@@ -56,6 +56,7 @@ mod streams;
 mod structural;
 mod tmdb;
 mod transcoder;
+mod universal;
 mod upstream;
 mod wire;
 mod feed;
@@ -468,6 +469,11 @@ pub struct Runtime {
     /// A part read the router accepted; `handle_connection` streams it after the
     /// runtime lock is released, so a media body never holds up the rest of the API.
     pending_part: Option<PartProxy>,
+    /// A transcoded segment the router accepted; served once ffmpeg has written it, after
+    /// the runtime lock is released (`universal.rs`).
+    pending_segment: Option<universal::SegmentPlan>,
+    /// The video transcoder, only with `REX_TRANSCODER` (`universal.rs`).
+    transcoder: Option<Arc<universal::Transcoder>>,
     /// A remote artwork url the router answered with (`_serve_image`); fetched, cached,
     /// after the lock is released, so a slow image host never holds up the API.
     pending_image: Option<String>,
@@ -753,6 +759,8 @@ impl Runtime {
             plex,
             match_candidates: HashMap::new(),
             pending_part: None,
+            pending_segment: None,
+            transcoder: universal::Transcoder::from_env(options.port),
             pending_image: None,
             pending_claim: None,
             plextv: Arc::new(plextv::PlexTv::new(claim, options.account_state_interval)),
@@ -3372,11 +3380,16 @@ impl Runtime {
             ("streamingBrainABRVersion", json!(3)),
             ("streamingBrainVersion", json!(2)),
             ("sync", json!(true)),
-            ("transcoderActiveVideoSessions", json!(0)),
+            // An encoder is claimed only when there is one (`REX_TRANSCODER`): Plex Web
+            // offers its Quality menu and converts only against `transcoderVideo`.
+            (
+                "transcoderActiveVideoSessions",
+                json!(self.transcoder.as_ref().map_or(0, |transcoder| transcoder.sessions().len())),
+            ),
             ("transcoderAudio", json!(false)),
             ("transcoderLyrics", json!(false)),
             ("transcoderSubtitles", json!(false)),
-            ("transcoderVideo", json!(false)),
+            ("transcoderVideo", json!(self.transcoder.is_some())),
             (
                 "transcoderVideoBitrates",
                 json!("64,96,208,320,720,1500,2000,3000,4000,8000,10000,12000,20000"),
@@ -8032,9 +8045,7 @@ impl Runtime {
             ("GET" | "HEAD", "/status/sessions/background") => {
                 Response::json(200, json!({"MediaContainer": {"size": 0}}))
             }
-            ("GET" | "HEAD", "/transcode/sessions") => {
-                Response::json(200, json!({"MediaContainer": {"size": 0}}))
-            }
+            ("GET" | "HEAD", "/transcode/sessions") => self.route_transcode_sessions(None, "GET"),
             ("GET" | "HEAD", "/clients") => {
                 Response::json(200, json!({"MediaContainer": {"size": 0}}))
             }
@@ -10865,7 +10876,13 @@ impl Runtime {
                 refusal = answer.text;
             }
         }
-        if let Some(refusal) = refusal {
+        // With an encoder, a refusal rex can convert is the reference's 3000/1001/1001
+        // (`tests/fixtures/transcode/`): the client goes on to `start.m3u8`.
+        let converting = match &refusal {
+            Some(_) if !all_parts => self.transcode_plan(query, headers, &key, &selected_for_engine, &profile_name, protocol),
+            _ => None,
+        };
+        if let Some(refusal) = refusal.clone().filter(|_| converting.is_none()) {
             fields.insert("directPlayDecisionCode".to_string(), json!(3000));
             fields.insert("directPlayDecisionText".to_string(), json!(refusal));
             fields.insert("generalDecisionCode".to_string(), json!(2000));
@@ -10902,12 +10919,22 @@ impl Runtime {
         self.decided_sessions.insert((session.clone(), key.clone()));
         fields.insert("resourceSession".to_string(), json!(session));
         let decided_path = query.get("path").map_or("", String::as_str);
-        if mde {
+        if converting.is_some() {
+            info!("DECISION conversion ({profile_name}) for path={decided_path}");
+        } else if mde {
             info!("DECISION direct play for path={decided_path}");
         } else {
             info!("DECISION direct play (no MDE, {profile_name}) for path={decided_path}");
         }
-        if mde {
+        if converting.is_some() {
+            let text = "Direct play not available; Conversion OK.";
+            fields.insert("directPlayDecisionCode".to_string(), json!(3000));
+            fields.insert("directPlayDecisionText".to_string(), json!(refusal.clone().unwrap_or_default()));
+            fields.insert("generalDecisionCode".to_string(), json!(1001));
+            fields.insert("generalDecisionText".to_string(), json!(text));
+            fields.insert("transcodeDecisionCode".to_string(), json!(1001));
+            fields.insert("transcodeDecisionText".to_string(), json!(text));
+        } else if mde {
             fields.insert("mdeDecisionCode".to_string(), json!(1000));
             fields.insert("mdeDecisionText".to_string(), json!("Direct play OK."));
         } else {
@@ -11082,6 +11109,16 @@ impl Runtime {
                         }
                     }
                 }
+            }
+        }
+        if let Some(plan) = &converting {
+            let converted = output
+                .get("Media")
+                .and_then(Value::as_array)
+                .and_then(|rows| rows.first())
+                .map(|media| self.converted_media(media, plan, true));
+            if let (Some(converted), Some(object)) = (converted, output.as_object_mut()) {
+                object.insert("Media".to_string(), json!([converted]));
             }
         }
         output = order_scalar_fields(output);
@@ -13900,6 +13937,9 @@ impl Runtime {
             && segments[1..3] == [":", "transcode"]
             && segments[3] == "universal"
         {
+            if let Some(response) = self.route_universal(&segments, query, request) {
+                return response;
+            }
             let leaf = segments.get(4).copied().unwrap_or_default();
             if leaf == "start" || leaf.starts_with("start.") {
                 let key = match self.decision_target(query, request) {
@@ -13926,6 +13966,13 @@ impl Runtime {
                 return Response::error(400, "rex: bad request");
             }
             return Response::error(404, "rex: no transcoder");
+        }
+        if self.transcoder.is_some()
+            && segments.len() == 3
+            && segments[..2] == ["transcode", "sessions"]
+            && matches!(request.method.as_str(), "GET" | "HEAD" | "DELETE")
+        {
+            return self.route_transcode_sessions(Some(segments[2]), &request.method);
         }
         if segments.first() == Some(&"resources") {
             if segments.len() == 2
@@ -23789,6 +23836,7 @@ fn handle_connection<S: Read + Write + PollRead>(
                 .lock()
                 .map_err(|_| "runtime lock poisoned".to_string())?;
             guard.pending_part = None;
+            guard.pending_segment = None;
             guard.pending_image = None;
             guard.pending_claim = None;
             guard.refused_for_token = false;
@@ -23807,6 +23855,7 @@ fn handle_connection<S: Read + Write + PollRead>(
                 }
             };
             part_plan = guard.pending_part.take();
+            let segment = guard.pending_segment.take();
             let image = guard.pending_image.take();
             let claim = guard.pending_claim.take();
             if guard.refused_for_token {
@@ -23825,13 +23874,18 @@ fn handle_connection<S: Read + Write + PollRead>(
             // `Handler.send_response`: on disk before the status line, written outside
             // the runtime lock so the other clients' requests go on meanwhile.
             write_or_log(snapshot);
-            match (image, claim) {
+            let mut response = match (image, claim) {
                 (_, Some(token)) => plextv::finish_claim(&runtime, &token, &request.target),
                 (Some(url), _) if response.status == 200 && response.body.is_empty() => {
                     serve_remote_image(response, &url)
                 }
                 _ => response,
+            };
+            // A transcoded segment waits for ffmpeg here, with the lock released.
+            if let Some(plan) = segment {
+                universal::finish_segment(plan, &mut response);
             }
+            response
         };
         // `_send_error`: a refusal logs its sentence, which the wire never carries.
         // `handle()`'s `except FilterError`: the refusal is logged by its detail, and

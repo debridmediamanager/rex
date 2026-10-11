@@ -104,6 +104,11 @@ impl Source {
         format!("{}/{escaped}", self.base)
     }
 
+    /// What the transcoder's FFmpeg reads a path with: its URL and the source's auth.
+    pub(super) fn ffmpeg_input(&self, path: &str) -> (String, Option<String>) {
+        (self.url(path), self.auth.clone())
+    }
+
     fn headers(&self) -> Vec<(&'static str, String)> {
         let mut headers = vec![("User-Agent", upstream::UPSTREAM_UA.to_string())];
         if let Some(auth) = &self.auth {

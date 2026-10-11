@@ -684,6 +684,7 @@ impl Runtime {
             if self.decided_sessions.iter().any(|(session, _)| *session == entry.id) {
                 object.insert("Session".to_string(), entry.session.clone());
             }
+            self.session_transcode(&entry.id, &entry.rating_key, object);
             rows.push(item);
         }
         rows
@@ -1014,6 +1015,7 @@ impl Runtime {
                                            "resolution": resolution_title(&resolution)}]}]),
                 );
             }
+            self.timeline_transcode(&session_pair.0, &key, &state, &mut fields);
             if state == "stopped" {
                 self.decided_sessions.remove(&session_pair);
             }
@@ -1047,9 +1049,10 @@ impl Runtime {
             .and_then(|value| value.as_i64())
             .unwrap_or(if listed { 1 } else { 0 });
         let mut body = Map::new();
+        // Measured with a conversion running: `size` counts the `TranscodeSession` too.
         body.insert(
             "size".to_string(),
-            json!(if fields.contains_key("Bandwidths") { 1 } else { 0 }),
+            json!(["Bandwidths", "TranscodeSession"].iter().filter(|name| fields.contains_key(**name)).count()),
         );
         body.insert("playbackState".to_string(), json!(playback_state));
         body.insert("skipCount".to_string(), json!(0));

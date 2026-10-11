@@ -1,0 +1,1415 @@
+{
+ "label": "copy-mkv",
+ "reference": "plexscratch 1.43.4.10903",
+ "source_request": "c45-play-mp4 decision (Plex Web 4.160.0, directPlay=0)",
+ "exchanges": [
+  {
+   "method": "GET",
+   "path": "/video/:/transcode/universal/decision",
+   "query": [
+    [
+     "hasMDE",
+     "1"
+    ],
+    [
+     "path",
+     "/library/metadata/3"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "protocol",
+     "hls"
+    ],
+    [
+     "fastSeek",
+     "1"
+    ],
+    [
+     "directPlay",
+     "0"
+    ],
+    [
+     "directStream",
+     "1"
+    ],
+    [
+     "subtitleSize",
+     "100"
+    ],
+    [
+     "audioBoost",
+     "100"
+    ],
+    [
+     "location",
+     "lan"
+    ],
+    [
+     "addDebugOverlay",
+     "0"
+    ],
+    [
+     "autoAdjustQuality",
+     "0"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "autoAdjustSubtitle",
+     "1"
+    ],
+    [
+     "mediaBufferSize",
+     "102400"
+    ],
+    [
+     "session",
+     "rexcapcopy-mkv"
+    ],
+    [
+     "subtitles",
+     "burn"
+    ],
+    [
+     "Accept-Language",
+     "en"
+    ],
+    [
+     "X-Plex-Session-Identifier",
+     "r721nn3yde4wajtzokgbe5dp"
+    ],
+    [
+     "X-Plex-Client-Profile-Extra",
+     "append-transcode-target-codec(type=videoProfile&context=streaming&videoCodec=h264&audioCodec=aac&protocol=hls)"
+    ],
+    [
+     "X-Plex-Incomplete-Segments",
+     "1"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Web"
+    ],
+    [
+     "X-Plex-Version",
+     "4.160.0"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "thuj6pv24kf5wr6qaqla8flz"
+    ],
+    [
+     "X-Plex-Platform",
+     "Chrome"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "151.0"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ],
+    [
+     "X-Plex-Model",
+     "standalone"
+    ],
+    [
+     "X-Plex-Device",
+     "Linux"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "Chrome"
+    ],
+    [
+     "X-Plex-Device-Screen-Resolution",
+     "1280x596,1280x720"
+    ],
+    [
+     "X-Plex-Token",
+     "<TOKEN>"
+    ],
+    [
+     "X-Plex-Language",
+     "en"
+    ],
+    [
+     "X-Plex-Session-Id",
+     "cb22220f-1e9f-4a50-8c54-1fd96224c096"
+    ],
+    [
+     "X-Plex-Playback-Session-Id",
+     "8a6deb6f-b9c0-4e42-81eb-6ae0bc1fb5d5"
+    ],
+    [
+     "X-Plex-Playback-Id",
+     "4698bde6-cc4c-44b9-83d7-a52a4cad98e5"
+    ]
+   ],
+   "req_headers": {
+    "Accept-Language": "en",
+    "Accept": "application/json",
+    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+    "Origin": "https://app.plex.tv",
+    "Referer": "https://app.plex.tv/"
+   },
+   "status": 200,
+   "res_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Access-Control-Expose-Headers",
+     "Location, Date"
+    ],
+    [
+     "Vary",
+     "Origin, X-Plex-Token"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Content-Length",
+     "5109"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Access-Control-Allow-Origin",
+     "https://app.plex.tv"
+    ],
+    [
+     "Date",
+     "Sun, 11 Oct 2026 18:04:41 GMT"
+    ]
+   ],
+   "res_len": 5109,
+   "ms": 17,
+   "res_body": "{\"MediaContainer\":{\"size\":1,\"allowSync\":\"1\",\"directPlayDecisionCode\":3000,\"directPlayDecisionText\":\"App cannot direct play this item. Direct play is disabled.\",\"generalDecisionCode\":1001,\"generalDecisionText\":\"Direct play not available; Conversion OK.\",\"identifier\":\"com.plexapp.plugins.library\",\"librarySectionID\":\"1\",\"librarySectionTitle\":\"Movies\",\"librarySectionUUID\":\"e46d000f-bcc4-4b5b-8a7b-1a9d721346ec\",\"mediaTagPrefix\":\"/system/bundle/media/flags/\",\"mediaTagVersion\":\"1786914632\",\"resourceSession\":\"r721nn3yde4wajtzokgbe5dp\",\"transcodeDecisionCode\":1001,\"transcodeDecisionText\":\"Direct play not available; Conversion OK.\",\"Metadata\":[{\"addedAt\":1789187069,\"art\":\"/library/metadata/3/art/1791242367\",\"audienceRating\":7.4,\"audienceRatingImage\":\"rottentomatoes://image.rating.upright\",\"contentRating\":\"PG\",\"duration\":1800690,\"guid\":\"plex://movie/5d77688123d5a3001f4ed3df\",\"key\":\"/library/metadata/3\",\"lastRatedAt\":\"1791241993\",\"lastViewedAt\":1791241993,\"librarySectionID\":\"1\",\"librarySectionKey\":\"/library/sections/1\",\"librarySectionTitle\":\"Movies\",\"originallyAvailableAt\":\"2010-09-30\",\"ratingKey\":\"3\",\"slug\":\"sintel\",\"studio\":\"Blender Foundation\",\"summary\":\"A wandering warrior finds an unlikely friend in the form of a young dragon. The two develop a close bond, until one day the dragon is snatched away. She then sets out on a relentless quest to reclaim her friend, finding in the end that her quest exacts a far greater price than she had ever imagined.\",\"thumb\":\"/library/metadata/3/thumb/1791242367\",\"title\":\"Sintel\",\"type\":\"movie\",\"updatedAt\":1791242367,\"userRating\":\"8.0\",\"viewCount\":1,\"year\":2010,\"Media\":[{\"audioProfile\":\"lc\",\"id\":\"3\",\"videoProfile\":\"high\",\"audioChannels\":1,\"audioCodec\":\"aac\",\"bitrate\":485,\"container\":\"mpegts\",\"duration\":1800690,\"height\":1080,\"protocol\":\"hls\",\"videoCodec\":\"h264\",\"videoFrameRate\":\"24p\",\"videoResolution\":\"1080p\",\"width\":1920,\"selected\":true,\"Part\":[{\"audioProfile\":\"lc\",\"deepAnalysisVersion\":\"6\",\"id\":\"3\",\"requiredBandwidths\":\"484,484,484,484,484,484,484,484\",\"videoProfile\":\"high\",\"bitrate\":485,\"container\":\"mpegts\",\"duration\":1800690,\"height\":1080,\"protocol\":\"hls\",\"width\":1920,\"decision\":\"transcode\",\"selected\":true,\"Stream\":[{\"bitDepth\":8,\"bitrate\":401,\"chromaLocation\":\"left\",\"chromaSubsampling\":\"4:2:0\",\"codec\":\"h264\",\"codedHeight\":1088,\"codedWidth\":1920,\"default\":true,\"displayTitle\":\"1080p\",\"extendedDisplayTitle\":\"1080p (H.264)\",\"frameRate\":24.0,\"hasScalingMatrix\":false,\"height\":1080,\"id\":\"5\",\"language\":\"English\",\"languageCode\":\"eng\",\"languageTag\":\"en\",\"level\":40,\"profile\":\"high\",\"refFrames\":4,\"requiredBandwidths\":\"400,400,400,400,400,400,400,400\",\"scanType\":\"progressive\",\"streamType\":1,\"width\":1920,\"decision\":\"copy\",\"location\":\"segments-av\"},{\"audioChannelLayout\":\"mono\",\"bitrate\":84,\"bitrateMode\":\"cbr\",\"channels\":1,\"codec\":\"aac\",\"default\":true,\"displayTitle\":\"English (AAC Mono)\",\"extendedDisplayTitle\":\"English (AAC Mono)\",\"id\":\"6\",\"language\":\"English\",\"languageCode\":\"eng\",\"languageTag\":\"en\",\"profile\":\"lc\",\"requiredBandwidths\":\"84,84,84,84,84,84,84,84\",\"samplingRate\":44100,\"selected\":true,\"streamType\":2,\"decision\":\"copy\",\"location\":\"segments-av\"}]}]}],\"UltraBlurColors\":[{\"bottomLeft\":\"0f2b3c\",\"bottomRight\":\"030f1b\",\"topLeft\":\"081c2a\",\"topRight\":\"020b14\"}],\"Genre\":[{\"filter\":\"genre=6\",\"id\":\"6\",\"tag\":\"Animation\"},{\"filter\":\"genre=23\",\"id\":\"23\",\"tag\":\"Fantasy\"},{\"filter\":\"genre=9\",\"id\":\"9\",\"tag\":\"Short\"},{\"filter\":\"genre=24\",\"id\":\"24\",\"tag\":\"Action\"},{\"filter\":\"genre=25\",\"id\":\"25\",\"tag\":\"Adventure\"},{\"filter\":\"genre=26\",\"id\":\"26\",\"tag\":\"Drama\"},{\"filter\":\"genre=27\",\"id\":\"27\",\"tag\":\"Science Fiction\"}],\"Country\":[{\"filter\":\"country=13\",\"id\":\"13\",\"tag\":\"Netherlands\"}],\"Rating\":[{\"image\":\"imdb://image.rating\",\"type\":\"audience\",\"value\":\"7.4\"},{\"image\":\"rottentomatoes://image.rating.upright\",\"type\":\"audience\",\"value\":\"7.4\"},{\"image\":\"themoviedb://image.rating\",\"type\":\"audience\",\"value\":\"7.3\"}],\"Collection\":[{\"filter\":\"collection=236\",\"guid\":\"collection://c077bfc1-962a-4396-a40d-194420e64506\",\"id\":\"236\",\"tag\":\"C76P Coll\"},{\"filter\":\"collection=238\",\"guid\":\"collection://7059d52e-ac4d-4380-bd4f-686595314750\",\"id\":\"238\",\"tag\":\"C76P Kcoll 011622\"}],\"Director\":[{\"filter\":\"director=28\",\"id\":\"28\",\"tag\":\"Colin Levy\",\"tagKey\":\"5d77688123d5a3001f4ed40a\",\"thumb\":\"https://metadata-static.plex.tv/d/people/d8e05ba0778c6373127f8d8b07c17326.jpg\"}],\"Writer\":[{\"filter\":\"writer=29\",\"id\":\"29\",\"tag\":\"Esther Wouda\",\"tagKey\":\"5d9c0904d4f2a9001f804e98\"}],\"Role\":[{\"filter\":\"actor=30\",\"id\":\"30\",\"role\":\"Sintel (voice)\",\"tag\":\"Halina Reijn\",\"tagKey\":\"5d77682bf54112001f5bc663\",\"thumb\":\"https://metadata-static.plex.tv/9/people/95a33cf9743f24d12c2ac803a26941bc.jpg\"},{\"filter\":\"actor=31\",\"id\":\"31\",\"role\":\"Shaman (voice)\",\"tag\":\"Thom Hoffman\",\"tagKey\":\"5d7768275af944001f1f6b57\",\"thumb\":\"https://metadata-static.plex.tv/2/people/2f5a97329557ec9b911e8f82c0b0fcf8.jpg\"}],\"Producer\":[{\"filter\":\"producer=12\",\"id\":\"12\",\"tag\":\"Ton Roosendaal\",\"tagKey\":\"5d776834103a2d001f567902\",\"thumb\":\"https://metadata-static.plex.tv/d/people/d0cd238b5a00353ddae78dd55720f7e3.jpg\"}],\"Field\":[{\"locked\":true,\"name\":\"thumb\"},{\"locked\":true,\"name\":\"collection\"}]}]}}",
+   "media_head_hex": null
+  },
+  {
+   "method": "GET",
+   "path": "/video/:/transcode/universal/decision",
+   "query": [
+    [
+     "hasMDE",
+     "1"
+    ],
+    [
+     "path",
+     "/library/metadata/3"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "protocol",
+     "hls"
+    ],
+    [
+     "fastSeek",
+     "1"
+    ],
+    [
+     "directPlay",
+     "0"
+    ],
+    [
+     "directStream",
+     "1"
+    ],
+    [
+     "subtitleSize",
+     "100"
+    ],
+    [
+     "audioBoost",
+     "100"
+    ],
+    [
+     "location",
+     "lan"
+    ],
+    [
+     "addDebugOverlay",
+     "0"
+    ],
+    [
+     "autoAdjustQuality",
+     "0"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "autoAdjustSubtitle",
+     "1"
+    ],
+    [
+     "mediaBufferSize",
+     "102400"
+    ],
+    [
+     "session",
+     "rexcapcopy-mkv"
+    ],
+    [
+     "subtitles",
+     "burn"
+    ],
+    [
+     "Accept-Language",
+     "en"
+    ],
+    [
+     "X-Plex-Session-Identifier",
+     "r721nn3yde4wajtzokgbe5dp"
+    ],
+    [
+     "X-Plex-Client-Profile-Extra",
+     "append-transcode-target-codec(type=videoProfile&context=streaming&videoCodec=h264&audioCodec=aac&protocol=hls)"
+    ],
+    [
+     "X-Plex-Incomplete-Segments",
+     "1"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Web"
+    ],
+    [
+     "X-Plex-Version",
+     "4.160.0"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "thuj6pv24kf5wr6qaqla8flz"
+    ],
+    [
+     "X-Plex-Platform",
+     "Chrome"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "151.0"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ],
+    [
+     "X-Plex-Model",
+     "standalone"
+    ],
+    [
+     "X-Plex-Device",
+     "Linux"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "Chrome"
+    ],
+    [
+     "X-Plex-Device-Screen-Resolution",
+     "1280x596,1280x720"
+    ],
+    [
+     "X-Plex-Token",
+     "<TOKEN>"
+    ],
+    [
+     "X-Plex-Language",
+     "en"
+    ],
+    [
+     "X-Plex-Session-Id",
+     "cb22220f-1e9f-4a50-8c54-1fd96224c096"
+    ],
+    [
+     "X-Plex-Playback-Session-Id",
+     "8a6deb6f-b9c0-4e42-81eb-6ae0bc1fb5d5"
+    ],
+    [
+     "X-Plex-Playback-Id",
+     "4698bde6-cc4c-44b9-83d7-a52a4cad98e5"
+    ]
+   ],
+   "req_headers": {
+    "Accept-Language": "en",
+    "Accept": "application/xml",
+    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+    "Origin": "https://app.plex.tv",
+    "Referer": "https://app.plex.tv/"
+   },
+   "status": 200,
+   "res_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Access-Control-Expose-Headers",
+     "Location, Date"
+    ],
+    [
+     "Vary",
+     "Origin, X-Plex-Token"
+    ],
+    [
+     "Content-Type",
+     "text/xml;charset=utf-8"
+    ],
+    [
+     "Content-Length",
+     "4936"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Access-Control-Allow-Origin",
+     "https://app.plex.tv"
+    ],
+    [
+     "Date",
+     "Sun, 11 Oct 2026 18:04:41 GMT"
+    ]
+   ],
+   "res_len": 4936,
+   "ms": 6,
+   "res_body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<MediaContainer size=\"1\" allowSync=\"1\" directPlayDecisionCode=\"3000\" directPlayDecisionText=\"App cannot direct play this item. Direct play is disabled.\" generalDecisionCode=\"1001\" generalDecisionText=\"Direct play not available; Conversion OK.\" identifier=\"com.plexapp.plugins.library\" librarySectionID=\"1\" librarySectionTitle=\"Movies\" librarySectionUUID=\"e46d000f-bcc4-4b5b-8a7b-1a9d721346ec\" mediaTagPrefix=\"/system/bundle/media/flags/\" mediaTagVersion=\"1786914632\" resourceSession=\"r721nn3yde4wajtzokgbe5dp\" transcodeDecisionCode=\"1001\" transcodeDecisionText=\"Direct play not available; Conversion OK.\">\n<Video addedAt=\"1789187069\" art=\"/library/metadata/3/art/1791242367\" audienceRating=\"7.4\" audienceRatingImage=\"rottentomatoes://image.rating.upright\" contentRating=\"PG\" duration=\"1800690\" guid=\"plex://movie/5d77688123d5a3001f4ed3df\" key=\"/library/metadata/3\" lastRatedAt=\"1791241993\" lastViewedAt=\"1791241993\" librarySectionID=\"1\" librarySectionKey=\"/library/sections/1\" librarySectionTitle=\"Movies\" originallyAvailableAt=\"2010-09-30\" ratingKey=\"3\" slug=\"sintel\" studio=\"Blender Foundation\" summary=\"A wandering warrior finds an unlikely friend in the form of a young dragon. The two develop a close bond, until one day the dragon is snatched away. She then sets out on a relentless quest to reclaim her friend, finding in the end that her quest exacts a far greater price than she had ever imagined.\" thumb=\"/library/metadata/3/thumb/1791242367\" title=\"Sintel\" type=\"movie\" updatedAt=\"1791242367\" userRating=\"8.0\" viewCount=\"1\" year=\"2010\">\n<Media audioProfile=\"lc\" id=\"3\" videoProfile=\"high\" audioChannels=\"1\" audioCodec=\"aac\" bitrate=\"485\" container=\"mpegts\" duration=\"1800690\" height=\"1080\" protocol=\"hls\" videoCodec=\"h264\" videoFrameRate=\"24p\" videoResolution=\"1080p\" width=\"1920\" selected=\"1\">\n<Part audioProfile=\"lc\" deepAnalysisVersion=\"6\" id=\"3\" requiredBandwidths=\"484,484,484,484,484,484,484,484\" videoProfile=\"high\" bitrate=\"485\" container=\"mpegts\" duration=\"1800690\" height=\"1080\" protocol=\"hls\" width=\"1920\" decision=\"transcode\" selected=\"1\">\n<Stream bitDepth=\"8\" bitrate=\"401\" chromaLocation=\"left\" chromaSubsampling=\"4:2:0\" codec=\"h264\" codedHeight=\"1088\" codedWidth=\"1920\" default=\"1\" displayTitle=\"1080p\" extendedDisplayTitle=\"1080p (H.264)\" frameRate=\"24\" hasScalingMatrix=\"0\" height=\"1080\" id=\"5\" language=\"English\" languageCode=\"eng\" languageTag=\"en\" level=\"40\" profile=\"high\" refFrames=\"4\" requiredBandwidths=\"400,400,400,400,400,400,400,400\" scanType=\"progressive\" streamType=\"1\" width=\"1920\" decision=\"copy\" location=\"segments-av\" />\n<Stream audioChannelLayout=\"mono\" bitrate=\"84\" bitrateMode=\"cbr\" channels=\"1\" codec=\"aac\" default=\"1\" displayTitle=\"English (AAC Mono)\" extendedDisplayTitle=\"English (AAC Mono)\" id=\"6\" language=\"English\" languageCode=\"eng\" languageTag=\"en\" profile=\"lc\" requiredBandwidths=\"84,84,84,84,84,84,84,84\" samplingRate=\"44100\" selected=\"1\" streamType=\"2\" decision=\"copy\" location=\"segments-av\" />\n</Part>\n</Media>\n<UltraBlurColors bottomLeft=\"0f2b3c\" bottomRight=\"030f1b\" topLeft=\"081c2a\" topRight=\"020b14\" />\n<Genre filter=\"genre=6\" id=\"6\" tag=\"Animation\" />\n<Genre filter=\"genre=23\" id=\"23\" tag=\"Fantasy\" />\n<Genre filter=\"genre=9\" id=\"9\" tag=\"Short\" />\n<Genre filter=\"genre=24\" id=\"24\" tag=\"Action\" />\n<Genre filter=\"genre=25\" id=\"25\" tag=\"Adventure\" />\n<Genre filter=\"genre=26\" id=\"26\" tag=\"Drama\" />\n<Genre filter=\"genre=27\" id=\"27\" tag=\"Science Fiction\" />\n<Country filter=\"country=13\" id=\"13\" tag=\"Netherlands\" />\n<Rating image=\"imdb://image.rating\" type=\"audience\" value=\"7.4\" />\n<Rating image=\"rottentomatoes://image.rating.upright\" type=\"audience\" value=\"7.4\" />\n<Rating image=\"themoviedb://image.rating\" type=\"audience\" value=\"7.3\" />\n<Collection filter=\"collection=236\" guid=\"collection://c077bfc1-962a-4396-a40d-194420e64506\" id=\"236\" tag=\"C76P Coll\" />\n<Collection filter=\"collection=238\" guid=\"collection://7059d52e-ac4d-4380-bd4f-686595314750\" id=\"238\" tag=\"C76P Kcoll 011622\" />\n<Director filter=\"director=28\" id=\"28\" tag=\"Colin Levy\" tagKey=\"5d77688123d5a3001f4ed40a\" thumb=\"https://metadata-static.plex.tv/d/people/d8e05ba0778c6373127f8d8b07c17326.jpg\" />\n<Writer filter=\"writer=29\" id=\"29\" tag=\"Esther Wouda\" tagKey=\"5d9c0904d4f2a9001f804e98\" />\n<Role filter=\"actor=30\" id=\"30\" role=\"Sintel (voice)\" tag=\"Halina Reijn\" tagKey=\"5d77682bf54112001f5bc663\" thumb=\"https://metadata-static.plex.tv/9/people/95a33cf9743f24d12c2ac803a26941bc.jpg\" />\n<Role filter=\"actor=31\" id=\"31\" role=\"Shaman (voice)\" tag=\"Thom Hoffman\" tagKey=\"5d7768275af944001f1f6b57\" thumb=\"https://metadata-static.plex.tv/2/people/2f5a97329557ec9b911e8f82c0b0fcf8.jpg\" />\n<Producer filter=\"producer=12\" id=\"12\" tag=\"Ton Roosendaal\" tagKey=\"5d776834103a2d001f567902\" thumb=\"https://metadata-static.plex.tv/d/people/d0cd238b5a00353ddae78dd55720f7e3.jpg\" />\n<Field locked=\"1\" name=\"thumb\" />\n<Field locked=\"1\" name=\"collection\" />\n</Video>\n</MediaContainer>\n",
+   "media_head_hex": null
+  },
+  {
+   "method": "GET",
+   "path": "/video/:/transcode/universal/start.m3u8",
+   "query": [
+    [
+     "hasMDE",
+     "1"
+    ],
+    [
+     "path",
+     "/library/metadata/3"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "protocol",
+     "hls"
+    ],
+    [
+     "fastSeek",
+     "1"
+    ],
+    [
+     "directPlay",
+     "0"
+    ],
+    [
+     "directStream",
+     "1"
+    ],
+    [
+     "subtitleSize",
+     "100"
+    ],
+    [
+     "audioBoost",
+     "100"
+    ],
+    [
+     "location",
+     "lan"
+    ],
+    [
+     "addDebugOverlay",
+     "0"
+    ],
+    [
+     "autoAdjustQuality",
+     "0"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "autoAdjustSubtitle",
+     "1"
+    ],
+    [
+     "mediaBufferSize",
+     "102400"
+    ],
+    [
+     "session",
+     "rexcapcopy-mkv"
+    ],
+    [
+     "subtitles",
+     "burn"
+    ],
+    [
+     "Accept-Language",
+     "en"
+    ],
+    [
+     "X-Plex-Session-Identifier",
+     "r721nn3yde4wajtzokgbe5dp"
+    ],
+    [
+     "X-Plex-Client-Profile-Extra",
+     "append-transcode-target-codec(type=videoProfile&context=streaming&videoCodec=h264&audioCodec=aac&protocol=hls)"
+    ],
+    [
+     "X-Plex-Incomplete-Segments",
+     "1"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Web"
+    ],
+    [
+     "X-Plex-Version",
+     "4.160.0"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "thuj6pv24kf5wr6qaqla8flz"
+    ],
+    [
+     "X-Plex-Platform",
+     "Chrome"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "151.0"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ],
+    [
+     "X-Plex-Model",
+     "standalone"
+    ],
+    [
+     "X-Plex-Device",
+     "Linux"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "Chrome"
+    ],
+    [
+     "X-Plex-Device-Screen-Resolution",
+     "1280x596,1280x720"
+    ],
+    [
+     "X-Plex-Token",
+     "<TOKEN>"
+    ],
+    [
+     "X-Plex-Language",
+     "en"
+    ],
+    [
+     "X-Plex-Session-Id",
+     "cb22220f-1e9f-4a50-8c54-1fd96224c096"
+    ],
+    [
+     "X-Plex-Playback-Session-Id",
+     "8a6deb6f-b9c0-4e42-81eb-6ae0bc1fb5d5"
+    ],
+    [
+     "X-Plex-Playback-Id",
+     "4698bde6-cc4c-44b9-83d7-a52a4cad98e5"
+    ]
+   ],
+   "req_headers": {
+    "Accept-Language": "en",
+    "Accept": "text/plain, */*; q=0.01",
+    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+    "Origin": "https://app.plex.tv",
+    "Referer": "https://app.plex.tv/"
+   },
+   "status": 200,
+   "res_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Access-Control-Expose-Headers",
+     "Location, Date"
+    ],
+    [
+     "Vary",
+     "Origin, X-Plex-Token"
+    ],
+    [
+     "Content-Type",
+     "application/vnd.apple.mpegurl"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Content-Length",
+     "166"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Access-Control-Allow-Origin",
+     "https://app.plex.tv"
+    ],
+    [
+     "Date",
+     "Sun, 11 Oct 2026 18:04:41 GMT"
+    ]
+   ],
+   "res_len": 166,
+   "ms": 6,
+   "res_body": "#EXTM3U\n#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=485000,RESOLUTION=1920x1080,FRAME-RATE=24.000000\nsession/rexcapcopy-mkv/base/index.m3u8?X-Plex-Incomplete-Segments=1\n",
+   "media_head_hex": null
+  },
+  {
+   "method": "GET",
+   "path": "/video/:/transcode/universal/session/rexcapcopy-mkv/base/index.m3u8",
+   "query": [
+    [
+     "X-Plex-Incomplete-Segments",
+     "1"
+    ],
+    [
+     "X-Plex-Token",
+     "<TOKEN>"
+    ]
+   ],
+   "req_headers": {
+    "Accept-Language": "en",
+    "Accept": "text/plain, */*; q=0.01",
+    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+    "Origin": "https://app.plex.tv",
+    "Referer": "https://app.plex.tv/"
+   },
+   "status": 200,
+   "res_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/vnd.apple.mpegurl"
+    ],
+    [
+     "Access-Control-Allow-Origin",
+     "https://app.plex.tv"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Content-Length",
+     "5161"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Date",
+     "Sun, 11 Oct 2026 18:04:41 GMT"
+    ]
+   ],
+   "res_len": 5161,
+   "ms": 48,
+   "res_body": "#EXTM3U\n#EXT-X-TARGETDURATION:10\n#EXT-X-ALLOW-CACHE:NO\n#EXT-X-MEDIA-SEQUENCE:0\n#EXTINF:10, nodesc\n00000.ts\n#EXTINF:10, nodesc\n00001.ts\n#EXTINF:10, nodesc\n00002.ts\n#EXTINF:10, nodesc\n00003.ts\n#EXTINF:10, nodesc\n00004.ts\n#EXTINF:10, nodesc\n00005.ts\n#EXTINF:10, nodesc\n00006.ts\n#EXTINF:10, nodesc\n00007.ts\n#EXTINF:10, nodesc\n00008.ts\n#EXTINF:10, nodesc\n00009.ts\n#EXTINF:10, nodesc\n00010.ts\n#EXTINF:10, nodesc\n00011.ts\n#EXTINF:10, nodesc\n00012.ts\n#EXTINF:10, nodesc\n00013.ts\n#EXTINF:10, nodesc\n00014.ts\n#EXTINF:10, nodesc\n00015.ts\n#EXTINF:10, nodesc\n00016.ts\n#EXTINF:10, nodesc\n00017.ts\n#EXTINF:10, nodesc\n00018.ts\n#EXTINF:10, nodesc\n00019.ts\n#EXTINF:10, nodesc\n00020.ts\n#EXTINF:10, nodesc\n00021.ts\n#EXTINF:10, nodesc\n00022.ts\n#EXTINF:10, nodesc\n00023.ts\n#EXTINF:10, nodesc\n00024.ts\n#EXTINF:10, nodesc\n00025.ts\n#EXTINF:10, nodesc\n00026.ts\n#EXTINF:10, nodesc\n00027.ts\n#EXTINF:10, nodesc\n00028.ts\n#EXTINF:10, nodesc\n00029.ts\n#EXTINF:10, nodesc\n00030.ts\n#EXTINF:10, nodesc\n00031.ts\n#EXTINF:10, nodesc\n00032.ts\n#EXTINF:10, nodesc\n00033.ts\n#EXTINF:10, nodesc\n00034.ts\n#EXTINF:10, nodesc\n00035.ts\n#EXTINF:10, nodesc\n00036.ts\n#EXTINF:10, nodesc\n00037.ts\n#EXTINF:10, nodesc\n00038.ts\n#EXTINF:10, nodesc\n00039.ts\n#EXTINF:10, nodesc\n00040.ts\n#EXTINF:10, nodesc\n00041.ts\n#EXTINF:10, nodesc\n00042.ts\n#EXTINF:10, nodesc\n00043.ts\n#EXTINF:10, nodesc\n00044.ts\n#EXTINF:10, nodesc\n00045.ts\n#EXTINF:10, nodesc\n00046.ts\n#EXTINF:10, nodesc\n00047.ts\n#EXTINF:10, nodesc\n00048.ts\n#EXTINF:10, nodesc\n00049.ts\n#EXTINF:10, nodesc\n00050.ts\n#EXTINF:10, nodesc\n00051.ts\n#EXTINF:10, nodesc\n00052.ts\n#EXTINF:10, nodesc\n00053.ts\n#EXTINF:10, nodesc\n00054.ts\n#EXTINF:10, nodesc\n00055.ts\n#EXTINF:10, nodesc\n00056.ts\n#EXTINF:10, nodesc\n00057.ts\n#EXTINF:10, nodesc\n00058.ts\n#EXTINF:10, nodesc\n00059.ts\n#EXTINF:10, nodesc\n00060.ts\n#EXTINF:10, nodesc\n00061.ts\n#EXTINF:10, nodesc\n00062.ts\n#EXTINF:10, nodesc\n00063.ts\n#EXTINF:10, nodesc\n00064.ts\n#EXTINF:10, nodesc\n00065.ts\n#EXTINF:10, nodesc\n00066.ts\n#EXTINF:10, nodesc\n00067.ts\n#EXTINF:10, nodesc\n00068.ts\n#EXTINF:10, nodesc\n00069.ts\n#EXTINF:10, nodesc\n00070.ts\n#EXTINF:10, nodesc\n00071.ts\n#EXTINF:10, nodesc\n00072.ts\n#EXTINF:10, nodesc\n00073.ts\n#EXTINF:10, nodesc\n00074.ts\n#EXTINF:10, nodesc\n00075.ts\n#EXTINF:10, nodesc\n00076.ts\n#EXTINF:10, nodesc\n00077.ts\n#EXTINF:10, nodesc\n00078.ts\n#EXTINF:10, nodesc\n00079.ts\n#EXTINF:10, nodesc\n00080.ts\n#EXTINF:10, nodesc\n00081.ts\n#EXTINF:10, nodesc\n00082.ts\n#EXTINF:10, nodesc\n00083.ts\n#EXTINF:10, nodesc\n00084.ts\n#EXTINF:10, nodesc\n00085.ts\n#EXTINF:10, nodesc\n00086.ts\n#EXTINF:10, nodesc\n00087.ts\n#EXTINF:10, nodesc\n00088.ts\n#EXTINF:10, nodesc\n00089.ts\n#EXTINF:10, nodesc\n00090.ts\n#EXTINF:10, nodesc\n00091.ts\n#EXTINF:10, nodesc\n00092.ts\n#EXTINF:10, nodesc\n00093.ts\n#EXTINF:10, nodesc\n00094.ts\n#EXTINF:10, nodesc\n00095.ts\n#EXTINF:10, nodesc\n00096.ts\n#EXTINF:10, nodesc\n00097.ts\n#EXTINF:10, nodesc\n00098.ts\n#EXTINF:10, nodesc\n00099.ts\n#EXTINF:10, nodesc\n00100.ts\n#EXTINF:10, nodesc\n00101.ts\n#EXTINF:10, nodesc\n00102.ts\n#EXTINF:10, nodesc\n00103.ts\n#EXTINF:10, nodesc\n00104.ts\n#EXTINF:10, nodesc\n00105.ts\n#EXTINF:10, nodesc\n00106.ts\n#EXTINF:10, nodesc\n00107.ts\n#EXTINF:10, nodesc\n00108.ts\n#EXTINF:10, nodesc\n00109.ts\n#EXTINF:10, nodesc\n00110.ts\n#EXTINF:10, nodesc\n00111.ts\n#EXTINF:10, nodesc\n00112.ts\n#EXTINF:10, nodesc\n00113.ts\n#EXTINF:10, nodesc\n00114.ts\n#EXTINF:10, nodesc\n00115.ts\n#EXTINF:10, nodesc\n00116.ts\n#EXTINF:10, nodesc\n00117.ts\n#EXTINF:10, nodesc\n00118.ts\n#EXTINF:10, nodesc\n00119.ts\n#EXTINF:10, nodesc\n00120.ts\n#EXTINF:10, nodesc\n00121.ts\n#EXTINF:10, nodesc\n00122.ts\n#EXTINF:10, nodesc\n00123.ts\n#EXTINF:10, nodesc\n00124.ts\n#EXTINF:10, nodesc\n00125.ts\n#EXTINF:10, nodesc\n00126.ts\n#EXTINF:10, nodesc\n00127.ts\n#EXTINF:10, nodesc\n00128.ts\n#EXTINF:10, nodesc\n00129.ts\n#EXTINF:10, nodesc\n00130.ts\n#EXTINF:10, nodesc\n00131.ts\n#EXTINF:10, nodesc\n00132.ts\n#EXTINF:10, nodesc\n00133.ts\n#EXTINF:10, nodesc\n00134.ts\n#EXTINF:10, nodesc\n00135.ts\n#EXTINF:10, nodesc\n00136.ts\n#EXTINF:10, nodesc\n00137.ts\n#EXTINF:10, nodesc\n00138.ts\n#EXTINF:10, nodesc\n00139.ts\n#EXTINF:10, nodesc\n00140.ts\n#EXTINF:10, nodesc\n00141.ts\n#EXTINF:10, nodesc\n00142.ts\n#EXTINF:10, nodesc\n00143.ts\n#EXTINF:10, nodesc\n00144.ts\n#EXTINF:10, nodesc\n00145.ts\n#EXTINF:10, nodesc\n00146.ts\n#EXTINF:10, nodesc\n00147.ts\n#EXTINF:10, nodesc\n00148.ts\n#EXTINF:10, nodesc\n00149.ts\n#EXTINF:10, nodesc\n00150.ts\n#EXTINF:10, nodesc\n00151.ts\n#EXTINF:10, nodesc\n00152.ts\n#EXTINF:10, nodesc\n00153.ts\n#EXTINF:10, nodesc\n00154.ts\n#EXTINF:10, nodesc\n00155.ts\n#EXTINF:10, nodesc\n00156.ts\n#EXTINF:10, nodesc\n00157.ts\n#EXTINF:10, nodesc\n00158.ts\n#EXTINF:10, nodesc\n00159.ts\n#EXTINF:10, nodesc\n00160.ts\n#EXTINF:10, nodesc\n00161.ts\n#EXTINF:10, nodesc\n00162.ts\n#EXTINF:10, nodesc\n00163.ts\n#EXTINF:10, nodesc\n00164.ts\n#EXTINF:10, nodesc\n00165.ts\n#EXTINF:10, nodesc\n00166.ts\n#EXTINF:10, nodesc\n00167.ts\n#EXTINF:10, nodesc\n00168.ts\n#EXTINF:10, nodesc\n00169.ts\n#EXTINF:10, nodesc\n00170.ts\n#EXTINF:10, nodesc\n00171.ts\n#EXTINF:10, nodesc\n00172.ts\n#EXTINF:10, nodesc\n00173.ts\n#EXTINF:10, nodesc\n00174.ts\n#EXTINF:10, nodesc\n00175.ts\n#EXTINF:10, nodesc\n00176.ts\n#EXTINF:10, nodesc\n00177.ts\n#EXTINF:10, nodesc\n00178.ts\n#EXTINF:10, nodesc\n00179.ts\n#EXTINF:1, nodesc\n00180.ts\n#EXT-X-ENDLIST\n",
+   "media_head_hex": null
+  },
+  {
+   "method": "GET",
+   "path": "/video/:/transcode/universal/session/rexcapcopy-mkv/base/00000.ts",
+   "query": [
+    [
+     "X-Plex-Token",
+     "<TOKEN>"
+    ]
+   ],
+   "req_headers": {
+    "Accept-Language": "en",
+    "Accept": "text/plain, */*; q=0.01",
+    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+    "Origin": "https://app.plex.tv",
+    "Referer": "https://app.plex.tv/"
+   },
+   "status": 200,
+   "res_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Access-Control-Allow-Origin",
+     "https://app.plex.tv"
+    ],
+    [
+     "Accept-Ranges",
+     "bytes"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Content-Length",
+     "714400"
+    ],
+    [
+     "Content-Type",
+     "video/MP2T"
+    ],
+    [
+     "Date",
+     "Sun, 11 Oct 2026 18:04:42 GMT"
+    ]
+   ],
+   "res_len": 714400,
+   "ms": 103,
+   "res_body": null,
+   "media_head_hex": "474011100042f025"
+  },
+  {
+   "method": "GET",
+   "path": "/video/:/transcode/universal/session/rexcapcopy-mkv/base/00001.ts",
+   "query": [
+    [
+     "X-Plex-Token",
+     "<TOKEN>"
+    ]
+   ],
+   "req_headers": {
+    "Accept-Language": "en",
+    "Accept": "text/plain, */*; q=0.01",
+    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+    "Origin": "https://app.plex.tv",
+    "Referer": "https://app.plex.tv/"
+   },
+   "status": 200,
+   "res_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Access-Control-Allow-Origin",
+     "https://app.plex.tv"
+    ],
+    [
+     "Accept-Ranges",
+     "bytes"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Content-Length",
+     "676612"
+    ],
+    [
+     "Content-Type",
+     "video/MP2T"
+    ],
+    [
+     "Date",
+     "Sun, 11 Oct 2026 18:04:42 GMT"
+    ]
+   ],
+   "res_len": 676612,
+   "ms": 3,
+   "res_body": null,
+   "media_head_hex": "474011140042f025"
+  },
+  {
+   "method": "GET",
+   "path": "/:/timeline",
+   "query": [
+    [
+     "ratingKey",
+     "3"
+    ],
+    [
+     "key",
+     "/library/metadata/3"
+    ],
+    [
+     "state",
+     "playing"
+    ],
+    [
+     "hasMDE",
+     "1"
+    ],
+    [
+     "time",
+     "4000"
+    ],
+    [
+     "duration",
+     "1800690"
+    ],
+    [
+     "X-Plex-Session-Identifier",
+     "r721nn3yde4wajtzokgbe5dp"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "thuj6pv24kf5wr6qaqla8flz"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Web"
+    ],
+    [
+     "X-Plex-Platform",
+     "Chrome"
+    ],
+    [
+     "X-Plex-Token",
+     "<TOKEN>"
+    ]
+   ],
+   "req_headers": {
+    "Accept-Language": "en",
+    "Accept": "application/json",
+    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+    "Origin": "https://app.plex.tv",
+    "Referer": "https://app.plex.tv/"
+   },
+   "status": 200,
+   "res_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Access-Control-Expose-Headers",
+     "Location, Date"
+    ],
+    [
+     "Vary",
+     "Origin, X-Plex-Token"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Content-Length",
+     "749"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Access-Control-Allow-Origin",
+     "https://app.plex.tv"
+    ],
+    [
+     "Date",
+     "Sun, 11 Oct 2026 18:04:42 GMT"
+    ]
+   ],
+   "res_len": 749,
+   "ms": 9,
+   "res_body": "{\"MediaContainer\":{\"size\":2,\"playbackState\":\"ignore\",\"skipCount\":0,\"viewCount\":1,\"viewOffset\":-1,\"Bandwidths\":[{\"Bandwidth\":[{\"time\":0,\"bandwidth\":509,\"resolution\":\"1080p\"}]}],\"TranscodeSession\":[{\"key\":\"/transcode/sessions/rexcapcopy-mkv\",\"throttled\":false,\"complete\":false,\"progress\":0.0,\"size\":0,\"speed\":null,\"error\":false,\"duration\":1800690,\"remaining\":0,\"context\":\"streaming\",\"sourceVideoCodec\":\"h264\",\"sourceAudioCodec\":\"aac\",\"videoDecision\":\"copy\",\"audioDecision\":\"copy\",\"protocol\":\"hls\",\"container\":\"mpegts\",\"videoCodec\":\"h264\",\"audioCodec\":\"aac\",\"audioChannels\":1,\"width\":1920,\"height\":1080,\"transcodeHwRequested\":false,\"transcodeHwFullPipeline\":false,\"timeStamp\":1791741881.9314614,\"maxOffsetAvailable\":110.046,\"minOffsetAvailable\":0.0}]}}",
+   "media_head_hex": null
+  },
+  {
+   "method": "GET",
+   "path": "/status/sessions",
+   "query": [
+    [
+     "X-Plex-Token",
+     "<TOKEN>"
+    ]
+   ],
+   "req_headers": {
+    "Accept-Language": "en",
+    "Accept": "application/json",
+    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+    "Origin": "https://app.plex.tv",
+    "Referer": "https://app.plex.tv/"
+   },
+   "status": 200,
+   "res_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Access-Control-Expose-Headers",
+     "Location, Date"
+    ],
+    [
+     "Vary",
+     "Origin, X-Plex-Token"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Content-Length",
+     "5365"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Access-Control-Allow-Origin",
+     "https://app.plex.tv"
+    ],
+    [
+     "Date",
+     "Sun, 11 Oct 2026 18:04:43 GMT"
+    ]
+   ],
+   "res_len": 5365,
+   "ms": 2,
+   "res_body": "{\"MediaContainer\":{\"size\":1,\"Metadata\":[{\"addedAt\":1789187069,\"art\":\"/library/metadata/3/art/1791242367\",\"audienceRating\":7.4,\"audienceRatingImage\":\"rottentomatoes://image.rating.upright\",\"contentRating\":\"PG\",\"duration\":1800690,\"guid\":\"plex://movie/5d77688123d5a3001f4ed3df\",\"key\":\"/library/metadata/3\",\"lastRatedAt\":\"1791241993\",\"lastViewedAt\":1791241993,\"librarySectionID\":\"1\",\"librarySectionKey\":\"/library/sections/1\",\"librarySectionTitle\":\"Movies\",\"originallyAvailableAt\":\"2010-09-30\",\"ratingKey\":\"3\",\"sessionKey\":\"3\",\"slug\":\"sintel\",\"studio\":\"Blender Foundation\",\"summary\":\"A wandering warrior finds an unlikely friend in the form of a young dragon. The two develop a close bond, until one day the dragon is snatched away. She then sets out on a relentless quest to reclaim her friend, finding in the end that her quest exacts a far greater price than she had ever imagined.\",\"thumb\":\"/library/metadata/3/thumb/1791242367\",\"title\":\"Sintel\",\"type\":\"movie\",\"updatedAt\":1791242367,\"userRating\":\"8.0\",\"viewCount\":1,\"viewOffset\":4000,\"year\":2010,\"Media\":[{\"audioProfile\":\"lc\",\"id\":\"3\",\"videoProfile\":\"high\",\"audioChannels\":1,\"audioCodec\":\"aac\",\"bitrate\":485,\"container\":\"mpegts\",\"duration\":1800690,\"height\":1080,\"protocol\":\"hls\",\"videoCodec\":\"h264\",\"videoFrameRate\":\"24p\",\"videoResolution\":\"1080p\",\"width\":1920,\"selected\":true,\"Part\":[{\"audioProfile\":\"lc\",\"id\":\"3\",\"videoProfile\":\"high\",\"bitrate\":485,\"container\":\"mpegts\",\"duration\":1800690,\"height\":1080,\"protocol\":\"hls\",\"width\":1920,\"decision\":\"transcode\",\"selected\":true,\"Stream\":[{\"bitDepth\":8,\"bitrate\":401,\"chromaLocation\":\"left\",\"chromaSubsampling\":\"4:2:0\",\"codec\":\"h264\",\"codedHeight\":1088,\"codedWidth\":1920,\"default\":true,\"displayTitle\":\"1080p (H.264)\",\"extendedDisplayTitle\":\"1080p (H.264)\",\"frameRate\":24.0,\"hasScalingMatrix\":false,\"height\":1080,\"id\":\"5\",\"language\":\"English\",\"languageCode\":\"eng\",\"languageTag\":\"en\",\"level\":40,\"profile\":\"high\",\"refFrames\":4,\"scanType\":\"progressive\",\"streamType\":1,\"width\":1920,\"decision\":\"copy\",\"location\":\"segments-av\"},{\"audioChannelLayout\":\"mono\",\"bitrate\":84,\"bitrateMode\":\"cbr\",\"channels\":1,\"codec\":\"aac\",\"default\":true,\"displayTitle\":\"English (AAC Mono)\",\"extendedDisplayTitle\":\"English (AAC Mono)\",\"id\":\"6\",\"language\":\"English\",\"languageCode\":\"eng\",\"languageTag\":\"en\",\"profile\":\"lc\",\"samplingRate\":44100,\"selected\":true,\"streamType\":2,\"decision\":\"copy\",\"location\":\"segments-av\"}]}]}],\"UltraBlurColors\":[{\"bottomLeft\":\"0f2b3c\",\"bottomRight\":\"030f1b\",\"topLeft\":\"081c2a\",\"topRight\":\"020b14\"}],\"Genre\":[{\"count\":\"3\",\"filter\":\"genre=6\",\"id\":\"6\",\"tag\":\"Animation\"},{\"count\":\"2\",\"filter\":\"genre=23\",\"id\":\"23\",\"tag\":\"Fantasy\"},{\"count\":\"4\",\"filter\":\"genre=9\",\"id\":\"9\",\"tag\":\"Short\"},{\"filter\":\"genre=24\",\"id\":\"24\",\"tag\":\"Action\"},{\"filter\":\"genre=25\",\"id\":\"25\",\"tag\":\"Adventure\"},{\"filter\":\"genre=26\",\"id\":\"26\",\"tag\":\"Drama\"},{\"count\":\"4\",\"filter\":\"genre=27\",\"id\":\"27\",\"tag\":\"Science Fiction\"}],\"Country\":[{\"count\":\"4\",\"filter\":\"country=13\",\"id\":\"13\",\"tag\":\"Netherlands\"}],\"Rating\":[{\"count\":\"5\",\"image\":\"imdb://image.rating\",\"type\":\"audience\",\"value\":\"7.4\"},{\"image\":\"rottentomatoes://image.rating.upright\",\"type\":\"audience\",\"value\":\"7.4\"},{\"count\":\"4\",\"image\":\"themoviedb://image.rating\",\"type\":\"audience\",\"value\":\"7.3\"}],\"Collection\":[{\"count\":\"2\",\"filter\":\"collection=236\",\"guid\":\"collection://c077bfc1-962a-4396-a40d-194420e64506\",\"id\":\"236\",\"tag\":\"C76P Coll\"},{\"filter\":\"collection=238\",\"guid\":\"collection://7059d52e-ac4d-4380-bd4f-686595314750\",\"id\":\"238\",\"tag\":\"C76P Kcoll 011622\"}],\"Director\":[{\"filter\":\"director=28\",\"id\":\"28\",\"tag\":\"Colin Levy\",\"tagKey\":\"5d77688123d5a3001f4ed40a\",\"thumb\":\"https://metadata-static.plex.tv/d/people/d8e05ba0778c6373127f8d8b07c17326.jpg\"}],\"Writer\":[{\"count\":\"2\",\"filter\":\"writer=29\",\"id\":\"29\",\"tag\":\"Esther Wouda\",\"tagKey\":\"5d9c0904d4f2a9001f804e98\"}],\"Role\":[{\"filter\":\"actor=30\",\"id\":\"30\",\"role\":\"Sintel (voice)\",\"tag\":\"Halina Reijn\",\"tagKey\":\"5d77682bf54112001f5bc663\",\"thumb\":\"https://metadata-static.plex.tv/9/people/95a33cf9743f24d12c2ac803a26941bc.jpg\"},{\"filter\":\"actor=31\",\"id\":\"31\",\"role\":\"Shaman (voice)\",\"tag\":\"Thom Hoffman\",\"tagKey\":\"5d7768275af944001f1f6b57\",\"thumb\":\"https://metadata-static.plex.tv/2/people/2f5a97329557ec9b911e8f82c0b0fcf8.jpg\"}],\"Producer\":[{\"count\":\"4\",\"filter\":\"producer=12\",\"id\":\"12\",\"tag\":\"Ton Roosendaal\",\"tagKey\":\"5d776834103a2d001f567902\",\"thumb\":\"https://metadata-static.plex.tv/d/people/d0cd238b5a00353ddae78dd55720f7e3.jpg\"}],\"Field\":[{\"locked\":true,\"name\":\"thumb\"},{\"locked\":true,\"name\":\"collection\"}],\"User\":{\"id\":\"1\"},\"Player\":{\"address\":\"127.0.0.1\",\"machineIdentifier\":\"thuj6pv24kf5wr6qaqla8flz\",\"platform\":\"Chrome\",\"product\":\"Plex Web\",\"profile\":\"Web\",\"state\":\"playing\",\"local\":true,\"relayed\":false,\"secure\":false,\"userID\":1},\"Session\":{\"id\":\"r721nn3yde4wajtzokgbe5dp\",\"bandwidth\":509,\"location\":\"lan\"},\"TranscodeSession\":{\"key\":\"/transcode/sessions/rexcapcopy-mkv\",\"throttled\":true,\"complete\":false,\"progress\":0.0,\"size\":-1,\"speed\":0.0,\"error\":false,\"duration\":1800690,\"remaining\":11341,\"context\":\"streaming\",\"sourceVideoCodec\":\"h264\",\"sourceAudioCodec\":\"aac\",\"videoDecision\":\"copy\",\"audioDecision\":\"copy\",\"protocol\":\"hls\",\"container\":\"mpegts\",\"videoCodec\":\"h264\",\"audioCodec\":\"aac\",\"audioChannels\":1,\"width\":1920,\"height\":1080,\"transcodeHwRequested\":false,\"transcodeHwFullPipeline\":false,\"timeStamp\":1791741881.9314614,\"maxOffsetAvailable\":510.207,\"minOffsetAvailable\":0.0}}]}}",
+   "media_head_hex": null
+  },
+  {
+   "method": "GET",
+   "path": "/status/sessions",
+   "query": [
+    [
+     "X-Plex-Token",
+     "<TOKEN>"
+    ]
+   ],
+   "req_headers": {
+    "Accept-Language": "en",
+    "Accept": "application/xml",
+    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+    "Origin": "https://app.plex.tv",
+    "Referer": "https://app.plex.tv/"
+   },
+   "status": 200,
+   "res_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Access-Control-Expose-Headers",
+     "Location, Date"
+    ],
+    [
+     "Vary",
+     "Origin, X-Plex-Token"
+    ],
+    [
+     "Content-Type",
+     "text/xml;charset=utf-8"
+    ],
+    [
+     "Content-Length",
+     "5137"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Access-Control-Allow-Origin",
+     "https://app.plex.tv"
+    ],
+    [
+     "Date",
+     "Sun, 11 Oct 2026 18:04:43 GMT"
+    ]
+   ],
+   "res_len": 5137,
+   "ms": 2,
+   "res_body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<MediaContainer size=\"1\">\n<Video addedAt=\"1789187069\" art=\"/library/metadata/3/art/1791242367\" audienceRating=\"7.4\" audienceRatingImage=\"rottentomatoes://image.rating.upright\" contentRating=\"PG\" duration=\"1800690\" guid=\"plex://movie/5d77688123d5a3001f4ed3df\" key=\"/library/metadata/3\" lastRatedAt=\"1791241993\" lastViewedAt=\"1791241993\" librarySectionID=\"1\" librarySectionKey=\"/library/sections/1\" librarySectionTitle=\"Movies\" originallyAvailableAt=\"2010-09-30\" ratingKey=\"3\" sessionKey=\"3\" slug=\"sintel\" studio=\"Blender Foundation\" summary=\"A wandering warrior finds an unlikely friend in the form of a young dragon. The two develop a close bond, until one day the dragon is snatched away. She then sets out on a relentless quest to reclaim her friend, finding in the end that her quest exacts a far greater price than she had ever imagined.\" thumb=\"/library/metadata/3/thumb/1791242367\" title=\"Sintel\" type=\"movie\" updatedAt=\"1791242367\" userRating=\"8.0\" viewCount=\"1\" viewOffset=\"4000\" year=\"2010\">\n<Media audioProfile=\"lc\" id=\"3\" videoProfile=\"high\" audioChannels=\"1\" audioCodec=\"aac\" bitrate=\"485\" container=\"mpegts\" duration=\"1800690\" height=\"1080\" protocol=\"hls\" videoCodec=\"h264\" videoFrameRate=\"24p\" videoResolution=\"1080p\" width=\"1920\" selected=\"1\">\n<Part audioProfile=\"lc\" id=\"3\" videoProfile=\"high\" bitrate=\"485\" container=\"mpegts\" duration=\"1800690\" height=\"1080\" protocol=\"hls\" width=\"1920\" decision=\"transcode\" selected=\"1\">\n<Stream bitDepth=\"8\" bitrate=\"401\" chromaLocation=\"left\" chromaSubsampling=\"4:2:0\" codec=\"h264\" codedHeight=\"1088\" codedWidth=\"1920\" default=\"1\" displayTitle=\"1080p (H.264)\" extendedDisplayTitle=\"1080p (H.264)\" frameRate=\"24\" hasScalingMatrix=\"0\" height=\"1080\" id=\"5\" language=\"English\" languageCode=\"eng\" languageTag=\"en\" level=\"40\" profile=\"high\" refFrames=\"4\" scanType=\"progressive\" streamType=\"1\" width=\"1920\" decision=\"copy\" location=\"segments-av\" />\n<Stream audioChannelLayout=\"mono\" bitrate=\"84\" bitrateMode=\"cbr\" channels=\"1\" codec=\"aac\" default=\"1\" displayTitle=\"English (AAC Mono)\" extendedDisplayTitle=\"English (AAC Mono)\" id=\"6\" language=\"English\" languageCode=\"eng\" languageTag=\"en\" profile=\"lc\" samplingRate=\"44100\" selected=\"1\" streamType=\"2\" decision=\"copy\" location=\"segments-av\" />\n</Part>\n</Media>\n<UltraBlurColors bottomLeft=\"0f2b3c\" bottomRight=\"030f1b\" topLeft=\"081c2a\" topRight=\"020b14\" />\n<Genre count=\"3\" filter=\"genre=6\" id=\"6\" tag=\"Animation\" />\n<Genre count=\"2\" filter=\"genre=23\" id=\"23\" tag=\"Fantasy\" />\n<Genre count=\"4\" filter=\"genre=9\" id=\"9\" tag=\"Short\" />\n<Genre filter=\"genre=24\" id=\"24\" tag=\"Action\" />\n<Genre filter=\"genre=25\" id=\"25\" tag=\"Adventure\" />\n<Genre filter=\"genre=26\" id=\"26\" tag=\"Drama\" />\n<Genre count=\"4\" filter=\"genre=27\" id=\"27\" tag=\"Science Fiction\" />\n<Country count=\"4\" filter=\"country=13\" id=\"13\" tag=\"Netherlands\" />\n<Rating count=\"5\" image=\"imdb://image.rating\" type=\"audience\" value=\"7.4\" />\n<Rating image=\"rottentomatoes://image.rating.upright\" type=\"audience\" value=\"7.4\" />\n<Rating count=\"4\" image=\"themoviedb://image.rating\" type=\"audience\" value=\"7.3\" />\n<Collection count=\"2\" filter=\"collection=236\" guid=\"collection://c077bfc1-962a-4396-a40d-194420e64506\" id=\"236\" tag=\"C76P Coll\" />\n<Collection filter=\"collection=238\" guid=\"collection://7059d52e-ac4d-4380-bd4f-686595314750\" id=\"238\" tag=\"C76P Kcoll 011622\" />\n<Director filter=\"director=28\" id=\"28\" tag=\"Colin Levy\" tagKey=\"5d77688123d5a3001f4ed40a\" thumb=\"https://metadata-static.plex.tv/d/people/d8e05ba0778c6373127f8d8b07c17326.jpg\" />\n<Writer count=\"2\" filter=\"writer=29\" id=\"29\" tag=\"Esther Wouda\" tagKey=\"5d9c0904d4f2a9001f804e98\" />\n<Role filter=\"actor=30\" id=\"30\" role=\"Sintel (voice)\" tag=\"Halina Reijn\" tagKey=\"5d77682bf54112001f5bc663\" thumb=\"https://metadata-static.plex.tv/9/people/95a33cf9743f24d12c2ac803a26941bc.jpg\" />\n<Role filter=\"actor=31\" id=\"31\" role=\"Shaman (voice)\" tag=\"Thom Hoffman\" tagKey=\"5d7768275af944001f1f6b57\" thumb=\"https://metadata-static.plex.tv/2/people/2f5a97329557ec9b911e8f82c0b0fcf8.jpg\" />\n<Producer count=\"4\" filter=\"producer=12\" id=\"12\" tag=\"Ton Roosendaal\" tagKey=\"5d776834103a2d001f567902\" thumb=\"https://metadata-static.plex.tv/d/people/d0cd238b5a00353ddae78dd55720f7e3.jpg\" />\n<Field locked=\"1\" name=\"thumb\" />\n<Field locked=\"1\" name=\"collection\" />\n<User id=\"1\" />\n<Player address=\"127.0.0.1\" machineIdentifier=\"thuj6pv24kf5wr6qaqla8flz\" platform=\"Chrome\" product=\"Plex Web\" profile=\"Web\" state=\"playing\" local=\"1\" relayed=\"0\" secure=\"0\" userID=\"1\" />\n<Session id=\"r721nn3yde4wajtzokgbe5dp\" bandwidth=\"509\" location=\"lan\" />\n<TranscodeSession key=\"/transcode/sessions/rexcapcopy-mkv\" throttled=\"1\" complete=\"0\" progress=\"0\" size=\"-1\" speed=\"0\" error=\"0\" duration=\"1800690\" remaining=\"11341\" context=\"streaming\" sourceVideoCodec=\"h264\" sourceAudioCodec=\"aac\" videoDecision=\"copy\" audioDecision=\"copy\" protocol=\"hls\" container=\"mpegts\" videoCodec=\"h264\" audioCodec=\"aac\" audioChannels=\"1\" width=\"1920\" height=\"1080\" transcodeHwRequested=\"0\" transcodeHwFullPipeline=\"0\" timeStamp=\"1791741881.9314613\" maxOffsetAvailable=\"510.20699999999999\" minOffsetAvailable=\"0\" />\n</Video>\n</MediaContainer>\n",
+   "media_head_hex": null
+  },
+  {
+   "method": "GET",
+   "path": "/transcode/sessions",
+   "query": [
+    [
+     "X-Plex-Token",
+     "<TOKEN>"
+    ]
+   ],
+   "req_headers": {
+    "Accept-Language": "en",
+    "Accept": "application/json",
+    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+    "Origin": "https://app.plex.tv",
+    "Referer": "https://app.plex.tv/"
+   },
+   "status": 200,
+   "res_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Access-Control-Expose-Headers",
+     "Location, Date"
+    ],
+    [
+     "Vary",
+     "Origin, X-Plex-Token"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Content-Length",
+     "584"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Access-Control-Allow-Origin",
+     "https://app.plex.tv"
+    ],
+    [
+     "Date",
+     "Sun, 11 Oct 2026 18:04:43 GMT"
+    ]
+   ],
+   "res_len": 584,
+   "ms": 1,
+   "res_body": "{\"MediaContainer\":{\"size\":1,\"TranscodeSession\":[{\"key\":\"rexcapcopy-mkv\",\"throttled\":true,\"complete\":false,\"progress\":0.0,\"size\":-1,\"speed\":0.0,\"error\":false,\"duration\":1800690,\"remaining\":11341,\"context\":\"streaming\",\"sourceVideoCodec\":\"h264\",\"sourceAudioCodec\":\"aac\",\"videoDecision\":\"copy\",\"audioDecision\":\"copy\",\"protocol\":\"hls\",\"container\":\"mpegts\",\"videoCodec\":\"h264\",\"audioCodec\":\"aac\",\"audioChannels\":1,\"width\":1920,\"height\":1080,\"transcodeHwRequested\":false,\"transcodeHwFullPipeline\":false,\"timeStamp\":1791741881.9314614,\"maxOffsetAvailable\":510.207,\"minOffsetAvailable\":0.0}]}}",
+   "media_head_hex": null
+  },
+  {
+   "method": "GET",
+   "path": "/transcode/sessions",
+   "query": [
+    [
+     "X-Plex-Token",
+     "<TOKEN>"
+    ]
+   ],
+   "req_headers": {
+    "Accept-Language": "en",
+    "Accept": "application/xml",
+    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+    "Origin": "https://app.plex.tv",
+    "Referer": "https://app.plex.tv/"
+   },
+   "status": 200,
+   "res_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Access-Control-Expose-Headers",
+     "Location, Date"
+    ],
+    [
+     "Vary",
+     "Origin, X-Plex-Token"
+    ],
+    [
+     "Content-Type",
+     "text/xml;charset=utf-8"
+    ],
+    [
+     "Content-Length",
+     "602"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Access-Control-Allow-Origin",
+     "https://app.plex.tv"
+    ],
+    [
+     "Date",
+     "Sun, 11 Oct 2026 18:04:43 GMT"
+    ]
+   ],
+   "res_len": 602,
+   "ms": 1,
+   "res_body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<MediaContainer size=\"1\">\n<TranscodeSession key=\"rexcapcopy-mkv\" throttled=\"1\" complete=\"0\" progress=\"0\" size=\"-1\" speed=\"0\" error=\"0\" duration=\"1800690\" remaining=\"11341\" context=\"streaming\" sourceVideoCodec=\"h264\" sourceAudioCodec=\"aac\" videoDecision=\"copy\" audioDecision=\"copy\" protocol=\"hls\" container=\"mpegts\" videoCodec=\"h264\" audioCodec=\"aac\" audioChannels=\"1\" width=\"1920\" height=\"1080\" transcodeHwRequested=\"0\" transcodeHwFullPipeline=\"0\" timeStamp=\"1791741881.9314613\" maxOffsetAvailable=\"510.20699999999999\" minOffsetAvailable=\"0\" />\n</MediaContainer>\n",
+   "media_head_hex": null
+  },
+  {
+   "method": "GET",
+   "path": "/video/:/transcode/universal/ping",
+   "query": [
+    [
+     "session",
+     "rexcapcopy-mkv"
+    ],
+    [
+     "X-Plex-Token",
+     "<TOKEN>"
+    ]
+   ],
+   "req_headers": {
+    "Accept-Language": "en",
+    "Accept": "text/plain, */*; q=0.01",
+    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+    "Origin": "https://app.plex.tv",
+    "Referer": "https://app.plex.tv/"
+   },
+   "status": 200,
+   "res_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Access-Control-Expose-Headers",
+     "Location, Date"
+    ],
+    [
+     "Vary",
+     "Origin, X-Plex-Token"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Access-Control-Allow-Origin",
+     "https://app.plex.tv"
+    ],
+    [
+     "Date",
+     "Sun, 11 Oct 2026 18:04:43 GMT"
+    ]
+   ],
+   "res_len": 0,
+   "ms": 1,
+   "res_body": "",
+   "media_head_hex": null
+  },
+  {
+   "method": "GET",
+   "path": "/video/:/transcode/universal/stop",
+   "query": [
+    [
+     "session",
+     "rexcapcopy-mkv"
+    ],
+    [
+     "X-Plex-Token",
+     "<TOKEN>"
+    ]
+   ],
+   "req_headers": {
+    "Accept-Language": "en",
+    "Accept": "text/plain, */*; q=0.01",
+    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+    "Origin": "https://app.plex.tv",
+    "Referer": "https://app.plex.tv/"
+   },
+   "status": 200,
+   "res_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Access-Control-Expose-Headers",
+     "Location, Date"
+    ],
+    [
+     "Vary",
+     "Origin, X-Plex-Token"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Access-Control-Allow-Origin",
+     "https://app.plex.tv"
+    ],
+    [
+     "Date",
+     "Sun, 11 Oct 2026 18:04:43 GMT"
+    ]
+   ],
+   "res_len": 0,
+   "ms": 1,
+   "res_body": "",
+   "media_head_hex": null
+  },
+  {
+   "method": "GET",
+   "path": "/:/timeline",
+   "query": [
+    [
+     "ratingKey",
+     "3"
+    ],
+    [
+     "key",
+     "/library/metadata/3"
+    ],
+    [
+     "state",
+     "stopped"
+    ],
+    [
+     "hasMDE",
+     "1"
+    ],
+    [
+     "time",
+     "4000"
+    ],
+    [
+     "duration",
+     "1800690"
+    ],
+    [
+     "X-Plex-Session-Identifier",
+     "r721nn3yde4wajtzokgbe5dp"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "thuj6pv24kf5wr6qaqla8flz"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Web"
+    ],
+    [
+     "X-Plex-Platform",
+     "Chrome"
+    ],
+    [
+     "X-Plex-Token",
+     "<TOKEN>"
+    ]
+   ],
+   "req_headers": {
+    "Accept-Language": "en",
+    "Accept": "application/json",
+    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+    "Origin": "https://app.plex.tv",
+    "Referer": "https://app.plex.tv/"
+   },
+   "status": 200,
+   "res_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Access-Control-Expose-Headers",
+     "Location, Date"
+    ],
+    [
+     "Vary",
+     "Origin, X-Plex-Token"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Content-Length",
+     "177"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Access-Control-Allow-Origin",
+     "https://app.plex.tv"
+    ],
+    [
+     "Date",
+     "Sun, 11 Oct 2026 18:04:43 GMT"
+    ]
+   ],
+   "res_len": 177,
+   "ms": 7,
+   "res_body": "{\"MediaContainer\":{\"size\":1,\"playbackState\":\"ignore\",\"skipCount\":0,\"viewCount\":1,\"viewOffset\":-1,\"Bandwidths\":[{\"Bandwidth\":[{\"time\":0,\"bandwidth\":509,\"resolution\":\"1080p\"}]}]}}",
+   "media_head_hex": null
+  },
+  {
+   "method": "GET",
+   "path": "/transcode/sessions",
+   "query": [
+    [
+     "X-Plex-Token",
+     "<TOKEN>"
+    ]
+   ],
+   "req_headers": {
+    "Accept-Language": "en",
+    "Accept": "application/json",
+    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+    "Origin": "https://app.plex.tv",
+    "Referer": "https://app.plex.tv/"
+   },
+   "status": 200,
+   "res_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Access-Control-Expose-Headers",
+     "Location, Date"
+    ],
+    [
+     "Vary",
+     "Origin, X-Plex-Token"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Content-Length",
+     "29"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Access-Control-Allow-Origin",
+     "https://app.plex.tv"
+    ],
+    [
+     "Date",
+     "Sun, 11 Oct 2026 18:04:43 GMT"
+    ]
+   ],
+   "res_len": 29,
+   "ms": 1,
+   "res_body": "{\"MediaContainer\":{\"size\":0}}",
+   "media_head_hex": null
+  }
+ ]
+}

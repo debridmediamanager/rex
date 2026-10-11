@@ -382,6 +382,26 @@ fn limitation(limits: &[&Map<String, Value>], values: &HashMap<String, Value>) -
     None
 }
 
+/// The first codec-profile limitation `codec` breaks in `scope` (`VideoCodec`,
+/// `VideoAudioCodec`), with the `onlyTranscodes` ones included: those are exactly the
+/// rules for a stream a conversion copies rather than one the app plays directly.
+pub fn codec_limitation(profile: &Profile, scope: &str, codec: &str, media: &Value) -> Option<String> {
+    let stream_list = streams(media);
+    let values = measured_values(media, &stream_list, selected_audio(&stream_list));
+    let limits = entries(profile, "codecprofiles")
+        .into_iter()
+        .filter(|entry| text(entry.get("tag")) == Some(scope))
+        .filter(|entry| names(entry.get("name")).iter().any(|name| *name == "*" || name.eq_ignore_ascii_case(codec)))
+        .flat_map(|entry| entries(entry, "limitations"))
+        .map(|limit| {
+            let mut limit = limit.clone();
+            limit.remove("onlyTranscodes");
+            limit
+        })
+        .collect::<Vec<_>>();
+    limitation(&limits.iter().collect::<Vec<_>>(), &values)
+}
+
 fn has_subtitle_target(profile: &Profile) -> bool {
     ["targets", "directplay"].iter().any(|key| {
         entries(profile, key)
