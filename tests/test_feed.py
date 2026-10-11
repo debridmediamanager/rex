@@ -497,13 +497,18 @@ def main():
         check("pushing the same again changes nothing", body.get("unchanged") == 3, body)
         named = dict(item("new"), ids={"imdb": "tt0103827"})
         server.feed("POST", "items", {"items": [named]})
-        renamed = server.row(qzxv_key)
-        check("an id the scanner's row was not identified by re-identifies it on the same key",
-              renamed.get("title") == "Blame It on the Bellboy" and renamed.get("ratingKey") == qzxv_key,
-              renamed.get("title"))
+        bellboy_key = by_file[item("movie")["file"]]
+        merged = server.row(bellboy_key)
+        # Re-identified as a title already here, it joins that row as a version, as a real
+        # PMS merges a file matched to a movie it holds (test_feed_versions.py).
+        check("an id the scanner's row was not identified by re-identifies it, into the row of that title",
+              server.request("/library/metadata/%s" % qzxv_key)[0] == 404 and merged.get("viewCount") == 1
+              and [((media.get("Part") or [{}])[0]).get("file") for media in merged.get("Media") or []]
+              == [item("movie")["file"], item("new")["file"]], merged.get("Media"))
+        keys = dict(keys, **{item("new")["id"]: bellboy_key})
         server.stop()
         server = Server(legacy_work, bytes_port)
-        check("a restart keeps the adopted keys", server.keys() == dict(keys), server.keys())
+        check("a restart keeps the adopted keys", server.keys() == keys, server.keys())
         shutil.rmtree(legacy_work, ignore_errors=True)
     finally:
         server.stop()

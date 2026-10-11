@@ -839,6 +839,11 @@ impl Runtime {
             .insert(String::new(), started_at);
         runtime.load_state()?;
         runtime.settle_scan_key();
+        // Releases a source pushed before they were folded into one row.
+        let folded = runtime.fold_versions(None);
+        if !folded.is_empty() {
+            info!("FEED folded {} row(s) into other releases of their titles", folded.len());
+        }
         // The claim reports the server's name to plex.tv; a restored rename is it.
         runtime.claim_mut().name = runtime.friendly.clone();
         // A restored vocabulary is kept as it stood (cycle 73); only a fresh start, or
@@ -22088,12 +22093,17 @@ impl Runtime {
         self.stream_part(&part, &part_id, source, path, download.then_some(filename), request)
     }
 
-    /// Where a Part's bytes are: the row's own source and path when the Part is the one
-    /// the feed made it with, else the source whose mount holds the file.
+    /// Where a Part's bytes are: the source and path of the release the Part's Media came
+    /// from (its own tags on a row holding several, else the row's when the Part is the
+    /// one the feed made it with), else the source whose mount holds the file.
     fn part_source(&self, row: &Value, file: &str) -> Option<(Arc<source::Source>, String)> {
+        let holder = row.get("Media").and_then(Value::as_array).into_iter().flatten().find(|media| {
+            media.get("Part").and_then(Value::as_array).into_iter().flatten().any(|part| part.get("file").and_then(Value::as_str) == Some(file))
+        });
         let own = scan::row_files(row).into_iter().next().is_some_and(|first| first == file);
-        if let (true, Some(name)) = (own, row.get("_source").and_then(Value::as_str)) {
-            let path = row.get("_path").and_then(Value::as_str)?;
+        let tags = holder.filter(|media| media.get("_sid").is_some()).or(own.then_some(row));
+        if let Some((tags, name)) = tags.and_then(|tags| Some((tags, tags.get("_source").and_then(Value::as_str)?))) {
+            let path = tags.get("_path").and_then(Value::as_str)?;
             let source = self.sources.iter().find(|source| source.name == name)?;
             return Some((Arc::clone(source), path.to_string()));
         }

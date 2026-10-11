@@ -9,6 +9,11 @@
 //! A row the feed made carries `_source`, `_sid` (the source's id), `_path` (its bytes
 //! under the source's url) and `_ids` (the ids it was identified by). An item without
 //! `media_info` is not a row at all: it waits in `feed_held` until a push brings one.
+//!
+//! A real PMS makes every file of one title one item, each file a Media of it, so a
+//! second release of a movie or episode already here joins its row (`fold_versions`).
+//! Each Media of such a row carries its own `_source`, `_sid` and `_path`, and the row's
+//! own are always its first Media's.
 
 use super::scan::{is_sample, name_release, row_files, under, Arrival, Found, Library};
 use super::source::{is_video, Source};
@@ -295,6 +300,11 @@ fn remove(shared: &SharedRuntime, source: &Source, ids: &[String], keys: &[Strin
             continue;
         }
         match rows.get(id) {
+            // One release of a row holding several: that Media goes, the row stays.
+            Some(key) if guard.drop_version(key, &source.name, id) => {
+                deleted += 1;
+                guard.dirty = true;
+            }
             Some(key) => doomed.push(key.clone()),
             None => unknown += 1,
         }
@@ -375,7 +385,10 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
                 Some((key, adopt)) => {
                     let row = guard.catalog.get(&key);
                     let had = row.map(row_ids).unwrap_or_default();
+                    // ponytail: a row holding several releases is not re-identified by one of
+                    // them; splitting the release back out is Split's job.
                     let reidentify = named
+                        && row.is_some_and(|row| versions(row).len() < 2)
                         && match (&item.imdb, &item.tmdb) {
                             (Some(imdb), _) => had.get("imdb").map(string_value).as_deref() != Some(imdb.as_str()),
                             (None, Some(tmdb)) => had.get("tmdb").map(string_value).as_deref() != Some(tmdb.as_str()),
@@ -414,6 +427,7 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
     let mut new_rows: BTreeMap<String, Vec<Arrival>> = BTreeMap::new();
     let mut libraries: HashMap<String, Library> = HashMap::new();
     let mut probed = Vec::new();
+    let mut touched = HashSet::new();
     // Each re-identified row's new identity: a show all of whose episodes move to the
     // same one is re-identified in place, keeping its key and its seasons'.
     let moving: HashMap<String, String> = plans
@@ -470,6 +484,7 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
                 if changed {
                     counts.updated += 1;
                     guard.dirty = true;
+                    touched.insert(key.clone());
                 } else {
                     counts.unchanged += 1;
                 }
@@ -486,18 +501,25 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
         guard.scan_progress(&mut activity, &section, &last, 99);
         // Measured (4a): a folder scan announces its new rows after the step at 99.
         let keys = guard.place_arrivals(&library, arrivals);
-        counts.created += keys.iter().filter(|key| {
-            guard.catalog.get(key).and_then(|row| row.get("type")).and_then(Value::as_str).is_some_and(|kind| kind == "movie" || kind == "episode")
-        }).count();
         activity.insert("subtitle".to_string(), json!(last));
         guard.scan_finished(&mut activity, &section);
         created.extend(keys);
     }
     let filled = guard.fill_probes(probed);
+    touched.extend(created.iter().cloned());
+    let folded = guard.fold_versions(Some(&touched));
+    created.retain(|key| !folded.contains(key));
+    counts.created += created
+        .iter()
+        .filter(|key| {
+            guard.catalog.get(key).and_then(|row| row.get("type")).and_then(Value::as_str).is_some_and(|kind| kind == "movie" || kind == "episode")
+        })
+        .count();
+    counts.updated += folded.len();
     for key in &created {
         guard.created_metadata_frames(key);
     }
-    if !created.is_empty() || filled > 0 {
+    if !created.is_empty() || filled > 0 || !folded.is_empty() {
         guard.touch_gdm();
         guard.dirty = true;
     }
@@ -527,6 +549,60 @@ fn row_ids(row: &Value) -> Map<String, Value> {
         .filter(|imdb| imdb.is_string())
         .map(|imdb| Map::from_iter([("imdb".to_string(), imdb.clone())]))
         .unwrap_or_default()
+}
+
+/// A row's releases as (source, source id, Media index): each Media's own tags on a row
+/// that holds several, else the row's.
+pub(super) fn versions(row: &Value) -> Vec<(String, String, usize)> {
+    let tag = |value: &Value, field: &str| value.get(field).and_then(Value::as_str).map(str::to_string);
+    let tagged: Vec<_> = row
+        .get("Media")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .enumerate()
+        .filter_map(|(index, media)| Some((tag(media, "_source")?, tag(media, "_sid")?, index)))
+        .collect();
+    if !tagged.is_empty() {
+        return tagged;
+    }
+    match (tag(row, "_source"), tag(row, "_sid")) {
+        (Some(source), Some(sid)) => vec![(source, sid, 0)],
+        _ => Vec::new(),
+    }
+}
+
+/// The file a row's Media at `index` reads.
+fn media_file(row: &Value, index: usize) -> Option<String> {
+    row.pointer(&format!("/Media/{index}/Part/0/file")).and_then(Value::as_str).map(str::to_string)
+}
+
+/// A row's Media, the first tagged with the row's own source fields when none is.
+fn tagged_media(row: &Value) -> Vec<Value> {
+    let mut media = row.get("Media").and_then(Value::as_array).cloned().unwrap_or_default();
+    if media.iter().all(|media| media.get("_sid").is_none()) {
+        if let Some(first) = media.first_mut().and_then(Value::as_object_mut) {
+            for field in ["_source", "_sid", "_path"] {
+                if let Some(value) = row.get(field) {
+                    first.insert(field.to_string(), value.clone());
+                }
+            }
+        }
+    }
+    media
+}
+
+/// Which title a row a source pushed is, for folding: its type, section, season, agent
+/// guid and edition. None for an unmatched row (a `local://` guid is its own key's), one
+/// in the trash or waiting for a probe, and a row no source pushed.
+fn version_slot(row: &Value) -> Option<String> {
+    let kind = row.get("type").and_then(Value::as_str).filter(|kind| matches!(*kind, "movie" | "episode"))?;
+    if row.get("_sid").is_none() || row.get("deletedAt").is_some() || row.get("_probePending").is_some_and(truthy) {
+        return None;
+    }
+    let guid = row.get("guid").and_then(Value::as_str).filter(|guid| !guid.is_empty() && !guid.starts_with("local://"))?;
+    let field = |name: &str| row.get(name).map(string_value).unwrap_or_default();
+    Some([kind, &field("librarySectionID"), &field("parentRatingKey"), guid, &field("editionTitle")].join("\u{1}"))
 }
 
 /// What identification wrote on a row, and the hierarchy fields placing it rewrites. A
@@ -578,8 +654,10 @@ impl Runtime {
         self.catalog
             .items()
             .iter()
-            .filter(|row| row.get("_source").and_then(Value::as_str) == Some(source))
-            .filter_map(|row| Some((row.get("_sid").map(string_value)?, key_of(row)?)))
+            .flat_map(|row| {
+                let key = key_of(row);
+                versions(row).into_iter().filter(|(of, _, _)| of == source).filter_map(move |(_, sid, _)| Some((sid, key.clone()?)))
+            })
             .collect()
     }
 
@@ -617,8 +695,8 @@ impl Runtime {
         self.catalog
             .items()
             .iter()
-            .filter(|row| row.get("_source").and_then(Value::as_str) == Some(source) && row.get("deletedAt").is_none())
-            .filter_map(|row| row.get("_sid").map(string_value))
+            .filter(|row| row.get("deletedAt").is_none())
+            .flat_map(|row| versions(row).into_iter().filter(|(of, _, _)| of == source).map(|(_, sid, _)| sid))
             .chain(self.feed_held.keys().filter_map(|key| key.strip_prefix(&prefix).map(str::to_string)))
             .collect()
     }
@@ -628,10 +706,11 @@ impl Runtime {
             .catalog
             .items()
             .iter()
-            .filter(|row| row.get("_source").and_then(Value::as_str) == Some(source.name.as_str()))
-            .map(|row| {
-                json!({"id": row.get("_sid"), "ratingKey": key_of(row), "file": row_files(row).into_iter().next(),
-                       "deleted": row.get("deletedAt").is_some()})
+            .flat_map(|row| {
+                versions(row).into_iter().filter(|(of, _, _)| *of == source.name).map(move |(_, sid, index)| {
+                    json!({"id": sid, "ratingKey": key_of(row), "file": media_file(row, index),
+                           "deleted": row.get("deletedAt").is_some()})
+                })
             })
             .collect();
         json!({"size": items.len(), "items": items})
@@ -688,14 +767,24 @@ impl Runtime {
             info!("FEED {source} adopted {key} for {}", item.id);
             changed = true;
         }
-        if row.get("_path").and_then(Value::as_str) != Some(item.path.as_str()) {
+        let index = versions(&row).into_iter().find(|(of, sid, _)| of == source && *sid == item.id).map_or(0, |(_, _, index)| index);
+        let tagged = row.pointer(&format!("/Media/{index}/_sid")).is_some();
+        let path = if tagged { row.pointer(&format!("/Media/{index}/_path")) } else { row.get("_path") };
+        if path.and_then(Value::as_str) != Some(item.path.as_str()) {
             if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
-                object.insert("_path".to_string(), json!(item.path));
+                if tagged {
+                    if let Some(media) = object.get_mut("Media").and_then(|media| media.get_mut(index)).and_then(Value::as_object_mut) {
+                        media.insert("_path".to_string(), json!(item.path));
+                    }
+                }
+                if index == 0 {
+                    object.insert("_path".to_string(), json!(item.path));
+                }
             }
             changed = true;
         }
         let part = |row: &Value| -> Option<Value> {
-            row.get("Media")?.as_array()?.first()?.get("Part")?.as_array()?.first().cloned()
+            row.get("Media")?.as_array()?.get(index)?.get("Part")?.as_array()?.first().cloned()
         };
         let current = part(&row).unwrap_or_default();
         let moved = current.get("file").and_then(Value::as_str) != Some(item.file.as_str());
@@ -706,7 +795,7 @@ impl Runtime {
                 .get_mut(key)
                 .and_then(|row| row.get_mut("Media"))
                 .and_then(Value::as_array_mut)
-                .and_then(|media| media.first_mut())
+                .and_then(|media| media.get_mut(index))
                 .and_then(|media| media.get_mut("Part"))
                 .and_then(Value::as_array_mut)
                 .and_then(|parts| parts.first_mut())
@@ -836,6 +925,87 @@ impl Runtime {
             }
         }
         info!("FEED re-identified show {show} in place -> {identity}");
+    }
+
+    /// Rows a source pushed that are one title -- the same agent guid in the same section
+    /// (an episode: the same season) -- made one row holding each release as a Media, as a
+    /// real PMS's scanner and agent make several files of one movie one item. The row
+    /// someone watched survives, else the oldest. `only` limits it to slots holding one of
+    /// those keys. Answers the keys folded away.
+    pub(super) fn fold_versions(&mut self, only: Option<&HashSet<String>>) -> HashSet<String> {
+        let mut slots: BTreeMap<String, Vec<(bool, i64, String)>> = BTreeMap::new();
+        for row in self.catalog.items() {
+            if let (Some(slot), Some(key)) = (version_slot(row), key_of(row)) {
+                let watched = ["viewCount", "viewOffset", "lastViewedAt", "userRating"].iter().any(|field| row.get(*field).is_some_and(truthy));
+                slots.entry(slot).or_default().push((!watched, key.parse().unwrap_or(i64::MAX), key));
+            }
+        }
+        let mut folded = HashSet::new();
+        for (_, mut rows) in slots {
+            if rows.len() < 2 || only.is_some_and(|only| !rows.iter().any(|(_, _, key)| only.contains(key))) {
+                continue;
+            }
+            rows.sort();
+            let survivor = rows[0].2.clone();
+            for (_, _, other) in &rows[1..] {
+                self.absorb_version(&survivor, other);
+                folded.insert(other.clone());
+            }
+        }
+        folded
+    }
+
+    /// `other`'s Media appended to `survivor`'s, each tagged with the release it came
+    /// from, and `other` deleted with its key retired.
+    fn absorb_version(&mut self, survivor: &str, other: &str) {
+        let (Some(kept), Some(gone)) = (self.catalog.get(survivor).cloned(), self.catalog.get(other).cloned()) else {
+            return;
+        };
+        let mut media = tagged_media(&kept);
+        media.extend(tagged_media(&gone));
+        if let Some(object) = self.catalog.get_mut(survivor).and_then(Value::as_object_mut) {
+            object.insert("Media".to_string(), Value::Array(media));
+        }
+        let absorbed = self.subtree_keys(other);
+        self.retire_row(other);
+        self.drop_from_queues(&absorbed);
+        self.push_timeline_entry(&gone, 9, Some("deleted"), None, None, None);
+        if let Some(row) = self.catalog.get(survivor).cloned() {
+            self.push_timeline_entry(&row, 5, None, None, None, None);
+        }
+        self.dirty = true;
+        info!("FEED folded {other} into {survivor} as another version");
+    }
+
+    /// One release of a row holding several gone: its Media dropped, the row's own
+    /// source fields its new first Media's. Answers false for a row of one release.
+    pub(super) fn drop_version(&mut self, key: &str, source: &str, sid: &str) -> bool {
+        let Some(row) = self.catalog.get(key) else {
+            return false;
+        };
+        let all = versions(row);
+        let Some(index) = all.iter().find(|(of, id, _)| of == source && id == sid).map(|(_, _, index)| *index).filter(|_| all.len() > 1) else {
+            return false;
+        };
+        if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
+            if let Some(media) = object.get_mut("Media").and_then(Value::as_array_mut) {
+                media.remove(index);
+            }
+            let first = object.get("Media").and_then(|media| media.get(0)).cloned().unwrap_or_default();
+            for field in ["_source", "_sid", "_path"] {
+                if let Some(value) = first.get(field) {
+                    object.insert(field.to_string(), value.clone());
+                }
+            }
+            if let Some(duration) = first.get("duration") {
+                object.insert("duration".to_string(), duration.clone());
+            }
+        }
+        if let Some(row) = self.catalog.get(key).cloned() {
+            self.push_timeline_entry(&row, 5, None, None, None, None);
+        }
+        info!("FEED {source} dropped {sid} from {key}");
+        true
     }
 
     /// A show or season a re-identified episode left with no children: deleted, its key

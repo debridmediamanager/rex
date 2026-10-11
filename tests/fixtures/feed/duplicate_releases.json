@@ -1,0 +1,3398 @@
+{
+ "_about": "Two releases of one film in fun's RD library, as fun's zurg answered /api/library/entry for them on 2026-10-11 (format.filename and signed_path redacted), with the TMDB and Plex answers fun-simplex cached for their IMDb id, trimmed to the fields identification reads. fun-simplex made them two movies (keys 104310 and 121691) carrying the same plex:// guid; a real PMS makes them one movie with two Media. `rows` are those two rows as fun-simplex's state database held them that day, the mount /mnt/zurg rewritten to the test's /zurg.",
+ "entries": [
+  {
+   "path": "movies/127 Hours (2010) 1080p BD-Remux/127 Hours (2010) 1080p BD-Remux.mkv",
+   "entry": {
+    "hash": "eb67aeeea975544e9e1bbffd8b49173c9bae4444",
+    "name": "127 Hours (2010) 1080p BD-Remux.mkv",
+    "imdb_id": "tt1542344",
+    "signed_path": "/strm/e/fixture-127-hours-0",
+    "size": 26307003613,
+    "media_info": {
+     "streams": [
+      {
+       "index": 0,
+       "id": "",
+       "codec_name": "h264",
+       "codec_long_name": "H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10",
+       "codec_type": "video",
+       "codec_time_base": "",
+       "codec_tag_string": "[0][0][0][0]",
+       "codec_tag": "0x0000",
+       "r_frame_rate": "24000/1001",
+       "avg_frame_rate": "24000/1001",
+       "time_base": "1/1000",
+       "start_pts": 0,
+       "start_time": "0.000000",
+       "duration_ts": 0,
+       "duration": "",
+       "bit_rate": "",
+       "bits_per_raw_sample": "8",
+       "nb_frames": "",
+       "disposition": {
+        "default": 0,
+        "dub": 0,
+        "original": 0,
+        "comment": 0,
+        "lyrics": 0,
+        "karaoke": 0,
+        "forced": 0,
+        "hearing_impaired": 0,
+        "visual_impaired": 0,
+        "clean_effects": 0,
+        "attached_pic": 0
+       },
+       "tags": {
+        "language": "eng",
+        "title": "127 Hours (2010) 1080p BD-Remux"
+       },
+       "field_order": "progressive",
+       "profile": "High",
+       "width": 1920,
+       "height": 1080,
+       "has_b_frames": 1,
+       "sample_aspect_ratio": "1:1",
+       "display_aspect_ratio": "16:9",
+       "pix_fmt": "yuv420p",
+       "level": 41
+      },
+      {
+       "index": 1,
+       "id": "",
+       "codec_name": "dts",
+       "codec_long_name": "DCA (DTS Coherent Acoustics)",
+       "codec_type": "audio",
+       "codec_time_base": "",
+       "codec_tag_string": "[0][0][0][0]",
+       "codec_tag": "0x0000",
+       "r_frame_rate": "0/0",
+       "avg_frame_rate": "0/0",
+       "time_base": "1/1000",
+       "start_pts": 0,
+       "start_time": "0.000000",
+       "duration_ts": 0,
+       "duration": "",
+       "bit_rate": "768000",
+       "bits_per_raw_sample": "",
+       "nb_frames": "",
+       "disposition": {
+        "default": 1,
+        "dub": 0,
+        "original": 0,
+        "comment": 0,
+        "lyrics": 0,
+        "karaoke": 0,
+        "forced": 0,
+        "hearing_impaired": 0,
+        "visual_impaired": 0,
+        "clean_effects": 0,
+        "attached_pic": 0
+       },
+       "tags": {
+        "language": "rus",
+        "title": "\u0414\u0443\u0431\u043b\u044f\u0436 R5"
+       },
+       "profile": "DTS",
+       "width": 0,
+       "height": 0,
+       "sample_fmt": "fltp",
+       "sample_rate": "48000",
+       "channels": 6,
+       "channel_layout": "5.1(side)"
+      },
+      {
+       "index": 2,
+       "id": "",
+       "codec_name": "dts",
+       "codec_long_name": "DCA (DTS Coherent Acoustics)",
+       "codec_type": "audio",
+       "codec_time_base": "",
+       "codec_tag_string": "[0][0][0][0]",
+       "codec_tag": "0x0000",
+       "r_frame_rate": "0/0",
+       "avg_frame_rate": "0/0",
+       "time_base": "1/1000",
+       "start_pts": 0,
+       "start_time": "0.000000",
+       "duration_ts": 0,
+       "duration": "",
+       "bit_rate": "1536000",
+       "bits_per_raw_sample": "",
+       "nb_frames": "",
+       "disposition": {
+        "default": 0,
+        "dub": 0,
+        "original": 0,
+        "comment": 0,
+        "lyrics": 0,
+        "karaoke": 0,
+        "forced": 0,
+        "hearing_impaired": 0,
+        "visual_impaired": 0,
+        "clean_effects": 0,
+        "attached_pic": 0
+       },
+       "tags": {
+        "language": "rus",
+        "title": "DVO-OzzTV"
+       },
+       "profile": "DTS",
+       "width": 0,
+       "height": 0,
+       "sample_fmt": "fltp",
+       "sample_rate": "48000",
+       "channels": 6,
+       "channel_layout": "5.1(side)"
+      },
+      {
+       "index": 3,
+       "id": "",
+       "codec_name": "dts",
+       "codec_long_name": "DCA (DTS Coherent Acoustics)",
+       "codec_type": "audio",
+       "codec_time_base": "",
+       "codec_tag_string": "[0][0][0][0]",
+       "codec_tag": "0x0000",
+       "r_frame_rate": "0/0",
+       "avg_frame_rate": "0/0",
+       "time_base": "1/1000",
+       "start_pts": 0,
+       "start_time": "0.000000",
+       "duration_ts": 0,
+       "duration": "",
+       "bit_rate": "",
+       "bits_per_raw_sample": "24",
+       "nb_frames": "",
+       "disposition": {
+        "default": 0,
+        "dub": 0,
+        "original": 0,
+        "comment": 0,
+        "lyrics": 0,
+        "karaoke": 0,
+        "forced": 0,
+        "hearing_impaired": 0,
+        "visual_impaired": 0,
+        "clean_effects": 0,
+        "attached_pic": 0
+       },
+       "tags": {
+        "language": "rus",
+        "title": "AVO-\u042e.\u0421\u0435\u0440\u0431\u0438\u043d"
+       },
+       "profile": "DTS-HD MA",
+       "width": 0,
+       "height": 0,
+       "sample_fmt": "s32p",
+       "sample_rate": "48000",
+       "channels": 6,
+       "channel_layout": "5.1(side)"
+      },
+      {
+       "index": 4,
+       "id": "",
+       "codec_name": "dts",
+       "codec_long_name": "DCA (DTS Coherent Acoustics)",
+       "codec_type": "audio",
+       "codec_time_base": "",
+       "codec_tag_string": "[0][0][0][0]",
+       "codec_tag": "0x0000",
+       "r_frame_rate": "0/0",
+       "avg_frame_rate": "0/0",
+       "time_base": "1/1000",
+       "start_pts": 0,
+       "start_time": "0.000000",
+       "duration_ts": 0,
+       "duration": "",
+       "bit_rate": "",
+       "bits_per_raw_sample": "24",
+       "nb_frames": "",
+       "disposition": {
+        "default": 0,
+        "dub": 0,
+        "original": 0,
+        "comment": 0,
+        "lyrics": 0,
+        "karaoke": 0,
+        "forced": 0,
+        "hearing_impaired": 0,
+        "visual_impaired": 0,
+        "clean_effects": 0,
+        "attached_pic": 0
+       },
+       "tags": {
+        "language": "rus",
+        "title": "DVO-\u041a\u0443\u0431\u0438\u043a \u0432 \u043a\u0443\u0431\u0435"
+       },
+       "profile": "DTS-HD MA",
+       "width": 0,
+       "height": 0,
+       "sample_fmt": "s32p",
+       "sample_rate": "48000",
+       "channels": 6,
+       "channel_layout": "5.1(side)"
+      },
+      {
+       "index": 5,
+       "id": "",
+       "codec_name": "dts",
+       "codec_long_name": "DCA (DTS Coherent Acoustics)",
+       "codec_type": "audio",
+       "codec_time_base": "",
+       "codec_tag_string": "[0][0][0][0]",
+       "codec_tag": "0x0000",
+       "r_frame_rate": "0/0",
+       "avg_frame_rate": "0/0",
+       "time_base": "1/1000",
+       "start_pts": 0,
+       "start_time": "0.000000",
+       "duration_ts": 0,
+       "duration": "",
+       "bit_rate": "",
+       "bits_per_raw_sample": "24",
+       "nb_frames": "",
+       "disposition": {
+        "default": 0,
+        "dub": 0,
+        "original": 0,
+        "comment": 0,
+        "lyrics": 0,
+        "karaoke": 0,
+        "forced": 0,
+        "hearing_impaired": 0,
+        "visual_impaired": 0,
+        "clean_effects": 0,
+        "attached_pic": 0
+       },
+       "tags": {
+        "language": "eng",
+        "title": "\u041e\u0440\u0438\u0433\u0438\u043d\u0430\u043b"
+       },
+       "profile": "DTS-HD MA",
+       "width": 0,
+       "height": 0,
+       "sample_fmt": "s32p",
+       "sample_rate": "48000",
+       "channels": 6,
+       "channel_layout": "5.1(side)"
+      },
+      {
+       "index": 6,
+       "id": "",
+       "codec_name": "ac3",
+       "codec_long_name": "ATSC A/52A (AC-3)",
+       "codec_type": "audio",
+       "codec_time_base": "",
+       "codec_tag_string": "[0][0][0][0]",
+       "codec_tag": "0x0000",
+       "r_frame_rate": "0/0",
+       "avg_frame_rate": "0/0",
+       "time_base": "1/1000",
+       "start_pts": 0,
+       "start_time": "0.000000",
+       "duration_ts": 0,
+       "duration": "",
+       "bit_rate": "224000",
+       "bits_per_raw_sample": "",
+       "nb_frames": "",
+       "disposition": {
+        "default": 0,
+        "dub": 0,
+        "original": 0,
+        "comment": 0,
+        "lyrics": 0,
+        "karaoke": 0,
+        "forced": 0,
+        "hearing_impaired": 0,
+        "visual_impaired": 0,
+        "clean_effects": 0,
+        "attached_pic": 0
+       },
+       "tags": {
+        "language": "eng",
+        "title": "AAC 2.0ch - Commentary"
+       },
+       "width": 0,
+       "height": 0,
+       "sample_fmt": "fltp",
+       "sample_rate": "48000",
+       "channels": 2,
+       "channel_layout": "stereo"
+      },
+      {
+       "index": 7,
+       "id": "",
+       "codec_name": "subrip",
+       "codec_long_name": "SubRip subtitle",
+       "codec_type": "subtitle",
+       "codec_time_base": "",
+       "codec_tag_string": "[0][0][0][0]",
+       "codec_tag": "0x0000",
+       "r_frame_rate": "0/0",
+       "avg_frame_rate": "0/0",
+       "time_base": "1/1000",
+       "start_pts": 0,
+       "start_time": "0.000000",
+       "duration_ts": 5621632,
+       "duration": "5621.632000",
+       "bit_rate": "",
+       "bits_per_raw_sample": "",
+       "nb_frames": "",
+       "disposition": {
+        "default": 1,
+        "dub": 0,
+        "original": 0,
+        "comment": 0,
+        "lyrics": 0,
+        "karaoke": 0,
+        "forced": 0,
+        "hearing_impaired": 0,
+        "visual_impaired": 0,
+        "clean_effects": 0,
+        "attached_pic": 0
+       },
+       "tags": {
+        "language": "rus",
+        "title": "Sub-R5"
+       },
+       "width": 0,
+       "height": 0
+      },
+      {
+       "index": 8,
+       "id": "",
+       "codec_name": "subrip",
+       "codec_long_name": "SubRip subtitle",
+       "codec_type": "subtitle",
+       "codec_time_base": "",
+       "codec_tag_string": "[0][0][0][0]",
+       "codec_tag": "0x0000",
+       "r_frame_rate": "0/0",
+       "avg_frame_rate": "0/0",
+       "time_base": "1/1000",
+       "start_pts": 0,
+       "start_time": "0.000000",
+       "duration_ts": 5621632,
+       "duration": "5621.632000",
+       "bit_rate": "",
+       "bits_per_raw_sample": "",
+       "nb_frames": "",
+       "disposition": {
+        "default": 0,
+        "dub": 0,
+        "original": 0,
+        "comment": 0,
+        "lyrics": 0,
+        "karaoke": 0,
+        "forced": 0,
+        "hearing_impaired": 0,
+        "visual_impaired": 0,
+        "clean_effects": 0,
+        "attached_pic": 0
+       },
+       "tags": {
+        "language": "rus",
+        "title": "Sub-forced.Voronine"
+       },
+       "width": 0,
+       "height": 0
+      },
+      {
+       "index": 9,
+       "id": "",
+       "codec_name": "subrip",
+       "codec_long_name": "SubRip subtitle",
+       "codec_type": "subtitle",
+       "codec_time_base": "",
+       "codec_tag_string": "[0][0][0][0]",
+       "codec_tag": "0x0000",
+       "r_frame_rate": "0/0",
+       "avg_frame_rate": "0/0",
+       "time_base": "1/1000",
+       "start_pts": 0,
+       "start_time": "0.000000",
+       "duration_ts": 5621632,
+       "duration": "5621.632000",
+       "bit_rate": "",
+       "bits_per_raw_sample": "",
+       "nb_frames": "",
+       "disposition": {
+        "default": 0,
+        "dub": 0,
+        "original": 0,
+        "comment": 0,
+        "lyrics": 0,
+        "karaoke": 0,
+        "forced": 0,
+        "hearing_impaired": 0,
+        "visual_impaired": 0,
+        "clean_effects": 0,
+        "attached_pic": 0
+       },
+       "tags": {
+        "language": "rus",
+        "title": "Sub-full.SDH.Voronine"
+       },
+       "width": 0,
+       "height": 0
+      },
+      {
+       "index": 10,
+       "id": "",
+       "codec_name": "subrip",
+       "codec_long_name": "SubRip subtitle",
+       "codec_type": "subtitle",
+       "codec_time_base": "",
+       "codec_tag_string": "[0][0][0][0]",
+       "codec_tag": "0x0000",
+       "r_frame_rate": "0/0",
+       "avg_frame_rate": "0/0",
+       "time_base": "1/1000",
+       "start_pts": 0,
+       "start_time": "0.000000",
+       "duration_ts": 5621632,
+       "duration": "5621.632000",
+       "bit_rate": "",
+       "bits_per_raw_sample": "",
+       "nb_frames": "",
+       "disposition": {
+        "default": 0,
+        "dub": 0,
+        "original": 0,
+        "comment": 0,
+        "lyrics": 0,
+        "karaoke": 0,
+        "forced": 0,
+        "hearing_impaired": 0,
+        "visual_impaired": 0,
+        "clean_effects": 0,
+        "attached_pic": 0
+       },
+       "tags": {
+        "language": "rus",
+        "title": "Sub-full.Voronine"
+       },
+       "width": 0,
+       "height": 0
+      },
+      {
+       "index": 11,
+       "id": "",
+       "codec_name": "subrip",
+       "codec_long_name": "SubRip subtitle",
+       "codec_type": "subtitle",
+       "codec_time_base": "",
+       "codec_tag_string": "[0][0][0][0]",
+       "codec_tag": "0x0000",
+       "r_frame_rate": "0/0",
+       "avg_frame_rate": "0/0",
+       "time_base": "1/1000",
+       "start_pts": 0,
+       "start_time": "0.000000",
+       "duration_ts": 5621632,
+       "duration": "5621.632000",
+       "bit_rate": "",
+       "bits_per_raw_sample": "",
+       "nb_frames": "",
+       "disposition": {
+        "default": 0,
+        "dub": 0,
+        "original": 0,
+        "comment": 0,
+        "lyrics": 0,
+        "karaoke": 0,
+        "forced": 0,
+        "hearing_impaired": 0,
+        "visual_impaired": 0,
+        "clean_effects": 0,
+        "attached_pic": 0
+       },
+       "tags": {
+        "language": "eng",
+        "title": "Sub"
+       },
+       "width": 0,
+       "height": 0
+      }
+     ],
+     "format": {
+      "filename": "<redacted: the URL zurg probed>",
+      "nb_streams": 12,
+      "nb_programs": 0,
+      "format_name": "matroska,webm",
+      "format_long_name": "Matroska / WebM",
+      "start_time": "0",
+      "duration": "5621.632",
+      "size": "26307003613",
+      "bit_rate": "37436820",
+      "probe_score": 100,
+      "tags": {
+       "creation_time": "2011-04-09T15:56:21.000000Z",
+       "encoder": "libebml v0.8.0 + libmatroska v0.9.0",
+       "title": "-Talian-"
+      }
+     },
+     "chapters": [
+      {
+       "id": -901060451,
+       "time_base": "1/1000000000",
+       "start_time": "0",
+       "end_time": "308.141",
+       "tags": {
+        "title": "00:00:00.000"
+       }
+      },
+      {
+       "id": -1955694927,
+       "time_base": "1/1000000000",
+       "start_time": "308.141",
+       "end_time": "475.975",
+       "tags": {
+        "title": "00:05:08.141"
+       }
+      },
+      {
+       "id": 1986894723,
+       "time_base": "1/1000000000",
+       "start_time": "475.975",
+       "end_time": "646.729",
+       "tags": {
+        "title": "00:07:55.975"
+       }
+      },
+      {
+       "id": 1230200235,
+       "time_base": "1/1000000000",
+       "start_time": "646.729",
+       "end_time": "882.924",
+       "tags": {
+        "title": "00:10:46.729"
+       }
+      },
+      {
+       "id": 673178537,
+       "time_base": "1/1000000000",
+       "start_time": "882.924",
+       "end_time": "1243.534",
+       "tags": {
+        "title": "00:14:42.924"
+       }
+      },
+      {
+       "id": 877932693,
+       "time_base": "1/1000000000",
+       "start_time": "1243.534",
+       "end_time": "1502.209",
+       "tags": {
+        "title": "00:20:43.534"
+       }
+      },
+      {
+       "id": -17143160,
+       "time_base": "1/1000000000",
+       "start_time": "1502.209",
+       "end_time": "1774.898",
+       "tags": {
+        "title": "00:25:02.209"
+       }
+      },
+      {
+       "id": 817938825,
+       "time_base": "1/1000000000",
+       "start_time": "1774.898",
+       "end_time": "1936.434",
+       "tags": {
+        "title": "00:29:34.898"
+       }
+      },
+      {
+       "id": -1006180457,
+       "time_base": "1/1000000000",
+       "start_time": "1936.434",
+       "end_time": "2146.728",
+       "tags": {
+        "title": "00:32:16.434"
+       }
+      },
+      {
+       "id": 127608739,
+       "time_base": "1/1000000000",
+       "start_time": "2146.728",
+       "end_time": "2412.368",
+       "tags": {
+        "title": "00:35:46.728"
+       }
+      },
+      {
+       "id": -1127324782,
+       "time_base": "1/1000000000",
+       "start_time": "2412.368",
+       "end_time": "2748.704",
+       "tags": {
+        "title": "00:40:12.368"
+       }
+      },
+      {
+       "id": 848043704,
+       "time_base": "1/1000000000",
+       "start_time": "2748.704",
+       "end_time": "2928.968",
+       "tags": {
+        "title": "00:45:48.704"
+       }
+      },
+      {
+       "id": -1969014654,
+       "time_base": "1/1000000000",
+       "start_time": "2928.968",
+       "end_time": "3121.744",
+       "tags": {
+        "title": "00:48:48.968"
+       }
+      },
+      {
+       "id": 571826064,
+       "time_base": "1/1000000000",
+       "start_time": "3121.744",
+       "end_time": "3365.988",
+       "tags": {
+        "title": "00:52:01.744"
+       }
+      },
+      {
+       "id": 598196663,
+       "time_base": "1/1000000000",
+       "start_time": "3365.988",
+       "end_time": "3657.32",
+       "tags": {
+        "title": "00:56:05.988"
+       }
+      },
+      {
+       "id": 634442625,
+       "time_base": "1/1000000000",
+       "start_time": "3657.32",
+       "end_time": "3799.629",
+       "tags": {
+        "title": "01:00:57.320"
+       }
+      },
+      {
+       "id": 331029917,
+       "time_base": "1/1000000000",
+       "start_time": "3799.629",
+       "end_time": "4003.208",
+       "tags": {
+        "title": "01:03:19.629"
+       }
+      },
+      {
+       "id": 1782758795,
+       "time_base": "1/1000000000",
+       "start_time": "4003.208",
+       "end_time": "4224.262",
+       "tags": {
+        "title": "01:06:43.208"
+       }
+      },
+      {
+       "id": 1125058218,
+       "time_base": "1/1000000000",
+       "start_time": "4224.262",
+       "end_time": "4351.222",
+       "tags": {
+        "title": "01:10:24.262"
+       }
+      },
+      {
+       "id": 708649860,
+       "time_base": "1/1000000000",
+       "start_time": "4351.222",
+       "end_time": "4533.237",
+       "tags": {
+        "title": "01:12:31.222"
+       }
+      },
+      {
+       "id": -1305925484,
+       "time_base": "1/1000000000",
+       "start_time": "4533.237",
+       "end_time": "4791.704",
+       "tags": {
+        "title": "01:15:33.237"
+       }
+      },
+      {
+       "id": -1372487529,
+       "time_base": "1/1000000000",
+       "start_time": "4791.704",
+       "end_time": "5008.545",
+       "tags": {
+        "title": "01:19:51.704"
+       }
+      },
+      {
+       "id": -1473559109,
+       "time_base": "1/1000000000",
+       "start_time": "5008.545",
+       "end_time": "5287.908",
+       "tags": {
+        "title": "01:23:28.545"
+       }
+      },
+      {
+       "id": -2117563479,
+       "time_base": "1/1000000000",
+       "start_time": "5287.908",
+       "end_time": "5621.632",
+       "tags": {
+        "title": "01:28:07.908"
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "path": "movies/127.Hours.2010.BluRay.1080p.DTS-HD.MA.5.1.AVC.REMUX-FraMeSToR/127.Hours.2010.BluRay.1080p.DTS-HD.MA.5.1.AVC.REMUX-FraMeSToR.mkv",
+   "entry": {
+    "hash": "08a54c097a3c9f2b80c1db47a1a3d13e409c5df9",
+    "name": "127.Hours.2010.BluRay.1080p.DTS-HD.MA.5.1.AVC.REMUX-FraMeSToR.mkv",
+    "imdb_id": "tt1542344",
+    "signed_path": "/strm/e/fixture-127-hours-1",
+    "size": 19920716411,
+    "media_info": {
+     "streams": [
+      {
+       "index": 0,
+       "id": "",
+       "codec_name": "h264",
+       "codec_long_name": "H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10",
+       "codec_type": "video",
+       "codec_time_base": "",
+       "codec_tag_string": "[0][0][0][0]",
+       "codec_tag": "0x0000",
+       "r_frame_rate": "24000/1001",
+       "avg_frame_rate": "24000/1001",
+       "time_base": "1/1000",
+       "start_pts": 0,
+       "start_time": "0.000000",
+       "duration_ts": 0,
+       "duration": "",
+       "bit_rate": "",
+       "bits_per_raw_sample": "8",
+       "nb_frames": "",
+       "disposition": {
+        "default": 1,
+        "dub": 0,
+        "original": 0,
+        "comment": 0,
+        "lyrics": 0,
+        "karaoke": 0,
+        "forced": 0,
+        "hearing_impaired": 0,
+        "visual_impaired": 0,
+        "clean_effects": 0,
+        "attached_pic": 0
+       },
+       "tags": {
+        "BPS": "23879987",
+        "BPS-eng": "23879987",
+        "DURATION": "01:33:41.616000000",
+        "DURATION-eng": "01:33:41.616000000",
+        "NUMBER_OF_BYTES": "16780515131",
+        "NUMBER_OF_BYTES-eng": "16780515131",
+        "NUMBER_OF_FRAMES": "134784",
+        "NUMBER_OF_FRAMES-eng": "134784",
+        "_STATISTICS_TAGS": "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+        "_STATISTICS_TAGS-eng": "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+        "_STATISTICS_WRITING_APP": "mkvmerge v15.0.0 ('Duel with the Devil') 64-bit",
+        "_STATISTICS_WRITING_APP-eng": "mkvmerge v15.0.0 ('Duel with the Devil') 64-bit",
+        "_STATISTICS_WRITING_DATE_UTC": "2017-10-02 10:59:06",
+        "_STATISTICS_WRITING_DATE_UTC-eng": "2017-10-02 10:59:06"
+       },
+       "field_order": "progressive",
+       "profile": "High",
+       "width": 1920,
+       "height": 1080,
+       "has_b_frames": 1,
+       "sample_aspect_ratio": "1:1",
+       "display_aspect_ratio": "16:9",
+       "pix_fmt": "yuv420p",
+       "level": 41
+      },
+      {
+       "index": 1,
+       "id": "",
+       "codec_name": "dts",
+       "codec_long_name": "DCA (DTS Coherent Acoustics)",
+       "codec_type": "audio",
+       "codec_time_base": "",
+       "codec_tag_string": "[0][0][0][0]",
+       "codec_tag": "0x0000",
+       "r_frame_rate": "0/0",
+       "avg_frame_rate": "0/0",
+       "time_base": "1/1000",
+       "start_pts": 0,
+       "start_time": "0.000000",
+       "duration_ts": 0,
+       "duration": "",
+       "bit_rate": "",
+       "bits_per_raw_sample": "24",
+       "nb_frames": "",
+       "disposition": {
+        "default": 1,
+        "dub": 0,
+        "original": 0,
+        "comment": 0,
+        "lyrics": 0,
+        "karaoke": 0,
+        "forced": 0,
+        "hearing_impaired": 0,
+        "visual_impaired": 0,
+        "clean_effects": 0,
+        "attached_pic": 0
+       },
+       "tags": {
+        "BPS": "3674437",
+        "BPS-eng": "3674437",
+        "DURATION": "01:33:41.622000000",
+        "DURATION-eng": "01:33:41.622000000",
+        "NUMBER_OF_BYTES": "2582037484",
+        "NUMBER_OF_BYTES-eng": "2582037484",
+        "NUMBER_OF_FRAMES": "527027",
+        "NUMBER_OF_FRAMES-eng": "527027",
+        "_STATISTICS_TAGS": "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+        "_STATISTICS_TAGS-eng": "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+        "_STATISTICS_WRITING_APP": "mkvmerge v15.0.0 ('Duel with the Devil') 64-bit",
+        "_STATISTICS_WRITING_APP-eng": "mkvmerge v15.0.0 ('Duel with the Devil') 64-bit",
+        "_STATISTICS_WRITING_DATE_UTC": "2017-10-02 10:59:06",
+        "_STATISTICS_WRITING_DATE_UTC-eng": "2017-10-02 10:59:06",
+        "language": "eng",
+        "title": "DTS-HD MA 5.1"
+       },
+       "profile": "DTS-HD MA",
+       "width": 0,
+       "height": 0,
+       "sample_fmt": "s32p",
+       "sample_rate": "48000",
+       "channels": 6,
+       "channel_layout": "5.1(side)"
+      },
+      {
+       "index": 2,
+       "id": "",
+       "codec_name": "ac3",
+       "codec_long_name": "ATSC A/52A (AC-3)",
+       "codec_type": "audio",
+       "codec_time_base": "",
+       "codec_tag_string": "[0][0][0][0]",
+       "codec_tag": "0x0000",
+       "r_frame_rate": "0/0",
+       "avg_frame_rate": "0/0",
+       "time_base": "1/1000",
+       "start_pts": 0,
+       "start_time": "0.000000",
+       "duration_ts": 0,
+       "duration": "",
+       "bit_rate": "224000",
+       "bits_per_raw_sample": "",
+       "nb_frames": "",
+       "disposition": {
+        "default": 0,
+        "dub": 0,
+        "original": 0,
+        "comment": 0,
+        "lyrics": 0,
+        "karaoke": 0,
+        "forced": 0,
+        "hearing_impaired": 0,
+        "visual_impaired": 0,
+        "clean_effects": 0,
+        "attached_pic": 0
+       },
+       "tags": {
+        "BPS": "224000",
+        "BPS-eng": "224000",
+        "DURATION": "01:33:41.632000000",
+        "DURATION-eng": "01:33:41.632000000",
+        "NUMBER_OF_BYTES": "157405696",
+        "NUMBER_OF_BYTES-eng": "157405696",
+        "NUMBER_OF_FRAMES": "175676",
+        "NUMBER_OF_FRAMES-eng": "175676",
+        "_STATISTICS_TAGS": "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+        "_STATISTICS_TAGS-eng": "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+        "_STATISTICS_WRITING_APP": "mkvmerge v15.0.0 ('Duel with the Devil') 64-bit",
+        "_STATISTICS_WRITING_APP-eng": "mkvmerge v15.0.0 ('Duel with the Devil') 64-bit",
+        "_STATISTICS_WRITING_DATE_UTC": "2017-10-02 10:59:06",
+        "_STATISTICS_WRITING_DATE_UTC-eng": "2017-10-02 10:59:06",
+        "language": "eng",
+        "title": "Commentary by Danny Boyle/Simon Beaufoy/Christian Colson"
+       },
+       "width": 0,
+       "height": 0,
+       "sample_fmt": "fltp",
+       "sample_rate": "48000",
+       "channels": 2,
+       "channel_layout": "stereo"
+      },
+      {
+       "index": 3,
+       "id": "",
+       "codec_name": "hdmv_pgs_subtitle",
+       "codec_long_name": "HDMV Presentation Graphic Stream subtitles",
+       "codec_type": "subtitle",
+       "codec_time_base": "",
+       "codec_tag_string": "[0][0][0][0]",
+       "codec_tag": "0x0000",
+       "r_frame_rate": "0/0",
+       "avg_frame_rate": "0/0",
+       "time_base": "1/1000",
+       "start_pts": 0,
+       "start_time": "0.000000",
+       "duration_ts": 5621632,
+       "duration": "5621.632000",
+       "bit_rate": "",
+       "bits_per_raw_sample": "",
+       "nb_frames": "",
+       "disposition": {
+        "default": 1,
+        "dub": 0,
+        "original": 0,
+        "comment": 0,
+        "lyrics": 0,
+        "karaoke": 0,
+        "forced": 0,
+        "hearing_impaired": 0,
+        "visual_impaired": 0,
+        "clean_effects": 0,
+        "attached_pic": 0
+       },
+       "tags": {
+        "BPS": "21116",
+        "BPS-eng": "21116",
+        "DURATION": "01:31:40.328000000",
+        "DURATION-eng": "01:31:40.328000000",
+        "NUMBER_OF_BYTES": "14518746",
+        "NUMBER_OF_BYTES-eng": "14518746",
+        "NUMBER_OF_FRAMES": "1060",
+        "NUMBER_OF_FRAMES-eng": "1060",
+        "_STATISTICS_TAGS": "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+        "_STATISTICS_TAGS-eng": "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+        "_STATISTICS_WRITING_APP": "mkvmerge v15.0.0 ('Duel with the Devil') 64-bit",
+        "_STATISTICS_WRITING_APP-eng": "mkvmerge v15.0.0 ('Duel with the Devil') 64-bit",
+        "_STATISTICS_WRITING_DATE_UTC": "2017-10-02 10:59:06",
+        "_STATISTICS_WRITING_DATE_UTC-eng": "2017-10-02 10:59:06",
+        "language": "eng",
+        "title": "English"
+       },
+       "width": 0,
+       "height": 0
+      },
+      {
+       "index": 4,
+       "id": "",
+       "codec_name": "hdmv_pgs_subtitle",
+       "codec_long_name": "HDMV Presentation Graphic Stream subtitles",
+       "codec_type": "subtitle",
+       "codec_time_base": "",
+       "codec_tag_string": "[0][0][0][0]",
+       "codec_tag": "0x0000",
+       "r_frame_rate": "0/0",
+       "avg_frame_rate": "0/0",
+       "time_base": "1/1000",
+       "start_pts": 0,
+       "start_time": "0.000000",
+       "duration_ts": 5621632,
+       "duration": "5621.632000",
+       "bit_rate": "",
+       "bits_per_raw_sample": "",
+       "nb_frames": "",
+       "disposition": {
+        "default": 0,
+        "dub": 0,
+        "original": 0,
+        "comment": 0,
+        "lyrics": 0,
+        "karaoke": 0,
+        "forced": 0,
+        "hearing_impaired": 0,
+        "visual_impaired": 0,
+        "clean_effects": 0,
+        "attached_pic": 0
+       },
+       "tags": {
+        "BPS": "20043",
+        "BPS-eng": "20043",
+        "DURATION": "01:31:40.328000000",
+        "DURATION-eng": "01:31:40.328000000",
+        "NUMBER_OF_BYTES": "13780414",
+        "NUMBER_OF_BYTES-eng": "13780414",
+        "NUMBER_OF_FRAMES": "912",
+        "NUMBER_OF_FRAMES-eng": "912",
+        "_STATISTICS_TAGS": "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+        "_STATISTICS_TAGS-eng": "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+        "_STATISTICS_WRITING_APP": "mkvmerge v15.0.0 ('Duel with the Devil') 64-bit",
+        "_STATISTICS_WRITING_APP-eng": "mkvmerge v15.0.0 ('Duel with the Devil') 64-bit",
+        "_STATISTICS_WRITING_DATE_UTC": "2017-10-02 10:59:06",
+        "_STATISTICS_WRITING_DATE_UTC-eng": "2017-10-02 10:59:06",
+        "language": "ger",
+        "title": "German"
+       },
+       "width": 0,
+       "height": 0
+      },
+      {
+       "index": 5,
+       "id": "",
+       "codec_name": "hdmv_pgs_subtitle",
+       "codec_long_name": "HDMV Presentation Graphic Stream subtitles",
+       "codec_type": "subtitle",
+       "codec_time_base": "",
+       "codec_tag_string": "[0][0][0][0]",
+       "codec_tag": "0x0000",
+       "r_frame_rate": "0/0",
+       "avg_frame_rate": "0/0",
+       "time_base": "1/1000",
+       "start_pts": 0,
+       "start_time": "0.000000",
+       "duration_ts": 5621632,
+       "duration": "5621.632000",
+       "bit_rate": "",
+       "bits_per_raw_sample": "",
+       "nb_frames": "",
+       "disposition": {
+        "default": 0,
+        "dub": 0,
+        "original": 0,
+        "comment": 0,
+        "lyrics": 0,
+        "karaoke": 0,
+        "forced": 0,
+        "hearing_impaired": 0,
+        "visual_impaired": 0,
+        "clean_effects": 0,
+        "attached_pic": 0
+       },
+       "tags": {
+        "BPS": "9005",
+        "BPS-eng": "9005",
+        "DURATION": "01:27:26.825000000",
+        "DURATION-eng": "01:27:26.825000000",
+        "NUMBER_OF_BYTES": "5906597",
+        "NUMBER_OF_BYTES-eng": "5906597",
+        "NUMBER_OF_FRAMES": "958",
+        "NUMBER_OF_FRAMES-eng": "958",
+        "_STATISTICS_TAGS": "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+        "_STATISTICS_TAGS-eng": "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+        "_STATISTICS_WRITING_APP": "mkvmerge v15.0.0 ('Duel with the Devil') 64-bit",
+        "_STATISTICS_WRITING_APP-eng": "mkvmerge v15.0.0 ('Duel with the Devil') 64-bit",
+        "_STATISTICS_WRITING_DATE_UTC": "2017-10-02 10:59:06",
+        "_STATISTICS_WRITING_DATE_UTC-eng": "2017-10-02 10:59:06",
+        "language": "jpn",
+        "title": "Japanese"
+       },
+       "width": 0,
+       "height": 0
+      },
+      {
+       "index": 6,
+       "id": "",
+       "codec_name": "hdmv_pgs_subtitle",
+       "codec_long_name": "HDMV Presentation Graphic Stream subtitles",
+       "codec_type": "subtitle",
+       "codec_time_base": "",
+       "codec_tag_string": "[0][0][0][0]",
+       "codec_tag": "0x0000",
+       "r_frame_rate": "0/0",
+       "avg_frame_rate": "0/0",
+       "time_base": "1/1000",
+       "start_pts": 0,
+       "start_time": "0.000000",
+       "duration_ts": 5621632,
+       "duration": "5621.632000",
+       "bit_rate": "",
+       "bits_per_raw_sample": "",
+       "nb_frames": "",
+       "disposition": {
+        "default": 0,
+        "dub": 0,
+        "original": 0,
+        "comment": 0,
+        "lyrics": 0,
+        "karaoke": 0,
+        "forced": 0,
+        "hearing_impaired": 0,
+        "visual_impaired": 0,
+        "clean_effects": 0,
+        "attached_pic": 0
+       },
+       "tags": {
+        "BPS": "21008",
+        "BPS-eng": "21008",
+        "DURATION": "01:31:40.328000000",
+        "DURATION-eng": "01:31:40.328000000",
+        "NUMBER_OF_BYTES": "14444475",
+        "NUMBER_OF_BYTES-eng": "14444475",
+        "NUMBER_OF_FRAMES": "1108",
+        "NUMBER_OF_FRAMES-eng": "1108",
+        "_STATISTICS_TAGS": "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+        "_STATISTICS_TAGS-eng": "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+        "_STATISTICS_WRITING_APP": "mkvmerge v15.0.0 ('Duel with the Devil') 64-bit",
+        "_STATISTICS_WRITING_APP-eng": "mkvmerge v15.0.0 ('Duel with the Devil') 64-bit",
+        "_STATISTICS_WRITING_DATE_UTC": "2017-10-02 10:59:06",
+        "_STATISTICS_WRITING_DATE_UTC-eng": "2017-10-02 10:59:06",
+        "language": "bul",
+        "title": "Bulgarian"
+       },
+       "width": 0,
+       "height": 0
+      },
+      {
+       "index": 7,
+       "id": "",
+       "codec_name": "hdmv_pgs_subtitle",
+       "codec_long_name": "HDMV Presentation Graphic Stream subtitles",
+       "codec_type": "subtitle",
+       "codec_time_base": "",
+       "codec_tag_string": "[0][0][0][0]",
+       "codec_tag": "0x0000",
+       "r_frame_rate": "0/0",
+       "avg_frame_rate": "0/0",
+       "time_base": "1/1000",
+       "start_pts": 0,
+       "start_time": "0.000000",
+       "duration_ts": 5621632,
+       "duration": "5621.632000",
+       "bit_rate": "",
+       "bits_per_raw_sample": "",
+       "nb_frames": "",
+       "disposition": {
+        "default": 0,
+        "dub": 0,
+        "original": 0,
+        "comment": 0,
+        "lyrics": 0,
+        "karaoke": 0,
+        "forced": 0,
+        "hearing_impaired": 0,
+        "visual_impaired": 0,
+        "clean_effects": 0,
+        "attached_pic": 0
+       },
+       "tags": {
+        "BPS": "18717",
+        "BPS-eng": "18717",
+        "DURATION": "01:31:40.286000000",
+        "DURATION-eng": "01:31:40.286000000",
+        "NUMBER_OF_BYTES": "12869221",
+        "NUMBER_OF_BYTES-eng": "12869221",
+        "NUMBER_OF_FRAMES": "1106",
+        "NUMBER_OF_FRAMES-eng": "1106",
+        "_STATISTICS_TAGS": "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+        "_STATISTICS_TAGS-eng": "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+        "_STATISTICS_WRITING_APP": "mkvmerge v15.0.0 ('Duel with the Devil') 64-bit",
+        "_STATISTICS_WRITING_APP-eng": "mkvmerge v15.0.0 ('Duel with the Devil') 64-bit",
+        "_STATISTICS_WRITING_DATE_UTC": "2017-10-02 10:59:06",
+        "_STATISTICS_WRITING_DATE_UTC-eng": "2017-10-02 10:59:06",
+        "language": "chi",
+        "title": "Chinese (Cantonese)"
+       },
+       "width": 0,
+       "height": 0
+      },
+      {
+       "index": 8,
+       "id": "",
+       "codec_name": "hdmv_pgs_subtitle",
+       "codec_long_name": "HDMV Presentation Graphic Stream subtitles",
+       "codec_type": "subtitle",
+       "codec_time_base": "",
+       "codec_tag_string": "[0][0][0][0]",
+       "codec_tag": "0x0000",
+       "r_frame_rate": "0/0",
+       "avg_frame_rate": "0/0",
+       "time_base": "1/1000",
+       "start_pts": 0,
+       "start_time": "0.000000",
+       "duration_ts": 5621632,
+       "duration": "5621.632000",
+       "bit_rate": "",
+       "bits_per_raw_sample": "",
+       "nb_frames": "",
+       "disposition": {
+        "default": 0,
+        "dub": 0,
+        "original": 0,
+        "comment": 0,
+        "lyrics": 0,
+        "karaoke": 0,
+        "forced": 0,
+        "hearing_impaired": 0,
+        "visual_impaired": 0,
+        "clean_effects": 0,
+        "attached_pic": 0
+       },
+       "tags": {
+        "BPS": "22791",
+        "BPS-eng": "22791",
+        "DURATION": "01:31:40.286000000",
+        "DURATION-eng": "01:31:40.286000000",
+        "NUMBER_OF_BYTES": "15670226",
+        "NUMBER_OF_BYTES-eng": "15670226",
+        "NUMBER_OF_FRAMES": "1118",
+        "NUMBER_OF_FRAMES-eng": "1118",
+        "_STATISTICS_TAGS": "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+        "_STATISTICS_TAGS-eng": "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+        "_STATISTICS_WRITING_APP": "mkvmerge v15.0.0 ('Duel with the Devil') 64-bit",
+        "_STATISTICS_WRITING_APP-eng": "mkvmerge v15.0.0 ('Duel with the Devil') 64-bit",
+        "_STATISTICS_WRITING_DATE_UTC": "2017-10-02 10:59:06",
+        "_STATISTICS_WRITING_DATE_UTC-eng": "2017-10-02 10:59:06",
+        "language": "chi",
+        "title": "Chinese (Mandarin Simplified)"
+       },
+       "width": 0,
+       "height": 0
+      },
+      {
+       "index": 9,
+       "id": "",
+       "codec_name": "hdmv_pgs_subtitle",
+       "codec_long_name": "HDMV Presentation Graphic Stream subtitles",
+       "codec_type": "subtitle",
+       "codec_time_base": "",
+       "codec_tag_string": "[0][0][0][0]",
+       "codec_tag": "0x0000",
+       "r_frame_rate": "0/0",
+       "avg_frame_rate": "0/0",
+       "time_base": "1/1000",
+       "start_pts": 0,
+       "start_time": "0.000000",
+       "duration_ts": 5621632,
+       "duration": "5621.632000",
+       "bit_rate": "",
+       "bits_per_raw_sample": "",
+       "nb_frames": "",
+       "disposition": {
+        "default": 0,
+        "dub": 0,
+        "original": 0,
+        "comment": 0,
+        "lyrics": 0,
+        "karaoke": 0,
+        "forced": 0,
+        "hearing_impaired": 0,
+        "visual_impaired": 0,
+        "clean_effects": 0,
+        "attached_pic": 0
+       },
+       "tags": {
+        "BPS": "23931",
+        "BPS-eng": "23931",
+        "DURATION": "01:31:40.286000000",
+        "DURATION-eng": "01:31:40.286000000",
+        "NUMBER_OF_BYTES": "16454021",
+        "NUMBER_OF_BYTES-eng": "16454021",
+        "NUMBER_OF_FRAMES": "1122",
+        "NUMBER_OF_FRAMES-eng": "1122",
+        "_STATISTICS_TAGS": "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+        "_STATISTICS_TAGS-eng": "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+        "_STATISTICS_WRITING_APP": "mkvmerge v15.0.0 ('Duel with the Devil') 64-bit",
+        "_STATISTICS_WRITING_APP-eng": "mkvmerge v15.0.0 ('Duel with the Devil') 64-bit",
+        "_STATISTICS_WRITING_DATE_UTC": "2017-10-02 10:59:06",
+        "_STATISTICS_WRITING_DATE_UTC-eng": "2017-10-02 10:59:06",
+        "language": "chi",
+        "title": "Chinese (Mandarin Traditional)"
+       },
+       "width": 0,
+       "height": 0
+      },
+      {
+       "index": 10,
+       "id": "",
+       "codec_name": "hdmv_pgs_subtitle",
+       "codec_long_name": "HDMV Presentation Graphic Stream subtitles",
+       "codec_type": "subtitle",
+       "codec_time_base": "",
+       "codec_tag_string": "[0][0][0][0]",
+       "codec_tag": "0x0000",
+       "r_frame_rate": "0/0",
+       "avg_frame_rate": "0/0",
+       "time_base": "1/1000",
+       "start_pts": 0,
+       "start_time": "0.000000",
+       "duration_ts": 5621632,
+       "duration": "5621.632000",
+       "bit_rate": "",
+       "bits_per_raw_sample": "",
+       "nb_frames": "",
+       "disposition": {
+        "default": 0,
+        "dub": 0,
+        "original": 0,
+        "comment": 0,
+        "lyrics": 0,
+        "karaoke": 0,
+        "forced": 0,
+        "hearing_impaired": 0,
+        "visual_impaired": 0,
+        "clean_effects": 0,
+        "attached_pic": 0
+       },
+       "tags": {
+        "BPS": "17837",
+        "BPS-eng": "17837",
+        "DURATION": "01:31:40.328000000",
+        "DURATION-eng": "01:31:40.328000000",
+        "NUMBER_OF_BYTES": "12264255",
+        "NUMBER_OF_BYTES-eng": "12264255",
+        "NUMBER_OF_FRAMES": "986",
+        "NUMBER_OF_FRAMES-eng": "986",
+        "_STATISTICS_TAGS": "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+        "_STATISTICS_TAGS-eng": "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+        "_STATISTICS_WRITING_APP": "mkvmerge v15.0.0 ('Duel with the Devil') 64-bit",
+        "_STATISTICS_WRITING_APP-eng": "mkvmerge v15.0.0 ('Duel with the Devil') 64-bit",
+        "_STATISTICS_WRITING_DATE_UTC": "2017-10-02 10:59:06",
+        "_STATISTICS_WRITING_DATE_UTC-eng": "2017-10-02 10:59:06",
+        "language": "hrv",
+        "title": "Croatian"
+       },
+       "width": 0,
+       "height": 0
+      },
+      {
+       "index": 11,
+       "id": "",
+       "codec_name": "hdmv_pgs_subtitle",
+       "codec_long_name": "HDMV Presentation Graphic Stream subtitles",
+       "codec_type": "subtitle",
+       "codec_time_base": "",
+       "codec_tag_string": "[0][0][0][0]",
+       "codec_tag": "0x0000",
+       "r_frame_rate": "0/0",
+       "avg_frame_rate": "0/0",
+       "time_base": "1/1000",
+       "start_pts": 0,
+       "start_time": "0.000000",
+       "duration_ts": 5621632,
+       "duration": "5621.632000",
+       "bit_rate": "",
+       "bits_per_raw_sample": "",
+       "nb_frames": "",
+       "disposition": {
+        "default": 0,
+        "dub": 0,
+        "original": 0,
+        "comment": 0,
+        "lyrics": 0,
+        "karaoke": 0,
+        "forced": 0,
+        "hearing_impaired": 0,
+        "visual_impaired": 0,
+        "clean_effects": 0,
+        "attached_pic": 0
+       },
+       "tags": {
+        "BPS": "12497",
+        "BPS-eng": "12497",
+        "DURATION": "01:31:40.328000000",
+        "DURATION-eng": "01:31:40.328000000",
+        "NUMBER_OF_BYTES": "8592222",
+        "NUMBER_OF_BYTES-eng": "8592222",
+        "NUMBER_OF_FRAMES": "1108",
+        "NUMBER_OF_FRAMES-eng": "1108",
+        "_STATISTICS_TAGS": "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+        "_STATISTICS_TAGS-eng": "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+        "_STATISTICS_WRITING_APP": "mkvmerge v15.0.0 ('Duel with the Devil') 64-bit",
+        "_STATISTICS_WRITING_APP-eng": "mkvmerge v15.0.0 ('Duel with the Devil') 64-bit",
+        "_STATISTICS_WRITING_DATE_UTC": "2017-10-02 10:59:06",
+        "_STATISTICS_WRITING_DATE_UTC-eng": "2017-10-02 10:59:06",
+        "language": "ara",
+        "title": "Arabic"
+       },
+       "width": 0,
+       "height": 0
+      },
+      {
+       "index": 12,
+       "id": "",
+       "codec_name": "hdmv_pgs_subtitle",
+       "codec_long_name": "HDMV Presentation Graphic Stream subtitles",
+       "codec_type": "subtitle",
+       "codec_time_base": "",
+       "codec_tag_string": "[0][0][0][0]",
+       "codec_tag": "0x0000",
+       "r_frame_rate": "0/0",
+       "avg_frame_rate": "0/0",
+       "time_base": "1/1000",
+       "start_pts": 0,
+       "start_time": "0.000000",
+       "duration_ts": 5621632,
+       "duration": "5621.632000",
+       "bit_rate": "",
+       "bits_per_raw_sample": "",
+       "nb_frames": "",
+       "disposition": {
+        "default": 0,
+        "dub": 0,
+        "original": 0,
+        "comment": 0,
+        "lyrics": 0,
+        "karaoke": 0,
+        "forced": 0,
+        "hearing_impaired": 0,
+        "visual_impaired": 0,
+        "clean_effects": 0,
+        "attached_pic": 0
+       },
+       "tags": {
+        "BPS": "20017",
+        "BPS-eng": "20017",
+        "DURATION": "01:31:40.328000000",
+        "DURATION-eng": "01:31:40.328000000",
+        "NUMBER_OF_BYTES": "13763160",
+        "NUMBER_OF_BYTES-eng": "13763160",
+        "NUMBER_OF_FRAMES": "1098",
+        "NUMBER_OF_FRAMES-eng": "1098",
+        "_STATISTICS_TAGS": "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+        "_STATISTICS_TAGS-eng": "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+        "_STATISTICS_WRITING_APP": "mkvmerge v15.0.0 ('Duel with the Devil') 64-bit",
+        "_STATISTICS_WRITING_APP-eng": "mkvmerge v15.0.0 ('Duel with the Devil') 64-bit",
+        "_STATISTICS_WRITING_DATE_UTC": "2017-10-02 10:59:06",
+        "_STATISTICS_WRITING_DATE_UTC-eng": "2017-10-02 10:59:06",
+        "language": "hun",
+        "title": "Hungarian"
+       },
+       "width": 0,
+       "height": 0
+      },
+      {
+       "index": 13,
+       "id": "",
+       "codec_name": "hdmv_pgs_subtitle",
+       "codec_long_name": "HDMV Presentation Graphic Stream subtitles",
+       "codec_type": "subtitle",
+       "codec_time_base": "",
+       "codec_tag_string": "[0][0][0][0]",
+       "codec_tag": "0x0000",
+       "r_frame_rate": "0/0",
+       "avg_frame_rate": "0/0",
+       "time_base": "1/1000",
+       "start_pts": 0,
+       "start_time": "0.000000",
+       "duration_ts": 5621632,
+       "duration": "5621.632000",
+       "bit_rate": "",
+       "bits_per_raw_sample": "",
+       "nb_frames": "",
+       "disposition": {
+        "default": 0,
+        "dub": 0,
+        "original": 0,
+        "comment": 0,
+        "lyrics": 0,
+        "karaoke": 0,
+        "forced": 0,
+        "hearing_impaired": 0,
+        "visual_impaired": 0,
+        "clean_effects": 0,
+        "attached_pic": 0
+       },
+       "tags": {
+        "BPS": "24546",
+        "BPS-eng": "24546",
+        "DURATION": "01:31:40.286000000",
+        "DURATION-eng": "01:31:40.286000000",
+        "NUMBER_OF_BYTES": "16876306",
+        "NUMBER_OF_BYTES-eng": "16876306",
+        "NUMBER_OF_FRAMES": "1110",
+        "NUMBER_OF_FRAMES-eng": "1110",
+        "_STATISTICS_TAGS": "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+        "_STATISTICS_TAGS-eng": "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+        "_STATISTICS_WRITING_APP": "mkvmerge v15.0.0 ('Duel with the Devil') 64-bit",
+        "_STATISTICS_WRITING_APP-eng": "mkvmerge v15.0.0 ('Duel with the Devil') 64-bit",
+        "_STATISTICS_WRITING_DATE_UTC": "2017-10-02 10:59:06",
+        "_STATISTICS_WRITING_DATE_UTC-eng": "2017-10-02 10:59:06",
+        "language": "ind",
+        "title": "Indonesian"
+       },
+       "width": 0,
+       "height": 0
+      },
+      {
+       "index": 14,
+       "id": "",
+       "codec_name": "hdmv_pgs_subtitle",
+       "codec_long_name": "HDMV Presentation Graphic Stream subtitles",
+       "codec_type": "subtitle",
+       "codec_time_base": "",
+       "codec_tag_string": "[0][0][0][0]",
+       "codec_tag": "0x0000",
+       "r_frame_rate": "0/0",
+       "avg_frame_rate": "0/0",
+       "time_base": "1/1000",
+       "start_pts": 0,
+       "start_time": "0.000000",
+       "duration_ts": 5621632,
+       "duration": "5621.632000",
+       "bit_rate": "",
+       "bits_per_raw_sample": "",
+       "nb_frames": "",
+       "disposition": {
+        "default": 0,
+        "dub": 0,
+        "original": 0,
+        "comment": 0,
+        "lyrics": 0,
+        "karaoke": 0,
+        "forced": 0,
+        "hearing_impaired": 0,
+        "visual_impaired": 0,
+        "clean_effects": 0,
+        "attached_pic": 0
+       },
+       "tags": {
+        "BPS": "15492",
+        "BPS-eng": "15492",
+        "DURATION": "01:32:25.707000000",
+        "DURATION-eng": "01:32:25.707000000",
+        "NUMBER_OF_BYTES": "10739568",
+        "NUMBER_OF_BYTES-eng": "10739568",
+        "NUMBER_OF_FRAMES": "990",
+        "NUMBER_OF_FRAMES-eng": "990",
+        "_STATISTICS_TAGS": "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+        "_STATISTICS_TAGS-eng": "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+        "_STATISTICS_WRITING_APP": "mkvmerge v15.0.0 ('Duel with the Devil') 64-bit",
+        "_STATISTICS_WRITING_APP-eng": "mkvmerge v15.0.0 ('Duel with the Devil') 64-bit",
+        "_STATISTICS_WRITING_DATE_UTC": "2017-10-02 10:59:06",
+        "_STATISTICS_WRITING_DATE_UTC-eng": "2017-10-02 10:59:06",
+        "language": "heb",
+        "title": "Hebrew"
+       },
+       "width": 0,
+       "height": 0
+      },
+      {
+       "index": 15,
+       "id": "",
+       "codec_name": "hdmv_pgs_subtitle",
+       "codec_long_name": "HDMV Presentation Graphic Stream subtitles",
+       "codec_type": "subtitle",
+       "codec_time_base": "",
+       "codec_tag_string": "[0][0][0][0]",
+       "codec_tag": "0x0000",
+       "r_frame_rate": "0/0",
+       "avg_frame_rate": "0/0",
+       "time_base": "1/1000",
+       "start_pts": 0,
+       "start_time": "0.000000",
+       "duration_ts": 5621632,
+       "duration": "5621.632000",
+       "bit_rate": "",
+       "bits_per_raw_sample": "",
+       "nb_frames": "",
+       "disposition": {
+        "default": 0,
+        "dub": 0,
+        "original": 0,
+        "comment": 0,
+        "lyrics": 0,
+        "karaoke": 0,
+        "forced": 0,
+        "hearing_impaired": 0,
+        "visual_impaired": 0,
+        "clean_effects": 0,
+        "attached_pic": 0
+       },
+       "tags": {
+        "BPS": "23976",
+        "BPS-eng": "23976",
+        "DURATION": "01:31:40.286000000",
+        "DURATION-eng": "01:31:40.286000000",
+        "NUMBER_OF_BYTES": "16484572",
+        "NUMBER_OF_BYTES-eng": "16484572",
+        "NUMBER_OF_FRAMES": "1104",
+        "NUMBER_OF_FRAMES-eng": "1104",
+        "_STATISTICS_TAGS": "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+        "_STATISTICS_TAGS-eng": "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+        "_STATISTICS_WRITING_APP": "mkvmerge v15.0.0 ('Duel with the Devil') 64-bit",
+        "_STATISTICS_WRITING_APP-eng": "mkvmerge v15.0.0 ('Duel with the Devil') 64-bit",
+        "_STATISTICS_WRITING_DATE_UTC": "2017-10-02 10:59:06",
+        "_STATISTICS_WRITING_DATE_UTC-eng": "2017-10-02 10:59:06",
+        "language": "may",
+        "title": "Malay"
+       },
+       "width": 0,
+       "height": 0
+      },
+      {
+       "index": 16,
+       "id": "",
+       "codec_name": "hdmv_pgs_subtitle",
+       "codec_long_name": "HDMV Presentation Graphic Stream subtitles",
+       "codec_type": "subtitle",
+       "codec_time_base": "",
+       "codec_tag_string": "[0][0][0][0]",
+       "codec_tag": "0x0000",
+       "r_frame_rate": "0/0",
+       "avg_frame_rate": "0/0",
+       "time_base": "1/1000",
+       "start_pts": 0,
+       "start_time": "0.000000",
+       "duration_ts": 5621632,
+       "duration": "5621.632000",
+       "bit_rate": "",
+       "bits_per_raw_sample": "",
+       "nb_frames": "",
+       "disposition": {
+        "default": 0,
+        "dub": 0,
+        "original": 0,
+        "comment": 0,
+        "lyrics": 0,
+        "karaoke": 0,
+        "forced": 0,
+        "hearing_impaired": 0,
+        "visual_impaired": 0,
+        "clean_effects": 0,
+        "attached_pic": 0
+       },
+       "tags": {
+        "BPS": "16157",
+        "BPS-eng": "16157",
+        "DURATION": "01:31:40.495000000",
+        "DURATION-eng": "01:31:40.495000000",
+        "NUMBER_OF_BYTES": "11109106",
+        "NUMBER_OF_BYTES-eng": "11109106",
+        "NUMBER_OF_FRAMES": "862",
+        "NUMBER_OF_FRAMES-eng": "862",
+        "_STATISTICS_TAGS": "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+        "_STATISTICS_TAGS-eng": "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+        "_STATISTICS_WRITING_APP": "mkvmerge v15.0.0 ('Duel with the Devil') 64-bit",
+        "_STATISTICS_WRITING_APP-eng": "mkvmerge v15.0.0 ('Duel with the Devil') 64-bit",
+        "_STATISTICS_WRITING_DATE_UTC": "2017-10-02 10:59:06",
+        "_STATISTICS_WRITING_DATE_UTC-eng": "2017-10-02 10:59:06",
+        "language": "pol",
+        "title": "Polish"
+       },
+       "width": 0,
+       "height": 0
+      },
+      {
+       "index": 17,
+       "id": "",
+       "codec_name": "hdmv_pgs_subtitle",
+       "codec_long_name": "HDMV Presentation Graphic Stream subtitles",
+       "codec_type": "subtitle",
+       "codec_time_base": "",
+       "codec_tag_string": "[0][0][0][0]",
+       "codec_tag": "0x0000",
+       "r_frame_rate": "0/0",
+       "avg_frame_rate": "0/0",
+       "time_base": "1/1000",
+       "start_pts": 0,
+       "start_time": "0.000000",
+       "duration_ts": 5621632,
+       "duration": "5621.632000",
+       "bit_rate": "",
+       "bits_per_raw_sample": "",
+       "nb_frames": "",
+       "disposition": {
+        "default": 0,
+        "dub": 0,
+        "original": 0,
+        "comment": 0,
+        "lyrics": 0,
+        "karaoke": 0,
+        "forced": 0,
+        "hearing_impaired": 0,
+        "visual_impaired": 0,
+        "clean_effects": 0,
+        "attached_pic": 0
+       },
+       "tags": {
+        "BPS": "21144",
+        "BPS-eng": "21144",
+        "DURATION": "01:31:40.328000000",
+        "DURATION-eng": "01:31:40.328000000",
+        "NUMBER_OF_BYTES": "14538047",
+        "NUMBER_OF_BYTES-eng": "14538047",
+        "NUMBER_OF_FRAMES": "1106",
+        "NUMBER_OF_FRAMES-eng": "1106",
+        "_STATISTICS_TAGS": "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+        "_STATISTICS_TAGS-eng": "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+        "_STATISTICS_WRITING_APP": "mkvmerge v15.0.0 ('Duel with the Devil') 64-bit",
+        "_STATISTICS_WRITING_APP-eng": "mkvmerge v15.0.0 ('Duel with the Devil') 64-bit",
+        "_STATISTICS_WRITING_DATE_UTC": "2017-10-02 10:59:06",
+        "_STATISTICS_WRITING_DATE_UTC-eng": "2017-10-02 10:59:06",
+        "language": "srp",
+        "title": "Serbian"
+       },
+       "width": 0,
+       "height": 0
+      },
+      {
+       "index": 18,
+       "id": "",
+       "codec_name": "hdmv_pgs_subtitle",
+       "codec_long_name": "HDMV Presentation Graphic Stream subtitles",
+       "codec_type": "subtitle",
+       "codec_time_base": "",
+       "codec_tag_string": "[0][0][0][0]",
+       "codec_tag": "0x0000",
+       "r_frame_rate": "0/0",
+       "avg_frame_rate": "0/0",
+       "time_base": "1/1000",
+       "start_pts": 0,
+       "start_time": "0.000000",
+       "duration_ts": 5621632,
+       "duration": "5621.632000",
+       "bit_rate": "",
+       "bits_per_raw_sample": "",
+       "nb_frames": "",
+       "disposition": {
+        "default": 0,
+        "dub": 0,
+        "original": 0,
+        "comment": 0,
+        "lyrics": 0,
+        "karaoke": 0,
+        "forced": 0,
+        "hearing_impaired": 0,
+        "visual_impaired": 0,
+        "clean_effects": 0,
+        "attached_pic": 0
+       },
+       "tags": {
+        "BPS": "17444",
+        "BPS-eng": "17444",
+        "DURATION": "01:31:40.286000000",
+        "DURATION-eng": "01:31:40.286000000",
+        "NUMBER_OF_BYTES": "11993762",
+        "NUMBER_OF_BYTES-eng": "11993762",
+        "NUMBER_OF_FRAMES": "1122",
+        "NUMBER_OF_FRAMES-eng": "1122",
+        "_STATISTICS_TAGS": "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+        "_STATISTICS_TAGS-eng": "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+        "_STATISTICS_WRITING_APP": "mkvmerge v15.0.0 ('Duel with the Devil') 64-bit",
+        "_STATISTICS_WRITING_APP-eng": "mkvmerge v15.0.0 ('Duel with the Devil') 64-bit",
+        "_STATISTICS_WRITING_DATE_UTC": "2017-10-02 10:59:06",
+        "_STATISTICS_WRITING_DATE_UTC-eng": "2017-10-02 10:59:06",
+        "language": "kor",
+        "title": "Korean"
+       },
+       "width": 0,
+       "height": 0
+      },
+      {
+       "index": 19,
+       "id": "",
+       "codec_name": "hdmv_pgs_subtitle",
+       "codec_long_name": "HDMV Presentation Graphic Stream subtitles",
+       "codec_type": "subtitle",
+       "codec_time_base": "",
+       "codec_tag_string": "[0][0][0][0]",
+       "codec_tag": "0x0000",
+       "r_frame_rate": "0/0",
+       "avg_frame_rate": "0/0",
+       "time_base": "1/1000",
+       "start_pts": 0,
+       "start_time": "0.000000",
+       "duration_ts": 5621632,
+       "duration": "5621.632000",
+       "bit_rate": "",
+       "bits_per_raw_sample": "",
+       "nb_frames": "",
+       "disposition": {
+        "default": 0,
+        "dub": 0,
+        "original": 0,
+        "comment": 0,
+        "lyrics": 0,
+        "karaoke": 0,
+        "forced": 0,
+        "hearing_impaired": 0,
+        "visual_impaired": 0,
+        "clean_effects": 0,
+        "attached_pic": 0
+       },
+       "tags": {
+        "BPS": "18040",
+        "BPS-eng": "18040",
+        "DURATION": "01:31:40.286000000",
+        "DURATION-eng": "01:31:40.286000000",
+        "NUMBER_OF_BYTES": "12403527",
+        "NUMBER_OF_BYTES-eng": "12403527",
+        "NUMBER_OF_FRAMES": "1116",
+        "NUMBER_OF_FRAMES-eng": "1116",
+        "_STATISTICS_TAGS": "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+        "_STATISTICS_TAGS-eng": "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+        "_STATISTICS_WRITING_APP": "mkvmerge v15.0.0 ('Duel with the Devil') 64-bit",
+        "_STATISTICS_WRITING_APP-eng": "mkvmerge v15.0.0 ('Duel with the Devil') 64-bit",
+        "_STATISTICS_WRITING_DATE_UTC": "2017-10-02 10:59:06",
+        "_STATISTICS_WRITING_DATE_UTC-eng": "2017-10-02 10:59:06",
+        "language": "tha",
+        "title": "Thai"
+       },
+       "width": 0,
+       "height": 0
+      },
+      {
+       "index": 20,
+       "id": "",
+       "codec_name": "hdmv_pgs_subtitle",
+       "codec_long_name": "HDMV Presentation Graphic Stream subtitles",
+       "codec_type": "subtitle",
+       "codec_time_base": "",
+       "codec_tag_string": "[0][0][0][0]",
+       "codec_tag": "0x0000",
+       "r_frame_rate": "0/0",
+       "avg_frame_rate": "0/0",
+       "time_base": "1/1000",
+       "start_pts": 0,
+       "start_time": "0.000000",
+       "duration_ts": 5621632,
+       "duration": "5621.632000",
+       "bit_rate": "",
+       "bits_per_raw_sample": "",
+       "nb_frames": "",
+       "disposition": {
+        "default": 0,
+        "dub": 0,
+        "original": 0,
+        "comment": 0,
+        "lyrics": 0,
+        "karaoke": 0,
+        "forced": 0,
+        "hearing_impaired": 0,
+        "visual_impaired": 0,
+        "clean_effects": 0,
+        "attached_pic": 0
+       },
+       "tags": {
+        "BPS": "22996",
+        "BPS-eng": "22996",
+        "DURATION": "01:31:40.328000000",
+        "DURATION-eng": "01:31:40.328000000",
+        "NUMBER_OF_BYTES": "15810715",
+        "NUMBER_OF_BYTES-eng": "15810715",
+        "NUMBER_OF_FRAMES": "1086",
+        "NUMBER_OF_FRAMES-eng": "1086",
+        "_STATISTICS_TAGS": "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+        "_STATISTICS_TAGS-eng": "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+        "_STATISTICS_WRITING_APP": "mkvmerge v15.0.0 ('Duel with the Devil') 64-bit",
+        "_STATISTICS_WRITING_APP-eng": "mkvmerge v15.0.0 ('Duel with the Devil') 64-bit",
+        "_STATISTICS_WRITING_DATE_UTC": "2017-10-02 10:59:06",
+        "_STATISTICS_WRITING_DATE_UTC-eng": "2017-10-02 10:59:06",
+        "language": "tur",
+        "title": "Turkish"
+       },
+       "width": 0,
+       "height": 0
+      },
+      {
+       "index": 21,
+       "id": "",
+       "codec_name": "hdmv_pgs_subtitle",
+       "codec_long_name": "HDMV Presentation Graphic Stream subtitles",
+       "codec_type": "subtitle",
+       "codec_time_base": "",
+       "codec_tag_string": "[0][0][0][0]",
+       "codec_tag": "0x0000",
+       "r_frame_rate": "0/0",
+       "avg_frame_rate": "0/0",
+       "time_base": "1/1000",
+       "start_pts": 0,
+       "start_time": "0.000000",
+       "duration_ts": 5621632,
+       "duration": "5621.632000",
+       "bit_rate": "",
+       "bits_per_raw_sample": "",
+       "nb_frames": "",
+       "disposition": {
+        "default": 0,
+        "dub": 0,
+        "original": 0,
+        "comment": 0,
+        "lyrics": 0,
+        "karaoke": 0,
+        "forced": 0,
+        "hearing_impaired": 0,
+        "visual_impaired": 0,
+        "clean_effects": 0,
+        "attached_pic": 0
+       },
+       "tags": {
+        "BPS": "20256",
+        "BPS-eng": "20256",
+        "DURATION": "01:31:40.286000000",
+        "DURATION-eng": "01:31:40.286000000",
+        "NUMBER_OF_BYTES": "13926725",
+        "NUMBER_OF_BYTES-eng": "13926725",
+        "NUMBER_OF_FRAMES": "1104",
+        "NUMBER_OF_FRAMES-eng": "1104",
+        "_STATISTICS_TAGS": "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+        "_STATISTICS_TAGS-eng": "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+        "_STATISTICS_WRITING_APP": "mkvmerge v15.0.0 ('Duel with the Devil') 64-bit",
+        "_STATISTICS_WRITING_APP-eng": "mkvmerge v15.0.0 ('Duel with the Devil') 64-bit",
+        "_STATISTICS_WRITING_DATE_UTC": "2017-10-02 10:59:06",
+        "_STATISTICS_WRITING_DATE_UTC-eng": "2017-10-02 10:59:06",
+        "language": "vie",
+        "title": "Vietnamese"
+       },
+       "width": 0,
+       "height": 0
+      },
+      {
+       "index": 22,
+       "id": "",
+       "codec_name": "hdmv_pgs_subtitle",
+       "codec_long_name": "HDMV Presentation Graphic Stream subtitles",
+       "codec_type": "subtitle",
+       "codec_time_base": "",
+       "codec_tag_string": "[0][0][0][0]",
+       "codec_tag": "0x0000",
+       "r_frame_rate": "0/0",
+       "avg_frame_rate": "0/0",
+       "time_base": "1/1000",
+       "start_pts": 0,
+       "start_time": "0.000000",
+       "duration_ts": 5621632,
+       "duration": "5621.632000",
+       "bit_rate": "",
+       "bits_per_raw_sample": "",
+       "nb_frames": "",
+       "disposition": {
+        "default": 0,
+        "dub": 0,
+        "original": 0,
+        "comment": 0,
+        "lyrics": 0,
+        "karaoke": 0,
+        "forced": 0,
+        "hearing_impaired": 0,
+        "visual_impaired": 0,
+        "clean_effects": 0,
+        "attached_pic": 0
+       },
+       "tags": {
+        "BPS": "19886",
+        "BPS-eng": "19886",
+        "DURATION": "01:31:40.328000000",
+        "DURATION-eng": "01:31:40.328000000",
+        "NUMBER_OF_BYTES": "13673008",
+        "NUMBER_OF_BYTES-eng": "13673008",
+        "NUMBER_OF_FRAMES": "1106",
+        "NUMBER_OF_FRAMES-eng": "1106",
+        "_STATISTICS_TAGS": "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+        "_STATISTICS_TAGS-eng": "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+        "_STATISTICS_WRITING_APP": "mkvmerge v15.0.0 ('Duel with the Devil') 64-bit",
+        "_STATISTICS_WRITING_APP-eng": "mkvmerge v15.0.0 ('Duel with the Devil') 64-bit",
+        "_STATISTICS_WRITING_DATE_UTC": "2017-10-02 10:59:06",
+        "_STATISTICS_WRITING_DATE_UTC-eng": "2017-10-02 10:59:06",
+        "language": "slv",
+        "title": "Slovenian"
+       },
+       "width": 0,
+       "height": 0
+      },
+      {
+       "index": 23,
+       "id": "",
+       "codec_name": "hdmv_pgs_subtitle",
+       "codec_long_name": "HDMV Presentation Graphic Stream subtitles",
+       "codec_type": "subtitle",
+       "codec_time_base": "",
+       "codec_tag_string": "[0][0][0][0]",
+       "codec_tag": "0x0000",
+       "r_frame_rate": "0/0",
+       "avg_frame_rate": "0/0",
+       "time_base": "1/1000",
+       "start_pts": 3212,
+       "start_time": "3.212000",
+       "duration_ts": 0,
+       "duration": "",
+       "bit_rate": "",
+       "bits_per_raw_sample": "",
+       "nb_frames": "",
+       "disposition": {
+        "default": 0,
+        "dub": 0,
+        "original": 0,
+        "comment": 0,
+        "lyrics": 0,
+        "karaoke": 0,
+        "forced": 0,
+        "hearing_impaired": 0,
+        "visual_impaired": 0,
+        "clean_effects": 0,
+        "attached_pic": 0
+       },
+       "tags": {
+        "BPS": "109513",
+        "BPS-eng": "109513",
+        "DURATION": "01:33:36.236000000",
+        "DURATION-eng": "01:33:36.236000000",
+        "NUMBER_OF_BYTES": "76881632",
+        "NUMBER_OF_BYTES-eng": "76881632",
+        "NUMBER_OF_FRAMES": "3222",
+        "NUMBER_OF_FRAMES-eng": "3222",
+        "_STATISTICS_TAGS": "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+        "_STATISTICS_TAGS-eng": "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+        "_STATISTICS_WRITING_APP": "mkvmerge v15.0.0 ('Duel with the Devil') 64-bit",
+        "_STATISTICS_WRITING_APP-eng": "mkvmerge v15.0.0 ('Duel with the Devil') 64-bit",
+        "_STATISTICS_WRITING_DATE_UTC": "2017-10-02 10:59:06",
+        "_STATISTICS_WRITING_DATE_UTC-eng": "2017-10-02 10:59:06",
+        "language": "ger",
+        "title": "German"
+       },
+       "width": 1920,
+       "height": 1080
+      },
+      {
+       "index": 24,
+       "id": "",
+       "codec_name": "hdmv_pgs_subtitle",
+       "codec_long_name": "HDMV Presentation Graphic Stream subtitles",
+       "codec_type": "subtitle",
+       "codec_time_base": "",
+       "codec_tag_string": "[0][0][0][0]",
+       "codec_tag": "0x0000",
+       "r_frame_rate": "0/0",
+       "avg_frame_rate": "0/0",
+       "time_base": "1/1000",
+       "start_pts": 3212,
+       "start_time": "3.212000",
+       "duration_ts": 0,
+       "duration": "",
+       "bit_rate": "",
+       "bits_per_raw_sample": "",
+       "nb_frames": "",
+       "disposition": {
+        "default": 0,
+        "dub": 0,
+        "original": 0,
+        "comment": 0,
+        "lyrics": 0,
+        "karaoke": 0,
+        "forced": 0,
+        "hearing_impaired": 0,
+        "visual_impaired": 0,
+        "clean_effects": 0,
+        "attached_pic": 0
+       },
+       "tags": {
+        "BPS": "77363",
+        "BPS-eng": "77363",
+        "DURATION": "01:33:36.236000000",
+        "DURATION-eng": "01:33:36.236000000",
+        "NUMBER_OF_BYTES": "54311761",
+        "NUMBER_OF_BYTES-eng": "54311761",
+        "NUMBER_OF_FRAMES": "3234",
+        "NUMBER_OF_FRAMES-eng": "3234",
+        "_STATISTICS_TAGS": "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+        "_STATISTICS_TAGS-eng": "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+        "_STATISTICS_WRITING_APP": "mkvmerge v15.0.0 ('Duel with the Devil') 64-bit",
+        "_STATISTICS_WRITING_APP-eng": "mkvmerge v15.0.0 ('Duel with the Devil') 64-bit",
+        "_STATISTICS_WRITING_DATE_UTC": "2017-10-02 10:59:06",
+        "_STATISTICS_WRITING_DATE_UTC-eng": "2017-10-02 10:59:06",
+        "language": "kor",
+        "title": "Korean"
+       },
+       "width": 1920,
+       "height": 1080
+      }
+     ],
+     "format": {
+      "filename": "<redacted: the URL zurg probed>",
+      "nb_streams": 25,
+      "nb_programs": 0,
+      "format_name": "matroska,webm",
+      "format_long_name": "Matroska / WebM",
+      "start_time": "0",
+      "duration": "5621.632",
+      "size": "19920716411",
+      "bit_rate": "28348659",
+      "probe_score": 100,
+      "tags": {
+       "creation_time": "2017-10-02T10:59:06.000000Z",
+       "encoder": "libebml v1.3.5 + libmatroska v1.4.5",
+       "title": "127 Hours"
+      }
+     },
+     "chapters": [
+      {
+       "id": -393618761,
+       "time_base": "1/1000000000",
+       "start_time": "0",
+       "end_time": "308.141",
+       "tags": {
+        "title": "00:00:00.000"
+       }
+      },
+      {
+       "id": 979879305,
+       "time_base": "1/1000000000",
+       "start_time": "308.141",
+       "end_time": "475.975",
+       "tags": {
+        "title": "00:05:08.141"
+       }
+      },
+      {
+       "id": -709853764,
+       "time_base": "1/1000000000",
+       "start_time": "475.975",
+       "end_time": "646.729",
+       "tags": {
+        "title": "00:07:55.975"
+       }
+      },
+      {
+       "id": -1687489903,
+       "time_base": "1/1000000000",
+       "start_time": "646.729",
+       "end_time": "882.924",
+       "tags": {
+        "title": "00:10:46.729"
+       }
+      },
+      {
+       "id": 715988652,
+       "time_base": "1/1000000000",
+       "start_time": "882.924",
+       "end_time": "1243.534",
+       "tags": {
+        "title": "00:14:42.924"
+       }
+      },
+      {
+       "id": 1297314239,
+       "time_base": "1/1000000000",
+       "start_time": "1243.534",
+       "end_time": "1502.209",
+       "tags": {
+        "title": "00:20:43.534"
+       }
+      },
+      {
+       "id": 979086267,
+       "time_base": "1/1000000000",
+       "start_time": "1502.209",
+       "end_time": "1774.898",
+       "tags": {
+        "title": "00:25:02.209"
+       }
+      },
+      {
+       "id": 1535856307,
+       "time_base": "1/1000000000",
+       "start_time": "1774.898",
+       "end_time": "1936.434",
+       "tags": {
+        "title": "00:29:34.898"
+       }
+      },
+      {
+       "id": 860243843,
+       "time_base": "1/1000000000",
+       "start_time": "1936.434",
+       "end_time": "2146.728",
+       "tags": {
+        "title": "00:32:16.434"
+       }
+      },
+      {
+       "id": -1263041882,
+       "time_base": "1/1000000000",
+       "start_time": "2146.728",
+       "end_time": "2412.368",
+       "tags": {
+        "title": "00:35:46.728"
+       }
+      },
+      {
+       "id": -1730552678,
+       "time_base": "1/1000000000",
+       "start_time": "2412.368",
+       "end_time": "2748.704",
+       "tags": {
+        "title": "00:40:12.368"
+       }
+      },
+      {
+       "id": -409695866,
+       "time_base": "1/1000000000",
+       "start_time": "2748.704",
+       "end_time": "2928.968",
+       "tags": {
+        "title": "00:45:48.704"
+       }
+      },
+      {
+       "id": -1650594392,
+       "time_base": "1/1000000000",
+       "start_time": "2928.968",
+       "end_time": "3121.744",
+       "tags": {
+        "title": "00:48:48.968"
+       }
+      },
+      {
+       "id": 124713889,
+       "time_base": "1/1000000000",
+       "start_time": "3121.744",
+       "end_time": "3365.988",
+       "tags": {
+        "title": "00:52:01.744"
+       }
+      },
+      {
+       "id": -71441773,
+       "time_base": "1/1000000000",
+       "start_time": "3365.988",
+       "end_time": "3657.32",
+       "tags": {
+        "title": "00:56:05.988"
+       }
+      },
+      {
+       "id": 695773598,
+       "time_base": "1/1000000000",
+       "start_time": "3657.32",
+       "end_time": "3799.629",
+       "tags": {
+        "title": "01:00:57.320"
+       }
+      },
+      {
+       "id": -1940315503,
+       "time_base": "1/1000000000",
+       "start_time": "3799.629",
+       "end_time": "4003.208",
+       "tags": {
+        "title": "01:03:19.629"
+       }
+      },
+      {
+       "id": 91943306,
+       "time_base": "1/1000000000",
+       "start_time": "4003.208",
+       "end_time": "4224.262",
+       "tags": {
+        "title": "01:06:43.208"
+       }
+      },
+      {
+       "id": -1351577940,
+       "time_base": "1/1000000000",
+       "start_time": "4224.262",
+       "end_time": "4351.222",
+       "tags": {
+        "title": "01:10:24.262"
+       }
+      },
+      {
+       "id": 896985998,
+       "time_base": "1/1000000000",
+       "start_time": "4351.222",
+       "end_time": "4533.237",
+       "tags": {
+        "title": "01:12:31.222"
+       }
+      },
+      {
+       "id": -1153063241,
+       "time_base": "1/1000000000",
+       "start_time": "4533.237",
+       "end_time": "4791.704",
+       "tags": {
+        "title": "01:15:33.237"
+       }
+      },
+      {
+       "id": 462333864,
+       "time_base": "1/1000000000",
+       "start_time": "4791.704",
+       "end_time": "5008.545",
+       "tags": {
+        "title": "01:19:51.704"
+       }
+      },
+      {
+       "id": -479561599,
+       "time_base": "1/1000000000",
+       "start_time": "5008.545",
+       "end_time": "5287.908",
+       "tags": {
+        "title": "01:23:28.545"
+       }
+      },
+      {
+       "id": 1659266237,
+       "time_base": "1/1000000000",
+       "start_time": "5287.908",
+       "end_time": "5621.632",
+       "tags": {
+        "title": "01:28:07.908"
+       }
+      }
+     ]
+    }
+   }
+  }
+ ],
+ "tmdb": {
+  "https://api.themoviedb.org/3/find/tt1542344?external_source=imdb_id&api_key=KEY": {
+   "movie_results": [
+    {
+     "id": 44115
+    }
+   ],
+   "tv_results": []
+  },
+  "https://api.themoviedb.org/3/movie/44115?append_to_response=credits%2Cexternal_ids%2Ccontent_ratings%2Crelease_dates&api_key=KEY": {
+   "title": "127 Hours",
+   "release_date": "2010-11-12",
+   "overview": "The true story of mountain climber Aron Ralston's remarkable adventure to save himself after a fallen boulder crashes on his arm and traps him in an isolated canyon in Utah.",
+   "external_ids": {
+    "imdb_id": "tt1542344"
+   }
+  }
+ },
+ "plex": {
+  "POST /library/metadata/matches {\"guid\": \"tmdb://44115\", \"type\": 1}": {
+   "MediaContainer": {
+    "Metadata": [
+     {
+      "guid": "plex://movie/5d77687d7e5fa10020bf080d"
+     }
+    ]
+   }
+  }
+ },
+ "rows": [
+  {
+   "ratingKey": "104310",
+   "key": "/library/metadata/104310",
+   "guid": "plex://movie/5d77687d7e5fa10020bf080d",
+   "type": "movie",
+   "title": "127 Hours",
+   "summary": "The true story of mountain climber Aron Ralston's remarkable adventure to save himself after a fallen boulder crashes on his arm and traps him in an isolated canyon in Utah.",
+   "duration": 5621632,
+   "addedAt": 1791655919,
+   "updatedAt": 1791655919,
+   "thumb": "/library/metadata/104310/thumb/1791655919",
+   "art": "/library/metadata/104310/art/1791655919",
+   "Media": [
+    {
+     "id": 10431000,
+     "duration": 5621632,
+     "bitrate": 37437,
+     "width": 1920,
+     "height": 1080,
+     "aspectRatio": 1.78,
+     "audioChannels": 6,
+     "audioCodec": "dca",
+     "videoCodec": "h264",
+     "videoResolution": "1080",
+     "container": "mkv",
+     "videoFrameRate": "24p",
+     "videoProfile": "high",
+     "audioProfile": "dts",
+     "Part": [
+      {
+       "id": 1043100,
+       "key": "/library/parts/1043100/1791655919/file.mkv",
+       "duration": 5621632,
+       "file": "/zurg/movies/127 Hours (2010) 1080p BD-Remux/127 Hours (2010) 1080p BD-Remux.mkv",
+       "size": 26307003613,
+       "container": "mkv",
+       "videoProfile": "high",
+       "audioProfile": "dts",
+       "Stream": [
+        {
+         "id": 104310001,
+         "streamType": 1,
+         "codec": "h264",
+         "index": 0,
+         "streamIdentifier": null,
+         "width": 1920,
+         "height": 1080,
+         "profile": "high",
+         "level": 41,
+         "refFrames": null,
+         "bitDepth": 8,
+         "chromaSubsampling": "4:2:0",
+         "chromaLocation": null,
+         "codedHeight": null,
+         "codedWidth": null,
+         "codecID": null,
+         "colorPrimaries": null,
+         "colorTrc": null,
+         "colorSpace": null,
+         "colorRange": null,
+         "frameRate": 23.976,
+         "scanType": "progressive",
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "title": "127 Hours (2010) 1080p BD-Remux",
+         "displayTitle": "1080p",
+         "extendedDisplayTitle": "127 Hours (2010) 1080p BD-Remux (H.264)"
+        },
+        {
+         "id": 104310002,
+         "streamType": 2,
+         "codec": "dca",
+         "index": 1,
+         "streamIdentifier": null,
+         "channels": 6,
+         "audioChannelLayout": "5.1(side)",
+         "samplingRate": 48000,
+         "bitDepth": 24,
+         "profile": "dts",
+         "selected": true,
+         "default": true,
+         "language": "\u0420\u0443\u0441\u0441\u043a\u0438\u0439",
+         "languageCode": "rus",
+         "languageTag": "ru",
+         "bitrate": 768,
+         "title": "\u0414\u0443\u0431\u043b\u044f\u0436 R5",
+         "displayTitle": "\u0420\u0443\u0441\u0441\u043a\u0438\u0439 (DTS 5.1)",
+         "extendedDisplayTitle": "\u0414\u0443\u0431\u043b\u044f\u0436 R5 (\u0420\u0443\u0441\u0441\u043a\u0438\u0439 DTS 5.1)"
+        },
+        {
+         "id": 104310003,
+         "streamType": 2,
+         "codec": "dca",
+         "index": 2,
+         "streamIdentifier": null,
+         "channels": 6,
+         "audioChannelLayout": "5.1(side)",
+         "samplingRate": 48000,
+         "bitDepth": 24,
+         "profile": "dts",
+         "language": "\u0420\u0443\u0441\u0441\u043a\u0438\u0439",
+         "languageCode": "rus",
+         "languageTag": "ru",
+         "bitrate": 1536,
+         "title": "DVO-OzzTV",
+         "displayTitle": "\u0420\u0443\u0441\u0441\u043a\u0438\u0439 (DTS 5.1)",
+         "extendedDisplayTitle": "DVO-OzzTV (\u0420\u0443\u0441\u0441\u043a\u0438\u0439 DTS 5.1)"
+        },
+        {
+         "id": 104310004,
+         "streamType": 2,
+         "codec": "dca",
+         "index": 3,
+         "streamIdentifier": null,
+         "channels": 6,
+         "audioChannelLayout": "5.1(side)",
+         "samplingRate": 48000,
+         "bitDepth": 24,
+         "profile": "ma",
+         "language": "\u0420\u0443\u0441\u0441\u043a\u0438\u0439",
+         "languageCode": "rus",
+         "languageTag": "ru",
+         "title": "AVO-\u042e.\u0421\u0435\u0440\u0431\u0438\u043d",
+         "displayTitle": "\u0420\u0443\u0441\u0441\u043a\u0438\u0439 (DTS-HD MA 5.1)",
+         "extendedDisplayTitle": "AVO-\u042e.\u0421\u0435\u0440\u0431\u0438\u043d (\u0420\u0443\u0441\u0441\u043a\u0438\u0439 DTS-HD MA 5.1)"
+        },
+        {
+         "id": 104310005,
+         "streamType": 2,
+         "codec": "dca",
+         "index": 4,
+         "streamIdentifier": null,
+         "channels": 6,
+         "audioChannelLayout": "5.1(side)",
+         "samplingRate": 48000,
+         "bitDepth": 24,
+         "profile": "ma",
+         "language": "\u0420\u0443\u0441\u0441\u043a\u0438\u0439",
+         "languageCode": "rus",
+         "languageTag": "ru",
+         "title": "DVO-\u041a\u0443\u0431\u0438\u043a \u0432 \u043a\u0443\u0431\u0435",
+         "displayTitle": "\u0420\u0443\u0441\u0441\u043a\u0438\u0439 (DTS-HD MA 5.1)",
+         "extendedDisplayTitle": "DVO-\u041a\u0443\u0431\u0438\u043a \u0432 \u043a\u0443\u0431\u0435 (\u0420\u0443\u0441\u0441\u043a\u0438\u0439 DTS-HD MA 5.1)"
+        },
+        {
+         "id": 104310006,
+         "streamType": 2,
+         "codec": "dca",
+         "index": 5,
+         "streamIdentifier": null,
+         "channels": 6,
+         "audioChannelLayout": "5.1(side)",
+         "samplingRate": 48000,
+         "bitDepth": 24,
+         "profile": "ma",
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "title": "\u041e\u0440\u0438\u0433\u0438\u043d\u0430\u043b",
+         "displayTitle": "English (DTS-HD MA 5.1)",
+         "extendedDisplayTitle": "\u041e\u0440\u0438\u0433\u0438\u043d\u0430\u043b (English DTS-HD MA 5.1)"
+        },
+        {
+         "id": 104310007,
+         "streamType": 2,
+         "codec": "ac3",
+         "index": 6,
+         "streamIdentifier": null,
+         "channels": 2,
+         "audioChannelLayout": "stereo",
+         "samplingRate": 48000,
+         "bitDepth": null,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "bitrate": 224,
+         "title": "AAC 2.0ch - Commentary",
+         "displayTitle": "English (AC3 Stereo)",
+         "extendedDisplayTitle": "AAC 2.0ch - Commentary (English AC3 Stereo)"
+        },
+        {
+         "id": 104310008,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "srt",
+         "index": 7,
+         "streamIdentifier": null,
+         "default": true,
+         "language": "\u0420\u0443\u0441\u0441\u043a\u0438\u0439",
+         "languageCode": "rus",
+         "languageTag": "ru",
+         "title": "Sub-R5",
+         "displayTitle": "\u0420\u0443\u0441\u0441\u043a\u0438\u0439",
+         "extendedDisplayTitle": "Sub-R5 (\u0420\u0443\u0441\u0441\u043a\u0438\u0439 SRT)"
+        },
+        {
+         "id": 104310009,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "srt",
+         "index": 8,
+         "streamIdentifier": null,
+         "language": "\u0420\u0443\u0441\u0441\u043a\u0438\u0439",
+         "languageCode": "rus",
+         "languageTag": "ru",
+         "title": "Sub-forced.Voronine",
+         "displayTitle": "\u0420\u0443\u0441\u0441\u043a\u0438\u0439",
+         "extendedDisplayTitle": "Sub-forced.Voronine (\u0420\u0443\u0441\u0441\u043a\u0438\u0439 SRT)"
+        },
+        {
+         "id": 104310010,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "srt",
+         "index": 9,
+         "streamIdentifier": null,
+         "language": "\u0420\u0443\u0441\u0441\u043a\u0438\u0439",
+         "languageCode": "rus",
+         "languageTag": "ru",
+         "title": "Sub-full.SDH.Voronine",
+         "displayTitle": "\u0420\u0443\u0441\u0441\u043a\u0438\u0439",
+         "extendedDisplayTitle": "Sub-full.SDH.Voronine (\u0420\u0443\u0441\u0441\u043a\u0438\u0439 SRT)"
+        },
+        {
+         "id": 104310011,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "srt",
+         "index": 10,
+         "streamIdentifier": null,
+         "language": "\u0420\u0443\u0441\u0441\u043a\u0438\u0439",
+         "languageCode": "rus",
+         "languageTag": "ru",
+         "title": "Sub-full.Voronine",
+         "displayTitle": "\u0420\u0443\u0441\u0441\u043a\u0438\u0439",
+         "extendedDisplayTitle": "Sub-full.Voronine (\u0420\u0443\u0441\u0441\u043a\u0438\u0439 SRT)"
+        },
+        {
+         "id": 104310012,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "srt",
+         "index": 11,
+         "streamIdentifier": null,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "title": "Sub",
+         "displayTitle": "English",
+         "extendedDisplayTitle": "Sub (English SRT)"
+        }
+       ]
+      }
+     ],
+     "hasVoiceActivity": false
+    }
+   ],
+   "_identity": "tmdb:44115",
+   "_release": "127 Hours (2010) 1080p BD-Remux.mkv",
+   "year": 2010,
+   "_hash": "eb67aeeea975544e9e1bbffd8b49173c9bae4444",
+   "_source": "rd",
+   "_sid": "movies/127 Hours (2010) 1080p BD-Remux/127 Hours (2010) 1080p BD-Remux.mkv",
+   "_path": "movies/127 Hours (2010) 1080p BD-Remux/127 Hours (2010) 1080p BD-Remux.mkv",
+   "_ids": {
+    "imdb": "tt1542344"
+   },
+   "originallyAvailableAt": "2010-11-12",
+   "tagline": "Every second counts.",
+   "audienceRating": 7.1,
+   "contentRating": "R",
+   "studio": "Fox Searchlight Pictures",
+   "Genre": [
+    {
+     "tag": "Adventure",
+     "id": 163376,
+     "filter": "genre=163376"
+    },
+    {
+     "tag": "Drama",
+     "id": 25779,
+     "filter": "genre=25779"
+    },
+    {
+     "tag": "Thriller",
+     "id": 187370,
+     "filter": "genre=187370"
+    }
+   ],
+   "Country": [
+    {
+     "tag": "France",
+     "id": 419635,
+     "filter": "country=419635"
+    },
+    {
+     "tag": "United Kingdom",
+     "id": 507717,
+     "filter": "country=507717"
+    }
+   ],
+   "Role": [
+    {
+     "tag": "James Franco",
+     "role": "Aron Ralston",
+     "thumb": "https://image.tmdb.org/t/p/w185/bjmAntHGiibLZixH8nTNVBzaFQn.jpg",
+     "tagKey": "cb6ef408d72075351761f3e9",
+     "id": 42846,
+     "filter": "actor=42846"
+    },
+    {
+     "tag": "Kate Mara",
+     "role": "Kristi Moore",
+     "thumb": "https://image.tmdb.org/t/p/w185/xZYD8wYHMmN9dMMPiohnKEFoTGx.jpg",
+     "tagKey": "afe5b5a625aae5926a34098e",
+     "id": 880929,
+     "filter": "actor=880929"
+    },
+    {
+     "tag": "Amber Tamblyn",
+     "role": "Megan McBride",
+     "thumb": "https://image.tmdb.org/t/p/w185/bzw0lxvtbEnYT7fZ8fn6NeSzMn9.jpg",
+     "tagKey": "141d9d4d8fe98cf11687ae7f",
+     "id": 226902,
+     "filter": "actor=226902"
+    },
+    {
+     "tag": "Cl\u00e9mence Po\u00e9sy",
+     "role": "Rana",
+     "thumb": "https://image.tmdb.org/t/p/w185/slWxRBAGLGmk4c2lLKYH7EfSXZ2.jpg",
+     "tagKey": "011ad8dc9496ae66f200fc1e",
+     "id": 395868,
+     "filter": "actor=395868"
+    },
+    {
+     "tag": "Lizzy Caplan",
+     "role": "Sonja Ralston",
+     "thumb": "https://image.tmdb.org/t/p/w185/cHs9pPpjcEMpWrGmrAYAn0QOE78.jpg",
+     "tagKey": "60de1fde994597218506a0a7",
+     "id": 451763,
+     "filter": "actor=451763"
+    },
+    {
+     "tag": "Kate Burton",
+     "role": "Aron's Mom",
+     "thumb": "https://image.tmdb.org/t/p/w185/rHnt0gTvarr492I1ZIYg8VNBdPn.jpg",
+     "tagKey": "89d3a11580d7e0625be18e71",
+     "id": 597843,
+     "filter": "actor=597843"
+    }
+   ],
+   "Director": [
+    {
+     "tag": "Danny Boyle",
+     "tagKey": "d27ac0e61c8a30732a40f640",
+     "id": 139696,
+     "filter": "director=139696"
+    }
+   ],
+   "Writer": [
+    {
+     "tag": "Simon Beaufoy",
+     "tagKey": "6ef1901c14f35aa8c273e77d",
+     "id": 708812,
+     "filter": "writer=708812"
+    },
+    {
+     "tag": "Danny Boyle",
+     "tagKey": "d27ac0e61c8a30732a40f640",
+     "id": 179832,
+     "filter": "writer=179832"
+    },
+    {
+     "tag": "Aron Ralston",
+     "tagKey": "4d6a33dfc4a83f256937a799",
+     "id": 889957,
+     "filter": "writer=889957"
+    },
+    {
+     "tag": "Rollo Armstrong",
+     "tagKey": "8bc72458398605b19e9042d0",
+     "id": 771629,
+     "filter": "writer=771629"
+    },
+    {
+     "tag": "Dido",
+     "tagKey": "1f8e41778c543765072d62c6",
+     "id": 740419,
+     "filter": "writer=740419"
+    }
+   ],
+   "Guid": [
+    {
+     "id": "imdb://tt1542344"
+    },
+    {
+     "id": "tmdb://44115"
+    }
+   ],
+   "_poster_url": "https://image.tmdb.org/t/p/w342/h0RMdn0rfl9l5hWXz3tUh6QVkhi.jpg",
+   "_art_url": "https://image.tmdb.org/t/p/w1280/viBWzktrBmhzRw4ehmUIrrN4C0z.jpg",
+   "_identify": {
+    "confidence": "exact",
+    "source": "dmm hash",
+    "imdb": "tt1542344",
+    "tmdb": 44115,
+    "plex": "plex://movie/5d77687d7e5fa10020bf080d",
+    "disputed": null
+   },
+   "librarySectionID": 1,
+   "librarySectionTitle": "Movies",
+   "librarySectionKey": "/library/sections/1",
+   "slug": "127-hours",
+   "Rating": [
+    {
+     "image": "themoviedb://image.rating",
+     "value": 7.1,
+     "type": "audience"
+    }
+   ],
+   "audienceRatingImage": "themoviedb://image.rating",
+   "UltraBlurColors": {
+    "topLeft": "1a1a1e",
+    "topRight": "24242a",
+    "bottomRight": "15151a",
+    "bottomLeft": "1f1f26"
+   },
+   "_scanned": true
+  },
+  {
+   "ratingKey": "121691",
+   "key": "/library/metadata/121691",
+   "guid": "plex://movie/5d77687d7e5fa10020bf080d",
+   "type": "movie",
+   "title": "127 Hours",
+   "summary": "The true story of mountain climber Aron Ralston's remarkable adventure to save himself after a fallen boulder crashes on his arm and traps him in an isolated canyon in Utah.",
+   "duration": 5621632,
+   "addedAt": 1791687412,
+   "updatedAt": 1791687412,
+   "thumb": "/library/metadata/121691/thumb/1791687412",
+   "art": "/library/metadata/121691/art/1791687412",
+   "Media": [
+    {
+     "id": 12169100,
+     "duration": 5621632,
+     "bitrate": 28349,
+     "width": 1920,
+     "height": 1080,
+     "aspectRatio": 1.78,
+     "audioChannels": 6,
+     "audioCodec": "dca-ma",
+     "videoCodec": "h264",
+     "videoResolution": "1080",
+     "container": "mkv",
+     "videoFrameRate": "24p",
+     "videoProfile": "high",
+     "audioProfile": "ma",
+     "Part": [
+      {
+       "id": 1216910,
+       "key": "/library/parts/1216910/1791687412/file.mkv",
+       "duration": 5621632,
+       "file": "/zurg/movies/127.Hours.2010.BluRay.1080p.DTS-HD.MA.5.1.AVC.REMUX-FraMeSToR/127.Hours.2010.BluRay.1080p.DTS-HD.MA.5.1.AVC.REMUX-FraMeSToR.mkv",
+       "size": 19920716411,
+       "container": "mkv",
+       "videoProfile": "high",
+       "audioProfile": "ma",
+       "Stream": [
+        {
+         "id": 121691001,
+         "streamType": 1,
+         "codec": "h264",
+         "index": 0,
+         "streamIdentifier": null,
+         "width": 1920,
+         "height": 1080,
+         "profile": "high",
+         "level": 41,
+         "refFrames": null,
+         "bitDepth": 8,
+         "chromaSubsampling": "4:2:0",
+         "chromaLocation": null,
+         "codedHeight": null,
+         "codedWidth": null,
+         "codecID": null,
+         "colorPrimaries": null,
+         "colorTrc": null,
+         "colorSpace": null,
+         "colorRange": null,
+         "frameRate": 23.976,
+         "scanType": "progressive",
+         "default": true,
+         "displayTitle": "1080p",
+         "extendedDisplayTitle": "1080p (H.264)"
+        },
+        {
+         "id": 121691002,
+         "streamType": 2,
+         "codec": "dca",
+         "index": 1,
+         "streamIdentifier": null,
+         "channels": 6,
+         "audioChannelLayout": "5.1(side)",
+         "samplingRate": 48000,
+         "bitDepth": 24,
+         "profile": "ma",
+         "selected": true,
+         "default": true,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "title": "DTS-HD MA 5.1",
+         "displayTitle": "English (DTS-HD MA 5.1)",
+         "extendedDisplayTitle": "DTS-HD MA 5.1 (English)"
+        },
+        {
+         "id": 121691003,
+         "streamType": 2,
+         "codec": "ac3",
+         "index": 2,
+         "streamIdentifier": null,
+         "channels": 2,
+         "audioChannelLayout": "stereo",
+         "samplingRate": 48000,
+         "bitDepth": null,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "bitrate": 224,
+         "title": "Commentary by Danny Boyle/Simon Beaufoy/Christian Colson",
+         "displayTitle": "English (AC3 Stereo)",
+         "extendedDisplayTitle": "Commentary by Danny Boyle/Simon Beaufoy/Christian Colson (English AC3 Stereo)"
+        },
+        {
+         "id": 121691004,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "pgs",
+         "index": 3,
+         "streamIdentifier": null,
+         "default": true,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "title": "English",
+         "displayTitle": "English",
+         "extendedDisplayTitle": "English (PGS)"
+        },
+        {
+         "id": 121691005,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "pgs",
+         "index": 4,
+         "streamIdentifier": null,
+         "language": "Deutsch",
+         "languageCode": "deu",
+         "languageTag": "de",
+         "title": "German",
+         "displayTitle": "Deutsch",
+         "extendedDisplayTitle": "German (Deutsch PGS)"
+        },
+        {
+         "id": 121691006,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "pgs",
+         "index": 5,
+         "streamIdentifier": null,
+         "language": "\u65e5\u672c\u8a9e",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "title": "Japanese",
+         "displayTitle": "\u65e5\u672c\u8a9e",
+         "extendedDisplayTitle": "Japanese (\u65e5\u672c\u8a9e PGS)"
+        },
+        {
+         "id": 121691007,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "pgs",
+         "index": 6,
+         "streamIdentifier": null,
+         "language": "\u0431\u044a\u043b\u0433\u0430\u0440\u0441\u043a\u0438",
+         "languageCode": "bul",
+         "languageTag": "bg",
+         "title": "Bulgarian",
+         "displayTitle": "\u0431\u044a\u043b\u0433\u0430\u0440\u0441\u043a\u0438",
+         "extendedDisplayTitle": "Bulgarian (\u0431\u044a\u043b\u0433\u0430\u0440\u0441\u043a\u0438 PGS)"
+        },
+        {
+         "id": 121691008,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "pgs",
+         "index": 7,
+         "streamIdentifier": null,
+         "language": "\u4e2d\u6587",
+         "languageCode": "zho",
+         "languageTag": "zh",
+         "title": "Chinese (Cantonese)",
+         "displayTitle": "\u4e2d\u6587",
+         "extendedDisplayTitle": "Chinese (Cantonese) (\u4e2d\u6587 PGS)"
+        },
+        {
+         "id": 121691009,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "pgs",
+         "index": 8,
+         "streamIdentifier": null,
+         "language": "\u4e2d\u6587",
+         "languageCode": "zho",
+         "languageTag": "zh",
+         "title": "Chinese (Mandarin Simplified)",
+         "displayTitle": "\u4e2d\u6587",
+         "extendedDisplayTitle": "Chinese (Mandarin Simplified) (\u4e2d\u6587 PGS)"
+        },
+        {
+         "id": 121691010,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "pgs",
+         "index": 9,
+         "streamIdentifier": null,
+         "language": "\u4e2d\u6587",
+         "languageCode": "zho",
+         "languageTag": "zh",
+         "title": "Chinese (Mandarin Traditional)",
+         "displayTitle": "\u4e2d\u6587",
+         "extendedDisplayTitle": "Chinese (Mandarin Traditional) (\u4e2d\u6587 PGS)"
+        },
+        {
+         "id": 121691011,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "pgs",
+         "index": 10,
+         "streamIdentifier": null,
+         "language": "Hrvatski",
+         "languageCode": "hrv",
+         "languageTag": "hr",
+         "title": "Croatian",
+         "displayTitle": "Hrvatski",
+         "extendedDisplayTitle": "Croatian (Hrvatski PGS)"
+        },
+        {
+         "id": 121691012,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "pgs",
+         "index": 11,
+         "streamIdentifier": null,
+         "language": "\u0627\u0644\u0639\u0631\u0628\u064a\u0629",
+         "languageCode": "ara",
+         "languageTag": "ar",
+         "title": "Arabic",
+         "displayTitle": "\u0627\u0644\u0639\u0631\u0628\u064a\u0629",
+         "extendedDisplayTitle": "Arabic (\u0627\u0644\u0639\u0631\u0628\u064a\u0629 PGS)"
+        },
+        {
+         "id": 121691013,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "pgs",
+         "index": 12,
+         "streamIdentifier": null,
+         "language": "magyar",
+         "languageCode": "hun",
+         "languageTag": "hu",
+         "title": "Hungarian",
+         "displayTitle": "magyar",
+         "extendedDisplayTitle": "Hungarian (magyar PGS)"
+        },
+        {
+         "id": 121691014,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "pgs",
+         "index": 13,
+         "streamIdentifier": null,
+         "language": "Indonesia",
+         "languageCode": "ind",
+         "languageTag": "id",
+         "title": "Indonesian",
+         "displayTitle": "Indonesia",
+         "extendedDisplayTitle": "Indonesian (Indonesia PGS)"
+        },
+        {
+         "id": 121691015,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "pgs",
+         "index": 14,
+         "streamIdentifier": null,
+         "language": "\u05e2\u05d1\u05e8\u05d9\u05ea",
+         "languageCode": "heb",
+         "languageTag": "he",
+         "title": "Hebrew",
+         "displayTitle": "\u05e2\u05d1\u05e8\u05d9\u05ea",
+         "extendedDisplayTitle": "Hebrew (\u05e2\u05d1\u05e8\u05d9\u05ea PGS)"
+        },
+        {
+         "id": 121691016,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "pgs",
+         "index": 15,
+         "streamIdentifier": null,
+         "language": "Melayu",
+         "languageCode": "msa",
+         "languageTag": "ms",
+         "title": "Malay",
+         "displayTitle": "Melayu",
+         "extendedDisplayTitle": "Malay (Melayu PGS)"
+        },
+        {
+         "id": 121691017,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "pgs",
+         "index": 16,
+         "streamIdentifier": null,
+         "language": "polski",
+         "languageCode": "pol",
+         "languageTag": "pl",
+         "title": "Polish",
+         "displayTitle": "polski",
+         "extendedDisplayTitle": "Polish (polski PGS)"
+        },
+        {
+         "id": 121691018,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "pgs",
+         "index": 17,
+         "streamIdentifier": null,
+         "language": "\u0441\u0440\u043f\u0441\u043a\u0438",
+         "languageCode": "srp",
+         "languageTag": "sr",
+         "title": "Serbian",
+         "displayTitle": "\u0441\u0440\u043f\u0441\u043a\u0438",
+         "extendedDisplayTitle": "Serbian (\u0441\u0440\u043f\u0441\u043a\u0438 PGS)"
+        },
+        {
+         "id": 121691019,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "pgs",
+         "index": 18,
+         "streamIdentifier": null,
+         "language": "\ud55c\uad6d\uc5b4",
+         "languageCode": "kor",
+         "languageTag": "ko",
+         "title": "Korean",
+         "displayTitle": "\ud55c\uad6d\uc5b4",
+         "extendedDisplayTitle": "Korean (\ud55c\uad6d\uc5b4 PGS)"
+        },
+        {
+         "id": 121691020,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "pgs",
+         "index": 19,
+         "streamIdentifier": null,
+         "language": "\u0e44\u0e17\u0e22",
+         "languageCode": "tha",
+         "languageTag": "th",
+         "title": "Thai",
+         "displayTitle": "\u0e44\u0e17\u0e22",
+         "extendedDisplayTitle": "Thai (\u0e44\u0e17\u0e22 PGS)"
+        },
+        {
+         "id": 121691021,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "pgs",
+         "index": 20,
+         "streamIdentifier": null,
+         "language": "T\u00fcrk\u00e7e",
+         "languageCode": "tur",
+         "languageTag": "tr",
+         "title": "Turkish",
+         "displayTitle": "T\u00fcrk\u00e7e",
+         "extendedDisplayTitle": "Turkish (T\u00fcrk\u00e7e PGS)"
+        },
+        {
+         "id": 121691022,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "pgs",
+         "index": 21,
+         "streamIdentifier": null,
+         "language": "Ti\u1ebfng Vi\u1ec7t",
+         "languageCode": "vie",
+         "languageTag": "vi",
+         "title": "Vietnamese",
+         "displayTitle": "Ti\u1ebfng Vi\u1ec7t",
+         "extendedDisplayTitle": "Vietnamese (Ti\u1ebfng Vi\u1ec7t PGS)"
+        },
+        {
+         "id": 121691023,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "pgs",
+         "index": 22,
+         "streamIdentifier": null,
+         "language": "sloven\u0161\u010dina",
+         "languageCode": "slv",
+         "languageTag": "sl",
+         "title": "Slovenian",
+         "displayTitle": "sloven\u0161\u010dina",
+         "extendedDisplayTitle": "Slovenian (sloven\u0161\u010dina PGS)"
+        },
+        {
+         "id": 121691024,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "pgs",
+         "index": 23,
+         "streamIdentifier": null,
+         "language": "Deutsch",
+         "languageCode": "deu",
+         "languageTag": "de",
+         "title": "German",
+         "displayTitle": "Deutsch",
+         "extendedDisplayTitle": "German (Deutsch PGS)"
+        },
+        {
+         "id": 121691025,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "pgs",
+         "index": 24,
+         "streamIdentifier": null,
+         "language": "\ud55c\uad6d\uc5b4",
+         "languageCode": "kor",
+         "languageTag": "ko",
+         "title": "Korean",
+         "displayTitle": "\ud55c\uad6d\uc5b4",
+         "extendedDisplayTitle": "Korean (\ud55c\uad6d\uc5b4 PGS)"
+        }
+       ]
+      }
+     ],
+     "hasVoiceActivity": false
+    }
+   ],
+   "_identity": "tmdb:44115",
+   "_release": "127.Hours.2010.BluRay.1080p.DTS-HD.MA.5.1.AVC.REMUX-FraMeSToR.mkv",
+   "year": 2010,
+   "_hash": "08a54c097a3c9f2b80c1db47a1a3d13e409c5df9",
+   "_source": "rd",
+   "_sid": "movies/127.Hours.2010.BluRay.1080p.DTS-HD.MA.5.1.AVC.REMUX-FraMeSToR/127.Hours.2010.BluRay.1080p.DTS-HD.MA.5.1.AVC.REMUX-FraMeSToR.mkv",
+   "_path": "movies/127.Hours.2010.BluRay.1080p.DTS-HD.MA.5.1.AVC.REMUX-FraMeSToR/127.Hours.2010.BluRay.1080p.DTS-HD.MA.5.1.AVC.REMUX-FraMeSToR.mkv",
+   "_ids": {
+    "imdb": "tt1542344"
+   },
+   "originallyAvailableAt": "2010-11-12",
+   "tagline": "Every second counts.",
+   "audienceRating": 7.1,
+   "contentRating": "R",
+   "studio": "Fox Searchlight Pictures",
+   "Genre": [
+    {
+     "tag": "Adventure",
+     "id": 163376,
+     "filter": "genre=163376"
+    },
+    {
+     "tag": "Drama",
+     "id": 25779,
+     "filter": "genre=25779"
+    },
+    {
+     "tag": "Thriller",
+     "id": 187370,
+     "filter": "genre=187370"
+    }
+   ],
+   "Country": [
+    {
+     "tag": "France",
+     "id": 419635,
+     "filter": "country=419635"
+    },
+    {
+     "tag": "United Kingdom",
+     "id": 507717,
+     "filter": "country=507717"
+    }
+   ],
+   "Role": [
+    {
+     "tag": "James Franco",
+     "role": "Aron Ralston",
+     "thumb": "https://image.tmdb.org/t/p/w185/bjmAntHGiibLZixH8nTNVBzaFQn.jpg",
+     "tagKey": "cb6ef408d72075351761f3e9",
+     "id": 42846,
+     "filter": "actor=42846"
+    },
+    {
+     "tag": "Kate Mara",
+     "role": "Kristi Moore",
+     "thumb": "https://image.tmdb.org/t/p/w185/xZYD8wYHMmN9dMMPiohnKEFoTGx.jpg",
+     "tagKey": "afe5b5a625aae5926a34098e",
+     "id": 880929,
+     "filter": "actor=880929"
+    },
+    {
+     "tag": "Amber Tamblyn",
+     "role": "Megan McBride",
+     "thumb": "https://image.tmdb.org/t/p/w185/bzw0lxvtbEnYT7fZ8fn6NeSzMn9.jpg",
+     "tagKey": "141d9d4d8fe98cf11687ae7f",
+     "id": 226902,
+     "filter": "actor=226902"
+    },
+    {
+     "tag": "Cl\u00e9mence Po\u00e9sy",
+     "role": "Rana",
+     "thumb": "https://image.tmdb.org/t/p/w185/slWxRBAGLGmk4c2lLKYH7EfSXZ2.jpg",
+     "tagKey": "011ad8dc9496ae66f200fc1e",
+     "id": 395868,
+     "filter": "actor=395868"
+    },
+    {
+     "tag": "Lizzy Caplan",
+     "role": "Sonja Ralston",
+     "thumb": "https://image.tmdb.org/t/p/w185/cHs9pPpjcEMpWrGmrAYAn0QOE78.jpg",
+     "tagKey": "60de1fde994597218506a0a7",
+     "id": 451763,
+     "filter": "actor=451763"
+    },
+    {
+     "tag": "Kate Burton",
+     "role": "Aron's Mom",
+     "thumb": "https://image.tmdb.org/t/p/w185/rHnt0gTvarr492I1ZIYg8VNBdPn.jpg",
+     "tagKey": "89d3a11580d7e0625be18e71",
+     "id": 597843,
+     "filter": "actor=597843"
+    }
+   ],
+   "Director": [
+    {
+     "tag": "Danny Boyle",
+     "tagKey": "d27ac0e61c8a30732a40f640",
+     "id": 139696,
+     "filter": "director=139696"
+    }
+   ],
+   "Writer": [
+    {
+     "tag": "Simon Beaufoy",
+     "tagKey": "6ef1901c14f35aa8c273e77d",
+     "id": 708812,
+     "filter": "writer=708812"
+    },
+    {
+     "tag": "Danny Boyle",
+     "tagKey": "d27ac0e61c8a30732a40f640",
+     "id": 179832,
+     "filter": "writer=179832"
+    },
+    {
+     "tag": "Aron Ralston",
+     "tagKey": "4d6a33dfc4a83f256937a799",
+     "id": 889957,
+     "filter": "writer=889957"
+    },
+    {
+     "tag": "Rollo Armstrong",
+     "tagKey": "8bc72458398605b19e9042d0",
+     "id": 771629,
+     "filter": "writer=771629"
+    },
+    {
+     "tag": "Dido",
+     "tagKey": "1f8e41778c543765072d62c6",
+     "id": 740419,
+     "filter": "writer=740419"
+    }
+   ],
+   "Guid": [
+    {
+     "id": "imdb://tt1542344"
+    },
+    {
+     "id": "tmdb://44115"
+    }
+   ],
+   "_poster_url": "https://image.tmdb.org/t/p/w342/h0RMdn0rfl9l5hWXz3tUh6QVkhi.jpg",
+   "_art_url": "https://image.tmdb.org/t/p/w1280/viBWzktrBmhzRw4ehmUIrrN4C0z.jpg",
+   "_identify": {
+    "confidence": "exact",
+    "source": "dmm hash",
+    "imdb": "tt1542344",
+    "tmdb": 44115,
+    "plex": "plex://movie/5d77687d7e5fa10020bf080d",
+    "disputed": null
+   },
+   "librarySectionID": 1,
+   "librarySectionTitle": "Movies",
+   "librarySectionKey": "/library/sections/1",
+   "slug": "127-hours",
+   "Rating": [
+    {
+     "image": "themoviedb://image.rating",
+     "value": 7.1,
+     "type": "audience"
+    }
+   ],
+   "audienceRatingImage": "themoviedb://image.rating",
+   "UltraBlurColors": {
+    "topLeft": "1a1a1e",
+    "topRight": "24242a",
+    "bottomRight": "15151a",
+    "bottomLeft": "1f1f26"
+   },
+   "_scanned": true
+  }
+ ]
+}
