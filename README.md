@@ -27,7 +27,7 @@ You need a Linux, macOS or Windows machine with Python 3, at least one source su
 Download the build for your machine from [Releases](https://github.com/debridmediamanager/rex/releases) and unpack it. There are builds for Linux (amd64 and arm64, glibc 2.35 or newer, so Ubuntu 22.04 and up), for macOS (Intel and Apple Silicon) and for Windows (64 bit).
 
 ```bash
-tar xzf rex-v0.1.1-linux-amd64.tar.gz && cd rex-v0.1.1-linux-amd64
+tar xzf rex-v0.2.0-linux-amd64.tar.gz && cd rex-v0.2.0-linux-amd64
 ```
 
 Or build it yourself. No Rust on the machine? The full guide has a Docker build.
