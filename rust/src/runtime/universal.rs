@@ -489,13 +489,19 @@ pub(crate) fn ffmpeg_args(plan: &Plan, path: Path, hardware: &Hardware, start: i
             (true, false) => "id=0,streams=v",
             _ => "id=0,streams=a",
         };
+        // FFmpeg's DASH muxer finds the manifest's folder by its last '/', so with a
+        // Windows path it wrote every segment into the working directory instead and each
+        // segment request failed (measured with FFmpeg 9.0.2 on Windows 11). Windows takes
+        // '/' as a separator, so hand it one.
+        let manifest = dir.join(format!("r{start}")).join("manifest.mpd").to_string_lossy().into_owned();
+        let manifest = if cfg!(windows) { manifest.replace('\\', "/") } else { manifest };
         push(&mut args, &[
             "-f", "dash", "-format_options", "movflags=+frag_discont", "-seg_duration", &length.to_string(),
             "-use_template", "1", "-use_timeline", "0", "-single_file", "0", "-window_size", "0",
             "-remove_at_exit", "0", "-dash_segment_type", "mp4", "-adaptation_sets", sets,
             "-init_seg_name", "init-$RepresentationID$.m4s",
             "-media_seg_name", "chunk-$RepresentationID$-$Number%05d$.m4s",
-            &dir.join(format!("r{start}")).join("manifest.mpd").to_string_lossy(),
+            &manifest,
         ]);
         return args;
     }
@@ -2048,8 +2054,10 @@ mod tests {
         let joined = ffmpeg_args(&dash, Path::Software, &Hardware::software(), 3, std::path::Path::new("/tmp/x")).join(" ");
         assert!(joined.contains("-ss 6 -i"), "{joined}");
         assert!(joined.contains("-output_ts_offset 6 -f dash -format_options movflags=+frag_discont -seg_duration 2"), "{joined}");
-        let manifest = std::path::Path::new("/tmp/x").join("r3").join("manifest.mpd");
-        assert!(joined.contains(&*manifest.to_string_lossy()), "{joined}");
+        assert!(joined.contains("/tmp/x/r3/manifest.mpd"), "{joined}");
+        // FFmpeg's DASH muxer splits the manifest path on '/' only.
+        let output = ffmpeg_args(&dash, Path::Software, &Hardware::software(), 3, &std::env::temp_dir().join("x"));
+        assert!(!output.last().unwrap().contains('\\'), "{output:?}");
         assert!(joined.contains("expr:gte(t,n_forced*2)"), "{joined}");
         assert!(!joined.contains("-f segment"));
     }
