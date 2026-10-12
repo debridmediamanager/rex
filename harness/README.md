@@ -164,7 +164,8 @@ is taken *through* the client, so it cannot have that defect.
 
 `scratch/` builds a second PMS from a sanitised copy of `config/`, for measuring writes
 the shared lab must never receive. It is deployed beside this directory on the lab host
-(`../plexscratch`) and answers on the Tailscale address, port 32410.
+(`../plexscratch`) and answers on `SCRATCH_BIND` (the lab host's own address; loopback
+otherwise), port 32410.
 
 | Measured while building it | Consequence |
 |---|---|
