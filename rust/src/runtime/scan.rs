@@ -1008,6 +1008,36 @@ mod tests {
     }
 
     #[test]
+    fn two_runtimes_saving_at_once_each_write_their_own_file() {
+        // The save queue is the process's: one runtime's flush drained another's queued
+        // delta into its own file and marked it done, so the other's flush wrote nothing.
+        // The unit tests run runtimes on parallel threads; Windows CI lost a row this way.
+        let base = std::env::temp_dir().join(format!("rex-both-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&base);
+        let dirs = [base.join("a"), base.join("b")];
+        for dir in &dirs {
+            fs::create_dir_all(dir).unwrap();
+            fs::write(dir.join("catalog.json"), seed("both").to_string()).unwrap();
+        }
+        let mut a = Runtime::load(options(&dirs[0], &dirs[0].join("catalog.json"))).unwrap();
+        let mut b = Runtime::load(options(&dirs[1], &dirs[1].join("catalog.json"))).unwrap();
+        let (key_a, key_b) = (a.mint_key(), b.mint_key());
+        a.catalog.add(scanned_row(&key_a));
+        b.catalog.add(scanned_row(&key_b));
+        let saved_a = a.snapshot_state().unwrap().expect("a change");
+        let saved_b = b.snapshot_state().unwrap().expect("a change");
+        write_snapshot(&saved_a).unwrap();
+        write_snapshot(&saved_b).unwrap();
+        drop((a, b));
+        let a = Runtime::load(options(&dirs[0], &dirs[0].join("catalog.json"))).unwrap();
+        let b = Runtime::load(options(&dirs[1], &dirs[1].join("catalog.json"))).unwrap();
+        assert!(a.catalog.get(&key_a).is_some(), "a's save is missing from a's file");
+        assert!(b.catalog.get(&key_b).is_some(), "b's save is missing from b's file");
+        drop((a, b));
+        let _ = fs::remove_dir_all(&base);
+    }
+
+    #[test]
     fn scanned_rows_keep_their_keys_and_state_across_restarts_and_catalog_edits() {
         let dir = std::env::temp_dir().join(format!("rex-scan-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);

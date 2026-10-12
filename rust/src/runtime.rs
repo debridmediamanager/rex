@@ -1654,7 +1654,7 @@ impl Runtime {
         }
         self.save_serial = store::next_serial();
         // Queued under the runtime lock, so deltas are written in the order taken.
-        store::enqueue(self.save_serial, delta);
+        store::enqueue(&path, self.save_serial, delta);
         Ok(Some(StateSnapshot {
             serial: self.save_serial,
             path,

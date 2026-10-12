@@ -821,14 +821,31 @@ pub fn write_fresh(path: &Path, state: &Map<String, Value>) -> Result<Cache, Str
 /// Snapshots are queued in the order they are taken (under the runtime lock) and
 /// written in that order by whichever thread flushes first, outside that lock: a
 /// later snapshot is a delta on the earlier ones, so none may be skipped or reordered.
+/// Each entry names its state file, and a flush takes only its own file's entries: the
+/// queue is the process's, and the unit tests run several runtimes at once, whose deltas
+/// one flush used to write into another's file while marking them done for the rest.
 struct Queue {
-    pending: VecDeque<(u64, Delta)>,
+    pending: VecDeque<(PathBuf, u64, Delta)>,
 }
 
 struct Writer {
     path: Option<PathBuf>,
     connection: Option<Connection>,
-    written: u64,
+    /// The last serial committed, per state file.
+    written: Vec<(PathBuf, u64)>,
+}
+
+impl Writer {
+    fn written(&self, path: &Path) -> u64 {
+        self.written.iter().find(|(of, _)| of == path).map_or(0, |(_, serial)| *serial)
+    }
+
+    fn mark(&mut self, path: &Path, serial: u64) {
+        match self.written.iter_mut().find(|(of, _)| of == path) {
+            Some(entry) => entry.1 = serial,
+            None => self.written.push((path.to_path_buf(), serial)),
+        }
+    }
 }
 
 static QUEUE: Mutex<Queue> = Mutex::new(Queue {
@@ -837,39 +854,43 @@ static QUEUE: Mutex<Queue> = Mutex::new(Queue {
 static WRITER: Mutex<Writer> = Mutex::new(Writer {
     path: None,
     connection: None,
-    written: 0,
+    written: Vec::new(),
 });
 
-/// The serial of the next snapshot, for the whole process. `WRITER.written` is the
-/// process's too, so a counter per runtime let a second runtime's first saves look already
-/// written and be dropped: a runtime loaded after another had saved lost its writes.
+/// The serial of the next snapshot, for the whole process. A counter per runtime let a
+/// second runtime's first saves look already written and be dropped: a runtime loaded
+/// after another had saved lost its writes.
 pub fn next_serial() -> u64 {
     static SERIAL: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
     SERIAL.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1
 }
 
-/// Queue a snapshot's delta; call with the runtime lock held, so serials are in order.
-pub fn enqueue(serial: u64, delta: Delta) {
+/// Queue a snapshot's delta for `path`; call with the runtime lock held, so serials are
+/// in order.
+pub fn enqueue(path: &Path, serial: u64, delta: Delta) {
     let mut queue = QUEUE
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
-    queue.pending.push_back((serial, delta));
+    queue.pending.push_back((path.to_path_buf(), serial, delta));
 }
 
-/// Make every queued snapshot up to `serial` durable at `path`. A failed write leaves
-/// the queue as it was, so the next flush retries it.
+/// Make every snapshot queued for `path` up to `serial` durable there. A failed write
+/// leaves the queue as it was, so the next flush retries it.
 pub fn flush(path: &Path, serial: u64) -> Result<(), String> {
     let mut writer = WRITER
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
-    if writer.written >= serial {
+    if writer.written(path) >= serial {
         return Ok(());
     }
     let batch: Vec<(u64, Delta)> = {
         let mut queue = QUEUE
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
-        queue.pending.drain(..).collect()
+        let (mine, others): (VecDeque<_>, VecDeque<_>) =
+            queue.pending.drain(..).partition(|(of, _, _)| of == path);
+        queue.pending = others;
+        mine.into_iter().map(|(_, serial, delta)| (serial, delta)).collect()
     };
     if batch.is_empty() {
         return Ok(());
@@ -882,7 +903,7 @@ pub fn flush(path: &Path, serial: u64) -> Result<(), String> {
                 writer.path = Some(path.to_path_buf());
             }
             Err(error) => {
-                requeue(batch);
+                requeue(path, batch);
                 return Err(error);
             }
         }
@@ -892,25 +913,25 @@ pub fn flush(path: &Path, serial: u64) -> Result<(), String> {
     let connection = writer.connection.as_mut().expect("opened above");
     match apply(connection, &deltas) {
         Ok(()) => {
-            writer.written = last;
+            writer.mark(path, last);
             Ok(())
         }
         Err(error) => {
             // Drop the connection: a file replaced underneath is reopened next time.
             writer.connection = None;
             let serials = (0..deltas.len()).map(|_| last);
-            requeue(serials.zip(deltas).collect());
+            requeue(path, serials.zip(deltas).collect());
             Err(format!("{error}: '{}'", path.display()))
         }
     }
 }
 
-fn requeue(batch: Vec<(u64, Delta)>) {
+fn requeue(path: &Path, batch: Vec<(u64, Delta)>) {
     let mut queue = QUEUE
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
-    for entry in batch.into_iter().rev() {
-        queue.pending.push_front(entry);
+    for (serial, delta) in batch.into_iter().rev() {
+        queue.pending.push_front((path.to_path_buf(), serial, delta));
     }
 }
 
