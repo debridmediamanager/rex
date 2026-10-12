@@ -1,18 +1,25 @@
 name: CI
 
 # Every push to main and every pull request builds rex and runs the suites that need no
-# credentials and no network beyond loopback. A tag `vX.Y.Z` does the same and then
-# publishes the GitHub release, with the tag's own message as its notes.
+# credentials and no network beyond loopback. A tag `vX.Y.Z` does the same, builds the other
+# platforms, and publishes the GitHub release with the tag's own message as its notes. A
+# manual run (workflow_dispatch) builds every platform without publishing anything.
+#
+# The platforms are the ones zurg's private releases are actually downloaded for, counted on
+# 2026-10-12 above the flat number every asset gets from whatever fetches them all: linux
+# amd64 and arm64, macOS amd64 and arm64. Windows amd64 is next and needs a port first.
 #
 # GitHub-hosted runners, not the org's self-hosted one: that runner is fun, which is
-# production. ubuntu-22.04 links against glibc 2.35, what zen and fun run, so the released
-# binary runs on them and on anything newer.
+# production. ubuntu-22.04 links against glibc 2.35, what zen and fun run, so the Linux
+# binaries run on them and on anything newer. macOS minutes cost ten times Linux ones on a
+# private repository, which is why macOS builds only for a tag or a manual run.
 
 on:
   push:
     branches: [main]
     tags: ['v*']
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -58,13 +65,104 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: rex-linux-x86_64
+          name: rex-linux-amd64
           path: rust/target/release/rex
+          retention-days: 7
+
+  linux-arm64:
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    env:
+      CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+      CC_aarch64_unknown_linux_gnu: aarch64-linux-gnu-gcc
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-unknown-linux-gnu
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+          key: aarch64
+
+      - name: Cross toolchain
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq gcc-aarch64-linux-gnu qemu-user-static binfmt-support
+
+      - name: Build
+        run: cargo build --release --locked --manifest-path rust/Cargo.toml --target aarch64-unknown-linux-gnu
+
+      # It runs under emulation: the CLI and the server answering on a port are what a
+      # cross build can get wrong that the amd64 suites would not see.
+      - name: Smoke test under qemu
+        run: |
+          mkdir -p rust/target/release
+          cp rust/target/aarch64-unknown-linux-gnu/release/rex rust/target/release/rex
+          file rust/target/release/rex | grep -q aarch64
+          export QEMU_LD_PREFIX=/usr/aarch64-linux-gnu
+          python3 tests/test_cli.py
+          python3 tests/test_native_runtime_smoke.py
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rex-linux-arm64
+          path: rust/target/aarch64-unknown-linux-gnu/release/rex
+          retention-days: 7
+
+  darwin:
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    runs-on: macos-14
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+
+      - name: Build
+        run: |
+          cargo build --release --locked --manifest-path rust/Cargo.toml --target aarch64-apple-darwin
+          cargo build --release --locked --manifest-path rust/Cargo.toml --target x86_64-apple-darwin
+
+      # The runner is Apple Silicon, so the arm64 binary runs the same suites the Linux
+      # one does; the amd64 binary is checked under Rosetta.
+      - name: Test
+        run: |
+          set -e
+          mkdir -p rust/target/release
+          cp rust/target/aarch64-apple-darwin/release/rex rust/target/release/rex
+          for suite in test_cli test_native_runtime_smoke test_build_catalog test_sources test_feed; do
+            echo "::group::$suite"
+            python3 "tests/$suite.py"
+            echo "::endgroup::"
+          done
+          file rust/target/x86_64-apple-darwin/release/rex | grep -q x86_64
+          arch -x86_64 rust/target/x86_64-apple-darwin/release/rex --help | head -1
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rex-darwin-arm64
+          path: rust/target/aarch64-apple-darwin/release/rex
+          retention-days: 7
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rex-darwin-amd64
+          path: rust/target/x86_64-apple-darwin/release/rex
           retention-days: 7
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: test
+    needs: [test, linux-arm64, darwin]
     runs-on: ubuntu-22.04
     permissions:
       contents: write
@@ -75,8 +173,7 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          name: rex-linux-x86_64
-          path: artifact
+          path: artifacts
 
       - name: Check the tag matches Cargo.toml
         run: |
@@ -87,21 +184,24 @@ jobs:
             exit 1
           fi
 
-      # The archive keeps the repository's layout, so manager.py, run.sh.example and every
+      # Each archive keeps the repository's layout, so manager.py, run.sh.example and every
       # command in the docs find the binary at rust/target/release/rex either way. rex reads
       # its measured *.json and *.xml beside the catalog or in its working directory.
       - name: Package
         run: |
-          name="rex-${GITHUB_REF_NAME}-linux-x86_64"
-          mkdir -p "$name/rust/target/release"
-          install -m 755 artifact/rex "$name/rust/target/release/rex"
-          git ls-files -z -- ':(top,glob)*.json' ':(top,glob)*.xml' favicon.ico \
-              build_catalog.py catalogdb.py hierarchy.py metadata.py manager.py \
-              run.sh.example cloudflared.example.yml README.md docs/setup.md docs/feed-api.md \
-            | xargs -0 cp --parents -t "$name"
-          tar czf "$name.tar.gz" "$name"
-          sha256sum "$name.tar.gz" > SHA256SUMS
-          tar tzf "$name.tar.gz" | head -80
+          set -e
+          for platform in linux-amd64 linux-arm64 darwin-amd64 darwin-arm64; do
+            name="rex-${GITHUB_REF_NAME}-${platform}"
+            mkdir -p "$name/rust/target/release"
+            install -m 755 "artifacts/rex-$platform/rex" "$name/rust/target/release/rex"
+            git ls-files -z -- ':(top,glob)*.json' ':(top,glob)*.xml' favicon.ico \
+                build_catalog.py catalogdb.py hierarchy.py metadata.py manager.py \
+                run.sh.example cloudflared.example.yml README.md docs/setup.md docs/feed-api.md \
+              | xargs -0 cp --parents -t "$name"
+            tar czf "$name.tar.gz" "$name"
+          done
+          sha256sum rex-*.tar.gz > SHA256SUMS
+          cat SHA256SUMS
 
       - name: Publish
         env:
@@ -115,4 +215,4 @@ jobs:
           gh release create "$GITHUB_REF_NAME" \
             --title "rex ${GITHUB_REF_NAME#v}" \
             --notes-file notes.md \
-            "rex-${GITHUB_REF_NAME}-linux-x86_64.tar.gz" SHA256SUMS
+            rex-*.tar.gz SHA256SUMS
