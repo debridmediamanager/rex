@@ -12237,7 +12237,8 @@ goes away still is:
   would remove more than half the source's items without `force` is a design choice against
   a source answering while it loads, not a measurement.
 - An item with no `media_info` is held, unshown, and arrives as newly added once probed.
-  Chosen, not measured: a real PMS shows an unanalysed file at once.
+  A real PMS shows an unanalysed file at once, but on rex such an item cannot play
+  ("An item without a probe cannot play" below, 2026-10-12), so the hold stays.
 - A pushed id the row was not identified by re-identifies it on its key, keeping what a
   person did to it. zurg's matcher keeps an episode's SHOW key (`GrandparentRatingKey`), so a
   show all of whose episodes move to one new identity is re-identified in place; the first
@@ -12353,3 +12354,32 @@ not. The probe finds VA-API encode and hardware decode for H.264, HEVC 8-bit and
 The first segment is the encode of its first seconds, so a conversion's segments are 2 s
 (1.3 s to the first on the GPU, against 2.4 s for 5 s); a remux keeps Plex's 10 s (HLS) and
 5 s (DASH), because it can only cut on the source's keyframes.
+
+## An item without a probe cannot play (2026-10-12)
+
+Question: could rex show a pushed item before its source sends `media_info`, as a real PMS
+shows a file before analysing it, and so not need a source that runs ffprobe?
+
+Setup on zen: a throwaway build whose feed showed an item with no `media_info` instead of
+holding it (the scanner's empty-probe row: `Media` with no container, codecs or duration,
+`_probePending`). One 60 s 1920x1080 H.264/AAC file, pushed twice under two names, once with
+its ffprobe JSON and once without, from a plain `python3 -m http.server` source. Client:
+Plex Web 4.147.1 from rex's own `/web`, driven over raw CDP in the Windows Chrome.
+
+| | With `media_info` | Without |
+|---|---|---|
+| Details page | `1min`, Video `1080p (H.264)`, Audio `Unknown (AAC Mono)` | no runtime, Video `None`, Audio `None` |
+| Play, no `REX_TRANSCODER` | `DECISION direct play`, part reads, 0 to 30 s in real time at 1920x1080 | play queue, `timeline` playing then stopped at 0 ms within a second, "This server is not powerful enough to convert video." No decision request, no part read |
+| Play, `REX_TRANSCODER` (CPU ffmpeg) | not tried | the client asks to convert: `400` on `/video/:/transcode/universal/decision` and on `start.mpd` |
+
+1. **The client gates on the streams before it asks the server anything.** With no codec it
+   cannot tell direct play is possible, so it goes straight to conversion, and a server
+   with no encoder ends the attempt client side.
+2. **rex's transcoder cannot rescue it.** Its plan is built from the row's `Media` and
+   `Stream`s, so a row without them is a bad request.
+3. Aside: the probed copy as MKV fails the same way in Plex Web without a transcoder,
+   because the browser cannot direct-play MKV and asks for a remux.
+
+So `media_info` is required and the hold is right. rex does not probe files itself: a
+source has to send ffprobe's output with each item (zurg does, from its own analysis).
+Native Plex apps were not tried.

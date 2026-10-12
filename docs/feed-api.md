@@ -152,7 +152,10 @@ What the fields do:
 - **Held until probed.** An item without `media_info` is stored but not shown: it is in no
   listing, hub, search or count, and logged `FEED <source> held <id>`. The push that
   brings its `media_info` shows it, stamped as added then, so it arrives in Recently Added
-  when it becomes playable. A row already shown never goes back to held.
+  when it becomes playable. A row already shown never goes back to held. rex never probes
+  a file itself, so a source must run ffprobe and send the result: measured on 2026-10-12,
+  Plex Web will not play an item without it (findings, "An item without a probe cannot
+  play").
 - **Identification.** `ids` first (an IMDb id is exact: TMDB's `/find`, then Plex's matcher
   by external id; an episode's or a season's IMDb id names its show, which is how DMM knows
   most season packs), else the release name (`identify.rs`: Plex's matcher and TMDB, their
