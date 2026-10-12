@@ -326,9 +326,17 @@ pub(super) fn open(
     timeout: Duration,
 ) -> Result<Upstream, String> {
     let mut url = url.to_string();
+    let origin = parse_url(&url).map(|target| (target.tls, target.host, target.port));
+    let mut headers = headers.to_vec();
     for _ in 0..10 {
         let target = parse_url(&url).ok_or_else(|| format!("unsupported url {url:?}"))?;
-        let response = exchange(method, &target, headers, body, timeout)?;
+        // A source's credential is for the source: a redirect to another origin (a CDN, a
+        // presigned link) goes without it, as curl and browsers send it. S3 refuses a
+        // presigned URL that also carries one ("Only one auth mechanism allowed").
+        if origin.as_ref() != Some(&(target.tls, target.host.clone(), target.port)) {
+            headers.retain(|(name, _)| !name.eq_ignore_ascii_case("authorization"));
+        }
+        let response = exchange(method, &target, &headers, body, timeout)?;
         let redirect = matches!(response.status, 301 | 302 | 303 | 307 | 308)
             && matches!(method, "GET" | "HEAD");
         let Some(location) = response.header("location").filter(|_| redirect) else {

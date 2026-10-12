@@ -26609,6 +26609,15 @@ fn serve_part_proxy<S: Write>(
             return refuse(stream, 502, "rex: upstream failed");
         }
     };
+    // A source may ignore `Range` and answer 200 with the whole file (Python's
+    // http.server does), so a range read skips up to its first byte itself.
+    if let (PartWindow::Partial { first, .. }, 200) = (&plan.window, upstream.status) {
+        let skipped = std::io::copy(&mut (&mut upstream).take(*first), &mut std::io::sink()).unwrap_or(0);
+        if skipped < *first {
+            error!("PART {part_id} upstream ended at {skipped} skipping to {first}");
+            return refuse(stream, 502, "rex: upstream failed");
+        }
+    }
     let length = match (&plan.window, want) {
         (PartWindow::Partial { content_range, .. }, Some(want)) => {
             response.status = 206;
