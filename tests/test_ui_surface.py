@@ -21,7 +21,7 @@ of that is in rex's memory -- catalog.json is never rewritten -- so a
 restart is the undo button. Run it against a test instance and restart that
 instance afterwards:
 
-    python3 server.py --port 32500 --catalog tests/catalog_ui.json --assert-claimed &
+    python3 oracle/server.py --port 32500 --catalog tests/catalog_ui.json --assert-claimed &
     python3 tests/test_ui_surface.py --base http://127.0.0.1:32500
 
 `tests/catalog_ui.json` is the fixture the checks are written against: rows
@@ -51,12 +51,13 @@ import urllib.request
 import xml.etree.ElementTree as ET
 
 # The suite is invoked as ``python3 tests/test_ui_surface.py``.  In that form
-# Python puts ``tests/`` rather than the repository root on sys.path, so the
-# focused transport regression near the end could not import the server it is
-# exercising.  Resolve the sibling module independently of the caller's cwd.
+# Python puts ``tests/`` rather than ``oracle/`` on sys.path, so the focused
+# transport regression near the end could not import the server it is
+# exercising.  Resolve the oracle independently of the caller's cwd.
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if REPO_ROOT not in sys.path:
-    sys.path.insert(0, REPO_ROOT)
+ORACLE = os.path.join(REPO_ROOT, "oracle")
+if ORACLE not in sys.path:
+    sys.path.insert(0, ORACLE)
 
 from server_command import server_command
 

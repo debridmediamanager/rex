@@ -60,7 +60,7 @@ def main():
     ap.add_argument("--xml", action="store_true", help="ask for XML instead of JSON")
     ap.add_argument("--keep", action="store_true")
     ap.add_argument("--max", type=int, default=400)
-    ap.add_argument("--oracle", default="server.py",
+    ap.add_argument("--oracle", default="oracle/server.py",
                     help="the oracle's script in --tree (a cycle head's server.py is the native shim: "
                          "pass server_oracle.py there)")
     a = ap.parse_args()

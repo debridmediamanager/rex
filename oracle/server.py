@@ -71,8 +71,9 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 http.client._MAXHEADERS = 101
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-# The measured sidecars: the repository's data/.
-DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+# The repository root, and the measured sidecars in its data/.
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATA_DIR = os.path.join(ROOT, "data")
 
 import catalogdb  # noqa: E402
 import claim as claim_module  # noqa: E402
@@ -722,7 +723,7 @@ try:
 except (OSError, ValueError):
     ITEM_PREFS = {}
 
-_OWNER_FEATURES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "owner_features.txt")
+_OWNER_FEATURES_PATH = os.path.join(ROOT, "owner_features.txt")
 try:
     with open(_OWNER_FEATURES_PATH) as _handle:
         OWNER_FEATURES = _handle.read().strip()
@@ -26167,7 +26168,7 @@ class Server(ThreadingHTTPServer):
 
 def main():
     parser = argparse.ArgumentParser(description="rex -- a PMS that owns no files")
-    parser.add_argument("--catalog", default=os.path.join(os.path.dirname(__file__), "catalog.json"))
+    parser.add_argument("--catalog", default=os.path.join(ROOT, "catalog.json"))
     parser.add_argument("--port", type=int, default=32400)
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument(
@@ -26192,7 +26193,7 @@ def main():
     )
     parser.add_argument(
         "--web-root",
-        default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "webclient"),
+        default=os.path.join(ROOT, "webclient"),
         help="directory of the extracted Plex Web client, served at /web",
     )
     parser.add_argument(

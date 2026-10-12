@@ -37,7 +37,7 @@ def server_command(*args, root=None):
                 % native)
         command = [native]
     elif configured.strip() == "python":
-        command = [sys.executable, os.path.join(root, "server.py")]
+        command = [sys.executable, os.path.join(root, "oracle", "server.py")]
     else:
         try:
             command = shlex.split(configured)

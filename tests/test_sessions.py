@@ -6,7 +6,7 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.environ.get("REX_TEST_ROOT", os.path.dirname(HERE))
-sys.path.insert(0, ROOT)
+sys.path.insert(0, os.path.join(ROOT, "oracle"))
 
 import sessions  # noqa: E402
 

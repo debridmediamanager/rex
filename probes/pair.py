@@ -169,7 +169,7 @@ def main():
         import shlex
         # `--no-state` first: a state file is the default, and an --extra `--state` wins.
         tail = ["--catalog", a.catalog, "--assert-claimed", "--gdm", "off", "--no-state"] + shlex.split(a.extra)
-        for cmd, port, tag in (([sys.executable, "server.py"], a.ports[0], "py"), ([a.bin], a.ports[1], "nat")):
+        for cmd, port, tag in (([sys.executable, "oracle/server.py"], a.ports[0], "py"), ([a.bin], a.ports[1], "nat")):
             log = open("%s.%s.log" % (a.out, tag), "w")
             procs.append(subprocess.Popen(cmd + ["--port", str(port)] + tail, cwd=a.tree, env=env,
                                           stdout=log, stderr=subprocess.STDOUT, start_new_session=True))

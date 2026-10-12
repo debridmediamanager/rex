@@ -34,7 +34,7 @@ def main():
 
         os.environ["REX_SERVER"] = "python"
         oracle = server_command("--port", 32500, root="/repo with spaces")
-        assert oracle == [sys.executable, os.path.join("/repo with spaces", "server.py"), "--port", "32500",
+        assert oracle == [sys.executable, os.path.join("/repo with spaces", "oracle", "server.py"), "--port", "32500",
                           "--no-state"]
 
         os.environ["REX_SERVER"] = '"/tmp/native build/rex" --profile "test mode"'

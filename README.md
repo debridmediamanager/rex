@@ -59,7 +59,7 @@ Write `sources.json` with one entry per source. Each source gets its own token t
 **3. Make the library**
 
 ```bash
-python3 build_catalog.py --seed --name myrex --out rex.db
+python3 oracle/build_catalog.py --seed --name myrex --out rex.db
 ```
 
 This makes an empty Movies and TV library. Files under a `movies` directory go to Movies and files under `shows` go to TV, whichever source they come from. If your sources use other directory names like `anime` add `--shows anime` now. rex keeps its library folders from the first start on.

@@ -18,7 +18,7 @@ import sys
 import tempfile
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, HERE)
+sys.path.insert(0, os.path.join(HERE, "oracle"))
 import identify  # noqa: E402
 import metadata  # noqa: E402
 

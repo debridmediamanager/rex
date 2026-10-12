@@ -10,7 +10,7 @@
 # the same instant, side by side. Announce once at the halfway mark and watch
 # whether that clears a stale fixed-identifier view.
 import os, sys, time, json, urllib.request, uuid
-sys.path.insert(0, '.')
+sys.path.insert(0, 'oracle')
 import heartbeat
 
 TOKEN = os.environ["PLEX_TOKEN"]

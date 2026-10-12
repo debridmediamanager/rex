@@ -8,7 +8,7 @@ Not a Plex fork and not a client. It is the server side of the protocol,
 written from measurement against a real PMS.
 
 **The server is the native Rust binary in `rust/`.** The Python server
-(`server.py` and the modules it imports) stays in the tree as the **oracle**: it
+(`oracle/server.py` and the modules it imports) stays in the tree as the **oracle**: it
 holds every measured behaviour, the native port is ported from it, and the parity
 suites (`test_native_phase2.py`, the decision corpus) compare against it. A new
 measurement lands in the Python oracle and the Rust server together, and the
@@ -37,24 +37,24 @@ searched on disk. The gate is usually one truthiness check in minified code.
 | Path | What it is |
 |---|---|
 | `rust/` | The server: the native port (`runtime.rs` and `runtime/*.rs` hold the routes). Build with `cargo build --release --manifest-path rust/Cargo.toml` |
-| `server.py` | The Python oracle: every route as measured. Read it first for any behaviour, then its Rust counterpart. |
-| `library.py` | The mutable half: watch state, edits, playlists, collections, history |
-| `filters.py` | Plex's filter query language: the operator is part of the KEY |
-| `persist.py` | the state file (on by default, `--no-state` off): the one file that keeps the mutable half across a restart. The oracle's is a pickle; the native server's is `rust/src/store.rs`, a SQLite database written by the row |
-| `manager.py` | the control service: runs no server until one is started, then supervises the ones it started (API on 127.0.0.1:32300, CLI, a page); docs/setup.md "Running several servers" |
-| `catalogdb.py` | the catalog in a SQLite database: what `build_catalog.py --out *.db` / `--convert` write and both servers read with `--catalog *.db` |
-| `sessions.py` | Live playback sessions, and the byte counters behind the Dashboard |
-| `hierarchy.py` | Flat leaves → show/season/episode with synthesised parents |
-| `metadata.py` | TMDB identification, `plex://` guid minting, artwork URLs |
-| `mediainfo.py` | ffprobe JSON → `Media`/`Part`/`Stream` elements |
-| `decision.py` | A plain-form decision: the client's own profile file (`client_profiles.json`) against the item |
-| `zurg.py` | The oracle's byte source: a Part's file under `--zurg-mount` read from zurg's WebDAV (the native server's sources are `runtime/source.rs`) |
-| `gdm.py` | Plex's LAN discovery protocol: the UDP half of being FOUND |
-| `gate.py` | Applies a client's direct-play gate to the catalog |
-| `xmlout.py` | MediaContainer → Plex XML (clients that refuse JSON) |
-| `identify.py` | which title a release is: an id in its name, a known IMDb id for its hash (zurg's), then Plex's matcher and TMDB, with their agreement as the confidence; `rust/src/identify.rs` is its port and must name as many of `tests/fixtures/identify/` right |
-| `build_catalog.py` | Writes a catalog: `--seed` an empty library at each source's mount (`--mount`, `--movies` and `--shows` repeat), `--convert` a JSON catalog into a database, `--relink` Plex's guids |
-| `claim.py`, `heartbeat.py` | plex.tv claim flow and registration upkeep |
+| `oracle/server.py` | The Python oracle: every route as measured. Read it first for any behaviour, then its Rust counterpart. |
+| `oracle/library.py` | The mutable half: watch state, edits, playlists, collections, history |
+| `oracle/filters.py` | Plex's filter query language: the operator is part of the KEY |
+| `oracle/persist.py` | the state file (on by default, `--no-state` off): the one file that keeps the mutable half across a restart. The oracle's is a pickle; the native server's is `rust/src/store.rs`, a SQLite database written by the row |
+| `oracle/manager.py` | the control service: runs no server until one is started, then supervises the ones it started (API on 127.0.0.1:32300, CLI, a page); docs/setup.md "Running several servers" |
+| `oracle/catalogdb.py` | the catalog in a SQLite database: what `build_catalog.py --out *.db` / `--convert` write and both servers read with `--catalog *.db` |
+| `oracle/sessions.py` | Live playback sessions, and the byte counters behind the Dashboard |
+| `oracle/hierarchy.py` | Flat leaves → show/season/episode with synthesised parents |
+| `oracle/metadata.py` | TMDB identification, `plex://` guid minting, artwork URLs |
+| `oracle/mediainfo.py` | ffprobe JSON → `Media`/`Part`/`Stream` elements |
+| `oracle/decision.py` | A plain-form decision: the client's own profile file (`client_profiles.json`) against the item |
+| `oracle/zurg.py` | The oracle's byte source: a Part's file under `--zurg-mount` read from zurg's WebDAV (the native server's sources are `runtime/source.rs`) |
+| `oracle/gdm.py` | Plex's LAN discovery protocol: the UDP half of being FOUND |
+| `oracle/gate.py` | Applies a client's direct-play gate to the catalog |
+| `oracle/xmlout.py` | MediaContainer → Plex XML (clients that refuse JSON) |
+| `oracle/identify.py` | which title a release is: an id in its name, a known IMDb id for its hash (zurg's), then Plex's matcher and TMDB, with their agreement as the confidence; `rust/src/identify.rs` is its port and must name as many of `tests/fixtures/identify/` right |
+| `oracle/build_catalog.py` | Writes a catalog: `--seed` an empty library at each source's mount (`--mount`, `--movies` and `--shows` repeat), `--convert` a JSON catalog into a database, `--relink` Plex's guids |
+| `oracle/claim.py`, `oracle/heartbeat.py` | plex.tv claim flow and registration upkeep |
 | `tests/` | Conformance and end-to-end suites, plus `catalog_ui.json` and `fixtures/decisions/`, the measured decision corpus |
 | `tests/fixtures/` | Redacted corpora recorded from a real PMS through a real client; `media/` pairs real files' probes with a real PMS's analysis of them |
 | `harness/` | plexlab — the reference PMS and the recorder. See below. |
@@ -108,7 +108,7 @@ gives the client a grid whose filter bar can only talk about the wrong type.
 
 ```bash
 cargo build --release --manifest-path rust/Cargo.toml
-python3 build_catalog.py --seed --name NAME --zurg-mount /mnt/zurg --out rex.db
+python3 oracle/build_catalog.py --seed --name NAME --zurg-mount /mnt/zurg --out rex.db
 cp run.sh.example run.sh     # fill in ZURG_URL (+ZURG_USER/ZURG_PASSWORD), REX_FEED_TOKEN, TMDB_KEY, PLEX_TOKEN
 ./run.sh                     # or: rust/target/release/rex --catalog rex.db --zurg-mount /mnt/zurg
 ```
@@ -183,12 +183,12 @@ launchctl remove com.rex.dev
 
 A plain `nohup ... &` from an agent tool call **does not survive** the call.
 
-Several servers, started and stopped on demand: `./manager.py serve`, then
-`./manager.py create NAME --port P [--catalog PATH] [--zurg-mount M]` (keys from
+Several servers, started and stopped on demand: `oracle/manager.py serve`, then
+`oracle/manager.py create NAME --port P [--catalog PATH] [--zurg-mount M]` (keys from
 `ZURG_URL`/`ZURG_USER`/`ZURG_PASSWORD`/`TMDB_KEY`/`PLEX_TOKEN`/`REX_TOKEN` in the
 environment) and `start|stop|list|logs NAME`; without a catalog, `build NAME --start` seeds
 an empty library at zurg's mount first. Its data
-lives in `managed/` (gitignored, mode 700); `tests/test_manager.py` drives it end to end and
+lives in `managed/` at the repository root (gitignored, mode 700); `tests/test_manager.py` drives it end to end and
 starts its own manager on a temporary root.
 
 The state file keeps what clients change -- watch state, ratings, edits, deletes,

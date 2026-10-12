@@ -69,7 +69,7 @@ def workdir(name="catalog.json", document=None):
 
 
 def convert(source, target):
-    run = subprocess.run([sys.executable, os.path.join(ROOT, "build_catalog.py"),
+    run = subprocess.run([sys.executable, os.path.join(ROOT, "oracle", "build_catalog.py"),
                           "--convert", source, "--out", target],
                          capture_output=True, text=True)
     return run.returncode == 0 and is_sqlite(target), (run.stdout + run.stderr)[-600:]

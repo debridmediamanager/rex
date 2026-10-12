@@ -32,7 +32,7 @@ import os
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.dirname(HERE))
+sys.path.insert(0, os.path.join(os.path.dirname(HERE), "oracle"))
 import decision  # noqa: E402  -- after the path is set, like the other module suites
 
 FIXTURES = os.path.join(HERE, "fixtures", "decisions")

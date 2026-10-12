@@ -317,7 +317,7 @@ def main():
 
         # Cycle 54: every extension a real PMS names, measured on plexscratch42 (1.42.2)
         # by reading one part of each container, and the four it leaves as a byte stream.
-        sys.path.insert(0, ROOT)
+        sys.path.insert(0, os.path.join(ROOT, "oracle"))
         import server as server_module_c54
         measured_c54 = {"mkv": "video/x-matroska", "mp4": "video/mp4", "m4v": "video/mp4",
                         "webm": "video/webm", "avi": "video/x-msvideo",

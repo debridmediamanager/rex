@@ -6,17 +6,17 @@ the library holding the directory its path starts with (`movies/<release>/<file>
 new server's catalog is a seed: a machineIdentifier, a name, and a movie and a show
 library naming those directories:
 
-    ./build_catalog.py --seed --name den --out rex.db
-    ./build_catalog.py --seed --name den --shows shows --shows anime --out rex.db
+    oracle/build_catalog.py --seed --name den --out rex.db
+    oracle/build_catalog.py --seed --name den --shows shows --shows anime --out rex.db
 
 `--mount` (repeatable) is the prefix the folders are shown with. zurg's own Plex matcher
 compares full paths, so it is zurg's `mount_path` when zurg's `plex_server_url` is rex.
 
 An `--out` ending in `.db` writes the catalog into a SQLite database instead (see
-catalogdb.py), which the server takes as `--catalog` and keeps its state in too. An
+oracle/catalogdb.py), which the server takes as `--catalog` and keeps its state in too. An
 existing JSON catalog is moved into one with
 
-    ./build_catalog.py --convert catalog.json --out rex.db
+    oracle/build_catalog.py --convert catalog.json --out rex.db
 """
 
 import argparse
@@ -35,7 +35,8 @@ import metadata as metadata_module  # noqa: E402
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--out", default=os.path.join(os.path.dirname(__file__), "catalog.json"))
+    parser.add_argument("--out", default=os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                                                       "catalog.json"))
     parser.add_argument("--name", default="rex", help="friendlyName the clients show")
     parser.add_argument("--seed", action="store_true",
                         help="write an empty library for a zurg-backed server")

@@ -516,9 +516,9 @@ def _client_titles(fixture, mediainfo):
 
 def load(root):
     if root:
-        sys.path.insert(0, os.path.abspath(root))
+        sys.path.insert(0, os.path.join(os.path.abspath(root), "oracle"))
     else:
-        sys.path.insert(0, os.path.dirname(HERE))
+        sys.path.insert(0, os.path.join(os.path.dirname(HERE), "oracle"))
     return importlib.import_module("mediainfo")
 
 

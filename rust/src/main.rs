@@ -273,7 +273,7 @@ fn parse_server_args(args: &[String]) -> Result<ServerArgs, String> {
     Ok(ServerArgs::Serve(Box::new(options)))
 }
 
-/// server.py's default is `webclient` beside itself. The native binary lives three
+/// server.py's default is `webclient` at the repository root. The native binary lives three
 /// levels under the checkout (`rust/target/release/rex`), so the same folder is
 /// `./webclient` when started from the checkout, or that one found from the binary.
 fn default_web_root() -> Option<PathBuf> {

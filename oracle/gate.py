@@ -67,7 +67,8 @@ def _numeric_frame_rate(media):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--catalog", default=os.path.join(os.path.dirname(__file__), "catalog.json"))
+    parser.add_argument("--catalog", default=os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                                                           "catalog.json"))
     args = parser.parse_args()
 
     with open(args.catalog) as handle:

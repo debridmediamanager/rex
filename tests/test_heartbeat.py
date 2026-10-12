@@ -21,7 +21,7 @@ import tempfile
 import urllib.parse
 import urllib.request
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "oracle"))
 import heartbeat  # noqa: E402
 import claim  # noqa: E402
 

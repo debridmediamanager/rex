@@ -23,7 +23,7 @@ import urllib.request
 import uuid
 import xml.etree.ElementTree as ET
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "oracle"))
 
 import heartbeat  # noqa: E402
 

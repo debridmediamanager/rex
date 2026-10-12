@@ -7,14 +7,14 @@ until it is started, and supervised once it is: an unexpected exit is restarted 
 backoff, and a server that keeps dying is marked failed instead of looping. What was
 running when the manager stopped is running again when it starts, and nothing else.
 
-    ./manager.py serve [--root managed] [--listen 127.0.0.1:32300] [--binary PATH]
-    ./manager.py create living-room --port 32400 --catalog catalog.json   # ZURG_* from env
-    ./manager.py start living-room
-    ./manager.py list | status NAME | logs NAME | stop NAME | restart NAME | delete NAME
-    ./manager.py create den --port 32401           # no catalog: seeded, then scanned from zurg
-    ./manager.py build den --start # build_catalog.py --seed into its database, then start
+    oracle/manager.py serve [--root managed] [--listen 127.0.0.1:32300] [--binary PATH]
+    oracle/manager.py create living-room --port 32400 --catalog catalog.json   # ZURG_* from env
+    oracle/manager.py start living-room
+    oracle/manager.py list | status NAME | logs NAME | stop NAME | restart NAME | delete NAME
+    oracle/manager.py create den --port 32401           # no catalog: seeded, then scanned from zurg
+    oracle/manager.py build den --start # build_catalog.py --seed into its database, then start
 
-Everything lives under the root (default `managed/` beside this file, mode 700):
+Everything lives under the root (default `managed/` at the repository root, mode 700):
 
     manager.db              the servers and their configurations (mode 600: it holds keys)
     admin.token             the API's bearer token, generated on first start (mode 600)
@@ -58,13 +58,14 @@ import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 
 import catalogdb  # noqa: E402
 
-DEFAULT_ROOT = os.path.join(HERE, "managed")
+DEFAULT_ROOT = os.path.join(ROOT, "managed")
 DEFAULT_LISTEN = "127.0.0.1:32300"
-DEFAULT_BINARY = os.path.join(HERE, "rust", "target", "release", "rex.exe" if os.name == "nt" else "rex")
+DEFAULT_BINARY = os.path.join(ROOT, "rust", "target", "release", "rex.exe" if os.name == "nt" else "rex")
 
 NAME = re.compile(r"^[a-z0-9-]{1,40}$")
 SECRETS = ("zurg_password", "tmdb_key", "plex_token", "token")
@@ -410,7 +411,7 @@ class Manager:
                   .encode())
         log.flush()
         try:
-            proc = subprocess.Popen(self.command(config, name), cwd=HERE,
+            proc = subprocess.Popen(self.command(config, name), cwd=ROOT,
                                     env=self.environment(config), stdin=subprocess.DEVNULL,
                                     stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
         except OSError as error:
@@ -673,7 +674,7 @@ class Manager:
                 if row["config"].get(field):
                     argv += [flag, row["config"][field]]
             try:
-                proc = subprocess.Popen(argv, cwd=HERE, env=self.environment(row["config"]),
+                proc = subprocess.Popen(argv, cwd=ROOT, env=self.environment(row["config"]),
                                         stdin=subprocess.DEVNULL, stdout=log,
                                         stderr=subprocess.STDOUT, start_new_session=True)
             finally:

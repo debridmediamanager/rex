@@ -87,7 +87,7 @@ def server_binary(work):
             return native
     wrapper = os.path.join(work, "rex-python")
     with open(wrapper, "w") as handle:
-        handle.write('#!/bin/sh\nexec "%s" "%s" "$@"\n' % (sys.executable, os.path.join(ROOT, "server.py")))
+        handle.write('#!/bin/sh\nexec "%s" "%s" "$@"\n' % (sys.executable, os.path.join(ROOT, "oracle", "server.py")))
     os.chmod(wrapper, 0o755)
     return wrapper
 
@@ -101,7 +101,7 @@ class Manager:
     def start(self):
         self.log = open(os.path.join(self.root + ".log"), "ab")
         self.proc = subprocess.Popen(
-            [sys.executable, os.path.join(ROOT, "manager.py"), "--root", self.root, "serve",
+            [sys.executable, os.path.join(ROOT, "oracle", "manager.py"), "--root", self.root, "serve",
              "--listen", "127.0.0.1:%d" % self.port, "--binary", self.binary],
             cwd=ROOT, stdout=self.log, stderr=self.log, start_new_session=True,
             env=dict(os.environ, PYTHONDONTWRITEBYTECODE="1"))
@@ -158,7 +158,7 @@ def main():
     binary = server_binary(work)
     builder = os.path.join(work, "fake_build_catalog.py")
     with open(builder, "w") as handle:
-        handle.write(FAKE_BUILDER % (ROOT, CATALOG))
+        handle.write(FAKE_BUILDER % (os.path.join(ROOT, "oracle"), CATALOG))
     print("server: %s" % binary)
     manager = Manager(root, binary)
     try:
@@ -331,7 +331,7 @@ def main():
         url = "http://127.0.0.1:%d" % manager.port
 
         def cli(*args, env=None):
-            run = subprocess.run([sys.executable, os.path.join(ROOT, "manager.py"), "--root", root,
+            run = subprocess.run([sys.executable, os.path.join(ROOT, "oracle", "manager.py"), "--root", root,
                                   args[0], "--url", url, *args[1:]], capture_output=True, text=True,
                                  env=dict(os.environ, **(env or {})), timeout=120)
             return run.returncode, run.stdout + run.stderr

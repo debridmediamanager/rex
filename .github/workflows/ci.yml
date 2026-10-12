@@ -285,7 +285,8 @@ jobs:
             mkdir -p "$name/rust/target/release"
             install -m 755 "artifacts/rex-$platform/$binary" "$name/rust/target/release/$binary"
             git ls-files -z -- data catalog.example.json \
-                build_catalog.py catalogdb.py hierarchy.py metadata.py manager.py \
+                oracle/build_catalog.py oracle/catalogdb.py oracle/hierarchy.py oracle/metadata.py \
+                oracle/manager.py \
                 run.sh.example cloudflared.example.yml README.md LICENSE docs/setup.md docs/feed-api.md \
               | xargs -0 cp --parents -t "$name"
             if [ "$platform" = windows-amd64 ]; then

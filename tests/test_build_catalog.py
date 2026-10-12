@@ -15,7 +15,7 @@ import sys
 import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.dirname(HERE))
+sys.path.insert(0, os.path.join(os.path.dirname(HERE), "oracle"))
 import build_catalog  # noqa: E402
 import catalogdb  # noqa: E402
 
@@ -34,7 +34,7 @@ import warnings
 for tool in ("build_catalog.py", "catalogdb.py", "hierarchy.py", "metadata.py", "manager.py"):
     with warnings.catch_warnings():
         warnings.simplefilter("error")
-        with open(os.path.join(os.path.dirname(HERE), tool), encoding="utf-8") as handle:
+        with open(os.path.join(os.path.dirname(HERE), "oracle", tool), encoding="utf-8") as handle:
             source = handle.read()
         try:
             compile(source, tool, "exec")
@@ -65,7 +65,7 @@ try:
     accented = os.path.join(work, "accented.json")
     json.dump({"machineIdentifier": "f" * 40, "friendlyName": "Café Ümlaut", "sections": [], "items": []},
               open(accented, "w", encoding="utf-8"), ensure_ascii=False)
-    subprocess.run([sys.executable, "-X", "utf8=0", os.path.join(os.path.dirname(HERE), "build_catalog.py"),
+    subprocess.run([sys.executable, "-X", "utf8=0", os.path.join(os.path.dirname(HERE), "oracle", "build_catalog.py"),
                     "--seed", "--out", accented], check=True, stdout=subprocess.DEVNULL,
                    env=dict(os.environ, LC_ALL="C", PYTHONCOERCECLOCALE="0", PYTHONUTF8="0"))
     reseeded = json.load(open(accented, encoding="utf-8"))["machineIdentifier"]
@@ -76,7 +76,7 @@ try:
         out = os.path.join(work, "seed.json")
         if os.path.exists(out):
             os.remove(out)
-        subprocess.run([sys.executable, os.path.join(os.path.dirname(HERE), "build_catalog.py"),
+        subprocess.run([sys.executable, os.path.join(os.path.dirname(HERE), "oracle", "build_catalog.py"),
                         "--seed", "--out", out] + list(flags), check=True, stdout=subprocess.DEVNULL)
         return {section["type"]: section["Location"] for section in json.load(open(out))["sections"]}
 

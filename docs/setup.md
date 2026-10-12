@@ -13,7 +13,7 @@ The steps below go in that order.
 
 | | |
 |---|---|
-| A Linux or macOS host | rex is one binary with no runtime dependencies. Python 3 (stdlib only) runs `build_catalog.py` and `manager.py` |
+| A Linux or macOS host | rex is one binary with no runtime dependencies. Python 3 (stdlib only) runs `oracle/build_catalog.py` and `oracle/manager.py` |
 | Rust, or Docker | to build it (below) |
 | One or more byte sources | [zurg](https://github.com/debridmediamanager/zurg) (a build with the rex feed: `rex_url` in its `config.yml`), or any HTTP server that serves the files plus something that pushes them to rex's feed |
 | A TMDB API key | free from [themoviedb.org](https://www.themoviedb.org/settings/api); it names what is pushed and powers Fix Match |
@@ -76,7 +76,7 @@ your own, is [`docs/feed-api.md`](feed-api.md).
 ### 3. Catalog: the server's identity and libraries
 
 ```bash
-python3 build_catalog.py --seed --name den --out rex.db
+python3 oracle/build_catalog.py --seed --name den --out rex.db
 ```
 
 This writes a SQLite database holding a fixed `machineIdentifier` (derived from
@@ -87,7 +87,7 @@ and whatever path prefix its `file` carries. An item in no library's directory i
 rejected, so name every directory your sources use:
 
 ```bash
-python3 build_catalog.py --seed --name den --out rex.db \
+python3 oracle/build_catalog.py --seed --name den --out rex.db \
   --movies movies --shows shows --shows anime
 ```
 
@@ -232,7 +232,7 @@ WantedBy=default.target
 
 Under launchd:
 `launchctl submit -l com.rex -o rex.log -e rex.err -- /bin/bash "$PWD/run.sh"`. To run
-several servers on one host, use `manager.py` (below).
+several servers on one host, use `oracle/manager.py` (below).
 
 rex logs a request's query string, so a client that sends its token as
 `?X-Plex-Token=` leaves it in the log. Keep the log private.
@@ -261,26 +261,26 @@ the same in PowerShell with `python` for `python3`. Three things differ:
 | `--announce-url needs PLEX_TOKEN` at start | `PLEX_TOKEN` is not in rex's environment |
 | A second server on the same catalog exits 1 | The state file is locked by the first: one catalog per server |
 
-### Running several servers: manager.py
+### Running several servers: oracle/manager.py
 
-`manager.py` is a control service on top of the server. It runs **no** rex server
+`oracle/manager.py` is a control service on top of the server. It runs **no** rex server
 until you start one: you create a server from a configuration (port, zurg, keys,
 catalog, options), start and stop it, and the manager supervises it -- an unexpected exit
 is restarted with a backoff, and one that keeps dying is marked failed. Whatever was
 running when the manager stopped is running again when it starts. Stdlib Python only.
 
 ```bash
-./manager.py serve                       # API + page on http://127.0.0.1:32300; prints the admin token once
+oracle/manager.py serve                  # API + page on http://127.0.0.1:32300; prints the admin token once
 export ZURG_URL=... ZURG_USER=... ZURG_PASSWORD=... TMDB_KEY=... PLEX_TOKEN=...
                                          # keys come from the environment, never the command line
-./manager.py create living-room --port 32400 --catalog "$PWD/catalog.json" --gdm on
-./manager.py start living-room
-./manager.py list                        # status | logs | stop | restart | delete [--purge] | build
+oracle/manager.py create living-room --port 32400 --catalog "$PWD/catalog.json" --gdm on
+oracle/manager.py start living-room
+oracle/manager.py list                   # status | logs | stop | restart | delete [--purge] | build
 
 # or from its keys alone: an empty library at zurg's mount, for zurg to fill
 # (its feed: --extra-arg=--sources --extra-arg=FILE, docs/feed-api.md)
-./manager.py create den --port 32401 --gdm on --zurg-mount /mnt/zurg
-./manager.py build den --start           # build_catalog.py --seed, then start (restart if running)
+oracle/manager.py create den --port 32401 --gdm on --zurg-mount /mnt/zurg
+oracle/manager.py build den --start      # build_catalog.py --seed, then start (restart if running)
 ```
 
 Each server gets `managed/servers/<name>/`, whose `rex.db` holds its catalog (copied
@@ -299,7 +299,7 @@ Run the manager itself under the init system, so it outlives any shell. macOS (l
 <plist version="1.0"><dict>
   <key>Label</key><string>com.rex.manager</string>
   <key>ProgramArguments</key><array>
-    <string>/usr/bin/python3</string><string>/path/to/rex/manager.py</string><string>serve</string>
+    <string>/usr/bin/python3</string><string>/path/to/rex/oracle/manager.py</string><string>serve</string>
   </array>
   <key>RunAtLoad</key><true/><key>KeepAlive</key><true/>
   <key>StandardOutPath</key><string>/path/to/rex/managed.log</string>
@@ -318,7 +318,7 @@ After=network-online.target
 [Service]
 User=ben
 WorkingDirectory=/path/to/rex
-ExecStart=/usr/bin/python3 /path/to/rex/manager.py serve
+ExecStart=/usr/bin/python3 /path/to/rex/oracle/manager.py serve
 KillMode=mixed
 TimeoutStopSec=60
 Restart=on-failure
