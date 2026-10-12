@@ -1809,8 +1809,8 @@ are changing; replay the client's exact request before altering behavior.
   'Control-Alt-Delete'), and **matches a ONE-character query against a title equal to it**. rex
   required the joined phrase, split the title on `[^0-9a-z]+` and had a two-character floor -- so two
   non-adjacent words of a title, or any title with an apostrophe, found nothing at all.
-- **The reference's own files are readable, and they explain two tables.** `ssh ben@kids docker exec
-  plexlab-plex` reads the image: `Resources/Profiles/` holds 78 `.xml` plus a stray `sugar.cmake`
+- **The reference's own files are readable, and they explain two tables.** `docker exec plexlab-plex`
+  on the lab host reads the image: `Resources/Profiles/` holds 78 `.xml` plus a stray `sugar.cmake`
   (hence 78 rows), a row's title is its `<Client name="...">` and not the file name, and the 23
   `Player.profile` aliases are **22 `redirect="..."` attributes plus one name-versus-filename
   difference** -- rex's table reproduces all 23 with zero errors. The `type=42` seven carry no
@@ -2469,8 +2469,8 @@ are changing; replay the client's exact request before altering behavior.
 
 - **The plug-in framework is PYTHON, shipped uncompiled in the image, and
   `System.bundle/Contents/Code/*.py` IS the `/system` surface.** Every `@route` in those
-  files is an endpoint (`ssh ben@kids docker exec plexlab-plex sh -c 'ls
-  /usr/lib/plexmediaserver/Resources/Plug-ins-e5521bd8c/'`; zen's is `Plug-ins-f737b826c`
+  files is an endpoint (`docker exec plexlab-plex sh -c 'ls
+  /usr/lib/plexmediaserver/Resources/Plug-ins-e5521bd8c/'` on the lab host; zen's is `Plug-ins-f737b826c`
   and the two differ). `runtime.py`'s `handle_request` is the `f(**d)` in every framework
   traceback, so the TypeError sentence is the function's own signature: `given` counts
   `self` plus every supplied name the function DECLARES, an undeclared one is "got an

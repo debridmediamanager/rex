@@ -2715,7 +2715,7 @@
     {
      "t": 1791499061.275,
      "iso": "2026-10-08T22:37:41.275+00:00",
-     "cmd": "mv -n -- '/home/ben/plexscratch/media-long/movies/Big Buck Bunny (2008)/Big Buck Bunny (2008) - 1080p.mkv' /home/ben/plexscratch/.mf-work/away/",
+     "cmd": "mv -n -- '~/plexscratch/media-long/movies/Big Buck Bunny (2008)/Big Buck Bunny (2008) - 1080p.mkv' ~/plexscratch/.mf-work/away/",
      "rc": 0,
      "stderr": ""
     }
@@ -2724,7 +2724,7 @@
     "waited 6.2s for idle (13 /activities polls; activities seen: [['ed315e1a-bae0-49d6-8536-46bd5a6f32ce', 'provider.subscriptions.process', 'Processing subscriptions']])"
    ],
    "notification_stream": {
-    "url": "ws://100.101.10.1:32410/:/websockets/notifications?X-Plex-Token=<redacted>",
+    "url": "ws://192.0.2.1:32410/:/websockets/notifications?X-Plex-Token=<redacted>",
     "opened": "2026-10-08T22:37:40.641+00:00"
    },
    "pref_found": {
@@ -7018,7 +7018,7 @@
     {
      "t": 1791499100.555,
      "iso": "2026-10-08T22:38:20.555+00:00",
-     "cmd": "mv -n -- '/home/ben/plexscratch/media-long/shows/Firefly (2002)/Season 01/Firefly (2002) - s01e03 - 1080p.mkv' /home/ben/plexscratch/.mf-work/away/",
+     "cmd": "mv -n -- '~/plexscratch/media-long/shows/Firefly (2002)/Season 01/Firefly (2002) - s01e03 - 1080p.mkv' ~/plexscratch/.mf-work/away/",
      "rc": 0,
      "stderr": ""
     }
@@ -7027,7 +7027,7 @@
     "waited 8.9s for idle (18 /activities polls; activities seen: [['d2dc5fc9-714b-49e8-94d3-97d475547d43', 'library.update.section', 'Scanning TV Shows']])"
    ],
    "notification_stream": {
-    "url": "ws://100.101.10.1:32410/:/websockets/notifications?X-Plex-Token=<redacted>",
+    "url": "ws://192.0.2.1:32410/:/websockets/notifications?X-Plex-Token=<redacted>",
     "opened": "2026-10-08T22:38:19.580+00:00"
    },
    "pref_during": {
@@ -8922,7 +8922,7 @@
     "waited 8.3s for idle (17 /activities polls; activities seen: [])"
    ],
    "notification_stream": {
-    "url": "ws://100.101.10.1:32410/:/websockets/notifications?X-Plex-Token=<redacted>",
+    "url": "ws://192.0.2.1:32410/:/websockets/notifications?X-Plex-Token=<redacted>",
     "opened": "2026-10-08T22:38:41.181+00:00"
    },
    "pms_log": [
@@ -11867,7 +11867,7 @@
     "waited 8.3s for idle (17 /activities polls; activities seen: [])"
    ],
    "notification_stream": {
-    "url": "ws://100.101.10.1:32410/:/websockets/notifications?X-Plex-Token=<redacted>",
+    "url": "ws://192.0.2.1:32410/:/websockets/notifications?X-Plex-Token=<redacted>",
     "opened": "2026-10-08T22:38:50.917+00:00"
    },
    "pms_log": [
@@ -14133,7 +14133,7 @@
     {
      "t": 1791499148.017,
      "iso": "2026-10-08T22:39:08.017+00:00",
-     "cmd": "mv -n -- '/home/ben/plexscratch/.mf-work/away/Big Buck Bunny (2008) - 1080p.mkv' '/home/ben/plexscratch/media-long/movies/Big Buck Bunny (2008)/'",
+     "cmd": "mv -n -- '~/plexscratch/.mf-work/away/Big Buck Bunny (2008) - 1080p.mkv' '~/plexscratch/media-long/movies/Big Buck Bunny (2008)/'",
      "rc": 0,
      "stderr": ""
     }
@@ -14142,7 +14142,7 @@
     "waited 9.3s for idle (19 /activities polls; activities seen: [['7398453c-0c3c-4abd-a734-cc602b345780', 'library.update.section', 'Scanning Movies']])"
    ],
    "notification_stream": {
-    "url": "ws://100.101.10.1:32410/:/websockets/notifications?X-Plex-Token=<redacted>",
+    "url": "ws://192.0.2.1:32410/:/websockets/notifications?X-Plex-Token=<redacted>",
     "opened": "2026-10-08T22:39:07.455+00:00"
    },
    "new_ratingKey": "66",
@@ -17843,7 +17843,7 @@
     {
      "t": 1791499165.157,
      "iso": "2026-10-08T22:39:25.157+00:00",
-     "cmd": "mv -n -- '/home/ben/plexscratch/.mf-work/away/Firefly (2002) - s01e03 - 1080p.mkv' '/home/ben/plexscratch/media-long/shows/Firefly (2002)/Season 01/'",
+     "cmd": "mv -n -- '~/plexscratch/.mf-work/away/Firefly (2002) - s01e03 - 1080p.mkv' '~/plexscratch/media-long/shows/Firefly (2002)/Season 01/'",
      "rc": 0,
      "stderr": ""
     }
@@ -17852,7 +17852,7 @@
     "waited 9.3s for idle (19 /activities polls; activities seen: [['9af782a5-8072-42be-89bc-d9c5a0c9efaa', 'library.update.section', 'Scanning TV Shows'], ['e8a9a236-b6f6-46b2-bcdc-4c8cd1094d6b', 'library.update.item.metadata', 'Updating Metadata']])"
    ],
    "notification_stream": {
-    "url": "ws://100.101.10.1:32410/:/websockets/notifications?X-Plex-Token=<redacted>",
+    "url": "ws://192.0.2.1:32410/:/websockets/notifications?X-Plex-Token=<redacted>",
     "opened": "2026-10-08T22:39:24.301+00:00"
    },
    "new_ratingKey": "67",
@@ -20033,7 +20033,7 @@
     {
      "t": 1791499181.848,
      "iso": "2026-10-08T22:39:41.848+00:00",
-     "cmd": "mv -n -- '/home/ben/plexscratch/media-long/movies/Sintel (2010)/Sintel (2010) - 1080p.mkv' /home/ben/plexscratch/.mf-work/away/",
+     "cmd": "mv -n -- '~/plexscratch/media-long/movies/Sintel (2010)/Sintel (2010) - 1080p.mkv' ~/plexscratch/.mf-work/away/",
      "rc": 0,
      "stderr": ""
     }
@@ -20042,7 +20042,7 @@
     "waited 8.4s for idle (17 /activities polls; activities seen: [['e2a2db5e-1e68-41ef-b368-a906e56a7ea2', 'library.update.section', 'Scanning Movies']])"
    ],
    "notification_stream": {
-    "url": "ws://100.101.10.1:32410/:/websockets/notifications?X-Plex-Token=<redacted>",
+    "url": "ws://192.0.2.1:32410/:/websockets/notifications?X-Plex-Token=<redacted>",
     "opened": "2026-10-08T22:39:41.179+00:00"
    },
    "pref_during": {
@@ -22251,7 +22251,7 @@
     {
      "t": 1791499198.574,
      "iso": "2026-10-08T22:39:58.574+00:00",
-     "cmd": "mv -n -- '/home/ben/plexscratch/.mf-work/away/Sintel (2010) - 1080p.mkv' '/home/ben/plexscratch/media-long/movies/Sintel (2010)/'",
+     "cmd": "mv -n -- '~/plexscratch/.mf-work/away/Sintel (2010) - 1080p.mkv' '~/plexscratch/media-long/movies/Sintel (2010)/'",
      "rc": 0,
      "stderr": ""
     }
@@ -22260,7 +22260,7 @@
     "waited 8.5s for idle (17 /activities polls; activities seen: [['02cd5ed0-81cb-4c42-b04b-8b5e55b57eca', 'library.update.section', 'Scanning Movies']])"
    ],
    "notification_stream": {
-    "url": "ws://100.101.10.1:32410/:/websockets/notifications?X-Plex-Token=<redacted>",
+    "url": "ws://192.0.2.1:32410/:/websockets/notifications?X-Plex-Token=<redacted>",
     "opened": "2026-10-08T22:39:57.955+00:00"
    },
    "new_ratingKey": "68",
@@ -24607,7 +24607,7 @@
     {
      "t": 1791499209.719,
      "iso": "2026-10-08T22:40:09.719+00:00",
-     "cmd": "mv -n -- '/home/ben/plexscratch/media-long/movies/Cosmos Laundromat (2015)' /home/ben/plexscratch/.mf-work/away/",
+     "cmd": "mv -n -- '~/plexscratch/media-long/movies/Cosmos Laundromat (2015)' ~/plexscratch/.mf-work/away/",
      "rc": 0,
      "stderr": ""
     }
@@ -24616,7 +24616,7 @@
     "waited 8.4s for idle (17 /activities polls; activities seen: [['a2394022-10f6-438a-93de-4f81ee958b10', 'library.update.section', 'Scanning Movies']])"
    ],
    "notification_stream": {
-    "url": "ws://100.101.10.1:32410/:/websockets/notifications?X-Plex-Token=<redacted>",
+    "url": "ws://192.0.2.1:32410/:/websockets/notifications?X-Plex-Token=<redacted>",
     "opened": "2026-10-08T22:40:09.086+00:00"
    },
    "pref_during": {
@@ -26950,7 +26950,7 @@
     {
      "t": 1791499224.441,
      "iso": "2026-10-08T22:40:24.441+00:00",
-     "cmd": "mv -n -- '/home/ben/plexscratch/.mf-work/away/Cosmos Laundromat (2015)' /home/ben/plexscratch/media-long/movies/",
+     "cmd": "mv -n -- '~/plexscratch/.mf-work/away/Cosmos Laundromat (2015)' ~/plexscratch/media-long/movies/",
      "rc": 0,
      "stderr": ""
     }
@@ -26959,7 +26959,7 @@
     "waited 8.4s for idle (17 /activities polls; activities seen: [])"
    ],
    "notification_stream": {
-    "url": "ws://100.101.10.1:32410/:/websockets/notifications?X-Plex-Token=<redacted>",
+    "url": "ws://192.0.2.1:32410/:/websockets/notifications?X-Plex-Token=<redacted>",
     "opened": "2026-10-08T22:40:23.863+00:00"
    },
    "pms_log": [
@@ -31562,21 +31562,21 @@
     {
      "t": 1791499242.249,
      "iso": "2026-10-08T22:40:42.249+00:00",
-     "cmd": "mv -n -- /home/ben/plexscratch/media-long/movies /home/ben/plexscratch/.mf-work/away/movies-root",
+     "cmd": "mv -n -- ~/plexscratch/media-long/movies ~/plexscratch/.mf-work/away/movies-root",
      "rc": 0,
      "stderr": ""
     },
     {
      "t": 1791499251.215,
      "iso": "2026-10-08T22:40:51.215+00:00",
-     "cmd": "mv -n -- /home/ben/plexscratch/.mf-work/away/movies-root /home/ben/plexscratch/media-long/movies",
+     "cmd": "mv -n -- ~/plexscratch/.mf-work/away/movies-root ~/plexscratch/media-long/movies",
      "rc": 0,
      "stderr": ""
     },
     {
      "t": 1791499251.641,
      "iso": "2026-10-08T22:40:51.641+00:00",
-     "cmd": "ls -ld /home/ben/plexscratch/media-long/movies",
+     "cmd": "ls -ld ~/plexscratch/media-long/movies",
      "rc": 0,
      "stderr": ""
     }
@@ -31585,7 +31585,7 @@
     "waited 8.4s for idle (17 /activities polls; activities seen: [])"
    ],
    "notification_stream": {
-    "url": "ws://100.101.10.1:32410/:/websockets/notifications?X-Plex-Token=<redacted>",
+    "url": "ws://192.0.2.1:32410/:/websockets/notifications?X-Plex-Token=<redacted>",
     "opened": "2026-10-08T22:40:41.510+00:00"
    },
    "pref_during": {
@@ -36231,28 +36231,28 @@
     {
      "t": 1791499265.958,
      "iso": "2026-10-08T22:41:05.958+00:00",
-     "cmd": "chmod 000 /home/ben/plexscratch/media-long/movies",
+     "cmd": "chmod 000 ~/plexscratch/media-long/movies",
      "rc": 0,
      "stderr": ""
     },
     {
      "t": 1791499266.4,
      "iso": "2026-10-08T22:41:06.400+00:00",
-     "cmd": "ls -ld /home/ben/plexscratch/media-long/movies",
+     "cmd": "ls -ld ~/plexscratch/media-long/movies",
      "rc": 0,
      "stderr": ""
     },
     {
      "t": 1791499275.389,
      "iso": "2026-10-08T22:41:15.389+00:00",
-     "cmd": "chmod 775 /home/ben/plexscratch/media-long/movies",
+     "cmd": "chmod 775 ~/plexscratch/media-long/movies",
      "rc": 0,
      "stderr": ""
     },
     {
      "t": 1791499275.696,
      "iso": "2026-10-08T22:41:15.696+00:00",
-     "cmd": "ls -ld /home/ben/plexscratch/media-long/movies",
+     "cmd": "ls -ld ~/plexscratch/media-long/movies",
      "rc": 0,
      "stderr": ""
     }
@@ -36261,7 +36261,7 @@
     "waited 8.3s for idle (17 /activities polls; activities seen: [])"
    ],
    "notification_stream": {
-    "url": "ws://100.101.10.1:32410/:/websockets/notifications?X-Plex-Token=<redacted>",
+    "url": "ws://192.0.2.1:32410/:/websockets/notifications?X-Plex-Token=<redacted>",
     "opened": "2026-10-08T22:41:05.159+00:00"
    },
    "pref_during": {
@@ -40914,28 +40914,28 @@
     {
      "t": 1791499277.026,
      "iso": "2026-10-08T22:41:17.026+00:00",
-     "cmd": "sh -c 'mv -n -- \"$0\" \"$1\" && mkdir \"$0\" && chmod 775 \"$0\"' /home/ben/plexscratch/media-long/movies /home/ben/plexscratch/.mf-work/away/movies-root",
+     "cmd": "sh -c 'mv -n -- \"$0\" \"$1\" && mkdir \"$0\" && chmod 775 \"$0\"' ~/plexscratch/media-long/movies ~/plexscratch/.mf-work/away/movies-root",
      "rc": 0,
      "stderr": ""
     },
     {
      "t": 1791499277.24,
      "iso": "2026-10-08T22:41:17.240+00:00",
-     "cmd": "ls -ld /home/ben/plexscratch/media-long/movies",
+     "cmd": "ls -ld ~/plexscratch/media-long/movies",
      "rc": 0,
      "stderr": ""
     },
     {
      "t": 1791499286.034,
      "iso": "2026-10-08T22:41:26.034+00:00",
-     "cmd": "sh -c 'rmdir -- \"$0\" && mv -n -- \"$1\" \"$0\"' /home/ben/plexscratch/media-long/movies /home/ben/plexscratch/.mf-work/away/movies-root",
+     "cmd": "sh -c 'rmdir -- \"$0\" && mv -n -- \"$1\" \"$0\"' ~/plexscratch/media-long/movies ~/plexscratch/.mf-work/away/movies-root",
      "rc": 0,
      "stderr": ""
     },
     {
      "t": 1791499286.266,
      "iso": "2026-10-08T22:41:26.266+00:00",
-     "cmd": "ls -ld /home/ben/plexscratch/media-long/movies",
+     "cmd": "ls -ld ~/plexscratch/media-long/movies",
      "rc": 0,
      "stderr": ""
     }
@@ -40944,7 +40944,7 @@
     "waited 8.3s for idle (17 /activities polls; activities seen: [])"
    ],
    "notification_stream": {
-    "url": "ws://100.101.10.1:32410/:/websockets/notifications?X-Plex-Token=<redacted>",
+    "url": "ws://192.0.2.1:32410/:/websockets/notifications?X-Plex-Token=<redacted>",
     "opened": "2026-10-08T22:41:16.314+00:00"
    },
    "pref_during": {
@@ -45668,28 +45668,28 @@
     {
      "t": 1791499322.063,
      "iso": "2026-10-08T22:42:02.063+00:00",
-     "cmd": "sh -c 'mv -n -- \"$0\" \"$1\" && mkdir \"$0\" && chmod 775 \"$0\"' /home/ben/plexscratch/media-long/movies /home/ben/plexscratch/.mf-work/away/movies-root",
+     "cmd": "sh -c 'mv -n -- \"$0\" \"$1\" && mkdir \"$0\" && chmod 775 \"$0\"' ~/plexscratch/media-long/movies ~/plexscratch/.mf-work/away/movies-root",
      "rc": 0,
      "stderr": ""
     },
     {
      "t": 1791499322.277,
      "iso": "2026-10-08T22:42:02.277+00:00",
-     "cmd": "ls -ld /home/ben/plexscratch/media-long/movies",
+     "cmd": "ls -ld ~/plexscratch/media-long/movies",
      "rc": 0,
      "stderr": ""
     },
     {
      "t": 1791499331.017,
      "iso": "2026-10-08T22:42:11.017+00:00",
-     "cmd": "sh -c 'rmdir -- \"$0\" && mv -n -- \"$1\" \"$0\"' /home/ben/plexscratch/media-long/movies /home/ben/plexscratch/.mf-work/away/movies-root",
+     "cmd": "sh -c 'rmdir -- \"$0\" && mv -n -- \"$1\" \"$0\"' ~/plexscratch/media-long/movies ~/plexscratch/.mf-work/away/movies-root",
      "rc": 0,
      "stderr": ""
     },
     {
      "t": 1791499331.455,
      "iso": "2026-10-08T22:42:11.455+00:00",
-     "cmd": "ls -ld /home/ben/plexscratch/media-long/movies",
+     "cmd": "ls -ld ~/plexscratch/media-long/movies",
      "rc": 0,
      "stderr": ""
     }
@@ -45698,7 +45698,7 @@
     "waited 8.3s for idle (17 /activities polls; activities seen: [])"
    ],
    "notification_stream": {
-    "url": "ws://100.101.10.1:32410/:/websockets/notifications?X-Plex-Token=<redacted>",
+    "url": "ws://192.0.2.1:32410/:/websockets/notifications?X-Plex-Token=<redacted>",
     "opened": "2026-10-08T22:42:01.319+00:00"
    },
    "pref_during": {

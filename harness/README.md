@@ -8,7 +8,7 @@ question: *what does a real PMS actually say here?*
 measurement, not a guess. This is the instrument that takes the measurement.
 Fixtures come from the implementation being modelled, never from ours.
 
-Runs on **kids** at `/home/ben/plexlab`.
+Runs on a lab host at `~/plexlab`.
 
 ## What it records
 

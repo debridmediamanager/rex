@@ -20,7 +20,8 @@ cd "$(dirname "$0")"
 LAB=${PLEXLAB_DIR:-../plexlab}
 PMS="Library/Application Support/Plex Media Server"
 IMAGE=plexinc/pms-docker@sha256:e0ab27395614a8e1a4fdf84c6bc60ac664915cfdde70c52d030c7728a1c48e14
-BIND=${SCRATCH_BIND:-100.101.10.1}
+# The address the copy is published on: the lab host's own, for clients on other hosts.
+BIND=${SCRATCH_BIND:-127.0.0.1}
 PORT=${SCRATCH_PORT:-32410}
 URL="http://$BIND:$PORT"
 

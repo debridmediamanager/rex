@@ -753,7 +753,7 @@ except OSError:
 # anything with a 200 -- so a typo in the dialog looked saved and silently was not.
 # `/:/resources/*` is PMS's whole `Resources/Graphics` tree, and it is **70 names**, not
 # the seven cycle 29 measured from a ten-name sample. Read out of the reference image
-# (`ssh ben@kids docker exec plexlab-plex ...`) and then measured name by name: all 70 are
+# (`docker exec plexlab-plex ...` on the lab host) and then measured name by name: all 70 are
 # a 200 on kids (1.43.4) and on zen (1.42.2), with the same status, media type and byte
 # count on both, so they are PMS's own bundled files rather than anything a library owns.
 #
@@ -7314,7 +7314,7 @@ class Rex:
         if route == "/servers":
             # Cycle 49: this list is what the server has DISCOVERED, and its own row
             # carries its own real address and its own real port. zen answers
-            # `192.168.88.244` and kids `172.31.7.2` -- each server's own interface
+            # `192.0.2.44` and kids `172.31.7.2` -- each server's own interface
             # address, not loopback -- and both name the port they listen on. rex
             # hard-coded `127.0.0.1` and the constant 32400, so a companion client that
             # reads /servers to find this server was sent to its own loopback on a port
@@ -8684,7 +8684,7 @@ class Rex:
             # real route and it answers **text/plain**, one line per connection slot:
             #
             #   1 ??? - Uninitialized
-            #   3 100.101.20.2:61216 - Routing - GET /connections #4e445 - Token (plexa630) (curl/8.7.1)
+            #   3 192.0.2.10:61216 - Routing - GET /connections #4e445 - Token (plexa630) (curl/8.7.1)
             #
             # The trailing parenthesis is the client's `X-Plex-Device-Name, X-Plex-Product`
             # when it sends them, its `User-Agent` when it does not, and absent when it
@@ -8849,7 +8849,7 @@ class Rex:
                 "publicAddress": self.public_address or "",
                 "publicPort": 0,
                 # Cycle 49: the pair moves TOGETHER. zen answers
-                # `privateAddress="192.168.88.244" privatePort="32400"` and kids, whose
+                # `privateAddress="192.0.2.44" privatePort="32400"` and kids, whose
                 # plex.tv mapping carries no local connection, answers `""` and **0** --
                 # never a port beside an empty address, which is the combination rex
                 # was the only server to produce.

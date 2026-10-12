@@ -42,7 +42,7 @@ services:
   #
   # Loopback is still not enough without a token: PMS also checks the Host header,
   # and answers 401 unless it names 127.0.0.1 or localhost (measured -- the published
-  # URL's `Host: 100.101.10.1:32410` is refused, `Host: 127.0.0.1:32400` is not, and
+  # URL's `Host: LAB_IP:32410` is refused, `Host: 127.0.0.1:32400` is not, and
   # any X-Forwarded-For turns the request into WAN). So clients send the server's own
   # `.LocalAdminToken` instead: `./scratch.sh token` prints it.
   loopback:
@@ -61,7 +61,7 @@ services:
     restart: "no"
     command: TCP-LISTEN:32400,fork,reuseaddr TCP:plexscratch-plex:32499
     ports:
-      - "${SCRATCH_BIND:-100.101.10.1}:${SCRATCH_PORT:-32410}:32400"
+      - "${SCRATCH_BIND:-127.0.0.1}:${SCRATCH_PORT:-32410}:32400"
     depends_on: [loopback]
     networks: [inside, edge]
 

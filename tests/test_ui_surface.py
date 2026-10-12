@@ -8057,7 +8057,7 @@ def main():
 
     # Cycle 49, measured on zen (1.42.2) and kids (1.43.4): `/servers` is the list of
     # servers this one has discovered, and its OWN row carries its own interface address
-    # and the port it really listens on -- zen `192.168.88.244`/32400, kids
+    # and the port it really listens on -- zen `192.0.2.44`/32400, kids
     # `172.31.7.2`/32400, neither one loopback. rex answered `127.0.0.1` and the
     # CONSTANT 32400 whatever port it was on, because `private_address` was declared and
     # never assigned. A companion client reads this list to find the server.

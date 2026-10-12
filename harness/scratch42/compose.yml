@@ -23,7 +23,7 @@ services:
     volumes:
       - ./config:/config
       - ./transcode:/transcode
-      - /home/ben/plexscratch/media-long:/data:ro
+      - ../plexscratch/media-long:/data:ro
     networks: [inside]
 
   loopback:
@@ -40,7 +40,7 @@ services:
     restart: "no"
     command: TCP-LISTEN:32400,fork,reuseaddr TCP:plexscratch42-plex:32499
     ports:
-      - "100.101.10.1:32411:32400"
+      - "${SCRATCH_BIND:-127.0.0.1}:32411:32400"
     depends_on: [loopback]
     networks: [inside, edge]
 

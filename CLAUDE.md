@@ -405,7 +405,7 @@ settling. A larger number than that means the harness, not the target.
 
 The lab is read-only for hunts. **Writes are measured on `plexscratch`**, a sanitised
 copy of the lab's config on the lab host (`harness/scratch/`, deployed beside the lab),
-answering at `http://LAB_IP:32410`:
+answering at `http://LAB_IP:32410` (`SCRATCH_BIND=LAB_IP`; it publishes on loopback otherwise):
 
 ```bash
 ./scratch.sh make     # once: pause the lab for the copy, sanitise it into pristine/

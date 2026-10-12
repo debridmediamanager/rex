@@ -92,7 +92,7 @@ each writes a UI dump, a screenshot and the capture-line range it produced.
   app is force-stopped and started again: `signin.py` then reports `state None` although the
   sign-in itself succeeded, and `am force-stop` + `am start` reaches Home (cycle 94, three times).
 * **A pinned connection on a Tailscale address (`100.x`) does not go through the proxy**: the
-  app reached plexscratch at `100.101.10.1:32410` directly, so nothing of it is in the tap log and
+  app reached plexscratch at `LAB_IP:32410` directly, so nothing of it is in the tap log and
   `rewrite.txt` cannot touch it. Read the copy's own `Logs/Plex Media Server.log` (`Request:`
   lines) for the exact requests, or pin a `10.0.2.2` address that a local relay forwards.
 * **Pinned to an unclaimed copy, a first sign-in lands on "Review Your Favorite Libraries"**

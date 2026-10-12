@@ -17,7 +17,7 @@ import argparse, collections, json, os, shutil, sys, time, urllib.parse, urllib.
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from cdp import Browser
 
-LAB = "/home/ben/plexlab"
+LAB = os.environ.get("PLEXLAB_DIR", os.path.expanduser("~/plexlab"))
 CAP = f"{LAB}/capture"
 LIVE = f"{CAP}/client.jsonl"
 

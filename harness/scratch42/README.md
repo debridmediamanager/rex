@@ -6,11 +6,12 @@ thing: *a writable 1.42.2 copy would settle this.* This is that copy.
 
 It is not a copy at all — it is a **fresh install** of `plexinc/pms-docker:1.42.2.10156-f737b826c`,
 the exact build zen runs, so there is no identity to strip and it has never held a plex.tv
-token. It runs on **kids** at `/home/ben/plexscratch42`, answering at
-`http://100.101.10.1:32411`.
+token. It runs on the lab host at `~/plexscratch42`, beside `~/plexscratch`, answering at
+`http://LAB_IP:32411`.
 
 ```bash
-cd /home/ben/plexscratch42
+cd ~/plexscratch42
+export SCRATCH_BIND=LAB_IP         # the address to publish on (loopback otherwise)
 docker compose up -d plex          # then wait for /identity to lose startState
 docker compose up -d loopback relay
 cat token.txt                      # the .LocalAdminToken clients send
@@ -45,7 +46,7 @@ docker compose down                # and `rm -rf config` to start over
   first and `loopback` must be recreated with it.
 - **Section creation answers 400 while `/identity` still reports `startState`.** Wait for it
   to clear rather than concluding the parameters are wrong.
-- **Its media is the lab's, mounted READ-ONLY** (`/home/ben/plexscratch/media-long`), so an
+- **Its media is the lab's, mounted READ-ONLY** (`~/plexscratch/media-long`), so an
   item delete can never remove a file. Its show library needs a `/library/sections/2/refresh`
   after creation — the first scan found nothing.
 - Its own subnets (`172.31.19.0/24`, `172.31.20.0/24`), container names and port are all
@@ -56,5 +57,5 @@ docker compose down                # and `rm -rf config` to start over
 ```bash
 docker exec plexscratch42-plex sh -c 'timeout 6 wget -q -O- https://plex.tv >/dev/null && echo REACHABLE || echo isolated'
 docker exec plexscratch42-plex sh -c 'getent hosts plex.tv >/dev/null && echo dns || echo "no dns"'
-curl -s http://100.101.10.1:32411/identity   # claimed="0", version 1.42.2.10156
+curl -s http://LAB_IP:32411/identity   # claimed="0", version 1.42.2.10156
 ```

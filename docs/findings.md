@@ -1714,7 +1714,7 @@ With it, the reference pushes log frames continuously -- **386 in 14 seconds**:
 ```json
 {"NotificationContainer":{"type":"log","size":1,"LogSentNotification":[
   {"level":3,"thread":"134304658963256","time":"Sep 12, 2026 18:19:15.428",
-   "message":"Request: [100.101.20.2:55607 (WAN)] GET /:/websockets/notifications?filters=log …"}]}}
+   "message":"Request: [192.0.2.10:55607 (WAN)] GET /:/websockets/notifications?filters=log …"}]}}
 ```
 
 `filters` is an exact whitelist of type names, pinned by running two sockets side by
@@ -7647,8 +7647,8 @@ entries CLOSED, and two instrument steps — one of them the most consequential 
 Three of those fix commits correct an earlier patch of the same cycle, each caught by the suite.
 
 **The instrument again: the reference's own FILES are readable.** Two §3.3 entries had waited on the
-words *"read the profile files, if a reference is ever shell-accessible"*. kids runs the lab PMS in
-Docker and `ssh ben@kids docker exec plexlab-plex …` reads the image — no PMS request, no write,
+words *"read the profile files, if a reference is ever shell-accessible"*. The lab runs its PMS in
+Docker, and `docker exec plexlab-plex …` on the lab host reads the image — no PMS request, no write,
 nothing that can alter the reference. `Resources/Profiles/` holds **79 entries: 78 `.xml` and one
 stray `sugar.cmake`**, which is why the API answers 78 rows; a row's title is its
 `<Client name="…">` attribute and not the file name (77 coincide, and
@@ -9523,7 +9523,7 @@ from their own values, so nothing here is version-split; the CLAIM is what split
 ##### Two more things the discovery surface exposed
 
 * **`/servers`' own row carries the server's own address and port.** zen answers
-  `192.168.88.244`/32400 and kids `172.31.7.2`/32400 — each its own interface address,
+  `192.0.2.44`/32400 and kids `172.31.7.2`/32400 — each its own interface address,
   never loopback. rex hard-coded `127.0.0.1` and the constant 32400 whatever port it
   was on, because `private_address` was declared and never assigned for the whole life of
   the field. `/myplex/account`'s `privateAddress`/`privatePort` move TOGETHER: zen carries
@@ -10944,9 +10944,9 @@ fixture conformance/decode nonzero results are the fixture's dead account-scoped
 media links, not live-catalog evidence.
 
 The two client legs that were missing from the first cycle-78 report are now
-fresh evidence. The existing Windows CDP browser, reached through `ssh
-ben@windows`, rendered the same Plex Web 4.147.1 bundle against the cycle-owned
-server and read-only kids PMS. Home, movie, show, season and episode routes all
+fresh evidence. The existing Windows CDP browser, reached over SSH, rendered
+the same Plex Web 4.147.1 bundle against the cycle-owned server and read-only
+kids PMS. Home, movie, show, season and episode routes all
 passed assertions on both legs, with reference write/socket gates active. Each
 full leg's 18 status failures are exactly nine harness-origin `GET /` 404s and
 nine harness-origin `GET /media/providers` 404s; the full-walk console counts are
@@ -11758,7 +11758,7 @@ recording.
 claim token through `POST /myplex/claim`). Its log ran `CLAIMED` → `servers.xml POST -> 422` →
 `pubsub subscribed` → `connectivity PUT -> 200 b''`, and `/api/servers/aebd…` went from 404 to
 200 (`createdAt="1791602869"`, the claim's second): the connectivity 404 of 2026-09-11 is gone.
-Restarted with `--announce-url https://zen.tail-net.ts.net:31400` (TLS on its own port, a
+Restarted with `--announce-url https://<test-host>.<tailnet>.ts.net:31400` (TLS on its own port, a
 Tailscale Let's Encrypt certificate), it was listed `presence=true`, owned, with an
 `accessToken` and that one connection, at all 47 polls from 03:29 to 04:17, past the
 40-minute lease; the heartbeat logged no failure, so the gzipped device answer now parses.
@@ -11828,7 +11828,7 @@ A restart that subscribed 16 s after the old process died (kill -9, then systemd
 the rig's unit waits 20 s before every start. A real PMS takes longer than that to come back.
 
 **A public connection does not make plex.tv's reachability 1 (2026-10-10).** rex-e2e
-announced `https://zen.tail-net.ts.net:8443` (Tailscale Funnel) beside its tailnet URI, and its
+announced `https://<test-host>.<tailnet>.ts.net:8443` (Tailscale Funnel) beside its tailnet URI, and its
 resource listed both. The Funnel URL was public: from dmm-01, through Funnel's public ingress
 rather than the tailnet, a token-bearing part read answered 206 with the same bytes as the
 tailnet read, and tokenless reads answered 401. Two connectivity PUTs, one and two minutes after
@@ -11918,7 +11918,7 @@ Also: `cloudflared` silently adopted `~/.cloudflared/config.yml` (the
 isolated `--config` to avoid it.
 
 Used instead: `tailscale serve --bg --https=8443` →
-`https://mac-laptop-01.tail-net.ts.net:8443`, real Let's Encrypt cert, HTTP/2.
+`https://<laptop>.<tailnet>.ts.net:8443`, real Let's Encrypt cert, HTTP/2.
 Correct ranges and content type verified through it.
 
 **This was the wrong substitute.** `tailscale serve` is tailnet-only;
