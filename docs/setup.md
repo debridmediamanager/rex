@@ -242,7 +242,7 @@ rex logs a request's query string, so a client that sends its token as
 The Windows build is `rust\target\release\rex.exe` in the zip, and every step above works
 the same in PowerShell with `python` for `python3`. Three things differ:
 
-- `run.sh.example` and `manager.py` are Linux and macOS only. Start `rex.exe` from a
+- `examples/run.sh.example` and `oracle/manager.py` are Linux and macOS only. Start `rex.exe` from a
   scheduled task (Task Scheduler, "At startup", "Run whether user is logged on or not") to
   keep it running.
 - `claim_state.json` and `sources.json` are protected by the folder they sit in, not by file

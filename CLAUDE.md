@@ -37,36 +37,49 @@ searched on disk. The gate is usually one truthiness check in minified code.
 | Path | What it is |
 |---|---|
 | `rust/` | The server: the native port (`runtime.rs` and `runtime/*.rs` hold the routes). Build with `cargo build --release --manifest-path rust/Cargo.toml` |
-| `oracle/server.py` | The Python oracle: every route as measured. Read it first for any behaviour, then its Rust counterpart. |
-| `oracle/library.py` | The mutable half: watch state, edits, playlists, collections, history |
-| `oracle/filters.py` | Plex's filter query language: the operator is part of the KEY |
-| `oracle/persist.py` | the state file (on by default, `--no-state` off): the one file that keeps the mutable half across a restart. The oracle's is a pickle; the native server's is `rust/src/store.rs`, a SQLite database written by the row |
-| `oracle/manager.py` | the control service: runs no server until one is started, then supervises the ones it started (API on 127.0.0.1:32300, CLI, a page); docs/setup.md "Running several servers" |
-| `oracle/catalogdb.py` | the catalog in a SQLite database: what `build_catalog.py --out *.db` / `--convert` write and both servers read with `--catalog *.db` |
-| `oracle/sessions.py` | Live playback sessions, and the byte counters behind the Dashboard |
-| `oracle/hierarchy.py` | Flat leaves → show/season/episode with synthesised parents |
-| `oracle/metadata.py` | TMDB identification, `plex://` guid minting, artwork URLs |
-| `oracle/mediainfo.py` | ffprobe JSON → `Media`/`Part`/`Stream` elements |
-| `oracle/decision.py` | A plain-form decision: the client's own profile file (`client_profiles.json`) against the item |
-| `oracle/zurg.py` | The oracle's byte source: a Part's file under `--zurg-mount` read from zurg's WebDAV (the native server's sources are `runtime/source.rs`) |
-| `oracle/gdm.py` | Plex's LAN discovery protocol: the UDP half of being FOUND |
-| `oracle/gate.py` | Applies a client's direct-play gate to the catalog |
-| `oracle/xmlout.py` | MediaContainer → Plex XML (clients that refuse JSON) |
-| `oracle/identify.py` | which title a release is: an id in its name, a known IMDb id for its hash (zurg's), then Plex's matcher and TMDB, with their agreement as the confidence; `rust/src/identify.rs` is its port and must name as many of `tests/fixtures/identify/` right |
-| `oracle/build_catalog.py` | Writes a catalog: `--seed` an empty library at each source's mount (`--mount`, `--movies` and `--shows` repeat), `--convert` a JSON catalog into a database, `--relink` Plex's guids |
-| `oracle/claim.py`, `oracle/heartbeat.py` | plex.tv claim flow and registration upkeep |
+| `oracle/` | The Python oracle (`server.py` and its modules, below), and the catalog and manager tools users run: `oracle/build_catalog.py`, `oracle/manager.py` |
+| `data/` | The measured sidecars both servers read (below) |
+| `examples/` | `run.sh.example`, `cloudflared.example.yml`, and `catalog.example.json`, the catalog's shape |
 | `tests/` | Conformance and end-to-end suites, plus `catalog_ui.json` and `fixtures/decisions/`, the measured decision corpus |
 | `tests/fixtures/` | Redacted corpora recorded from a real PMS through a real client; `media/` pairs real files' probes with a real PMS's analysis of them |
 | `harness/` | plexlab — the reference PMS and the recorder. See below. |
-| `probes/` | One-off measurement scripts that produced findings |
+| `probes/` | Measurement scripts: the recorders behind checked-in fixtures (`record_identify_corpus.py`, `record_episode_id_corpus.py`, `legacy_scan_fixture.py`), `ui_surface.py`, the plex.tv presence probes, `apkcensus.py`, and the lockstep diff (`pair.py`, `vsweep.py`, `ndiff.py`) |
 | `docs/findings.md` | Everything measured. Read before changing behaviour. |
+| `docs/protocol-traps.md`, `docs/setup.md`, `docs/feed-api.md` | The protocol's edge cases, the operator's guide, and the API sources push with |
+
+The modules in `oracle/`:
+
+| Path | What it is |
+|---|---|
+| `server.py` | The Python oracle: every route as measured. Read it first for any behaviour, then its Rust counterpart. |
+| `library.py` | The mutable half: watch state, edits, playlists, collections, history |
+| `filters.py` | Plex's filter query language: the operator is part of the KEY |
+| `persist.py` | the state file (on by default, `--no-state` off): the one file that keeps the mutable half across a restart. The oracle's is a pickle; the native server's is `rust/src/store.rs`, a SQLite database written by the row |
+| `manager.py` | the control service: runs no server until one is started, then supervises the ones it started (API on 127.0.0.1:32300, CLI, a page); docs/setup.md "Running several servers" |
+| `catalogdb.py` | the catalog in a SQLite database: what `build_catalog.py --out *.db` / `--convert` write and both servers read with `--catalog *.db` |
+| `sessions.py` | Live playback sessions, and the byte counters behind the Dashboard |
+| `hierarchy.py` | Flat leaves → show/season/episode with synthesised parents |
+| `metadata.py` | TMDB identification, `plex://` guid minting, artwork URLs |
+| `mediainfo.py` | ffprobe JSON → `Media`/`Part`/`Stream` elements |
+| `decision.py` | A plain-form decision: the client's own profile file (`client_profiles.json`) against the item |
+| `zurg.py` | The oracle's byte source: a Part's file under `--zurg-mount` read from zurg's WebDAV (the native server's sources are `runtime/source.rs`) |
+| `gdm.py` | Plex's LAN discovery protocol: the UDP half of being FOUND |
+| `gate.py` | Applies a client's direct-play gate to the catalog |
+| `xmlout.py` | MediaContainer → Plex XML (clients that refuse JSON) |
+| `identify.py` | which title a release is: an id in its name, a known IMDb id for its hash (zurg's), then Plex's matcher and TMDB, with their agreement as the confidence; `rust/src/identify.rs` is its port and must name as many of `tests/fixtures/identify/` right |
+| `build_catalog.py` | Writes a catalog: `--seed` an empty library at each source's mount (`--mount`, `--movies` and `--shows` repeat), `--convert` a JSON catalog into a database, `--relink` Plex's guids |
+| `claim.py`, `heartbeat.py` | plex.tv claim flow and registration upkeep |
+| `accountstate.py` | A claimed owner's watch and rating state imported from plex.tv |
+| `spellfix.py` | The spellfix1 subset Plex's universal search corrects spelling with |
 
 Sidecar fixtures are captured from a real PMS -- the later ones read straight out of its
 image -- and live in `data/`, where the oracle reads them (`DATA_DIR` in `server.py`). The descriptors (`server_prefs.json`, `regional_server_prefs.json`,
 `section_prefs.json`, `section_meta.json`, `section_meta_show.json`, `section_meta_artist.json`, `item_prefs.json`,
 `section_prefs_new.json`, `section_filters.json`, `section_sorts.json`, `system_agents.json`,
 `legacy_agents.json`, `agent_languages.json`, `languages.json`, `translations.json`, `refusal_strings.json`,
-`client_profiles.json`, `spellfix_static_tags.json`, `legacy_agent_config.json`); the image's own tables
+`client_profiles.json`, `spellfix_static_tags.json`, `legacy_agent_config.json`); the strings a
+real PMS localises per `X-Plex-Language` (`activity_strings.json`, `item_language_names.json`,
+`stream_words.json`, `title_templates.json`); the image's own tables
 (`plugin_bundles.json`, `plugin_prefs.json`, `attributions.json`, `resource_assets.json`,
 `media_flags.json`); and three files served verbatim at the top of the surface with no token
 (`crossdomain.xml`, `clientaccesspolicy.xml`, `favicon.ico`). Runtime files never go in
@@ -194,17 +207,17 @@ starts its own manager on a temporary root.
 
 The state file keeps what clients change -- watch state, ratings, edits, deletes,
 playlists, collections, history, sections, preferences, uploads, queues, and the device
-and statistics tables -- across restarts; see `persist.py` for what is and is not kept.
+and statistics tables -- across restarts; see `oracle/persist.py` for what is and is not kept.
 It is **on by default** since 2026-10-05: a SQLite database written by the row since
 2026-10-06 (`rust/src/store.rs`), `rex.db` beside the catalog or the catalog's own
-database when the catalog is one (`catalogdb.py`, `build_catalog.py --convert`); an old
+database when the catalog is one (`oracle/catalogdb.py`, `oracle/build_catalog.py --convert`); an old
 `state.json` is imported once and kept as `state.json.migrated`. The Python oracle's is
 `state.pickle`. `--state FILE` / `REX_STATE` move it. A second server on the
 same catalog finds the default locked and exits 1, as a second PMS on a served data
 directory does (cycle 92). Every suite relies on a
 restart being the undo button, so **a test instance runs with `--no-state`**:
-`tests/server_command.py` adds it to every server a suite starts, and a cycle tree's
-`server.py` shim sets an empty `REX_STATE`, so only a leg that names `--state` keeps one. The file is tied to the
+`tests/server_command.py` adds it to every server a suite starts, so only a leg that names
+`--state` keeps one. The file is tied to the
 catalog's digest; after a catalog rebuild only view state (by guid, then part file) and
 the server-level settings carry over, and the old file is kept as `<file>.stale` --
 unless the saved rows include scanned ones (`_scanned`): a library a source pushed is the
@@ -218,8 +231,9 @@ and a recording of everything that passes between them and plex.tv. It is the
 instrument for the rule above — it is how you find out what a real PMS answers
 for the client's exact request, instead of guessing.
 
-It runs on **kids** at `/home/ben/plexlab`. The repo holds the source; that
-directory holds the live instance, its captures and its `.venv`.
+It runs on a lab host; the private operations notes say which, and where the live lab
+lives. The repo holds the source; the deployed directory holds the live instance, its
+captures and its `.venv`. Below, `LAB` is the lab host's name and `LAB_IP` its address.
 
 Two capture axes, deliberately separate. Both write one JSON object per
 exchange with method, path, **every query param in order**, every header and
@@ -233,10 +247,10 @@ fact about status and headers, not something to keep on disk.
 
 | Endpoint | What |
 |---|---|
-| `http://kids:32400` | the reference PMS |
-| `http://kids:9081` | mitmweb, client axis (password `plexlab`) |
-| `http://kids:7902` | the browser's desktop, for watching a session run |
-| `http://100.101.10.1:9224` | CDP, for driving it. **Not** `http://kids:9224`: Chrome refuses a `Host` that is not an IP or localhost, and nothing rewrites it on this port (only kids' 9222 has Caddy in front). Verified 2026-09-22. |
+| `http://LAB:32400` | the reference PMS |
+| `http://LAB:9081` | mitmweb, client axis (password `plexlab`) |
+| `http://LAB:7902` | the browser's desktop, for watching a session run |
+| `http://LAB_IP:9224` | CDP, for driving it. **Not** `http://LAB:9224`: Chrome refuses a `Host` that is not an IP or localhost, and nothing rewrites it on this port. Verified 2026-09-22. |
 
 ### Setting it up from scratch
 
@@ -390,8 +404,8 @@ settling. A larger number than that means the harness, not the target.
 ### The disposable write reference: plexscratch
 
 The lab is read-only for hunts. **Writes are measured on `plexscratch`**, a sanitised
-copy of the lab's config on kids (`harness/scratch/`, deployed to `/home/ben/plexscratch`),
-answering at `http://100.101.10.1:32410`:
+copy of the lab's config on the lab host (`harness/scratch/`, deployed beside the lab),
+answering at `http://LAB_IP:32410`:
 
 ```bash
 ./scratch.sh make     # once: pause the lab for the copy, sanitise it into pristine/
@@ -407,7 +421,7 @@ answering at `http://100.101.10.1:32410`:
   `internal: true` network with no route out. `status` proves the isolation each time.
 - **An unclaimed PMS admits only loopback, and only with a local `Host`.** A request from
   an allowed network is logged "Allowed Network (Subnet)" and still 401s; so is loopback
-  with `Host: 100.101.10.1:32410`, and any `X-Forwarded-For` makes it WAN. So a socat hop
+  with `Host: LAB_IP:32410`, and any `X-Forwarded-For` makes it WAN. So a socat hop
   inside PMS's namespace makes every request loopback, and clients send the copy's own
   `.LocalAdminToken`. A session's client address therefore reads 127.0.0.1 there.
 - **Do not put the hop on 32401.** PMS binds that port itself and exits at start with
@@ -468,10 +482,10 @@ python3 tests/test_prefix_registry.py       # 58 measured prefix shapes
 python3 tests/test_regional_prefs.py        # the regional prefs documents, cell by cell
 python3 tests/test_part_bytes.py            # part reads against a local zurg stub
 python3 tests/test_native_transcode.py      # the transcoder against generated clips behind a local zurg; needs ffmpeg
-                                            # (REX_TRANSCODER, else PATH's); on zen REX_TRANSCODE_HW=vaapi with jellyfin-ffmpeg
+                                            # (REX_TRANSCODER, else PATH's); with an Intel GPU REX_TRANSCODE_HW=vaapi and jellyfin-ffmpeg
 python3 tests/test_feed.py                  # the feed API against a stub source: auth, upsert, late ids, held
                                             # items, trash and return, snapshot reconcile and guards, migration
-python3 tests/test_feed_versions.py         # two releases of one title: one row, a Media each (fun's real 127 Hours)
+python3 tests/test_feed_versions.py         # two releases of one title: one row, a Media each (a real library's 127 Hours)
 python3 tests/test_sources.py               # sources that are not zurg: a server ignoring Range, a redirect to a CDN
 python3 tests/test_server_command.py        # the launcher's native default and python override
 cargo test --manifest-path rust/Cargo.toml  # the Rust unit tests
@@ -485,11 +499,11 @@ with no `ZURG_URL` a part read is the routed 502 its checks expect.
 `test_all.py` and `conformance.py` need a live catalog and the same credentials.
 A provider account behind zurg is read-only in tests: read bytes, never add or delete.
 
-Where to run them: service and end-to-end tests run on **zen** (the workspace rule),
-with the native binary cross-built on the Mac --
+Where to run them: service and end-to-end tests run on a test host, never on a production
+one, with the native binary built in Docker where there is no Rust toolchain --
 `docker run --rm --platform linux/amd64 -v "$PWD":/src -v <target dir outside the repo>:/target -e CARGO_TARGET_DIR=/target -w /src/rust rust:1-bullseye cargo build --release`
--- and copied to `rust/target/release/rex` in the zen copy. Keep every test port
-**below 32768**: zen's ephemeral range starts there, so a port inside it is taken now and
+-- and copied to `rust/target/release/rex` in the test host's copy. Keep every test port
+**below 32768**: Linux's ephemeral range starts there by default, so a port inside it is taken now and
 then by an outgoing connection and the server fails to bind (the cause of the old
 "flaky" `--web-root` sub-server crash). The UI suite binds three sub-servers of its own
 on fixed ports (`gated_port`, `web_port_c16y`, `port_c29l`, 32597-32599); two suites at
@@ -530,13 +544,14 @@ precisely how the Seasons bug survived a fix attempt.
 ## CI and releases
 
 `.github/workflows/ci.yml` runs on every push to `main` and every pull request: a release
-build on GitHub's `ubuntu-22.04` (glibc 2.35, what zen and fun run), `cargo test`, and the
+build on GitHub's `ubuntu-22.04` (glibc 2.35, so the binary runs on 22.04 and newer), `cargo test`, and the
 black-box suites that need no credentials. A tag or a manual run (Actions, "Run workflow")
 also builds linux arm64 (cross-compiled, smoke-tested under qemu) and macOS arm64 and amd64
 on `macos-14` (the arm64 one runs suites natively), and Windows amd64, cross-compiled with
 MinGW on Linux and then tested on `windows-2022` (the unit tests and every suite but
 `test_manager`, since `manager.py` is Unix only). Those are the platforms zurg's own
-releases are downloaded for. It never runs on the org's self-hosted runner, which is fun.
+releases are downloaded for. It never runs on the org's self-hosted runner, which is a
+production host.
 
 A release is a tag. Set `version` in `rust/Cargo.toml`, push that to `main`, wait for CI,
 then tag the tested commit with the release notes as the tag message and push the tag:
@@ -548,7 +563,7 @@ git tag -a v0.2.0 -F notes.md <tested commit> && git push origin v0.2.0
 The tag's run tests again, checks the tag matches `Cargo.toml`, and publishes
 `rex-vX.Y.Z-{linux,darwin}-{amd64,arm64}.tar.gz`, `rex-vX.Y.Z-windows-amd64.zip` and `SHA256SUMS` as the GitHub release, titled `rex X.Y.Z`
 with the tag message as its notes. The archive keeps the repository's layout (the binary at
-`rust/target/release/rex`, the sidecars and the tools beside it), so every command in the
+`rust/target/release/rex`, the sidecars in `data/`, the tools in `oracle/`), so every command in the
 docs works the same from a release as from a checkout.
 
 ## Differential instruments
@@ -579,4 +594,4 @@ the result before changing the emulation.
 - Atomic commits, semantic single-line messages (`fix: emit totalSize on paged
   children`), authored as `Ben Adrian Sarmiento <me@bensarmiento.com>`.
 - Never commit a token, a provider download link, zurg's credentials, a Plex token, or
-  a tunnel credential. The repo is private; that is not a reason to relax this.
+  a tunnel credential. The repo is public.

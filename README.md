@@ -39,7 +39,7 @@ cargo build --release --manifest-path rust/Cargo.toml
 
 Both put rex at `rust/target/release/rex`.
 
-On Windows unpack the zip and use `python` where the steps say `python3` and `rust\target\release\rex.exe` where they say `rust/target/release/rex`. `run.sh.example` and `manager.py` are for Linux and macOS only.
+On Windows unpack the zip and use `python` where the steps say `python3` and `rust\target\release\rex.exe` where they say `rust/target/release/rex`. `examples/run.sh.example` and `oracle/manager.py` are for Linux and macOS only.
 
 **2. Tell rex where your files are**
 

@@ -79,7 +79,7 @@ Answers `200` with what happened:
 ```
 
 A removed id's row goes to the trash the way a real PMS trashes a missing file
-(plexscratch, `missing_file_scan_s43.json`): `deletedAt` on the row and its Media,
+(measured on a writable copy of a real PMS, `tests/fixtures/missing_file_scan_s43.json`): `deletedAt` on the row and its Media,
 announced as a `type -1` state 3/5 pair, or deleted at once with one `state 9` frame
 when `autoEmptyTrash` is on. The same id pushed again before the trash is emptied
 restores the **same** row and key; after `emptyTrash` it is a new row on a new key. A
@@ -172,7 +172,7 @@ What the fields do:
 - **Versions.** A release identified as a title already here -- the same agent guid in the
   same section, and for an episode the same season -- is no new row: it joins that row as
   another Media, as a real PMS offers several files of one movie as versions (2026-10-11,
-  fun: 407 movies and ~1,370 episodes were listed twice). The row someone watched
+  on one real library 407 movies and ~1,370 episodes were listed twice). The row someone watched
   survives, else the oldest; a pushed row that is unmatched (`local://`), trashed or
   awaiting a probe never folds. Each id stays addressable: the listing names every id on
   the row's key, a push updates its own Part, a part read streams from its own source and

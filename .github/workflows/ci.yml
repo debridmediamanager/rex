@@ -9,12 +9,12 @@ name: CI
 # 2026-10-12 above the flat number every asset gets from whatever fetches them all: linux
 # amd64 and arm64, macOS amd64 and arm64, Windows amd64.
 #
-# GitHub-hosted runners, not the org's self-hosted one: that runner is fun, which is
-# production. ubuntu-22.04 links against glibc 2.35, what zen and fun run, so the Linux
-# binaries run on them and on anything newer. macOS and Windows minutes cost ten and two
-# times Linux ones on a private repository, which is why those build only for a tag or a
-# manual run. Windows is cross-compiled with MinGW on Linux (no Visual Studio needed) and
-# then tested on a Windows runner.
+# GitHub-hosted runners, not the org's self-hosted one: that runner is production.
+# ubuntu-22.04 links against glibc 2.35, so the Linux binaries run on Ubuntu 22.04 and
+# anything newer. macOS and Windows minutes cost ten and two times Linux ones on a private
+# repository, which is why those build only for a tag or a manual run. Windows is
+# cross-compiled with MinGW on Linux (no Visual Studio needed) and then tested on a Windows
+# runner.
 
 on:
   push:
