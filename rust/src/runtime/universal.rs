@@ -77,11 +77,16 @@ pub(crate) struct Hardware {
     /// jellyfin-ffmpeg's `tonemapx`; upstream FFmpeg has none, and an HDR source then
     /// converts untonemapped rather than failing on every path.
     pub tonemapx: bool,
+    /// Ask the source for bounded ranges (`-request_size`). Windows only: jellyfin-ffmpeg
+    /// 8.1.3's Windows build reads an abandoned open-ended range to its end, so a seek into
+    /// a 74 MB file read 150 MB and took 78 s at 2 MB/s, against 2.2 MB on Linux, macOS and
+    /// Gyan's Windows build (measured 2026-10-12). Bounded, it read 3.9 MB in 2 s.
+    pub bounded_http: bool,
 }
 
 impl Hardware {
     fn software() -> Self {
-        Self { accel: Accel::None, decode: HashSet::new(), encode: false, tonemapx: false }
+        Self { accel: Accel::None, decode: HashSet::new(), encode: false, tonemapx: false, bounded_http: false }
     }
 }
 
@@ -392,6 +397,9 @@ pub(crate) fn ffmpeg_args(plan: &Plan, path: Path, hardware: &Hardware, start: i
         "-reconnect", "1", "-reconnect_on_network_error", "1", "-reconnect_delay_max", "4",
         "-probesize", "4M", "-analyzeduration", "4M", "-fflags", "+genpts",
     ]);
+    if hardware.bounded_http {
+        push(&mut args, &["-initial_request_size", "1048576", "-request_size", "8388608"]);
+    }
     if let Some(auth) = &plan.auth {
         // ponytail: the credential is visible in this host's process list; a loopback
         // relay through rex would hide it, worth it once a source with auth is shared.
@@ -703,12 +711,13 @@ impl Transcoder {
         thread::spawn(move || {
             let found = probing.probe();
             info!(
-                "transcoder: {} ({}), hardware {} encode={} tonemapx={} decode=[{}]",
+                "transcoder: {} ({}), hardware {} encode={} tonemapx={} bounded_http={} decode=[{}]",
                 probing.ffmpeg.display(),
                 probing.root.display(),
                 found.accel.name(),
                 found.encode,
                 found.tonemapx,
+                found.bounded_http,
                 {
                     let mut names = found.decode.iter().cloned().collect::<Vec<_>>();
                     names.sort();
@@ -749,6 +758,11 @@ impl Transcoder {
         let mut found = self.probe_device();
         let filters = Command::new(&self.ffmpeg).args(["-hide_banner", "-filters"]).stdin(Stdio::null()).stderr(Stdio::null()).output();
         found.tonemapx = filters.is_ok_and(|output| String::from_utf8_lossy(&output.stdout).contains(" tonemapx "));
+        // An FFmpeg too old for the option refuses to start with it, so ask first.
+        found.bounded_http = cfg!(windows) && {
+            let help = Command::new(&self.ffmpeg).args(["-hide_banner", "-h", "protocol=http"]).stdin(Stdio::null()).stderr(Stdio::null()).output();
+            help.is_ok_and(|output| String::from_utf8_lossy(&output.stdout).contains("-request_size"))
+        };
         found
     }
 
@@ -808,7 +822,7 @@ impl Transcoder {
                 }
                 let _ = std::fs::remove_file(&sample);
             }
-            return Hardware { accel, decode, encode: true, tonemapx: false };
+            return Hardware { accel, decode, encode: true, tonemapx: false, bounded_http: false };
         }
         Hardware::software()
     }
@@ -2047,6 +2061,18 @@ mod tests {
     }
 
     #[test]
+    fn bounded_requests_follow_the_probe() {
+        let video_plan = plan(false, 60_000);
+        let joined = |hardware: &Hardware| ffmpeg_args(&video_plan, Path::Software, hardware, 0, std::path::Path::new("/tmp/x")).join(" ");
+        assert!(!joined(&Hardware::software()).contains("-request_size"));
+        let bounded = Hardware { bounded_http: true, ..Hardware::software() };
+        let args = joined(&bounded);
+        // Input options: before `-i`, or FFmpeg applies them to the output.
+        let at = args.find("-request_size 8388608").expect("bounded requests");
+        assert!(args.contains("-initial_request_size 1048576") && at < args.find(" -i ").unwrap(), "{args}");
+    }
+
+    #[test]
     fn a_dash_run_keeps_the_titles_clock() {
         let mut dash = plan(false, 60_000);
         dash.protocol = Protocol::Dash;
@@ -2110,7 +2136,7 @@ mod tests {
 
     #[test]
     fn the_device_path_keeps_frames_on_the_device() {
-        let hardware = Hardware { accel: Accel::Vaapi("/dev/dri/renderD128".into()), decode: HashSet::from(["hevc".to_string()]), encode: true, tonemapx: true };
+        let hardware = Hardware { accel: Accel::Vaapi("/dev/dri/renderD128".into()), decode: HashSet::from(["hevc".to_string()]), encode: true, tonemapx: true, bounded_http: false };
         let video_plan = plan(false, 60_000);
         assert_eq!(ladder(&video_plan, &hardware), vec![Path::Full, Path::EncodeOnly, Path::Software]);
         let full = ffmpeg_args(&video_plan, Path::Full, &hardware, 0, std::path::Path::new("/tmp/x")).join(" ");
