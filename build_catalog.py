@@ -1,13 +1,18 @@
 #!/usr/bin/env python3
 """Write rex's catalog: the server's identity and its libraries.
 
-The library itself is zurg's. The native server lists each library's folder on zurg's
-WebDAV and adds what it finds -- probed by zurg, identified, placed -- whenever zurg
-asks it to scan (zurg's `plex_server_url` pointed at rex), and at start. So a new
-server's catalog is a seed: a machineIdentifier, a name, and a movie and a show
-library whose locations are folders under zurg's mount:
+The library itself is what rex's sources push (docs/feed-api.md). A pushed item lands
+in the library whose folder holds its `file`, so a new server's catalog is a seed: a
+machineIdentifier, a name, and a movie and a show library whose locations are folders
+under each source's mount (zurg's `mount_path`):
 
-    ./build_catalog.py --seed --name den --zurg-mount /mnt/zurg --out rex.db
+    ./build_catalog.py --seed --name den --mount /mnt/zurg --out rex.db
+
+`--mount`, `--movies` and `--shows` repeat: each library holds every folder under
+every mount, so several sources fill the same two libraries:
+
+    ./build_catalog.py --seed --name den --mount /mnt/zurg --mount /mnt/zurg_ad \
+        --shows shows --shows anime --out rex.db
 
 An `--out` ending in `.db` writes the catalog into a SQLite database instead (see
 catalogdb.py), which the server takes as `--catalog` and keeps its state in too. An
@@ -36,11 +41,15 @@ def main():
     parser.add_argument("--name", default="rex", help="friendlyName the clients show")
     parser.add_argument("--seed", action="store_true",
                         help="write an empty library for a zurg-backed server")
-    parser.add_argument("--zurg-mount", default="/mnt/zurg", help="with --seed: zurg's mount_path")
-    parser.add_argument("--movies", default="movies",
-                        help="with --seed: the zurg directory the movie library holds")
-    parser.add_argument("--shows", default="shows",
-                        help="with --seed: the zurg directory the show library holds")
+    parser.add_argument("--mount", "--zurg-mount", dest="mounts", action="append",
+                        help="with --seed: a source's mount (zurg's mount_path); repeat for "
+                             "several. Default /mnt/zurg")
+    parser.add_argument("--movies", action="append",
+                        help="with --seed: a directory the movie library holds under each "
+                             "mount; repeat for several. Default movies")
+    parser.add_argument("--shows", action="append",
+                        help="with --seed: a directory the show library holds under each "
+                             "mount; repeat for several. Default shows")
     parser.add_argument(
         "--convert",
         metavar="JSON",
@@ -78,14 +87,26 @@ def main():
     machine = existing_machine(args.out) or hashlib.sha1(
         ("plexsim/" + args.name).encode()).hexdigest()[:40]
     sections = hierarchy_module.sections(args.name)
-    mount = args.zurg_mount.rstrip("/")
-    for section, folder in zip(sections, (args.movies, args.shows)):
-        # zurg's own Plex integration finds a library by its location, and sends
-        # `<mount>/<directory>/<release>` as the scan's path.
-        section["Location"] = [{"id": int(section["key"]), "path": "%s/%s" % (mount, folder)}]
+    seed_locations(sections, args.mounts or ["/mnt/zurg"], args.movies or ["movies"],
+                   args.shows or ["shows"])
     save_catalog(args.out, {"machineIdentifier": machine, "friendlyName": args.name,
                             "sections": sections, "items": []})
     print("wrote %s: an empty library, machine=%s" % (args.out, machine))
+
+
+def seed_locations(sections, mounts, movies, shows):
+    """Each library holds every one of its folders under every mount. zurg's own Plex
+    integration finds a library by its location, and the feed places an item by its
+    `<mount>/<directory>/<release>/<file>`. Location ids are numbered across libraries,
+    so one mount and one folder each keeps the ids the seed always wrote (1 and 2)."""
+    next_id = 1
+    for section, folders in zip(sections, (movies, shows)):
+        section["Location"] = []
+        for mount in mounts:
+            for folder in folders:
+                section["Location"].append({"id": next_id,
+                                            "path": "%s/%s" % (mount.rstrip("/"), folder.strip("/"))})
+                next_id += 1
 
 
 def existing_machine(out):

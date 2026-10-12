@@ -10,6 +10,7 @@ derived it from `--name` every time, so rebuilding a managed server's catalog (i
 import json
 import os
 import shutil
+import subprocess
 import sys
 import tempfile
 
@@ -40,6 +41,30 @@ try:
     empty = os.path.join(work, "empty.db")
     open(empty, "wb").close()
     check("an empty file: none", build_catalog.existing_machine(empty) is None)
+
+    # -- --seed: one library per type, holding every folder under every mount ------------
+    def seed(*flags):
+        out = os.path.join(work, "seed.json")
+        if os.path.exists(out):
+            os.remove(out)
+        subprocess.run([sys.executable, os.path.join(os.path.dirname(HERE), "build_catalog.py"),
+                        "--seed", "--out", out] + list(flags), check=True, stdout=subprocess.DEVNULL)
+        return {section["type"]: section["Location"] for section in json.load(open(out))["sections"]}
+
+    check("one mount: the locations the seed always wrote",
+          seed("--zurg-mount", "/mnt/zurg") == {"movie": [{"id": 1, "path": "/mnt/zurg/movies"}],
+                                                 "show": [{"id": 2, "path": "/mnt/zurg/shows"}]},
+          seed("--zurg-mount", "/mnt/zurg"))
+    # fun's two libraries, read from its rex.db: three zurgs, anime beside shows.
+    fun = seed("--mount", "/mnt/zurg", "--mount", "/mnt/zurg_ad/", "--mount", "/mnt/zurg_tb",
+               "--shows", "shows", "--shows", "anime")
+    check("several mounts and folders: each library holds every folder under every mount",
+          [row["path"] for row in fun["movie"]] == ["/mnt/zurg/movies", "/mnt/zurg_ad/movies", "/mnt/zurg_tb/movies"]
+          and [row["path"] for row in fun["show"]] == ["/mnt/zurg/shows", "/mnt/zurg/anime", "/mnt/zurg_ad/shows",
+                                                       "/mnt/zurg_ad/anime", "/mnt/zurg_tb/shows", "/mnt/zurg_tb/anime"],
+          fun)
+    ids = [row["id"] for rows in fun.values() for row in rows]
+    check("and every location has its own id", len(set(ids)) == len(ids) == 9, ids)
 finally:
     shutil.rmtree(work, ignore_errors=True)
 failed = results.count(False)
