@@ -115,3 +115,7 @@ rex is written in Rust. A Python version stays in the tree as the reference the 
 ## Status
 
 It started as an experiment and got further than expected. It is not a product. It has no multi user story and it does not try to replace Plex.
+
+## License
+
+MIT. See [LICENSE](LICENSE).

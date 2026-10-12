@@ -286,7 +286,7 @@ jobs:
             install -m 755 "artifacts/rex-$platform/$binary" "$name/rust/target/release/$binary"
             git ls-files -z -- ':(top,glob)*.json' ':(top,glob)*.xml' favicon.ico \
                 build_catalog.py catalogdb.py hierarchy.py metadata.py manager.py \
-                run.sh.example cloudflared.example.yml README.md docs/setup.md docs/feed-api.md \
+                run.sh.example cloudflared.example.yml README.md LICENSE docs/setup.md docs/feed-api.md \
               | xargs -0 cp --parents -t "$name"
             if [ "$platform" = windows-amd64 ]; then
               zip -qr "$name.zip" "$name"

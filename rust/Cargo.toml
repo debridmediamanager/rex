@@ -3,7 +3,7 @@ name = "rex"
 version = "0.2.0"
 edition = "2021"
 description = "Native Plex protocol emulator (migration bootstrap)"
-license = "UNLICENSED"
+license = "MIT"
 
 [dependencies]
 serde_json = { version = "1.0", features = ["preserve_order"] }
