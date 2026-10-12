@@ -1,5 +1,5 @@
 {
- "_provenance": "Cycle 60. The words a stream's titles are composed from, per X-Plex-Language, read off plexscratch42's language-less audio track (movie 2, `Unknown`) and zen's forced (movie 1924) and SDH (movie 2925) English subtitles, as the displayTitle less the stream's own localised language name. `External` is the suffix of zen's sidecar subtitle (movie 19813).",
+ "_provenance": "Cycle 60. The words a stream's titles are composed from, per X-Plex-Language, read off plexscratch42's language-less audio track (movie 2, `Unknown`) and the 1.42.2 reference's forced (movie 1924) and SDH (movie 2925) English subtitles, as the displayTitle less the stream's own localised language name. `External` is the suffix of the 1.42.2 reference's sidecar subtitle (movie 19813).",
  "words": {
   "External": {
    "af": "Ekstern",

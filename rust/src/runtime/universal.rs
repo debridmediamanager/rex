@@ -18,7 +18,8 @@
 //! there and the segmenter's `-initial_offset` putting them back on the title's clock.
 //! Plex's own fork keeps absolute timestamps (`-copyts` + its `-segment_copyts`); on
 //! upstream FFmpeg 8 that pair wrote ONE unreadable segment for a seeked remux
-//! (measured on zen, jellyfin-ffmpeg 8.1.3), where the offset cuts every boundary.
+//! (measured on the test host, jellyfin-ffmpeg 8.1.3), where the offset cuts every
+//! boundary.
 
 use super::*;
 use std::collections::BTreeMap;
@@ -29,8 +30,8 @@ use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 
 /// A converted segment's length. rex places a keyframe on every boundary, so it can be
-/// short, and the first one is what a play start waits for: on zen's GPU a 2 s segment
-/// is finished 1.3 s after FFmpeg starts, a 5 s one 2.4 s (measured, HEVC 1080p).
+/// short, and the first one is what a play start waits for: on the test host's iGPU a 2 s
+/// segment is finished 1.3 s after FFmpeg starts, a 5 s one 2.4 s (measured, HEVC 1080p).
 const TRANSCODE_SEGMENT: u32 = 2;
 /// A remux cannot place keyframes, so its cut points are wherever the source's GOP
 /// allows; Plex remuxes in 10 s segments for the same reason.
@@ -233,7 +234,7 @@ impl Plan {
             length * 2,
             // Ours, not the reference's 2x segment: Plex Web's Shaka player starts only
             // once max(minBufferTime, 2 s) is buffered, so PT10S held every start for
-            // two 5 s segments (6.3 s to first frame on zen, measured).
+            // two 5 s segments (6.3 s to first frame on the test host, measured).
             length
         );
         let mut id = 0;
@@ -480,8 +481,8 @@ pub(crate) fn ffmpeg_args(plan: &Plan, path: Path, hardware: &Hardware, start: i
         // One fragmented MP4 per representation, `init-<rep>.m4s` and `chunk-<rep>-<n>.m4s`
         // numbered from 1 in the run's own directory. The MP4 muxer rebases every
         // fragment to zero unless told the fragments are discontinuous; with
-        // `frag_discont` and the offset, `tfdt` is the title's clock (measured on zen:
-        // a run from 600 s writes tfdt 14 400 000 at timescale 24 000).
+        // `frag_discont` and the offset, `tfdt` is the title's clock (measured on the
+        // 1.42.2 reference: a run from 600 s writes tfdt 14 400 000 at timescale 24 000).
         if offset > 0 {
             push(&mut args, &["-output_ts_offset", &offset.to_string()]);
         }
@@ -1185,7 +1186,8 @@ impl Transcoder {
                             // Only the newest request moves FFmpeg, and only once. A request
                             // the player has since left behind (it seeked elsewhere) gives up:
                             // two of them restarting in turn at their own positions was a
-                            // loop (3 531 restarts in seconds on zen, until zurg 5xx'd).
+                            // loop (3 531 restarts in seconds on the test host, until zurg
+                            // 5xx'd).
                             if state.requests != ticket || restarted {
                                 if state.requests != ticket {
                                     return Err(404);

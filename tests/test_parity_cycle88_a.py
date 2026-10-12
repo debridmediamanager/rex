@@ -2,8 +2,8 @@
 """Cycle 88, territory A (localisation): a modern agent's `Language` rows in the locales
 Plex Web ships that `agent_languages.json` did not hold.
 
-`tests/fixtures/c88_a_agent_languages_zen.json` was read off zen (1.42.2) as XML, the only
-form that carries every row, and kids (1.43.4) answers the same lists. Plex Web 4.162.1 ships
+`tests/fixtures/c88_a_agent_languages_zen.json` was read off the 1.42.2 reference as XML, the only
+form that carries every row, and plexlab (1.43.4) answers the same lists. Plex Web 4.162.1 ships
 43 locales and sends its own as `X-Plex-Language`; the table held 29 of them, so in af, bg,
 el, en-GB, es-419, fa, fr-CA, is, my, no, pt-BR, sl, sr, vi and zh-TW both servers answered
 the NO-HEADER list -- every language named in itself, `en-US` preselected -- where a real PMS
@@ -108,7 +108,7 @@ def main():
                     wrong.append((path, "no modern agent"))
             default = next(r for r in documents["mediaType=1 tv.plex.agents.movie"] if len(r) > 2)
             check("%s: every modern agent's Language rows are titled, ordered and preselected "
-                  "as zen's (%s %s)" % (language, default[0], default[1]), not wrong, wrong[:3])
+                  "as the 1.42.2 reference's (%s %s)" % (language, default[0], default[1]), not wrong, wrong[:3])
     finally:
         process.terminate()
         process.wait(timeout=10)

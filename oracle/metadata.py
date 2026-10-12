@@ -279,7 +279,7 @@ class PlexProvider:
     def match_title(self, kind, title, year=None, filename=None):
         """The provider's own match for a release name, as a real PMS asks for it.
 
-        plexlab's outbound capture (kids, 1.43.4) holds the body a scan sends:
+        plexlab's outbound capture (1.43.4) holds the body a scan sends:
         `{"excludeElements": "Media", "type": 1, "title": "Big Buck Bunny", "year": 2008,
         "filename": "Big Buck Bunny (2008)/Big Buck Bunny (2008) - 1080p.mkv", "hash":
         ...}`, answered with one row whose `Guid` list carries `imdb://` and `tmdb://`.
@@ -510,9 +510,9 @@ def enrich(row, tmdb, parsed, chosen=None):
         # An episode identifies as itself. Cycle 44 REFUTED the second half of the note
         # that used to stand here -- "carries no Guid[], matching a real PMS, which
         # leaves season and episode Guid arrays empty". Both references carry them:
-        # kids' episode 8 is `imdb://tt0579539`, `tmdb://1048594`, `tvdb://297989`, and
-        # 58 of 60 zen episodes surveyed carry a `Guid` block. The ids were already
-        # being fetched here and then thrown away.
+        # plexlab's episode 8 is `imdb://tt0579539`, `tmdb://1048594`, `tvdb://297989`, and
+        # 58 of 60 episodes of the 1.42.2 reference surveyed carry a `Guid` block. The ids were
+        # already being fetched here and then thrown away.
         row["guid"] = plex_guid("episode", episode_imdb or "tmdb:%s" % episode_tmdb)
         episode_externals = []
         if episode_imdb:
@@ -529,7 +529,8 @@ def enrich(row, tmdb, parsed, chosen=None):
         row["guid"] = plex_guid("movie", imdb_id or "tmdb:%s" % tmdb_id)
         row["Guid"] = externals
     # An episode TMDB does not have keeps the guid it had: it was minted a MOVIE guid
-    # and given its show's ids (zen's Tom and Jerry S02E05 under a one-season show).
+    # and given its show's ids (the 1.42.2 reference's Tom and Jerry S02E05 under a one-season
+    # show).
 
     # The show's identity, for the parent row the hierarchy builds.
     row["_show_external_guids"] = externals
@@ -559,7 +560,7 @@ def enrich(row, tmdb, parsed, chosen=None):
             if season_details.get("id"):
                 row["_season_guid"] = plex_guid("season", season_details["id"])
                 # Cycle 44: and the season's EXTERNAL ids, which a real PMS carries and
-                # this pipeline fetched and discarded -- kids' season 7 answers
+                # this pipeline fetched and discarded -- plexlab's season 7 answers
                 # `tmdb://3846` and `tvdb://15791`.
                 season_externals = [{"id": "tmdb://%s" % season_details["id"]}]
                 season_tvdb = (season_details.get("external_ids") or {}).get("tvdb_id")
@@ -569,8 +570,8 @@ def enrich(row, tmdb, parsed, chosen=None):
             if season_details.get("poster_path"):
                 row["_season_poster"] = IMAGE_BASE + "w342" + season_details["poster_path"]
             # Cycle 44: the season's own air-date YEAR is deliberately NOT stored as
-            # the season's `year`. Measured over zen's whole show library: 689 of its
-            # 742 seasons carry `parentYear` and exactly ONE carries a `year` of its
+            # the season's `year`. Measured over the 1.42.2 reference's whole show library: 689
+            # of its 742 seasons carry `parentYear` and exactly ONE carries a `year` of its
             # own (and that one's sort title is its agent's arc name, not `Season N`).
             # A real Plex series agent gives a season the SHOW's year as `parentYear`;
             # writing TMDB's season air-date year into the season's own column put

@@ -2,9 +2,10 @@
 #
 # plexscratch is a copy of the lab's config and therefore 1.43.4. Four open questions
 # (cycles 21, 25, 27, 28) all said "a writable 1.42.2 copy" would settle them. This is that:
-# a FRESH install of 1.42.2.10156 -- the exact build zen runs -- with its own config, the
-# lab's media mounted READ-ONLY, no route to plex.tv, and the same loopback hop plexscratch
-# uses (an unclaimed PMS admits only loopback, and only with a local Host header).
+# a FRESH install of 1.42.2.10156 -- the exact build the 1.42.2 reference runs -- with its
+# own config, the lab's media mounted READ-ONLY, no route to plex.tv, and the same loopback
+# hop plexscratch uses (an unclaimed PMS admits only loopback, and only with a local Host
+# header).
 #
 # It is fresh rather than copied, so there is no identity to strip: it has never held a
 # plex.tv token and cannot announce anything. Its items are UNMATCHED by construction --

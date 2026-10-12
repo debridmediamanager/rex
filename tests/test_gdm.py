@@ -3,7 +3,7 @@
 
 No server and no network: the fixture in tests/fixtures/gdm/ is the exact bytes each
 reference answered on 2026-09-18, and the trigger table is the byte-by-byte bisection
-run against zen (1.42.2). Run it with `python3 tests/test_gdm.py`.
+run against the 1.42.2 reference. Run it with `python3 tests/test_gdm.py`.
 """
 import json
 import os
@@ -46,7 +46,8 @@ def main():
             entry["label"], entry["version"],
             "claimed" if entry.get("host") else "unclaimed"), got, want)
 
-    # 2. The trigger is a prefix compare over min(len(datagram), 11), bisected on zen.
+    # 2. The trigger is a prefix compare over min(len(datagram), 11), bisected on the 1.42.2
+    #    reference.
     for case in recorded["trigger"]:
         payload = bytes.fromhex(case["hex"])
         check("trigger %s" % case["label"], gdm.matches(payload), case["answers"])
@@ -108,12 +109,12 @@ def main():
         check("a peer's answer becomes a /servers row",
               [(r["machine"], r["name"], r["address"], r["port"], r["version"]) for r in rows],
               [("p" * 40, "other", "10.9.8.7", 32400, "1.43.4.10903-e5521bd8c")])
-        # Its own reply is dropped: zen lists itself ONCE.
+        # Its own reply is dropped: the 1.42.2 reference lists itself ONCE.
         disco._record(disco.response(), ("127.0.0.1", 32414))
         check("the server's own answer is not a peer", len(disco.peers()), 1)
         # Cycle 50: the table is keyed by ADDRESS, not by machineIdentifier. Measured on
-        # zen with three responders at one address: it never listed two rows for that
-        # address, while distinct addresses are listed side by side.
+        # the 1.42.2 reference with three responders at one address: it never listed two
+        # rows for that address, while distinct addresses are listed side by side.
         second = gdm.build_response(name="second", port=32401, machine="q" * 40,
                                     version="1.42.2.10156-f737b826c", updated_at=1789000002)
         disco._record(second, ("10.9.8.7", 32414))

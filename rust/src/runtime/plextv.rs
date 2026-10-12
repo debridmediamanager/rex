@@ -37,9 +37,9 @@ const SERVICES_URL: &str = "https://servers.plex.tv/api/v2/server/users/services
 const SERVERS_URL: &str = "https://plex.tv/servers.xml";
 const PUBSUB_URL: &str = "https://pubsub.plex.tv/sub/eventsource/%s/%s";
 const ACCESS_TOKENS_URL: &str = "https://plex.tv/api/v2/server/access_tokens";
-/// `claim.ACCESS_REFRESH_WINDOW`: zen's 1.42.2 PMS re-reads the access-token list for an
-/// unknown token unless its last read finished about 6 s ago or less
-/// (tests/fixtures/plextv_access_tokens_s1422.json).
+/// `claim.ACCESS_REFRESH_WINDOW`: the 1.42.2 reference's 1.42.2 PMS re-reads the
+/// access-token list for an unknown token unless its last read finished about 6 s ago or
+/// less (tests/fixtures/plextv_access_tokens_s1422.json).
 const ACCESS_REFRESH_WINDOW: Duration = Duration::from_secs(6);
 /// `claim.PUBSUB_TIMEOUT` / `PUBSUB_RETRY` (the probe PMS, measured).
 const PUBSUB_TIMEOUT: u64 = 20;

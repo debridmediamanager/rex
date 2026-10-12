@@ -156,7 +156,7 @@ def one_write_touches_few_rows():
         server = Instance(catalog, state=state, wait=180)
         # A write is saved before it is answered; finding what changed must not cost
         # the whole library. With every row serialised to diff it, each of these took
-        # 2.7 s on zen against 2.2 ms without a state file.
+        # 2.7 s on the test host against 2.2 ms without a state file.
         took = []
         for index in range(5):
             started = time.monotonic()

@@ -3,7 +3,7 @@
 
 Each step is the exact request Plex for Mac / Plex Web was observed making, and
 each response is checked against the shape a real PMS returns for the same step
-(captured from fun). Key-level comparison is not enough: the `viewMode` bug was
+(captured from the production server). Key-level comparison is not enough: the `viewMode` bug was
 invisible to it, because both sides HAD the field and only the values were
 swapped -- a season list is 65593 and an episode list 65592, and rex had
 them inverted, so the client was handed the episode layout for a season list and
@@ -87,9 +87,10 @@ def main():
         in_progress = [item for item in episodes_for_show if item.get("viewOffset")]
         watched = [index for index, item in enumerate(episodes_for_show)
                    if item.get("viewCount")]
-        # Cycle 57 re-measured the pristine case on kids and zen: a show nothing of which
-        # has been watched or started carries its FIRST episode as OnDeck (kids' show 6
-        # carries episode 8), refuting cycle 41's "a pristine unwatched show omits it".
+        # Cycle 57 re-measured the pristine case on plexlab and the 1.42.2 reference: a show
+        # nothing of which has been watched or started carries its FIRST episode as OnDeck
+        # (plexlab's show 6 carries episode 8), refuting cycle 41's "a pristine unwatched show
+        # omits it".
         pristine = not in_progress and not watched
         expected_on_deck = bool(pristine or in_progress or (watched and any(
             not item.get("viewCount") for item in episodes_for_show[watched[-1] + 1:])))
@@ -108,7 +109,8 @@ def main():
         check("children 200", status == 200, "HTTP %s" % status)
         check("viewGroup=season", children.get("viewGroup") == "season",
               str(children.get("viewGroup")))
-        # The bug: fun returns 65593 for a season list. 65592 is the episode layout.
+        # The bug: the production server returns 65593 for a season list. 65592 is the episode
+        # layout.
         check("viewMode=65593 (season layout)", children.get("viewMode") == 65593,
               str(children.get("viewMode")))
         check("season count matches childCount", len(seasons) == (show.get("childCount") or 0),
@@ -202,9 +204,9 @@ def main():
                   status == expect, "HTTP %s" % status)
 
 
-    # Cycle 16, measured on kids (season 7, which owns no art) and zen (season 11114,
-    # which owns its own, and its episode 11115): a row that BORROWS its background
-    # carries the owner's path verbatim -- kids' season 7 and episode 8 both carry
+    # Cycle 16, measured on plexlab (season 7, which owns no art) and the 1.42.2 reference
+    # (season 11114, which owns its own, and its episode 11115): a row that BORROWS its
+    # background carries the owner's path verbatim -- plexlab's season 7 and episode 8 both carry
     # `/library/metadata/6/art/...` -- and its own `/art` is a 404. rex's
     # `_stamp_artwork` re-keyed every artwork URL to the row holding it, so a season
     # and its show claimed to own the same image under two paths and

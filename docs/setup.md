@@ -365,7 +365,7 @@ jellyfin-ffmpeg 8.1.3), on the CPU path, since the runners have no GPU.
 
 | Platform | GPU paths rex knows | Notes |
 |---|---|---|
-| Linux amd64 | VA-API (Intel, AMD), NVENC (NVIDIA), else x264 | VA-API measured on zen; the suite runs in CI |
+| Linux amd64 | VA-API (Intel, AMD), NVENC (NVIDIA), else x264 | VA-API measured on an Intel HD 510; the suite runs in CI |
 | Linux arm64 | the same, which on most ARM boards means x264 | not run in CI (it is emulated there) |
 | macOS | none: x264 always (no VideoToolbox path) | the suite runs in CI on Apple Silicon |
 | Windows | NVENC (NVIDIA), else x264 (no Quick Sync or AMF path) | the suite runs in CI and was run on a Windows 11 machine with an AMD GPU |

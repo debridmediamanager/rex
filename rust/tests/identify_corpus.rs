@@ -215,9 +215,9 @@ fn identify_corpus() {
     }
 }
 
-/// One release of each of the 285 shows fun's rex left unmatched on 2026-10-11 although
-/// zurg pushed the IMDb id DMM knows its hash by: 271 of those ids are an episode's
-/// (Arrow's tt2340185 is its pilot), which TMDB's /find answers under
+/// One release of each of the 285 shows the production rex left unmatched on 2026-10-11
+/// although zurg pushed the IMDb id DMM knows its hash by: 271 of those ids are an
+/// episode's (Arrow's tt2340185 is its pilot), which TMDB's /find answers under
 /// `tv_episode_results`, and each show stayed on `local://`.
 #[test]
 fn episode_ids_name_their_show() {
@@ -270,9 +270,10 @@ fn episode_ids_name_their_show() {
     assert!(missed.is_empty(), "{} of {shows} missed: {:?}", missed.len(), &missed[..missed.len().min(3)]);
 }
 
-/// Recorded on zen 2026-10-11. Plex's matcher answers `The.Tom.and.Jerry.Show.S02E05` with
-/// the 1975 series, one season long; TMDB's first hit is the 2014 series, five seasons.
-/// Plex won the dispute and every episode sat under a show with no season 2 or 3.
+/// Recorded on the test host 2026-10-11. Plex's matcher answers
+/// `The.Tom.and.Jerry.Show.S02E05` with the 1975 series, one season long; TMDB's first hit
+/// is the 2014 series, five seasons. Plex won the dispute and every episode sat under a
+/// show with no season 2 or 3.
 #[test]
 fn a_season_only_tmdb_has_decides_the_dispute() {
     let (corpus, tmdb, plex) = replay(concat!(

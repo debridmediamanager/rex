@@ -9,7 +9,7 @@
   "X-Plex-Device": "Windows",
   "X-Plex-Features": "external-media,indirect-media,hub-style-list"
  },
- "note": "`documents`: the reads Plex Web 4.162.1 and python-plexapi 4.18.2 make for an EMPTY music library whose answer moves with X-Plex-Language, in en/de/fr/ja, the library's number written {S}; uuids redacted. `vault_reads`: the random music.vault shelf of /hubs/sections/{S}, read in each of the 44 X-Plex-Language values Plex Web sends and en, once a minute for forty minutes, and on every hub page read for `documents` ([language, title, key]). `refusals`: six refusing Add Library forms (labels from c87_w4_add_library_refusals_s42.json) that between them raise all eleven lines, POSTed with no language, each of the 44 X-Plex-Language values Plex Web sends, en and hu-HU; nothing was created. `zen_photo_sorts`: zen's answer to a movie library's `sorts?type=13` (the photo sorts) in en/de/fr/ja.",
+ "note": "`documents`: the reads Plex Web 4.162.1 and python-plexapi 4.18.2 make for an EMPTY music library whose answer moves with X-Plex-Language, in en/de/fr/ja, the library's number written {S}; uuids redacted. `vault_reads`: the random music.vault shelf of /hubs/sections/{S}, read in each of the 44 X-Plex-Language values Plex Web sends and en, once a minute for forty minutes, and on every hub page read for `documents` ([language, title, key]). `refusals`: six refusing Add Library forms (labels from c87_w4_add_library_refusals_s42.json) that between them raise all eleven lines, POSTed with no language, each of the 44 X-Plex-Language values Plex Web sends, en and hu-HU; nothing was created. `zen_photo_sorts`: the 1.42.2 reference's answer to a movie library's `sorts?type=13` (the photo sorts) in en/de/fr/ja.",
  "created_with": "/library/sections?name=C87A%20Music&type=artist&agent=tv.plex.agents.music&scanner=Plex%20Music&language=en-US&metadataAgentProviderGroupId=3&location=%2Fdata%2Fc87a-music",
  "created_status": 201,
  "documents": {
@@ -25825,7 +25825,7 @@
   }
  ],
  "zen_photo_sorts": {
-  "reference": "zen PMS 1.42.2.10156, claimed (GET only), its movie library 1, paged 0/20",
+  "reference": "The 1.42.2 reference (PMS 1.42.2.10156), claimed (GET only), its movie library 1, paged 0/20",
   "path": "/library/sections/1/sorts?type=13",
   "documents": {
    "en": {

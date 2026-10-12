@@ -100,10 +100,10 @@ STRING_OPERATORS = {"=", "!=", "==", "!==", "<=", ">="}
 TAG_OPERATORS = {"=", "!="}
 
 # ...except that the restriction is the advertised FieldType's, not the python type's.
-# Cycle 14, on kids and zen: `titleSort>>=ZZZZ` answers 0 and 1 row, `summary>>=A` 4
-# and 1493, `tagline>>=A` 2 and 977, `originalTitle>>=M` 0 and 393 -- real orderings --
-# while the Meta-ADVERTISED strings `title` and `studio` answer every row to the same
-# key, which is what an ignored unknown field does. These four appear in no Meta.
+# Cycle 14, on plexlab and the 1.42.2 reference: `titleSort>>=ZZZZ` answers 0 and 1 row,
+# `summary>>=A` 4 and 1493, `tagline>>=A` 2 and 977, `originalTitle>>=M` 0 and 393 -- real
+# orderings -- while the Meta-ADVERTISED strings `title` and `studio` answer every row to
+# the same key, which is what an ignored unknown field does. These four appear in no Meta.
 UNLISTED_STRING_FIELDS = {"titleSort", "summary", "tagline", "originalTitle",
                           # Cycle 20: the artwork columns parse the same way, under
                           # every operator key including `>>` and `<<`.
@@ -169,11 +169,11 @@ def split_key(key):
     else:
         name, operator = key, "="
     if any(character in name for character in "<>!="):
-        # Cycle 22, measured on zen and kids: a key whose NAME still carries one of
-        # these after the suffix comes off -- `collection==`, `year>=`, `title!!` --
-        # is an UNKNOWN FIELD, not a refusal. A listing ignores it and answers every
-        # row, and `/query/parse` reports it verbatim as an `Error` of type `field`.
-        # The 400 this used to raise belongs to a DIFFERENT shape, which the pair
+        # Cycle 22, measured on the 1.42.2 reference and plexlab: a key whose NAME still
+        # carries one of these after the suffix comes off -- `collection==`, `year>=`,
+        # `title!!` -- is an UNKNOWN FIELD, not a refusal. A listing ignores it and
+        # answers every row, and `/query/parse` reports it verbatim as an `Error` of type
+        # `field`. The 400 this used to raise belongs to a DIFFERENT shape, which the pair
         # parser still refuses: a pair with no `=` at all (`?year%3E2010`).
         # Returning the whole key as the field name is what makes `field_type` answer
         # None and both callers report it as unknown.
@@ -234,12 +234,13 @@ def as_epoch(value, now=None):
     """
     now = now if now is not None else time.time()
     value = str(value)
-    # Cycle 55, measured on zen, kids and plexscratch42 over `addedAt`, `updatedAt`,
-    # `createdAt`, `originallyAvailableAt`, `beginsAt`, `endsAt`, `viewUpdatedAt` and the
-    # three per-user dates: an epoch is a SIGNED 64-BIT integer with nothing around it.
-    # ` 1`, `1 ` and `9223372036854775808` are 500s where `9223372036854775807` is a 200
-    # -- and so is `viewedAt= 1` on Top Played and `/users/top`, which parse the same way.
-    # rex stripped the value and read it with `float()`, answering 200 and no rows.
+    # Cycle 55, measured on the 1.42.2 reference, plexlab and plexscratch42 over
+    # `addedAt`, `updatedAt`, `createdAt`, `originallyAvailableAt`, `beginsAt`, `endsAt`,
+    # `viewUpdatedAt` and the three per-user dates: an epoch is a SIGNED 64-BIT integer
+    # with nothing around it. ` 1`, `1 ` and `9223372036854775808` are 500s where
+    # `9223372036854775807` is a 200 -- and so is `viewedAt= 1` on Top Played and
+    # `/users/top`, which parse the same way. rex stripped the value and read it with
+    # `float()`, answering 200 and no rows.
     if value != value.strip():
         raise FilterError(500, "unparseable date %r" % value)
     if re.fullmatch(r"[+-]?[0-9]+", value) and not -2 ** 63 <= int(value) < 2 ** 63:
@@ -272,16 +273,17 @@ def _to_epoch(text, form):
         raise FilterError(500, "unparseable date %r" % text)
 
 
-# Cycle 15, measured on kids (1.43.4) and zen (1.42.2): the two per-user-state
+# Cycle 15, measured on plexlab (1.43.4) and the 1.42.2 reference: the two per-user-state
 # columns that refuse a FRACTIONAL value. The five date columns refuse one through
 # `as_epoch`; `year`, `duration`, `index`, `skipCount`, `ratingCount`, `mediaCount`,
 # `absoluteIndex` and `userRating` take it and answer no rows.
 FRACTIONAL_REFUSED = {"viewCount", "viewOffset"}
 
-# Cycle 55, measured on zen (1.42.2) and kids (1.43.4): three integer columns take a
-# STRICT signed 32-bit integer -- `decade=1.5`, `decade=2147483648`, `viewCount=2147483648`
-# and `viewOffset= 1` are 500s on both, although 1.42.2 accepts a surrounding space on a
-# plain integer column and both accept `0x1` there. `+1990` and `01990` are 1990.
+# Cycle 55, measured on the 1.42.2 reference and plexlab (1.43.4): three integer columns
+# take a STRICT signed 32-bit integer -- `decade=1.5`, `decade=2147483648`,
+# `viewCount=2147483648` and `viewOffset= 1` are 500s on both, although 1.42.2 accepts a
+# surrounding space on a plain integer column and both accept `0x1` there. `+1990` and
+# `01990` are 1990.
 STRICT_INT32_FIELDS = {"decade", "viewCount", "viewOffset"}
 
 # The two columns whose ABSENCE is read as a value: cycle 20, measured on both
@@ -289,20 +291,21 @@ STRICT_INT32_FIELDS = {"decade", "viewCount", "viewOffset"}
 # whatever the value, and nothing else. `skipCount` looks identical on a row and is
 # not in the family.
 NULL_IS_ZERO_FIELDS = {"viewCount", "viewOffset"}
-# Cycle 54, measured on zen (1.42.2) and kids (1.43.4): the three per-user DATE columns,
-# read from the same settings row, behave the same way -- `lastRatedAt=0`, `<<=1` and
-# `<<=2020-01-01` are every unrated row, `!=5` and `>>=0` none of them. `viewUpdatedAt`
-# is not in the family: its nulls match nothing.
+# Cycle 54, measured on the 1.42.2 reference and plexlab (1.43.4): the three per-user DATE
+# columns, read from the same settings row, behave the same way -- `lastRatedAt=0`, `<<=1`
+# and `<<=2020-01-01` are every unrated row, `!=5` and `>>=0` none of them.
+# `viewUpdatedAt` is not in the family: its nulls match nothing.
 NULL_IS_ZERO_DATES = {"lastViewedAt", "lastRatedAt", "lastSkippedAt"}
 
-# Cycle 55, measured on zen (1.42.2), kids (1.43.4) and plexscratch42 (23 of 24 cells): on
-# these five columns `field=-1` is "HAS NO VALUE". zen's `userRating=-1` is the 3,465
-# unrated movies (`userRating!=-1` the other 422), `rating=-1` is 3,144 (3,887 - 743), and
-# `absoluteIndex=-1` and `parent=-1` are all 3,887 movies; kids answers 3, 5, 5 and 5. The
-# rule is narrow: bare `=` only (`<=-1`, `<<=-1` and `>=0` match nothing), `-01` counts and
-# `-1.0` does not, a comma list ORs it (`rating=-1,7` is 3,150), and `year`, `duration`,
-# `viewCount`, `index`, `contentRatingAge`, `mediaSize`, `mediaBitrate`, `skipCount`,
-# `mediaCount` and `ratingCount` answer 0 to it. rex answered 0 on all five.
+# Cycle 55, measured on the 1.42.2 reference, plexlab (1.43.4) and plexscratch42 (23 of 24
+# cells): on these five columns `field=-1` is "HAS NO VALUE". The 1.42.2 reference's
+# `userRating=-1` is the 3,465 unrated movies (`userRating!=-1` the other 422),
+# `rating=-1` is 3,144 (3,887 - 743), and `absoluteIndex=-1` and `parent=-1` are all 3,887
+# movies; plexlab answers 3, 5, 5 and 5. The rule is narrow: bare `=` only (`<=-1`,
+# `<<=-1` and `>=0` match nothing), `-01` counts and `-1.0` does not, a comma list ORs it
+# (`rating=-1,7` is 3,150), and `year`, `duration`, `viewCount`, `index`,
+# `contentRatingAge`, `mediaSize`, `mediaBitrate`, `skipCount`, `mediaCount` and
+# `ratingCount` answer 0 to it. rex answered 0 on all five.
 NULL_SENTINEL_FIELDS = {"rating", "audienceRating", "userRating", "absoluteIndex", "parent"}
 
 # The boolean-looking column whose OPERATOR a real PMS ignores: cycle 20, measured on
@@ -356,8 +359,8 @@ def _word_prefixes(wanted, text, sort=None):
     Trapalhão" and `title=Sex and Lucia`, `title=and Lucia` and `title=Dire a Lamine`
     all find their accented rows. What breaks the Bogotá query is the COLON.
 
-    Measured over 52 queries on zen (1.42.2) -- 27 to build the model and 25 more on
-    rows it had never seen, which it reproduced exactly:
+    Measured over 52 queries on the 1.42.2 reference -- 27 to build the model and 25 more
+    on rows it had never seen, which it reproduced exactly:
 
     * The RAW pass is the old matcher with no folding at all: each query word begins
       a title word, in order, on the raw spellings. `title=Bogot City` matches
@@ -381,29 +384,31 @@ def _word_prefixes(wanted, text, sort=None):
     `title!=Amelie` with the accent excludes exactly its one row), which is why this
     is the only place the fold goes.
     """
-    # Cycle 31, measured on kids and zen, which agree: a COMMA splits the query into
-    # ALTERNATIVES and a row matches if ANY of them does, while a DOT is a literal
-    # character of the word.
+    # Cycle 31, measured on plexlab and the 1.42.2 reference, which agree: a COMMA splits
+    # the query into ALTERNATIVES and a row matches if ANY of them does, while a DOT is a
+    # literal character of the word.
     #
-    #   kids `title=Steel,,` -> all 5 rows, `title=of,` -> all 5, `title=Tears, of` -> 1
-    #   zen  `title=Love,` -> all 3,887, `title=Love` -> 59, `title=Actually,Love` -> 59
+    #   plexlab `title=Steel,,` -> all 5 rows, `title=of,` -> all 5, `title=Tears, of` ->
+    #   1 the 1.42.2 reference  `title=Love,` -> all 3,887, `title=Love` -> 59,
+    #   `title=Actually,Love` -> 59
     #        (Love Actually is already in the 59, so the union is 59)
-    #   kids `title=Steel.` -> 0, `title=Tears of Steel.` -> 0     zen `Actually.` -> 0
+    #   plexlab `title=Steel.` -> 0, `title=Tears of Steel.` -> 0     the 1.42.2 reference
+    #   `Actually.` -> 0
     #
     # An empty alternative matches every row -- which is the recorded `title=` rule -- so a
     # trailing comma answers the whole library. rex STRIPPED both characters from the
     # query, so `Steel,` found one row where a real PMS answers all of them and `Steel.`
     # found one where a real PMS answers none. It is the filter bar's own text box, so a
     # typed comma or a trailing period silently gave a different row set.
-    # Cycle 32, measured on kids and zen: the RAW pass reads the title and the FOLDED
-    # pass reads the row's stored SORT title. kids' episode 8 is "The Train Job" with a
-    # sort title of "Train Job": `title=The Train` is 1 row (the raw pass), `Tráin Job` is
-    # 1 (the folded pass over the sort title), and `The Tráin`, `Thé Train` and
-    # `Thé Tráin Jób` are each **0** -- a folded query carrying the article cannot match,
-    # because the article is not in the string the folded pass reads. zen's season 11046,
-    # whose generated title is `Season 22` and whose agent sort title is `Egghead`, is the
-    # witness with no article at all: `title=Egghead` and `Egghéad` each answer it and
-    # `title=Season 22` answers nothing.
+    # Cycle 32, measured on plexlab and the 1.42.2 reference: the RAW pass reads the title
+    # and the FOLDED pass reads the row's stored SORT title. plexlab's episode 8 is "The
+    # Train Job" with a sort title of "Train Job": `title=The Train` is 1 row (the raw
+    # pass), `Tráin Job` is 1 (the folded pass over the sort title), and `The Tráin`, `Thé
+    # Train` and `Thé Tráin Jób` are each **0** -- a folded query carrying the article
+    # cannot match, because the article is not in the string the folded pass reads. The
+    # 1.42.2 reference's season 11046, whose generated title is `Season 22` and whose
+    # agent sort title is `Egghead`, is the witness with no article at all:
+    # `title=Egghead` and `Egghéad` each answer it and `title=Season 22` answers nothing.
     #
     # Rows with no article match either way, which is why thirteen cycles of this matcher
     # never saw it. rex folded the TITLE, so it answered rows a real PMS does not
@@ -416,9 +421,10 @@ def _word_prefixes(wanted, text, sort=None):
 def _original_phrase(wanted, text):
     """`title=` against the row's ORIGINAL title: a consecutive run of whole words.
 
-    Cycle 31, measured on zen. Unfolded on both sides, split on whitespace: every term but
-    the last must EQUAL a title word and the last may begin one, and the run has to be
-    adjacent. See `compare`'s `title` branch for the measurements.
+    Cycle 31, measured on the 1.42.2 reference. Unfolded on both sides, split on
+    whitespace: every term but the last must EQUAL a title word and the last may begin
+    one, and the run has to be adjacent. See `compare`'s `title` branch for the
+    measurements.
     """
     terms = [t for t in str(wanted).lower().split(" ") if t]
     words = str(text).lower().split()
@@ -454,14 +460,14 @@ def _folded_word_run(wanted, text):
     An empty term fails outright -- that is `title=Bogota ` and `title=Bogota:  City`,
     both of which a real PMS answers nothing to while the raw pass also misses them.
     """
-    # Cycle 32, swept on kids over 2,098 codepoints and on zen, which agree, then held out
-    # on both writable copies: the QUERY is folded by the same 100-character table a sort
-    # title is derived with and then case-folded, while the STORED sort title is only
-    # case-folded. A locked sort title `\u00c9gg\u0119head Zo\u017fa` answers `Zosa` (the
-    # case fold takes the long s) and answers neither `Egghead` nor `Egg\u0119head` -- the
-    # stored side is not run through the table again. That pair is the whole of hunt B's
-    # 102-character query table: the 100 plus `\u017f` and `\u212a`, which only a case fold
-    # reaches.
+    # Cycle 32, swept on plexlab over 2,098 codepoints and on the 1.42.2 reference, which
+    # agree, then held out on both writable copies: the QUERY is folded by the same
+    # 100-character table a sort title is derived with and then case-folded, while the
+    # STORED sort title is only case-folded. A locked sort title `\u00c9gg\u0119head
+    # Zo\u017fa` answers `Zosa` (the case fold takes the long s) and answers neither
+    # `Egghead` nor `Egg\u0119head` -- the stored side is not run through the table again.
+    # That pair is the whole of hunt B's 102-character query table: the 100 plus `\u017f`
+    # and `\u212a`, which only a case fold reaches.
     #
     # rex decomposed both sides with NFD, which folds 134 characters a real PMS does
     # not (`Sint\u0119l`, `\u0100ra`) and misses the two the case fold does.
@@ -482,14 +488,16 @@ def _folded_word_run(wanted, text):
     return True
 
 
-# What a BARE `<field>=` selects, measured on kids (1.43.4) and zen (1.42.2), which
-# agree exactly. Three behaviours, by field:
+# What a BARE `<field>=` selects, measured on plexlab (1.43.4) and the 1.42.2 reference,
+# which agree exactly. Three behaviours, by field:
 #   TAG_TABLE_FIELDS      match nothing            (genre= is 0 of 5 and 0 of 3887)
 #   EMPTY_MATCHES_EVERY   match every row          (studio= is 5 of 5 and 3887 of 3887,
-#                                                   though 14 of 200 zen movies have none)
+#                                                   though 14 of 200 movies of the 1.42.2
+#                                                   reference have none)
 #   everything else       match the valueless rows (contentRating= is 3 and 2864)
-# The codec axes disagree across the two versions (kids nothing, zen everything), so
-# they are a version difference rather than a rule and keep the middle behaviour.
+# The codec axes disagree across the two versions (plexlab nothing, the 1.42.2 reference
+# everything), so they are a version difference rather than a rule and keep the middle
+# behaviour.
 EMPTY_MATCHES_EVERY = {"studio", "editionTitle"}
 
 # `contentRating=None`, in that exact spelling, is a synonym for the empty value on
@@ -530,10 +538,11 @@ def _exact(operator, actual, wanted, field=""):
         else:
             hit = not values
     elif field in TAG_TABLE_FIELDS:
-        # Cycle 88, measured on kids (1.43.4) and zen (1.42.2): a tag NAME matches ignoring
-        # the case of its ASCII letters only -- `genre=ANIMATION` is `Animation`, and
-        # `actor=ARINZé KENE` is `Arinzé Kene` while `ARINZÉ KENE` matches nothing (SQLite's
-        # NOCASE). rex compared exactly, so any other case found no row.
+        # Cycle 88, measured on plexlab (1.43.4) and the 1.42.2 reference: a tag NAME
+        # matches ignoring the case of its ASCII letters only -- `genre=ANIMATION` is
+        # `Animation`, and `actor=ARINZé KENE` is `Arinzé Kene` while `ARINZÉ KENE`
+        # matches nothing (SQLite's NOCASE). rex compared exactly, so any other case found
+        # no row.
         hit = _ascii_lower(wanted) in {_ascii_lower(value) for value in values}
     else:
         hit = wanted in values
@@ -547,12 +556,12 @@ def _exact(operator, actual, wanted, field=""):
 def _tag_column(operator, actual, wanted, field=""):
     """A `tag`-typed COLUMN under an operator the tag-table fields never take.
 
-    Cycle 19, measured on kids (1.43.4) and zen (1.42.2). `contentRating` is declared
-    `tag` in the Meta like `genre` is, but it is a COLUMN on the row rather than a join
-    against a tag table -- and unlike a tag-table field, which `operator_allowed` closes
-    to `=`/`!=`, it answers all eight:
+    Cycle 19, measured on plexlab (1.43.4) and the 1.42.2 reference. `contentRating` is
+    declared `tag` in the Meta like `genre` is, but it is a COLUMN on the row rather than
+    a join against a tag table -- and unlike a tag-table field, which `operator_allowed`
+    closes to `=`/`!=`, it answers all eight:
 
-        zen, 3,887 movies, 2,864 of them with no rating at all
+        the 1.42.2 reference, 3,887 movies, 2,864 of them with no rating at all
         contentRating=PG     112     ==PG    112      (exact; `=` is CASE-SENSITIVE,
         contentRating!=PG   3,775    !==PG  3,775      `==` is not: `==pg` is 112 too
         contentRating<=PG   3,197    <<=PG  3,085      and `=pg` is 0)
@@ -563,7 +572,7 @@ def _tag_column(operator, actual, wanted, field=""):
     The four ordering keys partition exactly -- 802 + 3,085 = 3,887 and 3,197 + 690 =
     3,887 -- so they are `>=`, `<`, `<=`, `>` over the stored string, and the comparison
     is BYTE-ordered rather than case-folded: `<=pg` answers every row (a lowercase `p`
-    sorts above every rating a real library holds) where `<=PG` answers 3,197. kids
+    sorts above every rating a real library holds) where `<=PG` answers 3,197. plexlab
     agrees on all sixteen counts at its own scale.
 
     rex answered NOTHING to six of the eight, so the Content Rating filter's
@@ -602,10 +611,11 @@ def compare(kind, operator, actual, wanted, field=""):
     equality, and `==` is the exact one.
     """
     if field == "decade":
-        # Cycle 56, measured on zen and kids: `decade` IGNORES its operator, like
-        # `unmatched` and `resolution` -- `!=2010`, `>>=2000`, `<<=2020` answer the
-        # `=2010`, `=2000` and `=2020` buckets (zen 349, 252, 790). It is a bucket, not
-        # an ordering; rex compared, so "Decade is not 2010s" showed the complement.
+        # Cycle 56, measured on the 1.42.2 reference and plexlab: `decade` IGNORES its
+        # operator, like `unmatched` and `resolution` -- `!=2010`, `>>=2000`, `<<=2020`
+        # answer the `=2010`, `=2000` and `=2020` buckets (the 1.42.2 reference 349, 252,
+        # 790). It is a bucket, not an ordering; rex compared, so "Decade is not 2010s"
+        # showed the complement.
         operator = "="
 
     if field == "location":
@@ -620,12 +630,12 @@ def compare(kind, operator, actual, wanted, field=""):
         # than an empty result.
         if str(wanted).strip() not in RESOLUTIONS:
             raise FilterError(500, "unknown resolution %r" % wanted)
-        # Cycle 19: every operator answers the same set as `=`, `!=` INCLUDED. On zen
-        # `resolution=1080` and all seven others each answer 3,608 of 3,887; `=sd` and
-        # its seven answer 2; `=720` and its seven answer 6. kids agrees (5 and 0 and 0
-        # on its five clips), and a show library is the same (490 of 507 for every
-        # operator at `1080`). rex negated `!=` and answered nothing to the other
-        # six, so a client's "not 4k" filter emptied the grid.
+        # Cycle 19: every operator answers the same set as `=`, `!=` INCLUDED. On the
+        # 1.42.2 reference `resolution=1080` and all seven others each answer 3,608 of
+        # 3,887; `=sd` and its seven answer 2; `=720` and its seven answer 6. plexlab
+        # agrees (5 and 0 and 0 on its five clips), and a show library is the same (490 of
+        # 507 for every operator at `1080`). rex negated `!=` and answered nothing to the
+        # other six, so a client's "not 4k" filter emptied the grid.
         return _exact("=", actual, wanted)
 
     if kind in ("audioLanguage", "subtitleLanguage"):
@@ -633,16 +643,16 @@ def compare(kind, operator, actual, wanted, field=""):
         # "SOME stream of that type has this language"; every other operator is "NO
         # stream satisfies the operator's own comparison" -- a universally quantified
         # negation -- with `!=` and `==` both comparing EQUALITY and `!==` inequality.
-        # Measured on kids' six all-English episodes (`=`6 `!=`0 `==`0 `!==`6 `<=`0
-        # `>=`0 `<<=`6 `>>=`6) and reproduced over zen's 9,287 episodes and 3,887
-        # movies, including a code no row holds (`=zz` 0, `!=zz` 3,887, `<=zz` 21 --
-        # the rows with no audio stream at all, which match every non-`=` operator
+        # Measured on plexlab's six all-English episodes (`=`6 `!=`0 `==`0 `!==`6 `<=`0
+        # `>=`0 `<<=`6 `>>=`6) and reproduced over the 1.42.2 reference's 9,287 episodes
+        # and 3,887 movies, including a code no row holds (`=zz` 0, `!=zz` 3,887, `<=zz`
+        # 21 -- the rows with no audio stream at all, which match every non-`=` operator
         # vacuously). The three-letter code normalises for every operator alike.
         values = [language_code(v)
                   for v in (actual if isinstance(actual, (list, tuple)) else [actual])
                   if v is not None]
-        # The three-letter code normalises for EVERY operator, not just `=`: zen
-        # answers `audioLanguage=eng` and `=en` with the same 2,375 rows and
+        # The three-letter code normalises for EVERY operator, not just `=`: the 1.42.2
+        # reference answers `audioLanguage=eng` and `=en` with the same 2,375 rows and
         # `<=eng`/`<=en` with the same 1,330, so both sides are folded to the
         # 639-1 tag before anything is compared.
         wanted = language_code(wanted)
@@ -667,13 +677,13 @@ def compare(kind, operator, actual, wanted, field=""):
         return not any(holds(v) for v in values)
 
     if kind == "media_string":
-        # Cycle 54, fitted exactly on zen's 3,887 movies: `mediaVideoCodec`,
-        # `mediaAudioCodec` and `mediaContainer` compare EACH Media's value and match
-        # when ANY does, under every operator, with a Media that names none counting as
-        # the empty string. `=h264` 1,816; `!=h264` 2,120 (every row with some OTHER
-        # codec, not the 2,071 a negated membership gives); `=` 23 (a Media with no
-        # codec); `>>=h` 3,685 and `<<=h` 222, both ANY; and `==H264` 0 -- the exact
-        # pair is case-SENSITIVE here, unlike `contentRating`'s.
+        # Cycle 54, fitted exactly on the 1.42.2 reference's 3,887 movies:
+        # `mediaVideoCodec`, `mediaAudioCodec` and `mediaContainer` compare EACH Media's
+        # value and match when ANY does, under every operator, with a Media that names
+        # none counting as the empty string. `=h264` 1,816; `!=h264` 2,120 (every row with
+        # some OTHER codec, not the 2,071 a negated membership gives); `=` 23 (a Media
+        # with no codec); `>>=h` 3,685 and `<<=h` 222, both ANY; and `==H264` 0 -- the
+        # exact pair is case-SENSITIVE here, unlike `contentRating`'s.
         values = [str(v or "") for v in (actual if isinstance(actual, (list, tuple))
                                            else [actual])]
         wanted = str(wanted)
@@ -684,8 +694,9 @@ def compare(kind, operator, actual, wanted, field=""):
         return any(tests.get(operator, lambda v: False)(v) for v in values)
 
     if kind == "tagId":
-        # Cycle 57, measured on zen: the value is a tag ID and has to parse as one --
-        # `abc` and an empty value are 500s -- and it matches a tag of ANY table.
+        # Cycle 57, measured on the 1.42.2 reference: the value is a tag ID and has to
+        # parse as one -- `abc` and an empty value are 500s -- and it matches a tag of ANY
+        # table.
         if not re.fullmatch(r"[0-9]+", str(wanted).strip()):
             raise FilterError(500, "bad tagId %r" % wanted)
         return any(str(one) == str(int(wanted)) for one in actual or [] if one is not None)
@@ -707,24 +718,27 @@ def compare(kind, operator, actual, wanted, field=""):
         if field in NULL_IS_ZERO_DATES and operator == "=" and not (
                 re.fullmatch(r"[+-]?[0-9]+", str(wanted))
                 and -2 ** 31 <= int(wanted) < 2 ** 31):
-            # Cycle 55, measured on zen and kids: under a bare `=` the three per-user
-            # dates take a SIGNED 32-BIT integer and nothing else -- `-5y`, `2020-01-01`,
-            # `2147483648`, `-2147483649` and `9999999999` are 500s -- while the other
-            # seven operators still read a date (`lastViewedAt<<=-5y` is zen's 3,866).
+            # Cycle 55, measured on the 1.42.2 reference and plexlab: under a bare `=` the
+            # three per-user dates take a SIGNED 32-BIT integer and nothing else -- `-5y`,
+            # `2020-01-01`, `2147483648`, `-2147483649` and `9999999999` are 500s -- while
+            # the other seven operators still read a date (`lastViewedAt<<=-5y` is the
+            # 1.42.2 reference's 3,866).
             raise FilterError(500, "bad %s %r" % (field, wanted))
         if actual is None and field in NULL_IS_ZERO_DATES:
-            # Cycle 54, measured on zen and kids: the three per-user DATES are the
-            # `viewCount` family, not this one -- an unset value is below every value and
-            # equal to 0. zen's `lastRatedAt<<=2020-01-01` is the 3,465 unrated movies.
+            # Cycle 54, measured on the 1.42.2 reference and plexlab: the three per-user
+            # DATES are the `viewCount` family, not this one -- an unset value is below
+            # every value and equal to 0. The 1.42.2 reference's
+            # `lastRatedAt<<=2020-01-01` is the 3,465 unrated movies.
             return operator in ("<=", "<<=") or (operator == "=" and moment == 0)
         if actual is None:
-            # Cycle 20, re-measured on zen (1.42.2) and kids (1.43.4): a NULL date
-            # matches NOTHING, on every operator. Of zen's 3,887 movies exactly 1,518
-            # carry an `originallyAvailableAt`, and `<=2100-01-01` answers those 1,518
-            # while `<=1800-01-01` and `<<=1800-01-01` answer 0 -- so the 2,369 without
-            # one are in neither half, which is cycle 19's numeric rule exactly. The
-            # old reading ("a NULL date matches is-before") came from fun, which is out
-            # of scope, and it put every season of a show library into every `<=` set.
+            # Cycle 20, re-measured on the 1.42.2 reference and plexlab (1.43.4): a NULL
+            # date matches NOTHING, on every operator. Of the 1.42.2 reference's 3,887
+            # movies exactly 1,518 carry an `originallyAvailableAt`, and `<=2100-01-01`
+            # answers those 1,518 while `<=1800-01-01` and `<<=1800-01-01` answer 0 -- so
+            # the 2,369 without one are in neither half, which is cycle 19's numeric rule
+            # exactly. The old reading ("a NULL date matches is-before") came from the
+            # production server, which is out of scope, and it put every season of a show
+            # library into every `<=` set.
             return False
         # A row may hold a date as an ISO string (`originallyAvailableAt`) or as
         # an epoch (`addedAt`); both are dates to a filter.
@@ -750,12 +764,12 @@ def compare(kind, operator, actual, wanted, field=""):
         # so the value is not a number being compared -- it is true only when it
         # is exactly `1`, and everything else (an empty value included) is false.
         #
-        # Cycle 19 measured the rest of the grammar, on kids (1.43.4) and zen
-        # (1.42.2) alike, over `unwatched` and `duplicate`, seven values and all
+        # Cycle 19 measured the rest of the grammar, on plexlab (1.43.4) and the 1.42.2
+        # reference (1.42.2) alike, over `unwatched` and `duplicate`, seven values and all
         # eight operators: exactly TWO requests answer the true set -- `field=1`
         # and `field!=0`. Everything else answers the rows where the column is
-        # FALSE. zen's `unwatched=1` is 3,866 of 3,887 and its `!=1`, `==1`,
-        # `!==1`, `<=1`, `>=1`, `<<=1`, `>>=1`, `=0`, `==0`, `!==0`, `<=0`, `>=0`,
+        # FALSE. The 1.42.2 reference's `unwatched=1` is 3,866 of 3,887 and its `!=1`,
+        # `==1`, `!==1`, `<=1`, `>=1`, `<<=1`, `>>=1`, `=0`, `==0`, `!==0`, `<=0`, `>=0`,
         # `<<=0`, `>>=0`, `=2`, `!=2`, `=`, `=01`, `=true` and `=1 ` are all the
         # same 21; `duplicate=1` is 214 and every one of those the other 3,673.
         #
@@ -776,10 +790,10 @@ def compare(kind, operator, actual, wanted, field=""):
         state = 1 if actual else 0
         wanted = str(wanted)
         if field in OPERATOR_BLIND_BOOLEANS:
-            # Cycle 20, measured on kids' two seasons and zen's 741 over all eight
-            # operators and six values: `unmatched` IGNORES the operator entirely --
-            # only the literal `1` selects the true rows, and it does so under every
-            # operator, while every other value selects the false ones under every
+            # Cycle 20, measured on plexlab's two seasons and the 1.42.2 reference's 741
+            # over all eight operators and six values: `unmatched` IGNORES the operator
+            # entirely -- only the literal `1` selects the true rows, and it does so under
+            # every operator, while every other value selects the false ones under every
             # operator. It is `resolution`'s rule, not `unwatched`'s, and `unwatched`
             # itself is the control: it follows the two-request boolean rule on both
             # references. rex read it as a boolean, so `unmatched!=1` was inverted.
@@ -789,8 +803,8 @@ def compare(kind, operator, actual, wanted, field=""):
         return state == 0
 
     if kind == "id":
-        # `id` is a real filter field on every listing -- measured on kids (1.43.4)
-        # and zen (1.42.2), and echoed by `/query/parse` as a Rule with an EMPTY
+        # `id` is a real filter field on every listing -- measured on plexlab (1.43.4)
+        # and the 1.42.2 reference, and echoed by `/query/parse` as a Rule with an EMPTY
         # `fieldTitle`, because it is a field no Meta advertises. It compares like
         # the database column it is: a value that converts to a number compares
         # numerically (`id=01` and `id= 1` both find row 1), and one that cannot --
@@ -810,9 +824,10 @@ def compare(kind, operator, actual, wanted, field=""):
                 return operator == "!=="
             return operator in ("!=", "<<=", "<=")
         if operator in ("==", "!=="):
-            # Cycle 20, measured on kids and zen over two libraries and two row types:
-            # against a NUMBER the exact pair compares like `=`/`!=`. zen's
-            # `type=3&id==5190` is that one season and `!==5190` the other 740.
+            # Cycle 20, measured on plexlab and the 1.42.2 reference over two libraries
+            # and two row types: against a NUMBER the exact pair compares like `=`/`!=`.
+            # The 1.42.2 reference's `type=3&id==5190` is that one season and `!==5190`
+            # the other 740.
             hit = as_number(actual if actual is not None else 0) == target
             return hit if operator == "==" else not hit
         actual = as_number(actual if actual is not None else 0)
@@ -845,44 +860,46 @@ def compare(kind, operator, actual, wanted, field=""):
         if isinstance(actual, (list, tuple)):
             # Cycle 19: a MEDIA column can hold several values -- one per Media on the
             # row, or one per Media of every leaf on a show or a season -- and a real
-            # PMS matches when ANY of them does. zen's `type=2&duration<=1200000` (39)
-            # and `>=1200000` (483) overlap on 505 rows, which only an ANY can produce.
+            # PMS matches when ANY of them does. The 1.42.2 reference's
+            # `type=2&duration<=1200000` (39) and `>=1200000` (483) overlap on 505 rows,
+            # which only an ANY can produce.
             values = [v for v in actual if v is not None]
             if not values:
                 return False
             return any(compare(kind, operator, v, wanted, field) for v in values)
-        # Cycle 19, measured on kids and zen: a row with NO value for a numeric column
-        # matches NOTHING -- `!=` and `!==` included, which is what separates this from
-        # treating the absence as a 0. On zen 742 of 3,887 movies carry a `rating`, and
-        # `rating!=7` is 736, `rating!==7` 742, `rating<=7` 368 and `rating>>=7` 374:
-        # 368 + 374 = 742 exactly, so the 3,145 rows without one are in neither half.
-        # Its show library, where NO row carries a rating at all, answers 0 to all
-        # eight. rex read the absence as 0, so every `<=`/`<<=`/`!=` on Rating,
-        # Plays, Critic Rating or Audience Rating answered the rows that have no value
-        # -- the majority of a real library -- and `rating<=7` was the whole grid.
-        # The VALUE is still parsed first (cycle 15), so a word is a 500 here whether
-        # or not the column is null.
+        # Cycle 19, measured on plexlab and the 1.42.2 reference: a row with NO value for
+        # a numeric column matches NOTHING -- `!=` and `!==` included, which is what
+        # separates this from treating the absence as a 0. On the 1.42.2 reference, 742 of
+        # 3,887 movies carry a `rating`, and `rating!=7` is 736, `rating!==7` 742,
+        # `rating<=7` 368 and `rating>>=7` 374: 368 + 374 = 742 exactly, so the 3,145 rows
+        # without one are in neither half. Its show library, where NO row carries a rating
+        # at all, answers 0 to all eight. rex read the absence as 0, so every
+        # `<=`/`<<=`/`!=` on Rating, Plays, Critic Rating or Audience Rating answered the
+        # rows that have no value -- the majority of a real library -- and `rating<=7` was
+        # the whole grid. The VALUE is still parsed first (cycle 15), so a word is a 500
+        # here whether or not the column is null.
         if actual is None:
             # ...except on the two per-user columns, where a row with NO stored value
-            # is read as BELOW every value and equal to 0. Cycle 20, measured on kids
+            # is read as BELOW every value and equal to 0. Cycle 20, measured on plexlab
             # -- whose six episodes split three with a stored `view_count = 0` and
-            # three with no settings row at all -- and on zen: `viewCount=0` answers
-            # all six and 8,943 of 9,287, `<<=0` answers only the three with no row,
-            # `>=0` only the three with one, and `!=0` none. `skipCount` is NOT in the
-            # family: its nulls match nothing, which is what separates the two.
+            # three with no settings row at all -- and on the 1.42.2 reference:
+            # `viewCount=0` answers all six and 8,943 of 9,287, `<<=0` answers only the
+            # three with no row, `>=0` only the three with one, and `!=0` none.
+            # `skipCount` is NOT in the family: its nulls match nothing, which is what
+            # separates the two.
             if field in NULL_IS_ZERO_FIELDS:
                 return (operator in ("<=", "<<=")
                         or (operator == "=" and target == 0))
             return False
         if operator in ("==", "!=="):
             # ...and this pair is an exact STRING comparison of the stored number, not
-            # a numeric one. On zen `rating==7` answers 0 where `rating==7.0` answers
-            # the same 6 rows `rating=7` does, and `userRating==5` answers 0 against
-            # `==5.0`'s 43 -- while the INTEGER column answers `year==2000` with the
-            # same 39 as `year=2000` and `year==2000.0` with none. So the comparison is
-            # against the column's own rendering: a float prints `7.0`, an integer
-            # `2000`. rex compared numerically, so `rating==7` found the 7.0 rows a
-            # real PMS does not.
+            # a numeric one. On the 1.42.2 reference `rating==7` answers 0 where
+            # `rating==7.0` answers the same 6 rows `rating=7` does, and `userRating==5`
+            # answers 0 against `==5.0`'s 43 -- while the INTEGER column answers
+            # `year==2000` with the same 39 as `year=2000` and `year==2000.0` with none.
+            # So the comparison is against the column's own rendering: a float prints
+            # `7.0`, an integer `2000`. rex compared numerically, so `rating==7` found the
+            # 7.0 rows a real PMS does not.
             hit = str(actual) == str(wanted)
             return hit if operator == "==" else not hit
         actual = as_number(actual)
@@ -906,19 +923,20 @@ def compare(kind, operator, actual, wanted, field=""):
     text = "" if actual is None else str(actual)
     wanted = str(wanted)
     if field == "title" and operator == "=":
-        # Cycle 18, measured on zen over all 3,887 rows of a real movie library: the
-        # bare `title=` matcher -- and ONLY it -- also reads the row's ORIGINAL title.
-        # `title=the` answers 1,484 rows where the title alone explains 1,481, and the
-        # three extras are `Interstate 60` ("Interstate 60: Episodes of the Road"),
-        # `Millennial Killer` ("The Millennial Killer") and `Vae Victis` ("The Art of
-        # Evil"); `title=B` is 815 against 807 and `title=art` 7 against 6. Every other
+        # Cycle 18, measured on the 1.42.2 reference over all 3,887 rows of a real movie
+        # library: the bare `title=` matcher -- and ONLY it -- also reads the row's
+        # ORIGINAL title. `title=the` answers 1,484 rows where the title alone explains
+        # 1,481, and the three extras are `Interstate 60` ("Interstate 60: Episodes of the
+        # Road"), `Millennial Killer` ("The Millennial Killer") and `Vae Victis` ("The Art
+        # of Evil"); `title=B` is 815 against 807 and `title=art` 7 against 6. Every other
         # operator reads the title alone -- `title!=`, `==`, `!==`, `<=` and `>=` all
         # reproduce exactly on the title and DISAGREE once the original title is added,
         # which is what separates the two halves. Held out over 24 (operator, value)
         # pairs. A client searching a foreign film by its own-language title finds it.
-        # Cycle 31, measured on zen -- whose 471 rows with an `originalTitle` are the only
-        # instrument for it: the ORIGINAL title is matched as a CONSECUTIVE run of whole
-        # words, unfolded, and not by the title's two-pass folded matcher.
+        # Cycle 31, measured on the 1.42.2 reference -- whose 471 rows with an
+        # `originalTitle` are the only instrument for it: the ORIGINAL title is matched as
+        # a CONSECUTIVE run of whole words, unfolded, and not by the title's two-pass
+        # folded matcher.
         #
         #   `Le Salaire`, `Salaire de`, `de la peur`, `Le Sal`, `la peur` -> 1 row
         #   `Salaire peur`, `Le peur`, `Sal de`, `e Salaire`, `Meurtres Douai` -> 0
@@ -932,11 +950,12 @@ def compare(kind, operator, actual, wanted, field=""):
         # Cycle 32: `text` is the plain title (compare() stringifies `actual` early);
         # the folded pass needs the row's stored SORT title, which rides on the value.
         if wanted == "":
-            # Cycle 55, measured on zen (741 of 741 seasons at `type=3&title=`) and kids
-            # (2 of 2), and on a show's `/children` and `/library/all`: an EMPTY query
-            # matches EVERY row, a season whose title the server generates -- and so
-            # stores as nothing -- included. The word matcher found no word in an empty
-            # stored title and dropped every generated-title season.
+            # Cycle 55, measured on the 1.42.2 reference (741 of 741 seasons at
+            # `type=3&title=`) and plexlab (2 of 2), and on a show's `/children` and
+            # `/library/all`: an EMPTY query matches EVERY row, a season whose title the
+            # server generates -- and so stores as nothing -- included. The word matcher
+            # found no word in an empty stored title and dropped every generated-title
+            # season.
             return True
         return (_word_prefixes(wanted, text,
                                str(getattr(actual, "sort", text) or ""))
@@ -944,11 +963,12 @@ def compare(kind, operator, actual, wanted, field=""):
     if field in UNLISTED_STRING_FIELDS and operator in ("<=", "<<=", ">=", ">>="):
         # Cycle 14 measured that `titleSort`, `summary`, `tagline` and `originalTitle`
         # -- the string fields no Meta advertises -- take `>>`/`<<` where an advertised
-        # one ignores them, and recorded `titleSort>>=ZZZZ` answering 1 row of zen's
-        # 3,887. rex allowed the operators and then fell through to CONTAINMENT,
-        # so `titleSort<<=0` matched every row whose title happens to hold a `0`.
+        # one ignores them, and recorded `titleSort>>=ZZZZ` answering 1 row of the 1.42.2
+        # reference's 3,887. rex allowed the operators and then fell through to
+        # CONTAINMENT, so `titleSort<<=0` matched every row whose title happens to hold a
+        # `0`.
         #
-        # Cycle 18, on zen (1.42.2): all four keys are a case-insensitive
+        # Cycle 18, on the 1.42.2 reference: all four keys are a case-insensitive
         # LEXICOGRAPHIC comparison on these fields, and both sides are STRICT.
         # `titleSort<<=B` answers 127 and `>>=B` 3,760, which partition the library
         # exactly; `<<=Ba` answers 128, taking in `B2: Stealth at War`; `B` and `b`
@@ -959,12 +979,12 @@ def compare(kind, operator, actual, wanted, field=""):
         #
         # `<=` and `>=` are NOT begins-with and ends-with here: `titleSort<=B`
         # answers the same 127 rows as `<<=B`, starting with `01 Kid Krrish`. That
-        # pair keeps its advertised meaning on an ADVERTISED string field -- zen's
-        # `title<=B` is 136 rows all beginning with B and `title>=ing` 26 ending in
-        # `ing` -- so the two families genuinely differ, and the split is the
+        # pair keeps its advertised meaning on an ADVERTISED string field -- the 1.42.2
+        # reference's `title<=B` is 136 rows all beginning with B and `title>=ing` 26
+        # ending in `ing` -- so the two families genuinely differ, and the split is the
         # advertised FieldType's, exactly as cycle 14 found for `>>`/`<<`.
-        # Cycle 20, measured on zen's 3,887 movies and on kids: only `titleSort`
-        # folds case. `titleSort<=b` and `<=B` answer the same 127 rows, while
+        # Cycle 20, measured on the 1.42.2 reference's 3,887 movies and on plexlab: only
+        # `titleSort` folds case. `titleSort<=b` and `<=B` answer the same 127 rows, while
         # `summary<=b` is 3,884 against `<=B`'s 2,911, `tagline<=b` 3,878 against 3,011
         # and `originalTitle<=b` 3,548 against 3,439 -- a BYTE-ordered comparison, in
         # which every upper-case letter sorts below every lower-case one. Cycle 18
@@ -989,7 +1009,7 @@ def compare(kind, operator, actual, wanted, field=""):
         return text.lower() != wanted.lower()
     if operator == "<=":
         if field == "guid":
-            # Measured (cycle 13, re-measured cycle 83 on kids): the guid prefix is
+            # Measured (cycle 13, re-measured cycle 83 on plexlab): the guid prefix is
             # CASE-SENSITIVE -- `guid=plex` is every matched row and `guid=PLEX` none.
             return text.startswith(wanted)
         return text.lower().startswith(wanted.lower())
@@ -1092,13 +1112,14 @@ def parse(pairs, field_type, structural=STRUCTURAL, errors=None):
             operator = "<="
         alternatives = [v for v in value.split(",") if v != ""] or [value]
         if bare == "title" and operator == "=" and "," in value:
-            # Cycle 31, measured on kids and zen: on `title` an EMPTY comma member is KEPT,
-            # and since an empty `title=` matches every row a trailing comma answers the
-            # whole library -- kids' `title=Steel,,` and `title=of,` are 5 of 5, zen's
-            # `title=Love,` is 3,887 where `title=Love` is 59, and `title=Actually,Love` is
-            # the union (59, Love Actually being in it already). The empty member is dropped
-            # above because a TAG field's comma list is a set of ids where an empty member
-            # means nothing; on the title matcher it means "any row".
+            # Cycle 31, measured on plexlab and the 1.42.2 reference: on `title` an EMPTY
+            # comma member is KEPT, and since an empty `title=` matches every row a
+            # trailing comma answers the whole library -- plexlab's `title=Steel,,` and
+            # `title=of,` are 5 of 5, the 1.42.2 reference's `title=Love,` is 3,887 where
+            # `title=Love` is 59, and `title=Actually,Love` is the union (59, Love
+            # Actually being in it already). The empty member is dropped above because a
+            # TAG field's comma list is a set of ids where an empty member means nothing;
+            # on the title matcher it means "any row".
             alternatives = value.split(",")
         leaves = [{"field": bare, "scope": scope, "operator": operator,
                    "value": v, "type": kind} for v in alternatives]
@@ -1223,10 +1244,10 @@ def describe(tree, title_of, value_title_of):
 
 
 # The order a real PMS falls back to when the query names a source other than the
-# library's own: cycle 20, measured on kids and zen, `sourceType=2` (or 0, or -1, or any
-# integer but 1) makes /query/parse carry `Order: [{"field": "id", "ascending": true}]`
-# where the same query without it carries no Order at all. An explicit `sort=` still
-# wins, and the Rule, Limit and Group blocks are untouched.
+# library's own: cycle 20, measured on plexlab and the 1.42.2 reference, `sourceType=2`
+# (or 0, or -1, or any integer but 1) makes /query/parse carry `Order: [{"field": "id",
+# "ascending": true}]` where the same query without it carries no Order at all. An
+# explicit `sort=` still wins, and the Rule, Limit and Group blocks are untouched.
 SOURCE_DEFAULT_ORDER = [{"field": "id", "ascending": True}]
 
 
@@ -1235,9 +1256,10 @@ def source_order(value):
     if value is None:
         return None
     # Measured: an empty value, `1.5` and `abc` are each a 500, on a listing and at
-    # /query/parse alike. Cycle 55, measured on zen, kids and plexscratch42: so are a
-    # value past the signed 32-bit range (`2147483648`) and a surrounding space (`%201`),
-    # which `int(value.strip())` accepted; `+1` and `01` are the library's own source.
+    # /query/parse alike. Cycle 55, measured on the 1.42.2 reference, plexlab and
+    # plexscratch42: so are a value past the signed 32-bit range (`2147483648`) and a
+    # surrounding space (`%201`), which `int(value.strip())` accepted; `+1` and `01` are
+    # the library's own source.
     text = str(value)
     if not re.fullmatch(r"[+-]?[0-9]+", text) or not -2 ** 31 <= int(text) < 2 ** 31:
         raise FilterError(500, "bad sourceType %r" % value)

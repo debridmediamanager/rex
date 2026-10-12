@@ -1,5 +1,5 @@
 {
- "_about": "PMS 1.43.4 (kids, the lab), measured 2026-09-30 with GETs: container paging over the transports (header, query, both) and the value grammar of X-Plex-Container-Start/Size, per route family. `{show}` is the lab's show (6); the movie library is section 1 (5 movies), the show library section 2. `answer` keeps status, size, totalSize and offset only.",
+ "_about": "PMS 1.43.4 (plexlab, the lab), measured 2026-09-30 with GETs: container paging over the transports (header, query, both) and the value grammar of X-Plex-Container-Start/Size, per route family. `{show}` is the lab's show (6); the movie library is section 1 (5 movies), the show library section 2. `answer` keeps status, size, totalSize and offset only.",
  "version": "1.43.4",
  "families": [
   "/library/sections/1/all",

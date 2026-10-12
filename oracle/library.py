@@ -368,7 +368,8 @@ class Library:
         # when it was deleted.
         self._collection_guids = {}
         # Play history, newest last -- the order /status/sessions/history/all
-        # returns (measured on fun: the newest rows are at the highest offset).
+        # returns (measured on the production server: the newest rows are at the highest
+        # offset).
         self._history = []
         self._next_history = 0
         # Completed views per ratingKey, for /users/top. Measured: the reference's
@@ -719,7 +720,7 @@ class Library:
         # completion. Measured on plexscratch42 (1.42.2) and plexscratch (1.43.4):
         # `duration=66667` beaten 30000 -> 60000, `duration=3000` beaten 900 -> 3000 and
         # `duration=10030` beaten 6000 -> 10000 each COMPLETE, and a real Plex Web client
-        # completing kids' 10 030 ms row is the third witness. With the gate, nothing
+        # completing plexlab's 10 030 ms row is the third witness. With the gate, nothing
         # whose 90% point falls under ~66.7 s could ever be marked watched.
         #
         # And the threshold itself is INTEGER arithmetic, `(duration * 9) // 10`, not a
@@ -812,8 +813,8 @@ class Library:
     def record_view(self, row, account_id=1, device_id=1, view_type=None):
         """One row of `/status/sessions/history/all`.
 
-        Field set measured on fun (a production PMS with 3879 rows): an episode
-        carries key/ratingKey/parentKey/grandparent*/index/parentIndex, a movie
+        Field set measured on the production server (a production PMS with 3879 rows): an
+        episode carries key/ratingKey/parentKey/grandparent*/index/parentIndex, a movie
         carries title and originallyAvailableAt, and both carry historyKey,
         librarySectionID as a STRING, viewedAt, accountID and deviceID.
         """
@@ -834,13 +835,13 @@ class Library:
             "accountID": account_id,
             "deviceID": device_id,
         }
-        # Cycle 25, measured on zen (1.42.2, 73 episode rows) and on plexscratch
+        # Cycle 25, measured on the 1.42.2 reference (73 episode rows) and on plexscratch
         # (1.43.4): an EPISODE history row carries `title` and `originallyAvailableAt`
         # too, so it is not the movie's fields against the episode's -- every row of
         # both types carries both. The comment above says the field set was measured on
-        # fun; both current references disagree with it, and the History page listed the
-        # episode with no episode name at all.
-        # Cycle 70, measured on plexscratch42 (1.42.2) and kids (1.43.4) with Plex for
+        # the production server; both current references disagree with it, and the History
+        # page listed the episode with no episode name at all.
+        # Cycle 70, measured on plexscratch42 (1.42.2) and plexlab (1.43.4) with Plex for
         # Android's own beats: a SCROBBLE writes a row with `viewType: 1`, and a play a
         # timeline completes writes one with no `viewType` at all. The two never overlap
         # -- 191 and 129 rows on the copy -- and the kind decides which listing shows it.
@@ -905,7 +906,7 @@ class Library:
 
     def add_activity(self, subtitle, title="Updating Metadata",
                      kind="library.update.item.metadata", progress=0):
-        """Shape measured on fun mid-refresh: uuid, type, cancellable, userID,
+        """Shape measured on the production server mid-refresh: uuid, type, cancellable, userID,
         title, subtitle, progress."""
         activity = {
             "uuid": str(uuid.uuid4()),
@@ -1538,9 +1539,9 @@ class Library:
                     and str(child.get("grandparentRatingKey")) == key:
                 # Measured on the copy: a show's `contentRating` moves onto the
                 # episodes beneath it, and clearing it clears theirs. The read side on
-                # kids and zen is the same rule seen from the other end -- every
-                # episode of a show carries the show's certificate, a season carries
-                # none. rex derived it only at load, so a show edited afterwards
+                # plexlab and the 1.42.2 reference is the same rule seen from the other end
+                # -- every episode of a show carries the show's certificate, a season
+                # carries none. rex derived it only at load, so a show edited afterwards
                 # left its episodes showing a certificate it no longer had. A real PMS
                 # keeps an episode's OWN agent rating separate and moves only the
                 # inherited ones; rex's catalog has one column for both.
@@ -1596,9 +1597,9 @@ class Library:
             return
         if row.get("type") == "season" and GENERATED_SEASON_TITLE.match(title):
             # Cycle 20: a title the SERVER generated stores no sort title at all --
-            # zen's five `[Unknown Season]` rows carry none, where stripping the
-            # leading `[` would leave `Unknown Season]`. `Season N` and `Specials`
-            # derive to themselves and so were already absent; this is the third
+            # the 1.42.2 reference's five `[Unknown Season]` rows carry none, where
+            # stripping the leading `[` would leave `Unknown Season]`. `Season N` and
+            # `Specials` derive to themselves and so were already absent; this is the third
             # label, and the only one where the derivation differs from the title.
             row.pop("titleSort", None)
             return
@@ -1875,9 +1876,9 @@ class Library:
             # Measured on plexscratch (1.43.4) by unmatching a matched movie: `updatedAt`
             # moves AND the poster the row owns follows it -- `thumb/1790724822` became
             # `thumb/1790724825` beside `updatedAt 1790724825` -- which is cycle 20's rule
-            # that an owned artwork version IS the row's `updatedAt` (726 of 726 on zen).
-            # rex moved the stamp and kept the old version, so an unmatched row's
-            # poster named a version its own row no longer carried.
+            # that an owned artwork version IS the row's `updatedAt` (726 of 726 on the
+            # 1.42.2 reference). rex moved the stamp and kept the old version, so an
+            # unmatched row's poster named a version its own row no longer carried.
             for field in ("thumb", "art"):
                 value = str(row.get(field) or "")
                 owned = "/library/metadata/%s/%s/" % (row["ratingKey"], field)
@@ -1897,7 +1898,7 @@ class Library:
     # unmatched season never has matched episodes under it. The season also loses
     # its own `year` (the show's then shows through as `parentYear`) and its `thumb`
     # falls back to the SHOW's, because the season no longer has an agent-supplied
-    # poster of its own. kids shows the same end state from the other side: its
+    # poster of its own. plexlab shows the same end state from the other side: its
     # unmatched season 11 carries the show's thumb, no `year` and `parentYear`.
     #
     # What an episode unmatch drops, by either path. Re-measured on the copy against a
@@ -2926,8 +2927,8 @@ class Library:
         section = self.catalog.section(collection["librarySectionID"]) \
             if hasattr(self.catalog, "section") else None
         if section:
-            # Measured on fun's collection rows: the section's title and key ride on
-            # the row itself, as they do on every library row.
+            # Measured on the production server's collection rows: the section's title and
+            # key ride on the row itself, as they do on every library row.
             row["librarySectionTitle"] = section.get("title")
             row["librarySectionKey"] = "/library/sections/%s" % collection["librarySectionID"]
         if collection.get("smart"):

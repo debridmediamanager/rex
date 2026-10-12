@@ -12,7 +12,7 @@ than an absent one.
 The per-entry gates are measured out of the client's own bundle (`webclient/js`,
 Plex Web 4.147.1, `main-*.js` module 92273 -- one flag list per item type plus
 the predicate for each entry) and the response shapes out of a real PMS
-(plexlab, 1.43.4, plus production fun for the rows the lab had none of). Both
+(plexlab, 1.43.4, plus a production server for the rows the lab had none of). Both
 are recorded in docs/findings.md.
 
 **This suite WRITES.** It edits rows, marks items played, builds and deletes
@@ -256,8 +256,8 @@ def get(base, path):
 def xml_container(body):
     """An XML MediaContainer as the dict `container` makes of the JSON form.
 
-    Cycle 87 (W6), measured on zen, kids and plexscratch42: every `/system` path but the
-    bare `/system/agents` answers its `application/xml` document whatever Accept says,
+    Cycle 87 (W6), measured on the 1.42.2 reference, plexlab and plexscratch42: every `/system` path
+    but the bare `/system/agents` answers its `application/xml` document whatever Accept says,
     so a check on one reads the XML. Rows group by element, and an all-digit
     attribute reads as the number the JSON form would carry.
     """
@@ -464,7 +464,7 @@ def main():
         check("item detail container carries identifier + mediaTagPrefix",
               detail.get("identifier") == "com.plexapp.plugins.library"
               and bool(detail.get("mediaTagPrefix")),
-              "re-measured on fun and the 1.43.4 reference")
+              "re-measured on the production server and the 1.43.4 reference")
     else:
         skip("show checks", "no show section in the catalog")
 
@@ -617,12 +617,12 @@ def main():
     # tags the edit checks had replaced and whose poster the artwork checks had cleared,
     # and failed on a server that was answering correctly. A read check that depends on
     # fixture state belongs before the writes that change it.
-    # Cycle 45, measured on kids (1.43.4) and zen (1.42.2). Hunt A reported
+    # Cycle 45, measured on plexlab (1.43.4) and the 1.42.2 reference. Hunt A reported
     # `includeAlternates` as a 1.43.4-only option and it was left unbuilt on that basis;
     # the claim is REFUTED. The hunt's 1.42.2 oracle was plexscratch42, a fresh install
     # whose every row is unmatched and therefore holds NO agent artwork at all, so the
     # option had nothing to add there -- CLAUDE.md's "use it for grammar, never for a
-    # count" trap, taken from the other side. zen, a real matched 1.42.2 library,
+    # count" trap, taken from the other side. The 1.42.2 reference, a real matched 1.42.2 library,
     # honours it on `/hubs`, `/library/onDeck`, `/library/metadata/{id}` and both
     # `related` paths.
     #
@@ -633,12 +633,12 @@ def main():
     # `/library/recentlyAdded`, a `/children` page, a section `search`, `/collections`,
     # `/playlists`, `/hubs/search` and `/hubs/home/recentlyAdded` are byte-identical with
     # and without it, and inside `/hubs` exactly the shelves that carry full rows gain
-    # the block (zen's `home.television.recent` shows and its `home.ondeck` episode do;
-    # its `home.movies.recent` light movie rows do not). The inline `Related`, `Extras`
+    # the block (the 1.42.2 reference's `home.television.recent` shows and its `home.ondeck` episode
+    # do; its `home.movies.recent` light movie rows do not). The inline `Related`, `Extras`
     # and `Children` blocks follow the same rule.
     #
     # The child order is measured too: `Thumb` and `Art` sit between the tags and `Guid`
-    # and `Theme` sits directly after `Rating` -- kids' show 6 answers `Genre, Country,
+    # and `Theme` sits directly after `Rating` -- plexlab's show 6 answers `Genre, Country,
     # Thumb, Art, Guid, Rating, Theme, Role`. The value grammar is the `+?0*1` family
     # (`1`, `01`, `+1`, `000001` on; `2`, `-1`, `1.5`, `true`, empty off) and nothing
     # refuses. A DECISION IGNORES it, the same exception `excludeElements=` already has
@@ -691,7 +691,7 @@ def main():
           str(alt_c45))
 
 
-    # Cycle 45, measured on kids (1.43.4), zen (1.42.2), plexscratch (1.43.4) and
+    # Cycle 45, measured on plexlab (1.43.4), the 1.42.2 reference, plexscratch (1.43.4) and
     # plexscratch42 (1.42.2) over 91 leaf names, which agree on every one:
     # `/library/sections/{id}/{name}/top` is a REAL two-segment section leaf -- the
     # fifth, beside `extras/all`, `query/parse`, `indexes/thumbnails` and the versioned
@@ -704,7 +704,7 @@ def main():
     # ASCENDING BY TAG ID -- not by usage, which is what the name suggests. The `key` is
     # built from the REQUESTED name (`/library/sections/1/all?studio=28`) while `filter`
     # names the tag's OWN type (`director=28`), so the two disagree on the alias names.
-    # It is NOT the axis: kids' actor axis is the first-three-roles union (9) where
+    # It is NOT the axis: plexlab's actor axis is the first-three-roles union (9) where
     # `/actor/top` is every Role tag (12), and on a SHOW library it reads the LEAVES.
     #
     # ELEVEN names resolve to a type, in six pairs -- a tag name and a metadata COLUMN
@@ -724,8 +724,8 @@ def main():
     # media-axis exception and answers the whole library, as `/resolution/zzz` does.
     # The 1.43.4-only vocabulary splits with the version: `videoCodec`, `audioCodec`,
     # `subtitleCodec`, `audioLayout`, `atmos`, `hdr10plus`, `squareArt` and `clearLogo`
-    # are 200s on kids and 404s on zen, so rex -- which reports 1.42.2 -- 404s them.
-    # GET and HEAD only; every other verb is the read-only route's 404.
+    # are 200s on plexlab and 404s on the 1.42.2 reference, so rex -- which reports 1.42.2 -- 404s
+    # them. GET and HEAD only; every other verb is the read-only route's 404.
     top_c45 = {}
     for leaf_c45t in ("genre", "director", "writer", "actor", "producer", "country",
                       "studio", "rating", "title", "tagline", "summary"):
@@ -994,7 +994,7 @@ def main():
                         len(after_scrobble.get("Metadata") or [])))
     if rows:
         entry = rows[-1]
-        # Field set measured on production fun.
+        # Field set measured on a production server.
         check("history row carries the measured field set",
               all(k in entry for k in ("historyKey", "key", "ratingKey",
                                        "librarySectionID", "viewedAt", "accountID",
@@ -1152,9 +1152,9 @@ def main():
     movie_title = next((d.get("title") for d in
                         get(base, "/library/sections")[1].get("Directory") or []
                         if str(d.get("key")) == str(movie_section)), "")
-    # RE-MEASURED in cycle 18 on kids ("Movies") and zen ("Zen Movies", "Bench TV"): a
-    # MOVIE library COMPOSES this row's title from its own -- zen answers "All Zen
-    # Movies" -- and only a SHOW library answers the constant "All Shows". The check
+    # RE-MEASURED in cycle 18 on plexlab ("Movies") and the 1.42.2 reference ("Zen Movies", "Bench
+    # TV"): a MOVIE library COMPOSES this row's title from its own -- the 1.42.2 reference answers
+    # "All Zen Movies" -- and only a SHOW library answers the constant "All Shows". The check
     # asserted the constant for both, which is the half rex had hardcoded.
     check("the pivot rows carry the titles the sidebar prints",
           (plain_pivots.get("Directory") or [{}])[0].get("title")
@@ -1568,8 +1568,8 @@ def main():
             # plus the RFC 5987 form -- the shape measured on a real PMS.
             #
             # Cycle 44 split the two refusals: a file the source no longer has is a
-            # **404**, which is what a real PMS answers for a part it cannot open (zen
-            # part 23595), and a transport failure stays the 502. With no `ZURG_URL` the
+            # **404**, which is what a real PMS answers for a part it cannot open (the 1.42.2
+            # reference part 23595), and a transport failure stays the 502. With no `ZURG_URL` the
             # part has no bytes at all and this skip fires on the 502.
             skip("download serves an attachment named after the media file",
                  "part unreadable: the catalog's files are not on a zurg "
@@ -2179,7 +2179,7 @@ def main():
           status == 200 and len(sorts.get("Directory") or []) >= 6,
           "%d sort(s)" % len(sorts.get("Directory") or []))
     # Cycle 49 REFUTES cycle 15's "the two lists really are different": re-measured on
-    # zen (1.42.2), kids (1.43.4) and both unclaimed copies in six parameter spellings,
+    # the 1.42.2 reference, plexlab (1.43.4) and both unclaimed copies in six parameter spellings,
     # `/playlists/sorts` ends with the SAME `mediaCount` "Item Count" row the `Meta`
     # descriptor carries. rex ended it with `updatedAt` "Date Modified", so its two
     # surfaces contradicted each other and the page's sort menu offered a key the
@@ -2732,8 +2732,8 @@ def main():
     check("media statistics count a completed play",
           bool(media_stats.get("StatisticsMedia")),
           "%d row(s)" % len(media_stats.get("StatisticsMedia") or []))
-    # Cycle 58, measured on zen (UTC) and kids (Europe/Berlin): the coarse buckets are
-    # CALENDAR buckets in the server's local time -- a day starts at local midnight, a
+    # Cycle 58, measured on the 1.42.2 reference (UTC) and plexlab (Europe/Berlin): the coarse
+    # buckets are CALENDAR buckets in the server's local time -- a day starts at local midnight, a
     # week on a Monday, a month on the 1st and a year on January 1st. rex floored
     # the epoch to fixed widths, so every week began on a Thursday and every "month" on
     # whatever day thirty-day steps reached. The suite runs on the server's host.
@@ -2995,7 +2995,7 @@ def main():
     # Both rows are SELECTED by their state rather than assumed: with a TMDB key the Fix
     # Match section above leaves `movie` matched again, and the check then wrote to a
     # matched row and called it the unmatched one. The fixture carries a `local://` row
-    # (zen's own unmatched "Vinaipayan"), so an unmatched movie exists either way.
+    # (the 1.42.2 reference's own unmatched "Vinaipayan"), so an unmatched movie exists either way.
     guids_c36s = [(row_c36s.get("ratingKey"),
                    str((get(base, "/library/metadata/%s" % row_c36s.get("ratingKey"))[1]
                         .get("Metadata") or [{}])[0].get("guid") or ""))
@@ -3098,8 +3098,8 @@ def main():
         query_status, _, _ = gated_status("/library/sections?X-Plex-Token=suite-gate-token")
         check("the token is accepted in the query as well as the header",
               query_status == 200, "HTTP %s" % query_status)
-        # Cycle 16, measured on kids and zen with no token at all: a real PMS ROUTES
-        # before it authenticates. A path that does not exist is a 404 even
+        # Cycle 16, measured on plexlab and the 1.42.2 reference with no token at all: a real PMS
+        # ROUTES before it authenticates. A path that does not exist is a 404 even
         # unauthenticated -- `/no/such/path`, an unknown ratingKey, an unknown section
         # -- and only a path that DOES exist answers 401. The legacy single-segment
         # plug-in dispatcher (`/prefs`, `/channels`, `/prefsx`) is a 403 with its own
@@ -3124,8 +3124,8 @@ def main():
               "%s ; root body %d bytes, redirect=%s"
               % (routed_c16w, len(root_c16w), b"web/index.html" in root_c16w))
         # Cycle 52, swept over the whole single-segment vocabulary -- 131 names taken from
-        # the two servers' own binaries -- with NO token, on kids (1.43.4) and zen
-        # (1.42.2), which agree on every name but `/player`: the unauthenticated partition
+        # the two servers' own binaries -- with NO token, on plexlab (1.43.4) and the 1.42.2
+        # reference (1.42.2), which agree on every name but `/player`: the unauthenticated partition
         # is wider than the eleven 401s cycle 16 recorded. `/connections` and `/dlna` --
         # both routes cycle 49 added, after this list was written -- are 401s; `/manage`
         # answers its 302 to the web client like `/web`; and `/search`, `/downloadQueue`
@@ -3500,8 +3500,8 @@ def main():
     else:
         skip("a show library lists its own two scanners", "no show library")
     # Cycle 49 REFUTES the claim this check used to carry ("a real PMS does NOT put its
-    # account token in /myplex/account"). zen (1.42.2, claimed and fully mapped) answers
-    # `authToken="<its PlexOnlineToken>"`; kids (1.43.4, claimed) does not -- and kids
+    # account token in /myplex/account"). The 1.42.2 reference (claimed and fully mapped) answers
+    # `authToken="<its PlexOnlineToken>"`; plexlab (1.43.4, claimed) does not -- and plexlab
     # also answers an EMPTY publicAddress/publicPort/privateAddress/privatePort, so the
     # whole plex.tv mapping block is missing there. Version and mapping state are
     # CONFOUNDED on the only two claimed servers this project has, and neither unclaimed
@@ -3511,7 +3511,7 @@ def main():
     # every peer that can reach the port: a deliberate deviation.
     _, body, _ = request(base, "GET", "/myplex/account")
     account = json.loads(body).get("MyPlex", {}) if body[:1] == b"{" else {}
-    check("/myplex/account carries no authToken (deliberate: zen 1.42.2 sends one)",
+    check("/myplex/account carries no authToken (deliberate: the 1.42.2 reference sends one)",
           "authToken" not in account and account.get("signInState"),
           ",".join(sorted(account)))
     status, token, _ = get(base, "/security/token?type=delegation&scope=all")
@@ -3768,10 +3768,10 @@ def main():
     else:
         skip("filter: a tag field's = is EXACT, not contains",
              "no multi-character contentRating in the catalog")
-    # RE-MEASURED in cycle 13 on zen, and this check had it wrong: an empty value on a
-    # tag-TABLE field matches NOTHING, not the rows that have no value. 37 of 600 zen
-    # movies carry no Genre and all 600 carry no Label, yet `genre=` and `label=` both
-    # answer 0 rows there and on kids. The older reading -- "`genre=` returned none
+    # RE-MEASURED in cycle 13 on the 1.42.2 reference, and this check had it wrong: an empty value
+    # on a tag-TABLE field matches NOTHING, not the rows that have no value. 37 of 600
+    # movies on the 1.42.2 reference carry no Genre and all 600 carry no Label, yet `genre=` and
+    # `label=` both answer 0 rows there and on plexlab. The older reading -- "`genre=` returned none
     # because every row has a genre" -- was an inference from a five-movie library that
     # this data disproves. The rows-with-no-value rule is real, but it belongs to
     # `contentRating` and the language fields; `studio` and `editionTitle` are a third
@@ -4036,8 +4036,8 @@ def main():
     #
     # Cycle 16 re-measured this and the check had to move with it: an UNMATCHED movie
     # carries no `Preferences` block AT ALL (measured on plexscratch, corroborated
-    # read-only on zen, where every `local://` show advertises eight settings against a
-    # matched show's full list). So the three-setting half is asserted on a movie that is
+    # read-only on the 1.42.2 reference, where every `local://` show advertises eight settings
+    # against a matched show's full list). So the three-setting half is asserted on a movie that is
     # matched and the empty half on an unmatched one, each SELECTED by its guid: `movie`
     # was unmatched above, but with a TMDB key the Fix Match section matches it again,
     # and the fixture's `local://` row is the unmatched movie then. The old check
@@ -4273,8 +4273,8 @@ def main():
                                         entries[:2]))
     # Cycle 44 RE-MEASURED the other four and this check had the wrong belief in it.
     # `videoCodec`, `audioCodec`, `subtitleCodec` and `audioLayout` are secondary axes
-    # 1.43.4 answers and **1.42.2 404s** -- confirmed on zen AND on plexscratch42, both
-    # 1.42.2, on a movie library and a show library alike, against kids' 200s. rex
+    # 1.43.4 answers and **1.42.2 404s** -- confirmed on the 1.42.2 reference AND on plexscratch42,
+    # both 1.42.2, on a movie library and a show library alike, against plexlab's 200s. rex
     # reports 1.42.2. `CLAUDE.md` already records the same six-name media-codec split
     # for `/filters` and the `Meta` descriptor; the AXES split with them, which nothing
     # had checked, and rex's own `/filters` correctly omits all four while the axis
@@ -4319,8 +4319,8 @@ def main():
     # lesson as the two Meta sidecars. rex served one trimmed list for both, so
     # a show grid's filter bar could only talk about movies.
     #
-    # Cycle 14 re-measured the COUNT: this check said 28, which is kids' answer
-    # (1.43.4). zen -- 1.42.2, the build rex reports -- answers 22, and the six
+    # Cycle 14 re-measured the COUNT: this check said 28, which is plexlab's answer
+    # (1.43.4). The 1.42.2 reference -- the build rex reports -- answers 22, and the six
     # it drops are the media-codec axes. rex was advertising a newer server's
     # filter bar than the version it claims to be. See docs/findings.md.
     _, movie_filters, _ = get(base, "/library/sections/%s/filters" % movie_section)
@@ -4390,10 +4390,10 @@ def main():
                                "&pinnedContentDirectoryID=%s" % (movie_section, movie_section))
     hubs = promoted.get("Hub") or []
     identifiers = [h.get("hubIdentifier") for h in hubs]
-    # RE-MEASURED in cycle 13 on zen, the 1.42.2 build rex reports: this call sends
+    # RE-MEASURED in cycle 13 on the 1.42.2 reference, the build rex reports: this call sends
     # `pinnedContentDirectoryID`, and with it the third shelf is `home.movies.recent.N`,
     # not `movie.recentlyadded.N`. The bare call still answers the latter, and the check
-    # below covers it. kids (1.43.4) ignores the parameter, which is how the pinned
+    # below covers it. plexlab (1.43.4) ignores the parameter, which is how the pinned
     # shape went unnoticed for twelve cycles.
     _, bare_promoted, _ = get(base, "/hubs/promoted?contentDirectoryID=%s" % movie_section)
     bare_ids = [h.get("hubIdentifier") for h in bare_promoted.get("Hub") or []]
@@ -4589,7 +4589,7 @@ def main():
           "size=%s rows=%d providers=%d" % (legacy.get("size"),
                                             len(legacy.get("Metadata") or []),
                                             len(providers)))
-    # Cycle 41, measured on kids (1.43.4) and zen (1.42.2), identically within
+    # Cycle 41, measured on plexlab (1.43.4) and the 1.42.2 reference, identically within
     # each server: legacy `/search` ignores `limit`, including malformed and
     # non-positive values.  This differs deliberately from `/hubs/search` and
     # `/library/search`, whose measured grammars validate and apply the value.
@@ -4689,8 +4689,8 @@ def main():
         status, hubs, _ = get(base, "/hubs/sections/%s" % section_id)
         shelves = hubs.get("Hub") or []
         identifiers = [h.get("hubIdentifier") for h in shelves]
-        # RE-MEASURED in cycle 13 on zen, the 1.42.2 build rex reports: a movie
-        # library carries SIX shelves and a show library SEVEN. kids (1.43.4) builds
+        # RE-MEASURED in cycle 13 on the 1.42.2 reference, the build rex reports: a movie
+        # library carries SIX shelves and a show library SEVEN. plexlab (1.43.4) builds
         # neither `movie.topunwatched` nor `tv.startwatching`/`tv.toprated` although
         # its own rows qualify for all three, so the five were a version difference
         # read as a complete list.
@@ -4752,8 +4752,8 @@ def main():
     down = [r.get("ratingKey") for r in descending.get("Metadata") or []]
     check("a sort direction is honoured", len(up) > 1 and up == list(reversed(down)),
           "%s vs %s" % (up, down))
-    # Cycle 73, three reads each on zen, kids and plexscratch: an UNSEEDED random
-    # sort -- Plex Web's "Randomly" sends no seed -- is a fresh order per request.
+    # Cycle 73, three reads each on the 1.42.2 reference, plexlab and plexscratch: an UNSEEDED
+    # random sort -- Plex Web's "Randomly" sends no seed -- is a fresh order per request.
     # This check used to assert the opposite, a belief that was never measured.
     draws = []
     for _ in range(8):
@@ -5171,7 +5171,7 @@ def main():
                           % movie_lib)
     # RE-MEASURED in cycle 18: this list is PER VERSION. 1.43.4 answers 12 settings here
     # and 1.42.2 -- the build rex reports -- answers 7: `tv.plex.agents.none` adds no
-    # agent rows there at all. `section_prefs_new.json` was captured off kids, which is
+    # agent rows there at all. `section_prefs_new.json` was captured off plexlab, which is
     # the fourth fixture found to carry a version's own shape.
     check("an existing library's form is reshaped by ?agent=",
           status == 200 and len(form.get("Setting") or []) == 7,
@@ -5260,16 +5260,16 @@ def main():
     status, agents, _ = get(base, "/system/agents?mediaType=1")
     agent_rows = agents.get("Agent") or []
     movie_agent = next((a for a in agent_rows if a.get("identifier") == "tv.plex.agents.movie"), {})
-    # Cycle 17 re-measured this on kids (1.43.4) and zen (1.42.2): the two
+    # Cycle 17 re-measured this on plexlab (1.43.4) and the 1.42.2 reference: the two
     # `tv.plex.agents.nfo.*` rows exist only on 1.43.4, and rex reports 1.42.2, so
     # a movie library is offered TWO modern agents and not three. The fixture this
-    # check was written against was captured off kids.
+    # check was written against was captured off plexlab.
     #
     # Cycle 53 re-measured the whole list: a real 1.42.2 server offers FIVE agents for a
     # movie library, because the three legacy PRIMARIES for that type come first. This
     # check encoded rex's own four-agent catalogue, which was the inherited bound
-    # cycle 53 retired -- so it is updated to what zen and plexscratch42 answer rather
-    # than deleted.
+    # cycle 53 retired -- so it is updated to what the 1.42.2 reference and plexscratch42 answer
+    # rather than deleted.
     check("a movie library is offered its five agents, legacy first",
           [a.get("identifier") for a in agent_rows]
           == ["com.plexapp.agents.none", "com.plexapp.agents.imdb",
@@ -5278,8 +5278,8 @@ def main():
           ",".join(str(a.get("identifier")) for a in agent_rows))
     # Cycle 21: the list is read from the XML, because this endpoint writes its
     # `Language` rows as repeated JSON KEYS and a parser keeps only the last -- which
-    # is what both references do and what rex now does. zen carries 150 Language
-    # elements here and kids 195, and exactly one of each agent's carries `default="1"`.
+    # is what both references do and what rex now does. The 1.42.2 reference carries 150 Language
+    # elements here and plexlab 195, and exactly one of each agent's carries `default="1"`.
     _, agents_xml_c21, _ = request(base, "GET", "/system/agents?mediaType=1", want_json=False)
     movie_agent_xml_c21 = next(
         (a_c21 for a_c21 in ET.fromstring(agents_xml_c21).iter("Agent")
@@ -5307,7 +5307,7 @@ def main():
           status == 200 and b'size="0"' in chain and b"<Agent" not in chain,
           "HTTP %s %r" % (status, chain[:120]))
 
-    # Cycle 58, swept on zen (1.42.2) over fifteen agents x six media types and on kids
+    # Cycle 58, swept on the 1.42.2 reference over fifteen agents x six media types and on plexlab
     # (1.43.4), and the write on plexscratch42: a LEGACY primary agent has a chain. The
     # Agents settings page lists every agent serving the type -- the enabled ones first, in
     # the saved order -- and its reorder saves `PUT ?order=`, answering the `<combine>`
@@ -5400,7 +5400,7 @@ def main():
     check("one device reads by id, and an unknown id is a 404",
           status_one == 200 and (one.get("Device") or [{}])[0].get("id") == seen.get("id")
           and status_bad == 404, "HTTP %s / %s" % (status_one, status_bad))
-    # Cycle 70 re-measured the history kinds on plexscratch42 and kids: a play a timeline
+    # Cycle 70 re-measured the history kinds on plexscratch42 and plexlab: a play a timeline
     # completes writes a row with no `viewType`, which only the plain call (`type=0`) lists;
     # `type=1` lists scrobbles. This read used `type=1` on cycle 15's belief.
     history = get(base, "/status/sessions/history/all?sort=viewedAt:desc")[1].get("Metadata") or []
@@ -5664,8 +5664,8 @@ def main():
                               + urllib.parse.urlencode(spec), headers=sent)
         return status, (json.loads(body).get("MediaContainer", {}) if body[:1] == b"{" else {})
 
-    # Cycle 26, re-measured on kids and zen over nine parameter shapes: this check
-    # asserted more than a real PMS refuses, and is SPLIT rather than deleted. What
+    # Cycle 26, re-measured on plexlab and the 1.42.2 reference over nine parameter shapes: this
+    # check asserted more than a real PMS refuses, and is SPLIT rather than deleted. What
     # refuses is a path that names nothing playable and an OUT-OF-RANGE `mediaIndex`
     # (`1` on a one-Media row). What does NOT refuse -- 200 on both references, where
     # rex answered 400 -- is a missing, non-numeric, negative or empty `mediaIndex`
@@ -6062,7 +6062,7 @@ def main():
     # Cycle 7, second batch: python-plexapi as a third-party client. Scoped sort
     # keys and filters, the title word matcher, /library/all as a query, and the
     # reads plexapi makes that rex 404'd. Measured against the reference and
-    # fun; every check fails against the server as it stood before.
+    # the production server; every check fails against the server as it stood before.
     # ------------------------------------------------------------------
     print("\n=== scoped sorts and filters, /library/all, and python-plexapi's reads ===")
     if show_lib and c5_show and c5_season and c5_episode:
@@ -6351,7 +6351,7 @@ def main():
     advanced_filters = (get(base, "/library/sections/%s/filters?includeAdvanced=1" % movie_lib)[1]
                         .get("Directory") or [])
     season_filters = get(base, "/library/sections/%s/filters?type=3" % movie_lib)[1].get("Directory")
-    # Cycle 14: the episode list is 17 on kids (1.43.4) and 9 on zen (1.42.2, the
+    # Cycle 14: the episode list is 17 on plexlab (1.43.4) and 9 on the 1.42.2 reference (the
     # build rex reports) -- it drops the six codec axes AND `hdr`/`dovi`, which
     # the movie list keeps. The type-keying and the Duplicates rule are unchanged.
     check("/filters is the asked TYPE's list, and includeAdvanced adds Duplicates",
@@ -6607,15 +6607,15 @@ def main():
             % (c5_movie, movie_path8))
     deck8 = get(base, "/library/onDeck")[1].get("Metadata") or []
     home_deck8 = get(base, "/hubs/home/continueWatching")[1].get("Metadata") or []
-    # Cycle 28 re-measured this against zen, which HAS a row on deck where cycle 21's fun
-    # had none: an On Deck row is the DETAIL row, child element for child element, and it
-    # names its library by KEY as well as by UUID. The light projection and the missing
-    # key are 1.43.4's answer -- plexscratch's row drops `librarySectionKey`, `Guid`,
+    # Cycle 28 re-measured this against the 1.42.2 reference, which HAS a row on deck where the
+    # production server in cycle 21 had none: an On Deck row is the DETAIL row, child element for
+    # child element, and it names its library by KEY as well as by UUID. The light projection and
+    # the missing key are 1.43.4's answer -- plexscratch's row drops `librarySectionKey`, `Guid`,
     # `Rating` and `Producer` and stamps `studio` instead -- and rex reports 1.42.2,
-    # so zen is the witness that counts. What is left here is the librarySection pair
-    # each path carries; the projection itself is cycle 28's own check further down, and
-    # 1.42.2's Continue Watching row cannot be measured at all (zen is read-only and has
-    # nothing with a stored offset), so nothing is asserted about its shape.
+    # so the 1.42.2 reference is the witness that counts. What is left here is the librarySection
+    # pair each path carries; the projection itself is cycle 28's own check further down, and
+    # 1.42.2's Continue Watching row cannot be measured at all (the 1.42.2 reference is read-only
+    # and has nothing with a stored offset), so nothing is asserted about its shape.
     shape8 = [(sorted(k for k, v in r.items() if isinstance(v, list)),
                sorted(k for k, v in (detail_of(r.get("ratingKey")) or {}).items()
                       if isinstance(v, list)))
@@ -6623,7 +6623,8 @@ def main():
     # Cycle 30 corrected both halves on plexscratch42, a writable copy of the version
     # rex reports: the row is the detail row MINUS `Field`, and it carries NO
     # `librarySectionKey` -- on a movie and an episode alike, as plexscratch (1.43.4) and
-    # cycle 21's fun also said. zen's one on-deck row is the outlier, still open.
+    # the production server in cycle 21 also said. The 1.42.2 reference's one on-deck row is the
+    # outlier, still open.
     check("On Deck rows are the detail row minus Field, named by UUID and not by key",
           deck8 and home_deck8
           and all(set(detail8) - set(row8) <= {"Field"} and not set(row8) - set(detail8)
@@ -6821,8 +6822,8 @@ def main():
           and shows_trimmed9 and all(r.get("mediaCount") == 0 for r in shows_trimmed9),
           "%d movie row(s), %d show row(s)" % (len(trimmed9), len(shows_trimmed9)))
 
-    # The per-second series grows while these reads run (zen: 41 unfiltered, 42 with lan=1),
-    # so the set is retaken until the unfiltered read is the same before and after it.
+    # The per-second series grows while these reads run (the 1.42.2 reference: 41 unfiltered, 42
+    # with lan=1), so the set is retaken until the unfiltered read is the same before and after it.
     for _band_try9 in range(5):
         band9 = {q: get(base, "/statistics/bandwidth?timespan=6%s" % q)
                  for q in ("", "&accountID=999", "&deviceID=999", "&lan=0", "&lan=1", "&lan=true", "&deviceID=")}
@@ -6846,7 +6847,7 @@ def main():
     if history9:
         status_item9, item9, _ = get(base, history9[0]["historyKey"])
         one9 = (item9.get("Metadata") or [{}])[0]
-        # Re-measured in cycle 11 on kids (1.43.4) and zen (1.42.2), against every
+        # Re-measured in cycle 11 on plexlab (1.43.4) and the 1.42.2 reference, against every
         # readable row on each: the single read is NOT the row history/all lists. It is a
         # nine-attribute projection carrying `viewType: 1` and no `key`, `ratingKey` or
         # artwork. This check asserted the two were equal.
@@ -8055,9 +8056,9 @@ def main():
           "HTTP %s, %d movie(s), states %s" % (holder_w15f, len(movies_w15f), states_w15f[:6]))
 
 
-    # Cycle 49, measured on zen (1.42.2) and kids (1.43.4): `/servers` is the list of
+    # Cycle 49, measured on the 1.42.2 reference and plexlab (1.43.4): `/servers` is the list of
     # servers this one has discovered, and its OWN row carries its own interface address
-    # and the port it really listens on -- zen `192.0.2.44`/32400, kids
+    # and the port it really listens on -- the 1.42.2 reference `192.0.2.44`/32400, plexlab
     # `172.31.7.2`/32400, neither one loopback. rex answered `127.0.0.1` and the
     # CONSTANT 32400 whatever port it was on, because `private_address` was declared and
     # never assigned. A companion client reads this list to find the server.
@@ -8072,7 +8073,7 @@ def main():
         probe_c49a.connect(("192.0.2.1", 9))          # TEST-NET-1, never routed: sends nothing
         routed_c49a = probe_c49a.getsockname()[0]
     except OSError:
-        routed_c49a = ""                               # no route at all, which is kids' state
+        routed_c49a = ""                               # no route at all, which is plexlab's state
     finally:
         probe_c49a.close()
     check("the /servers self row names this host's own address, not loopback",
@@ -8082,8 +8083,8 @@ def main():
           row_c49a.get("host") == row_c49a.get("address"),
           "%r / %r" % (row_c49a.get("host"), row_c49a.get("address")))
 
-    # Cycle 49: `privateAddress` and `privatePort` move TOGETHER. zen carries both and
-    # kids -- whose plex.tv mapping holds no local connection -- carries `""` and **0**.
+    # Cycle 49: `privateAddress` and `privatePort` move TOGETHER. The 1.42.2 reference carries both
+    # and plexlab -- whose plex.tv mapping holds no local connection -- carries `""` and **0**.
     # rex was the only server of the four that answered a port beside an empty
     # address, because the port was the literal 32400.
     _, raw_c49b, _ = request(base, "GET", "/myplex/account")
@@ -8097,7 +8098,7 @@ def main():
           (not addr_c49b) or pport_c49b == port_c49a,
           "privateAddress=%r privatePort=%r want %d" % (addr_c49b, pport_c49b, port_c49a))
 
-    # Cycle 49, measured on zen (1.42.2 claimed), kids (1.43.4 claimed), plexscratch42
+    # Cycle 49, measured on the 1.42.2 reference (claimed), plexlab (1.43.4 claimed), plexscratch42
     # (1.42.2 unclaimed) and plexscratch (1.43.4 unclaimed), byte-identical on all four:
     # `/` carries the transcoder's quality LADDER as three parallel comma lists. Plex Web
     # builds its Quality menu from them, index by index.
@@ -8114,9 +8115,9 @@ def main():
           == "128,128,160,240,320,480,768,720,720,1080,1080,1080,1080",
           repr(root_c49c.get("transcoderVideoResolutions")))
     # Cycle 49: two more values on the same blob that no reference emits. `livetv` is a
-    # CONSTANT 7 on all four -- zen and kids (claimed) and both unclaimed copies, none of
-    # which has a tuner -- and `offlineTranscode` is 1 on the claimed pair and ABSENT on
-    # the unclaimed pair, never 0. rex answered 0 for both.
+    # CONSTANT 7 on all four -- the 1.42.2 reference and plexlab (claimed) and both unclaimed
+    # copies, none of which has a tuner -- and `offlineTranscode` is 1 on the claimed pair and
+    # ABSENT on the unclaimed pair, never 0. rex answered 0 for both.
     # Cycle 49, measured on plexscratch42 (1.42.2): a `mood[0].tag.tag=` write to a MOVIE
     # is a 200 that stores NOTHING, where the `style` and `similar` beside it really
     # store. rex stored it and then carried a `Mood` element no real PMS emits on a
@@ -8395,7 +8396,7 @@ def main():
           == [b"mappingState", b"mappingError", b"signInState", b"privateAddress"],
           "%s" % xml_order_c49o)
 
-    # Cycle 49, measured on zen (1.42.2) and kids (1.43.4): two named endpoints behind
+    # Cycle 49, measured on the 1.42.2 reference and plexlab (1.43.4): two named endpoints behind
     # the legacy single-segment dispatcher are real. `/dlna` is the DLNA server's own
     # library list -- the section rows keyed by their full path, without `allowSync`,
     # `filters` and `refreshing`, ending in a `/channels/all` "Channels" row -- and
@@ -8450,7 +8451,7 @@ def main():
 
     # Cycle 50: a DECISION container is written by the same serialiser `/status/sessions`
     # uses -- cycle 46 found that one and nobody asked whether the decision shares it. It
-    # does, measured on kids (1.43.4) and plexscratch42 (1.42.2): the row's scalars, its
+    # does, measured on plexlab (1.43.4) and plexscratch42 (1.42.2): the row's scalars, its
     # `Media`, `Part`, `Stream`, `Rating` and every person tag come out ALPHABETICALLY
     # with the decision flags after; `librarySectionID`, every tag `id` and a `Rating`'s
     # `value` are JSON STRINGS; `UltraBlurColors` is a LIST of one; an EMPTY `summary` is
@@ -8562,8 +8563,8 @@ def main():
 
     # Cycle 50: `/library/all`'s recorded "the default order is the ratingKey" holds for
     # the UNTYPED form only. A typed `?type=N` uses that type's own default listing order
-    # -- kids answers 1, 18, 17, 3, 4 (titleSort) where untyped is 1, 3, 4, 6, 7, and
-    # zen's `?type=1` is its section grid's order over 3,887 rows.
+    # -- plexlab answers 1, 18, 17, 3, 4 (titleSort) where untyped is 1, 3, 4, 6, 7, and
+    # the 1.42.2 reference's `?type=1` is its section grid's order over 3,887 rows.
     # A TYPED /library/all uses that type's own default listing order; only the untyped form
     # defaults to the ratingKey. The fixture's ratingKey order happens to BE its titleSort
     # order, so the check has to earn the difference: rename the highest-keyed movie so it
@@ -8598,9 +8599,9 @@ def main():
         skip("a typed /library/all is ordered like its own section grid, not by ratingKey",
              "needs two movies")
 
-    # Cycle 50, 56 language tags on one row against kids and zen (identical on all 20 that
-    # differ): the language-list enums carry their names in the REQUEST's language, and an
-    # explicit `X-Plex-Language: en` -- which is exactly what Plex Web sends -- is NOT the
+    # Cycle 50, 56 language tags on one row against plexlab and the 1.42.2 reference (identical on
+    # all 20 that differ): the language-list enums carry their names in the REQUEST's language, and
+    # an explicit `X-Plex-Language: en` -- which is exactly what Plex Web sends -- is NOT the
     # no-header document. rex short-circuited English in `_send_container` and
     # `translations.json` carries no `en` entry for these enums because English is the
     # source, so every English user's Advanced/Edit language picker read `català,
@@ -8637,8 +8638,8 @@ def main():
     check("...and another language keeps its own names AND its own order",
           turkish_c50e.startswith(":Library default|de-DE:Almanca|ar-SA:Arap"), turkish_c50e[:60])
 
-    # Cycle 50, comparing `/:/prefs` setting by setting against kids AND zen (0 attribute
-    # mismatches in 174 rows -- the fixture's SHAPE is exact): seven captured VALUES are
+    # Cycle 50, comparing `/:/prefs` setting by setting against plexlab AND the 1.42.2 reference (0
+    # attribute mismatches in 174 rows -- the fixture's SHAPE is exact): seven captured VALUES are
     # non-default where every real server answers its own default, and six of the seven
     # are the default on both fresh copies too. A library's `useLocalAssets` is the same
     # shape on the movie type only -- the show type was already right -- so the Edit
@@ -8672,7 +8673,7 @@ def main():
           "%s" % [p.get("types") for p in prov_c50d.get("MediaProvider") or []])
 
     # Cycle 50, from the matched-catalog byte diff -- a rex catalog built to MIRROR
-    # kids' library exactly, so the two servers could be compared byte for byte instead of
+    # plexlab's library exactly, so the two servers could be compared byte for byte instead of
     # shape-wise. Five findings: the image transcoder also transcodes the server's OWN
     # bundled assets (and rex uses exactly those as its placeholder `thumb`, so every
     # placeholder tile it asked for through the transcoder was a 500); three of `/`'s 25
@@ -8756,8 +8757,8 @@ def main():
     # where it is permanently that queue. rex also handed id 1 to the first USER
     # queue. This is cycle 6's rule from the other side: rex advertises
     # `backgroundProcessing=true` on `/` and refused everything behind it. The
-    # `clientIdentifier` is the same constant on zen, kids and plexscratch42 -- PMS's own,
-    # not the install's -- and it is carried in the list's guid too.
+    # `clientIdentifier` is the same constant on the 1.42.2 reference, plexlab and plexscratch42 --
+    # PMS's own, not the install's -- and it is carried in the list's guid too.
     # PMS's own background-processing queue and list -- the pair the official client's
     # Settings -> Status -> Conversions page is built from.
     _, pq42_c50b, _ = container(base, "GET", "/playQueues?type=42")
@@ -9048,7 +9049,7 @@ def main():
         ("an unknown encoding", b"bogus", b"5\r\nhello\r\n0\r\n\r\n"))}
     # Cycle 50 refuted the unrecognised-encoding cells: that value is ignored, so framing
     # behind it becomes the next request. The overflow cell was then rechecked with exact
-    # response draining on kids and both disposable versions: the parser is signed-64,
+    # response draining on plexlab and both disposable versions: the parser is signed-64,
     # so `FFFFFFFFFFFFFFFF` is its own 400 rather than a short body.
     LEFT49M = ("HTTP/1.1 200 OK", 2, True)
     want_c49m = {"one chunk": OK49M, "two chunks": OK49M, "0x prefix": OK49M,
@@ -9078,8 +9079,8 @@ def main():
           "%s, %d -> %d streams" % (status_c49m, before_c49m, subs_c49m()))
 
     # Cycle 49, bisected over token lengths 1-19 on both writable copies and confirmed on
-    # kids and zen with GET requests alone: the METHOD token is bounded at ten bytes, and
-    # the eleventh byte is refused the moment it arrives -- before any delimiter. That is
+    # plexlab and the 1.42.2 reference with GET requests alone: the METHOD token is bounded at ten
+    # bytes, and the eleventh byte is refused the moment it arrives -- before any delimiter. That is
     # the missing half of "a method a real PMS does not recognise at all is a 500", which
     # holds only up to ten bytes.
     import socket as _s49l
@@ -9154,8 +9155,8 @@ def main():
           and split_method_closed_c50j,
           "%r closed=%s" % (split_method_raw_c50j[:40], split_method_closed_c50j))
 
-    # Cycle 49, four refusal shapes on kids and zen, both identical: only the image
-    # transcoder's 200 belongs to the image header family. Its 400s and 404s order the
+    # Cycle 49, four refusal shapes on plexlab and the 1.42.2 reference, both identical: only the
+    # image transcoder's 200 belongs to the image header family. Its 400s and 404s order the
     # length before the type, like every other refusal on the surface, where rex sent
     # the image order to them too and put the connection pair in front of both.
     import socket as _s49k
@@ -9201,7 +9202,7 @@ def main():
     else:
         skip("a /photo/:/transcode 200 keeps the image family's own order", "no thumb on the fixture")
 
-    # Cycle 49, 27 refusal shapes on raw sockets against kids (1.43.4) and zen (1.42.2),
+    # Cycle 49, 27 refusal shapes on raw sockets against plexlab (1.43.4) and the 1.42.2 reference,
     # both agreeing on every one. Cycle 30 swept the connection state of every refusal the
     # ROUTER writes; the ones written BELOW it were never swept. The rule they show is
     # that a refusal of the request's ENVELOPE closes the connection and a refusal of its
@@ -9270,8 +9271,8 @@ def main():
           got_c49j == want_c49j,
           "%s" % {k: (got_c49j[k], want_c49j[k]) for k in want_c49j if got_c49j[k] != want_c49j[k]})
 
-    # Cycle 49, 20 target forms and 15 pipeline spellings on kids (1.43.4) and zen
-    # (1.42.2), both references identical: a real PMS accepts the ABSOLUTE FORM -- what a
+    # Cycle 49, 20 target forms and 15 pipeline spellings on plexlab (1.43.4) and the 1.42.2
+    # reference (1.42.2), both references identical: a real PMS accepts the ABSOLUTE FORM -- what a
     # client sends through an explicit HTTP proxy -- and routes it, discarding the
     # authority; rex read the scheme as a path segment and 404'd every one. And the
     # `X-Plex-Http-Pipeline` opt-out cycle 45 measured as a header works as a QUERY
@@ -9345,7 +9346,7 @@ def main():
                         "header beats query the other way": keep_c49i},
           "%s" % pipe_c49i)
 
-    # Cycle 49, from raw sockets on kids (1.43.4), zen (1.42.2) and plexscratch42: the
+    # Cycle 49, from raw sockets on plexlab (1.43.4), the 1.42.2 reference and plexscratch42: the
     # CONNECTION layer, which no cycle had swept. A real PMS answers a GET carrying a
     # declared body without waiting (cycle 37's half) and THEN consumes exactly
     # `Content-Length` bytes, so two requests on one socket get two answers; rex left
@@ -9485,7 +9486,7 @@ def main():
           answer_c49h == b"", "%r" % answer_c49h[:32])
 
     # Cycle 49 REFUTES cycle 23's "this form carries NO Duplicates Filter row at all".
-    # Re-measured on zen (1.42.2), kids (1.43.4) and both unclaimed copies in both
+    # Re-measured on the 1.42.2 reference, plexlab (1.43.4) and both unclaimed copies in both
     # parameter orders: with `includeAdvanced=1` the row IS there, and it is the one
     # Filter row on this path that keeps `advanced="1"` -- cycle 16's "a Filter carries
     # no advanced here" holds for every OTHER row. Cycle 23 read the absence of the FLAG
@@ -9530,8 +9531,8 @@ def main():
                          "transcoderVideoResolutions")}) == 1,
           "%s" % [len((root_c49c.get(n) or "").split(",")) for n in
                   ("transcoderVideoBitrates", "transcoderVideoQualities", "transcoderVideoResolutions")])
-    # zen alone carries `transcoderVideoRemuxOnly`; the 1.42.2 copy omits it, so it is that
-    # server's own state and NOT the version attribute it first looked like.
+    # The 1.42.2 reference alone carries `transcoderVideoRemuxOnly`; the 1.42.2 copy omits it, so it
+    # is that server's own state and NOT the version attribute it first looked like.
     check("/ does not invent transcoderVideoRemuxOnly",
           "transcoderVideoRemuxOnly" not in root_c49c, ",".join(sorted(root_c49c)[:3]))
 
@@ -10211,7 +10212,7 @@ def main():
              status_empty_c10p, status_word_c10p))
 
 
-    # Measured on kids (1.43.4) and zen (1.42.2): `?limit=N` caps a listing's rows.
+    # Measured on plexlab (1.43.4) and the 1.42.2 reference: `?limit=N` caps a listing's rows.
     # `limit=0` answers ONE row, a negative one every row, and `limit=abc` is a 500 --
     # and it is a property of the QUERY grammar, so /newest and /children ignore it.
     # rex read `limit` only in /query/parse, so every capped list was the whole
@@ -10243,7 +10244,7 @@ def main():
              newest_c11a, newest_plain_c11a, kids_c11a, kids_plain_c11a))
 
 
-    # Measured on kids (1.43.4) and zen (1.42.2), identically on both: a section
+    # Measured on plexlab (1.43.4) and the 1.42.2 reference, identically on both: a section
     # listing answers 500 to a `type=` it cannot parse and 200-with-no-rows to a
     # number it does not know, and /library/all answers 400 to the same values while
     # keeping 500 for an empty one. rex answered the whole grid to all of them,
@@ -10271,7 +10272,7 @@ def main():
              status_c11b("/library/all?type=1.5"), status_c11b("/library/all?type=")))
 
 
-    # Measured on kids (1.43.4) and zen (1.42.2): `excludeElements=Media` drops the
+    # Measured on plexlab (1.43.4) and the 1.42.2 reference: `excludeElements=Media` drops the
     # Media children and substitutes `mediaCount` on EVERY listing, including the
     # three cycles 9 and 10 added -- the section's allLeaves, /library/people/{id}/media
     # and /hubs/items. rex applied it to the grid and to child lists only, so a
@@ -10305,7 +10306,7 @@ def main():
           % (leaves_plain_c11c, leaves_c11c, hub_c11c, person_c11c, people_c11c))
 
 
-    # Measured on kids (1.43.4) and zen (1.42.2): a section's `allLeaves` is a full
+    # Measured on plexlab (1.43.4) and the 1.42.2 reference: a section's `allLeaves` is a full
     # query surface like `/all` -- `type=`, the filters, `sort=` and `limit=` all
     # apply, an unknown sort key and an unparseable type are 500s. rex answered
     # its whole leaf list to every one of them.
@@ -10337,7 +10338,7 @@ def main():
              bad_sort_c11d, bad_type_c11d))
 
 
-    # Measured on kids (1.43.4) and zen (1.42.2): `id` filters every listing although
+    # Measured on plexlab (1.43.4) and the 1.42.2 reference: `id` filters every listing although
     # no Meta advertises it -- /query/parse echoes it as a Rule with an EMPTY
     # fieldTitle. `=` is exact, `!=` excludes, a comma list is an OR, `>>`/`<<`/`>=`/`<=`
     # compare numerically. Cycle 20 overturned the `==`/`!==` half: measured on both
@@ -10407,7 +10408,7 @@ def main():
           "%s %s" % (status_c11e, parsed_c11e[-120:]))
 
 
-    # Re-measured on kids (1.43.4) and zen (1.42.2), correcting cycle 9's reading:
+    # Re-measured on plexlab (1.43.4) and the 1.42.2 reference, correcting cycle 9's reading:
     # `viewGroup`/`viewMode` on /library/people/{id}/media belong to an ACTOR's list
     # (tagType 6) only -- a Director, Writer or Producer list carries neither -- and
     # the list is a QUERY, so the library filters narrow it. rex sent the actor
@@ -10447,7 +10448,7 @@ def main():
               % (plain_c11f, dir_c11f, narrow_c11f, none_c11f))
 
 
-    # Measured on kids (1.43.4) and zen (1.42.2): a statistics container pages its
+    # Measured on plexlab (1.43.4) and the 1.42.2 reference: a statistics container pages its
     # SERIES only. Device and Account are a lookup for the rows on the page -- the
     # answer carries exactly the ones its rows name -- so a window past the end
     # carries neither. rex sliced all three lists with the same offset, so the
@@ -10486,7 +10487,7 @@ def main():
           "whole %s, first page %s, past the end %s" % (whole_c11g, first_c11g, past_c11g))
 
 
-    # Measured on kids (1.43.4) and zen (1.42.2): every statistics endpoint refuses a
+    # Measured on plexlab (1.43.4) and the 1.42.2 reference: every statistics endpoint refuses a
     # `timespan` that is not a whole number with 400 -- `abc`, `1.5`, an empty value,
     # a leading space -- and answers 200 to `0`, `-1` and `06`. rex ran an
     # unguarded int() on it: a 500 on two endpoints, and an ignored parameter on the
@@ -10506,7 +10507,7 @@ def main():
           "%s" % sorted((k[0], k[1] or "(empty)", v) for k, v in spans_c11h.items()))
 
 
-    # Measured on kids (1.43.4) and zen (1.42.2): `includeStorage=1` adds
+    # Measured on plexlab (1.43.4) and the 1.42.2 reference: `includeStorage=1` adds
     # `durationTotal` and `storageTotal` to a section grid row, at the library's own
     # top-level type only -- a show's are the sums over its episodes -- and nowhere
     # else (allLeaves, /library/all, /newest, a detail read carry neither). rex
@@ -10515,8 +10516,8 @@ def main():
     def storage_c11i(path):
         status, body, _ = get(base, path)
         rows_c11i = body.get("Metadata") or []
-        # Cycle 27: both are JSON STRINGS on a real PMS -- `"10031"` on kids and
-        # `"1440171"`/`"573936917"` on zen -- where this check was written against
+        # Cycle 27: both are JSON STRINGS on a real PMS -- `"10031"` on plexlab and
+        # `"1440171"`/`"573936917"` on the 1.42.2 reference -- where this check was written against
         # rex's integers. The value is compared as a number, with the type asserted
         # by the cycle-27 check that measured it; comparing the raw strings here would
         # make this check duplicate that one and fail for the wrong reason.
@@ -10552,7 +10553,7 @@ def main():
              episodes_c11i[1], leaves_c11i[1], detail_c11i[1]))
 
 
-    # Measured on kids (1.43.4) and zen (1.42.2), identical on both across every
+    # Measured on plexlab (1.43.4) and the 1.42.2 reference, identical on both across every
     # readable row: a SINGLE history read is a nine-attribute row -- no `key`, no
     # `ratingKey`, no artwork -- with `viewType` 1, and an episode adds
     # grandparentTitle, index and parentIndex. rex answered its stored listing
@@ -10589,7 +10590,7 @@ def main():
                  "ratingKey" in rows_c11j[-1]))
 
 
-    # Re-measured on kids (1.43.4) and zen (1.42.2): a real PMS gzips every
+    # Re-measured on plexlab (1.43.4) and the 1.42.2 reference: a real PMS gzips every
     # compressible body whenever the client offers gzip, even when compressing makes
     # it LARGER (83 bytes in, 90 out), and sends it plain only for
     # `Accept-Encoding: identity`. rex had an 860-byte floor and a "only if it
@@ -10706,8 +10707,8 @@ def main():
              [(s_c11m.get("title"), s_c11m.get("displayTitle"), s_c11m.get("selected"))
               for s_c11m in subs_c11m]))
 
-    # Cycle 73, measured on plexscratch42 and zen in 43 languages: the `External` in the
-    # codec suffix Plex Web's plain title gets is the client's word, as in the extended
+    # Cycle 73, measured on plexscratch42 and the 1.42.2 reference in 43 languages: the `External`
+    # in the codec suffix Plex Web's plain title gets is the client's word, as in the extended
     # title -- `Unbekannt (SRT Extern)`. rex localised the extended title only.
     localised_c73a = {}
     for lang_c73a in ("de", "ja", "sr"):
@@ -10807,10 +10808,10 @@ def main():
           % (weight_c11o(items_c11o), weight_c11o(children_c11o), weight_c11o(detail_c11o)))
 
 
-    # Measured on kids (1.43.4) and zen (1.42.2) against a real library: a LIGHT row
+    # Measured on plexlab (1.43.4) and the 1.42.2 reference against a real library: a LIGHT row
     # carries at most 2 Genre, 2 Writer, 2 Country and 3 Role -- the first of the detail
-    # row's own order -- where the detail row carries them all (155 roles on one zen
-    # movie, 3 on every listing of it). rex sent the whole list on every grid, hub
+    # row's own order -- where the detail row carries them all (155 roles on one movie
+    # of the 1.42.2 reference, 3 on every listing of it). rex sent the whole list on every grid, hub
     # and search row. Invisible on a five-clip library, which is why eleven cycles
     # missed it.
     def tags_c12a(path_c12a, key_c12a=None):
@@ -10836,7 +10837,7 @@ def main():
           "detail %s, grid %s" % (detail_c12a[1], grid_c12a[1]))
 
 
-    # Measured on kids (1.43.4) and zen (1.42.2): an episode's `parentGuid` is the
+    # Measured on plexlab (1.43.4) and the 1.42.2 reference: an episode's `parentGuid` is the
     # SEASON's guid, not the show's. rex copied the season's own `parentGuid` (the
     # show), so every episode of a show shared one parent guid and a client keying
     # per-season state off it could not tell the seasons apart.
@@ -10866,7 +10867,7 @@ def main():
                  row_c12b.get("grandparentGuid")))
 
 
-    # Measured on kids (1.43.4) and zen (1.42.2): the section grid answers
+    # Measured on plexlab (1.43.4) and the 1.42.2 reference: the section grid answers
     # `allowSync: true`. rex answered false on the grid while already answering
     # true on /newest, /recentlyAdded, /onDeck, /folder, /children and a detail row --
     # the most-requested container on the surface, and an attribute python-plexapi
@@ -10884,7 +10885,7 @@ def main():
           "%s, /library/sections %s" % (sync_c12c, bare_c12c))
 
 
-    # Measured on kids (1.43.4) and zen (1.42.2): with no `limit`, /hubs/search caps
+    # Measured on plexlab (1.43.4) and the 1.42.2 reference: with no `limit`, /hubs/search caps
     # each hub at 3 rows and /library/search answers 10 results in all. rex
     # defaulted both to 30, so the type-ahead path and every non-web client got a page
     # many times the size a real PMS sends. The query has to overflow a hub or the
@@ -10918,7 +10919,7 @@ def main():
           % (query_c12d, plain_c12d[1], wide_c12d[1], lib_plain_c12d, lib_wide_c12d))
 
 
-    # Measured on kids (1.43.4) and zen (1.42.2): an actor tag row in search is
+    # Measured on plexlab (1.43.4) and the 1.42.2 reference: an actor tag row in search is
     # `tagType: 6` and a director row 4. rex sent 4 for both, while
     # /library/people/{id} already answered 6 for the same person -- the server
     # contradicted itself.
@@ -11036,7 +11037,7 @@ def main():
                                       originals_c50f17[rating_key_c50f17])
 
 
-    # Measured on kids (1.43.4) and zen (1.42.2): `group=type`, `group=guid` and
+    # Measured on plexlab (1.43.4) and the 1.42.2 reference: `group=type`, `group=guid` and
     # `group=id` all answer 200 where rex answered 500. Exercised against all 27
     # candidate fields -- the other 24 agree, including the 11 that are 500 everywhere.
     # `id` became a filter field in cycle 11 and was still not a group field.
@@ -11052,7 +11053,7 @@ def main():
           "%s" % groups_c12f)
 
 
-    # Measured across all 26 secondary axes on kids (1.43.4) and zen (1.42.2): every
+    # Measured across all 26 secondary axes on plexlab (1.43.4) and the 1.42.2 reference: every
     # axis carries `content: "secondary"` except `actor`, which carries `viewGroup`
     # without it. rex sent it there too. No rule explains the exception and both
     # servers agree on it, so it is emulated as measured.
@@ -11066,7 +11067,7 @@ def main():
           "%s" % {a_c12h: b_c12h.get("content") for a_c12h, b_c12h in axes_c12h.items()})
 
 
-    # Re-measured on kids (1.43.4) and zen (1.42.2), correcting a lab-only reading: an
+    # Re-measured on plexlab (1.43.4) and the 1.42.2 reference, correcting a lab-only reading: an
     # EPISODE's title IS compared by /common (several differently titled episodes list
     # `title` in mixedFields, a single one sends its title) where a SEASON's is not, and
     # `titleSort` is "" only when it is genuinely mixed -- a single row answers its own
@@ -11313,13 +11314,13 @@ def main():
           and "provider.subscriptions.process:ended" in forced_c12p,
           "plain %s | forced %s" % (plain_c12p[-7:], forced_c12p[:4]))
 
-        # Re-measured on zen (1.42.2) against its 3887-row library, on the one movie with
+        # Re-measured on the 1.42.2 reference against its 3887-row library, on the one movie with
     # 17 directors and on a show and an episode with four: a light row's `Director`
     # list caps at 3 -- like `Role`, not like the two-entry Genre/Writer/Country caps
     # -- and `Producer` is absent from a light row however many the detail row carries
-    # (22 on one zen movie, none on any listing of it). Cycle 12 recorded the cap as
-    # "only known to be above 2" because the richest Director row in its 240-movie
-    # sample had two. kids cannot show this: no lab item has more than one director.
+    # (22 on one movie of the 1.42.2 reference, none on any listing of it). Cycle 12 recorded the
+    # cap as "only known to be above 2" because the richest Director row in its 240-movie
+    # sample had two. plexlab cannot show this: no lab item has more than one director.
     def people_c13a(path_c13a):
         status_c13a, body_c13a, _ = get(base, path_c13a)
         rows_c13a = body_c13a.get("Metadata") or []
@@ -11350,7 +11351,7 @@ def main():
     # `titleSort` removed, `parentThumb` nulled -- and each episode's `parentGuid`
     # follows the season to `local://<season id>`. The season itself loses its `year`,
     # so the show's shows through as `parentYear`, and its `thumb` falls back to the
-    # SHOW's. kids corroborates the season half from the other side: its season 11 is
+    # SHOW's. plexlab corroborates the season half from the other side: its season 11 is
     # unmatched and carries the show's thumb, no year and `parentYear: 2002`, where
     # its matched season 7 carries its own thumb and year. rex edited the one row,
     # which left matched episodes under an unmatched parent -- a state a real PMS
@@ -11396,7 +11397,7 @@ def main():
                      [(k, after_c13b[k].get("guid"), after_c13b[k].get("parentGuid"),
                        after_c13b[k].get("title")) for k in eps_c13b]))
 
-        # Measured on kids (1.43.4) and zen (1.42.2), on audienceRating, rating,
+        # Measured on plexlab (1.43.4) and the 1.42.2 reference, on audienceRating, rating,
     # userRating, contentRating, year, originallyAvailableAt, viewCount, viewOffset,
     # lastViewedAt, mediaHeight and mediaBitrate, and on a show library at type 2, 3
     # and 4: a row with NO value for the sort key sorts BELOW every row that has one
@@ -11425,13 +11426,13 @@ def main():
               and asc_c13c[-1][1] is not None and desc_c13c[0][1] is not None,
               "asc %s | desc %s" % (asc_c13c, desc_c13c))
 
-        # Measured on zen (1.42.2), which holds 214 duplicated movies of 3887 and 504
+        # Measured on the 1.42.2 reference, which holds 214 duplicated movies of 3887 and 504
     # duplicated episodes of 9287: `duplicate=1` is "this row has more than one Media"
     # -- 60 sampled movie rows carried 2 to 15 and 60 `duplicate=0` rows exactly one,
     # with no violation either way, and the two halves add up to the library. For a SHOW
     # or a SEASON, which have no Media of their own, it is "a leaf under it has more
-    # than one" -- 44 shows and 74 seasons on zen, and three sampled `duplicate=1` shows
-    # each had a multi-Media episode where three `duplicate=0` shows had none. kids holds
+    # than one" -- 44 shows and 74 seasons on the 1.42.2 reference, and three sampled `duplicate=1`
+    # shows each had a multi-Media episode where three `duplicate=0` shows had none. plexlab holds
     # no multi-Media item at all, so it answers 0 and is consistent rather than
     # contradicting. rex returned 0 for every row, so the Duplicates control that
     # `includeAdvanced=1` puts in the filter bar was advertised and permanently empty.
@@ -11464,19 +11465,20 @@ def main():
                   % (dupes_c13d(4, 1), len(every_c13d), dupes_c13d(3, 1), parent_c13d,
                      dupes_c13d(2, 1)))
 
-        # Measured on kids (1.43.4) and zen (1.42.2), which agree exactly: a bare `<field>=`
+        # Measured on plexlab (1.43.4) and the 1.42.2 reference, which agree exactly: a bare
+        # `<field>=`
     # on a `tag` field means THREE different things, by field.
     #   a tag-TABLE field (genre, country, director, writer, producer, actor, label,
     #     collection, network, similar) matches NOTHING -- 0 of 5 and 0 of 3887;
     #   `studio` and `editionTitle` match EVERY row -- 5 of 5 and 3887 of 3887, even
-    #     though 14 of 200 sampled zen movies carry no studio at all;
+    #     though 14 of 200 sampled movies on the 1.42.2 reference carry no studio at all;
     #   everything else of that kind (contentRating, audioLanguage, subtitleLanguage)
     #     matches the rows with NO value -- contentRating= is 3 of 5 and 2864 of 3887.
     # And `contentRating=None`, in that exact spelling, is a synonym for the empty value
-    # (2864 on zen, 3 on kids) where `none` and `NONE` match nothing; no other field has
-    # such a synonym. The codec axes disagree between the two servers (kids 0, zen every
-    # row), so they are a version difference and are left alone. rex applied the
-    # valueless-row rule to all of them, so a bare `genre=` selected the whole library
+    # (2864 on the 1.42.2 reference, 3 on plexlab) where `none` and `NONE` match nothing; no other
+    # field has such a synonym. The codec axes disagree between the two servers (plexlab 0, the
+    # 1.42.2 reference every row), so they are a version difference and are left alone. rex applied
+    # the valueless-row rule to all of them, so a bare `genre=` selected the whole library
     # and `studio=` selected only the rows that had none.
     def sized_c13e(query_c13e):
         path_c13e = "/library/sections/%s/all?type=1" % movie_section
@@ -11525,15 +11527,15 @@ def main():
               and "None" not in studio_axis_c13e,
               "contentRating %s | None row %s | studio %s" % (axis_c13e, none_c13e, studio_axis_c13e))
 
-        # Measured on kids (1.43.4) and zen (1.42.2), identically, across seven values:
+        # Measured on plexlab (1.43.4) and the 1.42.2 reference, identically, across seven values:
     # a tag or field axis REFUSES a `type=` it cannot parse -- `abc`, `1.5` and an empty
     # one are all 500 on genre, studio, actor, contentRating, firstCharacter, decade and
     # country, and 400 on `year` alone -- while `-1`, `99`, `2` and `04` are 200. The
     # MEDIA axes (resolution, audioLanguage, subtitleLanguage and the codecs) ignore
     # `type=` completely: the same list comes back for every value including `abc`, on a
     # movie library and a show library alike. And `firstCharacter` IS scoped by the type,
-    # its counts following it (zen's show library: 13/40 shows at type=2, 13/64 seasons at
-    # type=3, 185/207 episodes at type=4, empty at type=1). rex answered 200 to every
+    # its counts following it (the 1.42.2 reference's show library: 13/40 shows at type=2, 13/64
+    # seasons at type=3, 185/207 episodes at type=4, empty at type=1). rex answered 200 to every
     # axis whatever the type said, scoped `resolution` by type, and read firstCharacter off
     # the whole section.
     codes_c13f = {}
@@ -11561,7 +11563,8 @@ def main():
                                   and first_c13f["4"] > 0)),
           "%s | firstCharacter %s | resolution %s" % (codes_c13f, first_c13f, media_c13f))
 
-        # Measured on zen (1.42.2) over its 507-show library and confirmed on kids (1.43.4):
+        # Measured on the 1.42.2 reference over its 507-show library and confirmed on plexlab
+        # (1.43.4):
     # `viewedLeafCount`, `viewedOrInProgressLeafCount` and `unviewedLeafCount` are real
     # filter fields on a show listing -- `viewedOrInProgressLeafCount=0` is 499 of 507
     # and `=1` is 4, `viewedLeafCount>>0` is exactly the 8 shows with a watched episode,
@@ -11605,14 +11608,14 @@ def main():
                   % (every_c13g, key_c13g, shows_c13g("viewedLeafCount%3E%3E=0"),
                      shows_c13g("viewedOrInProgressLeafCount=0"), shows_c13g("leafCount%3E%3E=0")))
 
-        # Measured on zen (1.42.2 -- the build rex reports), against a 3887-movie and
+        # Measured on the 1.42.2 reference (the build rex reports), against a 3887-movie and
     # 507-show library: with no `count=` every library shelf carries at most SIX rows and
     # sets `more: true` -- movie.recentlyreleased, movie.recentlyadded, movie.topunwatched,
     # tv.recentlyaired, tv.startwatching and tv.toprated are all size 6, more true -- and
     # `/hubs` does the same (home.television.recent size 6, more true). `?count=3`,
     # `?count=12` and `?count=20` are honoured exactly, so six is the DEFAULT, not a
     # ceiling; the related shelf caps at six too (`movie.similar` size 6, more true).
-    # rex used 12, a number no reference has ever answered. kids cannot witness it
+    # rex used 12, a number no reference has ever answered. plexlab cannot witness it
     # either way: with five movies and one show, no shelf there can reach even six, which
     # is how the recorded "up to 12" survived twelve cycles unmeasured.
     if not show_section:
@@ -11638,13 +11641,13 @@ def main():
                   "%s | count=1 %s | count=3 %s | count=8 %s"
                   % (shelves_c13h, counted_c13h[1], counted_c13h[3], counted_c13h[8]))
 
-        # Measured on zen (1.42.2 -- rex's own reported build): a movie library's
+        # Measured on the 1.42.2 reference (rex's own reported build): a movie library's
     # Recommended tab carries `movie.topunwatched` between the genre shelf and Recently
     # Watched, and a show library carries `tv.startwatching` after Recently Added and
     # `tv.toprated` after Rediscover. Each is `style: shelf`, `random: true`, and each
-    # key is the listing its "see all" opens. kids (1.43.4) emits none of the three
+    # key is the listing its "see all" opens. plexlab (1.43.4) emits none of the three
     # although it HAS qualifying rows -- all three keys answer `size 1` there -- so this
-    # is a version difference and zen is the witness that matters. rex built six
+    # is a version difference and the 1.42.2 reference is the witness that matters. rex built six
     # shelves where 1.42.2 builds eight.
     shelves_c13i = {h_c13i.get("hubIdentifier"): h_c13i for h_c13i in
                     get(base, "/hubs/sections/%s" % movie_section)[1].get("Hub") or []}
@@ -11675,7 +11678,7 @@ def main():
                                             % show_section))),
           "movies %s | tv %s" % (order_c13i, list(tv_c13i)))
 
-        # Re-measured on kids (1.43.4) and zen (1.42.2) across four queries that match
+        # Re-measured on plexlab (1.43.4) and the 1.42.2 reference across four queries that match
     # nothing at all (`nomatchatall`, `xyzzyplugh`, `qwertyuiopzz`, `1234567890zz`):
     # both servers answer the seventeen hubs in ONE order, and it is not the order
     # rex used. `movie` is FIFTH, not first, and `collection` is FOURTEENTH,
@@ -11707,14 +11710,14 @@ def main():
           and promoted_types_c41h.index("genre") < promoted_types_c41h.index("show"),
           "%s" % promoted_types_c41h)
 
-        # Measured on kids (1.43.4) and zen (1.42.2): `/hubs/search` returns the ITEMS a
-    # matched tag is on, not just the tag row. kids `colin` answers the two tag rows AND
+        # Measured on plexlab (1.43.4) and the 1.42.2 reference: `/hubs/search` returns the ITEMS a
+    # matched tag is on, not just the tag row. plexlab `colin` answers the two tag rows AND
     # Firefly (`reason: actor, reasonID 105, reasonTitle "Colin Patrick Lynch"`) and
-    # Sintel (`reason: director, reasonTitle "Colin Levy"`); zen `tom hanks` answers
-    # eleven movie rows all reasoned on the actor, and across ten zen queries 53 of 81
-    # item rows carried a `reason` -- most search hits on a real library are tag hits.
-    # `/library/search` does NOT carry them (kids `colin` is two Directory rows and
-    # nothing else, zen `spielberg` five), so this is the hubs endpoint alone. rex
+    # Sintel (`reason: director, reasonTitle "Colin Levy"`); the 1.42.2 reference `tom hanks`
+    # answers eleven movie rows all reasoned on the actor, and across ten queries on the 1.42.2
+    # reference 53 of 81 item rows carried a `reason` -- most search hits on a real library are tag
+    # hits. `/library/search` does NOT carry them (plexlab `colin` is two Directory rows and
+    # nothing else, the 1.42.2 reference `spielberg` five), so this is the hubs endpoint alone. rex
     # matched titles only, so searching an actor, a director or a genre drew the tag row
     # with an empty Movies shelf beside it -- and its `reason` code could never fire.
     # One WORD of a director's name, because rex's tag matcher is a word-prefix
@@ -11745,10 +11748,10 @@ def main():
               % ({k_c13k: hit_c13k.get(k_c13k) for k_c13k in ("ratingKey", "reason", "reasonTitle")}
                  if hit_c13k else None, len(tag_c13k), len(items_c13k)))
 
-        # Measured on kids (1.43.4) and zen (1.42.2): an EPISODE that carries an
+        # Measured on plexlab (1.43.4) and the 1.42.2 reference: an EPISODE that carries an
     # `audienceRating` carries `audienceRatingImage` and a `Rating` element too -- 60 of
-    # 60 One Piece episodes and 3 of 3 kids episodes, with no exception, and the three
-    # kids episodes with no rating carry none of the three. A SEASON never carries any of
+    # 60 One Piece episodes and 3 of 3 plexlab episodes, with no exception, and the three
+    # plexlab episodes with no rating carry none of the three. A SEASON never carries any of
     # them (0 of 12 sampled across both servers). rex built `Rating` and
     # `audienceRatingImage` for a show and a movie only, so its own episode rows
     # contradicted its own movie rows, and the rating badge was missing from every
@@ -11776,7 +11779,7 @@ def main():
               % (detail_c13l.get("audienceRatingImage"), detail_c13l.get("Rating"),
                  season_c13l.get("Rating")))
 
-        # Measured on kids (1.43.4) and zen (1.42.2), 20 rows across five shows: a SHOW's
+        # Measured on plexlab (1.43.4) and the 1.42.2 reference, 20 rows across five shows: a SHOW's
     # `/allLeaves` gives every episode row the SHOW's `studio` -- "Mutant Enemy
     # Productions" on all six of Firefly's, "Toei Animation" on One Piece's, "20th
     # Century Fox Television" on The Simpsons'. Nothing else carries it: the episode's
@@ -11806,10 +11809,11 @@ def main():
                      [r_c13m.get("studio") for r_c13m in season_kids_c13m],
                      [r_c13m.get("studio") for r_c13m in section_c13m]))
 
-        # Measured on kids (1.43.4) and zen (1.42.2): a SEASON row of `/library/recentlyAdded`
-    # carries `parentSummary`, the SHOW's summary -- 2 of 2 season rows on kids and 3 of 3
-    # zen season rows whose show has a summary, while the 4 zen rows whose show has an
-    # empty one carry no such field (an empty string is omitted, like every other). A
+        # Measured on plexlab (1.43.4) and the 1.42.2 reference: a SEASON row of
+        # `/library/recentlyAdded`
+    # carries `parentSummary`, the SHOW's summary -- 2 of 2 season rows on plexlab and 3 of 3
+    # season rows of the 1.42.2 reference whose show has a summary, while the 4 there whose show has
+    # an empty one carry no such field (an empty string is omitted, like every other). A
     # movie row never carries it. And it is on that endpoint ALONE: swept across
     # /library/sections/{id}/recentlyAdded, /newest, /hubs/home/recentlyAdded,
     # /hubs/sections/{id}, /hubs/promoted, a type=3 listing, /children and /library/onDeck,
@@ -11840,15 +11844,15 @@ def main():
                  [("parentSummary" in r_c13n) for r_c13n in movies_c13n],
                  [("parentSummary" in r_c13n) for r_c13n in elsewhere_c13n]))
 
-        # Measured on zen (1.42.2 -- the build rex reports): `/hubs/promoted` answers a
+        # Measured on the 1.42.2 reference (the build rex reports): `/hubs/promoted` answers a
     # DIFFERENT third shelf when the client sends `pinnedContentDirectoryID` beside
     # `contentDirectoryID`. Bare, it is `movie.recentlyadded.1` / "Recently Added in Zen
     # Movies", keyed on the section listing; with the parameter it is
     # `home.movies.recent.1` / "Recently Added Movies", context `hub.home.movies.recent`,
     # keyed on `/hubs/home/recentlyAdded?type=1&pinnedContentDirectoryID=1`. A show
-    # library gives `home.television.recent.N` / "Recently Added TV". kids (1.43.4)
-    # ignores the parameter entirely, so this is a version difference and zen is the
-    # witness. The web client does send it -- its Promoted fetch builds
+    # library gives `home.television.recent.N` / "Recently Added TV". plexlab (1.43.4)
+    # ignores the parameter entirely, so this is a version difference and the 1.42.2 reference is
+    # the witness. The web client does send it -- its Promoted fetch builds
     # `{contentDirectoryID, pinnedContentDirectoryID, includeMeta, excludeFields}` --
     # and rex answered the bare shape to both, so a pinned library's Home row was
     # titled and keyed as the unpinned one.
@@ -11876,17 +11880,17 @@ def main():
               "mixed")),
           "bare %s | pinned %s | tv %s" % (bare_c13o[2:], pinned_c13o[2:], tv_c13o[2:]))
 
-        # Re-measured on zen (1.42.2) against One Piece, a 24-season show -- the first time
+        # Re-measured on the 1.42.2 reference against One Piece, a 24-season show -- the first time
     # this project has had a show deep enough to tell the two rules apart. A show's
     # `/children` carries the "All episodes" `Directory` row exactly when the PAGE comes
     # back with more than one season row, wherever the page starts: Start=0 Size=10 and
     # Start=10 Size=10 both answer size 11 with the row, Start=5 Size=3 answers 4 with it,
     # and Start=23 Size=2, Start=3 Size=1 and Start=0 Size=1 -- all one-row pages -- answer
-    # 1 without it. kids agrees on all six cases it can express. Cycle 8 recorded "at
-    # Start>0 the two servers disagree, follow kids and drop it", but kids has TWO seasons,
+    # 1 without it. plexlab agrees on all six cases it can express. Cycle 8 recorded "at
+    # Start>0 the two servers disagree, follow plexlab and drop it", but plexlab has TWO seasons,
     # so every Start>0 page there is a one-row page: the disagreement was a two-season
-    # library, not a version difference, and fun was right. A virtualised season list
-    # therefore mis-measured its own height on every page but the first.
+    # library, not a version difference, and the production server was right. A virtualised season
+    # list therefore mis-measured its own height on every page but the first.
     if not show:
         skip("the All-episodes row follows the page's row count, not its offset", "need a show")
     else:
@@ -12065,8 +12069,8 @@ def main():
                   % (season_index_c13t, detail_c13t, listed_c13t))
 
         # Measured on a writable copy: editing a SHOW's `contentRating` moves it on the
-    # episodes beneath it -- the write side of the rule kids and zen show from the read
-    # side, where every episode of a show carries the show's certificate and no season
+    # episodes beneath it -- the write side of the rule plexlab and the 1.42.2 reference show from
+    # the read side, where every episode of a show carries the show's certificate and no season
     # carries one. rex derived it once, when the catalog loaded, so a show edited
     # afterwards left its episodes showing the old certificate, and a show whose rating was
     # cleared left them showing one it no longer had.
@@ -12100,7 +12104,7 @@ def main():
 
 
     # Cycle 14: a real PMS derives titleSort by trimming whitespace and folding
-    # combining marks BEFORE stripping the article. Measured on zen over 5,294 rows
+    # combining marks BEFORE stripping the article. Measured on the 1.42.2 reference over 5,294 rows
     # -- all 21 accented rows carry the folded form and all 90 leading-space rows
     # carry the trimmed one, with no counterexample, which is what makes it the
     # server's derivation and not agent metadata. rex stripped the article only,
@@ -12130,7 +12134,7 @@ def main():
 
 
     # Cycle 14: the word-prefix matcher folds combining marks, the section's
-    # substring box does not -- both measured on zen, which holds real accented
+    # substring box does not -- both measured on the 1.42.2 reference, which holds real accented
     # titles. Give a fixture row an accented name and ask for the plain spelling.
     orig_c14b = ((get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
                  .get("title") or "Movie")
@@ -12157,11 +12161,11 @@ def main():
 
 
     # Cycle 14 read the SPACE as what turns the fold off; cycle 15 re-measured it over
-    # 52 queries on zen and the space is not the rule -- the COLON is. The fixture row
-    # cycle 14 used dropped the colon from zen's actual title, so the check asserted a
-    # shape zen was never asked for. Both of zen's titles are used verbatim here now:
-    # `Bogotá: City of the Lost`, where `Bogota City` really does find nothing, and
-    # `Adorável Trapalhão`, where the folded TWO-WORD query finds the row.
+    # 52 queries on the 1.42.2 reference and the space is not the rule -- the COLON is. The fixture
+    # row cycle 14 used dropped the colon from the 1.42.2 reference's actual title, so the check
+    # asserted a shape the 1.42.2 reference was never asked for. Both of the 1.42.2 reference's
+    # titles are used verbatim here now: `Bogotá: City of the Lost`, where `Bogota City` really does
+    # find nothing, and `Adorável Trapalhão`, where the folded TWO-WORD query finds the row.
     orig_c14c = ((get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
                  .get("title") or "Movie")
     request(base, "PUT", "/library/metadata/%s?title.value=%s"
@@ -12195,14 +12199,14 @@ def main():
           "colon %s | plain %s" % (colon_c14c, plain_c14c))
 
 
-    # Cycle 14: `/filters` is the list the server's OWN VERSION advertises. kids
-    # (1.43.4) answers 28 for a movie library, 17 at type=4 and 6 at type=10; zen
+    # Cycle 14: `/filters` is the list the server's OWN VERSION advertises. plexlab
+    # (1.43.4) answers 28 for a movie library, 17 at type=4 and 6 at type=10; the 1.42.2 reference
     # (1.42.2 -- the build rex reports) answers 22, 9 and 5, and the difference
     # is exactly the media-codec axes: `hdr10plus`, `atmos`, `videoCodec`,
     # `audioCodec`, `subtitleCodec`, `audioLayout` everywhere, plus `hdr` and `dovi`
     # on the EPISODE list, which keeps them on the movie list. Types 2, 3, 8, 9, 13
     # and 20 are identical on both, and so is the advanced Duplicates row. rex
-    # shipped kids' lists, so its filter bar offered a 1.42.2 client six axes that
+    # shipped plexlab's lists, so its filter bar offered a 1.42.2 client six axes that
     # build's own libraries do not have.
     codec_c14d = {"hdr10plus", "atmos", "videoCodec", "audioCodec", "subtitleCodec",
                   "audioLayout"}
@@ -12228,8 +12232,8 @@ def main():
 
 
     # Cycle 14: the grid's filter bar is built from `Meta.Type[].Filter`, which is a
-    # different fixture from /filters and carried the same 1.43.4 axes. On zen
-    # (1.42.2) a movie Type advertises 22 and an episode Type 9; on kids (1.43.4)
+    # different fixture from /filters and carried the same 1.43.4 axes. On the 1.42.2 reference
+    # (1.42.2) a movie Type advertises 22 and an episode Type 9; on plexlab (1.43.4)
     # they are 28 and 17. Trimming /filters alone left the two disagreeing, which is
     # worse than either: the bar drew axes the axis list no longer names.
     codec_c14e = {"hdr10plus", "atmos", "videoCodec", "audioCodec", "subtitleCodec",
@@ -12261,9 +12265,9 @@ def main():
 
     # Cycle 14: the row that survives a `group=` is the group's MINIMUM addedAt,
     # picked before the sort -- so the same SET comes back under every sort and only
-    # the order changes. Measured on kids (group=type answers the lowest-addedAt row,
-    # not the lowest ratingKey, under three different sorts) and on zen (the minimum
-    # addedAt in 88/88 year groups and 3450/3450 title groups). rex kept the first
+    # the order changes. Measured on plexlab (group=type answers the lowest-addedAt row,
+    # not the lowest ratingKey, under three different sorts) and on the 1.42.2 reference (the
+    # minimum addedAt in 88/88 year groups and 3450/3450 title groups). rex kept the first
     # row the sort produced, so changing the sort changed which rows the grid showed.
     def grouped_c14f(spec):
         return [r.get("ratingKey") for r in
@@ -12294,8 +12298,8 @@ def main():
 
 
     # Cycle 14: a type-prefixed `group=` is SCOPED like a filter and like a sort key.
-    # On kids `type=4&group=show.title` is 1 and `group=title` is 4; `group=season.index`
-    # is 2 and `group=index` is 3. On zen they are 505 vs 4443 and 58 vs 1144, and
+    # On plexlab `type=4&group=show.title` is 1 and `group=title` is 4; `group=season.index`
+    # is 2 and `group=index` is 3. On the 1.42.2 reference they are 505 vs 4443 and 58 vs 1144, and
     # `group=season.title` collapses 9287 episodes to 1. rex stripped the prefix and
     # read the field off the episode itself, so the two always agreed.
     def gtotal_c14g(spec):
@@ -12318,9 +12322,9 @@ def main():
               % (bare_c14g, show_c14g, shows_c14g, idx_c14g, season_c14g))
 
 
-    # Cycle 14: the actor axis is the union of each item's FIRST THREE roles. kids'
-    # five movies contribute 0+2+2+2+3 and the axis totalSize is exactly 9; zen's is
-    # 3413 against 59030 actor tags. Every other tag axis carries every tag. rex
+    # Cycle 14: the actor axis is the union of each item's FIRST THREE roles. plexlab's
+    # five movies contribute 0+2+2+2+3 and the axis totalSize is exactly 9; the 1.42.2 reference's
+    # is 3413 against 59030 actor tags. Every other tag axis carries every tag. rex
     # listed all of them, so on a real library it would hold 155 names per movie.
     # Five roles have to be WRITTEN here: by this point the suite has replaced every
     # fixture tag list, so a check that waited for a row with more than three would
@@ -12369,9 +12373,9 @@ def main():
 
 
     # Cycle 14: nine columns filter on a real PMS without appearing in any Meta, and
-    # rex answered the whole library to each. Measured on kids and zen, which
+    # rex answered the whole library to each. Measured on plexlab and the 1.42.2 reference, which
     # agree: `viewOffset>>=0` is 0 rows on both (an UNKNOWN field answers every row,
-    # which is how the two are told apart), and on zen `updatedAt>>=1780000000` is
+    # which is how the two are told apart), and on the 1.42.2 reference `updatedAt>>=1780000000` is
     # 3861/3887 and `originalTitle>>=M` is 393. `parentIndex` is a 500 on a listing on
     # both. A movie row's `index` is 1 on every row, so `index=1` is the whole library
     # and `index=2` is none -- rex's movie rows carry no index and answered zero.
@@ -12420,8 +12424,8 @@ def main():
 
 
     # Cycle 14: thirteen sort keys a real PMS accepts and rex answered 500 to, and
-    # one it accepted that both references refuse. Measured key by key on kids and zen,
-    # which agree exactly; none of the thirteen is in `/sorts?includeAdvanced=1`, so
+    # one it accepted that both references refuse. Measured key by key on plexlab and the 1.42.2
+    # reference, which agree exactly; none of the thirteen is in `/sorts?includeAdvanced=1`, so
     # this is the unadvertised-but-real set, the same class as the filter columns above.
     def sortstatus_c14j(key_c14j):
         return request(base, "GET", "/library/sections/%s/all?type=1&sort=%s"
@@ -12452,8 +12456,8 @@ def main():
              sizes_c14j == sorted(sizes_c14j)))
 
 
-    # Cycle 14: /status/sessions/history/all VALIDATES its ids. Measured on kids and
-    # zen across nineteen cases, which agree exactly: a non-integer accountID,
+    # Cycle 14: /status/sessions/history/all VALIDATES its ids. Measured on plexlab and
+    # the 1.42.2 reference across nineteen cases, which agree exactly: a non-integer accountID,
     # librarySectionID or metadataItemID is 400 (`abc`, empty and `1.5` alike, while
     # `1`, `-1` and `01` pass); a metadataItemID naming no row is 404, `0` included; an
     # unknown librarySectionID is an empty 200, not a 404; deviceID is not validated at
@@ -12481,8 +12485,8 @@ def main():
 
 
     # Cycle 14: the section `allLeaves` takes `group=` too -- the one part of the
-    # listing grammar cycle 11 left out of it. kids' 6 episodes group to 3 and zen's
-    # 9287 to 1144, the same as the grid's `type=4&group=index`. An ITEM's
+    # listing grammar cycle 11 left out of it. plexlab's 6 episodes group to 3 and the 1.42.2
+    # reference's 9287 to 1144, the same as the grid's `type=4&group=index`. An ITEM's
     # `/allLeaves?group=` is ignored on both references, so only this form takes it.
     if not show_section:
         skip("the section allLeaves takes group= and an item's does not", "need a show")
@@ -12550,9 +12554,9 @@ def main():
              "need three movie rows")
 
 
-    # Cycle 14: `/userRating` is a real axis with a FIXED six-bucket scale -- kids and
-    # zen answer the same rows on a movie library and a show library alike, whatever
-    # ratings the library holds -- and the nine axes belonging to OTHER library types
+    # Cycle 14: `/userRating` is a real axis with a FIXED six-bucket scale -- plexlab and
+    # the 1.42.2 reference answer the same rows on a movie library and a show library alike,
+    # whatever ratings the library holds -- and the nine axes belonging to OTHER library types
     # answer an EMPTY secondary container with their own title2 rather than a 404.
     # rex 404'd all ten, so the Ratings filter entry opened nothing and a client
     # reading the axis list was told nine endpoints do not exist.
@@ -12585,8 +12589,8 @@ def main():
           % (rating_rows_c14n, sorted({v_c14n[:2] for v_c14n in cross_c14n.values()})))
 
 
-    # Cycle 14: `/library/sections/{id}/recentlyReleased` is a 404 on kids and zen
-    # alike -- both library types, every `type=`, five library/type combinations -- and
+    # Cycle 14: `/library/sections/{id}/recentlyReleased` is a 404 on plexlab and the 1.42.2
+    # reference alike -- both library types, every `type=`, five library/type combinations -- and
     # it appears nowhere in findings.md, CLAUDE.md or either suite. rex answered a
     # 200 listing for an endpoint nobody ever measured. `/unwatched` beside it is real
     # and stays.
@@ -12603,9 +12607,9 @@ def main():
 
     # Cycle 14: `/banners` and `/thumbs` are artwork candidate lists on BOTH references
     # -- 200 with the same container shape as `/posters` -- and rex 404'd them.
-    # `banners` is empty on kids and zen alike; `thumbs` lists the media bundle's video
-    # thumbnails, which rex has none of. `/squareArts` stays a 404: it is 200 on
-    # kids (1.43.4) and 404 on zen (1.42.2), the version rex reports.
+    # `banners` is empty on plexlab and the 1.42.2 reference alike; `thumbs` lists the media
+    # bundle's video thumbnails, which rex has none of. `/squareArts` stays a 404: it is 200 on
+    # plexlab (1.43.4) and 404 on the 1.42.2 reference, the version rex reports.
     art_c14p = {}
     for leaf_c14p in ("posters", "arts", "banners", "thumbs", "squareArts"):
         status_c14p, body_c14p, _ = request(
@@ -12627,8 +12631,8 @@ def main():
 
 
     # Cycle 14: the two families of axis added above disagree about `type=`, and both
-    # disagreements are measured on kids and zen. A cross-type axis VALIDATES it --
-    # `?type=abc` and an empty `?type=` are 500s, `?type=2` a 200 -- exactly as `/genre`
+    # disagreements are measured on plexlab and the 1.42.2 reference. A cross-type axis VALIDATES it
+    # -- `?type=abc` and an empty `?type=` are 500s, `?type=2` a 200 -- exactly as `/genre`
     # does; `userRating` IGNORES it completely, answering 200 to all three the way
     # `/resolution` does. Landing them in one branch got `userRating` right and the
     # cross-type axes wrong.
@@ -12652,8 +12656,8 @@ def main():
              sorted(set(rating_c14q)), genre_c14q))
 
 
-    # Cycle 14: `/library/metadata/{id}/background` and `/composite` are 404s on kids
-    # and zen alike -- every row type, bare and versioned -- and rex served image
+    # Cycle 14: `/library/metadata/{id}/background` and `/composite` are 404s on plexlab
+    # and the 1.42.2 reference alike -- every row type, bare and versioned -- and rex served image
     # bytes from both. `thumb`, `art` and `poster` beside them are real and stay 200.
     # A playlist's and a collection's `/composite` is real and is served elsewhere.
     def artstatus_c14r(key_c14r, leaf_c14r):
@@ -12713,8 +12717,8 @@ def main():
                      len(before_l_c14s), len(after_l_c14s), gone_c14s))
 
 
-    # Cycle 14: a hub container says `allowSync: true` on kids and zen alike -- every
-    # hub path except `/hubs/metadata/{id}/postplay`, which says false, and
+    # Cycle 14: a hub container says `allowSync: true` on plexlab and the 1.42.2 reference alike --
+    # every hub path except `/hubs/metadata/{id}/postplay`, which says false, and
     # `/hubs/search` and `/hubs/items`, which carry none at all. rex defaulted to
     # false with three call sites putting it back, so eight of the ten said the opposite.
     def sync_c14t(path_c14t):
@@ -12737,8 +12741,8 @@ def main():
 
 
     # Cycle 14: on a SEASON listing the three leaf-count filters read the SHOW's
-    # counts. Measured on zen -- `type=3&viewedLeafCount>>0` answers 48 seasons, every
-    # season of the 8 shows with a watched leaf, and all 48 carry 0 on their own row --
+    # counts. Measured on the 1.42.2 reference -- `type=3&viewedLeafCount>>0` answers 48 seasons,
+    # every season of the 8 shows with a watched leaf, and all 48 carry 0 on their own row --
     # and on the copy. rex read the season's own counts, so a season grid filtered
     # by "watched" answered only the seasons that happened to hold the watched episode.
     if not show or not show_section:
@@ -13089,8 +13093,8 @@ def main():
           and set(section18_c15b) <= set(all18_c15b),
           "library/all %s | section %s" % (all18_c15b, section18_c15b))
 
-    # Cycle 15: `titleSort` trims the LEFT only. Measured on the copy -- zen holds no
-    # row with trailing or doubled whitespace, so cycle 14 could witness only the
+    # Cycle 15: `titleSort` trims the LEFT only. Measured on the copy -- the 1.42.2 reference holds
+    # no row with trailing or doubled whitespace, so cycle 14 could witness only the
     # leading half and read `.strip()` into the gap. A trailing space SURVIVES into
     # the sort title, which is why a title written with one carries no `titleSort` at
     # all: the derived string equals the title, and a real PMS omits it then.
@@ -13114,7 +13118,7 @@ def main():
     # Cycle 15: a show whose setting has never been written -- or has just been
     # CLEARED, which is the same state -- reports `episodeSort` as `-1`, the same as
     # its `default`. Re-read live on BOTH references while implementing the
-    # inheritance rule: kids (1.43.4) show 6 and zen (1.42.2) show 5189 both answer
+    # inheritance rule: plexlab (1.43.4) show 6 and the 1.42.2 reference show 5189 both answer
     # `-1`. `item_prefs.json` carried `0`, captured on 2026-09-12 from a show that
     # had been written, and rex served that stale value for every show it holds.
     # It matters because `-1` is the value that INHERITS the library's setting, so a
@@ -13190,11 +13194,11 @@ def main():
     request(base, "PUT", "/library/metadata/%s/prefs?flattenSeasons=-1&episodeSort=-1" % show)
     request(base, "PUT", "/library/sections/%s/prefs?flattenSeasons=0&episodeSort=-1" % show_section)
 
-    # Cycle 15, measured on kids (1.43.4) and zen (1.42.2), which agree: the View
+    # Cycle 15, measured on plexlab (1.43.4) and the 1.42.2 reference, which agree: the View
     # Play History page lists NOTHING without a `type=` -- `size 0`, `totalSize 0`,
     # on both -- and the `type` it matches is the row's `viewType`, NOT its metadata
-    # type. kids' history is five MOVIES and zen's is 73 EPISODES and BOTH come back
-    # under `type=1`, while `type=2`, `3`, `4`, `5` and `0` answer nothing on either.
+    # type. plexlab's history is five MOVIES and the 1.42.2 reference's is 73 EPISODES and BOTH come
+    # back under `type=1`, while `type=2`, `3`, `4`, `5` and `0` answer nothing on either.
     # `type=abc` and an empty `type=` are 400s, like the ids cycle 14 measured, and
     # every listing row carries `viewType: 1`.
     #
@@ -13216,10 +13220,10 @@ def main():
     one_h15 = get(base, "/status/sessions/history/all?type=1")[1]
     four_h15 = get(base, "/status/sessions/history/all?type=4")[1]
     list_h15 = get(base, "/status/sessions/history/all?type=1,4")[1]
-    # Cycle 70 RE-MEASURED this on plexscratch42 (1.42.2) and kids (1.43.4): kids' and zen's
-    # histories held scrobble rows only. A play a timeline completes -- the one just driven
-    # -- writes a row with NO `viewType`, which the plain call lists (it is `type=0`) and
-    # `type=1` does not; the scrobble rows stay `type=1`'s alone.
+    # Cycle 70 RE-MEASURED this on plexscratch42 (1.42.2) and plexlab (1.43.4): plexlab's and the
+    # 1.42.2 reference's histories held scrobble rows only. A play a timeline completes -- the one
+    # just driven -- writes a row with NO `viewType`, which the plain call lists (it is `type=0`)
+    # and `type=1` does not; the scrobble rows stay `type=1`'s alone.
     zero_h15 = get(base, "/status/sessions/history/all?type=0")[1]
     check("the plain history call lists the session plays (type=0), not the scrobbles",
           (none_h15.get("size") or 0) > 0 and (one_h15.get("size") or 0) > 0
@@ -13243,7 +13247,7 @@ def main():
              request(base, "GET", "/status/sessions/history/all?type=")[0],
              request(base, "GET", "/status/sessions/history/all?type=1")[0]))
 
-    # Cycle 15, measured on kids (1.43.4) and zen (1.42.2), which agree: the in-library
+    # Cycle 15, measured on plexlab (1.43.4) and the 1.42.2 reference, which agree: the in-library
     # search box answers the LIGHT grid row, exactly as every other listing does -- no
     # `Guid`, no `Rating`, no tag ids, no `Stream` inside a Part. Its row is
     # byte-comparable with the grid's row for the same item on both servers. rex
@@ -13266,10 +13270,10 @@ def main():
           and ("Guid" in grow_c15s) == ("Guid" in srow_c15s),
           "search keys %s" % sorted(srow_c15s))
 
-    # Cycle 15, measured on kids (1.43.4) and zen (1.42.2): `includeChildren=1` inlines
+    # Cycle 15, measured on plexlab (1.43.4) and the 1.42.2 reference: `includeChildren=1` inlines
     # a `Children` block on a SHOW and on nothing else. Neither reference puts one on a
-    # season, and neither is silent for want of children -- kids' season 7 holds three
-    # episodes and zen's season 17201 holds twenty-two. rex inlined a season's
+    # season, and neither is silent for want of children -- plexlab's season 7 holds three
+    # episodes and the 1.42.2 reference's season 17201 holds twenty-two. rex inlined a season's
     # episodes too, so a season detail read carried a list the client had not asked for
     # and would fetch again from /children.
     show_row_c15c = (get(base, "/library/metadata/%s?includeChildren=1" % show)[1]
@@ -13287,16 +13291,18 @@ def main():
           % (show_row_c15c.get("Children", {}).get("size"),
              season_row_c15c.get("Children"), movie_row_c15c.get("Children")))
 
-    # Cycle 15, measured on kids (1.43.4) and zen (1.42.2), which agree: four more
+    # Cycle 15, measured on plexlab (1.43.4) and the 1.42.2 reference, which agree: four more
     # columns filter a listing although no Meta advertises them.
-    #   parent=<ratingKey>  the row's immediate parentRatingKey. kids' type=4 goes
+    #   parent=<ratingKey>  the row's immediate parentRatingKey. plexlab's type=4 goes
     #                       6 -> 3 for a season and 6 -> 0 for the show above it;
-    #                       zen's goes 9287 -> 22 and -> 0. It reaches /library/all too.
-    #   rating=, audienceRating=  the two agent ratings. On zen `audienceRating>>=9` is
+    #                       the 1.42.2 reference's goes 9287 -> 22 and -> 0. It reaches /library/all
+    #                       too.
+    #   rating=, audienceRating=  the two agent ratings. On the 1.42.2 reference
+    #   `audienceRating>>=9` is
     #                       107 of 3887 and `rating>>=9` is 142; `<<=1` is 0 for both.
     #   file=               a case-insensitive SUBSTRING of the Part's path -- `unn`
-    #                       finds Big Buck Bunny, `.mkv` is 3811 of zen's 3887, an empty
-    #                       value is every row and `zzz` is none.
+    #                       finds Big Buck Bunny, `.mkv` is 3811 of the 1.42.2 reference's 3887, an
+    #                       empty value is every row and `zzz` is none.
     # rex ignored all four, which on a filter is worse than refusing: it answered
     # every row to two mutually exclusive queries.
     seasons_c15p = get(base, "/library/metadata/%s/children" % show)[1].get("Metadata") or []
@@ -13343,7 +13349,7 @@ def main():
           % (frag_c15p, hit_c15p.get("size"), miss_c15p.get("size"),
              empty_c15p.get("size"), every_c15p.get("size")))
 
-    # Cycle 15, measured on kids (1.43.4) and zen (1.42.2), which agree: /query/parse
+    # Cycle 15, measured on plexlab (1.43.4) and the 1.42.2 reference, which agree: /query/parse
     # echoes eight fields as a Rule with an EMPTY fieldTitle that a LISTING does not
     # filter on -- the parse surface is wider than the filter surface, and the two were
     # the same map in rex. `guid` is the sharpest of them: rex's listing has
@@ -13374,7 +13380,7 @@ def main():
           "%s | wibble %s | title %s"
           % (got_c15q, parsed_c15q("wibble=5")[0], parsed_c15q("title=x")))
 
-    # Cycle 15, measured on kids (1.43.4) and zen (1.42.2), whose answers are
+    # Cycle 15, measured on plexlab (1.43.4) and the 1.42.2 reference, whose answers are
     # byte-identical: `/playlists?includeMeta=1` carries a `Meta` descriptor with one
     # `Type` row and SIX sorts, and `/hubs/home/recentlyAdded?type=N&includeMeta=1`
     # carries one `Type` row whose `active` flips with the type -- `movie` true at
@@ -13412,10 +13418,10 @@ def main():
           and home_c15m["4"] is None and home_c15m["8"] is None,
           str(home_c15m))
 
-    # Cycle 15, measured on kids (1.43.4) and zen (1.42.2), which agree: on
+    # Cycle 15, measured on plexlab (1.43.4) and the 1.42.2 reference, which agree: on
     # `/hubs/search` -- and on no other hub path -- `contentDirectoryID` SCOPES the
-    # search to one library and VALIDATES its value. zen's `?query=the` answers show
-    # and movie hubs; with `contentDirectoryID=1` only the movie library's, with `=2`
+    # search to one library and VALIDATES its value. The 1.42.2 reference's `?query=the` answers
+    # show and movie hubs; with `contentDirectoryID=1` only the movie library's, with `=2`
     # only the show library's. `abc`, `99`, `1.5` and `-1` -- anything that does not
     # name a section -- are 404s on both, while an EMPTY value is a 200 that scopes
     # nothing. rex ignored the parameter and 200'd every value, so search-within-
@@ -13446,7 +13452,7 @@ def main():
              hits_c15h("&contentDirectoryID=%s" % show_section),
              hits_c15h("&contentDirectoryID=")))
 
-    # Cycle 15, measured on kids (1.43.4) and zen (1.42.2), which agree on all of it:
+    # Cycle 15, measured on plexlab (1.43.4) and the 1.42.2 reference, which agree on all of it:
     # `excludeElements=` is a property of the RESPONSE, exactly as paging is -- every
     # container that carries rows drops the named child elements, and dropping `Media`
     # substitutes `mediaCount` and `mediaCountOptimized`. Cycle 11 wired it into the
@@ -13860,11 +13866,11 @@ def main():
           and "count" not in mine_c15u[0],
           "tag %s | collection guid %r" % (mine_c15u, tg_c15u.get("guid")))
 
-    # Cycle 15, measured on THREE servers -- kids (1.43.4), plexscratch and zen (1.42.2),
+    # Cycle 15, measured on THREE servers -- plexlab (1.43.4), plexscratch and the 1.42.2 reference,
     # the last on episode 11115 of a show that does have artwork: an episode's own
     # `/library/metadata/{id}/art` path is a 404, bare and versioned. Its `/thumb` and
-    # `/poster` are 200s, and a SEASON's `/art` is a 200 on zen, so this belongs to the
-    # episode alone. The row ATTRIBUTE is not affected: an episode's `art` names its
+    # `/poster` are 200s, and a SEASON's `/art` is a 200 on the 1.42.2 reference, so this belongs to
+    # the episode alone. The row ATTRIBUTE is not affected: an episode's `art` names its
     # season's, exactly as rex's does, and that is the URL a client actually builds.
     leaf_c15x = (get(base, "/library/metadata/%s/children"
                      % (get(base, "/library/metadata/%s/children" % show)[1]
@@ -13990,7 +13996,7 @@ def main():
           str({k_c15v2: [(s_c15v2, d_c15v2.get("content")) for s_c15v2, d_c15v2, _ in v_c15v2]
                for k_c15v2, v_c15v2 in plugin_c15v2.items()}))
 
-    # Cycle 15, measured on kids (1.43.4) and zen (1.42.2), which agree on every cell:
+    # Cycle 15, measured on plexlab (1.43.4) and the 1.42.2 reference, which agree on every cell:
     # `limit=` and `parent=` are PARSED wherever a listing consumes them, and a value
     # that is not a whole number is a **500** -- `abc`, an empty value and `1.5` alike --
     # on the section grid, `allLeaves`, `search`, `common`, `/library/all`, an item's
@@ -14029,7 +14035,7 @@ def main():
                               request(base, "GET",
                                       "/status/sessions/history/all?type=1&parent=abc")[0]))
 
-    # Cycle 15, measured on kids (1.43.4) and zen (1.42.2), which agree exactly: a
+    # Cycle 15, measured on plexlab (1.43.4) and the 1.42.2 reference, which agree exactly: a
     # FRACTIONAL value is a 500 on seven columns and on no others.
     #
     #   500 on `=1.5`:  viewCount  viewOffset  lastViewedAt  lastRatedAt
@@ -14066,7 +14072,7 @@ def main():
           and all(v_c15f == 500 for v_c15f in empty_c15f.values()),
           "word=%s empty=%s" % (word_c15f, empty_c15f))
 
-    # Cycle 15, measured on kids (1.43.4) and zen (1.42.2), identical on both:
+    # Cycle 15, measured on plexlab (1.43.4) and the 1.42.2 reference, identical on both:
     # `/hubs/search?limit=` refuses in two different ways, and rex had them the
     # wrong way round.
     #
@@ -14085,7 +14091,7 @@ def main():
                        "01": 200, "1": 200, "3": 200},
           str(sl_c15q2))
 
-    # Cycle 15, measured on zen (1.42.2 -- the build rex reports; kids holds no
+    # Cycle 15, measured on the 1.42.2 reference (the build rex reports; plexlab holds no
     # related items at all for any row, which is an instrument limit and is stated
     # rather than hidden): the INLINE `Related` block caps at **5** rows per hub and
     # says `more: true`, where the standalone `/hubs/metadata/{id}/related` answers 6
@@ -14299,7 +14305,7 @@ def main():
           "%d queue frame(s): %s" % (len(queue_c15n2), queue_c15n2[:1]))
 
 
-    # Cycle 16, measured on kids (1.43.4) and zen (1.42.2) over fifteen paths and
+    # Cycle 16, measured on plexlab (1.43.4) and the 1.42.2 reference over fifteen paths and
     # every status they answer: a real PMS sends NO `Server:` header at all.
     # BaseHTTPRequestHandler adds one from `server_version`, so rex announced
     # itself as `Rex/0.1 Python/3.10.20` on every single response -- the one
@@ -14316,12 +14322,12 @@ def main():
           "%s" % banner_c16a)
 
 
-    # Cycle 16, measured on zen's 507-show / 741-season / 9287-episode library and
-    # confirmed on kids: the `firstCharacter` AXIS counts a row BELOW the library's
-    # own top-level type by its SHOW's sort title, not by its own. Bucketing zen's
+    # Cycle 16, measured on the 1.42.2 reference's 507-show / 741-season / 9287-episode library and
+    # confirmed on plexlab: the `firstCharacter` AXIS counts a row BELOW the library's
+    # own top-level type by its SHOW's sort title, not by its own. Bucketing the 1.42.2 reference's
     # seasons and episodes by their show reproduces the axis on 28 of 28 buckets at
     # type=3 AND at type=4; bucketing them by their own titles reproduces 0 of 28.
-    # kids -- whose one show is Firefly, whose seasons are "Season 1"/"Season 2" and
+    # plexlab -- whose one show is Firefly, whose seasons are "Season 1"/"Season 2" and
     # whose episodes have real titles -- answers `F:2` at type=3 and `F:6` at type=4.
     # rex counted each row's own title, so an episode grid's A-Z rail was an index
     # of episode titles where a real PMS indexes the shows.
@@ -14353,12 +14359,12 @@ def main():
           "axis %s, by show %s, by own title %s" % (letters_c16c, want_c16c, own_c16c))
 
 
-    # Cycle 16, measured on kids and zen: `/library/sections/{id}/firstCharacter/{key}`
-    # is a real LISTING of that bucket's rows -- the light grid row, `title2` reading
-    # "Start with '<key>'", the librarySection triple, and the listing grammar on top
-    # (zen's `B` bucket answers 6 of its 161 rows to `year=2020` and reverses under
-    # `sort=titleSort:desc`). It filters on the ROW's own sort title, which is what
-    # makes it disagree with the axis above it. rex routed on the leaf alone, so
+    # Cycle 16, measured on plexlab and the 1.42.2 reference:
+    # `/library/sections/{id}/firstCharacter/{key}` is a real LISTING of that bucket's rows -- the
+    # light grid row, `title2` reading "Start with '<key>'", the librarySection triple, and the
+    # listing grammar on top (the 1.42.2 reference's `B` bucket answers 6 of its 161 rows to
+    # `year=2020` and reverses under `sort=titleSort:desc`). It filters on the ROW's own sort title,
+    # which is what makes it disagree with the axis above it. rex routed on the leaf alone, so
     # the extra segment was dropped and every bucket answered the AXIS again: clicking
     # a letter in the A-Z rail redrew the rail instead of opening the rows behind it.
     grid_c16d = (get(base, "/library/sections/%s/all" % movie_section)[1]
@@ -14388,7 +14394,7 @@ def main():
              len(lower_c16d.get("Metadata") or [])))
 
 
-    # Cycle 16, measured on kids and zen: a SHOW library's `/unwatched` carries
+    # Cycle 16, measured on plexlab and the 1.42.2 reference: a SHOW library's `/unwatched` carries
     # `nocache: true` like every other container it answers, and a movie library's
     # does not. rex carried it on /all, /newest, /recentlyAdded, /onDeck,
     # /recentlyViewed, /allLeaves and /folder and dropped it on exactly this one, so
@@ -14446,7 +14452,7 @@ def main():
              len(filtered_c16g.get("Metadata") or [])))
 
 
-    # Cycle 16, measured on kids (1.43.4) and zen (1.42.2), every status and both
+    # Cycle 16, measured on plexlab (1.43.4) and the 1.42.2 reference, every status and both
     # formats: a real PMS NAMES its connection state on every response. With
     # `Connection: keep-alive` (or HTTP/1.1 and no Connection header) it answers
     # `Connection: Keep-Alive` and `Keep-Alive: timeout=20`; with `Connection: close`
@@ -14485,7 +14491,7 @@ def main():
           "%s" % conn_c16h)
 
 
-    # Cycle 16, measured on kids and zen: a paged container answers
+    # Cycle 16, measured on plexlab and the 1.42.2 reference: a paged container answers
     # `X-Plex-Container-Start` and `X-Plex-Container-Total-Size` as response HEADERS
     # beside the body's own `offset`/`totalSize`, on every container that pages
     # (`/identity` answers Total-Size 0). And the paging HEADER beats the query when
@@ -14508,8 +14514,8 @@ def main():
              paged_c16i[1].get("totalSize"), lower_c16i.get("x-plex-container-start")))
 
 
-    # Cycle 16, measured on kids and zen: a section's `/composite` exists only in its
-    # VERSIONED form. The bare path is a 404 on both references, with and without
+    # Cycle 16, measured on plexlab and the 1.42.2 reference: a section's `/composite` exists only
+    # in its VERSIONED form. The bare path is a 404 on both references, with and without
     # `?width&height`, and no `/library/sections` row carries a `composite` attribute
     # for a client to build the bare form from. rex answered image bytes there --
     # the same shape of invention as cycle 14's `/recentlyReleased`.
@@ -14529,8 +14535,8 @@ def main():
           "bare=%s versioned=%s" % (bare_c16j[0], versioned_c16j[0]))
 
 
-    # Cycle 16, measured on kids and zen: a real PMS never sends `100 Continue`. With
-    # `Expect: 100-continue` on a GET both references answer the 200 directly, while
+    # Cycle 16, measured on plexlab and the 1.42.2 reference: a real PMS never sends `100 Continue`.
+    # With `Expect: 100-continue` on a GET both references answer the 200 directly, while
     # rex wrote `HTTP/1.1 100 Continue` first (BaseHTTPRequestHandler's default
     # `handle_expect_100`). A client that counts responses, or a proxy, sees an extra
     # one that a real server never sends.
@@ -14551,7 +14557,7 @@ def main():
           "%r" % first_c16k.split(b"\r\n")[0])
 
 
-    # Cycle 16, measured on kids and zen: the `Accept-Encoding` token is matched
+    # Cycle 16, measured on plexlab and the 1.42.2 reference: the `Accept-Encoding` token is matched
     # EXACTLY and case-sensitively. `GZIP` and `x-gzip` get a plain body on both
     # references, `*` gets a plain body, and `gzip;q=0` is still gzipped (the q is
     # ignored). rex lower-cased the whole header and looked for the substring
@@ -14607,8 +14613,8 @@ def main():
           "%s %r" % (extras_c16n[0], extras_c16n[1][:60]))
 
 
-    # Cycle 16, measured on kids and zen: `X-Plex-Platform: Roku` (header or query,
-    # that exact spelling -- `roku`, iOS, tvOS, Chrome, Windows and the rest change
+    # Cycle 16, measured on plexlab and the 1.42.2 reference: `X-Plex-Platform: Roku` (header or
+    # query, that exact spelling -- `roku`, iOS, tvOS, Chrome, Windows and the rest change
     # nothing) strips `id` AND the whole `Pivot` list from every library `Directory`
     # of `/media/providers`, leaving the other nine attributes untouched. rex sent
     # the same rows to every platform, so a Roku client is handed pivots a real server
@@ -14639,8 +14645,8 @@ def main():
                                  sorted(chrome_c16o[0]) if chrome_c16o else None))
 
 
-    # Cycle 16, re-measured on kids and zen over thirty Accept headers, correcting
-    # cycle 5's reading in six places. A range qualifies only if its media type is
+    # Cycle 16, re-measured on plexlab and the 1.42.2 reference over thirty Accept headers,
+    # correcting cycle 5's reading in six places. A range qualifies only if its media type is
     # exactly `application/json` or `application/xml` AND either it has no parameters
     # at all or its FIRST parameter begins exactly `q=` -- `;charset=utf-8`,
     # `;level=1;q=0.5`, `; q=0.5` (a space after the semicolon) and `;Q=0.5` are all
@@ -14680,8 +14686,8 @@ def main():
                   if want_c16p[k_c16p] != v_c16p})
 
 
-    # Cycle 16, measured on kids and zen: `Range` applies to EVERY response body, not
-    # only to media bytes. `Range: bytes=0-9` on `/identity`, a grid, `/:/prefs` or
+    # Cycle 16, measured on plexlab and the 1.42.2 reference: `Range` applies to EVERY response
+    # body, not only to media bytes. `Range: bytes=0-9` on `/identity`, a grid, `/:/prefs` or
     # artwork answers `206 Partial Content` with `Content-Range: bytes 0-9/<len>`;
     # a range past the end is a `416`; an unrecognised unit (`cheese=0-9`) is served as
     # bytes; and a 206 is never gzipped even when the client offers gzip. rex
@@ -14690,7 +14696,7 @@ def main():
     # -- the whole body's and the slice's, which is what both references send -- and
     # `http.client` takes the FIRST and then waits for bytes that never come
     # (`IncompleteRead`). The check is the same; only the reader changed.
-    # Cycle 75, measured from kids: 30 simultaneous connects to plexscratch42 are all
+    # Cycle 75, measured from plexlab: 30 simultaneous connects to plexscratch42 are all
     # answered; rex reset most of them (a listen backlog of 5), and six at once -- a
     # browser's per-host count -- already lost some.
     host_c75b = (base.split("//")[1].split(":")[0], int(base.rsplit(":", 1)[1]))
@@ -14760,8 +14766,8 @@ def main():
           % (status_c16q, crange_c16q, size_c16q, enc_c16q, beyond_status_c16q))
 
 
-    # Cycle 16, measured on kids and zen in XML: a `Meta/Type` element's children come
-    # out `Filter, Sort, Field`. rex wrote `Field, Filter, Sort` --
+    # Cycle 16, measured on plexlab and the 1.42.2 reference in XML: a `Meta/Type` element's
+    # children come out `Filter, Sort, Field`. rex wrote `Field, Filter, Sort` --
     # `xmlout._CHILD_ORDER` knew the item-level `Field` and nothing about these three,
     # so they fell out in the order the dict happened to hold them. XML child order is
     # load-bearing in this project's history, which is why that table exists at all.
@@ -14780,8 +14786,8 @@ def main():
           "%s" % order_c16r)
 
 
-    # Cycle 16, measured on kids and zen: under `includeDetails=1` a `Sort` carries
-    # NO `active`/`activeDirection` and a `Filter` no `advanced` -- those three belong
+    # Cycle 16, measured on plexlab and the 1.42.2 reference: under `includeDetails=1` a `Sort`
+    # carries NO `active`/`activeDirection` and a `Filter` no `advanced` -- those three belong
     # to the `includeMeta=1` form, where all of them appear. The `includeDetails` Type
     # blocks sit at the TOP level of the container rather than inside a `Meta`.
     # rex stamped `active` and `activeDirection` on every Sort under
@@ -14805,9 +14811,9 @@ def main():
              sorted(meta_sorts_c16s[0]) if meta_sorts_c16s else None))
 
 
-    # Cycle 16, measured on kids and zen: the rows inlined by `includeChildren=1` carry
-    # NO `librarySectionID`, `librarySectionKey` or `librarySectionTitle` -- and
-    # neither do the same rows fetched through `/children`, which is where rex
+    # Cycle 16, measured on plexlab and the 1.42.2 reference: the rows inlined by
+    # `includeChildren=1` carry NO `librarySectionID`, `librarySectionKey` or `librarySectionTitle`
+    # -- and neither do the same rows fetched through `/children`, which is where rex
     # already had it right. The inline block was built from the FULL row instead of the
     # child projection, so it alone carried the triple, and a client reading the
     # inlined season rows saw a shape no real PMS sends.
@@ -14829,9 +14835,9 @@ def main():
                     if k_c16t.startswith("librarySection"))))
 
 
-    # Cycle 16, measured on kids and zen across five containers: a MediaContainer's
-    # attributes come out `size`, then `totalSize` and `offset` when it is paged, then
-    # every other attribute in alphabetical order. rex emitted them in the order
+    # Cycle 16, measured on plexlab and the 1.42.2 reference across five containers: a
+    # MediaContainer's attributes come out `size`, then `totalSize` and `offset` when it is paged,
+    # then every other attribute in alphabetical order. rex emitted them in the order
     # its dict happened to hold (`size, identifier, mediaTagPrefix, mediaTagVersion,
     # allowSync, ...`). Nothing a parser cares about -- it is the replay diff that
     # reads it, and a stable order is what makes that diff mean something.
@@ -14848,8 +14854,8 @@ def main():
           "%s" % names_c16u)
 
 
-    # Cycle 16, measured on kids and zen: a malformed request header is a 400 on a
-    # real PMS. A header line with no colon, a TAB anywhere in a value (a space is
+    # Cycle 16, measured on plexlab and the 1.42.2 reference: a malformed request header is a 400 on
+    # a real PMS. A header line with no colon, a TAB anywhere in a value (a space is
     # fine), a header name over 1024 bytes and a value over 4096 are each a 400.
     # rex accepted every one of them with a 200 and only refused at Python's own
     # 64 KiB line limit, answering Python's HTML error page rather than a 400.
@@ -14888,7 +14894,7 @@ def main():
           "%s ; a space in the value is fine -> %s" % (refused_c16v, fine_c16v))
 
 
-    # Cycle 16, measured on kids and zen: `/web` and `/web/` answer `302 Moved
+    # Cycle 16, measured on plexlab and the 1.42.2 reference: `/web` and `/web/` answer `302 Moved
     # Temporarily` with an ABSOLUTE `Location` built from the request's own `Host`
     # header (`Host: example.com:1234` gives `http://example.com:1234/web/index.html`),
     # `Cache-Control: public`, `X-Plex-Protocol: 1.0` and a zero-length body. rex
@@ -14966,7 +14972,7 @@ def main():
           == (302, "http://example.com:1234/web/index.html", "0"),
           str(neuter_web_seen_c46))
 
-    # Cycle 16, measured on kids and zen over every asset the bundle serves:
+    # Cycle 16, measured on plexlab and the 1.42.2 reference over every asset the bundle serves:
     # `Cache-Control: no-cache` like the rest of the surface, `Accept-Ranges: bytes`,
     # and NEVER gzipped even when the client offers gzip -- and three content types
     # that differ from Python's guesses (`.js` is `text/javascript`, `.html` carries
@@ -15345,12 +15351,12 @@ def main():
              len(queued_c16a11.get("Metadata") or [])))
 
 
-    # Cycle 16, measured on kids and on zen's 507-show / 9287-episode library: a show
-    # library's `?type=3` and `?type=4` grids default to the SHOW's order -- grouped by
+    # Cycle 16, measured on plexlab and on the 1.42.2 reference's 507-show / 9287-episode library: a
+    # show library's `?type=3` and `?type=4` grids default to the SHOW's order -- grouped by
     # the show's sort title, then `parentIndex`, then `index` -- and NOT to a flat
-    # `titleSort`. kids' episode grid opens "The Train Job, Bushwhacked, Our Mrs.
+    # `titleSort`. plexlab's episode grid opens "The Train Job, Bushwhacked, Our Mrs.
     # Reynolds, Episode 1, 2, 3" where `sort=titleSort` gives "Episode 1, 2, 3,
-    # Bushwhacked, Our Mrs. Reynolds, The Train Job"; zen's, 2000 rows in, is one
+    # Bushwhacked, Our Mrs. Reynolds, The Train Job"; the 1.42.2 reference's, 2000 rows in, is one
     # show's episodes in broadcast order where `sort=titleSort` is an alphabetical
     # jumble across shows. rex answered its own titleSort order to both, so opening
     # a show library's Episodes or Seasons tab gave an alphabetical shuffle.
@@ -15656,7 +15662,7 @@ def main():
           % (real_c16a21, dead_c16a21, versioned_c16a21))
 
 
-    # Cycle 16, measured on plexscratch and corroborated READ-ONLY on zen (1.42.2),
+    # Cycle 16, measured on plexscratch and corroborated READ-ONLY on the 1.42.2 reference,
     # where six `local://` shows advertise exactly eight settings while every
     # `plex://show/...` advertises the full list: an UNMATCHED item loses its
     # agent-driven preferences. A show drops `languageOverride` and `useOriginalTitle`;
@@ -15742,8 +15748,8 @@ def main():
           % (loading_c16a23[:1], done_c16a23[:1], was_c16a23))
 
 
-    # Cycle 16, measured on kids and zen, identically, across eight endpoints and 200+
-    # strings: a real PMS LOCALISES its own text by `X-Plex-Language` -- header or query
+    # Cycle 16, measured on plexlab and the 1.42.2 reference, identically, across eight endpoints
+    # and 200+ strings: a real PMS LOCALISES its own text by `X-Plex-Language` -- header or query
     # -- falling back to `Accept-Language`, and `X-Plex-Language` wins when both are
     # sent. The filter and sort menus, the `Meta` type titles, the hub titles, a
     # GENERATED season title (`Season 1` -> `Staffel 1`), a stream's language name and
@@ -15788,11 +15794,11 @@ def main():
 
     # Cycle 17: the Meta Field list is per VERSION, like the Filter list. Cycle 14 split
     # `Meta.Type[].Filter` per version and left `Field` at 1.43.4's, because BOTH Meta
-    # fixtures were captured off kids. Measured on zen (1.42.2, the build rex
-    # reports): 34 movie Fields and 20 episode ones against kids' 40 and 26, differing in
+    # fixtures were captured off plexlab. Measured on the 1.42.2 reference (the build rex
+    # reports): 34 movie Fields and 20 episode ones against plexlab's 40 and 26, differing in
     # exactly the six media-codec axes -- and on 1.42.2 those six are UNKNOWN fields, so a
-    # listing filtered on one answers EVERY row (3887 of zen's 3887) and /query/parse
-    # reports an `Error` rather than a `Rule`. rex advertised all six in the smart
+    # listing filtered on one answers EVERY row (3887 of the 1.42.2 reference's 3887) and
+    # /query/parse reports an `Error` rather than a `Rule`. rex advertised all six in the smart
     # filter builder, filtered on them (0 rows) and parsed them as real Rules.
     meta_c17d1 = get(base, "/library/sections/%s/all?includeMeta=1"
                      "&X-Plex-Container-Start=0&X-Plex-Container-Size=0"
@@ -15843,7 +15849,7 @@ def main():
           "%s vs %s" % (empty_codecs_c41a, all_c17d1))
 
 
-    # Cycle 17, measured on kids (1.43.4) and zen (1.42.2), which agree byte for byte
+    # Cycle 17, measured on plexlab (1.43.4) and the 1.42.2 reference, which agree byte for byte
     # over the whole table: an XML attribute value is escaped as `&` -> `&amp;`,
     # `<` -> `&lt;`, `>` -> `&gt;`, `"` -> `&#34;` and `'` -> `&#39;` (NUMERIC, not
     # `&quot;`/`&apos;`); TAB -> `&#9;` in decimal but NEWLINE and CR -> `&#xA;`/`&#xD;`
@@ -15889,8 +15895,8 @@ def main():
 
     # Cycle 17: an open entry carried "the MECHANISM is measured; the COVERAGE is only as wide as
     # capture_i18n.py's path list" since cycle 16, and it was right. Sweeping 87 paths
-    # against kids in German found 119 (attribute, string) pairs the reference
-    # translates that the table did not hold, and zen -- 1.42.2, the build rex
+    # against plexlab in German found 119 (attribute, string) pairs the reference
+    # translates that the table did not hold, and the 1.42.2 reference -- 1.42.2, the build rex
     # reports -- moves the same families (43 strings on a library's /prefs, 17 on
     # /hubs/search, 2 on /butler). The biggest is the PREFERENCES family: every `label`,
     # `summary` and `enumValues` of the Edit Library dialog and the per-item Advanced
@@ -15918,7 +15924,7 @@ def main():
 
     # Cycle 41 swept every safe read family from the complete retained client and
     # found four 1.42.2 source strings that the earlier path list never reached.
-    # All 28 translations were captured from zen; these stable German witnesses
+    # All 28 translations were captured from the 1.42.2 reference; these stable German witnesses
     # exercise the setting and both per-library hub families through the API.
     prefs_de_c41r3 = get(base, "/:/prefs?X-Plex-Language=de")[1]
     prefs_by_id_c41r3 = {row_c41r3.get("id"): row_c41r3
@@ -15943,7 +15949,7 @@ def main():
              sorted(movie_titles_c41r3), sorted(show_titles_c41r3)))
 
 
-    # Cycle 17, mapped path by path on kids by diffing a whole item document against
+    # Cycle 17, mapped path by path on plexlab by diffing a whole item document against
     # itself in German: inside a `Metadata` row the reference translates exactly three
     # things -- a GENERATED `Season N`/`Episode N` (already implemented), the
     # `Preferences` block's `Setting` rows (`label`, `summary` and `enumValues` alike,
@@ -15980,10 +15986,10 @@ def main():
              show_de_c17d4.get("title") == show_en_c17d4.get("title")))
 
 
-    # Cycle 17, measured on kids and held out on zen's real streams in de, fr and es: a
-    # Stream's `language` is localised, and its two display titles are COMPOSED from the
-    # localised name rather than substituted into. The difference shows on zen's movie
-    # 380, whose English subtitle track is TITLED "English": its `displayTitle` moves
+    # Cycle 17, measured on plexlab and held out on the 1.42.2 reference's real streams in de, fr
+    # and es: a Stream's `language` is localised, and its two display titles are COMPOSED from the
+    # localised name rather than substituted into. The difference shows on the 1.42.2 reference's
+    # movie 380, whose English subtitle track is TITLED "English": its `displayTitle` moves
     # `English` -> `Englisch` while its `extendedDisplayTitle` stays `English (SRT)`,
     # because the language part was already omitted for carrying one of the title's own
     # words -- the omission is decided on the ENGLISH name and only the rendered name
@@ -16036,17 +16042,17 @@ def main():
                  de_c17d5.get("displayTitle"), fr_c17d5.get("language")))
 
 
-    # Cycle 17, re-measured by the driver on kids (1.43.4) and zen (1.42.2), which agree:
+    # Cycle 17, re-measured by the driver on plexlab (1.43.4) and the 1.42.2 reference, which agree:
     # a SHOW's `/allLeaves` -- and no other container -- stamps every episode's
     # `grandparentThumb`, `grandparentArt`, `grandparentTheme` and `art` with the
     # EPISODE's own `addedAt` instead of the show's current artwork version. The
     # episode's detail row, the season's `/children`, the section grid at `type=4`,
     # `recentlyAdded`, `newest`, `/library/all` and the hubs all carry the show's
-    # CURRENT stamp; 14 of 14 stamped rows over 140 episodes on zen and 3 of 3 on kids
-    # carry their own. It is the same family as the `studio` this container already
+    # CURRENT stamp; 14 of 14 stamped rows over 140 episodes on the 1.42.2 reference and 3 of 3 on
+    # plexlab carry their own. It is the same family as the `studio` this container already
     # carries: a property of the list, not of the row. The hunt reported it as a
     # property of an EPISODE row -- it is not, and the section grid disagrees with that
-    # reading 641 times on zen.
+    # reading 641 times on the 1.42.2 reference.
     #
     # What it costs a client: an episode's grandparent artwork URL on this list is
     # stable for the life of the row, so a client that caches it keeps a valid URL
@@ -16099,7 +16105,7 @@ def main():
              len(grid_paths_c17a1), sorted(grid_versions_c17a1)))
 
 
-    # Cycle 17, derived by the driver from kids (1.43.4) and zen (1.42.2) and verified
+    # Cycle 17, derived by the driver from plexlab (1.43.4) and the 1.42.2 reference and verified
     # against both: a ROW's XML attribute order. Cycle 16 settled the CONTAINER's and
     # left a row's explicitly unmapped for this cycle. It is not alphabetical and not
     # the order the row dict was built in: a tag is `id, filter, tag`, a movie leads
@@ -16149,8 +16155,8 @@ def main():
 
     # Cycle 17, second pass over the row attribute order: the untyped `Directory` rows.
     # The first table's one untyped order came from the "All episodes" row alone, so it
-    # put `key, title` ahead of everything. Measured on kids and zen, which agree: a
-    # SORT row is `default, defaultDirection, descKey, firstCharacterKey, key, title`, a
+    # put `key, title` ahead of everything. Measured on plexlab and the 1.42.2 reference, which
+    # agree: a SORT row is `default, defaultDirection, descKey, firstCharacterKey, key, title`, a
     # `firstCharacter` bucket is `size, key, title`, a FILTER row is `filter,
     # filterType, key, title, type` and the All-episodes row is `leafCount, thumb,
     # viewedLeafCount, key, title`. All four agree on `key` before `title`, so one union
@@ -16173,10 +16179,10 @@ def main():
           % (sorts_c17a3[:4], chars_c17a3, filters_c17a3[:3]))
 
 
-    # Cycle 17, measured on kids (1.43.4) and zen (1.42.2) over the bare path and every
+    # Cycle 17, measured on plexlab (1.43.4) and the 1.42.2 reference over the bare path and every
     # `mediaType=`: `tv.plex.agents.nfo.movie` and `tv.plex.agents.nfo.series` exist on
     # 1.43.4 and on NOTHING on 1.42.2, which lists four modern agents where 1.43.4 lists
-    # six. `system_agents.json` was captured off kids, so rex -- which reports
+    # six. `system_agents.json` was captured off plexlab, so rex -- which reports
     # 1.42.2 -- offered the Add Library and Edit Library dialogs an agent a server of
     # its version does not have; picking it is a scanner/agent pair a real 1.42.2 would
     # refuse. Same family as this cycle's Meta Field split: a fixture captured off the
@@ -16204,9 +16210,9 @@ def main():
 
 
     # Cycle 17, re-measured by the driver on plexscratch character by character and
-    # corroborated on zen: a leading run of PUNCTUATION comes off the sort title, and it
-    # comes off BEFORE the article. zen's episode 10866 is titled "'Til Death Do Us Art"
-    # and sorts as "Til Death Do Us Art"; its episode `firstCharacter` axis has 27
+    # corroborated on the 1.42.2 reference: a leading run of PUNCTUATION comes off the sort title,
+    # and it comes off BEFORE the article. The 1.42.2 reference's episode 10866 is titled "'Til
+    # Death Do Us Art" and sorts as "Til Death Do Us Art"; its episode `firstCharacter` axis has 27
     # buckets -- `#` then A-Z, no apostrophe bucket -- and the `T` bucket holds that row.
     # The set is not a Unicode category: in ASCII only `" ' ( - . [ {` and `~` strip
     # while `! # $ % & ) * + , / : ; < = > ? @ \ ] ^ _ ` | }` do not, and the fullwidth
@@ -16439,7 +16445,7 @@ def main():
                         for k_c17b7, v_c17b7 in fell_c17b7.items())[:4])
 
 
-    # Cycle 17, measured read-only on kids (1.43.4) and zen (1.42.2), which agree
+    # Cycle 17, measured read-only on plexlab (1.43.4) and the 1.42.2 reference, which agree
     # exactly: `GET /livetv` is the plug-in dispatcher's own THREE-row container --
     # `dvrs`, `epg`, `sessions`, with `content="plugins"` -- not an empty one. rex
     # routed the whole `/livetv` tree to a bare empty container, so the one path that
@@ -16533,12 +16539,12 @@ def main():
           "%s" % stored_c17b11)
 
 
-    # Cycle 17, re-measured by the driver on kids (1.43.4) AND zen (1.42.2), which agree
+    # Cycle 17, re-measured by the driver on plexlab (1.43.4) AND the 1.42.2 reference, which agree
     # over 13 and 97 candidates: an artwork candidate whose `ratingKey` is a LOCAL uri
     # -- `metadata://`, `media://`, `upload://` -- carries that bare uri as its
     # `ratingKey` and a SERVER PATH as its `key` and `thumb`:
     # `/library/metadata/{id}/file?url=<the uri percent-encoded, with `.` encoded too>`,
-    # which really serves the image (200 image/jpeg on kids). A `media://` candidate
+    # which really serves the image (200 image/jpeg on plexlab). A `media://` candidate
     # carries NO `provider` while a `metadata://` one carries the agent's. rex put
     # the bare uri in `key` and `thumb` and stamped every local row `provider: "local"`,
     # so Change Artwork drew each uploaded tile with `img src="upload://posters/..."`,
@@ -16809,8 +16815,8 @@ def main():
     # singly with a notification socket open: the Scheduled Tasks page's Run button
     # reports a different sentence for twelve of them, three report SEVERAL messages,
     # and five report one where rex reported none at all. The task LIST is identical
-    # on kids, zen, plexscratch and rex -- 23 names, same order, same fields -- and
-    # every `POST /butler/{Task}` is a 200 with an empty body on both, so what differs is
+    # on plexlab, the 1.42.2 reference, plexscratch and rex -- 23 names, same order, same fields --
+    # and every `POST /butler/{Task}` is a 200 with an empty body on both, so what differs is
     # only what the page then prints. The COUNT in each sentence is content and not part
     # of the rule; the template is.
     #
@@ -16954,7 +16960,7 @@ def main():
           status == 200 and bucket.get("title2") == "Commencer avec 'T'",
           "%s %r" % (status, bucket.get("title2")))
 
-    # Cycle 18, measured on zen (1.42.2) over 3,887 real rows: on a string field no Meta
+    # Cycle 18, measured on the 1.42.2 reference over 3,887 real rows: on a string field no Meta
     # advertises, `<=`, `<<=`, `>=` and `>>=` are all a case-insensitive LEXICOGRAPHIC
     # comparison, both sides strict -- `titleSort<<=B` and `>>=B` partition the library
     # and a row whose sort title IS the value is in neither. rex allowed the keys and
@@ -16985,15 +16991,15 @@ def main():
                                                        if t.startswith("t")),
           "%s %s" % (status, listing.get("size")))
 
-    # Cycle 18, measured on zen (1.42.2, 14,433 rows) and kids: a row whose title the
+    # Cycle 18, measured on the 1.42.2 reference (14,433 rows) and plexlab: a row whose title the
     # SERVER generated stores the EMPTY STRING as its sort title. `titleSort=` with no
-    # value -- an equality on this field -- answers 740 of zen's 741 seasons and 4,630 of
-    # its 9,287 episodes, `titleSort<<=0` answers the same set, and every LETTER bucket of
+    # value -- an equality on this field -- answers 740 of the 1.42.2 reference's 741 seasons and
+    # 4,630 of its 9,287 episodes, `titleSort<<=0` answers the same set, and every LETTER bucket of
     # a season `firstCharacter` listing answers none of them while `#` answers them all.
     # rex read the row's TITLE where it stores no sort title, so its synthesised
     # seasons filtered and bucketed under `S`.
     # Cycle 31: an earlier check leaves a LOCKED sort title on a season, which is stored
-    # exactly as kids' agent-titled season 7 stores one -- and since cycle 31 a stored value
+    # exactly as plexlab's agent-titled season 7 stores one -- and since cycle 31 a stored value
     # equal to the generated title counts as stored, so the reconstruction below no longer
     # describes it. Put the seasons back to the synthesised state the rule is about:
     # unlock, then rewrite the title, which re-derives and drops the sort title.
@@ -17009,7 +17015,7 @@ def main():
     status, listing, _ = get(base, "/library/sections/%s/all?type=3&titleSort=" % show_section)
     # Counted live: by this point an earlier check may have given a season a title or a
     # SORT TITLE of its own, and either is stored like any other -- which is the
-    # reference's own "Egghead" season, the one of zen's 741 that does store one.
+    # reference's own "Egghead" season, the one of the 1.42.2 reference's 741 that does store one.
     seasons = len([r for r in get(base, "/library/sections/%s/all?type=3"
                                   % show_section)[1].get("Metadata") or []
                    if re.match(r"^Season \d+$", str(r.get("title") or ""))
@@ -17035,7 +17041,7 @@ def main():
 
     # Cycle 18: `section_prefs_new.json` is the FOURTH fixture found to be per VERSION,
     # after Meta.Type[].Filter (14), Meta.Type[].Field and system_agents.json (17). It was
-    # captured off kids (1.43.4) and differs from zen (1.42.2, the build rex reports)
+    # captured off plexlab (1.43.4) and differs from the 1.42.2 reference (the build rex reports)
     # in 16 of 35 (type, agent) cells: on 1.42.2 the AGENT's settings are appended whatever
     # the `type=`, and on 1.43.4 `tv.plex.agents.none` adds five generic rows at type 1
     # that 1.42.2 does not have -- the cell the Add Library dialog's "Personal Media"
@@ -17055,7 +17061,7 @@ def main():
     check("and useSeasonTitles belongs to the SERIES AGENT on 1.42.2",
           status == 200 and "useSeasonTitles" in names, "%s %s" % (status, len(names)))
 
-    # Cycle 18, measured on kids (1.43.4) and zen (1.42.2), byte-identical: four more
+    # Cycle 18, measured on plexlab (1.43.4) and the 1.42.2 reference, byte-identical: four more
     # single-segment paths are the legacy plug-in dispatcher's own POPULATED listings --
     # `/media` names grabbers/providers/subscriptions, `/services` ten services, `/status`
     # sessions -- `/statistics` is its empty 200 where rex 404'd, and `/security` is a
@@ -17105,8 +17111,8 @@ def main():
     check("a real single-segment writer still routes",
           status == 400, "%s" % status)
 
-    # Cycle 18, measured on kids and zen across five libraries: the in-library search box
-    # types its container from the ASKED `type=`, not from the library -- `type=3` is
+    # Cycle 18, measured on plexlab and the 1.42.2 reference across five libraries: the in-library
+    # search box types its container from the ASKED `type=`, not from the library -- `type=3` is
     # `viewGroup="season"` with `viewMode` 65593 and `type=4` is `viewGroup="episode"` with
     # `mixedParents: 1`. rex answered the library's own type and 65592 to all four, so
     # a client searching episodes got the show-grid layout with no parent context, and one
@@ -17131,8 +17137,8 @@ def main():
           and not grid.get("mixedParents"),
           "%s %s %s" % (status, grid.get("viewGroup"), grid.get("viewMode")))
 
-    # Cycle 18, measured on kids ("Movies", "TV Shows"), zen ("Zen Movies", "Zen Shows",
-    # "Bench TV"): the `All ...` string is COMPOSED from the library's own title on a movie
+    # Cycle 18, measured on plexlab ("Movies", "TV Shows"), the 1.42.2 reference ("Zen Movies", "Zen
+    # Shows", "Bench TV"): the `All ...` string is COMPOSED from the library's own title on a movie
     # library and is the constant "All Shows" on a show library -- in both places it
     # appears, the `/all` container's `title2` and the `all` pivot row. rex composed the
     # container's title2 for a show library ("All Debrid TV") and hardcoded "All Movies" for
@@ -17157,9 +17163,9 @@ def main():
     check("and the show pivot row stays constant",
           row.get("title") == "All Shows", "%r" % row.get("title"))
 
-    # Cycle 18, measured on kids and zen: `/library/recentlyAdded?limit=N` really caps and
-    # rewrites `totalSize` with the cap, and its grammar is a third one -- `limit=0` answers
-    # ZERO rows (a section listing answers one), a negative value lifts the server's own
+    # Cycle 18, measured on plexlab and the 1.42.2 reference: `/library/recentlyAdded?limit=N`
+    # really caps and rewrites `totalSize` with the cap, and its grammar is a third one -- `limit=0`
+    # answers ZERO rows (a section listing answers one), a negative value lifts the server's own
     # 50-row cap, and an unparseable one is IGNORED (a section listing is a 500). rex
     # ignored `limit=` on this path, so a client asking for the top N got the whole list and
     # paged against a totalSize a real server would have capped.
@@ -17177,8 +17183,8 @@ def main():
               status == 200 and listing.get("totalSize", listing.get("size")) == whole,
               "%s %s" % (status, listing.get("totalSize")))
 
-    # Cycle 18, measured on kids and zen: `/status/sessions/history/all` takes `limit=`,
-    # and it is a third grammar again -- `limit=-1` answers ZERO rows where the same value
+    # Cycle 18, measured on plexlab and the 1.42.2 reference: `/status/sessions/history/all` takes
+    # `limit=`, and it is a third grammar again -- `limit=-1` answers ZERO rows where the same value
     # lifts the cap on `/library/recentlyAdded` and means "every row" on a section listing
     # -- while `group=` is a 400 there, the empty form included. rex ignored both, so
     # the Activity page asking for a capped page got the whole history and a client error
@@ -17200,11 +17206,11 @@ def main():
         status, _, _ = get(base, "/status/sessions/history/all?type=1&group=" + value)
         check("and group=%r is a 400" % value, status == 400, "%s" % status)
 
-    # Cycle 18, measured on kids and zen: `parentIndex=` is a 500 on `/library/all` and on
-    # `/playlists` as well as on a section listing, and a `resolution=` outside the enum is
-    # a 500 there too (`/playlists?resolution=1` refuses where `?resolution=1080` is a 200).
-    # Cycle 15 recorded the parentIndex rule and it was wired into the section listing
-    # alone -- the class-C shape -- so python-plexapi and the SDKs read rex's 200 as
+    # Cycle 18, measured on plexlab and the 1.42.2 reference: `parentIndex=` is a 500 on
+    # `/library/all` and on `/playlists` as well as on a section listing, and a `resolution=`
+    # outside the enum is a 500 there too (`/playlists?resolution=1` refuses where
+    # `?resolution=1080` is a 200). Cycle 15 recorded the parentIndex rule and it was wired into the
+    # section listing alone -- the class-C shape -- so python-plexapi and the SDKs read rex's 200 as
     # "this field filtered nothing" rather than as a refusal.
     for path in ("/library/all?type=1&parentIndex=1", "/library/all?type=4&parentIndex=1",
                  "/playlists?parentIndex=1", "/playlists?resolution=1"):
@@ -17215,8 +17221,8 @@ def main():
     status, _, _ = get(base, "/playlists?resolution=1080")
     check("a resolution inside the enum is still a 200", status == 200, "%s" % status)
 
-    # Cycle 18, measured on kids and zen over 76 candidate names: `/hubs` and a SHOW
-    # library's `/hubs/sections/{id}` answer a 500 to exactly fifteen field names with any
+    # Cycle 18, measured on plexlab and the 1.42.2 reference over 76 candidate names: `/hubs` and a
+    # SHOW library's `/hubs/sections/{id}` answer a 500 to exactly fifteen field names with any
     # non-empty value, whatever operator follows; an empty value is a 200, an unknown field
     # is a 200, and a MOVIE library's hub page takes all fifteen. rex answered 200
     # everywhere, so anything sweeping the surface read a hub path as "a listing with the
@@ -17242,8 +17248,8 @@ def main():
           "%s %s" % (get(base, "/hubs/home/recentlyAdded?unwatched=1")[0],
                      get(base, "/hubs/search?query=a&unwatched=1")[0]))
 
-    # Cycle 18, measured on kids and zen: `/system` PAGES -- `Start=1&Size=1` answers one
-    # row and `totalSize 2`, `Start=5` answers none -- where cycle 9 recorded that a
+    # Cycle 18, measured on plexlab and the 1.42.2 reference: `/system` PAGES -- `Start=1&Size=1`
+    # answers one row and `totalSize 2`, `Start=5` answers none -- where cycle 9 recorded that a
     # `noHistory` container is left alone, a rule inferred from `/system/scanners/{N}`,
     # which really does ignore paging. The paged form emits NO `offset`, alone on the
     # surface, and in XML the plug-in framework's container is ordered
@@ -17267,7 +17273,7 @@ def main():
     check("and the plug-in container's XML leads with totalSize, noHistory, replaceParent",
           head.startswith('totalSize="2" noHistory="0" replaceParent="0" size="1"'), head)
 
-    # Cycle 18: `/system/search` is a 200 on kids and zen alike -- an empty
+    # Cycle 18: `/system/search` is a 200 on plexlab and the 1.42.2 reference alike -- an empty
     # `com.plexapp.system` container with `mediaTagPrefix` and `prefsKey`, the one container
     # attribute either reference emits that rex never did -- where rex 404'd it.
     status, listing, _ = get_system(base, "/system/search")
@@ -17412,8 +17418,8 @@ def main():
         status, _, _ = request(base, verb, "/library/metadata/%s/subtitles" % movie)
         check("%s on /subtitles is still a %s" % (verb, want), status == want, "%s" % status)
 
-    # Cycle 18, measured on zen over all 3,887 rows of a real movie library and held out on
-    # 24 (operator, value) pairs: the bare `title=` matcher ALSO reads the row's
+    # Cycle 18, measured on the 1.42.2 reference over all 3,887 rows of a real movie library and
+    # held out on 24 (operator, value) pairs: the bare `title=` matcher ALSO reads the row's
     # `originalTitle` -- `title=the` answers 1,484 rows where the title alone explains 1,481
     # -- while `title!=`, `==`, `!==`, `<=` and `>=` all read the title alone. A client
     # searching a foreign film by its own-language title finds it on a real PMS and did not
@@ -17435,9 +17441,9 @@ def main():
 
     # Cycle 18, swept character by character on plexscratch over every codepoint from U+0080
     # to U+02FF that NFD leaves alone: exactly eleven fold, and two of them are witnessed on
-    # zen's real library -- `D\u00f8d Kalm` sorts as `D0d Kalm` and `D\u00e6monicus` as
-    # `Demonicus`. rex folded combining marks only, so those rows carried no `titleSort`
-    # at all where a real PMS sends one.
+    # the 1.42.2 reference's real library -- `D\u00f8d Kalm` sorts as `D0d Kalm` and
+    # `D\u00e6monicus` as `Demonicus`. rex folded combining marks only, so those rows carried no
+    # `titleSort` at all where a real PMS sends one.
     pairs = ((u"\u00c6ther Probe", "Ether Probe"), (u"D\u00f8d Probe", "D0d Probe"),
              (u"D\u00e6mon Probe", "Demon Probe"), (u"Wei\u00df Probe", "Weis Probe"),
              (u"\u00d0elta Probe", "Delta Probe"))
@@ -17452,11 +17458,11 @@ def main():
     row = get(base, "/library/metadata/%s" % spare)[1]["Metadata"][0]
     check("and nothing above U+02FF folds", not row.get("titleSort"), "%r" % row.get("titleSort"))
 
-    # Cycle 18, measured on plexscratch with a control and corroborated on zen: a row whose
-    # title the SERVER generated is not in the query surface at all. The reference's season
-    # `Season 2` answers nothing to `search?type=3&query=season` while the same season
-    # renamed answers at once, and zen's `type=3&title=Season` is 0 of 741 seasons. rex
-    # synthesises every season title, so its seasons answered both.
+    # Cycle 18, measured on plexscratch with a control and corroborated on the 1.42.2 reference: a
+    # row whose title the SERVER generated is not in the query surface at all. The reference's
+    # season `Season 2` answers nothing to `search?type=3&query=season` while the same season
+    # renamed answers at once, and the 1.42.2 reference's `type=3&title=Season` is 0 of 741 seasons.
+    # rex synthesises every season title, so its seasons answered both.
     status, found, _ = get(base, "/library/sections/%s/search?type=3&query=season" % show_section)
     check("a generated season title is not in the search index",
           status == 200 and not found.get("size"), "%s %s" % (status, found.get("size")))
@@ -17474,11 +17480,11 @@ def main():
           "%s %s" % (status, listing.get("size")))
 
 
-    # Cycle 18, measured on zen (1.42.2) and kids (1.43.4): an item's `audioLanguage` and
+    # Cycle 18, measured on the 1.42.2 reference and plexlab (1.43.4): an item's `audioLanguage` and
     # `subtitleLanguage` enums are led by the item's OWN stream languages -- bare 639-1
     # tags, audio first then subtitles, each named in its own language -- before the generic
-    # regional list. zen's show 6910 leads `en:English|bg:...|cs:...` against its episodes'
-    # one audio and fifteen subtitle languages, and show 11113 leads `pa:...|en:English`.
+    # regional list. The 1.42.2 reference's show 6910 leads `en:English|bg:...|cs:...` against its
+    # episodes' one audio and fifteen subtitle languages, and show 11113 leads `pa:...|en:English`.
     # rex served the captured fixture list to every item, so a show's own languages could
     # not be chosen in its Preferences pane. The fixture gains one French subtitle track for
     # this check: with nothing but English in it the rule is invisible.
@@ -17522,7 +17528,7 @@ def main():
           and cancel_c19y.get("library.update.section") == {False},
           str({k_c19y: sorted(v_c19y) for k_c19y, v_c19y in cancel_c19y.items()}))
 
-    # Cycle 19, measured on kids (1.43.4) and zen (1.42.2). Three rules about the `Meta`
+    # Cycle 19, measured on plexlab (1.43.4) and the 1.42.2 reference. Three rules about the `Meta`
     # descriptor the library page is built from. (1) `active` follows the REQUEST: a show
     # library's `?type=3&includeMeta=1` marks `season` and `?type=4` marks `episode`, where
     # rex served the captured fixture's stored flags and kept the Shows tab lit. (2)
@@ -17562,10 +17568,10 @@ def main():
              [(t_c19m.get("type"), t_c19m.get("active")) for t_c19m in plain_c19m.get("Type") or []],
              sorts_c19m(adv_c19m)))
 
-    # Cycle 19, measured on zen (300 of 300 shows and 300 of 300 seasons) and kids (both its
-    # seasons): a row that has children names its CHILD LIST -- `/library/metadata/{id}/
-    # children` -- while an episode keeps the bare item path. Three of the four seasons
-    # cycle 13 added to the fixture by hand carry the bare path, and the client follows
+    # Cycle 19, measured on the 1.42.2 reference (300 of 300 shows and 300 of 300 seasons) and
+    # plexlab (both its seasons): a row that has children names its CHILD LIST --
+    # `/library/metadata/{id}/ children` -- while an episode keeps the bare item path. Three of the
+    # four seasons cycle 13 added to the fixture by hand carry the bare path, and the client follows
     # `key` verbatim, so a click on those seasons fetched the season's metadata row instead
     # of its episode list and the page drew nothing.
     _, seasons_c19k, _ = get(base, "/library/sections/%s/all?type=3" % show_section)
@@ -17594,10 +17600,10 @@ def main():
           % (one_c19k, status_c19k, kids_c19k.get("viewGroup"),
              len(kids_c19k.get("Metadata") or [])))
 
-    # Cycle 19, measured on zen (1.42.2): a MEDIA column is read from the row's Media, and a
+    # Cycle 19, measured on the 1.42.2 reference: a MEDIA column is read from the row's Media, and a
     # row that has none -- a show, a season -- from its LEAVES, matching when ANY leaf does.
-    # zen's show library answers `type=2&duration<=1200000` with 39 and `>=1200000` with 483
-    # of its 505 shows that have a value, which overlap and so cannot be one column on the
+    # the 1.42.2 reference's show library answers `type=2&duration<=1200000` with 39 and `>=1200000`
+    # with 483 of its 505 shows that have a value, which overlap and so cannot be one column on the
     # show row; `mediaSize` behaves the same. rex read `Media[0]` of the row itself, so
     # every media filter on a show or season grid -- the Resolution control a TV library
     # actually offers -- answered nothing.
@@ -17641,12 +17647,12 @@ def main():
 
 
     # Cycle 20, the derivation holdout: every rule `hierarchy.normalize_rows` applies,
-    # checked row by row against zen's 507 shows, 741 seasons and 9,287 episodes. A
-    # season's `titleSort` does NOT follow its `year`. 740 of zen's 741 seasons carry no
-    # `titleSort` at all and the one that does -- One Piece's season 22, the only season
+    # checked row by row against the 1.42.2 reference's 507 shows, 741 seasons and 9,287 episodes. A
+    # season's `titleSort` does NOT follow its `year`. 740 of the 1.42.2 reference's 741 seasons
+    # carry no `titleSort` at all and the one that does -- One Piece's season 22, the only season
     # in the library with a `year` -- carries `"Egghead"`, its own stored title, not the
     # `"Season 22"` it displays. Cycle 7 fitted "a year means titleSort == title" to
-    # kids' season 7, whose `Season 1` came from the agent and IS stored. rex
+    # plexlab's season 7, whose `Season 1` came from the agent and IS stored. rex
     # synthesises every season title, so under cycle 18's stored-title rule it stores
     # none -- and it was contradicting itself: the ROW said `titleSort: "Season 19"`
     # while `?titleSort=` (an equality on the empty string) matched the same row.
@@ -17680,9 +17686,9 @@ def main():
 
     # Cycle 20, the derivation holdout, on 9,293 real episodes across both references: a
     # season hands its `thumb` down as `parentThumb` only when the thumb is its OWN. Of
-    # zen's 681 seasons whose episodes exist, the 654 with a poster of their own give
-    # every episode a `parentThumb` and the 27 whose `thumb` is the SHOW's give none of
-    # them one -- 0 exceptions either way -- and kids reproduces it exactly: season 7 has
+    # the 1.42.2 reference's 681 seasons whose episodes exist, the 654 with a poster of their own
+    # give every episode a `parentThumb` and the 27 whose `thumb` is the SHOW's give none of
+    # them one -- 0 exceptions either way -- and plexlab reproduces it exactly: season 7 has
     # its own poster and its three episodes carry `parentThumb`, season 11 carries the
     # show's and its three carry none. `art` is NOT like this: it is handed down borrowed
     # or not. rex copied the season's thumb down whatever it pointed at, so an
@@ -17715,8 +17721,8 @@ def main():
     c20_season_a = c20_seasons[-1] if c20_seasons else None
     c20_season_b = c20_seasons[-2] if len(c20_seasons) > 1 else None
 
-    # Cycle 20, measured on zen's 741 real seasons: a real PMS generates THREE season
-    # labels, not one. Beside `Season N` it writes `Specials` for season 0 (4 rows) and
+    # Cycle 20, measured on the 1.42.2 reference's 741 real seasons: a real PMS generates THREE
+    # season labels, not one. Beside `Season N` it writes `Specials` for season 0 (4 rows) and
     # `[Unknown Season]` for a season with no index at all (5 rows), and all three are
     # stored NOWHERE -- `titleSort=` answers 740 of the 741, `title=Specials` and
     # `title=Unknown` answer 0, `/search?type=3&query=specials` answers 0, and the `#`
@@ -17743,10 +17749,10 @@ def main():
           % (sorted(matched_c20r), searched_c20r, titled_c20r, bucket_c20r.get("size")))
 
 
-    # Cycle 20, measured on kids (whose six episodes split three with a stored
-    # `view_count = 0` and three with no settings row at all) and on zen (8,943 of
+    # Cycle 20, measured on plexlab (whose six episodes split three with a stored
+    # `view_count = 0` and three with no settings row at all) and on the 1.42.2 reference (8,943 of
     # 9,287 episodes): `viewCount` and `viewOffset` treat a row with NO stored value as
-    # BELOW every value and equal to 0. kids answers `viewCount=0` with all six,
+    # BELOW every value and equal to 0. plexlab answers `viewCount=0` with all six,
     # `<<=0` with the three that have no row, `>=0` with the three that have one, and
     # `!=0` with none. `skipCount` is NOT in this family -- its nulls match nothing,
     # which is how the two were separated. rex answered an empty grid to
@@ -17799,8 +17805,8 @@ def main():
     # operators as UNIVERSALLY QUANTIFIED NEGATIONS -- the open question cycle 19 left.
     # `=v` is "some stream is v"; every other operator is "NO stream satisfies the
     # comparison", with `!=` and `==` both comparing equality and `!==` inequality. On
-    # kids' six all-English episodes that predicts `=`6 `!=`0 `==`0 `!==`6 `<=`0 `>=`0
-    # `<<=`6 `>>=`6, which is exactly what it answers; zen's 9,287 agree, and a row
+    # plexlab's six all-English episodes that predicts `=`6 `!=`0 `==`0 `!==`6 `<=`0 `>=`0
+    # `<<=`6 `>>=`6, which is exactly what it answers; the 1.42.2 reference's 9,287 agree, and a row
     # with no stream of that type matches every non-`=` operator vacuously (its
     # `audioLanguage=zz` is 0 and `!=zz` all 3,887). rex answered 0 to `!==`,
     # `<<=` and `>>=`.
@@ -17824,8 +17830,8 @@ def main():
 
     # Cycle 20: a stream-language column does NOT fall back to the leaves. Both
     # references answer NOTHING to `type=2&audioLanguage=en` and to
-    # `type=3&subtitleLanguage=en` -- zen over 507 shows and 741 seasons, kids over its
-    # one show and two seasons -- while the same probe at `type=4` returns a real
+    # `type=3&subtitleLanguage=en` -- the 1.42.2 reference over 507 shows and 741 seasons, plexlab
+    # over its one show and two seasons -- while the same probe at `type=4` returns a real
     # subset on both, so the filter is live and the parent row simply has no such
     # column. Cycle 19 built the any-leaf fallback for `duration`, `resolution` and
     # `mediaSize`; rex applied it to these two as well and selected every show.
@@ -17842,8 +17848,8 @@ def main():
 
     # Cycle 20: the media axes of a SHOW library are built from the LEAVES. Both
     # references answer a populated `/library/sections/{show}/resolution` and
-    # `/audioLanguage` -- zen 6 and 46 entries, kids 1 and 1 -- although no show or
-    # season row has Media of its own. rex built them from the section's top-level
+    # `/audioLanguage` -- the 1.42.2 reference 6 and 46 entries, plexlab 1 and 1 -- although no show
+    # or season row has Media of its own. rex built them from the section's top-level
     # rows only and answered an empty container, so the Resolution and Audio Language
     # menus of a TV library's filter bar were empty while the FILTER behind them worked.
     axes_c20v = {leaf_c20v: get(base, "/library/sections/%s/%s" % (show_section, leaf_c20v))[1]
@@ -17859,9 +17865,9 @@ def main():
 
 
     # Cycle 20: `file=` refuses a SHOW listing and reads the leaves on a SEASON one.
-    # `type=2&file=/` is a 500 on kids and zen alike -- the only media column that
-    # refuses rather than answering -- while `type=3&file=/` answers every season (zen
-    # 741, kids 2) and `type=4` every episode. rex answered a 200 with no rows at
+    # `type=2&file=/` is a 500 on plexlab and the 1.42.2 reference alike -- the only media column
+    # that refuses rather than answering -- while `type=3&file=/` answers every season (the 1.42.2
+    # reference 741, plexlab 2) and `type=4` every episode. rex answered a 200 with no rows at
     # type=2 and nothing at all at type=3: its `file` branch reads the row's own Media
     # and sits ABOVE the leaves fallback cycle 19 added, so the fallback never ran.
     fragment_c20w = ""
@@ -17884,8 +17890,8 @@ def main():
 
 
     # Cycle 20: `/library/sections/{id}/unwatched` is typed like a listing. Any `type=`
-    # but the library's own top-level type answers EMPTY on both references -- zen and
-    # kids each answer 0 rows to `?type=1`, `?type=3`, `?type=4` and `?type=10` on a
+    # but the library's own top-level type answers EMPTY on both references -- the 1.42.2 reference
+    # and plexlab each answer 0 rows to `?type=1`, `?type=3`, `?type=4` and `?type=10` on a
     # show library -- and the container's `viewGroup` flips to `episode` for every one
     # of them where a movie library keeps `movie`. An unparseable or empty `type=` is a
     # 500 there, and on `/onDeck` too, the refusal rex already answered on `/all`.
@@ -17911,8 +17917,8 @@ def main():
           "%s | refusals %s" % (unwatched_c20x, refusals_c20x))
 
 
-    # Cycle 20: `/recentlyViewedShows?type=N` is a typed QUERY. zen answers 507 shows,
-    # 741 seasons and 9,287 episodes to `type=2`, `3` and `4`, kids 1, 2 and 6, and
+    # Cycle 20: `/recentlyViewedShows?type=N` is a typed QUERY. The 1.42.2 reference answers 507
+    # shows, 741 seasons and 9,287 episodes to `type=2`, `3` and `4`, plexlab 1, 2 and 6, and
     # both answer 0 to `type=1` and `type=10`, while the container keeps
     # `viewGroup="show"`, its own `title2` and `allowSync: false` at every type.
     # rex ignored the parameter and always answered the show list.
@@ -17934,14 +17940,14 @@ def main():
 
 
     # the fixture holds one episode with two Media and seven with one, so its show is
-    # in both halves -- which is the shape zen's 24 overlapping shows have
+    # in both halves -- which is the shape the 1.42.2 reference's 24 overlapping shows have
     c20_dup_leaf = next((str(r_c20.get("ratingKey")) for r_c20 in
                          (get(base, "/library/sections/%s/all?type=4" % show_section)[1]
                           .get("Metadata") or [])
                          if len(r_c20.get("Media") or []) > 1), None)
 
-    # Cycle 20, measured on zen: on a PARENT row the Duplicates filter's TRUE and FALSE
-    # sets OVERLAP. `type=2&duplicate=1` answers 44 shows and `!=1` 487, which is 531
+    # Cycle 20, measured on the 1.42.2 reference: on a PARENT row the Duplicates filter's TRUE and
+    # FALSE sets OVERLAP. `type=2&duplicate=1` answers 44 shows and `!=1` 487, which is 531
     # of 507 rows -- 24 shows are in both -- and its seasons split 74 / 702 with 35 in
     # both. Both queries are evaluated per LEAF: `=1` is "some leaf has more than one
     # Media" and `!=1` is "some leaf has exactly one", so a parent holding both is in
@@ -17964,15 +17970,15 @@ def main():
              sorted(dup_c20aa & plain_c20aa)))
 
 
-    # Cycle 20, measured on zen's 3,887 movies (1,518 of which carry an
-    # `originallyAvailableAt`) and on kids: a NULL date matches NOTHING, on every
+    # Cycle 20, measured on the 1.42.2 reference's 3,887 movies (1,518 of which carry an
+    # `originallyAvailableAt`) and on plexlab: a NULL date matches NOTHING, on every
     # operator. `<=1800-01-01` and `<<=1800-01-01` answer 0 and `<=2100-01-01` answers
     # exactly the 1,518 with a value, so the 2,369 without one are in neither half --
     # the same rule cycle 19 measured for a numeric column. And `!=` really compares:
     # `addedAt!=2020-01-01` answers every row on both references where
     # rex answered none, because the date branch had no `!=` case at all and fell
     # through to equality. The old "a NULL date matches is-before" was measured on
-    # fun, which is out of scope.
+    # the production server, which is out of scope.
     dates_c20ab = {}
     for label_c20ab, key_c20ab in ((">=", "originallyAvailableAt%3E"),
                                    ("<=", "originallyAvailableAt%3C"),
@@ -17995,8 +18001,8 @@ def main():
                      (get(base, "/library/sections/%s/all?type=3" % show_section)[1]
                       .get("Metadata") or [])][0]
 
-    # Cycle 20, measured on kids' two seasons and zen's 741 over all eight operators
-    # and six values: `unmatched` IGNORES the operator. Only the literal value `1`
+    # Cycle 20, measured on plexlab's two seasons and the 1.42.2 reference's 741 over all eight
+    # operators and six values: `unmatched` IGNORES the operator. Only the literal value `1`
     # selects the unmatched rows, and it does so under `=`, `!=`, `==`, `!==`, `<=`,
     # `>=`, `<<=` and `>>=` alike; every other value (`0`, `2`, empty, `true`, `01`)
     # selects the matched ones under all eight. It belongs with `resolution`, which
@@ -18037,8 +18043,8 @@ def main():
                        .get("Metadata") or [])][0]
 
     # Cycle 20, measured on both references over two libraries and two row types:
-    # `id==<n>` and `id!==<n>` DO match a number. zen answers `type=3&id==5190` with
-    # that one season and `!==5190` with the other 740, kids `id==7` with season 7,
+    # `id==<n>` and `id!==<n>` DO match a number. The 1.42.2 reference answers `type=3&id==5190`
+    # with that one season and `!==5190` with the other 740, plexlab `id==7` with season 7,
     # and the movie libraries agree. Cycle 11 recorded "`==`/`!==` never match a
     # number" for this column -- measured, it seems, only against a value that was not
     # one -- and rex answered nothing to `id==` and every row to `id!==`.
@@ -18060,8 +18066,8 @@ def main():
     # Cycle 20: `mediaCount` and `createdAt` are recorded filter fields that could
     # never select anything in rex, because no row carries either attribute and
     # both were read straight off the row. Both references answer real subsets:
-    # `type=1&mediaCount=1` is 3,673 of zen's 3,887 and all 5 of kids', `type=2` and
-    # `type=3` read the LEAVES (487 shows and 702 seasons answer `=1`, 44 and 74
+    # `type=1&mediaCount=1` is 3,673 of the 1.42.2 reference's 3,887 and all 5 of plexlab's,
+    # `type=2` and `type=3` read the LEAVES (487 shows and 702 seasons answer `=1`, 44 and 74
     # answer `>>=1` -- the duplicate sets exactly), and `createdAt>=2000-01-01`
     # answers every row of every library on both. `sort=mediaCount` is a real
     # ordering on both too, where rex answered 500.
@@ -18467,8 +18473,8 @@ def main():
              request(base, "PUT", "/library/metadata/%s/prefs?collectionMode=1"
                      % c21v_collection)[0]))
 
-    # Cycle 21, measured on kids, zen AND plexscratch, every verb over the `/system`
-    # subtree: an empty response there carries NO `Content-Type` header at all. Every 404
+    # Cycle 21, measured on plexlab, the 1.42.2 reference AND plexscratch, every verb over the
+    # `/system` subtree: an empty response there carries NO `Content-Type` header at all. Every 404
     # -- GET, HEAD, POST, PUT and DELETE, on `/system` itself and on an unknown path under
     # it -- and the bare `OPTIONS` 200 come back with no body and no type, where a 404
     # anywhere ELSE on the surface carries `text/html` and a body. Cycle 18 recorded the
@@ -18637,7 +18643,7 @@ def main():
     # Cycle 21 read this off the LEGACY plug-in agents and generalised it: the bare form
     # was said to carry a `MediaType` row per media type and NO `Language`, and
     # `?mediaType=N` the other way round. Cycle 27 re-measured it agent for agent on
-    # kids (1.43.4) and zen (1.42.2), which agree, and the rule splits by agent FAMILY:
+    # plexlab (1.43.4) and the 1.42.2 reference, which agree, and the rule splits by agent FAMILY:
     #
     #   com.plexapp.agents.imdb   bare: 33 Language + 1 MediaType | typed: 33 + 0
     #   com.plexapp.agents.none   bare: 48 Language + 5 MediaType | typed:  1 + 0
@@ -18672,8 +18678,8 @@ def main():
     # Cycle 21: `/system/agents` is the ONE endpoint whose JSON repeats a child
     # element's KEY instead of emitting an array. Measured on both references: the raw
     # body reads `"Language":{"code":"ar"},"Language":{"code":"ca"},...` -- 150
-    # occurrences on zen and 195 on kids -- and `MediaType` is written the same way,
-    # while every other repeated child on every other path is a proper array (`Setting`
+    # occurrences on the 1.42.2 reference and 195 on plexlab -- and `MediaType` is written the same
+    # way, while every other repeated child on every other path is a proper array (`Setting`
     # on `/:/prefs`, `Agent` here, `Genre`, `Media`, `Role`, `Image` on a row,
     # `Action`, `Directory`, `Feature`, `Pivot` on `/media/providers`). A JSON parser
     # keeps the LAST of the repeated keys, so a client sees exactly one language per
@@ -18692,7 +18698,7 @@ def main():
           % (text_c21b.count('"Language":{'), '"Language":[' in text_c21b,
              '"Feature":[' in control_c21b))
 
-    # Cycle 21, measured on kids (1.43.4) and zen (1.42.2): a `Feature` element is never
+    # Cycle 21, measured on plexlab (1.43.4) and the 1.42.2 reference: a `Feature` element is never
     # self-closed. Every one of the fifteen on `/media/providers` is written as a PAIRED
     # empty element (`<Feature key="/hubs/search" type="search"></Feature>`) on both
     # servers, while `Directory`, `Action` and `Pivot` in the same document self-close
@@ -18717,7 +18723,7 @@ def main():
                   (get(base, "/library/sections/%s/all?type=3" % show_section)[1]
                    .get("Metadata") or [])][0]
 
-    # Cycle 21, measured on kids (1.43.4) and zen (1.42.2) over four seasons: the
+    # Cycle 21, measured on plexlab (1.43.4) and the 1.42.2 reference over four seasons: the
     # inherit option of a SEASON's `audioLanguage` and `subtitleLanguage` is
     # `:Series default`, not `:Account default` -- a season inherits from its SHOW.
     # `subtitleMode` already says `-1:Series default` in the captured fixture and
@@ -18748,8 +18754,8 @@ def main():
     c21_episode = c21_leaf_row.get("ratingKey")
     c21_season2 = c21_leaf_row.get("parentRatingKey")
 
-    # Cycle 21, measured on kids (episodes 8, 10, 13) and zen (5191, 19741, 13160): an
-    # EPISODE's `/tree` is the ancestor CHAIN and nothing else -- exactly three
+    # Cycle 21, measured on plexlab (episodes 8, 10, 13) and the 1.42.2 reference (5191, 19741,
+    # 13160): an EPISODE's `/tree` is the ancestor CHAIN and nothing else -- exactly three
     # `MetadataItem` nodes, the show, THAT episode's season and the episode. No sibling
     # season and no sibling episode. The controls agree on both references: a SEASON's
     # tree is the season plus its own episodes and a SHOW's is the whole tree. rex
@@ -18799,13 +18805,14 @@ def main():
                   .get("Metadata") or [{}])[0].get("ratingKey")
 
     # Cycle 21: a `/library/onDeck` row LEADS with `allowSync` and the librarySection
-    # triple, exactly as a `/library/recentlyAdded` row does. zen's on-deck episode
+    # triple, exactly as a `/library/recentlyAdded` row does. The 1.42.2 reference's on-deck episode
     # answers `allowSync="1" librarySectionID="4" librarySectionTitle="Bench TV"
     # librarySectionUUID="c37aa2af-..."` before `ratingKey`; rex carried the id,
     # the title and the UUID but no `allowSync` -- and `allowSync` on the ROW is the
     # signal `xmlout` keys the whole lead on, so without it the four came out in the
     # middle of the row. It is cycle 19's own recorded rule, implemented on one of the
-    # two paths it names (kids has nothing in progress, so zen is the live witness).
+    # two paths it names (plexlab has nothing in progress, so the 1.42.2 reference is the live
+    # witness).
     request(base, "PUT", "/:/timeline?ratingKey=%s&key=/library/metadata/%s&state=playing"
                          "&time=300000&duration=1320000&identifier=com.plexapp.plugins.library"
             % (c21_ondeck, c21_ondeck))
@@ -18820,7 +18827,7 @@ def main():
           and added_lead_c21g == lead_c21g,
           "onDeck %s | recentlyAdded %s" % (lead_c21g, added_lead_c21g))
 
-    # Cycle 21, measured byte for byte on kids and zen: a section's
+    # Cycle 21, measured byte for byte on plexlab and the 1.42.2 reference: a section's
     # `/hubs/sections/{id}/continueWatching/items` container is
     # `{size, allowSync: true, identifier}` and nothing else. rex said
     # `allowSync: false` and added `mediaTagPrefix` and `mediaTagVersion`, on an empty
@@ -18838,8 +18845,8 @@ def main():
           and all(sync_c21h[s_c21h] is True for s_c21h in sync_c21h),
           "%s | allowSync %s" % (keys_c21h, sync_c21h))
 
-    # Cycle 21, measured on kids and zen over four row types: an artwork path with an
-    # EXTRA SEGMENT after the version is a 404 -- `/library/metadata/{id}/thumb/{v}/x`
+    # Cycle 21, measured on plexlab and the 1.42.2 reference over four row types: an artwork path
+    # with an EXTRA SEGMENT after the version is a 404 -- `/library/metadata/{id}/thumb/{v}/x`
     # and `/thumb/{v}/1/2` both, on `thumb`, `poster` and `art`. A single trailing slash
     # is a 200 on all three (the recorded "one trailing slash is harmless") and so is a
     # bad version. rex served the image for anything that merely STARTED like an
@@ -18868,8 +18875,9 @@ def main():
     c21_state_show = c21_state_episode.get("grandparentRatingKey")
     c21_state_episode = c21_state_episode.get("ratingKey")
 
-    # Cycle 21, measured on zen's own watched rows (show 19756, season 19757, episode
-    # 19764) and corroborated on kids' watched MOVIE: the per-user-state block sits in
+    # Cycle 21, measured on the 1.42.2 reference's own watched rows (show 19756, season 19757,
+    # episode
+    # 19764) and corroborated on plexlab's watched MOVIE: the per-user-state block sits in
     # the MIDDLE of a row -- after the ratings and before `year`/`parentYear` -- on a
     # show, a season and an episode, exactly as it already did on a movie:
     #
@@ -18940,10 +18948,10 @@ def main():
           "%s | type still %r | section path %s"
           % (codes_c22a, row_c22a.get("type"), section_c22a))
 
-    # Cycle 22, measured on zen (3,887 movies) and kids (5): a filter key whose NAME still
-    # carries a comparison character after the operator suffix comes off -- `collection==`,
-    # `year>=`, `title!!` -- is an UNKNOWN FIELD, not a refusal. A listing ignores it and
-    # answers every row, exactly as a bogus name does, and `/query/parse` answers 200 with
+    # Cycle 22, measured on the 1.42.2 reference (3,887 movies) and plexlab (5): a filter key whose
+    # NAME still carries a comparison character after the operator suffix comes off --
+    # `collection==`, `year>=`, `title!!` -- is an UNKNOWN FIELD, not a refusal. A listing ignores
+    # it and answers every row, exactly as a bogus name does, and `/query/parse` answers 200 with
     # `Error: [{type: "field", value: "<the key verbatim>"}]`. rex raised a 400 from
     # `split_key` on both surfaces. The pair with NO `=` at all (`?year%%3E2010`) is a
     # different shape and stays the 400 cycle 11 measured, on all three servers.
@@ -18971,8 +18979,8 @@ def main():
           "listing %s | parse %s | no-separator %s"
           % (listing_c22b, parse_c22b, nosep_c22b))
 
-    # Cycle 22, measured on zen's 3,887 real movies: `sort=` on a text column compares RAW
-    # CODEPOINTS -- case-sensitive, with no accent folding. `sort=title:desc` opens on
+    # Cycle 22, measured on the 1.42.2 reference's 3,887 real movies: `sort=` on a text column
+    # compares RAW CODEPOINTS -- case-sensitive, with no accent folding. `sort=title:desc` opens on
     # `『ONE PIECE』…` (U+300E), then `iHostage`, then `Zero Tolerance`; `studio:desc` on
     # `ufotable` before `Zide-Perry`; `summary:desc` on `Özge…` then `join 6 murder…` then
     # `handu dreams…`; `originalTitle:desc` on Hangul above Latin. Every one puts the
@@ -18980,8 +18988,8 @@ def main():
     # returned `str(value).lower()` for every text key, which reorders any library holding
     # a lowercase-initial or non-ASCII value. It is the SORT side of the split cycle 20
     # measured on the FILTER side, where only `titleSort` folds case -- and `titleSort`
-    # itself stays folded here, because no row in zen's movies nor in the first 2,400 of
-    # its show library carries a lowercase-initial stored sort title to measure it with.
+    # itself stays folded here, because no row in the 1.42.2 reference's movies nor in the first
+    # 2,400 of its show library carries a lowercase-initial stored sort title to measure it with.
     c22c_rows = [r_c22c.get("ratingKey") for r_c22c in
                  (get(base, "/library/sections/%s/all?type=1" % movie_section)[1]
                   .get("Metadata") or [])]
@@ -19013,8 +19021,8 @@ def main():
         skip("a text sort compares raw codepoints, so lowercase sorts above uppercase",
              "needs two movies")
 
-    # Cycle 22, measured on zen (a 74-role movie) and kids over every element name their
-    # rows carry: `excludeElements=` honours an ALLOW-LIST -- `Media`, `Part`, `Genre`,
+    # Cycle 22, measured on the 1.42.2 reference (a 74-role movie) and plexlab over every element
+    # name their rows carry: `excludeElements=` honours an ALLOW-LIST -- `Media`, `Part`, `Genre`,
     # `Country`, `Guid`, `Rating`, `Director`, `Writer`, `Role`, `Producer` -- and every
     # other name is a NO-OP, exactly like an unknown one. `Extras`, `Related`,
     # `Preferences`, `Field`, `Chapter` and `Review` all survive being named. rex had
@@ -19049,8 +19057,8 @@ def main():
           % (sorted(gone_c22d), sorted(kept_c22d), media_c22d.get("partCount"),
              len(media_c22d.get("Part") or [])))
 
-    # Cycle 22, measured on zen and kids: `excludeElements=` reaches the rows INSIDE the
-    # inline `Related` and `Extras` blocks, not just the top-level row. With
+    # Cycle 22, measured on the 1.42.2 reference and plexlab: `excludeElements=` reaches the rows
+    # INSIDE the inline `Related` and `Extras` blocks, not just the top-level row. With
     # `excludeElements=Media` the nested related rows lose their Media and gain
     # `mediaCount`; with `=Genre` they lose their Genre. rex applied the option to the
     # top row alone, so a client trimming a preplay page still received every `Media`,
@@ -19074,8 +19082,8 @@ def main():
              sum(1 for r_c22e in nested_rows_c22e if "Media" in r_c22e),
              sum(1 for r_c22e in nested_rows_c22e if r_c22e.get("mediaCount") is not None)))
 
-    # Cycle 22, measured on zen and kids over 10 values x 6 options: five more options
-    # carry `checkFiles`'s value grammar exactly -- `0`, `1`, `00` and `01` are 200s and
+    # Cycle 22, measured on the 1.42.2 reference and plexlab over 10 values x 6 options: five more
+    # options carry `checkFiles`'s value grammar exactly -- `0`, `1`, `00` and `01` are 200s and
     # an empty value, `abc`, `2`, `true`, `-1` and `1.5` are 400s. rex validated
     # `checkFiles` alone (cycle 19) and took anything at all for the other five, so it
     # advertised a tolerance a real PMS does not have.
@@ -19095,8 +19103,8 @@ def main():
           "accepted %s | refused %s"
           % (sorted(set(good_c22f.values())), sorted(set(bad_c22f.values()))))
 
-    # Cycle 22, measured on zen and kids: `includeRelatedCount=0` EMPTIES the inline hub --
-    # `{hubIdentifier, size: 0, more: true}` with no rows -- where rex read `0` as
+    # Cycle 22, measured on the 1.42.2 reference and plexlab: `includeRelatedCount=0` EMPTIES the
+    # inline hub -- `{hubIdentifier, size: 0, more: true}` with no rows -- where rex read `0` as
     # "absent" and fell through to its default of five. `more` is true for any parsed cap
     # below the pool size, `0` included.
     _, zero_c22g, _ = get(base, "/library/metadata/%s?includeRelated=1&includeRelatedCount=0"
@@ -19120,8 +19128,8 @@ def main():
              hubs_c22g[0].get("more") if hubs_c22g else None,
              hubs1_c22g[0].get("size") if hubs1_c22g else None))
 
-    # Cycle 22, measured on zen (236 newlines in one movie's XML) and kids (34): a real
-    # PMS writes ONE element per line, with no indentation, and ends the document with a
+    # Cycle 22, measured on the 1.42.2 reference (236 newlines in one movie's XML) and plexlab (34):
+    # a real PMS writes ONE element per line, with no indentation, and ends the document with a
     # newline. rex emitted a newline after the declaration and nowhere else, and no
     # trailing one. It changes `Content-Length` on every XML response and what a `Range`
     # read of a container returns, which cycle 16 established applies to every body.
@@ -19161,9 +19169,9 @@ def main():
           "MediaContainer paired %s | Stream self-closed %d paired %d"
           % ("</MediaContainer>" in container_c22i, self_closed_c22i, paired_c22i))
 
-    # Cycle 22, harvested from 633 zen paths and 133 kids paths: three attribute orders a
-    # five-clip library never emits. A `Part` leads with `accessible, exists, id, key`
-    # where rex appended the two flags last; a section's pivot `Directory` leads with
+    # Cycle 22, harvested from 633 paths of the 1.42.2 reference and 133 plexlab paths: three
+    # attribute orders a five-clip library never emits. A `Part` leads with `accessible, exists, id,
+    # key` where rex appended the two flags last; a section's pivot `Directory` leads with
     # `secondary` (and with `prompt, search` on the search pivot); and a `Feature` leads
     # with `flavor`. `_ATTR_ORDER` is a topological sort of observed PAIRS, so a pair no
     # reference was ever seen to emit falls to the end -- which is exactly what happened
@@ -19191,8 +19199,8 @@ def main():
           "Part %s | pivot %s | Feature %s"
           % (part_attrs_c22j[:5], pivot_attrs_c22j, with_flavor_c22j[:2]))
 
-    # Cycle 22, measured on zen and kids: a LIGHT row's JSON child-element order is the
-    # light order, not the detail order -- `Guid` comes straight after `UltraBlurColors`,
+    # Cycle 22, measured on the 1.42.2 reference and plexlab: a LIGHT row's JSON child-element order
+    # is the light order, not the detail order -- `Guid` comes straight after `UltraBlurColors`,
     # before the tags. rex's XML writer had it right and its JSON writer did not:
     # `xmlout._split` picks the light order off the row's own `_light` marker, and
     # `json_body` calls `_drop_private` FIRST, which strips the marker before the orderer
@@ -19213,8 +19221,8 @@ def main():
                or xml_order_c22k.index("Guid") < xml_order_c22k.index("Genre")),
           "XML %s | JSON %s" % (xml_order_c22k, json_order_c22k))
 
-    # Cycle 22, measured on zen and kids: four `include*` options parse their value as an
-    # INTEGER -- `01` and `001` turn them on, `2` and `true` do not -- while
+    # Cycle 22, measured on the 1.42.2 reference and plexlab: four `include*` options parse their
+    # value as an INTEGER -- `01` and `001` turn them on, `2` and `true` do not -- while
     # `includePreferences` compares the string and takes `1` alone. rex tested `== "1"`
     # for all five, so a client sending the zero-padded form got a response with the block
     # missing: fix 4's failure mode, a valid document short a section.
@@ -19303,8 +19311,8 @@ def main():
           and set(playlists_c22n.values()) == {404},
           "%s | playlists path %s" % (bodies_c22n, playlists_c22n))
 
-    # Cycle 22, measured on kids, zen AND plexscratch: `/resources/{anything}` is a real
-    # 200 answering an empty container -- `1`, `99999` and `abc` alike, and on plexscratch
+    # Cycle 22, measured on plexlab, the 1.42.2 reference AND plexscratch: `/resources/{anything}`
+    # is a real 200 answering an empty container -- `1`, `99999` and `abc` alike, and on plexscratch
     # every verb answers the same -- while `/search/voice` with NO parameters is a 400 that
     # becomes a 404 once a `query=` is given. rex 404'd both unconditionally, and it
     # answered the plug-in dispatcher's listing to `POST`/`PUT /search`, where all three
@@ -19458,15 +19466,15 @@ def main():
           "%s | analyze timeline %d activity %s"
           % (seqs_c23b, len(analyze_timeline_c23b), analyze_acts_c23b))
 
-    # Cycle 23, measured on kids and zen with the same row fetched twice per server -- once
-    # from the section grid and once from `/search`: the `/search` row is byte-identical to
-    # that row's GRID row, prefixed with six attributes. `allowSync, librarySectionID,
-    # librarySectionTitle, librarySectionUUID, personal, sourceTitle` lead it, and nothing
-    # else differs. rex answered the DETAIL row -- `Guid`, `Rating`, tag elements
+    # Cycle 23, measured on plexlab and the 1.42.2 reference with the same row fetched twice per
+    # server -- once from the section grid and once from `/search`: the `/search` row is
+    # byte-identical to that row's GRID row, prefixed with six attributes. `allowSync,
+    # librarySectionID, librarySectionTitle, librarySectionUUID, personal, sourceTitle` lead it, and
+    # nothing else differs. rex answered the DETAIL row -- `Guid`, `Rating`, tag elements
     # carrying `id`/`filter` -- led by `ratingKey`, with no `allowSync` and no
     # `librarySectionUUID`, and a `librarySectionKey` neither reference sends there. On a
-    # real library that is several times the bytes per hit (zen's detail rows carry up to
-    # 155 `Role` elements), and a client keying a hit to a library by `librarySectionUUID`
+    # real library that is several times the bytes per hit (the 1.42.2 reference's detail rows carry
+    # up to 155 `Role` elements), and a client keying a hit to a library by `librarySectionUUID`
     # gets nothing.
     _, search_xml_c23c, _ = request(base, "GET", "/search?query=Tears", want_json=False)
     row_c23c = re.search(r"<Video ([^>]*)>", search_xml_c23c.decode("utf-8", "replace"))
@@ -19490,9 +19498,9 @@ def main():
           "lead %s | search-only %s | grid-only %s"
           % (lead_c23c[:6], extra_c23c, missing_c23c))
 
-    # Cycle 23, measured on kids and zen identically, over seven library/type pairs and four
-    # `sort=` spellings: a `Meta/Type`'s active SORT is marked only inside the Type row that
-    # matches the ASKED type -- a movie library asked `type=2` or `type=4` marks nothing at
+    # Cycle 23, measured on plexlab and the 1.42.2 reference identically, over seven library/type
+    # pairs and four `sort=` spellings: a `Meta/Type`'s active SORT is marked only inside the Type
+    # row that matches the ASKED type -- a movie library asked `type=2` or `type=4` marks nothing at
     # all -- and WHICH sort is marked follows the `sort=` parameter: none given lights the
     # default (`titleSort`, asc), `sort=addedAt:desc` lights `addedAt` with
     # `activeDirection="desc"`, and a spec naming no advertised key (`sort=year`) lights
@@ -19539,7 +19547,7 @@ def main():
           "%s" % cells_c23d)
 
     # Cycle 23 recorded that `?includeDetails=1&includeAdvanced=1` carries NO Duplicates
-    # Filter row at all. Cycle 49 REFUTED that on zen (1.42.2), kids (1.43.4) and both
+    # Filter row at all. Cycle 49 REFUTED that on the 1.42.2 reference, plexlab (1.43.4) and both
     # unclaimed copies, in both parameter orders: the row IS there and it is the ONE
     # Filter row on that path that keeps `advanced="1"`. Cycle 16's rule -- a Filter here
     # carries no `advanced` -- holds for every OTHER row, and cycle 23 read that absence
@@ -19562,11 +19570,11 @@ def main():
           and len(meta_rows_c23e) == 1 and 'advanced="1"' in meta_rows_c23e[0],
           "includeDetails %s | includeMeta %s" % (details_rows_c23e, meta_rows_c23e))
 
-    # Cycle 23, measured on kids and zen: a `/library/tags` (and `/library/people/{id}`) row
-    # is `id, filter, tag, tagType, tagKey, thumb` -- `thumb` LAST -- where rex led with
-    # it, because `_ATTR_INDEX["Directory[none]"]` knows `thumb` and knows none of the other
-    # five, so they all fell behind it. And the `/hubs/sections/{id}/manage` Hub leads with
-    # `identifier`, not `title`, and SELF-CLOSES: cycle 22 put `Hub` in `_ALWAYS_PAIRED`
+    # Cycle 23, measured on plexlab and the 1.42.2 reference: a `/library/tags` (and
+    # `/library/people/{id}`) row is `id, filter, tag, tagType, tagKey, thumb` -- `thumb` LAST --
+    # where rex led with it, because `_ATTR_INDEX["Directory[none]"]` knows `thumb` and knows none
+    # of the other five, so they all fell behind it. And the `/hubs/sections/{id}/manage` Hub leads
+    # with `identifier`, not `title`, and SELF-CLOSES: cycle 22 put `Hub` in `_ALWAYS_PAIRED`
     # after a census that never reached `/manage`, and on the ordinary hub paths a `size=0`
     # Hub really is paired on all three servers. The rule is the one cycle 22 left open for
     # `Directory`: paired when the element has a child collection, self-closed when it has
@@ -19591,10 +19599,10 @@ def main():
              re.findall(r'(\w+)="', manage_row_c23f.group(1))[:3] if manage_row_c23f else None,
              manage_row_c23f.group(2) == "/" if manage_row_c23f else None))
 
-    # Cycle 23, measured on kids and zen: a `Common` row leads with the GRANDPARENT pair and
-    # puts the PARENT pair before `ratingKey` -- `grandparentRatingKey, grandparentTitle,
-    # mixedFields, parentRatingKey, parentTitle, ratingKey, ...` -- where rex appended
-    # all four relational attributes after the scalars. And `/library/sections/{id}/common`
+    # Cycle 23, measured on plexlab and the 1.42.2 reference: a `Common` row leads with the
+    # GRANDPARENT pair and puts the PARENT pair before `ratingKey` -- `grandparentRatingKey,
+    # grandparentTitle, mixedFields, parentRatingKey, parentTitle, ratingKey, ...` -- where rex
+    # appended all four relational attributes after the scalars. And `/library/sections/{id}/common`
     # was the LAST place rex's own two writers disagreed with each other: `ordered()`
     # called `_element_name` without the `overrides` the handler passes, so the JSON writer
     # never saw `_xml={"Metadata": "Common"}`, bucketed the row as `Video[common]` -- which
@@ -19736,7 +19744,7 @@ def main():
           str([a.get("event") for a in activity_c25b]))
 
 
-    # Cycle 25, re-measured on kids over all seven verbs: `/library/metadata/{id}/match`
+    # Cycle 25, re-measured on plexlab over all seven verbs: `/library/metadata/{id}/match`
     # answers its no-parameters 400 to every one of them -- GET, HEAD, PUT, POST, DELETE,
     # PATCH and a bare OPTIONS. Cycle 17 recorded exactly that sentence and implemented
     # it for GET and DELETE, so rex still 404'd HEAD, PATCH and OPTIONS: the client's
@@ -19752,13 +19760,13 @@ def main():
           str(sorted(match_verbs_c25c.items())))
 
 
-    # Cycle 25, measured on kids (`query=Sintel`, the query that finally hits there) and
-    # on zen: a `/hubs/search` hit LEADS with `librarySectionTitle, score` before
+    # Cycle 25, measured on plexlab (`query=Sintel`, the query that finally hits there) and
+    # on the 1.42.2 reference: a `/hubs/search` hit LEADS with `librarySectionTitle, score` before
     # `ratingKey`, and a `/library/search` hit leads with `librarySectionTitle` alone.
     # This was long single-witness because cycle 22's driver could only
-    # reproduce it on zen. rex carried both attributes and put `librarySectionTitle`
-    # after `title` and `score` LAST, so its rows disagreed with both references and --
-    # since a real PMS's JSON key order IS its XML order -- so did its JSON.
+    # reproduce it on the 1.42.2 reference. rex carried both attributes and put
+    # `librarySectionTitle` after `title` and `score` LAST, so its rows disagreed with both
+    # references and -- since a real PMS's JSON key order IS its XML order -- so did its JSON.
     def lead_c25d(path_c25d):
         status_c25d, body_c25d = request(base, "GET", path_c25d, want_json=False)[:2]
         rows_c25d = re.findall(r"<(?:Video|Directory)\s([^>]*?)/?>",
@@ -19786,8 +19794,8 @@ def main():
           str([k for row in hub_rows_c25d for k in row if k.startswith("_")]))
 
 
-    # Cycle 25, measured on kids and zen in de and fr: `/library`'s three `Directory`
-    # titles are localised like every other piece of the server's own vocabulary --
+    # Cycle 25, measured on plexlab and the 1.42.2 reference in de and fr: `/library`'s three
+    # `Directory` titles are localised like every other piece of the server's own vocabulary --
     # `Bibliothek-Bereiche`, `Zuletzt hinzugefuegter Inhalt`, `Aktuelle Inhalte`. The
     # three strings were literals here and in no translation table, so a non-English
     # client read English labels on the first path python-plexapi asks for. `/system`
@@ -19817,8 +19825,8 @@ def main():
           str(sys_c25e["de"]))
 
 
-    # Cycle 25, measured on kids and zen: the `Setting` rows a show's `/tree` ends with
-    # are NOT localised -- `Episode sorting` stays English in de, fr and ja, where the
+    # Cycle 25, measured on plexlab and the 1.42.2 reference: the `Setting` rows a show's `/tree`
+    # ends with are NOT localised -- `Episode sorting` stays English in de, fr and ja, where the
     # same setting under `?includePreferences=1` moves. A tree node is a row keyed by
     # `id` rather than `ratingKey`, so rex's row guard did not see it and translated
     # what a real PMS leaves alone.
@@ -19848,15 +19856,15 @@ def main():
           "en=%s de=%s" % (prefs_c25f["en"][:2], prefs_c25f["de"][:2]))
 
 
-    # Cycle 25, measured on kids and zen, both library types: `X-Plex-Platform: Samsung`
-    # -- that exact spelling, header or query; `samsung`, `Tizen`, `Samsung TV` and 27
+    # Cycle 25, measured on plexlab and the 1.42.2 reference, both library types: `X-Plex-Platform:
+    # Samsung` -- that exact spelling, header or query; `samsung`, `Tizen`, `Samsung TV` and 27
     # other platform strings change nothing -- appends a hidden `includeInGlobal` row to
     # an existing library's `/prefs`. The second platform-keyed reshape on the surface,
     # after `Roku` on `/media/providers`, and it reaches this leaf only: the Add Library
     # form's list is unchanged under the same header.
     def prefs_ids_c25g(path_c25g, platform_c25g=None, in_query_c25g=False):
         # The suite's own client always sends `X-Plex-Platform: Chrome`, and the HEADER
-        # beats the query on a real PMS (re-measured on kids: header Chrome + query
+        # beats the query on a real PMS (re-measured on plexlab: header Chrome + query
         # Samsung answers the plain list, header Samsung + query Chrome answers the
         # extra row), so this builds its own request rather than using `request`.
         if platform_c25g and in_query_c25g:
@@ -19892,11 +19900,11 @@ def main():
           "includeInGlobal" not in new_form_c25g, str(new_form_c25g[-2:]))
 
 
-    # Cycle 25, measured on kids and zen: `/media/providers?includePreferences=1` carries
-    # each library's whole `Preferences` block, byte-identical to the one
-    # `/library/sections?includePreferences=1` answers -- the per-SHOW `episodeSort`
-    # variant included -- as the FIRST child of the library `Directory`. The `Home` row,
-    # which names no library, gets none. rex handled the option at three other sites
+    # Cycle 25, measured on plexlab and the 1.42.2 reference:
+    # `/media/providers?includePreferences=1` carries each library's whole `Preferences` block,
+    # byte-identical to the one `/library/sections?includePreferences=1` answers -- the per-SHOW
+    # `episodeSort` variant included -- as the FIRST child of the library `Directory`. The `Home`
+    # row, which names no library, gets none. rex handled the option at three other sites
     # and ignored it here.
     providers_c25h = get(base, "/media/providers?includePreferences=1")[1]
     dirs_c25h = [row_c25h
@@ -19933,8 +19941,8 @@ def main():
           str(len(plain_dirs_c25h)))
 
 
-    # Cycle 25, measured on kids and confirmed identical on zen: a modern agent's
-    # `Language` rows are TITLED and ORDERED in the client's language -- 45 of them, all
+    # Cycle 25, measured on plexlab and confirmed identical on the 1.42.2 reference: a modern
+    # agent's `Language` rows are TITLED and ORDERED in the client's language -- 45 of them, all
     # six modern agents sharing one list. `system_agents.json` was captured with no
     # `X-Plex-Language` at all, which is class A exactly, so rex answered the
     # self-named list to every client including one asking in English. The Add Library
@@ -20036,9 +20044,9 @@ def main():
           str(langs_c25j))
 
 
-    # Cycle 25, measured on kids and zen: exactly one `Language` row per language carries
-    # `default="1"`, and it is the CLIENT's language -- `de` preselects `de-DE`, `fr`
-    # `fr-FR`, `ja` `ja-JP` -- falling back to `en-US` with no header or an unrecognised
+    # Cycle 25, measured on plexlab and the 1.42.2 reference: exactly one `Language` row per
+    # language carries `default="1"`, and it is the CLIENT's language -- `de` preselects `de-DE`,
+    # `fr` `fr-FR`, `ja` `ja-JP` -- falling back to `en-US` with no header or an unrecognised
     # one. The Add Library dialog opens its dropdown on that row.
     def default_lang_c25k(lang_c25k=None):
         path_c25k = "/system/agents?mediaType=1"
@@ -20208,7 +20216,7 @@ def main():
                                       len(leaves_c25o)))
 
 
-    # Cycle 25, measured on zen (1.42.2, the build rex reports -- 73 of 73 episode
+    # Cycle 25, measured on the 1.42.2 reference (the build rex reports -- 73 of 73 episode
     # rows) and on plexscratch (1.43.4): an EPISODE history row carries `title` and
     # `originallyAvailableAt`, in a fixed order that is its own and not an ordinary
     # `Video`'s. rex carried neither, so the History page listed the episode with no
@@ -20535,7 +20543,7 @@ def main():
           "%r vs %r" % (unmatch_sub_c25u, refresh_sub_c25u))
 
 
-    # Cycle 26, measured on kids (1.43.4) and zen (1.42.2) across four items in both
+    # Cycle 26, measured on plexlab (1.43.4) and the 1.42.2 reference across four items in both
     # containers: a decision with NO `hasMDE=1` from a profile that direct plays the item
     # answers the directPlay/general PAIR -- both 1000, both "Direct play OK." -- with NO
     # transcode codes, the same Metadata row the MDE form carries, and `resourceSession`.
@@ -20599,7 +20607,7 @@ def main():
                if k_c26a.endswith("DecisionCode")}))
 
 
-    # Cycle 26, re-measured on kids and zen over SINGLE-Media rows: only an
+    # Cycle 26, re-measured on plexlab and the 1.42.2 reference over SINGLE-Media rows: only an
     # OUT-OF-RANGE `mediaIndex` refuses. A missing, non-numeric, negative or empty one
     # falls back to media 0; `partIndex` is never refused at any value; and a `path`
     # carrying a query string is accepted. Cycle 41 measured the distinct multi-Media
@@ -20658,8 +20666,8 @@ def main():
           unknown_c26b == 400, str(unknown_c26b))
 
 
-    # Cycle 26, measured on kids and zen over sixteen values on all three endpoints: a
-    # `timespan` the server does not KEEP is an empty 200, not the nearest bucket.
+    # Cycle 26, measured on plexlab and the 1.42.2 reference over sixteen values on all three
+    # endpoints: a `timespan` the server does not KEEP is an empty 200, not the nearest bucket.
     # bandwidth keeps `0 1 2 3 4 6`, media `0 1 2 3 4`, resources `6`; 5, 7, 99, -1 and
     # 007 answer `size 0` on both references, and `06` parses as 6 and answers rows.
     # rex fell back to the ONE-SECOND bucket for every unstored value, so it answered
@@ -20679,8 +20687,8 @@ def main():
           str({k_c26c: v_c26c for k_c26c, v_c26c in unstored_c26c.items() if v_c26c}))
     # Cycle 31: read each value ONCE. These series grow while the suite runs, so calling
     # `span_size_c26c` again to build the message could compare two different moments.
-    # Cycle 87: one pair can still straddle a new sample (zen read resources (3, 4) on the
-    # oracle), so a pair is retaken until both reads land in the same sample window.
+    # Cycle 87: one pair can still straddle a new sample (the 1.42.2 reference read resources (3, 4)
+    # on the oracle), so a pair is retaken until both reads land in the same sample window.
     def zero_six_pair_c26c(which_c26c):
         for _ in range(5):
             pair_c26c = (span_size_c26c(which_c26c, "06"), span_size_c26c(which_c26c, "6"))
@@ -20701,9 +20709,9 @@ def main():
                                get(base, "/statistics/bandwidth?timespan=")[0]))
 
 
-    # Cycle 26, measured on kids and zen on all three statistics endpoints. `limit=` is a
-    # real CAP and is PARSED: `1`, `01`, `0`, `-1` are 200s (a non-positive one answers no
-    # rows) and `1.5`, `abc`, an empty value and `+1` are 400s, even where the value
+    # Cycle 26, measured on plexlab and the 1.42.2 reference on all three statistics endpoints.
+    # `limit=` is a real CAP and is PARSED: `1`, `01`, `0`, `-1` are 200s (a non-positive one
+    # answers no rows) and `1.5`, `abc`, an empty value and `+1` are 400s, even where the value
     # changes nothing. `sort=` is a real ORDERING validated against a per-endpoint key
     # list -- `metadataType` is NOT a media key, which is the one that looks like it
     # should be. And the `at` family is four operators: `at>` means `>=`, `at<` means
@@ -20773,7 +20781,7 @@ def main():
           "series=%d got=%s want=%s" % (len(series_c26d), at_c26d, want_c26d))
 
 
-    # Cycle 26, measured on kids and zen: neither `/status/sessions` nor
+    # Cycle 26, measured on plexlab and the 1.42.2 reference: neither `/status/sessions` nor
     # `/statistics/{which}` is a PREFIX. Six session paths and three statistics ones that
     # rex answered 200 are 404s on both references -- and a 200 reads to a client as
     # "this endpoint exists and is empty", which is fix 4's trap from the other side and
@@ -20803,8 +20811,8 @@ def main():
                              "/status/sessions/terminate?sessionId=zzz")[0]))
 
 
-    # Cycle 26, measured on kids and zen. A decision answers exactly ONE Media -- the
-    # `mediaIndex` asked for -- where rex echoed every version with `selected` on the
+    # Cycle 26, measured on plexlab and the 1.42.2 reference. A decision answers exactly ONE Media
+    # -- the `mediaIndex` asked for -- where rex echoed every version with `selected` on the
     # chosen one, so a client counting them saw the whole edition list. And
     # `excludeElements=` is a NO-OP on this endpoint, the one exception to cycle 23's
     # "every container that carries rows honours it"; rex applied it and substituted
@@ -21565,7 +21573,7 @@ def main():
           "show=%s leaves=%s" % (restored_show_art_c41e, restored_art_c41e[:3]))
 
 
-    # Cycle 27, bisected on kids (1.43.4) and zen (1.42.2) and identical on both: the
+    # Cycle 27, bisected on plexlab (1.43.4) and the 1.42.2 reference and identical on both: the
     # header refusals are a COUNT and two byte caps, and every one of them is a plain
     # 400. 100 header lines pass and the 101st is refused, whatever they weigh -- 200 KB
     # of headers in fifty lines is a 200 -- so the earlier "~41 KB total" is
@@ -21602,8 +21610,8 @@ def main():
           headers_c27d(50, 4000))
 
 
-    # Cycle 27, bisected to the byte on kids and zen, identical on both and over three
-    # verbs: a real PMS bounds the URL at exactly 32768 bytes and answers a plain 400 to
+    # Cycle 27, bisected to the byte on plexlab and the 1.42.2 reference, identical on both and over
+    # three verbs: a real PMS bounds the URL at exactly 32768 bytes and answers a plain 400 to
     # 32769. It is the URL and not the request LINE -- the boundary does not move when
     # the method does. rex took Python's 64 KiB request-line limit instead, so every
     # URL between 32 KiB and 64 KiB was a 200 where a real PMS refuses, and a longer one
@@ -21630,7 +21638,7 @@ def main():
           "400" in url_status_c27e(70000), url_status_c27e(70000))
 
 
-    # Cycle 27, nine malformed request lines sent at kids (1.43.4) and zen (1.42.2),
+    # Cycle 27, nine malformed request lines sent at plexlab (1.43.4) and the 1.42.2 reference,
     # which agree on every one: the request line's grammar is exactly
     # `METHOD SP target SP HTTP/<digit>.<digit>` with CRLF endings -- one space between
     # the tokens and none after, an origin- or absolute-form target, and the two version
@@ -21680,9 +21688,9 @@ def main():
           line_status_c27f(b"get /identity HTTP/1.1"))
 
 
-    # Cycle 27, measured on kids and zen with a GET and on the writable copy with a POST,
-    # which agree: an unparseable `Content-Length` is IGNORED (`abc` is a 200 everywhere,
-    # and no body is read) and a NEGATIVE one is a 500. rex called `int()` on the raw
+    # Cycle 27, measured on plexlab and the 1.42.2 reference with a GET and on the writable copy
+    # with a POST, which agree: an unparseable `Content-Length` is IGNORED (`abc` is a 200
+    # everywhere, and no body is read) and a NEGATIVE one is a 500. rex called `int()` on the raw
     # header, so `abc` raised inside the handler thread and the socket closed with no
     # response, and `-1` reached `rfile.read(-1)`, which blocks until the peer hangs up.
     #
@@ -21742,7 +21750,7 @@ def main():
           not stale_c27p, str(stale_c27p[:3]))
 
 
-    # Cycle 27, re-measured on kids (1.43.4) and zen (1.42.2) in JSON: `durationTotal`
+    # Cycle 27, re-measured on plexlab (1.43.4) and the 1.42.2 reference in JSON: `durationTotal`
     # and `storageTotal` are STRINGS on both, where rex sent integers. XML cannot
     # tell the two apart, which is why cycle 19 recorded that the pair exists here and
     # not what type it is. A typed client whose model declares them `String` rejects the
@@ -21755,7 +21763,7 @@ def main():
           "%r %r" % (stored_c27h.get("durationTotal"), stored_c27h.get("storageTotal")))
 
 
-    # Cycle 27, re-measured on kids (1.43.4) and zen (1.42.2) agent by agent, which
+    # Cycle 27, re-measured on plexlab (1.43.4) and the 1.42.2 reference agent by agent, which
     # agree: the BARE `/system/agents` form carries the modern agents' 45 `Language`
     # rows and NO `MediaType`. Cycle 21 read the opposite off the legacy plug-in rows,
     # where it is true -- `com.plexapp.agents.imdb` really does carry a `MediaType` in
@@ -21779,9 +21787,9 @@ def main():
              typed_c27i.count("<Agent")))
 
 
-    # Cycle 27, measured on kids and zen: a modern `Agent` row leads `identifier, name,
-    # hasPrefs, id`. rex emitted `hasPrefs, id, identifier, name` -- its builder's
-    # dict order -- because `_ATTR_ORDER` had no `Agent` bucket at all. Cycle 19 parked
+    # Cycle 27, measured on plexlab and the 1.42.2 reference: a modern `Agent` row leads
+    # `identifier, name, hasPrefs, id`. rex emitted `hasPrefs, id, identifier, name` -- its
+    # builder's dict order -- because `_ATTR_ORDER` had no `Agent` bucket at all. Cycle 19 parked
     # this on the LEGACY rows' own pairs, which the modern rows do not carry.
     agent_xml_c27j = request(base, "GET", "/system/agents",
                              want_json=False)[1].decode("utf-8", "replace")
@@ -21799,8 +21807,8 @@ def main():
           "%s | %s" % (agent_names_c27j, agent_json_c27j[:5]))
 
 
-    # Cycle 27, measured on kids and zen over five `includeMeta=1` paths: a `Sort` row
-    # leads with `active, activeDirection` and only then `default, defaultDirection,
+    # Cycle 27, measured on plexlab and the 1.42.2 reference over five `includeMeta=1` paths: a
+    # `Sort` row leads with `active, activeDirection` and only then `default, defaultDirection,
     # descKey, firstCharacterKey, key, title`; and a `Hub` puts `random` BEFORE `style`.
     # Neither element had a bucket in `_ATTR_ORDER`, so rex emitted the flags it
     # adds last, last.
@@ -21823,7 +21831,7 @@ def main():
           str(randoms_c27k[:1]))
 
 
-    # Cycle 27, measured on kids (1.43.4) and zen (1.42.2), which agree: the rows
+    # Cycle 27, measured on plexlab (1.43.4) and the 1.42.2 reference, which agree: the rows
     # `?includeDetails=1` answers are ONE paged sequence -- 20 `Directory` + 1 `Type` +
     # 8 `FieldType` = 29 -- so a 20-row window is `size=20 totalSize=29 offset=0` and
     # `Start=20` hands back the Type and the eight FieldTypes as rows 20-28. rex's
@@ -21849,8 +21857,8 @@ def main():
           "page0=%s page20=%s" % (first_c27l, rest_c27l))
 
 
-    # Cycle 27, measured on kids and zen: three more empty elements are written PAIRED.
-    # An empty `Meta/Type` row (what `/hubs/home/recentlyAdded?includeMeta=1` answers),
+    # Cycle 27, measured on plexlab and the 1.42.2 reference: three more empty elements are written
+    # PAIRED. An empty `Meta/Type` row (what `/hubs/home/recentlyAdded?includeMeta=1` answers),
     # an empty `Related` block, and the `/media/providers` `Home` `Directory`, which
     # carries no children at all -- `<Directory hubKey="/hubs" title="Home"></Directory>`
     # on both references, while every other childless `Directory` self-closes. The last
@@ -21873,8 +21881,8 @@ def main():
           all(paired_c27n.values()), str(paired_c27n))
 
 
-    # Cycle 27, swept over eleven values of each of seven parameters on kids (1.43.4) and
-    # zen (1.42.2), which agree on all 77: `/photo/:/transcode` validates five more
+    # Cycle 27, swept over eleven values of each of seven parameters on plexlab (1.43.4) and
+    # the 1.42.2 reference, which agree on all 77: `/photo/:/transcode` validates five more
     # parameters, and rex took anything for all five -- so a client sending a
     # malformed tile URL got an image where a real PMS refuses the request.
     # `minSize` and `upscale` are BOOLEANS (`0`, `1`, `01`, `+1` only); `opacity` and
@@ -21946,7 +21954,7 @@ def main():
                    if v_c27o[0] != v_c27o[1]}) or "all agree")
 
 
-    # Cycle 27, measured on kids (1.43.4) and zen (1.42.2): the SINGLE history read is a
+    # Cycle 27, measured on plexlab (1.43.4) and the 1.42.2 reference: the SINGLE history read is a
     # third projection with an order of its own -- `historyKey, librarySectionID, title,
     # [grandparentTitle,] type, [index, parentIndex,] originallyAvailableAt, viewedAt,
     # accountID, deviceID, viewType`. Cycle 18 measured the FIELD SET and rex built
@@ -21986,7 +21994,8 @@ def main():
     # path once per media type, and a real PMS answers an empty 200 to ANY type number
     # that PARSES -- 0, 3, 8, 9, 10, 12, 13, 15, 18, 20 and -1 included -- and a 400 only
     # to a value that does not (`abc`, an empty one, `1.5`). Measured over 17 values on
-    # kids and zen, which agree on every one. rex refused everything but 1, 2 and 4.
+    # plexlab and the 1.42.2 reference, which agree on every one. rex refused everything but 1, 2
+    # and 4.
     #
     # What it costs a real client: the web client issues movie, show and ARTIST inside
     # one `all([...])` under a single try/catch, so the `type=8` refusal rejects the
@@ -22005,7 +22014,7 @@ def main():
     # Cycle 27, recorded through a real client: the Settings -> Metadata Agents pane
     # reads `/media/providers/metadata` and `/media/providers/metadata/group`
     # immediately before `/system/agents?mediaType=`, and both are populated 200s on
-    # kids (7 and 6 rows) and zen (4 and 4). rex had never routed either, so the
+    # plexlab (7 and 6 rows) and the 1.42.2 reference (4 and 4). rex had never routed either, so the
     # pane's provider list was empty on a server that holds four modern agents.
     prov_c27r = get(base, "/media/providers/metadata")[1]
     group_c27r = get(base, "/media/providers/metadata/group")[1]
@@ -22086,7 +22095,7 @@ def main():
              absent_c40b[0], removed_c40b[0], after_groups_c40b == before_groups_c40b))
 
 
-    # Cycle 27, measured on kids (1.43.4) and zen (1.42.2) and recorded through a real
+    # Cycle 27, measured on plexlab (1.43.4) and the 1.42.2 reference and recorded through a real
     # client: every PERSON tag carries a 24-hex `tagKey` -- on a detail row's `Director`,
     # `Writer`, `Role` and `Producer`, and on the rows of `/library/tags?type=4|5|6|7` --
     # where `Genre` and `Country` carry none. rex carried none at all, and the web
@@ -22130,10 +22139,10 @@ def main():
                            get(base, "/library/people/%s/media" % one_c27s)[0]))
 
 
-    # Cycle 27, measured on the copy and corroborated on zen: a pick re-versions only the
-    # artwork the row OWNS. Season 7's `art` was still the SHOW's path after its own
-    # poster was picked, and zen's episode 11115 carries `art` naming its SEASON beside a
-    # `grandparentArt` naming the show at a different stamp -- a borrowed field keeps the
+    # Cycle 27, measured on the copy and corroborated on the 1.42.2 reference: a pick re-versions
+    # only the artwork the row OWNS. Season 7's `art` was still the SHOW's path after its own
+    # poster was picked, and the 1.42.2 reference's episode 11115 carries `art` naming its SEASON
+    # beside a `grandparentArt` naming the show at a different stamp -- a borrowed field keeps the
     # owner's path, stamp and all. rex re-versioned `thumb`, `art` and `theme` onto
     # the picking row whatever it owned, so a season that borrowed the show's backdrop
     # came away claiming a path only the show serves.
@@ -22170,10 +22179,10 @@ def main():
                  borrower_c27t.get("thumb"), after_c27t.get("thumb")))
 
 
-    # Cycle 27, measured on zen's 73 real history rows and corroborated on kids: the
-    # Dashboard's Top Played shelf orders by play count descending, then by the MOST
-    # RECENT view descending, then by ratingKey. zen's four seven-play episodes come
-    # back 19766, 19767, 19763, 19762 -- the first pair last viewed at 1788088024 and
+    # Cycle 27, measured on the 1.42.2 reference's 73 real history rows and corroborated on plexlab:
+    # the Dashboard's Top Played shelf orders by play count descending, then by the MOST
+    # RECENT view descending, then by ratingKey. The 1.42.2 reference's four seven-play episodes
+    # come back 19766, 19767, 19763, 19762 -- the first pair last viewed at 1788088024 and
     # the second at 1788088000 -- which is neither ratingKey nor `addedAt` order, and
     # the row does not carry the number: it is the history's own, the same place
     # `globalViewCount` comes from. rex sorted on `(-plays, ratingKey)`, so a tied
@@ -22201,7 +22210,7 @@ def main():
               "%s (scrobbled %s then %s)" % (top_c27u, older_c27u, newer_c27u))
 
 
-    # Cycle 28, measured on kids (1.43.4) and zen (1.42.2) over nine values each, which
+    # Cycle 28, measured on plexlab (1.43.4) and the 1.42.2 reference over nine values each, which
     # agree edge case for edge case: `contentDirectoryID` SCOPES `/hubs` and the three
     # `/hubs/home/*` leaves, and on `/hubs` it also REMOVES the `home.playlists` shelf.
     # A non-empty value narrows every shelf to that library, an EMPTY one scopes
@@ -22270,9 +22279,9 @@ def main():
           str(promoted_c28a))
 
 
-    # Cycle 28, measured on kids and zen over thirteen values: `excludeContinueWatching`
-    # is true exactly when the value parses as the integer 1 -- `1` and `01` drop the
-    # shelves, `0`, `00`, `2`, `10`, `1.5`, `true`, ` 1`, `abc` and an empty value do
+    # Cycle 28, measured on plexlab and the 1.42.2 reference over thirteen values:
+    # `excludeContinueWatching` is true exactly when the value parses as the integer 1 -- `1` and
+    # `01` drop the shelves, `0`, `00`, `2`, `10`, `1.5`, `true`, ` 1`, `abc` and an empty value do
     # not -- and it drops BOTH `home.continue` and `home.ondeck`, on `/hubs/promoted`
     # and on the bare `/hubs` alike. No other `exclude<Name>=1` spelling does anything.
     # rex compared the raw string with `"1"`, so `01` missed; it dropped only
@@ -22299,11 +22308,11 @@ def main():
           str({k_c28b: v_c28b for k_c28b, v_c28b in drops_c28b.items()}))
 
 
-    # Cycle 28, measured on kids and zen over eleven values: `/hubs/continueWatching`
-    # and its `/items` leaf VALIDATE `contentDirectoryID`, where `/hubs/promoted` takes
-    # anything. At least one comma-separated member must be a POSITIVE INTEGER -- `01`,
-    # `999`, `999,998`, `abc,1`, `1,abc` and `1,` are 200s; `abc`, `0`, `-1`, `1.5` and
-    # a space are 404s. A section the server does not hold is fine: it is the SHAPE that
+    # Cycle 28, measured on plexlab and the 1.42.2 reference over eleven values:
+    # `/hubs/continueWatching` and its `/items` leaf VALIDATE `contentDirectoryID`, where
+    # `/hubs/promoted` takes anything. At least one comma-separated member must be a POSITIVE
+    # INTEGER -- `01`, `999`, `999,998`, `abc,1`, `1,abc` and `1,` are 200s; `abc`, `0`, `-1`, `1.5`
+    # and a space are 404s. A section the server does not hold is fine: it is the SHAPE that
     # is checked. This is the second path that validates the parameter, against
     # CLAUDE.md's "scopes and VALIDATES `/hubs/search` alone".
     cw_c28c = {}
@@ -22320,7 +22329,7 @@ def main():
                if v_c28c != (404 if k_c28c[1] in refused_c28c else 200)}) or "all agree")
 
 
-    # Cycle 28, measured on kids (1.43.4) and zen (1.42.2), identically: `/clients/
+    # Cycle 28, measured on plexlab (1.43.4) and the 1.42.2 reference, identically: `/clients/
     # profiles` is the server's CLIENT PROFILE catalogue, not the hosted-client list --
     # one `Profile` row per file in its `Resources/Profiles` directory, the same 78
     # names rex already holds for `Player.profile`. The bare form and `type=0`/`00`
@@ -22347,8 +22356,8 @@ def main():
           str(profiles_c28d))
 
 
-    # Cycle 28, measured on kids and zen: the `/collections` leaf is the `/all` listing
-    # with a DEFAULT `type=18`, and it runs the same query -- an unknown `sort` key, an
+    # Cycle 28, measured on plexlab and the 1.42.2 reference: the `/collections` leaf is the `/all`
+    # listing with a DEFAULT `type=18`, and it runs the same query -- an unknown `sort` key, an
     # unparseable `type` and an unparseable `limit` are each a 500, while `subtype`,
     # `smart` and an empty `sort` are accepted and ignored, and a `type=` the library
     # holds answers those rows instead (a movie library's `type=1` is its movies).
@@ -22371,15 +22380,15 @@ def main():
              sorted({r_c28e.get("type") for r_c28e in (typed_c28e.get("Metadata") or [])})))
 
 
-    # Cycle 28, measured on zen (50 rows: 12 shows, 31 seasons, 7 episodes) and
-    # corroborated on kids: `/hubs/home/recentlyAdded?type=2` -- Home's Recently Added TV
+    # Cycle 28, measured on the 1.42.2 reference (50 rows: 12 shows, 31 seasons, 7 episodes) and
+    # corroborated on plexlab: `/hubs/home/recentlyAdded?type=2` -- Home's Recently Added TV
     # shelf -- is a MIXED, ROLLED-UP list, not a list of shows. A group of two or more
     # recently-added siblings collapses into its parent, recursively: one new episode in
     # an otherwise old season stays an episode, two become the season, and two or more
     # new seasons become the show. And a parent row here is dated by its NEWEST LEAF
-    # (kids' Firefly carries its last episode's stamp, 04:24:45, against its own
-    # 04:27:37, and 14 of 14 zen season rows carry `max(child.addedAt)`) -- the opposite
-    # aggregation from `/library/recentlyAdded`, where cycle 25's "dated by the earliest
+    # (plexlab's Firefly carries its last episode's stamp, 04:24:45, against its own
+    # 04:27:37, and 14 of 14 season rows of the 1.42.2 reference carry `max(child.addedAt)`) -- the
+    # opposite aggregation from `/library/recentlyAdded`, where cycle 25's "dated by the earliest
     # episode" holds and is re-confirmed below.
     #
     # rex filtered `type == "show"`, so a new episode or a new season of an existing
@@ -22389,8 +22398,8 @@ def main():
     # equally recent, so the roll-up's own answer is the SHOW -- which is what rex
     # used to answer for the wrong reason. The half that separates them is the DATE: the
     # row now carries its newest leaf's stamp rather than the show's own. The MIXED case
-    # needs a library where only some rows are recent, which is zen's, and the suite
-    # cannot make one (an `addedAt` write is a 200 that stores nothing, cycle 20).
+    # needs a library where only some rows are recent, which is the 1.42.2 reference's, and the
+    # suite cannot make one (an `addedAt` write is a 200 that stores nothing, cycle 20).
     tv_c28f = get(base, "/hubs/home/recentlyAdded?type=2")[1].get("Metadata") or []
     show_row_c28f = (get(base, "/library/metadata/%s" % show)[1].get("Metadata") or [{}])[0]
     leaves_c28f = [int(r_c28f.get("addedAt") or 0) for r_c28f in
@@ -22415,8 +22424,8 @@ def main():
           "%d season row(s)" % len(early_c28f))
 
 
-    # Cycle 28, measured on zen -- which, unlike either reference in cycle 21, has a row
-    # on deck: all three On Deck paths answer the FULL DETAIL row, child for child
+    # Cycle 28, measured on the 1.42.2 reference -- which, unlike either reference in cycle 21, has
+    # a row on deck: all three On Deck paths answer the FULL DETAIL row, child for child
     # identical to `/library/metadata/{id}` (`Guid`, `Rating`, and the four person tags
     # carrying `id`, `filter`, `tagKey`, `role`, `thumb`), where the same row through the
     # section grid is the light one. rex answered the light row on `/library/onDeck`
@@ -22453,8 +22462,8 @@ def main():
               "detail %s | %s" % (detail_c28g, paths_c28g))
 
 
-    # Cycle 28, measured on zen and kids at `count=40`: a non-`random` shelf's rows are
-    # exactly the head of its OWN `key` listing, in that listing's order -- 29 of 32
+    # Cycle 28, measured on the 1.42.2 reference and plexlab at `count=40`: a non-`random` shelf's
+    # rows are exactly the head of its OWN `key` listing, in that listing's order -- 29 of 32
     # non-empty shelves matched byte for byte, and the three that did not are the
     # `random="1"` ones. rex's Recently Watched shelf broke it: the key it publishes
     # is `?sort=lastViewedAt:desc&unwatched=0&viewOffset=0` and its builder honoured
@@ -22490,8 +22499,8 @@ def main():
                   "shelf %s | key %s -> %s" % (shelf_c28h, hub_c28h.get("key"), key_c28h))
 
 
-    # Cycle 28, measured on zen: a shelf that advertises `random="1"` is a random SAMPLE
-    # of its whole key set, in random order, not the head of it -- `movie.topunwatched`'s
+    # Cycle 28, measured on the 1.42.2 reference: a shelf that advertises `random="1"` is a random
+    # SAMPLE of its whole key set, in random order, not the head of it -- `movie.topunwatched`'s
     # 30 rows sit at positions 26 to 579 of its 583-row key listing, non-monotonically,
     # and the same for `tv.startwatching` and `tv.toprated`. A NON-random shelf is exactly
     # the head of its key: 29 of 32 non-empty shelves matched byte for byte at
@@ -22503,8 +22512,8 @@ def main():
     # `movie.topunwatched` key is `?unwatched=1&audienceRating>=7.0`, so rating the movies
     # and leaving them unwatched fills it. Whatever rows are left is enough to see an
     # ORDER change and never enough to see a sample, which is why the assertion is about
-    # the order varying between requests -- the sampling half is zen's and is recorded
-    # there. TWO rows and twenty tries make a false failure a 1-in-500,000 event; three
+    # the order varying between requests -- the sampling half is the 1.42.2 reference's and is
+    # recorded there. TWO rows and twenty tries make a false failure a 1-in-500,000 event; three
     # movies was the fixture at load and the suite is down to two by the time this runs.
     for key_c28i in [r_c28i.get("ratingKey") for r_c28i in
                      (get(base, "/library/sections/%s/all" % movie_section)[1]
@@ -22536,8 +22545,8 @@ def main():
         skip("a random shelf really is random",
              "the topunwatched shelf has %d row(s)" % count_c28i)
     else:
-        # Cycle 30 corrected this on zen: the sample is a SAMPLE of the key set and it
-        # is STABLE -- 21 reads over seven minutes answered the identical rows. Cycle 28
+        # Cycle 30 corrected this on the 1.42.2 reference: the sample is a SAMPLE of the key set and
+        # it is STABLE -- 21 reads over seven minutes answered the identical rows. Cycle 28
         # asserted the order varying, which was rex's own bug.
         check("a random shelf advertises the flag and answers a steady sample",
               bool(flagged_c28i) and len(orders_c28i) == 1
@@ -22547,8 +22556,8 @@ def main():
                  len(steady_c28i) if steady_c28i else -1))
 
 
-    # Cycle 28, measured on zen and kids over the negative edge of a ten-row shelf:
-    # `count=-1` answers ONE row with `more: false` and `-2`, `-5` and `-100` answer NONE
+    # Cycle 28, measured on the 1.42.2 reference and plexlab over the negative edge of a ten-row
+    # shelf: `count=-1` answers ONE row with `more: false` and `-2`, `-5` and `-100` answer NONE
     # with `more: false`, where `count=0` answers none with `more: TRUE`. So a negative
     # count is `len(rows) + count` clamped at zero and always reports the shelf as
     # exhausted. rex clamped every negative value to zero and kept `more: true`.
@@ -22577,12 +22586,12 @@ def main():
               "%s of %s rows" % (edges_c28j, rows_c28j[0]))
 
 
-    # Cycle 28, measured on kids (1.43.4) and zen (1.42.2): a search tag hit is per
-    # LIBRARY, not per NAME -- kids' `drama` answers TWO `Drama` rows, one per library
+    # Cycle 28, measured on plexlab (1.43.4) and the 1.42.2 reference: a search tag hit is per
+    # LIBRARY, not per NAME -- plexlab's `drama` answers TWO `Drama` rows, one per library
     # holding the genre, each with its own `librarySectionID`, `key` and `count` against
-    # the same tag id, and zen's `comedy` answers 590 and 179 the same way. And the
+    # the same tag id, and the 1.42.2 reference's `comedy` answers 590 and 179 the same way. And the
     # `count` is the size of the listing the row's own `key` names, which is the
-    # library's own top-level type: 3 of 3 rows on zen and kids.
+    # library's own top-level type: 3 of 3 rows on the 1.42.2 reference and plexlab.
     #
     # rex keyed the hits by name alone and counted every row carrying the tag, so a
     # genre both libraries hold was one row naming whichever library the catalog reached
@@ -22612,8 +22621,8 @@ def main():
           "%s over %d row(s)" % (counts_c28k, len(tags_c28k)))
 
 
-    # Cycle 28, measured on kids (`Ian Hubert`) and zen (three `Amélie` actors): a PERSON
-    # search tag row carries its 24-hex `tagKey`, directly after `tagType` and before the
+    # Cycle 28, measured on plexlab (`Ian Hubert`) and the 1.42.2 reference (three `Amélie` actors):
+    # a PERSON search tag row carries its 24-hex `tagKey`, directly after `tagType` and before the
     # `thumb`, with `count` LAST -- and a `Genre` row carries none. The client builds
     # every person link from it, so rex's search hit, which minted the key for the
     # detail row and left it off this one, sent a click on an actor found by the search
@@ -22649,8 +22658,8 @@ def main():
               "%s -> %s | %s" % (person_c28m.get("tagKey"), resolved_c28m, keys_c28m))
 
 
-    # Cycle 28, measured on kids and zen (and on plexscratch for a collection): a
-    # `/library/search` tag row is the `/hubs/search` row WITHOUT `reason`, `reasonID`,
+    # Cycle 28, measured on plexlab and the 1.42.2 reference (and on plexscratch for a collection):
+    # a `/library/search` tag row is the `/hubs/search` row WITHOUT `reason`, `reasonID`,
     # `reasonTitle` and its own `score` -- the score sits on the `SearchResult` wrapper
     # alone there, as a number, where the hubs row carries it inside as a string.
     # rex answered the hubs row verbatim on the flat endpoint, four attributes and
@@ -22683,8 +22692,8 @@ def main():
                                 sorted(hubrow_c28n)))
 
 
-    # Cycle 28, measured on kids and zen: a `/library/search` `SearchResult` prints its
-    # score with FIVE decimals in XML (`score="0.52000"`, `score="0.93095"`) and sends
+    # Cycle 28, measured on plexlab and the 1.42.2 reference: a `/library/search` `SearchResult`
+    # prints its score with FIVE decimals in XML (`score="0.52000"`, `score="0.93095"`) and sends
     # the same value as a plain number in JSON -- XML being the default format, which is
     # the wire every TV and mobile client reads. rex wrote Python's own `"0.32"`.
     # The check MAKES the tag it needs. The fixture carries `Animation` on a row of each
@@ -22733,9 +22742,9 @@ def main():
           "flat %s | hub %s" % (flat_c28p, hubrow_c28p.get("tag")))
 
 
-    # Cycle 28, measured on kids, zen and plexscratch: `contentDirectoryID` scopes EVERY
-    # row family of `/hubs/search`, each by its own library -- kids' `drama` keeps one
-    # `Drama` tag row at `=1` and the other library's at `=2`, and plexscratch's
+    # Cycle 28, measured on plexlab, the 1.42.2 reference and plexscratch: `contentDirectoryID`
+    # scopes EVERY row family of `/hubs/search`, each by its own library -- plexlab's `drama` keeps
+    # one `Drama` tag row at `=1` and the other library's at `=2`, and plexscratch's
     # `c26act` keeps three collections and a movie playlist at `=1` and empties both at
     # `=2`, a playlist going with its MEMBERS' library. rex compared the tag ENTRIES
     # on a key they do not carry, so a scoped search answered NO tag rows for either
@@ -22773,7 +22782,7 @@ def main():
           % (genre_movie_c28q, genre_show_c28q, coll_here_c28q, coll_there_c28q))
 
 
-    # Cycle 28, measured on kids (1.43.4), zen (1.42.2) and plexscratch, identically:
+    # Cycle 28, measured on plexlab (1.43.4), the 1.42.2 reference and plexscratch, identically:
     # `searchTypes=` is `/library/search`'s own filter and its vocabulary is six tokens
     # -- `movies tv otherVideos music photos people` -- EXACT, case-sensitive and never
     # trimmed (`Movies`, ` movies` and `zzz` each select nothing), a comma list being a
@@ -22782,7 +22791,7 @@ def main():
     # goes with its library and a playlist with its MEMBERS' library. `/hubs/search`
     # IGNORES the parameter at every value.
     #
-    # And `limit=` caps the WHOLE list, not each hub -- kids' `firefly&limit=3` answers
+    # And `limit=` caps the WHOLE list, not each hub -- plexlab's `firefly&limit=3` answers
     # the show and two of its episodes -- refusing an unparseable value with a 400 and a
     # non-positive one with a 500, the same two-way refusal `/hubs/search` makes.
     # rex answered its rows whatever `searchTypes` said, capped each hub separately,
@@ -22846,10 +22855,10 @@ def main():
 
 
     # Cycle 28 asserted here that `/library/onDeck` KEEPS `librarySectionKey`, read off
-    # zen's single on-deck row. Cycle 30 built a writable 1.42.2 copy for that question and
-    # it says the key is absent, as plexscratch (1.43.4) and cycle 21's fun both did -- so
-    # the check that remains is cycle 30's own, further down, and this one is gone rather
-    # than inverted twice in the same file.
+    # the 1.42.2 reference's single on-deck row. Cycle 30 built a writable 1.42.2 copy for that
+    # question and it says the key is absent, as plexscratch (1.43.4) and the production server in
+    # cycle 21 both did -- so the check that remains is cycle 30's own, further down, and this one
+    # is gone rather than inverted twice in the same file.
 
     # Cycle 29, measured on plexscratch by uploading an `art` to a SEASON and reading its
     # three episodes back: an artwork UPLOAD cascades exactly as a pick does -- the
@@ -23148,8 +23157,8 @@ def main():
                  sorted({str(leaf_c29e.get("parentThumb")) for leaf_c29e in kids_c29e})))
 
 
-    # Cycle 29, measured on kids and zen over fifteen `url=` shapes, agreeing on every one:
-    # the DIMENSIONS are validated first, then the url -- a missing `url=` is a 400, an
+    # Cycle 29, measured on plexlab and the 1.42.2 reference over fifteen `url=` shapes, agreeing on
+    # every one: the DIMENSIONS are validated first, then the url -- a missing `url=` is a 400, an
     # EMPTY one a 404, an item artwork path of a row it holds the image, of a row it does
     # not hold a 404, one the row does not OWN a 404 (the transcoder answers what the
     # direct path answers), a server path that is not artwork a 500, and a url with a
@@ -23196,10 +23205,10 @@ def main():
           "%s | borrowed %s vs direct %s" % (shapes_c29g, borrowed_c29g, direct_c29g))
 
 
-    # Cycle 29, measured on kids and zen, whose bytes for these are byte-identical (so
-    # they are PMS's own bundled default-artwork assets): `/:/resources/` has SEVEN names
-    # and `library-art.png`, `playlist.png` and `album.png` are 404s on both references --
-    # even though a real PMS's own `/library` container advertises `library-art.png` as its
+    # Cycle 29, measured on plexlab and the 1.42.2 reference, whose bytes for these are
+    # byte-identical (so they are PMS's own bundled default-artwork assets): `/:/resources/` has
+    # SEVEN names and `library-art.png`, `playlist.png` and `album.png` are 404s on both references
+    # -- even though a real PMS's own `/library` container advertises `library-art.png` as its
     # `art`, which rex copies. And `?width=`/`?height=` are IGNORED: a 100x100 request
     # answers the same bytes as the bare path. rex generated a tile for all nine names
     # it knew and resized it.
@@ -23222,10 +23231,10 @@ def main():
           "%s | plain %d bytes, sized %d" % (res_c29h, len(plain_c29h), len(sized_c29h)))
 
 
-    # Cycle 29, measured on kids and zen over nine values of each of six options, identical
-    # on all 54: a 0/1 option's value is `+?0*[01]`. `0`, `1`, `00`, `01`, `000`, `0000001`,
-    # `+1`, `+0` and `+01` pass; `2`, `+2`, `-1`, `+`, `++1`, `1+`, `1.5`, `true`, an empty
-    # value and either surrounding space are 400s. Cycle 23 recorded the four-value form
+    # Cycle 29, measured on plexlab and the 1.42.2 reference over nine values of each of six
+    # options, identical on all 54: a 0/1 option's value is `+?0*[01]`. `0`, `1`, `00`, `01`, `000`,
+    # `0000001`, `+1`, `+0` and `+01` pass; `2`, `+2`, `-1`, `+`, `++1`, `1+`, `1.5`, `true`, an
+    # empty value and either surrounding space are 400s. Cycle 23 recorded the four-value form
     # from a sweep with no sign in it, so rex refused a leading `+` a real PMS accepts
     # -- on `checkFiles` and its five siblings and on `minSize`/`upscale`.
     bools_c29i = {}
@@ -23257,8 +23266,8 @@ def main():
           "checkFiles %s | minSize %s" % (bools_c29i, photo_c29i))
 
 
-    # Cycle 29, measured on kids and zen over seventeen values of `download=` on a part
-    # read: it is one of the 0/1 options and carries their whole grammar -- `1`, `01` and
+    # Cycle 29, measured on plexlab and the 1.42.2 reference over seventeen values of `download=` on
+    # a part read: it is one of the 0/1 options and carries their whole grammar -- `1`, `01` and
     # `+1` are the download, `0`, `00` and `+0` the plain read, and `2`, `-1`, `1.5`,
     # `true`, `false`, `TRUE`, `yes`, `abc`, an empty value, ` 1`, `1 ` and `10` are each a
     # 400. rex compared the raw string with `"1"`/`"true"`, so `download=true` was a
@@ -23288,9 +23297,9 @@ def main():
               "%s" % downloads_c29j)
 
 
-    # Cycle 29, measured on kids and zen over eight body paths and three container paths: a
-    # 416 is an ERROR RESPONSE and not the original resource with no bytes. The reference
-    # answers its 129-byte HTML page with `Content-Type: text/html` and neither
+    # Cycle 29, measured on plexlab and the 1.42.2 reference over eight body paths and three
+    # container paths: a 416 is an ERROR RESPONSE and not the original resource with no bytes. The
+    # reference answers its 129-byte HTML page with `Content-Type: text/html` and neither
     # `Accept-Ranges` nor `Content-Range`; rex answered `Content-Length: 0` with the
     # original media type and the full success header set, so a client got an `image/jpeg`
     # carrying zero bytes. rex keeps its own text/plain error body (cycle 1's
@@ -23330,8 +23339,8 @@ def main():
              headers_c29k.get("Accept-Ranges"), headers_c29k.get("Content-Range")))
 
 
-    # Cycle 29, measured on kids and zen: `X-Plex-Local-Asset: 1` marks an ITEM's own
-    # artwork and nothing else -- present on `/library/metadata/{id}/{thumb,art,poster}`
+    # Cycle 29, measured on plexlab and the 1.42.2 reference: `X-Plex-Local-Asset: 1` marks an
+    # ITEM's own artwork and nothing else -- present on `/library/metadata/{id}/{thumb,art,poster}`
     # and absent from a section's `/composite/{v}`, from `/:/resources/*`, from `/web/*`
     # and from a part read. rex put it on every image it sent, so a section tile
     # claimed to be an item's local asset.
@@ -23358,7 +23367,7 @@ def main():
           % (item_c29m, composite_c29m, resource_c29m))
 
 
-    # Cycle 29, measured on kids and zen: under `/web/*` a DIRECTORY is an empty
+    # Cycle 29, measured on plexlab and the 1.42.2 reference: under `/web/*` a DIRECTORY is an empty
     # `application/octet-stream` 200 (`Content-Length: 0`, never the index page), a
     # trailing slash after a file is a 404, a path that escapes the root is a **400** (not
     # the 403 rex invented, a status that is nowhere else on the surface), and
@@ -23448,9 +23457,9 @@ def main():
           "%s" % verbs_c29s)
 
 
-    # Cycle 29, measured on kids and zen on a movie and a show: a properly encoded `+1`
-    # (`%2B1`) turns an `include*` block on, where a RAW `+` decodes to a SPACE and stays
-    # off. Cycle 22 recorded `+1` as off from the raw form, so rex refused a sign a
+    # Cycle 29, measured on plexlab and the 1.42.2 reference on a movie and a show: a properly
+    # encoded `+1` (`%2B1`) turns an `include*` block on, where a RAW `+` decodes to a SPACE and
+    # stays off. Cycle 22 recorded `+1` as off from the raw form, so rex refused a sign a
     # real PMS accepts -- the same integer parse the 0/1 options have.
     inc_c29r = {}
     for value_c29r in ("1", "01", "001", quote("+1"), quote("+01"), "2", "true", "1.0",
@@ -23467,10 +23476,10 @@ def main():
           "%s" % inc_c29r)
 
 
-    # Cycle 29, measured on kids (whose 14 rows come back `movie x5, show, season x2,
+    # Cycle 29, measured on plexlab (whose 14 rows come back `movie x5, show, season x2,
     # episode x6` under `sort=type` and exactly reversed under `type:desc`) and sampled
-    # across zen's 14,434: `sort=type` orders by the type NUMBER -- movie 1, show 2,
-    # season 3, episode 4 -- not by the type's NAME. rex kept `type` in its text-sort
+    # across the 1.42.2 reference's 14,434: `sort=type` orders by the type NUMBER -- movie 1, show
+    # 2, season 3, episode 4 -- not by the type's NAME. rex kept `type` in its text-sort
     # list, so its order was alphabetical (`episode` first), which is a different order
     # for python-plexapi and for any stored smart-list uri naming the key.
     def types_c29q(spec_c29q):
@@ -23488,8 +23497,8 @@ def main():
           "asc %s | desc %s" % (asc_c29q, desc_c29q))
 
 
-    # Cycle 29, measured on kids (14 rows collapsing to 4 by type, 7 by year, 10 by title)
-    # and zen (14,434 to 4, 90, 8,358), which agree: `group=` is honoured on
+    # Cycle 29, measured on plexlab (14 rows collapsing to 4 by type, 7 by year, 10 by title)
+    # and the 1.42.2 reference (14,434 to 4, 90, 8,358), which agree: `group=` is honoured on
     # `/library/all` too, and an unknown or empty field is a 500 there as on a section
     # listing. rex's `grouped()` was already right -- this handler never called it, so
     # the cross-library Group control did nothing and an ungroupable field answered every
@@ -23515,9 +23524,9 @@ def main():
              refused_c29p))
 
 
-    # Cycle 29, measured on kids (whose library holds ONE extra) and zen (3,580), which
-    # agree on every value: `/library/sections/{id}/extras/all` runs the LISTING query and
-    # refuses what a listing refuses -- an unparseable `limit`, an unparseable or empty
+    # Cycle 29, measured on plexlab (whose library holds ONE extra) and the 1.42.2 reference
+    # (3,580), which agree on every value: `/library/sections/{id}/extras/all` runs the LISTING
+    # query and refuses what a listing refuses -- an unparseable `limit`, an unparseable or empty
     # `type`, an unknown `sort` key, any `group=`, an unparseable `parent` -- each a 500.
     # It also refuses FOUR keys the section grid accepts: `duration`, `resolution`,
     # `mediaSize` and `file` are 500s here and 200s on `/all`, so they are the leaf's own
@@ -23552,14 +23561,15 @@ def main():
     # questions all said "a writable 1.42.2 copy" would settle them:
     #
     #   * an On Deck row carries NO `librarySectionKey`, on a movie and on an episode
-    #     alike, where the DETAIL row carries one. Cycle 28 read the opposite off zen's
-    #     single on-deck row and put the key back; plexscratch (1.43.4) and cycle 21's fun
-    #     both say it is absent, so three instruments stand against zen's one
+    #     alike, where the DETAIL row carries one. Cycle 28 read the opposite off the 1.42.2
+    #     reference's single on-deck row and put the key back; plexscratch (1.43.4) and the
+    #     production server in cycle 21 both say it is absent, so three instruments stand against
+    #     the 1.42.2 reference's one
     #   * and the row is the detail row MINUS `Field`: the copy's movie carries `Field` on
     #     `/library/metadata/{id}` and on none of `/library/onDeck`,
     #     `/library/sections/{id}/onDeck`, `/hubs/home/onDeck` or
-    #     `/hubs/home/continueWatching`. zen's on-deck episode has no locked field, so
-    #     cycle 28 could not see this half at all
+    #     `/hubs/home/continueWatching`. The 1.42.2 reference's on-deck episode has no locked field,
+    #     so cycle 28 could not see this half at all
     #
     # `/hubs/home/onDeck` and `/hubs/home/continueWatching` DO carry the key, which rex
     # already had right; the section leaf carries no librarySection field on the row.
@@ -23711,8 +23721,8 @@ def main():
              "no episode row")
 
 
-    # Cycle 30, measured on zen over 21 reads 20 s apart across 7 minutes: a `random="1"`
-    # shelf's sample is STABLE. `movie.topunwatched.1` answered the identical 40
+    # Cycle 30, measured on the 1.42.2 reference over 21 reads 20 s apart across 7 minutes: a
+    # `random="1"` shelf's sample is STABLE. `movie.topunwatched.1` answered the identical 40
     # ratingKeys every time (and `tv.startwatching.2` and `tv.toprated.2` with it), a
     # different client identifier gets the same sample, and the same shelf at `count=12`
     # answers its own stable set which is not the head of the `count=40` one -- so the
@@ -23753,8 +23763,8 @@ def main():
                  narrow_c30e and narrow_c30e[1]))
 
 
-    # Cycle 30, measured on kids and zen 3/3 on each of seven paths: the 400 a query pair
-    # with no `=` answers CLOSES the connection, and it is the ONLY handler-level refusal
+    # Cycle 30, measured on plexlab and the 1.42.2 reference 3/3 on each of seven paths: the 400 a
+    # query pair with no `=` answers CLOSES the connection, and it is the ONLY handler-level refusal
     # on the surface that does -- seventeen other reachable 400s keep it alive on both
     # references. rex kept this one alive, so a harness that sends a malformed pair and
     # then reuses the socket passes here and hangs against a real PMS.
@@ -24103,13 +24113,13 @@ def main():
           "section %s | item %s" % (section_c31d, item_c31d))
 
 
-    # Cycle 31, read off kids' OWN DATABASE and then confirmed through its API. Season 7 --
+    # Cycle 31, read off plexlab's OWN DATABASE and then confirmed through its API. Season 7 --
     # the season an agent titled `Season 1` -- stores `title = ''` and
     # `title_sort = 'Season 1'`; its unmatched season 11 stores both empty. So a generated
     # display title is derived from the index in both cases and what the agent supplied is
     # the stored SORT title, which is why cycle 18's `titleSort=` split works at all.
     #
-    # On kids: `titleSort=Season 1` answers season 7, `titleSort=` answers season 11 alone,
+    # On plexlab: `titleSort=Season 1` answers season 7, `titleSort=` answers season 11 alone,
     # and `titleSort>>=Season 0` answers 7. rex treated a stored sort title EQUAL to the
     # generated title as no sort title at all, so it answered nothing to the first and third
     # and wrongly kept the row in the second -- one clause, three symptoms, and invisible
@@ -24122,7 +24132,7 @@ def main():
              "the show has %d season(s)" % len(seasons_c31e))
     else:
         # Put every season back to the synthesised state first: an earlier check may have
-        # left a LOCKED sort title on one, which is legitimately stored (kids' season 7 is
+        # left a LOCKED sort title on one, which is legitimately stored (plexlab's season 7 is
         # that row) and would make the control wrong.
         for key_c31e in seasons_c31e:
             request(base, "PUT", "/library/metadata/%s?titleSort.locked=0" % key_c31e)
@@ -24349,14 +24359,15 @@ def main():
                  smart_c31k.get("leafCount"), saved_c31k[0], after_c31k.get("content")))
 
 
-    # Cycle 31, measured on kids and zen, which agree: in `title=` a COMMA splits the query
-    # into ALTERNATIVES (a row matches if ANY matches, and an empty alternative matches
-    # every row, so a trailing comma answers the whole library) while a DOT is a LITERAL
+    # Cycle 31, measured on plexlab and the 1.42.2 reference, which agree: in `title=` a COMMA
+    # splits the query into ALTERNATIVES (a row matches if ANY matches, and an empty alternative
+    # matches every row, so a trailing comma answers the whole library) while a DOT is a LITERAL
     # character of the word.
     #
-    #   kids  title=Steel,, -> 5 of 5   title=of, -> 5   title=Tears, of -> 1
-    #   zen   title=Love, -> 3,887      title=Love -> 59   title=Actually,Love -> 59
-    #   kids  title=Steel. -> 0         title=Tears of Steel. -> 0    zen Actually. -> 0
+    #   plexlab  title=Steel,, -> 5 of 5   title=of, -> 5   title=Tears, of -> 1
+    #   the 1.42.2 reference   title=Love, -> 3,887      title=Love -> 59   title=Actually,Love ->
+    #   59 plexlab  title=Steel. -> 0         title=Tears of Steel. -> 0    the 1.42.2 reference
+    #   Actually. -> 0
     #
     # rex stripped both characters from the query, so a typed comma found one row where
     # a real PMS answers all of them and a trailing period found one where a real PMS
@@ -24445,13 +24456,13 @@ def main():
              "no show section")
 
 
-    # Cycle 31, measured on zen -- whose 471 rows with an `originalTitle` are the only
-    # instrument that can show it: the in-library search box reads the TITLE alone.
+    # Cycle 31, measured on the 1.42.2 reference -- whose 471 rows with an `originalTitle` are the
+    # only instrument that can show it: the in-library search box reads the TITLE alone.
     # `?query=Salaire`, `Douai`, `Meurtres` and `Chung` each answer 0 rows there, while the
     # rows carrying those original titles are present and findable by their titles; a
-    # title-only model scores 1,244 of 1,244 generated queries on both zen libraries where
-    # the title-or-original model misses 102. rex read both, so the box listed foreign
-    # films under a name a real PMS does not index here.
+    # title-only model scores 1,244 of 1,244 generated queries on both of the 1.42.2 reference's
+    # libraries where the title-or-original model misses 102. rex read both, so the box listed
+    # foreign films under a name a real PMS does not index here.
     request(base, "PUT", "/library/metadata/%s?originalTitle.value=%s"
                          % (movie, quote("Zarquon Original")))
     box_c31m = [r_c31m.get("ratingKey") for r_c31m in
@@ -24469,15 +24480,15 @@ def main():
           % (row_c31m.get("originalTitle"), box_c31m, title_c31m))
 
 
-    # Cycle 31, measured on kids and zen: the hub matcher takes a MULTI-WORD query word by
-    # word, IN ORDER, not as one phrase. kids answers `Tears Steel` with "Tears of Steel"
-    # at 0.73055 and `Big Bunny` with "Big Buck Bunny" at 0.73000; zen answers `Fear Lake`
-    # with "Fear by the Lake" at 0.73067. Reversed, the row still comes back in the 0.33
-    # fuzzy band, so the order decides the score and not the membership.
+    # Cycle 31, measured on plexlab and the 1.42.2 reference: the hub matcher takes a MULTI-WORD
+    # query word by word, IN ORDER, not as one phrase. plexlab answers `Tears Steel` with "Tears of
+    # Steel" at 0.73055 and `Big Bunny` with "Big Buck Bunny" at 0.73000; the 1.42.2 reference
+    # answers `Fear Lake` with "Fear by the Lake" at 0.73067. Reversed, the row still comes back in
+    # the 0.33 fuzzy band, so the order decides the score and not the membership.
     #
     # rex required the joined phrase as a prefix, so `Tears Steel` answered NO HUBS AT
-    # ALL -- 230 of zen's rows scoring 0.5 or better over 119 of 1,237 generated queries
-    # were missed. This is Plex Web's global search box.
+    # ALL -- 230 of the 1.42.2 reference's rows scoring 0.5 or better over 119 of 1,237 generated
+    # queries were missed. This is Plex Web's global search box.
     title_c31n = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
     words_c31n = [w_c31n for w_c31n in str(title_c31n.get("title") or "").split()
                   if len(w_c31n) > 2]
@@ -24501,8 +24512,8 @@ def main():
                                        phrase_c31n))
 
 
-    # Cycle 31, measured on zen -- the only library holding punctuated titles: the hub
-    # matcher tokenises the TITLE on WHITESPACE, so punctuation stays inside the word.
+    # Cycle 31, measured on the 1.42.2 reference -- the only library holding punctuated titles: the
+    # hub matcher tokenises the TITLE on WHITESPACE, so punctuation stays inside the word.
     # `query=don't` answers "Don't Look Up" and "Don't Move" at 0.53, `Don't Move` answers
     # 0.93041, `Dont Move` falls to the 0.33 fuzzy band, `Handmaid` answers "The Handmaid's
     # Tale", and `Delete` does not find 'Control-Alt-Delete' at a word score while
@@ -24524,11 +24535,11 @@ def main():
           % (apostrophe_c31o, whole_c31o, split_c31o))
 
 
-    # Cycle 31, measured on zen, which holds two one-character titles: a ONE-character hub
-    # query matches a title EQUAL to it and nothing else -- `query=X` answers the movie 'X'
-    # at 0.93076 and `A` answers 'A' at 0.91089, while `I` and `9`, which no zen title is,
-    # answer nothing. So it is equality, not the one-character prefix cycle 12 refuted.
-    # rex's two-character floor answered nothing to any of them.
+    # Cycle 31, measured on the 1.42.2 reference, which holds two one-character titles: a
+    # ONE-character hub query matches a title EQUAL to it and nothing else -- `query=X` answers the
+    # movie 'X' at 0.93076 and `A` answers 'A' at 0.91089, while `I` and `9`, which no title of the
+    # 1.42.2 reference is, answer nothing. So it is equality, not the one-character prefix cycle 12
+    # refuted. rex's two-character floor answered nothing to any of them.
     request(base, "PUT", "/library/metadata/%s?title.value=X&title.locked=1" % spare)
     def one_c31p(query_c31p):
         found_c31p = []
@@ -24542,8 +24553,8 @@ def main():
           "X -> %s | 9 -> %s" % (equal_c31p, other_c31p))
 
 
-    # Cycle 31, measured on zen -- whose 471 rows with an `originalTitle` are the only
-    # instrument for it: `title=` matches the ORIGINAL title as a CONSECUTIVE run of whole
+    # Cycle 31, measured on the 1.42.2 reference -- whose 471 rows with an `originalTitle` are the
+    # only instrument for it: `title=` matches the ORIGINAL title as a CONSECUTIVE run of whole
     # words, unfolded. `Le Salaire`, `Salaire de`, `de la peur`, `Le Sal` and `la peur` each
     # answer the one row; `Salaire peur`, `Le peur`, `Sal de`, `e Salaire` and
     # `Meurtres Douai` answer none. rex ran the TITLE's two-pass folded matcher over it,
@@ -24679,9 +24690,9 @@ def main():
               % (len(statuses_c32b), sorted(set(statuses_c32b))))
 
 
-    # Cycle 32, measured on kids and zen: the `title=` matcher's RAW pass reads the title
-    # and its FOLDED pass reads the row's stored SORT title. kids' episode 8 is "The Train
-    # Job" with the sort title "Train Job": `title=The Train` answers it through the raw
+    # Cycle 32, measured on plexlab and the 1.42.2 reference: the `title=` matcher's RAW pass reads
+    # the title and its FOLDED pass reads the row's stored SORT title. plexlab's episode 8 is "The
+    # Train Job" with the sort title "Train Job": `title=The Train` answers it through the raw
     # pass, `title=Tráin Job` through the folded one, and `The Tráin`, `Thé Train` and
     # `Thé Tráin Jób` each answer NOTHING -- a folded query carrying the article cannot
     # match, because the article is not in the string the folded pass reads.
@@ -24724,8 +24735,8 @@ def main():
           "titleSort %r" % row_c32d.get("titleSort"))
 
 
-    # Cycle 32, measured on kids (2,098 codepoints) and zen, held out on both writable
-    # copies: the `title=` folded pass folds the QUERY by the title table and a simple case
+    # Cycle 32, measured on plexlab (2,098 codepoints) and the 1.42.2 reference, held out on both
+    # writable copies: the `title=` folded pass folds the QUERY by the title table and a simple case
     # fold, and the STORED sort title by the case fold only. So the long s finds `s`, an
     # ogonek or a capital macron finds nothing, and a locked accented sort title is not
     # folded back to ASCII. rex ran NFD over both sides.
@@ -24840,8 +24851,8 @@ def main():
 
 
     # Cycle 32, read out of the reference's Resources/Profiles and scored against the
-    # decision endpoint on kids and zen (1,872 cells, the outcome exact on 1,871): a
-    # decision with no `hasMDE` runs the client's OWN profile file against the item.
+    # decision endpoint on plexlab and the 1.42.2 reference (1,872 cells, the outcome exact on
+    # 1,871): a decision with no `hasMDE` runs the client's OWN profile file against the item.
     # rex hard-coded Roku and Xbox One as the two that direct play, where 44 profiles
     # direct play a real row -- and neither of those two lists webm/vp8 or eac3.
     def decide_c32h(profile_c32h, item_c32h):
@@ -24878,8 +24889,8 @@ def main():
           # Cycle 45: this sentence said `container webm` until this cycle corrected the
           # container at LOAD as well as at build. Cycle 44 measured that a `.webm`
           # file's container IS `mkv` on a real PMS -- the identical 571,346,576-byte
-          # file answers `mkv` on zen -- so the row the refusal names changed with it.
-          # The check encoded the pre-fix catalog, which is why only a whole-suite run
+          # file answers `mkv` on the 1.42.2 reference -- so the row the refusal names changed with
+          # it. The check encoded the pre-fix catalog, which is why only a whole-suite run
           # could see it: `sdrive` proves a patch's own block and nothing else.
           and roku_movie_c32h[1].get("directPlayDecisionText")
           == "App cannot direct play this item. No direct play video profile exists for "
@@ -24890,9 +24901,9 @@ def main():
           xbox360_c32h[0] == 400, str(xbox360_c32h[0]))
 
 
-    # Cycle 32, measured on zen, kids and both writable copies: a real PMS writes JSON
-    # COMPACT and in raw UTF-8 -- no space after `:` or `,`, an accent written as itself,
-    # and a C0 control as `\\u00XX` in upper-case hex. rex wrote Python's defaults.
+    # Cycle 32, measured on the 1.42.2 reference, plexlab and both writable copies: a real PMS
+    # writes JSON COMPACT and in raw UTF-8 -- no space after `:` or `,`, an accent written as
+    # itself, and a C0 control as `\\u00XX` in upper-case hex. rex wrote Python's defaults.
     request(base, "PUT", "/library/metadata/%s?title.value=%s&title.locked=1"
                          % (movie, quote("Zq \u00e9t\u00e9\x1f/end")))
     status_c32i, raw_c32i, _h_c32i = request(base, "GET", "/library/metadata/%s" % movie)
@@ -24906,8 +24917,8 @@ def main():
                          % (movie, quote("Quarrel of Steelworks")))
 
 
-    # Cycle 33, measured on kids and zen off a raw socket over twenty-six response
-    # classes, keep-alive and closing, the two references identical in every case: the
+    # Cycle 33, measured on plexlab and the 1.42.2 reference off a raw socket over twenty-six
+    # response classes, keep-alive and closing, the two references identical in every case: the
     # response headers come out in a measured ORDER, per response family. Everywhere,
     # `X-Plex-Protocol` is first and `Date` is last -- rex had exactly those two the
     # wrong way round -- and the families contradict each other, a 200 container putting
@@ -24930,8 +24941,8 @@ def main():
           "; ".join("%s=%s" % (k_c33a, v_c33a[:4]) for k_c33a, v_c33a in order_c33a.items()))
 
 
-    # Cycle 33, measured on kids and zen over fifteen paths, identical on both: every
-    # response under `/system` carries the plug-in framework's session cookie -- a
+    # Cycle 33, measured on plexlab and the 1.42.2 reference over fifteen paths, identical on both:
+    # every response under `/system` carries the plug-in framework's session cookie -- a
     # constant -- except `/system/agents`, `/system/scanners/{N}` and `/system/proxy`,
     # which PMS implements itself. Nothing else on the surface sends a cookie.
     cookies_c33b = {label_c33b: request(base, "GET", path_c33b)[2].get("Set-Cookie")
@@ -24950,8 +24961,8 @@ def main():
           str({k_c33b: bool(v_c33b) for k_c33b, v_c33b in cookies_c33b.items()}))
 
 
-    # Cycle 33, measured on kids and zen: the CORS preflight and the `/web` 302 name
-    # their connection state like every other response, and the preflight carries
+    # Cycle 33, measured on plexlab and the 1.42.2 reference: the CORS preflight and the `/web` 302
+    # name their connection state like every other response, and the preflight carries
     # `Cache-Control: no-cache` as well. Both rex handlers write their own header
     # set and sent neither.
     # A real preflight, not a bare OPTIONS: without `Access-Control-Request-Method` a
@@ -25001,8 +25012,8 @@ def main():
              redirect_c33c.get("Connection")))
 
 
-    # Cycle 33, measured on kids and zen: every leaf of the plug-in framework's `/system`
-    # subtree writes `Content-Length` before `Content-Type` -- the order an ERROR uses --
+    # Cycle 33, measured on plexlab and the 1.42.2 reference: every leaf of the plug-in framework's
+    # `/system` subtree writes `Content-Length` before `Content-Type` -- the order an ERROR uses --
     # while `/system/agents`, which PMS implements itself, orders like a container. The
     # first header-order patch of this cycle read the family off the cookie, so the
     # cookie-less `/system/scanners/{N}` came out type-first.
@@ -25080,8 +25091,8 @@ def main():
               "guid %s | %s" % (guid_c33f, frames_c33f[:4]))
 
 
-    # Cycle 33, measured on kids and zen in XML and in JSON: a 206 of a CONTAINER answers
-    # `Content-Length` TWICE -- the whole body's length in its usual place, then
+    # Cycle 33, measured on plexlab and the 1.42.2 reference in XML and in JSON: a 206 of a
+    # CONTAINER answers `Content-Length` TWICE -- the whole body's length in its usual place, then
     # `Content-Range`, then the SLICE's after the connection state -- while the body is
     # the slice. A ranged artwork or asset answers the slice's length alone. rex
     # answered one length everywhere.
@@ -25155,8 +25166,8 @@ def main():
           "edit %s | row %s" % (edit_c34a[:4], row_c34a[:4]))
 
 
-    # Cycle 34, measured on kids and zen and recorded from the official client's own
-    # preflight of `PUT /updater/check`, which asks for no headers: the reference sends
+    # Cycle 34, measured on plexlab and the 1.42.2 reference and recorded from the official client's
+    # own preflight of `PUT /updater/check`, which asks for no headers: the reference sends
     # `Access-Control-Allow-Headers` ONLY when `Access-Control-Request-Headers` was sent,
     # echoing that value. rex always sent a fallback list.
     def preflight_c34b(extra_c34b):
@@ -25182,8 +25193,8 @@ def main():
 
 
     # Cycle 34, read off the reference through a fresh client-session capture (a socket may
-    # never be opened on kids or zen, so the harness's recording of the official client's
-    # own handshake is the only witness): the 101 answers `X-Plex-Protocol,
+    # never be opened on plexlab or the 1.42.2 reference, so the harness's recording of the official
+    # client's own handshake is the only witness): the 101 answers `X-Plex-Protocol,
     # Access-Control-Expose-Headers, Vary, Upgrade, Connection, Sec-WebSocket-Accept,
     # Cache-Control, Access-Control-Allow-Origin, Date`. rex had the set right and put
     # the three CORS headers at the end.
@@ -25217,8 +25228,8 @@ def main():
           str(names_c34c))
 
 
-    # Cycle 35, measured off a raw socket on kids and zen: a real PMS zeroes the MTIME
-    # field of its gzip header, so a compressed response is a pure function of its body
+    # Cycle 35, measured off a raw socket on plexlab and the 1.42.2 reference: a real PMS zeroes the
+    # MTIME field of its gzip header, so a compressed response is a pure function of its body
     # -- the same request twice answers the same bytes. Python's `gzip.compress` stamps
     # the current time. With `mtime=0` the whole member is byte-identical to the
     # reference's on every body measured.
@@ -25249,9 +25260,9 @@ def main():
           "mtime %s, identical %s" % (stamp_c35a, first_c35a == second_c35a))
 
 
-    # Cycle 35, 43 `Range` header values swept against kids and zen over a container and
-    # a `/web` asset -- 172 cells, the two references and the two body kinds identical in
-    # every one. rex had twelve of the 43 wrong; these are the cells a real client can
+    # Cycle 35, 43 `Range` header values swept against plexlab and the 1.42.2 reference over a
+    # container and a `/web` asset -- 172 cells, the two references and the two body kinds identical
+    # in every one. rex had twelve of the 43 wrong; these are the cells a real client can
     # provoke, and each was a 206 with no bytes or a 200 with no `Content-Range`.
     def ranged_c35b(value_c35b):
         sock_c35b = socket.create_connection(
@@ -25343,10 +25354,10 @@ def main():
     # 23 tasks, the two versions agreeing on every one. Cycle 49 REFUTED its one
     # disagreement -- Ad Markers -- as a copy's state taken for the rule: both writable copies are
     # UNCLAIMED, and `enabled` here is computed from claim state rather than stored.
-    # plexscratch is a byte copy of kids' own config with only the claim stripped and it
-    # answers 0 where kids answers 1; zen and kids, the two CLAIMED references, both
-    # answer 1 on both versions, and so does the `GenerateAdMarkerBehavior` preference
-    # (`scheduled`, a setting that does not exist at all on an unclaimed server).
+    # plexscratch is a byte copy of plexlab's own config with only the claim stripped and it
+    # answers 0 where plexlab answers 1; the 1.42.2 reference and plexlab, the two CLAIMED
+    # references, both answer 1 on both versions, and so does the `GenerateAdMarkerBehavior`
+    # preference (`scheduled`, a setting that does not exist at all on an unclaimed server).
     # rex asserts a claim, so the claimed value is the one it has to answer.
     # `/butler` is one of the two roots on the surface that is not a MediaContainer.
     _, raw_c35c, _ = request(base, "GET", "/butler")
@@ -25440,8 +25451,8 @@ def main():
           got_c35d[:len(want_c35d)] == want_c35d, str(got_c35d)[:400])
 
 
-    # Cycle 35, measured on kids and zen over sixteen (query, row) cells: the SCORE tier a
-    # search hit gets is the matcher's own in-order rule, plus the condition that the
+    # Cycle 35, measured on plexlab and the 1.42.2 reference over sixteen (query, row) cells: the
+    # SCORE tier a search hit gets is the matcher's own in-order rule, plus the condition that the
     # query's first term matches the title's FIRST word -- `Tears Steel` and `Big Bunny`
     # are 0.73, `Steel`, `Bunny`, `Buck Bunny` and `of Steel` are the 0.33 fuzzy band, and
     # an exact title is 0.93 on both references where rex said 0.95. Both scorers read
@@ -25482,8 +25493,8 @@ def main():
         skip("a search hit's score tier is the matcher's rule, not a title prefix",
              "need a three-word title")
 
-    # Cycle 36, measured on kids and zen over seven statuses and every path family that
-    # answers one: a real PMS's refusal BODY is one fixed HTML document per status --
+    # Cycle 36, measured on plexlab and the 1.42.2 reference over seven statuses and every path
+    # family that answers one: a real PMS's refusal BODY is one fixed HTML document per status --
     # `<html><head><title>{reason}</title></head><body><h1>{code} {reason}</h1></body>
     # </html>` with `Content-Type: text/html` -- and it ignores `Accept`. rex had
     # three of them (the 401, the 403 and the root's redirect) and answered `text/plain`
@@ -25515,8 +25526,8 @@ def main():
           not wrong_c36a, str(wrong_c36a))
 
 
-    # Cycle 36, measured on kids and zen with a bad token and a good one in one query: a
-    # repeated query parameter takes the LAST occurrence -- bad then good is a 200 and
+    # Cycle 36, measured on plexlab and the 1.42.2 reference with a bad token and a good one in one
+    # query: a repeated query parameter takes the LAST occurrence -- bad then good is a 200 and
     # good then bad a 401, on both references. That is the rule cycle 35 measured for
     # every other key on the surface, and the rule rex's own `query` dict already
     # follows. Three readers took the FIRST instead: the token gate, the client
@@ -25539,9 +25550,9 @@ def main():
           str([name_c36b for name_c36b, _d_c36b in events_c36b][:6]))
 
 
-    # Cycle 36, measured on kids and zen over six path families and byte-identical in
-    # every one: an id in a path SEGMENT is parsed as a number, so `01`, `001`, `+1` and
-    # `+01` name the same row as `1`, while `++1`, `1+`, `-1`, `0x1`, `1.0` and a
+    # Cycle 36, measured on plexlab and the 1.42.2 reference over six path families and
+    # byte-identical in every one: an id in a path SEGMENT is parsed as a number, so `01`, `001`,
+    # `+1` and `+01` name the same row as `1`, while `++1`, `1+`, `-1`, `0x1`, `1.0` and a
     # non-ASCII digit name nothing. rex compared the segment as a string, so a
     # zero-padded or plus-signed id was a 404 from a server that holds the row.
     def body_c36c(path_c36c):
@@ -25571,8 +25582,8 @@ def main():
              refused_c36c))
 
 
-    # Cycle 36, measured on kids and zen over seven envelope refusals: a request the
-    # server refuses BELOW the API answers the same 89-byte `text/html` document as
+    # Cycle 36, measured on plexlab and the 1.42.2 reference over seven envelope refusals: a request
+    # the server refuses BELOW the API answers the same 89-byte `text/html` document as
     # every refusal above it. rex answered Python's own 460-byte DOCTYPE page with
     # `text/html;charset=utf-8` -- the one document on the surface that names a library
     # rather than a status. Read with a raw socket: a malformed request line cannot be
@@ -25617,8 +25628,8 @@ def main():
           not wrong_c36d, str(wrong_c36d))
 
 
-    # Cycle 36, swept byte by byte over 0x01-0xFF on kids and zen: the request TARGET
-    # must be printable ASCII (0x21-0x7E), and in the PATH a `%` must begin an escape
+    # Cycle 36, swept byte by byte over 0x01-0xFF on plexlab and the 1.42.2 reference: the request
+    # TARGET must be printable ASCII (0x21-0x7E), and in the PATH a `%` must begin an escape
     # the reference's own parser can read -- an optional sign then a hex digit, with two
     # characters present, or another `%`. rex accepted 150 of the 158 refused bytes
     # and every malformed escape, so a client that put a raw accented character in a
@@ -25665,7 +25676,7 @@ def main():
           "refused %s | accepted %s" % (refused_c36e, accepted_c36e))
 
 
-    # Cycle 36, measured on kids and zen: `/hubs/sections/{id}` and its Continue
+    # Cycle 36, measured on plexlab and the 1.42.2 reference: `/hubs/sections/{id}` and its Continue
     # Watching see-all leaf 404 a section id the server does not hold, where rex
     # built a full Recommended page for any id at all -- `abc` and `-1` included.
     unknown_c36f = {
@@ -25685,8 +25696,8 @@ def main():
           "unknown %s | real %s" % (unknown_c36f, real_c36f))
 
 
-    # Cycle 36, measured on kids and zen: `/hubs/metadata/{id}/related` never resolves
-    # the row -- an id the server does not hold answers the empty hub container, where
+    # Cycle 36, measured on plexlab and the 1.42.2 reference: `/hubs/metadata/{id}/related` never
+    # resolves the row -- an id the server does not hold answers the empty hub container, where
     # `/library/metadata/{id}/related` and `/hubs/metadata/{id}/postplay` on the same id
     # are 404s. rex 404'd all three.
     status_c36g, body_c36g, _headers_c36g = request(base, "GET", "/hubs/metadata/999999/related")
@@ -25707,7 +25718,7 @@ def main():
           % (status_c36g, word_c36g, container_c36g, others_c36g, real_c36g[0]))
 
 
-    # Cycle 36, bisected on kids and zen: `/devices/{id}`, `/accounts/{id}`,
+    # Cycle 36, bisected on plexlab and the 1.42.2 reference: `/devices/{id}`, `/accounts/{id}`,
     # `/playQueues/{id}` and `/system/scanners/{N}` parse their id as a SIGNED 32-BIT
     # integer -- `2147483647` is that path's own not-found answer and `2147483648` a
     # 400 -- and a negative value inside the range is a 404 on all four, including
@@ -25736,9 +25747,9 @@ def main():
           bounded_c36h == want_c36h, str(bounded_c36h))
 
 
-    # Cycle 36, gridded on zen's "Riders of Justice" over forty queries and confirmed on
-    # kids' "Tears of Steel": the search ladder has FOUR tiers, not three, and its base
-    # is the ROW TYPE's. exact 0.93 / anchored 0.73 / prefix 0.53 / fuzzy 0.33 for a
+    # Cycle 36, gridded on the 1.42.2 reference's "Riders of Justice" over forty queries and
+    # confirmed on plexlab's "Tears of Steel": the search ladder has FOUR tiers, not three, and its
+    # base is the ROW TYPE's. exact 0.93 / anchored 0.73 / prefix 0.53 / fuzzy 0.33 for a
     # movie and a show; an EPISODE is 0.02 lower throughout. The exact tier reads
     # `titleSort` and `originalTitle` as well as the title, and the anchored tier is one
     # token comparison -- the query's first token equal to the title's first -- which
@@ -25785,8 +25796,8 @@ def main():
               ladder_c36i == want_ladder_c36i, str(ladder_c36i))
 
 
-    # Cycle 36, read off 17 rows on kids and zen with the rating fetched beside the
-    # score, and held out by the hunt over 11,076 scored (query, row) pairs of which
+    # Cycle 36, read off 17 rows on plexlab and the 1.42.2 reference with the rating fetched beside
+    # the score, and held out by the hunt over 11,076 scored (query, row) pairs of which
     # 11,075 decompose this way: a search hit's five decimals are the TIER plus the
     # row's own `audienceRating` / 10000, and a row with none scores the bare tier.
     # rex printed the bare tier for every row, so every hit inside a tier tied and
@@ -25812,8 +25823,8 @@ def main():
               "rating %s want %s got %s" % (rating_c36j, want_c36j, scored_c36j))
 
 
-    # Cycle 36, measured on zen and kids: a TAG row's ladder is the item ladder with the
-    # anchored tier collapsed away -- an exact name 0.92, a token-wise prefix from the
+    # Cycle 36, measured on the 1.42.2 reference and plexlab: a TAG row's ladder is the item ladder
+    # with the anchored tier collapsed away -- an exact name 0.92, a token-wise prefix from the
     # first word 0.52, a later-word reach 0.32 -- and there is no 0.72. rex
     # hard-coded 0.52 on a collection row and 0.32 on every other tag row, and its tag
     # matcher compared the whole query against ONE word, so a multi-word tag name could
@@ -25846,10 +25857,10 @@ def main():
               ladder_c36k == want_c36k, "genre %r -> %s" % (genre_c36k, ladder_c36k))
 
 
-    # Cycle 36, measured on kids and zen: ORDER decides the SCORE, not membership. A
-    # query whose words are all in the title but out of order comes back in the 0.33
-    # fuzzy band -- `Steel Tears` answers "Tears of Steel" on kids, `justice riders` and
-    # `Justice of` answer "Riders of Justice" on zen -- where rex's in-order walk
+    # Cycle 36, measured on plexlab and the 1.42.2 reference: ORDER decides the SCORE, not
+    # membership. A query whose words are all in the title but out of order comes back in the 0.33
+    # fuzzy band -- `Steel Tears` answers "Tears of Steel" on plexlab, `justice riders` and
+    # `Justice of` answer "Riders of Justice" on the 1.42.2 reference -- where rex's in-order walk
     # answered no hubs at all. Cycle 31 measured the sentence and built half of it.
     title_c36l = (get(base, "/library/metadata/%s" % movie)[1]
                   .get("Metadata") or [{}])[0].get("title") or ""
@@ -25877,8 +25888,8 @@ def main():
               str(order_c36l))
 
 
-    # Cycle 36, measured on zen over three Dolby Vision PROFILE 5 rows against all 78
-    # client profiles: when the source is profile 5 and the client HAS a conversion
+    # Cycle 36, measured on the 1.42.2 reference over three Dolby Vision PROFILE 5 rows against all
+    # 78 client profiles: when the source is profile 5 and the client HAS a conversion
     # target, the server refuses on the SOURCE -- `transcodeDecisionCode 2003`, "File is
     # unplayable. DoVi (Profile 5) color space is not supported." -- where a client with
     # no target at all gets the ordinary 4005. rex sent 4005 to both.
@@ -25886,7 +25897,7 @@ def main():
     # The UI fixture holds no Dolby Vision row, so this SKIPS here; the code path was
     # proved fail-then-pass by hand against a copy of this fixture carrying one
     # (`Chrome` 4005 -> 2003, `Generic` 4005 either way), and `tests/test_decision.py`
-    # holds zen:1120's 78 cells, which fail 41/78 against the unfixed model.
+    # holds the 1.42.2 reference:1120's 78 cells, which fail 41/78 against the unfixed model.
     dovi_c36m = None
     for row_c36m in (get(base, "/library/sections/%s/all?type=1" % movie_section)[1]
                      .get("Metadata") or []):
@@ -26101,7 +26112,7 @@ def main():
 
 
 
-    # Cycle 37, measured from raw sockets on kids 1.43.4 and zen 1.42.2: a literal
+    # Cycle 37, measured from raw sockets on plexlab 1.43.4 and the 1.42.2 reference: a literal
     # semicolon or hash in the PATH remains part of the path.  It is not stripped as
     # urllib.parse's params/fragment syntax.  In the QUERY, a hash remains part of the
     # value, so `type=1#x` is a malformed integer rather than `type=1`.
@@ -26329,11 +26340,11 @@ def main():
           str((status_c37d, bool(rows_c37d), bool(rows_c37d and "Media" in rows_c37d[0]))))
 
 
-    # Cycle 44, measured on zen (3,887 real movies, 1.42.2) and kids (1.43.4) over every
-    # key 0-12 on both library types: a star bucket rounds its KEY down to an even star
+    # Cycle 44, measured on the 1.42.2 reference (3,887 real movies, 1.42.2) and plexlab (1.43.4)
+    # over every key 0-12 on both library types: a star bucket rounds its KEY down to an even star
     # and takes the values within one of it, so a stored 5.0 is in `/userRating/6` and in
     # neither `/4` nor `/5`. rex truncated -- `int(value) == key` -- which puts a 5.0
-    # in `/5` alone and answers 165 rows where zen answers 208.
+    # in `/5` alone and answers 165 rows where the 1.42.2 reference answers 208.
     rows_c44s = get(base, "/library/sections/%s/all?type=1" % movie_section)[1].get("Metadata") or []
     if not rows_c44s:
         skip("star bucket rounds its key down to an even star", "no movie rows")
@@ -26372,8 +26383,8 @@ def main():
     # `/userRating` answers, byte for byte -- and it is ADVERTISED in a movie library's
     # own pivot `Directory` list, which `/userRating` is not. rex advertised the
     # pivot and 404'd the leaf, so the Ratings entry in the official client's sidebar
-    # opened nothing. The buckets read the CRITIC rating: zen's `/rating/8` is 221 rows
-    # and its `/userRating/8` is 200.
+    # opened nothing. The buckets read the CRITIC rating: the 1.42.2 reference's `/rating/8` is 221
+    # rows and its `/userRating/8` is 200.
     axis_c44r = get(base, "/library/sections/%s/rating" % movie_section)
     keys_c44r = [(d.get("key"), d.get("title")) for d in (axis_c44r[1].get("Directory") or [])]
     user_c44r = get(base, "/library/sections/%s/userRating" % movie_section)
@@ -26411,8 +26422,8 @@ def main():
 
 
     # Cycle 44, measured on plexscratch42 (1.42.2, the build rex reports) and
-    # confirmed for GET and HEAD on kids and zen: `/myplex/claim` is routed for POST
-    # ALONE. GET, HEAD, PUT, DELETE and a bare OPTIONS are each a 404 there, and PATCH
+    # confirmed for GET and HEAD on plexlab and the 1.42.2 reference: `/myplex/claim` is routed for
+    # POST ALONE. GET, HEAD, PUT, DELETE and a bare OPTIONS are each a 404 there, and PATCH
     # and an unknown method are the version-wide 500. rex routed every verb and
     # answered its own "missing claim token" 400 to all of them -- which tells a client
     # the endpoint exists and its request was malformed, where a real PMS says the
@@ -26431,7 +26442,7 @@ def main():
           str((verbs_c44c, near_c44c)))
 
 
-    # Cycle 45, measured on kids (1.43.4) and zen (1.42.2): the BARE `/sync` -- and
+    # Cycle 45, measured on plexlab (1.43.4) and the 1.42.2 reference: the BARE `/sync` -- and
     # `/sync/` -- is the legacy plug-in dispatcher's `{size: 0, content: "plugins"}`
     # 200, like every other single-segment path on the surface, while the deeper sync
     # paths (`/sync/items`, `/sync/transcodeQueue`, `/sync/zzz`) really are 404s.
@@ -26480,8 +26491,8 @@ def main():
 
 
     # Cycle 45: `/library/arts` is a real listing that rex 404'd -- every row on the
-    # server that OWNS an `art`, measured on kids (6 rows) and zen (4,190). The row is a
-    # fixed ELEVEN attributes in which six are the EMPTY STRING and four are `-1`; they
+    # server that OWNS an `art`, measured on plexlab (6 rows) and the 1.42.2 reference (4,190). The
+    # row is a fixed ELEVEN attributes in which six are the EMPTY STRING and four are `-1`; they
     # are not omitted, which is what makes the shape worth copying rather than inferring.
     # A row that BORROWS its parent's art carries the owner's path and is not listed.
     # `/library/posters`, `/library/thumbs` and `/library/banners` are 404s on both
@@ -26515,13 +26526,13 @@ def main():
                                                  neighbours_c45))
 
 
-    # Cycle 45, measured on kids and zen one leaf name after another against a real tag
-    # id: the bucket path does NOT read the leaf NAME. zen's GENRE tag 239 ("Action")
-    # answers the identical 427-row container -- same rows, same `title2` -- under
+    # Cycle 45, measured on plexlab and the 1.42.2 reference one leaf name after another against a
+    # real tag id: the bucket path does NOT read the leaf NAME. The 1.42.2 reference's GENRE tag 239
+    # ("Action") answers the identical 427-row container -- same rows, same `title2` -- under
     # `genre`, `director`, `actor`, `mood`, `style`, `similar`, `tag`, `format`,
     # `subformat`, `source`, `make`, `model`, `place`, `label`, `collection`, `network`,
-    # `writer`, `producer` and `country`, and zen's DIRECTOR tag 8544 answers ITS two
-    # rows under every one of them too. The lookup is the server's global tag TABLE and
+    # `writer`, `producer` and `country`, and the 1.42.2 reference's DIRECTOR tag 8544 answers ITS
+    # two rows under every one of them too. The lookup is the server's global tag TABLE and
     # the name in front of it is decoration; only `studio` and `platform` are not bucket
     # names at all, and an id no tag holds is a 404 under every name. rex resolved
     # the id against the NAME's own column, so nine names worked for their own tags and
@@ -26562,8 +26573,8 @@ def main():
     # for any value (cycle 29's rule; this is its SET), and `/extras/all` is a real leaf
     # of its own. Everything else -- `/children/1`, `/allLeaves/all`, `/tree/zzz`,
     # `/related/1`, `/posters/all`, `/similar/1`, `/matches/zzz` and thirteen more -- is a
-    # 404 on kids and zen alike. rex answered the LEAF AGAIN for sixteen of them and
-    # its own 400 for four: fix 4's trap, where a client reads a 200 as "this endpoint
+    # 404 on plexlab and the 1.42.2 reference alike. rex answered the LEAF AGAIN for sixteen of them
+    # and its own 400 for four: fix 4's trap, where a client reads a 200 as "this endpoint
     # exists". 64 of the 212 swept cells were wrong.
     closed_c45l = {}
     for leaf_c45l in ("children", "allLeaves", "grandchildren", "tree", "related",
@@ -26582,8 +26593,8 @@ def main():
           "closed=%s open=%s" % (sorted(set(closed_c45l.values())), open_c45l))
 
 
-    # Cycle 45, bisected on kids and zen: a VALIDATED version segment takes DIGITS with
-    # optional leading zeros and NOT a leading `+`. `/library/parts/{id}/1/file.mkv` and
+    # Cycle 45, bisected on plexlab and the 1.42.2 reference: a VALIDATED version segment takes
+    # DIGITS with optional leading zeros and NOT a leading `+`. `/library/parts/{id}/1/file.mkv` and
     # `/library/sections/{id}/composite/1` answer 200 for `1` and `01` and **404** for
     # `+1`, `-1`, `1.5`, `zzz`, `1a` and `%20`; the section composite additionally
     # answers **400** past the signed 32-bit bound, which is the int32 guard cycle 36
@@ -26625,8 +26636,8 @@ def main():
 
     # Cycle 45, found by sweeping HEAD and GET over 76 reachable paths on all three
     # servers -- the one disagreement of the 152 cells. `HEAD /library/sections/{id}/
-    # common` answers exactly what its GET answers on kids and zen: a 400 with no
-    # `type=` and a 200 with one. rex's handler tested `method != "GET"` and 404'd
+    # common` answers exactly what its GET answers on plexlab and the 1.42.2 reference: a 400 with
+    # no `type=` and a 200 with one. rex's handler tested `method != "GET"` and 404'd
     # the HEAD, although its own SECTION_LEAF_VERBS table already allowed it -- the gate
     # was written twice and the inner one forgot HEAD. Cycle 33's HEAD sweep used a hand
     # list of sixty paths and `/common` was not on it.
@@ -26645,8 +26656,8 @@ def main():
     # Cycle 45, caught by this cycle's own UI suite against this cycle's own earlier
     # patch: the "an item leaf 404s an extra path segment" rule has THREE kinds of
     # exception, not two. `/extras/all` and the artwork versions were measured; the third
-    # is `/library/metadata/{id}/users/top`, which is a 200 on kids and zen -- while
-    # `/users`, `/users/all` and `/users/zzz` beside it are 404s, so it is that exact
+    # is `/library/metadata/{id}/users/top`, which is a 200 on plexlab and the 1.42.2 reference --
+    # while `/users`, `/users/all` and `/users/zzz` beside it are 404s, so it is that exact
     # pair and not the `users` prefix. The 53-name sweep that found the rule did not have
     # `users` in its vocabulary, and the suite did: two checks that had passed for
     # fourteen cycles went red.
@@ -26680,8 +26691,8 @@ def main():
 
 
     # Cycle 45: `/library/arts` is a listing QUERY, not a dump -- the same shape cycle 29
-    # measured for `/library/sections/{id}/extras/all`. Measured on kids (6 rows) and zen
-    # (4,190): `title=`, `id=`, `id!=`, `year=`, `genre=`, `titleSort=`, `summary=`,
+    # measured for `/library/sections/{id}/extras/all`. Measured on plexlab (6 rows) and the 1.42.2
+    # reference (4,190): `title=`, `id=`, `id!=`, `year=`, `genre=`, `titleSort=`, `summary=`,
     # `guid=` and `duplicate=` all CONSTRAIN it; a GOOD `limit=` and `type=` are accepted
     # and IGNORED, so it parses the limit without honouring its value exactly as
     # `/children` does, while `limit=abc` is a **500**; and it refuses the SAME FIFTEEN
@@ -26710,8 +26721,8 @@ def main():
 
 
     # Cycle 45, found by sweeping the QUERY-PARAMETER name space (1,704 cells, three
-    # findings) and then pinned cell by cell on kids and zen with nothing else on the
-    # wire. Three columns rex reads wrongly:
+    # findings) and then pinned cell by cell on plexlab and the 1.42.2 reference with nothing else
+    # on the wire. Three columns rex reads wrongly:
     #
     #  * `extraType=` is a **500 wherever a listing consumes it** -- a section listing
     #    and `/library/all`, typed or untyped, for every value. rex filtered on
@@ -26720,9 +26731,9 @@ def main():
     #  * `unmatched=` is a **500 on `/library/all`** (typed or not) while it is a real
     #    filter on a SECTION listing on both library types. rex filtered on it
     #    everywhere.
-    #  * `file=` is a **200 on `/library/all`** and really filters (kids 11 rows of 14,
-    #    zen 12,899). rex raised its show-listing 500 there, because it decides that
-    #    refusal per ROW and an untyped `/library/all` contains shows. The refusal is a
+    #  * `file=` is a **200 on `/library/all`** and really filters (plexlab 11 rows of 14,
+    #    the 1.42.2 reference 12,899). rex raised its show-listing 500 there, because it decides
+    #    that refusal per ROW and an untyped `/library/all` contains shows. The refusal is a
     #    property of the QUERY's type: `type=2` refuses everywhere, `type=3` refuses on
     #    `/library/all` and answers on a section listing, and nothing else refuses.
     cols_c45 = {}
@@ -26754,8 +26765,8 @@ def main():
 
     # Cycle 45, caught while verifying this cycle's own `file=` patch: a SECTION listing
     # with no explicit `type=` uses the LIBRARY's own top-level type, so a SHOW library's
-    # bare `?file=mkv` is the `type=2` case and a **500** on kids and zen alike, while
-    # `type=3` and `type=4` there answer. The patch read the absent type as "no refusal"
+    # bare `?file=mkv` is the `type=2` case and a **500** on plexlab and the 1.42.2 reference alike,
+    # while `type=3` and `type=4` there answer. The patch read the absent type as "no refusal"
     # and answered 200.
     file_c45d = {}
     if show_section:
@@ -26772,7 +26783,7 @@ def main():
 
     # Cycle 45, and it is cycle 44's own fix finished. Cycle 44 measured that a `.webm`
     # file's container is `mkv` on a real PMS -- on the IDENTICAL 571,346,576-byte file,
-    # zen answers `mkv` where rex answered `webm` -- and corrected `build_media`.
+    # the 1.42.2 reference answers `mkv` where rex answered `webm` -- and corrected `build_media`.
     # `normalize_media`, the load-time corrector that exists precisely so a catalog built
     # before a rule was measured is fixed on load, was not touched, so every catalog
     # already on disk went on serving `webm`.
@@ -26856,13 +26867,13 @@ def main():
     # load (captured through plexlab):
     #
     #  * `asyncCheckFiles=1` adds `Part.accessible`/`exists`, exactly as `checkFiles=1`
-    #    does. On kids (1.43.4) it is deterministic -- the pair on 17 of 17 reads. On zen
-    #    (1.42.2) the check is genuinely SCHEDULED rather than blocking, so the pair
+    #    does. On plexlab (1.43.4) it is deterministic -- the pair on 17 of 17 reads. On the 1.42.2
+    #    reference (1.42.2) the check is genuinely SCHEDULED rather than blocking, so the pair
     #    appears on 9 of 16 reads of the same rows while `checkFiles=1` is 4 of 4; on a
     #    fresh isolated 1.42.2 copy that has never run one it never appears. rex has
     #    no async check and hard-codes the pair, so answering it like `checkFiles=1` is
-    #    the completed case -- which is what kids always answers and what zen answers
-    #    once the check has run. Cycle 22 measured this option's value GRAMMAR and added
+    #    the completed case -- which is what plexlab always answers and what the 1.42.2 reference
+    #    answers once the check has run. Cycle 22 measured this option's value GRAMMAR and added
     #    it to the validation loop without ever measuring its EFFECT, so it was refused
     #    correctly and then did nothing.
     #  * `/:/timeline?playbackTime=` is a VALIDATED signed 32-bit integer -- the client
@@ -26905,10 +26916,10 @@ def main():
 
 
     # Cycle 45: TEN more cross-type secondary axes, each with its own `title2`, measured
-    # on kids, zen and both writable copies. `CROSS_TYPE_AXES` held nine; the music and
-    # photo families it covers are not the whole list, and these are the sport, podcast
-    # and photo-EXIF ones. Two quirks, both on kids AND zen: `platform` (cycle 45's
-    # earlier finding) carries `title2: ""`, and **`narrator` is the only axis on the
+    # on plexlab, the 1.42.2 reference and both writable copies. `CROSS_TYPE_AXES` held nine; the
+    # music and photo families it covers are not the whole list, and these are the sport, podcast
+    # and photo-EXIF ones. Two quirks, both on plexlab AND the 1.42.2 reference: `platform` (cycle
+    # 45's earlier finding) carries `title2: ""`, and **`narrator` is the only axis on the
     # surface that does not validate `type=`** -- `type=abc` there is a 200 where every
     # other tag axis, `/genre` and the ten beside it included, is a 500.
     axes_c45x = {}
@@ -26934,15 +26945,15 @@ def main():
                         if v != (200, 0, want_c45x[k])} or "all ten", typed_c45x))
 
 
-    # Cycle 45: two more section leaves, 200 on kids, zen and both writable copies and
-    # 404 on rex.
+    # Cycle 45: two more section leaves, 200 on plexlab, the 1.42.2 reference and both writable
+    # copies and 404 on rex.
     #
     #  * `/recentlyViewedGrandparents` is byte-identical to `/recentlyViewedShows` on
     #    both library types -- same `title2` ("Recently Viewed Shows"), same rows, same
     #    `allowSync: false`.
     #  * `/recentlyAddedGrandparents` is byte-identical to `/recentlyAdded` on a MOVIE
     #    library; on a SHOW library it rolls the recently-added leaves up to their SHOW,
-    #    drops `mixedParents` and KEEPS `viewGroup: "episode"` (kids: 6 episode rows
+    #    drops `mixedParents` and KEEPS `viewGroup: "episode"` (plexlab: 6 episode rows
     #    become 1 show row).
     grand_c45 = {}
     for label_c45, section_c45 in (("movie", movie_section), ("show", show_section)):
@@ -26973,8 +26984,8 @@ def main():
           str(grand_c45))
 
 
-    # Cycle 45: three more routed endpoints rex 404'd, all 200/400 on kids, zen and
-    # both writable copies. A 404 tells a client the endpoint does not exist.
+    # Cycle 45: three more routed endpoints rex 404'd, all 200/400 on plexlab, the 1.42.2 reference
+    # and both writable copies. A 404 tells a client the endpoint does not exist.
     #
     #  * `/library/sections/{id}/stations/{genre|mood|style|decade}` -- an empty
     #    secondary-ish container carrying `art`, `thumb`, `title1` and NOTHING else (no
@@ -27003,7 +27014,7 @@ def main():
           % (stations_c45, sorted(station_c45), new_c45, view_c45))
 
 
-    # Cycle 45, two exact-value findings measured on kids and zen:
+    # Cycle 45, two exact-value findings measured on plexlab and the 1.42.2 reference:
     #
     #  * `/security/token` validates its parameter VALUES. Both references accept
     #    exactly `type=delegation` and `scope=all`, case-SENSITIVE, and answer **400**
@@ -27052,7 +27063,7 @@ def main():
     #    window, biased earlier -- and it needs `X-Plex-Container-Size` to do anything.
     #    An explicit `X-Plex-Container-Start` WINS over it, a key naming no row in the
     #    list starts at 0 with paging applied, and a value that does not begin
-    #    `/library/metadata/` means the parameter is not read at all. Measured on kids:
+    #    `/library/metadata/` means the parameter is not read at all. Measured on plexlab:
     #    `focus=/library/metadata/4` with `size=2` over its five-row movie grid answers
     #    `size 1, totalSize 5, offset 4`. The name is in PMS's binary with its own log
     #    line and in no client bundle, so nothing measured sends it yet.
@@ -27104,7 +27115,7 @@ def main():
           str(focus_c45))
 
 
-    # Cycle 45, measured on kids (1.43.4) and zen (1.42.2) over 39 cells, identical on
+    # Cycle 45, measured on plexlab (1.43.4) and the 1.42.2 reference over 39 cells, identical on
     # both. TWO findings in one place, and both are reachable from every browser.
     #
     #  * `X-Plex-Accept-Language` is a THIRD localisation input, header AND query, and it
@@ -27163,7 +27174,7 @@ def main():
           str({k: v for k, v in lang_c45.items() if want_c45.get(k) != v}) or "all 16")
 
 
-    # Cycle 45, measured on kids (1.43.4) and zen (1.42.2), which agree on every cell:
+    # Cycle 45, measured on plexlab (1.43.4) and the 1.42.2 reference, which agree on every cell:
     # `/library/shared` is a real endpoint -- the tab bar the Shared view draws -- and
     # rex 404'd it while answering only the `/all` leaf below it. It is a CONSTANT
     # seven-row `Type` container in an identifier of its own
@@ -27190,11 +27201,11 @@ def main():
     # `?limit=` is ignored entirely.
     #
     # NOT measured, and deliberately: **an EMPTY `?sort=` CRASHES a real PMS.** It
-    # closed the connection on kids and SEGV'd zen's Plex outright (systemd:
+    # closed the connection on plexlab and SEGV'd the 1.42.2 reference's Plex outright (systemd:
     # `code=killed, signal=SEGV`), reproduced on both. There is no answer to copy, so
     # rex reads the empty value as absent -- the convention `/collections` already
     # has for it -- and the crash is recorded rather than emulated. Do not send that
-    # request to zen.
+    # request to the 1.42.2 reference.
     shared_c45 = {}
     _status_c45s, tabs_c45, _ = get(base, "/library/shared")
     types_c45 = tabs_c45.get("Type") or []
@@ -27329,10 +27340,10 @@ def main():
           str(theme_c45))
 
 
-    # Cycle 45, measured on kids (1.43.4) and zen (1.42.2): `ownerFeatures` on `GET /`
+    # Cycle 45, measured on plexlab (1.43.4) and the 1.42.2 reference: `ownerFeatures` on `GET /`
     # and `subscriptionFeatures` on `/myplex/account` are the SAME STRING, byte for byte
-    # -- 7,078 characters on kids and 6,967 on zen, identical within each server.
-    # rex answered `pass,sync,hwtranscode` for one and the bare `pass` for the
+    # -- 7,078 characters on plexlab and 6,967 on the 1.42.2 reference, identical within each
+    # server. rex answered `pass,sync,hwtranscode` for one and the bare `pass` for the
     # other, so its own two fields contradicted each other and the client -- which reads
     # `ownerFeatures` in 28 places in its bundle -- was told the account had three
     # features on one path and one on the other.
@@ -27365,11 +27376,11 @@ def main():
 
 
     # Cycle 45, caught by `tests/test_catalog_features.py` on the cycle's own head and
-    # re-measured on kids and zen: this cycle's `extraType` refusal reached the SECTION
-    # EXTRAS leaf, which is the one listing that really reads the field. Both references
-    # answer 200 there and constrain -- zen's 3,580 clips are 1,264 at `extraType=1` and
-    # 54 at `extraType=3`, and a value that does not parse (`abc`, an empty one) is a 200
-    # with NO rows rather than the 500 an ordinary listing gives. `/library/all` and a
+    # re-measured on plexlab and the 1.42.2 reference: this cycle's `extraType` refusal reached the
+    # SECTION EXTRAS leaf, which is the one listing that really reads the field. Both references
+    # answer 200 there and constrain -- the 1.42.2 reference's 3,580 clips are 1,264 at
+    # `extraType=1` and 54 at `extraType=3`, and a value that does not parse (`abc`, an empty one)
+    # is a 200 with NO rows rather than the 500 an ordinary listing gives. `/library/all` and a
     # section grid keep the 500.
     #
     # The commit that added the refusal put the name in `REFUSED_FILTER_FIELDS`, which
@@ -27399,14 +27410,14 @@ def main():
 
     # Cycle 46, found by sweeping the OPTION name space the way cycle 45 swept the path
     # one -- 116 option-shaped names taken from the PMS binary's own string block and the
-    # official web client's bundle, against 19 container paths on kids, zen and rex.
-    # `checkFileAvailability` is a full SIBLING of `checkFiles`: the same
+    # official web client's bundle, against 19 container paths on plexlab, the 1.42.2 reference and
+    # rex. `checkFileAvailability` is a full SIBLING of `checkFiles`: the same
     # `accessible`/`exists` pair on the Part, the same `+?0*[01]` value grammar (`0`,
     # `1`, `01`, `+1` pass and everything else -- an empty value, `2`, `-1`, `1.5`,
     # `true`, `abc` -- is a 400), and the same reach (a DETAIL read only; a section grid,
     # `/library/all` and `/children` are byte-identical with and without it, exactly as
-    # they are for `checkFiles`). Measured on kids and zen, which agree on all 20 cells.
-    # rex knew the six options cycle 22's 60-name sweep found and not this one --
+    # they are for `checkFiles`). Measured on plexlab and the 1.42.2 reference, which agree on all
+    # 20 cells. rex knew the six options cycle 22's 60-name sweep found and not this one --
     # that sweep read the detail path's own vocabulary, where this name does not appear.
     avail_c46 = {}
     for value_c46a in ("", "0", "1", "01", "+1", "2", "-1", "1.5", "true", "abc"):
@@ -27434,8 +27445,8 @@ def main():
 
     # Cycle 46, from the same option sweep: `includeGuids=1` carries the `Guid` list on
     # `/library/recentlyAdded` as it does on `/library/all`, a section grid and a
-    # section's `recentlyAdded` -- measured on kids and zen, which agree. rex built
-    # this one listing with `_grid_row`'s default, which strips `Guid` unconditionally,
+    # section's `recentlyAdded` -- measured on plexlab and the 1.42.2 reference, which agree. rex
+    # built this one listing with `_grid_row`'s default, which strips `Guid` unconditionally,
     # so the one path the client uses to ask "do you already have this?" across the
     # whole server could never answer with an id.
     _status_c46g, plain_c46g, _ = get(base, "/library/recentlyAdded")
@@ -27500,7 +27511,7 @@ def main():
 
 
     # Cycle 46, from the option sweep: `includeMeta=1` carries a `Meta` on three more
-    # containers than rex answered -- measured on kids and zen, which agree.
+    # containers than rex answered -- measured on plexlab and the 1.42.2 reference, which agree.
     #
     #  * `/hubs/home/onDeck` and `/hubs/home/continueWatching` each carry ONE `Type` row
     #    naming the leaf itself: `{key, type: "mixed", title: "On Deck" / "Continue
@@ -27656,9 +27667,9 @@ def main():
     # `includeStorage=1` on `/media/providers` really does something. Cycle 44's hunt
     # reported it and the re-measurement recorded "no effect"; both references add
     # `durationTotal` and `storageTotal` -- on the `content` FEATURE element (the sum
-    # over every library) and on each library `Directory` (its own). Measured on kids
-    # (110,340 ms / 69,051,341 bytes over two libraries) and zen (33,140,975,506 ms /
-    # 45,597,604,284,267 bytes over three), each equal to the sum of its own rows.
+    # over every library) and on each library `Directory` (its own). Measured on plexlab
+    # (110,340 ms / 69,051,341 bytes over two libraries) and the 1.42.2 reference (33,140,975,506 ms
+    # / 45,597,604,284,267 bytes over three), each equal to the sum of its own rows.
     #
     # And they are JSON **NUMBERS** here where the same two fields on a section GRID row
     # are JSON **STRINGS** (cycle 27) -- same names, different type per path, which XML
@@ -27696,8 +27707,8 @@ def main():
           and feature_c46p[0][3] == sum(r_c46p[3] for r_c46p in libs_c46p),
           str(rows_c46p))
 
-    # Cycle 19: a boolean filter field's whole operator grammar, measured on kids and zen
-    # over `unwatched` and `duplicate`, seven values and all eight operators. Exactly two
+    # Cycle 19: a boolean filter field's whole operator grammar, measured on plexlab and the 1.42.2
+    # reference over `unwatched` and `duplicate`, seven values and all eight operators. Exactly two
     # requests answer the TRUE set -- `field=1` and `field!=0`; every other operator and
     # every other value answers the rows where the column is FALSE. rex compared 0/1
     # numerically, so `unwatched>=0` was the whole library and `unwatched!=2` the unwatched
@@ -27733,9 +27744,9 @@ def main():
           % (bool_count_c19b("duplicate%21=2"), bool_count_c19b("duplicate=0"),
              bool_count_c19b("duplicate%3E=0"), bool_count_c19b("duplicate%21=1")))
 
-    # Cycle 19, measured on kids (1.43.4) and zen (1.42.2): a row with NO value for a
-    # numeric column matches NOTHING -- `!=` and `!==` included. zen's 742 rated movies
-    # split 368/374 across `rating<=7` and `rating>>=7`, so the 3,145 unrated ones are in
+    # Cycle 19, measured on plexlab (1.43.4) and the 1.42.2 reference: a row with NO value for a
+    # numeric column matches NOTHING -- `!=` and `!==` included. The 1.42.2 reference's 742 rated
+    # movies split 368/374 across `rating<=7` and `rating>>=7`, so the 3,145 unrated ones are in
     # neither, and its show library (no row rated at all) answers 0 to all eight operators.
     # And `==`/`!==` are an exact STRING comparison of the stored number: `rating==7` is 0
     # where `rating==7.0` is the 6 rows `rating=7` finds, while `year==2000` is the same 39
@@ -27777,13 +27788,14 @@ def main():
           "years %s  ==%r -> %d   ==%r.0 -> %d"
           % (years_c19n, one_year_c19n, exact_c19n, one_year_c19n, float_c19n))
 
-    # Cycle 19, measured on kids (1.43.4) and zen (1.42.2). `contentRating` is declared
+    # Cycle 19, measured on plexlab (1.43.4) and the 1.42.2 reference. `contentRating` is declared
     # `tag` like `genre`, but it is a COLUMN rather than a join, and it answers all eight
-    # operators: on zen `=PG` and `==PG` are 112 (and `==pg` too -- `=` is case-sensitive,
-    # `==` is not), `<=PG` 3,197 and `>>=PG` 690 partition the 3,887 exactly, and the empty
-    # value compares as "" so `>=` with no value is every row and `<<=` none. `resolution`
+    # operators: on the 1.42.2 reference `=PG` and `==PG` are 112 (and `==pg` too -- `=` is
+    # case-sensitive, `==` is not), `<=PG` 3,197 and `>>=PG` 690 partition the 3,887 exactly, and
+    # the empty value compares as "" so `>=` with no value is every row and `<<=` none. `resolution`
     # is the other way round: every operator, `!=` included, answers the `=` set -- 3,608 of
-    # zen's 3,887 at `1080` for all eight. And `resolution=` matches ANY of a row's Media.
+    # the 1.42.2 reference's 3,887 at `1080` for all eight. And `resolution=` matches ANY of a row's
+    # Media.
     rows_c19t = get(base, "/library/sections/%s/all?type=1" % movie_section)[1].get("Metadata") or []
     rated_c19t = [str(r_c19t.get("contentRating") or "") for r_c19t in rows_c19t]
 
@@ -27827,7 +27839,7 @@ def main():
                          for op_c19t in ("", "%21", "%3D", "%21%3D", "%3C", "%3E", "%3C%3C", "%3E%3E")}
                         if pick_c19t else None))
 
-    # Cycle 19, measured on kids (1.43.4) and zen (1.42.2) with eleven field names:
+    # Cycle 19, measured on plexlab (1.43.4) and the 1.42.2 reference with eleven field names:
     # `excludeFields=` strips the named field from every CHILD ELEMENT, not only from the
     # row -- `id` off Media/Part/Stream/Genre/Guid, `file` off Part, `url` off Image,
     # `value` off Rating, `index` and `codec` off Stream, `tag` off Genre and Role. rex
@@ -27847,9 +27859,9 @@ def main():
              [("id" in s_c19x) for s_c19x in part_c19x.get("Stream") or []][:3],
              [("id" in g_c19x) for g_c19x in row_c19x.get("Genre") or []][:3]))
 
-    # Cycle 19, measured on kids (4 Image and 1 UltraBlurColors before and after) and zen
-    # (2 and 1): `excludeElements=Image` and `=UltraBlurColors` are no-ops on both servers,
-    # exactly like an unknown name, while every other element the option names really goes.
+    # Cycle 19, measured on plexlab (4 Image and 1 UltraBlurColors before and after) and the 1.42.2
+    # reference (2 and 1): `excludeElements=Image` and `=UltraBlurColors` are no-ops on both
+    # servers, exactly like an unknown name, while every other element the option names really goes.
     # rex removed them, so a client naming Image in a bandwidth-trimming list lost the
     # artwork rows and the tile colour wash a real PMS still sends.
     _, plain_c19e, _ = get(base, "/library/metadata/%s" % movie)
@@ -27868,9 +27880,9 @@ def main():
              "Genre" not in after_c19e))
 
     # Cycle 19: the ITEM path has the `/all` form the SECTION path does. Both references
-    # answer `/library/metadata/{id}/extras/all` with the container `/extras` gives -- kids
-    # an empty one, zen a three-clip one -- and rex 404'd the segment, which a client
-    # walking to the paged form of a preplay Extras shelf reads as "this item is gone".
+    # answer `/library/metadata/{id}/extras/all` with the container `/extras` gives -- plexlab
+    # an empty one, the 1.42.2 reference a three-clip one -- and rex 404'd the segment, which a
+    # client walking to the paged form of a preplay Extras shelf reads as "this item is gone".
     status_c19q, body_c19q, _ = get(base, "/library/metadata/%s/extras/all" % movie)
     status_c19r, bare_c19q, _ = get(base, "/library/metadata/%s/extras" % movie)
     status_c19s, _, _ = get(base, "/library/metadata/%s/extras/3" % movie)
@@ -27881,7 +27893,7 @@ def main():
           % (status_c19q, body_c19q.get("size"), status_c19r, bare_c19q.get("size"),
              status_c19s))
 
-    # Cycle 41, re-measured on kids (1.43.4) and zen (1.42.2): file-state fields
+    # Cycle 41, re-measured on plexlab (1.43.4) and the 1.42.2 reference: file-state fields
     # are a DETAIL option. Bare and `checkFiles=0` detail reads omit them;
     # `checkFiles=1` adds both; a section listing omits both even when it receives
     # the option. rex's old plezy compatibility waiver sent both everywhere.
@@ -27916,7 +27928,7 @@ def main():
               for key_c41b in ("accessible", "exists") if key_c41b in listing_part_c41b}))
 
     # Cycle 41, measured by writing the same five tag families on disposable copies of
-    # kids (1.43.4) and zen (1.42.2): both store Style, Collection, Label and Similar
+    # plexlab (1.43.4) and the 1.42.2 reference: both store Style, Collection, Label and Similar
     # on a movie. In JSON and XML alike, Style is immediately after UltraBlurColors,
     # Collection precedes Label, and Similar follows Label; each carries exactly the
     # ordinary `id, filter, tag` tag-row shape. Mood is not stored on a movie.
@@ -27980,8 +27992,8 @@ def main():
                          "&label%%5B%%5D.tag.tag-=C41LABEL"
                          "&similar%%5B%%5D.tag.tag-=C41SIMILAR" % movie)
 
-    # Cycle 19, measured on kids (1.43.4) and zen (1.42.2), identically: `checkFiles=` takes
-    # a bare decimal whole number that is 0 or 1 -- `0`, `1` and `01` are 200 while `abc`,
+    # Cycle 19, measured on plexlab (1.43.4) and the 1.42.2 reference, identically: `checkFiles=`
+    # takes a bare decimal whole number that is 0 or 1 -- `0`, `1` and `01` are 200 while `abc`,
     # an empty value, `2`, `true`, `-1`, `1.5`, a leading space and a trailing one are all
     # 400. rex accepted every one of them. (That rex sends `exists`/`accessible`
     # unconditionally is a deliberate deviation recorded in docs/findings.md; the VALUE
@@ -27995,8 +28007,8 @@ def main():
                   for v_c19c in ("abc", "", "2", "true", "-1", "1.5", " 1", "1 ")),
           str(grammar_c19c))
 
-    # Cycle 19, measured on kids (1.43.4) and zen (1.42.2): inside a `Meta` the `Type` rows
-    # come BEFORE the `FieldType` rows. rex sorted a Meta's children by the item table,
+    # Cycle 19, measured on plexlab (1.43.4) and the 1.42.2 reference: inside a `Meta` the `Type`
+    # rows come BEFORE the `FieldType` rows. rex sorted a Meta's children by the item table,
     # which knows neither name, so they came out in dict order -- FieldType first. XML is
     # the DEFAULT response format, so this is the shape a TV or mobile client reads.
     status_c19o, raw_c19o, _ = request(
@@ -28011,8 +28023,8 @@ def main():
           and "Type" in order_c19o and "FieldType" in order_c19o,
           str(order_c19o[:12]))
 
-    # Cycle 19, measured on kids (1.43.4) and zen (1.42.2), which agree on every sequence:
-    # five element buckets rex had no `_ATTR_ORDER` entry for (`Common`, `Feature`,
+    # Cycle 19, measured on plexlab (1.43.4) and the 1.42.2 reference, which agree on every
+    # sequence: five element buckets rex had no `_ATTR_ORDER` entry for (`Common`, `Feature`,
     # `Type`, the `/media/providers` library `Directory`, and `count`/`hubKey` inside
     # `Directory[none]`), plus the rows of `/library/recentlyAdded` and `/library/onDeck`,
     # which LEAD with `allowSync` and the librarySection triple before `ratingKey` where
@@ -28070,8 +28082,8 @@ def main():
                                             "librarySectionTitle", "librarySectionUUID"]),
           str(recent_c19a[0][:6] if recent_c19a else None))
 
-    # Cycle 19, measured on kids (1.43.4) and zen (1.42.2): a LIGHT row's child elements are
-    # ordered differently from a detail row's. On `?type=1&includeGuids=1` every listing row
+    # Cycle 19, measured on plexlab (1.43.4) and the 1.42.2 reference: a LIGHT row's child elements
+    # are ordered differently from a detail row's. On `?type=1&includeGuids=1` every listing row
     # on both servers answers `Media Image UltraBlurColors Guid Genre Country Director
     # Writer Role`, where the detail row answers `Media Image UltraBlurColors Genre Country
     # Guid Rating Director Writer Role Producer`. rex used one table for both. XML is
@@ -28127,7 +28139,7 @@ def main():
                               "_light" in str(get(base, "/library/sections/%s/all?type=1"
                                                   % movie_section)[1])))
 
-    # Cycle 19, measured on kids (1.43.4) and zen (1.42.2): a real PMS's JSON object keys
+    # Cycle 19, measured on plexlab (1.43.4) and the 1.42.2 reference: a real PMS's JSON object keys
     # come out in exactly its XML order -- the container's, the row's, `Media`'s, `Part`'s
     # and the row's child element keys, on all four row types. rex ordered the XML alone
     # (cycles 16-19) and left the JSON in dict order, so its two formats disagreed on every
@@ -28185,8 +28197,8 @@ def main():
           and request(base, "PUT", "/activities/abc")[0] == 400,
           str(acts_c19s))
 
-    # Cycle 19: `HEAD /:/prefs` is a 200 on kids, zen and plexscratch and rex 404'd it --
-    # the one disagreement in a HEAD sweep over sixty paths and four servers.
+    # Cycle 19: `HEAD /:/prefs` is a 200 on plexlab, the 1.42.2 reference and plexscratch and rex
+    # 404'd it -- the one disagreement in a HEAD sweep over sixty paths and four servers.
     head_c19p, body_c19p, headers_c19p = request(base, "HEAD", "/:/prefs")
     get_c19p, gbody_c19p, _gh_c19p = request(base, "GET", "/:/prefs")
     check("HEAD /:/prefs answers like its GET",
@@ -28242,11 +28254,11 @@ def main():
     check("an empty butler window moves the end hour to start + 1",
           window_c74 == [(5, 6), (23, 0), (6, 4)], window_c74)
 
-    # Cycle 19: `server_prefs.json` was captured off kids (1.43.4) and rex reports 1.42.2
-    # -- the fifth fixture found to be per VERSION. kids answers 174 settings and zen 173,
-    # and exactly `AllowLegacyAgents` and `CLDriver` are on kids and not on zen. A write to
-    # one of them succeeded on rex where a real 1.42.2 refuses the whole request as an
-    # unknown preference.
+    # Cycle 19: `server_prefs.json` was captured off plexlab (1.43.4) and rex reports 1.42.2
+    # -- the fifth fixture found to be per VERSION. plexlab answers 174 settings and the 1.42.2
+    # reference 173, and exactly `AllowLegacyAgents` and `CLDriver` are on plexlab and not on the
+    # 1.42.2 reference. A write to one of them succeeded on rex where a real 1.42.2 refuses the
+    # whole request as an unknown preference.
     _s_c19v, prefs_c19v, _h_c19v = get(base, "/:/prefs")
     ids_c19v = [s_c19v.get("id") for s_c19v in (prefs_c19v.get("Setting") or [])]
     check("the two 1.43.4-only settings are gone",
@@ -28523,9 +28535,9 @@ def main():
     # to it. `type=1` is the listing's own type selector, but `type>>=1`, `type<<=4`,
     # `type!=1`, `type>=3` and `type<=2` each parse into a Rule -- the only rule on the
     # surface with NO `fieldTitle` key at all -- and each really filters, on the row's
-    # TYPE NUMBER: zen answers 0 rows to `type=1&type>>=1` and 3,887 to `type<<=99`, 0
-    # to `type=4&type!=4` and 9,287 to `type=4&type>>=3`, and kids agrees on all four.
-    # It reaches `/library/all` as well. rex called the key an unknown field, so the
+    # TYPE NUMBER: the 1.42.2 reference answers 0 rows to `type=1&type>>=1` and 3,887 to
+    # `type<<=99`, 0 to `type=4&type!=4` and 9,287 to `type=4&type>>=3`, and plexlab agrees on all
+    # four. It reaches `/library/all` as well. rex called the key an unknown field, so the
     # parser reported an Error and the listing answered every row.
     type_parse_c20f = {}
     for label_c20f, key_c20f in ((">>=", "type%3E%3E"), ("<<=", "type%3C%3C"),
@@ -28606,9 +28618,9 @@ def main():
 
     # Cycle 20, the `group=` holdout across 60 candidate keys on both references: five
     # more group. `originalTitle`, `createdAt`, `mediaCount`, `ratingCount` and
-    # `absoluteIndex` each answer a 200 on kids and zen (zen: 472, 3840, 9, 1 and 1
-    # groups of its 3,887 movies) where rex answered the 500 it answers an unknown
-    # key. They are exactly the unadvertised columns cycle 14 and 15 found FILTER, so
+    # `absoluteIndex` each answer a 200 on plexlab and the 1.42.2 reference (the 1.42.2 reference:
+    # 472, 3840, 9, 1 and 1 groups of its 3,887 movies) where rex answered the 500 it answers an
+    # unknown key. They are exactly the unadvertised columns cycle 14 and 15 found FILTER, so
     # the group surface tracks the filter surface rather than the Meta.
     grouped_c20h = {field_c20h: get(base, "/library/sections/%s/all?type=1&group=%s"
                                     % (movie_section, field_c20h))[0]
@@ -28623,12 +28635,12 @@ def main():
           and all(code_c20h == 500 for code_c20h in refused_c20h.values()),
           "%s | still refused %s" % (grouped_c20h, refused_c20h))
 
-    # Cycle 20, measured on zen's 3,887 movies and on kids: of the four unlisted string
-    # fields only `titleSort` folds case. `titleSort<=b` and `<=B` answer the same 127
+    # Cycle 20, measured on the 1.42.2 reference's 3,887 movies and on plexlab: of the four unlisted
+    # string fields only `titleSort` folds case. `titleSort<=b` and `<=B` answer the same 127
     # rows and `<=m`/`<=M` the same 872, while `summary<=b` is 3,884 against `<=B`'s
     # 2,911, `tagline<=b` 3,878 against 3,011 and `originalTitle<=b` 3,548 against
     # 3,439 -- a BYTE-ordered comparison, where an upper-case letter sorts below every
-    # lower-case one. kids reproduces it on five rows (`summary<=b` 5, `<=B` 2).
+    # lower-case one. plexlab reproduces it on five rows (`summary<=b` 5, `<=B` 2).
     # Cycle 18 recorded all four as case-insensitive.
     ordered_c20ac = {}
     for field_c20ac in ("titleSort", "summary"):
@@ -28714,8 +28726,8 @@ def main():
              art_c20i.get("updatedAt")))
 
     # Cycle 20, measured over every owned artwork path of both references: an artwork
-    # URL's version IS the row's `updatedAt` -- 726 of 726 on zen (1.42.2) and 12 of 12
-    # on kids (1.43.4), `thumb` and `art` alike, no exception. The copy shows the
+    # URL's version IS the row's `updatedAt` -- 726 of 726 on the 1.42.2 reference and 12 of 12
+    # on plexlab (1.43.4), `thumb` and `art` alike, no exception. The copy shows the
     # mechanism from the write side: `updatedAt.value=1500000000` through the section
     # save path moves the column AND re-versions the poster to
     # `/library/metadata/1/thumb/1500000000`, which still serves the image. rex
@@ -28924,7 +28936,7 @@ def main():
                                    for got_c20q, want_c20q in codes_c20q.values()),
           "%s" % codes_c20q)
 
-    # Cycle 40, re-measured on kids 1.43.4 and zen 1.42.2 over GET/HEAD,
+    # Cycle 40, re-measured on plexlab 1.43.4 and the 1.42.2 reference over GET/HEAD,
     # JSON/XML Accept and identity/gzip: this legacy Framework action is a fixed
     # 500 application/xml traceback whatever representation the caller asks for.
     # Its GET honours gzip; HEAD carries the uncompressed 464-byte length and no
@@ -29108,8 +29120,8 @@ def main():
           "hub shows=%d shared=%d/%d"
           % (len(prefs_show_c46e), len(shared_prefs_c46e), len(shared_plain_c46e)))
 
-    # Cycle 52, measured on kids (1.43.4), zen (1.42.2) and plexscratch42 (unclaimed 1.42.2),
-    # which agree on all 190 single-segment prefixes of the dispatcher's 31 first segments:
+    # Cycle 52, measured on plexlab (1.43.4), the 1.42.2 reference and plexscratch42 (unclaimed
+    # 1.42.2), which agree on all 190 single-segment prefixes of the dispatcher's 31 first segments:
     # the legacy plug-in dispatcher lists the LAST SEGMENT of every registered prefix that
     # begins with the requested path and is STRICTLY LONGER than it. Cycle 50 captured 58
     # points of that rule as a table, so 119 of the 190 -- every prefix it had not sampled --
@@ -29145,8 +29157,8 @@ def main():
     check("the dispatcher's prefix registry follows its own rule",
           not wrong_c52a, "; ".join(wrong_c52a)[:300])
 
-    # Cycle 52, measured on kids (1.43.4) and zen (1.42.2), byte-identical on both: PMS's own
-    # route table names `/:file(crossdomain.xml|clientaccesspolicy.xml)`, and those two plus
+    # Cycle 52, measured on plexlab (1.43.4) and the 1.42.2 reference, byte-identical on both: PMS's
+    # own route table names `/:file(crossdomain.xml|clientaccesspolicy.xml)`, and those two plus
     # `/favicon.ico` are real static resources. They answer with NO token -- the third,
     # fourth and fifth exception to the 401 rule -- carry `Accept-Ranges: bytes`, are never
     # gzipped, and fall through to the dispatcher for every verb but GET and HEAD. rex
@@ -29178,8 +29190,8 @@ def main():
           and b"MediaContainer" not in policy_c52b,
           "%d/%d bytes" % (len(policy_c52b), len(access_c52b)))
 
-    # Cycle 52, measured on kids (1.43.4), zen (1.42.2), plexscratch and plexscratch42, which
-    # answer the identical seventeen rows in the identical order: `/:/plugins` lists the
+    # Cycle 52, measured on plexlab (1.43.4), the 1.42.2 reference, plexscratch and plexscratch42,
+    # which answer the identical seventeen rows in the identical order: `/:/plugins` lists the
     # plug-ins PMS itself bundles. "The `/:/plugins` listing" had been carried as a
     # deliberate bound since cycles 1-6 on the grounds that rex hosts no plug-ins -- but
     # the list is a fixed table in the image, like the profile files cycle 31 shipped, and
@@ -29239,8 +29251,8 @@ def main():
     check("the plug-in framework's envelope under /:/plugins",
           not wrong_c52c, "; ".join(wrong_c52c)[:300])
 
-    # Cycle 52, measured on kids (1.43.4) and zen (1.42.2) over `/system`, `/system/zzz` and
-    # `/:/plugins/{id}/prefs`: the plug-in framework's cookie rides its OWN responses, and
+    # Cycle 52, measured on plexlab (1.43.4) and the 1.42.2 reference over `/system`, `/system/zzz`
+    # and `/:/plugins/{id}/prefs`: the plug-in framework's cookie rides its OWN responses, and
     # neither the bare OPTIONS 200 nor the PATCH refusal is one of them. Both are answered
     # before the framework runs, so neither carries `Set-Cookie` on either version, where
     # rex attached it to every response under `/system`.
@@ -29259,7 +29271,7 @@ def main():
           not wrong_c52d and get_c52d.get("Set-Cookie") and put_c52d.get("Set-Cookie"),
           "; ".join(wrong_c52d)[:200] or "controls ok")
 
-    # Cycle 52, measured on kids (1.43.4) and zen (1.42.2), identical on both: the photo
+    # Cycle 52, measured on plexlab (1.43.4) and the 1.42.2 reference, identical on both: the photo
     # transcoder FETCHES the `url=` path, and its answer follows that fetch -- a url the
     # server answers with anything but 200 is a 404 here (a missing section composite, an
     # unknown item leaf, a row that borrows the field), and only a 200 whose bytes are not an
@@ -29393,7 +29405,7 @@ def main():
           "key=%s" % key_c52i)
 
     # Cycle 52, read out of the reference image's own `Resources/Graphics` tree and then
-    # measured name by name on kids (1.43.4) and zen (1.42.2), identical on both:
+    # measured name by name on plexlab (1.43.4) and the 1.42.2 reference, identical on both:
     # `/:/resources/*` is **70 names**, not the seven cycle 29 measured from a ten-name
     # sample. 59 are `image/png`, nine `image/jpeg` and two `application/octet-stream`; a
     # DIRECTORY is an empty octet-stream 200 in both spellings; `/:/resources` with no
@@ -29440,8 +29452,8 @@ def main():
                                  int.from_bytes(icon_c52j[16:20], "big"),
                                  int.from_bytes(icon_c52j[20:24], "big")))
 
-    # Cycle 52, measured on kids (1.43.4) and zen (1.42.2): `/connections` is a real route
-    # that answers **text/plain**, one line per connection --
+    # Cycle 52, measured on plexlab (1.43.4) and the 1.42.2 reference: `/connections` is a real
+    # route that answers **text/plain**, one line per connection --
     # `3 10.0.0.1:61216 - Routing - GET /connections #4e445 - Token (plexa630) (curl/8.7.1)`
     # -- where every verb but GET and HEAD falls through to the legacy dispatcher's empty
     # listing. rex answered that dispatcher container to the GET as well, so a caller was
@@ -29467,7 +29479,7 @@ def main():
           status_post_c52k == 200 and b'content="plugins"' in post_c52k,
           "HTTP %s" % status_post_c52k)
 
-    # Cycle 52, measured on kids (1.43.4) and zen (1.42.2), three repeats each: an extra
+    # Cycle 52, measured on plexlab (1.43.4) and the 1.42.2 reference, three repeats each: an extra
     # segment after a stream id is a 404, whatever it is -- `/colors`, `/zzz`, `/loudness/1`
     # -- where the stream itself is the 501 and `/loudness` and `/levels` are their own 404.
     # rex answered the 501 to every name it did not know.
@@ -29488,8 +29500,8 @@ def main():
           stream_c52m and not wrong_c52m and bare_c52m == 501,
           "; ".join(wrong_c52m)[:200] or "bare=%s" % bare_c52m)
 
-    # Cycle 52, measured on kids (1.43.4) and zen (1.42.2): an extra segment after an account
-    # or device id is a 404 -- `/accounts/1/history`, `/accounts/1/zzz`, `/devices/1/zzz`.
+    # Cycle 52, measured on plexlab (1.43.4) and the 1.42.2 reference: an extra segment after an
+    # account or device id is a 404 -- `/accounts/1/history`, `/accounts/1/zzz`, `/devices/1/zzz`.
     # rex's handlers read the id segment and ignored the rest, so `/accounts/1/history`
     # answered the account row and `/devices/1/zzz` the whole device list.
     wrong_c52n = []
@@ -29502,8 +29514,8 @@ def main():
     check("an extra segment after an account or device id is a 404",
           not wrong_c52n and control_c52n == 200, "; ".join(wrong_c52n)[:200])
 
-    # Cycle 52, swept over fifteen names on kids (1.43.4) and zen (1.42.2), which agree on
-    # every one: exactly four actions live under `/system/agents`, each answering the plug-in
+    # Cycle 52, swept over fifteen names on plexlab (1.43.4) and the 1.42.2 reference, which agree
+    # on every one: exactly four actions live under `/system/agents`, each answering the plug-in
     # framework's own TypeError traceback with a 500 -- `search` (456 bytes), `update` (456),
     # `contributors` (478) and `media/get` (462) -- and every other name is a 404 with an
     # EMPTY body. rex answered the AGENT CATALOGUE to `/system/agents/media/get` and to
@@ -29538,8 +29550,8 @@ def main():
     check("the four framework actions under /system/agents",
           not wrong_c52o and catalogue_c52o == 200, "; ".join(wrong_c52o)[:250])
 
-    # Cycle 52, measured on kids (1.43.4) and zen (1.42.2): PMS's own route table spells the
-    # transcoder `/:type(video|music|audio|subtitles)/:/transcode`, and all four prefixes are
+    # Cycle 52, measured on plexlab (1.43.4) and the 1.42.2 reference: PMS's own route table spells
+    # the transcoder `/:type(video|music|audio|subtitles)/:/transcode`, and all four prefixes are
     # routed -- a bare `/audio/:/transcode/universal/decision` is the decision's own
     # no-parameters 400 on both references, like the video form. rex 404'd three of the
     # four, so a music or subtitle client was told the endpoint does not exist rather than
@@ -29555,7 +29567,7 @@ def main():
     check("every transcode prefix the route table names is routed",
           not wrong_c52q and video_c52q == 400, "; ".join(wrong_c52q)[:200])
 
-    # Cycle 52, measured on kids (1.43.4) and zen (1.42.2) with a one-byte Range, three
+    # Cycle 52, measured on plexlab (1.43.4) and the 1.42.2 reference with a one-byte Range, three
     # repeats each: PMS's route table spells the part leaf
     # `/parts/:partID(\d+)/:changestamp(\d+)?/:filename?`, so ONE extra segment is a filename
     # whatever it says -- `/library/parts/{id}/indexes`, `/abc` and `/12345678901` all serve
@@ -29581,10 +29593,10 @@ def main():
     check("the part path's changestamp/filename arity",
           part_c52r and not wrong_c52r, "; ".join(wrong_c52r)[:200])
 
-    # Cycle 52, measured on kids and zen: `/library/metadata/augmentations/{x}` parses the id
-    # BEFORE it looks the row up, so a value that is not a number is a **400** (89 bytes) and
-    # a number is the ordinary 404 -- the shape `/devices`, `/accounts`, `/playQueues` and
-    # `/system/scanners` already have. rex answered 404 to both.
+    # Cycle 52, measured on plexlab and the 1.42.2 reference: `/library/metadata/augmentations/{x}`
+    # parses the id BEFORE it looks the row up, so a value that is not a number is a **400** (89
+    # bytes) and a number is the ordinary 404 -- the shape `/devices`, `/accounts`, `/playQueues`
+    # and `/system/scanners` already have. rex answered 404 to both.
     bad_c52p, body_c52p, _ = request(base, "GET", "/library/metadata/augmentations/zzz",
                                      want_json=False)
     good_c52p, good_body_c52p, _ = request(base, "GET", "/library/metadata/augmentations/1",
@@ -29594,11 +29606,11 @@ def main():
           and good_c52p == 404 and len(good_body_c52p) == 85,
           "bad=%s/%s good=%s" % (bad_c52p, len(body_c52p), good_c52p))
 
-    # Cycle 52, measured on zen (1.42.2, the build rex reports) and kids (1.43.4):
+    # Cycle 52, measured on the 1.42.2 reference (the build rex reports) and plexlab (1.43.4):
     # `/hubs/sections/{id}/popular` is a real route rex 404'd. Its rows are the library's
     # SEASONS with a `viewCount` above zero, most-watched first, in the full row projection,
     # and its container carries `allowSync` and the librarySection triple with a NUMERIC id.
-    # A movie library answers the empty container on zen whatever its play counts.
+    # A movie library answers the empty container on the 1.42.2 reference whatever its play counts.
     _, before_c52s, _ = get(base, "/hubs/sections/%s/popular" % show_section)
     episodes_c52s = []
     for season_c52s in (get(base, "/library/metadata/%s/children?excludeAllLeaves=1" % show)[1]
@@ -29627,12 +29639,12 @@ def main():
           % (len(before_c52s.get("Metadata") or []), len(rows_c52s), movie_c52s,
              extra_c52s, missing_c52s))
 
-    # Cycle 52, measured on zen (1.42.2, 32 genres) and kids (1.43.4, 7), which agree on every
-    # cell: a Categories tile's `thumb` carries a `blendColor` -- thirteen genre names have a
+    # Cycle 52, measured on the 1.42.2 reference (32 genres) and plexlab (1.43.4, 7), which agree on
+    # every cell: a Categories tile's `thumb` carries a `blendColor` -- thirteen genre names have a
     # FIXED colour and every other genre takes the next of a seven-colour cycle walked in
-    # TAG-ID order among the unknown ones (19 of 19 on zen, 3 of 3 on kids) -- and the thumb
-    # is the FIRST attribute of the row, ahead of `type`. rex emitted no `blendColor` at
-    # all, so a TV client's Categories browse drew every tile untinted, and its attribute
+    # TAG-ID order among the unknown ones (19 of 19 on the 1.42.2 reference, 3 of 3 on plexlab) --
+    # and the thumb is the FIRST attribute of the row, ahead of `type`. rex emitted no `blendColor`
+    # at all, so a TV client's Categories browse drew every tile untinted, and its attribute
     # order was `type, key, title, thumb`.
     # By the time this runs the suite has replaced the fixture's genre lists several times,
     # so the check MAKES the state it needs rather than assuming the catalog's own genres:
@@ -29658,11 +29670,11 @@ def main():
           status_c52t == 200 and rows_c52t and known_c52t and not wrong_c52t,
           "; ".join(wrong_c52t)[:250] or "%d tiles" % len(rows_c52t))
 
-    # Cycle 52, measured on zen (1.42.2): 479 of its 3,416 actor-axis rows carry
+    # Cycle 52, measured on the 1.42.2 reference: 479 of its 3,416 actor-axis rows carry
     # `/:/resources/actor-icon.png?t=<stamp>` and not one row lacks a `thumb`, while a
-    # director, writer or producer with no portrait carries none at all (979 of kids' and
-    # zen's 1,445 director rows have one) -- so the placeholder is the actor axis's alone.
-    # rex left the attribute off, so Plex Web's Cast grid drew a broken image for anyone
+    # director, writer or producer with no portrait carries none at all (979 of plexlab's and
+    # the 1.42.2 reference's 1,445 director rows have one) -- so the placeholder is the actor axis's
+    # alone. rex left the attribute off, so Plex Web's Cast grid drew a broken image for anyone
     # without a portrait.
     request(base, "PUT", "/library/metadata/%s?actor[0].tag.tag=%s"
             % (movie, quote("C52 Nameless Player")))
@@ -29720,10 +29732,10 @@ def main():
     check("the framework counts the arguments its own signature declares",
           not wrong_c52w, "; ".join(wrong_c52w)[:250])
 
-    # Cycle 53, measured on kids (1.43.4) and zen (1.42.2), identical on both: every container
-    # carries `mediaTagPrefix="/system/bundle/media/flags/"` and every path under it answered
-    # a 404 here -- so a client that followed the prefix a row gave it got nothing. PMS's own
-    # `Media-Flags.bundle` holds eight types, 742 PNGs and 624 substitution regexes; a known
+    # Cycle 53, measured on plexlab (1.43.4) and the 1.42.2 reference, identical on both: every
+    # container carries `mediaTagPrefix="/system/bundle/media/flags/"` and every path under it
+    # answered a 404 here -- so a client that followed the prefix a row gave it got nothing. PMS's
+    # own `Media-Flags.bundle` holds eight types, 742 PNGs and 624 substitution regexes; a known
     # value is its own image, an unknown VALUE is the bundle's 32x32 blank with a 200, and an
     # unknown TYPE or an empty value is the `/system` empty-bodied 404. The three substituted
     # types match case-insensitively (`studio/Disney` and `studio/Walt Disney Pictures` are
@@ -29779,9 +29791,9 @@ def main():
           "disney=%d walt=%d dts=%d ac3=%d"
           % (len(disney_c53a), len(walt_c53a), len(dts_c53a), len(ac3_c53a)))
 
-    # Cycle 53, measured on kids and zen: a flag image is served by the plug-in framework, so
-    # its header block is the `/system` family's -- the length before the type, the framework
-    # cookie, `Cache-Control: no-cache` -- and it names NO range unit, where rex's asset
+    # Cycle 53, measured on plexlab and the 1.42.2 reference: a flag image is served by the plug-in
+    # framework, so its header block is the `/system` family's -- the length before the type, the
+    # framework cookie, `Cache-Control: no-cache` -- and it names NO range unit, where rex's asset
     # handler added `Accept-Ranges: bytes`.
     _, _, flag_head_c53b = request(
         base, "GET", "/system/bundle/media/flags/videoResolution/1080", want_json=False)
@@ -29794,9 +29806,9 @@ def main():
           "flag=%s asset=%s" % (flag_head_c53b.get("Accept-Ranges"),
                                 asset_head_c53b.get("Accept-Ranges")))
 
-    # Cycle 53, measured on kids and zen: the flag service registers TEN types, two of which
-    # (`media`, `recordLabel`) have no directory in the bundle at all -- so every value under
-    # them is the blank with a 200 where an unknown TYPE is the empty-bodied 404. And the
+    # Cycle 53, measured on plexlab and the 1.42.2 reference: the flag service registers TEN types,
+    # two of which (`media`, `recordLabel`) have no directory in the bundle at all -- so every value
+    # under them is the blank with a 200 where an unknown TYPE is the empty-bodied 404. And the
     # value takes at most ONE extra segment (the country form, which every type accepts and
     # only `contentRating` has files for); a third segment is a 404. rex 404'd the two
     # directoryless types and answered the blank to a third segment.
@@ -29815,8 +29827,8 @@ def main():
     check("the flag service's ten types and its one country segment",
           not wrong_c53c, "; ".join(wrong_c53c)[:250])
 
-    # Cycle 53, read out of `System.bundle/Contents/Code/` and then measured on kids (1.43.4)
-    # and zen (1.42.2), byte-identical on both: eighteen more framework routes rex
+    # Cycle 53, read out of `System.bundle/Contents/Code/` and then measured on plexlab (1.43.4)
+    # and the 1.42.2 reference, byte-identical on both: eighteen more framework routes rex
     # answered nothing for. `peerservice.py` registers channels and plugins over five
     # directory names -- ten paths, each the framework's 130-byte EMPTY container with no
     # channel installed; `systemservice.py` answers a 229-byte agent-service status report and
@@ -29853,8 +29865,8 @@ def main():
           "%s | %s" % (sorted(k for k in plain_head_c53d if k.lower() == "content-type"),
                        xml_head_c53d.get("Content-Type")))
 
-    # Cycle 53, measured on kids (1.43.4), zen (1.42.2) and plexscratch42, three repeats each:
-    # three envelope rules under `/system`. The framework does NOT close its error response --
+    # Cycle 53, measured on plexlab (1.43.4), the 1.42.2 reference and plexscratch42, three repeats
+    # each: three envelope rules under `/system`. The framework does NOT close its error response --
     # all five `plugin-xml` paths answer `Connection: Keep-Alive` and a second request on the
     # same socket is served, where rex closed on a comment nobody had measured. Five
     # routes put `Cache-Control` SECOND rather than last. And `/system//` is the framework's
@@ -29953,8 +29965,8 @@ def main():
           "%s/%s/%s" % (status_c53e, len(body_slash_c53e),
                         head_slash_c53e.get("Content-Type")))
 
-    # Cycle 53, measured over three identifiers on kids (1.43.4) and zen (1.42.2), which agree:
-    # only the BARE `/system/agents` is PMS's own handler. Everything under it is the plug-in
+    # Cycle 53, measured over three identifiers on plexlab (1.43.4) and the 1.42.2 reference, which
+    # agree: only the BARE `/system/agents` is PMS's own handler. Everything under it is the plug-in
     # framework's, so `/system/agents/{id}/config/{N}` is written by the framework's
     # serialiser -- the single-quoted declaration and a SELF-CLOSED empty container, 130 bytes
     # -- and it is the one framework document that carries NO cookie, where its sibling
@@ -29976,8 +29988,8 @@ def main():
           % (status_c53f, len(config_c53f), head_c53f.get("Set-Cookie") is not None,
              len(contrib_c53f), contrib_head_c53f.get("Set-Cookie") is not None))
 
-    # Cycle 53, measured on kids (1.43.4) and zen (1.42.2): `/system/library/sections` carries
-    # THIRTEEN attributes per row and rex emitted four of them plus an `agent` that no
+    # Cycle 53, measured on plexlab (1.43.4) and the 1.42.2 reference: `/system/library/sections`
+    # carries THIRTEEN attributes per row and rex emitted four of them plus an `agent` that no
     # reference sends anywhere. The `key` is the URL-safe base64 of
     # `http://{host}:{port}/library/sections/{id}`; `unique` marks a title that occurs once;
     # the rows are sorted by the lower-cased title; the container carries the framework's
@@ -30013,7 +30025,7 @@ def main():
              [k_c53g for k_c53g in wanted_c53g if rows_c53g and k_c53g not in rows_c53g[0]],
              decoded_c53g[:1], extra_c53g))
 
-    # Cycle 53, measured on kids (1.43.4) and zen (1.42.2): a plug-in FRAMEWORK container
+    # Cycle 53, measured on plexlab (1.43.4) and the 1.42.2 reference: a plug-in FRAMEWORK container
     # pages without emitting an `offset` -- cycle 18 measured that on `/system` -- and it
     # still answers both `X-Plex-Container-*` response headers. rex keyed those headers on
     # the body's `offset`, so the one family that has none sent neither. And
@@ -30046,7 +30058,7 @@ def main():
     check("a framework container pages and names its window in the headers",
           not wrong_c53h, "; ".join(wrong_c53h)[:250])
 
-    # Cycle 53, measured on kids (1.43.4) and zen (1.42.2), identical on both: five more
+    # Cycle 53, measured on plexlab (1.43.4) and the 1.42.2 reference, identical on both: five more
     # sub-paths under a hosted plug-in are real, where cycle 52 recorded everything but
     # `prefs` as the framework's empty-bodied 404. `prefs/list` is byte-identical to `prefs`;
     # `plist` is the bundle's own `Info.plist` as `text/plain`; `prefs/set` an empty
@@ -30106,7 +30118,7 @@ def main():
           "same=%s root=%s %s" % (prefs_c53i == list_c53i, root_c53i,
                                   root_head_c53i.get("Location")))
 
-    # Cycle 53, measured on kids (1.43.4), zen (1.42.2) and both disposable copies: a
+    # Cycle 53, measured on plexlab (1.43.4), the 1.42.2 reference and both disposable copies: a
     # framework route whose own state COOKIE the server cannot unpack answers a 200 with an
     # EMPTY body, `Content-Type: text/html; charset=UTF-8` and `Server: TornadoServer/1.0` --
     # the one `Server:` header on the surface, which cycle 33 recorded as never sent. It
@@ -30149,8 +30161,8 @@ def main():
     check("a framework route with an unreadable state cookie answers Tornado's empty 200",
           not wrong_c53j, "; ".join(wrong_c53j)[:280])
 
-    # Cycle 53, measured on kids (1.43.4), zen (1.42.2), plexscratch and plexscratch42, which
-    # answer the identical eleven identifiers: a real PMS lists the LEGACY plug-in agents
+    # Cycle 53, measured on plexlab (1.43.4), the 1.42.2 reference, plexscratch and plexscratch42,
+    # which answer the identical eleven identifiers: a real PMS lists the LEGACY plug-in agents
     # beside the modern four, so a settings page reading `/system/agents` sees 15 rows on
     # 1.42.2 and saw four here. They had been carried as an inherited bound since cycles
     # 1-6; cycle 52 retired the sibling half (the `/:/plugins` listing) on the grounds that a
@@ -30176,7 +30188,8 @@ def main():
           len(rows_c53k) == 15 and len(legacy_c53k) == 11
           and identifiers_c53k[0] == "com.plexapp.agents.fanarttv"
           and identifiers_c53k[-1] == "tv.plex.agents.none"
-          # kids and zen send a JSON boolean here (cycle 87, c87_w2_system_agents_zen.json)
+          # plexlab and the 1.42.2 reference send a JSON boolean here (cycle 87,
+          # c87_w2_system_agents_zen.json)
           and imdb_c53k and imdb_c53k[0].get("primary") is True
           and (_rows_c53k(imdb_c53k[0].get("MediaType")) or [{}])[0].get("name")
           == "Plex Movie (Legacy)"
@@ -30204,9 +30217,9 @@ def main():
           "%d rows, %d legacy, imdb langs=%d"
           % (len(typed_rows_c53k), len(typed_legacy_c53k), len(imdb_langs_c53k)))
 
-    # Cycle 53, measured over all seventeen hosted identifiers on kids (1.43.4) and zen
-    # (1.42.2), identical on both: nine legacy agents answer an attribution TEXT and eight an
-    # IMAGE, `org.musicbrainz.agents.music` answers an empty text and no image, and every
+    # Cycle 53, measured over all seventeen hosted identifiers on plexlab (1.43.4) and the 1.42.2
+    # reference (1.42.2), identical on both: nine legacy agents answer an attribution TEXT and eight
+    # an IMAGE, `org.musicbrainz.agents.music` answers an empty text and no image, and every
     # other identifier -- the four modern agents included -- is a 404 on both leaves. The
     # bundle rex itself serves draws a 100x100 `<img>` per listed agent from the image
     # leaf, and rex 404'd every one.
@@ -30239,12 +30252,13 @@ def main():
           not wrong_c53l, "; ".join(wrong_c53l)[:250])
 
     # Cycle 53, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4) on a movie and an
-    # episode, and corroborated on zen's own live next-up row: a `/hubs/continueWatching` row
-    # and a `/hubs/continueWatching/items` row carry an integer `includedAt` directly after
-    # `lastViewedAt` and before `year`, where `/hubs/home/continueWatching`,
-    # `/hubs/sections/{id}/continueWatching/items` and `/library/onDeck` carry none. Plex
-    # Web's continue-watching reducer reads `includedAt ?? lastViewedAt`, so rex's rows
-    # ordered by the view time instead of the hub's own inclusion stamp.
+    # episode, and corroborated on the 1.42.2 reference's own live next-up row: a
+    # `/hubs/continueWatching` row and a `/hubs/continueWatching/items` row carry an integer
+    # `includedAt` directly after `lastViewedAt` and before `year`, where
+    # `/hubs/home/continueWatching`, `/hubs/sections/{id}/continueWatching/items` and
+    # `/library/onDeck` carry none. Plex Web's continue-watching reducer reads `includedAt ??
+    # lastViewedAt`, so rex's rows ordered by the view time instead of the hub's own inclusion
+    # stamp.
     request(base, "GET", "/:/timeline?ratingKey=%s&key=%s&state=playing&time=300000"
             "&duration=900000&identifier=com.plexapp.plugins.library" % (movie, movie))
     _, items_c53m, _ = get(base, "/hubs/continueWatching/items")
@@ -30268,10 +30282,10 @@ def main():
           "items=%d hub=%d home=%d deck=%d"
           % (len(rows_c53m), len(hub_rows_c53m), len(home_rows_c53m), len(deck_rows_c53m)))
 
-    # Cycle 53, measured on kids (episode 8, season 7) and zen (episode 19758), each twice:
-    # `includeAlternates=1` inlines the row's OWN remote candidate list, so a row whose
-    # `/arts` offers no AGENT candidate carries no `Art` key at all -- while zen's season
-    # 19757, whose `/arts` answers two, carries one. rex inlined the SHOW's candidate
+    # Cycle 53, measured on plexlab (episode 8, season 7) and the 1.42.2 reference (episode 19758),
+    # each twice: `includeAlternates=1` inlines the row's OWN remote candidate list, so a row whose
+    # `/arts` offers no AGENT candidate carries no `Art` key at all -- while the 1.42.2 reference's
+    # season 19757, whose `/arts` answers two, carries one. rex inlined the SHOW's candidate
     # onto every episode and season, because `hierarchy` copies `_art_url` down and the
     # option read it without the ownership gate the candidate leaf applies: the server
     # contradicted its own `/arts`.
@@ -30304,8 +30318,8 @@ def main():
           show and not wrong_c53n, "; ".join(wrong_c53n)[:200])
 
     # Cycle 53, read out of PMS's own database template and then measured field by field on
-    # kids (1.43.4) and zen (1.42.2), which agree cell for cell: ten more columns are real
-    # query fields -- `remote`, `isAdult`, `resourcesChangedAt`, `userFields`,
+    # plexlab (1.43.4) and the 1.42.2 reference, which agree cell for cell: ten more columns are
+    # real query fields -- `remote`, `isAdult`, `resourcesChangedAt`, `userFields`,
     # `lastSkippedAt`, `mediaAnalysisVersion`, `beginsAt`, `endsAt`, `agent` and `source`.
     # rex knew none of them, and an UNKNOWN field answers every row, so a smart list built
     # on one silently selected the whole library while `/query/parse` called the field
@@ -30370,7 +30384,7 @@ def main():
     # 400 to nine of the ten, and six of them are a 500 on the SECTION path, the split
     # `lastRatedAt` already had. Only `isAdult` reads back: exactly the literal `1` stores it,
     # every other value clears it, and the row then carries `isAdult: true` between
-    # `originalTitle` and `summary` -- which zen's row 631 shows on a real library.
+    # `originalTitle` and `summary` -- which the 1.42.2 reference's row 631 shows on a real library.
     wrong_c53p = []
     for column_c53p in ("remote", "isAdult", "resourcesChangedAt", "userFields",
                         "lastSkippedAt", "mediaAnalysisVersion", "beginsAt", "endsAt",
@@ -30418,10 +30432,10 @@ def main():
 
     # Cycle 54, read out of the server binary's own SQL (the settings-column projection
     # `lastViewedAt,viewCount,viewUpdatedAt,viewOffset,guid` and Plex Web's own hub query
-    # `sort=viewUpdatedAt:desc`) and measured on zen (1.42.2), kids (1.43.4) and
+    # `sort=viewUpdatedAt:desc`) and measured on the 1.42.2 reference, plexlab (1.43.4) and
     # plexscratch42: `viewUpdatedAt` is a real sort key and a real DATE filter column --
-    # the time the row's view state was last written. zen's `>>=1` is 424 of 3,887 and
-    # `>>=9999999999` none, a word is a 500, and a row never written matches nothing.
+    # the time the row's view state was last written. The 1.42.2 reference's `>>=1` is 424 of 3,887
+    # and `>>=9999999999` none, a word is a 500, and a row never written matches nothing.
     import time as time_c54a
     status_c54a, _, _ = request(base, "GET", "/library/sections/%s/all?sort=viewUpdatedAt:desc"
                                 % movie_section)
@@ -30477,8 +30491,8 @@ def main():
         check("an episode scrobble stamps viewUpdatedAt up the tree", all(chain_c54a),
               "episode/season/show %s" % chain_c54a)
 
-    # Cycle 54, found through the binary's SQL and fitted exactly on zen (16 of 16 cells over
-    # 9,287 episodes and 741 seasons) and kids: on an EPISODE listing, and for
+    # Cycle 54, found through the binary's SQL and fitted exactly on the 1.42.2 reference (16 of 16
+    # cells over 9,287 episodes and 741 seasons) and plexlab: on an EPISODE listing, and for
     # `unwatchedLeaves` on a season listing too, every leaf-count filter reads the SHOW's
     # counts -- cycle 14's season rule, one level further down. rex read the leaf's own
     # counts, which it does not have, so every unwatched episode fell in `unwatchedLeaves=0`.
@@ -30526,8 +30540,8 @@ def main():
         request(base, "PUT", "/:/rate?key=%s&identifier=com.plexapp.plugins.library&rating=%s"
                 % (movie, value_c54c))
 
-    # Cycle 54, measured on zen (1.42.2) and kids (1.43.4): three of cycle 53's ten schema
-    # columns are DATES, not integers. `lastSkippedAt`, `beginsAt` and `endsAt` each take
+    # Cycle 54, measured on the 1.42.2 reference and plexlab (1.43.4): three of cycle 53's ten
+    # schema columns are DATES, not integers. `lastSkippedAt`, `beginsAt` and `endsAt` each take
     # `-5y` and `2020-01-01` and refuse `1.5` with a 500 -- the grammar of `lastRatedAt`.
     wrong_c54e = []
     for column_c54e in ("lastSkippedAt", "beginsAt", "endsAt"):
@@ -30539,9 +30553,9 @@ def main():
     check("lastSkippedAt, beginsAt and endsAt are date columns", not wrong_c54e,
           "; ".join(wrong_c54e))
 
-    # Cycle 54, measured on zen (1.42.2) and kids (1.43.4): `lastViewedAt`, `lastRatedAt`
+    # Cycle 54, measured on the 1.42.2 reference and plexlab (1.43.4): `lastViewedAt`, `lastRatedAt`
     # and `lastSkippedAt` join `viewCount`/`viewOffset` -- a row with NO stored value is read
-    # as BELOW every value and equal to 0. zen's `lastRatedAt=0`, `<<=1`, `<=1` and
+    # as BELOW every value and equal to 0. The 1.42.2 reference's `lastRatedAt=0`, `<<=1`, `<=1` and
     # `<<=2020-01-01` are all the 3,465 unrated movies and `!=5` is the 422 rated ones.
     # Cycle 20's "a NULL date matches nothing" holds for every OTHER date column.
     request(base, "PUT", "/:/unscrobble?key=%s&identifier=com.plexapp.plugins.library" % movie)
@@ -30559,12 +30573,12 @@ def main():
                 wrong_c54d.append("%s%s" % (column_c54d, filter_c54d))
     check("an unset per-user date reads as zero", not wrong_c54d, "; ".join(wrong_c54d))
 
-    # Cycle 54, from the parameter names the server binary reads, measured on zen (1.42.2),
-    # kids (1.43.4) and plexscratch42: six MEDIA columns filter a listing. The three numbers
+    # Cycle 54, from the parameter names the server binary reads, measured on the 1.42.2 reference,
+    # plexlab (1.43.4) and plexscratch42: six MEDIA columns filter a listing. The three numbers
     # (`mediaHeight`, `mediaWidth`, `mediaAudioChannels`) refuse a word or an empty value
     # with a 500; the three names (`mediaVideoCodec`, `mediaAudioCodec`, `mediaContainer`)
-    # compare case-sensitively -- zen's `mediaVideoCodec=h264` is 1,816 of 3,887 and `=H264`
-    # and `==H264` none. rex did not know them, and an unknown field answers every row.
+    # compare case-sensitively -- the 1.42.2 reference's `mediaVideoCodec=h264` is 1,816 of 3,887
+    # and `=H264` and `==H264` none. rex did not know them, and an unknown field answers every row.
     _, grid_c54f = get(base, "/library/sections/%s/all" % movie_section)[:2]
     codecs_c54f = {m.get("videoCodec") for r in grid_c54f.get("Metadata") or []
                    for m in r.get("Media") or []}
@@ -30592,7 +30606,7 @@ def main():
         wrong_c54f.append("query/parse has no Rule")
     check("the six media columns filter a listing", not wrong_c54f, "; ".join(wrong_c54f))
 
-    # Cycle 54, from the binary's parameter names, measured on zen (1.42.2) and kids
+    # Cycle 54, from the binary's parameter names, measured on the 1.42.2 reference and plexlab
     # (1.43.4): eighteen more TAG-TABLE fields filter a listing although no Meta advertises
     # them. `=` with any value matches only rows carrying that tag -- none on either
     # reference -- `!=` every row, and any other operator is an unknown key (every row).
@@ -30607,11 +30621,11 @@ def main():
     check("eighteen more tag-table fields filter a listing", not wrong_c54g,
           ", ".join(wrong_c54g))
 
-    # Cycle 54, from the binary's parameter names, measured on zen (1.42.2) and kids
+    # Cycle 54, from the binary's parameter names, measured on the 1.42.2 reference and plexlab
     # (1.43.4): the four photo-cluster columns parse as integers -- a word or an empty value
     # is a 500 -- and match NO row under any operator; and `trash` is an INTEGER column, not
     # a boolean (`trash=abc` and `trash=` are 500s, `=01` is 1). rex holds no trashed
-    # row, so its `trash` is 0 everywhere, as kids' is: `=0` every row, `!=0` none.
+    # row, so its `trash` is 0 everywhere, as plexlab's is: `=0` every row, `!=0` none.
     wrong_c54h = []
     for query_c54h, want_c54h in (("cluster=abc", 500), ("clusterZoomLevel=", 500),
                                   ("clustering=abc", 500), ("trash=abc", 500), ("trash=", 500)):
@@ -30630,8 +30644,8 @@ def main():
     check("the cluster columns match nothing and trash is an integer", not wrong_c54h,
           "; ".join(wrong_c54h))
 
-    # Cycle 54, measured on kids (1.43.4) and zen (1.42.2, on a 25-season show): a show's
-    # `/children` and `/grandchildren` run the listing QUERY -- filters constrain them,
+    # Cycle 54, measured on plexlab (1.43.4) and the 1.42.2 reference (on a 25-season show): a
+    # show's `/children` and `/grandchildren` run the listing QUERY -- filters constrain them,
     # `sort=` orders them and an unknown key or an unparseable value is a 500 -- and the
     # "All episodes" row is there only when MORE THAN ONE season row is answered, paged or
     # not. rex ignored all of it on both paths, and cycle 46's "a show's season list
@@ -30666,7 +30680,7 @@ def main():
         check("a show's children and grandchildren run the listing query", not wrong_c54i,
               "; ".join(wrong_c54i))
 
-    # Cycle 54, measured on kids (1.43.4) and zen (1.42.2): `/unwatched` and
+    # Cycle 54, measured on plexlab (1.43.4) and the 1.42.2 reference: `/unwatched` and
     # `/recentlyViewedShows` run the listing's FILTERS -- `genre=zzzq` and `title=zzzq`
     # answer nothing on both -- where `newest`, `recentlyViewed` and `recentlyAdded` ignore
     # them. rex answered both lists whole.
@@ -30683,7 +30697,7 @@ def main():
     check("unwatched and recentlyViewedShows take the listing's filters", not wrong_c54j,
           "; ".join(wrong_c54j))
 
-    # Cycle 54, measured on kids (1.43.4) and zen (1.42.2): the MEDIA axes (`resolution`,
+    # Cycle 54, measured on plexlab (1.43.4) and the 1.42.2 reference: the MEDIA axes (`resolution`,
     # `audioLanguage`, `subtitleLanguage`), the Edit dialog's `/autocomplete` and `/common`
     # with an `id=` list all run the listing's filters -- `year=1` leaves no bucket and no
     # suggestion, `year=abc` is a 500, and `/common?id=A&genre=zzzq` is the EMPTY Common,
@@ -30716,7 +30730,7 @@ def main():
     check("the media axes, autocomplete and common take the listing's filters",
           not wrong_c54k, "; ".join(wrong_c54k)[:240])
 
-    # Cycle 54, measured on kids (1.43.4) and zen (1.42.2) and on both copies: every TV
+    # Cycle 54, measured on plexlab (1.43.4) and the 1.42.2 reference and on both copies: every TV
     # Recently Added shelf -- `home.television.recent` on `/hubs`, `tv.recentlyadded.N` on
     # `/hubs/promoted` and `/hubs/sections/N`, and `/hubs/home/recentlyAdded?type=2` --
     # runs the request's listing FILTERS over the EPISODES before it rolls them up
@@ -30760,9 +30774,9 @@ def main():
     check("the TV Recently Added shelves take the request's filters", not wrong_c54l,
           "; ".join(wrong_c54l))
 
-    # Cycle 54, measured on kids, zen and both copies: `/hubs/items?identifier=` for a Home
-    # shelf honours `contentDirectoryID` as `/hubs` does -- `home.movies.recent` scoped to
-    # another library, or to `abc`, is empty.
+    # Cycle 54, measured on plexlab, the 1.42.2 reference and both copies: `/hubs/items?identifier=`
+    # for a Home shelf honours `contentDirectoryID` as `/hubs` does -- `home.movies.recent` scoped
+    # to another library, or to `abc`, is empty.
     _, scoped_c54m, _ = get(base, "/hubs/items?identifier=home.movies.recent"
                                   "&contentDirectoryID=%s" % show_section)
     _, word_c54m, _ = get(base, "/hubs/items?identifier=home.movies.recent&contentDirectoryID=abc")
@@ -30774,11 +30788,11 @@ def main():
                                            len(word_c54m.get("Metadata") or []),
                                            len(plain_c54m.get("Metadata") or [])))
 
-    # Cycle 54, measured on kids (1.43.4) and zen (1.42.2): `unwatched=1` is a FLAG on
+    # Cycle 54, measured on plexlab (1.43.4) and the 1.42.2 reference: `unwatched=1` is a FLAG on
     # three lists that otherwise ignore the listing's filters. It drops the WATCHED leaf
-    # rows before the list's cap (kids 7 -> 6; zen stays at 50 because the 51st moves up).
-    # On `/library/recentlyAdded` and an item's `/allLeaves` it takes the `+?0*[01]` option
-    # grammar -- `2`, `abc`, an empty value are 400s -- and on a section's `recentlyAdded`
+    # rows before the list's cap (plexlab 7 -> 6; the 1.42.2 reference stays at 50 because the 51st
+    # moves up). On `/library/recentlyAdded` and an item's `/allLeaves` it takes the `+?0*[01]`
+    # option grammar -- `2`, `abc`, an empty value are 400s -- and on a section's `recentlyAdded`
     # only the literal `1` counts and nothing is refused.
     _, leaves_c54n, _ = get(base, "/library/metadata/%s/allLeaves" % show) if show else (0, {}, 0)
     episode_c54n = ((leaves_c54n.get("Metadata") or [{}])[0]).get("ratingKey")
@@ -30814,7 +30828,7 @@ def main():
     check("unwatched=1 drops the watched rows of three lists", not wrong_c54n,
           "; ".join(wrong_c54n)[:240])
 
-    # Cycle 54, measured on kids (1.43.4) and zen (1.42.2): the Dashboard's history
+    # Cycle 54, measured on plexlab (1.43.4) and the 1.42.2 reference: the Dashboard's history
     # filters. The keys are `viewedAt>` (INCLUSIVE, what `viewedAt%3E=` sends), `viewedAt<`
     # (inclusive) and a bare `viewedAt` (exact); `viewedAt>=` and `viewedAt<=` are unknown
     # keys, ignored and not validated. `/library/all/top` filters its HISTORY rows by them
@@ -30849,9 +30863,9 @@ def main():
     check("the Dashboard's viewedAt, accountID and section filters", not wrong_c54o,
           "; ".join(wrong_c54o)[:240])
 
-    # Cycle 54, from the binary's parameter names, measured on kids (1.43.4), zen (1.42.2)
-    # and plexscratch42: thirteen parameters are PARSED -- a value the grammar refuses is a
-    # 400 -- where rex answered 200. Most are int32 (`1.5`, empty and 2147483648
+    # Cycle 54, from the binary's parameter names, measured on plexlab (1.43.4), the 1.42.2
+    # reference and plexscratch42: thirteen parameters are PARSED -- a value the grammar refuses is
+    # a 400 -- where rex answered 200. Most are int32 (`1.5`, empty and 2147483648
     # refuse), `monthsAgo` any-size integer, `bytes` int64, `maxDistance` a float and
     # `personal` the 0/1 option, which at 1 empties the list; `metadataTypes` also
     # FILTERS the providers (a provider must serve every listed type; empty is all).
@@ -30892,10 +30906,10 @@ def main():
     check("thirteen parameters refuse what their grammar does not parse", not wrong_c54p,
           "; ".join(wrong_c54p)[:240])
 
-    # Cycle 54, measured on kids (1.43.4) and zen (1.42.2): `sectionID` on
-    # `/hubs/home/recentlyAdded` is a NUMBER. `01` is section 1 (kids 5 rows, zen 3,887),
-    # `0` answers nothing, and `abc`, `-1`, `1.5` and 2147483648 are IGNORED -- the whole
-    # list -- where rex compared strings and answered none to all of them.
+    # Cycle 54, measured on plexlab (1.43.4) and the 1.42.2 reference: `sectionID` on
+    # `/hubs/home/recentlyAdded` is a NUMBER. `01` is section 1 (plexlab 5 rows, the 1.42.2
+    # reference 3,887), `0` answers nothing, and `abc`, `-1`, `1.5` and 2147483648 are IGNORED --
+    # the whole list -- where rex compared strings and answered none to all of them.
     _, all_c54q, _ = get(base, "/hubs/home/recentlyAdded?type=1")
     every_c54q = len(all_c54q.get("Metadata") or [])
     wrong_c54q = []
@@ -30910,9 +30924,9 @@ def main():
 
     # Cycle 55, read out of the binary's SQL (`select metadata_items.id,count(*) as cnt ...
     # where tags.id in (...) group by metadata_items.id order by cnt desc,
-    # originally_available_at desc limit ?`) and reproduced exactly on zen (59 of 59 rows,
-    # in order) and on all four tagged kids movies: Related is a TAG SCORE. The item's first
-    # THREE genres and first FOUR roles are counted against each candidate, a candidate needs
+    # originally_available_at desc limit ?`) and reproduced exactly on the 1.42.2 reference (59 of
+    # 59 rows, in order) and on all four tagged plexlab movies: Related is a TAG SCORE. The item's
+    # first THREE genres and first FOUR roles are counted against each candidate, a candidate needs
     # at least TWO in common, and the list is shared-count then release date, capped at 200.
     # rex took any one shared genre, ordered by addedAt, and stopped at 12.
     _, grid_c55a, _ = get(base, "/library/sections/%s/all" % movie_section)
@@ -30969,7 +30983,7 @@ def main():
                       row_c55b.get("ratingKey"), episodes_c55b[1], row_c55b.get("lastViewedAt")))
 
     # Cycle 55, from the binary's SQL (`order by metadata_item_settings.updated_at desc`)
-    # and measured on zen (21 rows, exactly `viewUpdatedAt` descending with ties by
+    # and measured on the 1.42.2 reference (21 rows, exactly `viewUpdatedAt` descending with ties by
     # ratingKey) and on plexscratch42: a section's `recentlyViewed` is ordered by the
     # VIEW-STATE WRITE time, so rating a watched row moves it to the front although it was
     # not viewed again. rex ordered by `lastViewedAt`.
@@ -31064,7 +31078,7 @@ def main():
           created_c55f.get("duration") == want_c55f,
           "%s want %s" % (created_c55f.get("duration"), want_c55f))
 
-    # Cycle 55, re-measured on zen (`movie.genre.1.241` is exactly the head of
+    # Cycle 55, re-measured on the 1.42.2 reference (`movie.genre.1.241` is exactly the head of
     # `/library/sections/1/all?unwatched=1&genre=241&audienceRating>=7.0`): the genre shelf's
     # rows are the head of its OWN key listing, in that listing's default order. rex
     # answered them in catalog order.
@@ -31118,7 +31132,7 @@ def main():
                   "%s then %s" % ((zero_c55h.get("Metadata") or [{}])[0].get("title"),
                                   (back_c55h.get("Metadata") or [{}])[0].get("title")))
 
-    # Cycle 55, measured on zen (1.42.2) and kids (1.43.4): an axis, `/unwatched` and
+    # Cycle 55, measured on the 1.42.2 reference and plexlab (1.43.4): an axis, `/unwatched` and
     # `/onDeck` PARSE the listing's structural parameters -- `sort=abc`, `group=abc`,
     # `sourceType=abc` and `limit=2147483648` are 500s -- and ignore a good one:
     # `/genre?group=title` is the axis unchanged and `/unwatched?sort=titleSort:desc` is
@@ -31139,10 +31153,10 @@ def main():
           "bad %s, good %s, unwatched %s, grid %s" % (
               bad_c55a1, [g[0] for g in good_c55a1], order_c55a1, grid_c55a1))
 
-    # Cycle 55, measured on zen and kids: a parent's `/children` and `/grandchildren`, a
-    # person's `/media`, the in-library autocomplete, `/common` and the section's
-    # `/extras/all` parse `group`, `sourceType`, `limit` and `sort` -- a bad one is a 500 --
-    # and `/grandchildren` parses and applies its `type=` (`abc` a 500, `1` no episodes).
+    # Cycle 55, measured on the 1.42.2 reference and plexlab: a parent's `/children` and
+    # `/grandchildren`, a person's `/media`, the in-library autocomplete, `/common` and the
+    # section's `/extras/all` parse `group`, `sourceType`, `limit` and `sort` -- a bad one is a 500
+    # -- and `/grandchildren` parses and applies its `type=` (`abc` a 500, `1` no episodes).
     # rex answered 200 to every one of them.
     if show:
         _, detail_c55a2, _ = get(base, "/library/metadata/%s" % movie)
@@ -31167,8 +31181,8 @@ def main():
               "statuses %s, type=1 rows %s, group=title %s" % (
                   got_c55a2, len(typed_c55a2.get("Metadata") or []), kept_c55a2))
 
-    # Cycle 55, measured on zen and kids: the remaining readers of the listing grammar
-    # refuse what they cannot parse -- `index=abc` on `/collections` and `/playlists`,
+    # Cycle 55, measured on the 1.42.2 reference and plexlab: the remaining readers of the listing
+    # grammar refuse what they cannot parse -- `index=abc` on `/collections` and `/playlists`,
     # `limit=abc` on `/playlists/all` and an item's `/users/top`, an empty `limit=` on
     # Top Played, `/nearest?limit=abc` (400) and `limit=-1` (500), `/library/onDeck?type=
     # abc` (400), the autocomplete's `limit=2147483648` (400), `type=2147483648` (400 on
@@ -31196,7 +31210,7 @@ def main():
           got_c55a3 == [want for _, want in cells_c55a3] and ok_c55a3 == [200, 200],
           "%s, controls %s" % (got_c55a3, ok_c55a3))
 
-    # Cycle 55, measured on zen (1.42.2) and kids: Top Played refuses ANY `group`/`sort`
+    # Cycle 55, measured on the 1.42.2 reference and plexlab: Top Played refuses ANY `group`/`sort`
     # with a 400 and an item's `/users/top` with a 404; the hub pages parse `sourceType`
     # (`abc` a 500 on `/hubs`, `/hubs/promoted` and a show library's page) and
     # `/hubs/promoted` and the TV Recently Added list refuse a `group=`. rex answered
@@ -31213,8 +31227,8 @@ def main():
     check("Top Played and the hub pages refuse group, sort and sourceType",
           got_c55a4 == [want for _, want in cells_c55a4], "%s" % got_c55a4)
 
-    # Cycle 55, measured on zen (`sourceType=0` answers `126, 380, 395...` where 1
-    # answers the titleSort page) and kids (`1, 3, 4, 17, 18`): a `sourceType` other than
+    # Cycle 55, measured on the 1.42.2 reference (`sourceType=0` answers `126, 380, 395...` where 1
+    # answers the titleSort page) and plexlab (`1, 3, 4, 17, 18`): a `sourceType` other than
     # 1 ORDERS the grid by id, and `2147483648` and ` 1` are 500s. rex kept the
     # titleSort order and parsed the value with `int(value.strip())`.
     grid_c55f2 = "/library/sections/%s/all" % movie_section
@@ -31234,8 +31248,8 @@ def main():
               by_id_c55f2 == ids_c55f2 and plain_c55f2 != ids_c55f2 and bad_c55f2 == [500, 500],
               "sourceType=0 %s, =1 %s, bad %s" % (by_id_c55f2, plain_c55f2, bad_c55f2))
 
-    # Cycle 55, measured on zen and kids: an integer parameter takes an optional `+` and
-    # leading zeros -- `limit=+1` is one row, `mediaType=+1` the typed agent list,
+    # Cycle 55, measured on the 1.42.2 reference and plexlab: an integer parameter takes an optional
+    # `+` and leading zeros -- `limit=+1` is one row, `mediaType=+1` the typed agent list,
     # `accountID=+1` and `librarySectionID=+1` filter history and Top Played (where
     # `1.5` matches nothing with a 200), `contentDirectoryID=01` scopes a search, and
     # `type=01` is the `type=1` axis. rex refused or string-compared every one.
@@ -31256,16 +31270,16 @@ def main():
           "%s, limit=+1 rows %s, axis %s" % (got_c55f3, len(one_c55f3),
                                              [a[0] for a in axis_c55f3]))
 
-    # Cycle 55, measured on zen and kids: `/hubs/continueWatching` and its `/items` leaf
-    # answer 200 to an EMPTY `contentDirectoryID=`; rex 404'd both.
+    # Cycle 55, measured on the 1.42.2 reference and plexlab: `/hubs/continueWatching` and its
+    # `/items` leaf answer 200 to an EMPTY `contentDirectoryID=`; rex 404'd both.
     got_c55f16 = [get(base, p_c55f16 + "?contentDirectoryID=")[0]
                   for p_c55f16 in ("/hubs/continueWatching", "/hubs/continueWatching/items")]
     bad_c55f16 = get(base, "/hubs/continueWatching?contentDirectoryID=abc")[0]
     check("An empty contentDirectoryID is accepted on continue watching",
           got_c55f16 == [200, 200] and bad_c55f16 == 404, "%s, abc %s" % (got_c55f16, bad_c55f16))
 
-    # Cycle 55, measured on zen and kids: `01` and `+1` switch an option on exactly as
-    # `1` does at every reader -- `/library/sections?includePreferences=01`,
+    # Cycle 55, measured on the 1.42.2 reference and plexlab: `01` and `+1` switch an option on
+    # exactly as `1` does at every reader -- `/library/sections?includePreferences=01`,
     # `includeSummary=+1`, a section's `includeDetails=01`, `/sorts?includeAdvanced=01`,
     # a grid's `includeStorage=+1`, `/hubs?excludeContinueWatching=+1` and an item's
     # `asyncCheckFiles=01`. rex compared the raw string with "1" at each of them.
@@ -31287,10 +31301,10 @@ def main():
     check("01 and +1 switch every include and async option on", all(got_c55f4) and differs_c55f4,
           "%s, differs %s" % (got_c55f4, differs_c55f4))
 
-    # Cycle 55, measured on zen and kids: the `include*` blocks reach the FULL rows of
-    # every hub and related list, not only `/hubs` -- `/similar?includeExtras=1`
+    # Cycle 55, measured on the 1.42.2 reference and plexlab: the `include*` blocks reach the FULL
+    # rows of every hub and related list, not only `/hubs` -- `/similar?includeExtras=1`
     # carries `Extras` on each row and `/related?includeRelated=1` a `Related`
-    # block inside its `movie.similar` hub (zen: 4 of the first 4 rows). rex
+    # block inside its `movie.similar` hub (the 1.42.2 reference: 4 of the first 4 rows). rex
     # expanded them on `/hubs` alone.
     _, grid_c55f5, _ = get(base, "/library/sections/%s/all" % movie_section)
     pair_c55f5 = [r.get("ratingKey") for r in grid_c55f5.get("Metadata") or []][:2]
@@ -31312,12 +31326,12 @@ def main():
               "similar %s, related %s" % ([sorted(k for k in r if k[:1].isupper()) for r in srows_c55f5],
                                           [sorted(k for k in r if k[:1].isupper()) for r in rrows_c55f5]))
 
-    # Cycle 55, measured on zen and kids: `/unwatched?includeGuids=1` carries `Guid` on
-    # its rows like every other listing. rex left it off.
+    # Cycle 55, measured on the 1.42.2 reference and plexlab: `/unwatched?includeGuids=1` carries
+    # `Guid` on its rows like every other listing. rex left it off.
     _, unw_c55f6, _ = get(base, "/library/sections/%s/unwatched?includeGuids=1" % movie_section)
     rows_c55f6 = unw_c55f6.get("Metadata") or []
     _, plain_c55f6, _ = get(base, "/library/sections/%s/unwatched" % movie_section)
-    # Cycle 83, re-measured on kids (episodes 12-14), plexscratch (an unmatched movie and
+    # Cycle 83, re-measured on plexlab (episodes 12-14), plexscratch (an unmatched movie and
     # episode) and plexscratch42 (a `tv.plex.agents.none://` movie): an UNMATCHED row --
     # `local://` or `tv.plex.agents.none://` -- carries no `Guid` key even under
     # `includeGuids=1`, even where its detail keeps the ids the unmatch left, so this check
@@ -31329,9 +31343,9 @@ def main():
               and not any("Guid" in r for r in plain_c55f6.get("Metadata") or []),
               "%s" % [sorted(k for k in r if k[:1].isupper()) for r in rows_c55f6])
 
-    # Cycle 55, measured on zen, kids and plexscratch42: `field=-1` is "has no value" on
-    # `rating`, `audienceRating`, `userRating`, `absoluteIndex` and `parent` -- zen's
-    # `absoluteIndex=-1` and `parent=-1` are every movie -- under the bare `=` alone
+    # Cycle 55, measured on the 1.42.2 reference, plexlab and plexscratch42: `field=-1` is "has no
+    # value" on `rating`, `audienceRating`, `userRating`, `absoluteIndex` and `parent` -- the 1.42.2
+    # reference's `absoluteIndex=-1` and `parent=-1` are every movie -- under the bare `=` alone
     # (`-01` counts, `-1.0` and `<=-1` do not). rex answered no rows.
     grid_c55f7 = "/library/sections/%s/all" % movie_section
     every_c55f7 = get(base, grid_c55f7)[1].get("size")
@@ -31342,8 +31356,8 @@ def main():
           every_c55f7 and got_c55f7 == [every_c55f7, every_c55f7, every_c55f7, 0, 0],
           "all %s, got %s" % (every_c55f7, got_c55f7))
 
-    # Cycle 55, measured on zen, kids and plexscratch42: a date column's epoch is a signed
-    # 64-bit integer with nothing around it -- `addedAt= 1`, `updatedAt=1 ` and
+    # Cycle 55, measured on the 1.42.2 reference, plexlab and plexscratch42: a date column's epoch
+    # is a signed 64-bit integer with nothing around it -- `addedAt= 1`, `updatedAt=1 ` and
     # `createdAt=9223372036854775808` are 500s, `9223372036854775807` a 200, and so is
     # `viewedAt= 1` on an item's `/users/top`. rex stripped and float-parsed the value.
     grid_c55f8 = "/library/sections/%s/all" % movie_section
@@ -31355,8 +31369,8 @@ def main():
           got_c55f8 == [500, 500, 500, 200, 200] and top_c55f8 == 500,
           "%s, users/top %s" % (got_c55f8, top_c55f8))
 
-    # Cycle 55, measured on zen and kids: under a bare `=`, `lastViewedAt`, `lastRatedAt`
-    # and `lastSkippedAt` take a signed 32-bit integer only -- `-5y`, `2020-01-01` and
+    # Cycle 55, measured on the 1.42.2 reference and plexlab: under a bare `=`, `lastViewedAt`,
+    # `lastRatedAt` and `lastSkippedAt` take a signed 32-bit integer only -- `-5y`, `2020-01-01` and
     # `2147483648` are 500s -- where `<<=-5y` still reads a date. rex answered 200.
     grid_c55f9 = "/library/sections/%s/all" % movie_section
     got_c55f9 = [get(base, grid_c55f9 + q)[0] for q in (
@@ -31365,15 +31379,15 @@ def main():
     check("A per-user date under a bare = is an int32",
           got_c55f9 == [500, 500, 500, 200, 200], "%s" % got_c55f9)
 
-    # Cycle 55, measured on zen, kids and plexscratch42: `clusterStartsAt` is a date --
-    # `-5y` and `2020-01-01` are 200s, `1.5` a 500. rex parsed it as an integer.
+    # Cycle 55, measured on the 1.42.2 reference, plexlab and plexscratch42: `clusterStartsAt` is a
+    # date -- `-5y` and `2020-01-01` are 200s, `1.5` a 500. rex parsed it as an integer.
     grid_c55f10 = "/library/sections/%s/all" % movie_section
     got_c55f10 = [get(base, grid_c55f10 + q)[0] for q in (
         "?clusterStartsAt=-5y", "?clusterStartsAt=2020-01-01", "?clusterStartsAt=1.5")]
     check("clusterStartsAt is a date column", got_c55f10 == [200, 200, 500], "%s" % got_c55f10)
 
-    # Cycle 55, measured on zen and kids: `decade`, `viewCount` and `viewOffset` take a
-    # strict signed 32-bit integer -- `decade=1.5`, `decade=2147483648`,
+    # Cycle 55, measured on the 1.42.2 reference and plexlab: `decade`, `viewCount` and `viewOffset`
+    # take a strict signed 32-bit integer -- `decade=1.5`, `decade=2147483648`,
     # `viewCount=2147483648` and `viewOffset= 1` are 500s -- where `decade=+1990` is
     # 1990. rex answered 200 to all four.
     grid_c55f11 = "/library/sections/%s/all" % movie_section
@@ -31383,7 +31397,7 @@ def main():
     check("decade, viewCount and viewOffset are strict int32",
           got_c55f11 == [500, 500, 500, 500, 200, 200], "%s" % got_c55f11)
 
-    # Cycle 55, measured on zen (1.42.2), kids and plexscratch42: `parent=` is a number
+    # Cycle 55, measured on the 1.42.2 reference, plexlab and plexscratch42: `parent=` is a number
     # column -- `parent=+<show>` is that show's seasons and `parent=1.5` an empty 200 --
     # and only a word or an empty value is the 500. rex 500'd the first two.
     if show:
@@ -31401,18 +31415,18 @@ def main():
                                               len(plus_c55f12[1].get("Metadata") or []),
                                               half_c55f12[0], word_c55f12))
 
-    # Cycle 55, measured on zen and kids: `/hubs/search?sectionId=` refuses ANY integer id
-    # that names no section (`999`, `03`, `+3` are 400s; cycle 54's `0` and 2147483647 were
-    # two of them) and ignores what does not parse (`abc`, `-1`, `1.5`, `2147483648`).
+    # Cycle 55, measured on the 1.42.2 reference and plexlab: `/hubs/search?sectionId=` refuses ANY
+    # integer id that names no section (`999`, `03`, `+3` are 400s; cycle 54's `0` and 2147483647
+    # were two of them) and ignores what does not parse (`abc`, `-1`, `1.5`, `2147483648`).
     # rex refused only the two recorded values.
     got_c55f13 = [get(base, "/hubs/search?query=the&sectionId=%s" % v)[0]
                   for v in ("999", "0999", "%2B999", movie_section, "abc", "-1", "2147483648")]
     check("A hub search refuses a sectionId naming no section",
           got_c55f13 == [400, 400, 400, 200, 200, 200, 200], "%s" % got_c55f13)
 
-    # Cycle 55, measured on zen and kids: `personal=1` empties the MOVIE Recently Added
-    # list and leaves the TV one (`type=2`) exactly as it was -- zen 50 rows, kids 1.
-    # rex emptied both.
+    # Cycle 55, measured on the 1.42.2 reference and plexlab: `personal=1` empties the MOVIE
+    # Recently Added list and leaves the TV one (`type=2`) exactly as it was -- the 1.42.2 reference
+    # 50 rows, plexlab 1. rex emptied both.
     tv_c55f14 = [get(base, "/hubs/home/recentlyAdded?type=2%s" % q)[1].get("size")
                  for q in ("", "&personal=1")]
     movie_c55f14 = get(base, "/hubs/home/recentlyAdded?type=1&personal=1")[1].get("size")
@@ -31420,8 +31434,8 @@ def main():
           tv_c55f14[0] and tv_c55f14[0] == tv_c55f14[1] and not movie_c55f14,
           "tv %s, movie %s" % (tv_c55f14, movie_c55f14))
 
-    # Cycle 55, measured on zen (741 of 741 seasons) and kids (2 of 2): an empty `title=`
-    # matches EVERY row, including the seasons whose title the server generates, on a
+    # Cycle 55, measured on the 1.42.2 reference (741 of 741 seasons) and plexlab (2 of 2): an empty
+    # `title=` matches EVERY row, including the seasons whose title the server generates, on a
     # section listing, on `/library/all` and on a show's `/children`. rex dropped
     # every generated-title season.
     if show:
@@ -31435,7 +31449,7 @@ def main():
               and children_c55f15[0] == children_c55f15[1] and whole_c55f15[0] == whole_c55f15[1],
               "seasons %s, children %s, all %s" % (seasons_c55f15, children_c55f15, whole_c55f15))
 
-    # Cycle 55, measured on zen and kids: `/newest`, `/recentlyAdded` and
+    # Cycle 55, measured on the 1.42.2 reference and plexlab: `/newest`, `/recentlyAdded` and
     # `/recentlyViewed` answer their ordinary list to `type=abc` and to an empty `type=`,
     # and a show's `/allLeaves` answers every episode to `limit=abc`, where `/onDeck`
     # still refuses the type. rex 500'd all of them.
@@ -31452,9 +31466,10 @@ def main():
           "subsets %s, onDeck %s, allLeaves %s" % ([s[0] for s in subset_c55f17],
                                                    deck_c55f17, leaves_c55f17))
 
-    # Cycle 55, measured on zen and kids: `/hubs/sections/{id}/manage?metadataItemId=` has
-    # three answers -- `-1` is the bare hub list, a number naming no item an EMPTY 200, and
-    # an item the server holds (or a value that is not an int32) the 400. rex 400'd all.
+    # Cycle 55, measured on the 1.42.2 reference and plexlab:
+    # `/hubs/sections/{id}/manage?metadataItemId=` has three answers -- `-1` is the bare hub list, a
+    # number naming no item an EMPTY 200, and an item the server holds (or a value that is not an
+    # int32) the 400. rex 400'd all.
     manage_c55f18 = "/hubs/sections/%s/manage" % movie_section
     bare_c55f18 = get(base, manage_c55f18)
     minus_c55f18 = get(base, manage_c55f18 + "?metadataItemId=-1")
@@ -31468,15 +31483,15 @@ def main():
                                                   none_c55f18[1].get("size"), item_c55f18,
                                                   word_c55f18))
 
-    # Cycle 55, measured on zen and kids: `/system/agents?mediaType=-1` is identical to the
-    # bare `/system/agents`. rex answered the typed form, an empty agent list.
+    # Cycle 55, measured on the 1.42.2 reference and plexlab: `/system/agents?mediaType=-1` is
+    # identical to the bare `/system/agents`. rex answered the typed form, an empty agent list.
     bare_c55f19 = request(base, "GET", "/system/agents")[1]
     minus_c55f19 = request(base, "GET", "/system/agents?mediaType=-1")[1]
     check("mediaType=-1 is the bare agent list", bare_c55f19 == minus_c55f19,
           "%d vs %d bytes" % (len(bare_c55f19), len(minus_c55f19)))
 
-    # Cycle 55, measured on zen and kids on the related hub: `count` is a strict signed
-    # 32-bit integer -- `+1` is one row, ` 1` and `-2147483649` the default. rex
+    # Cycle 55, measured on the 1.42.2 reference and plexlab on the related hub: `count` is a strict
+    # signed 32-bit integer -- `+1` is one row, ` 1` and `-2147483649` the default. rex
     # stripped the value (` 1` was one row), refused `+1` and read `-2147483649` as none.
     _, grid_c55f20, _ = get(base, "/library/sections/%s/all" % movie_section)
     pair_c55f20 = [r.get("ratingKey") for r in grid_c55f20.get("Metadata") or []][:3]
@@ -31495,9 +31510,9 @@ def main():
               and got_c55f20 == [base_c55f20, [1] * len(base_c55f20), base_c55f20],
               "default %s, got %s" % (base_c55f20, got_c55f20))
 
-    # Cycle 55, measured on zen and kids: for the client-title rule the X-Plex-Product
-    # HEADER beats the query parameter -- header `abc` with query `Plex Web` prints the
-    # plain `1080p`, header `Plex Web` with query `abc` prints the codec. rex read the
+    # Cycle 55, measured on the 1.42.2 reference and plexlab: for the client-title rule the
+    # X-Plex-Product HEADER beats the query parameter -- header `abc` with query `Plex Web` prints
+    # the plain `1080p`, header `Plex Web` with query `abc` prints the codec. rex read the
     # query first.
     def video_title_c55f21(path, product):
         req_c55f21 = urllib.request.Request(base + path, headers={
@@ -31518,8 +31533,8 @@ def main():
               "(" in header_web_c55f21 and "(" not in (header_abc_c55f21 or "("),
               "header Plex Web %r, header abc %r" % (header_web_c55f21, header_abc_c55f21))
 
-    # Cycle 55, measured on zen and kids: `/statistics/bandwidth?offset=` is an int32
-    # (`abc` and `2147483648` 400s), `timespan` and `limit` past int32 are 400s and `+1`
+    # Cycle 55, measured on the 1.42.2 reference and plexlab: `/statistics/bandwidth?offset=` is an
+    # int32 (`abc` and `2147483648` 400s), `timespan` and `limit` past int32 are 400s and `+1`
     # a 200, a `group=` that is not one of the endpoint's keys is a 400, `accountID=-1`
     # is an empty 200, and `/statistics/media?type=abc` is a 400. rex answered 200 to
     # the refusals and 400 to `-1` and `limit=+1`.
@@ -31537,8 +31552,8 @@ def main():
     check("The statistics endpoints parse their integer parameters",
           got_c55f22 == [want for _, want in cells_c55f22], "%s" % got_c55f22)
 
-    # Cycle 55, measured on zen and kids: `/library/search?query=` is an empty 200 and only
-    # a missing `query` is the 400. rex refused the empty value.
+    # Cycle 55, measured on the 1.42.2 reference and plexlab: `/library/search?query=` is an empty
+    # 200 and only a missing `query` is the 400. rex refused the empty value.
     empty_c55f23 = get(base, "/library/search?query=")
     missing_c55f23 = get(base, "/library/search")[0]
     check("An empty library search query is an empty 200",
@@ -31546,8 +31561,8 @@ def main():
           and empty_c55f23[1].get("size") == 0 and missing_c55f23 == 400,
           "empty %s, missing %s" % (empty_c55f23[0], missing_c55f23))
 
-    # Cycle 55, measured on zen and kids on `/system/agents?mediaType=1`: a value led by a
-    # separator is not "no language" -- `-de` is German and `-1`, `-xx` and `.fr` are
+    # Cycle 55, measured on the 1.42.2 reference and plexlab on `/system/agents?mediaType=1`: a
+    # value led by a separator is not "no language" -- `-de` is German and `-1`, `-xx` and `.fr` are
     # English, where a bare `xx` keeps the no-language default. rex answered that
     # default to every separator-led value.
     def langs_c55f24(value):
@@ -31568,7 +31583,7 @@ def main():
                                      langs_c55f24("-1") == english_c55f24,
                                      langs_c55f24(".fr") == english_c55f24))
 
-    # Cycle 55, measured on zen (1.42.2) and kids (1.43.4): `/hubs/promoted` refuses the
+    # Cycle 55, measured on the 1.42.2 reference and plexlab (1.43.4): `/hubs/promoted` refuses the
     # fifteen hub-refused keys with a 500 whenever a SHOW library's shelf is in scope -- the
     # unscoped call, or `contentDirectoryID` naming the show library -- and answers 200 when
     # it is scoped to the movie library alone, the rule `/hubs/sections/{show}` already had.
@@ -31583,9 +31598,9 @@ def main():
     check("promoted hubs refuse the hub keys when a show library is in scope", not wrong_c55p,
           "; ".join(wrong_c55p))
 
-    # Cycle 56, measured on kids (1.43.4), zen (1.42.2) and plexscratch42: a SHOW library's
-    # `durationTotal`/`storageTotal` on `/media/providers?includeStorage=1` is the sum of its
-    # episodes (kids' TV Shows 60186 ms / 37683488 bytes), where rex summed only rows that
+    # Cycle 56, measured on plexlab (1.43.4), the 1.42.2 reference and plexscratch42: a SHOW
+    # library's `durationTotal`/`storageTotal` on `/media/providers?includeStorage=1` is the sum of
+    # its episodes (plexlab's TV Shows 60186 ms / 37683488 bytes), where rex summed only rows that
     # own a Media -- none, in a show library -- and answered 0. python-plexapi's
     # `LibrarySection.totalDuration` and `totalStorage` read exactly this attribute.
     _, providers_c56a, _ = get(base, "/media/providers?includeStorage=1")
@@ -31602,11 +31617,12 @@ def main():
     check("a show library's provider storage totals are its episodes'",
           got_c56a == want_c56a and want_c56a[0] > 0, "%s want %s" % (got_c56a, want_c56a))
 
-    # Cycle 56, measured on kids, zen and plexscratch42 and read by Plex Web's library
-    # Playlists page (`/playlists/all?type=15&playlistType=video&sectionID=N&includeMeta=1`):
-    # the playlist Meta's Type `key` carries the request's `playlistType`, `sectionID` and
-    # `type` (alphabetical, URL-encoded), `/playlists/all` marks NO Type and NO Sort active --
-    # so the page draws no sort bar -- and `/playlists` marks the REQUESTED sort active.
+    # Cycle 56, measured on plexlab, the 1.42.2 reference and plexscratch42 and read by Plex Web's
+    # library Playlists page
+    # (`/playlists/all?type=15&playlistType=video&sectionID=N&includeMeta=1`): the playlist Meta's
+    # Type `key` carries the request's `playlistType`, `sectionID` and `type` (alphabetical,
+    # URL-encoded), `/playlists/all` marks NO Type and NO Sort active -- so the page draws no sort
+    # bar -- and `/playlists` marks the REQUESTED sort active.
     _, all_c56b, _ = get(base, "/playlists/all?type=15&playlistType=video&sectionID=%s"
                                "&includeAdvanced=1&includeMeta=1" % movie_section)
     type_c56b = ((all_c56b.get("Meta") or {}).get("Type") or [{}])[0]
@@ -31623,10 +31639,10 @@ def main():
           "all key=%s active=%s; plain sorts %s" % (type_c56b.get("key"), type_c56b.get("active"),
                                                   active_c56b))
 
-    # Cycle 56, measured on kids, zen, plexscratch and plexscratch42 (identical): in the BARE
-    # `/system/agents` each legacy agent's `MediaType` carries its own `Language` rows -- 33
-    # for the legacy IMDb agent's movies, 26 each for The Movie Database, 44 for Photos.
-    # python-plexapi's `agents()` reads them as `AgentMediaType.languageCodes`; rex sent
+    # Cycle 56, measured on plexlab, the 1.42.2 reference, plexscratch and plexscratch42
+    # (identical): in the BARE `/system/agents` each legacy agent's `MediaType` carries its own
+    # `Language` rows -- 33 for the legacy IMDb agent's movies, 26 each for The Movie Database, 44
+    # for Photos. python-plexapi's `agents()` reads them as `AgentMediaType.languageCodes`; rex sent
     # none. Cycle 53's "no Language" is the AGENT row's, not its MediaType's.
     _, agents_c56c, _ = request(base, "GET", "/system/agents", want_json=False)
     text_c56c = agents_c56c.decode("utf-8", "replace")
@@ -31635,9 +31651,9 @@ def main():
     check("a legacy agent's MediaType carries its languages",
           block_c56c.count("<Language ") == 33, "%d rows" % block_c56c.count("<Language "))
 
-    # Cycle 56, measured on zen (1.42.2) and kids (1.43.4): `decade` IGNORES its operator --
-    # `decade!=2010`, `>>=2000`, `<<=2020` each answer the `=` bucket (zen 349, 252, 790).
-    # Plex Web builds "Decade / is not / 2010s" as `decade!=2010`; rex compared.
+    # Cycle 56, measured on the 1.42.2 reference and plexlab (1.43.4): `decade` IGNORES its operator
+    # -- `decade!=2010`, `>>=2000`, `<<=2020` each answer the `=` bucket (the 1.42.2 reference 349,
+    # 252, 790). Plex Web builds "Decade / is not / 2010s" as `decade!=2010`; rex compared.
     _, grid_c56d, _ = get(base, "/library/sections/%s/all" % movie_section)
     years_c56d = [int(r.get("year")) for r in grid_c56d.get("Metadata") or [] if r.get("year")]
     if years_c56d:
@@ -31652,11 +31668,12 @@ def main():
               "= %d, != %d, >> %d" % (len(keys_c56d(eq_c56d)), len(keys_c56d(ne_c56d)),
                                      len(keys_c56d(gt_c56d))))
 
-    # Cycle 56, measured on plexscratch42 with known provenance and on zen and kids: ANY
-    # per-user write -- a rating, a progress, an unscrobble -- creates the row's settings
-    # record with `viewCount` and `skipCount` 0, and the counter filters read it: after a
+    # Cycle 56, measured on plexscratch42 with known provenance and on the 1.42.2 reference and
+    # plexlab: ANY per-user write -- a rating, a progress, an unscrobble -- creates the row's
+    # settings record with `viewCount` and `skipCount` 0, and the counter filters read it: after a
     # rating, `viewCount!=1` and `skipCount=0` find the row and `viewCount<<=0` does not.
-    # zen's `viewCount>=0` is exactly its 424 rows with any state. Plex Web's "Plays is not 1".
+    # the 1.42.2 reference's `viewCount>=0` is exactly its 424 rows with any state. Plex Web's
+    # "Plays is not 1".
     _, grid_c56e, _ = get(base, "/library/sections/%s/all" % movie_section)
     keys_c56e = [r.get("ratingKey") for r in grid_c56e.get("Metadata") or []]
     target_c56e = next((k for k in keys_c56e
@@ -31681,9 +31698,9 @@ def main():
               and cells_c56e["skipCount=0"] and not cells_c56e["viewCount%3C%3C=0"],
               str(cells_c56e))
 
-    # Cycle 56, measured on zen and kids: `/hubs/sections/{id}?includeGuids=1` carries `Guid`
-    # on its rows (kids 5 of 5 on Recently Added), and python-plexapi's `section.hubs()`
-    # always sends it (`_buildQueryKey` prepends `includeGuids=1`). rex sent none.
+    # Cycle 56, measured on the 1.42.2 reference and plexlab: `/hubs/sections/{id}?includeGuids=1`
+    # carries `Guid` on its rows (plexlab 5 of 5 on Recently Added), and python-plexapi's
+    # `section.hubs()` always sends it (`_buildQueryKey` prepends `includeGuids=1`). rex sent none.
     _, hubs_c56f, _ = get(base, "/hubs/sections/%s?includeGuids=1" % movie_section)
     # Cycle 83: an unmatched row (`local://` or `tv.plex.agents.none://`) has no Guid key.
     rows_c56f = [m for h in hubs_c56f.get("Hub") or [] for m in h.get("Metadata") or []
@@ -31854,9 +31871,9 @@ def main():
         pristine_c57e()
         for key_c57e in watched_c57e:
             request(base, "GET", "/:/scrobble?key=%s&%s" % (key_c57e, I_c57e))
-    # Cycle 57, measured on zen (its live next-up, Bosch S1E9, no offset and no viewCount)
-    # and driven on plexscratch42 and plexscratch: the MERGED `/hubs/continueWatching` hub
-    # Plex Web's Home is built from -- and its `/items` leaf -- holds the On Deck NEXT-UP
+    # Cycle 57, measured on the 1.42.2 reference (its live next-up, Bosch S1E9, no offset and no
+    # viewCount) and driven on plexscratch42 and plexscratch: the MERGED `/hubs/continueWatching`
+    # hub Plex Web's Home is built from -- and its `/items` leaf -- holds the On Deck NEXT-UP
     # rows as well as the in-progress ones, each stamped `includedAt`, newest first, while
     # `/hubs/home/continueWatching` stays in-progress only. rex held the offsets alone,
     # so Home never offered the next episode after one was finished.
@@ -31901,9 +31918,9 @@ def main():
         pristine_c57f()
         for key_c57f in watched_c57f:
             request(base, "GET", "/:/scrobble?key=%s&%s" % (key_c57f, I_c57f))
-    # Cycle 57, measured on plexscratch42 and plexscratch at t+0 and t+25 s, and on zen for
-    # the positive half: a SECTION's Continue Watching shelf (`tv.inprogress.{id}`) and its
-    # see-all leaf list a next-up only when the episode before it was completed in a
+    # Cycle 57, measured on plexscratch42 and plexscratch at t+0 and t+25 s, and on the 1.42.2
+    # reference for the positive half: a SECTION's Continue Watching shelf (`tv.inprogress.{id}`)
+    # and its see-all leaf list a next-up only when the episode before it was completed in a
     # PLAYBACK SESSION -- a scrobble puts the next episode on deck everywhere else and
     # leaves this list empty. rex listed the scrobble-derived next-up here too.
     def section_cw_c57f():
@@ -31970,8 +31987,8 @@ def main():
         pristine_c57g()
         for key_c57g in watched_c57g:
             request(base, "GET", "/:/scrobble?key=%s&%s" % (key_c57g, I_c57g))
-    # Cycle 57, measured on kids (1.43.4, Firefly with nothing watched), on zen (19 of its
-    # first 20 shows, with no view state at all) and on both writable copies: a PRISTINE
+    # Cycle 57, measured on plexlab (1.43.4, Firefly with nothing watched), on the 1.42.2 reference
+    # (19 of its first 20 shows, with no view state at all) and on both writable copies: a PRISTINE
     # show carries an inline `OnDeck` -- the first episode the library holds -- and so does
     # the season that owns it, while every other season omits the block. Cycle 41's "a
     # pristine unwatched show omits it" is refuted; rex drew no Play target for every
@@ -32117,7 +32134,7 @@ def main():
         skip("playQueueLastAddedItemID is the tail of the Up Next block",
              "need a show of four episodes and two movies")
 
-    # Cycle 57, measured on zen (1.42.2): `tagId=<id>` is a real listing filter -- the
+    # Cycle 57, measured on the 1.42.2 reference: `tagId=<id>` is a real listing filter -- the
     # rows carrying that tag in ANY tag table (`tagId=1033` is the same 152 movies as
     # `genre=1033`, and a director, a country and an actor id each match their own
     # filter), an unknown id is none and `abc` or an empty value a 500. It is what the
@@ -32249,10 +32266,10 @@ def main():
           and moved_c58u and moved_c58u > before_c58u,
           "lastViewedAt %s -> %s (a moved beat %s), stays hidden %s, a moved beat shows it %s"
           % (before_c58u, same_c58u, moved_c58u, hidden_c58u, back_c58u))
-    # Cycle 58, measured on zen (1.42.2): the Dashboard's Top Played TV column asks
-    # `/library/all/top?type=2`, and a play is counted on the episode's SHOW there (zen's
-    # one show answers `globalViewCount: 73`, its episodes' history rows) and on its SEASON
-    # at `type=3`. rex matched the history row's own type, so no show ever had a play.
+    # Cycle 58, measured on the 1.42.2 reference: the Dashboard's Top Played TV column asks
+    # `/library/all/top?type=2`, and a play is counted on the episode's SHOW there (the 1.42.2
+    # reference's one show answers `globalViewCount: 73`, its episodes' history rows) and on its
+    # SEASON at `type=3`. rex matched the history row's own type, so no show ever had a play.
     leaves_c58 = get(base, "/library/sections/%s/all?type=4" % show_section)[1].get(
         "Metadata") or [] if show_section else []
     if leaves_c58:
@@ -32332,14 +32349,14 @@ def main():
           and off_search_c58["scoped"] == 404 and back_c58 == shown_c58,
           "hidden=2 %s back %s" % (off_search_c58, back_c58))
 
-    # Cycle 59, measured on zen (1.42.2), kids (1.43.4) and both copies: under
+    # Cycle 59, measured on the 1.42.2 reference, plexlab (1.43.4) and both copies: under
     # `X-Plex-Language: en` -- python-plexapi's default header, Plex Web's query parameter --
     # an item's Advanced enums stay English. rex replaced every `Library default` enum
     # with the 46-language list, so a show's Seasons dropdown offered languages and
     # python-plexapi's `editAdvanced(flattenSeasons=1)` refused its own value. And an item's
     # own language enum (its stream languages, then the regional list) is localised piece by
-    # piece: the head by tag (read off zen), the tail from the table in its own order, the
-    # inherit option on its own.
+    # piece: the head by tag (read off the 1.42.2 reference), the tail from the table in its own
+    # order, the inherit option on its own.
     import html as html_c59a
     def enums_c59a(rk_c59a, language_c59a, how_c59a="query"):
         path_c59a = "/library/metadata/%s?includePreferences=1" % rk_c59a
@@ -32377,14 +32394,14 @@ def main():
           de_c59a.startswith(":Benutzer-Standard|en:Englisch|") and "|ca-ES:Katalanisch|" in de_c59a,
           de_c59a[:120])
     da_c59a = enums_c59a(show, "da").get("audioLanguage") or ""
-    check("the Danish inherit option is zen's, not the table list's lead",
+    check("the Danish inherit option is the 1.42.2 reference's, not the table list's lead",
           da_c59a.startswith(":Kontomenu|"), da_c59a[:60])
     season_en_c59a = enums_c59a(season_c59a, "en").get("audioLanguage") or ""
     check("a season's language enum keeps its own head under en",
           season_en_c59a.startswith(":Series default|en:English|"), season_en_c59a[:80])
 
-    # Cycle 59, measured on zen, kids and both copies: a `/player/*` command carrying an
-    # `X-Plex-Target-Client-Identifier` header -- python-plexapi's proxied
+    # Cycle 59, measured on the 1.42.2 reference, plexlab and both copies: a `/player/*` command
+    # carrying an `X-Plex-Target-Client-Identifier` header -- python-plexapi's proxied
     # `PlexClient.sendCommand()` -- is a 404 (no such player to proxy to), for an unknown
     # id, a listed device and an empty value alike; only a bare command is the 400.
     def player_c59b(path_c59b, target_c59b):
@@ -32558,7 +32575,7 @@ def main():
           parents_c59h == {"Rg59 Renamed"} and grands_c59h == {"Rg59 Renamed"},
           str((parents_c59h, grands_c59h)))
 
-    # Cycle 59, measured on zen (1.42.2, claimed): Plex Web asks `/hubs/promoted` once per
+    # Cycle 59, measured on the 1.42.2 reference (claimed): Plex Web asks `/hubs/promoted` once per
     # pinned library WITH the pinned list, and only the FIRST pinned library of each type
     # carries a Recently Added shelf -- merging every pinned library of that type, keyed on
     # the pinned list as sent. A library that is not pinned, or an EMPTY pinned list, gets
@@ -32593,9 +32610,9 @@ def main():
                     for directory_c59 in feature_c59.get("Directory") or []:
                         found_c59[directory_c59.get("id")] = directory_c59
         return found_c59
-    # Cycle 59, measured on fun (1.42.2, claimed: `recommended, library, collections,
-    # categories` where the library holds collections, no `collections` where it holds none)
-    # and on both copies: a library's tab bar gains a Collections pivot while it holds a
+    # Cycle 59, measured on the production server (1.42.2, claimed: `recommended, library,
+    # collections, categories` where the library holds collections, no `collections` where it holds
+    # none) and on both copies: a library's tab bar gains a Collections pivot while it holds a
     # collection -- the tab Plex Web draws its Collections page from. rex hard-coded
     # three pivots, so a library's collections had no tab.
     _, grid_c59j, _ = get(base, "/library/sections/%s/all" % movie_section)
@@ -32630,12 +32647,12 @@ def main():
                     for directory_c59 in feature_c59.get("Directory") or []:
                         found_c59[directory_c59.get("id")] = directory_c59
         return found_c59
-    # Cycle 59, measured on plexscratch42 and plexscratch (zen, kids and fun hold no playlist
-    # and carry none): once the server holds a video playlist `/media/providers` lists a
-    # `playlists` content directory with one `playlists.video` pivot -- the Playlists
-    # source Plex Web offers in setup and the sidebar -- and `/hubs/promoted` answers the
-    # `home.playlists` shelf when `contentDirectoryID` names `playlists` (zen and kids answer
-    # it even empty). rex had neither, so the source page read "Not found".
+    # Cycle 59, measured on plexscratch42 and plexscratch (the 1.42.2 reference, plexlab and the
+    # production server hold no playlist and carry none): once the server holds a video playlist
+    # `/media/providers` lists a `playlists` content directory with one `playlists.video` pivot --
+    # the Playlists source Plex Web offers in setup and the sidebar -- and `/hubs/promoted` answers
+    # the `home.playlists` shelf when `contentDirectoryID` names `playlists` (the 1.42.2 reference
+    # and plexlab answer it even empty). rex had neither, so the source page read "Not found".
     _, grid_c59k, _ = get(base, "/library/sections/%s/all" % movie_section)
     first_c59k = ((grid_c59k.get("Metadata") or [{}])[0]).get("ratingKey")
     _, made_c59k, _ = container(base, "POST", "/playlists?type=video&title=Rg59%%20Src&smart=0&uri=%s"
@@ -32723,10 +32740,10 @@ def main():
           and movie_shelf_c59m == movie_list_c59m[:12] and show_shelf_c59m == show_list_c59m[:12],
           str((movie_shelf_c59m, show_shelf_c59m, movie_list_c59m, show_list_c59m)))
 
-    # Cycle 59: `translations.json` is PER VERSION. It was captured off kids (1.43.4); zen
-    # (1.42.2, the build rex reports) words 405 cells differently -- re-captured off zen
-    # with the same tool and overlaid. Three measured cells: a show's Seasons enum in Danish
-    # and Serbian, and Portuguese leaving the subtitle mode's inherit option in English.
+    # Cycle 59: `translations.json` is PER VERSION. It was captured off plexlab (1.43.4); the 1.42.2
+    # reference (1.42.2, the build rex reports) words 405 cells differently -- re-captured off the
+    # 1.42.2 reference with the same tool and overlaid. Three measured cells: a show's Seasons enum
+    # in Danish and Serbian, and Portuguese leaving the subtitle mode's inherit option in English.
     import html as html_c59n
     def enum_c59n(language_c59n, setting_c59n):
         body_c59n = urllib.request.urlopen(urllib.request.Request(
@@ -32792,7 +32809,7 @@ def main():
     check("an uploaded theme or logo is not deleted by a DELETE, which stays a 404",
           theme_c60b == 404 and logo_c60b == 404 and kept_c60b, str((theme_c60b, logo_c60b, kept_c60b)))
 
-    # Cycle 60, measured on zen (1.42.2) in 12 languages over 102 rows (23,820 of 23,832
+    # Cycle 60, measured on the 1.42.2 reference in 12 languages over 102 rows (23,820 of 23,832
     # stream cells exact; the 12 left are the recorded AC-3 title case): a stream's language
     # NAME follows the client's language by its TAG -- `fr` is `French` under `en`, which Plex
     # Web and python-plexapi both send, and `Französisch` under `de` -- and so do the Audio and
@@ -32838,8 +32855,8 @@ def main():
           str((en_c60c.get("displayTitle"), de_c60c.get("displayTitle"),
                (unknown_c60c or {}).get("displayTitle"), axis_c60c("de").get("fr"))))
 
-    # Cycle 60, measured on zen and plexscratch42 in 28 languages: a hub title with a name
-    # inserted -- `Recently Added in <library>`, `Top Movies in <genre>`, `<collection>
+    # Cycle 60, measured on the 1.42.2 reference and plexscratch42 in 28 languages: a hub title with
+    # a name inserted -- `Recently Added in <library>`, `Top Movies in <genre>`, `<collection>
     # Collection` -- is localised around the name. The table holds whole English strings and
     # never matched them, so a German library page read "Recently Added in Debrid Movies".
     def hub_titles_c60d(section_c60d, language_c60d):
@@ -32861,11 +32878,11 @@ def main():
                   if str(k).startswith("movie.genre")),
           str((de_c60d, ja_c60d.get("movie.recentlyadded.%s" % movie_section))))
 
-    # Cycle 60, re-captured off zen (every path) and plexscratch42 (the settings documents)
-    # recording the cells a language leaves in ENGLISH too: `translations.json` is 1.42.2's.
-    # Cycle 59 overlaid only the cells zen translated, so where 1.42.2 answers English rex
-    # still answered 1.43.4's translation (414 cells), and the Related, post-play and Manage
-    # Recommendations titles were never in the table at all.
+    # Cycle 60, re-captured off the 1.42.2 reference (every path) and plexscratch42 (the settings
+    # documents) recording the cells a language leaves in ENGLISH too: `translations.json` is
+    # 1.42.2's. Cycle 59 overlaid only the cells the 1.42.2 reference translated, so where 1.42.2
+    # answers English rex still answered 1.43.4's translation (414 cells), and the Related,
+    # post-play and Manage Recommendations titles were never in the table at all.
     def loc_c60e(path_c60e, language_c60e):
         return json.loads(urllib.request.urlopen(urllib.request.Request(
             base + path_c60e, headers={"User-Agent": UA, "Accept": "application/json",
@@ -32886,9 +32903,9 @@ def main():
     postplay_c60e = [h.get("title") for h in loc_c60e("/hubs/metadata/%s/postplay" % first_c60e, "de").get("Hub") or []]
     check("the post-play Related shelf is localised", "Related Movies" not in postplay_c60e, str(postplay_c60e))
 
-    # Cycle 60, measured on zen and plexscratch42 in 28 languages: Settings > Network's
-    # "Preferred network interface" lists the HOST's interfaces after `:Any`, so the enum is
-    # never in the table whole -- and its lead is translated (`:Alle`, `:全て`).
+    # Cycle 60, measured on the 1.42.2 reference and plexscratch42 in 28 languages: Settings >
+    # Network's "Preferred network interface" lists the HOST's interfaces after `:Any`, so the enum
+    # is never in the table whole -- and its lead is translated (`:Alle`, `:全て`).
     body_c60f = json.loads(urllib.request.urlopen(urllib.request.Request(
         base + "/:/prefs", headers={"User-Agent": UA, "Accept": "application/json",
                                     "X-Plex-Language": "ja"}), timeout=30).read())["MediaContainer"]
@@ -32959,7 +32976,7 @@ def main():
     check("a session is listed from its first playing beat, with no Session block before a decision",
           paused_c61b == [] and plain_c61b == [False], str((paused_c61b, plain_c61b)))
 
-    # Cycle 61, measured on plexscratch42 (a theme upload on a show) and read on kids'
+    # Cycle 61, measured on plexscratch42 (a theme upload on a show) and read on plexlab's
     # Firefly: a season carries its show's theme as `parentTheme` and has no `theme` of its
     # own, an episode only `grandparentTheme`; and a theme uploaded after a LOGO lands --
     # rex diverted it into the logo branch. Plex Web plays theme music from
@@ -32980,7 +32997,7 @@ def main():
           and all(not r.get("theme") for r in leaves_c61c.get("Metadata") or []),
           str((theme_c61c, [(r.get("parentTheme"), r.get("theme")) for r in season_rows_c61c])))
 
-    # Cycle 61, measured on zen (1.42.2) over ALL 173 of its settings in 28 languages:
+    # Cycle 61, measured on the 1.42.2 reference over ALL 173 of its settings in 28 languages:
     # `/:/prefs` pages, and cycle 60's capture read 20 of them, so the server Settings pages
     # kept 1.43.4's wording in 478 cells (Settings > Network read `Client Netzwerk` where
     # 1.42.2 reads `Client Network`).
@@ -33050,8 +33067,8 @@ def main():
     check("the timeline withholds Bandwidths from Plex for Windows alone",
           windows_c62b is False and mac_c62b is True, str((windows_c62b, mac_c62b)))
 
-    # Cycle 63, measured on zen (1.42.2), kids and plexscratch42 over the product strings the
-    # binary carries: the codec suffix goes to 21 products, not 13 -- `Plex HTPC for
+    # Cycle 63, measured on the 1.42.2 reference, plexlab and plexscratch42 over the product strings
+    # the binary carries: the codec suffix goes to 21 products, not 13 -- `Plex HTPC for
     # Windows/Mac/Linux`, `Plex for Linux`, `Plex for Fetch TV`, `Plex for Smart TVs`, `Plex for
     # VIDAA` and `Plex for X1` read `1080p (H.264)` where the bare `Plex HTPC` reads `1080p`.
     def video_title_c63a(product_c63a):
@@ -33091,9 +33108,9 @@ def main():
     check("the timeline withholds Bandwidths from Plex for Windows Phone too",
           phone_c63b is False and xbox_c63b is True, str((phone_c63b, xbox_c63b)))
 
-    # Cycle 64, measured on zen (1.42.2), kids and plexscratch42 over every product string the
-    # binary carries: `X-Plex-Product: Plex Home Theater` -- that spelling only, header or query,
-    # the header winning -- gets a FIVE-component `version` on `/` and `/media/providers`
+    # Cycle 64, measured on the 1.42.2 reference, plexlab and plexscratch42 over every product
+    # string the binary carries: `X-Plex-Product: Plex Home Theater` -- that spelling only, header
+    # or query, the header winning -- gets a FIVE-component `version` on `/` and `/media/providers`
     # (`1.42.2.10156.0-<build>`); `/identity` and every other product keep four.
     def version_c64a(path_c64a, product_c64a):
         headers_c64a = {"User-Agent": UA, "Accept": "application/json"}
@@ -33155,9 +33172,10 @@ def main():
           and "Processing subscriptions" in en_c65a,
           str((de_c65a[:3], accept_c65a[:3], en_c65a[:3])))
 
-    # Cycle 66, measured on kids, zen and plexscratch42 over 260 cells: `X-Plex-Platform: Roku`
-    # strips a library row's `id` and `Pivot` from `/media/providers` only for a Roku whose
-    # `X-Plex-Version` is absent, unparsable or below 6.4.2 -- every shipping Roku keeps them.
+    # Cycle 66, measured on plexlab, the 1.42.2 reference and plexscratch42 over 260 cells:
+    # `X-Plex-Platform: Roku` strips a library row's `id` and `Pivot` from `/media/providers` only
+    # for a Roku whose `X-Plex-Version` is absent, unparsable or below 6.4.2 -- every shipping Roku
+    # keeps them.
     def rows_c66b(headers_c66b, query_c66b=""):
         body_c66b = json.loads(urllib.request.urlopen(urllib.request.Request(
             base + "/media/providers" + query_c66b,
@@ -33179,8 +33197,9 @@ def main():
           and set(query_c66b) == {(True, True)},
           str((old_c66b, new_c66b, edge_c66b, below_c66b, query_c66b)))
 
-    # Cycle 66, measured on zen and plexscratch42: a lone `Accept-Language: zh-TW` on the socket
-    # handshake is a tag the server does not have -- English -- and `zh-TW,de;q=0.9` is German.
+    # Cycle 66, measured on the 1.42.2 reference and plexscratch42: a lone `Accept-Language: zh-TW`
+    # on the socket handshake is a tag the server does not have -- English -- and `zh-TW,de;q=0.9`
+    # is German.
     def titles_c66f(headers_c66f):
         _, frames_c66f = notifications(base, lambda: get(
             base, "/library/sections/%s/refresh" % show_section), seconds=4, headers=headers_c66f)
@@ -33201,8 +33220,8 @@ def main():
     check("the butler's progress messages are localised per socket",
           "Der Butler hat die Datenbank gesichert." in said_c66c, str(said_c66c[:3]))
 
-    # Cycle 66, measured on zen (1.42.2) read whole: the regional pt-BR settings carry 1.42.2's
-    # wording on the transcoder rows, and 1.42.2 leaves the CPU transcode limit in English.
+    # Cycle 66, measured on the 1.42.2 reference read whole: the regional pt-BR settings carry
+    # 1.42.2's wording on the transcoder rows, and 1.42.2 leaves the CPU transcode limit in English.
     body_c66d = json.loads(urllib.request.urlopen(urllib.request.Request(
         base + "/:/prefs", headers={"User-Agent": UA, "Accept": "application/json",
                                     "X-Plex-Language": "pt-BR"}), timeout=30).read())
@@ -33215,8 +33234,8 @@ def main():
           str([(rows_c66d.get(k) or {}).get("summary", "")[:60]
                for k in ("TranscoderTempDirectory", "_CPU-TranscodeCountLimit")]))
 
-    # Cycle 66, measured on zen, kids and plexscratch42: Plex Web's `no` (Norsk) and `af`
-    # (Afrikaans) have catalogues of their own on a real PMS -- rex held `nb` and no `af`.
+    # Cycle 66, measured on the 1.42.2 reference, plexlab and plexscratch42: Plex Web's `no` (Norsk)
+    # and `af` (Afrikaans) have catalogues of their own on a real PMS -- rex held `nb` and no `af`.
     def doc_c66g(path_c66g, language_c66g):
         return json.loads(urllib.request.urlopen(urllib.request.Request(
             base + path_c66g, headers={"User-Agent": UA, "Accept": "application/json",
@@ -33238,8 +33257,8 @@ def main():
           str((sorts_c66g("no")[:4], sorts_c66g("af")[:4], friendly_c66g("no"),
                friendly_c66g("af"), no_scan_c66g[:2])))
 
-    # Cycle 66, measured on zen, kids and plexscratch42: `pt-BR` (and `pt-PT`) read the
-    # Brazilian catalogue on every document and on the socket, not only on `/:/prefs`.
+    # Cycle 66, measured on the 1.42.2 reference, plexlab and plexscratch42: `pt-BR` (and `pt-PT`)
+    # read the Brazilian catalogue on every document and on the socket, not only on `/:/prefs`.
     def sorts_c66h(language_c66h):
         return [d.get("title") for d in json.loads(urllib.request.urlopen(urllib.request.Request(
             base + "/library/sections/%s/sorts" % movie_section,
@@ -33257,9 +33276,9 @@ def main():
           and "Avaliação da Plateia" in sorts_c66h("pt") and "Buscando" in br_scan_c66h,
           str((sorts_c66h("pt-BR")[:5], sorts_c66h("pt")[:5], br_scan_c66h[:2])))
 
-    # Cycle 66, measured on zen, kids and plexscratch42: the ICU-generated names follow the
-    # FULL locale -- a library's Certification Country list in `bg`, `en-GB`'s `St Helena` --
-    # for locales whose menus stay English on a real PMS.
+    # Cycle 66, measured on the 1.42.2 reference, plexlab and plexscratch42: the ICU-generated names
+    # follow the FULL locale -- a library's Certification Country list in `bg`, `en-GB`'s `St
+    # Helena` -- for locales whose menus stay English on a real PMS.
     def country_c66i(language_c66i):
         body_c66i = json.loads(urllib.request.urlopen(urllib.request.Request(
             base + "/library/sections/%s/prefs" % movie_section,
@@ -33275,9 +33294,9 @@ def main():
           str(((bg_c66i.get("country") or {}).get("enumValues", "")[:80],
                (gb_c66i.get("country") or {}).get("label"))))
 
-    # Cycle 66, measured on zen and plexscratch42: `/library`'s own directory titles and a
-    # collection's Collection Mode list are localised in `af` and `pt-BR` too -- sources the
-    # zen capture's paths do not reach.
+    # Cycle 66, measured on the 1.42.2 reference and plexscratch42: `/library`'s own directory
+    # titles and a collection's Collection Mode list are localised in `af` and `pt-BR` too --
+    # sources the 1.42.2 reference's capture paths do not reach.
     def library_c66j(language_c66j):
         return [d.get("title") for d in json.loads(urllib.request.urlopen(urllib.request.Request(
             base + "/library", headers={"User-Agent": UA, "Accept": "application/json",
@@ -33305,8 +33324,8 @@ def main():
           "Skanner" in nn_c67d and "Skanner" in nnq_c67d and "Scanning" in hant_c67d
           and "正在扫描" in hans_c67d, str((nn_c67d[:1], nnq_c67d[:1], hant_c67d[:1], hans_c67d[:1])))
 
-    # Cycle 67, measured on zen's matched show 6558 (1.42.2): the Episode ordering lead is
-    # 1.42.2's in sr/da/uk and localised in af and pt-BR.
+    # Cycle 67, measured on the 1.42.2 reference's matched show 6558 (1.42.2): the Episode ordering
+    # lead is 1.42.2's in sr/da/uk and localised in af and pt-BR.
     def ordering_c67a(language_c67a):
         body_c67a = json.loads(urllib.request.urlopen(urllib.request.Request(
             base + "/library/metadata/%s?includePreferences=1" % get(
@@ -33322,8 +33341,9 @@ def main():
           and ordering_c67a("pt-BR") == ":Padrão da biblioteca",
           str([ordering_c67a(l) for l in ("sr", "af", "pt-BR")]))
 
-    # Cycle 67, measured on zen, kids and plexscratch42: a season's Preferred audio language
-    # list is localised and re-collated for af, pt-BR, bg, zh-TW and the other new locales.
+    # Cycle 67, measured on the 1.42.2 reference, plexlab and plexscratch42: a season's Preferred
+    # audio language list is localised and re-collated for af, pt-BR, bg, zh-TW and the other new
+    # locales.
     def audio_c67b(language_c67b):
         body_c67b = json.loads(urllib.request.urlopen(urllib.request.Request(
             base + "/library/metadata/%s?includePreferences=1" % get(
@@ -33352,8 +33372,9 @@ def main():
           and any(str(m).startswith("A rendszer generálta a bélyegképeket") for m in hu_c67c),
           str((huhu_c67c[:1], hu_c67c[:1])))
 
-    # Cycle 68, measured on zen and plexscratch42: `ca` and `nn` have no catalogue of their own,
-    # so an exact catalogue later in Accept-Language beats them -- Chrome's Catalan header is English.
+    # Cycle 68, measured on the 1.42.2 reference and plexscratch42: `ca` and `nn` have no catalogue
+    # of their own, so an exact catalogue later in Accept-Language beats them -- Chrome's Catalan
+    # header is English.
     def friendly_c68a(accept_c68a):
         body_c68a = json.loads(urllib.request.urlopen(urllib.request.Request(
             base + "/:/prefs", headers={"User-Agent": UA, "Accept": "application/json",
@@ -33369,7 +33390,7 @@ def main():
           and got_c68a["nn-NO,nn;q=0.9,en-US;q=0.8,en;q=0.7"] == "Friendly name"
           and got_c68a["nn,ca;q=0.9"] == "Kallenavn", str(got_c68a))
 
-    # Cycle 70, measured on zen (1.42.2): Plex for Android asks /service/ultrablur/colors
+    # Cycle 70, measured on the 1.42.2 reference: Plex for Android asks /service/ultrablur/colors
     # for an item's backdrop tint (js:831397). The url resolves as the photo transcoder does.
     def ub_c70(url_c70, spelling_c70="service"):
         path_c70 = "/%s/ultrablur/colors" % spelling_c70
@@ -33392,7 +33413,7 @@ def main():
           and list(colors_c70[0]) == ["topLeft", "topRight", "bottomRight", "bottomLeft"],
           str((got_c70, status_c70, colors_c70)))
 
-    # Cycle 70, measured on zen (1.42.2): `excludeElements=Part` drops the Parts and adds a
+    # Cycle 70, measured on the 1.42.2 reference: `excludeElements=Part` drops the Parts and adds a
     # trailing `Media.partCount` on LISTING rows too -- Plex for Android sends it on every
     # library hubs request (js:1518625) -- and on a detail's nested Related rows.
     parts_c70 = {}
@@ -33431,7 +33452,7 @@ def main():
             "X-Plex-Client-Identifier": "c70-app", "X-Plex-Session-Id": session_b})
         with urllib.request.urlopen(req_b, timeout=30) as response_b:
             return json.loads(response_b.read())["MediaContainer"]
-    # Cycle 70, measured on plexscratch42 (1.42.2) and kids (1.43.4): a play a timeline
+    # Cycle 70, measured on plexscratch42 (1.42.2) and plexlab (1.43.4): a play a timeline
     # completes writes a history row with NO viewType, listed by the plain call (Plex for
     # Android's Play History, js:1622286) and by type=0; a scrobble's row is viewType 1.
     rk_c70 = spare or movie
@@ -33569,8 +33590,8 @@ def main():
               % second_c70d.encode() in body_x_c70d,
               str((pristine_c70d, self_c70d, {k: v for k, v in hub_c70d.items() if k != "Metadata"})))
 
-    # Cycle 71, measured on zen (episode 19758) and plexscratch42: an episode post-play's
-    # `tv.upnext` hub title follows X-Plex-Language (Plex for Android draws it).
+    # Cycle 71, measured on the 1.42.2 reference (episode 19758) and plexscratch42: an episode
+    # post-play's `tv.upnext` hub title follows X-Plex-Language (Plex for Android draws it).
     leaves_c71a = get(base, "/library/metadata/%s/allLeaves" % show)[1].get("Metadata") or [] \
         if show else []
     if len(leaves_c71a) > 1:
@@ -33589,8 +33610,8 @@ def main():
                               "ja": ["次に登場"], "ru": ["Очередь воспр."], "th": ["Up Next"]},
               str(titles_c71a))
 
-    # Cycle 71, measured on zen (movie 380) and kids: the inline Related block's hub title
-    # on a detail row follows X-Plex-Language, as /hubs/metadata/{id}/related does.
+    # Cycle 71, measured on the 1.42.2 reference (movie 380) and plexlab: the inline Related block's
+    # hub title on a detail row follows X-Plex-Language, as /hubs/metadata/{id}/related does.
     related_c71b = {}
     for lang_c71b in ("en", "de", "fr", "ja", "th"):
         req_c71b = urllib.request.Request(

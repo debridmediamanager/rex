@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Cycle 85, territory B: a TAB anywhere in a request header's value is a 400.
 
-Measured over raw sockets on kids (PMS 1.43.4) and plexscratch42 (PMS 1.42.2), identical,
+Measured over raw sockets on plexlab (PMS 1.43.4) and plexscratch42 (PMS 1.42.2), identical,
 and recorded in `tests/fixtures/header_tab_roku.json`: `X-Plex-Platform:\\tRoku`,
 `: \\tRoku`, `:\\t Roku`, `:  \\tRoku`, `Ro\\tku`, `Roku\\t`, `X-Plex-Version:\\t9.7.1` and an
 unknown header's leading TAB are each a plain 400, beside a control that is a 200.
@@ -117,7 +117,7 @@ def main():
     try:
         for cell in cells:
             statuses = {answer["status"] for answer in cell["answers"].values()}
-            check("reference: kids and plexscratch42 agree on %s" % cell["name"],
+            check("reference: plexlab and plexscratch42 agree on %s" % cell["name"],
                   len(statuses) == 1, cell["answers"])
             want = statuses.pop()
             got = raw_providers(port, cell["lines"])

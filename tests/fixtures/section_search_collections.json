@@ -1,5 +1,5 @@
 {
- "_about": "Section search typed 18 (collections), 2026-10-01, cycle 87 E2. plexscratch (1.43.4): an EMPTY episode collection E2Empty87 created in section 2 over the show's key and a one-member movie collection E2One87 in section 1, read, then both DELETEd. plexscratch42 (1.42.2): its standing collections C49Empty (one member despite the name), C52Amulti and C52Averify (both empty), read only. kids (1.43.4, GET only): the type=1 box's title2 keeps the query verbatim. Section UUIDs removed; no token or machine identifier recorded.",
+ "_about": "Section search typed 18 (collections), 2026-10-01, cycle 87 E2. plexscratch (1.43.4): an EMPTY episode collection E2Empty87 created in section 2 over the show's key and a one-member movie collection E2One87 in section 1, read, then both DELETEd. plexscratch42 (1.42.2): its standing collections C49Empty (one member despite the name), C52Amulti and C52Averify (both empty), read only. plexlab (1.43.4, GET only): the type=1 box's title2 keeps the query verbatim. Section UUIDs removed; no token or machine identifier recorded.",
  "s43": [
   {
    "request": "GET /library/sections/2/search?type=18&query=E2",

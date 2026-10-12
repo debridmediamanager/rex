@@ -116,11 +116,11 @@ _MEDIA_EXTENSIONS = (".mkv", ".mp4", ".m4v", ".mov", ".avi", ".webm", ".ts", ".m
 # each one in the middle and reading back the sort title. Exactly ELEVEN fold, all of
 # them in Latin-1, and the targets are not a transliteration anyone would write by hand:
 # `\u00f8` and `\u00d8` become the DIGIT ZERO and `\u00f0` becomes a capital `O`. Two of
-# them are witnessed on zen's real library as well (`D\u00f8d Kalm` sorts as `D0d Kalm`
-# and `D\u00e6monicus` as `Demonicus`), which is what found the gap: rex folded
-# combining marks only, so both rows carried no `titleSort` at all where a real PMS
+# them are witnessed on the 1.42.2 reference's real library as well (`D\u00f8d Kalm` sorts
+# as `D0d Kalm` and `D\u00e6monicus` as `Demonicus`), which is what found the gap: rex
+# folded combining marks only, so both rows carried no `titleSort` at all where a real PMS
 # sends one. Nothing above U+02FF folds -- Greek, Cyrillic and CJK all survive, as the
-# 51 non-ASCII rows of zen already showed.
+# 51 non-ASCII rows of the 1.42.2 reference already showed.
 
 # The characters a real PMS folds in a TITLE, and it is a TABLE, not a decomposition.
 # Cycle 32, swept on both writable copies -- plexscratch42 (1.42.2) and plexscratch
@@ -211,16 +211,17 @@ def sort_title(title):
     """The title a real PMS sorts by: whitespace trimmed, combining marks folded
     away, then the leading English article stripped.
 
-    Cycle 14 re-measured this on zen (1.42.2, the build rex reports) over all
-    5,294 rows of a real library, because the old rule had only fun -- now out of
-    scope -- as its witness and a five-clip lab has no title that can show the rest.
-    Three things, in this order, reproduce 5,289 of those rows exactly:
+    Cycle 14 re-measured this on the 1.42.2 reference (the build rex reports) over all
+    5,294 rows of a real library, because the old rule had only the production server --
+    now out of scope -- as its witness and a five-clip lab has no title that can show the
+    rest. Three things, in this order, reproduce 5,289 of those rows exactly:
 
-    * Leading whitespace goes, and ONLY leading whitespace. 90 rows of zen begin
+    * Leading whitespace goes, and ONLY leading whitespace. 90 rows of the 1.42.2 reference
+      begin
       with a space and every one carries a `titleSort` with it removed; none is
       missing one. Cycle 14 read that as `.strip()` and recorded the symmetric
-      half as unwitnessed, because zen holds no row with trailing or doubled
-      whitespace at all. Cycle 15 settled it by writing one on the copy:
+      half as unwitnessed, because the 1.42.2 reference holds no row with trailing or
+      doubled whitespace at all. Cycle 15 settled it by writing one on the copy:
       `'  Zeta Both  '` sorts as `'Zeta Both  '`, and `'Zeta Trail '` carries NO
       `titleSort`, because the derived string still equals the title. The trailing
       space survives, so this is an `lstrip`; `'The Zeta Art '` gives `'Zeta Art '`,
@@ -241,10 +242,10 @@ def sort_title(title):
 
     Cycle 17 re-measured the leading trim on plexscratch character by character and
     found it is not whitespace alone: a leading run of PUNCTUATION comes off too, and
-    before the article. zen's episode 10866, "'Til Death Do Us Art", sorts as "Til Death
-    Do Us Art" and sits in the `T` bucket of an episode `firstCharacter` axis that has
-    no apostrophe bucket at all -- 27 buckets, `#` then A-Z -- so the rule holds on
-    1.42.2 as well as on the copy where the table was measured.
+    before the article. The 1.42.2 reference's episode 10866, "'Til Death Do Us Art", sorts
+    as "Til Death Do Us Art" and sits in the `T` bucket of an episode `firstCharacter` axis
+    that has no apostrophe bucket at all -- 27 buckets, `#` then A-Z -- so the rule holds
+    on 1.42.2 as well as on the copy where the table was measured.
 
     The set is NOT a Unicode category and cannot be written as one. In ASCII exactly
     eight characters strip -- `"` `'` `(` `-` `.` `[` `{` `~` -- while `! # $ % & ) * +
@@ -256,8 +257,9 @@ def sort_title(title):
     characters with whitespace and repeat, and the guard is that a title made only of
     them keeps its own text rather than sorting as the empty string.
 
-    Only the LEADING half of the whitespace trim has a witness (zen holds no title
-    with trailing or doubled whitespace); `.strip()` here is the symmetric reading.
+    Only the LEADING half of the whitespace trim has a witness (the 1.42.2 reference holds
+    no title with trailing or doubled whitespace); `.strip()` here is the symmetric
+    reading.
     """
     # Cycle 32: the fold is the measured TABLE, not NFD -- see `_TITLE_FOLD`.
     folded = fold_title(title or "")
@@ -270,11 +272,11 @@ def sort_title(title):
 
 # The title forms a real PMS generates when it has none of its own. A season rex
 # synthesises is always one of them: `hierarchy` builds "Season %d" from the index.
-# Cycle 20, measured on zen's 741 real seasons: a real PMS generates THREE season
-# labels. `Specials` is season 0 (4 rows there, each `index: 0`) and `[Unknown Season]`
-# is a season with no index at all (5 rows); both behave exactly as `Season N` does --
-# no stored sort title, absent from `title=` and from the section search box, and in
-# the `#` bucket of the firstCharacter listing. kids holds neither, so the two labels
+# Cycle 20, measured on the 1.42.2 reference's 741 real seasons: a real PMS generates THREE
+# season labels. `Specials` is season 0 (4 rows there, each `index: 0`) and `[Unknown
+# Season]` is a season with no index at all (5 rows); both behave exactly as `Season N`
+# does -- no stored sort title, absent from `title=` and from the section search box, and
+# in the `#` bucket of the firstCharacter listing. plexlab holds neither, so the two labels
 # are single-reference while the mechanism behind them is cycle 18's two-witness rule.
 _GENERATED_TITLE = re.compile(r"^(Season \d+|Specials|\[Unknown Season\])$")
 
@@ -282,13 +284,13 @@ _GENERATED_TITLE = re.compile(r"^(Season \d+|Specials|\[Unknown Season\])$")
 def stored_title(row):
     """The title a real PMS stores for a row, which is "" where it GENERATED one.
 
-    Cycle 18, measured on plexscratch with a control and corroborated on zen and kids:
+    Cycle 18, measured on plexscratch with a control and corroborated on the 1.42.2 reference and plexlab:
     a row whose title the server made up is not in the query surface at all. The
     reference's season 11 is titled `Season 2` and `/library/sections/2/search?type=3&
     query=season` answers NOTHING, while the same season renamed `Zulu Season Probe`
     answers to `zulu`, to `season` and to `probe`; its three unmatched episodes
     (`Episode 1`-`3`) answer nothing to `query=episode` while `The Train Job` answers
-    `train`. The `title` FILTER agrees: zen's `type=3&title=Season` is 0 of 741 seasons
+    `train`. The `title` FILTER agrees: the 1.42.2 reference's `type=3&title=Season` is 0 of 741 seasons
     and its `type=4&title=Episode` is 203 -- the agent-supplied `Episode N` titles, the
     ones carrying `plex://episode` guids -- of 9,287 episodes.
 
@@ -304,13 +306,13 @@ def stored_title(row):
 def stored_sort_title(row):
     """The sort title a real PMS STORES, which is not the one it sends.
 
-    Measured on zen (1.42.2) over 14,433 rows of two real libraries and confirmed on
-    kids (1.43.4): a row whose title the SERVER generated stores the EMPTY STRING as
+    Measured on the 1.42.2 reference over 14,433 rows of two real libraries and confirmed on
+    plexlab (1.43.4): a row whose title the SERVER generated stores the EMPTY STRING as
     its sort title, where a row whose title an agent supplied stores the derived one.
     The three observables all agree, and they are what a client sees:
 
     * `?titleSort=` -- a bare, EMPTY value, which on this field is an equality --
-      answers exactly 740 of zen's 741 seasons, 4,630 of its 9,287 episodes, kids'
+      answers exactly 740 of the 1.42.2 reference's 741 seasons, 4,630 of its 9,287 episodes, plexlab's
       one unmatched season and its three unmatched episodes, and 0 of either
       library's movies and shows. `titleSort!=` answers the complement.
     * `?titleSort<<=0` answers the same sets: the empty string compares below `0`.
@@ -323,8 +325,8 @@ def stored_sort_title(row):
       string does and as cycle 13's "no value sorts BELOW every value" says.
 
     The one season and the 176 episodes that DO store a sort title while reading
-    `Season 1`/`Episode 1` are rows an agent gave that exact title to (kids' season 7
-    gained its own in a metadata refresh, and zen's 176
+    `Season 1`/`Episode 1` are rows an agent gave that exact title to (plexlab's season 7
+    gained its own in a metadata refresh, and the 1.42.2 reference's 176
     carry `plex://episode` guids). rex cannot tell those apart from a title it
     generated itself, so it decides on the title FORM -- a proxy for the mechanism,
     left open. Every season in a rex catalog is synthesised here,
@@ -337,7 +339,7 @@ def stored_sort_title(row):
     title = row.get("title") or ""
     if row.get("type") == "season" and _GENERATED_TITLE.match(title):
         # Cycle 31 read this off the reference's OWN DATABASE, which settles what the API
-        # could only imply. kids' season 7 -- the one agent-titled `Season 1` -- stores
+        # could only imply. plexlab's season 7 -- the one agent-titled `Season 1` -- stores
         # `title = ''` and `title_sort = 'Season 1'`, while its unmatched season 11 stores
         # both empty, and every season and episode of a fresh 1.42.2 copy stores `''`/`''`.
         # So the generated DISPLAY title is derived from the index in both cases, and what
@@ -345,7 +347,7 @@ def stored_sort_title(row):
         #
         # The consequence is the clause that used to be here. `stored == title` treated a
         # stored sort title equal to the generated title as no sort title at all -- which is
-        # exactly kids' season 7, the only row in either reference that can show the
+        # exactly plexlab's season 7, the only row in either reference that can show the
         # difference. Measured there: `titleSort=Season 1` answers season 7, `titleSort=`
         # answers season 11 alone, and `titleSort>>=Season 0` answers 7. rex answered
         # NOTHING to the first and third and wrongly included the row in the second, under
@@ -358,8 +360,8 @@ def stored_sort_title(row):
     return row.get("titleSort") or title
 
 
-# Cycle 27, measured on kids (1.43.4) and zen (1.42.2) and recorded through a real
-# client: every PERSON tag carries a `tagKey` -- a 24-hex plex.tv person id -- on a
+# Cycle 27, measured on plexlab (1.43.4) and the 1.42.2 reference and recorded through a
+# real client: every PERSON tag carries a `tagKey` -- a 24-hex plex.tv person id -- on a
 # detail row's `Director`, `Writer`, `Role` and `Producer`, and on the rows of
 # `/library/tags?type=4|5|6|7`. `Genre`, `Country` and `Studio` carry none, and a
 # `Collection` carries a `guid` instead.
@@ -390,7 +392,7 @@ SPECIALS_TITLE = "Specials"
 def set_season_count(show, seasons):
     """Give a show its `seasonCount`, or take it away, from its season rows.
 
-    Cycle 79, measured on zen (1.42.2): exactly the four of its 509 shows that hold a
+    Cycle 79, measured on the 1.42.2 reference: exactly the four of its 509 shows that hold a
     season 0 carry `seasonCount`, and it is the count WITHOUT the specials -- Bluey's
     `childCount="4" seasonCount="3"`, MythBusters' 17 and 16 -- sitting straight after
     `childCount` on the detail row, the section listing and every hub. A show with no
@@ -419,7 +421,7 @@ def normalize_rows(rows):
     built before these were measured carry the old fields baked in.
 
     * `titleSort` is emitted only when it differs from `title` -- 0 of 3,856 movies
-      and 0 of 599 shows on fun carry an equal one -- and it is the stripped title.
+      and 0 of 599 shows on the production server carry an equal one -- and it is the stripped title.
       rex sent the unstripped title on every movie, so "The Simpsons" filed
       under T, and every episode carried its SHOW's name.
     * `originalTitle` is the original-language title, present only when it differs
@@ -430,7 +432,7 @@ def normalize_rows(rows):
       field only when one is locked, and a `Field locked thumb` on every row told
       the Edit dialog every poster was pinned.
     * A movie has no `Location`; neither real server sends one.
-    * `rating` is the CRITIC rating (Rotten Tomatoes on fun), absent when there is
+    * `rating` is the CRITIC rating (Rotten Tomatoes on the production server), absent when there is
       none -- the lab's own TMDB-matched movies carry only `audienceRating`.
       rex copied the TMDB vote into both.
     * A season with a year of its own carries it, a `titleSort` EQUAL to its title
@@ -439,15 +441,15 @@ def normalize_rows(rows):
       `chapterSource` without chapters. A show has `index: 1`, and its `Location`
       is `{path}` with no id -- the id belongs to a SECTION's location.
     * No row names a theme -- `theme`, `parentTheme`, `grandparentTheme` -- because
-      rex has no theme audio and its theme endpoint 404s. Measured on fun: a show
+      rex has no theme audio and its theme endpoint 404s. Measured on the production server: a show
       without a theme carries none of the three, on itself or its children, and the
       web client asks for whichever it finds when theme music is on.
     """
     by_key = {str(row.get("ratingKey")): row for row in rows}
-    # Cycle 16, measured on kids and zen: a row that borrows its background carries
-    # the OWNER's path, not one of its own. A catalog built before that was measured
-    # carries a re-keyed copy on every season and episode, and the `_art_url` hints
-    # the builder used are stripped from the stored file -- but the VERSION is a hash
+    # Cycle 16, measured on plexlab and the 1.42.2 reference: a row that borrows its
+    # background carries the OWNER's path, not one of its own. A catalog built before that
+    # was measured carries a re-keyed copy on every season and episode, and the `_art_url`
+    # hints the builder used are stripped from the stored file -- but the VERSION is a hash
     # of the source image, so a season whose art carries its show's version is showing
     # its show's picture. Rewrite it to the show's path, then hand it down: an
     # episode's `art` is its season's resolved value, which is the show's when the
@@ -475,14 +477,14 @@ def normalize_rows(rows):
         if season and season.get("art"):
             row["art"] = season["art"]
         # Cycle 20, held out against 9,293 real episodes on both references: a season
-        # hands its poster down only when the poster is its OWN. zen's 654 seasons with
-        # a thumb of their own give every episode a `parentThumb` and its 27 whose thumb
-        # is the SHOW's give none, with no exception on either side; kids agrees on both
-        # of its seasons. `art` above is the opposite -- handed down borrowed or not --
-        # so this is a property of the FIELD and not of the row. The test is the stored
-        # path, which is the only thing the response exposes: cycle 16 measured that a
-        # borrowing row carries the owner's path verbatim, so a `thumb` naming another
-        # ratingKey IS the borrowed case.
+        # hands its poster down only when the poster is its OWN. The 1.42.2 reference's 654
+        # seasons with a thumb of their own give every episode a `parentThumb` and its 27
+        # whose thumb is the SHOW's give none, with no exception on either side; plexlab
+        # agrees on both of its seasons. `art` above is the opposite -- handed down
+        # borrowed or not -- so this is a property of the FIELD and not of the row. The
+        # test is the stored path, which is the only thing the response exposes: cycle 16
+        # measured that a borrowing row carries the owner's path verbatim, so a `thumb`
+        # naming another ratingKey IS the borrowed case.
         if season is not None:
             thumb = str(season.get("thumb") or "")
             if not thumb.startswith("/library/metadata/%s/" % season.get("ratingKey")):
@@ -490,8 +492,8 @@ def normalize_rows(rows):
     for row in rows:
         if row.get("type") not in ("show", "season"):
             continue
-        # Cycle 19, measured on zen (300 of 300 shows, 300 of 300 seasons) and kids
-        # (both its seasons): a row that HAS children names its child list, not
+        # Cycle 19, measured on the 1.42.2 reference (300 of 300 shows, 300 of 300 seasons)
+        # and plexlab (both its seasons): a row that HAS children names its child list, not
         # itself -- `key="/library/metadata/{id}/children"` -- while an episode keeps
         # the bare item path. `hierarchy` builds one that way, but three of the four
         # seasons cycle 13 added to `tests/catalog_ui.json` by hand carry the bare
@@ -502,11 +504,11 @@ def normalize_rows(rows):
         key = str(row.get("key") or "")
         if key and not key.endswith("/children"):
             row["key"] = key.rstrip("/") + "/children"
-    # Cycle 79, measured on zen (1.42.2) across all 509 shows of its show library: a real
-    # PMS titles season 0 `Specials` -- never `Season 0` -- and its episodes carry that as
-    # `parentTitle`. `build` titled every season `Season %d`, so a catalog holding an
-    # `S00E01` release drew a "Season 0" block on every client. Corrected at LOAD as well,
-    # because catalogs built before this carry the old title.
+    # Cycle 79, measured on the 1.42.2 reference across all 509 shows of its show library:
+    # a real PMS titles season 0 `Specials` -- never `Season 0` -- and its episodes carry
+    # that as `parentTitle`. `build` titled every season `Season %d`, so a catalog holding
+    # an `S00E01` release drew a "Season 0" block on every client. Corrected at LOAD as
+    # well, because catalogs built before this carry the old title.
     seasons_of = {}
     for row in rows:
         if row.get("type") != "season":
@@ -545,21 +547,23 @@ def normalize_rows(rows):
         if kind in ("movie", "show", "episode"):
             # `rating` is the CRITIC rating and rex copies the TMDB vote into both,
             # so it is dropped -- extended to EPISODE here because no episode on either
-            # reference carries one (0 of 20 One Piece episodes on zen, 0 of 3 on kids).
+            # reference carries one (0 of 20 One Piece episodes on the 1.42.2 reference, 0
+            # of 3 on plexlab).
             row.pop("rating", None)
         if kind == "episode" and not row.get("contentRating"):
-            # Measured on kids (1.43.4) and zen (1.42.2): an episode carries its SHOW's
-            # `contentRating` -- 6 of 6 on the lab, the three unmatched ones included
-            # although they have no agent metadata at all, and 18 of 18 across three zen
-            # shows (TV-14, TV-Y, TV-PG). A SEASON carries none on either server, and the
-            # write side agrees: on a writable copy, editing the show's rating moved it
-            # on the episodes that had none of their own and a show unmatch removed it
-            # from all of them. rex left an episode with no certificate at all.
+            # Measured on plexlab (1.43.4) and the 1.42.2 reference: an episode carries its
+            # SHOW's `contentRating` -- 6 of 6 on the lab, the three unmatched ones
+            # included although they have no agent metadata at all, and 18 of 18 across
+            # three of the 1.42.2 reference's shows (TV-14, TV-Y, TV-PG). A SEASON carries
+            # none on either server, and the write side agrees: on a writable copy, editing
+            # the show's rating moved it on the episodes that had none of their own and a
+            # show unmatch removed it from all of them. rex left an episode with no
+            # certificate at all.
             parent = by_key.get(str(row.get("grandparentRatingKey")))
             if parent and parent.get("contentRating"):
                 row["contentRating"] = parent["contentRating"]
         if kind == "episode" and row.get("audienceRating") is not None:
-            # Measured on kids (1.43.4) and zen (1.42.2): an EPISODE with an
+            # Measured on plexlab (1.43.4) and the 1.42.2 reference: an EPISODE with an
             # `audienceRating` carries `audienceRatingImage` and a `Rating` element as
             # well -- 60 of 60 One Piece episodes and 3 of 3 on the lab, with no
             # exception, while the unmatched episodes with no rating carry none of the
@@ -582,32 +586,32 @@ def normalize_rows(rows):
             # Cycle 44, corrected at LOAD like the other pipeline-produced row errors
             # here: a season built by `metadata.py` before this cycle carries TMDB's
             # season air-date year in its own `year` column. That is the shape 1 of
-            # zen's 742 seasons has and 689 do not, and carrying it takes `parentYear`
-            # away, because the rule below reads "has a year of its own" off that
-            # column. A real Plex series agent gives a season the SHOW's year as
+            # the 1.42.2 reference's 742 seasons has and 689 do not, and carrying it takes
+            # `parentYear` away, because the rule below reads "has a year of its own" off
+            # that column. A real Plex series agent gives a season the SHOW's year as
             # `parentYear`. A season's own year stays legal -- it is simply not what
             # this builder produces, and this builder wrote every season rex holds.
             if row.get("year") is not None and not stored_sort_titles.get(id(row)):
                 # The discriminator is the STORED SORT TITLE, and it is measured on both
                 # references: every season that carries a year of its own also stores
-                # one. kids' season 7 is `Season 1` with `titleSort: "Season 1"` and
-                # `year: 2002`; zen's single year-carrying season of 742 stores
-                # `Egghead`, its agent's arc name. A season with a year and NO stored
-                # sort title is a shape neither reference has -- and it is exactly what
-                # `metadata.py` wrote before this cycle, so this corrects the builder's
-                # own rows without touching a season an agent really identified.
+                # one. plexlab's season 7 is `Season 1` with `titleSort: "Season 1"` and
+                # `year: 2002`; the 1.42.2 reference's single year-carrying season of 742
+                # stores `Egghead`, its agent's arc name. A season with a year and NO
+                # stored sort title is a shape neither reference has -- and it is exactly
+                # what `metadata.py` wrote before this cycle, so this corrects the
+                # builder's own rows without touching a season an agent really identified.
                 show_row = by_key.get(str(row.get("parentRatingKey")))
                 row.pop("year", None)
                 if show_row is not None and show_row.get("year") is not None:
                     row["parentYear"] = show_row["year"]
             if row.get("year"):
-                # Cycle 20, held out against zen's 741 real seasons: the `year` does NOT
-                # bring a `titleSort` with it. 740 carry none, and the only one that does
-                # -- the only one with a `year` -- carries `Egghead`, the arc name its
-                # agent stored, where the row DISPLAYS `Season 22`. Cycle 7 read kids'
-                # season 7 (`Season 1`, agent-supplied and therefore stored) as "a year
-                # means titleSort == title"; the year is a coincidence of a season an
-                # agent really identified. rex generates every season title, so the
+                # Cycle 20, held out against the 1.42.2 reference's 741 real seasons: the
+                # `year` does NOT bring a `titleSort` with it. 740 carry none, and the only
+                # one that does -- the only one with a `year` -- carries `Egghead`, the arc
+                # name its agent stored, where the row DISPLAYS `Season 22`. Cycle 7 read
+                # plexlab's season 7 (`Season 1`, agent-supplied and therefore stored) as
+                # "a year means titleSort == title"; the year is a coincidence of a season
+                # an agent really identified. rex generates every season title, so the
                 # general rule above is the right one: a derived sort title equal to the
                 # title is not sent -- which is what `stored_sort_title` has answered to
                 # `?titleSort=` all along, so the row and the filter now agree.
@@ -618,9 +622,10 @@ def normalize_rows(rows):
             for location in row.get("Location") or []:
                 location.pop("id", None)
         if kind == "episode" and row.get("parentGuid") == row.get("grandparentGuid"):
-            # Measured on kids (1.43.4) and zen (1.42.2): an episode's parentGuid is the
-            # SEASON's guid. A catalog built before that was measured carries the show's
-            # guid in both, so the season's own guid is looked up here at load.
+            # Measured on plexlab (1.43.4) and the 1.42.2 reference: an episode's
+            # parentGuid is the SEASON's guid. A catalog built before that was measured
+            # carries the show's guid in both, so the season's own guid is looked up here
+            # at load.
             season_row = by_key.get(str(row.get("parentRatingKey")))
             if season_row and season_row.get("guid"):
                 row["parentGuid"] = season_row["guid"]
@@ -663,14 +668,14 @@ def _slug(title):
 def _stamp_artwork(rows):
     """Version every artwork URL so a client cannot serve a stale poster.
 
-    A real PMS emits `/library/metadata/<rk>/thumb/<version>` -- fun uses a
+    A real PMS emits `/library/metadata/<rk>/thumb/<version>` -- the production server uses a
     timestamp. rex emitted a constant `/thumb/1`, so when a ratingKey was
     reused by a later catalog build the URL stayed identical while the image
     behind it changed: The Simpsons at rk=20001 rendered with The Mentalist's
     poster, cached by the client from a previous build.
 
     Cycle 20, measured over every owned artwork path of both references: the version
-    is the row's `updatedAt`, exactly -- 726 of 726 on zen and 12 of 12 on kids, `thumb`
+    is the row's `updatedAt`, exactly -- 726 of 726 on the 1.42.2 reference and 12 of 12 on plexlab, `thumb`
     and `art` alike. The copy shows the mechanism from the write side: writing
     `updatedAt` through the section save path re-versions the poster onto the new stamp
     in the same call. A hash of the source URL was a defensible version and not the
@@ -685,13 +690,13 @@ def _stamp_artwork(rows):
 
     # Parent pointers must match the parent's stamped URL, not the old constant.
     by_key = {r["ratingKey"]: r for r in rows}
-    # Cycle 16, measured on kids and zen: a row that owns no background of its own
-    # carries its SHOW's art PATH verbatim -- kids' season 7 and episode 8 both carry
-    # `/library/metadata/6/art/<v>` -- and `/library/metadata/7/art` is a 404 there,
-    # while zen's season 11114, which DOES have art of its own, carries its own path
-    # and answers 200. Stamping re-keyed every borrowed URL to the row holding it, so
-    # three rows claimed the same image under three paths. This runs before the
-    # episode fix-up below, which then inherits the corrected value.
+    # Cycle 16, measured on plexlab and the 1.42.2 reference: a row that owns no background
+    # of its own carries its SHOW's art PATH verbatim -- plexlab's season 7 and episode 8
+    # both carry `/library/metadata/6/art/<v>` -- and `/library/metadata/7/art` is a 404
+    # there, while the 1.42.2 reference's season 11114, which DOES have art of its own,
+    # carries its own path and answers 200. Stamping re-keyed every borrowed URL to the row
+    # holding it, so three rows claimed the same image under three paths. This runs before
+    # the episode fix-up below, which then inherits the corrected value.
     for row in rows:
         if row.get("type") != "season":
             continue
@@ -806,15 +811,15 @@ def build(leaves):
                 "index": season_number,
                 # A season carries a `year` only when it has an air date of its OWN
                 # -- then `titleSort` too, equal to its title -- and `parentYear`
-                # otherwise. Measured on 74 seasons on fun; never the show's year
-                # borrowed. An older note tied the season list rendering to `year`;
-                # that was the paging bug.
+                # otherwise. Measured on 74 seasons on the production server; never the
+                # show's year borrowed. An older note tied the season list rendering to
+                # `year`; that was the paging bug.
                 "parentIndex": 1,
                 # Cycle 44: the pipeline no longer supplies `_season_year` -- see
-                # `metadata.py`. A season's own year stays possible (zen has exactly one
-                # such row of 742) and `normalize_rows` still applies the year /
-                # parentYear rule below; what changed is that a Plex series agent does
-                # not give a season one, so rex's never should either.
+                # `metadata.py`. A season's own year stays possible (the 1.42.2 reference
+                # has exactly one such row of 742) and `normalize_rows` still applies the
+                # year / parentYear rule below; what changed is that a Plex series agent
+                # does not give a season one, so rex's never should either.
                 "year": leaf.get("_season_year"),
                 # The season's EXTERNAL ids. Both references carry them on a season
                 # detail row; this pipeline fetched and discarded them until cycle 44.
@@ -871,8 +876,8 @@ def build(leaves):
         leaf["grandparentThumb"] = show["thumb"]
         leaf["grandparentArt"] = show["art"]
         leaf["grandparentGuid"] = show.get("guid")
-        # Measured on kids (1.43.4) and zen (1.42.2): an episode's `parentGuid` is the
-        # SEASON's own guid (`plex://season/...`), not the show's. rex copied the
+        # Measured on plexlab (1.43.4) and the 1.42.2 reference: an episode's `parentGuid`
+        # is the SEASON's own guid (`plex://season/...`), not the show's. rex copied the
         # season's `parentGuid` -- which is the show, correct for the season row itself
         # and wrong on the leaf -- so every episode of a show claimed to belong to one
         # and the same "season", and a client that keys per-season artwork or state off
@@ -912,7 +917,7 @@ def build(leaves):
 def _fill_season(season, leaf):
     """A season is made from its first leaf. A later leaf that identifies a season the first
     left unidentified (its TMDB season was not had) gives it that identity, and one carrying
-    artwork gives artwork to a season with none: fun's rex kept 186 seasons of 131 shows on
+    artwork gives artwork to a season with none: the production rex kept 186 seasons of 131 shows on
     the blank tile under a show with a poster (2026-10-12), because nothing after the first
     leaf was ever read. Returns the guid the season took, if it took one."""
     def present(value):

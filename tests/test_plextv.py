@@ -23,8 +23,8 @@ outbound-announce.json` recorded from a real PMS; its answers carry exactly the
 attributes the oracle's modules read, in the element shapes `tests/test_accountstate.py`
 already feeds them. The claim and registration half -- the exchange, `POST /servers.xml`,
 the pubsub stream and the connectivity PUT it prompts -- is checked against
-`tests/fixtures/plextv_registration_s1422.json`, a real 1.42.2 PMS claimed on zen with its
-plex.tv traffic recorded: the stub replays that recording's pubsub events and its 422, and
+`tests/fixtures/plextv_registration_s1422.json`, a real 1.42.2 PMS claimed on the 1.42.2 reference
+with its plex.tv traffic recorded: the stub replays that recording's pubsub events and its 422, and
 gzips an answer whenever the request asks for gzip, as plex.tv did there.
 
     python3 tests/test_plextv.py                      # the native server
@@ -75,10 +75,11 @@ CATALOG = os.path.join(HERE, "catalog_ui.json")
 with open(os.path.join(HERE, "fixtures", "plextv_registration_s1422.json")) as _handle:
     RECORDED = json.load(_handle)
 # plex.tv's list of the tokens a claimed server lets in, as it answered for rex-e2e, and
-# zen's own PMS re-reading it for an unknown token (the 6 s window is measured there).
+# the 1.42.2 reference itself re-reading it for an unknown token (the 6 s window is measured there).
 with open(os.path.join(HERE, "fixtures", "plextv_access_tokens_s1422.json")) as _handle:
     ACCESS = json.load(_handle)
-# zen's own PMS announcing its seventeen connections: one Connection[][uri] pair each, in a row.
+# the 1.42.2 reference's own PMS announcing its seventeen connections: one Connection[][uri] pair
+# each, in a row.
 with open(os.path.join(HERE, "fixtures", "pms_announce_connections_s1422.json")) as _handle:
     CONNECTIONS = json.load(_handle)
 MACHINE = "f1x7u4e0000000000000000000000000000000f1"

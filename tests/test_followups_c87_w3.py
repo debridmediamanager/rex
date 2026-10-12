@@ -4,18 +4,19 @@
 - A LEGACY plug-in agent row writes `hasPrefs, identifier, primary` (then `name` in the
   typed form), in JSON and XML alike; rex put `identifier` first, the modern rows'
   order. An empty legacy row is a PAIRED `<Agent ...>\\n</Agent>`; rex self-closed
-  it. Driven by zen's raw bodies: the JSON ones W2 recorded
+  it. Driven by the 1.42.2 reference's raw bodies: the JSON ones W2 recorded
   (`tests/fixtures/c87_w2_system_agents_zen.json`) and the XML ones recorded here
   (`tests/fixtures/c87_w3_system_agents_xml_zen.json`). After the fix every typed body
-  is byte-identical to zen's; the bare form is compared with its rows sorted, because
-  where `lastfm` and `plexthememusic` fall is zen's own plug-in load order (W2).
+  is byte-identical to the 1.42.2 reference's; the bare form is compared with its rows sorted,
+  because where `lastfm` and `plexthememusic` fall is the 1.42.2 reference's own plug-in load
+  order (W2).
 
 - The provider table numbers Personal Media **5** (`/system/agents` numbers it 4), its
   built-in group is 4 with `metadataAgentProviderId` 5, and provider 4 is the unlisted
-  MusicBrainz intermediary that only its per-id GET answers. Measured identically on kids,
-  zen, plexscratch and a fresh 1.42.2 install (plexscratch42), so a rule and not one
-  database's history; rex numbered providers by agent position. Driven by zen's
-  exchanges (`tests/fixtures/c87_w3_provider_ids_zen.json`).
+  MusicBrainz intermediary that only its per-id GET answers. Measured identically on plexlab,
+  the 1.42.2 reference, plexscratch and a fresh 1.42.2 install (plexscratch42), so a rule and not
+  one database's history; rex numbered providers by agent position. Driven by the 1.42.2
+  reference's exchanges (`tests/fixtures/c87_w3_provider_ids_zen.json`).
 
 - A write on a BUILT-IN provider or group id, measured on plexscratch42 (a fresh 1.42.2,
   2026-10-01; `tests/fixtures/c87_w3_builtin_provider_writes_s42.json`, nothing changed on
@@ -125,7 +126,7 @@ def label(exchange):
 
 def json_rows_sorted(text):
     """The body as (key, value) pairs -- repeated keys and key ORDER kept -- with the
-    top-level Agent rows sorted by identifier (zen's own plug-in load order aside)."""
+    top-level Agent rows sorted by identifier (the 1.42.2 reference's own plug-in load order aside)."""
     body = json.loads(text, object_pairs_hook=list)
     container = body[0][1]
     agents = sorted((row for key, value in container if key == "Agent" for row in value),
@@ -157,13 +158,13 @@ def legacy_order(port):
                     same = sort(text) == sort(want)
                 except (ValueError, IndexError):
                     same = False
-                check("%s %s: zen's rows, byte for byte, legacy keys `hasPrefs, identifier, "
+                check("%s %s: the 1.42.2 reference's rows, byte for byte, legacy keys `hasPrefs, identifier, "
                       "primary` and empty rows paired (row order aside)" % (kind, label(exchange)),
                       status == 200 and same, (status, text[:300]))
                 continue
             first = next((index for index, (a, b) in enumerate(zip(text, want)) if a != b),
                          min(len(text), len(want)))
-            check("%s %s: byte-identical to zen (legacy `hasPrefs, identifier, primary, name`)"
+            check("%s %s: byte-identical to the 1.42.2 reference (legacy `hasPrefs, identifier, primary, name`)"
                   % (kind, label(exchange)), status == 200 and text == want,
                   (status, "first difference at %d: got %r want %r"
                    % (first, text[first - 60:first + 60], want[first - 60:first + 60])))
@@ -174,7 +175,7 @@ def provider_ids(port):
         status, text = request(port, exchange["method"], exchange["path"], exchange["headers"])
         want = exchange["body"]
         if want is None:
-            check("%s is a %d (zen)" % (exchange["path"], exchange["status"]),
+            check("%s is a %d (the 1.42.2 reference)" % (exchange["path"], exchange["status"]),
                   status == exchange["status"], status)
             continue
         try:
@@ -186,7 +187,7 @@ def provider_ids(port):
         ids = [(row["id"], [item["metadataAgentProviderId"]
                             for item in row.get("MetadataAgentProviderGroupItem", [])])
                for row in rows]
-        check("%s is zen's container, ids %s" % (exchange["path"], ids),
+        check("%s is the 1.42.2 reference's container, ids %s" % (exchange["path"], ids),
               status == exchange["status"] and body == want, (status, body))
 
 
@@ -251,11 +252,11 @@ def _compare_reads(port, headers, label, reads):
                 if status == 200 else None
             want_ids = want["body"]["identifiers"]
             if path == "/system/agents":
-                # zen's / the copy's own plug-in load order aside (W2).
+                # the 1.42.2 reference's / the copy's own plug-in load order aside (W2).
                 got, want_ids = sorted(got or []), sorted(want_ids)
             ok, shown = got == want_ids, got
         elif path == "/media/providers/metadata":
-            # rex carries zen's `uri`/`online`; the ids are the question here.
+            # rex carries the 1.42.2 reference's `uri`/`online`; the ids are the question here.
             got = [row["id"] for row in body["MediaContainer"]["MetadataAgentProvider"]] \
                 if status == 200 else None
             ok = got == [row["id"] for row in want["body"]["MediaContainer"]["MetadataAgentProvider"]]

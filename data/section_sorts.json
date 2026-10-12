@@ -1,5 +1,5 @@
 {
- "_provenance": "GET /library/sections/1/sorts?type=N[&includeAdvanced=1] on the plexlab reference (1.43.4), 2026-09-13. The list is the TYPE's, identical on a movie and a show library, and fun (1.42.2) agrees for types 1-4 and 8. `{section}` is the library id.",
+ "_provenance": "GET /library/sections/1/sorts?type=N[&includeAdvanced=1] on the plexlab reference (1.43.4), 2026-09-13. The list is the TYPE's, identical on a movie and a show library, and the production server (1.42.2) agrees for types 1-4 and 8. `{section}` is the library id.",
  "plain": {
   "1": [
    {

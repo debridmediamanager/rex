@@ -834,7 +834,8 @@ impl Runtime {
     }
 }
 
-/// Cycle 52: thirteen genre names carry a FIXED Categories colour (zen and kids agree).
+/// Cycle 52: thirteen genre names carry a FIXED Categories colour (the 1.42.2 reference
+/// and plexlab agree).
 fn category_colour(name: &str) -> Option<&'static str> {
     Some(match name {
         "action" => "2B717E",
@@ -1019,7 +1020,7 @@ impl Runtime {
         query: &HashMap<String, String>,
     ) {
         // The oracle's `_include_int`: an optional `+`, digits, and the value ONE --
-        // kids draws no block for `-1` or `2` (cycle 83), only for `1`, `01`, `+1`.
+        // plexlab draws no block for `-1` or `2` (cycle 83), only for `1`, `01`, `+1`.
         let include_int = |name: &str| {
             query.get(name).is_some_and(|value| {
                 let digits = value.strip_prefix('+').unwrap_or(value);

@@ -4,19 +4,19 @@
 `/library/all/top` (Top Played, js:1521748 useTopCharts) answers the item's SECTION LISTING row
 -- the light projection a grid draws -- plus the librarySection triple, `globalViewCount` and
 `userCount` placed straight after `updatedAt` (after `deletedAt` where the row has one), and a
-`User` list last. Measured on kids (1.43.4, movies) and zen (1.42.2, a show, a season and
-episodes) in `tests/fixtures/c94_d_library_all_top.json`: the top row is the listing row with
+`User` list last. Measured on plexlab (1.43.4, movies) and the 1.42.2 reference (a show, a season
+and episodes) in `tests/fixtures/c94_d_library_all_top.json`: the top row is the listing row with
 exactly those additions, so no `Guid`, `Rating` or `Location` (which only a detail row carries).
 A show or season row also drops the listing's per-user aggregate (`viewCount`, `skipCount`,
-`lastViewedAt`, `userRating`, `lastRatedAt`) -- zen's Bosch rows against their own listing rows
--- and a SEASON row gains `leafCount` and `viewedLeafCount`, which its listing row does not carry,
-just before `addedAt`. An episode row (zen) and a movie row (kids) keep the listing's own
-state; whether 1.43.4 also drops a show's aggregate is not measured (kids has no show plays).
-rex answered the full detail row here.
+`lastViewedAt`, `userRating`, `lastRatedAt`) -- the 1.42.2 reference's Bosch rows against their own
+listing rows -- and a SEASON row gains `leafCount` and `viewedLeafCount`, which its listing row does
+not carry, just before `addedAt`. An episode row (the 1.42.2 reference) and a movie row (plexlab)
+keep the listing's own state; whether 1.43.4 also drops a show's aggregate is not measured (plexlab
+has no show plays). rex answered the full detail row here.
 
 The notification socket answers a client PING with a PONG carrying the same payload, at once
-(`tests/fixtures/c94_d_ws_ping.json`, kids and zen). Plex for Android 2026.19.1 pings its
-`/:/websockets/notifications` socket and, getting no pong from rex, dropped it after 50 s
+(`tests/fixtures/c94_d_ws_ping.json`, plexlab and the 1.42.2 reference). Plex for Android 2026.19.1
+pings its `/:/websockets/notifications` socket and, getting no pong from rex, dropped it after 50 s
 (close 1006) and never reopened it.
 
 Drives a real server process (`tests/server_command.py`): the native binary by default, the

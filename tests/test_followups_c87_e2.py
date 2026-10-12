@@ -14,7 +14,7 @@
    (`tests/fixtures/section_search_collections.json`): `type=18` searches the library's
    COLLECTIONS -- empty or not -- by title substring, case-blind, in a container whose
    viewGroup is `collection` with no viewMode, each row the `/all?type=18` row. Neither
-   server searched collections at all. Beside it, kids: the title2 keeps the query
+   server searched collections at all. Beside it, plexlab: the title2 keeps the query
    verbatim (`'TeArS'`, `' TEARS '`) and a padded query is not trimmed.
 3. The oracle's unlocked list writes (cycle 83): a row DELETE (and a merge) rewrites every
    playlist's item list -- read, filter, assign -- outside the lock the list writes have

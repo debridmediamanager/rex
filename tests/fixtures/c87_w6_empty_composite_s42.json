@@ -27,7 +27,7 @@
   "show": 200,
   "artist": 200
  },
- "note": "Section ids redacted to {S}. The token rode in the query (Plex Web's appendToken) and is stripped. The `width/height/rows/cols/border/media/repeat` sets are what Plex Web 4.162.1's composite image view (chunk-4030 `GA`) appends to a `composite` url; no Plex Web 4.147.1/4.162.1 call site builds a SECTION composite (a section row carries no `composite`, on kids, zen and plexscratch42).",
+ "note": "Section ids redacted to {S}. The token rode in the query (Plex Web's appendToken) and is stripped. The `width/height/rows/cols/border/media/repeat` sets are what Plex Web 4.162.1's composite image view (chunk-4030 `GA`) appends to a `composite` url; no Plex Web 4.147.1/4.162.1 call site builds a SECTION composite (a section row carries no `composite`, on plexlab, the 1.42.2 reference and plexscratch42).",
  "exchanges": [
   {
    "type": "movie",
@@ -1570,7 +1570,7 @@
    ]
   },
   "kids_nonempty": {
-   "reference": "kids PMS 1.43.4 (GET only), the populated Movies and TV Shows libraries",
+   "reference": "plexlab PMS 1.43.4 (GET only), the populated Movies and TV Shows libraries",
    "reads": [
     {
      "label": "kids-movies",

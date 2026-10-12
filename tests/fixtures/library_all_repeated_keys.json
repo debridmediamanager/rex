@@ -1,5 +1,5 @@
 {
- "_about": "PMS 1.43.4 (kids), 2026-09-30, GETs: a REPEATED query key on /library/all (last occurrence wins) against the section grid (a conjunction). Movie section 1 holds 1 Big Buck Bunny (2008, guid ...e4c9), 18 Cosmos Laundromat, 17 Elephants Dream, 3 Sintel (2010, guid ...d3df), 4 Tears of Steel; show 6 is Firefly. zen (1.42.2) agreed on year=1999&year=2001 against year=2001&year=1999 (the last year's rows).",
+ "_about": "PMS 1.43.4 (plexlab), 2026-09-30, GETs: a REPEATED query key on /library/all (last occurrence wins) against the section grid (a conjunction). Movie section 1 holds 1 Big Buck Bunny (2008, guid ...e4c9), 18 Cosmos Laundromat, 17 Elephants Dream, 3 Sintel (2010, guid ...d3df), 4 Tears of Steel; show 6 is Firefly. The 1.42.2 reference agreed on year=1999&year=2001 against year=2001&year=1999 (the last year's rows).",
  "version": "1.43.4",
  "cells": [
   {

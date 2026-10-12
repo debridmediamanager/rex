@@ -1,5 +1,5 @@
 {
- "reference": "plexscratch42 PMS 1.42.2.10156 (fresh, unclaimed); kids 1.43.4 (GET only) as witness",
+ "reference": "plexscratch42 PMS 1.42.2.10156 (fresh, unclaimed); plexlab 1.43.4 (GET only) as witness",
  "date": "2026-10-01",
  "note": "Response header NAMES in wire order (Date included, values dropped) off a raw keep-alive socket with no Origin, for every /system path family plus four core containers, plain, paged (header and query), gzipped (`Accept-Encoding: gzip`), both, and HEAD. A paged answer writes X-Plex-Container-Start/Total-Size after the type (core) or after the framework cookie (/system), before the connection state; every gzipped /system answer orders like the cycle-40 url-lookup gzip family, and the five Cache-Control-first framework routes keep it second when gzipped.",
  "exchanges": [

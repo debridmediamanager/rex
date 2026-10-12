@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """Two releases of one title are one row with two Media, as a real PMS makes them.
 
-fun-rex listed 127 Hours twice on 2026-10-11: two releases in one zurg, each pushed
+The production rex listed 127 Hours twice on 2026-10-11: two releases in one zurg, each pushed
 as its own item, identified to the same Plex guid, made two movies (407 movies and
 ~1,370 episodes doubled across the library). A real PMS's movie agent makes every file
 of one title one item and offers them as versions. This drives the feed with zurg's
 real entries for both releases (`fixtures/feed/duplicate_releases.json`), then starts
-on the two rows fun-rex actually held, which a restart must fold.
+on the two rows the production rex actually held, which a restart must fold.
 
     python3 tests/test_feed_versions.py
 """
@@ -115,16 +115,16 @@ def main():
         server.stop()
         shutil.rmtree(work, ignore_errors=True)
 
-    # -- restart: the two rows fun-rex held are folded ----------------------------
+    # -- restart: the two rows the production rex held are folded ----------------------------
     work = tempfile.mkdtemp(prefix="rex-versions-")
-    # They were fun's `rd` source's; the test's source is `zurg`.
+    # They were the production rex's `rd` source's; the test's source is `zurg`.
     catalog(work, [dict(row, _source="zurg") for row in FIXTURE["rows"]])
     server = Server(work, bytes_port)
     try:
         old = [row["ratingKey"] for row in FIXTURE["rows"]]
         listed = movies(server)
         row = server.row(old[0])
-        check("fun-rex's two 127 Hours rows start as one movie on the older key",
+        check("the production rex's two 127 Hours rows start as one movie on the older key",
               [r.get("ratingKey") for r in listed] == [old[0]] and len(row.get("Media") or []) == 2
               and server.request("/library/metadata/%s" % old[1])[0] == 404,
               ([(r.get("ratingKey"), len(r.get("Media") or [])) for r in listed], old))

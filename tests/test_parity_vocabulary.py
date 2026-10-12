@@ -3,7 +3,7 @@
 
 `probes/vsweep.py` appended every parameter name the oracle's source reads to
 every request path Plex Web builds and diffed the oracle against the native server.
-Each rule below was then measured on kids (1.43.4) and zen (1.42.2), and every check
+Each rule below was then measured on plexlab (1.43.4) and the 1.42.2 reference, and every check
 asserts that measured answer on `tests/catalog_ui.json`, not "the two servers agree":
 
 - the columns a listing REFUSES (`art`, `banner`, `theme`, `thumb`, `slug`, `extraType`,
@@ -117,7 +117,8 @@ def hub(mc, prefix):
                  if str(h.get("hubIdentifier", "")).startswith(prefix)), None)
 
 
-# The consumers of the listing grammar that kids and zen refuse the refused columns on.
+# The consumers of the listing grammar that plexlab and the 1.42.2 reference refuse the refused
+# columns on.
 GRAMMAR_PATHS = [
     "/library/metadata/20001/children?excludeAllLeaves=1",
     "/library/metadata/20001/grandchildren",

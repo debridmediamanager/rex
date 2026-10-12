@@ -1,5 +1,5 @@
 {
- "_about": "Verb table measured 2026-09-30 by sending each verb to each read path with a token, Accept: application/json and no body. plexscratch (1.43.4) for every verb; kids (1.43.4) and zen (1.42.2) for OPTIONS and HEAD only. plexscratch's ratingKeys 1 and 3 are two movies. Its /statistics GETs are themselves 404s there, so for that subtree only the refused verbs are kept, and kids -- where the GET and HEAD are 200s -- corroborates them with the same 404 to a bare OPTIONS. DELETE on a section, an item or a collection was never sent.",
+ "_about": "Verb table measured 2026-09-30 by sending each verb to each read path with a token, Accept: application/json and no body. plexscratch (1.43.4) for every verb; plexlab (1.43.4) and the 1.42.2 reference for OPTIONS and HEAD only. plexscratch's ratingKeys 1 and 3 are two movies. Its /statistics GETs are themselves 404s there, so for that subtree only the refused verbs are kept, and plexlab -- where the GET and HEAD are 200s -- corroborates them with the same 404 to a bare OPTIONS. DELETE on a section, an item or a collection was never sent.",
  "rows": [
   {
    "reference": "plexscratch",
@@ -1100,7 +1100,7 @@
    "contentType": "application/json"
   },
   {
-   "reference": "kids",
+   "reference": "plexlab",
    "version": "1.43.4",
    "method": "OPTIONS",
    "path": "/player/zzNoSuchLeaf",
@@ -1108,7 +1108,7 @@
    "contentType": "text/html"
   },
   {
-   "reference": "kids",
+   "reference": "plexlab",
    "version": "1.43.4",
    "method": "OPTIONS",
    "path": "/player/timeline/zzNoSuchLeaf",
@@ -1116,7 +1116,7 @@
    "contentType": "text/html"
   },
   {
-   "reference": "zen",
+   "reference": "The 1.42.2 reference",
    "version": "1.42.2",
    "method": "OPTIONS",
    "path": "/player/zzNoSuchLeaf",
@@ -1124,7 +1124,7 @@
    "contentType": "text/html"
   },
   {
-   "reference": "zen",
+   "reference": "The 1.42.2 reference",
    "version": "1.42.2",
    "method": "OPTIONS",
    "path": "/player/timeline/zzNoSuchLeaf",
@@ -1132,7 +1132,7 @@
    "contentType": "text/html"
   },
   {
-   "reference": "kids",
+   "reference": "plexlab",
    "version": "1.43.4",
    "method": "HEAD",
    "path": "/library/sections/1/prefs",
@@ -1140,7 +1140,7 @@
    "contentType": "text/xml"
   },
   {
-   "reference": "zen",
+   "reference": "The 1.42.2 reference",
    "version": "1.42.2",
    "method": "HEAD",
    "path": "/library/sections/1/prefs",
@@ -1292,7 +1292,7 @@
    "contentType": "text/html"
   },
   {
-   "reference": "kids",
+   "reference": "plexlab",
    "version": "1.43.4",
    "method": "OPTIONS",
    "path": "/statistics/resources?timespan=6",
@@ -1300,7 +1300,7 @@
    "contentType": "text/html"
   },
   {
-   "reference": "kids",
+   "reference": "plexlab",
    "version": "1.43.4",
    "method": "HEAD",
    "path": "/statistics/resources?timespan=6",
@@ -1308,7 +1308,7 @@
    "contentType": "text/xml"
   },
   {
-   "reference": "kids",
+   "reference": "plexlab",
    "version": "1.43.4",
    "method": "OPTIONS",
    "path": "/statistics/bandwidth?timespan=6",
@@ -1316,7 +1316,7 @@
    "contentType": "text/html"
   },
   {
-   "reference": "kids",
+   "reference": "plexlab",
    "version": "1.43.4",
    "method": "HEAD",
    "path": "/statistics/bandwidth?timespan=6",

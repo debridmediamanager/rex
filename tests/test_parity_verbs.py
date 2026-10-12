@@ -5,7 +5,7 @@ measured record in `tests/fixtures/verb_table_2026-09-30.json`.
 A differential sweep sent HEAD, OPTIONS, PUT, POST and DELETE to every client read
 path on the oracle and the native server, and the two disagreed by FAMILY. Each rule
 below is the reference's answer for a whole family, measured on plexscratch (1.43.4)
-for every verb and on kids and zen for OPTIONS and HEAD:
+for every verb and on plexlab and the 1.42.2 reference for OPTIONS and HEAD:
 
 - section leaves  -- `/library/sections/{id}/{leaf}` takes the verbs of cycle 15's
                      leaf table; every read leaf and the section's own POST is a 404

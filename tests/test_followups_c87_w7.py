@@ -4,9 +4,9 @@ the header order of paged and gzipped answers.
 
 1. `tests/fixtures/c87_w7_url_lookup.json`: `/system/services/url/lookup` is the 464-byte
    traceback only when no `url` argument is given. With one -- empty, relative, a non-URL,
-   an http URL, a YouTube link -- plexscratch42, kids and zen answer a 404 with an EMPTY,
-   untyped body and the framework cookie, under every Accept, gzip offer, paging and HEAD.
-   rex answered the traceback to all of them.
+   an http URL, a YouTube link -- plexscratch42, plexlab and the 1.42.2 reference answer a
+   404 with an EMPTY, untyped body and the framework cookie, under every Accept, gzip offer,
+   paging and HEAD. rex answered the traceback to all of them.
 2. `tests/fixtures/c87_w7_peer_paging.json`: the ten `/system/{channels,plugins}/{name}`
    peer directories page: a full window adds `totalSize="0"` and both
    `X-Plex-Container-*` headers. rex served the unpaged document whatever was asked.

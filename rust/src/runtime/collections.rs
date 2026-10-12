@@ -1889,7 +1889,8 @@ impl Runtime {
         if method == "DELETE" {
             return self.delete_collection(&id);
         }
-        // Measured on fun: the library container any item's detail carries.
+        // Measured on the production server: the library container any item's detail
+        // carries.
         let mut body = Map::new();
         body.insert("size".to_string(), json!(1));
         body.insert("allowSync".to_string(), json!(true));

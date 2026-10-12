@@ -1,5 +1,5 @@
 {
- "source": "harness capture/outbound.jsonl on kids, a real Plex 1.43.4 PMS announcing to plex.tv",
+ "source": "harness capture/outbound.jsonl on plexlab, a real Plex 1.43.4 PMS announcing to plex.tv",
  "captured": "2026-09-12",
  "note": "Every token replaced with the literal PLEX-TOKEN. No credential here.",
  "announces": [

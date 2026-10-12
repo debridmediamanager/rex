@@ -1,5 +1,5 @@
 {
- "_about": "Container paging sent as BOTH query parameters and X-Plex-Container-Start/-Size request headers with different values, measured 2026-09-30 with GETs only on kids (PMS 1.43.4, the lab), zen (PMS 1.42.2, production, read only) and plexscratch42 (PMS 1.42.2). Each cell is the request's query and headers and the answer's status, MediaContainer size/offset/totalSize, the number of rows and the X-Plex-Container-Start / -Total-Size response headers. The header wins per parameter on every route family; a header Start=abc beside a valid query is a 500.",
+ "_about": "Container paging sent as BOTH query parameters and X-Plex-Container-Start/-Size request headers with different values, measured 2026-09-30 with GETs only on plexlab (PMS 1.43.4, the lab), the 1.42.2 reference (production, read only) and plexscratch42 (PMS 1.42.2). Each cell is the request's query and headers and the answer's status, MediaContainer size/offset/totalSize, the number of rows and the X-Plex-Container-Start / -Total-Size response headers. The header wins per parameter on every route family; a header Start=abc beside a valid query is a 500.",
  "cells": [
   {
    "ref": "kids",

@@ -276,7 +276,7 @@ pub fn stored_title(row: &Row) -> String {
 pub fn stored_sort_title(row: &Row) -> String {
     let title = str_value(row, "title").unwrap_or_default();
     // Python's `if not row.get("titleSort")`: a stored sort title -- even one
-    // equal to the generated title (kids' season 7, cycle 31) -- counts; only a
+    // equal to the generated title (plexlab's season 7, cycle 31) -- counts; only a
     // row storing none (or an empty one) stores the empty string.
     if str_value(row, "type").as_deref() == Some("season")
         && generated_title(&title)
@@ -1054,9 +1054,9 @@ pub fn build(mut leaves: Vec<Value>) -> Vec<Value> {
 
 /// A season is made from its first leaf. A later leaf that identifies a season the first
 /// left unidentified (its TMDB season was not had) gives it that identity, and one carrying
-/// artwork gives artwork to a season with none: fun's rex kept 186 seasons of 131 shows on
-/// the blank tile under a show with a poster (2026-10-12), because nothing after the first
-/// leaf was ever read. Answers the guid the season took, if it took one.
+/// artwork gives artwork to a season with none: the production rex kept 186 seasons of 131
+/// shows on the blank tile under a show with a poster (2026-10-12), because nothing after
+/// the first leaf was ever read. Answers the guid the season took, if it took one.
 fn fill_season(season: &mut Row, leaf: &Row) -> Option<String> {
     let present = |value: &&Value| !value.is_null() && value.as_str() != Some("");
     let blank = |season: &Row, field: &str| season.get(field).filter(present).is_none();

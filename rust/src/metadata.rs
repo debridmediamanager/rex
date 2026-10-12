@@ -752,7 +752,8 @@ pub fn enrich(
         put(row, "Guid", externals.clone());
     }
     // An episode TMDB does not have keeps the guid it had: it was minted a MOVIE guid
-    // and given its show's ids (zen's Tom and Jerry S02E05 under a one-season show).
+    // and given its show's ids (the 1.42.2 reference's Tom and Jerry S02E05 under a
+    // one-season show).
     put(row, "_show_external_guids", externals);
     if let Some(path) = poster.as_deref() {
         put(row, "_poster_url", format!("{}w342{}", IMAGE_BASE, path));
@@ -874,9 +875,9 @@ mod tests {
             ]
         );
     }
-    /// zen, 2026-10-10: `The.Tom.and.Jerry.Show.S02E05` under the 1975 show, which has no
-    /// season 2. TMDB answered the show and nothing for the episode; the episode row was
-    /// minted `plex://movie/...` and given the show's ids.
+    /// The test host, 2026-10-10: `The.Tom.and.Jerry.Show.S02E05` under the 1975 show,
+    /// which has no season 2. TMDB answered the show and nothing for the episode; the
+    /// episode row was minted `plex://movie/...` and given the show's ids.
     #[test]
     fn an_episode_tmdb_lacks_keeps_its_guid() {
         let mut row = Map::from_iter([("guid".to_string(), json!("local://100095"))]);

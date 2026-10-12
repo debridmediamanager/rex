@@ -66,7 +66,7 @@ def main():
 
     # Cycle 37 reconstructed both PMS spellfix tables, including the exact
     # editdist1/rank score, top-ten cap, <=200 cutoff and fallback gate. These
-    # titles are the tiny measured kids corpus so `zzz` has the same two words.
+    # titles are the tiny measured plexlab corpus so `zzz` has the same two words.
     spelling = getattr(catalog, "spelling", None)
     zzz = spelling.metadata.candidates("zzz") if spelling is not None else []
     check("spellfix candidates use the measured cost and bounded result set",
@@ -133,7 +133,7 @@ def main():
 
     # A compact reconstruction of the live `emtz` witness. The 5,785 distinct
     # imdb GUID strings give that token its measured rank and keep Imtiaz out of
-    # the ten-candidate vector, exactly as zen's visible people hubs do.
+    # the ten-candidate vector, exactly as the 1.42.2 reference's visible people hubs do.
     emtz_ranks = {
         "ents": 2, "hintze": 1, "ends": 2, "entre": 1, "hunts": 2,
         "enter": 4, "amter": 1, "ent": 3, "emde": 1, "imtiaz": 1,
@@ -523,9 +523,10 @@ def main():
     check("the TV Recently Added shelves date a show by its newest leaf",
           section_stamp == 200 and promoted_stamp == 200,
           "section=%s promoted=%s" % (section_stamp, promoted_stamp))
-    # Cycle 55, measured on zen (twelve of twelve rows): the library's TV shelf IS the
-    # section's mixed roll-up -- a one-episode show is its EPISODE there, exactly as on
-    # `/hubs/home/recentlyAdded?type=2&sectionID=2` -- not a list of top-level shows.
+    # Cycle 55, measured on the 1.42.2 reference (twelve of twelve rows): the library's TV
+    # shelf IS the section's mixed roll-up -- a one-episode show is its EPISODE there,
+    # exactly as on `/hubs/home/recentlyAdded?type=2&sectionID=2` -- not a list of top-level
+    # shows.
     rolled = [r.get("ratingKey") for r in sim.recently_added_tv("2")]
     shelf_keys = [r.get("ratingKey") for r in section_recent.get("Metadata") or []]
     check("the library's TV shelf is the section's roll-up",
@@ -940,14 +941,15 @@ def main():
     # Cycle 44: the TMDB pipeline's own output, driven through `metadata.identify` with
     # a stubbed TMDB client. Two things it got wrong, both measured on the references:
     #
-    #  * a SEASON was given TMDB's season air-date year as its own `year`. 689 of zen's
+    #  * a SEASON was given TMDB's season air-date year as its own `year`. 689 of the 1.42.2
+    #  reference's
     #    742 seasons carry `parentYear` and exactly ONE carries a `year` of its own, so
     #    a Plex series agent does not produce one -- and carrying it takes `parentYear`
     #    away, because the year rule reads "has a year of its own" off that column;
     #  * a SEASON and an EPISODE carried no `Guid` at all. The ids were fetched and
-    #    discarded on a note claiming a real PMS leaves those arrays empty. kids' season
+    #    discarded on a note claiming a real PMS leaves those arrays empty. plexlab's season
     #    7 answers `tmdb://3846` and `tvdb://15791` and its episode 8 answers three ids;
-    #    58 of 60 zen episodes surveyed carry a block.
+    #    58 of 60 episodes of the 1.42.2 reference surveyed carry a block.
     import metadata as metadata_module
 
     class _Tmdb:
@@ -1048,11 +1050,11 @@ def main():
           and edited_gdm == ("empty", 200) and deleted_gdm == ("empty", 200),
           "key=%r touches=%d" % (created_key, gdm_stamp.touches))
 
-    # Cycle 79: season 0, driven from what zen answered for its four shows that hold one
-    # (tests/fixtures/specials_zen.json) and its control show without. Each show is
-    # rebuilt from one leaf per zen season through the catalog builder, and once more as
-    # a catalog written before the rule (season 0 stored as `Season 0`), which the load
-    # has to correct.
+    # Cycle 79: season 0, driven from what the 1.42.2 reference answered for its four shows
+    # that hold one (tests/fixtures/specials_zen.json) and its control show without. Each
+    # show is rebuilt from one leaf per season of the 1.42.2 reference through the catalog
+    # builder, and once more as a catalog written before the rule (season 0 stored as
+    # `Season 0`), which the load has to correct.
     import json
     import tempfile
     with open(os.path.join(HERE, "fixtures", "specials_zen.json"), encoding="utf-8") as handle:
@@ -1114,10 +1116,10 @@ def main():
                     show["childCount"], show["seasonCount"]) or not placed or not xml_placed:
                 wrong_counts.append((show["title"], detail.get("childCount"),
                                      detail.get("seasonCount"), placed, xml_placed))
-        check("a season 0 is titled Specials, as zen titles it (%s)" % label,
+        check("a season 0 is titled Specials, as the 1.42.2 reference titles it (%s)" % label,
               not wrong_titles, str(wrong_titles))
         check("a show with a season 0 carries seasonCount, without the specials, straight "
-              "after childCount, as zen answers (%s)" % label,
+              "after childCount, as the 1.42.2 reference answers (%s)" % label,
               not wrong_counts, str(wrong_counts))
 
         bluey = next(show for show in zen_specials if show.get("localised"))
@@ -1139,11 +1141,12 @@ def main():
             if got != expected:
                 wrong.append((language, got, expected))
         check("Specials is localised as a season title and an episode's parentTitle, and "
-              "kept English as title2, in every language zen answers (%s)" % label,
+              "kept English as title2, in every language the 1.42.2 reference answers (%s)" % label,
               not wrong, str(wrong[:3]))
 
-        # Deleting the season 0 recounts the show: zen's rule leaves a show without one
-        # no `seasonCount` at all, so it goes with the season rather than staying stale.
+        # Deleting the season 0 recounts the show: the 1.42.2 reference's rule leaves a show
+        # without one no `seasonCount` at all, so it goes with the season rather than
+        # staying stale.
         gundam = shows["Mobile Suit Gundam Wing"]
         season_zero = next(season for season in specials_sim.catalog.children(
             gundam["ratingKey"]) if season.get("index") == 0)

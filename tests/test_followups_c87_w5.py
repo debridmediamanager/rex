@@ -158,8 +158,8 @@ def run(port, fixture):
         return (body.get("MediaContainer") or {}).get("Meta") or {} if isinstance(body, dict) else {}
 
     def without_source(meta):
-        # The one claim-gated row: zen (claimed) lists `source` for albums and tracks
-        # and the unclaimed copy does not (see section_meta_artist.json's provenance).
+        # The one claim-gated row: the 1.42.2 reference (claimed) lists `source` for albums and
+        # tracks and the unclaimed copy does not (see section_meta_artist.json's provenance).
         meta = json.loads(json.dumps(meta))
         for entry in meta.get("Type") or []:
             if "Filter" in entry:

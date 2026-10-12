@@ -81,10 +81,11 @@ impl Runtime {
             .collect();
         let mut order: Vec<String> = Vec::new();
         // References: copying every episode of the library here, once per call and three
-        // calls per `/hubs`, was most of the home screen's 1.9 GB (fun, 2026-10-10).
-        // Only a show with a play or a resume point can have a row, so only those shows'
-        // episodes are grouped: grouping all of fun's 27k episodes, on every Home read
-        // (three times) and every item page, was most of their cost (2026-10-11).
+        // calls per `/hubs`, was most of the home screen's 1.9 GB (the production server,
+        // 2026-10-10). Only a show with a play or a resume point can have a row, so only
+        // those shows' episodes are grouped: grouping all of the production server's 27k
+        // episodes, on every Home read (three times) and every item page, was most of their
+        // cost (2026-10-11).
         let is_episode = |row: &Value| row.get("type").and_then(Value::as_str) == Some("episode");
         fn show_of(row: &Value) -> std::borrow::Cow<'_, str> {
             match row.get("grandparentRatingKey") {
@@ -328,9 +329,9 @@ pub(super) fn exclude_continue_watching(query: &HashMap<String, String>) -> bool
         && raw.trim_start_matches('+').trim_start_matches('0') == "1"
 }
 
-/// A shelf with no `count=` carries at most SIX rows (measured on zen).
+/// A shelf with no `count=` carries at most SIX rows (measured on the 1.42.2 reference).
 const SHELF_COUNT: i64 = 6;
-/// `/hubs/home/recentlyAdded?type=2` caps at 50 (cycle 28, zen).
+/// `/hubs/home/recentlyAdded?type=2` caps at 50 (cycle 28, the 1.42.2 reference).
 const TV_RECENT_CAP: usize = 50;
 
 /// The global hub list, measured identically on both real servers: eight shelves in
@@ -560,7 +561,8 @@ impl Runtime {
         // roll-up reads the stored rows. The oracle once took the key off the stored row,
         // and this grouped a flattened show's episodes under no season to match it.
         // Each leaf's key, season and show, read once and borrowed below: allocating them
-        // again for every map and lookup was most of this roll-up over fun's 27k episodes.
+        // again for every map and lookup was most of this roll-up over the production
+        // server's 27k episodes.
         let named = leaves
             .iter()
             .map(|leaf| {
@@ -649,11 +651,11 @@ impl Runtime {
             .collect()
     }
 
-    /// Cycle 54, measured on kids and zen: the request's listing FILTERS run over the
-    /// EPISODES before the TV roll-up -- `title=Train` answers the one episode,
-    /// `title=Firefly` nothing, `show.title=Firefly` the show again.  `Ok(None)` when the
-    /// request carries no filter; a filter that does not parse is its status.  A hub
-    /// PAGE drops an empty-valued pair first (`drop_empty`, the oracle's
+    /// Cycle 54, measured on plexlab and the 1.42.2 reference: the request's listing
+    /// FILTERS run over the EPISODES before the TV roll-up -- `title=Train` answers the one
+    /// episode, `title=Firefly` nothing, `show.title=Firefly` the show again.  `Ok(None)`
+    /// when the request carries no filter; a filter that does not parse is its status.  A
+    /// hub PAGE drops an empty-valued pair first (`drop_empty`, the oracle's
     /// `_hub_page_filters`), where `/hubs/home/recentlyAdded` parses it.
     pub(super) fn filtered_tv_leaves(
         &self,
@@ -666,7 +668,7 @@ impl Runtime {
             .map(|(name, value)| (name.clone(), value.clone()))
             .collect::<Vec<_>>();
         pairs.sort();
-        // The refused columns refuse before anything parses: kids' TV Recently Added
+        // The refused columns refuse before anything parses: plexlab's TV Recently Added
         // list answers `art=` (EMPTY, which that list parses) with a 500, where the
         // parse below finds no field in it and would answer every row.
         if pairs.iter().any(|(name, _)| {
@@ -705,7 +707,7 @@ impl Runtime {
     }
 
     /// The movie half of `recently_added_rows` by reference: Home's shelf and the
-    /// movie list copied every movie to show twelve (fun, 2026-10-11).
+    /// movie list copied every movie to show twelve (the production server, 2026-10-11).
     pub(super) fn recent_movie_refs(&self, section_id: Option<&String>) -> Vec<&Value> {
         let mut rows = self
             .catalog
@@ -951,9 +953,9 @@ impl Runtime {
             if section_type == "artist" {
                 // `server.py`: measured on plexscratch42 for an empty music library --
                 // `music.recent.added.<id>`, typed `album`, keyed on the library's albums
-                // by date added; under `pinnedContentDirectoryID` zen's swap onto the Home
-                // shelf's own identity (`home.music.recent`, "Recently Added Music",
-                // `type=8`). rex holds no music rows.
+                // by date added; under `pinnedContentDirectoryID` the 1.42.2 reference's
+                // swap onto the Home shelf's own identity (`home.music.recent`, "Recently
+                // Added Music", `type=8`). rex holds no music rows.
                 rows = Vec::new();
                 kind = "album";
                 identifier = format!("music.recent.added.{section_key}");
@@ -977,9 +979,9 @@ impl Runtime {
                 "shelf",
                 true,
             );
-            // Cycle 83, measured on kids (Firefly) and recorded on zen (cycle 55): the
-            // TV shelf's FULL show rows take the `include*` blocks here as on a library
-            // hub page; a light row never does.
+            // Cycle 83, measured on plexlab (Firefly) and recorded on the 1.42.2 reference
+            // (cycle 55): the TV shelf's FULL show rows take the `include*` blocks here as
+            // on a library hub page; a light row never does.
             if is_show {
                 for row in shelf
                     .get_mut("Metadata")
@@ -1028,8 +1030,8 @@ pub(super) const REFUSED_FILTER_FIELDS: &[&str] = &[
 ];
 
 /// The fifteen fields a hub request refuses with a value (a 500). Cycle 83, measured on
-/// kids and zen: the listing's refusals (`REFUSED_FILTER_FIELDS`) are refused here on the
-/// same terms, so `hub_refusal` checks both lists.
+/// plexlab and the 1.42.2 reference: the listing's refusals (`REFUSED_FILTER_FIELDS`) are
+/// refused here on the same terms, so `hub_refusal` checks both lists.
 const HUB_REFUSED_FIELDS: &[&str] = &[
     "duration",
     "lastViewedAt",
@@ -1089,9 +1091,9 @@ pub(super) fn page_window(
 /// `(start, size)` when both paging parameters are sent, `None` otherwise, and `Err(500)`
 /// for a value that does not parse (`server.py` `paging_values`).
 ///
-/// Cycle 83, measured on kids and zen over the grid, `/folder`, `/recentlyViewedShows`,
-/// `/children`, `/library/sections`, `/identity`, `/:/prefs`, a hub page and
-/// `/hubs/search`: a SIZE is parsed whenever it is sent, alone included (a lone
+/// Cycle 83, measured on plexlab and the 1.42.2 reference over the grid, `/folder`,
+/// `/recentlyViewedShows`, `/children`, `/library/sections`, `/identity`, `/:/prefs`, a hub
+/// page and `/hubs/search`: a SIZE is parsed whenever it is sent, alone included (a lone
 /// `X-Plex-Container-Size=abc` is the 500), a START only beside a Size. The grammar is a
 /// 32-bit signed integer -- an optional `+`/`-` and ASCII digits; an empty value, `1.5`,
 /// a space either side and `2147483648` are 500s. `trim().parse::<i64>()` took spaces and

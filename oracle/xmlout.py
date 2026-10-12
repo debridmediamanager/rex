@@ -26,9 +26,9 @@ _METADATA_ELEMENT = {
     "playlist": "Playlist",
     "track": "Track",
     # Cycle 45: a `type: "image"` row -- what `/library/arts` answers -- is a `<Photo>`,
-    # measured on kids. Without it the row fell through to the `Video` default, which is
-    # the trap this project already records for three other endpoints: `xmlout` names a
-    # `Metadata` row's element from the row's `type`, and XML is the DEFAULT format.
+    # measured on plexlab. Without it the row fell through to the `Video` default, which
+    # is the trap this project already records for three other endpoints: `xmlout` names
+    # a `Metadata` row's element from the row's `type`, and XML is the DEFAULT format.
     "image": "Photo",
 }
 
@@ -48,17 +48,17 @@ _LIGHT_CHILD_ORDER = {name: index for index, name in enumerate((
     "Writer", "Role", "Collection", "Location"))}
 
 # Cycle 45: `includeAlternates=1` inlines `Thumb` and `Art` between the tags and
-# `Guid`, and `Theme` directly after `Rating` -- kids' show 6 answers `Genre, Country,
-# Thumb, Art, Guid, Rating, Theme, Role` and zen's movie 380 `Genre, Country, Thumb,
-# Art, Guid, Rating, Director`. Without the entries they would fall to the END, which
-# is this table's documented failure mode for a pair no reference emitted.
-# Cycle 49 moved `Style`: it sits AFTER `Country` and before `Thumb`, not between
-# `UltraBlurColors` and `Genre`. Measured on plexscratch42 (1.42.2) and plexscratch
-# (1.43.4) on a movie MADE to carry the whole tag family at once -- `Genre Country Style
-# Collection Director Producer Label Similar Field` -- which is a row shape no reference
-# library holds, so cycle 23's 2,994-path sweep could not have seen it. `Mood` is
-# deliberately absent from this table still: a real PMS refuses a `mood` write on a movie
-# and stores nothing, so its slot is unmeasured rather than guessed.
+# `Guid`, and `Theme` directly after `Rating` -- plexlab's show 6 answers `Genre,
+# Country, Thumb, Art, Guid, Rating, Theme, Role` and the 1.42.2 reference's movie 380
+# `Genre, Country, Thumb, Art, Guid, Rating, Director`. Without the entries they would
+# fall to the END, which is this table's documented failure mode for a pair no reference
+# emitted. Cycle 49 moved `Style`: it sits AFTER `Country` and before `Thumb`, not
+# between `UltraBlurColors` and `Genre`. Measured on plexscratch42 (1.42.2) and
+# plexscratch (1.43.4) on a movie MADE to carry the whole tag family at once -- `Genre
+# Country Style Collection Director Producer Label Similar Field` -- which is a row shape
+# no reference library holds, so cycle 23's 2,994-path sweep could not have seen it.
+# `Mood` is deliberately absent from this table still: a real PMS refuses a `mood` write
+# on a movie and stores nothing, so its slot is unmeasured rather than guessed.
 _CHILD_ORDER = {name: index for index, name in enumerate((
     "Media", "Image", "UltraBlurColors", "Genre", "Country", "Style",
     "Thumb", "Art", "Guid", "Rating", "Theme",
@@ -66,16 +66,16 @@ _CHILD_ORDER = {name: index for index, name in enumerate((
     "CommonSenseMedia", "Chapter", "Marker", "Review", "Field", "Location", "Preferences",
     "OnDeck", "Extras", "Related", "Children"))}
 
-# Cycle 16, measured on kids and zen: inside a `Meta/Type` the order is
-# `Filter, Sort, Field` -- which is NOT the item order above, where `Field` comes
+# Cycle 16, measured on plexlab and the 1.42.2 reference: inside a `Meta/Type` the order
+# is `Filter, Sort, Field` -- which is NOT the item order above, where `Field` comes
 # before `Location`. rex sorted these three by the item table, which knows only
 # `Field`, so they came out in whatever order the dict held: `Field, Filter, Sort`.
 _TYPE_CHILD_ORDER = {name: index for index, name in enumerate(
     ("Filter", "Sort", "Field"))}
 
-# Cycle 19, measured on kids (1.43.4) and zen (1.42.2): inside a `Meta` the two `Type`
-# rows come BEFORE the eight `FieldType` rows -- `Type, Type, FieldType x8` on a movie
-# library's `?includeMeta=1`. rex sorted them by the item table, which knows
+# Cycle 19, measured on plexlab (1.43.4) and the 1.42.2 reference: inside a `Meta` the
+# two `Type` rows come BEFORE the eight `FieldType` rows -- `Type, Type, FieldType x8` on
+# a movie library's `?includeMeta=1`. rex sorted them by the item table, which knows
 # neither name, so the stable sort left the dict's own order and every Meta came out
 # `FieldType x8, Type, Type`. It gets the same pair right where they sit directly on
 # the container (`?includeDetails=1` is `Directory x20, Type, FieldType x8` on all
@@ -83,14 +83,14 @@ _TYPE_CHILD_ORDER = {name: index for index, name in enumerate(
 _META_CHILD_ORDER = {name: index for index, name in enumerate(("Type", "FieldType"))}
 
 
-# Cycle 17, measured on kids (1.43.4) and zen (1.42.2), which agree byte for byte:
-# a real PMS escapes an XML attribute value into pure ASCII even though the document
-# declares UTF-8. `&`, `<` and `>` take the named entities; `"` and `'` take NUMERIC
-# ones (`&#34;`, `&#39;`) rather than `&quot;`/`&apos;`; TAB is decimal `&#9;` while
-# NEWLINE and CR are HEX (`&#xA;`, `&#xD;`); every codepoint from U+0080 up becomes its
-# DECIMAL reference, astral plane included (an emoji is `&#128512;`, one reference and
-# not a surrogate pair); and every control character XML 1.0 forbids is replaced with a
-# literal `?`. rex used `xml.sax.saxutils.quoteattr`, which writes `&quot;`, leaves
+# Cycle 17, measured on plexlab (1.43.4) and the 1.42.2 reference, which agree byte for
+# byte: a real PMS escapes an XML attribute value into pure ASCII even though the
+# document declares UTF-8. `&`, `<` and `>` take the named entities; `"` and `'` take
+# NUMERIC ones (`&#34;`, `&#39;`) rather than `&quot;`/`&apos;`; TAB is decimal `&#9;`
+# while NEWLINE and CR are HEX (`&#xA;`, `&#xD;`); every codepoint from U+0080 up becomes
+# its DECIMAL reference, astral plane included (an emoji is `&#128512;`, one reference
+# and not a surrogate pair); and every control character XML 1.0 forbids is replaced with
+# a literal `?`. rex used `xml.sax.saxutils.quoteattr`, which writes `&quot;`, leaves
 # `'` alone, sends the newline as decimal and passes every non-ASCII character through
 # raw -- a different body from a real PMS on every response carrying an accent or an
 # apostrophe, which on a real library is most of them.
@@ -116,12 +116,12 @@ def _escape(text):
     return '"%s"' % "".join(out)
 
 
-# Cycle 17, derived from kids (1.43.4) and zen (1.42.2) and verified against them: the
-# order a ROW's attributes come out in. Cycle 16 settled the CONTAINER's (`size`, then
-# `totalSize`/`offset` when paged, then alphabetical) and left a row's explicitly
-# unmapped -- it is not alphabetical, and a tag comes out `id, filter, tag`. Each order
-# below is a topological sort of every attribute PAIR the two references were seen to
-# emit, over 25 element buckets and every row type, and each was checked to be a
+# Cycle 17, derived from plexlab (1.43.4) and the 1.42.2 reference and verified against
+# them: the order a ROW's attributes come out in. Cycle 16 settled the CONTAINER's
+# (`size`, then `totalSize`/`offset` when paged, then alphabetical) and left a row's
+# explicitly unmapped -- it is not alphabetical, and a tag comes out `id, filter, tag`.
+# Each order below is a topological sort of every attribute PAIR the two references were
+# seen to emit, over 25 element buckets and every row type, and each was checked to be a
 # superset of every observed sequence. Only witnessed pairs constrain it; attributes
 # never seen together fall where they fall, which is why an attribute missing from a
 # list keeps its place after the ones that are in it rather than being moved.
@@ -130,16 +130,16 @@ def _escape(text):
 # by element plus the row's `type`, except a `/library/sections` row -- the one
 # Directory that carries `agent` -- which has an order of its own.
 _ATTR_ORDER = {
-    # Cycle 19, measured on kids (1.43.4) and zen (1.42.2), which agree on all five:
-    # four element buckets `_ATTR_ORDER` had no entry for at all, plus the split
+    # Cycle 19, measured on plexlab (1.43.4) and the 1.42.2 reference, which agree on all
+    # five: four element buckets `_ATTR_ORDER` had no entry for at all, plus the split
     # `Directory[PROVIDER]` above. Without an entry the attributes come out in
     # whatever order the dict that built the row held them.
     "Common": (
-        # `/library/sections/{id}/common`, a single-row form on both servers. zen's
-        # sequence is a superset of kids'.
-        # Cycle 23, measured on kids and zen: the GRANDPARENT pair LEADS the element
-        # and the PARENT pair comes before `ratingKey`. rex appended all four
-        # after the scalars, because this bucket knew none of them.
+        # `/library/sections/{id}/common`, a single-row form on both servers. The 1.42.2
+        # reference's sequence is a superset of plexlab's.
+        # Cycle 23, measured on plexlab and the 1.42.2 reference: the GRANDPARENT pair
+        # LEADS the element and the PARENT pair comes before `ratingKey`. rex appended
+        # all four after the scalars, because this bucket knew none of them.
         "grandparentRatingKey", "grandparentTitle",
         # Cycle 25: `userRating` follows `mixedFields` directly, ahead of `guid` --
         # measured on plexscratch, the only instrument that can show the field at all.
@@ -174,8 +174,8 @@ _ATTR_ORDER = {
     "Country": (
         "id", "filter", "tag"
     ),
-    # Cycle 45: an `includeAlternates=1` artwork row. Measured on kids and zen --
-    # `key`, then `previewKey` where the provider gives one, then `source`.
+    # Cycle 45: an `includeAlternates=1` artwork row. Measured on plexlab and the 1.42.2
+    # reference -- `key`, then `previewKey` where the provider gives one, then `source`.
     "Thumb": (
         "key", "previewKey", "source"
     ),
@@ -221,7 +221,7 @@ _ATTR_ORDER = {
         "fastKey", "key", "title", "type"
     ),
     "Directory[none]": (
-        # Cycle 23, measured on kids and zen: a `/library/tags` and
+        # Cycle 23, measured on plexlab and the 1.42.2 reference: a `/library/tags` and
         # `/library/people/{id}` row is `id, filter, tag, tagType, tagKey, thumb` --
         # `thumb` LAST. This bucket knew `thumb` and none of the other five, so they
         # all fell behind it and the tag row came out led by its image.
@@ -248,8 +248,8 @@ _ATTR_ORDER = {
         "year", "parentYear",
         "thumb", "art", "parentThumb", "parentTheme", "leafCount",
         "viewedLeafCount", "addedAt", "updatedAt", "deletedAt",
-        # Cycle 94, measured on zen's `/library/all/top?type=3` row: the play counts follow
-        # `deletedAt` (`updatedAt` where there is none).
+        # Cycle 94, measured on the 1.42.2 reference's `/library/all/top?type=3` row: the
+        # play counts follow `deletedAt` (`updatedAt` where there is none).
         "globalViewCount", "userCount"
     ),
     "Directory[show]": (
@@ -257,17 +257,19 @@ _ATTR_ORDER = {
         "librarySectionTitle", "librarySectionID", "librarySectionKey",
         "titleSort", "originalTitle", "contentRating", "contentRatingAge",
         "summary", "index", "audienceRating", "userRating",
-        # Cycle 21, measured on zen's watched show 19756: `viewCount` and `skipCount`
-        # sit between the rating and `lastViewedAt`, and the whole block precedes
-        # `year`.
+        # Cycle 21, measured on the 1.42.2 reference's watched show 19756: `viewCount`
+        # and `skipCount` sit between the rating and `lastViewedAt`, and the whole block
+        # precedes `year`.
         "viewCount", "skipCount", "viewOffset", "lastViewedAt", "includedAt",
         "lastRatedAt", "year",
         "tagline", "thumb", "art", "theme", "duration", "originallyAvailableAt",
         "leafCount", "viewedLeafCount", "childCount",
-        # Cycle 79: `seasonCount` -- a show with a season 0 -- follows `childCount` on zen.
+        # Cycle 79: `seasonCount` -- a show with a season 0 -- follows `childCount` on the
+        # 1.42.2 reference.
         "seasonCount", "addedAt", "updatedAt",
         # Cycle 94: a `/library/all/top` row's play counts sit after `deletedAt` and before
-        # `audienceRatingImage` (zen's show row; kids' movie rows agree for movies).
+        # `audienceRatingImage` (the 1.42.2 reference's show row; plexlab's movie rows
+        # agree for movies).
         "deletedAt", "globalViewCount", "userCount", "audienceRatingImage", "episodeSort",
         "flattenSeasons"
     ),
@@ -275,25 +277,25 @@ _ATTR_ORDER = {
         "locked", "name"
     ),
     "Agent": (
-        # Cycle 27, measured on kids and zen: a MODERN agent row leads `identifier,
-        # name`, where rex emitted its builder's dict order. Cycle 19 parked "the
-        # Agent element's attribute order" on the LEGACY pairs (`hasPrefs < identifier
-        # < primary`), which the rows rex actually emits do not carry.
+        # Cycle 27, measured on plexlab and the 1.42.2 reference: a MODERN agent row
+        # leads `identifier, name`, where rex emitted its builder's dict order. Cycle 19
+        # parked "the Agent element's attribute order" on the LEGACY pairs (`hasPrefs <
+        # identifier < primary`), which the rows rex actually emits do not carry.
         "identifier", "name", "hasPrefs", "id", "primary"
     ),
     "Agent[legacy]": (
-        # Cycle 87, measured on zen (1.42.2) in JSON and XML over the bare path and every
-        # `mediaType=`: a LEGACY plug-in row (the one that carries `primary`) is
-        # `hasPrefs, identifier, primary, name` -- the order cycle 19 parked -- and not
-        # the modern row's `identifier, name, hasPrefs`. Kids (1.43.4) agrees after the
-        # `id` it alone leads with. One bucket for both put `identifier` first on all
-        # eleven legacy rows.
+        # Cycle 87, measured on the 1.42.2 reference in JSON and XML over the bare path
+        # and every `mediaType=`: a LEGACY plug-in row (the one that carries `primary`)
+        # is `hasPrefs, identifier, primary, name` -- the order cycle 19 parked -- and
+        # not the modern row's `identifier, name, hasPrefs`. plexlab (1.43.4) agrees
+        # after the `id` it alone leads with. One bucket for both put `identifier` first
+        # on all eleven legacy rows.
         "id", "hasPrefs", "identifier", "primary", "name"
     ),
     "Video[history1]": (
-        # Cycle 27, measured on kids (1.43.4) and zen (1.42.2): a SINGLE history read
-        # answers its nine (an episode's twelve) attributes in this order, which is
-        # neither the listing row's nor a movie row's.
+        # Cycle 27, measured on plexlab (1.43.4) and the 1.42.2 reference: a SINGLE
+        # history read answers its nine (an episode's twelve) attributes in this order,
+        # which is neither the listing row's nor a movie row's.
         "historyKey", "librarySectionID", "title", "grandparentTitle", "type",
         "index", "parentIndex", "originallyAvailableAt", "viewedAt", "accountID",
         "deviceID", "viewType"
@@ -314,9 +316,10 @@ _ATTR_ORDER = {
         "more", "random", "style", "promoted"
     ),
     "Sort": (
-        # Cycle 27, measured on kids and zen over five `includeMeta=1` paths: a `Sort`
-        # row leads with the ACTIVE pair, not with `default`. rex had no `Sort`
-        # bucket, so the two flags it adds last came out last.
+        # Cycle 27, measured on plexlab and the 1.42.2 reference over five
+        # `includeMeta=1` paths: a `Sort` row leads with the ACTIVE pair, not with
+        # `default`. rex had no `Sort` bucket, so the two flags it adds last came out
+        # last.
         "active", "activeDirection", "default", "defaultDirection", "descKey",
         "firstCharacterKey", "key", "title"
     ),
@@ -333,10 +336,10 @@ _ATTR_ORDER = {
         "has64bitOffsets", "videoProfile", "deletedAt", "hasVoiceActivity"
     ),
     "Part": (
-        # Cycle 22, harvested from 633 zen paths and 133 kids paths: the two
-        # `checkFiles=1` flags LEAD the element on both references. `_ATTR_ORDER` is a
-        # topological sort of observed PAIRS, and no reference had ever been seen to
-        # emit them beside their neighbours, so they fell to the END.
+        # Cycle 22, harvested from 633 paths of the 1.42.2 reference and 133 plexlab
+        # paths: the two `checkFiles=1` flags LEAD the element on both references.
+        # `_ATTR_ORDER` is a topological sort of observed PAIRS, and no reference had
+        # ever been seen to emit them beside their neighbours, so they fell to the END.
         "accessible", "exists",
         "id", "key", "duration", "file", "size", "audioProfile", "container",
         "failureBIFResultCode", "failureBIFRetryCount", "has64bitOffsets",
@@ -352,8 +355,9 @@ _ATTR_ORDER = {
     "Role": (
         "id", "filter", "tag", "tagKey", "role", "thumb"
     ),
-    # Cycle 25, measured on zen's 73 episode rows and kids' five movie rows: a history
-    # row's order. The movie form is a subsequence of this, so one bucket answers both.
+    # Cycle 25, measured on the 1.42.2 reference's 73 episode rows and plexlab's five
+    # movie rows: a history row's order. The movie form is a subsequence of this, so one
+    # bucket answers both.
     "Video[history]": (
         "historyKey", "key", "ratingKey", "librarySectionID", "parentKey",
         "grandparentKey", "title", "grandparentTitle", "type", "thumb", "parentThumb",
@@ -363,10 +367,10 @@ _ATTR_ORDER = {
     "Stream": (
         "id", "streamType", "canAutoSync", "selected", "default", "codec",
         "index", "channels", "bitrate", "language", "languageTag", "languageCode",
-        # Cycle 25, measured on zen's own XML for two rows carrying them: `anamorphic`
-        # sits between `bitrate` and `bitDepth` and `pixelAspectRatio` between `level`
-        # and `profile`. Without an entry a name falls to the END of the bucket, which
-        # is this table's documented failure mode.
+        # Cycle 25, measured on the 1.42.2 reference's own XML for two rows carrying
+        # them: `anamorphic` sits between `bitrate` and `bitDepth` and `pixelAspectRatio`
+        # between `level` and `profile`. Without an entry a name falls to the END of the
+        # bucket, which is this table's documented failure mode.
         "anamorphic",
         "bitDepth", "chromaLocation", "chromaSubsampling", "codedHeight",
         "codedWidth", "audioChannelLayout", "colorPrimaries", "colorRange",
@@ -385,25 +389,27 @@ _ATTR_ORDER = {
         "librarySectionID", "librarySectionKey", "grandparentTitle",
         "parentTitle", "contentRating", "summary", "index", "parentIndex",
         "audienceRating",
-        # Cycle 21, measured on zen's watched episode 19764: the per-user-state block
-        # sits HERE, after the rating and before the year -- where a movie row has
-        # carried it since cycle 17. Without an entry these names fell out in dict
-        # insertion order, which appended them after `updatedAt`, and cycle 19's "a
-        # real PMS's JSON key order is its XML order" moved both formats with them.
+        # Cycle 21, measured on the 1.42.2 reference's watched episode 19764: the
+        # per-user-state block sits HERE, after the rating and before the year -- where a
+        # movie row has carried it since cycle 17. Without an entry these names fell out
+        # in dict insertion order, which appended them after `updatedAt`, and cycle 19's
+        # "a real PMS's JSON key order is its XML order" moved both formats with them.
         "viewCount", "skipCount", "viewOffset", "lastViewedAt", "includedAt",
         "userRating",
         "lastRatedAt",
         "year", "thumb", "art", "parentThumb",
         "grandparentThumb", "grandparentArt", "grandparentTheme", "duration",
         "originallyAvailableAt", "addedAt", "updatedAt",
-        # Cycle 94, zen's `/library/all/top?type=4` rows: the play counts follow
-        # `updatedAt` (and that row's `deletedAt`) and precede `audienceRatingImage`.
+        # Cycle 94, the 1.42.2 reference's `/library/all/top?type=4` rows: the play
+        # counts follow `updatedAt` (and that row's `deletedAt`) and precede
+        # `audienceRatingImage`.
         "globalViewCount", "userCount", "audienceRatingImage",
         "deletedAt", "chapterSource"
     ),
     "Video[clip]": (
-        # Cycle 29, identical across 3,905 extras on kids and zen. extraType is
-        # deliberately last, after every optional timestamp and duration field.
+        # Cycle 29, identical across 3,905 extras on plexlab and the 1.42.2 reference.
+        # extraType is deliberately last, after every optional timestamp and duration
+        # field.
         "ratingKey", "key", "guid", "type", "title", "titleSort", "summary",
         "index", "year", "thumb", "primaryGuid", "art", "subtype", "duration",
         "originallyAvailableAt", "addedAt", "updatedAt", "extraType"
@@ -416,7 +422,7 @@ _ATTR_ORDER = {
         "summary", "rating", "audienceRating", "userRating", "viewCount",
         "lastViewedAt", "includedAt", "lastRatedAt", "year", "tagline", "thumb", "art",
         "duration", "originallyAvailableAt", "addedAt", "updatedAt", "deletedAt",
-        # Cycle 94, kids' `/library/all/top?type=1` rows.
+        # Cycle 94, plexlab's `/library/all/top?type=1` rows.
         "globalViewCount", "userCount",
         "audienceRatingImage", "chapterSource", "primaryExtraKey",
         "useOriginalTitle", "ratingImage"
@@ -429,24 +435,26 @@ _ATTR_INDEX = {bucket: {name: index for index, name in enumerate(names)}
                for bucket, names in _ATTR_ORDER.items()}
 
 
-# Cycle 19, measured on kids (1.43.4) and zen (1.42.2): the rows of
+# Cycle 19, measured on plexlab (1.43.4) and the 1.42.2 reference: the rows of
 # `/library/recentlyAdded` and `/library/onDeck` -- and only those -- LEAD with
 # `allowSync` and the librarySection triple, before `ratingKey`. A section grid carries
 # none of the four on the row, and `/library/all` and `/hubs/home/recentlyAdded` carry
 # the triple in the middle where every other row does. `allowSync` on the ROW is the
 # tell: it appears there and nowhere else, so it is the signal rather than the path.
 # Cycle 23: a `/search` row carries `personal` and `sourceTitle` inside the same lead,
-# directly after `librarySectionUUID` and before `ratingKey`, on kids and zen alike.
+# directly after `librarySectionUUID` and before `ratingKey`, on plexlab and the 1.42.2
+# reference alike.
 _LIBRARY_SECTION_LEAD = {"allowSync": -6, "librarySectionID": -5,
                          "librarySectionTitle": -4, "librarySectionUUID": -3,
                          "personal": -2, "sourceTitle": -1}
 
-# Cycle 25, measured on kids and zen: a `/hubs/search` and a `/library/search` hit LEAD
-# with `librarySectionTitle` before `ratingKey`, and a `/hubs/search` hit puts its own
-# `score` second. This was long single-witness because the driver could
-# only reproduce it on zen -- kids' hubs answered no `Video` for the queries that cycle
-# tried. `query=Sintel` hits on kids, and both references then agree exactly. rex
-# carried both fields and put `librarySectionTitle` after `title` and `score` LAST.
+# Cycle 25, measured on plexlab and the 1.42.2 reference: a `/hubs/search` and a
+# `/library/search` hit LEAD with `librarySectionTitle` before `ratingKey`, and a
+# `/hubs/search` hit puts its own `score` second. This was long single-witness because
+# the driver could only reproduce it on the 1.42.2 reference -- plexlab's hubs answered
+# no `Video` for the queries that cycle tried. `query=Sintel` hits on plexlab, and both
+# references then agree exactly. rex carried both fields and put `librarySectionTitle`
+# after `title` and `score` LAST.
 #
 # It needs a marker rather than a signal read off the row: `/library/all` and
 # `/hubs/home/recentlyAdded` rows carry `librarySectionTitle` too and keep it in the
@@ -472,16 +480,16 @@ def _attr_bucket(name, row):
     """The `_ATTR_ORDER` key for one element."""
     if name == "Video" and row.get("_history1"):
         # Cycle 27: the SINGLE history read is a third projection, with neither the
-        # listing row's order nor an item row's. Measured on kids and zen against every
-        # readable row on each.
+        # listing row's order nor an item row's. Measured on plexlab and the 1.42.2
+        # reference against every readable row on each.
         return "Video[history1]"
     if name == "Video" and row.get("_history"):
         # Cycle 25: a `/status/sessions/history/all` row is its own projection with its
-        # own order, measured on zen and plexscratch -- `historyKey` first, `title`
-        # between the parent keys and the type, `originallyAvailableAt` between the
-        # indexes and `viewedAt`. Nothing in the row distinguishes it from an ordinary
-        # `Video`, so the builder marks it, as `_light` already does; `_drop_private`
-        # takes the marker off both writers.
+        # own order, measured on the 1.42.2 reference and plexscratch -- `historyKey`
+        # first, `title` between the parent keys and the type, `originallyAvailableAt`
+        # between the indexes and `viewedAt`. Nothing in the row distinguishes it from an
+        # ordinary `Video`, so the builder marks it, as `_light` already does;
+        # `_drop_private` takes the marker off both writers.
         return "Video[history]"
     if name == "Agent" and row.get("primary") is not None:
         # Cycle 87: a legacy plug-in agent row; the modern rows carry no `primary`.
@@ -490,11 +498,11 @@ def _attr_bucket(name, row):
         if row.get("agent") is not None or row.get("scanner") is not None:
             # Cycle 19: the library `Directory` of `/media/providers` is a DIFFERENT
             # order from `/library/sections`'s, and rex reused one bucket for
-            # both. Measured identically on kids and zen: the provider form is
-            # `agent, language, refreshing, scanner, uuid, id, key, hubKey, type,
-            # title, updatedAt, scannedAt` where the section form leads `allowSync,
-            # filters, refreshing, key, type, title, agent, ...`. `hubKey` is what
-            # tells them apart -- the section rows carry none.
+            # both. Measured identically on plexlab and the 1.42.2 reference: the
+            # provider form is `agent, language, refreshing, scanner, uuid, id, key,
+            # hubKey, type, title, updatedAt, scannedAt` where the section form leads
+            # `allowSync, filters, refreshing, key, type, title, agent, ...`. `hubKey` is
+            # what tells them apart -- the section rows carry none.
             return "Directory[PROVIDER]" if row.get("hubKey") is not None \
                 else "Directory[SECTION]"
         return "%s[%s]" % (name, row.get("type") or "none")
@@ -522,12 +530,12 @@ def _format(key, value, row):
     if isinstance(value, float) and not isinstance(value, bool):
         if key == "frameRate":
             return "%.3f" % value
-        # Cycle 28, measured on kids and zen: a `/library/search` `SearchResult` prints
-        # its score with FIVE decimals in XML (`score="0.52000"`, `score="0.93095"`) and
-        # sends the same value as a plain number in JSON. It is the one place on the
-        # surface where the score is a float rather than the string `/hubs/search`
-        # carries, so it is the only one this rule can reach -- and rex wrote
-        # Python's own `"0.32"` there, a string no real PMS sends.
+        # Cycle 28, measured on plexlab and the 1.42.2 reference: a `/library/search`
+        # `SearchResult` prints its score with FIVE decimals in XML (`score="0.52000"`,
+        # `score="0.93095"`) and sends the same value as a plain number in JSON. It is
+        # the one place on the surface where the score is a float rather than the string
+        # `/hubs/search` carries, so it is the only one this rule can reach -- and rex
+        # wrote Python's own `"0.32"` there, a string no real PMS sends.
         if key == "score":
             return "%.5f" % value
         if (key in ("value", "default") and row.get("type") == "double"
@@ -570,9 +578,9 @@ def _split(name, row, container=False):
     emits them.
 
     Cycle 19: split out of `_render` because the JSON writer needs exactly the same
-    answer -- a real PMS's JSON key order IS its XML order, measured on kids (1.43.4)
-    and zen (1.42.2) for the container, the row, `Media`, `Part` and the row's child
-    element keys, on all four row types.
+    answer -- a real PMS's JSON key order IS its XML order, measured on plexlab (1.43.4)
+    and the 1.42.2 reference for the container, the row, `Media`, `Part` and the row's
+    child element keys, on all four row types.
     """
     attrs = []
     children = []
@@ -595,16 +603,17 @@ def _split(name, row, container=False):
     if container:
         # Measured: a listing's `Meta` comes BEFORE its rows; the rest keep their order.
         children.sort(key=lambda child: 0 if child == "Meta" else 1)
-        # Cycle 16, measured on kids and zen over five containers: the ATTRIBUTES come
-        # out `size`, then `totalSize` and `offset` when the container is paged, then
-        # everything else alphabetically. rex emitted whatever order its dict held.
+        # Cycle 16, measured on plexlab and the 1.42.2 reference over five containers:
+        # the ATTRIBUTES come out `size`, then `totalSize` and `offset` when the
+        # container is paged, then everything else alphabetically. rex emitted whatever
+        # order its dict held.
         lead = {"size": 0, "totalSize": 1, "offset": 2}
         if "noHistory" in attrs:
-            # Cycle 18, measured on kids and zen: the PLUG-IN FRAMEWORK's container
-            # has an order of its own -- `noHistory, replaceParent, size, identifier`,
-            # with `totalSize` FIRST of all when it is paged. It is the one container
-            # shape cycle 16's rule does not describe, and the only one on the surface
-            # that emits `totalSize` without `offset`.
+            # Cycle 18, measured on plexlab and the 1.42.2 reference: the PLUG-IN
+            # FRAMEWORK's container has an order of its own -- `noHistory, replaceParent,
+            # size, identifier`, with `totalSize` FIRST of all when it is paged. It is
+            # the one container shape cycle 16's rule does not describe, and the only one
+            # on the surface that emits `totalSize` without `offset`.
             lead = {"totalSize": 0, "noHistory": 1, "replaceParent": 2, "size": 3}
         attrs.sort(key=lambda key: (lead.get(key, 4), key))
     elif name == "Type":
@@ -664,8 +673,8 @@ def _split(name, row, container=False):
 def ordered(container, overrides=None):
     """The same container with every dict's keys in the order the XML writer emits.
 
-    Cycle 19, measured on kids (1.43.4) and zen (1.42.2): a real PMS's JSON object
-    keys come out in exactly its XML order -- the container's attributes, then its
+    Cycle 19, measured on plexlab (1.43.4) and the 1.42.2 reference: a real PMS's JSON
+    object keys come out in exactly its XML order -- the container's attributes, then its
     child keys; a row's attributes in the row's attribute order, then its child
     element keys. rex ordered the XML alone and left the JSON in whatever order
     the dict that built it held, so the two formats disagreed on every response. It
@@ -699,38 +708,39 @@ def ordered(container, overrides=None):
     return {root: walk(root, body, overrides)}
 
 
-# Cycle 21, measured on kids and zen: a `Feature` element is never self-closed. All
-# fifteen on `/media/providers` are written as PAIRED empty elements on both servers,
-# where `Directory`, `Action` and `Pivot` in the same document self-close when they have
-# no children. It is the reference writer's own quirk and it is element-specific.
-# Cycle 22, censused over ~45 paths on kids and zen: six more names are written PAIRED
-# when empty. `Part` self-closes while `Stream` never does (37,464 of 37,464 on zen,
-# 222 of 222 on kids), so it is an element-NAME table and not "anything that can hold
-# children" -- the same shape cycle 21 concluded for `Feature`. `Directory` is left
-# out on purpose: both references write it BOTH ways and which is which is an
-# attribute-level rule this cycle did not isolate.
-# Cycle 23: `Hub` comes OUT of the flat list. Measured on kids and zen, the
-# `/hubs/sections/{id}/manage` Hub -- which has no child collection at all -- is
-# SELF-CLOSED, while an ordinary hub path's `size="0"` Hub is paired on all three
-# servers. Cycle 22 censused ~45 paths and none of them was `/manage`, so it read a
-# name rule where the rule is the one it left open for `Directory`: paired when the
-# element carries a (possibly empty) child collection, self-closed when it carries none.
-# Cycle 27, measured on kids and zen: two more names join the table. An empty `Type`
-# (a `Meta/Type` row with no `Filter`, `Sort` or `Field`, which is what
-# `/hubs/home/recentlyAdded?includeMeta=1` answers) and an empty `Related` block are
-# both written PAIRED on both references, where rex self-closed them.
-# Cycle 50 added `Playlist`, the eighth: a playlist row with no children is
-# `<Playlist ...>\n</Playlist>` on zen, kids and plexscratch42 -- the ordinary rows of
-# `/playlists` and the background-processing row alike -- where rex self-closed it.
-# `PlayQueue`, in the same container family, self-closes on every one of them.
+# Cycle 21, measured on plexlab and the 1.42.2 reference: a `Feature` element is never
+# self-closed. All fifteen on `/media/providers` are written as PAIRED empty elements on
+# both servers, where `Directory`, `Action` and `Pivot` in the same document self-close
+# when they have no children. It is the reference writer's own quirk and it is
+# element-specific. Cycle 22, censused over ~45 paths on plexlab and the 1.42.2
+# reference: six more names are written PAIRED when empty. `Part` self-closes while
+# `Stream` never does (37,464 of 37,464 on the 1.42.2 reference, 222 of 222 on plexlab),
+# so it is an element-NAME table and not "anything that can hold children" -- the same
+# shape cycle 21 concluded for `Feature`. `Directory` is left out on purpose: both
+# references write it BOTH ways and which is which is an attribute-level rule this cycle
+# did not isolate. Cycle 23: `Hub` comes OUT of the flat list. Measured on plexlab and
+# the 1.42.2 reference, the `/hubs/sections/{id}/manage` Hub -- which has no child
+# collection at all -- is SELF-CLOSED, while an ordinary hub path's `size="0"` Hub is
+# paired on all three servers. Cycle 22 censused ~45 paths and none of them was
+# `/manage`, so it read a name rule where the rule is the one it left open for
+# `Directory`: paired when the element carries a (possibly empty) child collection,
+# self-closed when it carries none. Cycle 27, measured on plexlab and the 1.42.2
+# reference: two more names join the table. An empty `Type` (a `Meta/Type` row with no
+# `Filter`, `Sort` or `Field`, which is what `/hubs/home/recentlyAdded?includeMeta=1`
+# answers) and an empty `Related` block are both written PAIRED on both references, where
+# rex self-closed them. Cycle 50 added `Playlist`, the eighth: a playlist row with no
+# children is `<Playlist ...>\n</Playlist>` on the 1.42.2 reference, plexlab and
+# plexscratch42 -- the ordinary rows of `/playlists` and the background-processing row
+# alike -- where rex self-closed it. `PlayQueue`, in the same container family,
+# self-closes on every one of them.
 _ALWAYS_PAIRED = ("Feature", "MediaContainer", "Stream", "Extras", "Media",
                   "Activity", "Type", "Related", "Playlist",
                   # Cycle 54: a `Common` is paired on both references even when it
                   # carries no child element -- a mixed set, an empty one.
                   "Common",
                   # Cycle 87: the six legacy `/system/agents` rows with no `MediaType`
-                  # (fanarttv, htbackdrops, ...) are `<Agent ...>\n</Agent>` on kids
-                  # and zen alike; rex self-closed them.
+                  # (fanarttv, htbackdrops, ...) are `<Agent ...>\n</Agent>` on plexlab
+                  # and the 1.42.2 reference alike; rex self-closed them.
                   "Agent")
 _PAIRED_WITH_EMPTY_CHILDREN = ("Hub",)
 
@@ -781,10 +791,10 @@ def _render(name, row, out, overrides=None, container=False):
 def to_system_xml(container, elements=None):
     """Write the plug-in framework's `/system` XML form.
 
-    Cycle 50 measured this byte-identically on kids, zen, and plexscratch42. It
-    differs from the core writer in its prologue, indentation, compact `/>`, and
-    self-closing empty root. The response's `application/xml` type is selected by
-    the caller.
+    Cycle 50 measured this byte-identically on plexlab, the 1.42.2 reference, and
+    plexscratch42. It differs from the core writer in its prologue, indentation, compact
+    `/>`, and self-closing empty root. The response's `application/xml` type is selected
+    by the caller.
     """
     root, body = next(iter(container.items()))
     attrs, children = _split(root, body, container=True)
@@ -828,9 +838,9 @@ def to_xml(container, elements=None):
     # left, because `ButlerTasks` and `Query` carry no attributes at all to disagree on.
     _render(root, body, out, elements,
             container=(root.endswith("Container") or root in _ROOT_NAMES))
-    # Cycle 22, measured on zen (236 newlines in one movie's document) and kids (34):
-    # a real PMS writes ONE element per line, with no indentation, and the document
-    # ends with a newline. rex joined the pieces with nothing, so every XML
+    # Cycle 22, measured on the 1.42.2 reference (236 newlines in one movie's document)
+    # and plexlab (34): a real PMS writes ONE element per line, with no indentation, and
+    # the document ends with a newline. rex joined the pieces with nothing, so every XML
     # response was a single line -- which changes `Content-Length` on all of them and
     # what a `Range` read of a container returns (cycle 16: `Range` applies to every
     # body). `_render` now ends each tag with its own newline.

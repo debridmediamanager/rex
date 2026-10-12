@@ -77,7 +77,8 @@ def parsing():
         ("Lanterns.2026.S01E08.1080p.x265-ELiTE.mkv", "Lanterns", 2026, True),
         ("Avatar - The Last Airbender (2005 - 2008) [1080p]", "Avatar - The Last Airbender",
          2005, True),
-        # Named without SxxEyy; zurg filed each under movies on zen or fun until 2026-10-11.
+        # Named without SxxEyy; zurg filed each under movies on the test host or in production until
+        # 2026-10-11.
         ("Mysterious Love E06 1080p WEB.DL AAC H.264-Luvmichelle.mp4", "Mysterious Love", None, True),
         ("Some Day or One Day - 1x02 (1080p VIKI WEB.DL Marshall).mkv", "Some Day or One Day",
          None, True),
@@ -152,7 +153,7 @@ def exact():
 
 
 def episode_ids():
-    """`fixtures/identify/episode_ids.json`: one release of each of the 285 shows fun's rex
+    """`fixtures/identify/episode_ids.json`: one release of each of the 285 shows the production rex
     left unmatched on 2026-10-11 although zurg pushed the IMDb id DMM knows its hash by.
     271 of those ids are an episode's (Arrow's tt2340185 is its pilot), which TMDB's /find
     answers under `tv_episode_results`; the identifier read only movie and tv results, so
@@ -179,7 +180,7 @@ def episode_ids():
 
 
 def season_decides():
-    """`fixtures/identify/tom_and_jerry.json`, recorded on zen 2026-10-11. Plex's matcher
+    """`fixtures/identify/tom_and_jerry.json`, recorded on the test host 2026-10-11. Plex's matcher
     answers `The.Tom.and.Jerry.Show.S02E05` with the 1975 series, one season long; TMDB's
     first hit is the 2014 series, five seasons. Plex won the dispute and every episode sat
     under a show that has no season 2 or 3."""

@@ -4,16 +4,17 @@ Cycle 32. A plain-form decision runs the CLIENT's own profile against the item, 
 profile is a file the reference ships: its `Resources/Profiles/` was read out of the lab
 image read-only (78 `<Client>` files, parsed twice by two different parsers with identical
 results) into `client_profiles.json`. The rules below were fitted to the decision endpoint
-itself and scored cell by cell: kids (1.43.4) 78 profiles x 8 rows, zen (1.42.2) 78 x 16
-rows chosen for their containers, codecs, channel counts, bit depths and subtitle kinds,
-and cycle 34's 78 cells on a row MADE to carry two audio tracks with no language at all --
-1,950 cells, exact in outcome and refusal TEXT on 1,906.
+itself and scored cell by cell: plexlab (1.43.4) 78 profiles x 8 rows, the 1.42.2 reference
+78 x 16 rows chosen for their containers, codecs, channel counts, bit depths and subtitle
+kinds, and cycle 34's 78 cells on a row MADE to carry two audio tracks with no language at
+all -- 1,950 cells, exact in outcome and refusal TEXT on 1,906.
 
-All 44 it misses are zen 19813's cells, and they are a state rather than a shape: a row
-whose tracks name no language answers differently before any client has chosen a track
-(41 profiles refuse it as "not the first audio stream") and after one has, with the
-item's `Stream` rows byte-identical either way. rex carries a chosen track, so the
-model is the after; the before is measured in docs/findings.md and not emulated.
+All 44 it misses are the cells of the 1.42.2 reference's row 19813, and they are a state
+rather than a shape: a row whose tracks name no language answers differently before any
+client has chosen a track (41 profiles refuse it as "not the first audio stream") and after
+one has, with the item's `Stream` rows byte-identical either way. rex carries a chosen
+track, so the model is the after; the before is measured in docs/findings.md and not
+emulated.
 
 In order, each refusal naming itself in the reference's own words:
 
@@ -43,8 +44,9 @@ with open(os.path.join(_ROOT, "data", "client_profiles.json"), encoding="utf-8")
     PROFILES = json.load(_handle)
 
 # The subtitle codecs a `SubtitleProfile` target can convert. An image subtitle cannot be
-# burned into a direct play: Samsung declares an srt target and still refuses zen 1062's
-# selected PGS track, where it plays the same file's text tracks.
+# burned into a direct play: Samsung declares an srt target and still refuses the 1.42.2
+# reference's row 1062 for its selected PGS track, where it plays the same file's text
+# tracks.
 IMAGE_SUBTITLES = frozenset(["pgs", "hdmv_pgs_subtitle", "dvd_subtitle", "vobsub",
                              "dvb_subtitle", "dvbsub", "xsub"])
 
@@ -92,12 +94,12 @@ def evaluated_audio(media):
     """The audio stream the server would PLAY, or None.
 
     Cycle 32 re-picked the widest DEFAULT track here when the selected one carried no
-    language, fitted to zen 19813 -- the one measured row whose two audio tracks name
-    none. Cycle 34 made that row's shape on plexscratch and found the re-pick is not a
-    property of the row at all: the same bytes answer 41 of 78 profiles "not the first
-    audio stream" before any client has chosen a track and answer every one of the 78
-    from the visible row afterwards, with `Stream` byte-identical either way. See the
-    module docstring; the selection rex holds is the one a client has made.
+    language, fitted to the 1.42.2 reference's row 19813 -- the one measured row whose two
+    audio tracks name none. Cycle 34 made that row's shape on plexscratch and found the
+    re-pick is not a property of the row at all: the same bytes answer 41 of 78 profiles
+    "not the first audio stream" before any client has chosen a track and answer every one
+    of the 78 from the visible row afterwards, with `Stream` byte-identical either way. See
+    the module docstring; the selection rex holds is the one a client has made.
     """
     audio = [s for s in _streams(media) if s.get("streamType") == 2]
     if not audio:
@@ -142,8 +144,8 @@ def _limitation(limitations, values):
     for limit in limitations:
         if limit.get("onlyTranscodes") == "true":
             # iOS.xml bounds `audio.channels` at 2 with this attribute and direct plays
-            # four 6-channel aac rows on zen; tvOS carries the same bound without it and
-            # refuses the same four.
+            # four 6-channel aac rows on the 1.42.2 reference; tvOS carries the same bound
+            # without it and refuses the same four.
             continue
         name, tag = limit.get("name"), limit.get("tag")
         actual = values.get(name)
@@ -161,11 +163,11 @@ def _limitation(limitations, values):
             if actual is None:
                 continue
             text = str(actual).lower()
-            # Cycle 35, measured on zen's row 3831 against Android: a limitation whose
-            # comparison came from `list=` rather than `value=` names the list and then
-            # appends ` [list]` -- `high 10 != baseline|main|high [list]`. The corpus's
-            # other 1,949 cells are all `value=` comparisons, which carry no suffix; no
-            # measured row trips a `substring=` one, so that form is left alone.
+            # Cycle 35, measured on the 1.42.2 reference's row 3831 against Android: a
+            # limitation whose comparison came from `list=` rather than `value=` names the
+            # list and then appends ` [list]` -- `high 10 != baseline|main|high [list]`.
+            # The corpus's other 1,949 cells are all `value=` comparisons, which carry no
+            # suffix; no measured row trips a `substring=` one, so that form is left alone.
             wanted = limit.get("value") or limit.get("list") or limit.get("substring")
             if limit.get("value") is None and limit.get("list") is not None:
                 wanted = "%s [list]" % wanted
@@ -196,7 +198,8 @@ def direct_play(profile, media):
 
     The checks run in the order the reference's refusal texts put them, fitted over all
     1,950 measured (profile, row) cells and exact on 1,906 of them -- every miss being
-    zen 19813 read in the reference's pre-selection state, which the row does not carry.
+    the 1.42.2 reference's row 19813 read in its pre-selection state, which the row does
+    not carry.
     """
     streams = _streams(media)
     audio_streams = [s for s in streams if s.get("streamType") == 2]
@@ -208,8 +211,9 @@ def direct_play(profile, media):
                      for setting in profile.get("settings") or [])
     not_first = ("App cannot direct play this item. Selected audio stream is not the first "
                  "audio stream and app cannot select audio streams in direct play.")
-    # The SELECTED stream is refused before anything is matched: zen 2925, 2157 and 4969
-    # select their second track and 66 profiles each answer this, never a profile text.
+    # The SELECTED stream is refused before anything is matched: the 1.42.2 reference's
+    # rows 2925, 2157 and 4969 select their second track and 66 profiles each answer this,
+    # never a profile text.
     if selected_audio is not None and selected_audio is not audio_streams[0] \
             and not can_select:
         return False, not_first
@@ -268,8 +272,8 @@ def direct_play(profile, media):
     # Cycle 44: the SUBTITLE twin of the audio rule above,
     # and it runs after the audio-codec
     # pass AND after the subtitle-CODEC pass:, and it was missing entirely.
-    # Measured on zen (1.42.2) over 21 rows whose selected EMBEDDED subtitle is not the
-    # first embedded one -- 917, 4315, 10442, 2721, 2124, 4583, 4641, 4853, 10279 and
+    # Measured on the 1.42.2 reference over 21 rows whose selected EMBEDDED subtitle is not
+    # the first embedded one -- 917, 4315, 10442, 2721, 2124, 4583, 4641, 4853, 10279 and
     # eleven Media of 1637 -- and on a file built for it on plexscratch (1.43.4): exactly
     # three of the 78 profiles refuse, `Samsung`, `RokuDLNA-5000X-7.x` and
     # `RokuDLNA-6000X-7.x`, with
@@ -277,16 +281,17 @@ def direct_play(profile, media):
     #     App cannot direct play this item. Selected embedded subtitle stream is not the
     #     first embedded subtitle stream.
     #
-    # The gate is the same `DirectPlayStreamSelection` as the audio rule: on zen 917 only
-    # four profiles reach this stage at all, and the one that declares it
-    # (`Windows 10 Desktop`) direct-plays the row while the three that do not refuse it.
+    # The gate is the same `DirectPlayStreamSelection` as the audio rule: on the 1.42.2
+    # reference's row 917 only four profiles reach this stage at all, and the one that
+    # declares it (`Windows 10 Desktop`) direct-plays the row while the three that do not
+    # refuse it.
     #
     # The 2,106-cell corpus could not see this. In every corpus row whose selected
-    # subtitle is not first (zen 11901, 2157, 2925, 4969) the selected AUDIO is not first
-    # either, so the audio refusal fires above and masks it -- a sample that cannot
-    # disagree. It is reachable the moment a client uses its subtitle picker: rex told all
-    # three profiles "Direct play OK." for a row they will not render, which is cycle 26's
-    # failure mode from the other side.
+    # subtitle is not first (the 1.42.2 reference's rows 11901, 2157, 2925, 4969) the
+    # selected AUDIO is not first either, so the audio refusal fires above and masks it --
+    # a sample that cannot disagree. It is reachable the moment a client uses its subtitle
+    # picker: rex told all three profiles "Direct play OK." for a row they will not render,
+    # which is cycle 26's failure mode from the other side.
     if subtitle is not None and not subtitle.get("key") and not can_select:
         embedded = [s for s in streams
                     if s.get("streamType") == 3 and not s.get("key")]
@@ -295,10 +300,10 @@ def direct_play(profile, media):
                            "stream is not the first embedded subtitle stream.")
     values = _values(media, selected_audio)
     # Limitations: the CONTAINER's first, then a codec profile that names the codec, then
-    # one that says `*`. zen 848 on Android reports `part.optimizedForStreaming` before an
-    # audio channel bound it also fails, and zen 19754 on Sony Bravia 2011 reports its h264
-    # `video.level` bound before the `*` profile's `video.width` bound that comes first in
-    # the file.
+    # one that says `*`. The 1.42.2 reference's row 848 on Android reports
+    # `part.optimizedForStreaming` before an audio channel bound it also fails, and its row
+    # 19754 on Sony Bravia 2011 reports its h264 `video.level` bound before the `*`
+    # profile's `video.width` bound that comes first in the file.
     groups = []
     for holder in profile.get("containerprofiles") or []:
         names = _names(holder.get("name"))
@@ -327,13 +332,14 @@ def conversion(profile, protocol, media=None):
     """"convert", "neither" or "refuse" for a request whose direct play was refused."""
     source_codec = None
     if media is not None and _number(_dolby_vision_profile(media)) == 5:
-        # Cycle 36, measured on zen over three Dolby Vision PROFILE 5 rows (967 and 1120,
-        # mkv/hevc/1080; 4813, mp4/hevc/4k) against all 78 profiles: the server refuses to
-        # convert a profile-5 source at all. `transcodeDecisionCode 2003`, "File is
-        # unplayable. DoVi (Profile 5) color space is not supported." -- where the same
-        # 78 profiles against a profile 7 or 8 row, and against the two non-DV hevc
-        # controls already in the corpus, answer the ordinary 4002. So it is keyed on the
-        # DV profile and not on hevc, not on the container and not on server load.
+        # Cycle 36, measured on the 1.42.2 reference over three Dolby Vision PROFILE 5 rows
+        # (967 and 1120, mkv/hevc/1080; 4813, mp4/hevc/4k) against all 78 profiles: the
+        # server refuses to convert a profile-5 source at all. `transcodeDecisionCode
+        # 2003`, "File is unplayable. DoVi (Profile 5) color space is not supported." --
+        # where the same 78 profiles against a profile 7 or 8 row, and against the two
+        # non-DV hevc controls already in the corpus, answer the ordinary 4002. So it is
+        # keyed on the DV profile and not on hevc, not on the container and not on server
+        # load.
         #
         # It is not a blanket veto: ONE of the 38 profiles that declare a matching http
         # target still converts it, and that one is the only one whose target names the

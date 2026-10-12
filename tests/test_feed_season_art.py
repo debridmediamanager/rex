@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """A season takes its identity and poster once one of its episodes is identified.
 
-fun's rex drew the blank tile for 186 seasons of 131 shows on 2026-10-12, every one under
+The production rex drew the blank tile for 186 seasons of 131 shows on 2026-10-12, every one under
 a show with a poster: Black Mirror's Season 6 sat on `local://112196` with no ids, no
 summary and no poster. A season was made once, from its first episode. Its show was
 re-identified in place when zurg's later push named the release (imdb:tt27731671 ->
 tmdb:42009), but the season was found again by its index and left as it was made.
 
 This drives the feed with the season's five real files and the TMDB and Plex answers
-rex-fun had cached for them (`fixtures/feed/season_art.json`): pushed first with no ids,
+the production rex had cached for them (`fixtures/feed/season_art.json`): pushed first with no ids,
 so nothing names them, then with zurg's IMDb id, which re-identifies the show in place.
-Then it starts on the rows rex-fun actually held, which a restart must repair, and on
+Then it starts on the rows the production rex actually held, which a restart must repair, and on
 the same rows with a poster a person picked, which stays.
 
     python3 tests/test_feed_season_art.py
@@ -32,7 +32,7 @@ SHOW_GUID = "plex://show/5d9c0863ef619b002047f234"
 SEASON_GUID = "plex://season/640b5417e96cd974790c094f"
 TMDB_SEASON = FIXTURE["tmdb"]["https://api.themoviedb.org/3/tv/42009/season/6?api_key=KEY"]
 POSTER = "https://image.tmdb.org/t/p/w342" + TMDB_SEASON["poster_path"]
-FUN_SEASON = "112196"
+HELD_SEASON = "112196"
 
 
 def item(entry, ids=True):
@@ -119,7 +119,7 @@ def main():
               and str(server.row(season).get("guid")).startswith("local://"),
               (status, body, server.row(show).get("guid"), server.row(season).get("guid")))
         status, body = server.feed("POST", "items", {"items": pushed})
-        check("zurg's IMDb id re-identifies the show in place, as it did on fun",
+        check("zurg's IMDb id re-identifies the show in place, as it did in production",
               status == 200 and body.get("updated") == 5 and server.row(show).get("guid") == SHOW_GUID
               and server.keys() == keys, (body, server.row(show).get("guid")))
         row = season_of(server, show)
@@ -131,26 +131,27 @@ def main():
         server.stop()
         shutil.rmtree(work, ignore_errors=True)
 
-    # -- restart: the rows rex-fun held are repaired --------------------------------------
+    # -- restart: the rows the production rex held are repaired
+    # --------------------------------------
     work = tempfile.mkdtemp(prefix="rex-seasons-")
     rows = [dict(row, _source="zurg") if row.get("_source") else row for row in FIXTURE["rows"]]
     catalog(work, rows)
     server = Server(work, bytes_port)
     try:
-        row = wait_for(server, FUN_SEASON, lambda row: row.get("guid") == SEASON_GUID)
-        identified(server, row, SHOW_GUID, "fun's Season 6 after a restart")
-        check("fun's Season 6 after a restart: its poster is TMDB's for the season", poster(server, FUN_SEASON) == POSTER,
-              poster(server, FUN_SEASON))
+        row = wait_for(server, HELD_SEASON, lambda row: row.get("guid") == SEASON_GUID)
+        identified(server, row, SHOW_GUID, "the production Season 6 after a restart")
+        check("the production Season 6 after a restart: its poster is TMDB's for the season", poster(server, HELD_SEASON) == POSTER,
+              poster(server, HELD_SEASON))
     finally:
         server.stop()
     # The repair was saved, not made again: no TMDB or Plex answers this time.
     catalog(work, rows, answers=False)
     server = Server(work, bytes_port)
     try:
-        row = server.row(FUN_SEASON)
+        row = server.row(HELD_SEASON)
         check("the repaired season is kept across the next restart",
-              row.get("guid") == SEASON_GUID and poster(server, FUN_SEASON) == POSTER,
-              (row.get("guid"), poster(server, FUN_SEASON)))
+              row.get("guid") == SEASON_GUID and poster(server, HELD_SEASON) == POSTER,
+              (row.get("guid"), poster(server, HELD_SEASON)))
     finally:
         server.stop()
         shutil.rmtree(work, ignore_errors=True)
@@ -161,19 +162,19 @@ def main():
     catalog(work, rows, answers=False)
     server = Server(work, bytes_port)
     try:
-        status, _ = server.request("/library/metadata/%s/poster?url=%s" % (FUN_SEASON, urllib.parse.quote(picked, safe="")),
+        status, _ = server.request("/library/metadata/%s/poster?url=%s" % (HELD_SEASON, urllib.parse.quote(picked, safe="")),
                                    "PUT")
-        check("a person picks the unidentified season's poster", status == 200 and poster(server, FUN_SEASON) == picked,
-              (status, poster(server, FUN_SEASON)))
+        check("a person picks the unidentified season's poster", status == 200 and poster(server, HELD_SEASON) == picked,
+              (status, poster(server, HELD_SEASON)))
     finally:
         server.stop()
     catalog(work, rows)
     server = Server(work, bytes_port)
     try:
-        row = wait_for(server, FUN_SEASON, lambda row: row.get("guid") == SEASON_GUID)
+        row = wait_for(server, HELD_SEASON, lambda row: row.get("guid") == SEASON_GUID)
         check("the season takes its guid on the next start and keeps the poster the person picked",
-              row.get("guid") == SEASON_GUID and poster(server, FUN_SEASON) == picked,
-              (row.get("guid"), poster(server, FUN_SEASON)))
+              row.get("guid") == SEASON_GUID and poster(server, HELD_SEASON) == picked,
+              (row.get("guid"), poster(server, HELD_SEASON)))
     finally:
         server.stop()
         shutil.rmtree(work, ignore_errors=True)

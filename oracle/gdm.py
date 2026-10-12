@@ -9,8 +9,8 @@ LAN instead of through plex.tv.
 
 Everything here is measured, 2026-09-18, on four servers:
 
-  * zen        1.42.2, CLAIMED    -- the exact build rex reports
-  * plexlab    1.43.4, CLAIMED    -- the reference PMS on kids
+  * the 1.42.2 reference        1.42.2, CLAIMED    -- the exact build rex reports
+  * plexlab    1.43.4, CLAIMED    -- the reference PMS on plexlab
   * plexscratch42 1.42.2, UNCLAIMED
   * plexscratch   1.43.4, UNCLAIMED
 
@@ -22,18 +22,19 @@ The measurements
 
 **Two ports, and only two.** A real PMS answers a GDM query on UDP **32410** and
 UDP **32414** and on nothing else: 32400-32409, 32411, 32412, 32413 and 32415-32419
-were swept on zen and answer nothing.  32412/32413 are the PLAYER side of the same
-protocol -- a server neither listens on them nor answers them.
+were swept on the 1.42.2 reference and answer nothing.  32412/32413 are the PLAYER side
+of the same protocol -- a server neither listens on them nor answers them.
 
 **Both ports are joined to 239.0.0.250 and both answer a broadcast.**  Sent from
-zen's own LAN: `239.0.0.250:32410`, `239.0.0.250:32414`, `255.255.255.255:32410`,
-`255.255.255.255:32414` and the subnet broadcast each drew a reply from zen AND from
-the second server on that wire.  `239.0.0.250:32412` and `:32413` drew none.  The
-reply is unicast back to the datagram's source, from the port it arrived on.
+the 1.42.2 reference's own LAN: `239.0.0.250:32410`, `239.0.0.250:32414`,
+`255.255.255.255:32410`, `255.255.255.255:32414` and the subnet broadcast each drew a
+reply from the 1.42.2 reference AND from the second server on that wire.
+`239.0.0.250:32412` and `:32413` drew none.  The reply is unicast back to the datagram's
+source, from the port it arrived on.
 
 **The trigger is a PREFIX COMPARE, not a parse.**  The datagram and the constant
 ``b"M-SEARCH * "`` must agree over ``min(len(datagram), 11)`` bytes.  Bisected byte by
-byte on zen:
+byte on the 1.42.2 reference:
 
   * every proper prefix answers -- including the EMPTY datagram, and ``b"M"``;
   * one wrong byte at any of the eleven positions answers nothing
@@ -66,26 +67,26 @@ unclaimed PMS has no plex.direct certificate, so the claim and the certificate a
 confounded on these four instruments; rex therefore emits the line only when it
 actually holds a plex.direct hostname, which is the honest reading either way.
 
-**A real PMS also SENDS.**  Listening on the group from zen's own LAN, zen emits
-``b"M-SEARCH * HTTP/1.1\r\n"`` -- 21 bytes, ONE CRLF, not the doubled terminator -- to
-239.0.0.250:32414 every **5.00 seconds**, on every interface it holds (nine samples at
-0.96, 5.96, 10.96 ... 40.97 s).  That is how `/servers` is populated: zen's `/servers`
-listed itself, the second server on the wire, and -- within six seconds of rex being
-started with this module -- rex, at the address and port rex advertised.  A row
-ages out when its server stops answering; see SERVERS_TTL.
+**A real PMS also SENDS.**  Listening on the group from its own LAN, the 1.42.2
+reference emits ``b"M-SEARCH * HTTP/1.1\r\n"`` -- 21 bytes, ONE CRLF, not the doubled
+terminator -- to 239.0.0.250:32414 every **5.00 seconds**, on every interface it holds
+(nine samples at 0.96, 5.96, 10.96 ... 40.97 s).  That is how `/servers` is populated:
+the 1.42.2 reference's `/servers` listed itself, the second server on the wire, and --
+within six seconds of rex being started with this module -- rex, at the address and port
+rex advertised.  A row ages out when its server stops answering; see SERVERS_TTL.
 
-**`Updated-At` is not a clock.**  It stands still under polling (zen answered the same
-value to fifteen reads over a minute), it is stale on an idle server -- the second
-server on zen's wire answered a value 3.5 days old -- and on an IDLE unclaimed copy it
-did not move once in 86 samples over seventeen minutes.  It is the time the
-advertisement was last (re)generated.  The two ports can even disagree: plexscratch42
-answered 1789624280 on 32410 and 1789690002 on 32414 in the same second, and converged
-afterwards, so each socket carries its own last-regenerated stamp rather than reading
-one server-wide value. Cycle 50 then sampled both disposable versions across the
-server's write surface: library create, edit and delete move the stamp; FriendlyName
-changes the advertised Name without moving it; refresh, item edit, collection create
-and index deletion also leave it alone. Rex therefore stamps at construction and
-touches only those three library-lifecycle hooks.
+**`Updated-At` is not a clock.**  It stands still under polling (the 1.42.2 reference
+answered the same value to fifteen reads over a minute), it is stale on an idle server
+-- the second server on the 1.42.2 reference's wire answered a value 3.5 days old -- and
+on an IDLE unclaimed copy it did not move once in 86 samples over seventeen minutes.  It
+is the time the advertisement was last (re)generated.  The two ports can even disagree:
+plexscratch42 answered 1789624280 on 32410 and 1789690002 on 32414 in the same second,
+and converged afterwards, so each socket carries its own last-regenerated stamp rather
+than reading one server-wide value. Cycle 50 then sampled both disposable versions
+across the server's write surface: library create, edit and delete move the stamp;
+FriendlyName changes the advertised Name without moving it; refresh, item edit,
+collection create and index deletion also leave it alone. Rex therefore stamps at
+construction and touches only those three library-lifecycle hooks.
 """
 
 import logging
@@ -96,7 +97,8 @@ import time
 
 logger = logging.getLogger("rex.gdm")
 
-# The two ports a real PMS answers on, measured by sweeping 32400-32419 on zen.
+# The two ports a real PMS answers on, measured by sweeping 32400-32419 on the 1.42.2
+# reference.
 PORTS = (32410, 32414)
 
 # The GDM multicast group.  Both ports join it; the player ports (32412, 32413) are
@@ -111,14 +113,15 @@ QUERY = b"M-SEARCH * "
 # What a real PMS sends when it goes looking, byte for byte: one CRLF, no blank line.
 SEARCH = b"M-SEARCH * HTTP/1.1\r\n"
 
-# Measured on zen: every 5.00 s, to GROUP:32414.
+# Measured on the 1.42.2 reference: every 5.00 s, to GROUP:32414.
 SEARCH_INTERVAL = 5.0
 
-# How long a discovered row survives without an answer.  Bracketed on zen by starting a
-# server on its wire, stopping it and polling `/servers` every three seconds: present at
-# 177 s, gone at 180 s.  An earlier run read (154, 165] and is discarded -- it reused a
-# machineIdentifier zen had already held, so its row's age was not its last answer's.
-# 180 s is the same cutoff PMS applies to a playback session (sessions.py).
+# How long a discovered row survives without an answer.  Bracketed on the 1.42.2
+# reference by starting a server on its wire, stopping it and polling `/servers` every
+# three seconds: present at 177 s, gone at 180 s.  An earlier run read (154, 165] and is
+# discarded -- it reused a machineIdentifier the 1.42.2 reference had already held, so
+# its row's age was not its last answer's. 180 s is the same cutoff PMS applies to a
+# playback session (sessions.py).
 SERVERS_TTL = 180.0
 
 # Alphabetical, which is the order both references emit.  `Host` is inserted in
@@ -287,11 +290,12 @@ class Discovery(object):
     def _record(self, datagram, addr):
         """Record a peer's answer, keyed by its ADDRESS.
 
-        Cycle 50, measured on zen with three responders at one address answering its
-        searches: `/servers` never listed two rows for that address -- the single row
-        alternates, last writer wins -- while distinct addresses are listed side by side.
-        So the table is keyed on where the answer came FROM, not on the identity in it,
-        and rex keying on the machineIdentifier listed two servers on one host twice.
+        Cycle 50, measured on the 1.42.2 reference with three responders at one address
+        answering its searches: `/servers` never listed two rows for that address -- the
+        single row alternates, last writer wins -- while distinct addresses are listed
+        side by side. So the table is keyed on where the answer came FROM, not on the
+        identity in it, and rex keying on the machineIdentifier listed two servers on
+        one host twice.
         """
         row = parse_response(datagram)
         if row is None or row["machine"] == self.machine:

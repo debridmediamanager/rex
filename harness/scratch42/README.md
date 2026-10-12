@@ -5,8 +5,8 @@
 thing: *a writable 1.42.2 copy would settle this.* This is that copy.
 
 It is not a copy at all — it is a **fresh install** of `plexinc/pms-docker:1.42.2.10156-f737b826c`,
-the exact build zen runs, so there is no identity to strip and it has never held a plex.tv
-token. It runs on the lab host at `~/plexscratch42`, beside `~/plexscratch`, answering at
+the exact build the 1.42.2 reference runs, so there is no identity to strip and it has never held a
+plex.tv token. It runs on the lab host at `~/plexscratch42`, beside `~/plexscratch`, answering at
 `http://LAB_IP:32411`.
 
 ```bash
@@ -24,15 +24,16 @@ docker compose down                # and `rm -rf config` to start over
   it accepts, what a `Player.profile` resolves to, what shape an On Deck row is, what
   `/filters` and the `Meta` descriptor advertise, which settings exist. Cycle 30 used it to
   close three 3.3 entries in an afternoon, and to **correct cycle 28's own On Deck patch**,
-  which had been built from zen's single on-deck row.
+  which had been built from the 1.42.2 reference's single on-deck row.
 - **It cannot** answer anything that needs real metadata. It is isolated from plex.tv by
   construction (`internal: true`, no DNS), so every item is UNMATCHED: `local://` guids,
   filename titles, no `Guid`, no `Rating`, no people tags. A row-shape question whose answer
-  depends on those blocks needs zen.
+  depends on those blocks needs the 1.42.2 reference.
 - **It cannot** answer a SETTINGS count. It is unclaimed and unsubscribed, so `/:/prefs` answers
-  151 rows where zen answers 173, and `/library/sections/prefs?type=1&agent=tv.plex.agents.movie`
-  answers 14 where zen and kids both answer 19 — the missing rows are the marker-generation
-  settings and `ratingsSource`. rex's fixtures match zen's counts, which are right.
+  151 rows where the 1.42.2 reference answers 173, and
+  `/library/sections/prefs?type=1&agent=tv.plex.agents.movie` answers 14 where the 1.42.2 reference
+  and plexlab both answer 19 — the missing rows are the marker-generation settings and
+  `ratingsSource`. rex's fixtures match the 1.42.2 reference's counts, which are right.
 - **It cannot** answer anything that needs a CLAIMED server either — cycle 25's
   scrobble-versus-timeline history pair still waits on one.
 

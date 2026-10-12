@@ -11,7 +11,7 @@ Library commits added, in the request's language.
   three search prompts and its shelves' titles; rex had none of them in its table.
 - the random `music.vault` shelf's title, read in every language Plex Web sends over
   forty minutes: `Haven't played in %s months|years` is localised around the number.
-- zen's (1.42.2) answer to a movie library's `sorts?type=13`, the photo sorts: `Date Taken`
+- The 1.42.2 reference's answer to a movie library's `sorts?type=13`, the photo sorts: `Date Taken`
   is translated as well (`Aufnahmedatum`), which cycle 63 recorded as unreachable.
 - six refusing Add Library forms that between them raise all eleven refusal lines, in
   every language Plex Web sends and `hu-HU`: three of the lines are translated.
@@ -173,7 +173,8 @@ def main():
         check("the vault shelf's title is worded as measured in %d languages"
               % len({language for language, _unit in templates}), not wrong, wrong[:6])
 
-        # -- a photo type's sorts, as zen words them -------------------------------
+        # -- a photo type's sorts, as the 1.42.2 reference words them
+        # -------------------------------
         zen = fixture["zen_photo_sorts"]
         titles = {language: {row["key"]: row["title"]
                              for row in document["MediaContainer"]["Directory"]}
@@ -187,7 +188,7 @@ def main():
                    for row in json.loads(mine)["MediaContainer"].get("Directory", [])}
             wrong = [(key, got.get(key), title) for key, title in titles[language].items()
                      if english.get(key) == titles["en"].get(key) and got.get(key) != title]
-            check("%s %s: every sort title reads as zen's" % (language, zen["path"]), not wrong, wrong)
+            check("%s %s: every sort title reads as the 1.42.2 reference's" % (language, zen["path"]), not wrong, wrong)
 
         # -- Add Library's refusal lines -----------------------------------------
         wrong = []

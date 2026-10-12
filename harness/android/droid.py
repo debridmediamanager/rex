@@ -1,7 +1,7 @@
 """Cycle 70 instrument: Plex for Android (emulator) pinned to ONE server.
 
 - plex.tv's resource list is replaced by exactly one server entry (the target),
-  so the app can never reach fun or zen (production) and every library request
+  so the app can never reach a production server and every library request
   goes to the server under test.
 - plex.tv is read-only: any non-GET is answered locally with {} (never sent),
   except sign-in, which is answered with the real account's own /api/v2/user

@@ -1,6 +1,6 @@
 # plexscratch -- a DISPOSABLE copy of the plexlab reference, for measuring writes.
 #
-# The shared reference (../plexlab, kids:32400) is read-only for hunts: writes to it
+# The shared reference (../plexlab, LAB:32400) is read-only for hunts: writes to it
 # have deleted a library, re-matched a show and left an undeletable download queue.
 # This is a copy of its config that anything may write to and `./scratch.sh reset`
 # puts back, from a pristine copy taken once -- the lab itself is never touched again.

@@ -559,9 +559,10 @@ fn exact(operator: &str, actual: &Value, wanted: &str, field: &str) -> bool {
             vals.is_empty()
         }
     } else if is_tag_field(field) {
-        // Cycle 88, measured on kids and zen: a tag NAME matches ignoring the case of its
-        // ASCII letters only (SQLite's NOCASE) -- `genre=ANIMATION` is `Animation`, and
-        // `actor=ARINZé KENE` is `Arinzé Kene` while `ARINZÉ KENE` matches nothing.
+        // Cycle 88, measured on plexlab and the 1.42.2 reference: a tag NAME matches
+        // ignoring the case of its ASCII letters only (SQLite's NOCASE) --
+        // `genre=ANIMATION` is `Animation`, and `actor=ARINZé KENE` is `Arinzé Kene` while
+        // `ARINZÉ KENE` matches nothing.
         vals.iter().any(|x| x.eq_ignore_ascii_case(wanted))
     } else {
         vals.iter().any(|x| x == wanted)
@@ -851,7 +852,7 @@ pub fn compare(
     Ok(match operator.as_str() {
         "==" => text.to_lowercase() == wanted.to_lowercase(),
         "!==" => text.to_lowercase() != wanted.to_lowercase(),
-        // The guid prefix is CASE-SENSITIVE (kids: `guid=plex` every matched row,
+        // The guid prefix is CASE-SENSITIVE (plexlab: `guid=plex` every matched row,
         // `guid=PLEX` none); every other string's begins-with folds case.
         "<=" if field == "guid" => text.starts_with(wanted),
         "<=" => text.to_lowercase().starts_with(&wanted.to_lowercase()),
@@ -1020,7 +1021,8 @@ pub fn evaluate_with(
     }
     if let Some(op) = tree.get("op").and_then(Value::as_str) {
         // Borrowed, as is an unscoped candidate below: copying the rules and the whole
-        // row for every rule of every row was most of a filtered listing (fun, 2026-10-11).
+        // row for every rule of every row was most of a filtered listing (the production
+        // server, 2026-10-11).
         let rules: &[Value] = tree.get("rules").and_then(Value::as_array).map_or(&[], Vec::as_slice);
         if op == "and" {
             for rule in rules {
@@ -1051,9 +1053,9 @@ pub fn evaluate_with(
     };
     for candidate in candidates {
         if field == "title" && operator == "=" {
-            // Cycle 18, measured on zen: the bare `title=` matcher -- and ONLY it --
-            // also reads the row's ORIGINAL title, and (cycle 32) its folded pass
-            // reads the stored SORT title; both travel with the value in Python.
+            // Cycle 18, measured on the 1.42.2 reference: the bare `title=` matcher -- and
+            // ONLY it -- also reads the row's ORIGINAL title, and (cycle 32) its folded
+            // pass reads the stored SORT title; both travel with the value in Python.
             if let Some(object) = candidate.as_object() {
                 let text = value_of(field, &candidate);
                 let text = str_actual(&text).unwrap_or_default();

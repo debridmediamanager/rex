@@ -250,7 +250,7 @@ def retry_unnamed(bytes_port):
     server = Server(work, bytes_port)
     try:
         # -- an id that named nothing is tried again on the next push --------------------
-        # fun, 2026-10-11: zurg pushed Arrow's season pack with the IMDb id DMM knows its
+        # Production, 2026-10-11: zurg pushed Arrow's season pack with the IMDb id DMM knows its
         # hash by, the pilot's (tt2340185). TMDB's /find answers an episode's id under
         # `tv_episode_results`, which rex did not read, so the show stayed on `local://`, and
         # every later push carried the same id, which re-identified nothing.
@@ -270,7 +270,8 @@ def retry_unnamed(bytes_port):
         check("pushed again while its id still names nothing, it is left as it is",
               body.get("unchanged") == 1 and server.row(arrow_key).get("addedAt") == first.get("addedAt")
               and server.keys().get(arrow["id"]) == arrow_key, body)
-        # The providers answer now, as they did on fun once the request was one they knew.
+        # The providers answer now, as they did on the production server once the request was one
+        # they knew.
         for cache, rows in (("tmdb_cache.db", answers["tmdb"]), ("plex_cache.db", answers["plex"])):
             with sqlite3.connect(os.path.join(work, cache)) as db:
                 db.executemany("INSERT OR REPLACE INTO cache (key, value) VALUES (?, ?)",
@@ -293,9 +294,9 @@ def retry_unnamed(bytes_port):
 
 
 def loose_episodes(bytes_port):
-    """Episodes named without SxxEyy are placed. zurg filed these under movies on zen and
-    fun until 2026-10-11; filed as shows, each was dropped as `has no episode number; not
-    placed`. Their real names, and Suits.S03's disc-rip file, whose number is only in
+    """Episodes named without SxxEyy are placed. zurg filed these under movies on the test
+    host and in production until 2026-10-11; filed as shows, each was dropped as `has no episode
+    number; not placed`. Their real names, and Suits.S03's disc-rip file, whose number is only in
     the brackets."""
     work = tempfile.mkdtemp(prefix="rex-feed-loose-")
     catalog(work)

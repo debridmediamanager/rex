@@ -79,12 +79,13 @@ TIMESPANS = {6: 1, 5: 60, 4: 3600, 3: 86400, 2: 604800, 1: 2592000, 0: 31536000}
 def bucket_start(second, timespan):
     """The `at` of the statistics bucket holding `second`.
 
-    Cycle 58, measured on zen (UTC) and kids (Europe/Berlin): the buckets are CALENDAR
-    buckets in the server's LOCAL time, not fixed widths from the epoch. The same plays
-    land at a local midnight (kids' day bucket is 22:00 UTC), a Monday (zen's week bucket
-    1787529600), the 1st of the month and January 1st. `second % 604800` puts every week
-    on a Thursday and `% 2592000` a "month" on whatever day thirty-day steps reach, so the
-    Dashboard's history graph labelled every bar with the wrong date.
+    Cycle 58, measured on the 1.42.2 reference (UTC) and plexlab (Europe/Berlin): the
+    buckets are CALENDAR buckets in the server's LOCAL time, not fixed widths from the
+    epoch. The same plays land at a local midnight (plexlab's day bucket is 22:00 UTC), a
+    Monday (the 1.42.2 reference's week bucket 1787529600), the 1st of the month and
+    January 1st. `second % 604800` puts every week on a Thursday and `% 2592000` a
+    "month" on whatever day thirty-day steps reach, so the Dashboard's history graph
+    labelled every bar with the wrong date.
     """
     span = int(timespan)
     if span >= 5:

@@ -202,7 +202,7 @@ fn client_titles(node: &mut Value, external: &str) {
 impl Runtime {
     /// The Stream pass every JSON response takes: the client's language first (a
     /// real PMS composes the codec suffix onto the already-localised title), then the
-    /// product's codec suffix.  Cycle 50: a DECISION's streams get no suffix (kids
+    /// product's codec suffix.  Cycle 50: a DECISION's streams get no suffix (plexlab
     /// answers `1080p` there to Plex Web), and neither do the session rows.
     pub(super) fn stream_titles_response(&self, request: &Request, response: &mut Response) {
         if response.status != 200 || response.content_type != "application/json" {
@@ -258,9 +258,9 @@ impl Runtime {
             && segments[..2] == ["library", "sections"]
             && matches!(segments[3], "audioLanguage" | "subtitleLanguage")
         {
-            // Cycle 60, measured on zen: the language AXIS names its values in the
-            // client's language too (`Französisch` under `de`, `French` under `en`),
-            // keyed by the value -- the language tag.
+            // Cycle 60, measured on the 1.42.2 reference: the language AXIS names its
+            // values in the client's language too (`Französisch` under `de`, `French`
+            // under `en`), keyed by the value -- the language tag.
             if let (Some(by_tag), Some(rows)) = (
                 by_tag.filter(|map| !map.is_empty()),
                 document["MediaContainer"]

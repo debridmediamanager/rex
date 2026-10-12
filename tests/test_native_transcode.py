@@ -298,7 +298,8 @@ def get(port, path, params=(), accept="application/json", timeout=60):
 
 def start_server(catalog, zurg_port, transcoder, scratch):
     port = free_port()
-    # Software encoding unless the caller names a device (`REX_TRANSCODE_HW=vaapi` on zen).
+    # Software encoding unless the caller names a device (`REX_TRANSCODE_HW=vaapi` with an Intel
+    # iGPU).
     environment = dict(os.environ, ZURG_URL="http://127.0.0.1:%d" % zurg_port,
                        REX_TRANSCODE_HW=os.environ.get("REX_TRANSCODE_HW", "none"),
                        REX_TRANSCODE_DIR=os.path.join(scratch, "segments-%d" % port))
@@ -524,7 +525,8 @@ def main():
         get(port, "/video/:/transcode/universal/stop", [("session", session)])
         # Right after a seek the player still has a request out for the OLD position.
         # Each restarting FFmpeg at its own segment in turn was a loop (3 531 restarts in
-        # seconds against Plex Web on zen); the newest request wins, the older gives up.
+        # seconds against Plex Web on the 1.42.2 reference); the newest request wins, the older
+        # gives up.
         session = "s-race"
         get(port, "/video/:/transcode/universal/decision", plex_web_query("4", session))
         get(port, "/video/:/transcode/universal/start.m3u8", plex_web_query("4", session))

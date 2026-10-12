@@ -136,10 +136,10 @@ is taken *through* the client, so it cannot have that defect.
 
 - **Blocking the other servers' hostnames is not enough.** plex.tv still *lists*
   them, so the client selects one as the active server and the session never
-  reaches the lab at all. Measured: a hostname-only block drew fun's sidebar with
-  unreachable warnings and issued 46 requests to fun for every 8 to the lab. So
-  `isolate.py` filters the resource list itself, and the client then sees exactly
-  one owned server. Without it the first baseline sent 50 flows to production.
+  reaches the lab at all. Measured: a hostname-only block drew the production server's
+  sidebar with unreachable warnings and issued 46 requests to the production server for
+  every 8 to the lab. So `isolate.py` filters the resource list itself, and the client then
+  sees exactly one owned server. Without it the first baseline sent 50 flows to production.
 
 - **The PMS container's CA trust does not survive a recreate.** It lives in the
   image filesystem, not a volume. Without it every plex.tv call fails TLS, the
@@ -152,8 +152,8 @@ is taken *through* the client, so it cannot have that defect.
 
 - **mitmproxy runs with `--ssl-insecure`.** The lab server's Let's Encrypt cert
   chains through the `YR2` intermediate, whose root the image's CA bundle
-  predates; `fun`'s chains through `YR1` and verified fine. Upstream verification
-  is not what this harness measures, but the asymmetry is worth knowing before
+  predates; a production server's chains through `YR1` and verified fine. Upstream
+  verification is not what this harness measures, but the asymmetry is worth knowing before
   concluding a server is misconfigured.
 
 - **Do not `chown -R` the capture directory.** The gateway runs as 8888 and
@@ -182,7 +182,7 @@ The harness claims through the supported flow only:
 `GET /api/claim/token.json` then `POST /myplex/claim?token=…` against the
 server's own API. Account state was snapshotted before and after
 (`capture/resources-before.json`, `-after.json`): `plexlab` was added, nothing
-was renamed or removed, and `fun` and `zen` were untouched.
+was renamed or removed, and the account's other servers were untouched.
 
 One measurement corrects `docs/findings.md`. A real PMS announces itself with
 `PUT /devices/{machineIdentifier}` — the *identifier* form — carrying its full

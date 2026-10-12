@@ -1,7 +1,7 @@
 {
  "measured": "2026-09-18",
  "hosts": [
-  "zen 1.42.2 (claimed)",
+  "the 1.42.2 reference (claimed)",
   "plexlab 1.43.4 (claimed)",
   "plexscratch42 1.42.2 (unclaimed)",
   "plexscratch 1.43.4 (unclaimed)"
@@ -20,12 +20,12 @@
   {
    "label": "zen",
    "version": "1.42.2.10156-f737b826c",
-   "name": "zen",
+   "name": "pms142",
    "port": 32400,
    "machine": "e584cb2364c733c8d177ddab0140d307b5de2546",
    "host": "52f61baa62dc4b78ae65d126bb72698d.plex.direct",
    "updated_at": 1789689678,
-   "response": "HTTP/1.0 200 OK\r\nContent-Type: plex/media-server\r\nHost: 52f61baa62dc4b78ae65d126bb72698d.plex.direct\r\nName: zen\r\nPort: 32400\r\nResource-Identifier: e584cb2364c733c8d177ddab0140d307b5de2546\r\nUpdated-At: 1789689678\r\nVersion: 1.42.2.10156-f737b826c\r\n\r\n"
+   "response": "HTTP/1.0 200 OK\r\nContent-Type: plex/media-server\r\nHost: 52f61baa62dc4b78ae65d126bb72698d.plex.direct\r\nName: pms142\r\nPort: 32400\r\nResource-Identifier: e584cb2364c733c8d177ddab0140d307b5de2546\r\nUpdated-At: 1789689678\r\nVersion: 1.42.2.10156-f737b826c\r\n\r\n"
   },
   {
    "label": "plexlab",

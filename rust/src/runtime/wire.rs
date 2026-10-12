@@ -160,7 +160,7 @@ const ORDER_CONTAINER: &[&str] = &[
     "Date",
 ];
 // Cycle 87 (`server.py` "gzip"): a paged gzipped container writes its window headers
-// straight after the type, as the plain container does (kids, plexscratch42).
+// straight after the type, as the plain container does (plexlab, plexscratch42).
 const ORDER_GZIP: &[&str] = &[
     "X-Plex-Protocol",
     "Access-Control-Expose-Headers",
@@ -270,7 +270,8 @@ const ORDER_SYSTEM_NOCACHE_FIRST_GZIP: &[&str] = &[
     "Date",
 ];
 // Cycle 87: not `/system/services/url/lookup`'s order alone but EVERY gzipped `/system`
-// answer's, `/system/agents` and its 400 included (kids, zen, plexscratch42).
+// answer's, `/system/agents` and its 400 included (plexlab, the 1.42.2 reference,
+// plexscratch42).
 const ORDER_SYSTEM_GZIP: &[&str] = &[
     "X-Plex-Protocol",
     "Access-Control-Expose-Headers",
@@ -431,7 +432,7 @@ fn header_family(
             return ORDER_SYSTEM_NOCACHE_FIRST;
         }
         // `/system/agents` is the core's own handler: its container orders like one, but
-        // its refusal (`?mediaType=abc`, a 400 on kids) orders its length first like
+        // its refusal (`?mediaType=abc`, a 400 on plexlab) orders its length first like
         // every other refusal.
         return if path == "/system/agents" && status >= 400 {
             ORDER_ERROR
@@ -659,8 +660,9 @@ pub(super) fn envelope(
         && !part
         && !names.contains("content-encoding")
     {
-        // Measured on kids: a `/web/*` ASSET is never gzipped, but its 404 is the ordinary
-        // error document and is gzipped like any other (85 bytes to 78) when gzip is offered.
+        // Measured on plexlab: a `/web/*` ASSET is never gzipped, but its 404 is the
+        // ordinary error document and is gzipped like any other (85 bytes to 78) when gzip
+        // is offered.
         let asset = (is_web_route(&wire.path) && status < 400) || names.contains("accept-ranges");
         if offered
             && !asset
@@ -740,7 +742,7 @@ pub(super) fn reason_phrase(status: u16) -> &'static str {
         409 => "Conflict",
         416 => "Requested Range Not Satisfiable",
         500 => "Internal Server Error",
-        // Measured on kids (2026-09-30): an embedded stream's `/library/streams/{id}` is
+        // Measured on plexlab (2026-09-30): an embedded stream's `/library/streams/{id}` is
         // `HTTP/1.1 501 Not Implemented`; the phrase was missing here, so it went out empty.
         501 => "Not Implemented",
         502 => "Bad Gateway",
@@ -914,9 +916,9 @@ pub(super) fn exclude_container(
     response.body = serde_json::to_vec(&document).unwrap_or_default();
 }
 
-/// `/web` or a path under `/web/`. Measured on kids: `/webclient`, `/webm`, `/websocket` and
-/// `/web2` are ordinary plug-in paths -- their empty listing is gzipped and ordered like any
-/// container -- so the bare prefix `/web` is not the web client's tree.
+/// `/web` or a path under `/web/`. Measured on plexlab: `/webclient`, `/webm`, `/websocket`
+/// and `/web2` are ordinary plug-in paths -- their empty listing is gzipped and ordered like
+/// any container -- so the bare prefix `/web` is not the web client's tree.
 fn is_web_route(path: &str) -> bool {
     let route = path.split('?').next().unwrap_or_default();
     route == "/web" || route.starts_with("/web/")

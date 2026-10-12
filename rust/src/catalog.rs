@@ -22,7 +22,8 @@ pub struct Catalog {
     changes: Changes,
     /// `children`'s rows by parent key, built on first use and dropped by every mutable
     /// path. Without it a listing scanned all rows once per show and per season: 9 s for
-    /// a page of fun's 1,500 movies and over 30 s for its 13,500 episodes (2026-10-10).
+    /// a page of the production server's 1,500 movies and over 30 s for its 13,500
+    /// episodes (2026-10-10).
     children_index: std::sync::OnceLock<HashMap<String, Vec<usize>>>,
 }
 
@@ -254,8 +255,8 @@ impl TryFrom<Value> for Catalog {
 #[cfg(test)]
 mod tests {
     /// What a show listing asks for every show and every season (`leafCount`,
-    /// `childCount`), on fun's library as it stood on 2026-10-10: 361 shows, 698
-    /// seasons, 13,509 episodes and 1,565 movies.
+    /// `childCount`), on the production server's library as it stood on 2026-10-10: 361
+    /// shows, 698 seasons, 13,509 episodes and 1,565 movies.
     #[test]
     fn children_of_every_show_and_season_does_not_rescan_the_library_each_time() {
         let shape: Vec<Vec<usize>> =

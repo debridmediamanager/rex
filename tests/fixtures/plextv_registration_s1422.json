@@ -1,5 +1,5 @@
 {
- "source": "pms-probe: plexinc/pms-docker:1.42.2.10156-f737b826c on zen, claimed once by POST /myplex/claim?token= on the PMS, its plex.tv traffic recorded TLS-decrypted by the harness gateway (mitmproxy transparent at uid 8888, its CA trusted in the container before PMS first started)",
+ "source": "pms-probe: plexinc/pms-docker:1.42.2.10156-f737b826c on the test host, claimed once by POST /myplex/claim?token= on the PMS, its plex.tv traffic recorded TLS-decrypted by the harness gateway (mitmproxy transparent at uid 8888, its CA trusted in the container before PMS first started)",
  "captured": "2026-10-10",
  "note": "Tokens, the claim token, the account email/username/uuid, the home IP (publicAddress) and certificate material are redacted or dropped. The machineIdentifier is the throwaway probe's, removed from the account afterwards. Times are UTC.",
  "registry": {

@@ -6,9 +6,9 @@ the item, so the model has two measured inputs: `client_profiles.json`, read out
 reference's own `Resources/Profiles`, and this corpus, which is what the endpoint actually
 answered. `tests/fixtures/decisions/rows.json` holds each row's `Media` exactly as the
 reference wrote it and `cells.jsonl` one line per (profile, row) pair: 78 profiles against
-24 rows on kids (1.43.4) and zen (1.42.2), chosen for their containers, codecs, channel
-counts, bit depths and subtitle kinds, plus 78 against one row MADE for the model on
-plexscratch -- two audio tracks that carry no language at all.
+24 rows on plexlab (1.43.4) and the 1.42.2 reference, chosen for their containers, codecs,
+channel counts, bit depths and subtitle kinds, plus 78 against one row MADE for the model
+on plexscratch -- two audio tracks that carry no language at all.
 
 That made row is recorded in BOTH of its states, because the reference answers differently
 for the same bytes:
@@ -62,7 +62,8 @@ def outcome(cell):
     if direct == 1000:
         return "directplay"
     if general == 1001 or transcode == 4002:
-        # zen refuses some conversions on its own CPU budget (4002); a target existed.
+        # The 1.42.2 reference refuses some conversions on its own CPU budget (4002); a
+        # target existed.
         return "convert"
     if general == 2000:
         return "neither"
@@ -100,7 +101,7 @@ def main():
         if not exact:
             misses.append((cell, wanted, wanted_text, answer, text))
 
-    print("%d cells measured on kids, zen and plexscratch" % counted["cells"])
+    print("%d cells measured on plexlab, the 1.42.2 reference and plexscratch" % counted["cells"])
     print("  outcome  %d" % counted["outcome"])
     print("  and text %d" % counted["exact"])
     for cell, wanted, wanted_text, answer, text in misses[:args.examples]:

@@ -5,9 +5,9 @@ use super::resume::int_param;
 use super::*;
 
 /// Section leaves that PARSE `sort`, `group`, `sourceType` and `limit` and refuse a
-/// bad one with a 500 -- measured on zen (1.42.2) and kids (1.43.4), identical -- while
-/// answering exactly the same body to a GOOD one.  `userRating`, `rating`,
-/// `location`, `categories`, `folder` and the subsets answer 200 to all four.
+/// bad one with a 500 -- measured on the 1.42.2 reference and plexlab (1.43.4),
+/// identical -- while answering exactly the same body to a GOOD one.  `userRating`,
+/// `rating`, `location`, `categories`, `folder` and the subsets answer 200 to all four.
 const STRUCTURAL_SECTION_LEAVES: &[&str] = &[
     "actor",
     "aperture",
@@ -449,9 +449,9 @@ impl Runtime {
         self.parameter_refusal(&segments, query)
     }
 
-    /// Cycle 54/55, from the binary's parameter names and measured on kids, zen and
-    /// plexscratch42: parameters that are PARSED -- a value the grammar refuses is a
-    /// 400 -- on paths whose handlers otherwise ignore them.
+    /// Cycle 54/55, from the binary's parameter names and measured on plexlab, the
+    /// 1.42.2 reference and plexscratch42: parameters that are PARSED -- a value the
+    /// grammar refuses is a 400 -- on paths whose handlers otherwise ignore them.
     fn parameter_refusal(&self, segments: &[&str], query: &HashMap<String, String>) -> Option<u16> {
         let bad_int32 = |name: &str| {
             query

@@ -1,13 +1,13 @@
 //! The plug-in framework's surface: `/system/*` and `/:/plugins/*`.
 //!
-//! Cycles 18-58 measured this subtree on kids (1.43.4), zen (1.42.2) and both disposable
-//! copies as a DIFFERENT SERVER with an envelope of its own: its empty answers carry no
-//! `Content-Type`, its documents are written by the framework's serialiser (single-quoted
-//! declaration, two-space indent), its errors are the framework's own Python tracebacks,
-//! and every response but three carries the framework's `cereal1` session cookie. The
-//! Python oracle is `server.py` (`handle`, the `-- system --` block of `_route` and the
-//! `framework-*` kinds of `_dispatch`); this module ports it as one unit so the rest of
-//! the runtime keeps no second, approximate copy.
+//! Cycles 18-58 measured this subtree on plexlab (1.43.4), the 1.42.2 reference and both
+//! disposable copies as a DIFFERENT SERVER with an envelope of its own: its empty answers
+//! carry no `Content-Type`, its documents are written by the framework's serialiser
+//! (single-quoted declaration, two-space indent), its errors are the framework's own Python
+//! tracebacks, and every response but three carries the framework's `cereal1` session
+//! cookie. The Python oracle is `server.py` (`handle`, the `-- system --` block of `_route`
+//! and the `framework-*` kinds of `_dispatch`); this module ports it as one unit so the
+//! rest of the runtime keeps no second, approximate copy.
 
 use super::*;
 use regex::Regex;
@@ -55,8 +55,8 @@ fn plugin_root_error() -> Vec<u8> {
     .into_bytes()
 }
 
-/// Cycle 52: the plug-in framework's TypeError document. Byte for byte on kids and zen
-/// once the bundle hash and line number are the reported version's.
+/// Cycle 52: the plug-in framework's TypeError document. Byte for byte on plexlab and the
+/// 1.42.2 reference once the bundle hash and line number are the reported version's.
 fn framework_traceback(sentence: &str) -> Vec<u8> {
     format!(
         "<?xml version='1.0' encoding='utf-8'?>\n<Response code=\"2000\" status=\"TypeError: {sentence}\">\n  <Traceback>Traceback (most recent call last):\n{FRAMEWORK_RUNTIME_FRAME}TypeError: {sentence}\n</Traceback>\n</Response>\n"
@@ -947,7 +947,8 @@ impl Runtime {
         if route == "/system/services/url/lookup" {
             // Cycle 87 (`server.py`): the traceback is the BARE request only. Any `url`
             // argument, empty included, is a 404 with an empty, untyped body on
-            // plexscratch42, kids and zen: the function runs and no service claims it.
+            // plexscratch42, plexlab and the 1.42.2 reference: the function runs and no
+            // service claims it.
             if query.contains_key("url") {
                 return Response::bare(404);
             }
@@ -1186,11 +1187,11 @@ impl Runtime {
             "13" => (1, &["Plex Photo Scanner"]),
             _ => return Response::error(500, "rex: internal error"),
         };
-        // Cycle 87, measured on zen, kids and plexscratch42, byte-identical on all three
-        // and under every Accept. The MUSIC list is written by a different writer from
-        // the other three -- a DOUBLE-quoted declaration, and the third row its
-        // `size="3"` counts serialised as an empty indented line -- 220 bytes where the
-        // framework's own form of the same two rows is 217.
+        // Cycle 87, measured on the 1.42.2 reference, plexlab and plexscratch42,
+        // byte-identical on all three and under every Accept. The MUSIC list is written by
+        // a different writer from the other three -- a DOUBLE-quoted declaration, and the
+        // third row its `size="3"` counts serialised as an empty indented line -- 220 bytes
+        // where the framework's own form of the same two rows is 217.
         let music = size > names.len();
         let quote = if music { '"' } else { '\'' };
         let rows: String = names
@@ -1597,12 +1598,13 @@ impl Runtime {
                 .map(String::as_str)
                 .unwrap_or(""),
         ) {
-            // Cycle 83, zen (1.42.2) and kids: the XML pages like the JSON -- Start 1 Size 2
-            // answers `size 2 totalSize 5 offset 1`, the second and third agents and both
-            // X-Plex-Container headers. This XML is written here rather than by the
-            // pipeline, so it went out past the pager: every agent, no `totalSize`, and
-            // python-plexapi's `agents()` read `totalSize`/`offset` as None. Page the JSON
-            // first, the way the pipeline pages every other container, then render it.
+            // Cycle 83, the 1.42.2 reference and plexlab: the XML pages like the JSON --
+            // Start 1 Size 2 answers `size 2 totalSize 5 offset 1`, the second and third
+            // agents and both X-Plex-Container headers. This XML is written here rather
+            // than by the pipeline, so it went out past the pager: every agent, no
+            // `totalSize`, and python-plexapi's `agents()` read `totalSize`/`offset` as
+            // None. Page the JSON first, the way the pipeline pages every other container,
+            // then render it.
             let mut paged = Response::bytes(200, "application/json");
             paged.body = serde_json::to_vec(&ordered).unwrap_or_default();
             page_container(&mut paged, query, "/system/agents");
@@ -1621,12 +1623,13 @@ impl Runtime {
             response.headers.extend(headed.headers);
             return response;
         }
-        // Cycle 87, zen (1.42.2) under Plex Web's paging headers: a paged JSON answer
-        // repeats every `Language` key exactly as the unpaged one does. This body used to
-        // reach the pipeline's pager already rewritten into repeated keys; the pager parsed
-        // it, which keeps only the LAST of each, and wrote one `Language` per agent back.
-        // Page the array form here, the way the XML branch does, and repeat the keys after:
-        // a container that carries `totalSize` is one the pipeline's pager leaves alone.
+        // Cycle 87, the 1.42.2 reference under Plex Web's paging headers: a paged JSON
+        // answer repeats every `Language` key exactly as the unpaged one does. This body
+        // used to reach the pipeline's pager already rewritten into repeated keys; the
+        // pager parsed it, which keeps only the LAST of each, and wrote one `Language` per
+        // agent back. Page the array form here, the way the XML branch does, and repeat the
+        // keys after: a container that carries `totalSize` is one the pipeline's pager
+        // leaves alone.
         let mut response = Response::bytes(200, "application/json");
         response.body = serde_json::to_vec(&drop_empty_value(&ordered)).unwrap_or_default();
         page_container(&mut response, query, "/system/agents");
@@ -1662,9 +1665,9 @@ fn page_window(query: &HashMap<String, String>) -> Option<(usize, usize)> {
 
 /// A framework container in the client's format: the framework serialiser for XML
 /// (`application/xml`, no charset) and ordinary JSON otherwise.
-/// Cycle 87, measured on zen, kids and plexscratch42 with `Accept: application/json`:
-/// the framework's serialiser has no JSON form, so `/system`, `/system/search`,
-/// `/system/library/sections` and `/system/scanners/{N}` answer the same
+/// Cycle 87, measured on the 1.42.2 reference, plexlab and plexscratch42 with `Accept:
+/// application/json`: the framework's serialiser has no JSON form, so `/system`,
+/// `/system/search`, `/system/library/sections` and `/system/scanners/{N}` answer the same
 /// `application/xml` document whatever Accept says -- only the bare `/system/agents`,
 /// which PMS implements itself, answers JSON. rex answered JSON to all four.
 fn system_body(container: &Value) -> Response {

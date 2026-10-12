@@ -49,8 +49,8 @@ _EDITION = re.compile(r"(?i)\b(?:remastered|extended(?: edition)?|director'?s cu
 # `The Sopranos S01 …`, `Show Season 2 …`, `S01-S03`.
 # An episode named without `SxxEyy`: a bare number (`Mysterious Love E06 1080p`), the NxNN
 # form (`Some Day or One Day - 1x02`), or only inside the brackets `parse_release` drops (a
-# disc rip's `00000 (E01-The.Arrangement).m2ts`, Suits.S03 on fun). zurg files these as
-# shows since 2026-10-11, and with no number here the feed placed none of them.
+# disc rip's `00000 (E01-The.Arrangement).m2ts`, Suits.S03 on the production server). zurg files
+# these as shows since 2026-10-11, and with no number here the feed placed none of them.
 _LOOSE_NX = re.compile(r"(?i)(?:^|[\s._\-\[(])(\d{1,2})x(\d{2})(?:[\s._\-\])]|$)")
 _LOOSE_E = re.compile(r"(?i)(?:^|[\s._\-\[(])E(\d{2,3})(?:[\s._\-\])]|$)")
 _SEASON_PACK = re.compile(r"(?i)\b(?:S(\d{1,2})(?:\s?-\s?S?\d{1,2})?|Season[\s._-]?(\d{1,2}))\b(?![\s._-]?E\d)")
@@ -140,7 +140,7 @@ class Identifier:
     def _tmdb_for_imdb(self, imdb):
         """(kind, tmdb id) of an IMDb id, from TMDB's /find. An episode's or a season's
         id names its show: the id DMM knows a season pack by is usually its first
-        episode's (271 of the 285 shows fun's rex left unmatched on 2026-10-11, Arrow's
+        episode's (271 of the 285 shows the production rex left unmatched on 2026-10-11, Arrow's
         tt2340185 among them, were `tv_episode_results`)."""
         if self.tmdb is None:
             return None, None
@@ -175,7 +175,7 @@ class Identifier:
     def _season_only_tmdb_has(self, plex_answer, tmdb_kind, tmdb_id, tmdb_imdb, parsed):
         """Plex and TMDB named different shows, and the release's season is one only
         TMDB's has. Plex's matcher answers one show for a bare title: for
-        `The.Tom.and.Jerry.Show.S02E05` (zen, 2026-10-10) the 1975 series, one season
+        `The.Tom.and.Jerry.Show.S02E05` (the test host, 2026-10-10) the 1975 series, one season
         long, where TMDB's first hit is the 2014 one with five; every episode then sat
         under a show with no such season, with no episode metadata."""
         season = parsed.get("season")

@@ -1,5 +1,5 @@
 {
- "reference": "plexscratch42 PMS 1.42.2.10156 (fresh, unclaimed, no route out); kids 1.43.4 and zen 1.42.2 (GET only) as witnesses",
+ "reference": "plexscratch42 PMS 1.42.2.10156 (fresh, unclaimed, no route out); plexlab 1.43.4 and the 1.42.2 reference (GET only) as witnesses",
  "date": "2026-10-01",
  "note": "GET/HEAD /system/services/url/lookup with and without a `url` argument, raw socket, keep-alive. The bare request (and one without `url`) is the 464-byte framework traceback; any `url` value -- empty, relative, a non-URL, an http URL, and on the isolated plexscratch42 a YouTube watch URL -- is a 404 with an EMPTY body and no Content-Type, the framework cookie kept, never gzipped. Date dropped; the Set-Cookie value is the framework's constant empty-session blob, not a credential. Request token and client id omitted.",
  "exchanges": [

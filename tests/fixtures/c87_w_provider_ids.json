@@ -1,6 +1,6 @@
 [
  {
-  "reference": "zen PMS 1.42.2.10156",
+  "reference": "The 1.42.2 reference (PMS 1.42.2.10156)",
   "date": "2026-10-01",
   "method": "GET",
   "path": "/media/providers/metadata/1",
@@ -34,7 +34,7 @@
   }
  },
  {
-  "reference": "zen PMS 1.42.2.10156",
+  "reference": "The 1.42.2 reference (PMS 1.42.2.10156)",
   "date": "2026-10-01",
   "method": "GET",
   "path": "/media/providers/metadata/group/1",
@@ -69,7 +69,7 @@
   }
  },
  {
-  "reference": "zen PMS 1.42.2.10156",
+  "reference": "The 1.42.2 reference (PMS 1.42.2.10156)",
   "date": "2026-10-01",
   "method": "GET",
   "path": "/media/providers/metadata/2",
@@ -109,7 +109,7 @@
   }
  },
  {
-  "reference": "zen PMS 1.42.2.10156",
+  "reference": "The 1.42.2 reference (PMS 1.42.2.10156)",
   "date": "2026-10-01",
   "method": "GET",
   "path": "/media/providers/metadata/group/3",
@@ -144,7 +144,7 @@
   }
  },
  {
-  "reference": "zen PMS 1.42.2.10156",
+  "reference": "The 1.42.2 reference (PMS 1.42.2.10156)",
   "date": "2026-10-01",
   "method": "GET",
   "path": "/media/providers/metadata/abc",
@@ -157,7 +157,7 @@
   "body": null
  },
  {
-  "reference": "zen PMS 1.42.2.10156",
+  "reference": "The 1.42.2 reference (PMS 1.42.2.10156)",
   "date": "2026-10-01",
   "method": "GET",
   "path": "/media/providers/metadata/99",
@@ -170,7 +170,7 @@
   "body": null
  },
  {
-  "reference": "zen PMS 1.42.2.10156",
+  "reference": "The 1.42.2 reference (PMS 1.42.2.10156)",
   "date": "2026-10-01",
   "method": "GET",
   "path": "/media/providers/metadata/group/abc",
@@ -183,7 +183,7 @@
   "body": null
  },
  {
-  "reference": "zen PMS 1.42.2.10156",
+  "reference": "The 1.42.2 reference (PMS 1.42.2.10156)",
   "date": "2026-10-01",
   "method": "GET",
   "path": "/media/providers/metadata/group/99",

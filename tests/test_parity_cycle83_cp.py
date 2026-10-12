@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Cycle 83, territories C and P on the native server: the differences that were the native's.
 
-Each check replays a reference exchange recorded in `tests/fixtures/cycle83_cp.json` (zen and
-plexscratch42, both PMS 1.42.2) and asserts the measured value, not agreement between the two
-servers.
+Each check replays a reference exchange recorded in `tests/fixtures/cycle83_cp.json` (the 1.42.2
+reference and plexscratch42, both PMS 1.42.2) and asserts the measured value, not agreement between
+the two servers.
 
 Starts its own server (native by default, `REX_SERVER=python` the oracle,
 `REX_SERVER=/path/to/binary` any build) on `tests/catalog_ui.json`, without `--state`.
@@ -83,7 +83,7 @@ class Server:
 
 
 def agents_paged(srv):
-    """zen, 1.42.2: `GET /system/agents?mediaType=1` with the X-Plex-Container pair as request
+    """The 1.42.2 reference: `GET /system/agents?mediaType=1` with the X-Plex-Container pair as request
     headers and no Accept (python-plexapi's `PlexServer.agents()`) is the XML page -- `size 2
     totalSize 5 offset 1`, the second and third agents, and the two paging headers. The native
     server rendered this XML by hand past the pager, so it answered all five agents with no

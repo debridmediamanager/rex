@@ -1,10 +1,11 @@
 """Keep the harness off production servers, and on exactly one server.
 
-The account that claims the lab server (plexa630) also owns fun and zen, which
+The account that claims the lab server (plexa630) also owns two production servers, which
 are live. Blocking their hostnames is not enough: plex.tv still *lists* them, so
 the web client selects one as the active server and the session never reaches
-the lab at all -- measured, a blocked-hostname-only run drew fun's sidebar with
-unreachable warnings and issued 46 requests to fun for every 8 to the lab.
+the lab at all -- measured, a blocked-hostname-only run drew the production server's
+sidebar with unreachable warnings and issued 46 requests to the production server for every
+8 to the lab.
 
 So the resource list itself is filtered. The client then sees a single owned
 server, which is also the shape a real rex user would have, and every

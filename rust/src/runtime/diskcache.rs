@@ -1,10 +1,11 @@
 //! The on-disk answer cache behind `Tmdb` and `PlexMeta`: one SQLite row per answer.
 //!
 //! Both caches used to live in memory as one JSON object, rewritten whole to
-//! `tmdb_cache.json` / `plex_cache.json` on every miss. Measured on fun (2026-10-10, 10,056
-//! TMDB and 2,458 Plex answers): 230 MB serialized per identified release, about every
-//! 1.3 s while zurg's feed filled the library -- one core pinned in `serde_json`, 100 MB/s
-//! of disk writes and a 3-4 GB heap. A row per answer makes a miss cost its own bytes.
+//! `tmdb_cache.json` / `plex_cache.json` on every miss. Measured on the production server
+//! (2026-10-10, 10,056 TMDB and 2,458 Plex answers): 230 MB serialized per identified
+//! release, about every 1.3 s while zurg's feed filled the library -- one core pinned in
+//! `serde_json`, 100 MB/s of disk writes and a 3-4 GB heap. A row per answer makes a miss
+//! cost its own bytes.
 //!
 //! The database sits beside the JSON file it replaces (`tmdb_cache.db` for
 //! `tmdb_cache.json`). A legacy JSON cache is imported once, when the database does not

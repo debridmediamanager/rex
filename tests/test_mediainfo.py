@@ -3,7 +3,7 @@
 
 Every fixture in tests/fixtures/media/ is one real file: the ffprobe probe
 build_catalog.py takes of it, and the Media element a real PMS wrote for it --
-production fun (1.42.2) for real releases, the plexlab reference (1.43.4) for its
+a production server (1.42.2) for real releases, the plexlab reference (1.43.4) for its
 synthetic clips -- both recorded on 2026-09-13, the probe over the server's own part
 URL. `webDisplayTitles` is the same row read with `X-Plex-Product: Plex Web`.
 
@@ -11,8 +11,8 @@ The `s42-*` fixtures are SHALLOW: cycle 54 made one small file per container on 
 1.42.2 disposable copy (plexscratch42), because no real library holds a `.ts`, `.m4v`,
 `.wmv`, `.mpg`, `.flv`, `.ogv`, `.3gp` or `.divx` part. That copy's analysis is the
 scanner's quick pass -- even an explicit analyze leaves its streams without `bitDepth`,
-colour or `codecID`, all of which zen writes for the same containers -- so its STREAM
-fields are not a witness. Only the checks registered `shallow=True`, which read what the
+colour or `codecID`, all of which the 1.42.2 reference writes for the same containers -- so its
+STREAM fields are not a witness. Only the checks registered `shallow=True`, which read what the
 container decides, run on them.
 
 Each check converts every probe with `mediainfo.build_media` exactly as
@@ -96,51 +96,52 @@ SKIP = {
     # produce, the real server the 5.1 independent substream it indexed.
     ("fun-1051324-2", 2, "channels"): "E-AC-3 JOC in mp4",
     ("fun-1051324-2", 4, "channels"): "E-AC-3 JOC in mp4",
-    # The reference's AAC clips: fun writes `lc` for the same profile.
-    ("kids-1-0", 1, "profile"): "the 1.43.4 reference omits most of its AAC clips' profile; fun writes lc",
-    ("kids-12-0", 1, "profile"): "the 1.43.4 reference omits most of its AAC clips' profile; fun writes lc",
-    ("kids-13-0", 1, "profile"): "the 1.43.4 reference omits most of its AAC clips' profile; fun writes lc",
-    ("kids-14-0", 1, "profile"): "the 1.43.4 reference omits most of its AAC clips' profile; fun writes lc",
-    ("kids-17-0", 1, "profile"): "the 1.43.4 reference omits most of its AAC clips' profile; fun writes lc",
-    ("kids-18-0", 1, "profile"): "the 1.43.4 reference omits most of its AAC clips' profile; fun writes lc",
-    ("kids-3-0", 1, "profile"): "the 1.43.4 reference omits most of its AAC clips' profile; fun writes lc",
-    ("kids-4-0", 1, "profile"): "the 1.43.4 reference omits most of its AAC clips' profile; fun writes lc",
-    ("kids-8-0", 1, "profile"): "the 1.43.4 reference omits most of its AAC clips' profile; fun writes lc",
-    # The reference's untagged clips: fun leaves an untagged track without a language.
-    ("kids-1-0", 1, "language"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-1-0", 1, "languageCode"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-1-0", 1, "languageTag"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-10-0", 1, "language"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-10-0", 1, "languageCode"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-10-0", 1, "languageTag"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-12-0", 1, "language"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-12-0", 1, "languageCode"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-12-0", 1, "languageTag"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-13-0", 1, "language"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-13-0", 1, "languageCode"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-13-0", 1, "languageTag"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-14-0", 1, "language"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-14-0", 1, "languageCode"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-14-0", 1, "languageTag"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-17-0", 1, "language"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-17-0", 1, "languageCode"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-17-0", 1, "languageTag"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-3-0", 1, "language"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-3-0", 1, "languageCode"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-3-0", 1, "languageTag"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-4-0", 1, "language"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-4-0", 1, "languageCode"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-4-0", 1, "languageTag"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-8-0", 1, "language"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-8-0", 1, "languageCode"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-8-0", 1, "languageTag"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-9-0", 1, "language"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-9-0", 1, "languageCode"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-9-0", 1, "languageTag"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    # The reference's AAC clips: the production server writes `lc` for the same profile.
+    ("kids-1-0", 1, "profile"): "the 1.43.4 reference omits most of its AAC clips' profile; the production server writes lc",
+    ("kids-12-0", 1, "profile"): "the 1.43.4 reference omits most of its AAC clips' profile; the production server writes lc",
+    ("kids-13-0", 1, "profile"): "the 1.43.4 reference omits most of its AAC clips' profile; the production server writes lc",
+    ("kids-14-0", 1, "profile"): "the 1.43.4 reference omits most of its AAC clips' profile; the production server writes lc",
+    ("kids-17-0", 1, "profile"): "the 1.43.4 reference omits most of its AAC clips' profile; the production server writes lc",
+    ("kids-18-0", 1, "profile"): "the 1.43.4 reference omits most of its AAC clips' profile; the production server writes lc",
+    ("kids-3-0", 1, "profile"): "the 1.43.4 reference omits most of its AAC clips' profile; the production server writes lc",
+    ("kids-4-0", 1, "profile"): "the 1.43.4 reference omits most of its AAC clips' profile; the production server writes lc",
+    ("kids-8-0", 1, "profile"): "the 1.43.4 reference omits most of its AAC clips' profile; the production server writes lc",
+    # The reference's untagged clips: the production server leaves an untagged track without a
+    # language.
+    ("kids-1-0", 1, "language"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-1-0", 1, "languageCode"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-1-0", 1, "languageTag"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-10-0", 1, "language"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-10-0", 1, "languageCode"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-10-0", 1, "languageTag"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-12-0", 1, "language"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-12-0", 1, "languageCode"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-12-0", 1, "languageTag"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-13-0", 1, "language"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-13-0", 1, "languageCode"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-13-0", 1, "languageTag"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-14-0", 1, "language"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-14-0", 1, "languageCode"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-14-0", 1, "languageTag"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-17-0", 1, "language"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-17-0", 1, "languageCode"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-17-0", 1, "languageTag"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-3-0", 1, "language"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-3-0", 1, "languageCode"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-3-0", 1, "languageTag"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-4-0", 1, "language"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-4-0", 1, "languageCode"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-4-0", 1, "languageTag"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-8-0", 1, "language"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-8-0", 1, "languageCode"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-8-0", 1, "languageTag"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-9-0", 1, "language"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-9-0", 1, "languageCode"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-9-0", 1, "languageTag"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
     # Layouts the probe does not explain.
     ("fun-1051324-2", 2, "audioChannelLayout"): "E-AC-3 JOC in mp4",
     ("fun-1051324-2", 4, "audioChannelLayout"): "E-AC-3 JOC in mp4",
-    ("fun-1061845-0", 1, "audioChannelLayout"): "DTS Express: fun writes no layout; one track",
+    ("fun-1061845-0", 1, "audioChannelLayout"): "DTS Express: the production server writes no layout; one track",
     ("kids-1-0", 1, "audioChannelLayout"): "the 1.43.4 reference leaves most mono AAC clips without a layout",
     ("kids-12-0", 1, "audioChannelLayout"): "the 1.43.4 reference leaves most mono AAC clips without a layout",
     ("kids-13-0", 1, "audioChannelLayout"): "the 1.43.4 reference leaves most mono AAC clips without a layout",
@@ -151,44 +152,44 @@ SKIP = {
     ("kids-4-0", 1, "audioChannelLayout"): "the 1.43.4 reference leaves most mono AAC clips without a layout",
     ("kids-8-0", 1, "audioChannelLayout"): "the 1.43.4 reference leaves most mono AAC clips without a layout",
     # TrueHD in an mp4.
-    ("fun-1051324-2", 5, "bitDepth"): "TrueHD in mp4: fun writes no bit depth",
+    ("fun-1051324-2", 5, "bitDepth"): "TrueHD in mp4: the production server writes no bit depth",
     # AVI tracks the probe gives no id.
-    ("fun-1057221-0", 1, "streamIdentifier"): "an AVI track fun numbers with no id in the probe",
-    ("fun-1150826-0", 1, "streamIdentifier"): "an AVI track fun numbers with no id in the probe",
+    ("fun-1057221-0", 1, "streamIdentifier"): "an AVI track the production server numbers with no id in the probe",
+    ("fun-1150826-0", 1, "streamIdentifier"): "an AVI track the production server numbers with no id in the probe",
     # The reference's untagged video tracks.
-    ("kids-1-0", 0, "language"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-1-0", 0, "languageCode"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-1-0", 0, "languageTag"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-10-0", 0, "language"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-10-0", 0, "languageCode"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-10-0", 0, "languageTag"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-12-0", 0, "language"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-12-0", 0, "languageCode"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-12-0", 0, "languageTag"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-13-0", 0, "language"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-13-0", 0, "languageCode"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-13-0", 0, "languageTag"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-14-0", 0, "language"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-14-0", 0, "languageCode"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-14-0", 0, "languageTag"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-17-0", 0, "language"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-17-0", 0, "languageCode"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-17-0", 0, "languageTag"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-3-0", 0, "language"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-3-0", 0, "languageCode"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-3-0", 0, "languageTag"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-4-0", 0, "language"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-4-0", 0, "languageCode"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-4-0", 0, "languageTag"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-8-0", 0, "language"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-8-0", 0, "languageCode"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-8-0", 0, "languageTag"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-9-0", 0, "language"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-9-0", 0, "languageCode"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-9-0", 0, "languageTag"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-1-0", 0, "language"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-1-0", 0, "languageCode"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-1-0", 0, "languageTag"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-10-0", 0, "language"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-10-0", 0, "languageCode"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-10-0", 0, "languageTag"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-12-0", 0, "language"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-12-0", 0, "languageCode"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-12-0", 0, "languageTag"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-13-0", 0, "language"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-13-0", 0, "languageCode"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-13-0", 0, "languageTag"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-14-0", 0, "language"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-14-0", 0, "languageCode"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-14-0", 0, "languageTag"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-17-0", 0, "language"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-17-0", 0, "languageCode"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-17-0", 0, "languageTag"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-3-0", 0, "language"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-3-0", 0, "languageCode"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-3-0", 0, "languageTag"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-4-0", 0, "language"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-4-0", 0, "languageCode"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-4-0", 0, "languageTag"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-8-0", 0, "language"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-8-0", 0, "languageCode"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-8-0", 0, "languageTag"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-9-0", 0, "language"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-9-0", 0, "languageCode"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-9-0", 0, "languageTag"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
     # Media bitrates the probe does not give.
-    ("fun-1054688-1", None, "bitrate"): "neither rounded nor truncated: fun's own measure",
-    ("fun-1057221-0", None, "bitrate"): "neither rounded nor truncated: fun's own measure",
+    ("fun-1054688-1", None, "bitrate"): "neither rounded nor truncated: the production server's own measure",
+    ("fun-1057221-0", None, "bitrate"): "neither rounded nor truncated: the production server's own measure",
     ("kids-1-0", None, "bitrate"): "the 1.43.4 reference's ten-second clips",
     ("kids-10-0", None, "bitrate"): "the 1.43.4 reference's ten-second clips",
     ("kids-12-0", None, "bitrate"): "the 1.43.4 reference's ten-second clips",
@@ -204,41 +205,41 @@ SKIP = {
     ("fun-1051324-2", None, "audioCodec"): "E-AC-3 JOC in mp4: the probe's 7.1 outranks the DTS-HD MA track",
     ("fun-1051324-2", None, "audioChannels"): "E-AC-3 JOC in mp4: the probe's 7.1 outranks the DTS-HD MA track",
     ("fun-1051324-2", None, "audioProfile"): "E-AC-3 JOC in mp4: the probe's 7.1 outranks the DTS-HD MA track",
-    ("kids-1-0", None, "audioProfile"): "the 1.43.4 reference omits most of its AAC clips' profile; fun writes lc",
-    ("kids-12-0", None, "audioProfile"): "the 1.43.4 reference omits most of its AAC clips' profile; fun writes lc",
-    ("kids-13-0", None, "audioProfile"): "the 1.43.4 reference omits most of its AAC clips' profile; fun writes lc",
-    ("kids-14-0", None, "audioProfile"): "the 1.43.4 reference omits most of its AAC clips' profile; fun writes lc",
-    ("kids-17-0", None, "audioProfile"): "the 1.43.4 reference omits most of its AAC clips' profile; fun writes lc",
-    ("kids-18-0", None, "audioProfile"): "the 1.43.4 reference omits most of its AAC clips' profile; fun writes lc",
-    ("kids-3-0", None, "audioProfile"): "the 1.43.4 reference omits most of its AAC clips' profile; fun writes lc",
-    ("kids-4-0", None, "audioProfile"): "the 1.43.4 reference omits most of its AAC clips' profile; fun writes lc",
-    ("kids-8-0", None, "audioProfile"): "the 1.43.4 reference omits most of its AAC clips' profile; fun writes lc",
+    ("kids-1-0", None, "audioProfile"): "the 1.43.4 reference omits most of its AAC clips' profile; the production server writes lc",
+    ("kids-12-0", None, "audioProfile"): "the 1.43.4 reference omits most of its AAC clips' profile; the production server writes lc",
+    ("kids-13-0", None, "audioProfile"): "the 1.43.4 reference omits most of its AAC clips' profile; the production server writes lc",
+    ("kids-14-0", None, "audioProfile"): "the 1.43.4 reference omits most of its AAC clips' profile; the production server writes lc",
+    ("kids-17-0", None, "audioProfile"): "the 1.43.4 reference omits most of its AAC clips' profile; the production server writes lc",
+    ("kids-18-0", None, "audioProfile"): "the 1.43.4 reference omits most of its AAC clips' profile; the production server writes lc",
+    ("kids-3-0", None, "audioProfile"): "the 1.43.4 reference omits most of its AAC clips' profile; the production server writes lc",
+    ("kids-4-0", None, "audioProfile"): "the 1.43.4 reference omits most of its AAC clips' profile; the production server writes lc",
+    ("kids-8-0", None, "audioProfile"): "the 1.43.4 reference omits most of its AAC clips' profile; the production server writes lc",
     # Titles built from a field the probe does not give.
-    ("fun-1051324-2", 2, "displayTitle"): "E-AC-3 JOC in mp4: fun prints its 5.1 core",
-    ("fun-1051324-2", 2, "extendedDisplayTitle"): "E-AC-3 JOC in mp4: fun prints its 5.1 core",
-    ("fun-1051324-2", 4, "displayTitle"): "E-AC-3 JOC in mp4: fun prints its 5.1 core",
-    ("fun-1051324-2", 4, "extendedDisplayTitle"): "E-AC-3 JOC in mp4: fun prints its 5.1 core",
+    ("fun-1051324-2", 2, "displayTitle"): "E-AC-3 JOC in mp4: the production server prints its 5.1 core",
+    ("fun-1051324-2", 2, "extendedDisplayTitle"): "E-AC-3 JOC in mp4: the production server prints its 5.1 core",
+    ("fun-1051324-2", 4, "displayTitle"): "E-AC-3 JOC in mp4: the production server prints its 5.1 core",
+    ("fun-1051324-2", 4, "extendedDisplayTitle"): "E-AC-3 JOC in mp4: the production server prints its 5.1 core",
     ("fun-1061845-0", 3, "extendedDisplayTitle"): "a forced track with no linguistic content leaves Forced out; one track",
-    ("kids-1-0", 1, "displayTitle"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-1-0", 1, "extendedDisplayTitle"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-10-0", 1, "displayTitle"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-10-0", 1, "extendedDisplayTitle"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-12-0", 1, "displayTitle"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-12-0", 1, "extendedDisplayTitle"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-13-0", 1, "displayTitle"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-13-0", 1, "extendedDisplayTitle"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-14-0", 1, "displayTitle"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-14-0", 1, "extendedDisplayTitle"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-17-0", 1, "displayTitle"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-17-0", 1, "extendedDisplayTitle"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-3-0", 1, "displayTitle"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-3-0", 1, "extendedDisplayTitle"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-4-0", 1, "displayTitle"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-4-0", 1, "extendedDisplayTitle"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-8-0", 1, "displayTitle"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-8-0", 1, "extendedDisplayTitle"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-9-0", 1, "displayTitle"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
-    ("kids-9-0", 1, "extendedDisplayTitle"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-1-0", 1, "displayTitle"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-1-0", 1, "extendedDisplayTitle"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-10-0", 1, "displayTitle"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-10-0", 1, "extendedDisplayTitle"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-12-0", 1, "displayTitle"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-12-0", 1, "extendedDisplayTitle"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-13-0", 1, "displayTitle"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-13-0", 1, "extendedDisplayTitle"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-14-0", 1, "displayTitle"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-14-0", 1, "extendedDisplayTitle"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-17-0", 1, "displayTitle"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-17-0", 1, "extendedDisplayTitle"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-3-0", 1, "displayTitle"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-3-0", 1, "extendedDisplayTitle"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-4-0", 1, "displayTitle"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-4-0", 1, "extendedDisplayTitle"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-8-0", 1, "displayTitle"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-8-0", 1, "extendedDisplayTitle"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-9-0", 1, "displayTitle"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-9-0", 1, "extendedDisplayTitle"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
 }
 
 
@@ -264,8 +265,8 @@ def _container(fixture):
     anyone reading it. `fun-1052407-0.json` is a **`.webm`** file whose recorded Media --
     a real 1.42.2 PMS's own answer for it -- says `mkv`, while `mediainfo.py` overrode
     the demuxer's answer with the extension and produced `webm`. Confirmed live on the
-    identical 571,346,576-byte file: zen answers `mkv`, and no row of its 4,508 movie
-    Media carries `webm` at all.
+    identical 571,346,576-byte file: the 1.42.2 reference answers `mkv`, and no row of its 4,508
+    movie Media carries `webm` at all.
     """
     out = per_media(("container",))(fixture)
     real_part = ((fixture["Media"].get("Part") or [{}])[0])
@@ -279,8 +280,8 @@ def _container(fixture):
 def _packet_length(fixture):
     """Cycle 54: an MPEG-TS Part carries `packetLength: 188` and no other Part does.
 
-    Measured on all seventeen containers on plexscratch42, on zen's fourteen real `.m2ts`
-    parts, and in `fun-1073414-1` -- which has recorded it since cycle 10 without any check
+    Measured on all seventeen containers on plexscratch42, on the 1.42.2 reference's fourteen real
+    `.m2ts` parts, and in `fun-1073414-1` -- which has recorded it since cycle 10 without any check
     reading it. It is 188 on a Blu-ray `.m2ts` too, whose packets are really 192 bytes, so
     it is a constant of the container and not a measurement of the file.
     """
@@ -335,7 +336,7 @@ def _video_resolution_label(fixture):
 @check("video-resolution-survey", once=True)
 def _video_resolution_survey(mediainfo):
     survey = json.load(open(os.path.join(HERE, "fixtures", "media-resolutions.json")))
-    return [("%dx%d (%d Media on fun)" % (width, height, count), label,
+    return [("%dx%d (%d Media in production)" % (width, height, count), label,
              mediainfo._video_resolution(height, width))
             for width, height, label, count in survey["rows"]]
 
@@ -367,9 +368,9 @@ def _pixel_aspect_pair(fixture):
 
 @check("pixel-aspect-threshold", once=True)
 def _pixel_aspect_threshold(mediainfo):
-    """The sixteen ratios zen witnesses, the two in the corpus, and the exact boundary.
+    """The sixteen ratios the 1.42.2 reference witnesses, the two in the corpus, and the exact boundary.
 
-    Measured on 1,688 of zen's video Streams (358 carrying the pair, 1,330 carrying
+    Measured on 1,688 of the 1.42.2 reference's video Streams (358 carrying the pair, 1,330 carrying
     neither, none carrying one). Cycle 41 then measured both disposable reference
     versions at the boundary: `21:20` is false and `20:19` is true.
     """
@@ -583,22 +584,22 @@ def main():
 
 @check("cycle 24: the extended title's measured stand-ins and language rule", once=True)
 def extended_title_model(mediainfo):
-    """Cycle 24, fitted on zen's 105,558 real Streams and held out on the 46 recorded probes.
+    """Cycle 24, fitted on the 1.42.2 reference's 105,558 real Streams and held out on the 46 recorded probes.
 
     The LANGUAGE part has its own rule and it is the one two earlier attempts could not
     find: the name is carried only when it is a SINGLE token that is one of the title's
     words, with any TRAILING PARENTHESISED GROUP stripped from the name first -- so
     `Русский` in `Русский (Full) - ...` and `English (Weeb)` in `English (Some-Stuffs)` are
     carried, while `norsk bokmål` and `Tiếng Việt` in their own titles are not. Cycle 22
-    fitted "the whole name" to zen and it broke the recorded corpus; the first-word rule
-    alone fits the corpus and missed 179 of zen's rows. Beside it, five more stand-ins:
-    `Signs`/`Songs` for Forced, `CC`/`HI` for SDH, `1.0` for Mono, `HDR`/`Dolby` for the
+    fitted "the whole name" to the 1.42.2 reference and it broke the recorded corpus; the first-word
+    rule alone fits the corpus and missed 179 of the 1.42.2 reference's rows. Beside it, five more
+    stand-ins: `Signs`/`Songs` for Forced, `CC`/`HI` for SDH, `1.0` for Mono, `HDR`/`Dolby` for the
     dynamic range, and the raw ffprobe codec name (so `aac` carries `HE-AAC` and `H264`
     carries `H.264`). `eia_608` prints `Closed Captions` in BOTH titles, and a sidecar's
     codec suffix is its `providerTitle`, with `External` the fallback.
 
-    Scored end to end this moves zen's misses from 613 of 105,558 to 174, and the recorded
-    corpus from 3 of 642 to 0.
+    Scored end to end this moves the 1.42.2 reference's misses from 613 of 105,558 to 174, and the
+    recorded corpus from 3 of 642 to 0.
     """
     rows = []
 
@@ -623,7 +624,8 @@ def extended_title_model(mediainfo):
     out = built({"streamType": 3, "codec": "srt", "language": "English", "title": "Signs & Songs",
                  "forced": True})
     # The FORCED part is carried by `Signs`; the language is not, so it stays. 120 rows on
-    # zen are titled `Signs & Songs...` with `forced` set and no "forced" in the title.
+    # the 1.42.2 reference are titled `Signs & Songs...` with `forced` set and no "forced" in the
+    # title.
     rows.append(("Forced <- Signs", "Signs & Songs (English SRT)",
                  out.get("extendedDisplayTitle")))
     out = built({"streamType": 3, "codec": "srt", "language": "English",
@@ -634,9 +636,9 @@ def extended_title_model(mediainfo):
     rows.append(("Mono <- 1.0", "Commentary 1.0 (English FLAC)",
                  out.get("extendedDisplayTitle")))
     out = built({"streamType": 3, "codec": "eia_608", "language": "English"})
-    # `Closed Captions` is the CODEC LABEL, so it lands wherever the codec does. (zen's
-    # stored `displayTitle` carries the codec because those rows were read as Plex Web --
-    # the recorded client-title rule -- so the catalog form to compare is the extended one.)
+    # `Closed Captions` is the CODEC LABEL, so it lands wherever the codec does. (the 1.42.2
+    # reference's stored `displayTitle` carries the codec because those rows were read as Plex Web
+    # -- the recorded client-title rule -- so the catalog form to compare is the extended one.)
     rows.append(("eia_608", "English (Closed Captions)", out.get("extendedDisplayTitle")))
     out = built({"streamType": 3, "codec": "srt", "language": "English",
                  "key": "/library/streams/9", "providerTitle": "OpenSubtitles"})
@@ -651,10 +653,10 @@ def extended_title_model(mediainfo):
 @check("cycle 24: the language table, the video dub flag and an unnamed channel layout",
        once=True)
 def measured_smalls(mediainfo):
-    """Cycle 24, measured on zen's 105,558 real Streams.
+    """Cycle 24, measured on the 1.42.2 reference's 105,558 real Streams.
 
-    `languages.json` lacked THIRTEEN codes zen's streams actually use, each named in its own
-    language with its 639-1 tag. A VIDEO stream carries `dub` (88 of 13,681) and never
+    `languages.json` lacked THIRTEEN codes the 1.42.2 reference's streams actually use, each named
+    in its own language with its 639-1 tag. A VIDEO stream carries `dub` (88 of 13,681) and never
     `comment` or `hearingImpaired`, so its disposition set is default/forced/original/dub.
     And a layout ffprobe cannot name -- `8 channels (FL+FR+FC+LFE+SL+SR+TFL+TFR)` -- left a
     trailing SPACE behind when the bracket was split off, composing `(EAC3 8 channels )`.
@@ -704,7 +706,7 @@ def carried_codec_punctuation(mediainfo):
 @check("cycle 41: a visually impaired subtitle disposition is projected only when true",
        once=True)
 def visual_impaired_subtitle(mediainfo):
-    """Cycle 41, measured on zen's stored stream 93535 and metadata item 13374.
+    """Cycle 41, measured on the 1.42.2 reference's stored stream 93535 and metadata item 13374.
 
     The PGS subtitle's persisted `ma:visualImpaired:\"1\"` becomes
     `visualImpaired: true` on the Stream row. As with the other dispositions, a

@@ -17,7 +17,7 @@ against the reference's own exchange before it is applied to rex:
 
 And a request header's value is what follows the colon less ONE optional space, for every
 header (cycle 50's rule): `X-Plex-Platform:  Roku` is not Roku and `X-Plex-Version:  9.7.1`
-does not parse, measured over raw sockets on kids and plexscratch42
+does not parse, measured over raw sockets on plexlab and plexscratch42
 (`tests/fixtures/header_ows_roku.json`) through `/media/providers`' Roku pivot strip. The
 oracle's parser stripped every leading space.
 

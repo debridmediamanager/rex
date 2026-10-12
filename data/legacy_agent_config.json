@@ -1,5 +1,5 @@
 {
- "_source": "zen (1.42.2) GET /system/agents/{id}/config/{N} and /system/agents/contributors over all 15 agents x mediaType 1,2,8,9,13,20, cycle 58; kids (1.43.4) agrees on every 200 but the contributor ORDER of thetvdb|2 and themoviedb|2 (its load order).",
+ "_source": "The 1.42.2 reference GET /system/agents/{id}/config/{N} and /system/agents/contributors over all 15 agents x mediaType 1,2,8,9,13,20, cycle 58; plexlab (1.43.4) agrees on every 200 but the contributor ORDER of thetvdb|2 and themoviedb|2 (its load order).",
  "config": {
   "com.plexapp.agents.none|1": [
    {

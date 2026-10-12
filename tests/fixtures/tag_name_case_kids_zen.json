@@ -1,5 +1,5 @@
 {
- "_about": "cycle 88 B, 2026-10-02: a tag NAME in a section filter, kids (PMS 1.43.4) and zen (1.42.2, paged 50), GET only: ASCII letters match ignoring case, a non-ASCII letter only in its own case (SQLite NOCASE). Titles only; no token.",
+ "_about": "cycle 88 B, 2026-10-02: a tag NAME in a section filter, plexlab (PMS 1.43.4) and the 1.42.2 reference (paged 50), GET only: ASCII letters match ignoring case, a non-ASCII letter only in its own case (SQLite NOCASE). Titles only; no token.",
  "exchanges": [
   {
    "server": "kids",

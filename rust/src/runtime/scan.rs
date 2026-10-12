@@ -456,9 +456,9 @@ impl Runtime {
     /// identification of it when it has one, else its show's artwork where the season has
     /// none, and its show's guid and title as they stand. A season was only ever made, so
     /// one placed before its show was identified kept the local agent's guid, no ids and the
-    /// blank tile after the show was re-identified in place (fun, 2026-10-12: 186 seasons of
-    /// 131 shows, Black Mirror's Season 6 among them). What a person locked stays. Answers
-    /// whether anything changed.
+    /// blank tile after the show was re-identified in place (the production server,
+    /// 2026-10-12: 186 seasons of 131 shows, Black Mirror's Season 6 among them). What a
+    /// person locked stays. Answers whether anything changed.
     pub(super) fn refresh_season(&mut self, key: &str, built: &Value) -> bool {
         let Some(row) = self.catalog.get(key).and_then(Value::as_object).cloned() else {
             return false;
@@ -1019,9 +1019,10 @@ mod tests {
     /// One test, because the store's write queue is process-wide.
     #[test]
     fn a_snapshot_after_one_held_change_does_not_reserialise_every_held_item() {
-        // fun, 2026-10-10: 28,859 held items, every one serialised, hashed and compared
-        // on each save -- two seconds apart while any client polled -- under the runtime
-        // lock every request waits on. One real held record stands in for all of them.
+        // the production server, 2026-10-10: 28,859 held items, every one serialised, hashed
+        // and compared on each save -- two seconds apart while any client polled -- under the
+        // runtime lock every request waits on. One real held record stands in for all of
+        // them.
         let fixture: Value =
             serde_json::from_str(include_str!("../../tests/fixtures/feed_held_record.json")).unwrap();
         let record = fixture["record"].clone();
@@ -1257,7 +1258,8 @@ mod tests {
         let _ = fs::remove_dir_all(&dir);
     }
 
-    /// fun's Black Mirror Season 6 as rex-fun held it, refreshed by the seasons leaves build.
+    /// Black Mirror's Season 6 as the production rex held it, refreshed by the seasons leaves
+    /// build.
     #[test]
     fn a_season_takes_an_identity_once_and_moves_only_to_another_tmdb_season() {
         let fixture: Value =

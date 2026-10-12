@@ -475,9 +475,10 @@ impl Cache {
 
 impl Cache {
     /// An object field kept by its members' keys, so a save serialises only the members
-    /// `changed` names: the 28,859 held feed items on fun (2026-10-10) were serialised,
-    /// hashed and compared whole on every save, two seconds apart while any client polled.
-    /// A field the cache does not hold yet takes `diff`'s full pass over `all()`.
+    /// `changed` names: the 28,859 held feed items on the production server (2026-10-10)
+    /// were serialised, hashed and compared whole on every save, two seconds apart while
+    /// any client polled. A field the cache does not hold yet takes `diff`'s full pass
+    /// over `all()`.
     pub fn diff_members<'a>(
         &mut self,
         field: &str,

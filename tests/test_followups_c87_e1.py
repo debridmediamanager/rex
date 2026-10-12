@@ -42,7 +42,7 @@ WEB = {"X-Plex-Product": "Plex Web", "X-Plex-Version": "4.147.1", "X-Plex-Platfo
        "X-Plex-Text-Format": "plain", "X-Plex-Provider-Version": "7.2", "X-Plex-Drm": "widevine"}
 PLEXAPI = {"X-Plex-Product": "PlexAPI", "X-Plex-Version": "4.18.2", "X-Plex-Platform": "Darwin",
            "X-Plex-Platform-Version": "24.6.0", "X-Plex-Device": "macOS-15.6-arm64-arm-64bit",
-           "X-Plex-Device-Name": "macmini", "X-Plex-Language": "en", "X-Plex-Provides": "controller",
+           "X-Plex-Device-Name": "probe-mac", "X-Plex-Language": "en", "X-Plex-Provides": "controller",
            "X-Plex-Sync-Version": "2"}
 QUEUE_FLAGS = [("repeat", 0), ("own", 1), ("includeChapters", 1), ("includeMarkers", 1),
                ("includeGeolocation", 1), ("includeExternalMedia", 1)]

@@ -618,10 +618,10 @@ pub struct Runtime {
 }
 
 
-// Cycle 87, zen (1.42.2): provider 4 on every reference, a fresh install included, is
-// the MusicBrainz intermediary, which `/media/providers/metadata` never lists and its
-// per-id GET answers. zen's `uri`/`online` (kids and the fresh copy say `""`/`false`
-// here and on Plex Music alike: the music provider's reachability, not shape).
+// Cycle 87, the 1.42.2 reference: provider 4 on every reference, a fresh install included,
+// is the MusicBrainz intermediary, which `/media/providers/metadata` never lists and its
+// per-id GET answers. The 1.42.2 reference's `uri`/`online` (plexlab and the fresh copy say
+// `""`/`false` here and on Plex Music alike: the music provider's reachability, not shape).
 const HIDDEN_METADATA_PROVIDER: &str = r#"{"id":4,"identifier":"org.musicbrainz.agents.music","title":"MusicBrainz","uri":"provider://tv.plex.provider.metadata","agentType":"intermediary","online":true,"MetadataType":[{"type":8},{"type":9},{"type":10}]}"#;
 
 impl Runtime {
@@ -995,8 +995,9 @@ impl Runtime {
         let restored_rows = !rebuilt && state.get("items").is_some_and(Value::is_array);
         let saved_rows = state.get("items").is_some_and(Value::is_array);
         if restored_rows {
-            // Taken, not copied: a copy held every row twice at the start (fun, 16,000
-            // rows: 805 MB of saved document beside a 775 MB catalog, 2026-10-10).
+            // Taken, not copied: a copy held every row twice at the start (the production
+            // server, 16,000 rows: 805 MB of saved document beside a 775 MB catalog,
+            // 2026-10-10).
             let mut rows = match state.get_mut("items").map(Value::take) {
                 Some(Value::Array(rows)) => rows,
                 _ => Vec::new(),
@@ -1022,7 +1023,7 @@ impl Runtime {
             self.catalog.rebuild_index();
             // The rows are what the database holds (`store_cache` was read with them), so
             // the first save need not serialise all of them to find that out: 150 MB and
-            // a CPU-second at every start on fun (2026-10-10).
+            // a CPU-second at every start in production (2026-10-10).
             if unchanged && matches!(source, StateSource::Database(_)) {
                 self.catalog.take_changes();
             }
@@ -1792,7 +1793,8 @@ impl Runtime {
     }
 
     /// `section_rows` by reference, for what only reads them: a copy of every movie of
-    /// the section per call was most of `/library/sections` and Related (fun, 2026-10-11).
+    /// the section per call was most of `/library/sections` and Related (the production
+    /// server, 2026-10-11).
     fn section_row_refs(&self, key: &str) -> Vec<&Value> {
         self.catalog
             .items()
@@ -1816,7 +1818,8 @@ impl Runtime {
     }
 
     /// `children` and `leaves` by reference, for what only reads or counts them: a
-    /// show's row counted its episodes by copying every one of them (fun, 2026-10-10).
+    /// show's row counted its episodes by copying every one of them (the production server,
+    /// 2026-10-10).
     fn children_refs(&self, key: &str) -> Vec<&Value> {
         let mut rows = self.catalog.children_refs(key);
         rows.sort_by_key(|row| row.get("index").and_then(Value::as_i64).unwrap_or(0));
@@ -1838,8 +1841,9 @@ impl Runtime {
     /// Whether a row is "unplayed" on the lists that read it by LEAVES -- a show
     /// library's `/unwatched` and a show's `/children?unwatched=1`: a show or season
     /// while any of its leaves has no play, anything else by its own counter.  Cycle
-    /// 83, measured on zen (`tests/fixtures/unwatched_zen.json`) and cycle 71 on both
-    /// copies.  Not the `unwatched` filter column, which is the row's own counter.
+    /// 83, measured on the 1.42.2 reference (`tests/fixtures/unwatched_zen.json`) and cycle
+    /// 71 on both copies.  Not the `unwatched` filter column, which is the row's own
+    /// counter.
     fn has_unwatched(&self, row: &Value) -> bool {
         if matches!(row.get("type").and_then(Value::as_str), Some("show" | "season")) {
             return key_of(row)
@@ -2229,13 +2233,14 @@ impl Runtime {
     }
 
     /// A `/library/all/top` row. Cycle 94, measured with Plex for Android 2026.19.1's own
-    /// request on kids (1.43.4, movies) and zen (1.42.2, a show, a season, episodes) against
-    /// the same item's section listing row (tests/fixtures/c94_d_library_all_top.json): the
-    /// LIGHT listing row plus the librarySection triple, `globalViewCount` and `userCount`
-    /// (the writer places them after `updatedAt`/`deletedAt`) and `User` last -- no `Guid`,
-    /// `Rating` or `Location`, which the detail projection rex answered carried. A show
-    /// or season drops the listing's per-user aggregate; a season gains `leafCount` and
-    /// `viewedLeafCount`, which its listing row does not carry, before `addedAt`.
+    /// request on plexlab (1.43.4, movies) and the 1.42.2 reference (a show, a season,
+    /// episodes) against the same item's section listing row
+    /// (tests/fixtures/c94_d_library_all_top.json): the LIGHT listing row plus the
+    /// librarySection triple, `globalViewCount` and `userCount` (the writer places them
+    /// after `updatedAt`/`deletedAt`) and `User` last -- no `Guid`, `Rating` or `Location`,
+    /// which the detail projection rex answered carried. A show or season drops the
+    /// listing's per-user aggregate; a season gains `leafCount` and `viewedLeafCount`,
+    /// which its listing row does not carry, before `addedAt`.
     fn top_row(&self, original: &Value, plays: i64, accounts: &BTreeSet<i64>) -> Value {
         let full = self.public_row(original, false);
         let light = self.grid_row(original, true, false, false);
@@ -2623,7 +2628,7 @@ impl Runtime {
 
     /// `audioLanguage`/`subtitleLanguage` on an ITEM, led by its own streams.
     ///
-    /// Cycle 18, measured on zen (1.42.2) and kids (1.43.4): the enum is the
+    /// Cycle 18, measured on the 1.42.2 reference and plexlab (1.43.4): the enum is the
     /// inherit option, then the item's OWN stream languages as bare 639-1 tags
     /// -- AUDIO first, then subtitles, each group ordered by tag and the whole
     /// head deduped, each named in its own language -- then the generic
@@ -2845,11 +2850,11 @@ impl Runtime {
 
     /// The `Preferences` block a library row carries under `includePreferences=1`.
     ///
-    /// Measured on kids and zen: `/library/sections?includePreferences=1` and
-    /// `/media/providers?includePreferences=1` answer the same block for the same
-    /// library, byte for byte -- including the show library's `episodeSort`, which is
-    /// the per-SHOW variant here (`Library default` in its enum and "for this show" in
-    /// its summary) rather than the library leaf's own.
+    /// Measured on plexlab and the 1.42.2 reference:
+    /// `/library/sections?includePreferences=1` and `/media/providers?includePreferences=1`
+    /// answer the same block for the same library, byte for byte -- including the show
+    /// library's `episodeSort`, which is the per-SHOW variant here (`Library default` in
+    /// its enum and "for this show" in its summary) rather than the library leaf's own.
     fn section_preference_rows(&self, section_key: &str, kind: &str) -> Vec<Value> {
         let mut rows = self.section_pref_rows(section_key, kind);
         if kind == "show" {
@@ -3306,9 +3311,9 @@ impl Runtime {
         self.container(fields, false)
     }
 
-    /// Cycle 66, measured identically on kids, zen and plexscratch42: whether a Roku at
-    /// `version` is one a real PMS withholds library pivots from -- an absent or
-    /// unparseable version, or one below 6.4.2 on the components it carries.
+    /// Cycle 66, measured identically on plexlab, the 1.42.2 reference and plexscratch42:
+    /// whether a Roku at `version` is one a real PMS withholds library pivots from -- an
+    /// absent or unparseable version, or one below 6.4.2 on the components it carries.
     fn roku_predates_pivots(version: Option<&str>) -> bool {
         let text = version.unwrap_or("");
         let (core, _suffix) = match text.split_once('-') {
@@ -3441,8 +3446,9 @@ impl Runtime {
                                                        match kind { "show" => 2, "artist" => 8, _ => 1 }),
                        "type": "list", "title": "Library", "context": "content.library", "symbol": "library"}),
             ];
-            // Cycle 59, measured on fun and both copies: a library that HOLDS a
-            // collection gains this tab after Library; one that holds none does not.
+            // Cycle 59, measured on the production server and both copies: a library that
+            // HOLDS a collection gains this tab after Library; one that holds none does
+            // not.
             if self
                 .collections
                 .values()
@@ -3650,10 +3656,10 @@ impl Runtime {
                     .into_iter()
                     .map(|number| json!({"type":number}))
                     .collect::<Vec<_>>();
-                // Cycle 87, measured on kids, zen and both scratch copies (one a fresh
-                // 1.42.2 install): the provider table numbers Personal Media 5 where
-                // `/system/agents` numbers it 4. Provider 4 is the unlisted MusicBrainz
-                // intermediary (`HIDDEN_METADATA_PROVIDER`).
+                // Cycle 87, measured on plexlab, the 1.42.2 reference and both scratch
+                // copies (one a fresh 1.42.2 install): the provider table numbers Personal
+                // Media 5 where `/system/agents` numbers it 4. Provider 4 is the unlisted
+                // MusicBrainz intermediary (`HIDDEN_METADATA_PROVIDER`).
                 let id = match identifier {
                     "tv.plex.agents.none" => json!(5),
                     _ => agent.get("id").cloned().unwrap_or(Value::Null),
@@ -3738,10 +3744,10 @@ impl Runtime {
             if request.method == "GET" || request.method == "HEAD" {
                 let mut rows = self.metadata_provider_rows();
                 if let Some(raw) = query.get("metadataTypes").filter(|raw| !raw.is_empty()) {
-                    // Cycle 54, measured on kids and zen: a comma list of int32 media
-                    // types (a 400 otherwise), keeping the providers that serve EVERY
-                    // one of them -- `0` answers none, `1` the movie agent and the no-op
-                    // agent.  An empty value is every provider.
+                    // Cycle 54, measured on plexlab and the 1.42.2 reference: a comma list
+                    // of int32 media types (a 400 otherwise), keeping the providers that
+                    // serve EVERY one of them -- `0` answers none, `1` the movie agent and
+                    // the no-op agent.  An empty value is every provider.
                     let parts = raw.split(',').collect::<Vec<_>>();
                     if !parts.iter().all(|part| int_param(part, Some(32))) {
                         return Response::error(400, "rex: bad request");
@@ -3831,11 +3837,11 @@ impl Runtime {
             }
             return Response::error(404, "rex: not found");
         }
-        // Cycle 44 (oracle), re-measured on kids and zen 2026-10-01: the per-id GETs are
-        // real. `/media/providers/metadata/{id}` and `/media/providers/metadata/group/{id}`
-        // answer the listing's own row as a one-row container (paged like the listing);
-        // an id the server does not hold is a 404 and a non-numeric one a 400. The port
-        // 404'd every one of them.
+        // Cycle 44 (oracle), re-measured on plexlab and the 1.42.2 reference 2026-10-01:
+        // the per-id GETs are real. `/media/providers/metadata/{id}` and
+        // `/media/providers/metadata/group/{id}` answer the listing's own row as a one-row
+        // container (paged like the listing); an id the server does not hold is a 404 and a
+        // non-numeric one a 400. The port 404'd every one of them.
         if matches!(request.method.as_str(), "GET" | "HEAD")
             && (segments.len() == 4 || (segments.len() == 5 && segments[3] == "group"))
         {
@@ -4595,8 +4601,8 @@ impl Runtime {
         }
     }
 
-    /// The `Updating Metadata` activity a refresh runs (shape measured on fun
-    /// mid-refresh), started at -1.
+    /// The `Updating Metadata` activity a refresh runs (shape measured on the
+    /// production server mid-refresh), started at -1.
     fn start_metadata_activity(&mut self, subtitle: &str) -> Map<String, Value> {
         let mut activity =
             butler::new_activity("library.update.item.metadata", "Updating Metadata", false);
@@ -5233,8 +5239,8 @@ impl Runtime {
 
     /// `choose_rows` without the copies: section and type are tested BEFORE a row is
     /// cloned. Copying every row of a section first and dropping the other types after
-    /// put fun's whole show library -- 13,500 episodes -- in memory again for a page of 50
-    /// shows (+650 MB per request, 2026-10-10).
+    /// put the production server's whole show library -- 13,500 episodes -- in memory again
+    /// for a page of 50 shows (+650 MB per request, 2026-10-10).
     fn choose_refs(&self, section: Option<&str>, type_number: Option<i64>) -> Vec<&Value> {
         let kind = type_number.map(|number| match number {
             1 => "movie",
@@ -5269,7 +5275,7 @@ impl Runtime {
             ("viewOffset".to_string(), "integer".to_string()),
             ("rating".to_string(), "integer".to_string()),
             // Cycle 15: `audienceRating` is the other agent rating column
-            // (`audienceRating>>=9` is 107 of zen's 3,887, `<<=1` none).
+            // (`audienceRating>>=9` is 107 of the 1.42.2 reference's 3,887, `<<=1` none).
             ("audienceRating".to_string(), "integer".to_string()),
             ("userRating".to_string(), "integer".to_string()),
             ("lastViewedAt".to_string(), "date".to_string()),
@@ -5302,7 +5308,7 @@ impl Runtime {
             ("unwatched".to_string(), "boolean".to_string()),
             ("inProgress".to_string(), "boolean".to_string()),
             // `location` is the Meta's `tag` (below), compared as an integer
-            // (filters.rs): kids answers `location=-1` and `location=1,2` as 200s and
+            // (filters.rs): plexlab answers `location=-1` and `location=1,2` as 200s and
             // refuses an EMPTY value -- the integer TYPE refused the first two.
             // These columns are read by the listing query engine even though
             // the ordinary Meta descriptor does not advertise them.  The
@@ -5338,7 +5344,7 @@ impl Runtime {
             ("mediaAudioCodec".to_string(), "media_string".to_string()),
             ("mediaContainer".to_string(), "media_string".to_string()),
             // `unwatchedLeaves` is the Meta's BOOLEAN (below): true for the literal `1`
-            // only, so kids' movie grid answers every row to `=abc`, `=-1` and `=1,2`.
+            // only, so plexlab's movie grid answers every row to `=abc`, `=-1` and `=1,2`.
         ]);
         for field in [
             "genre",
@@ -5402,9 +5408,9 @@ impl Runtime {
         // Cycle 83: the ADVERTISED half of the table is every `Field` either library's
         // Meta carries, keyed by its bare name -- the oracle's FILTER_FIELD_TYPES is built
         // that way. A hand list drifts: this one lacked `dovi` and `network`, so both
-        // answered every row where kids and zen filter on them, and it carried `role`,
-        // which is no field at all on either (`role=1` is every row, where `actor=1` is
-        // none) and filtered here as the actor tag.
+        // answered every row where plexlab and the 1.42.2 reference filter on them, and it
+        // carried `role`, which is no field at all on either (`role=1` is every row, where
+        // `actor=1` is none) and filtered here as the actor tag.
         for (field, kind) in self.meta_field_types() {
             fields.entry(field).or_insert(kind);
         }
@@ -5739,9 +5745,9 @@ impl Runtime {
             return row.get("_viewUpdatedAt").cloned().unwrap_or(Value::Null);
         }
         if matches!(field, "viewCount" | "skipCount") && row.get(field).is_none() {
-            // Cycle 56, measured on plexscratch42 and on zen and kids: ANY per-user
-            // write creates the row's settings record with both counters at 0, and
-            // the counter filters read it; a row never written has no record,
+            // Cycle 56, measured on plexscratch42 and on the 1.42.2 reference and plexlab:
+            // ANY per-user write creates the row's settings record with both counters at 0,
+            // and the counter filters read it; a row never written has no record,
             // which is `viewCount`'s null-as-zero half and a null `skipCount` that
             // matches nothing.
             return if has_settings(row) {
@@ -5927,7 +5933,7 @@ impl Runtime {
                         .and_then(|parent| self.catalog.get(&parent).cloned())
                         .into_iter()
                         .collect(),
-                    // Cycle 83, measured on kids' movie library: a scope that names no
+                    // Cycle 83, measured on plexlab's movie library: a scope that names no
                     // relative of the row reads the ROW ITSELF -- `episode.title=`,
                     // `show.title=`, `season.title=` and `artist.title=Sintel` each find
                     // Sintel, and an empty `episode.addedAt=` is the date column's 500 --
@@ -6064,7 +6070,7 @@ impl Runtime {
                 // only a seed holds one.  The order is the CRC-32 of
                 // `<seed>/<ratingKey>`, and `desc` reverses it.
                 //
-                // Cycle 90: an unseeded order is also UNIFORM -- kids' five movies gave
+                // Cycle 90: an unseeded order is also UNIFORM -- plexlab's five movies gave
                 // 44 distinct orders in 60 reads (tests/fixtures/c90_n_unseeded_random_
                 // orders.json). A fresh salt under CRC-32 is not: CRC is affine, so a new
                 // salt only XORs every row's key with one mask -- six movies came out in
@@ -7224,13 +7230,13 @@ impl Runtime {
     /// `audioLanguage`/`subtitleLanguage` enum is built at READ time -- its stream
     /// languages as bare tags, then the regional list -- so it is never in the table
     /// whole, and localising it by the table's captured entry named this item's head in
-    /// each language's own name (`fr:Français` under `en`). zen localises it piece by
-    /// piece: the head's names and the inherit option are read off zen per language
-    /// (`item_language_names.json`; in da, he, pt and sr the inherit option is not the
-    /// table list's lead), and the regional tail is the table's own list in its own
-    /// ORDER (cycle 45: the order moves with the names). `translations.json` has no `en`
-    /// entry because English is the source, so, as the Python does at load time, the
-    /// table's list for a language it lacks is `agent_languages.json`'s rows.
+    /// each language's own name (`fr:Français` under `en`). The 1.42.2 reference localises
+    /// it piece by piece: the head's names and the inherit option are read off the 1.42.2
+    /// reference per language (`item_language_names.json`; in da, he, pt and sr the inherit
+    /// option is not the table list's lead), and the regional tail is the table's own list
+    /// in its own ORDER (cycle 45: the order moves with the names). `translations.json` has
+    /// no `en` entry because English is the source, so, as the Python does at load time,
+    /// the table's list for a language it lacks is `agent_languages.json`'s rows.
     fn localized_item_language_enum(
         &self,
         source: &str,
@@ -7332,11 +7338,11 @@ impl Runtime {
         if let Some(rebuilt) = self.localized_item_language_enum(source, language, strings) {
             return Some(rebuilt);
         }
-        // Cycle 83 (A's item-settings sweep on zen): the table's OWN entry for the exact
-        // language wins, as in `server.py`'s localiser, and only a language it lacks
-        // takes the agent rows. Cut to its base, `zh-TW` read `zh`'s simplified list and
-        // `es-419` `es`'s, in `es`'s ORDER, where zen 1.42.2 answers the item's
-        // `languageOverride` picker in `zh-TW`'s own names (`ar-SA:阿拉伯文（沙烏地阿拉伯）`,
+        // Cycle 83 (A's item-settings sweep on the 1.42.2 reference): the table's OWN entry
+        // for the exact language wins, as in `server.py`'s localiser, and only a language
+        // it lacks takes the agent rows. Cut to its base, `zh-TW` read `zh`'s simplified
+        // list and `es-419` `es`'s, in `es`'s ORDER, where the 1.42.2 reference answers the
+        // item's `languageOverride` picker in `zh-TW`'s own names (`ar-SA:阿拉伯文（沙烏地阿拉伯）`,
         // led by `tr-TR`) and `es-419`'s (`en-GB:Inglés (R. U.)`).
         if strings
             .get("enumValues")
@@ -7578,12 +7584,12 @@ impl Runtime {
             map.insert(key.clone(), value.clone());
             map
         });
-        // Cycle 16, re-measured cycle 83 on kids, zen and plexscratch42 over listings,
-        // `/children`, `/allLeaves`, hubs, search, On Deck, `/playlists`, a section's
-        // `/collections`, a collection's children and a playlist's items: when BOTH are
-        // sent the HEADER wins, per parameter -- query `Start=0&Size=2` with header
-        // `Start=1&Size=1` answers offset 1 size 1, a header naming only the size takes
-        // the size from the header and the offset from the query, and a header
+        // Cycle 16, re-measured cycle 83 on plexlab, the 1.42.2 reference and plexscratch42
+        // over listings, `/children`, `/allLeaves`, hubs, search, On Deck, `/playlists`, a
+        // section's `/collections`, a collection's children and a playlist's items: when
+        // BOTH are sent the HEADER wins, per parameter -- query `Start=0&Size=2` with
+        // header `Start=1&Size=1` answers offset 1 size 1, a header naming only the size
+        // takes the size from the header and the offset from the query, and a header
         // `Start=abc` beside a valid query is a 500. This read the header only when the
         // query had not named it, so a client sending both got the query's page.
         for name in ["X-Plex-Container-Start", "X-Plex-Container-Size"] {
@@ -7637,7 +7643,7 @@ impl Runtime {
             {
                 return Response::error(400, "rex: bad request");
             }
-            // Cycle 59, measured on zen, kids and both copies: WITH an
+            // Cycle 59, measured on the 1.42.2 reference, plexlab and both copies: WITH an
             // `X-Plex-Target-Client-Identifier` header -- python-plexapi's proxied
             // `PlexClient.sendCommand()` -- the server looks for that player to proxy
             // to and answers 404, for an unknown id, a listed device and an empty value
@@ -7818,7 +7824,8 @@ impl Runtime {
                 home_theater_version(&mut body, &query, &request.headers);
                 Response::json(200, body)
             }
-            // `/web/` keeps its slash through the trim above; kids answers it the same 302.
+            // `/web/` keeps its slash through the trim above; plexlab answers it the same
+            // 302.
             ("GET" | "HEAD", "/manage") | ("GET" | "HEAD", "/web" | "/web/") => {
                 let host = request.headers.get("host").cloned().unwrap_or_default();
                 Response {
@@ -7982,8 +7989,8 @@ impl Runtime {
                 Response::json(200, json!({"MediaContainer": {"size": 0}}))
             }
             ("GET" | "HEAD", "/library/all/top") => self.route_top(&query),
-            // Measured on kids (2026-09-30): the bare `/library/metadata` -- with or without
-            // paging, GET and HEAD -- is the 85-byte Not Found document, not a 400.
+            // Measured on plexlab (2026-09-30): the bare `/library/metadata` -- with or
+            // without paging, GET and HEAD -- is the 85-byte Not Found document, not a 400.
             ("GET" | "HEAD", "/library/metadata") => Response::error(404, "rex: not found"),
             ("GET" | "HEAD", "/library") => Response::json(
                 200,
@@ -8292,8 +8299,8 @@ impl Runtime {
                 }
             }
         }
-        // Measured on fun and on the 1.43.4 reference: this container carries `title1`
-        // and allowSync only -- no identifier and no media-tag pair.
+        // Measured on the production server and on the 1.43.4 reference: this container
+        // carries `title1` and allowSync only -- no identifier and no media-tag pair.
         fields.insert("allowSync".to_string(), json!(false));
         Response::json(200, self.container(fields, false))
     }
@@ -8945,9 +8952,9 @@ impl Runtime {
 
     /// The Dashboard's view-time keys as `(key, moment)` tests over a history row's
     /// `viewedAt` (the oracle's `_history_time_filter` with `date=True`).  Cycle 54,
-    /// measured on kids and zen with the client's own encoding: `viewedAt>` is `>=`,
-    /// `viewedAt<` is `<=` and a bare `viewedAt` is `==`; on Top Played and
-    /// `users/top` a value parses like a filter date and a bad one is a 500.
+    /// measured on plexlab and the 1.42.2 reference with the client's own encoding:
+    /// `viewedAt>` is `>=`, `viewedAt<` is `<=` and a bare `viewedAt` is `==`; on Top
+    /// Played and `users/top` a value parses like a filter date and a bad one is a 500.
     fn history_date_tests(
         query: &HashMap<String, String>,
     ) -> Result<Vec<(&'static str, f64)>, u16> {
@@ -8971,8 +8978,8 @@ impl Runtime {
     }
 
     fn route_top(&self, query: &HashMap<String, String>) -> Response {
-        // Cycle 27, swept over 17 values on kids and zen: any type NUMBER is
-        // answered, and only a value that does not PARSE is a 400.  A type this
+        // Cycle 27, swept over 17 values on plexlab and the 1.42.2 reference: any type
+        // NUMBER is answered, and only a value that does not PARSE is a 400.  A type this
         // server holds no rows of is an empty 200.
         let raw = query.get("type").map(String::as_str).unwrap_or("");
         let digits = raw.trim_start_matches(['+', '-']);
@@ -8986,9 +8993,9 @@ impl Runtime {
             4 => Some("episode"),
             _ => None,
         };
-        // Cycle 54, measured on kids and zen: `accountID`, `librarySectionID` and the
-        // viewedAt keys filter the HISTORY rows before the plays are counted.  A bad
-        // value in any of them is a 500.
+        // Cycle 54, measured on plexlab and the 1.42.2 reference: `accountID`,
+        // `librarySectionID` and the viewedAt keys filter the HISTORY rows before the plays
+        // are counted.  A bad value in any of them is a 500.
         let tests = match Self::history_date_tests(query) {
             Ok(tests) => tests,
             Err(status) => return Response::error(status, "rex: internal error"),
@@ -9028,8 +9035,8 @@ impl Runtime {
                 };
                 let mut counted = key.clone();
                 if row.get("type").and_then(Value::as_str) != Some(wanted) {
-                    // Cycle 58, measured on zen: a play is counted on the episode's
-                    // SEASON at `type=3` and its SHOW at `type=2`.
+                    // Cycle 58, measured on the 1.42.2 reference: a play is counted on the
+                    // episode's SEASON at `type=3` and its SHOW at `type=2`.
                     let parent = match wanted {
                         "show" => row.get("grandparentRatingKey").map(string_value),
                         "season" => row
@@ -9075,8 +9082,9 @@ impl Runtime {
                 *latest = (*latest).max(viewed);
             }
         }
-        // Cycle 27, measured on zen's 73 real history rows: a tie in the play count
-        // breaks on the MOST RECENT view, descending, and only then on the ratingKey.
+        // Cycle 27, measured on the 1.42.2 reference's 73 real history rows: a tie in the
+        // play count breaks on the MOST RECENT view, descending, and only then on the
+        // ratingKey.
         let mut ordered = plays.keys().copied().collect::<Vec<_>>();
         ordered.sort_by_key(|key| (-plays[key], -seen_at.get(key).copied().unwrap_or(0), *key));
         let limit = query
@@ -9168,9 +9176,9 @@ impl Runtime {
                 left_title.to_lowercase().cmp(&right_title.to_lowercase())
             })
         });
-        // Cycle 54, measured on kids and zen: `unwatched=` is a 0/1 OPTION here (the
-        // `+?0*[01]` grammar, anything else a 400), and at 1 it drops the watched LEAF
-        // rows before the cap.
+        // Cycle 54, measured on plexlab and the 1.42.2 reference: `unwatched=` is a 0/1
+        // OPTION here (the `+?0*[01]` grammar, anything else a 400), and at 1 it drops the
+        // watched LEAF rows before the cap.
         if let Some(value) = query.get("unwatched") {
             if !bool_option(value) {
                 return Response::error(400, "rex: bad request");
@@ -9308,15 +9316,16 @@ impl Runtime {
     }
 
     fn route_on_deck(&self, query: &HashMap<String, String>) -> Response {
-        // Cycle 55: `type=abc` and an empty `type=` are 400s on zen and kids.
+        // Cycle 55: `type=abc` and an empty `type=` are 400s on the 1.42.2 reference and
+        // plexlab.
         if query
             .get("type")
             .is_some_and(|value| !int_param(value, Some(32)))
         {
             return Response::error(400, "rex: bad request");
         }
-        // Cycle 28 (zen) and cycle 30 (plexscratch42): the FULL detail row minus
-        // `Field` and `librarySectionKey`, led by `allowSync` and the section UUID.
+        // Cycle 28 (the 1.42.2 reference) and cycle 30 (plexscratch42): the FULL detail row
+        // minus `Field` and `librarySectionKey`, led by `allowSync` and the section UUID.
         let rows = self
             .on_home(self.continue_watching(false))
             .iter()
@@ -9354,10 +9363,10 @@ impl Runtime {
 
     fn route_history(&self, query: &HashMap<String, String>) -> Response {
         let mut rows = self.history.clone();
-        // Cycle 14, measured case by case on kids (1.43.4) and zen (1.42.2): this page
-        // VALIDATES its ids.  `accountID`, `librarySectionID` and `metadataItemID` are
-        // 400 for anything that is not a whole number -- `abc`, empty and `1.5` alike --
-        // while `1`, `-1`, `01` and (cycle 55) `+1` are fine.
+        // Cycle 14, measured case by case on plexlab (1.43.4) and the 1.42.2 reference:
+        // this page VALIDATES its ids.  `accountID`, `librarySectionID` and
+        // `metadataItemID` are 400 for anything that is not a whole number -- `abc`, empty
+        // and `1.5` alike -- while `1`, `-1`, `01` and (cycle 55) `+1` are fine.
         for name in ["accountID", "librarySectionID", "metadataItemID"] {
             if let Some(value) = query.get(name) {
                 if !int_param(value, None) {
@@ -9365,7 +9374,8 @@ impl Runtime {
                 }
             }
         }
-        // Cycle 54, measured on kids and zen: `offset` is an int32 here.
+        // Cycle 54, measured on plexlab and the 1.42.2 reference: `offset` is an int32
+        // here.
         if let Some(value) = query.get("offset") {
             if !int_param(value, Some(32)) {
                 return Response::error(400, "rex: bad request");
@@ -9492,9 +9502,9 @@ impl Runtime {
                 }
             });
         }
-        // Cycle 18, measured on kids and zen: `limit=` is a THIRD grammar here --
-        // `limit=-1` answers ZERO rows -- and `group=` is refused outright with a 400,
-        // the empty form included.
+        // Cycle 18, measured on plexlab and the 1.42.2 reference: `limit=` is a THIRD
+        // grammar here -- `limit=-1` answers ZERO rows -- and `group=` is refused outright
+        // with a 400, the empty form included.
         if query.contains_key("group") {
             return Response::error(400, "rex: bad request");
         }
@@ -9523,9 +9533,9 @@ impl Runtime {
     /// checked before any endpoint answers.
     fn statistics_refusal(&self, which: &str, query: &HashMap<String, String>) -> Option<Response> {
         let refuse = || Some(Response::error(400, "rex: bad request"));
-        // Cycle 54/55, measured on kids and zen: `/statistics/media` parses `count`,
-        // `offset` and `type` as int32 and `/statistics/bandwidth` `bytes` as int64 and
-        // `offset` as int32; `offset` is an int32 on all THREE endpoints.
+        // Cycle 54/55, measured on plexlab and the 1.42.2 reference: `/statistics/media`
+        // parses `count`, `offset` and `type` as int32 and `/statistics/bandwidth` `bytes`
+        // as int64 and `offset` as int32; `offset` is an int32 on all THREE endpoints.
         let ints: &[(&str, u32)] = match which {
             "media" => &[("count", 32), ("offset", 32), ("type", 32)],
             "bandwidth" => &[("bytes", 64), ("offset", 32)],
@@ -10999,11 +11009,12 @@ impl Runtime {
                                         stream_object
                                             .insert("id".to_string(), json!(string_value(&id)));
                                     }
-                                    // The selected subtitle's own fate (zen, Plex Web's and
-                                    // Plex for Android's shapes): `subtitles=none` is
-                                    // `decision: ignore` with no location, `sidecar` is
-                                    // `location: sidecar-subs`. burn/auto/absent are 400s
-                                    // there with a subtitle selected; rex answers them.
+                                    // The selected subtitle's own fate (the 1.42.2
+                                    // reference, Plex Web's and Plex for Android's shapes):
+                                    // `subtitles=none` is `decision: ignore` with no
+                                    // location, `sidecar` is `location: sidecar-subs`.
+                                    // burn/auto/absent are 400s there with a subtitle
+                                    // selected; rex answers them.
                                     let subtitle = stream_object.get("streamType").and_then(Value::as_i64)
                                         == Some(3);
                                     match subtitles_mode.as_deref() {
@@ -11161,7 +11172,8 @@ impl Runtime {
 
         // References into the catalog, and a shelf projects only the rows it shows: every
         // shelf copied and projected the whole section to answer 12 rows -- 10-37 s for
-        // fun's 27k episodes (2026-10-11), with every other request waiting on the lock.
+        // the production server's 27k episodes (2026-10-11), with every other request
+        // waiting on the lock.
         let items = self
             .catalog
             .items()
@@ -11244,9 +11256,9 @@ impl Runtime {
         let mut added_tv = if is_show { self.section_recently_added_rows(section) } else { Vec::new() };
         let mut added: Vec<&Value>;
         if is_show {
-            // Cycle 54, measured on kids and zen: the TV shelf here runs the request's
-            // filters over the episodes, and `contentDirectoryID` naming another
-            // library empties it -- the other shelves keep their rows.
+            // Cycle 54, measured on plexlab and the 1.42.2 reference: the TV shelf here
+            // runs the request's filters over the episodes, and `contentDirectoryID` naming
+            // another library empties it -- the other shelves keep their rows.
             match self.filtered_tv_leaves(query, true) {
                 Ok(Some(leaves)) => {
                     added_tv = self.recently_added_tv(Some(&section_key.to_string()), Some(leaves))
@@ -11370,8 +11382,9 @@ impl Runtime {
                                 .and_then(Value::as_f64)
                                 .is_some_and(|value| value >= 7.0)
                     });
-                    // Cycle 55, re-measured on zen: the shelf is the HEAD of its own key
-                    // listing, so its rows come in that listing's default order.
+                    // Cycle 55, re-measured on the 1.42.2 reference: the shelf is the HEAD
+                    // of its own key listing, so its rows come in that listing's default
+                    // order.
                     let filtered = self
                         .sort_rows(filtered.clone(), Some("titleSort"))
                         .unwrap_or(filtered);
@@ -11394,13 +11407,14 @@ impl Runtime {
             let total = source_rows.len();
             let mut source_rows = source_rows;
             if random && source_rows.len() > 1 {
-                // Cycles 28 and 30, measured on zen: a `random="1"` shelf is a random
-                // SAMPLE of its whole key set in random order -- `movie.topunwatched.1`'s
-                // 30 rows sat at positions 26 to 579 of 583, not monotonic -- and the
-                // sample is STABLE per (shelf, `count=`) across reads and clients. The
-                // oracle mints one seed per pair for the life of the process. Sorting by
-                // ratingKey was neither: the same lowest keys on every run, in key order.
-                // The shuffle reads only the length, so it runs before the projection.
+                // Cycles 28 and 30, measured on the 1.42.2 reference: a `random="1"` shelf
+                // is a random SAMPLE of its whole key set in random order --
+                // `movie.topunwatched.1`'s 30 rows sat at positions 26 to 579 of 583, not
+                // monotonic -- and the sample is STABLE per (shelf, `count=`) across reads
+                // and clients. The oracle mints one seed per pair for the life of the
+                // process. Sorting by ratingKey was neither: the same lowest keys on every
+                // run, in key order. The shuffle reads only the length, so it runs before
+                // the projection.
                 shelf_sample(&identifier, count, &mut source_rows);
             }
             // Cycle 28: a negative count is `len(rows) + count` clamped at zero, and it
@@ -11419,7 +11433,7 @@ impl Runtime {
                     if identifier.starts_with("tv.recentlyadded.")
                         && row.get("type").and_then(Value::as_str) == Some("show")
                     {
-                        // Cycle 83, measured on kids: this FULL row takes the `include*`
+                        // Cycle 83, measured on plexlab: this FULL row takes the `include*`
                         // blocks -- `includeChildren`, `includeExtras`, `includeOnDeck`,
                         // `includePreferences` and `includeRelated` each add their block
                         // to Firefly's row and to no light row -- the oracle's
@@ -11428,8 +11442,8 @@ impl Runtime {
                         self.expand_full_rows(std::slice::from_mut(&mut full), query);
                         full
                     } else {
-                        // Cycle 56, measured on zen and kids: `includeGuids=1` carries
-                        // `Guid` on a library hub page's rows too.
+                        // Cycle 56, measured on the 1.42.2 reference and plexlab:
+                        // `includeGuids=1` carries `Guid` on a library hub page's rows too.
                         // The oracle's `_grid_row`: a shelf row keeps its `Media` (Parts
                         // without Streams) and its librarySection fields.
                         let mut shown = self.grid_row(row, true, false, false);
@@ -11896,10 +11910,10 @@ impl Runtime {
     /// library keeps a hidden row, a movie library drops it, and a next-up whose
     /// anchor was only scrobbled is not listed.
     /// Cycle 70: `/service(s)/ultrablur/colors?url=` -- Plex for Android's backdrop tint
-    /// (js:831397).  zen answers both spellings and resolves the url exactly as
-    /// `/photo/:/transcode` does: no `url` a 400, an unresolvable one a 404, a server
-    /// path that is not an image a 500, any image it serves a 200 with the four corner
-    /// colours.  rex has no image decoder, so the VALUES are the row's own palette.
+    /// (js:831397).  The 1.42.2 reference answers both spellings and resolves the url
+    /// exactly as `/photo/:/transcode` does: no `url` a 400, an unresolvable one a 404, a
+    /// server path that is not an image a 500, any image it serves a 200 with the four
+    /// corner colours.  rex has no image decoder, so the VALUES are the row's own palette.
     fn route_ultrablur_colors(
         &mut self,
         request: &Request,
@@ -12054,7 +12068,7 @@ impl Runtime {
             ("place", "place"),
         ];
         // Once for every tag shelf, not once per shelf: each read scanned every tag of
-        // every row (fun, 2026-10-11).
+        // every row (the production server, 2026-10-11).
         let tag_rows = self.search_tag_rows(raw, query.get("contentDirectoryID").map(String::as_str));
         let cap = query
             .get("limit")
@@ -12154,7 +12168,7 @@ impl Runtime {
                     Vec::new()
                 };
                 // Only the rows the shelf keeps are projected: "the" projected every
-                // matching episode of fun's library to answer 30 (4.6 s).
+                // matching episode of the production server's library to answer 30 (4.6 s).
                 let matched = matches(Some(kind));
                 let matched_total = matched.len();
                 let rows = matched
@@ -12333,9 +12347,9 @@ impl Runtime {
                     ("tag".to_string(), json!(name)),
                     ("tagType".to_string(), json!(tag_type)),
                 ]);
-                // Cycle 28, measured on kids and zen: a PERSON search tag row carries
-                // its 24-hex `tagKey` directly after `tagType`, with `count` LAST, and
-                // a `Genre` row carries none.
+                // Cycle 28, measured on plexlab and the 1.42.2 reference: a PERSON search
+                // tag row carries its 24-hex `tagKey` directly after `tagType`, with
+                // `count` LAST, and a `Genre` row carries none.
                 if matches!(tag_type, 4..=7) {
                     let tag_key =
                         tag_key.unwrap_or_else(|| crate::hierarchy::person_tag_key(&name));
@@ -12692,8 +12706,8 @@ impl Runtime {
         self.route_playlists_on(query, true)
     }
 
-    /// Cycle 56: the playlist Meta shaped by the request, measured on kids, zen and
-    /// plexscratch42.  The Type `key` carries the request's `playlistType`,
+    /// Cycle 56: the playlist Meta shaped by the request, measured on plexlab, the 1.42.2
+    /// reference and plexscratch42.  The Type `key` carries the request's `playlistType`,
     /// `sectionID` and `type` -- alphabetical, URL-encoded -- and nothing else.  On
     /// `/playlists/all` NO Type and NO Sort is active; on `/playlists` the Type is
     /// active and the active Sort is the requested one (Name ascending by default).
@@ -13898,8 +13912,9 @@ impl Runtime {
             return Response::error(400, "rex: bad request");
         }
         if segments.len() >= 3 && segments[..3] == ["library", "metadata", "augmentations"] {
-            // Cycle 52, kids and zen: the augmentation id is PARSED before the row is
-            // looked up -- not a number is a 400, a number the server does not hold a 404.
+            // Cycle 52, plexlab and the 1.42.2 reference: the augmentation id is PARSED
+            // before the row is looked up -- not a number is a 400, a number the server
+            // does not hold a 404.
             if segments
                 .get(3)
                 .is_some_and(|id| id.is_empty() || !id.bytes().all(|b| b.is_ascii_digit()))
@@ -14248,9 +14263,9 @@ impl Runtime {
         }
         if path == "/services/codecs" && matches!(request.method.as_str(), "GET" | "HEAD" | "OPTIONS")
         {
-            // server.py, cycle 45: a 403 on kids and zen (both unclaimed copies 404 it,
-            // so it tracks claimed state, and rex reports `claimed="1"`). Never
-            // ported: this server answered the ordinary 404.
+            // server.py, cycle 45: a 403 on plexlab and the 1.42.2 reference (both
+            // unclaimed copies 404 it, so it tracks claimed state, and rex reports
+            // `claimed="1"`). Never ported: this server answered the ordinary 404.
             return Response::error(403, "rex: forbidden");
         }
         if path == "/hubs/continueWatching/items" {
@@ -14266,10 +14281,10 @@ impl Runtime {
             return self.voice_search(query);
         }
         if path == "/hubs/promoted" {
-            // Cycle 55, measured on zen and kids: the fifteen hub-refused keys are a
-            // 500 here whenever a SHOW library's shelf is in scope -- unscoped, or
-            // `contentDirectoryID` naming a show library -- and a 200 when only a
-            // movie library is.
+            // Cycle 55, measured on the 1.42.2 reference and plexlab: the fifteen
+            // hub-refused keys are a 500 here whenever a SHOW library's shelf is in scope
+            // -- unscoped, or `contentDirectoryID` naming a show library -- and a 200 when
+            // only a movie library is.
             let wanted = content_directories(query);
             if self.catalog.sections.iter().any(|section| {
                 section.get("type").and_then(Value::as_str) == Some("show")
@@ -14281,7 +14296,7 @@ impl Runtime {
                     return refusal;
                 }
                 // Cycle 83: only a TV shelf runs the filters, so a movie-only page never
-                // parses them -- kids answers `resolution=1` 200 at
+                // parses them -- plexlab answers `resolution=1` 200 at
                 // `contentDirectoryID=1` and 500 at `=2`.
                 if let Err(status) = self.filtered_tv_leaves(query, true) {
                     return Response::error(status, "rex: bad request");
@@ -14397,14 +14412,15 @@ impl Runtime {
             // Measured: a movie or episode row here is the light projection; a show
             // row is the full one. Cycle 41: the TV type is a listing capped at 50
             // that pages; the movie type is cut at twelve -- before the projection, which
-            // projected every movie of fun's library for those twelve (1.3 s).
+            // projected every movie of the production server's library for those twelve
+            // (1.3 s).
             let projected = rows
                 .iter()
                 .take(if type_id == "2" { usize::MAX } else { 12 })
                 .map(|row| {
                     if row.get("type").and_then(Value::as_str) == Some("show") {
-                        // Cycle 83 (kids), cycle 55 (zen): on the TV list the full show
-                        // row takes the `include*` blocks.
+                        // Cycle 83 (plexlab), cycle 55 (the 1.42.2 reference): on the TV
+                        // list the full show row takes the `include*` blocks.
                         let mut full = self.detail_row(row);
                         if type_id == "2" {
                             self.expand_full_rows(std::slice::from_mut(&mut full), query);
@@ -14444,8 +14460,8 @@ impl Runtime {
             return Response::json(200, answer);
         }
         if path == "/hubs/home/continueWatching" {
-            // Measured on fun: the light projection. Cycle 25: the list is
-            // `resuming()` -- a next-up with no stored offset is On Deck and not
+            // Measured on the production server: the light projection. Cycle 25: the list
+            // is `resuming()` -- a next-up with no stored offset is On Deck and not
             // here. Cycle 28: `contentDirectoryID` scopes it; `sectionID` does not.
             let directories = content_directories(query);
             let rows = self
@@ -14568,12 +14584,12 @@ impl Runtime {
             }
             if let Some(raw_item) = query.get("metadataItemId") {
                 // Measured on both servers: naming an item -- even with an empty id --
-                // is a 400 on a read.  Cycle 55 refined it on zen and kids: the id is a
-                // signed 32-bit integer and there are THREE answers.  `-1` (and `-01`)
-                // is the bare hub list, a number naming NO item (`0`, `-2`, `999999`,
-                // `+999999`) is an EMPTY 200, and an item the server holds -- in any
-                // library -- is the 400, as are an empty value, a word, `1.5`, ` 1` and
-                // `2147483648`.
+                // is a 400 on a read.  Cycle 55 refined it on the 1.42.2 reference and
+                // plexlab: the id is a signed 32-bit integer and there are THREE answers.
+                // `-1` (and `-01`) is the bare hub list, a number naming NO item (`0`,
+                // `-2`, `999999`, `+999999`) is an EMPTY 200, and an item the server holds
+                // -- in any library -- is the 400, as are an empty value, a word, `1.5`, `
+                // 1` and `2147483648`.
                 if !int_param(raw_item, Some(32)) {
                     return Response::error(400, "rex: bad request");
                 }
@@ -14660,7 +14676,7 @@ impl Runtime {
                 .split('/')
                 .next()
                 .unwrap_or_default();
-            // Measured on kids: a leaf the server does not route under a section
+            // Measured on plexlab: a leaf the server does not route under a section
             // (`/hubs/sections/1/foo`, `/extras/x`, `/manage/x`, `/continueWatching`) is
             // the 85-byte Not Found document. Taking the first segment alone answered the
             // whole Recommended page for any of them.
@@ -14769,9 +14785,9 @@ impl Runtime {
                 if segments.get(3) == Some(&"composite")
                     && matches!(request.method.as_str(), "GET" | "HEAD")
                 {
-                    // Cycle 16: the BARE path is a 404 on kids and zen; only
-                    // `/composite/{version}` answers, the version all digits (cycle 45)
-                    // and inside int32 (cycle 36's guard, a 400 past it).
+                    // Cycle 16: the BARE path is a 404 on plexlab and the 1.42.2 reference;
+                    // only `/composite/{version}` answers, the version all digits (cycle
+                    // 45) and inside int32 (cycle 36's guard, a 400 past it).
                     let Some(version) = segments.get(4).filter(|_| segments.len() == 5) else {
                         return Response::error(404, "rex: not found");
                     };
@@ -14791,7 +14807,7 @@ impl Runtime {
                     // composite is the ordinary 404 -- with and without Plex Web's
                     // `width`, `height`, `rows`, `cols`, `border`, `media` and `repeat`,
                     // under every Accept -- and so is `/photo/:/transcode` of it. A
-                    // library with members is a jpeg (kids). rex drew a generated
+                    // library with members is a jpeg (plexlab). rex drew a generated
                     // tile for it.
                     if !self.catalog.items().iter().any(|row| {
                         string_value(row.get("librarySectionID").unwrap_or(&Value::Null))
@@ -15203,7 +15219,8 @@ impl Runtime {
                                 }
                             };
                         }
-                        // Measured on kids and zen: `limit=` applies here as on `/all`.
+                        // Measured on plexlab and the 1.42.2 reference: `limit=` applies
+                        // here as on `/all`.
                         let rows = match listing::limited(rows, query) {
                             Ok(rows) => rows,
                             Err(status) => return Response::error(status, "rex: bad request"),
@@ -15300,9 +15317,9 @@ impl Runtime {
                     );
                     let mut rows =
                         if leaf == "recentlyViewedShows" || leaf == "recentlyViewedGrandparents" {
-                            // Cycle 20, measured on kids and zen: a typed QUERY --
-                            // `?type=3` answers the library's seasons and `?type=4` its
-                            // episodes, `type=1` on a show library none.
+                            // Cycle 20, measured on plexlab and the 1.42.2 reference: a
+                            // typed QUERY -- `?type=3` answers the library's seasons and
+                            // `?type=4` its episodes, `type=1` on a show library none.
                             let own = if kind == "show" { 2 } else { 1 };
                             let asked = listing::parsed_type(query, 500, None)
                                 .ok()
@@ -15396,9 +15413,10 @@ impl Runtime {
                         match leaf {
                             "recentlyViewed" => {
                                 // Cycle 55, from `order by metadata_item_settings.updated_at
-                                // desc` and measured on zen (`viewUpdatedAt` descending,
-                                // ties by ratingKey) and plexscratch42: the ORDER is the
-                                // view-state write time, falling back to the view time.
+                                // desc` and measured on the 1.42.2 reference
+                                // (`viewUpdatedAt` descending, ties by ratingKey) and
+                                // plexscratch42: the ORDER is the view-state write time,
+                                // falling back to the view time.
                                 rows.retain(|row| stamp(row, "lastViewedAt") != 0);
                                 rows.sort_by_key(|row| {
                                     let written = stamp(row, "_viewUpdatedAt");
@@ -15477,12 +15495,12 @@ impl Runtime {
                         } else {
                             fields.insert("viewGroup".to_string(), json!("movie"));
                         }
-                        // Cycle 83, measured on zen (509 shows) and kids: with NO Size
-                        // sent this list is a DEFAULT window -- the first 25 rows,
-                        // `offset` 0 and the full `totalSize`, a lone Start ignored --
-                        // and once a Size is sent the shared rule applies: Start AND
-                        // Size page, a lone Size (or a negative value) is every row with
-                        // neither field, and a bad value beside a Size is a 500.
+                        // Cycle 83, measured on the 1.42.2 reference (509 shows) and
+                        // plexlab: with NO Size sent this list is a DEFAULT window -- the
+                        // first 25 rows, `offset` 0 and the full `totalSize`, a lone Start
+                        // ignored -- and once a Size is sent the shared rule applies: Start
+                        // AND Size page, a lone Size (or a negative value) is every row
+                        // with neither field, and a bad value beside a Size is a 500.
                         let (rows, start, total) = if query.contains_key("X-Plex-Container-Size") {
                             match page_window(rows, query) {
                                 Ok((page, true, start, total)) => (page, Some(start), total),
@@ -15683,8 +15701,8 @@ impl Runtime {
                         // advertised Meta `Field` title for (scope, bare name), the scope
                         // being the rule's own prefix or the one `type=` implies --
                         // `server.py`'s FIELD_TITLES. The hand table this replaced spelled
-                        // `episode.addedAt` "Episode Date Added" where zen (1.42.2) answers
-                        // "Date Episode Added", and named neither `hdr` ("HDR") nor
+                        // `episode.addedAt` "Episode Date Added" where the 1.42.2 reference
+                        // answers "Date Episode Added", and named neither `hdr` ("HDR") nor
                         // `show.unwatchedLeaves` ("Unwatched Episodes"): both came back "".
                         title_of: &|field, scope| {
                             let implicit = match type_number {
@@ -15838,9 +15856,9 @@ impl Runtime {
                     return self.unwatched_listing(section_key, section, query, pairs);
                 }
                 if segments.len() == 4 && segments[3] == "unwatched" {
-                    // Cycle 20, measured on kids and zen: typed like a listing, it
-                    // answers ONLY the library's own top-level type -- any other
-                    // `type=` is an EMPTY container whose viewGroup flips to
+                    // Cycle 20, measured on plexlab and the 1.42.2 reference: typed like a
+                    // listing, it answers ONLY the library's own top-level type -- any
+                    // other `type=` is an EMPTY container whose viewGroup flips to
                     // `episode` on a show library -- and an unparseable or empty
                     // `type=` is a 500.  Cycle 54: it runs the listing's filters;
                     // cycle 50: ordered by titleSort, and a row with children
@@ -16214,7 +16232,7 @@ impl Runtime {
                 if segments.len() == 4 && (segments[3] == "sorts" || segments[3] == "filters") {
                     let number = if let Some(value) = query.get("type") {
                         // Cycle 55: a signed 32-bit integer (`2147483648` is a 400, `+1`
-                        // the movie list), measured on zen and kids.
+                        // the movie list), measured on the 1.42.2 reference and plexlab.
                         if !int_param(value, Some(32)) {
                             return Response::error(400, "rex: bad request");
                         }
@@ -16322,8 +16340,8 @@ impl Runtime {
                     && !segments[4].is_empty()
                     && segments[4] != "top"
                 {
-                    // Cycle 16, measured on kids and zen: the bucket behind a
-                    // letter is a real LISTING, not the axis.  The match is on the
+                    // Cycle 16, measured on plexlab and the 1.42.2 reference: the bucket
+                    // behind a letter is a real LISTING, not the axis.  The match is on the
                     // ROW's own STORED sort title (cycle 18: empty for a generated
                     // title, so every synthesised season answers in `#`), `#`
                     // also takes every ASCII non-letter, and the listing grammar
@@ -16413,8 +16431,8 @@ impl Runtime {
                     return Response::json(200, self.container(fields, true));
                 }
                 if segments.len() == 4 && segments[3] == "firstCharacter" {
-                    // Measured on zen's show library: the axis IS scoped by
-                    // `?type=`, and (cycle 16) counts a row below the library's
+                    // Measured on the 1.42.2 reference's show library: the axis IS scoped
+                    // by `?type=`, and (cycle 16) counts a row below the library's
                     // own top-level type by its SHOW's sort title.  Cycle 41:
                     // every ASCII non-letter is counted under `#`.
                     if query
@@ -16705,9 +16723,9 @@ impl Runtime {
                     }
                     return Response::empty(200);
                 }
-                // A HEAD is the GET without its body here as everywhere (kids and zen:
-                // `HEAD /library/sections/1/prefs` 200 `text/xml`); matching GET alone
-                // sent the HEAD on to the unknown-leaf 404.
+                // A HEAD is the GET without its body here as everywhere (plexlab and the
+                // 1.42.2 reference: `HEAD /library/sections/1/prefs` 200 `text/xml`);
+                // matching GET alone sent the HEAD on to the unknown-leaf 404.
                 if segments[3] == "prefs" && matches!(request.method.as_str(), "GET" | "HEAD") {
                     let kind = section
                         .get("type")
@@ -16756,9 +16774,10 @@ impl Runtime {
                     };
                     let settings = self.section_settings(section_key, rows);
                     let mut settings = settings;
-                    // Cycle 25, measured on kids and zen: `X-Plex-Platform: Samsung` --
-                    // that exact spelling, the header beating the query -- appends a
-                    // HIDDEN twentieth setting to an existing library's prefs.
+                    // Cycle 25, measured on plexlab and the 1.42.2 reference:
+                    // `X-Plex-Platform: Samsung` -- that exact spelling, the header beating
+                    // the query -- appends a HIDDEN twentieth setting to an existing
+                    // library's prefs.
                     let platform = request
                         .headers
                         .get("x-plex-platform")
@@ -16884,9 +16903,10 @@ impl Runtime {
                         section.get("uuid").cloned().unwrap_or(Value::Null),
                     ),
                     ("mediaTagPrefix".to_string(), json!(MEDIA_TAG_PREFIX)),
-                    // Measured on kids and zen (2026-09-30), in German and English alike:
-                    // the multi-id container's `mediaTagVersion` is a JSON NUMBER, as on
-                    // every other library container. The native server sent a string.
+                    // Measured on plexlab and the 1.42.2 reference (2026-09-30), in German
+                    // and English alike: the multi-id container's `mediaTagVersion` is a
+                    // JSON NUMBER, as on every other library container. The native server
+                    // sent a string.
                     ("mediaTagVersion".to_string(), json!(MEDIA_TAG_VERSION)),
                     (
                         "Metadata".to_string(),
@@ -17288,8 +17308,8 @@ impl Runtime {
             );
         }
         if let Some(value) = query.get("type") {
-            // Cycle 55, measured on zen and kids: the type is a SIGNED 32-BIT integer --
-            // `type=2147483648` is refused with the same status as `abc`.
+            // Cycle 55, measured on the 1.42.2 reference and plexlab: the type is a SIGNED
+            // 32-BIT integer -- `type=2147483648` is refused with the same status as `abc`.
             if !int_param(value.trim(), Some(32)) {
                 return Response::error(
                     if request.method == "PUT" { 400 } else { 500 },
@@ -17514,7 +17534,7 @@ impl Runtime {
             .and_then(|section| section.get("type").and_then(Value::as_str))
             .unwrap_or("movie");
         // Cycle 83: `location=` is the grammar's own field (the Meta's tag, compared as
-        // the section Location id), so no private pass reads it here -- kids answers
+        // the section Location id), so no private pass reads it here -- plexlab answers
         // `-1` with no row and `1,2` with every row, and refuses an EMPTY value.
         let mut rows = rows;
         // Projection, paging and client identity options are container
@@ -17557,8 +17577,8 @@ impl Runtime {
         if let Some(status) = listing::listing_refusals(query, &[]) {
             return Response::error(status, "rex: bad request");
         }
-        // Cycle 55, measured on zen and kids: a `sourceType` other than 1 ORDERS the
-        // grid by id; an explicit `sort=` still wins.
+        // Cycle 55, measured on the 1.42.2 reference and plexlab: a `sourceType` other than
+        // 1 ORDERS the grid by id; an explicit `sort=` still wins.
         let by_id = crate::filters::source_order(query.get("sourceType").map(String::as_str))
             .ok()
             .flatten()
@@ -17660,9 +17680,9 @@ impl Runtime {
             .get("excludeFields")
             .map(|value| value.split(',').collect::<HashSet<_>>())
             .unwrap_or_default();
-        // Measured on kids and zen: `includeStorage=1` puts `durationTotal` and
-        // `storageTotal` -- JSON STRINGS (cycle 27) -- on the library's OWN top-level
-        // type only; a show carries the sum over its episodes.
+        // Measured on plexlab and the 1.42.2 reference: `includeStorage=1` puts
+        // `durationTotal` and `storageTotal` -- JSON STRINGS (cycle 27) -- on the library's
+        // OWN top-level type only; a show carries the sum over its episodes.
         let own_type = if section_type == "show" { 2 } else { 1 };
         let with_storage = query.get("includeStorage").is_some_and(|value| {
             bool_option(value) && value.trim_start_matches('+').trim_start_matches('0') == "1"
@@ -17671,7 +17691,8 @@ impl Runtime {
         });
         // The container window, taken before the projection (one row out per row in):
         // `page_fields` slicing afterwards projected every row of the library to answer
-        // a page of 50 -- 9 s on fun's movies, and 30 s+ for a `Size=0` episode count.
+        // a page of 50 -- 9 s on the production server's movies, and 30 s+ for a `Size=0`
+        // episode count.
         let window = match (
             query.get("X-Plex-Container-Start").and_then(|v| v.parse::<usize>().ok()),
             query.get("X-Plex-Container-Size").and_then(|v| v.parse::<usize>().ok()),
@@ -17782,8 +17803,8 @@ impl Runtime {
         fields.insert("librarySectionTitle".to_string(), json!(section_title));
         fields.insert("librarySectionUUID".to_string(), section_uuid);
         fields.insert("title1".to_string(), json!(section_title));
-        // Cycle 18, measured on kids and zen: a MOVIE library COMPOSES this
-        // from its own title ("All Zen Movies"), a SHOW library answers the
+        // Cycle 18, measured on plexlab and the 1.42.2 reference: a MOVIE library COMPOSES
+        // this from its own title ("All Zen Movies"), a SHOW library answers the
         // constant "All Shows" whatever it is called.
         if section_type == "show" {
             fields.insert("title2".to_string(), json!("All Shows"));
@@ -17904,9 +17925,9 @@ impl Runtime {
         let level = match query.get("parent") {
             None => Some(Vec::new()),
             Some(value) if value.is_empty() => None,
-            // Cycle 83, measured on kids: a parent that is not all DIGITS -- `-1`, `1,2`,
-            // `abc` -- is the TOP level (every row), the oracle's `isdigit` test; only a
-            // numeric id that names no directory is the empty list.
+            // Cycle 83, measured on plexlab: a parent that is not all DIGITS -- `-1`,
+            // `1,2`, `abc` -- is the TOP level (every row), the oracle's `isdigit` test;
+            // only a numeric id that names no directory is the empty list.
             Some(value) if !value.bytes().all(|byte| byte.is_ascii_digit()) => Some(Vec::new()),
             Some(value) => value
                 .parse::<i64>()
@@ -17951,7 +17972,7 @@ impl Runtime {
                 rows.push(projected);
             }
         }
-        // Cycle 83, measured on kids: this list pages by the shared rule -- only when
+        // Cycle 83, measured on plexlab: this list pages by the shared rule -- only when
         // Start AND Size are both sent (`Size=1` alone is every row, no offset and no
         // totalSize; a bad Start beside a Size is a 500) -- where it paged on a Size
         // alone and read an unparseable value as 0.
@@ -18059,7 +18080,7 @@ impl Runtime {
         } else {
             Vec::new()
         };
-        // Cycle 87, measured on kids and both copies: the query is VERBATIM --
+        // Cycle 87, measured on plexlab and both copies: the query is VERBATIM --
         // `query=TeArS` is titled `Search for 'TeArS'` (matching case-blind) and
         // `query=%20TEARS%20` keeps its spaces in the title and finds nothing. We
         // trimmed and lowercased it for both.
@@ -18110,7 +18131,7 @@ impl Runtime {
                     .unwrap_or(0)
             });
         } else if let Some(sort) = query.get("sort").filter(|sort| !sort.is_empty()) {
-            // Cycle 83, measured on kids: an EMPTY `sort=` is ignored here, on
+            // Cycle 83, measured on plexlab: an EMPTY `sort=` is ignored here, on
             // `/children` and on `/grandchildren` (a 200 in the default order), as it is
             // on every listing; only an unknown key refuses.
             rows = match self.sort_rows(rows, Some(sort)) {
@@ -18146,8 +18167,8 @@ impl Runtime {
                 shown
             })
             .collect::<Vec<_>>();
-        // Cycle 18, measured on kids and zen over two movie libraries and three
-        // show ones: this container is typed by the ASKED `type=`, not by the
+        // Cycle 18, measured on plexlab and the 1.42.2 reference over two movie libraries
+        // and three show ones: this container is typed by the ASKED `type=`, not by the
         // library -- `type=3` is `viewGroup="season"` with `viewMode` 65593,
         // `type=4` `viewGroup="episode"` with `mixedParents`.  It is the
         // secondary container without `content`.
@@ -18479,9 +18500,9 @@ impl Runtime {
         if let Some(first) = rows.first().and_then(key_of) {
             self.stamp_collection_tags(&first, &mut common);
         }
-        // Cycle 83, measured on kids (a movie's row and Firefly's) and zen: with `id=`
-        // the row takes the `Extras` and `Related` blocks and ONLY those -- no
-        // `Children`, `OnDeck` or `Preferences`, even on a show.
+        // Cycle 83, measured on plexlab (a movie's row and Firefly's) and the 1.42.2
+        // reference: with `id=` the row takes the `Extras` and `Related` blocks and ONLY
+        // those -- no `Children`, `OnDeck` or `Preferences`, even on a show.
         if query.get("id").is_some_and(|id| !id.is_empty()) {
             let blocks = query
                 .iter()
@@ -18904,10 +18925,10 @@ impl Runtime {
                         .get("includeChildren")
                         .is_some_and(|value| is_true_option(value))
                 {
-                    // Cycle 16, measured on kids and zen: an INLINED child row is the
-                    // full row without `librarySectionID`, `librarySectionKey` or
-                    // `librarySectionTitle`, which the same row through `/children`
-                    // carries.
+                    // Cycle 16, measured on plexlab and the 1.42.2 reference: an INLINED
+                    // child row is the full row without `librarySectionID`,
+                    // `librarySectionKey` or `librarySectionTitle`, which the same row
+                    // through `/children` carries.
                     let children = self
                         .children(key)
                         .into_iter()
@@ -18935,9 +18956,9 @@ impl Runtime {
                     object.insert("Related".to_string(), self.related_block(row, query));
                 }
             }
-            // Re-measured against fun and the 1.43.4 reference: the detail container
-            // says `allowSync` (not for a clip) and names the row's library by id,
-            // title and UUID beside the identifier and the media-tag pair.
+            // Re-measured against the production server and the 1.43.4 reference: the
+            // detail container says `allowSync` (not for a clip) and names the row's
+            // library by id, title and UUID beside the identifier and the media-tag pair.
             let mut detail_fields = Map::new();
             detail_fields.insert("size".to_string(), json!(1));
             detail_fields.insert("allowSync".to_string(), json!(kind != "clip"));
@@ -19041,15 +19062,16 @@ impl Runtime {
                 self.write_item_prefs(key, row, &pairs, request)
             }
             "banners" | "thumbs" if tail.len() == 1 => {
-                // Cycle 14: two more candidate lists, 200 on kids AND zen: `banners`
-                // is empty on both and `thumbs` lists the media bundle's video
-                // thumbnails, which rex has none of. Only GET and HEAD read them.
+                // Cycle 14: two more candidate lists, 200 on plexlab AND the 1.42.2
+                // reference: `banners` is empty on both and `thumbs` lists the media
+                // bundle's video thumbnails, which rex has none of. Only GET and HEAD read
+                // them.
                 if request.method != "GET" && request.method != "HEAD" {
                     return Response::error(404, "rex: not found");
                 }
                 Response::json(200, self.tag_container(Map::new()))
             }
-            // Cycle 83, measured on kids' clip 5 (a movie's trailer): a clip's
+            // Cycle 83, measured on plexlab's clip 5 (a movie's trailer): a clip's
             // `/allLeaves` and `/grandchildren` are the 404, where a movie's and an
             // episode's are empty 200s.
             "allLeaves" | "grandchildren"
@@ -19121,7 +19143,7 @@ impl Runtime {
                     .cloned()
                     .unwrap_or_default();
                 // The oracle's `_guid_gate`: `includeGuids=1` reaches this list too
-                // (kids' show 6: a Guid on each matched episode with it, none without),
+                // (plexlab's show 6: a Guid on each matched episode with it, none without),
                 // and a row with only its primary `guid` carries a one-entry Guid.
                 let shown = rows
                     .iter()
@@ -19218,8 +19240,9 @@ impl Runtime {
                 Response::json(200, self.container(fields, false))
             }
             "children" => {
-                // Measured on kids: an EPISODE's `/children` is the same 400 as a movie's
-                // (and a clip's); its `/allLeaves` stays a 200. Only the movie was refused.
+                // Measured on plexlab: an EPISODE's `/children` is the same 400 as a
+                // movie's (and a clip's); its `/allLeaves` stays a 200. Only the movie was
+                // refused.
                 if matches!(
                     row.get("type").and_then(Value::as_str),
                     Some("movie" | "episode" | "clip" | "track")
@@ -19258,11 +19281,11 @@ impl Runtime {
                 let unwatched_flag = ("unwatched".to_string(), "1".to_string());
                 let show_row = row.get("type").and_then(Value::as_str) == Some("show");
                 let filter_pairs = if show_row && filter_pairs.contains(&unwatched_flag) {
-                    // Cycle 83, measured on zen and cycle 71 on both copies: on a SHOW's
-                    // season list the literal `unwatched=1` is not the boolean column --
-                    // it keeps each season that still has an unwatched LEAF, whatever
-                    // the season's own `viewCount`; `unwatched!=0` and the other forms
-                    // stay the column (the row's own counter).
+                    // Cycle 83, measured on the 1.42.2 reference and cycle 71 on both
+                    // copies: on a SHOW's season list the literal `unwatched=1` is not the
+                    // boolean column -- it keeps each season that still has an unwatched
+                    // LEAF, whatever the season's own `viewCount`; `unwatched!=0` and the
+                    // other forms stay the column (the row's own counter).
                     children.retain(|child| self.has_unwatched(child));
                     filter_pairs
                         .into_iter()
@@ -19309,8 +19332,8 @@ impl Runtime {
                 fields.insert("Metadata".to_string(), Value::Array(rows.clone()));
                 if group {
                     let leaves = self.leaves(key);
-                    // Re-measured on zen against a 24-season show: the "All
-                    // episodes" row is present exactly when the PAGE holds more than
+                    // Re-measured on the 1.42.2 reference against a 24-season show: the
+                    // "All episodes" row is present exactly when the PAGE holds more than
                     // one season row -- Start=10 Size=10 carries it, Start=0 Size=1
                     // does not -- so the gate is the page's own length.  Cycle 54: and
                     // it is the ANSWER's row count, paged or not.
@@ -19462,7 +19485,7 @@ impl Runtime {
                     .collect::<Vec<_>>();
                 // Cycle 54: the listing's filters are ignored on `/allLeaves`; only
                 // `unwatched=` (above) is read.
-                // Cycle 83, measured on kids' show: `sort=` is ignored here as well --
+                // Cycle 83, measured on plexlab's show: `sort=` is ignored here as well --
                 // `title:desc`, `titleSort`, an empty value and an unknown key `zzz` all
                 // answer the six episodes in broadcast order with a 200, where this list
                 // sorted and refused the unknown key with a 500.
@@ -19488,15 +19511,15 @@ impl Runtime {
                     .and_then(Value::as_str)
                     .map(str::to_string);
                 if kind == "show" {
-                    // Cycle 17, measured on kids and zen: this list -- and no other
-                    // container -- stamps each episode's BORROWED artwork with the
-                    // EPISODE's own `addedAt`, so a leaf's cached URL never changes.
+                    // Cycle 17, measured on plexlab and the 1.42.2 reference: this list --
+                    // and no other container -- stamps each episode's BORROWED artwork with
+                    // the EPISODE's own `addedAt`, so a leaf's cached URL never changes.
                     for shown in &mut rows {
                         restamp_borrowed(shown);
                     }
-                    // Measured on kids and zen, 20 rows across five shows: a SHOW's
-                    // `/allLeaves` -- and only that list -- gives every episode row the
-                    // SHOW's `studio`.
+                    // Measured on plexlab and the 1.42.2 reference, 20 rows across five
+                    // shows: a SHOW's `/allLeaves` -- and only that list -- gives every
+                    // episode row the SHOW's `studio`.
                     if let Some(studio) = row.get("studio").filter(|studio| !studio.is_null()) {
                         for shown in &mut rows {
                             if let Some(object) = shown.as_object_mut() {
@@ -19786,7 +19809,7 @@ impl Runtime {
                 } else {
                     "theme"
                 };
-                // `Photo` rows for clear logos and `Track` rows for theme music (kids,
+                // `Photo` rows for clear logos and `Track` rows for theme music (plexlab,
                 // 1.43.4, both lists of a show). The default element is `Video`, and
                 // python-plexapi's `logos()`/`themes()` keep only rows of their own tag,
                 // so an uploaded candidate read back as an empty list.
@@ -20455,9 +20478,9 @@ impl Runtime {
             );
         }
         // `enrich` writes the TMDB vote into `rating` as well as `audienceRating`; load
-        // drops it, because `rating` is the CRITIC score (zen: 743 of 1,538 matched
-        // movies carry one, each beside a critic `ratingImage`). A Fix Match skipped
-        // that rule and put a TMDB vote back as a critic rating.
+        // drops it, because `rating` is the CRITIC score (the 1.42.2 reference: 743 of
+        // 1,538 matched movies carry one, each beside a critic `ratingImage`). A Fix Match
+        // skipped that rule and put a TMDB vote back as a critic rating.
         if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
             if matches!(
                 object.get("type").and_then(Value::as_str),
@@ -20907,8 +20930,9 @@ impl Runtime {
 
     /// `/library/metadata/{id}/tree` -- the raw item/media/part tree Get Info
     /// reads.  It NESTS (a show holds its seasons, each season its episodes), an
-    /// EPISODE's tree is rooted at its SHOW and (cycle 21, kids and zen) carries
-    /// only the ancestor CHAIN -- the show, that episode's season, the episode.
+    /// EPISODE's tree is rooted at its SHOW and (cycle 21, plexlab and the 1.42.2
+    /// reference) carries only the ancestor CHAIN -- the show, that episode's season, the
+    /// episode.
     fn route_tree(&self, row: &Value) -> Response {
         let mut top = row.clone();
         let mut keep: Option<HashSet<String>> = None;
@@ -22628,9 +22652,9 @@ impl Response {
         }
     }
     fn error(status: u16, message: &str) -> Self {
-        // Cycle 36, measured on kids and zen: every refusal on the surface answers the
-        // reference's own `text/html` document (85 bytes for a 404, 89 for a 400), never
-        // a rex sentence. The sentence is kept for the log only.
+        // Cycle 36, measured on plexlab and the 1.42.2 reference: every refusal on the
+        // surface answers the reference's own `text/html` document (85 bytes for a 404, 89
+        // for a 400), never a rex sentence. The sentence is kept for the log only.
         ERROR_NOTE.with(|note| *note.borrow_mut() = Some((status, message.to_string())));
         Self {
             status,
@@ -23061,7 +23085,7 @@ fn write_or_log(snapshot: Option<StateSnapshot>) {
 }
 
 /// Hand the heap's free pages back to the system. glibc keeps what a request freed:
-/// fun's server sat at its high-water mark -- 3.5 GB resident and 1.5 GB swapped
+/// the production server sat at its high-water mark -- 3.5 GB resident and 1.5 GB swapped
 /// (2026-10-10) -- long after the load and the listings that raised it were done.
 fn release_freed_memory() {
     #[cfg(all(target_os = "linux", target_env = "gnu"))]
@@ -24146,10 +24170,10 @@ fn handle_websocket<S: Read + Write + PollRead>(
                     return Ok(());
                 }
                 if opcode == 0x9 {
-                    // Cycle 94, measured on kids and zen: a client PING is answered at once
-                    // with an unmasked PONG carrying the same payload. Plex for Android
-                    // 2026.19.1 drops a socket that never pongs after 50 s (1006) and does
-                    // not reopen it. See the oracle's `_client_went_away`.
+                    // Cycle 94, measured on plexlab and the 1.42.2 reference: a client PING
+                    // is answered at once with an unmasked PONG carrying the same payload.
+                    // Plex for Android 2026.19.1 drops a socket that never pongs after 50 s
+                    // (1006) and does not reopen it. See the oracle's `_client_went_away`.
                     let payload: Vec<u8> = if masked {
                         rest[4..]
                             .iter()
@@ -24358,7 +24382,7 @@ fn maybe_compress(response: &mut Response, accept_encoding: Option<&String>) {
         })
     });
     // A body path -- a bundled asset, artwork, a `/web` file -- names a range unit and
-    // is never compressed, measured on kids and zen.
+    // is never compressed, measured on plexlab and the 1.42.2 reference.
     let ranged = response
         .headers
         .iter()
@@ -24399,7 +24423,7 @@ fn read_request<S: Read>(
         // all, and the socket goes as soon as the line is complete -- before every
         // other rule of the line: `get`, `getgetgetget` (past the method bound),
         // `get /id%zz...`, `get ... HTTP/1`, an LF-only `get` line and `get  /` are each
-        // closed at once with nothing written, on kids (1.43.4) and plexscratch42
+        // closed at once with nothing written, on plexlab (1.43.4) and plexscratch42
         // (1.42.2), re-measured 2026-09-30. This server held such a line to the
         // 20-second read timeout and then wrote a 400, and answered the other five 400.
         let lower_first = first_request && pending.first().is_some_and(u8::is_ascii_lowercase);
@@ -24427,8 +24451,9 @@ fn read_request<S: Read>(
             } else if pending.len() > 10 {
                 return Err("method length".to_string());
             }
-            // Cycle 27: a request line ended by a bare LF, with no CR, is a 400 on kids
-            // and zen. Waiting for a CRLF CRLF that never comes would leave it unanswered.
+            // Cycle 27: a request line ended by a bare LF, with no CR, is a 400 on plexlab
+            // and the 1.42.2 reference. Waiting for a CRLF CRLF that never comes would
+            // leave it unanswered.
             if let Some(newline) = pending.iter().position(|byte| *byte == b'\n') {
                 if newline > 0 && pending[newline - 1] != b'\r' {
                     return Err("bad request line".to_string());
@@ -24442,7 +24467,7 @@ fn read_request<S: Read>(
         let n = match stream.read(&mut chunk) {
             Ok(n) => n,
             // The 20-second read timeout: a kept-alive connection idling out, or a request
-            // that stopped arriving, is dropped with NOTHING written -- measured on kids
+            // that stopped arriving, is dropped with NOTHING written -- measured on plexlab
             // 2026-09-30 after a completed `GET /identity`, and cycle 49's incomplete
             // request. The error text used to reach the connection loop as an ordinary
             // parse failure, which wrote a 400 nobody had asked for onto every idle socket.
@@ -24508,10 +24533,10 @@ fn read_request<S: Read>(
     if parts[1].len() > MAX_TARGET_BYTES {
         return Err("target too long".to_string());
     }
-    // Cycle 36, swept byte by byte on kids and zen: the request TARGET must be printable
-    // ASCII (0x21-0x7E), and every `%` in its PATH must begin an escape a real PMS reads
-    // -- two characters present, parsed like `strtol` (an optional sign, then a hex
-    // digit), `%%` a literal pair. The query is not validated this way.
+    // Cycle 36, swept byte by byte on plexlab and the 1.42.2 reference: the request TARGET
+    // must be printable ASCII (0x21-0x7E), and every `%` in its PATH must begin an escape a
+    // real PMS reads -- two characters present, parsed like `strtol` (an optional sign,
+    // then a hex digit), `%%` a literal pair. The query is not validated this way.
     if !parts[1].bytes().all(|byte| (0x21..=0x7e).contains(&byte)) {
         return Err("bad request target".to_string());
     }
@@ -24918,11 +24943,12 @@ fn write_response<S: Write>(stream: &mut S, response: &Response, keep: bool) -> 
 /// The streams a decision's Part lists: the ones that PLAY, not the file's.
 ///
 /// Cycle 84, Plex Web's exact MDE request (`tests/fixtures/decision_streams_selected.json`):
-/// zen (1.42.2) answers movie 1098 -- two video streams, a selected and an unselected audio,
-/// a selected and four other subtitles -- with the FIRST video, the selected audio and the
-/// selected subtitle; plexscratch42 (1.42.2) answers a row whose two subtitles are both
-/// unselected with video and audio only, under every `subtitles` value. rex listed every
-/// stream of the file. An audio list with no selected track was not measured: left whole.
+/// the 1.42.2 reference answers movie 1098 -- two video streams, a selected and an
+/// unselected audio, a selected and four other subtitles -- with the FIRST video, the
+/// selected audio and the selected subtitle; plexscratch42 (1.42.2) answers a row whose two
+/// subtitles are both unselected with video and audio only, under every `subtitles` value.
+/// rex listed every stream of the file. An audio list with no selected track was not
+/// measured: left whole.
 fn decision_streams(streams: Vec<Value>) -> Vec<Value> {
     let kind = |stream: &Value| stream.get("streamType").and_then(Value::as_i64);
     let selected = |stream: &Value| stream.get("selected").is_some_and(truthy);
@@ -24966,7 +24992,7 @@ fn split_target(target: &str) -> (String, String) {
     }
 }
 /// Whether a bare `OPTIONS` on this multi-segment path reaches its handler, as it does
-/// on a real PMS -- server.py `OPTIONS_ROUTED`. Measured 2026-09-30 on kids (1.43.4)
+/// on a real PMS -- server.py `OPTIONS_ROUTED`. Measured 2026-09-30 on plexlab (1.43.4)
 /// and plexscratch42 (1.42.2): the transcoders, the `/:/` timeline writers, the bundled
 /// resources and five more answer OPTIONS exactly as they answer a GET (their own 400,
 /// the image, `/log/networked`'s empty 200), where every GET-only read route is a 404.
@@ -25364,9 +25390,9 @@ fn watched_leaf(row: &Value) -> bool {
     })
 }
 
-/// Cycle 64, measured on zen, kids and plexscratch42: `X-Plex-Product: Plex Home
-/// Theater` -- that spelling only, the header beating the query -- gets a FIVE-component
-/// `version` on `/` and `/media/providers` (`1.42.2.10156.0-<build>`).
+/// Cycle 64, measured on the 1.42.2 reference, plexlab and plexscratch42: `X-Plex-Product:
+/// Plex Home Theater` -- that spelling only, the header beating the query -- gets a
+/// FIVE-component `version` on `/` and `/media/providers` (`1.42.2.10156.0-<build>`).
 fn home_theater_version(
     body: &mut Value,
     query: &HashMap<String, String>,
@@ -25774,7 +25800,7 @@ fn load_regional_prefs(catalog: &Path, language: &str) -> Vec<Value> {
 }
 /// Which `Meta/Type` row carries `active`, and which Sort inside it.
 ///
-/// Cycle 19, measured on kids and zen: the flag follows the REQUEST --
+/// Cycle 19, measured on plexlab and the 1.42.2 reference: the flag follows the REQUEST --
 /// `/all?includeMeta=1` marks the library's type, `&type=3` marks `season`,
 /// `&type=4` `episode`, and `?includeDetails=1` marks NONE.  Cycle 23: the
 /// active SORT is marked only inside the Type that matches, and which one
@@ -26530,7 +26556,7 @@ fn serve_part_proxy<S: Write>(
     let mut upstream = match plan.source.open(&plan.path, &headers) {
         Ok(upstream) if upstream.status < 400 => upstream,
         // Cycle 44: the source saying the FILE is gone is a plain 404, as a real PMS
-        // answers for a part it cannot open (zen part 23595).
+        // answers for a part it cannot open (the 1.42.2 reference's part 23595).
         Ok(refused) if refused.status == 404 => {
             error!("part {part_id} is unavailable upstream: {}", plan.path);
             return refuse(stream, 404, "rex: not found");
@@ -26764,8 +26790,8 @@ pub fn xml_or_json(response: Response, accept: Option<&str>) -> Response {
 /// A JSON body in the order the XML writer emits, with every private marker
 /// dropped (server.py's `json_body`).
 ///
-/// Cycle 19, measured on kids and zen: a real PMS's JSON object keys come out
-/// in exactly its XML order -- the container's attributes, then its child keys;
+/// Cycle 19, measured on plexlab and the 1.42.2 reference: a real PMS's JSON object keys
+/// come out in exactly its XML order -- the container's attributes, then its child keys;
 /// a row's attributes in the row's attribute order, then its child element
 /// keys.  Cycle 22: a LIGHT row's JSON child order is the light order, read off
 /// the row's own `_light` marker -- so the markers are dropped AFTER ordering.
@@ -26829,9 +26855,10 @@ fn page_container(response: &mut Response, query: &HashMap<String, String>, path
     };
     let exempt =
         body.contains_key("noHistory") || path.trim_end_matches('/') == "/system/search";
-    // Cycle 83, kids and zen: the paging values are parsed wherever this rule pages, a
-    // lone Size included, even on a container its handler paged or windowed itself --
-    // `/identity?X-Plex-Container-Size=abc` is the 500 (`paging_values`).
+    // Cycle 83, plexlab and the 1.42.2 reference: the paging values are parsed wherever
+    // this rule pages, a lone Size included, even on a container its handler paged or
+    // windowed itself -- `/identity?X-Plex-Container-Size=abc` is the 500
+    // (`paging_values`).
     let window = if exempt {
         None
     } else {

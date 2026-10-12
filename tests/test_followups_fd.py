@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """A show is "unplayed" by its LEAVES on two lists, and by its own counter everywhere else.
 
-Measured on zen (PMS 1.42.2, the build rex reports, 2026-09-30, GET only) and checked
+Measured on the 1.42.2 reference (the build rex reports, 2026-09-30, GET only) and checked
 in as `tests/fixtures/unwatched_zen.json`. Its TV section holds 509 shows: six PARTLY
 watched (0 < viewedLeafCount < leafCount), two fully watched, and not one show or season
 carrying a `viewCount` of its own (its plays came through timelines).
@@ -123,7 +123,7 @@ def keys(found):
 
 
 def fixture_rules():
-    """What zen answered, read out of the recording -- the expectations below come from it."""
+    """What the 1.42.2 reference answered, read out of the recording -- the expectations below come from it."""
     with open(FIXTURE, encoding="utf-8") as handle:
         recorded = json.load(handle)
     exchanges = {entry["path"]: entry for entry in recorded["exchanges"]}
@@ -132,14 +132,14 @@ def fixture_rules():
     with_leaves = {row["ratingKey"] for row in shows
                    if row.get("viewedLeafCount", 0) < row.get("leafCount", 0)}
     listed = set(exchanges["/library/sections/2/unwatched"]["ratingKeys"])
-    check("zen: /unwatched is exactly the shows with an unwatched leaf (%d of %d)"
+    check("the 1.42.2 reference: /unwatched is exactly the shows with an unwatched leaf (%d of %d)"
           % (len(listed), len(shows)),
           listed == with_leaves and part <= listed and not full & listed,
           "listed %d, leaves %d" % (len(listed), len(with_leaves)))
-    check("zen: no show row carries its own viewCount",
+    check("the 1.42.2 reference: no show row carries its own viewCount",
           not [row for row in shows if "viewCount" in row])
     column = set(exchanges["/library/sections/2/all?type=2&unwatched=1"]["ratingKeys"])
-    check("zen: the column's unwatched=1 answers every show, the fully watched included",
+    check("the 1.42.2 reference: the column's unwatched=1 answers every show, the fully watched included",
           column == {row["ratingKey"] for row in shows} and full <= column
           and not exchanges["/library/sections/2/all?type=2&unwatched=0"]["ratingKeys"],
           len(column))
@@ -156,15 +156,15 @@ def fixture_rules():
                  if exchanges["/library/metadata/%s/children?%s" % (show, form)]["rows"]]
         if flagged != wanted or column != [row["ratingKey"] for row in seasons] or empty:
             leaf_rule.append((show, flagged, wanted, column, empty))
-    check("zen: a show's /children?unwatched=1 keeps the seasons with an unwatched leaf, "
+    check("the 1.42.2 reference: a show's /children?unwatched=1 keeps the seasons with an unwatched leaf, "
           "`!=0` keeps all and the other forms none", not leaf_rule, leaf_rule)
     return recorded
 
 
 def served(port):
     # Two episodes scrobbled: 1001 is season 30001's only one, 1005 one of 30004's four.
-    # The show is PARTLY watched, like zen's six, and the episode scrobble stamps its own
-    # `viewCount` on the season and the show (docs/protocol-traps.md).
+    # The show is PARTLY watched, like the 1.42.2 reference's six, and the episode scrobble
+    # stamps its own `viewCount` on the season and the show (docs/protocol-traps.md).
     for episode in ("1001", "1005"):
         status, _ = request(port, "GET", "/:/scrobble?key=%s&%s" % (episode, LIBRARY))
         check("scrobble %s answers 200" % episode, status == 200, status)
@@ -176,7 +176,7 @@ def served(port):
           and not counters.get("30002"), counters)
 
     status, found, _ = rows(port, "/library/sections/2/unwatched")
-    check("a partly watched show stays on /library/sections/2/unwatched (zen: all six do)",
+    check("a partly watched show stays on /library/sections/2/unwatched (the 1.42.2 reference: all six do)",
           status == 200 and keys(found) == [SHOW], (status, keys(found)))
     row = next((r for r in found if str(r.get("ratingKey")) == SHOW), {})
     check("and its row still opens /children?unwatched=1",
@@ -184,7 +184,7 @@ def served(port):
 
     status, found, directories = rows(port, "/library/metadata/%s/children?unwatched=1" % SHOW)
     check("/children?unwatched=1 keeps every season with an unwatched leaf, whatever its "
-          "own viewCount (zen 5195 and 11004; both copies in cycle 71)",
+          "own viewCount (the 1.42.2 reference's rows 5195 and 11004; both copies in cycle 71)",
           status == 200 and keys(found) == ["30002", "30003", "30004"], (status, keys(found)))
     check("and carries the All episodes row with the show's own counts",
           [(d.get("key"), d.get("leafCount"), d.get("viewedLeafCount")) for d in directories]
@@ -196,14 +196,15 @@ def served(port):
     check("/children?unwatched==1 is the column's false set, not the leaf flag",
           status == 200 and keys(found) == ["30001", "30004"], (status, keys(found)))
     status, found, _ = rows(port, "/library/metadata/30004/children?unwatched=1")
-    check("a SEASON's /children?unwatched=1 drops its watched episode (zen 17201: 19 of 22)",
+    check("a SEASON's /children?unwatched=1 drops its watched episode (the 1.42.2 reference's row 17201: 19 of 22)",
           status == 200 and keys(found) == ["1006", "1010", "1011"], (status, keys(found)))
 
-    # Everything watched: zen lists neither fully watched show and none of their seasons.
+    # Everything watched: the 1.42.2 reference lists neither fully watched show and none of
+    # their seasons.
     for episode in ("1002", "1003", "1004", "1006", "1010", "1011"):
         request(port, "GET", "/:/scrobble?key=%s&%s" % (episode, LIBRARY))
     status, found, _ = rows(port, "/library/sections/2/unwatched")
-    check("a fully watched show leaves /unwatched (zen 6098, 17133)",
+    check("a fully watched show leaves /unwatched (the 1.42.2 reference's rows 6098, 17133)",
           status == 200 and not found, (status, keys(found)))
     status, found, _ = rows(port, "/library/metadata/%s/children?unwatched=1" % SHOW)
     check("and its /children?unwatched=1 is empty",

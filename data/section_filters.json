@@ -1,5 +1,5 @@
 {
-  "_provenance": "GET /library/sections/1/filters?type=N[&includeAdvanced=1], 2026-09-13, on zen (1.42.2 -- the build rex reports) with kids (1.43.4) as the second witness. The list is the TYPE's, identical on a movie and a show library, and it is PER VERSION: 1.43.4 adds the media-codec axes hdr10plus, atmos, videoCodec, audioCodec, subtitleCodec and audioLayout to types 1, 4 and (for audioCodec) 10, and hdr and dovi to type 4, which 1.42.2 keeps on type 1 only. Types 2, 3, 8, 9, 13 and 20 and the advanced Duplicates row are identical on both. rex reports 1.42.2, so these are 1.42.2's. `{section}` is the library id.",
+  "_provenance": "GET /library/sections/1/filters?type=N[&includeAdvanced=1], 2026-09-13, on the 1.42.2 reference (the build rex reports) with plexlab (1.43.4) as the second witness. The list is the TYPE's, identical on a movie and a show library, and it is PER VERSION: 1.43.4 adds the media-codec axes hdr10plus, atmos, videoCodec, audioCodec, subtitleCodec and audioLayout to types 1, 4 and (for audioCodec) 10, and hdr and dovi to type 4, which 1.42.2 keeps on type 1 only. Types 2, 3, 8, 9, 13 and 20 and the advanced Duplicates row are identical on both. rex reports 1.42.2, so these are 1.42.2's. `{section}` is the library id.",
   "plain": {
     "1": [
       {

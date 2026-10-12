@@ -110,7 +110,7 @@ def composite(port, fixture):
             status == row["status"] and got.get("content-type") == measured_type(row)
             and raw.decode("utf-8", "replace") == row["body"],
             (status, got.get("content-type"), raw[:80]))
-    # The contrast: a library WITH members still answers its composite (kids, 200 jpeg).
+    # The contrast: a library WITH members still answers its composite (plexlab, 200 jpeg).
     status, got, _raw = request(
         port, "GET", "/library/sections/1/composite/1?width=120&height=120&rows=1&cols=1"
         "&border=0&media=thumb&repeat=1", dict(base, Accept="image/webp,image/*,*/*;q=0.8"))

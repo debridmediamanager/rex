@@ -68,8 +68,8 @@ impl Runtime {
         }
     }
 
-    /// Shape measured on fun mid-refresh: uuid, type, cancellable, userID, title,
-    /// subtitle, progress. Pushes the `started` frame.
+    /// Shape measured on the production server mid-refresh: uuid, type, cancellable,
+    /// userID, title, subtitle, progress. Pushes the `started` frame.
     pub(super) fn add_activity(
         &mut self,
         subtitle: &str,

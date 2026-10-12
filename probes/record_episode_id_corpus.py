@@ -5,8 +5,8 @@
     TMDB_KEY=... PLEX_TOKEN=... python3 probes/record_episode_id_corpus.py RELEASES.json OUT.json
 
 RELEASES.json is `[{name, hash, imdb, files}]`: one release of each show a rex library
-left unmatched although its source pushed an IMDb id (fun, 2026-10-11: 285 shows, the
-id DMM maps each hash to). Each is identified by that id alone, as the feed does, and
+left unmatched although its source pushed an IMDb id (the production server, 2026-10-11: 285
+shows, the id DMM maps each hash to). Each is identified by that id alone, as the feed does, and
 every provider answer the identifier read is kept, trimmed to the fields it reads.
 `truth` is the show TMDB's /find names for the id: an episode's or a season's show_id.
 A release with no `imdb` is identified by its name, and its `truth` (a TMDB id) is
@@ -92,7 +92,7 @@ def main():
         corpus.append({"name": release["name"], "hash": release["hash"].lower(),
                        "known": release.get("imdb"), "files": release["files"],
                        "truth": truth, "recorded": identity.get("tmdb")})
-    json.dump({"source": "fun rex's unmatched shows and the IMDb ids DMM gave them, 2026-10-11",
+    json.dump({"source": "The production rex's unmatched shows and the IMDb ids DMM gave them, 2026-10-11",
                "torrents": corpus, "tmdb": tmdb.record, "plex": plex_record},
               open(out_path, "w"), indent=1, sort_keys=True)
     named = sum(1 for t in corpus if t["truth"])

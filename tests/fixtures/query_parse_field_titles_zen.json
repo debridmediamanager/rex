@@ -1,5 +1,5 @@
 {
- "_provenance": "Cycle 83, measured on zen (PMS 1.42.2.10156) with X-Plex-Language: en: /library/sections/{id}/query/parse, section 1 a movie library and section 2 a show library. Each Rule is kept as type/field/fieldTitle; valueTitle (zen's own tag names) is dropped.",
+ "_provenance": "Cycle 83, measured on the 1.42.2 reference with X-Plex-Language: en: /library/sections/{id}/query/parse, section 1 a movie library and section 2 a show library. Each Rule is kept as type/field/fieldTitle; valueTitle (the 1.42.2 reference's own tag names) is dropped.",
  "exchanges": [
   {
    "path": "/library/sections/2/query/parse?type=4&show.title=a&episode.year=2000&episode.addedAt>>=1&show.unwatchedLeaves=1",

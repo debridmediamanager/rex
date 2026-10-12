@@ -8498,7 +8498,7 @@
  ],
  "witnesses": {
   "zen_music_form": {
-   "reference": "zen PMS 1.42.2.10156, claimed (GET only)",
+   "reference": "The 1.42.2 reference (PMS 1.42.2.10156), claimed (GET only)",
    "path": "/library/sections/prefs?type=8&agent=tv.plex.agents.music",
    "status": 200,
    "body": {

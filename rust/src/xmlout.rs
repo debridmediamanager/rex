@@ -61,7 +61,8 @@ const ALWAYS_PAIRED: &[&str] = &[
     "Related",
     "Playlist",
     "Common",
-    // Cycle 87: an empty legacy `/system/agents` row is paired on kids and zen.
+    // Cycle 87: an empty legacy `/system/agents` row is paired on plexlab and the 1.42.2
+    // reference.
     "Agent",
 ];
 const PAIRED_EMPTY: &[&str] = &["Hub"];
@@ -219,9 +220,9 @@ fn attr_order_base(name: &str, row: &Map<String, Value>, key: &str) -> usize {
     } else if name == "Video" && row.get("_history").is_some() {
         "Video[history]".to_string()
     } else if name == "Agent" && row.get("primary").is_some() {
-        // Cycle 87, measured on zen in JSON and XML: a legacy plug-in row (the one
-        // carrying `primary`) is `hasPrefs, identifier, primary, name`, not the modern
-        // row's `identifier, name, hasPrefs`.
+        // Cycle 87, measured on the 1.42.2 reference in JSON and XML: a legacy plug-in
+        // row (the one carrying `primary`) is `hasPrefs, identifier, primary, name`, not
+        // the modern row's `identifier, name, hasPrefs`.
         "Agent[legacy]".to_string()
     } else if matches!(name, "Video" | "Directory" | "Track" | "Playlist")
         && (row.get("agent").is_some() || row.get("scanner").is_some())
@@ -373,7 +374,7 @@ fn attr_order_base(name: &str, row: &Map<String, Value>, key: &str) -> usize {
             "addedAt",
             "updatedAt",
             "deletedAt",
-            // Cycle 94, zen's `/library/all/top?type=3` row.
+            // Cycle 94, the 1.42.2 reference's `/library/all/top?type=3` row.
             "globalViewCount",
             "userCount",
         ],
@@ -416,7 +417,7 @@ fn attr_order_base(name: &str, row: &Map<String, Value>, key: &str) -> usize {
             "addedAt",
             "updatedAt",
             "deletedAt",
-            // Cycle 94, zen's `/library/all/top?type=2` row.
+            // Cycle 94, the 1.42.2 reference's `/library/all/top?type=2` row.
             "globalViewCount",
             "userCount",
             "audienceRatingImage",
@@ -616,7 +617,7 @@ fn attr_order_base(name: &str, row: &Map<String, Value>, key: &str) -> usize {
             "originallyAvailableAt",
             "addedAt",
             "updatedAt",
-            // Cycle 94, zen's `/library/all/top?type=4` rows.
+            // Cycle 94, the 1.42.2 reference's `/library/all/top?type=4` rows.
             "globalViewCount",
             "userCount",
             "audienceRatingImage",
@@ -676,7 +677,7 @@ fn attr_order_base(name: &str, row: &Map<String, Value>, key: &str) -> usize {
             "addedAt",
             "updatedAt",
             "deletedAt",
-            // Cycle 94, kids' `/library/all/top?type=1` rows.
+            // Cycle 94, plexlab's `/library/all/top?type=1` rows.
             "globalViewCount",
             "userCount",
             "audienceRatingImage",

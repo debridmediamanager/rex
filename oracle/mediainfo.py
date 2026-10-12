@@ -27,21 +27,22 @@ _FRAME_RATE_TOKENS = [
     (Fraction(60, 1), "60p"),
 ]
 
-# A track's language as a real PMS writes it, measured on every track of 381 rows on fun:
-# `language` is the language's name IN that language (`日本語`, `Español`, `polski`),
-# `languageCode` the ISO 639-2 terminology code (ffprobe's `fre`, `ger`, `cze` and `chi` read
-# back `fra`, `deu`, `ces` and `zho`), and `languageTag` the two-letter ISO 639-1 code, or the
-# three-letter code where a language has none (`fil`, `mul`). rex printed English names
-# for 15 languages and the raw code for the rest, kept bibliographic codes, and cut the tag
-# to two letters -- `jp` for Japanese, `sp` for Spanish, `fi` (Finnish) for Filipino -- and a
-# client picks a track by the tag. languages.json holds every name and tag fun wrote.
+# A track's language as a real PMS writes it, measured on every track of 381 rows on the
+# production server: `language` is the language's name IN that language (`日本語`, `Español`,
+# `polski`), `languageCode` the ISO 639-2 terminology code (ffprobe's `fre`, `ger`, `cze` and
+# `chi` read back `fra`, `deu`, `ces` and `zho`), and `languageTag` the two-letter ISO 639-1
+# code, or the three-letter code where a language has none (`fil`, `mul`). rex printed English
+# names for 15 languages and the raw code for the rest, kept bibliographic codes, and cut the
+# tag to two letters -- `jp` for Japanese, `sp` for Spanish, `fi` (Finnish) for Filipino --
+# and a client picks a track by the tag. languages.json holds every name and tag the
+# production server wrote.
 LANGUAGES = json.load(open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                                     "data", "languages.json"),
                            encoding="utf-8"))
 
 # ISO 639-2's bibliographic codes, which Matroska files carry and ffprobe passes through,
 # against the terminology codes a real PMS writes. The first fifteen were each measured on
-# fun; the last four complete the standard's list.
+# the production server; the last four complete the standard's list.
 _TERMINOLOGY = {"alb": "sqi", "baq": "eus", "chi": "zho", "cze": "ces", "dut": "nld",
                 "fre": "fra", "ger": "deu", "gre": "ell", "ice": "isl", "mac": "mkd",
                 "may": "msa", "per": "fas", "rum": "ron", "slo": "slk", "wel": "cym",
@@ -77,12 +78,12 @@ def _frame_rate_token(rate):
     return "%gp" % round(float(value))
 
 
-# The resolution label, measured on all 4947 Media of fun's movie libraries with no
-# exception: the larger of a WIDTH bucket and a HEIGHT bucket, with `2k` and `2.7k` between
-# 1080 and 4k. rex read the height alone, so a cropped 1080p release (1920x800) was
+# The resolution label, measured on all 4947 Media of the production server's movie libraries
+# with no exception: the larger of a WIDTH bucket and a HEIGHT bucket, with `2k` and `2.7k`
+# between 1080 and 4k. rex read the height alone, so a cropped 1080p release (1920x800) was
 # `720`, and both a client's quality gate and the Resolution filter read the label. Each
-# threshold is the smallest dimension fun has in its bucket; the largest it has in the
-# bucket below is in the comment, and nothing between the two has been seen.
+# threshold is the smallest dimension the production server has in its bucket; the largest it
+# has in the bucket below is in the comment, and nothing between the two has been seen.
 _WIDTH_BUCKETS = ((2876, "4k"),    # 2560 is 2k
                   (2048, "2k"),    # 1998 is 1080
                   (1908, "1080"),  # 1424 is 720
@@ -111,10 +112,10 @@ def _video_resolution(height, width):
 
 
 # The aspect ratio a real PMS writes is one of six values -- 1.33, 1.66, 1.78, 1.85, 2.2 and
-# 2.35 -- on every Media of fun's movie libraries: the DISPLAY aspect (width times the sample
-# aspect ratio, over height) snapped to the nearest. rex wrote the raw quotient and
-# ignored the sample aspect ratio, so a 1920x800 release read 2.4 where a real server says
-# 2.35, and an anamorphic 3840x2160 (SAR 333:320) 1.78 where it says 1.85.
+# 2.35 -- on every Media of the production server's movie libraries: the DISPLAY aspect (width
+# times the sample aspect ratio, over height) snapped to the nearest. rex wrote the raw
+# quotient and ignored the sample aspect ratio, so a 1920x800 release read 2.4 where a real
+# server says 2.35, and an anamorphic 3840x2160 (SAR 333:320) 1.78 where it says 1.85.
 _ASPECT_RATIOS = (1.33, 1.66, 1.78, 1.85, 2.2, 2.35)
 
 
@@ -147,7 +148,8 @@ def _language_fields(tags):
     return {"language": raw, "languageCode": "", "languageTag": raw}
 
 
-# The track titles a real PMS writes, measured on every stream of 35 files on fun:
+# The track titles a real PMS writes, measured on every stream of 35 files on the production
+# server:
 #
 #   video     displayTitle  <resolution>[ <range>]              4K DoVi/HDR10
 #             extended      <displayTitle> (<CODEC>[ <Profile>]) 4K DoVi/HDR10 (HEVC Main 10)
@@ -212,7 +214,7 @@ def _audio_codec_label(row):
     return codec.upper()
 
 
-# Cycle 24: the dispositions a VIDEO stream carries, measured on zen.
+# Cycle 24: the dispositions a VIDEO stream carries, measured on the 1.42.2 reference.
 _VIDEO_FLAGS = ("default", "forced", "original", "dub")
 
 
@@ -220,7 +222,7 @@ def _channel_label(row):
     """The layout's own name (`5.1(side)` prints `5.1`, `2.1` stays `2.1`), else the count."""
     layout = row.get("audioChannelLayout")
     if layout:
-        # Cycle 24, measured on zen: a layout ffprobe cannot name reads
+        # Cycle 24, measured on the 1.42.2 reference: a layout ffprobe cannot name reads
         # `8 channels (FL+FR+FC+LFE+SL+SR+TFL+TFR)`, and splitting on the bracket left the
         # SPACE behind -- `8 channels ` composed `(EAC3 8 channels )` with a double space.
         base = layout.split("(")[0].strip()
@@ -239,11 +241,11 @@ def _alnum(text):
 def _carried(title, part, stand_ins=(), raw=()):
     """Whether the title already carries this part.
 
-    Cycle 24, fitted on zen's 105,558 real Streams and held out on the 46 recorded probes:
-    a part is carried when its FIRST word, or one of its stand-ins, is one of the title's
-    words -- `2.0` for Stereo and `1.0` for Mono, `AVC` for H.264, `Signs`/`Songs` for
-    Forced, `CC`/`HI` for SDH, `HDR`/`Dolby` for the dynamic range -- OR when the part or a
-    `raw` alias matches a title word with every non-alphanumeric character folded away,
+    Cycle 24, fitted on the 1.42.2 reference's 105,558 real Streams and held out on the 46
+    recorded probes: a part is carried when its FIRST word, or one of its stand-ins, is one of
+    the title's words -- `2.0` for Stereo and `1.0` for Mono, `AVC` for H.264, `Signs`/`Songs`
+    for Forced, `CC`/`HI` for SDH, `HDR`/`Dolby` for the dynamic range -- OR when the part or
+    a `raw` alias matches a title word with every non-alphanumeric character folded away,
     which is what makes `H264` carry `H.264` and `aac` carry `HE-AAC`.
     """
     words = {word.translate(_ASCII_LOWER) for word in _TITLE_SEPARATORS.split(title) if word}
@@ -260,13 +262,14 @@ def _language_carried(title, language, tag):
     """Whether the title already carries the LANGUAGE part, which has its own rule.
 
     Cycle 24, and it is the rule two earlier attempts could not find. Cycle 22 fitted "the
-    whole name, not the first word" to zen and it broke the recorded corpus; the first-word
-    rule alone fits the corpus and misses 179 of zen's rows. Both are explained by: the name
-    is carried only when it is a SINGLE token that is one of the title's words, with any
-    TRAILING PARENTHESISED GROUP stripped from the name first -- or when its tag is.
-    So `Русский` in `Русский (Full) - Кубик в Кубе` and `English (Weeb)` in
-    `English (Some-Stuffs)` are carried (single token after the strip), while `norsk bokmål`
-    and `Tiếng Việt` in their own titles are NOT (two tokens, and no single word can match).
+    whole name, not the first word" to the 1.42.2 reference and it broke the recorded corpus;
+    the first-word rule alone fits the corpus and misses 179 of the 1.42.2 reference's rows.
+    Both are explained by: the name is carried only when it is a SINGLE token that is one of
+    the title's words, with any TRAILING PARENTHESISED GROUP stripped from the name first --
+    or when its tag is. So `Русский` in `Русский (Full) - Кубик в Кубе` and `English (Weeb)`
+    in `English (Some-Stuffs)` are carried (single token after the strip), while `norsk
+    bokmål` and `Tiếng Việt` in their own titles are NOT (two tokens, and no single word can
+    match).
     """
     words = {word.translate(_ASCII_LOWER) for word in _TITLE_SEPARATORS.split(title) if word}
     base = re.sub(r"\s*\([^)]*\)\s*$", "", str(language or "")).strip()
@@ -300,18 +303,18 @@ def _subtitle_codec_label(row, external="External"):
     none. One witness only (the copy is a real PMS 1.43.4; no sidecar subtitle was
     found on the 1.42.2 server to confirm it against).
     """
-    # Cycle 24, measured on zen (107 streams): `eia_608` prints as `Closed Captions`, and
-    # it is the plain CODEC label, so it reaches the plain display title too.
+    # Cycle 24, measured on the 1.42.2 reference (107 streams): `eia_608` prints as `Closed
+    # Captions`, and it is the plain CODEC label, so it reaches the plain display title too.
     codec = str(row.get("codec") or "").upper()
     if codec == "EIA_608":
         codec = "Closed Captions"
     if codec and str(row.get("key") or "").startswith("/library/streams/"):
         # Cycle 24: the suffix is the stream's own `providerTitle`, and `External` is the
-        # fallback -- zen's 11 sidecars carry none and read `(SRT External)`, while the
-        # recorded corpus has one carrying `OpenSubtitles` and reading `(English SRT
+        # fallback -- the 1.42.2 reference's 11 sidecars carry none and read `(SRT External)`,
+        # while the recorded corpus has one carrying `OpenSubtitles` and reading `(English SRT
         # OpenSubtitles)`. Cycle 17 measured the fallback alone, on one server.
-        # Cycle 60: the fallback word is localised (zen's sidecar reads `SRT Extern` in
-        # German); a `providerTitle` is a name and stays as it is.
+        # Cycle 60: the fallback word is localised (the 1.42.2 reference's sidecar reads `SRT
+        # Extern` in German); a `providerTitle` is a name and stays as it is.
         return "%s %s" % (codec, row.get("providerTitle") or external)
     return codec
 
@@ -327,11 +330,11 @@ def stream_titles(row, stand_in=None, words=None):
     language part on the ENGLISH name and then renders the localised one, so a track
     titled "English" keeps `English (SRT)` in German while its plain title moves.
 
-    Cycle 60, measured on zen's forced (1924) and SDH (2925) tracks in 28 languages: the
-    part that IS carried is rendered in the LOCALISED name (`www.TamilRockers.com
-    (Englisch Erzwungen SRT)`), and `words` localises `Unknown`, `Forced` and `SDH`
-    wherever they are composed -- rex decided the omission on the localised name and
-    rendered the English one, the other way round.
+    Cycle 60, measured on the 1.42.2 reference's forced (1924) and SDH (2925) tracks in 28
+    languages: the part that IS carried is rendered in the LOCALISED name
+    (`www.TamilRockers.com (Englisch Erzwungen SRT)`), and `words` localises `Unknown`,
+    `Forced` and `SDH` wherever they are composed -- rex decided the omission on the localised
+    name and rendered the English one, the other way round.
     """
     words = words or {}
     unknown = words.get("Unknown") or "Unknown"
@@ -411,8 +414,9 @@ CODEC_TITLE_PRODUCTS = frozenset((
     "Plex for Android (Mobile)", "Plex for LG", "Plex for Samsung", "Plex for Windows",
     "Plex for Mac", "Plex for Xbox", "Plex for PlayStation 4", "Plex for PlayStation 5",
     "Plex for Vizio",
-    # Cycle 63, measured on zen, kids and plexscratch42 over the product strings the binary
-    # carries: eight more. The bare `Plex HTPC` stays plain; its `for <OS>` variants do not.
+    # Cycle 63, measured on the 1.42.2 reference, plexlab and plexscratch42 over the product
+    # strings the binary carries: eight more. The bare `Plex HTPC` stays plain; its `for <OS>`
+    # variants do not.
     "Plex HTPC for Windows", "Plex HTPC for Mac", "Plex HTPC for Linux", "Plex for Linux",
     "Plex for Fetch TV", "Plex for Smart TVs", "Plex for VIDAA", "Plex for X1"))
 
@@ -421,7 +425,8 @@ def client_display_title(row, product, external="External"):
     """The `displayTitle` one client is sent for a Stream row.
 
     `external` is the client's word for a sidecar: cycle 73, measured on plexscratch42 and
-    zen in 43 languages, the suffix Plex Web gets is localised (`Unbekannt (SRT Extern)`)
+    the 1.42.2 reference in 43 languages, the suffix Plex Web gets is localised (`Unbekannt
+    (SRT Extern)`)
     exactly as the extended title's is."""
     title = row.get("displayTitle")
     if product not in CODEC_TITLE_PRODUCTS or not title:
@@ -437,8 +442,8 @@ def client_display_title(row, product, external="External"):
 
 
 # ffprobe's disposition keys against a real PMS's attribute names. Measured on every
-# probed track on fun: each flag is written only when TRUE, on audio, subtitles and video
-# alike, and a real PMS never sends `default: false` or `selected: false`.
+# probed track on the production server: each flag is written only when TRUE, on audio,
+# subtitles and video alike, and a real PMS never sends `default: false` or `selected: false`.
 _DISPOSITIONS = {"default": "default", "forced": "forced", "hearingImpaired": "hearing_impaired",
                  "visualImpaired": "visual_impaired", "original": "original", "dub": "dub",
                  "comment": "comment"}
@@ -486,10 +491,10 @@ def _video_stream(stream, stream_id):
         "scanType": _scan_type(stream.get("field_order")),
     }
     row.update(_pixel_aspect(stream))
-    # Measured on the six Dolby Vision files probed on fun (profiles 5, 7, 8 and 10): the
-    # eight DOVI attributes are ffprobe's DOVI configuration record, field for field. They
-    # are what tells a client a Dolby Vision stream it can play from one it cannot, and
-    # rex sent none of them.
+    # Measured on the six Dolby Vision files probed on the production server (profiles 5, 7, 8
+    # and 10): the eight DOVI attributes are ffprobe's DOVI configuration record, field for
+    # field. They are what tells a client a Dolby Vision stream it can play from one it
+    # cannot, and rex sent none of them.
     dovi = next((data for data in stream.get("side_data_list") or []
                  if data.get("side_data_type") == "DOVI configuration record"), None)
     if dovi:
@@ -503,11 +508,11 @@ def _video_stream(stream, stream_id):
             "DOVIRPUPresent": bool(dovi.get("rpu_present_flag")),
             "DOVIVersion": "%s.%s" % (dovi.get("dv_version_major", 1), dovi.get("dv_version_minor", 0)),
         })
-    # Cycle 24, measured on zen's 13,681 video Streams: 88 carry `dub` and none carries
-    # `comment` or `hearingImpaired`, so the video set is these four.
+    # Cycle 24, measured on the 1.42.2 reference's 13,681 video Streams: 88 carry `dub` and
+    # none carries `comment` or `hearingImpaired`, so the video set is these four.
     row.update(_disposition(stream, _VIDEO_FLAGS))
     # A video stream carries its own language and title from its tags, measured on 17 and
-    # 10 streams on fun; rex set neither.
+    # 10 streams on the production server; rex set neither.
     tags = stream.get("tags") or {}
     row.update(_language_fields(tags))
     if tags.get("title"):
@@ -521,8 +526,8 @@ def _video_stream(stream, stream_id):
 def _pixel_aspect(stream):
     """`pixelAspectRatio` and `anamorphic`, which a real PMS sends as a PAIR.
 
-    Cycle 25, measured on 1,688 of zen's video Streams: 358 carry both and 1,330 carry
-    neither -- not one carries only one of the two -- and the value is ffprobe's
+    Cycle 25, measured on 1,688 of the 1.42.2 reference's video Streams: 358 carry both and
+    1,330 carry neither -- not one carries only one of the two -- and the value is ffprobe's
     `sample_aspect_ratio` verbatim, present exactly when the sample aspect is not square.
 
     `anamorphic` is the one Stream boolean a real PMS sends when it is FALSE, so it goes
@@ -564,9 +569,9 @@ def _bit_depth(stream):
     """A video stream's bit depth.
 
     ffprobe reports `bits_per_raw_sample` for H.264 and leaves it out for HEVC and AV1,
-    where the depth is only in the pixel format. Measured on fun: all 16 ten-bit streams
-    probed without it (`yuv420p10le`, `yuv444p10le`) read `bitDepth: 10`. rex defaulted
-    every one to 8, and ten-bit is a direct-play gate on many clients.
+    where the depth is only in the pixel format. Measured on the production server: all 16
+    ten-bit streams probed without it (`yuv420p10le`, `yuv444p10le`) read `bitDepth: 10`. rex
+    defaulted every one to 8, and ten-bit is a direct-play gate on many clients.
     """
     raw = _int_or(stream.get("bits_per_raw_sample"), None)
     if raw:
@@ -588,7 +593,7 @@ def _frame_rate(stream):
 def _video_profile(profile):
     """ffprobe's video profile as a real PMS writes it: lower case, without a trailing
     ` Profile` (`Simple Profile` is `simple`), and absent where ffprobe has only its unknown
-    marker `0` (which comes with level -99). Measured on fun; rex wrote `0` and -99."""
+    marker `0` (which comes with level -99). Measured on the production server; rex wrote `0` and -99."""
     text = (profile or "").strip().lower()
     if text.endswith(" profile"):
         text = text[:-len(" profile")]
@@ -597,7 +602,8 @@ def _video_profile(profile):
 
 def _coded_height(stream):
     """An H.264 stream's coded height is whole macroblocks: 1080 is 1088, 436 is 448 and 536
-    is 544, measured on 12 streams on fun and 11 on the reference, while ffprobe 8.1 reports
+    is 544, measured on 12 streams on the production server and 11 on the reference, while
+    ffprobe 8.1 reports
     the cropped height. HEVC and the rest match ffprobe as it is."""
     height = stream.get("coded_height")
     if height and stream.get("codec_name") == "h264":
@@ -626,7 +632,7 @@ def _stream_identifier(stream):
 
 
 def _audio_bit_depth(stream):
-    """Measured on 42 lossless and DTS tracks on fun: ffprobe's `bits_per_raw_sample`, and 24
+    """Measured on 42 lossless and DTS tracks on the production server: ffprobe's `bits_per_raw_sample`, and 24
     for a DTS track without it (DTS Express excepted); a lossy codec carries none. rex
     never sent an audio bit depth."""
     raw = _int_or(stream.get("bits_per_raw_sample"), None)
@@ -662,10 +668,10 @@ def _float_or_none(rate):
 
 
 # ffprobe's audio codec and profile against the ones a real PMS writes, measured on 141
-# tracks on fun and the reference. Every DTS variant is `dca`, with the profile naming the
-# variant; PCM in Matroska is `pcm` with ffprobe's sample format as its profile, while
-# Blu-ray PCM keeps its own name; and the `+ Dolby Atmos` profile ffprobe gives TrueHD and
-# E-AC-3 is not written at all. rex passed ffprobe's names through, and a client's
+# tracks on the production server and the reference. Every DTS variant is `dca`, with the
+# profile naming the variant; PCM in Matroska is `pcm` with ffprobe's sample format as its
+# profile, while Blu-ray PCM keeps its own name; and the `+ Dolby Atmos` profile ffprobe gives
+# TrueHD and E-AC-3 is not written at all. rex passed ffprobe's names through, and a client's
 # direct-play profile names `dca`: a `dts` track matched nothing in it.
 DTS_PROFILES = {"dts": "dts", "dts-hd ma": "ma", "dts-es": "es", "dts-hd hra": "hra",
                 "dts express": "express"}
@@ -696,19 +702,19 @@ def _audio_stream(stream, stream_id, selected):
         "index": stream.get("index"),
         "streamIdentifier": _stream_identifier(stream),
         "channels": channels,
-        # ffprobe's layout verbatim, measured on 126 of 130 tracks on fun, and absent where
-        # it has none. rex derived it from the channel count, so a `5.1` track was
-        # `5.1(side)` and a 3-, 4-, 5- or 7-channel one had no layout.
+        # ffprobe's layout verbatim, measured on 126 of 130 tracks on the production server,
+        # and absent where it has none. rex derived it from the channel count, so a `5.1`
+        # track was `5.1(side)` and a 3-, 4-, 5- or 7-channel one had no layout.
         "audioChannelLayout": stream.get("channel_layout") or None,
         "samplingRate": stream.get("sample_rate") and int(stream["sample_rate"]),
         "bitDepth": _audio_bit_depth(stream),
         "profile": plex_profile,
     }
-    # Measured on 130 audio tracks on fun: every flag is ffprobe's disposition and appears
-    # only when true. rex marked the FIRST track default, sent `default: false` and
-    # `selected: false` on every other one, and none of the other five flags. Which track
-    # is selected depends on the account's language settings, which rex does not have,
-    # so the first one still is.
+    # Measured on 130 audio tracks on the production server: every flag is ffprobe's
+    # disposition and appears only when true. rex marked the FIRST track default, sent
+    # `default: false` and `selected: false` on every other one, and none of the other five
+    # flags. Which track is selected depends on the account's language settings, which rex
+    # does not have, so the first one still is.
     if selected:
         row["selected"] = True
     row.update(_disposition(stream, TRACK_FLAGS))
@@ -722,8 +728,8 @@ def _audio_stream(stream, stream_id, selected):
 
 
 # ffprobe's subtitle decoder names against the codec a real PMS writes, measured on every
-# embedded track of 35 files on fun: SubRip is `srt`, a Blu-ray bitmap track `pgs` and a DVD
-# one `vobsub`. rex passed the last two through as `hdmv_pgs_subtitle` and
+# embedded track of 35 files on the production server: SubRip is `srt`, a Blu-ray bitmap track
+# `pgs` and a DVD one `vobsub`. rex passed the last two through as `hdmv_pgs_subtitle` and
 # `dvd_subtitle`, which no client's burn-in rule names.
 SUBTITLE_CODECS = {"subrip": "srt", "hdmv_pgs_subtitle": "pgs", "dvd_subtitle": "vobsub"}
 
@@ -732,8 +738,8 @@ def _subtitle_stream(stream, stream_id):
     tags = stream.get("tags") or {}
     codec = stream.get("codec_name") or ""
     codec = SUBTITLE_CODECS.get(codec, codec)
-    # Measured on 432 embedded subtitle tracks on fun: `default` and `forced`
-    # appear only when TRUE, every track says `canAutoSync: false`, and none
+    # Measured on 432 embedded subtitle tracks on the production server: `default` and
+    # `forced` appear only when TRUE, every track says `canAutoSync: false`, and none
     # carries `embeddedInVideo` -- which marks captions carried INSIDE the video
     # stream, not a subtitle track muxed beside it. rex sent all three on
     # every track, false flags included.
@@ -772,7 +778,7 @@ def build_media(probe, *, media_id, part_id, part_key, file_path, size, containe
     # Every video stream, not only the first -- a dual-layer Dolby Vision file carries its
     # enhancement layer as a second one, and a real PMS lists it -- except an attached
     # picture: ffprobe lists a Matroska file's cover art as a video stream, and a real PMS
-    # lists none (7 covers in 4 files on fun).
+    # lists none (7 covers in 4 files on the production server).
     videos = [s for s in streams if s.get("codec_type") == "video"
               and not (s.get("disposition") or {}).get("attached_pic")]
     video = videos[0] if videos else None
@@ -780,8 +786,8 @@ def build_media(probe, *, media_id, part_id, part_key, file_path, size, containe
     subtitles = [s for s in streams if s.get("codec_type") == "subtitle"]
 
     duration_ms = int(float(fmt.get("duration") or 0) * 1000)
-    # Rounded, not truncated: measured on 33 of 35 files on fun, where rex read one short
-    # on 28 of them. Stream bitrates round the same way.
+    # Rounded, not truncated: measured on 33 of 35 files on the production server, where rex
+    # read one short on 28 of them. Stream bitrates round the same way.
     bitrate_kbps = round(int(fmt.get("bit_rate") or 0) / 1000) or None
 
     rows = []
@@ -800,9 +806,10 @@ def build_media(probe, *, media_id, part_id, part_key, file_path, size, containe
     width = video.get("width") if video else None
     height = video.get("height") if video else None
     # The Media's audio fields name the track with the MOST channels, the first of them on a
-    # tie -- measured on 35 of 35 files on fun, where the first track was the wrong one in 9
-    # -- and a DTS-HD MA track is `dca-ma` there while every other DTS variant stays `dca`.
-    # rex named the first track, and a client gates direct play on these fields.
+    # tie -- measured on 35 of 35 files on the production server, where the first track was
+    # the wrong one in 9 -- and a DTS-HD MA track is `dca-ma` there while every other DTS
+    # variant stays `dca`. rex named the first track, and a client gates direct play on these
+    # fields.
     main_audio = max(audios, key=lambda s: s.get("channels") or 0) if audios else {}
     main_codec, main_profile = audio_codec(main_audio.get("codec_name"), main_audio.get("profile"))
     container = _CONTAINER_ALIASES.get(
@@ -812,12 +819,12 @@ def build_media(probe, *, media_id, part_id, part_key, file_path, size, containe
     # matroska/webm demuxer cannot tell the two apart; the extension can, and it is what
     # a real PMS reports", and turned a `.webm` file's container into `webm`.
     #
-    # A real PMS reports `mkv`. Measured on the SAME FILE -- zen ratingKey 19769 and
-    # rex row 1002 are both `Tears of Steel.webm`, 571,346,576 bytes, vp8/vorbis
-    # 1920x800 -- where zen (1.42.2, the build rex reports) answers
+    # A real PMS reports `mkv`. Measured on the SAME FILE -- the 1.42.2 reference ratingKey
+    # 19769 and rex row 1002 are both `Tears of Steel.webm`, 571,346,576 bytes, vp8/vorbis
+    # 1920x800 -- where the 1.42.2 reference (the build rex reports) answers
     # `container: "mkv"` and `Part.container: "mkv"` while the Part's key keeps
-    # `file.webm`. No row of zen's 4,508 movie Media carries `webm` as a container at
-    # all. And the project's own corpus has said so since cycle 10:
+    # `file.webm`. No row of the 1.42.2 reference's 4,508 movie Media carries `webm` as a
+    # container at all. And the project's own corpus has said so since cycle 10:
     # `tests/fixtures/media/fun-1052407-0.json` is a `.webm` file whose RECORDED Media
     # -- what a real PMS wrote for it -- is `mkv`. Nothing caught it because
     # `test_mediainfo.py` compared every stream and never the container; it does now.
@@ -834,8 +841,8 @@ def build_media(probe, *, media_id, part_id, part_key, file_path, size, containe
     # `mov` for a `.mov` and `mp4` for the rest -- measured on plexscratch42 (1.42.2) with
     # the brand crossed against the extension: a `.mov` written by the MP4 muxer (brand
     # `isom`) is still `mov`, and an `.mp4` written by the QuickTime muxer (brand `qt  `)
-    # is still `mp4`. zen's one real `.mov` part is `mov` too. rex answered `mp4` for
-    # every file of the family.
+    # is still `mp4`. The 1.42.2 reference's one real `.mov` part is `mov` too. rex answered
+    # `mp4` for every file of the family.
     container = _container_for(container, container_hint)
     video_profile = _video_profile(video.get("profile")) if video else None
 
@@ -881,7 +888,7 @@ def normalize_media(media):
     Applied at build time and again when a catalog loads, because catalogs built
     before these were measured carry the old flags baked in.
 
-    Measured on fun across 2,558 rows:
+    Measured on the production server across 2,558 rows:
     * `optimizedForStreaming` and `has64bitOffsets` exist ONLY for an mp4/mov --
       absent on every mkv, mpegts and avi. On an mp4 the Media's
       `optimizedForStreaming` is an INTEGER and the Part's a boolean, and both
@@ -941,8 +948,8 @@ def normalize_media(media):
         part.pop("has64bitOffsets", None)
         # Cycle 54: every MPEG-TS Part carries `packetLength: 188` -- a Blu-ray `.m2ts`,
         # whose packets are really 192 bytes, included -- and no other container's does.
-        # Measured on zen's fourteen `.m2ts` parts and on plexscratch42's `.ts`, `.mts` and
-        # `.m2ts`; rex never sent it.
+        # Measured on the 1.42.2 reference's fourteen `.m2ts` parts and on plexscratch42's
+        # `.ts`, `.mts` and `.m2ts`; rex never sent it.
         if container == "mpegts":
             part["packetLength"] = 188
         else:

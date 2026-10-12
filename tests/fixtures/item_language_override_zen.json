@@ -1,5 +1,5 @@
 {
- "_provenance": "Cycle 83, measured on zen (PMS 1.42.2.10156): GET /library/metadata/{movie}?includePreferences=1 and the same on a show, with X-Plex-Language as keyed; the languageOverride Setting row as answered. Movie and show rows were identical in every language.",
+ "_provenance": "Cycle 83, measured on the 1.42.2 reference: GET /library/metadata/{movie}?includePreferences=1 and the same on a show, with X-Plex-Language as keyed; the languageOverride Setting row as answered. Movie and show rows were identical in every language.",
  "request": "/library/metadata/{ratingKey}?includePreferences=1",
  "Setting": {
   "en": {

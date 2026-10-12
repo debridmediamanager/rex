@@ -84,15 +84,15 @@ try:
           seed("--zurg-mount", "/mnt/zurg") == {"movie": [{"id": 1, "path": "/mnt/zurg/movies"}],
                                                  "show": [{"id": 2, "path": "/mnt/zurg/shows"}]},
           seed("--zurg-mount", "/mnt/zurg"))
-    # fun's two libraries, read from its rex.db: three zurgs, anime beside shows.
-    fun = seed("--mount", "/mnt/zurg", "--mount", "/mnt/zurg_ad/", "--mount", "/mnt/zurg_tb",
+    # A production server's two libraries, read from its rex.db: three zurgs, anime beside shows.
+    prod = seed("--mount", "/mnt/zurg", "--mount", "/mnt/zurg_ad/", "--mount", "/mnt/zurg_tb",
                "--shows", "shows", "--shows", "anime")
     check("several mounts and folders: each library holds every folder under every mount",
-          [row["path"] for row in fun["movie"]] == ["/mnt/zurg/movies", "/mnt/zurg_ad/movies", "/mnt/zurg_tb/movies"]
-          and [row["path"] for row in fun["show"]] == ["/mnt/zurg/shows", "/mnt/zurg/anime", "/mnt/zurg_ad/shows",
+          [row["path"] for row in prod["movie"]] == ["/mnt/zurg/movies", "/mnt/zurg_ad/movies", "/mnt/zurg_tb/movies"]
+          and [row["path"] for row in prod["show"]] == ["/mnt/zurg/shows", "/mnt/zurg/anime", "/mnt/zurg_ad/shows",
                                                        "/mnt/zurg_ad/anime", "/mnt/zurg_tb/shows", "/mnt/zurg_tb/anime"],
-          fun)
-    ids = [row["id"] for rows in fun.values() for row in rows]
+          prod)
+    ids = [row["id"] for rows in prod.values() for row in rows]
     check("and every location has its own id", len(set(ids)) == len(ids) == 9, ids)
 finally:
     shutil.rmtree(work, ignore_errors=True)

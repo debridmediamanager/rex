@@ -2,8 +2,8 @@
 """Cycle 84 (territories N and P): the two measured-not-fixed items cycle 83 left.
 
 1. A decision lists only the streams that PLAY. Plex Web's exact MDE request
-   (`tests/fixtures/decision_streams_selected.json`, `request_query`) on zen (1.42.2) lists the
-   first video, the selected audio and the selected subtitle -- `decision: ignore` with no
+   (`tests/fixtures/decision_streams_selected.json`, `request_query`) on the 1.42.2 reference lists
+   the first video, the selected audio and the selected subtitle -- `decision: ignore` with no
    location under `subtitles=none`, `location: sidecar-subs` under `subtitles=sidecar` -- and
    on plexscratch42 (1.42.2) a row whose subtitles are all unselected lists none of them, under
    every `subtitles` value. Both servers listed every stream of the file with
@@ -135,7 +135,7 @@ def main():
         for mode, expected in sorted(expect_selected.items()):
             st, rows = decision_streams(port, query, "1011", mode)
             ids = [s.get("id") for s in rows if s.get("streamType") == 3]
-            check("decision subtitles=%s lists the selected subtitle alone as zen does" % mode,
+            check("decision subtitles=%s lists the selected subtitle alone as the 1.42.2 reference does" % mode,
                   st == 200 and shape(rows) == expected and ids == ["1002004"],
                   "status=%s streams=%s subtitle ids=%s" % (st, shape(rows), ids))
         xq = [(k, "/library/metadata/1011" if k == "path" else "none" if k == "subtitles" else v)

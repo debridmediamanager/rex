@@ -1,5 +1,5 @@
 {
- "reference": "plexscratch42 PMS 1.42.2.10156 (fresh, unclaimed, no route out); kids 1.43.4 and zen 1.42.2 (GET only) as witnesses",
+ "reference": "plexscratch42 PMS 1.42.2.10156 (fresh, unclaimed, no route out); plexlab 1.43.4 and the 1.42.2 reference (GET only) as witnesses",
  "date": "2026-10-01",
  "note": "The ten framework peer directories (`/system/{channels,plugins}/{all,music,video,photos,applications}`) with no channel installed, unpaged and paged by header and by query. A full window (Start and Size, Size > 0) adds `totalSize=\"0\"` as the FIRST attribute and the X-Plex-Container-Start/Total-Size response headers (start echoed even past the end); a zero-size window (`Start=0`, `Size=0`) still pages; a partial window (Start or Size alone) or a non-numeric Start is the unpaged 130-byte document. Raw socket, keep-alive; Date dropped.",
  "exchanges": [

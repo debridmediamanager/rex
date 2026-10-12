@@ -20,7 +20,7 @@ fn tag_names(tags: Option<&Value>, limit: Option<usize>) -> HashSet<String> {
 
 /// `wanted.intersection(&tag_names(tags, None)).count()` without building the set: a
 /// lowercased set of every genre and every cast member of every candidate, per request,
-/// was most of an item page's Related shelf on fun (2026-10-11).
+/// was most of an item page's Related shelf on the production server (2026-10-11).
 fn shared_tags(wanted: &HashSet<String>, tags: Option<&Value>) -> usize {
     if wanted.is_empty() {
         return 0;
@@ -49,7 +49,8 @@ impl Runtime {
     /// fills this from its metadata agent": the binary counts the item's FIRST THREE
     /// genres and FIRST FOUR roles against each candidate's tags, a candidate needs AT
     /// LEAST TWO in common, and the list is shared-count descending then release date
-    /// descending, capped at 200 -- which reproduces zen's movie 19770 exactly.
+    /// descending, capped at 200 -- which reproduces the 1.42.2 reference's movie 19770
+    /// exactly.
     pub(super) fn similar_rows(&self, row: &Value) -> Vec<Value> {
         let genres = tag_names(row.get("Genre"), Some(3));
         let roles = tag_names(row.get("Role"), Some(4));
@@ -263,9 +264,9 @@ impl Runtime {
             None
         };
         let Some(row) = row else {
-            // Cycle 36, measured on kids and zen: the `related` leaf never resolves
-            // the row -- an unknown id is an empty hub container -- where `postplay`
-            // on the same id is a 404.
+            // Cycle 36, measured on plexlab and the 1.42.2 reference: the `related` leaf
+            // never resolves the row -- an unknown id is an empty hub container -- where
+            // `postplay` on the same id is a 404.
             if leaf == "related" {
                 return Response::json(200, self.hub_container(Map::new()));
             }
@@ -372,14 +373,14 @@ impl Runtime {
         }
     }
 
-    /// Cycle 55, measured on zen and kids: the `include*` blocks reach the FULL rows of
-    /// every hub and related list -- `/similar?includeExtras=1` carries `Extras` on each
-    /// row and `/related?includeRelated=1` a `Related` block inside its hub.  The
-    /// options are handed on one at a time, so a nested Related block is not expanded
-    /// again (the oracle's `expand_full_rows`).
+    /// Cycle 55, measured on the 1.42.2 reference and plexlab: the `include*` blocks
+    /// reach the FULL rows of every hub and related list -- `/similar?includeExtras=1`
+    /// carries `Extras` on each row and `/related?includeRelated=1` a `Related` block
+    /// inside its hub.  The options are handed on one at a time, so a nested Related
+    /// block is not expanded again (the oracle's `expand_full_rows`).
     pub(super) fn expand_full_rows(&self, rows: &mut [Value], query: &HashMap<String, String>) {
         // The oracle's `_include_int`: an optional `+`, digits, and the value ONE --
-        // kids draws no block for `-1` or `2` (cycle 83), only for `1`, `01`, `+1`.
+        // plexlab draws no block for `-1` or `2` (cycle 83), only for `1`, `01`, `+1`.
         let include_int = |name: &str| {
             query.get(name).is_some_and(|value| {
                 let digits = value.strip_prefix('+').unwrap_or(value);

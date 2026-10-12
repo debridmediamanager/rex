@@ -59,7 +59,8 @@ const SECONDARY_TITLES: &[(&str, &str)] = &[
 const SECONDARY_MEDIA_1_43: &[&str] = &["videoCodec", "audioCodec", "subtitleCodec", "audioLayout"];
 const SECONDARY_MEDIA: &[&str] = &["resolution", "audioLanguage", "subtitleLanguage"];
 
-/// `/library/sections/{id}/userRating` -- a FIXED scale on kids and zen alike.
+/// `/library/sections/{id}/userRating` -- a FIXED scale on plexlab and the 1.42.2
+/// reference alike.
 const USER_RATINGS: &[(&str, &str)] = &[
     ("10", "5 stars"),
     ("8", "4 stars"),
@@ -606,8 +607,9 @@ impl Runtime {
             Ok(rows) => rows.into_iter().map(Cow::Borrowed).collect(),
             Err(status) => return Response::error(status, "rex: bad filter"),
         };
-        // Cycle 83, measured on kids and zen: a TAG-TABLE axis under any leaf-count
-        // filter is EMPTY (any value and operator) where a column axis applies it.
+        // Cycle 83, measured on plexlab and the 1.42.2 reference: a TAG-TABLE axis
+        // under any leaf-count filter is EMPTY (any value and operator) where a column
+        // axis applies it.
         if lookup(SECONDARY_TAGS, leaf).is_some()
             && pairs.iter().any(|(name, _)| {
                 matches!(
@@ -1122,8 +1124,9 @@ impl Runtime {
         } else {
             self.axis_typed_rows(section_id, query, pairs)
                 .into_iter()
-                // Cycle 83, measured on zen: a SHOW is on this list by its LEAVES (507
-                // of 509, exactly `unwatchedLeaves=1`), not by its own `viewCount`.
+                // Cycle 83, measured on the 1.42.2 reference: a SHOW is on this list by
+                // its LEAVES (507 of 509, exactly `unwatchedLeaves=1`), not by its own
+                // `viewCount`.
                 .filter(|row| self.has_unwatched(row))
                 .collect()
         };

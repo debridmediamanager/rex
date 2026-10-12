@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
 """Cycle 83, territory A: what the native server answered differently from the oracle in
-A's localisation and item-settings sweeps, checked against zen's (1.42.2) own answers.
+A's localisation and item-settings sweeps, checked against the 1.42.2 reference's own answers.
 
 - an item's `languageOverride` picker under `X-Plex-Language: zh-TW` and `es-419` is the
-  translation table's list for that exact language (zen leads zh-TW with `tr-TR:土耳其文`
-  and names `en-GB` `Inglés (R. U.)` in es-419); the native server cut the language to its
-  base and drew `zh`'s simplified names and `es`'s list;
+  translation table's list for that exact language (the 1.42.2 reference leads zh-TW with
+  `tr-TR:土耳其文` and names `en-GB` `Inglés (R. U.)` in es-419); the native server cut the language to
+  its base and drew `zh`'s simplified names and `es`'s list;
 - `/query/parse` titles each Rule by the advertised Meta Field for (scope, field):
   `episode.addedAt` is "Date Episode Added", `hdr` "HDR", `show.unwatchedLeaves`
   "Unwatched Episodes"; the native server's hand table spelled the first wrong and left
   the other two empty.
 
-Both expectations are zen's recorded exchanges (`tests/fixtures/item_language_override_zen.json`,
+Both expectations are the 1.42.2 reference's recorded exchanges
+(`tests/fixtures/item_language_override_zen.json`,
 `tests/fixtures/query_parse_field_titles_zen.json`). Drives a real server process
-(`tests/server_command.py`): the native binary by default, the oracle with
-`REX_SERVER=python`.
+(`tests/server_command.py`): the native binary by default, the oracle with `REX_SERVER=python`.
 
     python3 tests/test_parity_cycle83_xa.py
 """
@@ -40,7 +40,8 @@ for name in ("REX_STATE", "REX_TOKEN", "TMDB_KEY"):
 HEADERS = {"Accept": "application/json", "X-Plex-Client-Identifier": "parity-cycle83-xa",
            "X-Plex-Product": "Plex Web", "X-Plex-Version": "4.147.1",
            "X-Plex-Platform": "Chrome"}
-# The fixture catalog's movie and show, which carry the same item settings as zen's.
+# The fixture catalog's movie and show, which carry the same item settings as the 1.42.2
+# reference's.
 ITEMS = ("1007", "20001")
 
 results = []
@@ -104,7 +105,7 @@ def language_override(port):
             settings = ((body or {}).get("MediaContainer", {}).get("Metadata") or [{}])[0] \
                 .get("Preferences", {}).get("Setting", []) if isinstance(body, dict) else []
             got = next((s for s in settings if s.get("id") == "languageOverride"), {})
-            check("item %s languageOverride enumValues under %s is zen's" % (item, language),
+            check("item %s languageOverride enumValues under %s is the 1.42.2 reference's" % (item, language),
                   status == 200 and got.get("enumValues") == row["enumValues"],
                   "%s %r" % (status, (got.get("enumValues") or "")[:160]))
 

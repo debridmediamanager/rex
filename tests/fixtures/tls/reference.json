@@ -1,8 +1,8 @@
 {
  "measured": "2026-09-18",
  "hosts": [
-  "zen 1.42.2 (claimed)",
-  "kids 1.43.4 (claimed)"
+  "the 1.42.2 reference (claimed)",
+  "plexlab 1.43.4 (claimed)"
  ],
  "port": 32400,
  "note": "A real PMS multiplexes TLS and plain HTTP on the same TCP port. The first byte decides: 0x16 is a TLS handshake record, anything else is read as HTTP.",

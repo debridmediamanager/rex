@@ -14,8 +14,8 @@ So this suite stands up the upstream instead of asking for one:
     rex     -- started with ZURG_URL pointed at the stub, on a generated catalog
                    whose Part files sit under `--zurg-mount`
 
-and then drives rex's real handler. The expectations are the values kids (1.43.4)
-and zen (1.42.2) answer for the same header against their own parts, recorded in
+and then drives rex's real handler. The expectations are the values plexlab (1.43.4)
+and the 1.42.2 reference answer for the same header against their own parts, recorded in
 `EXPECTED` below with the measurement beside each one.
 
     python3 tests/test_part_bytes.py
@@ -183,8 +183,9 @@ CATALOG = {
 }
 
 # Every cell below is what BOTH references answer for that header against their own
-# part, measured cycle 44 on kids 1.43.4 (part 1) and zen 1.42.2 (part 4075), and
-# expressed against this suite's own body size. `None` for a header means "send none".
+# part, measured cycle 44 on plexlab 1.43.4 (part 1) and the 1.42.2 reference (part
+# 4075), and expressed against this suite's own body size. `None` for a header means
+# "send none".
 #   (label, Range header or None, expected status, expected Content-Range,
 #    expected Content-Length, expected first byte offset or None for "whole body")
 N = SIZE
@@ -371,7 +372,7 @@ def main():
               0 < after - before <= 2000, "delta=%d (a 1000-byte read)" % (after - before))
 
         # -- an UNAVAILABLE file is a 404, not a 502 -------------------------------
-        # Measured on zen part 23595, whose `checkFiles=1` reports
+        # Measured on the 1.42.2 reference's part 23595, whose `checkFiles=1` reports
         # `accessible=false`/`exists=false`: the byte read is a plain 404 with the
         # binary refusal header set. rex answered 502 to a dead link and to a
         # network failure alike.

@@ -10,8 +10,8 @@ use super::*;
 
 /// Return an artwork path only when `row` owns it.  Cycle 50: borrowed hierarchy
 /// artwork keeps the owner's ratingKey in its path; all eleven owning seasons sampled
-/// on zen carried `thumb` on the `/children` container and all four borrowing ones
-/// omitted it.
+/// on the 1.42.2 reference carried `thumb` on the `/children` container and all four
+/// borrowing ones omitted it.
 fn owned_artwork(row: &Value, field: &str) -> Option<Value> {
     let value = row.get(field)?;
     let prefix = format!(
@@ -81,7 +81,8 @@ impl Runtime {
                     "season"
                 })),
             ),
-            // Measured on fun: a SEASON list is 65593 and an EPISODE list is 65592.
+            // Measured on the production server: a SEASON list is 65593 and an EPISODE
+            // list is 65592.
             (
                 "viewMode",
                 Some(json!(if is_episode_list || is_movie_leaves {

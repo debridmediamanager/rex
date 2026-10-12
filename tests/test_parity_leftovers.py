@@ -4,16 +4,16 @@ re-measured on a real PMS and checked here against the measured values.
 
 - container paging over its two transports: a lone header or query parameter never
   pages, and header and query merge PER PARAMETER, the header winning
-  (`tests/fixtures/paging_grammar.json`, kids);
+  (`tests/fixtures/paging_grammar.json`, plexlab);
 - the grammar of the two paging values: a Size is parsed whenever sent, a lone one
   included, a Start only beside a Size, as a 32-bit signed integer (the same fixture);
 - `/folder?parent=` that is not all digits (`1,2`, `-1`, `+7`) is the top folder, an empty
-  or unknown numeric one the empty list, and a REPEATED `parent` takes its last value (kids);
+  or unknown numeric one the empty list, and a REPEATED `parent` takes its last value (plexlab);
 - `/library/all` reads a repeated parameter's LAST value where the section grid ANDs it
-  (kids and zen);
+  (plexlab and the 1.42.2 reference);
 - an EMPTY collection carries no `childCount` on any row
   (`tests/fixtures/collection_empty_childcount.json`, plexscratch42);
-- a CLIP's `/allLeaves` and `/grandchildren` are 404s beside `/children`'s 400 (kids' clip
+- a CLIP's `/allLeaves` and `/grandchildren` are 404s beside `/children`'s 400 (plexlab's clip
   5; driven on `catalog_features.json`'s trailer 201);
 - a poster upload is served `image/jpeg` whatever its bytes, and the transcoder still refuses
   one that is no image (`tests/fixtures/upload_non_image.json`, plexscratch42);
@@ -165,7 +165,7 @@ def run(port):
         check("paging values on %s follow the measured int32 grammar" % family,
               family not in wrong, wrong.get(family))
 
-    # 3. `/folder?parent=`: kids answers `1,2` with the library's top folder (the earlier
+    # 3. `/folder?parent=`: plexlab answers `1,2` with the library's top folder (the earlier
     #    "empty 200" was a numeric parent naming no directory), and the last `parent` wins.
     top = [row.get("key") for row in mc(port, "/library/sections/2/folder").get("Metadata") or []]
     answers = {}
@@ -290,7 +290,7 @@ def run(port):
 
 
 def run_features(port):
-    # 6. A clip (kids' 5, a movie's trailer): `/children` the 89-byte 400, `/allLeaves` and
+    # 6. A clip (plexlab's 5, a movie's trailer): `/children` the 89-byte 400, `/allLeaves` and
     #    `/grandchildren` the 85-byte 404, paged or not. A movie's stay empty 200s.
     paging = "X-Plex-Container-Start=0&X-Plex-Container-Size=5"
     seen = {}

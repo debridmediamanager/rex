@@ -167,8 +167,8 @@ mod tests {
 
     #[test]
     fn a_miss_writes_its_own_answer_not_the_whole_cache() {
-        // fun, 2026-10-10: 10,056 answers averaging 15 KB, and every miss rewrote all of them.
-        // 1,500 copies of one real answer make a 24 MB cache.
+        // the production server, 2026-10-10: 10,056 answers averaging 15 KB, and every miss
+        // rewrote all of them. 1,500 copies of one real answer make a 24 MB cache.
         let raw = include_str!("../../tests/fixtures/tmdb_movie_details.json");
         let (key, value) = serde_json::from_str::<Map<String, Value>>(raw).unwrap().into_iter().next().unwrap();
         let legacy: Map<String, Value> = (0..1500)

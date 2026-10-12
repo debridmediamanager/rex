@@ -146,8 +146,8 @@ def png(width, height):
 # --- an empty body is never gzipped -------------------------------------------------
 
 def empty_body(port):
-    # The official client's `PUT /updater/check`, exactly as kids received it: the query
-    # in order (token dropped) and every header but `Host`. kids answered it with
+    # The official client's `PUT /updater/check`, exactly as plexlab received it: the query
+    # in order (token dropped) and every header but `Host`. plexlab answered it with
     # `Content-Length: 0`, `text/html`, no encoding pair, the length before the type.
     exchange = None
     with open(FIXTURE) as corpus:
@@ -210,7 +210,7 @@ def transcoder_cache(port):
     def cache(path):
         status, headers, _ = request(port, "GET", path)
         return status, dict((k.lower(), v) for k, v in headers).get("cache-control")
-    # kids, 2026-09-30, repeated: 200 `max-age=259200` through the transcoder, 200
+    # plexlab, 2026-09-30, repeated: 200 `max-age=259200` through the transcoder, 200
     # `no-cache` read directly.
     through = cache("/photo/:/transcode?width=100&height=100&url=%s"
                     % urllib.parse.quote("/:/resources/movie.png", safe=""))
@@ -256,7 +256,7 @@ def collection_section_id(port):
 
 # --- a bare OPTIONS on a multi-segment path --------------------------------------------
 
-# Measured 2026-09-30 on kids (1.43.4) and, for the writers kids must not be sent,
+# Measured 2026-09-30 on plexlab (1.43.4) and, for the writers plexlab must not be sent,
 # plexscratch42 (1.42.2): (status, content type) for a bare OPTIONS with no parameters.
 OPTIONS_MEASURED = {
     "/hubs/home/onDeck": (404, "text/html"),
@@ -315,7 +315,7 @@ def options(port):
 # --- /services/codecs ---------------------------------------------------------------------
 
 def services_codecs(port):
-    # kids (1.43.4), claimed like this server, 2026-09-30: GET is the 403 (cycle 45).
+    # plexlab (1.43.4), claimed like this server, 2026-09-30: GET is the 403 (cycle 45).
     status = request(port, "GET", "/services/codecs")[0]
     check("GET /services/codecs is the claimed server's 403", status == 403, status)
 
@@ -334,7 +334,7 @@ def lower_case(port):
         "pipelined before a GET": b"get /identity HTTP/1.1\r\nHost: h\r\n\r\n"
                                   b"GET /identity HTTP/1.1\r\nHost: h\r\n\r\n",
     }
-    # kids and plexscratch42, 2026-09-30: nothing written and EOF at 0.0 s for every one.
+    # plexlab and plexscratch42, 2026-09-30: nothing written and EOF at 0.0 s for every one.
     got = {}
     for label, data in cases.items():
         received, ended, took = raw_exchange(port, data, wait=5)
@@ -342,7 +342,7 @@ def lower_case(port):
     check("a lower-case first request line draws nothing and closes at once",
           all(value == (b"", "EOF", True) for value in got.values()),
           {k: v for k, v in got.items() if v != (b"", "EOF", True)})
-    # After a completed request the same token is the unknown-method 500 (cycle 50): kids,
+    # After a completed request the same token is the unknown-method 500 (cycle 50): plexlab,
     # 2026-09-30, the second line sent half a second after the first was answered.
     sock = socket.create_connection(("127.0.0.1", port), timeout=10)
     received = b""
@@ -368,7 +368,7 @@ def lower_case(port):
 # --- the idle keep-alive drop ------------------------------------------------------------
 
 def idle_drop(port, out):
-    # kids, 2026-09-30: `GET /identity` on a kept-alive socket, then silence -- the 200,
+    # plexlab, 2026-09-30: `GET /identity` on a kept-alive socket, then silence -- the 200,
     # then EOF at 20.0 s with nothing more written.
     received, ended, took = raw_exchange(
         port, b"GET /identity HTTP/1.1\r\nHost: h\r\n\r\n", wait=30)

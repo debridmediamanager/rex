@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""A library's Recommended page projects only the rows its shelves show (fun, 2026-10-11).
+"""A library's Recommended page projects only the rows its shelves show (the production server, 2026-10-11).
 
-fun-rex, fed by zurg: 591 shows, 27,040 episodes and 3,346 movies. Plex for Mac's
+The production rex, fed by zurg: 591 shows, 27,040 episodes and 3,346 movies. Plex for Mac's
 Recommended tab (`/hubs/sections/{id}?count=12`) took 12-37 s and the Library tab queued
 behind it on the runtime lock: every shelf copied the whole section and projected every
 row of it -- Recently Released all 27k episodes -- before keeping 12. A filtered shelf
 listing (`unwatched=1&audienceRating>=7`) copied the whole row once per filter rule.
 
-The library is fun's first 120 shows (`rust/tests/fixtures/fun_show_shape.json`, every
-episode a copy of one real episode row, `fixtures/fun_episode_row.json`) and 1,500 copies
+The library is the production server's first 120 shows (`rust/tests/fixtures/fun_show_shape.json`,
+every episode a copy of one real episode row, `fixtures/fun_episode_row.json`) and 1,500 copies
 of one real movie row (`fixtures/fun_movie_row.json`). Bounds are fractions of an unpaged
 listing of the same section measured first in the same run, so a slower host moves them.
-Measured on zen: unfixed, TV hubs cost 1.71 units, movie hubs 6.34 and the filtered page
+Measured on the test host: unfixed, TV hubs cost 1.71 units, movie hubs 6.34 and the filtered page
 0.52; fixed, 0.02, 0.06 and 0.02.
 
     python3 tests/test_perf_section_hubs.py
@@ -32,7 +32,7 @@ CLIENT = ("&includeLibraryPlaylists=1&includeStations=1&includeRecentChannels=1&
 
 
 def catalog(directory):
-    """fun's shows, plus fun's movie row repeated with spread dates, ratings and genres."""
+    """The production server's shows, plus the production server's movie row repeated with spread dates, ratings and genres."""
     path, episodes = show_catalog(directory)
     data = json.load(open(path))
     movie = json.load(open(os.path.join(HERE, "fixtures", "fun_movie_row.json")))

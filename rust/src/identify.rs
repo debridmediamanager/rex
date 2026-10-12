@@ -74,8 +74,9 @@ static EDITION: LazyLock<Regex> = LazyLock::new(|| {
 });
 // An episode named without `SxxEyy`: a bare number (`Mysterious Love E06 1080p`), the NxNN
 // form (`Some Day or One Day - 1x02`), or only inside the brackets `parse_release` drops (a
-// disc rip's `00000 (E01-The.Arrangement).m2ts`, Suits.S03 on fun). zurg files these as
-// shows since 2026-10-11, and with no number here the feed placed none of them.
+// disc rip's `00000 (E01-The.Arrangement).m2ts`, Suits.S03 on the production server). zurg
+// files these as shows since 2026-10-11, and with no number here the feed placed none of
+// them.
 static LOOSE_NX: LazyLock<Regex> =
     LazyLock::new(|| re(r"(?i)(?:^|[\s._\-\[(])(\d{1,2})x(\d{2})(?:[\s._\-\])]|$)"));
 static LOOSE_E: LazyLock<Regex> =
@@ -230,8 +231,8 @@ pub fn tmdb_details(t: &dyn TmdbSource, kind: &str, id: i64) -> Option<Value> {
 
 /// (kind, tmdb id) of an IMDb id, from TMDB's /find. An episode's or a season's id
 /// names its show: the id DMM knows a season pack by is usually its first episode's
-/// (271 of the 285 shows fun's rex left unmatched on 2026-10-11, Arrow's tt2340185
-/// among them, were `tv_episode_results`).
+/// (271 of the 285 shows the production rex left unmatched on 2026-10-11, Arrow's
+/// tt2340185 among them, were `tv_episode_results`).
 pub fn tmdb_find_imdb(t: &dyn TmdbSource, imdb: &str) -> (Option<String>, Option<i64>) {
     let found = t.get(
         &format!("find/{imdb}"),
@@ -359,7 +360,7 @@ pub struct PlexAnswer {
 }
 
 /// The provider's own match for a release name, as a real PMS asks for it. plexlab's
-/// outbound capture (kids, 1.43.4) holds the body a scan sends, `type`, `title`,
+/// outbound capture (plexlab, 1.43.4) holds the body a scan sends, `type`, `title`,
 /// `year`, `filename` and the server's own file `hash`, which rex, reading no
 /// file itself, cannot compute; without it 184 of 198 labelled movies still matched right.
 pub fn plex_match_title(
@@ -463,9 +464,9 @@ pub struct Identifier<'a> {
 impl Identifier<'_> {
     /// Plex and TMDB named different shows, and the release's season is one only TMDB's
     /// has. Plex's matcher answers one show for a bare title: for
-    /// `The.Tom.and.Jerry.Show.S02E05` (zen, 2026-10-10) the 1975 series, one season
-    /// long, where TMDB's first hit is the 2014 one with five; every episode then sat
-    /// under a show with no such season, with no episode metadata.
+    /// `The.Tom.and.Jerry.Show.S02E05` (the test host, 2026-10-10) the 1975 series, one
+    /// season long, where TMDB's first hit is the 2014 one with five; every episode then
+    /// sat under a show with no such season, with no episode metadata.
     fn season_only_tmdb_has(
         &self,
         answer: &PlexAnswer,
@@ -721,7 +722,8 @@ mod tests {
 
     // Python's `(?![\s._-]?E\d)` refuses `S01` followed by an episode and backtracks;
     // answers taken from `identify.parse_name`.
-    /// Names zurg filed under movies on zen and fun until 2026-10-11, each a series.
+    /// Names zurg filed under movies on the test host and in production until 2026-10-11,
+    /// each a series.
     #[test]
     fn identify_loose_episode_numbers() {
         for (name, title, season, episode) in [

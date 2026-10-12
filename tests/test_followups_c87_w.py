@@ -3,15 +3,16 @@
 
 - `GET /media/providers/metadata/{id}` and `/media/providers/metadata/group/{id}` answer
   the listing's own row as a one-row container, paged like the listing; a non-numeric id
-  is a 400 and an unknown one a 404. Driven by zen's recorded exchanges
+  is a 400 and an unknown one a 404. Driven by the 1.42.2 reference's recorded exchanges
   (`tests/fixtures/c87_w_provider_ids.json`). The oracle had this since cycle 44; the
   native port 404'd all of it.
 - 4.162.1's section editor sends `action=create|update` to `/system/agents?mediaType=N`
-  and `/system/scanners/{N}`. 1.42.2 (zen, the version rex reports) ignores it; only
-  1.43.4 switches to a different list. Guards, measured on zen 2026-10-01.
+  and `/system/scanners/{N}`. 1.42.2 (the 1.42.2 reference, the version rex reports) ignores
+  it; only 1.43.4 switches to a different list. Guards, measured on the 1.42.2 reference
+  2026-10-01.
 - The clearLogo/squareArt artwork panes are gated on a server `shortVersion` of 1.43.0,
-  so a 1.42.2 server is never asked; its answers are pinned anyway (zen: an empty
-  `clearLogos` container, a 404 `squareArts`).
+  so a 1.42.2 server is never asked; its answers are pinned anyway (the 1.42.2 reference: an
+  empty `clearLogos` container, a 404 `squareArts`).
 
 Drives a real server process (`tests/server_command.py`): the native binary by
 default, the oracle with `REX_SERVER=python`.
@@ -105,12 +106,12 @@ def provider_ids(port):
         status, body = request(port, exchange["method"], exchange["path"], exchange["headers"])
         want = exchange["body"]
         if want is None:
-            check("%s is a %d (zen)" % (exchange["path"], exchange["status"]),
+            check("%s is a %d (the 1.42.2 reference)" % (exchange["path"], exchange["status"]),
                   status == exchange["status"], status)
             continue
-        # The rows are the four built-in modern agents, which rex holds under zen's
-        # ids for movie/series/music, so the whole one-row container is comparable.
-        check("%s is zen's one-row container" % exchange["path"],
+        # The rows are the four built-in modern agents, which rex holds under the 1.42.2
+        # reference's ids for movie/series/music, so the whole one-row container is comparable.
+        check("%s is the 1.42.2 reference's one-row container" % exchange["path"],
               status == exchange["status"] and body == want, (status, body))
 
 
@@ -119,14 +120,14 @@ def action_grammar(port):
     for action in ("create", "update"):
         status, body = request(port, "GET", "/system/agents?mediaType=1&action=" + action)
         rows = ((body or {}).get("MediaContainer") or {}).get("Agent") or []
-        check("/system/agents?mediaType=1&action=%s ignores action on 1.42.2 (zen: 5 rows)"
+        check("/system/agents?mediaType=1&action=%s ignores action on 1.42.2 (the 1.42.2 reference: 5 rows)"
               % action, status == 200 and body == bare and len(rows) == 5, (status, len(rows)))
     _, bare = request(port, "GET", "/system/scanners/1")
     status, body = request(port, "GET", "/system/scanners/1?action=create")
     # The list is XML whatever Accept says (cycle 87, W6): read the rows out of it.
     names = re.findall(r'<Scanner name="([^"]*)"/>', (body or b"").decode("utf-8")) \
         if isinstance(body, bytes) else []
-    check("/system/scanners/1?action=create ignores action on 1.42.2 (zen: 4 scanners)",
+    check("/system/scanners/1?action=create ignores action on 1.42.2 (the 1.42.2 reference: 4 scanners)",
           status == 200 and body == bare and names == [
               "Plex Movie", "Plex Movie Scanner", "Plex Video Files Scanner", "Plex Video Files"],
           (status, names))
@@ -135,11 +136,11 @@ def action_grammar(port):
 def artwork_kinds(port):
     status, body = request(port, "GET", "/library/metadata/1007/clearLogos")
     container = (body or {}).get("MediaContainer") or {} if isinstance(body, dict) else {}
-    check("clearLogos on 1.42.2 is an empty 200 container (zen)",
+    check("clearLogos on 1.42.2 is an empty 200 container (the 1.42.2 reference)",
           status == 200 and container.get("size") == 0 and "Metadata" not in container,
           (status, body))
     status, _ = request(port, "GET", "/library/metadata/1007/squareArts")
-    check("squareArts on 1.42.2 is a 404 (zen)", status == 404, status)
+    check("squareArts on 1.42.2 is a 404 (the 1.42.2 reference)", status == 404, status)
 
 
 def main():

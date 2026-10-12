@@ -221,11 +221,12 @@ impl Runtime {
         query: &HashMap<String, String>,
         pairs: &[(String, String)],
     ) -> Response {
-        // Cycle 83, measured on kids (1.43.4) and zen (1.42.2): this query reads each
-        // parameter ONCE, its LAST occurrence -- `guid=<a>&guid=<b>` is the <b> row,
-        // `year=2010&type=1&year=2008` the 2008 movie, `type=2&type=1` the movies, and a
-        // bad value before a good one is never parsed. A section listing ANDs a repeated
-        // key instead; the filter pass here ran that conjunction over every pair.
+        // Cycle 83, measured on plexlab (1.43.4) and the 1.42.2 reference: this query
+        // reads each parameter ONCE, its LAST occurrence -- `guid=<a>&guid=<b>` is the
+        // <b> row, `year=2010&type=1&year=2008` the 2008 movie, `type=2&type=1` the
+        // movies, and a bad value before a good one is never parsed. A section listing
+        // ANDs a repeated key instead; the filter pass here ran that conjunction over
+        // every pair.
         let pairs = &pairs
             .iter()
             .enumerate()
@@ -350,7 +351,7 @@ impl Runtime {
             "movie"
         };
         // Cycle 83: `guid=` is the grammar's own field (a case-sensitive prefix whose
-        // comma is OR -- kids answers `guid=<a>,<b>` with both rows), so no private
+        // comma is OR -- plexlab answers `guid=<a>,<b>` with both rows), so no private
         // prefix pass reads it here any more.
         let mut rows = match self.filter_rows(source, pairs, section_type) {
             Ok(rows) => rows,

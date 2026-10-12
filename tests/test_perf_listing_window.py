@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""A paged section listing projects only its page, on fun's library (2026-10-10).
+"""A paged section listing projects only its page, on the production server's library (2026-10-10).
 
-fun-rex, fed by zurg: 361 shows, 698 seasons and 13,509 episodes. A page of 50 movies
+The production rex, fed by zurg: 361 shows, 698 seasons and 13,509 episodes. A page of 50 movies
 took 9 s and a `X-Plex-Container-Size=0` episode count over 30 s: the section listing
 projected EVERY row of the library and `page_fields` sliced the page out afterwards.
-The shape is fun's (`rust/tests/fixtures/fun_show_shape.json`); every episode is a copy of one real
-episode row from it (`fixtures/fun_episode_row.json`, Media and cast included).
+The shape is the production server's (`rust/tests/fixtures/fun_show_shape.json`); every episode is a
+copy of one real episode row from it (`fixtures/fun_episode_row.json`, Media and cast included).
 
-The library is fun's first 120 shows (about 4,500 episodes): an unpaged listing of all
-13,509 projected rows held 5 GB, and two of them at once were killed by zen's OOM killer.
-The bounds are fractions of one unpaged listing measured first in the same run, so a
+The library is the production server's first 120 shows (about 4,500 episodes): an unpaged listing of
+all 13,509 projected rows held 5 GB, and two of them at once were killed by the test host's OOM
+killer. The bounds are fractions of one unpaged listing measured first in the same run, so a
 slower host moves them with it. The unit is one unpaged episode listing. Measured on
-zen: unfixed, a count and the last page cost 0.46 units each; windowed, 0.01-0.02.
+the test host: unfixed, a count and the last page cost 0.46 units each; windowed, 0.01-0.02.
 
     python3 tests/test_perf_listing_window.py
 """
@@ -68,7 +68,7 @@ def request(port, path):
 
 
 def catalog(directory):
-    """catalog_ui.json plus fun's shows, seasons and episodes in section 2."""
+    """catalog_ui.json plus the production server's shows, seasons and episodes in section 2."""
     data = json.load(open(os.path.join(HERE, "catalog_ui.json")))
     shape = json.load(open(os.path.join(ROOT, "rust", "tests", "fixtures", "fun_show_shape.json")))[:SHOWS]
     episode = json.load(open(os.path.join(HERE, "fixtures", "fun_episode_row.json")))

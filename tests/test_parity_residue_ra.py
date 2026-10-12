@@ -5,14 +5,14 @@ lockstep and neutralising what is random or per-run by measurement.
 
 Each check asserts the MEASURED answer, not the other server's:
 
-- a refusal at `/system/agents` orders its length before its type (kids, 1.43.4:
+- a refusal at `/system/agents` orders its length before its type (plexlab, 1.43.4:
   `?mediaType=abc` is the 89-byte 400), although the container there is type-first;
-- an embedded stream's 501 carries the reason phrase `Not Implemented` (kids), and an
+- an embedded stream's 501 carries the reason phrase `Not Implemented` (plexlab), and an
   uploaded sidecar's 200 orders its length before its type (plexscratch42, cycle 74);
 - the photo transcoder (and ultrablur through it) 500s an uploaded poster whose bytes are
   not an image, the 200-that-does-not-decode rule of cycle 52;
 - a `random="1"` hub shelf is a random sample of its whole set in random order, held per
-  (shelf, count) for the life of the process (zen, cycles 28 and 30).
+  (shelf, count) for the life of the process (the 1.42.2 reference, cycles 28 and 30).
 
 Drives a real server process (`tests/server_command.py`): the native binary by
 default, the oracle with `REX_SERVER=python`.
@@ -119,7 +119,7 @@ def stop(process):
         process.kill()
 
 
-# Measured 2026-09-30 on kids (1.43.4), raw socket, Connection: close.
+# Measured 2026-09-30 on plexlab (1.43.4), raw socket, Connection: close.
 ERROR_ORDER = ["X-Plex-Protocol", "Content-Length", "Content-Type", "Connection",
                "Cache-Control", "Date"]
 
@@ -134,7 +134,7 @@ def run(port):
           status == 200 and order(names)[:3] == ["X-Plex-Protocol", "Content-Type",
                                                  "Content-Length"], (status, names))
 
-    # An EMBEDDED stream (1007's first) is the 501, measured on kids for the bare id,
+    # An EMBEDDED stream (1007's first) is the 501, measured on plexlab for the bare id,
     # `.srt` and `.vtt` alike: `HTTP/1.1 501 Not Implemented`, 97 bytes, length first.
     for suffix in ("", ".srt", ".vtt"):
         status, reason, names, _, body = raw(port, "GET", "/library/streams/1007001" + suffix)
@@ -161,9 +161,9 @@ def run(port):
                   and values.get("content-type") == "text/html" and order(names) == ERROR_ORDER,
                   (status, reason, names, body[:40]))
 
-    # The photo transcoder DECODES what the path serves (cycle 52, kids and zen): only a
-    # 200 whose bytes are not an image is its 500, and ultrablur resolves its url the same
-    # way (cycle 70; kids answers `url=/identity` with that 109-byte 500). An uploaded
+    # The photo transcoder DECODES what the path serves (cycle 52, plexlab and the 1.42.2
+    # reference): only a 200 whose bytes are not an image is its 500, and ultrablur resolves its url
+    # the same way (cycle 70; plexlab answers `url=/identity` with that 109-byte 500). An uploaded
     # poster whose bytes are no image is such a 200 on the direct path.
     def thumb():
         rows = json.loads(raw(port, "GET", "/library/metadata/1007")[4])["MediaContainer"]
@@ -216,7 +216,7 @@ def shelf(port, count):
 
 
 def run_random_shelves(starts=6):
-    """Cycles 28 and 30 (zen): a `random="1"` shelf is a random SAMPLE of its whole set in
+    """Cycles 28 and 30 (the 1.42.2 reference): a `random="1"` shelf is a random SAMPLE of its whole set in
     random order, stable per (shelf, `count=`) for the life of the process. Over six fresh
     processes a real sampler repeats one six-row order every time with p = 720**-5 and one
     two-row sample with p = 15**-5; a sorted head does both every time."""

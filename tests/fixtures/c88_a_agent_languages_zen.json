@@ -1,5 +1,5 @@
 {
- "reference": "zen PMS 1.42.2.10156 (claimed, GET only); identical on kids PMS 1.43.4 for mediaType=1",
+ "reference": "The 1.42.2 reference (PMS 1.42.2.10156) (claimed, GET only); identical on plexlab PMS 1.43.4 for mediaType=1",
  "date": "2026-10-02",
  "request_headers": {
   "Accept": "application/xml",

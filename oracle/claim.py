@@ -41,16 +41,18 @@ SERVERS_URL = "https://plex.tv/servers.xml"
 PUBSUB_URL = "https://pubsub.plex.tv/sub/eventsource/%s/%s"
 ACCESS_TOKENS_URL = "https://plex.tv/api/v2/server/access_tokens"
 
-# Measured in zen's own 1.42.2 PMS log (tests/fixtures/plextv_access_tokens_s1422.json): a
-# request carrying a token the server does not hold makes it re-read the list plex.tv keeps of
-# every token allowed in -- `?auth_token=<server token>&unknownToken=<that token>` -- unless the
-# last read finished about 6 s ago or less ("Auth: tokens were refreshed recently enough"). All
-# 586 reads in four hours were prompted that way; none ran on a timer.
+# Measured in the 1.42.2 reference's own 1.42.2 PMS log
+# (tests/fixtures/plextv_access_tokens_s1422.json): a request carrying a token the server does
+# not hold makes it re-read the list plex.tv keeps of every token allowed in --
+# `?auth_token=<server token>&unknownToken=<that token>` -- unless the last read finished about 6
+# s ago or less ("Auth: tokens were refreshed recently enough"). All 586 reads in four hours were
+# prompted that way; none ran on a timer.
 ACCESS_REFRESH_WINDOW = 6
 
-# Measured on a real 1.42.2 PMS claimed on zen (tests/fixtures/plextv_registration_s1422.json):
-# its EventSourceClient gives up on a pubsub stream that says nothing for 20 s -- plex.tv
-# sends a `: -1` comment every 10 s -- and retries a dropped one after 15 s.
+# Measured on a real 1.42.2 PMS claimed on the 1.42.2 reference
+# (tests/fixtures/plextv_registration_s1422.json): its EventSourceClient gives up on a pubsub
+# stream that says nothing for 20 s -- plex.tv sends a `: -1` comment every 10 s -- and retries a
+# dropped one after 15 s.
 PUBSUB_TIMEOUT = 20
 PUBSUB_RETRY = 15
 

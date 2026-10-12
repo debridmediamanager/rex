@@ -4,6 +4,6 @@
   {"server": "kids", "version": "1.43.4", "ping": "c94d", "answer": ["8a0463393464"], "then_ping": "second", "then_answer": ["8a067365636f6e64"]},
   {"server": "kids", "version": "1.43.4", "ping": "", "answer": ["8a00"], "then_ping": "second", "then_answer": ["8a067365636f6e64"]},
   {"server": "zen", "version": "1.42.2", "ping": "c94d", "answer": ["8a0463393464"], "then_ping": "second", "then_answer": ["8a067365636f6e64"]},
-  {"server": "zen", "version": "1.42.2", "ping": "", "answer": ["8a00", "8800"], "then_ping": "second", "then_answer": [], "note": "zen closed (empty close frame) after ponging an empty ping, twice of three tries; kids never did. Recorded, not emulated."}
+  {"server": "zen", "version": "1.42.2", "ping": "", "answer": ["8a00", "8800"], "then_ping": "second", "then_answer": [], "note": "The 1.42.2 reference closed (empty close frame) after ponging an empty ping, twice of three tries; plexlab never did. Recorded, not emulated."}
  ]
 }

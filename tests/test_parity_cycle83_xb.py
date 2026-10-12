@@ -2,7 +2,7 @@
 """Cycle 83, territory B: what the native server got wrong that B's regressions caught.
 
 - An item's `/themes` and `/clearLogos` candidate rows are `Track` and `Photo` elements
-  (`tests/fixtures/candidate_rows_kids.json`, recorded on kids). python-plexapi's
+  (`tests/fixtures/candidate_rows_kids.json`, recorded on plexlab). python-plexapi's
   `themes()` and `logos()` keep only rows of their own tag, so the native server's default
   `Video` element turned an uploaded theme or logo into an empty list
   (`plexapi/mixins/resources.py`, `fetchItems(..., cls=media.Theme|media.Logo)`).
@@ -118,7 +118,7 @@ def measured_elements():
 
 def run(port):
     measured = measured_elements()
-    check("fixture: kids answers Track rows on /themes and Photo rows on /clearLogos",
+    check("fixture: plexlab answers Track rows on /themes and Photo rows on /clearLogos",
           measured == {"themes": {"Track"}, "clearLogos": {"Photo"}}, measured)
     for leaf, body in (("themes", MP3), ("clearLogos", PNG)):
         status, _ = request(port, "POST", "/library/metadata/%s/%s" % (MOVIE, leaf), body)
@@ -129,7 +129,7 @@ def run(port):
         check("GET /%s lists the upload as one candidate" % leaf, len(uploads) == 1,
               raw[:300])
         tags = sorted({row.tag for row in uploads})
-        check("the uploaded %s candidate is a %s element, as kids' rows are"
+        check("the uploaded %s candidate is a %s element, as plexlab's rows are"
               % (leaf, "/".join(sorted(measured[leaf]))),
               uploads and set(tags) == measured[leaf], tags)
         check("the uploaded %s candidate is selected" % leaf,
@@ -312,11 +312,11 @@ def decision_language_checks(port):
                        for row in measured["decision"][language]} for language in ("en", "fr")}
     items = {language: {(row["streamType"], row["languageTag"]): row["language"]
                         for row in measured["item"][language]} for language in ("en", "fr")}
-    check("fixture: zen's decision names the French track Français under en and fr",
+    check("fixture: the 1.42.2 reference's decision names the French track Français under en and fr",
           tags["en"][(2, "fr")] == tags["fr"][(2, "fr")] == "Français", tags)
     check("fixture: ... and the English subtitle English under fr, where the item read says Anglais",
           tags["fr"][(3, "en")] == "English" and items["fr"][(3, "en")] == "Anglais", (tags, items))
-    # Cycle 84: a decision lists only the SELECTED subtitle (zen, plexscratch42;
+    # Cycle 84: a decision lists only the SELECTED subtitle (the 1.42.2 reference, plexscratch42;
     # `tests/fixtures/decision_streams_selected.json`), so each subtitle is selected in turn on
     # part 10110 -- 1002003 English, 1002004 French -- and unselected again afterwards.
     for subtitle, sub_tag, sub_name in (("1002003", "en", "English"), ("1002004", "fr", "Français")):

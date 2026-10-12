@@ -1,5 +1,5 @@
 {
- "_about": "Two real zurg library entries (zen's zurg, 2026-10-09): the release name, its info hash, the IMDb id zurg identified it as, the file's size and the ffprobe zurg stored for it -- go-ffprobe's ProbeData, the shape `/api/library/entry` hands over as `media_info`. The probed URL (`format.filename`) is redacted. `signed_path` is not a real token.",
+ "_about": "Two real zurg library entries (the test host's zurg, 2026-10-09): the release name, its info hash, the IMDb id zurg identified it as, the file's size and the ffprobe zurg stored for it -- go-ffprobe's ProbeData, the shape `/api/library/entry` hands over as `media_info`. The probed URL (`format.filename`) is redacted. `signed_path` is not a real token.",
  "entries": {
   "episode": {
    "release": "American.Dad!.S05E07.Phantom.of.the.Telethon.1080p.DSNP.WEB.DL.DDP5.1.H.264-AndreMor.mkv",

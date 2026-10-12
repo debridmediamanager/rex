@@ -3,8 +3,8 @@
 checked against the exchange a real PMS gave for the same request.
 
 The expected values live in `tests/fixtures/parity_sweep_vb.jsonl`, one redacted
-exchange per line, recorded off kids (1.43.4) or zen (1.42.2). A reference's ratingKey is
-mapped onto the fixture catalog's item of the same kind before the request is replayed.
+exchange per line, recorded off plexlab (1.43.4) or the 1.42.2 reference. A reference's ratingKey
+is mapped onto the fixture catalog's item of the same kind before the request is replayed.
 
 Drives a real server process (`tests/server_command.py`): the native binary by
 default, the oracle with `REX_SERVER=python`.
@@ -135,7 +135,7 @@ def run(port):
     # 3. `/children` of a leaf -- an episode as well as a movie -- is the 400.
     replay(port, "leaf-children", "a leaf's children")
 
-    # 4. A client's FIRST request registers its device before the answer: kids' first
+    # 4. A client's FIRST request registers its device before the answer: plexlab's first
     #    `GET /devices` from a new identifier already lists that identifier's row.
     for row in fixture("devices-own-row"):
         req, ref = row["request"], row["response"]
@@ -228,8 +228,8 @@ def run_gate():
 
 def run_last(port):
     # 4b. ...so a first request whose platform is a NUMBER lists the row that the measured
-    #     `std::bad_cast` 500 (cycle 49, kids and zen) is about. Never sent to a reference;
-    #     it leaves the list broken, so it runs last.
+    #     `std::bad_cast` 500 (cycle 49, plexlab and the 1.42.2 reference) is about. Never sent to
+    #     a reference; it leaves the list broken, so it runs last.
     status, _, _ = send(port, "GET", "/devices", [
         ("Accept", "application/json"), ("X-Plex-Client-Identifier", "c83-vb-numeric"),
         ("X-Plex-Platform", "0")])

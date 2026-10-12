@@ -11,7 +11,8 @@ are changing; replay the client's exact request before altering behavior.
   `canNormalizeLoudness`, `gainOffset`, `loudness`, `loudnessAnalysisVersion`, `lra`, `peak` and
   `threshold` on every video audio stream; 1.42.2 writes none and its binary has no
   `canNormalizeLoudness`. python-plexapi 4.18.3 reads the flag. Emulating 1.42.2, leave them out.
-- **A copied rendered walk can name the wrong browser.** Cycle 81's `windows81/*.py` drove kids'
+- **A copied rendered walk can name the wrong browser.** Cycle 81's `windows81/*.py` drove the lab
+  host's
   9224 while its report said Windows. Read `drv.CDP` (and the user agent at `/json/version`)
   before calling a walk "Windows"; `cycle_mk_next.sh` now refuses 9224.
 - **A raw-socket check that expects a close must accept a reset.** Late bytes that reach a socket
@@ -241,7 +242,7 @@ are changing; replay the client's exact request before altering behavior.
   own token it admits every token in `GET plex.tv/api/v2/server/access_tokens?auth_token=
   <server token>` (the owner's devices, shared users; `tokenDisabled="1"` rows refused),
   read at a claimed start and re-read for an unknown token -- with `&unknownToken=` --
-  unless the last read finished about 6 s ago (zen's PMS log,
+  unless the last read finished about 6 s ago (the 1.42.2 reference's PMS log,
   `tests/fixtures/plextv_access_tokens_s1422.json`). Nothing re-reads it on a timer, so a
   device that signs in later is let in by its first request. rex gates a real claim
   this way on both servers; `--assert-claimed` is not a claim and stays open.
@@ -460,7 +461,7 @@ are changing; replay the client's exact request before altering behavior.
   movie's.
 - **A Media, Part or Stream attribute is measured against a real file, never read off
   ffprobe's names.** `tests/test_mediainfo.py` converts 46 recorded probes and compares them
-  with what fun and the reference wrote for the same file; add a probe to
+  with what the production server and the reference wrote for the same file; add a probe to
   `tests/fixtures/media/` before changing a rule. DTS is `dca` (`dca-ma` on the Media for
   DTS-HD MA), a Blu-ray subtitle `pgs`, a language is named in itself with its 639-2/T code and
   639-1 tag (`languages.json`), the Media's audio fields name the WIDEST track, the resolution
@@ -510,9 +511,11 @@ are changing; replay the client's exact request before altering behavior.
   suite then runs against a server it has already written to. The suite's own gate checks bind
   **32599** -- leave it free, or they measure whatever else is listening there.
 
-- **zen runs Plex 1.42.2 — the exact build rex reports — and kids 1.43.4.** With both, a
-  field only kids sends is a version difference and a rule both answer is not; fun is a third
-  opinion, not the only second one. zen is production: GET and HEAD only, like fun.
+- **The 1.42.2 reference runs Plex 1.42.2 — the exact build rex reports — and plexlab 1.43.4.** With
+  both, a
+  field only plexlab sends is a version difference and a rule both answer is not; the production
+  server is a third opinion, not the only second one. The 1.42.2 reference is production: GET and
+  HEAD only, like the production server.
 - **A listing runs a QUERY, and four parts of it were never run.** `?limit=N` caps the rows
   (0 answers ONE row, a negative one every row, `abc` a 500) and `/newest`, `/recentlyAdded`
   and `/children` ignore it; a `type=` that does not parse is a **500** on a section listing
@@ -560,7 +563,8 @@ are changing; replay the client's exact request before altering behavior.
   adding `grandparentTitle`/`index`/`parentIndex`, and no `key`, `ratingKey` or artwork. It is
   not the row `/status/sessions/history/all` lists.
 
-- **A five-clip library cannot show a row-shape rule that needs real content.** zen's 3,887
+- **A five-clip library cannot show a row-shape rule that needs real content.** The 1.42.2
+  reference's 3,887
   movies are the instrument for those: a LIGHT row caps its tag lists (2 `Genre`, 2 `Writer`,
   2 `Country`, 3 `Role`, always the first of the detail row's order) where the DETAIL row carries
   all 155 of a movie's roles; the search hubs cap at 3 rows with no `limit` and
@@ -598,11 +602,11 @@ are changing; replay the client's exact request before altering behavior.
   default to `desc`, so keying on `(value is None, value)` opens Rating, Plays, Date
   Viewed and Critic Rating on the rows that have no value at all.
 - **A light row caps `Director` at THREE and carries no `Producer`** however many the
-  detail row holds (17 directors and 22 producers on one zen movie). Only a real library
-  can show it: no lab item has more than one director.
+  detail row holds (17 directors and 22 producers on one movie of the 1.42.2 reference). Only a real
+  library can show it: no lab item has more than one director.
 - **`/hubs/search` returns the ITEMS behind a matched tag**, each naming it in
-  `reason`/`reasonID`/`reasonTitle` -- 53 of 81 item rows across ten zen queries -- while
-  `/library/search` carries the tag rows and the title hits only. And the seventeen hubs'
+  `reason`/`reasonID`/`reasonTitle` -- 53 of 81 item rows across ten queries on the 1.42.2 reference
+  -- while `/library/search` carries the tag rows and the title hits only. And the seventeen hubs'
   base ORDER has `movie` fifth and `collection` fourteenth; it is visible only on a query
   that matches nothing, because hits PROMOTE the hubs that scored.
 - **The "All episodes" row follows the PAGE's row count, not the offset.** It is there
@@ -610,10 +614,10 @@ are changing; replay the client's exact request before altering behavior.
   on a one-row page even at `Start=0`. Cycle 8's "the servers disagree past Start=0" was a
   two-season library, not a version difference.
 - **`duplicate=1` is "more than one Media"**, and on a SHOW or SEASON "a leaf has more
-  than one" (214 movies, 504 episodes, 44 shows and 74 seasons on zen).
+  than one" (214 movies, 504 episodes, 44 shows and 74 seasons on the 1.42.2 reference).
 - **A bare `<field>=` means three different things.** A tag-TABLE field matches NOTHING
-  (37 of 600 zen movies have no Genre and `genre=` still answers none); `studio` and
-  `editionTitle` match EVERY row; everything else of that kind matches the rows with no
+  (37 of 600 movies on the 1.42.2 reference have no Genre and `genre=` still answers none); `studio`
+  and `editionTitle` match EVERY row; everything else of that kind matches the rows with no
   value. `contentRating=None`, in that spelling only, is the empty synonym and the key of
   the axis's own trailing bucket -- the one axis that has one.
 - **A tag or field axis REFUSES an unparseable `type=`** -- 500, or 400 on `year` alone --
@@ -627,8 +631,8 @@ are changing; replay the client's exact request before altering behavior.
   listing** although no Meta advertises them; `leafCount` and `childCount` do not.
 - **A shelf with no `count=` carries SIX rows and says `more`**, not twelve -- and 1.42.2
   builds three shelves 1.43.4 does not (`movie.topunwatched`, `tv.startwatching`,
-  `tv.toprated`), so zen is the witness. `pinnedContentDirectoryID` reshapes the promoted
-  Recently Added shelf into `home.movies.recent.N` / "Recently Added Movies" on 1.42.2 and
+  `tv.toprated`), so the 1.42.2 reference is the witness. `pinnedContentDirectoryID` reshapes the
+  promoted Recently Added shelf into `home.movies.recent.N` / "Recently Added Movies" on 1.42.2 and
   changes nothing on 1.43.4.
 - **A write to a PARENT cascades.** Unmatching a season unmatches its episodes; unmatching
   a show unmatches its seasons AND episodes, and every descendant's `parentGuid` /
@@ -641,8 +645,8 @@ are changing; replay the client's exact request before altering behavior.
 
 - **`titleSort` is the title TRIMMED and FOLDED and then article-stripped.** Leading
   whitespace goes, Unicode combining marks are dropped (`Amélie` sorts as `Amelie`,
-  `Señor's` as `Senor's`), and only then the/a/an. Measured on zen over all 5,294 rows:
-  the model reproduces 5,289, all 21 accented rows carry the folded form and none lacks
+  `Señor's` as `Senor's`), and only then the/a/an. Measured on the 1.42.2 reference over all 5,294
+  rows: the model reproduces 5,289, all 21 accented rows carry the folded form and none lacks
   a `titleSort`, and the 51 rows whose non-ASCII survives NFD (CJK, `’`, `–`) carry none
   at all. The five misses are Spanish `La` and German `Das` -- per-item language, not
   mechanical, and deliberately not implemented.
@@ -666,9 +670,9 @@ are changing; replay the client's exact request before altering behavior.
   a type-prefixed group key is SCOPED like a filter: `type=4&group=show.title` collapses
   to the show count, not to the episode-title count.
 - **The `actor` axis is the union of each item's FIRST THREE roles**, not every Role tag
-  in the library -- kids' five movies contribute 0+2+2+2+3 and its axis totalSize is
-  exactly 9; zen's is 3413 against 59,030 actor tags. Every other tag axis carries every
-  tag. The axis's own `title2` says so: "By Starring Actor".
+  in the library -- plexlab's five movies contribute 0+2+2+2+3 and its axis totalSize is
+  exactly 9; the 1.42.2 reference's is 3413 against 59,030 actor tags. Every other tag axis carries
+  every tag. The axis's own `title2` says so: "By Starring Actor".
 - **Nine columns filter although no Meta advertises them**: `viewOffset`, `skipCount`,
   `ratingCount`, `absoluteIndex`, `lastRatedAt`, `updatedAt`, `createdAt`, `mediaCount`
   and `originalTitle`. `/query/parse` echoes each as a Rule with an EMPTY `fieldTitle`,
@@ -677,7 +681,7 @@ are changing; replay the client's exact request before altering behavior.
   `index` column is **1** on every row although the row never emits the attribute.
 - **A string field's six operators are the ADVERTISED FieldType's restriction, not the
   python type's.** `titleSort`, `summary`, `tagline` and `originalTitle` appear in no
-  Meta and take `>>`/`<<` (`titleSort>>=ZZZZ` is 1 row of zen's 3887), while the
+  Meta and take `>>`/`<<` (`titleSort>>=ZZZZ` is 1 row of the 1.42.2 reference's 3887), while the
   advertised `title` and `studio` answer every row to the same key -- an ignored field.
 - **Thirteen more `sort=` keys work than the fifteen `includeAdvanced=1` advertises**:
   `guid`, `originalTitle`, `contentRatingAge`, `studio`, `skipCount`, `absoluteIndex`,
@@ -705,7 +709,7 @@ are changing; replay the client's exact request before altering behavior.
   does. The two families split on that, so neither inherits the other's rule.
 - **`/library/metadata/{id}/banners` and `/thumbs` are candidate lists too** (200 on both
   versions, `banners` empty on both, `thumbs` from the media bundle). `/squareArts` is
-  **1.43.4 only** -- 404 on zen -- so rex, which reports 1.42.2, keeps 404ing it.
+  **1.43.4 only** -- 404 on the 1.42.2 reference -- so rex, which reports 1.42.2, keeps 404ing it.
 - **`/library/sections/{id}/recentlyReleased` does not exist.** A 404 on both references,
   every library type, with and without `type=`. rex answered a listing there for its
   whole life; the name appears in no findings document and in no suite, so it was assumed
@@ -744,7 +748,7 @@ are changing; replay the client's exact request before altering behavior.
   `/hubs/metadata/{id}/postplay`, which says false; `/hubs/search` and `/hubs/items` carry
   none at all. (`postplay` DOES carry `allowSync` -- an older note here said it carried
   neither that nor the librarySection triple; only the triple half was right.)
-- **On a SEASON listing the leaf-count filters read the SHOW's counts.** zen's
+- **On a SEASON listing the leaf-count filters read the SHOW's counts.** The 1.42.2 reference's
   `type=3&viewedLeafCount>>0` answers 48 seasons -- every season of the 8 shows with a
   watched leaf -- and all 48 carry 0 on their own row.
 - **A collection answers `/children` on the METADATA path** (a full secondary container with
@@ -755,9 +759,9 @@ are changing; replay the client's exact request before altering behavior.
   collection the server holds across libraries in title order.
 
 - **`/status/sessions/history/all` lists NOTHING without a `type=`** -- and the `type` is the
-  row's `viewType`, not its metadata type. kids' history is five MOVIES and zen's is 73
-  EPISODES and both answer to `type=1`, while `type=0/2/3/4/5` answer none on either;
-  `type=abc` and an empty one are 400s and every listing row carries `viewType: 1`. That is
+  row's `viewType`, not its metadata type. plexlab's history is five MOVIES and the 1.42.2
+  reference's is 73 EPISODES and both answer to `type=1`, while `type=0/2/3/4/5` answer none on
+  either; `type=abc` and an empty one are 400s and every listing row carries `viewType: 1`. That is
   the whole of the `size 0` cycle 11 could not explain.
 - **`titleSort` trims the LEFT only.** A trailing space survives into the sort title -- which
   is why a title written with one carries no `titleSort` at all, the derived string being
@@ -849,8 +853,8 @@ are changing; replay the client's exact request before altering behavior.
   **403** -- whether or not it answers when a token IS given. `GET /` is a 401 whose
   193-byte body redirects a browser into the web client.
 - **The `firstCharacter` AXIS and its BUCKETS disagree, on a real PMS.** The axis counts a
-  season or an episode by its SHOW's sort title (28 of 28 buckets on zen, both types); the
-  listing at `/firstCharacter/{key}` filters on the row's OWN stored sort title. So a
+  season or an episode by its SHOW's sort title (28 of 28 buckets on the 1.42.2 reference, both
+  types); the listing at `/firstCharacter/{key}` filters on the row's OWN stored sort title. So a
   season list's `A` bucket says 64 and answers 0 rows.
 - **A section leaf's extra path segment is a bucket or a 404, never the leaf again.**
   `/all/zzz`, `/sorts/zzz`, `/studio/<real key>`, `/audioLanguage/en` and fourteen more
@@ -862,7 +866,7 @@ are changing; replay the client's exact request before altering behavior.
   sort title, then `parentIndex`, then `index` -- not to a flat `titleSort`, and its
   `/unwatched` carries `nocache` like every other container it answers.
 - **An artwork path is a 200 only on the row that OWNS the image.** A row that borrows
-  carries the owner's path verbatim (kids' season 7 and episode 8 both carry
+  carries the owner's path verbatim (plexlab's season 7 and episode 8 both carry
   `/library/metadata/6/art/<v>`), so comparing the stored path's ratingKey with the
   requested one IS the rule; cycle 15's episode-only `/art` 404 was its special case.
 - **The envelope is measured too.** Every response names its connection state
@@ -926,8 +930,8 @@ are changing; replay the client's exact request before altering behavior.
   movie Fields and **20** episode ones against 40 and 26, differing in the six media-codec
   axes -- and on 1.42.2 those six are UNKNOWN fields, so a listing filtered on one answers
   EVERY row and `/query/parse` reports an `Error`. `tv.plex.agents.nfo.movie`/`.series` are
-  1.43.4-only too (four modern agents there, not six). When a fixture disagrees with zen,
-  suspect the version before the shape.
+  1.43.4-only too (four modern agents there, not six). When a fixture disagrees with the 1.42.2
+  reference, suspect the version before the shape.
 - **A real PMS escapes XML attribute values into pure ASCII**, `encoding="UTF-8"`
   notwithstanding: `&amp;`/`&lt;`/`&gt;` named, `"` and `'` NUMERIC (`&#34;`, `&#39;`), TAB
   decimal `&#9;` but NEWLINE and CR HEX (`&#xA;`, `&#xD;`), every codepoint from U+0080 up
@@ -990,21 +994,22 @@ are changing; replay the client's exact request before altering behavior.
 
 - **A title the SERVER generated is stored NOWHERE.** A season's `Season N` and an
   unmatched episode's `Episode N` have an EMPTY stored sort title -- `titleSort=` (a bare
-  empty value, an equality here) answers 740 of zen's 741 seasons and 4,630 of its 9,287
-  episodes, `titleSort<<=0` the same set, and every LETTER bucket of a season
+  empty value, an equality here) answers 740 of the 1.42.2 reference's 741 seasons and 4,630 of its
+  9,287 episodes, `titleSort<<=0` the same set, and every LETTER bucket of a season
   `firstCharacter` listing answers none while `#` answers them all -- and it is in no
   search index either: the copy's `Season 2` answers nothing to `search?type=3&
-  query=season` while the same season renamed answers at once, and zen's
-  `type=3&title=Season` is 0 of 741. An agent-supplied `Season 1`/`Episode 1` (kids'
-  season 7, 176 of zen's episodes) IS stored, and nothing on the row tells the two apart.
+  query=season` while the same season renamed answers at once, and the 1.42.2 reference's
+  `type=3&title=Season` is 0 of 741. An agent-supplied `Season 1`/`Episode 1` (plexlab's
+  season 7, 176 of the 1.42.2 reference's episodes) IS stored, and nothing on the row tells the two
+  apart.
 - **Eleven Latin-1 characters fold in `titleSort` that NFD cannot reach**, swept
   character by character over U+0080..U+02FF: `Æ→E Ð→D ×→x Ø→0 Þ→P ß→s æ→e ð→O ÷→/ ø→0
   þ→p`. `Ø`/`ø` become the DIGIT ZERO and `ð` a capital `O`, so it is a table and not a
-  transliteration; zen witnesses two of them (`Død Kalm` → `D0d Kalm`). Nothing above
-  U+02FF folds.
+  transliteration; the 1.42.2 reference witnesses two of them (`Død Kalm` → `D0d Kalm`). Nothing
+  above U+02FF folds.
 - **The bare `title=` matcher also reads the row's ORIGINAL title** -- and only it does:
-  `title=the` is 1,484 of zen's 3,887 where the title alone explains 1,481. `title!=`,
-  `==`, `!==`, `<=` and `>=` read the title alone.
+  `title=the` is 1,484 of the 1.42.2 reference's 3,887 where the title alone explains 1,481.
+  `title!=`, `==`, `!==`, `<=` and `>=` read the title alone.
 - **On an UNLISTED string field (`titleSort`, `summary`, `tagline`, `originalTitle`) the
   four ordering keys really ORDER**: `<=` ≡ `<<=` and `>=` ≡ `>>=`, case-insensitive
   lexicographic, both STRICT -- a row whose value IS the query is in neither set. They are
@@ -1063,12 +1068,12 @@ are changing; replay the client's exact request before altering behavior.
 
 - **A BOOLEAN filter answers the true set to exactly two requests** -- `field=1` and
   `field!=0`. Every other operator and every other value answers the rows where the
-  column is FALSE: zen's `unwatched=1` is 3,866 of 3,887 and its `!=1`, `==1`, `<=1`,
-  `>=1`, `<<=1`, `>>=1`, `=0`, `==0`, `!==0`, `=2`, `!=2`, `=`, `=01` and `=true` are all
+  column is FALSE: the 1.42.2 reference's `unwatched=1` is 3,866 of 3,887 and its `!=1`, `==1`,
+  `<=1`, `>=1`, `<<=1`, `>>=1`, `=0`, `==0`, `!==0`, `=2`, `!=2`, `=`, `=01` and `=true` are all
   the same 21. `!=2` is what rules out "parse the value, then negate".
 - **A row with NO value for a numeric column matches NOTHING**, `!=` and `!==` included --
-  zen's 742 rated movies split 368/374 across `rating<=7` and `rating>>=7`, so the 3,145
-  unrated ones are in neither -- and **`==`/`!==` there are an exact STRING comparison of
+  the 1.42.2 reference's 742 rated movies split 368/374 across `rating<=7` and `rating>>=7`, so the
+  3,145 unrated ones are in neither -- and **`==`/`!==` there are an exact STRING comparison of
   the stored number**: `rating==7` is 0 where `rating==7.0` is the 6 rows `rating=7`
   finds, while `year==2000` is the same 39 as `year=2000`.
 - **A `tag`-typed COLUMN takes all eight operators** where a tag-TABLE field takes two.
@@ -1104,10 +1109,10 @@ are changing; replay the client's exact request before altering behavior.
   response.
 - **`sort=duration` and `duration=` read the MEDIA's duration**, not the row's column, and
   on a SHOW or SEASON listing a media column is read from the LEAVES and matches when ANY
-  leaf does (zen's `duration<=1200000` and `>=1200000` answer 39 and 483 of 505).
+  leaf does (the 1.42.2 reference's `duration<=1200000` and `>=1200000` answer 39 and 483 of 505).
 - **The default listing order IS `sort=titleSort` and every tie falls back to `titleSort`
-  ASCENDING, in both directions** -- re-measured against zen's own ordering of 3,887 real
-  rows, so collation cancels out of the comparison.
+  ASCENDING, in both directions** -- re-measured against the 1.42.2 reference's own ordering of
+  3,887 real rows, so collation cancels out of the comparison.
 - **A library EDIT scans only when the form carries `language` or `scanner`** -- `agent`
   alone, with `name`, or with a `prefs[...]` is a 200 with ZERO frames -- and it REFUSES a
   `type` naming a different type from the library's own. **`?path=` SCOPES a scan**: the
@@ -1139,21 +1144,22 @@ are changing; replay the client's exact request before altering behavior.
   a socket opened with `filters=all` receives NOTHING and looks exactly like a server that
   pushes none. Always open with a control write.
 
-- **A season's `titleSort` follows the title it STORES, not its `year`.** 740 of zen's 741
+- **A season's `titleSort` follows the title it STORES, not its `year`.** 740 of the 1.42.2
+  reference's 741
   seasons carry none, and the one that does -- the only one with a year -- carries
   `Egghead`, its agent's arc name, not the `Season 22` it displays. Cycle 7 fitted the year
-  rule to kids' season 7, whose `Season 1` came from an agent. And **`Specials` and
+  rule to plexlab's season 7, whose `Season 1` came from an agent. And **`Specials` and
   `[Unknown Season]` are generated titles too** (season 0 and a season with no index): no
   stored sort title, absent from `title=` and from the section search box, in the `#`
   bucket.
 - **An episode carries `parentThumb` only when the season's poster is the season's OWN.**
-  654 of zen's seasons hand it down and its 27 that borrow the show's hand down nothing,
-  0 exceptions over 9,293 episodes on both references. `art` is the opposite -- handed down
+  654 of the 1.42.2 reference's seasons hand it down and its 27 that borrow the show's hand down
+  nothing, 0 exceptions over 9,293 episodes on both references. `art` is the opposite -- handed down
   borrowed or not -- so it is a property of the FIELD.
 - **`viewCount` and `viewOffset` read a row with NO stored value as BELOW every value and
   equal to 0** (`=0` and every `<=`/`<<=` match it, nothing else does); `skipCount` is not
   in the family. **A NULL date matches NOTHING**, on every operator -- the old "a null date
-  is before everything" came from fun -- and a date's `!=` really compares.
+  is before everything" came from the production server -- and a date's `!=` really compares.
 - **`audioLanguage`/`subtitleLanguage`: `=v` is "SOME stream is v" and every other operator
   is "NO stream satisfies the comparison"** (`!=`/`==` compare equality, `!==` inequality),
   so a row with no stream of that type matches all six vacuously. The 3-letter code
@@ -1206,8 +1212,8 @@ are changing; replay the client's exact request before altering behavior.
 - **The two forms of `/system/agents` carry different children.** The bare form has a
   `MediaType` row per media type an agent serves and NO `Language`; `?mediaType=N` has
   the Language list and no MediaType. And **that endpoint writes its `Language` and
-  `MediaType` as REPEATED JSON KEYS** rather than arrays -- 150 occurrences on zen, 195
-  on kids -- so a JSON parser keeps exactly ONE per agent while the XML carries all of
+  `MediaType` as REPEATED JSON KEYS** rather than arrays -- 150 occurrences on the 1.42.2 reference,
+  195 on plexlab -- so a JSON parser keeps exactly ONE per agent while the XML carries all of
   them. Every other repeated child on every other path is a proper array.
 - **A `Feature` element is never self-closed**: all fifteen on `/media/providers` are
   paired empty elements on both references, where `Directory`, `Action` and `Pivot` in
@@ -1258,7 +1264,8 @@ are changing; replay the client's exact request before altering behavior.
   eleven names -- `album artist chapterSource childCount hasChapterVideoStream leafCount
   logo poster role sourceType track` -- are a 400 on both and `hdr10plus` is a 200 that
   stores nothing. Five of the twenty-nine are the 1.43.4-only codec family and are HELD
-  OUT: plexscratch is 1.43.4 and zen cannot be written, so 1.42.2 is unmeasurable there.
+  OUT: plexscratch is 1.43.4 and the 1.42.2 reference cannot be written, so 1.42.2 is unmeasurable
+  there.
 - **A state write's `key=` is a BARE ratingKey**, not a path: `/library/metadata/17` is a
   404 on scrobble/unscrobble and a 500 on rate/progress. The four then diverge -- rate and
   progress int-parse the key (500), scrobble and unscrobble look it up (404); `/:/progress`
@@ -1290,8 +1297,8 @@ are changing; replay the client's exact request before altering behavior.
   `includePreferences` compares the string. **`includeRelatedCount=0` EMPTIES the hub**
   (`size 0`, `more true`), where reading `0` as absent falls through to the default of five.
 - **A real PMS writes ONE element per line and ends the document with a newline** (236 of
-  them in one zen movie, 34 on kids). **Six more names are written PAIRED when empty** --
-  `MediaContainer`, `Stream`, `Hub`, `Extras`, `Media`, `Activity` -- while `Part`
+  them in one movie on the 1.42.2 reference, 34 on plexlab). **Six more names are written PAIRED
+  when empty** -- `MediaContainer`, `Stream`, `Hub`, `Extras`, `Media`, `Activity` -- while `Part`
   self-closes, so it is an element-NAME table and not "can hold children".
 - **Three more attribute orders**: a `Part` leads `accessible, exists`, a section's pivot
   `Directory` leads `secondary` (and `prompt, search`), a `Feature` leads `flavor`.
@@ -1303,7 +1310,8 @@ are changing; replay the client's exact request before altering behavior.
 - **A text `sort=` compares RAW CODEPOINTS** -- case-sensitive, no accent folding, so
   lowercase sorts ABOVE uppercase (`iHostage` before `Zero Tolerance` descending). It is
   the SORT side of the split cycle 20 measured on the FILTER side; `titleSort` stays folded
-  because no zen row carries a lowercase-initial stored sort title to measure it with.
+  because no row of the 1.42.2 reference carries a lowercase-initial stored sort title to measure it
+  with.
 - **A filter key whose NAME keeps a comparison character is an UNKNOWN FIELD** --
   `collection==`, `year>=`, `title!!` are a 200 listing every row and a 200 `Error` at
   `/query/parse`. A pair with NO `=` at all is still the 400 cycle 11 measured.
@@ -1363,8 +1371,8 @@ are changing; replay the client's exact request before altering behavior.
   TRAILING PARENTHESISED GROUP stripped from the name first. `Русский` in `Русский (Full) -
   ...` and `English (Weeb)` in `English (Some-Stuffs)` are carried; `norsk bokmål` and
   `Tiếng Việt` in their own titles are not. Cycle 22's whole-name rule broke the recorded
-  corpus and the first-word rule alone missed 179 of zen's rows -- **a model fitted on one
-  corpus must be scored on the other before it is written.**
+  corpus and the first-word rule alone missed 179 of the 1.42.2 reference's rows -- **a model fitted
+  on one corpus must be scored on the other before it is written.**
 - **Five more stand-ins**: `Signs`/`Songs` for Forced, `CC`/`HI` for SDH, `1.0` for Mono,
   `HDR`/`Dolby` for the dynamic range, and the RAW ffprobe codec name with punctuation
   folded (`aac` carries `HE-AAC`, `H264` carries `H.264`). **`eia_608` is labelled
@@ -1373,11 +1381,13 @@ are changing; replay the client's exact request before altering behavior.
 - **`AC-3` in a title carries `AC3` and is NOT modelled** (132 rows): `VC-1` does not carry
   `VC1` and `E-AC3` does not carry `EAC3`, so no punctuation rule fits and a general one
   breaks 58 other streams. Recorded, not fitted.
-- **`languages.json` was missing thirteen codes** zen's streams use (`cha guj hye kat mar
+- **`languages.json` was missing thirteen codes** the 1.42.2 reference's streams use (`cha guj hye
+  kat mar
   mdr mon mya nno pan sin yor zul`). **A VIDEO stream carries `dub`** and never `comment`
   or `hearingImpaired`. **A layout ffprobe cannot name** (`8 channels (FL+FR+...)`) must be
   stripped of its trailing space.
-- **zen's stored `displayTitle` carries the codec and rex's catalog form does not** --
+- **The 1.42.2 reference's stored `displayTitle` carries the codec and rex's catalog form does not**
+  --
   that is the recorded CLIENT-TITLE rule (those rows are read as Plex Web), not a defect.
   Score `mediainfo` on the extended title, which is the catalog form.
 
@@ -1392,7 +1402,8 @@ are changing; replay the client's exact request before altering behavior.
 - **A show UNMATCH's activity opens with the show's BARE TITLE**, where its REFRESH opens
   with the frame title (`Firefly (2002)`) -- the one place on the surface where an
   activity's subtitle is not the frame title. From the season onwards both use it again.
-- **`pixelAspectRatio` and `anamorphic` are a PAIR** -- 358 of zen's video Streams carry
+- **`pixelAspectRatio` and `anamorphic` are a PAIR** -- 358 of the 1.42.2 reference's video Streams
+  carry
   both, 1,330 neither, none only one. The value is ffprobe's SAR verbatim, present exactly
   when the sample aspect is not square, and `anamorphic` is TRUE when the ratio rounded to
   ONE decimal place is not 1.0. Sixteen distinct ratios witness it; the boundary is
@@ -1400,9 +1411,9 @@ are changing; replay the client's exact request before altering behavior.
   difference model is refuted: a 3840-wide `333:320` displaces 156 pixels and is false
   where a 716-wide `16:15` displaces 48 and is true.
 - **The resolution label had no 480 WIDTH bucket**, so a wide short SD release fell to
-  `sd`: zen's three 856x358 Media are `480`. The entry is the smallest width zen has in
-  the bucket, as the other five are; 720 is the largest below it and the boundary is not
-  bisected.
+  `sd`: the 1.42.2 reference's three 856x358 Media are `480`. The entry is the smallest width the
+  1.42.2 reference has in the bucket, as the other five are; 720 is the largest below it and the
+  boundary is not bisected.
 - **A search hit LEADS with `librarySectionTitle`**, before `ratingKey`, on `/hubs/search`
   (where its own `score` follows it) and on `/library/search`. It needs a marker, not a
   signal read off the row: `/library/all` and `/hubs/home/recentlyAdded` carry the same
@@ -1478,7 +1489,8 @@ are changing; replay the client's exact request before altering behavior.
   a query string is a 200. This CORRECTS the older bullet that claimed all three -- and note
   neither reference holds a multi-part Media, so the `partIndex` half is measured on
   single-part rows only.
-- **A decision answers exactly ONE Media** (zen's rk=401 has fifteen), and **`excludeElements=`
+- **A decision answers exactly ONE Media** (the 1.42.2 reference's rk=401 has fifteen), and
+  **`excludeElements=`
   is a NO-OP on a decision** -- the one exception to "every container that carries rows honours
   it".
 - **A statistics `timespan` the server does not KEEP is an EMPTY 200**, not the nearest bucket:
@@ -1568,8 +1580,9 @@ are changing; replay the client's exact request before altering behavior.
   that had none; a pick on a show moves a BORROWING season's own `thumb` and every episode's
   own `art`; and when the owner's field goes, the borrower's goes with it.
 - **A pick re-versions only the artwork the row OWNS.** A borrowed field keeps the owner's path,
-  stamp and all -- zen's episode 11115 carries `art` naming its SEASON beside a `grandparentArt`
-  naming the show at a different stamp. Only the field being picked becomes the row's own.
+  stamp and all -- the 1.42.2 reference's episode 11115 carries `art` naming its SEASON beside a
+  `grandparentArt` naming the show at a different stamp. Only the field being picked becomes the
+  row's own.
 - **`durationTotal` and `storageTotal` are JSON STRINGS**, where every other number on that row
   is a number. XML cannot tell the two apart, which is why it took a JSON read on both
   references to see it.
@@ -1637,9 +1650,9 @@ are changing; replay the client's exact request before altering behavior.
   query: a `type=` the library holds answers those rows instead, an unknown `sort`, an
   unparseable `type` and an unparseable `limit` are each a 500, and `subtype`, `smart` and an
   empty `sort` are accepted and ignored.
-- **A search tag hit is per LIBRARY, not per NAME** (kids' `drama` is two `Drama` rows against
-  one tag id; zen's `comedy` carries 590 and 179), and its `count` is the size of the listing
-  its own `key` names -- the library's top-level type. **A PERSON row carries its 24-hex
+- **A search tag hit is per LIBRARY, not per NAME** (plexlab's `drama` is two `Drama` rows against
+  one tag id; the 1.42.2 reference's `comedy` carries 590 and 179), and its `count` is the size of
+  the listing its own `key` names -- the library's top-level type. **A PERSON row carries its 24-hex
   `tagKey`**, after `tagType` and before the `thumb`, with `count` last; a `Genre` row carries
   none.
 - **A `/library/search` tag row is the `/hubs/search` row minus `reason`, `reasonID`,
@@ -1701,7 +1714,8 @@ are changing; replay the client's exact request before altering behavior.
   a 500, and so are `duration`, `resolution`, `mediaSize` and `file`, which the section GRID
   accepts. `extraType=`, `title=`, `audioLanguage=` and a good `limit` are 200s and really
   constrain.
-- **`group=` is honoured on `/library/all`** (kids' 14 rows collapse to 4 by type) and an unknown or
+- **`group=` is honoured on `/library/all`** (plexlab's 14 rows collapse to 4 by type) and an
+  unknown or
   empty field is a 500 there too. **`sort=type` orders by the type NUMBER**, not the name.
 - **`/library/metadata/{id}/extras/all` and the section's answer 404 to every verb but GET and
   HEAD** -- the bare `/extras` keeps its POST 400. A five-segment read-only route needs the gate as
@@ -1713,10 +1727,10 @@ are changing; replay the client's exact request before altering behavior.
   anywhere). See `docs/findings.md`; the build waits on a catalog with extras in it.
 
 
-- **`plexscratch42` is the writable 1.42.2 reference** (`harness/scratch42/`, kids `:32411`) -- a
+- **`plexscratch42` is a writable 1.42.2 copy** (`harness/scratch42/`, the lab host's `:32411`) -- a
   fresh install of the build rex reports, isolated from plex.tv, so every item is UNMATCHED and
-  every SETTINGS count is short (151 prefs against zen's 173). Use it for grammar, never for a
-  count, and never for anything needing real metadata or a claimed server.
+  every SETTINGS count is short (151 prefs against the 1.42.2 reference's 173). Use it for grammar,
+  never for a count, and never for anything needing real metadata or a claimed server.
 - **An On Deck row carries no `librarySectionKey` and is the detail row MINUS `Field`** -- on a
   movie and an episode alike, on both versions. `/hubs/home/onDeck` and
   `/hubs/home/continueWatching` DO carry the key; `/library/onDeck` and the section leaf carry
@@ -1727,7 +1741,8 @@ are changing; replay the client's exact request before altering behavior.
 - **Two settings answer 403 to a PUT on 1.42.2, not four**: `PlexOnlineUrl` and
   `allowMediaDeletionLanOnly`. `TranscoderH264Options` and `TranscoderH264OptionsOverride` take a
   write there and really store it, where 1.43.4 refuses both.
-- **A `random="1"` shelf's sample is STABLE** -- 21 reads over seven minutes on zen answered the
+- **A `random="1"` shelf's sample is STABLE** -- 21 reads over seven minutes on the 1.42.2 reference
+  answered the
   identical rows, a different client identifier gets the same sample, and the same shelf at another
   `count=` holds its own. What makes a real PMS redraw one is NOT measured, so rex mints a seed
   per (shelf, count) once and holds it.
@@ -1789,7 +1804,8 @@ are changing; replay the client's exact request before altering behavior.
   `/library/sections`, `/media/providers`, `/media/providers/metadata` -- whose POST is their own 400).
   rex answered **200 with the whole GET body** to a bare OPTIONS on each, which is fix 4's trap
   from the outside.
-- **A stored sort title EQUAL to a generated title is still stored.** Read off kids' own DATABASE:
+- **A stored sort title EQUAL to a generated title is still stored.** Read off plexlab's own
+  DATABASE:
   its agent-titled season 7 stores `title = ''` and `title_sort = 'Season 1'`, so the displayed
   `Season N` is generated in every case and what an agent supplies is the SORT title. rex treated
   such a value as absent, so `titleSort=Season 1` found nothing, `titleSort=` wrongly kept the row and
@@ -1826,11 +1842,11 @@ are changing; replay the client's exact request before altering behavior.
   rex answered both with the second's container. The window is under a millisecond, so no
   sequential check can see it: fire barrier-released pairs.
 - **The title FOLD is a 100-character TABLE, not NFD, and the two sides differ.** Swept on both
-  copies over 2,076 codepoints for the sort title and on kids over 2,098 for the query: `ę ą ş ć ł`
-  and the capital macrons survive, lower-case macrons and Latin-1 fold, a combining mark is dropped.
-  The `title=` QUERY is the table plus a simple case fold (so `ſ` and the Kelvin sign match `s` and
-  `k`); the STORED sort title is case-folded only, so a locked `Éggęhead` is not found by `Egghead`.
-  The folded pass reads the stored SORT title, not the title (`Thé Train` finds nothing).
+  copies over 2,076 codepoints for the sort title and on plexlab over 2,098 for the query: `ę ą ş ć
+  ł` and the capital macrons survive, lower-case macrons and Latin-1 fold, a combining mark is
+  dropped. The `title=` QUERY is the table plus a simple case fold (so `ſ` and the Kelvin sign match
+  `s` and `k`); the STORED sort title is case-folded only, so a locked `Éggęhead` is not found by
+  `Egghead`. The folded pass reads the stored SORT title, not the title (`Thé Train` finds nothing).
 - **The hub search folds by the same table**, but its score CASE handling is two distinct passes:
   the raw-query partial pass and a broader whole-title pass. Cycle 39 completed and built the table,
   including the long-s and two-letter macron-`o` boundaries.
@@ -1880,8 +1896,8 @@ are changing; replay the client's exact request before altering behavior.
   question the browser did not put.
 - **The 101 handshake LEADS with the CORS pair**: `X-Plex-Protocol, Access-Control-Expose-Headers,
   Vary, Upgrade, Connection, Sec-WebSocket-Accept, Cache-Control, Access-Control-Allow-Origin, Date`.
-  It cannot be probed -- a socket may never be opened on kids or zen -- so it was read out of a
-  client-session capture, which records both sides of the client's own handshake.
+  It cannot be probed -- a socket may never be opened on plexlab or the 1.42.2 reference -- so it
+  was read out of a client-session capture, which records both sides of the client's own handshake.
 - **A decision reads EVERY audio stream, not only the selected one**: the first in INDEX order that no
   matching `<VideoProfile>` names is the codec the refusal names (Roku plays the selected mp3 and still
   refuses the row, naming its ac3). **Unless the profile declares
@@ -1964,9 +1980,9 @@ are changing; replay the client's exact request before altering behavior.
 - **ORDER decides the SCORE, not membership**: a query whose words are all in the title but out
   of order comes back in the 0.33 band. The rest of the membership rule is SQLite `spellfix1` --
   a phonetic-hash candidate then a top-N prune by a GLOBAL token frequency -- which is why
-  `Tears zzz` finds the row on kids' five titles and `Riders zzz` finds nothing on zen's 3,887.
-  The candidate half alone would answer most of a catalog to a nonsense query, so it is recorded
-  and not built.
+  `Tears zzz` finds the row on plexlab's five titles and `Riders zzz` finds nothing on the 1.42.2
+  reference's 3,887. The candidate half alone would answer most of a catalog to a nonsense query, so
+  it is recorded and not built.
 - **A Dolby Vision PROFILE 5 source is refused by the SERVER**: `transcodeDecisionCode 2003`,
   "File is unplayable. DoVi (Profile 5) color space is not supported." -- where profile 7 and 8
   rows answer the ordinary 4002. Not a blanket veto: the one profile whose transcode target names
@@ -2144,22 +2160,24 @@ are changing; replay the client's exact request before altering behavior.
   8 and 9 answer the same rows; `key=0` is the rows with NO value. Truncation gets every other
   bucket wrong.
 - **`videoCodec`, `audioCodec`, `subtitleCodec` and `audioLayout` are 1.43.4-only AXES** — 404 on
-  zen and on plexscratch42, 200 on kids. The same six media-codec names already split `/filters`
-  and the `Meta`; the axes split with them.
-- **A `.webm` file's `container` is `mkv`.** Measured on the identical 571,346,576-byte file: zen
-  answers `mkv` on the Media and the Part while the Part key keeps `file.webm`, and no row of zen's
-  4,508 movie Media carries `webm` at all. `tests/fixtures/media/fun-1052407-0.json` has recorded
-  that since cycle 10 and nothing read it, because `test_mediainfo.py` compared every stream field
-  and **never the container**. The override cost a direct play (`Sony Bravia 2013`) rather than
-  buying one.
+  the 1.42.2 reference and on plexscratch42, 200 on plexlab. The same six media-codec names already
+  split `/filters` and the `Meta`; the axes split with them.
+- **A `.webm` file's `container` is `mkv`.** Measured on the identical 571,346,576-byte file: the
+  1.42.2 reference
+  answers `mkv` on the Media and the Part while the Part key keeps `file.webm`, and no row of the
+  1.42.2 reference's 4,508 movie Media carries `webm` at all.
+  `tests/fixtures/media/fun-1052407-0.json` has recorded that since cycle 10 and nothing read it,
+  because `test_mediainfo.py` compared every stream field and **never the container**. The override
+  cost a direct play (`Sony Bravia 2013`) rather than buying one.
 - **A direct play is refused when the SELECTED embedded subtitle is not the FIRST embedded one** —
   `Samsung`, `RokuDLNA-5000X-7.x` and `RokuDLNA-6000X-7.x` only, gated on the same
   `DirectPlayStreamSelection` as the audio rule, and it runs after the audio-codec pass AND after
   the subtitle-codec pass. The 2,106-cell corpus could not show it: in every row it held whose
   subtitle is not first, the AUDIO is not first either, so the audio refusal masked it.
-- **A SEASON carries `parentYear`, not a `year` of its own** — 689 of zen's 742 do, exactly one
+- **A SEASON carries `parentYear`, not a `year` of its own** — 689 of the 1.42.2 reference's 742 do,
+  exactly one
   does not — and a season and an episode carry `Guid`. `metadata.py` fetched those ids and threw
-  them away on a note claiming a real PMS leaves the arrays empty; kids' season 7 answers
+  them away on a note claiming a real PMS leaves the arrays empty; plexlab's season 7 answers
   `tmdb://3846` + `tvdb://15791` and its episode 8 answers three.
 - **A real PMS announces with `PUT https://servers.plex.tv/devices/{machineIdentifier}`** — the
   identifier form, to `servers.plex.tv`, token in the query, empty body, thirteen headers led by
@@ -2175,7 +2193,8 @@ are changing; replay the client's exact request before altering behavior.
 - **`/media/providers/metadata/{id}` and `/group/{id}` are real** (400 for a non-numeric id), and
   in JSON `builtIn` is the STRING `"1"` on 1.42.2 and `order` is the FLOAT `1000.0` on both — the
   XML cannot tell either apart.
-- **A part whose FILE is gone is a plain 404**, not a 5xx: zen part 23595 (`accessible=false`,
+- **A part whose FILE is gone is a plain 404**, not a 5xx: the 1.42.2 reference's part 23595
+  (`accessible=false`,
   `exists=false`) answers 404 to the byte read. rex once answered 502 to a missing file and to
   a network failure alike. zurg's own 404 for the file is now the 404, another status zurg answers
   is passed on, and a transport failure keeps the 502, so it is still diagnosable.
@@ -2193,7 +2212,7 @@ are changing; replay the client's exact request before altering behavior.
   `producer`/`summary` 7, `country` 8. Every other name the server knows as a filter field or an
   axis is an EMPTY 200 and everything else a 404 -- including the eleven edit-path-400 names,
   the section's own leaves, `thumb`/`art`/`theme` and `platform`. `resolution` answers the whole
-  library like any media-axis bucket. It is NOT the axis: kids' actor axis is the
+  library like any media-axis bucket. It is NOT the axis: plexlab's actor axis is the
   first-three-roles union and `/actor/top` is every Role tag.
 - **`includeAlternates=1` inlines the AGENT's remote artwork on a FULL row and on nothing else** --
   `Thumb`, `Art`, `Theme` in that order, each `{key, source}` with a `previewKey` where the
@@ -2221,8 +2240,8 @@ are changing; replay the client's exact request before altering behavior.
   libraries and a third segment is a 404. That row projection leads with an empty `art` and
   `thumb` and drops `allowSync`, `filters` and `refreshing`. `?type=` selects NOTHING for any
   integer (the rows are libraries), `?sort=` really orders by title or `createdAt`, `?limit=` is
-  ignored -- and **an empty `?sort=` CRASHES a real PMS** (connection dropped on kids, SEGV on
-  zen). Never send that request to zen.
+  ignored -- and **an empty `?sort=` CRASHES a real PMS** (connection dropped on plexlab, SEGV on
+  the 1.42.2 reference). Never send that request to the 1.42.2 reference.
 - **`ownerFeatures` on `/` and `subscriptionFeatures` on `/myplex/account` are the SAME string**,
   byte for byte: a sorted comma join of ~180 opaque plex.tv UUIDs and 32 NAMED features. The 32
   names are identical on both servers where the UUID count is not. The UUIDs are NOT invented:
@@ -2246,8 +2265,9 @@ are changing; replay the client's exact request before altering behavior.
   at `type=2` and `/library/all?file=` untyped is a 200 that really filters; rex raised it
   from inside the row walk -- "this row is a show" -- so the untyped whole-library query was a
   500. And **`extraType` is a 500 on every listing EXCEPT the section extras leaf**, which is the
-  one path that really reads it (zen's 3,580 clips are 1,264 at `extraType=1`); putting the name
-  in the global refusal table broke that leaf, and only `test_catalog_features.py` could see it.
+  one path that really reads it (the 1.42.2 reference's 3,580 clips are 1,264 at `extraType=1`);
+  putting the name in the global refusal table broke that leaf, and only `test_catalog_features.py`
+  could see it.
 - **A play completes on a beat that CROSSES 90% however short it is.** The gate is
   `position >= (total * 9) // 10`, an integer comparison; the sub-minute exemption the old rule
   carried was never measured.
@@ -2393,11 +2413,12 @@ are changing; replay the client's exact request before altering behavior.
 
 - **The server's own BINARY is a route table, and it names endpoints no client sends.** It
   is 22 MB and readable on both references (`docker exec plexlab-plex cat "/usr/lib/
-  plexmediaserver/Plex Media Server"`; `cat` over ssh on zen), and its strings carry PMS's
-  route templates with their captures -- `/parts/:partID(\d+)/:changestamp(\d+)?/:filename?`,
+  plexmediaserver/Plex Media Server"`; `cat` over SSH on the 1.42.2 reference's host), and its
+  strings carry PMS's route templates with their captures --
+  `/parts/:partID(\d+)/:changestamp(\d+)?/:filename?`,
   `/:assetType(thumb|art|clearLogo|squareArt|banner|poster|theme)`,
-  `/:type(video|music|audio|subtitles)/:/transcode`. Diffing the two binaries splits the
-  vocabulary per version for free: 1.42.2 omits `squareArt` and keeps `clearLogo`.
+  `/:type(video|music|audio|subtitles)/:/transcode`. Diffing the two binaries splits the vocabulary
+  per version for free: 1.42.2 omits `squareArt` and keeps `clearLogo`.
 - **The legacy dispatcher's listing is a RULE**: the LAST SEGMENT of every registered legacy
   prefix that begins with the requested path and is STRICTLY LONGER than it. `/statistic`
   names `statistics` and `/statistics` is EMPTY; `/co` is empty because `/connections` is a
@@ -2427,8 +2448,8 @@ are changing; replay the client's exact request before altering behavior.
   `application/octet-stream` 200 in both spellings, the bare `/:/resources` is a 404,
   matching is case-SENSITIVE, and `?width=`/`?height=` are ignored. Cycle 29's "seven names"
   was a ten-name sample. An ACTOR with no portrait carries `/:/resources/actor-icon.png?t=`
-  -- 479 of zen's 3,416 actor rows, and not one lacks a `thumb` -- where a director, writer
-  or producer with none carries no `thumb` at all.
+  -- 479 of the 1.42.2 reference's 3,416 actor rows, and not one lacks a `thumb` -- where a
+  director, writer or producer with none carries no `thumb` at all.
 - **The photo transcoder FETCHES the `url=` path**: anything the server does not answer 200
   is a **404** there (an unknown leaf, a missing composite, a borrowed field, and
   `/children`, whose own answer is a 400), and only a 200 whose bytes are not an image is
@@ -2446,7 +2467,7 @@ are changing; replay the client's exact request before altering behavior.
   acceptor pool, its ordinals and its request allocator stay unmodelled.
 - **`/hubs/sections/{id}/popular` is real**: the library's SEASONS with a `viewCount` above
   zero, most-watched first, in the full row projection. A movie library answers the empty
-  container on 1.42.2 (kids 500s it, unexplained).
+  container on 1.42.2 (plexlab 500s it, unexplained).
 - **A Categories tile's `blendColor` is a TABLE** -- thirteen fixed genre names plus a
   seven-colour cycle walked in TAG-ID order over the rest (22 of 22 across both references)
   -- and the tile's `thumb` is the FIRST attribute of the row. The art is the highest-rated
@@ -2470,9 +2491,9 @@ are changing; replay the client's exact request before altering behavior.
 - **The plug-in framework is PYTHON, shipped uncompiled in the image, and
   `System.bundle/Contents/Code/*.py` IS the `/system` surface.** Every `@route` in those
   files is an endpoint (`docker exec plexlab-plex sh -c 'ls
-  /usr/lib/plexmediaserver/Resources/Plug-ins-e5521bd8c/'` on the lab host; zen's is `Plug-ins-f737b826c`
-  and the two differ). `runtime.py`'s `handle_request` is the `f(**d)` in every framework
-  traceback, so the TypeError sentence is the function's own signature: `given` counts
+  /usr/lib/plexmediaserver/Resources/Plug-ins-e5521bd8c/'` on the lab host; the 1.42.2 reference's is
+  `Plug-ins-f737b826c` and the two differ). `runtime.py`'s `handle_request` is the `f(**d)` in every
+  framework traceback, so the TypeError sentence is the function's own signature: `given` counts
   `self` plus every supplied name the function DECLARES, an undeclared one is "got an
   unexpected keyword argument", and a `**kwargs` tail is why `search` alone swallows one.
 - **`/system/bundle/media/flags/{type}[/{country}]/{value}` is a real image family, and
@@ -2547,7 +2568,7 @@ are changing; replay the client's exact request before altering behavior.
   episode's `/arts` are empty, so neither carries an inline `Art` -- the option must apply
   the same gate the candidate leaf does, or the server contradicts its own `/arts`.
 
-- **The part `Content-Type` table is wider than zen's six extensions.** Measured on
+- **The part `Content-Type` table is wider than the 1.42.2 reference's six extensions.** Measured on
   plexscratch42 one container at a time: `.ts` is `video/MP2T`, `.m4v` `video/mp4`, `.mpg`/
   `.mpeg` `video/mpeg`, `.flv` `video/x-flv`, `.wmv` `video/x-ms-wmv`, `.asf`
   `video/x-ms-asf`, `.divx` `video/x-msvideo`; `.mts`, `.m2ts`, `.ogv`, `.3gp` stay
@@ -2591,14 +2612,15 @@ are changing; replay the client's exact request before altering behavior.
 
 - **Related is a TAG SCORE computed by the server**: the item's first three genres and first
   four roles, a candidate needs two in common, shared-count then release date descending, cap
-  200 -- zen's 59 rows and kids' four lists exactly. It is not agent data.
+  200 -- the 1.42.2 reference's 59 rows and plexlab's four lists exactly. It is not agent data.
 - **On Deck's next-up anchors on the MOST RECENTLY VIEWED watched episode** (and the row carries
   that view's `lastViewedAt`); **`recentlyViewed` and a section's `/onDeck` leaf order by the
   view-state WRITE time** (`viewUpdatedAt`); **`popular` counts HISTORY rows**, so an unscrobbled
   season stays; a playlist's `duration` sums whole seconds; the genre shelf is the head of its
   own key; a season's generated title follows an index edit (`0` is `Specials`).
-- **A library's TV Recently Added shelf IS the section's mixed roll-up** (zen 12 of 12) -- a
-  one-episode show is its episode there. Cycle 50's "top-level shows" was kids' one show.
+- **A library's TV Recently Added shelf IS the section's mixed roll-up** (the 1.42.2 reference, 12
+  of 12) -- a
+  one-episode show is its episode there. Cycle 50's "top-level shows" was plexlab's one show.
 - **Structural parameters are parsed wherever they are read**: `sort`, `group`, `sourceType`,
   `limit`, `index`, `type` refuse on every axis, subset, children list, people list,
   autocomplete, `/common` and extras listing; `sourceType` other than 1 ORDERS by id. **An
@@ -2611,7 +2633,7 @@ are changing; replay the client's exact request before altering behavior.
 - **`/hubs/search?sectionId=` refuses any id naming no section**; `personal=1` empties only the
   MOVIE Recently Added list; `/hubs/promoted` refuses the fifteen hub keys whenever a show
   library's shelf is in scope; the `X-Plex-Product` HEADER beats the query for client titles.
-- **`/library/search?limit=4294967296` crashed kids' PMS.** Treat search limits past int32 as
+- **`/library/search?limit=4294967296` crashed plexlab's PMS.** Treat search limits past int32 as
   crash-shaped on a reference, like `/library/shared/all?sort=`.
 
 - **The loop's stopping rule is client impact**: tag every finding CLIENT-VISIBLE
@@ -2622,7 +2644,8 @@ are changing; replay the client's exact request before altering behavior.
   per-user write makes `viewCount` and `skipCount` read 0; `/hubs/sections/{id}` honours
   `includeGuids=1` (python-plexapi always sends it).
 
-- **Lists were never on kids or zen, so they are measured on the copies.** A collection search
+- **Lists were never on plexlab or the 1.42.2 reference, so they are measured on the copies.** A
+  collection search
   row is on the tag ladder; a list's history is an empty 200; a playlist scores one step below a
   movie; `X-Plex-Sync-Version` puts `allowSync="1"` on playlist rows and a playlist's items.
 - **Home's merged Continue Watching hub holds the On Deck next-up rows too** (stamped
@@ -2638,13 +2661,14 @@ are changing; replay the client's exact request before altering behavior.
   lower-case `t`, with the cookie). An empty order is the framework's `split` AttributeError, a
   missing one its TypeError; mediaType 8/9 is a `KeyError` for a non-legacy agent and 20 an
   AttributeError for every one; a non-integer type is a ValueError. Both answer XML whatever
-  `Accept` asks. See `legacy_agent_config.json`, zen's 192 cells byte for byte.
+  `Accept` asks. See `legacy_agent_config.json`, the 1.42.2 reference's 192 cells byte for byte.
 - **Top Played counts an episode's play on its SHOW at `type=2` and its SEASON at `type=3`** --
-  zen's one show answers `globalViewCount: 73`, its episodes' history rows. The Dashboard's TV
-  column asks `type=2`, which never matched a history row's own type.
+  the 1.42.2 reference's one show answers `globalViewCount: 73`, its episodes' history rows. The
+  Dashboard's TV column asks `type=2`, which never matched a history row's own type.
 - **Statistics buckets are CALENDAR buckets in local time**: a day at local midnight, a week on
-  a Monday, a month on the 1st, a year on January 1st (zen UTC, kids Europe/Berlin). Flooring
-  the epoch to fixed widths put every week on a Thursday. See `sessions.bucket_start`.
+  a Monday, a month on the 1st, a year on January 1st (the 1.42.2 reference UTC, plexlab
+  Europe/Berlin). Flooring the epoch to fixed widths put every week on a Thursday. See
+  `sessions.bucket_start`.
 - **Edit Library > Visibility (`hidden`) is a real filter.** At 1 the library leaves every Home
   shelf, `/hubs/continueWatching`, `/library/recentlyAdded` and `/library/onDeck`; `/hubs`
   keeps its shelf EMPTY and `/hubs/promoted` drops that library's shelf outright; its own page,
@@ -2677,9 +2701,10 @@ are changing; replay the client's exact request before altering behavior.
   dropdown offered 46 languages. An item's own language enum is built at READ time and is
   localised piece by piece (`item_language_names.json`): the head by tag, the tail from the
   table in its own order, the inherit option on its own.
-- **`translations.json` is per VERSION** -- the seventh such fixture. It was captured off kids
-  (1.43.4); re-capture it with `capture_i18n.py` against zen (`I18N_BASE`, `I18N_IDS` remapping
-  kids' ratingKeys) and overlay, never replace: zen lacks what kids' paths alone reach.
+- **`translations.json` is per VERSION** -- the seventh such fixture. It was captured off plexlab
+  (1.43.4); re-capture it with `capture_i18n.py` against the 1.42.2 reference (`I18N_BASE`,
+  `I18N_IDS` remapping plexlab's ratingKeys) and overlay, never replace: the 1.42.2 reference lacks
+  what plexlab's paths alone reach.
 - **An upload belongs to its row, and a theme or logo upload is stored.** A poster upload keeps
   the agent's candidate unselected with exactly one selected; a theme becomes the row's own
   versioned `theme` (served `audio/mpeg3`), a logo a `clearLogo` Image (served `image/jpeg`).
@@ -2696,7 +2721,7 @@ are changing; replay the client's exact request before altering behavior.
 - **A proxied `/player/*` command (with `X-Plex-Target-Client-Identifier`) is a 404**, and
   `DELETE /library/sections/all/refresh` a 200 with a "Library scan canceled" status frame.
 - **Drive the RENDERED client, not only its requests.** Cycle 59 pointed the real Plex Web app
-  at plexscratch42, kids and rex through kids' 9223 Chromium with `page.route` answering
+  at plexscratch42, plexlab and rex through the lab host's 9223 Chromium with `page.route` answering
   plex.tv, and found four surfaces no request replay had: a response is only half of what the
   client shows, and whether a tab EXISTS is decided by another endpoint entirely.
 
@@ -2730,8 +2755,8 @@ are changing; replay the client's exact request before altering behavior.
   stays plain where its `for <OS>` variants do not), the `Bandwidths` suppressor two.
 
 - **The reference's own translation catalogues are an instrument** (`Resources/locale/*/
-  LC_MESSAGES/plex.mo`, readable with `cat` on zen): search them for every string rex leaves
-  in English. A capture only finds the strings on the pages it walks.
+  LC_MESSAGES/plex.mo`, readable with `cat` on the 1.42.2 reference): search them for every string
+  rex leaves in English. A capture only finds the strings on the pages it walks.
 - **`Plex Home Theater` alone gets a five-component server version** on `/` and
   `/media/providers`.
 - **Activity titles are localised per notification SOCKET**, fixed at the handshake
@@ -2747,7 +2772,8 @@ are changing; replay the client's exact request before altering behavior.
 - **`Accept-Language` is matched as a LIST**: a language with no catalogue of its own (`ca`, `nn`)
   is a fallback that any exact catalogue later in the header beats (Chrome's Catalan header is
   English).
-- **An item-prefs sweep must pair rex's item with a MATCHED reference item** (zen show
+- **An item-prefs sweep must pair rex's item with a MATCHED reference item** (the 1.42.2 reference's
+  shows
   6558/6559/6560): an unmatched one has no `showOrdering` enum and another content head, so the
   comparison is silently empty. A socket's regional catalogue (`hu-HU` reads `hu_HU`) answers
   before the one it is based on.
@@ -2794,7 +2820,8 @@ are changing; replay the client's exact request before altering behavior.
   KILL` all survived on plexscratch. A coalescing saver loses exactly that window; with `--state`
   rex saves a client write (any non-GET, and the scrobble/rate/progress/timeline GETs) before
   its status line.
-- **An unseeded `sort=random` is a fresh order on every request** (zen, kids, plexscratch; `random:desc`
+- **An unseeded `sort=random` is a fresh order on every request** (the 1.42.2 reference, plexlab,
+  plexscratch; `random:desc`
   too). Only `random:<seed>` holds one order, and a `random="1"` shelf's sample is a different
   mechanism that stays stable for the process. Plex Web's "Randomly" sends no seed.
 - **What a restart changes on a real PMS** (cycle 73, seven restarts of plexscratch): watch state,
@@ -2827,7 +2854,8 @@ are changing; replay the client's exact request before altering behavior.
 - **`urllib` sends `Connection: close` on every request**, and a real PMS answers the connection state
   the client asked for. A header read through it is the client's, not the server's: read an envelope
   over a raw socket (cycle 75 found cycle 74's recorded `Connection: close` was exactly this).
-- **A real PMS answers a burst of simultaneous connections** (30 of 30 on plexscratch42 from kids);
+- **A real PMS answers a burst of simultaneous connections** (30 of 30 on plexscratch42 from
+  plexlab);
   `socketserver`'s default listen backlog of 5 reset most of them, and six -- a browser's per-host
   connection count -- already lost some. rex listens with a backlog of 128.
 - **A play queue has an OWNER, and `own=1` moves it.** A queue read with `own=1` by a client that does
@@ -2835,7 +2863,8 @@ are changing; replay the client's exact request before altering behavior.
   one-queue-per-client rule follows the owner: the taker's other queue is retired at once, its next new
   queue retires this one, and the creator's new queue leaves it alone (1.42.2 and 1.43.4). Plex Web hands
   another player the queue key with `own:1`.
-- **Season 0 is `Specials`, and only a show that holds one carries `seasonCount`.** On zen (1.42.2,
+- **Season 0 is `Specials`, and only a show that holds one carries `seasonCount`.** On the 1.42.2
+  reference (
   509 shows) the four shows with a season 0 answer `childCount` WITH it and `seasonCount` without it
   (Bluey 4 and 3) straight after `childCount` -- detail, section listing, hubs -- and no other show
   carries the attribute. The season's generated title is translated like `Season N` (its `title` and
@@ -2882,26 +2911,27 @@ are changing; replay the client's exact request before altering behavior.
   native server listed the shows whatever the type. An EMPTY collection carries no `childCount` on
   1.42.2, where rex sent 0 -- see the empty-collection rule below.
 - **The paging HEADER beats the query on every route family** (cycle 16, re-measured cycle 83 with
-  GETs on kids, zen and plexscratch42, `tests/fixtures/paging_header_precedence.json`): section
-  listings, `/children`, `/allLeaves`, `/hubs`, section hubs, `/hubs/search`, On Deck, Recently
-  Added, `/library/sections`, history, `/:/prefs`, a detail row, `/identity`, `/playlists`, a
-  section's `/collections`, a collection's children and a playlist's items all answer the header's
-  start and size, per parameter, and a header `Start=abc` beside a valid query is a 500. The native
-  server took a header only when the query had not named it; both now override at the door.
+  GETs on plexlab, the 1.42.2 reference and plexscratch42,
+  `tests/fixtures/paging_header_precedence.json`): section listings, `/children`, `/allLeaves`,
+  `/hubs`, section hubs, `/hubs/search`, On Deck, Recently Added, `/library/sections`, history,
+  `/:/prefs`, a detail row, `/identity`, `/playlists`, a section's `/collections`, a collection's
+  children and a playlist's items all answer the header's start and size, per parameter, and a
+  header `Start=abc` beside a valid query is a 500. The native server took a header only when the
+  query had not named it; both now override at the door.
 - **An EMPTY body is never gzipped**, whatever the client offers. The official client's own
   `PUT /updater/check` (`tests/fixtures/reference-walk.jsonl`, `Accept-Encoding: gzip, deflate, br,
   zstd`) is answered `Content-Length: 0`, `Content-Type: text/html`, no encoding pair, length before
   type. The oracle compressed nothing into a 20-byte stream with `X-Plex-Content-Original-Length: 0`,
   which also moved every empty write answer, a 204 included, into the gzip family's header order.
 - **`/photo/:/transcode` output caches for three days whatever it transcodes.** A bundled resource
-  (`url=/:/resources/movie.png`) answers `max-age=259200` on kids, fresh and cached alike, and so does an
-  item's artwork; the same files read directly are `no-cache`. The oracle
+  (`url=/:/resources/movie.png`) answers `max-age=259200` on plexlab, fresh and cached alike, and so does
+  an item's artwork; the same files read directly are `no-cache`. The oracle
   served a resource and an uploaded poster through the transcoder with the direct path's `no-cache`.
 - **A collection's `/library/metadata/{id}/children` names its section by NUMBER** --
   `librarySectionID: 1` on the container, paged or not, as on every other container (plexscratch42,
   four movie collections). Both servers sent the create request's `sectionId` string.
 - **A bare `OPTIONS` on a multi-segment path reaches only the handlers that take any verb.** Swept
-  2026-09-30 over every multi-segment route the oracle names, on kids and plexscratch42: the
+  2026-09-30 over every multi-segment route the oracle names, on plexlab and plexscratch42: the
   transcoders (`/photo/:/transcode`, `/video|subtitles/:/transcode/universal/*`), the `/:/` timeline
   writers, `/:/resources/*`, `/log/networked`, `/security/{resources,token}`,
   `/status/sessions/terminate` and `/services/codecs` answer it exactly as a GET (their own 400, the
@@ -2915,14 +2945,16 @@ are changing; replay the client's exact request before altering behavior.
 - **A lower-case first byte on a connection's first request is checked BEFORE every other rule of
   the line, and the socket goes at once.** `get`, `getgetgetget` (past the method bound), `get
   /id%zz...`, `get ... HTTP/1`, an LF-only `get` line and `get  /identity` all draw nothing and EOF at
-  0.0 s on kids (1.43.4) and plexscratch42 (1.42.2), re-measured 2026-09-30 -- which overturns cycle
-  27's "held to the 20-second idle close". An unterminated `get ` is held until the line completes.
-  The oracle answered the five malformed ones 400; the native server held every one to its read
-  timeout and then wrote a 400.
-- **An idle keep-alive connection is dropped at 20 s with NOTHING written** (kids, after a completed
+  0.0 s on plexlab (1.43.4) and plexscratch42 (1.42.2), re-measured 2026-09-30 -- which overturns
+  cycle 27's "held to the 20-second idle close". An unterminated `get ` is held until the line
+  completes. The oracle answered the five malformed ones 400; the native server held every one to
+  its read timeout and then wrote a 400.
+- **An idle keep-alive connection is dropped at 20 s with NOTHING written** (plexlab, after a
+  completed
   `GET /identity`). The native server turned its read timeout into a parse error and wrote an
   unsolicited 400 onto every idle socket before closing it.
-- **"Unplayed" is by LEAVES on two lists and by the row's own counter everywhere else.** On zen
+- **"Unplayed" is by LEAVES on two lists and by the row's own counter everywhere else.** On the
+  1.42.2 reference
   (cycle 83, `tests/fixtures/unwatched_zen.json`; 509 shows, six partly watched, two fully, none
   carrying a `viewCount` of its own) a show library's `/unwatched` is the 507 shows with an
   unwatched leaf -- the `unwatchedLeaves=1` set -- and a show's `/children?unwatched=1` keeps each
@@ -2933,7 +2965,7 @@ are changing; replay the client's exact request before altering behavior.
   "partly watched shows vanish from the TV Unwatched filter" is not the rule to copy, and Plex Web's
   TV filter sends `unwatchedLeaves=1` (the Filter the show Meta advertises) anyway. rex read the
   own counter on both lists, and an episode scrobble stamps one on its season and show.
-- **`/hubs/sections/{id}/{leaf}` routes four leaves and 404s the rest.** Swept on kids (1.43.4,
+- **`/hubs/sections/{id}/{leaf}` routes four leaves and 404s the rest.** Swept on plexlab (1.43.4,
   2026-09-30) with 1,450 names under both sections: only `extras`, `manage`, `newReleases` and
   `popular` answer (`popular` 500s on a movie library there, see the route), and every other leaf --
   `foo`, `continueWatching` without `/items`, `extras/x`, `manage/x` -- is the 85-byte Not Found
@@ -2942,19 +2974,20 @@ are changing; replay the client's exact request before altering behavior.
   `/hubs/home/` `continueWatching`, `onDeck` and `recentlyAdded`; both servers already agreed.
   (The sweep that found it showed the native answer "matching" early on: both requests had failed
   identically with the client out of ports, which `ndiff` does not report.)
-- **A `/web/*` 404 IS gzipped; only the 200 asset is not.** Measured on kids (1.43.4, 2026-09-30)
+- **A `/web/*` 404 IS gzipped; only the 200 asset is not.** Measured on plexlab (1.43.4, 2026-09-30)
   with `Accept-Encoding: gzip`: `/web/zzNoSuchLeaf` and `/web/js/zz.js` answer the 85-byte Not
   Found document as `Content-Encoding: gzip`, `X-Plex-Content-Original-Length: 85`, 78 bytes on the
   wire, and no connection state (the socket closes). The cycle-16 rule "a web asset is never
   gzipped" is about the served FILE; the native server applied it to every `/web` path. `/web/`
   (trailing slash) is the same absolute 302 as `/web`, which the native server 404'd.
-- **Every leaf type's `/children` is the 400.** Measured on kids (1.43.4, 2026-09-30): a movie (1),
+- **Every leaf type's `/children` is the 400.** Measured on plexlab (1.43.4, 2026-09-30): a movie
+  (1),
   an episode (8) and a clip (5) all answer the 89-byte Bad Request document, paged or not. Their
   `/allLeaves` and `/grandchildren` differ by type -- 200 for a movie and an episode, 404 for a clip.
   The oracle refused all four leaf types; the native server refused only a movie and answered an
   episode an empty 200 container. (A clip's 404s are checked on `catalog_features.json`'s trailer --
   see below.)
-- **A client's first request registers its device BEFORE the answer.** Measured on kids (1.43.4,
+- **A client's first request registers its device BEFORE the answer.** Measured on plexlab (1.43.4,
   2026-09-30) with a new synthetic identifier: the very first `GET /devices` it sent already listed
   its own row (`name`, `platform`, `clientIdentifier`). The oracle registered early only under
   `--state` (cycle 74's save-before-answer) and otherwise when it counted the response's bytes, so
@@ -2965,19 +2998,21 @@ are changing; replay the client's exact request before altering behavior.
   before the other; every later `/devices` 500s on both until a non-numeric platform overwrites the
   row, as on a real PMS. Numeric spellings are never sent to a shared reference.
 - **An idle keep-alive socket is closed at 20 s with NO bytes -- after a ranged 206 as after
-  anything.** Measured on kids (1.43.4, 2026-09-30) on a raw socket: `Range: bytes=0-1` on
+  anything.** Measured on plexlab (1.43.4, 2026-09-30) on a raw socket: `Range: bytes=0-1` on
   `/identity`, `/accounts` or `/status/sessions` answers 206 with `Content-Length` twice (the whole
   body's, then the slice's) and `Connection: Keep-Alive`; a second request on the socket is served;
   then the socket goes quiet and closes at 20.0 s. A socket that sent nothing, or half a request
   line, closes the same way. The native server answered every such read timeout with a 400 before
   closing, which a client that believed the first `Content-Length` (python's `http.client` does)
   read as the rest of its body -- the sweep's "oracle IncompleteRead, native 206" cells.
-- **The multi-id container's `mediaTagVersion` is a NUMBER.** Measured on kids (1.43.4,
-  `/library/metadata/1,17` and `/8,9`) and zen (1.42.2, two movies), with `X-Plex-Language: de` and
-  `en` alike (2026-09-30): `"mediaTagVersion":1786914632`, as on every other library container. The
-  native server sent it as a string on `/library/metadata/{a},{b}` only, in every language; the
-  sweep saw it only under the language headers because the family's base already carried it.
-- **`/webclient`, `/websocket`, `/webm`, `/web2` are NOT the web client's tree.** Measured on kids
+- **The multi-id container's `mediaTagVersion` is a NUMBER.** Measured on plexlab (1.43.4,
+  `/library/metadata/1,17` and `/8,9`) and the 1.42.2 reference (two movies), with `X-Plex-Language:
+  de` and `en` alike (2026-09-30): `"mediaTagVersion":1786914632`, as on every other library
+  container. The native server sent it as a string on `/library/metadata/{a},{b}` only, in every
+  language; the sweep saw it only under the language headers because the family's base already
+  carried it.
+- **`/webclient`, `/websocket`, `/webm`, `/web2` are NOT the web client's tree.** Measured on
+  plexlab
   (1.43.4, 2026-09-30): each is an ordinary single-segment plug-in path -- the dispatcher's
   `{"size":0,"content":"plugins"}`, gzipped when offered, in the container header order
   (`Content-Type`, `Connection`, `Keep-Alive`, the gzip trio, `Content-Length`, `Cache-Control`), a
@@ -2985,99 +3020,105 @@ are changing; replay the client's exact request before altering behavior.
   the bare prefix `/web`: the oracle gave these paths the asset header order, let them through the
   token gate and exempted them from the empty-segment rule; the native server also refused to gzip
   them. The web tree is `/web` and what is under `/web/`.
-- **The bare `/library/metadata` is a 404.** Measured on kids (1.43.4, 2026-09-30): GET and HEAD,
+- **The bare `/library/metadata` is a 404.** Measured on plexlab (1.43.4, 2026-09-30): GET and HEAD,
   with or without paging, answer the 85-byte Not Found document, as the oracle does. The native
   server answered a 400 there, with no measurement behind it.
-- **`/history` is the plug-in dispatcher's empty listing, not the history page.** Measured on kids
+- **`/history` is the plug-in dispatcher's empty listing, not the history page.** Measured on
+  plexlab
   (1.43.4, 2026-09-30): `{"size":0,"content":"plugins"}` (49 bytes), with any query --
   `accountID=abc` is not validated there. The history page is `/status/sessions/history/all`; the
   native server also routed the single segment to it, so `/history` listed plays and refused a bad
   `accountID` with a 400.
-- **The columns a listing REFUSES are refused wherever the filter grammar runs** (cycle 83, kids
-  and zen). `art`, `banner`, `theme`, `thumb`, `slug`, `extraType`, `parentIndex` and `userFields`
-  are 500s on a show's `/children` and `/grandchildren`, every tag axis, `/common`, `/search`,
-  `/autocomplete`, `/unwatched`, `/firstCharacter`, `/collection` and `/recentlyViewedShows`, not
-  only on the grid, `/library/all` and `/playlists`; and the hub pages refuse all eight on the
-  fifteen's terms (non-empty value, a show library's shelf in scope), so the hub set is the
-  fifteen PLUS the listing's refusals. The section extras leaf still filters on `extraType`.
+- **The columns a listing REFUSES are refused wherever the filter grammar runs** (cycle 83, plexlab
+  and the 1.42.2 reference). `art`, `banner`, `theme`, `thumb`, `slug`, `extraType`, `parentIndex`
+  and `userFields` are 500s on a show's `/children` and `/grandchildren`, every tag axis, `/common`,
+  `/search`, `/autocomplete`, `/unwatched`, `/firstCharacter`, `/collection` and
+  `/recentlyViewedShows`, not only on the grid, `/library/all` and `/playlists`; and the hub pages
+  refuse all eight on the fifteen's terms (non-empty value, a show library's shelf in scope), so the
+  hub set is the fifteen PLUS the listing's refusals. The section extras leaf still filters on
+  `extraType`.
 - **`guid=` is a grammar field on every listing**, not a grid-and-`/library/all` special case
-  (cycle 83, kids and zen): `guid=1` empties every tag axis, `/children`, `/grandchildren`,
-  `/search`, `/autocomplete`, `/unwatched`, `/recentlyViewedShows` and a hub page's TV shelf. The
-  prefix is CASE-SENSITIVE (`guid=PLEX` nothing), the `<=` key is the same prefix, and a comma is
-  the grammar's OR (`guid=<a>,<b>` is both rows) -- a private prefix pass read it as one guid.
-  kids answers `/library/all?type=1&guid=<a>&guid=<b>` with ONE row where the section grid
-  answers none -- the last-occurrence rule below.
-- **The filter field table is the Meta's, not a hand list** (cycle 83, kids and zen). `dovi` and
+  (cycle 83, plexlab and the 1.42.2 reference): `guid=1` empties every tag axis, `/children`,
+  `/grandchildren`, `/search`, `/autocomplete`, `/unwatched`, `/recentlyViewedShows` and a hub
+  page's TV shelf. The prefix is CASE-SENSITIVE (`guid=PLEX` nothing), the `<=` key is the same
+  prefix, and a comma is the grammar's OR (`guid=<a>,<b>` is both rows) -- a private prefix pass
+  read it as one guid. plexlab answers `/library/all?type=1&guid=<a>&guid=<b>` with ONE row where
+  the section grid answers none -- the last-occurrence rule below.
+- **The filter field table is the Meta's, not a hand list** (cycle 83, plexlab and the 1.42.2
+  reference). `dovi` and
   `network` are advertised Fields and filter (`dovi=1`, `network=1` empty every consumer on
-  kids), and `role` is no field at all: `role=1` answers every row where `actor=1` answers none.
+  plexlab), and `role` is no field at all: `role=1` answers every row where `actor=1` answers none.
   The native table lacked the first two and filtered `role` as the actor tag.
-- **A movie-scoped `/hubs/promoted` runs no filter at all** (cycle 83, kids): at
+- **A movie-scoped `/hubs/promoted` runs no filter at all** (cycle 83, plexlab): at
   `contentDirectoryID=1` `resolution=1`, `extraType=1`, `parentIndex=1` and `art=1` are 200s,
   at `=2` 500s -- only a TV shelf parses the request's filters.
-- **`/library/metadata/{id}/allLeaves` ignores `sort=`** (cycle 83, kids' show): `title:desc`,
+- **`/library/metadata/{id}/allLeaves` ignores `sort=`** (cycle 83, plexlab's show): `title:desc`,
   `titleSort`, an empty value and the unknown key `zzz` all answer the episodes in broadcast
   order with a 200.
 - **The `include*` blocks reach a library hub page's FULL rows, and `/common?id=` takes two of
-  them** (cycle 83, kids and zen). `/hubs/sections/{id}`'s TV Recently Added show row takes
-  `Children`, `Extras`, `OnDeck`, `Preferences` and `Related`; no light row takes any. The Common
-  row takes `Extras` and `Related` ONLY -- a movie's and Firefly's alike, never `Children`,
-  `OnDeck` or `Preferences`.
+  them** (cycle 83, plexlab and the 1.42.2 reference). `/hubs/sections/{id}`'s TV Recently Added
+  show row takes `Children`, `Extras`, `OnDeck`, `Preferences` and `Related`; no light row takes
+  any. The Common row takes `Extras` and `Related` ONLY -- a movie's and Firefly's alike, never
+  `Children`, `OnDeck` or `Preferences`.
 - **`includeGuids=1` never gives an unmatched `local://` row a Guid** -- on the grid, on
-  `/grandchildren` and on a hub page alike (cycle 83, kids' episodes 12-14), where a matched row
+  `/grandchildren` and on a hub page alike (cycle 83, plexlab's episodes 12-14), where a matched row
   with no external ids gets the one-entry list. `/grandchildren` honours the option at all.
   Widened below to `tv.plex.agents.none://` and to rows whose detail keeps its ids: one gate.
-- **`/recentlyViewedShows` is a DEFAULT window** (cycle 83, zen's 509 shows and kids): with no
+- **`/recentlyViewedShows` is a DEFAULT window** (cycle 83, the 1.42.2 reference's 509 shows and
+  plexlab): with no
   `X-Plex-Container-Size` it answers the first 25 rows at `offset` 0 with the full `totalSize`, a
   lone Start ignored; once a Size is sent the shared rule applies (both page, a lone Size or a
   negative value is every row with neither field). `/folder` follows the shared rule plainly.
-  A NON-INTEGER lone Size (`X-Plex-Container-Size=abc`) is a 500 on kids and zen on the grid,
-  `/folder` and `/recentlyViewedShows` -- see the paging grammar below.
-- **A scope that names no relative of the row reads the ROW ITSELF** (cycle 83, kids' movie
+  A NON-INTEGER lone Size (`X-Plex-Container-Size=abc`) is a 500 on plexlab and the 1.42.2 reference
+  on the grid, `/folder` and `/recentlyViewedShows` -- see the paging grammar below.
+- **A scope that names no relative of the row reads the ROW ITSELF** (cycle 83, plexlab's movie
   library): `episode.title=Sintel`, `show.title=`, `season.title=` and even `artist.title=Sintel`
   each find Sintel, and an empty `episode.addedAt=` is the date column's 500. So does an unknown
   scope prefix (`movie.genre!=1` keeps every row). The native resolver answered no rows, matching
   nothing and never parsing the value.
-- **`unwatchedLeaves` takes the Meta's BOOLEAN grammar** (cycle 83, kids): on a movie grid it is
+- **`unwatchedLeaves` takes the Meta's BOOLEAN grammar** (cycle 83, plexlab): on a movie grid it is
   every row for an empty value, `abc`, `-1`, `1,2` and `0`, and none for `1`. Typed as an integer
   it refused the empty and word values with a 500.
-- **An `include*` block turns on for the integer ONE only** (cycle 83, kids' hub page): `01` and
+- **An `include*` block turns on for the integer ONE only** (cycle 83, plexlab's hub page): `01` and
   `%2B1` draw the blocks, `-1`, `2` and `0` do not -- the `_include_int` rule cycles 22 and 29
   recorded, which the native full-row passes read as "any non-zero integer".
-- **A TAG-TABLE axis under any leaf-count filter is EMPTY** (cycle 83, kids and zen):
+- **A TAG-TABLE axis under any leaf-count filter is EMPTY** (cycle 83, plexlab and the 1.42.2
+  reference):
   `unwatchedLeaves`, `viewedLeafCount`, `unviewedLeafCount` and `viewedOrInProgressLeafCount`, any
   value and operator, empty the genre, director, actor, country, network and collection axes of a
-  movie and a show library (zen's show genre axis: 39 entries, 0 for `unwatchedLeaves=1` and for
-  `=0`), while the COLUMN axes -- `year`, `contentRating`, `studio` -- apply the filter to their
-  rows (zen's show year axis: 46 at `=1`, 2 at `=0`). A value that does not parse still refuses.
+  movie and a show library (the 1.42.2 reference's show genre axis: 39 entries, 0 for
+  `unwatchedLeaves=1` and for `=0`), while the COLUMN axes -- `year`, `contentRating`, `studio` --
+  apply the filter to their rows (the 1.42.2 reference's show year axis: 46 at `=1`, 2 at `=0`). A
+  value that does not parse still refuses.
 - **An EMPTY `sort=` is ignored on `/search`, `/children` and `/grandchildren`** as on every
-  listing (cycle 83, kids: 200s in the default order); only an unknown key refuses.
+  listing (cycle 83, plexlab: 200s in the default order); only an unknown key refuses.
 - **`location=` is the Meta's tag compared as the section Location id, on the grid too**
-  (cycle 83, kids): `-1` is no row, `1` and `1,2` every row, an empty value and `abc` 500s. The
+  (cycle 83, plexlab): `-1` is no row, `1` and `1,2` every row, an empty value and `abc` 500s. The
   native grid ran a private digits-only pass that refused `-1` and `1,2`.
-- **`/folder?parent=` that is not all DIGITS is the top level** (cycle 83, kids: `-1`, `1,2` and
+- **`/folder?parent=` that is not all DIGITS is the top level** (cycle 83, plexlab: `-1`, `1,2` and
   `abc` answer the library's top folder); a numeric id naming no directory is the empty list.
 - **A projected row takes only the `include*` blocks, never a detail read's fills** (cycle 83,
-  kids): the show Common row with `includeExtras=1` gains `Extras` and no `duration`, where the
+  plexlab): the show Common row with `includeExtras=1` gains `Extras` and no `duration`, where the
   native pass borrowed the detail read's, which fills a show's absent duration.
 - **A response post-pass that changes nothing must keep the route's BYTES** (cycle 83):
   `/system/agents` carries repeated `Language` keys in its JSON on purpose, and a native
   `excludeFields=`/`includeAlternates=` pass that re-serialised the parsed body collapsed them to
   the last one (6,658 bytes to 679), where the oracle leaves the body alone.
-- **The multi-id read's `mediaTagVersion` is an INTEGER** (cycle 83, kids'
+- **The multi-id read's `mediaTagVersion` is an INTEGER** (cycle 83, plexlab's
   `/library/metadata/1,3`), as on the single-id read; the native multi-id container sent a string.
-- **The TV Recently Added list refuses a refused column even EMPTY** (cycle 83, kids):
+- **The TV Recently Added list refuses a refused column even EMPTY** (cycle 83, plexlab):
   `/hubs/home/recentlyAdded?type=2` answers `art=`, `slug=`, `thumb=` and `userFields=` with a 500 --
   that list parses empty values, where a hub page drops them (`/hubs?art=` is a 200). The native list
   found no field in the pair and answered every row.
 - **The TV Recently Added list and a show-scoped `/hubs/promoted` pass the `include*` blocks
-  to their FULL show rows** (cycle 83, kids' Firefly takes all five on both; cycle 55 recorded the
-  list on zen) -- the native list and shelf applied none.
-- **`/system/agents` orders like a container only when it answers one.** Measured on kids
+  to their FULL show rows** (cycle 83, plexlab's Firefly takes all five on both; cycle 55 recorded
+  the list on the 1.42.2 reference) -- the native list and shelf applied none.
+- **`/system/agents` orders like a container only when it answers one.** Measured on plexlab
   (1.43.4, 2026-09-30, raw socket): `GET /system/agents?mediaType=abc` is the 89-byte 400 as
   `X-Plex-Protocol, Content-Length, Content-Type, Connection, Cache-Control, Date` -- the refusal
   family -- while its 200 container is type-first. Both servers sent the container order to every
   status there, the PATCH 500 included.
-- **An embedded stream's 501 has a reason phrase.** Measured on kids (1.43.4, 2026-09-30):
+- **An embedded stream's 501 has a reason phrase.** Measured on plexlab (1.43.4, 2026-09-30):
   `GET /library/streams/{id}` (and `.srt`, `.vtt`) of a stream the server holds is `HTTP/1.1 501
   Not Implemented`, 97 bytes, length before type. The native server wrote an EMPTY phrase for 501,
   and ordered an uploaded sidecar's 200 type-first where cycle 74 measured it length-first.
@@ -3097,19 +3138,20 @@ are changing; replay the client's exact request before altering behavior.
   compared against another.
 - **The verb table is a rule per route FAMILY, and each server had a different half of it.**
   Measured on plexscratch (1.43.4, 2026-09-30) with PUT, POST, DELETE, OPTIONS and HEAD over every
-  client read path, with kids and zen for OPTIONS and HEAD (`tests/fixtures/verb_table_2026-09-30.json`):
-  every SECTION leaf takes cycle 15's table and nothing else -- the eleven tag directories,
-  `firstCharacter`, `sorts`, `filters`, `unwatched` and `collections` are GET and HEAD only, the
-  section itself refuses POST, and `HEAD /library/sections/{id}/prefs` is the GET; the session and
-  search LISTINGS (`/status/sessions/background`, `/library/search`) and the whole `/statistics`
-  subtree refuse every verb but GET and HEAD; a key list `/library/metadata/{a},{b}` refuses POST
-  like one item; the provider-group LISTING answers PUT and DELETE with a 400 (with or without
-  `title=`: a group is edited by id) and only a bare OPTIONS with the 404; `/playlists?type=42` is a
-  read, so its POST is the create's 400 and PUT/DELETE/OPTIONS the dispatcher; and under `/player/`
-  a bare OPTIONS is the same 400 as every verb. The native server routed the section leaves by name
-  alone and answered the GET body to any verb; the oracle had listed read-only PATHS and answered the
-  rest. Both follow the families now. A key list's DELETE is held out -- no reference may be sent one.
-- **Paging is ONE merge of two transports, per parameter** (cycle 83, kids, GETs over the grid,
+  client read path, with plexlab and the 1.42.2 reference for OPTIONS and HEAD
+  (`tests/fixtures/verb_table_2026-09-30.json`): every SECTION leaf takes cycle 15's table and
+  nothing else -- the eleven tag directories, `firstCharacter`, `sorts`, `filters`, `unwatched` and
+  `collections` are GET and HEAD only, the section itself refuses POST, and `HEAD
+  /library/sections/{id}/prefs` is the GET; the session and search LISTINGS
+  (`/status/sessions/background`, `/library/search`) and the whole `/statistics` subtree refuse
+  every verb but GET and HEAD; a key list `/library/metadata/{a},{b}` refuses POST like one item;
+  the provider-group LISTING answers PUT and DELETE with a 400 (with or without `title=`: a group is
+  edited by id) and only a bare OPTIONS with the 404; `/playlists?type=42` is a read, so its POST is
+  the create's 400 and PUT/DELETE/OPTIONS the dispatcher; and under `/player/` a bare OPTIONS is the
+  same 400 as every verb. The native server routed the section leaves by name alone and answered the
+  GET body to any verb; the oracle had listed read-only PATHS and answered the rest. Both follow the
+  families now. A key list's DELETE is held out -- no reference may be sent one.
+- **Paging is ONE merge of two transports, per parameter** (cycle 83, plexlab, GETs over the grid,
   `/folder`, `/recentlyViewedShows`, `/library/sections`, `/children`, `/identity`, `/:/prefs`, a hub
   page and `/hubs/search`; `tests/fixtures/paging_grammar.json`). The effective Start is the header's
   if sent, else the query's, and the same for Size; the container pages when both effective values
@@ -3117,29 +3159,30 @@ are changing; replay the client's exact request before altering behavior.
   pages, and a header half overrides only its own half of a query pair. Cycle 16's "header wins" and
   the earlier "a lone header does nothing" are the same rule; both servers already followed it at
   `27d76b2` (the reported "native pages on a lone header" did not reproduce on any family).
-- **The paging VALUES are 32-bit signed integers, and a lone Size is parsed** (cycle 83, kids and
-  zen, the same families and fixture). Wherever a container pages, a Size is read whenever it is
-  sent -- `X-Plex-Container-Size=abc` ALONE, header or query, is the 109-byte 500 on `/identity` as on
-  the grid -- and a Start only beside a Size (a lone `Start=abc` is ignored; `Start=abc&Size=-1` is
-  the 500). The grammar: an optional `+`/`-` and ASCII digits, `-2147483648` to `2147483647`; an
-  empty value, `1.5`, `1e2`, `0x10`, `1_0`, a leading or trailing space and `2147483648` are 500s,
-  `+1` and `01` page, a negative value still turns paging off. A plug-in container (`noHistory`),
-  `/system/search`, a non-container root (`/butler`, `/myplex/account`), an image and an earlier
-  refusal (a 404, `/:/timeline`'s 400) are untouched. Both servers read a Size only beside a Start
-  and parsed with `int()` / `trim().parse::<i64>()`, so every one of these was a 200.
-- **`/folder?parent=1,2` is the TOP folder, not an empty list** (cycle 83, kids, re-measured): a
+- **The paging VALUES are 32-bit signed integers, and a lone Size is parsed** (cycle 83, plexlab and
+  the 1.42.2 reference, the same families and fixture). Wherever a container pages, a Size is read
+  whenever it is sent -- `X-Plex-Container-Size=abc` ALONE, header or query, is the 109-byte 500 on
+  `/identity` as on the grid -- and a Start only beside a Size (a lone `Start=abc` is ignored;
+  `Start=abc&Size=-1` is the 500). The grammar: an optional `+`/`-` and ASCII digits, `-2147483648`
+  to `2147483647`; an empty value, `1.5`, `1e2`, `0x10`, `1_0`, a leading or trailing space and
+  `2147483648` are 500s, `+1` and `01` page, a negative value still turns paging off. A plug-in
+  container (`noHistory`), `/system/search`, a non-container root (`/butler`, `/myplex/account`), an
+  image and an earlier refusal (a 404, `/:/timeline`'s 400) are untouched. Both servers read a Size
+  only beside a Start and parsed with `int()` / `trim().parse::<i64>()`, so every one of these was a
+  200.
+- **`/folder?parent=1,2` is the TOP folder, not an empty list** (cycle 83, plexlab, re-measured): a
   parent that is not all digits (`1,2`, `1%2C2`, `-1`, `+7`, ` 7`, `7,abc`) lists the library's top
   folder; only an EMPTY parent and a numeric one naming no directory (`1`, `99999`) are the empty
   200. A repeated `parent` takes its LAST value (`parent=7&parent=8` is folder 8, `parent=7&parent=abc`
-  the top). The earlier "empty 200 on kids, 500 on both ours" predates `69f8720`; at `27d76b2` both
-  servers already answered this, and the check pins it.
+  the top). The earlier "empty 200 on plexlab, 500 on both ours" predates `69f8720`; at `27d76b2`
+  both servers already answered this, and the check pins it.
 - **`/library/all` reads a repeated parameter's LAST occurrence; the section grid ANDs it**
-  (cycle 83, kids and zen, `tests/fixtures/library_all_repeated_keys.json`). `guid=<a>&guid=<b>` is
-  the <b> row, `year=2010&type=1&year=2008` the 2008 movie, `type=2&type=1` the movies, and a bad
-  value BEFORE a good one is never parsed (`type=abc&type=1` a 200, `type=1&type=abc` the 400;
-  `addedAt>=abc&addedAt>=1` a 200, the reverse the 500) -- the whole query is a map. The grid answers
-  both guids with no row, as a conjunction. Both servers ran the grid's conjunction here (the oracle
-  also emptied `type=2&type=1`, reading every `type`).
+  (cycle 83, plexlab and the 1.42.2 reference, `tests/fixtures/library_all_repeated_keys.json`).
+  `guid=<a>&guid=<b>` is the <b> row, `year=2010&type=1&year=2008` the 2008 movie, `type=2&type=1`
+  the movies, and a bad value BEFORE a good one is never parsed (`type=abc&type=1` a 200,
+  `type=1&type=abc` the 400; `addedAt>=abc&addedAt>=1` a 200, the reverse the 500) -- the whole
+  query is a map. The grid answers both guids with no row, as a conjunction. Both servers ran the
+  grid's conjunction here (the oracle also emptied `type=2&type=1`, reading every `type`).
 - **An EMPTY collection carries no `childCount` at all** (cycle 83, plexscratch42 1.42.2,
   `tests/fixtures/collection_empty_childcount.json`): an episode collection created over a show's key
   holds nothing, and neither its create answer nor section `/collections`, `/library/metadata/{id}`,
@@ -3147,7 +3190,8 @@ are changing; replay the client's exact request before altering behavior.
   where a one-member collection says `childCount: 1`. Both servers sent `0`. (The same copy's section
   `search?type=18&query=` finds the empty collection; both ours answer that search with no row --
   measured beside it, not changed here.)
-- **A CLIP's `/allLeaves` and `/grandchildren` are the 404** (cycle 83, kids' clip 5 re-measured,
+- **A CLIP's `/allLeaves` and `/grandchildren` are the 404** (cycle 83, plexlab's clip 5
+  re-measured,
   paged or not): the 85-byte Not Found, beside `/children`'s 89-byte 400, where a movie's two are
   empty 200s. `catalog_ui.json` holds no clip, but `catalog_features.json`'s trailer 201 is one, and
   both servers answered it the movie's empty 200s.
@@ -3242,15 +3286,15 @@ are changing; replay the client's exact request before altering behavior.
   goes through the transcoder and the Categories shelf reads its genre axis the same way. The
   oracle answered 200 throughout. No suite caught it: every check sent the token as a header.
 - **An item's `languageOverride` picker is the translation table's list for the EXACT language**
-  (cycle 83, zen 1.42.2, `GET /library/metadata/{id}?includePreferences=1`). Under `zh-TW` zen
-  leads the list with `tr-TR:土耳其文|zh-CN:中文|zh-TW:中文（台灣）` and names Arabic
+  (cycle 83, the 1.42.2 reference, `GET /library/metadata/{id}?includePreferences=1`). Under `zh-TW`
+  the 1.42.2 reference leads the list with `tr-TR:土耳其文|zh-CN:中文|zh-TW:中文（台灣）` and names Arabic
   `阿拉伯文（沙烏地阿拉伯）`; under `es-419` it names `en-GB` `Inglés (R. U.)`. The native server
   cut the language to its base and drew the agent list for `zh` (simplified, `zh`'s order) and
   `es` (`Inglés (RU)`), where the oracle took the table's own entry first. Only a language the
   table lacks falls back to the agent rows.
 - **A `/query/parse` Rule's `fieldTitle` is the advertised Meta `Field` title for (scope, field)**
-  (cycle 83, zen 1.42.2, `X-Plex-Language: en`), the scope being the rule's own prefix or the
-  one `type=` implies: `episode.addedAt` is `Date Episode Added`, `show.studio` `Studio`,
+  (cycle 83, the 1.42.2 reference, `X-Plex-Language: en`), the scope being the rule's own prefix or
+  the one `type=` implies: `episode.addedAt` is `Date Episode Added`, `show.studio` `Studio`,
   `show.genre` `Genre`, `show.unwatchedLeaves` `Unwatched Episodes`, `hdr` `HDR`, `dovi` `DOVI`,
   `episode.mediaSize` `File size` against the movie's `File Size`, and `season.title` (no Meta
   field) the empty string. The native server titled rules from a hand table that composed
@@ -3268,7 +3312,7 @@ are changing; replay the client's exact request before altering behavior.
   -- the app had nothing to play next -- and its PUT add put the bare season or show row, which has
   no Media, in the queue. The oracle matched the reference; the native port had dropped the flag.
 - **A candidate row's ELEMENT is part of the answer.** An item's `/themes` lists `Track` rows and
-  its `/clearLogos` `Photo` rows (kids, 1.43.4; `tests/fixtures/candidate_rows_kids.json`).
+  its `/clearLogos` `Photo` rows (plexlab, 1.43.4; `tests/fixtures/candidate_rows_kids.json`).
   python-plexapi's `themes()` and `logos()` keep only rows of their own tag, so the native
   server, whose uploaded candidates fell through to the default `Video`, read back an uploaded
   theme or logo as an empty list while the JSON was identical to the oracle's. Found by cycle 83's
@@ -3304,12 +3348,13 @@ are changing; replay the client's exact request before altering behavior.
 - **Adding a show to a play queue adds its episodes.** python-plexapi's `addItem(show)` grows a
   queue by the show's three episodes on plexscratch42 (1.42.2), as a create expands one; the
   native server added the show row itself, which has no Media to play.
-- **A decision's streams are NOT localised.** zen (1.42.2) answers Plex Web's MDE decision for a
+- **A decision's streams are NOT localised.** The 1.42.2 reference answers Plex Web's MDE decision
+  for a
   movie with a French track selected as `Français (DTS-HD MA 5.1)` under `X-Plex-Language=en` and
   its English subtitle as `English` under `fr`, while the same item's read says `French` and
   `Anglais` (`tests/fixtures/decision_stream_language_zen.json`). The native server kept the stored
   names; the oracle ran the item read's stream localiser over the decision too.
-- **`/system/agents` pages its XML like its JSON** (cycle 83, axis 2). zen (1.42.2) answers
+- **`/system/agents` pages its XML like its JSON** (cycle 83, axis 2). The 1.42.2 reference answers
   `GET /system/agents?mediaType=1` with request headers `X-Plex-Container-Start: 1` and
   `X-Plex-Container-Size: 2` and no `Accept` -- python-plexapi's `agents()` shape -- with
   `size="2" totalSize="5" offset="1"`, the second and third agents and both `X-Plex-Container-*`
@@ -3345,17 +3390,17 @@ are changing; replay the client's exact request before altering behavior.
   the recorded section-8 bound, unchanged.)
 - **A decision lists the streams that PLAY, not the file's** (cycle 84, the item cycle 83 left
   measured-not-fixed). Plex Web's exact MDE request (`tests/fixtures/decision_streams_selected.json`)
-  on zen (1.42.2): movie 1098 -- two video streams, a selected French and an unselected Spanish
-  DTS track, a selected English and four other PGS subtitles -- answers three Streams, the FIRST
-  video, the selected audio and the selected subtitle; srt rows 2925 (31 subtitles) and 3069 the
-  same. On plexscratch42 (1.42.2) row 272, whose two srt subtitles are both unselected, the
+  on the 1.42.2 reference: movie 1098 -- two video streams, a selected French and an unselected
+  Spanish DTS track, a selected English and four other PGS subtitles -- answers three Streams, the
+  FIRST video, the selected audio and the selected subtitle; srt rows 2925 (31 subtitles) and 3069
+  the same. On plexscratch42 (1.42.2) row 272, whose two srt subtitles are both unselected, the
   decision lists video and audio only under `subtitles=none|sidecar|burn|auto`. The selected
   subtitle carries `decision: ignore` and no `location` under `subtitles=none`, and
   `location: sidecar-subs` under `sidecar`. Both servers listed every stream of the file with
   `location: direct`. Measured and NOT acted on: with a subtitle selected, `burn`, `auto`, an
-  empty or an absent `subtitles` is a 400 on zen for Plex Web's and Plex for Android's shapes
-  alike -- so the "transcoder-less copy" reason recorded for the plexscratch42 400 was not the
-  reason; rex, which cannot burn, still answers them. Plex Web reads only the decision's
+  empty or an absent `subtitles` is a 400 on the 1.42.2 reference for Plex Web's and Plex for
+  Android's shapes alike -- so the "transcoder-less copy" reason recorded for the plexscratch42 400
+  was not the reason; rex, which cannot burn, still answers them. Plex Web reads only the decision's
   code pairs (it keeps the body as `decisionXML`, unread), so the stream list is invisible to it.
 - **A merge leaves the survivor's `updatedAt` alone** (cycle 84, `tests/fixtures/merge_updated_at_s42.json`).
   plexscratch42 (1.42.2), two rows of a throwaway section: after `PUT /library/metadata/768/merge?ids=769`
@@ -3401,15 +3446,15 @@ are changing; replay the client's exact request before altering behavior.
   oracle dropped the matched key even when the merge absorbed nothing (a survivor with no Media
   of its own), taking a row that still exists out of the queue.
 - **Every request header loses ONE optional leading space, not all of them** (cycle 84 F, raw
-  sockets on kids 1.43.4 and plexscratch42 1.42.2, identical; `tests/fixtures/header_ows_roku.json`).
-  Cycle 50 measured the rule for `Content-Length` and `X-Plex-Token`; it holds for the identity
-  headers too: `X-Plex-Platform:  Roku` (two or three spaces) is ` Roku`, not Roku, and keeps the
-  library pivots on `/media/providers` that `X-Plex-Platform: Roku` and `X-Plex-Platform:Roku`
-  lose; `X-Plex-Version:  9.7.1` carries a leading space, does not parse, and strips them; a
-  trailing space is kept (`Roku ` is not Roku either). The oracle applied the rule only through
-  `_header_value` and left every other reader on Python's parser, which strips all leading
-  whitespace; it now rewrites the parsed values off the raw lines. MALFORMED-ONLY: no client
-  sends a doubled separator.
+  sockets on plexlab 1.43.4 and plexscratch42 1.42.2, identical;
+  `tests/fixtures/header_ows_roku.json`). Cycle 50 measured the rule for `Content-Length` and
+  `X-Plex-Token`; it holds for the identity headers too: `X-Plex-Platform:  Roku` (two or three
+  spaces) is ` Roku`, not Roku, and keeps the library pivots on `/media/providers` that
+  `X-Plex-Platform: Roku` and `X-Plex-Platform:Roku` lose; `X-Plex-Version:  9.7.1` carries a
+  leading space, does not parse, and strips them; a trailing space is kept (`Roku ` is not Roku
+  either). The oracle applied the rule only through `_header_value` and left every other reader on
+  Python's parser, which strips all leading whitespace; it now rewrites the parsed values off the
+  raw lines. MALFORMED-ONLY: no client sends a doubled separator.
 - **`window` and `center` never move a queue's reported selection** (cycle 85 CP, plexscratch42
   1.42.2 and plexscratch 1.43.4, identical; `tests/fixtures/queue_section_delete_s42.jsonl`,
   steps `*-F`). A four-row queue with the selection moved to index 2 answers
@@ -3435,12 +3480,12 @@ are changing; replay the client's exact request before altering behavior.
   `max(playQueueTotalCount, rows)` and skips its confirm-playback path when
   `playQueueSelectedMetadataItemID` equals the item asked for.
 - **A TAB anywhere after a header's colon is a 400, leading ones included** (cycle 85 B, raw
-  sockets on kids 1.43.4 and plexscratch42 1.42.2, identical; `tests/fixtures/header_tab_roku.json`).
-  `X-Plex-Platform:\tRoku`, `: \tRoku`, `:\t Roku`, `:  \tRoku`, `Ro\tku`, `Roku\t`,
-  `X-Plex-Version:\t9.7.1` and an unknown header's `:\tvalue` are each a plain 400. Cycle 16's
-  TAB check read Python's parsed values, which had lost their leading whitespace, so after
-  cycle 84's one-space rewrite the oracle still answered a leading TAB with a 200 (B's
-  `regress64b_ows`, 5/7); it now reads the raw lines. The native server was already right.
+  sockets on plexlab 1.43.4 and plexscratch42 1.42.2, identical;
+  `tests/fixtures/header_tab_roku.json`). `X-Plex-Platform:\tRoku`, `: \tRoku`, `:\t Roku`, `:
+  \tRoku`, `Ro\tku`, `Roku\t`, `X-Plex-Version:\t9.7.1` and an unknown header's `:\tvalue` are each
+  a plain 400. Cycle 16's TAB check read Python's parsed values, which had lost their leading
+  whitespace, so after cycle 84's one-space rewrite the oracle still answered a leading TAB with a
+  200 (B's `regress64b_ows`, 5/7); it now reads the raw lines. The native server was already right.
   MALFORMED-ONLY: no client sends a TAB in a header.
 - **A show cascade's per-season activity progress rounds half to EVEN** (cycle 86 C+P,
   plexscratch 1.43.4; `tests/fixtures/show_cascade_progress_s43.json`). Two-season Firefly's
@@ -3451,60 +3496,63 @@ are changing; replay the client's exact request before altering behavior.
   The cascade's frame ORDER on 1.43.4 (per-season `updated` at the season's end, no trailing 49)
   stays recorded-not-implemented (findings, "The show cascade's frame ORDER on 1.43.4").
 - **The native port 404'd the per-id provider GETs the oracle has carried since cycle 44.**
-  Re-measured on zen and kids for Plex Web 4.162.1 (2026-10-01): `GET /media/providers/metadata/{id}`
-  and `/media/providers/metadata/group/{id}` are the listing's row as a one-row container, paged
-  like the listing (`totalSize=1 offset=0` under paging headers), 400 for a non-numeric id, 404
-  for an unknown one. MALFORMED-ONLY: 4.162.1 only PUTs and DELETEs those paths (and only for
-  non-built-in providers); it GETs the two listings, the provider one with `metadataTypes=`.
-  PUT/DELETE/POST on a built-in id still differ between the servers (the oracle answers the row)
-  and are unmeasured writes.
+  Re-measured on the 1.42.2 reference and plexlab for Plex Web 4.162.1 (2026-10-01): `GET
+  /media/providers/metadata/{id}` and `/media/providers/metadata/group/{id}` are the listing's row
+  as a one-row container, paged like the listing (`totalSize=1 offset=0` under paging headers), 400
+  for a non-numeric id, 404 for an unknown one. MALFORMED-ONLY: 4.162.1 only PUTs and DELETEs those
+  paths (and only for non-built-in providers); it GETs the two listings, the provider one with
+  `metadataTypes=`. PUT/DELETE/POST on a built-in id still differ between the servers (the oracle
+  answers the row) and are unmeasured writes.
 - **A legacy agent row's `hasPrefs` and `primary` are JSON BOOLEANS, and a bare-form `MediaType`'s
-  `mediaType` a NUMBER** (cycle 87 W2, kids 1.43.4 and zen 1.42.2, the bare path and every
-  `mediaType=` from 1 to 22 under Plex Web 4.162.1's headers; `tests/fixtures/c87_w2_system_agents_zen.json`).
-  `legacy_agents.json` was read out of the XML, so both servers sent `"hasPrefs":"1"`,
-  `"primary":"0"`, `"mediaType":"8"`. The XML is unchanged (`1`/`0`). MALFORMED-ONLY: Plex Web's
-  `AgentModel` reads `hasPrefs` through `parseBoolean` (`1===Number(e)||"true"===e`), which maps
-  `"1"` and `true` alike, and does not read `primary` at all; python-plexapi reads the XML.
+  `mediaType` a NUMBER** (cycle 87 W2, plexlab 1.43.4 and the 1.42.2 reference, the bare path and
+  every `mediaType=` from 1 to 22 under Plex Web 4.162.1's headers;
+  `tests/fixtures/c87_w2_system_agents_zen.json`). `legacy_agents.json` was read out of the XML, so
+  both servers sent `"hasPrefs":"1"`, `"primary":"0"`, `"mediaType":"8"`. The XML is unchanged
+  (`1`/`0`). MALFORMED-ONLY: Plex Web's `AgentModel` reads `hasPrefs` through `parseBoolean`
+  (`1===Number(e)||"true"===e`), which maps `"1"` and `true` alike, and does not read `primary` at
+  all; python-plexapi reads the XML.
 - **A PAGED `/system/agents` JSON still repeats every `Language` (and bare-form `MediaType`) key**
-  (cycle 87 W2, zen 1.42.2 under Plex Web 4.162.1's `X-Plex-Container-Start=0`/`Size=50`, and the
-  `Start=1 Size=2` window; `tests/fixtures/c87_w2_system_agents_zen.json`). The native route wrote
-  its repeated keys and then went through the pipeline's pager, which parsed the body -- keeping
-  the LAST of each repeated key -- and wrote one `Language` per agent back (704 bytes for
+  (cycle 87 W2, the 1.42.2 reference under Plex Web 4.162.1's `X-Plex-Container-Start=0`/`Size=50`,
+  and the `Start=1 Size=2` window; `tests/fixtures/c87_w2_system_agents_zen.json`). The native route
+  wrote its repeated keys and then went through the pipeline's pager, which parsed the body --
+  keeping the LAST of each repeated key -- and wrote one `Language` per agent back (704 bytes for
   `mediaType=1` against 6,394). It now pages the array form first, as its XML branch already did.
   The oracle was right. MALFORMED-ONLY: `JSON.parse` keeps the last duplicate at the first one's
   position, so Plex Web's parsed object was the same either way; only the wire bytes and length differed.
 - **`/system/agents?mediaType=9` and `=10` list Plex Music and Plex Personal Media; `14`, `20`, `21`
-  and `22` list Personal Media alone** (cycle 87 W2, kids 1.43.4 and zen 1.42.2 swept over
-  `mediaType=1..129`; every other type outside 1-4, 8, 13 is `size 0`; `tests/fixtures/c87_w2_system_agents_zen.json`).
-  `system_agents.json`'s `mediaTypes` held only 1, 2, 3, 4, 8 and 13, so both servers answered
-  `mediaType=9` with the two legacy rows alone and 10 with nothing, and the provider table's
-  `MetadataType` lists (music `8,9,10`, Personal Media `1,2,3,4,8,9,10,13,14,20,21,22` on zen) came
-  out short with them. CLIENT-VISIBLE: Plex Web 4.162.1's Agents settings page
-  (`chunk-4030`, `populateAgents`) asks for types 1, 2, 8, 9 and 13 and drops only the movie,
-  series and music modern agents, so its Albums tab lists Plex Personal Media on a real server and
-  did not on rex. Personal Media's provider id is 5 on zen, not 4: not settled here.
+  and `22` list Personal Media alone** (cycle 87 W2, plexlab 1.43.4 and the 1.42.2 reference swept
+  over `mediaType=1..129`; every other type outside 1-4, 8, 13 is `size 0`;
+  `tests/fixtures/c87_w2_system_agents_zen.json`). `system_agents.json`'s `mediaTypes` held only 1,
+  2, 3, 4, 8 and 13, so both servers answered `mediaType=9` with the two legacy rows alone and 10
+  with nothing, and the provider table's `MetadataType` lists (music `8,9,10`, Personal Media
+  `1,2,3,4,8,9,10,13,14,20,21,22` on the 1.42.2 reference) came out short with them. CLIENT-VISIBLE:
+  Plex Web 4.162.1's Agents settings page (`chunk-4030`, `populateAgents`) asks for types 1, 2, 8, 9
+  and 13 and drops only the movie, series and music modern agents, so its Albums tab lists Plex
+  Personal Media on a real server and did not on rex. Personal Media's provider id is 5 on the
+  1.42.2 reference, not 4: not settled here.
 - **A LEGACY `/system/agents` row is `hasPrefs, identifier, primary` (then `name`), not the
-  modern row's `identifier, name, hasPrefs, id`.** Measured on zen (1.42.2, 2026-10-01) in JSON
-  and XML over the bare path and `mediaType=1,2,8,9`; kids (1.43.4) agrees after the `id` it
+  modern row's `identifier, name, hasPrefs, id`.** Measured on the 1.42.2 reference (2026-10-01) in
+  JSON and XML over the bare path and `mediaType=1,2,8,9`; plexlab (1.43.4) agrees after the `id` it
   alone leads legacy rows with. The bucket is told apart by `primary`, which no modern row
   carries. An empty legacy row (fanarttv, htbackdrops, ...) is a PAIRED `<Agent ...>\n</Agent>`
   on both references. rex used the modern order for all eleven and self-closed the six
-  empty ones. After the fix every typed body is byte-identical to zen's
+  empty ones. After the fix every typed body is byte-identical to the 1.42.2 reference's
   (`tests/test_followups_c87_w3.py`). MALFORMED-ONLY: Plex Web reads the rows by key.
 - **The metadata PROVIDER table numbers Personal Media 5, not 4; `/system/agents` numbers it 4.**
-  Measured 2026-10-01 on kids (1.43.4), zen (1.42.2), plexscratch and plexscratch42 -- the last a
-  FRESH 1.42.2 install -- so it is a rule, not one database's row history: providers are movie 1,
-  series 2, music 3, Personal Media 5 (kids adds localmedia 6, NFO 7/8); provider **4** is the
-  `org.musicbrainz.agents.music` `intermediary` (`MetadataType` 8, 9, 10), which no listing (nor
-  `?metadataTypes=8`) shows and `GET /media/providers/metadata/4` answers. Built-in GROUPS are
+  Measured 2026-10-01 on plexlab (1.43.4), the 1.42.2 reference, plexscratch and plexscratch42 --
+  the last a FRESH 1.42.2 install -- so it is a rule, not one database's row history: providers are
+  movie 1, series 2, music 3, Personal Media 5 (plexlab adds localmedia 6, NFO 7/8); provider **4**
+  is the `org.musicbrainz.agents.music` `intermediary` (`MetadataType` 8, 9, 10), which no listing
+  (nor `?metadataTypes=8`) shows and `GET /media/providers/metadata/4` answers. Built-in GROUPS are
   numbered 1-4 in agent order, each item carrying the group's id and naming the provider by the
   provider's id: group 4, item 4, `metadataAgentProviderId` 5. rex numbered every provider by
   agent position, so `/4` answered Personal Media and `/5` was a 404. The MusicBrainz row's
-  `uri`/`online` are zen's (`provider://...`, `true`); kids and the fresh copy say `""`/`false`
-  there and on Plex Music alike -- reachability state, not shape. MALFORMED-ONLY: Plex Web
-  4.162.1 never GETs a provider by id; a provider id reaches it only as the Add/Edit Agent dialog's
-  `additionalProvider`, sent as `PUT /media/providers/metadata/group/{custom}/items/{providerId}`,
-  which rex answers by the group rather than the id (cycle 40).
+  `uri`/`online` are the 1.42.2 reference's (`provider://...`, `true`); plexlab and the fresh copy
+  say `""`/`false` there and on Plex Music alike -- reachability state, not shape. MALFORMED-ONLY:
+  Plex Web 4.162.1 never GETs a provider by id; a provider id reaches it only as the Add/Edit Agent
+  dialog's `additionalProvider`, sent as `PUT
+  /media/providers/metadata/group/{custom}/items/{providerId}`, which rex answers by the group
+  rather than the id (cycle 40).
 - **A timeline beat is for the item its `playQueueItemID` names, its crossing reads the SESSION's
   last position, and `complete` lasts only while the beats name the same item by the same id**
   (cycle 87 e1, plexscratch42 1.42.2, 30 beat sequences in Plex Web's shape and python-plexapi's
@@ -3577,7 +3625,7 @@ are changing; replay the client's exact request before altering behavior.
   two `C52A...`), case-blind, scoped to the section, in the search container with `viewGroup`
   `collection` and NO `viewMode` (a show library keeps `nocache`); each row is that collection's
   `/all?type=18` row. Cycle 83 read it as "finds an EMPTY collection"; both servers found NO
-  collection there at all, answering from the item rows. Measured beside it on kids and both
+  collection there at all, answering from the item rows. Measured beside it on plexlab and both
   copies: the box uses the query VERBATIM -- `query=TeArS` is titled `Search for 'TeArS'`, and
   `query=%20TEARS%20` is titled with its spaces and finds nothing -- where both servers trimmed and
   lowercased it. No official client or python-plexapi request in the corpora sends `type=18` here
@@ -3746,20 +3794,22 @@ are changing; replay the client's exact request before altering behavior.
   Artist, Album and Duration sorts in place). A bare `/filters` or `/sorts` is the type-8 list, the
   Library pivot opens `/all?type=8`, and `/sorts?type=9` in a music library carries `rating`
   ("Critic Rating") after Release Date, which the same type's list on a movie or show library does
-  not. Claim moves one row: zen (claimed) lists `source` for types 9 and 10 and both copies do not,
-  while on the copy each Type's Filter list equals its `/filters?type=N`, so the album and track
-  lists carry zen's row. rex served the MOVIE Meta, so Plex Web's Library tab read "Movies"
-  with a movie sort and filter bar, and python-plexapi's `listFilters`/`listSorts`/`searchAlbums`/
-  `recentlyAddedTracks` raised "Unknown libtype". CLIENT-VISIBLE.
+  not. Claim moves one row: the 1.42.2 reference (claimed) lists `source` for types 9 and 10 and
+  both copies do not, while on the copy each Type's Filter list equals its `/filters?type=N`, so the
+  album and track lists carry the 1.42.2 reference's row. rex served the MOVIE Meta, so Plex Web's
+  Library tab read "Movies" with a movie sort and filter bar, and python-plexapi's
+  `listFilters`/`listSorts`/`searchAlbums`/ `recentlyAddedTracks` raised "Unknown libtype".
+  CLIENT-VISIBLE.
 - **A music library's settings ARE the Add Library form's list for type 8 and its agent.**
   Measured on plexscratch42: an empty music library's `/library/sections/{id}/prefs` equals
   `/library/sections/prefs?type=8&agent=tv.plex.agents.music` row for row and value for value, and
   a write (`albumSort=2&artistBios=0`) is a 200 that reads back `2` and `false`. The copy is
-  unclaimed and answers nine rows; zen's form (claimed, rex's `section_prefs_new.json`) has
-  thirteen -- `musicAnalysis`, `augmentWithSharedContent`, `useExternalLyrics` and `concerts` are
-  claim-gated, and the copy refuses a write to one as unknown -- so rex serves the thirteen.
-  rex answered an EMPTY list (and refused every write as unknown), so the Edit Library
-  dialog's Advanced tab was blank and python-plexapi's `settings()` was []. CLIENT-VISIBLE.
+  unclaimed and answers nine rows; the 1.42.2 reference's form (claimed, rex's
+  `section_prefs_new.json`) has thirteen -- `musicAnalysis`, `augmentWithSharedContent`,
+  `useExternalLyrics` and `concerts` are claim-gated, and the copy refuses a write to one as unknown
+  -- so rex serves the thirteen. rex answered an EMPTY list (and refused every write as unknown), so
+  the Edit Library dialog's Advanced tab was blank and python-plexapi's `settings()` was [].
+  CLIENT-VISIBLE.
 - **A music library's Recommended tab is eight shelves, three of them behind request flags.**
   Measured on plexscratch42 and plexscratch over an empty music library: `/hubs/sections/{id}` is
   always `music.recent.played`, `music.recent.added` ("Recently Added in <library>", `album`),
@@ -3771,9 +3821,9 @@ are changing; replay the client's exact request before altering behavior.
   (2 months, 4 months, 8 months, 2 years, 3 years seen) and a `taggingCreatedAt` cutoff within the
   last day every few minutes; rex draws once per process. `/hubs/promoted` for the library is
   `music.recent.added.<id>` (the copy ignores `pinnedContentDirectoryID`; under it rex follows
-  zen's swap to `home.music.recent`). `style`/`promoted` are absent on the unclaimed copies for
-  every library and kept as the claimed movie and show shelves carry them. rex answered a
-  MOVIE library's shelves, so `stations()` returned None instead of []. CLIENT-VISIBLE
+  the 1.42.2 reference's swap to `home.music.recent`). `style`/`promoted` are absent on the
+  unclaimed copies for every library and kept as the claimed movie and show shelves carry them. rex
+  answered a MOVIE library's shelves, so `stations()` returned None instead of []. CLIENT-VISIBLE
   (python-plexapi); Plex Web draws an empty library's page the same either way.
 - **Every container a music library answers names the ARTIST resources and carries `nocache`.**
   Measured on plexscratch42 over 45 containers of an empty `type=artist` library -- listings,
@@ -3792,18 +3842,19 @@ are changing; replay the client's exact request before altering behavior.
   library is a 200 with an empty `text/html` body and `Connection: close`; afterwards
   `/hubs/sections/{id}` (with or without `includeStations`), the library, its `/all` and its
   `/prefs` are 404s, `/hubs/promoted?contentDirectoryID={id}` keeps only Continue Watching and On
-  Deck, and `/hubs` keeps `home.music.recent` -- which zen and the copies list with no music
-  library at all. rex answered all of it the same way; the check guards it.
+  Deck, and `/hubs` keeps `home.music.recent` -- which the 1.42.2 reference and the copies list with
+  no music library at all. rex answered all of it the same way; the check guards it.
 - **An EMPTY library's composite is a 404.** Measured on plexscratch42 (1.42.2) and plexscratch
   (1.43.4) for an empty movie, show and music library made with Add Library's form:
   `/library/sections/{id}/composite/{n}` -- bare, and with the `width`/`height`/`rows`/`cols`/
   `border`/`media`/`repeat` set Plex Web's composite view appends -- is the ordinary 85-byte html
   404 under every Accept, and `/photo/:/transcode?url=` of it is the same 404. A library with
-  members answers a jpeg (kids). rex drew a generated PNG tile. MALFORMED-ONLY: no Plex Web
+  members answers a jpeg (plexlab). rex drew a generated PNG tile. MALFORMED-ONLY: no Plex Web
   4.147.1/4.162.1 call site builds a SECTION composite (its composite view reads a row's own
-  `composite`, and no section row on kids, zen or plexscratch42 carries one), and
-  python-plexapi's `LibrarySection.composite` reads the same absent attribute.
-- **`/system` has no JSON form but the bare `/system/agents`.** Measured on zen, kids and
+  `composite`, and no section row on plexlab, the 1.42.2 reference or plexscratch42 carries one),
+  and python-plexapi's `LibrarySection.composite` reads the same absent attribute.
+- **`/system` has no JSON form but the bare `/system/agents`.** Measured on the 1.42.2 reference,
+  plexlab and
   plexscratch42 under `Accept: application/json`, `application/xml`, none, and
   `application/json, text/plain, */*`: `/system`, `/system/search`, `/system/library/sections`,
   `/system/scanners/{N}` (types 1, 2, 8, 9, 13, with and without 4.162.1's `action=`), the legacy
@@ -3816,17 +3867,17 @@ are changing; replay the client's exact request before altering behavior.
   through `ScannerCollection`, whose responseType is the base `xml` (`Accept: application/xml`),
   and parse the body as XML; only a third-party JSON client saw the difference.
 - **`/system/services/url/lookup` with a `url` is a 404, not the traceback.** Measured on
-  plexscratch42 (1.42.2), kids (1.43.4) and zen (1.42.2), raw keep-alive sockets, 2026-10-01
-  (`tests/fixtures/c87_w7_url_lookup.json`): the 464-byte traceback is the bare request and any
-  query WITHOUT `url` (`foo=1`, `URL=x`); any `url` value -- empty, `x`, a relative path, an http
-  URL and, on the isolated plexscratch42 only, a YouTube watch URL -- is a 404 with an EMPTY body,
-  no `Content-Type` and the framework cookie, under JSON Accept, a gzip offer, paging and HEAD.
-  (`?url` with no `=` is PMS's own 89-byte 400 before the framework sees it.) Both servers
+  plexscratch42 (1.42.2), plexlab (1.43.4) and the 1.42.2 reference, raw keep-alive sockets,
+  2026-10-01 (`tests/fixtures/c87_w7_url_lookup.json`): the 464-byte traceback is the bare request
+  and any query WITHOUT `url` (`foo=1`, `URL=x`); any `url` value -- empty, `x`, a relative path, an
+  http URL and, on the isolated plexscratch42 only, a YouTube watch URL -- is a 404 with an EMPTY
+  body, no `Content-Type` and the framework cookie, under JSON Accept, a gzip offer, paging and
+  HEAD. (`?url` with no `=` is PMS's own 89-byte 400 before the framework sees it.) Both servers
   answered the traceback to all of them. MALFORMED-ONLY: Plex Web 4.147.1 reads such a key only
   for a channel item (`responseType` special-cases `/system/services/url/lookup`), and with no
   channel installed no row carries one.
 - **The framework's ten peer directories PAGE.** `/system/{channels,plugins}/{all,music,video,
-  photos,applications}` on plexscratch42, kids and zen (2026-10-01,
+  photos,applications}` on plexscratch42, plexlab and the 1.42.2 reference (2026-10-01,
   `tests/fixtures/c87_w7_peer_paging.json`): a full window by header or query -- `Size=0`
   included -- answers `totalSize="0"` as the FIRST attribute (144 bytes) and
   `X-Plex-Container-Start` (echoed, `1` past the end too) / `X-Plex-Container-Total-Size: 0`; a
@@ -3834,7 +3885,7 @@ are changing; replay the client's exact request before altering behavior.
   unpaged document whatever was asked. MALFORMED-ONLY: neither Plex Web 4.147.1 nor
   python-plexapi requests these paths.
 - **The paging headers and a gzip body have their own slots in every family.** Header names in
-  wire order on plexscratch42 and kids, identical (2026-10-01,
+  wire order on plexscratch42 and plexlab, identical (2026-10-01,
   `tests/fixtures/c87_w7_header_order.json`, 176 exchanges): a paged answer writes
   `X-Plex-Container-Start, X-Plex-Container-Total-Size` straight after `Content-Type` in the core
   gzip family and straight after `Set-Cookie` in all four framework families -- never after
@@ -3919,27 +3970,27 @@ are changing; replay the client's exact request before altering behavior.
   on TIDAL`, `Recently Added Music Videos`) move in up to 34 of the 44 languages Plex Web sends,
   the same ten as everywhere keeping English. Both servers left all 52 strings in English: the
   table had been captured off libraries that held no music. The same strings in a movie or show
-  library's `sorts?type=8|9|10` read the same on zen, so cycle 63's bound -- recorded because
-  rex could hold no music library -- closes with it now that Add Library makes one. The
-  random `music.vault` shelf is worded around its number (`Keine Wiedergabe seit 11 Monaten`,
+  library's `sorts?type=8|9|10` read the same on the 1.42.2 reference, so cycle 63's bound --
+  recorded because rex could hold no music library -- closes with it now that Add Library makes one.
+  The random `music.vault` shelf is worded around its number (`Keine Wiedergabe seit 11 Monaten`,
   `Nicht abgespielt in 4 Jahren`; `title_templates.json`), and its period is drawn PER LANGUAGE
   (each language's hub page is its own cache entry) from two to eleven months or two to five
   years, wider than the five periods the W5 witness saw: 2,070 reads, one wording per language
   and unit. rex still draws one period per process from the five; the shelf is empty, so no
   client draws it.
-- **A photo type's `Date Taken` sort is translated.** zen (1.42.2), a movie library's
+- **A photo type's `Date Taken` sort is translated.** The 1.42.2 reference, a movie library's
   `sorts?type=13`, every language (2026-10-02, the same fixture's `zen_photo_sorts`):
   `originallyAvailableAt` is `Aufnahmedatum`/`Pris le`/`撮影日`, in the 34 languages that move;
   both servers left it English. Cycle 63 recorded it as unreachable because rex could hold
   no photo library; Add Library now creates one (`type=photo` with `com.plexapp.agents.none`).
 - **A modern agent's `Language` rows exist for every locale Plex Web ships, not 29 of them.**
-  zen (1.42.2) and kids (1.43.4) answer `/system/agents[?mediaType=N]` with a list titled and
-  ordered in the client's language, and the `default` row marked, in af, bg, el, en-GB, es-419,
+  The 1.42.2 reference and plexlab (1.43.4) answer `/system/agents[?mediaType=N]` with a list titled
+  and ordered in the client's language, and the `default` row marked, in af, bg, el, en-GB, es-419,
   fa, fr-CA, is, my, no, pt-BR, sl, sr, vi and zh-TW too (2026-10-02, read as XML,
   `tests/fixtures/c88_a_agent_languages_zen.json`). `agent_languages.json` held only the 28
   languages of cycle 25 plus English, so both servers answered those fifteen with the
-  NO-HEADER list -- `català, Čeština, Dansk...`, `en-US` preselected -- where zen names them
-  `Tiếng Ả Rập...` and preselects `vi-VN` (`bg-BG`, `el-GR`, `en-GB`, `fa-IR`, `fr-CA`,
+  NO-HEADER list -- `català, Čeština, Dansk...`, `en-US` preselected -- where the 1.42.2 reference
+  names them `Tiếng Ả Rập...` and preselects `vi-VN` (`bg-BG`, `el-GR`, `en-GB`, `fa-IR`, `fr-CA`,
   `is-IS`, `pt-BR`, `zh-TW`; af, es-419, my, no, sl and sr keep `en-US`). Each list is its own:
   pt-BR's equals pt's, but es-419, fr-CA, zh-TW and en-GB are not their base language's, so the
   table is keyed by the exact tag. The 43-language web corpus carried it for cycles as one
@@ -3975,14 +4026,14 @@ are changing; replay the client's exact request before altering behavior.
   playlist's `Field` rides on `/playlists/{id}` and the detail only -- `/playlists` lists none,
   where both servers listed it. The copy's `art` 404 itself carries `X-Plex-Local-Asset: 1`; not
   emulated.
-- **A tag NAME in a filter folds ASCII case only.** kids (1.43.4) and zen (1.42.2), GET
+- **A tag NAME in a filter folds ASCII case only.** plexlab (1.43.4) and the 1.42.2 reference, GET
   (2026-10-02, `tests/fixtures/tag_name_case_kids_zen.json`): `genre=animation` and
   `genre=ANIMATION` answer `Animation`'s rows (and `genre!=animation` its complement), as do
-  `country=NETHERLANDS` and `actor=HALINA REIJN`; on zen `actor=arinzé kene` and `ARINZé KENE`
-  find Arinzé Kene while `ARINZÉ KENE` finds nothing, and `BJöRK` finds Björk where `BJÖRK` does
-  not -- SQLite's NOCASE. Both servers compared a tag name exactly. Plex Web and python-plexapi
-  send the tag's id (plexapi resolves a name to its FilterChoice key first), so no client sends
-  a name in another case.
+  `country=NETHERLANDS` and `actor=HALINA REIJN`; on the 1.42.2 reference `actor=arinzé kene` and
+  `ARINZé KENE` find Arinzé Kene while `ARINZÉ KENE` finds nothing, and `BJöRK` finds Björk where
+  `BJÖRK` does not -- SQLite's NOCASE. Both servers compared a tag name exactly. Plex Web and
+  python-plexapi send the tag's id (plexapi resolves a name to its FilterChoice key first), so no
+  client sends a name in another case.
 - **A collection's delete untags its members by its CURRENT title, ignoring case -- on 1.42.2
   and 1.43.4 alike.** plexscratch42 and plexscratch (2026-10-02,
   `tests/fixtures/collection_delete_by_title_s42.json` / `_s43.json`, the same sequences): renamed
@@ -4016,9 +4067,9 @@ are changing; replay the client's exact request before altering behavior.
   `Collection.userRating`/`guid` (`Collection._loadData`). It is also why B's s42 chain sees
   `coll.editTitle` 409 and a pre-rated `C63B Coll`: a dead run left those tags behind.
 - **An unseeded `sort=random` is a UNIFORM order, not merely a different one** (cycle 90, N's
-  `fix76` leg: rex's six reads repeated two orders, zen's never did). Sixty reads of the
-  Android grid's request (`type=1&sort=random&includeCollections=1&includeAdvanced=1`, paged
-  0/30): kids' five movies gave 44 distinct orders (a uniform draw: 47), plexscratch42's 24 gave
+  `fix76` leg: rex's six reads repeated two orders, the 1.42.2 reference's never did). Sixty reads
+  of the Android grid's request (`type=1&sort=random&includeCollections=1&includeAdvanced=1`, paged
+  0/30): plexlab's five movies gave 44 distinct orders (a uniform draw: 47), plexscratch42's 24 gave
   60 of 60 (`tests/fixtures/c90_n_unseeded_random_orders.json`). Both servers ordered by the
   CRC-32 of `<fresh salt>/<ratingKey>`, and CRC is affine: a new salt only XORs every row's key
   with one mask, so `catalog_ui`'s six movies came out in 8 of 720 orders over 300 reads, two
@@ -4053,22 +4104,22 @@ are changing; replay the client's exact request before altering behavior.
   Not reachable through any client request, but CLIENT-VISIBLE to the clients of such a
   second server (`tests/test_parity_cycle92_cp.py`).
 - **A `/library/all/top` row is the LIGHT listing row, not the detail row** (cycle 94, Plex for
-  Android 2026.19.1's Top Played, js:1521748). Measured on kids (movies) and zen (a show, a season,
-  episodes) against the same item's section listing row (`tests/fixtures/c94_d_library_all_top.json`):
-  the listing row plus the librarySection triple, `globalViewCount`/`userCount` straight after
-  `updatedAt` (`deletedAt`) and `User` last -- no `Guid`, `Rating` or `Location`. A show or
-  season row drops the listing's per-user aggregate (`viewCount`, `skipCount`, `lastViewedAt`,
-  `userRating`, `lastRatedAt`); a season row gains `leafCount`/`viewedLeafCount` before `addedAt`.
-  Whether 1.43.4 also drops a show's aggregate is unmeasured (kids has no show plays).
-  MALFORMED-ONLY in rendering: TopChart reads title, type, ratingKey, image and the two counts
-  (`tests/test_parity_cycle94_d.py`).
+  Android 2026.19.1's Top Played, js:1521748). Measured on plexlab (movies) and the 1.42.2 reference
+  (a show, a season, episodes) against the same item's section listing row
+  (`tests/fixtures/c94_d_library_all_top.json`): the listing row plus the librarySection triple,
+  `globalViewCount`/`userCount` straight after `updatedAt` (`deletedAt`) and `User` last -- no
+  `Guid`, `Rating` or `Location`. A show or season row drops the listing's per-user aggregate
+  (`viewCount`, `skipCount`, `lastViewedAt`, `userRating`, `lastRatedAt`); a season row gains
+  `leafCount`/`viewedLeafCount` before `addedAt`. Whether 1.43.4 also drops a show's aggregate is
+  unmeasured (plexlab has no show plays). MALFORMED-ONLY in rendering: TopChart reads title, type,
+  ratingKey, image and the two counts (`tests/test_parity_cycle94_d.py`).
 - **The notification socket answers a client PING with a PONG at once**, unmasked, same payload
-  (`89 84 <mask> c94d` -> `8a 04 63 39 34 64`, empty -> `8a 00`; kids and zen,
+  (`89 84 <mask> c94d` -> `8a 04 63 39 34 64`, empty -> `8a 00`; plexlab and the 1.42.2 reference,
   `tests/fixtures/c94_d_ws_ping.json`). rex ignored client pings. Plex for Android 2026.19.1
   pings its `/:/websockets/notifications` socket and dropped rex's after exactly 50 s (close
   1006, four runs) and never reopened it, so it saw no `playing` or activity event on rex;
-  with pongs the socket stays open and carries them. CLIENT-VISIBLE. zen also CLOSES (`88 00`)
-  after ponging an EMPTY ping where kids does not: recorded, not emulated
+  with pongs the socket stays open and carries them. CLIENT-VISIBLE. The 1.42.2 reference also
+  CLOSES (`88 00`) after ponging an EMPTY ping where plexlab does not: recorded, not emulated
   (`tests/test_parity_cycle94_d.py`).
 
 ## The transcoder

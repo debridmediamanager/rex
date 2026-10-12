@@ -199,7 +199,7 @@ fn search_hub_rank(kind: &str, classes: &[i64]) -> i64 {
 /// PMS's recovered unstable descending comparison sort (libc++ introsort), in place.
 /// Each row is scored once: the sort reads only the scores, so the order is the same,
 /// where scoring on every comparison folded each title's text again and again -- most
-/// of a search for "the" over fun's library (2026-10-11).
+/// of a search for "the" over the production server's library (2026-10-11).
 pub(super) fn comparison_sort<T>(rows: &mut Vec<T>, score: &dyn Fn(&T) -> f64) {
     let mut keyed = rows.drain(..).map(|row| (score(&row), row)).collect::<Vec<_>>();
     comparison_sort_by(&mut keyed, &|pair: &(f64, T)| pair.0);
@@ -391,7 +391,7 @@ pub(super) struct TagEntry {
 
 // Borrowed from the catalog unless search changed the row: copying every match --
 // every movie for "movie", thousands of episodes for "the" -- was most of a search on
-// fun (2026-10-11).
+// the production server (2026-10-11).
 type Typed<'a> = HashMap<String, Vec<Cow<'a, Value>>>;
 type Tags = HashMap<String, Vec<TagEntry>>;
 
@@ -685,7 +685,8 @@ impl Runtime {
         } else {
             HashSet::new()
         };
-        // Moved, not copied: every match was copied here and again below (fun, 2026-10-11).
+        // Moved, not copied: every match was copied here and again below (the production
+        // server, 2026-10-11).
         let mut typed: Typed = HashMap::new();
         for row in rows {
             typed
@@ -1708,12 +1709,12 @@ impl Runtime {
         let mut rows = Vec::new();
         for (kind, _title) in SEARCH_HUBS {
             for row in typed.get(*kind).into_iter().flatten() {
-                // Cycle 23, measured on kids and zen with the same row read twice per
-                // server: a `/search` row is byte-identical to that row's GRID row,
-                // prefixed with six attributes and nothing else. rex answered the
-                // detail-derived listing row led by `ratingKey`, with neither
-                // `allowSync` nor the `librarySectionUUID` a client keys a hit to its
-                // library by.
+                // Cycle 23, measured on plexlab and the 1.42.2 reference with the same
+                // row read twice per server: a `/search` row is byte-identical to that
+                // row's GRID row, prefixed with six attributes and nothing else. rex
+                // answered the detail-derived listing row led by `ratingKey`, with
+                // neither `allowSync` nor the `librarySectionUUID` a client keys a hit
+                // to its library by.
                 let section_id = row.get("librarySectionID").cloned().unwrap_or(Value::Null);
                 let section = self
                     .section(&string_value(&section_id))

@@ -7,7 +7,8 @@
   whatever the uri holds (`tests/fixtures/collection_section_uri.json`, plexscratch42);
 - `X-Plex-Container-Start` / `-Size` request HEADERS win over the query parameters of the
   same name, per parameter, on every paged route family
-  (`tests/fixtures/paging_header_precedence.json`, kids, zen and plexscratch42);
+  (`tests/fixtures/paging_header_precedence.json`, plexlab, the 1.42.2 reference and
+  plexscratch42);
 - the GDM advertisement's `Updated-At` moves to the second of a library create, edit and
   delete, and not with a `FriendlyName` write (cycle 50, docs/findings.md);
 - a deleted library's rows are gone from every reader: 404 by key, and absent from

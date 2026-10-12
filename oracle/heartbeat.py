@@ -52,7 +52,7 @@ logger = logging.getLogger("rex.heartbeat")
 DEFAULT_INTERVAL = 600
 
 # Where a real PMS announces, and the identity it carries. Read out of the harness's
-# `capture/outbound.jsonl` on kids: three `PUT`s, byte-identical, to `servers.plex.tv`.
+# `capture/outbound.jsonl` on plexlab: three `PUT`s, byte-identical, to `servers.plex.tv`.
 ANNOUNCE_BASE = "https://servers.plex.tv"
 # The version rex's own `/identity` reports. Announcing a different one tells
 # plex.tv something no client reading the server would ever see.
@@ -124,7 +124,7 @@ def announce(token, machine_identifier, url, *, name="rex",
     Returns the parsed Device element.
     """
     # `url` is a comma-separated list: a server with several connections sends one
-    # `Connection[][uri]` pair each, in a row (zen's own PMS,
+    # `Connection[][uri]` pair each, in a row (the 1.42.2 reference's own PMS,
     # tests/fixtures/pms_announce_connections_s1422.json).
     query = urllib.parse.urlencode([
         *(("Connection[][uri]", uri) for uri in url.split(",") if uri),

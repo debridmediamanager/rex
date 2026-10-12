@@ -3,7 +3,7 @@
 
 The corpus is `tests/fixtures/outbound-announce.json`: the three `PUT /devices/...`
 exchanges a real 1.43.4 PMS made to plex.tv, lifted out of the harness's
-`capture/outbound.jsonl` on kids with every token replaced. All three are identical,
+`capture/outbound.jsonl` on plexlab with every token replaced. All three are identical,
 which is what makes them a specification rather than a sample.
 
 The announce is the only traffic rex sends to plex.tv, and it is what makes a

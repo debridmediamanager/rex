@@ -332,7 +332,7 @@ def run_system(s):
     none = [row for row in container(doc).get("MetadataAgentProvider") or []
             if row.get("identifier") == "tv.plex.agents.none"]
     types = [row.get("type") for row in (none[0].get("MetadataType") if none else [])]
-    # zen (1.42.2), cycle 87: Personal Media serves twelve types, numeric order.
+    # the 1.42.2 reference, cycle 87: Personal Media serves twelve types, numeric order.
     check("Personal Media's MetadataType rows are in numeric order",
           types == [1, 2, 3, 4, 8, 9, 10, 13, 14, 20, 21, 22], types)
 

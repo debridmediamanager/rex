@@ -1,5 +1,5 @@
 {
- "_provenance": "kids (PMS 1.43.4.10903), 2026-10-01, plain GET with the server token in a header (redacted), no Accept header (python-plexapi reads XML). Item 6 is a show with an agent theme and twelve agent clear logos. The element of a candidate row is Track on /themes and Photo on /clearLogos.",
+ "_provenance": "plexlab (PMS 1.43.4.10903), 2026-10-01, plain GET with the server token in a header (redacted), no Accept header (python-plexapi reads XML). Item 6 is a show with an agent theme and twelve agent clear logos. The element of a candidate row is Track on /themes and Photo on /clearLogos.",
  "exchanges": [
   {
    "method": "GET",

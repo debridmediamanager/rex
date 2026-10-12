@@ -2,8 +2,8 @@
 """rex's TLS port against what a real PMS does with the same port.
 
 A real PMS MULTIPLEXES: TLS and plain HTTP live on the same TCP port, and the
-discriminator is the first byte. Measured 2026-09-18 on zen (1.42.2) and kids (1.43.4),
-identical on both -- see `tests/fixtures/tls/reference.json` for the cells.
+discriminator is the first byte. Measured 2026-09-18 on the 1.42.2 reference and plexlab
+(1.43.4), identical on both -- see `tests/fixtures/tls/reference.json` for the cells.
 
 This suite starts its own rex and makes its own throwaway certificate with `openssl`,
 so it needs no credential and no network. Run it with `python3 tests/test_tls.py`.

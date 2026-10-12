@@ -22,7 +22,7 @@ impl Runtime {
 
     /// One `id`'s `value` from a sidecar's setting list, read in place: `show_pref` runs
     /// for every episode of a listing, and copying the whole sidecar for each one was
-    /// most of a show library's listing time on fun (2026-10-10).
+    /// most of a show library's listing time on the production server (2026-10-10).
     fn sidecar_setting_value(&self, sidecar: &str, kind: &str, name: &str) -> Option<String> {
         shared_json_sidecar(&self.catalog_path, sidecar)?
             .get(kind)?

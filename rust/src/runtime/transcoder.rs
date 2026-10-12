@@ -1,10 +1,10 @@
 //! `/photo/:/transcode` -- the photo transcoder, ported from `server.py`'s `_route`.
 //!
-//! Cycles 27-52, measured on kids (1.43.4) and zen (1.42.2): the dimensions are validated
-//! first, then five more parameters, then the `url=`. A relative url is FETCHED through the
-//! server's own route table and the answer follows that fetch -- anything but a 200 is a
-//! 404, a 200 that is not an image is the 500, and an image is the direct path's own
-//! bytes -- so the transcoder never serves a picture the direct path refuses.
+//! Cycles 27-52, measured on plexlab (1.43.4) and the 1.42.2 reference: the dimensions are
+//! validated first, then five more parameters, then the `url=`. A relative url is FETCHED
+//! through the server's own route table and the answer follows that fetch -- anything but a
+//! 200 is a 404, a 200 that is not an image is the 500, and an image is the direct path's
+//! own bytes -- so the transcoder never serves a picture the direct path refuses.
 
 use super::*;
 use regex::Regex;

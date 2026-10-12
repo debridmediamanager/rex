@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """The server's memory stays near its library's, at the start and under the home screen.
 
-fun-rex (2026-10-10), 19,600 rows: 3.5 GB resident and 1.5 GB swapped. heaptrack and
+The production rex (2026-10-10), 19,600 rows: 3.5 GB resident and 1.5 GB swapped. heaptrack and
 `/proc` on a copy of its database found the start holding every row twice (the saved
 document beside the restored catalog, 1.58 GB) and requests copying whole libraries --
 a page of 50 shows +650 MB, an episode count +1.4 GB at peak, `/hubs` +1.9 GB -- kept
 afterwards by the allocator.
 
-Fun's shape (`rust/tests/fixtures/fun_show_shape.json`, first 120 shows) with every
+Its shape (`rust/tests/fixtures/fun_show_shape.json`, first 120 shows) with every
 episode a copy of one real row (`fixtures/fun_episode_row.json`) is saved to a state
-database by one server and restored by a second, the path fun takes at every start. The
-bounds are ratios to the rows' own JSON size and to the resident size after the start,
-so they hold on any host. Linux only: it reads `/proc/<pid>/status`. Measured on zen:
+database by one server and restored by a second, the path the production server takes at every
+start. The bounds are ratios to the rows' own JSON size and to the resident size after the start,
+so they hold on any host. Linux only: it reads `/proc/<pid>/status`. Measured on the test host:
 unfixed, the start peaked at 16.6x the rows' JSON and the requests added 1,440 MB; fixed,
 8.2x and 6 MB.
 
@@ -79,7 +79,7 @@ def memory(pid):
 
 
 def catalog(directory):
-    """catalog_ui.json plus fun's first SHOWS shows; and the JSON size of every row."""
+    """catalog_ui.json plus the production server's first SHOWS shows; and the JSON size of every row."""
     data = json.load(open(os.path.join(HERE, "catalog_ui.json")))
     shape = json.load(open(os.path.join(ROOT, "rust", "tests", "fixtures",
                                         "fun_show_shape.json")))[:SHOWS]
@@ -112,7 +112,7 @@ def catalog(directory):
     with open(path, "w") as handle:
         json.dump(data, handle)
     rows_mb = sum(len(json.dumps(row)) for row in data["items"]) / 1e6
-    # fun's catalog file is a seed with no rows: the library is the state's own.
+    # the production server's catalog file is a seed with no rows: the library is the state's own.
     seed = os.path.join(directory, "seed.json")
     shutil.copy(os.path.join(HERE, "catalog_ui.json"), seed)
     return path, seed, rows_mb
@@ -160,7 +160,8 @@ def main():
         request(port, "/library/sections/2/all?X-Plex-Container-Start=0&X-Plex-Container-Size=1")
         time.sleep(3)
         stop(process)
-        # ...and the second restores them from it over the seed, as fun does at every start.
+        # ...and the second restores them from it over the seed, as the production server does at
+        # every start.
         process, port = start(seed, state)
         time.sleep(35)  # past one trim interval
         loaded, load_peak = memory(process.pid)

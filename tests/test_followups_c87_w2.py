@@ -1,19 +1,21 @@
 #!/usr/bin/env python3
 """Cycle 87 W2: `/system/agents?mediaType=N` as Plex Web 4.162.1 asks for it.
 
-Driven by zen's recorded exchanges (`tests/fixtures/c87_w2_system_agents_zen.json`,
-1.42.2, the version rex reports): the bare path and every `mediaType` from 1 to 22,
-each with the Plex Web headers and `X-Plex-Container-Start/Size` (zen is production and
-is always paged), plus two windowed reads and the `/media/providers/metadata` table. The
-bodies are kept as RAW TEXT, because the point of two of these checks is the repeated
-`Language` / `MediaType` keys that any JSON parser collapses.
+Driven by the 1.42.2 reference's recorded exchanges
+(`tests/fixtures/c87_w2_system_agents_zen.json`, 1.42.2, the version rex reports): the bare path
+and every `mediaType` from 1 to 22, each with the Plex Web headers and
+`X-Plex-Container-Start/Size` (the 1.42.2 reference is production and is always paged), plus two
+windowed reads and the `/media/providers/metadata` table. The bodies are kept as RAW TEXT, because
+the point of two of these checks is the repeated `Language` / `MediaType` keys that any JSON parser
+collapses.
 
 - A legacy agent's `hasPrefs` and `primary` are JSON BOOLEANS and a bare-form
-  `MediaType`'s `mediaType` a NUMBER on kids and zen alike; rex sent the strings
-  `"0"`/`"1"` its XML capture held.
+  `MediaType`'s `mediaType` a NUMBER on plexlab and the 1.42.2 reference alike; rex sent the
+  strings `"0"`/`"1"` its XML capture held.
 - Under paging the native server re-serialised the route's body and wrote each repeated
   `Language` key once (the last one); the oracle and both references repeat it.
-- `mediaType` 9, 10, 14, 20, 21 and 22 list the modern agents zen lists (Plex Music and
+- `mediaType` 9, 10, 14, 20, 21 and 22 list the modern agents the 1.42.2 reference lists (Plex
+  Music and
   Plex Personal Media for album/track, Personal Media for the photo and 20-22 types);
   rex listed none of them, and the provider table's `MetadataType` lists followed.
 
@@ -142,7 +144,7 @@ def legacy_types(port, exchange):
     expected, actual = table(want), table(got)
     if not expected:
         return
-    check("%s: legacy hasPrefs/primary are JSON booleans, mediaType a number (zen)"
+    check("%s: legacy hasPrefs/primary are JSON booleans, mediaType a number (the 1.42.2 reference)"
           % label(exchange), status == 200 and actual == expected,
           {key: (expected[key], actual.get(key)) for key in expected if actual.get(key) != expected[key]})
 
@@ -168,7 +170,7 @@ def repeated_keys(port, exchange):
     # Membership is `agent_lists`' question; this one is the count of each repeated key
     # on every row both sides list.
     shared = [key for key in expected if key in actual]
-    check("%s: every repeated Language/MediaType key is on the wire, as zen repeats it"
+    check("%s: every repeated Language/MediaType key is on the wire, as the 1.42.2 reference repeats it"
           % label(exchange), status == 200 and (shared or not actual) and
           all(actual[key] == expected[key] for key in shared),
           [(key, expected[key], actual[key]) for key in shared
@@ -182,12 +184,13 @@ def agent_lists(port, exchange):
     expected = [get(row, "identifier")[0] for row in want]
     actual = [get(row, "identifier")[0] for row in got]
     if exchange["path"] == "/system/agents":
-        # The bare list's ORDER of `lastfm` and `plexthememusic` is zen's own plug-in load
-        # order; kids and both scratch copies agree with rex (`legacy_agents.json`).
+        # The bare list's ORDER of `lastfm` and `plexthememusic` is the 1.42.2 reference's own
+        # plug-in load order; plexlab and both scratch copies agree with rex
+        # (`legacy_agents.json`).
         expected, actual = sorted(expected), sorted(actual)
     window = [get(container, key) for key in ("size", "totalSize", "offset")]
     got_window = [get(got_container, key) for key in ("size", "totalSize", "offset")]
-    check("%s lists %s (zen)" % (label(exchange), expected or "no agent"),
+    check("%s lists %s (the 1.42.2 reference)" % (label(exchange), expected or "no agent"),
           status == 200 and actual == expected and got_window == window,
           (status, actual, got_window, window))
 
@@ -197,11 +200,11 @@ def provider_types(port, exchange):
     status, text = request(port, "GET", exchange["path"], exchange["headers"])
     got = json.loads(text)["MediaContainer"].get("MetadataAgentProvider", []) \
         if status == 200 else []
-    # The provider ids are a separate question (zen numbers Personal Media 5); the
+    # The provider ids are a separate question (the 1.42.2 reference numbers Personal Media 5); the
     # media types each provider serves are the same table `/system/agents` reads.
     expected = {row["identifier"]: row["MetadataType"] for row in want}
     actual = {row["identifier"]: row.get("MetadataType") for row in got}
-    check("/media/providers/metadata: each provider's MetadataType list is zen's",
+    check("/media/providers/metadata: each provider's MetadataType list is the 1.42.2 reference's",
           actual == expected,
           {key: (expected[key], actual.get(key)) for key in expected if actual.get(key) != expected[key]})
 

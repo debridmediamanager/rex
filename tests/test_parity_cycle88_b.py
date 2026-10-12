@@ -31,9 +31,9 @@ an explicit `selected`; and the upload is the image at `thumb` (bare, versioned,
 the composite `thumb` (the uploaded poster never showed), listed the bare `upload://` uri as
 the candidate, and served a grey placeholder or a 404 at those paths.
 
-And a tag NAME in a section filter (`tests/fixtures/tag_name_case_kids_zen.json`, kids and
-zen): ASCII letters match ignoring case -- `genre=ANIMATION` is `Animation` -- and a
-non-ASCII letter only in its own case -- `actor=ARINZé KENE` finds Arinzé Kene,
+And a tag NAME in a section filter (`tests/fixtures/tag_name_case_kids_zen.json`, plexlab and
+the 1.42.2 reference): ASCII letters match ignoring case -- `genre=ANIMATION` is `Animation` --
+and a non-ASCII letter only in its own case -- `actor=ARINZé KENE` finds Arinzé Kene,
 `ARINZÉ KENE` nothing (SQLite's NOCASE). Both servers compared names exactly.
 
 Drives a real server process (`tests/server_command.py`): the native binary by default,

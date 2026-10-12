@@ -17,7 +17,7 @@ bundle rex serves at /web) -- with the parameter sets that code builds:
 Run it against a real PMS first -- that is the measurement -- then against
 rex and diff the two tables:
 
-    python3 probes/ui_surface.py --base http://kids:32400 --token $TOK > ref.txt
+    python3 probes/ui_surface.py --base http://LAB:32400 --token $TOK > ref.txt
     python3 probes/ui_surface.py --base http://127.0.0.1:32400 > sim.txt
     diff -u ref.txt sim.txt
 

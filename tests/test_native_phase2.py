@@ -250,7 +250,8 @@ def check_hierarchy():
         raise AssertionError("hierarchy season-year parity failed")
 
     # A season's first leaf without its TMDB season, a later one with it (Black Mirror's
-    # Season 6 on fun, fixtures/feed/season_art.json): the season is the later one's.
+    # Season 6 on the production server, fixtures/feed/season_art.json): the season is the
+    # later one's.
     art = json.load(open(os.path.join(HERE, "fixtures", "feed", "season_art.json")))
     tmdb_season = art["tmdb"]["https://api.themoviedb.org/3/tv/42009/season/6?api_key=KEY"]
     tmdb_show = next(answer for key, answer in art["tmdb"].items() if "/tv/42009?" in key)

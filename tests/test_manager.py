@@ -34,8 +34,8 @@ def check(name, ok, detail=""):
 
 
 def free_port():
-    # Below 32768: zen's ephemeral range starts there, and an outgoing connection can
-    # take a port above it between this probe and the bind.
+    # Below 32768: the 1.42.2 reference's ephemeral range starts there, and an outgoing connection
+    # can take a port above it between this probe and the bind.
     for _ in range(200):
         port = random.randint(20000, 32000)
         probe = socket.socket()
