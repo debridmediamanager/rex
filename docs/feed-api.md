@@ -168,7 +168,10 @@ What the fields do:
   release's.
 - **Late ids.** A push whose `ids` name what the row was not identified as re-identifies
   it on the same ratingKey, keeping its watch state (an episode moves to the show its new
-  identity names). So does any push of a row whose ids named nothing when they came.
+  identity names). So does any push of a row whose ids named nothing when they came. A
+  season takes the identity its episodes bring -- its guid and ids, summary and poster, the
+  show's poster where TMDB has none for it -- whatever its first episode lacked, unless a
+  person locked the field; seasons left without one are given theirs when the server starts.
 - **Versions.** A release identified as a title already here -- the same agent guid in the
   same section, and for an episode the same season -- is no new row: it joins that row as
   another Media, as a real PMS offers several files of one movie as versions (2026-10-11,
