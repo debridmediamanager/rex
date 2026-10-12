@@ -9,9 +9,6 @@ frames. The media is never on disk: the library is what a source such as
 [zurg](https://github.com/debridmediamanager/zurg) pushes to it, and every part read is a
 Range read of that source.
 
-Think [remux](https://github.com/lostb1t/remux), but for Plex instead of
-Jellyfin.
-
 ## What works
 
 - **Playback in the official client.** `PLAYQUEUE → DECISION direct play →
