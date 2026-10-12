@@ -977,6 +977,37 @@ mod tests {
     }
 
     #[test]
+    fn a_runtime_loaded_after_another_has_saved_keeps_its_own_writes() {
+        // The save serials were per runtime and the written mark per process: a second
+        // runtime's first saves counted as written and were dropped. The test suite runs
+        // several runtimes in one process; this one failed whenever another saved first.
+        let base = std::env::temp_dir().join(format!("rex-two-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&base);
+        let (first_dir, second_dir) = (base.join("first"), base.join("second"));
+        for dir in [&first_dir, &second_dir] {
+            fs::create_dir_all(dir).unwrap();
+            fs::write(dir.join("catalog.json"), seed("two").to_string()).unwrap();
+        }
+        let mut first = Runtime::load(options(&first_dir, &first_dir.join("catalog.json"))).unwrap();
+        for _ in 0..3 {
+            let key = first.mint_key();
+            first.catalog.add(scanned_row(&key));
+            first.save_state().unwrap();
+        }
+        drop(first);
+
+        let mut second = Runtime::load(options(&second_dir, &second_dir.join("catalog.json"))).unwrap();
+        let key = second.mint_key();
+        second.catalog.add(scanned_row(&key));
+        second.save_state().unwrap();
+        drop(second);
+        let second = Runtime::load(options(&second_dir, &second_dir.join("catalog.json"))).unwrap();
+        assert!(second.catalog.get(&key).is_some(), "the second runtime's save was dropped");
+        drop(second);
+        let _ = fs::remove_dir_all(&base);
+    }
+
+    #[test]
     fn scanned_rows_keep_their_keys_and_state_across_restarts_and_catalog_edits() {
         let dir = std::env::temp_dir().join(format!("rex-scan-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);

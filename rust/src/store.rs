@@ -840,6 +840,14 @@ static WRITER: Mutex<Writer> = Mutex::new(Writer {
     written: 0,
 });
 
+/// The serial of the next snapshot, for the whole process. `WRITER.written` is the
+/// process's too, so a counter per runtime let a second runtime's first saves look already
+/// written and be dropped: a runtime loaded after another had saved lost its writes.
+pub fn next_serial() -> u64 {
+    static SERIAL: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    SERIAL.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1
+}
+
 /// Queue a snapshot's delta; call with the runtime lock held, so serials are in order.
 pub fn enqueue(serial: u64, delta: Delta) {
     let mut queue = QUEUE
