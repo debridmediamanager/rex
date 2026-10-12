@@ -5,8 +5,10 @@
 # its own hostname does work.
 #
 # Two things measured through the edge, both in docs/findings.md:
-#   * Cloudflare strips `Range` on a prefix request, so `--part-mode proxy`
-#     sees range=- and serves the whole file. `--part-mode redirect` avoids it.
+#   * Cloudflare strips `Range` on a prefix request, so a part's opening read
+#     arrives as range=- and rex offers the whole file. Playback works and seeks
+#     still arrive as closed ranges; terminating TLS on rex itself
+#     (--tls-cert/--tls-key) avoids it.
 #   * Cloudflare answers 403 to a `Python-urllib/*` User-Agent on the media
 #     path. Every other UA, including an empty one, gets 206.
 

@@ -53,7 +53,7 @@ searched on disk. The gate is usually one truthiness check in minified code.
 | `gate.py` | Applies a client's direct-play gate to the catalog |
 | `xmlout.py` | MediaContainer → Plex XML (clients that refuse JSON) |
 | `identify.py` | which title a release is: an id in its name, a known IMDb id for its hash (zurg's), then Plex's matcher and TMDB, with their agreement as the confidence; `rust/src/identify.rs` is its port and must name as many of `tests/fixtures/identify/` right |
-| `build_catalog.py` | Writes a catalog: `--seed` an empty library at zurg's mount, `--convert` a JSON catalog into a database, `--relink` Plex's guids |
+| `build_catalog.py` | Writes a catalog: `--seed` an empty library at each source's mount (`--mount`, `--movies` and `--shows` repeat), `--convert` a JSON catalog into a database, `--relink` Plex's guids |
 | `claim.py`, `heartbeat.py` | plex.tv claim flow and registration upkeep |
 | `tests/` | Conformance and end-to-end suites, plus `catalog_ui.json` and `fixtures/decisions/`, the measured decision corpus |
 | `tests/fixtures/` | Redacted corpora recorded from a real PMS through a real client; `media/` pairs real files' probes with a real PMS's analysis of them |

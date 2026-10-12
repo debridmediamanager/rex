@@ -1,43 +1,34 @@
-#!/bin/zsh
-# Copy to run.sh (gitignored) and fill in the credentials.
+#!/bin/bash
+# Copy to run.sh (gitignored), fill in the values, and see README "Setup" for each step.
 #
-# zurg pushes the library and serves every Part's bytes: ZURG_URL is its address (bytes
-# at $ZURG_URL/dav), with ZURG_USER and ZURG_PASSWORD when its config sets a username,
-# REX_FEED_TOKEN is what it pushes with, and --zurg-mount is its mount_path, under
-# which every Part's file and every library's Location lives (./build_catalog.py --seed
-# writes such a catalog). In zurg's config.yml: rex_url (this server),
-# rex_feed_token (the same token), and for zurg's matcher plex_server_url (this
-# server), plex_token (its --token, or anything without one), plex_settings_policy: off.
-# Other or more sources: --sources FILE (docs/feed-api.md). TMDB_KEY and PLEX_TOKEN
-# identify what is pushed; without them a new item keeps its release name for a title,
-# unmatched, for Fix Match.
+# Keys come from rex.env beside this script (mode 600; gitignored, as are run.sh and
+# sources.json): TMDB_KEY names what is pushed and powers Fix Match,
+# PLEX_TOKEN (the owner's account token) feeds Plex's metadata agent and the announce.
+# Under systemd, EnvironmentFile= can load the same file instead.
+#
+# sources.json names every source that pushes items and serves their bytes
+# (docs/feed-api.md). A single zurg can do without it: ZURG_URL (+ZURG_USER and
+# ZURG_PASSWORD), REX_FEED_TOKEN and --zurg-mount in the environment define the source
+# "zurg".
+#
+# The catalog is ./build_catalog.py --seed --mount <each source's mount> --out rex.db;
+# the server keeps its state (watch state, edits, lists, history, prefs) in the same file.
+#
+# On --port 32400 rex answers Plex's LAN discovery (GDM) on udp/32410 and udp/32414; on a
+# host that runs Plex too, use another port and --gdm off.
+#
+# --announce-url is added once the server is claimed (claim_state.json beside the
+# catalog): claim it first, without it. The HTTPS address needs --tls-cert/--tls-key here
+# (a PKCS#8 or RSA key) or a named tunnel in front (cloudflared.example.yml).
 set -e
 cd "$(dirname "$0")"
-export ZURG_URL=http://127.0.0.1:9999 ZURG_USER= ZURG_PASSWORD=
-export REX_FEED_TOKEN=...
-export TMDB_KEY=... PLEX_TOKEN=...
-#
-# On --port 32400 rex answers Plex's LAN discovery protocol (GDM) on udp/32410
-# and udp/32414 by default, which is what a real PMS does and what lets an official
-# client on the same network find it without plex.tv. `--gdm off` turns it off.
-#
-# The server keeps watch state, edits, playlists, collections, history, preferences,
-# uploads and the device/statistics tables across restarts in a SQLite database,
-# rex.db beside the catalog (gitignored), by default, writing only what changed;
-# --state FILE moves it, and with --no-state a restart reloads the catalog as it is on
-# disk. An older state.json beside the catalog is imported into it once and kept as
-# state.json.migrated. The Python server keeps a pickle instead, so a state file does
-# not carry over from one server to the other.
-#
-# The catalog can live in a database too, and the state then shares that one file:
-#   ./build_catalog.py --convert catalog.json --out rex.db
-# and pass --catalog rex.db below.
-#
-# Build the server first: cargo build --release --manifest-path rust/Cargo.toml
-# The Python server (the measured oracle) still runs with: python3 server.py <flags>
+[ -f rex.env ] && { set -a; . ./rex.env; set +a; }
+ANNOUNCE=()
+[ -f claim_state.json ] && ANNOUNCE=(--announce-url "https://rex.example.com:32400,http://192.168.1.10:32400")
 exec rust/target/release/rex \
+  --catalog rex.db \
+  --sources sources.json \
   --port 32400 \
-  --zurg-mount /mnt/zurg \
-  --part-mode proxy \
-  --assert-claimed \
-  --verbose
+  --owner-username your-plex-username \
+  --owner-email you@example.com \
+  "${ANNOUNCE[@]}"
