@@ -17,8 +17,7 @@ it pushes with. They come from a JSON file named by `--sources FILE` (or
   "zurg": {
     "url": "http://127.0.0.1:9999/dav",
     "user": "zurg-user", "password": "zurg-password",
-    "token": "a long random feed token",
-    "mount": "/mnt/zurg"
+    "token": "a long random feed token"
   },
   "nas": {"url": "https://nas.example/media", "bearer": "...", "token": "..."}
 }
@@ -30,7 +29,7 @@ it pushes with. They come from a JSON file named by `--sources FILE` (or
 | `user`, `password` | Basic auth for `url` (optional) |
 | `bearer` | `Authorization: Bearer` for `url` instead (optional) |
 | `token` | What the source sends as `Authorization: Bearer <token>` to the feed. A source without one cannot push |
-| `mount` | Optional: the client-visible prefix of the source's files. An item without `file` shows `<mount>/<path>`, and a catalog row with no feed id whose Part file is under `mount` reads its bytes from this source |
+| `mount` | Optional and rarely needed: the prefix of the `file` clients see for an item pushed without one (`<mount>/<path>`, else `/<path>`). Nothing is read from it. It also lets a catalog row from the old WebDAV scanner, with no feed id, find its bytes |
 
 What rex needs from a byte server is a GET of a file, nothing more, so a source can be
 zurg's WebDAV, nginx, a NAS, object storage or `python3 -m http.server`
@@ -139,7 +138,7 @@ What rex holds for the source: the shown items with their ratingKeys
 | `id` | yes | The source's stable key for the file. A row's ratingKey belongs to (source, id) for good |
 | `path` | yes | Where the bytes are: `<source url>/<path>` |
 | `file` | no | The Part `file` clients see, and what zurg's matcher reads back (`<mount>/<directory>/<release>/<file>`). Default `<mount>/<path>`, or `/<path>` without a mount |
-| `library` | no | A section key, or `movie`/`show`. Default: the library whose `Location` holds `file`; with a type, that type's library holding `file`, else its first. Fixed when the id is first shown |
+| `library` | no | A section key, or `movie`/`show`. Default: the library whose `Location` holds `file`, else one with a folder ending in a directory `path` starts with (`/mnt/zurg/movies` holds `movies/...` whatever prefix `file` has); with a type, that type's library holding `file`, else its first. Fixed when the id is first shown |
 | `name` | no | The release name identification reads. Default: the folder above the file |
 | `release` | no | Groups a release's files, identified together (a season's episodes). Default: the folder above `path` |
 | `size` | no | Bytes |

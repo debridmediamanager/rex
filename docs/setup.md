@@ -55,11 +55,10 @@ Write `sources.json` beside the catalog, readable only by you (`chmod 600`):
   "rd": {
     "url": "http://127.0.0.1:9999/dav",
     "user": "zurg-user", "password": "zurg-password",
-    "token": "<a long random feed token>",
-    "mount": "/mnt/zurg"
+    "token": "<a long random feed token>"
   },
-  "ad": {"url": "http://127.0.0.1:9998/dav", "token": "<another token>", "mount": "/mnt/zurg_ad"},
-  "nas": {"url": "https://nas.example/media", "bearer": "...", "token": "<another token>", "mount": "/nas"}
+  "ad": {"url": "http://127.0.0.1:9998/dav", "token": "<another token>"},
+  "nas": {"url": "https://nas.example/media", "bearer": "...", "token": "<another token>"}
 }
 ```
 
@@ -68,7 +67,6 @@ Write `sources.json` beside the catalog, readable only by you (`chmod 600`):
 | `url` | where the bytes are: zurg's is `http://<zurg>:<port>/dav` |
 | `user`/`password` or `bearer` | the credential rex sends to `url` (zurg's `username`/`password`, if set). Never forwarded to a host it redirects to |
 | `token` | what this source pushes with. Make one per source: `openssl rand -hex 24` |
-| `mount` | the folder its files appear under in the library (zurg's `mount_path`). Nothing has to be mounted there: it is a name, and each library's folders (step 3) must include `<mount>/<directory>` |
 
 The source's name is the `rex_source` it pushes as. A single zurg can skip the file:
 `ZURG_URL` (+ `ZURG_USER`/`ZURG_PASSWORD`), `REX_FEED_TOKEN` and `--zurg-mount` in the
@@ -78,26 +76,29 @@ your own, is [`docs/feed-api.md`](feed-api.md).
 ### 3. Catalog: the server's identity and libraries
 
 ```bash
-python3 build_catalog.py --seed --name den --mount /mnt/zurg --out rex.db
+python3 build_catalog.py --seed --name den --out rex.db
 ```
 
 This writes a SQLite database holding a fixed `machineIdentifier` (derived from
-`--name`, and kept if you re-seed), a Movies library at `/mnt/zurg/movies` and a TV Shows
-library at `/mnt/zurg/shows`. A pushed item lands in the library whose folder holds its
-file, and an item no library holds is rejected, so give every source's mount and every
-directory you want shown:
+`--name`, and kept if you re-seed), a Movies library holding the `movies` directory and a
+TV Shows library holding `shows`. A pushed item lands in the library holding the
+directory its `path` starts with (`movies/<release>/<file>`), whichever source sent it
+and whatever path prefix its `file` carries. An item in no library's directory is
+rejected, so name every directory your sources use:
 
 ```bash
 python3 build_catalog.py --seed --name den --out rex.db \
-  --mount /mnt/zurg --mount /mnt/zurg_ad --mount /nas \
   --movies movies --shows shows --shows anime
 ```
 
-**List every source's mount before the first start.** Once rex has started, the
+The folders are shown in Plex as `/mnt/zurg/<directory>`. `--mount` changes that prefix,
+and it only matters for zurg's own Plex matcher, which matches a file by its full path,
+so set it to zurg's `mount_path` if you point zurg's `plex_server_url` at rex.
+
+**Name every directory before the first start.** Once rex has started, the
 libraries it saved in `rex.db` win over the catalog, so re-seeding changes nothing, and
-rex does not yet take Plex's "Edit Library → Add folders". A source added later gets
-a library of its own instead: Manage → Libraries → Add Library on
-`<its mount>/<directory>`.
+rex does not yet take Plex's "Edit Library → Add folders". A directory added later gets
+a library of its own instead: Manage → Libraries → Add Library on it.
 
 rex keeps everything clients change (watch state, edits, playlists, collections,
 history, preferences) in the same `rex.db`, written as it changes. Back it up with the
@@ -137,7 +138,6 @@ curl -s -H "Authorization: Bearer <rd's token>" http://127.0.0.1:32400/rex/feed/
 In each zurg's `config.yml` (zurg's [`docs/config.md`](https://github.com/debridmediamanager/zurg/blob/main/docs/config.md) has the details):
 
 ```yaml
-mount_path: /mnt/zurg              # the source's "mount" in sources.json
 rex_url: http://<rex host>:32400   # turns on zurg's ffprobe and IMDb lookups for new releases
 rex_feed_token: <the source's token>
 rex_source: rd                     # the source's name in sources.json (default "zurg")
@@ -241,7 +241,7 @@ rex logs a request's query string, so a client that sends its token as
 
 | Symptom | Cause |
 |---|---|
-| A push answers `rejected: no movie or show library holds ...` | The item's file is not under any library folder: seed that mount before the first start, or Add Library on it (step 3) |
+| A push answers `rejected: no movie or show library holds ...` | No library holds the item's directory: name it with `--movies`/`--shows` before the first start, or Add Library on it (step 3) |
 | zurg pushed but the library stays empty | Items are held until zurg probes them (step 5) |
 | A part read answers 502, or 401/403 | rex cannot reach the source's `url` (502), or the source refused its credential (its own status): the log line `PART ... upstream` says which |
 | The server is not in the Plex apps | Not claimed, no `--announce-url`, or the announced HTTPS address is not reachable from the internet (step 7) |

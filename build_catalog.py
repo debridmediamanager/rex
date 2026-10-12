@@ -1,18 +1,16 @@
 #!/usr/bin/env python3
 """Write rex's catalog: the server's identity and its libraries.
 
-The library itself is what rex's sources push (docs/feed-api.md). A pushed item lands
-in the library whose folder holds its `file`, so a new server's catalog is a seed: a
-machineIdentifier, a name, and a movie and a show library whose locations are folders
-under each source's mount (zurg's `mount_path`):
+The library itself is what rex's sources push (docs/feed-api.md). A pushed item lands in
+the library holding the directory its path starts with (`movies/<release>/<file>`), so a
+new server's catalog is a seed: a machineIdentifier, a name, and a movie and a show
+library naming those directories:
 
-    ./build_catalog.py --seed --name den --mount /mnt/zurg --out rex.db
+    ./build_catalog.py --seed --name den --out rex.db
+    ./build_catalog.py --seed --name den --shows shows --shows anime --out rex.db
 
-`--mount`, `--movies` and `--shows` repeat: each library holds every folder under
-every mount, so several sources fill the same two libraries:
-
-    ./build_catalog.py --seed --name den --mount /mnt/zurg --mount /mnt/zurg_ad \
-        --shows shows --shows anime --out rex.db
+`--mount` (repeatable) is the prefix the folders are shown with. zurg's own Plex matcher
+compares full paths, so it is zurg's `mount_path` when zurg's `plex_server_url` is rex.
 
 An `--out` ending in `.db` writes the catalog into a SQLite database instead (see
 catalogdb.py), which the server takes as `--catalog` and keeps its state in too. An
@@ -42,8 +40,8 @@ def main():
     parser.add_argument("--seed", action="store_true",
                         help="write an empty library for a zurg-backed server")
     parser.add_argument("--mount", "--zurg-mount", dest="mounts", action="append",
-                        help="with --seed: a source's mount (zurg's mount_path); repeat for "
-                             "several. Default /mnt/zurg")
+                        help="with --seed: the prefix the library folders are shown with (zurg's "
+                             "mount_path, for zurg's matcher); repeat for several. Default /mnt/zurg")
     parser.add_argument("--movies", action="append",
                         help="with --seed: a directory the movie library holds under each "
                              "mount; repeat for several. Default movies")

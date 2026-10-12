@@ -39,21 +39,20 @@ Write `sources.json` with one entry per source. Each source gets its own token t
 {
   "rd": {
     "url": "http://127.0.0.1:9999/dav",
-    "token": "<a long random token>",
-    "mount": "/mnt/zurg"
+    "token": "<a long random token>"
   }
 }
 ```
 
-`url` is where rex fetches the files from. `mount` is the folder the files appear under in the library and for zurg that is its `mount_path`. If the server needs a username and password add `user` and `password` too.
+`url` is where rex fetches the files from. If the server needs a username and password add `user` and `password` too.
 
 **3. Make the library**
 
 ```bash
-python3 build_catalog.py --seed --name myrex --mount /mnt/zurg --out rex.db
+python3 build_catalog.py --seed --name myrex --out rex.db
 ```
 
-This makes an empty Movies and TV library. Add a `--mount` for every source now. rex keeps its library folders from the first start on.
+This makes an empty Movies and TV library. Files under a `movies` directory go to Movies and files under `shows` go to TV, whichever source they come from. If your sources use other directory names like `anime` add `--shows anime` now. rex keeps its library folders from the first start on.
 
 **4. Start it**
 

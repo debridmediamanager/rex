@@ -11,7 +11,7 @@
 # ZURG_PASSWORD), REX_FEED_TOKEN and --zurg-mount in the environment define the source
 # "zurg".
 #
-# The catalog is ./build_catalog.py --seed --mount <each source's mount> --out rex.db;
+# The catalog is ./build_catalog.py --seed --out rex.db (--movies/--shows name more directories);
 # the server keeps its state (watch state, edits, lists, history, prefs) in the same file.
 #
 # On --port 32400 rex answers Plex's LAN discovery (GDM) on udp/32410 and udp/32414; on a
