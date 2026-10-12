@@ -210,7 +210,9 @@ jobs:
           # actions/checkout leaves the tag as a plain pointer to the commit, so its own
           # message is gone and %(contents) reads the commit's (v0.1.0 went out that way).
           git fetch --force origin "+refs/tags/$GITHUB_REF_NAME:refs/tags/$GITHUB_REF_NAME"
-          git tag -l --format='%(contents)' "$GITHUB_REF_NAME" > notes.md
+          # Subject and body only: %(contents) also carries a signed tag's PGP block, which
+          # v0.1.1's notes went out with.
+          git tag -l --format='%(contents:subject)%0a%0a%(contents:body)' "$GITHUB_REF_NAME" > notes.md
           test -s notes.md
           gh release create "$GITHUB_REF_NAME" \
             --title "rex ${GITHUB_REF_NAME#v}" \
