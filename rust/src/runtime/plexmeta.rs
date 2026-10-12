@@ -64,8 +64,14 @@ impl PlexMeta {
 impl crate::identify::PlexSource for PlexMeta {
     fn call(&self, method: &str, path: &str, body: Option<&Value>) -> Option<Value> {
         let key = format!("{method} {path} {}", body.map(python_json).unwrap_or_default());
-        if let Some(hit) = self.cache.get(&key) {
-            return Some(hit);
+        // A match or children list with no rows may be filled later, as TMDB's may
+        // (`tmdb::incomplete`): kept a day, then asked again.
+        let incomplete = |answer: &Value| {
+            answer.pointer("/MediaContainer/Metadata").and_then(Value::as_array).is_none_or(Vec::is_empty)
+        };
+        let cached = self.cache.get(&key);
+        if let Some(hit) = cached.as_ref().filter(|hit| !super::tmdb::expired(incomplete(hit), hit)) {
+            return Some(hit.clone());
         }
         let mut headers = vec![
             ("X-Plex-Token", self.token.clone()),
@@ -81,18 +87,21 @@ impl crate::identify::PlexSource for PlexMeta {
             headers.push(("X-Plex-Container-Size", "50".to_string()));
         }
         let payload = body.map(Value::to_string).unwrap_or_default();
-        let (status, _, raw) = upstream::fetch(
+        let fetched = upstream::fetch(
             method,
             &format!("{PROVIDER}{path}"),
             &headers,
             payload.as_bytes(),
             Duration::from_secs(25),
         )
-        .ok()?;
-        if !(200..300).contains(&status) {
-            return None;
-        }
-        let answer = serde_json::from_slice::<Value>(&raw).ok()?;
+        .ok()
+        .filter(|(status, _, _)| (200..300).contains(status))
+        .and_then(|(_, _, raw)| serde_json::from_slice::<Value>(&raw).ok());
+        // The provider unreachable: the answer it gave before, however empty.
+        let Some(answer) = fetched else {
+            return cached;
+        };
+        let answer = super::tmdb::stamped(incomplete(&answer), answer);
         self.cache.put(&key, &answer);
         Some(answer)
     }
