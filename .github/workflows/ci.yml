@@ -1,0 +1,114 @@
+name: CI
+
+# Every push to main and every pull request builds rex and runs the suites that need no
+# credentials and no network beyond loopback. A tag `vX.Y.Z` does the same and then
+# publishes the GitHub release, with the tag's own message as its notes.
+#
+# GitHub-hosted runners, not the org's self-hosted one: that runner is fun, which is
+# production. ubuntu-22.04 links against glibc 2.35, what zen and fun run, so the released
+# binary runs on them and on anything newer.
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CARGO_TERM_COLOR: always
+  # No suite may reach plex.tv: a test claim or announce writes to a real account.
+  REX_PLEXTV_URL: http://127.0.0.1:9
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+
+      - name: Build
+        run: cargo build --release --locked --manifest-path rust/Cargo.toml
+
+      - name: Rust unit tests
+        run: cargo test --release --locked --manifest-path rust/Cargo.toml
+
+      - name: Black-box suites
+        run: |
+          set -e
+          for suite in test_cli test_server_command test_native_runtime_smoke test_build_catalog \
+                       test_tls test_part_bytes test_sources test_feed test_feed_versions \
+                       test_plextv test_manager; do
+            echo "::group::$suite"
+            python3 "tests/$suite.py"
+            echo "::endgroup::"
+          done
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rex-linux-x86_64
+          path: rust/target/release/rex
+          retention-days: 7
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: test
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: rex-linux-x86_64
+          path: artifact
+
+      - name: Check the tag matches Cargo.toml
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          crate="v$(sed -n 's/^version = "\(.*\)"/\1/p' rust/Cargo.toml | head -1)"
+          if [ "$tag" != "$crate" ]; then
+            echo "::error::tag $tag does not match rust/Cargo.toml version $crate"
+            exit 1
+          fi
+
+      # The archive keeps the repository's layout, so manager.py, run.sh.example and every
+      # command in the docs find the binary at rust/target/release/rex either way. rex reads
+      # its measured *.json and *.xml beside the catalog or in its working directory.
+      - name: Package
+        run: |
+          name="rex-${GITHUB_REF_NAME}-linux-x86_64"
+          mkdir -p "$name/rust/target/release"
+          install -m 755 artifact/rex "$name/rust/target/release/rex"
+          git ls-files -z -- ':(top,glob)*.json' ':(top,glob)*.xml' favicon.ico \
+              build_catalog.py catalogdb.py hierarchy.py metadata.py manager.py \
+              run.sh.example cloudflared.example.yml README.md docs/setup.md docs/feed-api.md \
+            | xargs -0 cp --parents -t "$name"
+          tar czf "$name.tar.gz" "$name"
+          sha256sum "$name.tar.gz" > SHA256SUMS
+          tar tzf "$name.tar.gz" | head -80
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git tag -l --format='%(contents)' "$GITHUB_REF_NAME" > notes.md
+          gh release create "$GITHUB_REF_NAME" \
+            --title "rex ${GITHUB_REF_NAME#v}" \
+            --notes-file notes.md \
+            "rex-${GITHUB_REF_NAME}-linux-x86_64.tar.gz" SHA256SUMS
