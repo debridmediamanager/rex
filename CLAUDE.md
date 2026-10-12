@@ -41,7 +41,7 @@ searched on disk. The gate is usually one truthiness check in minified code.
 | `library.py` | The mutable half: watch state, edits, playlists, collections, history |
 | `filters.py` | Plex's filter query language: the operator is part of the KEY |
 | `persist.py` | the state file (on by default, `--no-state` off): the one file that keeps the mutable half across a restart. The oracle's is a pickle; the native server's is `rust/src/store.rs`, a SQLite database written by the row |
-| `manager.py` | the control service: runs no server until one is started, then supervises the ones it started (API on 127.0.0.1:32300, CLI, a page); README "Running several servers" |
+| `manager.py` | the control service: runs no server until one is started, then supervises the ones it started (API on 127.0.0.1:32300, CLI, a page); docs/setup.md "Running several servers" |
 | `catalogdb.py` | the catalog in a SQLite database: what `build_catalog.py --out *.db` / `--convert` write and both servers read with `--catalog *.db` |
 | `sessions.py` | Live playback sessions, and the byte counters behind the Dashboard |
 | `hierarchy.py` | Flat leaves → show/season/episode with synthesised parents |
@@ -142,7 +142,7 @@ made a row for adopts that row and its key. `/library/sections/{id}/refresh` and
 `/activities` are what they are on a library with nothing to read; old zurg builds still
 send refreshes and change nothing.
 
-`REX_TRANSCODER` (an FFmpeg; README "Transcoding") turns on conversion: a decision the
+`REX_TRANSCODER` (an FFmpeg; docs/setup.md "Transcoding") turns on conversion: a decision the
 client cannot direct-play becomes the reference's 3000/1001/1001 with the converted Media,
 and `start.m3u8`/`start.mpd` start one FFmpeg per session reading the Part from its source.
 Without it rex is the encoder-less server every suite measures, so the Python oracle has no
