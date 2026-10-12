@@ -10,6 +10,7 @@ sources.json
 *.csr
 *.pem
 tmdb_cache.json
+owner_features.txt
 cloudflared.yml
 .live_token
 server_token.txt
