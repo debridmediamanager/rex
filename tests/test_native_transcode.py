@@ -572,6 +572,10 @@ def main():
     print("\n%d/%d passed" % (len(results) - len(failed), len(results)))
     if failed:
         print("rex log: %s" % log)
+        # A CI runner's scratch directory is gone when the job ends: show what rex said.
+        if os.environ.get("CI"):
+            with open(log, encoding="utf-8", errors="replace") as handle:
+                print("".join(handle.readlines()[-150:]))
         return 1
     shutil.rmtree(scratch, ignore_errors=True)
     return 0
