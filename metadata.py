@@ -84,13 +84,13 @@ class Tmdb:
         self._cache = {}
         if os.path.exists(cache_path):
             try:
-                with open(cache_path) as handle:
+                with open(cache_path, encoding="utf-8") as handle:
                     self._cache = json.load(handle)
             except ValueError:
                 self._cache = {}
 
     def _save(self):
-        with open(self._cache_path, "w") as handle:
+        with open(self._cache_path, "w", encoding="utf-8") as handle:
             json.dump(self._cache, handle)
 
     def _get(self, path, **params):
@@ -229,7 +229,7 @@ class PlexProvider:
         self._cache = {}
         if cache_path and os.path.exists(cache_path):
             try:
-                with open(cache_path) as handle:
+                with open(cache_path, encoding="utf-8") as handle:
                     self._cache = json.load(handle)
             except ValueError:
                 self._cache = {}
@@ -262,7 +262,7 @@ class PlexProvider:
             return None
         self._cache[key] = payload
         if self._cache_path:
-            with open(self._cache_path, "w") as handle:
+            with open(self._cache_path, "w", encoding="utf-8") as handle:
                 json.dump(self._cache, handle)
         return payload
 

@@ -124,7 +124,7 @@ def is_database(path):
 def load_catalog(path):
     if catalogdb.is_sqlite(path):
         return catalogdb.read(path)
-    with open(path) as handle:
+    with open(path, encoding="utf-8") as handle:
         return json.load(handle)
 
 
@@ -133,7 +133,7 @@ def save_catalog(path, document):
     if is_database(path):
         catalogdb.write(path, document)
         return
-    with open(path, "w") as handle:
+    with open(path, "w", encoding="utf-8") as handle:
         json.dump(document, handle, indent=2)
 
 

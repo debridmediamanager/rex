@@ -42,6 +42,19 @@ try:
     open(empty, "wb").close()
     check("an empty file: none", build_catalog.existing_machine(empty) is None)
 
+    # -- a re-seed keeps the machine whatever the locale's encoding --------------------
+    # Python opens text in the locale's encoding unless told (cp1252 on Windows): a JSON
+    # catalog with a non-ASCII title failed to decode, existing_machine took that for "no
+    # catalog", and the re-seed minted a new machineIdentifier, a different server to Plex.
+    accented = os.path.join(work, "accented.json")
+    json.dump({"machineIdentifier": "f" * 40, "friendlyName": "Café Ümlaut", "sections": [], "items": []},
+              open(accented, "w", encoding="utf-8"), ensure_ascii=False)
+    subprocess.run([sys.executable, "-X", "utf8=0", os.path.join(os.path.dirname(HERE), "build_catalog.py"),
+                    "--seed", "--out", accented], check=True, stdout=subprocess.DEVNULL,
+                   env=dict(os.environ, LC_ALL="C", PYTHONCOERCECLOCALE="0", PYTHONUTF8="0"))
+    reseeded = json.load(open(accented, encoding="utf-8"))["machineIdentifier"]
+    check("a re-seed of a non-ASCII JSON catalog keeps its machine in any locale", reseeded == "f" * 40, reseeded)
+
     # -- --seed: one library per type, holding every folder under every mount ------------
     def seed(*flags):
         out = os.path.join(work, "seed.json")
