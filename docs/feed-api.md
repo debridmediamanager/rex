@@ -1,7 +1,7 @@
 # The feed API: sources push items to rex
 
 rex does not list, scan or query any library. A **source** (zurg, or anything else
-that serves files over HTTP with `Range`) pushes the items it holds, and rex turns
+that serves files over HTTP) pushes the items it holds, and rex turns
 them into library rows on keys that never change. The feed is rex's own API, not an
 emulated Plex route: nothing here was measured on a real PMS except what a row does when
 its file goes away (the trash rules below, `tests/fixtures/missing_file_scan_s43.json`).
@@ -32,9 +32,25 @@ it pushes with. They come from a JSON file named by `--sources FILE` (or
 | `token` | What the source sends as `Authorization: Bearer <token>` to the feed. A source without one cannot push |
 | `mount` | Optional: the client-visible prefix of the source's files. An item without `file` shows `<mount>/<path>`, and a catalog row with no feed id whose Part file is under `mount` reads its bytes from this source |
 
+What rex needs from a byte server is a GET of a file, nothing more, so a source can be
+zurg's WebDAV, nginx, a NAS, object storage or `python3 -m http.server`
+(`tests/test_sources.py` runs two such sources side by side):
+
+- `Range` is optional. A server that ignores it and answers 200 with the whole file
+  still serves seeks: rex skips to the first byte asked for itself (slowly, for a seek
+  deep into a large file: every byte before it is read).
+- Redirects (301/302/303/307/308) are followed. The source's `user`/`password` or
+  `bearer` goes only to the source's own origin, never to the host a redirect names,
+  so a presigned CDN link works and does not see the credential.
+- As many sources as needed, each a separate entry with its own feed token. Each
+  pushes to `/rex/feed/{its name}`, its rows remember it, and the same title from
+  two sources is one row with a Media each. An item's `file` decides which library
+  holds it, not its source.
+
 Without a sources file, `ZURG_URL` (+ `ZURG_USER`/`ZURG_PASSWORD`) still defines one
 source named `zurg`: url `$ZURG_URL/dav`, mount `--zurg-mount`, feed token
-`$REX_FEED_TOKEN`. A file entry named `zurg` replaces it.
+`$REX_FEED_TOKEN`. A file entry named `zurg` replaces it. That is a shortcut for
+zurg's existing setups; anything else, zurg included, can be a sources file entry.
 
 ## Endpoints
 
