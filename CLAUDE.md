@@ -79,7 +79,8 @@ names.
 The native server finds the same sidecars in `data/` beside the catalog, then one directory
 up, then in its working directory, trying each directory itself after its `data/` so a
 deployment that keeps them beside its catalog still works (`sidecar_roots` in `runtime.rs`).
-Run it from the repository root or keep the catalog there -- `run.sh.example` `cd`s to its own directory.
+Run it from the repository root or keep the catalog there -- `run.sh`, copied to the root from
+`examples/run.sh.example`, `cd`s to its own directory.
 `client_profiles.json`, `languages.json` and the decision corpus are compiled into the
 binary with `include_str!`, so a change to them needs a rebuild. `tmdb_cache.json` and
 `claim_state.json` sit beside the catalog on both servers.
@@ -109,8 +110,8 @@ gives the client a grid whose filter bar can only talk about the wrong type.
 ```bash
 cargo build --release --manifest-path rust/Cargo.toml
 python3 oracle/build_catalog.py --seed --name NAME --zurg-mount /mnt/zurg --out rex.db
-cp run.sh.example run.sh     # fill in ZURG_URL (+ZURG_USER/ZURG_PASSWORD), REX_FEED_TOKEN, TMDB_KEY, PLEX_TOKEN
-./run.sh                     # or: rust/target/release/rex --catalog rex.db --zurg-mount /mnt/zurg
+cp examples/run.sh.example run.sh   # fill in ZURG_URL (+ZURG_USER/ZURG_PASSWORD), REX_FEED_TOKEN, TMDB_KEY, PLEX_TOKEN
+./run.sh                            # or: rust/target/release/rex --catalog rex.db --zurg-mount /mnt/zurg
 ```
 
 Sources push the library; rex reads no media itself, lists and queries nothing, and
@@ -172,7 +173,7 @@ claim of an identity that already had such a row got the account token back, not
 token.
 
 `catalog.json` and `run.sh` are gitignored: both carry account-scoped
-credentials. `catalog.example.json` keeps the shape.
+credentials. `examples/catalog.example.json` keeps the shape.
 
 Under launchd, so it outlives the shell that starts it:
 

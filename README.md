@@ -106,7 +106,7 @@ app.plex.tv only connects to an HTTPS address and the other Plex apps prefer one
 
 Your Plex apps can then reach it from anywhere.
 
-To keep it running copy `run.sh.example` to `run.sh` and start it as a service. The full guide has a systemd unit and a way to run several servers on one machine.
+To keep it running copy `examples/run.sh.example` to `run.sh` next to `rust/` and start it as a service. The full guide has a systemd unit and a way to run several servers on one machine.
 
 ## For developers
 

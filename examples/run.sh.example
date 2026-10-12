@@ -1,7 +1,8 @@
 #!/bin/bash
-# Copy to run.sh (gitignored), fill in the values, and see README "Setup" for each step.
+# Copy to run.sh at the top of the checkout or release, beside rust/ (run.sh is gitignored),
+# fill in the values, and see README "Setup" for each step. It runs from its own directory.
 #
-# Keys come from rex.env beside this script (mode 600; gitignored, as are run.sh and
+# Keys come from rex.env beside run.sh (mode 600; gitignored, as are run.sh and
 # sources.json): TMDB_KEY names what is pushed and powers Fix Match,
 # PLEX_TOKEN (the owner's account token) feeds Plex's metadata agent and the announce.
 # Under systemd, EnvironmentFile= can load the same file instead.
@@ -19,7 +20,7 @@
 #
 # --announce-url is added once the server is claimed (claim_state.json beside the
 # catalog): claim it first, without it. The HTTPS address needs --tls-cert/--tls-key here
-# (a PKCS#8 or RSA key) or a named tunnel in front (cloudflared.example.yml).
+# (a PKCS#8 or RSA key) or a named tunnel in front (examples/cloudflared.example.yml).
 set -e
 cd "$(dirname "$0")"
 [ -f rex.env ] && { set -a; . ./rex.env; set +a; }

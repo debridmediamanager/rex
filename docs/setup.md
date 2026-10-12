@@ -190,7 +190,7 @@ give it your own hostname, in one of two ways:
   key, which is what `tailscale cert` and many ACME clients write, needs converting
   first: `openssl pkcs8 -topk8 -nocrypt -in host.key -out host.pkcs8.key`. A
   `tailscale cert` hostname works for apps on your tailnet.
-- **A named Cloudflare tunnel** in front: [`cloudflared.example.yml`](../cloudflared.example.yml).
+- **A named Cloudflare tunnel** in front: [`examples/cloudflared.example.yml`](../examples/cloudflared.example.yml).
   Quick tunnels do not work for Plex clients.
 
 Then restart rex with the addresses to register, the HTTPS one first and, optionally, a
@@ -208,8 +208,8 @@ an address plex.tv cannot reach are the usual causes.
 
 ### 8. Run it as a service
 
-`run.sh.example` is the whole command line as a script: copy it to `run.sh` beside the
-catalog and fill it in. It reads the keys from `rex.env` (`TMDB_KEY=` and `PLEX_TOKEN=`,
+`examples/run.sh.example` is the whole command line as a script: copy it to `run.sh` at the
+top of the checkout or release, beside `rust/` and the catalog, and fill it in. It reads the keys from `rex.env` (`TMDB_KEY=` and `PLEX_TOKEN=`,
 mode 600) and adds `--announce-url` once `claim_state.json` exists. `run.sh`, `rex.env`
 and `sources.json` are gitignored. Under systemd (`~/.config/systemd/user/rex.service`,
 then `systemctl --user enable --now rex`, and `loginctl enable-linger` so it runs
