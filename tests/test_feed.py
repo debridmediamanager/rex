@@ -447,6 +447,10 @@ def main():
         server = Server(work, bytes_port)
         check("held items survive a restart", [row.get("id") for row in server.feed("GET", "held")[1].get("held", [])]
               == [held["id"]] and server.keys().get(movie["id"]) == movie_key, server.feed("GET", "held"))
+        # addedAt counts whole seconds and Recently Added breaks a tie by title: on a fast
+        # runner (windows-2022) the earlier rows were stamped the same second and "Blame It
+        # on the Bellboy" sorted first, so start the push on a fresh second.
+        time.sleep(1.05 - time.time() % 1)
         before = int(time.time())
         mark = server.events.mark()
         status, body = server.feed("POST", "items", {"items": [item("new")]})
