@@ -585,6 +585,14 @@ holds the underlying captures and investigations. When the two appear to differ,
 replay the official client's exact request against the reference PMS and record
 the result before changing the emulation.
 
+The witnesses those documents and the code comments name: **plexlab**, the reference lab PMS
+(1.43.4, ten synthetic clips); **the 1.42.2 reference**, a real claimed PMS on 1.42.2.10156 --
+the build rex reports -- with a large matched library (3,887 movies, two show libraries),
+read-only; **the production server**, a real 1.42.2 library that was the early cycles' second
+witness and later ran a production rex; **plexscratch** and **plexscratch42**, the disposable
+write copies; **the lab host** and **the test host**, the machines plexlab and rex's own test
+rigs run on.
+
 ## Conventions
 
 - Comments explain **what was measured and why the obvious thing is wrong**,
