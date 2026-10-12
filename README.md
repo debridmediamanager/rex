@@ -20,16 +20,24 @@ rex gets its library from whatever you point at it. Each source sends rex the li
 
 This is the short version. [docs/setup.md](docs/setup.md) has every option and a troubleshooting table.
 
-You need a Linux or macOS machine with Rust and Python 3, at least one source such as zurg, a free [TMDB API key](https://www.themoviedb.org/settings/api) and your [Plex token](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/).
+You need a Linux machine (macOS works if you build it yourself) with Python 3, at least one source such as zurg, a free [TMDB API key](https://www.themoviedb.org/settings/api) and your [Plex token](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/).
 
-**1. Build it**
+**1. Get it**
+
+Download the Linux build from [Releases](https://github.com/debridmediamanager/rex/releases) and unpack it. It runs on Ubuntu 22.04 or anything with glibc 2.35 or newer.
+
+```bash
+tar xzf rex-v0.1.0-linux-x86_64.tar.gz && cd rex-v0.1.0-linux-x86_64
+```
+
+Or build it yourself. No Rust on the machine? The full guide has a Docker build.
 
 ```bash
 git clone https://github.com/debridmediamanager/rex && cd rex
 cargo build --release --manifest-path rust/Cargo.toml
 ```
 
-No Rust on the machine? The full guide has a Docker build.
+Both put rex at `rust/target/release/rex`.
 
 **2. Tell rex where your files are**
 
