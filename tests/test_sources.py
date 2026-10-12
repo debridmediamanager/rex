@@ -143,6 +143,8 @@ def main():
     movie, episode = (dict(item(kind, ids=False), size=len(BODY)) for kind in ("movie", "episode"))
     os.makedirs(os.path.join(disk_root, os.path.dirname(movie["path"])))
     open(os.path.join(disk_root, movie["path"]), "wb").write(BODY)
+    os.makedirs(os.path.join(disk_root, "movies", "Plain.Release.2021"))
+    open(os.path.join(disk_root, "movies", "Plain.Release.2021", "Plain.Release.2021.mkv"), "wb").write(BODY)
     disk_port = serve(functools.partial(http.server.SimpleHTTPRequestHandler, directory=disk_root))
     cdn_seen, front_seen = [], []
     cdn_port = serve(cdn_handler(cdn_seen))
@@ -152,11 +154,30 @@ def main():
         "disk": {"url": "http://127.0.0.1:%d" % disk_port, "token": "disk-feed"},
         "front": {"url": "http://127.0.0.1:%d/files" % front_port, "user": FRONT_USER,
                   "password": FRONT_PASSWORD, "token": "front-feed"},
+        "plain": {"url": "http://127.0.0.1:%d" % disk_port, "token": "plain-feed"},
     })
     try:
         disk_part = push(port, "disk", "disk-feed", movie)
         front_part = push(port, "front", "front-feed", episode)
         check("each source's push is a row with a part", disk_part and front_part, (disk_part, front_part))
+
+        # -- no prefix to line up: an item lands by its directory -----------------------------
+        # zurg's mount_path defaults to empty, and then it pushes no `file`: rex made it
+        # `/movies/...`, which the seeded `/zurg/movies` did not hold, so every item was refused.
+        plain_movie = {"id": "movies/Plain.Release.2021/Plain.Release.2021.mkv",
+                       "path": "movies/Plain.Release.2021/Plain.Release.2021.mkv", "size": len(BODY),
+                       "media_info": movie["media_info"]}
+        plain_episode = {"id": "shows/Plain.Show.S01.1080p/Plain.Show.S01E01.1080p.mkv",
+                         "path": "shows/Plain.Show.S01.1080p/Plain.Show.S01E01.1080p.mkv", "size": len(BODY),
+                         "media_info": episode["media_info"]}
+        status, raw = call(port, "/rex/feed/plain/items", "POST", {"items": [plain_movie, plain_episode]},
+                           {"Authorization": "Bearer plain-feed", "Content-Type": "application/json"})
+        body = json.loads(raw)
+        check("a source with no mount pushing no file: both items placed, none refused",
+              status == 200 and body.get("created") == 2 and not body.get("rejected"), body)
+        status, raw = call(port, "/library/sections/1/all")
+        titles = [row.get("title") for row in json.loads(raw)["MediaContainer"].get("Metadata") or []]
+        check("the movies directory's item is in the movie library", "Plain Release" in titles, titles)
 
         # -- a server that ignores Range: the client still gets the bytes it asked for ----
         status, raw = call(port, disk_part, headers={"Range": "bytes=100-199"})

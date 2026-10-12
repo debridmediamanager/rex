@@ -629,6 +629,19 @@ const IDENTITY_FIELDS: &[&str] = &[
     "_release_path", "_probePending", "_hash",
 ];
 
+/// Whether a library folder names a directory the item's path sits in: `/mnt/zurg/movies`
+/// and `/movies` both hold `movies/<release>/<file>`, whatever prefix the source's files
+/// carry. zurg's default `mount_path` is empty, so its items come with no prefix at all and a
+/// full-path match alone rejected every one against a seeded `/mnt/zurg/movies`.
+fn names_directory(location: &str, path: &str) -> bool {
+    let location = location.trim_end_matches('/');
+    let segments: Vec<&str> = path.split('/').collect();
+    (1..segments.len()).any(|count| {
+        let directory = segments[..count].join("/");
+        location == directory || location.ends_with(&format!("/{directory}"))
+    })
+}
+
 impl Runtime {
     fn section_title(&self, key: &str) -> String {
         self.section(key).map(|section| string_value(section.get("title").unwrap_or(&Value::Null))).unwrap_or_default()
@@ -656,6 +669,7 @@ impl Runtime {
         of_kind
             .iter()
             .find(|section| self.locations(section).iter().any(|location| under(&item.file, location)))
+            .or_else(|| of_kind.iter().find(|section| self.locations(section).iter().any(|location| names_directory(location, &item.path))))
             .or_else(|| wanted.and(of_kind.first()))
             .map(|section| library(section))
     }
