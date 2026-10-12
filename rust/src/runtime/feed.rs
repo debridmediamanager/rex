@@ -79,7 +79,12 @@ impl Item {
             size: value.get("size").and_then(Value::as_u64).unwrap_or(0),
             hash: text("hash").map(|hash| hash.to_ascii_lowercase()),
             tmdb: id_text("tmdb"),
-            media_info: value.get("media_info").filter(|probe| probe.is_object()).cloned(),
+            // A probe with no streams is no probe: Plex Web will not play such an item
+            // (findings, "An item without a probe cannot play"), so it is held like a missing one.
+            media_info: value
+                .get("media_info")
+                .filter(|probe| probe.get("streams").and_then(Value::as_array).is_some_and(|streams| !streams.is_empty()))
+                .cloned(),
             ids: Map::from_iter(
                 [("imdb", imdb.clone()), ("tmdb", id_text("tmdb")), ("tvdb", id_text("tvdb"))]
                     .into_iter()

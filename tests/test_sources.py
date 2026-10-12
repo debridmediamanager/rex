@@ -179,6 +179,18 @@ def main():
         titles = [row.get("title") for row in json.loads(raw)["MediaContainer"].get("Metadata") or []]
         check("the movies directory's item is in the movie library", "Plain Release" in titles, titles)
 
+        # -- a probe with no streams is held, not shown unplayable --------------------------
+        # docs/feed-api.md's own example item carried `{"format": {}, "streams": []}`, which
+        # rex took for a probe and showed as a row Plex Web cannot play.
+        empty = {"id": "movies/Empty.Probe.2022/Empty.Probe.2022.mkv",
+                 "path": "movies/Empty.Probe.2022/Empty.Probe.2022.mkv", "size": len(BODY),
+                 "media_info": {"format": {}, "streams": []}}
+        status, raw = call(port, "/rex/feed/plain/items", "POST", {"items": [empty]},
+                           {"Authorization": "Bearer plain-feed", "Content-Type": "application/json"})
+        body = json.loads(raw)
+        check("an item whose probe has no streams is held", status == 200 and body.get("held") == 1
+              and body.get("created") == 0, body)
+
         # -- a server that ignores Range: the client still gets the bytes it asked for ----
         status, raw = call(port, disk_part, headers={"Range": "bytes=100-199"})
         check("a range read from a server that answers 200 is the range's bytes, not the file's first",
