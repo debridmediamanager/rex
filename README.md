@@ -4,23 +4,23 @@ rex is a Plex Media Server that owns no files.
 
 Your movies and shows live on a debrid service or on any web server. rex shows them to the official Plex apps as a normal Plex server. Nothing is downloaded first. When you press play rex streams the file straight from where it lives.
 
-The library comes from [zurg](https://github.com/debridmediamanager/zurg). zurg tells rex about every movie and episode it holds and rex keeps up as things are added or removed. Any other web server works too as long as something tells rex what files it has.
+rex gets its library from whatever you point at it. Each source sends rex the list of files it has along with their ffprobe details and keeps it up to date as things are added or removed. [zurg](https://github.com/debridmediamanager/zurg) does this for you today. Anything else works too if it can run ffprobe and send the result to rex's [feed API](docs/feed-api.md). The files themselves can sit on any web server.
 
 ## What you get
 
-- It shows up in the Plex apps and in app.plex.tv next to your other servers
-- Movies and shows look the way they do in Plex with posters, summaries, cast, seasons and episodes
+- Once you add it to your Plex account it shows up in the Plex apps and in app.plex.tv next to your other servers
+- Movies and shows get posters, summaries, cast, seasons and episodes from TMDB and from Plex's own metadata
 - Watched state, Continue Watching, playlists, collections, edits and Fix Match all work and survive a restart
-- Apps on your home network find it on their own
-- Files play in their original quality. With FFmpeg and a GPU it also converts what a device cannot play. A converted film starts in about 2 seconds even on a small Intel box
-- Several sources feed the same libraries. Two debrid accounts and a NAS can all fill one Movies and one TV library
-- A file that disappears from its source leaves the library the same way it would in Plex
+- Apps on your home network find it on their own when it runs on port 32400
+- Files play in their original quality. With FFmpeg it also converts what a device cannot play and a GPU makes that fast. A converted film starts in about 2 seconds even on a small Intel box
+- Several sources can fill the same Movies and TV libraries. Two zurgs on two debrid accounts end up in one library
+- When a source reports a file gone it leaves the library the same way it would in Plex
 
 ## Setup
 
 This is the short version. [docs/setup.md](docs/setup.md) has every option and a troubleshooting table.
 
-You need a Linux or macOS machine with Rust, a free [TMDB API key](https://www.themoviedb.org/settings/api) and your [Plex token](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/).
+You need a Linux or macOS machine with Rust and Python 3, at least one source such as zurg, a free [TMDB API key](https://www.themoviedb.org/settings/api) and your [Plex token](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/).
 
 **1. Build it**
 
@@ -33,7 +33,7 @@ No Rust on the machine? The full guide has a Docker build.
 
 **2. Tell rex where your files are**
 
-Write `sources.json` with one entry per zurg or web server. Each one gets its own token that it pushes with. Make one with `openssl rand -hex 24`.
+Write `sources.json` with one entry per source. Each source gets its own token that it pushes with. Make one with `openssl rand -hex 24`.
 
 ```json
 {
@@ -45,7 +45,7 @@ Write `sources.json` with one entry per zurg or web server. Each one gets its ow
 }
 ```
 
-`url` is where the files are and `mount` is zurg's `mount_path`. If zurg has a username and password add `user` and `password` too.
+`url` is where rex fetches the files from. `mount` is the folder the files appear under in the library and for zurg that is its `mount_path`. If the server needs a username and password add `user` and `password` too.
 
 **3. Make the library**
 
@@ -89,13 +89,13 @@ Do this once per server. rex saves it in `claim_state.json` next to `rex.db`. Ba
 
 **7. Use it outside your home**
 
-The Plex apps only connect from outside to an HTTPS address. Give rex a certificate for your own hostname or put a Cloudflare tunnel in front. Then restart it with that address.
+app.plex.tv only connects to an HTTPS address and the other Plex apps prefer one. rex has no relay so the address has to be reachable from the internet. Give rex a certificate for your own hostname or put a Cloudflare tunnel in front. Then restart it with that address.
 
 ```bash
 --announce-url https://rex.example.com:32400
 ```
 
-It then shows up in your Plex apps everywhere.
+Your Plex apps can then reach it from anywhere.
 
 To keep it running copy `run.sh.example` to `run.sh` and start it as a service. The full guide has a systemd unit and a way to run several servers on one machine.
 
