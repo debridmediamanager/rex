@@ -2,6 +2,8 @@
 catalog.json
 claim_state.json
 run.sh
+rex.env
+sources.json
 *.log
 *.err
 *.key
