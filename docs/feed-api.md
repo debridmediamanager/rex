@@ -122,29 +122,33 @@ What rex holds for the source: the shown items with their ratingKeys
 {
   "id": "movies/Blame.It.On.The.Bellboy.1992.1080p/Blame.It.On.The.Bellboy.1992.1080p.mkv",
   "path": "movies/Blame.It.On.The.Bellboy.1992.1080p/Blame.It.On.The.Bellboy.1992.1080p.mkv",
-  "file": "/mnt/zurg/movies/Blame.It.On.The.Bellboy.1992.1080p/Blame.It.On.The.Bellboy.1992.1080p.mkv",
-  "library": "movie",
   "name": "Blame.It.On.The.Bellboy.1992.1080p.BluRay.x264",
-  "release": "movies/Blame.It.On.The.Bellboy.1992.1080p",
   "size": 4567890123,
-  "hash": "0123456789abcdef0123456789abcdef01234567",
   "ids": {"imdb": "tt0103827"},
-  "media_info": {"format": {}, "streams": []}
+  "media_info": {
+    "format": {"format_name": "matroska,webm", "duration": "5032.144000", "bit_rate": "7261654"},
+    "streams": [
+      {"index": 0, "codec_type": "video", "codec_name": "h264", "width": 1920, "height": 1080},
+      {"index": 1, "codec_type": "audio", "codec_name": "ac3", "channels": 6, "tags": {"language": "eng"}}
+    ]
+  }
 }
 ```
 
+The `media_info` above is cut down to show its shape. Send ffprobe's whole output.
+
 | Field | Required | Meaning |
 |---|---|---|
-| `id` | yes | The source's stable key for the file. A row's ratingKey belongs to (source, id) for good |
-| `path` | yes | Where the bytes are: `<source url>/<path>` |
-| `file` | no | The Part `file` clients see, and what zurg's matcher reads back (`<mount>/<directory>/<release>/<file>`). Default `<mount>/<path>`, or `/<path>` without a mount |
-| `library` | no | A section key, or `movie`/`show`. Default: the library whose `Location` holds `file`, else one with a folder ending in a directory `path` starts with (`/mnt/zurg/movies` holds `movies/...` whatever prefix `file` has); with a type, that type's library holding `file`, else its first. Fixed when the id is first shown |
+| `id` | yes | The source's stable key for the file. A row's ratingKey belongs to (source, id) for good, so keep it when the file is renamed |
+| `path` | yes | Where the bytes are: `<source url>/<path>`. Its first directory also picks the library (below) |
+| `media_info` | yes, in practice | ffprobe's `-show_format -show_streams` JSON (go-ffprobe's `ProbeData` is the same shape). Absent, `null` or with no `streams`: the item is **held**, because Plex Web will not play an item without streams (findings, "An item without a probe cannot play") |
+| `size` | recommended | Bytes. Shown as the Part's size and used to answer a client's `Range`; without it rex passes the client's `Range` to the source as it is |
+| `ids` | recommended | `imdb` (`tt…`), `tmdb`, `tvdb`. Exact identification; without them rex identifies by `name`. `tvdb` is kept, not used |
 | `name` | no | The release name identification reads. Default: the folder above the file |
 | `release` | no | Groups a release's files, identified together (a season's episodes). Default: the folder above `path` |
-| `size` | no | Bytes |
-| `hash` | no | The release's info hash |
-| `ids` | no | `imdb` (`tt…`), `tmdb`, `tvdb`. Exact identification; `tvdb` is kept, not used |
-| `media_info` | no | ffprobe's `-show_format -show_streams` JSON (go-ffprobe's `ProbeData` is the same shape). Absent or `null`: the item is **held** |
+| `file` | no | The path clients see in Get Info, and what zurg's matcher reads back (`<mount>/<directory>/<release>/<file>`). Default `<mount>/<path>`, or `/<path>` without a mount |
+| `library` | no | A section key, or `movie`/`show`. Default: the library whose `Location` holds `file`, else one with a folder ending in a directory `path` starts with (`/mnt/zurg/movies` holds `movies/...` whatever prefix `file` has); with a type, that type's library holding `file`, else its first. Fixed when the id is first shown |
+| `hash` | no | The release's info hash. Kept on the row; nothing reads it yet |
 
 What the fields do:
 
