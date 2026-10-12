@@ -21438,7 +21438,7 @@ def main():
     # Cycle 41 closes the sampling gap: the checked-in profile corpus is the exact
     # 78-name set swept on the writable copy. A profile's measured reported name is
     # its `redirect` target when present and its own key otherwise.
-    with open(os.path.join(os.path.dirname(__file__), "..", "client_profiles.json"),
+    with open(os.path.join(os.path.dirname(__file__), "..", "data", "client_profiles.json"),
               encoding="utf-8") as profiles_file_c27b:
         profile_rows_c27b = json.load(profiles_file_c27b)
     reported_overrides_c27b = {"Plex Home Theater-RaspberryPi": "Raspberry PI"}

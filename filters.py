@@ -134,7 +134,7 @@ _ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 # 639-2/T -> 639-1, the same table `mediainfo` names a track's language with. A stream
 # carries both spellings and a client may filter with either; cycle 20 measured that the
 # two answer identically under every operator, so both sides fold to the tag here.
-with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "languages.json")) as _handle:
+with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "languages.json")) as _handle:
     _LANGUAGE_TAGS = {code: tag for code, (_name, tag) in json.load(_handle).items()}
 
 

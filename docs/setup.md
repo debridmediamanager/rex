@@ -37,8 +37,8 @@ docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -v "$PWD":/src -w /src/rust 
 ```
 
 Run rex from the repository root, or keep its catalog there: it reads its measured
-sidecar files (`*.json` at the top of the tree) beside the catalog, one directory up,
-or in its working directory.
+sidecar files (`data/`) from beside the catalog, one directory up, or its working
+directory.
 
 ### 2. Sources: where the library and its bytes come from
 

@@ -35,7 +35,7 @@ _FRAME_RATE_TOKENS = [
 # for 15 languages and the raw code for the rest, kept bibliographic codes, and cut the tag
 # to two letters -- `jp` for Japanese, `sp` for Spanish, `fi` (Finnish) for Filipino -- and a
 # client picks a track by the tag. languages.json holds every name and tag fun wrote.
-LANGUAGES = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "languages.json"),
+LANGUAGES = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "languages.json"),
                            encoding="utf-8"))
 
 # ISO 639-2's bibliographic codes, which Matroska files carry and ffprobe passes through,

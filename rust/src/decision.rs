@@ -745,7 +745,7 @@ mod tests {
     use super::*;
     use serde_json::Value;
 
-    const PROFILES: &str = include_str!("../../client_profiles.json");
+    const PROFILES: &str = include_str!("../../data/client_profiles.json");
     const ROWS: &str = include_str!("../../tests/fixtures/decisions/rows.json");
     const CELLS: &str = include_str!("../../tests/fixtures/decisions/cells.jsonl");
 

@@ -39,7 +39,7 @@ import json
 import os
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
-with open(os.path.join(_HERE, "client_profiles.json"), encoding="utf-8") as _handle:
+with open(os.path.join(_HERE, "data", "client_profiles.json"), encoding="utf-8") as _handle:
     PROFILES = json.load(_handle)
 
 # The subtitle codecs a `SubtitleProfile` target can convert. An image subtitle cannot be

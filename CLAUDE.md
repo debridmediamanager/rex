@@ -62,24 +62,24 @@ searched on disk. The gate is usually one truthiness check in minified code.
 | `docs/findings.md` | Everything measured. Read before changing behaviour. |
 
 Sidecar fixtures are captured from a real PMS -- the later ones read straight out of its
-image -- and loaded relative to `server.py`. Keep the layout flat — the code resolves them
-with `dirname(__file__)`. The descriptors (`server_prefs.json`, `regional_server_prefs.json`,
+image -- and live in `data/`, where the oracle reads them (`DATA_DIR` in `server.py`). The descriptors (`server_prefs.json`, `regional_server_prefs.json`,
 `section_prefs.json`, `section_meta.json`, `section_meta_show.json`, `section_meta_artist.json`, `item_prefs.json`,
 `section_prefs_new.json`, `section_filters.json`, `section_sorts.json`, `system_agents.json`,
 `legacy_agents.json`, `agent_languages.json`, `languages.json`, `translations.json`, `refusal_strings.json`,
 `client_profiles.json`, `spellfix_static_tags.json`, `legacy_agent_config.json`); the image's own tables
 (`plugin_bundles.json`, `plugin_prefs.json`, `attributions.json`, `resource_assets.json`,
 `media_flags.json`); and three files served verbatim at the top of the surface with no token
-(`crossdomain.xml`, `clientaccesspolicy.xml`, `favicon.ico`). Two runtime files are the
-exception to the flat rule: `tmdb_cache.json` and `claim_state.json` are resolved beside the
-**catalog**, not beside `server.py`, because they are state rather than measurement.
+(`crossdomain.xml`, `clientaccesspolicy.xml`, `favicon.ico`). Runtime files never go in
+`data/`: `tmdb_cache.json` and `claim_state.json` are resolved beside the **catalog**,
+because they are state rather than measurement.
 The state file is state too: a SQLite database beside the catalog by default
 (`rex.db`), the catalog itself when the catalog is a database, or wherever `--state`
 names.
 
-The native server finds the same sidecars beside the catalog, then one directory up,
-then in its working directory (`sidecar_roots` in `runtime.rs`), so run it from the
-repository root or keep the catalog there -- `run.sh.example` `cd`s to its own directory.
+The native server finds the same sidecars in `data/` beside the catalog, then one directory
+up, then in its working directory, trying each directory itself after its `data/` so a
+deployment that keeps them beside its catalog still works (`sidecar_roots` in `runtime.rs`).
+Run it from the repository root or keep the catalog there -- `run.sh.example` `cd`s to its own directory.
 `client_profiles.json`, `languages.json` and the decision corpus are compiled into the
 binary with `include_str!`, so a change to them needs a rebuild. `tmdb_cache.json` and
 `claim_state.json` sit beside the catalog on both servers.

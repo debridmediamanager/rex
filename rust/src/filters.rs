@@ -161,7 +161,7 @@ pub fn language_code(value: &str) -> String {
     let tags = TAGS.get_or_init(|| {
         let mut tags = HashMap::new();
         if let Ok(document) = serde_json::from_str::<HashMap<String, Vec<String>>>(include_str!(
-            "../../languages.json"
+            "../../data/languages.json"
         )) {
             for (code, values) in document {
                 if let Some(tag) = values.get(1) {

@@ -32,7 +32,7 @@ const VIDEO_FLAGS: &[(&str, &str)] = &[
 fn languages() -> &'static HashMap<String, (String, String)> {
     static LANGUAGES: OnceLock<HashMap<String, (String, String)>> = OnceLock::new();
     LANGUAGES.get_or_init(|| {
-        let raw: Value = serde_json::from_str(include_str!("../../languages.json"))
+        let raw: Value = serde_json::from_str(include_str!("../../data/languages.json"))
             .expect("languages.json is valid JSON");
         raw.as_object()
             .expect("languages.json is an object")

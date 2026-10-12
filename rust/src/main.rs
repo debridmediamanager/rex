@@ -368,7 +368,7 @@ fn parse_decision_args(args: &[String]) -> Result<DecisionOptions, String> {
     Ok(DecisionOptions {
         profile: profile.ok_or_else(|| "--profile is required".to_string())?,
         media_path: media_path.ok_or_else(|| "--media is required".to_string())?,
-        profiles_path: profiles_path.unwrap_or_else(|| "client_profiles.json".to_string()),
+        profiles_path: profiles_path.unwrap_or_else(|| "data/client_profiles.json".to_string()),
         protocol: protocol.unwrap_or_else(|| "http".to_string()),
         direct,
     })

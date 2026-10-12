@@ -14,8 +14,8 @@ from server_command import server_command
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.environ.get("REX_TEST_ROOT", os.path.dirname(HERE))
 CATALOGUE = os.environ.get("REX_REGIONAL_PREFS_FIXTURE",
-                           os.path.join(ROOT, "regional_server_prefs.json"))
-BASE_PREFS = os.path.join(ROOT, "server_prefs.json")
+                           os.path.join(ROOT, "data", "regional_server_prefs.json"))
+BASE_PREFS = os.path.join(ROOT, "data", "server_prefs.json")
 VERSION_142_OMITS = {"AllowLegacyAgents", "CLDriver"}
 
 

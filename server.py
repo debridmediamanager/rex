@@ -71,6 +71,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 http.client._MAXHEADERS = 101
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# The measured sidecars: the repository's data/.
+DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 
 import catalogdb  # noqa: E402
 import claim as claim_module  # noqa: E402
@@ -245,7 +247,7 @@ UPSTREAM_UA = "rex/0.1"
 # nothing to read for it -- rex returned an empty Setting list.
 # Server-wide preferences. A real PMS answers /:/prefs with ~175 settings;
 # rex answered with an empty list, the same gap as the section prefs.
-_SERVER_PREFS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "server_prefs.json")
+_SERVER_PREFS_PATH = os.path.join(DATA_DIR, "server_prefs.json")
 try:
     with open(_SERVER_PREFS_PATH) as _handle:
         SERVER_PREFS = json.load(_handle)
@@ -258,7 +260,7 @@ except (OSError, ValueError):
 # this endpoint was measured at the regional-tag granularity.  Values are deliberately
 # absent: they are installation/account state, not language data.
 _REGIONAL_SERVER_PREFS_PATH = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "regional_server_prefs.json")
+    DATA_DIR, "regional_server_prefs.json")
 try:
     with open(_REGIONAL_SERVER_PREFS_PATH, encoding="utf-8") as _handle:
         _regional_server_prefs_doc = json.load(_handle)
@@ -278,7 +280,7 @@ for _alias, _target in (_regional_server_prefs_doc.get("aliases") or {}).items()
 # remainder. Keep the captured version-specific vocabulary beside the other flat
 # PMS fixtures rather than baking one library's derived 71,124 tokens into rex.
 _SPELLFIX_STATIC_TAGS_PATH = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "spellfix_static_tags.json")
+    DATA_DIR, "spellfix_static_tags.json")
 try:
     with open(_SPELLFIX_STATIC_TAGS_PATH, encoding="utf-8") as _handle:
         SPELLFIX_STATIC_TAGS = json.load(_handle)
@@ -297,7 +299,7 @@ SHOW_ROW_PREFS = ("flattenSeasons", "episodeSort")
 # path -- so nothing in it is invented. The attribute key matters: the reference
 # translates "By Genre" as a section pivot's `title` and leaves the same words alone as
 # a secondary axis's `title2`.
-_TRANSLATIONS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+_TRANSLATIONS_PATH = os.path.join(DATA_DIR,
                                   "translations.json")
 try:
     with open(_TRANSLATIONS_PATH, encoding="utf-8") as _handle:
@@ -331,7 +333,7 @@ for _enum, _translated in (TRANSLATIONS.get("enumValues") or {}).items():
 # inherit option are read off zen per language (`item_language_names.json`); the tail is
 # the table's own translated list, in its own order.
 try:
-    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+    with open(os.path.join(DATA_DIR,
                            "item_language_names.json"), encoding="utf-8") as _handle:
         _ITEM_LANGUAGE_TABLE = json.load(_handle)
         ITEM_LANGUAGE_NAMES = _ITEM_LANGUAGE_TABLE["names"]
@@ -365,7 +367,7 @@ def _localise_item_language_enum(value, language):
     # the lead of the table's list.
     return "|".join([(ITEM_LANGUAGE_LEADS.get(language) or {}).get(lead, lead)] + pieces)
 
-_SECTION_PREFS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "section_prefs.json")
+_SECTION_PREFS_PATH = os.path.join(DATA_DIR, "section_prefs.json")
 try:
     with open(_SECTION_PREFS_PATH) as _handle:
         SECTION_PREFS = json.load(_handle)
@@ -374,7 +376,7 @@ except (OSError, ValueError):
 
 # The Add Library dialog's form, per library type and agent. See the file's own
 # provenance note: a real PMS shapes the list by BOTH, and rex 400'd it.
-_SECTION_PREFS_NEW_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+_SECTION_PREFS_NEW_PATH = os.path.join(DATA_DIR,
                                        "section_prefs_new.json")
 try:
     with open(_SECTION_PREFS_NEW_PATH) as _handle:
@@ -397,7 +399,7 @@ except (OSError, ValueError):
 # unknown fields they are.
 SECTION_META = {}
 for _kind, _name in (("movie", "section_meta.json"), ("show", "section_meta_show.json")):
-    _path = os.path.join(os.path.dirname(os.path.abspath(__file__)), _name)
+    _path = os.path.join(DATA_DIR, _name)
     try:
         with open(_path) as _handle:
             SECTION_META[_kind] = json.load(_handle)
@@ -409,7 +411,7 @@ for _kind, _name in (("movie", "section_meta.json"), ("show", "section_meta_show
 # purpose: that table also types the filter engine's fields for every library, and a
 # music field's type was never measured against a movie or show listing.
 try:
-    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+    with open(os.path.join(DATA_DIR,
                            "section_meta_artist.json")) as _handle:
         SECTION_META_ARTIST = json.load(_handle)
 except (OSError, ValueError):
@@ -713,7 +715,7 @@ for _column in ("mediaVideoCodec", "mediaAudioCodec", "mediaContainer"):
 # Per-item Preferences: the Setting list an item's own settings tab reads,
 # captured from a real PMS. A show has eleven and a season has three, and they
 # are not the same three -- rex invented a single `episodeSort` row.
-_ITEM_PREFS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "item_prefs.json")
+_ITEM_PREFS_PATH = os.path.join(DATA_DIR, "item_prefs.json")
 try:
     with open(_ITEM_PREFS_PATH) as _handle:
         ITEM_PREFS = json.load(_handle)
@@ -771,7 +773,7 @@ except OSError:
 # level, and the stray `sugar.cmake` the build leaves behind) are carried verbatim, being
 # 1.4 KB between them. Shipping 4.7 MB of a product's artwork to reproduce the pixels of
 # the other 68 is recorded in HANDOVER 8 rather than done.
-with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+with open(os.path.join(DATA_DIR,
                        "resource_assets.json"), encoding="utf-8") as _handle:
     RESOURCE_ASSETS = json.load(_handle)
 
@@ -1012,7 +1014,7 @@ SECTION_SORTS = [
 # `atmos`, `inProgress`, `unmatched`, `unwatchedLeaves`). They are advertised
 # anyway, because that is what a real PMS advertises -- rex's unknown-leaf
 # 404 reproduces the rest of it for free.
-_SECTION_FILTERS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+_SECTION_FILTERS_PATH = os.path.join(DATA_DIR,
                                      "section_filters.json")
 try:
     with open(_SECTION_FILTERS_PATH) as _handle:
@@ -1021,7 +1023,7 @@ except OSError:
     SECTION_FILTERS = {"plain": {}, "advanced": {}}
 
 # `/library/sections/{id}/sorts`, per requested TYPE, captured like the filters above.
-_SECTION_SORTS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+_SECTION_SORTS_PATH = os.path.join(DATA_DIR,
                                    "section_sorts.json")
 try:
     with open(_SECTION_SORTS_PATH) as _handle:
@@ -1176,7 +1178,7 @@ PLAYLIST_SORTS = [
 # preselects by. rex sent one `en-US` row with no `default`, so the dropdown
 # had one language and nothing selected. Which agents each library type offers is
 # measured too. See system_agents.json for what is left out and why.
-_SYSTEM_AGENTS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+_SYSTEM_AGENTS_PATH = os.path.join(DATA_DIR,
                                    "system_agents.json")
 try:
     with open(_SYSTEM_AGENTS_PATH) as _handle:
@@ -1189,7 +1191,7 @@ AGENT_MEDIA_TYPES = _SYSTEM_AGENTS_DOC["mediaTypes"]
 # under each primary agent and what its drag-to-reorder saves. Swept on zen (1.42.2) over
 # all fifteen listed agents x the six media types `agentservice.py` knows; kids agrees on
 # every row but the contributor order of two TV cells, which is its own load order.
-_LEGACY_AGENT_CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+_LEGACY_AGENT_CONFIG_PATH = os.path.join(DATA_DIR,
                                          "legacy_agent_config.json")
 try:
     with open(_LEGACY_AGENT_CONFIG_PATH, encoding="utf-8") as _handle:
@@ -1209,7 +1211,7 @@ LEGACY_MEDIA_CLASSES = {1: "Movie", 2: "TV_Show", 8: "Artist", 9: "Album", 13: "
 # is NOT English: each language is named in itself there, and an unrecognised language
 # falls back to that rather than to English -- the opposite of every other localised
 # string on the surface.
-_AGENT_LANGUAGES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+_AGENT_LANGUAGES_PATH = os.path.join(DATA_DIR,
                                      "agent_languages.json")
 try:
     with open(_AGENT_LANGUAGES_PATH, encoding="utf-8") as _handle:
@@ -1271,7 +1273,7 @@ STATIC_RESOURCES = {
 }
 STATIC_RESOURCE_BYTES = {}
 for _resource in STATIC_RESOURCES:
-    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+    with open(os.path.join(DATA_DIR,
                            _resource.lstrip("/")), "rb") as _handle:
         STATIC_RESOURCE_BYTES[_resource] = _handle.read()
 
@@ -1292,7 +1294,7 @@ for _resource in STATIC_RESOURCES:
 # `plugins.webclient`) answer the framework's 109-byte 500 to every one of them, which is
 # the branch rex already has. The pixels of a bundle's images are rex's
 # placeholder at the file's real geometry, as `/:/resources` and the media flags are.
-with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+with open(os.path.join(DATA_DIR,
                        "plugin_bundles.json"), encoding="utf-8") as _handle:
     PLUGIN_BUNDLES = json.load(_handle)
 
@@ -1331,7 +1333,7 @@ PLUGIN_ROOT_ERROR = (
 # both leaves. The values are each bundle's `PlexAgentAttributionText` and
 # `Contents/Resources/attribution.png`; the image's pixels are rex's placeholder at
 # the file's real geometry, as the rest of this cycle's bundled artwork is.
-with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+with open(os.path.join(DATA_DIR,
                        "attributions.json"), encoding="utf-8") as _handle:
     AGENT_ATTRIBUTIONS = json.load(_handle)
 
@@ -1356,7 +1358,7 @@ with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
 # `MediaType`'s `mediaType` were held as the STRINGS "0"/"1"/"8" and went out that way in
 # JSON. kids and zen write them as JSON booleans and a number, on the bare path and every
 # `mediaType=`; the file now holds the JSON types, which the XML writer still renders 1/0.
-with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+with open(os.path.join(DATA_DIR,
                        "legacy_agents.json"), encoding="utf-8") as _handle:
     LEGACY_AGENTS = json.load(_handle)
 
@@ -1387,7 +1389,7 @@ PLUGIN_LIST = (
 # the media flags resource, the scanners and the web client. `/:/plugins/{id}/prefs` is
 # what the Console's plug-in pane and `prefsKey` open, and rex -- which advertises
 # `prefsKey="/:/plugins/com.plexapp.system/prefs"` itself -- 404'd every one of them.
-with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+with open(os.path.join(DATA_DIR,
                        "plugin_prefs.json"), encoding="utf-8") as _handle:
     PLUGIN_PREFS = json.load(_handle)
 
@@ -1415,7 +1417,7 @@ with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
 #
 # The pixels are rex's own placeholder at the file's real geometry, the convention
 # cycle 52 set for `/:/resources`; `blank.png` is 82 bytes and is carried verbatim.
-with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+with open(os.path.join(DATA_DIR,
                        "media_flags.json"), encoding="utf-8") as _handle:
     MEDIA_FLAGS = json.load(_handle)
 MEDIA_FLAG_BLANK = base64.b64decode(MEDIA_FLAGS["blank"])
@@ -3124,7 +3126,7 @@ def request_regional_server_prefs(query, headers):
 
 
 try:
-    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+    with open(os.path.join(DATA_DIR,
                            "title_templates.json"), encoding="utf-8") as _handle:
         _TEMPLATE_TABLE = json.load(_handle)
         TITLE_TEMPLATES = _TEMPLATE_TABLE["templates"]
@@ -3150,7 +3152,7 @@ def _localise_hub_title(title, language):
 
 
 try:
-    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+    with open(os.path.join(DATA_DIR,
                            "stream_words.json"), encoding="utf-8") as _handle:
         STREAM_WORDS = json.load(_handle)["words"]
 except (OSError, ValueError, KeyError):
@@ -3158,7 +3160,7 @@ except (OSError, ValueError, KeyError):
 
 
 try:
-    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+    with open(os.path.join(DATA_DIR,
                            "activity_strings.json"), encoding="utf-8") as _handle:
         _ACTIVITY_DOC = json.load(_handle)
         ACTIVITY_STRINGS = _ACTIVITY_DOC["strings"]
@@ -3171,7 +3173,7 @@ except (OSError, ValueError, KeyError):
 # request's language like an activity string does (`hu-HU` reads `hu_HU`); the other eight
 # stay English everywhere. rex wrote all eleven in English.
 try:
-    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+    with open(os.path.join(DATA_DIR,
                            "refusal_strings.json"), encoding="utf-8") as _handle:
         REFUSAL_STRINGS = json.load(_handle)["strings"]
 except (OSError, ValueError, KeyError):

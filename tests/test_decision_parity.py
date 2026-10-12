@@ -40,7 +40,7 @@ def run_native(command, media_path):
             "--media",
             media_path,
             "--profiles",
-            os.path.join(ROOT, "client_profiles.json"),
+            os.path.join(ROOT, "data", "client_profiles.json"),
         ],
         cwd=ROOT,
         check=False,

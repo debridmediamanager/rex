@@ -25586,6 +25586,9 @@ fn sidecar(path: &Path, suffix: &str) -> PathBuf {
     PathBuf::from(format!("{}.{}", path.display(), suffix))
 }
 
+/// Where the measured sidecars are read from: beside the catalog, one directory up, then the
+/// working directory. Each one's `data/` comes first -- where a checkout and a release keep
+/// them -- and then the directory itself, where an older deployment may still have them.
 fn sidecar_roots(catalog: &Path) -> Vec<PathBuf> {
     let mut roots = Vec::new();
     if let Some(parent) = catalog.parent() {
@@ -25595,7 +25598,21 @@ fn sidecar_roots(catalog: &Path) -> Vec<PathBuf> {
         }
     }
     roots.push(PathBuf::from("."));
-    roots
+    roots.into_iter().flat_map(|root| [root.join("data"), root]).collect()
+}
+
+#[cfg(test)]
+mod sidecar_tests {
+    use super::*;
+
+    #[test]
+    fn data_comes_before_each_directory_itself() {
+        let expected = ["/srv/rex/data", "/srv/rex", "/srv/data", "/srv", "./data", "."];
+        assert_eq!(
+            sidecar_roots(Path::new("/srv/rex/catalog.json")),
+            expected.iter().map(PathBuf::from).collect::<Vec<_>>()
+        );
+    }
 }
 
 fn load_json_sidecar(catalog: &Path, name: &str) -> Option<Value> {

@@ -275,7 +275,7 @@ jobs:
 
       # Each archive keeps the repository's layout, so manager.py, run.sh.example and every
       # command in the docs find the binary at rust/target/release/rex either way. rex reads
-      # its measured *.json and *.xml beside the catalog or in its working directory.
+      # its measured sidecars from data/, beside the catalog or in its working directory.
       - name: Package
         run: |
           set -e
@@ -284,7 +284,7 @@ jobs:
             binary=rex; [ "$platform" = windows-amd64 ] && binary=rex.exe
             mkdir -p "$name/rust/target/release"
             install -m 755 "artifacts/rex-$platform/$binary" "$name/rust/target/release/$binary"
-            git ls-files -z -- ':(top,glob)*.json' ':(top,glob)*.xml' favicon.ico \
+            git ls-files -z -- data catalog.example.json \
                 build_catalog.py catalogdb.py hierarchy.py metadata.py manager.py \
                 run.sh.example cloudflared.example.yml README.md LICENSE docs/setup.md docs/feed-api.md \
               | xargs -0 cp --parents -t "$name"
