@@ -525,6 +525,26 @@ corpora recorded from a real PMS *through a real client*, so they carry the
 client's own paging params; a payload transcribed by hand cannot, and that is
 precisely how the Seasons bug survived a fix attempt.
 
+## CI and releases
+
+`.github/workflows/ci.yml` runs on every push to `main` and every pull request: a release
+build on GitHub's `ubuntu-22.04` (glibc 2.35, what zen and fun run), `cargo test`, and the
+black-box suites that need no credentials. It never runs on the org's self-hosted runner,
+which is fun.
+
+A release is a tag. Set `version` in `rust/Cargo.toml`, push that to `main`, wait for CI,
+then tag the tested commit with the release notes as the tag message and push the tag:
+
+```bash
+git tag -a v0.2.0 -F notes.md <tested commit> && git push origin v0.2.0
+```
+
+The tag's run tests again, checks the tag matches `Cargo.toml`, and publishes
+`rex-vX.Y.Z-linux-x86_64.tar.gz` and `SHA256SUMS` as the GitHub release, titled `rex X.Y.Z`
+with the tag message as its notes. The archive keeps the repository's layout (the binary at
+`rust/target/release/rex`, the sidecars and the tools beside it), so every command in the
+docs works the same from a release as from a checkout.
+
 ## Differential instruments
 
 `handover/tools/pair.py REQS.jsonl --tree DIR --bin NATIVE` replays a request list (a harness capture
