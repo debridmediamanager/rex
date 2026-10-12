@@ -215,6 +215,10 @@ jobs:
     defaults:
       run:
         shell: bash
+    env:
+      # The suites read their fixtures without naming an encoding; the shipped tools name
+      # UTF-8 themselves (test_build_catalog checks that with UTF-8 mode off).
+      PYTHONUTF8: "1"
     steps:
       - uses: actions/checkout@v4
 
