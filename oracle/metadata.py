@@ -529,7 +529,7 @@ def enrich(row, tmdb, parsed, chosen=None):
         row["guid"] = plex_guid("movie", imdb_id or "tmdb:%s" % tmdb_id)
         row["Guid"] = externals
     # An episode TMDB does not have keeps the guid it had: it was minted a MOVIE guid
-    # and given its show's ids (the 1.42.2 reference's Tom and Jerry S02E05 under a one-season
+    # and given its show's ids (the test host's Tom and Jerry S02E05 under a one-season
     # show).
 
     # The show's identity, for the parent row the hierarchy builds.

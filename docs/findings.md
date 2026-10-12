@@ -12456,7 +12456,7 @@ The first segment is the encode of its first seconds, so a conversion's segments
 Question: could rex show a pushed item before its source sends `media_info`, as a real PMS
 shows a file before analysing it, and so not need a source that runs ffprobe?
 
-Setup on the 1.42.2 reference: a throwaway build whose feed showed an item with no `media_info`
+Setup on the test host: a throwaway build whose feed showed an item with no `media_info`
 instead of holding it (the scanner's empty-probe row: `Media` with no container, codecs or duration,
 `_probePending`). One 60 s 1920x1080 H.264/AAC file, pushed twice under two names, once with
 its ffprobe JSON and once without, from a plain `python3 -m http.server` source. Client:

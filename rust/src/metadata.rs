@@ -752,7 +752,7 @@ pub fn enrich(
         put(row, "Guid", externals.clone());
     }
     // An episode TMDB does not have keeps the guid it had: it was minted a MOVIE guid
-    // and given its show's ids (the 1.42.2 reference's Tom and Jerry S02E05 under a
+    // and given its show's ids (the test host's Tom and Jerry S02E05 under a
     // one-season show).
     put(row, "_show_external_guids", externals);
     if let Some(path) = poster.as_deref() {
