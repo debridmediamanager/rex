@@ -549,6 +549,89 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
     counts
 }
 
+/// Seasons left as they were made from an unidentified first episode -- the local agent's
+/// guid, or no poster -- under a show TMDB names (fun, 2026-10-12: Black Mirror's Season 6
+/// on `local://` with the blank tile, its show re-identified in place the day before). Run
+/// once at start: each is built again as a leaf of its show's identity builds it, from
+/// TMDB's season and Plex's guid for it (both cached when its episodes were identified),
+/// and refreshed with that (`refresh_season`). Answers how many changed.
+pub(super) fn repair_seasons(shared: &SharedRuntime) -> usize {
+    let present = |value: &&Value| !value.is_null() && value.as_str() != Some("");
+    // -- under the lock: which seasons, and what names them ---------------------------------
+    let (wanted, tmdb, plex) = {
+        let guard = lock(shared);
+        let Some(tmdb) = guard.tmdb.clone() else {
+            return 0;
+        };
+        let wanted: Vec<(String, i64, i64, Option<String>, Map<String, Value>)> = guard
+            .catalog
+            .items()
+            .iter()
+            .filter(|row| {
+                row.get("type").and_then(Value::as_str) == Some("season")
+                    && row.get("_scanned").is_some_and(truthy)
+                    && (row.get("guid").and_then(Value::as_str).is_none_or(|guid| guid.is_empty() || guid.starts_with("local://"))
+                        || row.get("_poster_url").filter(present).is_none())
+            })
+            .filter_map(|season| {
+                let key = key_of(season)?;
+                let index = season.get("index").and_then(Value::as_i64)?;
+                let show = guard.catalog.get(&season.get("parentRatingKey").map(string_value)?)?;
+                let id = show.get("_identity").and_then(Value::as_str)?.strip_prefix("tmdb:")?.parse::<i64>().ok()?;
+                // Plex's guid for the show, as the episodes' identification named it.
+                let named = guard.catalog.children_refs(&key).into_iter().find_map(|episode| {
+                    episode.pointer("/_identify/plex").and_then(Value::as_str).map(str::to_string)
+                });
+                let artwork = [("_show_poster", "_poster_url"), ("_show_art", "_art_url")]
+                    .into_iter()
+                    .filter_map(|(hint, field)| Some((hint.to_string(), show.get(field).filter(present)?.clone())))
+                    .collect();
+                Some((key, id, index, named, artwork))
+            })
+            .collect();
+        (wanted, tmdb, guard.plex.clone())
+    };
+    if wanted.is_empty() {
+        return 0;
+    }
+    // -- off the lock: the season each one's identity builds --------------------------------
+    let mut children: HashMap<String, HashMap<String, String>> = HashMap::new();
+    let built: Vec<(String, Value)> = wanted
+        .into_iter()
+        .filter_map(|(key, id, index, named, artwork)| {
+            let mut leaf = artwork;
+            for (field, value) in [("_kind", json!("tv")), ("_tmdb_id", json!(format!("tmdb:{id}"))), ("_season", json!(index)), ("_episode", json!(0))] {
+                leaf.insert(field.to_string(), value);
+            }
+            if let Some(season) = tmdb.season(&json!(id), &json!(index)).filter(truthy) {
+                if let Some(season) = season.as_object() {
+                    crate::metadata::season_hints(&mut leaf, season);
+                }
+            }
+            if let (Some(plex), Some(show)) = (plex.as_deref(), named) {
+                let seasons = children.entry(show.clone()).or_insert_with(|| crate::identify::plex_children(plex, &show));
+                if let Some(guid) = seasons.get(&index.to_string()) {
+                    leaf.insert("_season_guid".to_string(), json!(guid));
+                }
+            }
+            let season = crate::hierarchy::build(vec![Value::Object(leaf)])
+                .into_iter()
+                .find(|row| row.get("type").and_then(Value::as_str) == Some("season"))?;
+            Some((key, season))
+        })
+        .collect();
+    // -- under the lock: apply -------------------------------------------------------------
+    let mut guard = lock(shared);
+    let refreshed = built.iter().filter(|(key, season)| guard.refresh_season(key, season)).count();
+    if refreshed > 0 {
+        info!("FEED refreshed {refreshed} season(s) their show's identity names");
+        let snapshot = guard.flush_state();
+        drop(guard);
+        write_or_log(snapshot);
+    }
+    refreshed
+}
+
 /// The ids a row was identified by: its `_ids`, or for a row the old scanner made, the
 /// IMDb id its identification settled on.
 fn row_ids(row: &Value) -> Map<String, Value> {

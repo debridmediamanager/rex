@@ -810,37 +810,43 @@ pub fn enrich(
                 .filter(|value| value_truthy(value))
                 .and_then(Value::as_object)
             {
-                if let Some(id) = value_id(season.get("id")) {
-                    put(row, "_season_guid", plex_guid("season", &id));
-                    let mut ids = vec![json!({"id":format!("tmdb://{}",id)})];
-                    if let Some(tvdb) = season
-                        .get("external_ids")
-                        .and_then(|x| x.get("tvdb_id"))
-                        .and_then(|value| value_id(Some(value)))
-                    {
-                        ids.push(json!({"id":format!("tvdb://{}",tvdb)}));
-                    }
-                    put(row, "_season_guids", ids);
-                }
-                if let Some(v) = season
-                    .get("poster_path")
-                    .filter(|value| value_truthy(value))
-                    .and_then(Value::as_str)
-                {
-                    put(row, "_season_poster", format!("{}w342{}", IMAGE_BASE, v));
-                }
-                if let Some(v) = season.get("air_date").filter(|value| value_truthy(value)) {
-                    if year_prefix(Some(v)).is_some() {
-                        put(row, "_season_air", v.clone());
-                    }
-                }
-                if let Some(v) = season.get("overview").filter(|value| value_truthy(value)) {
-                    put(row, "_season_summary", v.clone());
-                }
+                season_hints(row, season);
             }
         }
     }
     true
+}
+
+/// What TMDB's season document gives the season a leaf builds (`hierarchy::build`): its
+/// minted guid and ids, poster, air date and summary.
+pub fn season_hints(row: &mut Map<String, Value>, season: &Map<String, Value>) {
+    if let Some(id) = value_id(season.get("id")) {
+        put(row, "_season_guid", plex_guid("season", &id));
+        let mut ids = vec![json!({"id":format!("tmdb://{}",id)})];
+        if let Some(tvdb) = season
+            .get("external_ids")
+            .and_then(|x| x.get("tvdb_id"))
+            .and_then(|value| value_id(Some(value)))
+        {
+            ids.push(json!({"id":format!("tvdb://{}",tvdb)}));
+        }
+        put(row, "_season_guids", ids);
+    }
+    if let Some(v) = season
+        .get("poster_path")
+        .filter(|value| value_truthy(value))
+        .and_then(Value::as_str)
+    {
+        put(row, "_season_poster", format!("{}w342{}", IMAGE_BASE, v));
+    }
+    if let Some(v) = season.get("air_date").filter(|value| value_truthy(value)) {
+        if year_prefix(Some(v)).is_some() {
+            put(row, "_season_air", v.clone());
+        }
+    }
+    if let Some(v) = season.get("overview").filter(|value| value_truthy(value)) {
+        put(row, "_season_summary", v.clone());
+    }
 }
 
 #[cfg(test)]

@@ -62,7 +62,7 @@ jobs:
           set -e
           for suite in test_cli test_server_command test_native_runtime_smoke test_build_catalog \
                        test_tls test_part_bytes test_sources test_feed test_feed_versions \
-                       test_plextv test_manager; do
+                       test_feed_season_art test_plextv test_manager; do
             echo "::group::$suite"
             python3 "tests/$suite.py"
             echo "::endgroup::"
@@ -262,7 +262,8 @@ jobs:
           set -e
           export PATH="/c/Program Files/Git/usr/bin:$PATH"
           for suite in test_cli test_server_command test_native_runtime_smoke test_build_catalog \
-                       test_tls test_part_bytes test_sources test_feed test_feed_versions test_plextv; do
+                       test_tls test_part_bytes test_sources test_feed test_feed_versions \
+                       test_feed_season_art test_plextv; do
             echo "::group::$suite"
             python "tests/$suite.py"
             echo "::endgroup::"

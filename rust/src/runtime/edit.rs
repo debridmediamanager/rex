@@ -378,7 +378,7 @@ fn strip_value_suffix(name: &str) -> &str {
     name.strip_suffix(".value").unwrap_or(name)
 }
 
-fn field_locked(row: &Map<String, Value>, field: &str) -> bool {
+pub(super) fn field_locked(row: &Map<String, Value>, field: &str) -> bool {
     row.get("Field")
         .and_then(Value::as_array)
         .into_iter()

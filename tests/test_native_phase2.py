@@ -249,6 +249,30 @@ def check_hierarchy():
     if not equivalent(expected_year, got_year):
         raise AssertionError("hierarchy season-year parity failed")
 
+    # A season's first leaf without its TMDB season, a later one with it (Black Mirror's
+    # Season 6 on fun, fixtures/feed/season_art.json): the season is the later one's.
+    art = json.load(open(os.path.join(HERE, "fixtures", "feed", "season_art.json")))
+    tmdb_season = art["tmdb"]["https://api.themoviedb.org/3/tv/42009/season/6?api_key=KEY"]
+    tmdb_show = next(answer for key, answer in art["tmdb"].items() if "/tv/42009?" in key)
+    show_hints = {"_kind": "tv", "_tmdb_id": "tmdb:42009", "_show_title": "Black Mirror", "_season": 6,
+                  "_show_guid": "plex://show/5d9c0863ef619b002047f234",
+                  "_show_poster": "https://image.tmdb.org/t/p/w342" + tmdb_show["poster_path"]}
+    season_hints = {"_season_guid": "plex://season/640b5417e96cd974790c094f",
+                    "_season_guids": [{"id": "tmdb://%s" % tmdb_season["id"]}],
+                    "_season_poster": "https://image.tmdb.org/t/p/w342" + tmdb_season["poster_path"],
+                    "_season_summary": tmdb_season["overview"]}
+    leaves = [dict(show_hints, ratingKey=str(112158 + n), title="Episode %d" % (n + 1), _episode=n + 1,
+                   **(season_hints if n else {})) for n in range(3)]
+    expected = hierarchy.build(copy.deepcopy(leaves))
+    got = native_json("hierarchy-build", document=leaves)
+    season = next(row for row in expected if row.get("type") == "season")
+    if (season.get("guid"), season.get("_poster_url"), season.get("summary")) != (
+            season_hints["_season_guid"], season_hints["_season_poster"], season_hints["_season_summary"]) \
+            or {row.get("parentGuid") for row in expected if row.get("type") == "episode"} != {season["guid"]}:
+        raise AssertionError("a season a later leaf identifies did not take that identity")
+    if not equivalent(expected, got):
+        raise AssertionError("hierarchy season filled by a later leaf parity failed")
+
     specials = json.load(open(os.path.join(HERE, "fixtures", "specials_zen.json")))
     leaves = []
     for number, show in enumerate(specials["shows"]):

@@ -872,7 +872,19 @@ pub fn build(mut leaves: Vec<Value>) -> Vec<Value> {
         let show = rows[show_index].as_object().cloned().unwrap();
         let season_key = (tmdb.clone(), season_number);
         let season_index = if let Some(index) = seasons.get(&season_key) {
-            *index
+            let index = *index;
+            let named = rows[index].as_object_mut().and_then(|season| fill_season(season, leaf));
+            if let (Some(guid), Some(key)) = (named, str_value(rows[index].as_object().unwrap(), "ratingKey")) {
+                // The season's earlier episodes took the show's guid as their parent's.
+                for row in rows.iter_mut().filter_map(Value::as_object_mut) {
+                    if str_value(row, "type").as_deref() == Some("episode")
+                        && str_value(row, "parentRatingKey").as_deref() == Some(key.as_str())
+                    {
+                        put(row, "parentGuid", guid.clone());
+                    }
+                }
+            }
+            index
         } else {
             next_season += 1;
             let rk = next_season.to_string();
@@ -1038,6 +1050,38 @@ pub fn build(mut leaves: Vec<Value>) -> Vec<Value> {
         }
     }
     rows
+}
+
+/// A season is made from its first leaf. A later leaf that identifies a season the first
+/// left unidentified (its TMDB season was not had) gives it that identity, and one carrying
+/// artwork gives artwork to a season with none: fun's rex kept 186 seasons of 131 shows on
+/// the blank tile under a show with a poster (2026-10-12), because nothing after the first
+/// leaf was ever read. Answers the guid the season took, if it took one.
+fn fill_season(season: &mut Row, leaf: &Row) -> Option<String> {
+    let present = |value: &&Value| !value.is_null() && value.as_str() != Some("");
+    let blank = |season: &Row, field: &str| season.get(field).filter(present).is_none();
+    let guid = str_value(leaf, "_season_guid").filter(|guid| !guid.is_empty() && blank(season, "guid"));
+    if guid.is_some() {
+        for (field, hint) in [
+            ("guid", "_season_guid"),
+            ("year", "_season_year"),
+            ("Guid", "_season_guids"),
+            ("summary", "_season_summary"),
+            ("_poster_url", "_season_poster"),
+        ] {
+            if let Some(value) = leaf.get(hint).filter(present) {
+                season.insert(field.to_string(), value.clone());
+            }
+        }
+    }
+    for (field, hint) in [("_poster_url", "_show_poster"), ("_art_url", "_show_art")] {
+        if blank(season, field) {
+            if let Some(value) = leaf.get(hint).filter(present) {
+                season.insert(field.to_string(), value.clone());
+            }
+        }
+    }
+    guid
 }
 
 #[cfg(test)]

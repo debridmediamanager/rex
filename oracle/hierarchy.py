@@ -843,6 +843,13 @@ def build(leaves):
             seasons[(tmdb_id, season_number)] = season
             show["childCount"] += 1
             rows.append(season)
+        else:
+            named = _fill_season(season, leaf)
+            if named:
+                # The season's earlier episodes took the show's guid as their parent's.
+                for row in rows:
+                    if row.get("type") == "episode" and row.get("parentRatingKey") == season["ratingKey"]:
+                        row["parentGuid"] = named
 
         # The leaf becomes a proper episode: its own still as `thumb`, the
         # show's artwork reachable through the grandparent fields, which is
@@ -900,3 +907,23 @@ def build(leaves):
                     "_season_year", "_season_air", "_season_summary"):
             row.pop(key, None)
     return rows
+
+
+def _fill_season(season, leaf):
+    """A season is made from its first leaf. A later leaf that identifies a season the first
+    left unidentified (its TMDB season was not had) gives it that identity, and one carrying
+    artwork gives artwork to a season with none: fun's rex kept 186 seasons of 131 shows on
+    the blank tile under a show with a poster (2026-10-12), because nothing after the first
+    leaf was ever read. Returns the guid the season took, if it took one."""
+    def present(value):
+        return value is not None and value != ""
+    guid = leaf.get("_season_guid") if not present(season.get("guid")) else None
+    if present(guid):
+        for field, hint in (("guid", "_season_guid"), ("year", "_season_year"), ("Guid", "_season_guids"),
+                            ("summary", "_season_summary"), ("_poster_url", "_season_poster")):
+            if present(leaf.get(hint)):
+                season[field] = leaf[hint]
+    for field, hint in (("_poster_url", "_show_poster"), ("_art_url", "_show_art")):
+        if not present(season.get(field)) and present(leaf.get(hint)):
+            season[field] = leaf[hint]
+    return guid if present(guid) else None

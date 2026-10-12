@@ -23336,6 +23336,11 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
         }
     }
     start_state_saver(Arc::clone(&runtime));
+    // Off the request path: a TMDB miss waits on the network.
+    let seasons = Arc::clone(&runtime);
+    let _ = thread::Builder::new().name("season-repair".to_string()).spawn(move || {
+        feed::repair_seasons(&seasons);
+    });
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {

@@ -431,6 +431,9 @@ impl Runtime {
                 }
             }
             if existing.contains(&key) {
+                if kind == "season" {
+                    self.refresh_season(&key, &row);
+                }
                 continue;
             }
             if kind == "episode" {
@@ -447,6 +450,84 @@ impl Runtime {
             self.push_created_frames(key);
         }
         created
+    }
+
+    /// A season already here, and the season a leaf of it builds now: the leaf's
+    /// identification of it when it has one, else its show's artwork where the season has
+    /// none, and its show's guid and title as they stand. A season was only ever made, so
+    /// one placed before its show was identified kept the local agent's guid, no ids and the
+    /// blank tile after the show was re-identified in place (fun, 2026-10-12: 186 seasons of
+    /// 131 shows, Black Mirror's Season 6 among them). What a person locked stays. Answers
+    /// whether anything changed.
+    pub(super) fn refresh_season(&mut self, key: &str, built: &Value) -> bool {
+        let Some(row) = self.catalog.get(key).and_then(Value::as_object).cloned() else {
+            return false;
+        };
+        let present = |value: &&Value| !value.is_null() && value.as_str() != Some("");
+        let named = |guid: Option<&Value>| {
+            guid.and_then(Value::as_str).is_some_and(|guid| !guid.is_empty() && !guid.starts_with("local://"))
+        };
+        let tmdb_season = |ids: Option<&Value>| {
+            ids.and_then(Value::as_array)?
+                .iter()
+                .find_map(|id| id.get("id")?.as_str()?.strip_prefix("tmdb://").map(str::to_string))
+        };
+        // The leaf's identity replaces one the season lacks, or another TMDB season's (its
+        // show re-identified as another title); a later release's lookup of the same season
+        // does not move it (one Plex missed would trade Plex's guid for a minted one).
+        let identified = named(built.get("guid"))
+            && (!named(row.get("guid")) || tmdb_season(built.get("Guid")) != tmdb_season(row.get("Guid")));
+        let mut changes = Vec::new();
+        for (field, lock) in [
+            ("guid", None),
+            ("Guid", None),
+            ("summary", Some("summary")),
+            ("year", Some("year")),
+            ("_poster_url", Some("thumb")),
+            ("_art_url", Some("art")),
+        ] {
+            let Some(value) = built.get(field).filter(present) else {
+                continue;
+            };
+            let artwork = matches!(field, "_poster_url" | "_art_url") && row.get(field).filter(present).is_none();
+            if (identified || artwork)
+                && !lock.is_some_and(|lock| super::edit::field_locked(&row, lock))
+                && row.get(field) != Some(value)
+            {
+                changes.push((field, value.clone()));
+            }
+        }
+        let show = row.get("parentRatingKey").map(string_value).and_then(|show| self.catalog.get(&show));
+        for (field, from) in [("parentGuid", "guid"), ("parentTitle", "title")] {
+            if let Some(value) = show.and_then(|show| show.get(from)).filter(present) {
+                if row.get(field) != Some(value) {
+                    changes.push((field, value.clone()));
+                }
+            }
+        }
+        if changes.is_empty() {
+            return false;
+        }
+        let guid = changes.iter().find(|(field, _)| *field == "guid").map(|(_, guid)| guid.clone());
+        if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
+            for (field, value) in changes {
+                object.insert(field.to_string(), value);
+            }
+        }
+        if let Some(guid) = guid {
+            // An episode's `parentGuid` is its season's own guid (hierarchy.rs).
+            let children: Vec<String> = self.catalog.children_refs(key).into_iter().filter_map(key_of).collect();
+            for child in children {
+                if let Some(object) = self.catalog.get_mut(&child).and_then(Value::as_object_mut) {
+                    object.insert("parentGuid".to_string(), guid.clone());
+                }
+            }
+        }
+        self.dirty = true;
+        if let Some(row) = self.catalog.get(key).cloned() {
+            self.push_timeline_entry(&row, 5, None, None, None, None);
+        }
+        true
     }
 
     /// The leaf row a new file becomes, on `key` or a minted one; `None` for a show's file
@@ -1173,6 +1254,49 @@ mod tests {
         let mut wrong = vec![arrival("episode")];
         name_release(&plan("movie"), &mut wrong, 1);
         assert!(!wrong[0].meta.clone().unwrap().contains_key("guid"));
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// fun's Black Mirror Season 6 as rex-fun held it, refreshed by the seasons leaves build.
+    #[test]
+    fn a_season_takes_an_identity_once_and_moves_only_to_another_tmdb_season() {
+        let fixture: Value =
+            serde_json::from_str(include_str!("../../../tests/fixtures/feed/season_art.json")).unwrap();
+        let dir = std::env::temp_dir().join(format!("rex-season-art-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let catalog = dir.join("catalog.json");
+        let document = json!({"machineIdentifier": "0000000000000000000000000000000000000078", "friendlyName": "seasons",
+                              "sections": [{"key": "2", "type": "show", "title": "TV Shows",
+                                            "uuid": "00000000000000000000000000000000000000ab"}],
+                              "items": fixture["rows"]});
+        fs::write(&catalog, document.to_string()).unwrap();
+        let mut runtime = Runtime::load(RuntimeOptions { catalog, state: None, ..RuntimeOptions::default() }).unwrap();
+        let built = |guid: &str, tmdb: i64, poster: &str| {
+            json!({"type": "season", "guid": guid, "Guid": [{"id": format!("tmdb://{tmdb}")}],
+                   "summary": "Twisted tales", "_poster_url": poster})
+        };
+        let field = |runtime: &Runtime, key: &str, name: &str| runtime.catalog.get(key).unwrap()[name].clone();
+        let plex = "plex://season/640b5417e96cd974790c094f";
+        let poster = "https://image.tmdb.org/t/p/w342/kwATNh8JC1IJclnVwk8x7wZb2b4.jpg";
+
+        assert!(runtime.refresh_season("112196", &built(plex, 331809, poster)));
+        assert_eq!(field(&runtime, "112196", "guid"), plex);
+        assert_eq!(field(&runtime, "112196", "_poster_url"), poster);
+        assert_eq!(field(&runtime, "112196", "parentGuid"), "plex://show/5d9c0863ef619b002047f234");
+        assert_eq!(field(&runtime, "112158", "parentGuid"), plex);
+        // The same TMDB season looked up again without Plex: a minted guid moves nothing.
+        assert!(!runtime.refresh_season("112196", &built("plex://season/0123456789abcdef01234567", 331809, poster)));
+        // A season that is not identified gives only artwork a season lacks.
+        assert!(!runtime.refresh_season("112196", &built("local://112196", 331809, "https://image.tmdb.org/t/p/w342/x.jpg")));
+        // Another TMDB season (the show re-identified as another title) replaces it, but not
+        // a poster a person locked.
+        if let Some(row) = runtime.catalog.get_mut("112196").and_then(Value::as_object_mut) {
+            row.insert("Field".to_string(), json!([{"locked": true, "name": "thumb"}]));
+        }
+        assert!(runtime.refresh_season("112196", &built("plex://season/76543210fedcba9876543210", 4242, "https://image.tmdb.org/t/p/w342/y.jpg")));
+        assert_eq!(field(&runtime, "112196", "guid"), "plex://season/76543210fedcba9876543210");
+        assert_eq!(field(&runtime, "112196", "_poster_url"), poster);
         let _ = fs::remove_dir_all(&dir);
     }
 
