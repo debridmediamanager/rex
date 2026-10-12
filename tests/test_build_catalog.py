@@ -27,6 +27,22 @@ def check(name, ok, detail=""):
     print("%s  %s%s" % ("PASS" if ok else "FAIL", name, "" if ok else "  -- " + str(detail)))
 
 
+# -- the tools a release ships compile without warnings ---------------------------------
+# Python 3.12 prints a SyntaxWarning for an invalid escape in any string, docstrings
+# included, to everyone who runs build_catalog.py the first time (hierarchy.py had `\ `).
+import warnings
+for tool in ("build_catalog.py", "catalogdb.py", "hierarchy.py", "metadata.py", "manager.py"):
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        with open(os.path.join(os.path.dirname(HERE), tool), encoding="utf-8") as handle:
+            source = handle.read()
+        try:
+            compile(source, tool, "exec")
+            problem = None
+        except (SyntaxError, SyntaxWarning) as error:
+            problem = error
+    check("%s compiles without warnings" % tool, problem is None, problem)
+
 work = tempfile.mkdtemp(prefix="rex-build-")
 try:
     document = json.load(open(os.path.join(HERE, "catalog_ui.json")))

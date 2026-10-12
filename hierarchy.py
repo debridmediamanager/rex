@@ -248,7 +248,7 @@ def sort_title(title):
 
     The set is NOT a Unicode category and cannot be written as one. In ASCII exactly
     eight characters strip -- `"` `'` `(` `-` `.` `[` `{` `~` -- while `! # $ % & ) * +
-    , / : ; < = > ? @ \ ] ^ _ ` | }` do not, so it is neither "opening brackets" nor
+    , / : ; < = > ? @ \\ ] ^ _ ` | }` do not, so it is neither "opening brackets" nor
     "Po" nor "Sm". Outside ASCII it is two whole ranges: every character from U+0080 to
     U+00BF and every character from U+2000 to U+2FFF strips (85 of 85 tested across
     them, plus every block boundary probed), while U+0100..U+1FFF and everything from
