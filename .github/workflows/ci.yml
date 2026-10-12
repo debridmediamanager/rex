@@ -7,12 +7,14 @@ name: CI
 #
 # The platforms are the ones zurg's private releases are actually downloaded for, counted on
 # 2026-10-12 above the flat number every asset gets from whatever fetches them all: linux
-# amd64 and arm64, macOS amd64 and arm64. Windows amd64 is next and needs a port first.
+# amd64 and arm64, macOS amd64 and arm64, Windows amd64.
 #
 # GitHub-hosted runners, not the org's self-hosted one: that runner is fun, which is
 # production. ubuntu-22.04 links against glibc 2.35, what zen and fun run, so the Linux
-# binaries run on them and on anything newer. macOS minutes cost ten times Linux ones on a
-# private repository, which is why macOS builds only for a tag or a manual run.
+# binaries run on them and on anything newer. macOS and Windows minutes cost ten and two
+# times Linux ones on a private repository, which is why those build only for a tag or a
+# manual run. Windows is cross-compiled with MinGW on Linux (no Visual Studio needed) and
+# then tested on a Windows runner.
 
 on:
   push:
@@ -160,9 +162,92 @@ jobs:
           path: rust/target/x86_64-apple-darwin/release/rex
           retention-days: 7
 
+  windows-amd64:
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    env:
+      CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER: x86_64-w64-mingw32-gcc
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-gnu
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+          key: windows
+
+      - name: Cross toolchain
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq gcc-mingw-w64-x86-64
+
+      # The unit tests are built here too and run on Windows by the next job.
+      - name: Build
+        run: |
+          cargo build --release --locked --manifest-path rust/Cargo.toml --target x86_64-pc-windows-gnu
+          tests=$(cargo test --release --locked --manifest-path rust/Cargo.toml --lib \
+                    --target x86_64-pc-windows-gnu --no-run --message-format=json \
+                  | python3 -c 'import json,sys; print([m["executable"] for m in map(json.loads, sys.stdin) if m.get("reason") == "compiler-artifact" and m.get("executable") and m["target"]["kind"] == ["lib"]][-1])')
+          mkdir -p out
+          cp rust/target/x86_64-pc-windows-gnu/release/rex.exe out/
+          cp "$tests" out/rex-tests.exe
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rex-windows-amd64
+          path: out/rex.exe
+          retention-days: 7
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rex-windows-tests
+          path: out/rex-tests.exe
+          retention-days: 1
+
+  windows-test:
+    needs: windows-amd64
+    runs-on: windows-2022
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: rex-windows-amd64
+          path: rust/target/release
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: rex-windows-tests
+          path: rust
+
+      - name: Rust unit tests
+        working-directory: rust
+        run: ./rex-tests.exe
+
+      # Not test_manager: manager.py is Linux and macOS only (process groups, signals).
+      # test_tls needs openssl, which Git for Windows ships.
+      - name: Black-box suites
+        run: |
+          set -e
+          export PATH="/c/Program Files/Git/usr/bin:$PATH"
+          for suite in test_cli test_server_command test_native_runtime_smoke test_build_catalog \
+                       test_tls test_part_bytes test_sources test_feed test_feed_versions test_plextv; do
+            echo "::group::$suite"
+            python "tests/$suite.py"
+            echo "::endgroup::"
+          done
+
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [test, linux-arm64, darwin]
+    needs: [test, linux-arm64, darwin, windows-test]
     runs-on: ubuntu-22.04
     permissions:
       contents: write
@@ -190,17 +275,22 @@ jobs:
       - name: Package
         run: |
           set -e
-          for platform in linux-amd64 linux-arm64 darwin-amd64 darwin-arm64; do
+          for platform in linux-amd64 linux-arm64 darwin-amd64 darwin-arm64 windows-amd64; do
             name="rex-${GITHUB_REF_NAME}-${platform}"
+            binary=rex; [ "$platform" = windows-amd64 ] && binary=rex.exe
             mkdir -p "$name/rust/target/release"
-            install -m 755 "artifacts/rex-$platform/rex" "$name/rust/target/release/rex"
+            install -m 755 "artifacts/rex-$platform/$binary" "$name/rust/target/release/$binary"
             git ls-files -z -- ':(top,glob)*.json' ':(top,glob)*.xml' favicon.ico \
                 build_catalog.py catalogdb.py hierarchy.py metadata.py manager.py \
                 run.sh.example cloudflared.example.yml README.md docs/setup.md docs/feed-api.md \
               | xargs -0 cp --parents -t "$name"
-            tar czf "$name.tar.gz" "$name"
+            if [ "$platform" = windows-amd64 ]; then
+              zip -qr "$name.zip" "$name"
+            else
+              tar czf "$name.tar.gz" "$name"
+            fi
           done
-          sha256sum rex-*.tar.gz > SHA256SUMS
+          sha256sum rex-*.tar.gz rex-*.zip > SHA256SUMS
           cat SHA256SUMS
 
       - name: Publish
@@ -217,4 +307,4 @@ jobs:
           gh release create "$GITHUB_REF_NAME" \
             --title "rex ${GITHUB_REF_NAME#v}" \
             --notes-file notes.md \
-            rex-*.tar.gz SHA256SUMS
+            rex-*.tar.gz rex-*.zip SHA256SUMS
