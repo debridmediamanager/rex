@@ -116,6 +116,13 @@ rex is written in Rust. A Python version stays in the tree as the reference the 
 
 It started as an experiment and got further than expected. It is not a product. It has no multi user story and it does not try to replace Plex.
 
+What it does not do:
+
+- Movies and TV only. Music and photo libraries stay empty
+- No Live TV or DVR
+- People you share it with see it as the owner does, with the owner's watch state
+- A converted stream carries no subtitles yet
+
 ## License
 
 MIT. See [LICENSE](LICENSE).

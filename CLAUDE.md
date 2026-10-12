@@ -452,7 +452,7 @@ python3 tests/test_parity_persist.py        # every kind of state --state keeps,
 python3 tests/test_parity_split_guid.py     # a split-off row; no Guid on an unmatched row
 python3 tests/test_parity_inner_token.py    # a query-string token reaches the transcoder's own reads (Plex for Android)
 python3 tests/test_parity_cycle83_*.py      # cycle 83's territory findings (xa, xb, xn, cp)
-python3 tests/test_followups_f{a,b,c,d}.py  # HANDOVER §2a's follow-ups, each against its measurement
+python3 tests/test_followups_f{a,b,c,d}.py  # parity follow-ups, each against its measurement
 ```
 
 The native-only and parity suites, all black-box unless noted:
