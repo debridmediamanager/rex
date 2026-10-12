@@ -237,6 +237,19 @@ several servers on one host, use `manager.py` (below).
 rex logs a request's query string, so a client that sends its token as
 `?X-Plex-Token=` leaves it in the log. Keep the log private.
 
+### Windows
+
+The Windows build is `rust\target\release\rex.exe` in the zip, and every step above works
+the same in PowerShell with `python` for `python3`. Three things differ:
+
+- `run.sh.example` and `manager.py` are Linux and macOS only. Start `rex.exe` from a
+  scheduled task (Task Scheduler, "At startup", "Run whether user is logged on or not") to
+  keep it running.
+- `claim_state.json` and `sources.json` are protected by the folder they sit in, not by file
+  modes, so keep the rex folder inside your user profile.
+- LAN discovery cannot share its port with a Plex Media Server on the same Windows machine.
+  Run rex with `--gdm off` there, as you would with another port on Linux.
+
 ### Troubleshooting
 
 | Symptom | Cause |

@@ -96,6 +96,7 @@ Where things live in `rust/src/`:
 | `runtime/universal.rs` | The video transcoder (`REX_TRANSCODER`): the conversion decision's plan and Media, `start.m3u8`/`start.mpd`, segments served outside the runtime lock, one FFmpeg per session with the hardware ladder, seeks, throttling and the idle reaper, and the `TranscodeSession` rows |
 | `runtime/plexmeta.rs`, `identify.rs` | Plex's metadata agent (`PLEX_TOKEN`), and the port of `identify.py` the feed names releases with |
 | `runtime/plextv.rs`, `runtime/tmdb.rs` | claim/heartbeat/account state, and Fix Match (`REX_PLEXTV_URL` points plex.tv at a stub) |
+| `platform.rs` | Everything asked of the OS beyond `std`: local time, CPU time and load, the host name, thread ids, pausing and killing FFmpeg, the GDM socket. A Unix half and a Windows half; nothing else may call `libc` for these |
 | `runtime/*.rs` (the rest) | One subsystem each, named after it: search, listing, axes, edit, collections, playlists, artwork, butler, framework, i18n, resume (On Deck and hubs), logging and so on |
 | `filters.rs`, `hierarchy.rs`, `metadata.rs`, `mediainfo.rs`, `decision.rs`, `xmlout.rs`, `gate.rs`, `catalog.rs` | The ports of the Python modules of the same name |
 
@@ -531,9 +532,10 @@ precisely how the Seasons bug survived a fix attempt.
 build on GitHub's `ubuntu-22.04` (glibc 2.35, what zen and fun run), `cargo test`, and the
 black-box suites that need no credentials. A tag or a manual run (Actions, "Run workflow")
 also builds linux arm64 (cross-compiled, smoke-tested under qemu) and macOS arm64 and amd64
-on `macos-14` (the arm64 one runs suites natively). Those are the platforms zurg's own
-releases are downloaded for; Windows amd64 is next and needs a port. It never runs on the
-org's self-hosted runner, which is fun.
+on `macos-14` (the arm64 one runs suites natively), and Windows amd64, cross-compiled with
+MinGW on Linux and then tested on `windows-2022` (the unit tests and every suite but
+`test_manager`, since `manager.py` is Unix only). Those are the platforms zurg's own
+releases are downloaded for. It never runs on the org's self-hosted runner, which is fun.
 
 A release is a tag. Set `version` in `rust/Cargo.toml`, push that to `main`, wait for CI,
 then tag the tested commit with the release notes as the tag message and push the tag:
@@ -543,7 +545,7 @@ git tag -a v0.2.0 -F notes.md <tested commit> && git push origin v0.2.0
 ```
 
 The tag's run tests again, checks the tag matches `Cargo.toml`, and publishes
-`rex-vX.Y.Z-{linux,darwin}-{amd64,arm64}.tar.gz` and `SHA256SUMS` as the GitHub release, titled `rex X.Y.Z`
+`rex-vX.Y.Z-{linux,darwin}-{amd64,arm64}.tar.gz`, `rex-vX.Y.Z-windows-amd64.zip` and `SHA256SUMS` as the GitHub release, titled `rex X.Y.Z`
 with the tag message as its notes. The archive keeps the repository's layout (the binary at
 `rust/target/release/rex`, the sidecars and the tools beside it), so every command in the
 docs works the same from a release as from a checkout.

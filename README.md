@@ -20,11 +20,11 @@ rex gets its library from whatever you point at it. Each source sends rex the li
 
 This is the short version. [docs/setup.md](docs/setup.md) has every option and a troubleshooting table.
 
-You need a Linux or macOS machine with Python 3, at least one source such as zurg, a free [TMDB API key](https://www.themoviedb.org/settings/api) and your [Plex token](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/).
+You need a Linux, macOS or Windows machine with Python 3, at least one source such as zurg, a free [TMDB API key](https://www.themoviedb.org/settings/api) and your [Plex token](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/).
 
 **1. Get it**
 
-Download the build for your machine from [Releases](https://github.com/debridmediamanager/rex/releases) and unpack it. There are builds for Linux (amd64 and arm64, glibc 2.35 or newer, so Ubuntu 22.04 and up) and for macOS (Intel and Apple Silicon).
+Download the build for your machine from [Releases](https://github.com/debridmediamanager/rex/releases) and unpack it. There are builds for Linux (amd64 and arm64, glibc 2.35 or newer, so Ubuntu 22.04 and up), for macOS (Intel and Apple Silicon) and for Windows (64 bit).
 
 ```bash
 tar xzf rex-v0.1.1-linux-amd64.tar.gz && cd rex-v0.1.1-linux-amd64
@@ -38,6 +38,8 @@ cargo build --release --manifest-path rust/Cargo.toml
 ```
 
 Both put rex at `rust/target/release/rex`.
+
+On Windows unpack the zip and use `python` where the steps say `python3` and `rust\target\release\rex.exe` where they say `rust/target/release/rex`. `run.sh.example` and `manager.py` are for Linux and macOS only.
 
 **2. Tell rex where your files are**
 
