@@ -271,16 +271,22 @@ mod tests {
         let path = std::env::temp_dir().join(format!("rex-pause-{}.txt", std::process::id()));
         let _ = std::fs::remove_file(&path);
         let mut child = writer(&path);
-        std::thread::sleep(Duration::from_millis(800));
-        assert!(size(&path) > 0, "the writer never wrote");
+        // Python can take seconds to start on a cold CI runner (it did on windows-2022).
+        let grew_past = |floor: u64| {
+            let deadline = std::time::Instant::now() + Duration::from_secs(20);
+            while size(&path) <= floor && std::time::Instant::now() < deadline {
+                std::thread::sleep(Duration::from_millis(50));
+            }
+            size(&path) > floor
+        };
+        assert!(grew_past(0), "the writer never wrote");
         super::pause(child.id());
         std::thread::sleep(Duration::from_millis(300)); // a write in flight may still land
         let paused = size(&path);
         std::thread::sleep(Duration::from_millis(600));
         assert_eq!(size(&path), paused, "a paused child kept writing");
         super::resume(child.id());
-        std::thread::sleep(Duration::from_millis(600));
-        assert!(size(&path) > paused, "a resumed child did not run again");
+        assert!(grew_past(paused), "a resumed child did not run again");
         super::kill(child.id());
         let status = child.wait().expect("the killed child to be reaped");
         assert!(!status.success());
