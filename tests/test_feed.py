@@ -175,12 +175,13 @@ class Events:
 
 
 class Server:
-    def __init__(self, work, bytes_port, catalog="catalog.json"):
+    def __init__(self, work, bytes_port, catalog="catalog.json", keys=None):
         self.port = free_port()
         sources = {"zurg": {"url": "http://127.0.0.1:%d/dav" % bytes_port, "bearer": BYTES_TOKEN,
                             "token": FEED_TOKEN, "mount": MOUNT}}
         json.dump(sources, open(os.path.join(work, "sources.json"), "w"))
         env = dict(os.environ, TMDB_KEY="fake", PLEX_TOKEN="fake", REX_PLEXTV_URL="http://127.0.0.1:9")
+        env.update(keys or {})
         for name in ("REX_STATE", "REX_TOKEN", "ZURG_URL", "REX_SOURCES", "REX_FEED_TOKEN"):
             env.pop(name, None)
         self.log = open(os.path.join(work, "server.log"), "ab")

@@ -181,6 +181,18 @@ pub(super) fn name_release(plan: &Library, arrivals: &mut [Arrival], files: usiz
             let field = if show { "_show_external_guids" } else { "Guid" };
             meta.insert(field.to_string(), Value::Array(externals.clone()));
         }
+        // TMDB has no poster for this title, or does not know it, and Plex does: its own
+        // artwork draws the tile (the production server, 2026-10-12: the Monogatari seasons Plex keeps as shows
+        // of their own, Wallace & Gromit, Tears of Steel).
+        // ponytail: Plex serves its artwork at full size (about 2 MB a poster), and
+        // `fetch_remote_image` keeps 512 images in memory; fine for the few titles only Plex
+        // draws, worth a size cap if that set grows.
+        let (poster, art) = if show { ("_show_poster", "_show_art") } else { ("_poster_url", "_art_url") };
+        for (field, plex) in [(poster, &identity.thumb), (art, &identity.art)] {
+            if let Some(url) = plex.as_ref().filter(|_| meta.get(field).is_none_or(Value::is_null)) {
+                meta.insert(field.to_string(), json!(url));
+            }
+        }
         if let Some(year) = identity.parsed.year.filter(|_| !meta.contains_key("year") && !show) {
             meta.insert("year".to_string(), json!(year));
         }
@@ -431,8 +443,14 @@ impl Runtime {
                 }
             }
             if existing.contains(&key) {
-                if kind == "season" {
-                    self.refresh_season(&key, &row);
+                match kind.as_str() {
+                    "season" => {
+                        self.refresh_season(&key, &row);
+                    }
+                    "show" => {
+                        self.fill_artwork(&key, &row);
+                    }
+                    _ => {}
                 }
                 continue;
             }
@@ -521,6 +539,34 @@ impl Runtime {
                 if let Some(object) = self.catalog.get_mut(&child).and_then(Value::as_object_mut) {
                     object.insert("parentGuid".to_string(), guid.clone());
                 }
+            }
+        }
+        self.dirty = true;
+        if let Some(row) = self.catalog.get(key).cloned() {
+            self.push_timeline_entry(&row, 5, None, None, None, None);
+        }
+        true
+    }
+
+    /// Artwork a show here lacks, from the show a later leaf builds: one named before TMDB
+    /// had its poster (the production server, 2026-10-12: Camp CrunchLabs), or known only to Plex, whose own
+    /// poster `name_release` falls back to. What a person picked or locked stays.
+    pub(super) fn fill_artwork(&mut self, key: &str, built: &Value) -> bool {
+        let Some(row) = self.catalog.get(key).and_then(Value::as_object).cloned() else {
+            return false;
+        };
+        let present = |value: &&Value| !value.is_null() && value.as_str() != Some("");
+        let changes: Vec<(&str, Value)> = [("_poster_url", "thumb"), ("_art_url", "art")]
+            .into_iter()
+            .filter(|(field, lock)| row.get(*field).filter(present).is_none() && !super::edit::field_locked(&row, lock))
+            .filter_map(|(field, _)| Some((field, built.get(field).filter(present)?.clone())))
+            .collect();
+        if changes.is_empty() {
+            return false;
+        }
+        if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
+            for (field, value) in changes {
+                object.insert(field.to_string(), value);
             }
         }
         self.dirty = true;

@@ -199,7 +199,7 @@ pub(super) fn handle(shared: &SharedRuntime, request: &Request, path: &str) -> R
         ("GET" | "HEAD", "held") => answer(200, lock(shared).feed_held_listing(&source)),
         ("POST", "items") => match body() {
             Ok(body) => match body.get("items").and_then(Value::as_array) {
-                Some(items) => answer(200, Value::Object(upsert(shared, &source, items, None).to_json())),
+                Some(items) => answer(200, Value::Object(upsert(shared, &source, items, None, false).to_json())),
                 None => answer(400, json!({"error": "expected {\"items\": [...]}"})),
             },
             Err(response) => response,
@@ -245,7 +245,7 @@ fn snapshot(shared: &SharedRuntime, source: &Source, body: &Value, sessions: &mu
         }
     }
     let mut seen = HashSet::new();
-    let counts = upsert(shared, source, items, Some(&mut seen));
+    let counts = upsert(shared, source, items, Some(&mut seen), false);
     let mut out = counts.to_json();
     let mut session_seen = seen;
     if let Some(id) = &session {
@@ -351,8 +351,9 @@ fn remove(shared: &SharedRuntime, source: &Source, ids: &[String], keys: &[Strin
     ])
 }
 
-/// Upsert a batch: classify under the lock, identify off it, apply under it.
-fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: Option<&mut HashSet<String>>) -> Counts {
+/// Upsert a batch: classify under the lock, identify off it, apply under it. `retry`
+/// identifies every existing row again (`retry_blank`), not only one whose ids changed.
+fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: Option<&mut HashSet<String>>, retry: bool) -> Counts {
     let mut counts = Counts::default();
     let mut items = Vec::new();
     for value in values {
@@ -399,15 +400,25 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
                     let unnamed = row.and_then(|row| row.get("_identify")).is_some_and(|report| {
                         ["tmdb", "plex"].iter().all(|field| report.get(*field).is_none_or(Value::is_null))
                     });
-                    let reidentify = named
+                    // A file whose library changed is placed again in the one it belongs to now.
+                    let moved = row.is_some_and(|row| {
+                        row.get("librarySectionID").map(string_value).as_deref() != Some(library.key.as_str())
+                    });
+                    // What a person matched is theirs: no push and no retry identifies it again.
+                    let reidentify = !row.is_some_and(|row| guard.matched_by_hand(row))
                         && row.is_some_and(|row| versions(row).len() < 2)
-                        && match (&item.imdb, &item.tmdb) {
-                            (Some(imdb), _) => unnamed || had.get("imdb").map(string_value).as_deref() != Some(imdb.as_str()),
-                            (None, Some(tmdb)) => unnamed || had.get("tmdb").map(string_value).as_deref() != Some(tmdb.as_str()),
-                            _ => false,
-                        };
+                        && (moved
+                            || named
+                                && (retry
+                                    || match (&item.imdb, &item.tmdb) {
+                                        (Some(imdb), _) => unnamed || had.get("imdb").map(string_value).as_deref() != Some(imdb.as_str()),
+                                        (None, Some(tmdb)) => unnamed || had.get("tmdb").map(string_value).as_deref() != Some(tmdb.as_str()),
+                                        _ => false,
+                                    }));
                     Plan::Row { key, adopt, reidentify }
                 }
+                // A retry names rows that are here; it never makes or holds one.
+                None if retry => continue,
                 None if item.media_info.is_some() => Plan::Show,
                 None => Plan::Hold,
             };
@@ -453,6 +464,7 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
             _ => None,
         })
         .collect();
+    let mut placed = 0;
     for (index, (item, library, plan)) in plans.into_iter().enumerate() {
         let held = held_key(&source.name, &item.id);
         match plan {
@@ -486,6 +498,16 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
                 if reidentify {
                     if let Some(arrival) = arrivals.remove(&index) {
                         changed |= guard.reidentify(&library, &key, arrival, &moving);
+                        // Placing a row again costs tens of milliseconds, and every request
+                        // waits on this lock: the retry's first pass over the production rex's rows held
+                        // it 2.5 minutes for 2,154 rows (the test host, 2026-10-13). Requests get
+                        // through every few rows.
+                        placed += 1;
+                        if placed % 8 == 0 {
+                            drop(guard);
+                            thread::sleep(std::time::Duration::from_millis(5));
+                            guard = lock(shared);
+                        }
                     }
                     if guard.tmdb.is_some() || guard.plex.is_some() {
                         if let Some(row) = guard.catalog.get_mut(&key).and_then(Value::as_object_mut) {
@@ -633,6 +655,102 @@ pub(super) fn repair_seasons(shared: &SharedRuntime) -> usize {
     refreshed
 }
 
+/// How long a row the retry left on the blank tile waits for its next try: an hour after
+/// the first, doubling to about five days.
+fn retry_after(attempts: i64) -> i64 {
+    3600 << (attempts.clamp(1, 8) - 1)
+}
+
+/// The item a row's source pushed, rebuilt from the row: what `upsert` needs to identify it
+/// again. Its probe is the row's already, so none is sent, and it stays in its library
+/// unless it is a film whose release names an episode, which `feed_library` moves.
+/// ponytail: the `library` a source named is not kept on the row, so such a film is filed
+/// by location, as zurg's items are; a source naming its films' library itself would move
+/// it back on its next push.
+fn pushed_item(row: &Value) -> Option<(String, Value)> {
+    let text = |field: &str| row.get(field).and_then(Value::as_str).filter(|value| !value.is_empty());
+    let name = text("_release")?;
+    let episode = text("type") == Some("movie") && crate::identify::parse_name(name).episode.is_some();
+    let library = row.get("librarySectionID").map(string_value).filter(|_| !episode);
+    Some((
+        text("_source")?.to_string(),
+        json!({"id": text("_sid")?, "path": text("_path")?, "file": row.pointer("/Media/0/Part/0/file")?,
+               "name": name, "release": name, "size": row.pointer("/Media/0/Part/0/size").cloned().unwrap_or(json!(0)),
+               "hash": row.get("_hash"), "ids": row.get("_ids").cloned().unwrap_or_else(|| json!({})),
+               "library": library}),
+    ))
+}
+
+/// Rows identification left on the blank tile -- a film with no poster, or an episode whose
+/// show has none -- and films whose release names an episode, identified again as their
+/// source pushed them, `limit` films or shows a pass. The feed names a row again only when its
+/// source's ids change, so a lookup that failed once (TMDB or Plex down, a key missing) and a
+/// title TMDB has learned since stayed blank for good: the production rex held 56 films and 45 shows
+/// so on 2026-10-12. Each row still blank afterwards waits longer before its next try
+/// (`retry_after`, kept on the row as `_retry`); what a person matched is never touched.
+/// Answers how many rows it tried.
+pub(super) fn retry_blank(shared: &SharedRuntime, limit: usize) -> usize {
+    let stamp = now();
+    // -- under the lock: which rows, a show's episodes together so it is named whole --------
+    let (by_source, keys, sources) = {
+        let guard = lock(shared);
+        if guard.tmdb.is_none() && guard.plex.is_none() {
+            return 0;
+        }
+        let mut groups: BTreeMap<String, Vec<(String, (String, Value))>> = BTreeMap::new();
+        for row in guard.catalog.items() {
+            let due = row.pointer("/_retry/at").and_then(Value::as_i64).is_none_or(|at| at <= stamp);
+            if !due || !guard.blank(row) {
+                continue;
+            }
+            let (Some(key), Some(item)) = (key_of(row), pushed_item(row)) else {
+                continue;
+            };
+            let group = row.get("grandparentRatingKey").map(string_value).unwrap_or_else(|| key.clone());
+            groups.entry(group).or_default().push((key, item));
+        }
+        let mut by_source: BTreeMap<String, Vec<Value>> = BTreeMap::new();
+        let mut keys = Vec::new();
+        for (key, (source, item)) in groups.into_values().take(limit).flatten() {
+            by_source.entry(source).or_default().push(item);
+            keys.push(key);
+        }
+        (by_source, keys, guard.sources.clone())
+    };
+    if keys.is_empty() {
+        return 0;
+    }
+    info!("FEED retrying {} row(s) left on the blank tile", keys.len());
+    for (name, items) in &by_source {
+        if let Some(source) = sources.iter().find(|source| source.name == *name) {
+            // Feed requests apply one at a time; so does this.
+            let _feed = FEED.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+            upsert(shared, source, items, None, true);
+        }
+    }
+    // -- under the lock: the next try for what is still blank -------------------------------
+    let mut guard = lock(shared);
+    for key in &keys {
+        let Some(row) = guard.catalog.get(key).cloned() else {
+            continue;
+        };
+        let attempts = row.pointer("/_retry/n").and_then(Value::as_i64).unwrap_or(0) + 1;
+        let blank = guard.blank(&row);
+        if let Some(object) = guard.catalog.get_mut(key).and_then(Value::as_object_mut) {
+            if blank {
+                object.insert("_retry".to_string(), json!({"n": attempts, "at": stamp + retry_after(attempts)}));
+            } else {
+                object.shift_remove("_retry");
+            }
+        }
+    }
+    guard.dirty = true;
+    let snapshot = guard.flush_state();
+    drop(guard);
+    write_or_log(snapshot);
+    keys.len()
+}
+
 /// The ids a row was identified by: its `_ids`, or for a row the old scanner made, the
 /// IMDb id its identification settled on.
 fn row_ids(row: &Value) -> Map<String, Value> {
@@ -678,7 +796,7 @@ fn media_file(row: &Value, index: usize) -> Option<String> {
 }
 
 /// A row's Media, the first tagged with the row's own source fields when none is.
-fn tagged_media(row: &Value) -> Vec<Value> {
+pub(super) fn tagged_media(row: &Value) -> Vec<Value> {
     let mut media = row.get("Media").and_then(Value::as_array).cloned().unwrap_or_default();
     if media.iter().all(|media| media.get("_sid").is_none()) {
         if let Some(first) = media.first_mut().and_then(Value::as_object_mut) {
@@ -732,6 +850,42 @@ fn names_directory(location: &str, path: &str) -> bool {
 }
 
 impl Runtime {
+    /// A row a person matched (Fix Match writes `_matched`), or an episode or season under a
+    /// show they matched: what they chose wins over anything a source pushes later.
+    pub(super) fn matched_by_hand(&self, row: &Value) -> bool {
+        let by_hand = |row: &Value| row.get("_matched").is_some_and(truthy);
+        by_hand(row)
+            || ["parentRatingKey", "grandparentRatingKey"].iter().any(|field| {
+                row.get(*field).map(string_value).and_then(|key| self.catalog.get(&key)).is_some_and(by_hand)
+            })
+    }
+
+    /// A row its source pushed that draws the blank tile -- a film with no poster, or an
+    /// episode whose show has none -- or a film whose release names an episode (zurg filed
+    /// it under movies), unless a person matched or unmatched it.
+    fn blank(&self, row: &Value) -> bool {
+        let has = |row: Option<&Value>, field: &str| {
+            row.and_then(|row| row.get(field)).is_some_and(|value| !value.is_null() && value.as_str() != Some(""))
+        };
+        let kind = row.get("type").and_then(Value::as_str);
+        if !matches!(kind, Some("movie" | "episode"))
+            || row.get("_sid").is_none()
+            || row.get("deletedAt").is_some()
+            || row.get("_probePending").is_some_and(truthy)
+            || versions(row).len() > 1
+            || self.matched_by_hand(row)
+            || row.get("guid").and_then(Value::as_str).is_some_and(|guid| guid.starts_with("tv.plex.agents.none://"))
+        {
+            return false;
+        }
+        if kind == Some("episode") {
+            let show = row.get("grandparentRatingKey").map(string_value).and_then(|show| self.catalog.get(&show));
+            return !has(show, "_poster_url");
+        }
+        !has(Some(row), "_poster_url")
+            || row.get("_release").and_then(Value::as_str).is_some_and(|name| crate::identify::parse_name(name).episode.is_some())
+    }
+
     fn section_title(&self, key: &str) -> String {
         self.section(key).map(|section| string_value(section.get("title").unwrap_or(&Value::Null))).unwrap_or_default()
     }
@@ -755,12 +909,37 @@ impl Runtime {
         }
         let of_kind: Vec<&Value> =
             sections.filter(|section| wanted.is_none() || section.get("type").and_then(Value::as_str) == wanted).collect();
-        of_kind
+        let holds = |section: &Value| {
+            self.locations(section).into_iter().find(|location| under(&item.file, location)).or_else(|| {
+                self.locations(section).into_iter().find(|location| names_directory(location, &item.path))
+            })
+        };
+        let found = of_kind
             .iter()
             .find(|section| self.locations(section).iter().any(|location| under(&item.file, location)))
             .or_else(|| of_kind.iter().find(|section| self.locations(section).iter().any(|location| names_directory(location, &item.path))))
-            .or_else(|| wanted.and(of_kind.first()))
-            .map(|section| library(section))
+            .or_else(|| wanted.and(of_kind.first()))?;
+        // zurg files a release by its own name rules, and the production server's Usenet zurg filed 40 anime
+        // episodes under movies on 2026-10-12 (`Detektiv.Conan.E0221…`, `[Moozzi2]
+        // Eighty-Six-15 […]`): each became a film nothing matched, on the blank tile. A
+        // release whose own name carries an episode number goes to a show library, the one
+        // beside that movie library's folder when there is one. Only the release's name: a
+        // film's extras (`… - 2011 documentary.mkv` in A Trip to the Moon) are not held to it.
+        let episode = || crate::identify::parse_name(&item.name).episode.is_some();
+        if wanted.is_none() && found.get("type").and_then(Value::as_str) == Some("movie") && episode() {
+            let parent = |location: &str| location.trim_end_matches('/').rsplit_once('/').map(|(parent, _)| parent.to_string());
+            let beside = holds(found).and_then(|location| parent(&location));
+            let shows: Vec<&Value> =
+                self.catalog.sections.iter().filter(|section| section.get("type").and_then(Value::as_str) == Some("show")).collect();
+            if let Some(show) = shows
+                .iter()
+                .find(|section| beside.is_some() && self.locations(section).iter().any(|location| parent(location) == beside))
+                .or(shows.first())
+            {
+                return Some(library(show));
+            }
+        }
+        Some(library(found))
     }
 
     /// This source's rows, by the source's id.
@@ -943,9 +1122,26 @@ impl Runtime {
         };
         let meta = arrival.meta.clone().unwrap_or_default();
         // A row whose id still names nothing gets no guid from identification and keeps
-        // its own: nothing changed, so it is not placed again on every push.
+        // its own: nothing changed, so it is not placed again on every push -- unless its
+        // library changed, or the same identity now brings artwork its tile lacks (TMDB had
+        // no poster yet for Camp CrunchLabs when the production rex first asked, 2026-10-12).
         let guid = meta.get("guid").or(old.get("guid").filter(|guid| guid.as_str().is_some_and(|guid| guid.starts_with("local://"))));
-        if meta.get("_identity") == old.get("_identity") && guid == old.get("guid") {
+        let moved = old.get("librarySectionID").map(string_value).as_deref() != Some(library.key.as_str());
+        let has = |row: Option<&Value>, field: &str| {
+            row.and_then(|row| row.get(field)).is_some_and(|value| !value.is_null() && value.as_str() != Some(""))
+        };
+        let parent = |field: &str| old.get(field).map(string_value).and_then(|key| self.catalog.get(&key));
+        let brought = Value::Object(meta.clone());
+        // A show's poster draws its seasons' too, but only the episodes that brought it would
+        // place their season again: Wallace & Gromit's Specials stayed blank in a rehearsal
+        // on the production rex's rows once Season 1's episodes had given the show Plex's poster.
+        let gains_art = if old.get("type").and_then(Value::as_str) == Some("episode") {
+            (!has(parent("grandparentRatingKey"), "_poster_url") || !has(parent("parentRatingKey"), "_poster_url"))
+                && (has(Some(&brought), "_show_poster") || has(Some(&brought), "_season_poster"))
+        } else {
+            !has(Some(&old), "_poster_url") && has(Some(&brought), "_poster_url")
+        };
+        if meta.get("_identity") == old.get("_identity") && guid == old.get("guid") && !moved && !gains_art {
             return false;
         }
         let Some(mut leaf) = self.leaf_for(library, &arrival, Some(key.to_string())) else {

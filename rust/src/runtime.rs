@@ -4895,6 +4895,10 @@ impl Runtime {
     /// season unmatches its episodes (each `parentGuid` follows it) and a show
     /// its seasons and every episode under them.
     fn unmatch_row(&mut self, key: &str) {
+        // Unmatched, the row is no longer the person's match; a source's next id names it.
+        if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
+            object.shift_remove("_matched");
+        }
         let Some(row) = self.catalog.get(key).cloned() else {
             return;
         };
@@ -20533,17 +20537,10 @@ impl Runtime {
         self.push_timeline_entry(row, 3, None, None, None, None);
         if let Some(existing) = existing {
             let existing_key = key_of(&existing).unwrap_or_default();
-            let mut media = existing
-                .get("Media")
-                .and_then(Value::as_array)
-                .cloned()
-                .unwrap_or_default();
-            media.extend(
-                row.get("Media")
-                    .and_then(Value::as_array)
-                    .cloned()
-                    .unwrap_or_default(),
-            );
+            // Each Media keeps the release it came from (`_source`/`_sid`): untagged, the
+            // absorbed release was a new row again at its source's next push.
+            let mut media = feed::tagged_media(&existing);
+            media.extend(feed::tagged_media(row));
             if let Some(object) = self
                 .catalog
                 .get_mut(&existing_key)
@@ -20551,6 +20548,7 @@ impl Runtime {
             {
                 object.insert("Media".to_string(), Value::Array(media));
                 object.insert("updatedAt".to_string(), json!(now()));
+                object.insert("_matched".to_string(), json!(true));
             }
             // Only what the merge absorbed leaves the play queues, with the version
             // stepped per row (`drop_from_queues`); the oracle drops it, this left it.
@@ -20576,9 +20574,18 @@ impl Runtime {
             if !guid.is_empty() {
                 self.identify_guid(key, &guid);
             }
+            let chosen = self.match_candidates.get(&guid).and_then(|(_, id)| id.as_i64());
             if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
                 if !guid.is_empty() {
                     object.insert("guid".to_string(), json!(guid));
+                    // What a person matched wins over anything a source pushes later: the
+                    // feed re-identified a row whenever a push named other ids, and so
+                    // undid the match (`matched_by_hand`). The show it names is the one later
+                    // episodes of that title join.
+                    object.insert("_matched".to_string(), json!(true));
+                    if let Some(id) = chosen {
+                        object.insert("_identity".to_string(), json!(format!("tmdb:{id}")));
+                    }
                 }
                 if !name.is_empty() {
                     object.insert("title".to_string(), json!(name));
@@ -23360,10 +23367,15 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
         }
     }
     start_state_saver(Arc::clone(&runtime));
-    // Off the request path: a TMDB miss waits on the network.
+    // Off the request path: a TMDB miss waits on the network. Then, every ten minutes, a
+    // batch of what identification left on the blank tile is named again (`retry_blank`).
     let seasons = Arc::clone(&runtime);
     let _ = thread::Builder::new().name("season-repair".to_string()).spawn(move || {
         feed::repair_seasons(&seasons);
+        loop {
+            feed::retry_blank(&seasons, 50);
+            thread::sleep(std::time::Duration::from_secs(600));
+        }
     });
     for stream in listener.incoming() {
         match stream {
