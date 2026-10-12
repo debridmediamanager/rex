@@ -310,10 +310,7 @@ fn parse_iso_epoch(value: &str) -> Option<f64> {
 }
 
 // Python's `time.mktime` interprets naive ISO values in the process-local
-// timezone and applies its DST rules.  Use the same libc primitive on the Unix
-// hosts that run rex; the calendar conversion is the deterministic fallback
-// for targets without a local-time API.
-#[cfg(unix)]
+// timezone and applies its DST rules, as the C library's own `mktime` does.
 fn local_epoch(year: i64, month: u32, day: u32, hour: u32, minute: u32, second: u32) -> f64 {
     let mut value: libc::tm = unsafe { std::mem::zeroed() };
     value.tm_year = (year - 1900) as libc::c_int;
@@ -323,15 +320,7 @@ fn local_epoch(year: i64, month: u32, day: u32, hour: u32, minute: u32, second: 
     value.tm_min = minute as libc::c_int;
     value.tm_sec = second as libc::c_int;
     value.tm_isdst = -1;
-    unsafe { libc::mktime(&mut value) as f64 }
-}
-
-#[cfg(not(unix))]
-fn local_epoch(year: i64, month: u32, day: u32, hour: u32, minute: u32, second: u32) -> f64 {
-    (days_from_civil(year, month, day) * 86_400
-        + i64::from(hour) * 3_600
-        + i64::from(minute) * 60
-        + i64::from(second)) as f64
+    crate::platform::local_mktime(&mut value) as f64
 }
 
 fn days_in_month(year: i64, month: u32) -> u32 {
@@ -341,19 +330,6 @@ fn days_in_month(year: i64, month: u32) -> u32 {
         4 | 6 | 9 | 11 => 30,
         _ => 31,
     }
-}
-
-// Days since 1970-01-01, using the proleptic Gregorian calendar.
-#[cfg(not(unix))]
-fn days_from_civil(year: i64, month: u32, day: u32) -> i64 {
-    let year = year - i64::from(month <= 2);
-    let era = if year >= 0 { year } else { year - 399 } / 400;
-    let yoe = year - era * 400;
-    let month = i64::from(month);
-    let day = i64::from(day);
-    let doy = (153 * (month + if month > 2 { -3 } else { 9 }) + 2) / 5 + day - 1;
-    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
-    era * 146_097 + doe - 719_468
 }
 
 pub fn split_key(key: &str) -> (String, String) {

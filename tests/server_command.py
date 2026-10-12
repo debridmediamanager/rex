@@ -29,7 +29,7 @@ def server_command(*args, root=None):
 
     configured = os.environ.get("REX_SERVER")
     if configured is None:
-        native = os.path.join(root, "rust", "target", "release", "rex")
+        native = os.path.join(root, "rust", "target", "release", "rex.exe" if os.name == "nt" else "rex")
         if not os.path.exists(native):
             raise FileNotFoundError(
                 "%s is not built: run `cargo build --release --manifest-path "

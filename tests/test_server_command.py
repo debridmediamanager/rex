@@ -22,7 +22,7 @@ def main():
                 assert "cargo build" in str(error) and "REX_SERVER=python" in str(error)
             else:
                 raise AssertionError("an unbuilt native default must fail clearly")
-            native = os.path.join(repo, "rust", "target", "release", "rex")
+            native = os.path.join(repo, "rust", "target", "release", "rex.exe" if os.name == "nt" else "rex")
             os.makedirs(os.path.dirname(native))
             open(native, "w").close()
             default = server_command("--port", 32500, root=repo)
@@ -34,7 +34,7 @@ def main():
 
         os.environ["REX_SERVER"] = "python"
         oracle = server_command("--port", 32500, root="/repo with spaces")
-        assert oracle == [sys.executable, "/repo with spaces/server.py", "--port", "32500",
+        assert oracle == [sys.executable, os.path.join("/repo with spaces", "server.py"), "--port", "32500",
                           "--no-state"]
 
         os.environ["REX_SERVER"] = '"/tmp/native build/rex" --profile "test mode"'

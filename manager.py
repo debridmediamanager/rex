@@ -64,7 +64,7 @@ import catalogdb  # noqa: E402
 
 DEFAULT_ROOT = os.path.join(HERE, "managed")
 DEFAULT_LISTEN = "127.0.0.1:32300"
-DEFAULT_BINARY = os.path.join(HERE, "rust", "target", "release", "rex")
+DEFAULT_BINARY = os.path.join(HERE, "rust", "target", "release", "rex.exe" if os.name == "nt" else "rex")
 
 NAME = re.compile(r"^[a-z0-9-]{1,40}$")
 SECRETS = ("zurg_password", "tmdb_key", "plex_token", "token")

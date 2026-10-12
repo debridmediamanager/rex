@@ -12,6 +12,7 @@ pub mod hierarchy;
 pub mod identify;
 pub mod mediainfo;
 pub mod metadata;
+pub(crate) mod platform;
 pub mod runtime;
 pub mod store;
 pub mod xmlout;

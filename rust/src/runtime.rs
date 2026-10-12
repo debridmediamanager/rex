@@ -9685,17 +9685,7 @@ impl Runtime {
             return bare_empty();
         }
         let now = now();
-        let cpu_seconds = unsafe {
-            let mut usage: libc::rusage = std::mem::zeroed();
-            if libc::getrusage(libc::RUSAGE_SELF, &mut usage) == 0 {
-                let seconds = |value: libc::timeval| {
-                    value.tv_sec as f64 + value.tv_usec as f64 / 1_000_000.0
-                };
-                seconds(usage.ru_utime) + seconds(usage.ru_stime)
-            } else {
-                0.0
-            }
-        };
+        let cpu_seconds = crate::platform::cpu_seconds();
         let mut process = 0.0_f64;
         if let Some((at, previous)) = self.resource_sample {
             if now > at {
@@ -9703,16 +9693,13 @@ impl Runtime {
             }
         }
         self.resource_sample = Some((now, cpu_seconds));
-        let host = {
-            let mut loads = [0.0_f64; 3];
-            let got = unsafe { libc::getloadavg(loads.as_mut_ptr(), 3) };
-            if got < 1 {
-                0.0
-            } else {
+        let host = match crate::platform::load_average() {
+            None => 0.0,
+            Some(load) => {
                 let cores = std::thread::available_parallelism()
                     .map(|count| count.get())
                     .unwrap_or(1) as f64;
-                (loads[0] / cores * 100.0).min(100.0)
+                (load / cores * 100.0).min(100.0)
             }
         };
         let round3 = |value: f64| (value * 1000.0).round() / 1000.0;
@@ -22732,19 +22719,9 @@ fn error_document(status: u16) -> Vec<u8> {
 
 /// The host's own name, which a real PMS shows when `FriendlyName` is written empty.
 fn local_host_name() -> String {
-    let mut buffer = [0_u8; 256];
-    // SAFETY: the buffer is valid for its whole length and gethostname NUL-terminates
-    // within it on success.
-    let status = unsafe { libc::gethostname(buffer.as_mut_ptr().cast(), buffer.len()) };
-    if status != 0 {
-        return "rex".to_string();
-    }
-    let end = buffer
-        .iter()
-        .position(|byte| *byte == 0)
-        .unwrap_or(buffer.len());
-    String::from_utf8_lossy(&buffer[..end]).into_owned()
+    crate::platform::host_name().unwrap_or_else(|| "rex".to_string())
 }
+
 
 /// library.py's `_tags`: the tag TABLE, keyed by (element, lowered name) and kept in
 /// INSERTION order the way a Python dict is. The order is load-bearing: `/library/tags`
@@ -22879,40 +22856,6 @@ fn load_tls_config(cert_path: &Path, key_path: Option<&Path>) -> Result<ServerCo
     Ok(config)
 }
 
-/// `Discovery._open`'s socket: `SO_REUSEADDR`, and `SO_REUSEPORT` where it exists, set
-/// BEFORE the bind -- which is what lets it share the port with a real PMS on the same
-/// host, as every Plex process there does.
-fn gdm_socket(port: u16) -> io::Result<UdpSocket> {
-    use std::os::fd::FromRawFd;
-    // SAFETY: plain socket-API calls on a descriptor this function owns until it hands
-    // it to `UdpSocket`, which then closes it.
-    unsafe {
-        let fd = libc::socket(libc::AF_INET, libc::SOCK_DGRAM, 0);
-        if fd < 0 {
-            return Err(io::Error::last_os_error());
-        }
-        let one: libc::c_int = 1;
-        let size = std::mem::size_of::<libc::c_int>() as libc::socklen_t;
-        let option = &one as *const libc::c_int as *const libc::c_void;
-        libc::setsockopt(fd, libc::SOL_SOCKET, libc::SO_REUSEADDR, option, size);
-        libc::setsockopt(fd, libc::SOL_SOCKET, libc::SO_REUSEPORT, option, size);
-        let mut address: libc::sockaddr_in = std::mem::zeroed();
-        address.sin_family = libc::AF_INET as libc::sa_family_t;
-        address.sin_port = port.to_be();
-        address.sin_addr = libc::in_addr { s_addr: libc::INADDR_ANY };
-        if libc::bind(
-            fd,
-            &address as *const libc::sockaddr_in as *const libc::sockaddr,
-            std::mem::size_of::<libc::sockaddr_in>() as libc::socklen_t,
-        ) < 0
-        {
-            let error = io::Error::last_os_error();
-            libc::close(fd);
-            return Err(error);
-        }
-        Ok(UdpSocket::from_raw_fd(fd))
-    }
-}
 
 /// `str(OSError)`: `[Errno 98] Address already in use`.
 fn py_os_error(error: &io::Error) -> String {
@@ -22948,7 +22891,7 @@ fn start_gdm(runtime: SharedRuntime, mode: &str, port: u16) {
     let ports = configured_gdm_ports();
     let mut bound = Vec::new();
     for port in &ports {
-        let socket = match gdm_socket(*port) {
+        let socket = match crate::platform::gdm_socket(*port) {
             Ok(socket) => socket,
             Err(error) => {
                 warning!(
@@ -23239,10 +23182,9 @@ fn resolve_state_path(options: &RuntimeOptions) -> Option<PathBuf> {
             return None;
         }
     };
-    use std::os::unix::io::AsRawFd;
-    // SAFETY: flock on a descriptor this function owns; the descriptor is leaked on
-    // success so the lock lasts as long as the process.
-    if unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) } != 0 {
+    // `File::try_lock` is `flock(LOCK_EX | LOCK_NB)` on Unix and `LockFileEx` on Windows;
+    // the file is leaked on success so the lock lasts as long as the process.
+    if file.try_lock().is_err() {
         // Cycle 92, measured on plexscratch (`tests/fixtures/pms_second_instance.json`):
         // a second PMS on a data directory another one is serving prints this line and
         // exits 1 at once. Running on without the file instead served clients whose
@@ -25349,18 +25291,9 @@ fn now_seconds() -> f64 {
 
 /// `socket.gethostname()`.
 fn hostname() -> String {
-    let mut buffer = [0_u8; 256];
-    // SAFETY: gethostname writes at most `len` bytes into the buffer it is given.
-    let result = unsafe { libc::gethostname(buffer.as_mut_ptr().cast(), buffer.len()) };
-    if result != 0 {
-        return String::new();
-    }
-    let end = buffer
-        .iter()
-        .position(|byte| *byte == 0)
-        .unwrap_or(buffer.len());
-    String::from_utf8_lossy(&buffer[..end]).into_owned()
+    crate::platform::host_name().unwrap_or_else(|| String::new())
 }
+
 
 fn now() -> i64 {
     SystemTime::now()
@@ -25509,45 +25442,29 @@ fn statistics_bucket(timestamp: i64, timespan: i64) -> i64 {
         let width = if timespan == 5 { 60 } else { 1 };
         return timestamp - timestamp.rem_euclid(width);
     }
-    #[cfg(unix)]
-    unsafe {
-        let mut local: libc::tm = std::mem::zeroed();
-        let source = timestamp as libc::time_t;
-        if libc::localtime_r(&source, &mut local).is_null() {
-            return timestamp;
-        }
-        local.tm_min = 0;
-        local.tm_sec = 0;
-        if timespan != 4 {
-            local.tm_hour = 0;
-        }
-        match timespan {
-            4 | 3 => {}
-            2 => {
-                // tm_wday is Sunday=0; move to the preceding Monday.
-                let days_since_monday = (local.tm_wday + 6) % 7;
-                local.tm_mday -= days_since_monday;
-            }
-            1 => local.tm_mday = 1,
-            _ => {
-                local.tm_mon = 0;
-                local.tm_mday = 1;
-            }
-        }
-        local.tm_isdst = -1;
-        return libc::mktime(&mut local) as i64;
+    let Some(mut local) = crate::platform::local_tm(timestamp) else {
+        return timestamp;
+    };
+    local.tm_min = 0;
+    local.tm_sec = 0;
+    if timespan != 4 {
+        local.tm_hour = 0;
     }
-    #[cfg(not(unix))]
-    {
-        let width = match timespan {
-            3 => 86_400,
-            2 => 7 * 86_400,
-            1 => 30 * 86_400,
-            0 => 365 * 86_400,
-            _ => 1,
-        };
-        timestamp - timestamp.rem_euclid(width)
+    match timespan {
+        4 | 3 => {}
+        2 => {
+            // tm_wday is Sunday=0; move to the preceding Monday.
+            let days_since_monday = (local.tm_wday + 6) % 7;
+            local.tm_mday -= days_since_monday;
+        }
+        1 => local.tm_mday = 1,
+        _ => {
+            local.tm_mon = 0;
+            local.tm_mday = 1;
+        }
     }
+    local.tm_isdst = -1;
+    crate::platform::local_mktime(&mut local)
 }
 
 /// Python's truthiness for a JSON value: null, false, 0, "" and empty containers

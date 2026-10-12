@@ -83,13 +83,8 @@ pub(crate) fn request_thread_name() -> String {
 }
 
 fn local(timestamp: i64) -> libc::tm {
-    // SAFETY: localtime_r writes only into the struct it is given.
-    unsafe {
-        let mut out: libc::tm = std::mem::zeroed();
-        let seconds = timestamp as libc::time_t;
-        libc::localtime_r(&seconds, &mut out);
-        out
-    }
+    // SAFETY: an all-zero tm is a valid value (the epoch's fields) for the rare failure.
+    crate::platform::local_tm(timestamp).unwrap_or_else(|| unsafe { std::mem::zeroed() })
 }
 
 const MONTHS: [&str; 12] = [
@@ -155,8 +150,7 @@ pub(crate) fn log(level: Level, message: &str) {
     let time = console_time(seconds, millis);
     let line = format!("{time} [{}] {} - {message}", thread_name(), level.name());
     // `record.thread` is `threading.get_ident()`, which is `pthread_self()`.
-    // SAFETY: pthread_self has no preconditions.
-    let ident = unsafe { libc::pthread_self() } as u64;
+    let ident = crate::platform::thread_ident();
     let row = json!({
         "level": level.number(),
         "thread": ident.to_string(),

@@ -55,6 +55,15 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from server_command import server_command
 
+# The stub stamps each request it takes. Python 3.12's time.time() moves in 15.6 ms steps on
+# Windows, so two requests rex sends a few ms apart stamped equal and every "after" check
+# failed there; this is the wall clock with perf_counter's resolution.
+_WALL_AT_START = time.time() - time.perf_counter()
+
+
+def precise_time():
+    return _WALL_AT_START + time.perf_counter()
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, ROOT)
@@ -206,7 +215,7 @@ class StubHandler(BaseHTTPRequestHandler):
         length = int(self.headers.get("Content-Length") or 0)
         body = self.rfile.read(length) if length else b""
         record = {
-            "at": time.time(), "method": self.command, "host": host, "path": path,
+            "at": precise_time(), "method": self.command, "host": host, "path": path,
             "query": urllib.parse.parse_qsl(target.query, keep_blank_values=True),
             "headers": [(k.lower(), v) for k, v in self.headers.items()],
             "body": body,
@@ -244,11 +253,11 @@ class StubHandler(BaseHTTPRequestHandler):
                 self.send_header(name, value)
         self.send_header("Connection", "close")
         self.end_headers()
-        opened = time.time()
+        opened = precise_time()  # compared with the requests' own `at`
         self.wfile.write(RECORDED["pubsub"]["events"][0]["data"].encode("utf-8"))
         self.wfile.flush()
         asked = None
-        while asked is None and time.time() - opened < 5:
+        while asked is None and precise_time() - opened < 5:
             time.sleep(0.1)
             asked = next((r for r in self.server.taken("plex.tv", "/api/servers/.*/connectivity", "PUT")
                           if r["at"] >= opened), None)
@@ -714,8 +723,9 @@ def main():
               saved == {"machine": MACHINE, "token": SERVER_TOKEN, "owner": OWNER, "email": EMAIL,
                         "feature_uuids": FEATURE_UUIDS, "account_id": ACCOUNT_ID,
                         "view_state_cursor": "opaque-cursor-1"}, saved)
+        # Windows has no mode bits: a profile's folders are private to their user instead.
         check("the claim file is private (0600)",
-              os.path.exists(claim_file) and stat.S_IMODE(os.stat(claim_file).st_mode) == 0o600,
+              os.path.exists(claim_file) and (os.name == "nt" or stat.S_IMODE(os.stat(claim_file).st_mode) == 0o600),
               os.path.exists(claim_file) and oct(os.stat(claim_file).st_mode))
         stub.clear()
         first.stop()

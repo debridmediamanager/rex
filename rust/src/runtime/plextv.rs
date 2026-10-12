@@ -476,9 +476,15 @@ impl Claim {
                 .map_or_else(|| "null".to_string(), |id| id.to_string()),
             string(&self.view_state_cursor),
         );
+        // The claim holds the server's token: owner-only on Unix. A Windows profile's
+        // folders are already private to their user.
         let result = std::fs::write(&self.path, document).and_then(|_| {
-            use std::os::unix::fs::PermissionsExt;
-            std::fs::set_permissions(&self.path, std::fs::Permissions::from_mode(0o600))
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                std::fs::set_permissions(&self.path, std::fs::Permissions::from_mode(0o600))?;
+            }
+            Ok(())
         });
         if let Err(message) = result {
             error!("could not persist claim state: {message}");

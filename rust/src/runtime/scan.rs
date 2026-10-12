@@ -1095,7 +1095,11 @@ mod tests {
         });
         fs::write(dir.join("plex_cache.json"), plex_cache.to_string()).unwrap();
         let entries: Value = serde_json::from_str(
-            &fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/../tests/fixtures/zurg/entries.json")).unwrap(),
+            // The build's own path, else the tree the test runs in: a test binary built in a
+            // container and run on another machine (Windows from a cross build) has only the latter.
+            &fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/../tests/fixtures/zurg/entries.json"))
+                .or_else(|_| fs::read_to_string("../tests/fixtures/zurg/entries.json"))
+                .unwrap(),
         )
         .unwrap();
         let arrival = |kind: &str| {

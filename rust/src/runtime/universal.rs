@@ -559,20 +559,22 @@ impl Session {
             if let Some(mut process) = child.take() {
                 // A paused process ignores SIGKILL until it is continued on some kernels'
                 // job control; continue it first.
-                unsafe {
-                    libc::kill(process.id() as i32, libc::SIGCONT);
-                }
+                crate::platform::resume(process.id());
                 let _ = process.kill();
                 let _ = process.wait();
             }
         }
     }
 
-    fn signal(&self, signal: i32) {
+    /// Pause (`true`) or resume the FFmpeg, through `platform`: SIGSTOP and SIGCONT on
+    /// Unix, a whole-process suspend and resume on Windows.
+    fn set_paused(&self, paused: bool) {
         if let Ok(child) = self.child.lock() {
             if let Some(process) = child.as_ref() {
-                unsafe {
-                    libc::kill(process.id() as i32, signal);
+                if paused {
+                    crate::platform::pause(process.id());
+                } else {
+                    crate::platform::resume(process.id());
                 }
             }
         }
@@ -988,9 +990,7 @@ impl Transcoder {
             // Two restarts racing each kill the old child and then store their own; the
             // one stored first must not be left running unowned.
             if let Some(mut older) = slot.replace(child) {
-                unsafe {
-                    libc::kill(older.id() as i32, libc::SIGCONT);
-                }
+                crate::platform::resume(older.id());
                 let _ = older.kill();
                 let _ = older.wait();
             }
@@ -1113,12 +1113,12 @@ impl Transcoder {
                 Err(_) => continue,
             };
             if !paused && ahead > THROTTLE_AHEAD {
-                session.signal(libc::SIGSTOP);
+                session.set_paused(true);
                 if let Ok(mut state) = session.state.lock() {
                     state.paused = true;
                 }
             } else if paused && ahead < RESUME_AHEAD {
-                session.signal(libc::SIGCONT);
+                session.set_paused(false);
                 if let Ok(mut state) = session.state.lock() {
                     state.paused = false;
                 }
@@ -1204,7 +1204,7 @@ impl Transcoder {
                 restarted = true;
                 self.launch(session, index, None);
             } else if session.throttled() {
-                session.signal(libc::SIGCONT);
+                session.set_paused(false);
                 if let Ok(mut state) = session.state.lock() {
                     state.paused = false;
                 }
@@ -1304,10 +1304,7 @@ fn kill_leftovers(root: &std::path::Path) {
         let cmdline = String::from_utf8_lossy(&cmdline).replace('\0', " ");
         if cmdline.contains("ffmpeg") && cmdline.contains(&needle) {
             warning!("transcoder: killing a leftover FFmpeg (pid {pid}) from an earlier run");
-            unsafe {
-                libc::kill(pid as i32, libc::SIGCONT);
-                libc::kill(pid as i32, libc::SIGKILL);
-            }
+            crate::platform::kill(pid);
         }
     }
 }
@@ -2051,7 +2048,8 @@ mod tests {
         let joined = ffmpeg_args(&dash, Path::Software, &Hardware::software(), 3, std::path::Path::new("/tmp/x")).join(" ");
         assert!(joined.contains("-ss 6 -i"), "{joined}");
         assert!(joined.contains("-output_ts_offset 6 -f dash -format_options movflags=+frag_discont -seg_duration 2"), "{joined}");
-        assert!(joined.contains("/tmp/x/r3/manifest.mpd"), "{joined}");
+        let manifest = std::path::Path::new("/tmp/x").join("r3").join("manifest.mpd");
+        assert!(joined.contains(&*manifest.to_string_lossy()), "{joined}");
         assert!(joined.contains("expr:gte(t,n_forced*2)"), "{joined}");
         assert!(!joined.contains("-f segment"));
     }

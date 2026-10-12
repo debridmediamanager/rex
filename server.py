@@ -37,7 +37,10 @@ import logging
 import os
 import random
 import re
-import resource
+try:
+    import resource  # Unix only; the native server is the one that runs on Windows
+except ImportError:
+    resource = None
 import signal
 import socket
 import ssl
@@ -21641,8 +21644,11 @@ class Rex:
         now = int(time.time())
         with self.lock:
             previous = self._resource_sample
-            usage = resource.getrusage(resource.RUSAGE_SELF)
-            cpu_seconds = usage.ru_utime + usage.ru_stime
+            if resource is not None:
+                usage = resource.getrusage(resource.RUSAGE_SELF)
+                cpu_seconds = usage.ru_utime + usage.ru_stime
+            else:
+                cpu_seconds = time.process_time()
             process = 0.0
             if previous and now > previous[0]:
                 process = max(0.0, (cpu_seconds - previous[1]) / (now - previous[0]) * 100)
