@@ -357,3 +357,23 @@ HDR, which is tonemapped on the CPU), and falls back to x264 when there is no de
 Every conversion is one FFmpeg reading the source over HTTP; nothing is downloaded
 first.
 
+
+### By platform
+
+Each platform runs the transcoder suite in CI (`tests/test_native_transcode.py`, against
+jellyfin-ffmpeg 8.1.3), on the CPU path, since the runners have no GPU.
+
+| Platform | GPU paths rex knows | Notes |
+|---|---|---|
+| Linux amd64 | VA-API (Intel, AMD), NVENC (NVIDIA), else x264 | VA-API measured on zen; the suite runs in CI |
+| Linux arm64 | the same, which on most ARM boards means x264 | not run in CI (it is emulated there) |
+| macOS | none: x264 always (no VideoToolbox path) | the suite runs in CI on Apple Silicon |
+| Windows | NVENC (NVIDIA), else x264 (no Quick Sync or AMF path) | the suite runs in CI and was run on a Windows 11 machine with an AMD GPU |
+
+Use a recent FFmpeg. Ubuntu 22.04's own (`apt install ffmpeg`, 4.4) starts a far seek a
+segment early; jellyfin-ffmpeg 8 has portable builds for every platform above
+(`jellyfin-ffmpeg_8.1.3-1_portable_*` on its releases page).
+
+On Linux an FFmpeg dies with rex and a restart sweeps up any left over. On macOS and
+Windows a stopped rex still stops its FFmpegs, but if rex crashes they run on until their
+conversion ends.
