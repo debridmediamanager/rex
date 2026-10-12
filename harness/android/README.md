@@ -117,7 +117,7 @@ each writes a UI dump, a screenshot and the capture-line range it produced.
 
 ## Request census
 
-`handover/tools/apkcensus.py decompile <apk or split dir> <out>` pulls the Hermes bundle out of
+`probes/apkcensus.py decompile <apk or split dir> <out>` pulls the Hermes bundle out of
 the base APK and decompiles it; `census` and `diff` list every request template with its base
 (PMS helper, plex.tv-family client, player-direct, in-app route) and call site.
 `handover/android-census-2026.19.1.md` is the 2026.9.0 -> 2026.19.1 diff.

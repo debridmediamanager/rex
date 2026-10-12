@@ -552,9 +552,9 @@ docs works the same from a release as from a checkout.
 
 ## Differential instruments
 
-`handover/tools/pair.py REQS.jsonl --tree DIR --bin NATIVE` replays a request list (a harness capture
+`probes/pair.py REQS.jsonl --tree DIR --bin NATIVE` replays a request list (a harness capture
 or `{method,path,headers,body}` lines) against a fresh oracle and a fresh native in lockstep and
-prints every normalised difference, header order included. `handover/tools/vsweep.py` sweeps a
+prints every normalised difference, header order included. `probes/vsweep.py` sweeps a
 vocabulary (query names, request headers, a path segment, methods; JSON or XML) over request
 families the same way. Use them before trusting that the two servers agree on anything a suite
 does not send.

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The gaps a differential VOCABULARY sweep found (cycle 83).
 
-`handover/tools/vsweep.py` appended every parameter name the oracle's source reads to
+`probes/vsweep.py` appended every parameter name the oracle's source reads to
 every request path Plex Web builds and diffed the oracle against the native server.
 Each rule below was then measured on kids (1.43.4) and zen (1.42.2), and every check
 asserts that measured answer on `tests/catalog_ui.json`, not "the two servers agree":
