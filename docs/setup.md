@@ -209,11 +209,11 @@ an address plex.tv cannot reach are the usual causes.
 ### 8. Run it as a service
 
 `examples/run.sh.example` is the whole command line as a script: copy it to `run.sh` at the
-top of the checkout or release, beside `rust/` and the catalog, and fill it in. It reads the keys from `rex.env` (`TMDB_KEY=` and `PLEX_TOKEN=`,
-mode 600) and adds `--announce-url` once `claim_state.json` exists. `run.sh`, `rex.env`
-and `sources.json` are gitignored. Under systemd (`~/.config/systemd/user/rex.service`,
-then `systemctl --user enable --now rex`, and `loginctl enable-linger` so it runs
-without a login):
+top of the checkout or release, beside `rust/` and the catalog, and fill it in. It reads the
+keys from `rex.env` (`TMDB_KEY=` and `PLEX_TOKEN=`, mode 600) and adds `--announce-url`
+once `claim_state.json` exists. `run.sh`, `rex.env` and `sources.json` are gitignored.
+Under systemd (`~/.config/systemd/user/rex.service`, then `systemctl --user enable --now
+rex`, and `loginctl enable-linger` so it runs without a login):
 
 ```ini
 [Unit]
@@ -316,7 +316,7 @@ Description=rex manager
 After=network-online.target
 
 [Service]
-User=ben
+User=youruser
 WorkingDirectory=/path/to/rex
 ExecStart=/usr/bin/python3 /path/to/rex/oracle/manager.py serve
 KillMode=mixed
