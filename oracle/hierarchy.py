@@ -324,10 +324,10 @@ def stored_sort_title(row):
 
     The one season and the 176 episodes that DO store a sort title while reading
     `Season 1`/`Episode 1` are rows an agent gave that exact title to (kids' season 7
-    gained its own in the metadata refresh recorded in HANDOVER 4.1, and zen's 176
+    gained its own in a metadata refresh, and zen's 176
     carry `plex://episode` guids). rex cannot tell those apart from a title it
     generated itself, so it decides on the title FORM -- a proxy for the mechanism,
-    recorded in HANDOVER 3.3. Every season in a rex catalog is synthesised here,
+    left open. Every season in a rex catalog is synthesised here,
     so the proxy is exact for the rows rex actually holds.
 
     An emptied title is NOT this case: a title write that empties a row regenerates
@@ -482,7 +482,7 @@ def normalize_rows(rows):
         # so this is a property of the FIELD and not of the row. The test is the stored
         # path, which is the only thing the response exposes: cycle 16 measured that a
         # borrowing row carries the owner's path verbatim, so a `thumb` naming another
-        # ratingKey IS the borrowed case. See HANDOVER.md 3.3.
+        # ratingKey IS the borrowed case.
         if season is not None:
             thumb = str(season.get("thumb") or "")
             if not thumb.startswith("/library/metadata/%s/" % season.get("ratingKey")):

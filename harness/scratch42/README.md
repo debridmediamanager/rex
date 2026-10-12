@@ -1,7 +1,7 @@
 # plexscratch42 — a writable reference pinned to 1.42.2
 
 `plexscratch` is a copy of the lab's config and is therefore **1.43.4**. rex reports
-**1.42.2.10156**, and four HANDOVER 3.3 entries (cycles 21, 25, 27, 28) all said the same
+**1.42.2.10156**, and four open questions (cycles 21, 25, 27, 28) all said the same
 thing: *a writable 1.42.2 copy would settle this.* This is that copy.
 
 It is not a copy at all — it is a **fresh install** of `plexinc/pms-docker:1.42.2.10156-f737b826c`,

@@ -1760,7 +1760,7 @@ are changing; replay the client's exact request before altering behavior.
   a scan, so the sequence is recorded and not built.
 - **The eventsource channel has no five-minute deadline** on a real PMS (still open at 430 s), and
   neither transport sends `id:` or `retry:`, so nothing replays across a reconnect. rex's 300 s
-  constant is gone; it still closes at ~256 s for an unfound reason (HANDOVER 3.3). **And the 101
+  constant is gone; it still closes at ~256 s for an unfound reason (still open). **And the 101
   upgrade carries a `Date`** -- it was the one response on the surface without one.
 
 - **`plexscratch42` answers the WRITE surface too, and the split is the VERB TABLE.** Held out write
@@ -2614,7 +2614,7 @@ are changing; replay the client's exact request before altering behavior.
 - **`/library/search?limit=4294967296` crashed kids' PMS.** Treat search limits past int32 as
   crash-shaped on a reference, like `/library/shared/all?sort=`.
 
-- **The loop's stopping rule is client impact** (HANDOVER 1): tag every finding CLIENT-VISIBLE
+- **The loop's stopping rule is client impact**: tag every finding CLIENT-VISIBLE
   (with the client call site) or MALFORMED-ONLY; build the first, record the second.
 - **A show library's provider storage totals are its episodes'**; the playlist Meta's Type key
   carries `playlistType`/`sectionID`/`type` and nothing is active on `/playlists/all`; a legacy
@@ -2960,7 +2960,7 @@ are changing; replay the client's exact request before altering behavior.
   `--state` (cycle 74's save-before-answer) and otherwise when it counted the response's bytes, so
   without `--state` the row appeared one request late -- and a numeric `X-Plex-Platform` on that
   first request answered 200 where the row it writes makes the list the measured `std::bad_cast`
-  500 (HANDOVER §9). The sweep's "500 on one server, 200 on the other" for `X-Plex-Platform: de` and
+  500. The sweep's "500 on one server, 200 on the other" for `X-Plex-Platform: de` and
   `Connection: de` was that same 500, left behind by a concurrent numeric-platform cell on one server
   before the other; every later `/devices` 500s on both until a non-numeric platform overwrites the
   row, as on a real PMS. Numeric spellings are never sent to a shared reference.
@@ -3115,8 +3115,8 @@ are changing; replay the client's exact request before altering behavior.
   if sent, else the query's, and the same for Size; the container pages when both effective values
   exist. So a lone header or a lone query parameter never pages, a header Size beside a query Start
   pages, and a header half overrides only its own half of a query pair. Cycle 16's "header wins" and
-  the handover's "a lone header does nothing" are the same rule; both servers already followed it at
-  `27d76b2` (the handover's "native pages on a lone header" did not reproduce on any family).
+  the earlier "a lone header does nothing" are the same rule; both servers already followed it at
+  `27d76b2` (the reported "native pages on a lone header" did not reproduce on any family).
 - **The paging VALUES are 32-bit signed integers, and a lone Size is parsed** (cycle 83, kids and
   zen, the same families and fixture). Wherever a container pages, a Size is read whenever it is
   sent -- `X-Plex-Container-Size=abc` ALONE, header or query, is the 109-byte 500 on `/identity` as on
@@ -3131,7 +3131,7 @@ are changing; replay the client's exact request before altering behavior.
   parent that is not all digits (`1,2`, `1%2C2`, `-1`, `+7`, ` 7`, `7,abc`) lists the library's top
   folder; only an EMPTY parent and a numeric one naming no directory (`1`, `99999`) are the empty
   200. A repeated `parent` takes its LAST value (`parent=7&parent=8` is folder 8, `parent=7&parent=abc`
-  the top). The handover's "empty 200 on kids, 500 on both ours" predates `69f8720`; at `27d76b2` both
+  the top). The earlier "empty 200 on kids, 500 on both ours" predates `69f8720`; at `27d76b2` both
   servers already answered this, and the check pins it.
 - **`/library/all` reads a repeated parameter's LAST occurrence; the section grid ANDs it**
   (cycle 83, kids and zen, `tests/fixtures/library_all_repeated_keys.json`). `guid=<a>&guid=<b>` is

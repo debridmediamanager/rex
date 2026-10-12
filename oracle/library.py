@@ -145,7 +145,8 @@ IGNORED_TAG_TYPES = {"network", "mood"}
 #
 # Cycle 21 recorded it correctly as "a 200 that stores nothing" and cycle 30, having
 # confirmed the 200 on the new 1.42.2 copy, put it in LOCK_ONLY_FIELDS -- which records a
-# lock. HANDOVER 3.1 class C inside the cycle that re-measured it: the status was checked
+# lock. A rule recorded correctly and implemented as a proxy, inside the cycle that
+# re-measured it: the status was checked
 # and the row was never read back. The Edit dialog draws its lock icons from `Field`, so
 # the regression drew a lock on a field it cannot show.
 NO_OP_FIELDS = {"hdr10plus"}
@@ -239,7 +240,7 @@ LOCK_ONLY_FIELDS = {"thumb", "art", "theme", "banner", "guid", "slug", "addedAt"
                     #
                     # Cycle 30 settled the two questions cycle 21 had to leave open, on
                     # **plexscratch42** -- a fresh writable 1.42.2 copy built for exactly
-                    # this (HANDOVER 4). On 1.42.2 the five media-codec names (`atmos`,
+                    # this. On 1.42.2 the five media-codec names (`atmos`,
                     # `audioCodec`, `audioLayout`, `subtitleCodec`, `videoCodec`) are each
                     # a **400** where 1.43.4 answers 200, so rex's refusal was right
                     # and that hold-out is CLOSED rather than implemented. `hdr10plus` is
@@ -488,9 +489,9 @@ class Library:
                 # history "staying at one row through three scrobbles"; driven again,
                 # one scrobble at a time with the count read between each, it moves
                 # every time. The row that does NOT appear is a timeline's, which is the
-                # copy's already-recorded session-bound limit (HANDOVER section 8,
-                # cycle 9) -- so only the additive half is asserted, the half where the
-                # instrument produced a row rather than failed to.
+                # copy's already-recorded session-bound limit (cycle 9) -- so only the
+                # additive half is asserted, the half where the instrument produced a row
+                # rather than failed to.
                 self.record_view(leaf, account_id, device_id, view_type=view_type)
             else:
                 leaf.pop("viewCount", None)
@@ -1255,8 +1256,7 @@ class Library:
             # rating left the episode with none at all and its page drew a blank
             # badge for the life of the process. Re-inheriting here reproduces every
             # step of the measured sequence; the read-time hook itself would have to
-            # reach the catalog from the row writer, so this is the write-side proxy
-            # -- see HANDOVER.md 3.3.
+            # reach the catalog from the row writer, so this is the write-side proxy.
             show = self.catalog.items.get(int(row["grandparentRatingKey"])) \
                 if str(row.get("grandparentRatingKey") or "").isdigit() else None
             if (show or {}).get("contentRating"):

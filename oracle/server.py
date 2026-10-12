@@ -62,8 +62,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 # Cycle 27, bisected on kids (1.43.4) and zen (1.42.2), identically on both: a real PMS
 # accepts exactly **100 header lines** and answers 400 to the 101st. The TOTAL size of
 # the header block is not what is bounded -- 200 KB of headers in fifty lines is a 200 --
-# so HANDOVER 3.3's "~41 KB" is refuted: that measurement used ~410-byte headers and hit
-# the count at 100 of them.
+# so the earlier "~41 KB" reading is refuted: that measurement used ~410-byte headers and
+# hit the count at 100 of them.
 #
 # Python's own reader raises at `_MAXHEADERS` counting the blank terminator line, so 100
 # is one too few: rex refused a request a real PMS answers. One more lets the
@@ -773,7 +773,7 @@ except OSError:
 # two files that are not images (`favicon.ico`, which is NOT the 5,430-byte one at the top
 # level, and the stray `sugar.cmake` the build leaves behind) are carried verbatim, being
 # 1.4 KB between them. Shipping 4.7 MB of a product's artwork to reproduce the pixels of
-# the other 68 is recorded in HANDOVER 8 rather than done.
+# the other 68 is a deliberate bound rather than done.
 with open(os.path.join(DATA_DIR,
                        "resource_assets.json"), encoding="utf-8") as _handle:
     RESOURCE_ASSETS = json.load(_handle)
@@ -1227,7 +1227,7 @@ except (OSError, ValueError, KeyError):
 # Dansk...` where a real server reads `Catalan, Czech, Danish...`. The English spelling is
 # already in `agent_languages.json`; aligning it here by CODE invents nothing. Every other
 # language the reference answers and `translations.json` lacks (tr, th, and the regional
-# catalogues) is recorded in HANDOVER 3.3 rather than guessed at.
+# catalogues) is left open rather than guessed at.
 # Cycle 59: only a LANGUAGE-LIST enum -- one whose first row after the default is a
 # language code. Keyed on the default's label alone, the injection also caught
 # `-1:Library default|0:Show|1:Hide`, `showOrdering`'s agent list and every other
@@ -1339,7 +1339,7 @@ with open(os.path.join(DATA_DIR,
     AGENT_ATTRIBUTIONS = json.load(_handle)
 
 # Cycle 53: the ELEVEN legacy plug-in agents a real PMS lists beside the modern four.
-# HANDOVER 8 has carried "legacy agents and the `/:/plugins` listing" as one inherited
+# "Legacy agents and the `/:/plugins` listing" had been carried as one inherited
 # bound since cycles 1-6, and cycle 52 retired the second half of it on the grounds that
 # the listing is a fixed table in the image rather than hosting. This is the same table:
 # kids, zen, plexscratch and plexscratch42 answer the identical eleven identifiers with
@@ -1371,7 +1371,7 @@ with open(os.path.join(DATA_DIR,
 # every one but `com.plexapp.system`, which is 0 on all four servers. (zen answers 0 for
 # `com.plexapp.agents.imdb` as well, which is that one server's own plug-in state.)
 #
-# HANDOVER §8 inherited "legacy agents and the `/:/plugins` listing" from cycles 1-6 as a
+# "Legacy agents and the `/:/plugins` listing" had been inherited from cycles 1-6 as a
 # deliberate bound on the grounds that rex hosts no plug-ins. The listing is not
 # hosting: it is a fixed table in the image, like `Resources/Profiles`, which cycle 31
 # already read out and shipped.
@@ -2022,7 +2022,7 @@ class Catalog:
         # all fall to the 0.33 fuzzy band, which rex does not emulate). rex folded
         # by NFD, so it answered those as word hits.
         #
-        # The CASE half is not modelled exactly, and is recorded as open (HANDOVER 3.3): a
+        # The CASE half is not modelled exactly, and is left open: a
         # capital macron, `\u017f` and `\u0130` match inside a title's LAST word
         # (`Cosmos Laundr\u014cmat`, `Sint\u0112l`, `Tears of \u017fteel` all 0.93) and fail
         # in an earlier one (`C\u014csmos`, `T\u0112ars`, `\u017fteel` alone 0.33), which
@@ -2168,8 +2168,8 @@ class Catalog:
         first term matches the first word", and both references score `Riders X` and
         `Riders of Justices` at the anchored tier where that model calls them fuzzy. It
         was fitted on sixteen cells, none of which carried a term the title does not
-        have -- HANDOVER 3.1 class D, a model that agreed with every case it was built
-        from. The anchored tier turns out to be one token comparison.
+        have -- a model that agreed with every case it was built from. The anchored tier
+        turns out to be one token comparison.
         """
         terms = cls._search_tier_words(query)
         if not terms:
@@ -4602,7 +4602,7 @@ class Rex:
         where 1.43.4 goes on -- does not survive the control: the 1.43.4 copy's rows have
         local metadata bundles and the 1.42.2 copy is a fresh install with none and no
         route to plex.tv, so whether the agent can then do any work is the copies' state
-        and not the surface's rule (HANDOVER 3.1 class E).
+        and not the surface's rule.
         """
         if str(row.get("guid") or "").startswith("local://"):
             self.notify_timeline(row, 2, "matching")
@@ -6761,7 +6761,7 @@ class Rex:
             # sentence moves with the parameters -- `?mediaType=1` makes it "(2 given)"
             # and a name the function does not declare makes it "got an unexpected
             # keyword argument". The recognised names below are measured; the general
-            # rule is PMS's own signatures and is an explicit bound in HANDOVER 8.
+            # rule is PMS's own signatures and is a deliberate bound.
             action_c52 = route[len("/system/agents/"):].strip("/")
             if action_c52 in FRAMEWORK_AGENT_ACTIONS:
                 name_c52, least_c52, known_c52, strict_c52 = \
@@ -7598,17 +7598,17 @@ class Rex:
                 # nothing in progress, so the projection was inferred rather than seen.
                 #
                 # Single-witness by instrument: kids' On Deck is empty on every path, so
-                # only zen can show it. See HANDOVER 3.3.
+                # only zen can show it.
                 # Cycle 28 read `librarySectionKey` off zen's one on-deck row and kept
                 # it here. Cycle 30 built the instrument that question needed -- a FRESH
                 # 1.42.2 copy, the build rex reports, writable and isolated
-                # (`plexscratch42`, HANDOVER 4) -- and it says otherwise: on a MOVIE and
+                # (`plexscratch42`) -- and it says otherwise: on a MOVIE and
                 # on an EPISODE alike this row carries `allowSync`, `librarySectionID`,
                 # `librarySectionTitle` and `librarySectionUUID` and **no
                 # `librarySectionKey`**, which is what plexscratch (1.43.4) and cycle
                 # 21's fun both said. Three instruments against zen's one, so zen is the
-                # outlier and cycle 21's absence was right; zen's own row is in HANDOVER
-                # 3.3 with the question still open.
+                # outlier and cycle 21's absence was right; zen's own row stays an open
+                # question.
                 #
                 # And the row is the detail row MINUS `Field`: the copy's movie carries
                 # `Field` on `/library/metadata/{id}` and none on any of the three On Deck
@@ -8437,7 +8437,7 @@ class Rex:
             # `/audio/:/transcode/universal/decision` is the decision's own
             # no-parameters 400 on both references, exactly as the video form is, where
             # rex 404'd the whole prefix. rex has no encoder, so what it answers
-            # past that refusal is its own (HANDOVER 8); the refusal is the measured part.
+            # past that refusal is its own; the refusal is the measured part.
             return ("error", 400, "rex: bad request")
         if route == "/video/:/transcode/universal/decision":
             return self.decision(query, headers)
@@ -8693,7 +8693,7 @@ class Rex:
             #
             # rex answered the dispatcher's `content="plugins"` container -- the wrong
             # media type and the wrong shape for a path a real PMS routes. What is NOT
-            # emulated, and stays recorded in HANDOVER 8 after cycle 50's 78-snapshot
+            # emulated, and stays a deliberate bound after cycle 50's 78-snapshot
             # matrix: PMS's fixed acceptor POOL (its `??? - Uninitialized` rows), the
             # ordinals, and the hexadecimal request allocator, none of which a server with
             # a thread per connection has. These are rex's own live connections in the
@@ -10338,8 +10338,7 @@ class Rex:
         """`/:/resources/<relative>` -- one of PMS's own 70 bundled files.
 
         The name set, the media type and the geometry are measured; the pixels are
-        rex's own placeholder in the file's container, which is the deviation
-        HANDOVER 8 records.
+        rex's own placeholder in the file's container, a deliberate deviation.
         """
         relative = relative.rstrip("/") if relative.endswith("/") else relative
         if relative in RESOURCE_DIRECTORIES:
@@ -11136,7 +11135,7 @@ class Rex:
                 # Cycle 55, from `order by metadata_item_settings.updated_at desc,index,id`
                 # and measured on plexscratch42: THIS leaf orders by the view-state write
                 # time (a rating moves a row to the front) where every other resume list
-                # keeps the view time. Single witness, an unclaimed copy (HANDOVER 3.3).
+                # keeps the view time. Single witness, an unclaimed copy.
                 rows = sorted(rows, key=lambda r: (
                     -(r.get("_viewUpdatedAt") or r.get("lastViewedAt") or 0),
                     int(r.get("index") or 0), int(r.get("ratingKey") or 0)))
@@ -11920,7 +11919,7 @@ class Rex:
 
         A tie on `addedAt` inside one group has no witness -- kids' two equal rows
         never form a group of their own -- so the lowest ratingKey breaks it here,
-        which at least keeps the answer independent of the sort. See HANDOVER.md 3.3.
+        which at least keeps the answer independent of the sort. It is left open.
         """
         bare = self.group_field(field)
         if not bare or bare not in self.GROUPABLE:
@@ -12162,8 +12161,8 @@ class Rex:
             # partitions the library exactly as `viewedLeafCount` does -- but zen and
             # kids between them hold NO leaf that is in progress and unwatched, so the
             # "or in progress" half of the name could not be separated from the viewed
-            # half on either reference. It is read here as the name says; see
-            # HANDOVER.md 3.3.
+            # half on either reference. It is read here as the name says, and
+            # left open.
             leaves = self.catalog.leaves(row.get("ratingKey")) \
                 if row.get("type") in ("show", "season") else []
             return sum(1 for leaf in leaves
@@ -15296,7 +15295,7 @@ class Rex:
         The ROLL-UP THRESHOLD is a fitted model and is recorded as one: the mechanism
         reproduces on all 50 zen rows with no counterexample, but what is in scope as
         "recently added" at all is not pinned, so two-or-more is measured-and-modelled
-        rather than a constant. See HANDOVER 3.3.
+        rather than a constant. It is left open.
         """
         def newest(row):
             leaves = self.catalog.leaves(row.get("ratingKey"))
@@ -18476,9 +18475,9 @@ class Rex:
         `/hubs/continueWatching` all agree each time.
 
         Cycle 9 measured this on the copy's TEN-SECOND clips, where every beat crosses
-        90% at once and an episode can barely be left in progress -- the handover's own
+        90% at once and an episode can barely be left in progress -- the standing
         "re-run anything about sessions, completion or resume from cycles 9 or earlier
-        on `long`" entry, paying off.
+        on `long`" rule, paying off.
         """
         rows = [r for r in self.catalog.items.values()
                 if r.get("viewOffset") and r.get("type") == "movie"
@@ -19334,7 +19333,7 @@ class Rex:
             the show's new stamp on both `thumb` and `parentThumb`)
           * episodes whose season had no poster of its own never GAINED `parentThumb`
             when one was picked for that season, because the cascade only moved a
-            field that was already there. That was HANDOVER 3.3's open question --
+            field that was already there. That was the open question --
             "whether a cascade CREATES a borrowed artwork field" -- and it does.
 
         A season's own `thumb` is still untouched when the season OWNS it, which is
@@ -20821,8 +20820,8 @@ class Rex:
                 # other 147 answer 200 and push a `preference` frame each. Nothing in the
                 # row marks them -- `CLDriver` is `hidden: true` too and is writable -- so
                 # the set is the measurement rather than a rule. `PlexOnlineUrl` could be
-                # claim-gated on an unclaimed copy; the other three are not obviously so.
-                # See HANDOVER.md 3.3.
+                # claim-gated on an unclaimed copy; the other three are not obviously so,
+                # and that is left open.
                 return ("error", 403, "rex: forbidden")
         typed = []
         for name, value in writes:
@@ -21546,8 +21545,8 @@ class Rex:
                         "configured backup directory"},
         {"name": "ButlerTaskCleanSupplementalLogFiles", "interval": 1,
          "scheduleRandomized": False, "enabled": False},
-        # Cycle 49 REFUTES cycle 35's reading of this row, which is HANDOVER 3.1 class E:
-        # cycle 35 measured it on the two writable copies, and both of those are
+        # Cycle 49 REFUTES cycle 35's reading of this row, a copy's state taken for the
+        # rule: cycle 35 measured it on the two writable copies, and both of those are
         # UNCLAIMED. `enabled` here is computed from claim/subscription state, not
         # stored -- plexscratch is a byte copy of kids' own config with only the claim
         # stripped, and it answers `enabled="0"` where kids answers `enabled="1"`. Both
@@ -22843,7 +22842,7 @@ class Handler(BaseHTTPRequestHandler):
         grace instead of trying to read the reference's own decision point out of a
         buffered reader that cannot be peeked without blocking: a body that arrives
         inside the grace is consumed and the socket kept, which is safe in the other
-        direction. Recorded as a deviation in HANDOVER 3.3.
+        direction. A deliberate deviation.
         """
         left = self._undrained
         chunked = getattr(self, "_undrained_chunked", False)
@@ -23088,7 +23087,7 @@ class Handler(BaseHTTPRequestHandler):
         Cycle 27 bisected the two caps rather than bracketing them: a name of exactly
         1024 bytes and a value of exactly 4096 are 200s on both references and 1025 and
         4097 are 400s, so the two constants above are right to the byte. The third of
-        that family -- HANDOVER 3.3's "~41 KB" total -- is a COUNT and not a size: 100
+        that family -- the earlier "~41 KB" total -- is a COUNT and not a size: 100
         header lines pass and the 101st is a 400, whatever the bytes add up to.
         """
         if not self._request_line_ok():
@@ -24214,8 +24213,8 @@ class Handler(BaseHTTPRequestHandler):
     # Python's BaseHTTPRequestHandler answers 501 with its own error page and a
     # `Server:` banner for any method it has no `do_` for. A real PMS answers a
     # **500** with its own four-line html body -- measured on the copy for `FROB`,
-    # `TRACE` and a wrong-case `Get`, on every path. HANDOVER already records that a
-    # real PMS never answers 405; it never answers 501 either.
+    # `TRACE` and a wrong-case `Get`, on every path. A real PMS never answers 405, and
+    # it never answers 501 either.
     UNKNOWN_METHOD_BODY = (b"<html><head><title>Internal Server Error</title></head>"
                            b"<body><h1>500 Internal Server Error</h1></body></html>")
 
@@ -26220,7 +26219,7 @@ def main():
     # Cycle 49: a real PMS is FOUND on the LAN by answering GDM on udp/32410 and
     # udp/32414 -- see gdm.py. `auto` is on only when the HTTP port is a real PMS's
     # 32400, because a test instance on another port must not claim the host's one
-    # GDM identity; that gate is a deliberate deviation and is in HANDOVER 3.3.
+    # GDM identity; that gate is a deliberate deviation.
     # Cycle 50: a real PMS carries TLS on its HTTP port, behind a `*.<hash>.plex.direct`
     # certificate plex.tv issues to a claimed server. rex cannot mint one, so the
     # operator supplies it; without it the port stays plain, which is what rex always

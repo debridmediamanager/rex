@@ -24,9 +24,8 @@ carrying its whole `X-Plex-*` identity and its token in the query. CLAUDE.md has
 recorded that correction since 2026-09-12 and this module did not follow it.
 
 The numeric form this module used is also the dangerous one: `/devices/{numeric}`
-resolves to whatever device row already holds that id and silently overwrites it, which
-is what the safety notes in HANDOVER.md §9 are about. `resolve_device_id` is kept for
-looking a device up, and nothing here needs it any more.
+resolves to whatever device row already holds that id and silently overwrites it.
+`resolve_device_id` is kept for looking a device up, and nothing here needs it any more.
 """
 
 import collections
@@ -110,9 +109,9 @@ def announce(token, machine_identifier, url, *, name="rex",
     * the HOST is `servers.plex.tv`, not `plex.tv`;
     * the path segment is the **machineIdentifier**, not plex.tv's numeric device id.
       CLAUDE.md has recorded that correction since 2026-09-12 and the code never
-      followed it -- HANDOVER.md §3.1 class C, a rule recorded correctly and
-      implemented as a proxy. It is also the dangerous half: a numeric id resolves to
-      whatever device row already holds it and silently overwrites that device;
+      followed it -- a rule recorded correctly and implemented as a proxy. It is
+      also the dangerous half: a numeric id resolves to whatever device row already holds
+      it and silently overwrites that device;
     * the token rides in the QUERY, and `natLoopbackSupported` is not sent at all;
     * `httpsEnabled` is the server's own https capability, not the uri's scheme -- the
       reference sent `httpsEnabled=1` beside an `http://172.31.7.2:32400` uri.

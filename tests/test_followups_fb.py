@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Follow-ups from HANDOVER §2a that were filed as "oracle bugs the native server does
+"""Follow-ups that were filed as "oracle bugs the native server does
 not copy", each re-measured on a real PMS before either server changed:
 
 - an EMPTY body is never gzipped, whatever the client offers -- driven from the official

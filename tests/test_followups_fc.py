@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Four HANDOVER §2a follow-ups, each against its measurement:
+"""Four parity follow-ups, each against its measurement:
 
 - a collection built from a SECTION uri holds the section's rows at the collection's own
   level (`type=2` the shows, `3` the seasons, `4` the episodes), never the episodes a play

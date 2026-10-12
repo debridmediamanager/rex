@@ -317,7 +317,7 @@ def apply_plex_guids(items, provider):
     Rows the provider cannot place keep the guid they have. Every copy of a relinked
     guid moves with it -- a season's `parentGuid`, an episode's `parentGuid` and
     `grandparentGuid` -- and a matched movie or show takes the provider's `slug` (a
-    real slug is the agent's, not the slugified title: HANDOVER §3.3, cycle 20), which
+    real slug is the agent's, not the slugified title: cycle 20), which
     a season's `parentSlug` and an episode's `grandparentSlug` repeat. Returns the
     number of rows relinked.
     """

@@ -285,7 +285,7 @@ def prop_races(catalog, pairs):
     server = Server(catalog)
     port = server.port
     try:
-        # Cycle 32 (`handover/tools/race.py`): two adds to one queue each answer the queue
+        # Cycle 32's race probe: two adds to one queue each answer the queue
         # AS THAT ADD LEFT IT; a write that builds its answer after the lock answers both
         # with the later container.
         same, statuses = 0, collections.Counter()

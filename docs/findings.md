@@ -3673,7 +3673,7 @@ the only server that can answer them.
 Measured and not acted on:
 
 - **Refuted: "a detail row's tags carry `count`".** Recorded in cycle 11 as a boundary note from
-  a hunter's report and written into the handover as this cycle's lead territory **without being
+  a hunter's report and carried forward as this cycle's lead territory **without being
   verified**. Searched here across the raw JSON and XML of the detail row (plain and with the
   full preplay `include*` set), every listing, `/library/tags` for nine types and all 26 secondary
   axes on both servers: `count` appears in exactly one place, the tag `Directory` rows of
@@ -3710,7 +3710,7 @@ ever read back. **Twenty-eight findings reported, twenty-two acted on**, and for
 first time in the programme not one of the read hunt's findings was refuted on
 re-measurement.
 
-The cycle opened with three revalidations from the handover's own thin-evidence list,
+The cycle opened with three revalidations of thin evidence,
 and two of them were findings in their own right.
 
 **`Director` caps at THREE on a light row, and `Producer` is not on one at all.**
@@ -3739,7 +3739,7 @@ and one where the client's own `local://` menu predicate answers differently per
 a freshly reset copy (`cycle13 (English SRT External)`, with `displayTitle` the plain
 `English`) and found eleven real sidecar subtitles on zen carrying the same form —
 `English (SRT External)`, `Deutsch (SRT External)`, `Unknown (TXT External)`.
-rex's implementation already matched; the single-witness note in the handover is
+rex's implementation already matched; the single-witness note is
 closed.
 
 ##### What a real library shows and a five-clip one cannot
@@ -3962,7 +3962,7 @@ the people surface, real watch state, and the listing query at scale. One writin
 plexscratch over collections, an in-progress leaf, and the six write cascades cycle 13
 measured and recorded rather than implemented.
 
-The cycle opened with two revalidations from the handover's thin-evidence list, and
+The cycle opened with two revalidations of thin evidence, and
 both paid: one was the largest finding of the cycle and the other closed a
 single-witness note.
 
@@ -4233,9 +4233,9 @@ Re-measured on the copy in `long` mode: a beat on episode 8 at 40% puts 8 on dec
 beat on 8 moves it back to **8**. Three transitions, with `/library/onDeck`,
 `/library/sections/{id}/onDeck`, `/hubs/home/onDeck` and `/hubs/continueWatching` agreeing
 each time. Cycle 9 measured this on the copy's TEN-SECOND clips, where every beat crosses
-90% at once and an episode can barely be left in progress at all — the handover's own
+90% at once and an episode can barely be left in progress at all — the standing
 "re-run anything about sessions, completion or resume from cycles 9 or earlier on `long`"
-entry, paying off exactly as written.
+rule, paying off exactly as written.
 
 **A show's prefs write pushes nothing — except `showOrdering`, which pushes everything.**
 This one is worth recording in full, because the first fix was wrong and the suite caught
@@ -4379,7 +4379,7 @@ Two hunters — the rest of the collection surface and the first sweep of the su
 HTTP METHOD (opus, writing to plexscratch); the real library swept by PARAMETER rather
 than by path (opus, read-only on kids and zen) — and the driver's own revalidation round.
 **33 findings implemented**, the largest cycle in the programme's history, and the three
-cascades §3.3 had carried since cycle 13 are finally built.
+cascades left open since cycle 13 are finally built.
 
 ##### The revalidation round, which paid three times
 
@@ -4392,8 +4392,8 @@ with the trailing half explicitly unwitnessed. Written on the copy it is not sym
 title, and a real PMS omits it then. Inner doubled whitespace survives too.
 
 **The SECTION-level `flattenSeasons` and `episodeSort` produce the same row effects as
-the item path, and `-1` on an item means INHERIT.** §3.3 recorded the library-wide path
-as *assumed* to behave like the item path. It does — and the show's own setting stays
+the item path, and `-1` on an item means INHERIT.** The library-wide path had been
+recorded as *assumed* to behave like the item path. It does — and the show's own setting stays
 `-1` throughout, which is what makes the item value a tri-state rather than a switch.
 All four combinations measured on the copy: section 1 / item -1 is ON, section 1 / item 0
 is OFF, section 0 / item 1 is ON, section 0 / item -1 is OFF. rex read the item's
@@ -4409,7 +4409,7 @@ Beside it, **an unwritten show reports `episodeSort` as `-1`**. `item_prefs.json
 because `-1` is the value that inherits.
 
 **The `group=` `addedAt` tie-break is the lowest ratingKey, and it is sort-independent.**
-§3.3 recorded this as a choice rather than a measurement, because no group on either
+This had been recorded as a choice rather than a measurement, because no group on either
 reference has two members sharing a minimum `addedAt`. The copy has one: movies `1` and
 `17` both carry `addedAt` 1789187071. Put in one group and renamed so that "lowest
 ratingKey" and "lowest titleSort" predict different survivors, the survivor is `1` under
@@ -4419,7 +4419,7 @@ already right; the register entry graduates.
 ##### `/status/sessions/history/all` lists nothing without a `type=`
 
 Cycle 11 recorded the plain call answering `size 0` on both references as a fact it could
-not explain, and three cycles carried it in §3.3 as "find the parameter or account state
+not explain, and three cycles carried it as an open question, "find the parameter or account state
 that makes a real PMS list history". The parameter is `type=`.
 
 | | kids 1.43.4 | zen 1.42.2 |
@@ -4446,7 +4446,7 @@ suite call sites read the page with no `type=`; each was updated rather than rem
 
 Cycle 14 measured `title=Bogota` finding "Bogotá: City of the Lost" while
 `title=Bogota City` and `title=Bogota ` find nothing, read the SPACE as what turns the
-fold off, recorded the mechanism as unexplained, and §3.3 flagged it as "a rule whose
+fold off, recorded the mechanism as unexplained, and it was flagged as "a rule whose
 shape nothing predicts is the kind this project has got wrong before". It was.
 
 `title=Adoravel Trapalhao` finds "Adorável Trapalhão". So do `Sex and Lucia`,
@@ -4615,7 +4615,7 @@ three paths were swept by METHOD and every one of them differed.
 * **What a real PMS does not recognise as a method at all is a 500** — `FROB`, `TRACE`, a
   wrong-case `Get` — with its own four-line html body, on every path. rex answered
   Python's BaseHTTPRequestHandler 501 page, which also leaks its `Server:` string.
-  HANDOVER records that a real PMS never answers 405; it never answers 501 either.
+  A real PMS never answers 405, and it never answers 501 either.
 * **POSTing an EMPTY body to any artwork or subtitle candidate list is a 406** —
   `/posters`, `/arts`, `/thumbs`, `/banners`, `/themes`, `/clearLogos` and `/subtitles`
   alike; `/extras` is a 400. It also refines a recorded rule: with neither a title nor
@@ -4632,7 +4632,7 @@ three paths were swept by METHOD and every one of them differed.
   AND zen (episode 11115 of a show that has artwork) — while its `/thumb` and `/poster`
   are 200s and a SEASON's `/art` is a 200 on zen.
 
-##### The three cascades §3.3 carried since cycle 13
+##### The three cascades left open since cycle 13
 
 All three were re-measured on the copy with a CONTROL write on the same socket first.
 
@@ -4712,10 +4712,10 @@ after a collection add. It follows a write that leaves work in the queue.
 Two hunters and a driver sweep. **Territory A** took the write surface one level below the
 collection on plexscratch: playlists, the play queue, the section save path on a SHOW
 library and the item-prefs family — the layer that had one pass in cycle 9 and nothing
-since, and the cycle whose findings §3.3 flags as thinnest. **Territory B** swept the
+since, and the cycle whose findings were flagged as thinnest. **Territory B** swept the
 dimension nobody had: the HTTP envelope itself — what a request's headers do and what
-every response's headers say, across three servers. The driver took the `Server:` banner
-§3.3 had carried, and then swept zen's **section 2**, which nobody had pointed anything
+every response's headers say, across three servers. The driver took the long-open `Server:`
+banner, and then swept zen's **section 2**, which nobody had pointed anything
 at: 507 shows, 741 seasons and 9,287 episodes, the first real SHOW library the project
 has had.
 
@@ -4848,7 +4848,7 @@ check proved to fail against its own parent commit.
 - **A real PMS sends no `Server:` banner at all.** Fifteen paths, both formats,
   200/400/404/500 alike. rex announced itself as `Rex/0.1 Python/3.10.20` on every
   response it had ever sent — the one header on the wire that says the server is not a
-  Plex Media Server. §3.3 had carried it since cycle 15.
+  Plex Media Server. It had been an open question since cycle 15.
 
 ##### Playlists, the play queue and the section save
 
@@ -4922,8 +4922,8 @@ The first implementation of "`smart=1` over a key list is a 400" refused the cre
 whenever the uri resolved to any rows — and a LISTING uri resolves to rows too, so every
 smart playlist create became a 400. The test is the uri's SHAPE, not whether it resolves.
 It was caught by the next patch's own check block failing on the parent, three commits
-later, and corrected with a check of its own. The lesson is the one §3.1 class C keeps
-teaching: a rule implemented as a proxy for itself is the kind that survives.
+later, and corrected with a check of its own. The lesson is the familiar
+one: a rule implemented as a proxy for itself is the kind that survives.
 
 ##### Measured and not acted on
 
@@ -4937,8 +4937,8 @@ teaching: a rule implemented as a proxy for itself is the kind that survives.
 - **Whether `X-Plex-Language` reaches the XML path identically** — the table is applied to
   the container before rendering, so it does by construction, but the reference's XML was
   not diffed language by language.
-- **Every write rule here has plexscratch as its ONLY witness**, as §3.3's first row says
-  of the whole family; kids is read-only and zen cannot answer a write.
+- **Every write rule here has plexscratch as its ONLY witness**, as it is for
+  the whole family; kids is read-only and zen cannot answer a write.
 - **`/library/metadata/{playlist}/` container attributes** (`allowSync`, `identifier`,
   `mediaTagPrefix`, `mediaTagVersion`) — measured on the copy, not implemented: rex's
   bare container there carries `size` alone, and the paths that matter now answer.
@@ -4975,7 +4975,7 @@ parent commit.
   so rex offered the Add Library and Edit Library dialogs an agent a server of its
   version does not have.
 - **`translations.json`'s coverage was only as wide as its capture script's path list**, as
-  §3.3 had said since cycle 16. Sweeping 87 paths against kids in German found **119
+  had been suspected since cycle 16. Sweeping 87 paths against kids in German found **119
   (attribute, string) pairs** the reference translates that the table did not hold, and zen
   moves the same families (43 strings on a library's `/prefs`, 17 on `/hubs/search`, 2 on
   `/butler`). The biggest is the PREFERENCES family — every `label`, `summary` and
@@ -5183,8 +5183,8 @@ The first implementation of "the collection item paths 404 the verbs they do not
 encoded `/items` as PUT-only — but the verbs measured on the reference were POST, DELETE,
 PATCH and OPTIONS, and GET was never among them. `GET /library/collections/{id}/items` is the
 member LIST, recorded since cycle 14, and the table took it out; the next finding's own
-measurement showed a collection with three members answering an empty list. It is the lesson
-§3.1 keeps teaching from the other side: a rule is scoped to what was TRIED, and a table
+measurement showed a collection with three members answering an empty list. It is the familiar
+lesson from the other side: a rule is scoped to what was TRIED, and a table
 written from a refusal list has to say which verbs were on it.
 
 ##### Measured and not acted on
@@ -5204,10 +5204,10 @@ written from a refusal list has to say which verbs were on it.
 - **A remote artwork candidate's `thumb` is an `images.plex.tv` proxy.** plex.tv is out of
   scope, so rex keeps the upstream URL there.
 - **The non-alphanumeric `firstCharacter` bucket**, re-measured against zen's section 2 —
-  507 shows, 741 seasons, 9,287 episodes, the instrument that did not exist when §3.3 first
-  flagged it. Section 2 contributes no non-digit non-letter-led title at all, so the "its own
+  507 shows, 741 seasons, 9,287 episodes, the instrument that did not exist when it was first
+  flagged. Section 2 contributes no non-digit non-letter-led title at all, so the "its own
   bucket, listed after Z" half still rests on the single `『` row in section 1.
-- **Every write rule here has plexscratch as its ONLY witness**, as §3.3's first row says of
+- **Every write rule here has plexscratch as its ONLY witness**, as it is for
   the whole family.
 - **The three legacy `com.plexapp.agents.*` rows** both references list at `/system/agents`
   stay deliberately absent: rex hosts no plug-in framework, and the fixture's own
@@ -5254,8 +5254,8 @@ code was written and each committed with a check proved to fail against its own 
 - What tells a generated title from an agent-supplied one is not visible on the row:
   kids' season 7 is titled `Season 1` by TMDB and stores it, and 176 of zen's episodes
   are titled `Episode N` by their agent and store it too. rex generates every season
-  title it has, so it decides on the title FORM — a proxy for the mechanism, recorded in
-  HANDOVER 3.3.
+  title it has, so it decides on the title FORM — a proxy for the mechanism, left
+  open.
 
 ##### The fold reaches eleven characters NFD cannot
 
@@ -5465,8 +5465,8 @@ the query exists.
 - **The library delete's frame IDS.** They are the server's own internal metadata ids —
   14 for a nine-row library — not the ratingKeys, and nothing in the response explains
   the id space. rex frames the rows it actually removes.
-- **The butler's per-task counts, and every write rule's single witness.** As HANDOVER
-  3.3's first row says of the whole family: plexscratch is the only server that can
+- **The butler's per-task counts, and every write rule's single witness.** As for the
+  whole family: plexscratch is the only server that can
   answer a write, so every write rule here has one witness.
 - **The non-English article strip and the non-alphanumeric `firstCharacter` bucket**,
   both carried forward again: nothing this cycle touched either.
@@ -6428,7 +6428,7 @@ therefore reads the extended title, which is the catalog form.
 Two hunts and a driver round. The driver opened the cycle by taking the two items cycle 24
 named first: the **season and show unmatch cascades**, which cycle 23 deferred because its own
 hunt was running the butler on the same writable copy and put thirty stray activity frames
-through the listener, and **`pixelAspectRatio`/`anamorphic`**, whose threshold HANDOVER 3.3
+through the listener, and **`pixelAspectRatio`/`anamorphic`**, whose threshold had been
 carried as bracketed rather than measured.
 
 **A SEASON's unmatch pushes ONE `matching` frame and then the season cascade; a SHOW's pushes
@@ -6484,7 +6484,7 @@ it named in the comment — and the boundary is NOT bisected: zen holds no width
 against the unfixed code on exactly one row.
 
 **A search hit LEADS with `librarySectionTitle`, and on `/hubs/search` its `score` follows.**
-HANDOVER 3.3 carried this as single-witness because cycle 22's driver could only reproduce it
+This had been single-witness because cycle 22's driver could only reproduce it
 on zen — kids' hubs answered no `Video` for the queries that cycle tried. `query=Sintel` hits
 on kids, and both references then agree exactly: `librarySectionTitle, score, ratingKey, key,
 guid, …` on `/hubs/search` and `librarySectionTitle, ratingKey, …` on `/library/search`.
@@ -6838,7 +6838,7 @@ emulated and the tick is recorded. Two durations (10 s and 30 min) and two rows 
 same, so it is a function of neither.
 
 `SESSION_TTL = 70` came from cycle 9, on the lab's ten-second clips before `long` mode existed
-— exactly the shape §3.3 warns about for everything measured there. A client that stops
+— exactly the shape to distrust in everything measured there. A client that stops
 beating, as several TV apps do while paused, fell off Now Playing after a minute and a bit.
 
 ---
@@ -6862,9 +6862,9 @@ the only known contradiction of that table, which is why it gets a marker rather
 
 ---
 
-**And a revalidation closed an entry rather than opening one.** §3.3 carried the collection and
-playlist `/refresh` and `/unmatch` FRAME sequences as measured-but-unimplemented. Driven side
-by side against the copy this cycle, rex reproduces all four exactly, frame for frame,
+**And a revalidation closed an entry rather than opening one.** The collection and playlist
+`/refresh` and `/unmatch` FRAME sequences had been carried as measured-but-unimplemented. Driven
+side by side against the copy this cycle, rex reproduces all four exactly, frame for frame,
 including the `state 2` / `metadataState: matching` opener and the guid gate that turns a
 collection's refresh from three frames into eight. Cycle 23 built them; what was missing was
 the `ended` frame's 100 and the guid reaching a read, both of which this cycle fixed.
@@ -6915,7 +6915,7 @@ answered.** Bisected on kids (1.43.4) and zen (1.42.2), which agree to the byte 
 - the **header caps are 1024 and 4096 bytes and 100 LINES**. The first two were BRACKETED in
   cycle 16 (1024 passes, 1100 fails) and are now bisected: 1024 and 4096 pass, 1025 and 4097 are
   400s, so rex's constants were right to the byte. The third is not a size at all —
-  **HANDOVER 3.3's "~41 KB total" is REFUTED**: 100 header lines pass and the 101st is a 400
+  **The earlier "~41 KB total" is REFUTED**: 100 header lines pass and the 101st is a 400
   whatever they weigh, and 200 KB of headers in fifty lines is a 200. The old figure is the same
   cap measured with ~410-byte headers. rex refused at a HUNDRED, one short, because Python's
   reader counts the blank terminator line, and answered `431`.
@@ -6947,7 +6947,7 @@ the image's own aspect ratio and on a resizer rex does not have.
 
 **The session row's `Player` is the one element there that is not alphabetical, and its
 `profile` is not a constant.** Cycle 26 recorded a session `Role` as `filter, actor, id, role,
-tag, tagKey, thumb` and left it in §3.3 as the one element its alphabetical rule did not
+tag, tagKey, thumb` and left it open as the one element its alphabetical rule did not
 explain. Re-measured on the copy with a row carrying seven tag types, every one of them IS
 plainly alphabetical — `Role` is `filter, id, role, tag, tagKey, thumb`, and there is no `actor`
 attribute on a `Role` at all. **That entry is closed and rex was already right.** What is
@@ -6983,8 +6983,8 @@ poster pick, reading the show, both seasons and two episodes back after each:
   episode 8's became the season's). rex dropped the field, so the tile drew nothing where a
   real PMS draws the parent's poster. Cycle 23's "the field gone" was measured on a MOVIE, which
   has no parent to borrow from.
-- a pick on a season **CREATES** `parentThumb` on episodes that had none. That was HANDOVER
-  3.3's open question — "whether a cascade CREATES a borrowed artwork field" — and it does.
+- a pick on a season **CREATES** `parentThumb` on episodes that had none. That was the
+  open question — "whether a cascade CREATES a borrowed artwork field" — and it does.
 - a pick on a show moves a BORROWING season's own `thumb` (kids' unmatched season 11 is such a
   row) and every episode's own `art` to the new stamp. rex moved `grandparentArt` and left
   `art` at the old stamp, so the same image had two names at two versions on one row.
@@ -7091,7 +7091,7 @@ the same place `globalViewCount` comes from: 12, 11, 9, 9, 7, 7, 7, 7 against 12
 7, 7 history rows. kids agrees on its three movies. rex sorted on `(-plays, ratingKey)`, so
 a tied group came back least-recently-watched first.
 
-The same hunt answered a question §7 has carried since cycle 7: **all nine `conformance.py`
+The same hunt answered a question open since cycle 7: **all nine `conformance.py`
 failures are one cause** -- the Range reads on `Part.key` answering `502 rex: debrid resolve
 failed`, because the fixture's Real-Debrid links are account-scoped and the harness runs with
 `RD_TOKEN=dummy`. None is a python-plexapi limitation and none is a server difference; sections
@@ -7118,10 +7118,10 @@ that error on kids and not on rex.
   so there is nothing to change. Recorded so the dimension is not re-swept.
 - **`Part.accessible`/`exists` are gated on `checkFiles=1`** on both references and rex sends
   them always. Re-confirmed and left alone: it is the cycles-1–6 deliberate deviation.
-- **REFUTED:** HANDOVER 3.3's "~41 KB" total header limit (above) and cycle 26's session `Role`
+- **REFUTED:** the earlier "~41 KB" total header limit (above) and cycle 26's session `Role`
   attribute order (above).
-- **The `mediaCount` column on a parent is per LEAF, and a MAX reading is refuted.** HANDOVER
-  3.3 carried it as unwitnessed because the only question ever asked was the `=1`/`>>1` split,
+- **The `mediaCount` column on a parent is per LEAF, and a MAX reading is refuted.** It had
+  been carried as unwitnessed because the only question ever asked was the `=1`/`>>1` split,
   which is also the Duplicates split. Asking for a VALUE separates them: on zen's shows
   `mediaCount=2` is 30, `=3` is 10 and `>>2` is 17 against 44 for `>>1` -- under a max-over-leaves
   reading those three are disjoint and sum to 47, more shows than have a duplicated leaf at all.
@@ -7313,8 +7313,8 @@ applies everywhere.
 Two hunts and a driver round: **nineteen findings**, and for the first time in the programme the
 driver's own revalidation step produced more of them than either hunt.
 
-**The revalidation step found six, in one mechanism.** HANDOVER 3.3 held two cycle-27 entries
-about the artwork cascade whose method was written down and never run -- "clear a show's `/art`
+**The revalidation step found six, in one mechanism.** Two open cycle-27 entries about the
+artwork cascade had their method written down and never run -- "clear a show's `/art`
 on the copy and read its episodes back", and "unmatch a show, give it an `art` back, and read the
 leaves". Running both, and then the writes they imply, produced six findings and one rule that
 subsumes every artwork cascade the project has measured since cycle 14:
@@ -7352,8 +7352,8 @@ STRIPPED `art` from every episode under it. It shipped inside this cycle's own s
 the next check in the same dimension caught it -- which is the argument for driving one finding
 at a time against its own parent.
 
-**Two stale claims closed by re-measurement.** HANDOVER 3.3 and section 8 both held that the
-collection's and playlist's `/refresh` and `/unmatch` FRAME sequences were measured and not
+**Two stale claims closed by re-measurement.** The open questions and the recorded bounds both
+held that the collection's and playlist's `/refresh` and `/unmatch` FRAME sequences were measured and not
 implemented. Driven again on plexscratch with a listener open, rex reproduces all four frame
 for frame: a collection's refresh is 3 frames on an agent guid and 8 once a `local://` guid makes
 it real (`2 matching`, `5`, `3 queued`, activity `started -1`, `updated 49`, `3 processing`,
@@ -7478,19 +7478,19 @@ finding and the build is not.
 `GET /library/metadata/{id}/file?url=file%3A%2F%2F%2Fetc%2Fhostname` with `200 image/jpeg` and the
 file's four bytes; kids (1.43.4) refuses the same request with a 400. The hunt stopped at that one
 request and read nothing else. rex 404s it either way — the references disagree, so there is no
-rule here — but zen is a production server on a build that still does it, and HANDOVER 9 records it
+rule here — but zen is a production server on a build that still does it, and it is recorded
 so that nobody points a sweep at that path again.
 
-#### The thirtieth pass — the instrument the handover kept asking for, and the response that is not a pure function of the request
+#### The thirtieth pass — the instrument the open questions kept asking for, and the response that is not a pure function of the request
 
 Two hunts and a driver round, and the cycle's largest result is an INSTRUMENT.
 
-**The instrument, not the effort — again.** Four HANDOVER 3.3 entries across cycles 21, 25, 27 and
+**The instrument, not the effort — again.** Four open questions across cycles 21, 25, 27 and
 28 all ended with the same sentence: *a writable 1.42.2 copy would settle this.* plexscratch is a
 copy of the lab's config and is therefore 1.43.4; zen is 1.42.2 and is production, read-only. So
 cycle 30 built the missing instrument -- **plexscratch42**, a FRESH install of
 `plexinc/pms-docker:1.42.2.10156-f737b826c`, the exact build zen runs and the one rex reports,
-isolated from plex.tv by construction and writable (`harness/scratch42/`, HANDOVER 4.6). It answered
+isolated from plex.tv by construction and writable (`harness/scratch42/`). It answered
 four open questions in an afternoon, and one of its answers corrected a patch from two cycles ago:
 
 - **An On Deck row carries no `librarySectionKey`, and it is the detail row MINUS `Field`.** Cycle
@@ -7527,7 +7527,7 @@ across the four agent-and-type combinations), so they are right and the copy's n
 limit. **Never read a settings count off plexscratch42.**
 
 **A three-season show, and what it says about cycle 25's progress model.** The copy now carries one
-(`Threefold`, nine distinct ffmpeg clips over three seasons — HANDOVER 3.3 has asked for one since
+(`Threefold`, nine distinct ffmpeg clips over three seasons — asked for since
 cycle 25). Unmatching it pushed an activity whose `Analyzing Media` phase steps **per LEAF from 25
 to 50** — -1, 25, 31, 36, 39, 42, 44, 47, 50 for nine episodes — and then `Updating Metadata` at 50
 twice before `ended 100`, with the subtitle staying the SHOW's title throughout and no per-season
@@ -7642,11 +7642,11 @@ row during a scan, so that sequence is unreachable and recorded rather than buil
 
 #### The thirty-first pass — the write surface per version, the derivations held out, and the reference's own files
 
-Two hunts and a driver round: **22 findings in 21 fix commits and three test commits**, six §3.3
+Two hunts and a driver round: **22 findings in 21 fix commits and three test commits**, six open
 entries CLOSED, and two instrument steps — one of them the most consequential thing in the cycle.
 Three of those fix commits correct an earlier patch of the same cycle, each caught by the suite.
 
-**The instrument again: the reference's own FILES are readable.** Two §3.3 entries had waited on the
+**The instrument again: the reference's own FILES are readable.** Two open entries had waited on the
 words *"read the profile files, if a reference is ever shell-accessible"*. The lab runs its PMS in
 Docker, and `docker exec plexlab-plex …` on the lab host reads the image — no PMS request, no write,
 nothing that can alter the reference. `Resources/Profiles/` holds **79 entries: 78 `.xml` and one
@@ -7731,7 +7731,7 @@ art 9,287/9,287, `parentThumb` present exactly when the season owns its poster 9
 stamp equal to `updatedAt` on every owned path with `addedAt` the fallback on the 268 rows that carry
 no `updatedAt` — which is `_stamp_artwork`'s own expression. The carried fields are 100% over the same
 rows, and the light projection differs from the real light row in nothing but one row's tag casing.
-Four §3.3 entries close on that population.
+Four open entries close on that population.
 
 What it found wrong is the **matchers**, and every one of them is a query a user types:
 
@@ -7784,7 +7784,7 @@ that contradiction is settled.
 #### The thirty-second pass — concurrency, the fold table in full, and the decision model from the profile files
 
 Two hunts and a driver round, carried across two sessions: **nine findings in nine fix commits and one
-test commit**, four §3.3 entries CLOSED, and two instruments used in anger that no cycle before had:
+test commit**, four open entries CLOSED, and two instruments used in anger that no cycle before had:
 **threads released from one barrier**, and the **reference image's own profile files as a model's
 input**.
 
@@ -7812,7 +7812,7 @@ And one deterministic finding it tripped over: **a WRITE's response honours the 
 rex gated both post-processors on GET and HEAD, so cycle 21's "paging is a property of the
 response" held for half the surface.
 
-**Territory B closed the two §3.3 entries it was given.** The `title=` query fold is a table of 102
+**Territory B closed the two open entries it was given.** The `title=` query fold is a table of 102
 characters, identical on kids and zen over every codepoint both could probe; and the decision model is
 exact.
 
@@ -7884,7 +7884,7 @@ three-row container, `/livetv/dvrs` and `/livetv/sessions` empty, `/livetv/epg` 
 `/media/grabbers` four grabbers — exactly rex's answers. The two UNCLAIMED copies 403 all of them
 and answer the container at `/livetv/` with a trailing slash. Class E, closed without a code change.
 
-**Two checks this cycle had to be refitted to the state the suite leaves them**, the recorded §10 trap:
+**Two checks this cycle had to be refitted to the state the suite leaves them**, a recorded trap:
 the write-exclude check assumed one Media on a movie that an earlier merge check has given two, and the
 add-race check needed a third movie the suite has deleted by then. Both were re-proved by hand against
 their own pre-patch trees, and the exclude check against a server with the second version merged in.
@@ -7908,7 +7908,7 @@ Measured and not acted on:
 #### The thirty-third pass — the response header block, and a version claim that did not survive its control
 
 Two hunts and a driver round: **five findings in six fix commits** (one of them repairing a
-regression this cycle's own first patch caused), four §3.3 entries closed or narrowed, and two large
+regression this cycle's own first patch caused), four open entries closed or narrowed, and two large
 NEGATIVE results — one of which refutes the cycle's only hunt finding as it was reported.
 
 **The hunts ran on a smaller model, and it shows in the shape of the cycle.** Both territories were
@@ -8026,11 +8026,11 @@ Measured and not acted on:
 
 #### The thirty-fourth pass — a fresh client capture, and the decision's audio streams made rather than found
 
-Both hunts died inside a minute on the weekly rate limit that killed cycle 33's (§10), so this
+Both hunts died inside a minute on the weekly rate limit that killed cycle 33's, so this
 cycle is the driver's own two territories: **a fresh client-session capture through plexlab**, the
 founding instrument, whose last full recording was cycle 27's; and **zen 19813's shape, made rather
-than found**, which §3.3 had been asking for since cycle 32. Five findings in four fix commits and
-two test commits, one §3.3 entry CLOSED, one recorded belief overturned, and one of the cycle's own
+than found**, which had been asked for since cycle 32. Five findings in four fix commits and
+two test commits, one open entry CLOSED, one recorded belief overturned, and one of the cycle's own
 earlier commits caught starving a check three thousand lines below it.
 
 **The capture.** `session-web.py` drove the official client through the walk again against kids and
@@ -8059,7 +8059,7 @@ sent:
   right set and put all three CORS headers at the end. The `Sec-WebSocket-Extensions` the client
   offers is echoed by neither side.
 
-**The made row.** §3.3's oldest open entry was zen 19813, the one measured row whose audio tracks
+**The made row.** The oldest open entry was zen 19813, the one measured row whose audio tracks
 carry no language, and the eight cells cycle 32's model could not fit. Its own instruction was to
 make one: `plexscratch`'s `long` media directory is writable. `ffmpeg` muxed Sintel's h264 video
 with an mp3 2.0 track and an ac3 5.1 track, both `default`, neither tagged with a language, into an
@@ -8093,7 +8093,7 @@ puts that check. The shape reproduces; the rule was then measurable.
   `Stream` rows are **byte-identical in both states**. So cycle 32's rule -- "the server re-picks the
   widest default track when the selected one has no language" -- is not a property of the row at all;
   it was that hidden state, fitted to one witness. rex holds a chosen track, so the model is the
-  after, and the before is recorded and not emulated (§8).
+  after, and the before is recorded and not emulated.
 
 `tests/test_decision.py` is the new suite that keeps it honest: `tests/fixtures/decisions/` holds
 each measured row's `Media` as the reference wrote it and one line per (profile, row) cell -- 78
@@ -8135,7 +8135,7 @@ had reported as "already correct" and found four of its seven items open.
   for the 404), and a HEAD carries its `Content-Length` with no body. rex had **three** of them --
   the 401, the 403 and the root's 193-byte redirect, each built by the cycle that happened to measure
   that one refusal -- and answered `text/plain` with a sentence of its own to every other refusal on the
-  surface. That sentence is cycle 1's "deliberate deviation", carried in HANDOVER §8 for thirty-five
+  surface. That sentence is cycle 1's "deliberate deviation", carried as a bound for thirty-five
   cycles and re-justified three times (cycles 16, 27, 29) without anyone reading what the reference
   actually sends. It is now gone: the sentences move to the LOG, which is where they were always the
   useful half.
@@ -8253,10 +8253,10 @@ ladder itself was two-thirds of the real one.
   `metadata_items` row. That pruning is visible from outside and unmeasurable: `Tears zzz`
   answers the row on kids' five titles and `Riders zzz` answers nothing on zen's 3,887.
   Emulating the candidate half alone would answer most of a real catalog to a nonsense query,
-  which is a worse error than answering none of it. §8 carries the mechanism so the next cycle
+  which is a worse error than answering none of it. The mechanism is recorded so the next cycle
   starts from it rather than from "a trigram score rex does not try to reproduce".
 
-**The same hunt took the decision corpus into Dolby Vision, and settled a §8 disagreement.**
+**The same hunt took the decision corpus into Dolby Vision, and settled a recorded disagreement.**
 
 * **A Dolby Vision PROFILE 5 source is refused by the server itself**, with a code and a sentence
   the corpus had never seen: `transcodeDecisionCode 2003`, "File is unplayable. DoVi (Profile 5)
@@ -8276,7 +8276,7 @@ ladder itself was two-thirds of the real one.
   is `DOVIBLPresent` and not `DOVIELPresent`: a separate-track enhancement layer says false on
   its own stream, a single-track dual layer says true beside its EL flag. fun's note was measured
   on a file of the first kind and zen's on files of the second. **rex was already right** --
-  `mediainfo.py` keys its "DoVi Enhancement Layer" label on exactly that flag -- so the §8 entry
+  `mediainfo.py` keys its "DoVi Enhancement Layer" label on exactly that flag -- so the entry
   is a resolved non-defect rather than an open contradiction.
 * **A multi-Media row answers `mediaIndex=N` from its own order.** zen's rk 401 has fifteen;
   `mediaIndex` 0, 1, 2 and 7 select Media 603, 3840, 4187 and 5404, `15` is an HTTP 400, and
@@ -8295,7 +8295,7 @@ ladder itself was two-thirds of the real one.
   rather than on the agreeing ones.
 
 **The write-frames hunt took the list cycle 35 reported as "already correct" and held it out** --
-HANDOVER §3.1 class F, a hunter's negative taken on trust -- and four of the seven items it had
+a hunter's negative taken on trust -- and four of the seven items it had
 closed are not closed. It drove 93 write measurements against plexscratch (1.43.4),
 plexscratch42 (1.42.2) and a frozen rex side by side, with one listener per server, a control
 title edit before every phase, and the agent confound designed out (a `tv.plex.agents.none`
@@ -8335,7 +8335,7 @@ is comparable).
   one -- where the item and metadata spellings of the same edit send `loading` with the new title
   in both. rex routed the section save straight through the item writer.
 
-**And the interlaced row the cycle asked for was MADE, which closes a §3.3 entry.** A
+**And the interlaced row the cycle asked for was MADE, which closes an open entry.** A
 `-flags +ilme+ildct -x264-params interlaced=1:tff=1` encode muxed into plexscratch's writable media
 and scanned gives a Stream with `scanType: "interlaced"` and `displayTitle "1080i (H.264)"` on both
 versions -- and `mediainfo._scan_type("tt")` already derives exactly that. Driven against all 78
@@ -8352,8 +8352,8 @@ Measured and not acted on:
   hash, transcribed and scored at 897 of 898 reference band rows -- and the top-N prune over a
   GLOBAL token frequency (`editdist1 + 32 - ⌊log₂ rank⌋`) cannot be read from outside. `Tears zzz`
   answers the row on kids' five titles and `Riders zzz` answers nothing on zen's 3,887, so the
-  candidate half alone would answer most of a real catalog to a nonsense query. §3.3 keeps the
-  entry with the mechanism attached, which is a much better starting point than "a trigram score".
+  candidate half alone would answer most of a real catalog to a nonsense query. The entry stays
+  open with the mechanism attached, which is a much better starting point than "a trigram score".
 - **`/match` on a SHOW.** Both copies open with a bare `state 3` carrying the OLD title and then
   run that show's refresh cascade; the DEPTH is the version's (1.43.4 cascades to every season and
   episode, 1.42.2 stops at the show). rex sends the bare 3 and then its own seven-frame show
@@ -8454,7 +8454,7 @@ sends.
   baseline|main|high **[list]**.` where a `value=` limitation carries no suffix. The row is now in
   the decision corpus, which it takes to **1,950 cells**; it is also the corpus's first
   `has64bitOffsets` true, and the reference's HTTP 400 for Xbox 360 there matches the model exactly,
-  which closes that half of §3.3's untripped-limitations entry.
+  which closes that half of the open untripped-limitations entry.
 
 **The negative results.** The encoding negotiation matches on both references and rex
 (`deflate`, `br`, `*` and `compress` all get a plain body; a list containing `gzip` gets gzip;
@@ -8470,7 +8470,7 @@ Measured and not acted on:
   table deliberately does not reach -- still comes back from a real PMS, scored by word position and
   word length (a length-2 word at the query's first position drops to the fuzzy floor, at the last
   position not at all; 16 zen titles scored). rex matches on prefixes and returns no row at all,
-  and emulating the band means emulating a continuous similarity score. §3.3 keeps the entry with the
+  and emulating the band means emulating a continuous similarity score. The entry stays open with the
   measurement attached.
 - **`video.separateFields` is read as a constant 0** in `decision.py` where every neighbouring value
   is read off the stream, and `mediainfo` never derives it. zen holds exactly one interlaced h264
@@ -8748,11 +8748,11 @@ Both scratch references were restored byte-for-byte. The final tree passes catal
 ### Cycle 41: the historical backlog and every advertised control
 
 Measured 2026-09-17 against both disposable PMS versions and frozen rex `2c06bab`. The
-historical census extracted 513 raw entries from this file and `HANDOVER.md`, retained 496 claim
-sources, normalized 287 parent claims and split compound claims into **332 atomic behaviors**.
-Every atom has a terminal disposition: 180 built, 42 refuted or superseded, 36 deliberate
-capability absences, 23 client-invisible fidelity choices, 40 external/instrument bounds and 11
-safely unreachable state models. The last 51 are explicit bounded cells, not open deductions;
+historical census extracted 513 raw entries from this file and the working notes of the time,
+retained 496 claim sources, normalized 287 parent claims and split compound claims into **332 atomic
+behaviors**. Every atom has a terminal disposition: 180 built, 42 refuted or superseded, 36
+deliberate capability absences, 23 client-invisible fidelity choices, 40 external/instrument bounds
+and 11 safely unreachable state models. The last 51 are explicit bounded cells, not open deductions;
 there are **zero actionable findings and zero unbounded unresolved cells** on the fixed tree.
 
 The independent advertisement census started from the other direction. It joined 49 live source
@@ -9086,7 +9086,7 @@ thirty-four cycles without anyone reading it.
 * A real PMS also `POST`s `servers.plex.tv/servers.xml` with a `MediaContainer` naming its
   `<Server>` and a `<Directory>` per library — 57 times in the recorded capture against three
   device announces. That is how plex.tv learns a server's libraries. It is a plex.tv WRITE and
-  therefore out of scope under §8/§9; recorded with its shape and cadence, not built.
+  therefore out of scope; recorded with its shape and cadence, not built.
 * The `Connection: close` a part read sends instead of the reference's `Keep-Alive`/`timeout=20`
   remains the recorded ffmpeg-seek deviation.
 * `Part.accessible`/`exists` remain hard-coded true. zen rows whose file is unreachable answer
@@ -9697,7 +9697,7 @@ and four more findings came out of the tag-rich row it had to MAKE to be non-vac
   claim token there would hand it to every peer that can reach the port.
 * **The `std::bad_cast` 500.** A device row whose `platform` parses as a number makes
   `GET /devices` — and `GET /statistics/bandwidth` — a 500 on a real PMS. rex stores
-  the string it was given and does not reproduce the crash. See HANDOVER §9: both
+  the string it was given and does not reproduce the crash. Both
   references were in that state, and it is damage this programme caused.
 
 
@@ -9756,7 +9756,7 @@ written, are 401s; `/manage` answers its 302 to the web client like `/web`; and 
 answered the generic 403 to all six.
 
 **`/:/plugins` is seventeen rows, and everything under it is a second plug-in framework
-subtree.** HANDOVER §8 has carried "legacy agents and the `/:/plugins` listing" as a
+subtree.** "Legacy agents and the `/:/plugins` listing" had been carried as a
 deliberate bound since cycles 1–6, on the grounds that rex hosts no plug-ins. The
 listing is not hosting: kids, zen, plexscratch and plexscratch42 answer the identical
 seventeen identifiers in the identical order, with `state: 4` on every one but
@@ -9938,8 +9938,8 @@ prefix — and the framework's `IndexError` traceback for every other running bu
 is `handlers/runtime.py:113` reaching for `handlers[0]` of an empty list. The four bundles
 the server hosts but does not run answer the 109-byte 500 to every one of them.
 
-**And the eleven legacy agents are listed.** HANDOVER §8 carried "legacy agents and the
-`/:/plugins` listing" as one inherited bound from cycles 1–6. Cycle 52 retired the second
+**And the eleven legacy agents are listed.** "Legacy agents and the
+`/:/plugins` listing" had been one inherited bound from cycles 1–6. Cycle 52 retired the second
 half on the grounds that a fixed table in the image is not hosting; this is the same
 table, and leaving the two halves split was drift rather than a decision. kids, zen,
 plexscratch and plexscratch42 answer the identical eleven identifiers with the identical
@@ -10039,7 +10039,7 @@ The census behind those four is the useful negative: 130 request families across
 and rex produced **zero JSON scalar-type differences** where the two references agree,
 and every element either reference emits is emitted by rex somewhere. The 121
 (element, attribute) cells present on both references and never here are, after
-re-measurement, content or state or already in HANDOVER 8.
+re-measurement, content or state or already a recorded bound.
 
 **Measured and not acted on.**
 
@@ -10168,7 +10168,7 @@ on zen wherever its library holds the extension:
 * **`sectionID` on `/hubs/home/recentlyAdded` is a number**: `01` is section 1, `0` nothing,
   and a value that is not a non-negative int32 is ignored.
 
-**Revalidated from HANDOVER 3.3.** The legacy agents' LOAD ORDER follows the filesystem:
+**An open entry, revalidated.** The legacy agents' LOAD ORDER follows the filesystem:
 zen's `Plug-ins` directory is btrfs (`ls -U` alphabetical) and the three docker instruments
 share one overlayfs order, plexscratch42 -- the same 1.42.2 build as zen -- included; it is
 environment, not version. `/system/library/sections`' `key` ignores `Host` entirely (seven
@@ -10234,7 +10234,7 @@ state on plexscratch42 where neither read-only reference held it.
 * **The genre shelf is the head of its own key listing**, in that listing's default order
   (zen's `movie.genre.1.241` is exactly the head of `?unwatched=1&genre=241&audienceRating>=7.0`).
   WHICH genre is a random pick per request query string (`?x=1` twice is one genre, `?x=2`
-  another), with the actor/director shelf moving beside it -- HANDOVER 8's random shelf.
+  another), with the actor/director shelf moving beside it -- the recorded random shelf.
 * **A season's generated title follows an index edit** -- `index.value=0` is `Specials`, the
   old index back is `Season N` again -- because a season's title is generated unless the user
   wrote one.
@@ -10244,7 +10244,7 @@ state on plexscratch42 where neither read-only reference held it.
 `/hubs/home/recentlyAdded?type=2&sectionID=2` -- the show `One Piece`, the episode `Facts of
 Life`, a season, three episodes ... twelve of twelve. Cycle 50's "keeps its top-level show row"
 held only where the roll-up IS the show, as on kids, whose one show is all its roll-up holds.
-Found revalidating cycle 54's §3.3 entry on the filtered form, which it closes.
+Found revalidating cycle 54's open entry on the filtered form, which it closes.
 
 **The parameter vocabulary, repeated and widened (Territory A).** Cycle 54's sweep sent four
 values per name. Cycle 55 repeated it (every cycle-54 fix holds; 220 names move a zen response,
@@ -10287,15 +10287,15 @@ them 1.42.2's as well:
 
 **Measured and not acted on.**
 
-* **The tagging join**, still (HANDOVER 8, cycle 54) -- its refusal half is measurable, but
+* **The tagging join**, still (cycle 54) -- its refusal half is measurable, but
   building a refusal for columns whose rows rex cannot compute was left with the match.
 * **How `/hubs/search?sectionId=` REORDERS its hubs** when the id names a section (that
   section's own types first, rows unchanged). The refusal is built; the order is not worked out.
 * **`/library/search` and `/hubs/search` `limit` at the int32 boundary.** kids 500s `2147483647`
   and `9223372036854775807` while answering `2147483648`, and `4294967296` CRASHED kids' PMS
-  (it restarted in about five seconds; HANDOVER 9). Only "outside int64 is a 500" is built.
+  (it restarted in about five seconds). Only "outside int64 is a 500" is built.
 * **WHICH genre the genre shelf picks** is random per request query string, with the actor and
-  director shelf moving beside it (HANDOVER 8's random shelf); rex's most-common genre is one
+  director shelf moving beside it (the recorded random shelf); rex's most-common genre is one
   admissible sample. The ORDER of the shelf's rows is built.
 * **A parent's `lastViewedAt` as `max(children)`** where its own state is absent is read by the
   binary's SQL; zen's section 2 displays it on rows no filter can see, the trace of state written
@@ -10305,11 +10305,11 @@ them 1.42.2's as well:
 
 #### The fifty-sixth pass — the first cycle under the client-impact rule
 
-From this cycle the loop stops when a cycle finds **nothing a real client would notice**
-(HANDOVER 1). Every finding is tagged CLIENT-VISIBLE -- an official client or python-plexapi
+From this cycle the loop stops when a cycle finds **nothing a real client would notice**.
+Every finding is tagged CLIENT-VISIBLE -- an official client or python-plexapi
 builds the request in ordinary use and the difference changes what it does, with the call site
--- or MALFORMED-ONLY. Client-visible findings are built; malformed-only ones are recorded in
-HANDOVER 8.
+-- or MALFORMED-ONLY. Client-visible findings are built; malformed-only ones are recorded as
+bounds.
 
 Territory A started from the CLIENTS: 3,885 recorded Plex Web exchanges (80 shapes), the
 reference walk replayed, 35 python-plexapi templates and 1,455 probes driven through it, 160
@@ -10479,7 +10479,7 @@ plexscratch42 and on rex, each followed by a reload of everything it should reac
   takes a non-empty pinned list as its scope over `contentDirectoryID`.
 * **`translations.json` is per version.** It was captured off kids (1.43.4); re-captured off zen
   (1.42.2) with the same tool and overlaid, it moves the Danish, Serbian, Ukrainian, Hebrew and
-  Portuguese strings (see the commit and HANDOVER §7).
+  Portuguese strings (see the commit).
 
 **Recorded, not built.** The Optimize surface python-plexapi reaches (`DELETE
 /playlists/generators?type=42`, the `mediaProcessingTarget` tag table) stays the recorded Optimize
@@ -10487,11 +10487,11 @@ bound; a real PMS's CORS echo is limited to `*.plex.tv`, `localhost` and `127.0.
 rex echoes any (no client is served from another origin); collection row attribute order; a
 smart playlist's `content` on `/library/metadata/{id}`; the unpause `queueRefreshed` frame; a
 split row's media delete. The ORDER of an item language enum's head is language-independent and
-fits neither tag order nor English-name order over zen's 507 shows (§3.3).
+fits neither tag order nor English-name order over zen's 507 shows (still open).
 
 #### The sixtieth pass — localisation as an axis, and the first three-hunter repeat
 
-Cycle 60 ran three hunters against the axis ledger (HANDOVER §7 "Cycle 59"). A repeated the
+Cycle 60 ran three hunters against cycle 59's axis ledger. A repeated the
 rendered client and walked it again in de, da, ja and pt; B repeated python-plexapi's writes and
 drove playback as fifteen client identities; C repeated axes 1, 2, 3, 4, 7 and 10.
 
@@ -10689,7 +10689,7 @@ Cycle 69 repeated all ten axes of the ledger and every territory reported zero c
 zero new malformed-only findings: the rendered client and localisation (43 Plex Web languages over
 HTTP, the socket and `/activities`), python-plexapi's writes and playback per identity, and the
 request inventory, reads, write flows, owner's screens, vocabulary and discovery. It is the cycle
-the client-impact stopping rule asked for. What it does not bound is listed in HANDOVER §7 "Cycle 69".
+the client-impact stopping rule asked for.
 
 #### The seventieth pass — the native Plex for Android app
 
@@ -10766,8 +10766,8 @@ localisation rules on axis 9, both drawn only by Plex for Android:
 unwatched leaves; an empty season's `/children` names its children's type; `/library/all?type=3`
 season rows carry no leaf counts; a show library's legacy `/unwatched` lists shows by their leaves;
 `/library/metadata/{collection}/children` on an episode collection is empty on 1.42.2; an episode's
-history row composes its parent artwork URLs from the parents' keys. None is read by a client
-(HANDOVER §8). **Checked and clean:** the Android walk's missing luma detail call on a repeat open
+history row composes its parent artwork URLs from the parents' keys. None is read by a client.
+**Checked and clean:** the Android walk's missing luma detail call on a repeat open
 is the app's own behaviour -- the reference does the same after a restart.
 
 #### The seventy-second pass — clean on all eleven axes
@@ -10933,8 +10933,7 @@ restart leg (only the statistics move) and the driver's Android walk across a re
 
 Cycle 78 repeated the cycle-77 implementation head (`afba7e4`) across every axis.
 A/B/C/N/P matrices, offline suites and their restart legs found no new
-client-visible or malformed-only difference. The complete exact command ledger,
-exit codes, raw paths and hashes are in `handover/cycle78-report.md`.
+client-visible or malformed-only difference.
 
 The private copy of the current account catalog passed navigation **25/25**,
 python-plexapi **38/38**, and real byte reads/decode **5/5**. The fixture UI
@@ -11228,7 +11227,7 @@ Its diff is a stricter filter-field grammar and four `AudioStream` attributes pl
   writes no history row.
 
 Every territory re-ran under 4.18.3 with no client-visible and no new malformed-only
-difference; the per-leg ledger is `handover/cycle82-report.md`. **Measured and not acted on:**
+difference. **Measured and not acted on:**
 plexscratch42's 500 on a 95 % timeline beat and on one identity's `select_sub_none` (it answers
 200 replayed on an idle server: reference contention); `regress_p75`'s fourth check, which encodes
 a claim cycle 75 refuted.
@@ -11284,7 +11283,7 @@ rows do not carry. Neither is measured on the same row both ways.
 #### The eighty-third to eighty-sixth passes — the native server measured against the references
 
 `main` became the native Rust server on 2026-09-30, so the loop reopened with the binary as the
-target. Before the first native cycle every HANDOVER §2a entry was worked (the follow-ups, a
+target. Before the first native cycle every open follow-up was worked (the follow-ups, a
 lockstep replay of the 15 real-client corpora, differential sweeps of the oracle's own vocabulary
 through query names, path segments, request headers, XML and methods, the UI suite's residue on
 both servers' streams, concurrency and the state file): 78 fixes, each in whichever server the
@@ -11294,7 +11293,7 @@ never reached the transcoder's inner read, `continuous=1` queues, the language p
 zh-TW/es-419/pt-PT, theme/logo candidate types, play-queue ownership and client), 84 found 2
 (a deleted item's timeline frame and its play-queue removal), 85 found 2 (a queue's selection offset
 under `window`/`center`; a deleted section's queued rows), and **86 found none**. The rules are trap
-bullets in `docs/protocol-traps.md`; the ledgers are `handover/cycle8{3,4,5,6}-report.md`.
+bullets in `docs/protocol-traps.md`.
 
 Measured and not acted on: a 92% beat with a different `playQueueItemID` from its stop (the
 reference ignores the stop; no client sends it); the reference's per-season activity frame order;
@@ -11308,8 +11307,8 @@ Cycle 93 met the stopping rule, but the reopen table's Android row was wrong: th
 recorded (read off the owner's phone) is a May 2026 build, and Google Play has served newer ones
 since; on 2026-10-05 the current build was **2026.19.1** (versionCode 971050475, updated
 2026-10-01). It was installed over 2026.9.0 on the emulator (Android accepted the update, so the
-signer is Plex's) and both Hermes bundles were censused with the new `handover/tools/apkcensus.py`
-(`handover/android-census-2026.19.1.md`): 330 -> 412 request templates, PMS-bound 63 -> 80; 19
+signer is Plex's) and both Hermes bundles were censused with the new `probes/apkcensus.py`:
+330 -> 412 request templates, PMS-bound 63 -> 80; 19
 PMS-bound added (a server dashboard: `/statistics/bandwidth|resources|media`, `/status/sessions`,
 history with account/section/item filters, `/library/all/top`; `/library/sections/{id}/prefs` on
 every item detail; `POST /library/collections`; `playlistType`/`subType` list filters), 2 removed,

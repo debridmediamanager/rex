@@ -58,7 +58,7 @@ PUBSUB_RETRY = 15
 # service. Set, every plex.tv, servers.plex.tv and scrobbles.plex.tv URL is sent to
 # `<base>/<host><path>` instead, which is how tests/test_plextv.py drives a claim, an
 # announce and an account import against a local stub: exercising these flows against
-# the real account signs real servers out (HANDOVER: the 2026-09-11 token reset), and a
+# the real account signs real servers out (the 2026-09-11 token reset), and a
 # second server announcing an identity rewrites that identity's registration. The host
 # stays in the path so the stub still sees which service was addressed.
 PLEXTV_URL_ENV = "REX_PLEXTV_URL"

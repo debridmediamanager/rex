@@ -3508,7 +3508,7 @@ def main():
     # copy can separate them (an unclaimed PMS holds no account token at all).
     # rex's omission therefore stands as a DELIBERATE deviation, not a measurement:
     # its own token gate defaults OFF, so emitting the claim token here would hand it to
-    # every peer that can reach the port. See HANDOVER 3.3 and 8.
+    # every peer that can reach the port: a deliberate deviation.
     _, body, _ = request(base, "GET", "/myplex/account")
     account = json.loads(body).get("MyPlex", {}) if body[:1] == b"{" else {}
     check("/myplex/account carries no authToken (deliberate: zen 1.42.2 sends one)",
@@ -6623,7 +6623,7 @@ def main():
     # Cycle 30 corrected both halves on plexscratch42, a writable copy of the version
     # rex reports: the row is the detail row MINUS `Field`, and it carries NO
     # `librarySectionKey` -- on a movie and an episode alike, as plexscratch (1.43.4) and
-    # cycle 21's fun also said. zen's one on-deck row is the outlier (HANDOVER 3.3).
+    # cycle 21's fun also said. zen's one on-deck row is the outlier, still open.
     check("On Deck rows are the detail row minus Field, named by UUID and not by key",
           deck8 and home_deck8
           and all(set(detail8) - set(row8) <= {"Field"} and not set(row8) - set(detail8)
@@ -8171,8 +8171,8 @@ def main():
     # with `clientIdentifier=""`. rex recorded them only for an identified client, so
     # that row stayed nameless whatever a client sent. This is the same write that
     # corrupted BOTH references during this programme: a NUMERIC `X-Plex-Platform` stores
-    # as a number there and makes `/devices` and `/statistics/bandwidth` a 500 (see
-    # HANDOVER 9). rex stores the string and does not reproduce the crash.
+    # as a number there and makes `/devices` and `/statistics/bandwidth` a 500.
+    # rex stores the string and does not reproduce the crash.
     request(base, "GET", "/identity")   # make sure the anonymous row exists
     import urllib.request as _u49q
     req_c49q = _u49q.Request(base + "/identity", headers={
@@ -13545,7 +13545,7 @@ def main():
     # every path.
     #
     # rex answered Python's BaseHTTPRequestHandler 501 page, which also leaks
-    # `Server: Rex/0.1 Python/3.10.20`; HANDOVER records that a real PMS never
+    # `Server: Rex/0.1 Python/3.10.20`; a real PMS never
     # answers 405, and it never answers 501 either. A bare OPTIONS with no
     # Access-Control-Request-* headers was a 200 where a real PMS routes it; a genuine
     # preflight is unchanged except that its response carries `Content-Type: text/plain`.
@@ -13576,7 +13576,7 @@ def main():
     # `/banners`, `/themes`, `/clearLogos` and `/subtitles` alike, all seven identical.
     # `/extras` is the one that is a 400 instead.
     #
-    # It also refines a recorded rule. HANDOVER has the subtitle upload's "no `title`
+    # It also refines a recorded rule: the subtitle upload's "no `title`
     # is a 500, an empty body a 406"; with NEITHER, the copy answers 406, so the
     # empty-body check runs FIRST. rex checked the title first and answered 500,
     # and answered 400/404/200 across the other six -- two of which (`/themes`,
@@ -13959,7 +13959,7 @@ def main():
     #     just GET: `PUT /prefs`, `POST /setting`, `DELETE /users` and `/devices.xml`
     #     are all 200 with `content="plugins"` on the copy, where rex 404'd them.
     #
-    # HANDOVER already records that verb routing is per (method, path) and not uniform.
+    # Verb routing is already known to be per (method, path) and not uniform.
     # It reads to a client -- and to python-plexapi's capability probes, which are
     # exactly this shape -- as "this endpoint exists and accepts writes".
     readonly_c15v2 = {}
@@ -14115,7 +14115,7 @@ def main():
              "nothing related is left in the fixture by this point")
 
     # Cycle 15: two standing checks asserted shapes this cycle re-measured and found
-    # wrong. Updated rather than removed, per the handover's own rule, and re-measured
+    # wrong. Updated rather than removed, per the standing rule, and re-measured
     # on plexscratch before either was touched:
     #
     #   * A BARE `OPTIONS` -- no `Access-Control-Request-*` headers -- is a 404 on
@@ -14137,7 +14137,7 @@ def main():
 
     # Cycle 15, re-measured on plexscratch with a control write on the same socket
     # first. Cycle 13 recorded this and did not build it; cycle 14 re-measured it and
-    # carried it; HANDOVER 3.3 named it cycle 15's cheapest territory. The frame counts,
+    # carried it; it was named cycle 15's cheapest territory. The frame counts,
     # on the two-season Firefly tree:
     #
     #     PUT /library/metadata/8/refresh   (episode)   7 frames
@@ -14206,7 +14206,7 @@ def main():
              len(show_frames_c15r2), len(ids_c15r2(show_frames_c15r2))))
 
     # Cycle 15, re-measured on plexscratch with a control write on the same socket
-    # first -- the third of the three cascades HANDOVER 3.3 carried into this cycle.
+    # first -- the third of the three open cascades carried into this cycle.
     # `PUT /library/metadata/{id}/analyze` is a 200 with an empty body and then, per
     # LEAF and in tree order, THREE `state 5` frames carrying `mediaState` `analyzing`,
     # `thumbnailing` and none, followed by ONE `media.generate.chapter.thumbs` activity
@@ -14267,8 +14267,8 @@ def main():
           and str(seasons_c15a[0]) not in [i_c15a for i_c15a, _s_c15a in season_c15a],
           str(season_c15a))
 
-    # Cycle 15, re-measured on plexscratch -- the last of the three cascades HANDOVER
-    # 3.3 carried into this cycle. `POST /library/sections` is a 201 with a `Location`
+    # Cycle 15, re-measured on plexscratch -- the last of the three open cascades
+    # carried into this cycle. `POST /library/sections` is a 201 with a `Location`
     # header (rex already had both) and then 75 frames: a `library.update.section`
     # "Scanning" activity stepping through the files with a `status` LIBRARY_UPDATE
     # frame beside it, a `created` pair per item, each item's refresh sequence, and
@@ -15887,7 +15887,7 @@ def main():
                                  all(byte_c17d2 < 128 for byte_c17d2 in body_c17d2)))
 
 
-    # Cycle 17: §3.3 carried "the MECHANISM is measured; the COVERAGE is only as wide as
+    # Cycle 17: an open entry carried "the MECHANISM is measured; the COVERAGE is only as wide as
     # capture_i18n.py's path list" since cycle 16, and it was right. Sweeping 87 paths
     # against kids in German found 119 (attribute, string) pairs the reference
     # translates that the table did not hold, and zen -- 1.42.2, the build rex
@@ -17355,7 +17355,7 @@ def main():
     # By this point in the suite the fixture's spare movie has been MERGED away (the
     # match check absorbs it), so cycle 18's three write checks below resolve a LIVE
     # row from the section rather than trusting the `spare` the suite started with --
-    # the trap HANDOVER.md 6 names, and the reason this file counts rows live.
+    # a known trap, and the reason this file counts rows live.
     live = [r["ratingKey"] for r in
             (get(base, "/library/sections/%s/all?type=1" % movie_section)[1]
              .get("Metadata") or [])]
@@ -17697,8 +17697,8 @@ def main():
     carry_c20b = [(str(r_c20b.get("parentRatingKey")), "parentThumb" in r_c20b)
                   for r_c20b in (eps_c20b.get("Metadata") or [])]
     # Stated in the direction that does not depend on an open question: whether a
-    # poster PICK creates the field on a child that carries none is HANDOVER 3.3's own
-    # unsettled entry, and by this point the suite has re-postered these rows. What is
+    # poster PICK creates the field on a child that carries none is still
+    # unsettled, and by this point the suite has re-postered these rows. What is
     # settled -- and what was wrong before cycle 20 -- is that an episode carrying
     # `parentThumb` belongs to a season whose poster is its OWN.
     check("an episode carries parentThumb only where the season's poster is its own",
@@ -19755,7 +19755,7 @@ def main():
     # Cycle 25, measured on kids (`query=Sintel`, the query that finally hits there) and
     # on zen: a `/hubs/search` hit LEADS with `librarySectionTitle, score` before
     # `ratingKey`, and a `/library/search` hit leads with `librarySectionTitle` alone.
-    # HANDOVER 3.3 carried this as single-witness because cycle 22's driver could only
+    # This was long single-witness because cycle 22's driver could only
     # reproduce it on zen. rex carried both attributes and put `librarySectionTitle`
     # after `title` and `score` LAST, so its rows disagreed with both references and --
     # since a real PMS's JSON key order IS its XML order -- so did its JSON.
@@ -21568,7 +21568,7 @@ def main():
     # Cycle 27, bisected on kids (1.43.4) and zen (1.42.2) and identical on both: the
     # header refusals are a COUNT and two byte caps, and every one of them is a plain
     # 400. 100 header lines pass and the 101st is refused, whatever they weigh -- 200 KB
-    # of headers in fifty lines is a 200 -- so the "~41 KB total" HANDOVER 3.3 carried is
+    # of headers in fifty lines is a 200 -- so the earlier "~41 KB total" is
     # refuted; it was the same cap measured with ~410-byte headers.
     #
     # rex answered Python's own `431 Request Header Fields Too Large` twice over: at
@@ -23548,8 +23548,8 @@ def main():
 
 
     # Cycle 30, measured on **plexscratch42** -- a fresh, writable, isolated copy of the
-    # exact build rex reports (1.42.2.10156), built this cycle because four HANDOVER
-    # 3.3 entries all said "a writable 1.42.2 copy" would settle them:
+    # exact build rex reports (1.42.2.10156), built this cycle because four open
+    # questions all said "a writable 1.42.2 copy" would settle them:
     #
     #   * an On Deck row carries NO `librarySectionKey`, on a movie and on an episode
     #     alike, where the DETAIL row carries one. Cycle 28 read the opposite off zen's
@@ -24021,7 +24021,7 @@ def main():
     #
     # Cycle 21 recorded exactly that -- "a 200 that stores nothing" -- and cycle 30, having
     # confirmed the 200 on the new 1.42.2 copy, put the name in `LOCK_ONLY_FIELDS`, which
-    # DOES record a lock. HANDOVER 3.1 class C in one hop: a rule recorded correctly and
+    # DOES record a lock. In one hop: a rule recorded correctly and
     # then implemented as its opposite, inside the cycle that re-measured it. The 200 was
     # the half cycle 30 checked; the `Field` row was the half it never read back.
     #
@@ -25341,7 +25341,7 @@ def main():
 
     # Cycle 35 diffed the whole `GET /butler` enabled table against both writable copies:
     # 23 tasks, the two versions agreeing on every one. Cycle 49 REFUTED its one
-    # disagreement -- Ad Markers -- as HANDOVER 3.1 class E: both writable copies are
+    # disagreement -- Ad Markers -- as a copy's state taken for the rule: both writable copies are
     # UNCLAIMED, and `enabled` here is computed from claim state rather than stored.
     # plexscratch is a byte copy of kids' own config with only the claim stripped and it
     # answers 0 where kids answers 1; zen and kids, the two CLAIMED references, both
@@ -29180,7 +29180,7 @@ def main():
 
     # Cycle 52, measured on kids (1.43.4), zen (1.42.2), plexscratch and plexscratch42, which
     # answer the identical seventeen rows in the identical order: `/:/plugins` lists the
-    # plug-ins PMS itself bundles. HANDOVER §8 carried "the `/:/plugins` listing" as a
+    # plug-ins PMS itself bundles. "The `/:/plugins` listing" had been carried as a
     # deliberate bound since cycles 1-6 on the grounds that rex hosts no plug-ins -- but
     # the list is a fixed table in the image, like the profile files cycle 31 shipped, and
     # rex answered `size 0` where a real server answers seventeen.
@@ -29447,7 +29447,7 @@ def main():
     # listing. rex answered that dispatcher container to the GET as well, so a caller was
     # handed an XML MediaContainer where a real PMS sends a plain-text report. (PMS's fixed
     # acceptor pool, its ordinals and its hexadecimal request allocator are not emulated and
-    # stay recorded in HANDOVER 8; these are rex's own live connections.)
+    # stay a deliberate bound; these are rex's own live connections.)
     status_c52k, body_c52k, head_c52k = request(base, "GET", "/connections", want_json=False)
     lines_c52k = body_c52k.decode("utf-8", "replace").splitlines()
     first_c52k = lines_c52k[:1]
@@ -30152,7 +30152,7 @@ def main():
     # Cycle 53, measured on kids (1.43.4), zen (1.42.2), plexscratch and plexscratch42, which
     # answer the identical eleven identifiers: a real PMS lists the LEGACY plug-in agents
     # beside the modern four, so a settings page reading `/system/agents` sees 15 rows on
-    # 1.42.2 and saw four here. HANDOVER 8 carried them as an inherited bound since cycles
+    # 1.42.2 and saw four here. They had been carried as an inherited bound since cycles
     # 1-6; cycle 52 retired the sibling half (the `/:/plugins` listing) on the grounds that a
     # fixed table in the image is not hosting, and this is the same table. In the BARE form a
     # legacy row carries `MediaType` children and no `Language`; in the typed form the
@@ -30281,7 +30281,7 @@ def main():
     # uploaded to, so its `/arts` answers ten rows -- nine uploads and the generated
     # placeholder -- and not one of them is an agent candidate. Keying on `size` made this
     # check pass its own fail-then-pass proof on a fresh server and fail inside the suite,
-    # which is the trap the handover names: a check must survive the whole suite.
+    # which is the known trap: a check must survive the whole suite.
     wrong_c53n = []
     for rating_key_c53n in ([show] if show else []):
         _, children_c53n, _ = get(base, "/library/metadata/%s/children?excludeAllLeaves=1"

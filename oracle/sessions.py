@@ -58,7 +58,7 @@ def _stored_platform(value):
 # (10 s and 30 min) and two rows behaved the same, so it is not a function of either.
 #
 # Cycle 9's 60-80 s came from the lab's ten-second clips before `long` mode existed, and
-# is the shape §3.3 warns about for everything measured there. The consequence of the old
+# is the shape to distrust in everything measured there. The consequence of the old
 # value is a client that stops beating -- several TV apps stop while paused -- vanishing
 # from Now Playing after seventy seconds where a real PMS holds it for three minutes.
 #

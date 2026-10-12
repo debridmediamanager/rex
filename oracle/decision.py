@@ -283,10 +283,10 @@ def direct_play(profile, media):
     #
     # The 2,106-cell corpus could not see this. In every corpus row whose selected
     # subtitle is not first (zen 11901, 2157, 2925, 4969) the selected AUDIO is not first
-    # either, so the audio refusal fires above and masks it -- HANDOVER.md §3.1 class B,
-    # a sample that cannot disagree. It is reachable the moment a client uses its
-    # subtitle picker: rex told all three profiles "Direct play OK." for a row they
-    # will not render, which is cycle 26's failure mode from the other side.
+    # either, so the audio refusal fires above and masks it -- a sample that cannot
+    # disagree. It is reachable the moment a client uses its subtitle picker: rex told all
+    # three profiles "Direct play OK." for a row they will not render, which is cycle 26's
+    # failure mode from the other side.
     if subtitle is not None and not subtitle.get("key") and not can_select:
         embedded = [s for s in streams
                     if s.get("streamType") == 3 and not s.get("key")]
@@ -341,7 +341,7 @@ def conversion(profile, protocol, media=None):
         # other target would re-encode to h264 and lose the colour space. Exact on all 78
         # cells in both directions.
         #
-        # Class D risk, recorded in HANDOVER 3.3: `h264,hevc,*` is the only positive
+        # Left open: `h264,hevc,*` is the only positive
         # witness on either reference, so "the target names the source codec" and "the
         # target declares `*`" fit the same 78 cells. The narrower of the two is built.
         video = next((s for s in _streams(media) if s.get("streamType") == 1), {})

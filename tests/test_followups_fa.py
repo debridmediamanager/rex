@@ -215,7 +215,7 @@ def replay(port, machine):
 
 
 def named(port, machine):
-    """The readers HANDOVER named, each against the concrete value the reference answered.
+    """The readers the follow-up list named, each against the concrete value the reference answered.
 
     Run after `replay`, so the show is flattened and the first episode of SEASON is
     watched. Reference, same state: `/library/recentlyAdded` lists `season 11` and

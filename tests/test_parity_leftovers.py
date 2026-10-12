@@ -165,7 +165,7 @@ def run(port):
         check("paging values on %s follow the measured int32 grammar" % family,
               family not in wrong, wrong.get(family))
 
-    # 3. `/folder?parent=`: kids answers `1,2` with the library's top folder (the handover's
+    # 3. `/folder?parent=`: kids answers `1,2` with the library's top folder (the earlier
     #    "empty 200" was a numeric parent naming no directory), and the last `parent` wins.
     top = [row.get("key") for row in mc(port, "/library/sections/2/folder").get("Metadata") or []]
     answers = {}

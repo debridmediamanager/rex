@@ -443,7 +443,7 @@ _LIBRARY_SECTION_LEAD = {"allowSync": -6, "librarySectionID": -5,
 
 # Cycle 25, measured on kids and zen: a `/hubs/search` and a `/library/search` hit LEAD
 # with `librarySectionTitle` before `ratingKey`, and a `/hubs/search` hit puts its own
-# `score` second. HANDOVER 3.3 carried this as single-witness because the driver could
+# `score` second. This was long single-witness because the driver could
 # only reproduce it on zen -- kids' hubs answered no `Video` for the queries that cycle
 # tried. `query=Sintel` hits on kids, and both references then agree exactly. rex
 # carried both fields and put `librarySectionTitle` after `title` and `score` LAST.
@@ -635,7 +635,7 @@ def _split(name, row, container=False):
             # `secure` are JSON booleans, `userID` an int) sit after every string,
             # although `local` would sort third alphabetically. A FIXED bucket list fits
             # the same data; the type split is the model that also answers for an
-            # attribute neither witness carried, and HANDOVER 3.3 records the pair.
+            # attribute neither witness carried, and the pair stays an open question.
             # rex emitted whatever order its builder's dict happened to hold.
             attrs.sort(key=lambda key: (not isinstance(row.get(key), str), key))
             return attrs, children
