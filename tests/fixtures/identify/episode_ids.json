@@ -1,5 +1,250 @@
 {
  "plex": {
+  "[\"POST\", \"/library/metadata/matches\", {\"excludeElements\": \"Media\", \"filename\": \"Anthony Bourdain\", \"title\": \"Anthony Bourdain\", \"type\": 2}]": {
+   "MediaContainer": {
+    "Metadata": [
+     {
+      "Guid": [
+       {
+        "id": "imdb://tt0475900"
+       },
+       {
+        "id": "tmdb://4533"
+       },
+       {
+        "id": "tvdb://79668"
+       }
+      ],
+      "art": "https://image.tmdb.org/t/p/original/fjeZd3szLaqfSLrYcEobubhNVTz.jpg",
+      "guid": "plex://show/5d9c086b46115600200aa1bd",
+      "thumb": "https://image.tmdb.org/t/p/original/97ZIHh3HfiiS0KNrScRRhxOVzPg.jpg",
+      "title": "Anthony Bourdain: No Reservations",
+      "year": 2005
+     }
+    ]
+   }
+  },
+  "[\"POST\", \"/library/metadata/matches\", {\"excludeElements\": \"Media\", \"filename\": \"Boy Meets World (1993) Season 1-7 S01-S07 (480p DVD x265 HEVC 10bit AAC 2.0 Panda)\", \"title\": \"Boy Meets World\", \"type\": 2, \"year\": 1993}]": {
+   "MediaContainer": {
+    "Metadata": [
+     {
+      "Guid": [
+       {
+        "id": "imdb://tt0105958"
+       },
+       {
+        "id": "tmdb://1777"
+       },
+       {
+        "id": "tvdb://71889"
+       }
+      ],
+      "art": "https://image.tmdb.org/t/p/original/7mgf8w8xPyLnIln0kFo6qH2OEGh.jpg",
+      "guid": "plex://show/5d9c0871705e7a001e6dcf0b",
+      "thumb": "https://image.tmdb.org/t/p/original/bS2ZDv7vVIuyWMOiMn9R6CF35jY.jpg",
+      "title": "Boy Meets World",
+      "year": 1993
+     }
+    ]
+   }
+  },
+  "[\"POST\", \"/library/metadata/matches\", {\"excludeElements\": \"Media\", \"filename\": \"Courage the Cowardly Dog (1999) Season 1-4 S01-04 (1080p HMAX WEBDL x265 10bit AAC 2.0 EDGE2020)\", \"title\": \"Courage the Cowardly Dog\", \"type\": 2, \"year\": 1999}]": {
+   "MediaContainer": {
+    "Metadata": [
+     {
+      "Guid": [
+       {
+        "id": "imdb://tt0220880"
+       },
+       {
+        "id": "tmdb://2085"
+       },
+       {
+        "id": "tvdb://77435"
+       }
+      ],
+      "art": "https://image.tmdb.org/t/p/original/cFuk3BU0sid8dby05eyyBPtK4dD.jpg",
+      "guid": "plex://show/5d9c08731cae62001f74cb68",
+      "thumb": "https://image.tmdb.org/t/p/original/uJQsBgzlrgZpjeB5fHBtJQA04nS.jpg",
+      "title": "Courage the Cowardly Dog",
+      "year": 1999
+     }
+    ]
+   }
+  },
+  "[\"POST\", \"/library/metadata/matches\", {\"excludeElements\": \"Media\", \"filename\": \"Ed, Edd n Eddy (1999) Season 6 S06 + Specials (1080p AI4K x265 HEVC 10bit AC3 2.0 ImE)\", \"title\": \"Ed, Edd n Eddy\", \"type\": 2, \"year\": 1999}]": {
+   "MediaContainer": {
+    "Metadata": [
+     {
+      "Guid": [
+       {
+        "id": "imdb://tt0184111"
+       },
+       {
+        "id": "tmdb://606"
+       },
+       {
+        "id": "tvdb://77466"
+       }
+      ],
+      "art": "https://image.tmdb.org/t/p/original/iRbNLYmqlxbqkfCuAmHaFwZ9ocY.jpg",
+      "guid": "plex://show/5d9c0819170e24001f2a798b",
+      "thumb": "https://image.tmdb.org/t/p/original/nfKenwmfmdtoXGhaYiDIftrBchw.jpg",
+      "title": "Ed, Edd n Eddy",
+      "year": 1999
+     }
+    ]
+   }
+  },
+  "[\"POST\", \"/library/metadata/matches\", {\"excludeElements\": \"Media\", \"filename\": \"Family.Matters.seasons.01-09.AMZN.1080p.10bit.hevc.x265-bearfish\", \"title\": \"Family Matters\", \"type\": 2}]": {
+   "MediaContainer": {
+    "Metadata": []
+   }
+  },
+  "[\"POST\", \"/library/metadata/matches\", {\"excludeElements\": \"Media\", \"filename\": \"The Adventures of Jimmy Neutron - Boy Genius\", \"title\": \"The Adventures of Jimmy Neutron - Boy Genius\", \"type\": 2}]": {
+   "MediaContainer": {
+    "Metadata": [
+     {
+      "Guid": [
+       {
+        "id": "imdb://tt0320808"
+       },
+       {
+        "id": "tmdb://2129"
+       },
+       {
+        "id": "tvdb://77612"
+       }
+      ],
+      "art": "https://image.tmdb.org/t/p/original/1BQqYdAAwTo1HBnXJrCNj6DQ9B3.jpg",
+      "guid": "plex://show/5d9c08737d06d9001ffd317c",
+      "thumb": "https://image.tmdb.org/t/p/original/dxUNSVBU03LuVSZ3rriui6a7Xvk.jpg",
+      "title": "The Adventures of Jimmy Neutron: Boy Genius",
+      "year": 2002
+     }
+    ]
+   }
+  },
+  "[\"POST\", \"/library/metadata/matches\", {\"excludeElements\": \"Media\", \"filename\": \"The Crocodile Hunter\", \"title\": \"The Crocodile Hunter\", \"type\": 2}]": {
+   "MediaContainer": {
+    "Metadata": [
+     {
+      "Guid": [
+       {
+        "id": "imdb://tt0229119"
+       },
+       {
+        "id": "tmdb://1904"
+       },
+       {
+        "id": "tvdb://90601"
+       }
+      ],
+      "art": "https://image.tmdb.org/t/p/original/v48dSrKSKD3C5aLJofx4bnhYwQ.jpg",
+      "guid": "plex://show/5d9c0871170e24001f2aadef",
+      "thumb": "https://image.tmdb.org/t/p/original/youExJaJ4EW8jjDllu0emOJAIKi.jpg",
+      "title": "The Crocodile Hunter",
+      "year": 1996
+     }
+    ]
+   }
+  },
+  "[\"POST\", \"/library/metadata/matches\", {\"excludeElements\": \"Media\", \"filename\": \"The.Devils.Plan.S02E05.1080p.HEVC.x265-MeGusta[EZTVx.to].mkv\", \"title\": \"The Devils Plan\", \"type\": 2}]": {
+   "MediaContainer": {
+    "Metadata": [
+     {
+      "Guid": [
+       {
+        "id": "imdb://tt27995115"
+       },
+       {
+        "id": "tmdb://214582"
+       },
+       {
+        "id": "tvdb://433304"
+       }
+      ],
+      "art": "https://image.tmdb.org/t/p/original/4LrM5d8FtNNSqzXyEoOVX2EiMd.jpg",
+      "guid": "plex://show/64f07dc37805645116362399",
+      "thumb": "https://image.tmdb.org/t/p/original/jNY6UVgvKz03yrSgCflkF5NF25K.jpg",
+      "title": "The Devil's Plan",
+      "year": 2023
+     }
+    ]
+   }
+  },
+  "[\"POST\", \"/library/metadata/matches\", {\"excludeElements\": \"Media\", \"filename\": \"[Lazier] Bleach Thousand-Year Blood War - 28 (WEB 1080p EAC3) [AC0C8A2A].mkv\", \"title\": \"Bleach Thousand-Year Blood War\", \"type\": 2}]": {
+   "MediaContainer": {
+    "Metadata": [
+     {
+      "Guid": [
+       {
+        "id": "imdb://tt0434665"
+       },
+       {
+        "id": "tmdb://30984"
+       },
+       {
+        "id": "tvdb://74796"
+       }
+      ],
+      "art": "https://image.tmdb.org/t/p/original/o0NsbcIvsllg6CJX0FBFY8wWbsn.jpg",
+      "guid": "plex://show/5d9c084902391c001f58594b",
+      "thumb": "https://image.tmdb.org/t/p/original/2EewmxXe72ogD0EaWM8gqa0ccIw.jpg",
+      "title": "Bleach",
+      "year": 2004
+     }
+    ]
+   }
+  },
+  "[\"POST\", \"/library/metadata/matches\", {\"excludeElements\": \"Media\", \"filename\": \"[Loyaldk] Sailor Moon Season 1 [Tri-Audio spa,jpn,eng] [Eng Subs] [BD]\", \"title\": \"Sailor Moon\", \"type\": 2}]": {
+   "MediaContainer": {
+    "Metadata": [
+     {
+      "Guid": [
+       {
+        "id": "imdb://tt0103369"
+       },
+       {
+        "id": "tmdb://3570"
+       },
+       {
+        "id": "tvdb://78500"
+       }
+      ],
+      "art": "https://image.tmdb.org/t/p/original/sNCpbcCcRadDBMTh6An1dBMakqr.jpg",
+      "guid": "plex://show/5d9c07fdd4f2a9001f7fce12",
+      "thumb": "https://image.tmdb.org/t/p/original/m0e8QxAM0n3XK9GPvkxzRB0YL4k.jpg",
+      "title": "Sailor Moon",
+      "year": 1992
+     }
+    ]
+   }
+  },
+  "[\"POST\", \"/library/metadata/matches\", {\"excludeElements\": \"Media\", \"filename\": \"[TV] Rocko's Modern Life S01-S04 (1993\\u20131996) (Complete Series)\", \"title\": \"Rocko's Modern Life\", \"type\": 2, \"year\": 1993}]": {
+   "MediaContainer": {
+    "Metadata": [
+     {
+      "Guid": [
+       {
+        "id": "imdb://tt0106115"
+       },
+       {
+        "id": "tmdb://657"
+       },
+       {
+        "id": "tvdb://75729"
+       }
+      ],
+      "art": "https://image.tmdb.org/t/p/original/f0ILH7zFjiE4aC6Kyu5i8uQOEY9.jpg",
+      "guid": "plex://show/5d9c0819705e7a001e6d2a1e",
+      "thumb": "https://image.tmdb.org/t/p/original/ydi5M4Dq10Doi9PPkkN95T8ao7Z.jpg",
+      "title": "Rocko's Modern Life",
+      "year": 1993
+     }
+    ]
+   }
+  },
   "[\"POST\", \"/library/metadata/matches\", {\"guid\": \"imdb://tt0114327\", \"type\": 2}]": {
    "MediaContainer": {
     "Metadata": []
@@ -2447,6 +2692,30 @@
       "guid": "plex://show/5d9c0857e264b7001fc41caf",
       "title": "Now and Then, Here and There",
       "year": 1999
+     }
+    ]
+   }
+  },
+  "[\"POST\", \"/library/metadata/matches\", {\"guid\": \"tmdb://2685\", \"type\": 2}]": {
+   "MediaContainer": {
+    "Metadata": [
+     {
+      "Guid": [
+       {
+        "id": "imdb://tt0096579"
+       },
+       {
+        "id": "tmdb://2685"
+       },
+       {
+        "id": "tvdb://76732"
+       }
+      ],
+      "art": "https://image.tmdb.org/t/p/original/vIeMoVqSqhEr2AaG9feqKBjeb8z.jpg",
+      "guid": "plex://show/5d9c0875705e7a001e6ddf49",
+      "thumb": "https://image.tmdb.org/t/p/original/tT7C8BLZSNQJnjNCz9ZLohIHJAz.jpg",
+      "title": "Family Matters",
+      "year": 1989
      }
     ]
    }
@@ -9037,6 +9306,131 @@
    "tv_results": [],
    "tv_season_results": []
   },
+  "[\"search/tv\", [[\"first_air_date_year\", 1993], [\"query\", \"Boy Meets World\"]]]": {
+   "results": [
+    {
+     "id": 1777
+    }
+   ]
+  },
+  "[\"search/tv\", [[\"first_air_date_year\", 1993], [\"query\", \"Rocko's Modern Life\"]]]": {
+   "results": [
+    {
+     "id": 657
+    }
+   ]
+  },
+  "[\"search/tv\", [[\"first_air_date_year\", 1999], [\"query\", \"Courage the Cowardly Dog\"]]]": {
+   "results": [
+    {
+     "id": 2085
+    }
+   ]
+  },
+  "[\"search/tv\", [[\"first_air_date_year\", 1999], [\"query\", \"Ed, Edd n Eddy\"]]]": {
+   "results": [
+    {
+     "id": 606
+    }
+   ]
+  },
+  "[\"search/tv\", [[\"query\", \"Anthony Bourdain\"]]]": {
+   "results": [
+    {
+     "id": 56305
+    },
+    {
+     "id": 4533
+    },
+    {
+     "id": 41993
+    },
+    {
+     "id": 68772
+    },
+    {
+     "id": 43131
+    }
+   ]
+  },
+  "[\"search/tv\", [[\"query\", \"Bleach Thousand-Year Blood War\"]]]": {
+   "results": [
+    {
+     "id": 336301
+    },
+    {
+     "id": 30984
+    }
+   ]
+  },
+  "[\"search/tv\", [[\"query\", \"Family Matters\"]]]": {
+   "results": [
+    {
+     "id": 2685
+    },
+    {
+     "id": 236356
+    },
+    {
+     "id": 309841
+    },
+    {
+     "id": 202302
+    },
+    {
+     "id": 19762
+    }
+   ]
+  },
+  "[\"search/tv\", [[\"query\", \"Sailor Moon\"]]]": {
+   "results": [
+    {
+     "id": 3570
+    },
+    {
+     "id": 61339
+    },
+    {
+     "id": 5405
+    },
+    {
+     "id": 254885
+    }
+   ]
+  },
+  "[\"search/tv\", [[\"query\", \"The Adventures of Jimmy Neutron - Boy Genius\"]]]": {
+   "results": [
+    {
+     "id": 2129
+    }
+   ]
+  },
+  "[\"search/tv\", [[\"query\", \"The Crocodile Hunter\"]]]": {
+   "results": [
+    {
+     "id": 1904
+    },
+    {
+     "id": 1595
+    },
+    {
+     "id": 19900
+    },
+    {
+     "id": 101696
+    },
+    {
+     "id": 4566
+    }
+   ]
+  },
+  "[\"search/tv\", [[\"query\", \"The Devils Plan\"]]]": {
+   "results": [
+    {
+     "id": 214582
+    }
+   ]
+  },
   "[\"tv/100088\", [[\"append_to_response\", \"credits,external_ids,content_ratings,release_dates\"]]]": {
    "external_ids": {
     "imdb_id": "tt3581920"
@@ -9403,6 +9797,13 @@
    },
    "imdb_id": null
   },
+  "[\"tv/1777\", [[\"append_to_response\", \"credits,external_ids,content_ratings,release_dates\"]]]": {
+   "external_ids": {
+    "imdb_id": "tt0105958"
+   },
+   "imdb_id": null,
+   "number_of_seasons": 7
+  },
   "[\"tv/18347\", [[\"append_to_response\", \"credits,external_ids,content_ratings,release_dates\"]]]": {
    "external_ids": {
     "imdb_id": "tt1439629"
@@ -9414,6 +9815,13 @@
     "imdb_id": "tt0439100"
    },
    "imdb_id": null
+  },
+  "[\"tv/1904\", [[\"append_to_response\", \"credits,external_ids,content_ratings,release_dates\"]]]": {
+   "external_ids": {
+    "imdb_id": "tt0229119"
+   },
+   "imdb_id": null,
+   "number_of_seasons": 5
   },
   "[\"tv/1940\", [[\"append_to_response\", \"credits,external_ids,content_ratings,release_dates\"]]]": {
    "external_ids": {
@@ -9493,6 +9901,13 @@
    },
    "imdb_id": null
   },
+  "[\"tv/2085\", [[\"append_to_response\", \"credits,external_ids,content_ratings,release_dates\"]]]": {
+   "external_ids": {
+    "imdb_id": "tt0220880"
+   },
+   "imdb_id": null,
+   "number_of_seasons": 4
+  },
   "[\"tv/208825\", [[\"append_to_response\", \"credits,external_ids,content_ratings,release_dates\"]]]": {
    "external_ids": {
     "imdb_id": "tt21874396"
@@ -9528,6 +9943,20 @@
     "imdb_id": "tt22263470"
    },
    "imdb_id": null
+  },
+  "[\"tv/2129\", [[\"append_to_response\", \"credits,external_ids,content_ratings,release_dates\"]]]": {
+   "external_ids": {
+    "imdb_id": "tt0320808"
+   },
+   "imdb_id": null,
+   "number_of_seasons": 3
+  },
+  "[\"tv/214582\", [[\"append_to_response\", \"credits,external_ids,content_ratings,release_dates\"]]]": {
+   "external_ids": {
+    "imdb_id": "tt27995115"
+   },
+   "imdb_id": null,
+   "number_of_seasons": 3
   },
   "[\"tv/218348\", [[\"append_to_response\", \"credits,external_ids,content_ratings,release_dates\"]]]": {
    "external_ids": {
@@ -9679,6 +10108,13 @@
    },
    "imdb_id": null
   },
+  "[\"tv/2685\", [[\"append_to_response\", \"credits,external_ids,content_ratings,release_dates\"]]]": {
+   "external_ids": {
+    "imdb_id": "tt0096579"
+   },
+   "imdb_id": null,
+   "number_of_seasons": 9
+  },
   "[\"tv/271267\", [[\"append_to_response\", \"credits,external_ids,content_ratings,release_dates\"]]]": {
    "external_ids": {
     "imdb_id": "tt31987295"
@@ -9757,6 +10193,13 @@
    },
    "imdb_id": null
   },
+  "[\"tv/336301\", [[\"append_to_response\", \"credits,external_ids,content_ratings,release_dates\"]]]": {
+   "external_ids": {
+    "imdb_id": null
+   },
+   "imdb_id": null,
+   "number_of_seasons": 1
+  },
   "[\"tv/33880\", [[\"append_to_response\", \"credits,external_ids,content_ratings,release_dates\"]]]": {
    "external_ids": {
     "imdb_id": "tt1695360"
@@ -9798,6 +10241,13 @@
     "imdb_id": "tt0290223"
    },
    "imdb_id": null
+  },
+  "[\"tv/3570\", [[\"append_to_response\", \"credits,external_ids,content_ratings,release_dates\"]]]": {
+   "external_ids": {
+    "imdb_id": "tt0103369"
+   },
+   "imdb_id": null,
+   "number_of_seasons": 5
   },
   "[\"tv/37606\", [[\"append_to_response\", \"credits,external_ids,content_ratings,release_dates\"]]]": {
    "external_ids": {
@@ -10051,6 +10501,13 @@
    },
    "imdb_id": null
   },
+  "[\"tv/606\", [[\"append_to_response\", \"credits,external_ids,content_ratings,release_dates\"]]]": {
+   "external_ids": {
+    "imdb_id": "tt0184111"
+   },
+   "imdb_id": null,
+   "number_of_seasons": 6
+  },
   "[\"tv/60622\", [[\"append_to_response\", \"credits,external_ids,content_ratings,release_dates\"]]]": {
    "external_ids": {
     "imdb_id": "tt2802850"
@@ -10200,6 +10657,13 @@
     "imdb_id": "tt6074794"
    },
    "imdb_id": null
+  },
+  "[\"tv/657\", [[\"append_to_response\", \"credits,external_ids,content_ratings,release_dates\"]]]": {
+   "external_ids": {
+    "imdb_id": "tt0106115"
+   },
+   "imdb_id": null,
+   "number_of_seasons": 4
   },
   "[\"tv/65844\", [[\"append_to_response\", \"credits,external_ids,content_ratings,release_dates\"]]]": {
    "external_ids": {

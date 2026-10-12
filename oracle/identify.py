@@ -46,14 +46,23 @@ _RANGE = re.compile(r"\s[-–]\s\d{1,4}\s?-\s?\d{1,4}\b.*$")
 _YEARS_RAN = re.compile(r"[(\[]\s*((?:19|20)\d{2})\s*[-–]\s*(?:(?:19|20)\d{2})?\s*[)\]]")
 _EDITION = re.compile(r"(?i)\b(?:remastered|extended(?: edition)?|director'?s cut|unrated|theatrical|4kremux\d*|uhd|imax)\b")
 # A season pack names its season without an episode: `Planet.Earth.II.S01.1080p…`,
-# `The Sopranos S01 …`, `Show Season 2 …`, `S01-S03`.
+# `The Sopranos S01 …`, `Show Season 2 …`, `S01-S03`, and on the production server `Family.Matters.seasons.01-09`
+# and `South Park - Seasons 1 to 25`.
 # An episode named without `SxxEyy`: a bare number (`Mysterious Love E06 1080p`), the NxNN
 # form (`Some Day or One Day - 1x02`), or only inside the brackets `parse_release` drops (a
 # disc rip's `00000 (E01-The.Arrangement).m2ts`, Suits.S03 on the production server). zurg files
-# these as shows since 2026-10-11, and with no number here the feed placed none of them.
+# these as shows since 2026-10-11, and with no number here the feed placed none of them. The
+# production server's Usenet library (2026-10-12) adds four digits and an `EP` or `Ep.`
+# (`Detektiv.Conan.E0221`, `One.Piece.EP1161`, `Gintama.Ep.14`), each filed under movies.
 _LOOSE_NX = re.compile(r"(?i)(?:^|[\s._\-\[(])(\d{1,2})x(\d{2})(?:[\s._\-\])]|$)")
-_LOOSE_E = re.compile(r"(?i)(?:^|[\s._\-\[(])E(\d{2,3})(?:[\s._\-\])]|$)")
-_SEASON_PACK = re.compile(r"(?i)\b(?:S(\d{1,2})(?:\s?-\s?S?\d{1,2})?|Season[\s._-]?(\d{1,2}))\b(?![\s._-]?E\d)")
+_LOOSE_E = re.compile(r"(?i)(?:^|[\s._\-\[(])E(?:P[.\s]?)?(\d{2,4})(?:[\s._\-\])]|$)")
+# An absolute episode glued to its title by a dash (`[Moozzi2] Eighty-Six-15 [BD …]`,
+# `[HorribleSubs].Gintama-340.[1080p]`, the production server's Usenet movies): two or three digits and no
+# year, so `Blade-Runner-2049` stays a film.
+_DASH_EPISODE = re.compile(r"^(.*\S)-(\d{2,3})$")
+# `Der.mude.Tod.AKA.Destiny.1921`: a film named twice, its original name first.
+_AKA = re.compile(r"\s+AKA\s+")
+_SEASON_PACK = re.compile(r"(?i)\b(?:S(\d{1,2})(?:\s?-\s?S?\d{1,2})?|Seasons?[\s._-]?(\d{1,2}))\b(?![\s._-]?E\d)")
 
 
 def explicit_ids(name):
@@ -110,7 +119,11 @@ def parse_name(name):
             parsed["pack"] = True
             head = _SEASON_PACK.split(parsed["title"].replace(".", " "), maxsplit=1)[0]
             parsed["title"] = re.sub(r"\s+", " ", head).strip(" -–—")
-    parsed["title"] = re.sub(r"\s+", " ", parsed["title"]).strip(" -–—")
+    parsed["title"] = _AKA.split(re.sub(r"\s+", " ", parsed["title"]).strip(" -–—"), maxsplit=1)[0]
+    dashed = _DASH_EPISODE.match(parsed["title"])
+    if dashed and parsed["season"] is None and parsed["episode"] is None and not parsed["year"] \
+            and not parsed["pack"]:
+        parsed["title"], parsed["episode"] = dashed.group(1).strip(" -–—"), int(dashed.group(2))
     return parsed
 
 
@@ -154,11 +167,13 @@ class Identifier:
                 return "show", found[key][0].get("show_id")
         return None, None
 
-    def _tmdb_identify(self, parsed, kind):
+    def _tmdb_identify(self, parsed, kind, fixed=False):
         """`Tmdb.identify`, but asked in the order the name implies: a season pack has
         no episode number, and `Tmdb.identify` searched it as a film first --
-        `Planet.Earth.II.S01` found a 2019 documentary film of that name."""
+        `Planet.Earth.II.S01` found a 2019 documentary film of that name. A kind the caller
+        `fixed` (its library's) is the only one asked: the other places nothing there."""
         order = ("tv", "movie") if kind == "show" else ("movie", "tv")
+        order = order[:1] if fixed else order
         for tmdb_kind in order:
             if tmdb_kind == "tv" and parsed["year"]:
                 # `Tmdb.search` applies a year to films only; a series is found by the
@@ -188,37 +203,65 @@ class Identifier:
         plex_seasons = self.plex.children(plex_answer["guid"])
         return bool(plex_seasons) and season not in plex_seasons
 
-    def identify(self, name, info_hash=None, files=1):
+    def identify(self, name, info_hash=None, files=1, kind=None):
         """`files`: how many video files the torrent holds. Several with no episode
         numbers and no single year are a series more often than not, so they are
-        tried as a show first."""
+        tried as a show first. `kind` ('movie' or 'show') is the caller's own, a library's:
+        an answer of the other kind places nothing there, so the name is asked as that kind."""
         parsed = parse_name(name)
-        kind = "show" if is_show(parsed) or (files > 2 and not parsed["year"]) else "movie"
+        fixed = kind
+        kind = kind or ("show" if is_show(parsed) or (files > 2 and not parsed["year"]) else "movie")
         identity = Identity(name=name, parsed=parsed, kind=kind, imdb=None, tmdb=None,
-                            plex=None, confidence=NONE, source=None)
+                            plex=None, confidence=NONE, source=None, thumb=None, art=None)
 
         exact = explicit_ids(name)
         imdb = exact.get("imdb") or (self.known.get(info_hash.lower()) if info_hash else None)
-        if imdb or exact.get("tmdb"):
-            identity.update(confidence=EXACT, source="name id" if exact else "dmm hash")
-            if imdb:
-                identity["imdb"] = imdb
-                found_kind, tmdb_id = self._tmdb_for_imdb(imdb)
-                if found_kind:
-                    identity.update(kind=found_kind, tmdb=tmdb_id)
-                # An episode's id found its show: the show is known by its own id.
-                if identity["kind"] == "show" and identity["tmdb"]:
-                    identity["imdb"] = self._tmdb_imdb("show", identity["tmdb"]) or imdb
-            else:
-                identity["tmdb"] = int(exact["tmdb"])
-            if self.plex is not None:
-                externals = ["tmdb://%s" % identity["tmdb"]] if identity["tmdb"] else []
-                externals += ["imdb://%s" % identity["imdb"]] if identity["imdb"] else []
-                matched = self.plex.match(identity["kind"], externals)
-                if matched:
-                    identity["plex"] = matched[0]
+        if not (imdb or exact.get("tmdb")):
+            return self._by_name(identity, fixed)
+        identity.update(confidence=EXACT, source="name id" if exact else "dmm hash")
+        if imdb:
+            identity["imdb"] = imdb
+            found_kind, tmdb_id = self._tmdb_for_imdb(imdb)
+            if found_kind:
+                identity.update(kind=found_kind, tmdb=tmdb_id)
+            # An episode's id found its show: the show is known by its own id.
+            if identity["kind"] == "show" and identity["tmdb"]:
+                identity["imdb"] = self._tmdb_imdb("show", identity["tmdb"]) or imdb
+        elif self.tmdb is None or self.tmdb.details("tv" if kind == "show" else "movie", int(exact["tmdb"])):
+            # zurg hands over the TMDB id of whatever its own Plex matched, an episode's
+            # among them: the production server's Pawn Stars came as 1559521, which no show has (2026-10-12).
+            identity["tmdb"] = int(exact["tmdb"])
+        if self.plex is not None:
+            externals = ["tmdb://%s" % identity["tmdb"]] if identity["tmdb"] else []
+            externals += ["imdb://%s" % identity["imdb"]] if identity["imdb"] else []
+            row = self.plex.match_row(identity["kind"], externals)
+            if row:
+                answer = self.plex.answer(row, identity["kind"])
+                identity.update(plex=answer["guid"], thumb=answer["thumb"], art=answer["art"])
+                # TMDB's /find does not know every IMDb id Plex does: DMM gives Knock at the
+                # Cabin as tt15679400, which Plex lists beside TMDB's 631842 (the production server, 2026-10-12).
+                # Plex's own TMDB ids are not all TMDB's: Digimon Adventure 02's 229048 is none.
+                details = self.tmdb.details("tv" if identity["kind"] == "show" else "movie", answer["tmdb"]) \
+                    if not identity["tmdb"] and answer["tmdb"] and self.tmdb is not None else None
+                if details:
+                    identity["tmdb"] = answer["tmdb"]
+                    identity["imdb"] = ((details.get("external_ids") or {}).get("imdb_id")
+                                        or details.get("imdb_id") or identity["imdb"])
+        if identity["tmdb"] and (not fixed or identity["kind"] == fixed):
             return identity
+        # The id names no title TMDB has, or one of the other kind than the library's: on
+        # the production server (2026-10-12) DMM's episode ids for Boy Meets World and Courage the Cowardly Dog,
+        # Bill Nye's id for a one-episode film, and zurg's ids for episodes left 45 shows and
+        # 12 films on the blank tile. The name decides then, as it does with no id at all:
+        # an id TMDB does not know is as likely DMM's mistake as Plex's -- its tt6257382 for
+        # A Serbian Film is Plex's "Film Postcards: Serbia".
+        named = self._by_name(Identity(identity, kind=kind, imdb=None, tmdb=None, plex=None,
+                                       confidence=NONE, source=None, thumb=None, art=None), fixed)
+        return named if named["tmdb"] or (named["plex"] and not identity["tmdb"]) else identity
 
+    def _by_name(self, identity, fixed):
+        """The cleaned name to Plex's matcher and TMDB, their agreement the confidence."""
+        name, parsed, kind = identity["name"], identity["parsed"], identity["kind"]
         if not parsed["title"]:
             return identity
         plex_answer = None
@@ -226,18 +269,24 @@ class Identifier:
             plex_answer = self.plex.match_title(kind, parsed["title"], parsed["year"], name)
         tmdb_kind = tmdb_id = tmdb_imdb = None
         if self.tmdb is not None:
-            tmdb_kind, tmdb_id = self._tmdb_identify(parsed, kind)
+            tmdb_kind, tmdb_id = self._tmdb_identify(parsed, kind, bool(fixed))
             if tmdb_id:
                 tmdb_imdb = self._tmdb_imdb(tmdb_kind, tmdb_id)
 
+        # A film Plex knows by no TMDB id is a record of its own, and the one DMM's map was
+        # fed (the production server, 2026-10-12): Plex answered `A.Serbian.Film.2010` with "Film Postcards:
+        # Serbia" and `Mar.Adentro.2004` with a yearless stub, where TMDB's search was right.
+        stub_film = plex_answer and plex_answer["kind"] == "movie" and not plex_answer.get("tmdb") \
+            and tmdb_kind == "movie"
         overruled = None
-        if plex_answer and tmdb_id and self._season_only_tmdb_has(plex_answer, tmdb_kind, tmdb_id,
-                                                                  tmdb_imdb, parsed):
+        if plex_answer and tmdb_id and (stub_film or self._season_only_tmdb_has(
+                plex_answer, tmdb_kind, tmdb_id, tmdb_imdb, parsed)):
             overruled, plex_answer = plex_answer, None
 
         if plex_answer:
             identity.update(plex=plex_answer["guid"], imdb=plex_answer.get("imdb"),
-                            tmdb=plex_answer.get("tmdb"), kind=plex_answer["kind"])
+                            tmdb=plex_answer.get("tmdb"), kind=plex_answer["kind"],
+                            thumb=plex_answer.get("thumb"), art=plex_answer.get("art"))
             agree = (tmdb_id and plex_answer.get("tmdb") == tmdb_id) or (
                 tmdb_imdb and plex_answer.get("imdb") == tmdb_imdb)
             identity.update(confidence=AGREED if agree else SINGLE,
@@ -253,7 +302,20 @@ class Identifier:
             # Plex did not match the name, but it knows the title by its id: without a
             # real `plex://` guid the Android app's detail page never loads (cycle 70).
             if self.plex is not None:
-                matched = self.plex.match(tmdb_kind, ["tmdb://%s" % tmdb_id])
-                if matched:
-                    identity["plex"] = matched[0]
+                row = self.plex.match_row(tmdb_kind, ["tmdb://%s" % tmdb_id])
+                if row:
+                    answer = self.plex.answer(row, tmdb_kind)
+                    identity.update(plex=answer["guid"], thumb=answer["thumb"], art=answer["art"])
         return identity
+
+
+def identify_release(identifier, release):
+    """A release as the native feed asks for it (`name_release`, rust/src/runtime/scan.rs):
+    `{name, hash, known, tmdb, files, kind}`, where `known` is the IMDb id its source sent,
+    a TMDB id sent without one is read as a `{tmdb-…}` tag in the name, and `kind` is the
+    library's. The identify corpora are replayed through it."""
+    name = release["name"]
+    if release.get("tmdb") and not release.get("known"):
+        name = "%s {tmdb-%s}" % (name, release["tmdb"])
+    return identifier.identify(name, info_hash=release.get("hash") or "zurg",
+                               files=release.get("files", 1), kind=release.get("kind"))

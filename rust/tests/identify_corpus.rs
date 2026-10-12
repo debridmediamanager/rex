@@ -304,3 +304,58 @@ fn a_season_only_tmdb_has_decides_the_dispute() {
         "requests the recording does not hold: tmdb {tmdb_missed:?} plex {plex_missed:?}"
     );
 }
+
+/// One release of each movie and show the production rex drew the blank tile for on 2026-10-12, as
+/// zurg pushed it (the IMDb id DMM gave its hash, or the TMDB id zurg's own Plex gave it),
+/// identified as the feed identifies it (`name_release`): in its library's kind, a TMDB id
+/// with no IMDb id read as a `{tmdb-…}` tag. The TMDB id each is was labelled by hand.
+/// The oracle names 80 of the 112 labelled; before this the port named 10.
+#[test]
+fn releases_on_the_blank_tile_are_named_in_their_library_kind() {
+    let (corpus, tmdb, plex) = replay(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../tests/fixtures/identify/blank_tile_releases.json"
+    ));
+    let torrents = corpus["torrents"].as_array().unwrap();
+    let identifier = Identifier {
+        tmdb: Some(&tmdb),
+        plex: Some(&plex),
+        known: torrents
+            .iter()
+            .filter_map(|torrent| Some((torrent["hash"].as_str()?.to_string(), torrent["known"].as_str()?.to_string())))
+            .collect(),
+    };
+    let (mut labelled, mut right, mut missed) = (0, 0, Vec::new());
+    for torrent in torrents {
+        let mut name = torrent["name"].as_str().unwrap().to_string();
+        if let (Some(id), None) = (torrent["tmdb"].as_str(), torrent["known"].as_str()) {
+            name = format!("{name} {{tmdb-{id}}}");
+        }
+        let kind = torrent["kind"].as_str().unwrap();
+        let identity = identifier.identify_as(
+            &name,
+            Some(torrent["hash"].as_str().unwrap_or("zurg")),
+            torrent["files"].as_u64().unwrap() as usize,
+            Some(kind),
+        );
+        if identity.tmdb.is_some() && identity.confidence != rex::identify::EXACT {
+            assert_eq!(identity.kind, kind, "{identity:?}");
+        }
+        let Some(truth) = torrent["truth"].as_i64() else {
+            continue;
+        };
+        labelled += 1;
+        if identity.tmdb == Some(truth) && identity.kind == kind {
+            right += 1;
+        } else {
+            missed.push(name);
+        }
+    }
+    let (tmdb_missed, plex_missed) = (tmdb.missed.borrow(), plex.missed.borrow());
+    assert!(
+        tmdb_missed.is_empty() && plex_missed.is_empty(),
+        "requests the recording does not hold: tmdb {tmdb_missed:?} plex {plex_missed:?}"
+    );
+    assert_eq!(labelled, 112);
+    assert!(right >= 80, "{right} of {labelled} named; missed {:?}", &missed[..missed.len().min(5)]);
+}

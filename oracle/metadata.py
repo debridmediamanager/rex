@@ -266,15 +266,33 @@ class PlexProvider:
                 json.dump(self._cache, handle)
         return payload
 
-    def match(self, kind, external_ids):
-        """(guid, slug) of the provider's item for a movie or show, or None."""
+    def match_row(self, kind, external_ids):
+        """The provider's row for a movie or show named by an external id, or None."""
         for external in sorted(external_ids, key=lambda value: not value.startswith("tmdb://")):
             payload = self._call("POST", "/library/metadata/matches",
                                  {"type": self.KIND_TYPE[kind], "guid": external})
             rows = ((payload or {}).get("MediaContainer") or {}).get("Metadata") or []
             if rows and rows[0].get("guid", "").startswith("plex://%s/" % kind):
-                return rows[0]["guid"], rows[0].get("slug")
+                return rows[0]
         return None
+
+    def match(self, kind, external_ids):
+        """(guid, slug) of the provider's item for a movie or show, or None."""
+        row = self.match_row(kind, external_ids)
+        return (row["guid"], row.get("slug")) if row else None
+
+    @staticmethod
+    def answer(row, kind):
+        """{guid, kind, title, year, imdb, tmdb, thumb, art} of a matched row. The provider's
+        own artwork rides along: a title only Plex knows has no TMDB poster (the production server, 2026-10-12:
+        the Monogatari seasons Plex keeps as shows of their own drew the blank tile)."""
+        ids = [guid.get("id", "") for guid in row.get("Guid") or []]
+        imdb = next((value[7:] for value in ids if value.startswith("imdb://")), None)
+        tmdb = next((value[7:] for value in ids if value.startswith("tmdb://")), None)
+        return {"guid": row["guid"], "kind": kind, "title": row.get("title"),
+                "year": row.get("year"), "imdb": imdb,
+                "tmdb": int(tmdb) if tmdb and tmdb.isdigit() else None,
+                "thumb": row.get("thumb") or None, "art": row.get("art") or None}
 
     def match_title(self, kind, title, year=None, filename=None):
         """The provider's own match for a release name, as a real PMS asks for it.
@@ -285,7 +303,7 @@ class PlexProvider:
         ...}`, answered with one row whose `Guid` list carries `imdb://` and `tmdb://`.
         The `hash` is the server's own file hash, which rex, reading no file, cannot compute;
         without it 184 of 198 labelled movies still matched right (identify.py).
-        Returns {guid, kind, title, year, imdb, tmdb} or None.
+        Returns the row's `answer`, or None.
         """
         body = {"excludeElements": "Media", "type": self.KIND_TYPE[kind], "title": title}
         if year:
@@ -296,13 +314,7 @@ class PlexProvider:
         rows = ((payload or {}).get("MediaContainer") or {}).get("Metadata") or []
         if not rows or not rows[0].get("guid", "").startswith("plex://%s/" % kind):
             return None
-        row = rows[0]
-        ids = [guid.get("id", "") for guid in row.get("Guid") or []]
-        imdb = next((value[7:] for value in ids if value.startswith("imdb://")), None)
-        tmdb = next((value[7:] for value in ids if value.startswith("tmdb://")), None)
-        return {"guid": row["guid"], "kind": kind, "title": row.get("title"),
-                "year": row.get("year"), "imdb": imdb,
-                "tmdb": int(tmdb) if tmdb and tmdb.isdigit() else None}
+        return self.answer(rows[0], kind)
 
     def children(self, guid):
         """{index: guid} of a show's seasons or a season's episodes."""

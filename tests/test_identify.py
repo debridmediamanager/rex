@@ -83,6 +83,25 @@ def parsing():
         ("Some Day or One Day - 1x02 (1080p VIKI WEB.DL Marshall).mkv", "Some Day or One Day",
          None, True),
         ("00000 (E01-The.Arrangement).m2ts", "00000 m2ts", None, True),
+        # Filed under movies by the production server's Usenet zurg (2026-10-12), each an episode.
+        ("Detektiv.Conan.E0221.Nichts.als.Luegen.2.German.1996.ANiME.FS.DL.1080p.BluRay.x264-STARS",
+         "Detektiv Conan", 1996, True),
+        ("One.Piece.EP1161.A.Dangerous.Deal.Loki.of.the.Underworld.and.Luffy.2160p.BILI.WEB-DL",
+         "One Piece", None, True),
+        ("Gintama.Ep.14.German.DTS.5.1.DL.1080p.BluRay.x264-AST4u", "Gintama", None, True),
+        ("[Moozzi2] Eighty-Six-15 [BD 3840x2160 x265-10Bit FLACx2]", "Eighty-Six", None, True),
+        ("[HorribleSubs].Gintama-340.[1080p]", "Gintama", None, True),
+        # Season packs named with `seasons`, and a film named twice.
+        ("Family.Matters.seasons.01-09.AMZN.1080p.10bit.hevc.x265-bearfish", "Family Matters", None, True),
+        ("South Park - Seasons 1 to 25 (S01-S25) Master Collection, The Movie & Extras [1080p-2160p]",
+         "South Park", None, True),
+        ("Der.mude.Tod.AKA.Destiny.1921.576p.BluRay.AAC.x264-HANDJOB", "Der mude Tod", 1921, False),
+        # And what must stay a film: a year beside the dash, one digit after it, and the
+        # release of the production server's only false hit, whose extra is `… - 2011 documentary.mkv`.
+        ("Blade-Runner-2049", "Blade-Runner", 2049, False),
+        ("Spider-Man-2", "Spider-Man-2", None, False),
+        ("A Trip to the Moon (1902) Arrow (1080p BluRay x265 HEVC 10bit AAC 2.0 afm72)",
+         "A Trip to the Moon", 1902, False),
     ]
     for name, title, year, show in cases:
         parsed = identify.parse_name(name)
@@ -179,6 +198,34 @@ def episode_ids():
           arrow["imdb"] == "tt2193021", str(dict(arrow)))
 
 
+def blank_tiles():
+    """`fixtures/identify/blank_tile_releases.json`: one release of each movie and show the production rex
+    drew the blank tile for on 2026-10-12 (56 films, 45 shows), as zurg pushed it -- the
+    IMDb id DMM gave its hash, the TMDB id zurg's own Plex gave it, or nothing -- in the
+    library the feed files it in, with the TMDB id it is labelled by hand. Before this,
+    10 of the 112 labelled were named: TMDB knew none of DMM's episode ids and none of
+    zurg's episode TMDB ids, Plex's matcher fed DMM stub films with no TMDB id, a
+    library's kind did not decide the kind asked, and absolute anime episode numbers and
+    `AKA` titles were not read."""
+    record = json.load(open(os.path.join(HERE, "fixtures", "identify", "blank_tile_releases.json")))
+    tmdb, plex = ReplayTmdb(record["tmdb"]), ReplayPlex(record["plex"])
+    torrents = record["torrents"]
+    identifier = identify.Identifier(tmdb=tmdb, plex=plex,
+                                     known={t["hash"]: t["known"] for t in torrents if t.get("known")})
+    identities = [(t, identify.identify_release(identifier, t)) for t in torrents]
+    check("every provider answer the identifier asked for is recorded",
+          not tmdb.missed and not plex.missed,
+          "tmdb %s plex %s" % (tmdb.missed[:2], plex.missed[:2]))
+    labelled = [(t, i) for t, i in identities if t["truth"]]
+    right = [(t, i) for t, i in labelled if i["tmdb"] == t["truth"] and i["kind"] == t["kind"]]
+    check("a release on the blank tile is named in its own library's kind (%d of %d)"
+          % (len(right), len(labelled)), len(labelled) == 112 and len(right) >= 80,
+          "missed %s" % [t["name"][:40] for t, i in labelled if (t, i) not in right][:5])
+    check("a release the library cannot hold is never given the other kind's id",
+          all(i["kind"] == t["kind"] for t, i in identities if i["tmdb"] and i["confidence"] != identify.EXACT),
+          [(t["name"][:40], i["kind"]) for t, i in identities if i["tmdb"] and i["kind"] != t["kind"]][:3])
+
+
 def season_decides():
     """`fixtures/identify/tom_and_jerry.json`, recorded on the test host 2026-10-11. Plex's matcher
     answers `The.Tom.and.Jerry.Show.S02E05` with the 1975 series, one season long; TMDB's
@@ -224,6 +271,7 @@ if __name__ == "__main__":
     corpus()
     exact()
     episode_ids()
+    blank_tiles()
     season_decides()
     failed = results.count(False)
     print("\n%d/%d passed" % (len(results) - failed, len(results)))

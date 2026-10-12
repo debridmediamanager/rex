@@ -76,19 +76,28 @@ static EDITION: LazyLock<Regex> = LazyLock::new(|| {
 // form (`Some Day or One Day - 1x02`), or only inside the brackets `parse_release` drops (a
 // disc rip's `00000 (E01-The.Arrangement).m2ts`, Suits.S03 on the production server). zurg
 // files these as shows since 2026-10-11, and with no number here the feed placed none of
-// them.
+// them. The production server's Usenet library (2026-10-12) adds four digits and an `EP` or
+// `Ep.` (`Detektiv.Conan.E0221`, `One.Piece.EP1161`, `Gintama.Ep.14`), each filed under movies.
 static LOOSE_NX: LazyLock<Regex> =
     LazyLock::new(|| re(r"(?i)(?:^|[\s._\-\[(])(\d{1,2})x(\d{2})(?:[\s._\-\])]|$)"));
 static LOOSE_E: LazyLock<Regex> =
-    LazyLock::new(|| re(r"(?i)(?:^|[\s._\-\[(])E(\d{2,3})(?:[\s._\-\])]|$)"));
+    LazyLock::new(|| re(r"(?i)(?:^|[\s._\-\[(])E(?:P[.\s]?)?(\d{2,4})(?:[\s._\-\])]|$)"));
+// An absolute episode glued to its title by a dash (`[Moozzi2] Eighty-Six-15 [BD …]`,
+// `[HorribleSubs].Gintama-340.[1080p]`, the production server's Usenet movies): two or three digits and no
+// year, so `Blade-Runner-2049` stays a film.
+static DASH_EPISODE: LazyLock<Regex> = LazyLock::new(|| re(r"^(.*\S)-(\d{2,3})$"));
+// `Der.mude.Tod.AKA.Destiny.1921`: a film named twice, its original name first. TMDB finds
+// all nine such names on the production server by that first name, and misses `La Haine AKA Hate` by the second.
+static AKA: LazyLock<Regex> = LazyLock::new(|| re(r"\s+AKA\s+"));
 // A season pack names its season without an episode: `Planet.Earth.II.S01.1080p…`,
-// `The Sopranos S01 …`, `Show Season 2 …`, `S01-S03`. Python ends it with
+// `The Sopranos S01 …`, `Show Season 2 …`, `S01-S03`, and on the production server `Family.Matters.seasons.01-09`
+// and `South Park - Seasons 1 to 25`. Python ends it with
 // `(?![\s._-]?E\d)`, which the regex crate lacks. The tail below consumes exactly
 // what that lookahead does not match, so the same backtracking path wins and the
 // start and groups are Python's; only the end differs, and only the start is used.
 static SEASON_PACK: LazyLock<Regex> = LazyLock::new(|| {
     re(
-        r"\b(?i:S(\d{1,2})(?:\s?-\s?S?\d{1,2})?|Season[\s._-]?(\d{1,2}))\b(?:\z|[^Ee\s._-]|[Ee](?:\z|\D)|[\s._-](?:\z|[^Ee]|[Ee](?:\z|\D)))",
+        r"\b(?i:S(\d{1,2})(?:\s?-\s?S?\d{1,2})?|Seasons?[\s._-]?(\d{1,2}))\b(?:\z|[^Ee\s._-]|[Ee](?:\z|\D)|[\s._-](?:\z|[^Ee]|[Ee](?:\z|\D)))",
     )
 });
 
@@ -181,6 +190,13 @@ pub fn parse_name(name: &str) -> Parsed {
         }
     }
     parsed.title = squeeze(&parsed.title);
+    parsed.title = AKA.splitn(&parsed.title, 2).next().unwrap_or_default().to_string();
+    if parsed.season.is_none() && parsed.episode.is_none() && parsed.year.unwrap_or(0) == 0 && !parsed.pack {
+        if let Some(dashed) = DASH_EPISODE.captures(&parsed.title) {
+            parsed.episode = py_int(&dashed[2]);
+            parsed.title = dashed[1].trim_matches([' ', '-', '–', '—']).to_string();
+        }
+    }
     parsed
 }
 
@@ -267,14 +283,16 @@ fn tmdb_imdb(t: &dyn TmdbSource, kind: &str, id: i64) -> Option<String> {
 
 /// `Tmdb.identify`, but asked in the order the name implies: a season pack has no
 /// episode number, and `Tmdb.identify` searched it as a film first --
-/// `Planet.Earth.II.S01` found a 2019 documentary film of that name.
-fn tmdb_identify(t: &dyn TmdbSource, parsed: &Parsed, kind: &str) -> (Option<String>, Option<i64>) {
+/// `Planet.Earth.II.S01` found a 2019 documentary film of that name. A kind the caller
+/// `fixed` (its library's) is the only one asked: the other places nothing there.
+fn tmdb_identify(t: &dyn TmdbSource, parsed: &Parsed, kind: &str, fixed: bool) -> (Option<String>, Option<i64>) {
     let order = if kind == "show" {
         ["tv", "movie"]
     } else {
         ["movie", "tv"]
     };
-    for tmdb_kind in order {
+    for tmdb_kind in &order[..if fixed { 1 } else { 2 }] {
+        let tmdb_kind = *tmdb_kind;
         let found = match parsed.year.filter(|year| *year != 0) {
             // `Tmdb.search` applies a year to films only; a series is found by the
             // year it first aired, and by its title alone when that finds nothing.
@@ -325,12 +343,9 @@ fn matched_row(payload: Option<Value>, kind: &str) -> Option<(Value, String)> {
         .then_some((row, guid))
 }
 
-/// (guid, slug) of the provider's item for a movie or show, `tmdb://` ids asked first.
-pub fn plex_match(
-    p: &dyn PlexSource,
-    kind: &str,
-    external_ids: &[String],
-) -> Option<(String, Option<String>)> {
+/// The provider's item for a movie or show named by an external id, `tmdb://` ids asked
+/// first (`PlexProvider.match_row`, read as `PlexProvider.answer`).
+pub fn plex_match(p: &dyn PlexSource, kind: &str, external_ids: &[String]) -> Option<PlexAnswer> {
     let mut ids = external_ids.iter().collect::<Vec<_>>();
     ids.sort_by_key(|id| !id.starts_with("tmdb://"));
     for external in ids {
@@ -339,16 +354,15 @@ pub fn plex_match(
             p.call("POST", "/library/metadata/matches", Some(&body)),
             kind,
         ) {
-            return Some((
-                guid,
-                row.get("slug").and_then(Value::as_str).map(str::to_string),
-            ));
+            return Some(PlexAnswer::of(&row, guid, kind));
         }
     }
     None
 }
 
-/// What `PlexProvider.match_title` answers.
+/// What `PlexProvider.answer` reads off a matched row. The provider's own artwork rides
+/// along: a title only Plex knows has no TMDB poster (the production server, 2026-10-12: the Monogatari
+/// seasons Plex keeps as shows of their own drew the blank tile).
 #[derive(Debug, Clone, PartialEq)]
 pub struct PlexAnswer {
     pub guid: String,
@@ -357,6 +371,38 @@ pub struct PlexAnswer {
     pub year: Option<i64>,
     pub imdb: Option<String>,
     pub tmdb: Option<i64>,
+    pub thumb: Option<String>,
+    pub art: Option<String>,
+}
+
+impl PlexAnswer {
+    fn of(row: &Value, guid: String, kind: &str) -> Self {
+        let ids = row
+            .get("Guid")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .map(|entry| entry.get("id").and_then(Value::as_str).unwrap_or_default())
+            .collect::<Vec<_>>();
+        let tail = |prefix: &str| {
+            ids.iter()
+                .find_map(|id| id.strip_prefix(prefix))
+                .map(str::to_string)
+        };
+        let tmdb =
+            tail("tmdb://").filter(|id| !id.is_empty() && id.chars().all(|c| c.is_ascii_digit()));
+        let text = |field: &str| row.get(field).and_then(Value::as_str).filter(|value| !value.is_empty()).map(str::to_string);
+        PlexAnswer {
+            guid,
+            kind: kind.to_string(),
+            title: row.get("title").and_then(Value::as_str).map(str::to_string),
+            year: row.get("year").and_then(Value::as_i64),
+            imdb: tail("imdb://"),
+            tmdb: tmdb.and_then(|id| py_int(&id)),
+            thumb: text("thumb"),
+            art: text("art"),
+        }
+    }
 }
 
 /// The provider's own match for a release name, as a real PMS asks for it. plexlab's
@@ -381,28 +427,7 @@ pub fn plex_match_title(
         p.call("POST", "/library/metadata/matches", Some(&body)),
         kind,
     )?;
-    let ids = row
-        .get("Guid")
-        .and_then(Value::as_array)
-        .into_iter()
-        .flatten()
-        .map(|entry| entry.get("id").and_then(Value::as_str).unwrap_or_default())
-        .collect::<Vec<_>>();
-    let tail = |prefix: &str| {
-        ids.iter()
-            .find_map(|id| id.strip_prefix(prefix))
-            .map(str::to_string)
-    };
-    let tmdb =
-        tail("tmdb://").filter(|id| !id.is_empty() && id.chars().all(|c| c.is_ascii_digit()));
-    Some(PlexAnswer {
-        guid,
-        kind: kind.to_string(),
-        title: row.get("title").and_then(Value::as_str).map(str::to_string),
-        year: row.get("year").and_then(Value::as_i64),
-        imdb: tail("imdb://"),
-        tmdb: tmdb.and_then(|id| py_int(&id)),
-    })
+    Some(PlexAnswer::of(&row, guid, kind))
 }
 
 /// {index: guid} of a show's seasons or a season's episodes.
@@ -451,6 +476,9 @@ pub struct Identity {
     pub confidence: &'static str,
     pub source: Option<String>,
     pub disputed: Option<Disputed>,
+    /// The provider's artwork for `plex`, for a title TMDB gives none.
+    pub thumb: Option<String>,
+    pub art: Option<String>,
 }
 
 /// Runs the steps in order for one torrent; either provider may be absent.
@@ -502,7 +530,8 @@ impl Identifier<'_> {
     }
 
     /// The same, with the movie/show decision taken from the caller (a library
-    /// section's type, "movie" or "show") instead of the name heuristic.
+    /// section's type, "movie" or "show") instead of the name heuristic: an answer of the
+    /// other kind places nothing there, so the name is asked as that kind.
     pub fn identify_as(
         &self,
         name: &str,
@@ -511,6 +540,7 @@ impl Identifier<'_> {
         kind: Option<&str>,
     ) -> Identity {
         let parsed = parse_name(name);
+        let fixed = kind;
         let kind = kind.unwrap_or(
             if is_show(&parsed) || (files > 2 && parsed.year.unwrap_or(0) == 0) {
                 "show"
@@ -528,6 +558,8 @@ impl Identifier<'_> {
             confidence: NONE,
             source: None,
             disputed: None,
+            thumb: None,
+            art: None,
         };
 
         let (name_imdb, name_tmdb) = explicit_ids(name);
@@ -539,55 +571,114 @@ impl Identifier<'_> {
                     .cloned()
             })
             .filter(|imdb| !imdb.is_empty());
-        if imdb.is_some() || name_tmdb.is_some() {
-            identity.confidence = EXACT;
-            identity.source = Some(if named { "name id" } else { "dmm hash" }.to_string());
-            if let Some(imdb) = imdb {
-                if let Some(t) = self.tmdb {
-                    if let (Some(found_kind), tmdb_id) = tmdb_find_imdb(t, &imdb) {
-                        identity.kind = found_kind;
-                        identity.tmdb = tmdb_id;
-                    }
+        if imdb.is_none() && name_tmdb.is_none() {
+            return self.by_name(identity, fixed.is_some());
+        }
+        let blank = identity.clone();
+        identity.confidence = EXACT;
+        identity.source = Some(if named { "name id" } else { "dmm hash" }.to_string());
+        if let Some(imdb) = imdb {
+            if let Some(t) = self.tmdb {
+                if let (Some(found_kind), tmdb_id) = tmdb_find_imdb(t, &imdb) {
+                    identity.kind = found_kind;
+                    identity.tmdb = tmdb_id;
                 }
-                // An episode's id found its show: the show is known by its own id.
-                let series = match (self.tmdb, identity.tmdb) {
-                    (Some(t), Some(id)) if identity.kind == "show" => tmdb_imdb(t, "show", id),
+            }
+            // An episode's id found its show: the show is known by its own id.
+            let series = match (self.tmdb, identity.tmdb) {
+                (Some(t), Some(id)) if identity.kind == "show" => tmdb_imdb(t, "show", id),
+                _ => None,
+            };
+            identity.imdb = Some(series.filter(|series| !series.is_empty()).unwrap_or(imdb));
+        } else if let Some(id) = name_tmdb.as_deref().and_then(py_int) {
+            // zurg hands over the TMDB id of whatever its own Plex matched, an episode's
+            // among them: the production server's Pawn Stars came as 1559521, which no show has (2026-10-12).
+            let found = |t: &dyn TmdbSource| {
+                tmdb_details(t, if kind == "show" { "tv" } else { "movie" }, id)
+                    .is_some_and(|details| details.as_object().is_some_and(|details| !details.is_empty()))
+            };
+            if self.tmdb.is_none_or(found) {
+                identity.tmdb = Some(id);
+            }
+        }
+        if let Some(p) = self.plex {
+            let mut externals = Vec::new();
+            if let Some(tmdb) = identity.tmdb.filter(|tmdb| *tmdb != 0) {
+                externals.push(format!("tmdb://{tmdb}"));
+            }
+            if let Some(imdb) = identity.imdb.as_deref().filter(|imdb| !imdb.is_empty()) {
+                externals.push(format!("imdb://{imdb}"));
+            }
+            if let Some(answer) = plex_match(p, &identity.kind, &externals) {
+                identity.plex = Some(answer.guid);
+                (identity.thumb, identity.art) = (answer.thumb, answer.art);
+                // TMDB's /find does not know every IMDb id Plex does: DMM gives Knock at the
+                // Cabin as tt15679400, which Plex lists beside TMDB's 631842 (the production server, 2026-10-12).
+                // Plex's own TMDB ids are not all TMDB's: Digimon Adventure 02's 229048 is none.
+                let details = match (self.tmdb, answer.tmdb) {
+                    (Some(t), Some(id)) if identity.tmdb.is_none() => {
+                        tmdb_details(t, if identity.kind == "show" { "tv" } else { "movie" }, id)
+                            .filter(|details| details.as_object().is_some_and(|details| !details.is_empty()))
+                    }
                     _ => None,
                 };
-                identity.imdb = Some(series.filter(|series| !series.is_empty()).unwrap_or(imdb));
-            } else {
-                identity.tmdb = name_tmdb.as_deref().and_then(py_int);
-            }
-            if let Some(p) = self.plex {
-                let mut externals = Vec::new();
-                if let Some(tmdb) = identity.tmdb.filter(|tmdb| *tmdb != 0) {
-                    externals.push(format!("tmdb://{tmdb}"));
+                if let Some(details) = details {
+                    identity.tmdb = answer.tmdb;
+                    let own = details
+                        .pointer("/external_ids/imdb_id")
+                        .and_then(Value::as_str)
+                        .filter(|imdb| !imdb.is_empty())
+                        .or_else(|| details.get("imdb_id").and_then(Value::as_str).filter(|imdb| !imdb.is_empty()));
+                    if let Some(own) = own {
+                        identity.imdb = Some(own.to_string());
+                    }
                 }
-                if let Some(imdb) = identity.imdb.as_deref().filter(|imdb| !imdb.is_empty()) {
-                    externals.push(format!("imdb://{imdb}"));
-                }
-                identity.plex = plex_match(p, &identity.kind, &externals).map(|(guid, _)| guid);
             }
+        }
+        if identity.tmdb.is_some() && fixed.is_none_or(|fixed| identity.kind == fixed) {
             return identity;
         }
+        // The id names no title TMDB has, or one of the other kind than the library's: on
+        // the production server (2026-10-12) DMM's episode ids for Boy Meets World and Courage the Cowardly Dog,
+        // Bill Nye's id for a one-episode film, and zurg's ids for episodes left 45 shows and
+        // 12 films on the blank tile. The name decides then, as it does with no id at all:
+        // an id TMDB does not know is as likely DMM's mistake as Plex's -- its tt6257382 for
+        // A Serbian Film is Plex's "Film Postcards: Serbia".
+        let by_name = self.by_name(blank, fixed.is_some());
+        if by_name.tmdb.is_some() || (by_name.plex.is_some() && identity.tmdb.is_none()) {
+            by_name
+        } else {
+            identity
+        }
+    }
 
+    /// The cleaned name to Plex's matcher and TMDB, their agreement the confidence.
+    fn by_name(&self, mut identity: Identity, fixed: bool) -> Identity {
         if identity.parsed.title.is_empty() {
             return identity;
         }
+        let name = identity.name.clone();
         let parsed = &identity.parsed;
         let mut plex_answer = self.plex.and_then(|p| {
-            plex_match_title(p, &identity.kind, &parsed.title, parsed.year, Some(name))
+            plex_match_title(p, &identity.kind, &parsed.title, parsed.year, Some(&name))
         });
         let (mut tmdb_kind, mut tmdb_id, mut tmdb_imdb_id) = (None, None, None);
         if let Some(t) = self.tmdb {
-            (tmdb_kind, tmdb_id) = tmdb_identify(t, parsed, &identity.kind);
+            (tmdb_kind, tmdb_id) = tmdb_identify(t, parsed, &identity.kind, fixed);
             if let (Some(kind), Some(id)) = (&tmdb_kind, tmdb_id) {
                 tmdb_imdb_id = tmdb_imdb(t, kind, id);
             }
         }
+        // A film Plex knows by no TMDB id is a record of its own, and the one DMM's map was
+        // fed (the production server, 2026-10-12): Plex answered `A.Serbian.Film.2010` with "Film Postcards:
+        // Serbia" and `Mar.Adentro.2004` with a yearless stub, where TMDB's search was right.
+        let stub_film = |answer: &PlexAnswer| {
+            answer.kind == "movie" && answer.tmdb.is_none() && tmdb_kind.as_deref() == Some("movie")
+        };
         let overruled = match (&plex_answer, tmdb_id) {
             (Some(answer), Some(id))
-                if self.season_only_tmdb_has(answer, tmdb_kind.as_deref(), id, tmdb_imdb_id.as_deref(), parsed) =>
+                if stub_film(answer)
+                    || self.season_only_tmdb_has(answer, tmdb_kind.as_deref(), id, tmdb_imdb_id.as_deref(), parsed) =>
             {
                 plex_answer.take()
             }
@@ -602,6 +693,7 @@ impl Identifier<'_> {
             identity.imdb = answer.imdb;
             identity.tmdb = answer.tmdb;
             identity.kind = answer.kind;
+            (identity.thumb, identity.art) = (answer.thumb, answer.art);
             identity.confidence = if agree { AGREED } else { SINGLE };
             identity.source = Some(if agree { "plex+tmdb" } else { "plex" }.to_string());
             if tmdb_id.is_some() && !agree {
@@ -624,9 +716,9 @@ impl Identifier<'_> {
             });
             // Plex did not match the name, but it knows the title by its id: without a
             // real `plex://` guid the Android app's detail page never loads (cycle 70).
-            if let Some(p) = self.plex {
-                identity.plex =
-                    plex_match(p, &identity.kind, &[format!("tmdb://{id}")]).map(|(guid, _)| guid);
+            if let Some(answer) = self.plex.and_then(|p| plex_match(p, &identity.kind, &[format!("tmdb://{id}")])) {
+                identity.plex = Some(answer.guid);
+                (identity.thumb, identity.art) = (answer.thumb, answer.art);
             }
         }
         identity
@@ -732,6 +824,19 @@ mod tests {
             ("00000 (E01-The.Arrangement).m2ts", "00000 m2ts", None, Some(1)),
             ("Suits.S03.1080p.BDRemux.2xRus.Eng.HDCLUB", "Suits", Some(3), None),
             ("Movie.2020.1080p.DDP5.1.x264-GRP.mkv", "Movie", None, None),
+            // Filed under movies by the production server's Usenet zurg (2026-10-12), each an episode.
+            ("Detektiv.Conan.E0221.Nichts.als.Luegen.2.German.1996.ANiME.FS.DL.1080p.BluRay.x264-STARS", "Detektiv Conan", None, Some(221)),
+            ("One.Piece.EP1161.A.Dangerous.Deal.Loki.of.the.Underworld.and.Luffy.2160p.BILI.WEB-DL", "One Piece", None, Some(1161)),
+            ("Gintama.Ep.14.German.DTS.5.1.DL.1080p.BluRay.x264-AST4u", "Gintama", None, Some(14)),
+            ("[Moozzi2] Eighty-Six-15 [BD 3840x2160 x265-10Bit FLACx2]", "Eighty-Six", None, Some(15)),
+            ("[HorribleSubs].Gintama-340.[1080p]", "Gintama", None, Some(340)),
+            ("Family.Matters.seasons.01-09.AMZN.1080p.10bit.hevc.x265-bearfish", "Family Matters", Some(1), None),
+            ("South Park - Seasons 1 to 25 (S01-S25) Master Collection, The Movie & Extras [1080p-2160p]", "South Park", Some(1), None),
+            // What stays a film: a year beside the dash, one digit after it, an `AKA`'s first name.
+            ("Blade-Runner-2049", "Blade-Runner", None, None),
+            ("Spider-Man-2", "Spider-Man-2", None, None),
+            ("A Trip to the Moon (1902) Arrow (1080p BluRay x265 HEVC 10bit AAC 2.0 afm72)", "A Trip to the Moon", None, None),
+            ("Der.mude.Tod.AKA.Destiny.1921.576p.BluRay.AAC.x264-HANDJOB", "Der mude Tod", None, None),
         ] {
             let parsed = parse_name(name);
             assert_eq!((parsed.title.as_str(), parsed.season, parsed.episode), (title, season, episode), "{name}");

@@ -4196,6 +4196,48 @@
     ]
    }
   },
+  "[\"POST\", \"/library/metadata/matches\", {\"guid\": \"tmdb://1095460\", \"type\": 1}]": {
+   "MediaContainer": {
+    "Metadata": [
+     {
+      "Guid": [
+       {
+        "id": "tmdb://1095460"
+       }
+      ],
+      "art": "https://image.tmdb.org/t/p/original/x09PUOdWiM3JhPRVrInG32Efedp.jpg",
+      "guid": "plex://movie/640788218cedf1ad9a2e147a",
+      "thumb": "https://image.tmdb.org/t/p/original/6tq7WDWohN5VbDlgSIKl06d8p5O.jpg",
+      "title": "Extraordinary Rescue",
+      "year": 2023
+     }
+    ]
+   }
+  },
+  "[\"POST\", \"/library/metadata/matches\", {\"guid\": \"tmdb://1193501\", \"type\": 1}]": {
+   "MediaContainer": {
+    "Metadata": [
+     {
+      "Guid": [
+       {
+        "id": "imdb://tt29550683"
+       },
+       {
+        "id": "tmdb://1193501"
+       },
+       {
+        "id": "tvdb://370387"
+       }
+      ],
+      "art": "https://metadata-static.plex.tv/1/gracenote/1415844feb34db1d8ff8cd528ead7b22.jpg",
+      "guid": "plex://movie/653434588ca101e8b9eac7c1",
+      "thumb": "https://metadata-static.plex.tv/5/gracenote/5328c37c81dc50e3606bf8daa1d83784.jpg",
+      "title": "Whistle",
+      "year": 2026
+     }
+    ]
+   }
+  },
   "[\"POST\", \"/library/metadata/matches\", {\"guid\": \"tmdb://1202033\", \"type\": 1}]": {
    "MediaContainer": {
     "Metadata": [
@@ -4280,6 +4322,30 @@
       "guid": "plex://movie/5d776827880197001ec90904",
       "title": "The Matrix",
       "year": 1999
+     }
+    ]
+   }
+  },
+  "[\"POST\", \"/library/metadata/matches\", {\"guid\": \"tmdb://974576\", \"type\": 1}]": {
+   "MediaContainer": {
+    "Metadata": [
+     {
+      "Guid": [
+       {
+        "id": "imdb://tt20215234"
+       },
+       {
+        "id": "tmdb://974576"
+       },
+       {
+        "id": "tvdb://358047"
+       }
+      ],
+      "art": "https://metadata-static.plex.tv/a/gracenote/a934df53aa80d128dee69a9d4ab6aedf.jpg",
+      "guid": "plex://movie/6284c9b1f018e53ba8574263",
+      "thumb": "https://metadata-static.plex.tv/b/gracenote/b2a45cd13e8816476c09231d85961321.jpg",
+      "title": "Conclave",
+      "year": 2024
      }
     ]
    }
