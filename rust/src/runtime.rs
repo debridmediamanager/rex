@@ -850,7 +850,7 @@ impl Runtime {
         runtime.load_state()?;
         runtime.settle_scan_key();
         // Releases a source pushed before they were folded into one row.
-        let folded = runtime.fold_versions(None);
+        let folded = runtime.fold_versions(None, &HashSet::new());
         if !folded.is_empty() {
             info!("FEED folded {} row(s) into other releases of their titles", folded.len());
         }

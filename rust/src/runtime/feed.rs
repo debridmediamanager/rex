@@ -526,6 +526,7 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
         }
     }
     let mut created = Vec::new();
+    let mut folded_new = HashSet::new();
     for (section, arrivals) in new_rows {
         let Some(library) = libraries.remove(&section) else {
             continue;
@@ -535,13 +536,26 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
         guard.scan_progress(&mut activity, &section, &last, 99);
         // Measured (4a): a folder scan announces its new rows after the step at 99.
         let keys = guard.place_arrivals(&library, arrivals);
+        // A new release of a title already here becomes another version of it before any
+        // client hears of it. Announced and then folded, it reached Plex for Mac as a row
+        // created and deleted, which it kept drawing in Recently Added with the trash icon
+        // (the production server, 2026-10-13: three releases of The Darjeeling Limited). A real PMS
+        // adds the file to the item it already has.
+        let new: HashSet<String> = keys.iter().cloned().collect();
+        let absorbed = guard.fold_versions(Some(&new), &new);
+        let keys: Vec<String> = keys.into_iter().filter(|key| !absorbed.contains(key)).collect();
+        for key in &keys {
+            guard.push_created_frames(key);
+        }
+        folded_new.extend(absorbed);
         activity.insert("subtitle".to_string(), json!(last));
         guard.scan_finished(&mut activity, &section);
         created.extend(keys);
     }
     let filled = guard.fill_probes(probed);
     touched.extend(created.iter().cloned());
-    let folded = guard.fold_versions(Some(&touched));
+    let mut folded = guard.fold_versions(Some(&touched), &HashSet::new());
+    folded.extend(folded_new);
     created.retain(|key| !folded.contains(key));
     counts.created += created
         .iter()
@@ -1170,7 +1184,7 @@ impl Runtime {
             self.reidentify_show(library, show, &leaf, moving);
         }
         self.catalog.remove(key);
-        self.place_leaves(library, vec![leaf], &HashSet::from([key.to_string()]));
+        self.place_leaves(library, vec![leaf], &HashSet::from([key.to_string()]), true);
         if let Some(row) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
             for (field, value) in old.as_object().into_iter().flatten() {
                 let placed = field.starts_with("parent") || field.starts_with("grandparent") || field.starts_with("librarySection");
@@ -1245,7 +1259,8 @@ impl Runtime {
     /// real PMS's scanner and agent make several files of one movie one item. The row
     /// someone watched survives, else the oldest. `only` limits it to slots holding one of
     /// those keys. Answers the keys folded away.
-    pub(super) fn fold_versions(&mut self, only: Option<&HashSet<String>>) -> HashSet<String> {
+    /// `unannounced`: rows no client has heard of, folded without a `deleted` frame.
+    pub(super) fn fold_versions(&mut self, only: Option<&HashSet<String>>, unannounced: &HashSet<String>) -> HashSet<String> {
         let mut slots: BTreeMap<String, Vec<(bool, i64, String)>> = BTreeMap::new();
         for row in self.catalog.items() {
             if let (Some(slot), Some(key)) = (version_slot(row), key_of(row)) {
@@ -1291,7 +1306,9 @@ impl Runtime {
             if let Some(key) = key_of(row) {
                 self.forget_row(&key);
             }
-            self.push_timeline_entry(row, 9, Some("deleted"), None, None, None);
+            if key_of(row).is_none_or(|key| !unannounced.contains(&key)) {
+                self.push_timeline_entry(row, 9, Some("deleted"), None, None, None);
+            }
         }
         self.drop_from_queues(&folded.iter().cloned().collect::<Vec<_>>());
         self.dirty = true;

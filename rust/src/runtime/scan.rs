@@ -350,13 +350,14 @@ impl Runtime {
                 None => warning!("FEED {} has no episode number; not placed", arrival.found.file),
             }
         }
-        self.place_leaves(plan, leaves, &HashSet::new())
+        // Announced by the caller once versions are folded (`push_created_frames`).
+        self.place_leaves(plan, leaves, &HashSet::new(), false)
     }
 
     /// Leaf rows into the library: a show's episode under the show of its identity and the
     /// season of its index, each found or made. `quiet` names leaves that are not new
     /// (a re-identified row keeps its key): they get no creation frames.
-    pub(super) fn place_leaves(&mut self, plan: &Library, leaves: Vec<Value>, quiet: &HashSet<String>) -> Vec<String> {
+    pub(super) fn place_leaves(&mut self, plan: &Library, leaves: Vec<Value>, quiet: &HashSet<String>, announce: bool) -> Vec<String> {
         if leaves.is_empty() {
             return Vec::new();
         }
@@ -464,7 +465,7 @@ impl Runtime {
         for key in &episodes {
             self.inherit_parents(key);
         }
-        for key in created.iter().filter(|key| !quiet.contains(*key)) {
+        for key in created.iter().filter(|key| announce && !quiet.contains(*key)) {
             self.push_created_frames(key);
         }
         created
@@ -725,7 +726,7 @@ impl Runtime {
     /// Measured (4a/4b): a row a scan creates is announced `state 0` with an empty title,
     /// then `state 1` created, analysing and thumbnailing, then `state 1` again; an
     /// episode's first frame also names its season and show.
-    fn push_created_frames(&mut self, key: &str) {
+    pub(super) fn push_created_frames(&mut self, key: &str) {
         let Some(row) = self.catalog.get(key).cloned() else {
             return;
         };

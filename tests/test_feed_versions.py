@@ -15,8 +15,9 @@ import os
 import shutil
 import sys
 import tempfile
+import time
 
-from test_feed import BYTES_TOKEN, BODY, MOUNT, LEGACY, Bytes, Server, check, results, serve
+from test_feed import BYTES_TOKEN, BODY, MOUNT, LEGACY, Bytes, Events, Server, check, results, serve
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FIXTURE = json.load(open(os.path.join(HERE, "fixtures", "feed", "duplicate_releases.json")))
@@ -75,7 +76,17 @@ def main():
         server.feed("POST", "items", {"items": [one]})
         key = server.keys().get(one["id"])
         server.request("/:/scrobble?key=%s&identifier=com.plexapp.plugins.library" % key)
+        events = Events(server.port)
+        mark = events.mark()
         status, body = server.feed("POST", "items", {"items": [two]})
+        # Plex for Mac drew a release announced as a new row and then folded away in Recently
+        # Added with the trash icon (the production server, 2026-10-13: The Darjeeling Limited).
+        time.sleep(0.5)
+        others = [(entry.get("itemID"), entry.get("state")) for name, frame in events.frames[mark:] if name == "timeline"
+                  for entry in (frame.get("TimelineEntry") if isinstance(frame.get("TimelineEntry"), list)
+                                else [frame.get("TimelineEntry")])
+                  if entry and entry.get("itemID") != key and entry.get("state") in (0, 9)]
+        check("the second release is never announced as a row of its own, created or deleted", others == [], others)
         listed = movies(server)
         row = server.row(key)
         check("the second release of a title is no new movie", status == 200 and body.get("created") == 0
