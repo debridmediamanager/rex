@@ -370,6 +370,7 @@ impl Runtime {
             );
         }
         object.insert("updatedAt".to_string(), json!(stamp));
+        minted_for_sources(object);
         self.store_row(key, row);
         self.cascade_artwork_from(key);
         info!("ARTWORK upload {key} {kind} {} bytes -> {upload}", body.len());
@@ -441,6 +442,7 @@ impl Runtime {
         fields.retain(|entry| entry.get("name").and_then(Value::as_str) != Some(field));
         fields.push(json!({"locked": true, "name": field}));
         object.insert("Field".to_string(), Value::Array(fields));
+        minted_for_sources(object);
         let body = object
             .get(field)
             .and_then(Value::as_str)
@@ -601,5 +603,16 @@ impl Runtime {
             "selected": !chose_remote && !chose_upload && current, "provider": "local"}),
         );
         container(entries)
+    }
+}
+
+/// A client's own pick or upload has just minted the row's paths for the artwork it now
+/// names: record that (`_thumbFor`, `_artFor`), or `restamp_artwork` takes the change for
+/// one the feed made and mints the path a second time, a second past `updatedAt` and past
+/// the path the pick answered.
+fn minted_for_sources(object: &mut serde_json::Map<String, Value>) {
+    for (source, mark) in [("_poster_url", "_thumbFor"), ("_art_url", "_artFor")] {
+        let from = object.get(source).filter(|value| !value.is_null()).cloned().unwrap_or(json!(""));
+        object.insert(mark.to_string(), from);
     }
 }
