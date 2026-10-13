@@ -18,7 +18,7 @@ The steps below go in that order.
 | One or more byte sources | [zurg](https://github.com/debridmediamanager/zurg) (a build with the rex feed: `rex_url` in its `config.yml`), or any HTTP server that serves the files plus something that pushes them to rex's feed |
 | A TMDB API key | free from [themoviedb.org](https://www.themoviedb.org/settings/api); it names what is pushed and powers Fix Match |
 | Your Plex account token | the `X-Plex-Token` in the URL of any "View XML" link in Plex Web ([Plex's guide](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/)). rex uses it for Plex's own metadata agent and for registering with plex.tv |
-| An HTTPS address | only for use outside your LAN and in app.plex.tv: a certificate for a hostname you control (a `tailscale cert`, Let's Encrypt) or a named Cloudflare tunnel |
+| An HTTPS address | only for use outside your LAN and in app.plex.tv: a certificate for a hostname you control (a `tailscale cert`, Let's Encrypt) |
 | FFmpeg | optional, for [transcoding](#transcoding) |
 
 ### 1. Build
@@ -199,15 +199,18 @@ server's identity already has a device row on the account.
 
 Plex apps outside your LAN, and app.plex.tv in a browser, connect only to an HTTPS
 address that plex.tv lists for the server. rex has no `*.plex.direct` certificate, so
-give it your own hostname, in one of two ways:
+give it your own hostname, with rex terminating TLS:
 
 - **rex terminates TLS**, on the same port as plain HTTP:
   `--tls-cert host.crt --tls-key host.key`. The key must be PKCS#8 or RSA PEM; an EC
   key, which is what `tailscale cert` and many ACME clients write, needs converting
   first: `openssl pkcs8 -topk8 -nocrypt -in host.key -out host.pkcs8.key`. A
   `tailscale cert` hostname works for apps on your tailnet.
-- **A named Cloudflare tunnel** in front: [`examples/cloudflared.example.yml`](../examples/cloudflared.example.yml).
-  Quick tunnels do not work for Plex clients.
+
+Do not put a Cloudflare tunnel in front. Every byte would pass through your host and then
+Cloudflare. Cloudflare also drops the `Range` of a file's first read. rex then serves the
+whole file and every play start pulls all of it from your source (measured in
+docs/findings.md under "The unavoidable trade-off").
 
 Then restart rex with the addresses to register, the HTTPS one first and, optionally, a
 LAN one:

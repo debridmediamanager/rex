@@ -20,7 +20,7 @@
 #
 # --announce-url is added once the server is claimed (claim_state.json beside the
 # catalog): claim it first, without it. The HTTPS address needs --tls-cert/--tls-key here
-# (a PKCS#8 or RSA key) or a named tunnel in front (examples/cloudflared.example.yml).
+# (a PKCS#8 or RSA key). Not a Cloudflare tunnel: docs/setup.md step 7 says why.
 set -e
 cd "$(dirname "$0")"
 [ -f rex.env ] && { set -a; . ./rex.env; set +a; }

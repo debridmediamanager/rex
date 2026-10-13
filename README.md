@@ -100,7 +100,7 @@ Do this once per server. rex saves it in `claim_state.json` next to `rex.db`. Ba
 
 **7. Use it outside your home**
 
-app.plex.tv only connects to an HTTPS address and the other Plex apps prefer one. rex has no relay so the address has to be reachable from the internet. Give rex a certificate for your own hostname or put a Cloudflare tunnel in front. Then restart it with that address.
+app.plex.tv only connects to an HTTPS address and the other Plex apps prefer one. rex has no relay so the address has to be reachable from the internet. Give rex a certificate for your own hostname with `--tls-cert` and `--tls-key`. Then restart it with that address. Do not put a Cloudflare tunnel in front. Cloudflare drops the range of the first read so every play start pulls the whole file from your source.
 
 ```bash
 --announce-url https://rex.example.com:32400

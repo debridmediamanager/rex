@@ -39,7 +39,7 @@ searched on disk. The gate is usually one truthiness check in minified code.
 | `rust/` | The server: the native port (`runtime.rs` and `runtime/*.rs` hold the routes). Build with `cargo build --release --manifest-path rust/Cargo.toml` |
 | `oracle/` | The Python oracle (`server.py` and its modules, below), and the catalog and manager tools users run: `oracle/build_catalog.py`, `oracle/manager.py` |
 | `data/` | The measured sidecars both servers read (below) |
-| `examples/` | `run.sh.example`, `cloudflared.example.yml`, and `catalog.example.json`, the catalog's shape |
+| `examples/` | `run.sh.example` and `catalog.example.json`, the catalog's shape |
 | `tests/` | Conformance and end-to-end suites, plus `catalog_ui.json` and `fixtures/decisions/`, the measured decision corpus |
 | `tests/fixtures/` | Redacted corpora recorded from a real PMS through a real client; `media/` pairs real files' probes with a real PMS's analysis of them |
 | `harness/` | plexlab — the reference PMS and the recorder. See below. |
