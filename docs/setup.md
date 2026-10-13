@@ -167,6 +167,11 @@ a wrong match can never be corrected by a later push.
 
 ### 6. Claim it, so it appears in your Plex apps
 
+Claiming is optional and at your own risk. rex is not made by Plex and Plex could take
+action against an account that registers it. Skip it and rex only answers on your own
+network (step 4 "Who may connect"), or start it with `--token` and give that token to your
+clients.
+
 Claiming registers the server on your Plex account, the same way a real Plex Media
 Server is claimed. **Do it once per server.** The claim is saved in `claim_state.json`
 beside the catalog and survives restarts. Keep a backup of that file: a lost claim

@@ -88,6 +88,8 @@ zurg sends rex its whole library and then every change as it happens. A movie or
 
 **6. Add it to your Plex account**
 
+This step is optional and at your own risk. rex is not made by Plex and Plex could take action against an account that registers it. Skip it and rex only answers on your own network.
+
 Open [plex.tv/claim](https://www.plex.tv/claim) and copy the code. It expires in four minutes.
 
 ```bash
