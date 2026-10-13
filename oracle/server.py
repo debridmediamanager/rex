@@ -8750,7 +8750,7 @@ class Rex:
             # connection slot:
             #
             #   1 ??? - Uninitialized
-            #   3 192.0.2.10:61216 - Routing - GET /connections #4e445 - Token (plexa630) (curl/8.7.1)
+            #   3 192.0.2.10:61216 - Routing - GET /connections #4e445 - Token (rex-owner) (curl/8.7.1)
             #
             # The trailing parenthesis is the client's `X-Plex-Device-Name, X-Plex-Product`
             # when it sends them, its `User-Agent` when it does not, and absent when it
@@ -26367,12 +26367,12 @@ def main():
     )
     parser.add_argument(
         "--owner-email",
-        default="plexadmin@debridmediamanager.com",
+        default="owner@example.com",
         help="owner email, which is what a real PMS reports as myPlexUsername",
     )
     parser.add_argument(
         "--owner-username",
-        default="plexa630",
+        default="rex-owner",
         help="the Plex account that OWNS this server; shared users are not owners",
     )
     # Registration is opt-in: passing --announce-url WRITES to a plex.tv account.

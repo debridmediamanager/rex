@@ -29454,7 +29454,7 @@ def main():
 
     # Cycle 52, measured on plexlab (1.43.4) and the 1.42.2 reference: `/connections` is a real
     # route that answers **text/plain**, one line per connection --
-    # `3 10.0.0.1:61216 - Routing - GET /connections #4e445 - Token (plexa630) (curl/8.7.1)`
+    # `3 10.0.0.1:61216 - Routing - GET /connections #4e445 - Token (rex-owner) (curl/8.7.1)`
     # -- where every verb but GET and HEAD falls through to the legacy dispatcher's empty
     # listing. rex answered that dispatcher container to the GET as well, so a caller was
     # handed an XML MediaContainer where a real PMS sends a plain-text report. (PMS's fixed
