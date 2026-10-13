@@ -23845,7 +23845,7 @@ fn handle_connection<S: Read + Write + PollRead>(
                 take_error_note();
             } else {
                 // `sim.requests.append((method, self.path))`.
-                let row = format!("{} {}", request.method, request.target);
+                let row = format!("{} {}", request.method, logging::redact_tokens(&request.target));
                 guard.requests.push(row);
                 if guard.requests.len() > 4000 {
                     guard.requests.drain(..2000);
@@ -23895,7 +23895,10 @@ fn handle_connection<S: Read + Write + PollRead>(
         // `log_request`: under --verbose, every answered request line at DEBUG.
         debug!(
             "\"{} {} {}\" {} -",
-            request.method, request.target, request.version, response.status
+            request.method,
+            logging::redact_tokens(&request.target),
+            request.version,
+            response.status
         );
         // Cycle 30/49: a refusal of the request's ENVELOPE closes the socket -- the
         // malformed query pair among them -- while a refusal of its MEANING keeps it.

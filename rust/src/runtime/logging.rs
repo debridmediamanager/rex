@@ -28,6 +28,17 @@ struct Sink {
     rows: Vec<Value>,
 }
 
+/// A request target with every `X-Plex-Token` value masked, plain or URL-encoded (the
+/// `url=` of `/photo/:/transcode` carries one): the request line and `requests.log` are what
+/// people hand over for support. A real PMS's own log masks every token as a run of `x`.
+pub(crate) fn redact_tokens(target: &str) -> String {
+    static TOKEN: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
+    TOKEN
+        .get_or_init(|| regex::Regex::new(r"(?i)(x-plex-token(?:=|%3d))[A-Za-z0-9_.~-]+").unwrap())
+        .replace_all(target, "${1}xxxxxxxxxxxxxxxxxxxx")
+        .into_owned()
+}
+
 static SINK: Mutex<Sink> = Mutex::new(Sink {
     lines: Vec::new(),
     rows: Vec::new(),

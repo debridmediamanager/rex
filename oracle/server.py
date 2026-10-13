@@ -3990,6 +3990,17 @@ _PADDED_ID_SEGMENT = re.compile(r"\+?0*[0-9]+\Z")
 _PERSIST_GET = re.compile(r"/:/(scrobble|unscrobble|rate|progress|timeline)\Z")
 
 
+_TOKEN_IN_TARGET = re.compile(r"(?i)(x-plex-token(?:=|%3d))[A-Za-z0-9_.~-]+")
+
+
+def redact_tokens(target):
+    """A request target with every `X-Plex-Token` value masked, plain or URL-encoded (the
+    `url=` of `/photo/:/transcode` carries one): the request line and `requests.log` are
+    what people hand over for support. A real PMS's own log masks every token as a run of
+    `x`."""
+    return _TOKEN_IN_TARGET.sub(r"\1xxxxxxxxxxxxxxxxxxxx", target)
+
+
 def _target_parts(target):
     """Split an HTTP request target without URL params/fragment semantics.
 
@@ -23675,7 +23686,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def log_message(self, fmt, *args):
         if self.server.verbose:
-            logger.debug("%s", fmt % args)
+            logger.debug("%s", redact_tokens(fmt % args))
 
     def _wants_xml(self):
         """Plex clients pick the format with Accept; TV and mobile want XML.
@@ -25046,7 +25057,7 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         with sim.lock:
-            sim.requests.append((method, self.path))
+            sim.requests.append((method, redact_tokens(self.path)))
 
         if isinstance(result, tuple):
             kind = result[0]

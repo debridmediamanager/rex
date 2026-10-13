@@ -863,6 +863,10 @@ def main():
               and logged(rex_log, "INFO", r"token gate: ENFORCED -- claimed: the server's own "
                                               r"token and the ones plex\.tv lists for it", ARCHIVE_LINE),
               (status, sorted(files), rex_log[-1500:]))
+        check("Download Logs' request log masks a query-string token",
+              DEVICE_TOKEN not in files.get("requests.log", "")
+              and "X-Plex-Token=xxxxxxxxxxxxxxxxxxxx" in files.get("requests.log", ""),
+              [line for line in files.get("requests.log", "").splitlines() if "oken" in line][:5])
         check("Download Logs carries the request log",
               re.search(r"^GET /identity$", files.get("requests.log", ""), re.M) is not None,
               files.get("requests.log", "")[-500:])
@@ -877,6 +881,10 @@ def main():
         check("--verbose logs each request line at DEBUG",
               logged(second_log, "DEBUG", r'"GET /identity HTTP/1\.1" 200 -'),
               second_log[-3000:])
+        check("--verbose request lines mask a query-string token",
+              DEVICE_TOKEN not in second_log
+              and logged(second_log, "DEBUG", r'"GET /library/sections\?X-Plex-Token=x{20} HTTP/1\.1" 200 -'),
+              [line for line in second_log.splitlines() if "oken=" in line][:5])
         check("without --verbose there are no request lines",
               not logged(first_log, "DEBUG", r'".*'), "first run had DEBUG lines")
     finally:
