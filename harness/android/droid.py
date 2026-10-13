@@ -9,11 +9,20 @@
   never mutated (no device link, no settings writes).
 - Direct connections to production hosts are refused outright.
 """
-import json, re, urllib.request
+import json, os, re, urllib.request
 from mitmproxy import http, ctx
 
-PROD_HOSTS = {"192.168.88.245", "192.168.88.244", "zen", "fun"}
-PROD_HASHES = ("0347ff6da1a340c7a5cba3561adf848f", "52f61baa62dc4b78ae65d126bb72698d")
+# The production servers this must never reach, from tokens.env (mitm.sh sources it), comma
+# separated: host names and addresses match exactly, an entry ending in "." is an address
+# prefix, and a plex.direct certificate hash matches inside the host name.
+PROD = [p.strip().lower() for p in os.environ.get("DROID_PROD", "").split(",") if p.strip()]
+if not PROD:
+    raise SystemExit("droid.py: set DROID_PROD to the production hosts, prefixes and certificate hashes")
+
+
+def is_prod(host):
+    return any(host == p or (p.endswith(".") and host.startswith(p)) or (len(p) == 32 and p in host)
+               for p in PROD)
 
 
 class Droid:
@@ -56,8 +65,7 @@ class Droid:
 
     def request(self, flow: http.HTTPFlow):
         host = flow.request.pretty_host.lower()
-        if host in PROD_HOSTS or any(h in host for h in PROD_HASHES) or \
-                (flow.request.port == 32400 and host.startswith("192.168.88.")):
+        if is_prod(host):
             flow.response = http.Response.make(403, b"blocked: production", {"X-C70": "prod"})
             return
         if host.endswith(".plex.direct"):
@@ -107,9 +115,10 @@ class Droid:
                 req = urllib.request.Request(ctx.options.turi + "/library/sections", headers={
                     "Accept": "application/json", "X-Plex-Token": ctx.options.ttoken})
                 dirs = json.load(urllib.request.urlopen(req, timeout=10))["MediaContainer"].get("Directory") or []
+                user = json.loads(self._user_body())
                 libs = [{"librarySectionID": d["key"], "serverId": ctx.options.tmachine,
-                         "serverName": ctx.options.tname, "serverOwnerId": 316687974,
-                         "ownerName": "plexa630", "type": d["type"], "title": d["title"],
+                         "serverName": ctx.options.tname, "serverOwnerId": user["id"],
+                         "ownerName": user["username"], "type": d["type"], "title": d["title"],
                          "key": "/library/sections/%s" % d["key"],
                          "hubKey": "/hubs/sections/%s" % d["key"]} for d in dirs]
                 for entry in data:

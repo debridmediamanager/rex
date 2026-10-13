@@ -9,7 +9,7 @@ web client.
 
 Nothing here holds a token. State and captures live in `$DROID_WORK` (default
 `~/rex-android`); tokens come from `$DROID_TOKENS` (default `$DROID_WORK/tokens.env`, mode 600,
-`ACCOUNT_TOKEN=` plus whatever server tokens you pin to).
+`ACCOUNT_TOKEN=` plus whatever server tokens you pin to, and `DROID_PROD=`: the production hosts, address prefixes ending in `.` and plex.direct certificate hashes `droid.py` refuses; it will not start without them).
 
 ## Setup (once)
 
