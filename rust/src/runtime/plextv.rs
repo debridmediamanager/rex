@@ -381,6 +381,9 @@ pub(crate) struct Claim {
     pub feature_uuids: Vec<String>,
     pub account_id: Option<i64>,
     pub view_state_cursor: Option<String>,
+    /// The access-token list as last read, sorted: kept in the claim file, so a start whose
+    /// read fails still lets the owner's and shared users' clients in.
+    pub access_tokens: Vec<String>,
 }
 
 pub(crate) type SharedClaim = Arc<Mutex<Claim>>;
@@ -405,6 +408,7 @@ impl Claim {
             feature_uuids: Vec::new(),
             account_id: None,
             view_state_cursor: None,
+            access_tokens: Vec::new(),
         };
         if !claim.path.exists() {
             return claim;
@@ -434,6 +438,19 @@ impl Claim {
                 claim.feature_uuids = uuids;
                 claim.account_id = state.get("account_id").and_then(Value::as_i64);
                 claim.view_state_cursor = optional_string(state.get("view_state_cursor"));
+                let mut tokens = state
+                    .get("access_tokens")
+                    .and_then(Value::as_array)
+                    .map(|rows| {
+                        rows.iter()
+                            .filter_map(Value::as_str)
+                            .map(str::to_string)
+                            .collect::<Vec<_>>()
+                    })
+                    .unwrap_or_default();
+                tokens.sort();
+                tokens.dedup();
+                claim.access_tokens = tokens;
                 info!(
                     "loaded claim for {} (owner {})",
                     claim.machine,
@@ -462,7 +479,7 @@ impl Claim {
                 .map_or_else(|| "null".to_string(), |text| python_json_string(text))
         };
         let document = format!(
-            "{{\"machine\": {}, \"token\": {}, \"owner\": {}, \"email\": {}, \"feature_uuids\": [{}], \"account_id\": {}, \"view_state_cursor\": {}}}",
+            "{{\"machine\": {}, \"token\": {}, \"owner\": {}, \"email\": {}, \"feature_uuids\": [{}], \"account_id\": {}, \"view_state_cursor\": {}, \"access_tokens\": [{}]}}",
             python_json_string(&self.machine),
             string(&self.token),
             string(&self.owner),
@@ -475,6 +492,11 @@ impl Claim {
             self.account_id
                 .map_or_else(|| "null".to_string(), |id| id.to_string()),
             string(&self.view_state_cursor),
+            self.access_tokens
+                .iter()
+                .map(|token| python_json_string(token))
+                .collect::<Vec<_>>()
+                .join(", "),
         );
         // The claim holds the server's token: owner-only on Unix. A Windows profile's
         // folders are already private to their user.
@@ -749,7 +771,8 @@ fn fetch_access_tokens(claim: &Claim, unknown: Option<&str>) -> Result<HashSet<S
 }
 
 /// The tokens plex.tv lets reach this server, as last read (`Claim.access_tokens`), and when
-/// that read finished. In memory only: a claimed start reads the list again.
+/// that read finished. Seeded from the claim file (`Claim.access_tokens`), and a read that
+/// changes it saves it there.
 #[derive(Debug, Default)]
 pub(crate) struct Access {
     tokens: Mutex<HashSet<String>>,
@@ -759,6 +782,16 @@ pub(crate) struct Access {
 }
 
 impl Access {
+    fn seeded(tokens: &[String]) -> Self {
+        let access = Self::default();
+        access
+            .tokens
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .extend(tokens.iter().cloned());
+        access
+    }
+
     fn holds(&self, token: &str) -> bool {
         self.tokens
             .lock()
@@ -772,6 +805,15 @@ impl Access {
         match fetch_access_tokens(&snapshot(claim), unknown) {
             Ok(tokens) => {
                 info!("plex.tv lists {} access tokens", tokens.len());
+                let mut sorted = tokens.iter().cloned().collect::<Vec<_>>();
+                sorted.sort();
+                {
+                    let mut state = claim.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+                    if state.access_tokens != sorted {
+                        state.access_tokens = sorted;
+                        state.save();
+                    }
+                }
                 *self
                     .tokens
                     .lock()
@@ -1676,12 +1718,13 @@ impl PlexTv {
             .ok()
             .filter(|value| !value.is_empty())
             .map(|_| Arc::new(WatchStateSync::new(account_state_interval)));
+        let claim_tokens = claim.access_tokens.clone();
         Self {
             claim: Arc::new(Mutex::new(claim)),
             refresh: AccountRefresh::default(),
             sync,
             beat: Mutex::new(None),
-            access: Arc::default(),
+            access: Arc::new(Access::seeded(&claim_tokens)),
         }
     }
 

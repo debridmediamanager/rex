@@ -103,7 +103,8 @@ class Claim:
         # round-tripping matters.
         self.view_state_cursor = None
         # The tokens plex.tv lets reach this server, as last read, and when that read
-        # finished. In memory only: a claimed start reads the list again.
+        # finished. Kept in the claim file: a start whose read fails would otherwise let in
+        # only the server's own token and 401 every owner and shared-user client.
         self.access_tokens = frozenset()
         self._access_read = None
         self._access_lock = threading.Lock()
@@ -124,6 +125,7 @@ class Claim:
                 self.feature_uuids = sorted(set(state.get("feature_uuids") or []))
                 self.account_id = state.get("account_id")
                 self.view_state_cursor = state.get("view_state_cursor")
+                self.access_tokens = frozenset(state.get("access_tokens") or [])
                 logger.info("loaded claim for %s (owner %s)", self.machine, self.owner)
             else:
                 # A different machineIdentifier is a different server; its claim
@@ -140,7 +142,8 @@ class Claim:
                      "owner": self.owner, "email": self.email,
                      "feature_uuids": self.feature_uuids,
                      "account_id": self.account_id,
-                     "view_state_cursor": self.view_state_cursor},
+                     "view_state_cursor": self.view_state_cursor,
+                     "access_tokens": sorted(self.access_tokens)},
                     handle,
                 )
             os.chmod(self._path, 0o600)
@@ -295,8 +298,11 @@ class Claim:
     def refresh_access_tokens(self, unknown=None):
         """Re-read the list; a failed read keeps the last one."""
         try:
-            self.access_tokens = self.fetch_access_tokens(unknown)
-            logger.info("plex.tv lists %d access tokens", len(self.access_tokens))
+            tokens = self.fetch_access_tokens(unknown)
+            logger.info("plex.tv lists %d access tokens", len(tokens))
+            if tokens != self.access_tokens:
+                self.access_tokens = tokens
+                self._save()
         except Exception as error:
             logger.error("access tokens read failed: %s", error)
         self._access_read = time.monotonic()

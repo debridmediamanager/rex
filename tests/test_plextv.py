@@ -189,6 +189,7 @@ class Stub(ThreadingHTTPServer):
         self.records = []
         self.pages = 0
         self.late_tokens = []
+        self.refuse_access = False
 
     def taken(self, host=None, path=None, method=None):
         with self.lock:
@@ -286,6 +287,8 @@ class StubHandler(BaseHTTPRequestHandler):
         if (method, host, path) == ("GET", "plex.tv", "/api/v2/server/access_tokens"):
             # The recorded answer with the stub's tokens in it, plus a disabled row and any
             # token the test has started listing; anything but the server token is a 401.
+            if self.server.refuse_access:
+                return 503, "text/plain", "stub: plex.tv is down"
             if query.get("auth_token") != SERVER_TOKEN:
                 return ACCESS["bad_auth_answer"]["status"], xml, ACCESS["bad_auth_answer"]["body"]
             body = ACCESS["response"]["body"].replace("SERVER-TOKEN", SERVER_TOKEN) \
@@ -720,6 +723,7 @@ def main():
                    .get("Metadata")), "history")
 
         saved = read_json(claim_file)
+        saved.pop("access_tokens", None)
         check("the claim file keeps machine, credentials, owner, features, id and cursor",
               saved == {"machine": MACHINE, "token": SERVER_TOKEN, "owner": OWNER, "email": EMAIL,
                         "feature_uuids": FEATURE_UUIDS, "account_id": ACCOUNT_ID,
@@ -887,6 +891,22 @@ def main():
               [line for line in second_log.splitlines() if "oken=" in line][:5])
         check("without --verbose there are no request lines",
               not logged(first_log, "DEBUG", r'".*'), "first run had DEBUG lines")
+
+        # -- restart while plex.tv refuses the list: the last one read still holds -----
+        kept = read_json(claim_file).get("access_tokens") or []
+        check("the claim file keeps the enabled access tokens plex.tv listed",
+              ACCOUNT_TOKEN in kept and DEVICE_TOKEN in kept and DISABLED_TOKEN not in kept, kept)
+        with stub.lock:
+            stub.refuse_access = True
+        stub.clear()
+        third =Instance(directory, ports[0], ports[2])
+        check("a restart whose list read fails still lets listed tokens in",
+              wait_for(lambda: stub.taken("plex.tv", access_path, "GET"), 10)
+              and third.request("GET", "/library/sections", token=ACCOUNT_TOKEN)[0] == 200
+              and third.request("GET", "/library/sections?X-Plex-Token=%s" % DEVICE_TOKEN)[0] == 200
+              and third.request("GET", "/library/sections", token=DISABLED_TOKEN)[0] == 401,
+              third.output()[-1500:])
+        third.stop()
     finally:
         for instance in LIVE:
             if instance.proc.poll() is None:
