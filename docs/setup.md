@@ -123,8 +123,14 @@ curl -s -H "Authorization: Bearer <rd's token>" http://127.0.0.1:32400/rex/feed/
 - **Port 32400 and LAN discovery.** On 32400 rex answers Plex's LAN discovery (GDM) on
   udp/32410 and 32414, so apps on the same network find it. On a host that already runs
   Plex, give rex another port and `--gdm off`.
-- **Who may connect.** Until it is claimed (step 6), rex serves anyone who can reach the
-  port. Keep it on your LAN until then, or start it with `--token <secret>`, which makes
+- **Who may connect.** Until it is claimed (step 6), rex answers only this machine and
+  private addresses (10.x, 172.16-31.x, 192.168.x, IPv6 fc00::/7), as an unclaimed Plex
+  Media Server does. Tailscale's 100.x addresses and anything arriving through a proxy with
+  a public `X-Forwarded-For` are refused, and so is a request whose `Host` is a hostname
+  rather than localhost or the address it reached: use `http://<LAN IP>:32400`. To admit
+  other networks, set **List of IP addresses and networks that are allowed without auth**
+  (`allowedNetworks`) in Settings > Network from the machine itself; once set, only
+  localhost and those networks get in. Or start rex with `--token <secret>`, which makes
   it refuse everything but `/identity` and `/web` without that `X-Plex-Token`. Once
   claimed it accepts only its own token and the tokens plex.tv lists for it, as a real
   Plex Media Server does.
@@ -178,6 +184,11 @@ account out of plex.tv before.
 
 4. `curl -s http://127.0.0.1:32400/identity` now reports `claimed="1"`, and
    `claim_state.json` exists beside the catalog.
+
+A claimed rex refuses another claim (409). To move it to another account, stop it, remove
+`claim_state.json` and claim again. rex also refuses to store a claim when plex.tv answers
+with the account's own `PLEX_TOKEN` instead of a server token, which happens when the
+server's identity already has a device row on the account.
 
 ### 7. Reach it from outside: HTTPS and the announce
 

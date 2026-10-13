@@ -177,13 +177,17 @@ once per machineIdentifier -- makes rex register the way a real PMS does (findin
 experiment, run"): `POST /servers.xml` writes plex.tv's server record (422 is its normal
 answer), and the pubsub stream it then holds open is what clients read as `presence`. The
 claim is kept in `claim_state.json`, so a restart re-registers without claiming again. A
-claimed server gates every request as a real PMS does: its own token and the tokens
-`plex.tv/api/v2/server/access_tokens` lists for it, re-read for an unknown token (findings,
-"The token gate a claimed server keeps").
+claimed server gates every request as a real PMS does: its own token, the tokens
+`plex.tv/api/v2/server/access_tokens` lists for it (re-read for an unknown token, and kept in
+`claim_state.json` so a failed read after a restart locks no one out), and the `transient-`
+tokens its own `/security/token` minted (findings, "The token gate a claimed server keeps").
+An unclaimed server without `--token` answers only its own networks, as an unclaimed PMS
+does (`local_request`; findings, "The gate an unclaimed server keeps").
 Start it without `--announce-url` for the claim and add it afterwards: the unclaimed
 heartbeat writes a device row with the account token first, and the 2026-09-11 spike's
 claim of an identity that already had such a row got the account token back, not a server
-token.
+token. rex now refuses to store a token equal to `PLEX_TOKEN`, and a claimed server answers
+another claim with 409.
 
 `catalog.json` and `run.sh` are gitignored: both carry account-scoped
 credentials. `examples/catalog.example.json` keeps the shape.
@@ -419,9 +423,11 @@ answering at `http://LAB_IP:32410` (`SCRATCH_BIND=LAB_IP`; it publishes on loopb
   `make` strips the token, account and certificate, skips Logs and Cache (the only other
   places they appear) and mints new machine identifiers, and PMS sits on an
   `internal: true` network with no route out. `status` proves the isolation each time.
-- **An unclaimed PMS admits only loopback, and only with a local `Host`.** A request from
-  an allowed network is logged "Allowed Network (Subnet)" and still 401s; so is loopback
-  with `Host: LAB_IP:32410`, and any `X-Forwarded-For` makes it WAN. So a socat hop
+- **An unclaimed PMS checks the source and the `Host`.** The peer and every
+  `X-Forwarded-For` hop must be loopback or on `allowedNetworks` (private addresses while it
+  is empty), and `Host` must be localhost or PMS's own address; `Host: LAB_IP:32410` is
+  neither, so the relay's requests 401 (re-measured 2026-10-13, findings "The gate an
+  unclaimed server keeps"). So a socat hop
   inside PMS's namespace makes every request loopback, and clients send the copy's own
   `.LocalAdminToken`. A session's client address therefore reads 127.0.0.1 there.
 - **Do not put the hop on 32401.** PMS binds that port itself and exits at start with

@@ -12553,3 +12553,54 @@ TMDB and Plex both have without a poster (The Marquee, a 2024 Hit Man that is no
 which zurg's id names, two TMDB show entries); a featurette TMDB files as television in the movie
 library; and Tears of Steel, which is two releases (RD and TorBox) on one row and so is never
 named again by one of them.
+
+## The gate an unclaimed server keeps (2026-10-13)
+
+Measured on **plexscratch** (never claimed, 1.43.4) from a container on its internal network
+(a private source, `Host` = PMS's own address unless stated), and through the loopback relay.
+`allowedNetworks` was changed with `PUT /:/prefs` and put back.
+
+| `allowedNetworks` | Request | `/library/sections` |
+|---|---|---|
+| set, includes 172.16/12 | private source | 200 |
+| set | `Host: localhost:32400` | 200 |
+| set | `Host` naming another IP, or a hostname | 401 |
+| set | `X-Forwarded-For: 1.2.3.4` | 401 |
+| set | `X-Forwarded-For: 192.168.88.5` (listed) | 200 |
+| set, without 172.16/12 | private source | 401 (`/identity` 200) |
+| set, without 172.16/12 | private source, `X-Forwarded-For` listed | 401 |
+| set | loopback relay, `Host: 127.0.0.1` / `localhost` | 200 |
+| set | loopback relay, `Host: LAB_IP:32410` | 401 |
+| empty | private source | 200 |
+| empty | `X-Forwarded-For` 172.31.9.77, 192.168.1.5, 10.1.2.3, fd00::5 | 200 |
+| empty | `X-Forwarded-For` 100.85.1.1, 169.254.1.1, 8.8.8.8 | 401 |
+
+So the peer and every forwarded hop must be loopback or allowed: on the list when it is set,
+RFC 1918 or fc00::/7 when it is empty (not CGNAT, not link-local). A forwarded hop cannot vouch
+for a refused peer. `Host` must be localhost or the server's own address. The open paths to a
+refused source were the ones a claimed server keeps open: `/identity` 200, `/web` and
+`/manage` 302, `/web/index.html`, `/crossdomain.xml`, `/clientaccesspolicy.xml` and
+`/favicon.ico` 200, `/security/token?type=delegation&scope=all` its own 400; `/myplex/account`,
+`/:/prefs`, `/library/sections` and `/status/sessions` 401.
+
+rex answered every peer while unclaimed and without `--token`; now it keeps this gate
+(`local_request`, `tests/test_unclaimed_gate.py`). The `allowedNetworks` value in
+`data/server_prefs.json` was the reference's own and is now the default, empty.
+
+The note this replaces ("an allowed network still 401s") was a `Host` refusal: the relay's
+requests name the lab host's address, which is not PMS's own.
+
+plexlab itself read `claimed="0"` with an empty `PlexOnlineToken` on the same day, so it is
+signed out, and admitting its allowed networks without a token.
+
+## Transient tokens are admitted back (2026-10-13)
+
+On the production server (claimed, 1.42.2.10156), a `transient-<uuid>` token minted by
+`GET /security/token?type=delegation&scope=all` with the server's token answered 200 at
+`/library/sections` (as a header and in the query), `/status/sessions`, `/:/prefs` and
+`/myplex/account`, and 403 at `/security/token` itself. rex minted the token and refused it
+everywhere. How long a real PMS keeps one was not measured; rex keeps them until a restart.
+
+The same server's log masks every token: 112 of 112 `X-Plex-Token =>` values were a run of
+`x`. rex's request line and `requests.log` (Download Logs) now mask `X-Plex-Token` values the
+same way, plain or URL-encoded.
