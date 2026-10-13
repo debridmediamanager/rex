@@ -728,6 +728,17 @@ def main():
         check("the claim file is private (0600)",
               os.path.exists(claim_file) and (os.name == "nt" or stat.S_IMODE(os.stat(claim_file).st_mode) == 0o600),
               os.path.exists(claim_file) and oct(os.stat(claim_file).st_mode))
+        claim_lines = [("INFO", r"CLAIMED by %s; server token stored" % OWNER),
+                       ("INFO", r"servers\.xml POST -> 422"),
+                       ("INFO", r"pubsub subscribed for %s" % MACHINE),
+                       ("INFO", r"connectivity PUT -> 200 b''"),
+                       ("INFO", r"pubsub: reachability 0 for asyncIdentifier %s" % re.escape(str(asked))),
+                       ("ERROR", r"claim exchange failed: .*")]
+        # plex.tv's verdict comes down the pubsub stream whenever it is sent, so a slow runner
+        # stopped rex before logging it: wait for the lines, then stop.
+        deadline = time.time() + 30
+        while time.time() < deadline and not all(logged(first.output(), *line) for line in claim_lines):
+            time.sleep(0.2)
         stub.clear()
         first.stop()
         first_log = first.output()
@@ -743,15 +754,9 @@ def main():
                      % (MACHINE, re.escape(ANNOUNCE_URL)))
               and logged(first_log, "WARNING", r"part-mode=proxy behind a public URL: .*"),
               first_log[-3000:])
-        check("the claim is logged, and its connectivity PUT",
-              logged(first_log, "INFO", r"CLAIMED by %s; server token stored" % OWNER)
-              and logged(first_log, "INFO", r"servers\.xml POST -> 422")
-              and logged(first_log, "INFO", r"pubsub subscribed for %s" % MACHINE)
-              and logged(first_log, "INFO", r"connectivity PUT -> 200 b''")
-              and logged(first_log, "INFO", r"pubsub: reachability 0 for asyncIdentifier %s"
-                         % re.escape(str(asked)))
-              and logged(first_log, "ERROR", r"claim exchange failed: .*"),
-              first_log[-3000:])
+        missing = [message for level, message in claim_lines if not logged(first_log, level, message)]
+        check("the claim is logged, and its connectivity PUT", not missing,
+              "missing %s in %s" % (missing, first_log[-2000:]))
 
         # -- restart: the claim survives -------------------------------------------
         second = Instance(directory, ports[1], ports[2], extra=("--verbose",), announce=ANNOUNCE_URLS)
