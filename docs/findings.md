@@ -12622,3 +12622,27 @@ check are asked as the machine; and the agent goes through `REX_PLEXTV_URL` like
 plex.tv host, so a suite with a fake `PLEX_TOKEN` no longer reaches the real agent. The
 example catalog's all-zero machineIdentifier, and the native server's fallback for a catalog
 without one, are refused for a claim (400) and for `--announce-url`.
+
+## What ownerFeatures gates (2026-10-13)
+
+Read out of Plex Web 4.147.1 (the 1.42.2 reference's bundle, all 214 files). Of the 32 names
+rex reported, a server's `ownerFeatures` is read for five: `session_kick` (the dashboard's
+Stop on a session), `dvr` and `livetv` (the Live TV & DVR settings and the `/dvrs` fetch),
+`lyrics` (the lyrics view, else a Plex Pass upsell) and `premium_music_metadata` (the music
+agent picker). `webhooks` and `content_filter` are read off the signed-in user's own account,
+not the server. Nine names (`camera_upload`, `content_filter`, `home`, `lyrics`,
+`music_videos`, `pass`, `premium_music_metadata`, `sync`, `trailers`) appear only in a
+fallback list used when a server predates `ownerFeatures` (0.9.17.0), which rex never does.
+The other names appear nowhere. `subscriptionFeatures` is not read, and `subscriptionActive`
+is only a schema field.
+
+Remote playback has one gate (module 24957): a video plays remotely without a paywall modal
+unless the user holds `remote-watch-pass-iap` and not `remote-watch-pass`, the connection is
+not private, and the server's `ownerFeatures` names neither `remote-watch-pass` nor its UUID.
+`pass` is not part of it, so the names rex reports do not move it in Plex Web. Other clients
+were not read.
+
+rex now reports `collections,federated-auth,home,item_clusters,kevin-bacon,pass,
+server-manager,session_kick,type-first` and drops the names for what it cannot do. `pass`
+stays until remote play with an owner who has none is measured (Fizzy #297).
+
