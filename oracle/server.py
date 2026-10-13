@@ -742,13 +742,14 @@ except OSError:
     # invented. `owner_features.txt` stays the local override, gitignored for the same
     # reason `catalog.json` is. rex's three-name default advertised an account with
     # no Collections, no Trailers, no Webhooks and no Session Kick.
+    # rex's own cut of those names (2026-10-13): it no longer claims what it cannot do --
+    # DVR and Live TV, tuners, lyrics and the music agents, downloads, camera upload, photos,
+    # plex.direct certificates, hardware transcoding, webhooks, content filters, trailers
+    # (findings, "What ownerFeatures gates"). `pass` stays until remote play without one is
+    # measured.
     OWNER_FEATURES = (
-        "adaptive_bitrate,camera_upload,collections,content_filter,"
-        "download_certificates,dvr,federated-auth,hardware_transcoding,home,"
-        "hwtranscode,item_clusters,kevin-bacon,livetv,loudness,lyrics,music-analysis,"
-        "music_videos,pass,photosV6-edit,photosV6-tv-albums,premium_music_metadata,"
-        "radio,server-manager,session_bandwidth_restrictions,session_kick,shared-radio,"
-        "sync,trailers,tuner-sharing,type-first,unsupportedtuners,webhooks")
+        "collections,federated-auth,home,item_clusters,kevin-bacon,pass,server-manager,"
+        "session_kick,type-first")
 
 # `/media/grabbers`, verbatim off the reference. rex answered an empty
 # container, which tells the Live TV setup page the server supports no tuner

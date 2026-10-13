@@ -103,13 +103,8 @@ ANNOUNCE_URLS = ANNOUNCE_URL + ",https://rex-public.stub.invalid:8443"
 SECRET = bytes(range(32))
 WATCHED_KEY, WATCHED_GUID = "1007", "plex://movie/520a1a3c2c634f2594808ee9"
 UNPLAYED_GUID = "plex://movie/520a1a3c2c634f2594808ee9-fixture1008"
-NAMED_FEATURES = ("adaptive_bitrate,camera_upload,collections,content_filter,"
-                  "download_certificates,dvr,federated-auth,hardware_transcoding,home,"
-                  "hwtranscode,item_clusters,kevin-bacon,livetv,loudness,lyrics,"
-                  "music-analysis,music_videos,pass,photosV6-edit,photosV6-tv-albums,"
-                  "premium_music_metadata,radio,server-manager,"
-                  "session_bandwidth_restrictions,session_kick,shared-radio,sync,trailers,"
-                  "tuner-sharing,type-first,unsupportedtuners,webhooks")
+NAMED_FEATURES = ("collections,federated-auth,home,item_clusters,kevin-bacon,pass,server-manager,"
+                  "session_kick,type-first")
 FEATURE_UUIDS = ["0a1b2c3d-stub-feature-uuid-a", "9f8e7d6c-stub-feature-uuid-b"]
 
 # The identity every request to plex.tv carries (claim.Claim._headers), in its order.

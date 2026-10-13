@@ -27361,14 +27361,9 @@ def main():
     account_c45 = json.loads(myplex_c45).get("MyPlex") or {}
     features_c45["owner"] = root_c45.get("ownerFeatures")
     features_c45["subscription"] = account_c45.get("subscriptionFeatures")
-    named_c45 = ("adaptive_bitrate,camera_upload,collections,content_filter,"
-                 "download_certificates,dvr,federated-auth,hardware_transcoding,home,"
-                 "hwtranscode,item_clusters,kevin-bacon,livetv,loudness,lyrics,"
-                 "music-analysis,music_videos,pass,photosV6-edit,photosV6-tv-albums,"
-                 "premium_music_metadata,radio,server-manager,"
-                 "session_bandwidth_restrictions,session_kick,shared-radio,sync,"
-                 "trailers,tuner-sharing,type-first,unsupportedtuners,webhooks")
-    check("the two feature lists agree and carry the measured names",
+    named_c45 = ("collections,federated-auth,home,item_clusters,kevin-bacon,pass,server-manager,"
+             "session_kick,type-first")
+    check("the two feature lists agree and carry rex's cut of the measured names",
           features_c45["owner"] == features_c45["subscription"] == named_c45
           and list(features_c45["owner"].split(",")) == sorted(
               features_c45["owner"].split(",")),
