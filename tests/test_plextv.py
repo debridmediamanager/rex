@@ -599,7 +599,7 @@ def main():
               visible and visible[0]["query"] == [("includeHttps", "1"), ("includeRelay", "1"),
                                                  ("includeIPv6", "1")]
               and sent(visible[0]) == [("x-plex-token", ACCOUNT_TOKEN),
-                                       ("x-plex-client-identifier", "rex-heartbeat"),
+                                       ("x-plex-client-identifier", MACHINE),
                                        ("accept", "application/json")],
               visible and (visible[0]["query"], sent(visible[0])))
         check("nothing but the announce reaches plex.tv while unclaimed",

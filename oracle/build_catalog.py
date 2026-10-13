@@ -72,7 +72,7 @@ def main():
 
     if args.relink:
         document = load_catalog(args.out)
-        count = relink_guids(document["items"], args.out)
+        count = relink_guids(document["items"], args.out, document["machineIdentifier"])
         save_catalog(args.out, document)
         print("relinked %d row(s) in %s" % (count, args.out))
         return
@@ -146,14 +146,14 @@ def save_catalog(path, document):
         json.dump(document, handle, indent=2)
 
 
-def relink_guids(items, out):
+def relink_guids(items, out, machine):
     """Give the rows Plex's own guids (metadata.PlexProvider); a no-op without PLEX_TOKEN."""
     token = os.environ.get("PLEX_TOKEN")
     if not token:
         print("no PLEX_TOKEN: guids stay minted, and the Android app's detail pages stay empty")
         return 0
     provider = metadata_module.PlexProvider(
-        token, os.path.join(os.path.dirname(os.path.abspath(out)), "plex_cache.json"))
+        token, os.path.join(os.path.dirname(os.path.abspath(out)), "plex_cache.json"), client=machine)
     return metadata_module.apply_plex_guids(items, provider)
 
 

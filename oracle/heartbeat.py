@@ -157,8 +157,10 @@ def announce(token, machine_identifier, url, *, name="rex",
         return ET.fromstring(read_body(response))
 
 
-def is_visible(token, name):
+def is_visible(token, name, machine):
     """Is the device actually in the list clients read? The only test that counts.
+    Asked as this server (`machine`), as a real PMS asks plex.tv everything; one fixed
+    identifier shared by every install was trivial for plex.tv to single out.
 
     The device row existing is not the same thing: a row with `presence="0"` is
     invisible to every client, which is exactly the failure this guards against.
@@ -167,7 +169,7 @@ def is_visible(token, name):
         plextv_url("https://plex.tv/api/v2/resources?includeHttps=1&includeRelay=1&includeIPv6=1"),
         headers={
             "X-Plex-Token": token,
-            "X-Plex-Client-Identifier": "rex-heartbeat",
+            "X-Plex-Client-Identifier": machine,
             "Accept": "application/json",
         },
     )
@@ -232,7 +234,7 @@ class Heartbeat:
                 self.failures = 0
                 # Verifying costs a second request but turns a silent
                 # disappearance into a log line, which is the whole point.
-                if not is_visible(self._token, self._name):
+                if not is_visible(self._token, self._name, self._machine):
                     logger.warning(
                         "announced but NOT visible in /api/v2/resources -- "
                         "clients cannot see rex right now"

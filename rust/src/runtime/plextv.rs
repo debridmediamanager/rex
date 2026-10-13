@@ -1072,10 +1072,12 @@ fn announce(token: &str, machine: &str, url: &str, name: &str) -> Result<(), Str
 }
 
 /// `heartbeat.is_visible`: is the server in the list every client reads?
-fn is_visible(token: &str, name: &str) -> Result<bool, String> {
+/// Asked as this server (`machine`), as a real PMS asks plex.tv everything; one fixed
+/// identifier shared by every install was trivial for plex.tv to single out.
+fn is_visible(token: &str, name: &str, machine: &str) -> Result<bool, String> {
     let headers = [
         ("X-Plex-Token", token.to_string()),
-        ("X-Plex-Client-Identifier", "rex-heartbeat".to_string()),
+        ("X-Plex-Client-Identifier", machine.to_string()),
         ("Accept", "application/json".to_string()),
     ];
     let (_, body) =
@@ -1133,7 +1135,7 @@ pub(crate) fn start_heartbeat(beat: Beat, claim: SharedClaim, interval: u64) {
                     failures = 0;
                     // Verifying costs a second request but turns a silent
                     // disappearance into a log line.
-                    if !is_visible(&token, &name)? {
+                    if !is_visible(&token, &name, &beat.machine)? {
                         warning!(
                             "announced but NOT visible in /api/v2/resources -- clients cannot see rex right now"
                         );

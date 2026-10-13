@@ -222,8 +222,11 @@ class PlexProvider:
 
     KIND_TYPE = {"movie": 1, "show": 2}
 
-    def __init__(self, token, cache_path, opener=None):
+    def __init__(self, token, cache_path, opener=None, client=None):
         self._token = token
+        # This server's machineIdentifier: what a real PMS sends as X-Plex-Client-Identifier
+        # on every agent call (plexlab's outbound capture, tests/fixtures/plexmeta_matches_s143.json).
+        self._client = client
         self._cache_path = cache_path
         self._open = opener or self._urlopen
         self._cache = {}
@@ -241,13 +244,15 @@ class PlexProvider:
             "Content-Type": "application/json",
             "X-Plex-Product": "Plex Media Server",
             "X-Plex-Provider-Version": "6.5.0",
-            "X-Plex-Client-Identifier": "rex",
         }
+        if self._client:
+            headers["X-Plex-Client-Identifier"] = self._client
         if method == "GET":
             # The agent pages at 50 (the lab capture); 500 is refused with a 400.
             headers.update({"X-Plex-Container-Start": "0", "X-Plex-Container-Size": "50"})
+        from claim import plextv_url
         request = urllib.request.Request(
-            PROVIDER + path, method=method, headers=headers,
+            plextv_url(PROVIDER + path), method=method, headers=headers,
             data=json.dumps(body).encode() if body is not None else None)
         with urllib.request.urlopen(request, timeout=25) as response:
             return json.load(response)

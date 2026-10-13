@@ -639,6 +639,7 @@ impl Runtime {
                     .unwrap_or_else(|| PathBuf::from("."));
                 Arc::new(tmdb::Tmdb::new(key, directory.join("tmdb_cache.json")))
             });
+        // Built once the catalog names the machine: the agent is asked as this server.
         let plex = std::env::var("PLEX_TOKEN")
             .ok()
             .filter(|token| !token.is_empty())
@@ -647,7 +648,7 @@ impl Runtime {
                     .ok()
                     .and_then(|path| path.parent().map(Path::to_path_buf))
                     .unwrap_or_else(|| PathBuf::from("."));
-                Arc::new(plexmeta::PlexMeta::new(token, directory.join("plex_cache.json")))
+                (token, directory.join("plex_cache.json"))
             });
         let sources = source::load(options.sources.as_deref(), &options.zurg_mount)?;
         // A catalog `build_catalog.py` wrote into a database carries the digest of the
@@ -718,6 +719,7 @@ impl Runtime {
             .and_then(Value::as_str)
             .unwrap_or("0000000000000000000000000000000000000001")
             .to_string();
+        let plex = plex.map(|(token, cache)| Arc::new(plexmeta::PlexMeta::new(token, cache, machine.clone())));
         let friendly = catalog
             .document
             .get("friendlyName")

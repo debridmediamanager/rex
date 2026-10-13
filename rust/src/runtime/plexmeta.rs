@@ -17,6 +17,9 @@ const PROVIDER: &str = "https://metadata.provider.plex.tv";
 
 pub(crate) struct PlexMeta {
     token: String,
+    /// This server's machineIdentifier: what a real PMS sends as `X-Plex-Client-Identifier`
+    /// on every agent call (plexlab's outbound capture, tests/fixtures/plexmeta_matches_s143.json).
+    client: String,
     cache_path: PathBuf,
     cache: DiskCache,
 }
@@ -56,8 +59,8 @@ fn python_json(value: &Value) -> String {
 }
 
 impl PlexMeta {
-    pub(crate) fn new(token: String, cache_path: PathBuf) -> Self {
-        Self { token, cache: DiskCache::open(&cache_path), cache_path }
+    pub(crate) fn new(token: String, cache_path: PathBuf, client: String) -> Self {
+        Self { token, client, cache: DiskCache::open(&cache_path), cache_path }
     }
 }
 
@@ -79,7 +82,7 @@ impl crate::identify::PlexSource for PlexMeta {
             ("Content-Type", "application/json".to_string()),
             ("X-Plex-Product", "Plex Media Server".to_string()),
             ("X-Plex-Provider-Version", "6.5.0".to_string()),
-            ("X-Plex-Client-Identifier", "rex".to_string()),
+            ("X-Plex-Client-Identifier", self.client.clone()),
         ];
         if method == "GET" {
             // The agent pages at 50 (the lab capture); 500 is refused with a 400.
@@ -89,7 +92,7 @@ impl crate::identify::PlexSource for PlexMeta {
         let payload = body.map(Value::to_string).unwrap_or_default();
         let fetched = upstream::fetch(
             method,
-            &format!("{PROVIDER}{path}"),
+            &super::plextv::plextv_url(&format!("{PROVIDER}{path}")),
             &headers,
             payload.as_bytes(),
             Duration::from_secs(25),

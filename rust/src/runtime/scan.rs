@@ -1278,7 +1278,7 @@ mod tests {
             kind: kind.to_string(),
             title: "x".to_string(),
             tmdb: Some(Arc::new(tmdb::Tmdb::new("testkey".to_string(), dir.join("tmdb_cache.json")))),
-            plex: Some(Arc::new(plexmeta::PlexMeta::new("token".to_string(), dir.join("plex_cache.json")))),
+            plex: Some(Arc::new(plexmeta::PlexMeta::new("token".to_string(), dir.join("plex_cache.json"), "f".repeat(40)))),
         };
         let mut movie = vec![arrival("movie")];
         name_release(&plan("movie"), &mut movie, 1);

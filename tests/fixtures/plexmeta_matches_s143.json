@@ -1,0 +1,94 @@
+{
+ "source": "harness capture/outbound.jsonl on plexlab, a real Plex 1.43.4 PMS matching a file with Plex's metadata agent",
+ "captured": "2026-09-12",
+ "note": "Every token replaced with the literal PLEX-TOKEN. x-plex-client-identifier is the lab's machineIdentifier (outbound-announce.json's), as on every agent call in the capture.",
+ "machineIdentifier": "15fad815c00463b33e2e644245763ee42ef84757",
+ "request": {
+  "method": "POST",
+  "host": "metadata.provider.plex.tv",
+  "path": "/library/metadata/matches",
+  "status": 200,
+  "req_headers": [
+   [
+    "user-agent",
+    "PlexMediaServer/1.43.4.10903-e5521bd8c"
+   ],
+   [
+    "accept-encoding",
+    "gzip"
+   ],
+   [
+    "accept",
+    "application/json"
+   ],
+   [
+    "x-plex-provider-version",
+    "6.5.0"
+   ],
+   [
+    "x-plex-client-identifier",
+    "15fad815c00463b33e2e644245763ee42ef84757"
+   ],
+   [
+    "x-plex-version",
+    "1.43.4.10903-e5521bd8c"
+   ],
+   [
+    "x-plex-provides",
+    "server"
+   ],
+   [
+    "x-plex-platform",
+    "Linux"
+   ],
+   [
+    "x-plex-product",
+    "Plex Media Server"
+   ],
+   [
+    "x-plex-platform-version",
+    "6.8.0-110-generic"
+   ],
+   [
+    "x-plex-device-name",
+    "plexlab"
+   ],
+   [
+    "x-plex-device",
+    "Docker Container"
+   ],
+   [
+    "x-plex-model",
+    "x86_64"
+   ],
+   [
+    "x-plex-device-vendor",
+    "Docker"
+   ],
+   [
+    "x-plex-api-token",
+    "PLEX-TOKEN"
+   ],
+   [
+    "content-type",
+    "application/json"
+   ],
+   [
+    "x-plex-language",
+    "en-US"
+   ],
+   [
+    "x-plex-country",
+    "US"
+   ],
+   [
+    "x-plex-text-format",
+    "markdown"
+   ],
+   [
+    "content-length",
+    "84"
+   ]
+  ]
+ }
+}

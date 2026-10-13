@@ -294,6 +294,57 @@ def retry_unnamed(bytes_port):
         shutil.rmtree(work, ignore_errors=True)
 
 
+def matcher_identity(bytes_port):
+    """Plex's metadata agent is asked as this server. A real PMS sends its machineIdentifier as
+    X-Plex-Client-Identifier on every agent call (fixtures/plexmeta_matches_s143.json, plexlab's
+    outbound capture); rex sent `rex` from every install. And it is asked where REX_PLEXTV_URL
+    points, as every other plex.tv host is, so no suite reaches the real agent."""
+    asked = []
+
+    class Agent(http.server.BaseHTTPRequestHandler):
+        def log_message(self, *args):
+            pass
+
+        def do_POST(self):
+            self.rfile.read(int(self.headers.get("Content-Length") or 0))
+            asked.append((self.command, self.path, {k.lower(): v for k, v in self.headers.items()}))
+            body = b'{"MediaContainer": {"size": 0, "Metadata": []}}'
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        do_GET = do_POST
+
+    stub = serve(Agent)
+    work = tempfile.mkdtemp(prefix="rex-feed-agent-")
+    catalog(work)
+    machine = json.load(open(os.path.join(work, "catalog.json")))["machineIdentifier"]
+    server = Server(work, bytes_port, keys={"REX_PLEXTV_URL": "http://127.0.0.1:%d" % stub})
+    try:
+        # A release no cached answer names, so the agent is asked.
+        name = "Vrqz.Klmw.2023.1080p.WEB-DL"
+        unknown = dict(item("new"), name=name, release="movies/" + name,
+                       id="movies/%s/%s.mkv" % (name, name), path="movies/%s/%s.mkv" % (name, name),
+                       file="%s/movies/%s/%s.mkv" % (MOUNT, name, name), hash="b" * 40)
+        server.feed("POST", "items", {"items": [unknown]})
+        deadline = time.time() + 30
+        while time.time() < deadline and not any("/library/metadata/matches" in path for _, path, _ in asked):
+            time.sleep(0.2)
+        matches = [headers for method, path, headers in asked
+                   if path.startswith("/metadata.provider.plex.tv/library/metadata/matches")]
+        real = json.load(open(os.path.join(FIXTURES, "plexmeta_matches_s143.json")))
+        recorded = dict(real["request"]["req_headers"])
+        check("the agent is asked through REX_PLEXTV_URL, as this server",
+              matches and matches[0].get("x-plex-client-identifier") == machine
+              and recorded["x-plex-client-identifier"] == real["machineIdentifier"],
+              [(path, headers.get("x-plex-client-identifier")) for _, path, headers in asked])
+    finally:
+        server.stop()
+        shutil.rmtree(work, ignore_errors=True)
+
+
 def loose_episodes(bytes_port):
     """Episodes named without SxxEyy are placed. zurg filed these under movies on the test
     host and in production until 2026-10-11; filed as shows, each was dropped as `has no episode
@@ -605,6 +656,7 @@ def main():
         shutil.rmtree(legacy_work, ignore_errors=True)
         retry_unnamed(bytes_port)
         loose_episodes(bytes_port)
+        matcher_identity(bytes_port)
     finally:
         server.stop()
         shutil.rmtree(work, ignore_errors=True)
