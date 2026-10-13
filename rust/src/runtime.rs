@@ -8166,12 +8166,12 @@ impl Runtime {
 
     /// `Rex.token_admitted`: `--token`, or -- once claimed -- the server's own token or
     /// one plex.tv lists for it. `handle_connection` has already re-read that list for an
-    /// unknown token (`Access::admits`) before taking the runtime lock.
-    /// ponytail: the transient tokens /security/token hands out are not admitted back; no
-    /// measurement of a real PMS accepting one yet.
+    /// unknown token (`Access::admits`) before taking the runtime lock. A transient token
+    /// this server minted at /security/token is let in too (`Access::mint`).
     fn token_admitted(&self, given: &str) -> bool {
         !given.is_empty()
             && (self.token.as_deref() == Some(given)
+                || self.plextv.access.minted(given)
                 || self.plextv.access.knows(&self.plextv.claim, given))
     }
 
@@ -9937,12 +9937,19 @@ impl Runtime {
                 .headers
                 .get("x-plex-token")
                 .or_else(|| query.get("X-Plex-Token"));
-            if !provided.is_some_and(|value| self.token_admitted(value)) {
+            // Measured 403 to a transient token too, which opens every other route.
+            if !provided.is_some_and(|value| {
+                self.token_admitted(value) && !self.plextv.access.minted(value)
+            }) {
                 return Response::error(403, "rex: forbidden");
             }
         }
         // Each call answers a DIFFERENT token, in server.py's `transient-<uuid4>` form.
-        let token = format!("transient-{}", plextv::uuid4());
+        let token = if self.gated() {
+            self.plextv.access.mint()
+        } else {
+            format!("transient-{}", plextv::uuid4())
+        };
         Response::json(200, json!({"MediaContainer": {"size": 0, "token": token}}))
     }
 

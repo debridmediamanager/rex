@@ -848,6 +848,16 @@ def main():
         check("claimed: /security/token is 403 to an unlisted token and answers a listed one",
               second.request("GET", delegation, token=UNLISTED_TOKEN)[0] == 403
               and second.request("GET", delegation, token=ACCOUNT_TOKEN)[0] == 200)
+        # Measured on a claimed 1.42.2 PMS (2026-10-13): the minted token opens the library as
+        # a header or in the query, and is refused only a token of its own.
+        status, body = second.request("GET", delegation, token=ACCOUNT_TOKEN)
+        transient = (container(body) or {}).get("token") if status == 200 else None
+        check("claimed: a /security/token token opens the server, but mints no other",
+              transient and transient.startswith("transient-")
+              and second.request("GET", "/library/sections", token=transient)[0] == 200
+              and second.request("GET", "/library/sections?X-Plex-Token=%s" % transient)[0] == 200
+              and second.request("GET", delegation, token=transient)[0] == 403,
+              (status, transient))
 
         refreshed = wait_for(lambda: stub.taken("servers.plex.tv", "/api/v2/features"), 20)
         users = stub.taken("servers.plex.tv", "/api/v2/user")

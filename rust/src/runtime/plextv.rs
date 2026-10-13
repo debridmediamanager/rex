@@ -779,6 +779,10 @@ pub(crate) struct Access {
     /// Held for a whole read, so a request arriving meanwhile waits for its answer ("Auth:
     /// tokens were just refreshed, caller should check again") instead of reading again.
     read: Mutex<Option<std::time::Instant>>,
+    /// The `transient-` tokens `/security/token` minted, let back in for this run: a claimed
+    /// 1.42.2 PMS admitted one to the library, sessions, prefs and account (2026-10-13).
+    /// ponytail: kept until a restart; how long a real PMS keeps one is unmeasured.
+    transient: Mutex<HashSet<String>>,
 }
 
 impl Access {
@@ -790,6 +794,22 @@ impl Access {
             .unwrap_or_else(|poisoned| poisoned.into_inner())
             .extend(tokens.iter().cloned());
         access
+    }
+
+    pub(crate) fn mint(&self) -> String {
+        let token = format!("transient-{}", uuid4());
+        self.transient
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .insert(token.clone());
+        token
+    }
+
+    pub(crate) fn minted(&self, token: &str) -> bool {
+        self.transient
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .contains(token)
     }
 
     fn holds(&self, token: &str) -> bool {
@@ -848,7 +868,7 @@ impl Access {
         if token.is_empty() || !claimed {
             return false;
         }
-        if self.knows(claim, token) {
+        if self.minted(token) || self.knows(claim, token) {
             return true;
         }
         let mut read = self.read.lock().unwrap_or_else(|poisoned| poisoned.into_inner());

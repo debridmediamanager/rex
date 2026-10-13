@@ -4090,6 +4090,8 @@ class Rex:
         # always has one and 401s everything but /identity and /web/* without it --
         # measured on both reference servers, for a missing AND a wrong token alike.
         self.token = token
+        # The `transient-` tokens /security/token minted: let back in for this run.
+        self.transient_tokens = set()
         # Verified against the production server and the 1.42.2 reference: both report the
         # owner's email here.
         self.owner_email = owner_email or owner_username
@@ -5923,12 +5925,15 @@ class Rex:
     def token_admitted(self, given):
         """`--token`, or -- once claimed -- the server's own token or one plex.tv lists for
         this server (claim.Claim.admits, which re-reads that list for an unknown token as a
-        real PMS does). Anything else is refused like a missing token.
-        ponytail: the transient tokens /security/token hands out are not admitted back; no
-        measurement of a real PMS accepting one yet."""
+        real PMS does), or a transient token this server minted at /security/token: a claimed
+        1.42.2 PMS let one into the library, sessions, prefs and account, as a header or in
+        the query (2026-10-13). Anything else is refused like a missing token.
+        ponytail: a transient token lives until a restart; how long a real PMS keeps one is
+        unmeasured."""
         if not given:
             return False
-        return given == self.token or (self.claim is not None and self.claim.admits(given))
+        return (given == self.token or given in self.transient_tokens
+                or (self.claim is not None and self.claim.admits(given)))
 
     def part_url(self, part_key):
         """Absolute URL for a Part, used where a container must carry one."""
@@ -7239,10 +7244,14 @@ class Rex:
                 return ("error", 400, "rex: bad request")
             if self.gated():
                 given = (headers or {}).get("X-Plex-Token") or query.get("X-Plex-Token")
-                if not self.token_admitted(given):
-                    # Measured: 403 here, not the 401 every other path answers.
+                # Measured: 403 here, not the 401 every other path answers -- and to a
+                # transient token too, which opens every other route (2026-10-13).
+                if not self.token_admitted(given) or given in self.transient_tokens:
                     return ("error", 403, "rex: forbidden")
-            return self.bare_container(size=0, token="transient-" + str(uuid.uuid4()))
+            token = "transient-" + str(uuid.uuid4())
+            if self.gated():
+                self.transient_tokens.add(token)
+            return self.bare_container(size=0, token=token)
         if segments[:1] == ["downloadQueue"]:
             return self.download_queue(method, segments, query, headers)
         if route == "/channels":
