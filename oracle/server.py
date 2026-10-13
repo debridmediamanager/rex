@@ -776,11 +776,10 @@ except OSError:
 # rex's own `/library` container advertises the first exactly as a real PMS's does.
 #
 # rex answers the right NAME SET, the right media type and the right GEOMETRY, and
-# generates the pixels -- its placeholder tile in the file's own container and size. The
-# two files that are not images (`favicon.ico`, which is NOT the 5,430-byte one at the top
-# level, and the stray `sugar.cmake` the build leaves behind) are carried verbatim, being
-# 1.4 KB between them. Shipping 4.7 MB of a product's artwork to reproduce the pixels of
-# the other 68 is a deliberate bound rather than done.
+# generates the pixels -- its placeholder tile in the file's own container and size. Of the
+# two that are not images, `favicon.ico` (16 px, not the 5,430-byte one at the top level) is
+# rex's own icon at that geometry and the stray `sugar.cmake` the build leaves behind answers
+# empty: rex ships none of Plex's artwork or build files.
 with open(os.path.join(DATA_DIR,
                        "resource_assets.json"), encoding="utf-8") as _handle:
     RESOURCE_ASSETS = json.load(_handle)
@@ -1268,7 +1267,8 @@ for _source in list((TRANSLATIONS.get("enumValues") or {})):
 # Cycle 52, read out of PMS's own route table (`/:file(crossdomain.xml|
 # clientaccesspolicy.xml)`) and then measured: three STATIC files sit at the top level of
 # a real PMS, byte-identical on plexlab (1.43.4) and the 1.42.2 reference -- the Flash and
-# Silverlight cross-domain policies PMS ships in `Resources/`, and its favicon. All three
+# Silverlight cross-domain policies PMS ships in `Resources/`, and a favicon (rex's own
+# icon at PMS's 32 and 16 px, 5,430 bytes as PMS's is). All three
 # answer **without a token**, which makes them the third, fourth and fifth exceptions to
 # "a real PMS 401s everything but `/identity` and `/web/*`"; all three carry
 # `Accept-Ranges: bytes` and really answer 206; none is ever gzipped, even when the
@@ -10462,6 +10462,9 @@ class Rex:
             return ("error", 404, "rex: not found")
         if "body" in asset:
             return ("asset", asset["type"], base64.b64decode(asset["body"]))
+        if not asset["type"].startswith("image/"):
+            # `sugar.cmake`: rex carries no Plex build file, so it answers empty.
+            return ("asset", asset["type"], b"")
         payload = (_jpeg if asset["type"] == "image/jpeg" else _png)(
             asset["width"], asset["height"], (32, 34, 38))
         return ("asset", asset["type"], payload)

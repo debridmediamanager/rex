@@ -81,8 +81,9 @@ image -- and live in `data/`, where the oracle reads them (`DATA_DIR` in `server
 real PMS localises per `X-Plex-Language` (`activity_strings.json`, `item_language_names.json`,
 `stream_words.json`, `title_templates.json`); the image's own tables
 (`plugin_bundles.json`, `plugin_prefs.json`, `attributions.json`, `resource_assets.json`,
-`media_flags.json`); and three files served verbatim at the top of the surface with no token
-(`crossdomain.xml`, `clientaccesspolicy.xml`, `favicon.ico`). Runtime files never go in
+`media_flags.json`); and three files served at the top of the surface with no token
+(`crossdomain.xml`, `clientaccesspolicy.xml`, and `favicon.ico`, which is rex's own icon:
+rex ships none of Plex's artwork). Runtime files never go in
 `data/`: `tmdb_cache.json` and `claim_state.json` are resolved beside the **catalog**,
 because they are state rather than measurement.
 The state file is state too: a SQLite database beside the catalog by default

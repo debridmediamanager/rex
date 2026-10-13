@@ -29435,6 +29435,26 @@ def main():
     check("/:/resources is PMS's whole bundled tree",
           not wrong_c52j, "; ".join(wrong_c52j)[:300])
 
+    # rex ships no Plex artwork or build files: both favicons are its own icon at Plex's
+    # geometry (a white r on indigo; the corner-inset pixel of the first image is the
+    # background), and `sugar.cmake` answers empty where PMS carries its build script.
+    def icon_pixel_c271(body):
+        import struct as struct_c271
+        if body[:4] != b"\x00\x00\x01\x00":
+            return None
+        size, offset = body[6], struct_c271.unpack("<I", body[18:22])[0]
+        size = size or 256
+        row = size // 2                       # a BMP image runs bottom-up
+        start = offset + 40 + (row * size + 2) * 4
+        blue, green, red, _alpha = body[start:start + 4]
+        return red, green, blue
+    pixels_c271 = {path_c271: icon_pixel_c271(request(base, "GET", path_c271, want_json=False)[1])
+                   for path_c271 in ("/favicon.ico", "/:/resources/favicon.ico")}
+    _, sugar_c271, _ = request(base, "GET", "/:/resources/sugar.cmake", want_json=False)
+    check("the favicons are rex's own icon and sugar.cmake carries no Plex build file",
+          all(pixel == (79, 70, 229) for pixel in pixels_c271.values()) and sugar_c271 == b"",
+          (pixels_c271, sugar_c271[:40]))
+
     # The geometry is the file's own, and a `.jpg` name really is a JPEG.
     _, fanart_c52j, _ = request(base, "GET", "/:/resources/movie-fanart.jpg", want_json=False)
     _, icon_c52j, _ = request(base, "GET", "/:/resources/movie.png", want_json=False)
