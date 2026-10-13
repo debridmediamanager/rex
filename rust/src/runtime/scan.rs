@@ -46,6 +46,8 @@ pub(super) struct Arrival {
     /// What identification gave this file's row: TMDB's fields (`metadata::enrich`),
     /// Plex's guids, and how sure (`identify.rs`).
     pub meta: Option<Map<String, Value>>,
+    /// The season and episode TMDB knows the file by, once its show is identified (`on_tmdb`).
+    pub numbers: Option<(i64, i64)>,
 }
 
 fn extension(file: &str) -> String {
@@ -80,6 +82,56 @@ pub(super) fn episode_of(release: &str, file_name: &str) -> Option<(i64, i64)> {
         return Some(numbers);
     }
     Some((season.unwrap_or(1), episode))
+}
+
+/// The season and episode TMDB knows a file of `show` by, when TMDB has no season by the
+/// file's own number: the production server held about 30 such seasons on `local://` (2026-10-13).
+/// Scene releases of anime number seasons as TVDB does (`Jujutsu.Kaisen.S03E03`, TMDB's
+/// S1E50), which anime-lists converts for a known show (`anime::tvdb_to_tmdb`); MythBusters'
+/// files number them by year (`MythBusters.2004x01`), which TMDB's season of that year is.
+/// Only an answer TMDB has, season and episode, is taken; a season TMDB has is never moved.
+#[cfg(test)]
+pub(super) fn on_tmdb(tmdb: Option<&dyn TmdbSource>, show: i64, numbers: (i64, i64)) -> (i64, i64) {
+    let seasons = tmdb.and_then(|t| identify::tmdb_details(t, "tv", show)).map(|details| tmdb_seasons(&details)).unwrap_or_default();
+    on_seasons(&seasons, show, numbers)
+}
+
+/// A show's TMDB seasons as (number, episodes, first air date), from its details.
+pub(super) fn tmdb_seasons(details: &Value) -> Vec<(i64, i64, String)> {
+    details
+        .get("seasons")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|row| {
+            Some((
+                row.get("season_number")?.as_i64()?,
+                row.get("episode_count").and_then(Value::as_i64).unwrap_or(0),
+                row.get("air_date").and_then(Value::as_str).unwrap_or_default().to_string(),
+            ))
+        })
+        .collect()
+}
+
+/// `on_tmdb` for seasons already read.
+pub(super) fn on_seasons(seasons: &[(i64, i64, String)], show: i64, (season, episode): (i64, i64)) -> (i64, i64) {
+    if seasons.is_empty() || seasons.iter().any(|row| row.0 == season) {
+        return (season, episode);
+    }
+    let fits = |(season, episode): (i64, i64)| seasons.iter().any(|row| row.0 == season && episode >= 1 && episode <= row.1);
+    if let Some(mapped) = super::anime::tvdb_to_tmdb(show, season, episode).filter(|mapped| fits(*mapped)) {
+        return mapped;
+    }
+    if season >= 1900 {
+        let aired: Vec<i64> =
+            seasons.iter().filter(|row| row.0 > 0 && row.2.starts_with(&season.to_string())).map(|row| row.0).collect();
+        if let [only] = aired[..] {
+            if fits((only, episode)) {
+                return (only, episode);
+            }
+        }
+    }
+    (season, episode)
 }
 
 /// Identification, off the lock, once per release: who it is (`identify.rs` -- an IMDb
@@ -171,10 +223,16 @@ pub(super) fn name_release(plan: &Library, arrivals: &mut [Arrival], files: usiz
         (true, Some(p), Some(guid)) => identify::plex_children(p, guid),
         _ => HashMap::new(),
     };
+    let show_seasons = details.as_ref().filter(|_| show).map(tmdb_seasons).unwrap_or_default();
     let mut episodes: HashMap<String, HashMap<String, String>> = HashMap::new();
     for arrival in arrivals.iter_mut() {
         let file_name = arrival.found.file.rsplit('/').next().unwrap_or_default().to_string();
         let numbers = if show { episode_of(&release, &file_name) } else { None };
+        let numbers = match (numbers, identity.tmdb.filter(|_| identity.kind == "show")) {
+            (Some(numbers), Some(id)) => Some(on_seasons(&show_seasons, id, numbers)),
+            (numbers, _) => numbers,
+        };
+        arrival.numbers = numbers;
         let mut meta = Map::new();
         meta.insert("title".to_string(), json!(identity.parsed.title));
         meta.insert("summary".to_string(), json!(""));
@@ -608,7 +666,7 @@ impl Runtime {
         let file_name = arrival.found.file.rsplit('/').next().unwrap_or_default().to_string();
         let release = identify::parse_name(&arrival.release);
         let (season, episode) = if plan.kind == "show" {
-            episode_of(&arrival.release, &file_name)?
+            arrival.numbers.or_else(|| episode_of(&arrival.release, &file_name))?
         } else {
             (0, 0)
         };
@@ -1064,6 +1122,35 @@ mod tests {
 
     /// `tests/fixtures/identify/unplaced_episodes.json`, which `tests/test_identify.py` reads
     /// the same way: files the production rex's feed dropped as "no episode number".
+    /// MythBusters' seasons as TMDB lists them (tv/1428, 2026-10-13): numbered 1-16, each
+    /// aired in one year from 2003; the production server's files number them by year (`2004x01`).
+    struct MythBusters;
+    impl TmdbSource for MythBusters {
+        fn get(&self, path: &str, _params: &[(&str, String)]) -> Option<Value> {
+            (path == "tv/1428").then(|| {
+                let mut seasons = vec![json!({"season_number": 0, "episode_count": 25, "air_date": "2004-01-11"})];
+                for (number, (count, year)) in [(11, 2003), (17, 2004), (20, 2005), (28, 2006), (25, 2007), (19, 2008), (23, 2009),
+                    (23, 2010), (21, 2011), (20, 2012), (11, 2013), (15, 2014), (14, 2015), (11, 2016), (6, 2017), (8, 2018)]
+                    .into_iter()
+                    .enumerate()
+                {
+                    seasons.push(json!({"season_number": number + 1, "episode_count": count, "air_date": format!("{year}-01-01")}));
+                }
+                json!({"id": 1428, "seasons": seasons})
+            })
+        }
+    }
+
+    #[test]
+    fn a_year_numbered_season_is_tmdbs_season_of_that_year() {
+        let tmdb: Option<&dyn TmdbSource> = Some(&MythBusters);
+        assert_eq!(on_tmdb(tmdb, 1428, (2004, 1)), (2, 1), "MythBusters.2004x01");
+        assert_eq!(on_tmdb(tmdb, 1428, (2003, 11)), (1, 11), "MythBusters.2003x11");
+        assert_eq!(on_tmdb(tmdb, 1428, (2018, 8)), (16, 8), "MythBusters.S2018E08");
+        assert_eq!(on_tmdb(tmdb, 1428, (2003, 12)), (2003, 12), "past the season's episodes: left as named");
+        assert_eq!(on_tmdb(tmdb, 1428, (5, 3)), (5, 3), "a season TMDB has is never moved");
+    }
+
     #[test]
     fn episode_of_reads_the_names_the_feed_dropped() {
         let record: Value =
@@ -1314,6 +1401,7 @@ mod tests {
                 entry: fixture["entry"].clone(),
                 extra: Map::new(),
                 meta: None,
+                numbers: None,
             }
         };
         let plan = |kind: &str| Library {

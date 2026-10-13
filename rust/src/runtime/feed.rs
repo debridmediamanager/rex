@@ -18,6 +18,7 @@
 use super::scan::{is_sample, name_release, row_files, under, Arrival, Found, Library};
 use super::source::{is_video, Source};
 use super::*;
+use crate::identify::TmdbSource;
 use std::collections::BTreeMap;
 use std::sync::LazyLock;
 
@@ -115,6 +116,7 @@ impl Item {
                 ("_ids".to_string(), Value::Object(self.ids.clone())),
             ]),
             meta: None,
+            numbers: None,
         }
     }
 
@@ -777,6 +779,7 @@ pub(super) fn replace_misnumbered(shared: &SharedRuntime) -> usize {
             return 0;
         }
         let mut by_source: BTreeMap<String, Vec<Value>> = BTreeMap::new();
+        let mut show_seasons: HashMap<i64, Vec<(i64, i64, String)>> = HashMap::new();
         for row in guard.catalog.items() {
             if row.get("type").and_then(Value::as_str) != Some("episode")
                 || row.get("deletedAt").is_some_and(|value| !value.is_null())
@@ -793,7 +796,30 @@ pub(super) fn replace_misnumbered(shared: &SharedRuntime) -> usize {
                 continue;
             };
             let name = file.rsplit('/').next().unwrap_or_default();
-            let misplaced = super::scan::episode_of(release, name).is_some_and(|(season, episode)| {
+            let show_id = row
+                .get("grandparentRatingKey")
+                .map(string_value)
+                .and_then(|key| guard.catalog.get(&key))
+                .and_then(|show| show.get("_identity"))
+                .and_then(Value::as_str)
+                .and_then(|identity| identity.strip_prefix("tmdb:"))
+                .and_then(|id| id.parse::<i64>().ok());
+            let numbers = super::scan::episode_of(release, name).map(|numbers| match show_id {
+                Some(id) => {
+                    // Read once a show: every episode of the library passes here, under the lock.
+                    let seasons = show_seasons.entry(id).or_insert_with(|| {
+                        guard
+                            .tmdb
+                            .as_deref()
+                            .and_then(|t| crate::identify::tmdb_details(t as &dyn TmdbSource, "tv", id))
+                            .map(|details| super::scan::tmdb_seasons(&details))
+                            .unwrap_or_default()
+                    });
+                    super::scan::on_seasons(seasons, id, numbers)
+                }
+                None => numbers,
+            });
+            let misplaced = numbers.is_some_and(|(season, episode)| {
                 row.get("parentIndex").and_then(Value::as_i64) != Some(season) || row.get("index").and_then(Value::as_i64) != Some(episode)
             });
             let elsewhere = super::anime::lookup(release, name).is_some_and(|(target, _)| {
@@ -1228,7 +1254,9 @@ impl Runtime {
         // compared ids, so the production server's `Ace of Diamond Act II S2 - 01` stayed season 1's.
         let renumbered = old.get("type").and_then(Value::as_str) == Some("episode")
             && library.kind == "show"
-            && super::scan::episode_of(&arrival.release, arrival.found.file.rsplit('/').next().unwrap_or_default())
+            && arrival
+                .numbers
+                .or_else(|| super::scan::episode_of(&arrival.release, arrival.found.file.rsplit('/').next().unwrap_or_default()))
                 .is_some_and(|(season, episode)| {
                     old.get("parentIndex").and_then(Value::as_i64) != Some(season)
                         || old.get("index").and_then(Value::as_i64) != Some(episode)

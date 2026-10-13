@@ -208,6 +208,27 @@ pub fn numbers(target: &Target, season: Option<i64>, episode: i64) -> (i64, i64)
     (target.season, episode.max(1))
 }
 
+/// TMDB's numbers for a file of a known anime show numbered as TVDB numbers it
+/// (`Jujutsu.Kaisen.S03E03`, `Oshi.no.Ko.S02E01`): the show's entry for that TVDB season
+/// whose offset the episode is past. Scene releases name these with no fansub mark, so
+/// `lookup` never sees them; the show they were identified as is what is looked up.
+pub fn tvdb_to_tmdb(tmdb: i64, season: i64, episode: i64) -> Option<(i64, i64)> {
+    current()?.tvdb_to_tmdb(tmdb, season, episode)
+}
+
+impl Index {
+    pub fn tvdb_to_tmdb(&self, tmdb: i64, season: i64, episode: i64) -> Option<(i64, i64)> {
+    let entries: Vec<&Target> =
+        self.entries.values().filter(|target| target.tmdb == tmdb && target.tvdb_season == Some(season)).collect();
+    let target = entries
+        .iter()
+        .filter(|target| target.tvdb_offset < episode)
+        .max_by_key(|target| target.tvdb_offset)
+        .or_else(|| entries.iter().min_by_key(|target| target.tvdb_offset))?;
+    Some((target.season, episode - target.tvdb_offset + target.offset))
+    }
+}
+
 pub fn shaped(name: &str) -> bool {
     SHAPED.is_match(name)
 }
@@ -319,6 +340,18 @@ mod tests {
             }
         }
         assert!(wrong.is_empty(), "{wrong:#?}");
+    }
+
+    /// Scene releases of the production server's anime, numbered as TVDB numbers them, and TMDB's
+    /// numbers for them (TMDB has Jujutsu Kaisen as one season of 59, Oshi no Ko of 35).
+    #[test]
+    fn tvdb_seasons_of_a_known_show_take_tmdbs_numbers() {
+        let index = index();
+        assert_eq!(index.tvdb_to_tmdb(95479, 3, 3), Some((1, 50)), "Jujutsu.Kaisen.S03E03");
+        assert_eq!(index.tvdb_to_tmdb(203737, 2, 1), Some((1, 12)), "Oshi.no.Ko.S02E01");
+        assert_eq!(index.tvdb_to_tmdb(209867, 2, 5), Some((1, 33)), "Frieren.Beyond.Journeys.End.S02E05");
+        assert_eq!(index.tvdb_to_tmdb(30984, 17, 23), Some((2, 23)), "Bleach - S17E23");
+        assert_eq!(index.tvdb_to_tmdb(70593, 1, 3), None, "the Korean Kingdom is no anime-lists show");
     }
 
     #[test]
