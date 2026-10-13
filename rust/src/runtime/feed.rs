@@ -765,6 +765,74 @@ pub(super) fn retry_blank(shared: &SharedRuntime, limit: usize) -> usize {
     keys.len()
 }
 
+/// Episodes placed on numbers their names no longer read, or anime under another show than
+/// the one its cour belongs to (`anime.rs`): pushed again as their source pushed them, so
+/// each is identified and placed again on its key, watch state kept. A parser fix reached only
+/// new files before this, and the production server held ~214 `Show S2 - NN` episodes in season 1
+/// (2026-10-13). Answers how many rows it placed again.
+pub(super) fn replace_misnumbered(shared: &SharedRuntime) -> usize {
+    let (by_source, sources) = {
+        let guard = lock(shared);
+        if guard.tmdb.is_none() && guard.plex.is_none() {
+            return 0;
+        }
+        let mut by_source: BTreeMap<String, Vec<Value>> = BTreeMap::new();
+        for row in guard.catalog.items() {
+            if row.get("type").and_then(Value::as_str) != Some("episode")
+                || row.get("deletedAt").is_some_and(|value| !value.is_null())
+                || row.get("_probePending").is_some_and(truthy)
+                || versions(row).len() > 1
+                || guard.matched_by_hand(row)
+            {
+                continue;
+            }
+            let (Some(release), Some(file)) = (
+                row.get("_release").and_then(Value::as_str),
+                row.pointer("/Media/0/Part/0/file").and_then(Value::as_str),
+            ) else {
+                continue;
+            };
+            let name = file.rsplit('/').next().unwrap_or_default();
+            let misplaced = super::scan::episode_of(release, name).is_some_and(|(season, episode)| {
+                row.get("parentIndex").and_then(Value::as_i64) != Some(season) || row.get("index").and_then(Value::as_i64) != Some(episode)
+            });
+            let elsewhere = super::anime::lookup(release, name).is_some_and(|(target, _)| {
+                let show = row.get("grandparentRatingKey").map(string_value).and_then(|key| guard.catalog.get(&key));
+                show.and_then(|show| show.get("_identity")).map(string_value) != Some(format!("tmdb:{}", target.tmdb))
+            });
+            if misplaced || elsewhere {
+                if let Some((source, item)) = pushed_item(row) {
+                    by_source.entry(source).or_default().push(item);
+                }
+            }
+        }
+        (by_source, guard.sources.clone())
+    };
+    let total: usize = by_source.values().map(Vec::len).sum();
+    if total == 0 {
+        return 0;
+    }
+    info!("FEED placing {total} episode(s) again on the numbers their names read");
+    let began = std::time::Instant::now();
+    let mut pushed = 0;
+    for (name, items) in &by_source {
+        if let Some(source) = sources.iter().find(|source| source.name == *name) {
+            pushed += items.len();
+            for chunk in items.chunks(200) {
+                let _feed = FEED.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+                upsert(shared, source, chunk, None, true);
+            }
+        }
+    }
+    let mut guard = lock(shared);
+    guard.dirty = true;
+    let snapshot = guard.flush_state();
+    drop(guard);
+    write_or_log(snapshot);
+    info!("FEED placed {pushed} episode(s) again in {:.0} s", began.elapsed().as_secs_f64());
+    pushed
+}
+
 /// The ids a row was identified by: its `_ids`, or for a row the old scanner made, the
 /// IMDb id its identification settled on.
 fn row_ids(row: &Value) -> Map<String, Value> {
@@ -1155,7 +1223,17 @@ impl Runtime {
         } else {
             !has(Some(&old), "_poster_url") && has(Some(&brought), "_poster_url")
         };
-        if meta.get("_identity") == old.get("_identity") && guid == old.get("guid") && !moved && !gains_art {
+        // An episode on numbers its name no longer reads (a parser that learned `S2 - 07` or
+        // an anime cour on TMDB's numbering) is placed again: re-identification only ever
+        // compared ids, so the production server's `Ace of Diamond Act II S2 - 01` stayed season 1's.
+        let renumbered = old.get("type").and_then(Value::as_str) == Some("episode")
+            && library.kind == "show"
+            && super::scan::episode_of(&arrival.release, arrival.found.file.rsplit('/').next().unwrap_or_default())
+                .is_some_and(|(season, episode)| {
+                    old.get("parentIndex").and_then(Value::as_i64) != Some(season)
+                        || old.get("index").and_then(Value::as_i64) != Some(episode)
+                });
+        if meta.get("_identity") == old.get("_identity") && guid == old.get("guid") && !moved && !gains_art && !renumbered {
             return false;
         }
         let Some(mut leaf) = self.leaf_for(library, &arrival, Some(key.to_string())) else {

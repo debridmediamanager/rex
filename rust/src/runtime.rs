@@ -61,6 +61,7 @@ mod upstream;
 mod wire;
 mod feed;
 mod source;
+mod anime;
 use artwork::owns_artwork;
 use logging::{debug, error, info, warning};
 use resume::{
@@ -23499,8 +23500,13 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
     // Off the request path: a TMDB miss waits on the network. Then, every ten minutes, a
     // batch of what identification left on the blank tile is named again (`retry_blank`).
     let seasons = Arc::clone(&runtime);
+    let catalog_dir = runtime.lock().ok().and_then(|guard| guard.catalog_path.parent().map(Path::to_path_buf));
     let _ = thread::Builder::new().name("season-repair".to_string()).spawn(move || {
+        if let Some(dir) = catalog_dir {
+            anime::load(&dir);
+        }
         feed::repair_seasons(&seasons);
+        feed::replace_misnumbered(&seasons);
         loop {
             feed::retry_blank(&seasons, 50);
             thread::sleep(std::time::Duration::from_secs(600));

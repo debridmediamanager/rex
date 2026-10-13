@@ -1,0 +1,271 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Entries of https://github.com/Anime-Lists/anime-lists anime-list-master.xml, 2026-10-13, cut to the titles a production library held. -->
+<anime-list>
+  <anime anidbid="104" tvdbid="OVA" defaulttvdbseason="" episodeoffset="" tmdbtv="" tmdbseason="" tmdboffset="" tmdbid="37910" imdbid="tt0370754">
+    <name>Hoshi no Koe</name>
+    <supplemental-info>
+      <studio>CoMix Wave</studio>
+    </supplemental-info>
+  </anime>
+  <anime anidbid="129" tvdbid="79685" defaulttvdbseason="1" episodeoffset="" tmdbtv="42705" tmdbseason="1" tmdboffset="" tmdbid="" imdbid="">
+    <name>Hajime no Ippo: The Fighting!</name>
+  </anime>
+  <anime anidbid="982" tvdbid="79685" defaulttvdbseason="0" episodeoffset="1" tmdbtv="42705" tmdbseason="0" tmdboffset="1" tmdbid="" imdbid="">
+    <name>Hajime no Ippo: Champion Road</name>
+  </anime>
+  <anime anidbid="1086" tvdbid="79685" defaulttvdbseason="0" episodeoffset="2" tmdbtv="42705" tmdbseason="0" tmdboffset="2" tmdbid="" imdbid="">
+    <name>Hajime no Ippo: The Fighting! - Kimura Tatsuya vs Mashiba Ryo</name>
+  </anime>
+  <anime anidbid="1547" tvdbid="hentai" defaulttvdbseason="" episodeoffset="" tmdbtv="" tmdbseason="" tmdboffset="" tmdbid="" imdbid="">
+    <name>Itoshi no Kotodama</name>
+  </anime>
+  <anime anidbid="2369" tvdbid="74796" defaulttvdbseason="a" episodeoffset="" tmdbtv="30984" tmdbseason="1" tmdboffset="" tmdbid="" imdbid="">
+    <name>Bleach</name>
+    <mapping-list>
+      <mapping anidbseason="0" tvdbseason="0">;2-99;3-2;4-0;</mapping>
+      <mapping anidbseason="1" tvdbseason="1" start="1" end="20"/>
+      <mapping anidbseason="1" tvdbseason="2" start="21" end="41" offset="-20"/>
+      <mapping anidbseason="1" tvdbseason="3" start="42" end="63" offset="-41"/>
+      <mapping anidbseason="1" tvdbseason="4" start="64" end="91" offset="-63"/>
+      <mapping anidbseason="1" tvdbseason="5" start="92" end="109" offset="-91"/>
+      <mapping anidbseason="1" tvdbseason="6" start="110" end="131" offset="-109"/>
+      <mapping anidbseason="1" tvdbseason="7" start="132" end="151" offset="-131"/>
+      <mapping anidbseason="1" tvdbseason="8" start="152" end="167" offset="-151"/>
+      <mapping anidbseason="1" tvdbseason="9" start="168" end="189" offset="-167"/>
+      <mapping anidbseason="1" tvdbseason="10" start="190" end="205" offset="-189"/>
+      <mapping anidbseason="1" tvdbseason="11" start="206" end="212" offset="-205"/>
+      <mapping anidbseason="1" tvdbseason="12" start="213" end="229" offset="-212"/>
+      <mapping anidbseason="1" tvdbseason="13" start="230" end="265" offset="-229"/>
+      <mapping anidbseason="1" tvdbseason="14" start="266" end="316" offset="-265"/>
+      <mapping anidbseason="1" tvdbseason="15" start="317" end="342" offset="-316"/>
+      <mapping anidbseason="1" tvdbseason="16" start="343" end="366" offset="-342"/>
+    </mapping-list>
+    <supplemental-info>
+      <studio>Studio Pierrot</studio>
+    </supplemental-info>
+  </anime>
+  <anime anidbid="4095" tvdbid="71535" defaulttvdbseason="0" episodeoffset="" tmdbtv="13674" tmdbseason="0" tmdboffset="" tmdbid="" imdbid="tt0488584">
+    <name>Kidou Senshi Z Gundam: A New Translation - Hoshi no Kodou wa Ai</name>
+    <mapping-list>
+      <mapping anidbseason="1" tvdbseason="0">;1-3;</mapping>
+    </mapping-list>
+    <supplemental-info>
+      <studio>Sunrise</studio>
+    </supplemental-info>
+  </anime>
+  <anime anidbid="4515" tvdbid="74796" defaulttvdbseason="0" episodeoffset="2" tmdbtv="" tmdbseason="" tmdboffset="" tmdbid="15575" imdbid="tt1105263">
+    <name>Gekijouban Bleach: Memories of Nobody</name>
+    <mapping-list>
+      <mapping anidbseason="0" tvdbseason="0">;1-0;</mapping>
+      <mapping anidbseason="1" tvdbseason="0">;2-3;3-3;4-3;</mapping>
+    </mapping-list>
+  </anime>
+  <anime anidbid="5238" tvdbid="146491" defaulttvdbseason="1" episodeoffset="" tmdbtv="68299" tmdbseason="1" tmdboffset="" tmdbid="" imdbid="">
+    <name>Hoshi no Ko Chobin</name>
+  </anime>
+  <anime anidbid="5352" tvdbid="74796" defaulttvdbseason="0" episodeoffset="" tmdbtv="" tmdbseason="" tmdboffset="" tmdbid="17101" imdbid="tt1148261">
+    <name>Gekijouban Bleach: The DiamondDust Rebellion Mou Hitotsu no Hyourinmaru</name>
+    <mapping-list>
+      <mapping anidbseason="1" tvdbseason="0">;1-4;</mapping>
+    </mapping-list>
+  </anime>
+  <anime anidbid="6041" tvdbid="74796" defaulttvdbseason="0" episodeoffset="" tmdbtv="" tmdbseason="" tmdboffset="" tmdbid="17165" imdbid="tt1339302">
+    <name>Gekijouban Bleach: Fade to Black Kimi no Na o Yobu</name>
+    <mapping-list>
+      <mapping anidbseason="1" tvdbseason="0">;1-5;</mapping>
+    </mapping-list>
+  </anime>
+  <anime anidbid="6153" tvdbid="79685" defaulttvdbseason="2" episodeoffset="" tmdbtv="42705" tmdbseason="2" tmdboffset="" tmdbid="" imdbid="">
+    <name>Hajime no Ippo: The Fighting! - New Challenger</name>
+  </anime>
+  <anime anidbid="6885" tvdbid="movie" defaulttvdbseason="" episodeoffset="" tmdbtv="" tmdbseason="" tmdboffset="" tmdbid="" imdbid="tt0422554">
+    <name>Kachikachi Yama no Shouboutai</name>
+  </anime>
+  <anime anidbid="6979" tvdbid="" defaulttvdbseason="" episodeoffset="" tmdbtv="" tmdbseason="" tmdboffset="" tmdbid="" imdbid="">
+    <name>Hoshi no Ko Poron</name>
+  </anime>
+  <anime anidbid="7666" tvdbid="74796" defaulttvdbseason="0" episodeoffset="" tmdbtv="" tmdbseason="" tmdboffset="" tmdbid="73245" imdbid="tt1785394">
+    <name>Gekijouban Bleach: Jigoku Hen</name>
+    <mapping-list>
+      <mapping anidbseason="1" tvdbseason="0">;1-6;</mapping>
+    </mapping-list>
+  </anime>
+  <anime anidbid="8791" tvdbid="259635" defaulttvdbseason="1" episodeoffset="" tmdbtv="46437" tmdbseason="1" tmdboffset="" tmdbid="" imdbid="">
+    <name>Kingdom</name>
+  </anime>
+  <anime anidbid="9672" tvdbid="259635" defaulttvdbseason="2" episodeoffset="" tmdbtv="46437" tmdbseason="2" tmdboffset="" tmdbid="" imdbid="">
+    <name>Kingdom (2013)</name>
+  </anime>
+  <anime anidbid="9982" tvdbid="79685" defaulttvdbseason="3" episodeoffset="" tmdbtv="42705" tmdbseason="3" tmdboffset="" tmdbid="" imdbid="">
+    <name>Hajime no Ippo: The Fighting! - Rising</name>
+  </anime>
+  <anime anidbid="10889" tvdbid="289884" defaulttvdbseason="1" episodeoffset="" tmdbtv="62564" tmdbseason="1" tmdboffset="" tmdbid="" imdbid="">
+    <name>Hibike! Euphonium</name>
+    <mapping-list>
+      <mapping anidbseason="0" tvdbseason="0">;1-8;</mapping>
+      <mapping anidbseason="0" tvdbseason="0" start="2" end="8" offset="-1"/>
+    </mapping-list>
+  </anime>
+  <anime anidbid="11746" tvdbid="289884" defaulttvdbseason="2" episodeoffset="" tmdbtv="62564" tmdbseason="2" tmdboffset="" tmdbid="" imdbid="">
+    <name>Hibike! Euphonium 2</name>
+    <mapping-list>
+      <mapping anidbseason="0" tvdbseason="0">;1-10;2-11;3-12;4-13;5-14;6-15;7-16;</mapping>
+    </mapping-list>
+  </anime>
+  <anime anidbid="11747" tvdbid="289884" defaulttvdbseason="0" episodeoffset="8" tmdbtv="" tmdbseason="" tmdboffset="" tmdbid="374056" imdbid="">
+    <name>Gekijouban Hibike! Euphonium: Kitauji Koukou Suisougaku Bu e Youkoso</name>
+  </anime>
+  <anime anidbid="12402" tvdbid="" defaulttvdbseason="" episodeoffset="" tmdbtv="" tmdbseason="" tmdboffset="" tmdbid="" imdbid="">
+    <name>Star Beat! Hoshi no Kodou</name>
+  </anime>
+  <anime anidbid="12962" tvdbid="289884" defaulttvdbseason="0" episodeoffset="" tmdbtv="62564" tmdbseason="0" tmdboffset="" tmdbid="" imdbid="tt6973828">
+    <name>Gekijouban Hibike! Euphonium: Todoketai Melody</name>
+    <mapping-list>
+      <mapping anidbseason="1" tvdbseason="0">;1-17;</mapping>
+    </mapping-list>
+  </anime>
+  <anime anidbid="13207" tvdbid="289884" defaulttvdbseason="0" episodeoffset="18" tmdbtv="62564" tmdbseason="0" tmdboffset="18" tmdbid="" imdbid="tt7089882">
+    <name>Gekijouban Hibike! Euphonium: Chikai no Finale</name>
+  </anime>
+  <anime anidbid="13542" tvdbid="OVA" defaulttvdbseason="" episodeoffset="" tmdbtv="" tmdbseason="" tmdboffset="" tmdbid="587200" imdbid="">
+    <name>Super Mario no Shouboutai</name>
+  </anime>
+  <anime anidbid="14488" tvdbid="355480" defaulttvdbseason="1" episodeoffset="" tmdbtv="88046" tmdbseason="1" tmdboffset="" tmdbid="" imdbid="tt9307686">
+    <name>En'en no Shouboutai</name>
+  </anime>
+  <anime anidbid="14491" tvdbid="355774" defaulttvdbseason="1" episodeoffset="" tmdbtv="86031" tmdbseason="1" tmdboffset="" tmdbid="" imdbid="">
+    <name>Dr. Stone</name>
+  </anime>
+  <anime anidbid="14935" tvdbid="289884" defaulttvdbseason="3" episodeoffset="" tmdbtv="62564" tmdbseason="3" tmdboffset="" tmdbid="" imdbid="">
+    <name>Hibike! Euphonium 3</name>
+  </anime>
+  <anime anidbid="15259" tvdbid="259635" defaulttvdbseason="3" episodeoffset="" tmdbtv="46437" tmdbseason="3" tmdboffset="" tmdbid="" imdbid="">
+    <name>Kingdom (2020)</name>
+  </anime>
+  <anime anidbid="15275" tvdbid="377543" defaulttvdbseason="1" episodeoffset="" tmdbtv="95479" tmdbseason="1" tmdboffset="" tmdbid="" imdbid="">
+    <name>Jujutsu Kaisen</name>
+  </anime>
+  <anime anidbid="15305" tvdbid="355774" defaulttvdbseason="2" episodeoffset="" tmdbtv="86031" tmdbseason="2" tmdboffset="" tmdbid="" imdbid="">
+    <name>Dr. Stone: Stone Wars</name>
+  </anime>
+  <anime anidbid="15335" tvdbid="355480" defaulttvdbseason="2" episodeoffset="" tmdbtv="88046" tmdbseason="2" tmdboffset="" tmdbid="" imdbid="">
+    <name>En'en no Shouboutai Ni no Shou</name>
+  </anime>
+  <anime anidbid="15449" tvdbid="74796" defaulttvdbseason="17" episodeoffset="" tmdbtv="30984" tmdbseason="2" tmdboffset="" tmdbid="" imdbid="">
+    <name>Bleach: Sennen Kessen Hen</name>
+  </anime>
+  <anime anidbid="15672" tvdbid="305074" defaulttvdbseason="0" episodeoffset="7" tmdbtv="65930" tmdbseason="0" tmdboffset="7" tmdbid="" imdbid="">
+    <name>Boku no Hero Academia: Ikinokore! Kesshi no Survival Kunren</name>
+  </anime>
+  <anime anidbid="16164" tvdbid="355774" defaulttvdbseason="0" episodeoffset="1" tmdbtv="86031" tmdbseason="0" tmdboffset="1" tmdbid="" imdbid="">
+    <name>Dr. Stone: Ryuusui</name>
+  </anime>
+  <anime anidbid="16169" tvdbid="377543" defaulttvdbseason="0" episodeoffset="1" tmdbtv="" tmdbseason="" tmdboffset="" tmdbid="810693" imdbid="tt14331144">
+    <name>Gekijouban Jujutsu Kaisen 0</name>
+  </anime>
+  <anime anidbid="16290" tvdbid="402033" defaulttvdbseason="1" episodeoffset="" tmdbtv="123542" tmdbseason="1" tmdboffset="" tmdbid="" imdbid="">
+    <name>Shiguang Dailiren</name>
+  </anime>
+  <anime anidbid="16531" tvdbid="402033" defaulttvdbseason="2" episodeoffset="" tmdbtv="123542" tmdbseason="2" tmdboffset="" tmdbid="" imdbid="">
+    <name>Shiguang Dailiren II</name>
+  </anime>
+  <anime anidbid="16912" tvdbid="259635" defaulttvdbseason="4" episodeoffset="" tmdbtv="46437" tmdbseason="4" tmdboffset="" tmdbid="" imdbid="">
+    <name>Kingdom (2022)</name>
+  </anime>
+  <anime anidbid="17053" tvdbid="355774" defaulttvdbseason="3" episodeoffset="" tmdbtv="86031" tmdbseason="3" tmdboffset="" tmdbid="" imdbid="">
+    <name>Dr. Stone: New World</name>
+  </anime>
+  <anime anidbid="17196" tvdbid="377543" defaulttvdbseason="2" episodeoffset="" tmdbtv="95479" tmdbseason="2" tmdboffset="" tmdbid="" imdbid="">
+    <name>Jujutsu Kaisen (2023)</name>
+  </anime>
+  <anime anidbid="17420" tvdbid="355480" defaulttvdbseason="3" episodeoffset="" tmdbtv="88046" tmdbseason="3" tmdboffset="" tmdbid="" imdbid="">
+    <name>En'en no Shouboutai San no Shou</name>
+  </anime>
+  <anime anidbid="17441" tvdbid="289884" defaulttvdbseason="0" episodeoffset="19" tmdbtv="" tmdbseason="" tmdboffset="" tmdbid="1108306" imdbid="">
+    <name>Tokubetsu Hen Hibike! Euphonium: Ensemble Contest Hen</name>
+  </anime>
+  <anime anidbid="17449" tvdbid="421069" defaulttvdbseason="1" episodeoffset="" tmdbtv="203737" tmdbseason="1" tmdboffset="" tmdbid="" imdbid="">
+    <name>"Oshi no Ko"</name>
+  </anime>
+  <anime anidbid="17617" tvdbid="424536" defaulttvdbseason="1" episodeoffset="" tmdbtv="209867" tmdbseason="1" tmdboffset="" tmdbid="" imdbid="">
+    <name>Sousou no Frieren</name>
+  </anime>
+  <anime anidbid="17655" tvdbid="259635" defaulttvdbseason="5" episodeoffset="" tmdbtv="46437" tmdbseason="5" tmdboffset="" tmdbid="" imdbid="">
+    <name>Kingdom (2024)</name>
+  </anime>
+  <anime anidbid="17765" tvdbid="74796" defaulttvdbseason="17" episodeoffset="13" tmdbtv="30984" tmdbseason="2" tmdboffset="13" tmdbid="" imdbid="">
+    <name>Bleach: Sennen Kessen Hen - Ketsubetsu Tan</name>
+  </anime>
+  <anime anidbid="18064" tvdbid="355774" defaulttvdbseason="3" episodeoffset="11" tmdbtv="86031" tmdbseason="3" tmdboffset="11" tmdbid="" imdbid="">
+    <name>Dr. Stone: New World (2023)</name>
+  </anime>
+  <anime anidbid="18086" tvdbid="421069" defaulttvdbseason="2" episodeoffset="" tmdbtv="203737" tmdbseason="1" tmdboffset="11" tmdbid="" imdbid="">
+    <name>"Oshi no Ko" (2024)</name>
+  </anime>
+  <anime anidbid="18220" tvdbid="74796" defaulttvdbseason="17" episodeoffset="26" tmdbtv="30984" tmdbseason="2" tmdboffset="26" tmdbid="" imdbid="">
+    <name>Bleach: Sennen Kessen Hen - Soukoku Tan</name>
+  </anime>
+  <anime anidbid="18336" tvdbid="355774" defaulttvdbseason="4" episodeoffset="" tmdbtv="86031" tmdbseason="4" tmdboffset="" tmdbid="" imdbid="">
+    <name>Dr. Stone: Science Future</name>
+  </anime>
+  <anime anidbid="18363" tvdbid="377543" defaulttvdbseason="3" episodeoffset="" tmdbtv="95479" tmdbseason="1" tmdboffset="47" tmdbid="" imdbid="">
+    <name>Jujutsu Kaisen: Shimetsu Kaiyuu Zenpen</name>
+  </anime>
+  <anime anidbid="18742" tvdbid="355480" defaulttvdbseason="3" episodeoffset="12" tmdbtv="88046" tmdbseason="3" tmdboffset="12" tmdbid="" imdbid="">
+    <name>En'en no Shouboutai San no Shou (2026)</name>
+  </anime>
+  <anime anidbid="18829" tvdbid="453673" defaulttvdbseason="1" episodeoffset="" tmdbtv="262700" tmdbseason="1" tmdboffset="" tmdbid="" imdbid="">
+    <name>Uma Musume: Cinderella Gray</name>
+  </anime>
+  <anime anidbid="18835" tvdbid="movie" defaulttvdbseason="" episodeoffset="" tmdbtv="" tmdbseason="" tmdboffset="" tmdbid="1338799" imdbid="">
+    <name>Gekijouban Soushuuhen Jujutsu Kaisen: Kaigyoku / Gyokusetsu</name>
+  </anime>
+  <anime anidbid="18886" tvdbid="424536" defaulttvdbseason="2" episodeoffset="" tmdbtv="209867" tmdbseason="1" tmdboffset="28" tmdbid="" imdbid="">
+    <name>Sousou no Frieren (2026)</name>
+  </anime>
+  <anime anidbid="18901" tvdbid="421069" defaulttvdbseason="3" episodeoffset="" tmdbtv="203737" tmdbseason="1" tmdboffset="24" tmdbid="" imdbid="">
+    <name>"Oshi no Ko" (2026)</name>
+  </anime>
+  <anime anidbid="19078" tvdbid="402033" defaulttvdbseason="3" episodeoffset="" tmdbtv="123542" tmdbseason="3" tmdboffset="" tmdbid="" imdbid="">
+    <name>Shiguang Dailiren: Yingdu Pian</name>
+  </anime>
+  <anime anidbid="19079" tvdbid="74796" defaulttvdbseason="17" episodeoffset="40" tmdbtv="30984" tmdbseason="2" tmdboffset="40" tmdbid="" imdbid="">
+    <name>Bleach: Sennen Kessen Hen - Kashin Tan</name>
+  </anime>
+  <anime anidbid="19169" tvdbid="web" defaulttvdbseason="" episodeoffset="" tmdbtv="" tmdbseason="" tmdboffset="" tmdbid="1479395" imdbid="">
+    <name>Hoshi no Kodomo to Hajimari no Ki</name>
+  </anime>
+  <anime anidbid="19221" tvdbid="movie" defaulttvdbseason="" episodeoffset="" tmdbtv="" tmdbseason="" tmdboffset="" tmdbid="1449433" imdbid="tt39123182">
+    <name>Saishuu Gakushou Hibike! Euphonium</name>
+  </anime>
+  <anime anidbid="19248" tvdbid="355774" defaulttvdbseason="4" episodeoffset="12" tmdbtv="86031" tmdbseason="4" tmdboffset="12" tmdbid="" imdbid="">
+    <name>Dr. Stone: Science Future (2025)</name>
+  </anime>
+  <anime anidbid="19295" tvdbid="259635" defaulttvdbseason="6" episodeoffset="" tmdbtv="46437" tmdbseason="6" tmdboffset="" tmdbid="" imdbid="">
+    <name>Kingdom (2025)</name>
+  </anime>
+  <anime anidbid="19419" tvdbid="453673" defaulttvdbseason="1" episodeoffset="13" tmdbtv="262700" tmdbseason="1" tmdboffset="13" tmdbid="" imdbid="">
+    <name>Uma Musume: Cinderella Gray (2025)</name>
+  </anime>
+  <anime anidbid="19614" tvdbid="355774" defaulttvdbseason="4" episodeoffset="24" tmdbtv="86031" tmdbseason="4" tmdboffset="24" tmdbid="" imdbid="">
+    <name>Dr. Stone: Science Future (2026)</name>
+  </anime>
+  <anime anidbid="19819" tvdbid="" defaulttvdbseason="" episodeoffset="" tmdbtv="" tmdbseason="" tmdboffset="" tmdbid="" imdbid="">
+    <name>Gekijouban Jujutsu Kaisen "Shibuya Jihen Tokubetsu Henshuuban" x "Shimetsu Kaiyuu Senkou Jouei"</name>
+  </anime>
+  <anime anidbid="19882" tvdbid="402033" defaulttvdbseason="4" episodeoffset="" tmdbtv="123542" tmdbseason="4" tmdboffset="" tmdbid="" imdbid="">
+    <name>Shiguang Dailiren III</name>
+  </anime>
+  <anime anidbid="19969" tvdbid="421069" defaulttvdbseason="4" episodeoffset="" tmdbtv="203737" tmdbseason="1" tmdboffset="35" tmdbid="" imdbid="">
+    <name>"Oshi no Ko" Final Season</name>
+  </anime>
+  <anime anidbid="19975" tvdbid="377543" defaulttvdbseason="3" episodeoffset="12" tmdbtv="95479" tmdbseason="1" tmdboffset="59" tmdbid="" imdbid="">
+    <name>Jujutsu Kaisen: Shimetsu Kaiyuu Kouhen</name>
+  </anime>
+  <anime anidbid="19977" tvdbid="424536" defaulttvdbseason="3" episodeoffset="" tmdbtv="209867" tmdbseason="1" tmdboffset="38" tmdbid="" imdbid="">
+    <name>Sousou no Frieren (2027)</name>
+  </anime>
+  <anime anidbid="20462" tvdbid="" defaulttvdbseason="" episodeoffset="" tmdbtv="" tmdbseason="" tmdboffset="" tmdbid="" imdbid="">
+    <name>Dr. Stone: Terraforming</name>
+  </anime>
+</anime-list>

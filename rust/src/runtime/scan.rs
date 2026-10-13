@@ -71,11 +71,15 @@ pub(super) fn is_sample(file: &str) -> bool {
 
 /// (season, episode) of a show's file: the file's own numbers, else its release's; an
 /// episode with no season (absolute numbering) is season 1.
-fn episode_of(release: &str, file_name: &str) -> Option<(i64, i64)> {
-    let release = identify::parse_name(release);
-    let file = identify::parse_name(file_name);
-    let episode = file.episode.or(release.episode)?;
-    Some((file.season.or(release.season).unwrap_or(1), episode))
+pub(super) fn episode_of(release: &str, file_name: &str) -> Option<(i64, i64)> {
+    let parsed = (identify::parse_name(release), identify::parse_name(file_name));
+    let episode = parsed.1.episode.or(parsed.0.episode)?;
+    let season = parsed.1.season.or(parsed.0.season);
+    // An anime cour on TMDB's numbering (`anime.rs`).
+    if let Some(numbers) = super::anime::renumber(release, file_name, season, episode) {
+        return Some(numbers);
+    }
+    Some((season.unwrap_or(1), episode))
 }
 
 /// Identification, off the lock, once per release: who it is (`identify.rs` -- an IMDb
@@ -103,9 +107,17 @@ pub(super) fn name_release(plan: &Library, arrivals: &mut [Arrival], files: usiz
         known.insert(hash.clone(), imdb.to_string());
     }
     let release = first.release.clone();
-    // A TMDB id with no IMDb id is read the way a `{tmdb-…}` folder tag is: exact.
-    let named = match first.entry.get("tmdb_id").and_then(Value::as_str) {
-        Some(id) if known.is_empty() && !id.is_empty() => format!("{release} {{tmdb-{id}}}"),
+    let first_file = first.found.file.rsplit('/').next().unwrap_or_default().to_string();
+    // A TMDB id with no IMDb id is read the way a `{tmdb-…}` folder tag is: exact. So is the
+    // show an anime release's cour belongs to (`anime.rs`), which DMM's id for its hash and
+    // its title both miss.
+    let anime = (plan.kind == "show").then(|| super::anime::lookup(&release, &first_file)).flatten();
+    if anime.is_some() {
+        known.clear();
+    }
+    let named = match (first.entry.get("tmdb_id").and_then(Value::as_str), anime) {
+        (_, Some((target, _))) => format!("{release} {{tmdb-{}}}", target.tmdb),
+        (Some(id), None) if known.is_empty() && !id.is_empty() => format!("{release} {{tmdb-{id}}}"),
         _ => release.clone(),
     };
     let identifier = Identifier {

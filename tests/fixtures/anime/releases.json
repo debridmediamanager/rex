@@ -1,0 +1,83 @@
+{
+ "source": "Release names from a production rex library (2026-10-13) and the TMDB show, season and episode each is, read off TMDB by hand: Bleach's Thousand-Year Blood War is its season 2 numbered through all four cours, Cinderella Gray's second cour is episodes 14-23 of its one season, Dr. Stone New World's second cour episodes 12-22 of season 3. anime-lists maps the Ikinokore OVA to TMDB special 8 while TMDB now lists it as 6 and 7, so specials are as right as that list. Erai-raws' `Shiguang Dailiren Season 3` came out in August 2026 with TMDB's season 4, Link Click 3; TMDB's season 3 is the six-episode Bridon Arc of 2024.",
+ "releases": [
+  {
+   "name": "[Erai-raws] Hibike Euphonium 3 - 01 [1080p][Multiple Subtitle][F15A9CDD].mkv",
+   "tmdb": 62564,
+   "season": 3,
+   "episode": 1
+  },
+  {
+   "name": "[Erai-raws] Bleach - Sennen Kessen Hen - Kashin Tan - 01 [1080p DSNP WEB-DL AVC AAC][MultiSub][AE2878AA].mkv",
+   "tmdb": 30984,
+   "season": 2,
+   "episode": 41
+  },
+  {
+   "name": "[Erai-raws] Uma Musume - Cinderella Gray Part 2 - 05 [1080p AMZN WEB-DL AVC EAC3][MultiSub][DF799ED3].mkv",
+   "tmdb": 262700,
+   "season": 1,
+   "episode": 18
+  },
+  {
+   "name": "[Erai-raws] Uma Musume-Cinderella Gray Part 2-09 [1080p AMZN WEB-DL AVC EAC3][MultiSub][8F047312].mkv",
+   "tmdb": 262700,
+   "season": 1,
+   "episode": 22
+  },
+  {
+   "name": "[Erai-raws] Dr Stone - New World Part 2 - 01 [1080p][HEVC][A3E31C3F].mkv",
+   "tmdb": 86031,
+   "season": 3,
+   "episode": 12
+  },
+  {
+   "name": "[Hakoniwa] Enen no Shouboutai - San no Shou - 24 [1A11435E][WEB 1080p HEVC AAC].mkv",
+   "tmdb": 88046,
+   "season": 3,
+   "episode": 24
+  },
+  {
+   "name": "[SZN & I-O] Hajime no Ippo New Challenger - 24[720p][2CA28B99].mkv",
+   "tmdb": 42705,
+   "season": 2,
+   "episode": 24
+  },
+  {
+   "name": "[ToonsHub].Bleach-Thousand-Year.Blood.War-S17E23.JAP.2160p.x264.AAC.[Multi-Subs]",
+   "tmdb": 30984,
+   "season": 2,
+   "episode": 23
+  },
+  {
+   "name": "[ToonsHub] BLEACH Thousand-Year Blood War - S01E04 (JAP 2160p x264 AAC) [Multi-Subs].mkv",
+   "tmdb": 30984,
+   "season": 2,
+   "episode": 4
+  },
+  {
+   "name": "[Feibanyama] Bleach Thousand Year Blood War S01E47 [IQIYI WebRip 2160p HEVC AAC Multi-Subs].mkv",
+   "tmdb": 30984,
+   "season": 2,
+   "episode": 47
+  },
+  {
+   "name": "[Erai-raws].Kingdom.4th.Season-21.[1080p]",
+   "tmdb": 46437,
+   "season": 4,
+   "episode": 21
+  },
+  {
+   "name": "[Erai-raws] Jujutsu Kaisen 2nd Season - 23 [1080p][Multiple Subtitle][ENG][5B2DEEB4].mkv",
+   "tmdb": 95479,
+   "season": 2,
+   "episode": 23
+  },
+  {
+   "name": "[Erai-raws] Shiguang Dailiren Season 3 - 01 (CA) [1080p CR WEBRip HEVC AAC][MultiSub][8FB131A8].mkv",
+   "tmdb": 123542,
+   "season": 4,
+   "episode": 1
+  }
+ ]
+}

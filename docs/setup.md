@@ -113,6 +113,15 @@ rust/target/release/rex --catalog rex.db --sources sources.json --port 32400 \
 ```
 
 The first lines of the log name each source (`source rd: feed on at /rex/feed/`) and the state file.
+
+- **Anime.** Fansubs name a season the way AniDB does (`Hibike Euphonium 3 - 01`,
+  `Cinderella Gray Part 2 - 05`) and TMDB numbers it as a season or as later episodes of one.
+  With `REX_ANIME_LISTS=on` rex keeps two community datasets beside the catalog,
+  [anime-lists](https://github.com/Anime-Lists/anime-lists) and the
+  [anime-offline-database](https://github.com/manami-project/anime-offline-database)
+  (about 66 MB, fetched again weekly), and places a fansub-named release on TMDB's show,
+  season and episode. At start it also moves episodes placed before onto those numbers.
+  Off by default.
 Check it answers:
 
 ```bash
