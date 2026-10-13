@@ -75,7 +75,7 @@ static YEARS_RAN: LazyLock<Regex> =
 static BRACKET_YEAR: LazyLock<Regex> = LazyLock::new(|| re(r"[(\[]((?:19|20)\d{2})[)\]]"));
 static EDITION: LazyLock<Regex> = LazyLock::new(|| {
     re(
-        r"(?i)\b(?:remastered|extended(?: edition)?|director'?s cut|unrated|theatrical|4kremux\d*|uhd|imax)\b",
+        r"(?i)\b(?:remastered|extended(?: edition)?|director'?s cut|unrated|theatrical(?:[ ._-]cut)?|4kremux\d*|uhd|imax)\b",
     )
 });
 // An episode named without `SxxEyy`: a bare number (`Mysterious Love E06 1080p`), the NxNN
@@ -108,7 +108,8 @@ static BRACKETED: LazyLock<Regex> =
 // `Der.mude.Tod.AKA.Destiny.1921`, `El.laberinto.del.fauno.aka.Pans.Labyrinth`: a film named
 // twice, its original name first. TMDB finds all nine such names on the production server by
 // that first name, and misses `La Haine AKA Hate` by the second.
-static AKA: LazyLock<Regex> = LazyLock::new(|| re(r"(?i)\s+aka\s+"));
+// `Gisaengchung a.K.A. Parasite 2019`: the dotted spelling as well (the production server, 2026-10-13).
+static AKA: LazyLock<Regex> = LazyLock::new(|| re(r"(?i)\s+(?:aka|a k a)\s+"));
 // `[Erai-raws].Kingdom.4th.Season-21.[1080p]`, `Gintama. Shirogane no Tamashii-hen 2nd Season - 14 END`:
 // a season written as an ordinal, the episode after it. Read as a pack, Kingdom's 21st
 // episode was a season 21 film on the production server (2026-10-13).
@@ -278,7 +279,10 @@ pub fn parse_name(name: &str) -> Parsed {
     }
     if let Some(numbered) = BRACKET_EPISODE.captures(name) {
         let number = py_int(&numbered[1]);
-        if parsed.season.is_none() && parsed.episode.is_none() && parsed.year.unwrap_or(0) == 0 && !parsed.pack
+        // A fansub names a sequel's year beside the title: `[Sakurato] Mairimashita! Iruma-kun (2026) [22]`.
+        if parsed.season.is_none() && parsed.episode.is_none()
+            && (parsed.year.unwrap_or(0) == 0 || name.trim_start().starts_with('['))
+            && !parsed.pack
             && !matches!(number, Some(480 | 576 | 720))
         {
             parsed.episode = number;

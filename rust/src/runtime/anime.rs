@@ -150,6 +150,12 @@ impl Index {
         if parsed.title.is_empty() {
             return None;
         }
+        // AniDB names a sequel by its year: `Mairimashita! Iruma-kun (2026)`.
+        if let Some(year) = parsed.year {
+            if let Some(target) = self.find(&format!("{} ({year})", parsed.title)) {
+                return Some((target.clone(), true));
+            }
+        }
         if let Some(season) = parsed.season.filter(|season| *season > 1) {
             let ordinal = match season % 10 {
                 1 if season % 100 != 11 => "st",

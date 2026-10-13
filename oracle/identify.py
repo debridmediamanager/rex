@@ -48,7 +48,7 @@ _SITE_RUN_ON = re.compile(r"(?i)\.(?!(?:mkv|mp4|webm|avi|ts|m4v)\b)\w")
 _RANGE = re.compile(r"\s[-–]\s(\d{1,4})\s?-\s?(\d{1,4})\b.*$")
 # `Avatar - The Last Airbender (2005 - 2008) [1080p]`: the years a series ran.
 _YEARS_RAN = re.compile(r"[(\[]\s*((?:19|20)\d{2})\s*[-–]\s*(?:(?:19|20)\d{2})?\s*[)\]]")
-_EDITION = re.compile(r"(?i)\b(?:remastered|extended(?: edition)?|director'?s cut|unrated|theatrical|4kremux\d*|uhd|imax)\b")
+_EDITION = re.compile(r"(?i)\b(?:remastered|extended(?: edition)?|director'?s cut|unrated|theatrical(?:[ ._-]cut)?|4kremux\d*|uhd|imax)\b")
 # A season pack names its season without an episode: `Planet.Earth.II.S01.1080p…`,
 # `The Sopranos S01 …`, `Show Season 2 …`, `S01-S03`, and on the production server `Family.Matters.seasons.01-09`
 # and `South Park - Seasons 1 to 25`.
@@ -76,7 +76,8 @@ _DASH_EPISODE = re.compile(r"^(.*\S)(?:-(\d{2,3})(?:v\d)?(?:\s+END)?(?:\s+-\S+)?
 _BRACKETED = re.compile(r"^\s*\[[^\]]*\]\s*\[([^\]]+)\]\s*\[(\d{1,4})(?:v\d)?\]")
 # `Der.mude.Tod.AKA.Destiny.1921`, `El.laberinto.del.fauno.aka.Pans.Labyrinth`: a film named
 # twice, its original name first.
-_AKA = re.compile(r"(?i)\s+aka\s+")
+# `Gisaengchung a.K.A. Parasite 2019`: the dotted spelling as well (the production server, 2026-10-13).
+_AKA = re.compile(r"(?i)\s+(?:aka|a k a)\s+")
 # `[Erai-raws].Kingdom.4th.Season-21.[1080p]`, `Gintama. Shirogane no Tamashii-hen 2nd Season - 14 END`:
 # a season written as an ordinal, the episode after it. Read as a pack, Kingdom's 21st
 # episode was a season 21 film on the production server (2026-10-13).
@@ -175,7 +176,9 @@ def parse_name(name):
         parsed["title"] = dashed.group(1).strip(" -–—")
         parsed["episode"] = int(dashed.group(2) or dashed.group(3))
     numbered = _BRACKET_EPISODE.match(name)
-    if numbered and parsed["season"] is None and parsed["episode"] is None and not parsed["year"] \
+    # A fansub names a sequel's year beside the title: `[Sakurato] Mairimashita! Iruma-kun (2026) [22]`.
+    if numbered and parsed["season"] is None and parsed["episode"] is None \
+            and (not parsed["year"] or name.lstrip().startswith("[")) \
             and not parsed["pack"] and int(numbered.group(1)) not in (480, 576, 720):
         parsed["episode"] = int(numbered.group(1))
     bracketed = _BRACKETED.match(name)

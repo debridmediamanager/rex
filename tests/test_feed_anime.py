@@ -99,7 +99,7 @@ def main():
     try:
         status, body = server.feed("POST", "items", {"items": [item(name) for name in names]})
         keys = server.keys()
-        check("the five files are placed", status == 200 and len(keys) == 5, (status, body))
+        check("every file is placed", status == 200 and len(keys) == len(names), (status, body))
         for name in names:
             want = FIXTURE["pushes"][name]["want"]
             got = placed(server, keys[FIXTURE["pushes"][name]["path"]])
@@ -142,6 +142,9 @@ def main():
         shutil.rmtree(work, ignore_errors=True)
 
     if RECORD:
+        for key, value in list(FIXTURE["tmdb"].items()):
+            if "/season/" in key and "/episode/" not in key and isinstance(value, dict):
+                FIXTURE["tmdb"][key] = {field: v for field, v in value.items() if field != "episodes"}
         json.dump(FIXTURE, open(FIXTURE_PATH, "w"), indent=1, sort_keys=True, ensure_ascii=False)
         print("recorded %d TMDB and %d Plex answers" % (len(FIXTURE["tmdb"]), len(FIXTURE["plex"])))
     print("\n%d/%d passed" % (sum(results), len(results)))
