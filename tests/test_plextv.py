@@ -504,6 +504,59 @@ def pref(body, name):
     return None
 
 
+def placeholder_identity():
+    """The example catalog's all-zero machineIdentifier is every copy's: an announce or a claim
+    on it would write the same plex.tv device row as every other copy's, so neither starts."""
+    stub = Stub(free_port())
+    threading.Thread(target=stub.serve_forever, daemon=True).start()
+    directory = tempfile.mkdtemp(prefix="rex-plextv-placeholder-")
+    try:
+        document = json.load(open(CATALOG))
+        document["machineIdentifier"] = "0" * 40
+        catalog = os.path.join(directory, "catalog.json")
+        json.dump(document, open(catalog, "w"))
+        env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1", PLEX_TOKEN=ACCOUNT_TOKEN,
+                   REX_PLEXTV_URL="http://127.0.0.1:%d" % stub.server_address[1])
+        for name in ("REX_STATE", "REX_TOKEN", "TMDB_KEY"):
+            env.pop(name, None)
+        port = free_port()
+        announced = subprocess.Popen(server_command("--port", port, "--catalog", catalog, "--gdm", "off",
+                                                    "--announce-url", ANNOUNCE_URL, "--heartbeat-interval", 2,
+                                                    root=ROOT),
+                                     cwd=ROOT, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        try:
+            output, _ = announced.communicate(timeout=15)
+        except subprocess.TimeoutExpired:
+            announced.kill()
+            output, _ = announced.communicate()
+        check("--announce-url on a placeholder machineIdentifier refuses to start, announcing nothing",
+              announced.returncode not in (0, None, -9) and "placeholder" in output
+              and not stub.taken("servers.plex.tv"),
+              (announced.returncode, output[-400:], [r["path"] for r in stub.taken("servers.plex.tv")]))
+        log = tempfile.TemporaryFile()
+        proc = subprocess.Popen(server_command("--port", port, "--catalog", catalog, "--gdm", "off", root=ROOT),
+                                cwd=ROOT, env=env, stdout=log, stderr=subprocess.STDOUT)
+        try:
+            for _ in range(150):
+                try:
+                    socket.create_connection(("127.0.0.1", port), timeout=1).close()
+                    break
+                except OSError:
+                    time.sleep(0.1)
+            conn = http.client.HTTPConnection("127.0.0.1", port, timeout=15)
+            conn.request("POST", "/myplex/claim?token=%s" % CLAIM_TOKEN)
+            status = conn.getresponse().status
+            conn.close()
+            check("a claim on a placeholder machineIdentifier is refused before plex.tv is asked",
+                  status == 400 and not stub.taken("plex.tv", "/api/claim/exchange"), status)
+        finally:
+            proc.kill()
+            proc.wait()
+    finally:
+        stub.shutdown()
+        shutil.rmtree(directory, ignore_errors=True)
+
+
 def main():
     base = os.environ.get("REX_TEST_PORT")
     ports = [int(base) + offset for offset in range(3)] if base else \
@@ -940,6 +993,7 @@ def main():
         stub.shutdown()
         shutil.rmtree(directory, ignore_errors=True)
 
+    placeholder_identity()
     passed = sum(results)
     print("%d/%d checks passed" % (passed, len(results)))
     return 0 if passed == len(results) else 1

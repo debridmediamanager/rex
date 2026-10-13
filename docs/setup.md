@@ -79,8 +79,8 @@ your own, is [`docs/feed-api.md`](feed-api.md).
 python3 oracle/build_catalog.py --seed --name den --out rex.db
 ```
 
-This writes a SQLite database holding a fixed `machineIdentifier` (derived from
-`--name`, and kept if you re-seed), a Movies library holding the `movies` directory and a
+This writes a SQLite database holding a fixed `machineIdentifier` (random, as a real
+Plex Media Server's is, and kept if you re-seed), a Movies library holding the `movies` directory and a
 TV Shows library holding `shows`. A pushed item lands in the library holding the
 directory its `path` starts with (`movies/<release>/<file>`), whichever source sent it
 and whatever path prefix its `file` carries. An item in no library's directory is

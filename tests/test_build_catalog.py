@@ -71,6 +71,25 @@ try:
     reseeded = json.load(open(accented, encoding="utf-8"))["machineIdentifier"]
     check("a re-seed of a non-ASCII JSON catalog keeps its machine in any locale", reseeded == "f" * 40, reseeded)
 
+    # -- a new seed's machine is its own --------------------------------------------------
+    # It was sha1("plexsim/" + --name): plex.tv could predict it, and two servers given the
+    # same name shared one identity, so a claim or an announce on one wrote the other's row.
+    def seeded_machine(out, *flags):
+        subprocess.run([sys.executable, os.path.join(os.path.dirname(HERE), "oracle", "build_catalog.py"),
+                        "--seed", "--name", "den", "--out", out] + list(flags), check=True, stdout=subprocess.DEVNULL)
+        return json.load(open(out, encoding="utf-8"))["machineIdentifier"]
+    first = seeded_machine(os.path.join(work, "den1.json"))
+    second = seeded_machine(os.path.join(work, "den2.json"))
+    check("two seeds with the same name get different machines, each 40 hex",
+          first != second and all(len(m) == 40 and set(m) <= set("0123456789abcdef") for m in (first, second)),
+          (first, second))
+    check("and a re-seed keeps its own", seeded_machine(os.path.join(work, "den1.json")) == first)
+    example = os.path.join(work, "example.json")
+    shutil.copy(os.path.join(os.path.dirname(HERE), "examples", "catalog.example.json"), example)
+    replaced = seeded_machine(example)
+    check("a re-seed over the example catalog's placeholder machine mints a real one",
+          not build_catalog.placeholder_machine(replaced) and len(replaced) == 40, replaced)
+
     # -- --seed: one library per type, holding every folder under every mount ------------
     def seed(*flags):
         out = os.path.join(work, "seed.json")

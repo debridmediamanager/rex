@@ -7882,6 +7882,11 @@ impl Runtime {
                     {
                         Response::error(409, "rex: already claimed")
                     }
+                    Some(_) if placeholder_machine(&self.machine) => Response::error(
+                        400,
+                        "rex: the catalog's machineIdentifier is a placeholder; seed a new \
+                         catalog with build_catalog.py --seed",
+                    ),
                     Some(token) => {
                         self.pending_claim = Some(token.clone());
                         Response::empty(200)
@@ -23108,6 +23113,13 @@ fn start_gdm(runtime: SharedRuntime, mode: &str, port: u16) {
 
 /// The token a request carries: a non-empty `X-Plex-Token` header, else the query's (its
 /// LAST occurrence, as `query` holds it).
+/// `placeholder_machine` in server.py: the example catalog's all-zero machineIdentifier, or
+/// this server's fallback for a catalog without one. Every copy shares it, so a claim or an
+/// announce on it would write the same plex.tv device row as every other copy's.
+fn placeholder_machine(machine: &str) -> bool {
+    matches!(machine.trim_matches('0'), "" | "1")
+}
+
 /// One `allowedNetworks` entry: an address, `address/bits` or `address/netmask`.
 fn network(entry: &str) -> Option<(std::net::IpAddr, u32)> {
     let entry = entry.trim();
@@ -23438,9 +23450,15 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
     start_gdm(Arc::clone(&runtime), &gdm_mode, port);
     if let (Some(url), Some(token)) = (announce, plex_token) {
         // Cycle 44: announced on the server's own machineIdentifier.
+        let announced = device_id.unwrap_or_else(|| machine.clone());
+        if placeholder_machine(&announced) {
+            return Err("--announce-url needs a machineIdentifier of this server's own; the \
+                        catalog's is a placeholder (seed one with build_catalog.py --seed)"
+                .to_string());
+        }
         let beat = plextv::Beat {
             token,
-            machine: device_id.unwrap_or_else(|| machine.clone()),
+            machine: announced,
             url,
             name: friendly,
         };

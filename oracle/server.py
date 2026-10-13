@@ -3994,6 +3994,13 @@ _PERSIST_GET = re.compile(r"/:/(scrobble|unscrobble|rate|progress|timeline)\Z")
 _TOKEN_IN_TARGET = re.compile(r"(?i)(x-plex-token(?:=|%3d))[A-Za-z0-9_.~-]+")
 
 
+def placeholder_machine(machine):
+    """The example catalog's all-zero machineIdentifier, or the native server's fallback for a
+    catalog without one: every copy shares it, so a claim or an announce on it would write
+    the same plex.tv device row as every other copy's."""
+    return str(machine or "").strip("0") in ("", "1")
+
+
 def redact_tokens(target):
     """A request target with every `X-Plex-Token` value masked, plain or URL-encoded (the
     `url=` of `/photo/:/transcode` carries one): the request line and `requests.log` are
@@ -8900,6 +8907,9 @@ class Rex:
             # rex's own refusal: repeated exchanges are what reset the account's tokens on
             # 2026-09-11. Re-claiming means removing claim_state.json first.
             return ("error", 409, "rex: already claimed")
+        if placeholder_machine(self.catalog.machine):
+            return ("error", 400, "rex: the catalog's machineIdentifier is a placeholder; "
+                                  "seed a new catalog with build_catalog.py --seed")
         try:
             self.claim.exchange(token)
         except Exception as error:
@@ -26683,6 +26693,9 @@ def main():
         plex_token = os.environ.get("PLEX_TOKEN")
         if not plex_token:
             parser.error("--announce-url needs PLEX_TOKEN in the environment")
+        if placeholder_machine(args.device_id or catalog.machine):
+            parser.error("--announce-url needs a machineIdentifier of this server's own; the "
+                         "catalog's is a placeholder (seed one with build_catalog.py --seed)")
         # Cycle 44: a real PMS announces on its own machineIdentifier
         # (`PUT servers.plex.tv/devices/{machineIdentifier}`), so the server's own is
         # the right default and there is nothing to look up. The numeric form this

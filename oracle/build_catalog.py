@@ -20,9 +20,9 @@ existing JSON catalog is moved into one with
 """
 
 import argparse
-import hashlib
 import json
 import os
+import secrets
 import sqlite3
 import sys
 
@@ -81,10 +81,12 @@ def main():
         parser.error("nothing to do: --seed, --convert or --relink")
     # machineIdentifier must be stable across restarts: plex.tv keys the registered
     # device on it, and a client that saw the old one treats a new value as a different
-    # server -- so a re-seed keeps the one already there.
-    # "plexsim/" is the pre-rename namespace, frozen: changing it re-mints every id it seeds.
-    machine = existing_machine(args.out) or hashlib.sha1(
-        ("plexsim/" + args.name).encode()).hexdigest()[:40]
+    # server -- so a re-seed keeps the one already there. A new one is random, as a real
+    # PMS's is: it was sha1("plexsim/" + name), which plex.tv could predict and which two
+    # servers given the same name shared. A placeholder (the example catalog's) is replaced.
+    machine = existing_machine(args.out)
+    if not machine or placeholder_machine(machine):
+        machine = secrets.token_hex(20)
     sections = hierarchy_module.sections(args.name)
     seed_locations(sections, args.mounts or ["/mnt/zurg"], args.movies or ["movies"],
                    args.shows or ["shows"])
@@ -106,6 +108,12 @@ def seed_locations(sections, mounts, movies, shows):
                 section["Location"].append({"id": next_id,
                                             "path": "%s/%s" % (mount.rstrip("/"), folder.strip("/"))})
                 next_id += 1
+
+
+def placeholder_machine(machine):
+    """The example catalog's all-zero id, or the native server's fallback for a catalog
+    without one: every copy shares it, so no server may claim or announce on it."""
+    return machine.strip("0") in ("", "1")
 
 
 def existing_machine(out):
