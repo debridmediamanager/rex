@@ -4859,6 +4859,17 @@
     "totalSize": 1
    }
   },
+  "POST /library/metadata/matches {\"excludeElements\": \"Media\", \"filename\": \"Sweeney.Todd.National.Broadway.Tour.LA.1982.720p.WEB-DL\", \"title\": \"Sweeney Todd National Broadway Tour LA\", \"type\": 1, \"year\": 1982}": {
+   "MediaContainer": {
+    "identifier": "tv.plex.provider.metadata",
+    "librarySectionID": "home",
+    "librarySectionTitle": "Metadata",
+    "offset": 0,
+    "size": 0,
+    "totalSize": 0
+   },
+   "_rexCachedAt": 1791854841
+  },
   "POST /library/metadata/matches {\"excludeElements\": \"Media\", \"filename\": \"Wallace & Gromit (1989) Season 1 S01 + Specials (1080p BluRay x265 HEVC 10bit EAC3 5.1 Ghost)\", \"title\": \"Wallace & Gromit\", \"type\": 2, \"year\": 1989}": {
    "MediaContainer": {
     "Metadata": [
@@ -5111,7 +5122,7 @@
     "size": 0,
     "totalSize": 0
    },
-   "_rexCachedAt": 1791849119
+   "_rexCachedAt": 1791854838
   },
   "POST /library/metadata/matches {\"guid\": \"imdb://tt15679400\", \"type\": 1}": {
    "MediaContainer": {
@@ -7391,13 +7402,6 @@
   }
  },
  "pushes": {
-  "champloo": {
-   "hash": "d1fef4ea629593c8f63d20495d4d294a9801372e",
-   "ids": {},
-   "name": "[philosophy-raws][Samurai Champloo][13][BDRIP][Hi10P FLAC][1920X1080]",
-   "path": "movies/[philosophy-raws][Samurai Champloo][13][BDRIP][Hi10P FLAC][1920X1080]/[philosophy-raws][Samurai Champloo][13][BDRIP][Hi10P FLAC][1920X1080].mkv.001/[philosophy-raws][Samurai Champloo][13][BDRIP][Hi10P FLAC][1920X1080].mkv",
-   "size": 1812553160
-  },
   "conan": {
    "hash": "898e4a9a7d02c0e7405f756b2b6ff01496a467ec",
    "ids": {},
@@ -7431,6 +7435,13 @@
    "name": "A.Serbian.Film.2010.Uncut.NORDIC.Bluray.1080p.DTS-HD.x264-Grym.mkv",
    "path": "movies/A.Serbian.Film.2010.Uncut.NORDIC.Bluray.1080p.DTS-HD.x264-Grym/A.Serbian.Film.2010.Uncut.NORDIC.Bluray.1080p.DTS-HD.x264-Grym.mkv",
    "size": 13866272571
+  },
+  "sweeney": {
+   "hash": "902f60186461cb5e2e9bfdd9dfcce282560988be",
+   "ids": {},
+   "name": "Sweeney.Todd.National.Broadway.Tour.LA.1982.720p.WEB-DL",
+   "path": "movies/Sweeney.Todd.National.Broadway.Tour.LA.1982.720p.WEB-DL/Sweeney.Todd.National.Broadway.Tour.LA.1982.720p.WEB-DL.part01.rar/Sweeney.Todd.National.Broadway.Tour.LA.1982.720p.WEB-DL.mp4",
+   "size": 8609240264
   }
  },
  "rows": [
@@ -9089,7 +9100,7 @@
  ],
  "tmdb": {
   "https://api.themoviedb.org/3/find/tt0530855?external_source=imdb_id&api_key=KEY": {
-   "_rexCachedAt": 1791849118,
+   "_rexCachedAt": 1791854838,
    "movie_results": [],
    "person_results": [],
    "tv_episode_results": [],
@@ -9097,7 +9108,7 @@
    "tv_season_results": []
   },
   "https://api.themoviedb.org/3/find/tt15679400?external_source=imdb_id&api_key=KEY": {
-   "_rexCachedAt": 1791849117,
+   "_rexCachedAt": 1791854835,
    "movie_results": [],
    "person_results": [],
    "tv_episode_results": [],
@@ -9105,7 +9116,7 @@
    "tv_season_results": []
   },
   "https://api.themoviedb.org/3/find/tt36615857?external_source=imdb_id&api_key=KEY": {
-   "_rexCachedAt": 1791849117,
+   "_rexCachedAt": 1791854836,
    "movie_results": [],
    "person_results": [],
    "tv_episode_results": [],
@@ -9113,7 +9124,7 @@
    "tv_season_results": []
   },
   "https://api.themoviedb.org/3/find/tt6257382?external_source=imdb_id&api_key=KEY": {
-   "_rexCachedAt": 1791849116,
+   "_rexCachedAt": 1791854835,
    "movie_results": [],
    "person_results": [],
    "tv_episode_results": [],
@@ -10351,7 +10362,7 @@
       "name": "Steven Schneider",
       "original_name": "Steven Schneider",
       "popularity": 0.8603,
-      "profile_path": "/r1NAJn49iiqJyoFAE9j53Q8TssQ.jpg"
+      "profile_path": "/lKvFSqxjqB5l2Al6Z2mshDMILvO.jpg"
      },
      {
       "adult": false,
@@ -10692,17 +10703,17 @@
        {
         "certification": "14",
         "descriptors": [],
-        "iso_639_1": "fr",
+        "iso_639_1": "de",
         "note": "",
-        "release_date": "2023-02-01T00:00:00.000Z",
+        "release_date": "2023-02-09T00:00:00.000Z",
         "type": 3
        },
        {
         "certification": "14",
         "descriptors": [],
-        "iso_639_1": "de",
+        "iso_639_1": "fr",
         "note": "",
-        "release_date": "2023-02-09T00:00:00.000Z",
+        "release_date": "2023-02-01T00:00:00.000Z",
         "type": 3
        }
       ]
@@ -10868,16 +10879,16 @@
         "certification": "",
         "descriptors": [],
         "iso_639_1": "",
-        "note": "Blu-ray",
-        "release_date": "2023-06-14T00:00:00.000Z",
+        "note": "DVD",
+        "release_date": "2023-07-26T00:00:00.000Z",
         "type": 5
        },
        {
         "certification": "",
         "descriptors": [],
         "iso_639_1": "",
-        "note": "DVD",
-        "release_date": "2023-07-26T00:00:00.000Z",
+        "note": "Blu-ray",
+        "release_date": "2023-06-14T00:00:00.000Z",
         "type": 5
        }
       ]
@@ -11422,8 +11433,8 @@
    "tagline": "Save your family or save humanity. Make the choice.",
    "title": "Knock at the Cabin",
    "video": false,
-   "vote_average": 6.2,
-   "vote_count": 3236
+   "vote_average": 6.237,
+   "vote_count": 3237
   },
   "https://api.themoviedb.org/3/movie/73861?append_to_response=credits%2Cexternal_ids%2Ccontent_ratings%2Crelease_dates&api_key=KEY": {
    "adult": false,
@@ -16688,12 +16699,19 @@
      "softcore": false,
      "title": "Knock at the Cabin",
      "video": false,
-     "vote_average": 6.2,
-     "vote_count": 3236
+     "vote_average": 6.237,
+     "vote_count": 3237
     }
    ],
    "total_pages": 1,
    "total_results": 1
+  },
+  "https://api.themoviedb.org/3/search/movie?query=Sweeney+Todd+National+Broadway+Tour+LA&year=1982&api_key=KEY": {
+   "_rexCachedAt": 1791854841,
+   "page": 1,
+   "results": [],
+   "total_pages": 1,
+   "total_results": 0
   },
   "https://api.themoviedb.org/3/search/tv?query=Boy+Meets+World&first_air_date_year=1993&api_key=KEY": {
    "page": 1,
@@ -16849,7 +16867,7 @@
    "total_results": 4
   },
   "https://api.themoviedb.org/3/search/tv?query=Knock+at+the+Cabin&api_key=KEY": {
-   "_rexCachedAt": 1791849118,
+   "_rexCachedAt": 1791854837,
    "page": 1,
    "results": [],
    "total_pages": 1,
@@ -16928,7 +16946,7 @@
    "total_results": 3
   },
   "https://api.themoviedb.org/3/search/tv?query=Wallace+%26+Gromit&first_air_date_year=1989&api_key=KEY": {
-   "_rexCachedAt": 1791849121,
+   "_rexCachedAt": 1791854841,
    "page": 1,
    "results": [],
    "total_pages": 1,
@@ -16955,7 +16973,7 @@
      "original_language": "ja",
      "original_name": "\u5316\u7269\u8a9e",
      "overview": "Koyomi Araragi, a high school student, finds himself constantly encountering girls afflicted by supernatural \"oddities.\" He dedicates himself to helping them, often with the aid of the eccentric specialist Meme Oshino. Each arc talks about a different girl's unique struggle and the mysterious cause of their affliction. The series explores themes of adolescence, personal growth, and the complexities of human relationships. It's known for its witty dialogue, stylistic animation, and unique narrative structure.",
-     "popularity": 68.5948,
+     "popularity": 66.7988,
      "poster_path": "/zCEjjb1NH3LLsWeZx47wOeqkezf.jpg",
      "softcore": false,
      "vote_average": 8.1,

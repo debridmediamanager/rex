@@ -83,12 +83,21 @@ static LOOSE_NX: LazyLock<Regex> =
 static LOOSE_E: LazyLock<Regex> =
     LazyLock::new(|| re(r"(?i)(?:^|[\s._\-\[(])E(?:P[.\s]?)?(\d{2,4})(?:[\s._\-\])]|$)"));
 // An absolute episode glued to its title by a dash (`[Moozzi2] Eighty-Six-15 [BD …]`,
-// `[HorribleSubs].Gintama-340.[1080p]`, the production server's Usenet movies): two or three digits and no
-// year, so `Blade-Runner-2049` stays a film.
-static DASH_EPISODE: LazyLock<Regex> = LazyLock::new(|| re(r"^(.*\S)-(\d{2,3})$"));
-// `Der.mude.Tod.AKA.Destiny.1921`: a film named twice, its original name first. TMDB finds
-// all nine such names on the production server by that first name, and misses `La Haine AKA Hate` by the second.
-static AKA: LazyLock<Regex> = LazyLock::new(|| re(r"\s+AKA\s+"));
+// `[HorribleSubs].Gintama-340.[1080p]`, the production server's Usenet movies): two or three
+// digits and no year, so `Blade-Runner-2049` stays a film; a version, a last episode's `END`
+// and a reposter's tag may follow (`Shichi-12 END`, `Gintama-364.[1080p]-RakuvFIN`). Spaced,
+// it needs the version, since `parse_release` already reads ` - 12`: `Uso - 01v2 - Monotone`.
+static DASH_EPISODE: LazyLock<Regex> = LazyLock::new(|| {
+    re(r"^(.*\S)(?:-(\d{2,3})(?:v\d)?(?:\s+END)?(?:\s+-\S+)?|\s+-\s+(\d{2,3})v\d(?:\s+-\s.*)?)$")
+});
+// `[philosophy-raws][Samurai Champloo][13][BDRIP]…`: every part bracketed, which
+// `parse_release` drops whole, the title second and the episode third.
+static BRACKETED: LazyLock<Regex> =
+    LazyLock::new(|| re(r"^\s*\[[^\]]*\]\s*\[([^\]]+)\]\s*\[(\d{1,4})(?:v\d)?\]"));
+// `Der.mude.Tod.AKA.Destiny.1921`, `El.laberinto.del.fauno.aka.Pans.Labyrinth`: a film named
+// twice, its original name first. TMDB finds all nine such names on the production server by
+// that first name, and misses `La Haine AKA Hate` by the second.
+static AKA: LazyLock<Regex> = LazyLock::new(|| re(r"(?i)\s+aka\s+"));
 // A season pack names its season without an episode: `Planet.Earth.II.S01.1080p…`,
 // `The Sopranos S01 …`, `Show Season 2 …`, `S01-S03`, and on the production server `Family.Matters.seasons.01-09`
 // and `South Park - Seasons 1 to 25`. Python ends it with
@@ -193,8 +202,14 @@ pub fn parse_name(name: &str) -> Parsed {
     parsed.title = AKA.splitn(&parsed.title, 2).next().unwrap_or_default().to_string();
     if parsed.season.is_none() && parsed.episode.is_none() && parsed.year.unwrap_or(0) == 0 && !parsed.pack {
         if let Some(dashed) = DASH_EPISODE.captures(&parsed.title) {
-            parsed.episode = py_int(&dashed[2]);
+            parsed.episode = dashed.get(2).or(dashed.get(3)).and_then(|number| py_int(number.as_str()));
             parsed.title = dashed[1].trim_matches([' ', '-', '–', '—']).to_string();
+        }
+    }
+    if let Some(bracketed) = BRACKETED.captures(name) {
+        if parsed.title.is_empty() && parsed.season.is_none() && parsed.episode.is_none() {
+            parsed.title = squeeze(&bracketed[1]);
+            parsed.episode = py_int(&bracketed[2]);
         }
     }
     parsed
@@ -830,6 +845,10 @@ mod tests {
             ("Gintama.Ep.14.German.DTS.5.1.DL.1080p.BluRay.x264-AST4u", "Gintama", None, Some(14)),
             ("[Moozzi2] Eighty-Six-15 [BD 3840x2160 x265-10Bit FLACx2]", "Eighty-Six", None, Some(15)),
             ("[HorribleSubs].Gintama-340.[1080p]", "Gintama", None, Some(340)),
+            ("[philosophy-raws][Samurai Champloo][13][BDRIP][Hi10P FLAC][1920X1080]", "Samurai Champloo", None, Some(13)),
+            ("[Moozzi2] Natsume Yuujinchou Shichi-12 END [BD 1920x1080 x265-10Bit Flac]", "Natsume Yuujinchou Shichi", None, Some(12)),
+            ("[HorribleSubs].Gintama-364.[1080p]-RakuvFIN", "Gintama", None, Some(364)),
+            ("[RH] Shigatsu wa Kimi no Uso (Your Lie in April) - 01v2 - Monotone-Colorful [Dual Audio] [BDRip]", "Shigatsu wa Kimi no Uso", None, Some(1)),
             ("Family.Matters.seasons.01-09.AMZN.1080p.10bit.hevc.x265-bearfish", "Family Matters", Some(1), None),
             ("South Park - Seasons 1 to 25 (S01-S25) Master Collection, The Movie & Extras [1080p-2160p]", "South Park", Some(1), None),
             // What stays a film: a year beside the dash, one digit after it, an `AKA`'s first name.
@@ -837,6 +856,7 @@ mod tests {
             ("Spider-Man-2", "Spider-Man-2", None, None),
             ("A Trip to the Moon (1902) Arrow (1080p BluRay x265 HEVC 10bit AAC 2.0 afm72)", "A Trip to the Moon", None, None),
             ("Der.mude.Tod.AKA.Destiny.1921.576p.BluRay.AAC.x264-HANDJOB", "Der mude Tod", None, None),
+            ("Mr.Nice.Guy.aka.Yat.goh.ho.yan.1997.Extended.Original.Cut.2160p.UHD.Blu-ray", "Mr Nice Guy", None, None),
         ] {
             let parsed = parse_name(name);
             assert_eq!((parsed.title.as_str(), parsed.season, parsed.episode), (title, season, episode), "{name}");

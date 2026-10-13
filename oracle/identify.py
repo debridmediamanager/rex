@@ -57,11 +57,17 @@ _EDITION = re.compile(r"(?i)\b(?:remastered|extended(?: edition)?|director'?s cu
 _LOOSE_NX = re.compile(r"(?i)(?:^|[\s._\-\[(])(\d{1,2})x(\d{2})(?:[\s._\-\])]|$)")
 _LOOSE_E = re.compile(r"(?i)(?:^|[\s._\-\[(])E(?:P[.\s]?)?(\d{2,4})(?:[\s._\-\])]|$)")
 # An absolute episode glued to its title by a dash (`[Moozzi2] Eighty-Six-15 [BD …]`,
-# `[HorribleSubs].Gintama-340.[1080p]`, the production server's Usenet movies): two or three digits and no
-# year, so `Blade-Runner-2049` stays a film.
-_DASH_EPISODE = re.compile(r"^(.*\S)-(\d{2,3})$")
-# `Der.mude.Tod.AKA.Destiny.1921`: a film named twice, its original name first.
-_AKA = re.compile(r"\s+AKA\s+")
+# `[HorribleSubs].Gintama-340.[1080p]`, the production server's Usenet movies): two or three
+# digits and no year, so `Blade-Runner-2049` stays a film; a version, a last episode's `END`
+# and a reposter's tag may follow (`Shichi-12 END`, `Gintama-364.[1080p]-RakuvFIN`). Spaced,
+# it needs the version, since `parse_release` already reads ` - 12`: `Uso - 01v2 - Monotone`.
+_DASH_EPISODE = re.compile(r"^(.*\S)(?:-(\d{2,3})(?:v\d)?(?:\s+END)?(?:\s+-\S+)?|\s+-\s+(\d{2,3})v\d(?:\s+-\s.*)?)$")
+# `[philosophy-raws][Samurai Champloo][13][BDRIP]…`: every part bracketed, which
+# `parse_release` drops whole, the title second and the episode third.
+_BRACKETED = re.compile(r"^\s*\[[^\]]*\]\s*\[([^\]]+)\]\s*\[(\d{1,4})(?:v\d)?\]")
+# `Der.mude.Tod.AKA.Destiny.1921`, `El.laberinto.del.fauno.aka.Pans.Labyrinth`: a film named
+# twice, its original name first.
+_AKA = re.compile(r"(?i)\s+aka\s+")
 _SEASON_PACK = re.compile(r"(?i)\b(?:S(\d{1,2})(?:\s?-\s?S?\d{1,2})?|Seasons?[\s._-]?(\d{1,2}))\b(?![\s._-]?E\d)")
 
 
@@ -123,7 +129,12 @@ def parse_name(name):
     dashed = _DASH_EPISODE.match(parsed["title"])
     if dashed and parsed["season"] is None and parsed["episode"] is None and not parsed["year"] \
             and not parsed["pack"]:
-        parsed["title"], parsed["episode"] = dashed.group(1).strip(" -–—"), int(dashed.group(2))
+        parsed["title"] = dashed.group(1).strip(" -–—")
+        parsed["episode"] = int(dashed.group(2) or dashed.group(3))
+    bracketed = _BRACKETED.match(name)
+    if bracketed and not parsed["title"] and parsed["season"] is None and parsed["episode"] is None:
+        parsed["title"] = re.sub(r"\s+", " ", bracketed.group(1)).strip(" -–—")
+        parsed["episode"] = int(bracketed.group(2))
     return parsed
 
 

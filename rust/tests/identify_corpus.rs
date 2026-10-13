@@ -309,7 +309,7 @@ fn a_season_only_tmdb_has_decides_the_dispute() {
 /// zurg pushed it (the IMDb id DMM gave its hash, or the TMDB id zurg's own Plex gave it),
 /// identified as the feed identifies it (`name_release`): in its library's kind, a TMDB id
 /// with no IMDb id read as a `{tmdb-…}` tag. The TMDB id each is was labelled by hand.
-/// The oracle names 80 of the 112 labelled; before this the port named 10.
+/// The oracle names 82 of the 112 labelled; before this the port named 10.
 #[test]
 fn releases_on_the_blank_tile_are_named_in_their_library_kind() {
     let (corpus, tmdb, plex) = replay(concat!(
@@ -357,5 +357,5 @@ fn releases_on_the_blank_tile_are_named_in_their_library_kind() {
         "requests the recording does not hold: tmdb {tmdb_missed:?} plex {plex_missed:?}"
     );
     assert_eq!(labelled, 112);
-    assert!(right >= 80, "{right} of {labelled} named; missed {:?}", &missed[..missed.len().min(5)]);
+    assert!(right >= 82, "{right} of {labelled} named; missed {:?}", &missed[..missed.len().min(5)]);
 }

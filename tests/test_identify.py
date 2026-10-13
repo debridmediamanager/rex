@@ -91,11 +91,18 @@ def parsing():
         ("Gintama.Ep.14.German.DTS.5.1.DL.1080p.BluRay.x264-AST4u", "Gintama", None, True),
         ("[Moozzi2] Eighty-Six-15 [BD 3840x2160 x265-10Bit FLACx2]", "Eighty-Six", None, True),
         ("[HorribleSubs].Gintama-340.[1080p]", "Gintama", None, True),
+        ("[philosophy-raws][Samurai Champloo][13][BDRIP][Hi10P FLAC][1920X1080]", "Samurai Champloo", None, True),
+        ("[Moozzi2] Natsume Yuujinchou Shichi-12 END [BD 1920x1080 x265-10Bit Flac]",
+         "Natsume Yuujinchou Shichi", None, True),
+        ("[HorribleSubs].Gintama-364.[1080p]-RakuvFIN", "Gintama", None, True),
+        ("[RH] Shigatsu wa Kimi no Uso (Your Lie in April) - 01v2 - Monotone-Colorful [Dual Audio] [BDRip]",
+         "Shigatsu wa Kimi no Uso", None, True),
         # Season packs named with `seasons`, and a film named twice.
         ("Family.Matters.seasons.01-09.AMZN.1080p.10bit.hevc.x265-bearfish", "Family Matters", None, True),
         ("South Park - Seasons 1 to 25 (S01-S25) Master Collection, The Movie & Extras [1080p-2160p]",
          "South Park", None, True),
         ("Der.mude.Tod.AKA.Destiny.1921.576p.BluRay.AAC.x264-HANDJOB", "Der mude Tod", 1921, False),
+        ("Mr.Nice.Guy.aka.Yat.goh.ho.yan.1997.Extended.Original.Cut.2160p.UHD.Blu-ray", "Mr Nice Guy", 1997, False),
         # And what must stay a film: a year beside the dash, one digit after it, and the
         # release of the production server's only false hit, whose extra is `… - 2011 documentary.mkv`.
         ("Blade-Runner-2049", "Blade-Runner", 2049, False),
@@ -203,7 +210,7 @@ def blank_tiles():
     drew the blank tile for on 2026-10-12 (56 films, 45 shows), as zurg pushed it -- the
     IMDb id DMM gave its hash, the TMDB id zurg's own Plex gave it, or nothing -- in the
     library the feed files it in, with the TMDB id it is labelled by hand. Before this,
-    10 of the 112 labelled were named: TMDB knew none of DMM's episode ids and none of
+    10 of the 112 labelled were named (82 now): TMDB knew none of DMM's episode ids and none of
     zurg's episode TMDB ids, Plex's matcher fed DMM stub films with no TMDB id, a
     library's kind did not decide the kind asked, and absolute anime episode numbers and
     `AKA` titles were not read."""
@@ -219,7 +226,7 @@ def blank_tiles():
     labelled = [(t, i) for t, i in identities if t["truth"]]
     right = [(t, i) for t, i in labelled if i["tmdb"] == t["truth"] and i["kind"] == t["kind"]]
     check("a release on the blank tile is named in its own library's kind (%d of %d)"
-          % (len(right), len(labelled)), len(labelled) == 112 and len(right) >= 80,
+          % (len(right), len(labelled)), len(labelled) == 112 and len(right) >= 82,
           "missed %s" % [t["name"][:40] for t, i in labelled if (t, i) not in right][:5])
     check("a release the library cannot hold is never given the other kind's id",
           all(i["kind"] == t["kind"] for t, i in identities if i["tmdb"] and i["confidence"] != identify.EXACT),

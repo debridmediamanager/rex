@@ -194,10 +194,10 @@ def retry(bytes_port):
     conan = next(row for row in rows if row["type"] == "movie")["ratingKey"]
     boy = next(row for row in rows if row.get("title") == "Boy Meets World")["ratingKey"]
     zoku = next(row for row in rows if row.get("title") == "Zoku Owarimonogatari")["ratingKey"]
-    champloo = item("champloo")
+    sweeney = item("sweeney")
     rows.append(dict(by_key[conan], ratingKey="199999", key="/library/metadata/199999", guid="local://199999",
-                     title=FIXTURE["pushes"]["champloo"]["name"], _sid=champloo["id"], _path=champloo["path"],
-                     _release=champloo["name"], _hash=champloo["hash"], _ids={}))
+                     title=FIXTURE["pushes"]["sweeney"]["name"], _sid=sweeney["id"], _path=sweeney["path"],
+                     _release=sweeney["name"], _hash=sweeney["hash"], _ids={}))
 
     work = tempfile.mkdtemp(prefix="rex-blank-")
     catalog(work, rows)

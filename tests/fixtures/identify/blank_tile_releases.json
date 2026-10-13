@@ -1553,6 +1553,16 @@
     ]
    }
   },
+  "[\"POST\", \"/library/metadata/matches\", {\"excludeElements\": \"Media\", \"filename\": \"[philosophy-raws][Samurai Champloo][13][BDRIP][Hi10P FLAC][1920X1080]\", \"title\": \"Samurai Champloo\", \"type\": 2}]": {
+   "MediaContainer": {
+    "Metadata": []
+   }
+  },
+  "[\"POST\", \"/library/metadata/matches\", {\"excludeElements\": \"Media\", \"filename\": \"[philosophy-raws][Samurai Champloo][15][BDRIP][Hi10P FLAC][1920X1080]\", \"title\": \"Samurai Champloo\", \"type\": 2}]": {
+   "MediaContainer": {
+    "Metadata": []
+   }
+  },
   "[\"POST\", \"/library/metadata/matches\", {\"excludeElements\": \"Media\", \"filename\": \"[smol] Monogatari Series Second Season (BD 1080p HEVC Opus)\", \"title\": \"Monogatari Series Second Season\", \"type\": 2}]": {
    "MediaContainer": {
     "Metadata": [
@@ -1978,6 +1988,30 @@
       "thumb": "https://image.tmdb.org/t/p/original/9IDdEEVrhceLVwPRy7Rk0fEzXYG.jpg",
       "title": "Heart Signal",
       "year": 2018
+     }
+    ]
+   }
+  },
+  "[\"POST\", \"/library/metadata/matches\", {\"guid\": \"tmdb://1063\", \"type\": 2}]": {
+   "MediaContainer": {
+    "Metadata": [
+     {
+      "Guid": [
+       {
+        "id": "imdb://tt0423731"
+       },
+       {
+        "id": "tmdb://1063"
+       },
+       {
+        "id": "tvdb://79089"
+       }
+      ],
+      "art": "https://image.tmdb.org/t/p/original/aZRGh7ccNAdqQWhHypvlT9UuXjZ.jpg",
+      "guid": "plex://show/5d9c086bd4f2a9001f800bb1",
+      "thumb": "https://image.tmdb.org/t/p/original/lYpHeSm7BcUxAbBx1ucuEH7oGAe.jpg",
+      "title": "Samurai Champloo",
+      "year": 2004
      }
     ]
    }
@@ -3579,6 +3613,13 @@
     }
    ]
   },
+  "[\"search/tv\", [[\"query\", \"Samurai Champloo\"]]]": {
+   "results": [
+    {
+     "id": 1063
+    }
+   ]
+  },
   "[\"search/tv\", [[\"query\", \"Shiguang Dailiren Season 3\"]]]": {
    "results": []
   },
@@ -3736,6 +3777,13 @@
    },
    "imdb_id": null,
    "number_of_seasons": 9
+  },
+  "[\"tv/1063\", [[\"append_to_response\", \"credits,external_ids,content_ratings,release_dates\"]]]": {
+   "external_ids": {
+    "imdb_id": "tt0423731"
+   },
+   "imdb_id": null,
+   "number_of_seasons": 1
   },
   "[\"tv/110837\", [[\"append_to_response\", \"credits,external_ids,content_ratings,release_dates\"]]]": {
    "external_ids": {
@@ -4220,7 +4268,7 @@
   {
    "files": 1,
    "hash": "d1fef4ea629593c8f63d20495d4d294a9801372e",
-   "kind": "movie",
+   "kind": "show",
    "known": null,
    "name": "[philosophy-raws][Samurai Champloo][13][BDRIP][Hi10P FLAC][1920X1080]",
    "source": "usenet",
@@ -4460,7 +4508,7 @@
   {
    "files": 1,
    "hash": "3acc521205d7e1f0d15ac33cb8faa7a3eba6fa91",
-   "kind": "movie",
+   "kind": "show",
    "known": null,
    "name": "[philosophy-raws][Samurai Champloo][15][BDRIP][Hi10P FLAC][1920X1080]",
    "source": "usenet",
