@@ -171,7 +171,7 @@ otherwise), port 32410.
 |---|---|
 | The lab's database writes its WAL continuously | `make` pauses `plexlab-plex` for the seconds the copy takes, then checkpoints and integrity-checks the copy |
 | The plex.tv token and certificate id appear in `Preferences.xml` and `Logs/` only; `Cache/` holds encrypted account state and the plex.direct certificate | the copy skips Logs, Cache, `.LocalAdminToken` and `Setup Plex.html`, strips the token, account and certificate, and gets new machine identifiers |
-| An unclaimed PMS 401s an allowed network, and 401s loopback whose `Host` is not 127.0.0.1/localhost | a socat hop in PMS's namespace makes requests loopback, and clients send the copy's own `.LocalAdminToken` (`./scratch.sh token`, new on every start) |
+| An unclaimed PMS 401s any request whose `Host` is not localhost or its own address (the relay's `LAB_IP:32410` is neither), and any source or `X-Forwarded-For` hop outside `allowedNetworks` (findings, "The gate an unclaimed server keeps") | a socat hop in PMS's namespace makes requests loopback, and clients send the copy's own `.LocalAdminToken` (`./scratch.sh token`, new on every start) |
 | PMS binds 32401 itself | the hop listens on 32499; on 32401 PMS exits with "Address in use" |
 | An `internal: true` network has no route and no DNS | TCP to 1.1.1.1 is "Network is unreachable"; `./scratch.sh status` re-proves it |
 

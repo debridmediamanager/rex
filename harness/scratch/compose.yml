@@ -32,9 +32,12 @@ services:
       - ${SCRATCH_MEDIA:-${PLEXLAB_DIR:-../plexlab}/media}:/data:ro
     networks: [inside]
 
-  # Measured on this PMS (1.43.4): an UNCLAIMED server lets only LOOPBACK in without
-  # a token. A request from the relay's address is logged as "Allowed Network
-  # (Subnet)" and still answered 401. So the relay does not reach PMS directly: this
+  # Measured on this PMS (1.43.4): an UNCLAIMED server answers a request without a token
+  # only when `Host` is localhost or its own address and the source (and every
+  # X-Forwarded-For hop) is loopback or in allowedNetworks (findings, "The gate an
+  # unclaimed server keeps", 2026-10-13). The relay's requests name LAB_IP:32410, which
+  # is neither, so they are logged "Allowed Network (Subnet)" and still 401. So the
+  # relay does not reach PMS directly: this
   # hop listens inside PMS's own network namespace and connects to 127.0.0.1, which
   # makes every request loopback. The price is that a session's client address always
   # reads 127.0.0.1 here. Like plexlab's cdp-relay, it shares a namespace, so it must
@@ -42,8 +45,8 @@ services:
   #
   # Loopback is still not enough without a token: PMS also checks the Host header,
   # and answers 401 unless it names 127.0.0.1 or localhost (measured -- the published
-  # URL's `Host: LAB_IP:32410` is refused, `Host: 127.0.0.1:32400` is not, and
-  # any X-Forwarded-For turns the request into WAN). So clients send the server's own
+  # URL's `Host: LAB_IP:32410` is refused, `Host: 127.0.0.1:32400` is not, and an
+  # X-Forwarded-For hop outside allowedNetworks is refused). So clients send the server's own
   # `.LocalAdminToken` instead: `./scratch.sh token` prints it.
   loopback:
     image: alpine/socat:latest

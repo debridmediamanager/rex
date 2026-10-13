@@ -39,7 +39,9 @@ docker compose down                # and `rm -rf config` to start over
 
 ## The traps, which are plexscratch's own
 
-- **An unclaimed PMS admits only loopback, and only with a local `Host`.** The `loopback`
+- **An unclaimed PMS checks the `Host` and the source.** `Host` must be localhost or its own
+  address, and the source and every `X-Forwarded-For` hop loopback or in `allowedNetworks`
+  (measured on the 1.43.4 copy; findings, "The gate an unclaimed server keeps"). The `loopback`
   service shares PMS's network namespace and relays `0.0.0.0:32499 -> 127.0.0.1:32400`, so
   every request arrives as loopback; the `relay` publishes that on one address. Clients send
   the server's own `.LocalAdminToken` (`token.txt`).
