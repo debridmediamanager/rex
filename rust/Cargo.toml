@@ -2,7 +2,7 @@
 name = "rex"
 version = "0.2.0"
 edition = "2021"
-description = "Native Plex protocol emulator (migration bootstrap)"
+description = "A Plex Media Server that owns no files: serves a library its sources push and streams it from where it lives"
 license = "MIT"
 
 [dependencies]
