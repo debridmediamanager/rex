@@ -177,7 +177,17 @@ impl Index {
             let numbered = target.tvdb_season == Some(season);
             return Some((target.clone(), numbered));
         }
-        self.find(&parsed.title).map(|target| (target.clone(), true))
+        self.find(&parsed.title).map(|target| (target.clone(), true)).or_else(|| {
+            // `Bleach 2 Sennen Kessen-hen - 46`: a series number between the title's words, which
+            // AniDB's names leave out (`Bleach: Sennen Kessen Hen`). The production server held it alone on
+            // `local://` (2026-10-13).
+            let words: Vec<&str> = parsed.title.split_whitespace().collect();
+            let lone = words.iter().enumerate().position(|(at, word)| {
+                at > 0 && at + 1 < words.len() && word.len() <= 2 && word.bytes().all(|b| b.is_ascii_digit())
+            })?;
+            let without: Vec<&str> = words.iter().enumerate().filter(|(at, _)| *at != lone).map(|(_, word)| *word).collect();
+            self.find(&without.join(" ")).map(|target| (target.clone(), true))
+        })
     }
 }
 
