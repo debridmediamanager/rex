@@ -1615,6 +1615,7 @@ impl Runtime {
         let Some(path) = self.state_path.clone() else {
             return Ok(None);
         };
+        self.restamp_artwork();
         let mut state = self.state_document(false);
         self.dirty = false;
         // The vocabulary only when it was replaced since the last snapshot.
@@ -6985,6 +6986,9 @@ impl Runtime {
             // registers no device and carries no framework cookie.
             return Response::error(500, "rex: unknown method");
         }
+        // Whatever the feed's threads and earlier requests wrote is answered with its own
+        // artwork paths (`restamp_artwork`).
+        self.restamp_artwork();
         // `persist.py`: a client write is on disk before it is answered (cycle 73 lost
         // five writes to a SIGKILL under a coalesced save), and so is a client's first
         // appearance or a changed name or platform (cycle 74). Everything else -- the

@@ -122,6 +122,75 @@ impl Runtime {
         }
     }
 
+    /// Clients cache a row's artwork by its path, and a real PMS mints a new version of the
+    /// path whenever the artwork changes (`set_artwork`, cycles 14, 27). The feed's own
+    /// changes -- a show re-identified in place, a retry, a season repaired -- replaced
+    /// `_poster_url` under the same path, so Plex for Mac kept drawing the blank tile it had
+    /// cached for Ahsoka and other shows on the production server (2026-10-13) while rex
+    /// served their posters. Every row written since the last pass whose artwork is not the
+    /// one its path was minted for (`_thumbFor`, `_artFor`) gets a new version, handed down
+    /// to its children. A row that never recorded one is stamped once where the library is
+    /// kept (`--state`): its cached artwork predates this and may be stale.
+    pub(super) fn restamp_artwork(&mut self) {
+        let touched = self.catalog.take_touched();
+        let keys: Vec<String> = if touched.all {
+            self.catalog.items().iter().filter_map(key_of).collect()
+        } else {
+            touched.keys.into_iter().collect()
+        };
+        let kept = self.state_path.is_some();
+        let stamp = now();
+        let mut cascade = Vec::new();
+        let mut wrote = false;
+        for key in keys {
+            let Some(row) = self.catalog.get(&key) else {
+                continue;
+            };
+            let mut writes = Vec::new();
+            for (source, field, mark) in [("_poster_url", "thumb", "_thumbFor"), ("_art_url", "art", "_artFor")] {
+                let owned = row
+                    .get(field)
+                    .and_then(Value::as_str)
+                    .is_some_and(|path| path.starts_with(&format!("/library/metadata/{key}/{field}/")));
+                let from = row.get(source).filter(|value| !value.is_null()).cloned().unwrap_or(json!(""));
+                match row.get(mark) {
+                    Some(minted) if *minted == from => {}
+                    None if !owned || !kept => writes.push((field, mark, from, false)),
+                    _ if owned => writes.push((field, mark, from, true)),
+                    _ => writes.push((field, mark, from, false)),
+                }
+            }
+            if writes.is_empty() {
+                continue;
+            }
+            wrote = true;
+            let shown = matches!(row.get("type").and_then(Value::as_str), Some("show" | "season"));
+            let mut bumped = false;
+            if let Some(object) = self.catalog.get_mut(&key).and_then(Value::as_object_mut) {
+                for (field, mark, from, bump) in writes {
+                    if bump {
+                        // Never the version it had: a poster found the second its row was made.
+                        let old = object.get(field).and_then(Value::as_str).and_then(|path| path.rsplit('/').next())
+                            .and_then(|version| version.parse::<i64>().ok()).unwrap_or(0);
+                        let version = stamp.max(old + 1);
+                        object.insert(field.to_string(), json!(format!("/library/metadata/{key}/{field}/{version}")));
+                        bumped = true;
+                    }
+                    object.insert(mark.to_string(), from);
+                }
+            }
+            if bumped && shown {
+                cascade.push(key);
+            }
+        }
+        for key in cascade {
+            self.cascade_artwork_from(&key);
+        }
+        if wrote {
+            self.dirty = true;
+        }
+    }
+
     /// Re-derive every borrowed artwork field under a row whose artwork changed
     /// (cycles 25, 27, 29, 61).
     pub(super) fn cascade_artwork_from(&mut self, key: &str) {

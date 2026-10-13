@@ -118,6 +118,7 @@ def main():
               status == 200 and body.get("created") == 5 and str(server.row(show).get("guid")).startswith("local://")
               and str(server.row(season).get("guid")).startswith("local://"),
               (status, body, server.row(show).get("guid"), server.row(season).get("guid")))
+        before = {key: server.row(key).get("thumb") for key in (show, season)}
         status, body = server.feed("POST", "items", {"items": pushed})
         check("zurg's IMDb id re-identifies the show in place, as it did in production",
               status == 200 and body.get("updated") == 5 and server.row(show).get("guid") == SHOW_GUID
@@ -127,6 +128,14 @@ def main():
         identified(server, row, SHOW_GUID, "re-identified")
         check("re-identified: its poster is TMDB's for the season, not the blank tile", poster(server, season) == POSTER,
               poster(server, season))
+        # Plex for Mac caches a poster by its path: on the production server it kept drawing the blank
+        # tile it had fetched for Ahsoka before the show was re-identified (2026-10-13).
+        after = {key: server.row(key).get("thumb") for key in (show, season)}
+        check("the show's and the season's new posters are on new paths, so a client fetches them again",
+              all(after[key] and after[key] != before[key] for key in (show, season)), (before, after))
+        check("and the episodes name the show's new path",
+              {row.get("grandparentThumb") for row in server.rows("/library/metadata/%s/children" % season)}
+              == {after[show]}, after[show])
     finally:
         server.stop()
         shutil.rmtree(work, ignore_errors=True)

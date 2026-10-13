@@ -20,6 +20,9 @@ pub struct Catalog {
     items: Vec<Value>,
     pub by_id: HashMap<String, usize>,
     changes: Changes,
+    /// The rows written since the last `take_touched`, kept apart from `changes` because a
+    /// save takes those: the runtime re-stamps the artwork paths of these (`restamp_artwork`).
+    touched: Changes,
     /// `children`'s rows by parent key, built on first use and dropped by every mutable
     /// path. Without it a listing scanned all rows once per show and per season: 9 s for
     /// a page of the production server's 1,500 movies and over 30 s for its 13,500
@@ -53,6 +56,7 @@ impl Catalog {
             items,
             by_id: HashMap::new(),
             changes: Changes { all: true, keys: HashSet::new() },
+            touched: Changes { all: true, keys: HashSet::new() },
             children_index: std::sync::OnceLock::new(),
         };
         catalog.rebuild_index();
@@ -94,6 +98,9 @@ impl Catalog {
         if !self.changes.all {
             self.changes.keys.insert(rating_key.to_string());
         }
+        if !self.touched.all {
+            self.touched.keys.insert(rating_key.to_string());
+        }
         self.children_index.take();
         self.items.get_mut(index)
     }
@@ -105,12 +112,17 @@ impl Catalog {
     /// Every row, mutably: a save then looks at them all.
     pub fn items_mut(&mut self) -> &mut Vec<Value> {
         self.changes.all = true;
+        self.touched.all = true;
         self.children_index.take();
         &mut self.items
     }
 
     pub fn take_changes(&mut self) -> Changes {
         std::mem::take(&mut self.changes)
+    }
+
+    pub fn take_touched(&mut self) -> Changes {
+        std::mem::take(&mut self.touched)
     }
 
     pub fn children(&self, parent_key: &str) -> Vec<Value> {
@@ -150,10 +162,16 @@ impl Catalog {
             Some(key) => {
                 self.by_id.insert(key.clone(), self.items.len() - 1);
                 if !self.changes.all {
-                    self.changes.keys.insert(key);
+                    self.changes.keys.insert(key.clone());
+                }
+                if !self.touched.all {
+                    self.touched.keys.insert(key);
                 }
             }
-            None => self.changes.all = true,
+            None => {
+                self.changes.all = true;
+                self.touched.all = true;
+            }
         }
     }
     /// Remove a row; the others keep their order, so a save deletes the one row.
