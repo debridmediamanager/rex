@@ -12604,3 +12604,21 @@ everywhere. How long a real PMS keeps one was not measured; rex keeps them until
 The same server's log masks every token: 112 of 112 `X-Plex-Token =>` values were a run of
 `x`. rex's request line and `requests.log` (Download Logs) now mask `X-Plex-Token` values the
 same way, plain or URL-encoded.
+
+## Every install its own identity (2026-10-13)
+
+plexlab's outbound capture (1.43.4, 2026-09-12) shows what a real PMS sends as
+`X-Plex-Client-Identifier`: its own machineIdentifier, on every call to
+`metadata.provider.plex.tv` (335 `/library/metadata/matches`, the metadata, markers and
+stream-match reads) as on every `servers.plex.tv` call
+(`tests/fixtures/plexmeta_matches_s143.json` keeps one matcher request). rex sent `rex` to
+the agent and `rex-heartbeat` on its `/api/v2/resources` check, from every install, and
+seeded the machineIdentifier as `sha1("plexsim/" + --name)`: plex.tv could predict it, and two
+servers given the same name were one server to it.
+
+Now a new seed's machineIdentifier is random (`secrets.token_hex(20)`) and a re-seed keeps
+the one already there, so a claimed server keeps its identity; the agent and the visibility
+check are asked as the machine; and the agent goes through `REX_PLEXTV_URL` like every other
+plex.tv host, so a suite with a fake `PLEX_TOKEN` no longer reaches the real agent. The
+example catalog's all-zero machineIdentifier, and the native server's fallback for a catalog
+without one, are refused for a claim (400) and for `--announce-url`.
