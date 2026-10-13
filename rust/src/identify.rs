@@ -62,7 +62,13 @@ static SITE_ANY: LazyLock<Regex> =
     LazyLock::new(|| re(r"(?i)\b(?:www\.)?[\w-]+\.(?:org|com|net|to|me|cc|io|ws|xyz|lol|ru)\b"));
 // Python's `$` also matches before a final newline; `(\n?)\z` is that, and the
 // substitution puts the newline back.
-static RANGE: LazyLock<Regex> = LazyLock::new(|| re(r"\s[-–]\s\d{1,4}\s?-\s?\d{1,4}\b.*(\n?)\z"));
+static RANGE: LazyLock<Regex> = LazyLock::new(|| re(r"\s[-–]\s(\d{1,4})\s?-\s?(\d{1,4})\b.*(\n?)\z"));
+// A site is the last word of its run: `Modern.Family.S03E14.Me.Jealous` and
+// `Crazy.Ex-Girlfriend.S03E02.To.Josh` are no sites, and reading them as `E14.Me` and
+// `E02.To` took the episode number with them (the production server's feed, 2026-10-13).
+// Python's lookahead `\.(?!(?:mkv|…)\b)\w` is the two patterns below.
+static SITE_RUN_ON: LazyLock<Regex> = LazyLock::new(|| re(r"^\.\w"));
+static SITE_EXTENSION: LazyLock<Regex> = LazyLock::new(|| re(r"(?i)^\.(?:mkv|mp4|webm|avi|ts|m4v)\b"));
 // `Avatar - The Last Airbender (2005 - 2008) [1080p]`: the years a series ran.
 static YEARS_RAN: LazyLock<Regex> =
     LazyLock::new(|| re(r"[(\[]\s*((?:19|20)\d{2})\s*[-–]\s*(?:(?:19|20)\d{2})?\s*[)\]]"));
@@ -78,10 +84,15 @@ static EDITION: LazyLock<Regex> = LazyLock::new(|| {
 // files these as shows since 2026-10-11, and with no number here the feed placed none of
 // them. The production server's Usenet library (2026-10-12) adds four digits and an `EP` or
 // `Ep.` (`Detektiv.Conan.E0221`, `One.Piece.EP1161`, `Gintama.Ep.14`), each filed under movies.
+// The production server's feed (2026-10-13) adds three digits and a year for the NxNN season
+// (`Animaniacs - 1x123`, `MythBusters - 2004x09`; never a bare 0, which is the hex of a group
+// tag such as `[0x539] Seishun Buta Yarou …`), `Episode` spelled out
+// (`Digimon Adventure Zero Two Episode 12 - …`) and a version alone (`[CyC] Mushishi 01v2`).
 static LOOSE_NX: LazyLock<Regex> =
-    LazyLock::new(|| re(r"(?i)(?:^|[\s._\-\[(])(\d{1,2})x(\d{2})(?:[\s._\-\])]|$)"));
-static LOOSE_E: LazyLock<Regex> =
-    LazyLock::new(|| re(r"(?i)(?:^|[\s._\-\[(])E(?:P[.\s]?)?(\d{2,4})(?:[\s._\-\])]|$)"));
+    LazyLock::new(|| re(r"(?i)(?:^|[\s._\-\[(])(0[1-9]|[1-9]\d?|(?:19|20)\d{2})x(\d{2,3})(?:[\s._\-\])]|$)"));
+static LOOSE_E: LazyLock<Regex> = LazyLock::new(|| {
+    re(r"(?i)(?:^|[\s._\-\[(])(?:E(?:P[.\s]?)?(\d{2,4})|Episode[\s._]?(\d{1,4})|(\d{2,4})v\d)(?:[\s._\-\])]|$)")
+});
 // An absolute episode glued to its title by a dash (`[Moozzi2] Eighty-Six-15 [BD …]`,
 // `[HorribleSubs].Gintama-340.[1080p]`, the production server's Usenet movies): two or three
 // digits and no year, so `Blade-Runner-2049` stays a film; a version, a last episode's `END`
@@ -145,7 +156,14 @@ pub fn explicit_ids(name: &str) -> (Option<String>, Option<String>) {
 pub fn parse_name(name: &str) -> Parsed {
     let stem = SITE_PREFIX.replace(name, "");
     let stem = ID_BRACKET.replace_all(&stem, " ");
-    let stem = SITE_ANY.replace_all(&stem, " ");
+    let stem = SITE_ANY.replace_all(&stem, |found: &regex::Captures| {
+        let rest = &stem[found.get(0).map_or(0, |m| m.end())..];
+        if SITE_RUN_ON.is_match(rest) && !SITE_EXTENSION.is_match(rest) {
+            found[0].to_string()
+        } else {
+            " ".to_string()
+        }
+    });
     let stem = EDITION.replace_all(&stem, " ");
     // `parse_release` drops every bracketed group as release-team noise, and with it
     // the year of `For the Birds (2000).mkv` and `How to Make a Killing (2026) {…}`.
@@ -156,8 +174,16 @@ pub fn parse_name(name: &str) -> Parsed {
     let stem = BRACKET_YEAR.replace_all(&stem, " ${1} ");
     // An episode range is a show's batch, never a film: `One Piece - 0001-1000` was
     // matched to a 2026 movie called One Piece before this.
-    let ranged = RANGE.is_match(&stem);
-    let stem = RANGE.replace_all(&stem, "${1}");
+    // Only a rising one: `One Piece - 0160 - 10 Survival Rate!` is episode 160 and its title.
+    let run = RANGE.captures(&stem).filter(|run| py_int(&run[2]) > py_int(&run[1]));
+    let ranged = run.is_some();
+    let stem = match run {
+        Some(run) => {
+            let whole = run.get(0).expect("group 0");
+            format!("{}{}{}", &stem[..whole.start()], &run[3], &stem[whole.end()..])
+        }
+        None => stem.to_string(),
+    };
     let release = parse_release(&stem);
     let mut parsed = Parsed {
         title: release["title"].as_str().unwrap_or_default().to_string(),
@@ -173,12 +199,25 @@ pub fn parse_name(name: &str) -> Parsed {
     }
     if parsed.season.is_none() && parsed.episode.is_none() {
         let loose = LOOSE_NX.captures(&stem).map(|found| (&*LOOSE_NX, py_int(&found[1]), py_int(&found[2])))
-            .or_else(|| LOOSE_E.captures(&stem).map(|found| (&*LOOSE_E, None, py_int(&found[1]))));
+            .or_else(|| LOOSE_E.captures(&stem).map(|found| {
+                let number = found.get(1).or(found.get(2)).or(found.get(3)).map_or("", |m| m.as_str());
+                (&*LOOSE_E, None, py_int(number))
+            }));
         if let Some((pattern, season, episode)) = loose {
             parsed.season = season;
             parsed.episode = episode;
             if let Some(cut) = pattern.find(&parsed.title) {
                 parsed.title = parsed.title[..cut.start()].to_string();
+            }
+        }
+    }
+    // `[SubsPlease] Tower of God S2 - 07v2 (1080p)`: an absolute number after the season it is
+    // in. Read as season 1 it was placed on that season's episode 7 as another version of it.
+    if parsed.season.is_none() && parsed.episode.is_some() {
+        if let Some(found) = SEASON_PACK.captures(&parsed.title) {
+            if let Some(season) = found.get(1) {
+                parsed.season = py_int(season.as_str());
+                parsed.title = parsed.title[..found.get(0).expect("group 0").start()].to_string();
             }
         }
     }
@@ -869,9 +908,10 @@ mod tests {
             let parsed = parse_name(name);
             (parsed.title, parsed.season, parsed.pack)
         };
+        // Five digits are no episode (`SxxEyy` reads four at most), and still refuse the pack.
         assert_eq!(
-            pack("Show S01 E02x"),
-            ("Show S01 E02x".to_string(), None, false)
+            pack("Show S01 E02345"),
+            ("Show S01 E02345".to_string(), None, false)
         );
         assert_eq!(pack("Show S01 Extras"), ("Show".to_string(), Some(1), true));
         assert_eq!(

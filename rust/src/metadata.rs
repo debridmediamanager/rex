@@ -47,8 +47,9 @@ fn release_regexes() -> (
     (
         EXT.get_or_init(|| Regex::new(r"(?i)\.(mkv|mp4|webm|avi|ts|m4v)$").unwrap()),
         BRACKET.get_or_init(|| Regex::new(r"[\[\(][^\]\)]*[\]\)]").unwrap()),
-        SEASON_EP.get_or_init(|| Regex::new(r"(?i)\bS(\d{1,2})[\s._-]?E(\d{1,3})\b").unwrap()),
-        LOOSE_EP.get_or_init(|| Regex::new(r"(?i)(?:^|\s)-\s(\d{2,4})(?:\s|$)").unwrap()),
+        // metadata.py says which names each of these four reads that it did not.
+        SEASON_EP.get_or_init(|| Regex::new(r"(?i)\bS(\d{1,2}|(?:19|20)\d{2})[\s._-]?E(\d{1,4})(?:\D|$)").unwrap()),
+        LOOSE_EP.get_or_init(|| Regex::new(r"(?i)(?:^|\s)-\s(\d{2,4})(?:v\d)?(?:\s|$)").unwrap()),
         YEAR.get_or_init(|| Regex::new(r"\b(19\d{2}|20\d{2})\b").unwrap()),
         CUT.get_or_init(|| Regex::new(
             r"(?i)\b(1080p|2160p|720p|480p|4k|web[\s._-]?dl|webrip|web|bluray|blu[\s._-]?ray|remux|hdtv|dvdrip|brrip|amzn|nf|hmax|glbo|dsnp|atvp|max|hulu|pcok|stan|hevc|x264|x265|h[\s._-]?264|h[\s._-]?265|av1|xvid|divx|ddp?5[\s._-]?1|dd5[\s._-]?1|ddp|dts|truehd|atmos|aac2[\s._-]?0|aac|ac3|eac3|opus|flac|dv|hdr10\+?|hdr|sdr|proper|repack|imax|extended|uncut|dual|multi|complete)\b"

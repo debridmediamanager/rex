@@ -41,7 +41,11 @@ _TMDB_TAG = re.compile(r"(?i)[\[{(]tmdb(?:id)?[-_ =:](\d{1,8})[\]})]")
 # `The.Matrix.Remastered.1999 …` (an edition word ahead of the year).
 _SITE_PREFIX = re.compile(r"(?i)^\s*(?:www\.)?[\w-]+\.(?:org|com|net|to|me|cc|io|ws|xyz|tv|lol|ru|li|se|nl)\s*[-–—_:|]+\s*")
 _SITE_ANY = re.compile(r"(?i)\b(?:www\.)?[\w-]+\.(?:org|com|net|to|me|cc|io|ws|xyz|lol|ru)\b")
-_RANGE = re.compile(r"\s[-–]\s\d{1,4}\s?-\s?\d{1,4}\b.*$")
+# A site is the last word of its run: `Modern.Family.S03E14.Me.Jealous` and
+# `Crazy.Ex-Girlfriend.S03E02.To.Josh` are no sites, and reading them as `E14.Me` and
+# `E02.To` took the episode number with them (the production server's feed, 2026-10-13).
+_SITE_RUN_ON = re.compile(r"(?i)\.(?!(?:mkv|mp4|webm|avi|ts|m4v)\b)\w")
+_RANGE = re.compile(r"\s[-–]\s(\d{1,4})\s?-\s?(\d{1,4})\b.*$")
 # `Avatar - The Last Airbender (2005 - 2008) [1080p]`: the years a series ran.
 _YEARS_RAN = re.compile(r"[(\[]\s*((?:19|20)\d{2})\s*[-–]\s*(?:(?:19|20)\d{2})?\s*[)\]]")
 _EDITION = re.compile(r"(?i)\b(?:remastered|extended(?: edition)?|director'?s cut|unrated|theatrical|4kremux\d*|uhd|imax)\b")
@@ -54,8 +58,13 @@ _EDITION = re.compile(r"(?i)\b(?:remastered|extended(?: edition)?|director'?s cu
 # these as shows since 2026-10-11, and with no number here the feed placed none of them. The
 # production server's Usenet library (2026-10-12) adds four digits and an `EP` or `Ep.`
 # (`Detektiv.Conan.E0221`, `One.Piece.EP1161`, `Gintama.Ep.14`), each filed under movies.
-_LOOSE_NX = re.compile(r"(?i)(?:^|[\s._\-\[(])(\d{1,2})x(\d{2})(?:[\s._\-\])]|$)")
-_LOOSE_E = re.compile(r"(?i)(?:^|[\s._\-\[(])E(?:P[.\s]?)?(\d{2,4})(?:[\s._\-\])]|$)")
+# The production server's feed (2026-10-13) adds three digits and a year for the NxNN season
+# (`Animaniacs - 1x123`, `MythBusters - 2004x09`; never a bare 0, which is the hex of a group
+# tag such as `[0x539] Seishun Buta Yarou …`), `Episode` spelled out
+# (`Digimon Adventure Zero Two Episode 12 - …`) and a version alone (`[CyC] Mushishi 01v2`).
+_LOOSE_NX = re.compile(r"(?i)(?:^|[\s._\-\[(])(0[1-9]|[1-9]\d?|(?:19|20)\d{2})x(\d{2,3})(?:[\s._\-\])]|$)")
+_LOOSE_E = re.compile(r"(?i)(?:^|[\s._\-\[(])(?:E(?:P[.\s]?)?(\d{2,4})|Episode[\s._]?(\d{1,4})|(\d{2,4})v\d)"
+                      r"(?:[\s._\-\])]|$)")
 # An absolute episode glued to its title by a dash (`[Moozzi2] Eighty-Six-15 [BD …]`,
 # `[HorribleSubs].Gintama-340.[1080p]`, the production server's Usenet movies): two or three
 # digits and no year, so `Blade-Runner-2049` stays a film; a version, a last episode's `END`
@@ -91,7 +100,7 @@ def parse_name(name):
     """
     stem = _SITE_PREFIX.sub("", name)
     stem = re.sub(r"[{\[(](?:imdb|tmdb|tvdb)(?:id)?[-_ =:][^}\])]*[}\])]", " ", stem, flags=re.I)
-    stem = _SITE_ANY.sub(" ", stem)
+    stem = _SITE_ANY.sub(lambda m: m.group(0) if _SITE_RUN_ON.match(m.string, m.end()) else " ", stem)
     stem = _EDITION.sub(" ", stem)
     # `parse_release` drops every bracketed group as release-team noise, and with it
     # the year of `For the Birds (2000).mkv` and `How to Make a Killing (2026) {…}`.
@@ -102,8 +111,11 @@ def parse_name(name):
     stem = re.sub(r"[(\[]((?:19|20)\d{2})[)\]]", r" \1 ", stem)
     # An episode range is a show's batch, never a film: `One Piece - 0001-1000` was
     # matched to a 2026 movie called One Piece before this.
-    ranged = bool(_RANGE.search(stem))
-    stem = _RANGE.sub("", stem)
+    # Only a rising one: `One Piece - 0160 - 10 Survival Rate!` is episode 160 and its title.
+    run = _RANGE.search(stem)
+    ranged = bool(run) and int(run.group(2)) > int(run.group(1))
+    if ranged:
+        stem = stem[:run.start()] + stem[run.end():]
     parsed = metadata_module.parse_release(stem)
     parsed["pack"] = ranged or bool(ran)
     if ran and not parsed["year"]:
@@ -114,10 +126,17 @@ def parse_name(name):
             if nx:
                 parsed["season"], parsed["episode"] = int(nx.group(1)), int(nx.group(2))
             else:
-                parsed["episode"] = int(bare.group(1))
+                parsed["episode"] = int(bare.group(1) or bare.group(2) or bare.group(3))
             cut = (_LOOSE_NX if nx else _LOOSE_E).search(parsed["title"])
             if cut:
                 parsed["title"] = parsed["title"][:cut.start()]
+    # `[SubsPlease] Tower of God S2 - 07v2 (1080p)`: an absolute number after the season it is
+    # in. Read as season 1 it was placed on that season's episode 7 as another version of it.
+    if parsed["season"] is None and parsed["episode"] is not None:
+        season = _SEASON_PACK.search(parsed["title"])
+        if season and season.group(1):
+            parsed["season"] = int(season.group(1))
+            parsed["title"] = parsed["title"][:season.start()]
     if parsed["season"] is None and parsed["episode"] is None:
         pack = _SEASON_PACK.search(parsed["title"]) or _SEASON_PACK.search(stem.replace(".", " "))
         if pack:

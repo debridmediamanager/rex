@@ -720,6 +720,28 @@
     ]
    }
   },
+  "[\"POST\", \"/library/metadata/matches\", {\"excludeElements\": \"Media\", \"filename\": \"Bridge.to.the.Sun.1961.1080p.WEB.DL.DD+2.0.H.264-SbR.mkv\", \"title\": \"Bridge to the Sun\", \"type\": 1, \"year\": 1961}]": {
+   "MediaContainer": {
+    "Metadata": [
+     {
+      "Guid": [
+       {
+        "id": "imdb://tt0054701"
+       },
+       {
+        "id": "tmdb://119926"
+       },
+       {
+        "id": "tvdb://71345"
+       }
+      ],
+      "guid": "plex://movie/5d77697247dd6e001f6c5a4e",
+      "title": "Bridge to the Sun",
+      "year": 1961
+     }
+    ]
+   }
+  },
   "[\"POST\", \"/library/metadata/matches\", {\"excludeElements\": \"Media\", \"filename\": \"Bridge.to.the.Sun.1961.1080p.WEB.DL.DD+2.0.H.264-SbR.mkv\", \"title\": \"the Sun\", \"type\": 1, \"year\": 1961}]": {
    "MediaContainer": {
     "Metadata": [
@@ -1154,6 +1176,28 @@
     ]
    }
   },
+  "[\"POST\", \"/library/metadata/matches\", {\"excludeElements\": \"Media\", \"filename\": \"Everybody.Loves.Me.When.Im.Dead.2025.1080p.NF.WEB.DL.AAC5.1.AV1-Saon.mkv\", \"title\": \"Everybody Loves Me When Im Dead\", \"type\": 1, \"year\": 2025}]": {
+   "MediaContainer": {
+    "Metadata": [
+     {
+      "Guid": [
+       {
+        "id": "imdb://tt35669054"
+       },
+       {
+        "id": "tmdb://1429750"
+       },
+       {
+        "id": "tvdb://369598"
+       }
+      ],
+      "guid": "plex://movie/67a533938b3b080eb77c51a7",
+      "title": "Everybody Loves Me When I'm Dead",
+      "year": 2025
+     }
+    ]
+   }
+  },
   "[\"POST\", \"/library/metadata/matches\", {\"excludeElements\": \"Media\", \"filename\": \"Everybody.Loves.Me.When.Im.Dead.2025.1080p.NF.WEB.DL.AAC5.1.AV1-Saon.mkv\", \"title\": \"Everybody When Im Dead\", \"type\": 1, \"year\": 2025}]": {
    "MediaContainer": {
     "Metadata": [
@@ -1427,6 +1471,25 @@
       "guid": "plex://movie/65d1a8a7dc7b5ade4690ed1a",
       "title": "Hotel Bitcoin",
       "year": 2024
+     }
+    ]
+   }
+  },
+  "[\"POST\", \"/library/metadata/matches\", {\"excludeElements\": \"Media\", \"filename\": \"How.Not.to.Win.Eurovision.2023.1080p.iP.WEB.DL.AAC2.0.H.264-turtle.mkv\", \"title\": \"How Not to Win Eurovision\", \"type\": 1, \"year\": 2023}]": {
+   "MediaContainer": {
+    "Metadata": [
+     {
+      "Guid": [
+       {
+        "id": "imdb://tt27744807"
+       },
+       {
+        "id": "tmdb://1119600"
+       }
+      ],
+      "guid": "plex://movie/644eea9434435a6d03c113ee",
+      "title": "How Not to Win Eurovision",
+      "year": 2023
      }
     ]
    }
@@ -2914,6 +2977,28 @@
       "guid": "plex://movie/60c07d11559c4f002c68d8f0",
       "title": "Stand Up Rahul",
       "year": 2022
+     }
+    ]
+   }
+  },
+  "[\"POST\", \"/library/metadata/matches\", {\"excludeElements\": \"Media\", \"filename\": \"Super.Size.Me.2004.1080p.AMZN.WEB.DL.DDP2.0.H.264-WitchHunter.mkv\", \"title\": \"Super Size Me\", \"type\": 1, \"year\": 2004}]": {
+   "MediaContainer": {
+    "Metadata": [
+     {
+      "Guid": [
+       {
+        "id": "imdb://tt0390521"
+       },
+       {
+        "id": "tmdb://9372"
+       },
+       {
+        "id": "tvdb://9237"
+       }
+      ],
+      "guid": "plex://movie/5d7768323c3c2a001fbcd96f",
+      "title": "Super Size Me",
+      "year": 2004
      }
     ]
    }

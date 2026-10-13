@@ -273,8 +273,24 @@ def season_decides():
           row["guid"] == "local://100095" and "Guid" not in row, str((row["guid"], row.get("Guid"))))
 
 
+def unplaced_episodes():
+    """`fixtures/identify/unplaced_episodes.json`: files the production rex's feed dropped as
+    "no episode number" on 2026-10-13 (6,214 of them since that morning's start), one or more
+    of each name shape, and two it placed on the wrong episode. The feed reads a file's
+    episode as `episode_of` in `rust/src/runtime/scan.rs` does: the file's number, else the
+    release's; the file's season, else the release's, else 1."""
+    record = json.load(open(os.path.join(HERE, "fixtures", "identify", "unplaced_episodes.json")))
+    for case in record["files"]:
+        release, file = identify.parse_name(case["release"]), identify.parse_name(case["file"])
+        episode = file["episode"] if file["episode"] is not None else release["episode"]
+        got = None if episode is None else (file["season"] or release["season"] or 1, episode)
+        want = None if case["episode"] is None else (case["season"], case["episode"])
+        check("%s: %s" % (case["shape"], case["file"][:60]), got == want, "got %s" % (got,))
+
+
 if __name__ == "__main__":
     parsing()
+    unplaced_episodes()
     corpus()
     exact()
     episode_ids()

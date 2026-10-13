@@ -1036,6 +1036,23 @@ fn prepare_rows(rows: &mut [Value]) {
 mod tests {
     use super::*;
 
+    /// `tests/fixtures/identify/unplaced_episodes.json`, which `tests/test_identify.py` reads
+    /// the same way: files the production rex's feed dropped as "no episode number".
+    #[test]
+    fn episode_of_reads_the_names_the_feed_dropped() {
+        let record: Value =
+            serde_json::from_str(include_str!("../../../tests/fixtures/identify/unplaced_episodes.json")).unwrap();
+        let mut wrong = Vec::new();
+        for case in record["files"].as_array().unwrap() {
+            let got = episode_of(case["release"].as_str().unwrap(), case["file"].as_str().unwrap());
+            let want = case["episode"].as_i64().map(|episode| (case["season"].as_i64().unwrap(), episode));
+            if got != want {
+                wrong.push(format!("{}: got {got:?}, want {want:?}", case["file"]));
+            }
+        }
+        assert!(wrong.is_empty(), "{wrong:#?}");
+    }
+
     fn options(dir: &Path, catalog: &Path) -> RuntimeOptions {
         RuntimeOptions {
             catalog: catalog.to_path_buf(),

@@ -40,8 +40,14 @@ _CUT = re.compile(
     r"dv|hdr10\+?|hdr|sdr|proper|repack|imax|extended|uncut|dual|multi|complete)\b"
 )
 
-_SEASON_EP = re.compile(r"(?i)\bS(\d{1,2})[\s._-]?E(\d{1,3})\b")
-_LOOSE_EP = re.compile(r"(?i)(?:^|\s)-\s(\d{2,4})(?:\s|$)")
+# The production server's feed dropped every one of these as "no episode number" (2026-10-13):
+# a second episode or a version glued on (`Lost.S04E13E14`, `Oshi no Ko - S02E13v2`), a letter
+# or the title glued on (`SpongeBob S01E01A`, `Friends.S06E03The.One`), four digits
+# (`One Piece (1999) - s22e1089`) and a year for a season (`Smyth S2006E03`, MythBusters).
+# The match is only cut at, so the character after the number may be consumed.
+_SEASON_EP = re.compile(r"(?i)\bS(\d{1,2}|(?:19|20)\d{2})[\s._-]?E(\d{1,4})(?:\D|$)")
+# `[sam] Hunter x Hunter (2011) - 006v2 [BD …]`: a version may follow the number.
+_LOOSE_EP = re.compile(r"(?i)(?:^|\s)-\s(\d{2,4})(?:v\d)?(?:\s|$)")
 
 
 def parse_release(filename):
