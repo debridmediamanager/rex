@@ -209,7 +209,10 @@ pub fn parse_name(name: &str) -> Parsed {
         }
     }
     if parsed.season.is_none() && parsed.episode.is_none() {
-        let loose = LOOSE_NX.captures(&stem).map(|found| (&*LOOSE_NX, py_int(&found[1]), py_int(&found[2])))
+        // A year is a season with two digits after it (`2004x09`); `1920x816` is a resolution.
+        let loose = LOOSE_NX.captures(&stem)
+            .filter(|found| py_int(&found[1]).is_none_or(|season| season < 1900) || found[2].len() == 2)
+            .map(|found| (&*LOOSE_NX, py_int(&found[1]), py_int(&found[2])))
             .or_else(|| LOOSE_E.captures(&stem).map(|found| {
                 let number = found.get(1).or(found.get(2)).or(found.get(3)).map_or("", |m| m.as_str());
                 (&*LOOSE_E, None, py_int(number))

@@ -131,6 +131,9 @@ def parse_name(name):
         parsed["year"] = int(ran.group(1))
     if parsed["season"] is None and parsed["episode"] is None:
         nx, bare = _LOOSE_NX.search(stem), _LOOSE_E.search(stem)
+        # A year is a season with two digits after it (`2004x09`); `1920x816` is a resolution.
+        if nx and int(nx.group(1)) >= 1900 and len(nx.group(2)) > 2:
+            nx = None
         if nx or bare:
             if nx:
                 parsed["season"], parsed["episode"] = int(nx.group(1)), int(nx.group(2))
