@@ -1342,7 +1342,7 @@
     "summary": "Comma separated list of IP addresses or IP/netmask entries for networks that are allowed to access Plex Media Server without logging in. When the server is signed out and this value is set, only localhost and addresses on this list will be allowed.",
     "type": "text",
     "default": "",
-    "value": "192.0.2.0/24,100.64.0.0/10",
+    "value": "",
     "hidden": false,
     "advanced": true,
     "group": "network"

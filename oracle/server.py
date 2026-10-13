@@ -42,6 +42,7 @@ try:
 except ImportError:
     resource = None
 import signal
+import ipaddress
 import socket
 import ssl
 import struct
@@ -24577,11 +24578,62 @@ class Handler(BaseHTTPRequestHandler):
                 return 404, self._error_document(404)
         return 401, self.UNAUTHORISED_BODY
 
+    def _local_request(self):
+        """The gate of an unclaimed server with no `--token`, as a never-claimed PMS 1.43.4
+        keeps it (plexscratch, 2026-10-13); the same paths stay open (`_authorised`). The
+        peer and every `X-Forwarded-For` hop must be loopback or, with `allowedNetworks`
+        empty, a private address (10/8, 172.16/12, 192.168/16, fc00::/7 -- not 100.64/10 or
+        link-local), or with it set, in it; a forwarded hop cannot vouch for a refused peer.
+        And `Host` must be localhost or the address the request arrived on: a LAN source
+        naming another host or a hostname is refused too."""
+        try:
+            peer = ipaddress.ip_address(self.client_address[0])
+            local = ipaddress.ip_address(self.connection.getsockname()[0])
+        except (TypeError, ValueError, IndexError, OSError, AttributeError):
+            return True
+        listed = []
+        for entry in str(self.server.sim.pref_overrides.get("allowedNetworks") or "").split(","):
+            try:
+                listed.append(ipaddress.ip_network(entry.strip(), strict=False))
+            except ValueError:
+                pass
+
+        def canonical(ip):
+            return getattr(ip, "ipv4_mapped", None) or ip
+
+        def allowed(ip):
+            ip = canonical(ip)
+            if ip.is_loopback:
+                return True
+            if not listed:
+                return ip in ipaddress.ip_network("fc00::/7") if ip.version == 6 else any(
+                    ip in ipaddress.ip_network(net)
+                    for net in ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"))
+            return any(ip.version == net.version and ip in net for net in listed)
+
+        hops = self.headers.get("X-Forwarded-For")
+        if hops is not None:
+            try:
+                if not all(allowed(ipaddress.ip_address(hop.strip())) for hop in hops.split(",")):
+                    return False
+            except ValueError:
+                return False
+        host = self.headers.get("Host")
+        if host is not None:
+            name = host[1:].split("]")[0] if host.startswith("[") else host.rsplit(":", 1)[0] \
+                if ":" in host else host
+            if name.lower() != "localhost":
+                try:
+                    named = canonical(ipaddress.ip_address(name))
+                except ValueError:
+                    return False
+                if not (named.is_loopback or named == canonical(local)):
+                    return False
+        return allowed(peer)
+
     def _authorised(self, path):
         """Whether this request carries a token this server lets in, if one is required."""
         sim = self.server.sim
-        if not sim.gated():
-            return True
         route, raw_query = _target_parts(path)
         if route == "/identity" or _is_web_route(route):
             return True
@@ -24601,6 +24653,8 @@ class Handler(BaseHTTPRequestHandler):
             # parameters and 403 with a token that is not good enough, which is how
             # a client tells "you did not ask properly" from "you may not have one".
             return True
+        if not sim.gated():
+            return self._local_request()
         # Cycle 36, measured on plexlab and the 1.42.2 reference with a bad token and a
         # good one in the same query: a repeated `X-Plex-Token=` takes the LAST occurrence
         # -- bad then good is a 200 and good then bad a 401, on both references -- which is
@@ -26555,12 +26609,13 @@ def main():
     server = Server((args.host, args.port), sim, args.verbose, tls_context=tls_context)
     logger.info("claim state: %s", "CLAIMED by %s" % claim.owner if claim.claimed else "unclaimed")
     # Said out loud either way: a real PMS 401s everything but /identity and /web/*
-    # without its token, and a rex with no token is readable by any peer that
-    # can reach the port -- library, preferences, sessions and media bytes alike.
+    # without its token, and a rex with no token is readable by every peer its unclaimed
+    # gate admits (`_local_request`) -- library, preferences, sessions and media bytes alike.
     logger.info("token gate: %s", "ENFORCED" if args.token else
                 "ENFORCED -- claimed: the server's own token and the ones plex.tv lists for it"
                 if claim.claimed else
-                "OFF -- every peer that can reach this port can read the library")
+                "OFF -- unclaimed: this machine and its private networks (allowedNetworks) "
+                "can read the library")
     logger.info(
         "rex on http://%s:%d  machine=%s  items=%d  parts=%s",
         socket.gethostname(),

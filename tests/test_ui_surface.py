@@ -8537,7 +8537,7 @@ def main():
     _port_c50i = int(_port_c50i.split("/")[0])
     def eventsource_headers_c50i(origin=None):
         sock = _s50i.create_connection((_host_c50i, _port_c50i), timeout=3)
-        request_c50i = ("GET /:/eventsource/notifications HTTP/1.1\r\nHost: h\r\n"
+        request_c50i = ("GET /:/eventsource/notifications HTTP/1.1\r\nHost: 127.0.0.1\r\n"
                         "Accept: text/event-stream\r\n"
                         + ("Origin: %s\r\n" % origin if origin else "") + "\r\n")
         try:
@@ -8863,13 +8863,13 @@ def main():
             sock.close()
         return ([buf[i:i + 26].split(b"\r\n")[0].decode("latin-1")
                  for i in range(len(buf)) if buf.startswith(b"HTTP/1.1 ", i)], closed)
-    FOLLOW50A = b"GET /library/sections HTTP/1.1\r\nHost: h\r\n\r\n"
+    FOLLOW50A = b"GET /library/sections HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n"
     OK2_50A = (["HTTP/1.1 200 OK", "HTTP/1.1 200 OK"], False)
 
     # A chunked body a read-only route does not want must not be WAITED for.
     import time as _t50a
     began_c50a = _t50a.time()
-    answer_c50a = wire_c50a(b"GET /identity HTTP/1.1\r\nHost: h\r\nTransfer-Encoding: chunked\r\n\r\n",
+    answer_c50a = wire_c50a(b"GET /identity HTTP/1.1\r\nHost: 127.0.0.1\r\nTransfer-Encoding: chunked\r\n\r\n",
                             wait=3.0)
     check("a chunked GET with no body at all is answered at once, not waited for",
           answer_c50a == (["HTTP/1.1 200 OK"], True) and _t50a.time() - began_c50a < 2.5,
@@ -8877,52 +8877,52 @@ def main():
 
     # An unrecognised Transfer-Encoding is IGNORED, not answered-and-closed.
     check("an unrecognised Transfer-Encoding is ignored and the socket is kept",
-          wire_c50a(b"GET /identity HTTP/1.1\r\nHost: h\r\nTransfer-Encoding: bogus\r\n\r\n"
+          wire_c50a(b"GET /identity HTTP/1.1\r\nHost: 127.0.0.1\r\nTransfer-Encoding: bogus\r\n\r\n"
                     + FOLLOW50A) == OK2_50A, "")
     # Exact means exact after removing only the header separator's one optional space.
     # Cycle 50's first parser patch preserved these bytes, then erased the distinction
     # with `.strip()` in the dispatcher and accepted both spellings as chunked.
     chunk_framing_c50a = b"5\r\nhello\r\n0\r\n\r\n" + FOLLOW50A
     check("surrounding whitespace makes Transfer-Encoding non-exact and ignored",
-          wire_c50a(b"GET /identity HTTP/1.1\r\nHost: h\r\n"
+          wire_c50a(b"GET /identity HTTP/1.1\r\nHost: 127.0.0.1\r\n"
                     b"Transfer-Encoding:  chunked\r\n\r\n" + chunk_framing_c50a)
           == (["HTTP/1.1 200 OK", "HTTP/1.1 400 Bad Request"], True)
-          and wire_c50a(b"GET /identity HTTP/1.1\r\nHost: h\r\n"
+          and wire_c50a(b"GET /identity HTTP/1.1\r\nHost: 127.0.0.1\r\n"
                         b"Transfer-Encoding: chunked \r\n\r\n" + chunk_framing_c50a)
           == (["HTTP/1.1 200 OK", "HTTP/1.1 400 Bad Request"], True), "")
     check("...and its framing, if any, becomes the next request's own refusal",
-          wire_c50a(b"GET /identity HTTP/1.1\r\nHost: h\r\nTransfer-Encoding: bogus\r\n\r\n"
+          wire_c50a(b"GET /identity HTTP/1.1\r\nHost: 127.0.0.1\r\nTransfer-Encoding: bogus\r\n\r\n"
                     b"5\r\nhello\r\n0\r\n\r\n" + FOLLOW50A)
           == (["HTTP/1.1 200 OK", "HTTP/1.1 400 Bad Request"], True), "")
     check("a chunk size beyond signed 64-bit is refused and closed",
-          wire_c50a(b"GET /identity HTTP/1.1\r\nHost: h\r\nTransfer-Encoding: chunked\r\n\r\n"
+          wire_c50a(b"GET /identity HTTP/1.1\r\nHost: 127.0.0.1\r\nTransfer-Encoding: chunked\r\n\r\n"
                     b"FFFFFFFFFFFFFFFF\r\n")
           == (["HTTP/1.1 400 Bad Request"], True), "")
     check("a trailer after the last chunk is left in the stream and earns its own 400",
-          wire_c50a(b"GET /identity HTTP/1.1\r\nHost: h\r\nTransfer-Encoding: chunked\r\n\r\n"
+          wire_c50a(b"GET /identity HTTP/1.1\r\nHost: 127.0.0.1\r\nTransfer-Encoding: chunked\r\n\r\n"
                     b"0\r\nX-T: v\r\n\r\n")
           == (["HTTP/1.1 200 OK", "HTTP/1.1 400 Bad Request"], True), "")
 
     # A header VALUE keeps everything after ONE optional leading space.
     check("a header value keeps everything after one optional leading space",
-          wire_c50a(b"GET /identity HTTP/1.1\r\nHost: h\r\nContent-Length:  7\r\n\r\nhello\r\n"
+          wire_c50a(b"GET /identity HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length:  7\r\n\r\nhello\r\n"
                     + FOLLOW50A) == (["HTTP/1.1 200 OK", "HTTP/1.1 400 Bad Request"], True),
           "")
     check("...and one leading space is still removed",
-          wire_c50a(b"GET /identity HTTP/1.1\r\nHost: h\r\nContent-Length: 5\r\n\r\nhello"
+          wire_c50a(b"GET /identity HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: 5\r\n\r\nhello"
                     + FOLLOW50A) == OK2_50A, "")
     check("...as is none at all",
-          wire_c50a(b"GET /identity HTTP/1.1\r\nHost: h\r\nContent-Length:5\r\n\r\nhello"
+          wire_c50a(b"GET /identity HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length:5\r\n\r\nhello"
                     + FOLLOW50A) == OK2_50A, "")
 
     # Re-swept after the first Cycle-50 parser patch: Content-Length joins
     # Transfer-Encoding in taking the FIRST duplicate. Test both orders because taking
     # the last one makes one request consume `ABCD` and lets the other desynchronise it.
     duplicate_short_c50a = (
-        b"GET /identity HTTP/1.1\r\nHost: h\r\nContent-Length: 5\r\n"
+        b"GET /identity HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: 5\r\n"
         b"Content-Length: 9\r\n\r\nhelloABCD" + FOLLOW50A)
     duplicate_long_c50a = (
-        b"GET /identity HTTP/1.1\r\nHost: h\r\nContent-Length: 9\r\n"
+        b"GET /identity HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: 9\r\n"
         b"Content-Length: 5\r\n\r\nhelloABCD" + FOLLOW50A)
     check("duplicate Content-Length headers take the first value in both orders",
           wire_c50a(duplicate_short_c50a)
@@ -8931,11 +8931,11 @@ def main():
 
     # A whitespace-only obs-fold is a fold too.
     check("a whitespace-only continuation line is refused like any other fold",
-          wire_c50a(b"GET /identity HTTP/1.1\r\nHost: h\r\nX-A: v\r\n \r\n\r\n")
+          wire_c50a(b"GET /identity HTTP/1.1\r\nHost: 127.0.0.1\r\nX-A: v\r\n \r\n\r\n")
           == (["HTTP/1.1 400 Bad Request"], True), "")
 
     # The method's FIRST BYTE decides the silence, not the whole token.
-    methods_c50a = {name: wire_c50a(name.encode() + b" /identity HTTP/1.1\r\nHost: h\r\n\r\n")[0]
+    methods_c50a = {name: wire_c50a(name.encode() + b" /identity HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n")[0]
                     for name in ("Get", "Blah", "HELLOGET", "get", "gET", "blah", "helloGET")}
     check("an unknown method starting upper-case is a 500 and one starting lower-case is silence",
           methods_c50a == {"Get": ["HTTP/1.1 500 Internal Serv"],
@@ -8948,17 +8948,17 @@ def main():
     # reaches the unknown-method handler, which matters when an ignored Content-Length
     # spelling leaves body bytes glued to the following `GET`.
     check("a lower-case method after a successful response is a reusable 500",
-          wire_c50a(b"GET /identity HTTP/1.1\r\nHost: h\r\n\r\n"
-                    b"helloGET /library/sections HTTP/1.1\r\nHost: h\r\n\r\n")
+          wire_c50a(b"GET /identity HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n"
+                    b"helloGET /library/sections HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n")
           == (["HTTP/1.1 200 OK", "HTTP/1.1 500 Internal Serv"], False), "")
     check("an ignored length can expose that same second-request method",
-          wire_c50a(b"GET /identity HTTP/1.1\r\nHost: h\r\nContent-Length:  5\r\n\r\nhello"
+          wire_c50a(b"GET /identity HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length:  5\r\n\r\nhello"
                     + FOLLOW50A)
           == (["HTTP/1.1 200 OK", "HTTP/1.1 500 Internal Serv"], False), "")
 
     # A refusal that follows a successful response on one connection reaches the wire.
     check("a refusal written for a pipelined request is flushed, with its status line",
-          wire_c50a(b"GET /identity HTTP/1.1\r\nHost: h\r\n\r\nX-T: v\r\n\r\n")
+          wire_c50a(b"GET /identity HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\nX-T: v\r\n\r\n")
           == (["HTTP/1.1 200 OK", "HTTP/1.1 400 Bad Request"], True), "")
     check("...and a bare HTTP/0.9-shaped line alone is answered a full HTTP/1.1 refusal",
           wire_c50a(b"X-T: v\r\n\r\n") == (["HTTP/1.1 400 Bad Request"], True), "")
@@ -8970,7 +8970,7 @@ def main():
     def short_chunk_headers_c50a(body):
         sock = _s50a.create_connection((_h50a, _p50a), timeout=3.0)
         try:
-            sock.sendall(b"GET /identity HTTP/1.1\r\nHost: h\r\n"
+            sock.sendall(b"GET /identity HTTP/1.1\r\nHost: 127.0.0.1\r\n"
                          b"Transfer-Encoding: chunked\r\n\r\n" + body)
             sock.settimeout(3.0)
             raw, closed = b"", False
@@ -9025,10 +9025,10 @@ def main():
                   for i in range(len(buf)) if buf.startswith(b"HTTP/1.1 ", i)]
         return ((starts[0] if starts else "(silence)"), len(starts), closed)
     def teq_c49m(encoding, body):
-        return (b"GET /identity HTTP/1.1\r\nHost: h\r\n"
+        return (b"GET /identity HTTP/1.1\r\nHost: 127.0.0.1\r\n"
                 + (b"Transfer-Encoding: " + encoding + b"\r\n" if encoding else b"")
                 + b"\r\n" + body
-                + b"GET /library/sections HTTP/1.1\r\nHost: h\r\n\r\n")
+                + b"GET /library/sections HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n")
     OK49M = ("HTTP/1.1 200 OK", 2, False)
     BAD49M = ("HTTP/1.1 400 Bad Request", 1, True)
     SHORT49M = ("HTTP/1.1 200 OK", 1, True)
@@ -9072,7 +9072,7 @@ def main():
     srt_c49m = b"1\n00:00:00,000 --> 00:00:01,000\nhi\n\n"
     status_c49m, _, _ = chunk_c49m(
         ("POST /library/metadata/%s/subtitles?title=c49chunk.srt&format=srt HTTP/1.1\r\n"
-         "Host: h\r\nTransfer-Encoding: chunked\r\n\r\n" % movie).encode()
+         "Host: 127.0.0.1\r\nTransfer-Encoding: chunked\r\n\r\n" % movie).encode()
         + b"%x\r\n" % len(srt_c49m) + srt_c49m + b"\r\n0\r\n\r\n")
     check("a chunked subtitle upload is accepted and stores its sidecar",
           status_c49m == "HTTP/1.1 200 OK" and subs_c49m() == before_c49m + 1,
@@ -9113,7 +9113,7 @@ def main():
                         11: ("HTTP/1.1 400 Bad Request", True),
                         12: ("HTTP/1.1 400 Bad Request", True)},
           "%s" % bare_c49l)
-    line_c49l = {n: method_c49l(b"A" * n + b" /identity HTTP/1.1\r\nHost: h\r\n\r\n")
+    line_c49l = {n: method_c49l(b"A" * n + b" /identity HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n")
                  for n in (3, 10, 11, 12)}
     check("an unknown method is a 500 up to ten bytes and a 400 from eleven",
           line_c49l == {3: ("HTTP/1.1 500 Internal Server Error", False),
@@ -9122,8 +9122,8 @@ def main():
                         12: ("HTTP/1.1 400 Bad Request", True)},
           "%s" % line_c49l)
     check("a real method is unaffected by the bound",
-          method_c49l(b"GET /identity HTTP/1.1\r\nHost: h\r\n\r\n")[0] == "HTTP/1.1 200 OK"
-          and method_c49l(b"OPTIONS /identity HTTP/1.1\r\nHost: h\r\n\r\n")[0] == "HTTP/1.1 200 OK",
+          method_c49l(b"GET /identity HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n")[0] == "HTTP/1.1 200 OK"
+          and method_c49l(b"OPTIONS /identity HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n")[0] == "HTTP/1.1 200 OK",
           "")
 
     # The limit applies across TCP reads, not only to the bytes available on the
@@ -9135,7 +9135,7 @@ def main():
         split_method_c50j.sendall(b"A" * 10)
         time.sleep(0.05)
         split_method_c50j.sendall(
-            b"A /identity HTTP/1.1\r\nHost: h\r\n\r\n")
+            b"A /identity HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n")
         split_method_c50j.settimeout(3)
         split_method_raw_c50j = b""
         split_method_closed_c50j = False
@@ -9163,7 +9163,7 @@ def main():
     _h49k, _, _p49k = base.split("//", 1)[1].partition(":")
     _p49k = int(_p49k.split("/")[0])
     def names_c49k(path):
-        req = ("GET %s HTTP/1.1\r\nHost: h\r\n\r\n" % path).encode()
+        req = ("GET %s HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n" % path).encode()
         sock = _s49k.create_connection((_h49k, _p49k), timeout=5)
         try:
             sock.sendall(req)
@@ -9240,21 +9240,21 @@ def main():
     CLOSE49J = ["Connection: close"]
     got_c49j = {
         "Content-Length: -1": envelope_c49j(
-            b"GET /identity HTTP/1.1\r\nHost: h\r\nContent-Length: -1\r\n\r\n"),
+            b"GET /identity HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: -1\r\n\r\n"),
         "non-terminal dot segment": envelope_c49j(
-            b"GET /x/../identity HTTP/1.1\r\nHost: h\r\n\r\n"),
+            b"GET /x/../identity HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n"),
         "obs-fold continuation": envelope_c49j(
-            b"GET /identity HTTP/1.1\r\nHost: h\r\nX-V: a\r\n b\r\n\r\n"),
-        "leading CRLF": envelope_c49j(b"\r\nGET /identity HTTP/1.1\r\nHost: h\r\n\r\n"),
-        "leading space": envelope_c49j(b" GET /identity HTTP/1.1\r\nHost: h\r\n\r\n"),
+            b"GET /identity HTTP/1.1\r\nHost: 127.0.0.1\r\nX-V: a\r\n b\r\n\r\n"),
+        "leading CRLF": envelope_c49j(b"\r\nGET /identity HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n"),
+        "leading space": envelope_c49j(b" GET /identity HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n"),
         "missing /:/resources asset": envelope_c49j(
-            b"GET /:/resources/nope.png HTTP/1.1\r\nHost: h\r\n\r\n"),
+            b"GET /:/resources/nope.png HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n"),
         "missing /web asset": envelope_c49j(
-            b"GET /web/nosuchfile.js HTTP/1.1\r\nHost: h\r\n\r\n"),
+            b"GET /web/nosuchfile.js HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n"),
         "unknown path (control)": envelope_c49j(
-            b"GET /nosuchpath/at/all HTTP/1.1\r\nHost: h\r\n\r\n"),
+            b"GET /nosuchpath/at/all HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n"),
         "a real asset (control)": envelope_c49j(
-            b"GET /:/resources/movie.png HTTP/1.1\r\nHost: h\r\n\r\n"),
+            b"GET /:/resources/movie.png HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n"),
     }
     want_c49j = {
         "Content-Length: -1": ("HTTP/1.1 500 Internal Server Error", CLOSE49J, True),
@@ -9282,7 +9282,7 @@ def main():
     _host49i, _, _port49i = base.split("//", 1)[1].partition(":")
     _port49i = int(_port49i.split("/")[0])
     def line_c49i(target, extra=""):
-        req = ("GET %s HTTP/1.1\r\nHost: h\r\n%s\r\n" % (target, extra)).encode()
+        req = ("GET %s HTTP/1.1\r\nHost: 127.0.0.1\r\n%s\r\n" % (target, extra)).encode()
         sock = _s49i.create_connection((_host49i, _port49i), timeout=5)
         try:
             sock.sendall(req)
@@ -9389,13 +9389,13 @@ def main():
             sock.close()
 
     lines_c49h, _ = wire_c49h(
-        b"GET /identity HTTP/1.1\r\nHost: h\r\nContent-Length: 5\r\n\r\nhello"
-        b"GET /library/sections HTTP/1.1\r\nHost: h\r\n\r\n")
+        b"GET /identity HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: 5\r\n\r\nhello"
+        b"GET /library/sections HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n")
     check("a declared body on a GET is consumed, so the next request is still read",
           lines_c49h == ["HTTP/1.1 200 OK", "HTTP/1.1 200 OK"], "%s" % (lines_c49h,))
 
     lines_c49h2, closed_c49h2 = wire_c49h(
-        b"GET /identity HTTP/1.1\r\nHost: h\r\nContent-Length: 5\r\n\r\n", wait=2.0)
+        b"GET /identity HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: 5\r\n\r\n", wait=2.0)
     check("a declared body that never arrives closes the connection after the answer",
           lines_c49h2 == ["HTTP/1.1 200 OK"] and closed_c49h2,
           "%s closed=%s" % (lines_c49h2, closed_c49h2))
@@ -9409,7 +9409,7 @@ def main():
     delayed_closed_c50j = False
     try:
         delayed_body_c50j.sendall(
-            b"GET /identity HTTP/1.1\r\nHost: h\r\nContent-Length: 5\r\n\r\n")
+            b"GET /identity HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: 5\r\n\r\n")
         delayed_body_c50j.settimeout(3)
         while b"\r\n\r\n" not in delayed_raw_c50j:
             delayed_raw_c50j += delayed_body_c50j.recv(65536)
@@ -9423,7 +9423,7 @@ def main():
         time.sleep(0.02)
         try:
             delayed_body_c50j.sendall(b"hello" +
-                                      b"GET /library/sections HTTP/1.1\r\nHost: h\r\n\r\n")
+                                      b"GET /library/sections HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n")
         except OSError:
             delayed_closed_c50j = True
         try:
@@ -9451,19 +9451,19 @@ def main():
           "%r closed=%s" % (delayed_statuses_c50j, delayed_closed_c50j))
 
     lines_c49h3, _ = wire_c49h(
-        b"GET /identity HTTP/1.1\r\nHost: h\r\nContent-Length: +5\r\n\r\nhello"
-        b"GET /library/sections HTTP/1.1\r\nHost: h\r\n\r\n")
+        b"GET /identity HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: +5\r\n\r\nhello"
+        b"GET /library/sections HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n")
     check("a leading + on Content-Length parses",
           lines_c49h3 == ["HTTP/1.1 200 OK", "HTTP/1.1 200 OK"], "%s" % (lines_c49h3,))
 
-    lines_c49h4, _ = wire_c49h(b"GET /library/sections HTTP/1.1\r\nHost: h\r\n",
+    lines_c49h4, _ = wire_c49h(b"GET /library/sections HTTP/1.1\r\nHost: 127.0.0.1\r\n",
                                half_close=True, wait=3.0)
     check("a header block ended by EOF rather than a blank line is answered with nothing",
           lines_c49h4 == [], "%s" % (lines_c49h4,))
 
     # The request deadline is ABSOLUTE: three pieces eleven seconds apart is 22 s in total
     # and never 20 s idle, and both references close it at 20.0 s with no answer.
-    req_c49h = (b"GET /identity HTTP/1.1\r\nHost: h\r\nX-Plex-Pad: " + b"y" * 300 + b"\r\n\r\n")
+    req_c49h = (b"GET /identity HTTP/1.1\r\nHost: 127.0.0.1\r\nX-Plex-Pad: " + b"y" * 300 + b"\r\n\r\n")
     step_c49h = (len(req_c49h) + 2) // 3
     sock_c49h = _sock49h.create_connection((host_c49h, port_c49h), timeout=40)
     try:
@@ -14466,7 +14466,7 @@ def main():
     def envelope_c16h(want_c16h):
         sock_c16h = socket_c16h.create_connection(
             (base.split("//")[1].split(":")[0], int(base.rsplit(":", 1)[1])), timeout=20)
-        sock_c16h.sendall(("GET /identity HTTP/1.1\r\nHost: h\r\nConnection: %s\r\n"
+        sock_c16h.sendall(("GET /identity HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: %s\r\n"
                            "Accept: application/json\r\n\r\n" % want_c16h).encode())
         seen_c16h = b""
         while b"\r\n\r\n" not in seen_c16h:
@@ -14543,7 +14543,7 @@ def main():
     import socket as socket_c16k
     sock_c16k = socket_c16k.create_connection(
         (base.split("//")[1].split(":")[0], int(base.rsplit(":", 1)[1])), timeout=20)
-    sock_c16k.sendall(b"GET /identity HTTP/1.1\r\nHost: h\r\nExpect: 100-continue\r\n"
+    sock_c16k.sendall(b"GET /identity HTTP/1.1\r\nHost: 127.0.0.1\r\nExpect: 100-continue\r\n"
                       b"Accept: application/json\r\nConnection: close\r\n\r\n")
     first_c16k = b""
     while b"\r\n" not in first_c16k:
@@ -14709,7 +14709,7 @@ def main():
                 gate_c75b.wait(timeout=15)
             except threading.BrokenBarrierError:
                 pass
-            conn_c75b.sendall(b"GET /identity HTTP/1.1\r\nHost: h\r\nConnection: close\r\n\r\n")
+            conn_c75b.sendall(b"GET /identity HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n")
             burst_c75b.append(conn_c75b.recv(16).startswith(b"HTTP/1.1 "))
             conn_c75b.close()
         except OSError:
@@ -14725,7 +14725,7 @@ def main():
     sock_c16q = socket.create_connection(
         (base.split("//")[1].split(":")[0], int(base.rsplit(":", 1)[1])), 20)
     sock_c16q.settimeout(20)
-    sock_c16q.sendall(b"GET /identity HTTP/1.1\r\nHost: h\r\nRange: bytes=0-9\r\n"
+    sock_c16q.sendall(b"GET /identity HTTP/1.1\r\nHost: 127.0.0.1\r\nRange: bytes=0-9\r\n"
                       b"Accept: application/json\r\nAccept-Encoding: gzip\r\n"
                       b"Connection: close\r\n\r\n")
     blob_c16q = b""
@@ -14878,7 +14878,7 @@ def main():
         parts_c16v = seen_c16v.split(b"\r\n")[0].split(b" ")
         return parts_c16v[1] if len(parts_c16v) > 1 else b"?"
 
-    head_c16v = b"GET /identity HTTP/1.1\r\nHost: h\r\nConnection: close\r\n"
+    head_c16v = b"GET /identity HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n"
     cases_c16v = {
         "no colon": head_c16v + b"BadHeaderLine\r\n\r\n",
         "tab in value": head_c16v + b"X-Foo: a	b\r\n\r\n",
@@ -21651,7 +21651,7 @@ def main():
         sock_c27f = socket.create_connection(
             (base.split("//")[1].split(":")[0], int(base.rsplit(":", 1)[1])), 10)
         sock_c27f.settimeout(8)
-        sock_c27f.sendall(line_c27f + ending_c27f + b"Host: h" + ending_c27f
+        sock_c27f.sendall(line_c27f + ending_c27f + b"Host: 127.0.0.1" + ending_c27f
                           + b"Connection: close" + ending_c27f + ending_c27f)
         got_c27f = b""
         try:
@@ -25042,7 +25042,7 @@ def main():
         sock_c33e = socket.create_connection(
             (base.split("//")[1].split(":")[0], int(base.rsplit(":", 1)[1])), 10)
         sock_c33e.settimeout(8)
-        sock_c33e.sendall(line_c33e + ending_c33e + b"Host: h" + ending_c33e
+        sock_c33e.sendall(line_c33e + ending_c33e + b"Host: 127.0.0.1" + ending_c33e
                           + b"Connection: close" + ending_c33e + ending_c33e)
         got_c33e = b""
         try:
@@ -25103,7 +25103,7 @@ def main():
     sock_c33g = socket.create_connection(
         (base.split("//")[1].split(":")[0], int(base.rsplit(":", 1)[1])), 10)
     sock_c33g.settimeout(8)
-    sock_c33g.sendall(b"GET /identity HTTP/1.1\r\nHost: h\r\nRange: bytes=0-5\r\n"
+    sock_c33g.sendall(b"GET /identity HTTP/1.1\r\nHost: 127.0.0.1\r\nRange: bytes=0-5\r\n"
                       b"Connection: close\r\n\r\n")
     raw_c33g = b""
     try:
@@ -25135,7 +25135,7 @@ def main():
         sock_c34a = socket.create_connection(
             (base.split("//")[1].split(":")[0], int(base.rsplit(":", 1)[1])), 10)
         sock_c34a.settimeout(8)
-        sock_c34a.sendall(("%s %s HTTP/1.1\r\nHost: h\r\nConnection: close\r\n\r\n"
+        sock_c34a.sendall(("%s %s HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n"
                            % (method_c34a, path_c34a)).encode())
         blob_c34a = b""
         try:
@@ -25204,7 +25204,7 @@ def main():
         (base.split("//")[1].split(":")[0], int(base.rsplit(":", 1)[1])), 10)
     sock_c34c.settimeout(8)
     sock_c34c.sendall((
-        "GET /:/websockets/notifications HTTP/1.1\r\nHost: h\r\nConnection: Upgrade\r\n"
+        "GET /:/websockets/notifications HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: Upgrade\r\n"
         "Upgrade: websocket\r\nOrigin: https://app.plex.tv\r\nSec-WebSocket-Version: 13\r\n"
         "Sec-WebSocket-Key: %s\r\n\r\n"
         % base64_c34c.b64encode(b"0123456789abcdef").decode()).encode())
@@ -25237,7 +25237,7 @@ def main():
         sock_c35a = socket.create_connection(
             (base.split("//")[1].split(":")[0], int(base.rsplit(":", 1)[1])), 10)
         sock_c35a.settimeout(15)
-        sock_c35a.sendall(("GET /library/sections HTTP/1.1\r\nHost: h\r\n"
+        sock_c35a.sendall(("GET /library/sections HTTP/1.1\r\nHost: 127.0.0.1\r\n"
                            "Accept: application/json\r\nAccept-Encoding: gzip\r\n"
                            "Connection: close\r\n\r\n").encode())
         blob_c35a = b""
@@ -25268,7 +25268,7 @@ def main():
         sock_c35b = socket.create_connection(
             (base.split("//")[1].split(":")[0], int(base.rsplit(":", 1)[1])), 10)
         sock_c35b.settimeout(15)
-        sock_c35b.sendall(("GET /identity HTTP/1.1\r\nHost: h\r\nAccept: application/json"
+        sock_c35b.sendall(("GET /identity HTTP/1.1\r\nHost: 127.0.0.1\r\nAccept: application/json"
                            "\r\nAccept-Encoding: identity\r\nRange: %s\r\n"
                            "Connection: close\r\n\r\n" % value_c35b).encode())
         blob_c35b = b""
@@ -25315,7 +25315,7 @@ def main():
         sock_c41b = socket.create_connection(
             (base.split("//")[1].split(":")[0], int(base.rsplit(":", 1)[1])), 10)
         sock_c41b.settimeout(15)
-        sock_c41b.sendall(("GET /identity HTTP/1.1\r\nHost: h\r\n"
+        sock_c41b.sendall(("GET /identity HTTP/1.1\r\nHost: 127.0.0.1\r\n"
                            "Accept: application/json\r\nAccept-Encoding: identity\r\n"
                            "Range: bytes=0-9\r\n%s: %s\r\nConnection: close\r\n\r\n"
                            % (name_c41b, value_c41b)).encode())
@@ -25592,7 +25592,7 @@ def main():
         sock_c36d = socket.create_connection(
             (base.split("//")[1].split(":")[0], int(base.rsplit(":", 1)[1])), 10)
         sock_c36d.settimeout(8)
-        sock_c36d.sendall(line_c36d + b"\r\nHost: h\r\n" + extra_c36d + b"Connection: close\r\n\r\n")
+        sock_c36d.sendall(line_c36d + b"\r\nHost: 127.0.0.1\r\n" + extra_c36d + b"Connection: close\r\n\r\n")
         got_c36d = b""
         try:
             while True:
@@ -25638,7 +25638,7 @@ def main():
         sock_c36e = socket.create_connection(
             (base.split("//")[1].split(":")[0], int(base.rsplit(":", 1)[1])), 10)
         sock_c36e.settimeout(8)
-        sock_c36e.sendall(b"GET " + target_c36e + b" HTTP/1.1\r\nHost: h\r\n"
+        sock_c36e.sendall(b"GET " + target_c36e + b" HTTP/1.1\r\nHost: 127.0.0.1\r\n"
                           b"Connection: close\r\n\r\n")
         got_c36e = b""
         try:
@@ -29012,7 +29012,7 @@ def main():
         parsed_c41c = urllib.parse.urlsplit(base)
         host_c41c = parsed_c41c.hostname or "127.0.0.1"
         port_c41c = parsed_c41c.port or 80
-        request_c41c = (b"GET /identity HTTP/1.1\r\nHost: h\r\n"
+        request_c41c = (b"GET /identity HTTP/1.1\r\nHost: 127.0.0.1\r\n"
                         + b"\r\n".join(extra_lines_c41c)
                         + b"\r\nConnection: close\r\n\r\n")
         with socket.create_connection((host_c41c, port_c41c), timeout=10) as sock_c41c:

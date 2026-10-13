@@ -8176,9 +8176,6 @@ impl Runtime {
     }
 
     fn authorized(&self, path: &str, request: &Request, query: &HashMap<String, String>) -> bool {
-        if !self.gated() {
-            return true;
-        }
         if path == "/identity"
             || path == "/web"
             || path.starts_with("/web/")
@@ -8191,7 +8188,58 @@ impl Runtime {
         {
             return true;
         }
+        if !self.gated() {
+            return self.local_request(request);
+        }
         request_token(request, query).is_some_and(|value| self.token_admitted(value))
+    }
+
+    /// The gate of an unclaimed server with no `--token`, as a never-claimed PMS 1.43.4 keeps
+    /// it (plexscratch, 2026-10-13); the same paths stay open (`authorized`). The peer and
+    /// every `X-Forwarded-For` hop must be loopback or, with `allowedNetworks` empty, a
+    /// private address (10/8, 172.16/12, 192.168/16, fc00::/7 -- not 100.64/10 or
+    /// link-local), or with it set, in it; a forwarded hop cannot vouch for a refused peer.
+    /// And `Host` must be localhost or the address the request arrived on: a LAN source
+    /// naming another host or a hostname is refused too.
+    fn local_request(&self, request: &Request) -> bool {
+        let Some((peer, local)) = CONNECTION.with(std::cell::Cell::get) else {
+            return true;
+        };
+        let listed = self
+            .prefs
+            .get("allowedNetworks")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .split(',')
+            .filter_map(network)
+            .collect::<Vec<_>>();
+        let allowed = |ip: std::net::IpAddr| {
+            let ip = ip.to_canonical();
+            ip.is_loopback()
+                || if listed.is_empty() {
+                    match ip {
+                        std::net::IpAddr::V4(v4) => v4.is_private(),
+                        std::net::IpAddr::V6(v6) => v6.segments()[0] & 0xfe00 == 0xfc00,
+                    }
+                } else {
+                    listed.iter().any(|&(net, bits)| in_network(ip, net, bits))
+                }
+        };
+        let forwarded = request.headers.get("x-forwarded-for").map_or(true, |hops| {
+            hops.split(',')
+                .all(|hop| hop.trim().parse().is_ok_and(|ip| allowed(ip)))
+        });
+        let host = request.headers.get("host").map_or(true, |host| {
+            let name = match host.strip_prefix('[') {
+                Some(rest) => rest.split(']').next().unwrap_or_default(),
+                None => host.rsplit_once(':').map_or(host.as_str(), |(name, _)| name),
+            };
+            name.eq_ignore_ascii_case("localhost")
+                || name.parse::<std::net::IpAddr>().is_ok_and(|ip| {
+                    ip.to_canonical().is_loopback() || ip.to_canonical() == local.to_canonical()
+                })
+        });
+        allowed(peer) && forwarded && host
     }
 
     fn unauthorized_route(&self, path: &str, request: &Request) -> Response {
@@ -22458,6 +22506,13 @@ pub struct Request {
 }
 
 thread_local! {
+    /// This connection's peer and local addresses, for the unclaimed gate
+    /// (`Runtime::local_request`). Unset when a request is driven in process.
+    static CONNECTION: std::cell::Cell<Option<(std::net::IpAddr, std::net::IpAddr)>> =
+        const { std::cell::Cell::new(None) };
+}
+
+thread_local! {
     /// The sentence of the last refusal built on this connection thread, which
     /// `handle_connection` logs the way `_send_error` does.
     static ERROR_NOTE: std::cell::RefCell<Option<(u16, String)>> =
@@ -23034,6 +23089,37 @@ fn start_gdm(runtime: SharedRuntime, mode: &str, port: u16) {
 
 /// The token a request carries: a non-empty `X-Plex-Token` header, else the query's (its
 /// LAST occurrence, as `query` holds it).
+/// One `allowedNetworks` entry: an address, `address/bits` or `address/netmask`.
+fn network(entry: &str) -> Option<(std::net::IpAddr, u32)> {
+    let entry = entry.trim();
+    let (address, mask) = entry.split_once('/').unwrap_or((entry, ""));
+    let address = address.parse::<std::net::IpAddr>().ok()?.to_canonical();
+    let full = if address.is_ipv4() { 32 } else { 128 };
+    let bits = if mask.is_empty() {
+        full
+    } else if let Ok(bits) = mask.parse::<u32>() {
+        bits
+    } else {
+        match mask.parse::<std::net::IpAddr>().ok()? {
+            std::net::IpAddr::V4(netmask) => u32::from(netmask).count_ones(),
+            std::net::IpAddr::V6(netmask) => u128::from(netmask).count_ones(),
+        }
+    };
+    (bits <= full).then_some((address, bits))
+}
+
+fn in_network(ip: std::net::IpAddr, net: std::net::IpAddr, bits: u32) -> bool {
+    match (ip, net) {
+        (std::net::IpAddr::V4(ip), std::net::IpAddr::V4(net)) => {
+            bits == 0 || (u32::from(ip) ^ u32::from(net)) >> (32 - bits) == 0
+        }
+        (std::net::IpAddr::V6(ip), std::net::IpAddr::V6(net)) => {
+            bits == 0 || (u128::from(ip) ^ u128::from(net)) >> (128 - bits) == 0
+        }
+        _ => false,
+    }
+}
+
 fn request_token<'a>(request: &'a Request, query: &'a HashMap<String, String>) -> Option<&'a String> {
     request
         .headers
@@ -23307,8 +23393,8 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
             "unclaimed".to_string()
         }
     );
-    // Said out loud either way: without a token every peer that can reach the port
-    // reads the library, preferences, sessions and media bytes alike.
+    // Said out loud either way: without a token every peer the unclaimed gate admits
+    // (`local_request`) reads the library, preferences, sessions and media bytes alike.
     info!(
         "token gate: {}",
         if gated {
@@ -23316,7 +23402,7 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
         } else if claim.claimed() {
             "ENFORCED -- claimed: the server's own token and the ones plex.tv lists for it"
         } else {
-            "OFF -- every peer that can reach this port can read the library"
+            "OFF -- unclaimed: this machine and its private networks (allowedNetworks) can read the library"
         }
     );
     info!(
@@ -23390,9 +23476,13 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
                     .peer_addr()
                     .map(|address| address.to_string())
                     .unwrap_or_else(|_| "???".to_string());
+                let addresses = stream.peer_addr().ok().zip(stream.local_addr().ok());
                 let thread_name = logging::request_thread_name();
                 thread::spawn(move || {
                     logging::name_thread(thread_name);
+                    CONNECTION.with(|cell| {
+                        cell.set(addresses.map(|(peer, local)| (peer.ip(), local.ip())))
+                    });
                     let _live = LiveConnectionGuard::register(peer);
                     if let Some(config) = tls_config {
                         // A TLS ClientHello is identified by the content-type
@@ -27336,5 +27426,31 @@ fn remember_list_upload(columns: &mut Map<String, Value>, upload: &str) {
         if !list.iter().any(|known| known.as_str() == Some(upload)) {
             list.push(json!(upload));
         }
+    }
+}
+
+#[cfg(test)]
+mod allowed_network_tests {
+    use super::*;
+
+    fn member(ip: &str, entry: &str) -> bool {
+        let (net, bits) = network(entry).expect("entry parses");
+        in_network(ip.parse::<std::net::IpAddr>().unwrap().to_canonical(), net, bits)
+    }
+
+    #[test]
+    fn entries_take_bits_netmasks_and_bare_addresses() {
+        assert!(member("192.168.88.7", "192.168.88.0/24"));
+        assert!(!member("192.168.89.7", "192.168.88.0/24"));
+        assert!(member("172.31.9.2", "172.16.0.0/12"));
+        assert!(member("10.1.2.3", "10.0.0.0/255.0.0.0"));
+        assert!(member("127.0.0.1", "127.0.0.1"));
+        assert!(!member("127.0.0.2", "127.0.0.1/32"));
+        assert!(member("::ffff:192.168.88.7", "192.168.88.0/24"));
+        assert!(member("fd00::5", "fc00::/7"));
+        assert!(!member("fd00::5", "10.0.0.0/8"));
+        assert!(member("8.8.8.8", "0.0.0.0/0"));
+        assert!(network("not-an-address").is_none());
+        assert!(network("10.0.0.0/33").is_none());
     }
 }

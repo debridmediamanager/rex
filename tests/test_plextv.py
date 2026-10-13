@@ -744,8 +744,8 @@ def main():
         first_log = first.output()
         check("startup says the claim state, the token gate and where it listens",
               logged(first_log, "INFO", r"claim state: unclaimed")
-              and logged(first_log, "INFO", r"token gate: OFF -- every peer that can reach "
-                                            r"this port can read the library")
+              and logged(first_log, "INFO", r"token gate: OFF -- unclaimed: this machine and its "
+                                            r"private networks \(allowedNetworks\) can read the library")
               and logged(first_log, "INFO", r"rex on http://\S+:%d  machine=%s  items=\d+  "
                                             r"parts=proxy" % (ports[0], MACHINE)),
               first_log[-3000:])
