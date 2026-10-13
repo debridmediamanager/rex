@@ -10,6 +10,11 @@ N labelled torrents (seed 7, one-label hashes only) are identified by name alone
 the DMM step is left out, since it is where the labels come from -- and every provider
 answer the identifier read is kept, trimmed to the fields it reads, together with the
 old builder's answer (file name to TMDB's first hit) for comparison.
+
+    TMDB_KEY=... PLEX_TOKEN=... python3 probes/record_identify_corpus.py --top-up CORPUS.json
+
+replays CORPUS.json and asks the providers only what the recording lacks, so a parser
+change that asks one more question records that answer and leaves the rest as recorded.
 """
 import json
 import os
@@ -28,11 +33,13 @@ def key(path, params):
 
 
 class RecordingTmdb(metadata.Tmdb):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, record=None, **kwargs):
         super().__init__(*args, **kwargs)
-        self.record = {}
+        self.record = {} if record is None else record
 
     def _get(self, path, **params):
+        if key(path, params) in self.record:
+            return self.record[key(path, params)]
         answer = super()._get(path, **params) or {}
         if path.startswith("search/"):
             trimmed = {"results": [{"id": r["id"]} for r in (answer.get("results") or [])[:5]]}
@@ -46,7 +53,43 @@ class RecordingTmdb(metadata.Tmdb):
         return trimmed
 
 
+def recording_plex(plex_record, cache):
+    plex = metadata.PlexProvider(os.environ["PLEX_TOKEN"], os.path.join(cache, "plex.json"))
+    real_call = plex._call
+
+    def recording_call(method, path, body=None):
+        recorded = json.dumps([method, path, body], sort_keys=True)
+        if recorded in plex_record:
+            return plex_record[recorded]
+        answer = real_call(method, path, body) or {}
+        rows = (answer.get("MediaContainer") or {}).get("Metadata") or []
+        trimmed = {"MediaContainer": {"Metadata": [
+            {"guid": row.get("guid"), "title": row.get("title"), "year": row.get("year"),
+             "Guid": [{"id": g.get("id")} for g in row.get("Guid") or []]}
+            for row in rows[:1]]}}
+        plex_record[recorded] = trimmed
+        return trimmed
+
+    plex._call = recording_call
+    return plex
+
+
+def top_up(path):
+    corpus = json.load(open(path))
+    cache = os.environ.get("RECORD_CACHE") or tempfile.mkdtemp(prefix="identify-record-")
+    tmdb_before, plex_before = len(corpus["tmdb"]), len(corpus["plex"])
+    tmdb = RecordingTmdb(os.environ["TMDB_KEY"], os.path.join(cache, "tmdb.json"), record=corpus["tmdb"])
+    identifier = identify.Identifier(tmdb=tmdb, plex=recording_plex(corpus["plex"], cache))
+    for torrent in corpus["torrents"]:
+        identifier.identify(torrent["name"], files=torrent["files"])
+    json.dump(corpus, open(path, "w"), indent=1, sort_keys=True)
+    print("%s: %d TMDB and %d Plex answers added" % (
+        path, len(corpus["tmdb"]) - tmdb_before, len(corpus["plex"]) - plex_before))
+
+
 def main():
+    if sys.argv[1] == "--top-up":
+        return top_up(sys.argv[2])
     torrents_path, labels_path, out_path = sys.argv[1:4]
     count = int(sys.argv[4]) if len(sys.argv) > 4 else 200
     torrents = {t["hash"].lower(): t for t in json.load(open(torrents_path))}
@@ -64,20 +107,7 @@ def main():
     os.makedirs(cache, exist_ok=True)
     tmdb = RecordingTmdb(os.environ["TMDB_KEY"], os.path.join(cache, "tmdb.json"))
     plex_record = {}
-    plex = metadata.PlexProvider(os.environ["PLEX_TOKEN"], os.path.join(cache, "plex.json"))
-    real_call = plex._call
-
-    def recording_call(method, path, body=None):
-        answer = real_call(method, path, body) or {}
-        rows = (answer.get("MediaContainer") or {}).get("Metadata") or []
-        trimmed = {"MediaContainer": {"Metadata": [
-            {"guid": row.get("guid"), "title": row.get("title"), "year": row.get("year"),
-             "Guid": [{"id": g.get("id")} for g in row.get("Guid") or []]}
-            for row in rows[:1]]}}
-        plex_record[json.dumps([method, path, body], sort_keys=True)] = trimmed
-        return trimmed
-
-    plex._call = recording_call
+    plex = recording_plex(plex_record, cache)
     identifier = identify.Identifier(tmdb=tmdb, plex=plex)
     corpus = []
     for h in known[:count]:
