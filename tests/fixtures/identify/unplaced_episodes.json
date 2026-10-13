@@ -1,5 +1,5 @@
 {
- "source": "files the production rex's feed left unplaced as \"no episode number\" on 2026-10-13, and two it placed on the wrong episode; season and episode read by hand from each name",
+ "source": "files the production rex's feed left unplaced as \"no episode number\" on 2026-10-13, and two it placed on the wrong episode; season and episode read by hand from each name; and anime seasons written as `4th Season`, `Season 3` or `[07]` (2026-10-13 afternoon)",
  "files": [
   {
    "shape": "site",
@@ -259,6 +259,41 @@
    "file": "One Piece (1999) - s21e1000 - [Erai-raws][1080p][HEVC][484B36B8].mkv",
    "season": 21,
    "episode": 1000
+  },
+  {
+   "shape": "a season named as an ordinal or a word, or an episode bracketed after the title",
+   "release": "[Erai-raws].Kingdom.4th.Season-21.[1080p]",
+   "file": "0816e0b1bd854e41b9aaa223db7a413b.mkv",
+   "season": 4,
+   "episode": 21
+  },
+  {
+   "shape": "a season named as an ordinal or a word, or an episode bracketed after the title",
+   "release": "[Sakurato].Bleach：.Sennen.Kessen.Hen.-.Kashin.Tan.[07][AVC-8bit.1080P.AAC][CHS]",
+   "file": "[Sakurato] Bleach： Sennen Kessen Hen - Kashin Tan [07][AVC-8bit 1080P AAC][CHS].mp4",
+   "season": 1,
+   "episode": 7
+  },
+  {
+   "shape": "a season named as an ordinal or a word, or an episode bracketed after the title",
+   "release": "[Erai-raws] Gintama. Shirogane no Tamashii-hen 2nd Season - 14 END [1080p][Multiple Subtitle]",
+   "file": "[Erai-raws] Gintama. Shirogane no Tamashii-hen 2nd Season - 14 END [1080p][Multiple Subtitle].mkv",
+   "season": 2,
+   "episode": 14
+  },
+  {
+   "shape": "a season named as an ordinal or a word, or an episode bracketed after the title",
+   "release": "[Erai-raws] Shiguang Dailiren Season 3 - 01 (CA) [1080p CR WEBRip HEVC AAC][MultiSub][8FB131A8]",
+   "file": "[Erai-raws] Shiguang Dailiren Season 3 - 01 (CA) [1080p CR WEBRip HEVC AAC][MultiSub][8FB131A8].mkv",
+   "season": 3,
+   "episode": 1
+  },
+  {
+   "shape": "a season named as an ordinal or a word, or an episode bracketed after the title",
+   "release": "[Erai-raws] Jujutsu Kaisen 2nd Season - 01 ~ 23 [1080p][Multiple Subtitle]",
+   "file": "[Erai-raws] Jujutsu Kaisen 2nd Season - 23 [1080p][Multiple Subtitle][291558E2].mkv",
+   "season": 2,
+   "episode": 23
   }
  ]
 }

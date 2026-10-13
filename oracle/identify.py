@@ -77,6 +77,15 @@ _BRACKETED = re.compile(r"^\s*\[[^\]]*\]\s*\[([^\]]+)\]\s*\[(\d{1,4})(?:v\d)?\]"
 # `Der.mude.Tod.AKA.Destiny.1921`, `El.laberinto.del.fauno.aka.Pans.Labyrinth`: a film named
 # twice, its original name first.
 _AKA = re.compile(r"(?i)\s+aka\s+")
+# `[Erai-raws].Kingdom.4th.Season-21.[1080p]`, `Gintama. Shirogane no Tamashii-hen 2nd Season - 14 END`:
+# a season written as an ordinal, the episode after it. Read as a pack, Kingdom's 21st
+# episode was a season 21 film on the production server (2026-10-13).
+_ORDINAL_SEASON = re.compile(r"(?i)\b(\d{1,2})(?:st|nd|rd|th)[\s._-]+Season\b")
+_ORDINAL_SEASON_EP = re.compile(r"(?i)\b(\d{1,2})(?:st|nd|rd|th)[\s._-]+Season[\s._]*-[\s._]*(\d{1,4})(?:v\d)?\b")
+# `[Sakurato] Bleach： Sennen Kessen Hen - Kashin Tan [07][AVC-8bit 1080P AAC][CHS]`: the episode
+# bracketed right after the title, which `parse_release` drops with the other brackets.
+# A resolution is never one (`[720]`).
+_BRACKET_EPISODE = re.compile(r"^\s*(?:\[[^\]]*\][\s.]*)?[^\[\]]*[^\[\]\s.]\s*\.?\[(\d{2,3})(?:v\d)?\]")
 _SEASON_PACK = re.compile(r"(?i)\b(?:S(\d{1,2})(?:\s?-\s?S?\d{1,2})?|Seasons?[\s._-]?(\d{1,2}))\b(?![\s._-]?E\d)")
 
 
@@ -132,11 +141,23 @@ def parse_name(name):
                 parsed["title"] = parsed["title"][:cut.start()]
     # `[SubsPlease] Tower of God S2 - 07v2 (1080p)`: an absolute number after the season it is
     # in. Read as season 1 it was placed on that season's episode 7 as another version of it.
+    # `Shiguang Dailiren Season 3 - 01` and `… 2nd Season - 14 END` the same way.
     if parsed["season"] is None and parsed["episode"] is not None:
         season = _SEASON_PACK.search(parsed["title"])
-        if season and season.group(1):
-            parsed["season"] = int(season.group(1))
+        ordinal = _ORDINAL_SEASON.search(parsed["title"])
+        if season and (season.group(1) or season.group(2)):
+            parsed["season"] = int(season.group(1) or season.group(2))
             parsed["title"] = parsed["title"][:season.start()]
+        elif ordinal:
+            parsed["season"] = int(ordinal.group(1))
+            parsed["title"] = parsed["title"][:ordinal.start()]
+    if parsed["season"] is None and parsed["episode"] is None:
+        ordinal = _ORDINAL_SEASON_EP.search(stem)
+        if ordinal:
+            parsed["season"], parsed["episode"] = int(ordinal.group(1)), int(ordinal.group(2))
+            cut = _ORDINAL_SEASON.search(parsed["title"])
+            if cut:
+                parsed["title"] = parsed["title"][:cut.start()]
     if parsed["season"] is None and parsed["episode"] is None:
         pack = _SEASON_PACK.search(parsed["title"]) or _SEASON_PACK.search(stem.replace(".", " "))
         if pack:
@@ -150,6 +171,10 @@ def parse_name(name):
             and not parsed["pack"]:
         parsed["title"] = dashed.group(1).strip(" -–—")
         parsed["episode"] = int(dashed.group(2) or dashed.group(3))
+    numbered = _BRACKET_EPISODE.match(name)
+    if numbered and parsed["season"] is None and parsed["episode"] is None and not parsed["year"] \
+            and not parsed["pack"] and int(numbered.group(1)) not in (480, 576, 720):
+        parsed["episode"] = int(numbered.group(1))
     bracketed = _BRACKETED.match(name)
     if bracketed and not parsed["title"] and parsed["season"] is None and parsed["episode"] is None:
         parsed["title"] = re.sub(r"\s+", " ", bracketed.group(1)).strip(" -–—")

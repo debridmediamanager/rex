@@ -1205,7 +1205,17 @@
     "Metadata": []
    }
   },
+  "[\"POST\", \"/library/metadata/matches\", {\"excludeElements\": \"Media\", \"filename\": \"[Erai-raws] Shiguang Dailiren Season 3 - 01 (CA) [1080p CR WEBRip HEVC AAC][MultiSub][8FB131A8]\", \"title\": \"Shiguang Dailiren\", \"type\": 2}]": {
+   "MediaContainer": {
+    "Metadata": []
+   }
+  },
   "[\"POST\", \"/library/metadata/matches\", {\"excludeElements\": \"Media\", \"filename\": \"[Erai-raws] Shiguang Dailiren Season 3 - 02 (CA) [1080p CR WEB-DL AVC AAC][MultiSub][8A32F55F]\", \"title\": \"Shiguang Dailiren Season 3\", \"type\": 2}]": {
+   "MediaContainer": {
+    "Metadata": []
+   }
+  },
+  "[\"POST\", \"/library/metadata/matches\", {\"excludeElements\": \"Media\", \"filename\": \"[Erai-raws] Shiguang Dailiren Season 3 - 02 (CA) [1080p CR WEB-DL AVC AAC][MultiSub][8A32F55F]\", \"title\": \"Shiguang Dailiren\", \"type\": 2}]": {
    "MediaContainer": {
     "Metadata": []
    }
@@ -2054,6 +2064,30 @@
       "thumb": "https://metadata-static.plex.tv/f/gracenote/f5e513c3c6899ba27c47dba2891e1f8a.jpg",
       "title": "Star Wars: The Clone Wars",
       "year": 2008
+     }
+    ]
+   }
+  },
+  "[\"POST\", \"/library/metadata/matches\", {\"guid\": \"tmdb://123542\", \"type\": 2}]": {
+   "MediaContainer": {
+    "Metadata": [
+     {
+      "Guid": [
+       {
+        "id": "imdb://tt14976292"
+       },
+       {
+        "id": "tmdb://123542"
+       },
+       {
+        "id": "tvdb://402033"
+       }
+      ],
+      "art": "https://image.tmdb.org/t/p/original/w3agwUSMpJ4X9t1jGrDtqqRPjDQ.jpg",
+      "guid": "plex://show/61b180048f749b300c783a36",
+      "thumb": "https://image.tmdb.org/t/p/original/wo9jwu5qMvXzhW2cyy5E6hOVs92.jpg",
+      "title": "LINK CLICK",
+      "year": 2021
      }
     ]
    }
@@ -3623,6 +3657,19 @@
   "[\"search/tv\", [[\"query\", \"Shiguang Dailiren Season 3\"]]]": {
    "results": []
   },
+  "[\"search/tv\", [[\"query\", \"Shiguang Dailiren\"]]]": {
+   "results": [
+    {
+     "id": 123542
+    },
+    {
+     "id": 257162
+    },
+    {
+     "id": 154716
+    }
+   ]
+  },
   "[\"search/tv\", [[\"query\", \"Signal\"]]]": {
    "results": [
     {
@@ -3800,6 +3847,13 @@
    "number_of_seasons": 1
   },
   "[\"tv/1160230\", [[\"append_to_response\", \"credits,external_ids,content_ratings,release_dates\"]]]": {},
+  "[\"tv/123542\", [[\"append_to_response\", \"credits,external_ids,content_ratings,release_dates\"]]]": {
+   "external_ids": {
+    "imdb_id": "tt14976292"
+   },
+   "imdb_id": null,
+   "number_of_seasons": 5
+  },
   "[\"tv/123578\", [[\"append_to_response\", \"credits,external_ids,content_ratings,release_dates\"]]]": {
    "external_ids": {
     "imdb_id": null

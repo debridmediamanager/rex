@@ -109,6 +109,17 @@ static BRACKETED: LazyLock<Regex> =
 // twice, its original name first. TMDB finds all nine such names on the production server by
 // that first name, and misses `La Haine AKA Hate` by the second.
 static AKA: LazyLock<Regex> = LazyLock::new(|| re(r"(?i)\s+aka\s+"));
+// `[Erai-raws].Kingdom.4th.Season-21.[1080p]`, `Gintama. Shirogane no Tamashii-hen 2nd Season - 14 END`:
+// a season written as an ordinal, the episode after it. Read as a pack, Kingdom's 21st
+// episode was a season 21 film on the production server (2026-10-13).
+static ORDINAL_SEASON: LazyLock<Regex> = LazyLock::new(|| re(r"(?i)\b(\d{1,2})(?:st|nd|rd|th)[\s._-]+Season\b"));
+static ORDINAL_SEASON_EP: LazyLock<Regex> =
+    LazyLock::new(|| re(r"(?i)\b(\d{1,2})(?:st|nd|rd|th)[\s._-]+Season[\s._]*-[\s._]*(\d{1,4})(?:v\d)?\b"));
+// `[Sakurato] Bleach： Sennen Kessen Hen - Kashin Tan [07][AVC-8bit 1080P AAC][CHS]`: the episode
+// bracketed right after the title, which `parse_release` drops with the other brackets.
+// A resolution is never one (`[720]`).
+static BRACKET_EPISODE: LazyLock<Regex> =
+    LazyLock::new(|| re(r"^\s*(?:\[[^\]]*\][\s.]*)?[^\[\]]*[^\[\]\s.]\s*\.?\[(\d{2,3})(?:v\d)?\]"));
 // A season pack names its season without an episode: `Planet.Earth.II.S01.1080p…`,
 // `The Sopranos S01 …`, `Show Season 2 …`, `S01-S03`, and on the production server `Family.Matters.seasons.01-09`
 // and `South Park - Seasons 1 to 25`. Python ends it with
@@ -213,11 +224,28 @@ pub fn parse_name(name: &str) -> Parsed {
     }
     // `[SubsPlease] Tower of God S2 - 07v2 (1080p)`: an absolute number after the season it is
     // in. Read as season 1 it was placed on that season's episode 7 as another version of it.
+    // `Shiguang Dailiren Season 3 - 01` and `… 2nd Season - 14 END` the same way.
     if parsed.season.is_none() && parsed.episode.is_some() {
-        if let Some(found) = SEASON_PACK.captures(&parsed.title) {
-            if let Some(season) = found.get(1) {
-                parsed.season = py_int(season.as_str());
-                parsed.title = parsed.title[..found.get(0).expect("group 0").start()].to_string();
+        let pack = SEASON_PACK.captures(&parsed.title).and_then(|found| {
+            let season = found.get(1).or(found.get(2))?;
+            Some((py_int(season.as_str()), found.get(0).expect("group 0").start()))
+        });
+        let ordinal = || {
+            ORDINAL_SEASON
+                .captures(&parsed.title)
+                .map(|found| (py_int(&found[1]), found.get(0).expect("group 0").start()))
+        };
+        if let Some((season, start)) = pack.or_else(ordinal) {
+            parsed.season = season;
+            parsed.title = parsed.title[..start].to_string();
+        }
+    }
+    if parsed.season.is_none() && parsed.episode.is_none() {
+        if let Some(found) = ORDINAL_SEASON_EP.captures(&stem) {
+            parsed.season = py_int(&found[1]);
+            parsed.episode = py_int(&found[2]);
+            if let Some(cut) = ORDINAL_SEASON.find(&parsed.title) {
+                parsed.title = parsed.title[..cut.start()].to_string();
             }
         }
     }
@@ -243,6 +271,14 @@ pub fn parse_name(name: &str) -> Parsed {
         if let Some(dashed) = DASH_EPISODE.captures(&parsed.title) {
             parsed.episode = dashed.get(2).or(dashed.get(3)).and_then(|number| py_int(number.as_str()));
             parsed.title = dashed[1].trim_matches([' ', '-', '–', '—']).to_string();
+        }
+    }
+    if let Some(numbered) = BRACKET_EPISODE.captures(name) {
+        let number = py_int(&numbered[1]);
+        if parsed.season.is_none() && parsed.episode.is_none() && parsed.year.unwrap_or(0) == 0 && !parsed.pack
+            && !matches!(number, Some(480 | 576 | 720))
+        {
+            parsed.episode = number;
         }
     }
     if let Some(bracketed) = BRACKETED.captures(name) {
