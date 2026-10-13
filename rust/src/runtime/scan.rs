@@ -125,7 +125,20 @@ pub(super) fn name_release(plan: &Library, arrivals: &mut [Arrival], files: usiz
         plex: plex.map(|p| p as &dyn PlexSource),
         known,
     };
-    let identity = identifier.identify_as(&named, Some(&hash), files, Some(&plan.kind));
+    let mut identity = identifier.identify_as(&named, Some(&hash), files, Some(&plan.kind));
+    // A release named in another language than its files (`Хватай Сон Чжэ и беги Lovely Runner`
+    // holding `Lovely.Runner.2024.S01E01`, `Détective.Conan.-.Inédits.VF` holding `Détective
+    // Conan S11E01`) is the title its files name: the production server held both on `local://`, and
+    // Lovely Runner beside the show of that name (2026-10-13).
+    let named_nothing = |identity: &identify::Identity| {
+        identity.kind != plan.kind || (identity.tmdb.is_none() && identity.plex.is_none() && identity.imdb.is_none())
+    };
+    if named_nothing(&identity) && !first_file.is_empty() && first_file != release {
+        let by_file = identifier.identify_as(stem(&first_file), None, 1, Some(&plan.kind));
+        if !named_nothing(&by_file) {
+            identity = by_file;
+        }
+    }
     let report = json!({
         "confidence": identity.confidence, "source": identity.source, "imdb": identity.imdb,
         "tmdb": identity.tmdb, "plex": identity.plex,
