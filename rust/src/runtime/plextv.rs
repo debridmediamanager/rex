@@ -612,6 +612,13 @@ pub(crate) fn exchange(claim: &SharedClaim, claim_token: &str) -> Result<(), Str
         .filter(|token| !token.is_empty())
         .ok_or_else(|| "claim exchange returned no authToken".to_string())?
         .to_string();
+    // The 2026-09-11 spike claimed an identity that already had a device row and got the
+    // ACCOUNT token back. Stored as the server's, every plex.tv write would then carry it.
+    if std::env::var("PLEX_TOKEN").ok().as_deref() == Some(token.as_str()) {
+        return Err("plex.tv answered the account token, not a server token; not stored \
+                    (this identity already has a device row)"
+            .to_string());
+    }
     let owner = {
         let mut state = claim
             .lock()

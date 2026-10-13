@@ -8896,6 +8896,10 @@ class Rex:
             return ("error", 400, "rex: missing claim token")
         if self.claim is None:
             return ("error", 500, "rex: claim support not configured")
+        if self.claim.claimed:
+            # rex's own refusal: repeated exchanges are what reset the account's tokens on
+            # 2026-09-11. Re-claiming means removing claim_state.json first.
+            return ("error", 409, "rex: already claimed")
         try:
             self.claim.exchange(token)
         except Exception as error:

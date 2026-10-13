@@ -86,6 +86,7 @@ MACHINE = "f1x7u4e0000000000000000000000000000000f1"
 FRIENDLY = "rex-ui-fixture"
 VERSION = "1.42.2.10156-rex"
 CLAIM_TOKEN = "claim-STUB-CLAIM-TOKEN"
+REUSED_CLAIM_TOKEN = "claim-STUB-REUSED"    # plex.tv answers it with the ACCOUNT token
 ACCOUNT_TOKEN = "ACCOUNT-TOKEN-STUB"
 SERVER_TOKEN = "SERVER-TOKEN-STUB"
 DEVICE_TOKEN = "DEVICE-TOKEN-STUB-3"        # another of the owner's devices, as plex.tv lists it
@@ -277,6 +278,10 @@ class StubHandler(BaseHTTPRequestHandler):
         query = dict(record["query"])
         xml = "application/xml"
         if (method, host, path) == ("POST", "plex.tv", "/api/claim/exchange"):
+            if query.get("token") == REUSED_CLAIM_TOKEN:
+                return 200, xml, ('<?xml version="1.0" encoding="UTF-8"?>\n<user id="%d" '
+                                  'username="%s" email="%s" authToken="%s"/>\n'
+                                  % (ACCOUNT_ID, OWNER, EMAIL, ACCOUNT_TOKEN))
             if query.get("token") != CLAIM_TOKEN:
                 return 401, xml, "<errors><error code=\"1001\" message=\"stub\"/></errors>"
             return 200, xml, ('<?xml version="1.0" encoding="UTF-8"?>\n<user id="%d" '
@@ -567,6 +572,11 @@ def main():
         check("a refused exchange is a 500 and leaves the server unclaimed",
               status == 500 and not truthy(container(first.request("GET", "/identity")[1])
                                            .get("claimed")), (status, body))
+        status, body = first.request("POST", "/myplex/claim?token=%s" % REUSED_CLAIM_TOKEN)
+        check("an exchange that answers the account token is refused, and nothing is stored",
+              status == 500 and not os.path.exists(claim_file)
+              and not truthy(container(first.request("GET", "/identity")[1]).get("claimed")),
+              (status, body))
 
         # -- the claim --------------------------------------------------------------
         claimed_at = time.time()
@@ -641,6 +651,11 @@ def main():
         asked = connectivity and dict(connectivity[0]["query"])["asyncIdentifier"]
 
         claim_now = surfaces(first, ACCOUNT_TOKEN)
+        exchanged = len(stub.taken("plex.tv", "/api/claim/exchange", "POST"))
+        status, body = first.request("POST", "/myplex/claim?token=%s" % CLAIM_TOKEN, token=ACCOUNT_TOKEN)
+        check("a claimed server refuses another claim without asking plex.tv",
+              status == 409 and len(stub.taken("plex.tv", "/api/claim/exchange", "POST")) == exchanged,
+              (status, body))
         check("claimed /identity reports claimed true at once",
               truthy(container(claim_now["identity"][1]).get("claimed")), claim_now["identity"])
         root = container(claim_now["root"][1])

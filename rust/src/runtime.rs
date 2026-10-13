@@ -7870,6 +7870,18 @@ impl Runtime {
                 // released (`finish_claim`), which answers the claimed /myplex/account.
                 match query.get("token").filter(|token| !token.is_empty()) {
                     None => Response::error(400, "rex: missing claim token"),
+                    // rex's own refusal: repeated exchanges are what reset the account's
+                    // tokens on 2026-09-11. Re-claiming means removing claim_state.json first.
+                    Some(_)
+                        if self
+                            .plextv
+                            .claim
+                            .lock()
+                            .unwrap_or_else(|poisoned| poisoned.into_inner())
+                            .claimed() =>
+                    {
+                        Response::error(409, "rex: already claimed")
+                    }
                     Some(token) => {
                         self.pending_claim = Some(token.clone());
                         Response::empty(200)

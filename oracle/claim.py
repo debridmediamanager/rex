@@ -203,6 +203,11 @@ class Claim:
         token = attrs.get("authToken") or attrs.get("authenticationToken")
         if not token:
             raise RuntimeError("claim exchange returned no authToken")
+        # The 2026-09-11 spike claimed an identity that already had a device row and got the
+        # ACCOUNT token back. Stored as the server's, every plex.tv write would then carry it.
+        if token == os.environ.get("PLEX_TOKEN"):
+            raise RuntimeError("plex.tv answered the account token, not a server token; "
+                               "not stored (this identity already has a device row)")
 
         with self._lock:
             self.token = token
