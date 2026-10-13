@@ -9872,7 +9872,7 @@ concatenating two fields an empty playlist does not have, so the candidate's `ke
 `?width=400&height=600` — a relative url that resolves to the page the client is on.
 
 **`/connections` is plain text.** A real PMS routes it and answers one line per connection
-slot — `3 10.0.0.1:61216 - Routing - GET /connections #4e445 - Token (plexa630)
+slot — `3 10.0.0.1:61216 - Routing - GET /connections #4e445 - Token (rex-owner)
 (curl/8.7.1)`, with the trailing parenthesis naming the client's
 `X-Plex-Device-Name, X-Plex-Product` or its `User-Agent` — where rex answered the
 dispatcher's XML container. Cycle 50's 78-snapshot matrix established that PMS's acceptor
@@ -11890,7 +11890,7 @@ log and asked of plex.tv for rex-e2e (`tests/fixtures/plextv_access_tokens_s1422
 - `GET plex.tv/api/v2/server/access_tokens?auth_token=<server token>` answers `<tokens>` with
   one `<token type="device" device=… token=… tokenDisabled="0" owned="1" createdAt=…/>` per
   token allowed in: the server's own first, then each of the owner's devices (20 rows for
-  plexa630; the account token in the production zurg's config is one, and so is the token of every
+  the test account; the account token in the production zurg's config is one, and so is the token of every
   client seen on rex-e2e that day). It is the list PMS checks a request's token against.
 - A claimed start reads it first (the probe's `claimed_start`); the claim itself did not; nothing
   reads it on a timer (the probe's hour, and four hours of the 1.42.2 reference's log).
@@ -11946,7 +11946,7 @@ Home users, each gets its own per-user access token, and they see the server wit
 
 This resolves the multi-user question left open earlier: **a server owner's Plex
 Pass covers remote streaming for every user on that server**, so one lifetime
-pass on plexa630 covers all shared users and nobody needs a Remote Watch Pass.
+pass on the owner's account covers all shared users and nobody needs a Remote Watch Pass.
 
 Limits that still bite: rex keeps no per-user state -- a claimed rex
 admits the tokens plex.tv lists for it, shared users' included (above), but
@@ -12008,8 +12008,8 @@ cost line, that read has to be recognised and bounded.
 persistently on 1.1.1.1, 8.8.8.8 and the local resolver, across two attempts.
 `trycloudflare.com` apex resolves; the quick-tunnel subdomains never published.
 
-Also: `cloudflared` silently adopted `~/.cloudflared/config.yml` (the
-`boiler-room.sarmiento.cc` named tunnel) and used its credentials for a
+Also: `cloudflared` silently adopted `~/.cloudflared/config.yml` (an
+unrelated named tunnel) and used its credentials for a
 `--url` quick tunnel, which broke routing on the first attempt. Pass an
 isolated `--config` to avoid it.
 
@@ -12027,12 +12027,12 @@ path. Since removed (`tailscale serve --https=8443 off`).
 | | |
 |---|---|
 | Hostname | `rex.example.com` (proxied CNAME, record id `<dns-record-id>`) |
-| Tunnel | `boiler-room-app`, `<tunnel-uuid>` |
+| Tunnel | an existing idle tunnel, `<tunnel-uuid>` |
 | Config | `rex/cloudflared-rex.yml` — **not** `~/.cloudflared/config.yml` |
 | Origin | `http://127.0.0.1:32400` |
 
 The tunnel was already on the account, `status: down`, with nothing listening on
-its origin port 8080 and its `boiler-room.sarmiento.cc` hostname no longer
+its origin port and its old hostname no longer
 resolving — so nothing was displaced. Its local run credentials still work; it
 came up healthy on 4 connections across txl01 and vie05.
 
@@ -12040,12 +12040,11 @@ Credential notes, since three of four did not work:
 
 - `~/.cloudflared/cert.pem` holds only an `ARGO TUNNEL TOKEN` and the API
   rejects it (`unauthorized`) — enough to *run* a tunnel, not to manage one.
-- The Nimbly global key covers only the five **Nimbly Technologies** work zones.
-  `sarmiento.cc`, `debridmediamanager.com` and the rest sit on Ben's personal
-  account `<machine-identifier>`.
-- That account's wrangler OAuth token is `zone (read)`: it lists zones and
+- A global API key for a different Cloudflare account sees none of the zones
+  that matter: an account-scoped key covers only that account's zones.
+- The zone-owning account's wrangler OAuth token is `zone (read)`: it lists zones and
   tunnels but is refused for DNS record read *and* write.
-- The personal global API key is what created the record.
+- That account's own global API key is what created the record.
 
 **Teardown:** delete DNS record `<dns-record-id>` on zone
 `<zone-id>`, and stop the `cloudflared --config
@@ -12056,7 +12055,7 @@ rex/cloudflared-rex.yml` process. Nothing else persists.
 `PUT /devices/{machineIdentifier}` **did not create a new device.** plex.tv
 resolved it to a **pre-existing** row and overwrote it:
 
-- device id `1366743689`, `clientIdentifier="zurg"`, `product="zurg"`,
+- device id `<device-id>`, `clientIdentifier="zurg"`, `product="zurg"`,
   `provides="server"`, `createdAt=1751239317` (2025-06-29)
 - overwritten: `name` → `rex-spike`, `productVersion`, `platform`,
   `platformVersion`, `device`, and its entire `Connection` list → the tailscale URL
@@ -12074,18 +12073,18 @@ does not 404, it lands somewhere else. A new device should instead be created by
 the PIN flow (`POST /api/v2/pins` + one browser authorization) and only then
 PUT by its numeric id.
 
-**Decision needed:** delete device `1366743689`, or leave it as rex's row.
+**Decision needed:** delete device `<device-id>`, or leave it as rex's row.
 
 ## Not yet done
 
 - **A GUI client.** Nothing is blocking it now — rex is live at
-  `https://rex.example.com` and discoverable on the plexa630 account. Next:
+  `https://rex.example.com` and discoverable on the owner's Plex account. Next:
   plezy (open source, debuggable on desktop), then the web app, then Android TV.
   The open question is whether official clients follow the 302 and tolerate RD's
   `application/force-download` content type.
 - Real artwork; `/photo/:/transcode` returns a generated solid-colour PNG.
 - Multi-user: each user needs their own Plex Pass, or rex runs on their LAN
-  and advertises a local connection. plexa630 has a lifetime Pass, so the spike
+  and advertises a local connection. The owner's account has a lifetime Pass, so the spike
   did not hit the remote-playback gate.
 
 ## Reference material worth keeping

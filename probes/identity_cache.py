@@ -14,6 +14,8 @@ sys.path.insert(0, 'oracle')
 import heartbeat
 
 TOKEN = os.environ["PLEX_TOKEN"]
+DEVICE_ID = os.environ["REX_DEVICE_ID"]    # the numeric plex.tv device id to re-announce
+PUBLIC_URL = os.environ["REX_PUBLIC_URL"]
 FIXED = "rex-fixed-client-7f3a91"   # stands in for a real client's identity
 
 def read(cid):
@@ -31,7 +33,7 @@ started = time.time()
 for i in range(13):
     note = ""
     if i == 6:
-        heartbeat.announce(TOKEN, "1366743689", "https://rex.sarmiento.cc",
+        heartbeat.announce(TOKEN, DEVICE_ID, PUBLIC_URL,
                            name="rex-spike")
         note = "<- re-announced here"
     f = read(FIXED)

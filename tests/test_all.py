@@ -7,7 +7,7 @@ the bytes actually decode, rather than trusting a 200.
 
 Two transports are checked separately because they behave differently:
   local   127.0.0.1:32400, straight at rex
-  public  https://rex.sarmiento.cc, through the Cloudflare tunnel, which
+  public  https://rex.example.com, through the Cloudflare tunnel, which
           strips `Range` on a prefix request
 
 A client-side gate verdict is included per item, because a 200 from rex does
@@ -106,7 +106,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--catalog", default=os.path.join(ROOT, "catalog.json"))
     parser.add_argument("--local", default="http://127.0.0.1:32400")
-    parser.add_argument("--public", default="https://rex.sarmiento.cc")
+    parser.add_argument("--public", default="https://rex.example.com")
     parser.add_argument("--skip-decode", action="store_true")
     args = parser.parse_args()
 

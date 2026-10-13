@@ -1,6 +1,6 @@
 """Keep the harness off production servers, and on exactly one server.
 
-The account that claims the lab server (plexa630) also owns two production servers, which
+The account that claims the lab server also owns two production servers, which
 are live. Blocking their hostnames is not enough: plex.tv still *lists* them, so
 the web client selects one as the active server and the session never reaches
 the lab at all -- measured, a blocked-hostname-only run drew the production server's
