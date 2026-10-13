@@ -143,11 +143,11 @@ The `media_info` above is cut down to show its shape. Send ffprobe's whole outpu
 | `path` | yes | Where the bytes are: `<source url>/<path>`. Its first directory also picks the library (below) |
 | `media_info` | yes, in practice | ffprobe's `-show_format -show_streams` JSON (go-ffprobe's `ProbeData` is the same shape). Absent, `null` or with no `streams`: the item is **held**, because Plex Web will not play an item without streams (findings, "An item without a probe cannot play") |
 | `size` | recommended | Bytes. Shown as the Part's size and used to answer a client's `Range`; without it rex passes the client's `Range` to the source as it is |
-| `ids` | recommended | `imdb` (`tt…`), `tmdb`, `tvdb`. Exact identification; without them rex identifies by `name`. `tvdb` is kept, not used |
+| `ids` | recommended | `imdb` (`tt…`), `tmdb`, `tvdb`. Exact identification; without them rex identifies by `name`, and so it does when TMDB has no title for them (below). `tvdb` is kept, not used |
 | `name` | no | The release name identification reads. Default: the folder above the file |
 | `release` | no | Groups a release's files, identified together (a season's episodes). Default: the folder above `path` |
 | `file` | no | The path clients see in Get Info, and what zurg's matcher reads back (`<mount>/<directory>/<release>/<file>`). Default `<mount>/<path>`, or `/<path>` without a mount |
-| `library` | no | A section key, or `movie`/`show`. Default: the library whose `Location` holds `file`, else one with a folder ending in a directory `path` starts with (`/mnt/zurg/movies` holds `movies/...` whatever prefix `file` has); with a type, that type's library holding `file`, else its first. Fixed when the id is first shown |
+| `library` | no | A section key, or `movie`/`show`. Default: the library whose `Location` holds `file`, else one with a folder ending in a directory `path` starts with (`/mnt/zurg/movies` holds `movies/...` whatever prefix `file` has); with a type, that type's library holding `file`, else its first. With no `library`, a release a movie library would take whose `name` carries an episode number (`E0221`, `EP1161`, `Ep.14`, `Name-15`) goes to a show library, the one beside it; a row already shown moves when its library changes |
 | `hash` | no | The release's info hash. Kept on the row; nothing reads it yet |
 
 What the fields do:
@@ -163,15 +163,27 @@ What the fields do:
   by external id; an episode's or a season's IMDb id names its show, which is how DMM knows
   most season packs), else the release name (`identify.rs`: Plex's matcher and TMDB, their
   agreement the confidence; when they name different shows and the release's season is one
-  only TMDB's has, TMDB's wins). A release no source names stays unmatched, for Fix Match.
-  An episode is numbered from `SxxEyy`, `NxNN` or a bare `E06`, in the file's name or its
-  release's.
+  only TMDB's has, TMDB's wins; a film Plex knows by no TMDB id loses to TMDB's search). An
+  id TMDB has no title for -- Plex's TMDB id for it is tried first -- or one of the other kind
+  than the library's leaves it to the name. A title only Plex knows takes Plex's own artwork.
+  A release no source names stays unmatched, for Fix Match. An episode is numbered from
+  `SxxEyy`, `NxNN`, a bare `E06`, `E0221`, `EP1161` or `Ep.14`, a number glued to the title
+  (`Gintama-340`, `Shichi-12 END`), ` - 01v2 -`, or the third of all-bracketed names
+  (`[group][Samurai Champloo][13]`), in the file's name or its release's.
 - **Late ids.** A push whose `ids` name what the row was not identified as re-identifies
   it on the same ratingKey, keeping its watch state (an episode moves to the show its new
   identity names). So does any push of a row whose ids named nothing when they came. A
   season takes the identity its episodes bring -- its guid and ids, summary and poster, the
   show's poster where TMDB has none for it -- whatever its first episode lacked, unless a
   person locked the field; seasons left without one are given theirs when the server starts.
+- **Retried.** A row on the blank tile -- a film with no poster, an episode whose show has
+  none, or a film whose release names an episode -- is identified again when the server
+  starts and every ten minutes after, up to 50 films or shows a pass, as its source pushed it.
+  One still unnamed waits an hour, then twice as long each time, to about five days. A TMDB or
+  Plex answer that found nothing or has no poster is asked again after a day.
+- **A person's match wins.** A Fix Match is recorded on the row: no push and no retry
+  identifies it, or the episodes of a show a person matched, again. Unmatch hands it back to
+  its source's ids.
 - **Versions.** A release identified as a title already here -- the same agent guid in the
   same section, and for an episode the same season -- is no new row: it joins that row as
   another Media, as a real PMS offers several files of one movie as versions (2026-10-11,

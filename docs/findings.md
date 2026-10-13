@@ -12478,3 +12478,78 @@ Plex Web 4.147.1 from rex's own `/web`, driven over raw CDP in the Windows Chrom
 So `media_info` is required and the hold is right. rex does not probe files itself: a
 source has to send ffprobe's output with each item (zurg does, from its own analysis).
 Native Plex apps were not tried.
+
+## The blank tile: what identification left unnamed (2026-10-12)
+
+Census of the production rex, each item's `thumb` fetched with the owner's token and hashed against the
+generated tile: 56 of 3,449 films, 45 of 623 shows and 140 of 1,648 seasons drew it, and every
+one was unidentified (no external `Guid`). The seasons were all under those 45 shows. Each
+release was traced through identification against the TMDB and Plex answers rex had cached,
+then asked again live (`tests/fixtures/identify/blank_tile_releases.json`):
+
+| Cause | Films | Shows |
+|---|---|---|
+| zurg filed an episode under `movies/`: its Usenet zurg's `has_episodes` reads `S01E01`, `E06` and `1x02`, not `E0221`, `EP1161`, `Ep.14`, `Name-15` or `[13]` | 39 | |
+| an id TMDB's `/find` does not know: DMM's map holds Plex's own records (`tt15679400` for Knock at the Cabin, which Plex lists beside TMDB's 631842; `tt6257382`, Plex's "Film Postcards: Serbia", for A Serbian Film) and episodes' ids | 7 | 13 |
+| a TMDB id zurg took from its own Plex match, an episode's (Pawn Stars came as 1559521: no show has it) | 2 | 9 |
+| an id or name of the other kind than the library's (Bill Nye's id is a one-episode film), so nothing placed it | | 7 |
+| known only to Plex, which has no TMDB id for it (the Monogatari seasons it keeps as shows, Wallace & Gromit) | 1 | 7 |
+| a name not read: `AKA` titles, all-bracket names, a stage recording | 5 | 6 |
+| TMDB had no poster yet when its answer was kept, and a kept answer was never asked again (Camp CrunchLabs has one now) | 2 | 2 |
+| a Russian release name with only a TVDB id | | 1 |
+
+None was a transient failure: asked again live, every lookup answered as its kept answer had,
+except the two details answers that have a poster now (a failed lookup is not logged, and was
+never kept). What kept them blank is that nothing asked again: the feed re-identifies a row only
+when its source's ids change, and an answer that found nothing was kept for good.
+
+What a real PMS shows for an item nothing matched, measured on plexscratch (1.43.4, no route
+out, so its agent cannot match): a movie scanned from one never-matched folder came back as
+`local://66` with `thumb` and `art` both set, `UltraBlurColors` computed, and both serving a
+frame of the file (`thumb` a 720x405 JPEG, `art` 1280x720). So a real PMS never omits `thumb`
+for an unmatched item and its client never draws the title instead: it draws a frame. rex reads
+no media and keeps its generated tile; the measurement does not support dropping `thumb`.
+
+What changed:
+
+1. The parser reads `E0221`, `EP1161`, `Ep.14` and `Name-15` (two or three digits, no year,
+   with a `v2`, a last episode's `END` or a reposter's `-RakuvFIN` after it), ` - 01v2 - `,
+   and all-bracketed `[group][Samurai Champloo][13]` as episode numbers, `Seasons 1 to 25` and
+   `seasons.01-09` as season packs, and an `AKA` or `aka` name by its first title: TMDB found
+   all nine `AKA` films on the production server by it and missed `La Haine AKA Hate` by the second. The native
+   and Python parsers agree on all 12,812 release names the production server holds, its Usenet backlog included.
+2. A movie-library release whose own name carries an episode number goes to the show library
+   beside it, and a row already filed there moves on its source's next push or the retry.
+   Release names only: the one false hit among the production server's 3,445 films was an extra's file name.
+3. An exact id resolves through Plex's TMDB id when TMDB's `/find` has none, if TMDB has that
+   title; otherwise, or when it names the other kind than the library's, the name decides.
+   A film Plex answers with no TMDB id loses a dispute to TMDB's search (the identify corpus
+   names 194 of 200, up from 193). The library's kind is the only one asked.
+4. Plex's own poster and art draw a title TMDB has none for.
+5. A start, and every ten minutes after, names again up to 50 films or shows on the blank
+   tile, each waiting an hour, then twice as long each time, while nothing names it. A TMDB
+   or Plex answer that found nothing or has no poster is asked again after a day; while the
+   provider is unreachable the kept answer stands.
+6. What a person matched is theirs: a Fix Match records it, no push or retry identifies that
+   row or its show's episodes again, and Unmatch hands it back. Matching a row into another
+   keeps its release on the survivor, where it was lost and came back as a row of its own.
+7. A row placed again lets requests through every eight rows. Rehearsed on the test host against a copy
+   of the production rex's rows and caches with real keys, the first pass named 50 titles' 2,154 rows and
+   held the runtime lock for 2.5 minutes in one go; with the yield, polling `/library/sections`
+   every half second through two passes, the slowest answer took 2.8 s (median 0.05 s). After
+   those two passes (27 minutes) the blank tile was down to 11 films, 10 shows and 10 seasons,
+   40 of the films having become episodes on their own keys.
+
+Live on the production rex (2026-10-13): at 00:40 UTC, with the Usenet library filling, 104 of 3,580
+films, 47 of 629 shows and 142 of 1,679 seasons drew the blank tile; by 02:33, after the passes
+and each row's second try, 10 of 3,542 films, 12 of 629 shows and 12 of 1,655 seasons did. 58 of
+the films held before were episodes on their own keys; the rest had folded into an episode row
+already there, as another version.
+
+What stays on the blank tile, and why: three films zurg has removed, in the trash and so never
+retried; names no lookup reads (`Hibike Euphonium 3`, `Shiguang Dailiren Season 3`, the `Part 2`
+cours, a Russian release name, an OVA, two stage recordings, `Ghost in the Shell 2.0`); titles
+TMDB and Plex both have without a poster (The Marquee, a 2024 Hit Man that is not Linklater's,
+which zurg's id names, two TMDB show entries); a featurette TMDB files as television in the movie
+library; and Tears of Steel, which is two releases (RD and TorBox) on one row and so is never
+named again by one of them.

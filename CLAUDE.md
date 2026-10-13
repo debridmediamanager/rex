@@ -43,7 +43,7 @@ searched on disk. The gate is usually one truthiness check in minified code.
 | `tests/` | Conformance and end-to-end suites, plus `catalog_ui.json` and `fixtures/decisions/`, the measured decision corpus |
 | `tests/fixtures/` | Redacted corpora recorded from a real PMS through a real client; `media/` pairs real files' probes with a real PMS's analysis of them |
 | `harness/` | plexlab — the reference PMS and the recorder. See below. |
-| `probes/` | Measurement scripts: the recorders behind checked-in fixtures (`record_identify_corpus.py`, `record_episode_id_corpus.py`, `legacy_scan_fixture.py`), `ui_surface.py`, the plex.tv presence probes, `apkcensus.py`, and the lockstep diff (`pair.py`, `vsweep.py`, `ndiff.py`) |
+| `probes/` | Measurement scripts: the recorders behind checked-in fixtures (`record_identify_corpus.py`, `record_episode_id_corpus.py`, `record_unidentified_corpus.py`, which also tops a corpus up, `legacy_scan_fixture.py`), `ui_surface.py`, the plex.tv presence probes, `apkcensus.py`, and the lockstep diff (`pair.py`, `vsweep.py`, `ndiff.py`) |
 | `docs/findings.md` | Everything measured. Read before changing behaviour. |
 | `docs/protocol-traps.md`, `docs/setup.md`, `docs/feed-api.md` | The protocol's edge cases, the operator's guide, and the API sources push with |
 
@@ -487,6 +487,7 @@ python3 tests/test_feed.py                  # the feed API against a stub source
                                             # items, trash and return, snapshot reconcile and guards, migration
 python3 tests/test_feed_versions.py         # two releases of one title: one row, a Media each (a real library's 127 Hours)
 python3 tests/test_feed_season_art.py       # a season takes its identification once an episode has it (a real library's Black Mirror S6)
+python3 tests/test_feed_blank_tiles.py      # what a real library drew the blank tile for gets named; a person's Fix Match stays theirs
 python3 tests/test_sources.py               # sources that are not zurg: a server ignoring Range, a redirect to a CDN
 python3 tests/test_server_command.py        # the launcher's native default and python override
 cargo test --manifest-path rust/Cargo.toml  # the Rust unit tests
