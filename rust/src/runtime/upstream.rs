@@ -8,6 +8,8 @@
 //! zurg stub up on a local plain port.
 
 use super::*;
+#[cfg(windows)]
+use rustls::pki_types::CertificateDer;
 use rustls::pki_types::ServerName;
 use rustls::{ClientConfig, ClientConnection, RootCertStore};
 use std::net::ToSocketAddrs;
@@ -32,6 +34,14 @@ fn client_config() -> Option<Arc<ClientConfig>> {
                 }
                 if !roots.is_empty() {
                     break;
+                }
+            }
+            #[cfg(windows)]
+            if roots.is_empty() {
+                if let Ok(certificates) = crate::platform::system_root_certificates() {
+                    for certificate in certificates {
+                        let _ = roots.add(CertificateDer::from(certificate));
+                    }
                 }
             }
             if roots.is_empty() {
@@ -124,7 +134,11 @@ impl Upstream {
 
 fn read_line(reader: &mut BufReader<Conn>) -> io::Result<String> {
     let mut line = Vec::new();
-    std::io::BufRead::read_until(reader, b'\n', &mut line)?;
+    // `read_until` otherwise keeps growing its destination until a newline or EOF.  The
+    // Take wrapper limits both the bytes read and the allocation when a peer leaves a
+    // malformed header unterminated.
+    let mut limited = reader.take(64 * 1024 + 1);
+    std::io::BufRead::read_until(&mut limited, b'\n', &mut line)?;
     if line.len() > 64 * 1024 {
         return Err(io::Error::new(io::ErrorKind::InvalidData, "header line too long"));
     }
@@ -188,10 +202,11 @@ struct Target {
 }
 
 fn parse_url(url: &str) -> Option<Target> {
-    let (tls, rest) = if let Some(rest) = url.strip_prefix("https://") {
-        (true, rest)
-    } else if let Some(rest) = url.strip_prefix("http://") {
-        (false, rest)
+    let (scheme, rest) = url.split_once("://")?;
+    let tls = if scheme.eq_ignore_ascii_case("https") {
+        true
+    } else if scheme.eq_ignore_ascii_case("http") {
+        false
     } else {
         return None;
     };
@@ -202,13 +217,85 @@ fn parse_url(url: &str) -> Option<Target> {
     };
     let authority = authority.rsplit_once('@').map_or(authority, |(_, host)| host);
     let (host, port) = match authority.rsplit_once(':') {
-        Some((host, port)) if !host.is_empty() => (host.to_string(), port.parse::<u16>().ok()?),
-        _ => (authority.to_string(), if tls { 443 } else { 80 }),
+        Some((host, port)) if !host.is_empty() => (host.to_ascii_lowercase(), port.parse::<u16>().ok()?),
+        _ => (authority.to_ascii_lowercase(), if tls { 443 } else { 80 }),
     };
     if host.is_empty() {
         return None;
     }
     Some(Target { tls, host, port, path })
+}
+
+fn normalize_path(path: &str) -> String {
+    // RFC 3986 section 5.2.4, kept as a string operation so encoded data and
+    // repeated slashes remain untouched.
+    let mut input = path.to_string();
+    let mut output = String::new();
+    while !input.is_empty() {
+        if input.starts_with("../") {
+            input.drain(..3);
+        } else if input.starts_with("./") {
+            input.drain(..2);
+        } else if input.starts_with("/./") {
+            input.replace_range(..3, "/");
+        } else if input == "/." {
+            input.replace_range(..2, "/");
+        } else if input.starts_with("/../") {
+            input.replace_range(..4, "/");
+            if let Some(last) = output.rfind('/') {
+                output.truncate(last);
+            } else {
+                output.clear();
+            }
+        } else if input == "/.." {
+            input.replace_range(..3, "/");
+            if let Some(last) = output.rfind('/') {
+                output.truncate(last);
+            } else {
+                output.clear();
+            }
+        } else if input == "." || input == ".." {
+            input.clear();
+        } else {
+            let end = if input.starts_with('/') {
+                input[1..].find('/').map_or(input.len(), |index| index + 1)
+            } else {
+                input.find('/').unwrap_or(input.len())
+            };
+            output.push_str(&input[..end]);
+            input.drain(..end);
+        }
+    }
+    output
+}
+
+fn redirect_url(target: &Target, location: &str) -> String {
+    let location = location.split('#').next().unwrap_or_default();
+    if location
+        .split_once("://")
+        .is_some_and(|(scheme, _)| scheme.eq_ignore_ascii_case("http") || scheme.eq_ignore_ascii_case("https"))
+    {
+        return location.to_string();
+    }
+    let scheme = if target.tls { "https" } else { "http" };
+    if location.starts_with("//") {
+        return format!("{scheme}:{location}");
+    }
+    if location.is_empty() {
+        return format!("{scheme}://{}:{}{}", target.host, target.port, target.path);
+    }
+    let base_path = target.path.split_once('?').map_or(target.path.as_str(), |(path, _)| path);
+    let (path, query) = location.split_once('?').map_or((location, None), |(path, query)| (path, Some(query)));
+    let path = if path.is_empty() {
+        base_path.to_string()
+    } else if path.starts_with('/') {
+        normalize_path(path)
+    } else {
+        let directory = base_path.rsplit_once('/').map_or("", |(directory, _)| directory);
+        normalize_path(&format!("{directory}/{path}"))
+    };
+    let query = query.map_or(String::new(), |query| format!("?{query}"));
+    format!("{scheme}://{}:{}{}{}", target.host, target.port, path, query)
 }
 
 fn connect(target: &Target, timeout: Duration) -> Result<Conn, String> {
@@ -342,19 +429,7 @@ pub(super) fn open(
         let Some(location) = response.header("location").filter(|_| redirect) else {
             return Ok(response);
         };
-        url = if location.starts_with("http://") || location.starts_with("https://") {
-            location.to_string()
-        } else if location.starts_with('/') {
-            format!(
-                "{}://{}:{}{}",
-                if target.tls { "https" } else { "http" },
-                target.host,
-                target.port,
-                location
-            )
-        } else {
-            return Ok(response);
-        };
+        url = redirect_url(&target, location);
     }
     Err("too many upstream redirects".to_string())
 }
@@ -397,4 +472,97 @@ pub(super) fn quote_plus(value: &str) -> String {
         }
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+    use std::net::TcpListener;
+    use std::sync::mpsc;
+    use std::thread::JoinHandle;
+    use std::time::Instant;
+
+    fn stub(response: Vec<u8>, hold_open: bool) -> (String, mpsc::Sender<()>, JoinHandle<()>) {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).expect("stub listener");
+        let address = listener.local_addr().expect("stub address");
+        let (release, released) = mpsc::channel();
+        let thread = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().expect("upstream connection");
+            stream.write_all(&response).expect("stub response");
+            stream.flush().expect("stub flush");
+            if hold_open {
+                let _ = released.recv_timeout(Duration::from_secs(5));
+            }
+        });
+        (format!("http://{address}/"), release, thread)
+    }
+
+    #[test]
+    fn redirect_paths_follow_rfc3986_examples_without_decoding() {
+        let target = parse_url("http://a/b/c/d;p?q").expect("test URL parses");
+        let uppercase = parse_url("HTTP://LOCALHOST:123/Path").expect("case-insensitive URL parses");
+        assert_eq!(uppercase.host, "localhost");
+        assert!(!uppercase.tls);
+        // RFC 3986 section 5.4, plus the empty-segment and query cases that
+        // matter to signed media URLs.
+        let cases = [
+            ("g", "http://a:80/b/c/g"),
+            ("./g", "http://a:80/b/c/g"),
+            ("g/", "http://a:80/b/c/g/"),
+            ("/g", "http://a:80/g"),
+            ("//g", "http://g"),
+            ("?y", "http://a:80/b/c/d;p?y"),
+            ("g?y", "http://a:80/b/c/g?y"),
+            ("#s", "http://a:80/b/c/d;p?q"),
+            ("g#s", "http://a:80/b/c/g"),
+            (".", "http://a:80/b/c/"),
+            ("./g/.", "http://a:80/b/c/g/"),
+            ("..", "http://a:80/b/"),
+            ("../g", "http://a:80/b/g"),
+            ("/a//b", "http://a:80/a//b"),
+            ("g%2Fh?x=a//b", "http://a:80/b/c/g%2Fh?x=a//b"),
+            ("HTTP://A/Case", "HTTP://A/Case"),
+        ];
+        for (location, expected) in cases {
+            assert_eq!(redirect_url(&target, location), expected, "Location: {location}");
+        }
+    }
+
+    #[test]
+    fn unterminated_upstream_header_is_rejected_at_the_limit() {
+        let mut response = b"HTTP/1.1 200 OK\r\nX-Broken: ".to_vec();
+        response.extend(std::iter::repeat_n(b'x', 64 * 1024));
+        let (url, release, thread) = stub(response, true);
+        let target = parse_url(&url).expect("stub URL");
+        let started = Instant::now();
+        let error = match exchange("GET", &target, &[], b"", Duration::from_millis(250)) {
+            Ok(_) => panic!("unterminated header was accepted"),
+            Err(error) => error,
+        };
+        assert!(error.to_string().contains("header line too long"));
+        assert!(started.elapsed() < Duration::from_secs(1), "reader waited for EOF");
+        release.send(()).expect("release stub");
+        thread.join().expect("stub thread");
+    }
+
+    #[test]
+    fn valid_upstream_headers_still_read_the_body() {
+        let (url, _release, thread) = stub(
+            b"HTTP/1.1 200 OK\r\nContent-Length: 3\r\nX-Test: valid\r\n\r\nabc".to_vec(),
+            false,
+        );
+        let target = parse_url(&url).expect("stub URL");
+        let mut response = exchange("GET", &target, &[], b"", Duration::from_secs(1)).expect("response");
+        assert_eq!(response.header("x-test"), Some("valid"));
+        assert_eq!(response.read_body(3).expect("body"), b"abc");
+        thread.join().expect("stub thread");
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_root_store_configures_tls() {
+        assert!(!crate::platform::system_root_certificates().expect("Windows ROOT store").is_empty());
+        assert!(client_config().is_some());
+    }
 }

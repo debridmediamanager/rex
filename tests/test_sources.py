@@ -81,8 +81,26 @@ def front_handler(cdn_port, seen):
             status = 302 if self.headers.get("Authorization") == expected else 401
             self.send_response(status)
             if status == 302:
-                # Another host: `localhost`, where the source's url names 127.0.0.1.
-                self.send_header("Location", "http://localhost:%d%s?X-Amz-Signature=x" % (cdn_port, self.path))
+                if self.path.startswith("/files/redirect/"):
+                    if "?" in self.path:
+                        # The third hop is another origin: `localhost` on the CDN port.
+                        # The fragment is client-side only.
+                        location = "//localhost:%d/relative.mkv#fragment" % cdn_port
+                    else:
+                        # Query-only references keep the current path before the CDN hop.
+                        location = "?signed=1"
+                elif self.path.startswith("/files/"):
+                    # Same-origin redirects may vary scheme and DNS host case. The client
+                    # must still retain this source's credential for the next hop.
+                    location = "HTTP://LOCALHOST:%d/redirect/relative.mkv" % self.server.server_address[1]
+                elif self.path.startswith("/redirect/relative.mkv"):
+                    if "?" in self.path:
+                        location = "//localhost:%d/relative.mkv#fragment" % cdn_port
+                    else:
+                        location = "?signed=1"
+                else:
+                    location = "../../redirect/relative.mkv"
+                self.send_header("Location", location)
             self.send_header("Content-Length", "0")
             self.end_headers()
 
@@ -150,7 +168,7 @@ def main():
     catalog(work)
     port, process, log = start(work, {
         "disk": {"url": "http://127.0.0.1:%d" % disk_port, "token": "disk-feed"},
-        "front": {"url": "http://127.0.0.1:%d/files" % front_port, "user": FRONT_USER,
+        "front": {"url": "http://localhost:%d/files" % front_port, "user": FRONT_USER,
                   "password": FRONT_PASSWORD, "token": "front-feed"},
         "plain": {"url": "http://127.0.0.1:%d" % disk_port, "token": "plain-feed"},
     })
@@ -199,13 +217,18 @@ def main():
         status, raw = call(port, disk_part)
         check("a whole read from it is the whole file", status == 200 and raw == BODY, (status, len(raw)))
 
-        # -- a redirect to another host: the source's credential stays with the source ----
+        # -- a redirect chain ends at another origin: the source's credential stays with the source ----
         status, raw = call(port, front_part, headers={"Range": "bytes=100-199"})
         check("a part the source redirects elsewhere streams from there", status == 206 and raw == BODY[100:200],
               (status, raw[:60]))
         check("the source itself got its credential", front_seen and front_seen[-1][1], front_seen[-1:])
+        check("case-insensitive same-origin redirect keeps its credential",
+              any(path == "/redirect/relative.mkv" and authorization for path, authorization in front_seen),
+              front_seen)
+        check("a query-only redirect keeps its current path", any(path.endswith("?signed=1") for path, _ in front_seen), front_seen)
         check("the other host never sees the source's credential", cdn_seen and not any(a for _, a, _ in cdn_seen),
               cdn_seen)
+        check("a protocol-relative redirect drops its fragment", cdn_seen and cdn_seen[-1][0] == "/relative.mkv", cdn_seen)
         check("and gets the Range", cdn_seen and cdn_seen[-1][2] == "bytes=100-199", cdn_seen[-1:])
     finally:
         process.terminate()

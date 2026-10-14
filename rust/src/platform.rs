@@ -169,6 +169,120 @@ pub(crate) fn random_bytes(buffer: &mut [u8]) -> io::Result<()> {
     }
 }
 
+/// Copy the DER certificates from Windows' current-user ROOT store, which includes inherited
+/// machine roots. The returned bytes own their storage because `CertEnumCertificatesInStore`
+/// invalidates the previous context as it advances.
+#[cfg(windows)]
+pub(crate) fn system_root_certificates() -> io::Result<Vec<Vec<u8>>> {
+    let store_name = "ROOT\0".encode_utf16().collect::<Vec<_>>();
+    // SAFETY: the store name is NUL-terminated for the duration of the call. Each context is
+    // copied before asking Windows for the next one, and the store is closed on every path.
+    unsafe {
+        let store = win::CertOpenSystemStoreW(std::ptr::null_mut(), store_name.as_ptr());
+        if store.is_null() {
+            return Err(io::Error::last_os_error());
+        }
+        let mut certificates = Vec::new();
+        let mut previous = std::ptr::null();
+        let mut failure = None;
+        loop {
+            let context = win::CertEnumCertificatesInStore(store, previous);
+            if context.is_null() {
+                break;
+            }
+            let certificate = &*context;
+            if certificate.pbCertEncoded.is_null() || certificate.cbCertEncoded == 0 {
+                // CertCloseStore does not free contexts returned by enumeration. The normal
+                // next enumeration frees `previous`; this error path has no next call.
+                win::CertFreeCertificateContext(context);
+                failure = Some(io::Error::new(io::ErrorKind::InvalidData, "Windows ROOT certificate has no DER data"));
+                break;
+            }
+            if certificate_allows_server_auth(context) {
+                certificates.push(
+                    std::slice::from_raw_parts(certificate.pbCertEncoded, certificate.cbCertEncoded as usize)
+                        .to_vec(),
+                );
+            }
+            previous = context;
+        }
+        let close_error = (win::CertCloseStore(store, 0) == 0).then(io::Error::last_os_error);
+        if let Some(error) = failure {
+            return Err(error);
+        }
+        if let Some(error) = close_error {
+            return Err(error);
+        }
+        Ok(certificates)
+    }
+}
+
+#[cfg(windows)]
+fn certificate_allows_server_auth(context: *const win::CertContext) -> bool {
+    use std::ffi::CStr;
+
+    const CRYPT_E_NOT_FOUND: u32 = 0x8009_2004;
+    const SERVER_AUTH: &[u8] = b"1.3.6.1.5.5.7.3.1";
+
+    // CertVerifyTimeValidity returns zero when the certificate is currently valid. A nonzero
+    // result means it is not yet valid or has expired.
+    if context.is_null() || unsafe { (*context).pCertInfo.is_null() } {
+        return false;
+    }
+    if unsafe { win::CertVerifyTimeValidity(std::ptr::null(), (*context).pCertInfo) } != 0 {
+        return false;
+    }
+
+    let mut size = 0_u32;
+    // SAFETY: the first call only asks crypt32 for the buffer size.
+    let status = unsafe { win::CertGetEnhancedKeyUsage(context, 0, std::ptr::null_mut(), &mut size) };
+    if status == 0 || (size as usize) < std::mem::size_of::<win::CertEnhancedKeyUsage>() {
+        return false;
+    }
+
+    // The returned struct and its OID pointers are packed into the caller-provided buffer.
+    // Vec<usize> gives the buffer the pointer alignment required by CERT_ENHKEY_USAGE and
+    // leaves the storage alive while the OID strings are inspected.
+    let words = (size as usize).div_ceil(std::mem::size_of::<usize>());
+    let mut buffer = vec![0_usize; words];
+    let mut fill_size = size;
+    // SAFETY: buffer is aligned and at least the size crypt32 requested; crypt32 fills the
+    // struct and points its OID strings into that same live buffer.
+    let fill_status = unsafe {
+        win::CertGetEnhancedKeyUsage(
+            context,
+            0,
+            buffer.as_mut_ptr().cast(),
+            &mut fill_size,
+        )
+    };
+    let fill_error = unsafe { win::GetLastError() };
+    if fill_status == 0 {
+        return false;
+    }
+    let usage = unsafe { &*buffer.as_ptr().cast::<win::CertEnhancedKeyUsage>() };
+    if usage.cUsageIdentifier == 0 {
+        return fill_error == CRYPT_E_NOT_FOUND;
+    }
+    let identifiers = if usage.rgpszUsageIdentifier.is_null() {
+        &[][..]
+    } else {
+        // SAFETY: crypt32 supplied exactly cUsageIdentifier NUL-terminated OID pointers in
+        // the buffer described by the successful call above.
+        unsafe {
+            std::slice::from_raw_parts(usage.rgpszUsageIdentifier, usage.cUsageIdentifier as usize)
+        }
+    };
+    identifiers.iter().any(|identifier| {
+        if identifier.is_null() {
+            return false;
+        }
+        // SAFETY: enhanced-key-usage identifiers are NUL-terminated ANSI OIDs from crypt32.
+        let identifier = unsafe { CStr::from_ptr(*identifier) }.to_bytes();
+        identifier == SERVER_AUTH
+    })
+}
+
 // The manager's process control. `rex manager` is Linux and macOS only, as manager.py was:
 // it supervises servers as process groups of their own and stops them with signals.
 
@@ -302,11 +416,27 @@ pub(crate) fn gdm_socket(port: u16) -> io::Result<UdpSocket> {
 #[allow(non_snake_case)]
 mod win {
     pub(super) type Handle = *mut core::ffi::c_void;
+    pub(super) type CertStore = *mut core::ffi::c_void;
 
     #[repr(C)]
     pub(super) struct FileTime {
         pub(super) low: u32,
         pub(super) high: u32,
+    }
+
+    #[repr(C)]
+    pub(super) struct CertContext {
+        pub(super) dwCertEncodingType: u32,
+        pub(super) pbCertEncoded: *const u8,
+        pub(super) cbCertEncoded: u32,
+        pub(super) pCertInfo: *const core::ffi::c_void,
+        pub(super) hCertStore: CertStore,
+    }
+
+    #[repr(C)]
+    pub(super) struct CertEnhancedKeyUsage {
+        pub(super) cUsageIdentifier: u32,
+        pub(super) rgpszUsageIdentifier: *mut *mut i8,
     }
 
     pub(super) const PROCESS_TERMINATE: u32 = 0x0001;
@@ -315,6 +445,8 @@ mod win {
     #[link(name = "kernel32")]
     extern "system" {
         pub(super) fn GetCurrentThreadId() -> u32;
+        pub(super) fn GetLastError() -> u32;
+        pub(super) fn SetLastError(error: u32);
         pub(super) fn GetCurrentProcess() -> Handle;
         pub(super) fn GetProcessTimes(
             process: Handle,
@@ -343,6 +475,30 @@ mod win {
     #[link(name = "bcrypt")]
     extern "system" {
         pub(super) fn BCryptGenRandom(algorithm: Handle, buffer: *mut u8, size: u32, flags: u32) -> i32;
+    }
+
+    #[link(name = "crypt32")]
+    extern "system" {
+        pub(super) fn CertOpenSystemStoreW(provider: Handle, store_name: *const u16) -> CertStore;
+        pub(super) fn CertEnumCertificatesInStore(store: CertStore, previous: *const CertContext) -> *const CertContext;
+        pub(super) fn CertCreateCertificateContext(
+            encoding: u32,
+            encoded: *const u8,
+            length: u32,
+        ) -> *const CertContext;
+        pub(super) fn CertFreeCertificateContext(context: *const CertContext) -> i32;
+        pub(super) fn CertSetEnhancedKeyUsage(context: *const CertContext, usage: *const CertEnhancedKeyUsage) -> i32;
+        pub(super) fn CertCloseStore(store: CertStore, flags: u32) -> i32;
+        pub(super) fn CertGetEnhancedKeyUsage(
+            context: *const CertContext,
+            flags: u32,
+            usage: *mut CertEnhancedKeyUsage,
+            size: *mut u32,
+        ) -> i32;
+        pub(super) fn CertVerifyTimeValidity(
+            time: *const FileTime,
+            info: *const core::ffi::c_void,
+        ) -> i32;
     }
 
     /// Open `pid` with `access`, run `body` on the handle, close it. A process that is
@@ -403,5 +559,116 @@ mod tests {
         let status = child.wait().expect("the killed child to be reaped");
         assert!(!status.success());
         let _ = std::fs::remove_file(&path);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn cert_context_matches_windows_sdk_layout() {
+        use std::mem::{align_of, offset_of, size_of};
+
+        let pointer = size_of::<*const u8>();
+        let alignment = align_of::<*const u8>();
+        let align = |offset: usize| (offset + alignment - 1) & !(alignment - 1);
+        let encoded = align(size_of::<u32>());
+        let length = encoded + pointer;
+        let info = align(length + size_of::<u32>());
+        let store = info + pointer;
+        assert_eq!(offset_of!(super::win::CertContext, dwCertEncodingType), 0);
+        assert_eq!(offset_of!(super::win::CertContext, pbCertEncoded), encoded);
+        assert_eq!(offset_of!(super::win::CertContext, cbCertEncoded), length);
+        assert_eq!(offset_of!(super::win::CertContext, pCertInfo), info);
+        assert_eq!(offset_of!(super::win::CertContext, hCertStore), store);
+        assert_eq!(size_of::<super::win::CertContext>(), store + pointer);
+
+        let usage_identifiers = align(size_of::<u32>());
+        assert_eq!(offset_of!(super::win::CertEnhancedKeyUsage, cUsageIdentifier), 0);
+        assert_eq!(offset_of!(super::win::CertEnhancedKeyUsage, rgpszUsageIdentifier), usage_identifiers);
+        assert_eq!(size_of::<super::win::CertEnhancedKeyUsage>(), usage_identifiers + pointer);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_roots_require_server_auth_and_current_validity() {
+        fn allows(der: &[u8]) -> bool {
+            let context = unsafe {
+                super::win::CertCreateCertificateContext(
+                    1,
+                    der.as_ptr(),
+                    u32::try_from(der.len()).expect("fixture fits in a certificate context"),
+                )
+            };
+            assert!(!context.is_null(), "fixture should decode as a certificate");
+            let allowed = super::certificate_allows_server_auth(context);
+            unsafe {
+                super::win::CertFreeCertificateContext(context);
+            }
+            allowed
+        }
+
+        assert!(allows(include_bytes!("../../tests/fixtures/windows/server-auth.der")));
+        assert!(!allows(include_bytes!("../../tests/fixtures/windows/code-signing.der")));
+        assert!(allows(include_bytes!("../../tests/fixtures/windows/all-uses.der")));
+        assert!(!allows(include_bytes!("../../tests/fixtures/windows/expired-server-auth.der")));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_eku_properties_filter_server_auth_without_store_mutation() {
+        use std::ffi::CString;
+
+        const CRYPT_E_NOT_FOUND: u32 = 0x8009_2004;
+        const SERVER_AUTH: &[u8] = b"1.3.6.1.5.5.7.3.1";
+        const CODE_SIGNING: &[u8] = b"1.3.6.1.5.5.7.3.3";
+        let all_uses = include_bytes!("../../tests/fixtures/windows/all-uses.der");
+
+        fn context(der: &[u8]) -> *const super::win::CertContext {
+            let context = unsafe {
+                super::win::CertCreateCertificateContext(
+                    1,
+                    der.as_ptr(),
+                    u32::try_from(der.len()).expect("fixture fits in a certificate context"),
+                )
+            };
+            assert!(!context.is_null(), "fixture should decode as a certificate");
+            context
+        }
+
+        fn property_restricted(der: &[u8], oid: &[u8]) -> bool {
+            let context = context(der);
+            let oid = CString::new(oid).expect("OID has no NUL bytes");
+            let mut identifiers = [oid.as_ptr().cast_mut()];
+            let usage = super::win::CertEnhancedKeyUsage {
+                cUsageIdentifier: 1,
+                rgpszUsageIdentifier: identifiers.as_mut_ptr(),
+            };
+            let set = unsafe { super::win::CertSetEnhancedKeyUsage(context, &usage) };
+            assert_ne!(set, 0, "in-memory EKU property should be set");
+            let allowed = super::certificate_allows_server_auth(context);
+            unsafe {
+                super::win::CertFreeCertificateContext(context);
+            }
+            allowed
+        }
+
+        assert!(property_restricted(all_uses, SERVER_AUTH));
+        assert!(!property_restricted(all_uses, CODE_SIGNING));
+
+        let all_context = context(all_uses);
+        assert!(super::certificate_allows_server_auth(all_context));
+        let disabled = super::win::CertEnhancedKeyUsage {
+            cUsageIdentifier: 0,
+            rgpszUsageIdentifier: std::ptr::null_mut(),
+        };
+        let set = unsafe { super::win::CertSetEnhancedKeyUsage(all_context, &disabled) };
+        assert_ne!(set, 0, "in-memory disabled EKU property should be set");
+        // A zero-count property is no-valid-uses when the fill reports S_OK. Prime the thread
+        // error to catch helpers that reuse a stale error instead of reading it after the fill.
+        unsafe {
+            super::win::SetLastError(CRYPT_E_NOT_FOUND);
+        }
+        assert!(!super::certificate_allows_server_auth(all_context));
+        unsafe {
+            super::win::CertFreeCertificateContext(all_context);
+        }
     }
 }
