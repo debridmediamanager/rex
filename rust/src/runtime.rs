@@ -19054,6 +19054,7 @@ impl Runtime {
                 for gone in &doomed {
                     if self.catalog.remove(gone).is_some() {
                         self.deleted.insert(gone.clone());
+                        self.forget_history(gone);
                     }
                 }
                 // `library.recount`: the show above a deleted season or episode is
@@ -21010,20 +21011,7 @@ impl Runtime {
                 if let Some(gone_key) = key_of(gone) {
                     self.catalog.remove(&gone_key);
                     self.forget_row(&gone_key);
-                    // `library._forget_item`, measured on the reference: a removed row's
-                    // history SURVIVES as `{historyKey, title, viewedAt, ...}` with its
-                    // `ratingKey` and `key` stripped. Keeping them made the History page
-                    // link a 404.
-                    for entry in self.history.iter_mut() {
-                        if entry.get("ratingKey").map(string_value).as_deref()
-                            == Some(gone_key.as_str())
-                        {
-                            if let Some(object) = entry.as_object_mut() {
-                                object.shift_remove("ratingKey");
-                                object.shift_remove("key");
-                            }
-                        }
-                    }
+                    self.forget_history(&gone_key);
                 }
             }
             removed_rows.extend(source_rows);

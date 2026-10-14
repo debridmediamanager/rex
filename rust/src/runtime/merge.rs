@@ -66,6 +66,21 @@ impl Runtime {
         }
     }
 
+    /// `library._forget_item`, which the oracle runs for every row a DELETE or a show merge
+    /// removes (never a plain merge): measured on the reference, a removed row's history
+    /// SURVIVES as `{historyKey, title, viewedAt, ...}` with its `ratingKey` and `key`
+    /// stripped. Keeping them made the History page link a 404.
+    pub(super) fn forget_history(&mut self, key: &str) {
+        for entry in self.history.iter_mut() {
+            if entry.get("ratingKey").map(string_value).as_deref() == Some(key) {
+                if let Some(object) = entry.as_object_mut() {
+                    object.shift_remove("ratingKey");
+                    object.shift_remove("key");
+                }
+            }
+        }
+    }
+
     /// `PUT /library/metadata/{id}/split`: one row per Media again, each new row on a
     /// fresh key carrying the source's metadata, its guid and locks included.
     pub(super) fn route_split(&mut self, key: &str) -> Response {

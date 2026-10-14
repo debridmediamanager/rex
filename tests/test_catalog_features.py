@@ -291,6 +291,7 @@ def main():
     run_additions(check)
     run_durations(check)
     run_show_merge_lists(check)
+    run_item_delete_forgets(check)
     run_zurg(check)
     run_gdm(check)
     run_specials(check)
@@ -1104,6 +1105,41 @@ def run_show_merge_lists(check):
         check("a show merge retires the absorbed keys, so a split never reuses one",
               split == 200 and statuses == [404, 200], "split %s, 1952 and 1953: %s"
               % (split, statuses))
+    finally:
+        server.stop()
+
+
+def run_item_delete_forgets(check):
+    """`DELETE /library/metadata/{id}` forgets the row the way the oracle's `library.delete`
+    did: its history rows SURVIVE with `ratingKey` and `key` stripped (measured on the
+    reference: rex kept both, so the History page linked a 404)."""
+    document = copy.deepcopy(BASE)
+    for key in ("1960", "1961", "1962"):
+        media = [{"id": int(key) * 10 + offset, "duration": 600000,
+                  "Part": [{"id": int(key) * 10 + offset, "duration": 600000}]}
+                 for offset in range(2 if key == "1960" else 1)]
+        document["items"].append({"ratingKey": key, "key": "/library/metadata/" + key,
+                                  "type": "movie", "title": "Delete Forgets %s" % key,
+                                  "librarySectionID": 1, "duration": 600000, "Media": media})
+    server = Server(document)
+    try:
+        session = {"X-Plex-Client-Identifier": "delete-forgets-player",
+                   "X-Plex-Session-Identifier": "delete-forgets-session",
+                   "X-Plex-Product": "Plex Web", "X-Plex-Platform": "Chrome"}
+        for state, offset in (("playing", 10000), ("playing", 300000), ("stopped", 590000)):
+            server.request("GET", "/:/timeline?ratingKey=1962&key=%%2Flibrary%%2Fmetadata%%2F1962"
+                           "&state=%s&time=%d&duration=600000" % (state, offset), session)
+        watched = next((row for row in server.json("/status/sessions/history/all")
+                        .get("Metadata") or [] if row.get("ratingKey") == "1962"), {})
+        deleted = server.request("DELETE", "/library/metadata/1962")[0]
+        survivor = next((row for row in server.json("/status/sessions/history/all")
+                         .get("Metadata") or []
+                         if row.get("historyKey") == watched.get("historyKey")), {})
+        check("a deleted row's history rows lose its ratingKey and key",
+              deleted == 200 and watched.get("historyKey")
+              and survivor.get("title") == watched.get("title")
+              and "ratingKey" not in survivor and "key" not in survivor,
+              "delete %s before %s after %s" % (deleted, sorted(watched), sorted(survivor)))
     finally:
         server.stop()
 
