@@ -13,7 +13,7 @@ suite holds what replaced it:
   serialising the other rows (catalog row changes are tracked, `catalog.rs`);
 * a legacy `state.json` (recorded from the native server before the change,
   `fixtures/legacy_state_native.json`) is imported once and kept aside;
-* `--catalog` takes a database written by `build_catalog.py --convert`: it serves
+* `--catalog` takes a database written by `rex catalog --convert`: it serves
   exactly what the JSON it came from serves, and the state then lives in the same file;
 * a catalog rebuilt inside that database keeps a `.stale` copy and carries view
   state, as a rebuilt JSON catalog does.
@@ -59,8 +59,8 @@ def workdir(name="catalog.json", document=None):
 
 
 def convert(source, target):
-    run = subprocess.run([sys.executable, os.path.join(ROOT, "oracle", "build_catalog.py"),
-                          "--convert", source, "--out", target],
+    rex = os.path.join(ROOT, "rust", "target", "release", "rex.exe" if os.name == "nt" else "rex")
+    run = subprocess.run([rex, "catalog", "--convert", source, "--out", target],
                          capture_output=True, text=True)
     return run.returncode == 0 and is_sqlite(target), (run.stdout + run.stderr)[-600:]
 
@@ -209,7 +209,7 @@ def database_catalog():
     try:
         database = os.path.join(work, "library.db")
         converted, detail = convert(source, database)
-        check("build_catalog.py --convert writes the catalog into a database", converted, detail)
+        check("rex catalog --convert writes the catalog into a database", converted, detail)
         if not converted:
             return
         plain = Instance(source)
