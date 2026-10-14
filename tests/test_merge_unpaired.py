@@ -62,7 +62,8 @@ def build_catalog(path):
             rows.append(dict(copy.deepcopy(season_template), ratingKey=str(season_key),
                              key="/library/metadata/%d/children" % season_key,
                              parentRatingKey=PROBE, index=season_index, title="Season %d" % season_index,
-                             guid="local://%d" % season_key, parentTitle=probe["title"]))
+                             guid="local://%d" % season_key, parentTitle=probe["title"],
+                             thumb="/library/metadata/%d/thumb/1700000000" % season_key))
         episode_key += 1
         rows.append(dict(copy.deepcopy(template), ratingKey=str(episode_key),
                          key="/library/metadata/%d" % episode_key,
@@ -127,6 +128,9 @@ def main():
               and season["ratingKey"] not in ("30101", "30102", "30103")
               and str(season.get("parentRatingKey")) == TARGET,
               season)
+
+        status, _ = request(port, "GET", season.get("thumb") or "/none") if season else (None, None)
+        check("and the new season's poster is one that loads (%s)" % (season or {}).get("thumb"), status == 200, status)
 
         extra_key, season_index, index = roles["extra"]
         season, episode = episode_at(port, TARGET, season_index, index)

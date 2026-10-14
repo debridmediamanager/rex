@@ -2140,12 +2140,17 @@ class Library:
                                   parentRatingKey=row["ratingKey"],
                                   parentKey="/library/metadata/%s" % row["ratingKey"],
                                   addedAt=_now(), updatedAt=_now())
+                    # The absorbed season's artwork named its own key, gone with it: the new
+                    # season shows its show's.
                     for field, own in (("parentTitle", "title"), ("parentGuid", "guid"),
-                                       ("parentThumb", "thumb"), ("parentArt", "art")):
+                                       ("parentThumb", "thumb"), ("parentArt", "art"),
+                                       ("thumb", "thumb"), ("art", "art")):
                         if own in row:
                             season[field] = row[own]
                         else:
                             season.pop(field, None)
+                    for field in ("Guid", "summary"):
+                        season.pop(field, None)
                     self.catalog.add(season)
                 old_parent = str(source.get("parentRatingKey"))
                 if int(source["ratingKey"]) in self.catalog._children.get(old_parent, []):

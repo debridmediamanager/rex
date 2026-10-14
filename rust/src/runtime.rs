@@ -20743,11 +20743,20 @@ impl Runtime {
                             object.insert("guid".to_string(), json!(format!("local://{season_key}")));
                             object.insert("parentRatingKey".to_string(), json!(key));
                             object.insert("parentKey".to_string(), json!(format!("/library/metadata/{key}")));
-                            for (field, own) in [("parentTitle", "title"), ("parentGuid", "guid"), ("parentThumb", "thumb"), ("parentArt", "art")] {
+                            // The absorbed season's artwork named its own key, gone with it: the new
+                            // season shows its show's until the season pass names it (`repair_seasons`).
+                            for (field, own) in [
+                                ("parentTitle", "title"), ("parentGuid", "guid"), ("parentThumb", "thumb"), ("parentArt", "art"),
+                                ("thumb", "thumb"), ("art", "art"), ("_poster_url", "_poster_url"), ("_art_url", "_art_url"),
+                                ("_thumbFor", "_thumbFor"), ("_artFor", "_artFor"),
+                            ] {
                                 match show.get(own) {
                                     Some(value) => object.insert(field.to_string(), value.clone()),
                                     None => object.shift_remove(field),
                                 };
+                            }
+                            for field in ["Guid", "summary", "_season_guid"] {
+                                object.shift_remove(field);
                             }
                             object.insert("addedAt".to_string(), json!(now()));
                             object.insert("updatedAt".to_string(), json!(now()));
