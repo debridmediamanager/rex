@@ -45,7 +45,7 @@
 
 use std::collections::{HashMap, HashSet};
 use std::fs;
-use std::io::{BufRead, BufReader, Read, Write};
+use std::io::{BufReader, Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
 use std::os::unix::process::ExitStatusExt;
@@ -82,6 +82,14 @@ const FAILURE_WINDOW: f64 = 600.0;
 /// ... is marked failed rather than restarted again.
 const FAILURE_LIMIT: usize = 5;
 const LOG_LIMIT: u64 = 10 * 1024 * 1024;
+// Keep the manager's small HTTP envelope bounded before it can allocate a body. These
+// match the native server's request limits, while the manager deliberately keeps its own
+// parser because its API is a separate contract.
+const MAX_HEADER_BYTES: usize = 256 * 1024;
+const MAX_HEADER_LINE_BYTES: usize = 64 * 1024;
+const MAX_HEADER_LINES: usize = 100;
+const MAX_TARGET_BYTES: usize = 32 * 1024;
+const MAX_BODY_BYTES: usize = 16 * 1024 * 1024;
 
 /// manager.py's schema: a database it wrote is read as it is.
 const SCHEMA: &str = "
@@ -1048,15 +1056,30 @@ fn same_secret(given: &str, expected: &str) -> bool {
     given.len() == expected.len() && given.bytes().zip(expected.bytes()).fold(0, |diff, (a, b)| diff | (a ^ b)) == 0
 }
 
+fn public_get(method: &str, target: &str) -> bool {
+    method == "GET"
+        && target
+            .split_once('?')
+            .map_or(target, |(path, _)| path)
+            .split('/')
+            .all(str::is_empty)
+}
+
+fn authorized(method: &str, target: &str, authorization: &str, token: &str) -> bool {
+    public_get(method, target)
+        || authorization
+            .strip_prefix("Bearer ")
+            .is_some_and(|given| !given.is_empty() && same_secret(given, token))
+}
+
 fn route(manager: &Manager, token: &str, method: &str, target: &str, authorization: &str, body: &[u8]) -> (u16, &'static str, Vec<u8>) {
     let json_reply = |status: u16, payload: &Value| (status, "application/json", py_dumps(payload, Some(1), false, true).into_bytes());
     let (path, query) = target.split_once('?').unwrap_or((target, ""));
     let parts = path.split('/').filter(|part| !part.is_empty()).collect::<Vec<_>>();
-    if method == "GET" && parts.is_empty() {
+    if public_get(method, target) {
         return (200, "text/html; charset=utf-8", PAGE.as_bytes().to_vec());
     }
-    let given = authorization.strip_prefix("Bearer ").unwrap_or("");
-    if given.is_empty() || !same_secret(given, token) {
+    if !authorized(method, target, authorization, token) {
         return json_reply(401, &json!({"error": "an Authorization: Bearer <admin token> is required"}));
     }
     let body = || -> Answer<Value> {
@@ -1122,6 +1145,7 @@ fn reason(status: u16) -> &'static str {
         202 => "Accepted",
         400 => "Bad Request",
         401 => "Unauthorized",
+        413 => "Payload Too Large",
         404 => "Not Found",
         405 => "Method Not Allowed",
         409 => "Conflict",
@@ -1130,51 +1154,159 @@ fn reason(status: u16) -> &'static str {
     }
 }
 
-/// One request and its answer, then the connection closes (http.server's HTTP/1.0).
-fn handle(stream: TcpStream, manager: &Manager, token: &str) -> std::io::Result<()> {
-    stream.set_nonblocking(false)?;
-    stream.set_read_timeout(Some(Duration::from_secs(60)))?;
-    let mut reader = BufReader::new(stream.try_clone()?);
-    let mut line = String::new();
-    reader.read_line(&mut line)?;
-    let request_line = line.trim_end().to_string();
-    if request_line.is_empty() {
-        // A port probe that connects and closes: http.server answers nothing.
-        return Ok(());
-    }
-    let mut words = request_line.split_whitespace();
-    let (method, target) = (words.next().unwrap_or("").to_string(), words.next().unwrap_or("/").to_string());
-    let (mut length, mut authorization) = (0_usize, String::new());
-    loop {
-        line.clear();
-        if reader.read_line(&mut line)? == 0 || line.trim().is_empty() {
-            break;
-        }
-        if let Some((name, value)) = line.split_once(':') {
-            match name.trim().to_ascii_lowercase().as_str() {
-                "content-length" => length = value.trim().parse().unwrap_or(0),
-                "authorization" => authorization = value.trim().to_string(),
-                _ => {}
-            }
-        }
-    }
-    let mut body = vec![0_u8; length];
-    reader.read_exact(&mut body)?;
-    let (status, content_type, payload) = match method.as_str() {
-        "GET" | "POST" | "PATCH" | "DELETE" => route(manager, token, &method, &target, &authorization, &body),
-        _ => (501, "application/json", py_dumps(&json!({"error": format!("Unsupported method ('{method}')")}), Some(1), false, true).into_bytes()),
-    };
+fn write_answer(stream: &mut TcpStream, request_line: &str, status: u16, content_type: &str, payload: &[u8]) -> std::io::Result<()> {
     // The request log goes to stderr, tokenless.
     eprintln!("{} \"{request_line}\" {status} -", local_stamp().get(11..).unwrap_or(""));
-    let mut stream = stream;
     let head = format!(
         "HTTP/1.0 {status} {}\r\nServer: rex-manager\r\nContent-Type: {content_type}\r\nContent-Length: {}\r\nCache-Control: no-store\r\n\r\n",
         reason(status),
         payload.len()
     );
     stream.write_all(head.as_bytes())?;
-    stream.write_all(&payload)?;
+    stream.write_all(payload)?;
     stream.flush()
+}
+
+fn error_answer(status: u16, message: &str) -> (u16, &'static str, Vec<u8>) {
+    (status, "application/json", py_dumps(&json!({"error": message}), Some(1), false, true).into_bytes())
+}
+
+fn read_line_limited(reader: &mut BufReader<TcpStream>, limit: usize) -> std::io::Result<Option<Vec<u8>>> {
+    let mut line = Vec::with_capacity(limit.min(256));
+    // `read_until` grows without a bound while waiting for a newline. `take` caps the
+    // read at one byte beyond the accepted line so an unterminated peer cannot grow it.
+    let mut limited = reader.take(limit.saturating_add(1) as u64);
+    std::io::BufRead::read_until(&mut limited, b'\n', &mut line)?;
+    if line.len() > limit {
+        return Err(std::io::Error::new(std::io::ErrorKind::InvalidData, "line too long"));
+    }
+    Ok((!line.is_empty()).then_some(line))
+}
+
+/// One request and its answer, then the connection closes (http.server's HTTP/1.0).
+fn handle(stream: TcpStream, manager: &Manager, token: &str) -> std::io::Result<()> {
+    stream.set_nonblocking(false)?;
+    stream.set_read_timeout(Some(Duration::from_secs(60)))?;
+    let mut reader = BufReader::new(stream.try_clone()?);
+    let mut stream = stream;
+    let request_line_bytes = match read_line_limited(&mut reader, MAX_HEADER_LINE_BYTES) {
+        Ok(Some(line)) => line,
+        Ok(None) => {
+            // A port probe that connects and closes: http.server answers nothing.
+            return Ok(());
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::InvalidData => {
+            let (status, content_type, payload) = error_answer(400, "request line too long");
+            return write_answer(&mut stream, "", status, content_type, &payload);
+        }
+        Err(error) => return Err(error),
+    };
+    if !request_line_bytes.ends_with(b"\n") {
+        let (status, content_type, payload) = error_answer(400, "malformed request line");
+        return write_answer(&mut stream, "", status, content_type, &payload);
+    }
+    let request_line = String::from_utf8_lossy(&request_line_bytes).trim_end_matches(['\r', '\n']).to_string();
+    if request_line.is_empty() {
+        // A port probe that connects and closes: http.server answers nothing.
+        return Ok(());
+    }
+    let mut words = request_line.split_whitespace();
+    let (Some(method), Some(target), Some(_version)) = (words.next(), words.next(), words.next()) else {
+        let (status, content_type, payload) = error_answer(400, "malformed request line");
+        return write_answer(&mut stream, &request_line, status, content_type, &payload);
+    };
+    if words.next().is_some() || target.len() > MAX_TARGET_BYTES {
+        let (status, content_type, payload) = error_answer(400, "malformed request target");
+        return write_answer(&mut stream, &request_line, status, content_type, &payload);
+    }
+    let (method, target) = (method.to_string(), target.to_string());
+    let (mut length, mut authorization) = (None, String::new());
+    let mut transfer_encoding = false;
+    let mut header_bytes = 0_usize;
+    let mut header_lines = 0_usize;
+    loop {
+        let line = match read_line_limited(&mut reader, MAX_HEADER_LINE_BYTES) {
+            Ok(Some(line)) => line,
+            Ok(None) => {
+                let (status, content_type, payload) = error_answer(400, "malformed headers");
+                return write_answer(&mut stream, &request_line, status, content_type, &payload);
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::InvalidData => {
+                let (status, content_type, payload) = error_answer(400, "header line too long");
+                return write_answer(&mut stream, &request_line, status, content_type, &payload);
+            }
+            Err(error) => return Err(error),
+        };
+        if !line.ends_with(b"\n") {
+            let (status, content_type, payload) = error_answer(400, "malformed headers");
+            return write_answer(&mut stream, &request_line, status, content_type, &payload);
+        }
+        let line = String::from_utf8_lossy(&line).trim_end_matches(['\r', '\n']).to_string();
+        if line.is_empty() {
+            break;
+        }
+        header_lines += 1;
+        header_bytes = header_bytes.saturating_add(line.len() + 2);
+        if header_lines > MAX_HEADER_LINES || header_bytes > MAX_HEADER_BYTES {
+            let (status, content_type, payload) = error_answer(400, "request headers exceed limit");
+            return write_answer(&mut stream, &request_line, status, content_type, &payload);
+        }
+        let Some((name, value)) = line.split_once(':') else {
+            let (status, content_type, payload) = error_answer(400, "malformed header");
+            return write_answer(&mut stream, &request_line, status, content_type, &payload);
+        };
+        match name.trim().to_ascii_lowercase().as_str() {
+            "content-length" => {
+                let value = value.trim();
+                let parsed = value.parse::<usize>();
+                if let Ok(parsed) = parsed {
+                    if length.is_some_and(|previous| previous != parsed) {
+                        let (status, content_type, payload) = error_answer(400, "conflicting Content-Length");
+                        return write_answer(&mut stream, &request_line, status, content_type, &payload);
+                    }
+                    length = Some(parsed);
+                } else {
+                    let (status, content_type, payload) = error_answer(400, "malformed Content-Length");
+                    return write_answer(&mut stream, &request_line, status, content_type, &payload);
+                }
+            }
+            "transfer-encoding" => transfer_encoding = true,
+            "authorization" => authorization = value.trim().to_string(),
+            _ => {}
+        }
+    }
+    // Authorization is checked before any body allocation or read. A public page can
+    // answer without consuming a body, just as it did before the bounds were added.
+    if !authorized(&method, &target, &authorization, token) {
+        let (status, content_type, payload) = route(manager, token, &method, &target, &authorization, &[]);
+        return write_answer(&mut stream, &request_line, status, content_type, &payload);
+    }
+    if transfer_encoding {
+        let (status, content_type, payload) = error_answer(400, "Transfer-Encoding is unsupported");
+        return write_answer(&mut stream, &request_line, status, content_type, &payload);
+    }
+    let length = length.unwrap_or(0);
+    if length > MAX_BODY_BYTES {
+        let (status, content_type, payload) = error_answer(413, "request body exceeds limit");
+        return write_answer(&mut stream, &request_line, status, content_type, &payload);
+    }
+    if public_get(&method, &target) {
+        let (status, content_type, payload) = route(manager, token, &method, &target, &authorization, &[]);
+        return write_answer(&mut stream, &request_line, status, content_type, &payload);
+    }
+    let mut body = vec![0_u8; length];
+    if let Err(error) = reader.read_exact(&mut body) {
+        if error.kind() == std::io::ErrorKind::UnexpectedEof {
+            let (status, content_type, payload) = error_answer(400, "request body is incomplete");
+            return write_answer(&mut stream, &request_line, status, content_type, &payload);
+        }
+        return Err(error);
+    }
+    let (status, content_type, payload) = match method.as_str() {
+        "GET" | "POST" | "PATCH" | "DELETE" => route(manager, token, &method, &target, &authorization, &body),
+        _ => (501, "application/json", py_dumps(&json!({"error": format!("Unsupported method ('{method}')")}), Some(1), false, true).into_bytes()),
+    };
+    write_answer(&mut stream, &request_line, status, content_type, &payload)
 }
 
 /// The API's token: an explicit file, else `<root>/admin.token`, created on first start

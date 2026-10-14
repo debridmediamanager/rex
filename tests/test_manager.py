@@ -57,6 +57,27 @@ def answers(port):
         return False
 
 
+def raw_status(port, request, timeout=3, half_close=True):
+    sock = socket.create_connection(("127.0.0.1", port), timeout=timeout)
+    sock.settimeout(timeout)
+    try:
+        sock.sendall(request)
+        if half_close:
+            sock.shutdown(socket.SHUT_WR)
+        raw = bytearray()
+        while True:
+            chunk = sock.recv(4096)
+            if not chunk:
+                break
+            raw.extend(chunk)
+        first = bytes(raw).split(b"\r\n", 1)[0].split()
+        return int(first[1]) if len(first) >= 2 else None
+    except (OSError, ValueError):
+        return None
+    finally:
+        sock.close()
+
+
 def wait_for(predicate, seconds):
     deadline = time.time() + seconds
     while time.time() < deadline:
@@ -159,6 +180,42 @@ def main():
         check("a wrong token is a 401", manager.api("GET", "/servers", token="nope")[0] == 401)
         page = manager.api("GET", "/", token="")
         check("the page loads without a token", page[0] == 200 and b"rex manager" in page[1])
+
+        oversized = ("POST /servers HTTP/1.1\r\n"
+                     "Host: manager\r\n"
+                     "Authorization: Bearer %s\r\n"
+                     "Content-Length: 16777217\r\n\r\n" % manager.token).encode()
+        check("an oversized body declaration is rejected before allocation",
+              raw_status(manager.port, oversized) == 413)
+        long_target = ("GET /" + ("x" * 32768) + " HTTP/1.1\r\n"
+                       "Host: manager\r\nAuthorization: Bearer %s\r\n\r\n" % manager.token).encode()
+        check("an oversized request target is a 400", raw_status(manager.port, long_target) == 400)
+        long_line = ("GET /servers HTTP/1.1 " + ("x" * 65536) + "\r\n"
+                     "Host: manager\r\nAuthorization: Bearer %s\r\n\r\n" % manager.token).encode()
+        check("an oversized request line is a 400", raw_status(manager.port, long_line) == 400)
+        long_header = ("GET /servers HTTP/1.1\r\nHost: manager\r\nAuthorization: Bearer %s\r\n"
+                       "X-Long: %s\r\n\r\n" % (manager.token, "x" * 65536)).encode()
+        check("an oversized header line is a 400", raw_status(manager.port, long_header) == 400)
+        aggregate_headers = ("GET /servers HTTP/1.1\r\nHost: manager\r\nAuthorization: Bearer %s\r\n" % manager.token)
+        aggregate_headers += "".join("X-Aggregate-%d: %s\r\n" % (index, "x" * 60000) for index in range(5))
+        check("an oversized header block is a 400", raw_status(manager.port, (aggregate_headers + "\r\n").encode()) == 400)
+        many_headers = ("GET /servers HTTP/1.1\r\nHost: manager\r\nAuthorization: Bearer %s\r\n" % manager.token)
+        many_headers += "".join("X-Test-%d: x\r\n" % index for index in range(101))
+        check("too many request headers are a 400", raw_status(manager.port, (many_headers + "\r\n").encode()) == 400)
+        malformed_length = ("GET /servers HTTP/1.1\r\nHost: manager\r\nAuthorization: Bearer %s\r\n"
+                            "Content-Length: not-a-number\r\n\r\n" % manager.token).encode()
+        check("a malformed Content-Length is a 400", raw_status(manager.port, malformed_length) == 400)
+        conflicting = ("POST /servers HTTP/1.1\r\nHost: manager\r\nAuthorization: Bearer %s\r\n"
+                       "Content-Length: 1\r\nContent-Length: 2\r\n\r\n" % manager.token).encode()
+        check("conflicting Content-Length values are a 400", raw_status(manager.port, conflicting) == 400)
+        transfer = ("GET /servers HTTP/1.1\r\nHost: manager\r\nAuthorization: Bearer %s\r\n"
+                    "Transfer-Encoding: chunked\r\n\r\n" % manager.token).encode()
+        check("unsupported transfer encoding is a 400", raw_status(manager.port, transfer) == 400)
+        unauthorized_body = ("POST /servers HTTP/1.1\r\nHost: manager\r\nAuthorization: Bearer wrong\r\n"
+                             "Content-Length: 1\r\n\r\n").encode()
+        check("unauthorized requests do not await their body",
+              raw_status(manager.port, unauthorized_body, half_close=False) == 401)
+        check("the API remains usable after rejected envelopes", manager.api("GET", "/servers")[0] == 200)
 
         a, b, c = free_port(), free_port(), free_port()
         status, made = manager.api("POST", "/servers", config("alpha", a, token="gate-secret",
