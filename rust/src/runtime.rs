@@ -20985,10 +20985,15 @@ impl Runtime {
                 source_rows.push(season);
                 source_rows.extend(self.children(&season_key));
             }
+            // `library.merge_shows`, as a plain merge (cycle 87, plexscratch,
+            // `tests/fixtures/merge_playlist_s43.json`): every absorbed row leaves the
+            // playlists and collections that held it -- its playlistItemID a 404 from then
+            // on -- and its key is retired, so a later split takes a key never used before
+            // rather than the absorbed row's, which a client's cache still holds for it.
             for gone in &source_rows {
                 if let Some(gone_key) = key_of(gone) {
                     self.catalog.remove(&gone_key);
-                    self.deleted.insert(gone_key);
+                    self.forget_row(&gone_key);
                 }
             }
             removed_rows.extend(source_rows);

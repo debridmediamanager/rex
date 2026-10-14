@@ -290,6 +290,7 @@ def main():
     run_rebuild(check)
     run_additions(check)
     run_durations(check)
+    run_show_merge_lists(check)
     run_zurg(check)
     run_gdm(check)
     run_specials(check)
@@ -1024,6 +1025,66 @@ def run_additions(check):
               == [("14101", -1, 3, False), ("14101", -1, 5, False)]
               and all(str(frame.get("sectionID")) == "2" for frame in frames),
               str(frames))
+    finally:
+        server.stop()
+
+
+def run_show_merge_lists(check):
+    """A show merge takes the absorbed rows out of every playlist and collection and retires
+    their keys, as a plain merge does (cycle 87, plexscratch,
+    `tests/fixtures/merge_playlist_s43.json`: the absorbed row's playlistItemID is a 404 to a
+    DELETE, and a split takes a key never used before). Its own library, so the episode keys
+    sit in the range a split mints from (1000 and up) with the absorbed one highest."""
+    document = copy.deepcopy(BASE)
+    document["sections"].append({"key": "93", "type": "show", "title": "Merge Lists",
+                                 "uuid": "merge-lists-section-93"})
+    rows = (show_rows("24111", "34111", "1951", 93, "Merge Lists Target")
+            + show_rows("24112", "34112", "1952", 93, "Merge Lists Source")
+            + show_rows("24113", "34113", "1941", 93, "Merge Lists Bystander"))
+    for row in rows:
+        if row["type"] == "episode":
+            row["Media"] = [{"id": int(row["ratingKey"]) * 10,
+                             "Part": [{"id": int(row["ratingKey"]) * 10}]}]
+    document["items"] += rows
+    server = Server(document)
+    try:
+        def uri(keys):
+            return ("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                    % (MACHINE, ",".join(keys)))
+
+        def made(path, fields):
+            body = server.json(path + "?" + urllib.parse.urlencode(fields), "POST")
+            return str(first(body).get("ratingKey") or "")
+
+        playlist = made("/playlists", [("type", "video"), ("title", "Merge Lists"),
+                                       ("smart", "0"), ("uri", uri(["1951", "1952"]))])
+        collection = made("/library/collections", [("type", "2"), ("title", "Merge Lists"),
+                                                   ("smart", "0"), ("sectionId", "93"),
+                                                   ("uri", uri(["24112", "24113"]))])
+        item_ids = {row.get("ratingKey"): row.get("playlistItemID") for row in
+                    server.json("/playlists/%s/items" % playlist).get("Metadata") or []}
+        merged = server.request("PUT", "/library/metadata/24111/merge?ids=24112")[0]
+        listed = server.json("/playlists/%s/items" % playlist)
+        playlist_keys = [row.get("ratingKey") for row in listed.get("Metadata") or []]
+        stale_delete = server.request("DELETE", "/playlists/%s/items/%s"
+                                      % (playlist, item_ids.get("1952")))[0]
+        members = server.json("/library/collections/%s/children" % collection)
+        member_keys = [row.get("ratingKey") for row in members.get("Metadata") or []]
+        check("a show merge takes the absorbed rows out of its playlists and collections",
+              playlist and collection and merged == 200 and playlist_keys == ["1951"]
+              and listed.get("leafCount") == 1 and stale_delete == 404
+              and member_keys == ["24113"]
+              and first(server.json("/library/collections/%s" % collection)).get("childCount")
+              == 1,
+              "merge %s playlist %s leafCount %s stale delete %s collection %s"
+              % (merged, playlist_keys, listed.get("leafCount"), stale_delete, member_keys))
+        # The merged episode holds two Media; splitting it mints a key past the retired one.
+        split = server.request("PUT", "/library/metadata/1951/split")[0]
+        statuses = [server.request("GET", "/library/metadata/%s" % key)[0]
+                    for key in ("1952", "1953")]
+        check("a show merge retires the absorbed keys, so a split never reuses one",
+              split == 200 and statuses == [404, 200], "split %s, 1952 and 1953: %s"
+              % (split, statuses))
     finally:
         server.stop()
 
