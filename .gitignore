@@ -21,13 +21,11 @@ webclient_fun/
 __pycache__/
 *.pyc
 plex_cache.json
-state.pickle
 rust/target/
 *.state
 *.state.tmp
 *.state.stale
 *.state.corrupt
-state.pickle.*
 state.json
 state.json.*
 rex.db
