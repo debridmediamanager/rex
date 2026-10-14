@@ -1,8 +1,8 @@
 //! `identify.rs` against the user's own Real-Debrid library, with DMM's labels as the
-//! key: `tests/fixtures/identify/corpus.json` replayed exactly as `tests/test_identify.py`
-//! replays it. Every request the port makes must be one the Python identifier made when
-//! the corpus was recorded; a miss answers `{}` and fails the test, which is what proves
-//! the two send the same requests.
+//! key: `tests/fixtures/identify/corpus.json` replayed offline. Every request the port
+//! makes must be one the recording holds (the Python identifier's, when the corpus was
+//! recorded); a miss answers `{}` and fails the test, which is what proves the two send
+//! the same requests.
 //!
 //! The keys are Python's `json.dumps` text, so they are parsed and indexed by value,
 //! never reproduced: TMDB's by `(path, sorted params)` with each value as `str()` puts

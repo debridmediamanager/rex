@@ -909,6 +909,36 @@ mod tests {
         );
     }
 
+    /// The year and the kind of the names `identify_loose_episode_numbers` reads, as the
+    /// Python identifier's own suite held them before it was removed.
+    #[test]
+    fn identify_loose_names_year_and_kind() {
+        for (name, title, year, show) in [
+            ("Mysterious Love E06 1080p WEB.DL AAC H.264-Luvmichelle.mp4", "Mysterious Love", None, true),
+            ("Some Day or One Day - 1x02 (1080p VIKI WEB.DL Marshall).mkv", "Some Day or One Day", None, true),
+            ("00000 (E01-The.Arrangement).m2ts", "00000 m2ts", None, true),
+            ("Detektiv.Conan.E0221.Nichts.als.Luegen.2.German.1996.ANiME.FS.DL.1080p.BluRay.x264-STARS", "Detektiv Conan", Some(1996), true),
+            ("One.Piece.EP1161.A.Dangerous.Deal.Loki.of.the.Underworld.and.Luffy.2160p.BILI.WEB-DL", "One Piece", None, true),
+            ("Gintama.Ep.14.German.DTS.5.1.DL.1080p.BluRay.x264-AST4u", "Gintama", None, true),
+            ("[Moozzi2] Eighty-Six-15 [BD 3840x2160 x265-10Bit FLACx2]", "Eighty-Six", None, true),
+            ("[HorribleSubs].Gintama-340.[1080p]", "Gintama", None, true),
+            ("[philosophy-raws][Samurai Champloo][13][BDRIP][Hi10P FLAC][1920X1080]", "Samurai Champloo", None, true),
+            ("[Moozzi2] Natsume Yuujinchou Shichi-12 END [BD 1920x1080 x265-10Bit Flac]", "Natsume Yuujinchou Shichi", None, true),
+            ("[HorribleSubs].Gintama-364.[1080p]-RakuvFIN", "Gintama", None, true),
+            ("[RH] Shigatsu wa Kimi no Uso (Your Lie in April) - 01v2 - Monotone-Colorful [Dual Audio] [BDRip]", "Shigatsu wa Kimi no Uso", None, true),
+            ("Family.Matters.seasons.01-09.AMZN.1080p.10bit.hevc.x265-bearfish", "Family Matters", None, true),
+            ("South Park - Seasons 1 to 25 (S01-S25) Master Collection, The Movie & Extras [1080p-2160p]", "South Park", None, true),
+            ("Der.mude.Tod.AKA.Destiny.1921.576p.BluRay.AAC.x264-HANDJOB", "Der mude Tod", Some(1921), false),
+            ("Mr.Nice.Guy.aka.Yat.goh.ho.yan.1997.Extended.Original.Cut.2160p.UHD.Blu-ray", "Mr Nice Guy", Some(1997), false),
+            ("Blade-Runner-2049", "Blade-Runner", Some(2049), false),
+            ("Spider-Man-2", "Spider-Man-2", None, false),
+            ("A Trip to the Moon (1902) Arrow (1080p BluRay x265 HEVC 10bit AAC 2.0 afm72)", "A Trip to the Moon", Some(1902), false),
+        ] {
+            let parsed = parse_name(name);
+            assert_eq!((parsed.title.as_str(), parsed.year, is_show(&parsed)), (title, year, show), "{name}");
+        }
+    }
+
     // Python's `(?![\s._-]?E\d)` refuses `S01` followed by an episode and backtracks;
     // answers taken from `identify.parse_name`.
     /// Names zurg filed under movies on the test host and in production until 2026-10-11,

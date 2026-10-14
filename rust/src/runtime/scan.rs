@@ -1175,8 +1175,8 @@ fn prepare_rows(rows: &mut [Value]) {
 mod tests {
     use super::*;
 
-    /// `tests/fixtures/identify/unplaced_episodes.json`, which `tests/test_identify.py` reads
-    /// the same way: files the production rex's feed dropped as "no episode number".
+    /// `tests/fixtures/identify/unplaced_episodes.json`: files the production rex's feed
+    /// dropped as "no episode number".
     /// MythBusters' seasons as TMDB lists them (tv/1428, 2026-10-13): numbered 1-16, each
     /// aired in one year from 2003; the production server's files number them by year (`2004x01`).
     struct MythBusters;
