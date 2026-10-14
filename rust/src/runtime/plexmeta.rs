@@ -110,6 +110,32 @@ impl crate::identify::PlexSource for PlexMeta {
     }
 }
 
+/// `build_catalog.relink_guids` (`rex catalog --relink`): the rows' guids relinked to the
+/// agent's, asked as `client` (the catalog's machineIdentifier) through the server's own cache.
+pub(crate) fn relink(items: &mut [Value], token: String, cache_path: PathBuf, client: String) -> usize {
+    struct Agent(PlexMeta);
+    impl crate::metadata::PlexProvider for Agent {
+        /// `PlexProvider.match`: the first external id, `tmdb://` ones first, whose match is
+        /// a `plex://` item of the kind asked for.
+        fn match_item(&mut self, kind: &str, external_ids: &[String]) -> Option<(String, Option<String>)> {
+            use crate::identify::PlexSource;
+            let mut ids = external_ids.iter().collect::<Vec<_>>();
+            ids.sort_by_key(|id| !id.starts_with("tmdb://"));
+            ids.into_iter().find_map(|external| {
+                let body = json!({"type": if kind == "movie" { 1 } else { 2 }, "guid": external});
+                let answer = self.0.call("POST", "/library/metadata/matches", Some(&body))?;
+                let row = answer.pointer("/MediaContainer/Metadata/0")?;
+                let guid = row.get("guid")?.as_str().filter(|guid| guid.starts_with(&format!("plex://{kind}/")))?;
+                Some((guid.to_string(), row.get("slug").and_then(Value::as_str).map(str::to_string)))
+            })
+        }
+        fn children(&mut self, guid: &str) -> HashMap<String, String> {
+            crate::identify::plex_children(&self.0, guid)
+        }
+    }
+    crate::metadata::apply_plex_guids_with_provider(items, &mut Agent(PlexMeta::new(token, cache_path, client)))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

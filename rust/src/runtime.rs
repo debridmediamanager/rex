@@ -43,7 +43,7 @@ mod logging;
 mod merge;
 mod notify;
 mod playlists;
-mod plexmeta;
+pub(crate) mod plexmeta;
 mod plextv;
 mod resume;
 mod scan;
@@ -7928,7 +7928,7 @@ impl Runtime {
                     Some(_) if placeholder_machine(&self.machine) => Response::error(
                         400,
                         "rex: the catalog's machineIdentifier is a placeholder; seed a new \
-                         catalog with build_catalog.py --seed",
+                         catalog with rex catalog --seed",
                     ),
                     Some(token) => {
                         self.pending_claim = Some(token.clone());
@@ -23526,7 +23526,7 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
         let announced = device_id.unwrap_or_else(|| machine.clone());
         if placeholder_machine(&announced) {
             return Err("--announce-url needs a machineIdentifier of this server's own; the \
-                        catalog's is a placeholder (seed one with build_catalog.py --seed)"
+                        catalog's is a placeholder (seed one with rex catalog --seed)"
                 .to_string());
         }
         let beat = plextv::Beat {

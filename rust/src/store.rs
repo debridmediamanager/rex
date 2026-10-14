@@ -7,15 +7,15 @@
 //! element, and a save writes only the elements that changed since the last one, in
 //! one transaction (`tests/test_sqlite_store.py` counts them with triggers).
 //!
-//! Schema, shared with `catalogdb.py` (which writes the catalog half):
+//! Schema; `write_catalog` writes the catalog half (`rex catalog`, as `catalogdb.py` did):
 //!
 //! ```text
-//! meta(key PRIMARY KEY, value)               format, catalogDigest, catalogDigestSha256
+//! meta(key PRIMARY KEY, value)               format, catalogDigest
 //! doc(name PRIMARY KEY, kind, body)          kind 'value' (body = JSON), 'array', 'object'
 //! row(coll, key, pos, body, PRIMARY KEY(coll, key))   elements of an array/object doc
 //! ```
 //!
-//! Names are prefixed: `catalog:<field>` for the catalog `build_catalog.py` writes,
+//! Names are prefixed: `catalog:<field>` for the catalog `rex catalog` writes,
 //! `state:<field>` for what the server writes. The server never writes `catalog:*`.
 //! An array element's key is its content hash and occurrence (an element that changes
 //! is a delete and an insert); an object element's key is its own key. `pos` orders a
@@ -195,7 +195,7 @@ fn meta(connection: &Connection, key: &str) -> Result<Option<String>, String> {
         .map_err(|e| e.to_string())
 }
 
-/// A catalog `build_catalog.py` wrote into a database, and the digest it recorded --
+/// A catalog `rex catalog` wrote into a database, and the digest it recorded --
 /// the SHA-1 of the JSON the catalog came from, so a state saved over that JSON file
 /// is still the same catalog's.
 pub fn read_catalog(path: &Path) -> Result<(Value, String), String> {
@@ -211,6 +211,53 @@ pub fn read_catalog(path: &Path) -> Result<(Value, String), String> {
     let digest = meta(&connection, "catalogDigest")?
         .ok_or_else(|| "cannot read catalog: the database records no catalogDigest".to_string())?;
     Ok((Value::Object(document), digest))
+}
+
+/// Replace the catalog in the database at `path` (created if absent) with `document`,
+/// leaving any state in it alone: `rex catalog --convert`/`--seed` and the manager's copy.
+/// An array's rows are keyed by their index and an object's by its keys, bodies as
+/// Python's compact `json.dumps` wrote them. `digest` is the SHA-1 of the JSON the catalog
+/// came from (see `read_catalog`).
+pub fn write_catalog(path: &Path, document: &Map<String, Value>, digest: &str) -> Result<(), String> {
+    let mut connection = open(path)?;
+    let pattern = format!("{CATALOG}%");
+    let body = |value: &Value| crate::catalog_tool::py_dumps(value, None, true, false);
+    let transaction = connection
+        .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
+        .map_err(|e| e.to_string())?;
+    (|| -> rusqlite::Result<()> {
+        transaction.execute("DELETE FROM row WHERE coll LIKE ?1", params![pattern])?;
+        transaction.execute("DELETE FROM doc WHERE name LIKE ?1", params![pattern])?;
+        let mut put = transaction.prepare("INSERT INTO row VALUES (?1, ?2, ?3, ?4)")?;
+        let mut doc = transaction.prepare("INSERT INTO doc VALUES (?1, ?2, ?3)")?;
+        for (field, value) in document {
+            let name = format!("{CATALOG}{field}");
+            match value {
+                Value::Array(rows) => {
+                    doc.execute(params![name, "array", None::<String>])?;
+                    for (index, row) in rows.iter().enumerate() {
+                        put.execute(params![name, index.to_string(), index as f64, body(row)])?;
+                    }
+                }
+                Value::Object(members) => {
+                    doc.execute(params![name, "object", None::<String>])?;
+                    for (index, (key, member)) in members.iter().enumerate() {
+                        put.execute(params![name, key, index as f64, body(member)])?;
+                    }
+                }
+                other => {
+                    doc.execute(params![name, "value", body(other)])?;
+                }
+            }
+        }
+        transaction.execute(
+            "INSERT OR REPLACE INTO meta VALUES ('catalogDigest', ?1)",
+            params![digest],
+        )?;
+        Ok(())
+    })()
+    .map_err(|e| e.to_string())?;
+    transaction.commit().map_err(|e| e.to_string())
 }
 
 /// What a state path holds.

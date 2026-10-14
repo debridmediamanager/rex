@@ -8,7 +8,7 @@ use rex::{catalog, decision, filters, gate, hierarchy, mediainfo, metadata, runt
 use serde_json::json;
 
 fn usage() -> &'static str {
-    "Usage: rex [server options] | rex <decision|mediainfo|normalize-media|stream-titles|hierarchy-build|hierarchy-normalize|hierarchy-fold|hierarchy-case|catalog-normalize|xml|system-xml|ordered|guid|provider-guids|gate|metadata-parse|metadata-enrich|filter-compare|filter-parse|filter-evaluate|filter-describe|filter-document|filter-orders|filter-source-order|identify-replay> ..."
+    "Usage: rex [server options] | rex catalog ... | rex <decision|mediainfo|normalize-media|stream-titles|hierarchy-build|hierarchy-normalize|hierarchy-fold|hierarchy-case|catalog-normalize|xml|system-xml|ordered|guid|provider-guids|gate|metadata-parse|metadata-enrich|filter-compare|filter-parse|filter-evaluate|filter-describe|filter-document|filter-orders|filter-source-order|identify-replay> ..."
 }
 
 /// `main()`'s `argparse` options, in its declaration order: (flag, metavar, takes a value).
@@ -1080,6 +1080,8 @@ fn main() -> ExitCode {
         run_decision(&args)
     } else if command == "serve" {
         run_server(&args)
+    } else if command == "catalog" {
+        rex::catalog_tool::main(&args)
     } else if command.starts_with('-') {
         let mut server_args = vec![command];
         server_args.extend(args);

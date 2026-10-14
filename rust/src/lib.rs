@@ -5,6 +5,7 @@
 //! response fixture.
 
 pub mod catalog;
+pub mod catalog_tool;
 pub mod decision;
 pub mod filters;
 pub mod gate;

@@ -1,6 +1,6 @@
 //! What rex asks of the operating system beyond `std`: local time, the process's CPU time
 //! and the host's load, the host name, a thread's id as Python reports it, pausing and
-//! killing a child, and the GDM socket.
+//! killing a child, the GDM socket and random bytes.
 //!
 //! rex was measured on Unix and the Unix half is that code, moved here unchanged. The
 //! Windows half lets the server run there; it declares the few Win32 calls it needs itself
@@ -147,6 +147,27 @@ pub(crate) fn kill(pid: u32) {
     });
 }
 
+/// `secrets.token_bytes`: the system's random source (a machineIdentifier, the manager's token).
+pub(crate) fn random_bytes(buffer: &mut [u8]) -> io::Result<()> {
+    #[cfg(unix)]
+    {
+        use std::io::Read;
+        std::fs::File::open("/dev/urandom")?.read_exact(buffer)
+    }
+    #[cfg(windows)]
+    {
+        // SAFETY: the buffer is valid for its whole length; 2 is BCRYPT_USE_SYSTEM_PREFERRED_RNG.
+        let status = unsafe {
+            win::BCryptGenRandom(std::ptr::null_mut(), buffer.as_mut_ptr(), buffer.len() as u32, 2)
+        };
+        if status == 0 {
+            Ok(())
+        } else {
+            Err(io::Error::other(format!("BCryptGenRandom failed: {status:#x}")))
+        }
+    }
+}
+
 /// `Discovery._open`'s socket: `SO_REUSEADDR`, and `SO_REUSEPORT` where it exists, set
 /// BEFORE the bind -- which is what lets it share the port with a real PMS on the same
 /// host, as every Plex process there does.
@@ -231,6 +252,11 @@ mod win {
 
     extern "C" {
         pub(super) fn _mktime64(tm: *mut libc::tm) -> i64;
+    }
+
+    #[link(name = "bcrypt")]
+    extern "system" {
+        pub(super) fn BCryptGenRandom(algorithm: Handle, buffer: *mut u8, size: u32, flags: u32) -> i32;
     }
 
     /// Open `pid` with `access`, run `body` on the handle, close it. A process that is
