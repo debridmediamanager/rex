@@ -334,4 +334,36 @@
       <mapping anidbseason="0" tvdbseason="0" start="1" end="8" offset="2"/>
     </mapping-list>
   </anime>
+  <anime anidbid="11370" tvdbid="305089" defaulttvdbseason="1" episodeoffset="" tmdbtv="65942" tmdbseason="1" tmdboffset="" tmdbid="" imdbid="">
+    <name>Re:Zero kara Hajimeru Isekai Seikatsu</name>
+    <mapping-list>
+      <mapping anidbseason="0" tvdbseason="0">;1-0;</mapping>
+      <mapping anidbseason="0" tvdbseason="0" start="2" end="26" offset="-1"/>
+    </mapping-list>
+  </anime>
+  <anime anidbid="13430" tvdbid="305089" defaulttvdbseason="0" episodeoffset="" tmdbtv="65942" tmdbseason="0" tmdboffset="" tmdbid="" imdbid="">
+    <name>Re:Zero kara Hajimeru Isekai Seikatsu (2018)</name>
+    <mapping-list>
+      <mapping anidbseason="0" tvdbseason="0">;1-27;2-29;</mapping>
+      <mapping anidbseason="1" tvdbseason="0">;1-26;2-28;</mapping>
+    </mapping-list>
+  </anime>
+  <anime anidbid="14792" tvdbid="305089" defaulttvdbseason="2" episodeoffset="" tmdbtv="65942" tmdbseason="1" tmdboffset="26" tmdbid="" imdbid="">
+    <name>Re:Zero kara Hajimeru Isekai Seikatsu (2020)</name>
+    <mapping-list>
+      <mapping anidbseason="0" tvdbseason="0" start="1" end="13" offset="29"/>
+    </mapping-list>
+  </anime>
+  <anime anidbid="15593" tvdbid="305089" defaulttvdbseason="2" episodeoffset="13" tmdbtv="65942" tmdbseason="1" tmdboffset="38" tmdbid="" imdbid="">
+    <name>Re:Zero kara Hajimeru Isekai Seikatsu (2021)</name>
+    <mapping-list>
+      <mapping anidbseason="0" tvdbseason="0" start="1" end="12" offset="42"/>
+    </mapping-list>
+  </anime>
+  <anime anidbid="17947" tvdbid="305089" defaulttvdbseason="3" episodeoffset="" tmdbtv="65942" tmdbseason="1" tmdboffset="50" tmdbid="" imdbid="">
+    <name>Re:Zero kara Hajimeru Isekai Seikatsu (2024)</name>
+  </anime>
+  <anime anidbid="19242" tvdbid="305089" defaulttvdbseason="4" episodeoffset="" tmdbtv="65942" tmdbseason="1" tmdboffset="66" tmdbid="" imdbid="">
+    <name>Re:Zero kara Hajimeru Isekai Seikatsu (2026)</name>
+  </anime>
 </anime-list>

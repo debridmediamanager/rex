@@ -215,9 +215,36 @@
     1,
     1
    ]
+  },
+  "rezero_feibanyama_s04e05": {
+   "hash": null,
+   "ids": {},
+   "name": "[Feibanyama] ReZERO Starting Life in Another World S04E05 [IQIYI WebRip 2160p HEVC AAC Multi-Audio Multi-Subs]",
+   "path": "shows/[Feibanyama] ReZERO Starting Life in Another World S04E05 [IQIYI WebRip 2160p HEVC AAC Multi-Audio Multi-Subs]/[Feibanyama] ReZERO Starting Life in Another World S04E05 [IQIYI WebRip 2160p HEVC AAC Multi-Audio Multi-Subs].mkv",
+   "size": 1327877383,
+   "want": [
+    65942,
+    1,
+    71
+   ],
+   "with": "rezero_subsplease_71"
+  },
+  "rezero_subsplease_71": {
+   "hash": "dc5f996e2207d25ebe35cf7b124a05d46dbf8bbf",
+   "ids": {
+    "imdb": "tt5607616"
+   },
+   "name": "[SubsPlease] Re Zero kara Hajimeru Isekai Seikatsu - 71 (1080p) [6DC8DD10]",
+   "path": "anime/[SubsPlease] Re Zero kara Hajimeru Isekai Seikatsu - 71 (1080p) [6DC8DD10]/[SubsPlease] Re Zero kara Hajimeru Isekai Seikatsu - 71 (1080p) [6DC8DD10].mkv",
+   "size": 1444037140,
+   "want": [
+    65942,
+    1,
+    71
+   ]
   }
  },
- "source": "zurg's entries for three season batches a production rex held folded onto one episode each (2026-10-14): [IK] Railgun's s02e01/s03e01/01 on S1E1, [Reza] Food Wars S01-S05 E01 on S1E1, and The Boys S03 BDRemux's E01-E08 (E06 apart) on S3E1 of a show identified through the pack's IMDb id. `want` is TMDB's show, season and episode (null show: only the numbers are checked). TMDB and Plex answers recorded with REX_RECORD_ANSWERS=1.",
+ "source": "zurg's entries for three season batches a production rex held folded onto one episode each (2026-10-14): [IK] Railgun's s02e01/s03e01/01 on S1E1, [Reza] Food Wars S01-S05 E01 on S1E1, and The Boys S03 BDRemux's E01-E08 (E06 apart) on S3E1 of a show identified through the pack's IMDb id. `want` is TMDB's show, season and episode (null show: only the numbers are checked). TMDB and Plex answers recorded with REX_RECORD_ANSWERS=1. Re:Zero's SubsPlease `- 71` and a scene `S04E05` are one episode (TMDB numbers the show as one season), versions of one row that a start must leave folded: the production server's row 100614 held both.",
  "tmdb": {
   "https://api.themoviedb.org/3/find/tt16900572?external_source=imdb_id&api_key=KEY": {
    "movie_results": [],
@@ -249,6 +276,37 @@
     }
    ],
    "tv_season_results": []
+  },
+  "https://api.themoviedb.org/3/search/tv?query=ReZERO+Starting+Life+in+Another+World&api_key=KEY": {
+   "page": 1,
+   "results": [
+    {
+     "adult": false,
+     "backdrop_path": "/7ZruEnSnHD6Jx5mF0hBt1E306Vt.jpg",
+     "first_air_date": "2016-04-04",
+     "genre_ids": [
+      16,
+      9648,
+      10759,
+      10765
+     ],
+     "id": 65942,
+     "name": "Re:ZERO -Starting Life in Another World-",
+     "origin_country": [
+      "JP"
+     ],
+     "original_language": "ja",
+     "original_name": "Re:ゼロから始める異世界生活",
+     "overview": "Natsuki Subaru, an ordinary high school  student, is on his way home from the convenience store when he finds  himself transported to another world. As he's lost and confused in a new  world where he doesn't even know left from right, the only person to  reach out to him was a beautiful girl with silver hair. Determined to  repay her somehow for saving him from his own despair, Subaru agrees to  help the girl find something she's looking for.",
+     "popularity": 114.0519,
+     "poster_path": "/oHqYrPAsIiTD5m4DuxumV4er8BU.jpg",
+     "softcore": false,
+     "vote_average": 8.118,
+     "vote_count": 804
+    }
+   ],
+   "total_pages": 1,
+   "total_results": 1
   },
   "https://api.themoviedb.org/3/tv/207901?append_to_response=credits%2Cexternal_ids%2Ccontent_ratings%2Crelease_dates&api_key=KEY": {
    "adult": false,
@@ -537,7 +595,7 @@
    "original_language": "da",
    "original_name": "Drenge",
    "overview": "A Danish group of guys sing in a church choir on Sunday, but indulge in God's forbidden pleasures every other day. When one of them drowns under mysterious circumstances, their unity and loyalty to one another is put to the ultimate test.",
-   "popularity": 3.068,
+   "popularity": 3.6718,
    "poster_path": "/kNnB7tx9X4Cck1BlbP6992omdIS.jpg",
    "production_companies": [
     {
@@ -1491,7 +1549,7 @@
       "name": "Rina Sato",
       "order": 0,
       "original_name": "佐藤利奈",
-      "popularity": 1.9909,
+      "popularity": 1.7806,
       "profile_path": "/kk0Tir25lDqdqYHHnYCpknGgZCa.jpg"
      },
      {
@@ -1504,7 +1562,7 @@
       "name": "Satomi Arai",
       "order": 1,
       "original_name": "新井里美",
-      "popularity": 2.3871,
+      "popularity": 2.0319,
       "profile_path": "/v95wU1gpSLAOJS5yKFTxyheXAW2.jpg"
      },
      {
@@ -1517,7 +1575,7 @@
       "name": "Aki Toyosaki",
       "order": 2,
       "original_name": "豊崎愛生",
-      "popularity": 1.6853,
+      "popularity": 1.6737,
       "profile_path": "/crZpbb0ILJnH7mIYZV2l4uqQx1J.jpg"
      },
      {
@@ -1530,7 +1588,7 @@
       "name": "Kanae Itou",
       "order": 3,
       "original_name": "伊藤かな恵",
-      "popularity": 1.7522,
+      "popularity": 1.4685,
       "profile_path": "/te4l0fzbfhtKWqNHPYdGZBXMmxt.jpg"
      },
      {
@@ -1543,7 +1601,7 @@
       "name": "Minako Kotobuki",
       "order": 4,
       "original_name": "寿美菜子",
-      "popularity": 1.9715,
+      "popularity": 2.2746,
       "profile_path": "/puocmMfvql6X1AvhFTolaV6Vh2r.jpg"
      },
      {
@@ -1556,7 +1614,7 @@
       "name": "Atsuko Tanaka",
       "order": 6,
       "original_name": "田中敦子",
-      "popularity": 1.9974,
+      "popularity": 1.7642,
       "profile_path": "/pacuup8TMK9SFsSJOY8jlbyzkFt.jpg"
      },
      {
@@ -1569,7 +1627,7 @@
       "name": "Atsushi Abe",
       "order": 7,
       "original_name": "阿部敦",
-      "popularity": 1.5127,
+      "popularity": 1.4582,
       "profile_path": "/b59PickRsrhT6kaUKN2dD8c7ip.jpg"
      },
      {
@@ -1582,7 +1640,7 @@
       "name": "Kana Ueda",
       "order": 8,
       "original_name": "植田佳奈",
-      "popularity": 1.6609,
+      "popularity": 1.2862,
       "profile_path": "/us6FMwXCeSUR2YyByxVcgOUjiIA.jpg"
      }
     ],
@@ -1597,7 +1655,7 @@
       "known_for_department": "Writing",
       "name": "Shogo Yasukawa",
       "original_name": "ヤスカワショウゴ",
-      "popularity": 0.7553,
+      "popularity": 0.669,
       "profile_path": null
      },
      {
@@ -1610,7 +1668,7 @@
       "known_for_department": "Production",
       "name": "Yuichiro Shiji",
       "original_name": "志治雄一郎",
-      "popularity": 0.4276,
+      "popularity": 0.4042,
       "profile_path": null
      },
      {
@@ -1623,7 +1681,7 @@
       "known_for_department": "Production",
       "name": "Naruhiro Asada",
       "original_name": "浅田成寛",
-      "popularity": 0.4024,
+      "popularity": 0.3883,
       "profile_path": null
      },
      {
@@ -1636,7 +1694,7 @@
       "known_for_department": "Sound",
       "name": "Noriko Dohi",
       "original_name": "土肥範子",
-      "popularity": 0.6404,
+      "popularity": 0.5616,
       "profile_path": null
      },
      {
@@ -1649,7 +1707,7 @@
       "known_for_department": "Art",
       "name": "Kentaro Izumi",
       "original_name": "泉健太郎",
-      "popularity": 0.4489,
+      "popularity": 0.4098,
       "profile_path": null
      },
      {
@@ -1662,7 +1720,7 @@
       "known_for_department": "Sound",
       "name": "Masafumi Watanabe",
       "original_name": "渡邊雅文",
-      "popularity": 0.8833,
+      "popularity": 0.6647,
       "profile_path": "/o5qZ7AVK7Xd6RTXvK8FAfcGFj2o.jpg"
      },
      {
@@ -1675,7 +1733,7 @@
       "known_for_department": "Directing",
       "name": "Kazuki Horiguchi",
       "original_name": "堀口和樹",
-      "popularity": 0.5943,
+      "popularity": 0.505,
       "profile_path": null
      },
      {
@@ -1688,7 +1746,7 @@
       "known_for_department": "Production",
       "name": "Takehiro Nakakura",
       "original_name": "中倉岳大",
-      "popularity": 0.3822,
+      "popularity": 0.3495,
       "profile_path": null
      },
      {
@@ -1714,7 +1772,7 @@
       "known_for_department": "Production",
       "name": "Noritomo Isogai",
       "original_name": "礒谷徳知",
-      "popularity": 0.7975,
+      "popularity": 0.6953,
       "profile_path": null
      },
      {
@@ -1727,7 +1785,7 @@
       "known_for_department": "Production",
       "name": "Kazuma Miki",
       "original_name": "三木一馬",
-      "popularity": 0.6077,
+      "popularity": 0.6085,
       "profile_path": null
      },
      {
@@ -1740,7 +1798,7 @@
       "known_for_department": "Production",
       "name": "Kozue Kananiwa",
       "original_name": "金庭こず恵",
-      "popularity": 0.7825,
+      "popularity": 0.7852,
       "profile_path": null
      },
      {
@@ -1753,7 +1811,7 @@
       "known_for_department": "Production",
       "name": "Kentaro Hattori",
       "original_name": "服部健太郎",
-      "popularity": 0.5614,
+      "popularity": 0.5174,
       "profile_path": null
      },
      {
@@ -1766,7 +1824,7 @@
       "known_for_department": "Sound",
       "name": "Maiko Iuchi",
       "original_name": "井内舞子",
-      "popularity": 0.6313,
+      "popularity": 0.5749,
       "profile_path": null
      },
      {
@@ -1779,7 +1837,7 @@
       "known_for_department": "Sound",
       "name": "Jin Aketagawa",
       "original_name": "明田川仁",
-      "popularity": 0.8284,
+      "popularity": 0.8249,
       "profile_path": null
      },
      {
@@ -1792,7 +1850,7 @@
       "known_for_department": "Camera",
       "name": "Shingo Fukuyo",
       "original_name": "福世晋吾",
-      "popularity": 0.5119,
+      "popularity": 0.4601,
       "profile_path": null
      },
      {
@@ -1805,7 +1863,7 @@
       "known_for_department": "Editing",
       "name": "Shigeru Nishiyama",
       "original_name": "西山茂",
-      "popularity": 0.7048,
+      "popularity": 0.6229,
       "profile_path": null
      },
      {
@@ -1818,7 +1876,7 @@
       "known_for_department": "Writing",
       "name": "Kazuma Kamachi",
       "original_name": "鎌池和馬",
-      "popularity": 0.6659,
+      "popularity": 0.6668,
       "profile_path": null
      },
      {
@@ -1831,33 +1889,7 @@
       "known_for_department": "Visual Effects",
       "name": "Tomomi Ando",
       "original_name": "安藤智美",
-      "popularity": 0.6698,
-      "profile_path": null
-     },
-     {
-      "adult": false,
-      "credit_id": "61ee52986d4c97006ca10fbe",
-      "department": "Visual Effects",
-      "gender": 2,
-      "id": 1251003,
-      "job": "Character Designer",
-      "known_for_department": "Writing",
-      "name": "Motoi Fuyukawa",
-      "original_name": "冬川基",
-      "popularity": 0.5408,
-      "profile_path": null
-     },
-     {
-      "adult": false,
-      "credit_id": "61ee52bdea37e0496d17d3a2",
-      "department": "Writing",
-      "gender": 2,
-      "id": 1251004,
-      "job": "Original Series Creator",
-      "known_for_department": "Writing",
-      "name": "Kazuma Kamachi",
-      "original_name": "鎌池和馬",
-      "popularity": 0.6659,
+      "popularity": 0.5557,
       "profile_path": null
      },
      {
@@ -1870,7 +1902,33 @@
       "known_for_department": "Writing",
       "name": "Kiyotaka Haimura",
       "original_name": "灰村キヨタカ",
-      "popularity": 0.5502,
+      "popularity": 0.4964,
+      "profile_path": null
+     },
+     {
+      "adult": false,
+      "credit_id": "61ee52986d4c97006ca10fbe",
+      "department": "Visual Effects",
+      "gender": 2,
+      "id": 1251003,
+      "job": "Character Designer",
+      "known_for_department": "Writing",
+      "name": "Motoi Fuyukawa",
+      "original_name": "冬川基",
+      "popularity": 0.4541,
+      "profile_path": null
+     },
+     {
+      "adult": false,
+      "credit_id": "61ee52bdea37e0496d17d3a2",
+      "department": "Writing",
+      "gender": 2,
+      "id": 1251004,
+      "job": "Original Series Creator",
+      "known_for_department": "Writing",
+      "name": "Kazuma Kamachi",
+      "original_name": "鎌池和馬",
+      "popularity": 0.6668,
       "profile_path": null
      },
      {
@@ -1883,20 +1941,7 @@
       "known_for_department": "Writing",
       "name": "Motoi Fuyukawa",
       "original_name": "冬川基",
-      "popularity": 0.5408,
-      "profile_path": null
-     },
-     {
-      "adult": false,
-      "credit_id": "52589b81760ee346615f1adb",
-      "department": "Writing",
-      "gender": 2,
-      "id": 1251005,
-      "job": "Writer",
-      "known_for_department": "Writing",
-      "name": "Kiyotaka Haimura",
-      "original_name": "灰村キヨタカ",
-      "popularity": 0.5502,
+      "popularity": 0.4541,
       "profile_path": null
      },
      {
@@ -1909,7 +1954,20 @@
       "known_for_department": "Writing",
       "name": "Hiroshi Onogi",
       "original_name": "大野木寛",
-      "popularity": 2.0681,
+      "popularity": 1.5633,
+      "profile_path": null
+     },
+     {
+      "adult": false,
+      "credit_id": "52589b81760ee346615f1adb",
+      "department": "Writing",
+      "gender": 2,
+      "id": 1251005,
+      "job": "Writer",
+      "known_for_department": "Writing",
+      "name": "Kiyotaka Haimura",
+      "original_name": "灰村キヨタカ",
+      "popularity": 0.4964,
       "profile_path": null
      },
      {
@@ -1922,7 +1980,7 @@
       "known_for_department": "Writing",
       "name": "Seishi Minakami",
       "original_name": "水上清資",
-      "popularity": 0.7985,
+      "popularity": 0.7441,
       "profile_path": "/2znlvZYu2l1oWBomOLHjBlicXoy.jpg"
      }
     ]
@@ -2000,7 +2058,7 @@
    "original_language": "ja",
    "original_name": "とある科学の超電磁砲",
    "overview": "Misaka's electro-manipulation skills - and her delightfully destructive railgun projectile movement - make her a rock star in Academy City. The techno-metropolis is filled with supernaturally powerful students known as Espers, including Misaka's flirtatious friend and roommate, Shirai Kuroko. She uses her teleportation skills as a member of the Judgment law enforcement team, fighting crime alongside fellow agent Uiharu. Joined by their friend Saten, a spunky Level 0 Esper, Misaka, Kuroko, and Uiharu have a blast taking on danger whenever and wherever it arises.",
-   "popularity": 46.2527,
+   "popularity": 45.7116,
    "poster_path": "/dZt1dqw0K4JGhwcqTh8yExHYK9w.jpg",
    "production_companies": [
     {
@@ -3674,6 +3732,1008 @@
    "type": "Scripted",
    "vote_average": 8.425,
    "vote_count": 853
+  },
+  "https://api.themoviedb.org/3/tv/65942/season/1/episode/71?append_to_response=external_ids&api_key=KEY": {
+   "air_date": "2026-05-06",
+   "crew": [
+    {
+     "adult": false,
+     "credit_id": "61520a50158c85002c4ff46a",
+     "department": "Writing",
+     "gender": 1,
+     "id": 3242144,
+     "job": "Writer",
+     "known_for_department": "Writing",
+     "name": "Yoshiko Nakamura",
+     "original_name": "中村能子",
+     "popularity": 0.8003,
+     "profile_path": null
+    },
+    {
+     "adult": false,
+     "credit_id": "63a92d1323851300afa27180",
+     "department": "Visual Effects",
+     "gender": 2,
+     "id": 2410641,
+     "job": "Animation Director",
+     "known_for_department": "Visual Effects",
+     "name": "Takashi Nagayoshi",
+     "original_name": "永吉隆志",
+     "popularity": 0.6947,
+     "profile_path": null
+    },
+    {
+     "adult": false,
+     "credit_id": "670039519ebea19006f82c3e",
+     "department": "Visual Effects",
+     "gender": 1,
+     "id": 2374686,
+     "job": "Supervising Animation Director",
+     "known_for_department": "Visual Effects",
+     "name": "Haruka Sagawa",
+     "original_name": "佐川遥",
+     "popularity": 3.1869,
+     "profile_path": null
+    },
+    {
+     "adult": false,
+     "credit_id": "67011a9ac9a10d46ea7d05ed",
+     "department": "Visual Effects",
+     "gender": 2,
+     "id": 3279612,
+     "job": "Creature Design",
+     "known_for_department": "Visual Effects",
+     "name": "Keitaro Chiba",
+     "original_name": "千葉啓太郎",
+     "popularity": 0.3736,
+     "profile_path": null
+    },
+    {
+     "adult": false,
+     "credit_id": "67011d81f878adfed0855bd7",
+     "department": "Directing",
+     "gender": 2,
+     "id": 1627346,
+     "job": "Series Director",
+     "known_for_department": "Directing",
+     "name": "Masahiro Shinohara",
+     "original_name": "篠原正寛",
+     "popularity": 0.8948,
+     "profile_path": "/eI0QrAMx2GZgxFvLCUWI6FPT9rx.jpg"
+    },
+    {
+     "adult": false,
+     "credit_id": "670128e9e480149146856030",
+     "department": "Visual Effects",
+     "gender": 1,
+     "id": 2374686,
+     "job": "Character Designer",
+     "known_for_department": "Visual Effects",
+     "name": "Haruka Sagawa",
+     "original_name": "佐川遥",
+     "popularity": 3.1869,
+     "profile_path": null
+    },
+    {
+     "adult": false,
+     "credit_id": "670134077830c1301e7d005b",
+     "department": "Art",
+     "gender": 1,
+     "id": 2181914,
+     "job": "Art Designer",
+     "known_for_department": "Art",
+     "name": "Kaoru Aoki",
+     "original_name": "青木薫",
+     "popularity": 0.6865,
+     "profile_path": null
+    },
+    {
+     "adult": false,
+     "credit_id": "670138fce480149146856293",
+     "department": "Art",
+     "gender": 1,
+     "id": 1522609,
+     "job": "Art Direction",
+     "known_for_department": "Art",
+     "name": "Ryouka Kinoshita",
+     "original_name": "木下了香",
+     "popularity": 0.5805,
+     "profile_path": null
+    },
+    {
+     "adult": false,
+     "credit_id": "6701644b9ebea19006f867a0",
+     "department": "Camera",
+     "gender": 1,
+     "id": 3817174,
+     "job": "Director of Photography",
+     "known_for_department": "Camera",
+     "name": "Miori Miyagi",
+     "original_name": "宮城己織",
+     "popularity": 0.4794,
+     "profile_path": null
+    },
+    {
+     "adult": false,
+     "credit_id": "670168a17830c1301e7d0a45",
+     "department": "Visual Effects",
+     "gender": 2,
+     "id": 4237065,
+     "job": "CGI Director",
+     "known_for_department": "Visual Effects",
+     "name": "Kentaro Ijima",
+     "original_name": "居嶋健太郎",
+     "popularity": 0.6282,
+     "profile_path": null
+    },
+    {
+     "adult": false,
+     "credit_id": "670177159ebea19006f86aec",
+     "department": "Sound",
+     "gender": 1,
+     "id": 4982557,
+     "job": "Music Producer",
+     "known_for_department": "Sound",
+     "name": "Marina Chabata",
+     "original_name": "茶畑満里奈",
+     "popularity": 0.4663,
+     "profile_path": null
+    },
+    {
+     "adult": false,
+     "credit_id": "67115eb7a2cfe125fb960da4",
+     "department": "Directing",
+     "gender": 2,
+     "id": 2410641,
+     "job": "Director",
+     "known_for_department": "Visual Effects",
+     "name": "Takashi Nagayoshi",
+     "original_name": "永吉隆志",
+     "popularity": 0.6947,
+     "profile_path": null
+    },
+    {
+     "adult": false,
+     "credit_id": "671a9c13c7802cc50359ddf4",
+     "department": "Art",
+     "gender": 0,
+     "id": 2378259,
+     "job": "Storyboard Artist",
+     "known_for_department": "Directing",
+     "name": "Yasuaki Fujii",
+     "original_name": "藤井康晶",
+     "popularity": 0.8215,
+     "profile_path": null
+    },
+    {
+     "adult": false,
+     "credit_id": "69fcc0eb39fab715add9ab57",
+     "department": "Production",
+     "gender": 0,
+     "id": 6196793,
+     "job": "Production Assistant",
+     "known_for_department": "Production",
+     "name": "Shota Sugano",
+     "original_name": "菅野晶太",
+     "popularity": 0.3832,
+     "profile_path": null
+    }
+   ],
+   "episode_number": 71,
+   "episode_type": "standard",
+   "external_ids": {
+    "freebase_id": null,
+    "freebase_mid": null,
+    "imdb_id": "tt41799448",
+    "tvdb_id": 11714307,
+    "tvrage_id": null,
+    "wikidata_id": null
+   },
+   "guest_stars": [
+    {
+     "adult": false,
+     "character": "Julius Juukulius (voice)",
+     "credit_id": "670941e6d357a2103996e21b",
+     "gender": 2,
+     "id": 1248374,
+     "known_for_department": "Acting",
+     "name": "Takuya Eguchi",
+     "order": 514,
+     "original_name": "江口拓也",
+     "popularity": 2.474,
+     "profile_path": "/hPPhUp0mM65Lc87Q8WXUEmGQAXx.jpg"
+    },
+    {
+     "adult": false,
+     "character": "Anastasia Hoshin (voice) / Foxidna (voice)",
+     "credit_id": "6a10c9b1e2badf74d704fa31",
+     "gender": 1,
+     "id": 230471,
+     "known_for_department": "Acting",
+     "name": "Kana Ueda",
+     "order": 586,
+     "original_name": "植田佳奈",
+     "popularity": 1.6609,
+     "profile_path": "/us6FMwXCeSUR2YyByxVcgOUjiIA.jpg"
+    },
+    {
+     "adult": false,
+     "character": "Meili Portroute (voice)",
+     "credit_id": "6a10cec10f674985b6b5a3dc",
+     "gender": 1,
+     "id": 1521765,
+     "known_for_department": "Acting",
+     "name": "Eri Suzuki",
+     "order": 587,
+     "original_name": "鈴木絵理",
+     "popularity": 1.3037,
+     "profile_path": "/1Fxr99sRJGgpzpW8dmDv2vWU74h.jpg"
+    },
+    {
+     "adult": false,
+     "character": "Shaula (voice)",
+     "credit_id": "6a10d5d98ab977bc0e4b43ab",
+     "gender": 1,
+     "id": 2359492,
+     "known_for_department": "Acting",
+     "name": "Fairouz Ai",
+     "order": 591,
+     "original_name": "ファイルーズあい",
+     "popularity": 3.4133,
+     "profile_path": "/coFu6WOVBZvqd1fw89vbHkiC0zB.jpg"
+    },
+    {
+     "adult": false,
+     "character": "Reid Astrea (voice)",
+     "credit_id": "6a10d90f87d7868cc04b44af",
+     "gender": 2,
+     "id": 144655,
+     "known_for_department": "Acting",
+     "name": "Tomokazu Sugita",
+     "order": 593,
+     "original_name": "杉田智和",
+     "popularity": 3.2083,
+     "profile_path": "/cv5zuPZySNsHXu24pjKLYCRzJ2J.jpg"
+    },
+    {
+     "adult": false,
+     "character": "Typhon (voice)",
+     "credit_id": "6a10d97f5d9887f526aeb7d7",
+     "gender": 1,
+     "id": 151182,
+     "known_for_department": "Acting",
+     "name": "Misaki Kuno",
+     "order": 594,
+     "original_name": "久野美咲",
+     "popularity": 3.2152,
+     "profile_path": "/hVtE4gdKaqofYZmXXtlJs4Q9XTL.jpg"
+    },
+    {
+     "adult": false,
+     "character": "Typhon's Father (voice)",
+     "credit_id": "6a10d9ad4e0e305472b988fe",
+     "gender": 2,
+     "id": 9718,
+     "known_for_department": "Acting",
+     "name": "Taiten Kusunoki",
+     "order": 595,
+     "original_name": "楠大典",
+     "popularity": 2.4516,
+     "profile_path": "/jzruzwQOdyiJyOQ7Y6Q9Ds3xU2I.jpg"
+    },
+    {
+     "adult": false,
+     "character": "Sinner (voice)",
+     "credit_id": "6a10da1191acb80f0e4b44ba",
+     "gender": 2,
+     "id": 1849852,
+     "known_for_department": "Acting",
+     "name": "Toshiki Iwasawa",
+     "order": 596,
+     "original_name": "岩澤俊樹",
+     "popularity": 0.7883,
+     "profile_path": "/tphptiwyHraqbuFMVyjUzLGqbfp.jpg"
+    },
+    {
+     "adult": false,
+     "character": "Sinner (voice)",
+     "credit_id": "6a10da24d41538216b4b4448",
+     "gender": 2,
+     "id": 3036738,
+     "known_for_department": "Acting",
+     "name": "Yu Akiba",
+     "order": 597,
+     "original_name": "秋葉佑",
+     "popularity": 0.8204,
+     "profile_path": "/jwhd8URCaWIFi3lW9oKp4gj9Ug6.jpg"
+    },
+    {
+     "adult": false,
+     "character": "Crowd (voice)",
+     "credit_id": "6a10da8991acb80f0e4b44c6",
+     "gender": 1,
+     "id": 3921101,
+     "known_for_department": "Acting",
+     "name": "Saki Takahashi",
+     "order": 598,
+     "original_name": "髙橋咲貴",
+     "popularity": 0.8249,
+     "profile_path": "/yNGz49k5FaPQQb1LGci79c9iU0r.jpg"
+    },
+    {
+     "adult": false,
+     "character": "Crowd (voice)",
+     "credit_id": "6a10da9987d7868cc04b44c9",
+     "gender": 1,
+     "id": 2573570,
+     "known_for_department": "Acting",
+     "name": "Yuuka Amemiya",
+     "order": 599,
+     "original_name": "雨宮夕夏",
+     "popularity": 0.8808,
+     "profile_path": "/8TqnDMY512FNSACrcl6zBkecX3K.jpg"
+    },
+    {
+     "adult": false,
+     "character": "Crowd (voice)",
+     "credit_id": "6a10daa87007ed173f08190c",
+     "gender": 1,
+     "id": 5130104,
+     "known_for_department": "Acting",
+     "name": "Mitose Azuma",
+     "order": 600,
+     "original_name": "吾妻珠雪",
+     "popularity": 0.3682,
+     "profile_path": "/5JyNb9z2I6lYsNPFzdHW8gBnpRY.jpg"
+    },
+    {
+     "adult": false,
+     "character": "Crowd (voice)",
+     "credit_id": "6a10dabe5d9887f526aeb816",
+     "gender": 2,
+     "id": 5053388,
+     "known_for_department": "Acting",
+     "name": "Kazuya Kanzaki",
+     "order": 601,
+     "original_name": "神崎一矢",
+     "popularity": 0.6361,
+     "profile_path": "/yEg6TBQw1aPcD6wfOHYj6jAFZoq.jpg"
+    }
+   ],
+   "id": 7130060,
+   "name": "Stick Swinger",
+   "overview": "The Great Pleiades Library doesn't seem to have the answers Subaru seeks, so he decides they must go further.",
+   "production_code": "",
+   "runtime": 24,
+   "season_number": 1,
+   "still_path": "/jrnIZluGgco1u6doK9tOuGJwqVd.jpg",
+   "vote_average": 9.4,
+   "vote_count": 62
+  },
+  "https://api.themoviedb.org/3/tv/65942/season/1?api_key=KEY": {
+   "_id": "56eecc1cc3a368225300bc9b",
+   "air_date": "2016-04-04",
+   "id": 75470,
+   "name": "Season 1",
+   "networks": [
+    {
+     "id": 98,
+     "logo_path": "/jnuO8pZNEBLEq5YaOP1f5OkmG91.png",
+     "name": "TV Tokyo",
+     "origin_country": "JP"
+    },
+    {
+     "id": 173,
+     "logo_path": "/fERjndErEpveJmQZccJbJDi93rj.png",
+     "name": "AT-X",
+     "origin_country": "JP"
+    }
+   ],
+   "overview": "",
+   "poster_path": "/a8p5VEnstPypeZWhsKhEadRG3jW.jpg",
+   "season_number": 1,
+   "vote_average": 9.4
+  },
+  "https://api.themoviedb.org/3/tv/65942?append_to_response=credits%2Cexternal_ids%2Ccontent_ratings%2Crelease_dates&api_key=KEY": {
+   "adult": false,
+   "backdrop_path": "/7ZruEnSnHD6Jx5mF0hBt1E306Vt.jpg",
+   "content_ratings": {
+    "results": [
+     {
+      "descriptors": [],
+      "iso_3166_1": "US",
+      "rating": "TV-14"
+     },
+     {
+      "descriptors": [],
+      "iso_3166_1": "AU",
+      "rating": "MA 15+"
+     },
+     {
+      "descriptors": [],
+      "iso_3166_1": "DE",
+      "rating": "16"
+     },
+     {
+      "descriptors": [],
+      "iso_3166_1": "KR",
+      "rating": "15"
+     },
+     {
+      "descriptors": [],
+      "iso_3166_1": "BR",
+      "rating": "16"
+     },
+     {
+      "descriptors": [],
+      "iso_3166_1": "ES",
+      "rating": "16"
+     },
+     {
+      "descriptors": [],
+      "iso_3166_1": "AT",
+      "rating": "14"
+     },
+     {
+      "descriptors": [],
+      "iso_3166_1": "IE",
+      "rating": "15"
+     },
+     {
+      "descriptors": [],
+      "iso_3166_1": "CH",
+      "rating": "16"
+     },
+     {
+      "descriptors": [],
+      "iso_3166_1": "PL",
+      "rating": "16"
+     },
+     {
+      "descriptors": [],
+      "iso_3166_1": "HU",
+      "rating": "16"
+     },
+     {
+      "descriptors": [],
+      "iso_3166_1": "CZ",
+      "rating": "15+"
+     },
+     {
+      "descriptors": [],
+      "iso_3166_1": "RO",
+      "rating": "15"
+     },
+     {
+      "descriptors": [],
+      "iso_3166_1": "TW",
+      "rating": "15+"
+     },
+     {
+      "descriptors": [],
+      "iso_3166_1": "PR",
+      "rating": "TV-14"
+     },
+     {
+      "descriptors": [],
+      "iso_3166_1": "VI",
+      "rating": "TV-14"
+     },
+     {
+      "descriptors": [],
+      "iso_3166_1": "MX",
+      "rating": "B-15"
+     },
+     {
+      "descriptors": [],
+      "iso_3166_1": "CA",
+      "rating": "18+"
+     },
+     {
+      "descriptors": [],
+      "iso_3166_1": "SG",
+      "rating": "NC16"
+     }
+    ]
+   },
+   "created_by": [],
+   "credits": {
+    "cast": [
+     {
+      "adult": false,
+      "character": "Subaru Natsuki (voice)",
+      "credit_id": "5742e061c3a36852980001b4",
+      "gender": 2,
+      "id": 1350418,
+      "known_for_department": "Acting",
+      "name": "Yusuke Kobayashi",
+      "order": 0,
+      "original_name": "小林裕介",
+      "popularity": 1.7048,
+      "profile_path": "/y4ukKDSobZJNuB4H3k89hkrKCDC.jpg"
+     },
+     {
+      "adult": false,
+      "character": "Emilia (voice)",
+      "credit_id": "5742e0d8c3a36877550024fb",
+      "gender": 1,
+      "id": 1492982,
+      "known_for_department": "Acting",
+      "name": "Rie Takahashi",
+      "order": 1,
+      "original_name": "高橋李依",
+      "popularity": 5.2219,
+      "profile_path": "/aeB7z0cBTASdjKOjQriBAO6hYq4.jpg"
+     },
+     {
+      "adult": false,
+      "character": "Puck (voice)",
+      "credit_id": "5742e1e59251416ce6002901",
+      "gender": 1,
+      "id": 1321070,
+      "known_for_department": "Acting",
+      "name": "Yumi Uchiyama",
+      "order": 2,
+      "original_name": "内山夕実",
+      "popularity": 2.47,
+      "profile_path": "/JvavoF3YOLCf4LHfl4XvYobANE.jpg"
+     },
+     {
+      "adult": false,
+      "character": "Ram (voice)",
+      "credit_id": "5742e644925141019f00028f",
+      "gender": 1,
+      "id": 1324665,
+      "known_for_department": "Acting",
+      "name": "Rie Murakawa",
+      "order": 4,
+      "original_name": "村川梨衣",
+      "popularity": 1.1408,
+      "profile_path": "/pawIx7uhV1a2fAHjvTnrCP0KcHX.jpg"
+     },
+     {
+      "adult": false,
+      "character": "Rem (voice)",
+      "credit_id": "5742e556925141111a001c79",
+      "gender": 1,
+      "id": 1325949,
+      "known_for_department": "Acting",
+      "name": "Inori Minase",
+      "order": 6,
+      "original_name": "水瀬いのり",
+      "popularity": 2.4908,
+      "profile_path": "/cqOrQDUbbQLKpujzcK47YqjFdNp.jpg"
+     },
+     {
+      "adult": false,
+      "character": "Beatrice (voice)",
+      "credit_id": "5742e6af925141111a001ca5",
+      "gender": 1,
+      "id": 219563,
+      "known_for_department": "Acting",
+      "name": "Satomi Arai",
+      "order": 7,
+      "original_name": "新井里美",
+      "popularity": 2.0319,
+      "profile_path": "/v95wU1gpSLAOJS5yKFTxyheXAW2.jpg"
+     }
+    ],
+    "crew": [
+     {
+      "adult": false,
+      "credit_id": "67bc2cb7741152b0420abacd",
+      "department": "Production",
+      "gender": 2,
+      "id": 3345100,
+      "job": "Production Supervisor",
+      "known_for_department": "Production",
+      "name": "Gaku Iwasa",
+      "original_name": "岩佐岳",
+      "popularity": 0.6217,
+      "profile_path": null
+     },
+     {
+      "adult": false,
+      "credit_id": "67016734f878adfed0856902",
+      "department": "Camera",
+      "gender": 2,
+      "id": 1624757,
+      "job": "Director of Photography",
+      "known_for_department": "Camera",
+      "name": "Kentaro Minegishi",
+      "original_name": "峰岸健太郎",
+      "popularity": 0.4155,
+      "profile_path": null
+     },
+     {
+      "adult": false,
+      "credit_id": "670127ebb146282f7b855589",
+      "department": "Directing",
+      "gender": 2,
+      "id": 1624752,
+      "job": "Script Supervisor",
+      "known_for_department": "Writing",
+      "name": "Tappei Nagatsuki",
+      "original_name": "長月達平",
+      "popularity": 1.1105,
+      "profile_path": null
+     },
+     {
+      "adult": false,
+      "credit_id": "6570854979a1c3011b4208e5",
+      "department": "Production",
+      "gender": 2,
+      "id": 1647492,
+      "job": "Producer",
+      "known_for_department": "Production",
+      "name": "Akihito Ikemoto",
+      "original_name": "池本昌仁",
+      "popularity": 0.3839,
+      "profile_path": null
+     },
+     {
+      "adult": false,
+      "credit_id": "657085f7d18fb9095ecf1656",
+      "department": "Art",
+      "gender": 2,
+      "id": 2392824,
+      "job": "Prop Designer",
+      "known_for_department": "Art",
+      "name": "Goichi Iwahata",
+      "original_name": "岩畑剛一",
+      "popularity": 0.5804,
+      "profile_path": null
+     },
+     {
+      "adult": false,
+      "credit_id": "65708508fad8e900e39e7c36",
+      "department": "Production",
+      "gender": 1,
+      "id": 1819782,
+      "job": "Producer",
+      "known_for_department": "Production",
+      "name": "Eriko Aoki",
+      "original_name": "青木絵理子",
+      "popularity": 0.5323,
+      "profile_path": null
+     },
+     {
+      "adult": false,
+      "credit_id": "657084efd18fb90958e9bdd2",
+      "department": "Production",
+      "gender": 1,
+      "id": 2362599,
+      "job": "Producer",
+      "known_for_department": "Production",
+      "name": "Aya Iizuka",
+      "original_name": "飯塚彩",
+      "popularity": 1.0059,
+      "profile_path": null
+     },
+     {
+      "adult": false,
+      "credit_id": "6570860c0cb33500e4bd8d3d",
+      "department": "Art",
+      "gender": 2,
+      "id": 2403769,
+      "job": "Prop Designer",
+      "known_for_department": "Art",
+      "name": "Noritaka Suzuki",
+      "original_name": "鈴木典孝",
+      "popularity": 0.4203,
+      "profile_path": null
+     },
+     {
+      "adult": false,
+      "credit_id": "6570862e41ad8d06e56ac548",
+      "department": "Sound",
+      "gender": 2,
+      "id": 1845876,
+      "job": "Sound Effects",
+      "known_for_department": "Sound",
+      "name": "Yuji Furuya",
+      "original_name": "古谷友二",
+      "popularity": 0.6588,
+      "profile_path": null
+     },
+     {
+      "adult": false,
+      "credit_id": "657085d1383df200ae503e27",
+      "department": "Sound",
+      "gender": 2,
+      "id": 2174356,
+      "job": "Music Producer",
+      "known_for_department": "Sound",
+      "name": "Gou Wakabayashi",
+      "original_name": "若林豪",
+      "popularity": 0.6704,
+      "profile_path": null
+     },
+     {
+      "adult": false,
+      "credit_id": "65708670fad8e900adbc5f12",
+      "department": "Crew",
+      "gender": 1,
+      "id": 3173213,
+      "job": "Special Effects",
+      "known_for_department": "Crew",
+      "name": "Miho Kawanishi",
+      "original_name": "川西美保",
+      "popularity": 0.4343,
+      "profile_path": null
+     },
+     {
+      "adult": false,
+      "credit_id": "61931812957e6d0085c222b5",
+      "department": "Sound",
+      "gender": 2,
+      "id": 1565177,
+      "job": "Original Music Composer",
+      "known_for_department": "Sound",
+      "name": "Kenichiro Suehiro",
+      "original_name": "末廣健一郎",
+      "popularity": 1.0494,
+      "profile_path": "/aNS2Hb3PfgckUMM8ELnbaDYIF7b.jpg"
+     },
+     {
+      "adult": false,
+      "credit_id": "5742e90cc3a368534200033d",
+      "department": "Writing",
+      "gender": 2,
+      "id": 550581,
+      "job": "Series Composition",
+      "known_for_department": "Writing",
+      "name": "Masahiro Yokotani",
+      "original_name": "横谷昌宏",
+      "popularity": 1.8568,
+      "profile_path": "/vFFo7ODIFfKuoKlRqGpGweIDFTE.jpg"
+     },
+     {
+      "adult": false,
+      "credit_id": "5742ec279251411dc8001ce6",
+      "department": "Sound",
+      "gender": 2,
+      "id": 570486,
+      "job": "Sound Director",
+      "known_for_department": "Sound",
+      "name": "Jin Aketagawa",
+      "original_name": "明田川仁",
+      "popularity": 0.8249,
+      "profile_path": null
+     },
+     {
+      "adult": false,
+      "credit_id": "5742ecaac3a36852980003ac",
+      "department": "Editing",
+      "gender": 1,
+      "id": 1624759,
+      "job": "Editor",
+      "known_for_department": "Editing",
+      "name": "Hitomi Sudo",
+      "original_name": "須藤瞳",
+      "popularity": 0.7927,
+      "profile_path": null
+     },
+     {
+      "adult": false,
+      "credit_id": "5742ec8cc3a36868e4001aa4",
+      "department": "Visual Effects",
+      "gender": 1,
+      "id": 1624758,
+      "job": "Color Designer",
+      "known_for_department": "Visual Effects",
+      "name": "Izumi Sakamoto",
+      "original_name": "坂本いづみ",
+      "popularity": 0.654,
+      "profile_path": null
+     },
+     {
+      "adult": false,
+      "credit_id": "67599a57ef269d0b88e3a935",
+      "department": "Visual Effects",
+      "gender": 2,
+      "id": 2355199,
+      "job": "Character Designer",
+      "known_for_department": "Art",
+      "name": "Shinichiro Otsuka",
+      "original_name": "大塚真一郎",
+      "popularity": 0.4072,
+      "profile_path": null
+     },
+     {
+      "adult": false,
+      "credit_id": "67599a925c364c4a67ffdeec",
+      "department": "Art",
+      "gender": 2,
+      "id": 2355199,
+      "job": "Original Series Design",
+      "known_for_department": "Art",
+      "name": "Shinichiro Otsuka",
+      "original_name": "大塚真一郎",
+      "popularity": 0.4072,
+      "profile_path": null
+     },
+     {
+      "adult": false,
+      "credit_id": "67599ab02d200c84f191281e",
+      "department": "Writing",
+      "gender": 2,
+      "id": 1624752,
+      "job": "Novel",
+      "known_for_department": "Writing",
+      "name": "Tappei Nagatsuki",
+      "original_name": "長月達平",
+      "popularity": 1.1105,
+      "profile_path": null
+     }
+    ]
+   },
+   "episode_run_time": [
+    25
+   ],
+   "external_ids": {
+    "facebook_id": null,
+    "freebase_id": null,
+    "freebase_mid": null,
+    "imdb_id": "tt5607616",
+    "instagram_id": null,
+    "tvdb_id": 305089,
+    "tvrage_id": null,
+    "twitter_id": "Rezero_official",
+    "wikidata_id": "Q65086934"
+   },
+   "first_air_date": "2016-04-04",
+   "genres": [
+    {
+     "id": 16,
+     "name": "Animation"
+    },
+    {
+     "id": 9648,
+     "name": "Mystery"
+    },
+    {
+     "id": 10759,
+     "name": "Action & Adventure"
+    },
+    {
+     "id": 10765,
+     "name": "Sci-Fi & Fantasy"
+    }
+   ],
+   "homepage": "http://re-zero-anime.jp/",
+   "id": 65942,
+   "in_production": false,
+   "languages": [
+    "ja"
+   ],
+   "last_air_date": "2026-09-30",
+   "last_episode_to_air": {
+    "air_date": "2026-09-30",
+    "episode_number": 85,
+    "episode_type": "finale",
+    "id": 7130183,
+    "name": "Shaula / Hero",
+    "overview": "As the battle to conquer the tower nears its climax, Subaru faces the giant scorpion that was once Shaula.",
+    "production_code": "",
+    "runtime": 42,
+    "season_number": 1,
+    "show_id": 65942,
+    "still_path": "/tJD87atdoaBEMLvWxHlzOsLxDHs.jpg",
+    "vote_average": 8.8,
+    "vote_count": 17
+   },
+   "name": "Re:ZERO -Starting Life in Another World-",
+   "networks": [
+    {
+     "id": 98,
+     "logo_path": "/jnuO8pZNEBLEq5YaOP1f5OkmG91.png",
+     "name": "TV Tokyo",
+     "origin_country": "JP"
+    },
+    {
+     "id": 173,
+     "logo_path": "/fERjndErEpveJmQZccJbJDi93rj.png",
+     "name": "AT-X",
+     "origin_country": "JP"
+    }
+   ],
+   "next_episode_to_air": null,
+   "number_of_episodes": 85,
+   "number_of_seasons": 1,
+   "origin_country": [
+    "JP"
+   ],
+   "original_language": "ja",
+   "original_name": "Re:ゼロから始める異世界生活",
+   "overview": "Natsuki Subaru, an ordinary high school  student, is on his way home from the convenience store when he finds  himself transported to another world. As he's lost and confused in a new  world where he doesn't even know left from right, the only person to  reach out to him was a beautiful girl with silver hair. Determined to  repay her somehow for saving him from his own despair, Subaru agrees to  help the girl find something she's looking for.",
+   "popularity": 118.8438,
+   "poster_path": "/oHqYrPAsIiTD5m4DuxumV4er8BU.jpg",
+   "production_companies": [
+    {
+     "id": 12569,
+     "logo_path": "/pROt6mT15AC5aTadf7NRBRiTVo3.png",
+     "name": "White Fox",
+     "origin_country": "JP"
+    },
+    {
+     "id": 2073,
+     "logo_path": "/tWxRSaKmRJNTcmtlXsmn5R4KOSU.png",
+     "name": "KADOKAWA",
+     "origin_country": "JP"
+    },
+    {
+     "id": 142186,
+     "logo_path": "/bdXTOuU7PdsDtQngyM7vb47zePs.png",
+     "name": "Hakuhodo DY Music & Pictures",
+     "origin_country": "JP"
+    },
+    {
+     "id": 157002,
+     "logo_path": "/hSdroyVthq3CynxTIIY7lnS8w1.png",
+     "name": "Tokyo MX",
+     "origin_country": "JP"
+    },
+    {
+     "id": 17981,
+     "logo_path": "/8UABNMysukRi4udTHYxcNUMbPR1.png",
+     "name": "AT-X",
+     "origin_country": "JP"
+    },
+    {
+     "id": 12540,
+     "logo_path": null,
+     "name": "Memory-Tech",
+     "origin_country": "JP"
+    },
+    {
+     "id": 225089,
+     "logo_path": "/g2DdqSxJNOzr9uoEwAcOcSi6DRQ.png",
+     "name": "DAXEL",
+     "origin_country": "JP"
+    }
+   ],
+   "production_countries": [
+    {
+     "iso_3166_1": "JP",
+     "name": "Japan"
+    }
+   ],
+   "seasons": [
+    {
+     "air_date": "2016-04-05",
+     "episode_count": 90,
+     "id": 76465,
+     "name": "Specials",
+     "overview": "",
+     "poster_path": "/DZtIJ4MbMgvrdZ6aqcCRfWjH03.jpg",
+     "season_number": 0,
+     "vote_average": 0.0
+    },
+    {
+     "air_date": "2016-04-04",
+     "episode_count": 85,
+     "id": 75470,
+     "name": "Season 1",
+     "overview": "",
+     "poster_path": "/a8p5VEnstPypeZWhsKhEadRG3jW.jpg",
+     "season_number": 1,
+     "vote_average": 9.4
+    }
+   ],
+   "softcore": false,
+   "spoken_languages": [
+    {
+     "english_name": "Japanese",
+     "iso_639_1": "ja",
+     "name": "日本語"
+    }
+   ],
+   "status": "Ended",
+   "tagline": "Racing through the journey of memories——",
+   "type": "Scripted",
+   "vote_average": 8.118,
+   "vote_count": 804
   }
  }
 }

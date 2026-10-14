@@ -776,15 +776,18 @@ pub(super) fn replace_misnumbered(shared: &SharedRuntime) -> usize {
     // Episodes on a season TMDB lacks, of a show IMDb knows: looked up through IMDb after the
     // lock is let go, since a `/find` TMDB has not answered before goes to the network.
     let mut deferred: Vec<(Option<i64>, Option<i64>, String, Value, i64, String, String, String, (i64, i64))> = Vec::new();
+    let unsure_versions: Vec<Unsure>;
     let (mut by_source, sources, tmdb) = {
         let mut guard = lock(shared);
         if guard.tmdb.is_none() && guard.plex.is_none() {
             return 0;
         }
-        guard.unfold_versions();
+        let mut show_seasons: HashMap<i64, Vec<(i64, i64, String)>> = HashMap::new();
+        let (elsewhere, unsure) = guard.versions_elsewhere(&mut show_seasons);
+        guard.unfold_versions(&elsewhere);
+        unsure_versions = unsure;
         let guard = guard;
         let mut by_source: BTreeMap<String, Vec<Value>> = BTreeMap::new();
-        let mut show_seasons: HashMap<i64, Vec<(i64, i64, String)>> = HashMap::new();
         for row in guard.catalog.items() {
             if row.get("type").and_then(Value::as_str) != Some("episode")
                 || row.get("deletedAt").is_some_and(|value| !value.is_null())
@@ -869,6 +872,37 @@ pub(super) fn replace_misnumbered(shared: &SharedRuntime) -> usize {
             let queued = by_source.entry(source).or_default();
             if !queued.iter().any(|queued| queued.get("id") == item.get("id")) {
                 queued.push(item);
+            }
+        }
+    }
+    // Releases of rows holding several that IMDb places, or failing it their names, elsewhere.
+    let mut away: BTreeMap<String, Vec<(String, String)>> = BTreeMap::new();
+    if let Some(t) = tmdb.as_deref() {
+        for unsure in unsure_versions {
+            let placed = super::scan::by_imdb(t as &dyn TmdbSource, unsure.show, &unsure.imdb, &unsure.release_title, &unsure.show_title, unsure.numbers)
+                .unwrap_or(unsure.numbers);
+            if (Some(placed.0), Some(placed.1)) != unsure.here {
+                away.entry(unsure.key).or_default().push(unsure.release);
+            }
+        }
+    }
+    if !away.is_empty() {
+        let mut guard = lock(shared);
+        let elsewhere: Vec<(String, Vec<usize>)> = away
+            .into_iter()
+            .filter_map(|(key, releases)| {
+                let all = versions(guard.catalog.get(&key)?);
+                let mut indices: Vec<usize> =
+                    all.iter().filter(|(source, sid, _)| releases.contains(&(source.clone(), sid.clone()))).map(|(_, _, index)| *index).collect();
+                if indices.len() == all.len() {
+                    indices.retain(|index| *index != 0);
+                }
+                (!indices.is_empty()).then_some((key, indices))
+            })
+            .collect();
+        for key in guard.unfold_versions(&elsewhere) {
+            if let Some((source, item)) = guard.catalog.get(&key).and_then(pushed_item) {
+                by_source.entry(source).or_default().push(item);
             }
         }
     }
@@ -995,6 +1029,41 @@ fn names_directory(location: &str, path: &str) -> bool {
         let directory = segments[..count].join("/");
         location == directory || location.ends_with(&format!("/{directory}"))
     })
+}
+
+/// A release of a row holding several whose season TMDB lacks: IMDb's numbering places it,
+/// a network lookup made off the lock, else its name's numbers do.
+struct Unsure {
+    key: String,
+    release: (String, String),
+    show: i64,
+    imdb: String,
+    release_title: String,
+    show_title: String,
+    numbers: (i64, i64),
+    here: (Option<i64>, Option<i64>),
+}
+
+/// The numbers the name of a row's release at `index` reads: its file's, under its folder's.
+fn release_numbers(row: &Value, index: usize) -> Option<(i64, i64)> {
+    let path = row.pointer(&format!("/Media/{index}/_path")).and_then(Value::as_str)?;
+    let mut segments = path.rsplit('/');
+    let name = segments.next()?;
+    let release = segments.next().or_else(|| row.get("_release").and_then(Value::as_str))?;
+    super::scan::episode_of(release, name)
+}
+
+/// A row made of one release: that release its only Media, its source fields and name the row's.
+fn take_release(row: &mut Map<String, Value>, media: &Value) {
+    for field in ["_source", "_sid", "_path"] {
+        if let Some(value) = media.get(field) {
+            row.insert(field.to_string(), value.clone());
+        }
+    }
+    if let Some(release) = media.get("_path").and_then(Value::as_str).and_then(|path| path.rsplit('/').nth(1)) {
+        row.insert("_release".to_string(), json!(release));
+    }
+    row.insert("Media".to_string(), json!([media]));
 }
 
 impl Runtime {
@@ -1461,25 +1530,20 @@ impl Runtime {
         folded
     }
 
-    /// Rows holding releases whose files name different episodes, which an identification
-    /// that gave a whole pack one guid folded together (The Boys S03E01-E08 on one episode,
-    /// Food Wars S01-S05 E01 on S1E1; 232 episodes on the production server, 2026-10-14):
-    /// each release naming another episode than the row's first goes onto a row of its own,
-    /// the way Split makes one, so the re-placing pass that follows numbers it by its name.
-    /// What a person matched stays. Answers how many rows it made.
-    pub(super) fn unfold_versions(&mut self) -> usize {
-        let numbers = |row: &Value, index: usize| {
-            let media = row.pointer(&format!("/Media/{index}"))?;
-            let path = media.get("_path").and_then(Value::as_str)?;
-            let mut segments = path.rsplit('/');
-            let name = segments.next()?;
-            let release = segments.next().or_else(|| row.get("_release").and_then(Value::as_str))?;
-            super::scan::episode_of(release, name)
-        };
-        let mut split: Vec<(String, Vec<usize>)> = Vec::new();
+    /// The releases of rows holding several that this pass would place on another episode
+    /// than the row's, which an identification that gave a whole pack one guid folded together
+    /// (The Boys S03E01-E08 on one episode, Food Wars S01-S05 E01 on S1E1; 232 episodes on the
+    /// production server, 2026-10-14). A release is placed as `replace_misnumbered` places a row:
+    /// its name's numbers on the show's TMDB seasons. One whose season TMDB lacks is IMDb's to
+    /// place: it is answered apart (`Unsure`), off the lock. A row a person matched stays whole.
+    /// When none would stay, the first does.
+    fn versions_elsewhere(&self, show_seasons: &mut HashMap<i64, Vec<(i64, i64, String)>>) -> (Vec<(String, Vec<usize>)>, Vec<Unsure>) {
+        let mut found = Vec::new();
+        let mut unsure = Vec::new();
         for row in self.catalog.items() {
             if row.get("type").and_then(Value::as_str) != Some("episode")
                 || row.get("deletedAt").is_some_and(|value| !value.is_null())
+                || row.get("_probePending").is_some_and(truthy)
                 || self.matched_by_hand(row)
             {
                 continue;
@@ -1488,34 +1552,85 @@ impl Runtime {
             if all.len() < 2 || all[0].2 != 0 {
                 continue;
             }
-            let Some(first) = numbers(row, 0) else {
-                continue;
-            };
-            let others: Vec<usize> = all[1..].iter().map(|(_, _, index)| *index).filter(|index| numbers(row, *index).is_some_and(|own| own != first)).collect();
-            if let (false, Some(key)) = (others.is_empty(), key_of(row)) {
-                split.push((key, others));
+            let show = row.get("grandparentRatingKey").map(string_value).and_then(|key| self.catalog.get(&key));
+            let show_id = show
+                .and_then(|show| show.get("_identity"))
+                .and_then(Value::as_str)
+                .and_then(|identity| identity.strip_prefix("tmdb:"))
+                .and_then(|id| id.parse::<i64>().ok());
+            let show_imdb = show.and_then(|show| show.get("Guid")).and_then(Value::as_array).and_then(|guids| {
+                guids.iter().filter_map(|guid| guid.get("id").and_then(Value::as_str)).find_map(|id| id.strip_prefix("imdb://"))
+            });
+            let here = (row.get("parentIndex").and_then(Value::as_i64), row.get("index").and_then(Value::as_i64));
+            let mut away = Vec::new();
+            for (source, sid, index) in &all {
+                let Some(numbers) = release_numbers(row, *index) else {
+                    continue;
+                };
+                let placed = match show_id {
+                    Some(id) => {
+                        let seasons = show_seasons.entry(id).or_insert_with(|| {
+                            self.tmdb
+                                .as_deref()
+                                .and_then(|t| crate::identify::tmdb_details(t as &dyn TmdbSource, "tv", id))
+                                .map(|details| super::scan::tmdb_seasons(&details))
+                                .unwrap_or_default()
+                        });
+                        let placed = super::scan::on_seasons(seasons, id, numbers);
+                        if let (Some(imdb), false, false) =
+                            (show_imdb, seasons.is_empty(), seasons.iter().any(|season| season.0 == placed.0))
+                        {
+                            let release = row
+                                .pointer(&format!("/Media/{index}/_path"))
+                                .and_then(Value::as_str)
+                                .and_then(|path| path.rsplit('/').nth(1))
+                                .or_else(|| row.get("_release").and_then(Value::as_str))
+                                .unwrap_or_default();
+                            unsure.push(Unsure {
+                                key: key_of(row).unwrap_or_default(),
+                                release: (source.clone(), sid.clone()),
+                                show: id,
+                                imdb: imdb.to_string(),
+                                release_title: crate::identify::parse_name(release).title,
+                                show_title: show.and_then(|show| show.get("title")).and_then(Value::as_str).unwrap_or_default().to_string(),
+                                numbers,
+                                here,
+                            });
+                            continue;
+                        }
+                        placed
+                    }
+                    None => numbers,
+                };
+                if (Some(placed.0), Some(placed.1)) != here {
+                    away.push(*index);
+                }
+            }
+            if away.len() == all.len() {
+                away.retain(|index| *index != 0);
+            }
+            if let (false, Some(key)) = (away.is_empty(), key_of(row)) {
+                found.push((key, away));
             }
         }
-        let mut made = 0;
-        for (key, indices) in split {
-            let Some(original) = self.catalog.get(&key).cloned() else {
+        (found, unsure)
+    }
+
+    /// Each release `versions_elsewhere` found onto a row of its own, the way Split makes one,
+    /// so the re-placing pass that follows places it by its name; the row keeps the others,
+    /// its own source fields its first's. Answers how many rows it made.
+    pub(super) fn unfold_versions(&mut self, elsewhere: &[(String, Vec<usize>)]) -> Vec<String> {
+        let mut made = Vec::new();
+        for (key, indices) in elsewhere {
+            let Some(original) = self.catalog.get(key).cloned() else {
                 continue;
             };
             let media = original.get("Media").and_then(Value::as_array).cloned().unwrap_or_default();
-            for index in &indices {
+            for index in indices {
                 let new_key = self.mint_key();
                 let mut clone = original.clone();
                 if let Some(object) = clone.as_object_mut() {
-                    let version = media[*index].clone();
-                    for field in ["_source", "_sid", "_path"] {
-                        if let Some(value) = version.get(field) {
-                            object.insert(field.to_string(), value.clone());
-                        }
-                    }
-                    if let Some(release) = version.get("_path").and_then(Value::as_str).and_then(|path| path.rsplit('/').nth(1)) {
-                        object.insert("_release".to_string(), json!(release));
-                    }
-                    object.insert("Media".to_string(), json!([version]));
+                    take_release(object, &media[*index]);
                     object.insert("ratingKey".to_string(), json!(new_key));
                     object.insert("key".to_string(), json!(format!("/library/metadata/{new_key}")));
                     // Another episode's: none of the row's watch state is its.
@@ -1524,15 +1639,18 @@ impl Runtime {
                     }
                 }
                 self.catalog.add(clone);
-                made += 1;
+                made.push(new_key);
             }
-            if let Some(object) = self.catalog.get_mut(&key).and_then(Value::as_object_mut) {
-                let kept: Vec<Value> = media.iter().enumerate().filter(|(index, _)| !indices.contains(index)).map(|(_, media)| media.clone()).collect();
+            let kept: Vec<Value> = media.iter().enumerate().filter(|(index, _)| !indices.contains(index)).map(|(_, media)| media.clone()).collect();
+            if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
+                if indices.contains(&0) {
+                    take_release(object, &kept[0]);
+                }
                 object.insert("Media".to_string(), Value::Array(kept));
             }
-            info!("FEED unfolded {} release(s) naming other episodes off {key}", indices.len());
+            info!("FEED unfolded {} release(s) placed on other episodes off {key}", indices.len());
         }
-        if made > 0 {
+        if !made.is_empty() {
             self.dirty = true;
         }
         made

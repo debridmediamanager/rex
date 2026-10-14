@@ -8,7 +8,9 @@ episode; and a pack identified through its IMDb id as one title gave all its epi
 guid, which the fold took for versions of one episode (The Boys S03E01-E08). This pushes
 zurg's entries for those files (`fixtures/feed/unfold.json`) and checks each lands on its
 own row and numbers; then folds them as the production server held them (an episode
-Merge, which keeps each release's source) and checks a start unfolds them again.
+Merge, which keeps each release's source) and checks a start unfolds them again, while
+two releases of one Re:Zero episode named apart (`- 71`, `S04E05`) stay one row on
+every start.
 
 Record the answers again: `REX_RECORD_ANSWERS=1 TMDB_KEY=... python3 tests/test_feed_unfold.py`.
 
@@ -39,8 +41,13 @@ def check_placed(label, got, keys, names):
         want = FIXTURE["pushes"][name]["want"]
         ok = got[name][1:] == want[1:] and (want[0] is None or got[name][0] == want[0])
         check("%s: %s is season %s episode %s" % (label, name, want[1], want[2]), ok, got[name])
-    rows = [keys[FIXTURE["pushes"][name]["path"]] for name in names]
-    check("%s: every file is a row of its own" % label, len(set(rows)) == len(rows), rows)
+    key = lambda name: keys[FIXTURE["pushes"][name]["path"]]
+    rows = [key(name) for name in names if "with" not in FIXTURE["pushes"][name]]
+    check("%s: every episode is a row of its own" % label, len(set(rows)) == len(rows), rows)
+    for name in names:
+        if "with" in FIXTURE["pushes"][name]:
+            check("%s: %s is a version of %s" % (label, name, FIXTURE["pushes"][name]["with"]),
+                  key(name) == key(FIXTURE["pushes"][name]["with"]), (key(name), key(FIXTURE["pushes"][name]["with"])))
 
 
 def main():
@@ -49,6 +56,7 @@ def main():
         source.files.add("/dav/" + pushed["path"])
     bytes_port = serve(source.handler())
     names = sorted(FIXTURE["pushes"])
+    rows_wanted = [name for name in names if "with" not in FIXTURE["pushes"][name]]
 
     # -- live: each file of a batch is its own episode -------------------------------------
     work = tempfile.mkdtemp(prefix="rex-unfold-")
@@ -69,7 +77,7 @@ def main():
             check("%s folded onto %s (%d releases)" % (group, target, len(others) + 1), status == 200, status)
         folded = server.keys()
         check("a merge keeps each release's source: the feed lists every file on its survivor",
-              len(folded) == len(names) and len(set(folded.values())) == len(FIXTURE["folds"]), folded)
+              len(folded) == len(names) and len(set(folded.values())) == len(FIXTURE["folds"]) + 1, folded)
     finally:
         anime.stop(server, work)
 
@@ -78,7 +86,7 @@ def main():
     try:
         deadline = time.time() + 90
         keys = server.keys()
-        while len(set(keys.values())) < len(names) and time.time() < deadline:
+        while len(set(keys.values())) < len(rows_wanted) and time.time() < deadline:
             time.sleep(1)
             keys = server.keys()
         got = placed_all(server, keys, names)
@@ -86,6 +94,18 @@ def main():
         for group, survivor in sorted(FIXTURE["folds"].items()):
             path = FIXTURE["pushes"][survivor]["path"]
             check("%s's survivor keeps its key" % group, keys.get(path) == folded.get(path), (folded.get(path), keys.get(path)))
+    finally:
+        anime.stop(server, work)
+
+    # -- and the start after that leaves every row as it is ----------------------------------
+    log = os.path.join(work, "server.log")
+    unfolded = open(log, errors="replace").read().count("FEED unfolded")
+    server = anime.start(work, bytes_port, True)
+    try:
+        time.sleep(20)
+        check("the next start unfolds nothing (versions of one episode stay one row)",
+              open(log, errors="replace").read().count("FEED unfolded") == unfolded and server.keys() == keys,
+              open(log, errors="replace").read().count("FEED unfolded") - unfolded)
     finally:
         anime.stop(server, work)
         shutil.rmtree(work, ignore_errors=True)
