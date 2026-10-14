@@ -252,8 +252,6 @@ def gdm_stamp(port):
 # reported as a known gap while it fails, and fails the suite once it passes, so the entry
 # is removed when the native server catches up.
 KNOWN_GAPS = {
-    "a play queue's shuffle and repeat are 0/1 integer flags and anything else is a "
-    "400, as both PMS versions answer": "shuffle=01 and shuffle=001 read as false",
     "spellfix rebuilds only at the measured optimization call sites":
         "the Butler OptimizeDatabase task and a section delete do not rebuild the spelling index",
     "show merge absorbs its hierarchy and combines matching episode Media":

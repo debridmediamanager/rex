@@ -13384,23 +13384,24 @@ impl Runtime {
             {
                 return Response::error(400, "rex: bad request");
             }
+            // Cycle 79, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4), which
+            // agree cell for cell (tests/fixtures/playqueue_flags.json): `shuffle` and
+            // `repeat` are INTEGER flags -- an optional `+` and digits whose value is 0 or
+            // 1, so `01`, `001` and `+1` shuffle -- and anything else is a 400: `True`, `2`,
+            // `-1`, `1.0`, ` 1`, an empty value. python-plexapi 4.17.2 sends
+            // `shuffle=True&repeat=True`, which a real PMS refuses. Comparing the text
+            // against "1" left `01` unshuffled.
+            let mut shuffled = false;
             for name in ["shuffle", "repeat"] {
                 if let Some(value) = query.get(name) {
-                    if !value.starts_with('+') && !value.chars().all(|ch| ch.is_ascii_digit()) {
+                    let Some(flag) = queue_flag(value) else {
                         return Response::error(400, "rex: bad request");
-                    }
-                    if value.trim_start_matches('+').parse::<i64>().ok() != Some(0)
-                        && value.trim_start_matches('+').parse::<i64>().ok() != Some(1)
-                    {
-                        return Response::error(400, "rex: bad request");
-                    }
+                    };
+                    shuffled |= name == "shuffle" && flag;
                 }
             }
             let mut rows = self.queue_rows_for_query(query);
             let natural = rows.iter().filter_map(key_of).collect::<Vec<_>>();
-            let shuffled = query
-                .get("shuffle")
-                .is_some_and(|value| value.trim_start_matches('+') == "1");
             if shuffled && rows.len() > 1 {
                 let seed = SystemTime::now()
                     .duration_since(UNIX_EPOCH)
@@ -25470,6 +25471,51 @@ fn hex(value: u8) -> Result<u8, ()> {
 }
 fn key_of(value: &Value) -> Option<String> {
     value.get("ratingKey").map(string_value)
+}
+
+/// A play queue's `shuffle` or `repeat` (cycle 79): one optional `+` and ASCII digits whose
+/// value is 0 or 1, however many leading zeros, read as off or on; `None` is the 400 a real
+/// PMS answers to anything else.
+fn queue_flag(value: &str) -> Option<bool> {
+    let digits = value.strip_prefix('+').unwrap_or(value);
+    if digits.is_empty() || !digits.bytes().all(|byte| byte.is_ascii_digit()) {
+        return None;
+    }
+    match digits.trim_start_matches('0') {
+        "" => Some(false),
+        "1" => Some(true),
+        _ => None,
+    }
+}
+
+#[cfg(test)]
+mod queue_flag_tests {
+    use super::*;
+
+    /// Every cell plexscratch42 and plexscratch answered for `shuffle` alone: a 200's
+    /// `playQueueShuffled` is the flag, a 400 is `None`.
+    #[test]
+    fn shuffle_reads_the_measured_cells() {
+        let fixture: Value =
+            serde_json::from_str(include_str!("../../tests/fixtures/playqueue_flags.json"))
+                .expect("the play queue flag fixture parses");
+        let cells = fixture["cells"]["shuffle"].as_object().expect("shuffle cells");
+        assert!(cells.len() >= 17);
+        for (value, servers) in cells {
+            for (server, cell) in servers.as_object().expect("a cell per server") {
+                let expected = match cell[0].as_i64() {
+                    Some(200) => cell[1].as_bool(),
+                    _ => None,
+                };
+                assert_eq!(queue_flag(value), expected, "shuffle={value:?} on {server}");
+            }
+        }
+        // The grammar's own edges: one `+` only, and a value past i64 that is still 1.
+        assert_eq!(queue_flag("++1"), None);
+        assert_eq!(queue_flag("+"), None);
+        assert_eq!(queue_flag(&format!("{}1", "0".repeat(40))), Some(true));
+        assert_eq!(queue_flag(&format!("1{}", "0".repeat(40))), None);
+    }
 }
 
 fn strip_excluded_fields(value: &mut Value, names: &HashSet<&str>) {
