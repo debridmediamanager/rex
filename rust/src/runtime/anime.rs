@@ -79,8 +79,11 @@ impl Index {
             let attrs: HashMap<&str, &str> =
                 ATTR.captures_iter(&found[1]).map(|a| (a.get(1).unwrap().as_str(), a.get(2).unwrap().as_str())).collect();
             let number = |name: &str| attrs.get(name).and_then(|value| value.parse::<i64>().ok());
+            // `a`: TMDB numbers the show absolutely (Dragon Ball Z), kept as season -1, which
+            // names the show and numbers nothing.
+            let season = number("tmdbseason").or_else(|| (attrs.get("tmdbseason") == Some(&"a")).then_some(-1));
             let (Some(anidb), Some(tmdb), Some(season)) =
-                (attrs.get("anidbid").and_then(|id| id.parse::<u32>().ok()), number("tmdbtv"), number("tmdbseason"))
+                (attrs.get("anidbid").and_then(|id| id.parse::<u32>().ok()), number("tmdbtv"), season)
             else {
                 continue;
             };
@@ -138,14 +141,15 @@ impl Index {
 
     /// The entry a title names, the lowest AniDB id when several share it (a show's first
     /// cour before its later ones).
-    /// A title several entries share is the first season's: `Ranma ½` names the 1989 series,
-    /// Nettou Hen (its TMDB season 2) and the 2024 remake alike.
+    /// A title several entries share is the first season's, or the absolutely numbered show's:
+    /// `Ranma ½` names the 1989 series, Nettou Hen (its TMDB season 2) and the 2024 remake alike,
+    /// and `Dragon Ball Z` the show and its specials.
     fn find(&self, title: &str) -> Option<&Target> {
         self.titles
             .get(&normalize(title))?
             .iter()
             .filter_map(|id| self.entries.get(id))
-            .min_by_key(|target| (target.season == 0, target.season, target.offset, target.anidb))
+            .min_by_key(|target| (target.season == 0, target.season.max(1), target.offset, target.anidb))
     }
 
     /// A file of a release: the release's entry, else the file's. A batch named for its first
@@ -167,6 +171,13 @@ impl Index {
     /// a later season (`Oshi no Ko S2 - 05`) that only the first season's entry answers names
     /// the show, not the season.
     pub fn lookup(&self, name: &str) -> Option<(Target, bool)> {
+        self.lookup_entry(name).map(|(target, numbered)| {
+            let numbered = numbered && target.season >= 0;
+            (target, numbered)
+        })
+    }
+
+    fn lookup_entry(&self, name: &str) -> Option<(Target, bool)> {
         let parsed = identify::parse_name(name);
         if parsed.title.is_empty() {
             return None;
@@ -240,7 +251,7 @@ pub fn tvdb_to_tmdb(tmdb: i64, season: i64, episode: i64) -> Option<(i64, i64)> 
 impl Index {
     pub fn tvdb_to_tmdb(&self, tmdb: i64, season: i64, episode: i64) -> Option<(i64, i64)> {
     let entries: Vec<&Target> =
-        self.entries.values().filter(|target| target.tmdb == tmdb && target.tvdb_season == Some(season)).collect();
+        self.entries.values().filter(|target| target.tmdb == tmdb && target.season >= 0 && target.tvdb_season == Some(season)).collect();
     let target = entries
         .iter()
         .filter(|target| target.tvdb_offset < episode)

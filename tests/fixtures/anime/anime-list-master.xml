@@ -405,4 +405,112 @@
   <anime anidbid="19067" tvdbid="451479" defaulttvdbseason="2" episodeoffset="" tmdbtv="259140" tmdbseason="1" tmdboffset="12" tmdbid="" imdbid="">
     <name>Ranma 1/2 (2025)</name>
   </anime>
+  <anime anidbid="397" tvdbid="81472" defaulttvdbseason="0" episodeoffset="19" tmdbtv="12971" tmdbseason="0" tmdboffset="19" tmdbid="" imdbid="tt0142243">
+    <name>Dragon Ball Z: Ryuuken Bakuhatsu!! Gokuu ga Yaraneba Dare ga Yaru</name>
+  </anime>
+  <anime anidbid="548" tvdbid="81472" defaulttvdbseason="0" episodeoffset="8" tmdbtv="12971" tmdbseason="0" tmdboffset="8" tmdbid="" imdbid="tt0142241">
+    <name>Dragon Ball Z: Kyokugen Battle!! Sandai Super Saiya-jin</name>
+  </anime>
+  <anime anidbid="762" tvdbid="81472" defaulttvdbseason="0" episodeoffset="2" tmdbtv="12971" tmdbseason="0" tmdboffset="2" tmdbid="" imdbid="tt0142233">
+    <name>Dragon Ball Z: Chikyuu Marugoto Choukessen</name>
+  </anime>
+  <anime anidbid="763" tvdbid="81472" defaulttvdbseason="0" episodeoffset="4" tmdbtv="12971" tmdbseason="0" tmdboffset="4" tmdbid="" imdbid="tt0142244">
+    <name>Dragon Ball Z: Super Saiya-jin Da Son Gokuu</name>
+  </anime>
+  <anime anidbid="905" tvdbid="81472" defaulttvdbseason="0" episodeoffset="11" tmdbtv="12971" tmdbseason="0" tmdboffset="11" tmdbid="" imdbid="tt0142242">
+    <name>Dragon Ball Z: Moetsukiro!! Nessen, Ressen, Chougekisen</name>
+    <mapping-list>
+      <mapping anidbseason="1" tvdbseason="0">;2-8;3-8;</mapping>
+    </mapping-list>
+  </anime>
+  <anime anidbid="906" tvdbid="81472" defaulttvdbseason="0" episodeoffset="17" tmdbtv="12971" tmdbseason="0" tmdboffset="17" tmdbid="" imdbid="tt0142234">
+    <name>Dragon Ball Z: Super Senshi Gekiha!! Katsu no wa Ore Da</name>
+    <mapping-list>
+      <mapping anidbseason="1" tvdbseason="0">;2-11;3-11;</mapping>
+    </mapping-list>
+  </anime>
+  <anime anidbid="1043" tvdbid="81472" defaulttvdbseason="0" episodeoffset="" tmdbtv="12971" tmdbseason="0" tmdboffset="" tmdbid="" imdbid="tt0142235">
+    <name>Dragon Ball Z (1989)</name>
+    <supplemental-info>
+      <studio>Toei Animation</studio>
+    </supplemental-info>
+  </anime>
+  <anime anidbid="1044" tvdbid="81472" defaulttvdbseason="0" episodeoffset="1" tmdbtv="12971" tmdbseason="0" tmdboffset="1" tmdbid="" imdbid="tt0142240">
+    <name>Dragon Ball Z: Kono Yo de Ichiban Tsuyoi Yatsu</name>
+    <mapping-list>
+      <mapping anidbseason="1" tvdbseason="0">;2-2;3-2;</mapping>
+    </mapping-list>
+    <supplemental-info>
+      <studio>Toei Animation</studio>
+    </supplemental-info>
+  </anime>
+  <anime anidbid="1045" tvdbid="81472" defaulttvdbseason="0" episodeoffset="5" tmdbtv="12971" tmdbseason="0" tmdboffset="5" tmdbid="" imdbid="tt1125254">
+    <name>Dragon Ball Z: Tobikkiri no Saikyou tai Saikyou</name>
+  </anime>
+  <anime anidbid="1046" tvdbid="81472" defaulttvdbseason="0" episodeoffset="7" tmdbtv="12971" tmdbseason="0" tmdboffset="7" tmdbid="" imdbid="tt0142237">
+    <name>Dragon Ball Z: Gekitotsu!! 100-oku Power no Senshi-tachi</name>
+  </anime>
+  <anime anidbid="1069" tvdbid="81472" defaulttvdbseason="0" episodeoffset="14" tmdbtv="12971" tmdbseason="0" tmdboffset="14" tmdbid="" imdbid="tt0142238">
+    <name>Dragon Ball Z: Ginga Girigiri!! Bucchigiri no Sugoi Yatsu</name>
+    <mapping-list>
+      <mapping anidbseason="1" tvdbseason="0">;2-9;3-9;</mapping>
+    </mapping-list>
+  </anime>
+  <anime anidbid="1070" tvdbid="81472" defaulttvdbseason="0" episodeoffset="16" tmdbtv="12971" tmdbseason="0" tmdboffset="16" tmdbid="" imdbid="tt0142239">
+    <name>Dragon Ball Z: Kiken na Futari! Super Senshi wa Nemurenai</name>
+    <mapping-list>
+      <mapping anidbseason="1" tvdbseason="0">;2-10;3-10;</mapping>
+    </mapping-list>
+  </anime>
+  <anime anidbid="1071" tvdbid="81472" defaulttvdbseason="0" episodeoffset="18" tmdbtv="12971" tmdbseason="0" tmdboffset="18" tmdbid="" imdbid="tt0142236">
+    <name>Dragon Ball Z: Fukkatsu no Fusion!! Gokuu to Vegeta</name>
+  </anime>
+  <anime anidbid="1474" tvdbid="81472" defaulttvdbseason="0" episodeoffset="10" tmdbtv="12971" tmdbseason="0" tmdboffset="10" tmdbid="" imdbid="tt0142247">
+    <name>Dragon Ball Z: Zetsubou e no Hankou!! Nokosareta Chousenshi - Gohan to Trunks</name>
+  </anime>
+  <anime anidbid="1530" tvdbid="81472" defaulttvdbseason="a" episodeoffset="" tmdbtv="12971" tmdbseason="a" tmdboffset="" tmdbid="" imdbid="">
+    <name>Dragon Ball Z</name>
+    <mapping-list>
+      <mapping anidbseason="0" tvdbseason="0">;1-0;2-0;3-0;4-0;5-0;</mapping>
+    </mapping-list>
+  </anime>
+  <anime anidbid="2336" tvdbid="81472" defaulttvdbseason="0" episodeoffset="3" tmdbtv="12971" tmdbseason="0" tmdboffset="3" tmdbid="" imdbid="tt0142245">
+    <name>Dragon Ball Z Special: Tatta Hitori no Saishuu Kessen - Freezer ni Idonda Z Senshi Son Gokuu no Chichi</name>
+  </anime>
+  <anime anidbid="2643" tvdbid="81472" defaulttvdbseason="0" episodeoffset="16" tmdbtv="12971" tmdbseason="0" tmdboffset="16" tmdbid="" imdbid="tt1286785">
+    <name>Dragon Ball Z Gaiden: Saiya-jin Zetsumetsu Keikaku</name>
+    <mapping-list>
+      <mapping anidbseason="1" tvdbseason="0">;401-17;402-18;403-18;</mapping>
+    </mapping-list>
+  </anime>
+  <anime anidbid="2908" tvdbid="72858" defaulttvdbseason="a" episodeoffset="" tmdbtv="15130" tmdbseason="a" tmdboffset="" tmdbid="" imdbid="">
+    <name>Monster Farm: Enbanseki no Himitsu</name>
+  </anime>
+  <anime anidbid="4106" tvdbid="72858" defaulttvdbseason="0" episodeoffset="" tmdbtv="15130" tmdbseason="0" tmdboffset="" tmdbid="" imdbid="">
+    <name>Monster Farm 5: Circus Caravan</name>
+  </anime>
+  <anime anidbid="4695" tvdbid="72858" defaulttvdbseason="3" episodeoffset="" tmdbtv="15130" tmdbseason="3" tmdboffset="" tmdbid="" imdbid="">
+    <name>Monster Farm: Legend e no Michi</name>
+  </anime>
+  <anime anidbid="6127" tvdbid="81472" defaulttvdbseason="0" episodeoffset="15" tmdbtv="12971" tmdbseason="0" tmdboffset="15" tmdbid="" imdbid="tt1317478">
+    <name>Dragon Ball: Ossu! Kaette Kita Son Gokuu to Nakama-tachi!!</name>
+  </anime>
+  <anime anidbid="6540" tvdbid="81472" defaulttvdbseason="0" episodeoffset="19" tmdbtv="12971" tmdbseason="0" tmdboffset="19" tmdbid="" imdbid="">
+    <name>Dragon Ball Z: Atsumare! Gokuu World</name>
+  </anime>
+  <anime anidbid="8809" tvdbid="81472" defaulttvdbseason="0" episodeoffset="20" tmdbtv="12971" tmdbseason="0" tmdboffset="20" tmdbid="" imdbid="">
+    <name>Dragon Ball: Episode of Bardock</name>
+  </anime>
+  <anime anidbid="9314" tvdbid="81472" defaulttvdbseason="0" episodeoffset="24" tmdbtv="12971" tmdbseason="0" tmdboffset="24" tmdbid="" imdbid="tt2263944">
+    <name>Dragon Ball Z: Kami to Kami</name>
+    <mapping-list>
+      <mapping anidbseason="0" tvdbseason="0">;1-0;2-0;3-0;</mapping>
+    </mapping-list>
+  </anime>
+  <anime anidbid="10742" tvdbid="81472" defaulttvdbseason="0" episodeoffset="26" tmdbtv="12971" tmdbseason="0" tmdboffset="26" tmdbid="" imdbid="tt3819668">
+    <name>Dragon Ball Z: Fukkatsu no "F"</name>
+    <mapping-list>
+      <mapping anidbseason="0" tvdbseason="0">;1-0;2-0;3-0;4-0;</mapping>
+    </mapping-list>
+  </anime>
 </anime-list>
