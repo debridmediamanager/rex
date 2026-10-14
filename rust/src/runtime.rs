@@ -18144,8 +18144,12 @@ impl Runtime {
             for folders in directory_list.iter().filter(|folders| {
                 folders.len() == level.len() + 1 && folders[..level.len()] == level[..]
             }) {
+                // Cycle 41, measured on a level holding both a file and a subfolder: JSON
+                // carries an UNTYPED key/title row for the folder, and XML names it
+                // `<Directory>` beside the file's `<Video>`. A `type: directory` row was
+                // neither: an extra JSON field, and `<Video>` in XML.
                 rows.push(json!({
-                    "type": "directory",
+                    "_element": "Directory",
                     "key": format!("/library/sections/{section_key}/folder?parent={}", ids[folders]),
                     "title": folders.last().cloned().unwrap_or_default(),
                 }));
