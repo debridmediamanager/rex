@@ -13,7 +13,7 @@ The steps below go in that order.
 
 | | |
 |---|---|
-| A Linux or macOS host | rex is one binary with no runtime dependencies. Python 3 (stdlib only) runs `oracle/build_catalog.py` and `oracle/manager.py` |
+| A Linux or macOS host | rex is one binary with no runtime dependencies. The same binary writes the catalog (`rex catalog`) and runs several servers (`rex manager`) |
 | Rust, or Docker | to build it (below) |
 | One or more byte sources | [zurg](https://github.com/debridmediamanager/zurg) (a build with the rex feed: `rex_url` in its `config.yml`), or any HTTP server that serves the files plus something that pushes them to rex's feed |
 | A TMDB API key | free from [themoviedb.org](https://www.themoviedb.org/settings/api); it names what is pushed and powers Fix Match |
@@ -76,7 +76,7 @@ your own, is [`docs/feed-api.md`](feed-api.md).
 ### 3. Catalog: the server's identity and libraries
 
 ```bash
-python3 oracle/build_catalog.py --seed --name den --out rex.db
+rust/target/release/rex catalog --seed --name den --out rex.db
 ```
 
 This writes a SQLite database holding a fixed `machineIdentifier` (random, as a real
@@ -87,7 +87,7 @@ and whatever path prefix its `file` carries. An item in no library's directory i
 rejected, so name every directory your sources use:
 
 ```bash
-python3 oracle/build_catalog.py --seed --name den --out rex.db \
+rust/target/release/rex catalog --seed --name den --out rex.db \
   --movies movies --shows shows --shows anime
 ```
 
@@ -266,7 +266,7 @@ WantedBy=default.target
 
 Under launchd:
 `launchctl submit -l com.rex -o rex.log -e rex.err -- /bin/bash "$PWD/run.sh"`. To run
-several servers on one host, use `oracle/manager.py` (below).
+several servers on one host, use `rex manager` (below).
 
 rex logs a request's query string, so a client that sends its token as
 `?X-Plex-Token=` leaves it in the log. Keep the log private.
@@ -274,9 +274,9 @@ rex logs a request's query string, so a client that sends its token as
 ### Windows
 
 The Windows build is `rust\target\release\rex.exe` in the zip, and every step above works
-the same in PowerShell with `python` for `python3`. Three things differ:
+the same in PowerShell with `rust\target\release\rex.exe` for `rust/target/release/rex`. Three things differ:
 
-- `examples/run.sh.example` and `oracle/manager.py` are Linux and macOS only. Start `rex.exe` from a
+- `examples/run.sh.example` and `rex manager` are Linux and macOS only. Start `rex.exe` from a
   scheduled task (Task Scheduler, "At startup", "Run whether user is logged on or not") to
   keep it running.
 - `claim_state.json` and `sources.json` are protected by the folder they sit in, not by file
@@ -295,33 +295,33 @@ the same in PowerShell with `python` for `python3`. Three things differ:
 | `--announce-url needs PLEX_TOKEN` at start | `PLEX_TOKEN` is not in rex's environment |
 | A second server on the same catalog exits 1 | The state file is locked by the first: one catalog per server |
 
-### Running several servers: oracle/manager.py
+### Running several servers: rex manager
 
-`oracle/manager.py` is a control service on top of the server. It runs **no** rex server
+`rex manager` is a control service on top of the server. It runs **no** rex server
 until you start one: you create a server from a configuration (port, zurg, keys,
 catalog, options), start and stop it, and the manager supervises it -- an unexpected exit
 is restarted with a backoff, and one that keeps dying is marked failed. Whatever was
-running when the manager stopped is running again when it starts. Stdlib Python only.
+running when the manager stopped is running again when it starts.
 
 ```bash
-oracle/manager.py serve                  # API + page on http://127.0.0.1:32300; prints the admin token once
+rex manager serve                        # API + page on http://127.0.0.1:32300; prints the admin token once
 export ZURG_URL=... ZURG_USER=... ZURG_PASSWORD=... TMDB_KEY=... PLEX_TOKEN=...
                                          # keys come from the environment, never the command line
-oracle/manager.py create living-room --port 32400 --catalog "$PWD/catalog.json" --gdm on
-oracle/manager.py start living-room
-oracle/manager.py list                   # status | logs | stop | restart | delete [--purge] | build
+rex manager create living-room --port 32400 --catalog "$PWD/catalog.json" --gdm on
+rex manager start living-room
+rex manager list                         # status | logs | stop | restart | delete [--purge] | build
 
 # or from its keys alone: an empty library at zurg's mount, for zurg to fill
 # (its feed: --extra-arg=--sources --extra-arg=FILE, docs/feed-api.md)
-oracle/manager.py create den --port 32401 --gdm on --zurg-mount /mnt/zurg
-oracle/manager.py build den --start      # build_catalog.py --seed, then start (restart if running)
+rex manager create den --port 32401 --gdm on --zurg-mount /mnt/zurg
+rex manager build den --start            # rex catalog --seed, then start (restart if running)
 ```
 
 Each server gets `managed/servers/<name>/`, whose `rex.db` holds its catalog (copied
 in; a JSON catalog is converted) and, on the native server, its state. Keys are stored in
 `managed/manager.db` (mode 600) and passed to each server through its environment; the
 API redacts them. `http://127.0.0.1:32300/` is a small page for the same operations (paste
-the admin token from `managed/admin.token`). `build NAME` runs `build_catalog.py --seed`
+the admin token from `managed/admin.token`). `build NAME` runs `rex catalog --seed`
 into the server's database as a background job.
 
 Run the manager itself under the init system, so it outlives any shell. macOS (launchd,
@@ -333,7 +333,7 @@ Run the manager itself under the init system, so it outlives any shell. macOS (l
 <plist version="1.0"><dict>
   <key>Label</key><string>com.rex.manager</string>
   <key>ProgramArguments</key><array>
-    <string>/usr/bin/python3</string><string>/path/to/rex/oracle/manager.py</string><string>serve</string>
+    <string>/path/to/rex/rust/target/release/rex</string><string>manager</string><string>serve</string>
   </array>
   <key>RunAtLoad</key><true/><key>KeepAlive</key><true/>
   <key>StandardOutPath</key><string>/path/to/rex/managed.log</string>
@@ -352,7 +352,7 @@ After=network-online.target
 [Service]
 User=youruser
 WorkingDirectory=/path/to/rex
-ExecStart=/usr/bin/python3 /path/to/rex/oracle/manager.py serve
+ExecStart=/path/to/rex/rust/target/release/rex manager serve
 KillMode=mixed
 TimeoutStopSec=60
 Restart=on-failure

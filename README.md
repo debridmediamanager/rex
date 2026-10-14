@@ -20,7 +20,7 @@ rex gets its library from whatever you point at it. Each source sends rex the li
 
 This is the short version. [docs/setup.md](docs/setup.md) has every option and a troubleshooting table.
 
-You need a Linux, macOS or Windows machine with Python 3, at least one source such as zurg, a free [TMDB API key](https://www.themoviedb.org/settings/api) and your [Plex token](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/).
+You need a Linux, macOS or Windows machine, at least one source such as zurg, a free [TMDB API key](https://www.themoviedb.org/settings/api) and your [Plex token](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/).
 
 **1. Get it**
 
@@ -39,7 +39,7 @@ cargo build --release --manifest-path rust/Cargo.toml
 
 Both put rex at `rust/target/release/rex`.
 
-On Windows unpack the zip and use `python` where the steps say `python3` and `rust\target\release\rex.exe` where they say `rust/target/release/rex`. `examples/run.sh.example` and `oracle/manager.py` are for Linux and macOS only.
+On Windows unpack the zip and use `rust\target\release\rex.exe` where the steps say `rust/target/release/rex`. `examples/run.sh.example` and `rex manager` are for Linux and macOS only.
 
 **2. Tell rex where your files are**
 
@@ -59,7 +59,7 @@ Write `sources.json` with one entry per source. Each source gets its own token t
 **3. Make the library**
 
 ```bash
-python3 oracle/build_catalog.py --seed --name myrex --out rex.db
+rust/target/release/rex catalog --seed --name myrex --out rex.db
 ```
 
 This makes an empty Movies and TV library. Files under a `movies` directory go to Movies and files under `shows` go to TV, whichever source they come from. If your sources use other directory names like `anime` add `--shows anime` now. rex keeps its library folders from the first start on.
@@ -112,7 +112,7 @@ To keep it running copy `examples/run.sh.example` to `run.sh` next to `rust/` an
 
 ## For developers
 
-rex is written in Rust. A Python version stays in the tree as the reference the Rust one is checked against. [CLAUDE.md](CLAUDE.md) covers the code, the tests and how every behaviour was measured against a real Plex Media Server. [docs/findings.md](docs/findings.md) is the record of those measurements. [docs/feed-api.md](docs/feed-api.md) is the API a source uses to push its library.
+rex is written in Rust. [CLAUDE.md](CLAUDE.md) covers the code, the tests and how every behaviour was measured against a real Plex Media Server. [docs/findings.md](docs/findings.md) is the record of those measurements. [docs/feed-api.md](docs/feed-api.md) is the API a source uses to push its library.
 
 ## Status
 
