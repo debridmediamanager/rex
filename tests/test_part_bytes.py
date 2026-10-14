@@ -239,6 +239,57 @@ def raw(port, path, headers=(), method="GET"):
     return int(lines[0].split()[1]), names, values, body
 
 
+def content_types(zurg_port, extensions):
+    """The Content-Type a part read answers for a stored file of each extension: one row
+    per extension, its Part's file `movie.<ext>` and no container, on a server of its own."""
+    rows = []
+    for number, ext in enumerate(extensions, start=101):
+        row = json.loads(json.dumps(CATALOG["items"][0]))
+        row.update(ratingKey=str(number), key="/library/metadata/%d" % number,
+                   title="Extension %s" % ext, guid="plex://movie/%024d" % number)
+        media = row["Media"][0]
+        media.pop("container")
+        media["id"] = number * 10
+        part = media["Part"][0]
+        part.pop("container")
+        part.update(id=number * 100, key="/library/parts/%d/1700000000/file.%s" % (number * 100, ext),
+                    file="/zurg/movies/Extension %s/movie.%s" % (ext, ext))
+        for index, stream in enumerate(part["Stream"]):
+            stream["id"] = number * 1000 + index
+        rows.append(row)
+    catalog = tempfile.NamedTemporaryFile("w", suffix=".json", delete=False)
+    json.dump(dict(CATALOG, items=rows), catalog)
+    catalog.close()
+    port = free_port()
+    environment = dict(os.environ, ZURG_URL="http://127.0.0.1:%d" % zurg_port,
+                       ZURG_USER="zurg-user", ZURG_PASSWORD="zurg-pass")
+    process = subprocess.Popen(
+        server_command("--port", port, "--catalog", catalog.name, "--assert-claimed",
+                       "--zurg-mount", "/zurg", "--gdm", "off", root=ROOT),
+        cwd=ROOT, env=environment, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    served = {}
+    try:
+        for _ in range(160):
+            try:
+                urllib.request.urlopen("http://127.0.0.1:%d/identity" % port, timeout=2)
+                break
+            except Exception:
+                time.sleep(0.25)
+        for row in rows:
+            ext = row["Media"][0]["Part"][0]["file"].rsplit(".", 1)[-1]
+            with urllib.request.urlopen(urllib.request.Request(
+                    "http://127.0.0.1:%d%s" % (port, row["key"]),
+                    headers={"Accept": "application/json"}), timeout=15) as response:
+                key = json.load(response)["MediaContainer"]["Metadata"][0]["Media"][0]["Part"][0]["key"]
+            _status, _names, values, _body = raw(port, key, [("Accept", "*/*"), ("Range", "bytes=0-9")])
+            served[ext] = values.get("content-type")
+    finally:
+        process.terminate()
+        process.wait(timeout=10)
+        os.unlink(catalog.name)
+    return served
+
+
 def main():
     zurg_port, _zurg = serve(Zurg)
     catalog = tempfile.NamedTemporaryFile("w", suffix=".json", delete=False)
@@ -318,8 +369,6 @@ def main():
 
         # Cycle 54: every extension a real PMS names, measured on plexscratch42 (1.42.2)
         # by reading one part of each container, and the four it leaves as a byte stream.
-        sys.path.insert(0, os.path.join(ROOT, "oracle"))
-        import server as server_module_c54
         measured_c54 = {"mkv": "video/x-matroska", "mp4": "video/mp4", "m4v": "video/mp4",
                         "webm": "video/webm", "avi": "video/x-msvideo",
                         "divx": "video/x-msvideo", "mov": "video/quicktime",
@@ -330,10 +379,9 @@ def main():
                         "ogv": "application/octet-stream",
                         "3gp": "application/octet-stream",
                         "mpegts": "application/octet-stream"}
-        wrong_c54 = ["%s -> %s" % (ext, server_module_c54._part_content_type(
-            {"file": "/x/movie.%s" % ext}, None)) for ext, want in measured_c54.items()
-            if server_module_c54._part_content_type({"file": "/x/movie.%s" % ext}, None)
-            != want]
+        served_c54 = content_types(zurg_port, measured_c54)
+        wrong_c54 = ["%s -> %s" % (ext, served_c54.get(ext)) for ext, want in measured_c54.items()
+                     if served_c54.get(ext) != want]
         check("the part Content-Type of every measured extension", not wrong_c54,
               "; ".join(wrong_c54))
 
