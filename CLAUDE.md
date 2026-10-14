@@ -7,13 +7,14 @@ sources push to it -- zurg's, streamed from zurg -- instead of local media.
 Not a Plex fork and not a client. It is the server side of the protocol,
 written from measurement against a real PMS.
 
-**The server is the native Rust binary in `rust/`.** The Python server
-(`oracle/server.py` and the modules it imports) stays in the tree as the **oracle**: it
-holds every measured behaviour, the native port is ported from it, and the parity
-suites (`test_native_phase2.py`, the decision corpus) compare against it. A new
-measurement lands in the Python oracle and the Rust server together, and the
-black-box suites must pass on both (`REX_SERVER=python` selects the oracle).
-The last Python-only `main` is the `python-server` branch.
+**rex is the Rust binary in `rust/`**, and nothing else: the server, the catalog
+writer (`rex catalog`) and the manager (`rex manager`). It was ported from a Python
+server, the **oracle**, which was removed on 2026-10-14; the last Python-only `main` is
+the `python-server` branch, and the last tree holding both is `c488a1a`. Code comments
+and dated findings that name a Python file (`server.py`, `persist.py`, `library.py`, ...)
+or "the oracle" mean that server; read it there with `git show c488a1a:oracle/<file>`.
+What it answered, measured against a real PMS, is kept as recorded values: the parity
+suites' expectations and `tests/fixtures/oracle_golden/`.
 
 ## The one rule that matters
 
@@ -36,44 +37,18 @@ searched on disk. The gate is usually one truthiness check in minified code.
 
 | Path | What it is |
 |---|---|
-| `rust/` | The server: the native port (`runtime.rs` and `runtime/*.rs` hold the routes). Build with `cargo build --release --manifest-path rust/Cargo.toml` |
-| `oracle/` | The Python oracle (`server.py` and its modules, below), and the catalog and manager tools users run: `oracle/build_catalog.py`, `oracle/manager.py` |
-| `data/` | The measured sidecars both servers read (below) |
+| `rust/` | rex (`runtime.rs` and `runtime/*.rs` hold the routes). Build with `cargo build --release --manifest-path rust/Cargo.toml` |
+| `data/` | The measured sidecars the server reads (below) |
 | `examples/` | `run.sh.example` and `catalog.example.json`, the catalog's shape |
 | `tests/` | Conformance and end-to-end suites, plus `catalog_ui.json` and `fixtures/decisions/`, the measured decision corpus |
 | `tests/fixtures/` | Redacted corpora recorded from a real PMS through a real client; `media/` pairs real files' probes with a real PMS's analysis of them |
 | `harness/` | plexlab — the reference PMS and the recorder. See below. |
-| `probes/` | Measurement scripts: the recorders behind checked-in fixtures (`record_identify_corpus.py`, `record_episode_id_corpus.py`, `record_unidentified_corpus.py`, which also tops a corpus up, `legacy_scan_fixture.py`), `ui_surface.py`, the plex.tv presence probes, `apkcensus.py`, and the lockstep diff (`pair.py`, `vsweep.py`, `ndiff.py`) |
+| `probes/` | Measurement scripts: the recorders behind checked-in fixtures (`record_identify_corpus.py`, `record_episode_id_corpus.py`, `record_unidentified_corpus.py`, which also tops a corpus up, `legacy_scan_fixture.py`), `ui_surface.py`, the plex.tv presence probes and `apkcensus.py`. The corpus recorders run the Rust identifier through `identify_replay.py` (the binary's `identify-replay` adapter) |
 | `docs/findings.md` | Everything measured. Read before changing behaviour. |
 | `docs/protocol-traps.md`, `docs/setup.md`, `docs/feed-api.md` | The protocol's edge cases, the operator's guide, and the API sources push with |
 
-The modules in `oracle/`:
-
-| Path | What it is |
-|---|---|
-| `server.py` | The Python oracle: every route as measured. Read it first for any behaviour, then its Rust counterpart. |
-| `library.py` | The mutable half: watch state, edits, playlists, collections, history |
-| `filters.py` | Plex's filter query language: the operator is part of the KEY |
-| `persist.py` | the state file (on by default, `--no-state` off): the one file that keeps the mutable half across a restart. The oracle's is a pickle; the native server's is `rust/src/store.rs`, a SQLite database written by the row |
-| `manager.py` | the control service: runs no server until one is started, then supervises the ones it started (API on 127.0.0.1:32300, CLI, a page); docs/setup.md "Running several servers" |
-| `catalogdb.py` | the catalog in a SQLite database: what `build_catalog.py --out *.db` / `--convert` write and both servers read with `--catalog *.db` |
-| `sessions.py` | Live playback sessions, and the byte counters behind the Dashboard |
-| `hierarchy.py` | Flat leaves → show/season/episode with synthesised parents |
-| `metadata.py` | TMDB identification, `plex://` guid minting, artwork URLs |
-| `mediainfo.py` | ffprobe JSON → `Media`/`Part`/`Stream` elements |
-| `decision.py` | A plain-form decision: the client's own profile file (`client_profiles.json`) against the item |
-| `zurg.py` | The oracle's byte source: a Part's file under `--zurg-mount` read from zurg's WebDAV (the native server's sources are `runtime/source.rs`) |
-| `gdm.py` | Plex's LAN discovery protocol: the UDP half of being FOUND |
-| `gate.py` | Applies a client's direct-play gate to the catalog |
-| `xmlout.py` | MediaContainer → Plex XML (clients that refuse JSON) |
-| `identify.py` | which title a release is: an id in its name, a known IMDb id for its hash (zurg's), then Plex's matcher and TMDB, with their agreement as the confidence; `rust/src/identify.rs` is its port and must name as many of `tests/fixtures/identify/` right |
-| `build_catalog.py` | Writes a catalog: `--seed` an empty library at each source's mount (`--mount`, `--movies` and `--shows` repeat), `--convert` a JSON catalog into a database, `--relink` Plex's guids |
-| `claim.py`, `heartbeat.py` | plex.tv claim flow and registration upkeep |
-| `accountstate.py` | A claimed owner's watch and rating state imported from plex.tv |
-| `spellfix.py` | The spellfix1 subset Plex's universal search corrects spelling with |
-
 Sidecar fixtures are captured from a real PMS -- the later ones read straight out of its
-image -- and live in `data/`, where the oracle reads them (`DATA_DIR` in `server.py`). The descriptors (`server_prefs.json`, `regional_server_prefs.json`,
+image -- and live in `data/`. The descriptors (`server_prefs.json`, `regional_server_prefs.json`,
 `section_prefs.json`, `section_meta.json`, `section_meta_show.json`, `section_meta_artist.json`, `item_prefs.json`,
 `section_prefs_new.json`, `section_filters.json`, `section_sorts.json`, `system_agents.json`,
 `legacy_agents.json`, `agent_languages.json`, `languages.json`, `translations.json`, `refusal_strings.json`,
@@ -97,23 +72,26 @@ Run it from the repository root or keep the catalog there -- `run.sh`, copied to
 `examples/run.sh.example`, `cd`s to its own directory.
 `client_profiles.json`, `languages.json` and the decision corpus are compiled into the
 binary with `include_str!`, so a change to them needs a rebuild. `tmdb_cache.json` and
-`claim_state.json` sit beside the catalog on both servers.
+`claim_state.json` sit beside the catalog.
 
 Where things live in `rust/src/`:
 
 | Path | What it is |
 |---|---|
-| `main.rs` | The CLI: the server flags (argparse's, refusals included) and the test-only adapters `test_native_phase2.py` drives |
+| `main.rs` | The CLI: the server flags (argparse's, refusals included), the `catalog` and `manager` subcommands, and the test-only adapters the suites drive (`test_native_phase2.py`, `test_mediainfo.py`, the corpus recorders) |
+| `catalog_tool.rs` | `rex catalog`: `--seed` an empty library at each source's mount (`--mount`, `--movies` and `--shows` repeat; a re-seed keeps the machineIdentifier), `--convert` a JSON catalog into a database, `--relink` Plex's guids |
+| `manager.rs` | `rex manager`: the control service that runs no server until one is started, then supervises the ones it started (API on 127.0.0.1:32300, CLI, a page); Linux and macOS only; docs/setup.md "Running several servers" |
 | `runtime.rs` | The request loop, the route table and most projections; `serve` starts GDM, the state saver and the plex.tv threads |
 | `runtime/wire.rs` | The response envelope: header order, Range/416, CORS, gzip, websocket handshake |
 | `runtime/upstream.rs` | The HTTP/HTTPS client (rustls, system roots) behind zurg, provider redirects, TMDB, Plex's metadata agent and artwork |
 | `runtime/source.rs`, `runtime/feed.rs`, `runtime/scan.rs` | Sources (`--sources`, or `ZURG_URL`'s `zurg`: where a Part's bytes are, the feed token), the feed API sources push items to (`docs/feed-api.md`), and the rows those items become: added, held until probed, filled, re-identified, trashed, keys minted once (`mint_key`) |
 | `runtime/universal.rs` | The video transcoder (`REX_TRANSCODER`): the conversion decision's plan and Media, `start.m3u8`/`start.mpd`, segments served outside the runtime lock, one FFmpeg per session with the hardware ladder, seeks, throttling and the idle reaper, and the `TranscodeSession` rows |
-| `runtime/plexmeta.rs`, `identify.rs` | Plex's metadata agent (`PLEX_TOKEN`), and the port of `identify.py` the feed names releases with |
+| `runtime/plexmeta.rs`, `identify.rs` | Plex's metadata agent (`PLEX_TOKEN`), and which title a release is: an id in its name, a known IMDb id for its hash (zurg's), then Plex's matcher and TMDB, with their agreement as the confidence; it must name as many of `tests/fixtures/identify/` right (`rust/tests/identify_corpus.rs`) |
 | `runtime/plextv.rs`, `runtime/tmdb.rs` | claim/heartbeat/account state, and Fix Match (`REX_PLEXTV_URL` points plex.tv at a stub) |
 | `platform.rs` | Everything asked of the OS beyond `std`: local time, CPU time and load, the host name, thread ids, pausing and killing FFmpeg, the GDM socket. A Unix half and a Windows half; nothing else may call `libc` for these |
 | `runtime/*.rs` (the rest) | One subsystem each, named after it: search, listing, axes, edit, collections, playlists, artwork, butler, framework, i18n, resume (On Deck and hubs), logging and so on |
-| `filters.rs`, `hierarchy.rs`, `metadata.rs`, `mediainfo.rs`, `decision.rs`, `xmlout.rs`, `gate.rs`, `catalog.rs` | The ports of the Python modules of the same name |
+| `filters.rs`, `hierarchy.rs`, `metadata.rs`, `mediainfo.rs`, `decision.rs`, `xmlout.rs`, `gate.rs`, `catalog.rs` | Plex's filter grammar (the operator is part of the KEY), flat leaves to show/season/episode, TMDB and `plex://` guids, ffprobe JSON to `Media`/`Part`/`Stream`, a plain-form decision against the client's own profile, Plex XML, the direct-play gate, the catalog |
+| `store.rs` | The state file: a SQLite database written by the row, holding the catalog too when the catalog is a database |
 
 A movie library and a show library have **different**
 `Meta` descriptors, which is why there are two: retargeting one onto the other
@@ -123,7 +101,7 @@ gives the client a grid whose filter bar can only talk about the wrong type.
 
 ```bash
 cargo build --release --manifest-path rust/Cargo.toml
-python3 oracle/build_catalog.py --seed --name NAME --zurg-mount /mnt/zurg --out rex.db
+rust/target/release/rex catalog --seed --name NAME --zurg-mount /mnt/zurg --out rex.db
 cp examples/run.sh.example run.sh   # fill in ZURG_URL (+ZURG_USER/ZURG_PASSWORD), REX_FEED_TOKEN, TMDB_KEY, PLEX_TOKEN
 ./run.sh                            # or: rust/target/release/rex --catalog rex.db --zurg-mount /mnt/zurg
 ```
@@ -137,7 +115,7 @@ or more sources go in a `--sources` file. With no source a part read is the 502 
 unreachable source is. `TMDB_KEY` and `PLEX_TOKEN` identify what is pushed (Fix Match
 needs TMDB). `--zurg-mount` is zurg's `mount_path` (default `/mnt/zurg`): a Part's `file`
 is `<mount>/<directory>/<release>/<file>`, and each library's `Location` is
-`<mount>/<directory>` -- set in the catalog's sections (`build_catalog.py --seed`), or
+`<mount>/<directory>` -- set in the catalog's sections (`rex catalog --seed`), or
 through Add Library's `location`.
 
 Point zurg at the server in zurg's `config.yml`: `rex_url` (this server's URL),
@@ -161,17 +139,13 @@ send refreshes and change nothing.
 `REX_TRANSCODER` (an FFmpeg; docs/setup.md "Transcoding") turns on conversion: a decision the
 client cannot direct-play becomes the reference's 3000/1001/1001 with the converted Media,
 and `start.m3u8`/`start.mpd` start one FFmpeg per session reading the Part from its source.
-Without it rex is the encoder-less server every suite measures, so the Python oracle has no
-transcoder: like the feed, it is the native server's own, and only its wire shapes are the
-reference's (`tests/fixtures/transcode/`, recorded on plexscratch for Plex Web's exact
+Without it rex is the encoder-less server every suite measures. The transcoder, like the
+feed, is rex's own, and only its wire shapes are the reference's (`tests/fixtures/transcode/`, recorded on plexscratch for Plex Web's exact
 requests). Segment lengths, encoder settings and the MPD's `minBufferTime` are ours, chosen
 by measurement (findings, "The universal transcoder").
 
-The native state file is a SQLite database and does not read the Python server's pickle,
-so a state file does not move between the two. `--announce-url` needs `PLEX_TOKEN`; a comma-separated
-list announces each URI as its own connection, as a PMS with several does. The Python
-oracle reads parts from zurg's WebDAV under `--zurg-mount` (`zurg.py`, `--part-mode
-redirect` included) and has no feed: the feed is rex's own API, not PMS emulation.
+`--announce-url` needs `PLEX_TOKEN`; a comma-separated list announces each URI as its own
+connection, as a PMS with several does. The feed is rex's own API, not PMS emulation.
 
 A real claim -- `POST /myplex/claim?token=` with a token from `plex.tv/api/claim/token.json`,
 once per machineIdentifier -- makes rex register the way a real PMS does (findings, "The
@@ -202,8 +176,8 @@ launchctl remove com.rex.dev
 
 A plain `nohup ... &` from an agent tool call **does not survive** the call.
 
-Several servers, started and stopped on demand: `oracle/manager.py serve`, then
-`oracle/manager.py create NAME --port P [--catalog PATH] [--zurg-mount M]` (keys from
+Several servers, started and stopped on demand: `rex manager serve`, then
+`rex manager create NAME --port P [--catalog PATH] [--zurg-mount M]` (keys from
 `ZURG_URL`/`ZURG_USER`/`ZURG_PASSWORD`/`TMDB_KEY`/`PLEX_TOKEN`/`REX_TOKEN` in the
 environment) and `start|stop|list|logs NAME`; without a catalog, `build NAME --start` seeds
 an empty library at zurg's mount first. Its data
@@ -212,12 +186,11 @@ starts its own manager on a temporary root.
 
 The state file keeps what clients change -- watch state, ratings, edits, deletes,
 playlists, collections, history, sections, preferences, uploads, queues, and the device
-and statistics tables -- across restarts; see `oracle/persist.py` for what is and is not kept.
+and statistics tables -- across restarts; `rust/src/store.rs` says what is and is not kept.
 It is **on by default** since 2026-10-05: a SQLite database written by the row since
 2026-10-06 (`rust/src/store.rs`), `rex.db` beside the catalog or the catalog's own
-database when the catalog is one (`oracle/catalogdb.py`, `oracle/build_catalog.py --convert`); an old
-`state.json` is imported once and kept as `state.json.migrated`. The Python oracle's is
-`state.pickle`. `--state FILE` / `REX_STATE` move it. A second server on the
+database when the catalog is one (`rex catalog --convert`); an old
+`state.json` is imported once and kept as `state.json.migrated`. `--state FILE` / `REX_STATE` move it. A second server on the
 same catalog finds the default locked and exits 1, as a second PMS on a served data
 directory does (cycle 92). Every suite relies on a
 restart being the undo button, so **a test instance runs with `--no-state`**:
@@ -436,23 +409,20 @@ answering at `http://LAB_IP:32410` (`SCRATCH_BIND=LAB_IP`; it publishes on loopb
 
 ## Testing
 
-The black-box suites start or target the native server by default
-(`tests/server_command.py` runs `rust/target/release/rex`, so build it first);
-`REX_SERVER=python` runs them against the Python oracle, and a fix is done when
-they pass on both. Neither needs network beyond zurg and TMDB.
+The black-box suites start or target the server (`tests/server_command.py` runs
+`rust/target/release/rex`, so build it first; `REX_SERVER` names another executable). They
+need no network beyond zurg and TMDB. The `test_parity_*` suites assert what the oracle
+answered, itself measured against a real PMS.
 
 ```bash
 python3 tests/test_navigation.py            # client request replay, shape conformance
 python3 tests/test_ui_surface.py            # context menu + every server page, end to end
 python3 tests/test_all.py                   # play queue → decision → byte reads → real decode
 python3 tests/conformance.py                # drives rex with python-plexapi
-python3 tests/test_mediainfo.py             # mediainfo.py against a real PMS's analysis; no server
-python3 tests/test_decision.py              # decision.py against 1,872 measured decisions; no server
-python3 tests/test_gdm.py                   # gdm.py against four real servers' GDM; no server
+python3 tests/test_mediainfo.py             # the mediainfo adapter against a real PMS's analysis; no server
 python3 tests/test_persist.py               # --state across SIGTERM, SIGKILL and a rebuilt catalog; starts its own
-python3 tests/test_identify.py              # identify.py against 200 labelled torrents of the real library; offline
 python3 tests/test_sqlite_store.py          # the state/catalog database: rows written per save, legacy import; starts its own
-python3 tests/test_manager.py               # manager.py end to end: create, start, crash restart, give-up, restore; starts its own
+python3 tests/test_manager.py               # rex manager end to end: create, start, crash restart, give-up, restore; starts its own
 python3 tests/test_concurrency.py           # barrier races, 32-thread load, backlog, --state kills, reaper, slow sockets; ~4 min
 python3 tests/test_plextv.py                # claim, announce, account import and restart against a LOCAL stub plex.tv
 python3 tests/test_session_reaper.py        # Now Playing's 180 s + 30 s-tick reaper; ~3.5 min of wall clock
@@ -481,10 +451,10 @@ python3 tests/test_merge_unpaired.py        # a show merge moves the episodes th
 The native-only and parity suites, all black-box unless noted:
 
 ```bash
-python3 tests/test_native_runtime_smoke.py  # native routes and CLI refusals; refuses REX_SERVER=python
+python3 tests/test_native_runtime_smoke.py  # native routes and CLI refusals
 python3 tests/test_native_gdm.py            # native GDM answers and the /servers self row
 REX_NATIVE_BIN=rust/target/release/rex python3 tests/test_native_phase2.py
-                                            # the Rust core modules against the Python ones, row by row
+                                            # the core modules against the oracle's recorded answers, row by row
 python3 tests/test_tls.py                   # HTTPS and plain HTTP on one port
 python3 tests/test_prefix_registry.py       # 58 measured prefix shapes
 python3 tests/test_regional_prefs.py        # the regional prefs documents, cell by cell
@@ -500,13 +470,14 @@ python3 tests/test_feed_anime.py            # an anime cour on TMDB's season and
 python3 tests/test_feed_names.py            # releases named in a way identification read wrong: a.K.A., THEATRiCAL.CUT, a release in another language than its files
 python3 tests/test_feed_unfold.py           # each file of a season batch its own episode; rows that folded several episodes unfolded at start
 python3 tests/test_sources.py               # sources that are not zurg: a server ignoring Range, a redirect to a CDN
-python3 tests/test_server_command.py        # the launcher's native default and python override
-cargo test --manifest-path rust/Cargo.toml  # the Rust unit tests
+python3 tests/test_server_command.py        # the launcher's default and REX_SERVER override
+cargo test --manifest-path rust/Cargo.toml  # the Rust unit tests: the decision corpus (1,872 measured decisions),
+                                            # GDM against four real servers, the identify corpora
 ```
 
 Credentials unlock the rest. With `TMDB_KEY`, and a copy of `catalog_ui.json` whose Part
 files a zurg serves (`ZURG_URL`, `--zurg-mount`; made on the test host, never committed),
-the UI suite runs with **no skips** (1,979/1,979 on both servers when it was RD-backed).
+the UI suite runs with **no skips** (1,979/1,979 when it was RD-backed).
 Keyless and zurg-less it is 1,975/1,975 with exactly three skips (two Fix Match, Download):
 with no `ZURG_URL` a part read is the routed 502 its checks expect.
 `test_all.py` and `conformance.py` need a live catalog and the same credentials.
@@ -562,7 +533,7 @@ black-box suites that need no credentials. A tag or a manual run (Actions, "Run 
 also builds linux arm64 (cross-compiled, smoke-tested under qemu) and macOS arm64 and amd64
 on `macos-14` (the arm64 one runs suites natively), and Windows amd64, cross-compiled with
 MinGW on Linux and then tested on `windows-2022` (the unit tests and every suite but
-`test_manager`, since `manager.py` is Unix only). Those are the platforms zurg's own
+`test_manager`, since `rex manager` is Unix only). Those are the platforms zurg's own
 releases are downloaded for. It never runs on the org's self-hosted runner, which is a
 production host.
 
@@ -576,17 +547,8 @@ git tag -a v0.2.0 -F notes.md <tested commit> && git push origin v0.2.0
 The tag's run tests again, checks the tag matches `Cargo.toml`, and publishes
 `rex-vX.Y.Z-{linux,darwin}-{amd64,arm64}.tar.gz`, `rex-vX.Y.Z-windows-amd64.zip` and `SHA256SUMS` as the GitHub release, titled `rex X.Y.Z`
 with the tag message as its notes. The archive keeps the repository's layout (the binary at
-`rust/target/release/rex`, the sidecars in `data/`, the tools in `oracle/`), so every command in the
+`rust/target/release/rex`, the sidecars in `data/`), so every command in the
 docs works the same from a release as from a checkout.
-
-## Differential instruments
-
-`probes/pair.py REQS.jsonl --tree DIR --bin NATIVE` replays a request list (a harness capture
-or `{method,path,headers,body}` lines) against a fresh oracle and a fresh native in lockstep and
-prints every normalised difference, header order included. `probes/vsweep.py` sweeps a
-vocabulary (query names, request headers, a path segment, methods; JSON or XML) over request
-families the same way. Use them before trusting that the two servers agree on anything a suite
-does not send.
 
 ## Protocol reference
 
@@ -609,8 +571,7 @@ rigs run on.
 
 - Comments explain **what was measured and why the obvious thing is wrong**,
   not what the line does. Match the existing density.
-- The Rust server keeps its existing crate set; the Python oracle stays stdlib
-  only on the server path. Tests may use `plexapi`; probes may use
+- rex keeps its existing crate set. Tests may use `plexapi`; probes may use
   anything.
 - Atomic commits, semantic single-line messages (`fix: emit totalSize on paged
   children`), authored as `Ben Adrian Sarmiento <me@bensarmiento.com>`.
