@@ -1128,3 +1128,99 @@ impl SearchIndex {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::{json, Value};
+    use std::collections::HashMap;
+
+    fn static_tags() -> Vec<String> {
+        serde_json::from_str(include_str!("../../../data/spellfix_static_tags.json"))
+            .expect("the static vocabulary parses")
+    }
+
+    /// `tests/catalog_features.json`'s index: the tiny measured plexlab corpus, where
+    /// `zzz` has the same two words.
+    fn features_index() -> SearchIndex {
+        let document: Value = serde_json::from_str(include_str!("../../../tests/catalog_features.json"))
+            .expect("the features fixture parses");
+        let catalog = crate::catalog::Catalog::from_value(document).expect("the features fixture loads");
+        SearchIndex::build(catalog.items(), &static_tags())
+    }
+
+    fn words(vocabulary: &Vocabulary, query: &str) -> Vec<String> {
+        vocabulary.candidates(query).into_iter().map(|(_, word)| word).collect()
+    }
+
+    /// Cycle 37 reconstructed both PMS spellfix tables: the exact editdist1/rank score
+    /// (`job` at distance 110, `steel` at 137), the top-ten cap and the <=200 cutoff.
+    #[test]
+    fn candidates_use_the_measured_cost_and_bounded_result_set() {
+        let zzz = features_index().metadata.candidates("zzz");
+        assert_eq!(zzz, vec![(140, "job".to_string()), (167, "steel".to_string())]);
+    }
+
+    /// Cycle 39: every row-backed source feeds the tag vocabulary, each with its own field
+    /// shape -- GUIDs by `id`, ratings by `image`, a scalar studio, and a constant naming
+    /// each populated artwork column.
+    #[test]
+    fn the_tag_vocabulary_reads_every_row_backed_source() {
+        let row = json!({
+            "title": "Vocabulary Sources",
+            "Genre": [{"tag": "Measured Genre"}],
+            "Chapter": [{"tag": "The Grey Havens"}],
+            "Review": [{"tag": "Reviewer One"}],
+            "Marker": [{"tag": "Intro Marker"}],
+            "CommonSenseMedia": [{"tag": "Age Twelve"}],
+            "Guid": [{"id": "imdb://tt1234567"}],
+            "Rating": [{"image": "rottentomatoes://image.rating.upright"}],
+            "studio": "Studio Canal",
+            "Network": [{"tag": "HBO Max"}],
+            "thumb": "/thumb/path",
+            "art": "/art/path",
+            "theme": "/theme/path",
+            "_clearLogo": "/logo/path",
+        });
+        let index = SearchIndex::build(&[row], &[]);
+        let ranks = index.tags.rows.iter().map(|word| (word.word.as_str(), word.rank)).collect::<HashMap<_, _>>();
+        for word in [
+            "measured", "grey", "reviewer", "marker", "twelve", "imdb", "rottentomatoes", "studio",
+            "canal", "hbo", "max", "thumb", "art", "theme", "clearlogo",
+        ] {
+            assert_eq!(ranks.get(word), Some(&1), "{word} in {ranks:?}");
+        }
+    }
+
+    /// Cycle 39's versioned 28-string server-owned vocabulary takes part in the bounded
+    /// candidate vectors.
+    #[test]
+    fn the_static_tags_reach_the_candidate_vectors() {
+        let index = features_index();
+        assert_eq!(static_tags().len(), 28);
+        assert_eq!(words(&index.tags, "optmized"), vec!["optimized".to_string()]);
+        assert!(words(&index.tags, "tft").contains(&"dvd".to_string()));
+        assert!(words(&index.tags, "flr").contains(&"bluray".to_string()));
+    }
+
+    /// A compact reconstruction of the live `emtz` witness: 5,785 distinct imdb GUID strings
+    /// give that token its measured rank and keep Imtiaz out of the ten-candidate vector,
+    /// exactly as the 1.42.2 reference's visible people hubs do.
+    #[test]
+    fn guid_rank_keeps_the_emtz_people_candidate_outside_the_cap() {
+        let ranks = [
+            ("ents", 2), ("hintze", 1), ("ends", 2), ("entre", 1), ("hunts", 2),
+            ("enter", 4), ("amter", 1), ("ent", 3), ("emde", 1), ("imtiaz", 1),
+        ];
+        let roles = ranks
+            .iter()
+            .flat_map(|(word, count)| (0..*count).map(move |index| json!({"tag": format!("{word}{}", " ".repeat(index))})))
+            .collect::<Vec<_>>();
+        let guids = (0..5785).map(|index| json!({"id": format!("imdb://tt{index:07}")})).collect::<Vec<_>>();
+        let index = SearchIndex::build(&[json!({"title": "Vocabulary Witness", "Role": roles, "Guid": guids})], &[]);
+        let emtz = words(&index.tags, "emtz");
+        assert_eq!(emtz.last().map(String::as_str), Some("imdb"), "{emtz:?}");
+        assert!(!emtz.contains(&"imtiaz".to_string()), "{emtz:?}");
+        assert!(!index.tag_matches("Imtiaz Ali", "emtz"));
+    }
+}
