@@ -20349,11 +20349,6 @@ impl Runtime {
         self.cascade_artwork_from(owner_key);
     }
 
-    /// Merge identical show hierarchies, combining each episode's Media (cycle 41):
-    /// the absorbed episode's Media precede the survivor's, the absorbed show, seasons
-    /// and episodes disappear, and a shape whose leaves cannot be paired by season and
-    /// episode index is left alone. Frames: every removed row state 9 untitled, then
-    /// each changed episode state 3/5 under type -1.
     /// `composite_for`'s image: a real PMS builds a 400x600 mosaic of the members'
     /// posters; rex has no imaging library, so it serves the first member's own
     /// poster (else its backdrop) at the TMDB variant nearest the width -- one of the
@@ -20694,6 +20689,11 @@ impl Runtime {
         Response::empty(200)
     }
 
+    /// Merge show hierarchies, combining each paired episode's Media (cycle 41): the
+    /// absorbed episode's Media precede the survivor's, and the absorbed show, seasons
+    /// and paired episodes disappear. An episode with no partner of the same season and
+    /// episode index moves under the survivor on its own key. Frames: every removed row
+    /// state 9 untitled, then each changed or moved episode state 3/5 under type -1.
     fn merge_shows(&mut self, key: &str, others: &[(String, Value)]) -> (Response, usize) {
         let target_leaves = self.leaves(key);
         let pair_key = |leaf: &Value| {
@@ -20713,6 +20713,7 @@ impl Runtime {
                 continue;
             }
             let mut pairs = Vec::new();
+            let mut unpaired = Vec::new();
             for source in &source_leaves {
                 match target_leaves
                     .iter()
@@ -20721,14 +20722,57 @@ impl Runtime {
                     Some(target) => {
                         pairs.push((key_of(target).unwrap_or_default(), source.clone()))
                     }
-                    None => {
-                        pairs.clear();
-                        break;
-                    }
+                    None => unpaired.push(source.clone()),
                 }
             }
-            if pairs.len() != source_leaves.len() {
-                continue;
+            // Measured on 1.43.4 (`merge_unpaired_show_s43.json`): an episode the target
+            // has no partner for moves under it on its own key, into the target's season
+            // of its index, a season the target gains on a new key when it has none.
+            for source in &unpaired {
+                let Some(episode_key) = key_of(source) else {
+                    continue;
+                };
+                let index = source.get("parentIndex").map(py_str).unwrap_or_default();
+                let found = self
+                    .children(key)
+                    .into_iter()
+                    .find(|season| season.get("index").map(py_str).unwrap_or_default() == index)
+                    .and_then(|season| key_of(&season));
+                let season_key = match found {
+                    Some(season_key) => season_key,
+                    None => {
+                        let season_key = self.mint_key();
+                        let from = source.get("parentRatingKey").map(string_value).unwrap_or_default();
+                        let mut season = self.catalog.get(&from).cloned().unwrap_or_else(|| json!({"type": "season", "index": source.get("parentIndex")}));
+                        let show = self.catalog.get(key).cloned().unwrap_or_default();
+                        if let Some(object) = season.as_object_mut() {
+                            object.insert("ratingKey".to_string(), json!(season_key));
+                            object.insert("key".to_string(), json!(format!("/library/metadata/{season_key}/children")));
+                            object.insert("guid".to_string(), json!(format!("local://{season_key}")));
+                            object.insert("parentRatingKey".to_string(), json!(key));
+                            object.insert("parentKey".to_string(), json!(format!("/library/metadata/{key}")));
+                            for (field, own) in [("parentTitle", "title"), ("parentGuid", "guid"), ("parentThumb", "thumb"), ("parentArt", "art")] {
+                                match show.get(own) {
+                                    Some(value) => object.insert(field.to_string(), value.clone()),
+                                    None => object.shift_remove(field),
+                                };
+                            }
+                            object.insert("addedAt".to_string(), json!(now()));
+                            object.insert("updatedAt".to_string(), json!(now()));
+                        }
+                        self.catalog.add(season);
+                        season_key
+                    }
+                };
+                if let Some(object) = self.catalog.get_mut(&episode_key).and_then(Value::as_object_mut) {
+                    object.insert("parentRatingKey".to_string(), json!(season_key));
+                    // A person put it here: the feed's re-placing passes leave it (`matched_by_hand`).
+                    object.insert("_matched".to_string(), json!(true));
+                }
+                self.inherit_parents(&episode_key);
+                if !changed.contains(&episode_key) {
+                    changed.push(episode_key);
+                }
             }
             for (target_key, source) in &pairs {
                 if let Some(object) = self

@@ -2091,10 +2091,9 @@ class Library:
         Cycle 41 measured the one-season/one-episode case on both supported PMS
         versions. The absorbed episode's Media precedes the survivor's, the show
         keeps its own Location before the absorbed Location, and the absorbed
-        show/season/episode all disappear. A shape whose leaves cannot be paired
-        by season and episode index is deliberately left alone: that hierarchy
-        was not measured, and inventing how Plex reconciles it would violate the
-        server's measurement rule.
+        show/season/episode all disappear. A leaf with no partner of the same
+        season and episode index moves under the survivor on its own key
+        (measured on 1.43.4, `merge_unpaired_show_s43.json`).
 
         Returns ``(removed_rows, changed_episodes)``. Removed rows are in the
         exact parent-before-child order used by the reference's delete frames.
@@ -2117,14 +2116,57 @@ class Library:
             if not source_leaves:
                 continue
             pairs = []
+            unpaired = []
             for source in source_leaves:
                 target = target_leaves.get((source.get("parentIndex"), source.get("index")))
                 if target is None:
-                    pairs = []
-                    break
-                pairs.append((target, source))
-            if len(pairs) != len(source_leaves):
-                continue
+                    unpaired.append(source)
+                else:
+                    pairs.append((target, source))
+
+            # Measured on 1.43.4 (`merge_unpaired_show_s43.json`): an episode the target
+            # has no partner for moves under it on its own key, into the target's season
+            # of its index, a season the target gains on a new key when it has none.
+            for source in unpaired:
+                season = next((s for s in self.catalog.children(row["ratingKey"])
+                               if s.get("index") == source.get("parentIndex")), None)
+                if season is None:
+                    old = self.catalog.items.get(int(source.get("parentRatingKey") or 0)) or {}
+                    season = dict(old, type="season", index=source.get("parentIndex"))
+                    new_key = str(self.catalog.next_key("season"))
+                    season.update(ratingKey=new_key,
+                                  key="/library/metadata/%s/children" % new_key,
+                                  guid="local://%s" % new_key,
+                                  parentRatingKey=row["ratingKey"],
+                                  parentKey="/library/metadata/%s" % row["ratingKey"],
+                                  addedAt=_now(), updatedAt=_now())
+                    for field, own in (("parentTitle", "title"), ("parentGuid", "guid"),
+                                       ("parentThumb", "thumb"), ("parentArt", "art")):
+                        if own in row:
+                            season[field] = row[own]
+                        else:
+                            season.pop(field, None)
+                    self.catalog.add(season)
+                old_parent = str(source.get("parentRatingKey"))
+                if int(source["ratingKey"]) in self.catalog._children.get(old_parent, []):
+                    self.catalog._children[old_parent].remove(int(source["ratingKey"]))
+                self.catalog._children.setdefault(str(season["ratingKey"]), []).append(
+                    int(source["ratingKey"]))
+                source.update(parentRatingKey=season["ratingKey"],
+                              parentKey="/library/metadata/%s" % season["ratingKey"],
+                              grandparentRatingKey=row["ratingKey"],
+                              grandparentKey="/library/metadata/%s" % row["ratingKey"])
+                for field, parent, own in (
+                        ("parentTitle", season, "title"), ("parentGuid", season, "guid"),
+                        ("parentThumb", season, "thumb"), ("grandparentTitle", row, "title"),
+                        ("grandparentGuid", row, "guid"), ("grandparentThumb", row, "thumb"),
+                        ("grandparentArt", row, "art")):
+                    if own in parent:
+                        source[field] = parent[own]
+                    else:
+                        source.pop(field, None)
+                if source not in changed:
+                    changed.append(source)
 
             for target, source in pairs:
                 target["Media"] = list(source.get("Media") or []) + list(target.get("Media") or [])

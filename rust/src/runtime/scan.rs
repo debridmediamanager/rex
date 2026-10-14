@@ -812,7 +812,7 @@ impl Runtime {
     }
 
     /// An episode's parent fields, read off the rows it now sits under.
-    fn inherit_parents(&mut self, key: &str) {
+    pub(super) fn inherit_parents(&mut self, key: &str) {
         let Some(episode) = self.catalog.get(key).cloned() else {
             return;
         };
