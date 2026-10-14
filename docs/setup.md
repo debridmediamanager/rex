@@ -122,6 +122,12 @@ The first lines of the log name each source (`source rd: feed on at /rex/feed/`)
   (about 66 MB, fetched again weekly), and places a fansub-named release on TMDB's show,
   season and episode. At start it also moves episodes placed before onto those numbers.
   Off by default.
+- **Seasons TMDB numbers differently.** Release groups number long shows as IMDb and TVDB
+  do (`Bungo.Stray.Dogs.S04E01`, `Detective.Conan.S33E01`), and TMDB files many as one long
+  season. With `REX_IMDB_EPISODES=on` rex keeps IMDb's episode table beside the catalog
+  (`title.episode.tsv.gz`, about 55 MB, fetched again weekly, plus an index of it) and, for a
+  season TMDB lacks, places the file on the TMDB episode TMDB names for IMDb's episode by
+  those numbers. Off by default.
 Check it answers:
 
 ```bash

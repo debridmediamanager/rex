@@ -773,7 +773,10 @@ pub(super) fn retry_blank(shared: &SharedRuntime, limit: usize) -> usize {
 /// new files before this, and the production server held ~214 `Show S2 - NN` episodes in season 1
 /// (2026-10-13). Answers how many rows it placed again.
 pub(super) fn replace_misnumbered(shared: &SharedRuntime) -> usize {
-    let (by_source, sources) = {
+    // Episodes on a season TMDB lacks, of a show IMDb knows: looked up through IMDb after the
+    // lock is let go, since a `/find` TMDB has not answered before goes to the network.
+    let mut deferred: Vec<(Option<i64>, Option<i64>, String, Value, i64, String, String, String, (i64, i64))> = Vec::new();
+    let (mut by_source, sources, tmdb) = {
         let guard = lock(shared);
         if guard.tmdb.is_none() && guard.plex.is_none() {
             return 0;
@@ -815,7 +818,28 @@ pub(super) fn replace_misnumbered(shared: &SharedRuntime) -> usize {
                             .map(|details| super::scan::tmdb_seasons(&details))
                             .unwrap_or_default()
                     });
-                    super::scan::on_seasons(seasons, id, numbers)
+                    let placed = super::scan::on_seasons(seasons, id, numbers);
+                    let show = row.get("grandparentRatingKey").map(string_value).and_then(|key| guard.catalog.get(&key));
+                    let show_imdb = show.and_then(|show| show.get("Guid")).and_then(Value::as_array).and_then(|guids| {
+                        guids.iter().filter_map(|guid| guid.get("id").and_then(Value::as_str)).find_map(|id| id.strip_prefix("imdb://"))
+                    });
+                    if let (false, Some(imdb), Some((source, item))) =
+                        (seasons.is_empty() || seasons.iter().any(|row| row.0 == placed.0), show_imdb, pushed_item(row))
+                    {
+                        deferred.push((
+                            row.get("parentIndex").and_then(Value::as_i64),
+                            row.get("index").and_then(Value::as_i64),
+                            source,
+                            item,
+                            id,
+                            imdb.to_string(),
+                            crate::identify::parse_name(release).title,
+                            show.and_then(|show| show.get("title")).and_then(Value::as_str).unwrap_or_default().to_string(),
+                            numbers,
+                        ));
+                        return placed;
+                    }
+                    placed
                 }
                 None => numbers,
             });
@@ -832,8 +856,20 @@ pub(super) fn replace_misnumbered(shared: &SharedRuntime) -> usize {
                 }
             }
         }
-        (by_source, guard.sources.clone())
+        (by_source, guard.sources.clone(), guard.tmdb.clone())
     };
+    for (season, index, source, item, show, imdb, release_title, show_title, numbers) in deferred {
+        let Some(t) = tmdb.as_deref() else {
+            break;
+        };
+        let found = super::scan::by_imdb(t as &dyn TmdbSource, show, &imdb, &release_title, &show_title, numbers);
+        if found.is_some_and(|(s, e)| Some(s) != season || Some(e) != index) {
+            let queued = by_source.entry(source).or_default();
+            if !queued.iter().any(|queued| queued.get("id") == item.get("id")) {
+                queued.push(item);
+            }
+        }
+    }
     let total: usize = by_source.values().map(Vec::len).sum();
     if total == 0 {
         return 0;

@@ -62,6 +62,7 @@ mod wire;
 mod feed;
 mod source;
 mod anime;
+mod imdb;
 use artwork::owns_artwork;
 use logging::{debug, error, info, warning};
 use resume::{
@@ -23504,6 +23505,7 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
     let _ = thread::Builder::new().name("season-repair".to_string()).spawn(move || {
         if let Some(dir) = catalog_dir {
             anime::load(&dir);
+            imdb::load(&dir);
         }
         feed::repair_seasons(&seasons);
         feed::replace_misnumbered(&seasons);

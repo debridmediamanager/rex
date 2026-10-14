@@ -134,6 +134,52 @@ pub(super) fn on_seasons(seasons: &[(i64, i64, String)], show: i64, (season, epi
     (season, episode)
 }
 
+/// TMDB's numbers for a file whose season TMDB lacks, through IMDb's numbering of the show
+/// (`imdb.rs`): the IMDb id of IMDb's episode by those numbers, and the TMDB episode TMDB's
+/// `/find` names for it, if it is the identified show's. A release named as the show plus a
+/// subtitle is another series of it -- `BLEACH.Thousand-Year.Blood.War.S04E01` identified as
+/// Bleach would be IMDb's Bleach S4, the Bount arc of the original series -- and is left.
+pub(super) fn by_imdb(
+    tmdb: &dyn TmdbSource,
+    show: i64,
+    show_imdb: &str,
+    release_title: &str,
+    show_title: &str,
+    (season, episode): (i64, i64),
+) -> Option<(i64, i64)> {
+    let (release, title) = (super::anime::normalize(release_title), super::anime::normalize(show_title));
+    if title.is_empty() || (release != title && release.starts_with(&format!("{title} "))) {
+        return None;
+    }
+    let tconst = super::imdb::episode(show_imdb, season, episode)?;
+    let found = tmdb.get(&format!("find/{tconst}"), &[("external_source", "imdb_id".to_string())])?;
+    let hit = found.get("tv_episode_results")?.as_array()?.first()?;
+    if hit.get("show_id")?.as_i64()? != show {
+        return None;
+    }
+    Some((hit.get("season_number")?.as_i64()?, hit.get("episode_number")?.as_i64()?))
+}
+
+/// `on_seasons`, then IMDb's numbering where TMDB still has no season by the file's number.
+pub(super) fn on_tmdb_or_imdb(
+    tmdb: Option<&dyn TmdbSource>,
+    seasons: &[(i64, i64, String)],
+    show: i64,
+    show_imdb: Option<&str>,
+    release_title: &str,
+    show_title: &str,
+    numbers: (i64, i64),
+) -> (i64, i64) {
+    let placed = on_seasons(seasons, show, numbers);
+    if seasons.is_empty() || seasons.iter().any(|row| row.0 == placed.0) {
+        return placed;
+    }
+    match (tmdb, show_imdb) {
+        (Some(t), Some(imdb)) => by_imdb(t, show, imdb, release_title, show_title, numbers).unwrap_or(placed),
+        _ => placed,
+    }
+}
+
 /// Identification, off the lock, once per release: who it is (`identify.rs` -- an IMDb
 /// id the source pushed is exact; otherwise its name to Plex's matcher and TMDB, their agreement
 /// the confidence), then for each new file the fields TMDB gives its row and Plex's own
@@ -229,7 +275,16 @@ pub(super) fn name_release(plan: &Library, arrivals: &mut [Arrival], files: usiz
         let file_name = arrival.found.file.rsplit('/').next().unwrap_or_default().to_string();
         let numbers = if show { episode_of(&release, &file_name) } else { None };
         let numbers = match (numbers, identity.tmdb.filter(|_| identity.kind == "show")) {
-            (Some(numbers), Some(id)) => Some(on_seasons(&show_seasons, id, numbers)),
+            (Some(numbers), Some(id)) => Some(on_tmdb_or_imdb(
+                tmdb.map(|t| t as &dyn TmdbSource),
+                &show_seasons,
+                id,
+                // A show named by its TMDB id (an anime cour's) carries no IMDb id of its own.
+                identity.imdb.as_deref().or_else(|| details.as_ref()?.pointer("/external_ids/imdb_id")?.as_str()),
+                &identify::parse_name(&release).title,
+                details.as_ref().and_then(|d| d.get("name")).and_then(Value::as_str).unwrap_or_default(),
+                numbers,
+            )),
             (numbers, _) => numbers,
         };
         arrival.numbers = numbers;
@@ -1139,6 +1194,14 @@ mod tests {
                 json!({"id": 1428, "seasons": seasons})
             })
         }
+    }
+
+    /// `BLEACH.Thousand-Year.Blood.War.S04E01`, identified as Bleach (TMDB files the sequel series under
+    /// it), is no S4 of Bleach on IMDb's numbering: that is the original series' Bount arc.
+    #[test]
+    fn a_release_named_as_the_show_and_a_subtitle_is_not_looked_up_on_imdb() {
+        let tmdb: &dyn TmdbSource = &MythBusters;
+        assert_eq!(by_imdb(tmdb, 30984, "tt0434665", "BLEACH Thousand-Year Blood War", "Bleach", (4, 1)), None);
     }
 
     #[test]

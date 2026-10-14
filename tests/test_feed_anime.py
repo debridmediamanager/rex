@@ -49,10 +49,12 @@ def catalog(work):
         json.dump({} if RECORD else FIXTURE[name], open(os.path.join(work, name + "_cache.json"), "w"))
     for name in ("anime-list-master.xml", "anime-offline-database.jsonl"):
         shutil.copy(os.path.join(LISTS, name), os.path.join(work, name))
+    # IMDb's rows for these shows, kept where rex keeps the dataset, so nothing is fetched.
+    shutil.copy(os.path.join(HERE, "fixtures", "imdb", "title.episode.tsv.gz"), os.path.join(work, "title.episode.tsv.gz"))
 
 
 def start(work, bytes_port, anime):
-    keys = {"REX_ANIME_LISTS": "on" if anime else "off"}
+    keys = {"REX_ANIME_LISTS": "on" if anime else "off", "REX_IMDB_EPISODES": "on" if anime else "off"}
     if RECORD:
         keys.update(TMDB_KEY=os.environ["TMDB_KEY"], PLEX_TOKEN=os.environ.get("PLEX_TOKEN", "fake"))
     return Server(work, bytes_port, keys=keys)
