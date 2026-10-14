@@ -21,7 +21,7 @@ of that is in rex's memory -- catalog.json is never rewritten -- so a
 restart is the undo button. Run it against a test instance and restart that
 instance afterwards:
 
-    python3 oracle/server.py --port 32500 --catalog tests/catalog_ui.json --assert-claimed &
+    rust/target/release/rex --port 32500 --catalog tests/catalog_ui.json --assert-claimed --no-state &
     python3 tests/test_ui_surface.py --base http://127.0.0.1:32500
 
 `tests/catalog_ui.json` is the fixture the checks are written against: rows
@@ -50,16 +50,9 @@ import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 
-# The suite is invoked as ``python3 tests/test_ui_surface.py``.  In that form
-# Python puts ``tests/`` rather than ``oracle/`` on sys.path, so the focused
-# transport regression near the end could not import the server it is
-# exercising.  Resolve the oracle independently of the caller's cwd.
-REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ORACLE = os.path.join(REPO_ROOT, "oracle")
-if ORACLE not in sys.path:
-    sys.path.insert(0, ORACLE)
-
 from server_command import server_command
+
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 GREEN = "\033[32m"
 RED = "\033[31m"
@@ -8266,42 +8259,6 @@ def main():
     check("an agent config path without its index is a 404",
           agent_c50g and config_status_c50g == 404,
           "agent=%r status=%r" % (agent_c50g, config_status_c50g))
-    # Cycle 50: a normal keep-alive idle timeout first fires in the method peek.
-    # Swallowing it poisons BufferedReader; the following readline raises the plain
-    # OSError below and ThreadingHTTPServer prints a traceback.  Reproduce the exact
-    # exception transition without adding 20 idle seconds to every suite run.
-    import server as _server_c50h
-    class _TimedReaderC50H:
-        saw_eof = False
-        def begin(self):
-            pass
-        def _arm(self):
-            pass
-        def peek(self, _count):
-            raise socket.timeout("timed out")
-        def readline(self, _count):
-            raise OSError("cannot read from timed out object")
-    class _FlushC50H:
-        def flush(self):
-            pass
-    class _ConnectionC50H:
-        def settimeout(self, _seconds):
-            pass
-    handler_c50h = object.__new__(_server_c50h.Handler)
-    handler_c50h.rfile = _TimedReaderC50H()
-    handler_c50h.wfile = _FlushC50H()
-    handler_c50h.connection = _ConnectionC50H()
-    handler_c50h.log_error = lambda *_args: None
-    handler_c50h.close_connection = False
-    error_c50h = None
-    try:
-        handler_c50h.handle_one_request()
-    except OSError as caught_c50h:
-        error_c50h = caught_c50h
-    check("an idle keep-alive timeout closes quietly instead of escaping as OSError",
-          error_c50h is None and handler_c50h.close_connection,
-          "%r" % error_c50h)
-
     # Cycle 49, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4) on a movie
     # MADE to carry the whole tag family at once -- a row shape no reference library holds,
     # which is why cycle 23's 2,994-path child-order sweep could not see any of this.
@@ -22103,7 +22060,7 @@ def main():
     # server that is not plex.tv's cloud, so every person tile on every preplay page
     # linked to `/library/people/undefined`.
     #
-    # The value is MINTED (see hierarchy.py): rex has no source for plex.tv's own
+    # The value is MINTED (see `rust/src/hierarchy.rs`): rex has no source for plex.tv's own
     # person ids, so the shape is measured and the value is a deterministic substitute.
     detail_c27s = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
     people_c27s = {name_c27s: (detail_c27s.get(name_c27s) or [{}])[0]
@@ -25896,8 +25853,9 @@ def main():
     #
     # The UI fixture holds no Dolby Vision row, so this SKIPS here; the code path was
     # proved fail-then-pass by hand against a copy of this fixture carrying one
-    # (`Chrome` 4005 -> 2003, `Generic` 4005 either way), and `tests/test_decision.py`
-    # holds the 1.42.2 reference:1120's 78 cells, which fail 41/78 against the unfixed model.
+    # (`Chrome` 4005 -> 2003, `Generic` 4005 either way), and the decision corpus
+    # (`tests/fixtures/decisions/`, replayed by `rust/src/decision.rs`'s tests) holds the
+    # 1.42.2 reference:1120's 78 cells, which fail 41/78 against the unfixed model.
     dovi_c36m = None
     for row_c36m in (get(base, "/library/sections/%s/all?type=1" % movie_section)[1]
                      .get("Metadata") or []):
@@ -27352,9 +27310,7 @@ def main():
     # UUIDs plus 32 NAMED features, and the 32 names are byte-identical on both servers
     # while the UUID count differs (212 against 209). So the names are the modellable
     # half and the UUIDs are account-and-server-scoped plex.tv content: rex carries
-    # the names and does not invent the ids. `owner_features.txt` beside `server.py`
-    # stays the local override for anyone who wants the real list, and it is gitignored
-    # for the same reason `catalog.json` is.
+    # the names and does not invent the ids.
     features_c45 = {}
     _status_c45f, root_c45, _ = get(base, "/")
     _status_c45f2, myplex_c45, _ = request(base, "GET", "/myplex/account")

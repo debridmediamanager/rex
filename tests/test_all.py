@@ -26,9 +26,6 @@ import urllib.parse
 import urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.join(ROOT, "oracle"))
-
-import gate  # noqa: E402
 
 GREEN = "\033[32m"
 RED = "\033[31m"
