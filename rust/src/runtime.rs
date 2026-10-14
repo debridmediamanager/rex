@@ -2084,7 +2084,7 @@ impl Runtime {
                 "viewedLeafCount".to_string(),
                 json!(leaves
                     .iter()
-                    .filter(|leaf| leaf.get("viewCount").is_some())
+                    .filter(|leaf| leaf.get("viewCount").is_some_and(truthy))
                     .count()),
             );
             // `Preferences`, `OnDeck` and `Extras` are DETAIL blocks the route adds
@@ -2099,7 +2099,7 @@ impl Runtime {
                 "viewedLeafCount".to_string(),
                 json!(children
                     .iter()
-                    .filter(|leaf| leaf.get("viewCount").is_some())
+                    .filter(|leaf| leaf.get("viewCount").is_some_and(truthy))
                     .count()),
             );
             if let Some(parent_key) = object.get("parentRatingKey").map(string_value) {
@@ -5517,6 +5517,7 @@ impl Runtime {
                     "Role",
                     "Country",
                     "Label",
+                    "Similar",
                     "Mood",
                     "Style",
                 ]
@@ -5591,7 +5592,7 @@ impl Runtime {
                     || value.starts_with("none://")));
         }
         if field == "unwatched" {
-            return json!(row.get("viewCount").is_none());
+            return json!(!row.get("viewCount").is_some_and(truthy));
         }
         if field == "inProgress" {
             return json!(row.get("viewOffset").and_then(Value::as_i64).unwrap_or(0) > 0);
@@ -5646,16 +5647,19 @@ impl Runtime {
             let leaves = self.show_leaves_for_counts(row);
             let viewed = leaves
                 .iter()
-                .filter(|leaf| leaf.get("viewCount").is_some())
+                .filter(|leaf| leaf.get("viewCount").is_some_and(truthy))
                 .count() as i64;
-            let in_progress = leaves
+            let viewed_or_in_progress = leaves
                 .iter()
-                .filter(|leaf| leaf.get("viewOffset").and_then(Value::as_i64).unwrap_or(0) > 0)
+                .filter(|leaf| {
+                    leaf.get("viewCount").is_some_and(truthy)
+                        || leaf.get("viewOffset").and_then(Value::as_i64).unwrap_or(0) > 0
+                })
                 .count() as i64;
             return json!(match field {
                 "viewedLeafCount" => viewed,
                 "unviewedLeafCount" => leaves.len() as i64 - viewed,
-                _ => viewed + in_progress,
+                _ => viewed_or_in_progress,
             });
         }
         if matches!(
@@ -5694,10 +5698,13 @@ impl Runtime {
                     .collect();
             }
             if field == "duration" {
+                if media.is_empty() {
+                    return row.get("duration").cloned().unwrap_or(Value::Null);
+                }
                 return Value::Array(
                     media
                         .iter()
-                        .filter_map(|m| m.get("duration").cloned())
+                        .map(|m| m.get("duration").cloned().unwrap_or(Value::Null))
                         .collect(),
                 );
             }
@@ -5706,6 +5713,22 @@ impl Runtime {
                     media
                         .iter()
                         .filter_map(|m| m.get("videoResolution").cloned())
+                    .collect(),
+                );
+            }
+            if field == "mediaSize" {
+                // A Media may be split across several Parts. The filter column is
+                // backed by every Part size, so a later segment remains searchable.
+                return Value::Array(
+                    media
+                        .iter()
+                        .flat_map(|m| {
+                            m.get("Part")
+                                .and_then(Value::as_array)
+                                .into_iter()
+                                .flatten()
+                        })
+                        .filter_map(|part| part.get("size").cloned())
                         .collect(),
                 );
             }
@@ -5719,10 +5742,6 @@ impl Runtime {
                     "mediaAudioCodec" => m.get("audioCodec"),
                     "mediaContainer" => m.get("container"),
                     "mediaBitrate" => m.get("bitrate"),
-                    "mediaSize" => m
-                        .get("Part")
-                        .and_then(Value::as_array)
-                        .and_then(|parts| parts.iter().find_map(|part| part.get("size"))),
                     _ => None,
                 })
                 .cloned()
@@ -5737,7 +5756,7 @@ impl Runtime {
             let leaves = self.show_leaves_for_counts(row);
             let viewed = leaves
                 .iter()
-                .filter(|leaf| leaf.get("viewCount").is_some())
+                .filter(|leaf| leaf.get("viewCount").is_some_and(truthy))
                 .count();
             return json!((leaves.len() > viewed) as i64);
         }
@@ -5780,11 +5799,12 @@ impl Runtime {
                     .filter(|stream| {
                         stream.get("streamType").and_then(Value::as_i64) == Some(stream_type)
                     })
-                    .filter_map(|stream| {
-                        stream
-                            .get("languageCode")
-                            .or_else(|| stream.get("language"))
+                    .flat_map(|stream| {
+                        [stream.get("languageTag"), stream.get("languageCode")]
+                            .into_iter()
+                            .flatten()
                     })
+                    .filter(|value| truthy(value))
                     .cloned()
                     .collect(),
             );
@@ -22566,7 +22586,10 @@ fn start_state_saver(runtime: SharedRuntime) {
     }
     // SAFETY: the handler only stores to an atomic, which is async-signal-safe.
     unsafe {
-        libc::signal(libc::SIGTERM, on_sigterm as libc::sighandler_t);
+        libc::signal(
+            libc::SIGTERM,
+            on_sigterm as *const () as libc::sighandler_t,
+        );
     }
     let _ = thread::Builder::new().name("state-saver".to_string()).spawn(move || {
         // `run()` waits for the dirty flag and then a whole interval, so a write is
@@ -24600,6 +24623,216 @@ fn hex(value: u8) -> Result<u8, ()> {
 }
 fn key_of(value: &Value) -> Option<String> {
     value.get("ratingKey").map(string_value)
+}
+
+#[cfg(test)]
+mod filter_projection_tests {
+    use super::*;
+
+    fn fixture_runtime_file(file: &str) -> Runtime {
+        let built = PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/../tests")).join(file);
+        Runtime::load(RuntimeOptions {
+            catalog: if built.exists() {
+                built
+            } else {
+                PathBuf::from("../tests").join(file)
+            },
+            state: Some(PathBuf::new()),
+            ..RuntimeOptions::default()
+        })
+        .expect("the UI fixture loads")
+    }
+
+    fn fixture_runtime() -> Runtime {
+        // This measured feature catalog records a single Media with two Parts, preserving
+        // the multi-file shape from the reference probe.
+        fixture_runtime_file("catalog_features.json")
+    }
+
+    #[test]
+    fn media_size_reads_every_part_in_a_media_row() {
+        let runtime = fixture_runtime();
+        let row = runtime
+            .catalog
+            .get("101")
+            .cloned()
+            .expect("the recorded multi-part movie exists");
+        let sizes = runtime.filter_value(&row, "mediaSize");
+        assert_eq!(sizes, json!([111000000, 222000000]));
+        let rows = runtime
+            .filter_rows(
+                vec![row],
+                &[("mediaSize".to_string(), "222000000".to_string())],
+                "movie",
+            )
+            .expect("the recorded media-size query parses");
+        assert_eq!(rows.len(), 1, "the second recorded Part remains searchable");
+    }
+
+    #[test]
+    fn media_language_uses_the_recorded_language_tag_when_code_is_empty() {
+        let media_fixture: Value = serde_json::from_str(include_str!(
+            "../../tests/fixtures/media/fun-1118087-0.json"
+        ))
+        .expect("the production media capture parses");
+        let row = json!({"type": "movie", "Media": [media_fixture["Media"].clone()]});
+        let runtime = fixture_runtime();
+        assert_eq!(
+            runtime.filter_value(&row, "subtitleLanguage"),
+            json!(["russian", "english", "english"])
+        );
+    }
+
+    #[test]
+    fn tag_id_includes_similar_tags_from_the_recorded_provider_response() {
+        let fixture: Value = serde_json::from_str(include_str!(
+            "../../tests/fixtures/provider/matches.json"
+        ))
+        .expect("the recorded provider response parses");
+        let mut row = fixture[0]["response"]["MediaContainer"]["Metadata"][0].clone();
+        number_catalog_tags(std::slice::from_mut(&mut row));
+        let ids = row["Similar"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|tag| tag.get("id"))
+            .collect::<Vec<_>>();
+        let actual = fixture_runtime().filter_value(&row, "tagId");
+        assert!(!ids.is_empty(), "the recorded Similar table has ids");
+        assert!(
+            actual.as_array().is_some_and(|values| !values.is_empty()),
+            "the projected tagId array is not empty"
+        );
+        assert!(
+            ids.iter()
+                .all(|id| actual.as_array().is_some_and(|values| values.iter().any(|value| value == *id))),
+            "tagId omitted a Similar id: expected {ids:?}, got {actual}"
+        );
+    }
+
+    #[test]
+    fn unwatched_treats_recorded_zero_view_count_as_unwatched() {
+        let fixture: Value = serde_json::from_str(include_str!(
+            "../../tests/fixtures/timeline_play_latch_s42.json"
+        ))
+        .expect("the recorded timeline fixture parses");
+        let view_count = fixture["sequences"]["pa/again_cleared"]["beats"][0]["answer"]["viewCount"].clone();
+        assert_eq!(view_count, json!(0));
+        let row = json!({"type": "movie", "viewCount": view_count});
+        assert_eq!(fixture_runtime().filter_value(&row, "unwatched"), json!(true));
+    }
+
+    #[test]
+    fn leaf_counts_do_not_count_the_recorded_zero_view_count_as_watched() {
+        let fixture: Value = serde_json::from_str(include_str!(
+            "../../tests/fixtures/timeline_play_latch_s42.json"
+        ))
+        .expect("the recorded timeline fixture parses");
+        let view_count = fixture["sequences"]["pa/again_cleared"]["beats"][0]["answer"]["viewCount"]
+            .clone();
+        assert_eq!(view_count, json!(0));
+        let mut runtime = fixture_runtime();
+        runtime.catalog.get_mut("109").expect("the recorded episode exists")["viewCount"] =
+            view_count;
+        let show = runtime.catalog.get("108").cloned().expect("the recorded show exists");
+        assert_eq!(runtime.filter_value(&show, "viewedLeafCount"), json!(0));
+        assert_eq!(runtime.filter_value(&show, "unviewedLeafCount"), json!(1));
+        assert_eq!(runtime.filter_value(&show, "viewedOrInProgressLeafCount"), json!(0));
+        assert_eq!(runtime.filter_value(&show, "unwatchedLeaves"), json!(1));
+        assert_eq!(runtime.section_listing_row(&show)["viewedLeafCount"], json!(0));
+
+        let mut ui_runtime = fixture_runtime_file("catalog_ui.json");
+        ui_runtime.catalog.get_mut("1004").expect("the recorded episode exists")["viewCount"] =
+            json!(0);
+        let season = ui_runtime
+            .catalog
+            .get("30003")
+            .cloned()
+            .expect("the recorded season exists");
+        assert_eq!(
+            ui_runtime.section_listing_row(&season)["viewedLeafCount"],
+            json!(0),
+            "the season listing also treats recorded zero as unwatched"
+        );
+    }
+
+    #[test]
+    fn viewed_or_in_progress_counts_each_recorded_leaf_once() {
+        let timeline: Value = serde_json::from_str(include_str!(
+            "../../tests/fixtures/timeline_play_latch_s42.json"
+        ))
+        .expect("the recorded timeline fixture parses");
+        let scan: Value = serde_json::from_str(include_str!(
+            "../../tests/fixtures/missing_file_scan_s43.json"
+        ))
+        .expect("the recorded scan fixture parses");
+        let both = scan["steps"][1]["rows_before"]["/library/metadata/10"]["body"]
+            ["MediaContainer"]["Metadata"][0]
+            .clone();
+        assert_eq!(both["viewCount"], json!(1));
+        assert_eq!(both["viewOffset"], json!(101000));
+        let watched_only = timeline["sequences"]["pa/pll_p_then_a"]["beats"][0]["answer"].clone();
+        let progress_only = timeline["sequences"]["pa/again_cleared"]["beats"][0]["answer"].clone();
+        let neither = timeline["sequences"]["pa/again_cleared"]["beats"][2]["answer"].clone();
+        let cases = [
+            ("watched-only", watched_only, 1, 0, 1),
+            ("progress-only", progress_only, 0, 1, 1),
+            ("watched-and-progress", both, 1, 0, 1),
+            ("neither", neither, 0, 1, 0),
+        ];
+        for (name, state, viewed, unviewed, viewed_or_in_progress) in cases {
+            assert_eq!(state["viewCount"], json!(viewed), "{name} fixture viewCount");
+            let mut runtime = fixture_runtime();
+            let episode = runtime.catalog.get_mut("109").expect("the recorded episode exists");
+            episode["viewCount"] = state["viewCount"].clone();
+            episode["viewOffset"] = state["viewOffset"].clone();
+            let show = runtime.catalog.get("108").cloned().expect("the recorded show exists");
+            assert_eq!(runtime.filter_value(&show, "viewedLeafCount"), json!(viewed), "{name}");
+            assert_eq!(runtime.filter_value(&show, "unviewedLeafCount"), json!(unviewed), "{name}");
+            assert_eq!(
+                runtime.filter_value(&show, "viewedOrInProgressLeafCount"),
+                json!(viewed_or_in_progress),
+                "{name}"
+            );
+            let matches = runtime
+                .filter_rows(
+                    vec![show.clone()],
+                    &[(
+                        "viewedOrInProgressLeafCount".to_string(),
+                        viewed_or_in_progress.to_string(),
+                    )],
+                    "show",
+                )
+                .expect("the recorded leaf-count query parses");
+            assert_eq!(matches.len(), 1, "{name} query matches the show");
+        }
+    }
+
+    #[test]
+    fn duration_keeps_a_row_value_when_a_missing_file_has_no_media() {
+        let fixture: Value = serde_json::from_str(include_str!(
+            "../../tests/fixtures/missing_file_scan_s43.json"
+        ))
+        .expect("the recorded missing-file scan parses");
+        let row = fixture["steps"][1]["rows_before"]["/library/metadata/6"]["body"]
+            ["MediaContainer"]["Metadata"][0]
+            .clone();
+        assert_eq!(row["type"], json!("show"));
+        assert!(row.get("Media").is_none());
+        assert_eq!(fixture_runtime().filter_value(&row, "duration"), json!(2700000));
+    }
+
+    #[test]
+    fn duration_preserves_a_null_for_recorded_media_without_duration() {
+        let fixture: Value = serde_json::from_str(include_str!(
+            "../../tests/fixtures/collection_merged_s43.json"
+        ))
+        .expect("the recorded collection merge parses");
+        let row = fixture["solo"][0]["body"]["MediaContainer"]["Metadata"][0].clone();
+        assert_eq!(row["Media"][0].get("duration"), None);
+        assert_eq!(fixture_runtime().filter_value(&row, "duration"), json!([null]));
+    }
+
 }
 
 /// A play queue's `shuffle` or `repeat` (cycle 79): one optional `+` and ASCII digits whose
