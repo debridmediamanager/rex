@@ -15077,24 +15077,6 @@ impl Runtime {
                         }
                         let title =
                             section.get("title").map_or_else(|| "None".to_string(), string_value);
-                        let uuid = format!("rex-library-delete-{}", now());
-                        let activity = |event: &str, progress: i64| {
-                            json!({"ActivityNotification": {
-                                "event": event,
-                                "uuid": uuid,
-                                "Activity": {
-                                    "type": "library.delete",
-                                    "progress": progress,
-                                    "subtitle": "Deleting library"
-                                }
-                            }})
-                        };
-                        self.push_event("activity", activity("started", 0));
-                        for progress in [15, 30, 45, 60, 75, 90] {
-                            self.push_event("activity", activity("updated", progress));
-                        }
-                        self.push_event("activity", activity("ended", 100));
-                        info!("SECTION delete {section_key} ({title})");
                         self.catalog.sections.retain(|row| {
                             string_value(row.get("key").unwrap_or(&Value::Null)) != section_key
                         });
@@ -15140,11 +15122,37 @@ impl Runtime {
                             .items_mut()
                             .retain(|row| key_of(row).is_none_or(|key| !doomed.contains(&key)));
                         self.catalog.rebuild_index();
+                        // Measured on a writable copy of the reference, frame for frame: a
+                        // `library.delete` activity titled `Deleting Library`, started at 0,
+                        // updated at 0 with `Deleting section N`, then at 50, 0, 10, 40 and 60
+                        // with `Optimizing Database`, and ended at 100 -- eight frames, and
+                        // (cycle 30, on a 3-row and a 200-row library) no per-row timeline
+                        // frames at all. rex stepped an untitled `Deleting library` through
+                        // 15..90, which no reference sent.
+                        let mut activity =
+                            butler::new_activity("library.delete", "Deleting Library", false);
+                        self.notify_activity(&activity, "started");
+                        let optimizing = "Optimizing Database".to_string();
+                        for (progress, subtitle) in [
+                            (0, format!("Deleting section {section_key}")),
+                            (50, optimizing.clone()),
+                            (0, optimizing.clone()),
+                            (10, optimizing.clone()),
+                            (40, optimizing.clone()),
+                            (60, optimizing),
+                        ] {
+                            activity.insert("progress".to_string(), json!(progress));
+                            activity.insert("subtitle".to_string(), json!(subtitle));
+                            self.notify_activity(&activity, "updated");
+                        }
                         // Cycle 38: a library delete completes with the database
                         // optimization, the measured spelling-index rebuild point -- so the
                         // vocabulary loses the library's words and takes every edit made
                         // since the last rebuild elsewhere.
                         self.rebuild_spelling();
+                        activity.insert("progress".to_string(), json!(100));
+                        self.notify_activity(&activity, "ended");
+                        info!("SECTION delete {section_key} ({title})");
                         self.deleted.extend(doomed);
                         self.touch_gdm();
                         self.catalog.document.insert(

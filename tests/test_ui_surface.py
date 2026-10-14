@@ -9512,11 +9512,30 @@ def main():
                                               "&scanner=%s&language=en-US&location=%s"
                                               % (quote("Plex Movie"), quote("/data/w15g")))
     key_w15g = ((made_w15g.get("Directory") or [{}])[0]).get("key")
-    deleted_w15g = run_w15g(lambda: request(base, "DELETE", "/library/sections/%s" % key_w15g), "library.delete")
+    _, frames_w15g = notifications(base, lambda: request(base, "DELETE", "/library/sections/%s" % key_w15g),
+                                   seconds=3)
+    rows_w15g = [a for f in frames_w15g or []
+                 for a in (f.get("NotificationContainer") or {}).get("ActivityNotification") or []
+                 if (a.get("Activity") or {}).get("type") == "library.delete"]
+    deleted_w15g = [a.get("event") for a in rows_w15g]
     check("cleaning bundles and deleting a library each run their activity",
           bundles_w15g == ["started"] + ["updated"] * 6 + ["ended"]
           and deleted_w15g == ["started"] + ["updated"] * 6 + ["ended"],
           "%s / %s" % (bundles_w15g, deleted_w15g))
+    # Measured on plexscratch, frame for frame: the delete's activity is titled `Deleting
+    # Library`, steps `Deleting section N` at 0, then `Optimizing Database` at 50, 0, 10, 40
+    # and 60, and ends at 100 keeping that subtitle. rex stepped an untitled `Deleting
+    # library` through 15, 30 ... 90.
+    steps_w15g = [(a.get("event"), (a.get("Activity") or {}).get("title"),
+                   (a.get("Activity") or {}).get("subtitle"), (a.get("Activity") or {}).get("progress"))
+                  for a in rows_w15g]
+    check("a library delete steps Deleting section N, then Optimizing Database at 50, 0, 10, 40, 60",
+          steps_w15g == [("started", "Deleting Library", "", 0),
+                         ("updated", "Deleting Library", "Deleting section %s" % key_w15g, 0)]
+          + [("updated", "Deleting Library", "Optimizing Database", progress)
+             for progress in (50, 0, 10, 40, 60)]
+          + [("ended", "Deleting Library", "Optimizing Database", 100)],
+          str(steps_w15g))
 
     # Measured on plexscratch: a merge with no ids is a 400, an unknown id a 404, and a movie
     # into a show a 400. rex answered 200 to all three and moved the movie into the show.
