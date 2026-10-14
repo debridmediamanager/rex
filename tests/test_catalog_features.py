@@ -1142,6 +1142,19 @@ def run_zurg(check):
     item(document, 105)["Media"] = [{"id": 4105, "container": "mkv", "Part": [
         {"id": 4105, "key": "/library/parts/4105/1/file.mkv", "container": "mkv", "size": 1000,
          "file": "/rex/1/C41C Plus+Name (2202).mkv"}]}]
+    # The oracle's folder order: a level's folders by their name lowercased (`a` before `B`,
+    # where path order puts `B` first), its files by Python's `lower()` (`äa` before `Äb`,
+    # where an ASCII fold leaves `Ä` below `ä`) and then by the row's key as a number (999
+    # before 1000).
+    order = {"106": "Order/B/one.mkv", "107": "Order/a/two.mkv", "47201": "Order/Äb.mkv",
+             "47202": "Order/äa.mkv", "1000": "Order/Tie.mkv", "999": "Order/tie.mkv"}
+    for key, path in order.items():
+        if not any(str(row.get("ratingKey")) == key for row in document["items"]):
+            document["items"].append({"ratingKey": key, "key": "/library/metadata/" + key,
+                                      "type": "movie", "title": "Order %s" % key,
+                                      "librarySectionID": 1})
+        item(document, key)["Media"] = [{"id": 600000 + int(key), "Part": [
+            {"id": 600000 + int(key), "file": "/rex/1/" + path}]}]
     server = Server(document, args=("--gdm", "off", "--zurg-mount", "/rex"),
                     env={"ZURG_URL": "http://127.0.0.1:%d" % zurg.server_address[1]})
     try:
@@ -1165,6 +1178,13 @@ def run_zurg(check):
             mixed_tags = [xml[:120]]
         check("a mixed folder level renders Directory then Video",
               mixed_tags == ["Directory", "Video"], "%s via %s" % (mixed_tags, folder.get("key")))
+        ordered = next((row for row in top.get("Metadata") or [] if row.get("title") == "Order"), {})
+        level = [row.get("ratingKey") or row.get("title") for row in
+                 server.json(ordered.get("key") or "/library/sections/1/folder?parent=1")
+                 .get("Metadata") or []]
+        check("a folder level lists its folders, then its files, by their lowercased names",
+              level == ["a", "B", "999", "1000", "47202", "47201"],
+              "%s via %s" % (level, ordered.get("key")))
 
         status, headers, _ = server.request("HEAD", "/library/parts/4105/1/file.mkv?download=1",
                                             accept="*/*")

@@ -18141,9 +18141,21 @@ impl Runtime {
         };
         let mut rows = Vec::new();
         if let Some(level) = level {
-            for folders in directory_list.iter().filter(|folders| {
-                folders.len() == level.len() + 1 && folders[..level.len()] == level[..]
-            }) {
+            // `server.py` `folder_view`: a level's folders by their name lowercased, then its
+            // files by their file name lowercased and the row's numeric key -- Python's
+            // `str.lower()`, which folds every cased letter (`Ä` with `ä`), not ASCII alone,
+            // and a key compared as a number (999 before 1000). The directory ids stay in
+            // path order; only the listing order is the name's.
+            let mut siblings = directory_list
+                .iter()
+                .filter(|folders| {
+                    folders.len() == level.len() + 1 && folders[..level.len()] == level[..]
+                })
+                .collect::<Vec<_>>();
+            siblings.sort_by_cached_key(|folders| {
+                folders.last().map(|name| name.to_lowercase()).unwrap_or_default()
+            });
+            for folders in siblings {
                 // Cycle 41, measured on a level holding both a file and a subfolder: JSON
                 // carries an UNTYPED key/title row for the folder, and XML names it
                 // `<Directory>` beside the file's `<Video>`. A `type: directory` row was
@@ -18158,15 +18170,11 @@ impl Runtime {
                 .iter()
                 .filter(|(folders, _, _)| folders == &level)
                 .collect::<Vec<_>>();
-            files.sort_by(|left, right| {
-                left.1
-                    .to_ascii_lowercase()
-                    .cmp(&right.1.to_ascii_lowercase())
-                    .then_with(|| {
-                        key_of(&left.2)
-                            .unwrap_or_default()
-                            .cmp(&key_of(&right.2).unwrap_or_default())
-                    })
+            files.sort_by_cached_key(|(_, name, row)| {
+                (
+                    name.to_lowercase(),
+                    key_of(row).and_then(|key| key.parse::<i64>().ok()),
+                )
             });
             for (_, _, row) in files {
                 let mut projected = self.grid_row(row, false, false, false);
