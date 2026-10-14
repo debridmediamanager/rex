@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 """Now Playing forgets a silent player on the reference's schedule, and only then.
 
-Cycles 26 and 41 measured it (`sessions.py`): a process-wide reaper ticks every 30
+Cycles 26 and 41 measured it (`rust/src/runtime/sessions.rs`): a process-wide reaper ticks every 30
 seconds and drops each session whose last beat is older than the tick minus 180 s, so a
 player that stops beating stays listed for 180-210 s. A server with no reaper lists it
 until the process ends; one with a per-row timer drops it at exactly 180 s.
 
-Drives a real server process (`tests/server_command.py`), so it runs against the
-Python oracle and, with `REX_SERVER`, the native binary. It takes about 3.5
-minutes: the rule is about wall-clock minutes and is measured on them.
+The ticks are counted from the server's start. A player that falls silent halfway
+between two ticks is therefore still listed past 180 s, until the next tick, where a
+per-row timer drops it at 180 s exactly.
+
+Drives a real server process (`tests/server_command.py`). It takes about 4 minutes:
+the rule is about wall-clock minutes and is measured on them.
 
     python3 tests/test_session_reaper.py
 """
@@ -74,6 +77,7 @@ def main():
     for name in ("REX_STATE", "REX_TOKEN"):
         env.pop(name, None)
     log = tempfile.TemporaryFile()
+    launched = time.time()
     proc = subprocess.Popen(
         server_command("--port", port, "--catalog", os.path.join(HERE, "catalog_ui.json"),
                        "--gdm", "off", "--assert-claimed", root=ROOT),
@@ -91,23 +95,35 @@ def main():
         last_beat = time.time()
         check("both players are in Now Playing", listed(port) >= {silent, steady}, listed(port))
 
-        gone_at = None
+        # Half a tick after the server's start: its 180 s end mid-interval, at about
+        # start + 195 s, and the tick that removes it is start + 210 s.
+        midway = "reaper-midway"
+        time.sleep(max(0.0, launched + 15 - time.time()))
+        check("a player beating half a tick after the start is accepted",
+              beat(port, midway, "1009") == 200)
+        midway_beat = time.time()
+
+        gone_at = midway_gone_at = None
         next_steady = time.time() + 20
-        while time.time() - last_beat < 216:
+        while time.time() - midway_beat < 216 and (gone_at is None or midway_gone_at is None):
             if time.time() >= next_steady:
                 beat(port, steady, "1008")
                 next_steady += 20
             rows = listed(port)
             age = time.time() - last_beat
-            if silent not in rows:
+            if gone_at is None and silent not in rows:
                 gone_at = age
-                break
+            if midway_gone_at is None and midway not in rows:
+                midway_gone_at = time.time() - midway_beat
             time.sleep(1.0 if age > 170 else 5.0)
         check("a silent player is still listed for 180 s after its last beat",
               gone_at is None or gone_at >= 180, "gone at +%.1f s" % (gone_at or 0))
         check("and is gone by the next 30-second tick, within 210 s",
               gone_at is not None and gone_at <= 212, "gone at %s" % (
                   "+%.1f s" % gone_at if gone_at is not None else "never"))
+        check("a player silent from mid-tick outlives its 180 s until the tick, not a per-row timer",
+              midway_gone_at is not None and 190 <= midway_gone_at <= 212, "gone at %s" % (
+                  "+%.1f s" % midway_gone_at if midway_gone_at is not None else "never"))
         check("a player that keeps beating is never reaped", steady in listed(port), listed(port))
     finally:
         proc.send_signal(signal.SIGTERM)
