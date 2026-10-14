@@ -381,6 +381,12 @@ impl Runtime {
                             self.notify_activity(&activity, "updated");
                         }
                     }
+                    // Cycle 38 recovered the spellfix rebuild's callers from both PMS
+                    // binaries: the Butler's OptimizeDatabase is one of the three (with
+                    // `PUT /library/optimize` and a library delete); an edit is not.
+                    if name == "OptimizeDatabase" {
+                        self.rebuild_spelling();
+                    }
                     activity.insert("progress".to_string(), json!(100));
                     self.notify_activity(&activity, "ended");
                 }

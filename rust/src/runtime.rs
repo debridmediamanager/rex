@@ -15126,6 +15126,11 @@ impl Runtime {
                             .items_mut()
                             .retain(|row| key_of(row).is_none_or(|key| !doomed.contains(&key)));
                         self.catalog.rebuild_index();
+                        // Cycle 38: a library delete completes with the database
+                        // optimization, the measured spelling-index rebuild point -- so the
+                        // vocabulary loses the library's words and takes every edit made
+                        // since the last rebuild elsewhere.
+                        self.rebuild_spelling();
                         self.deleted.extend(doomed);
                         self.touch_gdm();
                         self.catalog.document.insert(

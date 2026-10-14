@@ -252,8 +252,6 @@ def gdm_stamp(port):
 # reported as a known gap while it fails, and fails the suite once it passes, so the entry
 # is removed when the native server catches up.
 KNOWN_GAPS = {
-    "spellfix rebuilds only at the measured optimization call sites":
-        "the Butler OptimizeDatabase task and a section delete do not rebuild the spelling index",
     "show merge absorbs its hierarchy and combines matching episode Media":
         "the merged show does not take the absorbed show's Location",
     "duration filter and sort read Media.duration": "sort=duration orders by the row's duration",
