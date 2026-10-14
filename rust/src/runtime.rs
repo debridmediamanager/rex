@@ -57,7 +57,7 @@ mod structural;
 mod tmdb;
 mod transcoder;
 mod universal;
-mod upstream;
+pub(crate) mod upstream;
 mod wire;
 mod feed;
 mod source;

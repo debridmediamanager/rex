@@ -1,6 +1,7 @@
 //! What rex asks of the operating system beyond `std`: local time, the process's CPU time
 //! and the host's load, the host name, a thread's id as Python reports it, pausing and
-//! killing a child, the GDM socket and random bytes.
+//! killing a child, the GDM socket, random bytes, and the manager's process groups and
+//! signals (Unix only).
 //!
 //! rex was measured on Unix and the Unix half is that code, moved here unchanged. The
 //! Windows half lets the server run there; it declares the few Win32 calls it needs itself
@@ -166,6 +167,91 @@ pub(crate) fn random_bytes(buffer: &mut [u8]) -> io::Result<()> {
             Err(io::Error::other(format!("BCryptGenRandom failed: {status:#x}")))
         }
     }
+}
+
+// The manager's process control. `rex manager` is Linux and macOS only, as manager.py was:
+// it supervises servers as process groups of their own and stops them with signals.
+
+/// `subprocess.Popen(start_new_session=True)`: the child leads a session and process
+/// group of its own, so a signal to the manager's terminal or group never reaches it.
+#[cfg(unix)]
+pub(crate) fn new_session(command: &mut std::process::Command) {
+    use std::os::unix::process::CommandExt;
+    // SAFETY: setsid is async-signal-safe, all a pre_exec hook may call.
+    unsafe {
+        command.pre_exec(|| {
+            libc::setsid();
+            Ok(())
+        });
+    }
+}
+
+/// `os.killpg(pid, SIGTERM)`, or SIGKILL with `kill`; a group that is gone is skipped.
+#[cfg(unix)]
+pub(crate) fn signal_group(pid: u32, kill: bool) {
+    // SAFETY: killpg only sends a signal.
+    unsafe {
+        libc::killpg(pid as libc::pid_t, if kill { libc::SIGKILL } else { libc::SIGTERM });
+    }
+}
+
+/// `os.kill(pid, 0)`: whether the process exists (one we may not signal still does).
+#[cfg(unix)]
+pub(crate) fn alive(pid: u32) -> bool {
+    // SAFETY: signal 0 only checks the process.
+    let delivered = unsafe { libc::kill(pid as libc::pid_t, 0) } == 0;
+    delivered || io::Error::last_os_error().raw_os_error() == Some(libc::EPERM)
+}
+
+/// `signal.Signals(number).name`.
+#[cfg(unix)]
+pub(crate) fn signal_name(number: i32) -> Option<&'static str> {
+    [
+        (libc::SIGHUP, "SIGHUP"),
+        (libc::SIGINT, "SIGINT"),
+        (libc::SIGQUIT, "SIGQUIT"),
+        (libc::SIGILL, "SIGILL"),
+        (libc::SIGTRAP, "SIGTRAP"),
+        (libc::SIGABRT, "SIGABRT"),
+        (libc::SIGBUS, "SIGBUS"),
+        (libc::SIGFPE, "SIGFPE"),
+        (libc::SIGKILL, "SIGKILL"),
+        (libc::SIGUSR1, "SIGUSR1"),
+        (libc::SIGSEGV, "SIGSEGV"),
+        (libc::SIGUSR2, "SIGUSR2"),
+        (libc::SIGPIPE, "SIGPIPE"),
+        (libc::SIGALRM, "SIGALRM"),
+        (libc::SIGTERM, "SIGTERM"),
+        (libc::SIGXCPU, "SIGXCPU"),
+    ]
+    .into_iter()
+    .find_map(|(signal, name)| (signal == number).then_some(name))
+}
+
+/// `ps -o command= -p PID`: a process's command line, empty when it is gone.
+#[cfg(unix)]
+pub(crate) fn command_line(pid: u32) -> String {
+    std::process::Command::new("ps")
+        .args(["-o", "command=", "-p", &pid.to_string()])
+        .output()
+        .map(|output| String::from_utf8_lossy(&output.stdout).into_owned())
+        .unwrap_or_default()
+}
+
+/// Set once SIGTERM or SIGINT arrives, after the first call installs the handlers.
+#[cfg(unix)]
+pub(crate) fn termination_flag() -> &'static std::sync::atomic::AtomicBool {
+    static TERMINATED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+    extern "C" fn on_signal(_: libc::c_int) {
+        TERMINATED.store(true, std::sync::atomic::Ordering::SeqCst);
+    }
+    let handler = on_signal as extern "C" fn(libc::c_int) as libc::sighandler_t;
+    // SAFETY: the handler only stores to an atomic, which is async-signal-safe.
+    unsafe {
+        libc::signal(libc::SIGTERM, handler);
+        libc::signal(libc::SIGINT, handler);
+    }
+    &TERMINATED
 }
 
 /// `Discovery._open`'s socket: `SO_REUSEADDR`, and `SO_REUSEPORT` where it exists, set

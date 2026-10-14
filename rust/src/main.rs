@@ -8,7 +8,7 @@ use rex::{catalog, decision, filters, gate, hierarchy, mediainfo, metadata, runt
 use serde_json::json;
 
 fn usage() -> &'static str {
-    "Usage: rex [server options] | rex catalog ... | rex <decision|mediainfo|normalize-media|stream-titles|hierarchy-build|hierarchy-normalize|hierarchy-fold|hierarchy-case|catalog-normalize|xml|system-xml|ordered|guid|provider-guids|gate|metadata-parse|metadata-enrich|filter-compare|filter-parse|filter-evaluate|filter-describe|filter-document|filter-orders|filter-source-order|identify-replay> ..."
+    "Usage: rex [server options] | rex catalog ... | rex manager ... | rex <decision|mediainfo|normalize-media|stream-titles|hierarchy-build|hierarchy-normalize|hierarchy-fold|hierarchy-case|catalog-normalize|xml|system-xml|ordered|guid|provider-guids|gate|metadata-parse|metadata-enrich|filter-compare|filter-parse|filter-evaluate|filter-describe|filter-document|filter-orders|filter-source-order|identify-replay> ..."
 }
 
 /// `main()`'s `argparse` options, in its declaration order: (flag, metavar, takes a value).
@@ -1068,6 +1068,16 @@ fn run_core(command: &str, args: &[String]) -> Result<(), String> {
     }
 }
 
+#[cfg(unix)]
+fn run_manager(args: &[String]) -> Result<(), String> {
+    rex::manager::main(args)
+}
+
+#[cfg(not(unix))]
+fn run_manager(_args: &[String]) -> Result<(), String> {
+    Err("manager runs on Linux and macOS only: it supervises servers as process groups and stops them with signals".to_string())
+}
+
 fn main() -> ExitCode {
     let mut args = env::args().skip(1).collect::<Vec<_>>();
     // `python3 server.py` with no arguments serves on the defaults, and `--help`
@@ -1082,6 +1092,8 @@ fn main() -> ExitCode {
         run_server(&args)
     } else if command == "catalog" {
         rex::catalog_tool::main(&args)
+    } else if command == "manager" {
+        run_manager(&args)
     } else if command.starts_with('-') {
         let mut server_args = vec![command];
         server_args.extend(args);

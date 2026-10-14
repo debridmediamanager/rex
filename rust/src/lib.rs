@@ -11,6 +11,8 @@ pub mod filters;
 pub mod gate;
 pub mod hierarchy;
 pub mod identify;
+#[cfg(unix)]
+pub mod manager;
 pub mod mediainfo;
 pub mod metadata;
 pub(crate) mod platform;

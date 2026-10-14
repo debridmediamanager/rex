@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""manager.py: no server runs until one is started, and the manager keeps them running.
+"""rex manager: no server runs until one is started, and the manager keeps them running.
 
-Drives a real manager process on a temporary root, managing real rex processes on
-`tests/catalog_ui.json`: the native binary by default, the Python oracle with
-`REX_SERVER=python` (through a two-line wrapper, since the manager takes one
-executable), or any executable `REX_SERVER` names.
+Drives a real manager process (`rust/target/release/rex manager`, so build it first) on a
+temporary root, managing real rex processes on `tests/catalog_ui.json`: the native binary
+by default, the Python oracle with `REX_SERVER=python` (through a two-line wrapper, since
+the manager takes one executable), or any executable `REX_SERVER` names.
 
     python3 tests/test_manager.py
 """
@@ -24,6 +24,7 @@ import urllib.request
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 CATALOG = os.path.join(HERE, "catalog_ui.json")
+REX = os.path.join(ROOT, "rust", "target", "release", "rex")
 results = []
 
 
@@ -101,10 +102,9 @@ class Manager:
     def start(self):
         self.log = open(os.path.join(self.root + ".log"), "ab")
         self.proc = subprocess.Popen(
-            [sys.executable, os.path.join(ROOT, "oracle", "manager.py"), "--root", self.root, "serve",
+            [REX, "manager", "--root", self.root, "serve",
              "--listen", "127.0.0.1:%d" % self.port, "--binary", self.binary],
-            cwd=ROOT, stdout=self.log, stderr=self.log, start_new_session=True,
-            env=dict(os.environ, PYTHONDONTWRITEBYTECODE="1"))
+            cwd=ROOT, stdout=self.log, stderr=self.log, start_new_session=True)
         if not wait_for(lambda: answers(self.port), 30):
             raise SystemExit("the manager did not start:\n" + self.output())
         with open(os.path.join(self.root, "admin.token")) as handle:
@@ -141,13 +141,12 @@ def config(name, port, **extra):
                  "gdm": "off", "assert_claimed": True}, **extra)
 
 
-# Stands in for build_catalog.py --seed: writes catalog_ui.json into --out the way the
+# Stands in for `rex catalog --seed`: writes catalog_ui.json into --out the way the
 # builder writes a database, so the started server has rows to answer with.
-FAKE_BUILDER = """import sys, json
-sys.path.insert(0, %r)
-import catalogdb
+FAKE_BUILDER = """#!%s
+import subprocess, sys
 out = sys.argv[sys.argv.index("--out") + 1]
-catalogdb.write(out, json.load(open(%r)))
+subprocess.run([%r, "catalog", "--convert", %r, "--out", out], check=True)
 print("built", out)
 """
 
@@ -158,7 +157,8 @@ def main():
     binary = server_binary(work)
     builder = os.path.join(work, "fake_build_catalog.py")
     with open(builder, "w") as handle:
-        handle.write(FAKE_BUILDER % (os.path.join(ROOT, "oracle"), CATALOG))
+        handle.write(FAKE_BUILDER % (sys.executable, REX, CATALOG))
+    os.chmod(builder, 0o755)
     print("server: %s" % binary)
     manager = Manager(root, binary)
     try:
@@ -284,7 +284,7 @@ def main():
         status, job = manager.api("POST", "/servers/idle/build")
         done = wait_for(lambda: (lambda v: v["status"] in ("succeeded", "failed") and v)(
             manager.api("GET", "/servers/idle/build")[1]), 120)
-        # The real build_catalog.py --seed: what is held here is the job -- it runs, ends,
+        # The real `rex catalog --seed`: what is held here is the job -- it runs, ends,
         # and its log is kept.
         check("a build runs as a job with its own status and log",
               status == 202 and done and done["log"] and done["exit"] is not None, done)
@@ -331,7 +331,7 @@ def main():
         url = "http://127.0.0.1:%d" % manager.port
 
         def cli(*args, env=None):
-            run = subprocess.run([sys.executable, os.path.join(ROOT, "oracle", "manager.py"), "--root", root,
+            run = subprocess.run([REX, "manager", "--root", root,
                                   args[0], "--url", url, *args[1:]], capture_output=True, text=True,
                                  env=dict(os.environ, **(env or {})), timeout=120)
             return run.returncode, run.stdout + run.stderr

@@ -371,7 +371,7 @@ pub(super) fn open_once(
 }
 
 /// `open` plus the whole body: `(status, headers, body)`.
-pub(super) fn fetch(
+pub(crate) fn fetch(
     method: &str,
     url: &str,
     headers: &[(&str, String)],
