@@ -247,27 +247,10 @@ def gdm_stamp(port):
     return fields.get("Name"), fields.get("Updated-At")
 
 
-# Measured behaviour the Python oracle held and the native server does not, found when
-# this suite stopped driving the oracle in-process (2026-10-14). Each still runs: it is
-# reported as a known gap while it fails, and fails the suite once it passes, so the entry
-# is removed when the native server catches up.
-KNOWN_GAPS = {
-}
-
-
 def main():
     failures = []
-    gaps = []
 
     def check(name, condition, detail=""):
-        if name in KNOWN_GAPS:
-            gaps.append(name)
-            if condition:
-                print("FAIL", name, "-- passes now: remove it from KNOWN_GAPS")
-                failures.append(name)
-            else:
-                print("GAP ", name, detail, "-- known native gap:", KNOWN_GAPS[name])
-            return
         print(("PASS" if condition else "FAIL"), name, detail)
         if not condition:
             failures.append(name)
@@ -312,14 +295,10 @@ def main():
     run_specials(check)
     run_enrichment(check)
 
-    unchecked = sorted(set(KNOWN_GAPS) - set(gaps))
-    for name in unchecked:
-        print("FAIL", name, "-- in KNOWN_GAPS but never checked")
-    failures += unchecked
     if failures:
         print("FAIL %d catalog feature check(s)" % len(failures))
         return 1
-    print("PASS all catalog feature checks (%d known native gaps)" % len(set(gaps)))
+    print("PASS all catalog feature checks")
     return 0
 
 
