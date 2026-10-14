@@ -205,15 +205,6 @@ impl Runtime {
         }
     }
 
-    /// `/library/all` (`server.py`'s handler of the same route).
-    pub(super) fn library_all(&self, query: &HashMap<String, String>) -> Response {
-        let pairs = query
-            .iter()
-            .map(|(key, value)| (key.clone(), value.clone()))
-            .collect::<Vec<_>>();
-        self.library_all_pairs(query, &pairs)
-    }
-
     /// `/library/all` with the request's ORDERED pairs: a filter query may repeat a
     /// key, and the scoped-guid conjunction below reads every `type=` it names.
     pub(super) fn library_all_pairs(
@@ -271,7 +262,7 @@ impl Runtime {
             // `_listing_row`: each row with its `Image` list.
             let page = page
                 .iter()
-                .map(|row| listed_collection(self.public_row(row, false)))
+                .map(|row| listed_collection(self.public_row(row)))
                 .collect::<Vec<_>>();
             let mut fields = Map::from_iter([("Metadata".to_string(), Value::Array(page))]);
             if paged {
@@ -380,7 +371,7 @@ impl Runtime {
             .map(|row| {
                 if row.get("_collectionRow").is_some() {
                     // `_listing_row`: the `?type=18` row, with its `Image` list.
-                    return listed_collection(self.public_row(row, false));
+                    return listed_collection(self.public_row(row));
                 }
                 let mut shown = self.grid_row(row, true, keep_guid, false);
                 if keep_guid && unmatched_guid(row) {

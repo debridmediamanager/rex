@@ -208,7 +208,6 @@ impl Runtime {
                 rows.push(stub.clone());
             }
         }
-        let show = section.get("type").and_then(Value::as_str) == Some("show");
         let mut body = Map::new();
         body.insert("size".to_string(), json!(rows.len()));
         body.insert("allowSync".to_string(), json!(false));

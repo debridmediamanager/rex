@@ -339,11 +339,10 @@ impl Runtime {
         let shows = count(&["show"]);
         for (index, name) in names.iter().enumerate() {
             let index = index + 1;
-            let (messages, inner) = butler_messages(name);
-            let mut messages = messages.to_vec();
+            let inner = butler_messages(name).1;
             let runs = if name == "BackupDatabase" { 2 } else { 1 };
             for _run in 0..runs {
-                messages = butler_messages(name).0.to_vec();
+                let mut messages = butler_messages(name).0.to_vec();
                 if let Some((kind, title, subtitle)) = inner {
                     let opens_empty = kind == "general.db.optimize";
                     let mut activity = new_activity(kind, title, false);

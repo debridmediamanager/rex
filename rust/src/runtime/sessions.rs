@@ -209,7 +209,6 @@ impl Runtime {
         if !name.is_empty() || !platform.is_empty() {
             let previous = self.devices.get(identifier).cloned();
             let device = Device {
-                client_identifier: identifier.to_string(),
                 name: if name.is_empty() {
                     previous.as_ref().map(|device| device.name.clone()).unwrap_or_default()
                 } else {

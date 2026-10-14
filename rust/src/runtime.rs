@@ -15,7 +15,6 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use flate2::write::GzEncoder;
 use flate2::Compression;
 use rustls::pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs1KeyDer, PrivatePkcs8KeyDer};
 use rustls::{ServerConfig, ServerConnection, StreamOwned};
@@ -68,7 +67,7 @@ use artwork::owns_artwork;
 pub use streams::{client_titles, CODEC_TITLE_PRODUCTS};
 use logging::{debug, error, info, warning};
 use resume::{
-    apply_listing_guids, bool_option, content_directories, exclude_continue_watching, guid_gate,
+    apply_listing_guids, bool_option, content_directories, guid_gate,
     hub_refusal, int_param, page_window, paging_values, unmatched_guid,
 };
 
@@ -308,7 +307,6 @@ impl Default for RuntimeOptions {
 
 #[derive(Debug, Clone)]
 struct Device {
-    client_identifier: String,
     name: String,
     product: String,
     platform: Value,
@@ -1189,7 +1187,6 @@ impl Runtime {
                     self.devices.insert(
                         key.clone(),
                         Device {
-                            client_identifier: key.clone(),
                             name: row
                                 .get("name")
                                 .and_then(Value::as_str)
@@ -1980,20 +1977,15 @@ impl Runtime {
     }
 
     fn detail_row(&self, original: &Value) -> Value {
-        self.detail_row_prefs(original, false)
+        self.detail_row_prefs(original)
     }
 
-    /// The detail projection; `prefs` also echoes the item's written settings as row
-    /// attributes, which `server.py` does on an item's OWN detail read alone (a movie in
-    /// its metadata leaf, a show or season in `parent_detail`) -- never on a listing,
-    /// shelf, search row or multi-key read of the same item.
-    /// `server.py`'s `_public_row`: the detail projection, with the written settings
-    /// only when `with_prefs` (the item's own detail read).
-    fn public_row(&self, original: &Value, with_prefs: bool) -> Value {
-        self.detail_row_prefs(original, with_prefs)
+    /// `server.py`'s `_public_row`: the detail projection without private catalog fields.
+    fn public_row(&self, original: &Value) -> Value {
+        self.detail_row_prefs(original)
     }
 
-    fn detail_row_prefs(&self, original: &Value, prefs: bool) -> Value {
+    fn detail_row_prefs(&self, original: &Value) -> Value {
         let mut row = strip_private_value(original);
         let Some(object) = row.as_object_mut() else {
             return row;
@@ -2289,40 +2281,6 @@ impl Runtime {
         row
     }
 
-    fn listing_row(&self, original: &Value) -> Value {
-        let mut row = self.public_row(original, false);
-        if let Some(object) = row.as_object_mut() {
-            object.shift_remove("Media");
-            object.shift_remove("Guid");
-            object.shift_remove("Rating");
-            object.shift_remove("Field");
-            object.shift_remove("Preferences");
-            object.shift_remove("OnDeck");
-            for name in ["Label", "Style", "Similar", "Mood"] {
-                object.shift_remove(name);
-            }
-            for name in [
-                "Genre",
-                "Country",
-                "Director",
-                "Writer",
-                "Role",
-                "Collection",
-            ] {
-                if let Some(tags) = object.get_mut(name).and_then(Value::as_array_mut) {
-                    *tags = tags
-                        .iter()
-                        .filter_map(|tag| {
-                            tag.get("tag")
-                                .and_then(Value::as_str)
-                                .map(|text| json!({"tag": text}))
-                        })
-                        .collect();
-                }
-            }
-        }
-        row
-    }
 
     /// The light grid projection used by section listings, shelves, and search.
     /// It starts from the measured detail projection so mutable hierarchy
@@ -2354,7 +2312,7 @@ impl Runtime {
     /// listing's per-user aggregate; a season gains `leafCount` and `viewedLeafCount`,
     /// which its listing row does not carry, before `addedAt`.
     fn top_row(&self, original: &Value, plays: i64, accounts: &BTreeSet<i64>) -> Value {
-        let full = self.public_row(original, false);
+        let full = self.public_row(original);
         let light = self.grid_row(original, true, false, false);
         let kind = original.get("type").and_then(Value::as_str).unwrap_or_default();
         let aggregate = ["viewCount", "skipCount", "lastViewedAt", "userRating", "lastRatedAt"];
@@ -2390,7 +2348,7 @@ impl Runtime {
         keep_guid: bool,
         keep_location: bool,
     ) -> Value {
-        let mut row = self.public_row(original, false);
+        let mut row = self.public_row(original);
         let Some(object) = row.as_object_mut() else {
             return row;
         };
@@ -2514,8 +2472,8 @@ impl Runtime {
             }
             // A section grid exposes the file path for a row, but the
             // database location id is an internal column and is absent from
-            // the measured listing projection.  `listing_row` retains the
-            // catalog Location shape, so remove only its id here.
+            // the measured listing projection. The catalog detail projection
+            // retains the Location shape, so remove only its id here.
             if let Some(locations) = object.get_mut("Location").and_then(Value::as_array_mut) {
                 for location in locations {
                     if let Some(location) = location.as_object_mut() {
@@ -2542,7 +2500,7 @@ impl Runtime {
         // `/allLeaves` keeps Media so clients can calculate storage and
         // duration without opening every item. Ordinary grid rows omit Media;
         // using that projection here loses the measured Media/mediaCount split.
-        let mut row = self.public_row(original, false);
+        let mut row = self.public_row(original);
         if let Some(object) = row.as_object_mut() {
             for name in ["Guid", "Rating", "Field", "Preferences", "OnDeck"] {
                 object.shift_remove(name);
@@ -2573,47 +2531,6 @@ impl Runtime {
         row
     }
 
-    fn on_deck_for(&self, leaves: &[Value]) -> Option<Value> {
-        let in_progress = leaves
-            .iter()
-            .enumerate()
-            .filter(|(_, row)| row.get("viewOffset").and_then(Value::as_i64).unwrap_or(0) > 0)
-            .max_by_key(|(index, row)| {
-                (
-                    row.get("lastViewedAt").and_then(Value::as_i64).unwrap_or(0),
-                    row.get("_viewUpdatedAt")
-                        .and_then(Value::as_i64)
-                        .unwrap_or(0),
-                    *index,
-                )
-            })
-            .map(|(_, row)| row.clone());
-        if let Some(row) = in_progress {
-            return Some(self.detail_row(&row));
-        }
-        if leaves.iter().any(|row| row.get("viewCount").is_some()) {
-            // Next-up follows the last watched leaf in hierarchy order.  A
-            // simple first-unwatched lookup points back at episode one after
-            // episode two is scrobbled, which is exactly the shelf regression
-            // the measured show contract catches.
-            let last_watched = leaves
-                .iter()
-                .enumerate()
-                .filter(|(_, row)| row.get("viewCount").is_some())
-                .map(|(index, _)| index)
-                .max();
-            if let Some(index) = last_watched {
-                if let Some(next) = leaves.get(index + 1) {
-                    return Some(self.detail_row(next));
-                }
-            }
-            return leaves
-                .iter()
-                .find(|row| row.get("viewCount").is_none())
-                .map(|row| self.detail_row(row));
-        }
-        leaves.first().map(|row| self.detail_row(row))
-    }
 
     /// Per-section filter/sort descriptors, retargeted from the captured
     /// template (`section_meta.json` / `section_meta_show.json`): every key in
@@ -3543,7 +3460,6 @@ impl Runtime {
                 .get("type")
                 .and_then(Value::as_str)
                 .unwrap_or("movie");
-            let show = kind == "show";
             let mut pivots = vec![
                 json!({"id": "recommended", "key": format!("/hubs/sections/{key}"), "type": "hub",
                        "title": "Recommended", "context": "content.discover", "symbol": "star"}),
@@ -4956,29 +4872,12 @@ impl Runtime {
         self.notify_timeline(&row, 5, None, None, None);
     }
 
-    fn push_refresh_events_named(&mut self, key: &str, subtitle: &str) {
-        if self.catalog.get(key).is_some() {
-            self.notify_refreshed(key);
-            return;
-        }
-        // A list row lives outside the catalog: frame it as the list it is.
-        let row = if let Some(collection) = self.collections.get(key) {
-            json!({"ratingKey": key, "type": "collection", "title": subtitle,
-                   "librarySectionID": collection.section})
-        } else {
-            json!({"ratingKey": key, "type": "playlist", "title": subtitle, "librarySectionID": -1})
-        };
-        self.notify_refreshed_row(&row);
-    }
 
     /// A metadata refresh's frames: the measured seven-frame sequence.
     fn push_refresh_events(&mut self, key: &str) {
         self.notify_refreshed(key);
     }
 
-    fn push_edit_events(&mut self, key: &str) {
-        self.push_edit_events_named(key, "loading");
-    }
 
     fn push_edit_events_named(&mut self, key: &str, metadata_state: &str) {
         // `notify_edited`: the two timeline frames and nothing else. The log line the
@@ -5334,13 +5233,6 @@ impl Runtime {
         history
     }
 
-    fn device_id(&self, identifier: &str) -> i64 {
-        self.device_order
-            .iter()
-            .position(|known| known == identifier)
-            .map(|index| index as i64 + 1)
-            .unwrap_or(self.device_order.len() as i64 + 1)
-    }
 
     fn choose_rows(&self, section: Option<&str>, type_number: Option<i64>) -> Vec<Value> {
         self.choose_refs(section, type_number).into_iter().cloned().collect()
@@ -6552,13 +6444,6 @@ impl Runtime {
         }
     }
 
-    fn playlist_item_id(&self, playlist: &Playlist, index: usize) -> i64 {
-        playlist
-            .item_ids
-            .get(index)
-            .copied()
-            .unwrap_or((index + 1) as i64)
-    }
 
     /// A list's stored columns: a collection's `extra`, a playlist's edits.
     fn list_columns(&self, id: &str, is_collection: bool) -> Option<Map<String, Value>> {
@@ -7878,7 +7763,6 @@ impl Runtime {
                     _ => Response::error(404, "rex: not found"),
                 };
             }
-            return Self::preflight(request);
         }
         // These are library read projections.  PMS rejects writes at the
         // route envelope before the projection handler runs; returning the
@@ -9137,9 +9021,6 @@ impl Runtime {
         response
     }
 
-    fn route_all(&self, query: &HashMap<String, String>) -> Response {
-        self.library_all(query)
-    }
 
     /// The Dashboard's view-time keys as `(key, moment)` tests over a history row's
     /// `viewedAt` (the oracle's `_history_time_filter` with `date=True`).  Cycle 54,
@@ -9434,77 +9315,6 @@ impl Runtime {
         Response::json(200, self.container(fields, true))
     }
 
-    fn on_deck_rows(&self) -> Vec<Value> {
-        let project = |row: &Value| {
-            let mut projected = self.detail_row(row);
-            if let Some(object) = projected.as_object_mut() {
-                object.shift_remove("Field");
-                object.shift_remove("librarySectionKey");
-                if let Some(section) = self.section(&string_value(
-                    row.get("librarySectionID").unwrap_or(&Value::Null),
-                )) {
-                    if let Some(uuid) = section.get("uuid") {
-                        object.insert("librarySectionUUID".to_string(), uuid.clone());
-                    }
-                }
-            }
-            projected
-        };
-        let mut rows = self
-            .catalog
-            .items()
-            .iter()
-            .filter(|row| row.get("type").and_then(Value::as_str) == Some("movie"))
-            .filter(|row| {
-                key_of(row)
-                    .map(|key| !self.hidden_continue.contains(&key))
-                    .unwrap_or(false)
-                    && row
-                        .get("viewOffset")
-                        .and_then(Value::as_i64)
-                        .is_some_and(|offset| offset > 0)
-            })
-            .map(project)
-            .collect::<Vec<_>>();
-        for show in self
-            .catalog
-            .items()
-            .iter()
-            .filter(|row| row.get("type").and_then(Value::as_str) == Some("show"))
-        {
-            let show_key = key_of(show).unwrap_or_default();
-            let mut leaves = self.leaves(&show_key);
-            leaves.sort_by_key(|row| {
-                (
-                    row.get("parentIndex").and_then(Value::as_i64).unwrap_or(0),
-                    row.get("index").and_then(Value::as_i64).unwrap_or(0),
-                )
-            });
-            if let Some(candidate) = leaves.into_iter().find(|row| {
-                key_of(row)
-                    .map(|key| !self.hidden_continue.contains(&key))
-                    .unwrap_or(false)
-                    && row
-                        .get("viewOffset")
-                        .and_then(Value::as_i64)
-                        .is_some_and(|offset| offset > 0)
-            }) {
-                rows.push(project(&candidate));
-                continue;
-            }
-            if let Some(candidate) = self.on_deck_for(&self.leaves(&show_key)) {
-                if candidate.get("viewCount").is_none() {
-                    rows.push(project(&candidate));
-                }
-            }
-        }
-        /*
-         * The global shelf has one resume row per show.  Choosing the lowest
-         * episode above also handles the measured next-up fallback; keeping
-         * the candidate pass separate would re-add every in-progress leaf.
-         */
-        rows
-    }
 
     fn route_on_deck(&self, query: &HashMap<String, String>) -> Response {
         // Cycle 55: `type=abc` and an empty `type=` are 400s on the 1.42.2 reference and
@@ -9792,85 +9602,6 @@ impl Runtime {
         None
     }
 
-    fn route_media_statistics(&self, query: &HashMap<String, String>) -> Response {
-        // Measured on both servers: an empty or non-numeric `accountID`/`deviceID` is a
-        // 400, as on `/statistics/bandwidth`.
-        for name in ["accountID", "deviceID"] {
-            if query.get(name).is_some_and(|value| !int_param(value, None)) {
-                return Response::error(400, "rex: bad request");
-            }
-        }
-        let spans = if let Some(value) = query.get("timespan") {
-            let timespan = value.parse::<i64>().unwrap_or_default();
-            if matches!(timespan, 0 | 1 | 2 | 3 | 4) {
-                vec![timespan]
-            } else {
-                Vec::new()
-            }
-        } else {
-            vec![0, 1, 2, 3, 4]
-        };
-        let account = query.get("accountID").map(String::as_str);
-        let device = query.get("deviceID").map(String::as_str);
-        let include_account = account.is_none_or(|value| value == "1");
-        let include_device = device.is_none_or(|value| value == "1");
-        let mut rows = self
-            .catalog
-            .items()
-            .iter()
-            .filter(|row| row.get("viewCount").is_some())
-            .flat_map(|row| {
-                let viewed_at = row
-                    .get("lastViewedAt")
-                    .and_then(Value::as_i64)
-                    .unwrap_or_else(now);
-                spans.iter().map(move |timespan| {
-                    json!({
-                        "accountID": 1,
-                        "deviceID": 1,
-                        "ratingKey": key_of(row).unwrap_or_default(),
-                        "at": statistics_bucket(viewed_at, *timespan),
-                        "viewCount": row.get("viewCount").cloned().unwrap_or(json!(0)),
-                        "duration": row.get("duration").cloned().unwrap_or(json!(0)),
-                        "lastViewedAt": row.get("lastViewedAt").cloned().unwrap_or(json!(now())),
-                        "timespan": timespan,
-                    })
-                })
-            })
-            .collect::<Vec<_>>();
-        if !include_account || !include_device {
-            rows.clear();
-        }
-        if let Some(limit) = query
-            .get("limit")
-            .and_then(|value| value.parse::<i32>().ok())
-        {
-            if limit <= 0 {
-                rows.clear();
-            } else {
-                rows.truncate(limit as usize);
-            }
-        }
-        if let Some(offset) = query
-            .get("offset")
-            .and_then(|value| value.parse::<i32>().ok())
-        {
-            if offset > 0 {
-                rows = rows.into_iter().skip(offset as usize).collect();
-            }
-        }
-        let size = rows.len();
-        Response::json(
-            200,
-            self.container(
-                Map::from_iter([
-                    ("size".to_string(), json!(size)),
-                    ("StatisticsMedia".to_string(), Value::Array(rows)),
-                ]),
-                false,
-            ),
-        )
-    }
 
     /// `resource_statistics`: the Dashboard's CPU and memory graph.  The samples are
     /// taken when the endpoint is ASKED -- the Dashboard polls while it is open, so the
@@ -12193,372 +11924,12 @@ impl Runtime {
         )
     }
 
-    fn route_search(&self, query: &HashMap<String, String>) -> Response {
-        let Some(raw) = query.get("query").or_else(|| query.get("term")) else {
-            return Response::error(400, "rex: bad request");
-        };
-        if raw.is_empty() {
-            return Response::error(
-                if query.contains_key("term") { 404 } else { 400 },
-                "rex: bad request",
-            );
-        }
-        let needle = raw.to_lowercase();
-        let matches = |kind: Option<&str>| {
-            self.catalog
-                .items()
-                .iter()
-                .filter(|row| {
-                    if raw.chars().count() == 1 {
-                        return false;
-                    }
-                    kind.map(|wanted| row.get("type").and_then(Value::as_str) == Some(wanted))
-                        .unwrap_or(true)
-                        && {
-                            let title = row
-                                .get("title")
-                                .and_then(Value::as_str)
-                                .unwrap_or("")
-                                .to_lowercase();
-                            // Global search uses word-prefix matching for the
-                            // normal tier. The measured fuzzy tier accepts a
-                            // short mid-word fragment (up to three characters)
-                            // and leaves longer fragments unmatched.
-                            let wanted = needle.split_whitespace().collect::<Vec<_>>();
-                            if wanted.len() <= 1 {
-                                needle.len() <= 3 && title.contains(&needle)
-                                    || title
-                                        .split_whitespace()
-                                        .any(|word| word.starts_with(&needle))
-                            } else {
-                                let words = title.split_whitespace().collect::<Vec<_>>();
-                                let mut cursor = 0;
-                                wanted.iter().all(|term| {
-                                    while cursor < words.len() && !words[cursor].starts_with(term) {
-                                        cursor += 1;
-                                    }
-                                    let found = cursor < words.len();
-                                    cursor += usize::from(found);
-                                    found
-                                })
-                            }
-                        }
-                })
-                .collect::<Vec<_>>()
-        };
-        let hubs = [
-            ("show", "show"),
-            ("artist", "artist"),
-            ("album", "album"),
-            ("episode", "episode"),
-            ("movie", "movie"),
-            ("track", "track"),
-            ("photoalbum", "photoalbum"),
-            ("autotag", "autotag"),
-            ("photo", "photo"),
-            ("tag", "tag"),
-            ("actor", "actor"),
-            ("director", "director"),
-            ("genre", "genre"),
-            ("collection", "collection"),
-            ("playlist", "playlist"),
-            ("shared", "shared"),
-            ("place", "place"),
-        ];
-        // Once for every tag shelf, not once per shelf: each read scanned every tag of
-        // every row (the production server, 2026-10-11).
-        let tag_rows = self.search_tag_rows(raw, query.get("contentDirectoryID").map(String::as_str));
-        let cap = query
-            .get("limit")
-            .and_then(|value| value.parse::<usize>().ok())
-            .unwrap_or(3);
-        let hub_rows = hubs
-            .into_iter()
-            .map(|(identifier, kind)| {
-                let tag_kind = matches!(
-                    kind,
-                    "genre"
-                        | "collection"
-                        | "director"
-                        | "writer"
-                        | "actor"
-                        | "producer"
-                        | "country"
-                );
-                let mut directory_rows = if kind == "collection" {
-                    let mut values = tag_rows
-                        .iter()
-                        .filter(|(name, _)| name == kind)
-                        .map(|(_, row)| row.clone())
-                        .collect::<Vec<_>>();
-                    values.extend(
-                        self.collections
-                            .values()
-                            .filter(|collection| search_text_matches(raw, &collection.title))
-                            .map(|collection| {
-                                let mut row = self.dynamic_collection_row(collection);
-                                if let Some(object) = row.as_object_mut() {
-                                    object.insert("score".to_string(), json!("0.92000"));
-                                }
-                                row
-                            }),
-                    );
-                    values
-                } else if tag_kind {
-                    tag_rows
-                        .iter()
-                        .filter(|(name, _)| name == kind)
-                        .map(|(_, row)| {
-                            let mut row = row.clone();
-                            if let Some(object) = row.as_object_mut() {
-                                let score = object
-                                    .get("tag")
-                                    .and_then(Value::as_str)
-                                    .map(|tag| {
-                                        let needle = raw.to_lowercase();
-                                        let lower = tag.to_lowercase();
-                                        if lower == needle {
-                                            "0.92000"
-                                        } else if lower
-                                            .split_whitespace()
-                                            .any(|word| word.starts_with(&needle))
-                                        {
-                                            "0.52000"
-                                        } else {
-                                            "0.30000"
-                                        }
-                                    })
-                                    .unwrap_or("0.30000");
-                                object.insert(
-                                    "reason".to_string(),
-                                    json!(format!(
-                                        "{}={}",
-                                        kind,
-                                        object.get("id").map(string_value).unwrap_or_default()
-                                    )),
-                                );
-                                object.insert(
-                                    "reasonID".to_string(),
-                                    object.get("id").cloned().unwrap_or(Value::Null),
-                                );
-                                object.insert(
-                                    "reasonTitle".to_string(),
-                                    object.get("tag").cloned().unwrap_or(Value::Null),
-                                );
-                                object.insert("score".to_string(), json!(score));
-                            }
-                            row
-                        })
-                        .collect::<Vec<_>>()
-                } else if kind == "playlist" {
-                    self.playlists
-                        .values()
-                        .filter(|playlist| search_text_matches(raw, &playlist.title))
-                        .map(|playlist| {
-                            let mut row = self.dynamic_playlist_row(playlist);
-                            if let Some(object) = row.as_object_mut() {
-                                object.insert("score".to_string(), json!("0.92000"));
-                            }
-                            row
-                        })
-                        .collect::<Vec<_>>()
-                } else {
-                    Vec::new()
-                };
-                // Only the rows the shelf keeps are projected: "the" projected every
-                // matching episode of the production server's library to answer 30 (4.6 s).
-                let matched = matches(Some(kind));
-                let matched_total = matched.len();
-                let rows = matched
-                    .into_iter()
-                    .take(cap)
-                    .map(|row| {
-                        let mut value = self.listing_row(row);
-                        let title = row.get("title").and_then(Value::as_str).unwrap_or_default();
-                        let title_lower = title.to_lowercase();
-                        let prefix = needle.split_whitespace().count() <= 1
-                            && title_lower
-                                .split_whitespace()
-                                .any(|word| word.starts_with(&needle));
-                        if let Some(object) = value.as_object_mut() {
-                            object.shift_remove("Guid");
-                            for tag_name in
-                                ["Genre", "Country", "Director", "Writer", "Producer", "Role"]
-                            {
-                                if let Some(tags) =
-                                    object.get_mut(tag_name).and_then(Value::as_array_mut)
-                                {
-                                    for tag in tags {
-                                        if let Some(tag_object) = tag.as_object_mut() {
-                                            tag_object.shift_remove("id");
-                                        }
-                                    }
-                                }
-                            }
-                            let section_title = self
-                                .section(&string_value(
-                                    row.get("librarySectionID").unwrap_or(&Value::Null),
-                                ))
-                                .and_then(|section| section.get("title"))
-                                .cloned()
-                                .unwrap_or(Value::Null);
-                            let old = object.clone();
-                            let mut ordered = Map::new();
-                            ordered.insert("librarySectionTitle".to_string(), section_title);
-                            ordered.insert(
-                                "score".to_string(),
-                                json!(if prefix { "1.00000" } else { "0.30000" }),
-                            );
-                            for (key, item) in old {
-                                ordered.entry(key).or_insert(item);
-                            }
-                            value = Value::Object(ordered);
-                        }
-                        value
-                    })
-                    .collect::<Vec<_>>();
-                if !tag_kind && kind != "collection" && kind != "playlist" {
-                    directory_rows.clear();
-                }
-                let mut values = if tag_kind || kind == "collection" || kind == "playlist" {
-                    directory_rows
-                } else {
-                    rows
-                };
-                let total = if tag_kind || kind == "collection" || kind == "playlist" {
-                    values.len()
-                } else {
-                    matched_total
-                };
-                values.truncate(cap);
-                let key_name = if tag_kind { "Directory" } else { "Metadata" };
-                let hub = Map::from_iter([
-                    ("hubIdentifier".to_string(), json!(identifier)),
-                    ("title".to_string(), json!(identifier)),
-                    ("type".to_string(), json!(kind)),
-                    ("context".to_string(), json!("")),
-                    ("style".to_string(), json!("shelf")),
-                    ("size".to_string(), json!(values.len())),
-                    ("more".to_string(), json!(total > values.len())),
-                    (key_name.to_string(), Value::Array(values)),
-                ]);
-                Value::Object(hub)
-            })
-            .collect::<Vec<_>>();
-        Response::json(
-            200,
-            self.container(
-                Map::from_iter([("Hub".to_string(), Value::Array(hub_rows))]),
-                false,
-            ),
-        )
-    }
 
     /// Search's tag shelves are built from the live tag tables rather than the
     /// title index.  A tag is visible only when a top-level item in its
     /// library carries it, while `count` includes every matching row in that
     /// library (episodes therefore affect the count without becoming the
     /// clicked key).
-    fn search_tag_rows(&self, raw: &str, section_filter: Option<&str>) -> Vec<(String, Value)> {
-        let fields = [
-            ("Genre", "genre", 1_i64),
-            ("Collection", "collection", 2_i64),
-            ("Director", "director", 4_i64),
-            ("Writer", "writer", 5_i64),
-            ("Role", "actor", 6_i64),
-            ("Producer", "producer", 7_i64),
-            ("Country", "country", 8_i64),
-            ("Network", "network", 9_i64),
-        ];
-        let mut out = Vec::new();
-        for (element, kind, tag_type) in fields {
-            let mut per_section: HashMap<(String, String), (String, i64, bool, Option<String>)> =
-                HashMap::new();
-            for row in self.catalog.items() {
-                let section = string_value(row.get("librarySectionID").unwrap_or(&Value::Null));
-                if section_filter.is_some_and(|wanted| wanted != section) {
-                    continue;
-                }
-                let top_level = matches!(
-                    row.get("type").and_then(Value::as_str),
-                    Some("movie" | "show")
-                );
-                for tag in row
-                    .get(element)
-                    .and_then(Value::as_array)
-                    .into_iter()
-                    .flatten()
-                {
-                    let Some(name) = tag.get("tag").and_then(Value::as_str) else {
-                        continue;
-                    };
-                    if !search_text_matches(raw, name) {
-                        continue;
-                    }
-                    let id = string_value(tag.get("id").unwrap_or(&Value::Null));
-                    if id.is_empty() {
-                        continue;
-                    }
-                    let entry = per_section
-                        .entry((section.clone(), id.clone()))
-                        .or_insert_with(|| {
-                            (
-                                name.to_string(),
-                                0,
-                                false,
-                                tag.get("tagKey")
-                                    .and_then(Value::as_str)
-                                    .map(str::to_string),
-                            )
-                        });
-                    entry.1 += 1;
-                    entry.2 |= top_level;
-                }
-            }
-            for ((section, id), (name, count, visible, tag_key)) in per_section {
-                if !visible {
-                    continue;
-                }
-                let section_title = self
-                    .section(&section)
-                    .and_then(|value| value.get("title"))
-                    .and_then(Value::as_str)
-                    .unwrap_or_default();
-                let section_uuid = self
-                    .section(&section)
-                    .and_then(|value| value.get("uuid"))
-                    .cloned()
-                    .unwrap_or(Value::Null);
-                let mut row = Map::from_iter([
-                    (
-                        "librarySectionID".to_string(),
-                        json!(section.parse::<i64>().unwrap_or(0)),
-                    ),
-                    ("librarySectionTitle".to_string(), json!(section_title)),
-                    ("librarySectionUUID".to_string(), section_uuid),
-                    (
-                        "key".to_string(),
-                        json!(format!("/library/sections/{section}/all?{kind}={id}")),
-                    ),
-                    ("id".to_string(), json!(id)),
-                    ("filter".to_string(), json!(format!("{kind}={id}"))),
-                    ("tag".to_string(), json!(name)),
-                    ("tagType".to_string(), json!(tag_type)),
-                ]);
-                // Cycle 28, measured on plexlab and the 1.42.2 reference: a PERSON search
-                // tag row carries its 24-hex `tagKey` directly after `tagType`, with
-                // `count` LAST, and a `Genre` row carries none.
-                if matches!(tag_type, 4..=7) {
-                    let tag_key =
-                        tag_key.unwrap_or_else(|| crate::hierarchy::person_tag_key(&name));
-                    row.insert("tagKey".to_string(), json!(tag_key));
-                }
-                row.insert("count".to_string(), json!(count));
-                out.push((kind.to_string(), Value::Object(row)));
-            }
-        }
-        out
-    }
 
     /// `/hubs/items?identifier=` -- `hub_items` in `server.py`: the shelf a library's
     /// Recommended page (`movie.*.{id}`, `tv.*.{id}`) or the Home page (`home.*`) names
@@ -12634,110 +12005,6 @@ impl Runtime {
         )
     }
 
-    fn route_library_search(&self, query: &HashMap<String, String>) -> Response {
-        let Some(raw) = query.get("query") else {
-            return Response::error(400, "rex: bad request");
-        };
-        if raw.is_empty() {
-            return Response::error(400, "rex: bad request");
-        }
-        let allowed_types = query
-            .get("searchTypes")
-            .map(|value| value.split(',').map(str::to_string).collect::<HashSet<_>>());
-        let section_filter = query
-            .get("contentDirectoryID")
-            .or_else(|| query.get("sectionID"))
-            .map(String::as_str);
-        let mut rows = self
-            .catalog
-            .items()
-            .iter()
-            .filter(|row| {
-                search_text_matches(raw, row.get("title").and_then(Value::as_str).unwrap_or(""))
-                    && allowed_types.as_ref().map_or(true, |types| {
-                        types.contains(row.get("type").and_then(Value::as_str).unwrap_or_default())
-                    })
-                    && section_filter.is_none_or(|section| {
-                        string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == section
-                    })
-            })
-            .map(|row| {
-                let mut projected = self.listing_row(row);
-                if let Some(object) = projected.as_object_mut() {
-                    object.shift_remove("librarySectionID");
-                    object.shift_remove("librarySectionKey");
-                    object.shift_remove("Guid");
-                    for tag_name in ["Genre", "Country", "Director", "Writer", "Producer", "Role"] {
-                        if let Some(tags) = object.get_mut(tag_name).and_then(Value::as_array_mut) {
-                            for tag in tags {
-                                if let Some(tag_object) = tag.as_object_mut() {
-                                    tag_object.shift_remove("id");
-                                }
-                            }
-                        }
-                    }
-                    let title = self
-                        .section(&string_value(
-                            row.get("librarySectionID").unwrap_or(&Value::Null),
-                        ))
-                        .and_then(|section| section.get("title"))
-                        .cloned()
-                        .unwrap_or(Value::Null);
-                    let old = object.clone();
-                    let mut ordered = Map::new();
-                    ordered.insert("librarySectionTitle".to_string(), title);
-                    for (key, item) in old {
-                        ordered.entry(key).or_insert(item);
-                    }
-                    projected = Value::Object(ordered);
-                }
-                json!({"score":1.0,"Metadata":projected})
-            })
-            .collect::<Vec<_>>();
-        let tag_rows = self
-            .search_tag_rows(raw, section_filter)
-            .into_iter()
-            .map(|(_, mut row)| {
-                if let Some(object) = row.as_object_mut() {
-                    object.shift_remove("reason");
-                    object.shift_remove("reasonID");
-                    object.shift_remove("reasonTitle");
-                    object.shift_remove("score");
-                }
-                json!({"score":0.52,"Directory":row})
-            })
-            .collect::<Vec<_>>();
-        rows.extend(tag_rows);
-        rows.extend(
-            self.collections
-                .values()
-                .filter(|collection| search_text_matches(raw, &collection.title))
-                .map(|collection| json!({"score":0.92,"Metadata":self.dynamic_collection_row(collection)})),
-        );
-        rows.extend(
-            self.playlists
-                .values()
-                .filter(|playlist| search_text_matches(raw, &playlist.title))
-                .map(
-                    |playlist| json!({"score":0.92,"Metadata":self.dynamic_playlist_row(playlist)}),
-                ),
-        );
-        if let Some(limit) = query
-            .get("limit")
-            .and_then(|value| value.parse::<usize>().ok())
-        {
-            rows.truncate(limit);
-        } else {
-            rows.truncate(10);
-        }
-        Response::json(
-            200,
-            self.container(
-                Map::from_iter([("SearchResult".to_string(), Value::Array(rows))]),
-                false,
-            ),
-        )
-    }
 
     fn route_legacy_search(&self, query: &HashMap<String, String>) -> Response {
         let Some(raw) = query.get("query") else {
@@ -13307,7 +12574,6 @@ impl Runtime {
                 sliced.extend(rows[selected_index + 1..high].iter().cloned());
             }
             rows = sliced;
-            selected_index = selected_index.saturating_sub(low);
         } else if let Some(window) = query
             .get("window")
             .and_then(|value| value.parse::<usize>().ok())
@@ -13315,7 +12581,6 @@ impl Runtime {
             let low = selected_index.saturating_sub(window).min(rows.len());
             let high = (selected_index + window + 1).min(rows.len());
             rows = rows[low..high.max(low)].to_vec();
-            selected_index = selected_index.saturating_sub(low);
         }
         if listed_nothing {
             rows.clear();
@@ -15222,7 +14487,7 @@ impl Runtime {
                         .iter()
                         .map(|row| {
                             // `_listing_row`: the full row, without the detail's settings.
-                            let mut entry = self.public_row(row, false);
+                            let mut entry = self.public_row(row);
                             if let Some(object) = entry.as_object_mut() {
                                 object.shift_remove("Field");
                                 object.shift_remove("librarySectionKey");
@@ -15277,7 +14542,6 @@ impl Runtime {
                     if !matches!(segments[4], "genre" | "mood" | "style" | "decade") {
                         return Response::error(404, "rex: not found");
                     }
-                    let is_show = section.get("type").and_then(Value::as_str) == Some("show");
                     return Response::json(
                         200,
                         json!({"MediaContainer": {
@@ -17467,7 +16731,6 @@ impl Runtime {
         fields.insert("title2".to_string(), json!(title2));
         fields.insert("viewGroup".to_string(), json!(view_group));
         fields.insert("viewMode".to_string(), json!(65592));
-        let show = section_type == "show";
         fields.insert(
             "art".to_string(),
             json!(resource_art(section_type)),
@@ -18396,7 +17659,6 @@ impl Runtime {
         // library -- `type=3` is `viewGroup="season"` with `viewMode` 65593,
         // `type=4` `viewGroup="episode"` with `mixedParents`.  It is the
         // secondary container without `content`.
-        let show = section_type == "show";
         let mut fields = Map::new();
         fields.insert("allowSync".to_string(), json!(false));
         fields.insert(
@@ -20348,85 +19610,6 @@ impl Runtime {
         }
     }
 
-    fn route_item_prefs(
-        &mut self,
-        key: &str,
-        row: &Value,
-        query: &HashMap<String, String>,
-        request: &Request,
-    ) -> Response {
-        if request.method != "PUT" {
-            return Response::error(404, "rex: not found");
-        }
-        let kind = row.get("type").and_then(Value::as_str).unwrap_or("");
-        if kind == "episode" {
-            return Response::error(400, "rex: bad request");
-        }
-        if kind != "show" && kind != "season" && kind != "movie" {
-            return Response::error(404, "rex: not found");
-        }
-        let valid = if kind == "show" {
-            [
-                "episodeSort",
-                "autoDeletionItemPolicyUnwatchedLibrary",
-                "autoDeletionItemPolicyWatchedLibrary",
-                "flattenSeasons",
-                "showOrdering",
-                "languageOverride",
-                "useOriginalTitle",
-                "enableCreditsMarkerGeneration",
-                "audioLanguage",
-                "subtitleLanguage",
-                "subtitleMode",
-            ]
-            .as_slice()
-        } else if kind == "season" {
-            ["audioLanguage", "subtitleLanguage", "subtitleMode"].as_slice()
-        } else {
-            [
-                "languageOverride",
-                "useOriginalTitle",
-                "enableCreditsMarkerGeneration",
-            ]
-            .as_slice()
-        };
-        if query
-            .keys()
-            .any(|name| name.starts_with("X-Plex-") || !valid.contains(&name.as_str()))
-        {
-            return Response::error(400, "rex: bad request");
-        }
-        if query.is_empty() {
-            return Response::error(400, "rex: bad request");
-        }
-        if kind == "movie" {
-            let unmatched = row
-                .get("guid")
-                .and_then(Value::as_str)
-                .is_some_and(|value| {
-                    value.starts_with("local://")
-                        || value.starts_with("none://")
-                        || value.starts_with("tv.plex.agents.none://")
-                });
-            if unmatched {
-                return Response::error(400, "rex: bad request");
-            }
-        }
-        let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) else {
-            return Response::error(404, "rex: not found");
-        };
-        let settings = object
-            .entry("_prefs".to_string())
-            .or_insert_with(|| Value::Object(Map::new()));
-        let Some(settings) = settings.as_object_mut() else {
-            return Response::error(500, "rex: internal error");
-        };
-        for (name, value) in query {
-            settings.insert(name.clone(), json!(value));
-        }
-        self.dirty = true;
-        Response::empty(200)
-    }
 
     fn propagate_metadata_change(&mut self, key: &str, changed: &HashSet<String>) {
         let Some(owner) = self.catalog.get(key).cloned() else {
@@ -20521,15 +19704,6 @@ impl Runtime {
         self.dirty = true;
     }
 
-    fn cascade_artwork(
-        &mut self,
-        owner_key: &str,
-        _field: &str,
-        _old: Option<Value>,
-        _new: Option<Value>,
-    ) {
-        self.cascade_artwork_from(owner_key);
-    }
 
     /// `composite_for`'s image: a real PMS builds a 400x600 mosaic of the members'
     /// posters; rex has no imaging library, so it serves the first member's own
@@ -22108,159 +21282,7 @@ impl Runtime {
         Response::error(404, "rex: not found")
     }
 
-    fn create_playlist(&mut self, query: &HashMap<String, String>) -> Response {
-        let Some(title) = query.get("title") else {
-            return Response::error(400, "rex: title required");
-        };
-        let Some(kind) = query.get("type") else {
-            return Response::error(400, "rex: type required");
-        };
-        if !matches!(kind.as_str(), "video" | "audio" | "photo") {
-            return Response::error(500, "rex: unsupported playlist type");
-        }
-        let Some(uri) = query.get("uri") else {
-            return Response::error(400, "rex: uri required");
-        };
-        let source_rows = self.rows_for_uri(uri);
-        let mismatch = kind == "audio"
-            && source_rows
-                .iter()
-                .any(|row| row.get("type").and_then(Value::as_str) == Some("movie"));
-        let id = format!("{}", self.next_playlist);
-        self.next_playlist += 1;
-        let p = Playlist {
-            id: id.clone(),
-            title: title.clone(),
-            // A type-mismatched create still commits the playlist shell and
-            // its `created` timeline entry, but PMS leaves the item list
-            // empty before returning 400.
-            items: if mismatch {
-                Vec::new()
-            } else {
-                query
-                    .get("uri")
-                    .map(|uri| self.rows_for_uri(uri))
-                    .unwrap_or_default()
-                    .iter()
-                    .filter_map(key_of)
-                    .collect()
-            },
-            item_ids: query
-                .get("uri")
-                .filter(|_| !mismatch)
-                .map(|uri| {
-                    let count = self.rows_for_uri(uri).len();
-                    (0..count)
-                        .map(|_| {
-                            let value = self.next_dynamic_key;
-                            self.next_dynamic_key += 1;
-                            value
-                        })
-                        .collect()
-                })
-                .unwrap_or_default(),
-            smart: query.get("smart").is_some_and(|v| v == "1"),
-            uri: query.get("uri").cloned().unwrap_or_default(),
-        };
-        let row = self.dynamic_playlist_row(&p);
-        self.playlists.insert(id, p);
-        self.edits
-            .entry(row.get("ratingKey").map(string_value).unwrap_or_default())
-            .or_default()
-            .insert("playlistType".to_string(), json!(kind));
-        let playlist_id = row.get("ratingKey").map(string_value).unwrap_or_default();
-        self.push_list_timeline(&playlist_id, 15, 0, "created");
-        self.dirty = true;
-        self.save_if_dirty();
-        if mismatch {
-            return Response::error(400, "rex: playlist type mismatch");
-        }
-        Response::json(
-            200,
-            self.container(
-                Map::from_iter([("Metadata".to_string(), vec![row].into_iter().collect())]),
-                false,
-            ),
-        )
-    }
 
-    fn edit_playlist(&mut self, id: &str, query: &HashMap<String, String>) -> Response {
-        let allowed = [
-            "title",
-            "title.value",
-            "titleSort",
-            "titleSort.value",
-            "summary",
-            "summary.value",
-            "summary",
-            "contentRating",
-            "contentRating.value",
-            "year",
-            "year.value",
-            "studio",
-            "studio.value",
-            "originallyAvailableAt",
-            "originallyAvailableAt.value",
-            "thumb",
-            "thumb.value",
-            "art",
-            "art.value",
-            "userRating",
-            "userRating.value",
-            "guid",
-            "duration",
-            "addedAt",
-            "updatedAt",
-            "viewCount",
-            "lastViewedAt",
-            "viewUpdatedAt",
-            "type",
-        ];
-        let names = query
-            .keys()
-            .filter(|name| !name.starts_with("X-Plex-"))
-            .collect::<Vec<_>>();
-        if names.is_empty()
-            || names
-                .iter()
-                .any(|name| !allowed.contains(&name.as_str()) && !name.starts_with("label["))
-        {
-            return Response::error(400, "rex: bad request");
-        }
-        let Some(playlist) = self.playlists.get_mut(id) else {
-            return Response::error(404, "rex: not found");
-        };
-        if let Some(title) = query.get("title.value").or_else(|| query.get("title")) {
-            playlist.title = title.clone();
-        }
-        let edits = self.edits.entry(id.to_string()).or_default();
-        for name in names {
-            if let Some(value) = query.get(name.as_str()) {
-                let base = name
-                    .strip_suffix(".value")
-                    .unwrap_or(name.as_str())
-                    .to_string();
-                if matches!(base.as_str(), "title" | "summary") {
-                    edits.insert(base, json!(value));
-                } else if !matches!(
-                    base.as_str(),
-                    "userRating"
-                        | "guid"
-                        | "duration"
-                        | "addedAt"
-                        | "updatedAt"
-                        | "viewCount"
-                        | "lastViewedAt"
-                        | "type"
-                ) {
-                    edits.insert(base, json!(value));
-                }
-            }
-        }
-        self.dirty = true;
-        self.save_if_dirty();
-        Response::empty(200)
-    }
 
     /// `PUT /library/parts/{partID}?audioStreamID=&subtitleStreamID=` -- track
     /// selection.  Cycle 44, measured on both writable copies: the two
@@ -22969,15 +21991,6 @@ impl Response {
             content_type: String::new(),
             body,
             headers: vec![(wire::UNTYPED_MARK.to_string(), "1".to_string())],
-            close: false,
-        }
-    }
-    fn image(body: Vec<u8>) -> Self {
-        Self {
-            status: 200,
-            content_type: "image/jpeg".to_string(),
-            body,
-            headers: Vec::new(),
             close: false,
         }
     }
@@ -24777,54 +23790,6 @@ fn base64_encode(bytes: &[u8]) -> String {
     output
 }
 
-fn maybe_compress(response: &mut Response, accept_encoding: Option<&String>) {
-    // PMS uses the literal lower-case token as a feature switch.  It does not
-    // negotiate case-insensitively and it still compresses a body when the
-    // resulting gzip is a few bytes larger (both details are observable on
-    // small plug-in containers).  `q=0` is likewise left untouched because
-    // the measured implementation only searches for the token.
-    let compressible = response.content_type.starts_with("application/")
-        || response.content_type.starts_with("text/xml")
-        || (response.content_type == "text/html" && response.status != 200);
-    let offered = accept_encoding.is_some_and(|value| {
-        value.split(',').any(|token| {
-            token
-                .trim()
-                .split(';')
-                .next()
-                .is_some_and(|encoding| encoding == "gzip")
-        })
-    });
-    // A body path -- a bundled asset, artwork, a `/web` file -- names a range unit and
-    // is never compressed, measured on plexlab and the 1.42.2 reference.
-    let ranged = response
-        .headers
-        .iter()
-        .any(|(name, _)| name == "Accept-Ranges");
-    if response.body.is_empty() || !compressible || !offered || ranged {
-        return;
-    }
-    let original = response.body.len();
-    let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
-    if encoder.write_all(&response.body).is_err() {
-        return;
-    }
-    let Ok(compressed) = encoder.finish() else {
-        return;
-    };
-    response.body = compressed;
-    response
-        .headers
-        .push(("Content-Encoding".to_string(), "gzip".to_string()));
-    response.headers.push((
-        "X-Plex-Content-Original-Length".to_string(),
-        original.to_string(),
-    ));
-    response.headers.push((
-        "X-Plex-Content-Compressed-Length".to_string(),
-        response.body.len().to_string(),
-    ));
-}
 
 fn read_request<S: Read>(
     stream: &mut S,
@@ -25721,30 +24686,6 @@ fn canonical_tag(value: &str) -> String {
     first.to_uppercase().collect::<String>() + chars.as_str()
 }
 
-fn search_text_matches(wanted: &str, text: &str) -> bool {
-    let wanted = wanted.trim().to_lowercase();
-    if wanted.is_empty() || wanted.chars().count() == 1 {
-        return false;
-    }
-    let terms = wanted.split_whitespace().collect::<Vec<_>>();
-    let words = text
-        .to_lowercase()
-        .split_whitespace()
-        .map(str::to_string)
-        .collect::<Vec<_>>();
-    if terms.len() == 1 && wanted.len() <= 3 && text.to_lowercase().contains(&wanted) {
-        return true;
-    }
-    let mut cursor = 0usize;
-    terms.iter().all(|term| {
-        while cursor < words.len() && !words[cursor].starts_with(term) {
-            cursor += 1;
-        }
-        let found = cursor < words.len();
-        cursor += usize::from(found);
-        found
-    })
-}
 
 fn tag_id(field: &str, value: &str) -> i64 {
     (crc32(format!("{field}:{value}").as_bytes()) % 900_000 + 1_000) as i64
@@ -26091,19 +25032,6 @@ fn py_str(value: &Value) -> String {
 }
 
 /// Python 3's `round()`: halves go to the even neighbour.
-fn py_round(value: f64) -> i64 {
-    let floor = value.floor();
-    let diff = value - floor;
-    if (diff - 0.5).abs() < 1e-9 {
-        if (floor as i64) % 2 == 0 {
-            floor as i64
-        } else {
-            floor as i64 + 1
-        }
-    } else {
-        value.round() as i64
-    }
-}
 
 /// A `random="1"` hub shelf's sample: the rows shuffled by a seed minted once per
 /// (shelf, count) and held for the life of the process (the oracle's `shelf_seeds`).
@@ -27192,9 +26120,6 @@ fn serve_part_proxy<S: Write>(
     Ok(false)
 }
 
-fn base64_decode(text: &str) -> Option<String> {
-    String::from_utf8(base64_decode_bytes(text)?).ok()
-}
 
 fn base64_decode_bytes(text: &str) -> Option<Vec<u8>> {
     let mut value = 0_u32;

@@ -290,7 +290,6 @@ impl Runtime {
         title2: Option<&str>,
         fields: Map<String, Value>,
     ) -> Value {
-        let show = section.get("type").and_then(Value::as_str) == Some("show");
         let mut body = Map::new();
         body.insert("size".to_string(), json!(0));
         body.insert("allowSync".to_string(), json!(false));

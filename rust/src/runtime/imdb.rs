@@ -110,14 +110,6 @@ pub fn load(dir: &Path) -> bool {
     }
 }
 
-/// Open an index for tests and the start (`load`).
-pub fn open(index: &Path) -> bool {
-    match Connection::open_with_flags(index, OpenFlags::SQLITE_OPEN_READ_ONLY) {
-        Ok(db) => DB.lock().map(|mut slot| *slot = Some(db)).is_ok(),
-        Err(_) => false,
-    }
-}
-
 /// The IMDb id of `show`'s episode `episode` of season `season`, as IMDb numbers them.
 pub fn episode(show: &str, season: i64, episode: i64) -> Option<String> {
     let parent = number(show)?;

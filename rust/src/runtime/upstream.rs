@@ -100,8 +100,6 @@ enum Framing {
 /// de-chunked and bounded by its declared length.
 pub(super) struct Upstream {
     pub status: u16,
-    /// The status line's reason phrase, which `urllib.error.HTTPError` puts in its text.
-    pub reason: String,
     pub headers: Vec<(String, String)>,
     reader: BufReader<Conn>,
     framing: Framing,
@@ -387,15 +385,8 @@ fn exchange(
     } else {
         Framing::Close
     };
-    let reason = status_line
-        .splitn(3, ' ')
-        .nth(2)
-        .unwrap_or_default()
-        .trim()
-        .to_string();
     Ok(Upstream {
         status,
-        reason,
         headers: response_headers,
         reader,
         framing,
@@ -432,17 +423,6 @@ pub(super) fn open(
         url = redirect_url(&target, location);
     }
     Err("too many upstream redirects".to_string())
-}
-
-/// One exchange, redirects NOT followed: what a server answers, `Location` and all.
-pub(super) fn open_once(
-    method: &str,
-    url: &str,
-    headers: &[(&str, String)],
-    timeout: Duration,
-) -> Result<Upstream, String> {
-    let target = parse_url(url).ok_or_else(|| format!("unsupported url {url:?}"))?;
-    exchange(method, &target, headers, b"", timeout)
 }
 
 /// `open` plus the whole body: `(status, headers, body)`.

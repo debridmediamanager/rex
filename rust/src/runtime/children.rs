@@ -108,7 +108,7 @@ impl Runtime {
             // Measured on both servers: every child list says it can sync.
             ("allowSync", Some(json!(true))),
         ];
-        let mut set =
+        let set =
             |fields: &mut Vec<(&str, Option<Value>)>, name: &'static str, value: Option<Value>| {
                 if let Some(slot) = fields.iter_mut().find(|(known, _)| *known == name) {
                     slot.1 = value;

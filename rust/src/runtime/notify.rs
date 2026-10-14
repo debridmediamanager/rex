@@ -32,42 +32,6 @@ impl Runtime {
         );
     }
 
-    /// One activity from `started` to `ended`, with the measured `updated` steps --
-    /// (progress, subtitle) pairs -- between; the end keeps the last subtitle.
-    pub(super) fn push_activity_run(&mut self, kind: &str, title: &str, steps: &[(i64, &str)]) {
-        let uuid = self.activity_uuid();
-        let mut activity = json!({"uuid": uuid, "type": kind, "cancellable": false,
-            "userID": 1, "title": title, "subtitle": "", "progress": 0});
-        self.push_activity(&activity, "started");
-        for (progress, subtitle) in steps {
-            activity["progress"] = json!(progress);
-            activity["subtitle"] = json!(subtitle);
-            self.push_activity(&activity, "updated");
-        }
-        activity["progress"] = json!(100);
-        self.push_activity(&activity, "ended");
-    }
-
-    // The timeline's state alphabet, read off the reference and pinned against the
-    // client's own reducer: 0 created, 3 queued/processing/loading an edit, 4 loading,
-    // 5 DONE (and it carries NO metadataState), 9 deleted. `5` is what makes the
-    // client refetch the row.
-
-    /// Plex's numeric type code as a TimelineEntry carries it. A playlist is 15 and a
-    /// collection 18 on the wire, and the client builds the URL of the row it
-    /// updates from this number.
-    pub(super) fn timeline_type(kind: &str) -> i64 {
-        match kind {
-            "movie" => 1,
-            "show" => 2,
-            "season" => 3,
-            "episode" => 4,
-            "playlist" => 15,
-            "collection" => 18,
-            _ => 1,
-        }
-    }
-
     /// Shape measured on the production server mid-refresh: uuid, type, cancellable,
     /// userID, title, subtitle, progress. Pushes the `started` frame.
     pub(super) fn add_activity(
@@ -91,17 +55,6 @@ impl Runtime {
             "library.update.item.metadata",
             -1,
         )
-    }
-
-    /// End an activity the way a real refresh does: an `updated` at 49 unless the
-    /// sequence already pushed it, then `ended` at 100.
-    pub(super) fn finish_activity(&mut self, activity: &mut Value) {
-        if activity.get("progress").and_then(Value::as_i64) != Some(49) {
-            activity["progress"] = json!(49);
-            self.push_activity(activity, "updated");
-        }
-        activity["progress"] = json!(100);
-        self.push_activity(activity, "ended");
     }
 
     /// started -> ended with NO `updated` between (the chapter-thumbs activity, the
