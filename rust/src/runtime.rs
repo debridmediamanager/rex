@@ -6362,6 +6362,20 @@ impl Runtime {
                 .cloned()
                 .unwrap_or(Value::Null);
         }
+        if bare == "duration" {
+            // Cycle 41 closed cycle 19's differentiating-fixture gap: the sort reads the
+            // primary Media's `duration`, as the filter does, not the metadata row's own --
+            // the two disagree on a real library -- and a Media without one sorts below
+            // every populated value. Which version a multi-Media row sorts by is a
+            // separate axis no reference witnessed.
+            return target
+                .and_then(|target| target.get("Media"))
+                .and_then(Value::as_array)
+                .and_then(|media| media.first())
+                .and_then(|media| media.get("duration"))
+                .cloned()
+                .unwrap_or(Value::Null);
+        }
         if bare == "mediaHeight" {
             return target
                 .and_then(|target| target.get("Media"))
