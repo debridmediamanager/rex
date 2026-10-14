@@ -378,4 +378,31 @@
   <anime anidbid="17198" tvdbid="348545" defaulttvdbseason="4" episodeoffset="" tmdbtv="85937" tmdbseason="4" tmdboffset="" tmdbid="" imdbid="">
     <name>Kimetsu no Yaiba: Katanakaji no Sato Hen</name>
   </anime>
+  <anime anidbid="193" tvdbid="76932" defaulttvdbseason="2" episodeoffset="" tmdbtv="57706" tmdbseason="2" tmdboffset="" tmdbid="" imdbid="">
+    <name>Ranma 1/2 Nettou Hen</name>
+    <mapping-list>
+      <mapping anidbseason="0" tvdbseason="0">;1-0;2-0;3-0;</mapping>
+      <mapping anidbseason="1" tvdbseason="3" start="23" end="44" offset="-22">;45-24;51-23;</mapping>
+      <mapping anidbseason="1" tvdbseason="4" start="46" end="50" offset="-45"/>
+      <mapping anidbseason="1" tvdbseason="4" start="52" end="69" offset="-46">;72-24;</mapping>
+      <mapping anidbseason="1" tvdbseason="5" start="73" end="94" offset="-70">;70-1;71-2;</mapping>
+      <mapping anidbseason="1" tvdbseason="6" start="95" end="118" offset="-94">;103-10;104-11;105-13;106-14;107-16;108-9;109-17;110-19;111-20;112-12;113-15;114-18;115-22;116-23;117-21;</mapping>
+      <mapping anidbseason="1" tvdbseason="7" start="119" end="143" offset="-118">;136-19;137-20;138-18;</mapping>
+    </mapping-list>
+    <supplemental-info>
+      <studio>Studio Deen</studio>
+    </supplemental-info>
+  </anime>
+  <anime anidbid="4576" tvdbid="76932" defaulttvdbseason="1" episodeoffset="" tmdbtv="57706" tmdbseason="1" tmdboffset="" tmdbid="" imdbid="">
+    <name>Ranma 1/2</name>
+    <supplemental-info>
+      <studio>Studio Deen</studio>
+    </supplemental-info>
+  </anime>
+  <anime anidbid="18700" tvdbid="451479" defaulttvdbseason="1" episodeoffset="" tmdbtv="259140" tmdbseason="1" tmdboffset="" tmdbid="" imdbid="">
+    <name>Ranma 1/2 (2024)</name>
+  </anime>
+  <anime anidbid="19067" tvdbid="451479" defaulttvdbseason="2" episodeoffset="" tmdbtv="259140" tmdbseason="1" tmdboffset="12" tmdbid="" imdbid="">
+    <name>Ranma 1/2 (2025)</name>
+  </anime>
 </anime-list>

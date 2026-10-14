@@ -138,13 +138,16 @@ impl Index {
 
     /// The entry a title names, the lowest AniDB id when several share it (a show's first
     /// cour before its later ones).
+    /// A title several entries share is the first season's: `Ranma ½` names the 1989 series,
+    /// Nettou Hen (its TMDB season 2) and the 2024 remake alike.
     fn find(&self, title: &str) -> Option<&Target> {
-        self.titles.get(&normalize(title))?.iter().find_map(|id| self.entries.get(id))
+        self.titles
+            .get(&normalize(title))?
+            .iter()
+            .filter_map(|id| self.entries.get(id))
+            .min_by_key(|target| (target.season == 0, target.season, target.offset, target.anidb))
     }
 
-    /// The entry a release is, and whether its numbers are this entry's: a bare title with
-    /// a later season (`Oshi no Ko S2 - 05`) that only the first season's entry answers names
-    /// the show, not the season.
     /// A file of a release: the release's entry, else the file's. A batch named for its first
     /// season, or for several (`[Reza] Food Wars`, `[Pog42] Bakuman Seasons 1-3`), holds files
     /// that name their own (`S03E01`, `s02e01`): such a file is numbered by its entry only when
@@ -160,6 +163,9 @@ impl Index {
         Some((target.clone(), numbered && season == target.tvdb_season))
     }
 
+    /// The entry a release is, and whether its numbers are this entry's: a bare title with
+    /// a later season (`Oshi no Ko S2 - 05`) that only the first season's entry answers names
+    /// the show, not the season.
     pub fn lookup(&self, name: &str) -> Option<(Target, bool)> {
         let parsed = identify::parse_name(name);
         if parsed.title.is_empty() {
