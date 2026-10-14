@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 """rex's plex.tv integration, black-box, against a LOCAL stub of plex.tv.
 
-Drives a real server process (`tests/server_command.py`: unset `REX_SERVER` is the
-native binary, `REX_SERVER=python` the Python oracle) through the four things a deployment
-does with plex.tv:
+Drives a real server process (`tests/server_command.py`) through the four things a
+deployment does with plex.tv (`rust/src/runtime/plextv.rs`):
 
-* announcing its connection URI on `--heartbeat-interval` (heartbeat.py),
-* redeeming a claim token handed to `POST /myplex/claim` (claim.py),
-* the claimed owner's profile/feature refresh and cloud watch-state import
-  (accountstate.py), and
+* announcing its connection URI on `--heartbeat-interval`,
+* redeeming a claim token handed to `POST /myplex/claim`,
+* the claimed owner's profile/feature refresh and cloud watch-state import, and
 * a restart that keeps the claim (`claim_state.json` beside the catalog).
 
 Nothing here reaches plex.tv. `REX_PLEXTV_URL` sends every plex.tv,
@@ -18,23 +16,22 @@ literal placeholders; a real claim or announce from a test identity is what rese
 account's tokens on 2026-09-11, and a second server announcing a real identity rewrites
 that identity's registration.
 
-The stub's request grammar is the one the modules send and `tests/fixtures/
+The stub's request grammar is the one rex sends and `tests/fixtures/
 outbound-announce.json` recorded from a real PMS; its answers carry exactly the
-attributes the oracle's modules read, in the element shapes `tests/test_accountstate.py`
-already feeds them. The claim and registration half -- the exchange, `POST /servers.xml`,
+attributes rex reads. The claim and registration half -- the exchange, `POST /servers.xml`,
 the pubsub stream and the connectivity PUT it prompts -- is checked against
 `tests/fixtures/plextv_registration_s1422.json`, a real 1.42.2 PMS claimed on the 1.42.2 reference
 with its plex.tv traffic recorded: the stub replays that recording's pubsub events and its 422, and
 gzips an answer whenever the request asks for gzip, as plex.tv did there.
 
-    python3 tests/test_plextv.py                      # the native server
-    REX_SERVER=python python3 tests/test_plextv.py   # the Python oracle
+    python3 tests/test_plextv.py
 
 `REX_TEST_PORT` picks the first of the three ports it binds (server, restarted
 server, stub); the default asks the OS for free ones.
 """
 import base64
 import gzip
+import hashlib
 import http.client
 import io
 import json
@@ -69,8 +66,6 @@ ROOT = os.path.dirname(HERE)
 sys.path.insert(0, ROOT)
 sys.path.insert(0, HERE)
 
-import test_accountstate  # noqa: E402  (its synthetic encrypted-service helpers)
-
 CATALOG = os.path.join(HERE, "catalog_ui.json")
 with open(os.path.join(HERE, "fixtures", "plextv_registration_s1422.json")) as _handle:
     RECORDED = json.load(_handle)
@@ -82,6 +77,9 @@ with open(os.path.join(HERE, "fixtures", "plextv_access_tokens_s1422.json")) as 
 # each, in a row.
 with open(os.path.join(HERE, "fixtures", "pms_announce_connections_s1422.json")) as _handle:
     CONNECTIONS = json.load(_handle)
+# plexlab's own PMS (1.43.4) renewing its registration, three times, tokens replaced.
+with open(os.path.join(HERE, "fixtures", "outbound-announce.json")) as _handle:
+    ANNOUNCES = json.load(_handle)["announces"]
 MACHINE = "f1x7u4e0000000000000000000000000000000f1"
 FRIENDLY = "rex-ui-fixture"
 VERSION = "1.42.2.10156-rex"
@@ -102,12 +100,13 @@ ANNOUNCE_URL = "https://rex.stub.invalid"
 ANNOUNCE_URLS = ANNOUNCE_URL + ",https://rex-public.stub.invalid:8443"
 SECRET = bytes(range(32))
 WATCHED_KEY, WATCHED_GUID = "1007", "plex://movie/520a1a3c2c634f2594808ee9"
-UNPLAYED_GUID = "plex://movie/520a1a3c2c634f2594808ee9-fixture1008"
+UNPLAYED_KEY, UNPLAYED_GUID = "1008", "plex://movie/520a1a3c2c634f2594808ee9-fixture1008"
+CLEARED_KEY, CLEARED_GUID = "1009", "plex://movie/520a1a3c2c634f2594808ee9-fixture1009"
 NAMED_FEATURES = ("collections,federated-auth,home,item_clusters,kevin-bacon,pass,server-manager,"
                   "session_kick,type-first")
 FEATURE_UUIDS = ["0a1b2c3d-stub-feature-uuid-a", "9f8e7d6c-stub-feature-uuid-b"]
 
-# The identity every request to plex.tv carries (claim.Claim._headers), in its order.
+# The identity every request to plex.tv carries, in its order.
 IDENTITY = [
     ("x-plex-client-identifier", MACHINE),
     ("x-plex-product", "Plex Media Server"),
@@ -120,7 +119,7 @@ IDENTITY = [
 ]
 
 # What a real PMS sends on every claim and registration call, in its order, with
-# rex's own identity values (claim.Claim.pms_headers).
+# rex's own identity values.
 PMS_HEADERS = [
     ("user-agent", "PlexMediaServer/%s" % VERSION), ("accept", "*/*"),
     ("accept-encoding", "gzip"), ("x-plex-client-identifier", MACHINE),
@@ -170,7 +169,97 @@ BEARER = ".".join([
             "userId": ACCOUNT_ID}),
     base64.urlsafe_b64encode(b"stub-signature").decode("ascii").rstrip("="),
 ])
-SERVICE_TOKEN = test_accountstate.synthetic_service_token(BEARER, SECRET)
+
+
+# -- the scrobbling credential, encrypted as plex.tv hands it out ---------------
+# AES-256-CBC under PMS's MD5 key expansion (OpenSSL's EVP_BytesToKey, NID 4): the
+# encrypting half of what rex decrypts, in the standard library only. It is checked
+# against the public NIST AES-256 block vector, so the credential rex decrypts below
+# cannot merely agree with a wrong AES of rex's own.
+
+SBOX = bytes.fromhex(
+    "637c777bf26b6fc53001672bfed7ab76ca82c97dfa5947f0add4a2af9ca472c0"
+    "b7fd9326363ff7cc34a5e5f171d8311504c723c31896059a071280e2eb27b275"
+    "09832c1a1b6e5aa0523bd6b329e32f8453d100ed20fcb15b6acbbe394a4c58cf"
+    "d0efaafb434d338545f9027f503c9fa851a3408f929d38f5bcb6da2110fff3d2"
+    "cd0c13ec5f974417c4a77e3d645d197360814fdc222a908846eeb814de5e0bdb"
+    "e0323a0a4906245cc2d3ac629195e479e7c8376d8dd54ea96c56f4ea657aae08"
+    "ba78252e1ca6b4c6e8dd741f4bbd8b8a703eb5664803f60e613557b986c11d9e"
+    "e1f8981169d98e949b1e87e9ce5528df8ca1890dbfe6426841992d0fb054bb16")
+
+
+def _gf_mul(left, right):
+    value = 0
+    for _ in range(8):
+        if right & 1:
+            value ^= left
+        left = ((left << 1) ^ (0x11B if left & 0x80 else 0)) & 0xFF
+        right >>= 1
+    return value
+
+
+def aes256_round_keys(key):
+    words = [list(key[index:index + 4]) for index in range(0, 32, 4)]
+    rcon = 1
+    while len(words) < 60:
+        index = len(words)
+        word = words[-1][:]
+        if index % 8 == 0:
+            word = [SBOX[value] for value in word[1:] + word[:1]]
+            word[0] ^= rcon
+            rcon = _gf_mul(rcon, 2)
+        elif index % 8 == 4:
+            word = [SBOX[value] for value in word]
+        words.append([words[index - 8][offset] ^ word[offset] for offset in range(4)])
+    return [sum(words[index:index + 4], []) for index in range(0, 60, 4)]
+
+
+def aes_encrypt_block(block, round_keys):
+    def shift_rows(state):
+        result = state[:]
+        for row in range(1, 4):
+            values = [state[row + 4 * column] for column in range(4)]
+            values = values[row:] + values[:row]
+            for column, value in enumerate(values):
+                result[row + 4 * column] = value
+        return result
+
+    def mix_columns(state):
+        matrix = ((2, 3, 1, 1), (1, 2, 3, 1), (1, 1, 2, 3), (3, 1, 1, 2))
+        result = state[:]
+        for column in range(4):
+            source = state[4 * column:4 * column + 4]
+            for row in range(4):
+                result[4 * column + row] = 0
+                for offset in range(4):
+                    result[4 * column + row] ^= _gf_mul(matrix[row][offset], source[offset])
+        return result
+
+    state = [value ^ round_keys[0][index] for index, value in enumerate(block)]
+    for round_number in range(1, 14):
+        state = mix_columns(shift_rows([SBOX[value] for value in state]))
+        state = [value ^ round_keys[round_number][index] for index, value in enumerate(state)]
+    state = shift_rows([SBOX[value] for value in state])
+    return bytes(value ^ round_keys[14][index] for index, value in enumerate(state))
+
+
+def synthetic_service_token(bearer, secret):
+    expanded, previous = b"", b""
+    while len(expanded) < 48:
+        previous = hashlib.md5(previous + secret).digest()
+        expanded += previous
+    round_keys, iv = aes256_round_keys(expanded[:32]), expanded[32:48]
+    plaintext = bearer.encode("utf-8")
+    plaintext += bytes([16 - len(plaintext) % 16]) * (16 - len(plaintext) % 16)
+    ciphertext, previous = bytearray(), iv
+    for index in range(0, len(plaintext), 16):
+        previous = aes_encrypt_block(bytes(left ^ right for left, right in
+                                           zip(plaintext[index:index + 16], previous)), round_keys)
+        ciphertext.extend(previous)
+    return base64.b64encode(bytes(ciphertext)).decode("ascii")
+
+
+SERVICE_TOKEN = synthetic_service_token(BEARER, SECRET)
 
 
 # -- the stub ----------------------------------------------------------------
@@ -186,6 +275,9 @@ class Stub(ThreadingHTTPServer):
         self.pages = 0
         self.late_tokens = []
         self.refuse_access = False
+        # A later owner read names another account id beside a broken feature table.
+        self.user_id = ACCOUNT_ID
+        self.broken_features = False
 
     def taken(self, host=None, path=None, method=None):
         with self.lock:
@@ -303,8 +395,10 @@ class StubHandler(BaseHTTPRequestHandler):
             return recorded("claim", "POST", "/servers.xml")["status"], xml, ""
         if (method, host, path) == ("GET", "servers.plex.tv", "/api/v2/user"):
             return 200, xml, ('<?xml version="1.0" encoding="UTF-8"?>\n<user id="%d" '
-                              'username="%s" email="%s"/>\n' % (ACCOUNT_ID, OWNER, EMAIL))
+                              'username="%s" email="%s"/>\n' % (self.server.user_id, OWNER, EMAIL))
         if (method, host, path) == ("GET", "servers.plex.tv", "/api/v2/features"):
+            if self.server.broken_features:
+                return 200, xml, "<broken"
             return 200, xml, ('<?xml version="1.0" encoding="UTF-8"?>\n<features>'
                               '<feature id="stub-b" uuid="%s"/><feature id="stub-a" uuid="%s"/>'
                               '<feature id="named-only"/></features>\n'
@@ -334,6 +428,8 @@ class StubHandler(BaseHTTPRequestHandler):
                 {"guid": WATCHED_GUID, "viewState": "complete", "viewedAt": 1789591000123,
                  "rating": 8, "ratedAt": 1789591000456},
                 {"guid": UNPLAYED_GUID, "viewState": "unplayed", "viewedAt": 1789591000789},
+                {"guid": CLEARED_GUID, "viewState": "unplayed", "viewedAt": 1789591000999,
+                 "rating": -1, "ratedAt": 1789591000999},
                 {"guid": "plex://movie/not-held-here", "viewState": "complete",
                  "viewedAt": 1789591000999},
             ] if first else []
@@ -423,8 +519,13 @@ def truthy(value):
     return value in (True, 1, "1", "true")
 
 
-# urllib and the native client each add transport headers of their own; what the
-# modules SET is what is compared, in the order they set it.
+def first_row(response):
+    """The first Metadata row of a (status, body) answer, or {}."""
+    return (container(response[1]).get("Metadata") or [{}])[0]
+
+
+# The native client adds transport headers of its own; what
+# rex SETS is what is compared, in the order it sets it.
 TRANSPORT = {"host", "connection", "content-length"}
 
 
@@ -563,6 +664,10 @@ def main():
     claim_file = os.path.join(directory, "claim_state.json")
     features = ",".join(sorted(set(NAMED_FEATURES.split(",")) | set(FEATURE_UUIDS)))
     try:
+        key = bytes.fromhex("603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4")
+        check("the suite's AES-256 encrypts the public NIST block vector",
+              aes_encrypt_block(bytes.fromhex("6bc1bee22e409f96e93d7e117393172a"),
+                                aes256_round_keys(key)).hex() == "f3eed1bdb5d2a03c064b5a7e3db181f8")
         # -- unclaimed, announcing ----------------------------------------------
         first = Instance(directory, ports[0], ports[2])
         announces = wait_for(lambda: len(stub.taken("servers.plex.tv", "/devices/.*", "PUT")) >= 2
@@ -587,6 +692,18 @@ def main():
                       ("x-plex-platform-version", "6.1"), ("x-plex-device-name", FRIENDLY),
                       ("x-plex-device", "PC"), ("x-plex-model", "x86_64"),
                       ("x-plex-device-vendor", "rex")], sent(put))
+            # The three PUTs a real 1.43.4 PMS made (plexlab's capture/outbound.jsonl).
+            real = ANNOUNCES[0]
+            check("the recorded announces agree with each other",
+                  all(a["url"] == real["url"] and a["query"] == real["query"]
+                      and a["headers"] == real["headers"] for a in ANNOUNCES), len(ANNOUNCES))
+            check("announce goes to the recorded origin with the recorded query keys and headers",
+                  "https://%s" % put["host"] == real["origin"]
+                  and [k for k, _ in put["query"]] == [k for k, _ in real["query"]]
+                  and [k for k, _ in sent(put)] == names(real["headers"])
+                  and dict(sent(put))["accept"] == dict(real["headers"])["accept"]
+                  and "natLoopbackSupported" not in dict(put["query"]),
+                  (put["host"], put["query"], sent(put)))
             gap = announces[1]["at"] - announces[0]["at"]
             check("renewal follows the interval, not a busy loop", 1.0 <= gap <= 6.0, gap)
         visible = stub.taken("plex.tv", "/api/v2/resources", "GET")
@@ -625,6 +742,25 @@ def main():
               status == 500 and not os.path.exists(claim_file)
               and not truthy(container(first.request("GET", "/identity")[1]).get("claimed")),
               (status, body))
+
+        # Watch state the cloud import is to clear: a watched, part-played, rated row the
+        # cloud calls unplayed with no rating, and a rated row it sends the -1 clear for.
+        library = "&identifier=com.plexapp.plugins.library"
+        for path in ("/:/scrobble?key=%s" % UNPLAYED_KEY,
+                     "/:/progress?key=%s&time=61000&state=stopped" % UNPLAYED_KEY,
+                     "/:/rate?key=%s&rating=7" % UNPLAYED_KEY, "/:/rate?key=%s&rating=6" % CLEARED_KEY):
+            first.request("GET", path + library)
+        local_state = {key: first_row(first.request("GET", "/library/metadata/%s" % key))
+                       for key in (UNPLAYED_KEY, CLEARED_KEY)}
+        history_before = [row.get("ratingKey") for row in container(first.request(
+            "GET", "/status/sessions/history/all?type=0,1")[1]).get("Metadata") or []]
+        check("before the claim the rows hold local view state and stars",
+              all(local_state[UNPLAYED_KEY].get(k) for k in ("viewCount", "viewOffset", "lastViewedAt"))
+              and local_state[UNPLAYED_KEY].get("userRating") == 7.0
+              and local_state[CLEARED_KEY].get("userRating") == 6.0
+              and local_state[CLEARED_KEY].get("lastRatedAt"),
+              {key: {k: row.get(k) for k in ("viewCount", "viewOffset", "lastViewedAt", "userRating",
+                                             "lastRatedAt")} for key, row in local_state.items()})
 
         # -- the claim --------------------------------------------------------------
         claimed_at = time.time()
@@ -718,6 +854,9 @@ def main():
         check("claimed PlexOnlineMail is the owner's email",
               pref(claim_now["prefs"][1], "PlexOnlineMail") == EMAIL,
               pref(claim_now["prefs"][1], "PlexOnlineMail"))
+        check("until the account refresh lands, ownerFeatures are the named defaults",
+              not stub.taken("servers.plex.tv", "/api/v2/features")
+              and root.get("ownerFeatures") == NAMED_FEATURES, root.get("ownerFeatures"))
 
         # The owner read, then the feature table eleven seconds later (cycle 47).
         refreshed = wait_for(lambda: stub.taken("servers.plex.tv", "/api/v2/features"), 20)
@@ -781,9 +920,22 @@ def main():
               watched.get("viewCount") == 1 and watched.get("lastViewedAt") == 1789591000
               and watched.get("userRating") == 8.0 and watched.get("lastRatedAt") == 1789591000,
               {k: watched.get(k) for k in ("viewCount", "lastViewedAt", "userRating", "lastRatedAt")})
-        check("an import is not a play: no history row",
-              not (container(first.request("GET", "/status/sessions/history/all?type=0,1", token=ACCOUNT_TOKEN)[1])
-                   .get("Metadata")), "history")
+        unplayed = first_row(first.request("GET", "/library/metadata/%s" % UNPLAYED_KEY, token=ACCOUNT_TOKEN))
+        check("an unplayed cloud row clears view state, and no rating leaves the stars alone",
+              not any(key in unplayed for key in ("viewCount", "viewOffset", "lastViewedAt"))
+              and unplayed.get("userRating") == 7.0
+              and unplayed.get("lastRatedAt") == local_state[UNPLAYED_KEY].get("lastRatedAt"),
+              {k: unplayed.get(k) for k in ("viewCount", "viewOffset", "lastViewedAt", "userRating",
+                                            "lastRatedAt")})
+        cleared = first_row(first.request("GET", "/library/metadata/%s" % CLEARED_KEY, token=ACCOUNT_TOKEN))
+        check("an explicit cloud rating of -1 clears the stars",
+              "userRating" not in cleared and "lastRatedAt" not in cleared,
+              {k: cleared.get(k) for k in ("userRating", "lastRatedAt")})
+        history = container(first.request("GET", "/status/sessions/history/all?type=0,1",
+                                          token=ACCOUNT_TOKEN)[1]).get("Metadata") or []
+        check("an import is not a play: no history row beyond the local scrobble",
+              [row.get("ratingKey") for row in history] == history_before,
+              [row.get("ratingKey") for row in history])
 
         saved = read_json(claim_file)
         saved.pop("access_tokens", None)
@@ -969,16 +1121,33 @@ def main():
         kept = read_json(claim_file).get("access_tokens") or []
         check("the claim file keeps the enabled access tokens plex.tv listed",
               ACCOUNT_TOKEN in kept and DEVICE_TOKEN in kept and DISABLED_TOKEN not in kept, kept)
+        before_refresh = read_json(claim_file)
         with stub.lock:
             stub.refuse_access = True
+            stub.user_id = ACCOUNT_ID + 1
+            stub.broken_features = True
         stub.clear()
-        third =Instance(directory, ports[0], ports[2])
+        # A plain-http connection URI: the reference announced httpsEnabled=1 beside one.
+        third = Instance(directory, ports[0], ports[2], announce="http://10.0.0.1:32400")
         check("a restart whose list read fails still lets listed tokens in",
               wait_for(lambda: stub.taken("plex.tv", access_path, "GET"), 10)
               and third.request("GET", "/library/sections", token=ACCOUNT_TOKEN)[0] == 200
               and third.request("GET", "/library/sections?X-Plex-Token=%s" % DEVICE_TOKEN)[0] == 200
               and third.request("GET", "/library/sections", token=DISABLED_TOKEN)[0] == 401,
               third.output()[-1500:])
+        beats = stub.taken("servers.plex.tv", "/devices/.*", "PUT")
+        check("httpsEnabled does not follow the connection URI's scheme",
+              beats and beats[0]["query"][:2] == [("Connection[][uri]", "http://10.0.0.1:32400"),
+                                                  ("httpsEnabled", "1")],
+              beats and beats[0]["query"])
+        broken = wait_for(lambda: stub.taken("servers.plex.tv", "/api/v2/features"), 20)
+        time.sleep(0.5)
+        after_refresh = read_json(claim_file)
+        check("an owner read and a broken feature table change nothing: one last-good update",
+              broken and stub.taken("servers.plex.tv", "/api/v2/user")
+              and after_refresh.get("account_id") == before_refresh.get("account_id") == ACCOUNT_ID
+              and after_refresh.get("feature_uuids") == before_refresh.get("feature_uuids") == FEATURE_UUIDS,
+              {k: (before_refresh.get(k), after_refresh.get(k)) for k in ("account_id", "feature_uuids")})
         third.stop()
     finally:
         for instance in LIVE:
