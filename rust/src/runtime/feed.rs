@@ -964,7 +964,9 @@ fn version_slot(row: &Value) -> Option<String> {
     }
     let guid = row.get("guid").and_then(Value::as_str).filter(|guid| !guid.is_empty() && !guid.starts_with("local://"))?;
     let field = |name: &str| row.get(name).map(string_value).unwrap_or_default();
-    Some([kind, &field("librarySectionID"), &field("parentRatingKey"), guid, &field("editionTitle")].join("\u{1}"))
+    // The episode's index too: a pack identified as one title gives every episode its guid,
+    // and the production server folded The Boys S03E01-E08 into one episode (2026-10-14).
+    Some([kind, &field("librarySectionID"), &field("parentRatingKey"), &field("index"), guid, &field("editionTitle")].join("\u{1}"))
 }
 
 /// What identification wrote on a row, and the hierarchy fields placing it rewrites. A
@@ -1503,5 +1505,29 @@ impl Runtime {
             self.retired_keys.push(number);
         }
         self.push_timeline_entry(&row, 9, Some("deleted"), None, None, None);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The production server's The Boys S03E01 (2026-10-14): its pack was identified through
+    /// the pack's IMDb id as one title, so E02-E08 carried the same guid on the same season and
+    /// were folded onto it as versions.
+    #[test]
+    fn episodes_sharing_a_guid_are_not_versions_of_one_another() {
+        let episode = |index: i64, file: &str| {
+            json!({"ratingKey": format!("12523{index}"), "type": "episode", "librarySectionID": 2,
+                   "parentRatingKey": "125247", "index": index, "guid": "plex://movie/fa2808235df1f6cc0b74a3df",
+                   "_sid": format!("shows/The.Boys.S03.2022.BDRemux.1080p.Ukr.Eng/{file}")})
+        };
+        let first = episode(1, "The.Boys.S03E01.Payback.1080p.BDRemux.UkrEng.mkv");
+        let second = episode(2, "The.Boys.S03E02.The.Only.Man.in.the.Sky.1080p.BDRemux.UkrEng.mkv");
+        assert!(version_slot(&first).is_some());
+        assert_ne!(version_slot(&first), version_slot(&second));
+        let mut again = second.clone();
+        again["_sid"] = json!("shows/The.Boys.S03.2160p/The.Boys.S03E02.2160p.mkv");
+        assert_eq!(version_slot(&second), version_slot(&again), "another release of E02 is still a version of it");
     }
 }
