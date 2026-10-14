@@ -366,4 +366,16 @@
   <anime anidbid="19242" tvdbid="305089" defaulttvdbseason="4" episodeoffset="" tmdbtv="65942" tmdbseason="1" tmdboffset="66" tmdbid="" imdbid="">
     <name>Re:Zero kara Hajimeru Isekai Seikatsu (2026)</name>
   </anime>
+  <anime anidbid="7251" tvdbid="193811" defaulttvdbseason="1" episodeoffset="" tmdbtv="36041" tmdbseason="1" tmdboffset="" tmdbid="" imdbid="">
+    <name>Bakuman.</name>
+  </anime>
+  <anime anidbid="14107" tvdbid="348545" defaulttvdbseason="1" episodeoffset="" tmdbtv="85937" tmdbseason="1" tmdboffset="" tmdbid="" imdbid="">
+    <name>Kimetsu no Yaiba</name>
+  </anime>
+  <anime anidbid="16054" tvdbid="348545" defaulttvdbseason="3" episodeoffset="" tmdbtv="85937" tmdbseason="3" tmdboffset="" tmdbid="" imdbid="">
+    <name>Kimetsu no Yaiba: Yuukaku Hen</name>
+  </anime>
+  <anime anidbid="17198" tvdbid="348545" defaulttvdbseason="4" episodeoffset="" tmdbtv="85937" tmdbseason="4" tmdboffset="" tmdbid="" imdbid="">
+    <name>Kimetsu no Yaiba: Katanakaji no Sato Hen</name>
+  </anime>
 </anime-list>

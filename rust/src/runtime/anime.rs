@@ -146,13 +146,14 @@ impl Index {
     /// a later season (`Oshi no Ko S2 - 05`) that only the first season's entry answers names
     /// the show, not the season.
     /// A file of a release: the release's entry, else the file's. A batch named for its first
-    /// season holds files that name their own (`[Reza] Food Wars` / `[Reza] Food Wars S03E01.mkv`):
-    /// such a file is numbered by its entry only when that entry is the file's season, else it
-    /// keeps its own numbers. The production server stacked Food Wars S01-S05 E01 on S1E1 (2026-10-14).
+    /// season, or for several (`[Reza] Food Wars`, `[Pog42] Bakuman Seasons 1-3`), holds files
+    /// that name their own (`S03E01`, `s02e01`): such a file is numbered by its entry only when
+    /// that entry is the file's season, else it keeps its own numbers. The production server
+    /// stacked Food Wars S01-S05 E01 on S1E1 (2026-10-14).
     pub fn lookup_pair(&self, release: &str, file: &str) -> Option<(Target, bool)> {
         let found = self.lookup(release).or_else(|| self.lookup(file))?;
         let season = identify::parse_name(file).season;
-        if season.is_none() || identify::parse_name(release).season.is_some() || season == found.0.tvdb_season {
+        if season.is_none() || season == found.0.tvdb_season {
             return Some(found);
         }
         let (target, numbered) = self.lookup(file).unwrap_or(found);
