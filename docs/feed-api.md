@@ -200,6 +200,20 @@ What the fields do:
   identification; nothing is re-identified unless the item's ids differ from the ones the
   row was identified by.
 
+## What rex sends back: a delete
+
+A person deleting a row in a client deletes its files at the source, as a real PMS deletes
+the files on its disk (measured on plexscratch 1.43.4, `tests/fixtures/media_delete_s43.json`).
+For every Part of the row and the rows beneath it, rex sends the source a WebDAV
+`DELETE {url}/{path}` with the source's credentials -- what a media server on zurg's mount
+sends through rclone -- and removes the rows only when every file is gone (a 2xx, or the
+source's 404). zurg marks the file deleted, keeps it so across restarts, removes the release
+from the account with its last file, and pushes the removal back. A source that refuses (zurg
+answers 403 for a file an *arr placed under `__magic__`) or cannot be reached leaves the rows
+as they were and the client gets the reference's 400; with `allowMediaDeletion` off the
+delete is the reference's 403 and the source is not asked. Without this a deleted row came
+back with the source's next snapshot.
+
 ## What happened to the scan
 
 `GET /library/sections/{id}/refresh` and `/activities` are what they are on a library

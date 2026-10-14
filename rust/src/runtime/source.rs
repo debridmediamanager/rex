@@ -137,6 +137,12 @@ impl Source {
         }
     }
 
+    /// Delete a file at the source the way a media server's delete reaches zurg through its
+    /// mount: a WebDAV `DELETE` of its path. Answers the source's status.
+    pub(super) fn delete(&self, path: &str) -> Result<u16, String> {
+        upstream::open("DELETE", &self.url(path), &self.headers(), b"", Duration::from_secs(60)).map(|response| response.status)
+    }
+
     /// Whether `presented` is this source's feed token (compared without an early exit).
     pub(super) fn admits(&self, presented: &str) -> bool {
         let Some(token) = &self.token else {

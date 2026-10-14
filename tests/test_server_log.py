@@ -292,8 +292,12 @@ def main():
             status=200)
         run("a merge", "PUT", M + "1008/merge?ids=1009",
             [("INFO", E("MERGE 1008 <- ['1009'] (1 row(s) absorbed)"))], status=200)
-        run("an item delete", "DELETE", M + "1014", [("INFO", E("DELETE 1014 (Vinaipayan)"))],
-            status=200)
+        # The delete goes to the file's source first (media_delete_s43.json), and this zurg is
+        # on a closed port: the row stays, the refusal is logged and the answer is the 400 a
+        # real PMS gives a file it cannot remove.
+        run("an item delete its source cannot reach", "DELETE", M + "1014",
+            [("WARNING", r"DELETE refused by the source, row kept: .*Vinaipayan.* at zurg: .*")],
+            status=400)
         run("a play queue", "POST", "/playQueues?type=video&uri=%s&shuffle=0&repeat=0&own=1" % uri,
             [("INFO", r"PLAYQUEUE \d+ -> 1 item\(s\) from uri="
               + E(urllib.parse.unquote(uri)[:80]))], status=200)

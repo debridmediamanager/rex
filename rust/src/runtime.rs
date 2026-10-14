@@ -18295,6 +18295,9 @@ impl Runtime {
                     }
                     index += 1;
                 }
+                if let Some(refusal) = self.delete_at_sources(&doomed) {
+                    return refusal;
+                }
                 let mut emptied = None;
                 if row.get("type").and_then(Value::as_str) == Some("episode") {
                     let season = row
@@ -21572,6 +21575,48 @@ impl Runtime {
         };
         let part_id = segments.first().copied().unwrap_or("").to_string();
         self.stream_part(&part, &part_id, source, path, download.then_some(filename), request)
+    }
+
+    /// Measured on plexscratch 1.43.4 (`tests/fixtures/media_delete_s43.json`): a media delete
+    /// removes the FILES first and the row only once they are gone. With `allowMediaDeletion`
+    /// off it is a 403; a file that cannot be removed leaves the row as it was and answers
+    /// 400. rex's files are its sources', so each Part of the rows going is deleted there --
+    /// a WebDAV `DELETE`, as a media server on zurg's mount sends one -- and zurg drops it
+    /// from the account instead of pushing it back with its next snapshot, which is what a
+    /// row-only delete did (the production server's Mandalorian featurette, 2026-10-14). A
+    /// file the source already lacks (404) is gone either way. `None`: go on with the delete.
+    /// ponytail: the deletes run under the runtime lock, one request each; a delete is rare
+    /// and a person's, so a show of many files holds it for the source's time.
+    fn delete_at_sources(&self, keys: &[String]) -> Option<Response> {
+        if self.prefs.get("allowMediaDeletion").is_some_and(|value| value.as_bool() == Some(false)) {
+            return Some(Response::error(403, "rex: media deletion is off"));
+        }
+        let mut targets: Vec<(Arc<source::Source>, String)> = Vec::new();
+        for key in keys {
+            let Some(row) = self.catalog.get(key) else {
+                continue;
+            };
+            for file in scan::row_files(row) {
+                if let Some((source, path)) = self.part_source(row, &file) {
+                    if !targets.iter().any(|(other, known)| other.name == source.name && *known == path) {
+                        targets.push((source, path));
+                    }
+                }
+            }
+        }
+        let mut refused = Vec::new();
+        for (source, path) in &targets {
+            match source.delete(path) {
+                Ok(status) if (200..300).contains(&status) || status == 404 => info!("DELETE {path} at {}: {status}", source.name),
+                Ok(status) => refused.push(format!("{path} at {}: {status}", source.name)),
+                Err(error) => refused.push(format!("{path} at {}: {error}", source.name)),
+            }
+        }
+        if refused.is_empty() {
+            return None;
+        }
+        warning!("DELETE refused by the source, row kept: {}", refused.join("; "));
+        Some(Response::error(400, "rex: the source did not delete the file"))
     }
 
     /// Where a Part's bytes are: the source and path of the release the Part's Media came

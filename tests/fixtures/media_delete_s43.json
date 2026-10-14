@@ -1,0 +1,12 @@
+{
+ "source": "plexscratch (PMS 1.43.4) 2026-10-14: a probe movie library at /config/probe-media/movies (writable) and the copy's own Movies at /data/movies (a read-only mount). DELETE /library/metadata/{id} with the server token, then GET of the item and a listing of its folder. Plex's log for the first: 'Deleting directory [Qzxv Delete Probe (2001)]'.",
+ "cases": [
+  {"what": "allowMediaDeletion=1, the file deletable", "request": "DELETE /library/metadata/58",
+   "status": 200, "body": "", "content_type": "text/html", "item_after": 404, "file_after": "gone, and its now-empty folder with it"},
+  {"what": "allowMediaDeletion=0", "request": "DELETE /library/metadata/59",
+   "status": 403, "body": "<html><head><title>Forbidden</title></head><body><h1>403 Forbidden</h1></body></html>", "content_type": "text/html", "item_after": 200, "file_after": "kept"},
+  {"what": "allowMediaDeletion=1, the file not deletable (read-only mount)", "request": "DELETE /library/metadata/1",
+   "status": 400, "content_type": "text/html", "body_length": 89, "item_after": 200, "deletedAt_after": null, "file_after": "kept"}
+ ],
+ "reading": "A media delete removes the file first; the row goes only when the file did. A file that cannot be removed leaves the row as it was and answers 400; with deletion off the answer is 403."
+}
