@@ -145,6 +145,20 @@ impl Index {
     /// The entry a release is, and whether its numbers are this entry's: a bare title with
     /// a later season (`Oshi no Ko S2 - 05`) that only the first season's entry answers names
     /// the show, not the season.
+    /// A file of a release: the release's entry, else the file's. A batch named for its first
+    /// season holds files that name their own (`[Reza] Food Wars` / `[Reza] Food Wars S03E01.mkv`):
+    /// such a file is numbered by its entry only when that entry is the file's season, else it
+    /// keeps its own numbers. The production server stacked Food Wars S01-S05 E01 on S1E1 (2026-10-14).
+    pub fn lookup_pair(&self, release: &str, file: &str) -> Option<(Target, bool)> {
+        let found = self.lookup(release).or_else(|| self.lookup(file))?;
+        let season = identify::parse_name(file).season;
+        if season.is_none() || identify::parse_name(release).season.is_some() || season == found.0.tvdb_season {
+            return Some(found);
+        }
+        let (target, numbered) = self.lookup(file).unwrap_or(found);
+        Some((target.clone(), numbered && season == target.tvdb_season))
+    }
+
     pub fn lookup(&self, name: &str) -> Option<(Target, bool)> {
         let parsed = identify::parse_name(name);
         if parsed.title.is_empty() {
@@ -249,7 +263,7 @@ pub fn lookup(release: &str, file: &str) -> Option<(Target, bool)> {
     if !shaped(release) && !shaped(file) {
         return None;
     }
-    index.lookup(release).or_else(|| index.lookup(file))
+    index.lookup_pair(release, file)
 }
 
 /// TMDB's numbers for an anime release's parsed ones; `None` when it is no mapped anime.
@@ -352,6 +366,29 @@ mod tests {
         assert_eq!(index.tvdb_to_tmdb(209867, 2, 5), Some((1, 33)), "Frieren.Beyond.Journeys.End.S02E05");
         assert_eq!(index.tvdb_to_tmdb(30984, 17, 23), Some((2, 23)), "Bleach - S17E23");
         assert_eq!(index.tvdb_to_tmdb(70593, 1, 3), None, "the Korean Kingdom is no anime-lists show");
+    }
+
+    /// Batches named for a show's first season whose files name their own season, from the
+    /// production server (2026-10-14): each file is TMDB's season it names.
+    #[test]
+    fn a_batch_file_naming_its_season_keeps_it() {
+        let index = index();
+        let record: Value =
+            serde_json::from_str(include_str!("../../../tests/fixtures/anime/batch_files.json")).unwrap();
+        let mut wrong = Vec::new();
+        for case in record["files"].as_array().unwrap() {
+            let (release, file) = (case["release"].as_str().unwrap(), case["file"].as_str().unwrap());
+            let parsed = identify::parse_name(file);
+            let got = index.lookup_pair(release, file).map(|(target, numbered)| {
+                let (season, episode) = (parsed.season, parsed.episode.unwrap());
+                (target.tmdb, if numbered { numbers(&target, season, episode) } else { (season.unwrap_or(1), episode) })
+            });
+            let want = Some((case["tmdb"].as_i64().unwrap(), (case["season"].as_i64().unwrap(), case["episode"].as_i64().unwrap())));
+            if got != want {
+                wrong.push(format!("{file}: got {got:?}, want {want:?}"));
+            }
+        }
+        assert!(wrong.is_empty(), "{wrong:#?}");
     }
 
     #[test]

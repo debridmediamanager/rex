@@ -283,4 +283,55 @@
   <anime anidbid="19878" tvdbid="473560" defaulttvdbseason="1" episodeoffset="" tmdbtv="313215" tmdbseason="1" tmdboffset="" tmdbid="" imdbid="">
     <name>Mairimashita! Iruma-kun: If Episode of Mafia</name>
   </anime>
+  <anime anidbid="6460" tvdbid="114921" defaulttvdbseason="1" episodeoffset="" tmdbtv="30977" tmdbseason="1" tmdboffset="" tmdbid="" imdbid="">
+    <name>Toaru Kagaku no Railgun</name>
+  </anime>
+  <anime anidbid="9484" tvdbid="114921" defaulttvdbseason="2" episodeoffset="" tmdbtv="30977" tmdbseason="2" tmdboffset="" tmdbid="" imdbid="">
+    <name>Toaru Kagaku no Railgun S</name>
+    <mapping-list>
+      <mapping anidbseason="0" tvdbseason="0">;1-7;2-8;3-0;4-0;</mapping>
+    </mapping-list>
+  </anime>
+  <anime anidbid="10901" tvdbid="289909" defaulttvdbseason="1" episodeoffset="" tmdbtv="62273" tmdbseason="1" tmdboffset="" tmdbid="" imdbid="">
+    <name>Shokugeki no Souma</name>
+  </anime>
+  <anime anidbid="11664" tvdbid="289909" defaulttvdbseason="0" episodeoffset="1" tmdbtv="62273" tmdbseason="0" tmdboffset="1" tmdbid="" imdbid="">
+    <name>Shokugeki no Souma OAD</name>
+  </anime>
+  <anime anidbid="11828" tvdbid="289909" defaulttvdbseason="2" episodeoffset="" tmdbtv="62273" tmdbseason="2" tmdboffset="" tmdbid="" imdbid="">
+    <name>Shokugeki no Souma: Ni no Sara</name>
+  </anime>
+  <anime anidbid="13244" tvdbid="289909" defaulttvdbseason="3" episodeoffset="" tmdbtv="62273" tmdbseason="3" tmdboffset="" tmdbid="" imdbid="">
+    <name>Shokugeki no Souma: San no Sara</name>
+  </anime>
+  <anime anidbid="13658" tvdbid="289909" defaulttvdbseason="3" episodeoffset="12" tmdbtv="62273" tmdbseason="3" tmdboffset="12" tmdbid="" imdbid="">
+    <name>Shokugeki no Souma: San no Sara - Tootsuki Ressha Hen</name>
+  </anime>
+  <anime anidbid="14441" tvdbid="114921" defaulttvdbseason="3" episodeoffset="" tmdbtv="30977" tmdbseason="3" tmdboffset="" tmdbid="" imdbid="">
+    <name>Toaru Kagaku no Railgun T</name>
+    <mapping-list>
+      <mapping anidbseason="0" tvdbseason="0">;1-0;2-0;3-12;4-13;</mapping>
+    </mapping-list>
+  </anime>
+  <anime anidbid="14951" tvdbid="289909" defaulttvdbseason="4" episodeoffset="" tmdbtv="62273" tmdbseason="4" tmdboffset="" tmdbid="" imdbid="">
+    <name>Shokugeki no Souma: Shin no Sara</name>
+  </anime>
+  <anime anidbid="15319" tvdbid="289909" defaulttvdbseason="5" episodeoffset="" tmdbtv="62273" tmdbseason="5" tmdboffset="" tmdbid="" imdbid="">
+    <name>Shokugeki no Souma: Gou no Sara</name>
+  </anime>
+  <anime anidbid="2659" tvdbid="79839" defaulttvdbseason="1" episodeoffset="" tmdbtv="53787" tmdbseason="1" tmdboffset="" tmdbid="" imdbid="">
+    <name>Aria the Animation</name>
+  </anime>
+  <anime anidbid="4243" tvdbid="79839" defaulttvdbseason="2" episodeoffset="" tmdbtv="53787" tmdbseason="2" tmdboffset="" tmdbid="" imdbid="">
+    <name>Aria the Natural</name>
+    <mapping-list>
+      <mapping anidbseason="0" tvdbseason="0">;204-1;</mapping>
+    </mapping-list>
+  </anime>
+  <anime anidbid="5424" tvdbid="79839" defaulttvdbseason="3" episodeoffset="" tmdbtv="53787" tmdbseason="3" tmdboffset="" tmdbid="" imdbid="">
+    <name>Aria the Origination</name>
+    <mapping-list>
+      <mapping anidbseason="0" tvdbseason="0" start="1" end="8" offset="2"/>
+    </mapping-list>
+  </anime>
 </anime-list>
