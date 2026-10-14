@@ -1112,7 +1112,9 @@ def run_show_merge_lists(check):
 def run_item_delete_forgets(check):
     """`DELETE /library/metadata/{id}` forgets the row the way the oracle's `library.delete`
     did: its history rows SURVIVE with `ratingKey` and `key` stripped (measured on the
-    reference: rex kept both, so the History page linked a 404)."""
+    reference: rex kept both, so the History page linked a 404), its playlist entries and
+    collection memberships go, and its key is retired, so a later split takes a key never
+    used before. Movies in the range a split mints from, the deleted one highest."""
     document = copy.deepcopy(BASE)
     for key in ("1960", "1961", "1962"):
         media = [{"id": int(key) * 10 + offset, "duration": 600000,
@@ -1123,6 +1125,18 @@ def run_item_delete_forgets(check):
                                   "librarySectionID": 1, "duration": 600000, "Media": media})
     server = Server(document)
     try:
+        def made(path, fields):
+            body = server.json(path + "?" + urllib.parse.urlencode(fields), "POST")
+            return str(first(body).get("ratingKey") or "")
+
+        uri = "server://%s/com.plexapp.plugins.library/library/metadata/1961,1962" % MACHINE
+        playlist = made("/playlists", [("type", "video"), ("title", "Delete Forgets"),
+                                       ("smart", "0"), ("uri", uri)])
+        collection = made("/library/collections", [("type", "1"), ("title", "Delete Forgets"),
+                                                   ("smart", "0"), ("sectionId", "1"),
+                                                   ("uri", uri)])
+        item_ids = {row.get("ratingKey"): row.get("playlistItemID") for row in
+                    server.json("/playlists/%s/items" % playlist).get("Metadata") or []}
         session = {"X-Plex-Client-Identifier": "delete-forgets-player",
                    "X-Plex-Session-Identifier": "delete-forgets-session",
                    "X-Plex-Product": "Plex Web", "X-Plex-Platform": "Chrome"}
@@ -1140,6 +1154,25 @@ def run_item_delete_forgets(check):
               and survivor.get("title") == watched.get("title")
               and "ratingKey" not in survivor and "key" not in survivor,
               "delete %s before %s after %s" % (deleted, sorted(watched), sorted(survivor)))
+        listed = server.json("/playlists/%s/items" % playlist)
+        playlist_keys = [row.get("ratingKey") for row in listed.get("Metadata") or []]
+        stale_delete = server.request("DELETE", "/playlists/%s/items/%s"
+                                      % (playlist, item_ids.get("1962")))[0]
+        members = [row.get("ratingKey") for row in
+                   server.json("/library/collections/%s/children" % collection)
+                   .get("Metadata") or []]
+        count = first(server.json("/library/collections/%s" % collection)).get("childCount")
+        split = server.request("PUT", "/library/metadata/1960/split")[0]
+        statuses = [server.request("GET", "/library/metadata/%s" % key)[0]
+                    for key in ("1962", "1963")]
+        check("a deleted row leaves its playlists and collections and its key is retired",
+              playlist and collection and playlist_keys == ["1961"]
+              and listed.get("leafCount") == 1 and stale_delete == 404
+              and members == ["1961"] and count == 1
+              and split == 200 and statuses == [404, 200],
+              "playlist %s leafCount %s stale delete %s collection %s childCount %s; "
+              "split %s, 1962 and 1963: %s" % (playlist_keys, listed.get("leafCount"),
+                                               stale_delete, members, count, split, statuses))
     finally:
         server.stop()
 

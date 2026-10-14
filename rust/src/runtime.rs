@@ -19033,6 +19033,7 @@ impl Runtime {
                     }
                     index += 1;
                 }
+                let mut emptied = None;
                 if row.get("type").and_then(Value::as_str) == Some("episode") {
                     let season = row
                         .get("parentRatingKey")
@@ -19048,12 +19049,27 @@ impl Runtime {
                         })
                         .count();
                     if siblings <= 1 && self.catalog.get(&season).is_some() {
-                        doomed.push(season);
+                        doomed.push(season.clone());
+                        emptied = Some(season);
                     }
                 }
+                // `library.delete`: the row and everything beneath it leave every playlist
+                // and collection (cycle 87: the entry goes, its playlistItemID a 404, where
+                // rex hid it at render and kept it addressable) and their keys are retired,
+                // so a later split takes a key never used before -- not the deleted row's,
+                // which a client's cache still holds for it. A season its last episode's
+                // delete empties is only retired, as the oracle's `catalog.remove` of it.
                 for gone in &doomed {
-                    if self.catalog.remove(gone).is_some() {
+                    if self.catalog.remove(gone).is_none() {
+                        continue;
+                    }
+                    if emptied.as_ref() == Some(gone) {
+                        if let Ok(number) = gone.parse::<i64>() {
+                            self.retired_keys.push(number);
+                        }
                         self.deleted.insert(gone.clone());
+                    } else {
+                        self.forget_row(gone);
                         self.forget_history(gone);
                     }
                 }
