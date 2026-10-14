@@ -841,7 +841,10 @@ mod tests {
         let textual = serde_json::json!({
             "Part": [{"Stream": [{"streamType": "2", "selected": true}]}]
         });
-        assert!(evaluated_audio(&numeric).is_some());
+        assert_eq!(
+            evaluated_audio(&numeric).and_then(|stream| stream.get("streamType")),
+            Some(&Value::from(2))
+        );
         assert!(evaluated_audio(&textual).is_none());
     }
 }
