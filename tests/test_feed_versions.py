@@ -110,12 +110,13 @@ def main():
         check("a moved second release moves its own Part, not the first's",
               files(row) == [one["file"], moved["file"]] and ok and hit == ["/dav/" + moved["path"]], (files(row), hit))
 
-        status, body = server.feed("DELETE", "items", {"ids": [one["id"]]})
+        status, body = server.feed("DELETE", "items", {"ids": [one["id"], one["id"]]})
         row = server.row(key)
         ok, hit = read(server, row, moved["file"])
-        check("removing one release drops its Media; the row stays, out of the trash",
+        check("repeating one release id drops its Media once; the row stays, out of the trash",
               status == 200 and body.get("trashed") == 0 and files(row) == [moved["file"]] and not row.get("deletedAt")
-              and server.keys() == {two["id"]: key}, (body, files(row), row.get("deletedAt")))
+              and server.keys() == {two["id"]: key} and body.get("deleted") == 1 and body.get("unknown") == 0,
+              (body, files(row), row.get("deletedAt")))
         check("and the release left streams from its own path", ok and hit == ["/dav/" + moved["path"]], hit)
         status, body = server.feed("PUT", "snapshot", {"items": [moved]})
         check("a snapshot naming the release left removes nothing", status == 200 and server.keys() == {two["id"]: key},

@@ -300,7 +300,11 @@ fn remove(shared: &SharedRuntime, source: &Source, ids: &[String], keys: &[Strin
     let (mut trashed, mut deleted, mut released, mut unknown) = (0, 0, 0, 0);
     let mut sections = BTreeMap::new();
     let mut doomed = Vec::new();
+    let mut seen = HashSet::new();
     for id in ids {
+        if !seen.insert(id) {
+            continue;
+        }
         if guard.release(&held_key(&source.name, id)).is_some() {
             released += 1;
             guard.dirty = true;
