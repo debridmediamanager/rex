@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""mediainfo.py against a real PMS's own analysis of the same files.
+"""The native mediainfo (`rust/src/mediainfo.rs`) against a real PMS's own analysis of the same files.
 
 Every fixture in tests/fixtures/media/ is one real file: the ffprobe probe
 build_catalog.py takes of it, and the Media element a real PMS wrote for it --
@@ -15,25 +15,70 @@ colour or `codecID`, all of which the 1.42.2 reference writes for the same conta
 STREAM fields are not a witness. Only the checks registered `shallow=True`, which read what the
 container decides, run on them.
 
-Each check converts every probe with `mediainfo.build_media` exactly as
-build_catalog.py does and compares the attributes one rule governs with the real
-server's, presence and value. No server and no network.
+Each check converts every probe with the native CLI's `mediainfo` test adapter (`build_media`,
+as the catalog is built) and compares the attributes one rule governs with the real
+server's, presence and value; the rules below a single row are driven through the same
+adapter with a one-stream probe, or through `stream-titles`. No server and no network.
 
-    python3 tests/test_mediainfo.py [--root TREE] [--only CHECK[,CHECK]] [--list]
+    python3 tests/test_mediainfo.py [--bin REX] [--only CHECK[,CHECK]] [--list]
 
-`--root` imports mediainfo from another tree: that is how a check is proven to fail
-against the unfixed code.
+`--bin` checks another native binary (default `$REX_NATIVE_BIN`, else
+`rust/target/release/rex`): that is how a check is proven to fail against the unfixed code.
 """
 
 import argparse
 import glob
-import importlib
 import json
 import os
+import subprocess
 import sys
+import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FIXTURES = os.path.join(HERE, "fixtures", "media")
+
+
+class Native:
+    """The native binary's mediainfo test adapters."""
+
+    def __init__(self, binary):
+        self.binary = binary
+
+    def _run(self, document, *args):
+        with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as handle:
+            json.dump(document, handle)
+        try:
+            result = subprocess.run([self.binary, *args, "--input", handle.name],
+                                    capture_output=True, text=True, check=False)
+        finally:
+            os.unlink(handle.name)
+        if result.returncode:
+            raise RuntimeError("%s exited %d: %s" % (args[0], result.returncode, result.stderr.strip()))
+        return json.loads(result.stdout)
+
+    def build_media(self, probe, media_id, part_id, part_key, file_path, size, container_hint=None):
+        args = ["mediainfo", "--media-id", str(media_id), "--part-id", str(part_id),
+                "--part-key", part_key, "--file", file_path, "--size", str(size)]
+        if container_hint:
+            args += ["--container-hint", container_hint]
+        return self._run(probe, *args)
+
+    def built(self, *streams):
+        """The Media `build_media` makes of a probe holding only these ffprobe streams."""
+        return self.build_media({"streams": list(streams)}, 1, 1, "/library/parts/1/1/file.mkv",
+                                "file.mkv", 0)
+
+    def built_stream(self, stream):
+        return self.built(stream)["Part"][0]["Stream"][0]
+
+    def stream_titles(self, row):
+        """`stream_titles` on one Stream row, which comes back with its titles."""
+        return self._run([row], "stream-titles")[0]
+
+    def client_display_titles(self, rows, product):
+        """Each Stream row's `displayTitle` as `product` is sent it."""
+        return [row.get("displayTitle") for row in self._run(rows, "stream-titles", "--product", product)]
+
 
 CHECKS = []
 
@@ -263,7 +308,7 @@ def _container(fixture):
     Cycle 44: this suite compared every stream field and the Media's geometry and never
     the container, so the corpus carried a refutation for thirty-four cycles without
     anyone reading it. `fun-1052407-0.json` is a **`.webm`** file whose recorded Media --
-    a real 1.42.2 PMS's own answer for it -- says `mkv`, while `mediainfo.py` overrode
+    a real 1.42.2 PMS's own answer for it -- says `mkv`, while rex's mediainfo overrode
     the demuxer's answer with the extension and produced `webm`. Confirmed live on the
     identical 571,346,576-byte file: the 1.42.2 reference answers `mkv`, and no row of its 4,508
     movie Media carries `webm` at all.
@@ -333,23 +378,29 @@ def _video_resolution_label(fixture):
     return per_media(("videoResolution",))(fixture)
 
 
+def video_resolution(native, height, width):
+    """The `videoResolution` of a Media whose one video stream is `width`x`height`."""
+    return native.built({"codec_type": "video", "codec_name": "h264", "index": 0,
+                         "width": width, "height": height}).get("videoResolution")
+
+
 @check("video-resolution-survey", once=True)
-def _video_resolution_survey(mediainfo):
+def _video_resolution_survey(native):
     survey = json.load(open(os.path.join(HERE, "fixtures", "media-resolutions.json")))
     return [("%dx%d (%d Media in production)" % (width, height, count), label,
-             mediainfo._video_resolution(height, width))
+             video_resolution(native, height, width))
             for width, height, label, count in survey["rows"]]
 
 
 @check("cycle 41: the short-wide 480 resolution boundary", once=True)
-def _short_wide_480_boundary(mediainfo):
+def _short_wide_480_boundary(native):
     """Both disposable reference versions switch from SD to 480 at stored width 848.
 
     The boundary sweep used a fixed 360-pixel height and observed stored widths 840,
     842, 844 and 846 as ``sd`` and 848 as ``480``. Odd source widths were normalised
     down by analysis, so this tests the values PMS actually stores and rex reads.
     """
-    return [("%dx360" % width, expected, mediainfo._video_resolution(360, width))
+    return [("%dx360" % width, expected, video_resolution(native, 360, width))
             for width, expected in ((840, "sd"), (842, "sd"), (844, "sd"),
                                     (846, "sd"), (848, "480"))]
 
@@ -367,7 +418,7 @@ def _pixel_aspect_pair(fixture):
 
 
 @check("pixel-aspect-threshold", once=True)
-def _pixel_aspect_threshold(mediainfo):
+def _pixel_aspect_threshold(native):
     """The sixteen ratios the 1.42.2 reference witnesses, the two in the corpus, and the exact boundary.
 
     Measured on 1,688 of the 1.42.2 reference's video Streams (358 carrying the pair, 1,330 carrying
@@ -384,9 +435,9 @@ def _pixel_aspect_threshold(mediainfo):
                             ("20:19", True), ("495:464", True), ("721:640", True),
                             ("32:27", True),
                             ("2:1", True)):
-        built = mediainfo._video_stream(
-            {"codec_name": "h264", "index": 0, "width": 1920, "height": 1080,
-             "sample_aspect_ratio": ratio}, 1)
+        built = native.built_stream(
+            {"codec_type": "video", "codec_name": "h264", "index": 0, "width": 1920,
+             "height": 1080, "sample_aspect_ratio": ratio})
         rows.append(("sample_aspect_ratio %s" % ratio,
                      (ratio, expected) if expected is not None else (None, None),
                      (built.get("pixelAspectRatio"), built.get("anamorphic"))))
@@ -500,37 +551,31 @@ def _subtitle_titles(fixture):
 
 
 @check("client-titles")
-def _client_titles(fixture, mediainfo):
+def _client_titles(fixture, native):
     """`webDisplayTitles` is each stream's displayTitle as read with `X-Plex-Product: Plex Web`."""
+    pairs = [(real, sim) for real, sim in paired(fixture, None)
+             if not skipped(fixture, real["index"], "displayTitle")]
+    built = [sim for _real, sim in pairs if sim]
+    titles = {product: iter(native.client_display_titles(built, product) if built else [])
+              for product in ("Plex Web", "Plex for Roku")}
     out = []
-    for real, sim in paired(fixture, None):
-        if skipped(fixture, real["index"], "displayTitle"):
-            continue
+    for real, sim in pairs:
+        web, roku = (next(titles["Plex Web"]), next(titles["Plex for Roku"])) if sim else (None, None)
         out.append(("%s stream %s Plex Web displayTitle" % (fixture["name"], real["index"]),
-                    fixture["webDisplayTitles"].get(str(real["index"])),
-                    mediainfo.client_display_title(sim, "Plex Web") if sim else None))
+                    fixture["webDisplayTitles"].get(str(real["index"])), web))
         out.append(("%s stream %s Plex for Roku displayTitle" % (fixture["name"], real["index"]),
-                    real.get("displayTitle"),
-                    mediainfo.client_display_title(sim, "Plex for Roku") if sim else None))
+                    real.get("displayTitle"), roku))
     return out
 
 
-def load(root):
-    if root:
-        sys.path.insert(0, os.path.join(os.path.abspath(root), "oracle"))
-    else:
-        sys.path.insert(0, os.path.join(os.path.dirname(HERE), "oracle"))
-    return importlib.import_module("mediainfo")
-
-
-def fixtures(mediainfo):
+def fixtures(native):
     out = []
     for path in sorted(glob.glob(os.path.join(FIXTURES, "*.json"))):
         fixture = json.load(open(path))
         fixture["name"] = os.path.basename(path)[:-5]
         probe = fixture["probe"]
         extension = fixture["extension"]
-        fixture["sim"] = mediainfo.build_media(
+        fixture["sim"] = native.build_media(
             probe, media_id=1, part_id=1,
             part_key="/library/parts/1/1/file.%s" % extension,
             file_path="file.%s" % extension,
@@ -542,7 +587,8 @@ def fixtures(mediainfo):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--root", help="import mediainfo from this tree")
+    parser.add_argument("--bin", default=os.environ.get("REX_NATIVE_BIN", os.path.join(
+        os.path.dirname(HERE), "rust", "target", "release", "rex")), help="the native binary to check")
     parser.add_argument("--only", help="comma-separated check names")
     parser.add_argument("--list", action="store_true")
     parser.add_argument("--examples", type=int, default=6)
@@ -550,8 +596,11 @@ def main():
     if args.list:
         print("\n".join(name for name, _, _ in CHECKS))
         return 0
-    mediainfo = load(args.root)
-    corpus = fixtures(mediainfo)
+    if not os.path.exists(args.bin):
+        print("native binary not found: %s" % args.bin)
+        return 1
+    native = Native(args.bin)
+    corpus = fixtures(native)
     wanted = set(args.only.split(",")) if args.only else None
     passed = total = 0
     for name, function, once in CHECKS:
@@ -559,7 +608,7 @@ def main():
             continue
         total += 1
         code = function.__code__
-        extra = {"mediainfo": mediainfo} if "mediainfo" in code.co_varnames[:code.co_argcount] else {}
+        extra = {"native": native} if "native" in code.co_varnames[:code.co_argcount] else {}
         try:
             if once:
                 rows = function(**extra)
@@ -583,7 +632,7 @@ def main():
 
 
 @check("cycle 24: the extended title's measured stand-ins and language rule", once=True)
-def extended_title_model(mediainfo):
+def extended_title_model(native):
     """Cycle 24, fitted on the 1.42.2 reference's 105,558 real Streams and held out on the 46 recorded probes.
 
     The LANGUAGE part has its own rule and it is the one two earlier attempts could not
@@ -604,9 +653,7 @@ def extended_title_model(mediainfo):
     rows = []
 
     def built(row):
-        out = dict(row)
-        mediainfo.stream_titles(out)
-        return out
+        return native.stream_titles(row)
 
     # the language rule, in both directions
     for title, language, code, want in (
@@ -652,7 +699,7 @@ def extended_title_model(mediainfo):
 
 @check("cycle 24: the language table, the video dub flag and an unnamed channel layout",
        once=True)
-def measured_smalls(mediainfo):
+def measured_smalls(native):
     """Cycle 24, measured on the 1.42.2 reference's 105,558 real Streams.
 
     `languages.json` lacked THIRTEEN codes the 1.42.2 reference's streams actually use, each named
@@ -665,22 +712,24 @@ def measured_smalls(mediainfo):
     for code, name, tag in (("zul", "isiZulu", "zu"), ("kat", "\u10e5\u10d0\u10e0\u10d7\u10e3\u10da\u10d8", "ka"),
                             ("nno", "norsk nynorsk", "nn"), ("mdr", "Mandar", "mdr"),
                             ("cha", "Chamorro", "ch")):
-        got = mediainfo.LANGUAGES.get(code)
-        rows.append(("languages.json %s" % code, [name, tag], list(got) if got else None))
-    built = {"streamType": 2, "codec": "eac3", "language": "English",
-             "audioChannelLayout": "8 channels (FL+FR+FC+LFE+SL+SR+TFL+TFR)"}
-    mediainfo.stream_titles(built)
+        # The table's row, as a track tagged with the code is written.
+        got = native.built_stream({"codec_type": "audio", "codec_name": "aac", "index": 0,
+                                   "tags": {"language": code}})
+        rows.append(("languages.json %s" % code, [name, tag],
+                     [got.get("language"), got.get("languageTag")]))
+    built = native.stream_titles({"streamType": 2, "codec": "eac3", "language": "English",
+                                  "audioChannelLayout": "8 channels (FL+FR+FC+LFE+SL+SR+TFL+TFR)"})
     rows.append(("unnamed layout", "English (EAC3 8 channels)",
                  built.get("extendedDisplayTitle")))
-    # `getattr` with a default, not an attribute read: a check that raises proves nothing
-    # about its other clauses, which is cycle 19's lesson.
-    rows.append(("video dub is a disposition", True,
-                 "dub" in (getattr(mediainfo, "_VIDEO_FLAGS", ()) or ())))
+    # A video track's `dub` disposition is carried: it is one of the video flags.
+    video = native.built_stream({"codec_type": "video", "codec_name": "h264", "index": 0,
+                                 "width": 1920, "height": 1080, "disposition": {"dub": 1}})
+    rows.append(("video dub is a disposition", True, video.get("dub") is True))
     return rows
 
 
 @check("cycle 41: carried codec punctuation discriminator", once=True)
-def carried_codec_punctuation(mediainfo):
+def carried_codec_punctuation(native):
     """Cycle 24's three exact discriminator families, retained together.
 
     An AC-3 stored title carries the AC3 codec component, but VC-1 does not carry
@@ -698,14 +747,13 @@ def carried_codec_punctuation(mediainfo):
     ]
     rows = []
     for label, stream, want in cases:
-        mediainfo.stream_titles(stream)
-        rows.append((label, want, stream.get("extendedDisplayTitle")))
+        rows.append((label, want, native.stream_titles(stream).get("extendedDisplayTitle")))
     return rows
 
 
 @check("cycle 41: a visually impaired subtitle disposition is projected only when true",
        once=True)
-def visual_impaired_subtitle(mediainfo):
+def visual_impaired_subtitle(native):
     """Cycle 41, measured on the 1.42.2 reference's stored stream 93535 and metadata item 13374.
 
     The PGS subtitle's persisted `ma:visualImpaired:\"1\"` becomes
@@ -713,6 +761,7 @@ def visual_impaired_subtitle(mediainfo):
     false or absent ffprobe flag is omitted rather than serialized as false.
     """
     base = {
+        "codec_type": "subtitle",
         "codec_name": "hdmv_pgs_subtitle",
         "index": 0,
         "tags": {"language": "eng", "title": "SDH"},
@@ -722,11 +771,11 @@ def visual_impaired_subtitle(mediainfo):
     missing = dict(base)
     return [
         ("visual impaired true", True,
-         mediainfo._subtitle_stream(positive, 1).get("visualImpaired")),
+         native.built_stream(positive).get("visualImpaired")),
         ("visual impaired false omitted", False,
-         "visualImpaired" in mediainfo._subtitle_stream(negative, 1)),
+         "visualImpaired" in native.built_stream(negative)),
         ("visual impaired absent omitted", False,
-         "visualImpaired" in mediainfo._subtitle_stream(missing, 1)),
+         "visualImpaired" in native.built_stream(missing)),
     ]
 
 

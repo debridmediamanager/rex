@@ -11,7 +11,7 @@ use std::sync::OnceLock;
 
 /// The products whose `displayTitle` carries the codec, measured on both servers
 /// against 38 product names, case-sensitively (cycle 63 added the last eight).
-const CODEC_TITLE_PRODUCTS: &[&str] = &[
+pub const CODEC_TITLE_PRODUCTS: &[&str] = &[
     "Plex Web",
     "Plex for iOS",
     "Plex for Apple TV",
@@ -162,7 +162,7 @@ fn localise_streams(
     }
 }
 
-fn client_titles(node: &mut Value, external: &str) {
+pub fn client_titles(node: &mut Value, external: &str) {
     match node {
         Value::Array(items) => {
             for item in items {

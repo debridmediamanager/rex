@@ -64,6 +64,8 @@ mod source;
 mod anime;
 mod imdb;
 use artwork::owns_artwork;
+/// The products' codec-suffix pass, for main.rs's `stream-titles` test adapter.
+pub use streams::{client_titles, CODEC_TITLE_PRODUCTS};
 use logging::{debug, error, info, warning};
 use resume::{
     apply_listing_guids, bool_option, content_directories, exclude_continue_watching, guid_gate,

@@ -8,7 +8,7 @@ use rex::{catalog, decision, filters, gate, hierarchy, mediainfo, metadata, runt
 use serde_json::json;
 
 fn usage() -> &'static str {
-    "Usage: rex [server options] | rex <decision|mediainfo|normalize-media|hierarchy-build|hierarchy-normalize|hierarchy-fold|hierarchy-case|catalog-normalize|xml|system-xml|ordered|guid|provider-guids|gate|metadata-parse|metadata-enrich|filter-compare|filter-parse|filter-evaluate|filter-describe|filter-document|filter-orders|filter-source-order> ..."
+    "Usage: rex [server options] | rex <decision|mediainfo|normalize-media|stream-titles|hierarchy-build|hierarchy-normalize|hierarchy-fold|hierarchy-case|catalog-normalize|xml|system-xml|ordered|guid|provider-guids|gate|metadata-parse|metadata-enrich|filter-compare|filter-parse|filter-evaluate|filter-describe|filter-document|filter-orders|filter-source-order> ..."
 }
 
 /// `main()`'s `argparse` options, in its declaration order: (flag, metavar, takes a value).
@@ -504,6 +504,29 @@ fn run_core(command: &str, args: &[String]) -> Result<(), String> {
             let input = required(&options, "--input")?;
             let mut value = read_json(input)?;
             mediainfo::normalize_media(&mut value);
+            print_json(&value)
+        }
+        "stream-titles" => {
+            // Each Stream row's titles (`mediainfo::stream_titles`); with --product, the
+            // displayTitle that product is sent instead (the server's codec-suffix pass).
+            let options = parse_core_args(args, &["--input", "--product"])?;
+            let mut value = read_json(required(&options, "--input")?)?;
+            if !value.is_array() {
+                return Err("stream-titles input must be an array".to_string());
+            }
+            match optional(&options, "--product") {
+                Some(product) if runtime::CODEC_TITLE_PRODUCTS.contains(&product) => {
+                    runtime::client_titles(&mut value, "External");
+                }
+                Some(_) => {}
+                None => {
+                    for row in value.as_array_mut().into_iter().flatten() {
+                        if let Some(row) = row.as_object_mut() {
+                            mediainfo::stream_titles(row, None, None);
+                        }
+                    }
+                }
+            }
             print_json(&value)
         }
         "hierarchy-build" => {

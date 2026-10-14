@@ -711,10 +711,12 @@ fn pixel_aspect(stream: &Row) -> Row {
     }
     let mut out = map();
     put(&mut out, "pixelAspectRatio", raw);
+    // |n/d - 1| > 1/20, in integers: `21:20` sits exactly on the boundary, which a real
+    // PMS calls square and a float reads as 0.050000000000000044 over it.
     put(
         &mut out,
         "anamorphic",
-        (n as f64 / d as f64 - 1.0).abs() > 0.05,
+        (i128::from(n) - i128::from(d)).abs() * 20 > i128::from(d).abs(),
     );
     out
 }
