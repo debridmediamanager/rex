@@ -235,8 +235,7 @@ jobs:
       run:
         shell: bash
     env:
-      # The suites read their fixtures without naming an encoding; the shipped tools name
-      # UTF-8 themselves (test_build_catalog checks that with UTF-8 mode off).
+      # The suites read their fixtures without naming an encoding.
       PYTHONUTF8: "1"
     steps:
       - uses: actions/checkout@v4
@@ -255,7 +254,7 @@ jobs:
         working-directory: rust
         run: ./rex-tests.exe
 
-      # Not test_manager: manager.py is Linux and macOS only (process groups, signals).
+      # Not test_manager: `rex manager` is Linux and macOS only (process groups, signals).
       # test_tls needs openssl, which Git for Windows ships.
       - name: Black-box suites
         run: |
@@ -303,7 +302,7 @@ jobs:
             exit 1
           fi
 
-      # Each archive keeps the repository's layout, so manager.py, run.sh and every
+      # Each archive keeps the repository's layout, so `rex manager`, run.sh and every
       # command in the docs find the binary at rust/target/release/rex either way. rex reads
       # its measured sidecars from data/, beside the catalog or in its working directory.
       - name: Package
@@ -315,8 +314,6 @@ jobs:
             mkdir -p "$name/rust/target/release"
             install -m 755 "artifacts/rex-$platform/$binary" "$name/rust/target/release/$binary"
             git ls-files -z -- data examples \
-                oracle/build_catalog.py oracle/catalogdb.py oracle/hierarchy.py oracle/metadata.py \
-                oracle/manager.py \
                 README.md LICENSE docs/setup.md docs/feed-api.md \
               | xargs -0 cp --parents -t "$name"
             if [ "$platform" = windows-amd64 ]; then
