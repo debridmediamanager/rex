@@ -823,7 +823,7 @@ pub(super) fn replace_misnumbered(shared: &SharedRuntime) -> usize {
                             .map(|details| super::scan::tmdb_seasons(&details))
                             .unwrap_or_default()
                     });
-                    let placed = super::scan::on_seasons(seasons, id, numbers);
+                    let placed = super::scan::on_seasons(seasons, id, numbers, super::scan::scene_numbered(release, name));
                     let show = row.get("grandparentRatingKey").map(string_value).and_then(|key| guard.catalog.get(&key));
                     let show_imdb = show.and_then(|show| show.get("Guid")).and_then(Value::as_array).and_then(|guids| {
                         guids.iter().filter_map(|guid| guid.get("id").and_then(Value::as_str)).find_map(|id| id.strip_prefix("imdb://"))
@@ -1044,13 +1044,14 @@ struct Unsure {
     here: (Option<i64>, Option<i64>),
 }
 
-/// The numbers the name of a row's release at `index` reads: its file's, under its folder's.
-fn release_numbers(row: &Value, index: usize) -> Option<(i64, i64)> {
+/// The numbers the name of a row's release at `index` reads: its file's, under its folder's,
+/// and whether they are the name's own (`scan::scene_numbered`).
+fn release_numbers(row: &Value, index: usize) -> Option<((i64, i64), bool)> {
     let path = row.pointer(&format!("/Media/{index}/_path")).and_then(Value::as_str)?;
     let mut segments = path.rsplit('/');
     let name = segments.next()?;
     let release = segments.next().or_else(|| row.get("_release").and_then(Value::as_str))?;
-    super::scan::episode_of(release, name)
+    Some((super::scan::episode_of(release, name)?, super::scan::scene_numbered(release, name)))
 }
 
 /// A row made of one release: that release its only Media, its source fields and name the row's.
@@ -1564,7 +1565,7 @@ impl Runtime {
             let here = (row.get("parentIndex").and_then(Value::as_i64), row.get("index").and_then(Value::as_i64));
             let mut away = Vec::new();
             for (source, sid, index) in &all {
-                let Some(numbers) = release_numbers(row, *index) else {
+                let Some((numbers, scene)) = release_numbers(row, *index) else {
                     continue;
                 };
                 let placed = match show_id {
@@ -1576,7 +1577,7 @@ impl Runtime {
                                 .map(|details| super::scan::tmdb_seasons(&details))
                                 .unwrap_or_default()
                         });
-                        let placed = super::scan::on_seasons(seasons, id, numbers);
+                        let placed = super::scan::on_seasons(seasons, id, numbers, scene);
                         if let (Some(imdb), false, false) =
                             (show_imdb, seasons.is_empty(), seasons.iter().any(|season| season.0 == placed.0))
                         {

@@ -129,16 +129,22 @@ def main():
         stop(server, work)
     server = start(work, bytes_port, True)
     try:
+        # A file of an episode another file is on joins that row as another version.
+        joined = dict(keys)
+        for name in names:
+            partner = FIXTURE["pushes"][name].get("with")
+            if partner:
+                joined[FIXTURE["pushes"][name]["path"]] = keys[FIXTURE["pushes"][partner]["path"]]
         for name in names:
             want = FIXTURE["pushes"][name]["want"]
-            got = wait_for(server, keys[FIXTURE["pushes"][name]["path"]], want)
+            got = wait_for(server, joined[FIXTURE["pushes"][name]["path"]], want)
             if want[0] is None:
                 check("a start leaves the Korean Kingdom where it was", got[1:] == before[name][1:], (before[name], got))
             else:
                 check("a start places %s on TMDB's season %s episode %s, on its key" % (name, want[1], want[2]),
                       got == want, (before[name], got))
         check("and what was watched stays watched", server.row(hibike).get("viewCount") == 1, server.row(hibike).get("viewCount"))
-        check("no file is left on a row of its own", server.keys() == keys, server.keys())
+        check("no file is left on a row of its own", server.keys() == joined, server.keys())
     finally:
         stop(server, work)
         shutil.rmtree(work, ignore_errors=True)

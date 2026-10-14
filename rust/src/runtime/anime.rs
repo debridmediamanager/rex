@@ -252,12 +252,30 @@ impl Index {
     pub fn tvdb_to_tmdb(&self, tmdb: i64, season: i64, episode: i64) -> Option<(i64, i64)> {
     let entries: Vec<&Target> =
         self.entries.values().filter(|target| target.tmdb == tmdb && target.season >= 0 && target.tvdb_season == Some(season)).collect();
+    if entries.is_empty() && season > 1 {
+        return self.nth_cour(tmdb, season, episode);
+    }
     let target = entries
         .iter()
         .filter(|target| target.tvdb_offset < episode)
         .max_by_key(|target| target.tvdb_offset)
         .or_else(|| entries.iter().min_by_key(|target| target.tvdb_offset))?;
     Some((target.season, episode - target.tvdb_offset + target.offset))
+    }
+
+    /// A season TVDB does not have, of a show TVDB keeps as one season of cours: the cour by
+    /// that number. Ascendance of a Bookworm's BD remux names its second cour `S02E01`, which
+    /// anime-lists has as TVDB S1 from episode 15, TMDB's S1E15; only a show all of whose
+    /// entries are TVDB season 1, so Bleach's original run (absolute) and Thousand-Year Blood
+    /// War (TVDB 17) never read as one another.
+    fn nth_cour(&self, tmdb: i64, season: i64, episode: i64) -> Option<(i64, i64)> {
+        let mut cours: Vec<&Target> = self.entries.values().filter(|target| target.tmdb == tmdb && target.season > 0).collect();
+        if cours.is_empty() || cours.iter().any(|target| target.tvdb_season != Some(1)) {
+            return None;
+        }
+        cours.sort_by_key(|target| (target.tvdb_offset, target.anidb));
+        let target = cours.get(usize::try_from(season - 1).ok()?)?;
+        Some((target.season, episode + target.offset))
     }
 }
 
@@ -384,6 +402,12 @@ mod tests {
         assert_eq!(index.tvdb_to_tmdb(209867, 2, 5), Some((1, 33)), "Frieren.Beyond.Journeys.End.S02E05");
         assert_eq!(index.tvdb_to_tmdb(30984, 17, 23), Some((2, 23)), "Bleach - S17E23");
         assert_eq!(index.tvdb_to_tmdb(70593, 1, 3), None, "the Korean Kingdom is no anime-lists show");
+        // Ascendance of a Bookworm: TVDB has its four cours as one season; a BD remux names them S01-S04.
+        assert_eq!(index.tvdb_to_tmdb(91768, 2, 1), Some((1, 15)), "S02E01-Apprentice Priestess");
+        assert_eq!(index.tvdb_to_tmdb(91768, 3, 2), Some((1, 28)), "the third cour");
+        assert_eq!(index.tvdb_to_tmdb(91768, 4, 1), Some((2, 1)), "Ascendance.of.a.Bookworm.S04E01");
+        assert_eq!(index.tvdb_to_tmdb(91768, 5, 1), None, "no fifth cour");
+        assert_eq!(index.tvdb_to_tmdb(30984, 2, 2), None, "Bleach (2004) - s02e02 is no Thousand-Year Blood War cour");
     }
 
     /// Batches named for a show's first season whose files name their own season, from the

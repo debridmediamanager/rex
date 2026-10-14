@@ -84,6 +84,16 @@ pub(super) fn episode_of(release: &str, file_name: &str) -> Option<(i64, i64)> {
     Some((season.unwrap_or(1), episode))
 }
 
+/// Whether a file's numbers are its name's own, as scene releases number them -- not ones the
+/// anime mapping already put on TMDB's numbering (`anime::renumber`).
+pub(super) fn scene_numbered(release: &str, file_name: &str) -> bool {
+    let parsed = (identify::parse_name(release), identify::parse_name(file_name));
+    let Some(episode) = parsed.1.episode.or(parsed.0.episode) else {
+        return false;
+    };
+    super::anime::renumber(release, file_name, parsed.1.season.or(parsed.0.season), episode).is_none()
+}
+
 /// The season and episode TMDB knows a file of `show` by, when TMDB has no season by the
 /// file's own number: the production server held about 30 such seasons on `local://` (2026-10-13).
 /// Scene releases of anime number seasons as TVDB does (`Jujutsu.Kaisen.S03E03`, TMDB's
@@ -93,7 +103,7 @@ pub(super) fn episode_of(release: &str, file_name: &str) -> Option<(i64, i64)> {
 #[cfg(test)]
 pub(super) fn on_tmdb(tmdb: Option<&dyn TmdbSource>, show: i64, numbers: (i64, i64)) -> (i64, i64) {
     let seasons = tmdb.and_then(|t| identify::tmdb_details(t, "tv", show)).map(|details| tmdb_seasons(&details)).unwrap_or_default();
-    on_seasons(&seasons, show, numbers)
+    on_seasons(&seasons, show, numbers, true)
 }
 
 /// A show's TMDB seasons as (number, episodes, first air date), from its details.
@@ -113,12 +123,21 @@ pub(super) fn tmdb_seasons(details: &Value) -> Vec<(i64, i64, String)> {
         .collect()
 }
 
-/// `on_tmdb` for seasons already read.
-pub(super) fn on_seasons(seasons: &[(i64, i64, String)], show: i64, (season, episode): (i64, i64)) -> (i64, i64) {
+/// `on_tmdb` for seasons already read. `scene`: the numbers are the name's own
+/// (`scene_numbered`), which for a known anime show are TVDB's even where TMDB has a season
+/// by the same number: TMDB's Ascendance of a Bookworm S2 is the 2026 cour, and the BD
+/// remux's `S02E01-Apprentice Priestess` TVDB's second season, TMDB's S1E15 (the production
+/// server held 12 of them as versions of the 2026 cour's episodes, 2026-10-14).
+pub(super) fn on_seasons(seasons: &[(i64, i64, String)], show: i64, (season, episode): (i64, i64), scene: bool) -> (i64, i64) {
+    let fits = |(season, episode): (i64, i64)| seasons.iter().any(|row| row.0 == season && episode >= 1 && episode <= row.1);
+    if scene && season > 0 {
+        if let Some(mapped) = super::anime::tvdb_to_tmdb(show, season, episode).filter(|mapped| fits(*mapped)) {
+            return mapped;
+        }
+    }
     if seasons.is_empty() || seasons.iter().any(|row| row.0 == season) {
         return (season, episode);
     }
-    let fits = |(season, episode): (i64, i64)| seasons.iter().any(|row| row.0 == season && episode >= 1 && episode <= row.1);
     if let Some(mapped) = super::anime::tvdb_to_tmdb(show, season, episode).filter(|mapped| fits(*mapped)) {
         return mapped;
     }
@@ -169,8 +188,9 @@ pub(super) fn on_tmdb_or_imdb(
     release_title: &str,
     show_title: &str,
     numbers: (i64, i64),
+    scene: bool,
 ) -> (i64, i64) {
-    let placed = on_seasons(seasons, show, numbers);
+    let placed = on_seasons(seasons, show, numbers, scene);
     if seasons.is_empty() || seasons.iter().any(|row| row.0 == placed.0) {
         return placed;
     }
@@ -284,6 +304,7 @@ pub(super) fn name_release(plan: &Library, arrivals: &mut [Arrival], files: usiz
                 &identify::parse_name(&release).title,
                 details.as_ref().and_then(|d| d.get("name")).and_then(Value::as_str).unwrap_or_default(),
                 numbers,
+                scene_numbered(&release, &file_name),
             )),
             (numbers, _) => numbers,
         };

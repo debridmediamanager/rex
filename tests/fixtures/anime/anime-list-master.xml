@@ -513,4 +513,25 @@
       <mapping anidbseason="0" tvdbseason="0">;1-0;2-0;3-0;4-0;</mapping>
     </mapping-list>
   </anime>
+  <anime anidbid="14727" tvdbid="366263" defaulttvdbseason="1" episodeoffset="" tmdbtv="91768" tmdbseason="1" tmdboffset="" tmdbid="" imdbid="">
+    <name>Honzuki no Gekokujou: Shisho ni Naru Tame ni wa Shudan o Erande Iraremasen</name>
+  </anime>
+  <anime anidbid="15293" tvdbid="366263" defaulttvdbseason="1" episodeoffset="14" tmdbtv="91768" tmdbseason="1" tmdboffset="14" tmdbid="" imdbid="">
+    <name>Honzuki no Gekokujou: Shisho ni Naru Tame ni wa Shudan o Erande Iraremasen (2020)</name>
+  </anime>
+  <anime anidbid="15300" tvdbid="366263" defaulttvdbseason="0" episodeoffset="" tmdbtv="91768" tmdbseason="0" tmdboffset="" tmdbid="" imdbid="">
+    <name>Honzuki no Gekokujou: Shisho ni Naru Tame ni wa Shudan o Erande Iraremasen - Eustachius no Shitamachi Sennyuu Daisakusen / Corinna-sama no Otaku Houmon</name>
+    <mapping-list>
+      <mapping anidbseason="1" tvdbseason="0">;1-1;1-2;</mapping>
+    </mapping-list>
+  </anime>
+  <anime anidbid="15634" tvdbid="366263" defaulttvdbseason="1" episodeoffset="26" tmdbtv="91768" tmdbseason="1" tmdboffset="26" tmdbid="" imdbid="">
+    <name>Honzuki no Gekokujou: Shisho ni Naru Tame ni wa Shudan o Erande Iraremasen (2022)</name>
+    <mapping-list>
+      <mapping anidbseason="0" tvdbseason="0" start="1" end="2" offset="2"/>
+    </mapping-list>
+  </anime>
+  <anime anidbid="18302" tvdbid="366263" defaulttvdbseason="1" episodeoffset="36" tmdbtv="91768" tmdbseason="2" tmdboffset="" tmdbid="" imdbid="">
+    <name>Honzuki no Gekokujou: Shisho ni Naru Tame ni wa Shudan o Erande Iraremasen - Ryoushu no Youjo</name>
+  </anime>
 </anime-list>
