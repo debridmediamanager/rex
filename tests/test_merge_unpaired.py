@@ -13,8 +13,7 @@ The fixture's roles are replayed on `tests/catalog_ui.json`'s Simpsons: the prob
 paired season is one the Simpsons has, its unpaired season one it lacks, and a second
 unpaired episode lands in a season the Simpsons already has.
 
-Drives a real server process (`tests/server_command.py`): the native binary by default,
-the oracle with `REX_SERVER=python`.
+Drives a real server process (`tests/server_command.py`).
 
     python3 tests/test_merge_unpaired.py
 """

@@ -3,8 +3,7 @@
 
 Drives a real manager process (`rust/target/release/rex manager`, so build it first) on a
 temporary root, managing real rex processes on `tests/catalog_ui.json`: the native binary
-by default, the Python oracle with `REX_SERVER=python` (through a two-line wrapper, since
-the manager takes one executable), or any executable `REX_SERVER` names.
+by default, or any executable `REX_SERVER` names.
 
     python3 tests/test_manager.py
 """
@@ -79,18 +78,7 @@ def get_json(port, path, headers=None):
 
 
 def server_binary(work):
-    configured = os.environ.get("REX_SERVER")
-    if configured and configured.strip() != "python":
-        return configured
-    if configured is None:
-        native = os.path.join(ROOT, "rust", "target", "release", "rex")
-        if os.path.exists(native):
-            return native
-    wrapper = os.path.join(work, "rex-python")
-    with open(wrapper, "w") as handle:
-        handle.write('#!/bin/sh\nexec "%s" "%s" "$@"\n' % (sys.executable, os.path.join(ROOT, "oracle", "server.py")))
-    os.chmod(wrapper, 0o755)
-    return wrapper
+    return os.environ.get("REX_SERVER") or os.path.join(ROOT, "rust", "target", "release", "rex")
 
 
 class Manager:
