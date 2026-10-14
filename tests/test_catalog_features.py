@@ -1034,7 +1034,9 @@ def run_show_merge_lists(check):
     their keys, as a plain merge does (cycle 87, plexscratch,
     `tests/fixtures/merge_playlist_s43.json`: the absorbed row's playlistItemID is a 404 to a
     DELETE, and a split takes a key never used before). Its own library, so the episode keys
-    sit in the range a split mints from (1000 and up) with the absorbed one highest."""
+    sit in the range a split mints from (1000 and up) with the absorbed one highest. And a
+    removed row's history SURVIVES with its `ratingKey` and `key` stripped (measured on the
+    reference: rex kept both, so the History page linked a 404)."""
     document = copy.deepcopy(BASE)
     document["sections"].append({"key": "93", "type": "show", "title": "Merge Lists",
                                  "uuid": "merge-lists-section-93"})
@@ -1043,8 +1045,9 @@ def run_show_merge_lists(check):
             + show_rows("24113", "34113", "1941", 93, "Merge Lists Bystander"))
     for row in rows:
         if row["type"] == "episode":
-            row["Media"] = [{"id": int(row["ratingKey"]) * 10,
-                             "Part": [{"id": int(row["ratingKey"]) * 10}]}]
+            row["duration"] = 600000
+            row["Media"] = [{"id": int(row["ratingKey"]) * 10, "duration": 600000,
+                             "Part": [{"id": int(row["ratingKey"]) * 10, "duration": 600000}]}]
     document["items"] += rows
     server = Server(document)
     try:
@@ -1063,7 +1066,23 @@ def run_show_merge_lists(check):
                                                    ("uri", uri(["24112", "24113"]))])
         item_ids = {row.get("ratingKey"): row.get("playlistItemID") for row in
                     server.json("/playlists/%s/items" % playlist).get("Metadata") or []}
+        # The absorbed episode watched to the end in a playback session: its history row.
+        session = {"X-Plex-Client-Identifier": "merge-lists-player",
+                   "X-Plex-Session-Identifier": "merge-lists-session",
+                   "X-Plex-Product": "Plex Web", "X-Plex-Platform": "Chrome"}
+        for state, offset in (("playing", 10000), ("playing", 300000), ("stopped", 590000)):
+            server.request("GET", "/:/timeline?ratingKey=1952&key=%%2Flibrary%%2Fmetadata%%2F1952"
+                           "&state=%s&time=%d&duration=600000" % (state, offset), session)
+        watched = next((row for row in server.json("/status/sessions/history/all")
+                        .get("Metadata") or [] if row.get("ratingKey") == "1952"), {})
         merged = server.request("PUT", "/library/metadata/24111/merge?ids=24112")[0]
+        survivor = next((row for row in server.json("/status/sessions/history/all")
+                         .get("Metadata") or []
+                         if row.get("historyKey") == watched.get("historyKey")), {})
+        check("a show merge strips the absorbed rows' keys from their history rows",
+              watched.get("historyKey") and survivor.get("title") == watched.get("title")
+              and "ratingKey" not in survivor and "key" not in survivor,
+              "before %s after %s" % (sorted(watched), sorted(survivor)))
         listed = server.json("/playlists/%s/items" % playlist)
         playlist_keys = [row.get("ratingKey") for row in listed.get("Metadata") or []]
         stale_delete = server.request("DELETE", "/playlists/%s/items/%s"
