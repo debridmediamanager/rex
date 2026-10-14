@@ -252,10 +252,6 @@ def gdm_stamp(port):
 # reported as a known gap while it fails, and fails the suite once it passes, so the entry
 # is removed when the native server catches up.
 KNOWN_GAPS = {
-    "deleting a show's season 0 takes its seasonCount away (a fresh build)":
-        "seasonCount stays 1",
-    "deleting a show's season 0 takes its seasonCount away (a catalog written before the rule)":
-        "seasonCount stays 1",
 }
 
 

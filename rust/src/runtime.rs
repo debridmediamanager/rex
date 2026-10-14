@@ -19040,6 +19040,31 @@ impl Runtime {
                         self.deleted.insert(gone.clone());
                     }
                 }
+                // `library.recount`: the show above a deleted season or episode is
+                // recounted. Cycle 79, the 1.42.2 reference: only a show holding a season 0
+                // carries `seasonCount`, so deleting that season takes it away rather than
+                // leaving it stale.
+                for parent in ["parentRatingKey", "grandparentRatingKey"] {
+                    let Some(show_key) = row.get(parent).map(string_value) else {
+                        continue;
+                    };
+                    if self.catalog.get(&show_key).and_then(|show| show.get("type"))
+                        != Some(&json!("show"))
+                    {
+                        continue;
+                    }
+                    let seasons = self
+                        .children_refs(&show_key)
+                        .into_iter()
+                        .filter_map(Value::as_object)
+                        .cloned()
+                        .collect::<Vec<_>>();
+                    if let Some(show) =
+                        self.catalog.get_mut(&show_key).and_then(Value::as_object_mut)
+                    {
+                        crate::hierarchy::set_season_count(show, &seasons);
+                    }
+                }
                 // Measured (docs/findings.md, "A removed row leaves the play queues"): the
                 // queue shrinks, its VERSION steps and the selection moves to a row that
                 // still exists. Filtering the row out only when the queue was read left
