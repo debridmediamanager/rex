@@ -20904,6 +20904,38 @@ impl Runtime {
                     changed.push(target_key.clone());
                 }
             }
+            // Cycle 41, measured on both disposable PMS versions: the merged show keeps its
+            // own Location first and takes the absorbed show's after it, each folder once
+            // (by id and path).
+            let absorbed = other
+                .get("Location")
+                .and_then(Value::as_array)
+                .cloned()
+                .unwrap_or_default();
+            if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
+                let mut locations = object
+                    .get("Location")
+                    .and_then(Value::as_array)
+                    .cloned()
+                    .unwrap_or_default();
+                let marker = |entry: &Value| match entry.as_object() {
+                    Some(place) => json!([place.get("id"), place.get("path")]),
+                    None => entry.clone(),
+                };
+                let mut seen = locations
+                    .iter()
+                    .filter(|entry| entry.is_object())
+                    .map(marker)
+                    .collect::<Vec<_>>();
+                for location in absorbed {
+                    let mark = marker(&location);
+                    if !seen.contains(&mark) {
+                        seen.push(mark);
+                        locations.push(location);
+                    }
+                }
+                object.insert("Location".to_string(), Value::Array(locations));
+            }
             let mut source_rows = vec![other.clone()];
             for season in self.children(other_key) {
                 let season_key = key_of(&season).unwrap_or_default();

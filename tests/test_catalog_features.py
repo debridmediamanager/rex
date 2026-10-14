@@ -252,8 +252,6 @@ def gdm_stamp(port):
 # reported as a known gap while it fails, and fails the suite once it passes, so the entry
 # is removed when the native server catches up.
 KNOWN_GAPS = {
-    "show merge absorbs its hierarchy and combines matching episode Media":
-        "the merged show does not take the absorbed show's Location",
     "duration filter and sort read Media.duration": "sort=duration orders by the row's duration",
     "a mixed folder level renders Directory then Video":
         "a folder row is written <Video type=\"directory\"> in XML",
