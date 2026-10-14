@@ -130,7 +130,47 @@ const GDM_PORTS: [u16; 2] = [32410, 32414];
 const GDM_GROUP: &str = "239.0.0.250";
 const GDM_QUERY: &[u8] = b"M-SEARCH * ";
 const GDM_SEARCH: &[u8] = b"M-SEARCH * HTTP/1.1\r\n";
+/// A real PMS searches its LAN this often (`gdm.SEARCH_INTERVAL`).
+const GDM_SEARCH_INTERVAL: std::time::Duration = std::time::Duration::from_secs(5);
 const GDM_TTL_SECONDS: i64 = 180;
+
+/// The trigger, bisected byte by byte on the 1.42.2 reference: a prefix compare of the
+/// datagram with `GDM_QUERY` over min(its length, 11), so an empty datagram answers too.
+fn gdm_query_matches(datagram: &[u8]) -> bool {
+    datagram
+        .iter()
+        .zip(GDM_QUERY.iter())
+        .take(datagram.len().min(GDM_QUERY.len()))
+        .all(|(got, wanted)| got == wanted)
+}
+
+/// The advertisement block, line for line as the four recorded references send it
+/// (`tests/fixtures/gdm/responses.json`): a claimed server's `Host:` line, an unclaimed
+/// one's none at all.
+fn gdm_block(
+    host: Option<&str>,
+    name: &str,
+    port: u16,
+    machine: &str,
+    updated_at: i64,
+    version: &str,
+) -> Vec<u8> {
+    let mut lines = vec![
+        "HTTP/1.0 200 OK".to_string(),
+        "Content-Type: plex/media-server".to_string(),
+    ];
+    if let Some(host) = host {
+        lines.push(format!("Host: {host}"));
+    }
+    lines.extend([
+        format!("Name: {name}"),
+        format!("Port: {port}"),
+        format!("Resource-Identifier: {machine}"),
+        format!("Updated-At: {updated_at}"),
+        format!("Version: {version}"),
+    ]);
+    format!("{}\r\n\r\n", lines.join("\r\n")).into_bytes()
+}
 
 fn configured_gdm_ports() -> Vec<u16> {
     std::env::var("REX_GDM_PORTS")
@@ -3156,21 +3196,14 @@ impl Runtime {
     }
 
     fn gdm_response(&self) -> Vec<u8> {
-        let mut lines = vec![
-            "HTTP/1.0 200 OK".to_string(),
-            "Content-Type: plex/media-server".to_string(),
-        ];
-        if let Some(host) = self.gdm_host() {
-            lines.push(format!("Host: {host}"));
-        }
-        lines.extend([
-            format!("Name: {}", self.friendly),
-            format!("Port: {}", self.private_port),
-            format!("Resource-Identifier: {}", self.machine),
-            format!("Updated-At: {}", self.gdm_updated_at),
-            format!("Version: {VERSION}"),
-        ]);
-        format!("{}\r\n\r\n", lines.join("\r\n")).into_bytes()
+        gdm_block(
+            self.gdm_host().as_deref(),
+            &self.friendly,
+            self.private_port,
+            &self.machine,
+            self.gdm_updated_at,
+            VERSION,
+        )
     }
 
     /// Cycle 50, measured on both disposable copies with a 2 s sampler inside the
@@ -23072,12 +23105,7 @@ fn start_gdm(runtime: SharedRuntime, mode: &str, port: u16) {
             loop {
                 match socket.recv_from(&mut packet) {
                     Ok((length, address)) => {
-                        if packet[..length]
-                            .iter()
-                            .zip(GDM_QUERY.iter())
-                            .take(length.min(GDM_QUERY.len()))
-                            .all(|(got, wanted)| got == wanted)
-                        {
+                        if gdm_query_matches(&packet[..length]) {
                             let response = shared.lock().ok().map(|runtime| runtime.gdm_response());
                             if let Some(response) = response {
                                 if let Err(error) = socket.send_to(&response, address) {
@@ -23133,7 +23161,7 @@ fn start_gdm(runtime: SharedRuntime, mode: &str, port: u16) {
             {
                 debug!("GDM: search failed: {}", py_os_error(&error));
             }
-            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+            let deadline = std::time::Instant::now() + GDM_SEARCH_INTERVAL;
             let mut packet = [0_u8; 4096];
             while std::time::Instant::now() < deadline {
                 match socket.recv_from(&mut packet) {
@@ -27517,6 +27545,143 @@ fn remember_list_upload(columns: &mut Map<String, Value>, upload: &str) {
         if !list.iter().any(|known| known.as_str() == Some(upload)) {
             list.push(json!(upload));
         }
+    }
+}
+
+#[cfg(test)]
+mod gdm_tests {
+    use super::*;
+
+    /// What four real servers answered on udp/32410 and udp/32414 on 2026-09-18, and the
+    /// trigger bisected byte by byte on the 1.42.2 reference.
+    fn recorded() -> Value {
+        serde_json::from_str(include_str!("../../tests/fixtures/gdm/responses.json"))
+            .expect("the GDM fixture parses")
+    }
+
+    /// The 1.42.2 reference's own advertisement for another server (cycle 50's peers).
+    fn block(host: Option<&str>, name: &str, port: u16, machine: &str, at: i64, version: &str) -> Vec<u8> {
+        gdm_block(host, name, port, machine, at, version)
+    }
+
+    #[test]
+    fn each_recorded_block_is_reproduced_from_its_own_values() {
+        for entry in recorded()["servers"].as_array().expect("servers") {
+            let got = gdm_block(
+                entry.get("host").and_then(Value::as_str),
+                entry["name"].as_str().expect("name"),
+                entry["port"].as_u64().expect("port") as u16,
+                entry["machine"].as_str().expect("machine"),
+                entry["updated_at"].as_i64().expect("updated_at"),
+                entry["version"].as_str().expect("version"),
+            );
+            assert_eq!(
+                String::from_utf8(got).expect("the block is text"),
+                entry["response"].as_str().expect("response"),
+                "{}",
+                entry["label"]
+            );
+        }
+    }
+
+    #[test]
+    fn the_trigger_is_the_bisected_prefix_compare() {
+        let cases = recorded()["trigger"].as_array().expect("trigger").clone();
+        assert!(cases.len() >= 60, "{} trigger cases", cases.len());
+        for case in cases {
+            let hex = case["hex"].as_str().expect("hex");
+            let payload = (0..hex.len() / 2)
+                .map(|index| u8::from_str_radix(&hex[index * 2..index * 2 + 2], 16).expect("hex byte"))
+                .collect::<Vec<_>>();
+            assert_eq!(gdm_query_matches(&payload), case["answers"] == true, "{}", case["label"]);
+        }
+    }
+
+    #[test]
+    fn the_ports_group_and_search_are_the_measured_ones() {
+        let recorded = recorded();
+        let ports = recorded["ports"].as_array().expect("ports");
+        assert_eq!(GDM_PORTS.iter().map(|port| json!(port)).collect::<Vec<_>>(), *ports);
+        // 32412/32413 are the PLAYER side: a server neither binds nor answers them.
+        for silent in recorded["silent_ports"].as_array().expect("silent_ports") {
+            assert!(!GDM_PORTS.iter().any(|port| json!(port) == *silent), "{silent}");
+        }
+        assert_eq!(GDM_GROUP, recorded["group"].as_str().expect("group"));
+        assert_eq!(GDM_QUERY, b"M-SEARCH * ");
+        assert_eq!(GDM_SEARCH, b"M-SEARCH * HTTP/1.1\r\n");
+        assert_eq!(GDM_SEARCH_INTERVAL, std::time::Duration::from_secs(5));
+    }
+
+    fn fixture_runtime() -> Runtime {
+        Runtime::load(RuntimeOptions {
+            catalog: PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/../tests/catalog_ui.json")),
+            state: Some(PathBuf::new()),
+            token: None,
+            ..RuntimeOptions::default()
+        })
+        .expect("the UI fixture loads")
+    }
+
+    /// The peers `/servers` lists after its own row: (machine, name, address, port, version).
+    fn peers(runtime: &Runtime) -> Vec<(String, String, String, i64, String)> {
+        let mut rows = runtime
+            .gdm_server_rows()
+            .into_iter()
+            .skip(1)
+            .map(|row| {
+                let text = |key: &str| row[key].as_str().unwrap_or_default().to_string();
+                (text("machineIdentifier"), text("name"), text("address"), row["port"].as_i64().unwrap_or(0), text("version"))
+            })
+            .collect::<Vec<_>>();
+        rows.sort();
+        rows
+    }
+
+    #[test]
+    fn the_peer_table_is_keyed_by_address_and_ages_out() {
+        let mut runtime = fixture_runtime();
+        let peer = block(Some("abc.plex.direct"), "other", 32400, &"p".repeat(40), 1789000001, "1.43.4.10903-e5521bd8c");
+        runtime.gdm_record(&peer, "10.9.8.7");
+        let one = vec![("p".repeat(40), "other".to_string(), "10.9.8.7".to_string(), 32400, "1.43.4.10903-e5521bd8c".to_string())];
+        assert_eq!(peers(&runtime), one, "a peer's answer becomes a /servers row");
+        // Its own reply is dropped: the 1.42.2 reference lists itself ONCE.
+        let own = runtime.gdm_response();
+        runtime.gdm_record(&own, "127.0.0.1");
+        assert_eq!(peers(&runtime).len(), 1, "the server's own answer is not a peer");
+        // Cycle 50: keyed by ADDRESS, not machineIdentifier; at one address the last writer wins.
+        let second = block(None, "second", 32401, &"q".repeat(40), 1789000002, "1.42.2.10156-f737b826c");
+        runtime.gdm_record(&second, "10.9.8.7");
+        assert_eq!(
+            peers(&runtime).into_iter().map(|row| (row.0, row.1)).collect::<Vec<_>>(),
+            vec![("q".repeat(40), "second".to_string())],
+            "two servers at one address are ONE row"
+        );
+        runtime.gdm_record(&peer, "10.9.8.8");
+        assert_eq!(peers(&runtime).len(), 2, "two addresses are two rows");
+        runtime.gdm_peers.remove("10.9.8.8");
+        runtime.gdm_record(&peer, "10.9.8.7");
+        // A player answers `plex/media-player`; it is not a server, nor is a non-GDM datagram.
+        let player = String::from_utf8(peer.clone()).expect("text").replace("plex/media-server", "plex/media-player");
+        runtime.gdm_record(player.as_bytes(), "10.9.8.6");
+        assert_eq!(peers(&runtime).len(), 1, "a media-player answer is not a server");
+        runtime.gdm_record(b"HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n", "10.9.8.5");
+        assert_eq!(peers(&runtime), one, "a non-GDM datagram is not a server");
+        for row in runtime.gdm_peers.values_mut() {
+            row.last_seen = now() - GDM_TTL_SECONDS - 1;
+        }
+        assert!(peers(&runtime).is_empty(), "a peer ages out after {GDM_TTL_SECONDS} s");
+    }
+
+    #[test]
+    fn a_touch_moves_updated_at_and_keeps_the_new_name() {
+        let mut runtime = fixture_runtime();
+        runtime.gdm_updated_at = 1789000000;
+        runtime.friendly = "renamed".to_string();
+        runtime.touch_gdm();
+        assert!(runtime.gdm_updated_at > 1789000000);
+        let response = String::from_utf8(runtime.gdm_response()).expect("text");
+        assert!(response.contains("Name: renamed\r\n"), "{response}");
+        assert!(response.contains(&format!("Updated-At: {}\r\n", runtime.gdm_updated_at)), "{response}");
     }
 }
 

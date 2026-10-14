@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """Exercise the native Rust GDM responder over its real UDP sockets.
 
-The historical ``tests/test_gdm.py`` imports the Python helper directly.  This
-driver keeps that measured oracle separate and verifies that the Rust server
-answers the same trigger grammar without importing or starting Python server
-code.
+The recorded references' blocks, the bisected trigger table, the ports and the peer
+table are unit-tested beside the responder (`gdm_tests` in `rust/src/runtime.rs`,
+driven by `tests/fixtures/gdm/responses.json`); this drives the running server.
 """
 
 import json
@@ -95,6 +94,26 @@ def main():
                     ok = ok and prefix_ok and suffix_ok and source_ok
                 checks.append(ok)
                 print("%s udp/%d %s" % ("PASS" if ok else "FAIL", port, label))
+
+        # A real PMS's own search, sent to the group, reaches the responder. A host that
+        # does not deliver multicast to itself cannot show it.
+        probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        probe.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 1)
+        probe.settimeout(2.0)
+        try:
+            probe.sendto(b"M-SEARCH * HTTP/1.1\r\n", ("239.0.0.250", gdm_ports[-1]))
+            seen = probe.recvfrom(4096)[0]
+        except OSError:
+            seen = None
+        finally:
+            probe.close()
+        if seen is None:
+            print("SKIP a multicast search reaches the responder "
+                  "(this host does not deliver multicast to itself)")
+        else:
+            ok = seen.startswith(expected_prefix) and seen.endswith(b"\r\n\r\n")
+            checks.append(ok)
+            print("%s a multicast search reaches the responder" % ("PASS" if ok else "FAIL"))
 
         request = urllib.request.Request(
             "http://127.0.0.1:%d/servers" % tcp,
