@@ -1,22 +1,20 @@
 #!/usr/bin/env python3
-"""Compare native decision output with the Python oracle on semantic probes.
+"""Compare native decision output with the Python oracle's recorded answers on semantic probes.
 
 The probes exercise JSON number whitespace and streamType typing directly. They are
-not claimed PMS measurements and are intentionally kept out of the measured corpus.
+not claimed PMS measurements and are intentionally kept out of the measured corpus. Each
+expected (outcome, text) is what `oracle/decision.py`'s `decide("Android", media)` answered,
+recorded from the oracle before it was removed.
 """
 
 import json
 import os
 import shlex
 import subprocess
-import sys
 import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
-sys.path.insert(0, os.path.join(ROOT, "oracle"))
-
-import decision  # noqa: E402
 
 
 def native_command():
@@ -51,8 +49,9 @@ def run_native(command, media_path):
 
 
 def main():
+    # (media, the oracle's recorded outcome and text)
     probes = [
-        {
+        ({
             "container": "mp4",
             "videoCodec": "h264",
             "Part": [
@@ -63,8 +62,9 @@ def main():
                     ]
                 }
             ],
-        },
-        {
+        }, ("neither", "App cannot direct play this item. No direct play video profile exists "
+                       "for protocol http, with container mp4, video codec h264, and audio codec ac3.")),
+        ({
             "container": "mp4",
             "videoCodec": "h264",
             "Part": [
@@ -75,19 +75,19 @@ def main():
                     ]
                 }
             ],
-        },
+        }, ("neither", "This app cannot play this item. The reason is: "
+                       "part.optimizedForStreaming limitation applies: 0 != 1.")),
     ]
     command = native_command()
     with tempfile.TemporaryDirectory(prefix="rex-decision-parity-") as directory:
-        for media in probes:
-            expected_outcome, expected_text = decision.decide("Android", media)
+        for media, (expected_outcome, expected_text) in probes:
             path = os.path.join(directory, "media.json")
             with open(path, "w", encoding="utf-8") as handle:
                 json.dump(media, handle)
             actual = run_native(command, path)
             assert actual["outcome"] == expected_outcome, (media, actual, expected_outcome)
             assert actual["text"] == expected_text, (media, actual, expected_text)
-    print("PASS native/Python semantic decision parity for numeric and string streamType")
+    print("PASS native decision matches the oracle's recorded answers for numeric and string streamType")
     return 0
 
 
