@@ -275,6 +275,11 @@ class Stub(ThreadingHTTPServer):
         self.pages = 0
         self.late_tokens = []
         self.refuse_access = False
+        # The first claimed startup deliberately holds the pubsub handler after its 200
+        # headers are visible.  This makes the response/recording race deterministic: rex's
+        # connectivity PUT must be stamped after `opened`.
+        self.pubsub_gap = False
+        self.pubsub_connectivity_seen = threading.Event()
         # A later owner read names another account id beside a broken feature table.
         self.user_id = ACCOUNT_ID
         self.broken_features = False
@@ -312,6 +317,9 @@ class StubHandler(BaseHTTPRequestHandler):
         }
         with self.server.lock:
             self.server.records.append(record)
+        if (record["method"], record["host"], record["path"]) == \
+                ("PUT", "plex.tv", "/api/servers/%s/connectivity" % MACHINE):
+            self.server.pubsub_connectivity_seen.set()
         if (self.command, host) == ("GET", "pubsub.plex.tv"):
             return self.pubsub(path)
         status, kind, payload = self.answer(record)
@@ -342,8 +350,10 @@ class StubHandler(BaseHTTPRequestHandler):
             if name.lower() in ("content-type", "cache-control", "expires"):
                 self.send_header(name, value)
         self.send_header("Connection", "close")
-        self.end_headers()
         opened = precise_time()  # compared with the requests' own `at`
+        self.end_headers()
+        if self.server.pubsub_gap:
+            self.server.pubsub_connectivity_seen.wait(5)
         self.wfile.write(RECORDED["pubsub"]["events"][0]["data"].encode("utf-8"))
         self.wfile.flush()
         asked = None
@@ -764,6 +774,7 @@ def main():
 
         # -- the claim --------------------------------------------------------------
         claimed_at = time.time()
+        stub.pubsub_gap = True
         status, body = first.request("POST", "/myplex/claim?token=%s" % CLAIM_TOKEN)
         myplex = (body or {}).get("MyPlex") if isinstance(body, dict) else None
         check("POST /myplex/claim answers the claimed /myplex/account",
@@ -976,6 +987,7 @@ def main():
         missing = [message for level, message in claim_lines if not logged(first_log, level, message)]
         check("the claim is logged, and its connectivity PUT", not missing,
               "missing %s in %s" % (missing, first_log[-2000:]))
+        stub.pubsub_gap = False
 
         # -- restart: the claim survives -------------------------------------------
         second = Instance(directory, ports[1], ports[2], extra=("--verbose",), announce=ANNOUNCE_URLS)
