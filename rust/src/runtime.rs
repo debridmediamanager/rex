@@ -20037,23 +20037,15 @@ impl Runtime {
                     info!("MERGE {key} <- {ids_repr} (0 row(s) absorbed)");
                     return Response::empty(200);
                 }
-                let mut media = row
-                    .get("Media")
-                    .and_then(Value::as_array)
-                    .cloned()
-                    .unwrap_or_default();
+                // Each Media keeps the release it came from (`feed::tagged_media`), so a source's
+                // next push of an absorbed release finds this row rather than making another.
+                let mut media = feed::tagged_media(row);
                 let mut merged = Vec::new();
                 for (other, value) in others {
                     if other == key {
                         continue;
                     }
-                    media.extend(
-                        value
-                            .get("Media")
-                            .and_then(Value::as_array)
-                            .cloned()
-                            .unwrap_or_default(),
-                    );
+                    media.extend(feed::tagged_media(&value));
                     // A merged-away key is retired: a later split never reuses it.
                     let absorbed = self.subtree_keys(&other);
                     self.freeze_merged_collections(&other);
@@ -20780,18 +20772,8 @@ impl Runtime {
                     .get_mut(target_key)
                     .and_then(Value::as_object_mut)
                 {
-                    let mut media = source
-                        .get("Media")
-                        .and_then(Value::as_array)
-                        .cloned()
-                        .unwrap_or_default();
-                    media.extend(
-                        object
-                            .get("Media")
-                            .and_then(Value::as_array)
-                            .cloned()
-                            .unwrap_or_default(),
-                    );
+                    let mut media = feed::tagged_media(source);
+                    media.extend(feed::tagged_media(&Value::Object(object.clone())));
                     object.insert("Media".to_string(), Value::Array(media));
                     object.insert("updatedAt".to_string(), json!(now()));
                 }

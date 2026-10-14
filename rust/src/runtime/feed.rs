@@ -777,10 +777,12 @@ pub(super) fn replace_misnumbered(shared: &SharedRuntime) -> usize {
     // lock is let go, since a `/find` TMDB has not answered before goes to the network.
     let mut deferred: Vec<(Option<i64>, Option<i64>, String, Value, i64, String, String, String, (i64, i64))> = Vec::new();
     let (mut by_source, sources, tmdb) = {
-        let guard = lock(shared);
+        let mut guard = lock(shared);
         if guard.tmdb.is_none() && guard.plex.is_none() {
             return 0;
         }
+        guard.unfold_versions();
+        let guard = guard;
         let mut by_source: BTreeMap<String, Vec<Value>> = BTreeMap::new();
         let mut show_seasons: HashMap<i64, Vec<(i64, i64, String)>> = HashMap::new();
         for row in guard.catalog.items() {
@@ -1457,6 +1459,83 @@ impl Runtime {
         self.drop_from_queues(&folded.iter().cloned().collect::<Vec<_>>());
         self.dirty = true;
         folded
+    }
+
+    /// Rows holding releases whose files name different episodes, which an identification
+    /// that gave a whole pack one guid folded together (The Boys S03E01-E08 on one episode,
+    /// Food Wars S01-S05 E01 on S1E1; 232 episodes on the production server, 2026-10-14):
+    /// each release naming another episode than the row's first goes onto a row of its own,
+    /// the way Split makes one, so the re-placing pass that follows numbers it by its name.
+    /// What a person matched stays. Answers how many rows it made.
+    pub(super) fn unfold_versions(&mut self) -> usize {
+        let numbers = |row: &Value, index: usize| {
+            let media = row.pointer(&format!("/Media/{index}"))?;
+            let path = media.get("_path").and_then(Value::as_str)?;
+            let mut segments = path.rsplit('/');
+            let name = segments.next()?;
+            let release = segments.next().or_else(|| row.get("_release").and_then(Value::as_str))?;
+            super::scan::episode_of(release, name)
+        };
+        let mut split: Vec<(String, Vec<usize>)> = Vec::new();
+        for row in self.catalog.items() {
+            if row.get("type").and_then(Value::as_str) != Some("episode")
+                || row.get("deletedAt").is_some_and(|value| !value.is_null())
+                || self.matched_by_hand(row)
+            {
+                continue;
+            }
+            let all = versions(row);
+            if all.len() < 2 || all[0].2 != 0 {
+                continue;
+            }
+            let Some(first) = numbers(row, 0) else {
+                continue;
+            };
+            let others: Vec<usize> = all[1..].iter().map(|(_, _, index)| *index).filter(|index| numbers(row, *index).is_some_and(|own| own != first)).collect();
+            if let (false, Some(key)) = (others.is_empty(), key_of(row)) {
+                split.push((key, others));
+            }
+        }
+        let mut made = 0;
+        for (key, indices) in split {
+            let Some(original) = self.catalog.get(&key).cloned() else {
+                continue;
+            };
+            let media = original.get("Media").and_then(Value::as_array).cloned().unwrap_or_default();
+            for index in &indices {
+                let new_key = self.mint_key();
+                let mut clone = original.clone();
+                if let Some(object) = clone.as_object_mut() {
+                    let version = media[*index].clone();
+                    for field in ["_source", "_sid", "_path"] {
+                        if let Some(value) = version.get(field) {
+                            object.insert(field.to_string(), value.clone());
+                        }
+                    }
+                    if let Some(release) = version.get("_path").and_then(Value::as_str).and_then(|path| path.rsplit('/').nth(1)) {
+                        object.insert("_release".to_string(), json!(release));
+                    }
+                    object.insert("Media".to_string(), json!([version]));
+                    object.insert("ratingKey".to_string(), json!(new_key));
+                    object.insert("key".to_string(), json!(format!("/library/metadata/{new_key}")));
+                    // Another episode's: none of the row's watch state is its.
+                    for field in ["viewCount", "viewOffset", "lastViewedAt", "userRating"] {
+                        object.shift_remove(field);
+                    }
+                }
+                self.catalog.add(clone);
+                made += 1;
+            }
+            if let Some(object) = self.catalog.get_mut(&key).and_then(Value::as_object_mut) {
+                let kept: Vec<Value> = media.iter().enumerate().filter(|(index, _)| !indices.contains(index)).map(|(_, media)| media.clone()).collect();
+                object.insert("Media".to_string(), Value::Array(kept));
+            }
+            info!("FEED unfolded {} release(s) naming other episodes off {key}", indices.len());
+        }
+        if made > 0 {
+            self.dirty = true;
+        }
+        made
     }
 
     /// One release of a row holding several gone: its Media dropped, the row's own
