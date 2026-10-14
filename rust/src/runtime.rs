@@ -27944,8 +27944,11 @@ mod gdm_tests {
     }
 
     fn fixture_runtime() -> Runtime {
+        // The build's own path, else the tree the test runs in: a test binary built in a
+        // container and run on another machine (Windows from a cross build) has only the latter.
+        let built = PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/../tests/catalog_ui.json"));
         Runtime::load(RuntimeOptions {
-            catalog: PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/../tests/catalog_ui.json")),
+            catalog: if built.exists() { built } else { PathBuf::from("../tests/catalog_ui.json") },
             state: Some(PathBuf::new()),
             token: None,
             ..RuntimeOptions::default()
