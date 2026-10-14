@@ -19,8 +19,7 @@ collapses.
   Plex Personal Media for album/track, Personal Media for the photo and 20-22 types);
   rex listed none of them, and the provider table's `MetadataType` lists followed.
 
-Drives a real server process (`tests/server_command.py`): the native binary by
-default, the oracle with `REX_SERVER=python`.
+Drives a real server process (`tests/server_command.py`).
 
     python3 tests/test_followups_c87_w2.py
 """

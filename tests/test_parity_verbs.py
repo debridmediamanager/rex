@@ -26,8 +26,7 @@ for every verb and on plexlab and the 1.42.2 reference for OPTIONS and HEAD:
 - player          -- a bare OPTIONS under `/player/` is the same 400 as every other
                      verb (the oracle 404'd it).
 
-Drives a real server process (`tests/server_command.py`): the native binary by
-default, the oracle with `REX_SERVER=python`.
+Drives a real server process (`tests/server_command.py`).
 
     python3 tests/test_parity_verbs.py
 """

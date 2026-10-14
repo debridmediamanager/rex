@@ -15,8 +15,7 @@ member (`collection[].tag.tag-`) does the same. A collection CREATED with nothin
 has no `childCount` (cycle 83); the reference simply stops recomputing the aggregate when the
 count reaches zero.
 
-Drives a real server process (`tests/server_command.py`): the native binary by default,
-the oracle with `REX_SERVER=python`.
+Drives a real server process (`tests/server_command.py`).
 
     python3 tests/test_parity_cycle87_b.py
 """

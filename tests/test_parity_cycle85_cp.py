@@ -18,8 +18,7 @@ checked against the reference's own exchange before it is applied to rex:
   queue with no live row still names its selection. A window slices the whole queue
   before the dead rows drop. Both servers counted and indexed only the live rows.
 
-Drives a real server process (`tests/server_command.py`): the native binary by default,
-the oracle with `REX_SERVER=python`.
+Drives a real server process (`tests/server_command.py`).
 
     python3 tests/test_parity_cycle85_cp.py
 """

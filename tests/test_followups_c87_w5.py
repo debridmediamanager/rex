@@ -8,8 +8,7 @@ sort descriptors, its preferences and its hubs. `tests/fixtures/c87_w5_music_lib
 is every one of those reads, replayed on plexscratch42 (1.42.2) against the same empty
 music library made with the same form, and each check below asserts the measured value.
 
-Drives a real server process (`tests/server_command.py`): the native binary by
-default, the oracle with `REX_SERVER=python`.
+Drives a real server process (`tests/server_command.py`).
 
     python3 tests/test_followups_c87_w5.py
 """

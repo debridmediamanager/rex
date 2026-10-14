@@ -15,8 +15,6 @@ pushed without ids stays unmatched until a later push names it.
 The migration leg starts from rows the old WebDAV scanner really made
 (`fixtures/feed/legacy_scan_rows.json`, recorded by `probes/legacy_scan_fixture.py`).
 
-Native only: the feed is rex's own API, and the Python oracle has none.
-
     python3 tests/test_feed.py
 """
 import http.server
@@ -666,7 +664,4 @@ def main():
 
 
 if __name__ == "__main__":
-    if os.environ.get("REX_SERVER") == "python":
-        print("the feed is rex's own API; the Python oracle has none, so this suite is native only")
-        sys.exit(0)
     sys.exit(main())

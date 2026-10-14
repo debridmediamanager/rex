@@ -19,7 +19,7 @@ def main():
             try:
                 server_command("--port", 32500, root=repo)
             except FileNotFoundError as error:
-                assert "cargo build" in str(error) and "REX_SERVER=python" in str(error)
+                assert "cargo build" in str(error) and "REX_SERVER" in str(error)
             else:
                 raise AssertionError("an unbuilt native default must fail clearly")
             native = os.path.join(repo, "rust", "target", "release", "rex.exe" if os.name == "nt" else "rex")
@@ -31,11 +31,6 @@ def main():
             assert server_command("--state", "s", root=repo) == [native, "--state", "s"]
             assert server_command("--state=s", root=repo) == [native, "--state=s"]
             assert server_command("--no-state", root=repo) == [native, "--no-state"]
-
-        os.environ["REX_SERVER"] = "python"
-        oracle = server_command("--port", 32500, root="/repo with spaces")
-        assert oracle == [sys.executable, os.path.join("/repo with spaces", "oracle", "server.py"), "--port", "32500",
-                          "--no-state"]
 
         os.environ["REX_SERVER"] = '"/tmp/native build/rex" --profile "test mode"'
         selected = server_command("--port", 32501, "--catalog", "/tmp/catalog.json",
@@ -64,7 +59,7 @@ def main():
         else:
             os.environ["REX_SERVER"] = old
 
-    print("PASS native default, python oracle and quoted executable override")
+    print("PASS native default and quoted executable override")
     return 0
 
 

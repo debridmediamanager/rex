@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 """The server's command line is `main()`'s argparse, on both servers.
 
-What a caller of `server.py` can rely on and a port can silently drop: `-h`/`--help`
+What a caller of the Python oracle could rely on and a port can silently drop: `-h`/`--help`
 anywhere among the options prints the help and exits 0 without serving; an option
 argparse does not know is refused with exit 2; `--flag=value` and a unique prefix of
 a flag are accepted; and with no `--web-root` the `webclient` folder beside the
 program is the client served at `/web`.
 
-Drives real server processes (`tests/server_command.py`), so it runs against the
-native binary by default and the Python oracle with `REX_SERVER=python`.
+Drives real server processes (`tests/server_command.py`).
 
     python3 tests/test_cli.py
 """

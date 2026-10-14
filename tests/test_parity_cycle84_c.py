@@ -7,8 +7,7 @@ movie library created on the legacy Personal Media agent over the reference medi
 asserts the measured values: no `Guid` key on that row in any `includeGuids=1` listing, JSON or
 XML, and the row NOT counted by the `unmatched=1` filter.
 
-Starts its own server (native by default, `REX_SERVER=python` the oracle,
-`REX_SERVER=/path/to/binary` any build), without `--state`.
+Starts its own server (native by default, `REX_SERVER=/path/to/binary` any build), without `--state`.
 """
 import http.client
 import json

@@ -36,8 +36,7 @@ the 1.42.2 reference): ASCII letters match ignoring case -- `genre=ANIMATION` is
 and a non-ASCII letter only in its own case -- `actor=ARINZé KENE` finds Arinzé Kene,
 `ARINZÉ KENE` nothing (SQLite's NOCASE). Both servers compared names exactly.
 
-Drives a real server process (`tests/server_command.py`): the native binary by default,
-the oracle with `REX_SERVER=python`.
+Drives a real server process (`tests/server_command.py`).
 
     python3 tests/test_parity_cycle88_b.py
 """

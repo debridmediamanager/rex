@@ -14,16 +14,11 @@ suite holds what replaced it:
 * a legacy `state.json` (recorded from the native server before the change,
   `fixtures/legacy_state_native.json`) is imported once and kept aside;
 * `--catalog` takes a database written by `build_catalog.py --convert`: it serves
-  exactly what the JSON it came from serves, on both servers, and the native state
-  then lives in the same file;
+  exactly what the JSON it came from serves, and the state then lives in the same file;
 * a catalog rebuilt inside that database keeps a `.stale` copy and carries view
   state, as a rebuilt JSON catalog does.
 
-Native-only checks are skipped under `REX_SERVER=python`: the Python oracle keeps
-its pickle (a recorded deliberate difference) and only reads a database catalog.
-
     python3 tests/test_sqlite_store.py
-    REX_SERVER=python python3 tests/test_sqlite_store.py
 """
 import copy
 import json
@@ -41,12 +36,7 @@ from test_persist import Instance, LIBRARY, check, first, results
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
-NATIVE = os.environ.get("REX_SERVER", "").strip() != "python"
 MAGIC = b"SQLite format 3\x00"
-
-
-def skip(name):
-    print("SKIP  %s  -- the Python oracle keeps its pickle" % name)
 
 
 def is_sqlite(path):
@@ -84,8 +74,6 @@ def scrobble(instance, key="1007"):
 
 
 def default_database():
-    if not NATIVE:
-        return skip("the default state is rex.db, stored by the row")
     work, catalog = workdir()
     try:
         server = Instance(catalog, default=True)
@@ -131,8 +119,6 @@ def large_catalog(count):
 
 def one_write_touches_few_rows():
     name = "one rating on a 20,000-row catalog writes a handful of rows"
-    if not NATIVE:
-        return skip(name)
     work, catalog = workdir(document=large_catalog(20000))
     try:
         state = os.path.join(work, "rex.db")
@@ -188,8 +174,6 @@ def one_write_touches_few_rows():
 
 def legacy_migration():
     name = "a legacy state.json is imported into rex.db and kept aside"
-    if not NATIVE:
-        return skip(name)
     work, catalog = workdir()
     try:
         legacy = os.path.join(work, "state.json")
@@ -238,8 +222,6 @@ def database_catalog():
         check("a database catalog serves exactly what its JSON source serves",
               not differ and all(from_db[path][0] == 200 for path in SAME),
               "differ %s; statuses %s" % (differ, [from_db[p][0] for p in SAME]))
-        if not NATIVE:
-            return skip("the native state lives in the catalog's own database")
         server = Instance(database, default=True)
         scrobble(server)
         server.stop()

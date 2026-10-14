@@ -23,8 +23,7 @@
 A media-item DELETE itself is a 400 on both disposable copies (read-only media), so the
 frame's TITLE for a media row is unmeasured and not asserted here.
 
-Drives a real server process (`tests/server_command.py`): the native binary by
-default, the oracle with `REX_SERVER=python`.
+Drives a real server process (`tests/server_command.py`).
 
     python3 tests/test_parity_cycle84_b.py
 """

@@ -16,8 +16,7 @@ over one movie, and the two versions answer every step alike:
 Both servers untagged by the stored tag, so the first two left nothing where a real PMS
 leaves the tag, and the last left A's tag and membership alone.
 
-Drives a real server process (`tests/server_command.py`): the native binary by default,
-the oracle with `REX_SERVER=python`.
+Drives a real server process (`tests/server_command.py`).
 
     python3 tests/test_parity_cycle88_b3.py
 """

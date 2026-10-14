@@ -14,8 +14,7 @@ server rounded half away from zero and said 45.
 Re-read here from the fixture, then applied to rex's four-season show, whose second
 season lands on the same 44.5.
 
-Drives a real server process (`tests/server_command.py`): the native binary by default,
-the oracle with `REX_SERVER=python`.
+Drives a real server process (`tests/server_command.py`).
 
     python3 tests/test_parity_cycle86_cp.py
 """

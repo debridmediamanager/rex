@@ -12,8 +12,7 @@ remains is behaviour.
   playing client's device, not device 1;
 - a remote artwork fetch sends the oracle's urllib headers, with no `Accept`.
 
-Drives a real server process (`tests/server_command.py`): the native binary by
-default, the oracle with `REX_SERVER=python`.
+Drives a real server process (`tests/server_command.py`).
 
     python3 tests/test_parity_residue.py
 """

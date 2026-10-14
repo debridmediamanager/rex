@@ -26,8 +26,7 @@
    delete. The unfixed oracle failed 9 and 10 of 300 pairs; the check asserts none.
    `--skip-race` leaves it out.
 
-Drives a real server process (`tests/server_command.py`): the native binary by default,
-the oracle with `REX_SERVER=python`.
+Drives a real server process (`tests/server_command.py`).
 
     python3 tests/test_followups_c87_e2.py
 """

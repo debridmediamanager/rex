@@ -2,14 +2,14 @@
 """Item metadata and the library's secondary leaves answer what the oracle answers.
 
 Each check is a difference the full UI suite's recording found between the native
-server and the Python oracle (`server.py`), on `/library/metadata/{id}` and its leaves,
+server and the Python oracle, on `/library/metadata/{id}` and its leaves,
 `/library`, `/library/tags`, `/library/arts`, `/library/randomArtwork` and
 `/library/people/{id}/media`. The values asserted are the oracle's own -- concrete
 shapes, not "equal to the other server" -- so the file passes on the oracle and on a
 native build that has closed the gaps.
 
 Drives a real server process (`tests/server_command.py`): the native binary by default,
-the oracle with `REX_SERVER=python`, any other build with `REX_SERVER=/path`.
+any other build with `REX_SERVER=/path`.
 
     python3 tests/test_parity_metadata.py
 """

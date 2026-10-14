@@ -24,8 +24,7 @@ unpaged `/library/sections/1/all` before any list exists -- so a slower host mov
 bound with it. The fixed servers sit at 0.1 to 2 of that unit; the unfixed ones at 2.4
 (a create) to 48 (twenty pairs).
 
-Drives a real server process (`tests/server_command.py`): the native binary by default,
-the oracle with `REX_SERVER=python`.
+Drives a real server process (`tests/server_command.py`).
 
     python3 tests/test_perf_c87.py
 """

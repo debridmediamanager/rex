@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 """Playlists, collections and artwork answer what the Python oracle answers.
 
-Each check pins a value the oracle (`server.py`) answers for the UI suite's own request,
+Each check pins a value the Python oracle answered for the UI suite's own request,
 found by recording `tests/test_ui_surface.py` against the oracle and the native server
 and diffing every exchange. Each one failed on the native build before its fix.
 
-Drives a real server process (`tests/server_command.py`): the native binary by
-default, the oracle with `REX_SERVER=python`.
+Drives a real server process (`tests/server_command.py`).
 
     python3 tests/test_parity_lists.py
 """

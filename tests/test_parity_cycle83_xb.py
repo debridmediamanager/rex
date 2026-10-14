@@ -25,8 +25,7 @@
   (`tests/fixtures/decision_stream_language_zen.json`) while the item read localises them;
   the oracle localised the decision too.
 
-Drives a real server process (`tests/server_command.py`): the native binary by
-default, the oracle with `REX_SERVER=python`.
+Drives a real server process (`tests/server_command.py`).
 
     python3 tests/test_parity_cycle83_xb.py
 """

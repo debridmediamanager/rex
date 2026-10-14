@@ -15,8 +15,7 @@ the first to come back, it took the other server's file and showed THAT server's
 writes instead of its own. Now it refuses to start, as PMS does. An explicit `--state`
 or `--no-state` names a different arrangement and still starts.
 
-Drives real server processes (`tests/server_command.py`): the native binary by
-default, the oracle with `REX_SERVER=python`.
+Drives real server processes (`tests/server_command.py`).
 
     python3 tests/test_parity_cycle92_cp.py
 """

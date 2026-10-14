@@ -16,8 +16,7 @@ Both halves are driven from `tests/fixtures/split_guid.json`, recorded on plexsc
   the imdb/tmdb list the unmatch kept. rex kept an unmatched movie's stored ids in
   every listing and gave a `local://` row a one-entry list on `/hubs`.
 
-Drives a real server process (`tests/server_command.py`): the native binary by
-default, the oracle with `REX_SERVER=python`.
+Drives a real server process (`tests/server_command.py`).
 
     python3 tests/test_parity_split_guid.py
 """

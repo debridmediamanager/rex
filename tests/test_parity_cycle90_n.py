@@ -8,8 +8,7 @@ rex ordered by the CRC-32 of `<salt>/<ratingKey>` with a fresh salt: CRC is affi
 so a new salt only XORs every row's key with one mask, and six movies came out in 8 of
 720 orders -- the "reshuffled" grid repeated itself every few reads.
 
-Drives a real server process (`tests/server_command.py`): the native binary by
-default, the oracle with `REX_SERVER=python`.
+Drives a real server process (`tests/server_command.py`).
 
     python3 tests/test_parity_cycle90_n.py
 """

@@ -21,8 +21,7 @@ Both servers pruned the absorbed key and recounted live, so the solo collection 
 `childCount` and the pair read 1. A row DELETE that empties a collection stays unmeasured:
 the copy answers 400 to every media-item DELETE (`allowMediaDeletion` true, media read-only).
 
-Drives a real server process (`tests/server_command.py`): the native binary by default,
-the oracle with `REX_SERVER=python`.
+Drives a real server process (`tests/server_command.py`).
 
     python3 tests/test_parity_cycle87_b2.py
 """

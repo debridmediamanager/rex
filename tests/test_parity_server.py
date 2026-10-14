@@ -9,8 +9,7 @@ check asserts the Python oracle's concrete value, which is what its handler's co
 records as measured on a real PMS -- not "equal to the other server".
 
 Drives a real server process (`tests/server_command.py`): the native binary by
-default, the oracle with `REX_SERVER=python`, another build with
-`REX_SERVER=/path/to/rex`.
+default, another build with `REX_SERVER=/path/to/rex`.
 
     python3 tests/test_parity_server.py
 """
@@ -351,7 +350,7 @@ def run_system(s):
 
 def run_resources(s):
     # -- bundled resources and generated images are the oracle's bytes ---------------
-    # server.py's `_jpeg`/`_png` placeholders at the measured geometry (zlib level 6 for
+    # The oracle's `_jpeg`/`_png` placeholders at the measured geometry (zlib level 6 for
     # the PNG, so the deflate stream is zlib's own).
     for path, size, kind in (("/:/resources/movie-fanart.jpg", 33011, "image/jpeg"),
                              ("/:/resources/show-fanart.jpg", 33011, "image/jpeg"),

@@ -15,8 +15,7 @@ not copy", each re-measured on a real PMS before either server changed:
   every other rule of the line;
 - an idle keep-alive connection is dropped at 20 s with nothing written.
 
-Drives a real server process (`tests/server_command.py`): the native binary by default,
-the oracle with `REX_SERVER=python`.
+Drives a real server process (`tests/server_command.py`).
 
     python3 tests/test_followups_fb.py
 """

@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 """Hubs and search answer the oracle's shapes: the parity checks for route family A.
 
-Each check here is a difference found by recording the UI suite against `server.py`
+Each check here is a difference found by recording the UI suite against the Python oracle
 and against the native server and diffing every exchange (`/hubs*`, `/hubs/search*`,
 `/library/sections/{id}/search|autocomplete`, `/library/search`, `/search`,
-`/library/matches`). They assert the oracle's concrete values, so each one passes on
-`server.py`, failed on the native build before its fix, and passes after it.
+`/library/matches`). They assert the oracle's concrete values, so each one passed on
+the oracle, failed on the native build before its fix, and passes after it.
 
 Drives a real server process (`tests/server_command.py`): the native binary by
-default, the Python oracle with `REX_SERVER=python`, any other build with
-`REX_SERVER=/path/to/rex`. Writes go to its own in-memory catalog.
+default, any other build with `REX_SERVER=/path/to/rex`. Writes go to its own in-memory catalog.
 
     python3 tests/test_parity_hubs.py
 """

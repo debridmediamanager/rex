@@ -19,8 +19,7 @@ The notification socket answers a client PING with a PONG carrying the same payl
 pings its `/:/websockets/notifications` socket and, getting no pong from rex, dropped it after 50 s
 (close 1006) and never reopened it.
 
-Drives a real server process (`tests/server_command.py`): the native binary by default, the
-oracle with `REX_SERVER=python`. Binds a port in 25420-25429.
+Drives a real server process (`tests/server_command.py`). Binds a port in 25420-25429.
 
     python3 tests/test_parity_cycle94_d.py
 """

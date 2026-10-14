@@ -24,8 +24,7 @@ Both servers minted a fresh guid per collection and brought nothing back, so re-
 collection Plex Web had rated showed it unrated, and python-plexapi's `userRating` and
 `guid` disagreed with a real PMS.
 
-Drives a real server process (`tests/server_command.py`): the native binary by default,
-the oracle with `REX_SERVER=python`.
+Drives a real server process (`tests/server_command.py`).
 
     python3 tests/test_parity_cycle89_b.py
     python3 tests/test_parity_cycle89_b.py --capture BASE TOKEN OUT   # re-measure (writes!)

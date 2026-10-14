@@ -14,8 +14,7 @@ Each check asserts the MEASURED answer, not the other server's:
 - a `random="1"` hub shelf is a random sample of its whole set in random order, held per
   (shelf, count) for the life of the process (the 1.42.2 reference, cycles 28 and 30).
 
-Drives a real server process (`tests/server_command.py`): the native binary by
-default, the oracle with `REX_SERVER=python`.
+Drives a real server process (`tests/server_command.py`).
 
     python3 tests/test_parity_residue_ra.py
 """

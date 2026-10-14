@@ -13,8 +13,7 @@
    `application/xml` document whatever Accept says, and the music scanner list is its own
    220-byte form. rex answered JSON to a JSON Accept, and 217 bytes for music.
 
-Drives a real server process (`tests/server_command.py`): the native binary by
-default, the oracle with `REX_SERVER=python`.
+Drives a real server process (`tests/server_command.py`).
 
     python3 tests/test_followups_c87_w6.py
 """

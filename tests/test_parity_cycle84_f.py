@@ -21,8 +21,7 @@ does not parse, measured over raw sockets on plexlab and plexscratch42
 (`tests/fixtures/header_ows_roku.json`) through `/media/providers`' Roku pivot strip. The
 oracle's parser stripped every leading space.
 
-Drives a real server process (`tests/server_command.py`): the native binary by default,
-the oracle with `REX_SERVER=python`.
+Drives a real server process (`tests/server_command.py`).
 
     python3 tests/test_parity_cycle84_f.py
 """

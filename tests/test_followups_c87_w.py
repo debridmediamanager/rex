@@ -14,8 +14,7 @@
   so a 1.42.2 server is never asked; its answers are pinned anyway (the 1.42.2 reference: an
   empty `clearLogos` container, a 404 `squareArts`).
 
-Drives a real server process (`tests/server_command.py`): the native binary by
-default, the oracle with `REX_SERVER=python`.
+Drives a real server process (`tests/server_command.py`).
 
     python3 tests/test_followups_c87_w.py
 """

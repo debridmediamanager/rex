@@ -18,8 +18,7 @@ the header order of paged and gzipped answers.
 Every request is replayed on a raw keep-alive socket, because `Connection: close` changes
 the header block (it drops `Keep-Alive`) and the order is what item 3 measures.
 
-Drives a real server process (`tests/server_command.py`): the native binary by
-default, the oracle with `REX_SERVER=python`.
+Drives a real server process (`tests/server_command.py`).
 
     python3 tests/test_followups_c87_w7.py
 """

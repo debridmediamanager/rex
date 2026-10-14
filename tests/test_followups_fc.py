@@ -14,8 +14,7 @@
 - a deleted library's rows are gone from every reader: 404 by key, and absent from
   listings, hubs, On Deck, Recently Added, search, playlists, collections and play queues.
 
-Drives a real server process (`tests/server_command.py`): the native binary by default,
-the oracle with `REX_SERVER=python`.
+Drives a real server process (`tests/server_command.py`).
 
     python3 tests/test_followups_fc.py
 """

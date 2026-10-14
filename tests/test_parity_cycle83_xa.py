@@ -14,7 +14,7 @@ A's localisation and item-settings sweeps, checked against the 1.42.2 reference'
 Both expectations are the 1.42.2 reference's recorded exchanges
 (`tests/fixtures/item_language_override_zen.json`,
 `tests/fixtures/query_parse_field_titles_zen.json`). Drives a real server process
-(`tests/server_command.py`): the native binary by default, the oracle with `REX_SERVER=python`.
+(`tests/server_command.py`).
 
     python3 tests/test_parity_cycle83_xa.py
 """

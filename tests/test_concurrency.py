@@ -2,8 +2,7 @@
 """Concurrency: what many clients at once may and may not change about the answers.
 
 Every parity comparison before this sent one request at a time. This suite drives a
-real server process (`tests/server_command.py`: the native binary by default, the
-oracle with `REX_SERVER=python`) with many at once, black-box, and proves:
+real server process (`tests/server_command.py`) with many at once, black-box, and proves:
 
 1. races  -- two requests released by one barrier are serialised: two play-queue adds
    answer two different containers (cycle 32: a real PMS 0 of 110, rex 11 of 67

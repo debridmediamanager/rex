@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Library listing parity: the section containers, leaves and rows as `server.py` builds them.
+"""Library listing parity: the section containers, leaves and rows as the Python oracle built them.
 
 Each check asserts what the Python oracle answers (itself measured against a real PMS)
 for one request of the library-listing family -- `/library/sections`, a section's
@@ -8,8 +8,7 @@ leaves (`sorts`, `filters`, `folder`, `{tag}/top`, `arts`, `allLeaves`, `albums`
 double-slash pass-through routes -- found by diffing the native server's answers
 against the oracle's over the whole UI suite.
 
-Drives a real server process (`tests/server_command.py`): the native binary by
-default, the oracle with `REX_SERVER=python`.
+Drives a real server process (`tests/server_command.py`).
 
     python3 tests/test_parity_listings.py
 """

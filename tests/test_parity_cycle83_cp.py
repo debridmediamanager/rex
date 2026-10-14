@@ -5,8 +5,8 @@ Each check replays a reference exchange recorded in `tests/fixtures/cycle83_cp.j
 reference and plexscratch42, both PMS 1.42.2) and asserts the measured value, not agreement between
 the two servers.
 
-Starts its own server (native by default, `REX_SERVER=python` the oracle,
-`REX_SERVER=/path/to/binary` any build) on `tests/catalog_ui.json`, without `--state`.
+Starts its own server (native by default, `REX_SERVER=/path/to/binary` any build) on
+`tests/catalog_ui.json`, without `--state`.
 """
 import http.client
 import json

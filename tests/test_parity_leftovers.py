@@ -20,8 +20,7 @@ re-measured on a real PMS and checked here against the measured values.
 - `DELETE /library/metadata/{a},{b}` is a 404 that deletes nothing
   (`tests/fixtures/delete_key_list.json`, plexscratch42);
 
-Drives a real server process (`tests/server_command.py`): the native binary by
-default, the oracle with `REX_SERVER=python`.
+Drives a real server process (`tests/server_command.py`).
 
     python3 tests/test_parity_leftovers.py
 """

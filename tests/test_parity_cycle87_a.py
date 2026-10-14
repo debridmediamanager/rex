@@ -16,8 +16,7 @@ Library commits added, in the request's language.
 - six refusing Add Library forms that between them raise all eleven refusal lines, in
   every language Plex Web sends and `hu-HU`: three of the lines are translated.
 
-Drives a real server process (`tests/server_command.py`): the native binary by default,
-the oracle with `REX_SERVER=python`.
+Drives a real server process (`tests/server_command.py`).
 
     python3 tests/test_parity_cycle87_a.py
 """

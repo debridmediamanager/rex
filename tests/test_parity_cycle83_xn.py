@@ -11,7 +11,7 @@ FOLLOW it in its own season, and stops at the season's end; a PUT add honours it
 way; and a season or show uri added to a queue adds its episodes. The native PUT added the
 bare episode, season or show row.
 
-Starts its own server (native by default, `REX_SERVER=python` the oracle) on
+Starts its own server (native by default) on
 `tests/catalog_ui.json`, whose show 20001 has seasons 30002 [1002, 1003] and
 30004 [1005, 1006, 1010, 1011].
 """

@@ -25,8 +25,7 @@ Both servers re-stamped `lastRatedAt` and `viewUpdatedAt` on every `/:/rate`, st
 `-5` cleared `lastRatedAt` instead. CLIENT-VISIBLE: a section's Recently Watched shelf and
 its `/onDeck` order by `viewUpdatedAt` (cycle 54), and python-plexapi reads `lastRatedAt`.
 
-Drives a real server process (`tests/server_command.py`): the native binary by default,
-the oracle with `REX_SERVER=python`.
+Drives a real server process (`tests/server_command.py`).
 
     python3 tests/test_parity_cycle90_b.py
     python3 tests/test_parity_cycle90_b.py --capture BASE TOKEN OUT   # re-measure (writes!)

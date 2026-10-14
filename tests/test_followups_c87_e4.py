@@ -26,8 +26,7 @@
    in the stored list and hid it at render, so the stale id still addressed a slot:
    the move landed after it and the DELETE answered 200.
 
-Drives a real server process (`tests/server_command.py`): the native binary by default,
-the oracle with `REX_SERVER=python`.
+Drives a real server process (`tests/server_command.py`).
 
     python3 tests/test_followups_c87_e4.py
 """

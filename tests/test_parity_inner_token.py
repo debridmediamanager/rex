@@ -9,7 +9,7 @@ was refused and every poster tile answered 404 -- the app drew titles where the 
 The oracle answered 200. `/service(s)/ultrablur/colors` goes through the transcoder, and the
 Categories shelf reads its genre axis the same way.
 
-Starts its own servers (native by default, `REX_SERVER=python` the oracle) on
+Starts its own servers (native by default) on
 `tests/catalog_ui.json` with `--token`.
 """
 import gzip

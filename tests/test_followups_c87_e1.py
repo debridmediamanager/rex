@@ -11,8 +11,7 @@
   (`tests/fixtures/queue_lost_selection_s42.json`);
 - the reads that list no rows at all: `window=0`, and a `center=` naming no row of the queue.
 
-Drives a real server process (`tests/server_command.py`): the native binary by default,
-the oracle with `REX_SERVER=python`.
+Drives a real server process (`tests/server_command.py`).
 
     python3 tests/test_followups_c87_e1.py
 """

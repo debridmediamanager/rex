@@ -1,17 +1,15 @@
 #!/usr/bin/env python3
 """Playback, sessions and statistics answer the way the Python oracle answers them.
 
-Each check pins a value, a shape or a header the oracle (`server.py`, `sessions.py`)
+Each check pins a value, a shape or a header the Python oracle
 produces for the exact request, where the native port answered something else: the
 play-queue item counter, the session model behind `/status/sessions`, the device table,
 the per-device byte counters behind `/statistics/bandwidth`, the resource sampler behind
 `/statistics/resources`, and the empty `text/html` answer every mutating endpoint gives.
 
-Drives a real server process (`tests/server_command.py`), so it runs against the native
-binary by default and against the oracle with `REX_SERVER=python`:
+Drives a real server process (`tests/server_command.py`):
 
     python3 tests/test_parity_playback.py
-    REX_SERVER=python python3 tests/test_parity_playback.py
 """
 import http.client
 import json

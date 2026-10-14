@@ -7,8 +7,7 @@ static files stay open; everything else needs a peer and every `X-Forwarded-For`
 loopback or, with `allowedNetworks` empty, a private network (with it set, in it), and a
 `Host` naming localhost or the address the request arrived on. rex answered everyone.
 
-    python3 tests/test_unclaimed_gate.py                      # the native server
-    REX_SERVER=python python3 tests/test_unclaimed_gate.py   # the Python oracle
+    python3 tests/test_unclaimed_gate.py
 """
 import http.client
 import os

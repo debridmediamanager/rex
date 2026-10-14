@@ -12,8 +12,7 @@ whitespace -- so a leading TAB (alone, or after the one optional space) passed a
 with the platform `\\tRoku`, while the native server refused it. B's `regress64b_ows`
 caught it at 5/7 on the oracle.
 
-Drives a real server process (`tests/server_command.py`): the native binary by default,
-the oracle with `REX_SERVER=python`.
+Drives a real server process (`tests/server_command.py`).
 
     python3 tests/test_parity_cycle85_b.py
 """

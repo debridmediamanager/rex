@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""`--state`, kind by kind: every piece of mutable state `persist.py` keeps survives.
+"""`--state`, kind by kind: every piece of mutable state the state file keeps survives.
 
 `test_persist.py` proves the store works for a dozen writes at once. This suite
-walks the whole list `persist.py` snapshots -- the catalog's rows and sections, the
+walks the whole list the state file holds -- the catalog's rows and sections, the
 library's lists, tag table, history and counters, the server's preferences, section
 and agent settings, provider groups, uploads (and their bytes), minted theme rows,
 play and download queues, and the session module's device and statistics tables --
@@ -15,12 +15,11 @@ the reads answer identically, and only counts when they differ from a fresh inst
 kind also creates one more of its thing after the restart, and that id must be the one
 a server that never restarted hands out: the counter continues rather than restarts.
 
-The catalog-rebuild rule (`persist.Store.restore`) is checked last: over a changed
-catalog only the view state -- matched by guid, then by part file -- and the
+The catalog-rebuild rule (`restore_state`, `rust/src/runtime.rs`) is checked last: over a
+changed catalog only the view state -- matched by guid, then by part file -- and the
 server-level settings carry over, and the old file is kept as `<file>.stale`.
 
-    python3 tests/test_parity_persist.py            # native
-    REX_SERVER=python python3 tests/test_parity_persist.py
+    python3 tests/test_parity_persist.py
 """
 import hashlib
 import http.client
@@ -615,7 +614,7 @@ def main():
 
 
 def rebuild(work, catalog, machine):
-    """`persist.Store.restore` over a changed catalog: view state by guid, then by part
+    """The state restore over a changed catalog: view state by guid, then by part
     file; the server-level settings; nothing else; the old file kept as `.stale`."""
     state = os.path.join(work, "rebuild-state")
     shutil.copy(os.path.join(HERE, "catalog_ui.json"), catalog)

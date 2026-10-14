@@ -309,7 +309,7 @@ def main():
         speller.stop()
 
         # -- a read is coalesced, not saved before it is answered -------------------
-        # persist.Store: only a client write (or a first-seen device) is saved before
+        # The state store: only a client write (or a first-seen device) is saved before
         # its answer; every other request marks the state dirty and the saver writes at
         # most once per two-second interval. A server that saved on every request
         # rewrote the whole state file -- every catalog row -- on each read.

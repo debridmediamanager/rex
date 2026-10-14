@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The server's own log, as the Console and Download Logs hand it to a client.
 
-Every route that logs in `server.py` writes one line with its own text and level, on
+Every route that logs (as the Python oracle did) writes one line with its own text and level, on
 the thread that served the request, and that line reaches Download Logs
 (`/diagnostics/logs`, `rex.log`) and every event channel opened with
 `filters=log` as a `LogSentNotification`. A server that answers the same bytes but
@@ -13,8 +13,7 @@ exact whitelist on the SSE channel as on the websocket, the SSE channel STREAMS 
 its first ping, an edit pushes its real `EDIT` line and nothing invented, and a
 websocket CLOSE is echoed with 1000.
 
-Drives real server processes (`tests/server_command.py`), so it runs against the
-native binary by default and the Python oracle with `REX_SERVER=python`. The
+Drives real server processes (`tests/server_command.py`). The
 part read goes to a zurg on a closed port and expects the transport failure's 502.
 
     python3 tests/test_server_log.py

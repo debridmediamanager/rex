@@ -21,8 +21,7 @@ rex read the row's own `viewCount` on both lists, and an episode scrobble stamps
 on its season and show, so one watched episode took the show off `/unwatched` and a
 partly watched season off `/children?unwatched=1`.
 
-Drives a real server process (`tests/server_command.py`): the native binary by default,
-the oracle with `REX_SERVER=python`.
+Drives a real server process (`tests/server_command.py`).
 
     python3 tests/test_followups_fd.py
 """

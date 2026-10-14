@@ -17,8 +17,7 @@ every listing surface read once (python-plexapi's `section.all()` shape included
 Both servers sent every tag in join order, so python-plexapi's `Movie.collections` on a
 `section.all()` object (a non-empty list is never reloaded) named different collections.
 
-Drives a real server process (`tests/server_command.py`): the native binary by default,
-the oracle with `REX_SERVER=python`.
+Drives a real server process (`tests/server_command.py`).
 
     python3 tests/test_parity_cycle88_b4.py
 """

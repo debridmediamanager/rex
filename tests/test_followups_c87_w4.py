@@ -14,8 +14,7 @@ offers (`com.plexapp.agents.imdb` with `en`, `com.plexapp.agents.none` with `xn`
 The forms the reference ACCEPTED are replayed too, the music ones included (a real
 PMS creates a `type=artist` library with the music agent, `Plex Music` and group 3).
 
-Drives a real server process (`tests/server_command.py`): the native binary by
-default, the oracle with `REX_SERVER=python`.
+Drives a real server process (`tests/server_command.py`).
 
     python3 tests/test_followups_c87_w4.py
 """

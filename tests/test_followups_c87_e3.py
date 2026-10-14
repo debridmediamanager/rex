@@ -13,8 +13,7 @@ python-plexapi's `Playable.updateTimeline` shape:
 - a beat with NO `playQueueItemID` moves its client's own queue to the first row of its
   `ratingKey`; an EMPTY one (or `0`, `abc`, an unknown id) moves nothing.
 
-Drives a real server process (`tests/server_command.py`): the native binary by default,
-the oracle with `REX_SERVER=python`.
+Drives a real server process (`tests/server_command.py`).
 
     python3 tests/test_followups_c87_e3.py
 """

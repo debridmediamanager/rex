@@ -72,7 +72,4 @@ def main():
 
 
 if __name__ == "__main__":
-    if os.environ.get("REX_SERVER") == "python":
-        print("the feed is rex's own API; the Python oracle has none, so this suite is native only")
-        sys.exit(0)
     sys.exit(main())

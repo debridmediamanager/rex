@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """The gaps a differential VOCABULARY sweep found (cycle 83).
 
-`probes/vsweep.py` appended every parameter name the oracle's source reads to
-every request path Plex Web builds and diffed the oracle against the native server.
+The oracle-era `probes/vsweep.py` appended every parameter name the oracle's source read
+to every request path Plex Web builds and diffed the oracle against the native server.
 Each rule below was then measured on plexlab (1.43.4) and the 1.42.2 reference, and every check
 asserts that measured answer on `tests/catalog_ui.json`, not "the two servers agree":
 
@@ -18,8 +18,7 @@ asserts that measured answer on `tests/catalog_ui.json`, not "the two servers ag
   `/grandchildren`;
 - `X-Plex-Container-*` as QUERY parameters on `/folder` and `/recentlyViewedShows`.
 
-    python3 tests/test_parity_vocabulary.py            # native
-    REX_SERVER=python python3 tests/test_parity_vocabulary.py
+    python3 tests/test_parity_vocabulary.py
 """
 import http.client
 import json

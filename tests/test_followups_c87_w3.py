@@ -34,8 +34,7 @@
   listing, `/group/3` (404, a second DELETE too) and `/system/agents`' bare list and
   `mediaType=8`/`9` -- and Add Library then refuses its agent with a 400 either way.
 
-Drives a real server process (`tests/server_command.py`): the native binary by
-default, the oracle with `REX_SERVER=python`.
+Drives a real server process (`tests/server_command.py`).
 
     python3 tests/test_followups_c87_w3.py
 """

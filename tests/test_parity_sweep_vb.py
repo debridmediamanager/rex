@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
-"""Rules found by the differential path-segment and header sweeps (`vsweep.py`), each
-checked against the exchange a real PMS gave for the same request.
+"""Rules found by the differential path-segment and header sweeps (the oracle-era
+`probes/vsweep.py`), each checked against the exchange a real PMS gave for the same request.
 
 The expected values live in `tests/fixtures/parity_sweep_vb.jsonl`, one redacted
 exchange per line, recorded off plexlab (1.43.4) or the 1.42.2 reference. A reference's ratingKey
 is mapped onto the fixture catalog's item of the same kind before the request is replayed.
 
-Drives a real server process (`tests/server_command.py`): the native binary by
-default, the oracle with `REX_SERVER=python`.
+Drives a real server process (`tests/server_command.py`).
 
     python3 tests/test_parity_sweep_vb.py
 """

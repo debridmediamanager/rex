@@ -13,8 +13,6 @@ into the same libraries (an item's `file` places it; its source only says where 
   `Authorization` header, as S3 does for a presigned URL ("Only one auth mechanism
   allowed"), and honours `Range`.
 
-Native only: the feed is rex's own API, and the Python oracle has none.
-
     python3 tests/test_sources.py
 """
 import base64
@@ -223,7 +221,4 @@ def main():
 
 
 if __name__ == "__main__":
-    if os.environ.get("REX_SERVER") == "python":
-        print("the feed is rex's own API; the Python oracle has none, so this suite is native only")
-        sys.exit(0)
     sys.exit(main())

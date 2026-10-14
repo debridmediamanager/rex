@@ -29,8 +29,7 @@ cannot be undone on a server with no route to a metadata provider. Its checks as
 cascade as docs/protocol-traps.md records it for an ordinary show (`local://<id>`,
 `Episode N`, `parentGuid` following the season, an emptied summary, no `year`).
 
-Drives a real server process (`tests/server_command.py`): the native binary by
-default, the oracle with `REX_SERVER=python`.
+Drives a real server process (`tests/server_command.py`).
 
     python3 tests/test_followups_fa.py
 """
