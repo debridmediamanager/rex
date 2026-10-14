@@ -516,18 +516,9 @@ impl Runtime {
                 )])),
             );
         }
-        // The library's clips: every clip owned by a parent in this section.
-        let mut rows = self
-            .catalog
-            .items()
-            .iter()
-            .filter(|row| {
-                row.get("type").and_then(Value::as_str) == Some("clip")
-                    && string_value(row.get("librarySectionID").unwrap_or(&Value::Null))
-                        == section_key
-            })
-            .cloned()
-            .collect::<Vec<_>>();
+        // The library's clips: every clip owned by a parent in this section. A clip carries
+        // no librarySectionID of its own (cycle 29), so reading the row's own named none.
+        let mut rows = self.section_clips(section_key);
         if let Ok(Some(number)) = parsed_type(query, 500, None) {
             if number != 12 {
                 rows.clear();

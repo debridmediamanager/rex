@@ -69,35 +69,9 @@ impl Runtime {
             }
         }
         if include("includeExtras") {
-            // The fixture's clips are the only extras; a parent with none answers the
-            // size-0 block rather than omitting it.
-            let extras = self
-                .catalog
-                .items()
-                .iter()
-                .filter(|candidate| {
-                    candidate.get("type").and_then(Value::as_str) == Some("clip")
-                        && candidate
-                            .get("_parentRatingKey")
-                            .or_else(|| candidate.get("parentRatingKey"))
-                            .map(string_value)
-                            .as_deref()
-                            == Some(key.as_str())
-                })
-                .map(|extra| {
-                    let mut shown = self.detail_row(extra);
-                    if let Some(object) = shown.as_object_mut() {
-                        object.shift_remove("art");
-                    }
-                    shown
-                })
-                .collect::<Vec<_>>();
-            let mut block = Map::new();
-            block.insert("size".to_string(), json!(extras.len()));
-            if !extras.is_empty() {
-                block.insert("Metadata".to_string(), Value::Array(extras));
-            }
-            object.insert("Extras".to_string(), Value::Object(block));
+            // Measured: a movie, an episode, a show and a season all carry the block --
+            // every clip, uncapped, in index order.
+            object.insert("Extras".to_string(), self.extras_block(&key));
         }
         if matches!(kind.as_str(), "show" | "season") && include("includeOnDeck") {
             // Cycle 50: On Deck is selected once for the SHOW; a season exposes that
@@ -150,9 +124,12 @@ impl Runtime {
                     .unwrap_or_default();
                 if kind != "season" || owner == key {
                     let mut projected = self.detail_row(&chosen);
+                    // Cycle 50: with includeExtras=1 both PMS versions add the episode's
+                    // own Extras block to the inline row too.
                     if include("includeExtras") {
+                        let extras = self.extras_block(&key_of(&chosen).unwrap_or_default());
                         if let Some(inner) = projected.as_object_mut() {
-                            inner.insert("Extras".to_string(), json!({"size": 0}));
+                            inner.insert("Extras".to_string(), extras);
                         }
                     }
                     object.insert("OnDeck".to_string(), json!({"Metadata": projected}));

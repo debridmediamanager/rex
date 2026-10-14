@@ -252,13 +252,6 @@ def gdm_stamp(port):
 # reported as a known gap while it fails, and fails the suite once it passes, so the entry
 # is removed when the native server catches up.
 KNOWN_GAPS = {
-    "the parent advertises its lowest-index trailer and an uncapped inline block":
-        "no primaryExtraKey on the parent row",
-    "item and section extras expose the measured full and light projections":
-        "/library/metadata/{id}/extras/all and /library/sections/{id}/extras/all list nothing",
-    "a clip carries only its own coverPoster Image on both extras lists":
-        "the extras lists are empty",
-    "clip XML keeps extraType as its final attribute": "the extras lists are empty",
     "a play queue's shuffle and repeat are 0/1 integer flags and anything else is a "
     "400, as both PMS versions answer": "shuffle=01 and shuffle=001 read as false",
     "spellfix rebuilds only at the measured optimization call sites":

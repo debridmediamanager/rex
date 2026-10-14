@@ -709,6 +709,7 @@ impl Runtime {
         let decision_profiles = load_json_sidecar(&options.catalog, "client_profiles.json")
             .and_then(|value| serde_json::from_value(value).ok())
             .unwrap_or_default();
+        clip_extras(catalog.items_mut());
         catalog.normalize();
         catalog.retitle_streams();
         show_listing_columns(catalog.items_mut());
@@ -1862,6 +1863,70 @@ impl Runtime {
 
     fn leaves(&self, key: &str) -> Vec<Value> {
         self.leaves_refs(key).into_iter().cloned().collect()
+    }
+
+    /// `server.py` `Catalog.extras`: a parent's clips (owned through `_parentRatingKey`,
+    /// never `parentRatingKey`) in their measured index order.
+    fn extras_of(&self, key: &str) -> Vec<&Value> {
+        let mut rows = self
+            .catalog
+            .items()
+            .iter()
+            .filter(|row| {
+                row.get("type").and_then(Value::as_str) == Some("clip")
+                    && row.get("_parentRatingKey").map(string_value).as_deref() == Some(key)
+            })
+            .collect::<Vec<_>>();
+        rows.sort_by_key(|row| clip_index(row));
+        rows
+    }
+
+    /// `server.py` `Catalog.section_extras`: every clip owned by a parent in one section,
+    /// parent by parent, each parent's in index order. The section is the parent's
+    /// (`_librarySectionID`, stamped at load by `clip_extras`).
+    fn section_clips(&self, section_key: &str) -> Vec<Value> {
+        let mut parents = Vec::new();
+        for row in self.catalog.items() {
+            if row.get("type").and_then(Value::as_str) == Some("clip")
+                && row.get("_librarySectionID").map(string_value).as_deref() == Some(section_key)
+            {
+                let parent = row.get("_parentRatingKey").map(string_value).unwrap_or_default();
+                if !parents.contains(&parent) {
+                    parents.push(parent);
+                }
+            }
+        }
+        parents
+            .iter()
+            .flat_map(|parent| self.extras_of(parent))
+            .filter(|row| {
+                row.get("_librarySectionID").map(string_value).as_deref() == Some(section_key)
+            })
+            .cloned()
+            .collect()
+    }
+
+    /// The `Extras` block `includeExtras` adds to a detail row: the full rows of the item's
+    /// clips without the `art` a clip borrows from its parent, and a size-0 block for an
+    /// item with none rather than no block.
+    fn extras_block(&self, key: &str) -> Value {
+        let rows = self
+            .extras_of(key)
+            .into_iter()
+            .map(|extra| {
+                let mut shown = self.detail_row(extra);
+                if let Some(object) = shown.as_object_mut() {
+                    object.shift_remove("art");
+                }
+                shown
+            })
+            .collect::<Vec<_>>();
+        let mut block = Map::new();
+        block.insert("size".to_string(), json!(rows.len()));
+        if !rows.is_empty() {
+            block.insert("Metadata".to_string(), Value::Array(rows));
+        }
+        Value::Object(block)
     }
 
     /// `children` and `leaves` by reference, for what only reads or counts them: a
@@ -19738,12 +19803,20 @@ impl Runtime {
                     return Response::error(400, "rex: bad request");
                 }
                 // The oracle's `tag_container(allowSync=False)`: the identifier and
-                // media-tag pair ride along with an explicit `allowSync`.
+                // media-tag pair ride along with an explicit `allowSync`. Cycle 19: the
+                // item path has the `/all` form the section path does, and both answer
+                // the item's clips as FULL rows -- the 1.42.2 reference a three-clip list
+                // -- each keeping the `art` it borrows from its parent.
+                let rows = self
+                    .extras_of(key)
+                    .into_iter()
+                    .map(|extra| self.detail_row(extra))
+                    .collect::<Vec<_>>();
                 Response::json(
                     200,
                     self.tag_container(Map::from_iter([
                         ("allowSync".to_string(), json!(false)),
-                        ("Metadata".to_string(), Value::Array(Vec::new())),
+                        ("Metadata".to_string(), Value::Array(rows)),
                     ])),
                 )
             }
@@ -25077,6 +25150,97 @@ fn py_int(text: &str) -> Option<i64> {
     }
     let value = digits.replace('_', "").parse::<i64>().ok()?;
     Some(if negative { -value } else { value })
+}
+
+/// `server.py` `Catalog.__init__`. Cycle 29 measured the clip surface over 3,905 rows of
+/// the 1.42.2 reference: a clip (an extra, owned through `_parentRatingKey`) publishes no
+/// librarySection triple of its own, but its owning section is its parent's, kept
+/// privately (`_librarySectionID`) for the section's extras leaf. And the parent's
+/// `primaryExtraKey` is its lowest-index trailer's key (`extraType` 1), whatever other
+/// extras come before it.
+fn clip_extras(items: &mut [Value]) {
+    let positions = items
+        .iter()
+        .enumerate()
+        .filter_map(|(position, row)| key_of(row).map(|key| (key, position)))
+        .collect::<HashMap<_, _>>();
+    let mut parents: Vec<(String, Vec<usize>)> = Vec::new();
+    for (position, row) in items.iter().enumerate() {
+        if row.get("type").and_then(Value::as_str) != Some("clip") {
+            continue;
+        }
+        let Some(parent) = row
+            .get("_parentRatingKey")
+            .map(string_value)
+            .filter(|parent| !parent.is_empty())
+        else {
+            continue;
+        };
+        match parents.iter_mut().find(|(key, _)| *key == parent) {
+            Some((_, owned)) => owned.push(position),
+            None => parents.push((parent, vec![position])),
+        }
+    }
+    for (parent, mut owned) in parents {
+        let Some(&parent_position) = positions.get(&parent) else {
+            continue;
+        };
+        owned.sort_by_key(|&position| clip_index(&items[position]));
+        let section = items[parent_position]
+            .get("librarySectionID")
+            .cloned()
+            .unwrap_or(Value::Null);
+        for &position in &owned {
+            if let Some(clip) = items[position].as_object_mut() {
+                clip.insert("_librarySectionID".to_string(), section.clone());
+            }
+        }
+        let trailer = owned.iter().find_map(|&position| {
+            let extra_type = items[position].get("extraType").and_then(|value| {
+                value.as_i64().or_else(|| string_value(value).trim().parse().ok())
+            });
+            (extra_type == Some(1))
+                .then(|| items[position].get("key").cloned())
+                .flatten()
+        });
+        if let (Some(key), Some(row)) = (trailer, items[parent_position].as_object_mut()) {
+            row.insert("primaryExtraKey".to_string(), key);
+        }
+    }
+}
+
+/// A clip's place among its parent's extras: its `index`, absent as 0.
+fn clip_index(row: &Value) -> i64 {
+    row.get("index").and_then(Value::as_i64).unwrap_or(0)
+}
+
+#[cfg(test)]
+mod clip_extras_tests {
+    use super::*;
+
+    /// The parent's `primaryExtraKey` is its lowest-INDEX trailer -- not its first clip, nor
+    /// its first trailer in catalog order -- and each of its clips takes its section; a clip
+    /// whose parent is not in the catalog takes nothing.
+    #[test]
+    fn the_primary_extra_is_the_lowest_index_trailer() {
+        let clip = |key: &str, index: i64, extra_type: Value, parent: &str| {
+            json!({"ratingKey": key, "key": format!("/library/metadata/{key}"), "type": "clip",
+                   "index": index, "extraType": extra_type, "_parentRatingKey": parent})
+        };
+        let mut items = vec![
+            clip("301", 3, json!(1), "100"),
+            json!({"ratingKey": "100", "type": "movie", "librarySectionID": 4}),
+            clip("302", 1, json!(5), "100"),
+            clip("303", 2, json!("1"), "100"),
+            clip("304", 1, json!(1), "999"),
+        ];
+        clip_extras(&mut items);
+        assert_eq!(items[1]["primaryExtraKey"], json!("/library/metadata/303"));
+        for position in [0, 2, 3] {
+            assert_eq!(items[position]["_librarySectionID"], json!(4));
+        }
+        assert!(items[4].get("_librarySectionID").is_none());
+    }
 }
 
 /// `server.py` `Catalog.__init__`: a show's LISTING row carries `duration` (a typical
