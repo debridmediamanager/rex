@@ -105,6 +105,19 @@ static LOOSE_E: LazyLock<Regex> = LazyLock::new(|| {
 static DASH_EPISODE: LazyLock<Regex> = LazyLock::new(|| {
     re(r"^(.*\S)(?:-(\d{2,3})(?:v\d)?(?:\s+END)?(?:\s+-\S+)?|\s+-\s+(\d{2,3})v\d(?:\s+-\s.*)?)$")
 });
+// `[HatSubs] One Piece 1106 (WEB 1080p) [97566ECF]`, `[Some-Stuffs] Pocket Monsters - Aim to be a
+// Pokémon Master 01 (PM19 137) (1080p) v2 [C55CAF83]`: a fansub's absolute episode spaced after
+// its title, the version after the brackets. Read as part of the title, the production server
+// made a show of each of 17 One Piece and 3 Pokémon episodes on the blank tile (2026-10-16). Only
+// with the file's CRC tag, which a single episode carries and a batch does not, so `[KH] To
+// Love-Ru Darkness 2nd` and a film called `… 100` stay as they are.
+static FANSUB_TRAILING: LazyLock<Regex> = LazyLock::new(|| re(r"^(.*\S)\s+(\d{2,4})(?:\s+v\d)?$"));
+static CRC_TAG: LazyLock<Regex> = LazyLock::new(|| re(r"\[[0-9A-Fa-f]{8}\]"));
+// What a fansub numbers like an episode and is not one: `[Zurako]_Mawaru_Penguindrum_NCED_07`, `OVA 04`.
+// `scan::NOT_EPISODE`'s words.
+static NOT_EPISODE: LazyLock<Regex> = LazyLock::new(|| {
+    re(r"(?i)\b(?:nc(?:op|ed)\w*|ova|oad|op|ed|sp|pv|cm|special|specials|movie|menu|preview|trailer|recap|extra|extras|bonus|featurette|interview|behind|making|creditless|clean|teaser|promo|omake)\b")
+});
 // `[philosophy-raws][Samurai Champloo][13][BDRIP]…`: every part bracketed, which
 // `parse_release` drops whole, the title second and the episode third.
 static BRACKETED: LazyLock<Regex> =
@@ -280,6 +293,15 @@ pub fn parse_name(name: &str) -> Parsed {
         if let Some(dashed) = DASH_EPISODE.captures(&parsed.title) {
             parsed.episode = dashed.get(2).or(dashed.get(3)).and_then(|number| py_int(number.as_str()));
             parsed.title = dashed[1].trim_matches([' ', '-', '–', '—']).to_string();
+        }
+    }
+    if parsed.season.is_none() && parsed.episode.is_none() && parsed.year.unwrap_or(0) == 0 && !parsed.pack
+        && name.trim_start().starts_with('[')
+        && CRC_TAG.is_match(name)
+    {
+        if let Some(trailing) = FANSUB_TRAILING.captures(&parsed.title).filter(|found| !NOT_EPISODE.is_match(&found[1])) {
+            parsed.episode = py_int(&trailing[2]);
+            parsed.title = trailing[1].trim_matches([' ', '-', '–', '—']).to_string();
         }
     }
     if let Some(numbered) = BRACKET_EPISODE.captures(name) {
@@ -963,6 +985,12 @@ mod tests {
             ("[Moozzi2] Eighty-Six-15 [BD 3840x2160 x265-10Bit FLACx2]", "Eighty-Six", None, Some(15)),
             ("[HorribleSubs].Gintama-340.[1080p]", "Gintama", None, Some(340)),
             ("[philosophy-raws][Samurai Champloo][13][BDRIP][Hi10P FLAC][1920X1080]", "Samurai Champloo", None, Some(13)),
+            // The production server's blank tiles (2026-10-16): an absolute episode spaced after the title.
+            ("[HatSubs] One Piece 1106 (WEB 1080p) [97566ECF]", "One Piece", None, Some(1106)),
+            ("[HatSubs] One Piece 1120 (WEB 1080p) v2 [C01F2DCE]", "One Piece", None, Some(1120)),
+            ("[Some-Stuffs] Pocket Monsters - Aim to be a Pokémon Master 01 (PM19 137) (1080p) v2 [C55CAF83]", "Pocket Monsters - Aim to be a Pokémon Master", None, Some(1)),
+            // Without the file's CRC tag a trailing number stays the title's.
+            ("[KH] Mob Psycho 100 (BD 1080p HEVC FLAC)", "Mob Psycho 100", None, None),
             ("[Moozzi2] Natsume Yuujinchou Shichi-12 END [BD 1920x1080 x265-10Bit Flac]", "Natsume Yuujinchou Shichi", None, Some(12)),
             ("[HorribleSubs].Gintama-364.[1080p]-RakuvFIN", "Gintama", None, Some(364)),
             ("[RH] Shigatsu wa Kimi no Uso (Your Lie in April) - 01v2 - Monotone-Colorful [Dual Audio] [BDRip]", "Shigatsu wa Kimi no Uso", None, Some(1)),
