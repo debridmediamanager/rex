@@ -111,11 +111,26 @@ fn numbers_of(release: &str, folder: Option<&str>, file_name: &str) -> Option<(O
             }
         }
     }
+    // `aaf-wilty.302.avi` in `Would.I.Lie.To.You.S03E01.PROPER…`: a scene file numbering its season
+    // and episode as one number, which the release's own `S03E01` overruled. That NZB holds two
+    // episodes, and the production server put the second on the first (2026-10-16). Only the
+    // release's season, so a `720` or a film's `300` is never read as one.
+    if parsed.1.episode.is_none() {
+        if let (Some(season), Some(found)) = (parsed.0.season.filter(|season| (1..=9).contains(season)), SCENE_SHORTHAND.captures(stem)) {
+            if found[1].parse::<i64>().ok() == Some(season) {
+                if let Some(episode) = found[2].parse::<i64>().ok().filter(|episode| *episode > 0) {
+                    return Some((Some(season), episode));
+                }
+            }
+        }
+    }
     if let Some(episode) = parsed.1.episode.or(parsed.0.episode) {
         return Some((parsed.1.season.or(parsed.0.season), episode));
     }
     numbered_in_release(&parsed.0, release, folder, file_name)
 }
+
+static SCENE_SHORTHAND: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?:^|[\s._-])(\d)(\d{2})(?:[\s._-]|$)").unwrap());
 
 // Two to ten, as anime titles write a season: `Ni`, `San`, `Shi`, `Go`. Capitalised only, so the
 // particle in `Mahou Shoujo ni Akogarete 10` is no season.
