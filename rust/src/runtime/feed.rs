@@ -862,9 +862,16 @@ fn film_shaped(name: &str) -> bool {
 /// it back on its next push.
 fn pushed_item(row: &Value) -> Option<(String, Value)> {
     let text = |field: &str| row.get(field).and_then(Value::as_str).filter(|value| !value.is_empty());
-    let name = text("_release")?;
+    // The release's name, not an archive's: the rows the production server split off as
+    // `aaf-wilty.301.rar` were retried by that name and stayed on the blank tile (2026-10-16).
+    let name = version_release(row, 0)?;
     let episode = text("type") == Some("movie") && crate::identify::parse_name(name).episode.is_some();
-    let library = row.get("librarySectionID").map(string_value).filter(|_| !episode);
+    // A film filed with the shows, named by its exact id, is filed by location like a push, so
+    // it can go to Movies (`as_film`).
+    let film = text("type") == Some("episode")
+        && film_shaped(name)
+        && row.pointer("/_ids/imdb").and_then(Value::as_str).is_some_and(|imdb| imdb.starts_with("tt"));
+    let library = row.get("librarySectionID").map(string_value).filter(|_| !episode && !film);
     Some((
         text("_source")?.to_string(),
         json!({"id": text("_sid")?, "path": text("_path")?, "file": row.pointer("/Media/0/Part/0/file")?,

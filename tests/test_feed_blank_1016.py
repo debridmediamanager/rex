@@ -16,6 +16,8 @@ native server asked for them:
 * The three Evangelion Rebuild films, which zurg files under anime and so under TV Shows: their
   exact ids are films, refused as shows. They go to Movies.
 
+The rows the production server already held that way (`rows`) are named by the retry a start runs.
+
 Record the answers again: `REX_RECORD_ANSWERS=1 TMDB_KEY=... PLEX_TOKEN=... python3 tests/test_feed_blank_1016.py`.
 
     python3 tests/test_feed_blank_1016.py
@@ -36,8 +38,8 @@ blank.FIXTURE = FIXTURE = json.load(open(blank.FIXTURE_PATH))
 NAMES = sorted(FIXTURE["pushes"])
 
 
-def catalog(work):
-    blank.catalog(work)
+def catalog(work, rows=()):
+    blank.catalog(work, rows)
     # IMDb's rows for Would I Lie to You?, kept where rex keeps the dataset: the production server
     # numbers by them (REX_IMDB_EPISODES=on), and the start that split the archive's versions off read them.
     shutil.copy(os.path.join(HERE, "fixtures", "imdb", "title.episode.tsv.gz"), os.path.join(work, "title.episode.tsv.gz"))
@@ -116,6 +118,29 @@ def main():
         check("the start unfolds nothing and keeps every key",
               open(log, errors="replace").read().count("FEED unfolded") == unfolded and server.keys() == keys,
               {path: (keys.get(path), key) for path, key in server.keys().items() if keys.get(path) != key})
+    finally:
+        blank.stop(server, work)
+        shutil.rmtree(work, ignore_errors=True)
+
+    # -- rows held that way: a start's retry names them --------------------------------------
+    work = tempfile.mkdtemp(prefix="rex-blank1016-")
+    catalog(work, FIXTURE["rows"])
+    server = start(work, bytes_port)
+    try:
+        episode = lambda title: next(row["ratingKey"] for row in FIXTURE["rows"] if row.get("_release", "").startswith(title))
+        named = lambda row: not str(row.get("guid", "local://")).startswith(blank.LOCAL)
+        wilty = blank.wait_for(server, episode("aaf-wilty"), lambda row: [row.get("parentIndex"), row.get("index")] == [3, 1])
+        show = server.row(wilty.get("grandparentRatingKey")) if wilty.get("grandparentRatingKey") else {}
+        check("the row held as the show `aaf-wilty 301 rar` is TMDB 4775's S03E01 again",
+              tmdb_of(show) == 4775 and [wilty.get("parentIndex"), wilty.get("index")] == [3, 1],
+              (show.get("title"), tmdb_of(show), wilty.get("parentIndex"), wilty.get("index")))
+        piece = blank.wait_for(server, episode("[HatSubs] One Piece"), lambda row: row.get("grandparentTitle") == "One Piece")
+        check("the row held as the show `One Piece 1106` is an episode of One Piece",
+              piece.get("grandparentTitle") == "One Piece", (piece.get("grandparentTitle"), piece.get("grandparentGuid")))
+        film = blank.wait_for(server, episode("[Baws] Evangelion"), lambda row: row.get("type") == "movie")
+        check("the row held as the show `Evangelion 1 11` is a film in Movies, named",
+              film.get("type") == "movie" and str(film.get("librarySectionID")) == "1" and named(film),
+              (film.get("type"), film.get("librarySectionID"), film.get("guid"), film.get("title")))
     finally:
         blank.stop(server, work)
         shutil.rmtree(work, ignore_errors=True)
