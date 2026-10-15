@@ -528,6 +528,9 @@ pub struct Runtime {
     pending_claim: Option<String>,
     /// `claim.Claim` and the account threads `main()` wires (`plextv.rs`).
     plextv: Arc<plextv::PlexTv>,
+    /// The owner's track settings, read from plex.tv at start and daily; `None` until then
+    /// (and on an unclaimed server), when Parts keep ffprobe's first audio track.
+    track_prefs: Option<crate::mediainfo::TrackPrefs>,
     /// `sim.requests`: `METHOD path` for every request the router answered, for the
     /// `requests.log` in Download Logs.
     requests: Vec<String>,
@@ -818,6 +821,7 @@ impl Runtime {
             pending_image: None,
             pending_claim: None,
             plextv: Arc::new(plextv::PlexTv::new(claim, options.account_state_interval)),
+            track_prefs: None,
             requests: Vec::new(),
             unknown: Vec::new(),
             refused_for_token: false,
@@ -21442,6 +21446,10 @@ impl Runtime {
                     if part.get("id").map(string_value).as_deref() != Some(part_id) && !all_parts {
                         continue;
                     }
+                    // Chosen by hand: the account's settings never re-select over it.
+                    if let Some(object) = part.as_object_mut() {
+                        object.insert("_trackChosen".to_string(), json!(true));
+                    }
                     for stream in part
                         .get_mut("Stream")
                         .and_then(Value::as_array_mut)
@@ -21480,6 +21488,40 @@ impl Runtime {
                 .join(", ")
         );
         Response::empty(200)
+    }
+
+    /// Select the account's tracks on every Part nobody chose tracks for, as a real PMS
+    /// does for its owner. Runs when the settings first arrive and when they change.
+    pub(crate) fn set_track_prefs(&mut self, prefs: crate::mediainfo::TrackPrefs) {
+        if self.track_prefs.as_ref() == Some(&prefs) {
+            return;
+        }
+        // By key, and only the rows that change (see `select_stream` on `items_mut`).
+        let differ = |row: &Value| {
+            let mut media = row.get("Media").cloned().unwrap_or(Value::Null);
+            crate::mediainfo::select_media_tracks(&mut media, &prefs)
+        };
+        let keys: Vec<String> = self
+            .catalog
+            .items()
+            .iter()
+            .filter(|row| differ(row))
+            .filter_map(key_of)
+            .collect();
+        for key in &keys {
+            if let Some(media) = self.catalog.get_mut(key).and_then(|row| row.get_mut("Media")) {
+                crate::mediainfo::select_media_tracks(media, &prefs);
+            }
+        }
+        info!(
+            "TRACKS account settings audio={:?} (auto {}) subtitles={:?} (mode {}): {} item(s) re-selected",
+            prefs.audio, prefs.auto_audio, prefs.subtitle, prefs.subtitles, keys.len()
+        );
+        self.track_prefs = Some(prefs);
+        if !keys.is_empty() {
+            self.dirty = true;
+            self.save_if_dirty();
+        }
     }
 
     fn route_part(

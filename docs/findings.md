@@ -3283,8 +3283,21 @@ Measured in the tenth pass's media batch and not acted on:
   reports 192); Media durations a millisecond apart; two Media bitrates that are neither rounded nor
   truncated; `hasThumbnail`, `indexes` and the `failureBIF*` fields; and `eia_608` captions,
   whose only sample failed to probe.
-- **Which audio track is `selected`** follows the account's language settings, which rex
-  does not have; the first track stays selected.
+- **Which audio track is `selected`** follows the account's language settings. Since
+  2026-10-15 rex reads them from the owner's plex.tv profile (`autoSelectAudio`,
+  `defaultAudioLanguage`, `autoSelectSubtitle`, `defaultSubtitleLanguage`) at start and daily
+  and selects as a real 1.42.2 library did for that account on 1,500 Parts
+  (`tests/fixtures/track_selection/real_pms_1422.json`): audio is the first track in the
+  language, else the first track -- not the one flagged default; with subtitles always on, the
+  first subtitle in the language, else among all, that is neither flagged forced nor titled
+  signs/songs, else the first. A title saying "Forced" without the flag is not avoided. Audio
+  matched 1,500 of 1,500 and subtitles 1,498; the two misses are the second version of
+  two-version titles, where that PMS contradicted its own rule. Before, rex kept ffprobe's first
+  audio track and no subtitle, so a German-first release played German with no subtitles on
+  every episode for an English account (Dark Matter on the production server). A Part a client
+  chose tracks on (`PUT /library/parts`) is marked `_trackChosen` and never re-selected.
+  Subtitle modes 0 and 1 follow Plex's documented meaning and were not measured; the owner's
+  settings apply to shared users too, where a real PMS selects per user.
 - **Leads, one sample each:** a `.webm` file reported as container `mkv` (rex keeps
   `webm`, which Plex Web's direct-play rule depends on); `anamorphic: false` on a 333:320
   sample aspect ratio; an AVI audio track numbered `1` with no id in the probe; a forced track

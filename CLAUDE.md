@@ -483,6 +483,7 @@ python3 tests/test_sources.py               # registering sources, and sources t
                                             # a redirect to a CDN, a restart, rows before registration, the two-step delete
 python3 tests/test_server_command.py        # the launcher's default and REX_SERVER override
 python3 tests/test_unclaimed_gate.py        # what an unclaimed server answers: local networks, Host names, allowedNetworks
+python3 tests/test_track_prefs.py           # a real Part starts on the owner's plex.tv audio/subtitle languages; a hand pick stays
 python3 tests/parallel_suites.py --workers 4 test_cli test_feed ...
                                             # several suites at once, as CI runs them: each gets its own
                                             # REX_TEST_PORTS range (tests/test_ports.py), output kept per suite

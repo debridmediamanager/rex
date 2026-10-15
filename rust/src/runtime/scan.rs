@@ -1003,7 +1003,7 @@ impl Runtime {
             .and_then(Value::as_u64)
             .filter(|size| *size > 0)
             .unwrap_or(arrival.found.size);
-        let media = mediainfo::build_media(
+        let mut media = mediainfo::build_media(
             probe.as_ref().unwrap_or(&json!({"format": {}, "streams": []})),
             rating * 100,
             part_id,
@@ -1012,6 +1012,9 @@ impl Runtime {
             size as i64,
             Some(&extension),
         );
+        if let Some(prefs) = &self.track_prefs {
+            mediainfo::select_media_tracks(&mut media, prefs);
+        }
         let title = if release.title.is_empty() { stem(&file_name).to_string() } else { release.title.clone() };
         let mut leaf = json!({
             "ratingKey": key,
@@ -1183,7 +1186,7 @@ impl Runtime {
             };
             let part = old.get("Part").and_then(Value::as_array).and_then(|parts| parts.first()).cloned().unwrap_or_default();
             let file = part.get("file").and_then(Value::as_str).unwrap_or_default().to_string();
-            let media = mediainfo::build_media(
+            let mut media = mediainfo::build_media(
                 &probe,
                 old.get("id").and_then(Value::as_i64).unwrap_or(0),
                 part.get("id").and_then(Value::as_i64).unwrap_or(0),
@@ -1192,6 +1195,9 @@ impl Runtime {
                 part.get("size").and_then(Value::as_i64).unwrap_or(0),
                 Some(&extension(&file)),
             );
+            if let Some(prefs) = &self.track_prefs {
+                mediainfo::select_media_tracks(&mut media, prefs);
+            }
             if let Some(object) = self.catalog.get_mut(&key).and_then(Value::as_object_mut) {
                 object.insert("duration".to_string(), media.get("duration").cloned().unwrap_or(json!(0)));
                 object.insert("Media".to_string(), json!([media]));

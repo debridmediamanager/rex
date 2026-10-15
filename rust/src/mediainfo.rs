@@ -1407,6 +1407,112 @@ pub fn normalize_media(media: &mut Value) {
     media.insert("Part".to_string(), Value::Array(parts));
 }
 
+/// The account's track settings (plex.tv `/api/v2/user` `profile`): what a real PMS
+/// selects on every Part nobody chose tracks for.
+#[derive(Clone, Debug, PartialEq)]
+pub struct TrackPrefs {
+    pub auto_audio: bool,
+    pub audio: Option<String>,
+    /// `autoSelectSubtitle`: 0 manually selected, 1 shown with foreign audio, 2 always.
+    pub subtitles: i64,
+    pub subtitle: Option<String>,
+}
+
+fn stream_language(stream: &Value) -> Option<String> {
+    let tag = stream.get("languageTag").and_then(Value::as_str)?;
+    tag.split('-').next().map(str::to_ascii_lowercase).filter(|code| !code.is_empty())
+}
+
+/// Which audio and subtitle a real PMS selects for these streams. Measured on a real
+/// 1.42.2 library under `autoSelectAudio` English and `autoSelectSubtitle` 2 English
+/// (`tests/fixtures/track_selection/`): audio is the first track in the language, else
+/// the first track -- not the one flagged default; the subtitle is the first one in the
+/// language, else among all, that is neither flagged forced nor titled signs/songs,
+/// else the first. A title saying "Forced" is not avoided; the forced flag is.
+pub fn chosen_tracks(streams: &[Value], prefs: &TrackPrefs) -> (Option<i64>, Option<i64>) {
+    let of = |kind: i64| {
+        streams
+            .iter()
+            .filter(move |stream| stream.get("streamType").and_then(Value::as_i64) == Some(kind))
+    };
+    let id = |stream: &Value| stream.get("id").and_then(Value::as_i64);
+    let wanted = |stream: &&Value, language: &Option<String>| {
+        language.is_some() && stream_language(stream) == *language
+    };
+    let audio_track = prefs
+        .auto_audio
+        .then(|| of(2).find(|stream| wanted(stream, &prefs.audio)))
+        .flatten()
+        .or_else(|| of(2).next());
+    let partial = |stream: &&Value| {
+        stream.get("forced").and_then(Value::as_bool).unwrap_or(false)
+            || stream.get("title").and_then(Value::as_str).is_some_and(|title| {
+                let title = title.to_lowercase();
+                title.contains("sign") || title.contains("song")
+            })
+    };
+    let in_language: Vec<&Value> = of(3).filter(|stream| wanted(stream, &prefs.subtitle)).collect();
+    // ponytail: modes 0 and 1 follow Plex's documented meaning, not a measurement (the
+    // only account measured is on 2); measure them on plexscratch if anyone uses them.
+    let pool: Vec<&Value> = match prefs.subtitles {
+        2 if in_language.is_empty() => of(3).collect(),
+        2 => in_language,
+        1 if audio_track.and_then(stream_language) != prefs.subtitle => in_language,
+        _ => Vec::new(),
+    };
+    let subtitle = pool.iter().find(|stream| !partial(stream)).or(pool.first());
+    (audio_track.and_then(id), subtitle.and_then(|stream| id(stream)))
+}
+
+/// Select the account's tracks on a Part nobody chose tracks for (`_trackChosen`, set by
+/// `PUT /library/parts`). Answers whether anything changed.
+pub fn select_tracks(part: &mut Value, prefs: &TrackPrefs) -> bool {
+    if part.get("_trackChosen").and_then(Value::as_bool) == Some(true) {
+        return false;
+    }
+    let Some(streams) = part.get_mut("Stream").and_then(Value::as_array_mut) else {
+        return false;
+    };
+    let (audio, subtitle) = chosen_tracks(streams, prefs);
+    let mut changed = false;
+    for stream in streams.iter_mut() {
+        let kind = stream.get("streamType").and_then(Value::as_i64);
+        let want = match kind {
+            Some(2) => audio,
+            Some(3) => subtitle,
+            _ => continue,
+        };
+        let is = stream.get("id").and_then(Value::as_i64) == want && want.is_some();
+        let was = stream.get("selected").and_then(Value::as_bool) == Some(true);
+        if is != was {
+            changed = true;
+            if let Some(object) = stream.as_object_mut() {
+                if is {
+                    object.insert("selected".into(), Value::Bool(true));
+                } else {
+                    object.shift_remove("selected");
+                }
+            }
+        }
+    }
+    changed
+}
+
+/// `select_tracks` on every Part of a Media list (a row's `Media`, or `build_media`'s).
+pub fn select_media_tracks(media: &mut Value, prefs: &TrackPrefs) -> bool {
+    let mut changed = false;
+    let rows = match media {
+        Value::Array(rows) => rows.iter_mut().collect::<Vec<_>>(),
+        other => vec![other],
+    };
+    for row in rows {
+        for part in row.get_mut("Part").and_then(Value::as_array_mut).into_iter().flatten() {
+            changed |= select_tracks(part, prefs);
+        }
+    }
+    changed
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

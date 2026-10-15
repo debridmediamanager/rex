@@ -669,8 +669,13 @@ fn fetch_features(claim: &Claim) -> Result<Vec<String>, String> {
 }
 
 fn fetch_account_id(claim: &Claim) -> Result<Option<i64>, String> {
+    fetch_account(claim).map(|(id, _)| id)
+}
+
+/// The owner's id and track settings from the one `/api/v2/user` read.
+fn fetch_account(claim: &Claim) -> Result<(Option<i64>, Option<crate::mediainfo::TrackPrefs>), String> {
     let Some(token) = claim.token.clone().filter(|token| !token.is_empty()) else {
-        return Ok(None);
+        return Ok((None, None));
     };
     let url = format!(
         "{ACCOUNT_URL}?{}",
@@ -684,11 +689,19 @@ fn fetch_account_id(claim: &Claim) -> Result<Option<i64>, String> {
     let (_, body) =
         urlopen("GET", &url, &headers, None, 30).map_err(|failure| failure.to_string())?;
     let root = parse_xml(&body)?;
-    root.get("id")
+    let id = root
+        .get("id")
         .filter(|id| !id.is_empty() && id.bytes().all(|byte| byte.is_ascii_digit()))
         .and_then(|id| id.parse::<i64>().ok())
-        .map(Some)
-        .ok_or_else(|| "account response returned no numeric id".to_string())
+        .ok_or_else(|| "account response returned no numeric id".to_string())?;
+    let language = |profile: &Element, name: &str| profile.get(name).filter(|code| !code.is_empty()).map(str::to_string);
+    let prefs = root.all("profile").first().map(|profile| crate::mediainfo::TrackPrefs {
+        auto_audio: profile.get("autoSelectAudio") == Some("1"),
+        audio: language(profile, "defaultAudioLanguage"),
+        subtitles: profile.get("autoSelectSubtitle").and_then(|mode| mode.parse().ok()).unwrap_or(0),
+        subtitle: language(profile, "defaultSubtitleLanguage"),
+    });
+    Ok((Some(id), prefs))
 }
 
 /// `ensure_account_id`: acquire and persist the owner id an older claim file lacks.
@@ -1166,12 +1179,18 @@ pub(crate) struct AccountRefresh {
 }
 
 impl AccountRefresh {
-    fn refresh(claim: &SharedClaim) -> Result<bool, String> {
+    fn refresh(claim: &SharedClaim, runtime: &SharedRuntime) -> Result<bool, String> {
         let current = snapshot(claim);
         if !current.claimed() {
             return Ok(false);
         }
-        let account_id = fetch_account_id(&current)?;
+        let (account_id, prefs) = fetch_account(&current)?;
+        if let Some(prefs) = prefs {
+            runtime
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .set_track_prefs(prefs);
+        }
         thread::sleep(Duration::from_secs(ACCOUNT_FEATURE_DELAY));
         let uuids = fetch_features(&snapshot(claim))?;
         let mut state = claim
@@ -1183,7 +1202,7 @@ impl AccountRefresh {
         Ok(true)
     }
 
-    pub(crate) fn start(&self, claim: SharedClaim) {
+    pub(crate) fn start(&self, claim: SharedClaim, runtime: SharedRuntime) {
         if self.started.swap(true, Ordering::SeqCst) {
             return;
         }
@@ -1195,7 +1214,7 @@ impl AccountRefresh {
                 loop {
                     let started = now();
                     if started >= next {
-                        let result = Self::refresh(&claim);
+                        let result = Self::refresh(&claim, &runtime);
                         next = started + ACCOUNT_REFRESH_INTERVAL;
                         match result {
                             Ok(_) => failures = 0,
@@ -1764,7 +1783,7 @@ impl PlexTv {
 
     /// The account threads `main()` starts for a claimed server, and a claim starts.
     pub(crate) fn start_account(&self, runtime: &SharedRuntime) {
-        self.refresh.start(Arc::clone(&self.claim));
+        self.refresh.start(Arc::clone(&self.claim), Arc::clone(runtime));
         if let Some(sync) = &self.sync {
             sync.start(Arc::clone(&self.claim), Arc::clone(runtime));
         }
