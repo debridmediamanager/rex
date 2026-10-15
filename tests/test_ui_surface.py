@@ -29411,7 +29411,7 @@ def main():
           not wrong_c52j, "; ".join(wrong_c52j)[:300])
 
     # rex ships no Plex artwork or build files: both favicons are its own icon at Plex's
-    # geometry (a T-rex head on indigo; the middle of the second row from the top is the
+    # geometry (a T-rex head on orange; the middle of the second row from the top is the
     # background above the skull), and `sugar.cmake` answers empty where PMS carries its
     # build script.
     def icon_pixel_c271(body):
@@ -29428,7 +29428,7 @@ def main():
                    for path_c271 in ("/favicon.ico", "/:/resources/favicon.ico")}
     _, sugar_c271, _ = request(base, "GET", "/:/resources/sugar.cmake", want_json=False)
     check("the favicons are rex's own icon and sugar.cmake carries no Plex build file",
-          all(pixel == (79, 70, 229) for pixel in pixels_c271.values()) and sugar_c271 == b"",
+          all(pixel == (255, 154, 98) for pixel in pixels_c271.values()) and sugar_c271 == b"",
           (pixels_c271, sugar_c271[:40]))
 
     # The geometry is the file's own, and a `.jpg` name really is a JPEG.
