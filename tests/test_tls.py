@@ -15,9 +15,10 @@ import ssl
 import subprocess
 import sys
 import tempfile
-import time
 
 from server_command import server_command
+from startup_wait import poll_until
+from test_ports import free_port
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -40,14 +41,6 @@ def skip(label, why):
     global SKIP
     SKIP += 1
     print("SKIP %s (%s)" % (label, why))
-
-
-def free_port():
-    probe = socket.socket()
-    probe.bind(("127.0.0.1", 0))
-    port = probe.getsockname()[1]
-    probe.close()
-    return port
 
 
 def first_bytes(port, payload, wait=3.0, limit=200):
@@ -111,13 +104,16 @@ def serve(port, extra):
         server_command("--port", port, "--catalog", os.path.join(HERE, "catalog_ui.json"),
                         *extra, root=ROOT),
         cwd=ROOT, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    for _ in range(80):
+    def ready():
         try:
             sock = socket.create_connection(("127.0.0.1", port), timeout=1)
             sock.close()
-            return proc
+            return True
         except OSError:
-            time.sleep(0.25)
+            return False
+    served = poll_until(ready, 20)
+    if served and proc.poll() is None:
+        return proc
     proc.kill()
     raise SystemExit("rex did not start on %d" % port)
 

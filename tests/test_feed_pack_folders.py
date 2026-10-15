@@ -89,7 +89,7 @@ def main():
         after = server.keys()
         while after.get(FIXTURE["pushes"]["courage-s02-15"]["path"]) == after.get(FIXTURE["pushes"]["edge-s02e15"]["path"]) \
                 and time.time() < deadline:
-            time.sleep(1)
+            time.sleep(0.1)
             after = server.keys()
         for name in ("courage-s02-15", "edge-s02e03", "edge-s02e15"):
             row = server.row(after.get(FIXTURE["pushes"][name]["path"]))

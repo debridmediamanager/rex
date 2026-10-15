@@ -82,7 +82,7 @@ def wait_for(server, key, want, seconds=60):
     deadline = time.time() + seconds
     got = placed(server, key)
     while got[1:] != want[1:] and time.time() < deadline:
-        time.sleep(1)
+        time.sleep(0.1)
         got = placed(server, key)
     return got
 

@@ -21,7 +21,6 @@ import http.server
 import json
 import os
 import shutil
-import socket
 import socketserver
 import sqlite3
 import subprocess
@@ -34,6 +33,8 @@ import urllib.parse
 import urllib.request
 
 from server_command import server_command
+from startup_wait import poll_until
+from test_ports import free_port
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -53,12 +54,6 @@ results = []
 def check(name, ok, detail=""):
     results.append(bool(ok))
     print("%s  %s%s" % ("PASS" if ok else "FAIL", name, "" if ok else "  -- " + str(detail)[:600]))
-
-
-def free_port():
-    with socket.socket() as sock:
-        sock.bind(("127.0.0.1", 0))
-        return sock.getsockname()[1]
 
 
 def item(kind, ids=True, probe=True):
@@ -189,12 +184,13 @@ class Server:
                            "--state", os.path.join(work, "rex.db"), "--sources",
                            os.path.join(work, "sources.json"), "--assert-claimed", "--gdm", "off", root=ROOT),
             cwd=ROOT, env=env, stdout=self.log, stderr=subprocess.STDOUT)
-        for _ in range(160):
+        def ready():
             try:
                 urllib.request.urlopen("http://127.0.0.1:%d/identity" % self.port, timeout=2)
-                break
+                return True
             except Exception:
-                time.sleep(0.25)
+                return False
+        poll_until(ready, 40)
         self.events = Events(self.port)
 
     def request(self, path, method="GET", body=None, headers=None):

@@ -27,7 +27,7 @@ gzips an answer whenever the request asks for gzip, as plex.tv did there.
     python3 tests/test_plextv.py
 
 `REX_TEST_PORT` picks the first of the three ports it binds (server, restarted
-server, stub); the default asks the OS for free ones.
+server, stub); otherwise the bounded test-port allocator is used.
 """
 import base64
 import gzip
@@ -51,6 +51,7 @@ import zipfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from server_command import server_command
+from test_ports import free_port
 
 # The stub stamps each request it takes. Python 3.12's time.time() moves in 15.6 ms steps on
 # Windows, so two requests rex sends a few ms apart stamped equal and every "after" check
@@ -450,14 +451,6 @@ class StubHandler(BaseHTTPRequestHandler):
 
 
 # -- the server under test -----------------------------------------------------
-
-def free_port():
-    probe = socket.socket()
-    probe.bind(("127.0.0.1", 0))
-    port = probe.getsockname()[1]
-    probe.close()
-    return port
-
 
 LIVE = []
 

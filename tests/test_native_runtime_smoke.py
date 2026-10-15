@@ -19,6 +19,7 @@ import urllib.request
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 from server_command import server_command  # noqa: E402
+from test_ports import free_port  # noqa: E402
 
 
 def request(base, path, method="GET"):
@@ -45,6 +46,9 @@ def check(results, label, condition, detail=""):
 def main():
     port = 32620
     with socket.socket() as probe:
+        # The smoke owns this fixed port in CI. Reuse a prior run's TIME_WAIT
+        # socket while still rejecting an active listener at bind time.
+        probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         try:
             probe.bind(("127.0.0.1", port))
         except OSError:
@@ -118,10 +122,7 @@ def main():
             ("an unknown --gdm", ["--gdm", "sometimes"], b"invalid choice"),
             ("--tls-key without --tls-cert", ["--tls-key", "key.pem"], b"--tls-key needs --tls-cert"),
         ):
-            probe = socket.socket()
-            probe.bind(("127.0.0.1", 0))
-            spare = probe.getsockname()[1]
-            probe.close()
+            spare = free_port()
             try:
                 refused = subprocess.run(
                     [native, "--port", str(spare), "--catalog", "tests/catalog_ui.json",

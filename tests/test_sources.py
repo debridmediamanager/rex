@@ -25,12 +25,13 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import time
 import urllib.parse
 import urllib.request
 
 from server_command import server_command
-from test_feed import BODY, MOUNT, ROOT, check, results, free_port, item, catalog, serve
+from startup_wait import poll_until
+from test_feed import BODY, MOUNT, ROOT, check, results, item, catalog, serve
+from test_ports import free_port
 
 FRONT_USER, FRONT_PASSWORD = "front-user", "front-password"
 
@@ -119,12 +120,13 @@ def start(work, sources):
         server_command("--port", port, "--catalog", os.path.join(work, "catalog.json"), "--sources",
                        os.path.join(work, "sources.json"), "--assert-claimed", "--gdm", "off", root=ROOT),
         cwd=ROOT, env=env, stdout=log, stderr=subprocess.STDOUT)
-    for _ in range(160):
+    def ready():
         try:
             urllib.request.urlopen("http://127.0.0.1:%d/identity" % port, timeout=2)
-            break
+            return True
         except Exception:
-            time.sleep(0.25)
+            return False
+    poll_until(ready, 40)
     return port, process, log
 
 

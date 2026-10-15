@@ -16,11 +16,12 @@ import shutil
 import socket
 import subprocess
 import sys
-import time
 import urllib.error
 import urllib.request
 
 from server_command import server_command
+from startup_wait import poll_until
+from test_ports import free_port
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -36,14 +37,6 @@ results = []
 def check(name, ok, detail=""):
     results.append(bool(ok))
     print("%s  %s%s" % ("PASS" if ok else "FAIL", name, "" if ok else "  -- " + str(detail)[:400]))
-
-
-def free_port():
-    probe = socket.socket()
-    probe.bind(("127.0.0.1", 0))
-    port = probe.getsockname()[1]
-    probe.close()
-    return port
 
 
 def listening(port):
@@ -71,14 +64,17 @@ def serving(*args):
                                               root=ROOT),
                                cwd=ROOT, env=ENV, stdout=subprocess.DEVNULL,
                                stderr=subprocess.DEVNULL)
-    for _ in range(80):
+    def ready():
         if process.poll() is not None:
-            break
+            return True
         try:
             urllib.request.urlopen("http://127.0.0.1:%d/identity" % port, timeout=2).read()
-            return process, port
+            return True
         except Exception:
-            time.sleep(0.25)
+            return False
+    served = poll_until(ready, 20)
+    if served and process.poll() is None:
+        return process, port
     return process, None
 
 

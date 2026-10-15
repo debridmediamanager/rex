@@ -30,10 +30,11 @@ import subprocess
 import sys
 import tempfile
 import threading
-import time
 import urllib.request
 
 from server_command import server_command
+from startup_wait import poll_until
+from test_ports import free_port
 
 ROOT = os.environ.get("REX_TEST_ROOT",
                       os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -46,12 +47,6 @@ results = []
 def check(label, ok, detail=""):
     results.append((label, bool(ok)))
     print("  %s  %-58s %s" % ("PASS" if ok else "FAIL", label, detail))
-
-
-def free_port():
-    with socket.socket() as sock:
-        sock.bind(("127.0.0.1", 0))
-        return sock.getsockname()[1]
 
 
 class _Quiet(http.server.BaseHTTPRequestHandler):
@@ -269,12 +264,13 @@ def content_types(zurg_port, extensions):
         cwd=ROOT, env=environment, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     served = {}
     try:
-        for _ in range(160):
+        def ready():
             try:
                 urllib.request.urlopen("http://127.0.0.1:%d/identity" % port, timeout=2)
-                break
+                return True
             except Exception:
-                time.sleep(0.25)
+                return False
+        poll_until(ready, 40)
         for row in rows:
             ext = row["Media"][0]["Part"][0]["file"].rsplit(".", 1)[-1]
             with urllib.request.urlopen(urllib.request.Request(
@@ -304,12 +300,13 @@ def main():
         cwd=ROOT, env=environment,
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
-        for _ in range(160):
+        def ready():
             try:
                 urllib.request.urlopen("http://127.0.0.1:%d/identity" % port, timeout=2)
-                break
+                return True
             except Exception:
-                time.sleep(0.25)
+                return False
+        poll_until(ready, 40)
         # Read the Part's own `key` back rather than composing it: the version stamp
         # is the row's, and a check that guesses it measures a 404.
         with urllib.request.urlopen(urllib.request.Request(

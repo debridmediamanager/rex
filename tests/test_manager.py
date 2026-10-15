@@ -9,7 +9,6 @@ by default, or any executable `REX_SERVER` names.
 """
 import json
 import os
-import random
 import shutil
 import signal
 import socket
@@ -19,6 +18,8 @@ import tempfile
 import time
 import urllib.error
 import urllib.request
+
+from test_ports import free_port
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -31,22 +32,6 @@ def check(name, ok, detail=""):
     results.append(bool(ok))
     print("%s  %s%s" % ("PASS" if ok else "FAIL", name, "" if ok else "  -- " + str(detail)[:600]),
           flush=True)
-
-
-def free_port():
-    # Below 32768: the 1.42.2 reference's ephemeral range starts there, and an outgoing connection
-    # can take a port above it between this probe and the bind.
-    for _ in range(200):
-        port = random.randint(20000, 32000)
-        probe = socket.socket()
-        try:
-            probe.bind(("127.0.0.1", port))
-            return port
-        except OSError:
-            continue
-        finally:
-            probe.close()
-    raise SystemExit("no free port")
 
 
 def answers(port):
@@ -84,7 +69,7 @@ def wait_for(predicate, seconds):
         value = predicate()
         if value:
             return value
-        time.sleep(0.25)
+        time.sleep(0.1)
     return predicate()
 
 

@@ -24,7 +24,6 @@ import json
 import os
 import re
 import shutil
-import socket
 import socketserver
 import subprocess
 import sys
@@ -35,6 +34,8 @@ import urllib.parse
 import urllib.request
 
 from server_command import server_command
+from startup_wait import poll_until
+from test_ports import free_port
 
 ROOT = os.environ.get("REX_TEST_ROOT",
                       os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -50,12 +51,6 @@ results = []
 def check(label, ok, detail=""):
     results.append((label, bool(ok)))
     print("  %s  %-62s %s" % ("PASS" if ok else "FAIL", label, detail))
-
-
-def free_port():
-    with socket.socket() as sock:
-        sock.bind(("127.0.0.1", 0))
-        return sock.getsockname()[1]
 
 
 MEDIA = {}
@@ -313,12 +308,13 @@ def start_server(catalog, zurg_port, transcoder, scratch, **env):
     process = subprocess.Popen(
         server_command("--port", port, "--catalog", catalog, "--assert-claimed", "--zurg-mount", "/zurg", root=ROOT),
         cwd=ROOT, env=environment, stdout=log, stderr=subprocess.STDOUT)
-    for _ in range(160):
+    def ready():
         try:
             urllib.request.urlopen("http://127.0.0.1:%d/identity" % port, timeout=2)
-            break
+            return True
         except Exception:
-            time.sleep(0.25)
+            return False
+    poll_until(ready, 40)
     return port, process, log.name
 
 

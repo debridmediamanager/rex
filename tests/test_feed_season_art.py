@@ -91,7 +91,7 @@ def wait_for(server, key, until, seconds=30):
     deadline = time.time() + seconds
     row = server.row(key)
     while not until(row) and time.time() < deadline:
-        time.sleep(0.5)
+        time.sleep(0.1)
         row = server.row(key)
     return row
 

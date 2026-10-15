@@ -18,6 +18,7 @@ import tempfile
 import time
 
 from server_command import server_command
+from test_ports import free_port
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -28,14 +29,6 @@ results = []
 def check(name, ok, detail=""):
     results.append(bool(ok))
     print("%s %s%s" % ("PASS" if ok else "FAIL", name, "" if ok else "  -- %r" % (detail,)))
-
-
-def free_port():
-    probe = socket.socket()
-    probe.bind(("127.0.0.1", 0))
-    port = probe.getsockname()[1]
-    probe.close()
-    return port
 
 
 def own_address():

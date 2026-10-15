@@ -87,7 +87,7 @@ def main():
         deadline = time.time() + 90
         keys = server.keys()
         while len(set(keys.values())) < len(rows_wanted) and time.time() < deadline:
-            time.sleep(1)
+            time.sleep(0.1)
             keys = server.keys()
         got = placed_all(server, keys, names)
         check_placed("after a start", got, keys, names)
