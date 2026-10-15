@@ -317,7 +317,7 @@ jobs:
             mkdir -p "$name/rust/target/release"
             install -m 755 "artifacts/rex-$platform/$binary" "$name/rust/target/release/$binary"
             git ls-files -z -- data examples \
-                README.md LICENSE docs/setup.md docs/feed-api.md \
+                README.md LICENSE docs/setup.md docs/feed-api.md docs/metadata-api.md \
               | xargs -0 cp --parents -t "$name"
             if [ "$platform" = windows-amd64 ]; then
               zip -qr "$name.zip" "$name"
