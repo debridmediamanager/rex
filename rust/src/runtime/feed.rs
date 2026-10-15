@@ -855,7 +855,7 @@ pub(super) fn replace_misnumbered(shared: &SharedRuntime) -> usize {
                         ));
                         return placed;
                     }
-                    placed
+                    super::scan::by_title(guard.tmdb.as_deref().map(|t| t as &dyn TmdbSource), id, release, name, placed)
                 }
                 None => numbers,
             });
@@ -1057,14 +1057,14 @@ struct Unsure {
 
 /// The numbers the name of a row's release at `index` reads: its file's, under its folder's,
 /// and whether they are the name's own (`scan::scene_numbered`).
-fn release_numbers(row: &Value, index: usize) -> Option<((i64, i64), bool)> {
+fn release_numbers(row: &Value, index: usize) -> Option<((i64, i64), bool, &str, &str)> {
     let path = row.pointer(&format!("/Media/{index}/_path")).and_then(Value::as_str)?;
     let mut segments = path.rsplit('/');
     let name = segments.next()?;
     let release = segments.next().or_else(|| row.get("_release").and_then(Value::as_str))?;
     // The row's own folder is its first Media's.
     let folder = row.as_object().and_then(super::scan::folder_of).filter(|_| index == 0);
-    Some((super::scan::episode_of(release, folder, name)?, super::scan::scene_numbered(release, folder, name)))
+    Some((super::scan::episode_of(release, folder, name)?, super::scan::scene_numbered(release, folder, name), release, name))
 }
 
 /// A row made of one release: that release its only Media, its source fields and name the row's.
@@ -1581,7 +1581,7 @@ impl Runtime {
             let here = (row.get("parentIndex").and_then(Value::as_i64), row.get("index").and_then(Value::as_i64));
             let mut away = Vec::new();
             for (source, sid, index) in &all {
-                let Some((numbers, scene)) = release_numbers(row, *index) else {
+                let Some((numbers, scene, release_name, file_name)) = release_numbers(row, *index) else {
                     continue;
                 };
                 let placed = match show_id {
@@ -1615,7 +1615,7 @@ impl Runtime {
                             });
                             continue;
                         }
-                        placed
+                        super::scan::by_title(self.tmdb.as_deref().map(|t| t as &dyn TmdbSource), id, release_name, file_name, placed)
                     }
                     None => numbers,
                 };

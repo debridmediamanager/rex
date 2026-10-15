@@ -3,11 +3,14 @@
 zurg's mount flattens: Saturday Night Live Seasons 1-15 has an `01 ` file in each of fifteen
 `Season N` folders, Smallville's Italian BD remux in each of ten `Stagione N`. zurg now pushes
 the folder (`folder`), and each file is its own season's episode; pushed without it, the file
-is left unplaced rather than folded onto another season's. A pack listed at its top level
+is left unplaced rather than folded onto another season's. Courage's and Phineas and Ferb's
+packs number the half hour where TMDB numbers its 11-minute segments, so their files go on the
+TMDB episode their titles name. A pack listed at its top level
 (Digimon Tamers, `folder: ""`) was never flattened, so its leading numbers read too. zurg's real
 entries are `fixtures/feed/pack_folders.json`.
 
-Record the answers again: `REX_RECORD_ANSWERS=1 TMDB_KEY=... python3 tests/test_feed_pack_folders.py`.
+Record the answers again: `REX_RECORD_ANSWERS=1 TMDB_KEY=... python3 tests/test_feed_pack_folders.py`
+(with `REX_DMM_API_KEY` too, the season lists come through DMM's metadata API; the answers are TMDB's either way).
 
     python3 tests/test_feed_pack_folders.py
 """
@@ -48,7 +51,8 @@ def main():
                "sections": LEGACY["sections"], "items": []}, open(os.path.join(work, "catalog.json"), "w"))
     for name in ("tmdb", "plex"):
         json.dump({} if RECORD else FIXTURE[name], open(os.path.join(work, name + "_cache.json"), "w"))
-    keys = {"TMDB_KEY": os.environ["TMDB_KEY"], "PLEX_TOKEN": os.environ.get("PLEX_TOKEN", "fake")} if RECORD else None
+    keys = {"TMDB_KEY": os.environ["TMDB_KEY"], "PLEX_TOKEN": os.environ.get("PLEX_TOKEN", "fake"),
+            "REX_DMM_API_KEY": os.environ.get("REX_DMM_API_KEY", "")} if RECORD else None
     server = Server(work, bytes_port, keys=keys)
     try:
         server.feed("POST", "items", {"items": [item(name) for name in sorted(FIXTURE["pushes"])]})
@@ -73,9 +77,8 @@ def main():
                 if os.path.exists(path):
                     with sqlite3.connect(path) as db:
                         FIXTURE[name].update({key: json.loads(value) for key, value in db.execute("SELECT key, value FROM cache")})
-            for key, value in list(FIXTURE["tmdb"].items()):
-                if "/season/" in key and "/episode/" not in key and isinstance(value, dict):
-                    FIXTURE["tmdb"][key] = {field: v for field, v in value.items() if field != "episodes"}
+            # Season answers keep their episode lists, unlike test_feed_names's: the titles in
+            # them are what places Courage's and Phineas and Ferb's files.
             json.dump(FIXTURE, open(FIXTURE_PATH, "w"), indent=1, sort_keys=True, ensure_ascii=False)
         shutil.rmtree(work, ignore_errors=True)
     print("\n%d/%d passed" % (sum(results), len(results)))

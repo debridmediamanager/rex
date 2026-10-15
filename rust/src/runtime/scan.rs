@@ -319,6 +319,52 @@ pub(super) fn on_tmdb_or_imdb(
     }
 }
 
+// What a pack's file name says before its title: `14. `, `1.01. `, `101a-b - `, `237-8 - `, `-01 `.
+static TITLE_LEAD: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^-?\d+(?:\.\d+)?(?:[a-z](?:-[a-z])?|-\d{1,2})?\.?\s*(?:-\s+)?").unwrap());
+
+/// The TMDB episode a pack's file is titled as, in the season its numbers name, else the
+/// numbers. TMDB files Courage the Cowardly Dog and Phineas and Ferb by their 11-minute
+/// segments (26 and 47 a season), and their packs by the half hour: `Season 2/14. The Magic
+/// Tree Of Nowhere. Robot Randy` is TMDB's S2E1 "The Magic Tree of Nowhere", not S2E14
+/// (measured 2026-10-15; IMDb numbers them by the half hour too, but TMDB's /find answers
+/// half of IMDb's ids with one segment and the rest with nothing). The file's title must
+/// start with one episode's whole name, the longest when several do, and only a name with
+/// no number of its own (`numbered_in_release`) is read so: a scene release's S02E05 is its own.
+pub(super) fn by_title(
+    tmdb: Option<&dyn TmdbSource>,
+    show: i64,
+    release: &str,
+    file_name: &str,
+    (season, episode): (i64, i64),
+) -> (i64, i64) {
+    let parsed = (identify::parse_name(release), identify::parse_name(file_name));
+    let (Some(t), None) = (tmdb, parsed.1.episode.or(parsed.0.episode)) else {
+        return (season, episode);
+    };
+    let fold = |text: &str| text.chars().filter(|c| c.is_alphanumeric()).collect::<String>().to_lowercase();
+    let stem = file_name.rsplit_once('.').map_or(file_name, |(stem, _)| stem);
+    let title = fold(&BRACKETS.replace_all(&TITLE_LEAD.replace(stem, ""), " "));
+    let Some(listed) = t.get(&format!("tv/{show}/season/{season}"), &[]) else {
+        return (season, episode);
+    };
+    let mut named: Vec<(usize, i64)> = listed
+        .get("episodes")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|row| {
+            let name = fold(row.get("name")?.as_str()?);
+            (name.len() >= 6 && title.starts_with(&name)).then_some((name.len(), row.get("episode_number")?.as_i64()?))
+        })
+        .collect();
+    named.sort_unstable_by(|a, b| b.0.cmp(&a.0));
+    match named.as_slice() {
+        [(longest, number), rest @ ..] if rest.first().is_none_or(|next| next.0 < *longest) => (season, *number),
+        _ => (season, episode),
+    }
+}
+
 /// Identification, off the lock, once per release: who it is (`identify.rs` -- an IMDb
 /// id the source pushed is exact; otherwise its name to Plex's matcher and TMDB, their agreement
 /// the confidence), then for each new file the fields TMDB gives its row and Plex's own
@@ -425,7 +471,8 @@ pub(super) fn name_release(plan: &Library, arrivals: &mut [Arrival], files: usiz
                 details.as_ref().and_then(|d| d.get("name")).and_then(Value::as_str).unwrap_or_default(),
                 numbers,
                 scene_numbered(&release, folder.as_deref(), &file_name),
-            )),
+            ))
+            .map(|numbers| by_title(tmdb.map(|t| t as &dyn TmdbSource), id, &release, &file_name, numbers)),
             (numbers, _) => numbers,
         };
         arrival.numbers = numbers;
@@ -1368,6 +1415,40 @@ mod tests {
             }
         }
         assert!(wrong.is_empty(), "{wrong:#?}");
+    }
+
+    /// TMDB's season lists as `tests/fixtures/identify/segment_titles.json` recorded them.
+    struct Seasons(Value);
+    impl TmdbSource for Seasons {
+        fn get(&self, path: &str, _params: &[(&str, String)]) -> Option<Value> {
+            let key = path.strip_prefix("tv/")?.replace("/season/", "/");
+            Some(json!({"episodes": self.0["seasons"].get(&key)?.clone()}))
+        }
+    }
+
+    /// `tests/fixtures/identify/segment_titles.json`: Courage's and Phineas and Ferb's packs,
+    /// numbered by the half hour, on TMDB's segments by their titles; SNL's as they were.
+    #[test]
+    fn by_title_places_a_pack_on_the_tmdb_episode_its_title_names() {
+        let record: Value =
+            serde_json::from_str(include_str!("../../../tests/fixtures/identify/segment_titles.json")).unwrap();
+        let tmdb = Seasons(record.clone());
+        let mut wrong = Vec::new();
+        for case in record["files"].as_array().unwrap() {
+            let (release, folder, file) = (case["release"].as_str().unwrap(), case["folder"].as_str(), case["file"].as_str().unwrap());
+            let numbers = episode_of(release, folder, file).unwrap();
+            let got = by_title(Some(&tmdb), case["show"].as_i64().unwrap(), release, file, numbers);
+            let want = (case["season"].as_i64().unwrap(), case["episode"].as_i64().unwrap());
+            if got != want {
+                wrong.push(format!("{file}: got {got:?}, want {want:?}"));
+            }
+        }
+        assert!(wrong.is_empty(), "{} wrong: {wrong:#?}", wrong.len());
+        // A scene release's own numbers stand, whatever its title says.
+        assert_eq!(
+            by_title(Some(&tmdb), 2085, "Courage.the.Cowardly.Dog.S02.1080p", "Courage.the.Cowardly.Dog.S02E14.The.Magic.Tree.of.Nowhere.mkv", (2, 14)),
+            (2, 14)
+        );
     }
 
     /// `tests/fixtures/identify/pack_folders.json`: every file of eight packs on fun, Smallville's
