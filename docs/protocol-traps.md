@@ -4132,6 +4132,10 @@ are changing; replay the client's exact request before altering behavior.
 - **No `-copyts` with the segment muxer.** Count from the seek and let `-initial_offset` put
   the timestamps back; DASH needs `-output_ts_offset` and `movflags=+frag_discont`, and
   `make_non_negative` against AAC priming's wrapped `tfdt`.
+- **A session's playlist, segments and headers come without a token.** They are fetched
+  relative to start.m3u8/start.mpd, which drops the query. A real PMS keys them to the session:
+  200 while it runs, 404 once it does not, claimed or not; `start`, `ping`, `stop` and
+  `/transcode/sessions` stay gated (findings, "A conversion session is its own key").
 - **Only the newest segment request may restart FFmpeg.** The request for the old position is
   still out when the seek's arrives.
 - **Spawn FFmpeg from a thread that never exits.** `PR_SET_PDEATHSIG` is tied to the thread.

@@ -12646,3 +12646,38 @@ rex now reports `collections,federated-auth,home,item_clusters,kevin-bacon,pass,
 server-manager,session_kick,type-first` and drops the names for what it cannot do. `pass`
 stays until remote play with an owner who has none is measured (Fizzy #297).
 
+
+## A conversion session is its own key (2026-10-15)
+
+A claimed rex (eb54b2c, the Windows build, `REX_TRANSCODER`) started a conversion for Plex Web
+4.147.1 -- a remux of an h264/aac .mov, and a 4K h264 mp4 -- then answered the client's next
+request, `GET /video/:/transcode/universal/session/<id>/base/index.m3u8`, 401 "no valid
+token", and the client showed "Playback Error, h4 (Not Supported)". start.m3u8 names that
+playlist relative to itself, and a relative URL drops the query the token rode in. The suites
+run unclaimed from loopback, which is not gated, so none of them saw it.
+
+Measured with `probes/record_session_gate.py` (`tests/fixtures/transcode/session_gate_s143.json`
+and `session_gate_s1422.json`): on plexscratch (1.43.4, unclaimed) through its relay, whose
+`Host` its gate refuses, with an HLS and a DASH remux of Sintel started with the token; and on
+the claimed 1.42.2 production server with no token at all, for a session that does not exist
+only, since starting one there is a write to production. Tokenless `/library/sections` was 401
+on both.
+
+| Without a token | plexscratch | claimed 1.42.2 |
+|---|---|---|
+| a live session's `base/index.m3u8` (GET, HEAD), `.ts`, DASH `header` and `.m4s` | 200 | not tried |
+| the same with a wrong token | 200 | not tried |
+| a live session's `index.m3u8`, POST, PUT or DELETE | 404 | not tried |
+| a session that does not exist, or has stopped | 404 | 404 |
+| `start.m3u8` | 403 | not tried |
+| `ping`, `stop`, `/transcode/sessions` | 401 | not tried |
+
+So PMS keys `/video/:/transcode/universal/session/...` to the session alone, ahead of its token
+gate, and keeps gating every request that names a session in its query. The claimed server
+answers an unknown session 404, not its 401, so there too the session is looked up before any
+token is.
+
+rex now leaves that path out of its gate (`authorized`) and answers 404 to every verb but GET
+and HEAD on it. `tests/test_native_transcode.py` replays the plexscratch recording against a
+claimed rex (a `claim_state.json`, plex.tv on a closed port); 18 of its 30 checks failed on
+eb54b2c. Not emulated: a tokenless `start.m3u8` is the reference's 403 and rex's 401.

@@ -43,7 +43,7 @@ searched on disk. The gate is usually one truthiness check in minified code.
 | `tests/` | Conformance and end-to-end suites, plus `catalog_ui.json` and `fixtures/decisions/`, the measured decision corpus |
 | `tests/fixtures/` | Redacted corpora recorded from a real PMS through a real client; `media/` pairs real files' probes with a real PMS's analysis of them |
 | `harness/` | plexlab — the reference PMS and the recorder. See below. |
-| `probes/` | Measurement scripts: the recorders behind checked-in fixtures (`record_identify_corpus.py`, `record_episode_id_corpus.py`, `record_unidentified_corpus.py`, which also tops a corpus up, `legacy_scan_fixture.py`), `ui_surface.py`, the plex.tv presence probes and `apkcensus.py`. The corpus recorders run the Rust identifier through `identify_replay.py` (the binary's `identify-replay` adapter) |
+| `probes/` | Measurement scripts: the recorders behind checked-in fixtures (`record_identify_corpus.py`, `record_episode_id_corpus.py`, `record_unidentified_corpus.py`, which also tops a corpus up, `legacy_scan_fixture.py`, `record_session_gate.py`), `ui_surface.py`, the plex.tv presence probes and `apkcensus.py`. The corpus recorders run the Rust identifier through `identify_replay.py` (the binary's `identify-replay` adapter) |
 | `docs/findings.md` | Everything measured. Read before changing behaviour. |
 | `docs/protocol-traps.md`, `docs/setup.md`, `docs/feed-api.md` | The protocol's edge cases, the operator's guide, and the API sources push with |
 
@@ -156,6 +156,8 @@ claimed server gates every request as a real PMS does: its own token, the tokens
 `plex.tv/api/v2/server/access_tokens` lists for it (re-read for an unknown token, and kept in
 `claim_state.json` so a failed read after a restart locks no one out), and the `transient-`
 tokens its own `/security/token` minted (findings, "The token gate a claimed server keeps").
+A conversion's own playlist and segments (`/video/:/transcode/universal/session/...`) are
+keyed to the session, not the token, as on a real PMS (findings, "A conversion session is its own key").
 An unclaimed server without `--token` answers only its own networks, as an unclaimed PMS
 does (`local_request`; findings, "The gate an unclaimed server keeps").
 Start it without `--announce-url` for the claim and add it afterwards: the unclaimed
