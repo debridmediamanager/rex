@@ -2783,8 +2783,8 @@ are changing; replay the client's exact request before altering behavior.
   minted, so the action row stays a skeleton and a show's Seasons block spins forever. The
   catalog takes Plex's own guids from `metadata.provider.plex.tv` (`POST
   /library/metadata/matches {"type":1|2,"guid":"tmdb://N"}`, then `children` by `index`):
-  `rex catalog --relink` with `PLEX_TOKEN`. The provider refuses `X-Plex-Container-Size:
-  500` with a 400; the agent pages at 50.
+  `rex catalog --relink`, asked with the claim beside the catalog, else `PLEX_TOKEN`. The
+  provider refuses `X-Plex-Container-Size: 500` with a 400; the agent pages at 50.
 - **`/service/ultrablur/colors` resolves its `url` like `/photo/:/transcode`** and answers the
   corner colours as a JSON LIST of one (an element in XML). Plex for Android uses the singular
   `/service/` spelling for any item without `UltraBlurColors`.

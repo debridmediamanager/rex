@@ -20,7 +20,7 @@ rex gets its library from whatever you point at it. Each source sends rex the li
 
 This is the short version. [docs/setup.md](docs/setup.md) has every option and a troubleshooting table.
 
-You need a Linux, macOS or Windows machine, at least one source such as zurg, a free [TMDB API key](https://www.themoviedb.org/settings/api) and your [Plex token](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/).
+You need a Linux, macOS or Windows machine, at least one source such as zurg and a free [TMDB API key](https://www.themoviedb.org/settings/api). rex never needs your Plex token.
 
 **1. Get it**
 
@@ -32,7 +32,7 @@ tar xzf rex-vX.Y.Z-linux-amd64.tar.gz && cd rex-vX.Y.Z-linux-amd64
 
 The steps below need a release newer than v0.2.0: v0.2.0 predates sources registering
 themselves and the catalog seeding itself on first start. Until a newer release is out,
-build it yourself. No Rust on the machine? No Rust on the machine? The full guide has a Docker build.
+build it yourself. No Rust on the machine? The full guide has a Docker build.
 
 ```bash
 git clone https://github.com/debridmediamanager/rex && cd rex
@@ -46,7 +46,7 @@ On Windows unpack the zip and use `rust\target\release\rex.exe` where the steps 
 **2. Start it**
 
 ```bash
-export TMDB_KEY=... PLEX_TOKEN=...
+export TMDB_KEY=...
 rust/target/release/rex --catalog rex.db --friendly-name myrex \
   --owner-username <your Plex username> --owner-email <your Plex email>
 ```
@@ -81,9 +81,11 @@ curl -X POST "http://127.0.0.1:32400/myplex/claim?token=claim-xxxxxxxxxxxx"
 
 Do this once per server. rex saves it in `claim_state.json` next to `rex.db`. Back that file up.
 
+From then on rex talks to plex.tv with the server's own token from the claim. That token also lets rex match your titles with Plex's own metadata as well as TMDB's. If you skip this step and still want Plex's matches, set `PLEX_TOKEN` to your [Plex token](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/) in step 2. A claimed server does not need it.
+
 **5. Use it outside your home**
 
-app.plex.tv only connects to an HTTPS address and the other Plex apps prefer one. rex has no relay so the address has to be reachable from the internet. Give rex a certificate for your own hostname with `--tls-cert` and `--tls-key`. Then restart it with that address. Do not put a Cloudflare tunnel in front. Cloudflare drops the range of the first read so every play start pulls the whole file from your source.
+app.plex.tv only connects to an HTTPS address and the other Plex apps prefer one. rex has no relay so the address has to be reachable from the internet. Give rex a certificate for your own hostname with `--tls-cert` and `--tls-key`. Then restart it with that address. rex registers the address once it is claimed. Without `PLEX_TOKEN` it can have the address from the first start: it waits and registers the moment you claim it. Do not put a Cloudflare tunnel in front. Cloudflare drops the range of the first read so every play start pulls the whole file from your source.
 
 ```bash
 --announce-url https://rex.example.com:32400

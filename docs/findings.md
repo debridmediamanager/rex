@@ -12703,3 +12703,36 @@ rex now leaves that path out of its gate (`authorized`) and answers 404 to every
 and HEAD on it. `tests/test_native_transcode.py` replays the plexscratch recording against a
 claimed rex (a `claim_state.json`, plex.tv on a closed port); 18 of its 30 checks failed on
 eb54b2c. Not emulated: a tokenless `start.m3u8` is the reference's 403 and rex's 401.
+
+
+## A claimed server needs no account token (2026-10-15)
+
+`PLEX_TOKEN`, the owner's account token, was the one credential setup asked for that a real PMS
+never holds. rex sent it to Plex's metadata agent, on the announce and on the visibility check,
+and refused `--announce-url` without it. A claimed PMS asks plex.tv everything with its own
+server token, and a claimed rex holds one (`claim_state.json`). Measured from fun with rex-fun's
+server token, read-only, with the headers `plexmeta.rs` sends (`X-Plex-Token`,
+`X-Plex-Client-Identifier` the machineIdentifier, `X-Plex-Product: Plex Media Server`,
+`X-Plex-Provider-Version: 6.5.0`):
+
+| Request, with the server token | Answer |
+|---|---|
+| `POST metadata.provider.plex.tv/library/metadata/matches` `{"type":1,"guid":"tmdb://603"}` | 200, `plex://movie/5d776827880197001ec90904` (The Matrix) |
+| the same with `{"type":1,"title":"The Matrix","year":1999}` | 200, the same guid |
+| `{"type":2,"guid":"tmdb://1396"}`, then `GET /library/metadata/<id>/children` | 200 with a `plex://show/` guid, then 200 with 6 rows |
+| `GET plex.tv/api/v2/resources` | 200, 3 rows, rex-fun's own machine among them |
+
+So rex now asks plex.tv with the claim's token wherever it used `PLEX_TOKEN`, and with
+`PLEX_TOKEN` only while there is no claim (`plextv::server_token`): the announce and its
+visibility check, Plex's metadata agent (on when there is either, and from the moment a claim
+is made at runtime) and `rex catalog --relink` (the claim beside the catalog). `--announce-url`
+no longer needs `PLEX_TOKEN`. Unclaimed with neither, rex starts, logs once that it waits for a
+claim and announces the moment it is claimed, so `--announce-url` can be on from the first
+start; announcing nothing before the claim also never writes the account-token device row
+behind the 2026-09-11 claim that answered the account token. `tests/test_plextv.py`'s
+server-token legs: on 7715aff (a) and (b) refused to start ("--announce-url needs PLEX_TOKEN in
+the environment"), and (c)'s agent asked nothing without `PLEX_TOKEN`, claimed at start or at
+runtime.
+
+Not measured: whether the server token reads everything else the account token does on the
+agent (artwork, markers). rex asks it only for matches and children.

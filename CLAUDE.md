@@ -86,7 +86,7 @@ Where things live in `rust/src/`:
 | `runtime/upstream.rs` | The HTTP/HTTPS client (rustls, system roots) behind zurg, provider redirects, TMDB, Plex's metadata agent and artwork |
 | `runtime/source.rs`, `runtime/feed.rs`, `runtime/scan.rs` | Sources (registered over `PUT /rex/sources/{name}`, kept in the state file, deleted with a confirmation: where a Part's bytes are), the feed API sources push items to, open to anyone who can reach rex (`docs/feed-api.md`), and the rows those items become: added, held until probed, filled, re-identified, trashed, keys minted once (`mint_key`) |
 | `runtime/universal.rs` | The video transcoder (`REX_TRANSCODER`): the conversion decision's plan and Media, `start.m3u8`/`start.mpd`, segments served outside the runtime lock, one FFmpeg per session with the hardware ladder, seeks, throttling and the idle reaper, and the `TranscodeSession` rows |
-| `runtime/plexmeta.rs`, `identify.rs` | Plex's metadata agent (`PLEX_TOKEN`), and which title a release is: an id in its name, a known IMDb id for its hash (zurg's), then Plex's matcher and TMDB, with their agreement as the confidence; it must name as many of `tests/fixtures/identify/` right (`rust/tests/identify_corpus.rs`) |
+| `runtime/plexmeta.rs`, `identify.rs` | Plex's metadata agent (the claim's server token, else `PLEX_TOKEN`), and which title a release is: an id in its name, a known IMDb id for its hash (zurg's), then Plex's matcher and TMDB, with their agreement as the confidence; it must name as many of `tests/fixtures/identify/` right (`rust/tests/identify_corpus.rs`) |
 | `runtime/plextv.rs`, `runtime/tmdb.rs` | claim/heartbeat/account state, and TMDB's reads for Fix Match and identification, through a metadata provider first when one is set (`REX_PLEXTV_URL` points plex.tv at a stub) |
 | `platform.rs` | Everything asked of the OS beyond `std`: local time, CPU time and load, the host name, thread ids, pausing and killing FFmpeg, the GDM socket. A Unix half and a Windows half; nothing else may call `libc` for these |
 | `runtime/*.rs` (the rest) | One subsystem each, named after it: search, listing, axes, edit, collections, playlists, artwork, butler, framework, i18n, resume (On Deck and hubs), logging and so on |
@@ -102,7 +102,7 @@ gives the client a grid whose filter bar can only talk about the wrong type.
 ```bash
 cargo build --release --manifest-path rust/Cargo.toml
 rust/target/release/rex --catalog rex.db --friendly-name NAME --zurg-mount /mnt/zurg   # seeds rex.db on its first start
-cp examples/run.sh.example run.sh   # keys go in rex.env beside it (TMDB_KEY, PLEX_TOKEN; mode 600)
+cp examples/run.sh.example run.sh   # keys go in rex.env beside it (TMDB_KEY; PLEX_TOKEN optional; mode 600)
 ```
 
 Sources push the library; rex reads no media itself, lists and queries nothing, and
@@ -119,7 +119,8 @@ the old WebDAV scanner reads through the registered source whose `mount` holds i
 so either plays again once its source registers. `DELETE /rex/sources/{name}` answers a
 one-use code valid 300 s; `DELETE .../confirm/<code>` removes the source and what it pushed
 from rex, never its files. With no source a part read is the 502 an unreachable source is. `TMDB_KEY` and
-`PLEX_TOKEN` identify what is pushed (Fix Match needs TMDB). `--zurg-mount` is zurg's
+Plex's matcher identify what is pushed (Fix Match needs TMDB); the matcher is asked with the
+claim's server token, or `PLEX_TOKEN` on an unclaimed server, and is off with neither. `--zurg-mount` is zurg's
 `mount_path` (default `/mnt/zurg`): a Part's `file` is `<mount>/<directory>/<release>/<file>`,
 and each library's `Location` is `<mount>/<directory>` -- set in the catalog's sections
 (`rex catalog --seed`, or the seed on start), or through Add Library's `location`.
@@ -150,7 +151,9 @@ feed, is rex's own, and only its wire shapes are the reference's (`tests/fixture
 requests). Segment lengths, encoder settings and the MPD's `minBufferTime` are ours, chosen
 by measurement (findings, "The universal transcoder").
 
-`--announce-url` needs `PLEX_TOKEN`; a comma-separated list announces each URI as its own
+`--announce-url` announces with the claim's server token, or `PLEX_TOKEN` while unclaimed; with
+neither it waits for the claim and announces the moment it lands, no restart (findings, "A
+claimed server needs no account token"). A comma-separated list announces each URI as its own
 connection, as a PMS with several does. The feed is rex's own API, not PMS emulation.
 
 A real claim -- `POST /myplex/claim?token=` with a token from `plex.tv/api/claim/token.json`,
@@ -166,10 +169,11 @@ A conversion's own playlist and segments (`/video/:/transcode/universal/session/
 keyed to the session, not the token, as on a real PMS (findings, "A conversion session is its own key").
 An unclaimed server without `--token` answers only its own networks, as an unclaimed PMS
 does (`local_request`; findings, "The gate an unclaimed server keeps").
-Start it without `--announce-url` for the claim and add it afterwards: the unclaimed
-heartbeat writes a device row with the account token first, and the 2026-09-11 spike's
-claim of an identity that already had such a row got the account token back, not a server
-token. rex now refuses to store a token equal to `PLEX_TOKEN`, and a claimed server answers
+With `PLEX_TOKEN` set, start it without `--announce-url` for the claim and add it afterwards:
+the unclaimed heartbeat writes a device row with the account token first, and the 2026-09-11
+spike's claim of an identity that already had such a row got the account token back, not a
+server token. Without `PLEX_TOKEN` nothing is announced before the claim, so `--announce-url`
+can stay on. rex refuses to store a token equal to `PLEX_TOKEN`, and a claimed server answers
 another claim with 409.
 
 `rex.db`, `rex.env` and `run.sh` are gitignored: the catalog and `rex.env` carry

@@ -3,8 +3,9 @@
 # fill in the values, and see README "Setup" for each step. It runs from its own directory.
 #
 # Keys come from rex.env beside run.sh (mode 600; gitignored, as is run.sh):
-# TMDB_KEY names what is pushed and powers Fix Match,
-# PLEX_TOKEN (the owner's account token) feeds Plex's metadata agent and the announce.
+# TMDB_KEY names what is pushed and powers Fix Match. PLEX_TOKEN (the owner's account token)
+# is optional: a claimed server asks Plex's metadata agent and plex.tv with its own token, and
+# only an unclaimed one that should still match with Plex's agent needs it.
 # REX_METADATA_URL (+REX_METADATA_KEY) reads TMDB through a metadata provider first, such as
 # DMM for its sponsors (docs/metadata-api.md).
 # Under systemd, EnvironmentFile= can load the same file instead.
@@ -20,14 +21,18 @@
 # On --port 32400 rex answers Plex's LAN discovery (GDM) on udp/32410 and udp/32414; on a
 # host that runs Plex too, use another port and --gdm off.
 #
-# --announce-url is added once the server is claimed (claim_state.json beside the
-# catalog): claim it first, without it. The HTTPS address needs --tls-cert/--tls-key here
-# (a PKCS#8 or RSA key). Not a Cloudflare tunnel: docs/setup.md step 7 says why.
+# --announce-url: an unclaimed server announces nothing until it is claimed, then at once.
+# With PLEX_TOKEN set it would announce with that token before the claim, which can make the
+# claim fail (docs/setup.md step 6), so it is left off then until claim_state.json exists.
+# The HTTPS address needs --tls-cert/--tls-key here (a PKCS#8 or RSA key). Not a Cloudflare
+# tunnel: docs/setup.md step 7 says why.
 set -e
 cd "$(dirname "$0")"
 [ -f rex.env ] && { set -a; . ./rex.env; set +a; }
 ANNOUNCE=()
-[ -f claim_state.json ] && ANNOUNCE=(--announce-url "https://rex.example.com:32400,http://192.168.1.10:32400")
+if [ -f claim_state.json ] || [ -z "${PLEX_TOKEN:-}" ]; then
+  ANNOUNCE=(--announce-url "https://rex.example.com:32400,http://192.168.1.10:32400")
+fi
 exec rust/target/release/rex \
   --catalog rex.db \
   --friendly-name myrex \
