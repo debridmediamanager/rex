@@ -505,16 +505,32 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
 
     // -- under the lock: which library, which row, what has to be identified ---------------
     let mut plans: Vec<(Item, Library, Plan)> = Vec::new();
+    // The movie library a film a source filed with the shows may go to, by plan index (`as_film`).
+    let mut film_libraries: HashMap<usize, Library> = HashMap::new();
     {
         let guard = lock(shared);
         let rows = guard.feed_rows(&source.name);
         let legacy = guard.legacy_rows_by_file();
         let named = guard.tmdb.is_some() || guard.plex.is_some();
         for item in items {
-            let Some(library) = guard.feed_library(&item) else {
+            let Some(mut library) = guard.feed_library(&item) else {
                 counts.rejected.push(json!({"id": item.id, "reason": format!("no movie or show library holds {}", item.file)}));
                 continue;
             };
+            let film = library.kind == "show" && item.library.is_none() && item.imdb.is_some() && film_shaped(&item.name);
+            if film {
+                let in_section = |kind: &str| guard.feed_library(&Item { library: Some(kind.to_string()), ..item.clone() });
+                // Already moved there: it stays, so a push does not re-identify it every time.
+                let placed = rows.get(&item.id).and_then(|key| guard.catalog.get(key)).filter(|row| row.get("type").and_then(Value::as_str) == Some("movie"));
+                match placed.and_then(|row| row.get("librarySectionID")).map(string_value).and_then(|key| in_section(&key)) {
+                    Some(movies) => library = movies,
+                    None => {
+                        if let Some(movies) = in_section("movie") {
+                            film_libraries.insert(plans.len(), movies);
+                        }
+                    }
+                }
+            }
             if let Some(seen) = seen.as_deref_mut() {
                 seen.insert(item.id.clone());
             }
@@ -568,13 +584,36 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
         }
     }
     let mut arrivals: HashMap<usize, Arrival> = HashMap::new();
+    let mut moved_to_films = Vec::new();
     for indices in groups.values() {
         let library = &plans[indices[0]].1;
         let mut release: Vec<Arrival> = indices.iter().map(|index| plans[*index].0.arrival(&source.name)).collect();
         let files = release.len();
         name_release(library, &mut release, files);
+        // `[Baws] Evangelion 1.11 - You Are (Not) Alone v2` in zurg's anime directory, which
+        // feeds the production server's TV Shows: one file whose exact id is a film, refused as
+        // a show and left on the blank tile with its two sequels (2026-10-16). Named as a film,
+        // it is filed in the movie library.
+        let named = |arrivals: &[Arrival]| arrivals.first().and_then(|arrival| arrival.meta.as_ref()).is_some_and(|meta| meta.contains_key("title"));
+        if files == 1 && !named(&release) {
+            if let Some(movies) = film_libraries.get(&indices[0]) {
+                let mut as_film = vec![plans[indices[0]].0.arrival(&source.name)];
+                name_release(movies, &mut as_film, 1);
+                if named(&as_film) {
+                    info!("FEED {:?} is a film: filed in {}", plans[indices[0]].0.name, movies.title);
+                    release = as_film;
+                    moved_to_films.push(indices[0]);
+                }
+            }
+        }
         for (index, arrival) in indices.iter().zip(release) {
             arrivals.insert(*index, arrival);
+        }
+    }
+
+    for index in moved_to_films {
+        if let Some(movies) = film_libraries.remove(&index) {
+            plans[index].1 = movies;
         }
     }
 
@@ -807,6 +846,12 @@ pub(super) fn repair_seasons(shared: &SharedRuntime) -> usize {
 /// the first, doubling to about five days.
 fn retry_after(attempts: i64) -> i64 {
     3600 << (attempts.clamp(1, 8) - 1)
+}
+
+/// A release name a film could have: no season, episode or pack in it.
+fn film_shaped(name: &str) -> bool {
+    let parsed = crate::identify::parse_name(name);
+    parsed.season.is_none() && parsed.episode.is_none() && !parsed.pack
 }
 
 /// The item a row's source pushed, rebuilt from the row: what `upsert` needs to identify it
