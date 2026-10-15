@@ -670,19 +670,19 @@ impl Runtime {
     pub fn load(options: RuntimeOptions) -> Result<Self, String> {
         // Fix Match needs a live agent, keyed like build_catalog.py; the response cache
         // lives beside the catalog.
-        // A DMM sponsor's key reads TMDB through DMM (`REX_DMM_API_KEY`, `REX_DMM_URL`), with
-        // or without a TMDB key of rex's own to fall back on.
+        // A metadata provider (`REX_METADATA_URL`, `docs/metadata-api.md`; DMM is one) answers
+        // TMDB's reads first, with or without a TMDB key of rex's own to fall back on.
         let env = |name: &str| std::env::var(name).ok().filter(|value| !value.is_empty());
-        let dmm_key = env("REX_DMM_API_KEY");
-        let tmdb = (env("TMDB_KEY").is_some() || dmm_key.is_some()).then(|| {
+        let provider = env("REX_METADATA_URL");
+        let tmdb = (env("TMDB_KEY").is_some() || provider.is_some()).then(|| {
             // `os.path.dirname(os.path.abspath(catalog))`: absolute, symlinks kept.
             let directory = std::path::absolute(&options.catalog)
                 .ok()
                 .and_then(|path| path.parent().map(Path::to_path_buf))
                 .unwrap_or_else(|| PathBuf::from("."));
             let tmdb = tmdb::Tmdb::new(env("TMDB_KEY").unwrap_or_default(), directory.join("tmdb_cache.json"));
-            Arc::new(match dmm_key {
-                Some(key) => tmdb.with_dmm(env("REX_DMM_URL").unwrap_or_else(|| "https://debridmediamanager.com".to_string()), key),
+            Arc::new(match provider {
+                Some(url) => tmdb.with_provider(url, env("REX_METADATA_KEY")),
                 None => tmdb,
             })
         });

@@ -10,7 +10,7 @@ TMDB episode their titles name. A pack listed at its top level
 entries are `fixtures/feed/pack_folders.json`.
 
 Record the answers again: `REX_RECORD_ANSWERS=1 TMDB_KEY=... python3 tests/test_feed_pack_folders.py`
-(with `REX_DMM_API_KEY` too, the season lists come through DMM's metadata API; the answers are TMDB's either way).
+(with `REX_METADATA_URL` too, through a metadata provider such as DMM; the answers are TMDB's either way).
 
     python3 tests/test_feed_pack_folders.py
 """
@@ -53,7 +53,8 @@ def main():
     for name in ("tmdb", "plex"):
         json.dump({} if RECORD else FIXTURE[name], open(os.path.join(work, name + "_cache.json"), "w"))
     keys = {"TMDB_KEY": os.environ["TMDB_KEY"], "PLEX_TOKEN": os.environ.get("PLEX_TOKEN", "fake"),
-            "REX_DMM_API_KEY": os.environ.get("REX_DMM_API_KEY", "")} if RECORD else None
+            "REX_METADATA_URL": os.environ.get("REX_METADATA_URL", ""),
+            "REX_METADATA_KEY": os.environ.get("REX_METADATA_KEY", "")} if RECORD else None
     server = Server(work, bytes_port, keys=keys)
     try:
         server.feed("POST", "items", {"items": [item(name) for name in sorted(FIXTURE["pushes"])]})
