@@ -1,7 +1,7 @@
 //! The feed: sources push their items here, and rex lists or queries no source.
 //!
-//! `docs/feed-api.md` is the reference. A request is admitted from the networks an unclaimed
-//! server answers (`local_request`; never a Plex token), parsed, classified under the
+//! `docs/feed-api.md` is the reference. A request is admitted from anyone (no token, no
+//! network gate, never the Plex gate), parsed, classified under the
 //! runtime lock, identified off it (TMDB and Plex's matcher are network lookups), and
 //! applied under it again, then saved before it is answered. Feed requests apply one at a
 //! time (`FEED`), which is also what keeps a snapshot's chunks in order. A source pushes
@@ -185,13 +185,10 @@ fn answer(status: u16, body: Value) -> Response {
 }
 
 /// `/rex/feed/{source}/{items|snapshot|held}` and `/rex/sources[/{name}]`, outside the Plex
-/// gate: answered to the peers an unclaimed server answers, claimed or not. A feed token
-/// guarded it before, which every source had to be configured with by hand beside rex.
+/// gate and open to anyone who can reach rex: a feed token per source, set by hand on both
+/// sides, guarded it before, and a local-network gate refused sources that name rex by host
+/// name (a Docker service, Tailscale). The owner chose an open feed over either.
 pub(super) fn handle(shared: &SharedRuntime, request: &Request, path: &str) -> Response {
-    if !lock(shared).local_request(request) {
-        warning!("FEED refused a {} {} from beyond the local networks", request.method, logged_path(path));
-        return answer(403, json!({"error": "the feed answers only local networks"}));
-    }
     if let Some(rest) = path.strip_prefix("/rex/sources") {
         return sources(shared, request, rest.trim_matches('/'));
     }

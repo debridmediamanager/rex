@@ -386,18 +386,17 @@ def main():
     catalog(work)
     server = Server(work, bytes_port)
     try:
-        # -- refusals: this machine's networks, a registered source ---------------------
-        # The feed answers whom an unclaimed server answers (`local_request`), claimed or
-        # not, and no token: a feed token had to be made up and set on both sides by hand.
+        # -- refusals: only a source nobody registered ----------------------------------
+        # The feed is open: no token, and no network gate. A local-network gate refused a
+        # zurg naming rex by host name (`Host: rex`, a Docker service) or over Tailscale.
         movie = item("movie", ids=False)
         for label, extra in (("a forwarded hop beyond the local networks", {"X-Forwarded-For": "203.0.113.9"}),
                              ("a Host that names another machine", {"Host": "rex.example"})):
-            status, body = server.feed("POST", "items", {"items": [movie]}, headers=extra)
-            check("a push from %s is refused 403" % label,
-                  status == 403 and body == {"error": "the feed answers only local networks"}, (status, body))
-        status, body = server.request("/rex/sources/zurg", "PUT", {"url": "http://203.0.113.9/dav"},
-                                      {"Content-Type": "application/json", "X-Forwarded-For": "203.0.113.9"})
-        check("and so is a registration from there", status == 403, (status, body))
+            status, body = server.feed("GET", "items", headers=extra)
+            check("a feed request from %s is answered, not refused" % label, status == 200, (status, body))
+        status, body = server.request("/rex/sources", "GET", None,
+                                      {"X-Forwarded-For": "203.0.113.9", "Host": "rex"})
+        check("and so is the sources API from there", status == 200, (status, body))
         status, body = server.feed("POST", "items", {"items": [movie]}, source="nobody")
         check("a source nobody registered is a 404 naming the registration",
               status == 404 and body == {"error": "no such source: PUT /rex/sources/nobody first"}, (status, body))

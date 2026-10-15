@@ -32,19 +32,12 @@ zurg's WebDAV, nginx, a NAS, object storage or `python3 -m http.server`
 
 ### Who may call it
 
-The feed and the sources API answer the networks an unclaimed rex answers (`local_request`;
-findings, "The gate an unclaimed server keeps"), claimed or not: the peer and every
-`X-Forwarded-For` hop must be loopback or a private address (10/8, 172.16/12, 192.168/16,
-fc00::/7), or once `allowedNetworks` is set, in it, and `Host` must be `localhost` or the
-address the request reached. Anything else is a `403`
-`{"error": "the feed answers only local networks"}`. No token is read; Plex tokens and the
-Plex gate play no part. Two consequences for a source:
-
-- Name rex by its address (`http://127.0.0.1:32400`, `http://192.168.1.10:32400`), not by a
-  host name: a container that reaches rex as `http://rex:32400` sends `Host: rex` and is
-  refused.
-- Tailscale's 100.64/10 is not a private range. A source that reaches rex over Tailscale
-  needs it in `allowedNetworks` (Settings > Network on rex, from rex's own machine).
+Anyone who can reach rex. The feed and the sources API read no token, check no network and
+are not behind the Plex gate, claimed or not, so a source may name rex by address or host
+name (`http://rex:32400` from a container, a Tailscale name). That also means anyone who can
+reach rex's port can register a source, push items and delete a source with everything it
+pushed: keep rex's port off the open internet, or put a proxy in front of it that passes
+`/rex/feed/` and `/rex/sources` only from where your sources run.
 
 ### Rows keep their source
 

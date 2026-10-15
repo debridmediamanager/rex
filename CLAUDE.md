@@ -111,9 +111,9 @@ seeded on start as `rex catalog --seed` seeds one (`--friendly-name`, default `r
 libraries under `--zurg-mount`); `rex catalog --seed` stays for naming more directories or
 re-seeding. A source registers itself -- `PUT /rex/sources/{name}`: its byte url, `user`/
 `password` or `bearer`, `mount` -- and rex keeps the registration in the state file; it then
-pushes to `/rex/feed/{name}`. Both answer only the peers an unclaimed server answers
-(`local_request`, below), claimed or not, and read no token: a feed token per source, set
-by hand on both sides, was the setup's longest step. Registering is the only way a source
+pushes to `/rex/feed/{name}`. Both are open to anyone who can reach rex, claimed or not:
+no token (a feed token per source, set by hand on both sides, was the setup's longest
+step) and no network gate (one refused zurgs naming rex by host name or over Tailscale). Registering is the only way a source
 exists (`ZURG_URL` is not read): a row keeps its `_source`/`_path`, and a catalog row from
 the old WebDAV scanner reads through the registered source whose `mount` holds its file,
 so either plays again once its source registers. `DELETE /rex/sources/{name}` answers a

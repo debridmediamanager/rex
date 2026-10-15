@@ -58,12 +58,12 @@ Until you add it to your Plex account in step 4 anyone on your home network can 
 Add this to zurg's `config.yml` and restart zurg.
 
 ```yaml
-rex_url: http://<rex's IP address>:32400
+rex_url: http://<rex's address>:32400
 ```
 
 That is all rex needs. zurg tells rex where its files are and how to log in to them, then sends its whole library and every change as it happens. A movie or episode shows up once zurg has analyzed it. For a library you already had press **Analyze & Tag Library** on zurg's dashboard once. A big library takes a few hours to fill.
 
-Use rex's IP address, not a host name: rex takes a library only from its own machine and home network, and it checks the address a request was sent to. Running two zurgs? Give each a name of its own with `rex_source: rd` and `rex_source: ad`. Anything else that serves files can register the same way, see the [feed API](docs/feed-api.md).
+Anyone who can reach rex's port can push to its library or delete what a source pushed, so keep that port off the open internet. Running two zurgs? Give each a name of its own with `rex_source: rd` and `rex_source: ad`. Anything else that serves files can register the same way, see the [feed API](docs/feed-api.md).
 
 A zurg from before this does not tell rex where its files are, so update zurg first.
 

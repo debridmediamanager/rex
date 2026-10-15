@@ -176,8 +176,8 @@ rex_url: http://<rex's address>:32400   # turns on zurg's ffprobe and IMDb looku
 rex_source: rd                          # optional: the name it registers as (default "zurg")
 ```
 
-That is all rex needs from zurg. Use rex's IP address, or `127.0.0.1` on the same machine,
-not a host name (step 2). Restart zurg. Once its library has loaded it registers with rex,
+That is all rex needs from zurg: an address or a host name (`http://rex:32400` from a
+container) both work. Restart zurg. Once its library has loaded it registers with rex,
 pushes everything it holds, then each change as it happens, and the whole library again
 every `rex_snapshot_every_hours` (6), registering again at the start of each. Watch it
 arrive in rex's log (`SOURCES rd registered ...`, `FEED rd ...`) and with the
@@ -304,7 +304,6 @@ the same in PowerShell with `rust\target\release\rex.exe` for `rust/target/relea
 |---|---|
 | A push answers 404 `no such source: PUT /rex/sources/... first` | The source has not registered: a zurg from before the sources API never does, update it (step 2) |
 | Every part read answers 502 | No source is registered (`curl -s http://127.0.0.1:32400/rex/sources`), or rex cannot reach the one that is |
-| A push or a registration answers 403 `the feed answers only local networks` | It came from beyond rex's own networks, through a proxy, or addressed rex by a host name (step 2) |
 | A push answers `rejected: no movie or show library holds ...` | No library holds the item's directory: name it with `--movies`/`--shows` before the first start, or Add Library on it (step 3) |
 | zurg pushed but the library stays empty | Items are held until zurg probes them (step 5) |
 | A part read answers 502, or 401/403 | rex cannot reach the source's `url` (502), or the source refused its credential (its own status): the log line `PART ... upstream` says which |
