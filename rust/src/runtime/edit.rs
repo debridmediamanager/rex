@@ -1286,8 +1286,21 @@ impl Runtime {
                 }
             }
         }
-        for child in self.catalog.items_mut().iter_mut() {
-            let Some(child) = child.as_object_mut() else {
+        // Only the rows beneath, by key: `items_mut` marks every row changed, and the
+        // save then re-diffs the whole library under the lock for one show edit.
+        let beneath = self
+            .catalog
+            .items()
+            .iter()
+            .filter(|child| {
+                ["parentRatingKey", "grandparentRatingKey"]
+                    .iter()
+                    .any(|name| child.get(*name).map(string_value).as_deref() == Some(key.as_str()))
+            })
+            .filter_map(key_of)
+            .collect::<Vec<_>>();
+        for child_key in &beneath {
+            let Some(child) = self.catalog.get_mut(child_key).and_then(Value::as_object_mut) else {
                 continue;
             };
             let parent = child

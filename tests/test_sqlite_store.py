@@ -21,6 +21,7 @@ suite holds what replaced it:
     python3 tests/test_sqlite_store.py
 """
 import copy
+import http.client
 import json
 import os
 import shutil
@@ -119,7 +120,13 @@ def large_catalog(count):
 
 def one_write_touches_few_rows():
     name = "one rating on a 20,000-row catalog writes a handful of rows"
-    work, catalog = workdir(document=large_catalog(20000))
+    document = large_catalog(20000)
+    # A second audio track on one row, for a switch that changes something.
+    switched = next(row for row in document["items"] if row["ratingKey"] == "600124")
+    streams = switched["Media"][0]["Part"][0]["Stream"]
+    streams.append(dict(next(s for s in streams if s["streamType"] == 2), id=1007003))
+    streams[-1].pop("selected", None)
+    work, catalog = workdir(document=document)
     try:
         state = os.path.join(work, "rex.db")
         server = Instance(catalog, state=state, wait=180)
@@ -152,6 +159,49 @@ def one_write_touches_few_rows():
         took.sort()
         check("a write on a 20,000-row catalog is saved without serialising every row",
               took[2] < 0.5, "median %.3f s of %s" % (took[2], ["%.3f" % t for t in took]))
+        # A track switch is the same kind of write. It used to flag every row changed:
+        # on fun's library each PUT took 19-45 s under the runtime lock, stalling the
+        # Apple TV that sent it (2026-10-15, Dark Matter S1E2). Here that full pass was
+        # 0.25 s against 0.001 s, hence the tighter bound than the rating's.
+        took = []
+        for index in range(5):
+            started = time.monotonic()
+            server.request("PUT", "/library/parts/%d?audioStreamID=1007002&allParts=1" % (
+                2000000 + (200 + index) * 4))
+            took.append(time.monotonic() - started)
+        took.sort()
+        check("a track switch on a 20,000-row catalog is saved without serialising every row",
+              took[2] < 0.1, "median %.3f s of %s" % (took[2], ["%.3f" % t for t in took]))
+        # Two more one-row writes that edited through `items_mut` the same way: a show's
+        # title, which follows onto its seasons and episodes, and an uploaded subtitle's
+        # delete.
+        took = []
+        for index in range(5):
+            started = time.monotonic()
+            server.request("PUT", "/library/metadata/20001?type=2&id=20001"
+                           "&title.value=Renamed%%20%d&title.locked=1" % index)
+            took.append(time.monotonic() - started)
+        took.sort()
+        check("a show edit on a 20,000-row catalog is saved without serialising every row",
+              took[2] < 0.1, "median %.3f s of %s" % (took[2], ["%.3f" % t for t in took]))
+        took = []
+        for index in range(5):
+            conn = http.client.HTTPConnection("127.0.0.1", server.port, timeout=10)
+            conn.request("POST", "/library/metadata/600201/subtitles?title=s%d.srt&format=srt"
+                         % index, body=b"1\n00:00:01,000 --> 00:00:02,000\nhi\n",
+                         headers={"Accept": "application/json"})
+            conn.getresponse().read()
+            conn.close()
+            stream = max(int(stream["id"]) for stream in first(server.request(
+                "GET", "/library/metadata/600201")[1])["Media"][0]["Part"][0]["Stream"]
+                if stream["streamType"] == 3)
+            started = time.monotonic()
+            status = server.request("DELETE", "/library/streams/%d" % stream)[0]
+            took.append(time.monotonic() - started)
+        took.sort()
+        check("a subtitle delete on a 20,000-row catalog is saved without serialising every row",
+              status == 200 and took[2] < 0.1,
+              "status %s, median %.3f s of %s" % (status, took[2], ["%.3f" % t for t in took]))
         server.stop()
         with sqlite3.connect(state) as db:
             db.execute("DELETE FROM audit")
@@ -167,6 +217,14 @@ def one_write_touches_few_rows():
         server = Instance(catalog, state=state, wait=180)
         kept = first(server.request("GET", "/library/metadata/600123")[1]).get("userRating")
         check("that rating is restored after a hard kill", kept == 8, "userRating %s" % kept)
+        part = 2000000 + 124 * 4
+        status = server.request("PUT", "/library/parts/%d?audioStreamID=1007003&allParts=1" % part)[0]
+        server.stop(signal.SIGKILL)
+        server = Instance(catalog, state=state, wait=180)
+        streams = first(server.request("GET", "/library/metadata/600124")[1])["Media"][0]["Part"][0]["Stream"]
+        chosen = [s["id"] for s in streams if s["streamType"] == 2 and s.get("selected")]
+        check("a track switch is restored after a hard kill", status == 200 and chosen == [1007003],
+              "status %s, selected audio %s" % (status, chosen))
         server.stop()
     finally:
         shutil.rmtree(work, ignore_errors=True)

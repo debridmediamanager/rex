@@ -16565,29 +16565,7 @@ impl Runtime {
             if request.method == "PUT" {
                 // Measured on a writable copy: a PUT to a stream it HAS is 200 with an
                 // empty body and stores nothing; one it does not have is a 400.
-                let known = self.catalog.items().iter().any(|row| {
-                    row.get("Media")
-                        .and_then(Value::as_array)
-                        .into_iter()
-                        .flatten()
-                        .any(|media| {
-                            media
-                                .get("Part")
-                                .and_then(Value::as_array)
-                                .into_iter()
-                                .flatten()
-                                .any(|part| {
-                                    part.get("Stream")
-                                        .and_then(Value::as_array)
-                                        .into_iter()
-                                        .flatten()
-                                        .any(|stream| {
-                                            stream.get("id").and_then(Value::as_i64)
-                                                == Some(stream_id)
-                                        })
-                                })
-                        })
-                });
+                let known = self.catalog.items().iter().any(|row| row_has_stream(row, stream_id));
                 if known {
                     return Response::empty(200);
                 }
@@ -16596,7 +16574,19 @@ impl Runtime {
             if request.method == "DELETE" {
                 let mut found = false;
                 let mut uploaded = false;
-                for row in self.catalog.items_mut() {
+                // By key: `items_mut` marks every row changed, and the save then
+                // re-diffs the whole library under the lock (see `select_stream`).
+                let owners = self
+                    .catalog
+                    .items()
+                    .iter()
+                    .filter(|row| row_has_stream(row, stream_id))
+                    .filter_map(key_of)
+                    .collect::<Vec<_>>();
+                for key in &owners {
+                    let Some(row) = self.catalog.get_mut(key) else {
+                        continue;
+                    };
                     for media in row
                         .get_mut("Media")
                         .and_then(Value::as_array_mut)
@@ -21422,8 +21412,12 @@ impl Runtime {
             }
         }
         let all_parts = query.get("allParts").is_some_and(|value| value == "1");
-        if let Some(media_rows) = self.catalog.items_mut()[owner_index]
-            .get_mut("Media")
+        // `get_mut`, not `items_mut`: the latter marks every row changed, and the save
+        // that follows then re-diffed fun's whole library under the lock (19-45 s a PUT).
+        if let Some(media_rows) = self
+            .catalog
+            .get_mut(&owner_key)
+            .and_then(|row| row.get_mut("Media"))
             .and_then(Value::as_array_mut)
         {
             for media in media_rows {
@@ -24956,6 +24950,18 @@ fn order_scalar_fields(value: Value) -> Value {
         }
         other => other,
     }
+}
+
+fn row_has_stream(row: &Value, stream_id: i64) -> bool {
+    row.get("Media")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|media| media.get("Part").and_then(Value::as_array))
+        .flatten()
+        .filter_map(|part| part.get("Stream").and_then(Value::as_array))
+        .flatten()
+        .any(|stream| stream.get("id").and_then(Value::as_i64) == Some(stream_id))
 }
 
 fn string_value(value: &Value) -> String {
