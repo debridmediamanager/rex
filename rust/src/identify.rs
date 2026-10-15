@@ -90,6 +90,10 @@ static EDITION: LazyLock<Regex> = LazyLock::new(|| {
 // (`Digimon Adventure Zero Two Episode 12 - …`) and a version alone (`[CyC] Mushishi 01v2`).
 static LOOSE_NX: LazyLock<Regex> =
     LazyLock::new(|| re(r"(?i)(?:^|[\s._\-\[(])(0[1-9]|[1-9]\d?|(?:19|20)\d{2})x(\d{2,3})(?:[\s._\-\])]|$)"));
+// The year season with an `e` (`MythBusters.2014e06.Mythssion impossible`, 276 files of the
+// production server's `Mythbusters - Complete Series`, 2026-10-15).
+static YEAR_E: LazyLock<Regex> =
+    LazyLock::new(|| re(r"(?i)(?:^|[\s._\-\[(])((?:19|20)\d{2})e(\d{2})(?:[\s._\-\])]|$)"));
 static LOOSE_E: LazyLock<Regex> = LazyLock::new(|| {
     re(r"(?i)(?:^|[\s._\-\[(])(?:E(?:P[.\s]?)?(\d{2,4})|Episode[\s._]?(\d{1,4})|(\d{2,4})v\d)(?:[\s._\-\])]|$)")
 });
@@ -214,6 +218,7 @@ pub fn parse_name(name: &str) -> Parsed {
         let loose = LOOSE_NX.captures(&stem)
             .filter(|found| py_int(&found[1]).is_none_or(|season| season < 1900) || found[2].len() == 2)
             .map(|found| (&*LOOSE_NX, py_int(&found[1]), py_int(&found[2])))
+            .or_else(|| YEAR_E.captures(&stem).map(|found| (&*YEAR_E, py_int(&found[1]), py_int(&found[2]))))
             .or_else(|| LOOSE_E.captures(&stem).map(|found| {
                 let number = found.get(1).or(found.get(2)).or(found.get(3)).map_or("", |m| m.as_str());
                 (&*LOOSE_E, None, py_int(number))

@@ -1,5 +1,5 @@
 {
- "source": "files the production rex's feed left unplaced as \"no episode number\" on 2026-10-13, and two it placed on the wrong episode; season and episode read by hand from each name; and anime seasons written as `4th Season`, `Season 3` or `[07]` (2026-10-13 afternoon)",
+ "source": "files the production rex's feed left unplaced as \"no episode number\" on 2026-10-13, and two it placed on the wrong episode; season and episode read by hand from each name; and anime seasons written as `4th Season`, `Season 3` or `[07]` (2026-10-13 afternoon); and names that carry their number only beside their release -- a leading number, the show's name then a number, `10of13`, `2014e06` -- with the shapes deliberately left unread (2026-10-15)",
  "files": [
   {
    "shape": "site",
@@ -299,6 +299,174 @@
    "shape": "not an episode",
    "release": "[Coalgirls]_Evangelion_3.33.0_You_Can_(Not)_Redo_(1920x816_Blu-ray_FLAC)_[FC2091F9]",
    "file": "[Coalgirls]_Evangelion_3.33.0_You_Can_(Not)_Redo_(1920x816_Blu-ray_FLAC)_[FC2091F9].mkv",
+   "season": null,
+   "episode": null
+  },
+  {
+   "shape": "leading-one-season",
+   "release": "Sailor.Moon.S01.576p.DVD.Remux.DD2.0-Sakhr-v2",
+   "file": "35. Returning Memories, Usagi and Mamoru's Past.mkv",
+   "season": 1,
+   "episode": 35
+  },
+  {
+   "shape": "leading-one-season",
+   "release": "Star Trek - The Original Series - Season 2 - Original",
+   "file": "02 - Who Mourns for Adonais - Stardate 3468.1 (Original).mkv",
+   "season": 2,
+   "episode": 2
+  },
+  {
+   "shape": "leading-one-season",
+   "release": "PAW.Patrol.Season1.NickelodeonHD1080i.rus.eng-rutracker",
+   "file": "02. Pup Pup Boogie + Pups in a Fog.HD.rus.eng.mkv",
+   "season": 1,
+   "episode": 2
+  },
+  {
+   "shape": "leading-absolute",
+   "release": "[DmonHiro] Inuyasha (BD, 720p) (US BD)",
+   "file": "140 - Eternal Love - The Naginata Of Kenkon.mkv",
+   "season": 1,
+   "episode": 140
+  },
+  {
+   "shape": "leading-absolute",
+   "release": "Утиные истории (DVDRemux)",
+   "file": "082 - Бесприданница.mkv",
+   "season": 1,
+   "episode": 82
+  },
+  {
+   "shape": "title-number",
+   "release": "[Coalgirls]_Hunter_X_Hunter_(1920x1080_Blu-ray_FLAC)",
+   "file": "[Coalgirls]_Hunter_X_Hunter_034_(1920x1080_Blu-ray_FLAC)_[C699BA0F].mkv",
+   "season": 1,
+   "episode": 34
+  },
+  {
+   "shape": "title-number",
+   "release": "Lovely Runner (2024)",
+   "file": "Lovely Runner 14.mkv",
+   "season": 1,
+   "episode": 14
+  },
+  {
+   "shape": "title-number",
+   "release": "House.M.D.S06.BDRemux",
+   "file": "House M.D. 14 - Private Lives.mkv",
+   "season": 6,
+   "episode": 14
+  },
+  {
+   "shape": "title-number",
+   "release": "Magic Knight Rayearth TV [BD-rip 1440x1080 x264 FLAC]",
+   "file": "Magic Knight Rayearth 11  [BD-rip 1440x1080 x264 FLAC].mkv",
+   "season": 1,
+   "episode": 11
+  },
+  {
+   "shape": "title-number",
+   "release": "[Zurako] Mawaru Penguindrum (BD 1080p AAC)",
+   "file": "[Zurako]_Mawaru_Penguindrum_08_Even_if_Your_Love_is_a_Lie,_I..._(BD_1080p_AAC)_[F49EF94A].mkv",
+   "season": 1,
+   "episode": 8
+  },
+  {
+   "shape": "title-number",
+   "release": "Cowboy Bebop [EG]",
+   "file": "[EG]Cowboy_Bebop_14_1080p_V2(10bit.DualAudio)[05AF11A7].mkv",
+   "season": 1,
+   "episode": 14
+  },
+  {
+   "shape": "title-number",
+   "release": "Digimon Tamers",
+   "file": "[Positron] Digimon Tamers 22 (XviD-MP3).avi",
+   "season": 1,
+   "episode": 22
+  },
+  {
+   "shape": "title-number",
+   "release": "[EG] Outlaw Star BD",
+   "file": "[EG]Outlaw_Star_21_BD(1080p_10bit_DualAudio)[A4347F2F].mkv",
+   "season": 1,
+   "episode": 21
+  },
+  {
+   "shape": "of-count",
+   "release": "Cosmos",
+   "file": "Carl.Sagans.Cosmos.10of13.The.Edge.of.Forever.DivX.MP3.avi",
+   "season": 1,
+   "episode": 10
+  },
+  {
+   "shape": "year-e",
+   "release": "Mythbusters - Complete Series",
+   "file": "MythBusters.2014e06.Mythssion impossible.mkv",
+   "season": 2014,
+   "episode": 6
+  },
+  {
+   "shape": "flattened-pack",
+   "release": "Smallville",
+   "file": "01 Odissea.mkv",
+   "season": null,
+   "episode": null
+  },
+  {
+   "shape": "flattened-pack",
+   "release": "Saturday Night Live Seasons 1-15",
+   "file": "05 Demi Moore, Johnny Clegg, Savuka.avi",
+   "season": null,
+   "episode": null
+  },
+  {
+   "shape": "season-in-number",
+   "release": "Are You Afraid Of The Dark Complete Series-JUGGALOTUS",
+   "file": "608 - The Tale of the Vampire Town.avi",
+   "season": null,
+   "episode": null
+  },
+  {
+   "shape": "extra",
+   "release": "[Holomux] To LOVE-Ru",
+   "file": "[Holomux] To Love-Ru OVA 04 [DVD x264 480p FLAC 2.0][621FD857]-other.mkv",
+   "season": null,
+   "episode": null
+  },
+  {
+   "shape": "extra",
+   "release": "[Zurako] Mawaru Penguindrum (BD 1080p AAC)",
+   "file": "[Zurako]_Mawaru_Penguindrum_NCED_07_(BD_1080p_AAC)_[969317E8].mkv",
+   "season": null,
+   "episode": null
+  },
+  {
+   "shape": "extra",
+   "release": "[EG] Outlaw Star BD",
+   "file": "[EG]Outlaw_Star_NCEDB_BD(1080p_10bit)[C644418F].mkv",
+   "season": null,
+   "episode": null
+  },
+  {
+   "shape": "intro",
+   "release": "Утиные истории (DVDRemux)",
+   "file": "000 - Заставка Дисней на ЦТ-1 1991.mkv",
+   "season": null,
+   "episode": null
+  },
+  {
+   "shape": "season-in-number",
+   "release": "Phineas and Ferb Season 1 2 3 4 OWCA 1080p v2 DONUT",
+   "file": "403a-b - Bully Bust; Backyard Hodge Podge.mkv",
+   "season": null,
+   "episode": null
+  },
+  {
+   "shape": "extra",
+   "release": "[iKaos] TFS Dragon Ball Z Abridged Collection",
+   "file": "002 - Deleted Scene Episodes 2-4 [iKaos]-deleted.mkv",
    "season": null,
    "episode": null
   }

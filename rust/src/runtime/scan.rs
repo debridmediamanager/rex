@@ -9,6 +9,10 @@
 //! keeps the ratingKey it matched each release to and drops the release's IMDb id when
 //! that key disappears, so a row's key is minted once and kept across pushes and restarts.
 
+use std::sync::LazyLock;
+
+use regex::Regex;
+
 use super::*;
 use crate::identify::{self, Identifier, PlexSource, TmdbSource};
 use crate::{hierarchy, mediainfo};
@@ -74,9 +78,7 @@ pub(super) fn is_sample(file: &str) -> bool {
 /// (season, episode) of a show's file: the file's own numbers, else its release's; an
 /// episode with no season (absolute numbering) is season 1.
 pub(super) fn episode_of(release: &str, file_name: &str) -> Option<(i64, i64)> {
-    let parsed = (identify::parse_name(release), identify::parse_name(file_name));
-    let episode = parsed.1.episode.or(parsed.0.episode)?;
-    let season = parsed.1.season.or(parsed.0.season);
+    let (season, episode) = numbers_of(release, file_name)?;
     // An anime cour on TMDB's numbering (`anime.rs`).
     if let Some(numbers) = super::anime::renumber(release, file_name, season, episode) {
         return Some(numbers);
@@ -87,12 +89,88 @@ pub(super) fn episode_of(release: &str, file_name: &str) -> Option<(i64, i64)> {
 /// Whether a file's numbers are its name's own, as scene releases number them -- not ones the
 /// anime mapping already put on TMDB's numbering (`anime::renumber`).
 pub(super) fn scene_numbered(release: &str, file_name: &str) -> bool {
-    let parsed = (identify::parse_name(release), identify::parse_name(file_name));
-    let Some(episode) = parsed.1.episode.or(parsed.0.episode) else {
+    let Some((season, episode)) = numbers_of(release, file_name) else {
         return false;
     };
-    super::anime::renumber(release, file_name, parsed.1.season.or(parsed.0.season), episode).is_none()
+    super::anime::renumber(release, file_name, season, episode).is_none()
 }
+
+/// The season (if named) and episode a show's file is numbered by: the file's own name, else
+/// its release's, else the shapes only a show's file can be read by (`numbered_in_release`).
+fn numbers_of(release: &str, file_name: &str) -> Option<(Option<i64>, i64)> {
+    let parsed = (identify::parse_name(release), identify::parse_name(file_name));
+    if let Some(episode) = parsed.1.episode.or(parsed.0.episode) {
+        return Some((parsed.1.season.or(parsed.0.season), episode));
+    }
+    numbered_in_release(&parsed.0, release, file_name)
+}
+
+// Names that carry an episode number only beside their release, each measured on the production
+// server's feed (2026-10-15, 4,405 files unplaced): a film called `Apollo 13` reads the same,
+// so they are read for a show's files and never by `parse_name`.
+// `35. Returning Memories` in `Sailor.Moon.S01…`, `02 - Who Mourns for Adonais` in `Star Trek … Season 2`.
+static LEADING: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^(\d{1,3})(?:\.\s*|\s+-\s+|\s+)[^\d\s]").unwrap());
+// `011 - Terror Of The Ancient Noh Mask (v2)` (InuYasha), `063 - Пещера Али-Баббы` (DuckTales): an
+// absolute number zero-padded to three digits. `608 - The Tale of the Vampire Town` is season 6's
+// eighth in `Are You Afraid Of The Dark Complete Series`, so only 000-199 are read so.
+static LEADING_ABSOLUTE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^([01]\d{2})(?:\.\s*|\s+-\s+)\S").unwrap());
+// `Carl.Sagans.Cosmos.10of13.The.Edge.of.Forever`.
+static OF_COUNT: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?i)(?:^|[\s._-])(\d{1,3})of(\d{1,3})(?:[\s._-]|$)").unwrap());
+// `[Coalgirls]_Hunter_X_Hunter_001_(1920x1080…)`, `Lovely Runner 14`, `House M.D. 15 - Black Hole`,
+// `[Zurako]_Mawaru_Penguindrum_08_Even_if…`: the show's own name, then the number.
+static TITLE_NUMBER: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^(.*?\S)\s+(\d{2,3})(?:v\d)?(?:\s.*)?$").unwrap());
+// A release that names more than one season: `Season 1 2 3 4`, `S01-S07`, `Seasons 1-15`, `Complete Series`.
+static SEASONS: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?i)seasons|complete|\bs\d{1,2}\s*[-+&]\s*s?\d|season[\s._]*\d{1,2}[\s._,&+-]+\d").unwrap()
+});
+
+/// `numbers_of` for a file whose name has no number `parse_name` reads. Two-digit leading
+/// numbers in a release of several seasons stay unread: zurg lists a pack's files in one folder,
+/// so Smallville's and Saturday Night Live's `01`s of every season would fold onto one episode.
+fn numbered_in_release(parsed: &identify::Parsed, release: &str, file_name: &str) -> Option<(Option<i64>, i64)> {
+    let release = release.rsplit('/').next().unwrap_or(release);
+    let stem = file_name.rsplit_once('.').map_or(file_name, |(stem, _)| stem);
+    // Plex's local-extra suffixes: `002 - Deleted Scene Episodes 2-4 [iKaos]-deleted` is no episode 2.
+    if EXTRA.is_match(stem) {
+        return None;
+    }
+    let several = SEASONS.is_match(release) || parsed.pack && parsed.season.is_none();
+    let one_season = parsed.season.filter(|_| !several);
+    let positive = |number: &str| number.parse::<i64>().ok().filter(|number| *number > 0);
+    if let Some(season) = one_season {
+        if let Some(found) = LEADING.captures(stem) {
+            return Some((Some(season), positive(&found[1])?));
+        }
+    }
+    if parsed.season.is_none() && !several {
+        if let Some(found) = LEADING_ABSOLUTE.captures(stem) {
+            return Some((None, positive(&found[1])?));
+        }
+    }
+    if let Some(found) = OF_COUNT.captures(stem) {
+        let (episode, count) = (positive(&found[1])?, positive(&found[2])?);
+        return (episode <= count).then_some((one_season, episode));
+    }
+    // The name before the number must be the release's (`Magic Knight Rayearth 09` in
+    // `Magic Knight Rayearth TV`), so `To LOVE-Ru OVA 04` or `Mawaru_Penguindrum_NCED_07` is no
+    // episode 4 or 7, and a show named with a number (`Room 104`) never reads it as one.
+    let spaced = stem.replace('_', " ");
+    let bare = BRACKETS.replace_all(&spaced, " ");
+    let found = TITLE_NUMBER.captures(bare.trim())?;
+    let fold = |text: &str| text.chars().filter(|c| c.is_alphanumeric()).collect::<String>().to_lowercase();
+    let (head, show) = (fold(&found[1]), fold(&parsed.title));
+    // The release may say more than the file (`… TV`, `… BD`), never less: a file's
+    // `OVA 04`, `NCED 07` or `207, 208` (two episodes) is not the show's name.
+    let named = head.len() >= 4
+        && (show == head || show.starts_with(&head) && !show[head.len()..].starts_with(|c: char| c.is_ascii_digit()));
+    named.then_some(())?;
+    Some((one_season, positive(&found[2])?))
+}
+
+static BRACKETS: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[\[(][^\])]*[\])]").unwrap());
+static EXTRA: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?i)-(?:behindthescenes|deleted|featurette|interview|scene|short|trailer|other)$").unwrap()
+});
 
 /// The season and episode TMDB knows a file of `show` by, when TMDB has no season by the
 /// file's own number: the production server held about 30 such seasons on `local://` (2026-10-13).
