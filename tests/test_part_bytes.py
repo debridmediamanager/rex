@@ -11,8 +11,8 @@ So this suite stands up the upstream instead of asking for one:
 
     local zurg  -- WebDAV file reads with ordinary byte-range semantics, behind basic
                    auth, answering 404 for a file it no longer has
-    rex     -- started with ZURG_URL pointed at the stub, on a generated catalog
-                   whose Part files sit under `--zurg-mount`
+    rex     -- the stub registered as its source `zurg` (`PUT /rex/sources/zurg`), on a
+                   generated catalog whose Part files sit under the source's `mount`
 
 and then drives rex's real handler. The expectations are the values plexlab (1.43.4)
 and the 1.42.2 reference answer for the same header against their own parts, recorded in
@@ -32,13 +32,19 @@ import tempfile
 import threading
 import urllib.request
 
-from server_command import server_command
+from server_command import register_source, server_command
 from startup_wait import poll_until
 from test_ports import free_port
 
 ROOT = os.environ.get("REX_TEST_ROOT",
                       os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 SIZE = 100000
+
+
+def ZURG_SOURCE(zurg_port):
+    """The stub as zurg registers itself: its WebDAV, its login, its mount."""
+    return {"url": "http://127.0.0.1:%d/dav" % zurg_port, "user": "zurg-user", "password": "zurg-pass",
+            "mount": "/zurg"}
 BODY = bytes(((i * 7 + 13) % 251) for i in range(SIZE))
 
 results = []
@@ -256,12 +262,9 @@ def content_types(zurg_port, extensions):
     json.dump(dict(CATALOG, items=rows), catalog)
     catalog.close()
     port = free_port()
-    environment = dict(os.environ, ZURG_URL="http://127.0.0.1:%d" % zurg_port,
-                       ZURG_USER="zurg-user", ZURG_PASSWORD="zurg-pass")
     process = subprocess.Popen(
-        server_command("--port", port, "--catalog", catalog.name, "--assert-claimed",
-                       "--zurg-mount", "/zurg", "--gdm", "off", root=ROOT),
-        cwd=ROOT, env=environment, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        server_command("--port", port, "--catalog", catalog.name, "--assert-claimed", "--gdm", "off", root=ROOT),
+        cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     served = {}
     try:
         def ready():
@@ -271,6 +274,7 @@ def content_types(zurg_port, extensions):
             except Exception:
                 return False
         poll_until(ready, 40)
+        register_source(port, "zurg", ZURG_SOURCE(zurg_port))
         for row in rows:
             ext = row["Media"][0]["Part"][0]["file"].rsplit(".", 1)[-1]
             with urllib.request.urlopen(urllib.request.Request(
@@ -292,13 +296,9 @@ def main():
     json.dump(CATALOG, catalog)
     catalog.close()
     port = free_port()
-    environment = dict(os.environ, ZURG_URL="http://127.0.0.1:%d" % zurg_port,
-                       ZURG_USER="zurg-user", ZURG_PASSWORD="zurg-pass")
     process = subprocess.Popen(
-        server_command("--port", port, "--catalog", catalog.name, "--assert-claimed",
-                       "--zurg-mount", "/zurg", root=ROOT),
-        cwd=ROOT, env=environment,
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        server_command("--port", port, "--catalog", catalog.name, "--assert-claimed", root=ROOT),
+        cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
         def ready():
             try:
@@ -307,6 +307,7 @@ def main():
             except Exception:
                 return False
         poll_until(ready, 40)
+        check("the stub registers as the source zurg", register_source(port, "zurg", ZURG_SOURCE(zurg_port)) == 200)
         # Read the Part's own `key` back rather than composing it: the version stamp
         # is the row's, and a check that guesses it measures a 404.
         with urllib.request.urlopen(urllib.request.Request(

@@ -1,10 +1,11 @@
 //! The feed: sources push their items here, and rex lists or queries no source.
 //!
-//! `docs/feed-api.md` is the reference. A request is authenticated by its source's feed
-//! token (never a Plex token), parsed, classified under the runtime lock, identified off
-//! it (TMDB and Plex's matcher are network lookups), and applied under it again, then
-//! saved before it is answered. Feed requests apply one at a time (`FEED`), which is also
-//! what keeps a snapshot's chunks in order.
+//! `docs/feed-api.md` is the reference. A request is admitted from the networks an unclaimed
+//! server answers (`local_request`; never a Plex token), parsed, classified under the
+//! runtime lock, identified off it (TMDB and Plex's matcher are network lookups), and
+//! applied under it again, then saved before it is answered. Feed requests apply one at a
+//! time (`FEED`), which is also what keeps a snapshot's chunks in order. A source pushes
+//! under the name it registered with `PUT /rex/sources/{name}` (`sources`).
 //!
 //! A row the feed made carries `_source`, `_sid` (the source's id), `_path` (its bytes
 //! under the source's url) and `_ids` (the ids it was identified by). An item without
@@ -176,25 +177,22 @@ fn answer(status: u16, body: Value) -> Response {
     Response::json(status, body)
 }
 
-/// `/rex/feed/{source}/{items|snapshot|held}`, outside the Plex gate.
+/// `/rex/feed/{source}/{items|snapshot|held}` and `/rex/sources[/{name}]`, outside the Plex
+/// gate: answered to the peers an unclaimed server answers, claimed or not. A feed token
+/// guarded it before, which every source had to be configured with by hand beside rex.
 pub(super) fn handle(shared: &SharedRuntime, request: &Request, path: &str) -> Response {
+    if !lock(shared).local_request(request) {
+        warning!("FEED refused a {} {path} from beyond the local networks", request.method);
+        return answer(403, json!({"error": "the feed answers only local networks"}));
+    }
+    if let Some(rest) = path.strip_prefix("/rex/sources") {
+        return sources(shared, request, rest.trim_matches('/'));
+    }
     let rest = path.trim_start_matches("/rex/feed/").trim_end_matches('/');
     let (name, leaf) = rest.split_once('/').unwrap_or((rest, ""));
     let Some(source) = lock(shared).sources.iter().find(|source| source.name == name).cloned() else {
-        return answer(404, json!({"error": "no such source"}));
+        return answer(404, json!({"error": format!("no such source: PUT /rex/sources/{name} first")}));
     };
-    if source.token.is_none() {
-        return answer(404, json!({"error": "this source has no feed token"}));
-    }
-    let presented = request
-        .headers
-        .get("authorization")
-        .and_then(|value| value.strip_prefix("Bearer ").or_else(|| value.strip_prefix("bearer ")))
-        .unwrap_or_default();
-    if !source.admits(presented.trim()) {
-        warning!("FEED {name}: refused a {} without its feed token", request.method);
-        return answer(401, json!({"error": "a feed request needs the source's feed token"}));
-    }
     let mut sessions = FEED.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     let body = || -> Result<Value, Response> {
         serde_json::from_slice::<Value>(&request.body)
@@ -232,6 +230,43 @@ pub(super) fn handle(shared: &SharedRuntime, request: &Request, path: &str) -> R
     };
     drop(sessions);
     response
+}
+
+/// `GET /rex/sources`, `GET /rex/sources/{name}`, `PUT /rex/sources/{name}`: what a part
+/// read streams from. A PUT creates or replaces the source -- zurg sends it again at the
+/// start of every push session -- and the next part read uses it; credentials are kept in
+/// the state file and never answered.
+fn sources(shared: &SharedRuntime, request: &Request, name: &str) -> Response {
+    match (request.method.as_str(), name) {
+        ("GET" | "HEAD", "") => {
+            let listed: Vec<Value> = lock(shared).sources.iter().map(|source| source.public()).collect();
+            answer(200, json!({"size": listed.len(), "sources": listed}))
+        }
+        ("GET" | "HEAD", _) => match lock(shared).sources.iter().find(|source| source.name == name) {
+            Some(source) => answer(200, source.public()),
+            None => answer(404, json!({"error": "no such source"})),
+        },
+        ("PUT", _) if !name.is_empty() => {
+            let body = serde_json::from_slice::<Value>(&request.body).unwrap_or(Value::Null);
+            let source = match Source::register(name, &body) {
+                Ok(source) => source,
+                Err(error) => return answer(400, json!({"error": error})),
+            };
+            let public = source.public();
+            let mut guard = lock(shared);
+            let changed = guard.sources.iter().find(|known| known.name == name).map(|known| &known.record) != Some(&source.record);
+            if changed {
+                info!("SOURCES {name} registered at {}", public["url"].as_str().unwrap_or_default());
+                guard.put_source(source);
+                guard.dirty = true;
+            }
+            let snapshot = guard.flush_state();
+            drop(guard);
+            write_or_log(snapshot);
+            answer(200, public)
+        }
+        _ => answer(405, json!({"error": "method not allowed"})),
+    }
 }
 
 /// `PUT .../snapshot`: upsert the chunk, and on the last one remove what no chunk named.
@@ -748,11 +783,10 @@ pub(super) fn retry_blank(shared: &SharedRuntime, limit: usize) -> usize {
     }
     info!("FEED retrying {} row(s) left on the blank tile", keys.len());
     for (name, items) in &by_source {
-        if let Some(source) = sources.iter().find(|source| source.name == *name) {
-            // Feed requests apply one at a time; so does this.
-            let _feed = FEED.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-            upsert(shared, source, items, None, true);
-        }
+        let source = named(&sources, name);
+        // Feed requests apply one at a time; so does this.
+        let _feed = FEED.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        upsert(shared, &source, items, None, true);
     }
     // -- under the lock: the next try for what is still blank -------------------------------
     let mut guard = lock(shared);
@@ -984,12 +1018,11 @@ where
     let began = std::time::Instant::now();
     let mut pushed = 0;
     for (name, items) in &by_source {
-        if let Some(source) = sources.iter().find(|source| source.name == *name) {
-            pushed += items.len();
-            for chunk in items.chunks(200) {
-                let _feed = FEED.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-                upsert(shared, source, chunk, None, true);
-            }
+        let source = named(&sources, name);
+        pushed += items.len();
+        for chunk in items.chunks(200) {
+            let _feed = FEED.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+            upsert(shared, &source, chunk, None, true);
         }
     }
     let mut guard = lock(shared);
@@ -999,6 +1032,18 @@ where
     write_or_log(snapshot);
     info!("FEED placed {pushed} episode(s) again in {:.0} s", began.elapsed().as_secs_f64());
     pushed
+}
+
+/// The source a row names, to identify its items again as it pushed them: that needs its
+/// name alone, never its bytes. The passes at start run before a source registers on a
+/// catalog from before registration was kept, and skipping an unregistered source's rows
+/// left them on the blank tile until the next pass ten minutes on.
+fn named(sources: &[Arc<Source>], name: &str) -> Arc<Source> {
+    sources
+        .iter()
+        .find(|source| source.name == name)
+        .cloned()
+        .unwrap_or_else(|| Arc::new(Source::new(name, "", None, None)))
 }
 
 /// The ids a row was identified by: its `_ids`, or for a row the old scanner made, the
@@ -1150,6 +1195,15 @@ fn take_release(row: &mut Map<String, Value>, media: &Value) {
 }
 
 impl Runtime {
+    /// A source registered (or restored): it replaces the one of its name.
+    pub(super) fn put_source(&mut self, source: Source) {
+        let source = Arc::new(source);
+        match self.sources.iter_mut().find(|known| known.name == source.name) {
+            Some(known) => *known = source,
+            None => self.sources.push(source),
+        }
+    }
+
     /// A row a person matched (Fix Match writes `_matched`), or an episode or season under a
     /// show they matched: what they chose wins over anything a source pushes later.
     pub(super) fn matched_by_hand(&self, row: &Value) -> bool {

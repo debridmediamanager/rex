@@ -1,14 +1,13 @@
-//! Sources: where a Part's bytes come from, and who may push items (`feed.rs`).
+//! Sources: where a Part's bytes come from, registered over rex's own API (`feed.rs`).
 //!
-//! rex reads no media itself. A source is any HTTP server that answers a Range GET
-//! with a file's bytes -- zurg's WebDAV is one -- plus the feed token it pushes its items
-//! with. A row the feed made names its source and the file's path under the source's url
-//! (`_source`, `_path`); a catalog row with neither reads from the source whose `mount`
-//! holds its Part's `file`, which is how parts were read before there was a feed.
-//!
-//! `--sources FILE` (or `$REX_SOURCES`) names them, as `docs/feed-api.md` describes.
-//! Without one, `ZURG_URL` (+`ZURG_USER`/`ZURG_PASSWORD`) is the source `zurg`, read at
-//! `$ZURG_URL/dav` under `--zurg-mount`, pushing with `$REX_FEED_TOKEN`.
+//! rex reads no media itself. A source is any HTTP server that answers a Range GET with a
+//! file's bytes -- zurg's WebDAV is one -- registered by name with `PUT /rex/sources/{name}`
+//! and kept in the state file, so it outlives a restart before the source registers again.
+//! Registering is the only way a source exists: rex is configured with none.
+//! A row the feed made names its source and the file's path under the source's url
+//! (`_source`, `_path`), and plays again once that name is registered; a catalog row with
+//! neither reads from the source whose `mount` holds its Part's `file`, which is how parts
+//! were read before there was a feed.
 
 use super::upstream;
 use super::*;
@@ -18,12 +17,12 @@ use std::time::Duration;
 pub(crate) struct Source {
     pub name: String,
     base: String,
-    /// `Basic <base64>` or `Bearer <token>` for the bytes; never logged.
+    /// `Basic <base64>` or `Bearer <token>` for the bytes; never logged or answered.
     auth: Option<String>,
-    /// What the source sends as `Authorization: Bearer` to the feed; never logged.
-    pub token: Option<String>,
     /// The prefix the source's files carry as a Part's `file`, without a trailing `/`.
     pub mount: Option<String>,
+    /// What registered it, credentials included, as the state file keeps it.
+    pub record: Value,
 }
 
 /// One path segment as a URL carries it: unreserved bytes pass, every other is `%XX`
@@ -58,14 +57,50 @@ fn trimmed_mount(mount: &str) -> String {
 }
 
 impl Source {
-    pub(crate) fn new(name: &str, base: &str, auth: Option<String>, token: Option<String>, mount: Option<&str>) -> Self {
+    pub(crate) fn new(name: &str, base: &str, auth: Option<String>, mount: Option<&str>) -> Self {
         Self {
             name: name.to_string(),
             base: base.trim_end_matches('/').to_string(),
             auth,
-            token: token.filter(|token| !token.is_empty()),
             mount: mount.filter(|mount| !mount.is_empty()).map(trimmed_mount),
+            record: Value::Null,
         }
+    }
+
+    /// A `PUT /rex/sources/{name}` body: `url` (http or https), `user`/`password` or
+    /// `bearer` for it, and `mount`. Answers why it is refused.
+    pub(crate) fn register(name: &str, body: &Value) -> Result<Self, String> {
+        if name.is_empty() || !name.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_') {
+            return Err(format!("source name {name:?}: letters, digits, '-' and '_' only"));
+        }
+        if !body.is_object() {
+            return Err("the body must be a JSON object".to_string());
+        }
+        let field = |key: &str| body.get(key).and_then(Value::as_str).unwrap_or_default().to_string();
+        let url = field("url");
+        let Some(rest) = url.strip_prefix("http://").or_else(|| url.strip_prefix("https://")) else {
+            return Err("url must be http(s)".to_string());
+        };
+        // GET /rex/sources answers the url: credentials in it would be answered with it.
+        if rest.split(['/', '?', '#']).next().unwrap_or_default().contains('@') {
+            return Err("url carries credentials: send them as user and password".to_string());
+        }
+        let auth = Source::basic(&field("user"), &field("password"))
+            .or_else(|| Some(field("bearer")).filter(|bearer| !bearer.is_empty()).map(|bearer| format!("Bearer {bearer}")));
+        let record = Map::from_iter(
+            ["url", "user", "password", "bearer", "mount"]
+                .into_iter()
+                .filter_map(|key| Some((key.to_string(), json!(Some(field(key)).filter(|value| !value.is_empty())?)))),
+        );
+        let mut source = Source::new(name, &url, auth, Some(&field("mount")));
+        source.record = Value::Object(record);
+        Ok(source)
+    }
+
+    /// What the sources API answers for it: never a credential, only which kind it has.
+    pub(crate) fn public(&self) -> Value {
+        let auth = self.auth.as_deref().and_then(|auth| auth.split(' ').next()).map(str::to_ascii_lowercase);
+        json!({"name": self.name, "url": self.base, "auth": auth, "mount": self.mount})
     }
 
     fn basic(user: &str, password: &str) -> Option<String> {
@@ -142,58 +177,6 @@ impl Source {
     pub(super) fn delete(&self, path: &str) -> Result<u16, String> {
         upstream::open("DELETE", &self.url(path), &self.headers(), b"", Duration::from_secs(60)).map(|response| response.status)
     }
-
-    /// Whether `presented` is this source's feed token (compared without an early exit).
-    pub(super) fn admits(&self, presented: &str) -> bool {
-        let Some(token) = &self.token else {
-            return false;
-        };
-        let (a, b) = (token.as_bytes(), presented.as_bytes());
-        a.len() == b.len() && a.iter().zip(b).fold(0u8, |diff, (x, y)| diff | (x ^ y)) == 0
-    }
-}
-
-/// The sources: the file's (`--sources` / `$REX_SOURCES`), then `ZURG_URL`'s as
-/// `zurg` unless the file names one. A file that cannot be read or parsed stops the start.
-pub(crate) fn load(file: Option<&Path>, zurg_mount: &str) -> Result<Vec<Arc<Source>>, String> {
-    let mut sources = Vec::new();
-    let from_env = std::env::var("REX_SOURCES").ok().filter(|path| !path.is_empty()).map(PathBuf::from);
-    if let Some(path) = file.map(Path::to_path_buf).or(from_env) {
-        let text = fs::read_to_string(&path).map_err(|error| format!("cannot read sources {}: {error}", path.display()))?;
-        let document: Value =
-            serde_json::from_str(&text).map_err(|error| format!("cannot parse sources {}: {error}", path.display()))?;
-        let Some(entries) = document.as_object() else {
-            return Err(format!("sources {} must be a JSON object of name -> source", path.display()));
-        };
-        for (name, entry) in entries {
-            if name.is_empty() || !name.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_') {
-                return Err(format!("source name {name:?}: letters, digits, '-' and '_' only"));
-            }
-            let field = |key: &str| entry.get(key).and_then(Value::as_str).unwrap_or_default().to_string();
-            let url = field("url");
-            if !url.starts_with("http://") && !url.starts_with("https://") {
-                return Err(format!("source {name}: url must be http(s)"));
-            }
-            let auth = Source::basic(&field("user"), &field("password"))
-                .or_else(|| Some(field("bearer")).filter(|bearer| !bearer.is_empty()).map(|bearer| format!("Bearer {bearer}")));
-            sources.push(Arc::new(Source::new(name, &url, auth, Some(field("token")), Some(&field("mount")))));
-        }
-    }
-    let zurg_url = std::env::var("ZURG_URL").ok().filter(|url| !url.is_empty());
-    if let Some(url) = zurg_url.filter(|_| !sources.iter().any(|source| source.name == "zurg")) {
-        let auth = Source::basic(
-            &std::env::var("ZURG_USER").unwrap_or_default(),
-            &std::env::var("ZURG_PASSWORD").unwrap_or_default(),
-        );
-        sources.push(Arc::new(Source::new(
-            "zurg",
-            &format!("{}/dav", url.trim_end_matches('/')),
-            auth,
-            std::env::var("REX_FEED_TOKEN").ok(),
-            Some(zurg_mount),
-        )));
-    }
-    Ok(sources)
 }
 
 #[cfg(test)]
@@ -202,7 +185,7 @@ mod tests {
 
     #[test]
     fn a_mount_path_and_a_feed_path_name_the_same_url() {
-        let source = Source::new("zurg", "http://127.0.0.1:9999/dav/", None, None, Some("/mnt/zurg/"));
+        let source = Source::new("zurg", "http://127.0.0.1:9999/dav/", None, Some("/mnt/zurg/"));
         let file = "/mnt/zurg/movies/A+B (2020)/A+B.mkv";
         let path = source.path_under_mount(file).unwrap();
         assert_eq!(path, "movies/A+B (2020)/A+B.mkv");
@@ -210,10 +193,35 @@ mod tests {
         assert_eq!(source.url(&path), "http://127.0.0.1:9999/dav/movies/A%2BB%20%282020%29/A%2BB.mkv");
         assert_eq!(source.path_under_mount("/rex/1/movie.mkv"), None);
         assert_eq!(source.path_under_mount("/mnt/zurgish/x.mkv"), None);
-        let bare = Source::new("nas", "https://nas/media", None, Some("t".into()), None);
+        let bare = Source::new("nas", "https://nas/media", None, None);
         assert_eq!(bare.default_file("a/b.mkv"), "/a/b.mkv");
         assert_eq!(bare.path_under_mount("/a/b.mkv"), None);
-        assert!(bare.admits("t") && !bare.admits("tt") && !bare.admits(""));
-        assert!(!source.admits(""), "a source without a token admits nobody");
+    }
+
+    #[test]
+    fn a_registration_is_checked_and_answered_without_its_credentials() {
+        let body = json!({"url": "http://127.0.0.1:9999/dav", "user": "zurg-user", "password": "s3cret", "mount": "/mnt/zurg"});
+        let source = Source::register("zurg", &body).unwrap();
+        assert_eq!(source.url("movies/a.mkv"), "http://127.0.0.1:9999/dav/movies/a.mkv");
+        assert_eq!(source.headers()[1], ("Authorization", format!("Basic {}", base64_encode(b"zurg-user:s3cret"))));
+        assert_eq!(source.record, body, "the state file keeps what registered it");
+        let public = source.public();
+        assert_eq!(public["auth"], "basic");
+        assert!(!public.to_string().contains("s3cret") && !public.to_string().contains("zurg-user"));
+        let bearer = Source::register("nas", &json!({"url": "https://nas/media", "bearer": "tok"})).unwrap();
+        assert_eq!(bearer.public()["auth"], "bearer");
+        assert!(!bearer.public().to_string().contains("tok"));
+        assert_eq!(Source::register("plain", &json!({"url": "http://h/x"})).unwrap().public()["auth"], Value::Null);
+        for (name, body) in [
+            ("bad.name", json!({"url": "http://h/x"})),
+            ("", json!({"url": "http://h/x"})),
+            ("ok", json!({"url": "ftp://h/x"})),
+            ("ok", json!({})),
+            ("ok", json!({"url": "http://user:pass@h/x"})),
+            ("ok", json!(["not", "an", "object"])),
+        ] {
+            assert!(Source::register(name, &body).is_err(), "{name:?} {body}");
+        }
+        assert!(Source::register("ok", &json!({"url": "http://h/x?next=a@b"})).is_ok(), "an @ past the host is no userinfo");
     }
 }

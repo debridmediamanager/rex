@@ -27,7 +27,7 @@ import unicodedata
 import urllib.parse
 import xml.etree.ElementTree as ET
 
-from server_command import server_command
+from server_command import register_source, server_command
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.environ.get("REX_TEST_ROOT", os.path.dirname(HERE))
@@ -35,7 +35,7 @@ FIXTURE = os.environ.get("REX_CATALOG_FEATURES", os.path.join(HERE, "catalog_fea
 NATIVE = os.environ.get("REX_NATIVE_BIN", os.path.join(
     ROOT, "rust", "target", "release", "rex.exe" if os.name == "nt" else "rex"))
 ENV = dict(os.environ, REX_PLEXTV_URL=os.environ.get("REX_PLEXTV_URL", "http://127.0.0.1:9"))
-for _name in ("REX_STATE", "REX_TOKEN", "TMDB_KEY", "PLEX_TOKEN", "ZURG_URL", "REX_GDM_PORTS"):
+for _name in ("REX_STATE", "REX_TOKEN", "TMDB_KEY", "PLEX_TOKEN", "REX_GDM_PORTS"):
     ENV.pop(_name, None)
 
 with open(FIXTURE, encoding="utf-8") as _handle:
@@ -1243,8 +1243,8 @@ def run_zurg(check):
                                       "librarySectionID": 1})
         item(document, key)["Media"] = [{"id": 600000 + int(key), "Part": [
             {"id": 600000 + int(key), "file": "/rex/1/" + path}]}]
-    server = Server(document, args=("--gdm", "off", "--zurg-mount", "/rex"),
-                    env={"ZURG_URL": "http://127.0.0.1:%d" % zurg.server_address[1]})
+    server = Server(document, args=("--gdm", "off"))
+    register_source(server.port, "zurg", {"url": "http://127.0.0.1:%d/dav" % zurg.server_address[1], "mount": "/rex"})
     try:
         media = (first(server.json("/library/metadata/101")).get("Media") or [{}])[0]
         read = []

@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Sources are byte servers, and rex assumes nothing of one beyond HTTP.
+"""Sources are byte servers, registered over rex's API, and rex assumes nothing of one beyond HTTP.
 
-`docs/feed-api.md`: a source is any HTTP server that answers a GET for a file. This
-suite runs two at once, neither of them zurg, each pushing under its own name and token
-into the same libraries (an item's `file` places it; its source only says where the bytes are):
+`docs/feed-api.md`: a source is any HTTP server that answers a GET for a file, registered
+with `PUT /rex/sources/{name}` and kept in the state file. This suite registers two at once,
+neither of them zurg, each pushing under its own name into the same libraries (an item's
+`file` places it; its source only says where the bytes are):
 
 - `disk`: Python's own `http.server.SimpleHTTPRequestHandler` over a directory -- the
   real implementation, not a stub of it. It ignores `Range` and answers every GET 200
@@ -12,6 +13,11 @@ into the same libraries (an item's `file` places it; its source only says where 
   storage front hands out presigned links. `cdn` refuses any request carrying an
   `Authorization` header, as S3 does for a presigned URL ("Only one auth mechanism
   allowed"), and honours `Range`.
+
+Then what registration itself promises: a bad one is refused, credentials are never answered
+or logged, a source survives a restart before it registers again, a new registration is
+what the next part read streams from, and rows made before their source registered -- the
+old WebDAV scanner's, and a catalog's feed rows -- play once it has.
 
     python3 tests/test_sources.py
 """
@@ -30,7 +36,7 @@ import urllib.request
 
 from server_command import server_command
 from startup_wait import poll_until
-from test_feed import BODY, MOUNT, ROOT, check, results, item, catalog, serve
+from test_feed import BODY, BYTES_TOKEN, LEGACY, MOUNT, ROOT, Bytes, check, results, item, catalog, serve
 from test_ports import free_port
 
 FRONT_USER, FRONT_PASSWORD = "front-user", "front-password"
@@ -109,16 +115,17 @@ def front_handler(cdn_port, seen):
     return Handler
 
 
-def start(work, sources):
+def start(work, sources, env_extra=None, *args):
+    """A server on `work`'s catalog and state, each of `sources` registered as zurg does it."""
     port = free_port()
-    json.dump(sources, open(os.path.join(work, "sources.json"), "w"))
     env = dict(os.environ, TMDB_KEY="fake", PLEX_TOKEN="fake", REX_PLEXTV_URL="http://127.0.0.1:9")
-    for name in ("REX_STATE", "REX_TOKEN", "ZURG_URL", "REX_SOURCES", "REX_FEED_TOKEN"):
+    for name in ("REX_STATE", "REX_TOKEN"):
         env.pop(name, None)
+    env.update(env_extra or {})
     log = open(os.path.join(work, "server.log"), "ab")
     process = subprocess.Popen(
-        server_command("--port", port, "--catalog", os.path.join(work, "catalog.json"), "--sources",
-                       os.path.join(work, "sources.json"), "--assert-claimed", "--gdm", "off", root=ROOT),
+        server_command("--port", port, "--catalog", os.path.join(work, "catalog.json"), "--state",
+                       os.path.join(work, "rex.db"), "--assert-claimed", "--gdm", "off", *args, root=ROOT),
         cwd=ROOT, env=env, stdout=log, stderr=subprocess.STDOUT)
     def ready():
         try:
@@ -127,11 +134,29 @@ def start(work, sources):
         except Exception:
             return False
     poll_until(ready, 40)
+    for name, source in sources.items():
+        status, raw = register(port, name, source)
+        check("source %s registers" % name, status == 200, (status, raw))
     return port, process, log
 
 
+def stop(process, log):
+    process.terminate()
+    try:
+        process.wait(timeout=20)
+    except subprocess.TimeoutExpired:
+        process.kill()
+    log.close()
+
+
+def register(port, name, body, headers=None):
+    data = body if isinstance(body, bytes) else json.dumps(body).encode()
+    return call(port, "/rex/sources/%s" % name, "PUT", data,
+                dict({"Content-Type": "application/json"}, **(headers or {})))
+
+
 def call(port, path, method="GET", body=None, headers=None):
-    data = None if body is None else json.dumps(body).encode()
+    data = body if body is None or isinstance(body, bytes) else json.dumps(body).encode()
     request = urllib.request.Request("http://127.0.0.1:%d%s" % (port, path), data=data, method=method,
                                      headers=dict({"Accept": "application/json"}, **(headers or {})))
     try:
@@ -144,14 +169,87 @@ def call(port, path, method="GET", body=None, headers=None):
         return error.code, error.read()
 
 
-def push(port, source, token, entry):
+def loads(raw):
+    """A JSON answer, or {} for one that is not (a server without the API answers HTML)."""
+    try:
+        return json.loads(raw)
+    except ValueError:
+        return {}
+
+
+def registered(port):
+    """[(name, url)] of what GET /rex/sources lists."""
+    return [(row.get("name"), row.get("url")) for row in loads(call(port, "/rex/sources")[1]).get("sources", [])]
+
+
+def push(port, source, entry):
     status, raw = call(port, "/rex/feed/%s/items" % source, "POST", {"items": [entry]},
-                       {"Authorization": "Bearer " + token, "Content-Type": "application/json"})
-    status, raw = call(port, "/rex/feed/%s/items" % source, headers={"Authorization": "Bearer " + token})
-    key = {row["id"]: row["ratingKey"] for row in json.loads(raw).get("items", [])}.get(entry["id"])
+                       {"Content-Type": "application/json"})
+    status, raw = call(port, "/rex/feed/%s/items" % source)
+    key = {row["id"]: row["ratingKey"] for row in loads(raw).get("items", [])}.get(entry["id"])
     status, raw = call(port, "/library/metadata/%s" % key)
     row = (json.loads(raw)["MediaContainer"].get("Metadata") or [{}])[0] if status == 200 else {}
     return ((row.get("Media") or [{}])[0].get("Part") or [{}])[0].get("key")
+
+
+def gated():
+    """The sources API and the feed are rex's own, answered before the Plex gate: a server
+    with `--token` (as a claimed one) takes a registration and a push with no token from its
+    own machine, while its library still wants the token. zurg reads a 401 on its
+    registration as a rex without the sources API and carries on unregistered."""
+    work = tempfile.mkdtemp(prefix="rex-sources-gated-")
+    catalog(work)
+    port, process, log = start(work, {"plain": {"url": "http://127.0.0.1:9"}}, None, "--token", "gate-secret")
+    try:
+        status, raw = call(port, "/rex/feed/plain/items", "POST", {"items": [item("movie", ids=False)]},
+                           {"Content-Type": "application/json"})
+        check("a gated server takes a push with no token", status == 200 and loads(raw).get("created") == 1,
+              (status, raw))
+        check("while its library still wants one", call(port, "/library/sections")[0] == 401)
+    finally:
+        stop(process, log)
+        shutil.rmtree(work, ignore_errors=True)
+
+
+def part_key(port, key):
+    status, raw = call(port, "/library/metadata/%s" % key)
+    row = (json.loads(raw)["MediaContainer"].get("Metadata") or [{}])[0] if status == 200 else {}
+    return ((row.get("Media") or [{}])[0].get("Part") or [{}])[0].get("key") or "/none"
+
+
+def unregistered_rows():
+    """Rows keep the source they came from. A catalog's rows -- one the old WebDAV scanner made
+    (`fixtures/feed/legacy_scan_rows.json`: no source, its Part's file under zurg's mount) and
+    one the feed made for `zurg` -- have no bytes while no source is registered, and read from
+    `zurg` the moment it registers, no restart: the scanner's at its file under the source's
+    `mount`, the feed's at its own `_path`."""
+    work = tempfile.mkdtemp(prefix="rex-sources-rows-")
+    stub = Bytes()
+    rows = json.loads(json.dumps(LEGACY["items"]))
+    movie = item("movie")
+    part_file = lambda row: ((row.get("Media") or [{}])[0].get("Part") or [{}])[0].get("file")
+    scanned = next(row for row in rows if part_file(row) == movie["file"])
+    episode = next(row for row in rows if row.get("type") == "episode")
+    fed = "shows/Elsewhere/" + episode["Media"][0]["Part"][0]["file"].rsplit("/", 1)[1]
+    episode.update(_source="zurg", _sid=fed, _path=fed)
+    for path in (movie["path"], fed):
+        stub.files.add("/dav/" + path)
+    stub_port = serve(stub.handler())
+    catalog(work, rows)
+    port, process, log = start(work, {})
+    try:
+        keys = (part_key(port, scanned["ratingKey"]), part_key(port, episode["ratingKey"]))
+        before = [call(port, key, headers={"Range": "bytes=0-9"})[0] for key in keys]
+        check("with no source registered, a row's part has no bytes (502)", before == [502, 502], before)
+        register(port, "zurg", {"url": "http://127.0.0.1:%d/dav" % stub_port, "bearer": BYTES_TOKEN, "mount": MOUNT})
+        after = [call(port, key, headers={"Range": "bytes=0-9"}) for key in keys]
+        hits = [seen[1] for seen in stub.seen if seen[0] == "GET"]
+        check("once zurg registers, the scanner's row reads its file under zurg's mount, the feed's its path",
+              [status for status, _ in after] == [206, 206] and all(raw == BODY[:10] for _, raw in after)
+              and hits == ["/dav/" + movie["path"], "/dav/" + fed], (after, hits))
+    finally:
+        stop(process, log)
+        shutil.rmtree(work, ignore_errors=True)
 
 
 def main():
@@ -168,15 +266,45 @@ def main():
     cdn_port = serve(cdn_handler(cdn_seen))
     front_port = serve(front_handler(cdn_port, front_seen))
     catalog(work)
-    port, process, log = start(work, {
-        "disk": {"url": "http://127.0.0.1:%d" % disk_port, "token": "disk-feed"},
-        "front": {"url": "http://localhost:%d/files" % front_port, "user": FRONT_USER,
-                  "password": FRONT_PASSWORD, "token": "front-feed"},
-        "plain": {"url": "http://127.0.0.1:%d" % disk_port, "token": "plain-feed"},
-    })
+    port, process, log = start(work, {})
     try:
-        disk_part = push(port, "disk", "disk-feed", movie)
-        front_part = push(port, "front", "front-feed", episode)
+        # -- registration: what is refused, what is answered ------------------------------
+        status, raw = call(port, "/rex/sources")
+        # rex leaves a field with no value out of every JSON answer, an empty list included.
+        check("nothing registered lists no source", status == 200 and loads(raw) == {"size": 0}, (status, raw))
+        status, raw = call(port, "/rex/feed/disk/items", "POST", {"items": [movie]}, {"Content-Type": "application/json"})
+        check("a push before its source registered is a 404 naming the registration",
+              status == 404 and b"PUT /rex/sources/disk first" in raw, (status, raw))
+        for label, name, body in (
+                ("a name with a dot", "bad.name", {"url": "http://127.0.0.1:%d" % disk_port}),
+                ("an ftp url", "disk", {"url": "ftp://127.0.0.1/x"}),
+                ("no url", "disk", {"user": "x"}),
+                ("a url carrying its credentials", "disk", {"url": "http://u:p@127.0.0.1:%d" % disk_port}),
+                ("a body that is not JSON", "disk", b"not json")):
+            status, raw = register(port, name, body)
+            check("a registration with %s is a 400" % label, status == 400 and b"error" in raw, (status, raw))
+        sources = {
+            "disk": {"url": "http://127.0.0.1:%d" % disk_port},
+            "front": {"url": "http://localhost:%d/files" % front_port, "user": FRONT_USER, "password": FRONT_PASSWORD},
+            "plain": {"url": "http://127.0.0.1:%d" % disk_port},
+        }
+        answers = {name: register(port, name, body) for name, body in sources.items()}
+        check("a registration answers the source", all(status == 200 for status, _ in answers.values())
+              and loads(answers["front"][1]) == {"name": "front", "url": sources["front"]["url"], "auth": "basic"}
+              and loads(answers["disk"][1]) == {"name": "disk", "url": sources["disk"]["url"]}, answers)
+        status, again = register(port, "front", sources["front"])
+        check("registering the same again answers the same", status == 200 and again == answers["front"][1], again)
+        status, listed = call(port, "/rex/sources")
+        status_one, one = call(port, "/rex/sources/front")
+        check("GET lists every source and shows one, its auth only by kind",
+              status == 200 and [row.get("name") for row in loads(listed).get("sources", [])] == ["disk", "front", "plain"]
+              and status_one == 200 and loads(one).get("auth") == "basic", (listed, one))
+        check("and never a credential", FRONT_PASSWORD.encode() not in listed + one + again
+              and FRONT_USER.encode() not in listed + one + again, (listed, one))
+        check("an unknown source is a 404", call(port, "/rex/sources/nobody")[0] == 404)
+
+        disk_part = push(port, "disk", movie)
+        front_part = push(port, "front", episode)
         check("each source's push is a row with a part", disk_part and front_part, (disk_part, front_part))
 
         # -- no prefix to line up: an item lands by its directory -----------------------------
@@ -189,7 +317,7 @@ def main():
                          "path": "shows/Plain.Show.S01.1080p/Plain.Show.S01E01.1080p.mkv", "size": len(BODY),
                          "media_info": episode["media_info"]}
         status, raw = call(port, "/rex/feed/plain/items", "POST", {"items": [plain_movie, plain_episode]},
-                           {"Authorization": "Bearer plain-feed", "Content-Type": "application/json"})
+                           {"Content-Type": "application/json"})
         body = json.loads(raw)
         check("a source with no mount pushing no file: both items placed, none refused",
               status == 200 and body.get("created") == 2 and not body.get("rejected"), body)
@@ -204,7 +332,7 @@ def main():
                  "path": "movies/Empty.Probe.2022/Empty.Probe.2022.mkv", "size": len(BODY),
                  "media_info": {"format": {}, "streams": []}}
         status, raw = call(port, "/rex/feed/plain/items", "POST", {"items": [empty]},
-                           {"Authorization": "Bearer plain-feed", "Content-Type": "application/json"})
+                           {"Content-Type": "application/json"})
         body = json.loads(raw)
         check("an item whose probe has no streams is held", status == 200 and body.get("held") == 1
               and body.get("created") == 0, body)
@@ -232,14 +360,35 @@ def main():
               cdn_seen)
         check("a protocol-relative redirect drops its fragment", cdn_seen and cdn_seen[-1][0] == "/relative.mkv", cdn_seen)
         check("and gets the Range", cdn_seen and cdn_seen[-1][2] == "bytes=100-199", cdn_seen[-1:])
+
+        # -- a new registration is what the next part read streams from ---------------------
+        moved = os.path.join(work, "moved")
+        os.makedirs(os.path.dirname(os.path.join(moved, movie["path"])))
+        open(os.path.join(moved, movie["path"]), "wb").write(BODY[::-1])
+        moved_port = serve(functools.partial(http.server.SimpleHTTPRequestHandler, directory=moved))
+        status, _ = register(port, "disk", {"url": "http://127.0.0.1:%d" % moved_port})
+        status_read, raw = call(port, disk_part, headers={"Range": "bytes=0-99"})
+        check("registered again elsewhere, the next part read streams from there, no restart",
+              status == 200 and status_read == 206 and raw == BODY[::-1][:100], (status, status_read, raw[:8]))
+
+        # -- a restart keeps what registered, before anything registers again ---------------
+        stop(process, log)
+        port, process, log = start(work, {})
+        listed = registered(port)
+        status_read, raw = call(port, disk_part, headers={"Range": "bytes=0-99"})
+        check("a restart keeps the registered sources, the last registration of each",
+              listed == [("disk", "http://127.0.0.1:%d" % moved_port), ("front", sources["front"]["url"]),
+                         ("plain", sources["plain"]["url"])] and status_read == 206 and raw == BODY[::-1][:100],
+              (listed, status_read))
+        status, raw = call(port, front_part, headers={"Range": "bytes=100-199"})
+        check("with their credentials: the source behind basic auth still streams",
+              status == 206 and raw == BODY[100:200], status)
+        check("and never logged one", FRONT_PASSWORD not in open(os.path.join(work, "server.log"), errors="replace").read())
     finally:
-        process.terminate()
-        try:
-            process.wait(timeout=20)
-        except subprocess.TimeoutExpired:
-            process.kill()
-        log.close()
+        stop(process, log)
         shutil.rmtree(work, ignore_errors=True)
+    gated()
+    unregistered_rows()
     failed = results.count(False)
     print("\n%d/%d source checks passed" % (len(results) - failed, len(results)))
     return 1 if failed else 0

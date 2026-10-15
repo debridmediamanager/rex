@@ -113,6 +113,9 @@ def main():
     # An option `main()` does not declare is refused, not swallowed.
     for label, args, wanted in (
         ("--no-gdm, which argparse does not declare", ["--no-gdm"], b"unrecognized arguments: --no-gdm"),
+        # Sources register over the API now (docs/feed-api.md); the file is gone.
+        ("--sources, which no longer exists", ["--sources", "sources.json"],
+         b"unrecognized arguments: --sources sources.json"),
         ("a stray positional argument", ["stray"], b"unrecognized arguments: stray"),
         ("--h, which could be --help, --host or --heartbeat-interval", ["--h"], b"ambiguous option: --h"),
         ("a value that looks like an option", ["--token", "--verbose"], b"argument --token: expected one argument"),

@@ -1555,15 +1555,16 @@ def main():
             want_json=False)
         disposition = headers.get("Content-Disposition", "")
         if status in (404, 502):
-            # The bytes come from zurg, so this needs a catalog whose Part files zurg
-            # serves (`ZURG_URL`, `--zurg-mount`). Verified by hand against a live provider link:
+            # The bytes come from zurg, so this needs a catalog whose Part files a zurg
+            # registered with the server serves (`PUT /rex/sources/zurg` with its `mount`).
+            # Verified by hand against a live provider link:
             # 206, video/x-matroska, and `attachment; filename="For the Birds (2000).mkv"`
             # plus the RFC 5987 form -- the shape measured on a real PMS.
             #
             # Cycle 44 split the two refusals: a file the source no longer has is a
             # **404**, which is what a real PMS answers for a part it cannot open (the 1.42.2
-            # reference part 23595), and a transport failure stays the 502. With no `ZURG_URL` the
-            # part has no bytes at all and this skip fires on the 502.
+            # reference part 23595), and a transport failure stays the 502. With no source
+            # registered the part has no bytes at all and this skip fires on the 502.
             skip("download serves an attachment named after the media file",
                  "part unreadable: the catalog's files are not on a zurg "
                  "(HTTP %s)" % status)

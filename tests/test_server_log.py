@@ -13,8 +13,8 @@ exact whitelist on the SSE channel as on the websocket, the SSE channel STREAMS 
 its first ping, an edit pushes its real `EDIT` line and nothing invented, and a
 websocket CLOSE is echoed with 1000.
 
-Drives real server processes (`tests/server_command.py`). The
-part read goes to a zurg on a closed port and expects the transport failure's 502.
+Drives real server processes (`tests/server_command.py`). The source registered first is a
+zurg on a closed port: its part read expects the transport failure's 502.
 
     python3 tests/test_server_log.py
 """
@@ -38,8 +38,7 @@ from server_command import server_command
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
-# zurg on a closed port: every part read is a transport failure, and its log lines are.
-ENV = dict(os.environ, ZURG_URL="http://127.0.0.1:9", PYTHONDONTWRITEBYTECODE="1",
+ENV = dict(os.environ, PYTHONDONTWRITEBYTECODE="1",
            REX_PLEXTV_URL=os.environ.get("REX_PLEXTV_URL", "http://127.0.0.1:9"))
 for _name in ("REX_STATE", "REX_TOKEN", "TMDB_KEY"):
     ENV.pop(_name, None)
@@ -72,8 +71,7 @@ class Server:
         self.connections = 0
         self.process = subprocess.Popen(
             server_command("--port", self.port, "--catalog", "tests/catalog_ui.json",
-                           "--assert-claimed", "--gdm", "off", "--zurg-mount", "/rex",
-                           root=ROOT),
+                           "--assert-claimed", "--gdm", "off", root=ROOT),
             cwd=ROOT, env=ENV, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         for _ in range(120):
             try:
@@ -211,6 +209,12 @@ def main():
             return runs[-1]
 
         E = re.escape
+        # zurg on a closed port: every part read is a transport failure, and its log lines are.
+        run("a source registration", "PUT", "/rex/sources/zurg",
+            [("INFO", E("SOURCES zurg registered at http://127.0.0.1:9/dav")),
+             ("INFO", E("SOURCES PUT /rex/sources/zurg -> 200"))],
+            body=json.dumps({"url": "http://127.0.0.1:9/dav", "mount": "/rex"}).encode(),
+            headers={"Content-Type": "application/json"}, status=200)
         run("a refused filter", "GET", "/library/sections/1/all?year%3E%3E=abc",
             [("WARNING", E("REFUSED /library/sections/1/all: unparseable number 'abc'")),
              ("INFO", E("500 GET /library/sections/1/all -- rex: unparseable number 'abc'"))],

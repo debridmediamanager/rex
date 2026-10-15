@@ -33,7 +33,7 @@ import time
 import urllib.parse
 import urllib.request
 
-from server_command import server_command
+from server_command import register_source, server_command
 from startup_wait import poll_until
 from test_ports import free_port
 
@@ -298,15 +298,14 @@ def start_server(catalog, zurg_port, transcoder, scratch, **env):
     port = free_port()
     # Software encoding unless the caller names a device (`REX_TRANSCODE_HW=vaapi` with an Intel
     # iGPU).
-    environment = dict(os.environ, ZURG_URL="http://127.0.0.1:%d" % zurg_port,
-                       REX_TRANSCODE_HW=os.environ.get("REX_TRANSCODE_HW", "none"),
+    environment = dict(os.environ, REX_TRANSCODE_HW=os.environ.get("REX_TRANSCODE_HW", "none"),
                        REX_TRANSCODE_DIR=os.path.join(scratch, "segments-%d" % port), **env)
     environment.pop("REX_TRANSCODER", None)
     if transcoder:
         environment["REX_TRANSCODER"] = FFMPEG
     log = open(os.path.join(scratch, "rex-%d.log" % port), "w")
     process = subprocess.Popen(
-        server_command("--port", port, "--catalog", catalog, "--assert-claimed", "--zurg-mount", "/zurg", root=ROOT),
+        server_command("--port", port, "--catalog", catalog, "--assert-claimed", root=ROOT),
         cwd=ROOT, env=environment, stdout=log, stderr=subprocess.STDOUT)
     def ready():
         try:
@@ -315,6 +314,7 @@ def start_server(catalog, zurg_port, transcoder, scratch, **env):
         except Exception:
             return False
     poll_until(ready, 40)
+    register_source(port, "zurg", {"url": "http://127.0.0.1:%d/dav" % zurg_port, "mount": "/zurg"})
     return port, process, log.name
 
 

@@ -270,10 +270,8 @@ pub struct RuntimeOptions {
     pub heartbeat_interval: u64,
     pub account_state_interval: u64,
     pub plex_direct_host: Option<String>,
-    /// zurg's `mount_path`: the mount of the source `ZURG_URL` defines (`source.rs`).
+    /// zurg's `mount_path`: the folder a catalog this start seeds shows its libraries under.
     pub zurg_mount: String,
-    /// `--sources`: the sources file (`docs/feed-api.md`).
-    pub sources: Option<PathBuf>,
     /// `--friendly-name`: the name a catalog this start seeds is given (`serve`).
     pub friendly_name: Option<String>,
 }
@@ -302,7 +300,6 @@ impl Default for RuntimeOptions {
             account_state_interval: plextv::ACCOUNT_STATE_INTERVAL,
             plex_direct_host: None,
             zurg_mount: "/mnt/zurg".to_string(),
-            sources: None,
             friendly_name: None,
         }
     }
@@ -496,8 +493,9 @@ pub struct Runtime {
     pub state_path: Option<PathBuf>,
     pub catalog_path: PathBuf,
     pub source_digest: String,
-    /// Where Part bytes come from and who may push items (`source.rs`, `feed.rs`).
-    /// Shared with the part reads that stream outside the lock.
+    /// Where Part bytes come from, by name: the registered sources (`source.rs`). A
+    /// registration replaces its entry under the lock; a part read takes its source's `Arc`
+    /// and streams outside it.
     sources: Vec<Arc<source::Source>>,
     /// Pushed items with no `media_info` yet, by `<source>:<id>`: stored, never shown.
     feed_held: std::collections::BTreeMap<String, Value>,
@@ -703,7 +701,6 @@ impl Runtime {
                     .unwrap_or_else(|| PathBuf::from("."));
                 (token, directory.join("plex_cache.json"))
             });
-        let sources = source::load(options.sources.as_deref(), &options.zurg_mount)?;
         // A catalog `build_catalog.py` wrote into a database carries the digest of the
         // JSON it came from, so a state saved over that JSON is still this catalog's.
         let from_database = store::is_sqlite(&options.catalog);
@@ -807,7 +804,7 @@ impl Runtime {
             state_path: options.state,
             catalog_path: options.catalog,
             source_digest,
-            sources,
+            sources: Vec::new(),
             feed_held: std::collections::BTreeMap::new(),
             feed_held_changed: HashSet::new(),
             // Fix Match needs a live agent; the cache lives beside the catalog.
@@ -1087,6 +1084,14 @@ impl Runtime {
             .and_then(Value::as_object)
             .cloned()
             .unwrap_or_default();
+        // Registered sources are the server's, like its preferences: kept over a rebuilt
+        // catalog too, so its rows still have their bytes before a source registers again.
+        for (name, record) in state.get("sources").and_then(Value::as_object).into_iter().flatten() {
+            match source::Source::register(name, record) {
+                Ok(source) => self.put_source(source),
+                Err(error) => warning!("saved source {name} not restored: {error}"),
+            }
+        }
         let mut carried = 0;
         // Keyed by ratingKey, so only for a file from before the rows were kept: over a
         // rebuilt catalog the saved rows are matched by `carry_view_state` instead.
@@ -1801,6 +1806,7 @@ impl Runtime {
             ("historyCounter", json!(self.history_counter.get())),
             ("retiredKeys", json!(self.retired_keys)),
             ("nextScanKey", json!(self.next_scan_key)),
+            ("sources", json!(self.sources.iter().map(|source| (source.name.clone(), source.record.clone())).collect::<Map<String, Value>>())),
             // A snapshot diffs it by key instead (`diff_members`).
             ("feedHeld", if full { json!(self.feed_held) } else { Value::Null }),
             ("collectionGuids", json!(self.collection_guids.iter().map(|(k, v)| (k.clone(), v.clone())).collect::<Map<String, Value>>())),
@@ -22757,14 +22763,10 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
         info!("state file {}: {}", path.display(), loaded.state_summary);
     }
     if loaded.sources.is_empty() {
-        info!("no source (--sources or ZURG_URL): parts have no bytes to stream");
+        info!("no source yet: one registers at PUT /rex/sources/{{name}} (docs/feed-api.md)");
     }
     for source in &loaded.sources {
-        info!(
-            "source {}: feed {}",
-            source.name,
-            if source.token.is_some() { "on at /rex/feed/" } else { "off (no token)" }
-        );
+        info!("source {}: registered, feed at /rex/feed/{}/", source.name, source.name);
     }
     let runtime = Arc::new(Mutex::new(loaded));
     // `logger.addHandler(_Capture())`: Download Logs and the Console see what follows.
@@ -23180,9 +23182,10 @@ fn handle_connection<S: Read + Write + PollRead>(
                     .is_some_and(|scheme_end| &request.target[..scheme_end] != "http")
         };
         let (request_path, request_query) = split_target(&request.target);
-        // The feed is rex's own API, not an emulated PMS route: its source's token
-        // admits it, never the Plex gate (`feed.rs`, `docs/feed-api.md`).
-        if request_path.starts_with("/rex/feed/") {
+        // The feed and the sources it pushes as are rex's own API, not emulated PMS routes:
+        // the networks an unclaimed server answers admit them, never the Plex gate
+        // (`feed.rs`, `docs/feed-api.md`).
+        if request_path.starts_with("/rex/feed/") || request_path == "/rex/sources" || request_path.starts_with("/rex/sources/") {
             let keep = request.version == "HTTP/1.1"
                 && request
                     .headers
@@ -23190,7 +23193,12 @@ fn handle_connection<S: Read + Write + PollRead>(
                     .is_none_or(|value| !value.eq_ignore_ascii_case("close"))
                 && !close_after_body;
             let response = feed::handle(&runtime, &request, &request_path);
-            info!("FEED {} {request_path} -> {}", request.method, response.status);
+            info!(
+                "{} {} {request_path} -> {}",
+                if request_path.starts_with("/rex/feed/") { "FEED" } else { "SOURCES" },
+                request.method,
+                response.status
+            );
             write_response(&mut stream, &response, keep)?;
             served_any = true;
             if !keep {

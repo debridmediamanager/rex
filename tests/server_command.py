@@ -7,8 +7,11 @@ fixed arguments while retaining the test's own server arguments. Shell quoting i
 interpreted once with :func:`shlex.split`; no shell is introduced for the child process.
 """
 
+import json
 import os
 import shlex
+import urllib.error
+import urllib.request
 
 
 def server_command(*args, root=None):
@@ -46,3 +49,17 @@ def server_command(*args, root=None):
     if not any(arg in ("--state", "--no-state") or arg.startswith("--state=") for arg in args):
         args.append("--no-state")
     return command + args
+
+
+def register_source(port, name, source):
+    """Register a test byte server with a running rex as a source registers itself
+    (`PUT /rex/sources/{name}`, docs/feed-api.md): rex is configured with none. Answers
+    the status."""
+    request = urllib.request.Request("http://127.0.0.1:%d/rex/sources/%s" % (port, name),
+                                     data=json.dumps(source).encode(), method="PUT",
+                                     headers={"Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            return response.status
+    except urllib.error.HTTPError as error:
+        return error.code

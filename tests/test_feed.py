@@ -6,7 +6,9 @@ itself: items whose id and path are `<directory>/<release>/<file>`, whose `file`
 under zurg's mount, carrying zurg's two real entries (`fixtures/zurg/entries.json`: the
 release, hash, IMDb id, size and stored ffprobe) and a release zurg has neither
 identified nor probed. Its bytes are a plain Range server behind a bearer token, not
-WebDAV, because a source is any HTTP server that honours Range.
+WebDAV, because a source is any HTTP server that honours Range; the source registers it
+(`PUT /rex/sources/zurg`) before it pushes, as zurg does, and pushes with no token: the feed
+answers this machine's networks.
 
 TMDB and Plex answer from `fixtures/feed/provider_cache.json` (real ids) written beside
 the catalog; a lookup they miss goes out with a fake key and is refused, so a release
@@ -42,7 +44,6 @@ FIXTURES = os.path.join(HERE, "fixtures")
 ENTRIES = json.load(open(os.path.join(FIXTURES, "zurg", "entries.json")))["entries"]
 CACHE = json.load(open(os.path.join(FIXTURES, "feed", "provider_cache.json")))
 LEGACY = json.load(open(os.path.join(FIXTURES, "feed", "legacy_scan_rows.json")))
-FEED_TOKEN = "feed-secret-for-tests"
 BYTES_TOKEN = "bytes-secret-for-tests"
 BODY = bytes((i * 7 + 13) % 251 for i in range(65536))
 NEW = "Qzxv.Wmplk.2024.1080p.WEB-DL"
@@ -78,11 +79,12 @@ def item(kind, ids=True, probe=True):
 
 
 class Bytes:
-    """A source's byte server: Range reads of `files` behind a bearer token."""
+    """A source's byte server: Range reads of `files` behind a bearer token (`auth`)."""
 
     def __init__(self):
         self.files = set()
         self.seen = []
+        self.auth = "Bearer " + BYTES_TOKEN
 
     def handler(source):
         class Handler(http.server.BaseHTTPRequestHandler):
@@ -105,7 +107,7 @@ class Bytes:
                 path = urllib.parse.unquote(self.path)
                 source.seen.append((self.command, path, self.headers.get("Authorization"),
                                     self.headers.get("Range")))
-                if self.headers.get("Authorization") != "Bearer " + BYTES_TOKEN:
+                if self.headers.get("Authorization") != source.auth:
                     return self.reply(401)
                 if path not in source.files:
                     return self.reply(404)
@@ -170,19 +172,15 @@ class Events:
 class Server:
     def __init__(self, work, bytes_port, catalog="catalog.json", keys=None):
         self.port = free_port()
-        sources = {"zurg": {"url": "http://127.0.0.1:%d/dav" % bytes_port, "bearer": BYTES_TOKEN,
-                            "token": FEED_TOKEN, "mount": MOUNT}}
-        json.dump(sources, open(os.path.join(work, "sources.json"), "w"))
         env = dict(os.environ, TMDB_KEY="fake", PLEX_TOKEN="fake", REX_PLEXTV_URL="http://127.0.0.1:9")
-        for name in ("REX_STATE", "REX_TOKEN", "ZURG_URL", "REX_SOURCES", "REX_FEED_TOKEN", "REX_METADATA_URL", "REX_METADATA_KEY"):
+        for name in ("REX_STATE", "REX_TOKEN", "REX_METADATA_URL", "REX_METADATA_KEY"):
             env.pop(name, None)
         # After the clean-up, so a recording run's metadata provider reaches the server.
         env.update(keys or {})
         self.log = open(os.path.join(work, "server.log"), "ab")
         self.process = subprocess.Popen(
             server_command("--port", self.port, "--catalog", os.path.join(work, catalog),
-                           "--state", os.path.join(work, "rex.db"), "--sources",
-                           os.path.join(work, "sources.json"), "--assert-claimed", "--gdm", "off", root=ROOT),
+                           "--state", os.path.join(work, "rex.db"), "--assert-claimed", "--gdm", "off", root=ROOT),
             cwd=ROOT, env=env, stdout=self.log, stderr=subprocess.STDOUT)
         def ready():
             try:
@@ -192,6 +190,10 @@ class Server:
                 return False
         poll_until(ready, 40)
         self.events = Events(self.port)
+        # What zurg does at the start of every push session.
+        self.request("/rex/sources/zurg", "PUT", {"url": "http://127.0.0.1:%d/dav" % bytes_port,
+                                                  "bearer": BYTES_TOKEN, "mount": MOUNT},
+                     {"Content-Type": "application/json"})
 
     def request(self, path, method="GET", body=None, headers=None):
         data = body if body is None or isinstance(body, bytes) else json.dumps(body).encode()
@@ -205,11 +207,9 @@ class Server:
             raw = error.read()
             return error.code, json.loads(raw) if raw[:1] == b"{" else raw
 
-    def feed(self, method, leaf, body=None, token=FEED_TOKEN, source="zurg"):
-        headers = {"Content-Type": "application/json"}
-        if token:
-            headers["Authorization"] = "Bearer " + token
-        return self.request("/rex/feed/%s/%s" % (source, leaf), method, body, headers)
+    def feed(self, method, leaf, body=None, source="zurg", headers=None):
+        return self.request("/rex/feed/%s/%s" % (source, leaf), method, body,
+                            dict({"Content-Type": "application/json"}, **(headers or {})))
 
     def rows(self, path):
         status, body = self.request(path)
@@ -386,17 +386,21 @@ def main():
     catalog(work)
     server = Server(work, bytes_port)
     try:
-        # -- refusals: the feed takes its source's token and nothing else -----------------
+        # -- refusals: this machine's networks, a registered source ---------------------
+        # The feed answers whom an unclaimed server answers (`local_request`), claimed or
+        # not, and no token: a feed token had to be made up and set on both sides by hand.
         movie = item("movie", ids=False)
-        status, _ = server.feed("POST", "items", {"items": [movie]}, token=None)
-        check("a push without a token is refused 401", status == 401, status)
-        status, _ = server.feed("POST", "items", {"items": [movie]}, token="wrong")
-        check("a push with another token is refused 401", status == 401, status)
-        status, _ = server.request("/rex/feed/zurg/items", "POST", {"items": [movie]},
-                                   {"X-Plex-Token": FEED_TOKEN, "Content-Type": "application/json"})
-        check("the feed token as a Plex token is refused 401", status == 401, status)
-        status, _ = server.feed("POST", "items", {"items": [movie]}, source="nobody")
-        check("an unknown source is a 404", status == 404, status)
+        for label, extra in (("a forwarded hop beyond the local networks", {"X-Forwarded-For": "203.0.113.9"}),
+                             ("a Host that names another machine", {"Host": "rex.example"})):
+            status, body = server.feed("POST", "items", {"items": [movie]}, headers=extra)
+            check("a push from %s is refused 403" % label,
+                  status == 403 and body == {"error": "the feed answers only local networks"}, (status, body))
+        status, body = server.request("/rex/sources/zurg", "PUT", {"url": "http://203.0.113.9/dav"},
+                                      {"Content-Type": "application/json", "X-Forwarded-For": "203.0.113.9"})
+        check("and so is a registration from there", status == 403, (status, body))
+        status, body = server.feed("POST", "items", {"items": [movie]}, source="nobody")
+        check("a source nobody registered is a 404 naming the registration",
+              status == 404 and body == {"error": "no such source: PUT /rex/sources/nobody first"}, (status, body))
         status, _ = server.feed("POST", "items", b"not json")
         check("a body that is not a JSON object is a 400", status == 400, status)
         check("nothing was added by a refused push", server.keys() == {} and
@@ -404,7 +408,8 @@ def main():
 
         # -- upsert: a release pushed without ids is shown unmatched ---------------------
         status, body = server.feed("POST", "items", {"items": [movie]})
-        check("a probed item is created", status == 200 and body.get("created") == 1, body)
+        check("a probed item pushed from this machine with no Authorization is created",
+              status == 200 and body.get("created") == 1, body)
         movie_key = server.keys().get(movie["id"])
         row = server.row(movie_key)
         part = ((row.get("Media") or [{}])[0].get("Part") or [{}])[0]
@@ -427,7 +432,7 @@ def main():
         hit = [seen for seen in source.seen if seen[0] == "GET"]
         check("a part read streams the source's bytes, Range forwarded", status == 206 and raw == BODY[100:200],
               status)
-        check("read at <url>/<path> with the source's bearer, not the feed token",
+        check("read at <url>/<path> with the bearer the source registered",
               hit and hit[-1][1] == "/dav/" + movie["path"] and hit[-1][2] == "Bearer " + BYTES_TOKEN
               and hit[-1][3] == "bytes=100-199", hit[-1:])
 
