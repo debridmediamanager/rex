@@ -179,9 +179,10 @@ class Server:
                             "token": FEED_TOKEN, "mount": MOUNT}}
         json.dump(sources, open(os.path.join(work, "sources.json"), "w"))
         env = dict(os.environ, TMDB_KEY="fake", PLEX_TOKEN="fake", REX_PLEXTV_URL="http://127.0.0.1:9")
-        env.update(keys or {})
-        for name in ("REX_STATE", "REX_TOKEN", "ZURG_URL", "REX_SOURCES", "REX_FEED_TOKEN"):
+        for name in ("REX_STATE", "REX_TOKEN", "ZURG_URL", "REX_SOURCES", "REX_FEED_TOKEN", "REX_DMM_API_KEY", "REX_DMM_URL"):
             env.pop(name, None)
+        # After the clean-up, so a recording run's DMM key reaches the server.
+        env.update(keys or {})
         self.log = open(os.path.join(work, "server.log"), "ab")
         self.process = subprocess.Popen(
             server_command("--port", self.port, "--catalog", os.path.join(work, catalog),

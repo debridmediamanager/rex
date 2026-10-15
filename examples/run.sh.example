@@ -5,6 +5,7 @@
 # Keys come from rex.env beside run.sh (mode 600; gitignored, as are run.sh and
 # sources.json): TMDB_KEY names what is pushed and powers Fix Match,
 # PLEX_TOKEN (the owner's account token) feeds Plex's metadata agent and the announce.
+# REX_DMM_API_KEY, a DMM sponsor's key, reads TMDB through DMM's cache first (docs/setup.md).
 # Under systemd, EnvironmentFile= can load the same file instead.
 #
 # sources.json names every source that pushes items and serves their bytes

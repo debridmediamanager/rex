@@ -114,6 +114,11 @@ rust/target/release/rex --catalog rex.db --sources sources.json --port 32400 \
 
 The first lines of the log name each source (`source rd: feed on at /rex/feed/`) and the state file.
 
+- **DMM sponsors.** `REX_DMM_API_KEY` (the 64-character key from gatekeeper) reads TMDB
+  through DMM's metadata API: the same answers, from DMM's cache, so a library's shows and
+  seasons are mostly already there. rex asks DMM first and TMDB itself only when DMM does not
+  answer, so with both keys a lapsed sponsorship changes nothing; with the DMM key alone no
+  `TMDB_KEY` is needed. `REX_DMM_URL` points it at another DMM.
 - **Anime.** Fansubs name a season the way AniDB does (`Hibike Euphonium 3 - 01`,
   `Cinderella Gray Part 2 - 05`) and TMDB numbers it as a season or as later episodes of one.
   With `REX_ANIME_LISTS=on` rex keeps two community datasets beside the catalog,
