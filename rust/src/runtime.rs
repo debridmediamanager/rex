@@ -511,6 +511,9 @@ pub struct Runtime {
     /// A part read the router accepted; `handle_connection` streams it after the
     /// runtime lock is released, so a media body never holds up the rest of the API.
     pending_part: Option<PartProxy>,
+    /// File checks are deferred too: a source HEAD can take its full timeout and must not
+    /// hold the runtime lock while an unrelated client asks for identity or a listing.
+    pending_file_checks: Option<Vec<FileCheck>>,
     /// A transcoded segment the router accepted; served once ffmpeg has written it, after
     /// the runtime lock is released (`universal.rs`).
     pending_segment: Option<universal::SegmentPlan>,
@@ -809,6 +812,7 @@ impl Runtime {
             plex,
             match_candidates: HashMap::new(),
             pending_part: None,
+            pending_file_checks: None,
             pending_segment: None,
             transcoder: universal::Transcoder::from_env(options.port),
             pending_image: None,
@@ -971,19 +975,11 @@ impl Runtime {
             }
         };
         self.restore_state(state, &source)?;
-        // The import: the restored state into a new database beside the target, then
-        // the legacy file aside and the database into place.
-        let migrating = sidecar(&path, "migrating");
         let document = self.state_document(true);
         let cache = document
             .as_object()
             .ok_or_else(|| "state is not a document".to_string())
-            .and_then(|document| store::write_fresh(&migrating, document))?;
-        if origin.exists() {
-            fs::rename(&origin, sidecar(&origin, "migrated")).map_err(|e| e.to_string())?;
-        }
-        store::remove_sidecars(&path);
-        fs::rename(&migrating, &path).map_err(|e| e.to_string())?;
+            .and_then(|document| migrate_legacy_state(&path, &origin, document, |_| Ok(())))?;
         self.store_cache = cache;
         self.spelling_saved = self.spelling_serial;
         info!("state file {} imported into {}", origin.display(), path.display());
@@ -20365,33 +20361,40 @@ impl Runtime {
         response
     }
 
-    fn annotate_file_checks(&self, row: &Value) -> Value {
+    fn annotate_file_checks(&mut self, row: &Value) -> Value {
         let mut out = row.clone();
+        let mut checks = Vec::new();
         if let Some(object) = out.as_object_mut() {
             object.insert("_filesChecked".to_string(), json!(true));
         }
         let Some(media_rows) = out.get_mut("Media").and_then(Value::as_array_mut) else {
             return out;
         };
-        for media in media_rows {
+        for (media_index, media) in media_rows.iter_mut().enumerate() {
             let Some(parts) = media.get_mut("Part").and_then(Value::as_array_mut) else {
                 continue;
             };
-            for part in parts {
+            for (part_index, part) in parts.iter_mut().enumerate() {
                 // Cycle 46: the byte source answering for the file is the fileless
                 // server's existence check, and its explicit "not found" the false/false
                 // pair a real PMS reports for a missing file; other failures are not
                 // collapsed into "missing".
-                let available = match part.get("file").and_then(Value::as_str).and_then(|file| self.part_source(row, file)) {
-                    Some((source, path)) => source.exists(&path),
-                    None => true,
-                };
+                let file = part.get("file").and_then(Value::as_str);
+                if let Some(file) = file {
+                    if let Some((source, path)) = self.part_source(row, file) {
+                        checks.push(FileCheck { media_index, part_index, source, path });
+                    }
+                }
+                // The measured shape always carries both fields.  They are projected with the
+                // captured source result once the route has released the runtime lock.
+                let available = true;
                 if let Some(object) = part.as_object_mut() {
                     object.insert("accessible".to_string(), json!(available));
                     object.insert("exists".to_string(), json!(available));
                 }
             }
         }
+        self.pending_file_checks = Some(checks);
         out
     }
 
@@ -23304,6 +23307,7 @@ fn handle_connection<S: Read + Write + PollRead>(
                 .lock()
                 .map_err(|_| "runtime lock poisoned".to_string())?;
             guard.pending_part = None;
+            guard.pending_file_checks = None;
             guard.pending_segment = None;
             guard.pending_image = None;
             guard.pending_claim = None;
@@ -23323,6 +23327,7 @@ fn handle_connection<S: Read + Write + PollRead>(
                 }
             };
             part_plan = guard.pending_part.take();
+            let file_checks = guard.pending_file_checks.take();
             let segment = guard.pending_segment.take();
             let image = guard.pending_image.take();
             let claim = guard.pending_claim.take();
@@ -23349,6 +23354,9 @@ fn handle_connection<S: Read + Write + PollRead>(
                 }
                 _ => response,
             };
+            if let Some(checks) = file_checks {
+                finish_file_checks(&mut response, checks);
+            }
             // A transcoded segment waits for ffmpeg here, with the lock released.
             if let Some(plan) = segment {
                 universal::finish_segment(plan, &mut response);
@@ -24146,6 +24154,9 @@ fn read_request<S: Read>(
                 Ok(value) if value <= i64::MAX as i128 => value as usize,
                 _ => return Err("bad chunk".to_string()),
             };
+            if size > MAX_BODY_BYTES.saturating_sub(decoded.len()) {
+                return Err("body exceeds limit".to_string());
+            }
             cursor = line_end + 2;
             if size == 0 {
                 if pending.len() >= cursor + 2 && pending[cursor..cursor + 2] == *b"\r\n" {
@@ -25395,6 +25406,67 @@ fn sidecar(path: &Path, suffix: &str) -> PathBuf {
     PathBuf::from(format!("{}.{}", path.display(), suffix))
 }
 
+/// Pick a never-before-used archive name. A retry must not overwrite an archive from an
+/// earlier import: that copy is the recovery path if installation stops halfway through.
+fn next_migration_archive(path: &Path) -> PathBuf {
+    let first = sidecar(path, "migrated");
+    if !first.exists() {
+        return first;
+    }
+    for number in 1_u64.. {
+        let candidate = PathBuf::from(format!("{}.{}", first.display(), number));
+        if !candidate.exists() {
+            return candidate;
+        }
+    }
+    unreachable!("a finite directory cannot contain every migration archive name")
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum MigrationPoint {
+    BeforeInstall,
+    AfterInstall,
+    BeforeArchive,
+}
+
+/// Install a complete legacy import without discarding the only recoverable copy first.
+/// `checkpoint` is a small test seam for failure/restart coverage; production passes a no-op.
+fn migrate_legacy_state<F>(
+    path: &Path,
+    origin: &Path,
+    document: &Map<String, Value>,
+    mut checkpoint: F,
+) -> Result<store::Cache, String>
+where
+    F: FnMut(MigrationPoint) -> Result<(), String>,
+{
+    let migrating = sidecar(path, "migrating");
+    let cache = store::write_fresh(&migrating, document)?;
+    let same_path = origin == path;
+    let archive = next_migration_archive(origin);
+    if same_path {
+        // Keep the source recoverable before replacing it. A rename over an existing file is
+        // atomic on the supported platforms, so deleting the destination first would only add
+        // a window in which neither the old state nor the new database exists.
+        fs::copy(origin, &archive).map_err(|error| error.to_string())?;
+        fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(&archive)
+            .and_then(|file| file.sync_all())
+            .map_err(|error| error.to_string())?;
+        checkpoint(MigrationPoint::BeforeInstall)?;
+    }
+    store::remove_sidecars(path);
+    fs::rename(&migrating, path).map_err(|error| error.to_string())?;
+    checkpoint(MigrationPoint::AfterInstall)?;
+    if !same_path && origin.exists() {
+        checkpoint(MigrationPoint::BeforeArchive)?;
+        fs::rename(origin, &archive).map_err(|error| error.to_string())?;
+    }
+    Ok(cache)
+}
+
 /// Where the measured sidecars are read from: beside the catalog, one directory up, then the
 /// working directory. Each one's `data/` comes first -- where a checkout and a release keep
 /// them -- and then the directory itself, where an older deployment may still have them.
@@ -25421,6 +25493,344 @@ mod sidecar_tests {
             sidecar_roots(Path::new("/srv/rex/catalog.json")),
             expected.iter().map(PathBuf::from).collect::<Vec<_>>()
         );
+    }
+}
+
+#[cfg(test)]
+mod migration_tests {
+    use super::*;
+
+    fn catalog() -> Value {
+        json!({
+            "machineIdentifier": "0000000000000000000000000000000000000099",
+            "friendlyName": "migration-test",
+            "sections": [],
+            "items": []
+        })
+    }
+
+    fn state() -> Map<String, Value> {
+        json!({"format": 1, "friendlyName": "legacy", "items": []})
+            .as_object()
+            .cloned()
+            .unwrap()
+    }
+
+    fn options(catalog: &Path, state: &Path) -> RuntimeOptions {
+        RuntimeOptions {
+            catalog: catalog.to_path_buf(),
+            state: Some(state.to_path_buf()),
+            ..RuntimeOptions::default()
+        }
+    }
+
+    fn work(name: &str) -> PathBuf {
+        let path = std::env::temp_dir().join(format!("rex-{name}-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&path);
+        fs::create_dir_all(&path).unwrap();
+        path
+    }
+
+    #[test]
+    fn a_failed_same_path_install_keeps_the_legacy_source_for_restart() {
+        let dir = work("migration-same");
+        let catalog_path = dir.join("catalog.json");
+        let state_path = dir.join("state.json");
+        let original = serde_json::to_vec(&Value::Object(state())).unwrap();
+        fs::write(&catalog_path, catalog().to_string()).unwrap();
+        fs::write(&state_path, &original).unwrap();
+        fs::write(sidecar(&state_path, "migrated"), b"an older archive").unwrap();
+
+        let error = migrate_legacy_state(&state_path, &state_path, &state(), |point| {
+            (point == MigrationPoint::BeforeInstall)
+                .then(|| Err("injected install failure".to_string()))
+                .unwrap_or(Ok(()))
+        })
+        .expect_err("the injected install failure must surface");
+        assert_eq!(error, "injected install failure");
+        assert_eq!(fs::read(&state_path).unwrap(), original);
+        assert_eq!(fs::read(sidecar(&state_path, "migrated")).unwrap(), b"an older archive");
+        assert_eq!(fs::read(sidecar(&state_path, "migrated.1")).unwrap(), original);
+        assert!(!store::is_sqlite(&state_path));
+
+        let runtime = Runtime::load(options(&catalog_path, &state_path)).expect("restart imports the source");
+        assert_eq!(runtime.friendly, "legacy");
+        assert!(store::is_sqlite(&state_path));
+        assert_eq!(fs::read(sidecar(&state_path, "migrated")).unwrap(), b"an older archive");
+        assert_eq!(fs::read(sidecar(&state_path, "migrated.1")).unwrap(), original);
+        assert_eq!(fs::read(sidecar(&state_path, "migrated.2")).unwrap(), original);
+        assert!(!PathBuf::from(format!("{}-wal", state_path.display())).exists());
+        assert!(!PathBuf::from(format!("{}-shm", state_path.display())).exists());
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn a_failure_after_distinct_install_keeps_both_database_and_legacy_source() {
+        let dir = work("migration-distinct");
+        let catalog_path = dir.join("catalog.json");
+        let origin = dir.join("state.json");
+        let target = dir.join("rex.db");
+        let original = serde_json::to_vec(&Value::Object(state())).unwrap();
+        fs::write(&catalog_path, catalog().to_string()).unwrap();
+        fs::write(&origin, &original).unwrap();
+
+        let error = migrate_legacy_state(&target, &origin, &state(), |point| {
+            (point == MigrationPoint::BeforeArchive)
+                .then(|| Err("injected archive rename failure".to_string()))
+                .unwrap_or(Ok(()))
+        })
+        .expect_err("the injected archive rename failure must surface");
+        assert_eq!(error, "injected archive rename failure");
+        assert!(store::is_sqlite(&target));
+        assert_eq!(fs::read(&origin).unwrap(), original);
+        assert!(!sidecar(&origin, "migrated").exists());
+
+        let runtime = Runtime::load(options(&catalog_path, &target)).expect("restart opens the installed database");
+        assert_eq!(runtime.friendly, "legacy");
+        assert_eq!(fs::read(&origin).unwrap(), original);
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn a_successful_distinct_install_archives_the_source_after_the_database_exists() {
+        let dir = work("migration-success");
+        let catalog_path = dir.join("catalog.json");
+        let origin = dir.join("state.json");
+        let target = dir.join("rex.db");
+        let original = serde_json::to_vec(&Value::Object(state())).unwrap();
+        fs::write(&catalog_path, catalog().to_string()).unwrap();
+        fs::write(&origin, &original).unwrap();
+
+        migrate_legacy_state(&target, &origin, &state(), |_| Ok(())).expect("migration");
+        assert!(store::is_sqlite(&target));
+        assert!(!origin.exists());
+        assert_eq!(fs::read(sidecar(&origin, "migrated")).unwrap(), original);
+        assert!(!PathBuf::from(format!("{}-wal", target.display())).exists());
+        assert!(!PathBuf::from(format!("{}-shm", target.display())).exists());
+        let _ = fs::remove_dir_all(dir);
+    }
+}
+
+#[cfg(test)]
+mod file_check_tests {
+    use super::*;
+
+    fn routed_request(listener: &TcpListener, shared: SharedRuntime, target: &str, accept: &str) -> Vec<u8> {
+        let address = listener.local_addr().unwrap();
+        let listener = listener.try_clone().unwrap();
+        let server = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().expect("rex connection");
+            handle_connection(&mut stream, shared).expect("rex request");
+            let _ = stream.shutdown(std::net::Shutdown::Write);
+        });
+        let mut client = TcpStream::connect(address).unwrap();
+        write!(
+            client,
+            "GET {target} HTTP/1.1\r\nHost: localhost\r\nAccept: {accept}\r\nConnection: close\r\n\r\n"
+        )
+        .unwrap();
+        client.shutdown(std::net::Shutdown::Write).unwrap();
+        client
+            .set_read_timeout(Some(std::time::Duration::from_secs(2)))
+            .unwrap();
+        let mut response = Vec::new();
+        client.read_to_end(&mut response).unwrap();
+        server.join().unwrap();
+        response
+    }
+
+    fn response_body(response: &[u8]) -> &[u8] {
+        response
+            .windows(4)
+            .position(|window| window == b"\r\n\r\n")
+            .map(|at| &response[at + 4..])
+            .unwrap_or_default()
+    }
+
+    #[test]
+    fn routed_file_checks_keep_indices_after_excluding_file_for_json_and_xml() {
+        let dir = std::env::temp_dir().join(format!("rex-file-check-route-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let source_listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let source_port = source_listener.local_addr().unwrap().port();
+        let source_path = dir.join("sources.json");
+        fs::write(
+            &source_path,
+            serde_json::to_vec(&json!({
+                "slow": {"url": format!("http://127.0.0.1:{source_port}"), "mount": "/mnt"}
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+        let catalog_path = dir.join("catalog.json");
+        let file = "/mnt/episode.mkv";
+        let media = |sid: &str| {
+            json!({"_source": "slow", "_sid": sid, "_path": "episode.mkv",
+                   "Part": [{"file": file}]})
+        };
+        fs::write(
+            &catalog_path,
+            serde_json::to_vec(&json!({
+                "machineIdentifier": "file-check-route-machine",
+                "friendlyName": "file-check-route",
+                "sections": [{"key": "1", "type": "movie", "title": "Movies", "uuid": "route"}],
+                "items": [
+                    {"ratingKey": "11", "key": "/library/metadata/11", "type": "movie", "title": "Requested",
+                     "librarySectionID": 1, "Genre": [{"tag": "Sci-Fi"}, {"tag": "Drama"}], "Media": [media("one")]},
+                    {"ratingKey": "12", "key": "/library/metadata/12", "type": "movie", "title": "Related",
+                     "librarySectionID": 1, "Genre": [{"tag": "Sci-Fi"}, {"tag": "Drama"}], "Media": [media("two")]}
+                ]
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+        let runtime = Runtime::load(RuntimeOptions {
+            catalog: catalog_path,
+            state: Some(dir.join("state.disabled")),
+            sources: Some(source_path),
+            ..RuntimeOptions::default()
+        })
+        .unwrap();
+        let shared = Arc::new(Mutex::new(runtime));
+        let server_listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let source = std::thread::spawn(move || {
+            for _ in 0..2 {
+                let (mut stream, _) = source_listener.accept().expect("source HEAD");
+                let mut request = Vec::new();
+                let mut buffer = [0_u8; 1024];
+                while !request.windows(4).any(|window| window == b"\r\n\r\n") {
+                    let count = stream.read(&mut buffer).expect("source request");
+                    if count == 0 {
+                        break;
+                    }
+                    request.extend_from_slice(&buffer[..count]);
+                }
+                assert!(request.starts_with(b"HEAD /episode.mkv "));
+                stream
+                    .write_all(b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
+                    .unwrap();
+            }
+        });
+
+        let target = "/library/metadata/11?checkFiles=1&includeRelated=1&excludeFields=file";
+        let json_response = routed_request(&server_listener, shared.clone(), target, "application/json");
+        assert!(json_response.starts_with(b"HTTP/1.1 200"));
+        let json_body: Value = serde_json::from_slice(response_body(&json_response)).unwrap();
+        let requested = &json_body["MediaContainer"]["Metadata"][0];
+        assert!(requested["Media"][0]["Part"][0].get("file").is_none());
+        assert_eq!(requested["Media"][0]["Part"][0]["accessible"], json!(false));
+        assert_eq!(requested["Media"][0]["Part"][0]["exists"], json!(false));
+        let related = &requested["Related"];
+        assert!(related.to_string().find("accessible").is_none(), "related parts were projected by file key: {related}");
+
+        let xml_response = routed_request(&server_listener, shared, target, "application/xml");
+        source.join().unwrap();
+        assert!(xml_response.starts_with(b"HTTP/1.1 200"));
+        let xml_body = String::from_utf8(response_body(&xml_response).to_vec()).unwrap();
+        assert!(!xml_body.contains("file="));
+        assert!(xml_body.contains("accessible=\"0\"") || xml_body.contains("accessible=\"false\""), "XML checked Part missing false accessibility: {xml_body}");
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn routed_slow_file_check_leaves_identity_available_while_head_is_blocked() {
+        let dir = std::env::temp_dir().join(format!("rex-file-check-lock-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let source_listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let source_port = source_listener.local_addr().unwrap().port();
+        let source_path = dir.join("sources.json");
+        fs::write(
+            &source_path,
+            serde_json::to_vec(&json!({"slow": {"url": format!("http://127.0.0.1:{source_port}"), "mount": "/mnt"}})).unwrap(),
+        )
+        .unwrap();
+        let catalog_path = dir.join("catalog.json");
+        fs::write(
+            &catalog_path,
+            serde_json::to_vec(&json!({
+                "machineIdentifier": "file-check-lock-machine", "friendlyName": "file-check-lock", "sections": [],
+                "items": [{"ratingKey": "11", "type": "episode", "title": "Episode",
+                           "Media": [{"_source": "slow", "_sid": "1", "_path": "episode.mkv", "Part": [{"file": "/mnt/episode.mkv"}]}]}]
+            })).unwrap(),
+        )
+        .unwrap();
+        let runtime = Runtime::load(RuntimeOptions {
+            catalog: catalog_path,
+            state: Some(dir.join("state.disabled")),
+            sources: Some(source_path),
+            ..RuntimeOptions::default()
+        })
+        .unwrap();
+        let shared = Arc::new(Mutex::new(runtime));
+        let server_listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let address = server_listener.local_addr().unwrap();
+        let first_listener = server_listener.try_clone().unwrap();
+        let first_shared = shared.clone();
+        let first = std::thread::spawn(move || {
+            let (mut stream, _) = first_listener.accept().expect("file-check connection");
+            handle_connection(&mut stream, first_shared).expect("file-check request");
+        });
+        let (started_tx, started_rx) = std::sync::mpsc::channel();
+        let (release_tx, release_rx) = std::sync::mpsc::channel();
+        let source = std::thread::spawn(move || {
+            let (mut stream, _) = source_listener.accept().expect("source HEAD");
+            let mut request = Vec::new();
+            let mut buffer = [0_u8; 1024];
+            while !request.windows(4).any(|window| window == b"\r\n\r\n") {
+                let count = stream.read(&mut buffer).expect("source request");
+                if count == 0 {
+                    break;
+                }
+                request.extend_from_slice(&buffer[..count]);
+            }
+            started_tx.send(()).unwrap();
+            release_rx
+                .recv_timeout(std::time::Duration::from_secs(2))
+                .expect("bounded source release");
+            stream
+                .write_all(b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
+                .unwrap();
+        });
+        let mut checked = TcpStream::connect(address).unwrap();
+        checked
+            .write_all(b"GET /library/metadata/11?checkFiles=1 HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n")
+            .unwrap();
+        checked.shutdown(std::net::Shutdown::Write).unwrap();
+        started_rx
+            .recv_timeout(std::time::Duration::from_secs(2))
+            .expect("HEAD started");
+
+        let second_listener = server_listener.try_clone().unwrap();
+        let second_shared = shared.clone();
+        let second = std::thread::spawn(move || {
+            let (mut stream, _) = second_listener.accept().expect("identity connection");
+            handle_connection(&mut stream, second_shared).expect("identity request");
+        });
+        let mut identity = TcpStream::connect(address).unwrap();
+        identity
+            .write_all(b"GET /identity HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n")
+            .unwrap();
+        identity.shutdown(std::net::Shutdown::Write).unwrap();
+        identity
+            .set_read_timeout(Some(std::time::Duration::from_millis(300)))
+            .unwrap();
+        let mut identity_bytes = Vec::new();
+        let identity_available = match identity.read_to_end(&mut identity_bytes) {
+            Ok(_) => identity_bytes.starts_with(b"HTTP/1.1 200"),
+            Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => false,
+            Err(error) => panic!("identity read failed: {error}"),
+        };
+        let _ = release_tx.send(());
+        let first_result = first.join();
+        let second_result = second.join();
+        let source_result = source.join();
+        assert!(identity_available, "identity was blocked by a source HEAD in handle_connection");
+        first_result.expect("file-check request completed");
+        second_result.expect("identity request completed");
+        source_result.expect("source HEAD completed");
+        let _ = fs::remove_dir_all(dir);
     }
 }
 
@@ -26261,6 +26671,62 @@ struct PartProxy {
     range: Option<String>,
 }
 
+/// A source lookup captured from the row while the runtime lock was held.  The result is
+/// projected into the already-built response after the lookup finishes, so a slow HEAD cannot
+/// block unrelated requests or write stale availability into the catalog.
+#[derive(Debug)]
+struct FileCheck {
+    media_index: usize,
+    part_index: usize,
+    source: Arc<source::Source>,
+    path: String,
+}
+
+fn finish_file_checks(response: &mut Response, checks: Vec<FileCheck>) {
+    if checks.is_empty() || response.status != 200 || response.content_type != "application/json" {
+        return;
+    }
+    let Ok(mut document) = serde_json::from_slice::<Value>(&response.body) else {
+        return;
+    };
+    let Some(metadata) = document
+        .get_mut("MediaContainer")
+        .and_then(Value::as_object_mut)
+        .and_then(|container| container.get_mut("Metadata"))
+        .and_then(Value::as_array_mut)
+        .and_then(|rows| rows.first_mut())
+        .and_then(Value::as_object_mut)
+    else {
+        return;
+    };
+    for check in checks {
+        let available = check.source.exists(&check.path);
+        let Some(part) = metadata
+            .get_mut("Media")
+            .and_then(Value::as_array_mut)
+            .and_then(|media| media.get_mut(check.media_index))
+            .and_then(Value::as_object_mut)
+            .and_then(|media| media.get_mut("Part"))
+            .and_then(Value::as_array_mut)
+            .and_then(|parts| parts.get_mut(check.part_index))
+            .and_then(Value::as_object_mut)
+        else {
+            continue;
+        };
+        // The route may have projected either field away (`excludeFields`). Preserve that
+        // request shape: only replace placeholders which are still present in this Part.
+        if part.contains_key("accessible") {
+            part.insert("accessible".to_string(), json!(available));
+        }
+        if part.contains_key("exists") {
+            part.insert("exists".to_string(), json!(available));
+        }
+    }
+    if let Ok(body) = serde_json::to_vec(&document) {
+        response.body = body;
+    }
+}
+
 /// `_serve_image`'s upstream half, outside the lock: the remote bytes and their type
 /// into the response the router shaped, or the 404 a failed fetch is.
 fn serve_remote_image(mut response: Response, url: &str) -> Response {
@@ -27096,6 +27562,51 @@ fn remember_list_upload(columns: &mut Map<String, Value>, upload: &str) {
         if !list.iter().any(|known| known.as_str() == Some(upload)) {
             list.push(json!(upload));
         }
+    }
+}
+
+#[cfg(test)]
+mod request_parser_tests {
+    use super::*;
+    use std::io::Cursor;
+
+    #[test]
+    fn chunked_request_body_is_bounded_before_reading_payload() {
+        let request = b"POST /playlists HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n1000001\r\n";
+        let mut pending = Vec::new();
+        let error = read_request(&mut Cursor::new(request.as_slice()), &mut pending, false)
+            .expect_err("oversized chunk should be rejected");
+        assert_eq!(error, "body exceeds limit");
+    }
+
+    #[test]
+    fn chunked_request_body_aggregate_is_bounded_across_chunks() {
+        let first = MAX_BODY_BYTES - 1;
+        // `/hubs` is a body-consuming route; query-only writes deliberately dispatch early
+        // when their body has not arrived yet, which is a separate measured rule.
+        let mut request = b"POST /hubs HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n".to_vec();
+        request.extend_from_slice(format!("{first:x}\r\n").as_bytes());
+        request.extend(std::iter::repeat_n(b'a', first));
+        request.extend_from_slice(b"\r\n2\r\naa\r\n0\r\n\r\n");
+        // Seed the parser's existing read buffer so the test exercises the
+        // aggregate guard without spending the parser's 20-second envelope
+        // deadline copying a 16 MiB synthetic body through tiny reads.
+        let mut pending = request;
+        match read_request(&mut Cursor::new([]), &mut pending, false) {
+            Err(error) => assert_eq!(error, "body exceeds limit"),
+            Ok(Some(request)) => panic!("aggregate body was accepted ({} bytes)", request.body.len()),
+            Ok(None) => panic!("aggregate request was ignored"),
+        }
+    }
+
+    #[test]
+    fn chunked_request_body_under_the_limit_is_reassembled() {
+        let request = b"POST /playlists HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhello\r\n6\r\n world\r\n0\r\n\r\n";
+        let mut pending = Vec::new();
+        let parsed = read_request(&mut Cursor::new(request.as_slice()), &mut pending, false)
+            .expect("under-limit body").expect("request");
+        assert_eq!(parsed.body, b"hello world");
+        assert!(parsed.body_complete);
     }
 }
 

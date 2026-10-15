@@ -777,31 +777,100 @@ pub(super) fn retry_blank(shared: &SharedRuntime, limit: usize) -> usize {
     keys.len()
 }
 
+fn eligible_episode(row: &Value) -> bool {
+    row.get("type").and_then(Value::as_str) == Some("episode")
+        && !row.get("deletedAt").is_some_and(|value| !value.is_null())
+        && !row.get("_probePending").is_some_and(truthy)
+}
+
+fn season_lookup_candidate(row: &Value) -> bool {
+    if !eligible_episode(row) {
+        return false;
+    }
+    let all = versions(row);
+    (all.len() <= 1
+        && row.get("_release").and_then(Value::as_str).is_some()
+        && row.pointer("/Media/0/Part/0/file").and_then(Value::as_str).is_some())
+        || (all.len() >= 2 && all[0].2 == 0)
+}
+
+fn show_tmdb_id(catalog: &Catalog, row: &Value) -> Option<i64> {
+    row.get("grandparentRatingKey")
+        .map(string_value)
+        .and_then(|key| catalog.get(&key))
+        .and_then(|show| show.get("_identity"))
+        .and_then(Value::as_str)
+        .and_then(|identity| identity.strip_prefix("tmdb:"))
+        .and_then(|id| id.parse::<i64>().ok())
+}
+
 /// Episodes placed on numbers their names no longer read, or anime under another show than
 /// the one its cour belongs to (`anime.rs`): pushed again as their source pushed them, so
 /// each is identified and placed again on its key, watch state kept. A parser fix reached only
 /// new files before this, and the production server held ~214 `Show S2 - NN` episodes in season 1
 /// (2026-10-13). Answers how many rows it placed again.
 pub(super) fn replace_misnumbered(shared: &SharedRuntime) -> usize {
+    let (tmdb, has_plex) = {
+        let guard = lock(shared);
+        (guard.tmdb.clone(), guard.plex.is_some())
+    };
+    if tmdb.is_none() && !has_plex {
+        return 0;
+    }
+    let lookup = tmdb.clone().map(|tmdb| {
+        move |id| {
+            crate::identify::tmdb_details(tmdb.as_ref() as &dyn TmdbSource, "tv", id)
+                .map(|details| super::scan::tmdb_seasons(&details))
+                .unwrap_or_default()
+        }
+    });
+    replace_misnumbered_with(shared, lookup)
+}
+
+fn replace_misnumbered_with<F>(shared: &SharedRuntime, mut lookup: Option<F>) -> usize
+where
+    F: FnMut(i64) -> Vec<(i64, i64, String)>,
+{
     // Episodes on a season TMDB lacks, of a show IMDb knows: looked up through IMDb after the
     // lock is let go, since a `/find` TMDB has not answered before goes to the network.
     let mut deferred: Vec<(Option<i64>, Option<i64>, String, Value, i64, String, String, String, (i64, i64))> = Vec::new();
     let unsure_versions: Vec<Unsure>;
-    let (mut by_source, sources, tmdb) = {
-        let mut guard = lock(shared);
-        if guard.tmdb.is_none() && guard.plex.is_none() {
-            return 0;
+    let (tmdb, sources, show_ids) = {
+        let guard = lock(shared);
+        let mut show_ids = Vec::new();
+        let mut seen_show_ids = HashSet::new();
+        for row in guard.catalog.items() {
+            if !season_lookup_candidate(row) || guard.matched_by_hand(row) {
+                continue;
+            }
+            let Some(id) = show_tmdb_id(&guard.catalog, row) else {
+                continue;
+            };
+            if seen_show_ids.insert(id) {
+                show_ids.push(id);
+            }
         }
-        let mut show_seasons: HashMap<i64, Vec<(i64, i64, String)>> = HashMap::new();
-        let (elsewhere, unsure) = guard.versions_elsewhere(&mut show_seasons);
+        (guard.tmdb.clone(), guard.sources.clone(), show_ids)
+    };
+    // TMDB details can take seconds and must never occupy the runtime lock while they are
+    // fetched. The map is immutable during the catalog pass below, so every caller shares the
+    // same answer for a show and the lock is only used for the short row projection phases.
+    let mut show_seasons: HashMap<i64, Vec<(i64, i64, String)>> = HashMap::new();
+    let lookup_available = lookup.is_some();
+    if let Some(lookup) = lookup.as_mut() {
+        for id in show_ids {
+            show_seasons.insert(id, lookup(id));
+        }
+    }
+    let mut by_source = {
+        let mut guard = lock(shared);
+        let (elsewhere, unsure) = guard.versions_elsewhere(&show_seasons, lookup_available);
         guard.unfold_versions(&elsewhere);
         unsure_versions = unsure;
         let guard = guard;
         let mut by_source: BTreeMap<String, Vec<Value>> = BTreeMap::new();
         for row in guard.catalog.items() {
-            if row.get("type").and_then(Value::as_str) != Some("episode")
-                || row.get("deletedAt").is_some_and(|value| !value.is_null())
-                || row.get("_probePending").is_some_and(truthy)
+            if !eligible_episode(row)
                 || versions(row).len() > 1
                 || guard.matched_by_hand(row)
             {
@@ -814,26 +883,16 @@ pub(super) fn replace_misnumbered(shared: &SharedRuntime) -> usize {
                 continue;
             };
             let name = file.rsplit('/').next().unwrap_or_default();
-            let show_id = row
-                .get("grandparentRatingKey")
-                .map(string_value)
-                .and_then(|key| guard.catalog.get(&key))
-                .and_then(|show| show.get("_identity"))
-                .and_then(Value::as_str)
-                .and_then(|identity| identity.strip_prefix("tmdb:"))
-                .and_then(|id| id.parse::<i64>().ok());
+            let show_id = show_tmdb_id(&guard.catalog, row);
+            if lookup_available && show_id.is_some_and(|id| !show_seasons.contains_key(&id)) {
+                // A show can arrive while the first snapshot's lookup is blocked.  It has no
+                // answer yet; an empty season list would move its episode by guesswork.
+                continue;
+            }
             let folder = row.as_object().and_then(super::scan::folder_of);
             let numbers = super::scan::episode_of(release, folder, name).map(|numbers| match show_id {
                 Some(id) => {
-                    // Read once a show: every episode of the library passes here, under the lock.
-                    let seasons = show_seasons.entry(id).or_insert_with(|| {
-                        guard
-                            .tmdb
-                            .as_deref()
-                            .and_then(|t| crate::identify::tmdb_details(t as &dyn TmdbSource, "tv", id))
-                            .map(|details| super::scan::tmdb_seasons(&details))
-                            .unwrap_or_default()
-                    });
+                    let seasons = show_seasons.get(&id).map(Vec::as_slice).unwrap_or(&[]);
                     let placed = super::scan::on_seasons(seasons, id, numbers, super::scan::scene_numbered(release, folder, name));
                     let show = row.get("grandparentRatingKey").map(string_value).and_then(|key| guard.catalog.get(&key));
                     let show_imdb = show.and_then(|show| show.get("Guid")).and_then(Value::as_array).and_then(|guids| {
@@ -872,7 +931,7 @@ pub(super) fn replace_misnumbered(shared: &SharedRuntime) -> usize {
                 }
             }
         }
-        (by_source, guard.sources.clone(), guard.tmdb.clone())
+        by_source
     };
     for (season, index, source, item, show, imdb, release_title, show_title, numbers) in deferred {
         let Some(t) = tmdb.as_deref() else {
@@ -1580,15 +1639,15 @@ impl Runtime {
     /// its name's numbers on the show's TMDB seasons. One whose season TMDB lacks is IMDb's to
     /// place: it is answered apart (`Unsure`), off the lock. A row a person matched stays whole.
     /// When none would stay, the first does.
-    fn versions_elsewhere(&self, show_seasons: &mut HashMap<i64, Vec<(i64, i64, String)>>) -> (Vec<(String, Vec<usize>)>, Vec<Unsure>) {
+    fn versions_elsewhere(
+        &self,
+        show_seasons: &HashMap<i64, Vec<(i64, i64, String)>>,
+        lookup_available: bool,
+    ) -> (Vec<(String, Vec<usize>)>, Vec<Unsure>) {
         let mut found = Vec::new();
         let mut unsure = Vec::new();
         for row in self.catalog.items() {
-            if row.get("type").and_then(Value::as_str) != Some("episode")
-                || row.get("deletedAt").is_some_and(|value| !value.is_null())
-                || row.get("_probePending").is_some_and(truthy)
-                || self.matched_by_hand(row)
-            {
+            if !eligible_episode(row) || self.matched_by_hand(row) {
                 continue;
             }
             let all = versions(row);
@@ -1596,11 +1655,7 @@ impl Runtime {
                 continue;
             }
             let show = row.get("grandparentRatingKey").map(string_value).and_then(|key| self.catalog.get(&key));
-            let show_id = show
-                .and_then(|show| show.get("_identity"))
-                .and_then(Value::as_str)
-                .and_then(|identity| identity.strip_prefix("tmdb:"))
-                .and_then(|id| id.parse::<i64>().ok());
+            let show_id = show_tmdb_id(&self.catalog, row);
             let show_imdb = show.and_then(|show| show.get("Guid")).and_then(Value::as_array).and_then(|guids| {
                 guids.iter().filter_map(|guid| guid.get("id").and_then(Value::as_str)).find_map(|id| id.strip_prefix("imdb://"))
             });
@@ -1612,13 +1667,11 @@ impl Runtime {
                 };
                 let placed = match show_id {
                     Some(id) => {
-                        let seasons = show_seasons.entry(id).or_insert_with(|| {
-                            self.tmdb
-                                .as_deref()
-                                .and_then(|t| crate::identify::tmdb_details(t as &dyn TmdbSource, "tv", id))
-                                .map(|details| super::scan::tmdb_seasons(&details))
-                                .unwrap_or_default()
-                        });
+                        let seasons = match show_seasons.get(&id) {
+                            Some(seasons) => seasons.as_slice(),
+                            None if !lookup_available => &[],
+                            None => continue,
+                        };
                         let placed = super::scan::on_seasons(seasons, id, numbers, scene);
                         if let (Some(imdb), false, false) =
                             (show_imdb, seasons.is_empty(), seasons.iter().any(|season| season.0 == placed.0))
@@ -1756,6 +1809,55 @@ impl Runtime {
 mod tests {
     use super::*;
 
+    fn work(name: &str) -> std::path::PathBuf {
+        let path = std::env::temp_dir().join(format!("rex-feed-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&path);
+        std::fs::create_dir_all(&path).unwrap();
+        path
+    }
+
+    fn runtime_with_episode(dir: &std::path::Path) -> (SharedRuntime, String) {
+        let catalog_path = dir.join("catalog.json");
+        let show = json!({
+            "ratingKey": "10",
+            "key": "/library/metadata/10",
+            "type": "show",
+            "title": "Original",
+            "librarySectionID": 1,
+            "_identity": "tmdb:100"
+        });
+        let episode = json!({
+            "ratingKey": "11",
+            "key": "/library/metadata/11",
+            "type": "episode",
+            "title": "Episode",
+            "librarySectionID": 1,
+            "grandparentRatingKey": "10",
+            "parentRatingKey": "12",
+            "parentIndex": 1,
+            "index": 2,
+            "_release": "Original.S01E02.1080p",
+            "_source": "test",
+            "_sid": "one",
+            "Media": [{"Part": [{"file": "/shows/Original/episode.mkv"}]}]
+        });
+        let catalog = json!({
+            "format": 1,
+            "machineIdentifier": "feed-test-machine",
+            "friendlyName": "feed-test",
+            "sections": [{"key": "1", "type": 2, "title": "Shows", "Location": [{"path": "/shows"}]}],
+            "items": [show, episode]
+        });
+        std::fs::write(&catalog_path, serde_json::to_vec(&catalog).unwrap()).unwrap();
+        let runtime = Runtime::load(RuntimeOptions {
+            catalog: catalog_path,
+            state: Some(dir.join("no-state")),
+            ..RuntimeOptions::default()
+        })
+        .unwrap();
+        (Arc::new(Mutex::new(runtime)), "11".to_string())
+    }
+
     /// The production server's The Boys S03E01 (2026-10-14): its pack was identified through
     /// the pack's IMDb id as one title, so E02-E08 carried the same guid on the same season and
     /// were folded onto it as versions.
@@ -1773,5 +1875,89 @@ mod tests {
         let mut again = second.clone();
         again["_sid"] = json!("shows/The.Boys.S03.2160p/The.Boys.S03E02.2160p.mkv");
         assert_eq!(version_slot(&second), version_slot(&again), "another release of E02 is still a version of it");
+    }
+
+    #[test]
+    fn season_lookup_releases_runtime_lock_and_skips_a_show_added_during_lookup() {
+        let dir = work("lookup-lock");
+        let (shared, episode_key) = runtime_with_episode(&dir);
+        {
+            let guard = shared.lock().unwrap();
+            let episode = guard.catalog.get(&episode_key).expect("fixture episode");
+            assert!(season_lookup_candidate(episode), "fixture is not a lookup candidate: {episode}");
+            assert_eq!(show_tmdb_id(&guard.catalog, episode), Some(100));
+            assert!(!guard.matched_by_hand(episode), "fixture unexpectedly matched by hand: {episode}");
+        }
+        let (started_tx, started_rx) = std::sync::mpsc::channel();
+        let (release_tx, release_rx) = std::sync::mpsc::channel();
+        let worker = {
+            let shared = shared.clone();
+            std::thread::spawn(move || {
+                replace_misnumbered_with(
+                    &shared,
+                    Some(move |_show_id| {
+                        started_tx.send(()).unwrap();
+                        release_rx
+                            .recv_timeout(std::time::Duration::from_secs(2))
+                            .expect("bounded lookup release");
+                        vec![(1, 1, "1900-01-01".to_string())]
+                    }),
+                )
+            })
+        };
+        if started_rx
+            .recv_timeout(std::time::Duration::from_secs(2))
+            .is_err()
+        {
+            let _ = release_tx.send(());
+            let _ = worker.join();
+            panic!("lookup callback did not start");
+        }
+
+        // The callback is blocked as a stand-in for TMDB.  Acquiring this lock proves the
+        // runtime remains available to a concurrent feed request while that lookup waits.
+        let lock_available = shared.try_lock().is_ok();
+        if lock_available {
+            let mut guard = shared.lock().unwrap();
+            let added_show = json!({
+                "ratingKey": "20",
+                "key": "/library/metadata/20",
+                "type": "show",
+                "title": "Arrived During Lookup",
+                "librarySectionID": 1,
+                "_identity": "tmdb:200"
+            });
+            let added_episode = json!({
+                "ratingKey": "21",
+                "key": "/library/metadata/21",
+                "type": "episode",
+                "title": "New Episode",
+                "librarySectionID": 1,
+                "grandparentRatingKey": "20",
+                "parentRatingKey": "22",
+                "parentIndex": 1900,
+                "index": 1,
+                "_release": "Arrived.S1900E01.1080p",
+                "_source": "test",
+                "_sid": "two",
+                "Media": [{"Part": [{"file": "/shows/Arrived/episode.mkv"}]}]
+            });
+            guard.catalog.add(added_show);
+            guard.catalog.add(added_episode);
+            drop(guard);
+        }
+        let _ = release_tx.send(());
+        let result = worker.join();
+        assert!(lock_available, "TMDB lookup held the runtime lock");
+        result.expect("season repair worker completed");
+
+        if lock_available {
+            let guard = shared.lock().unwrap();
+            assert_eq!(guard.catalog.get(&episode_key).and_then(|row| row.get("index")).and_then(Value::as_i64), Some(2));
+            assert_eq!(guard.catalog.get("21").and_then(|row| row.get("parentIndex")).and_then(Value::as_i64), Some(1900));
+            assert_eq!(guard.catalog.get("21").and_then(|row| row.get("index")).and_then(Value::as_i64), Some(1));
+            drop(guard);
+        }
+        let _ = std::fs::remove_dir_all(dir);
     }
 }

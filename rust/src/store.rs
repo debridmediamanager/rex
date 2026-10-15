@@ -861,8 +861,18 @@ pub fn write_fresh(path: &Path, state: &Map<String, Value>) -> Result<Cache, Str
     let delta = cache.diff(state, &[]);
     let mut connection = open(path)?;
     apply(&mut connection, &[delta])?;
-    // Closing checkpoints the log into the file, which is then renamed into place.
+    // Checkpoint before close: migration renames the main file, so no state may remain
+    // stranded in a sidecar WAL that belongs to the temporary name.
+    connection
+        .execute_batch("PRAGMA wal_checkpoint(TRUNCATE);")
+        .map_err(|e| e.to_string())?;
     connection.close().map_err(|(_, e)| e.to_string())?;
+    fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(path)
+        .and_then(|file| file.sync_all())
+        .map_err(|e| e.to_string())?;
     Ok(cache)
 }
 

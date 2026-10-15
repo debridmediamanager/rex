@@ -12,6 +12,7 @@
 //! account's tokens on 2026-09-11.
 
 use std::collections::{HashMap, HashSet};
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
@@ -159,8 +160,12 @@ fn inflate(headers: &[(String, String)], payload: Vec<u8>) -> Result<Vec<u8>, St
         return Ok(payload);
     }
     let mut out = Vec::new();
-    std::io::Read::read_to_end(&mut flate2::read::GzDecoder::new(payload.as_slice()), &mut out)
-        .map_err(|error| error.to_string())?;
+    let mut decoded = flate2::read::GzDecoder::new(payload.as_slice())
+        .take((upstream::MAX_BODY_BYTES + 1) as u64);
+    std::io::Read::read_to_end(&mut decoded, &mut out).map_err(|error| error.to_string())?;
+    if out.len() > upstream::MAX_BODY_BYTES {
+        return Err("upstream body too large".to_string());
+    }
     Ok(out)
 }
 
@@ -1970,6 +1975,36 @@ pub(super) fn finish_claim(runtime: &SharedRuntime, token: &str, _target: &str) 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::Write;
+
+    fn gzip(body: &[u8]) -> Vec<u8> {
+        let mut encoder = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::fast());
+        encoder.write_all(body).expect("gzip body");
+        encoder.finish().expect("gzip finish")
+    }
+
+    #[test]
+    fn inflate_keeps_plain_and_normal_gzip_bodies() {
+        let plain = b"plain response".to_vec();
+        assert_eq!(inflate(&[], plain.clone()).expect("plain body"), plain);
+        let encoded = gzip(b"decoded response");
+        assert_eq!(
+            inflate(&[("Content-Encoding".to_string(), "gzip".to_string())], encoded)
+                .expect("gzip body"),
+            b"decoded response"
+        );
+    }
+
+    #[test]
+    fn inflate_rejects_an_oversized_decoded_body() {
+        let body = vec![b'x'; upstream::MAX_BODY_BYTES + 1];
+        let error = inflate(
+            &[("Content-Encoding".to_string(), "gzip".to_string())],
+            gzip(&body),
+        )
+        .expect_err("decoded body over the cap");
+        assert_eq!(error, "upstream body too large");
+    }
 
     #[test]
     fn aes256_matches_the_nist_block_vector() {

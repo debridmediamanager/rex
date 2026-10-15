@@ -18,6 +18,8 @@ use std::time::Duration;
 
 /// `server.py`'s `UPSTREAM_UA`, sent on artwork and part reads.
 pub(super) const UPSTREAM_UA: &str = "rex/0.1";
+/// Shared cap for complete upstream responses, including responses decoded by plex.tv.
+pub(crate) const MAX_BODY_BYTES: usize = 64 * 1024 * 1024;
 
 /// The roots urllib uses on the Linux hosts rex runs on. Loaded once.
 fn client_config() -> Option<Arc<ClientConfig>> {
@@ -158,6 +160,12 @@ impl Read for Upstream {
                 }
                 let want = buf.len().min(usize::try_from(*left).unwrap_or(usize::MAX));
                 let count = self.reader.read(&mut buf[..want])?;
+                if count == 0 {
+                    return Err(io::Error::new(
+                        io::ErrorKind::UnexpectedEof,
+                        "response body shorter than Content-Length",
+                    ));
+                }
                 *left -= count as u64;
                 Ok(count)
             }
@@ -214,9 +222,24 @@ fn parse_url(url: &str) -> Option<Target> {
         None => (rest, "/".to_string()),
     };
     let authority = authority.rsplit_once('@').map_or(authority, |(_, host)| host);
-    let (host, port) = match authority.rsplit_once(':') {
-        Some((host, port)) if !host.is_empty() => (host.to_ascii_lowercase(), port.parse::<u16>().ok()?),
-        _ => (authority.to_ascii_lowercase(), if tls { 443 } else { 80 }),
+    let (host, port) = if let Some(bracketed) = authority.strip_prefix('[') {
+        let end = bracketed.find(']')?;
+        let host = &bracketed[..end];
+        if host.is_empty() {
+            return None;
+        }
+        let suffix = &bracketed[end + 1..];
+        let port = if suffix.is_empty() {
+            if tls { 443 } else { 80 }
+        } else {
+            suffix.strip_prefix(':')?.parse::<u16>().ok()?
+        };
+        (host.to_ascii_lowercase(), port)
+    } else {
+        match authority.rsplit_once(':') {
+            Some((host, port)) if !host.is_empty() => (host.to_ascii_lowercase(), port.parse::<u16>().ok()?),
+            _ => (authority.to_ascii_lowercase(), if tls { 443 } else { 80 }),
+        }
     };
     if host.is_empty() {
         return None;
@@ -280,7 +303,7 @@ fn redirect_url(target: &Target, location: &str) -> String {
         return format!("{scheme}:{location}");
     }
     if location.is_empty() {
-        return format!("{scheme}://{}:{}{}", target.host, target.port, target.path);
+        return format!("{scheme}://{}{}", format_authority(target, true), target.path);
     }
     let base_path = target.path.split_once('?').map_or(target.path.as_str(), |(path, _)| path);
     let (path, query) = location.split_once('?').map_or((location, None), |(path, query)| (path, Some(query)));
@@ -293,7 +316,21 @@ fn redirect_url(target: &Target, location: &str) -> String {
         normalize_path(&format!("{directory}/{path}"))
     };
     let query = query.map_or(String::new(), |query| format!("?{query}"));
-    format!("{scheme}://{}:{}{}{}", target.host, target.port, path, query)
+    format!("{scheme}://{}{}{}", format_authority(target, true), path, query)
+}
+
+fn format_authority(target: &Target, include_default_port: bool) -> String {
+    let host = if target.host.contains(':') {
+        format!("[{}]", target.host)
+    } else {
+        target.host.clone()
+    };
+    let default_port = if target.tls { 443 } else { 80 };
+    if include_default_port || target.port != default_port {
+        format!("{host}:{}", target.port)
+    } else {
+        host
+    }
 }
 
 fn connect(target: &Target, timeout: Duration) -> Result<Conn, String> {
@@ -331,12 +368,7 @@ fn exchange(
     timeout: Duration,
 ) -> Result<Upstream, String> {
     let mut conn = connect(target, timeout)?;
-    let default_port = if target.tls { 443 } else { 80 };
-    let host = if target.port == default_port {
-        target.host.clone()
-    } else {
-        format!("{}:{}", target.host, target.port)
-    };
+    let host = format_authority(target, false);
     let mut head = format!("{method} {} HTTP/1.1\r\nHost: {host}\r\n", target.path);
     for (name, value) in headers {
         head.push_str(&format!("{name}: {value}\r\n"));
@@ -434,7 +466,7 @@ pub(crate) fn fetch(
     timeout: Duration,
 ) -> Result<(u16, Vec<(String, String)>, Vec<u8>), String> {
     let mut response = open(method, url, headers, body, timeout)?;
-    let payload = response.read_body(64 * 1024 * 1024)?;
+    let payload = response.read_body(MAX_BODY_BYTES)?;
     Ok((response.status, response.headers, payload))
 }
 
@@ -458,7 +490,7 @@ pub(super) fn quote_plus(value: &str) -> String {
 mod tests {
     use super::*;
     use std::io::Write;
-    use std::net::TcpListener;
+    use std::net::{Shutdown, TcpListener};
     use std::sync::mpsc;
     use std::thread::JoinHandle;
     use std::time::Instant;
@@ -510,6 +542,73 @@ mod tests {
     }
 
     #[test]
+    fn bracketed_ipv6_urls_keep_their_authority() {
+        let target = parse_url("http://[::1]:8080/media/file.mkv").expect("IPv6 URL parses");
+        assert_eq!(target.host, "::1");
+        assert_eq!(target.port, 8080);
+        assert_eq!(format_authority(&target, false), "[::1]:8080");
+        assert_eq!(redirect_url(&target, ""), "http://[::1]:8080/media/file.mkv");
+
+        let default_port = parse_url("https://[2001:db8::1]/").expect("IPv6 URL parses");
+        assert_eq!(default_port.host, "2001:db8::1");
+        assert_eq!(default_port.port, 443);
+        assert_eq!(format_authority(&default_port, false), "[2001:db8::1]");
+        assert_eq!(redirect_url(&default_port, ""), "https://[2001:db8::1]:443/");
+    }
+
+    #[test]
+    fn ipv6_socket_receives_a_bracketed_host_header() {
+        let listener = match TcpListener::bind(("::1", 0)) {
+            Ok(listener) => listener,
+            Err(error) => {
+                eprintln!("IPv6 loopback unavailable; skipping socket assertion: {error}");
+                return;
+            }
+        };
+        listener
+            .set_nonblocking(true)
+            .expect("nonblocking IPv6 listener");
+        let port = listener.local_addr().expect("IPv6 listener address").port();
+        let (host_tx, host_rx) = mpsc::channel();
+        let thread = std::thread::spawn(move || {
+            let deadline = Instant::now() + Duration::from_secs(2);
+            let (mut stream, _) = loop {
+                match listener.accept() {
+                    Ok(connection) => break connection,
+                    Err(error) if error.kind() == std::io::ErrorKind::WouldBlock && Instant::now() < deadline => {
+                        std::thread::sleep(Duration::from_millis(5));
+                    }
+                    Err(_) => return,
+                }
+            };
+            let mut request = Vec::new();
+            let mut buffer = [0_u8; 1024];
+            while !request.windows(4).any(|window| window == b"\r\n\r\n") {
+                let count = std::io::Read::read(&mut stream, &mut buffer).expect("request");
+                if count == 0 {
+                    break;
+                }
+                request.extend_from_slice(&buffer[..count]);
+            }
+            let host = String::from_utf8_lossy(&request)
+                .lines()
+                .find_map(|line| line.strip_prefix("Host: "))
+                .unwrap_or_default()
+                .to_string();
+            host_tx.send(host).expect("host receiver");
+            stream
+                .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n")
+                .expect("response");
+        });
+        let target = parse_url(&format!("http://[::1]:{port}/probe")).expect("IPv6 URL");
+        let response = exchange("GET", &target, &[], b"", Duration::from_secs(1))
+            .expect("IPv6 loopback exchange");
+        assert_eq!(response.status, 200);
+        assert_eq!(host_rx.recv().expect("captured host"), format!("[::1]:{port}"));
+        thread.join().expect("IPv6 stub");
+    }
+
+    #[test]
     fn unterminated_upstream_header_is_rejected_at_the_limit() {
         let mut response = b"HTTP/1.1 200 OK\r\nX-Broken: ".to_vec();
         response.extend(std::iter::repeat_n(b'x', 64 * 1024));
@@ -536,6 +635,33 @@ mod tests {
         let mut response = exchange("GET", &target, &[], b"", Duration::from_secs(1)).expect("response");
         assert_eq!(response.header("x-test"), Some("valid"));
         assert_eq!(response.read_body(3).expect("body"), b"abc");
+        thread.join().expect("stub thread");
+    }
+
+    #[test]
+    fn short_fixed_length_body_is_rejected() {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).expect("stub listener");
+        let address = listener.local_addr().expect("stub address");
+        let (release, released) = mpsc::channel();
+        let thread = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().expect("upstream connection");
+            stream
+                .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 3\r\n\r\nx")
+                .expect("stub response");
+            stream.shutdown(Shutdown::Write).expect("half-close stub");
+            let _ = released.recv_timeout(Duration::from_secs(5));
+        });
+        let target = parse_url(&format!("http://{address}/")).expect("stub URL");
+        let mut response = exchange("GET", &target, &[], b"", Duration::from_secs(1))
+            .expect("response head");
+        let error = response
+            .read_body(64)
+            .expect_err("short fixed-length body should fail");
+        assert!(
+            error.contains("shorter than Content-Length"),
+            "unexpected error: {error}"
+        );
+        release.send(()).expect("release stub");
         thread.join().expect("stub thread");
     }
 
