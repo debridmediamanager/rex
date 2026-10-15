@@ -148,6 +148,7 @@ The `media_info` above is cut down to show its shape. Send ffprobe's whole outpu
 | `release` | no | Groups a release's files, identified together (a season's episodes). Default: the folder above `path` |
 | `file` | no | The path clients see in Get Info, and what zurg's matcher reads back (`<mount>/<directory>/<release>/<file>`). Default `<mount>/<path>`, or `/<path>` without a mount |
 | `library` | no | A section key, or `movie`/`show`. Default: the library whose `Location` holds `file`, else one with a folder ending in a directory `path` starts with (`/mnt/zurg/movies` holds `movies/...` whatever prefix `file` has); with a type, that type's library holding `file`, else its first. With no `library`, a release a movie library would take whose `name` carries an episode number (`E0221`, `EP1161`, `Ep.14`, `Name-15`) goes to a show library, the one beside it; a row already shown moves when its library changes |
+| `folder` | no | The folder the provider lists the file in inside its release (`Smallville/Stagione 6`), `""` at its top level. A pack of several seasons that numbers each season's files from `01` says the season only here; without it rex leaves such a pack's files unplaced rather than fold its seasons onto one. Kept on the row |
 | `hash` | no | The release's info hash. Kept on the row; nothing reads it yet |
 
 What the fields do:

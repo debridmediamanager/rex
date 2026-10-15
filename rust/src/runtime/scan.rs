@@ -76,9 +76,10 @@ pub(super) fn is_sample(file: &str) -> bool {
 }
 
 /// (season, episode) of a show's file: the file's own numbers, else its release's; an
-/// episode with no season (absolute numbering) is season 1.
-pub(super) fn episode_of(release: &str, file_name: &str) -> Option<(i64, i64)> {
-    let (season, episode) = numbers_of(release, file_name)?;
+/// episode with no season (absolute numbering) is season 1. `folder` is where the source says
+/// the provider lists the file inside its release (`folder_of`), `None` when it says nothing.
+pub(super) fn episode_of(release: &str, folder: Option<&str>, file_name: &str) -> Option<(i64, i64)> {
+    let (season, episode) = numbers_of(release, folder, file_name)?;
     // An anime cour on TMDB's numbering (`anime.rs`).
     if let Some(numbers) = super::anime::renumber(release, file_name, season, episode) {
         return Some(numbers);
@@ -88,8 +89,8 @@ pub(super) fn episode_of(release: &str, file_name: &str) -> Option<(i64, i64)> {
 
 /// Whether a file's numbers are its name's own, as scene releases number them -- not ones the
 /// anime mapping already put on TMDB's numbering (`anime::renumber`).
-pub(super) fn scene_numbered(release: &str, file_name: &str) -> bool {
-    let Some((season, episode)) = numbers_of(release, file_name) else {
+pub(super) fn scene_numbered(release: &str, folder: Option<&str>, file_name: &str) -> bool {
+    let Some((season, episode)) = numbers_of(release, folder, file_name) else {
         return false;
     };
     super::anime::renumber(release, file_name, season, episode).is_none()
@@ -97,19 +98,38 @@ pub(super) fn scene_numbered(release: &str, file_name: &str) -> bool {
 
 /// The season (if named) and episode a show's file is numbered by: the file's own name, else
 /// its release's, else the shapes only a show's file can be read by (`numbered_in_release`).
-fn numbers_of(release: &str, file_name: &str) -> Option<(Option<i64>, i64)> {
+fn numbers_of(release: &str, folder: Option<&str>, file_name: &str) -> Option<(Option<i64>, i64)> {
     let parsed = (identify::parse_name(release), identify::parse_name(file_name));
     if let Some(episode) = parsed.1.episode.or(parsed.0.episode) {
         return Some((parsed.1.season.or(parsed.0.season), episode));
     }
-    numbered_in_release(&parsed.0, release, file_name)
+    numbered_in_release(&parsed.0, release, folder, file_name)
+}
+
+/// The provider's folder a row's or an arrival's file sits in (`_folder`, as the source said it).
+pub(super) fn folder_of(fields: &Map<String, Value>) -> Option<&str> {
+    fields.get("_folder").and_then(Value::as_str)
 }
 
 // Names that carry an episode number only beside their release, each measured on the production
 // server's feed (2026-10-15, 4,405 files unplaced): a film called `Apollo 13` reads the same,
 // so they are read for a show's files and never by `parse_name`.
 // `35. Returning Memories` in `Sailor.Moon.S01…`, `02 - Who Mourns for Adonais` in `Star Trek … Season 2`.
-static LEADING: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^(\d{1,3})(?:\.\s*|\s+-\s+|\s+)[^\d\s]").unwrap());
+// `-01 Are You Afraid of the Dark - The Tale of the Phantom Cab` in its pack's `Season 1` folder.
+static LEADING: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^-?(\d{1,3})(?:\.\s*|\s+-\s+|\s+)[^\d\s]").unwrap());
+// The season's number before the episode's, in a folder of that season: `601 - The Tale of the
+// Zombie Dice` (Are You Afraid of the Dark's `Season 6`), `05.01 - Steve Martin, Blondie` (Saturday
+// Night Live's), `1.01. A Night At The Katz Motel` (Courage's), and Phineas and Ferb's `S1 (2007-9)`
+// with two segments or two episodes on one file: `101a-b - Rollercoaster; …`, `237-8 - Summer Belongs to You!`.
+static SEASON_LEADING: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^(\d{1,2})\.?(\d{2})(?:[a-z](?:-[a-z])?|-\d{1,2})?(?:\.\s*|\s+-\s+|\s+)[^\d\s]").unwrap()
+});
+// A folder of one season, as packs on fun's providers name them (2026-10-15): `Stagione 6`,
+// `Season 13`, `Are You Afraid Of The Dark Season 4`, `S2 (2009-11)`, `Saturday Night Live -  Season 05`,
+// `Season 1 (1999–2001) (Classics Remastered)`. `Season 2006` (by year) and `Season TV` name none.
+static FOLDER_SEASON: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?i)(?:^|[\s._-])(?:season|stagione|staffel|saison|temporada|s)[\s._-]*(\d{1,2})(?:$|[^\d\-–+&,e])").unwrap()
+});
 // `011 - Terror Of The Ancient Noh Mask (v2)` (InuYasha), `063 - Пещера Али-Баббы` (DuckTales): an
 // absolute number zero-padded to three digits. `608 - The Tale of the Vampire Town` is season 6's
 // eighth in `Are You Afraid Of The Dark Complete Series`, so only 000-199 are read so.
@@ -124,19 +144,33 @@ static SEASONS: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"(?i)seasons|complete|\bs\d{1,2}\s*[-+&]\s*s?\d|season[\s._]*\d{1,2}[\s._,&+-]+\d").unwrap()
 });
 
-/// `numbers_of` for a file whose name has no number `parse_name` reads. Two-digit leading
-/// numbers in a release of several seasons stay unread: zurg lists a pack's files in one folder,
-/// so Smallville's and Saturday Night Live's `01`s of every season would fold onto one episode.
-fn numbered_in_release(parsed: &identify::Parsed, release: &str, file_name: &str) -> Option<(Option<i64>, i64)> {
+/// `numbers_of` for a file whose name has no number `parse_name` reads. zurg lists a pack's
+/// files in one folder, so Smallville's and Saturday Night Live's `01`s of every season would
+/// fold onto one episode: two-digit leading numbers in a release of several seasons are read
+/// only under the season folder the provider lists them in (`folder`, which zurg sends since
+/// the 2026-10-15 feed), and a release whose files the provider lists at its top level
+/// (`Some("")`) was never flattened.
+fn numbered_in_release(parsed: &identify::Parsed, release: &str, folder: Option<&str>, file_name: &str) -> Option<(Option<i64>, i64)> {
     let release = release.rsplit('/').next().unwrap_or(release);
     let stem = file_name.rsplit_once('.').map_or(file_name, |(stem, _)| stem);
     // Plex's local-extra suffixes: `002 - Deleted Scene Episodes 2-4 [iKaos]-deleted` is no episode 2.
     if EXTRA.is_match(stem) {
         return None;
     }
-    let several = SEASONS.is_match(release) || parsed.pack && parsed.season.is_none();
-    let one_season = parsed.season.filter(|_| !several);
     let positive = |number: &str| number.parse::<i64>().ok().filter(|number| *number > 0);
+    // The folder right above the file: Smallville's `Stagione 6/Extra` holds no episodes.
+    let folder_season = folder
+        .and_then(|folder| folder.rsplit('/').next())
+        .filter(|folder| !SEASONS.is_match(folder))
+        .and_then(|folder| FOLDER_SEASON.captures(folder))
+        .and_then(|found| positive(&found[1]));
+    let several = folder_season.is_none() && (SEASONS.is_match(release) || parsed.pack && parsed.season.is_none());
+    let one_season = folder_season.or(parsed.season.filter(|_| !several));
+    if let Some(season) = folder_season {
+        if let Some(found) = SEASON_LEADING.captures(stem).filter(|found| positive(&found[1]) == Some(season)) {
+            return Some((Some(season), positive(&found[2])?));
+        }
+    }
     if let Some(season) = one_season {
         if let Some(found) = LEADING.captures(stem) {
             return Some((Some(season), positive(&found[1])?));
@@ -145,6 +179,13 @@ fn numbered_in_release(parsed: &identify::Parsed, release: &str, file_name: &str
     if parsed.season.is_none() && !several {
         if let Some(found) = LEADING_ABSOLUTE.captures(stem) {
             return Some((None, positive(&found[1])?));
+        }
+        // `01 - Guilmon Is Born! The Digimon That I Created!`, at the top of `[DmonHiro] Digimon
+        // Tamers (BD, 1080p)`: listed so by the provider, so no pack's seasons were folded into it.
+        if folder == Some("") {
+            if let Some(found) = LEADING.captures(stem) {
+                return Some((None, positive(&found[1])?));
+            }
         }
     }
     if let Some(found) = OF_COUNT.captures(stem) {
@@ -371,7 +412,8 @@ pub(super) fn name_release(plan: &Library, arrivals: &mut [Arrival], files: usiz
     let mut episodes: HashMap<String, HashMap<String, String>> = HashMap::new();
     for arrival in arrivals.iter_mut() {
         let file_name = arrival.found.file.rsplit('/').next().unwrap_or_default().to_string();
-        let numbers = if show { episode_of(&release, &file_name) } else { None };
+        let folder = folder_of(&arrival.extra).map(str::to_string);
+        let numbers = if show { episode_of(&release, folder.as_deref(), &file_name) } else { None };
         let numbers = match (numbers, identity.tmdb.filter(|_| identity.kind == "show")) {
             (Some(numbers), Some(id)) => Some(on_tmdb_or_imdb(
                 tmdb.map(|t| t as &dyn TmdbSource),
@@ -382,7 +424,7 @@ pub(super) fn name_release(plan: &Library, arrivals: &mut [Arrival], files: usiz
                 &identify::parse_name(&release).title,
                 details.as_ref().and_then(|d| d.get("name")).and_then(Value::as_str).unwrap_or_default(),
                 numbers,
-                scene_numbered(&release, &file_name),
+                scene_numbered(&release, folder.as_deref(), &file_name),
             )),
             (numbers, _) => numbers,
         };
@@ -820,7 +862,7 @@ impl Runtime {
         let file_name = arrival.found.file.rsplit('/').next().unwrap_or_default().to_string();
         let release = identify::parse_name(&arrival.release);
         let (season, episode) = if plan.kind == "show" {
-            arrival.numbers.or_else(|| episode_of(&arrival.release, &file_name))?
+            arrival.numbers.or_else(|| episode_of(&arrival.release, folder_of(&arrival.extra), &file_name))?
         } else {
             (0, 0)
         };
@@ -1319,13 +1361,31 @@ mod tests {
             serde_json::from_str(include_str!("../../../tests/fixtures/identify/unplaced_episodes.json")).unwrap();
         let mut wrong = Vec::new();
         for case in record["files"].as_array().unwrap() {
-            let got = episode_of(case["release"].as_str().unwrap(), case["file"].as_str().unwrap());
+            let got = episode_of(case["release"].as_str().unwrap(), case["folder"].as_str(), case["file"].as_str().unwrap());
             let want = case["episode"].as_i64().map(|episode| (case["season"].as_i64().unwrap(), episode));
             if got != want {
                 wrong.push(format!("{}: got {got:?}, want {want:?}", case["file"]));
             }
         }
         assert!(wrong.is_empty(), "{wrong:#?}");
+    }
+
+    /// `tests/fixtures/identify/pack_folders.json`: every file of eight packs on fun, Smallville's
+    /// and Saturday Night Live's among them, under the folder its provider lists it in.
+    #[test]
+    fn episode_of_reads_a_packs_season_folders() {
+        let record: Value =
+            serde_json::from_str(include_str!("../../../tests/fixtures/identify/pack_folders.json")).unwrap();
+        let mut wrong = Vec::new();
+        for case in record["files"].as_array().unwrap() {
+            let (release, folder, file) = (case["release"].as_str().unwrap(), case["folder"].as_str(), case["file"].as_str().unwrap());
+            let got = episode_of(release, folder, file);
+            let want = case["episode"].as_i64().map(|episode| (case["season"].as_i64().unwrap(), episode));
+            if got != want {
+                wrong.push(format!("{folder:?}/{file}: got {got:?}, want {want:?}"));
+            }
+        }
+        assert!(wrong.is_empty(), "{} wrong: {wrong:#?}", wrong.len());
     }
 
     fn options(dir: &Path, catalog: &Path) -> RuntimeOptions {

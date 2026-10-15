@@ -46,6 +46,9 @@ struct Item {
     tmdb: Option<String>,
     ids: Map<String, Value>,
     media_info: Option<Value>,
+    /// Where the provider lists the file inside its release; `""` at its top level, `None`
+    /// when the source does not say (`scan::numbered_in_release`).
+    folder: Option<String>,
 }
 
 impl Item {
@@ -80,6 +83,7 @@ impl Item {
             size: value.get("size").and_then(Value::as_u64).unwrap_or(0),
             hash: text("hash").map(|hash| hash.to_ascii_lowercase()),
             tmdb: id_text("tmdb"),
+            folder: value.get("folder").and_then(Value::as_str).map(|folder| folder.trim_matches('/').to_string()),
             // A probe with no streams is no probe: Plex Web will not play such an item
             // (findings, "An item without a probe cannot play"), so it is held like a missing one.
             media_info: value
@@ -114,7 +118,9 @@ impl Item {
                 ("_sid".to_string(), json!(self.id)),
                 ("_path".to_string(), json!(self.path)),
                 ("_ids".to_string(), Value::Object(self.ids.clone())),
-            ]),
+            ]
+            .into_iter()
+            .chain(self.folder.as_ref().map(|folder| ("_folder".to_string(), json!(folder))))),
             meta: None,
             numbers: None,
         }
@@ -697,7 +703,7 @@ fn pushed_item(row: &Value) -> Option<(String, Value)> {
         json!({"id": text("_sid")?, "path": text("_path")?, "file": row.pointer("/Media/0/Part/0/file")?,
                "name": name, "release": name, "size": row.pointer("/Media/0/Part/0/size").cloned().unwrap_or(json!(0)),
                "hash": row.get("_hash"), "ids": row.get("_ids").cloned().unwrap_or_else(|| json!({})),
-               "library": library}),
+               "library": library, "folder": row.get("_folder")}),
     ))
 }
 
@@ -816,7 +822,8 @@ pub(super) fn replace_misnumbered(shared: &SharedRuntime) -> usize {
                 .and_then(Value::as_str)
                 .and_then(|identity| identity.strip_prefix("tmdb:"))
                 .and_then(|id| id.parse::<i64>().ok());
-            let numbers = super::scan::episode_of(release, name).map(|numbers| match show_id {
+            let folder = row.as_object().and_then(super::scan::folder_of);
+            let numbers = super::scan::episode_of(release, folder, name).map(|numbers| match show_id {
                 Some(id) => {
                     // Read once a show: every episode of the library passes here, under the lock.
                     let seasons = show_seasons.entry(id).or_insert_with(|| {
@@ -827,7 +834,7 @@ pub(super) fn replace_misnumbered(shared: &SharedRuntime) -> usize {
                             .map(|details| super::scan::tmdb_seasons(&details))
                             .unwrap_or_default()
                     });
-                    let placed = super::scan::on_seasons(seasons, id, numbers, super::scan::scene_numbered(release, name));
+                    let placed = super::scan::on_seasons(seasons, id, numbers, super::scan::scene_numbered(release, folder, name));
                     let show = row.get("grandparentRatingKey").map(string_value).and_then(|key| guard.catalog.get(&key));
                     let show_imdb = show.and_then(|show| show.get("Guid")).and_then(Value::as_array).and_then(|guids| {
                         guids.iter().filter_map(|guid| guid.get("id").and_then(Value::as_str)).find_map(|id| id.strip_prefix("imdb://"))
@@ -1055,7 +1062,9 @@ fn release_numbers(row: &Value, index: usize) -> Option<((i64, i64), bool)> {
     let mut segments = path.rsplit('/');
     let name = segments.next()?;
     let release = segments.next().or_else(|| row.get("_release").and_then(Value::as_str))?;
-    Some((super::scan::episode_of(release, name)?, super::scan::scene_numbered(release, name)))
+    // The row's own folder is its first Media's.
+    let folder = row.as_object().and_then(super::scan::folder_of).filter(|_| index == 0);
+    Some((super::scan::episode_of(release, folder, name)?, super::scan::scene_numbered(release, folder, name)))
 }
 
 /// A row made of one release: that release its only Media, its source fields and name the row's.
@@ -1370,7 +1379,10 @@ impl Runtime {
             && library.kind == "show"
             && arrival
                 .numbers
-                .or_else(|| super::scan::episode_of(&arrival.release, arrival.found.file.rsplit('/').next().unwrap_or_default()))
+                .or_else(|| {
+                    let name = arrival.found.file.rsplit('/').next().unwrap_or_default();
+                    super::scan::episode_of(&arrival.release, super::scan::folder_of(&arrival.extra), name)
+                })
                 .is_some_and(|(season, episode)| {
                     old.get("parentIndex").and_then(Value::as_i64) != Some(season)
                         || old.get("index").and_then(Value::as_i64) != Some(episode)

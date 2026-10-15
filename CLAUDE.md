@@ -470,6 +470,7 @@ python3 tests/test_feed_season_art.py       # a season takes its identification 
 python3 tests/test_feed_blank_tiles.py      # what a real library drew the blank tile for gets named; a person's Fix Match stays theirs
 python3 tests/test_feed_anime.py            # an anime cour on TMDB's season and episode (REX_ANIME_LISTS), and rows placed before moved there
 python3 tests/test_feed_names.py            # releases named in a way identification read wrong: a.K.A., THEATRiCAL.CUT, a release in another language than its files
+python3 tests/test_feed_pack_folders.py     # a pack's season folders, which zurg's mount flattens: SNL's and Smallville's 01s each their own season's
 python3 tests/test_feed_unfold.py           # each file of a season batch its own episode; rows that folded several episodes unfolded at start
 python3 tests/test_feed_delete.py           # a delete removes the files at the source first, as a real PMS's does (zurg's WebDAV DELETE)
 python3 tests/test_sources.py               # sources that are not zurg: a server ignoring Range, a redirect to a CDN
