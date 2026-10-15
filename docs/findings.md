@@ -12320,7 +12320,9 @@ rescan fetches entries only for files it does not know. Reproduced on the last s
 
 What replaced it (`docs/feed-api.md`, `rust/src/runtime/feed.rs`, `source.rs`): a source pushes
 items (`POST`/`DELETE /rex/feed/{source}/items`, chunked `PUT .../snapshot`) with its own
-feed token, and rex reads its bytes from `<source url>/<path>`. None of the feed is PMS
+feed token, and rex reads its bytes from `<source url>/<path>`. (Since 2026-10-15 a source
+registers its url and credentials itself, `PUT /rex/sources/{name}`, and the feed answers the
+local networks instead of a token.) None of the feed is PMS
 emulation, so none of it was measured on a real PMS; what a row does when it is added or
 goes away still is:
 

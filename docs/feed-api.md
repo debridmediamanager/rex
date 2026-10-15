@@ -8,28 +8,13 @@ its file goes away (the trash rules below, `tests/fixtures/missing_file_scan_s43
 
 ## Sources
 
-A source has a name, a byte base URL, optional credentials for it, and the feed token
-it pushes with. They come from a JSON file named by `--sources FILE` (or
-`$REX_SOURCES`); keep it out of the catalog and the repository, mode 600:
-
-```json
-{
-  "zurg": {
-    "url": "http://127.0.0.1:9999/dav",
-    "user": "zurg-user", "password": "zurg-password",
-    "token": "a long random feed token"
-  },
-  "nas": {"url": "https://nas.example/media", "bearer": "...", "token": "..."}
-}
-```
-
-| Field | Meaning |
-|---|---|
-| `url` | A part's bytes are `GET <url>/<path>` with the client's `Range` forwarded; each path segment is percent-encoded |
-| `user`, `password` | Basic auth for `url` (optional) |
-| `bearer` | `Authorization: Bearer` for `url` instead (optional) |
-| `token` | What the source sends as `Authorization: Bearer <token>` to the feed. A source without one cannot push |
-| `mount` | Optional and rarely needed: the prefix of the `file` clients see for an item pushed without one (`<mount>/<path>`, else `/<path>`). Nothing is read from it. It also lets a catalog row from the old WebDAV scanner, with no feed id, find its bytes |
+A source has a name, a byte base URL, optional credentials for it, and optionally the
+prefix its files are shown under. The source registers them itself, over this API, before
+it pushes (`PUT /rex/sources/{name}`, below), and rex keeps them in its state file
+(`rex.db`), so a source's rows keep their bytes across a restart before it registers again.
+Nothing about a source is set on rex's side: no file, no token. rex used to take them from a
+sources file with a feed token per source, which had to be made up and copied to both sides
+by hand.
 
 What rex needs from a byte server is a GET of a file, nothing more, so a source can be
 zurg's WebDAV, nginx, a NAS, object storage or `python3 -m http.server`
@@ -41,22 +26,98 @@ zurg's WebDAV, nginx, a NAS, object storage or `python3 -m http.server`
 - Redirects (301/302/303/307/308) are followed. The source's `user`/`password` or
   `bearer` goes only to the source's own origin, never to the host a redirect names,
   so a presigned CDN link works and does not see the credential.
-- As many sources as needed, each a separate entry with its own feed token. Each
-  pushes to `/rex/feed/{its name}`, its rows remember it, and the same title from
-  two sources is one row with a Media each. An item's `file` decides which library
-  holds it, not its source.
+- As many sources as needed, each registered under its own name. Each pushes to
+  `/rex/feed/{its name}`, its rows remember it, and the same title from two sources is one
+  row with a Media each. An item's `file` decides which library holds it, not its source.
 
-Without a sources file, `ZURG_URL` (+ `ZURG_USER`/`ZURG_PASSWORD`) still defines one
-source named `zurg`: url `$ZURG_URL/dav`, mount `--zurg-mount`, feed token
-`$REX_FEED_TOKEN`. A file entry named `zurg` replaces it. That is a shortcut for
-zurg's existing setups; anything else, zurg included, can be a sources file entry.
+### Who may call it
+
+The feed and the sources API answer the networks an unclaimed rex answers (`local_request`;
+findings, "The gate an unclaimed server keeps"), claimed or not: the peer and every
+`X-Forwarded-For` hop must be loopback or a private address (10/8, 172.16/12, 192.168/16,
+fc00::/7), or once `allowedNetworks` is set, in it, and `Host` must be `localhost` or the
+address the request reached. Anything else is a `403`
+`{"error": "the feed answers only local networks"}`. No token is read; Plex tokens and the
+Plex gate play no part. Two consequences for a source:
+
+- Name rex by its address (`http://127.0.0.1:32400`, `http://192.168.1.10:32400`), not by a
+  host name: a container that reaches rex as `http://rex:32400` sends `Host: rex` and is
+  refused.
+- Tailscale's 100.64/10 is not a private range. A source that reaches rex over Tailscale
+  needs it in `allowedNetworks` (Settings > Network on rex, from rex's own machine).
+
+### Rows keep their source
+
+Registering is the only way a source exists: rex is configured with none, and `ZURG_URL`
+(which used to define a source `zurg`) is no longer read. A row the feed made names its
+source and its path there (`_source`, `_path`); a catalog row from before the feed (the old
+WebDAV scanner's) names none, and reads from the registered source whose `mount` holds its
+Part's `file`. Either has no bytes -- a part read answers 502 -- until that source
+registers, and plays the moment it does.
+
+## Registering a source
+
+### `PUT /rex/sources/{name}`
+
+```json
+{"url": "http://127.0.0.1:9999/dav", "user": "zurg-user", "password": "zurg-password", "mount": "/mnt/zurg"}
+```
+
+| Field | Meaning |
+|---|---|
+| `url` | Required, `http` or `https`. A part's bytes are `GET <url>/<path>` with the client's `Range` forwarded; each path segment is percent-encoded. No `user:password@` in it: the url is answered back, so credentials go in their own fields |
+| `user`, `password` | Basic auth for `url` (optional) |
+| `bearer` | `Authorization: Bearer` for `url` instead (optional) |
+| `mount` | Optional and rarely needed: the prefix of the `file` clients see for an item pushed without one (`<mount>/<path>`, else `/<path>`). Nothing is read from it. It also lets a catalog row from the old WebDAV scanner, with no feed id, find its bytes |
+
+`{name}` is letters, digits, `-` and `_`. A registration creates the source or replaces the
+one of that name, and the next part read streams from what it names, without a restart.
+Sending the same registration again changes nothing, so a source can send it every time it
+starts a push session; zurg does. Answers `200` with the source as `GET` shows it, or `400`
+`{"error": ...}` for a bad name, a url that is not http(s) or carries credentials, or a body
+that is not a JSON object.
+
+### `GET /rex/sources` and `GET /rex/sources/{name}`
+
+```json
+{"size": 1, "sources": [{"name": "zurg", "url": "http://127.0.0.1:9999/dav", "auth": "basic", "mount": "/mnt/zurg"}]}
+```
+
+Every source, or one (`404` for a name nothing registered). A credential is never answered,
+only its kind: `auth` is `basic` or `bearer`. As in every JSON answer rex gives, a field
+with no value is left out: a source with no credential has no `auth`, and with nothing
+registered the listing is `{"size": 0}`.
+
+### `DELETE /rex/sources/{name}` -- two requests
+
+Deleting a source removes it and every item it pushed from rex, so it takes two requests,
+and the first removes nothing:
+
+```json
+DELETE /rex/sources/rd                      -> {"confirm": "/rex/sources/rd/confirm/9f2c...e41a", "items": 1234, "expires_in": 300}
+DELETE /rex/sources/rd/confirm/9f2c...e41a  -> {"deleted": true, "removed": 1234}
+```
+
+The first answers how many items the source has here (its rows' releases and its held
+items) and the path that confirms the delete: a random 128-bit code, bound to that source,
+good for one use within 300 seconds and held in memory only, so a restart forgets it. Asking
+again replaces the code. A wrong, expired, used or other source's code is a `404` that
+removes nothing; a name nothing registered is a `404` too. The log shows the confirmation
+path with the code as `***`.
+
+The confirmation removes the registration, the source's held items, and its releases from
+the library: a row whose every release is this source's is deleted for good, as emptying the
+trash deletes one, and a row that also holds another source's release keeps that one and
+loses only this source's Media. It is a removal from rex alone: no `DELETE` reaches the
+source's files (compare a person's delete, below). Registered and pushed again afterwards,
+the source starts with nothing, and its items are new rows on new keys.
 
 ## Endpoints
 
-Every endpoint is under `/rex/feed/{source}` and takes the source's feed token as
-`Authorization: Bearer <token>`. Plex tokens are not accepted and the Plex gate does not
-apply. An unknown source, or one with no token configured, is a `404`; a missing or
-wrong token is a `401`. Bodies are JSON, at most 16 MiB a request (`413` above that).
+Every endpoint is under `/rex/feed/{source}`, for a source registered above, and answers
+only the networks above. A name nothing registered is a `404`
+`{"error": "no such source: PUT /rex/sources/{source} first"}`. Bodies are JSON, at most
+16 MiB a request (`413` above that).
 
 A request is applied before it is answered, one feed request at a time per server. New
 releases are identified on the way in (TMDB and Plex's matcher, a few lookups each, cached

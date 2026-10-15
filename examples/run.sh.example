@@ -2,20 +2,20 @@
 # Copy to run.sh at the top of the checkout or release, beside rust/ (run.sh is gitignored),
 # fill in the values, and see README "Setup" for each step. It runs from its own directory.
 #
-# Keys come from rex.env beside run.sh (mode 600; gitignored, as are run.sh and
-# sources.json): TMDB_KEY names what is pushed and powers Fix Match,
+# Keys come from rex.env beside run.sh (mode 600; gitignored, as is run.sh):
+# TMDB_KEY names what is pushed and powers Fix Match,
 # PLEX_TOKEN (the owner's account token) feeds Plex's metadata agent and the announce.
 # REX_METADATA_URL (+REX_METADATA_KEY) reads TMDB through a metadata provider first, such as
 # DMM for its sponsors (docs/metadata-api.md).
 # Under systemd, EnvironmentFile= can load the same file instead.
 #
-# sources.json names every source that pushes items and serves their bytes
-# (docs/feed-api.md). A single zurg can do without it: ZURG_URL (+ZURG_USER and
-# ZURG_PASSWORD), REX_FEED_TOKEN and --zurg-mount in the environment define the source
-# "zurg".
+# Sources register themselves and push their items (docs/feed-api.md): zurg needs only
+# rex_url in its config.yml. Nothing about a source is set here.
 #
-# The catalog is rust/target/release/rex catalog --seed --out rex.db (--movies/--shows name more directories);
-# the server keeps its state (watch state, edits, lists, history, prefs) in the same file.
+# The first start seeds rex.db, named by --friendly-name, its libraries under --zurg-mount;
+# to name more directories, seed it yourself first: rust/target/release/rex catalog --seed
+# --out rex.db (--movies/--shows). The server keeps its state (watch state, edits, lists,
+# history, prefs, the sources' registrations) in the same file.
 #
 # On --port 32400 rex answers Plex's LAN discovery (GDM) on udp/32410 and udp/32414; on a
 # host that runs Plex too, use another port and --gdm off.
@@ -30,7 +30,8 @@ ANNOUNCE=()
 [ -f claim_state.json ] && ANNOUNCE=(--announce-url "https://rex.example.com:32400,http://192.168.1.10:32400")
 exec rust/target/release/rex \
   --catalog rex.db \
-  --sources sources.json \
+  --friendly-name myrex \
+  --zurg-mount /mnt/zurg \
   --port 32400 \
   --owner-username your-plex-username \
   --owner-email you@example.com \

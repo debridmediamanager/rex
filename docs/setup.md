@@ -5,9 +5,15 @@ The README has the short version. This is the full one with every option.
 ## The steps
 
 A rex server is four things: the binary, a **catalog** (its identity and two empty
-libraries), the **sources** that push the library and serve its bytes, and, if it
-is to appear in your Plex apps, a **claim** on your Plex account with an HTTPS address.
-The steps below go in that order.
+libraries, made on its first start), the **sources** that register with it, push the
+library and serve its bytes, and, if it is to appear in your Plex apps, a **claim** on your
+Plex account with an HTTPS address. Setting one up is one command:
+
+```bash
+rust/target/release/rex --catalog rex.db --friendly-name den --zurg-mount /mnt/zurg
+```
+
+The steps below go through it in order.
 
 ### What you need
 
@@ -42,44 +48,40 @@ directory.
 
 ### 2. Sources: where the library and its bytes come from
 
-rex reads no disk and lists nothing. Each source **pushes** its items to
-`/rex/feed/<name>/...` with its own feed token, and when someone plays a file rex
-fetches its bytes with a GET of `<url>/<path>`. A source can be zurg's WebDAV, nginx, a
-NAS, object storage or `python3 -m http.server`. `Range` support and redirects are
-handled, and as many sources as you like feed the same libraries.
+rex reads no disk and lists nothing, and nothing about a source is set on rex's side. Each
+source **registers** itself (`PUT /rex/sources/<name>`: the URL its files are under, the
+credential for it, its mount) and **pushes** its items to `/rex/feed/<name>/...`; when
+someone plays a file rex fetches its bytes with a GET of `<url>/<path>`. A source can be
+zurg's WebDAV, nginx, a NAS, object storage or `python3 -m http.server`. `Range` support and
+redirects are handled, and as many sources as you like feed the same libraries. rex keeps
+each registration, credential included, in `rex.db`, so a restart keeps playing before the
+source registers again.
 
-Write `sources.json` beside the catalog, readable only by you (`chmod 600`):
+zurg does both with nothing but `rex_url` in its `config.yml` (step 5). Anything else
+registers and pushes the same way: [`docs/feed-api.md`](feed-api.md) is the full contract,
+for writing a pusher of your own.
 
-```json
-{
-  "rd": {
-    "url": "http://127.0.0.1:9999/dav",
-    "user": "zurg-user", "password": "zurg-password",
-    "token": "<a long random feed token>"
-  },
-  "ad": {"url": "http://127.0.0.1:9998/dav", "token": "<another token>"},
-  "nas": {"url": "https://nas.example/media", "bearer": "...", "token": "<another token>"}
-}
-```
+Registering and pushing are answered only from the networks an unclaimed rex answers (step
+4, "Who may connect"), even once rex is claimed, and take no token. A source must name rex by its address, not a host
+name, and one on Tailscale needs `allowedNetworks`.
 
-| Field | |
-|---|---|
-| `url` | where the bytes are: zurg's is `http://<zurg>:<port>/dav` |
-| `user`/`password` or `bearer` | the credential rex sends to `url` (zurg's `username`/`password`, if set). Never forwarded to a host it redirects to |
-| `token` | what this source pushes with. Make one per source: `openssl rand -hex 24` |
-
-The source's name is the `rex_source` it pushes as. A single zurg can skip the file:
-`ZURG_URL` (+ `ZURG_USER`/`ZURG_PASSWORD`), `REX_FEED_TOKEN` and `--zurg-mount` in the
-environment define a source named `zurg`. The full contract, for writing a pusher of
-your own, is [`docs/feed-api.md`](feed-api.md).
+Registering is the only way a source exists: `ZURG_URL` is no longer read, and a zurg build
+from before the sources API, which never registers, needs updating. Rows rex already has keep
+their source and play again once it registers. `DELETE /rex/sources/<name>` removes a source
+and everything it pushed from rex, after a confirmation ([`docs/feed-api.md`](feed-api.md)).
 
 ### 3. Catalog: the server's identity and libraries
+
+The first start makes the catalog when the `--catalog` file does not exist yet: rex seeds it
+as `rex catalog --seed` would, named by `--friendly-name` (default `rex`), its libraries
+under `--zurg-mount`, and logs `seeded rex.db: ...`. To name more directories, seed it
+yourself before the first start:
 
 ```bash
 rust/target/release/rex catalog --seed --name den --out rex.db
 ```
 
-This writes a SQLite database holding a fixed `machineIdentifier` (random, as a real
+Either way this is a SQLite database holding a fixed `machineIdentifier` (random, as a real
 Plex Media Server's is, and kept if you re-seed), a Movies library holding the `movies` directory and a
 TV Shows library holding `shows`. A pushed item lands in the library holding the
 directory its `path` starts with (`movies/<release>/<file>`), whichever source sent it
@@ -101,18 +103,21 @@ rex does not yet take Plex's "Edit Library → Add folders". A directory added l
 a library of its own instead: Manage → Libraries → Add Library on it.
 
 rex keeps everything clients change (watch state, edits, playlists, collections,
-history, preferences) in the same `rex.db`, written as it changes. Back it up with the
+history, preferences), and each source's registration, in the same `rex.db`, written as it
+changes. It holds the sources' credentials, so keep it private. Back it up with the
 server stopped, or with `sqlite3 rex.db ".backup rex.db.bak"`.
 
 ### 4. First start, on your LAN
 
 ```bash
 export TMDB_KEY=... PLEX_TOKEN=...
-rust/target/release/rex --catalog rex.db --sources sources.json --port 32400 \
+rust/target/release/rex --catalog rex.db --friendly-name den --port 32400 \
   --owner-username <your Plex username> --owner-email <your Plex email>
 ```
 
-The first lines of the log name each source (`source rd: feed on at /rex/feed/`) and the state file.
+The first lines of the log say whether it seeded the catalog, name each source it already
+knows (`source rd: registered, feed at /rex/feed/rd/`, or `no source yet`) and the state
+file.
 
 - **A metadata provider.** `REX_METADATA_URL` points rex at a server that answers TMDB's
   reads for it ([metadata-api.md](metadata-api.md)), with `REX_METADATA_KEY` if it takes a key.
@@ -139,7 +144,8 @@ Check it answers:
 
 ```bash
 curl -s http://127.0.0.1:32400/identity      # machineIdentifier, version
-curl -s -H "Authorization: Bearer <rd's token>" http://127.0.0.1:32400/rex/feed/rd/items   # {"size":0,...} until it pushes
+curl -s http://127.0.0.1:32400/rex/sources            # {"size":0,"sources":[]} until a source registers
+curl -s http://127.0.0.1:32400/rex/feed/rd/items       # what rd pushed, once it has registered
 ```
 
 - **Port 32400 and LAN discovery.** On 32400 rex answers Plex's LAN discovery (GDM) on
@@ -166,15 +172,16 @@ curl -s -H "Authorization: Bearer <rd's token>" http://127.0.0.1:32400/rex/feed/
 In each zurg's `config.yml` (zurg's [`docs/config.md`](https://github.com/debridmediamanager/zurg/blob/main/docs/config.md) has the details):
 
 ```yaml
-rex_url: http://<rex host>:32400   # turns on zurg's ffprobe and IMDb lookups for new releases
-rex_feed_token: <the source's token>
-rex_source: rd                     # the source's name in sources.json (default "zurg")
+rex_url: http://<rex's address>:32400   # turns on zurg's ffprobe and IMDb lookups for new releases
+rex_source: rd                          # optional: the name it registers as (default "zurg")
 ```
 
-Restart zurg. Once its library has loaded it pushes everything it holds, then each
-change as it happens, and the whole library again every `rex_snapshot_every_hours`
-(6). Watch it arrive in rex's log (`FEED rd ...`) and with the `/rex/feed/rd/items`
-call above.
+That is all rex needs from zurg. Use rex's IP address, or `127.0.0.1` on the same machine,
+not a host name (step 2). Restart zurg. Once its library has loaded it registers with rex,
+pushes everything it holds, then each change as it happens, and the whole library again
+every `rex_snapshot_every_hours` (6), registering again at the start of each. Watch it
+arrive in rex's log (`SOURCES rd registered ...`, `FEED rd ...`) and with the
+`/rex/sources` and `/rex/feed/rd/items` calls above.
 
 **An item appears only once zurg has probed it with ffprobe**, because rex lists each
 file with its streams. Items zurg never probed are held, not shown. For a library that
@@ -252,7 +259,7 @@ an address plex.tv cannot reach are the usual causes.
 `examples/run.sh.example` is the whole command line as a script: copy it to `run.sh` at the
 top of the checkout or release, beside `rust/` and the catalog, and fill it in. It reads the
 keys from `rex.env` (`TMDB_KEY=` and `PLEX_TOKEN=`, mode 600) and adds `--announce-url`
-once `claim_state.json` exists. `run.sh`, `rex.env` and `sources.json` are gitignored.
+once `claim_state.json` exists. `run.sh` and `rex.env` are gitignored.
 Under systemd (`~/.config/systemd/user/rex.service`, then `systemctl --user enable --now
 rex`, and `loginctl enable-linger` so it runs without a login):
 
@@ -286,8 +293,8 @@ the same in PowerShell with `rust\target\release\rex.exe` for `rust/target/relea
 - `examples/run.sh.example` and `rex manager` are Linux and macOS only. Start `rex.exe` from a
   scheduled task (Task Scheduler, "At startup", "Run whether user is logged on or not") to
   keep it running.
-- `claim_state.json` and `sources.json` are protected by the folder they sit in, not by file
-  modes, so keep the rex folder inside your user profile.
+- `claim_state.json` and `rex.db`, which holds the sources' credentials, are protected by
+  the folder they sit in, not by file modes, so keep the rex folder inside your user profile.
 - LAN discovery cannot share its port with a Plex Media Server on the same Windows machine.
   Run rex with `--gdm off` there, as you would with another port on Linux.
 
@@ -295,6 +302,9 @@ the same in PowerShell with `rust\target\release\rex.exe` for `rust/target/relea
 
 | Symptom | Cause |
 |---|---|
+| A push answers 404 `no such source: PUT /rex/sources/... first` | The source has not registered: a zurg from before the sources API never does, update it (step 2) |
+| Every part read answers 502 | No source is registered (`curl -s http://127.0.0.1:32400/rex/sources`), or rex cannot reach the one that is |
+| A push or a registration answers 403 `the feed answers only local networks` | It came from beyond rex's own networks, through a proxy, or addressed rex by a host name (step 2) |
 | A push answers `rejected: no movie or show library holds ...` | No library holds the item's directory: name it with `--movies`/`--shows` before the first start, or Add Library on it (step 3) |
 | zurg pushed but the library stays empty | Items are held until zurg probes them (step 5) |
 | A part read answers 502, or 401/403 | rex cannot reach the source's `url` (502), or the source refused its credential (its own status): the log line `PART ... upstream` says which |
@@ -312,14 +322,13 @@ running when the manager stopped is running again when it starts.
 
 ```bash
 rex manager serve                        # API + page on http://127.0.0.1:32300; prints the admin token once
-export ZURG_URL=... ZURG_USER=... ZURG_PASSWORD=... TMDB_KEY=... PLEX_TOKEN=...
-                                         # keys come from the environment, never the command line
+export TMDB_KEY=... PLEX_TOKEN=...       # keys come from the environment, never the command line
 rex manager create living-room --port 32400 --catalog "$PWD/catalog.json" --gdm on
 rex manager start living-room
 rex manager list                         # status | logs | stop | restart | delete [--purge] | build
 
 # or from its keys alone: an empty library at zurg's mount, for zurg to fill
-# (its feed: --extra-arg=--sources --extra-arg=FILE, docs/feed-api.md)
+# (zurg registers with it and pushes once its rex_url names the port)
 rex manager create den --port 32401 --gdm on --zurg-mount /mnt/zurg
 rex manager build den --start            # rex catalog --seed, then start (restart if running)
 ```

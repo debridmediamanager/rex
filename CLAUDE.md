@@ -84,7 +84,7 @@ Where things live in `rust/src/`:
 | `runtime.rs` | The request loop, the route table and most projections; `serve` starts GDM, the state saver and the plex.tv threads |
 | `runtime/wire.rs` | The response envelope: header order, Range/416, CORS, gzip, websocket handshake |
 | `runtime/upstream.rs` | The HTTP/HTTPS client (rustls, system roots) behind zurg, provider redirects, TMDB, Plex's metadata agent and artwork |
-| `runtime/source.rs`, `runtime/feed.rs`, `runtime/scan.rs` | Sources (`--sources`, or `ZURG_URL`'s `zurg`: where a Part's bytes are, the feed token), the feed API sources push items to (`docs/feed-api.md`), and the rows those items become: added, held until probed, filled, re-identified, trashed, keys minted once (`mint_key`) |
+| `runtime/source.rs`, `runtime/feed.rs`, `runtime/scan.rs` | Sources (registered over `PUT /rex/sources/{name}`, kept in the state file, deleted with a confirmation: where a Part's bytes are), the feed API sources push items to, behind the unclaimed gate (`docs/feed-api.md`), and the rows those items become: added, held until probed, filled, re-identified, trashed, keys minted once (`mint_key`) |
 | `runtime/universal.rs` | The video transcoder (`REX_TRANSCODER`): the conversion decision's plan and Media, `start.m3u8`/`start.mpd`, segments served outside the runtime lock, one FFmpeg per session with the hardware ladder, seeks, throttling and the idle reaper, and the `TranscodeSession` rows |
 | `runtime/plexmeta.rs`, `identify.rs` | Plex's metadata agent (`PLEX_TOKEN`), and which title a release is: an id in its name, a known IMDb id for its hash (zurg's), then Plex's matcher and TMDB, with their agreement as the confidence; it must name as many of `tests/fixtures/identify/` right (`rust/tests/identify_corpus.rs`) |
 | `runtime/plextv.rs`, `runtime/tmdb.rs` | claim/heartbeat/account state, and TMDB's reads for Fix Match and identification, through a metadata provider first when one is set (`REX_PLEXTV_URL` points plex.tv at a stub) |
@@ -101,25 +101,32 @@ gives the client a grid whose filter bar can only talk about the wrong type.
 
 ```bash
 cargo build --release --manifest-path rust/Cargo.toml
-rust/target/release/rex catalog --seed --name NAME --zurg-mount /mnt/zurg --out rex.db
-cp examples/run.sh.example run.sh   # fill in ZURG_URL (+ZURG_USER/ZURG_PASSWORD), REX_FEED_TOKEN, TMDB_KEY, PLEX_TOKEN
-./run.sh                            # or: rust/target/release/rex --catalog rex.db --zurg-mount /mnt/zurg
+rust/target/release/rex --catalog rex.db --friendly-name NAME --zurg-mount /mnt/zurg   # seeds rex.db on its first start
+cp examples/run.sh.example run.sh   # fill in TMDB_KEY, PLEX_TOKEN; ./run.sh keeps the same command line
 ```
 
 Sources push the library; rex reads no media itself, lists and queries nothing, and
-has no provider code of its own (`docs/feed-api.md`). The environment: `ZURG_URL`
-(zurg's address) makes zurg the source `zurg` -- a part's bytes are `$ZURG_URL/dav/...`,
-with `ZURG_USER`/`ZURG_PASSWORD` when zurg's config sets a username -- and
-`REX_FEED_TOKEN` is the token zurg pushes with (without it the feed is off). Other
-or more sources go in a `--sources` file. With no source a part read is the 502 an
-unreachable source is. `TMDB_KEY` and `PLEX_TOKEN` identify what is pushed (Fix Match
-needs TMDB). `--zurg-mount` is zurg's `mount_path` (default `/mnt/zurg`): a Part's `file`
-is `<mount>/<directory>/<release>/<file>`, and each library's `Location` is
-`<mount>/<directory>` -- set in the catalog's sections (`rex catalog --seed`), or
-through Add Library's `location`.
+has no provider code of its own (`docs/feed-api.md`). A `--catalog` that does not exist is
+seeded on start as `rex catalog --seed` seeds one (`--friendly-name`, default `rex`; its
+libraries under `--zurg-mount`); `rex catalog --seed` stays for naming more directories or
+re-seeding. A source registers itself -- `PUT /rex/sources/{name}`: its byte url, `user`/
+`password` or `bearer`, `mount` -- and rex keeps the registration in the state file; it then
+pushes to `/rex/feed/{name}`. Both answer only the peers an unclaimed server answers
+(`local_request`, below), claimed or not, and read no token: a feed token per source, set
+by hand on both sides, was the setup's longest step. Registering is the only way a source
+exists (`ZURG_URL` is not read): a row keeps its `_source`/`_path`, and a catalog row from
+the old WebDAV scanner reads through the registered source whose `mount` holds its file,
+so either plays again once its source registers. `DELETE /rex/sources/{name}` answers a
+one-use code valid 300 s; `DELETE .../confirm/<code>` removes the source and what it pushed
+from rex, never its files. With no source a part read is the 502 an unreachable source is. `TMDB_KEY` and
+`PLEX_TOKEN` identify what is pushed (Fix Match needs TMDB). `--zurg-mount` is zurg's
+`mount_path` (default `/mnt/zurg`): a Part's `file` is `<mount>/<directory>/<release>/<file>`,
+and each library's `Location` is `<mount>/<directory>` -- set in the catalog's sections
+(`rex catalog --seed`, or the seed on start), or through Add Library's `location`.
 
-Point zurg at the server in zurg's `config.yml`: `rex_url` (this server's URL),
-`rex_feed_token` (`$REX_FEED_TOKEN`), `mount_path` (`--zurg-mount`), and, for
+Point zurg at the server in zurg's `config.yml`: `rex_url` (this server's URL, by address:
+the gate refuses a host name in `Host`) is all the feed needs; zurg registers itself as the
+source `zurg` (or its `rex_source`). Set `mount_path` (`--zurg-mount`), and, for
 zurg's matcher, `plex_server_url` (this server) with `plex_token` (this server's
 `--token`; once claimed, a token plex.tv lists for it, such as the owner's account token)
 and `plex_settings_policy: off`. zurg then pushes a snapshot of its library once it has
@@ -180,8 +187,7 @@ A plain `nohup ... &` from an agent tool call **does not survive** the call.
 
 Several servers, started and stopped on demand: `rex manager serve`, then
 `rex manager create NAME --port P [--catalog PATH] [--zurg-mount M]` (keys from
-`ZURG_URL`/`ZURG_USER`/`ZURG_PASSWORD`/`TMDB_KEY`/`PLEX_TOKEN`/`REX_TOKEN` in the
-environment) and `start|stop|list|logs NAME`; without a catalog, `build NAME --start` seeds
+`TMDB_KEY`/`PLEX_TOKEN`/`REX_TOKEN` in the environment; sources register with each server) and `start|stop|list|logs NAME`; without a catalog, `build NAME --start` seeds
 an empty library at zurg's mount first. Its data
 lives in `managed/` at the repository root (gitignored, mode 700); `tests/test_manager.py` drives it end to end and
 starts its own manager on a temporary root.
@@ -428,7 +434,8 @@ python3 tests/test_manager.py               # rex manager end to end: create, st
 python3 tests/test_concurrency.py           # barrier races, 32-thread load, backlog, --state kills, reaper, slow sockets; ~4 min
 python3 tests/test_plextv.py                # claim, announce, account import and restart against a LOCAL stub plex.tv
 python3 tests/test_session_reaper.py        # Now Playing's 180 s + 30 s-tick reaper; ~3.5 min of wall clock
-python3 tests/test_cli.py                   # main()'s argparse: --help anywhere, refusals, --flag=value, prefixes, --web-root default
+python3 tests/test_cli.py                   # main()'s argparse: --help anywhere, refusals, --flag=value, prefixes, --web-root
+                                            # default, a missing catalog seeded on start
 python3 tests/test_server_log.py            # every route's log line and level, Download Logs, filters=log, SSE/websocket channels
 python3 tests/test_parity_listings.py       # section listings, /library roots, Add Library, section prefs: the oracle's values
 python3 tests/test_parity_metadata.py       # item detail, children, tags, top leaves, alternates: the oracle's values
@@ -463,7 +470,7 @@ python3 tests/test_regional_prefs.py        # the regional prefs documents, cell
 python3 tests/test_part_bytes.py            # part reads against a local zurg stub
 python3 tests/test_native_transcode.py      # the transcoder against generated clips behind a local zurg; needs ffmpeg
                                             # (REX_TRANSCODER, else PATH's); with an Intel GPU REX_TRANSCODE_HW=vaapi and jellyfin-ffmpeg
-python3 tests/test_feed.py                  # the feed API against a stub source: auth, upsert, late ids, held
+python3 tests/test_feed.py                  # the feed API against a stub source: the gate, upsert, late ids, held
                                             # items, trash and return, snapshot reconcile and guards, migration
 python3 tests/test_feed_versions.py         # two releases of one title: one row, a Media each (a real library's 127 Hours)
 python3 tests/test_feed_season_art.py       # a season takes its identification once an episode has it (a real library's Black Mirror S6)
@@ -473,17 +480,19 @@ python3 tests/test_feed_names.py            # releases named in a way identifica
 python3 tests/test_feed_pack_folders.py     # a pack's season folders, which zurg's mount flattens: SNL's and Smallville's 01s each their own season's
 python3 tests/test_feed_unfold.py           # each file of a season batch its own episode; rows that folded several episodes unfolded at start
 python3 tests/test_feed_delete.py           # a delete removes the files at the source first, as a real PMS's does (zurg's WebDAV DELETE)
-python3 tests/test_sources.py               # sources that are not zurg: a server ignoring Range, a redirect to a CDN
+python3 tests/test_sources.py               # registering sources, and sources that are not zurg: a server ignoring Range,
+                                            # a redirect to a CDN, a restart, rows before registration, the two-step delete
 python3 tests/test_server_command.py        # the launcher's default and REX_SERVER override
 cargo test --manifest-path rust/Cargo.toml  # the Rust unit tests: the decision corpus (1,872 measured decisions),
                                             # GDM against four real servers, the identify corpora
 ```
 
 Credentials unlock the rest. With `TMDB_KEY`, and a copy of `catalog_ui.json` whose Part
-files a zurg serves (`ZURG_URL`, `--zurg-mount`; made on the test host, never committed),
-the UI suite runs with **no skips** (1,979/1,979 when it was RD-backed).
+files a zurg serves (made on the test host, never committed) and that zurg registered with
+the test server (`PUT /rex/sources/zurg` with its url, login and `mount`), the UI suite runs
+with **no skips** (1,979/1,979 when it was RD-backed).
 Keyless and zurg-less it is 1,975/1,975 with exactly three skips (two Fix Match, Download):
-with no `ZURG_URL` a part read is the routed 502 its checks expect.
+with no source registered a part read is the routed 502 its checks expect.
 `test_all.py` and `conformance.py` need a live catalog and the same credentials.
 A provider account behind zurg is read-only in tests: read bytes, never add or delete.
 

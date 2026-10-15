@@ -41,52 +41,33 @@ Both put rex at `rust/target/release/rex`.
 
 On Windows unpack the zip and use `rust\target\release\rex.exe` where the steps say `rust/target/release/rex`. `examples/run.sh.example` and `rex manager` are for Linux and macOS only.
 
-**2. Tell rex where your files are**
-
-Write `sources.json` with one entry per source. Each source gets its own token that it pushes with. Make one with `openssl rand -hex 24`.
-
-```json
-{
-  "rd": {
-    "url": "http://127.0.0.1:9999/dav",
-    "token": "<a long random token>"
-  }
-}
-```
-
-`url` is where rex fetches the files from. If the server needs a username and password add `user` and `password` too.
-
-**3. Make the library**
-
-```bash
-rust/target/release/rex catalog --seed --name myrex --out rex.db
-```
-
-This makes an empty Movies and TV library. Files under a `movies` directory go to Movies and files under `shows` go to TV, whichever source they come from. If your sources use other directory names like `anime` add `--shows anime` now. rex keeps its library folders from the first start on.
-
-**4. Start it**
+**2. Start it**
 
 ```bash
 export TMDB_KEY=... PLEX_TOKEN=...
-rust/target/release/rex --catalog rex.db --sources sources.json \
+rust/target/release/rex --catalog rex.db --friendly-name myrex \
   --owner-username <your Plex username> --owner-email <your Plex email>
 ```
 
-Until you add it to your Plex account in step 6 anyone who can reach port 32400 can browse it. Keep it on your home network until then.
+The first start makes `rex.db` with an empty Movies and TV library named `myrex`. Files under a `movies` directory go to Movies and files under `shows` go to TV, whichever source they come from. If your sources use other directory names like `anime`, make the library yourself before the first start instead: `rust/target/release/rex catalog --seed --name myrex --shows shows --shows anime --out rex.db`. rex keeps its library folders from the first start on.
 
-**5. Point zurg at it**
+Until you add it to your Plex account in step 4 anyone on your home network can browse it. Keep it there until then.
+
+**3. Point zurg at it**
 
 Add this to zurg's `config.yml` and restart zurg.
 
 ```yaml
-rex_url: http://<rex host>:32400
-rex_feed_token: <the token from sources.json>
-rex_source: rd
+rex_url: http://<rex's IP address>:32400
 ```
 
-zurg sends rex its whole library and then every change as it happens. A movie or episode shows up once zurg has analyzed it. For a library you already had press **Analyze & Tag Library** on zurg's dashboard once. A big library takes a few hours to fill.
+That is all rex needs. zurg tells rex where its files are and how to log in to them, then sends its whole library and every change as it happens. A movie or episode shows up once zurg has analyzed it. For a library you already had press **Analyze & Tag Library** on zurg's dashboard once. A big library takes a few hours to fill.
 
-**6. Add it to your Plex account**
+Use rex's IP address, not a host name: rex takes a library only from its own machine and home network, and it checks the address a request was sent to. Running two zurgs? Give each a name of its own with `rex_source: rd` and `rex_source: ad`. Anything else that serves files can register the same way, see the [feed API](docs/feed-api.md).
+
+A zurg from before this does not tell rex where its files are, so update zurg first.
+
+**4. Add it to your Plex account**
 
 This step is optional and at your own risk. rex is not made by Plex and Plex could take action against an account that registers it. Skip it and rex only answers on your own network.
 
@@ -98,7 +79,7 @@ curl -X POST "http://127.0.0.1:32400/myplex/claim?token=claim-xxxxxxxxxxxx"
 
 Do this once per server. rex saves it in `claim_state.json` next to `rex.db`. Back that file up.
 
-**7. Use it outside your home**
+**5. Use it outside your home**
 
 app.plex.tv only connects to an HTTPS address and the other Plex apps prefer one. rex has no relay so the address has to be reachable from the internet. Give rex a certificate for your own hostname with `--tls-cert` and `--tls-key`. Then restart it with that address. Do not put a Cloudflare tunnel in front. Cloudflare drops the range of the first read so every play start pulls the whole file from your source.
 

@@ -23,9 +23,10 @@ are changing; replay the client's exact request before altering behavior.
   manifest or B's nonexistent subtitle fixture. Cycle 81 repaired those inputs
   from measured captures and the isolated scratch PMS; check the request
   denominator and the source fixture before calling a leg clean.
-- **Every part read failing is configuration first.** With no `ZURG_URL` every part read is
-  the routed 502, and a Part whose `file` is not under `--zurg-mount` is a 404 before zurg is
-  asked. Either looks like rex is broken; check the environment and the mount first.
+- **Every part read failing is configuration first.** With no source registered
+  (`GET /rex/sources`) every part read is the routed 502, and a catalog row's
+  Part whose `file` is under no source's mount is a 404 before any source is asked. Either
+  looks like rex is broken; check `GET /rex/sources`, the environment and the mount first.
 - **Cloudflare strips `Range` on a prefix request.** `--part-mode proxy` then
   sees `range=-` and fetches the whole file per playback start. Use
   `--part-mode redirect` through the edge.
