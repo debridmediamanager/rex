@@ -86,25 +86,56 @@ impl Tmdb {
         }
     }
 
-    /// Reads through DMM first: `{base}/api/metadata/tmdb/{path}` answers TMDB's own JSON
-    /// from DMM's cache, so a library's seasons cost one TMDB call across every DMM sponsor.
+    /// Reads through DMM first: `{base}/api/metadata/<id>?sources=tmdb` answers TMDB's own
+    /// JSON from DMM's cache (`/search` for a title's candidates), so a library's seasons cost
+    /// one TMDB call across every DMM sponsor.
     pub(super) fn with_dmm(mut self, base: String, key: String) -> Self {
         self.dmm = Some((base.trim_end_matches('/').to_string(), key));
         self
     }
 
-    /// DMM's answer: `Ok(Some)` TMDB's JSON, `Ok(None)` TMDB has no such title (its own 404,
-    /// which carries TMDB's `status_code`), `Err` DMM did not answer for TMDB -- a lapsed key,
-    /// its rate limit, a path it does not serve -- so TMDB is asked directly.
-    fn get_dmm(base: &str, key: &str, path: &str, query: &str) -> Result<Option<Value>, ()> {
-        let url = format!("{base}/api/metadata/tmdb/{path}{}{query}", if query.is_empty() { "" } else { "?" });
-        match upstream::fetch("GET", &url, &[("x-api-key", key.to_string())], b"", Duration::from_secs(25)) {
-            Ok((200..=299, _, body)) => Ok(serde_json::from_slice::<Value>(&body).ok()),
-            Ok((404, _, body))
-                if serde_json::from_slice::<Value>(&body).is_ok_and(|answer| answer.get("status_code").is_some()) =>
-            {
-                Ok(None)
+    /// DMM's metadata API for one of rex's TMDB reads: the url, and the field of its answer's
+    /// `sources` holding TMDB's own JSON. None for a read it has no answer for.
+    fn dmm_request(base: &str, path: &str, params: &[(&str, String)]) -> Option<(String, &'static str)> {
+        let param = |name: &str| params.iter().find(|(key, _)| *key == name).map(|(_, value)| upstream::quote_plus(value));
+        let segments: Vec<&str> = path.split('/').collect();
+        let number = |text: &str| text.bytes().all(|byte| byte.is_ascii_digit()) && !text.is_empty();
+        let only = "sources=tmdb";
+        Some(match segments.as_slice() {
+            ["search", kind @ ("movie" | "tv")] => {
+                let year = param("year").or_else(|| param("first_air_date_year"));
+                let kind = if *kind == "movie" { "movie" } else { "show" };
+                let year = year.map(|year| format!("&year={year}")).unwrap_or_default();
+                (format!("{base}/api/metadata/search?query={}&type={kind}{year}", param("query")?), "tmdb")
             }
+            ["find", imdb] if imdb.starts_with("tt") => (format!("{base}/api/metadata/imdb:{imdb}?{only}"), "tmdbFind"),
+            [kind @ ("movie" | "tv"), id] if number(id) => (format!("{base}/api/metadata/tmdb:{kind}:{id}?{only}"), "tmdb"),
+            ["tv", id, "season", season] if number(id) && number(season) => {
+                (format!("{base}/api/metadata/tmdb:tv:{id}?season={season}&{only}"), "tmdbSeason")
+            }
+            ["tv", id, "season", season, "episode", episode] if number(id) && number(season) && number(episode) => (
+                format!("{base}/api/metadata/tmdb:tv:{id}?season={season}&episode={episode}&{only}"),
+                "tmdbEpisode",
+            ),
+            _ => return None,
+        })
+    }
+
+    /// DMM's answer: `Ok(Some)` TMDB's JSON, `Ok(None)` no such title (DMM's 404), `Err` DMM did
+    /// not answer for TMDB -- a lapsed key, its rate limit, a source that failed, a read it has
+    /// no answer for -- so TMDB is asked directly.
+    fn get_dmm(base: &str, key: &str, path: &str, params: &[(&str, String)]) -> Result<Option<Value>, ()> {
+        let (url, field) = Self::dmm_request(base, path, params).ok_or(())?;
+        match upstream::fetch("GET", &url, &[("x-api-key", key.to_string())], b"", Duration::from_secs(25)) {
+            Ok((200..=299, _, body)) => {
+                let answer = serde_json::from_slice::<Value>(&body).map_err(|_| ())?;
+                answer.pointer(&format!("/sources/{field}")).filter(|tmdb| tmdb.is_object()).cloned().map(Some).ok_or(())
+            }
+            // An IMDb id TMDB's find does not know is an empty find, as TMDB answers one.
+            Ok((404, _, _)) if field == "tmdbFind" => Ok(Some(
+                json!({"movie_results": [], "person_results": [], "tv_results": [], "tv_episode_results": [], "tv_season_results": []}),
+            )),
+            Ok((404, _, _)) => Ok(None),
             _ => Err(()),
         }
     }
@@ -124,7 +155,6 @@ impl Tmdb {
             .iter()
             .map(|(name, value)| format!("{name}={}", upstream::quote_plus(value)))
             .collect::<Vec<_>>();
-        let own = query.join("&");
         query.push(format!("api_key={}", upstream::quote_plus(&self.key)));
         let url = format!("{}/{path}?{}", self.api, query.join("&"));
         // Keyed by the real API's url, whatever `api` points at, and whoever answers it.
@@ -134,7 +164,7 @@ impl Tmdb {
         if let Some(hit) = cached.as_ref().filter(|hit| !expired(incomplete(path, hit), hit)) {
             return Some(hit.clone());
         }
-        let from_dmm = self.dmm.as_ref().map(|(base, key)| Self::get_dmm(base, key, path, &own));
+        let from_dmm = self.dmm.as_ref().map(|(base, key)| Self::get_dmm(base, key, path, params));
         let fetched = match from_dmm {
             Some(Ok(payload)) => payload,
             // Without a TMDB key of its own rex has no one else to ask.
@@ -264,9 +294,9 @@ mod tests {
     }
 
     /// DMM's sponsor metadata API is asked first and TMDB only when DMM does not answer for
-    /// it. Its answers are DMM's measured ones (2026-10-15, production): TMDB's JSON, TMDB's own
-    /// 404 with `status_code`, 404 `{"error": ...}` for a read it does not serve, and 401 for a
-    /// lapsed key.
+    /// it. Its answers are DMM's measured ones (2026-10-15, production): TMDB's JSON under
+    /// `sources` (`tmdbSeason` for a season list), 404 for a title no source knows (an empty
+    /// find for an IMDb id), 401 for a lapsed key, and a null source when TMDB failed.
     #[test]
     fn dmm_answers_first_and_tmdb_only_when_dmm_does_not() {
         let dir = std::env::temp_dir().join(format!("rex-tmdb-dmm-{}", std::process::id()));
@@ -274,31 +304,46 @@ mod tests {
         fs::create_dir_all(&dir).unwrap();
         let season = json!({"season_number": 1, "episodes": [{"episode_number": 1, "name": "Rollercoaster"}]});
         let (tmdb_url, tmdb_seen) = answering(200, json!({"season_number": 1, "episodes": []}).to_string());
+        let with = |status: u16, body: Value, name: &str| {
+            let (dmm_url, dmm_seen) = answering(status, body.to_string());
+            let mut tmdb = Tmdb::new("testkey".to_string(), dir.join(name)).with_dmm(dmm_url, "sponsorkey".to_string());
+            tmdb.api = tmdb_url.clone();
+            (tmdb, dmm_seen)
+        };
 
-        let (dmm_url, dmm_seen) = answering(200, season.to_string());
-        let mut tmdb = Tmdb::new("testkey".to_string(), dir.join("a.json")).with_dmm(dmm_url, "sponsorkey".to_string());
-        tmdb.api = tmdb_url.clone();
+        let (tmdb, dmm_seen) = with(200, json!({"ids": {"tmdb": 1877}, "type": "show", "merged": null,
+                                                "sources": {"tmdb": {"id": 1877}, "tmdbSeason": season}}), "a.json");
         assert_eq!(tmdb.season(&json!(1877), &json!(1)), Some(season.clone()));
-        assert_eq!(*dmm_seen.lock().unwrap(), ["GET /api/metadata/tmdb/tv/1877/season/1 HTTP/1.1 sponsorkey"]);
+        assert_eq!(
+            *dmm_seen.lock().unwrap(),
+            ["GET /api/metadata/tmdb:tv:1877?season=1&sources=tmdb HTTP/1.1 sponsorkey"]
+        );
         assert!(tmdb_seen.lock().unwrap().is_empty());
         // Kept under TMDB's own url, so a server that drops DMM keeps what it read.
-        assert_eq!(
-            tmdb.cache.get(&format!("{API}/tv/1877/season/1?api_key=KEY")),
-            Some(season.clone())
-        );
+        assert_eq!(tmdb.cache.get(&format!("{API}/tv/1877/season/1?api_key=KEY")), Some(season.clone()));
+        // Each of rex's reads, as DMM names it.
+        let request = |path: &str, params: &[(&str, String)]| Tmdb::dmm_request("D", path, params);
+        assert_eq!(request("tv/1877", &[("append_to_response", "credits".to_string())]),
+                   Some(("D/api/metadata/tmdb:tv:1877?sources=tmdb".to_string(), "tmdb")));
+        assert_eq!(request("tv/1877/season/2/episode/3", &[]),
+                   Some(("D/api/metadata/tmdb:tv:1877?season=2&episode=3&sources=tmdb".to_string(), "tmdbEpisode")));
+        assert_eq!(request("find/tt0852863", &[("external_source", "imdb_id".to_string())]),
+                   Some(("D/api/metadata/imdb:tt0852863?sources=tmdb".to_string(), "tmdbFind")));
+        assert_eq!(request("search/tv", &[("query", "Phineas and Ferb".to_string()), ("first_air_date_year", "2007".to_string())]),
+                   Some(("D/api/metadata/search?query=Phineas+and+Ferb&type=show&year=2007".to_string(), "tmdb")));
 
-        // TMDB has no such show: DMM says so in TMDB's words, and TMDB is not asked again.
-        let (dmm_url, _) = answering(404, json!({"status_code": 34, "success": false}).to_string());
-        let mut tmdb = Tmdb::new("testkey".to_string(), dir.join("b.json")).with_dmm(dmm_url, "sponsorkey".to_string());
-        tmdb.api = tmdb_url.clone();
+        // No source knows the title: no answer, and TMDB is not asked again. An IMDb id
+        // TMDB's find does not know (Courage's tt0549680) is TMDB's own empty find.
+        let (tmdb, _) = with(404, json!({"error": "No source knows this title"}), "b.json");
         assert_eq!(tmdb.season(&json!(999999999), &json!(1)), None);
+        let find = Tmdb::get(&tmdb, "find/tt0549680", &[("external_source", "imdb_id".to_string())]).unwrap();
+        assert_eq!(find["tv_episode_results"], json!([]));
         assert!(tmdb_seen.lock().unwrap().is_empty());
 
-        // A lapsed key, or a read DMM does not serve: TMDB directly, with rex's own key.
-        for (status, body) in [(401, json!({"error": "Sponsorship is no longer active"})), (404, json!({"error": "Not a TMDB read this API serves"}))] {
-            let (dmm_url, _) = answering(status, body.to_string());
-            let mut tmdb = Tmdb::new("testkey".to_string(), dir.join(format!("c{status}.json"))).with_dmm(dmm_url, "sponsorkey".to_string());
-            tmdb.api = tmdb_url.clone();
+        // A lapsed key, or TMDB failing behind DMM: TMDB directly, with rex's own key.
+        let failed = json!({"ids": {}, "type": "show", "merged": null, "sources": {"tmdb": null, "tmdbSeason": null}});
+        for (status, body, name) in [(401, json!({"error": "Sponsorship is no longer active"}), "c.json"), (200, failed, "d.json")] {
+            let (tmdb, _) = with(status, body, name);
             assert!(tmdb.season(&json!(1877), &json!(1)).is_some(), "{status}");
         }
         assert_eq!(tmdb_seen.lock().unwrap().len(), 2);
@@ -306,7 +351,7 @@ mod tests {
 
         // DMM alone, no TMDB key: DMM's refusal is no answer, and TMDB is never asked keyless.
         let (dmm_url, _) = answering(429, json!({"error": "Rate limit exceeded"}).to_string());
-        let mut tmdb = Tmdb::new(String::new(), dir.join("d.json")).with_dmm(dmm_url, "sponsorkey".to_string());
+        let mut tmdb = Tmdb::new(String::new(), dir.join("e.json")).with_dmm(dmm_url, "sponsorkey".to_string());
         tmdb.api = tmdb_url;
         assert_eq!(tmdb.season(&json!(1877), &json!(1)), None);
         assert_eq!(tmdb_seen.lock().unwrap().len(), 2);
