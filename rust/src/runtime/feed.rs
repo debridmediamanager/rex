@@ -194,10 +194,13 @@ pub(super) fn handle(shared: &SharedRuntime, request: &Request, path: &str) -> R
     }
     let rest = path.trim_start_matches("/rex/feed/").trim_end_matches('/');
     let (name, leaf) = rest.split_once('/').unwrap_or((rest, ""));
+    // The source is looked up once this request holds the feed lock: a confirmed delete
+    // removes it holding that lock, and a push waiting behind it must get the 404 that makes
+    // zurg register again, not apply to a source that is gone.
+    let mut sessions = FEED.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     let Some(source) = lock(shared).sources.iter().find(|source| source.name == name).cloned() else {
         return answer(404, json!({"error": format!("no such source: PUT /rex/sources/{name} first")}));
     };
-    let mut sessions = FEED.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     let body = || -> Result<Value, Response> {
         serde_json::from_slice::<Value>(&request.body)
             .ok()
@@ -2036,6 +2039,38 @@ mod tests {
         })
         .unwrap();
         (Arc::new(Mutex::new(runtime)), "11".to_string())
+    }
+
+    /// A confirmed delete removes its source holding the feed lock. A push for that source
+    /// already waiting on the lock must find it gone, so zurg hears the 404 that makes it
+    /// register again: one that looked its source up before it waited put the deleted
+    /// source's rows back under a name nothing registers.
+    #[test]
+    fn a_push_waiting_behind_a_source_delete_finds_the_source_gone() {
+        let dir = work("delete-race");
+        let (shared, _) = runtime_with_episode(&dir);
+        shared.lock().unwrap().put_source(Source::register("b", &json!({"url": "http://127.0.0.1:9"})).unwrap());
+        let feed = FEED.lock().unwrap();
+        let push = {
+            let shared = shared.clone();
+            std::thread::spawn(move || {
+                let request = Request {
+                    method: "POST".to_string(),
+                    target: "/rex/feed/b/items".to_string(),
+                    version: "HTTP/1.1".to_string(),
+                    headers: HashMap::new(),
+                    body: br#"{"items": []}"#.to_vec(),
+                    body_complete: true,
+                };
+                handle(&shared, &request, "/rex/feed/b/items").status
+            })
+        };
+        // The push reaches the feed lock and waits there, as behind a confirmed delete.
+        std::thread::sleep(std::time::Duration::from_millis(300));
+        shared.lock().unwrap().delete_source("b");
+        drop(feed);
+        assert_eq!(push.join().unwrap(), 404, "a push behind the delete was applied to a source that is gone");
+        let _ = std::fs::remove_dir_all(dir);
     }
 
     #[test]

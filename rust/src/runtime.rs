@@ -25683,15 +25683,6 @@ mod file_check_tests {
         fs::create_dir_all(&dir).unwrap();
         let source_listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
         let source_port = source_listener.local_addr().unwrap().port();
-        let source_path = dir.join("sources.json");
-        fs::write(
-            &source_path,
-            serde_json::to_vec(&json!({
-                "slow": {"url": format!("http://127.0.0.1:{source_port}"), "mount": "/mnt"}
-            }))
-            .unwrap(),
-        )
-        .unwrap();
         let catalog_path = dir.join("catalog.json");
         let file = "/mnt/episode.mkv";
         let media = |sid: &str| {
@@ -25714,13 +25705,16 @@ mod file_check_tests {
             .unwrap(),
         )
         .unwrap();
-        let runtime = Runtime::load(RuntimeOptions {
+        let mut runtime = Runtime::load(RuntimeOptions {
             catalog: catalog_path,
             state: Some(dir.join("state.disabled")),
-            sources: Some(source_path),
             ..RuntimeOptions::default()
         })
         .unwrap();
+        // A source exists only by registering (`PUT /rex/sources/{name}`).
+        runtime.put_source(
+            source::Source::register("slow", &json!({"url": format!("http://127.0.0.1:{source_port}"), "mount": "/mnt"})).unwrap(),
+        );
         let shared = Arc::new(Mutex::new(runtime));
         let server_listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
         let source = std::thread::spawn(move || {
@@ -25769,12 +25763,6 @@ mod file_check_tests {
         fs::create_dir_all(&dir).unwrap();
         let source_listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
         let source_port = source_listener.local_addr().unwrap().port();
-        let source_path = dir.join("sources.json");
-        fs::write(
-            &source_path,
-            serde_json::to_vec(&json!({"slow": {"url": format!("http://127.0.0.1:{source_port}"), "mount": "/mnt"}})).unwrap(),
-        )
-        .unwrap();
         let catalog_path = dir.join("catalog.json");
         fs::write(
             &catalog_path,
@@ -25785,13 +25773,16 @@ mod file_check_tests {
             })).unwrap(),
         )
         .unwrap();
-        let runtime = Runtime::load(RuntimeOptions {
+        let mut runtime = Runtime::load(RuntimeOptions {
             catalog: catalog_path,
             state: Some(dir.join("state.disabled")),
-            sources: Some(source_path),
             ..RuntimeOptions::default()
         })
         .unwrap();
+        // A source exists only by registering (`PUT /rex/sources/{name}`).
+        runtime.put_source(
+            source::Source::register("slow", &json!({"url": format!("http://127.0.0.1:{source_port}"), "mount": "/mnt"})).unwrap(),
+        );
         let shared = Arc::new(Mutex::new(runtime));
         let server_listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
         let address = server_listener.local_addr().unwrap();
