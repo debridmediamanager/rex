@@ -1,5 +1,5 @@
 {
- "source": "every video file of eight packs on fun's zurg instances (RD, and TorBox's Smallville), 2026-10-15: release name, the folder the provider lists the file in (zurg's .zurgtorrent `path`), and the file as zurg shows it; season and episode read by hand from each pack's naming (`Stagione 6/01 Zod`, `Season 6/601 - …`, `S1 (2007-9)/101a-b - …`, Courage's numbers running on across its season folders); null where the folder holds no episodes (`Extra`, `Kringles (2006)`, `Season TV`) or the file is no episode; Heidi blu-ray complete's files are named by the show's Japanese title (`Alps_no_Shoujo_Heidi_01`), which shares nothing with the release's name, and are deliberately left unread (`shape: left-unread`): a name before the number that is not the release's is how `OVA 04` and `NCED 07` look too",
+ "source": "every video file of eight packs on fun's zurg instances (RD, and TorBox's Smallville), 2026-10-15: release name, the folder the provider lists the file in (zurg's .zurgtorrent `path`), and the file as zurg shows it; season and episode read by hand from each pack's naming (`Stagione 6/01 Zod`, `Season 6/601 - …`, `S1 (2007-9)/101a-b - …`, Courage's numbers running on across its season folders); null where the folder holds no episodes (`Extra`, `Kringles (2006)`, `Season TV`) or the file is no episode; Heidi blu-ray complete's files are named by the show's Japanese title (`Alps_no_Shoujo_Heidi_01`), which shares nothing with the release's name, left unread at first because a name before the number that is not the release's is how `OVA 04` and `NCED 07` look too; read since 2026-10-15 evening at Ben's request, as files at the top of a one-folder release whose name before the number holds no extras word (`shape: top-level-of-one-folder`)",
  "files": [
   {
    "release": "Are You Afraid Of The Dark Complete Series-JUGGALOTUS",
@@ -1923,417 +1923,417 @@
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_01 [232071A7].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 1,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_02 [71308E44].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 2,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_03 [6676EA86].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 3,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_04 [BD469B59].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 4,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_05 [5EA97630].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 5,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_06 [85D99E7F].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 6,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_07 [AFC0255D].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 7,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_08 [60F6A1FC].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 8,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_09 [8BFB44D4].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 9,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_10 [EFC3F990].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 10,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_11 [1412C43C].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 11,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_12 [C8A9F6FB].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 12,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_13 [78A69B95].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 13,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_14 [96231EDF].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 14,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_15 [8D3B385C].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 15,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_16 [5DA84B8F].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 16,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_17 [0FB258D5].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 17,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_18 [8B107BCB].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 18,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_19 [4A6C0C65].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 19,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_20 [1536B800].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 20,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_21 [80F7341C].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 21,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_22 [57CDBECC].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 22,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_23 [C008390E].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 23,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_24 [ADA67934].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 24,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_25 [E35C25D2].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 25,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_26 [06EF0893].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 26,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_27 [B8C5B826].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 27,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_28 [8163C4A9].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 28,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_29 [1DD6DD37].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 29,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_30 [910F40C2].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 30,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_31 [436D2787].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 31,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_32 [B4413BDA].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 32,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_33 [1E353CCF].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 33,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_34 [EF4D78DE].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 34,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_35 [73CB8121].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 35,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_36 [E78B0C00].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 36,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_37 [BE598849].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 37,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_38 [E4088890].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 38,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_39 [B38A472D].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 39,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_40 [529F6C75].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 40,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_41 [7230AB34].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 41,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_42 [0934B701].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 42,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_43 [6689F343].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 43,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_44 [DDA98B0C].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 44,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_45 [AC1ECADB].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 45,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_46 [88988E79].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 46,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_47 [4DE923A4].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 47,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_48 [D0CF1C80].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 48,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_49 [67483380].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 49,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_50 [8E2CCAA7].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 50,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_51 [B03DA3A8].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 51,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Heidi blu-ray complete",
    "folder": "",
    "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_52 [6B0EEE48].mkv",
-   "season": null,
-   "episode": null,
-   "shape": "left-unread"
+   "season": 1,
+   "episode": 52,
+   "shape": "top-level-of-one-folder"
   },
   {
    "release": "Phineas and Ferb Season 1 2 3 4 OWCA 1080p v2 DONUT",

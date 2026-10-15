@@ -100,11 +100,29 @@ pub(super) fn scene_numbered(release: &str, folder: Option<&str>, file_name: &st
 /// its release's, else the shapes only a show's file can be read by (`numbered_in_release`).
 fn numbers_of(release: &str, folder: Option<&str>, file_name: &str) -> Option<(Option<i64>, i64)> {
     let parsed = (identify::parse_name(release), identify::parse_name(file_name));
+    // `[CyC] Natsume Yuujinchou Shi 01`, `[tlacatlc6] Natsume Yuujinchou San 01v2`: the season as a
+    // Japanese numeral (四 shi, 三 san) right before the episode. The second read as season 1.
+    let stem = file_name.rsplit_once('.').map_or(file_name, |(stem, _)| stem);
+    if parsed.1.season.is_none() {
+        if let Some(found) = JAPANESE_SEASON.captures(stem) {
+            let season = JAPANESE_NUMERALS.iter().position(|word| *word == &found[1]).map(|index| index as i64 + 2);
+            if let (Some(season), Ok(episode)) = (season, found[2].parse::<i64>()) {
+                return (episode > 0).then_some((Some(season), episode));
+            }
+        }
+    }
     if let Some(episode) = parsed.1.episode.or(parsed.0.episode) {
         return Some((parsed.1.season.or(parsed.0.season), episode));
     }
     numbered_in_release(&parsed.0, release, folder, file_name)
 }
+
+// Two to ten, as anime titles write a season: `Ni`, `San`, `Shi`, `Go`. Capitalised only, so the
+// particle in `Mahou Shoujo ni Akogarete 10` is no season.
+const JAPANESE_NUMERALS: [&str; 9] = ["Ni", "San", "Shi", "Go", "Roku", "Nana", "Hachi", "Kyuu", "Juu"];
+static JAPANESE_SEASON: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"[\s._](Ni|San|Shi|Go|Roku|Nana|Hachi|Kyuu|Juu)[\s._]+(\d{2,3})(?:v\d)?(?:[\s._(\[]|$)").unwrap()
+});
 
 /// The provider's folder a row's or an arrival's file sits in (`_folder`, as the source said it).
 pub(super) fn folder_of(fields: &Map<String, Value>) -> Option<&str> {
@@ -133,12 +151,27 @@ static FOLDER_SEASON: LazyLock<Regex> = LazyLock::new(|| {
 // `011 - Terror Of The Ancient Noh Mask (v2)` (InuYasha), `063 - Пещера Али-Баббы` (DuckTales): an
 // absolute number zero-padded to three digits. `608 - The Tale of the Vampire Town` is season 6's
 // eighth in `Are You Afraid Of The Dark Complete Series`, so only 000-199 are read so.
-static LEADING_ABSOLUTE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^([01]\d{2})(?:\.\s*|\s+-\s+)\S").unwrap());
+static LEADING_ABSOLUTE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^([01]\d{2})(?:-[01]\d{2})?(?:\.\s*|\s+-\s+)\S").unwrap());
+static UNDERSCORE_SEASON_EP: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?i)(?:^|[\s._-])S(\d{1,2})[._-]?EP?(\d{1,4})(?:[^\da-z]|$)").unwrap());
+static SEASON_DASH_EP: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?i)(?:^|[\s._-])Season[\s._]*(\d{1,2})[\s._]*-[\s._]*(\d{1,4})(?:v\d)?(?:[^\da-z]|$)").unwrap());
+static PAIRED_CODES: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?:^|\s-\s)(\d{3}),\s*(\d{3})\s-\s").unwrap());
+static DOUBLE_NX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?i)(?:^|[\s._-])(\d{1,2})x(\d{2,3})x\d{2,3}(?:[\s._-]|$)").unwrap());
+static EP_ANY: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?i)(?:^|[\s._-])ep(\d{1,4})(?:[^\da-z]|$)").unwrap());
+static PRIMED: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^(?:\[[^\]]*\]\s*)?([^\[\]]+?)\s-\s(\d{2,3})'(?:[\s\[(]|$)").unwrap());
+// What a show's one-folder release holds besides its episodes, named like them: `To LOVE-Ru OVA 04`,
+// `Mawaru_Penguindrum_NCED_07`, `Uchuu Kyoudai - NCOP04`.
+static NOT_EPISODE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?i)\b(?:nc(?:op|ed)\w*|ova|oad|op|ed|sp|pv|cm|special|specials|movie|menu|preview|trailer|recap|extra|extras|bonus|featurette|interview|behind|making|creditless|clean|teaser|promo|omake)\b").unwrap()
+});
 // `Carl.Sagans.Cosmos.10of13.The.Edge.of.Forever`.
 static OF_COUNT: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?i)(?:^|[\s._-])(\d{1,3})of(\d{1,3})(?:[\s._-]|$)").unwrap());
 // `[Coalgirls]_Hunter_X_Hunter_001_(1920x1080…)`, `Lovely Runner 14`, `House M.D. 15 - Black Hole`,
 // `[Zurako]_Mawaru_Penguindrum_08_Even_if…`: the show's own name, then the number.
-static TITLE_NUMBER: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^(.*?\S)\s+(\d{2,3})(?:v\d)?(?:\s.*)?$").unwrap());
+static TITLE_NUMBER: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^(.*?\S)\s+(\d{2,4})(?:v\d)?(?:\s.*)?$").unwrap());
 // A release that names more than one season: `Season 1 2 3 4`, `S01-S07`, `Seasons 1-15`, `Complete Series`.
 static SEASONS: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"(?i)seasons|complete|\bs\d{1,2}\s*[-+&]\s*s?\d|season[\s._]*\d{1,2}[\s._,&+-]+\d").unwrap()
@@ -166,6 +199,32 @@ fn numbered_in_release(parsed: &identify::Parsed, release: &str, folder: Option<
         .and_then(|found| positive(&found[1]));
     let several = folder_season.is_none() && (SEASONS.is_match(release) || parsed.pack && parsed.season.is_none());
     let one_season = folder_season.or(parsed.season.filter(|_| !several));
+    // Season and episode in shapes `parse_name` leaves to a show's files (fun's feed, 2026-10-15):
+    // `MLB_S6EP01_Climatiqueen` (no word boundary before an underscore's `S`), `Grand.Blue.Season.3-09`.
+    if let Some(found) = UNDERSCORE_SEASON_EP.captures(stem).or_else(|| SEASON_DASH_EP.captures(stem)) {
+        return Some((positive(&found[1]), positive(&found[2])?));
+    }
+    // Two episodes in one file go on the first (rex keeps a file on one row):
+    // `The Amazing World of Gumball - 207, 208 - The Phone - The Job` (season 2's 7th and 8th),
+    // `Animaniacs - 1x60x61 - Testimonials & Babblin' Bijou`.
+    if let Some(found) = PAIRED_CODES.captures(stem) {
+        let (first, second) = (positive(&found[1])?, positive(&found[2])?);
+        if first / 100 == second / 100 && second == first + 1 && first % 100 > 0 {
+            return Some((Some(first / 100), first % 100));
+        }
+    }
+    if let Some(found) = DOUBLE_NX.captures(stem) {
+        return Some((positive(&found[1]), positive(&found[2])?));
+    }
+    // `meteor_garden_ep27#[jem]`: a stray character where `parse_name` wants a separator.
+    if let Some(found) = EP_ANY.captures(stem) {
+        return Some((one_season, positive(&found[1])?));
+    }
+    // `[Sephirotic] Evangelion - 21'`: the director's cut of episode 21, another version of it
+    // (TMDB lists no special for it). `Evangelion - The End of Evangelion - 25'` is the film, in parts.
+    if let Some(found) = PRIMED.captures(stem).filter(|found| !found[1].contains(" - ")) {
+        return Some((one_season, positive(&found[2])?));
+    }
     if let Some(season) = folder_season {
         if let Some(found) = SEASON_LEADING.captures(stem).filter(|found| positive(&found[1]) == Some(season)) {
             return Some((Some(season), positive(&found[2])?));
@@ -177,6 +236,7 @@ fn numbered_in_release(parsed: &identify::Parsed, release: &str, folder: Option<
         }
     }
     if parsed.season.is_none() && !several {
+        // `147-148 - The Tragic Love Song Of Destiny` (InuYasha): two episodes, on the first.
         if let Some(found) = LEADING_ABSOLUTE.captures(stem) {
             return Some((None, positive(&found[1])?));
         }
@@ -195,17 +255,31 @@ fn numbered_in_release(parsed: &identify::Parsed, release: &str, folder: Option<
     // The name before the number must be the release's (`Magic Knight Rayearth 09` in
     // `Magic Knight Rayearth TV`), so `To LOVE-Ru OVA 04` or `Mawaru_Penguindrum_NCED_07` is no
     // episode 4 or 7, and a show named with a number (`Room 104`) never reads it as one.
-    let spaced = stem.replace('_', " ");
+    // Dots too: `BBC.Frozen.Planet.01.To.the.Ends.of.the.Earth`.
+    let spaced = stem.replace(['_', '.'], " ");
     let bare = BRACKETS.replace_all(&spaced, " ");
     let found = TITLE_NUMBER.captures(bare.trim())?;
+    let number = positive(&found[2])?;
+    // Four digits for a long run (`[HatSubs] One Piece 1106`), never a year or a resolution.
+    if found[2].len() == 4 && (1900..=2099).contains(&number) || matches!(number, 480 | 576 | 720 | 1080 | 2160) {
+        return None;
+    }
     let fold = |text: &str| text.chars().filter(|c| c.is_alphanumeric()).collect::<String>().to_lowercase();
     let (head, show) = (fold(&found[1]), fold(&parsed.title));
     // The release may say more than the file (`… TV`, `… BD`), never less: a file's
     // `OVA 04`, `NCED 07` or `207, 208` (two episodes) is not the show's name.
+    // A release of one episode is named as its file (`[HatSubs] One Piece 1107 (WEB 1080p)`), so the
+    // release's own title carries the number; four digits is a long run, never `Room 104`.
+    let alone = found[2].len() == 4 && show == format!("{head}{}", &found[2]);
     let named = head.len() >= 4
-        && (show == head || show.starts_with(&head) && !show[head.len()..].starts_with(|c: char| c.is_ascii_digit()));
-    named.then_some(())?;
-    Some((one_season, positive(&found[2])?))
+        && (alone || show == head || show.starts_with(&head) && !show[head.len()..].starts_with(|c: char| c.is_ascii_digit()));
+    // A file the provider lists at the top of a one-folder release is an episode of it whatever
+    // the file calls the show: `[Silver_zero_Subs]Alps_no_Shoujo_Heidi_01` in `Heidi blu-ray
+    // complete`, `[EG]Cowbop_Bebop_01` (sic) in `Cowboy Bebop [EG]` -- unless its name says it is
+    // something else.
+    let top_level = folder == Some("") && head.len() >= 4 && !NOT_EPISODE.is_match(&found[1]);
+    (named || top_level).then_some(())?;
+    Some((one_season, number))
 }
 
 static BRACKETS: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[\[(][^\])]*[\])]").unwrap());

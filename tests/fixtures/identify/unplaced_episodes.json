@@ -1,5 +1,5 @@
 {
- "source": "files the production rex's feed left unplaced as \"no episode number\" on 2026-10-13, and two it placed on the wrong episode; season and episode read by hand from each name; and anime seasons written as `4th Season`, `Season 3` or `[07]` (2026-10-13 afternoon); and names that carry their number only beside their release -- a leading number, the show's name then a number, `10of13`, `2014e06` -- with the shapes deliberately left unread (2026-10-15)",
+ "source": "files the production rex's feed left unplaced as \"no episode number\" on 2026-10-13, and two it placed on the wrong episode; season and episode read by hand from each name; and anime seasons written as `4th Season`, `Season 3` or `[07]` (2026-10-13 afternoon); and names that carry their number only beside their release -- a leading number, the show's name then a number, `10of13`, `2014e06` -- with the shapes deliberately left unread (2026-10-15); and the shapes fun's Plex still held that rex did not (2026-10-15 afternoon): top-level files of a one-folder release, dotted, four-digit, S6EP01, Season.3-09, ep27#, two-episode files on their first episode, a director's cut, a Japanese season numeral, and what stays out",
  "files": [
   {
    "shape": "site",
@@ -469,6 +469,144 @@
    "file": "002 - Deleted Scene Episodes 2-4 [iKaos]-deleted.mkv",
    "season": null,
    "episode": null
+  },
+  {
+   "shape": "folder-top-level",
+   "release": "Heidi blu-ray complete",
+   "file": "[Silver_zero_Subs]Alps_no_Shoujo_Heidi_01 [232071A7].mkv",
+   "season": 1,
+   "episode": 1,
+   "folder": ""
+  },
+  {
+   "shape": "folder-top-level",
+   "release": "Cowboy Bebop [EG]",
+   "file": "[EG]Cowbop_Bebop_02_1080p_(10bit.DualAudio)[0AB5EDC0].mkv",
+   "season": 1,
+   "episode": 2,
+   "folder": ""
+  },
+  {
+   "shape": "dotted-title-number",
+   "release": "BBC.Frozen.Planet.2011.BluRay.1080i.DTS-HD.MA.5.1.AVC.REMUX-FraMeSToR",
+   "file": "BBC.Frozen.Planet.02.Spring.2011.BluRay.1080i.DTS-HD.MA.5.1.AVC.REMUX-FraMeSToR.mkv",
+   "season": 1,
+   "episode": 2
+  },
+  {
+   "shape": "underscore-season-ep",
+   "release": "Miraculous.Tales.of.Ladybug.Cat.Noir.S06.1080p.OnAdd",
+   "file": "MLB_S6EP03_SUBLIMATION_RUS_DUB_OnAdd.mkv",
+   "season": 6,
+   "episode": 3
+  },
+  {
+   "shape": "four-digit-title-number",
+   "release": "[HatSubs] One Piece 1107 (WEB 1080p) [7587906C]",
+   "file": "[HatSubs] One Piece 1107 (WEB 1080p) [7587906C].mkv",
+   "season": 1,
+   "episode": 1107
+  },
+  {
+   "shape": "season-dash-ep",
+   "release": "[Erai-raws].Grand.Blue.Season.3-09.[1080p.CR.WEB-DL.AVC.AAC][MultiSub][5FD92C67]",
+   "file": "[Erai-raws].Grand.Blue.Season.3-09.[1080p.CR.WEB-DL.AVC.AAC][MultiSub][5FD92C67].mkv",
+   "season": 3,
+   "episode": 9
+  },
+  {
+   "shape": "ep-stray-char",
+   "release": "Meteor Garden Complete Series",
+   "file": "meteor_garden_ep27#[jem].avi",
+   "season": 1,
+   "episode": 27
+  },
+  {
+   "shape": "paired-codes",
+   "release": "The Amazing World of Gumball {8623bc}",
+   "file": "The Amazing World of Gumball - 207, 208 - The Phone - The Job.mkv",
+   "season": 2,
+   "episode": 7
+  },
+  {
+   "shape": "double-nx",
+   "release": "Animaniacs",
+   "file": "Animaniacs - 5x19x20 - Katie KaBoom Prom Night & Magic Time - SD DVD.mkv",
+   "season": 5,
+   "episode": 19
+  },
+  {
+   "shape": "leading-absolute-pair",
+   "release": "[DmonHiro] Inuyasha (BD, 720p) (US BD)",
+   "file": "147-148 - The Tragic Love Song Of Destiny.mkv",
+   "season": 1,
+   "episode": 147
+  },
+  {
+   "shape": "primed-cut",
+   "release": "Neon Genesis Evangelion 1-26 DC+EoE [MULTI][BD 1080p 8bits v2.22][Sephirotic]",
+   "file": "[Sephirotic] Evangelion - 22' [MULTI][BD 1080p 8bits 5.1 AAC][82842B04].mkv",
+   "season": 1,
+   "episode": 22
+  },
+  {
+   "shape": "japanese-season",
+   "release": "[CyC] Natsume Yuujinchou Shi 03 (BD 1080p Hi10 x264 FLAC) [FF4CEA93]",
+   "file": "[CyC] Natsume Yuujinchou Shi 03 (BD 1080p Hi10 x264 FLAC) [FF4CEA93].mkv",
+   "season": 4,
+   "episode": 3
+  },
+  {
+   "shape": "not-episode",
+   "release": "Neon Genesis Evangelion 1-26 DC+EoE [MULTI][BD 1080p 8bits v2.22][Sephirotic]",
+   "file": "[Sephirotic] Evangelion - The End of Evangelion - 25' [MULTI][BD 1080p 8bits 5.1 AAC][80C45029].mkv",
+   "season": null,
+   "episode": null
+  },
+  {
+   "shape": "not-episode",
+   "release": "[iKaos] TFS Dragon Ball Z Abridged Collection",
+   "file": "DBZ Abridged - 010B - The Punchline (2) [iKaos].mkv",
+   "season": null,
+   "episode": null
+  },
+  {
+   "shape": "not-episode",
+   "release": "[SubsPlease] Re Zero kara Hajimeru Isekai Seikatsu (01-25) (1080p) [Batch]",
+   "file": "[SubsPlease] Re Zero kara Hajimeru Isekai Seikatsu - 01A (1080p) [39286AC6].mkv",
+   "season": null,
+   "episode": null
+  },
+  {
+   "shape": "not-episode",
+   "release": "The Electric Company - 1970s (Childrens TV series in MP4 format)",
+   "file": "4. The Best of the Electric Company - (Eps 491, 72A, 110A, 79B, 130B).mp4",
+   "season": null,
+   "episode": null
+  },
+  {
+   "shape": "not-episode-top-level",
+   "release": "[Holomux] To LOVE-Ru",
+   "file": "[Holomux] To Love-Ru OVA 04 [DVD x264 480p FLAC 2.0][621FD857]-other.mkv",
+   "season": null,
+   "episode": null,
+   "folder": ""
+  },
+  {
+   "shape": "not-episode-top-level",
+   "release": "[Zurako] Mawaru Penguindrum (BD 1080p AAC)",
+   "file": "[Zurako]_Mawaru_Penguindrum_NCED_07_(BD_1080p_AAC)_[969317E8].mkv",
+   "season": null,
+   "episode": null,
+   "folder": ""
+  },
+  {
+   "shape": "not-episode-top-level",
+   "release": "[EG] Outlaw Star BD",
+   "file": "[EG]Outlaw_Star_NCEDB_BD(1080p_10bit)[C644418F].mkv",
+   "season": null,
+   "episode": null,
+   "folder": ""
   }
  ]
 }
