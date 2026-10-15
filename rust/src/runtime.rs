@@ -274,6 +274,8 @@ pub struct RuntimeOptions {
     pub zurg_mount: String,
     /// `--sources`: the sources file (`docs/feed-api.md`).
     pub sources: Option<PathBuf>,
+    /// `--friendly-name`: the name a catalog this start seeds is given (`serve`).
+    pub friendly_name: Option<String>,
 }
 
 impl Default for RuntimeOptions {
@@ -301,6 +303,7 @@ impl Default for RuntimeOptions {
             plex_direct_host: None,
             zurg_mount: "/mnt/zurg".to_string(),
             sources: None,
+            friendly_name: None,
         }
     }
 }
@@ -22729,6 +22732,23 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
         None => None,
     };
     let mut options = options;
+    // One command sets a server up: a catalog that does not exist yet is seeded here as
+    // `rex catalog --seed` seeds one, before the state path is chosen beside it.
+    if !options.catalog.try_exists().unwrap_or(true) {
+        let name = options.friendly_name.as_deref().unwrap_or("rex");
+        let machine = crate::catalog_tool::write_seed(
+            &options.catalog.to_string_lossy(),
+            name,
+            std::slice::from_ref(&options.zurg_mount),
+            &["movies".to_string()],
+            &["shows".to_string()],
+        )?;
+        info!(
+            "seeded {}: an empty library named {name} at {}, machine={machine}",
+            options.catalog.display(),
+            options.zurg_mount
+        );
+    }
     options.state = resolve_state_path(&options);
     let loaded = Runtime::load(options)?;
     release_freed_memory();

@@ -4,18 +4,21 @@
 What a caller of the Python oracle could rely on and a port can silently drop: `-h`/`--help`
 anywhere among the options prints the help and exits 0 without serving; an option
 argparse does not know is refused with exit 2; `--flag=value` and a unique prefix of
-a flag are accepted; and with no `--web-root` the `webclient` folder beside the
-program is the client served at `/web`.
+a flag are accepted; with no `--web-root` the `webclient` folder beside the
+program is the client served at `/web`; and a `--catalog` that does not exist is seeded,
+so one command sets a server up.
 
 Drives real server processes (`tests/server_command.py`).
 
     python3 tests/test_cli.py
 """
+import json
 import os
 import shutil
 import socket
 import subprocess
 import sys
+import tempfile
 import urllib.error
 import urllib.request
 
@@ -132,6 +135,31 @@ def main():
             check("serves on %s" % label, port is not None)
         finally:
             stop(process)
+
+    # One command: a catalog that does not exist is seeded as `rex catalog --seed` would,
+    # named by --friendly-name, its libraries under --zurg-mount.
+    scratch = tempfile.mkdtemp(prefix="rex-cli-seed-")
+    seeded = os.path.join(scratch, "rex.db")
+    process, port = serving("--port", "PORT", "--catalog", seeded, "--friendly-name", "Seeded Den",
+                            "--zurg-mount", "/srv/zurg", "--gdm", "off")
+    try:
+        def get(path):
+            request = urllib.request.Request("http://127.0.0.1:%d%s" % (port, path),
+                                             headers={"Accept": "application/json"})
+            with urllib.request.urlopen(request, timeout=10) as response:
+                return json.loads(response.read())["MediaContainer"]
+        root = get("/") if port else {}
+        sections = get("/library/sections").get("Directory", []) if port else []
+        locations = sorted((row.get("type"), location.get("path")) for row in sections
+                           for location in row.get("Location", []))
+        check("a --catalog that does not exist is seeded on start: named, its libraries under the mount",
+              port is not None and root.get("friendlyName") == "Seeded Den"
+              and locations == [("movie", "/srv/zurg/movies"), ("show", "/srv/zurg/shows")]
+              and os.path.exists(seeded) and open(seeded, "rb").read(16) == b"SQLite format 3\x00",
+              (port, root.get("friendlyName"), locations))
+    finally:
+        stop(process)
+        shutil.rmtree(scratch, ignore_errors=True)
 
     # No --web-root: the `webclient` beside the program is served at /web. Use the
     # checkout's own when there is one; otherwise lay down a marker and remove it.

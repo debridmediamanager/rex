@@ -252,11 +252,11 @@ fn redact(config: &Map<String, Value>) -> Value {
 ///
 /// Written the way `rex catalog --convert` writes one: a JSON catalog keeps its own
 /// digest, so a state saved over that file is still the same catalog's, and a database
-/// catalog keeps the digest it recorded. The server has no friendly-name flag -- the name
-/// is the catalog's `friendlyName` -- so a name given here is written into the copy, which
-/// then is a different catalog (a new digest). Only the catalog half of an existing
-/// `target` is replaced: the state the server wrote there stays, and the server sets it
-/// aside by digest if the catalog changed.
+/// catalog keeps the digest it recorded. The server's `--friendly-name` names only a
+/// catalog it seeds -- an existing one's name is its `friendlyName` -- so a name given here
+/// is written into the copy, which then is a different catalog (a new digest). Only the
+/// catalog half of an existing `target` is replaced: the state the server wrote there
+/// stays, and the server sets it aside by digest if the catalog changed.
 fn import_catalog(source: &str, target: &Path, friendly_name: Option<&str>) -> Answer<()> {
     if let Some(parent) = target.parent() {
         fs::create_dir_all(parent)?;

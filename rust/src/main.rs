@@ -36,6 +36,7 @@ const SERVER_OPTIONS: &[(&str, &str, bool)] = &[
     ("--no-state", "", false),
     ("--zurg-mount", "ZURG_MOUNT", true),
     ("--sources", "SOURCES", true),
+    ("--friendly-name", "FRIENDLY_NAME", true),
 ];
 
 /// `parser.print_usage()`: argparse's wrapped usage block, with this binary's name.
@@ -83,6 +84,8 @@ fn server_help() -> String {
         ("--no-state", "keep nothing across a restart: a restart reloads the catalog as it is on disk, which the test suites rely on. Also an empty $REX_STATE"),
         ("--zurg-mount", "zurg's mount_path, the mount of the source $ZURG_URL defines (bytes at $ZURG_URL/dav, with $ZURG_USER/$ZURG_PASSWORD; feed token $REX_FEED_TOKEN). Default /mnt/zurg"),
         ("--sources", "JSON file of the sources that push items and serve their bytes (docs/feed-api.md). Default $REX_SOURCES"),
+        ("--catalog", "the catalog, a .db or .json file. One that does not exist is seeded on start, as rex catalog --seed would: an empty movie and show library under --zurg-mount. Default catalog.json"),
+        ("--friendly-name", "the name a catalog seeded on this start is given (default rex); an existing catalog keeps its own"),
     ]
     .into_iter()
     .collect();
@@ -241,6 +244,7 @@ fn parse_server_args(args: &[String]) -> Result<ServerArgs, String> {
             "--no-state" => options.state = Some(PathBuf::new()),
             "--zurg-mount" => options.zurg_mount = value,
             "--sources" => options.sources = Some(PathBuf::from(value)),
+            "--friendly-name" => options.friendly_name = Some(value),
             _ => unreachable!("every SERVER_OPTIONS flag is matched"),
         }
         // argparse checks `choices` as it consumes the option, before any later `-h`.

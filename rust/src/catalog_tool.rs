@@ -149,7 +149,7 @@ pub fn main(args: &[String]) -> Result<(), String> {
 /// re-seed keeps the one already there. A new one is random, as a real PMS's is: it was
 /// sha1("plexsim/" + name), which plex.tv could predict and which two servers given the
 /// same name shared. A placeholder (the example catalog's) is replaced.
-fn write_seed(out: &str, name: &str, mounts: &[String], movies: &[String], shows: &[String]) -> Result<String, String> {
+pub(crate) fn write_seed(out: &str, name: &str, mounts: &[String], movies: &[String], shows: &[String]) -> Result<String, String> {
     let machine = match existing_machine(out).filter(|machine| !placeholder_machine(machine)) {
         Some(machine) => machine,
         None => random_machine()?,
