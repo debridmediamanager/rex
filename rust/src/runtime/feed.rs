@@ -991,7 +991,7 @@ pub(super) fn tagged_media(row: &Value) -> Vec<Value> {
     let mut media = row.get("Media").and_then(Value::as_array).cloned().unwrap_or_default();
     if media.iter().all(|media| media.get("_sid").is_none()) {
         if let Some(first) = media.first_mut().and_then(Value::as_object_mut) {
-            for field in ["_source", "_sid", "_path"] {
+            for field in ["_source", "_sid", "_path", "_folder"] {
                 if let Some(value) = row.get(field) {
                     first.insert(field.to_string(), value.clone());
                 }
@@ -1062,8 +1062,13 @@ fn release_numbers(row: &Value, index: usize) -> Option<((i64, i64), bool, &str,
     let mut segments = path.rsplit('/');
     let name = segments.next()?;
     let release = segments.next().or_else(|| row.get("_release").and_then(Value::as_str))?;
-    // The row's own folder is its first Media's.
-    let folder = row.as_object().and_then(super::scan::folder_of).filter(|_| index == 0);
+    // Each version's own folder; one folded before versions carried theirs has the row's,
+    // which is its first Media's.
+    let folder = row
+        .pointer(&format!("/Media/{index}"))
+        .and_then(Value::as_object)
+        .and_then(super::scan::folder_of)
+        .or_else(|| row.as_object().and_then(super::scan::folder_of).filter(|_| index == 0));
     Some((super::scan::episode_of(release, folder, name)?, super::scan::scene_numbered(release, folder, name), release, name))
 }
 
@@ -1074,6 +1079,11 @@ fn take_release(row: &mut Map<String, Value>, media: &Value) {
             row.insert(field.to_string(), value.clone());
         }
     }
+    // The row's folder is its release's, or none: another release's would number it.
+    match media.get("_folder") {
+        Some(folder) => row.insert("_folder".to_string(), folder.clone()),
+        None => row.shift_remove("_folder"),
+    };
     if let Some(release) = media.get("_path").and_then(Value::as_str).and_then(|path| path.rsplit('/').nth(1)) {
         row.insert("_release".to_string(), json!(release));
     }
@@ -1303,6 +1313,22 @@ impl Runtime {
                 }
                 if index == 0 {
                     object.insert("_path".to_string(), json!(item.path));
+                }
+            }
+            changed = true;
+        }
+        // The folder the source names now, on the version and, for the first, the row: rows
+        // made or folded before versions carried their folder get it from the next push.
+        let folder_at = if tagged { row.pointer(&format!("/Media/{index}/_folder")) } else { row.get("_folder") };
+        if let (Some(folder), true) = (&item.folder, folder_at.and_then(Value::as_str) != item.folder.as_deref()) {
+            if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
+                if tagged {
+                    if let Some(media) = object.get_mut("Media").and_then(|media| media.get_mut(index)).and_then(Value::as_object_mut) {
+                        media.insert("_folder".to_string(), json!(folder));
+                    }
+                }
+                if index == 0 {
+                    object.insert("_folder".to_string(), json!(folder));
                 }
             }
             changed = true;
@@ -1693,6 +1719,10 @@ impl Runtime {
                     object.insert(field.to_string(), value.clone());
                 }
             }
+            match first.get("_folder") {
+                Some(folder) => object.insert("_folder".to_string(), folder.clone()),
+                None => object.shift_remove("_folder"),
+            };
             if let Some(duration) = first.get("duration") {
                 object.insert("duration".to_string(), duration.clone());
             }

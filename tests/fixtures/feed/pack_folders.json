@@ -15,6 +15,21 @@
     1
    ]
   },
+  "courage-s02-15": {
+   "folder": "Season 2",
+   "hash": "4056012603ecf1d156f78bd56d023c6392b0cbd2",
+   "ids": {
+    "imdb": "tt0549680"
+   },
+   "name": "[AORE] Courage The Cowardly Dog",
+   "path": "shows/[AORE] Courage The Cowardly Dog/15. The Curse Of Shirley. Courage In The Big Stinkin' City.mkv",
+   "size": 916798607,
+   "want": [
+    2,
+    3
+   ],
+   "with": "edge-s02e03"
+  },
   "digimon-tamers-01": {
    "folder": "",
    "hash": "4add254b3f46b2416c627578f99833a7913183c8",
@@ -27,6 +42,34 @@
    "want": [
     1,
     1
+   ]
+  },
+  "edge-s02e03": {
+   "folder": "Season 2",
+   "hash": "7d460b7359cba3d7121da9774b65c4d718fded3e",
+   "ids": {
+    "imdb": "tt0549680"
+   },
+   "name": "Courage the Cowardly Dog (1999) Season 1-4 S01-04 (1080p HMAX WEBDL x265 10bit AAC 2.0 EDGE2020)",
+   "path": "shows/Courage the Cowardly Dog (1999) Season 1-4 S01-04 (1080p HMAX WEBDL x265 10bit AAC 2.0 EDGE2020)/Courage the Cowardly Dog - S02E03-E04 - Curse of Shirley & Courage in the Big Stinkin' City (1080p x265 EDGE2020).mkv",
+   "size": 577295866,
+   "want": [
+    2,
+    3
+   ]
+  },
+  "edge-s02e15": {
+   "folder": "Season 2",
+   "hash": "7d460b7359cba3d7121da9774b65c4d718fded3e",
+   "ids": {
+    "imdb": "tt0549680"
+   },
+   "name": "Courage the Cowardly Dog (1999) Season 1-4 S01-04 (1080p HMAX WEBDL x265 10bit AAC 2.0 EDGE2020)",
+   "path": "shows/Courage the Cowardly Dog (1999) Season 1-4 S01-04 (1080p HMAX WEBDL x265 10bit AAC 2.0 EDGE2020)/Courage the Cowardly Dog - S02E15-E16 - Bad Hair Day & The Forbidden Hat of Gold (1080p x265 EDGE2020).mkv",
+   "size": 547201260,
+   "want": [
+    2,
+    15
    ]
   },
   "phineas-s01-101ab": {
@@ -105,7 +148,7 @@
    ]
   }
  },
- "source": "real files of three packs on fun's zurg instances (2026-10-15): the release name, hash, IMDb id, size and the folder the provider lists each file in, as zurg's feed pushes them since it sends `folder`; `want` is the season and episode each file is (null: not an episode, or no folder said); Courage's `Season 2/14.` and Phineas and Ferb's `101a-b` are TMDB's S2E1 and S1E1 by their titles, TMDB numbering their 11-minute segments",
+ "source": "real files of three packs on fun's zurg instances (2026-10-15): the release name, hash, IMDb id, size and the folder the provider lists each file in, as zurg's feed pushes them since it sends `folder`; `want` is the season and episode each file is (null: not an episode, or no folder said); Courage's `Season 2/14.` and Phineas and Ferb's `101a-b` are TMDB's S2E1 and S1E1 by their titles, TMDB numbering their 11-minute segments; EDGE2020's S02E03-E04 and S02E15-E16 beside [AORE]'s `15. The Curse Of Shirley`, which the production rex folded into S02E15 by its number on 2026-10-15 and a start must move to S02E03",
  "tmdb": {
   "https://api.themoviedb.org/3/find/tt0072562?external_source=imdb_id&api_key=KEY": {
    "movie_results": [],
@@ -203,7 +246,7 @@
    "tv_season_results": []
   },
   "https://api.themoviedb.org/3/find/tt0549680?external_source=imdb_id&api_key=KEY": {
-   "_rexCachedAt": 1792064797,
+   "_rexCachedAt": 1792065699,
    "movie_results": [],
    "person_results": [],
    "tv_episode_results": [],
@@ -211,6 +254,38 @@
    "tv_season_results": []
   },
   "https://api.themoviedb.org/3/search/tv?query=Courage+The+Cowardly+Dog&api_key=KEY": {
+   "page": 1,
+   "results": [
+    {
+     "adult": false,
+     "backdrop_path": "/dugFpakDXxjDjEUloukNqAx3cjK.jpg",
+     "first_air_date": "1999-11-12",
+     "genre_ids": [
+      16,
+      10751,
+      10765,
+      35,
+      10762
+     ],
+     "id": 2085,
+     "name": "Courage the Cowardly Dog",
+     "origin_country": [
+      "US"
+     ],
+     "original_language": "en",
+     "original_name": "Courage the Cowardly Dog",
+     "overview": "The bizarre misadventures of a cowardly dog named Courage and his elderly owners in a farmhouse in Nowhere, Kansas.",
+     "popularity": 33.3263,
+     "poster_path": "/uJQsBgzlrgZpjeB5fHBtJQA04nS.jpg",
+     "softcore": false,
+     "vote_average": 8.227,
+     "vote_count": 1682
+    }
+   ],
+   "total_pages": 1,
+   "total_results": 1
+  },
+  "https://api.themoviedb.org/3/search/tv?query=Courage+the+Cowardly+Dog&first_air_date_year=1999&api_key=KEY": {
    "page": 1,
    "results": [
     {
@@ -19513,6 +19588,70 @@
    "vote_average": 7.9,
    "vote_count": 1069
   },
+  "https://api.themoviedb.org/3/tv/2085/season/2/episode/15?append_to_response=external_ids&api_key=KEY": {
+   "air_date": "2001-04-13",
+   "crew": [
+    {
+     "adult": false,
+     "credit_id": "52572112760ee3776a204815",
+     "department": "Directing",
+     "gender": 2,
+     "id": 1229066,
+     "job": "Director",
+     "known_for_department": "Writing",
+     "name": "John R. Dilworth",
+     "original_name": "John R. Dilworth",
+     "popularity": 0.6344,
+     "profile_path": null
+    },
+    {
+     "adult": false,
+     "credit_id": "62c6915a447f9c006952cf86",
+     "department": "Writing",
+     "gender": 0,
+     "id": 1654798,
+     "job": "Storyboard",
+     "known_for_department": "Writing",
+     "name": "Curtis Cim",
+     "original_name": "Curtis Cim",
+     "popularity": 0.4151,
+     "profile_path": null
+    },
+    {
+     "adult": false,
+     "credit_id": "62c683400bb076004ee519d7",
+     "department": "Writing",
+     "gender": 2,
+     "id": 991160,
+     "job": "Writer",
+     "known_for_department": "Writing",
+     "name": "David Steven Cohen",
+     "original_name": "David Steven Cohen",
+     "popularity": 0.7891,
+     "profile_path": null
+    }
+   ],
+   "episode_number": 15,
+   "episode_type": "standard",
+   "external_ids": {
+    "freebase_id": null,
+    "freebase_mid": "/m/0266bj_",
+    "imdb_id": null,
+    "tvdb_id": 242214,
+    "tvrage_id": null,
+    "wikidata_id": null
+   },
+   "guest_stars": [],
+   "id": 143619,
+   "name": "Bad Hair Day",
+   "overview": "Muriel is kidnapped and taken to a hair farm to be used for growing hair.",
+   "production_code": "",
+   "runtime": 11,
+   "season_number": 2,
+   "still_path": "/vKO4l3n5uKgMKtrdnkmXGi2FKMT.jpg",
+   "vote_average": 7,
+   "vote_count": 1
+  },
   "https://api.themoviedb.org/3/tv/2085/season/2/episode/1?append_to_response=external_ids&api_key=KEY": {
    "air_date": "2000-10-31",
    "crew": [
@@ -19574,6 +19713,70 @@
    "runtime": 11,
    "season_number": 2,
    "still_path": "/iFYPhK10Ue7OhZKP1ABlPn8nidy.jpg",
+   "vote_average": 7,
+   "vote_count": 1
+  },
+  "https://api.themoviedb.org/3/tv/2085/season/2/episode/3?append_to_response=external_ids&api_key=KEY": {
+   "air_date": "2000-12-08",
+   "crew": [
+    {
+     "adult": false,
+     "credit_id": "52572112760ee3776a204815",
+     "department": "Directing",
+     "gender": 2,
+     "id": 1229066,
+     "job": "Director",
+     "known_for_department": "Writing",
+     "name": "John R. Dilworth",
+     "original_name": "John R. Dilworth",
+     "popularity": 0.6344,
+     "profile_path": null
+    },
+    {
+     "adult": false,
+     "credit_id": "62c683400bb076004ee519d7",
+     "department": "Writing",
+     "gender": 2,
+     "id": 991160,
+     "job": "Writer",
+     "known_for_department": "Writing",
+     "name": "David Steven Cohen",
+     "original_name": "David Steven Cohen",
+     "popularity": 0.7891,
+     "profile_path": null
+    },
+    {
+     "adult": false,
+     "credit_id": "62c68486c1606a02d94d15f6",
+     "department": "Writing",
+     "gender": 2,
+     "id": 1486322,
+     "job": "Storyboard",
+     "known_for_department": "Directing",
+     "name": "David Wachtenheim",
+     "original_name": "David Wachtenheim",
+     "popularity": 0.8174,
+     "profile_path": "/pY4sQL4gOJXELp2VKtwkGoTxEpy.jpg"
+    }
+   ],
+   "episode_number": 3,
+   "episode_type": "standard",
+   "external_ids": {
+    "freebase_id": "/en/curse_of_shirley",
+    "freebase_mid": "/m/026683y",
+    "imdb_id": null,
+    "tvdb_id": 242208,
+    "tvrage_id": null,
+    "wikidata_id": null
+   },
+   "guest_stars": [],
+   "id": 143610,
+   "name": "The Curse of Shirley",
+   "overview": "Shirley's curse on Eustace can only be undone if he learns to give of himself.",
+   "production_code": "",
+   "runtime": 11,
+   "season_number": 2,
+   "still_path": "/nhy0pnHp455AdtvegKQB0Qyij3M.jpg",
    "vote_average": 7,
    "vote_count": 1
   },

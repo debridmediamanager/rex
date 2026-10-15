@@ -20,6 +20,7 @@ import shutil
 import sqlite3
 import sys
 import tempfile
+import time
 
 from test_feed import ENTRIES, LEGACY, MOUNT, Bytes, Server, check, results, serve
 
@@ -66,9 +67,36 @@ def main():
             row = server.row(key) if key else {}
             got = [row.get("parentIndex"), row.get("index")]
             check("%s is S%02dE%02d" % (name, *pushed["want"]), got == pushed["want"], (got, row.get("grandparentTitle")))
+        key = lambda name: placed.get(FIXTURE["pushes"][name]["path"])
+        for name in sorted(FIXTURE["pushes"]):
+            if "with" in FIXTURE["pushes"][name]:
+                other = FIXTURE["pushes"][name]["with"]
+                check("%s is a version of %s" % (name, other), key(name) and key(name) == key(other), (key(name), key(other)))
         snl = {server.row(placed[FIXTURE["pushes"][name]["path"]]).get("grandparentRatingKey")
                for name in ("snl-s13-01", "snl-s14-01") if FIXTURE["pushes"][name]["path"] in placed}
         check("both SNL episodes are under one show", len(snl) == 1, snl)
+        # As the production rex held it on 2026-10-15: [AORE]'s `15.` read by its number and
+        # folded into EDGE2020's S02E15 -- here by a Merge, which keeps each release's fields.
+        status, _ = server.request("/library/metadata/%s/merge?ids=%s" % (key("edge-s02e15"), key("edge-s02e03")), "PUT")
+        check("folded as the production rex held it", status == 200, status)
+    finally:
+        server.stop()
+    # A start moves each release where its name or title places it.
+    server = Server(work, bytes_port, keys=keys)
+    try:
+        deadline = time.time() + 90
+        after = server.keys()
+        while after.get(FIXTURE["pushes"]["courage-s02-15"]["path"]) == after.get(FIXTURE["pushes"]["edge-s02e15"]["path"]) \
+                and time.time() < deadline:
+            time.sleep(1)
+            after = server.keys()
+        for name in ("courage-s02-15", "edge-s02e03", "edge-s02e15"):
+            row = server.row(after.get(FIXTURE["pushes"][name]["path"]))
+            got = [row.get("parentIndex"), row.get("index")]
+            check("after a start: %s is S%02dE%02d" % (name, *FIXTURE["pushes"][name]["want"]), got == FIXTURE["pushes"][name]["want"], got)
+        check("after a start: [AORE]'s 15. is a version of EDGE2020's S02E03",
+              after.get(FIXTURE["pushes"]["courage-s02-15"]["path"]) == after.get(FIXTURE["pushes"]["edge-s02e03"]["path"]),
+              after.get(FIXTURE["pushes"]["courage-s02-15"]["path"]))
     finally:
         server.stop()
         if RECORD:
