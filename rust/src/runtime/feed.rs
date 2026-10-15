@@ -32,6 +32,13 @@ struct Session {
     seen: HashSet<String>,
 }
 
+/// The code each `DELETE /rex/sources/{name}` answered, until it is confirmed or expires.
+/// In memory only: a restart forgets every pending delete.
+static DELETES: LazyLock<Mutex<HashMap<String, (String, std::time::Instant)>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
+
+/// How long a source delete's code confirms it, in seconds.
+const DELETE_WINDOW: u64 = 300;
+
 /// One pushed item, its defaults filled in.
 #[derive(Debug, Clone)]
 struct Item {
@@ -182,7 +189,7 @@ fn answer(status: u16, body: Value) -> Response {
 /// guarded it before, which every source had to be configured with by hand beside rex.
 pub(super) fn handle(shared: &SharedRuntime, request: &Request, path: &str) -> Response {
     if !lock(shared).local_request(request) {
-        warning!("FEED refused a {} {path} from beyond the local networks", request.method);
+        warning!("FEED refused a {} {} from beyond the local networks", request.method, logged_path(path));
         return answer(403, json!({"error": "the feed answers only local networks"}));
     }
     if let Some(rest) = path.strip_prefix("/rex/sources") {
@@ -232,12 +239,26 @@ pub(super) fn handle(shared: &SharedRuntime, request: &Request, path: &str) -> R
     response
 }
 
+/// A feed or sources path as the log shows it: a delete's confirmation code is a credential
+/// for 300 s, and the log is read by more people than may delete a source.
+pub(super) fn logged_path(path: &str) -> String {
+    match path.split_once("/confirm/") {
+        Some((head, _)) => format!("{head}/confirm/***"),
+        None => path.to_string(),
+    }
+}
+
 /// `GET /rex/sources`, `GET /rex/sources/{name}`, `PUT /rex/sources/{name}`: what a part
 /// read streams from. A PUT creates or replaces the source -- zurg sends it again at the
 /// start of every push session -- and the next part read uses it; credentials are kept in
-/// the state file and never answered.
+/// the state file and never answered. `DELETE /rex/sources/{name}` and its confirmation
+/// remove a source and everything it pushed (`ask_delete`, `confirm_delete`).
 fn sources(shared: &SharedRuntime, request: &Request, name: &str) -> Response {
     match (request.method.as_str(), name) {
+        ("DELETE", _) => match name.split_once("/confirm/") {
+            Some((name, code)) => confirm_delete(shared, name, code),
+            None => ask_delete(shared, name),
+        },
         ("GET" | "HEAD", "") => {
             let listed: Vec<Value> = lock(shared).sources.iter().map(|source| source.public()).collect();
             answer(200, json!({"size": listed.len(), "sources": listed}))
@@ -266,6 +287,72 @@ fn sources(shared: &SharedRuntime, request: &Request, name: &str) -> Response {
             answer(200, public)
         }
         _ => answer(405, json!({"error": "method not allowed"})),
+    }
+}
+
+/// `DELETE /rex/sources/{name}` deletes nothing: it answers how many items the source has
+/// here and the one path that removes them, valid for `DELETE_WINDOW` seconds. A source's
+/// whole library goes with one request, and a stray or replayed DELETE must not be that
+/// request. A new ask replaces the source's earlier code.
+fn ask_delete(shared: &SharedRuntime, name: &str) -> Response {
+    let items = {
+        let guard = lock(shared);
+        if !guard.sources.iter().any(|source| source.name == name) {
+            return answer(404, json!({"error": "no such source"}));
+        }
+        guard.source_items(name).iter().map(|(_, sids, _)| sids.len()).sum::<usize>()
+            + guard.feed_held.keys().filter(|key| key.starts_with(&held_key(name, ""))).count()
+    };
+    let mut bytes = [0_u8; 16];
+    if let Err(error) = crate::platform::random_bytes(&mut bytes) {
+        return answer(500, json!({"error": format!("no random source: {error}")}));
+    }
+    let code: String = bytes.iter().map(|byte| format!("{byte:02x}")).collect();
+    let until = std::time::Instant::now() + std::time::Duration::from_secs(DELETE_WINDOW);
+    DELETES.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).insert(name.to_string(), (code.clone(), until));
+    info!("SOURCES {name}: delete asked for, {items} item(s); confirm within {DELETE_WINDOW} s");
+    answer(200, json!({"confirm": format!("/rex/sources/{name}/confirm/{code}"), "items": items, "expires_in": DELETE_WINDOW}))
+}
+
+/// `DELETE /rex/sources/{name}/confirm/{code}`: the code `ask_delete` answered for this
+/// source, unexpired and not used before, removes the source and every item it pushed from
+/// rex -- never the files at the source. Any other code is a 404 that removes nothing.
+fn confirm_delete(shared: &SharedRuntime, name: &str, code: &str) -> Response {
+    let confirmed = {
+        let mut deletes = DELETES.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        let (confirmed, spent) = confirms(deletes.get(name), code, std::time::Instant::now());
+        if spent {
+            deletes.remove(name);
+        }
+        confirmed
+    };
+    if !confirmed {
+        warning!("SOURCES {name}: a delete confirmation with no matching code removed nothing");
+        return answer(404, json!({"error": format!("no delete to confirm with this code: ask again with DELETE /rex/sources/{name}")}));
+    }
+    // Feed requests apply one at a time; the source's open snapshot ends with it.
+    let mut sessions = FEED.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    sessions.remove(name);
+    let mut guard = lock(shared);
+    let removed = guard.delete_source(name);
+    let snapshot = guard.flush_state();
+    drop(guard);
+    drop(sessions);
+    write_or_log(snapshot);
+    answer(200, json!({"deleted": true, "removed": removed}))
+}
+
+/// Whether `code` confirms a source's pending delete at `now`, and whether that pending
+/// delete is spent: by its use (single use) or its expiry. A wrong code spends nothing.
+fn confirms(pending: Option<&(String, std::time::Instant)>, code: &str, now: std::time::Instant) -> (bool, bool) {
+    match pending {
+        None => (false, false),
+        Some((_, until)) if now >= *until => (false, true),
+        // Compared without an early exit.
+        Some((known, _)) => {
+            let same = known.len() == code.len() && known.bytes().zip(code.bytes()).fold(0, |diff, (a, b)| diff | (a ^ b)) == 0;
+            (same, same)
+        }
     }
 }
 
@@ -1204,6 +1291,48 @@ impl Runtime {
         }
     }
 
+    /// The rows holding a release of this source: (key, its ids there, whether every
+    /// release of the row is this source's).
+    fn source_items(&self, source: &str) -> Vec<(String, Vec<String>, bool)> {
+        self.catalog
+            .items()
+            .iter()
+            .filter_map(|row| {
+                let all = versions(row);
+                let mine: Vec<String> = all.iter().filter(|(of, _, _)| of == source).map(|(_, sid, _)| sid.clone()).collect();
+                let whole = mine.len() == all.len();
+                Some((key_of(row)?, mine, whole)).filter(|(_, mine, _)| !mine.is_empty())
+            })
+            .collect()
+    }
+
+    /// A confirmed source delete: its registration, its held items, and its releases --
+    /// a row of its releases alone deleted for good as `emptyTrash` deletes one, a row
+    /// holding another source's too keeping those. Nothing is asked of the source. Answers
+    /// how many items went.
+    fn delete_source(&mut self, source: &str) -> usize {
+        self.sources.retain(|known| known.name != source);
+        let prefix = held_key(source, "");
+        let held: Vec<String> = self.feed_held.keys().filter(|key| key.starts_with(&prefix)).cloned().collect();
+        for key in &held {
+            self.release(key);
+        }
+        let mut removed = held.len();
+        for (key, sids, whole) in self.source_items(source) {
+            removed += sids.len();
+            if whole {
+                self.purge_row(&key);
+            } else {
+                for sid in &sids {
+                    self.drop_version(&key, source, sid);
+                }
+            }
+        }
+        self.dirty = true;
+        info!("SOURCES {source} deleted: {removed} item(s) removed from rex with its registration");
+        removed
+    }
+
     /// A row a person matched (Fix Match writes `_matched`), or an episode or season under a
     /// show they matched: what they chose wins over anything a source pushes later.
     pub(super) fn matched_by_hand(&self, row: &Value) -> bool {
@@ -1910,6 +2039,20 @@ mod tests {
         })
         .unwrap();
         (Arc::new(Mutex::new(runtime)), "11".to_string())
+    }
+
+    #[test]
+    fn a_delete_code_confirms_once_and_only_in_time() {
+        let now = std::time::Instant::now();
+        let code = "0123456789abcdef0123456789abcdef".to_string();
+        let pending = (code.clone(), now + std::time::Duration::from_secs(DELETE_WINDOW));
+        assert_eq!(confirms(Some(&pending), &code, now), (true, true), "the right code in time, spent by its use");
+        assert_eq!(confirms(Some(&pending), "0123456789abcdef0123456789abcdee", now), (false, false), "a wrong code spends nothing");
+        assert_eq!(confirms(Some(&pending), "0123", now), (false, false));
+        assert_eq!(confirms(Some(&pending), "", now), (false, false));
+        assert_eq!(confirms(None, &code, now), (false, false), "nothing asked for, or already used");
+        let late = now + std::time::Duration::from_secs(DELETE_WINDOW);
+        assert_eq!(confirms(Some(&pending), &code, late), (false, true), "expired: refused and forgotten");
     }
 
     /// The production server's The Boys S03E01 (2026-10-14): its pack was identified through

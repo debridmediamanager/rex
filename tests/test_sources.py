@@ -17,7 +17,8 @@ neither of them zurg, each pushing under its own name into the same libraries (a
 Then what registration itself promises: a bad one is refused, credentials are never answered
 or logged, a source survives a restart before it registers again, a new registration is
 what the next part read streams from, and rows made before their source registered -- the
-old WebDAV scanner's, and a catalog's feed rows -- play once it has.
+old WebDAV scanner's, and a catalog's feed rows -- play once it has. And deleting a source:
+two requests, the first of which removes nothing, and nothing asked of the source's files.
 
     python3 tests/test_sources.py
 """
@@ -38,6 +39,7 @@ from server_command import server_command
 from startup_wait import poll_until
 from test_feed import BODY, BYTES_TOKEN, LEGACY, MOUNT, ROOT, Bytes, check, results, item, catalog, serve
 from test_ports import free_port
+import test_feed_versions as versions
 
 FRONT_USER, FRONT_PASSWORD = "front-user", "front-password"
 
@@ -252,6 +254,103 @@ def unregistered_rows():
         shutil.rmtree(work, ignore_errors=True)
 
 
+class Untouched(Bytes):
+    """The byte stub, recording any DELETE it is sent: deleting a source asks nothing of it."""
+
+    def handler(source):
+        base = Bytes.handler(source)
+
+        class Handler(base):
+            def do_DELETE(self):
+                source.seen.append(("DELETE", self.path, None, None))
+                self.reply(204)
+        return Handler
+
+
+def delete_source():
+    """`DELETE /rex/sources/{name}` deletes nothing: it answers a confirmation path, valid for
+    300 s, that removes the source and every item it pushed -- its held items and its releases,
+    a row another source also holds keeping that one's -- from rex alone. The two releases of
+    127 Hours (`fixtures/feed/duplicate_releases.json`) come from two sources here, so they are
+    one row with a Media each."""
+    work = tempfile.mkdtemp(prefix="rex-sources-delete-")
+    stub = Untouched()
+    one, two = versions.item(0), versions.item(1)
+    bellboy, held = item("movie", ids=False), item("new", probe=False)
+    for pushed in (one, two, bellboy):
+        stub.files.add("/dav/" + pushed["path"])
+    stub_port = serve(stub.handler())
+    versions.catalog(work)
+    source = {"url": "http://127.0.0.1:%d/dav" % stub_port, "bearer": BYTES_TOKEN, "mount": MOUNT}
+    port, process, log = start(work, {"a": source, "b": source})
+    feed = lambda name, method, leaf, body=None: call(port, "/rex/feed/%s/%s" % (name, leaf), method, body,
+                                                      {"Content-Type": "application/json"})
+    listing = lambda name, leaf="items": loads(feed(name, "GET", leaf)[1])
+    try:
+        feed("a", "POST", "items", {"items": [one]})
+        feed("b", "POST", "items", {"items": [two, bellboy, held]})
+        shared_key = {row["id"]: row["ratingKey"] for row in listing("a").get("items", [])}.get(one["id"])
+        b_keys = {row["id"]: row["ratingKey"] for row in listing("b").get("items", [])}
+        check("two sources' releases of one title are one row; b also has a film of its own and a held item",
+              shared_key and b_keys.get(two["id"]) == shared_key and b_keys.get(bellboy["id"]) not in (None, shared_key)
+              and listing("b", "held").get("size") == 1, (shared_key, b_keys, listing("b", "held")))
+
+        status, raw = call(port, "/rex/sources/b", "DELETE")
+        asked = loads(raw) if status == 200 else {}
+        code = asked.get("confirm", "").rsplit("/", 1)[-1]
+        check("the first DELETE answers a confirmation, the source's item count and the window",
+              status == 200 and asked.get("confirm") == "/rex/sources/b/confirm/" + code
+              and len(code) >= 32 and all(c in "0123456789abcdef" for c in code) and asked.get("items") == 3 and asked.get("expires_in") == 300,
+              (status, raw))
+        check("and removes nothing", call(port, "/rex/sources/b")[0] == 200 and len(listing("b").get("items", [])) == 2
+              and listing("b", "held").get("size") == 1
+              and call(port, "/library/metadata/%s" % b_keys.get(bellboy["id"]))[0] == 200)
+        status, raw = call(port, "/rex/sources/a", "DELETE")
+        a_code = loads(raw).get("confirm", "").rsplit("/", 1)[-1] if status == 200 else ""
+        refusals = [call(port, "/rex/sources/b/confirm/" + wrong, "DELETE")[0]
+                    for wrong in ("0" * len(code), a_code, code[:-1], code + "0", "")]
+        check("a wrong code, another source's code or a mangled one is a 404", refusals == [404] * 5, refusals)
+        check("and removes nothing", call(port, "/rex/sources/b")[0] == 200 and len(listing("b").get("items", [])) == 2)
+        check("an unregistered source has nothing to delete", call(port, "/rex/sources/nobody", "DELETE")[0] == 404)
+
+        status, raw = call(port, "/rex/sources/b/confirm/" + code, "DELETE")
+        check("the confirmation removes the source and its three items",
+              status == 200 and loads(raw) == {"deleted": True, "removed": 3}, (status, raw))
+        check("its registration is gone, and its feed with it: a push is the 404 that asks it to register",
+              call(port, "/rex/sources/b")[0] == 404 and feed("b", "GET", "items")[0] == 404
+              and feed("b", "POST", "items", {"items": [bellboy]})[0] == 404)
+        check("its film of its own is gone from the library",
+              bellboy["id"] in b_keys and call(port, "/library/metadata/%s" % b_keys[bellboy["id"]])[0] == 404)
+        status, raw = call(port, "/library/metadata/%s" % shared_key)
+        files = [part.get("file") for media in (loads(raw)["MediaContainer"]["Metadata"][0].get("Media") or [])
+                 for part in media.get("Part") or []] if status == 200 else []
+        check("the row a's release shares keeps a's Media and loses b's", files == [one["file"]], (status, files))
+        status, raw = call(port, part_key(port, shared_key), headers={"Range": "bytes=0-9"})
+        check("and still streams it", status == 206 and raw == BODY[:10], status)
+        check("the same code again is a 404", call(port, "/rex/sources/b/confirm/" + code, "DELETE")[0] == 404)
+        check("and no file was deleted at the source", not any(seen[0] == "DELETE" for seen in stub.seen), stub.seen)
+
+        stop(process, log)
+        port, process, log = start(work, {})
+        status, raw = call(port, "/library/metadata/%s" % shared_key)
+        files = [part.get("file") for media in (loads(raw)["MediaContainer"]["Metadata"][0].get("Media") or [])
+                 for part in media.get("Part") or []] if status == 200 else []
+        check("after a restart the delete holds: a alone registered, b's rows and Media gone",
+              [name for name, _ in registered(port)] == ["a"] and bellboy["id"] in b_keys
+              and call(port, "/library/metadata/%s" % b_keys[bellboy["id"]])[0] == 404 and files == [one["file"]],
+              (registered(port), files))
+        register(port, "b", source)
+        check("registered again, b starts with nothing", listing("b").get("size") == 0
+              and listing("b", "held").get("size") == 0, (listing("b"), listing("b", "held")))
+        status, raw = feed("b", "POST", "items", {"items": [bellboy]})
+        again = {row["id"]: row["ratingKey"] for row in listing("b").get("items", [])}.get(bellboy["id"])
+        check("and its push is a new row on a new key", status == 200 and loads(raw).get("created") == 1
+              and again not in (None, b_keys.get(bellboy["id"])), (raw, again))
+    finally:
+        stop(process, log)
+        shutil.rmtree(work, ignore_errors=True)
+
+
 def main():
     work = tempfile.mkdtemp(prefix="rex-sources-")
     disk_root = os.path.join(work, "disk")
@@ -389,6 +488,7 @@ def main():
         shutil.rmtree(work, ignore_errors=True)
     gated()
     unregistered_rows()
+    delete_source()
     failed = results.count(False)
     print("\n%d/%d source checks passed" % (len(results) - failed, len(results)))
     return 1 if failed else 0

@@ -23194,9 +23194,10 @@ fn handle_connection<S: Read + Write + PollRead>(
                 && !close_after_body;
             let response = feed::handle(&runtime, &request, &request_path);
             info!(
-                "{} {} {request_path} -> {}",
+                "{} {} {} -> {}",
                 if request_path.starts_with("/rex/feed/") { "FEED" } else { "SOURCES" },
                 request.method,
+                feed::logged_path(&request_path),
                 response.status
             );
             write_response(&mut stream, &response, keep)?;
