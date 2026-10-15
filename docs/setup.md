@@ -307,6 +307,49 @@ the same in PowerShell with `rust\target\release\rex.exe` for `rust/target/relea
 - LAN discovery cannot share its port with a Plex Media Server on the same Windows machine.
   Run rex with `--gdm off` there, as you would with another port on Linux.
 
+### Docker
+
+`ghcr.io/debridmediamanager/rex` is each release's Linux build (amd64 and arm64) in an image,
+published by `.github/workflows/docker.yml`: `latest`, `X.Y.Z` and `X.Y`. It is private, as
+the repository is: log in with a classic GitHub token that has `read:packages` and `repo`,
+the same as for zurg's image.
+
+```bash
+docker login ghcr.io -u YOUR_GITHUB_USERNAME
+```
+
+Everything rex writes (`rex.db`, `claim_state.json`, the TMDB cache) goes to `/config`.
+Arguments that start with a flag run the server on `/config/rex.db` (`REX_CATALOG` moves
+it); a subcommand runs as given, so naming more directories before the first start is:
+
+```bash
+docker compose run --rm rex catalog --seed --name den --out /config/rex.db \
+  --movies movies --shows shows --shows anime
+```
+
+```yaml
+services:
+  rex:
+    image: ghcr.io/debridmediamanager/rex:latest
+    container_name: rex
+    restart: unless-stopped
+    network_mode: host        # LAN discovery (GDM), and zurg's registered address reachable as on the host
+    environment:
+      TMDB_KEY: your_tmdb_key
+    volumes:
+      - ./rex:/config
+    command: >
+      --friendly-name den --zurg-mount /zurg_mnt/zurg
+      --owner-username <your Plex username> --owner-email <your Plex email>
+```
+
+zurg's `rex_url` is then `http://<the host's LAN IP>:32400`, and the claim (step 6) is the
+same `curl` on the host. Certificates for step 7 go in `/config` too:
+`--tls-cert /config/host.crt --tls-key /config/host.pkcs8.key`. Without host networking,
+publish `32400:32400` and add `--gdm off`; apps then find rex only once it is claimed, and
+rex must still reach the address zurg registers. The image carries no FFmpeg, so
+`REX_TRANSCODER` needs one mounted in. rex saves its state on `docker stop`.
+
 ### Troubleshooting
 
 | Symptom | Cause |

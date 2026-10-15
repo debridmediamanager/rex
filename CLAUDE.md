@@ -567,7 +567,10 @@ git tag -a v0.2.0 -F notes.md <tested commit> && git push origin v0.2.0
 
 The tag's run tests again, checks the tag matches `Cargo.toml`, and publishes
 `rex-vX.Y.Z-{linux,darwin}-{amd64,arm64}.tar.gz`, `rex-vX.Y.Z-windows-amd64.zip` and `SHA256SUMS` as the GitHub release, titled `rex X.Y.Z`
-with the tag message as its notes. The archive keeps the repository's layout (the binary at
+with the tag message as its notes. Its `docker` job then calls `.github/workflows/docker.yml`,
+which packages that release's Linux archives into `ghcr.io/debridmediamanager/rex`
+(`latest`, `X.Y.Z`, `X.Y`; private, like the repository) without compiling; run it by hand
+with a tag to give an older release an image. The archive keeps the repository's layout (the binary at
 `rust/target/release/rex`, the sidecars in `data/`), so every command in the
 docs works the same from a release as from a checkout.
 

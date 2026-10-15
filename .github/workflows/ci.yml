@@ -343,3 +343,13 @@ jobs:
             --title "rex ${GITHUB_REF_NAME#v}" \
             --notes-file notes.md \
             rex-*.tar.gz rex-*.zip SHA256SUMS
+
+  # The image packages the archives the release just published (docker.yml).
+  docker:
+    needs: release
+    uses: ./.github/workflows/docker.yml
+    with:
+      tag: ${{ github.ref_name }}
+    permissions:
+      contents: read
+      packages: write

@@ -41,6 +41,8 @@ cargo build --release --manifest-path rust/Cargo.toml
 
 Both put rex at `rust/target/release/rex`.
 
+Or run the Docker image, `ghcr.io/debridmediamanager/rex` (private, like zurg's): [docs/setup.md](docs/setup.md#docker) has a compose file.
+
 On Windows unpack the zip and use `rust\target\release\rex.exe` where the steps say `rust/target/release/rex`. `examples/run.sh.example` and `rex manager` are for Linux and macOS only.
 
 **2. Start it**
