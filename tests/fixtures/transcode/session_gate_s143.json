@@ -1,0 +1,1106 @@
+{
+ "label": "s143",
+ "reference": "claimed=\"0\" version=\"1.43.4.10903-e5521bd8c\"",
+ "exchanges": [
+  {
+   "method": "GET",
+   "path": "/library/sections",
+   "query": [],
+   "token": "none",
+   "note": "control: the gate refuses this source",
+   "status": 401,
+   "content_type": "text/html",
+   "res_len": 91
+  },
+  {
+   "method": "HEAD",
+   "path": "/video/:/transcode/universal/session/nosuchsession0001/base/index.m3u8",
+   "query": [],
+   "token": "none",
+   "note": "HEAD",
+   "status": 404,
+   "content_type": "text/html",
+   "res_len": 0
+  },
+  {
+   "method": "GET",
+   "path": "/video/:/transcode/universal/session/nosuchsession0001/base/index.m3u8",
+   "query": [],
+   "token": "none",
+   "note": "a session that does not exist",
+   "status": 404,
+   "content_type": "text/html",
+   "res_len": 85
+  },
+  {
+   "method": "GET",
+   "path": "/video/:/transcode/universal/session/nosuchsession0001/base/00000.ts",
+   "query": [],
+   "token": "none",
+   "note": "a session that does not exist",
+   "status": 404,
+   "content_type": "text/html",
+   "res_len": 85
+  },
+  {
+   "method": "GET",
+   "path": "/video/:/transcode/universal/session/nosuchsession0001/0/header",
+   "query": [],
+   "token": "none",
+   "note": "a session that does not exist",
+   "status": 404,
+   "content_type": "text/html",
+   "res_len": 85
+  },
+  {
+   "method": "GET",
+   "path": "/video/:/transcode/universal/session/nosuchsession0001/0/0.m4s",
+   "query": [],
+   "token": "none",
+   "note": "a session that does not exist",
+   "status": 404,
+   "content_type": "text/html",
+   "res_len": 85
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections",
+   "query": [
+    [
+     "X-Plex-Token",
+     "<TOKEN>"
+    ]
+   ],
+   "token": "valid",
+   "note": "control: the token opens it",
+   "status": 200,
+   "content_type": "application/json",
+   "res_len": 946
+  },
+  {
+   "method": "GET",
+   "path": "/video/:/transcode/universal/decision",
+   "query": [
+    [
+     "hasMDE",
+     "1"
+    ],
+    [
+     "path",
+     "/library/metadata/3"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "protocol",
+     "hls"
+    ],
+    [
+     "fastSeek",
+     "1"
+    ],
+    [
+     "directPlay",
+     "0"
+    ],
+    [
+     "directStream",
+     "1"
+    ],
+    [
+     "subtitleSize",
+     "100"
+    ],
+    [
+     "audioBoost",
+     "100"
+    ],
+    [
+     "location",
+     "lan"
+    ],
+    [
+     "addDebugOverlay",
+     "0"
+    ],
+    [
+     "autoAdjustQuality",
+     "0"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "autoAdjustSubtitle",
+     "1"
+    ],
+    [
+     "mediaBufferSize",
+     "102400"
+    ],
+    [
+     "session",
+     "gateprobe-hls-s143"
+    ],
+    [
+     "subtitles",
+     "burn"
+    ],
+    [
+     "Accept-Language",
+     "en"
+    ],
+    [
+     "X-Plex-Session-Identifier",
+     "playback-gateprobe-hls-s143"
+    ],
+    [
+     "X-Plex-Client-Profile-Extra",
+     "append-transcode-target-codec(type=videoProfile&context=streaming&videoCodec=h264&audioCodec=aac&protocol=hls)"
+    ],
+    [
+     "X-Plex-Incomplete-Segments",
+     "1"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Web"
+    ],
+    [
+     "X-Plex-Version",
+     "4.160.0"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "thuj6pv24kf5wr6qaqla8flz"
+    ],
+    [
+     "X-Plex-Platform",
+     "Chrome"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "151.0"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ],
+    [
+     "X-Plex-Model",
+     "standalone"
+    ],
+    [
+     "X-Plex-Device",
+     "Linux"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "Chrome"
+    ],
+    [
+     "X-Plex-Device-Screen-Resolution",
+     "1280x596,1280x720"
+    ],
+    [
+     "X-Plex-Language",
+     "en"
+    ],
+    [
+     "X-Plex-Session-Id",
+     "cb22220f-1e9f-4a50-8c54-1fd96224c096"
+    ],
+    [
+     "X-Plex-Playback-Session-Id",
+     "8a6deb6f-b9c0-4e42-81eb-6ae0bc1fb5d5"
+    ],
+    [
+     "X-Plex-Playback-Id",
+     "4698bde6-cc4c-44b9-83d7-a52a4cad98e5"
+    ],
+    [
+     "X-Plex-Token",
+     "<TOKEN>"
+    ]
+   ],
+   "token": "valid",
+   "note": "",
+   "status": 200,
+   "content_type": "application/json",
+   "res_len": 4694
+  },
+  {
+   "method": "GET",
+   "path": "/video/:/transcode/universal/start.m3u8",
+   "query": [
+    [
+     "hasMDE",
+     "1"
+    ],
+    [
+     "path",
+     "/library/metadata/3"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "protocol",
+     "hls"
+    ],
+    [
+     "fastSeek",
+     "1"
+    ],
+    [
+     "directPlay",
+     "0"
+    ],
+    [
+     "directStream",
+     "1"
+    ],
+    [
+     "subtitleSize",
+     "100"
+    ],
+    [
+     "audioBoost",
+     "100"
+    ],
+    [
+     "location",
+     "lan"
+    ],
+    [
+     "addDebugOverlay",
+     "0"
+    ],
+    [
+     "autoAdjustQuality",
+     "0"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "autoAdjustSubtitle",
+     "1"
+    ],
+    [
+     "mediaBufferSize",
+     "102400"
+    ],
+    [
+     "session",
+     "gateprobe-hls-s143"
+    ],
+    [
+     "subtitles",
+     "burn"
+    ],
+    [
+     "Accept-Language",
+     "en"
+    ],
+    [
+     "X-Plex-Session-Identifier",
+     "playback-gateprobe-hls-s143"
+    ],
+    [
+     "X-Plex-Client-Profile-Extra",
+     "append-transcode-target-codec(type=videoProfile&context=streaming&videoCodec=h264&audioCodec=aac&protocol=hls)"
+    ],
+    [
+     "X-Plex-Incomplete-Segments",
+     "1"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Web"
+    ],
+    [
+     "X-Plex-Version",
+     "4.160.0"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "thuj6pv24kf5wr6qaqla8flz"
+    ],
+    [
+     "X-Plex-Platform",
+     "Chrome"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "151.0"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ],
+    [
+     "X-Plex-Model",
+     "standalone"
+    ],
+    [
+     "X-Plex-Device",
+     "Linux"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "Chrome"
+    ],
+    [
+     "X-Plex-Device-Screen-Resolution",
+     "1280x596,1280x720"
+    ],
+    [
+     "X-Plex-Language",
+     "en"
+    ],
+    [
+     "X-Plex-Session-Id",
+     "cb22220f-1e9f-4a50-8c54-1fd96224c096"
+    ],
+    [
+     "X-Plex-Playback-Session-Id",
+     "8a6deb6f-b9c0-4e42-81eb-6ae0bc1fb5d5"
+    ],
+    [
+     "X-Plex-Playback-Id",
+     "4698bde6-cc4c-44b9-83d7-a52a4cad98e5"
+    ]
+   ],
+   "token": "none",
+   "note": "start without a token",
+   "status": 403,
+   "content_type": "text/html",
+   "res_len": 85
+  },
+  {
+   "method": "GET",
+   "path": "/video/:/transcode/universal/start.m3u8",
+   "query": [
+    [
+     "hasMDE",
+     "1"
+    ],
+    [
+     "path",
+     "/library/metadata/3"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "protocol",
+     "hls"
+    ],
+    [
+     "fastSeek",
+     "1"
+    ],
+    [
+     "directPlay",
+     "0"
+    ],
+    [
+     "directStream",
+     "1"
+    ],
+    [
+     "subtitleSize",
+     "100"
+    ],
+    [
+     "audioBoost",
+     "100"
+    ],
+    [
+     "location",
+     "lan"
+    ],
+    [
+     "addDebugOverlay",
+     "0"
+    ],
+    [
+     "autoAdjustQuality",
+     "0"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "autoAdjustSubtitle",
+     "1"
+    ],
+    [
+     "mediaBufferSize",
+     "102400"
+    ],
+    [
+     "session",
+     "gateprobe-hls-s143"
+    ],
+    [
+     "subtitles",
+     "burn"
+    ],
+    [
+     "Accept-Language",
+     "en"
+    ],
+    [
+     "X-Plex-Session-Identifier",
+     "playback-gateprobe-hls-s143"
+    ],
+    [
+     "X-Plex-Client-Profile-Extra",
+     "append-transcode-target-codec(type=videoProfile&context=streaming&videoCodec=h264&audioCodec=aac&protocol=hls)"
+    ],
+    [
+     "X-Plex-Incomplete-Segments",
+     "1"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Web"
+    ],
+    [
+     "X-Plex-Version",
+     "4.160.0"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "thuj6pv24kf5wr6qaqla8flz"
+    ],
+    [
+     "X-Plex-Platform",
+     "Chrome"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "151.0"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ],
+    [
+     "X-Plex-Model",
+     "standalone"
+    ],
+    [
+     "X-Plex-Device",
+     "Linux"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "Chrome"
+    ],
+    [
+     "X-Plex-Device-Screen-Resolution",
+     "1280x596,1280x720"
+    ],
+    [
+     "X-Plex-Language",
+     "en"
+    ],
+    [
+     "X-Plex-Session-Id",
+     "cb22220f-1e9f-4a50-8c54-1fd96224c096"
+    ],
+    [
+     "X-Plex-Playback-Session-Id",
+     "8a6deb6f-b9c0-4e42-81eb-6ae0bc1fb5d5"
+    ],
+    [
+     "X-Plex-Playback-Id",
+     "4698bde6-cc4c-44b9-83d7-a52a4cad98e5"
+    ],
+    [
+     "X-Plex-Token",
+     "<TOKEN>"
+    ]
+   ],
+   "token": "valid",
+   "note": "start with the token",
+   "status": 200,
+   "content_type": "application/vnd.apple.mpegurl",
+   "res_len": 170
+  },
+  {
+   "method": "GET",
+   "path": "/video/:/transcode/universal/session/gateprobe-hls-s143/base/index.m3u8",
+   "query": [
+    [
+     "X-Plex-Incomplete-Segments",
+     "1"
+    ]
+   ],
+   "token": "none",
+   "note": "the playlist start.m3u8 names, as Plex Web asks for it",
+   "status": 200,
+   "content_type": "application/vnd.apple.mpegurl",
+   "res_len": 5161
+  },
+  {
+   "method": "GET",
+   "path": "/video/:/transcode/universal/session/gateprobe-hls-s143/base/00000.ts",
+   "query": [],
+   "token": "none",
+   "note": "a segment",
+   "status": 200,
+   "content_type": "video/MP2T",
+   "res_len": 714400
+  },
+  {
+   "method": "GET",
+   "path": "/video/:/transcode/universal/session/gateprobe-hls-s143/base/index.m3u8",
+   "query": [
+    [
+     "X-Plex-Incomplete-Segments",
+     "1"
+    ],
+    [
+     "X-Plex-Token",
+     "<WRONG>"
+    ]
+   ],
+   "token": "wrong",
+   "note": "the playlist with a wrong token",
+   "status": 200,
+   "content_type": "application/vnd.apple.mpegurl",
+   "res_len": 5161
+  },
+  {
+   "method": "GET",
+   "path": "/video/:/transcode/universal/session/gateprobe-hls-s143/base/00001.ts",
+   "query": [
+    [
+     "X-Plex-Token",
+     "<WRONG>"
+    ]
+   ],
+   "token": "wrong",
+   "note": "a segment with a wrong token",
+   "status": 200,
+   "content_type": "video/MP2T",
+   "res_len": 676612
+  },
+  {
+   "method": "HEAD",
+   "path": "/video/:/transcode/universal/session/gateprobe-hls-s143/base/index.m3u8",
+   "query": [
+    [
+     "X-Plex-Incomplete-Segments",
+     "1"
+    ]
+   ],
+   "token": "none",
+   "note": "HEAD",
+   "status": 200,
+   "content_type": "application/vnd.apple.mpegurl",
+   "res_len": 0
+  },
+  {
+   "method": "POST",
+   "path": "/video/:/transcode/universal/session/gateprobe-hls-s143/base/index.m3u8",
+   "query": [
+    [
+     "X-Plex-Incomplete-Segments",
+     "1"
+    ]
+   ],
+   "token": "none",
+   "note": "another verb",
+   "status": 404,
+   "content_type": "text/html",
+   "res_len": 85
+  },
+  {
+   "method": "PUT",
+   "path": "/video/:/transcode/universal/session/gateprobe-hls-s143/base/index.m3u8",
+   "query": [
+    [
+     "X-Plex-Incomplete-Segments",
+     "1"
+    ]
+   ],
+   "token": "none",
+   "note": "another verb",
+   "status": 404,
+   "content_type": "text/html",
+   "res_len": 85
+  },
+  {
+   "method": "DELETE",
+   "path": "/video/:/transcode/universal/session/gateprobe-hls-s143/base/index.m3u8",
+   "query": [
+    [
+     "X-Plex-Incomplete-Segments",
+     "1"
+    ]
+   ],
+   "token": "none",
+   "note": "another verb",
+   "status": 404,
+   "content_type": "text/html",
+   "res_len": 85
+  },
+  {
+   "method": "GET",
+   "path": "/video/:/transcode/universal/ping",
+   "query": [
+    [
+     "session",
+     "gateprobe-hls-s143"
+    ]
+   ],
+   "token": "none",
+   "note": "ping a live session",
+   "status": 401,
+   "content_type": "text/html",
+   "res_len": 91
+  },
+  {
+   "method": "GET",
+   "path": "/transcode/sessions",
+   "query": [],
+   "token": "none",
+   "note": "the session listing",
+   "status": 401,
+   "content_type": "text/html",
+   "res_len": 91
+  },
+  {
+   "method": "GET",
+   "path": "/video/:/transcode/universal/decision",
+   "query": [
+    [
+     "hasMDE",
+     "1"
+    ],
+    [
+     "path",
+     "/library/metadata/3"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "protocol",
+     "dash"
+    ],
+    [
+     "fastSeek",
+     "1"
+    ],
+    [
+     "directPlay",
+     "0"
+    ],
+    [
+     "directStream",
+     "1"
+    ],
+    [
+     "subtitleSize",
+     "100"
+    ],
+    [
+     "audioBoost",
+     "100"
+    ],
+    [
+     "location",
+     "lan"
+    ],
+    [
+     "addDebugOverlay",
+     "0"
+    ],
+    [
+     "autoAdjustQuality",
+     "0"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "mediaBufferSize",
+     "102400"
+    ],
+    [
+     "session",
+     "gateprobe-dash-s143"
+    ],
+    [
+     "subtitles",
+     "burn"
+    ],
+    [
+     "Accept-Language",
+     "en"
+    ],
+    [
+     "X-Plex-Session-Identifier",
+     "playback-gateprobe-dash-s143"
+    ],
+    [
+     "X-Plex-Client-Profile-Extra",
+     "append-transcode-target-codec(type=videoProfile&context=streaming&videoCodec=h264&audioCodec=aac&protocol=dash)"
+    ],
+    [
+     "X-Plex-Incomplete-Segments",
+     "1"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Web"
+    ],
+    [
+     "X-Plex-Version",
+     "4.147.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "ububjnez3q8nez1fhigxja5j"
+    ],
+    [
+     "X-Plex-Platform",
+     "Chrome"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "151.0"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ],
+    [
+     "X-Plex-Model",
+     "bundled"
+    ],
+    [
+     "X-Plex-Device",
+     "Linux"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "Chrome"
+    ],
+    [
+     "X-Plex-Device-Screen-Resolution",
+     "1280x596,1280x720"
+    ],
+    [
+     "X-Plex-Language",
+     "en"
+    ],
+    [
+     "X-Plex-Token",
+     "<TOKEN>"
+    ]
+   ],
+   "token": "valid",
+   "note": "",
+   "status": 200,
+   "content_type": "application/json",
+   "res_len": 4755
+  },
+  {
+   "method": "GET",
+   "path": "/video/:/transcode/universal/start.mpd",
+   "query": [
+    [
+     "hasMDE",
+     "1"
+    ],
+    [
+     "path",
+     "/library/metadata/3"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "protocol",
+     "dash"
+    ],
+    [
+     "fastSeek",
+     "1"
+    ],
+    [
+     "directPlay",
+     "0"
+    ],
+    [
+     "directStream",
+     "1"
+    ],
+    [
+     "subtitleSize",
+     "100"
+    ],
+    [
+     "audioBoost",
+     "100"
+    ],
+    [
+     "location",
+     "lan"
+    ],
+    [
+     "addDebugOverlay",
+     "0"
+    ],
+    [
+     "autoAdjustQuality",
+     "0"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "mediaBufferSize",
+     "102400"
+    ],
+    [
+     "session",
+     "gateprobe-dash-s143"
+    ],
+    [
+     "subtitles",
+     "burn"
+    ],
+    [
+     "Accept-Language",
+     "en"
+    ],
+    [
+     "X-Plex-Session-Identifier",
+     "playback-gateprobe-dash-s143"
+    ],
+    [
+     "X-Plex-Client-Profile-Extra",
+     "append-transcode-target-codec(type=videoProfile&context=streaming&videoCodec=h264&audioCodec=aac&protocol=dash)"
+    ],
+    [
+     "X-Plex-Incomplete-Segments",
+     "1"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Web"
+    ],
+    [
+     "X-Plex-Version",
+     "4.147.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "ububjnez3q8nez1fhigxja5j"
+    ],
+    [
+     "X-Plex-Platform",
+     "Chrome"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "151.0"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ],
+    [
+     "X-Plex-Model",
+     "bundled"
+    ],
+    [
+     "X-Plex-Device",
+     "Linux"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "Chrome"
+    ],
+    [
+     "X-Plex-Device-Screen-Resolution",
+     "1280x596,1280x720"
+    ],
+    [
+     "X-Plex-Language",
+     "en"
+    ],
+    [
+     "X-Plex-Token",
+     "<TOKEN>"
+    ]
+   ],
+   "token": "valid",
+   "note": "start with the token",
+   "status": 200,
+   "content_type": "application/dash+xml",
+   "res_len": 1517
+  },
+  {
+   "method": "GET",
+   "path": "/video/:/transcode/universal/session/gateprobe-dash-s143/0/header",
+   "query": [],
+   "token": "none",
+   "note": "DASH",
+   "status": 200,
+   "content_type": "application/octet-stream",
+   "res_len": 815
+  },
+  {
+   "method": "GET",
+   "path": "/video/:/transcode/universal/session/gateprobe-dash-s143/0/0.m4s",
+   "query": [],
+   "token": "none",
+   "note": "DASH",
+   "status": 200,
+   "content_type": "application/octet-stream",
+   "res_len": 333361
+  },
+  {
+   "method": "GET",
+   "path": "/video/:/transcode/universal/session/gateprobe-dash-s143/1/header",
+   "query": [],
+   "token": "none",
+   "note": "DASH",
+   "status": 200,
+   "content_type": "application/octet-stream",
+   "res_len": 745
+  },
+  {
+   "method": "GET",
+   "path": "/video/:/transcode/universal/session/gateprobe-dash-s143/1/0.m4s",
+   "query": [],
+   "token": "none",
+   "note": "DASH",
+   "status": 200,
+   "content_type": "application/octet-stream",
+   "res_len": 65808
+  },
+  {
+   "method": "GET",
+   "path": "/video/:/transcode/universal/stop",
+   "query": [
+    [
+     "session",
+     "gateprobe-hls-s143"
+    ]
+   ],
+   "token": "none",
+   "note": "stop without a token",
+   "status": 401,
+   "content_type": "text/html",
+   "res_len": 91
+  },
+  {
+   "method": "GET",
+   "path": "/video/:/transcode/universal/ping",
+   "query": [
+    [
+     "session",
+     "gateprobe-hls-s143"
+    ],
+    [
+     "X-Plex-Token",
+     "<TOKEN>"
+    ]
+   ],
+   "token": "valid",
+   "note": "did the tokenless stop stop it?",
+   "status": 200,
+   "content_type": "text/html",
+   "res_len": 0
+  },
+  {
+   "method": "GET",
+   "path": "/video/:/transcode/universal/stop",
+   "query": [
+    [
+     "session",
+     "gateprobe-hls-s143"
+    ],
+    [
+     "X-Plex-Token",
+     "<TOKEN>"
+    ]
+   ],
+   "token": "valid",
+   "note": "",
+   "status": 200,
+   "content_type": "text/html",
+   "res_len": 0
+  },
+  {
+   "method": "GET",
+   "path": "/video/:/transcode/universal/session/gateprobe-hls-s143/base/00002.ts",
+   "query": [],
+   "token": "none",
+   "note": "a segment of a stopped session",
+   "status": 404,
+   "content_type": "text/html",
+   "res_len": 85
+  },
+  {
+   "method": "GET",
+   "path": "/video/:/transcode/universal/stop",
+   "query": [
+    [
+     "session",
+     "gateprobe-dash-s143"
+    ],
+    [
+     "X-Plex-Token",
+     "<TOKEN>"
+    ]
+   ],
+   "token": "valid",
+   "note": "",
+   "status": 200,
+   "content_type": "text/html",
+   "res_len": 0
+  }
+ ]
+}

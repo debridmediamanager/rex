@@ -1,0 +1,66 @@
+{
+ "label": "s1422",
+ "reference": "claimed=\"1\" version=\"1.42.2.10156-f737b826c\"",
+ "exchanges": [
+  {
+   "method": "GET",
+   "path": "/library/sections",
+   "query": [],
+   "token": "none",
+   "note": "control: the gate refuses this source",
+   "status": 401,
+   "content_type": "text/html",
+   "res_len": 91
+  },
+  {
+   "method": "HEAD",
+   "path": "/video/:/transcode/universal/session/nosuchsession0001/base/index.m3u8",
+   "query": [],
+   "token": "none",
+   "note": "HEAD",
+   "status": 404,
+   "content_type": "text/html",
+   "res_len": 0
+  },
+  {
+   "method": "GET",
+   "path": "/video/:/transcode/universal/session/nosuchsession0001/base/index.m3u8",
+   "query": [],
+   "token": "none",
+   "note": "a session that does not exist",
+   "status": 404,
+   "content_type": "text/html",
+   "res_len": 85
+  },
+  {
+   "method": "GET",
+   "path": "/video/:/transcode/universal/session/nosuchsession0001/base/00000.ts",
+   "query": [],
+   "token": "none",
+   "note": "a session that does not exist",
+   "status": 404,
+   "content_type": "text/html",
+   "res_len": 85
+  },
+  {
+   "method": "GET",
+   "path": "/video/:/transcode/universal/session/nosuchsession0001/0/header",
+   "query": [],
+   "token": "none",
+   "note": "a session that does not exist",
+   "status": 404,
+   "content_type": "text/html",
+   "res_len": 85
+  },
+  {
+   "method": "GET",
+   "path": "/video/:/transcode/universal/session/nosuchsession0001/0/0.m4s",
+   "query": [],
+   "token": "none",
+   "note": "a session that does not exist",
+   "status": 404,
+   "content_type": "text/html",
+   "res_len": 85
+  }
+ ]
+}

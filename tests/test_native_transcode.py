@@ -14,6 +14,9 @@ timeline and stop -- decoding what comes back rather than trusting a 200.
 And the encoder-less server is unchanged without it: the same request is the
 "neither" decision and `start.m3u8` is the 404 it always was.
 
+A claimed rex replays what a real PMS answers a conversion's session requests sent
+without a token (`session_gate_s143.json`): keyed to the session, not the token.
+
     python3 tests/test_native_transcode.py      # REX_TRANSCODER=/path/to/ffmpeg optional
 """
 import http.server
@@ -281,11 +284,11 @@ def walk_dash(port, label, key, expect_video, expect_audio, size, duration=DURAT
     check("%s: stop is 200" % label, status == 200, str(status))
 
 
-def get(port, path, params=(), accept="application/json", timeout=60):
+def get(port, path, params=(), accept="application/json", timeout=60, method="GET"):
     url = "http://127.0.0.1:%d%s" % (port, path)
     if params:
         url += "?" + urllib.parse.urlencode(list(params))
-    request = urllib.request.Request(url, headers={"Accept": accept})
+    request = urllib.request.Request(url, method=method, headers={"Accept": accept})
     try:
         with urllib.request.urlopen(request, timeout=timeout) as response:
             return response.status, dict(response.headers), response.read()
@@ -296,13 +299,13 @@ def get(port, path, params=(), accept="application/json", timeout=60):
         return 0, {}, b""
 
 
-def start_server(catalog, zurg_port, transcoder, scratch):
+def start_server(catalog, zurg_port, transcoder, scratch, **env):
     port = free_port()
     # Software encoding unless the caller names a device (`REX_TRANSCODE_HW=vaapi` with an Intel
     # iGPU).
     environment = dict(os.environ, ZURG_URL="http://127.0.0.1:%d" % zurg_port,
                        REX_TRANSCODE_HW=os.environ.get("REX_TRANSCODE_HW", "none"),
-                       REX_TRANSCODE_DIR=os.path.join(scratch, "segments-%d" % port))
+                       REX_TRANSCODE_DIR=os.path.join(scratch, "segments-%d" % port), **env)
     environment.pop("REX_TRANSCODER", None)
     if transcoder:
         environment["REX_TRANSCODER"] = FFMPEG
@@ -317,6 +320,25 @@ def start_server(catalog, zurg_port, transcoder, scratch):
         except Exception:
             time.sleep(0.25)
     return port, process, log.name
+
+
+def replay_session_gate(port, token):
+    """A real PMS keys a conversion's own requests to the session, not to the token: Plex Web
+    asks for the playlist start.m3u8 names relative to it, which drops the token, and a claimed
+    rex answered it 401 (Plex Web 4.147.1, 2026-10-15: "Playback Error, h4"). Replays what
+    plexscratch answered a source its gate refuses, which a claimed server's gate refuses too."""
+    recorded = json.load(open(os.path.join(ROOT, "tests/fixtures/transcode/session_gate_s143.json")))
+    tokens = {"valid": token, "wrong": "WRONG-TOKEN-0000000000", "none": None}
+    for exchange in recorded["exchanges"]:
+        if exchange["path"].endswith("/start.m3u8") and exchange["token"] == "none":
+            continue  # the reference refuses it 403 where rex's refusal is 401; not this gate
+        params = [(name, "/library/metadata/1" if name == "path" else value)
+                  for name, value in exchange["query"] if name != "X-Plex-Token"]
+        if tokens[exchange["token"]]:
+            params.append(("X-Plex-Token", tokens[exchange["token"]]))
+        status = get(port, exchange["path"], params, method=exchange["method"])[0]
+        check("claimed: %s %s, %s token" % (exchange["method"], exchange["path"].replace("/video/:/transcode/universal", "")[:44], exchange["token"]),
+              status == exchange["status"], "%s, the reference %s" % (status, exchange["status"]))
 
 
 def decision(port, key, session, **extra):
@@ -480,6 +502,20 @@ def main():
         status, _, body = get(port, "/")
         check("without an encoder / claims no transcoder",
               json.loads(body)["MediaContainer"].get("transcoderVideo") is False, "")
+    finally:
+        process.terminate()
+        process.wait()
+
+    print("claimed, with REX_TRANSCODER (plex.tv on a closed port)")
+    claimed = os.path.join(scratch, "claimed")
+    os.makedirs(claimed)
+    shutil.copy(catalog, claimed)
+    json.dump({"machine": "0000000000000000000000000000000000000007", "token": "SERVER-TOKEN-STUB"},
+              open(os.path.join(claimed, "claim_state.json"), "w"))
+    port, process, log = start_server(os.path.join(claimed, "catalog.json"), zurg_port, True, scratch,
+                                      REX_PLEXTV_URL="http://127.0.0.1:%d" % free_port())
+    try:
+        replay_session_gate(port, "SERVER-TOKEN-STUB")
     finally:
         process.terminate()
         process.wait()

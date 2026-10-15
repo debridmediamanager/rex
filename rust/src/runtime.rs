@@ -8224,6 +8224,12 @@ impl Runtime {
             || path.starts_with("/web/")
             || path == "/manage"
             || path == "/security/token"
+            // A conversion's playlist, segments and headers are asked for relative to
+            // start.m3u8/start.mpd, which drops the query the token rode in. A real PMS keys
+            // them to the session alone: no token or a wrong one is 200 while it runs and 404
+            // once it does not, for every verb, claimed or not (findings, "A conversion
+            // session is its own key"). start, ping, stop and /transcode/sessions stay gated.
+            || path.starts_with("/video/:/transcode/universal/session/")
             || (matches!(
                 path,
                 "/crossdomain.xml" | "/clientaccesspolicy.xml" | "/favicon.ico"

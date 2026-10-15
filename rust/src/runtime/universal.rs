@@ -1868,7 +1868,8 @@ impl Runtime {
             }
             "session" => {
                 let id = segments.get(5).copied().unwrap_or_default();
-                let Some(session) = transcoder.session(id) else {
+                // The reference answers a live session's playlist 404 to POST, PUT and DELETE.
+                let Some(session) = transcoder.session(id).filter(|_| matches!(request.method.as_str(), "GET" | "HEAD")) else {
                     return Some(Response::error(404, "rex: not found"));
                 };
                 match (segments.get(6).copied(), segments.get(7).copied(), segments.len()) {
