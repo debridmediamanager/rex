@@ -30,9 +30,9 @@ Download the build for your machine from [Releases](https://github.com/debridmed
 tar xzf rex-vX.Y.Z-linux-amd64.tar.gz && cd rex-vX.Y.Z-linux-amd64
 ```
 
-The steps below need a release newer than v0.2.0: v0.2.0 predates sources registering
-themselves and the catalog seeding itself on first start. Until a newer release is out,
-build it yourself. No Rust on the machine? The full guide has a Docker build.
+The steps below need v0.3.0 or newer: v0.2.0 predates sources registering themselves and
+the catalog seeding itself on first start. To build it yourself instead (no Rust on the
+machine? the full guide has a Docker build):
 
 ```bash
 git clone https://github.com/debridmediamanager/rex && cd rex

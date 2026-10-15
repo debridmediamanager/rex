@@ -1,6 +1,6 @@
 [package]
 name = "rex"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 description = "A Plex Media Server that owns no files: serves a library its sources push and streams it from where it lives"
 license = "MIT"
