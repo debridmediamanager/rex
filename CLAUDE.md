@@ -478,6 +478,7 @@ python3 tests/test_feed.py                  # the feed API against a stub source
 python3 tests/test_feed_versions.py         # two releases of one title: one row, a Media each (a real library's 127 Hours)
 python3 tests/test_feed_season_art.py       # a season takes its identification once an episode has it (a real library's Black Mirror S6)
 python3 tests/test_feed_blank_tiles.py      # what a real library drew the blank tile for gets named; a person's Fix Match stays theirs
+python3 tests/test_feed_blank_1016.py       # archive members stay versions of their episode, `One Piece 1106` is One Piece, a film zurg files under anime goes to Movies
 python3 tests/test_feed_anime.py            # an anime cour on TMDB's season and episode (REX_ANIME_LISTS), and rows placed before moved there
 python3 tests/test_feed_names.py            # releases named in a way identification read wrong: a.K.A., THEATRiCAL.CUT, a release in another language than its files
 python3 tests/test_feed_pack_folders.py     # a pack's season folders, which zurg's mount flattens: SNL's and Smallville's 01s each their own season's
