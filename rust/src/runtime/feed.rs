@@ -1182,7 +1182,7 @@ pub(super) fn tagged_media(row: &Value) -> Vec<Value> {
     let mut media = row.get("Media").and_then(Value::as_array).cloned().unwrap_or_default();
     if media.iter().all(|media| media.get("_sid").is_none()) {
         if let Some(first) = media.first_mut().and_then(Value::as_object_mut) {
-            for field in ["_source", "_sid", "_path", "_folder"] {
+            for field in ["_source", "_sid", "_path", "_folder", "_release", "_ids"] {
                 if let Some(value) = row.get(field) {
                     first.insert(field.to_string(), value.clone());
                 }
@@ -1246,13 +1246,45 @@ struct Unsure {
     here: (Option<i64>, Option<i64>),
 }
 
+// An archive a source lists as a folder of its members.
+static ARCHIVE: LazyLock<regex::Regex> = LazyLock::new(|| regex::Regex::new(r"(?i)\.(?:rar|zip|7z)$").unwrap());
+
+/// The release a source path's file is in: its folder, or the folder above the archive it
+/// is a member of. `shows/Would.I.Lie.To.You.S03E01.PROPER…/aaf-wilty.301.rar/aaf-wilty.301.avi`
+/// read as the release `aaf-wilty.301.rar`: episode 301 of season 1, so a start unfolded the
+/// version off the episode it was and made it a show of its own on the blank tile (the
+/// production server, 2026-10-16).
+fn release_dir(path: &str) -> Option<&str> {
+    let mut parents = path.rsplit('/').skip(1);
+    let mut parent = parents.next()?;
+    while ARCHIVE.is_match(parent) {
+        match parents.next() {
+            Some(up) => parent = up,
+            None => break,
+        }
+    }
+    Some(parent)
+}
+
+/// The release name a row's Media at `index` came from: what its source pushed as the
+/// name, kept on the version since the fold carries it, else the row's for its first
+/// version, else its path's (`release_dir`).
+fn version_release(row: &Value, index: usize) -> Option<&str> {
+    fn text(value: Option<&Value>) -> Option<&str> {
+        value.and_then(Value::as_str).filter(|name| !name.is_empty())
+    }
+    text(row.pointer(&format!("/Media/{index}/_release")))
+        .or_else(|| text(row.get("_release")).filter(|name| index == 0 && !ARCHIVE.is_match(name)))
+        .or_else(|| row.pointer(&format!("/Media/{index}/_path")).and_then(Value::as_str).and_then(release_dir))
+        .or_else(|| text(row.get("_release")))
+}
+
 /// The numbers the name of a row's release at `index` reads: its file's, under its folder's,
 /// and whether they are the name's own (`scan::scene_numbered`).
 fn release_numbers(row: &Value, index: usize) -> Option<((i64, i64), bool, &str, &str)> {
     let path = row.pointer(&format!("/Media/{index}/_path")).and_then(Value::as_str)?;
-    let mut segments = path.rsplit('/');
-    let name = segments.next()?;
-    let release = segments.next().or_else(|| row.get("_release").and_then(Value::as_str))?;
+    let name = path.rsplit('/').next()?;
+    let release = version_release(row, index)?;
     // Each version's own folder; one folded before versions carried theirs has the row's,
     // which is its first Media's.
     let folder = row
@@ -1275,8 +1307,18 @@ fn take_release(row: &mut Map<String, Value>, media: &Value) {
         Some(folder) => row.insert("_folder".to_string(), folder.clone()),
         None => row.shift_remove("_folder"),
     };
-    if let Some(release) = media.get("_path").and_then(Value::as_str).and_then(|path| path.rsplit('/').nth(1)) {
+    let release = media
+        .get("_release")
+        .and_then(Value::as_str)
+        .filter(|name| !name.is_empty())
+        .or_else(|| media.get("_path").and_then(Value::as_str).and_then(release_dir))
+        .map(str::to_string);
+    if let Some(release) = release {
         row.insert("_release".to_string(), json!(release));
+    }
+    // The ids its source pushed with it, not the row's: those name the other release.
+    if let Some(ids) = media.get("_ids") {
+        row.insert("_ids".to_string(), ids.clone());
     }
     row.insert("Media".to_string(), json!([media]));
 }
@@ -1575,6 +1617,26 @@ impl Runtime {
             }
             changed = true;
         }
+        // The name and ids the source pushes now, on the version (`version_release`): one folded
+        // before versions carried them takes them from the next push.
+        if tagged {
+            let ids = Value::Object(item.ids.clone());
+            let stale = row.pointer(&format!("/Media/{index}/_release")).and_then(Value::as_str) != Some(item.name.as_str())
+                || row.pointer(&format!("/Media/{index}/_ids")) != Some(&ids);
+            if stale {
+                if let Some(media) = self
+                    .catalog
+                    .get_mut(key)
+                    .and_then(|row| row.get_mut("Media"))
+                    .and_then(|media| media.get_mut(index))
+                    .and_then(Value::as_object_mut)
+                {
+                    media.insert("_release".to_string(), json!(item.name));
+                    media.insert("_ids".to_string(), ids);
+                }
+                changed = true;
+            }
+        }
         let part = |row: &Value| -> Option<Value> {
             row.get("Media")?.as_array()?.get(index)?.get("Part")?.as_array()?.first().cloned()
         };
@@ -1859,12 +1921,7 @@ impl Runtime {
                         if let (Some(imdb), false, false) =
                             (show_imdb, seasons.is_empty(), seasons.iter().any(|season| season.0 == placed.0))
                         {
-                            let release = row
-                                .pointer(&format!("/Media/{index}/_path"))
-                                .and_then(Value::as_str)
-                                .and_then(|path| path.rsplit('/').nth(1))
-                                .or_else(|| row.get("_release").and_then(Value::as_str))
-                                .unwrap_or_default();
+                            let release = version_release(row, *index).unwrap_or_default();
                             unsure.push(Unsure {
                                 key: key_of(row).unwrap_or_default(),
                                 release: (source.clone(), sid.clone()),
@@ -2085,6 +2142,38 @@ mod tests {
         assert_eq!(confirms(None, &code, now), (false, false), "nothing asked for, or already used");
         let late = now + std::time::Duration::from_secs(DELETE_WINDOW);
         assert_eq!(confirms(Some(&pending), &code, late), (false, true), "expired: refused and forgotten");
+    }
+
+    /// The production server's Would I Lie to You? S03E01 (2026-10-16) as it held it: a WEB-DL
+    /// release and the `S03E01.PROPER` NZB's archive member folded onto it at 21:45, the
+    /// version with only its source fields. The start at 22:08 read the archive as its release,
+    /// `aaf-wilty.301.rar`, numbered it episode 301 and unfolded it into a show of that name.
+    #[test]
+    fn a_version_inside_an_archive_is_numbered_by_its_release() {
+        let web = "shows/Would.I.Lie.To.You.S03E09.Unseen.bits.UKTV.WEB-DL.AAC2.0.H.264-BTW/f28908120d6f4baa84e4ff62cb06b8f0.part01.rar/Would.I.Lie.To.You.S03E01.Jo.Brand.Carol.Vorderman.Russell.Howard.Larry.Lamb.UKTV.WEB-DL.AAC2.0.H.264-BTW.mkv";
+        let proper = "shows/Would.I.Lie.To.You.S03E01.PROPER.WS.PDTV.XviD-aAF/aaf-wilty.301.rar/aaf-wilty.301.avi";
+        let second = "shows/Would.I.Lie.To.You.S03E01.PROPER.WS.PDTV.XviD-aAF/aaf-wilty.302.rar/aaf-wilty.302.avi";
+        let row = json!({"ratingKey": "160370", "type": "episode", "parentIndex": 3, "index": 1,
+                         "_release": "Would.I.Lie.To.You.S03E09.Unseen.bits.UKTV.WEB-DL.AAC2.0.H.264-BTW", "_ids": {},
+                         "Media": [{"_source": "usenet", "_sid": web, "_path": web, "_folder": ""},
+                                   {"_source": "usenet", "_sid": proper, "_path": proper, "_folder": ""},
+                                   {"_source": "usenet", "_sid": second, "_path": second, "_folder": ""}]});
+        assert_eq!(version_release(&row, 1), Some("Would.I.Lie.To.You.S03E01.PROPER.WS.PDTV.XviD-aAF"));
+        assert_eq!(release_numbers(&row, 0).map(|found| found.0), Some((3, 1)));
+        assert_eq!(release_numbers(&row, 1).map(|found| found.0), Some((3, 1)), "the archive's member stays on the episode it is");
+        assert_eq!(release_numbers(&row, 2).map(|found| found.0), Some((3, 2)), "the NZB's second episode is S03E02");
+        // A row split off a version takes the version's release and ids, never the archive's name.
+        let mut split = row.as_object().unwrap().clone();
+        let version = json!({"_source": "usenet", "_sid": proper, "_path": proper, "_ids": {"imdb": "tt1055238"}});
+        take_release(&mut split, &version);
+        assert_eq!(split["_release"], json!("Would.I.Lie.To.You.S03E01.PROPER.WS.PDTV.XviD-aAF"));
+        assert_eq!(split["_ids"], json!({"imdb": "tt1055238"}));
+        // A version folded since keeps what its source pushed.
+        let pushed = json!({"_source": "usenet", "_sid": "one", "_path": "shows/one/f.mkv", "_release": "Other.Name.S03E01", "_ids": {"imdb": "tt1"}});
+        let folded = tagged_media(&json!({"Media": [{"Part": []}], "_source": "usenet", "_sid": "one", "_path": "shows/one/f.mkv",
+                                          "_release": "Other.Name.S03E01", "_ids": {"imdb": "tt1"}}));
+        assert_eq!(folded[0]["_release"], pushed["_release"]);
+        assert_eq!(folded[0]["_ids"], pushed["_ids"]);
     }
 
     /// The production server's The Boys S03E01 (2026-10-14): its pack was identified through
