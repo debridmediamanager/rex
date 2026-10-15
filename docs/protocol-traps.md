@@ -171,7 +171,7 @@ are changing; replay the client's exact request before altering behavior.
   what rex did for its whole life, while advertising 40 filterable fields.
   A bare `=` on a string CONTAINS -- except on `title`, where each query word must
   BEGIN a title word in order, and on `titleSort`/`summary`/`tagline`, where it is
-  equality. `==` is the exact one, and it ignores case. See `filters.py`. (Cycle 14:
+  equality. `==` is the exact one, and it ignores case. See `rust/src/filters.rs`. (Cycle 14:
   the six-operator restriction is the ADVERTISED FieldType's, so the unlisted
   `titleSort`/`summary`/`tagline`/`originalTitle` take the ordering keys as well.)
 - **What a bare `=` means depends on the field's advertised TYPE, and three types
@@ -1851,7 +1851,7 @@ are changing; replay the client's exact request before altering behavior.
 - **The hub search folds by the same table**, but its score CASE handling is two distinct passes:
   the raw-query partial pass and a broader whole-title pass. Cycle 39 completed and built the table,
   including the long-s and two-letter macron-`o` boundaries.
-- **A plain-form decision runs the client's own PROFILE FILE** (`decision.py`,
+- **A plain-form decision runs the client's own PROFILE FILE** (`decision.rs`,
   `client_profiles.json`, read out of the lab image): selected audio not first, container and video
   codec, the stream it would play, a sidecar subtitle, the audio codec, an embedded subtitle, then
   the container's limitations before a named codec's before `*`. Exact on 1,864 of 1,872 measured
@@ -1909,7 +1909,7 @@ are changing; replay the client's exact request before altering behavior.
   audio stream" although `selected` names the first one; `PUT /library/parts/{id}?audioStreamID=<that
   same track>` makes all 41 answer from the visible row and `audioStreamID=-1` puts them back, with
   `Media`, `Part` and `Stream` byte-identical throughout. rex holds a chosen track and models that
-  state; `tests/test_decision.py` scores both against the recorded corpus.
+  state; `cargo test` (`rust/src/decision.rs`) scores both against the recorded corpus.
 - **A sidecar fixture read out of the reference's image has to be the WHOLE thing.**
   `client_profiles.json` kept 10 of the 30 `<Setting>` rows -- the one the model of the day read --
   and the decision turned on one of the twenty it dropped.
@@ -1989,7 +1989,7 @@ are changing; replay the client's exact request before altering behavior.
   rows answer the ordinary 4002. Not a blanket veto: the one profile whose transcode target names
   the source's own codec still converts it. **`DOVIBLPresent` is the dual-layer discriminator**,
   not `DOVIELPresent`: a separate-track enhancement layer says false on its own stream, and that
-  settles the one-witness-each-side disagreement in favour of what `mediainfo.py` already does.
+  settles the one-witness-each-side disagreement in favour of what `mediainfo.rs` already does.
 - **An UNMATCHED show refuses the agent prefs**: its `Preferences` block carries eight settings, not
   ten, and `useOriginalTitle`/`languageOverride` are 400s there; **`showOrdering` is a 500** for
   every value, with NO frames, while the value is STORED -- the write lands and the cascade behind
@@ -2006,7 +2006,7 @@ are changing; replay the client's exact request before altering behavior.
   the item and metadata spellings of the same edit send `loading` with the new title.
 - **An MBAFF interlaced row sets `scanType: interlaced` and NOT `video.separateFields`**: made on
   the copy and driven against all 78 profiles, only `RokuDLNA-5.1` refuses it (on `video.scanType`)
-  and iOS and tvOS -- the two profiles naming `separateFields` -- direct-play it. `decision.py`'s
+  and iOS and tvOS -- the two profiles naming `separateFields` -- direct-play it. `decision.rs`'s
   constant 0 is right; a row that trips it needs field-coded PAFF pictures no encoder here writes.
 - **The request target is RAW data, not a browser URL.** A literal `;` or `#` remains in the path or
   query; `urlparse`/`urlsplit` silently strips it as params/fragment syntax and routes a different
@@ -2122,7 +2122,7 @@ are changing; replay the client's exact request before altering behavior.
   request builders or call sites.
 - **Inventory server processes at both ends of every cycle.** Cycle 43 startup found Cycle 41's
   frozen listeners still on 32587/32588 despite a later clean-close record. List every
-  `server.py --port` process, resolve cwd and command line, and kill only proved cycle-owned
+  `rex --port` process, resolve cwd and command line, and kill only proved cycle-owned
   processes; checking the current cycle's expected ports cannot catch an older stray listener.
 - **Container magic belongs to the selected Part, not to the test fixture's history.** The first
   live MP4 made `conformance.py` select the right Plex Web direct-play row and then fail its old
@@ -2783,7 +2783,7 @@ are changing; replay the client's exact request before altering behavior.
   minted, so the action row stays a skeleton and a show's Seasons block spins forever. The
   catalog takes Plex's own guids from `metadata.provider.plex.tv` (`POST
   /library/metadata/matches {"type":1|2,"guid":"tmdb://N"}`, then `children` by `index`):
-  `build_catalog.py --relink` with `PLEX_TOKEN`. The provider refuses `X-Plex-Container-Size:
+  `rex catalog --relink` with `PLEX_TOKEN`. The provider refuses `X-Plex-Container-Size:
   500` with a 400; the agent pages at 50.
 - **`/service/ultrablur/colors` resolves its `url` like `/photo/:/transcode`** and answers the
   corner colours as a JSON LIST of one (an element in XML). Plex for Android uses the singular
@@ -3235,7 +3235,7 @@ are changing; replay the client's exact request before altering behavior.
   client's `/identity` had a median of 20-23 ms (the oracle, saving outside its request lock:
   0.5 ms), and 32 loaded clients saw it take up to 0.78 s. The snapshot is still taken under the
   lock; the file is written after it, in snapshot order, before the status line (2026-09-30).
-- **`--state` keeps every kind `persist.py` keeps, not a list of the ones someone remembered.**
+- **`--state` keeps every kind `store.rs` keeps, not a list of the ones someone remembered.**
   Checked kind by kind (`tests/test_parity_persist.py`, 2026-10-01): the native file lost the
   section-pref overrides (with them `flattenSeasons`' row effects), custom metadata provider
   groups and their id counter, the BYTES of uploaded posters/art/themes/logos (the candidates

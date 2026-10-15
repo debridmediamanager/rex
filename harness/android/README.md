@@ -110,9 +110,8 @@ each writes a UI dump, a screenshot and the capture-line range it produced.
   load it BEFORE `tap.py` so the tap records the edited body. The socket carries the ACCOUNT
   token, not the server's: a rex started with `--token` 401s it. `wstap.py` logs every frame
   and the close (`wslog=`); mitmproxy does not count ping/pong frames as messages.
-* **Pin a copy on Tailscale through a local relay** when the proxy has to see it: droid only maps
-  `10.0.2.2:32588` to loopback, and a `100.x` connection bypasses the proxy entirely; with a
-  `10.0.2.2:<port>` relay the favourites hook cannot reach the target and the sheet shows the
+* **Pin a copy on Tailscale through a local relay** when the proxy has to see it: a `100.x`
+  connection bypasses the proxy entirely; with a `10.0.2.2:<port>` relay the favourites hook cannot reach the target and the sheet shows the
   ACCOUNT's real favourites -- never pick one of those rows.
 
 ## Request census

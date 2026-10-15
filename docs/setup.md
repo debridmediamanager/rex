@@ -19,7 +19,7 @@ The steps below go through it in order.
 
 | | |
 |---|---|
-| A Linux or macOS host | rex is one binary with no runtime dependencies. The same binary writes the catalog (`rex catalog`) and runs several servers (`rex manager`) |
+| A Linux, macOS or Windows host | rex is one binary and its `data/` sidecars, with no other runtime dependencies. The same binary writes the catalog (`rex catalog`) and runs several servers (`rex manager`) |
 | Rust, or Docker | to build it (below) |
 | One or more byte sources | [zurg](https://github.com/debridmediamanager/zurg) (a build with the rex feed: `rex_url` in its `config.yml`), or any HTTP server that serves the files plus something that pushes them to rex's feed |
 | A TMDB API key | free from [themoviedb.org](https://www.themoviedb.org/settings/api); it names what is pushed and powers Fix Match |
@@ -61,9 +61,10 @@ zurg does both with nothing but `rex_url` in its `config.yml` (step 5). Anything
 registers and pushes the same way: [`docs/feed-api.md`](feed-api.md) is the full contract,
 for writing a pusher of your own.
 
-Registering and pushing are answered only from the networks an unclaimed rex answers (step
-4, "Who may connect"), even once rex is claimed, and take no token. A source must name rex by its address, not a host
-name, and one on Tailscale needs `allowedNetworks`.
+Registering and pushing take no token and check no network, claimed or not, so a source may
+name rex by address or host name. Anyone who can reach rex's port can register a source and
+delete one with everything it pushed: keep the port off the open internet
+([`docs/feed-api.md`](feed-api.md), "Who may call it").
 
 Registering is the only way a source exists: `ZURG_URL` is no longer read, and a zurg build
 from before the sources API, which never registers, needs updating. Rows rex already has keep
@@ -74,16 +75,16 @@ and everything it pushed from rex, after a confirmation ([`docs/feed-api.md`](fe
 
 The first start makes the catalog when the `--catalog` file does not exist yet: rex seeds it
 as `rex catalog --seed` would, named by `--friendly-name` (default `rex`), its libraries
-under `--zurg-mount`, and logs `seeded rex.db: ...`. To name more directories, seed it
-yourself before the first start:
+under `--zurg-mount`, and logs `seeded rex.db: ...`. Or seed it yourself before the first
+start, which is how to name more directories (below):
 
 ```bash
 rust/target/release/rex catalog --seed --name den --out rex.db
 ```
 
 Either way this is a SQLite database holding a fixed `machineIdentifier` (random, as a real
-Plex Media Server's is, and kept if you re-seed), a Movies library holding the `movies` directory and a
-TV Shows library holding `shows`. A pushed item lands in the library holding the
+Plex Media Server's is, and kept if you re-seed), a movie library titled Debrid Movies holding the `movies`
+directory and a show library titled Debrid TV holding `shows`. A pushed item lands in the library holding the
 directory its `path` starts with (`movies/<release>/<file>`), whichever source sent it
 and whatever path prefix its `file` carries. An item in no library's directory is
 rejected, so name every directory your sources use:
@@ -140,11 +141,12 @@ file.
   (`title.episode.tsv.gz`, about 55 MB, fetched again weekly, plus an index of it) and, for a
   season TMDB lacks, places the file on the TMDB episode TMDB names for IMDb's episode by
   those numbers. Off by default.
+
 Check it answers:
 
 ```bash
 curl -s http://127.0.0.1:32400/identity      # machineIdentifier, version
-curl -s http://127.0.0.1:32400/rex/sources            # {"size":0,"sources":[]} until a source registers
+curl -s http://127.0.0.1:32400/rex/sources            # {"size":0} until a source registers
 curl -s http://127.0.0.1:32400/rex/feed/rd/items       # what rd pushed, once it has registered
 ```
 
@@ -180,7 +182,7 @@ That is all rex needs from zurg: an address or a host name (`http://rex:32400` f
 container) both work. Restart zurg. Once its library has loaded it registers with rex,
 pushes everything it holds, then each change as it happens, and the whole library again
 every `rex_snapshot_every_hours` (6), registering again at the start of each. Watch it
-arrive in rex's log (`SOURCES rd registered ...`, `FEED rd ...`) and with the
+arrive in rex's log (`SOURCES rd registered ...`, `FEED POST /rex/feed/rd/items -> 200`) and with the
 `/rex/sources` and `/rex/feed/rd/items` calls above.
 
 **An item appears only once zurg has probed it with ffprobe**, because rex lists each
@@ -314,8 +316,8 @@ the same in PowerShell with `rust\target\release\rex.exe` for `rust/target/relea
 ### Running several servers: rex manager
 
 `rex manager` is a control service on top of the server. It runs **no** rex server
-until you start one: you create a server from a configuration (port, zurg, keys,
-catalog, options), start and stop it, and the manager supervises it -- an unexpected exit
+until you start one: you create a server from a configuration (port, keys,
+zurg's mount, catalog, options), start and stop it, and the manager supervises it -- an unexpected exit
 is restarted with a backoff, and one that keeps dying is marked failed. Whatever was
 running when the manager stopped is running again when it starts.
 

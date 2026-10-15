@@ -8,7 +8,7 @@ release, hash, IMDb id, size and stored ffprobe) and a release zurg has neither
 identified nor probed. Its bytes are a plain Range server behind a bearer token, not
 WebDAV, because a source is any HTTP server that honours Range; the source registers it
 (`PUT /rex/sources/zurg`) before it pushes, as zurg does, and pushes with no token: the feed
-answers this machine's networks.
+is open to anyone who can reach rex.
 
 TMDB and Plex answer from `fixtures/feed/provider_cache.json` (real ids) written beside
 the catalog; a lookup they miss goes out with a fake key and is refused, so a release

@@ -41,6 +41,7 @@ status and headers, not something to keep on disk.
 
 ```bash
 ./scripts/make-media.sh            # synthetic clips named as real titles
+python3 -m venv .venv && .venv/bin/pip install websocket-client requests
 cp .env.example .env               # fill in after the first claim
 ./lab.sh up
 ```

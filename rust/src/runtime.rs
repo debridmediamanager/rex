@@ -23183,7 +23183,7 @@ fn handle_connection<S: Read + Write + PollRead>(
         };
         let (request_path, request_query) = split_target(&request.target);
         // The feed and the sources it pushes as are rex's own API, not emulated PMS routes:
-        // the networks an unclaimed server answers admit them, never the Plex gate
+        // open to anyone who can reach rex, outside the Plex gate and any network check
         // (`feed.rs`, `docs/feed-api.md`).
         if request_path.starts_with("/rex/feed/") || request_path == "/rex/sources" || request_path.starts_with("/rex/sources/") {
             let keep = request.version == "HTTP/1.1"

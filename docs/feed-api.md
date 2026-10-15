@@ -3,8 +3,8 @@
 rex does not list, scan or query any library. A **source** (zurg, or anything else
 that serves files over HTTP) pushes the items it holds, and rex turns
 them into library rows on keys that never change. The feed is rex's own API, not an
-emulated Plex route: nothing here was measured on a real PMS except what a row does when
-its file goes away (the trash rules below, `tests/fixtures/missing_file_scan_s43.json`).
+emulated Plex route: what was measured on a real PMS is marked where it applies (what a row
+does when its file goes away, `tests/fixtures/missing_file_scan_s43.json`; a delete; Versions).
 
 ## Sources
 
@@ -107,10 +107,9 @@ the source starts with nothing, and its items are new rows on new keys.
 
 ## Endpoints
 
-Every endpoint is under `/rex/feed/{source}`, for a source registered above, and answers
-only the networks above. A name nothing registered is a `404`
+Every endpoint is under `/rex/feed/{source}`, for a source registered above. A name nothing registered is a `404`
 `{"error": "no such source: PUT /rex/sources/{source} first"}`. Bodies are JSON, at most
-16 MiB a request (`413` above that).
+16 MiB a request (`400` above that).
 
 A request is applied before it is answered, one feed request at a time per server. New
 releases are identified on the way in (TMDB and Plex's matcher, a few lookups each, cached

@@ -10,9 +10,9 @@ written from measurement against a real PMS.
 **rex is the Rust binary in `rust/`**, and nothing else: the server, the catalog
 writer (`rex catalog`) and the manager (`rex manager`). It was ported from a Python
 server, the **oracle**, which was removed on 2026-10-14; the last Python-only `main` is
-the `python-server` branch, and the last tree holding both is `c488a1a`. Code comments
+the `origin/python-server` branch, and the last tree holding both is `758bd5f`. Code comments
 and dated findings that name a Python file (`server.py`, `persist.py`, `library.py`, ...)
-or "the oracle" mean that server; read it there with `git show c488a1a:oracle/<file>`.
+or "the oracle" mean that server; read it there with `git show 758bd5f:oracle/<file>`.
 What it answered, measured against a real PMS, is kept as recorded values: the parity
 suites' expectations and `tests/fixtures/oracle_golden/`.
 
@@ -84,7 +84,7 @@ Where things live in `rust/src/`:
 | `runtime.rs` | The request loop, the route table and most projections; `serve` starts GDM, the state saver and the plex.tv threads |
 | `runtime/wire.rs` | The response envelope: header order, Range/416, CORS, gzip, websocket handshake |
 | `runtime/upstream.rs` | The HTTP/HTTPS client (rustls, system roots) behind zurg, provider redirects, TMDB, Plex's metadata agent and artwork |
-| `runtime/source.rs`, `runtime/feed.rs`, `runtime/scan.rs` | Sources (registered over `PUT /rex/sources/{name}`, kept in the state file, deleted with a confirmation: where a Part's bytes are), the feed API sources push items to, behind the unclaimed gate (`docs/feed-api.md`), and the rows those items become: added, held until probed, filled, re-identified, trashed, keys minted once (`mint_key`) |
+| `runtime/source.rs`, `runtime/feed.rs`, `runtime/scan.rs` | Sources (registered over `PUT /rex/sources/{name}`, kept in the state file, deleted with a confirmation: where a Part's bytes are), the feed API sources push items to, open to anyone who can reach rex (`docs/feed-api.md`), and the rows those items become: added, held until probed, filled, re-identified, trashed, keys minted once (`mint_key`) |
 | `runtime/universal.rs` | The video transcoder (`REX_TRANSCODER`): the conversion decision's plan and Media, `start.m3u8`/`start.mpd`, segments served outside the runtime lock, one FFmpeg per session with the hardware ladder, seeks, throttling and the idle reaper, and the `TranscodeSession` rows |
 | `runtime/plexmeta.rs`, `identify.rs` | Plex's metadata agent (`PLEX_TOKEN`), and which title a release is: an id in its name, a known IMDb id for its hash (zurg's), then Plex's matcher and TMDB, with their agreement as the confidence; it must name as many of `tests/fixtures/identify/` right (`rust/tests/identify_corpus.rs`) |
 | `runtime/plextv.rs`, `runtime/tmdb.rs` | claim/heartbeat/account state, and TMDB's reads for Fix Match and identification, through a metadata provider first when one is set (`REX_PLEXTV_URL` points plex.tv at a stub) |
@@ -102,7 +102,7 @@ gives the client a grid whose filter bar can only talk about the wrong type.
 ```bash
 cargo build --release --manifest-path rust/Cargo.toml
 rust/target/release/rex --catalog rex.db --friendly-name NAME --zurg-mount /mnt/zurg   # seeds rex.db on its first start
-cp examples/run.sh.example run.sh   # fill in TMDB_KEY, PLEX_TOKEN; ./run.sh keeps the same command line
+cp examples/run.sh.example run.sh   # keys go in rex.env beside it (TMDB_KEY, PLEX_TOKEN; mode 600)
 ```
 
 Sources push the library; rex reads no media itself, lists and queries nothing, and
@@ -124,12 +124,11 @@ from rex, never its files. With no source a part read is the 502 an unreachable 
 and each library's `Location` is `<mount>/<directory>` -- set in the catalog's sections
 (`rex catalog --seed`, or the seed on start), or through Add Library's `location`.
 
-Point zurg at the server in zurg's `config.yml`: `rex_url` (this server's URL, by address:
-the gate refuses a host name in `Host`) is all the feed needs; zurg registers itself as the
-source `zurg` (or its `rex_source`). Set `mount_path` (`--zurg-mount`), and, for
-zurg's matcher, `plex_server_url` (this server) with `plex_token` (this server's
-`--token`; once claimed, a token plex.tv lists for it, such as the owner's account token)
-and `plex_settings_policy: off`. zurg then pushes a snapshot of its library once it has
+Point zurg at the server in zurg's `config.yml`: `rex_url` (this server's URL, an address
+or a host name) is all the feed needs; zurg registers itself as the source `zurg` (or its
+`rex_source`). Set `mount_path` (`--zurg-mount`). Leave zurg's `plex_server_url` on a real
+Plex, if there is one: pointed at rex, zurg's matcher learns rex's own matches and pushes
+them back as exact ids, so a wrong match can never be corrected (`docs/setup.md`). zurg then pushes a snapshot of its library once it has
 loaded and every few hours, and every change as it happens: `POST`/`DELETE
 /rex/feed/zurg/items`, `PUT /rex/feed/zurg/snapshot` (`runtime/feed.rs`). An item
 with no `media_info` is held, not shown, until zurg probes it; a late IMDb id re-identifies
@@ -173,8 +172,8 @@ claim of an identity that already had such a row got the account token back, not
 token. rex now refuses to store a token equal to `PLEX_TOKEN`, and a claimed server answers
 another claim with 409.
 
-`catalog.json` and `run.sh` are gitignored: both carry account-scoped
-credentials. `examples/catalog.example.json` keeps the shape.
+`rex.db`, `rex.env` and `run.sh` are gitignored: the catalog and `rex.env` carry
+account-scoped credentials. `examples/catalog.example.json` keeps the shape.
 
 Under launchd, so it outlives the shell that starts it:
 
@@ -186,9 +185,9 @@ launchctl remove com.rex.dev
 A plain `nohup ... &` from an agent tool call **does not survive** the call.
 
 Several servers, started and stopped on demand: `rex manager serve`, then
-`rex manager create NAME --port P [--catalog PATH] [--zurg-mount M]` (keys from
-`TMDB_KEY`/`PLEX_TOKEN`/`REX_TOKEN` in the environment; sources register with each server) and `start|stop|list|logs NAME`; without a catalog, `build NAME --start` seeds
-an empty library at zurg's mount first. Its data
+`rex manager create NAME --port P [--catalog PATH] [--zurg-mount M] [--friendly-name N]` (keys from
+`TMDB_KEY`/`PLEX_TOKEN`/`REX_TOKEN` in the environment; sources register with each server) and `start|stop|list|logs NAME`; a server with no catalog seeds one on its first start
+(`build NAME` seeds it ahead of time). Its data
 lives in `managed/` at the repository root (gitignored, mode 700); `tests/test_manager.py` drives it end to end and
 starts its own manager on a temporary root.
 
@@ -457,7 +456,7 @@ python3 tests/test_followups_f{a,b,c,d}.py  # parity follow-ups, each against it
 python3 tests/test_merge_unpaired.py        # a show merge moves the episodes the target has no partner for (1.43.4)
 ```
 
-The native-only and parity suites, all black-box unless noted:
+The native-only suites, all black-box unless noted:
 
 ```bash
 python3 tests/test_native_runtime_smoke.py  # native routes and CLI refusals
@@ -470,7 +469,7 @@ python3 tests/test_regional_prefs.py        # the regional prefs documents, cell
 python3 tests/test_part_bytes.py            # part reads against a local zurg stub
 python3 tests/test_native_transcode.py      # the transcoder against generated clips behind a local zurg; needs ffmpeg
                                             # (REX_TRANSCODER, else PATH's); with an Intel GPU REX_TRANSCODE_HW=vaapi and jellyfin-ffmpeg
-python3 tests/test_feed.py                  # the feed API against a stub source: the gate, upsert, late ids, held
+python3 tests/test_feed.py                  # the feed API against a stub source: no gate, upsert, late ids, held
                                             # items, trash and return, snapshot reconcile and guards, migration
 python3 tests/test_feed_versions.py         # two releases of one title: one row, a Media each (a real library's 127 Hours)
 python3 tests/test_feed_season_art.py       # a season takes its identification once an episode has it (a real library's Black Mirror S6)
@@ -483,6 +482,10 @@ python3 tests/test_feed_delete.py           # a delete removes the files at the 
 python3 tests/test_sources.py               # registering sources, and sources that are not zurg: a server ignoring Range,
                                             # a redirect to a CDN, a restart, rows before registration, the two-step delete
 python3 tests/test_server_command.py        # the launcher's default and REX_SERVER override
+python3 tests/test_unclaimed_gate.py        # what an unclaimed server answers: local networks, Host names, allowedNetworks
+python3 tests/parallel_suites.py --workers 4 test_cli test_feed ...
+                                            # several suites at once, as CI runs them: each gets its own
+                                            # REX_TEST_PORTS range (tests/test_ports.py), output kept per suite
 cargo test --manifest-path rust/Cargo.toml  # the Rust unit tests: the decision corpus (1,872 measured decisions),
                                             # GDM against four real servers, the identify corpora
 ```
@@ -500,7 +503,7 @@ Where to run them: service and end-to-end tests run on a test host, never on a p
 one, with the native binary built in Docker where there is no Rust toolchain --
 `docker run --rm --platform linux/amd64 -v "$PWD":/src -v <target dir outside the repo>:/target -e CARGO_TARGET_DIR=/target -w /src/rust rust:1-bullseye cargo build --release`
 -- and copied to `rust/target/release/rex` in the test host's copy. Keep every test port
-**below 32768**: Linux's ephemeral range starts there by default, so a port inside it is taken now and
+**below 32768** (`tests/test_ports.py` reads a `REX_TEST_PORTS=low-high` range): Linux's ephemeral range starts there by default, so a port inside it is taken now and
 then by an outgoing connection and the server fails to bind (the cause of the old
 "flaky" `--web-root` sub-server crash). The UI suite binds three sub-servers of its own
 on fixed ports (`gated_port`, `web_port_c16y`, `port_c29l`, 32597-32599); two suites at

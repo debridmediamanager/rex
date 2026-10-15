@@ -27,10 +27,12 @@ You need a Linux, macOS or Windows machine, at least one source such as zurg, a 
 Download the build for your machine from [Releases](https://github.com/debridmediamanager/rex/releases) and unpack it. There are builds for Linux (amd64 and arm64, glibc 2.35 or newer, so Ubuntu 22.04 and up), for macOS (Intel and Apple Silicon) and for Windows (64 bit).
 
 ```bash
-tar xzf rex-v0.2.0-linux-amd64.tar.gz && cd rex-v0.2.0-linux-amd64
+tar xzf rex-vX.Y.Z-linux-amd64.tar.gz && cd rex-vX.Y.Z-linux-amd64
 ```
 
-Or build it yourself. No Rust on the machine? The full guide has a Docker build.
+The steps below need a release newer than v0.2.0: v0.2.0 predates sources registering
+themselves and the catalog seeding itself on first start. Until a newer release is out,
+build it yourself. No Rust on the machine? No Rust on the machine? The full guide has a Docker build.
 
 ```bash
 git clone https://github.com/debridmediamanager/rex && cd rex
