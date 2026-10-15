@@ -599,6 +599,17 @@ fn snapshot(claim: &SharedClaim) -> Claim {
         .clone()
 }
 
+/// The token rex asks plex.tv with: the claim's own server token, else `PLEX_TOKEN`.
+/// Measured 2026-10-15 (findings, "A claimed server needs no account token"): the server
+/// token answers the announce, `/api/v2/resources` and Plex's metadata agent as the account
+/// token does, so `PLEX_TOKEN` is only an unclaimed server's way in.
+pub(crate) fn server_token(claim: &SharedClaim) -> Option<String> {
+    snapshot(claim)
+        .token
+        .filter(|token| !token.is_empty())
+        .or_else(|| std::env::var("PLEX_TOKEN").ok().filter(|token| !token.is_empty()))
+}
+
 /// `Claim.exchange`: redeem a `claim-…` token for this server's own token.
 pub(crate) fn exchange(claim: &SharedClaim, claim_token: &str) -> Result<(), String> {
     let current = snapshot(claim);
@@ -1113,27 +1124,20 @@ fn is_visible(token: &str, name: &str, machine: &str) -> Result<bool, String> {
     }))
 }
 
-/// `heartbeat.Heartbeat`'s target: the account token it was started with, which a
-/// claim's own token replaces (a claimed PMS announces with its own).
+/// `heartbeat.Heartbeat`'s target. Announced with `server_token`, so a claimed PMS announces
+/// with its own token and a claim made after the start announces without a restart.
 #[derive(Debug, Clone)]
 pub(crate) struct Beat {
-    pub token: String,
     pub machine: String,
     pub url: String,
     pub name: String,
 }
 
 impl Beat {
-    fn token(&self, claim: &SharedClaim) -> String {
-        snapshot(claim)
-            .token
-            .filter(|token| !token.is_empty())
-            .unwrap_or_else(|| self.token.clone())
-    }
-
     /// `Heartbeat.beat`: one announce.
     fn beat(&self, claim: &SharedClaim) -> Result<(), String> {
-        announce(&self.token(claim), &self.machine, &self.url, &self.name)
+        let token = server_token(claim).ok_or("no claim and no PLEX_TOKEN to announce with")?;
+        announce(&token, &self.machine, &self.url, &self.name)
     }
 }
 
@@ -1147,13 +1151,24 @@ pub(crate) fn start_heartbeat(beat: Beat, claim: SharedClaim, interval: u64) {
         .name("rex-heartbeat".to_string())
         .spawn(move || {
             let mut failures = 0_u64;
-            let (token, name) = (beat.token.clone(), beat.name.clone());
+            let mut waiting = false;
             loop {
-                let result = beat.beat(&claim).and_then(|_| {
+                // Unclaimed with no PLEX_TOKEN there is nothing to announce with yet; said once,
+                // and the claim itself announces at once (`finish_claim`). Announcing nothing
+                // before the claim also keeps the account-token device row that made the
+                // 2026-09-11 claim answer the account token from ever being written.
+                let Some(token) = server_token(&claim) else {
+                    if !std::mem::replace(&mut waiting, true) {
+                        info!("--announce-url: waiting for a claim (POST /myplex/claim) or PLEX_TOKEN before announcing");
+                    }
+                    thread::sleep(Duration::from_secs(interval));
+                    continue;
+                };
+                let result = announce(&token, &beat.machine, &beat.url, &beat.name).and_then(|_| {
                     failures = 0;
                     // Verifying costs a second request but turns a silent
                     // disappearance into a log line.
-                    if !is_visible(&token, &name, &beat.machine)? {
+                    if !is_visible(&token, &beat.name, &beat.machine)? {
                         warning!(
                             "announced but NOT visible in /api/v2/resources -- clients cannot see rex right now"
                         );
@@ -1973,11 +1988,18 @@ pub(super) fn finish_claim(runtime: &SharedRuntime, token: &str, _target: &str) 
     }
     // What the probe PMS did next: POST /servers.xml, the device PUT, then the pubsub
     // stream that makes it present (`do_claim`).
-    let local_address = runtime
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .private_address
-        .clone();
+    let local_address = {
+        let mut guard = runtime
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        // A server started with no PLEX_TOKEN matches with Plex's agent from its claim on.
+        if guard.plex.is_none() {
+            let cache = claim_path(&guard.catalog_path).with_file_name("plex_cache.json");
+            let agent = super::plexmeta::PlexMeta::new(Arc::clone(&plextv.claim), cache, guard.machine.clone());
+            guard.plex = Some(Arc::new(agent));
+        }
+        guard.private_address.clone()
+    };
     let beat = plextv
         .beat
         .lock()

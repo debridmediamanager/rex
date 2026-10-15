@@ -213,10 +213,6 @@ fn validate(config: Value, partial: bool) -> Answer<Map<String, Value>> {
     if out.get("extra_args").is_some_and(|value| !value.as_array().is_some_and(|rows| rows.iter().all(Value::is_string))) {
         return refuse("extra_args must be a list of strings".to_string());
     }
-    if truthy(out.get("announce_url")) && !(truthy(out.get("plex_token")) || partial) {
-        // The server refuses to start with --announce-url and no PLEX_TOKEN.
-        return refuse("announce_url needs plex_token".to_string());
-    }
     if !partial {
         for (field, default) in [
             ("host", json!("0.0.0.0")),
@@ -1681,8 +1677,8 @@ mod tests {
         assert_eq!(refused(json!({"name": "den", "port": 32401, "gdm": "maybe"}), false).unwrap().1, "gdm must be one of auto, on, off");
         assert_eq!(refused(json!({"name": "den", "port": 32401, "verbose": 1}), false).unwrap().1, "verbose must be true or false");
         assert_eq!(refused(json!({"name": "den", "port": 32401, "extra_args": [1]}), false).unwrap().1, "extra_args must be a list of strings");
-        assert_eq!(refused(json!({"name": "den", "port": 32401, "announce_url": "https://x"}), false).unwrap().1, "announce_url needs plex_token");
-        assert!(validate(json!({"announce_url": "https://x"}), true).is_ok(), "a PATCH is checked against the whole configuration later");
+        // A claimed server announces with its own token; an unclaimed one waits for its claim.
+        assert!(validate(json!({"name": "den", "port": 32401, "announce_url": "https://x"}), false).is_ok());
         assert_eq!(refused(json!([]), true).unwrap().1, "the configuration must be a JSON object");
     }
 

@@ -285,6 +285,13 @@ class Stub(ThreadingHTTPServer):
         self.user_id = ACCOUNT_ID
         self.broken_features = False
 
+    def handle_error(self, request, client_address):
+        # A stopped rex hangs up on its pubsub stream. socketserver printed the
+        # ConnectionResetError from a daemon thread, and once that landed while the
+        # interpreter was finalizing, Python aborted (exit -6) after every check had passed.
+        if not isinstance(sys.exc_info()[1], ConnectionError):
+            super().handle_error(request, client_address)
+
     def taken(self, host=None, path=None, method=None):
         with self.lock:
             return [r for r in self.records
@@ -456,19 +463,22 @@ LIVE = []
 
 
 class Instance:
-    def __init__(self, directory, port, stub_port, extra=(), announce=ANNOUNCE_URL):
+    def __init__(self, directory, port, stub_port, extra=(), announce=ANNOUNCE_URL, plex_token=ACCOUNT_TOKEN):
+        """`announce=None` starts it without --announce-url, `plex_token=None` without PLEX_TOKEN."""
         LIVE.append(self)
         self.port = port
         catalog = os.path.join(directory, "catalog.json")
         command = server_command("--port", port, "--catalog", catalog, "--gdm", "off",
-                                 "--announce-url", announce, "--heartbeat-interval", 2,
+                                 *(("--announce-url", announce) if announce else ()), "--heartbeat-interval", 2,
                                  "--account-state-interval", 3600, *extra, root=ROOT)
         env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1",
-                   PLEX_TOKEN=ACCOUNT_TOKEN,
+                   PLEX_TOKEN=plex_token or "",
                    REX_PLEXTV_URL="http://127.0.0.1:%d" % stub_port,
                    REX_SCROBBLING_DECRYPT_SECRET_B64=base64.b64encode(SECRET).decode())
-        for name in ("REX_STATE", "REX_TOKEN", "TMDB_KEY"):
+        for name in ("REX_STATE", "REX_TOKEN", "TMDB_KEY", "REX_METADATA_URL", "REX_METADATA_KEY"):
             env.pop(name, None)
+        if not plex_token:
+            env.pop("PLEX_TOKEN")
         self.log = tempfile.TemporaryFile()
         self.proc = subprocess.Popen(command, cwd=ROOT, env=env,
                                      stdout=self.log, stderr=subprocess.STDOUT)
@@ -654,6 +664,177 @@ def placeholder_identity():
     finally:
         stub.shutdown()
         shutil.rmtree(directory, ignore_errors=True)
+
+
+# Plex's metadata agent, as `REX_PLEXTV_URL` sends it to the stub, and a probed movie for a
+# source to push: its media_info is zurg's own probe of a real release.
+AGENT = "metadata.provider.plex.tv"
+with open(os.path.join(HERE, "fixtures", "zurg", "entries.json")) as _handle:
+    MEDIA_INFO = json.load(_handle)["entries"]["movie"]["entry"]["media_info"]
+
+
+def push(instance, release):
+    """zurg's registration, then one probed movie no id names, through the open feed: with
+    Plex's agent on, naming it asks the agent's matcher. Answers the push's status."""
+    path = "movies/%s/%s.mkv" % (release, release)
+    status = None
+    for method, target, document in (
+            ("PUT", "/rex/sources/zurg", {"url": "http://127.0.0.1:9/dav", "mount": "/zurg"}),
+            ("POST", "/rex/feed/zurg/items", {"items": [{
+                "id": path, "path": path, "file": "/zurg/" + path, "name": release, "library": "movie",
+                "release": "movies/" + release, "size": 12345,
+                "hash": hashlib.sha1(release.encode()).hexdigest(), "media_info": MEDIA_INFO}]})):
+        conn = http.client.HTTPConnection("127.0.0.1", instance.port, timeout=60)
+        try:
+            conn.request(method, target, body=json.dumps(document),
+                         headers={"Content-Type": "application/json", "Accept": "application/json"})
+            response = conn.getresponse()
+            answer = response.read()
+            status = response.status
+            try:
+                rejected = json.loads(answer).get("rejected")
+            except (ValueError, AttributeError):
+                rejected = None
+            if rejected:  # a 200 that placed nothing
+                status = "rejected: %s" % rejected
+        finally:
+            conn.close()
+    return status
+
+
+def asked_with(records):
+    """(token, client identifier) of each request, as plex.tv received it."""
+    return [(dict(r["headers"]).get("x-plex-token") or dict(r["query"]).get("X-Plex-Token"),
+             dict(r["headers"]).get("x-plex-client-identifier")) for r in records]
+
+
+def server_token_setup():
+    """Setup needs no account token (2026-10-15). A claimed server asks plex.tv with its own
+    token -- the announce, the visibility check and Plex's metadata agent, each measured to
+    answer it (findings, "A claimed server needs no account token") -- and PLEX_TOKEN is only
+    an unclaimed server's fallback. Each leg starts a server of its own on a fresh copy."""
+    stub = Stub(free_port())
+    threading.Thread(target=stub.serve_forever, daemon=True).start()
+    stub_port = stub.server_address[1]
+    directories = []
+
+    def fresh(claimed):
+        directory = tempfile.mkdtemp(prefix="rex-plextv-servertoken-")
+        directories.append(directory)
+        shutil.copy(CATALOG, os.path.join(directory, "catalog.json"))
+        if claimed:
+            # What a claim leaves beside the catalog (`claim_state.json`), the stub's token in it.
+            with open(os.path.join(directory, "claim_state.json"), "w") as handle:
+                json.dump({"machine": MACHINE, "token": SERVER_TOKEN, "owner": OWNER, "email": EMAIL,
+                           "feature_uuids": [], "account_id": ACCOUNT_ID, "view_state_cursor": None}, handle)
+        return directory
+
+    def start(directory, **options):
+        """The instance, or the output of one that would not start."""
+        try:
+            return Instance(directory, free_port(), stub_port, **options)
+        except SystemExit as error:
+            return str(error)
+
+    def started(label, instance):
+        check(label, not isinstance(instance, str), instance[-400:] if isinstance(instance, str) else "")
+        return not isinstance(instance, str)
+
+    def claim(instance):
+        return instance.request("POST", "/myplex/claim?token=%s" % CLAIM_TOKEN)[0]
+
+    def beats():
+        return stub.taken("servers.plex.tv", "/devices/%s" % MACHINE, "PUT")
+
+    def visibility():
+        return stub.taken("plex.tv", "/api/v2/resources", "GET")
+
+    def agent_after(mark, release, instance):
+        push(instance, release)
+        return wait_for(lambda: stub.taken(AGENT)[mark:], 15) or []
+
+    try:
+        # -- (a) claimed, no PLEX_TOKEN, --announce-url -------------------------------
+        stub.clear()
+        claimed = start(fresh(True), plex_token=None)
+        if started("(a) a claimed server with --announce-url and no PLEX_TOKEN starts", claimed):
+            announced = wait_for(lambda: len(beats()) >= 2 and visibility() and beats(), 12) or []
+            check("(a) it announces with the claim's server token, on the interval",
+                  len(announced) >= 2 and {token for token, _ in asked_with(announced)} == {SERVER_TOKEN},
+                  asked_with(beats()))
+            check("(a) and checks /api/v2/resources with that token, as this server",
+                  visibility() and set(asked_with(visibility())) == {(SERVER_TOKEN, MACHINE)},
+                  asked_with(visibility()))
+            claimed.stop()
+
+        # -- (b) unclaimed, no PLEX_TOKEN, --announce-url; then a claim at runtime ------
+        stub.clear()
+        waiting = start(fresh(False), plex_token=None)
+        if started("(b) an unclaimed server with --announce-url and no PLEX_TOKEN starts", waiting):
+            time.sleep(5)  # two heartbeat intervals and more
+            check("(b) it announces nothing before its claim",
+                  not beats() and not visibility(), [(r["host"], r["path"]) for r in stub.records])
+            check("(b) it says once that it waits for a claim",
+                  waiting.output().count("waiting for a claim") == 1, waiting.output()[-1500:])
+            status = claim(waiting)
+            publishes = wait_for(lambda: stub.taken("plex.tv", "/servers.xml", "POST"), 10)
+            announced = wait_for(lambda: len(beats()) >= 2 and len(visibility()) >= 1 and beats(), 12) or []
+            # A heartbeat tick may land before the claim's own announce; the claim's follows its
+            # POST /servers.xml within the second, as the claim leg above measures it.
+            check("(b) a claim made after the start announces at once, with the server token",
+                  status == 200 and publishes and announced
+                  and any(0 <= r["at"] - publishes[0]["at"] < 1.0 for r in announced)
+                  and {token for token, _ in asked_with(announced)} == {SERVER_TOKEN},
+                  (status, asked_with(beats())))
+            check("(b) and the heartbeat goes on with it, checking visibility with it",
+                  len(announced) >= 2 and set(asked_with(visibility())) == {(SERVER_TOKEN, MACHINE)},
+                  asked_with(visibility()))
+            waiting.stop()
+
+        # -- (c) no PLEX_TOKEN: Plex's agent from a claim, at runtime and at start --------
+        stub.clear()
+        directory = fresh(False)
+        plain = start(directory, plex_token=None, announce=None)
+        if started("(c) an unclaimed server with no PLEX_TOKEN starts", plain):
+            status = push(plain, "Qzxv.Wmplk.2024.1080p.WEB-DL")
+            time.sleep(2)
+            check("(c) unclaimed with no PLEX_TOKEN, a push asks Plex's agent nothing",
+                  status == 200 and not stub.taken(AGENT), (status, asked_with(stub.taken(AGENT))))
+            status = claim(plain)
+            asked = agent_after(len(stub.taken(AGENT)), "Vrnkt.Plozz.2023.1080p.WEB-DL", plain)
+            check("(c) a claim made at runtime turns Plex's agent on, asked with the server token",
+                  status == 200 and asked and set(asked_with(asked)) == {(SERVER_TOKEN, MACHINE)},
+                  (status, asked_with(asked)))
+            plain.stop()
+            stub.clear()
+            again = start(directory, plex_token=None, announce=None)
+            if started("(c) the claimed server restarts with no PLEX_TOKEN", again):
+                asked = agent_after(0, "Jxqol.Brimt.2022.1080p.WEB-DL", again)
+                check("(c) a claimed start with no PLEX_TOKEN asks Plex's agent with the server token",
+                      asked and set(asked_with(asked)) == {(SERVER_TOKEN, MACHINE)}, asked_with(asked))
+                again.stop()
+
+        # -- (d) PLEX_TOKEN only, unclaimed: as before -----------------------------------
+        stub.clear()
+        legacy = start(fresh(False), announce=None)
+        if started("(d) an unclaimed server with PLEX_TOKEN starts", legacy):
+            asked = agent_after(0, "Plomb.Treska.2021.1080p.WEB-DL", legacy)
+            check("(d) unclaimed, Plex's agent is asked with PLEX_TOKEN, as before",
+                  asked and set(asked_with(asked)) == {(ACCOUNT_TOKEN, MACHINE)}, asked_with(asked))
+            status = claim(legacy)
+            asked = agent_after(len(stub.taken(AGENT)), "Gruvn.Hollet.2020.1080p.WEB-DL", legacy)
+            check("(d) once claimed, the server token replaces PLEX_TOKEN there too",
+                  status == 200 and asked and set(asked_with(asked)) == {(SERVER_TOKEN, MACHINE)},
+                  (status, asked_with(asked)))
+            legacy.stop()
+    finally:
+        for instance in LIVE:
+            if instance.proc.poll() is None:
+                instance.proc.kill()
+                instance.proc.wait()
+        stub.shutdown()
+        for directory in directories:
+            shutil.rmtree(directory, ignore_errors=True)
 
 
 def main():
@@ -1163,6 +1344,7 @@ def main():
         shutil.rmtree(directory, ignore_errors=True)
 
     placeholder_identity()
+    server_token_setup()
     passed = sum(results)
     print("%d/%d checks passed" % (passed, len(results)))
     return 0 if passed == len(results) else 1

@@ -47,7 +47,7 @@ options:
   --convert JSON        write an existing JSON catalog into the --out database
                         and stop
   --relink              only relink the guids of the existing --out catalog to
-                        Plex's (needs PLEX_TOKEN)
+                        Plex's (needs a claim beside it, or PLEX_TOKEN)
 ";
 
 fn usage_error(message: &str) -> String {
@@ -224,17 +224,13 @@ fn save_catalog(path: &str, document: &Value) -> Result<(), String> {
     fs::write(path, text).map_err(|e| format!("cannot write {path}: {e}"))
 }
 
-/// Give the rows Plex's own guids (metadata.PlexProvider); a no-op without PLEX_TOKEN.
+/// Give the rows Plex's own guids (metadata.PlexProvider); a no-op with neither a claim
+/// beside the catalog nor PLEX_TOKEN.
 fn relink_guids(items: &mut [Value], out: &str, machine: String) -> usize {
-    let Some(token) = std::env::var("PLEX_TOKEN").ok().filter(|token| !token.is_empty()) else {
-        println!("no PLEX_TOKEN: guids stay minted, and the Android app's detail pages stay empty");
-        return 0;
-    };
-    let directory = std::path::absolute(out)
-        .ok()
-        .and_then(|path| path.parent().map(Path::to_path_buf))
-        .unwrap_or_else(|| PathBuf::from("."));
-    crate::runtime::plexmeta::relink(items, token, directory.join("plex_cache.json"), machine)
+    crate::runtime::plexmeta::relink(items, Path::new(out), machine).unwrap_or_else(|| {
+        println!("no claim and no PLEX_TOKEN: guids stay minted, and the Android app's detail pages stay empty");
+        0
+    })
 }
 
 pub(crate) fn sha1_hex(bytes: &[u8]) -> String {

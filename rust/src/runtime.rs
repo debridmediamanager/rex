@@ -503,8 +503,8 @@ pub struct Runtime {
     feed_held_changed: HashSet<String>,
     /// `metadata.Tmdb`, only with `TMDB_KEY`: without it Fix Match has no candidates.
     tmdb: Option<Arc<tmdb::Tmdb>>,
-    /// Plex's metadata agent, only with `PLEX_TOKEN`: what a scan matches a release with
-    /// and where a matched row's real `plex://` guid comes from.
+    /// Plex's metadata agent, once claimed or with `PLEX_TOKEN`: what a scan matches a release
+    /// with and where a matched row's real `plex://` guid comes from.
     plex: Option<Arc<plexmeta::PlexMeta>>,
     /// Fix Match guid -> the TMDB `(kind, id)` that minted it, so `PUT .../match`
     /// re-identifies the row from what the person picked.
@@ -693,17 +693,6 @@ impl Runtime {
                 None => tmdb,
             })
         });
-        // Built once the catalog names the machine: the agent is asked as this server.
-        let plex = std::env::var("PLEX_TOKEN")
-            .ok()
-            .filter(|token| !token.is_empty())
-            .map(|token| {
-                let directory = std::path::absolute(&options.catalog)
-                    .ok()
-                    .and_then(|path| path.parent().map(Path::to_path_buf))
-                    .unwrap_or_else(|| PathBuf::from("."));
-                (token, directory.join("plex_cache.json"))
-            });
         // A catalog `build_catalog.py` wrote into a database carries the digest of the
         // JSON it came from, so a state saved over that JSON is still this catalog's.
         let from_database = store::is_sqlite(&options.catalog);
@@ -773,7 +762,6 @@ impl Runtime {
             .and_then(Value::as_str)
             .unwrap_or("0000000000000000000000000000000000000001")
             .to_string();
-        let plex = plex.map(|(token, cache)| Arc::new(plexmeta::PlexMeta::new(token, cache, machine.clone())));
         let friendly = catalog
             .document
             .get("friendlyName")
@@ -788,6 +776,13 @@ impl Runtime {
             &friendly,
             VERSION,
         );
+        let plextv = Arc::new(plextv::PlexTv::new(claim, options.account_state_interval));
+        // Built once the catalog names the machine: the agent is asked as this server, with
+        // the claim's token or PLEX_TOKEN (a claim made later builds it then, `finish_claim`).
+        let plex = plextv::server_token(&plextv.claim).map(|_| {
+            let cache = plextv::claim_path(&options.catalog).with_file_name("plex_cache.json");
+            Arc::new(plexmeta::PlexMeta::new(Arc::clone(&plextv.claim), cache, machine.clone()))
+        });
         let mut runtime = Self {
             catalog,
             machine,
@@ -820,7 +815,7 @@ impl Runtime {
             transcoder: universal::Transcoder::from_env(options.port),
             pending_image: None,
             pending_claim: None,
-            plextv: Arc::new(plextv::PlexTv::new(claim, options.account_state_interval)),
+            plextv,
             track_prefs: None,
             requests: Vec::new(),
             unknown: Vec::new(),
@@ -22762,13 +22757,6 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
     let heartbeat_interval = options.heartbeat_interval;
     let gated = options.token.is_some();
     let tls_cert = options.tls_cert.clone();
-    // `main()`: registration WRITES to a plex.tv account, with the account token.
-    let plex_token = std::env::var("PLEX_TOKEN")
-        .ok()
-        .filter(|token| !token.is_empty());
-    if announce.is_some() && plex_token.is_none() {
-        return Err("--announce-url needs PLEX_TOKEN in the environment".to_string());
-    }
     if std::env::var("TMDB_KEY").map_or(true, |key| key.is_empty()) {
         info!("no TMDB_KEY: Fix Match will report no candidates");
     }
@@ -22867,7 +22855,9 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
         );
     }
     start_gdm(Arc::clone(&runtime), &gdm_mode, port);
-    if let (Some(url), Some(token)) = (announce, plex_token) {
+    // Announced with the claim's token, else PLEX_TOKEN; with neither the heartbeat waits for
+    // a claim (`plextv::start_heartbeat`).
+    if let Some(url) = announce {
         // Cycle 44: announced on the server's own machineIdentifier.
         let announced = device_id.unwrap_or_else(|| machine.clone());
         if placeholder_machine(&announced) {
@@ -22876,7 +22866,6 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
                 .to_string());
         }
         let beat = plextv::Beat {
-            token,
             machine: announced,
             url,
             name: friendly,
