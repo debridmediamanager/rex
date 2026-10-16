@@ -1334,6 +1334,7 @@ pub fn normalize_media(media: &mut Value) {
         {
             p.shift_remove("hasThumbnail");
         }
+        let packed = crate::catalog::unpack_part(p);
         if let Some(streams) = p.get_mut("Stream").and_then(Value::as_array_mut) {
             for stream in streams {
                 let Some(s) = stream.as_object_mut() else {
@@ -1403,6 +1404,9 @@ pub fn normalize_media(media: &mut Value) {
                 }
             }
         }
+        if packed {
+            crate::catalog::repack_part(p);
+        }
     }
     media.insert("Part".to_string(), Value::Array(parts));
 }
@@ -1470,9 +1474,17 @@ pub fn select_tracks(part: &mut Value, prefs: &TrackPrefs) -> bool {
     if part.get("_trackChosen").and_then(Value::as_bool) == Some(true) {
         return false;
     }
-    let Some(streams) = part.get_mut("Stream").and_then(Value::as_array_mut) else {
-        return false;
-    };
+    let packed = part.as_object_mut().is_some_and(crate::catalog::unpack_part);
+    let changed = part.get_mut("Stream").and_then(Value::as_array_mut).is_some_and(|streams| select_in(streams, prefs));
+    if packed {
+        if let Some(object) = part.as_object_mut() {
+            crate::catalog::repack_part(object);
+        }
+    }
+    changed
+}
+
+fn select_in(streams: &mut [Value], prefs: &TrackPrefs) -> bool {
     let (audio, subtitle) = chosen_tracks(streams, prefs);
     let mut changed = false;
     for stream in streams.iter_mut() {

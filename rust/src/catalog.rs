@@ -30,6 +30,8 @@ pub struct Catalog {
     /// every `get_mut` made the first listing after each progress beat rescan the library,
     /// which on the production server (2026-10-16) paged all of it back in from swap.
     index: RowIndex,
+    /// Rows written since `pack_pending` last packed their streams (`PACKED_STREAMS`), or all.
+    unpacked: Changes,
 }
 
 /// `Catalog::index`: positions by parent and by section, and the positions written since.
@@ -181,6 +183,7 @@ impl Catalog {
             changes: Changes { all: true, keys: HashSet::new() },
             touched: Changes { all: true, keys: HashSet::new() },
             index: RowIndex::default(),
+            unpacked: Changes { all: true, keys: HashSet::new() },
         };
         catalog.rebuild_index();
         Ok(catalog)
@@ -197,7 +200,9 @@ impl Catalog {
     pub fn to_value(&self) -> Value {
         let mut document = self.document.clone();
         document.insert("sections".to_string(), Value::Array(self.sections.clone()));
-        document.insert("items".to_string(), Value::Array(self.items.clone()));
+        let mut items = Value::Array(self.items.clone());
+        unpack_streams(&mut items);
+        document.insert("items".to_string(), items);
         Value::Object(document)
     }
 
@@ -224,6 +229,9 @@ impl Catalog {
         if !self.touched.all {
             self.touched.keys.insert(rating_key.to_string());
         }
+        if !self.unpacked.all {
+            self.unpacked.keys.insert(rating_key.to_string());
+        }
         self.index.mark(index);
         self.items.get_mut(index)
     }
@@ -236,8 +244,28 @@ impl Catalog {
     pub fn items_mut(&mut self) -> &mut Vec<Value> {
         self.changes.all = true;
         self.touched.all = true;
+        self.unpacked.all = true;
         self.index.drop_all();
         &mut self.items
+    }
+
+    /// Pack the streams of the rows written since the last call. Packing changes no row's
+    /// content as anything outside this file sees it, so it marks nothing to save.
+    pub fn pack_pending(&mut self) -> usize {
+        let pending = std::mem::take(&mut self.unpacked);
+        let mut packed = 0;
+        if pending.all {
+            for row in self.items.iter_mut() {
+                packed += usize::from(pack_streams(row));
+            }
+        } else {
+            for key in &pending.keys {
+                if let Some(row) = self.by_id.get(key).and_then(|index| self.items.get_mut(*index)) {
+                    packed += usize::from(pack_streams(row));
+                }
+            }
+        }
+        packed
     }
 
     pub fn take_changes(&mut self) -> Changes {
@@ -277,6 +305,9 @@ impl Catalog {
                 if !self.changes.all {
                     self.changes.keys.insert(key.clone());
                 }
+                if !self.unpacked.all {
+                    self.unpacked.keys.insert(key.clone());
+                }
                 if !self.touched.all {
                     self.touched.keys.insert(key);
                 }
@@ -284,6 +315,7 @@ impl Catalog {
             None => {
                 self.changes.all = true;
                 self.touched.all = true;
+                self.unpacked.all = true;
             }
         }
     }
@@ -352,19 +384,167 @@ impl Catalog {
                     .into_iter()
                     .flatten()
                 {
-                    for stream in part
-                        .get_mut("Stream")
-                        .and_then(Value::as_array_mut)
-                        .into_iter()
-                        .flatten()
-                    {
-                        if let Some(stream) = stream.as_object_mut() {
+                    edit_part_streams(part, |streams| {
+                        for stream in streams.iter_mut().filter_map(Value::as_object_mut) {
                             mediainfo::stream_titles(stream, None, None);
                         }
-                    }
+                    });
                 }
             }
         }
+    }
+}
+
+/// A Part's `Stream` rows as the server holds them: the rows' JSON text under this key, in
+/// the place `Stream` had among the Part's keys. Each stream as a map of thirty-odd keys cost
+/// ~3.5 KB: the production server's 40,197 rows held 1.25 GB of streams in a 2.6 GB process
+/// (2026-10-16, heaptrack), interleaved with the rows every listing walks, and fun swapped it.
+/// Responses (`Response::json`, `strip_private_value`) and saves (`unpacked`) see `Stream`.
+pub const PACKED_STREAMS: &str = "_streams";
+
+/// The Part's `Stream` rows, whichever way the Part holds them.
+pub fn part_streams(part: &Value) -> std::borrow::Cow<'_, [Value]> {
+    match part.get("Stream") {
+        Some(Value::Array(rows)) => std::borrow::Cow::Borrowed(rows.as_slice()),
+        _ => match part.get(PACKED_STREAMS).and_then(Value::as_str) {
+            Some(text) => std::borrow::Cow::Owned(serde_json::from_str(text).unwrap_or_default()),
+            None => std::borrow::Cow::Borrowed(&[]),
+        },
+    }
+}
+
+/// Whether the Part may hold the stream `id`: a packed Part whose text does not name it
+/// cannot, so a scan of the library for one stream decodes almost nothing.
+pub fn part_may_hold_stream(part: &Value, id: i64) -> bool {
+    match part.get(PACKED_STREAMS).and_then(Value::as_str) {
+        Some(text) if !matches!(part.get("Stream"), Some(Value::Array(_))) => text.contains(&format!("\"id\":{id}")),
+        _ => true,
+    }
+}
+
+/// The highest stream `id` on the Part, read off packed text without decoding it.
+pub fn max_stream_id(part: &Value) -> Option<i64> {
+    match (part.get("Stream"), part.get(PACKED_STREAMS).and_then(Value::as_str)) {
+        (Some(Value::Array(rows)), _) => rows.iter().filter_map(|stream| stream.get("id").and_then(Value::as_i64)).max(),
+        (_, Some(text)) => text
+            .split("\"id\":")
+            .skip(1)
+            .filter_map(|tail| {
+                let digits: String = tail.chars().take_while(|ch| ch.is_ascii_digit() || *ch == '-').collect();
+                digits.parse::<i64>().ok()
+            })
+            .max(),
+        _ => None,
+    }
+}
+
+/// Whether the Part has `Stream` rows at all, in either form.
+pub fn has_part_streams(part: &Value) -> bool {
+    matches!(part.get("Stream"), Some(Value::Array(_))) || part.get(PACKED_STREAMS).is_some_and(Value::is_string)
+}
+
+/// Edit a Part's `Stream` rows in place: `edit` gets them as an array and the Part keeps
+/// whichever form it had. Answers `None` when the Part has none.
+pub fn edit_part_streams<R>(part: &mut Value, edit: impl FnOnce(&mut Vec<Value>) -> R) -> Option<R> {
+    let object = part.as_object_mut()?;
+    if let Some(Value::Array(rows)) = object.get_mut("Stream") {
+        return Some(edit(rows));
+    }
+    let text = object.get(PACKED_STREAMS)?.as_str()?;
+    let mut rows: Vec<Value> = serde_json::from_str(text).unwrap_or_default();
+    let answer = edit(&mut rows);
+    object.insert(PACKED_STREAMS.to_string(), Value::String(Value::Array(rows).to_string()));
+    Some(answer)
+}
+
+/// Unpack one Part's packed `Stream` rows in place, for code that edits them as an array;
+/// answers whether it was packed, so `repack_part` puts it back as it was.
+pub fn unpack_part(part: &mut Map<String, Value>) -> bool {
+    let Some(Value::String(text)) = part.get(PACKED_STREAMS) else {
+        return false;
+    };
+    let rows = serde_json::from_str(text).unwrap_or_else(|_| Value::Array(Vec::new()));
+    rename(part, PACKED_STREAMS, "Stream", rows);
+    true
+}
+
+/// Pack one Part's `Stream` rows again after `unpack_part`.
+pub fn repack_part(part: &mut Map<String, Value>) {
+    if let Some(Value::Array(rows)) = part.get("Stream") {
+        let text = Value::String(serde_json::to_string(rows).unwrap_or_default());
+        rename(part, "Stream", PACKED_STREAMS, text);
+    }
+}
+
+/// Replace a key with another in its own place among the map's keys.
+fn rename(object: &mut Map<String, Value>, from: &str, to: &str, value: Value) {
+    match object.iter().position(|(key, _)| key == from) {
+        Some(at) => {
+            object.shift_remove(from);
+            object.shift_insert(at, to.to_string(), value);
+        }
+        None => {
+            object.insert(to.to_string(), value);
+        }
+    }
+}
+
+/// Pack every Part's `Stream` rows of a row. Answers whether any were packed.
+pub fn pack_streams(row: &mut Value) -> bool {
+    let mut packed = false;
+    for media in row.get_mut("Media").and_then(Value::as_array_mut).into_iter().flatten() {
+        for part in media.get_mut("Part").and_then(Value::as_array_mut).into_iter().flatten() {
+            let Some(object) = part.as_object_mut() else {
+                continue;
+            };
+            if let Some(Value::Array(rows)) = object.get("Stream") {
+                let text = Value::String(serde_json::to_string(rows).unwrap_or_default());
+                rename(object, "Stream", PACKED_STREAMS, text);
+                packed = true;
+            }
+        }
+    }
+    packed
+}
+
+/// `value` with every packed `Stream` written out again, wherever in it a Part sits.
+pub fn unpack_streams(value: &mut Value) {
+    match value {
+        Value::Object(object) => {
+            if let Some(Value::String(text)) = object.get(PACKED_STREAMS) {
+                let rows = serde_json::from_str(text).unwrap_or_else(|_| Value::Array(Vec::new()));
+                rename(object, PACKED_STREAMS, "Stream", rows);
+            }
+            for (_, child) in object.iter_mut() {
+                if matches!(child, Value::Object(_) | Value::Array(_)) {
+                    unpack_streams(child);
+                }
+            }
+        }
+        Value::Array(values) => values.iter_mut().for_each(unpack_streams),
+        _ => {}
+    }
+}
+
+/// Whether anything in `value` is packed: a response without Parts is not copied to unpack.
+pub fn holds_packed_streams(value: &Value) -> bool {
+    match value {
+        Value::Object(object) => {
+            object.contains_key(PACKED_STREAMS) || object.values().any(|child| matches!(child, Value::Object(_) | Value::Array(_)) && holds_packed_streams(child))
+        }
+        Value::Array(values) => values.iter().any(holds_packed_streams),
+        _ => false,
+    }
+}
+
+/// `value` as it is written out: packed `Stream` rows unpacked, nothing copied when none are.
+pub fn unpacked(value: &Value) -> std::borrow::Cow<'_, Value> {
+    if holds_packed_streams(value) {
+        let mut copy = value.clone();
+        unpack_streams(&mut copy);
+        std::borrow::Cow::Owned(copy)
+    } else {
+        std::borrow::Cow::Borrowed(value)
     }
 }
 
@@ -465,6 +645,37 @@ mod tests {
         assert_eq!(keys(&catalog, "1"), ["5"]);
         catalog.remove("2");
         assert_eq!(keys(&catalog, "2"), ["1"]);
+    }
+
+    #[test]
+    fn packed_streams_read_edit_and_write_out_as_they_were() {
+        let original = serde_json::json!({"ratingKey": "1", "Media": [{"id": 1, "Part": [
+            {"id": 7, "key": "/library/parts/7", "Stream": [
+                {"id": 11, "streamType": 1, "codec": "hevc", "bitrate": 2.5},
+                {"id": 12, "streamType": 2, "language": "English", "selected": true},
+                {"id": 113, "streamType": 3, "displayTitle": "\"Forced\" \u{e9}"}], "size": 9},
+            {"id": 8, "file": "b.mkv"}]}]});
+        let mut row = original.clone();
+        assert!(pack_streams(&mut row));
+        let part = &row["Media"][0]["Part"][0];
+        assert!(part.get("Stream").is_none() && part[PACKED_STREAMS].is_string());
+        // In the place `Stream` had, so writing it out restores the same text.
+        let keys: Vec<&String> = part.as_object().unwrap().keys().collect();
+        assert_eq!(keys, ["id", "key", PACKED_STREAMS, "size"]);
+        assert_eq!(part_streams(part).len(), 3);
+        assert!(has_part_streams(part) && !has_part_streams(&row["Media"][0]["Part"][1]));
+        assert_eq!(max_stream_id(part), Some(113));
+        assert!(part_may_hold_stream(part, 12) && !part_may_hold_stream(part, 13));
+        assert_eq!(unpacked(&row).to_string(), original.to_string());
+        let part = &mut row["Media"][0]["Part"][0];
+        edit_part_streams(part, |streams| streams[1]["selected"] = serde_json::json!(false));
+        assert!(part[PACKED_STREAMS].is_string());
+        assert_eq!(part_streams(part)[1]["selected"], false);
+        assert!(unpack_part(part.as_object_mut().unwrap()));
+        assert_eq!(part["Stream"][1]["selected"], false);
+        repack_part(part.as_object_mut().unwrap());
+        assert!(part.get("Stream").is_none());
+        assert!(!pack_streams(&mut row), "already packed");
     }
 
     /// A progress beat writes one row in place; the listings after it read the index. On

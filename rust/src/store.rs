@@ -155,8 +155,12 @@ fn read_prefix(
                     .map_err(|e| e.to_string())?;
                 for listed in listed {
                     let (key, pos, body) = listed.map_err(|e| e.to_string())?;
-                    let value: Value =
+                    let mut value: Value =
                         serde_json::from_str(&body).map_err(|e| format!("{name}/{key}: {e}"))?;
+                    // Packed as it is read, so the next row reuses what its streams held.
+                    if field == "items" {
+                        crate::catalog::pack_streams(&mut value);
+                    }
                     collection.rows.insert(key.clone(), (pos, hash_text(&body)));
                     collection.order.push(key.clone());
                     if kind == Kind::Array {
@@ -628,7 +632,7 @@ impl Cache {
             for key in changed {
                 match (collection.rows.get(key).copied(), get(key)) {
                     (Some((pos, hash)), Some(row)) => {
-                        let body = row.to_string();
+                        let body = crate::catalog::unpacked(row).to_string();
                         let new_hash = hash_text(&body);
                         if new_hash != hash {
                             puts.push((key.clone(), pos, new_hash, body));
@@ -681,7 +685,7 @@ impl Cache {
                     .and_then(|key| collection.rows.get(key))
                     .map_or(0.0, |(pos, _)| pos + 1.0);
                 for (_, key, row) in appended {
-                    let body = row.to_string();
+                    let body = crate::catalog::unpacked(row).to_string();
                     collection.rows.insert(key.clone(), (next, hash_text(&body)));
                     collection.order.push(key.clone());
                     delta.ops.push(Op::Put { coll: name.clone(), key, pos: next, body });
@@ -703,7 +707,7 @@ impl Cache {
         let entries = rows
             .iter()
             .map(|row| {
-                let body = row.to_string();
+                let body = crate::catalog::unpacked(row).to_string();
                 let key = match key_of(row) {
                     Some(key) if !key.starts_with('#') && taken.insert(key.clone()) => key,
                     _ => {

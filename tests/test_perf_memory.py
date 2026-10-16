@@ -13,7 +13,8 @@ database by one server and restored by a second, the path the production server 
 start. The bounds are ratios to the rows' own JSON size and to the resident size after the start,
 so they hold on any host. Linux only: it reads `/proc/<pid>/status`. Measured on the test host:
 unfixed, the start peaked at 16.6x the rows' JSON and the requests added 1,440 MB; fixed,
-8.2x and 6 MB.
+8.2x and 6 MB. Each stream was then a map of its own, half of the production server's 2.6 GB on
+2026-10-16; held as text, the restored library is 4.0x its JSON (8.1x before, arm64 Docker).
 
     python3 tests/test_perf_memory.py
 """
@@ -40,6 +41,8 @@ for name in ("REX_STATE", "REX_TOKEN", "TMDB_KEY", "PLEX_TOKEN"):
 HEADERS = {"X-Plex-Product": "Plex Web", "X-Plex-Platform": "Chrome",
            "X-Plex-Client-Identifier": "perf-memory", "Accept": "application/json"}
 SHOWS = 120
+# Each Part's streams are held as their JSON text (`catalog::PACKED_STREAMS`).
+RESIDENT = 6
 results = []
 
 
@@ -169,6 +172,8 @@ def main():
               % (rows_mb, loaded, load_peak), flush=True)
         check("the start peaks under 12x the rows' JSON (%.1fx)" % (load_peak / rows_mb),
               load_peak < 12 * rows_mb, (load_peak, rows_mb))
+        check("the restored library holds under %dx its rows' JSON (%%.1fx)" % RESIDENT % (loaded / rows_mb),
+              loaded < RESIDENT * rows_mb, (loaded, rows_mb))
 
         for path_ in ("/hubs", "/library/sections/2/all?X-Plex-Container-Start=0&X-Plex-Container-Size=50",
                       "/library/sections/2/all?type=4&X-Plex-Container-Start=0&X-Plex-Container-Size=0",

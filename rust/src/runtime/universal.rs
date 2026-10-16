@@ -1511,6 +1511,8 @@ impl Runtime {
         protocol: &str,
     ) -> Option<Plan> {
         self.transcoder.as_ref()?;
+        let media = crate::catalog::unpacked(media);
+        let media = media.as_ref();
         let wire = Protocol::parse(protocol)?;
         let profile = decision::resolve(&self.decision_profiles, profile_name)?;
         if decision::conversion(profile, protocol, Some(media)) != decision::Outcome::Convert {
@@ -1694,6 +1696,7 @@ impl Runtime {
     /// The decision's copy keeps `deepAnalysisVersion` and `requiredBandwidths`; the
     /// session row's does not.
     pub(super) fn converted_media(&self, projected: &Value, plan: &Plan, decision: bool) -> Value {
+        let projected = crate::catalog::unpacked(projected);
         let source = projected.as_object().cloned().unwrap_or_default();
         let part = source
             .get("Part")

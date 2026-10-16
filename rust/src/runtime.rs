@@ -1660,6 +1660,8 @@ impl Runtime {
     /// The state as the file will hold it, taken under the runtime lock; writing it is
     /// `write_snapshot`'s, which needs no lock but the file's own.
     fn snapshot_state(&mut self) -> Result<Option<StateSnapshot>, String> {
+        // Background passes write rows outside a request; theirs are packed here.
+        self.catalog.pack_pending();
         let Some(path) = self.state_path.clone() else {
             return Ok(None);
         };
@@ -1983,7 +1985,13 @@ impl Runtime {
     }
 
     fn detail_row_prefs(&self, original: &Value) -> Value {
-        let mut row = strip_private_value(original);
+        self.projected_row(original, true)
+    }
+
+    /// `detail_row_prefs`, and with `streams` false a packed Part's streams left out: a
+    /// listing drops them (`grid_row`), and unpacking them first cost a parse per row.
+    fn projected_row(&self, original: &Value, streams: bool) -> Value {
+        let mut row = if streams { strip_private_value(original) } else { strip_private_fields(original) };
         let Some(object) = row.as_object_mut() else {
             return row;
         };
@@ -2345,7 +2353,7 @@ impl Runtime {
         keep_guid: bool,
         keep_location: bool,
     ) -> Value {
-        let mut row = self.public_row(original);
+        let mut row = self.projected_row(original, false);
         let Some(object) = row.as_object_mut() else {
             return row;
         };
@@ -2449,6 +2457,7 @@ impl Runtime {
                     for part in parts {
                         if let Some(part_object) = part.as_object_mut() {
                             part_object.shift_remove("Stream");
+                            part_object.shift_remove(crate::catalog::PACKED_STREAMS);
                         }
                     }
                 }
@@ -2484,6 +2493,7 @@ impl Runtime {
                         for part in parts {
                             if let Some(part_object) = part.as_object_mut() {
                                 part_object.shift_remove("Stream");
+                                part_object.shift_remove(crate::catalog::PACKED_STREAMS);
                             }
                         }
                     }
@@ -2662,11 +2672,12 @@ impl Runtime {
     /// inherit option reads `:Series default`.
     fn item_language_enum(&self, row: &Value, stored: &str) -> String {
         let kind = row.get("type").and_then(Value::as_str).unwrap_or("");
-        let rows = if matches!(kind, "show" | "season") {
+        let mut rows = if matches!(kind, "show" | "season") {
             self.leaves(&key_of(row).unwrap_or_default())
         } else {
             vec![row.clone()]
         };
+        rows.iter_mut().for_each(crate::catalog::unpack_streams);
         let languages = load_json_sidecar(&self.catalog_path, "languages.json");
         let mut head = Vec::new();
         let mut seen = HashSet::new();
@@ -2685,11 +2696,7 @@ impl Runtime {
                         .into_iter()
                         .flatten()
                     {
-                        for stream in part
-                            .get("Stream")
-                            .and_then(Value::as_array)
-                            .into_iter()
-                            .flatten()
+                        for stream in crate::catalog::part_streams(part).iter()
                         {
                             if stream.get("streamType").and_then(Value::as_i64) == Some(stream_kind)
                             {
@@ -5787,22 +5794,16 @@ impl Runtime {
                             .into_iter()
                             .flatten()
                     })
-                    .flat_map(|part| {
-                        part.get("Stream")
-                            .and_then(Value::as_array)
-                            .into_iter()
-                            .flatten()
-                    })
+                    .flat_map(|part| crate::catalog::part_streams(part).into_owned())
                     .filter(|stream| {
                         stream.get("streamType").and_then(Value::as_i64) == Some(stream_type)
                     })
                     .flat_map(|stream| {
-                        [stream.get("languageTag"), stream.get("languageCode")]
+                        [stream.get("languageTag").cloned(), stream.get("languageCode").cloned()]
                             .into_iter()
                             .flatten()
                     })
-                    .filter(|value| truthy(value))
-                    .cloned()
+                    .filter(truthy)
                     .collect(),
             );
         }
@@ -10690,9 +10691,10 @@ impl Runtime {
             .and_then(|tail| tail.split(['/', '?']).next())
             .unwrap_or("")
             .to_string();
-        let Some(row) = self.catalog.get(&key).cloned() else {
+        let Some(mut row) = self.catalog.get(&key).cloned() else {
             return Response::error(400, "rex: bad request");
         };
+        crate::catalog::unpack_streams(&mut row);
         let media_rows = row
             .get("Media")
             .and_then(Value::as_array)
@@ -16151,11 +16153,7 @@ impl Runtime {
                                     .into_iter()
                                     .flatten()
                                 {
-                                    for stream in part
-                                        .get("Stream")
-                                        .and_then(Value::as_array)
-                                        .into_iter()
-                                        .flatten()
+                                    for stream in crate::catalog::part_streams(part).iter()
                                     {
                                         if stream.get("streamType").and_then(Value::as_i64)
                                             == Some(stream_type)
@@ -16523,11 +16521,10 @@ impl Runtime {
                             .into_iter()
                             .flatten()
                         {
-                            for stream in part
-                                .get("Stream")
-                                .and_then(Value::as_array)
-                                .into_iter()
-                                .flatten()
+                            if !crate::catalog::part_may_hold_stream(part, stream_id) {
+                                continue;
+                            }
+                            for stream in crate::catalog::part_streams(part).iter()
                             {
                                 if stream.get("id").and_then(Value::as_i64) == Some(stream_id) {
                                     let Some(content) =
@@ -16588,6 +16585,7 @@ impl Runtime {
                             .into_iter()
                             .flatten()
                         {
+                            let packed = part.as_object_mut().is_some_and(crate::catalog::unpack_part);
                             if let Some(streams) =
                                 part.get_mut("Stream").and_then(Value::as_array_mut)
                             {
@@ -16600,6 +16598,9 @@ impl Runtime {
                                         streams.remove(index);
                                     }
                                 }
+                            }
+                            if packed {
+                                part.as_object_mut().map(crate::catalog::repack_part);
                             }
                         }
                     }
@@ -19256,13 +19257,7 @@ impl Runtime {
                             .cloned()
                             .unwrap_or_default()
                     })
-                    .flat_map(|part| {
-                        part.get("Stream")
-                            .and_then(Value::as_array)
-                            .cloned()
-                            .unwrap_or_default()
-                    })
-                    .filter_map(|stream| stream.get("id").and_then(Value::as_i64))
+                    .filter_map(|part| crate::catalog::max_stream_id(&part))
                     .max()
                     .unwrap_or(0)
                     + 1;
@@ -19279,7 +19274,12 @@ impl Runtime {
                 crate::mediainfo::stream_titles(&mut stream_row, None, None);
                 stream_row.insert("_content".to_string(), json!(content));
                 let stream = Value::Object(stream_row);
-                let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) else {
+                let Some(row) = self.catalog.get_mut(key) else {
+                    return Response::error(404, "rex: not found");
+                };
+                // Packed again with the request's other writes (`pack_pending`).
+                crate::catalog::unpack_streams(row);
+                let Some(object) = row.as_object_mut() else {
                     return Response::error(404, "rex: not found");
                 };
                 // Every part of every Media: the new track deselects the subtitle in all
@@ -20541,11 +20541,8 @@ impl Runtime {
                         part.get(name).cloned().unwrap_or(Value::Null),
                     );
                 }
-                let streams = part
-                    .get("Stream")
-                    .and_then(Value::as_array)
-                    .into_iter()
-                    .flatten()
+                let streams = crate::catalog::part_streams(part)
+                    .iter()
                     .map(tree_stream)
                     .collect::<Vec<_>>();
                 if !streams.is_empty() {
@@ -21360,7 +21357,8 @@ impl Runtime {
         if wanted.is_empty() {
             return Response::empty(200);
         }
-        let owner = self.catalog.items()[owner_index].clone();
+        let mut owner = self.catalog.items()[owner_index].clone();
+        crate::catalog::unpack_streams(&mut owner);
         let streams_of = |stream_type: i64| {
             owner
                 .get("Media")
@@ -21414,7 +21412,11 @@ impl Runtime {
         if let Some(media_rows) = self
             .catalog
             .get_mut(&owner_key)
-            .and_then(|row| row.get_mut("Media"))
+            .and_then(|row| {
+                // Packed again with the request's other writes (`pack_pending`).
+                crate::catalog::unpack_streams(row);
+                row.get_mut("Media")
+            })
             .and_then(Value::as_array_mut)
         {
             for media in media_rows {
@@ -22058,10 +22060,14 @@ pub struct Response {
 }
 
 impl Response {
-    fn json(status: u16, value: Value) -> Self {
+    fn json(status: u16, mut value: Value) -> Self {
         note_paired_hubs(&value);
-        let body =
-            upper_json_escapes(serde_json::to_vec(&drop_empty_value(&value)).unwrap_or_default());
+        // In place: a copy of a whole-library answer was hundreds of megabytes more.
+        if crate::catalog::holds_packed_streams(&value) {
+            crate::catalog::unpack_streams(&mut value);
+        }
+        drop_empty_in_place(&mut value);
+        let body = upper_json_escapes(serde_json::to_vec(&value).unwrap_or_default());
         Self {
             status,
             content_type: "application/json".to_string(),
@@ -22280,6 +22286,18 @@ fn artwork_photo_row(row: &Value) -> Value {
         "modDate": -1,
         "metaModDate": -1,
     })
+}
+
+/// `drop_empty_value` on a value the caller owns.
+fn drop_empty_in_place(value: &mut Value) {
+    match value {
+        Value::Object(object) => {
+            object.retain(|_, item| !item.is_null() && !item.as_array().is_some_and(Vec::is_empty));
+            object.values_mut().for_each(drop_empty_in_place);
+        }
+        Value::Array(items) => items.iter_mut().for_each(drop_empty_in_place),
+        _ => {}
+    }
 }
 
 fn drop_empty_value(value: &Value) -> Value {
@@ -22772,7 +22790,7 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
         );
     }
     options.state = resolve_state_path(&options);
-    let loaded = Runtime::load(options)?;
+    let mut loaded = Runtime::load(options)?;
     release_freed_memory();
     start_memory_trimmer();
     if let Some(path) = &loaded.state_path {
@@ -22784,6 +22802,8 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
     for source in &loaded.sources {
         info!("source {}: registered, feed at /rex/feed/{}/", source.name, source.name);
     }
+    // Before the first request: the load and its start passes wrote every row unpacked.
+    loaded.catalog.pack_pending();
     let runtime = Arc::new(Mutex::new(loaded));
     // `logger.addHandler(_Capture())`: Download Logs and the Console see what follows.
     logging::start_capture();
@@ -23367,6 +23387,7 @@ fn handle_connection<S: Read + Write + PollRead>(
                     Response::error(500, "rex: internal error")
                 }
             };
+            guard.catalog.pack_pending();
             part_plan = guard.pending_part.take();
             let file_checks = guard.pending_file_checks.take();
             let segment = guard.pending_segment.take();
@@ -25011,9 +25032,10 @@ fn row_has_stream(row: &Value, stream_id: i64) -> bool {
         .flatten()
         .filter_map(|media| media.get("Part").and_then(Value::as_array))
         .flatten()
-        .filter_map(|part| part.get("Stream").and_then(Value::as_array))
-        .flatten()
-        .any(|stream| stream.get("id").and_then(Value::as_i64) == Some(stream_id))
+        .filter(|part| crate::catalog::part_may_hold_stream(part, stream_id))
+        .any(|part| {
+            crate::catalog::part_streams(part).iter().any(|stream| stream.get("id").and_then(Value::as_i64) == Some(stream_id))
+        })
 }
 
 fn string_value(value: &Value) -> String {
@@ -26364,13 +26386,35 @@ fn plugin_container(rows: Vec<(&str, bool)>) -> Value {
     )]))
 }
 
-fn strip_private_value(value: &Value) -> Value {
+/// `strip_private_value` that leaves packed streams out instead of unpacking them.
+fn strip_private_fields(value: &Value) -> Value {
     match value {
         Value::Object(object) => Value::Object(
             object
                 .iter()
                 .filter(|(key, _)| !key.starts_with('_'))
-                .map(|(key, value)| (key.clone(), strip_private_value(value)))
+                .map(|(key, value)| (key.clone(), strip_private_fields(value)))
+                .collect(),
+        ),
+        Value::Array(values) => Value::Array(values.iter().map(strip_private_fields).collect()),
+        _ => value.clone(),
+    }
+}
+
+fn strip_private_value(value: &Value) -> Value {
+    match value {
+        // A packed Part's streams are written out as the `Stream` rows they are.
+        Value::Object(object) => Value::Object(
+            object
+                .iter()
+                .filter_map(|(key, value)| match (key.as_str(), value) {
+                    (crate::catalog::PACKED_STREAMS, Value::String(text)) => Some((
+                        "Stream".to_string(),
+                        strip_private_value(&serde_json::from_str(text).unwrap_or_else(|_| json!([]))),
+                    )),
+                    _ if key.starts_with('_') => None,
+                    _ => Some((key.clone(), strip_private_value(value))),
+                })
                 .collect(),
         ),
         Value::Array(values) => Value::Array(values.iter().map(strip_private_value).collect()),

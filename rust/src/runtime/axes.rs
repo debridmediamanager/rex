@@ -832,11 +832,7 @@ impl Runtime {
                         .into_iter()
                         .flatten()
                     {
-                        for stream in part
-                            .get("Stream")
-                            .and_then(Value::as_array)
-                            .into_iter()
-                            .flatten()
+                        for stream in crate::catalog::part_streams(part).iter()
                         {
                             if stream.get("streamType").and_then(Value::as_i64) != Some(wanted) {
                                 continue;

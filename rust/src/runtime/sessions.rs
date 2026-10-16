@@ -593,6 +593,7 @@ impl Runtime {
                         let Some(mut part) = part.as_object().cloned() else {
                             continue;
                         };
+                        crate::catalog::unpack_part(&mut part);
                         if decided {
                             part.insert("decision".to_string(), json!("directplay"));
                             part.insert("selected".to_string(), json!(true));
