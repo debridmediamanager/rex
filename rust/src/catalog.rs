@@ -23,11 +23,134 @@ pub struct Catalog {
     /// The rows written since the last `take_touched`, kept apart from `changes` because a
     /// save takes those: the runtime re-stamps the artwork paths of these (`restamp_artwork`).
     touched: Changes,
-    /// `children`'s rows by parent key, built on first use and dropped by every mutable
-    /// path. Without it a listing scanned all rows once per show and per season: 9 s for
-    /// a page of the production server's 1,500 movies and over 30 s for its 13,500
-    /// episodes (2026-10-10).
-    children_index: std::sync::OnceLock<HashMap<String, Vec<usize>>>,
+    /// `children`'s rows by parent key and each section's movies and shows, built on first
+    /// use. Without it a listing scanned all rows once per show and per season: 9 s for a
+    /// page of the production server's 1,500 movies and over 30 s for its 13,500 episodes
+    /// (2026-10-10). A row written in place re-files only itself: dropping the index on
+    /// every `get_mut` made the first listing after each progress beat rescan the library,
+    /// which on the production server (2026-10-16) paged all of it back in from swap.
+    index: RowIndex,
+}
+
+/// `Catalog::index`: positions by parent and by section, and the positions written since.
+#[derive(Default)]
+struct RowIndex(std::sync::Mutex<IndexState>);
+
+#[derive(Default)]
+struct IndexState {
+    built: Option<Positions>,
+    stale: Vec<usize>,
+}
+
+#[derive(Default)]
+struct Positions {
+    parent_of: Vec<Option<String>>,
+    children: HashMap<String, Vec<usize>>,
+    section_of: Vec<Option<String>>,
+    sections: HashMap<String, Vec<usize>>,
+}
+
+/// A clone builds its own index when it is first read.
+impl Clone for RowIndex {
+    fn clone(&self) -> Self {
+        Self::default()
+    }
+}
+
+impl std::fmt::Debug for RowIndex {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("RowIndex")
+    }
+}
+
+fn key_text(value: Option<&Value>) -> Option<String> {
+    match value {
+        Some(Value::String(value)) => Some(value.clone()),
+        Some(Value::Number(value)) => Some(value.to_string()),
+        _ => None,
+    }
+}
+
+/// The section a movie or show row is listed in; other rows are listed under their parents.
+fn section_of(item: &Value) -> Option<String> {
+    matches!(item.get("type").and_then(Value::as_str), Some("movie" | "show"))
+        .then(|| match item.get("librarySectionID") {
+            Some(Value::Bool(value)) => value.to_string(),
+            other => key_text(other).unwrap_or_default(),
+        })
+}
+
+fn file(map: &mut HashMap<String, Vec<usize>>, key: Option<&String>, position: usize, add: bool) {
+    let Some(key) = key else {
+        return;
+    };
+    let list = map.entry(key.clone()).or_default();
+    match (list.binary_search(&position), add) {
+        (Err(at), true) => list.insert(at, position),
+        (Ok(at), false) => {
+            list.remove(at);
+        }
+        _ => {}
+    }
+}
+
+impl RowIndex {
+    fn drop_all(&self) {
+        let mut state = self.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        state.built = None;
+        state.stale.clear();
+    }
+
+    fn mark(&self, position: usize) {
+        let mut state = self.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        if state.built.is_some() {
+            state.stale.push(position);
+        }
+    }
+
+    /// The positions `pick` reads out of the index, brought up to date with `items` first.
+    fn read<T>(&self, items: &[Value], pick: impl FnOnce(&Positions) -> T) -> T {
+        let mut state = self.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        let stale = std::mem::take(&mut state.stale);
+        let positions = state.built.get_or_insert_with(|| {
+            let mut positions = Positions::default();
+            for (position, item) in items.iter().enumerate() {
+                let parent = key_text(item.get("parentRatingKey"));
+                let section = section_of(item);
+                if let Some(parent) = &parent {
+                    positions.children.entry(parent.clone()).or_default().push(position);
+                }
+                if let Some(section) = &section {
+                    positions.sections.entry(section.clone()).or_default().push(position);
+                }
+                positions.parent_of.push(parent);
+                positions.section_of.push(section);
+            }
+            positions
+        });
+        for position in stale {
+            let Some(item) = items.get(position) else {
+                continue;
+            };
+            if positions.parent_of.len() <= position {
+                positions.parent_of.resize(position + 1, None);
+                positions.section_of.resize(position + 1, None);
+            }
+            let parent = key_text(item.get("parentRatingKey"));
+            if parent != positions.parent_of[position] {
+                file(&mut positions.children, positions.parent_of[position].as_ref(), position, false);
+                file(&mut positions.children, parent.as_ref(), position, true);
+                positions.parent_of[position] = parent;
+            }
+            let section = section_of(item);
+            if section != positions.section_of[position] {
+                file(&mut positions.sections, positions.section_of[position].as_ref(), position, false);
+                file(&mut positions.sections, section.as_ref(), position, true);
+                positions.section_of[position] = section;
+            }
+        }
+        pick(positions)
+    }
 }
 
 /// The rows changed since the last `take_changes`: by key, or all of them.
@@ -57,7 +180,7 @@ impl Catalog {
             by_id: HashMap::new(),
             changes: Changes { all: true, keys: HashSet::new() },
             touched: Changes { all: true, keys: HashSet::new() },
-            children_index: std::sync::OnceLock::new(),
+            index: RowIndex::default(),
         };
         catalog.rebuild_index();
         Ok(catalog)
@@ -79,7 +202,7 @@ impl Catalog {
     }
 
     pub fn rebuild_index(&mut self) {
-        self.children_index.take();
+        self.index.drop_all();
         self.by_id.clear();
         for (index, item) in self.items.iter().enumerate() {
             if let Some(key) = key_value(item) {
@@ -101,7 +224,7 @@ impl Catalog {
         if !self.touched.all {
             self.touched.keys.insert(rating_key.to_string());
         }
-        self.children_index.take();
+        self.index.mark(index);
         self.items.get_mut(index)
     }
 
@@ -113,7 +236,7 @@ impl Catalog {
     pub fn items_mut(&mut self) -> &mut Vec<Value> {
         self.changes.all = true;
         self.touched.all = true;
-        self.children_index.take();
+        self.index.drop_all();
         &mut self.items
     }
 
@@ -131,33 +254,23 @@ impl Catalog {
 
     /// `children` without the copies, for callers that only read or count.
     pub fn children_refs(&self, parent_key: &str) -> Vec<&Value> {
-        let index = self.children_index.get_or_init(|| {
-            let mut index: HashMap<String, Vec<usize>> = HashMap::new();
-            for (position, item) in self.items.iter().enumerate() {
-                let parent = match item.get("parentRatingKey") {
-                    Some(Value::String(value)) => value.clone(),
-                    Some(Value::Number(value)) => value.to_string(),
-                    _ => continue,
-                };
-                index.entry(parent).or_default().push(position);
-            }
-            index
-        });
-        index
-            .get(parent_key)
-            .into_iter()
-            .flatten()
-            .filter_map(|position| self.items.get(*position))
-            .collect()
+        let positions = self.index.read(&self.items, |index| index.children.get(parent_key).cloned());
+        positions.into_iter().flatten().filter_map(|position| self.items.get(position)).collect()
+    }
+
+    /// A section's movies and shows, in row order.
+    pub fn section_refs(&self, section_key: &str) -> Vec<&Value> {
+        let positions = self.index.read(&self.items, |index| index.sections.get(section_key).cloned());
+        positions.into_iter().flatten().filter_map(|position| self.items.get(position)).collect()
     }
 
     /// Append a row. A row with a key is recorded by its key, so a save writes that one
     /// row (`store.rs` appends it) rather than looking at every row: a scan adds rows to a
     /// live library one release at a time.
     pub fn add(&mut self, item: Value) {
-        self.children_index.take();
         let key = key_value(&item);
         self.items.push(item);
+        self.index.mark(self.items.len() - 1);
         match key {
             Some(key) => {
                 self.by_id.insert(key.clone(), self.items.len() - 1);
@@ -328,6 +441,57 @@ mod tests {
         assert_eq!(catalog.children("9").len(), 1);
         catalog.remove("3");
         assert!(catalog.children("1").is_empty());
+    }
+
+    #[test]
+    fn a_section_lists_its_movies_and_shows_through_adds_moves_and_removes() {
+        let mut catalog = Catalog::from_value(serde_json::json!({"items": [
+            {"ratingKey": "1", "type": "movie", "librarySectionID": 1},
+            {"ratingKey": "2", "type": "show", "librarySectionID": "2"},
+            {"ratingKey": "3", "type": "season", "librarySectionID": 2, "parentRatingKey": "2"},
+            {"ratingKey": "4", "type": "movie", "librarySectionID": "1"}]})).unwrap();
+        let keys = |catalog: &Catalog, section: &str| -> Vec<String> {
+            catalog.section_refs(section).iter().filter_map(|row| key_value(row)).collect()
+        };
+        assert_eq!(keys(&catalog, "1"), ["1", "4"]);
+        assert_eq!(keys(&catalog, "2"), ["2"]);
+        catalog.add(serde_json::json!({"ratingKey": "5", "type": "movie", "librarySectionID": 1}));
+        assert_eq!(keys(&catalog, "1"), ["1", "4", "5"]);
+        // A film moved among the shows keeps its place in row order there.
+        catalog.get_mut("1").unwrap()["librarySectionID"] = serde_json::json!(2);
+        assert_eq!(keys(&catalog, "1"), ["4", "5"]);
+        assert_eq!(keys(&catalog, "2"), ["1", "2"]);
+        catalog.get_mut("4").unwrap()["type"] = serde_json::json!("episode");
+        assert_eq!(keys(&catalog, "1"), ["5"]);
+        catalog.remove("2");
+        assert_eq!(keys(&catalog, "2"), ["1"]);
+    }
+
+    /// A progress beat writes one row in place; the listings after it read the index. On
+    /// the production server (2026-10-16) every write dropped the index, so each listing after
+    /// a beat scanned all 40,197 rows again: 2,000 alternations took 4 s here, unfixed.
+    #[test]
+    fn a_row_written_in_place_does_not_rescan_the_library() {
+        let mut items = Vec::new();
+        for show in 0..400u64 {
+            let show_key = (100_000 + show * 100).to_string();
+            items.push(serde_json::json!({"ratingKey": show_key, "type": "show", "librarySectionID": 2}));
+            for episode in 1..100u64 {
+                items.push(serde_json::json!({"ratingKey": (100_000 + show * 100 + episode).to_string(),
+                                              "type": "episode", "parentRatingKey": show_key}));
+            }
+        }
+        let mut catalog = Catalog::from_value(serde_json::json!({"items": items})).unwrap();
+        assert_eq!(catalog.children("100000").len(), 99);
+        let started = std::time::Instant::now();
+        for beat in 0..2000u64 {
+            let key = (100_000 + (beat % 400) * 100 + 1 + beat % 99).to_string();
+            catalog.get_mut(&key).unwrap()["viewOffset"] = serde_json::json!(beat * 1000);
+            assert_eq!(catalog.children(&(100_000 + (beat % 400) * 100).to_string()).len(), 99);
+            assert_eq!(catalog.section_refs("2").len(), 400);
+        }
+        let elapsed = started.elapsed();
+        assert!(elapsed < std::time::Duration::from_millis(500), "2,000 beats took {elapsed:?}");
     }
 
     use super::*;

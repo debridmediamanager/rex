@@ -1850,17 +1850,7 @@ impl Runtime {
     /// the section per call was most of `/library/sections` and Related (the production
     /// server, 2026-10-11).
     fn section_row_refs(&self, key: &str) -> Vec<&Value> {
-        self.catalog
-            .items()
-            .iter()
-            .filter(|item| {
-                string_value(item.get("librarySectionID").unwrap_or(&Value::Null)) == key
-                    && matches!(
-                        item.get("type").and_then(Value::as_str),
-                        Some("movie" | "show")
-                    )
-            })
-            .collect()
+        self.catalog.section_refs(key)
     }
 
     fn children(&self, key: &str) -> Vec<Value> {
