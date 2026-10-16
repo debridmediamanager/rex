@@ -1833,6 +1833,21 @@ impl super::Runtime {
         self.assert_claimed || self.claim_snapshot().claimed()
     }
 
+    /// The owner's Plex username: `--owner-username`, else the claimed account's, which
+    /// the claim already holds, so a setup need not type it; `rex-owner` before a claim.
+    pub(super) fn owner_name(&self) -> String {
+        if !self.owner_username.is_empty() {
+            return self.owner_username.clone();
+        }
+        let claim = self.claim_snapshot();
+        if claim.claimed() {
+            if let Some(owner) = claim.owner.filter(|owner| !owner.is_empty()) {
+                return owner;
+            }
+        }
+        "rex-owner".to_string()
+    }
+
     /// `_owner`: what a real PMS reports as myPlexUsername, the owner's EMAIL.
     pub(super) fn owner(&self) -> String {
         let claim = self.claim_snapshot();

@@ -1036,6 +1036,10 @@ def main():
         check("claimed /media/providers names the owner's email and signs in",
               providers.get("myPlexUsername") == EMAIL and providers.get("myPlexSigninState") == "ok",
               {k: providers.get(k) for k in ("myPlexUsername", "myPlexSigninState")})
+        status, accounts = first.request("GET", "/accounts", token=ACCOUNT_TOKEN)
+        check("with no --owner-username the claimed account's username names the owner",
+              status == 200 and [row.get("name") for row in container(accounts).get("Account", [])][:1] == [OWNER],
+              (status, accounts))
         check("claimed PlexOnlineMail is the owner's email",
               pref(claim_now["prefs"][1], "PlexOnlineMail") == EMAIL,
               pref(claim_now["prefs"][1], "PlexOnlineMail"))

@@ -157,7 +157,7 @@ impl Runtime {
             return bare_empty();
         }
         let devices = self.statistics_devices();
-        let account = json!({"id": 1, "key": "/accounts/1", "name": self.owner_username,
+        let account = json!({"id": 1, "key": "/accounts/1", "name": self.owner_name(),
                              "defaultAudioLanguage": "en", "autoSelectAudio": true,
                              "defaultSubtitleLanguage": "en", "subtitleMode": 2, "thumb": ""});
         let size = rows.len() + devices.len() + 1;

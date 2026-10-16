@@ -286,7 +286,7 @@ impl Default for RuntimeOptions {
             assert_claimed: false,
             web_root: None,
             owner_email: "owner@example.com".to_string(),
-            owner_username: "rex-owner".to_string(),
+            owner_username: String::new(),
             tls_cert: None,
             tls_key: None,
             gdm: "auto".to_string(),
@@ -8138,7 +8138,7 @@ impl Runtime {
             }
             ("GET" | "HEAD", "/:/eventsource/notifications") => Response::sse(),
             ("GET" | "HEAD", "/connections") => {
-                Response::plain(200, connection_lines(&self.owner_username).into_bytes())
+                Response::plain(200, connection_lines(&self.owner_name()).into_bytes())
             }
             // The play-state writers answer on every verb the dispatcher routes, as
             // the Python oracle does: the suite's own `PUT /:/scrobble` wrote
@@ -16632,7 +16632,7 @@ impl Runtime {
                 self.container(
                     Map::from_iter([(
                         "Account".to_string(),
-                        json!([{"id":1,"title":self.owner_username,"email":self.owner_email}]),
+                        json!([{"id":1,"title":self.owner_name(),"email":self.owner_email}]),
                     )]),
                     false,
                 ),
@@ -22775,7 +22775,9 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
     // One command sets a server up: a catalog that does not exist yet is seeded here as
     // `rex catalog --seed` seeds one, before the state path is chosen beside it.
     if !options.catalog.try_exists().unwrap_or(true) {
-        let name = options.friendly_name.as_deref().unwrap_or("rex");
+        // The host's name by default, as a real PMS names itself, so a setup need not pick one.
+        let name = options.friendly_name.clone().unwrap_or_else(local_host_name);
+        let name = name.as_str();
         let machine = crate::catalog_tool::write_seed(
             &options.catalog.to_string_lossy(),
             name,

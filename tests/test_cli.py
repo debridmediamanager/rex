@@ -164,6 +164,24 @@ def main():
         stop(process)
         shutil.rmtree(scratch, ignore_errors=True)
 
+    # With neither flag the guide's one command is `rex --catalog rex.db`: the server is named
+    # after its host, as a real PMS is, and its libraries are under zurg's default mount.
+    scratch = tempfile.mkdtemp(prefix="rex-cli-seed-")
+    process, port = serving("--port", "PORT", "--catalog", os.path.join(scratch, "rex.db"), "--gdm", "off")
+    try:
+        request = urllib.request.Request("http://127.0.0.1:%d/library/sections" % port,
+                                         headers={"Accept": "application/json"}) if port else None
+        sections = json.loads(urllib.request.urlopen(request, timeout=10).read())["MediaContainer"] if port else {}
+        identity = urllib.request.urlopen("http://127.0.0.1:%d/" % port, timeout=10).read().decode() if port else ""
+        locations = sorted(location.get("path") for row in sections.get("Directory", [])
+                           for location in row.get("Location", []))
+        check("seeded with no --friendly-name and no --zurg-mount: the host's name, under /mnt/zurg",
+              'friendlyName="%s"' % socket.gethostname() in identity
+              and locations == ["/mnt/zurg/movies", "/mnt/zurg/shows"], (identity[:300], locations))
+    finally:
+        stop(process)
+        shutil.rmtree(scratch, ignore_errors=True)
+
     # No --web-root: the `webclient` beside the program is served at /web. Use the
     # checkout's own when there is one; otherwise lay down a marker and remove it.
     webclient = os.path.join(ROOT, "webclient")

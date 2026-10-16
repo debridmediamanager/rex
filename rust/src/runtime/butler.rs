@@ -827,7 +827,7 @@ impl Runtime {
                 "Account": [{
                     "id": 1,
                     "key": "/accounts/1",
-                    "name": self.owner_username,
+                    "name": self.owner_name(),
                     "defaultAudioLanguage": "en",
                     "autoSelectAudio": true,
                     "defaultSubtitleLanguage": "en",

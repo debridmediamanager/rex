@@ -302,7 +302,7 @@ impl Runtime {
     }
 
     fn statistics_account(&self) -> Value {
-        json!({"id": 1, "key": "/accounts/1", "name": self.owner_username,
+        json!({"id": 1, "key": "/accounts/1", "name": self.owner_name(),
                "defaultAudioLanguage": "en", "autoSelectAudio": true,
                "defaultSubtitleLanguage": "en", "subtitleMode": 2, "thumb": ""})
     }
@@ -461,7 +461,7 @@ impl Runtime {
         if !local {
             player.insert("remotePublicAddress".to_string(), json!(address));
         }
-        let owner = self.owner_username.clone();
+        let owner = self.owner_name();
         let row = self.catalog.get(rating_key).cloned().unwrap_or(Value::Null);
         let entry = self.sessions.get_mut(&session_id).expect("session just ensured");
         entry.rating_key = rating_key.to_string();
@@ -724,7 +724,7 @@ impl Runtime {
         }
         let text = format!(
             "\"{}\" asked to stop your playback from this server: {}",
-            self.owner_username,
+            self.owner_name(),
             query.get("reason").cloned().unwrap_or_default()
         );
         self.terminated_sessions.insert(session_id.clone(), text);
