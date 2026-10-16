@@ -19902,7 +19902,8 @@ impl Runtime {
         ]);
         // `enrich` treats a failed details lookup as a miss and changes nothing.
         let details = tmdb.details(kind, id).unwrap_or(Value::Null);
-        let season = parsed.get("season").filter(|v| truthy(v)).cloned();
+        // Season 0 (Specials) is a season: `metadata::enrich`.
+        let season = parsed.get("season").filter(|v| truthy(v) || v.as_i64() == Some(0)).cloned();
         let episode_number = parsed.get("episode").filter(|v| truthy(v)).cloned();
         let found = details.as_object().is_some_and(|object| !object.is_empty());
         let episode = match (kind.as_str(), &season, &episode_number) {

@@ -13,7 +13,8 @@ placement contract; `Bungo.Stray.Dogs.S04E01`, TMDB's S1E37), and films zurg fil
 Each is checked placed as pushed, and still there after every pass a start runs (with the
 anime lists and IMDb's numbering off, which read the names otherwise, and on), after the blank
 tile retry, and after a later push that places it elsewhere (same key, watched). A person's Fix
-Match wins over a placement, and a file pushed without one is placed by its name.
+Match wins over a placement, and a file pushed without one is placed by its name. Episodes placed
+on season 0 (`specials.json`, Firefly's) are TMDB's specials by name, like any other episode.
 
     python3 tests/test_feed_placement.py
 """
@@ -33,6 +34,7 @@ FIXTURES = os.path.join(HERE, "fixtures")
 ANIME = json.load(open(os.path.join(FIXTURES, "feed", "anime.json")))
 TILES = json.load(open(os.path.join(FIXTURES, "feed", "blank_tiles.json")))
 EVA = json.load(open(os.path.join(FIXTURES, "feed", "blank_1016.json")))
+SPECIALS = json.load(open(os.path.join(FIXTURES, "feed", "specials.json")))
 
 # TMDB's numbers for each, as `anime.json` recorded TMDB's answers for them; Case Closed's from
 # the placement contract (TMDB lists one season of 1,217 episodes, rex's name read keeps S33).
@@ -224,15 +226,66 @@ def films(bytes_port):
         shutil.rmtree(work, ignore_errors=True)
 
 
+def specials(bytes_port):
+    """Firefly's Trash, The Message and Heart of Gold, which TMDB keeps as season 0 and zurg
+    placed there (`fixtures/feed/specials.json`, zen's end-to-end rig): each is TMDB's episode
+    by title, summary and ids, in a season a real PMS titles `Specials` (findings, "Season 0"),
+    with TMDB's season-0 poster. rex drew them `Episode 1-3` under the show's movie guid."""
+    work = tempfile.mkdtemp(prefix="rex-placed-specials-")
+    catalog(work, SPECIALS)
+    tmdb = {key.split("/3/", 1)[1].split("?", 1)[0]: value for key, value in SPECIALS["tmdb"].items()}
+    names = sorted(SPECIALS["pushes"])
+    pushed = lambda name: item(SPECIALS, name, folder=SPECIALS["pushes"][name]["folder"], **SPECIALS["pushes"][name]["placed"])
+    server = start(work, bytes_port)
+
+    def check_specials(label):
+        keys = server.keys()
+        rows = {name: server.row(keys.get(pushed(name)["id"])) for name in names}
+        guids = set()
+        for name in names:
+            row, placed = rows[name], SPECIALS["pushes"][name]["placed"]
+            answer = tmdb["tv/1437/season/%d/episode/%d" % (placed["season"], placed["episode"])]
+            check("%s: %s is TMDB's S%dE%d %r, by its summary and ids too" % (label, name, placed["season"], placed["episode"], answer["name"]),
+                  [row.get("parentIndex"), row.get("index"), row.get("title"), row.get("summary")]
+                  == [placed["season"], placed["episode"], answer["name"], answer["overview"]]
+                  and "tmdb://%d" % answer["id"] in blank.guids(row) and str(row.get("guid", "")).startswith("plex://episode/"),
+                  (row.get("parentIndex"), row.get("index"), row.get("title"), row.get("guid"), blank.guids(row)))
+            guids.add(row.get("guid"))
+        check("%s: each episode has a guid of its own" % label, len(guids) == len(names), guids)
+        season = server.row(rows["s01e11_trash"].get("parentRatingKey"))
+        check("%s: their season is Specials, TMDB's season 0, with TMDB's poster" % label,
+              season.get("index") == 0 and season.get("title") == "Specials"
+              and "tmdb://%d" % tmdb["tv/1437/season/0"]["id"] in blank.guids(season)
+              and blank.poster(server, season.get("ratingKey")) is not None,
+              (season.get("index"), season.get("title"), blank.guids(season), blank.poster(server, season.get("ratingKey"))))
+        check("%s: under the same show as season 1" % label,
+              len({row.get("grandparentRatingKey") for row in rows.values()}) == 1, [row.get("grandparentRatingKey") for row in rows.values()])
+
+    try:
+        status, body = server.feed("POST", "items", {"items": [pushed(name) for name in names]})
+        check("every Firefly file is taken", status == 200 and not body.get("rejected"), (status, body))
+        check_specials("pushed")
+    finally:
+        anime.stop(server, work)
+    server = start(work, bytes_port, True)
+    try:
+        time.sleep(15)
+        check_specials("after a start")
+    finally:
+        anime.stop(server, work)
+        shutil.rmtree(work, ignore_errors=True)
+
+
 def main():
     source = Bytes()
-    for fixture in (ANIME, TILES, EVA):
+    for fixture in (ANIME, TILES, EVA, SPECIALS):
         for pushed in fixture["pushes"].values():
             source.files.add("/dav/" + pushed["path"])
     bytes_port = serve(source.handler())
     live(bytes_port)
     retried(bytes_port)
     films(bytes_port)
+    specials(bytes_port)
     print("\n%d/%d passed" % (sum(results), len(results)))
     return 0 if all(results) else 1
 

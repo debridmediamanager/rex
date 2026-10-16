@@ -1,0 +1,1351 @@
+{
+ "_about": "zen's end-to-end rig, 2026-10-16: zurg (real RD account, DMM placement) pushed Firefly.S01.COMPLETE.REPACK's S01E11-E13 as TMDB 1437's S0E1-E3 (TMDB keeps Trash, The Message and Heart of Gold as specials) and S01E02 as S1E1. `pushes` is each item as the rig's rows recorded it; `tmdb` is the rig's tmdb_cache.db answers for them, read-only, each season document cut to its own fields. rex placed the specials right and titled them `Episode 1-3` under the show's movie guid.",
+ "plex": {},
+ "pushes": {
+  "s01e02_the_train_job": {
+   "folder": "",
+   "hash": "935a77d282bce621fe0514668225abf597f5756a",
+   "ids": {
+    "imdb": "tt0303461",
+    "tmdb": "1437"
+   },
+   "name": "Firefly.S01.COMPLETE.REPACK.1080p.BRRip.AC3.x264-LESS",
+   "path": "shows/Firefly.S01.COMPLETE.REPACK.1080p.BRRip.AC3.x264-LESS/Firefly.S01E02.The.Train.Job.1080p.BRRip.AC3.x264-LESS.mkv",
+   "placed": {
+    "episode": 1,
+    "kind": "episode",
+    "season": 1
+   },
+   "size": 1028804302
+  },
+  "s01e11_trash": {
+   "folder": "",
+   "hash": "935a77d282bce621fe0514668225abf597f5756a",
+   "ids": {
+    "imdb": "tt0303461",
+    "tmdb": "1437"
+   },
+   "name": "Firefly.S01.COMPLETE.REPACK.1080p.BRRip.AC3.x264-LESS",
+   "path": "shows/Firefly.S01.COMPLETE.REPACK.1080p.BRRip.AC3.x264-LESS/Firefly.S01E11.Trash.1080p.BRRip.AC3.x264-LESS.mkv",
+   "placed": {
+    "episode": 1,
+    "kind": "episode",
+    "season": 0
+   },
+   "size": 1053831058
+  },
+  "s01e12_the_message": {
+   "folder": "",
+   "hash": "935a77d282bce621fe0514668225abf597f5756a",
+   "ids": {
+    "imdb": "tt0303461",
+    "tmdb": "1437"
+   },
+   "name": "Firefly.S01.COMPLETE.REPACK.1080p.BRRip.AC3.x264-LESS",
+   "path": "shows/Firefly.S01.COMPLETE.REPACK.1080p.BRRip.AC3.x264-LESS/Firefly.S01E12.The.Message.1080p.BRRip.AC3.x264-LESS.mkv",
+   "placed": {
+    "episode": 2,
+    "kind": "episode",
+    "season": 0
+   },
+   "size": 1065934190
+  },
+  "s01e13_heart_of_gold": {
+   "folder": "",
+   "hash": "935a77d282bce621fe0514668225abf597f5756a",
+   "ids": {
+    "imdb": "tt0303461",
+    "tmdb": "1437"
+   },
+   "name": "Firefly.S01.COMPLETE.REPACK.1080p.BRRip.AC3.x264-LESS",
+   "path": "shows/Firefly.S01.COMPLETE.REPACK.1080p.BRRip.AC3.x264-LESS/Firefly.S01E13.Heart.of.Gold.1080p.BRRip.AC3.x264-LESS.mkv",
+   "placed": {
+    "episode": 3,
+    "kind": "episode",
+    "season": 0
+   },
+   "size": 1022804483
+  }
+ },
+ "tmdb": {
+  "https://api.themoviedb.org/3/tv/1437/season/0/episode/1?append_to_response=external_ids&api_key=KEY": {
+   "air_date": "2003-06-28",
+   "crew": [
+    {
+     "adult": false,
+     "credit_id": "5256f0db19c2956ff611034d",
+     "department": "Writing",
+     "gender": 2,
+     "id": 12891,
+     "job": "Writer",
+     "known_for_department": "Writing",
+     "name": "Joss Whedon",
+     "original_name": "Joss Whedon",
+     "popularity": 2.3614,
+     "profile_path": "/tAcIXWQWgGzoSsw2BUBuDbCGgii.jpg"
+    },
+    {
+     "adult": false,
+     "credit_id": "5256f0e019c2956ff6110a21",
+     "department": "Writing",
+     "gender": 2,
+     "id": 187863,
+     "job": "Writer",
+     "known_for_department": "Writing",
+     "name": "Jose Molina",
+     "original_name": "Jose Molina",
+     "popularity": 0.6127,
+     "profile_path": null
+    },
+    {
+     "adult": false,
+     "credit_id": "5256f0dd19c2956ff61106a0",
+     "department": "Writing",
+     "gender": 2,
+     "id": 1215761,
+     "job": "Writer",
+     "known_for_department": "Writing",
+     "name": "Ben Edlund",
+     "original_name": "Ben Edlund",
+     "popularity": 0.8964,
+     "profile_path": null
+    },
+    {
+     "adult": false,
+     "credit_id": "5256f0dd19c2956ff61106b4",
+     "department": "Directing",
+     "gender": 2,
+     "id": 1174226,
+     "job": "Director",
+     "known_for_department": "Directing",
+     "name": "Vern Gillum",
+     "original_name": "Vern Gillum",
+     "popularity": 0.4251,
+     "profile_path": null
+    },
+    {
+     "adult": false,
+     "credit_id": "58780304c3a36850e900c1a4",
+     "department": "Camera",
+     "gender": 2,
+     "id": 55441,
+     "job": "Director of Photography",
+     "known_for_department": "Directing",
+     "name": "David Boyd",
+     "original_name": "David Boyd",
+     "popularity": 1.162,
+     "profile_path": "/8IM71QyrIcsN2Lz2QzjZ7F6p9QE.jpg"
+    },
+    {
+     "adult": false,
+     "credit_id": "587802b4c3a36850f200ca29",
+     "department": "Sound",
+     "gender": 2,
+     "id": 1084669,
+     "job": "Music",
+     "known_for_department": "Sound",
+     "name": "Greg Edmonson",
+     "original_name": "Greg Edmonson",
+     "popularity": 0.4706,
+     "profile_path": null
+    }
+   ],
+   "episode_number": 1,
+   "episode_type": "standard",
+   "external_ids": {
+    "freebase_id": null,
+    "freebase_mid": null,
+    "imdb_id": "tt0579540",
+    "tvdb_id": 298002,
+    "tvrage_id": null,
+    "wikidata_id": "Q7835704"
+   },
+   "guest_stars": [
+    {
+     "adult": false,
+     "character": "Monty",
+     "credit_id": "587a85349251413ecb006494",
+     "gender": 2,
+     "id": 116233,
+     "known_for_department": "Acting",
+     "name": "Franc Ross",
+     "order": 541,
+     "original_name": "Franc Ross",
+     "popularity": 0.6082,
+     "profile_path": "/ryhu0C5dAatcI2vDpi2crx0NbBE.jpg"
+    },
+    {
+     "adult": false,
+     "character": "Durran Haymer",
+     "credit_id": "587a8549c3a3684a27006785",
+     "gender": 2,
+     "id": 23974,
+     "known_for_department": "Acting",
+     "name": "Dwier Brown",
+     "order": 542,
+     "original_name": "Dwier Brown",
+     "popularity": 1.2568,
+     "profile_path": "/qaZRslaXk46RAPig6PDASf5msJu.jpg"
+    },
+    {
+     "adult": false,
+     "character": "Police Sergeant",
+     "credit_id": "587a855d9251413e9200648a",
+     "gender": 2,
+     "id": 183507,
+     "known_for_department": "Acting",
+     "name": "John Eric Bentley",
+     "order": 543,
+     "original_name": "John Eric Bentley",
+     "popularity": 1.0625,
+     "profile_path": "/2r2ybtn1qDCl3JlKFYklODelvW8.jpg"
+    },
+    {
+     "adult": false,
+     "character": "Saffron",
+     "credit_id": "64d292e9ede1b0013c715572",
+     "gender": 1,
+     "id": 110014,
+     "known_for_department": "Acting",
+     "name": "Christina Hendricks",
+     "order": 620,
+     "original_name": "Christina Hendricks",
+     "popularity": 4.0535,
+     "profile_path": "/nwSh3NXQtUT3joHbCVwLvOoBxJG.jpg"
+    }
+   ],
+   "id": 4257250,
+   "name": "Trash",
+   "overview": "Saffron returns to plague Serenity with a scheme to steal a rare antique weapon from a wealthy landowner. Unfortunately for Mal, she neglects to mention just how she came across the information needed to break into the landowner's home.",
+   "production_code": "1AGE12",
+   "runtime": 45,
+   "season_number": 0,
+   "still_path": "/if0a9fQhm0RRP9CcZy6w3nCeq0z.jpg",
+   "vote_average": 7.6,
+   "vote_count": 33
+  },
+  "https://api.themoviedb.org/3/tv/1437/season/0/episode/2?append_to_response=external_ids&api_key=KEY": {
+   "air_date": "2003-07-15",
+   "crew": [
+    {
+     "adult": false,
+     "credit_id": "5256f0dc19c2956ff61104f0",
+     "department": "Directing",
+     "gender": 2,
+     "id": 202100,
+     "job": "Director",
+     "known_for_department": "Writing",
+     "name": "Tim Minear",
+     "original_name": "Tim Minear",
+     "popularity": 1.2124,
+     "profile_path": "/zOnOJmM0sShVbLgW2jB0j0r6D6U.jpg"
+    },
+    {
+     "adult": false,
+     "credit_id": "5256f0db19c2956ff611035f",
+     "department": "Writing",
+     "gender": 2,
+     "id": 202100,
+     "job": "Writer",
+     "known_for_department": "Writing",
+     "name": "Tim Minear",
+     "original_name": "Tim Minear",
+     "popularity": 1.2124,
+     "profile_path": "/zOnOJmM0sShVbLgW2jB0j0r6D6U.jpg"
+    },
+    {
+     "adult": false,
+     "credit_id": "5256f0db19c2956ff611034d",
+     "department": "Writing",
+     "gender": 2,
+     "id": 12891,
+     "job": "Writer",
+     "known_for_department": "Writing",
+     "name": "Joss Whedon",
+     "original_name": "Joss Whedon",
+     "popularity": 2.3614,
+     "profile_path": "/tAcIXWQWgGzoSsw2BUBuDbCGgii.jpg"
+    },
+    {
+     "adult": false,
+     "credit_id": "58780304c3a36850e900c1a4",
+     "department": "Camera",
+     "gender": 2,
+     "id": 55441,
+     "job": "Director of Photography",
+     "known_for_department": "Directing",
+     "name": "David Boyd",
+     "original_name": "David Boyd",
+     "popularity": 1.162,
+     "profile_path": "/8IM71QyrIcsN2Lz2QzjZ7F6p9QE.jpg"
+    },
+    {
+     "adult": false,
+     "credit_id": "587802b4c3a36850f200ca29",
+     "department": "Sound",
+     "gender": 2,
+     "id": 1084669,
+     "job": "Music",
+     "known_for_department": "Sound",
+     "name": "Greg Edmonson",
+     "original_name": "Greg Edmonson",
+     "popularity": 0.4706,
+     "profile_path": null
+    }
+   ],
+   "episode_number": 2,
+   "episode_type": "standard",
+   "external_ids": {
+    "freebase_id": null,
+    "freebase_mid": null,
+    "imdb_id": "tt0579538",
+    "tvdb_id": 298003,
+    "tvrage_id": null,
+    "wikidata_id": "Q7751126"
+   },
+   "guest_stars": [
+    {
+     "adult": false,
+     "character": "Tracey",
+     "credit_id": "587a8625c3a3684a4a006ad1",
+     "gender": 2,
+     "id": 141955,
+     "known_for_department": "Acting",
+     "name": "Jonathan M. Woodward",
+     "order": 544,
+     "original_name": "Jonathan M. Woodward",
+     "popularity": 0.7418,
+     "profile_path": "/mWJe3IuwgvUj5eN4b3hZet4vLOr.jpg"
+    },
+    {
+     "adult": false,
+     "character": "Lieutenant Womack",
+     "credit_id": "587a86389251413f0f006504",
+     "gender": 2,
+     "id": 25849,
+     "known_for_department": "Acting",
+     "name": "Richard Burgi",
+     "order": 545,
+     "original_name": "Richard Burgi",
+     "popularity": 1.7593,
+     "profile_path": "/o4YYXnrZI69OZ8bm57sQCfxQYBT.jpg"
+    },
+    {
+     "adult": false,
+     "character": "Amnon Duul",
+     "credit_id": "587a864a9251413f330067c1",
+     "gender": 2,
+     "id": 1350891,
+     "known_for_department": "Acting",
+     "name": "Al Pugliese",
+     "order": 546,
+     "original_name": "Al Pugliese",
+     "popularity": 0.678,
+     "profile_path": "/o6leE215JLGUuThu8S8K77t8eHj.jpg"
+    },
+    {
+     "adult": false,
+     "character": "Fendris",
+     "credit_id": "587a865f9251413f1b006ab1",
+     "gender": 2,
+     "id": 1738941,
+     "known_for_department": "Acting",
+     "name": "Tod Nakamura",
+     "order": 547,
+     "original_name": "Tod Nakamura",
+     "popularity": 0.4489,
+     "profile_path": null
+    },
+    {
+     "adult": false,
+     "character": "Skunk",
+     "credit_id": "587a868ac3a3684a6500685f",
+     "gender": 2,
+     "id": 1738942,
+     "known_for_department": "Acting",
+     "name": "Craig Vincent",
+     "order": 548,
+     "original_name": "Craig Vincent",
+     "popularity": 0.5919,
+     "profile_path": null
+    },
+    {
+     "adult": false,
+     "character": "Barker",
+     "credit_id": "587a869ec3a3684a270068c2",
+     "gender": 2,
+     "id": 155295,
+     "known_for_department": "Acting",
+     "name": "Morgan Rusler",
+     "order": 549,
+     "original_name": "Morgan Rusler",
+     "popularity": 0.5946,
+     "profile_path": "/bKTFDc5J3ViirEIOu8UnOu1GjSL.jpg"
+    },
+    {
+     "adult": false,
+     "character": "Browncoat Soldier (uncredited)",
+     "credit_id": "60166db7907f26003f564654",
+     "gender": 2,
+     "id": 1828992,
+     "known_for_department": "Acting",
+     "name": "Danny Nero",
+     "order": 610,
+     "original_name": "Danny Nero",
+     "popularity": 0.8955,
+     "profile_path": null
+    },
+    {
+     "adult": false,
+     "character": "Bodyguard / Shopper (uncredited)",
+     "credit_id": "60166d3abb1057003d938829",
+     "gender": 2,
+     "id": 1269559,
+     "known_for_department": "Acting",
+     "name": "Gerard J. Reyes",
+     "order": 611,
+     "original_name": "Gerard J. Reyes",
+     "popularity": 0.5837,
+     "profile_path": null
+    },
+    {
+     "adult": false,
+     "character": "Man at Funeral (uncredited)",
+     "credit_id": "60166dc8976a23003fa5223d",
+     "gender": 2,
+     "id": 12891,
+     "known_for_department": "Writing",
+     "name": "Joss Whedon",
+     "order": 612,
+     "original_name": "Joss Whedon",
+     "popularity": 2.3614,
+     "profile_path": "/tAcIXWQWgGzoSsw2BUBuDbCGgii.jpg"
+    }
+   ],
+   "id": 4257251,
+   "name": "The Message",
+   "overview": "A former Independence soldier who had served with Mal and Zoë returns in a dramatic manner, with a vicious Alliance officer chasing after him for some unusual smuggled goods.",
+   "production_code": "1AGE13",
+   "runtime": 46,
+   "season_number": 0,
+   "still_path": "/2b2nlxpwDLCj9iFv9zqBBlkEu4K.jpg",
+   "vote_average": 7.0,
+   "vote_count": 33
+  },
+  "https://api.themoviedb.org/3/tv/1437/season/0/episode/3?append_to_response=external_ids&api_key=KEY": {
+   "air_date": "2003-08-19",
+   "crew": [
+    {
+     "adult": false,
+     "credit_id": "5256f0e419c2956ff6110cff",
+     "department": "Writing",
+     "gender": 2,
+     "id": 28250,
+     "job": "Writer",
+     "known_for_department": "Production",
+     "name": "Brett Matthews",
+     "original_name": "Brett Matthews",
+     "popularity": 0.6413,
+     "profile_path": null
+    },
+    {
+     "adult": false,
+     "credit_id": "5256f0e419c2956ff6110d29",
+     "department": "Directing",
+     "gender": 2,
+     "id": 8573,
+     "job": "Director",
+     "known_for_department": "Directing",
+     "name": "Thomas J. Wright",
+     "original_name": "Thomas J. Wright",
+     "popularity": 0.9699,
+     "profile_path": null
+    },
+    {
+     "adult": false,
+     "credit_id": "5256f0db19c2956ff611034d",
+     "department": "Writing",
+     "gender": 2,
+     "id": 12891,
+     "job": "Writer",
+     "known_for_department": "Writing",
+     "name": "Joss Whedon",
+     "original_name": "Joss Whedon",
+     "popularity": 2.3614,
+     "profile_path": "/tAcIXWQWgGzoSsw2BUBuDbCGgii.jpg"
+    },
+    {
+     "adult": false,
+     "credit_id": "58780304c3a36850e900c1a4",
+     "department": "Camera",
+     "gender": 2,
+     "id": 55441,
+     "job": "Director of Photography",
+     "known_for_department": "Directing",
+     "name": "David Boyd",
+     "original_name": "David Boyd",
+     "popularity": 1.162,
+     "profile_path": "/8IM71QyrIcsN2Lz2QzjZ7F6p9QE.jpg"
+    },
+    {
+     "adult": false,
+     "credit_id": "587802b4c3a36850f200ca29",
+     "department": "Sound",
+     "gender": 2,
+     "id": 1084669,
+     "job": "Music",
+     "known_for_department": "Sound",
+     "name": "Greg Edmonson",
+     "original_name": "Greg Edmonson",
+     "popularity": 0.4706,
+     "profile_path": null
+    }
+   ],
+   "episode_number": 3,
+   "episode_type": "standard",
+   "external_ids": {
+    "freebase_id": null,
+    "freebase_mid": null,
+    "imdb_id": "tt0579529",
+    "tvdb_id": 298001,
+    "tvrage_id": null,
+    "wikidata_id": "Q5692282"
+   },
+   "guest_stars": [
+    {
+     "adult": false,
+     "character": "Nandi",
+     "credit_id": "587a836c9251413eec006150",
+     "gender": 1,
+     "id": 89251,
+     "known_for_department": "Acting",
+     "name": "Melinda Clarke",
+     "order": 13,
+     "original_name": "Melinda Clarke",
+     "popularity": 1.8522,
+     "profile_path": "/xFNeQGhBvqz4eo3QcvnqXtPsAIO.jpg"
+    },
+    {
+     "adult": false,
+     "character": "Chari",
+     "credit_id": "587a83989251413eec00616e",
+     "gender": 1,
+     "id": 157047,
+     "known_for_department": "Directing",
+     "name": "Kimberly McCullough",
+     "order": 536,
+     "original_name": "Kimberly McCullough",
+     "popularity": 0.8857,
+     "profile_path": "/bhLjAkYh931tg1VC8nHGFzAgCfb.jpg"
+    },
+    {
+     "adult": false,
+     "character": "Rance Burgess",
+     "credit_id": "587a83c2c3a36846c3005596",
+     "gender": 2,
+     "id": 9632,
+     "known_for_department": "Acting",
+     "name": "Fredric Lehne",
+     "order": 537,
+     "original_name": "Fredric Lehne",
+     "popularity": 1.9153,
+     "profile_path": "/qjtfC2QWLukoNVnDjp8QZF6E6Xz.jpg"
+    },
+    {
+     "adult": false,
+     "character": "Petaline",
+     "credit_id": "587a83ef9251413eec0061b3",
+     "gender": 1,
+     "id": 1244436,
+     "known_for_department": "Acting",
+     "name": "Tracy Ryan",
+     "order": 538,
+     "original_name": "Tracy Ryan",
+     "popularity": 0.6883,
+     "profile_path": "/16GSXEdHsaJGyDnbb8p3VQN4rQp.jpg"
+    },
+    {
+     "adult": false,
+     "character": "Helen",
+     "credit_id": "587a8417c3a3684a9e00603e",
+     "gender": 1,
+     "id": 1738932,
+     "known_for_department": "Acting",
+     "name": "Heather Black",
+     "order": 539,
+     "original_name": "Heather Black",
+     "popularity": 0.4367,
+     "profile_path": null
+    },
+    {
+     "adult": false,
+     "character": "Lucy",
+     "credit_id": "587a8429c3a3684a2700667d",
+     "gender": 1,
+     "id": 1224584,
+     "known_for_department": "Acting",
+     "name": "Angie Hart",
+     "order": 540,
+     "original_name": "Angie Hart",
+     "popularity": 0.3216,
+     "profile_path": null
+    },
+    {
+     "adult": false,
+     "character": "Belinda",
+     "credit_id": "60166d750816c700428771cd",
+     "gender": 0,
+     "id": 1599759,
+     "known_for_department": "Acting",
+     "name": "Sandy Mulvihill",
+     "order": 607,
+     "original_name": "Sandy Mulvihill",
+     "popularity": 0.4286,
+     "profile_path": null
+    },
+    {
+     "adult": false,
+     "character": "Narrator",
+     "credit_id": "60166d7fa9117f003de60e62",
+     "gender": 2,
+     "id": 165827,
+     "known_for_department": "Acting",
+     "name": "Jim Lau",
+     "order": 608,
+     "original_name": "Jim Lau",
+     "popularity": 1.5319,
+     "profile_path": "/vtnVGok0rQoSiH6ubJa73l94tVV.jpg"
+    },
+    {
+     "adult": false,
+     "character": "Deadwood Town Protestor (uncredited)",
+     "credit_id": "60166d88d266a2003d10f3a7",
+     "gender": 2,
+     "id": 1783064,
+     "known_for_department": "Acting",
+     "name": "Jerry Buys",
+     "order": 609,
+     "original_name": "Jerry Buys",
+     "popularity": 0.5447,
+     "profile_path": null
+    },
+    {
+     "adult": false,
+     "character": "Emma",
+     "credit_id": "63f937a3fb52990085a6eb45",
+     "gender": 0,
+     "id": 3937061,
+     "known_for_department": "Acting",
+     "name": "Doan Ly",
+     "order": 619,
+     "original_name": "Doan Ly",
+     "popularity": 0.2951,
+     "profile_path": null
+    }
+   ],
+   "id": 4257252,
+   "name": "Heart of Gold",
+   "overview": "A Companion-trained friend of Inara's who runs a brothel calls for help from Serenity when a local bigwig reveals his intentions to take \"his\" baby from the girl he impregnated.",
+   "production_code": "1AGE10",
+   "runtime": 46,
+   "season_number": 0,
+   "still_path": "/ef4T254PwZIpPfjQ8a5wxo9QEMD.jpg",
+   "vote_average": 7.1,
+   "vote_count": 31
+  },
+  "https://api.themoviedb.org/3/tv/1437/season/0?api_key=KEY": {
+   "_id": "5256f0ca19c2956ff6110227",
+   "air_date": "2003-06-28",
+   "id": 3847,
+   "name": "Specials",
+   "networks": [
+    {
+     "id": 19,
+     "logo_path": "/1DSpHrWyOORkL9N2QHX7Adt31mQ.png",
+     "name": "FOX",
+     "origin_country": "US"
+    }
+   ],
+   "overview": "",
+   "poster_path": "/6GgGAyMB7KVocw6QoLi2Ke4kJZE.jpg",
+   "season_number": 0,
+   "vote_average": 0.0
+  },
+  "https://api.themoviedb.org/3/tv/1437/season/1/episode/1?append_to_response=external_ids&api_key=KEY": {
+   "air_date": "2002-09-20",
+   "crew": [
+    {
+     "adult": false,
+     "credit_id": "5256f0db19c2956ff611035f",
+     "department": "Writing",
+     "gender": 2,
+     "id": 202100,
+     "job": "Writer",
+     "known_for_department": "Writing",
+     "name": "Tim Minear",
+     "original_name": "Tim Minear",
+     "popularity": 1.1807,
+     "profile_path": "/zOnOJmM0sShVbLgW2jB0j0r6D6U.jpg"
+    },
+    {
+     "adult": false,
+     "credit_id": "5256f0db19c2956ff611034d",
+     "department": "Writing",
+     "gender": 2,
+     "id": 12891,
+     "job": "Writer",
+     "known_for_department": "Writing",
+     "name": "Joss Whedon",
+     "original_name": "Joss Whedon",
+     "popularity": 2.4088,
+     "profile_path": "/tAcIXWQWgGzoSsw2BUBuDbCGgii.jpg"
+    },
+    {
+     "adult": false,
+     "credit_id": "5256f0db19c2956ff61103a3",
+     "department": "Directing",
+     "gender": 2,
+     "id": 12891,
+     "job": "Director",
+     "known_for_department": "Writing",
+     "name": "Joss Whedon",
+     "original_name": "Joss Whedon",
+     "popularity": 2.4088,
+     "profile_path": "/tAcIXWQWgGzoSsw2BUBuDbCGgii.jpg"
+    },
+    {
+     "adult": false,
+     "credit_id": "58780304c3a36850e900c1a4",
+     "department": "Camera",
+     "gender": 2,
+     "id": 55441,
+     "job": "Director of Photography",
+     "known_for_department": "Directing",
+     "name": "David Boyd",
+     "original_name": "David Boyd",
+     "popularity": 0.9769,
+     "profile_path": "/8IM71QyrIcsN2Lz2QzjZ7F6p9QE.jpg"
+    },
+    {
+     "adult": false,
+     "credit_id": "587802b4c3a36850f200ca29",
+     "department": "Sound",
+     "gender": 2,
+     "id": 1084669,
+     "job": "Music",
+     "known_for_department": "Sound",
+     "name": "Greg Edmonson",
+     "original_name": "Greg Edmonson",
+     "popularity": 0.506,
+     "profile_path": null
+    }
+   ],
+   "episode_number": 1,
+   "episode_type": "standard",
+   "external_ids": {
+    "freebase_id": null,
+    "freebase_mid": null,
+    "imdb_id": "tt0579539",
+    "tvdb_id": 297989,
+    "tvrage_id": null,
+    "wikidata_id": "Q7769902"
+   },
+   "guest_stars": [
+    {
+     "adult": false,
+     "character": "Adelai Niska",
+     "credit_id": "5877ff13c3a36850f500e85b",
+     "gender": 2,
+     "id": 84707,
+     "known_for_department": "Acting",
+     "name": "Michael Fairman",
+     "order": 7,
+     "original_name": "Michael Fairman",
+     "popularity": 1.0162,
+     "profile_path": "/zFLOZiKJJxhSTwgKgAGZyexOyUm.jpg"
+    },
+    {
+     "adult": false,
+     "character": "Lund",
+     "credit_id": "5877febcc3a36850f000c9e1",
+     "gender": 2,
+     "id": 27736,
+     "known_for_department": "Acting",
+     "name": "Tom Towles",
+     "order": 501,
+     "original_name": "Tom Towles",
+     "popularity": 1.0944,
+     "profile_path": "/ekBEknY5CAjX8zXkSjGVkS3WcAN.jpg"
+    },
+    {
+     "adult": false,
+     "character": "Crow",
+     "credit_id": "5877fedc925141104700c045",
+     "gender": 2,
+     "id": 52366,
+     "known_for_department": "Acting",
+     "name": "Andrew Bryniarski",
+     "order": 502,
+     "original_name": "Andrew Bryniarski",
+     "popularity": 1.4192,
+     "profile_path": "/7WecTlVEkck19VMXTcBfSkmshYL.jpg"
+    },
+    {
+     "adult": false,
+     "character": "Sheriff Bourne",
+     "credit_id": "5877ff2bc3a36850f000ca32",
+     "gender": 2,
+     "id": 2518,
+     "known_for_department": "Acting",
+     "name": "Gregg Henry",
+     "order": 503,
+     "original_name": "Gregg Henry",
+     "popularity": 3.057,
+     "profile_path": "/j17nuAFulrbYP34g4Qw8SZRDNUo.jpg"
+    },
+    {
+     "adult": false,
+     "character": "Deputy",
+     "credit_id": "5acc532a0e0a2631a3025128",
+     "gender": 1,
+     "id": 131455,
+     "known_for_department": "Directing",
+     "name": "Valerie Red-Horse",
+     "order": 553,
+     "original_name": "Valerie Red-Horse",
+     "popularity": 0.4271,
+     "profile_path": "/v0oo1SKp4erO85jB46nZU9gNYhp.jpg"
+    },
+    {
+     "adult": false,
+     "character": "Ensign",
+     "credit_id": "5acc535cc3a36834de07d2b6",
+     "gender": 1,
+     "id": 154599,
+     "known_for_department": "Acting",
+     "name": "Lina Patel",
+     "order": 554,
+     "original_name": "Lina Patel",
+     "popularity": 0.5432,
+     "profile_path": "/nocneBfZHR0Z8SJORvEdYVJVTew.jpg"
+    },
+    {
+     "adult": false,
+     "character": "Officer",
+     "credit_id": "5acc539e9251410bda004e85",
+     "gender": 2,
+     "id": 1219579,
+     "known_for_department": "Acting",
+     "name": "Kevin Will",
+     "order": 555,
+     "original_name": "Kevin Will",
+     "popularity": 0.8798,
+     "profile_path": "/skLUZhtN2aUsBusSWAGjd5ThY1t.jpg"
+    },
+    {
+     "adult": false,
+     "character": "Fed",
+     "credit_id": "5acc53ed9251414341021d20",
+     "gender": 2,
+     "id": 116514,
+     "known_for_department": "Acting",
+     "name": "Eric Lange",
+     "order": 556,
+     "original_name": "Eric Lange",
+     "popularity": 1.4623,
+     "profile_path": "/bjicjzgzM9cQFp3myiraT2E4gch.jpg"
+    },
+    {
+     "adult": false,
+     "character": "Henchman",
+     "credit_id": "5acc54d79251410bda004fce",
+     "gender": 2,
+     "id": 44825,
+     "known_for_department": "Acting",
+     "name": "David Reynolds",
+     "order": 557,
+     "original_name": "David Reynolds",
+     "popularity": 0.4516,
+     "profile_path": "/6HKWm7shK5BrLlI91JV6KAIzK2H.jpg"
+    },
+    {
+     "adult": false,
+     "character": "Man",
+     "credit_id": "5acc54fdc3a3687e480274b0",
+     "gender": 2,
+     "id": 149640,
+     "known_for_department": "Acting",
+     "name": "Jeff Ricketts",
+     "order": 558,
+     "original_name": "Jeff Ricketts",
+     "popularity": 0.8505,
+     "profile_path": "/khiwfKygqFILzpvUNlu55EqQjFm.jpg"
+    },
+    {
+     "adult": false,
+     "character": "Other Man",
+     "credit_id": "5acc55280e0a2631cc0254b6",
+     "gender": 2,
+     "id": 155825,
+     "known_for_department": "Acting",
+     "name": "Dennis Cockrum",
+     "order": 559,
+     "original_name": "Dennis Cockrum",
+     "popularity": 1.1966,
+     "profile_path": "/A3Or26SK7GFf9nv9OVd2X5DpLuO.jpg"
+    },
+    {
+     "adult": false,
+     "character": "Immigrant Woman",
+     "credit_id": "5acc55620e0a26320a023b50",
+     "gender": 1,
+     "id": 205374,
+     "known_for_department": "Acting",
+     "name": "Rene Hamilton",
+     "order": 560,
+     "original_name": "Rene Hamilton",
+     "popularity": 0.6178,
+     "profile_path": null
+    },
+    {
+     "adult": false,
+     "character": "Immigrant Woman #2",
+     "credit_id": "5acc55dd9251414341021f14",
+     "gender": 0,
+     "id": 149628,
+     "known_for_department": "Acting",
+     "name": "Michelle Ferrara",
+     "order": 561,
+     "original_name": "Michelle Ferrara",
+     "popularity": 0.5309,
+     "profile_path": null
+    },
+    {
+     "adult": false,
+     "character": "Bellydancer (uncredited)",
+     "credit_id": "60166acbaafebd0040da5c03",
+     "gender": 1,
+     "id": 1287070,
+     "known_for_department": "Costume & Make-Up",
+     "name": "Melody White",
+     "order": 585,
+     "original_name": "Melody White",
+     "popularity": 0.4485,
+     "profile_path": null
+    },
+    {
+     "adult": false,
+     "character": "Bar Guy, Henchman (uncredited)",
+     "credit_id": "60166ad628723c003faca0ef",
+     "gender": 2,
+     "id": 1286738,
+     "known_for_department": "Acting",
+     "name": "Rick Williamson",
+     "order": 586,
+     "original_name": "Rick Williamson",
+     "popularity": 0.5328,
+     "profile_path": "/byOjQKOeC6c8eLxQZWnhmtnIU4A.jpg"
+    }
+   ],
+   "id": 1048594,
+   "name": "The Train Job",
+   "overview": "The crew of Serenity take on a train heist commissioned by a crime lord. They steal the goods, only to find it is medicine that's desperately needed by the town.",
+   "production_code": "1AGE01",
+   "runtime": 43,
+   "season_number": 1,
+   "still_path": "/w4yFzJkAiGjuDQuFKLOocjrH1eH.jpg",
+   "vote_average": 7.6,
+   "vote_count": 82
+  },
+  "https://api.themoviedb.org/3/tv/1437/season/1?api_key=KEY": {
+   "_id": "5256f0ca19c2956ff6110211",
+   "air_date": "2002-09-20",
+   "id": 3846,
+   "name": "Season 1",
+   "networks": [
+    {
+     "id": 19,
+     "logo_path": "/1DSpHrWyOORkL9N2QHX7Adt31mQ.png",
+     "name": "FOX",
+     "origin_country": "US"
+    }
+   ],
+   "overview": "",
+   "poster_path": "/qpjgUjjj3gQTzkQgcHXVBaP51Qf.jpg",
+   "season_number": 1,
+   "vote_average": 7.9
+  },
+  "https://api.themoviedb.org/3/tv/1437?append_to_response=credits%2Cexternal_ids%2Ccontent_ratings%2Crelease_dates&api_key=KEY": {
+   "adult": false,
+   "backdrop_path": "/te4VJNMipsFQofCkiytuyswGDlV.jpg",
+   "content_ratings": {
+    "results": [
+     {
+      "descriptors": [],
+      "iso_3166_1": "DE",
+      "rating": "16"
+     },
+     {
+      "descriptors": [],
+      "iso_3166_1": "GB",
+      "rating": "12"
+     },
+     {
+      "descriptors": [],
+      "iso_3166_1": "AU",
+      "rating": "M"
+     },
+     {
+      "descriptors": [],
+      "iso_3166_1": "US",
+      "rating": "TV-14"
+     },
+     {
+      "descriptors": [],
+      "iso_3166_1": "NL",
+      "rating": "12"
+     },
+     {
+      "descriptors": [],
+      "iso_3166_1": "ES",
+      "rating": "16"
+     },
+     {
+      "descriptors": [],
+      "iso_3166_1": "BR",
+      "rating": "12"
+     },
+     {
+      "descriptors": [],
+      "iso_3166_1": "AT",
+      "rating": "16"
+     },
+     {
+      "descriptors": [],
+      "iso_3166_1": "IE",
+      "rating": "12"
+     },
+     {
+      "descriptors": [],
+      "iso_3166_1": "CH",
+      "rating": "16"
+     },
+     {
+      "descriptors": [],
+      "iso_3166_1": "BE",
+      "rating": "12"
+     }
+    ]
+   },
+   "created_by": [
+    {
+     "credit_id": "5256f0e619c2956ff6111124",
+     "gender": 2,
+     "id": 12891,
+     "name": "Joss Whedon",
+     "original_name": "Joss Whedon",
+     "profile_path": "/tAcIXWQWgGzoSsw2BUBuDbCGgii.jpg"
+    }
+   ],
+   "credits": {
+    "cast": [
+     {
+      "adult": false,
+      "character": "Mal Reynolds",
+      "credit_id": "62032facba131b0114278ae5",
+      "gender": 2,
+      "id": 51797,
+      "known_for_department": "Acting",
+      "name": "Nathan Fillion",
+      "order": 0,
+      "original_name": "Nathan Fillion",
+      "popularity": 9.7101,
+      "profile_path": "/aW6vCxkUZtwb6iH2Wf88Uq0XNVv.jpg"
+     },
+     {
+      "adult": false,
+      "character": "Zoë Washburne",
+      "credit_id": "62032fe762fcd300690c443a",
+      "gender": 1,
+      "id": 9576,
+      "known_for_department": "Acting",
+      "name": "Gina Torres",
+      "order": 1,
+      "original_name": "Gina Torres",
+      "popularity": 3.6001,
+      "profile_path": "/ukDNHgvEgdU95eaw6pngiAPucv4.jpg"
+     },
+     {
+      "adult": false,
+      "character": "Hoban Washburne",
+      "credit_id": "62033002ba131b0114278bb8",
+      "gender": 2,
+      "id": 21088,
+      "known_for_department": "Acting",
+      "name": "Alan Tudyk",
+      "order": 2,
+      "original_name": "Alan Tudyk",
+      "popularity": 3.8481,
+      "profile_path": "/jUuUbPuMGonFT5E2pcs4alfqaCN.jpg"
+     },
+     {
+      "adult": false,
+      "character": "Inara Serra",
+      "credit_id": "620330115b12400106ef0626",
+      "gender": 1,
+      "id": 54882,
+      "known_for_department": "Acting",
+      "name": "Morena Baccarin",
+      "order": 3,
+      "original_name": "Morena Baccarin",
+      "popularity": 11.5127,
+      "profile_path": "/4gyHyg6FJ1oFczOm5pmMkdEEo2J.jpg"
+     },
+     {
+      "adult": false,
+      "character": "Jayne Cobb",
+      "credit_id": "62032fce158c8500b87a2509",
+      "gender": 2,
+      "id": 2059,
+      "known_for_department": "Acting",
+      "name": "Adam Baldwin",
+      "order": 4,
+      "original_name": "Adam Baldwin",
+      "popularity": 3.0366,
+      "profile_path": "/lfbyJWNWGbiYfU0Yr1tjn6Trd2V.jpg"
+     },
+     {
+      "adult": false,
+      "character": "Kaylee Frye",
+      "credit_id": "62033024ba131b00dbd81f67",
+      "gender": 1,
+      "id": 72092,
+      "known_for_department": "Acting",
+      "name": "Jewel Staite",
+      "order": 5,
+      "original_name": "Jewel Staite",
+      "popularity": 2.5153,
+      "profile_path": "/ztxDIZvuPreUixO6ZPxwkCg2UlO.jpg"
+     },
+     {
+      "adult": false,
+      "character": "Simon Tam",
+      "credit_id": "620330364df291009c1869a4",
+      "gender": 2,
+      "id": 55148,
+      "known_for_department": "Acting",
+      "name": "Sean Maher",
+      "order": 6,
+      "original_name": "Sean Maher",
+      "popularity": 1.2088,
+      "profile_path": "/o7splcOIVAdbHnwohJOUAvXWVlk.jpg"
+     },
+     {
+      "adult": false,
+      "character": "River Tam",
+      "credit_id": "620330470792e1010a472023",
+      "gender": 1,
+      "id": 54881,
+      "known_for_department": "Acting",
+      "name": "Summer Glau",
+      "order": 8,
+      "original_name": "Summer Glau",
+      "popularity": 2.346,
+      "profile_path": "/rDTxblyw0AwU5oSeksgP7GwMyrF.jpg"
+     },
+     {
+      "adult": false,
+      "character": "Derrial Book",
+      "credit_id": "6203305ae323f30042a702b0",
+      "gender": 2,
+      "id": 74570,
+      "known_for_department": "Acting",
+      "name": "Ron Glass",
+      "order": 9,
+      "original_name": "Ron Glass",
+      "popularity": 1.2971,
+      "profile_path": "/wXkS9e8VZPWlc7jK3AaMXZ2OTUx.jpg"
+     }
+    ],
+    "crew": [
+     {
+      "adult": false,
+      "credit_id": "54a5814f9251411d5300f41c",
+      "department": "Art",
+      "gender": 2,
+      "id": 1407344,
+      "job": "Production Design",
+      "known_for_department": "Art",
+      "name": "Carey Meyer",
+      "original_name": "Carey Meyer",
+      "popularity": 0.7299,
+      "profile_path": null
+     },
+     {
+      "adult": false,
+      "credit_id": "5256f0e619c2956ff61111a6",
+      "department": "Production",
+      "gender": 2,
+      "id": 12891,
+      "job": "Producer",
+      "known_for_department": "Writing",
+      "name": "Joss Whedon",
+      "original_name": "Joss Whedon",
+      "popularity": 2.4088,
+      "profile_path": "/tAcIXWQWgGzoSsw2BUBuDbCGgii.jpg"
+     },
+     {
+      "adult": false,
+      "credit_id": "5256f0e619c2956ff61111bc",
+      "department": "Production",
+      "gender": 2,
+      "id": 202100,
+      "job": "Producer",
+      "known_for_department": "Writing",
+      "name": "Tim Minear",
+      "original_name": "Tim Minear",
+      "popularity": 1.1807,
+      "profile_path": "/zOnOJmM0sShVbLgW2jB0j0r6D6U.jpg"
+     },
+     {
+      "adult": false,
+      "credit_id": "5256f0e719c2956ff61111d2",
+      "department": "Production",
+      "gender": 2,
+      "id": 1215761,
+      "job": "Producer",
+      "known_for_department": "Writing",
+      "name": "Ben Edlund",
+      "original_name": "Ben Edlund",
+      "popularity": 0.87,
+      "profile_path": null
+     }
+    ]
+   },
+   "episode_run_time": [],
+   "external_ids": {
+    "facebook_id": null,
+    "freebase_id": null,
+    "freebase_mid": "/m/014v3t",
+    "imdb_id": "tt0303461",
+    "instagram_id": null,
+    "tvdb_id": 78874,
+    "tvrage_id": 3548,
+    "twitter_id": null,
+    "wikidata_id": "Q11622"
+   },
+   "first_air_date": "2002-09-20",
+   "genres": [
+    {
+     "id": 18,
+     "name": "Drama"
+    },
+    {
+     "id": 10759,
+     "name": "Action & Adventure"
+    },
+    {
+     "id": 10765,
+     "name": "Sci-Fi & Fantasy"
+    }
+   ],
+   "homepage": "",
+   "id": 1437,
+   "in_production": false,
+   "languages": [
+    "en"
+   ],
+   "last_air_date": "2002-12-20",
+   "last_episode_to_air": {
+    "air_date": "2002-12-20",
+    "episode_number": 11,
+    "episode_type": "finale",
+    "id": 1048593,
+    "name": "Serenity",
+    "overview": "Malcolm Reynolds is a veteran and the captain of Serenity. He and his crew are smuggling goods, but they need to pick up some passengers for extra money. However, not all the passengers are what they seem.",
+    "production_code": "1AGE79",
+    "runtime": 88,
+    "season_number": 1,
+    "show_id": 1437,
+    "still_path": "/uNpt7V0a94xlgp7sdgUJK9GOOSe.jpg",
+    "vote_average": 7.9,
+    "vote_count": 72
+   },
+   "name": "Firefly",
+   "networks": [
+    {
+     "id": 19,
+     "logo_path": "/1DSpHrWyOORkL9N2QHX7Adt31mQ.png",
+     "name": "FOX",
+     "origin_country": "US"
+    }
+   ],
+   "next_episode_to_air": null,
+   "number_of_episodes": 11,
+   "number_of_seasons": 1,
+   "origin_country": [
+    "US"
+   ],
+   "original_language": "en",
+   "original_name": "Firefly",
+   "overview": "In the year 2517, the universe is a vast frontier where lawlessness reigns and adventure awaits! Join Captain Malcolm Reynolds and his ragtag crew aboard the spaceship Serenity as they navigate the fringes of society, battling the oppressive Alliance and facing off against ruthless bounty hunters.",
+   "popularity": 27.0801,
+   "poster_path": "/vZcKsy4sGAvWMVqLluwYuoi11Kj.jpg",
+   "production_companies": [
+    {
+     "id": 10567,
+     "logo_path": "/kbZu62C3ZwNfOtao1ECIFTzL40Q.png",
+     "name": "Mutant Enemy Productions",
+     "origin_country": "US"
+    },
+    {
+     "id": 1556,
+     "logo_path": "/31h94rG9hzjprXoYNy3L1ErUya2.png",
+     "name": "20th Century Fox Television",
+     "origin_country": "US"
+    }
+   ],
+   "production_countries": [
+    {
+     "iso_3166_1": "US",
+     "name": "United States of America"
+    }
+   ],
+   "seasons": [
+    {
+     "air_date": "2003-06-28",
+     "episode_count": 12,
+     "id": 3847,
+     "name": "Specials",
+     "overview": "",
+     "poster_path": "/6GgGAyMB7KVocw6QoLi2Ke4kJZE.jpg",
+     "season_number": 0,
+     "vote_average": 0.0
+    },
+    {
+     "air_date": "2002-09-20",
+     "episode_count": 11,
+     "id": 3846,
+     "name": "Season 1",
+     "overview": "",
+     "poster_path": "/qpjgUjjj3gQTzkQgcHXVBaP51Qf.jpg",
+     "season_number": 1,
+     "vote_average": 7.9
+    }
+   ],
+   "softcore": false,
+   "spoken_languages": [
+    {
+     "english_name": "English",
+     "iso_639_1": "en",
+     "name": "English"
+    }
+   ],
+   "status": "Canceled",
+   "tagline": "You can't take the sky from me.",
+   "type": "Scripted",
+   "vote_average": 8.3,
+   "vote_count": 2535
+  }
+ }
+}

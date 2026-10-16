@@ -12736,3 +12736,36 @@ runtime.
 
 Not measured: whether the server token reads everything else the account token does on the
 agent (artwork, markers). rex asks it only for matches and children.
+
+## A special is an episode of season 0 (2026-10-16)
+
+zen's end-to-end rig (zurg on a real RD account, DMM placement) pushed Firefly.S01.COMPLETE.REPACK's
+S01E11-E13 as TMDB 1437's S0E1-E3: TMDB keeps Trash, The Message and Heart of Gold as specials.
+rex placed them there and fetched TMDB's answers for them (its `tmdb_cache.db` held
+`tv/1437/season/0` and each `season/0/episode/N`), and drew each as `Episode N` with the show's
+summary and backdrop, under one `plex://movie/290798…` guid shared by all three. `metadata::enrich`
+kept the oracle's `if parsed["season"] and parsed["episode"]`, so a season 0 was no season: the
+episode's answer was dropped and the row took the show's MOVIE guid. The Specials season itself was
+right (title `Specials`, TMDB's season-0 poster and `tmdb://3847`), because its hints are read
+whenever a season is named at all.
+
+A real PMS names a special as it names any episode. Read from the 1.42.2 reference's own library
+database (stopped since 00:09, opened read-only and immutable; Bluey's Specials season is its 11130
+under show 11004, as in `tests/fixtures/specials_zen.json`): its four shows with a season 0 hold 7
+special episodes, each with its own title, summary, air date and `plex://episode/` guid, none titled
+`Episode N`; each season 0 has a `plex://season/` guid and the agent's poster.
+
+| Show | Season, episode | Title | Guid |
+|---|---|---|---|
+| Bluey (2018) | 0, 2 | Crazy Christmas Lights | `plex://episode/6073246b6cedb6002c67e333` |
+| Bluey (2018) | 0, 3 | Silent Night (Before Christmas) | `plex://episode/6073246b6cedb6002c67e332` |
+| Bluey (2018) | 0, 4 | Jingle Bells | `plex://episode/6073246b6cedb6002c67e331` |
+| Mobile Suit Gundam Wing | 0, 9 | Portrait of a Ruined Country | `plex://episode/5d9c0f242192ba001f3587d4` |
+| MythBusters | 0, 8 | Buried Alive | `plex://episode/5fbd80fedcbaf9002f97d321` |
+| MythBusters | 0, 11 | Alcatraz Escape | `plex://episode/5fbd8100dcbaf9002f97d335` |
+| Solo Leveling | 0, 1 | How to Get Stronger | `plex://episode/65d3794cb9a4f240d4f1c131` |
+
+So season 0 now names its episodes as any season does: TMDB's title, summary, air date and still,
+and an episode guid from TMDB's episode id. `tests/fixtures/feed/specials.json` is the rig's
+answers; `tests/test_feed_placement.py` checks the three specials and their season through a start,
+and `native_phase2.json`'s "metadata enrich edge case 1", the oracle's answer, changed with it.

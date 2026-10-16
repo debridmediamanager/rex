@@ -680,8 +680,12 @@ pub fn enrich(
         .filter(|value| value_truthy(value))
         .and_then(Value::as_str)
         .map(str::to_string);
+    // Season 0 is TMDB's Specials, a season like the others. Read as Python's truthiness, its
+    // episodes kept the show's title, summary and art and were minted the show's MOVIE guid:
+    // zen's Firefly S0E1-E3 (Trash, The Message, Heart of Gold) all drew `Episode N` under
+    // `plex://movie/290798…`, with TMDB's answers for them in the cache (2026-10-16).
     let episode_requested = kind == "tv"
-        && parsed.get("season").is_some_and(value_truthy)
+        && parsed.get("season").is_some_and(|season| value_truthy(season) || season.as_i64() == Some(0))
         && parsed.get("episode").is_some_and(value_truthy);
     if episode_requested {
         if let Some(ep_value) = episode.filter(|value| value_truthy(value)) {
@@ -894,6 +898,28 @@ mod tests {
         assert_eq!(row["guid"], "local://100095");
         assert!(!row.contains_key("Guid"), "{:?}", row.get("Guid"));
         assert_eq!(row["_show_external_guids"], json!([{"id": "imdb://tt0130417"}, {"id": "tmdb://7842"}]));
+    }
+    /// zen's end-to-end rig (2026-10-16, `tests/fixtures/feed/specials.json`): zurg placed
+    /// Firefly's Trash on TMDB's S0E1, and TMDB's answer for it named the row -- not the show's
+    /// title, summary and movie guid.
+    #[test]
+    fn a_special_is_its_tmdb_episode() {
+        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../tests/fixtures/feed/specials.json");
+        let fixture: Value = serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+        let answer = |path: &str| {
+            fixture["tmdb"].as_object().unwrap().iter().find(|(key, _)| key.contains(&format!("/3/{path}?"))).map(|(_, v)| v.clone()).unwrap()
+        };
+        let (details, season, episode) = (answer("tv/1437"), answer("tv/1437/season/0"), answer("tv/1437/season/0/episode/1"));
+        let parsed = Map::from_iter(
+            [("title", json!("Firefly")), ("year", Value::Null), ("season", json!(0)), ("episode", json!(1))].map(|(k, v)| (k.to_string(), v)),
+        );
+        let mut row = Map::new();
+        assert!(enrich(&mut row, &details, &parsed, Some(&episode), Some(&season), "tv", 1437));
+        assert_eq!((&row["title"], &row["index"], &row["parentIndex"]), (&json!("Trash"), &json!(1), &json!(0)));
+        assert_eq!(row["summary"], episode["overview"]);
+        assert!(row["guid"].as_str().unwrap().starts_with("plex://episode/"), "{}", row["guid"]);
+        assert!(row["Guid"].as_array().unwrap().contains(&json!({"id": format!("tmdb://{}", episode["id"])})), "{}", row["Guid"]);
+        assert_eq!(row["_season_guids"][0], json!({"id": format!("tmdb://{}", season["id"])}));
     }
     #[test]
     fn guid() {
