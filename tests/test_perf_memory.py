@@ -15,6 +15,9 @@ so they hold on any host. Linux only: it reads `/proc/<pid>/status`. Measured on
 unfixed, the start peaked at 16.6x the rows' JSON and the requests added 1,440 MB; fixed,
 8.2x and 6 MB. Each stream was then a map of its own, half of the production server's 2.6 GB on
 2026-10-16; held as text, the restored library is 4.0x its JSON (8.1x before, arm64 Docker).
+An unpaged listing of every episode built its body in several full copies the allocator then
+kept (the production server's library: +2.4 GB a request, 6.5 GB after three); here two of them left
++131 MB on 363 MB before and +19 MB on 182 MB after.
 
     python3 tests/test_perf_memory.py
 """
@@ -185,6 +188,15 @@ def main():
               flush=True)
         check("those requests raise the peak by under a third of the started size (+%.0f MB)"
               % (peak - load_peak), peak - load_peak < loaded / 3, (peak, load_peak, loaded))
+        # Every episode, unpaged, twice -- as a client syncing the library asks for it.
+        for _ in range(2):
+            if request(port, "/library/sections/2/all?type=4") != 200:
+                check("the unpaged episode listing answers", False)
+            time.sleep(1)
+        after, _ = memory(process.pid)
+        print("after two unpaged episode listings: %.0f MB resident" % after, flush=True)
+        check("what an unpaged listing built is given back (+%.0f MB of %.0f MB)" % (after - loaded, loaded),
+              after - loaded < loaded / 4, (after, loaded))
     finally:
         if process is not None and process.poll() is None:
             process.kill()

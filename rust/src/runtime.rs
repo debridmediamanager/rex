@@ -23544,7 +23544,15 @@ fn handle_connection<S: Read + Write + PollRead>(
             }
         };
         served_any = true;
-        if response.close || !keep || !still_open || close_after_write {
+        // Building a body this size took several times it on the heap, which the allocator
+        // kept until the next trim: an unpaged episode listing of the production server's library
+        // (92 MB) left 0.9-1.2 GB resident each, 3.7 GB in all, under a 4 GB unit limit.
+        let close = response.close || !keep || !still_open || close_after_write;
+        if response.body.len() >= 8 << 20 {
+            drop(response);
+            release_freed_memory();
+        }
+        if close {
             break;
         }
     }
@@ -26386,6 +26394,19 @@ fn plugin_container(rows: Vec<(&str, bool)>) -> Value {
     )]))
 }
 
+/// `strip_private_value` on a value the caller owns.
+fn strip_private_in_place(value: &mut Value) {
+    match value {
+        Value::Object(object) => {
+            crate::catalog::unpack_part(object);
+            object.retain(|key, _| !key.starts_with('_'));
+            object.values_mut().for_each(strip_private_in_place);
+        }
+        Value::Array(values) => values.iter_mut().for_each(strip_private_in_place),
+        _ => {}
+    }
+}
+
 /// `strip_private_value` that leaves packed streams out instead of unpacking them.
 fn strip_private_fields(value: &Value) -> Value {
     match value {
@@ -27130,7 +27151,8 @@ fn order_json_body(response: &mut Response, path: &str) {
     if object.len() != 1 || !object.values().next().is_some_and(Value::is_object) {
         return;
     }
-    let ordered = strip_private_value(&xmlout::ordered(&document, None));
+    let mut ordered = xmlout::into_ordered(document, None);
+    strip_private_in_place(&mut ordered);
     if let Ok(body) = serde_json::to_vec(&ordered) {
         response.body = body;
     }

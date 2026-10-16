@@ -856,63 +856,66 @@ pub fn to_xml(container: &Value, overrides: Option<&HashMap<String, String>>) ->
     out.into_bytes()
 }
 pub fn ordered(container: &Value, overrides: Option<&HashMap<String, String>>) -> Value {
+    into_ordered(container.clone(), overrides)
+}
+
+/// `ordered`, moving the values out of `container` instead of copying them: a response of
+/// every episode of the production server's library (92 MB of JSON) held the parsed body, its ordered copy
+/// and that copy without private markers at once, 2.4 GB above the library (2026-10-16).
+pub fn into_ordered(container: Value, overrides: Option<&HashMap<String, String>>) -> Value {
     fn walk(
         key: &str,
-        row: &Map<String, Value>,
+        mut row: Map<String, Value>,
         overrides: Option<&HashMap<String, String>>,
         container: bool,
     ) -> Value {
-        let name = element_name(key, row, overrides);
-        let (attrs, children) = split(&name, row, container);
+        let name = element_name(key, &row, overrides);
+        let (attrs, children) = split(&name, &row, container);
         let mut out = Map::new();
         for k in attrs {
-            out.insert(k.clone(), row.get(&k).cloned().unwrap_or(Value::Null));
+            let value = row.swap_remove(&k).unwrap_or(Value::Null);
+            out.insert(k, value);
         }
         for k in children {
-            if let Some(value) = row.get(&k) {
-                match value {
-                    Value::Object(child) => {
-                        out.insert(k.clone(), walk(&k, child, overrides, false));
-                    }
-                    Value::Array(values) => {
-                        out.insert(
-                            k.clone(),
-                            Value::Array(
-                                values
-                                    .iter()
-                                    .filter_map(|v| {
-                                        v.as_object().map(|child| walk(&k, child, overrides, false))
-                                    })
-                                    .collect(),
-                            ),
-                        );
-                    }
-                    _ => {}
+            match row.swap_remove(&k) {
+                Some(Value::Object(child)) => {
+                    let child = walk(&k, child, overrides, false);
+                    out.insert(k, child);
                 }
+                Some(Value::Array(values)) => {
+                    let values = values
+                        .into_iter()
+                        .filter_map(|v| match v {
+                            Value::Object(child) => Some(walk(&k, child, overrides, false)),
+                            _ => None,
+                        })
+                        .collect();
+                    out.insert(k, Value::Array(values));
+                }
+                _ => {}
             }
         }
         Value::Object(out)
     }
-    let Some(root) = container.as_object().and_then(|m| m.iter().next()) else {
-        return container.clone();
+    let Value::Object(mut root_map) = container else {
+        return container;
     };
-    let (root_name, body) = root;
-    if let Some(body) = body.as_object() {
-        let mut out = Map::new();
-        out.insert(
-            root_name.clone(),
-            walk(
-                root_name,
-                body,
-                overrides,
-                root_name.ends_with("Container")
-                    || root_name == "ButlerTasks"
-                    || root_name == "Query",
-            ),
-        );
-        Value::Object(out)
-    } else {
-        container.clone()
+    let Some(root_name) = root_map.keys().next().cloned() else {
+        return Value::Object(root_map);
+    };
+    match root_map.shift_remove(&root_name) {
+        Some(Value::Object(body)) => {
+            let is_container = root_name.ends_with("Container") || root_name == "ButlerTasks" || root_name == "Query";
+            let mut out = Map::new();
+            let body = walk(&root_name, body, overrides, is_container);
+            out.insert(root_name, body);
+            Value::Object(out)
+        }
+        Some(other) => {
+            root_map.shift_insert(0, root_name, other);
+            Value::Object(root_map)
+        }
+        None => Value::Object(root_map),
     }
 }
 /// Serialize the plug-in framework's compact `/system` response form.
