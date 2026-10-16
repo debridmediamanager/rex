@@ -87,6 +87,13 @@ pub(super) fn episode_of(release: &str, folder: Option<&str>, file_name: &str) -
     Some((season.unwrap_or(1), episode))
 }
 
+/// Whether a file's own name numbers it with an episode and no season (`One Piece - 0207`):
+/// a pack's season then comes from the pack, and the number may run from the show's first episode.
+pub(super) fn numbered_absolutely(file_name: &str) -> bool {
+    let parsed = identify::parse_name(file_name);
+    parsed.episode.is_some() && parsed.season.is_none()
+}
+
 /// Whether a file's numbers are its name's own, as scene releases number them -- not ones the
 /// anime mapping already put on TMDB's numbering (`anime::renumber`).
 pub(super) fn scene_numbered(release: &str, folder: Option<&str>, file_name: &str) -> bool {
@@ -324,7 +331,7 @@ static EXTRA: LazyLock<Regex> = LazyLock::new(|| {
 #[cfg(test)]
 pub(super) fn on_tmdb(tmdb: Option<&dyn TmdbSource>, show: i64, numbers: (i64, i64)) -> (i64, i64) {
     let seasons = tmdb.and_then(|t| identify::tmdb_details(t, "tv", show)).map(|details| numbered_seasons(tmdb, show, &details)).unwrap_or_default();
-    on_seasons(&seasons, show, numbers, true)
+    on_seasons(&seasons, show, numbers, true, false)
 }
 
 /// A TMDB season: its number, how many episodes it has, its first air date, and the number of
@@ -376,7 +383,7 @@ pub(super) fn numbered_seasons(tmdb: Option<&dyn TmdbSource>, show: i64, details
 /// by the same number: TMDB's Ascendance of a Bookworm S2 is the 2026 cour, and the BD
 /// remux's `S02E01-Apprentice Priestess` TVDB's second season, TMDB's S1E15 (the production
 /// server held 12 of them as versions of the 2026 cour's episodes, 2026-10-14).
-pub(super) fn on_seasons(seasons: &[Season], show: i64, (season, episode): (i64, i64), scene: bool) -> (i64, i64) {
+pub(super) fn on_seasons(seasons: &[Season], show: i64, (season, episode): (i64, i64), scene: bool, absolute: bool) -> (i64, i64) {
     let fits = |(season, episode): (i64, i64)| seasons.iter().any(|row| row.0 == season && episode >= 1 && episode <= row.1);
     if scene && season > 0 {
         if let Some(mapped) = super::anime::tvdb_to_tmdb(show, season, episode).filter(|mapped| fits(*mapped)) {
@@ -391,6 +398,23 @@ pub(super) fn on_seasons(seasons: &[Season], show: i64, (season, episode): (i64,
     // episodes on `local://` so (2026-10-16), as fun's real Plex holds them. Only a show
     // anime-lists files as anime: Sesame Street's `Episode 1840` is a production number.
     if season == 1 && episode > 1 && !fits((1, episode)) && super::anime::is_anime(show) {
+        if let Some(counted) = counted_through(seasons, episode) {
+            return counted;
+        }
+    }
+    // The same number in a pack that names its season: `[Koten_Gars] One Piece - Season 04-09/…
+    // One Piece - 0207` and `[Zoku] One Piece - Season 19 (Whole Cake) (783-842)/One Piece - 783 -
+    // Sanji's Homecoming!` take the season from the pack and number the file from the show's first
+    // episode, so the production server held 387 One Piece files on episodes their seasons do not
+    // have (2026-10-16); counted through TMDB's seasons, all 18 that carry a title land on TMDB's
+    // episode of that name. Only a file whose own name has no season (`absolute`), and only past
+    // what TMDB's season holds: Crunchyroll's `One.Piece.S22E46` numbers its own season, which
+    // starts three episodes before TMDB's. And only in a season TMDB has: Monogatari's `Off &
+    // Monster Season - 06` is in a season TMDB lacks, and counted from the first it read as
+    // Bakemonogatari's S1E6 (a rehearsal on the production server's rows, 2026-10-16).
+    let within = |(season, episode): (i64, i64)| seasons.iter().any(|row| row.0 == season && episode >= row.3 && episode < row.3 + row.1);
+    let listed = seasons.iter().any(|row| row.0 == season);
+    if absolute && season > 1 && episode > 1 && listed && !within((season, episode)) && super::anime::is_anime(show) {
         if let Some(counted) = counted_through(seasons, episode) {
             return counted;
         }
@@ -464,8 +488,9 @@ pub(super) fn on_tmdb_or_imdb(
     show_title: &str,
     numbers: (i64, i64),
     scene: bool,
+    absolute: bool,
 ) -> (i64, i64) {
-    let placed = on_seasons(seasons, show, numbers, scene);
+    let placed = on_seasons(seasons, show, numbers, scene, absolute);
     if seasons.is_empty() || seasons.iter().any(|row| row.0 == placed.0) {
         return placed;
     }
@@ -645,6 +670,7 @@ pub(super) fn name_release(plan: &Library, arrivals: &mut [Arrival], files: usiz
                 details.as_ref().and_then(|d| d.get("name")).and_then(Value::as_str).unwrap_or_default(),
                 numbers,
                 scene_numbered(&release, folder.as_deref(), &file_name),
+                numbered_absolutely(&file_name),
             ))
             .map(|numbers| by_title(tmdb.map(|t| t as &dyn TmdbSource), id, &release, &file_name, numbers)),
             (numbers, _) => numbers,
@@ -1623,6 +1649,16 @@ mod tests {
         assert_eq!(counted_through(&seasons, 62), Some((2, 62)));
         let total: i64 = seasons.iter().filter(|row| row.0 > 0).map(|row| row.1).sum();
         assert_eq!(counted_through(&seasons, total + 1), None);
+    }
+
+    /// What reads as numbered from the show's first episode: a file with an episode and no
+    /// season of its own (the production server's One Piece packs), never a scene `SxxEyy`.
+    #[test]
+    fn a_file_numbered_without_a_season_is_absolute() {
+        assert!(numbered_absolutely("One Piece - 783 - Sanji`s Homecoming! Into Big Mom`s Territory!.mkv"));
+        assert!(numbered_absolutely("[Koten_Gars] One Piece - 0207 [FUNi-DL][h.264][1080p][AAC] [5BF32B17].mkv"));
+        assert!(!numbered_absolutely("One.Piece.S22E46.A.Fleeting.Moment.of.Happiness-Kumachi.and.Ginny.1080p.CR.WEB-DL.mkv"));
+        assert!(!numbered_absolutely("[Yellow-Flash] Kingdom S3 - 26 [Blu-Ray][1080p][10bit][DE9D5456].mkv"));
     }
 
     /// TMDB's season lists as `tests/fixtures/identify/segment_titles.json` recorded them.

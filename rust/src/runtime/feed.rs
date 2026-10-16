@@ -1116,7 +1116,7 @@ where
             let numbers = pushed.or_else(|| super::scan::episode_of(release, folder, name).map(|numbers| match show_id {
                 Some(id) => {
                     let seasons = show_seasons.get(&id).map(Vec::as_slice).unwrap_or(&[]);
-                    let placed = super::scan::on_seasons(seasons, id, numbers, super::scan::scene_numbered(release, folder, name));
+                    let placed = super::scan::on_seasons(seasons, id, numbers, super::scan::scene_numbered(release, folder, name), super::scan::numbered_absolutely(name));
                     let show = row.get("grandparentRatingKey").map(string_value).and_then(|key| guard.catalog.get(&key));
                     let show_imdb = show.and_then(|show| show.get("Guid")).and_then(Value::as_array).and_then(|guids| {
                         guids.iter().filter_map(|guid| guid.get("id").and_then(Value::as_str)).find_map(|id| id.strip_prefix("imdb://"))
@@ -2046,7 +2046,7 @@ impl Runtime {
                             None if !lookup_available => &[],
                             None => continue,
                         };
-                        let placed = super::scan::on_seasons(seasons, id, numbers, scene);
+                        let placed = super::scan::on_seasons(seasons, id, numbers, scene, super::scan::numbered_absolutely(file_name));
                         if let (Some(imdb), false, false) =
                             (show_imdb, seasons.is_empty(), seasons.iter().any(|season| season.0 == placed.0))
                         {

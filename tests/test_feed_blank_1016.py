@@ -16,6 +16,9 @@ native server asked for them:
   anime, `fixtures/anime/`; the production server runs with REX_ANIME_LISTS=on).
 * `Fairy.Tail.E233.Song.of.the.Faries`, numbered the same way, is TMDB's S6E7 "Song of the Fairies":
   TMDB numbers Fairy Tail's seasons from 1.
+* `[Zoku] One Piece - Season 19 (Whole Cake) (783-842)/One Piece - 783 - Sanji's Homecoming!` and
+  `[Koten_Gars] One Piece - Season 04-09/… One Piece - 0207`: the pack names a season and the file
+  numbers from the show's first episode, so it is TMDB's S18E783 and S7E207, not the pack's season.
   The start numbers by IMDb's episodes (`fixtures/imdb/`, its rows for the show), as the production
   server does.
 * The three Evangelion Rebuild films, which zurg files under anime and so under TV Shows: their
@@ -76,7 +79,7 @@ def start(work, bytes_port):
 def item(name):
     """zurg's entry, with the provider `folder` zurg always sends ("" at a release's top level):
     the production server's rows came with it, and it is what reads a file's leading number."""
-    return dict(blank.item(name), folder="")
+    return dict(blank.item(name), folder=FIXTURE["pushes"][name].get("folder", ""))
 
 
 def tmdb_of(row):
