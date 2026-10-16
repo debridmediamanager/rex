@@ -127,20 +127,14 @@ file.
   already there. rex asks the provider first and TMDB itself only when it does not answer, so
   with `TMDB_KEY` as well a lapsed key changes nothing; with the provider alone no `TMDB_KEY`
   is needed.
-- **Anime.** Fansubs name a season the way AniDB does (`Hibike Euphonium 3 - 01`,
-  `Cinderella Gray Part 2 - 05`) and TMDB numbers it as a season or as later episodes of one.
-  With `REX_ANIME_LISTS=on` rex keeps two community datasets beside the catalog,
-  [anime-lists](https://github.com/Anime-Lists/anime-lists) and the
-  [anime-offline-database](https://github.com/manami-project/anime-offline-database)
-  (about 66 MB, fetched again weekly), and places a fansub-named release on TMDB's show,
-  season and episode. At start it also moves episodes placed before onto those numbers.
-  Off by default.
-- **Seasons TMDB numbers differently.** Release groups number long shows as IMDb and TVDB
-  do (`Bungo.Stray.Dogs.S04E01`, `Detective.Conan.S33E01`), and TMDB files many as one long
-  season. With `REX_IMDB_EPISODES=on` rex keeps IMDb's episode table beside the catalog
-  (`title.episode.tsv.gz`, about 55 MB, fetched again weekly, plus an index of it) and, for a
-  season TMDB lacks, places the file on the TMDB episode TMDB names for IMDb's episode by
-  those numbers. Off by default.
+- **Anime and long shows.** Their TMDB season and episode come from the source: zurg with a
+  sponsor `dmm_api_key` asks DMM and pushes each file placed; rex numbers anything pushed
+  without a placement by its name. Upgrading: `REX_ANIME_LISTS` and `REX_IMDB_EPISODES` are no
+  longer read, so an install that still sets them starts as before, and the
+  `anime-list-master.xml`, `anime-offline-database.jsonl`, `title.episode.tsv.gz` and
+  `imdb-episodes.db` they kept beside the catalog are ignored (delete them if you like). On the
+  first start, episodes they had renumbered and no source placed go back to the numbers their
+  names give, on the same keys, until the source pushes them placed.
 
 Check it answers:
 

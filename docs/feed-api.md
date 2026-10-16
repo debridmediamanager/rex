@@ -198,7 +198,7 @@ The `media_info` above is cut down to show its shape. Send ffprobe's whole outpu
 | `size` | recommended | Bytes. Shown as the Part's size and used to answer a client's `Range`; without it rex passes the client's `Range` to the source as it is |
 | `ids` | recommended | `imdb` (`tt…`), `tmdb`, `tvdb`. Exact identification; without them rex identifies by `name`, and so it does when TMDB has no title for them (below). `tvdb` is kept, not used. With `kind`, `imdb` and `tmdb` are the movie's or the **show's** ids, never an episode's |
 | `kind` | no | `movie` or `episode`: what the source knows the file is. With it the file is **placed**, not guessed (below): it picks the movie or show library, and its `ids` are the title. Anything else, or absent: rex decides as without it |
-| `season`, `episode` | no | With `kind: episode`, the episode on **TMDB's** numbering of the show `ids.tmdb` names (`season` 0 is Specials). The row is placed exactly there; the file's name, the anime lists and IMDb's numbering are not read. Absent: the name numbers it |
+| `season`, `episode` | no | With `kind: episode`, the episode on **TMDB's** numbering of the show `ids.tmdb` names (`season` 0 is Specials). The row is placed exactly there; the file's name is not read. Absent: the name numbers it |
 | `episode_end` | no | The last episode of a file holding several (`E01E02` -> 2). Kept on the row; the file is placed on `episode`, as rex places every multi-episode file on its first |
 | `name` | no | The release name identification reads. Default: the folder above the file |
 | `release` | no | Groups a release's files, identified together (a season's episodes). Default: the folder above `path` |

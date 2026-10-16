@@ -12771,3 +12771,17 @@ same ids, so no push names it again: the blank-tile retry takes an episode with 
 and a start names the rig's three on their keys. `tests/fixtures/feed/specials.json` is the rig's
 answers; `tests/test_feed_placement.py` checks the three specials and their season through a start,
 and `native_phase2.json`'s "metadata enrich edge case 1", the oracle's answer, changed with it.
+
+## The anime lists and IMDb's numbering are retired (2026-10-16)
+
+`REX_ANIME_LISTS` (anime-lists and the anime-offline-database, `runtime/anime.rs`) and
+`REX_IMDB_EPISODES` (IMDb's `title.episode`, `runtime/imdb.rs`) are removed. Where a fansub cour
+or a long show sits on TMDB's numbering is now its source's answer: zurg asks DMM's
+`/api/sponsor/place` and pushes `kind`, `ids.tmdb`, `season` and `episode` (docs/feed-api.md), which
+rex has honoured since e47d920 and names on season 0 since 08e9f2f. rex no longer downloads either
+dataset or renumbers by them: no TVDB-to-TMDB season mapping, no absolute episode counted through
+TMDB's seasons, no `{tmdb-…}` forced from an anime title, no `/find` of IMDb's episode. Its own name
+parser stays the fallback for what arrives unplaced, and so does a year-numbered season on TMDB's
+season of that year (MythBusters 2004x01). An install that still sets them starts and ignores
+them; on its first start, rows they renumbered without a placement go back to their names' numbers
+on their keys.
