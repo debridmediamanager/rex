@@ -82,4 +82,6 @@ jobs:
           for i in $(seq 1 30); do curl -sf http://127.0.0.1:32400/identity && break; sleep 1; done
           curl -sf http://127.0.0.1:32400/rex/sources | grep -q '"size":0'
           docker logs rex-smoke 2>&1 | grep -q 'seeded '
+          # rex.db holds the sources' logins: it must not be readable by others on the host.
+          test "$(docker exec rex-smoke stat -c %a /config/rex.db)" = 600
           docker stop rex-smoke
