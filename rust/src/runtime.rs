@@ -10162,17 +10162,14 @@ impl Runtime {
         if let Some(offset) = offset.filter(|_| !unmoved) {
             self.hidden_continue.remove(key);
             if row.get("type").and_then(Value::as_str) == Some("episode") {
+                // The hidden set, not the library: every progress beat scanned all rows.
                 let show = row.get("grandparentRatingKey").map(string_value);
-                let siblings = self
-                    .catalog
-                    .items()
-                    .iter()
-                    .filter(|other| other.get("grandparentRatingKey").map(string_value) == show)
-                    .filter_map(key_of)
-                    .collect::<Vec<_>>();
-                for sibling in siblings {
-                    self.hidden_continue.remove(&sibling);
-                }
+                let catalog = &self.catalog;
+                self.hidden_continue.retain(|hidden| {
+                    catalog
+                        .get(hidden)
+                        .is_none_or(|other| other.get("grandparentRatingKey").map(string_value) != show)
+                });
             }
             let near_end = completes && total > 0 && (offset as f64) >= total as f64 * 0.9;
             if (total > 0 || !completes) && offset > 60000 && !near_end {

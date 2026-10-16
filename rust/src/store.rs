@@ -381,6 +381,10 @@ struct Collection {
     /// key -> (pos, hash of the stored body)
     rows: HashMap<String, (f64, u64)>,
     order: Vec<String>,
+    /// Hash of the whole field as `diff` last wrote it; 0 when unknown or written by member.
+    /// Every save re-keyed and compared each element of every field -- 22,432 `deleted` and
+    /// 22,380 `retiredKeys` on the production server (2026-10-16) -- for each progress beat.
+    whole: u64,
 }
 
 /// What the database holds, as of the last snapshot: the next one writes the difference.
@@ -465,6 +469,12 @@ impl Cache {
                         });
                         self.docs.insert(field.clone(), (kind, 0));
                     }
+                    let whole = hash_text(&value.to_string());
+                    if previous.map(|(was, _)| was) == Some(kind)
+                        && self.collections.get(field).is_some_and(|collection| collection.whole == whole)
+                    {
+                        continue;
+                    }
                     let entries: Vec<(String, String)> = match value {
                         Value::Array(elements) => {
                             let mut seen: HashMap<u64, usize> = HashMap::new();
@@ -488,6 +498,7 @@ impl Cache {
                     };
                     let collection = self.collections.entry(field.clone()).or_default();
                     diff_collection(&name, collection, entries, &mut delta);
+                    collection.whole = whole;
                 }
                 _ => {
                     let body = value.to_string();
@@ -545,6 +556,7 @@ impl Cache {
         let name = format!("{STATE}{field}");
         let mut delta = Delta::default();
         let collection = self.collections.get_mut(field).expect("checked above");
+        collection.whole = 0;
         // Every pass leaves `order` in position order, and a new member goes last.
         let mut next = collection
             .order
@@ -608,6 +620,7 @@ impl Cache {
             && self.collections.contains_key(field);
         if let (Some(changed), true) = (changed, known) {
             let collection = self.collections.get_mut(field).expect("checked above");
+            collection.whole = 0;
             let mut complete = true;
             let mut puts = Vec::with_capacity(changed.len());
             let mut appended = Vec::new();
@@ -706,6 +719,7 @@ impl Cache {
             .collect();
         let collection = self.collections.entry(field.to_string()).or_default();
         diff_collection(&name, collection, entries, &mut delta);
+        collection.whole = 0;
         delta
     }
 }
