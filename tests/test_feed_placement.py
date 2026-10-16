@@ -61,11 +61,11 @@ def episode(name, numbers=None):
     return item(ANIME, name, dict(ANIME["pushes"][name]["ids"], tmdb=show), kind="episode", season=season, episode=number)
 
 
-def catalog(work, *fixtures):
+def catalog(work, *fixtures, rows=()):
     sections = json.loads(json.dumps(LEGACY["sections"]))
     next(section for section in sections if section["type"] == "show")["Location"].append({"id": 3, "path": "/zurg/anime"})
     json.dump({"machineIdentifier": "00000000000000000000000000000000000000f9", "friendlyName": "rex-placed",
-               "sections": sections, "items": []}, open(os.path.join(work, "catalog.json"), "w"))
+               "sections": sections, "items": list(rows)}, open(os.path.join(work, "catalog.json"), "w"))
     for name in ("tmdb", "plex"):
         merged = {}
         for fixture in fixtures:
@@ -226,51 +226,75 @@ def films(bytes_port):
         shutil.rmtree(work, ignore_errors=True)
 
 
+SPECIAL_TMDB = {key.split("/3/", 1)[1].split("?", 1)[0]: value for key, value in SPECIALS["tmdb"].items()}
+
+
+def special(name):
+    return item(SPECIALS, name, folder=SPECIALS["pushes"][name]["folder"], **SPECIALS["pushes"][name]["placed"])
+
+
+def check_specials(label, server):
+    """Each special is TMDB's episode by title, summary and ids, in a season a real PMS titles
+    `Specials` (findings, "Season 0"), with TMDB's season-0 poster."""
+    names = sorted(SPECIALS["pushes"])
+    keys = server.keys()
+    rows = {name: server.row(keys.get(special(name)["id"])) for name in names}
+    guids = set()
+    for name in names:
+        row, placed = rows[name], SPECIALS["pushes"][name]["placed"]
+        answer = SPECIAL_TMDB["tv/1437/season/%d/episode/%d" % (placed["season"], placed["episode"])]
+        check("%s: %s is TMDB's S%dE%d %r, by its summary and ids too" % (label, name, placed["season"], placed["episode"], answer["name"]),
+              [row.get("parentIndex"), row.get("index"), row.get("title"), row.get("summary")]
+              == [placed["season"], placed["episode"], answer["name"], answer["overview"]]
+              and "tmdb://%d" % answer["id"] in blank.guids(row) and str(row.get("guid", "")).startswith("plex://episode/"),
+              (row.get("parentIndex"), row.get("index"), row.get("title"), row.get("guid"), blank.guids(row)))
+        guids.add(row.get("guid"))
+    check("%s: each episode has a guid of its own" % label, len(guids) == len(names), guids)
+    season = server.row(rows["s01e11_trash"].get("parentRatingKey"))
+    check("%s: their season is Specials, TMDB's season 0, with TMDB's poster" % label,
+          season.get("index") == 0 and season.get("title") == "Specials"
+          and "tmdb://%d" % SPECIAL_TMDB["tv/1437/season/0"]["id"] in blank.guids(season)
+          and blank.poster(server, season.get("ratingKey")) is not None,
+          (season.get("index"), season.get("title"), blank.guids(season), blank.poster(server, season.get("ratingKey"))))
+    check("%s: under the same show as season 1" % label,
+          len({row.get("grandparentRatingKey") for row in rows.values()}) == 1, [row.get("grandparentRatingKey") for row in rows.values()])
+    return keys
+
+
 def specials(bytes_port):
     """Firefly's Trash, The Message and Heart of Gold, which TMDB keeps as season 0 and zurg
-    placed there (`fixtures/feed/specials.json`, zen's end-to-end rig): each is TMDB's episode
-    by title, summary and ids, in a season a real PMS titles `Specials` (findings, "Season 0"),
-    with TMDB's season-0 poster. rex drew them `Episode 1-3` under the show's movie guid."""
+    placed there (`fixtures/feed/specials.json`, zen's end-to-end rig). rex drew them `Episode 1-3`
+    under the show's movie guid; the rows it held so (`rows`) are named by the retry a start runs."""
     work = tempfile.mkdtemp(prefix="rex-placed-specials-")
     catalog(work, SPECIALS)
-    tmdb = {key.split("/3/", 1)[1].split("?", 1)[0]: value for key, value in SPECIALS["tmdb"].items()}
-    names = sorted(SPECIALS["pushes"])
-    pushed = lambda name: item(SPECIALS, name, folder=SPECIALS["pushes"][name]["folder"], **SPECIALS["pushes"][name]["placed"])
     server = start(work, bytes_port)
-
-    def check_specials(label):
-        keys = server.keys()
-        rows = {name: server.row(keys.get(pushed(name)["id"])) for name in names}
-        guids = set()
-        for name in names:
-            row, placed = rows[name], SPECIALS["pushes"][name]["placed"]
-            answer = tmdb["tv/1437/season/%d/episode/%d" % (placed["season"], placed["episode"])]
-            check("%s: %s is TMDB's S%dE%d %r, by its summary and ids too" % (label, name, placed["season"], placed["episode"], answer["name"]),
-                  [row.get("parentIndex"), row.get("index"), row.get("title"), row.get("summary")]
-                  == [placed["season"], placed["episode"], answer["name"], answer["overview"]]
-                  and "tmdb://%d" % answer["id"] in blank.guids(row) and str(row.get("guid", "")).startswith("plex://episode/"),
-                  (row.get("parentIndex"), row.get("index"), row.get("title"), row.get("guid"), blank.guids(row)))
-            guids.add(row.get("guid"))
-        check("%s: each episode has a guid of its own" % label, len(guids) == len(names), guids)
-        season = server.row(rows["s01e11_trash"].get("parentRatingKey"))
-        check("%s: their season is Specials, TMDB's season 0, with TMDB's poster" % label,
-              season.get("index") == 0 and season.get("title") == "Specials"
-              and "tmdb://%d" % tmdb["tv/1437/season/0"]["id"] in blank.guids(season)
-              and blank.poster(server, season.get("ratingKey")) is not None,
-              (season.get("index"), season.get("title"), blank.guids(season), blank.poster(server, season.get("ratingKey"))))
-        check("%s: under the same show as season 1" % label,
-              len({row.get("grandparentRatingKey") for row in rows.values()}) == 1, [row.get("grandparentRatingKey") for row in rows.values()])
-
     try:
-        status, body = server.feed("POST", "items", {"items": [pushed(name) for name in names]})
+        status, body = server.feed("POST", "items", {"items": [special(name) for name in sorted(SPECIALS["pushes"])]})
         check("every Firefly file is taken", status == 200 and not body.get("rejected"), (status, body))
-        check_specials("pushed")
+        check_specials("pushed", server)
     finally:
         anime.stop(server, work)
     server = start(work, bytes_port, True)
     try:
         time.sleep(15)
-        check_specials("after a start")
+        check_specials("after a start", server)
+    finally:
+        anime.stop(server, work)
+        shutil.rmtree(work, ignore_errors=True)
+
+    # -- held so: the same push changes nothing, so a start's retry names them ------------------
+    work = tempfile.mkdtemp(prefix="rex-placed-specials-held-")
+    catalog(work, SPECIALS, rows=[dict(row, _source="zurg") if row.get("_source") else row for row in SPECIALS["rows"]])
+    held = {row["ratingKey"] for row in SPECIALS["rows"] if row.get("type") == "episode"}
+    server = start(work, bytes_port)
+    try:
+        trash = next(row["ratingKey"] for row in SPECIALS["rows"] if row.get("_sid") == special("s01e11_trash")["id"])
+        blank.wait_for(server, trash, lambda row: str(row.get("guid", "")).startswith("plex://episode/"), 60)
+        keys = check_specials("rows held as `Episode N`, after a start", server)
+        check("rows held as `Episode N`: each is named on its own key", set(keys.values()) == held, (keys, held))
+        status, body = server.feed("POST", "items", {"items": [special(name) for name in sorted(SPECIALS["pushes"])]})
+        check("zurg's next push of them is taken", status == 200 and not body.get("rejected"), (status, body))
+        check("and keeps every key", check_specials("rows held as `Episode N`, after zurg's next push", server) == keys)
     finally:
         anime.stop(server, work)
         shutil.rmtree(work, ignore_errors=True)

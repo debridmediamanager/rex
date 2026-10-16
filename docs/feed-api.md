@@ -244,7 +244,8 @@ What the fields do:
   show's poster where TMDB has none for it -- whatever its first episode lacked, unless a
   person locked the field; seasons left without one are given theirs when the server starts.
 - **Retried.** A row on the blank tile -- a film with no poster, an episode whose show has
-  none, or a film whose release names an episode -- is identified again when the server
+  none, or a film whose release names an episode -- or an episode named as a film (a film's guid,
+  which every season-0 episode got before 2026-10-16) is identified again when the server
   starts and every ten minutes after, up to 50 films or shows a pass, as its source pushed it.
   One still unnamed waits an hour, then twice as long each time, to about five days. A TMDB or
   Plex answer that found nothing or has no poster is asked again after a day.

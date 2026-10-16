@@ -1,5 +1,5 @@
 {
- "_about": "zen's end-to-end rig, 2026-10-16: zurg (real RD account, DMM placement) pushed Firefly.S01.COMPLETE.REPACK's S01E11-E13 as TMDB 1437's S0E1-E3 (TMDB keeps Trash, The Message and Heart of Gold as specials) and S01E02 as S1E1. `pushes` is each item as the rig's rows recorded it; `tmdb` is the rig's tmdb_cache.db answers for them, read-only, each season document cut to its own fields. rex placed the specials right and titled them `Episode 1-3` under the show's movie guid.",
+ "_about": "zen's end-to-end rig, 2026-10-16: zurg (real RD account, DMM placement) pushed Firefly.S01.COMPLETE.REPACK's S01E11-E13 as TMDB 1437's S0E1-E3 (TMDB keeps Trash, The Message and Heart of Gold as specials) and S01E02 as S1E1. `pushes` is each item as the rig's rows recorded it; `tmdb` is the rig's tmdb_cache.db answers for them, read-only, each season document cut to its own fields. rex placed the specials right and titled them `Episode 1-3` under the show's movie guid. `rows` is the rig's show, its two seasons, the three specials as rex held them (`Episode N`, the show's movie guid) and S1E1, read-only from its rex.db after the push.",
  "plex": {},
  "pushes": {
   "s01e02_the_train_job": {
@@ -67,6 +67,1157 @@
    "size": 1022804483
   }
  },
+ "rows": [
+  {
+   "Country": [
+    {
+     "filter": "country=387550",
+     "id": 387550,
+     "tag": "United States of America"
+    }
+   ],
+   "Genre": [
+    {
+     "filter": "genre=25779",
+     "id": 25779,
+     "tag": "Drama"
+    },
+    {
+     "filter": "genre=218583",
+     "id": 218583,
+     "tag": "Action & Adventure"
+    },
+    {
+     "filter": "genre=553114",
+     "id": 553114,
+     "tag": "Sci-Fi & Fantasy"
+    }
+   ],
+   "Guid": [
+    {
+     "id": "imdb://tt0303461"
+    },
+    {
+     "id": "tmdb://1437"
+    }
+   ],
+   "Location": [
+    {
+     "path": "/mnt/zurg/shows/Firefly.S01.COMPLETE.REPACK.1080p.BRRip.AC3.x264-LESS"
+    }
+   ],
+   "Rating": [
+    {
+     "image": "themoviedb://image.rating",
+     "type": "audience",
+     "value": 8.3
+    }
+   ],
+   "Role": [
+    {
+     "filter": "actor=512297",
+     "id": 512297,
+     "role": "Mal Reynolds",
+     "tag": "Nathan Fillion",
+     "tagKey": "81c86be30e6b8e063494dbde",
+     "thumb": "https://image.tmdb.org/t/p/w185/aW6vCxkUZtwb6iH2Wf88Uq0XNVv.jpg"
+    },
+    {
+     "filter": "actor=494065",
+     "id": 494065,
+     "role": "Zoë Washburne",
+     "tag": "Gina Torres",
+     "tagKey": "9ae2e2e032b13ee32f34ae51",
+     "thumb": "https://image.tmdb.org/t/p/w185/ukDNHgvEgdU95eaw6pngiAPucv4.jpg"
+    },
+    {
+     "filter": "actor=779445",
+     "id": 779445,
+     "role": "Hoban Washburne",
+     "tag": "Alan Tudyk",
+     "tagKey": "dd45d932f3c39d9d01b86845",
+     "thumb": "https://image.tmdb.org/t/p/w185/jUuUbPuMGonFT5E2pcs4alfqaCN.jpg"
+    },
+    {
+     "filter": "actor=592740",
+     "id": 592740,
+     "role": "Inara Serra",
+     "tag": "Morena Baccarin",
+     "tagKey": "e8af3ed060612b75f8eb3c7d",
+     "thumb": "https://image.tmdb.org/t/p/w185/4gyHyg6FJ1oFczOm5pmMkdEEo2J.jpg"
+    },
+    {
+     "filter": "actor=390785",
+     "id": 390785,
+     "role": "Jayne Cobb",
+     "tag": "Adam Baldwin",
+     "tagKey": "1841e44cf5ddf881a4481ff5",
+     "thumb": "https://image.tmdb.org/t/p/w185/lfbyJWNWGbiYfU0Yr1tjn6Trd2V.jpg"
+    },
+    {
+     "filter": "actor=899423",
+     "id": 899423,
+     "role": "Kaylee Frye",
+     "tag": "Jewel Staite",
+     "tagKey": "65b011858ff2e395e952d654",
+     "thumb": "https://image.tmdb.org/t/p/w185/ztxDIZvuPreUixO6ZPxwkCg2UlO.jpg"
+    }
+   ],
+   "UltraBlurColors": {
+    "bottomLeft": "1f1f26",
+    "bottomRight": "15151a",
+    "topLeft": "1a1a1e",
+    "topRight": "24242a"
+   },
+   "_artFor": "https://image.tmdb.org/t/p/w1280/te4VJNMipsFQofCkiytuyswGDlV.jpg",
+   "_art_url": "https://image.tmdb.org/t/p/w1280/te4VJNMipsFQofCkiytuyswGDlV.jpg",
+   "_identity": "tmdb:1437",
+   "_poster_url": "https://image.tmdb.org/t/p/w342/vZcKsy4sGAvWMVqLluwYuoi11Kj.jpg",
+   "_scanned": true,
+   "_thumbFor": "https://image.tmdb.org/t/p/w342/vZcKsy4sGAvWMVqLluwYuoi11Kj.jpg",
+   "addedAt": 1792109596,
+   "art": "/library/metadata/100003/art/1792109597",
+   "audienceRating": 8.3,
+   "audienceRatingImage": "themoviedb://image.rating",
+   "childCount": 1,
+   "contentRating": "12",
+   "guid": "plex://show/1709082b80fe898f07cba8fb",
+   "index": 1,
+   "key": "/library/metadata/100003/children",
+   "leafCount": 1,
+   "librarySectionID": 2,
+   "librarySectionKey": "/library/sections/2",
+   "librarySectionTitle": "Debrid TV",
+   "ratingKey": "100003",
+   "slug": "firefly",
+   "studio": "Mutant Enemy Productions",
+   "summary": "In the year 2517, the universe is a vast frontier where lawlessness reigns and adventure awaits! Join Captain Malcolm Reynolds and his ragtag crew aboard the spaceship Serenity as they navigate the fringes of society, battling the oppressive Alliance and facing off against ruthless bounty hunters.",
+   "tagline": "You can't take the sky from me.",
+   "thumb": "/library/metadata/100003/thumb/1792109597",
+   "title": "Firefly",
+   "type": "show",
+   "updatedAt": 1792109596,
+   "viewedLeafCount": 0,
+   "year": 2002
+  },
+  {
+   "Guid": [
+    {
+     "id": "tmdb://3846"
+    }
+   ],
+   "UltraBlurColors": {
+    "bottomLeft": "1f1f26",
+    "bottomRight": "15151a",
+    "topLeft": "1a1a1e",
+    "topRight": "24242a"
+   },
+   "_artFor": "https://image.tmdb.org/t/p/w1280/te4VJNMipsFQofCkiytuyswGDlV.jpg",
+   "_art_url": "https://image.tmdb.org/t/p/w1280/te4VJNMipsFQofCkiytuyswGDlV.jpg",
+   "_poster_url": "https://image.tmdb.org/t/p/w342/qpjgUjjj3gQTzkQgcHXVBaP51Qf.jpg",
+   "_scanned": true,
+   "_thumbFor": "https://image.tmdb.org/t/p/w342/qpjgUjjj3gQTzkQgcHXVBaP51Qf.jpg",
+   "addedAt": 1792109596,
+   "art": "/library/metadata/100003/art/1792109597",
+   "guid": "plex://season/a02f9adc005c9cbb33eafd59",
+   "index": 1,
+   "key": "/library/metadata/100004/children",
+   "leafCount": 1,
+   "librarySectionID": 2,
+   "librarySectionKey": "/library/sections/2",
+   "librarySectionTitle": "Debrid TV",
+   "parentGuid": "plex://show/1709082b80fe898f07cba8fb",
+   "parentIndex": 1,
+   "parentKey": "/library/metadata/100003",
+   "parentRatingKey": "100003",
+   "parentSlug": "firefly",
+   "parentStudio": "Mutant Enemy Productions",
+   "parentThumb": "/library/metadata/100003/thumb/1792109597",
+   "parentTitle": "Firefly",
+   "parentYear": 2002,
+   "ratingKey": "100004",
+   "summary": "",
+   "thumb": "/library/metadata/100004/thumb/1792109597",
+   "title": "Season 1",
+   "type": "season",
+   "updatedAt": 1792109596,
+   "viewedLeafCount": 0
+  },
+  {
+   "Guid": [
+    {
+     "id": "tmdb://3847"
+    }
+   ],
+   "UltraBlurColors": {
+    "bottomLeft": "1f1f26",
+    "bottomRight": "15151a",
+    "topLeft": "1a1a1e",
+    "topRight": "24242a"
+   },
+   "_artFor": "https://image.tmdb.org/t/p/w1280/te4VJNMipsFQofCkiytuyswGDlV.jpg",
+   "_art_url": "https://image.tmdb.org/t/p/w1280/te4VJNMipsFQofCkiytuyswGDlV.jpg",
+   "_poster_url": "https://image.tmdb.org/t/p/w342/6GgGAyMB7KVocw6QoLi2Ke4kJZE.jpg",
+   "_scanned": true,
+   "_thumbFor": "https://image.tmdb.org/t/p/w342/6GgGAyMB7KVocw6QoLi2Ke4kJZE.jpg",
+   "addedAt": 1792109616,
+   "art": "/library/metadata/100003/art/1792173232",
+   "guid": "plex://season/1927ffc3a7d8099c0ed3e38e",
+   "index": 0,
+   "key": "/library/metadata/100019/children",
+   "leafCount": 1,
+   "librarySectionID": 2,
+   "librarySectionKey": "/library/sections/2",
+   "librarySectionTitle": "Debrid TV",
+   "parentGuid": "plex://show/1709082b80fe898f07cba8fb",
+   "parentIndex": 1,
+   "parentKey": "/library/metadata/100003",
+   "parentRatingKey": "100003",
+   "parentSlug": "firefly",
+   "parentStudio": "Mutant Enemy Productions",
+   "parentThumb": "/library/metadata/100003/thumb/1792173232",
+   "parentTitle": "Firefly",
+   "parentYear": 2002,
+   "ratingKey": "100019",
+   "summary": "",
+   "thumb": "/library/metadata/100019/thumb/1792173233",
+   "title": "Specials",
+   "type": "season",
+   "updatedAt": 1792173232,
+   "viewedLeafCount": 0
+  },
+  {
+   "Guid": [
+    {
+     "id": "imdb://tt0303461"
+    },
+    {
+     "id": "tmdb://1437"
+    }
+   ],
+   "Media": [
+    {
+     "Part": [
+      {
+       "Stream": [
+        {
+         "bitDepth": 8,
+         "chromaLocation": null,
+         "chromaSubsampling": "4:2:0",
+         "codec": "h264",
+         "codecID": null,
+         "codedHeight": null,
+         "codedWidth": null,
+         "colorPrimaries": null,
+         "colorRange": null,
+         "colorSpace": null,
+         "colorTrc": null,
+         "default": true,
+         "displayTitle": "1080p",
+         "extendedDisplayTitle": "Firefly.S01E11.Trash.1080p.BRRip.AC3.x264-LESS (1080p H.264)",
+         "frameRate": 23.976,
+         "height": 1080,
+         "id": 100014001,
+         "index": 0,
+         "level": 41,
+         "profile": "high",
+         "refFrames": null,
+         "scanType": "progressive",
+         "streamIdentifier": null,
+         "streamType": 1,
+         "title": "Firefly.S01E11.Trash.1080p.BRRip.AC3.x264-LESS",
+         "width": 1920
+        },
+        {
+         "audioChannelLayout": "5.1(side)",
+         "bitDepth": null,
+         "bitrate": 640,
+         "channels": 6,
+         "codec": "ac3",
+         "default": true,
+         "displayTitle": "English (AC3 5.1)",
+         "extendedDisplayTitle": "Firefly.S01E11.Trash.1080p.BRRip.AC3.x264-LESS (English AC3 5.1)",
+         "id": 100014002,
+         "index": 1,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "samplingRate": 48000,
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 2,
+         "title": "Firefly.S01E11.Trash.1080p.BRRip.AC3.x264-LESS"
+        },
+        {
+         "canAutoSync": false,
+         "codec": "pgs",
+         "default": true,
+         "displayTitle": "English",
+         "extendedDisplayTitle": "English (PGS)",
+         "id": 100014003,
+         "index": 2,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "streamIdentifier": null,
+         "streamType": 3
+        }
+       ],
+       "audioProfile": null,
+       "container": "mkv",
+       "duration": 2623041,
+       "file": "/mnt/zurg/shows/Firefly.S01.COMPLETE.REPACK.1080p.BRRip.AC3.x264-LESS/Firefly.S01E11.Trash.1080p.BRRip.AC3.x264-LESS.mkv",
+       "id": 1000140,
+       "key": "/library/parts/1000140/1792109616/file.mkv",
+       "size": 1053831058,
+       "videoProfile": "high"
+      }
+     ],
+     "aspectRatio": 1.78,
+     "audioChannels": 6,
+     "audioCodec": "ac3",
+     "audioProfile": null,
+     "bitrate": 3214,
+     "container": "mkv",
+     "duration": 2623041,
+     "hasVoiceActivity": false,
+     "height": 1080,
+     "id": 10001400,
+     "videoCodec": "h264",
+     "videoFrameRate": "24p",
+     "videoProfile": "high",
+     "videoResolution": "1080",
+     "width": 1920
+    }
+   ],
+   "Rating": [
+    {
+     "image": "themoviedb://image.rating",
+     "type": "audience",
+     "value": 8.3
+    }
+   ],
+   "Role": [
+    {
+     "filter": "actor=512297",
+     "id": 512297,
+     "role": "Mal Reynolds",
+     "tag": "Nathan Fillion",
+     "tagKey": "81c86be30e6b8e063494dbde",
+     "thumb": "https://image.tmdb.org/t/p/w185/aW6vCxkUZtwb6iH2Wf88Uq0XNVv.jpg"
+    },
+    {
+     "filter": "actor=494065",
+     "id": 494065,
+     "role": "Zoë Washburne",
+     "tag": "Gina Torres",
+     "tagKey": "9ae2e2e032b13ee32f34ae51",
+     "thumb": "https://image.tmdb.org/t/p/w185/ukDNHgvEgdU95eaw6pngiAPucv4.jpg"
+    },
+    {
+     "filter": "actor=779445",
+     "id": 779445,
+     "role": "Hoban Washburne",
+     "tag": "Alan Tudyk",
+     "tagKey": "dd45d932f3c39d9d01b86845",
+     "thumb": "https://image.tmdb.org/t/p/w185/jUuUbPuMGonFT5E2pcs4alfqaCN.jpg"
+    },
+    {
+     "filter": "actor=592740",
+     "id": 592740,
+     "role": "Inara Serra",
+     "tag": "Morena Baccarin",
+     "tagKey": "e8af3ed060612b75f8eb3c7d",
+     "thumb": "https://image.tmdb.org/t/p/w185/4gyHyg6FJ1oFczOm5pmMkdEEo2J.jpg"
+    },
+    {
+     "filter": "actor=390785",
+     "id": 390785,
+     "role": "Jayne Cobb",
+     "tag": "Adam Baldwin",
+     "tagKey": "1841e44cf5ddf881a4481ff5",
+     "thumb": "https://image.tmdb.org/t/p/w185/lfbyJWNWGbiYfU0Yr1tjn6Trd2V.jpg"
+    },
+    {
+     "filter": "actor=899423",
+     "id": 899423,
+     "role": "Kaylee Frye",
+     "tag": "Jewel Staite",
+     "tagKey": "65b011858ff2e395e952d654",
+     "thumb": "https://image.tmdb.org/t/p/w185/ztxDIZvuPreUixO6ZPxwkCg2UlO.jpg"
+    }
+   ],
+   "UltraBlurColors": {
+    "bottomLeft": "1f1f26",
+    "bottomRight": "15151a",
+    "topLeft": "1a1a1e",
+    "topRight": "24242a"
+   },
+   "_artFor": "https://image.tmdb.org/t/p/w1280/te4VJNMipsFQofCkiytuyswGDlV.jpg",
+   "_art_url": "https://image.tmdb.org/t/p/w1280/te4VJNMipsFQofCkiytuyswGDlV.jpg",
+   "_folder": "",
+   "_generatedTitle": true,
+   "_hash": "935a77d282bce621fe0514668225abf597f5756a",
+   "_identify": {
+    "confidence": "exact",
+    "disputed": null,
+    "imdb": "tt0303461",
+    "plex": null,
+    "source": "placed",
+    "tmdb": 1437
+   },
+   "_identity": "tmdb:1437",
+   "_ids": {
+    "imdb": "tt0303461",
+    "tmdb": "1437"
+   },
+   "_own_content_rating": true,
+   "_path": "shows/Firefly.S01.COMPLETE.REPACK.1080p.BRRip.AC3.x264-LESS/Firefly.S01E11.Trash.1080p.BRRip.AC3.x264-LESS.mkv",
+   "_placed": {
+    "episode": 1,
+    "kind": "episode",
+    "season": 0
+   },
+   "_poster_url": "https://image.tmdb.org/t/p/w1280/te4VJNMipsFQofCkiytuyswGDlV.jpg",
+   "_release": "Firefly.S01.COMPLETE.REPACK.1080p.BRRip.AC3.x264-LESS",
+   "_scanned": true,
+   "_sid": "shows/Firefly.S01.COMPLETE.REPACK.1080p.BRRip.AC3.x264-LESS/Firefly.S01E11.Trash.1080p.BRRip.AC3.x264-LESS.mkv",
+   "_source": "zurg",
+   "_thumbFor": "https://image.tmdb.org/t/p/w1280/te4VJNMipsFQofCkiytuyswGDlV.jpg",
+   "addedAt": 1792109616,
+   "art": "/library/metadata/100003/art/1792109597",
+   "audienceRating": 8.3,
+   "audienceRatingImage": "themoviedb://image.rating",
+   "contentRating": "12",
+   "duration": 2623041,
+   "grandparentArt": "/library/metadata/100003/art/1792109597",
+   "grandparentGuid": "plex://show/1709082b80fe898f07cba8fb",
+   "grandparentKey": "/library/metadata/100003",
+   "grandparentRatingKey": "100003",
+   "grandparentSlug": "firefly",
+   "grandparentThumb": "/library/metadata/100003/thumb/1792109597",
+   "grandparentTitle": "Firefly",
+   "guid": "plex://movie/290798afd9de294942577bfa",
+   "index": 1,
+   "key": "/library/metadata/100014",
+   "librarySectionID": 2,
+   "librarySectionKey": "/library/sections/2",
+   "librarySectionTitle": "Debrid TV",
+   "originallyAvailableAt": "2002-09-20",
+   "parentGuid": "plex://season/1927ffc3a7d8099c0ed3e38e",
+   "parentIndex": 0,
+   "parentKey": "/library/metadata/100019",
+   "parentRatingKey": "100019",
+   "parentThumb": "/library/metadata/100019/thumb/1792173233",
+   "parentTitle": "Specials",
+   "ratingKey": "100014",
+   "summary": "In the year 2517, the universe is a vast frontier where lawlessness reigns and adventure awaits! Join Captain Malcolm Reynolds and his ragtag crew aboard the spaceship Serenity as they navigate the fringes of society, battling the oppressive Alliance and facing off against ruthless bounty hunters.",
+   "thumb": "/library/metadata/100014/thumb/1792173233",
+   "title": "Episode 1",
+   "type": "episode",
+   "updatedAt": 1792173232,
+   "year": 2002
+  },
+  {
+   "Guid": [
+    {
+     "id": "imdb://tt0303461"
+    },
+    {
+     "id": "tmdb://1437"
+    }
+   ],
+   "Media": [
+    {
+     "Part": [
+      {
+       "Stream": [
+        {
+         "bitDepth": 8,
+         "chromaLocation": null,
+         "chromaSubsampling": "4:2:0",
+         "codec": "h264",
+         "codecID": null,
+         "codedHeight": null,
+         "codedWidth": null,
+         "colorPrimaries": null,
+         "colorRange": null,
+         "colorSpace": null,
+         "colorTrc": null,
+         "default": true,
+         "displayTitle": "1080p",
+         "extendedDisplayTitle": "Firefly.S01E12.The.Message.1080p.BRRip.AC3.x264-LESS (1080p H.264)",
+         "frameRate": 23.976,
+         "height": 1080,
+         "id": 100015001,
+         "index": 0,
+         "level": 41,
+         "profile": "high",
+         "refFrames": null,
+         "scanType": "progressive",
+         "streamIdentifier": null,
+         "streamType": 1,
+         "title": "Firefly.S01E12.The.Message.1080p.BRRip.AC3.x264-LESS",
+         "width": 1920
+        },
+        {
+         "audioChannelLayout": "5.1(side)",
+         "bitDepth": null,
+         "bitrate": 640,
+         "channels": 6,
+         "codec": "ac3",
+         "default": true,
+         "displayTitle": "English (AC3 5.1)",
+         "extendedDisplayTitle": "Firefly.S01E12.The.Message.1080p.BRRip.AC3.x264-LESS (English AC3 5.1)",
+         "id": 100015002,
+         "index": 1,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "samplingRate": 48000,
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 2,
+         "title": "Firefly.S01E12.The.Message.1080p.BRRip.AC3.x264-LESS"
+        },
+        {
+         "canAutoSync": false,
+         "codec": "pgs",
+         "default": true,
+         "displayTitle": "English",
+         "extendedDisplayTitle": "English (PGS)",
+         "id": 100015003,
+         "index": 2,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "streamIdentifier": null,
+         "streamType": 3
+        }
+       ],
+       "audioProfile": null,
+       "container": "mkv",
+       "duration": 2645119,
+       "file": "/mnt/zurg/shows/Firefly.S01.COMPLETE.REPACK.1080p.BRRip.AC3.x264-LESS/Firefly.S01E12.The.Message.1080p.BRRip.AC3.x264-LESS.mkv",
+       "id": 1000150,
+       "key": "/library/parts/1000150/1792109616/file.mkv",
+       "size": 1065934190,
+       "videoProfile": "high"
+      }
+     ],
+     "aspectRatio": 1.78,
+     "audioChannels": 6,
+     "audioCodec": "ac3",
+     "audioProfile": null,
+     "bitrate": 3224,
+     "container": "mkv",
+     "duration": 2645119,
+     "hasVoiceActivity": false,
+     "height": 1080,
+     "id": 10001500,
+     "videoCodec": "h264",
+     "videoFrameRate": "24p",
+     "videoProfile": "high",
+     "videoResolution": "1080",
+     "width": 1920
+    }
+   ],
+   "Rating": [
+    {
+     "image": "themoviedb://image.rating",
+     "type": "audience",
+     "value": 8.3
+    }
+   ],
+   "Role": [
+    {
+     "filter": "actor=512297",
+     "id": 512297,
+     "role": "Mal Reynolds",
+     "tag": "Nathan Fillion",
+     "tagKey": "81c86be30e6b8e063494dbde",
+     "thumb": "https://image.tmdb.org/t/p/w185/aW6vCxkUZtwb6iH2Wf88Uq0XNVv.jpg"
+    },
+    {
+     "filter": "actor=494065",
+     "id": 494065,
+     "role": "Zoë Washburne",
+     "tag": "Gina Torres",
+     "tagKey": "9ae2e2e032b13ee32f34ae51",
+     "thumb": "https://image.tmdb.org/t/p/w185/ukDNHgvEgdU95eaw6pngiAPucv4.jpg"
+    },
+    {
+     "filter": "actor=779445",
+     "id": 779445,
+     "role": "Hoban Washburne",
+     "tag": "Alan Tudyk",
+     "tagKey": "dd45d932f3c39d9d01b86845",
+     "thumb": "https://image.tmdb.org/t/p/w185/jUuUbPuMGonFT5E2pcs4alfqaCN.jpg"
+    },
+    {
+     "filter": "actor=592740",
+     "id": 592740,
+     "role": "Inara Serra",
+     "tag": "Morena Baccarin",
+     "tagKey": "e8af3ed060612b75f8eb3c7d",
+     "thumb": "https://image.tmdb.org/t/p/w185/4gyHyg6FJ1oFczOm5pmMkdEEo2J.jpg"
+    },
+    {
+     "filter": "actor=390785",
+     "id": 390785,
+     "role": "Jayne Cobb",
+     "tag": "Adam Baldwin",
+     "tagKey": "1841e44cf5ddf881a4481ff5",
+     "thumb": "https://image.tmdb.org/t/p/w185/lfbyJWNWGbiYfU0Yr1tjn6Trd2V.jpg"
+    },
+    {
+     "filter": "actor=899423",
+     "id": 899423,
+     "role": "Kaylee Frye",
+     "tag": "Jewel Staite",
+     "tagKey": "65b011858ff2e395e952d654",
+     "thumb": "https://image.tmdb.org/t/p/w185/ztxDIZvuPreUixO6ZPxwkCg2UlO.jpg"
+    }
+   ],
+   "UltraBlurColors": {
+    "bottomLeft": "1f1f26",
+    "bottomRight": "15151a",
+    "topLeft": "1a1a1e",
+    "topRight": "24242a"
+   },
+   "_artFor": "https://image.tmdb.org/t/p/w1280/te4VJNMipsFQofCkiytuyswGDlV.jpg",
+   "_art_url": "https://image.tmdb.org/t/p/w1280/te4VJNMipsFQofCkiytuyswGDlV.jpg",
+   "_folder": "",
+   "_generatedTitle": true,
+   "_hash": "935a77d282bce621fe0514668225abf597f5756a",
+   "_identify": {
+    "confidence": "exact",
+    "disputed": null,
+    "imdb": "tt0303461",
+    "plex": null,
+    "source": "placed",
+    "tmdb": 1437
+   },
+   "_identity": "tmdb:1437",
+   "_ids": {
+    "imdb": "tt0303461",
+    "tmdb": "1437"
+   },
+   "_own_content_rating": true,
+   "_path": "shows/Firefly.S01.COMPLETE.REPACK.1080p.BRRip.AC3.x264-LESS/Firefly.S01E12.The.Message.1080p.BRRip.AC3.x264-LESS.mkv",
+   "_placed": {
+    "episode": 2,
+    "kind": "episode",
+    "season": 0
+   },
+   "_poster_url": "https://image.tmdb.org/t/p/w1280/te4VJNMipsFQofCkiytuyswGDlV.jpg",
+   "_release": "Firefly.S01.COMPLETE.REPACK.1080p.BRRip.AC3.x264-LESS",
+   "_scanned": true,
+   "_sid": "shows/Firefly.S01.COMPLETE.REPACK.1080p.BRRip.AC3.x264-LESS/Firefly.S01E12.The.Message.1080p.BRRip.AC3.x264-LESS.mkv",
+   "_source": "zurg",
+   "_thumbFor": "https://image.tmdb.org/t/p/w1280/te4VJNMipsFQofCkiytuyswGDlV.jpg",
+   "addedAt": 1792109616,
+   "art": "/library/metadata/100003/art/1792109597",
+   "audienceRating": 8.3,
+   "audienceRatingImage": "themoviedb://image.rating",
+   "contentRating": "12",
+   "duration": 2645119,
+   "grandparentArt": "/library/metadata/100003/art/1792109597",
+   "grandparentGuid": "plex://show/1709082b80fe898f07cba8fb",
+   "grandparentKey": "/library/metadata/100003",
+   "grandparentRatingKey": "100003",
+   "grandparentSlug": "firefly",
+   "grandparentThumb": "/library/metadata/100003/thumb/1792109597",
+   "grandparentTitle": "Firefly",
+   "guid": "plex://movie/290798afd9de294942577bfa",
+   "index": 2,
+   "key": "/library/metadata/100015",
+   "librarySectionID": 2,
+   "librarySectionKey": "/library/sections/2",
+   "librarySectionTitle": "Debrid TV",
+   "originallyAvailableAt": "2002-09-20",
+   "parentGuid": "plex://season/1927ffc3a7d8099c0ed3e38e",
+   "parentIndex": 0,
+   "parentKey": "/library/metadata/100019",
+   "parentRatingKey": "100019",
+   "parentThumb": "/library/metadata/100019/thumb/1792173233",
+   "parentTitle": "Specials",
+   "ratingKey": "100015",
+   "summary": "In the year 2517, the universe is a vast frontier where lawlessness reigns and adventure awaits! Join Captain Malcolm Reynolds and his ragtag crew aboard the spaceship Serenity as they navigate the fringes of society, battling the oppressive Alliance and facing off against ruthless bounty hunters.",
+   "thumb": "/library/metadata/100015/thumb/1792173232",
+   "title": "Episode 2",
+   "type": "episode",
+   "updatedAt": 1792173232,
+   "year": 2002
+  },
+  {
+   "Guid": [
+    {
+     "id": "imdb://tt0303461"
+    },
+    {
+     "id": "tmdb://1437"
+    }
+   ],
+   "Media": [
+    {
+     "Part": [
+      {
+       "Stream": [
+        {
+         "bitDepth": 8,
+         "chromaLocation": null,
+         "chromaSubsampling": "4:2:0",
+         "codec": "h264",
+         "codecID": null,
+         "codedHeight": null,
+         "codedWidth": null,
+         "colorPrimaries": null,
+         "colorRange": null,
+         "colorSpace": null,
+         "colorTrc": null,
+         "default": true,
+         "displayTitle": "1080p",
+         "extendedDisplayTitle": "Firefly.S01E13.Heart.of.Gold.1080p.BRRip.AC3.x264-LESS (1080p H.264)",
+         "frameRate": 23.976,
+         "height": 1080,
+         "id": 100016001,
+         "index": 0,
+         "level": 41,
+         "profile": "high",
+         "refFrames": null,
+         "scanType": "progressive",
+         "streamIdentifier": null,
+         "streamType": 1,
+         "title": "Firefly.S01E13.Heart.of.Gold.1080p.BRRip.AC3.x264-LESS",
+         "width": 1920
+        },
+        {
+         "audioChannelLayout": "5.1(side)",
+         "bitDepth": null,
+         "bitrate": 640,
+         "channels": 6,
+         "codec": "ac3",
+         "default": true,
+         "displayTitle": "English (AC3 5.1)",
+         "extendedDisplayTitle": "Firefly.S01E13.Heart.of.Gold.1080p.BRRip.AC3.x264-LESS (English AC3 5.1)",
+         "id": 100016002,
+         "index": 1,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "samplingRate": 48000,
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 2,
+         "title": "Firefly.S01E13.Heart.of.Gold.1080p.BRRip.AC3.x264-LESS"
+        },
+        {
+         "canAutoSync": false,
+         "codec": "pgs",
+         "default": true,
+         "displayTitle": "English",
+         "extendedDisplayTitle": "English (PGS)",
+         "id": 100016003,
+         "index": 2,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "streamIdentifier": null,
+         "streamType": 3
+        }
+       ],
+       "audioProfile": null,
+       "container": "mkv",
+       "duration": 2548384,
+       "file": "/mnt/zurg/shows/Firefly.S01.COMPLETE.REPACK.1080p.BRRip.AC3.x264-LESS/Firefly.S01E13.Heart.of.Gold.1080p.BRRip.AC3.x264-LESS.mkv",
+       "id": 1000160,
+       "key": "/library/parts/1000160/1792109616/file.mkv",
+       "size": 1022804483,
+       "videoProfile": "high"
+      }
+     ],
+     "aspectRatio": 1.78,
+     "audioChannels": 6,
+     "audioCodec": "ac3",
+     "audioProfile": null,
+     "bitrate": 3211,
+     "container": "mkv",
+     "duration": 2548384,
+     "hasVoiceActivity": false,
+     "height": 1080,
+     "id": 10001600,
+     "videoCodec": "h264",
+     "videoFrameRate": "24p",
+     "videoProfile": "high",
+     "videoResolution": "1080",
+     "width": 1920
+    }
+   ],
+   "Rating": [
+    {
+     "image": "themoviedb://image.rating",
+     "type": "audience",
+     "value": 8.3
+    }
+   ],
+   "Role": [
+    {
+     "filter": "actor=512297",
+     "id": 512297,
+     "role": "Mal Reynolds",
+     "tag": "Nathan Fillion",
+     "tagKey": "81c86be30e6b8e063494dbde",
+     "thumb": "https://image.tmdb.org/t/p/w185/aW6vCxkUZtwb6iH2Wf88Uq0XNVv.jpg"
+    },
+    {
+     "filter": "actor=494065",
+     "id": 494065,
+     "role": "Zoë Washburne",
+     "tag": "Gina Torres",
+     "tagKey": "9ae2e2e032b13ee32f34ae51",
+     "thumb": "https://image.tmdb.org/t/p/w185/ukDNHgvEgdU95eaw6pngiAPucv4.jpg"
+    },
+    {
+     "filter": "actor=779445",
+     "id": 779445,
+     "role": "Hoban Washburne",
+     "tag": "Alan Tudyk",
+     "tagKey": "dd45d932f3c39d9d01b86845",
+     "thumb": "https://image.tmdb.org/t/p/w185/jUuUbPuMGonFT5E2pcs4alfqaCN.jpg"
+    },
+    {
+     "filter": "actor=592740",
+     "id": 592740,
+     "role": "Inara Serra",
+     "tag": "Morena Baccarin",
+     "tagKey": "e8af3ed060612b75f8eb3c7d",
+     "thumb": "https://image.tmdb.org/t/p/w185/4gyHyg6FJ1oFczOm5pmMkdEEo2J.jpg"
+    },
+    {
+     "filter": "actor=390785",
+     "id": 390785,
+     "role": "Jayne Cobb",
+     "tag": "Adam Baldwin",
+     "tagKey": "1841e44cf5ddf881a4481ff5",
+     "thumb": "https://image.tmdb.org/t/p/w185/lfbyJWNWGbiYfU0Yr1tjn6Trd2V.jpg"
+    },
+    {
+     "filter": "actor=899423",
+     "id": 899423,
+     "role": "Kaylee Frye",
+     "tag": "Jewel Staite",
+     "tagKey": "65b011858ff2e395e952d654",
+     "thumb": "https://image.tmdb.org/t/p/w185/ztxDIZvuPreUixO6ZPxwkCg2UlO.jpg"
+    }
+   ],
+   "UltraBlurColors": {
+    "bottomLeft": "1f1f26",
+    "bottomRight": "15151a",
+    "topLeft": "1a1a1e",
+    "topRight": "24242a"
+   },
+   "_artFor": "https://image.tmdb.org/t/p/w1280/te4VJNMipsFQofCkiytuyswGDlV.jpg",
+   "_art_url": "https://image.tmdb.org/t/p/w1280/te4VJNMipsFQofCkiytuyswGDlV.jpg",
+   "_folder": "",
+   "_generatedTitle": true,
+   "_hash": "935a77d282bce621fe0514668225abf597f5756a",
+   "_identify": {
+    "confidence": "exact",
+    "disputed": null,
+    "imdb": "tt0303461",
+    "plex": null,
+    "source": "placed",
+    "tmdb": 1437
+   },
+   "_identity": "tmdb:1437",
+   "_ids": {
+    "imdb": "tt0303461",
+    "tmdb": "1437"
+   },
+   "_own_content_rating": true,
+   "_path": "shows/Firefly.S01.COMPLETE.REPACK.1080p.BRRip.AC3.x264-LESS/Firefly.S01E13.Heart.of.Gold.1080p.BRRip.AC3.x264-LESS.mkv",
+   "_placed": {
+    "episode": 3,
+    "kind": "episode",
+    "season": 0
+   },
+   "_poster_url": "https://image.tmdb.org/t/p/w1280/te4VJNMipsFQofCkiytuyswGDlV.jpg",
+   "_release": "Firefly.S01.COMPLETE.REPACK.1080p.BRRip.AC3.x264-LESS",
+   "_scanned": true,
+   "_sid": "shows/Firefly.S01.COMPLETE.REPACK.1080p.BRRip.AC3.x264-LESS/Firefly.S01E13.Heart.of.Gold.1080p.BRRip.AC3.x264-LESS.mkv",
+   "_source": "zurg",
+   "_thumbFor": "https://image.tmdb.org/t/p/w1280/te4VJNMipsFQofCkiytuyswGDlV.jpg",
+   "addedAt": 1792109616,
+   "art": "/library/metadata/100003/art/1792109597",
+   "audienceRating": 8.3,
+   "audienceRatingImage": "themoviedb://image.rating",
+   "contentRating": "12",
+   "duration": 2548384,
+   "grandparentArt": "/library/metadata/100003/art/1792109597",
+   "grandparentGuid": "plex://show/1709082b80fe898f07cba8fb",
+   "grandparentKey": "/library/metadata/100003",
+   "grandparentRatingKey": "100003",
+   "grandparentSlug": "firefly",
+   "grandparentThumb": "/library/metadata/100003/thumb/1792109597",
+   "grandparentTitle": "Firefly",
+   "guid": "plex://movie/290798afd9de294942577bfa",
+   "index": 3,
+   "key": "/library/metadata/100016",
+   "librarySectionID": 2,
+   "librarySectionKey": "/library/sections/2",
+   "librarySectionTitle": "Debrid TV",
+   "originallyAvailableAt": "2002-09-20",
+   "parentGuid": "plex://season/1927ffc3a7d8099c0ed3e38e",
+   "parentIndex": 0,
+   "parentKey": "/library/metadata/100019",
+   "parentRatingKey": "100019",
+   "parentThumb": "/library/metadata/100019/thumb/1792173233",
+   "parentTitle": "Specials",
+   "ratingKey": "100016",
+   "summary": "In the year 2517, the universe is a vast frontier where lawlessness reigns and adventure awaits! Join Captain Malcolm Reynolds and his ragtag crew aboard the spaceship Serenity as they navigate the fringes of society, battling the oppressive Alliance and facing off against ruthless bounty hunters.",
+   "thumb": "/library/metadata/100016/thumb/1792173232",
+   "title": "Episode 3",
+   "type": "episode",
+   "updatedAt": 1792173232,
+   "year": 2002
+  },
+  {
+   "Guid": [
+    {
+     "id": "imdb://tt0579539"
+    },
+    {
+     "id": "tmdb://1048594"
+    },
+    {
+     "id": "tvdb://297989"
+    }
+   ],
+   "Media": [
+    {
+     "Part": [
+      {
+       "Stream": [
+        {
+         "bitDepth": 8,
+         "chromaLocation": null,
+         "chromaSubsampling": "4:2:0",
+         "codec": "h264",
+         "codecID": null,
+         "codedHeight": null,
+         "codedWidth": null,
+         "colorPrimaries": null,
+         "colorRange": null,
+         "colorSpace": null,
+         "colorTrc": null,
+         "default": true,
+         "displayTitle": "1080p",
+         "extendedDisplayTitle": "Firefly.S01E02.The.Train.Job.1080p.BRRip.AC3.x264-LESS (1080p H.264)",
+         "frameRate": 23.976,
+         "height": 1080,
+         "id": 100006001,
+         "index": 0,
+         "level": 41,
+         "profile": "high",
+         "refFrames": null,
+         "scanType": "progressive",
+         "streamIdentifier": null,
+         "streamType": 1,
+         "title": "Firefly.S01E02.The.Train.Job.1080p.BRRip.AC3.x264-LESS",
+         "width": 1920
+        },
+        {
+         "audioChannelLayout": "5.1(side)",
+         "bitDepth": null,
+         "bitrate": 640,
+         "channels": 6,
+         "codec": "ac3",
+         "default": true,
+         "displayTitle": "English (AC3 5.1)",
+         "extendedDisplayTitle": "Firefly.S01E02.The.Train.Job.1080p.BRRip.AC3.x264-LESS (English AC3 5.1)",
+         "id": 100006002,
+         "index": 1,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "samplingRate": 48000,
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 2,
+         "title": "Firefly.S01E02.The.Train.Job.1080p.BRRip.AC3.x264-LESS"
+        },
+        {
+         "canAutoSync": false,
+         "codec": "pgs",
+         "default": true,
+         "displayTitle": "English",
+         "extendedDisplayTitle": "English (PGS)",
+         "id": 100006003,
+         "index": 2,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "streamIdentifier": null,
+         "streamType": 3
+        }
+       ],
+       "audioProfile": null,
+       "container": "mkv",
+       "duration": 2563584,
+       "file": "/mnt/zurg/shows/Firefly.S01.COMPLETE.REPACK.1080p.BRRip.AC3.x264-LESS/Firefly.S01E02.The.Train.Job.1080p.BRRip.AC3.x264-LESS.mkv",
+       "id": 1000060,
+       "key": "/library/parts/1000060/1792109616/file.mkv",
+       "size": 1028804302,
+       "videoProfile": "high"
+      }
+     ],
+     "aspectRatio": 1.78,
+     "audioChannels": 6,
+     "audioCodec": "ac3",
+     "audioProfile": null,
+     "bitrate": 3211,
+     "container": "mkv",
+     "duration": 2563584,
+     "hasVoiceActivity": false,
+     "height": 1080,
+     "id": 10000600,
+     "videoCodec": "h264",
+     "videoFrameRate": "24p",
+     "videoProfile": "high",
+     "videoResolution": "1080",
+     "width": 1920
+    }
+   ],
+   "Rating": [
+    {
+     "image": "themoviedb://image.rating",
+     "type": "audience",
+     "value": 8.3
+    }
+   ],
+   "Role": [
+    {
+     "filter": "actor=512297",
+     "id": 512297,
+     "role": "Mal Reynolds",
+     "tag": "Nathan Fillion",
+     "tagKey": "81c86be30e6b8e063494dbde",
+     "thumb": "https://image.tmdb.org/t/p/w185/aW6vCxkUZtwb6iH2Wf88Uq0XNVv.jpg"
+    },
+    {
+     "filter": "actor=494065",
+     "id": 494065,
+     "role": "Zoë Washburne",
+     "tag": "Gina Torres",
+     "tagKey": "9ae2e2e032b13ee32f34ae51",
+     "thumb": "https://image.tmdb.org/t/p/w185/ukDNHgvEgdU95eaw6pngiAPucv4.jpg"
+    },
+    {
+     "filter": "actor=779445",
+     "id": 779445,
+     "role": "Hoban Washburne",
+     "tag": "Alan Tudyk",
+     "tagKey": "dd45d932f3c39d9d01b86845",
+     "thumb": "https://image.tmdb.org/t/p/w185/jUuUbPuMGonFT5E2pcs4alfqaCN.jpg"
+    },
+    {
+     "filter": "actor=592740",
+     "id": 592740,
+     "role": "Inara Serra",
+     "tag": "Morena Baccarin",
+     "tagKey": "e8af3ed060612b75f8eb3c7d",
+     "thumb": "https://image.tmdb.org/t/p/w185/4gyHyg6FJ1oFczOm5pmMkdEEo2J.jpg"
+    },
+    {
+     "filter": "actor=390785",
+     "id": 390785,
+     "role": "Jayne Cobb",
+     "tag": "Adam Baldwin",
+     "tagKey": "1841e44cf5ddf881a4481ff5",
+     "thumb": "https://image.tmdb.org/t/p/w185/lfbyJWNWGbiYfU0Yr1tjn6Trd2V.jpg"
+    },
+    {
+     "filter": "actor=899423",
+     "id": 899423,
+     "role": "Kaylee Frye",
+     "tag": "Jewel Staite",
+     "tagKey": "65b011858ff2e395e952d654",
+     "thumb": "https://image.tmdb.org/t/p/w185/ztxDIZvuPreUixO6ZPxwkCg2UlO.jpg"
+    }
+   ],
+   "UltraBlurColors": {
+    "bottomLeft": "1f1f26",
+    "bottomRight": "15151a",
+    "topLeft": "1a1a1e",
+    "topRight": "24242a"
+   },
+   "_artFor": "https://image.tmdb.org/t/p/w1280/te4VJNMipsFQofCkiytuyswGDlV.jpg",
+   "_art_url": "https://image.tmdb.org/t/p/w1280/te4VJNMipsFQofCkiytuyswGDlV.jpg",
+   "_folder": "",
+   "_hash": "935a77d282bce621fe0514668225abf597f5756a",
+   "_identify": {
+    "confidence": "exact",
+    "disputed": null,
+    "imdb": "tt0303461",
+    "plex": null,
+    "source": "placed",
+    "tmdb": 1437
+   },
+   "_identity": "tmdb:1437",
+   "_ids": {
+    "imdb": "tt0303461",
+    "tmdb": "1437"
+   },
+   "_own_content_rating": true,
+   "_path": "shows/Firefly.S01.COMPLETE.REPACK.1080p.BRRip.AC3.x264-LESS/Firefly.S01E02.The.Train.Job.1080p.BRRip.AC3.x264-LESS.mkv",
+   "_placed": {
+    "episode": 1,
+    "kind": "episode",
+    "season": 1
+   },
+   "_poster_url": "https://image.tmdb.org/t/p/w1280/w4yFzJkAiGjuDQuFKLOocjrH1eH.jpg",
+   "_release": "Firefly.S01.COMPLETE.REPACK.1080p.BRRip.AC3.x264-LESS",
+   "_scanned": true,
+   "_sid": "shows/Firefly.S01.COMPLETE.REPACK.1080p.BRRip.AC3.x264-LESS/Firefly.S01E02.The.Train.Job.1080p.BRRip.AC3.x264-LESS.mkv",
+   "_source": "zurg",
+   "_thumbFor": "https://image.tmdb.org/t/p/w1280/w4yFzJkAiGjuDQuFKLOocjrH1eH.jpg",
+   "addedAt": 1792109616,
+   "art": "/library/metadata/100003/art/1792173232",
+   "audienceRating": 8.3,
+   "audienceRatingImage": "themoviedb://image.rating",
+   "contentRating": "12",
+   "duration": 2563584,
+   "grandparentArt": "/library/metadata/100003/art/1792109597",
+   "grandparentGuid": "plex://show/1709082b80fe898f07cba8fb",
+   "grandparentKey": "/library/metadata/100003",
+   "grandparentRatingKey": "100003",
+   "grandparentSlug": "firefly",
+   "grandparentThumb": "/library/metadata/100003/thumb/1792109597",
+   "grandparentTitle": "Firefly",
+   "guid": "plex://episode/c75ac8abe7488dc4aa2cb5b3",
+   "index": 1,
+   "key": "/library/metadata/100006",
+   "librarySectionID": 2,
+   "librarySectionKey": "/library/sections/2",
+   "librarySectionTitle": "Debrid TV",
+   "originallyAvailableAt": "2002-09-20",
+   "parentGuid": "plex://season/a02f9adc005c9cbb33eafd59",
+   "parentIndex": 1,
+   "parentKey": "/library/metadata/100004",
+   "parentRatingKey": "100004",
+   "parentThumb": "/library/metadata/100004/thumb/1792109597",
+   "parentTitle": "Season 1",
+   "ratingKey": "100006",
+   "summary": "The crew of Serenity take on a train heist commissioned by a crime lord. They steal the goods, only to find it is medicine that's desperately needed by the town.",
+   "thumb": "/library/metadata/100006/thumb/1792173233",
+   "title": "The Train Job",
+   "titleSort": "Train Job",
+   "type": "episode",
+   "updatedAt": 1792173232,
+   "year": 2002
+  }
+ ],
  "tmdb": {
   "https://api.themoviedb.org/3/tv/1437/season/0/episode/1?append_to_response=external_ids&api_key=KEY": {
    "air_date": "2003-06-28",

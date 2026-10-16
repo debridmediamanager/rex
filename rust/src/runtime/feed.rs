@@ -1492,7 +1492,7 @@ impl Runtime {
 
     /// A row its source pushed that draws the blank tile -- a film with no poster, or an
     /// episode whose show has none -- or a film whose release names an episode (zurg filed
-    /// it under movies), unless a person matched or unmatched it.
+    /// it under movies), or an episode named as a film, unless a person matched or unmatched it.
     fn blank(&self, row: &Value) -> bool {
         let has = |row: Option<&Value>, field: &str| {
             row.and_then(|row| row.get(field)).is_some_and(|value| !value.is_null() && value.as_str() != Some(""))
@@ -1510,7 +1510,10 @@ impl Runtime {
         }
         if kind == Some("episode") {
             let show = row.get("grandparentRatingKey").map(string_value).and_then(|show| self.catalog.get(&show));
-            return !has(show, "_poster_url");
+            // An episode with a film's guid is one `metadata::enrich` named after its show: every
+            // season-0 episode before it read Specials (zen's Firefly S0E1-E3, `Episode N` under
+            // one `plex://movie/` guid, 2026-10-16). Same ids, same placement: no push names it again.
+            return !has(show, "_poster_url") || row.get("guid").and_then(Value::as_str).is_some_and(|guid| guid.starts_with("plex://movie/"));
         }
         // A film its source placed as one is one, whatever its release's name numbers.
         !has(Some(row), "_poster_url")

@@ -12766,6 +12766,8 @@ special episodes, each with its own title, summary, air date and `plex://episode
 | Solo Leveling | 0, 1 | How to Get Stronger | `plex://episode/65d3794cb9a4f240d4f1c131` |
 
 So season 0 now names its episodes as any season does: TMDB's title, summary, air date and still,
-and an episode guid from TMDB's episode id. `tests/fixtures/feed/specials.json` is the rig's
+and an episode guid from TMDB's episode id. A row named so before is on the right numbers with the
+same ids, so no push names it again: the blank-tile retry takes an episode with a film's guid too,
+and a start names the rig's three on their keys. `tests/fixtures/feed/specials.json` is the rig's
 answers; `tests/test_feed_placement.py` checks the three specials and their season through a start,
 and `native_phase2.json`'s "metadata enrich edge case 1", the oracle's answer, changed with it.
