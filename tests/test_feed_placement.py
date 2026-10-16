@@ -10,9 +10,10 @@ a season or as episodes further on (`Hibike Euphonium 3 - 01` is S3E1, Uma Musum
 S1E18), scene numbers TMDB does not have (`Detective.Conan.S33E01`, TMDB's S1E1103 in the
 placement contract; `Bungo.Stray.Dogs.S04E01`, TMDB's S1E37), and films zurg files under anime.
 
-Each is checked placed as pushed, and still there after every pass a start runs (with the
-anime lists and IMDb's numbering off, which read the names otherwise, and on), after the blank
-tile retry, and after a later push that places it elsewhere (same key, watched). A person's Fix
+Each is checked placed as pushed, and still there after every pass a start runs (also with
+`REX_ANIME_LISTS` and `REX_IMDB_EPISODES` set, which rex no longer reads: nothing is logged or
+kept for them), after the blank tile retry, and after a later push that places it elsewhere
+(same key, watched). A person's Fix
 Match wins over a placement, and a file pushed without one is placed by its name. Episodes placed
 on season 0 (`specials.json`, Firefly's) are TMDB's specials by name, like any other episode.
 
@@ -26,7 +27,6 @@ import tempfile
 import time
 
 from test_feed import ENTRIES, LEGACY, MOUNT, Bytes, Server, check, results, serve
-import test_feed_anime as anime
 import test_feed_blank_tiles as blank
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -38,8 +38,8 @@ SPECIALS = json.load(open(os.path.join(FIXTURES, "feed", "specials.json")))
 
 # TMDB's numbers for each, as `anime.json` recorded TMDB's answers for them; Case Closed's from
 # the placement contract (TMDB lists one season of 1,217 episodes, rex's name read keeps S33).
-# Left out: `bleach_tybw` (its anime-lists entry is a one-episode TMDB stub) and `kingdom_scene`,
-# pushed without a placement.
+# Left out: `bleach_tybw` (its `want` is a one-episode TMDB stub) and `kingdom_scene`, pushed
+# without a placement.
 PLACED = {name: pushed["want"] for name, pushed in ANIME["pushes"].items() if pushed["want"][0] and name != "bleach_tybw"}
 PLACED["case_closed"] = [30983, 1, 1103]
 
@@ -71,17 +71,30 @@ def catalog(work, *fixtures, rows=()):
         for fixture in fixtures:
             merged.update(fixture[name])
         json.dump(merged, open(os.path.join(work, name + "_cache.json"), "w"))
-    # What the passes at start read names by when the flags are on, so nothing is fetched.
-    for name in ("anime-list-master.xml", "anime-offline-database.jsonl"):
-        shutil.copy(os.path.join(FIXTURES, "anime", name), os.path.join(work, name))
-    shutil.copy(os.path.join(FIXTURES, "imdb", "title.episode.tsv.gz"), os.path.join(work, "title.episode.tsv.gz"))
 
 
-def start(work, bytes_port, lists=False, tmdb=True):
-    keys = {"REX_ANIME_LISTS": "on" if lists else "off", "REX_IMDB_EPISODES": "on" if lists else "off"}
+# What rex once kept beside the catalog for those two settings.
+DATASETS = ("anime-list-master.xml", "anime-offline-database.jsonl", "title.episode.tsv.gz", "imdb-episodes.db")
+
+
+def start(work, bytes_port, retired=False, tmdb=True):
+    """`retired`: an install that still sets REX_ANIME_LISTS and REX_IMDB_EPISODES on."""
+    keys = {"REX_ANIME_LISTS": "on", "REX_IMDB_EPISODES": "on"} if retired else {}
     if not tmdb:
         keys["TMDB_KEY"] = ""
     return Server(work, bytes_port, keys=keys)
+
+
+def stop(server, work):
+    server.stop()
+
+
+def placed(server, key):
+    """(the show's TMDB id, season, episode) an episode row sits on."""
+    row = server.row(key)
+    show = server.row(row.get("grandparentRatingKey")) if row.get("grandparentRatingKey") else {}
+    tmdb = next((int(guid["id"][7:]) for guid in show.get("Guid") or [] if guid.get("id", "").startswith("tmdb://")), None)
+    return [tmdb, row.get("parentIndex"), row.get("index")]
 
 
 def log_count(work, text):
@@ -90,7 +103,7 @@ def log_count(work, text):
 
 def check_placed(label, server, names, keys):
     for name in names:
-        got = anime.placed(server, keys.get(item(ANIME, name)["id"]))
+        got = placed(server, keys.get(item(ANIME, name)["id"]))
         check("%s: %s is TMDB %s's S%sE%s" % (label, name, *PLACED[name]), got == PLACED[name], got)
 
 
@@ -103,11 +116,11 @@ def live(bytes_port):
         status, body = server.feed("POST", "items", {"items": [item(ANIME, "bungo_scene")]})
         bungo = server.keys().get(item(ANIME, "bungo_scene")["id"])
         check("pushed without a placement, Bungo.Stray.Dogs.S04E01 is placed by its name (S4E1)",
-              status == 200 and anime.placed(server, bungo) == [65931, 4, 1], (body, anime.placed(server, bungo)))
+              status == 200 and placed(server, bungo) == [65931, 4, 1], (body, placed(server, bungo)))
         server.request("/:/scrobble?key=%s&identifier=com.plexapp.plugins.library" % bungo)
         server.feed("POST", "items", {"items": [episode("bungo_scene")]})
         check("placed, it is TMDB's S1E37, on the same key", server.keys().get(item(ANIME, "bungo_scene")["id"]) == bungo
-              and anime.placed(server, bungo) == PLACED["bungo_scene"], (server.keys(), anime.placed(server, bungo)))
+              and placed(server, bungo) == PLACED["bungo_scene"], (server.keys(), placed(server, bungo)))
         check("and what was watched stays watched", server.row(bungo).get("viewCount") == 1, server.row(bungo).get("viewCount"))
 
         # -- placed again elsewhere: moved on its key -----------------------------------------
@@ -115,12 +128,12 @@ def live(bytes_port):
         # as TMDB numbers that cour: S1E15.
         server.feed("POST", "items", {"items": [episode("ascendance_bd_s02e01", [91768, 2, 1])]})
         bd = server.keys().get(item(ANIME, "ascendance_bd_s02e01")["id"])
-        check("placed on S2E1, it is there", anime.placed(server, bd) == [91768, 2, 1], anime.placed(server, bd))
+        check("placed on S2E1, it is there", placed(server, bd) == [91768, 2, 1], placed(server, bd))
         server.request("/:/scrobble?key=%s&identifier=com.plexapp.plugins.library" % bd)
         server.feed("POST", "items", {"items": [episode("ascendance_bd_s02e01")]})
         check("a later push placing it on S1E15 moves it there, on the same key, watched",
-              server.keys().get(item(ANIME, "ascendance_bd_s02e01")["id"]) == bd and anime.placed(server, bd) == [91768, 1, 15]
-              and server.row(bd).get("viewCount") == 1, (anime.placed(server, bd), server.row(bd).get("viewCount")))
+              server.keys().get(item(ANIME, "ascendance_bd_s02e01")["id"]) == bd and placed(server, bd) == [91768, 1, 15]
+              and server.row(bd).get("viewCount") == 1, (placed(server, bd), server.row(bd).get("viewCount")))
 
         # -- every placement as pushed; a file without one by its name --------------------------
         rest = sorted(set(PLACED) - {"bungo_scene", "ascendance_bd_s02e01"})
@@ -130,16 +143,16 @@ def live(bytes_port):
         check_placed("pushed", server, sorted(PLACED), keys)
         check("the files of one episode are one row (Ascendance's two S4 - 01)",
               keys[item(ANIME, "ascendance_scene_s04e01")["id"]] == keys[item(ANIME, "ascendance_erai_s4_01")["id"]], keys)
-        kingdom = anime.placed(server, keys[item(ANIME, "kingdom_scene")["id"]])
+        kingdom = placed(server, keys[item(ANIME, "kingdom_scene")["id"]])
         check("a file pushed without a placement is numbered by its name (Kingdom.S01E03)", kingdom[1:] == [1, 3], kingdom)
     finally:
-        anime.stop(server, work)
+        stop(server, work)
 
     # -- every pass a start runs leaves each where it was placed -------------------------------
-    for lists in (False, True):
-        label = "after a start with the anime lists and IMDb %s" % ("on" if lists else "off")
+    for retired in (False, True):
+        label = "after a start%s" % (" with REX_ANIME_LISTS and REX_IMDB_EPISODES still on" if retired else "")
         before = (log_count(work, "FEED placing"), log_count(work, "FEED unfolded"))
-        server = start(work, bytes_port, lists)
+        server = start(work, bytes_port, retired)
         try:
             time.sleep(20)
             check_placed(label, server, sorted(PLACED), keys)
@@ -148,7 +161,12 @@ def live(bytes_port):
                   (before, log_count(work, "FEED placing"), log_count(work, "FEED unfolded")))
             check("%s: what was watched stays watched" % label, server.row(bungo).get("viewCount") == 1 and server.row(bd).get("viewCount") == 1)
         finally:
-            anime.stop(server, work)
+            stop(server, work)
+    log = open(os.path.join(work, "server.log"), errors="replace").read()
+    check("the retired settings log nothing and fetch nothing beside the catalog",
+          not any(word in log for word in ("ANIME", "IMDB")) and not any(os.path.exists(os.path.join(work, name)) for name in DATASETS),
+          ([line for line in log.splitlines() if "ANIME" in line or "IMDB" in line][:5],
+           [name for name in DATASETS if os.path.exists(os.path.join(work, name))]))
     shutil.rmtree(work, ignore_errors=True)
 
 
@@ -163,7 +181,7 @@ def retried(bytes_port):
         keys = server.keys()
         check_placed("with no TMDB", server, sorted(PLACED), keys)
     finally:
-        anime.stop(server, work)
+        stop(server, work)
     retries = log_count(work, "FEED retrying")
     server = start(work, bytes_port, tmdb=False)
     try:
@@ -176,7 +194,7 @@ def retried(bytes_port):
         check_placed("after the blank-tile retry", server, sorted(PLACED), keys)
         check("after the blank-tile retry: every key kept", server.keys() == keys, server.keys())
     finally:
-        anime.stop(server, work)
+        stop(server, work)
         shutil.rmtree(work, ignore_errors=True)
 
 
@@ -212,8 +230,8 @@ def films(bytes_port):
               server.row(key).get("guid") == chosen.get("guid") and server.keys().get(serbian_item(0)["id"]) == key,
               (server.row(key).get("guid"), chosen.get("guid")))
     finally:
-        anime.stop(server, work)
-    server = start(work, bytes_port, True)
+        stop(server, work)
+    server = start(work, bytes_port)
     try:
         time.sleep(15)
         check("after a start the match is still the person's", server.row(key).get("guid") == chosen.get("guid"), server.row(key).get("guid"))
@@ -222,7 +240,7 @@ def films(bytes_port):
               [conan.get("parentIndex"), conan.get("index")] == [1, 221] and server.row(keys.get(eva_item["id"])).get("type") == "movie",
               (conan.get("parentIndex"), conan.get("index")))
     finally:
-        anime.stop(server, work)
+        stop(server, work)
         shutil.rmtree(work, ignore_errors=True)
 
 
@@ -273,13 +291,13 @@ def specials(bytes_port):
         check("every Firefly file is taken", status == 200 and not body.get("rejected"), (status, body))
         check_specials("pushed", server)
     finally:
-        anime.stop(server, work)
-    server = start(work, bytes_port, True)
+        stop(server, work)
+    server = start(work, bytes_port)
     try:
         time.sleep(15)
         check_specials("after a start", server)
     finally:
-        anime.stop(server, work)
+        stop(server, work)
         shutil.rmtree(work, ignore_errors=True)
 
     # -- held so: the same push changes nothing, so a start's retry names them ------------------
@@ -296,7 +314,7 @@ def specials(bytes_port):
         check("zurg's next push of them is taken", status == 200 and not body.get("rejected"), (status, body))
         check("and keeps every key", check_specials("rows held as `Episode N`, after zurg's next push", server) == keys)
     finally:
-        anime.stop(server, work)
+        stop(server, work)
         shutil.rmtree(work, ignore_errors=True)
 
 

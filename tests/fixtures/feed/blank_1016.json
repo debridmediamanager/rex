@@ -47,11 +47,7 @@
    "path": "shows/Fairy.Tail.E233.Song.of.the.Faries.German.2014.ANiME.DL.720p.BluRay.x264-STARS/1VbpAFOM5bgfZUNePtzI2x.part1.rar/stars-fairy.tail.e233.720p.mkv",
    "size": 318437166,
    "want": {
-    "numbers": [
-     6,
-     7
-    ],
-    "show_tmdb": 46261
+    "show_title": "Fairy Tail"
    }
   },
   "onepiece_1106": {
@@ -61,11 +57,7 @@
    "path": "anime/[HatSubs] One Piece 1106 (WEB 1080p) [97566ECF]/[HatSubs] One Piece 1106 (WEB 1080p) [97566ECF].mkv",
    "size": 1479951691,
    "want": {
-    "numbers": [
-     22,
-     1106
-    ],
-    "show_tmdb": 37854
+    "show_title": "One Piece"
    }
   },
   "onepiece_1107": {
@@ -75,11 +67,7 @@
    "path": "anime/[HatSubs] One Piece 1107 (WEB 1080p) [7587906C]/[HatSubs] One Piece 1107 (WEB 1080p) [7587906C].mkv",
    "size": 1488473503,
    "want": {
-    "numbers": [
-     22,
-     1107
-    ],
-    "show_tmdb": 37854
+    "show_title": "One Piece"
    }
   },
   "onepiece_koten_207": {
@@ -92,11 +80,7 @@
    "path": "anime/[Koten_Gars] One Piece - Season 04-09 [FUNi-DL][h.264][1080p][AAC] (English Dubbed)/[Koten_Gars] One Piece - 0207 [FUNi-DL][h.264][1080p][AAC] [5BF32B17].mkv",
    "size": 1063722848,
    "want": {
-    "numbers": [
-     7,
-     207
-    ],
-    "show_tmdb": 37854
+    "show_title": "One Piece"
    }
   },
   "onepiece_zoku_783": {
@@ -109,11 +93,7 @@
    "path": "shows/[Zoku] One Piece - Season 19 (Whole Cake) P01 (783-842) [Dual-Audio] v2/One Piece - 783 - Sanji`s Homecoming! Into Big Mom`s Territory!.mkv",
    "size": 5162009592,
    "want": {
-    "numbers": [
-     18,
-     783
-    ],
-    "show_tmdb": 37854
+    "show_title": "One Piece"
    }
   },
   "wilty_e02_302": {

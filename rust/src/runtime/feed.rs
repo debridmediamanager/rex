@@ -1025,9 +1025,8 @@ fn show_tmdb_id(catalog: &Catalog, row: &Value) -> Option<i64> {
         .and_then(|id| id.parse::<i64>().ok())
 }
 
-/// Episodes placed on numbers their names no longer read, or anime under another show than
-/// the one its cour belongs to (`anime.rs`): pushed again as their source pushed them, so
-/// each is identified and placed again on its key, watch state kept. A parser fix reached only
+/// Episodes placed on numbers their names no longer read: pushed again as their source pushed
+/// them, so each is identified and placed again on its key, watch state kept. A parser fix reached only
 /// new files before this, and the production server held ~214 `Show S2 - NN` episodes in season 1
 /// (2026-10-13). Answers how many rows it placed again.
 pub(super) fn replace_misnumbered(shared: &SharedRuntime) -> usize {
@@ -1041,7 +1040,7 @@ pub(super) fn replace_misnumbered(shared: &SharedRuntime) -> usize {
     let lookup = tmdb.clone().map(|tmdb| {
         move |id| {
             crate::identify::tmdb_details(tmdb.as_ref() as &dyn TmdbSource, "tv", id)
-                .map(|details| super::scan::numbered_seasons(Some(tmdb.as_ref() as &dyn TmdbSource), id, &details))
+                .map(|details| super::scan::tmdb_seasons(&details))
                 .unwrap_or_default()
         }
     });
@@ -1052,11 +1051,7 @@ fn replace_misnumbered_with<F>(shared: &SharedRuntime, mut lookup: Option<F>) ->
 where
     F: FnMut(i64) -> Vec<super::scan::Season>,
 {
-    // Episodes on a season TMDB lacks, of a show IMDb knows: looked up through IMDb after the
-    // lock is let go, since a `/find` TMDB has not answered before goes to the network.
-    let mut deferred: Vec<(Option<i64>, Option<i64>, String, Value, i64, String, String, String, (i64, i64))> = Vec::new();
-    let unsure_versions: Vec<Unsure>;
-    let (tmdb, sources, show_ids) = {
+    let (sources, show_ids) = {
         let guard = lock(shared);
         let mut show_ids = Vec::new();
         let mut seen_show_ids = HashSet::new();
@@ -1071,7 +1066,7 @@ where
                 show_ids.push(id);
             }
         }
-        (guard.tmdb.clone(), guard.sources.clone(), show_ids)
+        (guard.sources.clone(), show_ids)
     };
     // TMDB details can take seconds and must never occupy the runtime lock while they are
     // fetched. The map is immutable during the catalog pass below, so every caller shares the
@@ -1083,11 +1078,10 @@ where
             show_seasons.insert(id, lookup(id));
         }
     }
-    let mut by_source = {
+    let by_source = {
         let mut guard = lock(shared);
-        let (elsewhere, unsure) = guard.versions_elsewhere(&show_seasons, lookup_available);
+        let elsewhere = guard.versions_elsewhere(&show_seasons, lookup_available);
         guard.unfold_versions(&elsewhere);
-        unsure_versions = unsure;
         let guard = guard;
         let mut by_source: BTreeMap<String, Vec<Value>> = BTreeMap::new();
         for row in guard.catalog.items() {
@@ -1116,27 +1110,7 @@ where
             let numbers = pushed.or_else(|| super::scan::episode_of(release, folder, name).map(|numbers| match show_id {
                 Some(id) => {
                     let seasons = show_seasons.get(&id).map(Vec::as_slice).unwrap_or(&[]);
-                    let placed = super::scan::on_seasons(seasons, id, numbers, super::scan::scene_numbered(release, folder, name), super::scan::numbered_absolutely(name));
-                    let show = row.get("grandparentRatingKey").map(string_value).and_then(|key| guard.catalog.get(&key));
-                    let show_imdb = show.and_then(|show| show.get("Guid")).and_then(Value::as_array).and_then(|guids| {
-                        guids.iter().filter_map(|guid| guid.get("id").and_then(Value::as_str)).find_map(|id| id.strip_prefix("imdb://"))
-                    });
-                    if let (false, Some(imdb), Some((source, item))) =
-                        (seasons.is_empty() || seasons.iter().any(|row| row.0 == placed.0), show_imdb, pushed_item(row))
-                    {
-                        deferred.push((
-                            row.get("parentIndex").and_then(Value::as_i64),
-                            row.get("index").and_then(Value::as_i64),
-                            source,
-                            item,
-                            id,
-                            imdb.to_string(),
-                            crate::identify::parse_name(release).title,
-                            show.and_then(|show| show.get("title")).and_then(Value::as_str).unwrap_or_default().to_string(),
-                            numbers,
-                        ));
-                        return placed;
-                    }
+                    let placed = super::scan::on_seasons(seasons, numbers);
                     super::scan::by_title(guard.tmdb.as_deref().map(|t| t as &dyn TmdbSource), id, release, name, placed)
                 }
                 None => numbers,
@@ -1144,12 +1118,7 @@ where
             let misplaced = numbers.is_some_and(|(season, episode)| {
                 row.get("parentIndex").and_then(Value::as_i64) != Some(season) || row.get("index").and_then(Value::as_i64) != Some(episode)
             });
-            // A row its source placed with its ids is that show's, whatever show the lists name.
-            let elsewhere = !row.as_object().is_some_and(super::scan::pinned) && super::anime::lookup(release, name).is_some_and(|(target, _)| {
-                let show = row.get("grandparentRatingKey").map(string_value).and_then(|key| guard.catalog.get(&key));
-                show.and_then(|show| show.get("_identity")).map(string_value) != Some(format!("tmdb:{}", target.tmdb))
-            });
-            if misplaced || elsewhere {
+            if misplaced {
                 if let Some((source, item)) = pushed_item(row) {
                     by_source.entry(source).or_default().push(item);
                 }
@@ -1157,49 +1126,6 @@ where
         }
         by_source
     };
-    for (season, index, source, item, show, imdb, release_title, show_title, numbers) in deferred {
-        let Some(t) = tmdb.as_deref() else {
-            break;
-        };
-        let found = super::scan::by_imdb(t as &dyn TmdbSource, show, &imdb, &release_title, &show_title, numbers);
-        if found.is_some_and(|(s, e)| Some(s) != season || Some(e) != index) {
-            let queued = by_source.entry(source).or_default();
-            if !queued.iter().any(|queued| queued.get("id") == item.get("id")) {
-                queued.push(item);
-            }
-        }
-    }
-    // Releases of rows holding several that IMDb places, or failing it their names, elsewhere.
-    let mut away: BTreeMap<String, Vec<(String, String)>> = BTreeMap::new();
-    if let Some(t) = tmdb.as_deref() {
-        for unsure in unsure_versions {
-            let placed = super::scan::by_imdb(t as &dyn TmdbSource, unsure.show, &unsure.imdb, &unsure.release_title, &unsure.show_title, unsure.numbers)
-                .unwrap_or(unsure.numbers);
-            if (Some(placed.0), Some(placed.1)) != unsure.here {
-                away.entry(unsure.key).or_default().push(unsure.release);
-            }
-        }
-    }
-    if !away.is_empty() {
-        let mut guard = lock(shared);
-        let elsewhere: Vec<(String, Vec<usize>)> = away
-            .into_iter()
-            .filter_map(|(key, releases)| {
-                let all = versions(guard.catalog.get(&key)?);
-                let mut indices: Vec<usize> =
-                    all.iter().filter(|(source, sid, _)| releases.contains(&(source.clone(), sid.clone()))).map(|(_, _, index)| *index).collect();
-                if indices.len() == all.len() {
-                    indices.retain(|index| *index != 0);
-                }
-                (!indices.is_empty()).then_some((key, indices))
-            })
-            .collect();
-        for key in guard.unfold_versions(&elsewhere) {
-            if let Some((source, item)) = guard.catalog.get(&key).and_then(pushed_item) {
-                by_source.entry(source).or_default().push(item);
-            }
-        }
-    }
     let total: usize = by_source.values().map(Vec::len).sum();
     if total == 0 {
         return 0;
@@ -1336,19 +1262,6 @@ fn names_directory(location: &str, path: &str) -> bool {
     })
 }
 
-/// A release of a row holding several whose season TMDB lacks: IMDb's numbering places it,
-/// a network lookup made off the lock, else its name's numbers do.
-struct Unsure {
-    key: String,
-    release: (String, String),
-    show: i64,
-    imdb: String,
-    release_title: String,
-    show_title: String,
-    numbers: (i64, i64),
-    here: (Option<i64>, Option<i64>),
-}
-
 // An archive a source lists as a folder of its members.
 static ARCHIVE: LazyLock<regex::Regex> = LazyLock::new(|| regex::Regex::new(r"(?i)\.(?:rar|zip|7z)$").unwrap());
 
@@ -1382,9 +1295,8 @@ fn version_release(row: &Value, index: usize) -> Option<&str> {
         .or_else(|| text(row.get("_release")))
 }
 
-/// The numbers the name of a row's release at `index` reads: its file's, under its folder's,
-/// and whether they are the name's own (`scan::scene_numbered`).
-fn release_numbers(row: &Value, index: usize) -> Option<((i64, i64), bool, &str, &str)> {
+/// The numbers the name of a row's release at `index` reads: its file's, under its folder's.
+fn release_numbers(row: &Value, index: usize) -> Option<((i64, i64), &str, &str)> {
     let path = row.pointer(&format!("/Media/{index}/_path")).and_then(Value::as_str)?;
     let name = path.rsplit('/').next()?;
     let release = version_release(row, index)?;
@@ -1395,7 +1307,7 @@ fn release_numbers(row: &Value, index: usize) -> Option<((i64, i64), bool, &str,
         .and_then(Value::as_object)
         .and_then(super::scan::folder_of)
         .or_else(|| row.as_object().and_then(super::scan::folder_of).filter(|_| index == 0));
-    Some((super::scan::episode_of(release, folder, name)?, super::scan::scene_numbered(release, folder, name), release, name))
+    Some((super::scan::episode_of(release, folder, name)?, release, name))
 }
 
 /// A row made of one release: that release its only Media, its source fields and name the row's.
@@ -1824,9 +1736,9 @@ impl Runtime {
         } else {
             !has(Some(&old), "_poster_url") && has(Some(&brought), "_poster_url")
         };
-        // An episode on numbers its name no longer reads (a parser that learned `S2 - 07` or
-        // an anime cour on TMDB's numbering) is placed again: re-identification only ever
-        // compared ids, so the production server's `Ace of Diamond Act II S2 - 01` stayed season 1's.
+        // An episode on numbers its name no longer reads (a parser that learned `S2 - 07`) is
+        // placed again: re-identification only ever compared ids, so the production server's
+        // `Ace of Diamond Act II S2 - 01` stayed season 1's.
         let renumbered = old.get("type").and_then(Value::as_str) == Some("episode")
             && library.kind == "show"
             && arrival
@@ -2003,16 +1915,14 @@ impl Runtime {
     /// than the row's, which an identification that gave a whole pack one guid folded together
     /// (The Boys S03E01-E08 on one episode, Food Wars S01-S05 E01 on S1E1; 232 episodes on the
     /// production server, 2026-10-14). A release is placed as `replace_misnumbered` places a row:
-    /// its name's numbers on the show's TMDB seasons. One whose season TMDB lacks is IMDb's to
-    /// place: it is answered apart (`Unsure`), off the lock. A row a person matched stays whole.
+    /// its name's numbers on the show's TMDB seasons. A row a person matched stays whole.
     /// When none would stay, the first does.
     fn versions_elsewhere(
         &self,
         show_seasons: &HashMap<i64, Vec<super::scan::Season>>,
         lookup_available: bool,
-    ) -> (Vec<(String, Vec<usize>)>, Vec<Unsure>) {
+    ) -> Vec<(String, Vec<usize>)> {
         let mut found = Vec::new();
-        let mut unsure = Vec::new();
         for row in self.catalog.items() {
             if !eligible_episode(row) || self.matched_by_hand(row) {
                 continue;
@@ -2021,14 +1931,10 @@ impl Runtime {
             if all.len() < 2 || all[0].2 != 0 {
                 continue;
             }
-            let show = row.get("grandparentRatingKey").map(string_value).and_then(|key| self.catalog.get(&key));
             let show_id = show_tmdb_id(&self.catalog, row);
-            let show_imdb = show.and_then(|show| show.get("Guid")).and_then(Value::as_array).and_then(|guids| {
-                guids.iter().filter_map(|guid| guid.get("id").and_then(Value::as_str)).find_map(|id| id.strip_prefix("imdb://"))
-            });
             let here = (row.get("parentIndex").and_then(Value::as_i64), row.get("index").and_then(Value::as_i64));
             let mut away = Vec::new();
-            for (source, sid, index) in &all {
+            for (_, _, index) in &all {
                 // A release its source placed belongs on the episode it was placed on.
                 if let Some((season, episode)) = super::scan::placed_numbers(version_placed(row, *index)) {
                     if (Some(season), Some(episode)) != here {
@@ -2036,7 +1942,7 @@ impl Runtime {
                     }
                     continue;
                 }
-                let Some((numbers, scene, release_name, file_name)) = release_numbers(row, *index) else {
+                let Some((numbers, release_name, file_name)) = release_numbers(row, *index) else {
                     continue;
                 };
                 let placed = match show_id {
@@ -2046,23 +1952,7 @@ impl Runtime {
                             None if !lookup_available => &[],
                             None => continue,
                         };
-                        let placed = super::scan::on_seasons(seasons, id, numbers, scene, super::scan::numbered_absolutely(file_name));
-                        if let (Some(imdb), false, false) =
-                            (show_imdb, seasons.is_empty(), seasons.iter().any(|season| season.0 == placed.0))
-                        {
-                            let release = version_release(row, *index).unwrap_or_default();
-                            unsure.push(Unsure {
-                                key: key_of(row).unwrap_or_default(),
-                                release: (source.clone(), sid.clone()),
-                                show: id,
-                                imdb: imdb.to_string(),
-                                release_title: crate::identify::parse_name(release).title,
-                                show_title: show.and_then(|show| show.get("title")).and_then(Value::as_str).unwrap_or_default().to_string(),
-                                numbers,
-                                here,
-                            });
-                            continue;
-                        }
+                        let placed = super::scan::on_seasons(seasons, numbers);
                         super::scan::by_title(self.tmdb.as_deref().map(|t| t as &dyn TmdbSource), id, release_name, file_name, placed)
                     }
                     None => numbers,
@@ -2078,7 +1968,7 @@ impl Runtime {
                 found.push((key, away));
             }
         }
-        (found, unsure)
+        found
     }
 
     /// Each release `versions_elsewhere` found onto a row of its own, the way Split makes one,
@@ -2385,7 +2275,7 @@ mod tests {
                         release_rx
                             .recv_timeout(std::time::Duration::from_secs(2))
                             .expect("bounded lookup release");
-                        vec![(1, 1, "1900-01-01".to_string(), 1)]
+                        vec![(1, 1, "1900-01-01".to_string())]
                     }),
                 )
             })

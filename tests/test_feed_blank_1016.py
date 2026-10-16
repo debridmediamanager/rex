@@ -10,17 +10,12 @@ native server asked for them:
   episode 301 and split it off into a show of that name with no ids. The `S03E01.PROPER` NZB
   holds two episodes, and its `aaf-wilty.302` is S03E02.
 * `[HatSubs] One Piece 1106 (WEB 1080p) [97566ECF]`: the episode number spaced after the title
-  was read as part of it, and each episode became a show of its own. Numbered from the show's
-  first episode, it is TMDB's S22E1106: its seasons counted in order, each numbered as TMDB
-  numbers it, One Piece's on from the show's first episode (anime-lists files One Piece as
-  anime, `fixtures/anime/`; the production server runs with REX_ANIME_LISTS=on).
-* `Fairy.Tail.E233.Song.of.the.Faries`, numbered the same way, is TMDB's S6E7 "Song of the Fairies":
-  TMDB numbers Fairy Tail's seasons from 1.
+  was read as part of it, and each episode became a show of its own. It is an episode of One
+  Piece; TMDB's S22E1106 comes with its source's placement, not from its name.
+* `Fairy.Tail.E233.Song.of.the.Faries`, an episode of Fairy Tail (TMDB's S6E7, likewise placed).
 * `[Zoku] One Piece - Season 19 (Whole Cake) (783-842)/One Piece - 783 - Sanji's Homecoming!` and
   `[Koten_Gars] One Piece - Season 04-09/… One Piece - 0207`: the pack names a season and the file
-  numbers from the show's first episode, so it is TMDB's S18E783 and S7E207, not the pack's season.
-  The start numbers by IMDb's episodes (`fixtures/imdb/`, its rows for the show), as the production
-  server does.
+  numbers from the show's first episode; episodes of One Piece (TMDB's S18E783 and S7E207, as placed).
 * The three Evangelion Rebuild films, which zurg files under anime and so under TV Shows: their
   exact ids are films, refused as shows. They go to Movies.
 
@@ -45,34 +40,13 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 blank.FIXTURE_PATH = os.path.join(HERE, "fixtures", "feed", "blank_1016.json")
 blank.FIXTURE = FIXTURE = json.load(open(blank.FIXTURE_PATH))
 NAMES = sorted(FIXTURE["pushes"])
-shared_trimmed = blank.trimmed
-
-
-def trimmed(key, answer):
-    """`blank.trimmed`, but a season keeps each episode's number and name: rex reads the number
-    TMDB gives a season's first episode, which One Piece's run on from the show's first."""
-    if "/season/" in key and "/episode/" not in key:
-        return dict(shared_trimmed(key, answer), episodes=[{"episode_number": row.get("episode_number"), "name": row.get("name")}
-                                                          for row in answer.get("episodes") or []])
-    return shared_trimmed(key, answer)
-
-
-blank.trimmed = trimmed
-
-
-def catalog(work, rows=()):
-    blank.catalog(work, rows)
-    # IMDb's rows for Would I Lie to You?, kept where rex keeps the dataset: the production server
-    # numbers by them (REX_IMDB_EPISODES=on), and the start that split the archive's versions off read them.
-    shutil.copy(os.path.join(HERE, "fixtures", "imdb", "title.episode.tsv.gz"), os.path.join(work, "title.episode.tsv.gz"))
-    for name in ("anime-list-master.xml", "anime-offline-database.jsonl"):
-        shutil.copy(os.path.join(HERE, "fixtures", "anime", name), os.path.join(work, name))
+catalog = blank.catalog
 
 
 def start(work, bytes_port):
-    keys = {"REX_IMDB_EPISODES": "on", "REX_ANIME_LISTS": "on"}
+    keys = None
     if blank.RECORD:
-        keys.update(TMDB_KEY=os.environ["TMDB_KEY"], PLEX_TOKEN=os.environ["PLEX_TOKEN"])
+        keys = {"TMDB_KEY": os.environ["TMDB_KEY"], "PLEX_TOKEN": os.environ["PLEX_TOKEN"]}
     return Server(work, bytes_port, keys=keys)
 
 
@@ -159,10 +133,9 @@ def main():
         check("the row held as the show `aaf-wilty 301 rar` is TMDB 4775's S03E01 again",
               tmdb_of(show) == 4775 and [wilty.get("parentIndex"), wilty.get("index")] == [3, 1],
               (show.get("title"), tmdb_of(show), wilty.get("parentIndex"), wilty.get("index")))
-        piece = blank.wait_for(server, episode("[HatSubs] One Piece"), lambda row: [row.get("parentIndex"), row.get("index")] == [22, 1106])
-        check("the row held as the show `One Piece 1106` is One Piece's S22E1106",
-              piece.get("grandparentTitle") == "One Piece" and [piece.get("parentIndex"), piece.get("index")] == [22, 1106],
-              (piece.get("grandparentTitle"), piece.get("parentIndex"), piece.get("index")))
+        piece = blank.wait_for(server, episode("[HatSubs] One Piece"), lambda row: row.get("grandparentTitle") == "One Piece")
+        check("the row held as the show `One Piece 1106` is an episode of One Piece",
+              piece.get("grandparentTitle") == "One Piece", (piece.get("grandparentTitle"), piece.get("grandparentGuid")))
         film = blank.wait_for(server, episode("[Baws] Evangelion"), lambda row: row.get("type") == "movie")
         check("the row held as the show `Evangelion 1 11` is a film in Movies, named",
               film.get("type") == "movie" and str(film.get("librarySectionID")) == "1" and named(film),

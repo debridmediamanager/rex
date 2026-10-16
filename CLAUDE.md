@@ -480,12 +480,11 @@ python3 tests/test_feed.py                  # the feed API against a stub source
 python3 tests/test_feed_versions.py         # two releases of one title: one row, a Media each (a real library's 127 Hours)
 python3 tests/test_feed_season_art.py       # a season takes its identification once an episode has it (a real library's Black Mirror S6)
 python3 tests/test_feed_blank_tiles.py      # what a real library drew the blank tile for gets named; a person's Fix Match stays theirs
-python3 tests/test_feed_blank_1016.py       # archive members stay versions of their episode, `One Piece 1106` is One Piece's S22E1106 and Fairy Tail's E233 its S6E7, a film zurg files under anime goes to Movies
-python3 tests/test_feed_anime.py            # an anime cour on TMDB's season and episode (REX_ANIME_LISTS), and rows placed before moved there
+python3 tests/test_feed_blank_1016.py       # archive members stay versions of their episode, `One Piece 1106` is One Piece, a film zurg files under anime goes to Movies
 python3 tests/test_feed_names.py            # releases named in a way identification read wrong: a.K.A., THEATRiCAL.CUT, a release in another language than its files
 python3 tests/test_feed_pack_folders.py     # a pack's season folders, which zurg's mount flattens: SNL's and Smallville's 01s each their own season's
 python3 tests/test_feed_unfold.py           # each file of a season batch its own episode; rows that folded several episodes unfolded at start
-python3 tests/test_feed_placement.py        # a file its source placed (`kind`, TMDB season/episode) stays there through every start pass and retry; Fix Match wins; a season-0 special is TMDB's episode (Firefly's)
+python3 tests/test_feed_placement.py        # a file its source placed (`kind`, TMDB season/episode) stays there through every start pass and retry; Fix Match wins; a season-0 special is TMDB's episode (Firefly's); the retired REX_ANIME_LISTS/REX_IMDB_EPISODES do nothing
 python3 tests/test_feed_delete.py           # a delete removes the files at the source first, as a real PMS's does (zurg's WebDAV DELETE)
 python3 tests/test_sources.py               # registering sources, and sources that are not zurg: a server ignoring Range,
                                             # a redirect to a CDN, a restart, rows before registration, the two-step delete

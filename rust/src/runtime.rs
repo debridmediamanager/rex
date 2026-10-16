@@ -60,8 +60,6 @@ pub(crate) mod upstream;
 mod wire;
 mod feed;
 mod source;
-mod anime;
-mod imdb;
 use artwork::owns_artwork;
 /// The products' codec-suffix pass, for main.rs's `stream-titles` test adapter.
 pub use streams::{client_titles, CODEC_TITLE_PRODUCTS};
@@ -22889,12 +22887,7 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
     // Off the request path: a TMDB miss waits on the network. Then, every ten minutes, a
     // batch of what identification left on the blank tile is named again (`retry_blank`).
     let seasons = Arc::clone(&runtime);
-    let catalog_dir = runtime.lock().ok().and_then(|guard| guard.catalog_path.parent().map(Path::to_path_buf));
     let _ = thread::Builder::new().name("season-repair".to_string()).spawn(move || {
-        if let Some(dir) = catalog_dir {
-            anime::load(&dir);
-            imdb::load(&dir);
-        }
         feed::repair_seasons(&seasons);
         feed::replace_misnumbered(&seasons);
         loop {

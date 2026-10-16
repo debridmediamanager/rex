@@ -246,6 +246,54 @@
  },
  "source": "zurg's entries for three season batches a production rex held folded onto one episode each (2026-10-14): [IK] Railgun's s02e01/s03e01/01 on S1E1, [Reza] Food Wars S01-S05 E01 on S1E1, and The Boys S03 BDRemux's E01-E08 (E06 apart) on S3E1 of a show identified through the pack's IMDb id. `want` is TMDB's show, season and episode (null show: only the numbers are checked). TMDB and Plex answers recorded with REX_RECORD_ANSWERS=1. Re:Zero's SubsPlease `- 71` and a scene `S04E05` are one episode (TMDB numbers the show as one season), versions of one row that a start must leave folded: the production server's row 100614 held both.",
  "tmdb": {
+  "https://api.themoviedb.org/3/find/tt13155370?external_source=imdb_id&api_key=KEY": {
+   "movie_results": [],
+   "person_results": [],
+   "tv_episode_results": [
+    {
+     "air_date": "2020-09-26",
+     "episode_number": 13,
+     "episode_type": "finale",
+     "id": 2431771,
+     "media_type": "tv_episode",
+     "name": "Food Wars",
+     "overview": "The BLUE reaches its climax with Soma and Erina’s final battle. However, Erina is too worked up over her mission to save Mana. Soma decides to cook a dish for Erina instead! What will become of their battle!?",
+     "production_code": "",
+     "runtime": 24,
+     "season_number": 5,
+     "show_id": 62273,
+     "still_path": "/nJlCYNe3CMoNaWrecv4De2xTAh4.jpg",
+     "vote_average": 5.6,
+     "vote_count": 5
+    }
+   ],
+   "tv_results": [],
+   "tv_season_results": []
+  },
+  "https://api.themoviedb.org/3/find/tt1631259?external_source=imdb_id&api_key=KEY": {
+   "movie_results": [],
+   "person_results": [],
+   "tv_episode_results": [
+    {
+     "air_date": "2010-03-20",
+     "episode_number": 24,
+     "episode_type": "finale",
+     "id": 749416,
+     "media_type": "tv_episode",
+     "name": "Dear My Friends",
+     "overview": "Misaka and her friends reach the facility where the children are being held, but Therestina uses Capacity Down to take the Espers out of the fight. With everything on the line, it’s up to Saten to save the day.",
+     "production_code": "",
+     "runtime": 23,
+     "season_number": 1,
+     "show_id": 30977,
+     "still_path": "/1OHZBRxmtwRRhUMW20cySsTuYy4.jpg",
+     "vote_average": 6.8,
+     "vote_count": 5
+    }
+   ],
+   "tv_results": [],
+   "tv_season_results": []
+  },
   "https://api.themoviedb.org/3/find/tt16900572?external_source=imdb_id&api_key=KEY": {
    "movie_results": [],
    "person_results": [],
