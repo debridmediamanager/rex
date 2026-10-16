@@ -49,11 +49,10 @@ On Windows unpack the zip and use `rust\target\release\rex.exe` where the steps 
 
 ```bash
 export TMDB_KEY=...
-rust/target/release/rex --catalog rex.db --friendly-name myrex \
-  --owner-username <your Plex username> --owner-email <your Plex email>
+rust/target/release/rex --catalog rex.db
 ```
 
-The first start makes `rex.db` with an empty Movies and TV library named `myrex`. Files under a `movies` directory go to Movies and files under `shows` go to TV, whichever source they come from. If your sources use other directory names like `anime`, make the library yourself before the first start instead: `rust/target/release/rex catalog --seed --name myrex --shows shows --shows anime --out rex.db`. rex keeps its library folders from the first start on.
+The first start makes `rex.db` with an empty Movies and TV library, named after the machine (`--friendly-name` picks another name). Files under a `movies` directory go to Movies and files under `shows` go to TV, whichever source they come from; a file under any other directory, like `anime`, goes to the one of its kind. Once claimed, rex takes the owner's Plex username from the claim.
 
 Until you add it to your Plex account in step 4 anyone on your home network can browse it. Keep it there until then.
 
@@ -65,7 +64,7 @@ Add this to zurg's `config.yml` and restart zurg.
 rex_url: http://<rex's address>:32400
 ```
 
-That is all rex needs. zurg tells rex where its files are and how to log in to them, then sends its whole library and every change as it happens. A movie or episode shows up once zurg has analyzed it. For a library you already had press **Analyze & Tag Library** on zurg's dashboard once. A big library takes a few hours to fill.
+That is all rex needs. zurg tells rex where its files are and how to log in to them, then sends its whole library and every change as it happens. A movie or episode shows up once zurg has analyzed it, which zurg starts as soon as its library has loaded.
 
 Anyone who can reach rex's port can push to its library or delete what a source pushed, so keep that port off the open internet. Running two zurgs? Give each a name of its own with `rex_source: rd` and `rex_source: ad`. Anything else that serves files can register the same way, see the [feed API](docs/feed-api.md).
 

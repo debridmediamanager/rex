@@ -101,13 +101,13 @@ gives the client a grid whose filter bar can only talk about the wrong type.
 
 ```bash
 cargo build --release --manifest-path rust/Cargo.toml
-rust/target/release/rex --catalog rex.db --friendly-name NAME --zurg-mount /mnt/zurg   # seeds rex.db on its first start
+rust/target/release/rex --catalog rex.db   # seeds rex.db on its first start, named after the host, under /mnt/zurg
 cp examples/run.sh.example run.sh   # keys go in rex.env beside it (TMDB_KEY; PLEX_TOKEN optional; mode 600)
 ```
 
 Sources push the library; rex reads no media itself, lists and queries nothing, and
 has no provider code of its own (`docs/feed-api.md`). A `--catalog` that does not exist is
-seeded on start as `rex catalog --seed` seeds one (`--friendly-name`, default `rex`; its
+seeded on start as `rex catalog --seed` seeds one (`--friendly-name`, default the host name; its
 libraries under `--zurg-mount`); `rex catalog --seed` stays for naming more directories or
 re-seeding. A source registers itself -- `PUT /rex/sources/{name}`: its byte url, `user`/
 `password` or `bearer`, `mount` -- and rex keeps the registration in the state file; it then

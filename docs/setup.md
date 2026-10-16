@@ -10,7 +10,7 @@ library and serve its bytes, and, if it is to appear in your Plex apps, a **clai
 Plex account with an HTTPS address. Setting one up is one command:
 
 ```bash
-rust/target/release/rex --catalog rex.db --friendly-name den --zurg-mount /mnt/zurg
+rust/target/release/rex --catalog rex.db
 ```
 
 The steps below go through it in order.
@@ -74,7 +74,7 @@ and everything it pushed from rex, after a confirmation ([`docs/feed-api.md`](fe
 ### 3. Catalog: the server's identity and libraries
 
 The first start makes the catalog when the `--catalog` file does not exist yet: rex seeds it
-as `rex catalog --seed` would, named by `--friendly-name` (default `rex`), its libraries
+as `rex catalog --seed` would, named by `--friendly-name` (default: the machine's host name, as a real PMS names itself), its libraries
 under `--zurg-mount`, and logs `seeded rex.db: ...`. Or seed it yourself before the first
 start, which is how to name more directories (below):
 
@@ -86,8 +86,10 @@ Either way this is a SQLite database holding a fixed `machineIdentifier` (random
 Plex Media Server's is, and kept if you re-seed), a movie library titled Debrid Movies holding the `movies`
 directory and a show library titled Debrid TV holding `shows`. A pushed item lands in the library holding the
 directory its `path` starts with (`movies/<release>/<file>`), whichever source sent it
-and whatever path prefix its `file` carries. An item in no library's directory is
-rejected, so name every directory your sources use:
+and whatever path prefix its `file` carries. An item in no library's directory goes to
+the first library of its kind: an episode (by the source's `kind`, else an episode number
+in its name) to a show library, anything else to a movie library. To give a directory a
+library of its own, name it when seeding:
 
 ```bash
 rust/target/release/rex catalog --seed --name den --out rex.db \
@@ -112,9 +114,11 @@ server stopped, or with `sqlite3 rex.db ".backup rex.db.bak"`.
 
 ```bash
 export TMDB_KEY=...
-rust/target/release/rex --catalog rex.db --friendly-name den --port 32400 \
-  --owner-username <your Plex username> --owner-email <your Plex email>
+rust/target/release/rex --catalog rex.db --port 32400
 ```
+
+`--owner-username` and `--owner-email` are only display names before a claim; a claimed
+server takes both from the claim.
 
 The first lines of the log say whether it seeded the catalog, name each source it already
 knows (`source rd: registered, feed at /rex/feed/rd/`, or `no source yet`) and the state
@@ -332,10 +336,10 @@ services:
       TMDB_KEY: your_tmdb_key
     volumes:
       - ./rex:/config
-    command: >
-      --friendly-name den --zurg-mount /zurg_mnt/zurg
-      --owner-username <your Plex username> --owner-email <your Plex email>
 ```
+
+The image starts rex on `/config/rex.db` with `--zurg-mount /zurg_mnt/zurg`, where zurg's
+Docker setup mounts, so the compose file needs no `command:`; one given adds to those.
 
 zurg's `rex_url` is then `http://<the host's LAN IP>:32400`, and the claim (step 6) is the
 same `curl` on the host. Certificates for step 7 go in `/config` too:
@@ -350,7 +354,7 @@ rex must still reach the address zurg registers. The image carries no FFmpeg, so
 |---|---|
 | A push answers 404 `no such source: PUT /rex/sources/... first` | The source has not registered: a zurg from before the sources API never does, update it (step 2) |
 | Every part read answers 502 | No source is registered (`curl -s http://127.0.0.1:32400/rex/sources`), or rex cannot reach the one that is |
-| A push answers `rejected: no movie or show library holds ...` | No library holds the item's directory: name it with `--movies`/`--shows` before the first start, or Add Library on it (step 3) |
+| A push answers `rejected: no movie or show library holds ...` | The catalog has no movie or show library at all: name one with `--movies`/`--shows` before the first start, or Add Library on it (step 3) |
 | zurg pushed but the library stays empty | Items are held until zurg probes them (step 5) |
 | A part read answers 502, or 401/403 | rex cannot reach the source's `url` (502), or the source refused its credential (its own status): the log line `PART ... upstream` says which |
 | The server is not in the Plex apps | Not claimed, no `--announce-url`, or the announced HTTPS address is not reachable from the internet (step 7) |

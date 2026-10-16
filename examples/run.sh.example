@@ -13,7 +13,8 @@
 # Sources register themselves and push their items (docs/feed-api.md): zurg needs only
 # rex_url in its config.yml. Nothing about a source is set here.
 #
-# The first start seeds rex.db, named by --friendly-name, its libraries under --zurg-mount;
+# The first start seeds rex.db, named after the host (--friendly-name), its libraries under
+# /mnt/zurg (--zurg-mount); a claimed server takes its owner from the claim (--owner-username);
 # to name more directories, seed it yourself first: rust/target/release/rex catalog --seed
 # --out rex.db (--movies/--shows). The server keeps its state (watch state, edits, lists,
 # history, prefs, the sources' registrations) in the same file.
@@ -35,9 +36,5 @@ if [ -f claim_state.json ] || [ -z "${PLEX_TOKEN:-}" ]; then
 fi
 exec rust/target/release/rex \
   --catalog rex.db \
-  --friendly-name myrex \
-  --zurg-mount /mnt/zurg \
   --port 32400 \
-  --owner-username your-plex-username \
-  --owner-email you@example.com \
   "${ANNOUNCE[@]}"
