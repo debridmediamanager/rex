@@ -249,6 +249,10 @@ pub fn tvdb_to_tmdb(tmdb: i64, season: i64, episode: i64) -> Option<(i64, i64)> 
 }
 
 impl Index {
+    pub fn is_anime(&self, tmdb: i64) -> bool {
+        self.entries.values().any(|target| target.tmdb == tmdb)
+    }
+
     pub fn tvdb_to_tmdb(&self, tmdb: i64, season: i64, episode: i64) -> Option<(i64, i64)> {
     let entries: Vec<&Target> =
         self.entries.values().filter(|target| target.tmdb == tmdb && target.season >= 0 && target.tvdb_season == Some(season)).collect();
@@ -277,6 +281,11 @@ impl Index {
         let target = cours.get(usize::try_from(season - 1).ok()?)?;
         Some((target.season, episode + target.offset))
     }
+}
+
+/// Whether anime-lists files a TMDB show as anime, under any of its entries.
+pub fn is_anime(tmdb: i64) -> bool {
+    current().is_some_and(|index| index.is_anime(tmdb))
 }
 
 pub fn shaped(name: &str) -> bool {
@@ -431,6 +440,14 @@ mod tests {
             }
         }
         assert!(wrong.is_empty(), "{wrong:#?}");
+    }
+
+    /// anime-lists files One Piece (`tmdbseason="a"`) as anime, and nothing files Sesame Street.
+    #[test]
+    fn anime_lists_names_the_shows_it_files() {
+        let index = index();
+        assert!(index.is_anime(37854), "One Piece");
+        assert!(!index.is_anime(502), "Sesame Street");
     }
 
     #[test]

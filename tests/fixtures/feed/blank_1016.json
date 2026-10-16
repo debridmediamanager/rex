@@ -1,5 +1,5 @@
 {
- "_about": "zurg's entries for the rows the production rex drew the blank tile for on 2026-10-16, read from fun's zurg data and rex.db: Would I Lie to You? S03 releases whose files sit inside archives (the S03E01.PROPER NZB holds two episodes), a fansub's One Piece episodes numbered after the title, and the three Evangelion Rebuild films zurg files under anime; with the TMDB and Plex answers the native server asked for them. `rows` are the production server's rows for three of them as it held them that afternoon (_retry dropped, Part files under the test mount): a show named after the archive, one after the episode number, and the first film as an unidentified show.",
+ "_about": "zurg's entries for the rows the production rex drew the blank tile for on 2026-10-16, read from fun's zurg data and rex.db: Would I Lie to You? S03 releases whose files sit inside archives (the S03E01.PROPER NZB holds two episodes), a fansub's One Piece episodes numbered after the title, and the three Evangelion Rebuild films zurg files under anime; with the TMDB and Plex answers the native server asked for them. `rows` are the production server's rows for three of them as it held them that afternoon (_retry dropped, Part files under the test mount): a show named after the archive, one after the episode number, and the first film as an unidentified show. `fairytail_e233` is the production server's Usenet release of Fairy Tail's 233rd episode, \"Song of the Fairies\", which TMDB numbers S6E7.",
  "plex": {},
  "pushes": {
   "eva_111": {
@@ -38,6 +38,22 @@
     "film": true
    }
   },
+  "fairytail_e233": {
+   "hash": "037a221ba0b07720978eac0751792d637ce3a3ce",
+   "ids": {
+    "imdb": "tt1528406"
+   },
+   "name": "Fairy.Tail.E233.Song.of.the.Faries.German.2014.ANiME.DL.720p.BluRay.x264-STARS",
+   "path": "shows/Fairy.Tail.E233.Song.of.the.Faries.German.2014.ANiME.DL.720p.BluRay.x264-STARS/1VbpAFOM5bgfZUNePtzI2x.part1.rar/stars-fairy.tail.e233.720p.mkv",
+   "size": 318437166,
+   "want": {
+    "numbers": [
+     6,
+     7
+    ],
+    "show_tmdb": 46261
+   }
+  },
   "onepiece_1106": {
    "hash": "aa65bc03464cdd48bad277ff6c7636af4236ff8d",
    "ids": {},
@@ -45,7 +61,11 @@
    "path": "anime/[HatSubs] One Piece 1106 (WEB 1080p) [97566ECF]/[HatSubs] One Piece 1106 (WEB 1080p) [97566ECF].mkv",
    "size": 1479951691,
    "want": {
-    "show_title": "One Piece"
+    "numbers": [
+     22,
+     1106
+    ],
+    "show_tmdb": 37854
    }
   },
   "onepiece_1107": {
@@ -55,7 +75,11 @@
    "path": "anime/[HatSubs] One Piece 1107 (WEB 1080p) [7587906C]/[HatSubs] One Piece 1107 (WEB 1080p) [7587906C].mkv",
    "size": 1488473503,
    "want": {
-    "show_title": "One Piece"
+    "numbers": [
+     22,
+     1107
+    ],
+    "show_tmdb": 37854
    }
   },
   "wilty_e02_302": {

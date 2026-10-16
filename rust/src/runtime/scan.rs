@@ -310,12 +310,16 @@ static EXTRA: LazyLock<Regex> = LazyLock::new(|| {
 /// Only an answer TMDB has, season and episode, is taken; a season TMDB has is never moved.
 #[cfg(test)]
 pub(super) fn on_tmdb(tmdb: Option<&dyn TmdbSource>, show: i64, numbers: (i64, i64)) -> (i64, i64) {
-    let seasons = tmdb.and_then(|t| identify::tmdb_details(t, "tv", show)).map(|details| tmdb_seasons(&details)).unwrap_or_default();
+    let seasons = tmdb.and_then(|t| identify::tmdb_details(t, "tv", show)).map(|details| numbered_seasons(tmdb, show, &details)).unwrap_or_default();
     on_seasons(&seasons, show, numbers, true)
 }
 
-/// A show's TMDB seasons as (number, episodes, first air date), from its details.
-pub(super) fn tmdb_seasons(details: &Value) -> Vec<(i64, i64, String)> {
+/// A TMDB season: its number, how many episodes it has, its first air date, and the number of
+/// its first episode (`numbered_seasons`).
+pub(super) type Season = (i64, i64, String, i64);
+
+/// A show's TMDB seasons, from its details, each taken to number its episodes from 1.
+pub(super) fn tmdb_seasons(details: &Value) -> Vec<Season> {
     details
         .get("seasons")
         .and_then(Value::as_array)
@@ -326,9 +330,32 @@ pub(super) fn tmdb_seasons(details: &Value) -> Vec<(i64, i64, String)> {
                 row.get("season_number")?.as_i64()?,
                 row.get("episode_count").and_then(Value::as_i64).unwrap_or(0),
                 row.get("air_date").and_then(Value::as_str).unwrap_or_default().to_string(),
+                1,
             ))
         })
         .collect()
+}
+
+/// `tmdb_seasons`, with the number TMDB gives each season's first episode for a show
+/// anime-lists files as anime: TMDB numbers One Piece's on from the show's first episode
+/// (its S22 is 1089-1155) and Fairy Tail's and My Hero Academia's from 1, while anime-lists
+/// marks One Piece and Fairy Tail alike (`tmdbseason="a"`). Read off the runtime lock: a
+/// season list TMDB has not answered before goes to the network.
+pub(super) fn numbered_seasons(tmdb: Option<&dyn TmdbSource>, show: i64, details: &Value) -> Vec<Season> {
+    let mut seasons = tmdb_seasons(details);
+    let Some(t) = tmdb.filter(|_| super::anime::is_anime(show)) else {
+        return seasons;
+    };
+    for season in seasons.iter_mut().filter(|season| season.0 > 0) {
+        let listed = t.get(&format!("tv/{show}/season/{}", season.0), &[]);
+        if let Some(first) = listed
+            .as_ref()
+            .and_then(|listed| listed.get("episodes")?.as_array()?.first()?.get("episode_number")?.as_i64())
+        {
+            season.3 = first;
+        }
+    }
+    seasons
 }
 
 /// `on_tmdb` for seasons already read. `scene`: the numbers are the name's own
@@ -336,11 +363,23 @@ pub(super) fn tmdb_seasons(details: &Value) -> Vec<(i64, i64, String)> {
 /// by the same number: TMDB's Ascendance of a Bookworm S2 is the 2026 cour, and the BD
 /// remux's `S02E01-Apprentice Priestess` TVDB's second season, TMDB's S1E15 (the production
 /// server held 12 of them as versions of the 2026 cour's episodes, 2026-10-14).
-pub(super) fn on_seasons(seasons: &[(i64, i64, String)], show: i64, (season, episode): (i64, i64), scene: bool) -> (i64, i64) {
+pub(super) fn on_seasons(seasons: &[Season], show: i64, (season, episode): (i64, i64), scene: bool) -> (i64, i64) {
     let fits = |(season, episode): (i64, i64)| seasons.iter().any(|row| row.0 == season && episode >= 1 && episode <= row.1);
     if scene && season > 0 {
         if let Some(mapped) = super::anime::tvdb_to_tmdb(show, season, episode).filter(|mapped| fits(*mapped)) {
             return mapped;
+        }
+    }
+    // An anime numbered from its first episode on (`[SubsPlease] One Piece - 1130`, `[Anime Time]
+    // My Hero Academia - 089`, `Fairy.Tail.E233.Song.of.the.Faries`) reads as one long season 1,
+    // which TMDB splits: counted through TMDB's seasons in order it is TMDB's episode (Fairy
+    // Tail's E233 and E202 land on the TMDB episodes their titles name, My Hero Academia's 150 on
+    // S7E12). The production server held 2,042 One Piece, 347 My Hero Academia and 178 Fairy Tail
+    // episodes on `local://` so (2026-10-16), as fun's real Plex holds them. Only a show
+    // anime-lists files as anime: Sesame Street's `Episode 1840` is a production number.
+    if season == 1 && episode > 1 && !fits((1, episode)) && super::anime::is_anime(show) {
+        if let Some(counted) = counted_through(seasons, episode) {
+            return counted;
         }
     }
     if seasons.is_empty() || seasons.iter().any(|row| row.0 == season) {
@@ -359,6 +398,21 @@ pub(super) fn on_seasons(seasons: &[(i64, i64, String)], show: i64, (season, epi
         }
     }
     (season, episode)
+}
+
+/// The TMDB season and episode an absolute episode number is, its seasons counted in order and
+/// the episode numbered as TMDB numbers that season's; None past the last episode TMDB lists.
+fn counted_through(seasons: &[Season], episode: i64) -> Option<(i64, i64)> {
+    let mut regular: Vec<&Season> = seasons.iter().filter(|row| row.0 > 0).collect();
+    regular.sort_by_key(|row| row.0);
+    let mut left = episode;
+    for row in regular {
+        if left <= row.1 {
+            return Some((row.0, row.3 + left - 1));
+        }
+        left -= row.1;
+    }
+    None
 }
 
 /// TMDB's numbers for a file whose season TMDB lacks, through IMDb's numbering of the show
@@ -390,7 +444,7 @@ pub(super) fn by_imdb(
 /// `on_seasons`, then IMDb's numbering where TMDB still has no season by the file's number.
 pub(super) fn on_tmdb_or_imdb(
     tmdb: Option<&dyn TmdbSource>,
-    seasons: &[(i64, i64, String)],
+    seasons: &[Season],
     show: i64,
     show_imdb: Option<&str>,
     release_title: &str,
@@ -543,7 +597,11 @@ pub(super) fn name_release(plan: &Library, arrivals: &mut [Arrival], files: usiz
         (true, Some(p), Some(guid)) => identify::plex_children(p, guid),
         _ => HashMap::new(),
     };
-    let show_seasons = details.as_ref().filter(|_| show).map(tmdb_seasons).unwrap_or_default();
+    let show_seasons = details
+        .as_ref()
+        .filter(|_| show)
+        .map(|details| numbered_seasons(tmdb.map(|t| t as &dyn TmdbSource), identity.tmdb.unwrap_or_default(), details))
+        .unwrap_or_default();
     let mut episodes: HashMap<String, HashMap<String, String>> = HashMap::new();
     for arrival in arrivals.iter_mut() {
         let file_name = arrival.found.file.rsplit('/').next().unwrap_or_default().to_string();
@@ -1510,6 +1568,34 @@ mod tests {
             }
         }
         assert!(wrong.is_empty(), "{wrong:#?}");
+    }
+
+    /// One Piece's TMDB seasons as `tests/fixtures/feed/blank_1016.json` recorded them
+    /// (2026-10-16): an absolute episode is counted through them, the first season's own
+    /// numbers stay, and a number past TMDB's last episode is none.
+    #[test]
+    fn an_absolute_episode_is_counted_through_tmdbs_seasons() {
+        let record: Value = serde_json::from_str(include_str!("../../../tests/fixtures/feed/blank_1016.json")).unwrap();
+        let details = record["tmdb"]
+            .as_object()
+            .unwrap()
+            .iter()
+            .find(|(key, _)| key.contains("/tv/37854?"))
+            .map(|(_, details)| details.clone())
+            .unwrap();
+        let mut seasons = tmdb_seasons(&details);
+        assert_eq!(counted_through(&seasons, 1106), Some((22, 18)), "a show TMDB numbers from 1 each season");
+        // One Piece's own: each season numbered on from the show's first episode.
+        let mut first = 1;
+        for season in seasons.iter_mut().filter(|season| season.0 > 0) {
+            season.3 = first;
+            first += season.1;
+        }
+        assert_eq!(counted_through(&seasons, 1106), Some((22, 1106)), "[HatSubs] One Piece 1106");
+        assert_eq!(counted_through(&seasons, 61), Some((1, 61)), "East Blue's last");
+        assert_eq!(counted_through(&seasons, 62), Some((2, 62)));
+        let total: i64 = seasons.iter().filter(|row| row.0 > 0).map(|row| row.1).sum();
+        assert_eq!(counted_through(&seasons, total + 1), None);
     }
 
     /// TMDB's season lists as `tests/fixtures/identify/segment_titles.json` recorded them.

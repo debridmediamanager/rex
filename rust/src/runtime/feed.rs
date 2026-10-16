@@ -993,7 +993,7 @@ pub(super) fn replace_misnumbered(shared: &SharedRuntime) -> usize {
     let lookup = tmdb.clone().map(|tmdb| {
         move |id| {
             crate::identify::tmdb_details(tmdb.as_ref() as &dyn TmdbSource, "tv", id)
-                .map(|details| super::scan::tmdb_seasons(&details))
+                .map(|details| super::scan::numbered_seasons(Some(tmdb.as_ref() as &dyn TmdbSource), id, &details))
                 .unwrap_or_default()
         }
     });
@@ -1002,7 +1002,7 @@ pub(super) fn replace_misnumbered(shared: &SharedRuntime) -> usize {
 
 fn replace_misnumbered_with<F>(shared: &SharedRuntime, mut lookup: Option<F>) -> usize
 where
-    F: FnMut(i64) -> Vec<(i64, i64, String)>,
+    F: FnMut(i64) -> Vec<super::scan::Season>,
 {
     // Episodes on a season TMDB lacks, of a show IMDb knows: looked up through IMDb after the
     // lock is let go, since a `/find` TMDB has not answered before goes to the network.
@@ -1028,7 +1028,7 @@ where
     // TMDB details can take seconds and must never occupy the runtime lock while they are
     // fetched. The map is immutable during the catalog pass below, so every caller shares the
     // same answer for a show and the lock is only used for the short row projection phases.
-    let mut show_seasons: HashMap<i64, Vec<(i64, i64, String)>> = HashMap::new();
+    let mut show_seasons: HashMap<i64, Vec<super::scan::Season>> = HashMap::new();
     let lookup_available = lookup.is_some();
     if let Some(lookup) = lookup.as_mut() {
         for id in show_ids {
@@ -1938,7 +1938,7 @@ impl Runtime {
     /// When none would stay, the first does.
     fn versions_elsewhere(
         &self,
-        show_seasons: &HashMap<i64, Vec<(i64, i64, String)>>,
+        show_seasons: &HashMap<i64, Vec<super::scan::Season>>,
         lookup_available: bool,
     ) -> (Vec<(String, Vec<usize>)>, Vec<Unsure>) {
         let mut found = Vec::new();
@@ -2270,7 +2270,7 @@ mod tests {
                         release_rx
                             .recv_timeout(std::time::Duration::from_secs(2))
                             .expect("bounded lookup release");
-                        vec![(1, 1, "1900-01-01".to_string())]
+                        vec![(1, 1, "1900-01-01".to_string(), 1)]
                     }),
                 )
             })
