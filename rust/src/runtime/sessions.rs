@@ -107,9 +107,12 @@ pub(super) fn current_peer_ip() -> String {
 /// or a float when it has a point or an exponent.
 pub(super) fn stored_platform(text: &str) -> Value {
     let trimmed = text.trim_matches(|ch| ch == ' ' || ch == '\t');
-    let numeric = regex::Regex::new(r"^[+-]?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?$")
-        .map(|pattern| pattern.is_match(trimmed))
-        .unwrap_or(false);
+    // Compiled once: every request that names a device came through here.
+    static NUMERIC: std::sync::OnceLock<Option<regex::Regex>> = std::sync::OnceLock::new();
+    let numeric = NUMERIC
+        .get_or_init(|| regex::Regex::new(r"^[+-]?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?$").ok())
+        .as_ref()
+        .is_some_and(|pattern| pattern.is_match(trimmed));
     if !numeric {
         return json!(text);
     }
