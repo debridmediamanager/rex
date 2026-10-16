@@ -196,7 +196,10 @@ The `media_info` above is cut down to show its shape. Send ffprobe's whole outpu
 | `path` | yes | Where the bytes are: `<source url>/<path>`. Its first directory also picks the library (below) |
 | `media_info` | yes, in practice | ffprobe's `-show_format -show_streams` JSON (go-ffprobe's `ProbeData` is the same shape). Absent, `null` or with no `streams`: the item is **held**, because Plex Web will not play an item without streams (findings, "An item without a probe cannot play") |
 | `size` | recommended | Bytes. Shown as the Part's size and used to answer a client's `Range`; without it rex passes the client's `Range` to the source as it is |
-| `ids` | recommended | `imdb` (`tt…`), `tmdb`, `tvdb`. Exact identification; without them rex identifies by `name`, and so it does when TMDB has no title for them (below). `tvdb` is kept, not used |
+| `ids` | recommended | `imdb` (`tt…`), `tmdb`, `tvdb`. Exact identification; without them rex identifies by `name`, and so it does when TMDB has no title for them (below). `tvdb` is kept, not used. With `kind`, `imdb` and `tmdb` are the movie's or the **show's** ids, never an episode's |
+| `kind` | no | `movie` or `episode`: what the source knows the file is. With it the file is **placed**, not guessed (below): it picks the movie or show library, and its `ids` are the title. Anything else, or absent: rex decides as without it |
+| `season`, `episode` | no | With `kind: episode`, the episode on **TMDB's** numbering of the show `ids.tmdb` names (`season` 0 is Specials). The row is placed exactly there; the file's name, the anime lists and IMDb's numbering are not read. Absent: the name numbers it |
+| `episode_end` | no | The last episode of a file holding several (`E01E02` -> 2). Kept on the row; the file is placed on `episode`, as rex places every multi-episode file on its first |
 | `name` | no | The release name identification reads. Default: the folder above the file |
 | `release` | no | Groups a release's files, identified together (a season's episodes). Default: the folder above `path` |
 | `file` | no | The path clients see in Get Info, and what zurg's matcher reads back (`<mount>/<directory>/<release>/<file>`). Default `<mount>/<path>`, or `/<path>` without a mount |
@@ -213,6 +216,16 @@ What the fields do:
   a file itself, so a source must run ffprobe and send the result: measured on 2026-10-12,
   Plex Web will not play an item without it (findings, "An item without a probe cannot
   play").
+- **Placement.** An item with a `kind` and ids is placed where its source says, and its name
+  only fills what the push leaves out: the movie or show is the one its ids name, kept even
+  when TMDB has no record of it (TMDB is asked only for the other id and its metadata, Plex's
+  matcher only for its guids by external id), and an episode sits on its `season` and
+  `episode`. That holds on every push and restart: the passes that place rows again by their
+  names (misnumbered episodes, versions that fold other episodes, blank-tile retries) leave a
+  placed row on its numbers. A later push placing it elsewhere moves it there on the same
+  ratingKey, watch state kept; a push without a placement leaves it where the last one put it,
+  unless other ids name it again. A placed version of a row holding several moves at the next
+  start. A person's Fix Match still wins over a placement.
 - **Identification.** `ids` first (an IMDb id is exact: TMDB's `/find`, then Plex's matcher
   by external id; an episode's or a season's IMDb id names its show, which is how DMM knows
   most season packs), else the release name (`identify.rs`: Plex's matcher and TMDB, their

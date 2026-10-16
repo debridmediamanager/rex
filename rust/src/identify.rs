@@ -776,6 +776,52 @@ impl Identifier<'_> {
         }
     }
 
+    /// A title its source placed (`kind` and the movie's or show's ids, docs/feed-api.md): those
+    /// ids are the title, whatever its name reads or TMDB knows of it, so nothing is guessed.
+    /// Only what they leave out is asked: the other id from TMDB, and Plex's guid and artwork
+    /// from its matcher by external id.
+    pub fn placed(&self, name: &str, kind: &str, tmdb: Option<i64>, imdb: Option<&str>) -> Identity {
+        let mut identity = Identity {
+            name: name.to_string(),
+            parsed: parse_name(name),
+            kind: kind.to_string(),
+            imdb: imdb.filter(|imdb| imdb.starts_with("tt")).map(str::to_string),
+            tmdb: tmdb.filter(|id| *id > 0),
+            plex: None,
+            confidence: EXACT,
+            source: Some("placed".to_string()),
+            disputed: None,
+            thumb: None,
+            art: None,
+        };
+        if let Some(t) = self.tmdb {
+            if let (None, Some(imdb)) = (identity.tmdb, identity.imdb.as_deref()) {
+                identity.tmdb = match tmdb_find_imdb(t, imdb) {
+                    (Some(found), id) if found == kind => id,
+                    _ => None,
+                };
+            }
+            if identity.imdb.is_none() {
+                identity.imdb = identity.tmdb.and_then(|id| tmdb_imdb(t, kind, id)).filter(|imdb| !imdb.is_empty());
+            }
+        }
+        if let Some(p) = self.plex {
+            let externals: Vec<String> = identity
+                .tmdb
+                .map(|id| format!("tmdb://{id}"))
+                .into_iter()
+                .chain(identity.imdb.as_ref().map(|imdb| format!("imdb://{imdb}")))
+                .collect();
+            if let Some(answer) = plex_match(p, kind, &externals) {
+                identity.plex = Some(answer.guid);
+                (identity.thumb, identity.art) = (answer.thumb, answer.art);
+                identity.tmdb = identity.tmdb.or(answer.tmdb);
+                identity.imdb = identity.imdb.or(answer.imdb);
+            }
+        }
+        identity
+    }
+
     /// The cleaned name to Plex's matcher and TMDB, their agreement the confidence.
     fn by_name(&self, mut identity: Identity, fixed: bool) -> Identity {
         if identity.parsed.title.is_empty() {
@@ -1080,5 +1126,12 @@ mod tests {
         };
         let nothing = bare.identify("Unknown.Release.2020.mkv", None, 1);
         assert_eq!((nothing.confidence, nothing.imdb), (NONE, None));
+        // A placed title is its ids, never its name's: TMDB names the other id, Plex its guid.
+        let placed = identifier.placed("A.Serbian.Film.2010.1080p", "movie", None, Some("tt0133093"));
+        assert_eq!((placed.tmdb, placed.confidence, placed.source.as_deref()), (Some(603), EXACT, Some("placed")));
+        assert_eq!(placed.plex.as_deref(), Some("plex://movie/5d776825880197001ec967c8"));
+        // An id TMDB does not answer is still the title, with no provider to ask.
+        let unknown = bare.placed("Detective.Conan.S33E01", "show", Some(30983), None);
+        assert_eq!((unknown.kind.as_str(), unknown.tmdb, unknown.imdb), ("show", Some(30983), None));
     }
 }

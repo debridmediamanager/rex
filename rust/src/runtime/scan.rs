@@ -144,6 +144,19 @@ pub(super) fn folder_of(fields: &Map<String, Value>) -> Option<&str> {
     fields.get("_folder").and_then(Value::as_str)
 }
 
+/// The season and episode its source placed a file on (a `_placed`, docs/feed-api.md), on TMDB's
+/// numbering: what a row stays on, whatever its name, the anime lists or IMDb read.
+pub(super) fn placed_numbers(placed: Option<&Value>) -> Option<(i64, i64)> {
+    let placed = placed?;
+    Some((placed.get("season")?.as_i64()?, placed.get("episode")?.as_i64()?))
+}
+
+/// Whether a row's or an arrival's source placed it with ids of its own: it is the title those
+/// ids name, and nothing names it again by its name (the anime lists' show included).
+pub(super) fn pinned(fields: &Map<String, Value>) -> bool {
+    fields.contains_key("_placed") && fields.get("_ids").is_some_and(|ids| ids.get("imdb").is_some() || ids.get("tmdb").is_some())
+}
+
 // Names that carry an episode number only beside their release, each measured on the production
 // server's feed (2026-10-15, 4,405 files unplaced): a film called `Apollo 13` reads the same,
 // so they are read for a show's files and never by `parse_name`.
@@ -534,10 +547,19 @@ pub(super) fn name_release(plan: &Library, arrivals: &mut [Arrival], files: usiz
     }
     let release = first.release.clone();
     let first_file = first.found.file.rsplit('/').next().unwrap_or_default().to_string();
+    // A release its source placed is the title of the ids it came with (`Identifier::placed`).
+    let placed = pinned(&first.extra).then(|| {
+        let kind = first.extra.get("_placed").and_then(|placed| placed.get("kind")).and_then(Value::as_str).unwrap_or_default();
+        (
+            if kind == "movie" { "movie" } else { "show" },
+            first.entry.get("tmdb_id").and_then(Value::as_str).and_then(|id| id.parse::<i64>().ok()),
+            first.entry.get("imdb_id").and_then(Value::as_str).map(str::to_string),
+        )
+    });
     // A TMDB id with no IMDb id is read the way a `{tmdb-…}` folder tag is: exact. So is the
     // show an anime release's cour belongs to (`anime.rs`), which DMM's id for its hash and
     // its title both miss.
-    let anime = (plan.kind == "show").then(|| super::anime::lookup(&release, &first_file)).flatten();
+    let anime = (plan.kind == "show" && placed.is_none()).then(|| super::anime::lookup(&release, &first_file)).flatten();
     if anime.is_some() {
         known.clear();
     }
@@ -551,7 +573,10 @@ pub(super) fn name_release(plan: &Library, arrivals: &mut [Arrival], files: usiz
         plex: plex.map(|p| p as &dyn PlexSource),
         known,
     };
-    let mut identity = identifier.identify_as(&named, Some(&hash), files, Some(&plan.kind));
+    let mut identity = match &placed {
+        Some((kind, tmdb, imdb)) => identifier.placed(&release, kind, *tmdb, imdb.as_deref()),
+        None => identifier.identify_as(&named, Some(&hash), files, Some(&plan.kind)),
+    };
     // A release named in another language than its files (`Хватай Сон Чжэ и беги Lovely Runner`
     // holding `Lovely.Runner.2024.S01E01`, `Détective.Conan.-.Inédits.VF` holding `Détective
     // Conan S11E01`) is the title its files name: the production server held both on `local://`, and
@@ -606,8 +631,10 @@ pub(super) fn name_release(plan: &Library, arrivals: &mut [Arrival], files: usiz
     for arrival in arrivals.iter_mut() {
         let file_name = arrival.found.file.rsplit('/').next().unwrap_or_default().to_string();
         let folder = folder_of(&arrival.extra).map(str::to_string);
-        let numbers = if show { episode_of(&release, folder.as_deref(), &file_name) } else { None };
-        let numbers = match (numbers, identity.tmdb.filter(|_| identity.kind == "show")) {
+        // Numbers its source placed the file on are TMDB's already: nothing renumbers them.
+        let pushed = placed_numbers(arrival.extra.get("_placed")).filter(|_| show);
+        let numbers = if show && pushed.is_none() { episode_of(&release, folder.as_deref(), &file_name) } else { pushed };
+        let numbers = match (numbers, identity.tmdb.filter(|_| identity.kind == "show" && pushed.is_none())) {
             (Some(numbers), Some(id)) => Some(on_tmdb_or_imdb(
                 tmdb.map(|t| t as &dyn TmdbSource),
                 &show_seasons,

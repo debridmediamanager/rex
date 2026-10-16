@@ -86,7 +86,7 @@ Where things live in `rust/src/`:
 | `runtime/upstream.rs` | The HTTP/HTTPS client (rustls, system roots) behind zurg, provider redirects, TMDB, Plex's metadata agent and artwork |
 | `runtime/source.rs`, `runtime/feed.rs`, `runtime/scan.rs` | Sources (registered over `PUT /rex/sources/{name}`, kept in the state file, deleted with a confirmation: where a Part's bytes are), the feed API sources push items to, open to anyone who can reach rex (`docs/feed-api.md`), and the rows those items become: added, held until probed, filled, re-identified, trashed, keys minted once (`mint_key`) |
 | `runtime/universal.rs` | The video transcoder (`REX_TRANSCODER`): the conversion decision's plan and Media, `start.m3u8`/`start.mpd`, segments served outside the runtime lock, one FFmpeg per session with the hardware ladder, seeks, throttling and the idle reaper, and the `TranscodeSession` rows |
-| `runtime/plexmeta.rs`, `identify.rs` | Plex's metadata agent (the claim's server token, else `PLEX_TOKEN`), and which title a release is: an id in its name, a known IMDb id for its hash (zurg's), then Plex's matcher and TMDB, with their agreement as the confidence; it must name as many of `tests/fixtures/identify/` right (`rust/tests/identify_corpus.rs`) |
+| `runtime/plexmeta.rs`, `identify.rs` | Plex's metadata agent (the claim's server token, else `PLEX_TOKEN`), and which title a release is: its source's placement (`Identifier::placed`), else an id in its name, a known IMDb id for its hash (zurg's), then Plex's matcher and TMDB, with their agreement as the confidence; it must name as many of `tests/fixtures/identify/` right (`rust/tests/identify_corpus.rs`) |
 | `runtime/plextv.rs`, `runtime/tmdb.rs` | claim/heartbeat/account state, and TMDB's reads for Fix Match and identification, through a metadata provider first when one is set (`REX_PLEXTV_URL` points plex.tv at a stub) |
 | `platform.rs` | Everything asked of the OS beyond `std`: local time, CPU time and load, the host name, thread ids, pausing and killing FFmpeg, the GDM socket. A Unix half and a Windows half; nothing else may call `libc` for these |
 | `runtime/*.rs` (the rest) | One subsystem each, named after it: search, listing, axes, edit, collections, playlists, artwork, butler, framework, i18n, resume (On Deck and hubs), logging and so on |
@@ -132,6 +132,8 @@ Plex, if there is one: pointed at rex, zurg's matcher learns rex's own matches a
 them back as exact ids, so a wrong match can never be corrected (`docs/setup.md`). zurg then pushes a snapshot of its library once it has
 loaded and every few hours, and every change as it happens: `POST`/`DELETE
 /rex/feed/zurg/items`, `PUT /rex/feed/zurg/snapshot` (`runtime/feed.rs`). An item
+with a `kind` and ids is placed where zurg says (TMDB's season and episode), not by its name,
+and no pass at start renumbers it (`_placed` on the row); the name places only what arrives without. An item
 with no `media_info` is held, not shown, until zurg probes it; a late IMDb id re-identifies
 its row on the same key; a file that is gone is trashed as measured on plexscratch
 (`tests/fixtures/missing_file_scan_s43.json`: soft delete, deleted at once under
@@ -483,6 +485,7 @@ python3 tests/test_feed_anime.py            # an anime cour on TMDB's season and
 python3 tests/test_feed_names.py            # releases named in a way identification read wrong: a.K.A., THEATRiCAL.CUT, a release in another language than its files
 python3 tests/test_feed_pack_folders.py     # a pack's season folders, which zurg's mount flattens: SNL's and Smallville's 01s each their own season's
 python3 tests/test_feed_unfold.py           # each file of a season batch its own episode; rows that folded several episodes unfolded at start
+python3 tests/test_feed_placement.py        # a file its source placed (`kind`, TMDB season/episode) stays there through every start pass and retry; Fix Match wins
 python3 tests/test_feed_delete.py           # a delete removes the files at the source first, as a real PMS's does (zurg's WebDAV DELETE)
 python3 tests/test_sources.py               # registering sources, and sources that are not zurg: a server ignoring Range,
                                             # a redirect to a CDN, a restart, rows before registration, the two-step delete
