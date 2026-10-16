@@ -1461,11 +1461,6 @@ impl Runtime {
                 self.locations(section).into_iter().find(|location| names_directory(location, &item.path))
             })
         };
-        let found = of_kind
-            .iter()
-            .find(|section| self.locations(section).iter().any(|location| under(&item.file, location)))
-            .or_else(|| of_kind.iter().find(|section| self.locations(section).iter().any(|location| names_directory(location, &item.path))))
-            .or_else(|| wanted.and(of_kind.first()))?;
         // zurg files a release by its own name rules, and the production server's Usenet zurg filed 40 anime
         // episodes under movies on 2026-10-12 (`Detektiv.Conan.E0221…`, `[Moozzi2]
         // Eighty-Six-15 […]`): each became a film nothing matched, on the blank tile. A
@@ -1474,6 +1469,18 @@ impl Runtime {
         // film's extras (`… - 2011 documentary.mkv` in A Trip to the Moon) are not held to it.
         // A `kind` the source placed it as decides instead of the name, either way.
         let episode = || item.kind().map_or_else(|| crate::identify::parse_name(&item.name).episode.is_some(), |kind| kind == "episode");
+        // A folder no library holds (zurg's `anime`) goes to the first library of its kind:
+        // refusing it made every setup with such a folder seed its libraries by hand first.
+        let of_its_kind = || {
+            let kind = if episode() { "show" } else { "movie" };
+            of_kind.iter().find(|section| section.get("type").and_then(Value::as_str) == Some(kind))
+        };
+        let found = of_kind
+            .iter()
+            .find(|section| self.locations(section).iter().any(|location| under(&item.file, location)))
+            .or_else(|| of_kind.iter().find(|section| self.locations(section).iter().any(|location| names_directory(location, &item.path))))
+            .or_else(|| wanted.and(of_kind.first()))
+            .or_else(of_its_kind)?;
         if wanted.is_none() && found.get("type").and_then(Value::as_str) == Some("show") && item.kind() == Some("movie") {
             if let Some(movies) = self.feed_library(&Item { library: Some("movie".to_string()), ..item.clone() }) {
                 return Some(movies);

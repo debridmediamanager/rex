@@ -377,6 +377,33 @@ def loose_episodes(bytes_port):
         shutil.rmtree(work, ignore_errors=True)
 
 
+def other_folders(bytes_port):
+    """A folder no library holds is not refused: zurg's `anime` or `kids` sent every item
+    back as `rejected: no movie or show library holds ...` unless the libraries were seeded
+    with that folder before the first start. An item goes to the library of its kind."""
+    work = tempfile.mkdtemp(prefix="rex-feed-folders-")
+    catalog(work)
+    server = Server(work, bytes_port)
+    try:
+        items = []
+        for kind, directory in (("movie", "kids"), ("episode", "anime")):
+            moved = item(kind)
+            for field in ("id", "path", "file", "release"):
+                moved[field] = moved[field].replace("movies/" if kind == "movie" else "shows/", directory + "/", 1)
+            items.append(moved)
+        status, body = server.feed("POST", "items", {"items": items})
+        check("an item in a folder no library holds is taken, not refused",
+              status == 200 and body.get("created") == 2 and not body.get("rejected"), (status, body))
+        keys = server.keys()
+        check("the film goes to the movie library and the episode to the show library",
+              [row.get("ratingKey") for row in server.rows("/library/sections/1/all")] == [keys.get(items[0]["id"])]
+              and server.row(keys.get(items[1]["id"])).get("type") == "episode"
+              and len(server.rows("/library/sections/2/all")) == 1, (keys, body))
+    finally:
+        server.stop()
+        shutil.rmtree(work, ignore_errors=True)
+
+
 def main():
     work = tempfile.mkdtemp(prefix="rex-feed-")
     source = Bytes()
@@ -656,6 +683,7 @@ def main():
         retry_unnamed(bytes_port)
         loose_episodes(bytes_port)
         matcher_identity(bytes_port)
+        other_folders(bytes_port)
     finally:
         server.stop()
         shutil.rmtree(work, ignore_errors=True)
