@@ -489,7 +489,7 @@ pub(super) fn quote_plus(value: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::Write;
+    use std::io::{Read, Write};
     use std::net::{Shutdown, TcpListener};
     use std::sync::mpsc;
     use std::thread::JoinHandle;
@@ -501,6 +501,12 @@ mod tests {
         let (release, released) = mpsc::channel();
         let thread = std::thread::spawn(move || {
             let (mut stream, _) = listener.accept().expect("upstream connection");
+            // Windows resets a socket closed with unread request bytes, losing the response.
+            let mut request = Vec::new();
+            let mut byte = [0u8; 1];
+            while !request.ends_with(b"\r\n\r\n") && matches!(stream.read(&mut byte), Ok(1)) {
+                request.push(byte[0]);
+            }
             stream.write_all(&response).expect("stub response");
             stream.flush().expect("stub flush");
             if hold_open {

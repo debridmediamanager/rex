@@ -444,8 +444,8 @@ mod tests {
     /// The provider's own rows, recorded from metadata.provider.plex.tv
     /// (tests/fixtures/provider/matches.json): Big Buck Bunny's match.
     fn recorded(path: &str) -> Value {
-        let file = concat!(env!("CARGO_MANIFEST_DIR"), "/../tests/fixtures/provider/matches.json");
-        let rows: Value = serde_json::from_str(&std::fs::read_to_string(file).unwrap()).unwrap();
+        // Compiled in: CI's Windows test binary is cross-built, so the manifest path is a Linux one.
+        let rows: Value = serde_json::from_str(include_str!("../../tests/fixtures/provider/matches.json")).unwrap();
         rows.as_array().unwrap().iter().find(|row| row["path"].as_str().unwrap().contains(path)).unwrap()["response"].clone()
     }
 
