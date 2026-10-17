@@ -1,0 +1,6130 @@
+{
+ "_provenance": "Recorded 2026-10-17 on a throwaway, unclaimed Plex Media Server 1.42.2.10156-f737b826c (plexinc/pms-docker) on the test host, over loopback with its .LocalAdminToken. Item 1 is a real Dolby Vision profile 5 release (Predator: Killer of Killers (2025) 2160p WEB-DL DV P5, its first 40 s cut with -c copy -strict unofficial so the DOVI record stays, remuxed +faststart), item 2 a generated 1080p 10-bit HEVC control. `items` holds each item's Media as that server analysed it. `decisions` holds GET /video/:/transcode/universal/decision answers: Plex for Android's shape with and without hasMDE (with MDE the server decides no direct play at all), and Samsung's profile with an app-style add-direct-play-profile for mp4/hevc, without and with Plex for Android's add-limitation(scope=videoCodec&scopeName=hevc&type=notMatch&name=video.DOVIProfile&value=5) (the app's own spelling, notMatch) and the PascalCase NotMatch.",
+ "items": {
+  "1": {
+   "title": "Predator: Killer of Killers",
+   "Media": [
+    {
+     "id": 1,
+     "duration": 40250,
+     "bitrate": 11041,
+     "width": 3840,
+     "height": 2160,
+     "aspectRatio": 1.78,
+     "audioChannels": 6,
+     "audioCodec": "eac3",
+     "videoCodec": "hevc",
+     "videoResolution": "4k",
+     "container": "mp4",
+     "videoFrameRate": "24p",
+     "optimizedForStreaming": 1,
+     "has64bitOffsets": false,
+     "videoProfile": "main 10",
+     "Part": [
+      {
+       "id": 1,
+       "key": "/library/parts/1/1792251188/file.mp4",
+       "duration": 40250,
+       "file": "/data/movies/Predator Killer of Killers (2025).mp4",
+       "size": 55549276,
+       "container": "mp4",
+       "has64bitOffsets": false,
+       "optimizedForStreaming": true,
+       "videoProfile": "main 10",
+       "Stream": [
+        {
+         "id": 1,
+         "streamType": 1,
+         "default": true,
+         "codec": "hevc",
+         "index": 0,
+         "bitrate": 10315,
+         "language": "English",
+         "languageTag": "en",
+         "languageCode": "eng",
+         "DOVIBLCompatID": 0,
+         "DOVIBLPresent": true,
+         "DOVIELPresent": false,
+         "DOVILevel": 6,
+         "DOVIPresent": true,
+         "DOVIProfile": 5,
+         "DOVIRPUPresent": true,
+         "DOVIVersion": "1.0",
+         "bitDepth": 10,
+         "chromaLocation": "left",
+         "chromaSubsampling": "4:2:0",
+         "codecID": "hev1",
+         "codedHeight": 2160,
+         "codedWidth": 3840,
+         "colorRange": "pc",
+         "frameRate": 24.0,
+         "height": 2160,
+         "level": 150,
+         "profile": "main 10",
+         "refFrames": 1,
+         "streamIdentifier": "1",
+         "width": 3840,
+         "displayTitle": "4K DoVi",
+         "extendedDisplayTitle": "4K DoVi (HEVC Main 10)"
+        },
+        {
+         "id": 2,
+         "streamType": 2,
+         "selected": true,
+         "default": true,
+         "codec": "eac3",
+         "index": 1,
+         "channels": 6,
+         "bitrate": 768,
+         "language": "English",
+         "languageTag": "en",
+         "languageCode": "eng",
+         "audioChannelLayout": "5.1(side)",
+         "samplingRate": 48000,
+         "streamIdentifier": "2",
+         "displayTitle": "English (EAC3 5.1)",
+         "extendedDisplayTitle": "English (EAC3 5.1)"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "2": {
+   "title": "Sintel",
+   "Media": [
+    {
+     "id": 2,
+     "duration": 10000,
+     "bitrate": 3313,
+     "width": 1920,
+     "height": 1080,
+     "aspectRatio": 1.78,
+     "audioChannels": 1,
+     "audioCodec": "aac",
+     "videoCodec": "hevc",
+     "videoResolution": "1080",
+     "container": "mp4",
+     "videoFrameRate": "24p",
+     "optimizedForStreaming": 1,
+     "audioProfile": "lc",
+     "has64bitOffsets": false,
+     "videoProfile": "main 10",
+     "Part": [
+      {
+       "id": 2,
+       "key": "/library/parts/2/1792250962/file.mp4",
+       "duration": 10000,
+       "file": "/data/movies/Sintel (2010).mp4",
+       "size": 4141175,
+       "audioProfile": "lc",
+       "container": "mp4",
+       "has64bitOffsets": false,
+       "optimizedForStreaming": true,
+       "videoProfile": "main 10",
+       "Stream": [
+        {
+         "id": 3,
+         "streamType": 1,
+         "default": true,
+         "codec": "hevc",
+         "index": 0,
+         "bitrate": 3234,
+         "bitDepth": 10,
+         "chromaLocation": "left",
+         "chromaSubsampling": "4:2:0",
+         "codecID": "hev1",
+         "codedHeight": 1088,
+         "codedWidth": 1920,
+         "colorRange": "tv",
+         "frameRate": 24.0,
+         "height": 1080,
+         "level": 120,
+         "profile": "main 10",
+         "refFrames": 1,
+         "scanType": "progressive",
+         "streamIdentifier": "1",
+         "width": 1920,
+         "displayTitle": "1080p",
+         "extendedDisplayTitle": "1080p (HEVC Main 10)"
+        },
+        {
+         "id": 4,
+         "streamType": 2,
+         "selected": true,
+         "default": true,
+         "codec": "aac",
+         "index": 1,
+         "channels": 1,
+         "bitrate": 69,
+         "profile": "lc",
+         "samplingRate": 44100,
+         "streamIdentifier": "2",
+         "displayTitle": "Unknown (AAC Mono)",
+         "extendedDisplayTitle": "Unknown (AAC Mono)"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ },
+ "decisions": [
+  {
+   "label": "dv5-mde-dp1-limit",
+   "item": "1",
+   "query": [
+    [
+     "hasMDE",
+     "1"
+    ],
+    [
+     "path",
+     "/library/metadata/1"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "protocol",
+     "hls"
+    ],
+    [
+     "fastSeek",
+     "1"
+    ],
+    [
+     "directPlay",
+     "1"
+    ],
+    [
+     "directStream",
+     "1"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "videoQuality",
+     "100"
+    ],
+    [
+     "videoResolution",
+     "3840x2160"
+    ],
+    [
+     "maxVideoBitrate",
+     "200000"
+    ],
+    [
+     "subtitleSize",
+     "100"
+    ],
+    [
+     "audioBoost",
+     "100"
+    ],
+    [
+     "location",
+     "lan"
+    ],
+    [
+     "session",
+     "rexdovi-dv5-mde-dp1-limit"
+    ]
+   ],
+   "req_headers": {
+    "X-Plex-Product": "Plex for Android (Mobile)",
+    "X-Plex-Platform": "Android",
+    "X-Plex-Platform-Version": "14",
+    "X-Plex-Device": "Pixel 8",
+    "X-Plex-Version": "2026.19.1",
+    "X-Plex-Client-Identifier": "rexdovi-probe",
+    "X-Plex-Client-Profile-Extra": "add-limitation(scope=videoCodec&scopeName=hevc&type=NotMatch&name=video.DOVIProfile&value=5)",
+    "Accept": "application/json",
+    "X-Plex-Token": "<token>"
+   },
+   "status": 200,
+   "response": {
+    "size": 1,
+    "allowSync": "1",
+    "identifier": "com.plexapp.plugins.library",
+    "librarySectionID": "1",
+    "librarySectionTitle": "Movies",
+    "librarySectionUUID": "<section-uuid>",
+    "mdeDecisionCode": 1000,
+    "mdeDecisionText": "Direct play OK.",
+    "mediaTagPrefix": "/system/bundle/media/flags/",
+    "mediaTagVersion": "1758205129",
+    "resourceSession": "rexdovi-probe",
+    "Metadata": [
+     {
+      "addedAt": 1792250998,
+      "art": "/library/metadata/1/art/1792251212",
+      "audienceRating": 8.7,
+      "audienceRatingImage": "rottentomatoes://image.rating.upright",
+      "contentRating": "R",
+      "contentRatingAge": 16,
+      "duration": 40250,
+      "guid": "plex://movie/67eec27814d38e5e9757b885",
+      "hasPremiumExtras": "1",
+      "key": "/library/metadata/1",
+      "librarySectionID": "1",
+      "librarySectionKey": "/library/sections/1",
+      "librarySectionTitle": "Movies",
+      "originallyAvailableAt": "2025-06-06",
+      "rating": 9.4,
+      "ratingImage": "rottentomatoes://image.rating.ripe",
+      "ratingKey": "1",
+      "slug": "predator-killer-of-killers",
+      "studio": "20th Century Studios",
+      "summary": "While three of the fiercest warriors in human history\u2014a Viking raider, a ninja in feudal Japan, and a WWII pilot\u2014are killers in their own right, they are merely prey for their new opponent: the ultimate killer of killers.",
+      "tagline": "The hunt begins.",
+      "thumb": "/library/metadata/1/thumb/1792251212",
+      "title": "Predator: Killer of Killers",
+      "type": "movie",
+      "updatedAt": 1792251212,
+      "year": 2025,
+      "Media": [
+       {
+        "aspectRatio": "1.78",
+        "audioChannels": 6,
+        "audioCodec": "eac3",
+        "bitrate": 11041,
+        "container": "mp4",
+        "duration": 40250,
+        "has64bitOffsets": false,
+        "height": 2160,
+        "id": "1",
+        "optimizedForStreaming": true,
+        "videoCodec": "hevc",
+        "videoFrameRate": "24p",
+        "videoProfile": "main 10",
+        "videoResolution": "4k",
+        "width": 3840,
+        "selected": true,
+        "Part": [
+         {
+          "container": "mp4",
+          "duration": 40250,
+          "file": "/data/movies/Predator Killer of Killers (2025).mp4",
+          "has64bitOffsets": false,
+          "id": "1",
+          "key": "/library/parts/1/1792251188/file.mp4",
+          "optimizedForStreaming": true,
+          "size": 55549276,
+          "videoProfile": "main 10",
+          "decision": "directplay",
+          "selected": true,
+          "Stream": [
+           {
+            "DOVIBLCompatID": 0,
+            "DOVIBLPresent": true,
+            "DOVIELPresent": false,
+            "DOVILevel": 6,
+            "DOVIPresent": true,
+            "DOVIProfile": 5,
+            "DOVIRPUPresent": true,
+            "DOVIVersion": "1.0",
+            "bitDepth": 10,
+            "bitrate": 10315,
+            "chromaLocation": "left",
+            "chromaSubsampling": "4:2:0",
+            "codec": "hevc",
+            "codecID": "hev1",
+            "codedHeight": 2160,
+            "codedWidth": 3840,
+            "colorRange": "pc",
+            "default": true,
+            "displayTitle": "4K DoVi",
+            "extendedDisplayTitle": "4K DoVi (HEVC Main 10)",
+            "frameRate": 24.0,
+            "height": 2160,
+            "id": "1",
+            "index": 0,
+            "language": "English",
+            "languageCode": "eng",
+            "languageTag": "en",
+            "level": 150,
+            "profile": "main 10",
+            "refFrames": 1,
+            "streamIdentifier": "1",
+            "streamType": 1,
+            "width": 3840,
+            "location": "direct"
+           },
+           {
+            "audioChannelLayout": "5.1(side)",
+            "bitrate": 768,
+            "channels": 6,
+            "codec": "eac3",
+            "default": true,
+            "displayTitle": "English (EAC3 5.1)",
+            "extendedDisplayTitle": "English (EAC3 5.1)",
+            "id": "2",
+            "index": 1,
+            "language": "English",
+            "languageCode": "eng",
+            "languageTag": "en",
+            "samplingRate": 48000,
+            "selected": true,
+            "streamIdentifier": "2",
+            "streamType": 2,
+            "location": "direct"
+           }
+          ]
+         }
+        ]
+       }
+      ],
+      "UltraBlurColors": [
+       {
+        "bottomLeft": "122513",
+        "bottomRight": "061326",
+        "topLeft": "051221",
+        "topRight": "0e213a"
+       }
+      ],
+      "Genre": [
+       {
+        "filter": "genre=4",
+        "id": "4",
+        "tag": "Science Fiction"
+       },
+       {
+        "filter": "genre=5",
+        "id": "5",
+        "tag": "Animation"
+       },
+       {
+        "filter": "genre=6",
+        "id": "6",
+        "tag": "Action"
+       },
+       {
+        "filter": "genre=7",
+        "id": "7",
+        "tag": "Adventure"
+       },
+       {
+        "filter": "genre=8",
+        "id": "8",
+        "tag": "Thriller"
+       }
+      ],
+      "Country": [
+       {
+        "filter": "country=53",
+        "id": "53",
+        "tag": "United States of America"
+       }
+      ],
+      "Rating": [
+       {
+        "image": "imdb://image.rating",
+        "type": "audience",
+        "value": "7.4"
+       },
+       {
+        "image": "rottentomatoes://image.rating.ripe",
+        "type": "critic",
+        "value": "9.4"
+       },
+       {
+        "image": "rottentomatoes://image.rating.upright",
+        "type": "audience",
+        "value": "8.7"
+       },
+       {
+        "image": "themoviedb://image.rating",
+        "type": "audience",
+        "value": "7.8"
+       }
+      ],
+      "Director": [
+       {
+        "filter": "director=9",
+        "id": "9",
+        "tag": "Dan Trachtenberg",
+        "tagKey": "5d7768b57a53e9001e6d6ef0",
+        "thumb": "https://metadata-static.plex.tv/0/people/065a1ba46bf07e8b918d31d37eede59f.jpg"
+       }
+      ],
+      "Writer": [
+       {
+        "filter": "writer=10",
+        "id": "10",
+        "tag": "Jim Thomas",
+        "tagKey": "5d77682a54f42c001f8c3185"
+       },
+       {
+        "filter": "writer=11",
+        "id": "11",
+        "tag": "John Thomas",
+        "tagKey": "5d77682a54f42c001f8c3186"
+       },
+       {
+        "filter": "writer=12",
+        "id": "12",
+        "tag": "Dan Trachtenberg",
+        "tagKey": "5d7768b57a53e9001e6d6ef0",
+        "thumb": "https://metadata-static.plex.tv/0/people/065a1ba46bf07e8b918d31d37eede59f.jpg"
+       },
+       {
+        "filter": "writer=13",
+        "id": "13",
+        "tag": "Micho Rutare",
+        "tagKey": "5d77696d9ab54400214f1c0a",
+        "thumb": "https://metadata-static.plex.tv/1/people/109612d927fb58fe8ec68aba37a1e15f.jpg"
+       }
+      ],
+      "Role": [
+       {
+        "filter": "actor=14",
+        "id": "14",
+        "role": "Ursa (voice)",
+        "tag": "Lindsay LaVanchy",
+        "tagKey": "5d776c7251dd69001fe3b5da",
+        "thumb": "https://metadata-static.plex.tv/f/people/f7c5e02275a1c93d797720812879a76a.jpg"
+       },
+       {
+        "filter": "actor=15",
+        "id": "15",
+        "role": "Kenji / Kiyoshi (voice)",
+        "tag": "Louis Ozawa",
+        "tagKey": "5d776845880197001ec965d5",
+        "thumb": "https://metadata-static.plex.tv/6/people/679012cb0505b4531c57167465a5275b.jpg"
+       },
+       {
+        "filter": "actor=16",
+        "id": "16",
+        "role": "Torres (voice)",
+        "tag": "Rick Gonzalez",
+        "tagKey": "5d776825961905001eb90a26",
+        "thumb": "https://metadata-static.plex.tv/c/people/cae8c3633b5817cfb711fb0628f5e5d0.jpg"
+       },
+       {
+        "filter": "actor=17",
+        "id": "17",
+        "role": "Vandy (voice)",
+        "tag": "Michael Biehn",
+        "tagKey": "5d776824151a60001f24a3bf",
+        "thumb": "https://metadata-static.plex.tv/7/people/774268b81023c5093f542e3e339d4085.jpg"
+       },
+       {
+        "filter": "actor=18",
+        "id": "18",
+        "role": "Einar (voice)",
+        "tag": "Doug Cockle",
+        "tagKey": "5d77682a103a2d001f56544b",
+        "thumb": "https://metadata-static.plex.tv/5/people/5a28ddbcaa2b9cbbab525aa76fcd3224.jpg"
+       },
+       {
+        "filter": "actor=19",
+        "id": "19",
+        "role": "Anders (voice)",
+        "tag": "Damien C. Haas",
+        "tagKey": "5d776b367a53e9001e71e1db",
+        "thumb": "https://metadata-static.plex.tv/0/people/09e7e5828963dc60773bd525d5da63f7.jpg"
+       },
+       {
+        "filter": "actor=20",
+        "id": "20",
+        "role": "Freya (voice)",
+        "tag": "Lauren Holt",
+        "tagKey": "5e62465a93f43c003cbccdd1",
+        "thumb": "https://metadata-static.plex.tv/0/people/0f30720d17606e161d6979f206e939bb.jpg"
+       },
+       {
+        "filter": "actor=21",
+        "id": "21",
+        "role": "Ivar (voice)",
+        "tag": "Jeff Leach",
+        "tagKey": "5d776b2ffb0d55001f55f186"
+       },
+       {
+        "filter": "actor=22",
+        "id": "22",
+        "role": "Young Ursa (voice)",
+        "tag": "Cherami Leigh",
+        "tagKey": "5d7768307e9a3c0020c6bd7c",
+        "thumb": "https://metadata-static.plex.tv/c/people/c54cf1188f86e8be342b056c6ebdf34d.jpg"
+       },
+       {
+        "filter": "actor=23",
+        "id": "23",
+        "role": "Delgado (voice)",
+        "tag": "Alessa Luz Martinez",
+        "tagKey": "5f404d2d1ae71000410a7781"
+       },
+       {
+        "filter": "actor=24",
+        "id": "24",
+        "role": "Gunnar (voice)",
+        "tag": "Piotr Michael",
+        "tagKey": "5d776b90ad5437001f7a38f8",
+        "thumb": "https://metadata-static.plex.tv/e/people/ef0526604d2648fd55bede7706ec36a0.jpg"
+       },
+       {
+        "filter": "actor=25",
+        "id": "25",
+        "role": "Chief Zoran (voice)",
+        "tag": "Andrew Morgado",
+        "tagKey": "5d776c47fb0d55001f582ed9"
+       },
+       {
+        "filter": "actor=26",
+        "id": "26",
+        "role": "Krivich Prisoner (voice)",
+        "tag": "Brock Powell",
+        "tagKey": "5d776c7696b655001fe31661",
+        "thumb": "https://metadata-static.plex.tv/9/people/92162c56525359b30100f3ce0e00eed2.jpg"
+       },
+       {
+        "filter": "actor=27",
+        "id": "27",
+        "role": "Torres' Dad (voice)",
+        "tag": "Felix Solis",
+        "tagKey": "5d77682f151a60001f24c62b",
+        "thumb": "https://metadata-static.plex.tv/9/people/9b59be387f27cb3e35958f99256c0f46.jpg"
+       },
+       {
+        "filter": "actor=28",
+        "id": "28",
+        "role": "Warlord Predator (voice)",
+        "tag": "Britton Watkins",
+        "tagKey": "5d776d96fb0d55001f5a4a92"
+       },
+       {
+        "filter": "actor=29",
+        "id": "29",
+        "role": "Additional Voices (voice)",
+        "tag": "Alex Albrecht",
+        "tagKey": "5d7768b57a53e9001e6d6ef5",
+        "thumb": "https://metadata-static.plex.tv/0/people/01c91ecf8cc4c3fc6b78178fdc2b289f.jpg"
+       },
+       {
+        "filter": "actor=30",
+        "id": "30",
+        "role": "Additional Voices (voice)",
+        "tag": "James Bannon",
+        "tagKey": "5dcd37c0ddb8cb001e1e0e6f",
+        "thumb": "https://metadata-static.plex.tv/people/5dcd37c0ddb8cb001e1e0e6f.jpg"
+       },
+       {
+        "filter": "actor=31",
+        "id": "31",
+        "role": "Additional Voices (voice)",
+        "tag": "Jeff Cannata",
+        "tagKey": "5d776f8bad5437001f812a33",
+        "thumb": "https://metadata-static.plex.tv/e/people/eff75682116cd548fb7475df15cec41a.jpg"
+       },
+       {
+        "filter": "actor=32",
+        "id": "32",
+        "role": "Additional Voices (voice)",
+        "tag": "Jonathan Dixon",
+        "tagKey": "5d77683beb5d26001f1e1f3f",
+        "thumb": "https://metadata-static.plex.tv/people/5d77683beb5d26001f1e1f3f.jpg"
+       },
+       {
+        "filter": "actor=33",
+        "id": "33",
+        "role": "Additional Voices (voice)",
+        "tag": "Mel Fair",
+        "tagKey": "5d77685161141d001fb18905",
+        "thumb": "https://metadata-static.plex.tv/people/5d77685161141d001fb18905.jpg"
+       },
+       {
+        "filter": "actor=34",
+        "id": "34",
+        "role": "Additional Voices (voice)",
+        "tag": "Mary Louise Gemmill",
+        "tagKey": "5d77685c8718ba001e319c86",
+        "thumb": "https://metadata-static.plex.tv/3/people/3f845ecb60b64cd5340d5af716c7a842.jpg"
+       },
+       {
+        "filter": "actor=35",
+        "id": "35",
+        "role": "Additional Voices (voice)",
+        "tag": "Stefan Grube",
+        "tagKey": "5d7769a9594b2b001e6a6c28",
+        "thumb": "https://metadata-static.plex.tv/1/people/10700d7d19165f46761468b4772bc4ee.jpg"
+       },
+       {
+        "filter": "actor=36",
+        "id": "36",
+        "role": "Additional Voices (voice)",
+        "tag": "David Heckel",
+        "tagKey": "5f3fa845864225004278d533"
+       },
+       {
+        "filter": "actor=37",
+        "id": "37",
+        "role": "Additional Voices (voice)",
+        "tag": "Eiji Inoue",
+        "tagKey": "5d77682785719b001f3a0edc",
+        "thumb": "https://metadata-static.plex.tv/8/people/868d81ae1c41b415299b4a3bae6f35c1.jpg"
+       },
+       {
+        "filter": "actor=38",
+        "id": "38",
+        "role": "Additional Voices (voice)",
+        "tag": "Bjorn Johnson",
+        "tagKey": "5d776835151a60001f24da4a",
+        "thumb": "https://metadata-static.plex.tv/0/people/04e2f934d42ad352bbcdd4aee92f97ae.jpg"
+       },
+       {
+        "filter": "actor=39",
+        "id": "39",
+        "role": "Additional Voices (voice)",
+        "tag": "Rett Keeter",
+        "tagKey": "5f3fd14304a8650040981b49"
+       },
+       {
+        "filter": "actor=40",
+        "id": "40",
+        "role": "Additional Voices (voice)",
+        "tag": "James Taku Leung",
+        "tagKey": "5d7769f7fb0d55001f53624a",
+        "thumb": "https://metadata-static.plex.tv/people/5d7769f7fb0d55001f53624a.jpg"
+       },
+       {
+        "filter": "actor=41",
+        "id": "41",
+        "role": "Additional Voices (voice)",
+        "tag": "Isaias Alexander Miranda",
+        "tagKey": "5f3fbafe03883a0040a9d5e4",
+        "thumb": "https://metadata-static.plex.tv/d/people/d8643c3b76d4926ac752638c33ffce14.jpg"
+       },
+       {
+        "filter": "actor=42",
+        "id": "42",
+        "role": "Additional Voices (voice)",
+        "tag": "Yumi Mizui",
+        "tagKey": "5d7769f7fb0d55001f53624b",
+        "thumb": "https://metadata-static.plex.tv/c/people/cf0fc6c543191117970a4168c1099f96.jpg"
+       },
+       {
+        "filter": "actor=43",
+        "id": "43",
+        "role": "Additional Voices (voice)",
+        "tag": "Micho Rutare",
+        "tagKey": "5d77696d9ab54400214f1c0a",
+        "thumb": "https://metadata-static.plex.tv/1/people/109612d927fb58fe8ec68aba37a1e15f.jpg"
+       },
+       {
+        "filter": "actor=44",
+        "id": "44",
+        "role": "Additional Voices (voice)",
+        "tag": "Justin Shenkarow",
+        "tagKey": "5d776841961905001eb96557",
+        "thumb": "https://metadata-static.plex.tv/5/people/5bc7a1fd5ddc08dcf3a09017a8de9930.jpg"
+       },
+       {
+        "filter": "actor=45",
+        "id": "45",
+        "role": "Additional Voices (voice)",
+        "tag": "Jerry Trainor",
+        "tagKey": "5d776825103a2d001f563c20",
+        "thumb": "https://metadata-static.plex.tv/f/people/fa7ff99417a79d0417eefffd33a1df26.jpg"
+       },
+       {
+        "filter": "actor=46",
+        "id": "46",
+        "role": "Additional Voices (voice)",
+        "tag": "Toru Uchikado",
+        "tagKey": "5d7770a6fb0d55001f5f59dd",
+        "thumb": "https://metadata-static.plex.tv/b/people/b7d17f1aae456cbcfcbf94d59b7e8ab2.jpg"
+       },
+       {
+        "filter": "actor=47",
+        "id": "47",
+        "role": "Additional Voices (voice)",
+        "tag": "Bernie Van De Yacht",
+        "tagKey": "5d77685b5af944001f20072e"
+       },
+       {
+        "filter": "actor=48",
+        "id": "48",
+        "role": "Additional Voices (voice)",
+        "tag": "Matthew Wolf",
+        "tagKey": "5d77684ff59e58002189b79d",
+        "thumb": "https://metadata-static.plex.tv/people/5d77684ff59e58002189b79d.jpg"
+       }
+      ],
+      "Producer": [
+       {
+        "filter": "producer=49",
+        "id": "49",
+        "tag": "John Davis",
+        "tagKey": "5d77682585719b001f3a05dd",
+        "thumb": "https://metadata-static.plex.tv/people/5d77682585719b001f3a05dd.jpg"
+       },
+       {
+        "filter": "producer=50",
+        "id": "50",
+        "tag": "Dan Trachtenberg",
+        "tagKey": "5d7768b57a53e9001e6d6ef0",
+        "thumb": "https://metadata-static.plex.tv/0/people/065a1ba46bf07e8b918d31d37eede59f.jpg"
+       },
+       {
+        "filter": "producer=51",
+        "id": "51",
+        "tag": "Marc Toberoff",
+        "tagKey": "5d77684e298480001f4ac256",
+        "thumb": "https://metadata-static.plex.tv/d/people/d3a239a38cf178bff5a3a3cee35eec1c.jpg"
+       },
+       {
+        "filter": "producer=52",
+        "id": "52",
+        "tag": "Ben Rosenblatt",
+        "tagKey": "5dce6b5c7a42e6001fc84b71"
+       }
+      ],
+      "CommonSenseMedia": [
+       {
+        "id": "88",
+        "oneLiner": "Bloody, nonstop violence, death in animated alien film."
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "label": "dv5-mde-dp1-nolimit",
+   "item": "1",
+   "query": [
+    [
+     "hasMDE",
+     "1"
+    ],
+    [
+     "path",
+     "/library/metadata/1"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "protocol",
+     "hls"
+    ],
+    [
+     "fastSeek",
+     "1"
+    ],
+    [
+     "directPlay",
+     "1"
+    ],
+    [
+     "directStream",
+     "1"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "videoQuality",
+     "100"
+    ],
+    [
+     "videoResolution",
+     "3840x2160"
+    ],
+    [
+     "maxVideoBitrate",
+     "200000"
+    ],
+    [
+     "subtitleSize",
+     "100"
+    ],
+    [
+     "audioBoost",
+     "100"
+    ],
+    [
+     "location",
+     "lan"
+    ],
+    [
+     "session",
+     "rexdovi-dv5-mde-dp1-nolimit"
+    ]
+   ],
+   "req_headers": {
+    "X-Plex-Product": "Plex for Android (Mobile)",
+    "X-Plex-Platform": "Android",
+    "X-Plex-Platform-Version": "14",
+    "X-Plex-Device": "Pixel 8",
+    "X-Plex-Version": "2026.19.1",
+    "X-Plex-Client-Identifier": "rexdovi-probe",
+    "X-Plex-Client-Profile-Extra": "",
+    "Accept": "application/json",
+    "X-Plex-Token": "<token>"
+   },
+   "status": 200,
+   "response": {
+    "size": 1,
+    "allowSync": "1",
+    "identifier": "com.plexapp.plugins.library",
+    "librarySectionID": "1",
+    "librarySectionTitle": "Movies",
+    "librarySectionUUID": "<section-uuid>",
+    "mdeDecisionCode": 1000,
+    "mdeDecisionText": "Direct play OK.",
+    "mediaTagPrefix": "/system/bundle/media/flags/",
+    "mediaTagVersion": "1758205129",
+    "resourceSession": "rexdovi-probe",
+    "Metadata": [
+     {
+      "addedAt": 1792250998,
+      "art": "/library/metadata/1/art/1792251212",
+      "audienceRating": 8.7,
+      "audienceRatingImage": "rottentomatoes://image.rating.upright",
+      "contentRating": "R",
+      "contentRatingAge": 16,
+      "duration": 40250,
+      "guid": "plex://movie/67eec27814d38e5e9757b885",
+      "hasPremiumExtras": "1",
+      "key": "/library/metadata/1",
+      "librarySectionID": "1",
+      "librarySectionKey": "/library/sections/1",
+      "librarySectionTitle": "Movies",
+      "originallyAvailableAt": "2025-06-06",
+      "rating": 9.4,
+      "ratingImage": "rottentomatoes://image.rating.ripe",
+      "ratingKey": "1",
+      "slug": "predator-killer-of-killers",
+      "studio": "20th Century Studios",
+      "summary": "While three of the fiercest warriors in human history\u2014a Viking raider, a ninja in feudal Japan, and a WWII pilot\u2014are killers in their own right, they are merely prey for their new opponent: the ultimate killer of killers.",
+      "tagline": "The hunt begins.",
+      "thumb": "/library/metadata/1/thumb/1792251212",
+      "title": "Predator: Killer of Killers",
+      "type": "movie",
+      "updatedAt": 1792251212,
+      "year": 2025,
+      "Media": [
+       {
+        "aspectRatio": "1.78",
+        "audioChannels": 6,
+        "audioCodec": "eac3",
+        "bitrate": 11041,
+        "container": "mp4",
+        "duration": 40250,
+        "has64bitOffsets": false,
+        "height": 2160,
+        "id": "1",
+        "optimizedForStreaming": true,
+        "videoCodec": "hevc",
+        "videoFrameRate": "24p",
+        "videoProfile": "main 10",
+        "videoResolution": "4k",
+        "width": 3840,
+        "selected": true,
+        "Part": [
+         {
+          "container": "mp4",
+          "duration": 40250,
+          "file": "/data/movies/Predator Killer of Killers (2025).mp4",
+          "has64bitOffsets": false,
+          "id": "1",
+          "key": "/library/parts/1/1792251188/file.mp4",
+          "optimizedForStreaming": true,
+          "size": 55549276,
+          "videoProfile": "main 10",
+          "decision": "directplay",
+          "selected": true,
+          "Stream": [
+           {
+            "DOVIBLCompatID": 0,
+            "DOVIBLPresent": true,
+            "DOVIELPresent": false,
+            "DOVILevel": 6,
+            "DOVIPresent": true,
+            "DOVIProfile": 5,
+            "DOVIRPUPresent": true,
+            "DOVIVersion": "1.0",
+            "bitDepth": 10,
+            "bitrate": 10315,
+            "chromaLocation": "left",
+            "chromaSubsampling": "4:2:0",
+            "codec": "hevc",
+            "codecID": "hev1",
+            "codedHeight": 2160,
+            "codedWidth": 3840,
+            "colorRange": "pc",
+            "default": true,
+            "displayTitle": "4K DoVi",
+            "extendedDisplayTitle": "4K DoVi (HEVC Main 10)",
+            "frameRate": 24.0,
+            "height": 2160,
+            "id": "1",
+            "index": 0,
+            "language": "English",
+            "languageCode": "eng",
+            "languageTag": "en",
+            "level": 150,
+            "profile": "main 10",
+            "refFrames": 1,
+            "streamIdentifier": "1",
+            "streamType": 1,
+            "width": 3840,
+            "location": "direct"
+           },
+           {
+            "audioChannelLayout": "5.1(side)",
+            "bitrate": 768,
+            "channels": 6,
+            "codec": "eac3",
+            "default": true,
+            "displayTitle": "English (EAC3 5.1)",
+            "extendedDisplayTitle": "English (EAC3 5.1)",
+            "id": "2",
+            "index": 1,
+            "language": "English",
+            "languageCode": "eng",
+            "languageTag": "en",
+            "samplingRate": 48000,
+            "selected": true,
+            "streamIdentifier": "2",
+            "streamType": 2,
+            "location": "direct"
+           }
+          ]
+         }
+        ]
+       }
+      ],
+      "UltraBlurColors": [
+       {
+        "bottomLeft": "122513",
+        "bottomRight": "061326",
+        "topLeft": "051221",
+        "topRight": "0e213a"
+       }
+      ],
+      "Genre": [
+       {
+        "filter": "genre=4",
+        "id": "4",
+        "tag": "Science Fiction"
+       },
+       {
+        "filter": "genre=5",
+        "id": "5",
+        "tag": "Animation"
+       },
+       {
+        "filter": "genre=6",
+        "id": "6",
+        "tag": "Action"
+       },
+       {
+        "filter": "genre=7",
+        "id": "7",
+        "tag": "Adventure"
+       },
+       {
+        "filter": "genre=8",
+        "id": "8",
+        "tag": "Thriller"
+       }
+      ],
+      "Country": [
+       {
+        "filter": "country=53",
+        "id": "53",
+        "tag": "United States of America"
+       }
+      ],
+      "Rating": [
+       {
+        "image": "imdb://image.rating",
+        "type": "audience",
+        "value": "7.4"
+       },
+       {
+        "image": "rottentomatoes://image.rating.ripe",
+        "type": "critic",
+        "value": "9.4"
+       },
+       {
+        "image": "rottentomatoes://image.rating.upright",
+        "type": "audience",
+        "value": "8.7"
+       },
+       {
+        "image": "themoviedb://image.rating",
+        "type": "audience",
+        "value": "7.8"
+       }
+      ],
+      "Director": [
+       {
+        "filter": "director=9",
+        "id": "9",
+        "tag": "Dan Trachtenberg",
+        "tagKey": "5d7768b57a53e9001e6d6ef0",
+        "thumb": "https://metadata-static.plex.tv/0/people/065a1ba46bf07e8b918d31d37eede59f.jpg"
+       }
+      ],
+      "Writer": [
+       {
+        "filter": "writer=10",
+        "id": "10",
+        "tag": "Jim Thomas",
+        "tagKey": "5d77682a54f42c001f8c3185"
+       },
+       {
+        "filter": "writer=11",
+        "id": "11",
+        "tag": "John Thomas",
+        "tagKey": "5d77682a54f42c001f8c3186"
+       },
+       {
+        "filter": "writer=12",
+        "id": "12",
+        "tag": "Dan Trachtenberg",
+        "tagKey": "5d7768b57a53e9001e6d6ef0",
+        "thumb": "https://metadata-static.plex.tv/0/people/065a1ba46bf07e8b918d31d37eede59f.jpg"
+       },
+       {
+        "filter": "writer=13",
+        "id": "13",
+        "tag": "Micho Rutare",
+        "tagKey": "5d77696d9ab54400214f1c0a",
+        "thumb": "https://metadata-static.plex.tv/1/people/109612d927fb58fe8ec68aba37a1e15f.jpg"
+       }
+      ],
+      "Role": [
+       {
+        "filter": "actor=14",
+        "id": "14",
+        "role": "Ursa (voice)",
+        "tag": "Lindsay LaVanchy",
+        "tagKey": "5d776c7251dd69001fe3b5da",
+        "thumb": "https://metadata-static.plex.tv/f/people/f7c5e02275a1c93d797720812879a76a.jpg"
+       },
+       {
+        "filter": "actor=15",
+        "id": "15",
+        "role": "Kenji / Kiyoshi (voice)",
+        "tag": "Louis Ozawa",
+        "tagKey": "5d776845880197001ec965d5",
+        "thumb": "https://metadata-static.plex.tv/6/people/679012cb0505b4531c57167465a5275b.jpg"
+       },
+       {
+        "filter": "actor=16",
+        "id": "16",
+        "role": "Torres (voice)",
+        "tag": "Rick Gonzalez",
+        "tagKey": "5d776825961905001eb90a26",
+        "thumb": "https://metadata-static.plex.tv/c/people/cae8c3633b5817cfb711fb0628f5e5d0.jpg"
+       },
+       {
+        "filter": "actor=17",
+        "id": "17",
+        "role": "Vandy (voice)",
+        "tag": "Michael Biehn",
+        "tagKey": "5d776824151a60001f24a3bf",
+        "thumb": "https://metadata-static.plex.tv/7/people/774268b81023c5093f542e3e339d4085.jpg"
+       },
+       {
+        "filter": "actor=18",
+        "id": "18",
+        "role": "Einar (voice)",
+        "tag": "Doug Cockle",
+        "tagKey": "5d77682a103a2d001f56544b",
+        "thumb": "https://metadata-static.plex.tv/5/people/5a28ddbcaa2b9cbbab525aa76fcd3224.jpg"
+       },
+       {
+        "filter": "actor=19",
+        "id": "19",
+        "role": "Anders (voice)",
+        "tag": "Damien C. Haas",
+        "tagKey": "5d776b367a53e9001e71e1db",
+        "thumb": "https://metadata-static.plex.tv/0/people/09e7e5828963dc60773bd525d5da63f7.jpg"
+       },
+       {
+        "filter": "actor=20",
+        "id": "20",
+        "role": "Freya (voice)",
+        "tag": "Lauren Holt",
+        "tagKey": "5e62465a93f43c003cbccdd1",
+        "thumb": "https://metadata-static.plex.tv/0/people/0f30720d17606e161d6979f206e939bb.jpg"
+       },
+       {
+        "filter": "actor=21",
+        "id": "21",
+        "role": "Ivar (voice)",
+        "tag": "Jeff Leach",
+        "tagKey": "5d776b2ffb0d55001f55f186"
+       },
+       {
+        "filter": "actor=22",
+        "id": "22",
+        "role": "Young Ursa (voice)",
+        "tag": "Cherami Leigh",
+        "tagKey": "5d7768307e9a3c0020c6bd7c",
+        "thumb": "https://metadata-static.plex.tv/c/people/c54cf1188f86e8be342b056c6ebdf34d.jpg"
+       },
+       {
+        "filter": "actor=23",
+        "id": "23",
+        "role": "Delgado (voice)",
+        "tag": "Alessa Luz Martinez",
+        "tagKey": "5f404d2d1ae71000410a7781"
+       },
+       {
+        "filter": "actor=24",
+        "id": "24",
+        "role": "Gunnar (voice)",
+        "tag": "Piotr Michael",
+        "tagKey": "5d776b90ad5437001f7a38f8",
+        "thumb": "https://metadata-static.plex.tv/e/people/ef0526604d2648fd55bede7706ec36a0.jpg"
+       },
+       {
+        "filter": "actor=25",
+        "id": "25",
+        "role": "Chief Zoran (voice)",
+        "tag": "Andrew Morgado",
+        "tagKey": "5d776c47fb0d55001f582ed9"
+       },
+       {
+        "filter": "actor=26",
+        "id": "26",
+        "role": "Krivich Prisoner (voice)",
+        "tag": "Brock Powell",
+        "tagKey": "5d776c7696b655001fe31661",
+        "thumb": "https://metadata-static.plex.tv/9/people/92162c56525359b30100f3ce0e00eed2.jpg"
+       },
+       {
+        "filter": "actor=27",
+        "id": "27",
+        "role": "Torres' Dad (voice)",
+        "tag": "Felix Solis",
+        "tagKey": "5d77682f151a60001f24c62b",
+        "thumb": "https://metadata-static.plex.tv/9/people/9b59be387f27cb3e35958f99256c0f46.jpg"
+       },
+       {
+        "filter": "actor=28",
+        "id": "28",
+        "role": "Warlord Predator (voice)",
+        "tag": "Britton Watkins",
+        "tagKey": "5d776d96fb0d55001f5a4a92"
+       },
+       {
+        "filter": "actor=29",
+        "id": "29",
+        "role": "Additional Voices (voice)",
+        "tag": "Alex Albrecht",
+        "tagKey": "5d7768b57a53e9001e6d6ef5",
+        "thumb": "https://metadata-static.plex.tv/0/people/01c91ecf8cc4c3fc6b78178fdc2b289f.jpg"
+       },
+       {
+        "filter": "actor=30",
+        "id": "30",
+        "role": "Additional Voices (voice)",
+        "tag": "James Bannon",
+        "tagKey": "5dcd37c0ddb8cb001e1e0e6f",
+        "thumb": "https://metadata-static.plex.tv/people/5dcd37c0ddb8cb001e1e0e6f.jpg"
+       },
+       {
+        "filter": "actor=31",
+        "id": "31",
+        "role": "Additional Voices (voice)",
+        "tag": "Jeff Cannata",
+        "tagKey": "5d776f8bad5437001f812a33",
+        "thumb": "https://metadata-static.plex.tv/e/people/eff75682116cd548fb7475df15cec41a.jpg"
+       },
+       {
+        "filter": "actor=32",
+        "id": "32",
+        "role": "Additional Voices (voice)",
+        "tag": "Jonathan Dixon",
+        "tagKey": "5d77683beb5d26001f1e1f3f",
+        "thumb": "https://metadata-static.plex.tv/people/5d77683beb5d26001f1e1f3f.jpg"
+       },
+       {
+        "filter": "actor=33",
+        "id": "33",
+        "role": "Additional Voices (voice)",
+        "tag": "Mel Fair",
+        "tagKey": "5d77685161141d001fb18905",
+        "thumb": "https://metadata-static.plex.tv/people/5d77685161141d001fb18905.jpg"
+       },
+       {
+        "filter": "actor=34",
+        "id": "34",
+        "role": "Additional Voices (voice)",
+        "tag": "Mary Louise Gemmill",
+        "tagKey": "5d77685c8718ba001e319c86",
+        "thumb": "https://metadata-static.plex.tv/3/people/3f845ecb60b64cd5340d5af716c7a842.jpg"
+       },
+       {
+        "filter": "actor=35",
+        "id": "35",
+        "role": "Additional Voices (voice)",
+        "tag": "Stefan Grube",
+        "tagKey": "5d7769a9594b2b001e6a6c28",
+        "thumb": "https://metadata-static.plex.tv/1/people/10700d7d19165f46761468b4772bc4ee.jpg"
+       },
+       {
+        "filter": "actor=36",
+        "id": "36",
+        "role": "Additional Voices (voice)",
+        "tag": "David Heckel",
+        "tagKey": "5f3fa845864225004278d533"
+       },
+       {
+        "filter": "actor=37",
+        "id": "37",
+        "role": "Additional Voices (voice)",
+        "tag": "Eiji Inoue",
+        "tagKey": "5d77682785719b001f3a0edc",
+        "thumb": "https://metadata-static.plex.tv/8/people/868d81ae1c41b415299b4a3bae6f35c1.jpg"
+       },
+       {
+        "filter": "actor=38",
+        "id": "38",
+        "role": "Additional Voices (voice)",
+        "tag": "Bjorn Johnson",
+        "tagKey": "5d776835151a60001f24da4a",
+        "thumb": "https://metadata-static.plex.tv/0/people/04e2f934d42ad352bbcdd4aee92f97ae.jpg"
+       },
+       {
+        "filter": "actor=39",
+        "id": "39",
+        "role": "Additional Voices (voice)",
+        "tag": "Rett Keeter",
+        "tagKey": "5f3fd14304a8650040981b49"
+       },
+       {
+        "filter": "actor=40",
+        "id": "40",
+        "role": "Additional Voices (voice)",
+        "tag": "James Taku Leung",
+        "tagKey": "5d7769f7fb0d55001f53624a",
+        "thumb": "https://metadata-static.plex.tv/people/5d7769f7fb0d55001f53624a.jpg"
+       },
+       {
+        "filter": "actor=41",
+        "id": "41",
+        "role": "Additional Voices (voice)",
+        "tag": "Isaias Alexander Miranda",
+        "tagKey": "5f3fbafe03883a0040a9d5e4",
+        "thumb": "https://metadata-static.plex.tv/d/people/d8643c3b76d4926ac752638c33ffce14.jpg"
+       },
+       {
+        "filter": "actor=42",
+        "id": "42",
+        "role": "Additional Voices (voice)",
+        "tag": "Yumi Mizui",
+        "tagKey": "5d7769f7fb0d55001f53624b",
+        "thumb": "https://metadata-static.plex.tv/c/people/cf0fc6c543191117970a4168c1099f96.jpg"
+       },
+       {
+        "filter": "actor=43",
+        "id": "43",
+        "role": "Additional Voices (voice)",
+        "tag": "Micho Rutare",
+        "tagKey": "5d77696d9ab54400214f1c0a",
+        "thumb": "https://metadata-static.plex.tv/1/people/109612d927fb58fe8ec68aba37a1e15f.jpg"
+       },
+       {
+        "filter": "actor=44",
+        "id": "44",
+        "role": "Additional Voices (voice)",
+        "tag": "Justin Shenkarow",
+        "tagKey": "5d776841961905001eb96557",
+        "thumb": "https://metadata-static.plex.tv/5/people/5bc7a1fd5ddc08dcf3a09017a8de9930.jpg"
+       },
+       {
+        "filter": "actor=45",
+        "id": "45",
+        "role": "Additional Voices (voice)",
+        "tag": "Jerry Trainor",
+        "tagKey": "5d776825103a2d001f563c20",
+        "thumb": "https://metadata-static.plex.tv/f/people/fa7ff99417a79d0417eefffd33a1df26.jpg"
+       },
+       {
+        "filter": "actor=46",
+        "id": "46",
+        "role": "Additional Voices (voice)",
+        "tag": "Toru Uchikado",
+        "tagKey": "5d7770a6fb0d55001f5f59dd",
+        "thumb": "https://metadata-static.plex.tv/b/people/b7d17f1aae456cbcfcbf94d59b7e8ab2.jpg"
+       },
+       {
+        "filter": "actor=47",
+        "id": "47",
+        "role": "Additional Voices (voice)",
+        "tag": "Bernie Van De Yacht",
+        "tagKey": "5d77685b5af944001f20072e"
+       },
+       {
+        "filter": "actor=48",
+        "id": "48",
+        "role": "Additional Voices (voice)",
+        "tag": "Matthew Wolf",
+        "tagKey": "5d77684ff59e58002189b79d",
+        "thumb": "https://metadata-static.plex.tv/people/5d77684ff59e58002189b79d.jpg"
+       }
+      ],
+      "Producer": [
+       {
+        "filter": "producer=49",
+        "id": "49",
+        "tag": "John Davis",
+        "tagKey": "5d77682585719b001f3a05dd",
+        "thumb": "https://metadata-static.plex.tv/people/5d77682585719b001f3a05dd.jpg"
+       },
+       {
+        "filter": "producer=50",
+        "id": "50",
+        "tag": "Dan Trachtenberg",
+        "tagKey": "5d7768b57a53e9001e6d6ef0",
+        "thumb": "https://metadata-static.plex.tv/0/people/065a1ba46bf07e8b918d31d37eede59f.jpg"
+       },
+       {
+        "filter": "producer=51",
+        "id": "51",
+        "tag": "Marc Toberoff",
+        "tagKey": "5d77684e298480001f4ac256",
+        "thumb": "https://metadata-static.plex.tv/d/people/d3a239a38cf178bff5a3a3cee35eec1c.jpg"
+       },
+       {
+        "filter": "producer=52",
+        "id": "52",
+        "tag": "Ben Rosenblatt",
+        "tagKey": "5dce6b5c7a42e6001fc84b71"
+       }
+      ],
+      "CommonSenseMedia": [
+       {
+        "id": "88",
+        "oneLiner": "Bloody, nonstop violence, death in animated alien film."
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "label": "dv5-mde-dp0-limit",
+   "item": "1",
+   "query": [
+    [
+     "hasMDE",
+     "1"
+    ],
+    [
+     "path",
+     "/library/metadata/1"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "protocol",
+     "hls"
+    ],
+    [
+     "fastSeek",
+     "1"
+    ],
+    [
+     "directPlay",
+     "0"
+    ],
+    [
+     "directStream",
+     "1"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "videoQuality",
+     "100"
+    ],
+    [
+     "videoResolution",
+     "3840x2160"
+    ],
+    [
+     "maxVideoBitrate",
+     "200000"
+    ],
+    [
+     "subtitleSize",
+     "100"
+    ],
+    [
+     "audioBoost",
+     "100"
+    ],
+    [
+     "location",
+     "lan"
+    ],
+    [
+     "session",
+     "rexdovi-dv5-mde-dp0-limit"
+    ]
+   ],
+   "req_headers": {
+    "X-Plex-Product": "Plex for Android (Mobile)",
+    "X-Plex-Platform": "Android",
+    "X-Plex-Platform-Version": "14",
+    "X-Plex-Device": "Pixel 8",
+    "X-Plex-Version": "2026.19.1",
+    "X-Plex-Client-Identifier": "rexdovi-probe",
+    "X-Plex-Client-Profile-Extra": "add-limitation(scope=videoCodec&scopeName=hevc&type=NotMatch&name=video.DOVIProfile&value=5)",
+    "Accept": "application/json",
+    "X-Plex-Token": "<token>"
+   },
+   "status": 200,
+   "response": {
+    "size": 0,
+    "allowSync": "1",
+    "directPlayDecisionCode": 3000,
+    "directPlayDecisionText": "App cannot direct play this item. Direct play is disabled.",
+    "generalDecisionCode": 2000,
+    "generalDecisionText": "Neither direct play nor conversion is available.",
+    "identifier": "com.plexapp.plugins.library",
+    "librarySectionID": "1",
+    "librarySectionTitle": "Movies",
+    "librarySectionUUID": "<section-uuid>",
+    "mediaTagPrefix": "/system/bundle/media/flags/",
+    "mediaTagVersion": "1758205129",
+    "transcodeDecisionCode": 2003,
+    "transcodeDecisionText": "File is unplayable. DoVi (Profile 5) color space is not supported."
+   }
+  },
+  {
+   "label": "dv5-mde-dp0-nolimit",
+   "item": "1",
+   "query": [
+    [
+     "hasMDE",
+     "1"
+    ],
+    [
+     "path",
+     "/library/metadata/1"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "protocol",
+     "hls"
+    ],
+    [
+     "fastSeek",
+     "1"
+    ],
+    [
+     "directPlay",
+     "0"
+    ],
+    [
+     "directStream",
+     "1"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "videoQuality",
+     "100"
+    ],
+    [
+     "videoResolution",
+     "3840x2160"
+    ],
+    [
+     "maxVideoBitrate",
+     "200000"
+    ],
+    [
+     "subtitleSize",
+     "100"
+    ],
+    [
+     "audioBoost",
+     "100"
+    ],
+    [
+     "location",
+     "lan"
+    ],
+    [
+     "session",
+     "rexdovi-dv5-mde-dp0-nolimit"
+    ]
+   ],
+   "req_headers": {
+    "X-Plex-Product": "Plex for Android (Mobile)",
+    "X-Plex-Platform": "Android",
+    "X-Plex-Platform-Version": "14",
+    "X-Plex-Device": "Pixel 8",
+    "X-Plex-Version": "2026.19.1",
+    "X-Plex-Client-Identifier": "rexdovi-probe",
+    "X-Plex-Client-Profile-Extra": "",
+    "Accept": "application/json",
+    "X-Plex-Token": "<token>"
+   },
+   "status": 200,
+   "response": {
+    "size": 0,
+    "allowSync": "1",
+    "directPlayDecisionCode": 3000,
+    "directPlayDecisionText": "App cannot direct play this item. Direct play is disabled.",
+    "generalDecisionCode": 2000,
+    "generalDecisionText": "Neither direct play nor conversion is available.",
+    "identifier": "com.plexapp.plugins.library",
+    "librarySectionID": "1",
+    "librarySectionTitle": "Movies",
+    "librarySectionUUID": "<section-uuid>",
+    "mediaTagPrefix": "/system/bundle/media/flags/",
+    "mediaTagVersion": "1758205129",
+    "transcodeDecisionCode": 2003,
+    "transcodeDecisionText": "File is unplayable. DoVi (Profile 5) color space is not supported."
+   }
+  },
+  {
+   "label": "dv5-nomde-dp1-limit",
+   "item": "1",
+   "query": [
+    [
+     "path",
+     "/library/metadata/1"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "protocol",
+     "hls"
+    ],
+    [
+     "fastSeek",
+     "1"
+    ],
+    [
+     "directPlay",
+     "1"
+    ],
+    [
+     "directStream",
+     "1"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "videoQuality",
+     "100"
+    ],
+    [
+     "videoResolution",
+     "3840x2160"
+    ],
+    [
+     "maxVideoBitrate",
+     "200000"
+    ],
+    [
+     "subtitleSize",
+     "100"
+    ],
+    [
+     "audioBoost",
+     "100"
+    ],
+    [
+     "location",
+     "lan"
+    ],
+    [
+     "session",
+     "rexdovi-dv5-nomde-dp1-limit"
+    ]
+   ],
+   "req_headers": {
+    "X-Plex-Product": "Plex for Android (Mobile)",
+    "X-Plex-Platform": "Android",
+    "X-Plex-Platform-Version": "14",
+    "X-Plex-Device": "Pixel 8",
+    "X-Plex-Version": "2026.19.1",
+    "X-Plex-Client-Identifier": "rexdovi-probe",
+    "X-Plex-Client-Profile-Extra": "add-direct-play-profile(type=videoProfile&container=mp4&videoCodec=hevc&audioCodec=*)+add-limitation(scope=videoCodec&scopeName=hevc&type=NotMatch&name=video.DOVIProfile&value=5)",
+    "Accept": "application/json",
+    "X-Plex-Token": "<token>"
+   },
+   "status": 200,
+   "response": {
+    "size": 0,
+    "allowSync": "1",
+    "directPlayDecisionCode": 3000,
+    "directPlayDecisionText": "This app cannot play this item. The reason is: video.width limitation applies: 3840 > 1920.",
+    "generalDecisionCode": 2000,
+    "generalDecisionText": "Neither direct play nor conversion is available.",
+    "identifier": "com.plexapp.plugins.library",
+    "librarySectionID": "1",
+    "librarySectionTitle": "Movies",
+    "librarySectionUUID": "<section-uuid>",
+    "mediaTagPrefix": "/system/bundle/media/flags/",
+    "mediaTagVersion": "1758205129",
+    "transcodeDecisionCode": 2003,
+    "transcodeDecisionText": "File is unplayable. DoVi (Profile 5) color space is not supported."
+   }
+  },
+  {
+   "label": "dv5-nomde-dp1-nolimit",
+   "item": "1",
+   "query": [
+    [
+     "path",
+     "/library/metadata/1"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "protocol",
+     "hls"
+    ],
+    [
+     "fastSeek",
+     "1"
+    ],
+    [
+     "directPlay",
+     "1"
+    ],
+    [
+     "directStream",
+     "1"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "videoQuality",
+     "100"
+    ],
+    [
+     "videoResolution",
+     "3840x2160"
+    ],
+    [
+     "maxVideoBitrate",
+     "200000"
+    ],
+    [
+     "subtitleSize",
+     "100"
+    ],
+    [
+     "audioBoost",
+     "100"
+    ],
+    [
+     "location",
+     "lan"
+    ],
+    [
+     "session",
+     "rexdovi-dv5-nomde-dp1-nolimit"
+    ]
+   ],
+   "req_headers": {
+    "X-Plex-Product": "Plex for Android (Mobile)",
+    "X-Plex-Platform": "Android",
+    "X-Plex-Platform-Version": "14",
+    "X-Plex-Device": "Pixel 8",
+    "X-Plex-Version": "2026.19.1",
+    "X-Plex-Client-Identifier": "rexdovi-probe",
+    "X-Plex-Client-Profile-Extra": "add-direct-play-profile(type=videoProfile&container=mp4&videoCodec=hevc&audioCodec=*)",
+    "Accept": "application/json",
+    "X-Plex-Token": "<token>"
+   },
+   "status": 200,
+   "response": {
+    "size": 0,
+    "allowSync": "1",
+    "directPlayDecisionCode": 3000,
+    "directPlayDecisionText": "This app cannot play this item. The reason is: video.width limitation applies: 3840 > 1920.",
+    "generalDecisionCode": 2000,
+    "generalDecisionText": "Neither direct play nor conversion is available.",
+    "identifier": "com.plexapp.plugins.library",
+    "librarySectionID": "1",
+    "librarySectionTitle": "Movies",
+    "librarySectionUUID": "<section-uuid>",
+    "mediaTagPrefix": "/system/bundle/media/flags/",
+    "mediaTagVersion": "1758205129",
+    "transcodeDecisionCode": 2003,
+    "transcodeDecisionText": "File is unplayable. DoVi (Profile 5) color space is not supported."
+   }
+  },
+  {
+   "label": "dv5-nomde-dp0-limit",
+   "item": "1",
+   "query": [
+    [
+     "path",
+     "/library/metadata/1"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "protocol",
+     "hls"
+    ],
+    [
+     "fastSeek",
+     "1"
+    ],
+    [
+     "directPlay",
+     "0"
+    ],
+    [
+     "directStream",
+     "1"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "videoQuality",
+     "100"
+    ],
+    [
+     "videoResolution",
+     "3840x2160"
+    ],
+    [
+     "maxVideoBitrate",
+     "200000"
+    ],
+    [
+     "subtitleSize",
+     "100"
+    ],
+    [
+     "audioBoost",
+     "100"
+    ],
+    [
+     "location",
+     "lan"
+    ],
+    [
+     "session",
+     "rexdovi-dv5-nomde-dp0-limit"
+    ]
+   ],
+   "req_headers": {
+    "X-Plex-Product": "Plex for Android (Mobile)",
+    "X-Plex-Platform": "Android",
+    "X-Plex-Platform-Version": "14",
+    "X-Plex-Device": "Pixel 8",
+    "X-Plex-Version": "2026.19.1",
+    "X-Plex-Client-Identifier": "rexdovi-probe",
+    "X-Plex-Client-Profile-Extra": "add-direct-play-profile(type=videoProfile&container=mp4&videoCodec=hevc&audioCodec=*)+add-limitation(scope=videoCodec&scopeName=hevc&type=NotMatch&name=video.DOVIProfile&value=5)",
+    "Accept": "application/json",
+    "X-Plex-Token": "<token>"
+   },
+   "status": 200,
+   "response": {
+    "size": 0,
+    "allowSync": "1",
+    "directPlayDecisionCode": 3000,
+    "directPlayDecisionText": "App cannot direct play this item. Direct play is disabled.",
+    "generalDecisionCode": 2000,
+    "generalDecisionText": "Neither direct play nor conversion is available.",
+    "identifier": "com.plexapp.plugins.library",
+    "librarySectionID": "1",
+    "librarySectionTitle": "Movies",
+    "librarySectionUUID": "<section-uuid>",
+    "mediaTagPrefix": "/system/bundle/media/flags/",
+    "mediaTagVersion": "1758205129",
+    "transcodeDecisionCode": 2003,
+    "transcodeDecisionText": "File is unplayable. DoVi (Profile 5) color space is not supported."
+   }
+  },
+  {
+   "label": "dv5-nomde-dp0-nolimit",
+   "item": "1",
+   "query": [
+    [
+     "path",
+     "/library/metadata/1"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "protocol",
+     "hls"
+    ],
+    [
+     "fastSeek",
+     "1"
+    ],
+    [
+     "directPlay",
+     "0"
+    ],
+    [
+     "directStream",
+     "1"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "videoQuality",
+     "100"
+    ],
+    [
+     "videoResolution",
+     "3840x2160"
+    ],
+    [
+     "maxVideoBitrate",
+     "200000"
+    ],
+    [
+     "subtitleSize",
+     "100"
+    ],
+    [
+     "audioBoost",
+     "100"
+    ],
+    [
+     "location",
+     "lan"
+    ],
+    [
+     "session",
+     "rexdovi-dv5-nomde-dp0-nolimit"
+    ]
+   ],
+   "req_headers": {
+    "X-Plex-Product": "Plex for Android (Mobile)",
+    "X-Plex-Platform": "Android",
+    "X-Plex-Platform-Version": "14",
+    "X-Plex-Device": "Pixel 8",
+    "X-Plex-Version": "2026.19.1",
+    "X-Plex-Client-Identifier": "rexdovi-probe",
+    "X-Plex-Client-Profile-Extra": "add-direct-play-profile(type=videoProfile&container=mp4&videoCodec=hevc&audioCodec=*)",
+    "Accept": "application/json",
+    "X-Plex-Token": "<token>"
+   },
+   "status": 200,
+   "response": {
+    "size": 0,
+    "allowSync": "1",
+    "directPlayDecisionCode": 3000,
+    "directPlayDecisionText": "App cannot direct play this item. Direct play is disabled.",
+    "generalDecisionCode": 2000,
+    "generalDecisionText": "Neither direct play nor conversion is available.",
+    "identifier": "com.plexapp.plugins.library",
+    "librarySectionID": "1",
+    "librarySectionTitle": "Movies",
+    "librarySectionUUID": "<section-uuid>",
+    "mediaTagPrefix": "/system/bundle/media/flags/",
+    "mediaTagVersion": "1758205129",
+    "transcodeDecisionCode": 2003,
+    "transcodeDecisionText": "File is unplayable. DoVi (Profile 5) color space is not supported."
+   }
+  },
+  {
+   "label": "hevc-control-mde-dp1-limit",
+   "item": "2",
+   "query": [
+    [
+     "hasMDE",
+     "1"
+    ],
+    [
+     "path",
+     "/library/metadata/2"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "protocol",
+     "hls"
+    ],
+    [
+     "fastSeek",
+     "1"
+    ],
+    [
+     "directPlay",
+     "1"
+    ],
+    [
+     "directStream",
+     "1"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "videoQuality",
+     "100"
+    ],
+    [
+     "videoResolution",
+     "3840x2160"
+    ],
+    [
+     "maxVideoBitrate",
+     "200000"
+    ],
+    [
+     "subtitleSize",
+     "100"
+    ],
+    [
+     "audioBoost",
+     "100"
+    ],
+    [
+     "location",
+     "lan"
+    ],
+    [
+     "session",
+     "rexdovi-hevc-control-mde-dp1-limit"
+    ]
+   ],
+   "req_headers": {
+    "X-Plex-Product": "Plex for Android (Mobile)",
+    "X-Plex-Platform": "Android",
+    "X-Plex-Platform-Version": "14",
+    "X-Plex-Device": "Pixel 8",
+    "X-Plex-Version": "2026.19.1",
+    "X-Plex-Client-Identifier": "rexdovi-probe",
+    "X-Plex-Client-Profile-Extra": "add-limitation(scope=videoCodec&scopeName=hevc&type=NotMatch&name=video.DOVIProfile&value=5)",
+    "Accept": "application/json",
+    "X-Plex-Token": "<token>"
+   },
+   "status": 200,
+   "response": {
+    "size": 1,
+    "allowSync": "1",
+    "identifier": "com.plexapp.plugins.library",
+    "librarySectionID": "1",
+    "librarySectionTitle": "Movies",
+    "librarySectionUUID": "<section-uuid>",
+    "mdeDecisionCode": 1000,
+    "mdeDecisionText": "Direct play OK.",
+    "mediaTagPrefix": "/system/bundle/media/flags/",
+    "mediaTagVersion": "1758205129",
+    "resourceSession": "rexdovi-probe",
+    "Metadata": [
+     {
+      "addedAt": 1792250962,
+      "art": "/library/metadata/2/art/1792251095",
+      "audienceRating": 7.4,
+      "audienceRatingImage": "rottentomatoes://image.rating.upright",
+      "contentRating": "PG",
+      "duration": 10000,
+      "guid": "plex://movie/5d77688123d5a3001f4ed3df",
+      "key": "/library/metadata/2",
+      "librarySectionID": "1",
+      "librarySectionKey": "/library/sections/1",
+      "librarySectionTitle": "Movies",
+      "originallyAvailableAt": "2010-09-30",
+      "ratingKey": "2",
+      "slug": "sintel",
+      "studio": "Blender Foundation",
+      "summary": "A wandering warrior finds an unlikely friend in the form of a young dragon. The two develop a close bond, until one day the dragon is snatched away. She then sets out on a relentless quest to reclaim her friend, finding in the end that her quest exacts a far greater price than she had ever imagined.",
+      "thumb": "/library/metadata/2/thumb/1792251095",
+      "title": "Sintel",
+      "type": "movie",
+      "updatedAt": 1792251095,
+      "year": 2010,
+      "Media": [
+       {
+        "aspectRatio": "1.78",
+        "audioChannels": 1,
+        "audioCodec": "aac",
+        "audioProfile": "lc",
+        "bitrate": 3313,
+        "container": "mp4",
+        "duration": 10000,
+        "has64bitOffsets": false,
+        "height": 1080,
+        "id": "2",
+        "optimizedForStreaming": true,
+        "videoCodec": "hevc",
+        "videoFrameRate": "24p",
+        "videoProfile": "main 10",
+        "videoResolution": "1080",
+        "width": 1920,
+        "selected": true,
+        "Part": [
+         {
+          "audioProfile": "lc",
+          "container": "mp4",
+          "duration": 10000,
+          "file": "/data/movies/Sintel (2010).mp4",
+          "has64bitOffsets": false,
+          "id": "2",
+          "key": "/library/parts/2/1792250962/file.mp4",
+          "optimizedForStreaming": true,
+          "size": 4141175,
+          "videoProfile": "main 10",
+          "decision": "directplay",
+          "selected": true,
+          "Stream": [
+           {
+            "bitDepth": 10,
+            "bitrate": 3234,
+            "chromaLocation": "left",
+            "chromaSubsampling": "4:2:0",
+            "codec": "hevc",
+            "codecID": "hev1",
+            "codedHeight": 1088,
+            "codedWidth": 1920,
+            "colorRange": "tv",
+            "default": true,
+            "displayTitle": "1080p",
+            "extendedDisplayTitle": "1080p (HEVC Main 10)",
+            "frameRate": 24.0,
+            "height": 1080,
+            "id": "3",
+            "index": 0,
+            "level": 120,
+            "profile": "main 10",
+            "refFrames": 1,
+            "scanType": "progressive",
+            "streamIdentifier": "1",
+            "streamType": 1,
+            "width": 1920,
+            "location": "direct"
+           },
+           {
+            "bitrate": 69,
+            "channels": 1,
+            "codec": "aac",
+            "default": true,
+            "displayTitle": "Unknown (AAC Mono)",
+            "extendedDisplayTitle": "Unknown (AAC Mono)",
+            "id": "4",
+            "index": 1,
+            "profile": "lc",
+            "samplingRate": 44100,
+            "selected": true,
+            "streamIdentifier": "2",
+            "streamType": 2,
+            "location": "direct"
+           }
+          ]
+         }
+        ]
+       }
+      ],
+      "UltraBlurColors": [
+       {
+        "bottomLeft": "0f2b3c",
+        "bottomRight": "030f1b",
+        "topLeft": "081c2a",
+        "topRight": "020b14"
+       }
+      ],
+      "Genre": [
+       {
+        "filter": "genre=5",
+        "id": "5",
+        "tag": "Animation"
+       },
+       {
+        "filter": "genre=89",
+        "id": "89",
+        "tag": "Fantasy"
+       },
+       {
+        "filter": "genre=90",
+        "id": "90",
+        "tag": "Short"
+       },
+       {
+        "filter": "genre=6",
+        "id": "6",
+        "tag": "Action"
+       },
+       {
+        "filter": "genre=7",
+        "id": "7",
+        "tag": "Adventure"
+       },
+       {
+        "filter": "genre=91",
+        "id": "91",
+        "tag": "Drama"
+       },
+       {
+        "filter": "genre=4",
+        "id": "4",
+        "tag": "Science Fiction"
+       }
+      ],
+      "Country": [
+       {
+        "filter": "country=97",
+        "id": "97",
+        "tag": "Netherlands"
+       }
+      ],
+      "Rating": [
+       {
+        "image": "imdb://image.rating",
+        "type": "audience",
+        "value": "7.4"
+       },
+       {
+        "image": "rottentomatoes://image.rating.upright",
+        "type": "audience",
+        "value": "7.4"
+       },
+       {
+        "image": "themoviedb://image.rating",
+        "type": "audience",
+        "value": "7.3"
+       }
+      ],
+      "Director": [
+       {
+        "filter": "director=92",
+        "id": "92",
+        "tag": "Colin Levy",
+        "tagKey": "5d77688123d5a3001f4ed40a",
+        "thumb": "https://metadata-static.plex.tv/d/people/d8e05ba0778c6373127f8d8b07c17326.jpg"
+       }
+      ],
+      "Writer": [
+       {
+        "filter": "writer=93",
+        "id": "93",
+        "tag": "Esther Wouda",
+        "tagKey": "5d9c0904d4f2a9001f804e98"
+       }
+      ],
+      "Role": [
+       {
+        "filter": "actor=94",
+        "id": "94",
+        "role": "Sintel (voice)",
+        "tag": "Halina Reijn",
+        "tagKey": "5d77682bf54112001f5bc663",
+        "thumb": "https://metadata-static.plex.tv/9/people/95a33cf9743f24d12c2ac803a26941bc.jpg"
+       },
+       {
+        "filter": "actor=95",
+        "id": "95",
+        "role": "Shaman (voice)",
+        "tag": "Thom Hoffman",
+        "tagKey": "5d7768275af944001f1f6b57",
+        "thumb": "https://metadata-static.plex.tv/2/people/2f5a97329557ec9b911e8f82c0b0fcf8.jpg"
+       }
+      ],
+      "Producer": [
+       {
+        "filter": "producer=96",
+        "id": "96",
+        "tag": "Ton Roosendaal",
+        "tagKey": "5d776834103a2d001f567902",
+        "thumb": "https://metadata-static.plex.tv/d/people/d0cd238b5a00353ddae78dd55720f7e3.jpg"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "label": "hevc-control-mde-dp1-nolimit",
+   "item": "2",
+   "query": [
+    [
+     "hasMDE",
+     "1"
+    ],
+    [
+     "path",
+     "/library/metadata/2"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "protocol",
+     "hls"
+    ],
+    [
+     "fastSeek",
+     "1"
+    ],
+    [
+     "directPlay",
+     "1"
+    ],
+    [
+     "directStream",
+     "1"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "videoQuality",
+     "100"
+    ],
+    [
+     "videoResolution",
+     "3840x2160"
+    ],
+    [
+     "maxVideoBitrate",
+     "200000"
+    ],
+    [
+     "subtitleSize",
+     "100"
+    ],
+    [
+     "audioBoost",
+     "100"
+    ],
+    [
+     "location",
+     "lan"
+    ],
+    [
+     "session",
+     "rexdovi-hevc-control-mde-dp1-nolimit"
+    ]
+   ],
+   "req_headers": {
+    "X-Plex-Product": "Plex for Android (Mobile)",
+    "X-Plex-Platform": "Android",
+    "X-Plex-Platform-Version": "14",
+    "X-Plex-Device": "Pixel 8",
+    "X-Plex-Version": "2026.19.1",
+    "X-Plex-Client-Identifier": "rexdovi-probe",
+    "X-Plex-Client-Profile-Extra": "",
+    "Accept": "application/json",
+    "X-Plex-Token": "<token>"
+   },
+   "status": 200,
+   "response": {
+    "size": 1,
+    "allowSync": "1",
+    "identifier": "com.plexapp.plugins.library",
+    "librarySectionID": "1",
+    "librarySectionTitle": "Movies",
+    "librarySectionUUID": "<section-uuid>",
+    "mdeDecisionCode": 1000,
+    "mdeDecisionText": "Direct play OK.",
+    "mediaTagPrefix": "/system/bundle/media/flags/",
+    "mediaTagVersion": "1758205129",
+    "resourceSession": "rexdovi-probe",
+    "Metadata": [
+     {
+      "addedAt": 1792250962,
+      "art": "/library/metadata/2/art/1792251095",
+      "audienceRating": 7.4,
+      "audienceRatingImage": "rottentomatoes://image.rating.upright",
+      "contentRating": "PG",
+      "duration": 10000,
+      "guid": "plex://movie/5d77688123d5a3001f4ed3df",
+      "key": "/library/metadata/2",
+      "librarySectionID": "1",
+      "librarySectionKey": "/library/sections/1",
+      "librarySectionTitle": "Movies",
+      "originallyAvailableAt": "2010-09-30",
+      "ratingKey": "2",
+      "slug": "sintel",
+      "studio": "Blender Foundation",
+      "summary": "A wandering warrior finds an unlikely friend in the form of a young dragon. The two develop a close bond, until one day the dragon is snatched away. She then sets out on a relentless quest to reclaim her friend, finding in the end that her quest exacts a far greater price than she had ever imagined.",
+      "thumb": "/library/metadata/2/thumb/1792251095",
+      "title": "Sintel",
+      "type": "movie",
+      "updatedAt": 1792251095,
+      "year": 2010,
+      "Media": [
+       {
+        "aspectRatio": "1.78",
+        "audioChannels": 1,
+        "audioCodec": "aac",
+        "audioProfile": "lc",
+        "bitrate": 3313,
+        "container": "mp4",
+        "duration": 10000,
+        "has64bitOffsets": false,
+        "height": 1080,
+        "id": "2",
+        "optimizedForStreaming": true,
+        "videoCodec": "hevc",
+        "videoFrameRate": "24p",
+        "videoProfile": "main 10",
+        "videoResolution": "1080",
+        "width": 1920,
+        "selected": true,
+        "Part": [
+         {
+          "audioProfile": "lc",
+          "container": "mp4",
+          "duration": 10000,
+          "file": "/data/movies/Sintel (2010).mp4",
+          "has64bitOffsets": false,
+          "id": "2",
+          "key": "/library/parts/2/1792250962/file.mp4",
+          "optimizedForStreaming": true,
+          "size": 4141175,
+          "videoProfile": "main 10",
+          "decision": "directplay",
+          "selected": true,
+          "Stream": [
+           {
+            "bitDepth": 10,
+            "bitrate": 3234,
+            "chromaLocation": "left",
+            "chromaSubsampling": "4:2:0",
+            "codec": "hevc",
+            "codecID": "hev1",
+            "codedHeight": 1088,
+            "codedWidth": 1920,
+            "colorRange": "tv",
+            "default": true,
+            "displayTitle": "1080p",
+            "extendedDisplayTitle": "1080p (HEVC Main 10)",
+            "frameRate": 24.0,
+            "height": 1080,
+            "id": "3",
+            "index": 0,
+            "level": 120,
+            "profile": "main 10",
+            "refFrames": 1,
+            "scanType": "progressive",
+            "streamIdentifier": "1",
+            "streamType": 1,
+            "width": 1920,
+            "location": "direct"
+           },
+           {
+            "bitrate": 69,
+            "channels": 1,
+            "codec": "aac",
+            "default": true,
+            "displayTitle": "Unknown (AAC Mono)",
+            "extendedDisplayTitle": "Unknown (AAC Mono)",
+            "id": "4",
+            "index": 1,
+            "profile": "lc",
+            "samplingRate": 44100,
+            "selected": true,
+            "streamIdentifier": "2",
+            "streamType": 2,
+            "location": "direct"
+           }
+          ]
+         }
+        ]
+       }
+      ],
+      "UltraBlurColors": [
+       {
+        "bottomLeft": "0f2b3c",
+        "bottomRight": "030f1b",
+        "topLeft": "081c2a",
+        "topRight": "020b14"
+       }
+      ],
+      "Genre": [
+       {
+        "filter": "genre=5",
+        "id": "5",
+        "tag": "Animation"
+       },
+       {
+        "filter": "genre=89",
+        "id": "89",
+        "tag": "Fantasy"
+       },
+       {
+        "filter": "genre=90",
+        "id": "90",
+        "tag": "Short"
+       },
+       {
+        "filter": "genre=6",
+        "id": "6",
+        "tag": "Action"
+       },
+       {
+        "filter": "genre=7",
+        "id": "7",
+        "tag": "Adventure"
+       },
+       {
+        "filter": "genre=91",
+        "id": "91",
+        "tag": "Drama"
+       },
+       {
+        "filter": "genre=4",
+        "id": "4",
+        "tag": "Science Fiction"
+       }
+      ],
+      "Country": [
+       {
+        "filter": "country=97",
+        "id": "97",
+        "tag": "Netherlands"
+       }
+      ],
+      "Rating": [
+       {
+        "image": "imdb://image.rating",
+        "type": "audience",
+        "value": "7.4"
+       },
+       {
+        "image": "rottentomatoes://image.rating.upright",
+        "type": "audience",
+        "value": "7.4"
+       },
+       {
+        "image": "themoviedb://image.rating",
+        "type": "audience",
+        "value": "7.3"
+       }
+      ],
+      "Director": [
+       {
+        "filter": "director=92",
+        "id": "92",
+        "tag": "Colin Levy",
+        "tagKey": "5d77688123d5a3001f4ed40a",
+        "thumb": "https://metadata-static.plex.tv/d/people/d8e05ba0778c6373127f8d8b07c17326.jpg"
+       }
+      ],
+      "Writer": [
+       {
+        "filter": "writer=93",
+        "id": "93",
+        "tag": "Esther Wouda",
+        "tagKey": "5d9c0904d4f2a9001f804e98"
+       }
+      ],
+      "Role": [
+       {
+        "filter": "actor=94",
+        "id": "94",
+        "role": "Sintel (voice)",
+        "tag": "Halina Reijn",
+        "tagKey": "5d77682bf54112001f5bc663",
+        "thumb": "https://metadata-static.plex.tv/9/people/95a33cf9743f24d12c2ac803a26941bc.jpg"
+       },
+       {
+        "filter": "actor=95",
+        "id": "95",
+        "role": "Shaman (voice)",
+        "tag": "Thom Hoffman",
+        "tagKey": "5d7768275af944001f1f6b57",
+        "thumb": "https://metadata-static.plex.tv/2/people/2f5a97329557ec9b911e8f82c0b0fcf8.jpg"
+       }
+      ],
+      "Producer": [
+       {
+        "filter": "producer=96",
+        "id": "96",
+        "tag": "Ton Roosendaal",
+        "tagKey": "5d776834103a2d001f567902",
+        "thumb": "https://metadata-static.plex.tv/d/people/d0cd238b5a00353ddae78dd55720f7e3.jpg"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "label": "hevc-control-mde-dp0-limit",
+   "item": "2",
+   "query": [
+    [
+     "hasMDE",
+     "1"
+    ],
+    [
+     "path",
+     "/library/metadata/2"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "protocol",
+     "hls"
+    ],
+    [
+     "fastSeek",
+     "1"
+    ],
+    [
+     "directPlay",
+     "0"
+    ],
+    [
+     "directStream",
+     "1"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "videoQuality",
+     "100"
+    ],
+    [
+     "videoResolution",
+     "3840x2160"
+    ],
+    [
+     "maxVideoBitrate",
+     "200000"
+    ],
+    [
+     "subtitleSize",
+     "100"
+    ],
+    [
+     "audioBoost",
+     "100"
+    ],
+    [
+     "location",
+     "lan"
+    ],
+    [
+     "session",
+     "rexdovi-hevc-control-mde-dp0-limit"
+    ]
+   ],
+   "req_headers": {
+    "X-Plex-Product": "Plex for Android (Mobile)",
+    "X-Plex-Platform": "Android",
+    "X-Plex-Platform-Version": "14",
+    "X-Plex-Device": "Pixel 8",
+    "X-Plex-Version": "2026.19.1",
+    "X-Plex-Client-Identifier": "rexdovi-probe",
+    "X-Plex-Client-Profile-Extra": "add-limitation(scope=videoCodec&scopeName=hevc&type=NotMatch&name=video.DOVIProfile&value=5)",
+    "Accept": "application/json",
+    "X-Plex-Token": "<token>"
+   },
+   "status": 200,
+   "response": {
+    "size": 1,
+    "allowSync": "1",
+    "directPlayDecisionCode": 3000,
+    "directPlayDecisionText": "App cannot direct play this item. Direct play is disabled.",
+    "generalDecisionCode": 1001,
+    "generalDecisionText": "Direct play not available; Conversion OK.",
+    "identifier": "com.plexapp.plugins.library",
+    "librarySectionID": "1",
+    "librarySectionTitle": "Movies",
+    "librarySectionUUID": "<section-uuid>",
+    "mediaTagPrefix": "/system/bundle/media/flags/",
+    "mediaTagVersion": "1758205129",
+    "resourceSession": "rexdovi-probe",
+    "transcodeDecisionCode": 1001,
+    "transcodeDecisionText": "Direct play not available; Conversion OK.",
+    "Metadata": [
+     {
+      "addedAt": 1792250962,
+      "art": "/library/metadata/2/art/1792251095",
+      "audienceRating": 7.4,
+      "audienceRatingImage": "rottentomatoes://image.rating.upright",
+      "contentRating": "PG",
+      "duration": 10000,
+      "guid": "plex://movie/5d77688123d5a3001f4ed3df",
+      "key": "/library/metadata/2",
+      "librarySectionID": "1",
+      "librarySectionKey": "/library/sections/1",
+      "librarySectionTitle": "Movies",
+      "originallyAvailableAt": "2010-09-30",
+      "ratingKey": "2",
+      "slug": "sintel",
+      "studio": "Blender Foundation",
+      "summary": "A wandering warrior finds an unlikely friend in the form of a young dragon. The two develop a close bond, until one day the dragon is snatched away. She then sets out on a relentless quest to reclaim her friend, finding in the end that her quest exacts a far greater price than she had ever imagined.",
+      "thumb": "/library/metadata/2/thumb/1792251095",
+      "title": "Sintel",
+      "type": "movie",
+      "updatedAt": 1792251095,
+      "year": 2010,
+      "Media": [
+       {
+        "audioProfile": "lc",
+        "id": "2",
+        "videoProfile": "main 10",
+        "audioChannels": 1,
+        "audioCodec": "aac",
+        "bitrate": 20190,
+        "container": "mpegts",
+        "duration": 10000,
+        "height": 1080,
+        "protocol": "hls",
+        "videoCodec": "h264",
+        "videoFrameRate": "24p",
+        "videoResolution": "1080p",
+        "width": 1920,
+        "selected": true,
+        "Part": [
+         {
+          "audioProfile": "lc",
+          "id": "2",
+          "videoProfile": "main 10",
+          "bitrate": 20190,
+          "container": "mpegts",
+          "duration": 10000,
+          "height": 1080,
+          "protocol": "hls",
+          "width": 1920,
+          "decision": "transcode",
+          "selected": true,
+          "Stream": [
+           {
+            "bitDepth": 8,
+            "bitrate": 20121,
+            "codec": "h264",
+            "default": true,
+            "displayTitle": "1080p",
+            "extendedDisplayTitle": "1080p (HEVC Main 10)",
+            "frameRate": 24.0,
+            "height": 1080,
+            "id": "3",
+            "streamType": 1,
+            "width": 1920,
+            "decision": "transcode",
+            "location": "segments-av"
+           },
+           {
+            "bitrate": 69,
+            "bitrateMode": "cbr",
+            "channels": 1,
+            "codec": "aac",
+            "default": true,
+            "displayTitle": "Unknown (AAC Mono)",
+            "extendedDisplayTitle": "Unknown (AAC Mono)",
+            "id": "4",
+            "profile": "lc",
+            "samplingRate": 44100,
+            "selected": true,
+            "streamType": 2,
+            "decision": "copy",
+            "location": "segments-av"
+           }
+          ]
+         }
+        ]
+       }
+      ],
+      "UltraBlurColors": [
+       {
+        "bottomLeft": "0f2b3c",
+        "bottomRight": "030f1b",
+        "topLeft": "081c2a",
+        "topRight": "020b14"
+       }
+      ],
+      "Genre": [
+       {
+        "filter": "genre=5",
+        "id": "5",
+        "tag": "Animation"
+       },
+       {
+        "filter": "genre=89",
+        "id": "89",
+        "tag": "Fantasy"
+       },
+       {
+        "filter": "genre=90",
+        "id": "90",
+        "tag": "Short"
+       },
+       {
+        "filter": "genre=6",
+        "id": "6",
+        "tag": "Action"
+       },
+       {
+        "filter": "genre=7",
+        "id": "7",
+        "tag": "Adventure"
+       },
+       {
+        "filter": "genre=91",
+        "id": "91",
+        "tag": "Drama"
+       },
+       {
+        "filter": "genre=4",
+        "id": "4",
+        "tag": "Science Fiction"
+       }
+      ],
+      "Country": [
+       {
+        "filter": "country=97",
+        "id": "97",
+        "tag": "Netherlands"
+       }
+      ],
+      "Rating": [
+       {
+        "image": "imdb://image.rating",
+        "type": "audience",
+        "value": "7.4"
+       },
+       {
+        "image": "rottentomatoes://image.rating.upright",
+        "type": "audience",
+        "value": "7.4"
+       },
+       {
+        "image": "themoviedb://image.rating",
+        "type": "audience",
+        "value": "7.3"
+       }
+      ],
+      "Director": [
+       {
+        "filter": "director=92",
+        "id": "92",
+        "tag": "Colin Levy",
+        "tagKey": "5d77688123d5a3001f4ed40a",
+        "thumb": "https://metadata-static.plex.tv/d/people/d8e05ba0778c6373127f8d8b07c17326.jpg"
+       }
+      ],
+      "Writer": [
+       {
+        "filter": "writer=93",
+        "id": "93",
+        "tag": "Esther Wouda",
+        "tagKey": "5d9c0904d4f2a9001f804e98"
+       }
+      ],
+      "Role": [
+       {
+        "filter": "actor=94",
+        "id": "94",
+        "role": "Sintel (voice)",
+        "tag": "Halina Reijn",
+        "tagKey": "5d77682bf54112001f5bc663",
+        "thumb": "https://metadata-static.plex.tv/9/people/95a33cf9743f24d12c2ac803a26941bc.jpg"
+       },
+       {
+        "filter": "actor=95",
+        "id": "95",
+        "role": "Shaman (voice)",
+        "tag": "Thom Hoffman",
+        "tagKey": "5d7768275af944001f1f6b57",
+        "thumb": "https://metadata-static.plex.tv/2/people/2f5a97329557ec9b911e8f82c0b0fcf8.jpg"
+       }
+      ],
+      "Producer": [
+       {
+        "filter": "producer=96",
+        "id": "96",
+        "tag": "Ton Roosendaal",
+        "tagKey": "5d776834103a2d001f567902",
+        "thumb": "https://metadata-static.plex.tv/d/people/d0cd238b5a00353ddae78dd55720f7e3.jpg"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "label": "hevc-control-mde-dp0-nolimit",
+   "item": "2",
+   "query": [
+    [
+     "hasMDE",
+     "1"
+    ],
+    [
+     "path",
+     "/library/metadata/2"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "protocol",
+     "hls"
+    ],
+    [
+     "fastSeek",
+     "1"
+    ],
+    [
+     "directPlay",
+     "0"
+    ],
+    [
+     "directStream",
+     "1"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "videoQuality",
+     "100"
+    ],
+    [
+     "videoResolution",
+     "3840x2160"
+    ],
+    [
+     "maxVideoBitrate",
+     "200000"
+    ],
+    [
+     "subtitleSize",
+     "100"
+    ],
+    [
+     "audioBoost",
+     "100"
+    ],
+    [
+     "location",
+     "lan"
+    ],
+    [
+     "session",
+     "rexdovi-hevc-control-mde-dp0-nolimit"
+    ]
+   ],
+   "req_headers": {
+    "X-Plex-Product": "Plex for Android (Mobile)",
+    "X-Plex-Platform": "Android",
+    "X-Plex-Platform-Version": "14",
+    "X-Plex-Device": "Pixel 8",
+    "X-Plex-Version": "2026.19.1",
+    "X-Plex-Client-Identifier": "rexdovi-probe",
+    "X-Plex-Client-Profile-Extra": "",
+    "Accept": "application/json",
+    "X-Plex-Token": "<token>"
+   },
+   "status": 200,
+   "response": {
+    "size": 1,
+    "allowSync": "1",
+    "directPlayDecisionCode": 3000,
+    "directPlayDecisionText": "App cannot direct play this item. Direct play is disabled.",
+    "generalDecisionCode": 1001,
+    "generalDecisionText": "Direct play not available; Conversion OK.",
+    "identifier": "com.plexapp.plugins.library",
+    "librarySectionID": "1",
+    "librarySectionTitle": "Movies",
+    "librarySectionUUID": "<section-uuid>",
+    "mediaTagPrefix": "/system/bundle/media/flags/",
+    "mediaTagVersion": "1758205129",
+    "resourceSession": "rexdovi-probe",
+    "transcodeDecisionCode": 1001,
+    "transcodeDecisionText": "Direct play not available; Conversion OK.",
+    "Metadata": [
+     {
+      "addedAt": 1792250962,
+      "art": "/library/metadata/2/art/1792251095",
+      "audienceRating": 7.4,
+      "audienceRatingImage": "rottentomatoes://image.rating.upright",
+      "contentRating": "PG",
+      "duration": 10000,
+      "guid": "plex://movie/5d77688123d5a3001f4ed3df",
+      "key": "/library/metadata/2",
+      "librarySectionID": "1",
+      "librarySectionKey": "/library/sections/1",
+      "librarySectionTitle": "Movies",
+      "originallyAvailableAt": "2010-09-30",
+      "ratingKey": "2",
+      "slug": "sintel",
+      "studio": "Blender Foundation",
+      "summary": "A wandering warrior finds an unlikely friend in the form of a young dragon. The two develop a close bond, until one day the dragon is snatched away. She then sets out on a relentless quest to reclaim her friend, finding in the end that her quest exacts a far greater price than she had ever imagined.",
+      "thumb": "/library/metadata/2/thumb/1792251095",
+      "title": "Sintel",
+      "type": "movie",
+      "updatedAt": 1792251095,
+      "year": 2010,
+      "Media": [
+       {
+        "audioProfile": "lc",
+        "id": "2",
+        "videoProfile": "main 10",
+        "audioChannels": 1,
+        "audioCodec": "aac",
+        "bitrate": 20190,
+        "container": "mpegts",
+        "duration": 10000,
+        "height": 1080,
+        "protocol": "hls",
+        "videoCodec": "h264",
+        "videoFrameRate": "24p",
+        "videoResolution": "1080p",
+        "width": 1920,
+        "selected": true,
+        "Part": [
+         {
+          "audioProfile": "lc",
+          "id": "2",
+          "videoProfile": "main 10",
+          "bitrate": 20190,
+          "container": "mpegts",
+          "duration": 10000,
+          "height": 1080,
+          "protocol": "hls",
+          "width": 1920,
+          "decision": "transcode",
+          "selected": true,
+          "Stream": [
+           {
+            "bitDepth": 8,
+            "bitrate": 20121,
+            "codec": "h264",
+            "default": true,
+            "displayTitle": "1080p",
+            "extendedDisplayTitle": "1080p (HEVC Main 10)",
+            "frameRate": 24.0,
+            "height": 1080,
+            "id": "3",
+            "streamType": 1,
+            "width": 1920,
+            "decision": "transcode",
+            "location": "segments-av"
+           },
+           {
+            "bitrate": 69,
+            "bitrateMode": "cbr",
+            "channels": 1,
+            "codec": "aac",
+            "default": true,
+            "displayTitle": "Unknown (AAC Mono)",
+            "extendedDisplayTitle": "Unknown (AAC Mono)",
+            "id": "4",
+            "profile": "lc",
+            "samplingRate": 44100,
+            "selected": true,
+            "streamType": 2,
+            "decision": "copy",
+            "location": "segments-av"
+           }
+          ]
+         }
+        ]
+       }
+      ],
+      "UltraBlurColors": [
+       {
+        "bottomLeft": "0f2b3c",
+        "bottomRight": "030f1b",
+        "topLeft": "081c2a",
+        "topRight": "020b14"
+       }
+      ],
+      "Genre": [
+       {
+        "filter": "genre=5",
+        "id": "5",
+        "tag": "Animation"
+       },
+       {
+        "filter": "genre=89",
+        "id": "89",
+        "tag": "Fantasy"
+       },
+       {
+        "filter": "genre=90",
+        "id": "90",
+        "tag": "Short"
+       },
+       {
+        "filter": "genre=6",
+        "id": "6",
+        "tag": "Action"
+       },
+       {
+        "filter": "genre=7",
+        "id": "7",
+        "tag": "Adventure"
+       },
+       {
+        "filter": "genre=91",
+        "id": "91",
+        "tag": "Drama"
+       },
+       {
+        "filter": "genre=4",
+        "id": "4",
+        "tag": "Science Fiction"
+       }
+      ],
+      "Country": [
+       {
+        "filter": "country=97",
+        "id": "97",
+        "tag": "Netherlands"
+       }
+      ],
+      "Rating": [
+       {
+        "image": "imdb://image.rating",
+        "type": "audience",
+        "value": "7.4"
+       },
+       {
+        "image": "rottentomatoes://image.rating.upright",
+        "type": "audience",
+        "value": "7.4"
+       },
+       {
+        "image": "themoviedb://image.rating",
+        "type": "audience",
+        "value": "7.3"
+       }
+      ],
+      "Director": [
+       {
+        "filter": "director=92",
+        "id": "92",
+        "tag": "Colin Levy",
+        "tagKey": "5d77688123d5a3001f4ed40a",
+        "thumb": "https://metadata-static.plex.tv/d/people/d8e05ba0778c6373127f8d8b07c17326.jpg"
+       }
+      ],
+      "Writer": [
+       {
+        "filter": "writer=93",
+        "id": "93",
+        "tag": "Esther Wouda",
+        "tagKey": "5d9c0904d4f2a9001f804e98"
+       }
+      ],
+      "Role": [
+       {
+        "filter": "actor=94",
+        "id": "94",
+        "role": "Sintel (voice)",
+        "tag": "Halina Reijn",
+        "tagKey": "5d77682bf54112001f5bc663",
+        "thumb": "https://metadata-static.plex.tv/9/people/95a33cf9743f24d12c2ac803a26941bc.jpg"
+       },
+       {
+        "filter": "actor=95",
+        "id": "95",
+        "role": "Shaman (voice)",
+        "tag": "Thom Hoffman",
+        "tagKey": "5d7768275af944001f1f6b57",
+        "thumb": "https://metadata-static.plex.tv/2/people/2f5a97329557ec9b911e8f82c0b0fcf8.jpg"
+       }
+      ],
+      "Producer": [
+       {
+        "filter": "producer=96",
+        "id": "96",
+        "tag": "Ton Roosendaal",
+        "tagKey": "5d776834103a2d001f567902",
+        "thumb": "https://metadata-static.plex.tv/d/people/d0cd238b5a00353ddae78dd55720f7e3.jpg"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "label": "hevc-control-nomde-dp1-limit",
+   "item": "2",
+   "query": [
+    [
+     "path",
+     "/library/metadata/2"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "protocol",
+     "hls"
+    ],
+    [
+     "fastSeek",
+     "1"
+    ],
+    [
+     "directPlay",
+     "1"
+    ],
+    [
+     "directStream",
+     "1"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "videoQuality",
+     "100"
+    ],
+    [
+     "videoResolution",
+     "3840x2160"
+    ],
+    [
+     "maxVideoBitrate",
+     "200000"
+    ],
+    [
+     "subtitleSize",
+     "100"
+    ],
+    [
+     "audioBoost",
+     "100"
+    ],
+    [
+     "location",
+     "lan"
+    ],
+    [
+     "session",
+     "rexdovi-hevc-control-nomde-dp1-limit"
+    ]
+   ],
+   "req_headers": {
+    "X-Plex-Product": "Plex for Android (Mobile)",
+    "X-Plex-Platform": "Android",
+    "X-Plex-Platform-Version": "14",
+    "X-Plex-Device": "Pixel 8",
+    "X-Plex-Version": "2026.19.1",
+    "X-Plex-Client-Identifier": "rexdovi-probe",
+    "X-Plex-Client-Profile-Extra": "add-direct-play-profile(type=videoProfile&container=mp4&videoCodec=hevc&audioCodec=*)+add-limitation(scope=videoCodec&scopeName=hevc&type=NotMatch&name=video.DOVIProfile&value=5)",
+    "Accept": "application/json",
+    "X-Plex-Token": "<token>"
+   },
+   "status": 200,
+   "response": {
+    "size": 1,
+    "allowSync": "1",
+    "directPlayDecisionCode": 1000,
+    "directPlayDecisionText": "Direct play OK.",
+    "generalDecisionCode": 1000,
+    "generalDecisionText": "Direct play OK.",
+    "identifier": "com.plexapp.plugins.library",
+    "librarySectionID": "1",
+    "librarySectionTitle": "Movies",
+    "librarySectionUUID": "<section-uuid>",
+    "mediaTagPrefix": "/system/bundle/media/flags/",
+    "mediaTagVersion": "1758205129",
+    "resourceSession": "rexdovi-probe",
+    "Metadata": [
+     {
+      "addedAt": 1792250962,
+      "art": "/library/metadata/2/art/1792251095",
+      "audienceRating": 7.4,
+      "audienceRatingImage": "rottentomatoes://image.rating.upright",
+      "contentRating": "PG",
+      "duration": 10000,
+      "guid": "plex://movie/5d77688123d5a3001f4ed3df",
+      "key": "/library/metadata/2",
+      "librarySectionID": "1",
+      "librarySectionKey": "/library/sections/1",
+      "librarySectionTitle": "Movies",
+      "originallyAvailableAt": "2010-09-30",
+      "ratingKey": "2",
+      "slug": "sintel",
+      "studio": "Blender Foundation",
+      "summary": "A wandering warrior finds an unlikely friend in the form of a young dragon. The two develop a close bond, until one day the dragon is snatched away. She then sets out on a relentless quest to reclaim her friend, finding in the end that her quest exacts a far greater price than she had ever imagined.",
+      "thumb": "/library/metadata/2/thumb/1792251095",
+      "title": "Sintel",
+      "type": "movie",
+      "updatedAt": 1792251095,
+      "year": 2010,
+      "Media": [
+       {
+        "aspectRatio": "1.78",
+        "audioChannels": 1,
+        "audioCodec": "aac",
+        "audioProfile": "lc",
+        "bitrate": 3313,
+        "container": "mp4",
+        "duration": 10000,
+        "has64bitOffsets": false,
+        "height": 1080,
+        "id": "2",
+        "optimizedForStreaming": true,
+        "videoCodec": "hevc",
+        "videoFrameRate": "24p",
+        "videoProfile": "main 10",
+        "videoResolution": "1080",
+        "width": 1920,
+        "selected": true,
+        "Part": [
+         {
+          "audioProfile": "lc",
+          "container": "mp4",
+          "duration": 10000,
+          "file": "/data/movies/Sintel (2010).mp4",
+          "has64bitOffsets": false,
+          "id": "2",
+          "key": "/library/parts/2/1792250962/file.mp4",
+          "optimizedForStreaming": true,
+          "size": 4141175,
+          "videoProfile": "main 10",
+          "decision": "directplay",
+          "selected": true,
+          "Stream": [
+           {
+            "bitDepth": 10,
+            "bitrate": 3234,
+            "chromaLocation": "left",
+            "chromaSubsampling": "4:2:0",
+            "codec": "hevc",
+            "codecID": "hev1",
+            "codedHeight": 1088,
+            "codedWidth": 1920,
+            "colorRange": "tv",
+            "default": true,
+            "displayTitle": "1080p",
+            "extendedDisplayTitle": "1080p (HEVC Main 10)",
+            "frameRate": 24.0,
+            "height": 1080,
+            "id": "3",
+            "index": 0,
+            "level": 120,
+            "profile": "main 10",
+            "refFrames": 1,
+            "scanType": "progressive",
+            "streamIdentifier": "1",
+            "streamType": 1,
+            "width": 1920,
+            "location": "direct"
+           },
+           {
+            "bitrate": 69,
+            "channels": 1,
+            "codec": "aac",
+            "default": true,
+            "displayTitle": "Unknown (AAC Mono)",
+            "extendedDisplayTitle": "Unknown (AAC Mono)",
+            "id": "4",
+            "index": 1,
+            "profile": "lc",
+            "samplingRate": 44100,
+            "selected": true,
+            "streamIdentifier": "2",
+            "streamType": 2,
+            "location": "direct"
+           }
+          ]
+         }
+        ]
+       }
+      ],
+      "UltraBlurColors": [
+       {
+        "bottomLeft": "0f2b3c",
+        "bottomRight": "030f1b",
+        "topLeft": "081c2a",
+        "topRight": "020b14"
+       }
+      ],
+      "Genre": [
+       {
+        "filter": "genre=5",
+        "id": "5",
+        "tag": "Animation"
+       },
+       {
+        "filter": "genre=89",
+        "id": "89",
+        "tag": "Fantasy"
+       },
+       {
+        "filter": "genre=90",
+        "id": "90",
+        "tag": "Short"
+       },
+       {
+        "filter": "genre=6",
+        "id": "6",
+        "tag": "Action"
+       },
+       {
+        "filter": "genre=7",
+        "id": "7",
+        "tag": "Adventure"
+       },
+       {
+        "filter": "genre=91",
+        "id": "91",
+        "tag": "Drama"
+       },
+       {
+        "filter": "genre=4",
+        "id": "4",
+        "tag": "Science Fiction"
+       }
+      ],
+      "Country": [
+       {
+        "filter": "country=97",
+        "id": "97",
+        "tag": "Netherlands"
+       }
+      ],
+      "Rating": [
+       {
+        "image": "imdb://image.rating",
+        "type": "audience",
+        "value": "7.4"
+       },
+       {
+        "image": "rottentomatoes://image.rating.upright",
+        "type": "audience",
+        "value": "7.4"
+       },
+       {
+        "image": "themoviedb://image.rating",
+        "type": "audience",
+        "value": "7.3"
+       }
+      ],
+      "Director": [
+       {
+        "filter": "director=92",
+        "id": "92",
+        "tag": "Colin Levy",
+        "tagKey": "5d77688123d5a3001f4ed40a",
+        "thumb": "https://metadata-static.plex.tv/d/people/d8e05ba0778c6373127f8d8b07c17326.jpg"
+       }
+      ],
+      "Writer": [
+       {
+        "filter": "writer=93",
+        "id": "93",
+        "tag": "Esther Wouda",
+        "tagKey": "5d9c0904d4f2a9001f804e98"
+       }
+      ],
+      "Role": [
+       {
+        "filter": "actor=94",
+        "id": "94",
+        "role": "Sintel (voice)",
+        "tag": "Halina Reijn",
+        "tagKey": "5d77682bf54112001f5bc663",
+        "thumb": "https://metadata-static.plex.tv/9/people/95a33cf9743f24d12c2ac803a26941bc.jpg"
+       },
+       {
+        "filter": "actor=95",
+        "id": "95",
+        "role": "Shaman (voice)",
+        "tag": "Thom Hoffman",
+        "tagKey": "5d7768275af944001f1f6b57",
+        "thumb": "https://metadata-static.plex.tv/2/people/2f5a97329557ec9b911e8f82c0b0fcf8.jpg"
+       }
+      ],
+      "Producer": [
+       {
+        "filter": "producer=96",
+        "id": "96",
+        "tag": "Ton Roosendaal",
+        "tagKey": "5d776834103a2d001f567902",
+        "thumb": "https://metadata-static.plex.tv/d/people/d0cd238b5a00353ddae78dd55720f7e3.jpg"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "label": "hevc-control-nomde-dp1-nolimit",
+   "item": "2",
+   "query": [
+    [
+     "path",
+     "/library/metadata/2"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "protocol",
+     "hls"
+    ],
+    [
+     "fastSeek",
+     "1"
+    ],
+    [
+     "directPlay",
+     "1"
+    ],
+    [
+     "directStream",
+     "1"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "videoQuality",
+     "100"
+    ],
+    [
+     "videoResolution",
+     "3840x2160"
+    ],
+    [
+     "maxVideoBitrate",
+     "200000"
+    ],
+    [
+     "subtitleSize",
+     "100"
+    ],
+    [
+     "audioBoost",
+     "100"
+    ],
+    [
+     "location",
+     "lan"
+    ],
+    [
+     "session",
+     "rexdovi-hevc-control-nomde-dp1-nolimit"
+    ]
+   ],
+   "req_headers": {
+    "X-Plex-Product": "Plex for Android (Mobile)",
+    "X-Plex-Platform": "Android",
+    "X-Plex-Platform-Version": "14",
+    "X-Plex-Device": "Pixel 8",
+    "X-Plex-Version": "2026.19.1",
+    "X-Plex-Client-Identifier": "rexdovi-probe",
+    "X-Plex-Client-Profile-Extra": "add-direct-play-profile(type=videoProfile&container=mp4&videoCodec=hevc&audioCodec=*)",
+    "Accept": "application/json",
+    "X-Plex-Token": "<token>"
+   },
+   "status": 200,
+   "response": {
+    "size": 1,
+    "allowSync": "1",
+    "directPlayDecisionCode": 1000,
+    "directPlayDecisionText": "Direct play OK.",
+    "generalDecisionCode": 1000,
+    "generalDecisionText": "Direct play OK.",
+    "identifier": "com.plexapp.plugins.library",
+    "librarySectionID": "1",
+    "librarySectionTitle": "Movies",
+    "librarySectionUUID": "<section-uuid>",
+    "mediaTagPrefix": "/system/bundle/media/flags/",
+    "mediaTagVersion": "1758205129",
+    "resourceSession": "rexdovi-probe",
+    "Metadata": [
+     {
+      "addedAt": 1792250962,
+      "art": "/library/metadata/2/art/1792251095",
+      "audienceRating": 7.4,
+      "audienceRatingImage": "rottentomatoes://image.rating.upright",
+      "contentRating": "PG",
+      "duration": 10000,
+      "guid": "plex://movie/5d77688123d5a3001f4ed3df",
+      "key": "/library/metadata/2",
+      "librarySectionID": "1",
+      "librarySectionKey": "/library/sections/1",
+      "librarySectionTitle": "Movies",
+      "originallyAvailableAt": "2010-09-30",
+      "ratingKey": "2",
+      "slug": "sintel",
+      "studio": "Blender Foundation",
+      "summary": "A wandering warrior finds an unlikely friend in the form of a young dragon. The two develop a close bond, until one day the dragon is snatched away. She then sets out on a relentless quest to reclaim her friend, finding in the end that her quest exacts a far greater price than she had ever imagined.",
+      "thumb": "/library/metadata/2/thumb/1792251095",
+      "title": "Sintel",
+      "type": "movie",
+      "updatedAt": 1792251095,
+      "year": 2010,
+      "Media": [
+       {
+        "aspectRatio": "1.78",
+        "audioChannels": 1,
+        "audioCodec": "aac",
+        "audioProfile": "lc",
+        "bitrate": 3313,
+        "container": "mp4",
+        "duration": 10000,
+        "has64bitOffsets": false,
+        "height": 1080,
+        "id": "2",
+        "optimizedForStreaming": true,
+        "videoCodec": "hevc",
+        "videoFrameRate": "24p",
+        "videoProfile": "main 10",
+        "videoResolution": "1080",
+        "width": 1920,
+        "selected": true,
+        "Part": [
+         {
+          "audioProfile": "lc",
+          "container": "mp4",
+          "duration": 10000,
+          "file": "/data/movies/Sintel (2010).mp4",
+          "has64bitOffsets": false,
+          "id": "2",
+          "key": "/library/parts/2/1792250962/file.mp4",
+          "optimizedForStreaming": true,
+          "size": 4141175,
+          "videoProfile": "main 10",
+          "decision": "directplay",
+          "selected": true,
+          "Stream": [
+           {
+            "bitDepth": 10,
+            "bitrate": 3234,
+            "chromaLocation": "left",
+            "chromaSubsampling": "4:2:0",
+            "codec": "hevc",
+            "codecID": "hev1",
+            "codedHeight": 1088,
+            "codedWidth": 1920,
+            "colorRange": "tv",
+            "default": true,
+            "displayTitle": "1080p",
+            "extendedDisplayTitle": "1080p (HEVC Main 10)",
+            "frameRate": 24.0,
+            "height": 1080,
+            "id": "3",
+            "index": 0,
+            "level": 120,
+            "profile": "main 10",
+            "refFrames": 1,
+            "scanType": "progressive",
+            "streamIdentifier": "1",
+            "streamType": 1,
+            "width": 1920,
+            "location": "direct"
+           },
+           {
+            "bitrate": 69,
+            "channels": 1,
+            "codec": "aac",
+            "default": true,
+            "displayTitle": "Unknown (AAC Mono)",
+            "extendedDisplayTitle": "Unknown (AAC Mono)",
+            "id": "4",
+            "index": 1,
+            "profile": "lc",
+            "samplingRate": 44100,
+            "selected": true,
+            "streamIdentifier": "2",
+            "streamType": 2,
+            "location": "direct"
+           }
+          ]
+         }
+        ]
+       }
+      ],
+      "UltraBlurColors": [
+       {
+        "bottomLeft": "0f2b3c",
+        "bottomRight": "030f1b",
+        "topLeft": "081c2a",
+        "topRight": "020b14"
+       }
+      ],
+      "Genre": [
+       {
+        "filter": "genre=5",
+        "id": "5",
+        "tag": "Animation"
+       },
+       {
+        "filter": "genre=89",
+        "id": "89",
+        "tag": "Fantasy"
+       },
+       {
+        "filter": "genre=90",
+        "id": "90",
+        "tag": "Short"
+       },
+       {
+        "filter": "genre=6",
+        "id": "6",
+        "tag": "Action"
+       },
+       {
+        "filter": "genre=7",
+        "id": "7",
+        "tag": "Adventure"
+       },
+       {
+        "filter": "genre=91",
+        "id": "91",
+        "tag": "Drama"
+       },
+       {
+        "filter": "genre=4",
+        "id": "4",
+        "tag": "Science Fiction"
+       }
+      ],
+      "Country": [
+       {
+        "filter": "country=97",
+        "id": "97",
+        "tag": "Netherlands"
+       }
+      ],
+      "Rating": [
+       {
+        "image": "imdb://image.rating",
+        "type": "audience",
+        "value": "7.4"
+       },
+       {
+        "image": "rottentomatoes://image.rating.upright",
+        "type": "audience",
+        "value": "7.4"
+       },
+       {
+        "image": "themoviedb://image.rating",
+        "type": "audience",
+        "value": "7.3"
+       }
+      ],
+      "Director": [
+       {
+        "filter": "director=92",
+        "id": "92",
+        "tag": "Colin Levy",
+        "tagKey": "5d77688123d5a3001f4ed40a",
+        "thumb": "https://metadata-static.plex.tv/d/people/d8e05ba0778c6373127f8d8b07c17326.jpg"
+       }
+      ],
+      "Writer": [
+       {
+        "filter": "writer=93",
+        "id": "93",
+        "tag": "Esther Wouda",
+        "tagKey": "5d9c0904d4f2a9001f804e98"
+       }
+      ],
+      "Role": [
+       {
+        "filter": "actor=94",
+        "id": "94",
+        "role": "Sintel (voice)",
+        "tag": "Halina Reijn",
+        "tagKey": "5d77682bf54112001f5bc663",
+        "thumb": "https://metadata-static.plex.tv/9/people/95a33cf9743f24d12c2ac803a26941bc.jpg"
+       },
+       {
+        "filter": "actor=95",
+        "id": "95",
+        "role": "Shaman (voice)",
+        "tag": "Thom Hoffman",
+        "tagKey": "5d7768275af944001f1f6b57",
+        "thumb": "https://metadata-static.plex.tv/2/people/2f5a97329557ec9b911e8f82c0b0fcf8.jpg"
+       }
+      ],
+      "Producer": [
+       {
+        "filter": "producer=96",
+        "id": "96",
+        "tag": "Ton Roosendaal",
+        "tagKey": "5d776834103a2d001f567902",
+        "thumb": "https://metadata-static.plex.tv/d/people/d0cd238b5a00353ddae78dd55720f7e3.jpg"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "label": "hevc-control-nomde-dp0-limit",
+   "item": "2",
+   "query": [
+    [
+     "path",
+     "/library/metadata/2"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "protocol",
+     "hls"
+    ],
+    [
+     "fastSeek",
+     "1"
+    ],
+    [
+     "directPlay",
+     "0"
+    ],
+    [
+     "directStream",
+     "1"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "videoQuality",
+     "100"
+    ],
+    [
+     "videoResolution",
+     "3840x2160"
+    ],
+    [
+     "maxVideoBitrate",
+     "200000"
+    ],
+    [
+     "subtitleSize",
+     "100"
+    ],
+    [
+     "audioBoost",
+     "100"
+    ],
+    [
+     "location",
+     "lan"
+    ],
+    [
+     "session",
+     "rexdovi-hevc-control-nomde-dp0-limit"
+    ]
+   ],
+   "req_headers": {
+    "X-Plex-Product": "Plex for Android (Mobile)",
+    "X-Plex-Platform": "Android",
+    "X-Plex-Platform-Version": "14",
+    "X-Plex-Device": "Pixel 8",
+    "X-Plex-Version": "2026.19.1",
+    "X-Plex-Client-Identifier": "rexdovi-probe",
+    "X-Plex-Client-Profile-Extra": "add-direct-play-profile(type=videoProfile&container=mp4&videoCodec=hevc&audioCodec=*)+add-limitation(scope=videoCodec&scopeName=hevc&type=NotMatch&name=video.DOVIProfile&value=5)",
+    "Accept": "application/json",
+    "X-Plex-Token": "<token>"
+   },
+   "status": 200,
+   "response": {
+    "size": 1,
+    "allowSync": "1",
+    "directPlayDecisionCode": 3000,
+    "directPlayDecisionText": "App cannot direct play this item. Direct play is disabled.",
+    "generalDecisionCode": 1001,
+    "generalDecisionText": "Direct play not available; Conversion OK.",
+    "identifier": "com.plexapp.plugins.library",
+    "librarySectionID": "1",
+    "librarySectionTitle": "Movies",
+    "librarySectionUUID": "<section-uuid>",
+    "mediaTagPrefix": "/system/bundle/media/flags/",
+    "mediaTagVersion": "1758205129",
+    "resourceSession": "rexdovi-probe",
+    "transcodeDecisionCode": 1001,
+    "transcodeDecisionText": "Direct play not available; Conversion OK.",
+    "Metadata": [
+     {
+      "addedAt": 1792250962,
+      "art": "/library/metadata/2/art/1792251095",
+      "audienceRating": 7.4,
+      "audienceRatingImage": "rottentomatoes://image.rating.upright",
+      "contentRating": "PG",
+      "duration": 10000,
+      "guid": "plex://movie/5d77688123d5a3001f4ed3df",
+      "key": "/library/metadata/2",
+      "librarySectionID": "1",
+      "librarySectionKey": "/library/sections/1",
+      "librarySectionTitle": "Movies",
+      "originallyAvailableAt": "2010-09-30",
+      "ratingKey": "2",
+      "slug": "sintel",
+      "studio": "Blender Foundation",
+      "summary": "A wandering warrior finds an unlikely friend in the form of a young dragon. The two develop a close bond, until one day the dragon is snatched away. She then sets out on a relentless quest to reclaim her friend, finding in the end that her quest exacts a far greater price than she had ever imagined.",
+      "thumb": "/library/metadata/2/thumb/1792251095",
+      "title": "Sintel",
+      "type": "movie",
+      "updatedAt": 1792251095,
+      "year": 2010,
+      "Media": [
+       {
+        "audioProfile": "lc",
+        "id": "2",
+        "videoProfile": "main 10",
+        "audioChannels": 1,
+        "audioCodec": "aac",
+        "bitrate": 20190,
+        "container": "mpegts",
+        "duration": 10000,
+        "height": 1080,
+        "protocol": "hls",
+        "videoCodec": "h264",
+        "videoFrameRate": "24p",
+        "videoResolution": "1080p",
+        "width": 1920,
+        "selected": true,
+        "Part": [
+         {
+          "audioProfile": "lc",
+          "id": "2",
+          "videoProfile": "main 10",
+          "bitrate": 20190,
+          "container": "mpegts",
+          "duration": 10000,
+          "height": 1080,
+          "protocol": "hls",
+          "width": 1920,
+          "decision": "transcode",
+          "selected": true,
+          "Stream": [
+           {
+            "bitDepth": 8,
+            "bitrate": 20121,
+            "codec": "h264",
+            "default": true,
+            "displayTitle": "1080p",
+            "extendedDisplayTitle": "1080p (HEVC Main 10)",
+            "frameRate": 24.0,
+            "height": 1080,
+            "id": "3",
+            "streamType": 1,
+            "width": 1920,
+            "decision": "transcode",
+            "location": "segments-av"
+           },
+           {
+            "bitrate": 69,
+            "bitrateMode": "cbr",
+            "channels": 1,
+            "codec": "aac",
+            "default": true,
+            "displayTitle": "Unknown (AAC Mono)",
+            "extendedDisplayTitle": "Unknown (AAC Mono)",
+            "id": "4",
+            "profile": "lc",
+            "samplingRate": 44100,
+            "selected": true,
+            "streamType": 2,
+            "decision": "copy",
+            "location": "segments-av"
+           }
+          ]
+         }
+        ]
+       }
+      ],
+      "UltraBlurColors": [
+       {
+        "bottomLeft": "0f2b3c",
+        "bottomRight": "030f1b",
+        "topLeft": "081c2a",
+        "topRight": "020b14"
+       }
+      ],
+      "Genre": [
+       {
+        "filter": "genre=5",
+        "id": "5",
+        "tag": "Animation"
+       },
+       {
+        "filter": "genre=89",
+        "id": "89",
+        "tag": "Fantasy"
+       },
+       {
+        "filter": "genre=90",
+        "id": "90",
+        "tag": "Short"
+       },
+       {
+        "filter": "genre=6",
+        "id": "6",
+        "tag": "Action"
+       },
+       {
+        "filter": "genre=7",
+        "id": "7",
+        "tag": "Adventure"
+       },
+       {
+        "filter": "genre=91",
+        "id": "91",
+        "tag": "Drama"
+       },
+       {
+        "filter": "genre=4",
+        "id": "4",
+        "tag": "Science Fiction"
+       }
+      ],
+      "Country": [
+       {
+        "filter": "country=97",
+        "id": "97",
+        "tag": "Netherlands"
+       }
+      ],
+      "Rating": [
+       {
+        "image": "imdb://image.rating",
+        "type": "audience",
+        "value": "7.4"
+       },
+       {
+        "image": "rottentomatoes://image.rating.upright",
+        "type": "audience",
+        "value": "7.4"
+       },
+       {
+        "image": "themoviedb://image.rating",
+        "type": "audience",
+        "value": "7.3"
+       }
+      ],
+      "Director": [
+       {
+        "filter": "director=92",
+        "id": "92",
+        "tag": "Colin Levy",
+        "tagKey": "5d77688123d5a3001f4ed40a",
+        "thumb": "https://metadata-static.plex.tv/d/people/d8e05ba0778c6373127f8d8b07c17326.jpg"
+       }
+      ],
+      "Writer": [
+       {
+        "filter": "writer=93",
+        "id": "93",
+        "tag": "Esther Wouda",
+        "tagKey": "5d9c0904d4f2a9001f804e98"
+       }
+      ],
+      "Role": [
+       {
+        "filter": "actor=94",
+        "id": "94",
+        "role": "Sintel (voice)",
+        "tag": "Halina Reijn",
+        "tagKey": "5d77682bf54112001f5bc663",
+        "thumb": "https://metadata-static.plex.tv/9/people/95a33cf9743f24d12c2ac803a26941bc.jpg"
+       },
+       {
+        "filter": "actor=95",
+        "id": "95",
+        "role": "Shaman (voice)",
+        "tag": "Thom Hoffman",
+        "tagKey": "5d7768275af944001f1f6b57",
+        "thumb": "https://metadata-static.plex.tv/2/people/2f5a97329557ec9b911e8f82c0b0fcf8.jpg"
+       }
+      ],
+      "Producer": [
+       {
+        "filter": "producer=96",
+        "id": "96",
+        "tag": "Ton Roosendaal",
+        "tagKey": "5d776834103a2d001f567902",
+        "thumb": "https://metadata-static.plex.tv/d/people/d0cd238b5a00353ddae78dd55720f7e3.jpg"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "label": "hevc-control-nomde-dp0-nolimit",
+   "item": "2",
+   "query": [
+    [
+     "path",
+     "/library/metadata/2"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "protocol",
+     "hls"
+    ],
+    [
+     "fastSeek",
+     "1"
+    ],
+    [
+     "directPlay",
+     "0"
+    ],
+    [
+     "directStream",
+     "1"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "videoQuality",
+     "100"
+    ],
+    [
+     "videoResolution",
+     "3840x2160"
+    ],
+    [
+     "maxVideoBitrate",
+     "200000"
+    ],
+    [
+     "subtitleSize",
+     "100"
+    ],
+    [
+     "audioBoost",
+     "100"
+    ],
+    [
+     "location",
+     "lan"
+    ],
+    [
+     "session",
+     "rexdovi-hevc-control-nomde-dp0-nolimit"
+    ]
+   ],
+   "req_headers": {
+    "X-Plex-Product": "Plex for Android (Mobile)",
+    "X-Plex-Platform": "Android",
+    "X-Plex-Platform-Version": "14",
+    "X-Plex-Device": "Pixel 8",
+    "X-Plex-Version": "2026.19.1",
+    "X-Plex-Client-Identifier": "rexdovi-probe",
+    "X-Plex-Client-Profile-Extra": "add-direct-play-profile(type=videoProfile&container=mp4&videoCodec=hevc&audioCodec=*)",
+    "Accept": "application/json",
+    "X-Plex-Token": "<token>"
+   },
+   "status": 200,
+   "response": {
+    "size": 1,
+    "allowSync": "1",
+    "directPlayDecisionCode": 3000,
+    "directPlayDecisionText": "App cannot direct play this item. Direct play is disabled.",
+    "generalDecisionCode": 1001,
+    "generalDecisionText": "Direct play not available; Conversion OK.",
+    "identifier": "com.plexapp.plugins.library",
+    "librarySectionID": "1",
+    "librarySectionTitle": "Movies",
+    "librarySectionUUID": "<section-uuid>",
+    "mediaTagPrefix": "/system/bundle/media/flags/",
+    "mediaTagVersion": "1758205129",
+    "resourceSession": "rexdovi-probe",
+    "transcodeDecisionCode": 1001,
+    "transcodeDecisionText": "Direct play not available; Conversion OK.",
+    "Metadata": [
+     {
+      "addedAt": 1792250962,
+      "art": "/library/metadata/2/art/1792251095",
+      "audienceRating": 7.4,
+      "audienceRatingImage": "rottentomatoes://image.rating.upright",
+      "contentRating": "PG",
+      "duration": 10000,
+      "guid": "plex://movie/5d77688123d5a3001f4ed3df",
+      "key": "/library/metadata/2",
+      "librarySectionID": "1",
+      "librarySectionKey": "/library/sections/1",
+      "librarySectionTitle": "Movies",
+      "originallyAvailableAt": "2010-09-30",
+      "ratingKey": "2",
+      "slug": "sintel",
+      "studio": "Blender Foundation",
+      "summary": "A wandering warrior finds an unlikely friend in the form of a young dragon. The two develop a close bond, until one day the dragon is snatched away. She then sets out on a relentless quest to reclaim her friend, finding in the end that her quest exacts a far greater price than she had ever imagined.",
+      "thumb": "/library/metadata/2/thumb/1792251095",
+      "title": "Sintel",
+      "type": "movie",
+      "updatedAt": 1792251095,
+      "year": 2010,
+      "Media": [
+       {
+        "audioProfile": "lc",
+        "id": "2",
+        "videoProfile": "main 10",
+        "audioChannels": 1,
+        "audioCodec": "aac",
+        "bitrate": 20190,
+        "container": "mpegts",
+        "duration": 10000,
+        "height": 1080,
+        "protocol": "hls",
+        "videoCodec": "h264",
+        "videoFrameRate": "24p",
+        "videoResolution": "1080p",
+        "width": 1920,
+        "selected": true,
+        "Part": [
+         {
+          "audioProfile": "lc",
+          "id": "2",
+          "videoProfile": "main 10",
+          "bitrate": 20190,
+          "container": "mpegts",
+          "duration": 10000,
+          "height": 1080,
+          "protocol": "hls",
+          "width": 1920,
+          "decision": "transcode",
+          "selected": true,
+          "Stream": [
+           {
+            "bitDepth": 8,
+            "bitrate": 20121,
+            "codec": "h264",
+            "default": true,
+            "displayTitle": "1080p",
+            "extendedDisplayTitle": "1080p (HEVC Main 10)",
+            "frameRate": 24.0,
+            "height": 1080,
+            "id": "3",
+            "streamType": 1,
+            "width": 1920,
+            "decision": "transcode",
+            "location": "segments-av"
+           },
+           {
+            "bitrate": 69,
+            "bitrateMode": "cbr",
+            "channels": 1,
+            "codec": "aac",
+            "default": true,
+            "displayTitle": "Unknown (AAC Mono)",
+            "extendedDisplayTitle": "Unknown (AAC Mono)",
+            "id": "4",
+            "profile": "lc",
+            "samplingRate": 44100,
+            "selected": true,
+            "streamType": 2,
+            "decision": "copy",
+            "location": "segments-av"
+           }
+          ]
+         }
+        ]
+       }
+      ],
+      "UltraBlurColors": [
+       {
+        "bottomLeft": "0f2b3c",
+        "bottomRight": "030f1b",
+        "topLeft": "081c2a",
+        "topRight": "020b14"
+       }
+      ],
+      "Genre": [
+       {
+        "filter": "genre=5",
+        "id": "5",
+        "tag": "Animation"
+       },
+       {
+        "filter": "genre=89",
+        "id": "89",
+        "tag": "Fantasy"
+       },
+       {
+        "filter": "genre=90",
+        "id": "90",
+        "tag": "Short"
+       },
+       {
+        "filter": "genre=6",
+        "id": "6",
+        "tag": "Action"
+       },
+       {
+        "filter": "genre=7",
+        "id": "7",
+        "tag": "Adventure"
+       },
+       {
+        "filter": "genre=91",
+        "id": "91",
+        "tag": "Drama"
+       },
+       {
+        "filter": "genre=4",
+        "id": "4",
+        "tag": "Science Fiction"
+       }
+      ],
+      "Country": [
+       {
+        "filter": "country=97",
+        "id": "97",
+        "tag": "Netherlands"
+       }
+      ],
+      "Rating": [
+       {
+        "image": "imdb://image.rating",
+        "type": "audience",
+        "value": "7.4"
+       },
+       {
+        "image": "rottentomatoes://image.rating.upright",
+        "type": "audience",
+        "value": "7.4"
+       },
+       {
+        "image": "themoviedb://image.rating",
+        "type": "audience",
+        "value": "7.3"
+       }
+      ],
+      "Director": [
+       {
+        "filter": "director=92",
+        "id": "92",
+        "tag": "Colin Levy",
+        "tagKey": "5d77688123d5a3001f4ed40a",
+        "thumb": "https://metadata-static.plex.tv/d/people/d8e05ba0778c6373127f8d8b07c17326.jpg"
+       }
+      ],
+      "Writer": [
+       {
+        "filter": "writer=93",
+        "id": "93",
+        "tag": "Esther Wouda",
+        "tagKey": "5d9c0904d4f2a9001f804e98"
+       }
+      ],
+      "Role": [
+       {
+        "filter": "actor=94",
+        "id": "94",
+        "role": "Sintel (voice)",
+        "tag": "Halina Reijn",
+        "tagKey": "5d77682bf54112001f5bc663",
+        "thumb": "https://metadata-static.plex.tv/9/people/95a33cf9743f24d12c2ac803a26941bc.jpg"
+       },
+       {
+        "filter": "actor=95",
+        "id": "95",
+        "role": "Shaman (voice)",
+        "tag": "Thom Hoffman",
+        "tagKey": "5d7768275af944001f1f6b57",
+        "thumb": "https://metadata-static.plex.tv/2/people/2f5a97329557ec9b911e8f82c0b0fcf8.jpg"
+       }
+      ],
+      "Producer": [
+       {
+        "filter": "producer=96",
+        "id": "96",
+        "tag": "Ton Roosendaal",
+        "tagKey": "5d776834103a2d001f567902",
+        "thumb": "https://metadata-static.plex.tv/d/people/d0cd238b5a00353ddae78dd55720f7e3.jpg"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "label": "dv5-samsung-nomde-dp1-nolimit",
+   "item": "1",
+   "query": [
+    [
+     "path",
+     "/library/metadata/1"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "protocol",
+     "hls"
+    ],
+    [
+     "directPlay",
+     "1"
+    ],
+    [
+     "directStream",
+     "1"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "videoQuality",
+     "100"
+    ],
+    [
+     "videoResolution",
+     "3840x2160"
+    ],
+    [
+     "maxVideoBitrate",
+     "200000"
+    ],
+    [
+     "location",
+     "lan"
+    ],
+    [
+     "session",
+     "rexdovi-dv5-samsung-nomde-dp1-nolimit"
+    ]
+   ],
+   "req_headers": {
+    "X-Plex-Product": "Plex for Samsung",
+    "X-Plex-Platform": "Samsung",
+    "X-Plex-Client-Profile-Name": "Samsung",
+    "X-Plex-Client-Identifier": "rexdovi-probe-2",
+    "X-Plex-Client-Profile-Extra": "add-direct-play-profile(type=videoProfile&container=mp4&videoCodec=hevc&audioCodec=*)",
+    "Accept": "application/json",
+    "X-Plex-Token": "<token>"
+   },
+   "status": 200,
+   "response": {
+    "size": 1,
+    "allowSync": "1",
+    "directPlayDecisionCode": 1000,
+    "directPlayDecisionText": "Direct play OK.",
+    "generalDecisionCode": 1000,
+    "generalDecisionText": "Direct play OK.",
+    "identifier": "com.plexapp.plugins.library",
+    "librarySectionID": "1",
+    "librarySectionTitle": "Movies",
+    "librarySectionUUID": "<section-uuid>",
+    "mediaTagPrefix": "/system/bundle/media/flags/",
+    "mediaTagVersion": "1758205129",
+    "resourceSession": "rexdovi-probe-2",
+    "Metadata": [
+     {
+      "addedAt": 1792250998,
+      "art": "/library/metadata/1/art/1792251212",
+      "audienceRating": 8.7,
+      "audienceRatingImage": "rottentomatoes://image.rating.upright",
+      "contentRating": "R",
+      "contentRatingAge": 16,
+      "duration": 40250,
+      "guid": "plex://movie/67eec27814d38e5e9757b885",
+      "hasPremiumExtras": "1",
+      "key": "/library/metadata/1",
+      "librarySectionID": "1",
+      "librarySectionKey": "/library/sections/1",
+      "librarySectionTitle": "Movies",
+      "originallyAvailableAt": "2025-06-06",
+      "rating": 9.4,
+      "ratingImage": "rottentomatoes://image.rating.ripe",
+      "ratingKey": "1",
+      "slug": "predator-killer-of-killers",
+      "studio": "20th Century Studios",
+      "summary": "While three of the fiercest warriors in human history\u2014a Viking raider, a ninja in feudal Japan, and a WWII pilot\u2014are killers in their own right, they are merely prey for their new opponent: the ultimate killer of killers.",
+      "tagline": "The hunt begins.",
+      "thumb": "/library/metadata/1/thumb/1792251212",
+      "title": "Predator: Killer of Killers",
+      "type": "movie",
+      "updatedAt": 1792251212,
+      "year": 2025,
+      "Media": [
+       {
+        "aspectRatio": "1.78",
+        "audioChannels": 6,
+        "audioCodec": "eac3",
+        "bitrate": 11041,
+        "container": "mp4",
+        "duration": 40250,
+        "has64bitOffsets": false,
+        "height": 2160,
+        "id": "1",
+        "optimizedForStreaming": true,
+        "videoCodec": "hevc",
+        "videoFrameRate": "24p",
+        "videoProfile": "main 10",
+        "videoResolution": "4k",
+        "width": 3840,
+        "selected": true,
+        "Part": [
+         {
+          "container": "mp4",
+          "duration": 40250,
+          "file": "/data/movies/Predator Killer of Killers (2025).mp4",
+          "has64bitOffsets": false,
+          "id": "1",
+          "key": "/library/parts/1/1792251188/file.mp4",
+          "optimizedForStreaming": true,
+          "size": 55549276,
+          "videoProfile": "main 10",
+          "decision": "directplay",
+          "selected": true,
+          "Stream": [
+           {
+            "DOVIBLCompatID": 0,
+            "DOVIBLPresent": true,
+            "DOVIELPresent": false,
+            "DOVILevel": 6,
+            "DOVIPresent": true,
+            "DOVIProfile": 5,
+            "DOVIRPUPresent": true,
+            "DOVIVersion": "1.0",
+            "bitDepth": 10,
+            "bitrate": 10315,
+            "chromaLocation": "left",
+            "chromaSubsampling": "4:2:0",
+            "codec": "hevc",
+            "codecID": "hev1",
+            "codedHeight": 2160,
+            "codedWidth": 3840,
+            "colorRange": "pc",
+            "default": true,
+            "displayTitle": "4K DoVi",
+            "extendedDisplayTitle": "4K DoVi (HEVC Main 10)",
+            "frameRate": 24.0,
+            "height": 2160,
+            "id": "1",
+            "index": 0,
+            "language": "English",
+            "languageCode": "eng",
+            "languageTag": "en",
+            "level": 150,
+            "profile": "main 10",
+            "refFrames": 1,
+            "streamIdentifier": "1",
+            "streamType": 1,
+            "width": 3840,
+            "location": "direct"
+           },
+           {
+            "audioChannelLayout": "5.1(side)",
+            "bitrate": 768,
+            "channels": 6,
+            "codec": "eac3",
+            "default": true,
+            "displayTitle": "English (EAC3 5.1)",
+            "extendedDisplayTitle": "English (EAC3 5.1)",
+            "id": "2",
+            "index": 1,
+            "language": "English",
+            "languageCode": "eng",
+            "languageTag": "en",
+            "samplingRate": 48000,
+            "selected": true,
+            "streamIdentifier": "2",
+            "streamType": 2,
+            "location": "direct"
+           }
+          ]
+         }
+        ]
+       }
+      ],
+      "UltraBlurColors": [
+       {
+        "bottomLeft": "122513",
+        "bottomRight": "061326",
+        "topLeft": "051221",
+        "topRight": "0e213a"
+       }
+      ],
+      "Genre": [
+       {
+        "filter": "genre=4",
+        "id": "4",
+        "tag": "Science Fiction"
+       },
+       {
+        "filter": "genre=5",
+        "id": "5",
+        "tag": "Animation"
+       },
+       {
+        "filter": "genre=6",
+        "id": "6",
+        "tag": "Action"
+       },
+       {
+        "filter": "genre=7",
+        "id": "7",
+        "tag": "Adventure"
+       },
+       {
+        "filter": "genre=8",
+        "id": "8",
+        "tag": "Thriller"
+       }
+      ],
+      "Country": [
+       {
+        "filter": "country=53",
+        "id": "53",
+        "tag": "United States of America"
+       }
+      ],
+      "Rating": [
+       {
+        "image": "imdb://image.rating",
+        "type": "audience",
+        "value": "7.4"
+       },
+       {
+        "image": "rottentomatoes://image.rating.ripe",
+        "type": "critic",
+        "value": "9.4"
+       },
+       {
+        "image": "rottentomatoes://image.rating.upright",
+        "type": "audience",
+        "value": "8.7"
+       },
+       {
+        "image": "themoviedb://image.rating",
+        "type": "audience",
+        "value": "7.8"
+       }
+      ],
+      "Director": [
+       {
+        "filter": "director=9",
+        "id": "9",
+        "tag": "Dan Trachtenberg",
+        "tagKey": "5d7768b57a53e9001e6d6ef0",
+        "thumb": "https://metadata-static.plex.tv/0/people/065a1ba46bf07e8b918d31d37eede59f.jpg"
+       }
+      ],
+      "Writer": [
+       {
+        "filter": "writer=10",
+        "id": "10",
+        "tag": "Jim Thomas",
+        "tagKey": "5d77682a54f42c001f8c3185"
+       },
+       {
+        "filter": "writer=11",
+        "id": "11",
+        "tag": "John Thomas",
+        "tagKey": "5d77682a54f42c001f8c3186"
+       },
+       {
+        "filter": "writer=12",
+        "id": "12",
+        "tag": "Dan Trachtenberg",
+        "tagKey": "5d7768b57a53e9001e6d6ef0",
+        "thumb": "https://metadata-static.plex.tv/0/people/065a1ba46bf07e8b918d31d37eede59f.jpg"
+       },
+       {
+        "filter": "writer=13",
+        "id": "13",
+        "tag": "Micho Rutare",
+        "tagKey": "5d77696d9ab54400214f1c0a",
+        "thumb": "https://metadata-static.plex.tv/1/people/109612d927fb58fe8ec68aba37a1e15f.jpg"
+       }
+      ],
+      "Role": [
+       {
+        "filter": "actor=14",
+        "id": "14",
+        "role": "Ursa (voice)",
+        "tag": "Lindsay LaVanchy",
+        "tagKey": "5d776c7251dd69001fe3b5da",
+        "thumb": "https://metadata-static.plex.tv/f/people/f7c5e02275a1c93d797720812879a76a.jpg"
+       },
+       {
+        "filter": "actor=15",
+        "id": "15",
+        "role": "Kenji / Kiyoshi (voice)",
+        "tag": "Louis Ozawa",
+        "tagKey": "5d776845880197001ec965d5",
+        "thumb": "https://metadata-static.plex.tv/6/people/679012cb0505b4531c57167465a5275b.jpg"
+       },
+       {
+        "filter": "actor=16",
+        "id": "16",
+        "role": "Torres (voice)",
+        "tag": "Rick Gonzalez",
+        "tagKey": "5d776825961905001eb90a26",
+        "thumb": "https://metadata-static.plex.tv/c/people/cae8c3633b5817cfb711fb0628f5e5d0.jpg"
+       },
+       {
+        "filter": "actor=17",
+        "id": "17",
+        "role": "Vandy (voice)",
+        "tag": "Michael Biehn",
+        "tagKey": "5d776824151a60001f24a3bf",
+        "thumb": "https://metadata-static.plex.tv/7/people/774268b81023c5093f542e3e339d4085.jpg"
+       },
+       {
+        "filter": "actor=18",
+        "id": "18",
+        "role": "Einar (voice)",
+        "tag": "Doug Cockle",
+        "tagKey": "5d77682a103a2d001f56544b",
+        "thumb": "https://metadata-static.plex.tv/5/people/5a28ddbcaa2b9cbbab525aa76fcd3224.jpg"
+       },
+       {
+        "filter": "actor=19",
+        "id": "19",
+        "role": "Anders (voice)",
+        "tag": "Damien C. Haas",
+        "tagKey": "5d776b367a53e9001e71e1db",
+        "thumb": "https://metadata-static.plex.tv/0/people/09e7e5828963dc60773bd525d5da63f7.jpg"
+       },
+       {
+        "filter": "actor=20",
+        "id": "20",
+        "role": "Freya (voice)",
+        "tag": "Lauren Holt",
+        "tagKey": "5e62465a93f43c003cbccdd1",
+        "thumb": "https://metadata-static.plex.tv/0/people/0f30720d17606e161d6979f206e939bb.jpg"
+       },
+       {
+        "filter": "actor=21",
+        "id": "21",
+        "role": "Ivar (voice)",
+        "tag": "Jeff Leach",
+        "tagKey": "5d776b2ffb0d55001f55f186"
+       },
+       {
+        "filter": "actor=22",
+        "id": "22",
+        "role": "Young Ursa (voice)",
+        "tag": "Cherami Leigh",
+        "tagKey": "5d7768307e9a3c0020c6bd7c",
+        "thumb": "https://metadata-static.plex.tv/c/people/c54cf1188f86e8be342b056c6ebdf34d.jpg"
+       },
+       {
+        "filter": "actor=23",
+        "id": "23",
+        "role": "Delgado (voice)",
+        "tag": "Alessa Luz Martinez",
+        "tagKey": "5f404d2d1ae71000410a7781"
+       },
+       {
+        "filter": "actor=24",
+        "id": "24",
+        "role": "Gunnar (voice)",
+        "tag": "Piotr Michael",
+        "tagKey": "5d776b90ad5437001f7a38f8",
+        "thumb": "https://metadata-static.plex.tv/e/people/ef0526604d2648fd55bede7706ec36a0.jpg"
+       },
+       {
+        "filter": "actor=25",
+        "id": "25",
+        "role": "Chief Zoran (voice)",
+        "tag": "Andrew Morgado",
+        "tagKey": "5d776c47fb0d55001f582ed9"
+       },
+       {
+        "filter": "actor=26",
+        "id": "26",
+        "role": "Krivich Prisoner (voice)",
+        "tag": "Brock Powell",
+        "tagKey": "5d776c7696b655001fe31661",
+        "thumb": "https://metadata-static.plex.tv/9/people/92162c56525359b30100f3ce0e00eed2.jpg"
+       },
+       {
+        "filter": "actor=27",
+        "id": "27",
+        "role": "Torres' Dad (voice)",
+        "tag": "Felix Solis",
+        "tagKey": "5d77682f151a60001f24c62b",
+        "thumb": "https://metadata-static.plex.tv/9/people/9b59be387f27cb3e35958f99256c0f46.jpg"
+       },
+       {
+        "filter": "actor=28",
+        "id": "28",
+        "role": "Warlord Predator (voice)",
+        "tag": "Britton Watkins",
+        "tagKey": "5d776d96fb0d55001f5a4a92"
+       },
+       {
+        "filter": "actor=29",
+        "id": "29",
+        "role": "Additional Voices (voice)",
+        "tag": "Alex Albrecht",
+        "tagKey": "5d7768b57a53e9001e6d6ef5",
+        "thumb": "https://metadata-static.plex.tv/0/people/01c91ecf8cc4c3fc6b78178fdc2b289f.jpg"
+       },
+       {
+        "filter": "actor=30",
+        "id": "30",
+        "role": "Additional Voices (voice)",
+        "tag": "James Bannon",
+        "tagKey": "5dcd37c0ddb8cb001e1e0e6f",
+        "thumb": "https://metadata-static.plex.tv/people/5dcd37c0ddb8cb001e1e0e6f.jpg"
+       },
+       {
+        "filter": "actor=31",
+        "id": "31",
+        "role": "Additional Voices (voice)",
+        "tag": "Jeff Cannata",
+        "tagKey": "5d776f8bad5437001f812a33",
+        "thumb": "https://metadata-static.plex.tv/e/people/eff75682116cd548fb7475df15cec41a.jpg"
+       },
+       {
+        "filter": "actor=32",
+        "id": "32",
+        "role": "Additional Voices (voice)",
+        "tag": "Jonathan Dixon",
+        "tagKey": "5d77683beb5d26001f1e1f3f",
+        "thumb": "https://metadata-static.plex.tv/people/5d77683beb5d26001f1e1f3f.jpg"
+       },
+       {
+        "filter": "actor=33",
+        "id": "33",
+        "role": "Additional Voices (voice)",
+        "tag": "Mel Fair",
+        "tagKey": "5d77685161141d001fb18905",
+        "thumb": "https://metadata-static.plex.tv/people/5d77685161141d001fb18905.jpg"
+       },
+       {
+        "filter": "actor=34",
+        "id": "34",
+        "role": "Additional Voices (voice)",
+        "tag": "Mary Louise Gemmill",
+        "tagKey": "5d77685c8718ba001e319c86",
+        "thumb": "https://metadata-static.plex.tv/3/people/3f845ecb60b64cd5340d5af716c7a842.jpg"
+       },
+       {
+        "filter": "actor=35",
+        "id": "35",
+        "role": "Additional Voices (voice)",
+        "tag": "Stefan Grube",
+        "tagKey": "5d7769a9594b2b001e6a6c28",
+        "thumb": "https://metadata-static.plex.tv/1/people/10700d7d19165f46761468b4772bc4ee.jpg"
+       },
+       {
+        "filter": "actor=36",
+        "id": "36",
+        "role": "Additional Voices (voice)",
+        "tag": "David Heckel",
+        "tagKey": "5f3fa845864225004278d533"
+       },
+       {
+        "filter": "actor=37",
+        "id": "37",
+        "role": "Additional Voices (voice)",
+        "tag": "Eiji Inoue",
+        "tagKey": "5d77682785719b001f3a0edc",
+        "thumb": "https://metadata-static.plex.tv/8/people/868d81ae1c41b415299b4a3bae6f35c1.jpg"
+       },
+       {
+        "filter": "actor=38",
+        "id": "38",
+        "role": "Additional Voices (voice)",
+        "tag": "Bjorn Johnson",
+        "tagKey": "5d776835151a60001f24da4a",
+        "thumb": "https://metadata-static.plex.tv/0/people/04e2f934d42ad352bbcdd4aee92f97ae.jpg"
+       },
+       {
+        "filter": "actor=39",
+        "id": "39",
+        "role": "Additional Voices (voice)",
+        "tag": "Rett Keeter",
+        "tagKey": "5f3fd14304a8650040981b49"
+       },
+       {
+        "filter": "actor=40",
+        "id": "40",
+        "role": "Additional Voices (voice)",
+        "tag": "James Taku Leung",
+        "tagKey": "5d7769f7fb0d55001f53624a",
+        "thumb": "https://metadata-static.plex.tv/people/5d7769f7fb0d55001f53624a.jpg"
+       },
+       {
+        "filter": "actor=41",
+        "id": "41",
+        "role": "Additional Voices (voice)",
+        "tag": "Isaias Alexander Miranda",
+        "tagKey": "5f3fbafe03883a0040a9d5e4",
+        "thumb": "https://metadata-static.plex.tv/d/people/d8643c3b76d4926ac752638c33ffce14.jpg"
+       },
+       {
+        "filter": "actor=42",
+        "id": "42",
+        "role": "Additional Voices (voice)",
+        "tag": "Yumi Mizui",
+        "tagKey": "5d7769f7fb0d55001f53624b",
+        "thumb": "https://metadata-static.plex.tv/c/people/cf0fc6c543191117970a4168c1099f96.jpg"
+       },
+       {
+        "filter": "actor=43",
+        "id": "43",
+        "role": "Additional Voices (voice)",
+        "tag": "Micho Rutare",
+        "tagKey": "5d77696d9ab54400214f1c0a",
+        "thumb": "https://metadata-static.plex.tv/1/people/109612d927fb58fe8ec68aba37a1e15f.jpg"
+       },
+       {
+        "filter": "actor=44",
+        "id": "44",
+        "role": "Additional Voices (voice)",
+        "tag": "Justin Shenkarow",
+        "tagKey": "5d776841961905001eb96557",
+        "thumb": "https://metadata-static.plex.tv/5/people/5bc7a1fd5ddc08dcf3a09017a8de9930.jpg"
+       },
+       {
+        "filter": "actor=45",
+        "id": "45",
+        "role": "Additional Voices (voice)",
+        "tag": "Jerry Trainor",
+        "tagKey": "5d776825103a2d001f563c20",
+        "thumb": "https://metadata-static.plex.tv/f/people/fa7ff99417a79d0417eefffd33a1df26.jpg"
+       },
+       {
+        "filter": "actor=46",
+        "id": "46",
+        "role": "Additional Voices (voice)",
+        "tag": "Toru Uchikado",
+        "tagKey": "5d7770a6fb0d55001f5f59dd",
+        "thumb": "https://metadata-static.plex.tv/b/people/b7d17f1aae456cbcfcbf94d59b7e8ab2.jpg"
+       },
+       {
+        "filter": "actor=47",
+        "id": "47",
+        "role": "Additional Voices (voice)",
+        "tag": "Bernie Van De Yacht",
+        "tagKey": "5d77685b5af944001f20072e"
+       },
+       {
+        "filter": "actor=48",
+        "id": "48",
+        "role": "Additional Voices (voice)",
+        "tag": "Matthew Wolf",
+        "tagKey": "5d77684ff59e58002189b79d",
+        "thumb": "https://metadata-static.plex.tv/people/5d77684ff59e58002189b79d.jpg"
+       }
+      ],
+      "Producer": [
+       {
+        "filter": "producer=49",
+        "id": "49",
+        "tag": "John Davis",
+        "tagKey": "5d77682585719b001f3a05dd",
+        "thumb": "https://metadata-static.plex.tv/people/5d77682585719b001f3a05dd.jpg"
+       },
+       {
+        "filter": "producer=50",
+        "id": "50",
+        "tag": "Dan Trachtenberg",
+        "tagKey": "5d7768b57a53e9001e6d6ef0",
+        "thumb": "https://metadata-static.plex.tv/0/people/065a1ba46bf07e8b918d31d37eede59f.jpg"
+       },
+       {
+        "filter": "producer=51",
+        "id": "51",
+        "tag": "Marc Toberoff",
+        "tagKey": "5d77684e298480001f4ac256",
+        "thumb": "https://metadata-static.plex.tv/d/people/d3a239a38cf178bff5a3a3cee35eec1c.jpg"
+       },
+       {
+        "filter": "producer=52",
+        "id": "52",
+        "tag": "Ben Rosenblatt",
+        "tagKey": "5dce6b5c7a42e6001fc84b71"
+       }
+      ],
+      "CommonSenseMedia": [
+       {
+        "id": "88",
+        "oneLiner": "Bloody, nonstop violence, death in animated alien film."
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "label": "dv5-samsung-nomde-dp1-notMatch",
+   "item": "1",
+   "query": [
+    [
+     "path",
+     "/library/metadata/1"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "protocol",
+     "hls"
+    ],
+    [
+     "directPlay",
+     "1"
+    ],
+    [
+     "directStream",
+     "1"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "videoQuality",
+     "100"
+    ],
+    [
+     "videoResolution",
+     "3840x2160"
+    ],
+    [
+     "maxVideoBitrate",
+     "200000"
+    ],
+    [
+     "location",
+     "lan"
+    ],
+    [
+     "session",
+     "rexdovi-dv5-samsung-nomde-dp1-notMatch"
+    ]
+   ],
+   "req_headers": {
+    "X-Plex-Product": "Plex for Samsung",
+    "X-Plex-Platform": "Samsung",
+    "X-Plex-Client-Profile-Name": "Samsung",
+    "X-Plex-Client-Identifier": "rexdovi-probe-2",
+    "X-Plex-Client-Profile-Extra": "add-direct-play-profile(type=videoProfile&container=mp4&videoCodec=hevc&audioCodec=*)+add-limitation(scope=videoCodec&scopeName=hevc&type=notMatch&name=video.DOVIProfile&value=5)",
+    "Accept": "application/json",
+    "X-Plex-Token": "<token>"
+   },
+   "status": 200,
+   "response": {
+    "size": 0,
+    "allowSync": "1",
+    "directPlayDecisionCode": 3000,
+    "directPlayDecisionText": "This app cannot play this item. The reason is: video.DOVIProfile limitation applies: 5 == 5.",
+    "generalDecisionCode": 2000,
+    "generalDecisionText": "Neither direct play nor conversion is available.",
+    "identifier": "com.plexapp.plugins.library",
+    "librarySectionID": "1",
+    "librarySectionTitle": "Movies",
+    "librarySectionUUID": "<section-uuid>",
+    "mediaTagPrefix": "/system/bundle/media/flags/",
+    "mediaTagVersion": "1758205129",
+    "transcodeDecisionCode": 2003,
+    "transcodeDecisionText": "File is unplayable. DoVi (Profile 5) color space is not supported."
+   }
+  },
+  {
+   "label": "dv5-samsung-nomde-dp1-NotMatch",
+   "item": "1",
+   "query": [
+    [
+     "path",
+     "/library/metadata/1"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "protocol",
+     "hls"
+    ],
+    [
+     "directPlay",
+     "1"
+    ],
+    [
+     "directStream",
+     "1"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "videoQuality",
+     "100"
+    ],
+    [
+     "videoResolution",
+     "3840x2160"
+    ],
+    [
+     "maxVideoBitrate",
+     "200000"
+    ],
+    [
+     "location",
+     "lan"
+    ],
+    [
+     "session",
+     "rexdovi-dv5-samsung-nomde-dp1-NotMatch"
+    ]
+   ],
+   "req_headers": {
+    "X-Plex-Product": "Plex for Samsung",
+    "X-Plex-Platform": "Samsung",
+    "X-Plex-Client-Profile-Name": "Samsung",
+    "X-Plex-Client-Identifier": "rexdovi-probe-2",
+    "X-Plex-Client-Profile-Extra": "add-direct-play-profile(type=videoProfile&container=mp4&videoCodec=hevc&audioCodec=*)+add-limitation(scope=videoCodec&scopeName=hevc&type=NotMatch&name=video.DOVIProfile&value=5)",
+    "Accept": "application/json",
+    "X-Plex-Token": "<token>"
+   },
+   "status": 200,
+   "response": {
+    "size": 0,
+    "allowSync": "1",
+    "directPlayDecisionCode": 3000,
+    "directPlayDecisionText": "This app cannot play this item. The reason is: video.DOVIProfile limitation applies: 5 == 5.",
+    "generalDecisionCode": 2000,
+    "generalDecisionText": "Neither direct play nor conversion is available.",
+    "identifier": "com.plexapp.plugins.library",
+    "librarySectionID": "1",
+    "librarySectionTitle": "Movies",
+    "librarySectionUUID": "<section-uuid>",
+    "mediaTagPrefix": "/system/bundle/media/flags/",
+    "mediaTagVersion": "1758205129",
+    "transcodeDecisionCode": 2003,
+    "transcodeDecisionText": "File is unplayable. DoVi (Profile 5) color space is not supported."
+   }
+  },
+  {
+   "label": "hevc-control-samsung-nomde-dp1-nolimit",
+   "item": "2",
+   "query": [
+    [
+     "path",
+     "/library/metadata/2"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "protocol",
+     "hls"
+    ],
+    [
+     "directPlay",
+     "1"
+    ],
+    [
+     "directStream",
+     "1"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "videoQuality",
+     "100"
+    ],
+    [
+     "videoResolution",
+     "3840x2160"
+    ],
+    [
+     "maxVideoBitrate",
+     "200000"
+    ],
+    [
+     "location",
+     "lan"
+    ],
+    [
+     "session",
+     "rexdovi-hevc-control-samsung-nomde-dp1-nolimit"
+    ]
+   ],
+   "req_headers": {
+    "X-Plex-Product": "Plex for Samsung",
+    "X-Plex-Platform": "Samsung",
+    "X-Plex-Client-Profile-Name": "Samsung",
+    "X-Plex-Client-Identifier": "rexdovi-probe-2",
+    "X-Plex-Client-Profile-Extra": "add-direct-play-profile(type=videoProfile&container=mp4&videoCodec=hevc&audioCodec=*)",
+    "Accept": "application/json",
+    "X-Plex-Token": "<token>"
+   },
+   "status": 200,
+   "response": {
+    "size": 1,
+    "allowSync": "1",
+    "directPlayDecisionCode": 1000,
+    "directPlayDecisionText": "Direct play OK.",
+    "generalDecisionCode": 1000,
+    "generalDecisionText": "Direct play OK.",
+    "identifier": "com.plexapp.plugins.library",
+    "librarySectionID": "1",
+    "librarySectionTitle": "Movies",
+    "librarySectionUUID": "<section-uuid>",
+    "mediaTagPrefix": "/system/bundle/media/flags/",
+    "mediaTagVersion": "1758205129",
+    "resourceSession": "rexdovi-probe-2",
+    "Metadata": [
+     {
+      "addedAt": 1792250962,
+      "art": "/library/metadata/2/art/1792251095",
+      "audienceRating": 7.4,
+      "audienceRatingImage": "rottentomatoes://image.rating.upright",
+      "contentRating": "PG",
+      "duration": 10000,
+      "guid": "plex://movie/5d77688123d5a3001f4ed3df",
+      "key": "/library/metadata/2",
+      "librarySectionID": "1",
+      "librarySectionKey": "/library/sections/1",
+      "librarySectionTitle": "Movies",
+      "originallyAvailableAt": "2010-09-30",
+      "ratingKey": "2",
+      "slug": "sintel",
+      "studio": "Blender Foundation",
+      "summary": "A wandering warrior finds an unlikely friend in the form of a young dragon. The two develop a close bond, until one day the dragon is snatched away. She then sets out on a relentless quest to reclaim her friend, finding in the end that her quest exacts a far greater price than she had ever imagined.",
+      "thumb": "/library/metadata/2/thumb/1792251095",
+      "title": "Sintel",
+      "type": "movie",
+      "updatedAt": 1792251095,
+      "year": 2010,
+      "Media": [
+       {
+        "aspectRatio": "1.78",
+        "audioChannels": 1,
+        "audioCodec": "aac",
+        "audioProfile": "lc",
+        "bitrate": 3313,
+        "container": "mp4",
+        "duration": 10000,
+        "has64bitOffsets": false,
+        "height": 1080,
+        "id": "2",
+        "optimizedForStreaming": true,
+        "videoCodec": "hevc",
+        "videoFrameRate": "24p",
+        "videoProfile": "main 10",
+        "videoResolution": "1080",
+        "width": 1920,
+        "selected": true,
+        "Part": [
+         {
+          "audioProfile": "lc",
+          "container": "mp4",
+          "duration": 10000,
+          "file": "/data/movies/Sintel (2010).mp4",
+          "has64bitOffsets": false,
+          "id": "2",
+          "key": "/library/parts/2/1792250962/file.mp4",
+          "optimizedForStreaming": true,
+          "size": 4141175,
+          "videoProfile": "main 10",
+          "decision": "directplay",
+          "selected": true,
+          "Stream": [
+           {
+            "bitDepth": 10,
+            "bitrate": 3234,
+            "chromaLocation": "left",
+            "chromaSubsampling": "4:2:0",
+            "codec": "hevc",
+            "codecID": "hev1",
+            "codedHeight": 1088,
+            "codedWidth": 1920,
+            "colorRange": "tv",
+            "default": true,
+            "displayTitle": "1080p",
+            "extendedDisplayTitle": "1080p (HEVC Main 10)",
+            "frameRate": 24.0,
+            "height": 1080,
+            "id": "3",
+            "index": 0,
+            "level": 120,
+            "profile": "main 10",
+            "refFrames": 1,
+            "scanType": "progressive",
+            "streamIdentifier": "1",
+            "streamType": 1,
+            "width": 1920,
+            "location": "direct"
+           },
+           {
+            "bitrate": 69,
+            "channels": 1,
+            "codec": "aac",
+            "default": true,
+            "displayTitle": "Unknown (AAC Mono)",
+            "extendedDisplayTitle": "Unknown (AAC Mono)",
+            "id": "4",
+            "index": 1,
+            "profile": "lc",
+            "samplingRate": 44100,
+            "selected": true,
+            "streamIdentifier": "2",
+            "streamType": 2,
+            "location": "direct"
+           }
+          ]
+         }
+        ]
+       }
+      ],
+      "UltraBlurColors": [
+       {
+        "bottomLeft": "0f2b3c",
+        "bottomRight": "030f1b",
+        "topLeft": "081c2a",
+        "topRight": "020b14"
+       }
+      ],
+      "Genre": [
+       {
+        "filter": "genre=5",
+        "id": "5",
+        "tag": "Animation"
+       },
+       {
+        "filter": "genre=89",
+        "id": "89",
+        "tag": "Fantasy"
+       },
+       {
+        "filter": "genre=90",
+        "id": "90",
+        "tag": "Short"
+       },
+       {
+        "filter": "genre=6",
+        "id": "6",
+        "tag": "Action"
+       },
+       {
+        "filter": "genre=7",
+        "id": "7",
+        "tag": "Adventure"
+       },
+       {
+        "filter": "genre=91",
+        "id": "91",
+        "tag": "Drama"
+       },
+       {
+        "filter": "genre=4",
+        "id": "4",
+        "tag": "Science Fiction"
+       }
+      ],
+      "Country": [
+       {
+        "filter": "country=97",
+        "id": "97",
+        "tag": "Netherlands"
+       }
+      ],
+      "Rating": [
+       {
+        "image": "imdb://image.rating",
+        "type": "audience",
+        "value": "7.4"
+       },
+       {
+        "image": "rottentomatoes://image.rating.upright",
+        "type": "audience",
+        "value": "7.4"
+       },
+       {
+        "image": "themoviedb://image.rating",
+        "type": "audience",
+        "value": "7.3"
+       }
+      ],
+      "Director": [
+       {
+        "filter": "director=92",
+        "id": "92",
+        "tag": "Colin Levy",
+        "tagKey": "5d77688123d5a3001f4ed40a",
+        "thumb": "https://metadata-static.plex.tv/d/people/d8e05ba0778c6373127f8d8b07c17326.jpg"
+       }
+      ],
+      "Writer": [
+       {
+        "filter": "writer=93",
+        "id": "93",
+        "tag": "Esther Wouda",
+        "tagKey": "5d9c0904d4f2a9001f804e98"
+       }
+      ],
+      "Role": [
+       {
+        "filter": "actor=94",
+        "id": "94",
+        "role": "Sintel (voice)",
+        "tag": "Halina Reijn",
+        "tagKey": "5d77682bf54112001f5bc663",
+        "thumb": "https://metadata-static.plex.tv/9/people/95a33cf9743f24d12c2ac803a26941bc.jpg"
+       },
+       {
+        "filter": "actor=95",
+        "id": "95",
+        "role": "Shaman (voice)",
+        "tag": "Thom Hoffman",
+        "tagKey": "5d7768275af944001f1f6b57",
+        "thumb": "https://metadata-static.plex.tv/2/people/2f5a97329557ec9b911e8f82c0b0fcf8.jpg"
+       }
+      ],
+      "Producer": [
+       {
+        "filter": "producer=96",
+        "id": "96",
+        "tag": "Ton Roosendaal",
+        "tagKey": "5d776834103a2d001f567902",
+        "thumb": "https://metadata-static.plex.tv/d/people/d0cd238b5a00353ddae78dd55720f7e3.jpg"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "label": "hevc-control-samsung-nomde-dp1-notMatch",
+   "item": "2",
+   "query": [
+    [
+     "path",
+     "/library/metadata/2"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "protocol",
+     "hls"
+    ],
+    [
+     "directPlay",
+     "1"
+    ],
+    [
+     "directStream",
+     "1"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "videoQuality",
+     "100"
+    ],
+    [
+     "videoResolution",
+     "3840x2160"
+    ],
+    [
+     "maxVideoBitrate",
+     "200000"
+    ],
+    [
+     "location",
+     "lan"
+    ],
+    [
+     "session",
+     "rexdovi-hevc-control-samsung-nomde-dp1-notMatch"
+    ]
+   ],
+   "req_headers": {
+    "X-Plex-Product": "Plex for Samsung",
+    "X-Plex-Platform": "Samsung",
+    "X-Plex-Client-Profile-Name": "Samsung",
+    "X-Plex-Client-Identifier": "rexdovi-probe-2",
+    "X-Plex-Client-Profile-Extra": "add-direct-play-profile(type=videoProfile&container=mp4&videoCodec=hevc&audioCodec=*)+add-limitation(scope=videoCodec&scopeName=hevc&type=notMatch&name=video.DOVIProfile&value=5)",
+    "Accept": "application/json",
+    "X-Plex-Token": "<token>"
+   },
+   "status": 200,
+   "response": {
+    "size": 1,
+    "allowSync": "1",
+    "directPlayDecisionCode": 1000,
+    "directPlayDecisionText": "Direct play OK.",
+    "generalDecisionCode": 1000,
+    "generalDecisionText": "Direct play OK.",
+    "identifier": "com.plexapp.plugins.library",
+    "librarySectionID": "1",
+    "librarySectionTitle": "Movies",
+    "librarySectionUUID": "<section-uuid>",
+    "mediaTagPrefix": "/system/bundle/media/flags/",
+    "mediaTagVersion": "1758205129",
+    "resourceSession": "rexdovi-probe-2",
+    "Metadata": [
+     {
+      "addedAt": 1792250962,
+      "art": "/library/metadata/2/art/1792251095",
+      "audienceRating": 7.4,
+      "audienceRatingImage": "rottentomatoes://image.rating.upright",
+      "contentRating": "PG",
+      "duration": 10000,
+      "guid": "plex://movie/5d77688123d5a3001f4ed3df",
+      "key": "/library/metadata/2",
+      "librarySectionID": "1",
+      "librarySectionKey": "/library/sections/1",
+      "librarySectionTitle": "Movies",
+      "originallyAvailableAt": "2010-09-30",
+      "ratingKey": "2",
+      "slug": "sintel",
+      "studio": "Blender Foundation",
+      "summary": "A wandering warrior finds an unlikely friend in the form of a young dragon. The two develop a close bond, until one day the dragon is snatched away. She then sets out on a relentless quest to reclaim her friend, finding in the end that her quest exacts a far greater price than she had ever imagined.",
+      "thumb": "/library/metadata/2/thumb/1792251095",
+      "title": "Sintel",
+      "type": "movie",
+      "updatedAt": 1792251095,
+      "year": 2010,
+      "Media": [
+       {
+        "aspectRatio": "1.78",
+        "audioChannels": 1,
+        "audioCodec": "aac",
+        "audioProfile": "lc",
+        "bitrate": 3313,
+        "container": "mp4",
+        "duration": 10000,
+        "has64bitOffsets": false,
+        "height": 1080,
+        "id": "2",
+        "optimizedForStreaming": true,
+        "videoCodec": "hevc",
+        "videoFrameRate": "24p",
+        "videoProfile": "main 10",
+        "videoResolution": "1080",
+        "width": 1920,
+        "selected": true,
+        "Part": [
+         {
+          "audioProfile": "lc",
+          "container": "mp4",
+          "duration": 10000,
+          "file": "/data/movies/Sintel (2010).mp4",
+          "has64bitOffsets": false,
+          "id": "2",
+          "key": "/library/parts/2/1792250962/file.mp4",
+          "optimizedForStreaming": true,
+          "size": 4141175,
+          "videoProfile": "main 10",
+          "decision": "directplay",
+          "selected": true,
+          "Stream": [
+           {
+            "bitDepth": 10,
+            "bitrate": 3234,
+            "chromaLocation": "left",
+            "chromaSubsampling": "4:2:0",
+            "codec": "hevc",
+            "codecID": "hev1",
+            "codedHeight": 1088,
+            "codedWidth": 1920,
+            "colorRange": "tv",
+            "default": true,
+            "displayTitle": "1080p",
+            "extendedDisplayTitle": "1080p (HEVC Main 10)",
+            "frameRate": 24.0,
+            "height": 1080,
+            "id": "3",
+            "index": 0,
+            "level": 120,
+            "profile": "main 10",
+            "refFrames": 1,
+            "scanType": "progressive",
+            "streamIdentifier": "1",
+            "streamType": 1,
+            "width": 1920,
+            "location": "direct"
+           },
+           {
+            "bitrate": 69,
+            "channels": 1,
+            "codec": "aac",
+            "default": true,
+            "displayTitle": "Unknown (AAC Mono)",
+            "extendedDisplayTitle": "Unknown (AAC Mono)",
+            "id": "4",
+            "index": 1,
+            "profile": "lc",
+            "samplingRate": 44100,
+            "selected": true,
+            "streamIdentifier": "2",
+            "streamType": 2,
+            "location": "direct"
+           }
+          ]
+         }
+        ]
+       }
+      ],
+      "UltraBlurColors": [
+       {
+        "bottomLeft": "0f2b3c",
+        "bottomRight": "030f1b",
+        "topLeft": "081c2a",
+        "topRight": "020b14"
+       }
+      ],
+      "Genre": [
+       {
+        "filter": "genre=5",
+        "id": "5",
+        "tag": "Animation"
+       },
+       {
+        "filter": "genre=89",
+        "id": "89",
+        "tag": "Fantasy"
+       },
+       {
+        "filter": "genre=90",
+        "id": "90",
+        "tag": "Short"
+       },
+       {
+        "filter": "genre=6",
+        "id": "6",
+        "tag": "Action"
+       },
+       {
+        "filter": "genre=7",
+        "id": "7",
+        "tag": "Adventure"
+       },
+       {
+        "filter": "genre=91",
+        "id": "91",
+        "tag": "Drama"
+       },
+       {
+        "filter": "genre=4",
+        "id": "4",
+        "tag": "Science Fiction"
+       }
+      ],
+      "Country": [
+       {
+        "filter": "country=97",
+        "id": "97",
+        "tag": "Netherlands"
+       }
+      ],
+      "Rating": [
+       {
+        "image": "imdb://image.rating",
+        "type": "audience",
+        "value": "7.4"
+       },
+       {
+        "image": "rottentomatoes://image.rating.upright",
+        "type": "audience",
+        "value": "7.4"
+       },
+       {
+        "image": "themoviedb://image.rating",
+        "type": "audience",
+        "value": "7.3"
+       }
+      ],
+      "Director": [
+       {
+        "filter": "director=92",
+        "id": "92",
+        "tag": "Colin Levy",
+        "tagKey": "5d77688123d5a3001f4ed40a",
+        "thumb": "https://metadata-static.plex.tv/d/people/d8e05ba0778c6373127f8d8b07c17326.jpg"
+       }
+      ],
+      "Writer": [
+       {
+        "filter": "writer=93",
+        "id": "93",
+        "tag": "Esther Wouda",
+        "tagKey": "5d9c0904d4f2a9001f804e98"
+       }
+      ],
+      "Role": [
+       {
+        "filter": "actor=94",
+        "id": "94",
+        "role": "Sintel (voice)",
+        "tag": "Halina Reijn",
+        "tagKey": "5d77682bf54112001f5bc663",
+        "thumb": "https://metadata-static.plex.tv/9/people/95a33cf9743f24d12c2ac803a26941bc.jpg"
+       },
+       {
+        "filter": "actor=95",
+        "id": "95",
+        "role": "Shaman (voice)",
+        "tag": "Thom Hoffman",
+        "tagKey": "5d7768275af944001f1f6b57",
+        "thumb": "https://metadata-static.plex.tv/2/people/2f5a97329557ec9b911e8f82c0b0fcf8.jpg"
+       }
+      ],
+      "Producer": [
+       {
+        "filter": "producer=96",
+        "id": "96",
+        "tag": "Ton Roosendaal",
+        "tagKey": "5d776834103a2d001f567902",
+        "thumb": "https://metadata-static.plex.tv/d/people/d0cd238b5a00353ddae78dd55720f7e3.jpg"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "label": "hevc-control-samsung-nomde-dp1-NotMatch",
+   "item": "2",
+   "query": [
+    [
+     "path",
+     "/library/metadata/2"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "protocol",
+     "hls"
+    ],
+    [
+     "directPlay",
+     "1"
+    ],
+    [
+     "directStream",
+     "1"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "videoQuality",
+     "100"
+    ],
+    [
+     "videoResolution",
+     "3840x2160"
+    ],
+    [
+     "maxVideoBitrate",
+     "200000"
+    ],
+    [
+     "location",
+     "lan"
+    ],
+    [
+     "session",
+     "rexdovi-hevc-control-samsung-nomde-dp1-NotMatch"
+    ]
+   ],
+   "req_headers": {
+    "X-Plex-Product": "Plex for Samsung",
+    "X-Plex-Platform": "Samsung",
+    "X-Plex-Client-Profile-Name": "Samsung",
+    "X-Plex-Client-Identifier": "rexdovi-probe-2",
+    "X-Plex-Client-Profile-Extra": "add-direct-play-profile(type=videoProfile&container=mp4&videoCodec=hevc&audioCodec=*)+add-limitation(scope=videoCodec&scopeName=hevc&type=NotMatch&name=video.DOVIProfile&value=5)",
+    "Accept": "application/json",
+    "X-Plex-Token": "<token>"
+   },
+   "status": 200,
+   "response": {
+    "size": 1,
+    "allowSync": "1",
+    "directPlayDecisionCode": 1000,
+    "directPlayDecisionText": "Direct play OK.",
+    "generalDecisionCode": 1000,
+    "generalDecisionText": "Direct play OK.",
+    "identifier": "com.plexapp.plugins.library",
+    "librarySectionID": "1",
+    "librarySectionTitle": "Movies",
+    "librarySectionUUID": "<section-uuid>",
+    "mediaTagPrefix": "/system/bundle/media/flags/",
+    "mediaTagVersion": "1758205129",
+    "resourceSession": "rexdovi-probe-2",
+    "Metadata": [
+     {
+      "addedAt": 1792250962,
+      "art": "/library/metadata/2/art/1792251095",
+      "audienceRating": 7.4,
+      "audienceRatingImage": "rottentomatoes://image.rating.upright",
+      "contentRating": "PG",
+      "duration": 10000,
+      "guid": "plex://movie/5d77688123d5a3001f4ed3df",
+      "key": "/library/metadata/2",
+      "librarySectionID": "1",
+      "librarySectionKey": "/library/sections/1",
+      "librarySectionTitle": "Movies",
+      "originallyAvailableAt": "2010-09-30",
+      "ratingKey": "2",
+      "slug": "sintel",
+      "studio": "Blender Foundation",
+      "summary": "A wandering warrior finds an unlikely friend in the form of a young dragon. The two develop a close bond, until one day the dragon is snatched away. She then sets out on a relentless quest to reclaim her friend, finding in the end that her quest exacts a far greater price than she had ever imagined.",
+      "thumb": "/library/metadata/2/thumb/1792251095",
+      "title": "Sintel",
+      "type": "movie",
+      "updatedAt": 1792251095,
+      "year": 2010,
+      "Media": [
+       {
+        "aspectRatio": "1.78",
+        "audioChannels": 1,
+        "audioCodec": "aac",
+        "audioProfile": "lc",
+        "bitrate": 3313,
+        "container": "mp4",
+        "duration": 10000,
+        "has64bitOffsets": false,
+        "height": 1080,
+        "id": "2",
+        "optimizedForStreaming": true,
+        "videoCodec": "hevc",
+        "videoFrameRate": "24p",
+        "videoProfile": "main 10",
+        "videoResolution": "1080",
+        "width": 1920,
+        "selected": true,
+        "Part": [
+         {
+          "audioProfile": "lc",
+          "container": "mp4",
+          "duration": 10000,
+          "file": "/data/movies/Sintel (2010).mp4",
+          "has64bitOffsets": false,
+          "id": "2",
+          "key": "/library/parts/2/1792250962/file.mp4",
+          "optimizedForStreaming": true,
+          "size": 4141175,
+          "videoProfile": "main 10",
+          "decision": "directplay",
+          "selected": true,
+          "Stream": [
+           {
+            "bitDepth": 10,
+            "bitrate": 3234,
+            "chromaLocation": "left",
+            "chromaSubsampling": "4:2:0",
+            "codec": "hevc",
+            "codecID": "hev1",
+            "codedHeight": 1088,
+            "codedWidth": 1920,
+            "colorRange": "tv",
+            "default": true,
+            "displayTitle": "1080p",
+            "extendedDisplayTitle": "1080p (HEVC Main 10)",
+            "frameRate": 24.0,
+            "height": 1080,
+            "id": "3",
+            "index": 0,
+            "level": 120,
+            "profile": "main 10",
+            "refFrames": 1,
+            "scanType": "progressive",
+            "streamIdentifier": "1",
+            "streamType": 1,
+            "width": 1920,
+            "location": "direct"
+           },
+           {
+            "bitrate": 69,
+            "channels": 1,
+            "codec": "aac",
+            "default": true,
+            "displayTitle": "Unknown (AAC Mono)",
+            "extendedDisplayTitle": "Unknown (AAC Mono)",
+            "id": "4",
+            "index": 1,
+            "profile": "lc",
+            "samplingRate": 44100,
+            "selected": true,
+            "streamIdentifier": "2",
+            "streamType": 2,
+            "location": "direct"
+           }
+          ]
+         }
+        ]
+       }
+      ],
+      "UltraBlurColors": [
+       {
+        "bottomLeft": "0f2b3c",
+        "bottomRight": "030f1b",
+        "topLeft": "081c2a",
+        "topRight": "020b14"
+       }
+      ],
+      "Genre": [
+       {
+        "filter": "genre=5",
+        "id": "5",
+        "tag": "Animation"
+       },
+       {
+        "filter": "genre=89",
+        "id": "89",
+        "tag": "Fantasy"
+       },
+       {
+        "filter": "genre=90",
+        "id": "90",
+        "tag": "Short"
+       },
+       {
+        "filter": "genre=6",
+        "id": "6",
+        "tag": "Action"
+       },
+       {
+        "filter": "genre=7",
+        "id": "7",
+        "tag": "Adventure"
+       },
+       {
+        "filter": "genre=91",
+        "id": "91",
+        "tag": "Drama"
+       },
+       {
+        "filter": "genre=4",
+        "id": "4",
+        "tag": "Science Fiction"
+       }
+      ],
+      "Country": [
+       {
+        "filter": "country=97",
+        "id": "97",
+        "tag": "Netherlands"
+       }
+      ],
+      "Rating": [
+       {
+        "image": "imdb://image.rating",
+        "type": "audience",
+        "value": "7.4"
+       },
+       {
+        "image": "rottentomatoes://image.rating.upright",
+        "type": "audience",
+        "value": "7.4"
+       },
+       {
+        "image": "themoviedb://image.rating",
+        "type": "audience",
+        "value": "7.3"
+       }
+      ],
+      "Director": [
+       {
+        "filter": "director=92",
+        "id": "92",
+        "tag": "Colin Levy",
+        "tagKey": "5d77688123d5a3001f4ed40a",
+        "thumb": "https://metadata-static.plex.tv/d/people/d8e05ba0778c6373127f8d8b07c17326.jpg"
+       }
+      ],
+      "Writer": [
+       {
+        "filter": "writer=93",
+        "id": "93",
+        "tag": "Esther Wouda",
+        "tagKey": "5d9c0904d4f2a9001f804e98"
+       }
+      ],
+      "Role": [
+       {
+        "filter": "actor=94",
+        "id": "94",
+        "role": "Sintel (voice)",
+        "tag": "Halina Reijn",
+        "tagKey": "5d77682bf54112001f5bc663",
+        "thumb": "https://metadata-static.plex.tv/9/people/95a33cf9743f24d12c2ac803a26941bc.jpg"
+       },
+       {
+        "filter": "actor=95",
+        "id": "95",
+        "role": "Shaman (voice)",
+        "tag": "Thom Hoffman",
+        "tagKey": "5d7768275af944001f1f6b57",
+        "thumb": "https://metadata-static.plex.tv/2/people/2f5a97329557ec9b911e8f82c0b0fcf8.jpg"
+       }
+      ],
+      "Producer": [
+       {
+        "filter": "producer=96",
+        "id": "96",
+        "tag": "Ton Roosendaal",
+        "tagKey": "5d776834103a2d001f567902",
+        "thumb": "https://metadata-static.plex.tv/d/people/d0cd238b5a00353ddae78dd55720f7e3.jpg"
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ]
+}

@@ -273,6 +273,10 @@ fn measured_values(
         ),
         ("video.separateFields".to_string(), Value::from(0)),
         (
+            "video.DOVIProfile".to_string(),
+            video.get("DOVIProfile").cloned().unwrap_or(Value::Null),
+        ),
+        (
             "part.optimizedForStreaming".to_string(),
             Value::from(if is_one(optimized) { 1 } else { 0 }),
         ),
@@ -702,6 +706,52 @@ pub fn resolve<'a>(profiles: &'a Profiles, name: &str) -> Option<&'a Profile> {
     profile
 }
 
+/// The profile with what `X-Plex-Client-Profile-Extra` adds to it: `add-direct-play-profile`
+/// and `add-limitation`. Plex for Android adds `type=notMatch&name=video.DOVIProfile&value=5`
+/// for HEVC on a device without Dolby Vision profile 5, and a real 1.42.2 then refuses that
+/// direct play ("video.DOVIProfile limitation applies: 5 == 5") while a non-DV HEVC file still
+/// plays (`tests/fixtures/decisions/dovi_profile5_limitation_s1422.json`).
+// ponytail: the other directives (transcode targets, settings) are not applied to the decision.
+pub fn with_extra(profile: &Profile, extra: &str) -> Profile {
+    let mut profile = profile.clone();
+    let capital = |word: &str| {
+        let mut chars = word.chars();
+        chars.next().map(|first| first.to_ascii_uppercase().to_string() + chars.as_str()).unwrap_or_default()
+    };
+    for directive in extra.split('+') {
+        let Some((kind, rest)) = directive.split_once('(') else {
+            continue;
+        };
+        let pairs: HashMap<&str, &str> = rest
+            .trim_end_matches(')')
+            .split('&')
+            .filter_map(|pair| pair.split_once('='))
+            .collect();
+        // The profile resource says "any" with an empty field; a client's extra says `*`.
+        let field = |key: &str| Value::from(pairs.get(key).copied().filter(|value| *value != "*").unwrap_or(""));
+        let (list, entry) = match kind.trim() {
+            "add-direct-play-profile" if pairs.get("type") == Some(&"videoProfile") => (
+                "directplay",
+                serde_json::json!({"tag": "VideoProfile", "container": field("container"),
+                    "codec": field("videoCodec"), "audioCodec": field("audioCodec")}),
+            ),
+            "add-limitation" => (
+                "codecprofiles",
+                serde_json::json!({"tag": capital(pairs.get("scope").copied().unwrap_or("")),
+                    "name": field("scopeName"), "limitations": [{"name": field("name"),
+                    "tag": capital(pairs.get("type").copied().unwrap_or("")), "value": field("value")}]}),
+            ),
+            _ => continue,
+        };
+        if let Some(Value::Array(entries)) = profile.get_mut(list) {
+            entries.push(entry);
+        } else {
+            profile.insert(list.to_string(), Value::Array(vec![entry]));
+        }
+    }
+    profile
+}
+
 pub fn decide(
     profiles: &Profiles,
     name: &str,
@@ -715,6 +765,10 @@ pub fn decide(
             text: None,
         };
     };
+    decide_profile(profile, media, protocol, direct)
+}
+
+pub fn decide_profile(profile: &Profile, media: &Value, protocol: &str, direct: bool) -> Decision {
     let mut text = "App cannot direct play this item. Direct play is disabled.".to_string();
     if direct {
         let (ok, reason) = direct_play(profile, media);
@@ -846,5 +900,33 @@ mod tests {
             Some(&Value::from(2))
         );
         assert!(evaluated_audio(&textual).is_none());
+    }
+
+    const DOVI: &str = include_str!("../../tests/fixtures/decisions/dovi_profile5_limitation_s1422.json");
+
+    #[test]
+    fn a_client_extra_limitation_refuses_dolby_vision_profile_5_as_a_real_pms_does() {
+        let profiles = parse_profiles(PROFILES).expect("profile fixture parses");
+        let fixture: Value = serde_json::from_str(DOVI).expect("dovi fixture parses");
+        let samsung = resolve(&profiles, "Samsung").expect("Samsung profile");
+        let mut checked = 0;
+        for row in fixture["decisions"].as_array().expect("decisions") {
+            if !row["label"].as_str().unwrap_or("").contains("-samsung-") {
+                continue;
+            }
+            let media = &fixture["items"][row["item"].as_str().expect("item")]["Media"][0];
+            let extra = row["req_headers"]["X-Plex-Client-Profile-Extra"].as_str().unwrap_or("");
+            let answer = decide_profile(&with_extra(samsung, extra), media, "hls", true);
+            let reference = &row["response"];
+            let direct = reference["directPlayDecisionCode"].as_i64() == Some(1000);
+            assert_eq!(answer.outcome == Outcome::DirectPlay, direct, "{}", row["label"]);
+            assert_eq!(answer.text.as_deref(), reference["directPlayDecisionText"].as_str(), "{}", row["label"]);
+            if !direct {
+                assert_eq!(reference["transcodeDecisionCode"].as_i64(), Some(2003), "{}", row["label"]);
+                assert!(dolby_vision_blocked(&profiles, "Samsung", Some(media), "hls"), "{}", row["label"]);
+            }
+            checked += 1;
+        }
+        assert_eq!(checked, 6);
     }
 }

@@ -13068,3 +13068,35 @@ and Sonarr included), so these are a busy production host's numbers, not a quiet
   Foundation S02 2160p) take the CPU path.
 - Not measured: two viewers at once (one does not keep up), 1080p Dolby Vision (rex-fun has none),
   a quiet host, a GPU tonemapper.
+
+## Dolby Vision profile 5 on a device without it: the client's limitation (2026-10-17)
+
+Measured on a throwaway, unclaimed PMS 1.42.2.10156-f737b826c on the test host, over loopback with its
+`.LocalAdminToken`, with a real profile 5 release (Predator: Killer of Killers (2025) 2160p WEB-DL DV P5,
+its first 40 s) and a generated 1080p 10-bit HEVC control
+(`tests/fixtures/decisions/dovi_profile5_limitation_s1422.json`).
+
+- **Plex for Android decides this itself.** Its media decision engine (`hasMDE=1`) runs
+  `limitDolbyVisionProfile5` on the client: a device without profile 5 support gets result false,
+  "Dolby Vision Profile 5 is not supported", so the app never direct-plays it. It asks for a conversion
+  instead, carrying `add-limitation(scope=videoCodec&scopeName=hevc&type=notMatch&name=video.DOVIProfile&value=5)`
+  in `X-Plex-Client-Profile-Extra` (the app spells the type `notMatch`). With `hasMDE=1` and
+  `directPlay=1` the real server answers no decision codes at all, for both items.
+- **Asked for a conversion (`directPlay=0`)**, the real server refuses profile 5 with 3000/2000/2003,
+  "File is unplayable. DoVi (Profile 5) color space is not supported.", limitation or not; the control
+  converts (1001). rex with `REX_TRANSCODER` converts profile 5 with its RPU instead (findings "HDR and
+  Dolby Vision conversions"), which is rex's own improvement, not the reference.
+- **A server-side decision honours the limitation.** Samsung's profile with an
+  `add-direct-play-profile(type=videoProfile&container=mp4&videoCodec=hevc&audioCodec=*)`: profile 5
+  direct-plays without the limitation (1000, "Direct play OK."), and with it (`notMatch` or `NotMatch`)
+  answers 3000/2000/2003 with "This app cannot play this item. The reason is: video.DOVIProfile
+  limitation applies: 5 == 5."; the HEVC control direct-plays either way. `video.DOVIProfile` is the only
+  DOVI limitation property the Android bundle names.
+- **rex before:** its decision read only the profile resource, never the client's extra, and had no
+  `video.DOVIProfile` value, so a non-MDE client asking that limitation still got direct play (pink and
+  green on a device without profile 5). Now `decision::with_extra` adds a request's
+  `add-direct-play-profile` and `add-limitation` to the profile it decides with (`*` meaning any), and
+  `video.DOVIProfile` is the video stream's `DOVIProfile`. Other extra directives still are not applied
+  to the decision.
+- Not seen: which non-MDE clients send this limitation. The Android bundle is the only one read; iOS,
+  tvOS and the TV apps were not.

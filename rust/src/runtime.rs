@@ -10820,13 +10820,25 @@ impl Runtime {
         };
         let mde = query.get("hasMDE") == Some(&"1".to_string());
         if refusal.is_none() && !mde {
-            let answer = decision::decide(
-                &self.decision_profiles,
-                &profile_name,
-                &selected_for_engine,
-                protocol,
-                true,
-            );
+            let extra = query
+                .get("X-Plex-Client-Profile-Extra")
+                .or_else(|| headers.get("x-plex-client-profile-extra"))
+                .map_or("", String::as_str);
+            let answer = match decision::resolve(&self.decision_profiles, &profile_name) {
+                Some(profile) if !extra.is_empty() => decision::decide_profile(
+                    &decision::with_extra(profile, extra),
+                    &selected_for_engine,
+                    protocol,
+                    true,
+                ),
+                _ => decision::decide(
+                    &self.decision_profiles,
+                    &profile_name,
+                    &selected_for_engine,
+                    protocol,
+                    true,
+                ),
+            };
             if answer.outcome == decision::Outcome::Refuse {
                 // Xbox 360's one video target is an asf with no protocol, and both
                 // references answer a 400 for every row it cannot direct play.
