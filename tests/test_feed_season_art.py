@@ -9,7 +9,8 @@ tmdb:42009), but the season was found again by its index and left as it was made
 
 This drives the feed with the season's five real files and the TMDB and Plex answers
 the production rex had cached for them (`fixtures/feed/season_art.json`): pushed first with no ids,
-so nothing names them, then with zurg's IMDb id, which re-identifies the show in place.
+so nothing names them, then placed as zurg pushes what DMM placed, which re-identifies the show
+in place.
 Then it starts on the rows the production rex actually held, which a restart must repair, and on
 the same rows with a poster a person picked, which stays.
 
@@ -36,12 +37,15 @@ HELD_SEASON = "112196"
 
 
 def item(entry, ids=True):
+    """zurg's entry, with `ids` pushed as zurg pushes what DMM placed: Black Mirror (TMDB 42009),
+    season 6, the episode each file is."""
     path, data = entry["path"], entry["entry"]
     out = {"id": path, "path": path, "file": "%s/%s" % (MOUNT, path), "name": data["name"],
            "release": path.rsplit("/", 1)[0], "size": data["size"], "hash": data["hash"],
            "media_info": data["media_info"]}
     if ids:
-        out["ids"] = {"imdb": data["imdb_id"]}
+        episode = int(path.split(".S06E", 1)[1][:2])
+        out.update(ids={"imdb": data["imdb_id"], "tmdb": 42009}, kind="episode", season=6, episode=episode)
     return out
 
 
@@ -118,24 +122,26 @@ def main():
               status == 200 and body.get("created") == 5 and str(server.row(show).get("guid")).startswith("local://")
               and str(server.row(season).get("guid")).startswith("local://"),
               (status, body, server.row(show).get("guid"), server.row(season).get("guid")))
-        before = {key: server.row(key).get("thumb") for key in (show, season)}
+        before = [server.row(key).get("thumb") for key in (show, season)]
         status, body = server.feed("POST", "items", {"items": pushed})
-        check("zurg's IMDb id re-identifies the show in place, as it did in production",
+        check("zurg's placement re-identifies the show in place, as its IMDb id did in production",
               status == 200 and body.get("updated") == 5 and server.row(show).get("guid") == SHOW_GUID
               and server.keys() == keys, (body, server.row(show).get("guid")))
+        # Unplaced, the files were season 1 in file order; placed, they are TMDB's season 6.
         row = season_of(server, show)
-        check("the season stays the one season, on its key", row.get("ratingKey") == season, (row.get("ratingKey"), season))
+        season = row.get("ratingKey")
+        check("the show holds one season, the one its source placed them in", row.get("index") == 6, row.get("index"))
         identified(server, row, SHOW_GUID, "re-identified")
         check("re-identified: its poster is TMDB's for the season, not the blank tile", poster(server, season) == POSTER,
               poster(server, season))
         # Plex for Mac caches a poster by its path: on the production server it kept drawing the blank
         # tile it had fetched for Ahsoka before the show was re-identified (2026-10-13).
-        after = {key: server.row(key).get("thumb") for key in (show, season)}
+        after = [server.row(key).get("thumb") for key in (show, season)]
         check("the show's and the season's new posters are on new paths, so a client fetches them again",
-              all(after[key] and after[key] != before[key] for key in (show, season)), (before, after))
+              all(now and now != then for now, then in zip(after, before)), (before, after))
         check("and the episodes name the show's new path",
               {row.get("grandparentThumb") for row in server.rows("/library/metadata/%s/children" % season)}
-              == {after[show]}, after[show])
+              == {after[0]}, after[0])
     finally:
         server.stop()
         shutil.rmtree(work, ignore_errors=True)

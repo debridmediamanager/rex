@@ -8,7 +8,7 @@ use rex::{catalog, decision, filters, gate, hierarchy, mediainfo, metadata, runt
 use serde_json::json;
 
 fn usage() -> &'static str {
-    "Usage: rex [server options] | rex catalog ... | rex manager ... | rex <decision|mediainfo|normalize-media|stream-titles|hierarchy-build|hierarchy-normalize|hierarchy-fold|hierarchy-case|catalog-normalize|xml|system-xml|ordered|guid|provider-guids|gate|metadata-parse|metadata-enrich|filter-compare|filter-parse|filter-evaluate|filter-describe|filter-document|filter-orders|filter-source-order|identify-replay> ..."
+    "Usage: rex [server options] | rex catalog ... | rex manager ... | rex <decision|mediainfo|normalize-media|stream-titles|hierarchy-build|hierarchy-normalize|hierarchy-fold|hierarchy-case|catalog-normalize|xml|system-xml|ordered|guid|provider-guids|gate|metadata-enrich|filter-compare|filter-parse|filter-evaluate|filter-describe|filter-document|filter-orders|filter-source-order> ..."
 }
 
 /// `main()`'s `argparse` options, in its declaration order: (flag, metavar, takes a value).
@@ -667,11 +667,6 @@ fn run_core(command: &str, args: &[String]) -> Result<(), String> {
                 p60,
             ))
         }
-        "metadata-parse" => {
-            let options = parse_core_args(args, &["--filename"])?;
-            let filename = required(&options, "--filename")?;
-            print_json(&metadata::parse_release(filename))
-        }
         "metadata-enrich" => {
             let options = parse_core_args(args, &["--input"])?;
             let input = read_json(required(&options, "--input")?)?;
@@ -924,143 +919,6 @@ fn run_core(command: &str, args: &[String]) -> Result<(), String> {
             let order = filters::source_order(value)
                 .map_err(|error| format!("filter {}: {}", error.status, error.detail))?;
             print_json(&order.map_or(serde_json::Value::Null, serde_json::Value::Array))
-        }
-        "identify-replay" => {
-            // `probes/record_*_corpus.py`: each torrent identified as its corpus's replay test
-            // identifies it (rust/tests/identify_corpus.rs), from the recorded answers alone,
-            // keyed as there. A request the record lacks is answered `{}` and listed with the
-            // torrent, in order, so the recorder can ask it live and replay again.
-            use rex::identify::{Identifier, PlexSource, TmdbSource};
-            use serde_json::Value;
-            use std::cell::RefCell;
-            type TmdbKey = (String, Vec<(String, String)>);
-            fn text(value: &Value) -> String {
-                value
-                    .as_str()
-                    .map_or_else(|| value.to_string(), str::to_string)
-            }
-            fn sorted_keys(value: &Value) -> Value {
-                match value {
-                    Value::Object(map) => {
-                        let mut keys = map.keys().collect::<Vec<_>>();
-                        keys.sort();
-                        Value::Object(
-                            keys.into_iter()
-                                .map(|key| (key.clone(), sorted_keys(&map[key])))
-                                .collect(),
-                        )
-                    }
-                    Value::Array(rows) => Value::Array(rows.iter().map(sorted_keys).collect()),
-                    other => other.clone(),
-                }
-            }
-            struct Replay {
-                tmdb: HashMap<TmdbKey, Value>,
-                plex: HashMap<String, Value>,
-                missed: RefCell<Vec<Value>>,
-            }
-            impl TmdbSource for Replay {
-                fn get(&self, path: &str, params: &[(&str, String)]) -> Option<Value> {
-                    let mut pairs = params
-                        .iter()
-                        .map(|(name, value)| (name.to_string(), value.clone()))
-                        .collect::<Vec<_>>();
-                    pairs.sort();
-                    let key = (path.to_string(), pairs);
-                    let answer = self.tmdb.get(&key).cloned();
-                    if answer.is_none() {
-                        self.missed.borrow_mut().push(json!({"tmdb": [key.0, key.1]}));
-                    }
-                    Some(answer.unwrap_or_else(|| json!({})))
-                }
-            }
-            impl PlexSource for Replay {
-                fn call(&self, method: &str, path: &str, body: Option<&Value>) -> Option<Value> {
-                    let key = json!([method, path, body]);
-                    let answer = self.plex.get(&sorted_keys(&key).to_string()).cloned();
-                    if answer.is_none() {
-                        self.missed.borrow_mut().push(json!({"plex": key}));
-                    }
-                    Some(answer.unwrap_or_else(|| json!({})))
-                }
-            }
-            let options = parse_core_args(args, &["--input"])?;
-            let input = read_json(required(&options, "--input")?)?;
-            let mut replay = Replay {
-                tmdb: HashMap::new(),
-                plex: HashMap::new(),
-                missed: RefCell::default(),
-            };
-            let bad = |key: &str| format!("unreadable recorded key {key}");
-            for (key, answer) in input["tmdb"].as_object().into_iter().flatten() {
-                let parsed: Value = serde_json::from_str(key).map_err(|_| bad(key))?;
-                let mut pairs = parsed[1]
-                    .as_array()
-                    .ok_or_else(|| bad(key))?
-                    .iter()
-                    .map(|pair| (text(&pair[0]), text(&pair[1])))
-                    .collect::<Vec<_>>();
-                pairs.sort();
-                replay.tmdb.insert((text(&parsed[0]), pairs), answer.clone());
-            }
-            for (key, answer) in input["plex"].as_object().into_iter().flatten() {
-                let parsed: Value = serde_json::from_str(key).map_err(|_| bad(key))?;
-                replay.plex.insert(sorted_keys(&parsed).to_string(), answer.clone());
-            }
-            let mode = input["mode"].as_str().unwrap_or("hash");
-            let torrents = input["torrents"]
-                .as_array()
-                .ok_or_else(|| "torrents must be an array".to_string())?;
-            let known = {
-                torrents
-                    .iter()
-                    .filter_map(|torrent| {
-                        Some((
-                            torrent["hash"].as_str()?.to_lowercase(),
-                            torrent["known"].as_str().filter(|id| !id.is_empty())?.to_string(),
-                        ))
-                    })
-                    .collect()
-            };
-            let identifier = Identifier {
-                tmdb: Some(&replay),
-                plex: Some(&replay),
-                known,
-            };
-            let mut identities = Vec::new();
-            for torrent in torrents {
-                let name = torrent["name"]
-                    .as_str()
-                    .ok_or_else(|| "a torrent without a name".to_string())?;
-                let files = torrent["files"].as_u64().unwrap_or(1) as usize;
-                let identity = match mode {
-                    "hash" => identifier.identify(name, torrent["hash"].as_str(), files),
-                    // `identify_release`, as the feed names a release: a TMDB id sent
-                    // without an IMDb id is read as a `{tmdb-…}` tag, in its library's kind.
-                    "release" => {
-                        let tmdb = text(&torrent["tmdb"]);
-                        let tagged = !torrent["tmdb"].is_null() && !matches!(tmdb.as_str(), "" | "0")
-                            && torrent["known"].as_str().filter(|id| !id.is_empty()).is_none();
-                        let name = if tagged { format!("{name} {{tmdb-{tmdb}}}") } else { name.to_string() };
-                        let hash = torrent["hash"].as_str().filter(|hash| !hash.is_empty());
-                        identifier.identify_as(&name, Some(hash.unwrap_or("zurg")), files, torrent["kind"].as_str())
-                    }
-                    other => return Err(format!("unknown mode {other}")),
-                };
-                identities.push(json!({
-                    "imdb": identity.imdb,
-                    "tmdb": identity.tmdb,
-                    "plex": identity.plex,
-                    "kind": identity.kind,
-                    "source": identity.source,
-                    "confidence": identity.confidence,
-                    "disputed": identity.disputed.map(|disputed| json!({
-                        "tmdb": disputed.tmdb, "imdb": disputed.imdb, "kind": disputed.kind,
-                    })),
-                    "missed": replay.missed.take(),
-                }));
-            }
-            print_json(&json!({ "identities": identities }))
         }
         _ => Err(format!("unknown command {command}\n{}", usage())),
     }

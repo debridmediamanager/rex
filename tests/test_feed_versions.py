@@ -25,12 +25,14 @@ GUID = "plex://movie/5d77687d7e5fa10020bf080d"
 
 
 def item(index, path=None):
+    """zurg's entry, pushed as zurg pushes what DMM placed: a film, by its IMDb id and the TMDB id
+    the fixture's answers name (44115)."""
     entry = FIXTURE["entries"][index]
     path = path or entry["path"]
     data = entry["entry"]
     return {"id": path, "path": path, "file": "%s/%s" % (MOUNT, path), "name": data["name"],
             "release": path.rsplit("/", 1)[0], "size": data["size"], "hash": data["hash"],
-            "media_info": data["media_info"], "ids": {"imdb": data["imdb_id"]}}
+            "media_info": data["media_info"], "ids": {"imdb": data["imdb_id"], "tmdb": 44115}, "kind": "movie"}
 
 
 def catalog(work, items=()):

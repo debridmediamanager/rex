@@ -71,8 +71,10 @@ def main():
         check_rows("after a start", server)
 
         # -- a release of a trashed episode brings it back --------------------------------------
+        # Recorded before zurg sent DMM's numbers with its `kind` (36fac6ca); it sends TMDB's S1E2
+        # now, and rex numbers nothing by its name.
         pushed = FIXTURE["pushes"]["freakazoid_bang_s01e02"]
-        item = dict(pushed, file="%s/%s" % (MOUNT, pushed["path"]), media_info=PROBE)
+        item = dict(pushed, file="%s/%s" % (MOUNT, pushed["path"]), media_info=PROBE, season=1, episode=2)
         status, body = server.feed("POST", "items", {"items": [item]})
         check("the other S01E02 NZB is taken", status == 200 and not (body or {}).get("rejected"), (status, body))
         key = server.keys().get(pushed["id"])

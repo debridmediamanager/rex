@@ -422,7 +422,7 @@ def main():
               status == 200 and body.get("created") == 2 and not body.get("rejected"), body)
         status, raw = call(port, "/library/sections/1/all")
         titles = [row.get("title") for row in json.loads(raw)["MediaContainer"].get("Metadata") or []]
-        check("the movies directory's item is in the movie library", "Plain Release" in titles, titles)
+        check("the movies directory's item is in the movie library", "Plain.Release.2021" in titles, titles)
 
         # -- a probe with no streams is held, not shown unplayable --------------------------
         # docs/feed-api.md's own example item carried `{"format": {}, "streams": []}`, which

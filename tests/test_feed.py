@@ -4,8 +4,9 @@
 `docs/feed-api.md` is the contract. The source here is zurg as its producer describes
 itself: items whose id and path are `<directory>/<release>/<file>`, whose `file` is that
 under zurg's mount, carrying zurg's two real entries (`fixtures/zurg/entries.json`: the
-release, hash, IMDb id, size and stored ffprobe) and a release zurg has neither
-identified nor probed. Its bytes are a plain Range server behind a bearer token, not
+release, hash, IMDb id, size and stored ffprobe), pushed with ids as zurg pushes what DMM
+placed (`kind`, the title's TMDB and IMDb ids, an episode's TMDB season and episode), and a
+release zurg has neither placed nor probed. Its bytes are a plain Range server behind a bearer token, not
 WebDAV, because a source is any HTTP server that honours Range; the source registers it
 (`PUT /rex/sources/zurg`) before it pushes, as zurg does, and pushes with no token: the feed
 is open to anyone who can reach rex.
@@ -24,7 +25,6 @@ import json
 import os
 import shutil
 import socketserver
-import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -48,6 +48,10 @@ BYTES_TOKEN = "bytes-secret-for-tests"
 BODY = bytes((i * 7 + 13) % 251 for i in range(65536))
 NEW = "Qzxv.Wmplk.2024.1080p.WEB-DL"
 MOUNT = "/zurg"
+# DMM's placement of the two entries: the title's TMDB id (`provider_cache.json`), the kind, and
+# for the episode TMDB's season and episode.
+PLACED = {"movie": ({"tmdb": 31639}, {"kind": "movie"}),
+          "episode": ({"tmdb": 1433}, {"kind": "episode", "season": 5, "episode": 7})}
 
 results = []
 
@@ -58,7 +62,8 @@ def check(name, ok, detail=""):
 
 
 def item(kind, ids=True, probe=True):
-    """A zurg-shaped item for one of the fixture's entries, or `new` (unidentified)."""
+    """A zurg-shaped item for one of the fixture's entries, placed as DMM placed it unless
+    `ids` is false, or `new` (never placed)."""
     if kind == "new":
         release, filename, entry = NEW, NEW + ".mkv", {"hash": "a" * 40, "name": NEW, "size": 12345}
         entry["media_info"] = ENTRIES["movie"]["entry"]["media_info"] if probe else None
@@ -74,7 +79,8 @@ def item(kind, ids=True, probe=True):
            "release": "%s/%s" % (directory, release), "size": entry["size"], "hash": entry["hash"],
            "media_info": entry["media_info"]}
     if ids and entry.get("imdb_id"):
-        out["ids"] = {"imdb": entry["imdb_id"]}
+        out["ids"] = dict(PLACED[kind][0], imdb=entry["imdb_id"])
+        out.update(PLACED[kind][1])
     return out
 
 
@@ -239,56 +245,6 @@ def catalog(work, items=(), name="catalog.json", next_key=None):
         json.dump(rows, open(os.path.join(work, cache), "w"))
 
 
-def retry_unnamed(bytes_port):
-    """An id that named nothing is tried again on the next push, on its own server."""
-    work = tempfile.mkdtemp(prefix="rex-feed-unnamed-")
-    catalog(work)
-    server = Server(work, bytes_port)
-    try:
-        # -- an id that named nothing is tried again on the next push --------------------
-        # Production, 2026-10-11: zurg pushed Arrow's season pack with the IMDb id DMM knows its
-        # hash by, the pilot's (tt2340185). TMDB's /find answers an episode's id under
-        # `tv_episode_results`, which rex did not read, so the show stayed on `local://`, and
-        # every later push carried the same id, which re-identified nothing.
-        answers = json.load(open(os.path.join(FIXTURES, "feed", "episode_id_answers.json")))
-        arrow_path = answers["file"][len("/mnt/zurg/"):]
-        arrow = {"id": arrow_path, "path": arrow_path, "file": "%s/%s" % (MOUNT, arrow_path),
-                 "name": answers["release"], "release": "shows/" + answers["release"],
-                 "size": ENTRIES["episode"]["entry"]["size"], "hash": answers["hash"],
-                 "media_info": ENTRIES["episode"]["entry"]["media_info"], "ids": {"imdb": "tt2340185"}}
-        server.feed("POST", "items", {"items": [arrow]})
-        arrow_key = server.keys().get(arrow["id"])
-        first = server.row(arrow_key)
-        arrow_show = first.get("grandparentRatingKey")
-        check("an id no provider answered leaves the show unmatched",
-              arrow_key and first.get("grandparentGuid") == "local://%s" % arrow_show, first.get("grandparentGuid"))
-        status, body = server.feed("POST", "items", {"items": [arrow]})
-        check("pushed again while its id still names nothing, it is left as it is",
-              body.get("unchanged") == 1 and server.row(arrow_key).get("addedAt") == first.get("addedAt")
-              and server.keys().get(arrow["id"]) == arrow_key, body)
-        # The providers answer now, as they did on the production server once the request was one
-        # they knew.
-        for cache, rows in (("tmdb_cache.db", answers["tmdb"]), ("plex_cache.db", answers["plex"])):
-            with sqlite3.connect(os.path.join(work, cache)) as db:
-                db.executemany("INSERT OR REPLACE INTO cache (key, value) VALUES (?, ?)",
-                               [(key, json.dumps(value)) for key, value in rows.items()])
-        status, body = server.feed("POST", "items", {"items": [arrow]})
-        show = server.row(arrow_show)
-        check("the same push again identifies it: the show by the episode's id, on its key",
-              status == 200 and body.get("updated") == 1 and server.keys().get(arrow["id"]) == arrow_key
-              and show.get("guid") == "plex://show/5d9c086c02391c001f5891cf" and show.get("title") == "Arrow",
-              (body, show.get("guid"), show.get("title")))
-        check("the show is known by its own IMDb id, not the pilot's",
-              {"id": "imdb://tt2193021"} in (server.row(arrow_key).get("Guid") or [])
-              or {"id": "imdb://tt2193021"} in (show.get("Guid") or []),
-              (show.get("Guid"), server.row(arrow_key).get("Guid")))
-        status, body = server.feed("POST", "items", {"items": [arrow]})
-        check("and once named, the same push changes nothing", body.get("unchanged") == 1, body)
-    finally:
-        server.stop()
-        shutil.rmtree(work, ignore_errors=True)
-
-
 def matcher_identity(bytes_port):
     """Plex's metadata agent is asked as this server. A real PMS sends its machineIdentifier as
     X-Plex-Client-Identifier on every agent call (fixtures/plexmeta_matches_s143.json, plexlab's
@@ -318,9 +274,10 @@ def matcher_identity(bytes_port):
     machine = json.load(open(os.path.join(work, "catalog.json")))["machineIdentifier"]
     server = Server(work, bytes_port, keys={"REX_PLEXTV_URL": "http://127.0.0.1:%d" % stub})
     try:
-        # A release with an id no cached answer names, so the agent is asked (a name alone is not).
+        # A release placed with an id no cached answer names, so the agent is asked (a name alone,
+        # or an id nothing placed, is not).
         name = "Vrqz.Klmw.2023.1080p.WEB-DL"
-        unknown = dict(item("new"), name=name, release="movies/" + name, ids={"imdb": "tt99999991"},
+        unknown = dict(item("new"), name=name, release="movies/" + name, ids={"imdb": "tt99999991"}, kind="movie",
                        id="movies/%s/%s.mkv" % (name, name), path="movies/%s/%s.mkv" % (name, name),
                        file="%s/movies/%s/%s.mkv" % (MOUNT, name, name), hash="b" * 40)
         server.feed("POST", "items", {"items": [unknown]})
@@ -335,43 +292,6 @@ def matcher_identity(bytes_port):
               matches and matches[0].get("x-plex-client-identifier") == machine
               and recorded["x-plex-client-identifier"] == real["machineIdentifier"],
               [(path, headers.get("x-plex-client-identifier")) for _, path, headers in asked])
-    finally:
-        server.stop()
-        shutil.rmtree(work, ignore_errors=True)
-
-
-def loose_episodes(bytes_port):
-    """Episodes named without SxxEyy are placed. zurg filed these under movies on the test
-    host and in production until 2026-10-11; filed as shows, each was dropped as `has no episode
-    number; not placed`. Their real names, and Suits.S03's disc-rip file, whose number is only in
-    the brackets."""
-    work = tempfile.mkdtemp(prefix="rex-feed-loose-")
-    catalog(work)
-    server = Server(work, bytes_port)
-    entry = ENTRIES["episode"]["entry"]
-    try:
-        cases = [("Mysterious Love E06 1080p WEB.DL AAC H.264-Luvmichelle",
-                  "Mysterious Love E06 1080p WEB.DL AAC H.264-Luvmichelle.mp4", 1, 6),
-                 ("Some Day or One Day - 1x02 (1080p VIKI WEB.DL Marshall)",
-                  "Some Day or One Day - 1x02 (1080p VIKI WEB.DL Marshall).mkv", 1, 2),
-                 ("Suits.S03.1080p.BDRemux.2xRus.Eng.HDCLUB", "00000 (E01-The.Arrangement).m2ts", 3, 1)]
-        items = []
-        for release, filename, _season, _episode in cases:
-            path = "shows/%s/%s" % (release, filename)
-            items.append({"id": path, "path": path, "file": "%s/%s" % (MOUNT, path), "name": release,
-                          "release": "shows/" + release, "size": entry["size"],
-                          "hash": "%040x" % len(items), "media_info": entry["media_info"]})
-        status, body = server.feed("POST", "items", {"items": items})
-        keys = server.keys()
-        placed = [server.row(keys.get(item["id"])) if keys.get(item["id"]) else {} for item in items]
-        check("each is created", status == 200 and body.get("created") == len(items), body)
-        check("as an episode of its own season and number",
-              [(row.get("type"), row.get("parentIndex"), row.get("index")) for row in placed]
-              == [("episode", season, episode) for _r, _f, season, episode in cases],
-              [(row.get("type"), row.get("parentIndex"), row.get("index")) for row in placed])
-        check("under a show of its title",
-              [row.get("grandparentTitle") for row in placed] == ["Mysterious Love", "Some Day or One Day", "Suits"],
-              [row.get("grandparentTitle") for row in placed])
     finally:
         server.stop()
         shutil.rmtree(work, ignore_errors=True)
@@ -445,8 +365,9 @@ def main():
         check("its Media and Streams are the pushed ffprobe",
               (row.get("Media") or [{}])[0].get("videoCodec") == "h264" and len(part.get("Stream") or []) == 4,
               row.get("Media"))
-        check("with no ids and no provider answer it is unmatched: titled from its name, local guid",
-              row.get("guid") == "local://%s" % movie_key and row.get("title") == "Blame It on the Bellboy"
+        check("with no placement it is unmatched: titled as its file, nothing read off it, local guid",
+              row.get("guid") == "local://%s" % movie_key
+              and row.get("title") == ENTRIES["movie"]["file"].rsplit(".", 1)[0] and not row.get("year")
               and not row.get("Guid"), (row.get("guid"), row.get("title"), row.get("Guid")))
         status, body = server.feed("POST", "items", {"items": [movie]})
         check("the same push again changes nothing",
@@ -466,7 +387,7 @@ def main():
         server.request("/:/scrobble?key=%s&identifier=com.plexapp.plugins.library" % movie_key)
         status, body = server.feed("POST", "items", {"items": [item("movie")]})
         row = server.row(movie_key)
-        check("a push that adds an IMDb id re-identifies the row", status == 200 and body.get("updated") == 1
+        check("a push that places it re-identifies the row", status == 200 and body.get("updated") == 1
               and row.get("title") == "Blame It on the Bellboy" and row.get("year") == 1992, (body, row.get("title")))
         check("on the same ratingKey, with Plex's guid and both external ids",
               server.keys().get(movie["id"]) == movie_key
@@ -476,27 +397,32 @@ def main():
         status, body = server.feed("POST", "items", {"items": [item("movie")]})
         check("the same ids again re-identify nothing", body.get("unchanged") == 1, body)
 
-        # -- an episode: unmatched by name, then its id: the same episode, show, season ----
+        # -- an episode: unmatched in file order, then placed: the same episode and show ----
         episode = item("episode")
         status, body = server.feed("POST", "items", {"items": [item("episode", ids=False)]})
         episode_key = server.keys().get(episode["id"])
         before = server.row(episode_key)
-        local_show, local_season = before.get("grandparentRatingKey"), before.get("parentRatingKey")
-        # The same push again, with an IMDb id TMDB and Plex do not know: the show moves to
-        # that identity, still unidentified, on its own key and its own local guid.
+        local_show = before.get("grandparentRatingKey")
+        check("an episode with no placement is the first of season 1 of a local show named after its release",
+              body.get("created") == 1 and [before.get("parentIndex"), before.get("index")] == [1, 1]
+              and before.get("grandparentGuid") == "local://%s" % local_show
+              and before.get("grandparentTitle") == episode["name"], (body, before))
+        # Placed, with an IMDb id TMDB and Plex do not know: the show moves to that identity, still
+        # unidentified, on its own key and its own local guid, and the episode to TMDB's S5E7.
         unknown = dict(item("episode"), ids={"imdb": "tt0000001"})
         server.feed("POST", "items", {"items": [unknown]})
         unnamed = (server.rows("/library/sections/2/all") or [{}])[0]
+        moved = server.row(episode_key)
         check("an id no provider knows keeps the show's key and its own local guid",
               unnamed.get("ratingKey") == local_show and unnamed.get("guid") == "local://%s" % local_show,
               (unnamed.get("ratingKey"), unnamed.get("guid"), local_show))
-        check("an episode with no ids is placed under a local show and season of its name",
-              body.get("created") == 1 and before.get("index") == 7 and before.get("parentIndex") == 5
-              and before.get("grandparentGuid") == "local://%s" % local_show, (body, before))
+        check("and the episode moves to the season and episode its source placed it on",
+              [moved.get("parentIndex"), moved.get("index")] == [5, 7], (moved.get("parentIndex"), moved.get("index")))
+        local_season = moved.get("parentRatingKey")
         status, body = server.feed("POST", "items", {"items": [episode]})
         ep = server.row(episode_key)
         shows = server.rows("/library/sections/2/all?includeGuids=1")
-        check("its id re-identifies the episode on its key: TMDB's title, Plex's guid",
+        check("its ids re-identify the episode on its key: TMDB's title, Plex's guid",
               body.get("updated") == 1 and server.keys().get(episode["id"]) == episode_key
               and ep.get("title") == "Phantom of the Telethon"
               and ep.get("guid") == "plex://episode/5d9c0ab4705e7a001e6d4a2b", (body, ep.get("title"), ep.get("guid")))
@@ -518,7 +444,7 @@ def main():
                  .get("Hub", []) if hub.get("size")]
         check("an item with no media_info is held, not created", body.get("held") == 1 and body.get("created") == 0,
               body)
-        check("it is in no listing and no search", "Qzxv Wmplk" not in titles and not search and not found,
+        check("it is in no listing and no search", NEW not in titles and not search and not found,
               (titles, found))
         check("the held listing names it", status_h == 200 and [row.get("id") for row in listing.get("held", [])]
               == [held["id"]], listing)
@@ -536,7 +462,7 @@ def main():
         new_key = server.keys().get(held["id"])
         new = server.row(new_key)
         recent = [row.get("ratingKey") for row in server.rows("/library/recentlyAdded")]
-        check("the push that brings media_info shows it", body.get("created") == 1 and new.get("title") == "Qzxv Wmplk"
+        check("the push that brings media_info shows it", body.get("created") == 1 and new.get("title") == NEW
               and server.feed("GET", "held")[1].get("size") == 0, (body, new.get("title")))
         check("stamped as added when it became playable, first in Recently Added",
               (new.get("addedAt") or 0) >= before and recent[:1] == [new_key], (new.get("addedAt"), before, recent))
@@ -665,7 +591,7 @@ def main():
               filled.get("Media"))
         status, body = server.feed("POST", "items", {"items": pushed})
         check("pushing the same again changes nothing", body.get("unchanged") == 3, body)
-        named = dict(item("new"), ids={"imdb": "tt0103827"})
+        named = dict(item("new"), ids={"imdb": "tt0103827", "tmdb": 31639}, kind="movie")
         server.feed("POST", "items", {"items": [named]})
         bellboy_key = by_file[item("movie")["file"]]
         merged = server.row(bellboy_key)
@@ -680,8 +606,6 @@ def main():
         server = Server(legacy_work, bytes_port)
         check("a restart keeps the adopted keys", server.keys() == keys, server.keys())
         shutil.rmtree(legacy_work, ignore_errors=True)
-        retry_unnamed(bytes_port)
-        loose_episodes(bytes_port)
         matcher_identity(bytes_port)
         other_folders(bytes_port)
     finally:

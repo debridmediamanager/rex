@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""A disc's extras are never episodes: not when they are pushed, and not as rows a start finds.
+"""A disc's extras are never episodes when they are pushed, and the rows a start finds stay as held.
 
 `fixtures/feed/extras_1017.json` is what the production rex held on 2026-10-17 and zurg's pushes
 of the same release. `[KH] Motto To Love-Ru (BD …)` lists its menus and creditless openings and
@@ -10,7 +10,9 @@ file, which a client could play for the episode.
 
 An extra of a type Plex serves -- the creditless opening, a film's `Featurettes/` or `-trailer`
 file -- is a clip of its release's title instead (`extraType`, the shape cycle 29 measured on the
-1.42.2 reference); a disc's menus are no extra Plex has a type for and stay unplaced.
+1.42.2 reference); a disc's menus are no extra Plex has a type for and stay unplaced. Rows already
+held are a person's to delete: no pass at start reads a row's name (2026-10-17), so a start keeps
+them as they are.
 
 Record the answers again: `REX_RECORD_ANSWERS=1 TMDB_KEY=... PLEX_TOKEN=... python3 tests/test_feed_extras.py`.
 
@@ -71,12 +73,12 @@ def files(row):
 
 
 def check_rows(label, server):
-    gone = {key: server.row(key).get("title") for key in MOTTO if server.row(key)}
-    check("%s: Motto To Love-Ru's menus and NCED are no show, no season and no episodes" % label, not gone, gone)
-    for key, own in sorted(TO_LOVE_RU.items()):
-        held = files(server.row(key))
-        check("%s: To Love Ru %s keeps its own release and nothing else" % (label, key),
-              len(held) == 1 and held[0].startswith(own), held)
+    kept = [key for key in MOTTO if server.row(key)]
+    check("%s: Motto To Love-Ru's rows are as they were held" % label, kept == MOTTO, kept)
+    for key in sorted(TO_LOVE_RU):
+        held = next(row for row in FIXTURE["rows"] if row["ratingKey"] == key)
+        check("%s: To Love Ru %s keeps every release it held" % (label, key),
+              sorted(files(server.row(key))) == sorted(files(held)), files(server.row(key)))
 
 
 def check_clip(server, parent, key, extra_type, subtype, title):
@@ -105,22 +107,13 @@ def main():
         source.files.add("/dav/" + pushed["path"])
     bytes_port = serve(source.handler())
 
-    # -- rows held so: a start drops what is no episode ----------------------------------------
+    # -- rows held so: a start leaves them as they are -----------------------------------------
     work = tempfile.mkdtemp(prefix="rex-extras-")
     catalog(work, FIXTURE["rows"])
     server = start(work, bytes_port)
     try:
-        check_rows("after a start", server)
-    finally:
-        stop(server, work)
-    log = os.path.join(work, "server.log")
-    dropped = open(log, errors="replace").read().count("FEED dropped")
-    server = start(work, bytes_port)
-    try:
         time.sleep(10)
-        check_rows("after the next start", server)
-        check("the next start drops nothing more", open(log, errors="replace").read().count("FEED dropped") == dropped == 1,
-              (dropped, open(log, errors="replace").read().count("FEED dropped")))
+        check_rows("after a start", server)
     finally:
         stop(server, work)
         shutil.rmtree(work, ignore_errors=True)

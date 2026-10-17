@@ -14,7 +14,7 @@ use std::sync::LazyLock;
 use regex::Regex;
 
 use super::*;
-use crate::identify::{self, Identifier, PlexSource, TmdbSource};
+use crate::identify::{self, PlexSource, TmdbSource};
 use crate::{hierarchy, mediainfo};
 
 /// Where minted keys start: above the catalog's own ranges (movies and episodes 1000+,
@@ -75,42 +75,15 @@ pub(super) fn is_sample(file: &str) -> bool {
         .any(|word| word == "sample")
 }
 
-/// (season, episode) of a show's file: the file's own numbers, else its release's; an
-/// episode with no season (absolute numbering) is season 1. `folder` is where the source says
-/// the provider lists the file inside its release (`folder_of`), `None` when it says nothing.
-pub(super) fn episode_of(release: &str, folder: Option<&str>, file_name: &str) -> Option<(i64, i64)> {
-    let (season, episode) = numbers_of(release, folder, file_name)?;
-    Some((season.unwrap_or(1), episode))
-}
-
-/// A file a show's release holds besides its episodes: one its provider lists in a folder of
-/// extras, one with a creditless opening's or ending's tag (`S02NCED1v1`), or one named before its
-/// number by `NOT_EPISODE`'s words alone, the show's own aside. `[KH] Motto To Love-Ru (BD …)`
-/// lists `Extras/Menu/Menu - 02.mkv` and `Extras/NC/NCED - 01.mkv` (fun's RD library, 2026-10-17):
-/// numbered as episodes they were a show of their own, and To Love-Ru's `NC/NCED - 01.mkv`,
-/// `Extras/CM/BD & DVD CM - 01.mkv` and `OVAs/… - OVA - 03 - …` versions of its episodes 1 and 3.
-/// Otherwise a file that names its own season (`S00E01`) is an episode.
-pub(super) fn is_extra(release: &str, folder: Option<&str>, file_name: &str) -> bool {
-    extra(&(identify::parse_name(release), identify::parse_name(file_name)), folder, file_name)
-}
-
-fn extra(parsed: &(identify::Parsed, identify::Parsed), folder: Option<&str>, file_name: &str) -> bool {
-    if folder.is_some_and(|folder| folder.split('/').any(|segment| EXTRAS_FOLDER.is_match(segment.trim()))) {
-        return true;
-    }
-    if stem(file_name).split(|c: char| !c.is_ascii_alphanumeric()).any(|token| CREDITLESS.is_match(token)) {
-        return true;
-    }
-    if parsed.1.season.is_some() {
-        return false;
-    }
-    let words = |text: &str| -> Vec<String> {
-        text.split(|c: char| !c.is_alphanumeric()).filter(|word| !word.is_empty()).map(str::to_lowercase).collect()
-    };
-    let (show, head) = (words(&parsed.0.title), words(&parsed.1.title));
-    // `Ed, Edd n Eddy - 01` is its show's.
-    let marks = |word: &String| EXTRA_WORD.is_match(word) && !show.contains(word);
-    head.iter().any(marks) && head.iter().all(|word| marks(word) || show.contains(word) || matches!(word.as_str(), "bd" | "dvd"))
+/// A file a release holds besides its episodes, by the names Plex's scanner knows local extras by:
+/// one its provider lists in a folder of extras, or one with a creditless opening's or ending's tag
+/// (`S02NCED1v1`). `[KH] Motto To Love-Ru (BD …)` lists `Extras/Menu/Menu - 02.mkv` and
+/// `Extras/NC/NCED - 01.mkv` (fun's RD library, 2026-10-17): numbered as episodes they were a show
+/// of their own. Folders and tags only, never a file's words: whether a file is an OVA or an
+/// episode is its source's to say, by placing it.
+pub(super) fn is_extra(folder: Option<&str>, file_name: &str) -> bool {
+    folder.is_some_and(|folder| folder.split('/').any(|segment| EXTRAS_FOLDER.is_match(segment.trim())))
+        || stem(file_name).split(|c: char| !c.is_ascii_alphanumeric()).any(|token| CREDITLESS.is_match(token))
 }
 
 /// The `extraType` a release's extra is served as: by the deepest folder Plex names local extras
@@ -169,62 +142,6 @@ static EXTRAS_FOLDER: LazyLock<Regex> = LazyLock::new(|| {
 // `NCOP`, `NCED2`, `S02NCED1v1` (fun's Bungo Stray Dogs and My Hero Academia S02 discs, five
 // "episode 64"s each, 2026-10-17).
 static CREDITLESS: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?i)^(?:s\d{1,2})?nc(?:op|ed)\d*(?:v\d+)?$").unwrap());
-// `NOT_EPISODE`'s words, one at a time.
-static EXTRA_WORD: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^(?:nc(?:op|ed)\w*|nc|ova|oad|op|ed|sp|pv|cm|special|specials|movie|menu|preview|trailer|recap|extra|extras|bonus|featurette|interview|behind|making|creditless|clean|teaser|promo|omake)$").unwrap()
-});
-
-/// The season (if named) and episode a show's file is numbered by: the file's own name, else
-/// its release's, else the shapes only a show's file can be read by (`numbered_in_release`).
-/// None for an extra (`is_extra`).
-fn numbers_of(release: &str, folder: Option<&str>, file_name: &str) -> Option<(Option<i64>, i64)> {
-    let parsed = (identify::parse_name(release), identify::parse_name(file_name));
-    if extra(&parsed, folder, file_name) {
-        return None;
-    }
-    // `[CyC] Natsume Yuujinchou Shi 01`, `[tlacatlc6] Natsume Yuujinchou San 01v2`: the season as a
-    // Japanese numeral (四 shi, 三 san) right before the episode. The second read as season 1.
-    let stem = file_name.rsplit_once('.').map_or(file_name, |(stem, _)| stem);
-    if parsed.1.season.is_none() {
-        if let Some(found) = JAPANESE_SEASON.captures(stem) {
-            let season = JAPANESE_NUMERALS.iter().position(|word| *word == &found[1]).map(|index| index as i64 + 2);
-            if let (Some(season), Ok(episode)) = (season, found[2].parse::<i64>()) {
-                return (episode > 0).then_some((Some(season), episode));
-            }
-        }
-    }
-    // `aaf-wilty.302.avi` in `Would.I.Lie.To.You.S03E01.PROPER…`: a scene file numbering its season
-    // and episode as one number, which the release's own `S03E01` overruled. That NZB holds two
-    // episodes, and the production server put the second on the first (2026-10-16). Only the
-    // release's season, so a `720` or a film's `300` is never read as one.
-    if parsed.1.episode.is_none() {
-        if let (Some(season), Some(found)) = (parsed.0.season.filter(|season| (1..=9).contains(season)), SCENE_SHORTHAND.captures(stem)) {
-            if found[1].parse::<i64>().ok() == Some(season) {
-                if let Some(episode) = found[2].parse::<i64>().ok().filter(|episode| *episode > 0) {
-                    return Some((Some(season), episode));
-                }
-            }
-        }
-    }
-    if let Some(episode) = parsed.1.episode.or(parsed.0.episode) {
-        return Some((parsed.1.season.or(parsed.0.season), episode));
-    }
-    numbered_in_release(&parsed.0, release, folder, file_name)
-}
-
-static SCENE_SHORTHAND: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?:^|[\s._-])(\d)(\d{2})(?:[\s._-]|$)").unwrap());
-
-// Two to ten, as anime titles write a season: `Ni`, `San`, `Shi`, `Go`. Capitalised only, so the
-// particle in `Mahou Shoujo ni Akogarete 10` is no season.
-const JAPANESE_NUMERALS: [&str; 9] = ["Ni", "San", "Shi", "Go", "Roku", "Nana", "Hachi", "Kyuu", "Juu"];
-static JAPANESE_SEASON: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"[\s._](Ni|San|Shi|Go|Roku|Nana|Hachi|Kyuu|Juu)[\s._]+(\d{2,3})(?:v\d)?(?:[\s._(\[]|$)").unwrap()
-});
-
-/// The provider's folder a row's or an arrival's file sits in (`_folder`, as the source said it).
-pub(super) fn folder_of(fields: &Map<String, Value>) -> Option<&str> {
-    fields.get("_folder").and_then(Value::as_str)
-}
 
 /// The season and episode its source placed a file on (a `_placed`, docs/feed-api.md), on TMDB's
 /// numbering: what a row stays on, whatever its name reads.
@@ -233,271 +150,35 @@ pub(super) fn placed_numbers(placed: Option<&Value>) -> Option<(i64, i64)> {
     Some((placed.get("season")?.as_i64()?, placed.get("episode")?.as_i64()?))
 }
 
-/// Whether a row's or an arrival's source placed it with ids of its own: it is the title those
-/// ids name, and nothing names it again by its name.
-pub(super) fn pinned(fields: &Map<String, Value>) -> bool {
-    fields.contains_key("_placed") && fields.get("_ids").is_some_and(|ids| ids.get("imdb").is_some() || ids.get("tmdb").is_some())
-}
-
-// Names that carry an episode number only beside their release, each measured on the production
-// server's feed (2026-10-15, 4,405 files unplaced): a film called `Apollo 13` reads the same,
-// so they are read for a show's files and never by `parse_name`.
-// `35. Returning Memories` in `Sailor.Moon.S01…`, `02 - Who Mourns for Adonais` in `Star Trek … Season 2`.
-// `-01 Are You Afraid of the Dark - The Tale of the Phantom Cab` in its pack's `Season 1` folder.
-static LEADING: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^-?(\d{1,3})(?:\.\s*|\s+-\s+|\s+)[^\d\s]").unwrap());
-// The season's number before the episode's, in a folder of that season: `601 - The Tale of the
-// Zombie Dice` (Are You Afraid of the Dark's `Season 6`), `05.01 - Steve Martin, Blondie` (Saturday
-// Night Live's), `1.01. A Night At The Katz Motel` (Courage's), and Phineas and Ferb's `S1 (2007-9)`
-// with two segments or two episodes on one file: `101a-b - Rollercoaster; …`, `237-8 - Summer Belongs to You!`.
-static SEASON_LEADING: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^(\d{1,2})\.?(\d{2})(?:[a-z](?:-[a-z])?|-\d{1,2})?(?:\.\s*|\s+-\s+|\s+)[^\d\s]").unwrap()
-});
-// A folder of one season, as packs on fun's providers name them (2026-10-15): `Stagione 6`,
-// `Season 13`, `Are You Afraid Of The Dark Season 4`, `S2 (2009-11)`, `Saturday Night Live -  Season 05`,
-// `Season 1 (1999–2001) (Classics Remastered)`. `Season 2006` (by year) and `Season TV` name none.
-static FOLDER_SEASON: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?i)(?:^|[\s._-])(?:season|stagione|staffel|saison|temporada|s)[\s._-]*(\d{1,2})(?:$|[^\d\-–+&,e])").unwrap()
-});
-// `011 - Terror Of The Ancient Noh Mask (v2)` (InuYasha), `063 - Пещера Али-Баббы` (DuckTales): an
-// absolute number zero-padded to three digits. `608 - The Tale of the Vampire Town` is season 6's
-// eighth in `Are You Afraid Of The Dark Complete Series`, so only 000-199 are read so.
-static LEADING_ABSOLUTE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^([01]\d{2})(?:-[01]\d{2})?(?:\.\s*|\s+-\s+)\S").unwrap());
-static UNDERSCORE_SEASON_EP: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(?i)(?:^|[\s._-])S(\d{1,2})[._-]?EP?(\d{1,4})(?:[^\da-z]|$)").unwrap());
-static SEASON_DASH_EP: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(?i)(?:^|[\s._-])Season[\s._]*(\d{1,2})[\s._]*-[\s._]*(\d{1,4})(?:v\d)?(?:[^\da-z]|$)").unwrap());
-static PAIRED_CODES: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?:^|\s-\s)(\d{3}),\s*(\d{3})\s-\s").unwrap());
-static DOUBLE_NX: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(?i)(?:^|[\s._-])(\d{1,2})x(\d{2,3})x\d{2,3}(?:[\s._-]|$)").unwrap());
-static EP_ANY: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?i)(?:^|[\s._-])ep(\d{1,4})(?:[^\da-z]|$)").unwrap());
-static PRIMED: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^(?:\[[^\]]*\]\s*)?([^\[\]]+?)\s-\s(\d{2,3})'(?:[\s\[(]|$)").unwrap());
-// What a show's one-folder release holds besides its episodes, named like them: `To LOVE-Ru OVA 04`,
-// `Mawaru_Penguindrum_NCED_07`, `Uchuu Kyoudai - NCOP04`.
-static NOT_EPISODE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?i)\b(?:nc(?:op|ed)\w*|ova|oad|op|ed|sp|pv|cm|special|specials|movie|menu|preview|trailer|recap|extra|extras|bonus|featurette|interview|behind|making|creditless|clean|teaser|promo|omake)\b").unwrap()
-});
-// `Carl.Sagans.Cosmos.10of13.The.Edge.of.Forever`.
-static OF_COUNT: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?i)(?:^|[\s._-])(\d{1,3})of(\d{1,3})(?:[\s._-]|$)").unwrap());
-// `[Coalgirls]_Hunter_X_Hunter_001_(1920x1080…)`, `Lovely Runner 14`, `House M.D. 15 - Black Hole`,
-// `[Zurako]_Mawaru_Penguindrum_08_Even_if…`: the show's own name, then the number.
-static TITLE_NUMBER: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^(.*?\S)\s+(\d{2,4})(?:v\d)?(?:\s.*)?$").unwrap());
-// A release that names more than one season: `Season 1 2 3 4`, `S01-S07`, `Seasons 1-15`, `Complete Series`.
-static SEASONS: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?i)seasons|complete|\bs\d{1,2}\s*[-+&]\s*s?\d|season[\s._]*\d{1,2}[\s._,&+-]+\d").unwrap()
-});
-
-/// `numbers_of` for a file whose name has no number `parse_name` reads. zurg lists a pack's
-/// files in one folder, so Smallville's and Saturday Night Live's `01`s of every season would
-/// fold onto one episode: two-digit leading numbers in a release of several seasons are read
-/// only under the season folder the provider lists them in (`folder`, which zurg sends since
-/// the 2026-10-15 feed), and a release whose files the provider lists at its top level
-/// (`Some("")`) was never flattened.
-fn numbered_in_release(parsed: &identify::Parsed, release: &str, folder: Option<&str>, file_name: &str) -> Option<(Option<i64>, i64)> {
-    let release = release.rsplit('/').next().unwrap_or(release);
-    let stem = file_name.rsplit_once('.').map_or(file_name, |(stem, _)| stem);
-    // Plex's local-extra suffixes: `002 - Deleted Scene Episodes 2-4 [iKaos]-deleted` is no episode 2.
-    if EXTRA.is_match(stem) {
-        return None;
-    }
-    let positive = |number: &str| number.parse::<i64>().ok().filter(|number| *number > 0);
-    // The folder right above the file: Smallville's `Stagione 6/Extra` holds no episodes.
-    let folder_season = folder
-        .and_then(|folder| folder.rsplit('/').next())
-        .filter(|folder| !SEASONS.is_match(folder))
-        .and_then(|folder| FOLDER_SEASON.captures(folder))
-        .and_then(|found| positive(&found[1]));
-    let several = folder_season.is_none() && (SEASONS.is_match(release) || parsed.pack && parsed.season.is_none());
-    let one_season = folder_season.or(parsed.season.filter(|_| !several));
-    // Season and episode in shapes `parse_name` leaves to a show's files (fun's feed, 2026-10-15):
-    // `MLB_S6EP01_Climatiqueen` (no word boundary before an underscore's `S`), `Grand.Blue.Season.3-09`.
-    if let Some(found) = UNDERSCORE_SEASON_EP.captures(stem).or_else(|| SEASON_DASH_EP.captures(stem)) {
-        return Some((positive(&found[1]), positive(&found[2])?));
-    }
-    // Two episodes in one file go on the first (rex keeps a file on one row):
-    // `The Amazing World of Gumball - 207, 208 - The Phone - The Job` (season 2's 7th and 8th),
-    // `Animaniacs - 1x60x61 - Testimonials & Babblin' Bijou`.
-    if let Some(found) = PAIRED_CODES.captures(stem) {
-        let (first, second) = (positive(&found[1])?, positive(&found[2])?);
-        if first / 100 == second / 100 && second == first + 1 && first % 100 > 0 {
-            return Some((Some(first / 100), first % 100));
-        }
-    }
-    if let Some(found) = DOUBLE_NX.captures(stem) {
-        return Some((positive(&found[1]), positive(&found[2])?));
-    }
-    // `meteor_garden_ep27#[jem]`: a stray character where `parse_name` wants a separator.
-    if let Some(found) = EP_ANY.captures(stem) {
-        return Some((one_season, positive(&found[1])?));
-    }
-    // `[Sephirotic] Evangelion - 21'`: the director's cut of episode 21, another version of it
-    // (TMDB lists no special for it). `Evangelion - The End of Evangelion - 25'` is the film, in parts.
-    if let Some(found) = PRIMED.captures(stem).filter(|found| !found[1].contains(" - ")) {
-        return Some((one_season, positive(&found[2])?));
-    }
-    if let Some(season) = folder_season {
-        if let Some(found) = SEASON_LEADING.captures(stem).filter(|found| positive(&found[1]) == Some(season)) {
-            return Some((Some(season), positive(&found[2])?));
-        }
-    }
-    if let Some(season) = one_season {
-        if let Some(found) = LEADING.captures(stem) {
-            return Some((Some(season), positive(&found[1])?));
-        }
-    }
-    if parsed.season.is_none() && !several {
-        // `147-148 - The Tragic Love Song Of Destiny` (InuYasha): two episodes, on the first.
-        if let Some(found) = LEADING_ABSOLUTE.captures(stem) {
-            return Some((None, positive(&found[1])?));
-        }
-        // `01 - Guilmon Is Born! The Digimon That I Created!`, at the top of `[DmonHiro] Digimon
-        // Tamers (BD, 1080p)`: listed so by the provider, so no pack's seasons were folded into it.
-        if folder == Some("") {
-            if let Some(found) = LEADING.captures(stem) {
-                return Some((None, positive(&found[1])?));
-            }
-        }
-    }
-    if let Some(found) = OF_COUNT.captures(stem) {
-        let (episode, count) = (positive(&found[1])?, positive(&found[2])?);
-        return (episode <= count).then_some((one_season, episode));
-    }
-    // The name before the number must be the release's (`Magic Knight Rayearth 09` in
-    // `Magic Knight Rayearth TV`), so `To LOVE-Ru OVA 04` or `Mawaru_Penguindrum_NCED_07` is no
-    // episode 4 or 7, and a show named with a number (`Room 104`) never reads it as one.
-    // Dots too: `BBC.Frozen.Planet.01.To.the.Ends.of.the.Earth`.
-    let spaced = stem.replace(['_', '.'], " ");
-    let bare = BRACKETS.replace_all(&spaced, " ");
-    let found = TITLE_NUMBER.captures(bare.trim())?;
-    let number = positive(&found[2])?;
-    // Four digits for a long run (`[HatSubs] One Piece 1106`), never a year or a resolution.
-    if found[2].len() == 4 && (1900..=2099).contains(&number) || matches!(number, 480 | 576 | 720 | 1080 | 2160) {
-        return None;
-    }
-    let fold = |text: &str| text.chars().filter(|c| c.is_alphanumeric()).collect::<String>().to_lowercase();
-    let (head, show) = (fold(&found[1]), fold(&parsed.title));
-    // The release may say more than the file (`… TV`, `… BD`), never less: a file's
-    // `OVA 04`, `NCED 07` or `207, 208` (two episodes) is not the show's name.
-    // A release of one episode is named as its file (`[HatSubs] One Piece 1107 (WEB 1080p)`), so the
-    // release's own title carries the number; four digits is a long run, never `Room 104`.
-    let alone = found[2].len() == 4 && show == format!("{head}{}", &found[2]);
-    let named = head.len() >= 4
-        && (alone || show == head || show.starts_with(&head) && !show[head.len()..].starts_with(|c: char| c.is_ascii_digit()));
-    // A file the provider lists at the top of a one-folder release is an episode of it whatever
-    // the file calls the show: `[Silver_zero_Subs]Alps_no_Shoujo_Heidi_01` in `Heidi blu-ray
-    // complete`, `[EG]Cowbop_Bebop_01` (sic) in `Cowboy Bebop [EG]` -- unless its name says it is
-    // something else.
-    let top_level = folder == Some("") && head.len() >= 4 && !NOT_EPISODE.is_match(&found[1]);
-    (named || top_level).then_some(())?;
-    Some((one_season, number))
-}
-
-static BRACKETS: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[\[(][^\])]*[\])]").unwrap());
-static EXTRA: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?i)-(?:behindthescenes|deleted|featurette|interview|scene|short|trailer|other)$").unwrap()
-});
-
-/// The season and episode TMDB knows a file of `show` by, when TMDB has no season by the
-/// file's own number: the production server held about 30 such seasons on `local://` (2026-10-13).
-/// MythBusters' files number them by year (`MythBusters.2004x01`), which TMDB's season of that
-/// year is. Only an answer TMDB has, season and episode, is taken; a season TMDB has is never
-/// moved. Anime and long shows TMDB numbers otherwise are placed by their source (`_placed`).
-#[cfg(test)]
-pub(super) fn on_tmdb(tmdb: Option<&dyn TmdbSource>, show: i64, numbers: (i64, i64)) -> (i64, i64) {
-    let seasons = tmdb.and_then(|t| identify::tmdb_details(t, "tv", show)).map(|details| tmdb_seasons(&details)).unwrap_or_default();
-    on_seasons(&seasons, numbers)
-}
-
-/// A TMDB season: its number, how many episodes it has, and its first air date.
-pub(super) type Season = (i64, i64, String);
-
-/// A show's TMDB seasons, from its details.
-pub(super) fn tmdb_seasons(details: &Value) -> Vec<Season> {
-    details
-        .get("seasons")
-        .and_then(Value::as_array)
-        .into_iter()
-        .flatten()
-        .filter_map(|row| {
-            Some((
-                row.get("season_number")?.as_i64()?,
-                row.get("episode_count").and_then(Value::as_i64).unwrap_or(0),
-                row.get("air_date").and_then(Value::as_str).unwrap_or_default().to_string(),
-            ))
-        })
-        .collect()
-}
-
-/// `on_tmdb` for seasons already read.
-pub(super) fn on_seasons(seasons: &[Season], (season, episode): (i64, i64)) -> (i64, i64) {
-    let fits = |(season, episode): (i64, i64)| seasons.iter().any(|row| row.0 == season && episode >= 1 && episode <= row.1);
-    if seasons.is_empty() || seasons.iter().any(|row| row.0 == season) {
-        return (season, episode);
-    }
-    if season >= 1900 {
-        let aired: Vec<i64> =
-            seasons.iter().filter(|row| row.0 > 0 && row.2.starts_with(&season.to_string())).map(|row| row.0).collect();
-        if let [only] = aired[..] {
-            if fits((only, episode)) {
-                return (only, episode);
-            }
-        }
-    }
-    (season, episode)
-}
-
-// What a pack's file name says before its title: `14. `, `1.01. `, `101a-b - `, `237-8 - `, `-01 `.
-static TITLE_LEAD: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^-?\d+(?:\.\d+)?(?:[a-z](?:-[a-z])?|-\d{1,2})?\.?\s*(?:-\s+)?").unwrap());
-
-/// The TMDB episode a pack's file is titled as, in the season its numbers name, else the
-/// numbers. TMDB files Courage the Cowardly Dog and Phineas and Ferb by their 11-minute
-/// segments (26 and 47 a season), and their packs by the half hour: `Season 2/14. The Magic
-/// Tree Of Nowhere. Robot Randy` is TMDB's S2E1 "The Magic Tree of Nowhere", not S2E14
-/// (measured 2026-10-15; IMDb numbers them by the half hour too, but TMDB's /find answers
-/// half of IMDb's ids with one segment and the rest with nothing). The file's title must
-/// start with one episode's whole name, the longest when several do, and only a name with
-/// no number of its own (`numbered_in_release`) is read so: a scene release's S02E05 is its own.
-pub(super) fn by_title(
-    tmdb: Option<&dyn TmdbSource>,
-    show: i64,
-    release: &str,
-    file_name: &str,
-    (season, episode): (i64, i64),
-) -> (i64, i64) {
-    let parsed = (identify::parse_name(release), identify::parse_name(file_name));
-    let (Some(t), None) = (tmdb, parsed.1.episode.or(parsed.0.episode)) else {
-        return (season, episode);
+/// What a row or an item is identified by: the `kind` and ids its source placed it with, or a TMDB
+/// id a person set by hand at the source, read as its library's kind ("movie" or "show"). Answers
+/// ("movie" or "show", TMDB id, IMDb id); None for anything else, an IMDb or TVDB id without a
+/// `kind` among them: zurg has DMM place a hand-set IMDb id, and one DMM cannot place is one
+/// TMDB's /find could not either.
+pub(super) fn identified_by(
+    ids: Option<&Map<String, Value>>,
+    placed: Option<&Value>,
+    library: &str,
+) -> Option<(&'static str, Option<i64>, Option<String>)> {
+    let id = |key: &str| ids.and_then(|ids| ids.get(key)).map(string_value).filter(|id| !id.is_empty());
+    let tmdb = id("tmdb").and_then(|id| id.parse::<i64>().ok()).filter(|id| *id > 0);
+    let imdb = id("imdb").filter(|imdb| imdb.starts_with("tt"));
+    let kind = match placed.and_then(|placed| placed.get("kind")).and_then(Value::as_str) {
+        Some(kind) if tmdb.is_some() || imdb.is_some() => kind,
+        _ if tmdb.is_some() => library,
+        _ => return None,
     };
-    let fold = |text: &str| text.chars().filter(|c| c.is_alphanumeric()).collect::<String>().to_lowercase();
-    let stem = file_name.rsplit_once('.').map_or(file_name, |(stem, _)| stem);
-    let title = fold(&BRACKETS.replace_all(&TITLE_LEAD.replace(stem, ""), " "));
-    let Some(listed) = t.get(&format!("tv/{show}/season/{season}"), &[]) else {
-        return (season, episode);
-    };
-    let mut named: Vec<(usize, i64)> = listed
-        .get("episodes")
-        .and_then(Value::as_array)
-        .into_iter()
-        .flatten()
-        .filter_map(|row| {
-            let name = fold(row.get("name")?.as_str()?);
-            (name.len() >= 6 && title.starts_with(&name)).then_some((name.len(), row.get("episode_number")?.as_i64()?))
-        })
-        .collect();
-    named.sort_unstable_by(|a, b| b.0.cmp(&a.0));
-    match named.as_slice() {
-        [(longest, number), rest @ ..] if rest.first().is_none_or(|next| next.0 < *longest) => (season, *number),
-        _ => (season, episode),
-    }
+    Some((if kind == "movie" { "movie" } else { "show" }, tmdb, imdb))
 }
 
-/// Identification, off the lock, once per release: who it is (`identify.rs` -- its placement
-/// or an id the source pushed is exact; only an id that names nothing usable falls back to its
-/// name, to Plex's matcher and TMDB, their agreement the confidence; no id, no lookup), then for each new file the fields TMDB gives its row and Plex's own
-/// guids for it. A release named as the other kind of title than its library's, or not
-/// at all, stays unmatched for Fix Match.
-pub(super) fn name_release(plan: &Library, arrivals: &mut [Arrival], files: usize) {
+/// Identification, off the lock, once per release: the title its source placed it as, or the
+/// TMDB id a person set by hand at the source (`identified_by`, `identify::placed`), then for each
+/// new file the fields TMDB gives its row and Plex's own guids for it. TMDB's episode and Plex's
+/// season and episode guids are asked only for numbers the source placed a file on: the file
+/// order rex numbers anything else by (`feed::number_unplaced`) names no TMDB episode. A release
+/// named as the other kind of title than its library's, or not at all, stays unmatched for Fix
+/// Match: nothing is asked for it.
+pub(super) fn name_release(plan: &Library, arrivals: &mut [Arrival]) {
     let (tmdb, plex) = (plan.tmdb.as_deref(), plan.plex.as_deref());
     let Some(first) = arrivals.first() else {
         return;
@@ -505,78 +186,34 @@ pub(super) fn name_release(plan: &Library, arrivals: &mut [Arrival], files: usiz
     if tmdb.is_none() && plex.is_none() {
         return;
     }
-    let hash = first
-        .entry
-        .get("hash")
-        .and_then(Value::as_str)
-        .filter(|hash| !hash.is_empty())
-        .unwrap_or("zurg")
-        .to_ascii_lowercase();
-    let mut known = HashMap::new();
-    if let Some(imdb) = first.entry.get("imdb_id").and_then(Value::as_str).filter(|id| !id.is_empty()) {
-        known.insert(hash.clone(), imdb.to_string());
+    let placed = first.extra.get("_placed");
+    let Some((kind, tmdb_id, imdb)) = identified_by(first.extra.get("_ids").and_then(Value::as_object), placed, &plan.kind) else {
+        return;
+    };
+    let show = plan.kind == "show";
+    let tmdb_kind = if show { "tv" } else { "movie" };
+    // A TMDB id with no placement names a title only if TMDB has one of the library's kind, as a
+    // `{tmdb-…}` tag did: zurg's own Plex once handed over episodes' ids as their show's (the
+    // production server's Pawn Stars came as 1559521, which no show has, 2026-10-12), and rows
+    // pushed before DMM placed them still carry such ids. With no TMDB to ask, the id stands.
+    let known = |t: &dyn TmdbSource| {
+        tmdb_id.and_then(|id| identify::tmdb_details(t, tmdb_kind, id)).is_some_and(|details| details.as_object().is_some_and(|d| !d.is_empty()))
+    };
+    if placed.is_none() && !tmdb.is_none_or(|t| known(t)) {
+        return;
     }
+    let source = if placed.is_some() { "placed" } else { "set by hand" };
     let release = first.release.clone();
-    let first_file = first.found.file.rsplit('/').next().unwrap_or_default().to_string();
-    // A release its source placed is the title of the ids it came with (`Identifier::placed`).
-    let placed = pinned(&first.extra).then(|| {
-        let kind = first.extra.get("_placed").and_then(|placed| placed.get("kind")).and_then(Value::as_str).unwrap_or_default();
-        (
-            if kind == "movie" { "movie" } else { "show" },
-            first.entry.get("tmdb_id").and_then(Value::as_str).and_then(|id| id.parse::<i64>().ok()),
-            first.entry.get("imdb_id").and_then(Value::as_str).map(str::to_string),
-        )
-    });
-    // A TMDB id with no IMDb id is read the way a `{tmdb-…}` folder tag is: exact.
-    let named = match first.entry.get("tmdb_id").and_then(Value::as_str) {
-        Some(id) if known.is_empty() && !id.is_empty() => format!("{release} {{tmdb-{id}}}"),
-        _ => release.clone(),
-    };
-    let identifier = Identifier {
-        tmdb: tmdb.map(|t| t as &dyn TmdbSource),
-        plex: plex.map(|p| p as &dyn PlexSource),
-        known,
-    };
-    let mut identity = match &placed {
-        Some((kind, tmdb, imdb)) => identifier.placed(&release, kind, *tmdb, imdb.as_deref()),
-        None => identifier.identify_as(&named, Some(&hash), files, Some(&plan.kind)),
-    };
-    // A release named in another language than its files (`Хватай Сон Чжэ и беги Lovely Runner`
-    // holding `Lovely.Runner.2024.S01E01`, `Détective.Conan.-.Inédits.VF` holding `Détective
-    // Conan S11E01`) is the title its files name: the production server held both on `local://`, and
-    // Lovely Runner beside the show of that name (2026-10-13).
-    let named_nothing = |identity: &identify::Identity| {
-        identity.kind != plan.kind || (identity.tmdb.is_none() && identity.plex.is_none() && identity.imdb.is_none())
-    };
-    if named_nothing(&identity) && !first_file.is_empty() && first_file != release {
-        // The same ids, so a file names its title only where its release could have.
-        let tag = &named[release.len()..];
-        let by_file = identifier.identify_as(&format!("{}{tag}", stem(&first_file)), Some(&hash), 1, Some(&plan.kind));
-        if !named_nothing(&by_file) {
-            identity = by_file;
-        }
-    }
-    let report = json!({
-        "confidence": identity.confidence, "source": identity.source, "imdb": identity.imdb,
-        "tmdb": identity.tmdb, "plex": identity.plex,
-        "disputed": identity.disputed.as_ref().map(|d| json!({"tmdb": d.tmdb, "imdb": d.imdb, "kind": d.kind})),
-    });
-    let matched = identity.kind == plan.kind
-        && (identity.tmdb.is_some() || identity.plex.is_some() || identity.imdb.is_some());
-    info!(
-        "FEED identified {release:?} -> {} {} ({})",
-        identity.confidence,
-        identity.imdb.as_deref().unwrap_or("?"),
-        identity.source.as_deref().unwrap_or("-")
-    );
-    if !matched {
+    let identity = identify::placed(plex.map(|p| p as &dyn PlexSource), kind, tmdb_id, imdb.as_deref());
+    let report = json!({"source": source, "imdb": identity.imdb, "tmdb": identity.tmdb, "plex": identity.plex});
+    let named = identity.tmdb.map(|id| format!("tmdb:{id}")).or_else(|| identity.imdb.clone()).unwrap_or_default();
+    info!("FEED identified {release:?} -> {} {named} ({source})", identity.kind);
+    if identity.kind != plan.kind {
         for arrival in arrivals.iter_mut() {
             arrival.meta = Some(Map::from_iter([("_identify".to_string(), report.clone())]));
         }
         return;
     }
-    let show = plan.kind == "show";
-    let tmdb_kind = if show { "tv" } else { "movie" };
     let details = tmdb.zip(identity.tmdb).and_then(|(t, id)| identify::tmdb_details(t, tmdb_kind, id));
     let externals: Vec<Value> = identity
         .imdb
@@ -588,32 +225,23 @@ pub(super) fn name_release(plan: &Library, arrivals: &mut [Arrival], files: usiz
         (true, Some(p), Some(guid)) => identify::plex_children(p, guid),
         _ => HashMap::new(),
     };
-    let show_seasons = details.as_ref().filter(|_| show).map(tmdb_seasons).unwrap_or_default();
+    // Plex's title for a title TMDB does not describe, else the release's name as pushed.
+    let title = identity.title.clone().unwrap_or_else(|| release.clone());
     let mut episodes: HashMap<String, HashMap<String, String>> = HashMap::new();
     for arrival in arrivals.iter_mut() {
-        let file_name = arrival.found.file.rsplit('/').next().unwrap_or_default().to_string();
-        let folder = folder_of(&arrival.extra).map(str::to_string);
-        // Numbers its source placed the file on are TMDB's already: nothing renumbers them.
+        // Numbers its source placed the file on are TMDB's; any other is rex's own file order.
         let pushed = placed_numbers(arrival.extra.get("_placed")).filter(|_| show);
-        let numbers = if show && pushed.is_none() { episode_of(&release, folder.as_deref(), &file_name) } else { pushed };
-        let numbers = match (numbers, identity.tmdb.filter(|_| identity.kind == "show" && pushed.is_none())) {
-            (Some(numbers), Some(id)) => {
-                Some(by_title(tmdb.map(|t| t as &dyn TmdbSource), id, &release, &file_name, on_seasons(&show_seasons, numbers)))
-            }
-            (numbers, _) => numbers,
-        };
-        arrival.numbers = numbers;
+        let numbers = arrival.numbers.filter(|_| show);
         let mut meta = Map::new();
-        meta.insert("title".to_string(), json!(identity.parsed.title));
+        meta.insert("title".to_string(), json!(title));
         meta.insert("summary".to_string(), json!(""));
         if let (Some(details), Some(id), Some(t)) = (&details, identity.tmdb, plan.tmdb.as_deref()) {
             let parsed = Map::from_iter([
-                ("title".to_string(), json!(identity.parsed.title)),
-                ("year".to_string(), json!(identity.parsed.year)),
+                ("title".to_string(), json!(title)),
                 ("season".to_string(), json!(numbers.map(|n| n.0))),
                 ("episode".to_string(), json!(numbers.map(|n| n.1))),
             ]);
-            let (episode, season) = match numbers {
+            let (episode, season) = match pushed {
                 Some((season, episode)) => (
                     t.episode(&json!(id), &json!(season), &json!(episode)),
                     t.season(&json!(id), &json!(season)),
@@ -629,10 +257,16 @@ pub(super) fn name_release(plan: &Library, arrivals: &mut [Arrival], files: usiz
                 tmdb_kind,
                 id,
             );
-        } else if !externals.is_empty() {
-            // Named, but no TMDB to describe it: the ids alone.
+        } else {
+            // Named, but no TMDB to describe it: the ids alone, and Plex's title and year.
             let field = if show { "_show_external_guids" } else { "Guid" };
             meta.insert(field.to_string(), Value::Array(externals.clone()));
+            if show {
+                meta.insert("_show_title".to_string(), json!(title));
+                if let Some(year) = identity.year {
+                    meta.insert("_show_year".to_string(), json!(year));
+                }
+            }
         }
         // TMDB has no poster for this title, or does not know it, and Plex does: its own
         // artwork draws the tile (the production server, 2026-10-12: the Monogatari seasons Plex keeps as shows
@@ -646,7 +280,7 @@ pub(super) fn name_release(plan: &Library, arrivals: &mut [Arrival], files: usiz
                 meta.insert(field.to_string(), json!(url));
             }
         }
-        if let Some(year) = identity.parsed.year.filter(|_| !meta.contains_key("year") && !show) {
+        if let Some(year) = identity.year.filter(|_| !meta.contains_key("year") && !show) {
             meta.insert("year".to_string(), json!(year));
         }
         let identity_key = identity
@@ -665,7 +299,7 @@ pub(super) fn name_release(plan: &Library, arrivals: &mut [Arrival], files: usiz
                 meta.insert("guid".to_string(), json!(guid));
             } else {
                 meta.insert("_show_guid".to_string(), json!(guid));
-                if let Some((season, episode)) = numbers {
+                if let Some((season, episode)) = pushed {
                     if let Some(season_guid) = seasons.get(&season.to_string()) {
                         meta.insert("_season_guid".to_string(), json!(season_guid));
                         let children = episodes.entry(season_guid.clone()).or_insert_with(|| {
@@ -1034,15 +668,11 @@ impl Runtime {
     }
 
     /// The leaf row a new file becomes, on `key` or a minted one; `None` for a show's file
-    /// with no episode.
+    /// with no numbers (an extra Plex has no type for). Unmatched, a film is titled as its file
+    /// and an episode's show as its release, the names as pushed: rex reads nothing off them.
     pub(super) fn leaf_for(&mut self, plan: &Library, arrival: &Arrival, key: Option<String>) -> Option<Value> {
         let file_name = arrival.found.file.rsplit('/').next().unwrap_or_default().to_string();
-        let release = identify::parse_name(&arrival.release);
-        let (season, episode) = if plan.kind == "show" {
-            arrival.numbers.or_else(|| episode_of(&arrival.release, folder_of(&arrival.extra), &file_name))?
-        } else {
-            (0, 0)
-        };
+        let (season, episode) = if plan.kind == "show" { arrival.numbers? } else { (0, 0) };
         let key = key.unwrap_or_else(|| self.mint_key());
         let rating = key.parse::<i64>().unwrap_or(0);
         let stamp = now();
@@ -1071,7 +701,10 @@ impl Runtime {
         if let Some(prefs) = &self.track_prefs {
             mediainfo::select_media_tracks(&mut media, prefs);
         }
-        let title = if release.title.is_empty() { stem(&file_name).to_string() } else { release.title.clone() };
+        let title = match plan.kind.as_str() {
+            "show" if !arrival.release.is_empty() => arrival.release.clone(),
+            _ => stem(&file_name).to_string(),
+        };
         let mut leaf = json!({
             "ratingKey": key,
             "key": format!("/library/metadata/{key}"),
@@ -1085,12 +718,9 @@ impl Runtime {
             "thumb": format!("/library/metadata/{key}/thumb/{stamp}"),
             "art": format!("/library/metadata/{key}/art/{stamp}"),
             "Media": [media],
-            "_identity": format!("title:{}", hierarchy::fold_title(&release.title).to_lowercase()),
+            "_identity": format!("title:{}", hierarchy::fold_title(&title).to_lowercase()),
             "_release": arrival.release.clone(),
         });
-        if let Some(year) = release.year {
-            leaf["year"] = json!(year);
-        }
         if probe.is_none() {
             leaf["_probePending"] = json!(true);
         }
@@ -1107,14 +737,10 @@ impl Runtime {
             leaf["_episode"] = json!(episode);
             leaf["_show_title"] = json!(leaf["title"].clone());
             leaf["_show_summary"] = json!("");
-            if let Some(year) = release.year {
-                leaf["_show_year"] = json!(year);
-            }
             // The local agent's episode: its generated title, marked as generated so an
             // index edit re-titles it (`unmatch_row`).
             leaf["title"] = json!(format!("Episode {episode}"));
             leaf["_generatedTitle"] = json!(true);
-            leaf.as_object_mut()?.shift_remove("year");
             leaf["_release_path"] = json!(arrival.release_path.clone());
         }
         if let Some(meta) = &arrival.meta {
@@ -1567,65 +1193,28 @@ fn prepare_rows(rows: &mut [Value]) {
 mod tests {
     use super::*;
 
-    /// `tests/fixtures/identify/unplaced_episodes.json`: files the production rex's feed
-    /// dropped as "no episode number".
-    /// MythBusters' seasons as TMDB lists them (tv/1428, 2026-10-13): numbered 1-16, each
-    /// aired in one year from 2003; the production server's files number them by year (`2004x01`).
-    struct MythBusters;
-    impl TmdbSource for MythBusters {
-        fn get(&self, path: &str, _params: &[(&str, String)]) -> Option<Value> {
-            (path == "tv/1428").then(|| {
-                let mut seasons = vec![json!({"season_number": 0, "episode_count": 25, "air_date": "2004-01-11"})];
-                for (number, (count, year)) in [(11, 2003), (17, 2004), (20, 2005), (28, 2006), (25, 2007), (19, 2008), (23, 2009),
-                    (23, 2010), (21, 2011), (20, 2012), (11, 2013), (15, 2014), (14, 2015), (11, 2016), (6, 2017), (8, 2018)]
-                    .into_iter()
-                    .enumerate()
-                {
-                    seasons.push(json!({"season_number": number + 1, "episode_count": count, "air_date": format!("{year}-01-01")}));
-                }
-                json!({"id": 1428, "seasons": seasons})
-            })
-        }
-    }
-
+    /// The creditless openings and endings two Blu-ray seasons on fun list under `Extras`, which
+    /// the production server put on S02E64 as five and two "episodes" (2026-10-17): a row made
+    /// before zurg sent `folder` carries none, and its tag is enough.
     #[test]
-    fn a_year_numbered_season_is_tmdbs_season_of_that_year() {
-        let tmdb: Option<&dyn TmdbSource> = Some(&MythBusters);
-        assert_eq!(on_tmdb(tmdb, 1428, (2004, 1)), (2, 1), "MythBusters.2004x01");
-        assert_eq!(on_tmdb(tmdb, 1428, (2003, 11)), (1, 11), "MythBusters.2003x11");
-        assert_eq!(on_tmdb(tmdb, 1428, (2018, 8)), (16, 8), "MythBusters.S2018E08");
-        assert_eq!(on_tmdb(tmdb, 1428, (2003, 12)), (2003, 12), "past the season's episodes: left as named");
-        assert_eq!(on_tmdb(tmdb, 1428, (5, 3)), (5, 3), "a season TMDB has is never moved");
-    }
-
-    #[test]
-    fn episode_of_reads_the_names_the_feed_dropped() {
-        let record: Value =
-            serde_json::from_str(include_str!("../../../tests/fixtures/identify/unplaced_episodes.json")).unwrap();
-        let mut wrong = Vec::new();
-        for case in record["files"].as_array().unwrap() {
-            let got = episode_of(case["release"].as_str().unwrap(), case["folder"].as_str(), case["file"].as_str().unwrap());
-            let want = case["episode"].as_i64().map(|episode| (case["season"].as_i64().unwrap(), episode));
-            if got != want {
-                wrong.push(format!("{}: got {got:?}, want {want:?}", case["file"]));
-            }
+    fn an_extra_is_its_folder_or_its_creditless_tag() {
+        for file in [
+            "Bungo.Stray.Dogs.S02.NCED.BluRay.1080p.Remux.FLAC2.0.H.264-LYS1TH3A.mkv",
+            "Bungo.Stray.Dogs.S02.NCOP.BluRay.1080p.Remux.FLAC2.0.H.264-LYS1TH3A.mkv",
+            "Boku.no.Hero.Academia.S02NCED1v1.BluRay.Remux.FLAC2.0.H.264-FLE.mkv",
+            "Boku.no.Hero.Academia.S02NCED1v2.BluRay.Remux.FLAC2.0.H.264-FLE.mkv",
+            "Boku.no.Hero.Academia.S02NCED2.BluRay.Remux.FLAC2.0.H.264-FLE.mkv",
+            "Boku.no.Hero.Academia.S02NCOP.BluRay.Remux.FLAC2.0.H.264-FLE.mkv",
+            "Boku.no.Hero.Academia.S02NCOP2.BluRay.Remux.FLAC2.0.H.264-FLE.mkv",
+        ] {
+            assert!(is_extra(None, file), "{file}");
+            assert!(is_extra(Some("Extras"), file), "{file}");
         }
-        assert!(wrong.is_empty(), "{wrong:#?}");
-    }
-
-    /// A row the feed made before zurg sent `folder` (2026-10-15) carries none, and the start
-    /// reads it by its name alone: a creditless tag is enough (`CREDITLESS`).
-    #[test]
-    fn a_creditless_tag_is_no_episode_without_its_folder() {
-        let record: Value =
-            serde_json::from_str(include_str!("../../../tests/fixtures/identify/unplaced_episodes.json")).unwrap();
-        let tagged: Vec<&Value> = record["files"].as_array().unwrap().iter().filter(|case| case["folder"] == "Extras").collect();
-        assert_eq!(tagged.len(), 7);
-        for case in tagged {
-            let (release, file) = (case["release"].as_str().unwrap(), case["file"].as_str().unwrap());
-            assert_eq!(episode_of(release, None, file), None, "{file}");
-        }
-        assert!(!is_extra("Ed.Edd.n.Eddy.S01.DVDRip", None, "Ed, Edd n Eddy - 01.mkv"), "a show named with an extras word");
+        assert!(is_extra(Some("Extras/Menu"), "Menu - 02.mkv"));
+        // A file's words are no folder: an unlisted OVA or a show named with an extras word is
+        // an episode until its source says otherwise.
+        assert!(!is_extra(Some(""), "Ed, Edd n Eddy - 01.mkv"));
+        assert!(!is_extra(Some("OVAs"), "[KH] To Love-Ru Darkness - OVA - 01 - Prologue - Pollen Plan - Body touch.mkv"));
     }
 
     /// The deepest folder of extras decides the type; a disc's menus and commercials have none.
@@ -1647,58 +1236,6 @@ mod tests {
         ] {
             assert_eq!(extra_type(folder, file), want, "{folder:?}/{file}");
         }
-    }
-
-    /// TMDB's season lists as `tests/fixtures/identify/segment_titles.json` recorded them.
-    struct Seasons(Value);
-    impl TmdbSource for Seasons {
-        fn get(&self, path: &str, _params: &[(&str, String)]) -> Option<Value> {
-            let key = path.strip_prefix("tv/")?.replace("/season/", "/");
-            Some(json!({"episodes": self.0["seasons"].get(&key)?.clone()}))
-        }
-    }
-
-    /// `tests/fixtures/identify/segment_titles.json`: Courage's and Phineas and Ferb's packs,
-    /// numbered by the half hour, on TMDB's segments by their titles; SNL's as they were.
-    #[test]
-    fn by_title_places_a_pack_on_the_tmdb_episode_its_title_names() {
-        let record: Value =
-            serde_json::from_str(include_str!("../../../tests/fixtures/identify/segment_titles.json")).unwrap();
-        let tmdb = Seasons(record.clone());
-        let mut wrong = Vec::new();
-        for case in record["files"].as_array().unwrap() {
-            let (release, folder, file) = (case["release"].as_str().unwrap(), case["folder"].as_str(), case["file"].as_str().unwrap());
-            let numbers = episode_of(release, folder, file).unwrap();
-            let got = by_title(Some(&tmdb), case["show"].as_i64().unwrap(), release, file, numbers);
-            let want = (case["season"].as_i64().unwrap(), case["episode"].as_i64().unwrap());
-            if got != want {
-                wrong.push(format!("{file}: got {got:?}, want {want:?}"));
-            }
-        }
-        assert!(wrong.is_empty(), "{} wrong: {wrong:#?}", wrong.len());
-        // A scene release's own numbers stand, whatever its title says.
-        assert_eq!(
-            by_title(Some(&tmdb), 2085, "Courage.the.Cowardly.Dog.S02.1080p", "Courage.the.Cowardly.Dog.S02E14.The.Magic.Tree.of.Nowhere.mkv", (2, 14)),
-            (2, 14)
-        );
-    }
-
-    /// `tests/fixtures/identify/pack_folders.json`: every file of eight packs on fun, Smallville's
-    /// and Saturday Night Live's among them, under the folder its provider lists it in.
-    #[test]
-    fn episode_of_reads_a_packs_season_folders() {
-        let record: Value =
-            serde_json::from_str(include_str!("../../../tests/fixtures/identify/pack_folders.json")).unwrap();
-        let mut wrong = Vec::new();
-        for case in record["files"].as_array().unwrap() {
-            let (release, folder, file) = (case["release"].as_str().unwrap(), case["folder"].as_str(), case["file"].as_str().unwrap());
-            let got = episode_of(release, folder, file);
-            let want = case["episode"].as_i64().map(|episode| (case["season"].as_i64().unwrap(), episode));
-            if got != want {
-                wrong.push(format!("{folder:?}/{file}: got {got:?}, want {want:?}"));
-            }
-        }
-        assert!(wrong.is_empty(), "{} wrong: {wrong:#?}", wrong.len());
     }
 
     fn options(dir: &Path, catalog: &Path) -> RuntimeOptions {
@@ -1879,24 +1416,21 @@ mod tests {
         let _ = fs::remove_dir_all(&dir);
     }
 
-    /// The identification pass on zurg's two real entries (`fixtures/zurg/entries.json`),
-    /// offline: TMDB's and Plex's answers sit in their on-disk caches, which is where a
-    /// live lookup would have put them. The answers are written for the test.
+    /// The identification pass on zurg's two real entries (`fixtures/zurg/entries.json`), pushed
+    /// as zurg pushes what DMM placed, offline: TMDB's and Plex's answers sit in their on-disk
+    /// caches, which is where a live lookup would have put them. The answers are written for the
+    /// test, and none is TMDB's /find: a placement names the title.
     #[test]
-    fn an_imdb_id_from_zurg_names_the_release_and_plex_names_its_guids() {
+    fn a_placement_names_the_release_and_plex_names_its_guids() {
         let dir = std::env::temp_dir().join(format!("rex-name-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         let api = "https://api.themoviedb.org/3";
         let details = "append_to_response=credits%2Cexternal_ids%2Ccontent_ratings%2Crelease_dates";
         let tmdb_cache = json!({
-            format!("{api}/find/tt0103827?external_source=imdb_id&api_key=KEY"):
-                {"movie_results": [{"id": 31639}], "tv_results": []},
             format!("{api}/movie/31639?{details}&api_key=KEY"):
                 {"title": "Blame It on the Bellboy", "release_date": "1992-03-06",
                  "overview": "A hotel mix-up.", "external_ids": {"imdb_id": "tt0103827"}},
-            format!("{api}/find/tt0397306?external_source=imdb_id&api_key=KEY"):
-                {"movie_results": [], "tv_results": [{"id": 1433}]},
             format!("{api}/tv/1433?{details}&api_key=KEY"):
                 {"name": "American Dad!", "first_air_date": "2005-02-06",
                  "external_ids": {"imdb_id": "tt0397306"}},
@@ -1925,19 +1459,25 @@ mod tests {
                 .unwrap(),
         )
         .unwrap();
-        let arrival = |kind: &str| {
+        // DMM's placement: the movie's or show's ids, and an episode's TMDB season and episode.
+        let arrival = |kind: &str, placed: Option<Value>, ids: Value| {
             let fixture = &entries["entries"][kind];
             let release = fixture["release"].as_str().unwrap().to_string();
             let file = format!("/zurg/x/{release}/{}", fixture["file"].as_str().unwrap());
+            let numbers = placed_numbers(placed.as_ref());
             Arrival {
                 found: Found { file, size: 1 },
                 release: release.clone(),
                 release_path: format!("/zurg/x/{release}"),
                 entry: fixture["entry"].clone(),
-                extra: Map::new(),
+                extra: Map::from_iter([("_ids".to_string(), ids)].into_iter().chain(placed.map(|placed| ("_placed".to_string(), placed)))),
                 meta: None,
-                numbers: None,
+                numbers,
             }
+        };
+        let film = || arrival("movie", Some(json!({"kind": "movie"})), json!({"imdb": "tt0103827", "tmdb": "31639"}));
+        let american_dad = || {
+            arrival("episode", Some(json!({"kind": "episode", "season": 5, "episode": 7})), json!({"imdb": "tt0397306", "tmdb": "1433"}))
         };
         let mut claim = plextv::Claim::load(&"f".repeat(40), dir.join("claim_state.json"), "x", VERSION);
         claim.token = Some("token".to_string());
@@ -1949,16 +1489,27 @@ mod tests {
             tmdb: Some(Arc::new(tmdb::Tmdb::new("testkey".to_string(), dir.join("tmdb_cache.json")))),
             plex: Some(Arc::new(plexmeta::PlexMeta::new(Arc::clone(&claim), dir.join("plex_cache.json"), "f".repeat(40)))),
         };
-        let mut movie = vec![arrival("movie")];
-        name_release(&plan("movie"), &mut movie, 1);
+        let mut movie = vec![film()];
+        name_release(&plan("movie"), &mut movie);
         let meta = movie[0].meta.clone().unwrap();
         assert_eq!(meta["title"], "Blame It on the Bellboy");
         assert_eq!(meta["year"], 1992);
         assert_eq!(meta["guid"], "plex://movie/5d7768279ab5440020ad6e0e");
         assert_eq!(meta["Guid"], json!([{"id": "imdb://tt0103827"}, {"id": "tmdb://31639"}]));
-        assert_eq!(meta["_identify"]["confidence"], "exact");
-        let mut episode = vec![arrival("episode")];
-        name_release(&plan("show"), &mut episode, 1);
+        assert_eq!(meta["_identify"]["source"], "placed");
+        // A TMDB id set by hand in zurg, with no placement: that id, in its library's kind.
+        let mut by_hand = vec![arrival("movie", None, json!({"tmdb": 31639}))];
+        name_release(&plan("movie"), &mut by_hand);
+        let meta = by_hand[0].meta.clone().unwrap();
+        assert_eq!((meta["title"].clone(), meta["_identify"]["source"].clone()), (json!("Blame It on the Bellboy"), json!("set by hand")));
+        // An IMDb id with no placement, or no id at all, names nothing and asks nobody.
+        for ids in [json!({"imdb": "tt0103827"}), json!({"tvdb": "71256"}), json!({})] {
+            let mut unplaced = vec![arrival("movie", None, ids.clone())];
+            name_release(&plan("movie"), &mut unplaced);
+            assert!(unplaced[0].meta.is_none(), "{ids}");
+        }
+        let mut episode = vec![american_dad()];
+        name_release(&plan("show"), &mut episode);
         let meta = episode[0].meta.clone().unwrap();
         assert_eq!(meta["title"], "Phantom of the Telethon");
         assert_eq!(meta["_show_title"], "American Dad!");
@@ -1967,8 +1518,8 @@ mod tests {
         assert_eq!(meta["guid"], "plex://episode/5d9c0ab4705e7a001e6d4a2b");
         assert_eq!((meta["_season"].clone(), meta["_episode"].clone()), (json!(5), json!(7)));
         // A movie library's release that is a show is not forced into a movie.
-        let mut wrong = vec![arrival("episode")];
-        name_release(&plan("movie"), &mut wrong, 1);
+        let mut wrong = vec![american_dad()];
+        name_release(&plan("movie"), &mut wrong);
         assert!(!wrong[0].meta.clone().unwrap().contains_key("guid"));
         let _ = fs::remove_dir_all(&dir);
     }

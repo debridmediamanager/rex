@@ -34,7 +34,7 @@ GROUPS = {
     "hierarchy-build": "hierarchy rows", "hierarchy-normalize": "hierarchy rows",
     "hierarchy-fold": "hierarchy rows", "hierarchy-case": "hierarchy rows",
     "xml": "XML documents", "ordered": "XML documents", "system-xml": "XML documents",
-    "metadata-parse": "metadata/provider rows", "metadata-enrich": "metadata/provider rows",
+    "metadata-enrich": "metadata/provider rows",
     "provider-guids": "metadata/provider rows",
     "gate": "gate/catalog rows", "catalog-normalize": "gate/catalog rows",
 }

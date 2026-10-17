@@ -1,9 +1,7 @@
-//! Pure metadata identity, release parsing, and artwork helpers.
+//! Pure metadata identity and artwork helpers.
 
 use std::collections::HashMap;
-use std::sync::OnceLock;
 
-use regex::Regex;
 use serde_json::{json, Map, Value};
 use sha1::{Digest, Sha1};
 
@@ -25,78 +23,6 @@ pub fn plex_guid(kind: &str, seed: &str) -> String {
         kind,
         &sha1_hex(&format!("plexsim/{}/{}", kind, seed))[..24]
     )
-}
-
-fn release_regexes() -> (
-    &'static Regex,
-    &'static Regex,
-    &'static Regex,
-    &'static Regex,
-    &'static Regex,
-    &'static Regex,
-) {
-    static EXT: OnceLock<Regex> = OnceLock::new();
-    static BRACKET: OnceLock<Regex> = OnceLock::new();
-    static SEASON_EP: OnceLock<Regex> = OnceLock::new();
-    static LOOSE_EP: OnceLock<Regex> = OnceLock::new();
-    static YEAR: OnceLock<Regex> = OnceLock::new();
-    static CUT: OnceLock<Regex> = OnceLock::new();
-    // Keep all patterns equivalent to metadata.py.  In particular, the word
-    // boundaries prevent `S01E01` embedded in a movie title and prevent noise
-    // tokens such as `stan` from cutting `Constantine`.
-    (
-        EXT.get_or_init(|| Regex::new(r"(?i)\.(mkv|mp4|webm|avi|ts|m4v)$").unwrap()),
-        BRACKET.get_or_init(|| Regex::new(r"[\[\(][^\]\)]*[\]\)]").unwrap()),
-        // metadata.py says which names each of these four reads that it did not.
-        SEASON_EP.get_or_init(|| Regex::new(r"(?i)\bS(\d{1,2}|(?:19|20)\d{2})[\s._-]?E(\d{1,4})(?:\D|$)").unwrap()),
-        LOOSE_EP.get_or_init(|| Regex::new(r"(?i)(?:^|\s)-\s(\d{2,4})(?:v\d)?(?:\s|$)").unwrap()),
-        YEAR.get_or_init(|| Regex::new(r"\b(19\d{2}|20\d{2})\b").unwrap()),
-        CUT.get_or_init(|| Regex::new(
-            r"(?i)\b(1080p|2160p|720p|480p|4k|web[\s._-]?dl|webrip|web|bluray|blu[\s._-]?ray|remux|hdtv|dvdrip|brrip|amzn|nf|hmax|glbo|dsnp|atvp|max|hulu|pcok|stan|hevc|x264|x265|h[\s._-]?264|h[\s._-]?265|av1|xvid|divx|ddp?5[\s._-]?1|dd5[\s._-]?1|ddp|dts|truehd|atmos|aac2[\s._-]?0|aac|ac3|eac3|opus|flac|dv|hdr10\+?|hdr|sdr|proper|repack|imax|extended|uncut|dual|multi|complete)\b"
-        ).unwrap()),
-    )
-}
-
-/// Parse the filename grammar used before TMDB lookup.
-pub fn parse_release(filename: &str) -> Value {
-    let (extension, bracket, season_ep, loose_ep, year_re, cut_re) = release_regexes();
-    let mut stem = extension.replace(filename, "").to_string();
-    stem = bracket.replace_all(&stem, " ").to_string();
-    stem = stem.replace(['.', '_'], " ");
-    let (mut season, mut episode): (Option<i64>, Option<i64>) = (None, None);
-    if let Some(found) = season_ep.captures(&stem) {
-        season = found.get(1).and_then(|value| value.as_str().parse().ok());
-        episode = found.get(2).and_then(|value| value.as_str().parse().ok());
-        if let Some(start) = found.get(0).map(|value| value.start()) {
-            stem.truncate(start);
-        }
-    } else if let Some(found) = loose_ep.captures(&stem) {
-        episode = found.get(1).and_then(|value| value.as_str().parse().ok());
-        if let Some(start) = found.get(0).map(|value| value.start()) {
-            stem.truncate(start);
-        }
-    }
-    let mut year: Option<i64> = None;
-    let mut last_year_start = None;
-    for found in year_re.captures_iter(&stem) {
-        if let Some(value) = found.get(1) {
-            year = value.as_str().parse().ok();
-            last_year_start = Some(value.start());
-        }
-    }
-    if let Some(start) = last_year_start {
-        stem.truncate(start);
-    }
-    if let Some(found) = cut_re.find(&stem) {
-        stem.truncate(found.start());
-    }
-    let title = stem
-        .split_whitespace()
-        .collect::<Vec<_>>()
-        .join(" ")
-        .trim_matches(|c: char| matches!(c, ' ' | '-' | '–' | '—'))
-        .to_string();
-    json!({"title": title, "year": year, "season": season, "episode": episode})
 }
 
 /// Provider calls required by the GUID relinker.  The core transformation
@@ -926,26 +852,6 @@ mod tests {
         assert_eq!(
             plex_guid("movie", "tt1254207"),
             "plex://movie/c18b41265ec9c09e0042e95d"
-        );
-    }
-    #[test]
-    fn release() {
-        assert_eq!(
-            parse_release("The.Movie.2023.1080p.mkv")["title"],
-            "The Movie"
-        );
-    }
-
-    #[test]
-    fn release_regex_boundaries_match_measured_names() {
-        assert_eq!(parse_release("Maxwell.mkv")["title"], "Maxwell");
-        assert_eq!(parse_release("Constantine.mkv")["title"], "Constantine");
-        assert_eq!(parse_release("Film.1899")["title"], "Film 1899");
-        assert_eq!(parse_release("Film.1899")["year"], Value::Null);
-        assert_eq!(parse_release("MovieS01E01.mkv")["title"], "MovieS01E01");
-        assert_eq!(
-            parse_release("Detective Conan - 1194 1080p.mkv")["episode"],
-            1194
         );
     }
 }

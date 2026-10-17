@@ -19,7 +19,6 @@
 use super::scan::{is_sample, name_release, row_files, under, Arrival, Found, Library};
 use super::source::{is_video, Source};
 use super::*;
-use crate::identify::TmdbSource;
 use std::collections::BTreeMap;
 use std::sync::LazyLock;
 
@@ -55,12 +54,16 @@ struct Item {
     ids: Map<String, Value>,
     media_info: Option<Value>,
     /// Where the provider lists the file inside its release; `""` at its top level, `None`
-    /// when the source does not say (`scan::numbered_in_release`).
+    /// when the source does not say (`scan::is_extra`).
     folder: Option<String>,
     /// Where the source placed the file, kept on the row as `_placed`: its `kind` ("movie" or
     /// "episode") and an episode's TMDB `season`, `episode` and `episode_end`. `None` when it
-    /// sends no `kind` rex knows: the file is placed by its name.
+    /// sends no `kind` rex knows: nothing places the file, and its name is not read.
     placed: Option<Value>,
+    /// The season and episode a show's file its source did not number is on: its row's, when it
+    /// has one, else the next in its release's file order (`number_unplaced`). Set before it is
+    /// identified, which reads them.
+    kept: Option<(i64, i64)>,
 }
 
 impl Item {
@@ -106,6 +109,7 @@ impl Item {
         });
         Ok(Self {
             placed,
+            kept: None,
             library: value.get("library").map(string_value).filter(|v| !v.is_empty() && v != "null"),
             size: value.get("size").and_then(Value::as_u64).unwrap_or(0),
             hash: text("hash").map(|hash| hash.to_ascii_lowercase()),
@@ -150,13 +154,19 @@ impl Item {
             .chain(self.folder.as_ref().map(|folder| ("_folder".to_string(), json!(folder))))
             .chain(self.placed.as_ref().map(|placed| ("_placed".to_string(), placed.clone())))),
             meta: None,
-            numbers: super::scan::placed_numbers(self.placed.as_ref()),
+            numbers: super::scan::placed_numbers(self.placed.as_ref()).or(self.kept),
         }
     }
 
     /// The `kind` its source placed it as, if any.
     fn kind(&self) -> Option<&str> {
         self.placed.as_ref()?.get("kind")?.as_str()
+    }
+
+    /// Whether anything names it in `library` (`scan::identified_by`): a placement with ids, or a
+    /// TMDB id set by hand.
+    fn identifiable(&self, library: &str) -> bool {
+        super::scan::identified_by(Some(&self.ids), self.placed.as_ref(), library).is_some()
     }
 
     /// The held record: what the push said, minus nothing (it has no probe).
@@ -532,33 +542,17 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
 
     // -- under the lock: which library, which row, what has to be identified ---------------
     let mut plans: Vec<(Item, Library, Plan)> = Vec::new();
-    // The movie library a film a source filed with the shows may go to, by plan index (`as_film`).
-    let mut film_libraries: HashMap<usize, Library> = HashMap::new();
     {
         let guard = lock(shared);
         let rows = guard.feed_rows(&source.name);
         let legacy = guard.legacy_rows_by_file();
         let named = guard.tmdb.is_some() || guard.plex.is_some();
-        for item in items {
-            let Some(mut library) = guard.feed_library(&item) else {
+        for mut item in items {
+            // A `kind` the source sent says which it is (`feed_library`); no name guesses.
+            let Some(library) = guard.feed_library(&item) else {
                 counts.rejected.push(json!({"id": item.id, "reason": format!("no movie or show library holds {}", item.file)}));
                 continue;
             };
-            // A `kind` the source sent says which it is (`feed_library`); no name guesses.
-            let film = library.kind == "show" && item.library.is_none() && item.placed.is_none() && item.imdb.is_some() && film_shaped(&item.name);
-            if film {
-                let in_section = |kind: &str| guard.feed_library(&Item { library: Some(kind.to_string()), ..item.clone() });
-                // Already moved there: it stays, so a push does not re-identify it every time.
-                let placed = rows.get(&item.id).and_then(|key| guard.catalog.get(key)).filter(|row| row.get("type").and_then(Value::as_str) == Some("movie"));
-                match placed.and_then(|row| row.get("librarySectionID")).map(string_value).and_then(|key| in_section(&key)) {
-                    Some(movies) => library = movies,
-                    None => {
-                        if let Some(movies) = in_section("movie") {
-                            film_libraries.insert(plans.len(), movies);
-                        }
-                    }
-                }
-            }
             if let Some(seen) = seen.as_deref_mut() {
                 seen.insert(item.id.clone());
             }
@@ -571,10 +565,8 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
                     let had = row.map(row_ids).unwrap_or_default();
                     // ponytail: a row holding several releases is not re-identified by one of
                     // them; splitting the release back out is Split's job.
-                    // An id that named nothing when it came is tried again on each push:
-                    // 285 of the production server's shows sat on `local://` with zurg's
-                    // exact id (2026-10-11), an episode's IMDb id that `tmdb_find_imdb` did
-                    // not read yet.
+                    // An id that named nothing when it came (TMDB or Plex unreachable, a key
+                    // missing) is tried again on each push.
                     let unnamed = row.and_then(|row| row.get("_identify")).is_some_and(|report| {
                         ["tmdb", "plex"].iter().all(|field| report.get(*field).is_none_or(Value::is_null))
                     });
@@ -584,7 +576,7 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
                     });
                     // Placed somewhere else than before, it is placed again, providers or none. A
                     // push with no placement leaves it where the last one put it (absent is
-                    // unknown), unless other ids name it again by its name.
+                    // unknown), unless a TMDB id set by hand names it again.
                     let replaced = item.placed.is_some() && row.is_some_and(|row| version_placed(row, 0) != item.placed.as_ref());
                     // What a person matched is theirs: no push and no retry identifies it again.
                     // A clip is its parent's: no library, so never "moved", and no title of its own.
@@ -593,12 +585,20 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
                         && (moved
                             || replaced
                             || named
+                                && item.identifiable(&library.kind)
                                 && (retry
                                     || match (&item.imdb, &item.tmdb) {
                                         (Some(imdb), _) => unnamed || had.get("imdb").map(string_value).as_deref() != Some(imdb.as_str()),
                                         (None, Some(tmdb)) => unnamed || had.get("tmdb").map(string_value).as_deref() != Some(tmdb.as_str()),
                                         _ => false,
                                     }));
+                    // Nothing numbered it: it keeps the numbers it has, and is identified on them
+                    // (a row is renumbered by its source alone).
+                    if super::scan::placed_numbers(item.placed.as_ref()).is_none() {
+                        item.kept = row.filter(|row| row.get("type").and_then(Value::as_str) == Some("episode")).and_then(|row| {
+                            Some((row.get("parentIndex")?.as_i64()?, row.get("index")?.as_i64()?))
+                        });
+                    }
                     Plan::Row { key, adopt, reidentify }
                 }
                 // A retry names rows that are here; it never makes or holds one.
@@ -611,6 +611,7 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
             };
             plans.push((item, library, plan));
         }
+        number_unplaced(&guard, &mut plans);
     }
 
     // -- off the lock: identification, once per release ---------------------------------
@@ -621,36 +622,12 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
         }
     }
     let mut arrivals: HashMap<usize, Arrival> = HashMap::new();
-    let mut moved_to_films = Vec::new();
     for indices in groups.values() {
         let library = &plans[indices[0]].1;
         let mut release: Vec<Arrival> = indices.iter().map(|index| plans[*index].0.arrival(&source.name)).collect();
-        let files = release.len();
-        name_release(library, &mut release, files);
-        // `[Baws] Evangelion 1.11 - You Are (Not) Alone v2` in zurg's anime directory, which
-        // feeds the production server's TV Shows: one file whose exact id is a film, refused as
-        // a show and left on the blank tile with its two sequels (2026-10-16). Named as a film,
-        // it is filed in the movie library.
-        let named = |arrivals: &[Arrival]| arrivals.first().and_then(|arrival| arrival.meta.as_ref()).is_some_and(|meta| meta.contains_key("title"));
-        if files == 1 && !named(&release) {
-            if let Some(movies) = film_libraries.get(&indices[0]) {
-                let mut as_film = vec![plans[indices[0]].0.arrival(&source.name)];
-                name_release(movies, &mut as_film, 1);
-                if named(&as_film) {
-                    info!("FEED {:?} is a film: filed in {}", plans[indices[0]].0.name, movies.title);
-                    release = as_film;
-                    moved_to_films.push(indices[0]);
-                }
-            }
-        }
+        name_release(library, &mut release);
         for (index, arrival) in indices.iter().zip(release) {
             arrivals.insert(*index, arrival);
-        }
-    }
-
-    for index in moved_to_films {
-        if let Some(movies) = film_libraries.remove(&index) {
-            plans[index].1 = movies;
         }
     }
 
@@ -912,7 +889,6 @@ fn retry_after(attempts: i64) -> i64 {
     3600 << (attempts.clamp(1, 8) - 1)
 }
 
-/// A release name a film could have: no season, episode or pack in it.
 /// The `extraType` a new file is served as when it is its release's extra and not an episode its
 /// source placed: in a show's release what `scan::is_extra` finds, in a film's only Plex's own
 /// folder and suffix names (`scan::extra_type`), never a name's words.
@@ -921,41 +897,66 @@ fn release_extra(item: &Item, library: &Library) -> Option<i64> {
         return None;
     }
     let file_name = item.file.rsplit('/').next().unwrap_or_default();
-    if library.kind == "show" && !super::scan::is_extra(&item.name, item.folder.as_deref(), file_name) {
+    if library.kind == "show" && !super::scan::is_extra(item.folder.as_deref(), file_name) {
         return None;
     }
     super::scan::extra_type(item.folder.as_deref(), file_name)
 }
 
-fn film_shaped(name: &str) -> bool {
-    let parsed = crate::identify::parse_name(name);
-    parsed.season.is_none() && parsed.episode.is_none() && !parsed.pack
+/// Numbers for the new files of a show's release its source did not place: season 1, episodes in
+/// the release's file order (its paths sorted), after any of the release's own rows already here.
+/// rex reads no number off a name: DMM places all but 0.9% of the production server's episodes
+/// (2026-10-17), and these are for a person to see and Fix Match.
+/// ponytail: numbers stay file order until the source places the files, and a file that arrives
+/// after its release's others is numbered after them, not between; a placement moves it.
+fn number_unplaced(runtime: &Runtime, plans: &mut [(Item, Library, Plan)]) {
+    let mut releases: BTreeMap<(String, String), Vec<usize>> = BTreeMap::new();
+    for (index, (item, library, plan)) in plans.iter().enumerate() {
+        let file_name = item.file.rsplit('/').next().unwrap_or_default();
+        if matches!(plan, Plan::Show)
+            && library.kind == "show"
+            && super::scan::placed_numbers(item.placed.as_ref()).is_none()
+            && !super::scan::is_extra(item.folder.as_deref(), file_name)
+        {
+            releases.entry((library.key.clone(), item.name.clone())).or_default().push(index);
+        }
+    }
+    if releases.is_empty() {
+        return;
+    }
+    let mut numbered: HashMap<(String, String), i64> = HashMap::new();
+    for row in runtime.catalog.items() {
+        let (Some(release), Some(index)) = (row.get("_release").and_then(Value::as_str), row.get("index").and_then(Value::as_i64)) else {
+            continue;
+        };
+        if row.get("type").and_then(Value::as_str) == Some("episode") && row.get("parentIndex").and_then(Value::as_i64) == Some(1) {
+            let section = row.get("librarySectionID").map(string_value).unwrap_or_default();
+            let last = numbered.entry((section, release.to_string())).or_insert(0);
+            *last = (*last).max(index);
+        }
+    }
+    for (release, mut indices) in releases {
+        let last = numbered.get(&release).copied().unwrap_or(0);
+        indices.sort_by(|a, b| plans[*a].0.path.cmp(&plans[*b].0.path));
+        for (position, index) in indices.into_iter().enumerate() {
+            plans[index].0.kept = Some((1, last + 1 + position as i64));
+        }
+    }
 }
 
 /// The item a row's source pushed, rebuilt from the row: what `upsert` needs to identify it
-/// again. Its probe is the row's already, so none is sent, and it stays in its library
-/// unless it is a film whose release names an episode, which `feed_library` moves.
-/// ponytail: the `library` a source named is not kept on the row, so such a film is filed
-/// by location, as zurg's items are; a source naming its films' library itself would move
-/// it back on its next push.
+/// again, in the library it is in. Its probe is the row's already, so none is sent.
 fn pushed_item(row: &Value) -> Option<(String, Value)> {
     let text = |field: &str| row.get(field).and_then(Value::as_str).filter(|value| !value.is_empty());
     // The release's name, not an archive's: the rows the production server split off as
     // `aaf-wilty.301.rar` were retried by that name and stayed on the blank tile (2026-10-16).
     let name = version_release(row, 0)?;
-    let episode = text("type") == Some("movie") && crate::identify::parse_name(name).episode.is_some();
-    // A film filed with the shows, named by its exact id, is filed by location like a push, so
-    // it can go to Movies (`as_film`).
-    let film = text("type") == Some("episode")
-        && film_shaped(name)
-        && row.pointer("/_ids/imdb").and_then(Value::as_str).is_some_and(|imdb| imdb.starts_with("tt"));
     // Where its source placed it, which put it in this library: the placement goes with it.
     let placed = version_placed(row, 0).and_then(Value::as_object);
-    let library = row.get("librarySectionID").map(string_value).filter(|_| placed.is_some() || !episode && !film);
     let mut item = json!({"id": text("_sid")?, "path": text("_path")?, "file": row.pointer("/Media/0/Part/0/file")?,
                           "name": name, "release": name, "size": row.pointer("/Media/0/Part/0/size").cloned().unwrap_or(json!(0)),
                           "hash": row.get("_hash"), "ids": row.get("_ids").cloned().unwrap_or_else(|| json!({})),
-                          "library": library, "folder": row.get("_folder")});
+                          "library": row.get("librarySectionID").map(string_value), "folder": row.get("_folder")});
     if let (Some(placed), Some(object)) = (placed, item.as_object_mut()) {
         object.extend(placed.clone());
     }
@@ -969,13 +970,14 @@ fn version_placed(row: &Value, index: usize) -> Option<&Value> {
 }
 
 /// Rows identification left on the blank tile -- a film with no poster, or an episode whose
-/// show has none -- and films whose release names an episode, identified again as their
-/// source pushed them, `limit` films or shows a pass. The feed names a row again only when its
-/// source's ids change, so a lookup that failed once (TMDB or Plex down, a key missing) and a
-/// title TMDB has learned since stayed blank for good: the production rex held 56 films and 45 shows
-/// so on 2026-10-12. Each row still blank afterwards waits longer before its next try
-/// (`retry_after`, kept on the row as `_retry`); what a person matched is never touched.
-/// Answers how many rows it tried.
+/// show has none -- identified again as their source pushed them, `limit` films or shows a
+/// pass. The feed names a row again only when its source's ids change, so a lookup that failed
+/// once (TMDB or Plex down, a key missing) and a title TMDB has learned since stayed blank for
+/// good: the production rex held 56 films and 45 shows so on 2026-10-12. Only a row that came
+/// with something to name it by (`scan::identified_by`) is tried; one with no ids has nothing
+/// to retry with and stays as it is, for Fix Match. Each row still blank afterwards waits
+/// longer before its next try (`retry_after`, kept on the row as `_retry`); what a person
+/// matched is never touched. Answers how many rows it tried.
 pub(super) fn retry_blank(shared: &SharedRuntime, limit: usize) -> usize {
     let stamp = now();
     // -- under the lock: which rows, a show's episodes together so it is named whole --------
@@ -987,7 +989,11 @@ pub(super) fn retry_blank(shared: &SharedRuntime, limit: usize) -> usize {
         let mut groups: BTreeMap<String, Vec<(String, (String, Value))>> = BTreeMap::new();
         for row in guard.catalog.items() {
             let due = row.pointer("/_retry/at").and_then(Value::as_i64).is_none_or(|at| at <= stamp);
-            if !due || !guard.blank(row) {
+            let library = if row.get("type").and_then(Value::as_str) == Some("movie") { "movie" } else { "show" };
+            if !due
+                || !guard.blank(row)
+                || super::scan::identified_by(row.get("_ids").and_then(Value::as_object), version_placed(row, 0), library).is_none()
+            {
                 continue;
             }
             let (Some(key), Some(item)) = (key_of(row), pushed_item(row)) else {
@@ -1037,160 +1043,8 @@ pub(super) fn retry_blank(shared: &SharedRuntime, limit: usize) -> usize {
     keys.len()
 }
 
-fn eligible_episode(row: &Value) -> bool {
-    row.get("type").and_then(Value::as_str) == Some("episode")
-        && !row.get("deletedAt").is_some_and(|value| !value.is_null())
-        && !row.get("_probePending").is_some_and(truthy)
-}
-
-fn season_lookup_candidate(row: &Value) -> bool {
-    if !eligible_episode(row) {
-        return false;
-    }
-    let all = versions(row);
-    (all.len() <= 1
-        && row.get("_release").and_then(Value::as_str).is_some()
-        && row.pointer("/Media/0/Part/0/file").and_then(Value::as_str).is_some())
-        || (all.len() >= 2 && all[0].2 == 0)
-}
-
-fn show_tmdb_id(catalog: &Catalog, row: &Value) -> Option<i64> {
-    row.get("grandparentRatingKey")
-        .map(string_value)
-        .and_then(|key| catalog.get(&key))
-        .and_then(|show| show.get("_identity"))
-        .and_then(Value::as_str)
-        .and_then(|identity| identity.strip_prefix("tmdb:"))
-        .and_then(|id| id.parse::<i64>().ok())
-}
-
-/// Episodes placed on numbers their names no longer read: pushed again as their source pushed
-/// them, so each is identified and placed again on its key, watch state kept. A parser fix reached only
-/// new files before this, and the production server held ~214 `Show S2 - NN` episodes in season 1
-/// (2026-10-13). Answers how many rows it placed again.
-pub(super) fn replace_misnumbered(shared: &SharedRuntime) -> usize {
-    let (tmdb, has_plex) = {
-        let guard = lock(shared);
-        (guard.tmdb.clone(), guard.plex.is_some())
-    };
-    if tmdb.is_none() && !has_plex {
-        return 0;
-    }
-    let lookup = tmdb.clone().map(|tmdb| {
-        move |id| {
-            crate::identify::tmdb_details(tmdb.as_ref() as &dyn TmdbSource, "tv", id)
-                .map(|details| super::scan::tmdb_seasons(&details))
-                .unwrap_or_default()
-        }
-    });
-    replace_misnumbered_with(shared, lookup)
-}
-
-fn replace_misnumbered_with<F>(shared: &SharedRuntime, mut lookup: Option<F>) -> usize
-where
-    F: FnMut(i64) -> Vec<super::scan::Season>,
-{
-    let (sources, show_ids) = {
-        let guard = lock(shared);
-        let mut show_ids = Vec::new();
-        let mut seen_show_ids = HashSet::new();
-        for row in guard.catalog.items() {
-            if !season_lookup_candidate(row) || guard.matched_by_hand(row) {
-                continue;
-            }
-            let Some(id) = show_tmdb_id(&guard.catalog, row) else {
-                continue;
-            };
-            if seen_show_ids.insert(id) {
-                show_ids.push(id);
-            }
-        }
-        (guard.sources.clone(), show_ids)
-    };
-    // TMDB details can take seconds and must never occupy the runtime lock while they are
-    // fetched. The map is immutable during the catalog pass below, so every caller shares the
-    // same answer for a show and the lock is only used for the short row projection phases.
-    let mut show_seasons: HashMap<i64, Vec<super::scan::Season>> = HashMap::new();
-    let lookup_available = lookup.is_some();
-    if let Some(lookup) = lookup.as_mut() {
-        for id in show_ids {
-            show_seasons.insert(id, lookup(id));
-        }
-    }
-    let by_source = {
-        let mut guard = lock(shared);
-        let elsewhere = guard.versions_elsewhere(&show_seasons, lookup_available);
-        guard.unfold_versions(&elsewhere);
-        let guard = guard;
-        let mut by_source: BTreeMap<String, Vec<Value>> = BTreeMap::new();
-        for row in guard.catalog.items() {
-            if !eligible_episode(row)
-                || versions(row).len() > 1
-                || guard.matched_by_hand(row)
-            {
-                continue;
-            }
-            let (Some(release), Some(file)) = (
-                row.get("_release").and_then(Value::as_str),
-                row.pointer("/Media/0/Part/0/file").and_then(Value::as_str),
-            ) else {
-                continue;
-            };
-            let name = file.rsplit('/').next().unwrap_or_default();
-            let show_id = show_tmdb_id(&guard.catalog, row);
-            if lookup_available && show_id.is_some_and(|id| !show_seasons.contains_key(&id)) {
-                // A show can arrive while the first snapshot's lookup is blocked.  It has no
-                // answer yet; an empty season list would move its episode by guesswork.
-                continue;
-            }
-            let folder = row.as_object().and_then(super::scan::folder_of);
-            // The numbers its source placed it on, else its name's.
-            let pushed = super::scan::placed_numbers(version_placed(row, 0));
-            let numbers = pushed.or_else(|| super::scan::episode_of(release, folder, name).map(|numbers| match show_id {
-                Some(id) => {
-                    let seasons = show_seasons.get(&id).map(Vec::as_slice).unwrap_or(&[]);
-                    let placed = super::scan::on_seasons(seasons, numbers);
-                    super::scan::by_title(guard.tmdb.as_deref().map(|t| t as &dyn TmdbSource), id, release, name, placed)
-                }
-                None => numbers,
-            }));
-            let misplaced = numbers.is_some_and(|(season, episode)| {
-                row.get("parentIndex").and_then(Value::as_i64) != Some(season) || row.get("index").and_then(Value::as_i64) != Some(episode)
-            });
-            if misplaced {
-                if let Some((source, item)) = pushed_item(row) {
-                    by_source.entry(source).or_default().push(item);
-                }
-            }
-        }
-        by_source
-    };
-    let total: usize = by_source.values().map(Vec::len).sum();
-    if total == 0 {
-        return 0;
-    }
-    info!("FEED placing {total} episode(s) again on the numbers their names read");
-    let began = std::time::Instant::now();
-    let mut pushed = 0;
-    for (name, items) in &by_source {
-        let source = named(&sources, name);
-        pushed += items.len();
-        for chunk in items.chunks(200) {
-            let _feed = FEED.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-            upsert(shared, &source, chunk, None, true);
-        }
-    }
-    let mut guard = lock(shared);
-    guard.dirty = true;
-    let snapshot = guard.flush_state();
-    drop(guard);
-    write_or_log(snapshot);
-    info!("FEED placed {pushed} episode(s) again in {:.0} s", began.elapsed().as_secs_f64());
-    pushed
-}
-
 /// The source a row names, to identify its items again as it pushed them: that needs its
-/// name alone, never its bytes. The passes at start run before a source registers on a
+/// name alone, never its bytes. The retry at start runs before a source registers on a
 /// catalog from before registration was kept, and skipping an unregistered source's rows
 /// left them on the blank tile until the next pass ten minutes on.
 fn named(sources: &[Arc<Source>], name: &str) -> Arc<Source> {
@@ -1326,9 +1180,8 @@ static ARCHIVE: LazyLock<regex::Regex> = LazyLock::new(|| regex::Regex::new(r"(?
 
 /// The release a source path's file is in: its folder, or the folder above the archive it
 /// is a member of. `shows/Would.I.Lie.To.You.S03E01.PROPER…/aaf-wilty.301.rar/aaf-wilty.301.avi`
-/// read as the release `aaf-wilty.301.rar`: episode 301 of season 1, so a start unfolded the
-/// version off the episode it was and made it a show of its own on the blank tile (the
-/// production server, 2026-10-16).
+/// is the PROPER release's; read as a release called `aaf-wilty.301.rar`, the production server
+/// split it off its episode into a show of that name (2026-10-16).
 fn release_dir(path: &str) -> Option<&str> {
     let mut parents = path.rsplit('/').skip(1);
     let mut parent = parents.next()?;
@@ -1352,21 +1205,6 @@ fn version_release(row: &Value, index: usize) -> Option<&str> {
         .or_else(|| text(row.get("_release")).filter(|name| index == 0 && !ARCHIVE.is_match(name)))
         .or_else(|| row.pointer(&format!("/Media/{index}/_path")).and_then(Value::as_str).and_then(release_dir))
         .or_else(|| text(row.get("_release")))
-}
-
-/// The numbers the name of a row's release at `index` reads: its file's, under its folder's.
-fn release_numbers(row: &Value, index: usize) -> Option<((i64, i64), &str, &str)> {
-    let path = row.pointer(&format!("/Media/{index}/_path")).and_then(Value::as_str)?;
-    let name = path.rsplit('/').next()?;
-    let release = version_release(row, index)?;
-    // Each version's own folder; one folded before versions carried theirs has the row's,
-    // which is its first Media's.
-    let folder = row
-        .pointer(&format!("/Media/{index}"))
-        .and_then(Value::as_object)
-        .and_then(super::scan::folder_of)
-        .or_else(|| row.as_object().and_then(super::scan::folder_of).filter(|_| index == 0));
-    Some((super::scan::episode_of(release, folder, name)?, release, name))
 }
 
 /// A row made of one release: that release its only Media, its source fields and name the row's.
@@ -1462,8 +1300,8 @@ impl Runtime {
     }
 
     /// A row its source pushed that draws the blank tile -- a film with no poster, or an
-    /// episode whose show has none -- or a film whose release names an episode (zurg filed
-    /// it under movies), or an episode named as a film, unless a person matched or unmatched it.
+    /// episode whose show has none -- or an episode named as a film, unless a person matched or
+    /// unmatched it.
     fn blank(&self, row: &Value) -> bool {
         let has = |row: Option<&Value>, field: &str| {
             row.and_then(|row| row.get(field)).is_some_and(|value| !value.is_null() && value.as_str() != Some(""))
@@ -1486,10 +1324,7 @@ impl Runtime {
             // one `plex://movie/` guid, 2026-10-16). Same ids, same placement: no push names it again.
             return !has(show, "_poster_url") || row.get("guid").and_then(Value::as_str).is_some_and(|guid| guid.starts_with("plex://movie/"));
         }
-        // A film its source placed as one is one, whatever its release's name numbers.
         !has(Some(row), "_poster_url")
-            || row.get("_placed").is_none()
-                && row.get("_release").and_then(Value::as_str).is_some_and(|name| crate::identify::parse_name(name).episode.is_some())
     }
 
     fn section_title(&self, key: &str) -> String {
@@ -1522,12 +1357,10 @@ impl Runtime {
         };
         // zurg files a release by its own name rules, and the production server's Usenet zurg filed 40 anime
         // episodes under movies on 2026-10-12 (`Detektiv.Conan.E0221…`, `[Moozzi2]
-        // Eighty-Six-15 […]`): each became a film nothing matched, on the blank tile. A
-        // release whose own name carries an episode number goes to a show library, the one
-        // beside that movie library's folder when there is one. Only the release's name: a
-        // film's extras (`… - 2011 documentary.mkv` in A Trip to the Moon) are not held to it.
-        // A `kind` the source placed it as decides instead of the name, either way.
-        let episode = || item.kind().map_or_else(|| crate::identify::parse_name(&item.name).episode.is_some(), |kind| kind == "episode");
+        // Eighty-Six-15 […]`). One its source placed as an episode goes to a show library, the
+        // one beside that movie library's folder when there is one, and a film filed with the
+        // shows to Movies; the name is never read (it was until 2026-10-17).
+        let episode = || item.kind() == Some("episode");
         // A folder no library holds (zurg's `anime`) goes to the first library of its kind:
         // refusing it made every setup with such a folder seed its libraries by hand first.
         let of_its_kind = || {
@@ -1811,21 +1644,12 @@ impl Runtime {
         } else {
             !has(Some(&old), "_poster_url") && has(Some(&brought), "_poster_url")
         };
-        // An episode on numbers its name no longer reads (a parser that learned `S2 - 07`) is
-        // placed again: re-identification only ever compared ids, so the production server's
-        // `Ace of Diamond Act II S2 - 01` stayed season 1's.
+        // An episode its source placed on other numbers than it sits on moves there: re-identification
+        // only ever compared ids, so a placement arriving with the same ids moved nothing.
+        let here = (old.get("parentIndex").and_then(Value::as_i64), old.get("index").and_then(Value::as_i64));
         let renumbered = old.get("type").and_then(Value::as_str) == Some("episode")
             && library.kind == "show"
-            && arrival
-                .numbers
-                .or_else(|| {
-                    let name = arrival.found.file.rsplit('/').next().unwrap_or_default();
-                    super::scan::episode_of(&arrival.release, super::scan::folder_of(&arrival.extra), name)
-                })
-                .is_some_and(|(season, episode)| {
-                    old.get("parentIndex").and_then(Value::as_i64) != Some(season)
-                        || old.get("index").and_then(Value::as_i64) != Some(episode)
-                });
+            && arrival.numbers.is_some_and(|(season, episode)| here != (Some(season), Some(episode)));
         if meta.get("_identity") == old.get("_identity") && guid == old.get("guid") && !moved && !gains_art && !renumbered {
             return false;
         }
@@ -2021,154 +1845,6 @@ impl Runtime {
         folded
     }
 
-    /// What a show's rows hold that is no episode (`scan::is_extra`), as a start finds it: a row
-    /// of such files alone is deleted, one holding an episode too keeps that. The production
-    /// server held `[KH] Motto To Love-Ru`'s menus and creditless ending as a show of five episodes
-    /// and To Love-Ru's commercials and OVAs as versions of its first episodes (2026-10-17). A
-    /// file its source placed on numbers stays, and so does what a person matched. Answers how
-    /// many releases went.
-    pub(super) fn drop_extras(&mut self) -> usize {
-        let extra = |row: &Value, index: usize| {
-            let (Some(release), Some(file)) = (version_release(row, index), media_file(row, index)) else {
-                return false;
-            };
-            let folder = row
-                .pointer(&format!("/Media/{index}"))
-                .and_then(Value::as_object)
-                .and_then(super::scan::folder_of)
-                .or_else(|| row.as_object().and_then(super::scan::folder_of).filter(|_| index == 0));
-            super::scan::placed_numbers(version_placed(row, index)).is_none()
-                && super::scan::is_extra(release, folder, file.rsplit('/').next().unwrap_or_default())
-        };
-        let doomed: Vec<(String, Vec<(String, String)>, bool)> = self
-            .catalog
-            .items()
-            .iter()
-            .filter(|row| row.get("type").and_then(Value::as_str) == Some("episode") && !self.matched_by_hand(row))
-            .filter_map(|row| {
-                let all = versions(row);
-                let extras: Vec<(String, String)> =
-                    all.iter().filter(|(_, _, index)| extra(row, *index)).map(|(source, sid, _)| (source.clone(), sid.clone())).collect();
-                Some((key_of(row)?, extras.clone(), extras.len() == all.len())).filter(|_| !extras.is_empty())
-            })
-            .collect();
-        let mut dropped = 0;
-        for (key, extras, whole) in doomed {
-            dropped += extras.len();
-            if whole {
-                self.purge_row(&key);
-            } else {
-                for (source, sid) in extras {
-                    self.drop_version(&key, &source, &sid);
-                }
-            }
-        }
-        if dropped > 0 {
-            self.dirty = true;
-        }
-        dropped
-    }
-
-    /// The releases of rows holding several that this pass would place on another episode
-    /// than the row's, which an identification that gave a whole pack one guid folded together
-    /// (The Boys S03E01-E08 on one episode, Food Wars S01-S05 E01 on S1E1; 232 episodes on the
-    /// production server, 2026-10-14). A release is placed as `replace_misnumbered` places a row:
-    /// its name's numbers on the show's TMDB seasons. A row a person matched stays whole.
-    /// When none would stay, the first does.
-    fn versions_elsewhere(
-        &self,
-        show_seasons: &HashMap<i64, Vec<super::scan::Season>>,
-        lookup_available: bool,
-    ) -> Vec<(String, Vec<usize>)> {
-        let mut found = Vec::new();
-        for row in self.catalog.items() {
-            if !eligible_episode(row) || self.matched_by_hand(row) {
-                continue;
-            }
-            let all = versions(row);
-            if all.len() < 2 || all[0].2 != 0 {
-                continue;
-            }
-            let show_id = show_tmdb_id(&self.catalog, row);
-            let here = (row.get("parentIndex").and_then(Value::as_i64), row.get("index").and_then(Value::as_i64));
-            let mut away = Vec::new();
-            for (_, _, index) in &all {
-                // A release its source placed belongs on the episode it was placed on.
-                if let Some((season, episode)) = super::scan::placed_numbers(version_placed(row, *index)) {
-                    if (Some(season), Some(episode)) != here {
-                        away.push(*index);
-                    }
-                    continue;
-                }
-                let Some((numbers, release_name, file_name)) = release_numbers(row, *index) else {
-                    continue;
-                };
-                let placed = match show_id {
-                    Some(id) => {
-                        let seasons = match show_seasons.get(&id) {
-                            Some(seasons) => seasons.as_slice(),
-                            None if !lookup_available => &[],
-                            None => continue,
-                        };
-                        let placed = super::scan::on_seasons(seasons, numbers);
-                        super::scan::by_title(self.tmdb.as_deref().map(|t| t as &dyn TmdbSource), id, release_name, file_name, placed)
-                    }
-                    None => numbers,
-                };
-                if (Some(placed.0), Some(placed.1)) != here {
-                    away.push(*index);
-                }
-            }
-            if away.len() == all.len() {
-                away.retain(|index| *index != 0);
-            }
-            if let (false, Some(key)) = (away.is_empty(), key_of(row)) {
-                found.push((key, away));
-            }
-        }
-        found
-    }
-
-    /// Each release `versions_elsewhere` found onto a row of its own, the way Split makes one,
-    /// so the re-placing pass that follows places it by its name; the row keeps the others,
-    /// its own source fields its first's. Answers how many rows it made.
-    pub(super) fn unfold_versions(&mut self, elsewhere: &[(String, Vec<usize>)]) -> Vec<String> {
-        let mut made = Vec::new();
-        for (key, indices) in elsewhere {
-            let Some(original) = self.catalog.get(key).cloned() else {
-                continue;
-            };
-            let media = original.get("Media").and_then(Value::as_array).cloned().unwrap_or_default();
-            for index in indices {
-                let new_key = self.mint_key();
-                let mut clone = original.clone();
-                if let Some(object) = clone.as_object_mut() {
-                    take_release(object, &media[*index]);
-                    object.insert("ratingKey".to_string(), json!(new_key));
-                    object.insert("key".to_string(), json!(format!("/library/metadata/{new_key}")));
-                    // Another episode's: none of the row's watch state is its.
-                    for field in ["viewCount", "viewOffset", "lastViewedAt", "userRating"] {
-                        object.shift_remove(field);
-                    }
-                }
-                self.catalog.add(clone);
-                made.push(new_key);
-            }
-            let kept: Vec<Value> = media.iter().enumerate().filter(|(index, _)| !indices.contains(index)).map(|(_, media)| media.clone()).collect();
-            if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
-                if indices.contains(&0) {
-                    take_release(object, &kept[0]);
-                }
-                object.insert("Media".to_string(), Value::Array(kept));
-            }
-            info!("FEED unfolded {} release(s) placed on other episodes off {key}", indices.len());
-        }
-        if !made.is_empty() {
-            self.dirty = true;
-        }
-        made
-    }
-
     /// One release of a row holding several gone: its Media dropped, the row's own
     /// source fields its new first Media's. Answers false for a row of one release.
     pub(super) fn drop_version(&mut self, key: &str, source: &str, sid: &str) -> bool {
@@ -2326,9 +2002,9 @@ mod tests {
     /// The production server's Would I Lie to You? S03E01 (2026-10-16) as it held it: a WEB-DL
     /// release and the `S03E01.PROPER` NZB's archive member folded onto it at 21:45, the
     /// version with only its source fields. The start at 22:08 read the archive as its release,
-    /// `aaf-wilty.301.rar`, numbered it episode 301 and unfolded it into a show of that name.
+    /// `aaf-wilty.301.rar`, and split it off into a show of that name.
     #[test]
-    fn a_version_inside_an_archive_is_numbered_by_its_release() {
+    fn a_version_inside_an_archive_is_its_releases() {
         let web = "shows/Would.I.Lie.To.You.S03E09.Unseen.bits.UKTV.WEB-DL.AAC2.0.H.264-BTW/f28908120d6f4baa84e4ff62cb06b8f0.part01.rar/Would.I.Lie.To.You.S03E01.Jo.Brand.Carol.Vorderman.Russell.Howard.Larry.Lamb.UKTV.WEB-DL.AAC2.0.H.264-BTW.mkv";
         let proper = "shows/Would.I.Lie.To.You.S03E01.PROPER.WS.PDTV.XviD-aAF/aaf-wilty.301.rar/aaf-wilty.301.avi";
         let second = "shows/Would.I.Lie.To.You.S03E01.PROPER.WS.PDTV.XviD-aAF/aaf-wilty.302.rar/aaf-wilty.302.avi";
@@ -2337,10 +2013,9 @@ mod tests {
                          "Media": [{"_source": "usenet", "_sid": web, "_path": web, "_folder": ""},
                                    {"_source": "usenet", "_sid": proper, "_path": proper, "_folder": ""},
                                    {"_source": "usenet", "_sid": second, "_path": second, "_folder": ""}]});
+        assert_eq!(version_release(&row, 0), Some("Would.I.Lie.To.You.S03E09.Unseen.bits.UKTV.WEB-DL.AAC2.0.H.264-BTW"));
         assert_eq!(version_release(&row, 1), Some("Would.I.Lie.To.You.S03E01.PROPER.WS.PDTV.XviD-aAF"));
-        assert_eq!(release_numbers(&row, 0).map(|found| found.0), Some((3, 1)));
-        assert_eq!(release_numbers(&row, 1).map(|found| found.0), Some((3, 1)), "the archive's member stays on the episode it is");
-        assert_eq!(release_numbers(&row, 2).map(|found| found.0), Some((3, 2)), "the NZB's second episode is S03E02");
+        assert_eq!(version_release(&row, 2), Some("Would.I.Lie.To.You.S03E01.PROPER.WS.PDTV.XviD-aAF"));
         // A row split off a version takes the version's release and ids, never the archive's name.
         let mut split = row.as_object().unwrap().clone();
         let version = json!({"_source": "usenet", "_sid": proper, "_path": proper, "_ids": {"imdb": "tt1055238"}});
@@ -2356,8 +2031,8 @@ mod tests {
     }
 
     /// Detective Conan S33E01, which TMDB numbers S1E1103 (the placement contract's own example,
-    /// 2026-10-16): the placement is parsed, kept on the row, rebuilt from it for the passes at
-    /// start, and goes with its release when a version is split off.
+    /// 2026-10-16): the placement is parsed, kept on the row, rebuilt from it for the blank-tile
+    /// retry, and goes with its release when a version is split off.
     #[test]
     fn a_placement_is_kept_with_its_release() {
         let source = Source::new("zurg", "", None, None);
@@ -2369,7 +2044,21 @@ mod tests {
         assert_eq!(item.placed.as_ref(), Some(&placed));
         let arrival = item.arrival("zurg");
         assert_eq!((arrival.numbers, arrival.extra.get("_placed")), (Some((1, 1103)), Some(&placed)));
-        assert!(super::super::scan::pinned(&arrival.extra), "placed with its ids: the title is theirs");
+        let ids = arrival.extra.get("_ids").and_then(Value::as_object);
+        assert_eq!(
+            super::super::scan::identified_by(ids, arrival.extra.get("_placed"), "show"),
+            Some(("show", Some(30983), Some("tt0131179".to_string()))),
+            "placed with its ids: the title is theirs"
+        );
+        // A TMDB id set by hand names it in its library's kind; an IMDb or TVDB id alone names nothing.
+        for (ids, want) in [
+            (json!({"tmdb": "1428"}), Some(("show", Some(1428), None))),
+            (json!({"imdb": "tt0383126"}), None),
+            (json!({"tvdb": "73388"}), None),
+        ] {
+            assert_eq!(super::super::scan::identified_by(ids.as_object(), None, "show"), want, "{ids}");
+        }
+        assert_eq!(super::super::scan::identified_by(None, Some(&placed), "show"), None, "a placement with no ids names nothing");
         let row = json!({"type": "episode", "librarySectionID": 2, "_source": "zurg", "_sid": path, "_path": path,
                          "_release": "Detective.Conan.S33.1080p.WEB.H264-GRP", "_ids": item.ids, "_placed": placed,
                          "Media": [{"Part": [{"file": format!("/{path}"), "size": 1}]}]});
@@ -2377,7 +2066,7 @@ mod tests {
         assert_eq!(Item::parse(&source, &again).unwrap().placed.as_ref(), Some(&placed), "rebuilt for retry_blank and the start");
         let range = Item::parse(&source, &json!({"id": path, "path": path, "kind": "episode", "season": 1, "episode": 1103, "episode_end": 1104})).unwrap();
         assert_eq!(range.placed, Some(json!({"kind": "episode", "season": 1, "episode": 1103, "episode_end": 1104})));
-        // What rex does not know places nothing: the name decides, as before.
+        // What rex does not know places nothing, and the name is not read instead.
         for odd in [json!({"kind": "show", "season": 1, "episode": 2}), json!({"season": 1, "episode": 2})] {
             let mut odd = odd;
             odd["id"] = json!(path);
@@ -2408,89 +2097,5 @@ mod tests {
         let mut again = second.clone();
         again["_sid"] = json!("shows/The.Boys.S03.2160p/The.Boys.S03E02.2160p.mkv");
         assert_eq!(version_slot(&second), version_slot(&again), "another release of E02 is still a version of it");
-    }
-
-    #[test]
-    fn season_lookup_releases_runtime_lock_and_skips_a_show_added_during_lookup() {
-        let dir = work("lookup-lock");
-        let (shared, episode_key) = runtime_with_episode(&dir);
-        {
-            let guard = shared.lock().unwrap();
-            let episode = guard.catalog.get(&episode_key).expect("fixture episode");
-            assert!(season_lookup_candidate(episode), "fixture is not a lookup candidate: {episode}");
-            assert_eq!(show_tmdb_id(&guard.catalog, episode), Some(100));
-            assert!(!guard.matched_by_hand(episode), "fixture unexpectedly matched by hand: {episode}");
-        }
-        let (started_tx, started_rx) = std::sync::mpsc::channel();
-        let (release_tx, release_rx) = std::sync::mpsc::channel();
-        let worker = {
-            let shared = shared.clone();
-            std::thread::spawn(move || {
-                replace_misnumbered_with(
-                    &shared,
-                    Some(move |_show_id| {
-                        started_tx.send(()).unwrap();
-                        release_rx
-                            .recv_timeout(std::time::Duration::from_secs(2))
-                            .expect("bounded lookup release");
-                        vec![(1, 1, "1900-01-01".to_string())]
-                    }),
-                )
-            })
-        };
-        if started_rx
-            .recv_timeout(std::time::Duration::from_secs(2))
-            .is_err()
-        {
-            let _ = release_tx.send(());
-            let _ = worker.join();
-            panic!("lookup callback did not start");
-        }
-
-        // The callback is blocked as a stand-in for TMDB.  Acquiring this lock proves the
-        // runtime remains available to a concurrent feed request while that lookup waits.
-        let lock_available = shared.try_lock().is_ok();
-        if lock_available {
-            let mut guard = shared.lock().unwrap();
-            let added_show = json!({
-                "ratingKey": "20",
-                "key": "/library/metadata/20",
-                "type": "show",
-                "title": "Arrived During Lookup",
-                "librarySectionID": 1,
-                "_identity": "tmdb:200"
-            });
-            let added_episode = json!({
-                "ratingKey": "21",
-                "key": "/library/metadata/21",
-                "type": "episode",
-                "title": "New Episode",
-                "librarySectionID": 1,
-                "grandparentRatingKey": "20",
-                "parentRatingKey": "22",
-                "parentIndex": 1900,
-                "index": 1,
-                "_release": "Arrived.S1900E01.1080p",
-                "_source": "test",
-                "_sid": "two",
-                "Media": [{"Part": [{"file": "/shows/Arrived/episode.mkv"}]}]
-            });
-            guard.catalog.add(added_show);
-            guard.catalog.add(added_episode);
-            drop(guard);
-        }
-        let _ = release_tx.send(());
-        let result = worker.join();
-        assert!(lock_available, "TMDB lookup held the runtime lock");
-        result.expect("season repair worker completed");
-
-        if lock_available {
-            let guard = shared.lock().unwrap();
-            assert_eq!(guard.catalog.get(&episode_key).and_then(|row| row.get("index")).and_then(Value::as_i64), Some(2));
-            assert_eq!(guard.catalog.get("21").and_then(|row| row.get("parentIndex")).and_then(Value::as_i64), Some(1900));
-            assert_eq!(guard.catalog.get("21").and_then(|row| row.get("index")).and_then(Value::as_i64), Some(1));
-            drop(guard);
-        }
-        let _ = std::fs::remove_dir_all(dir);
     }
 }

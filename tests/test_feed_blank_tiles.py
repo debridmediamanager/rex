@@ -1,19 +1,20 @@
 #!/usr/bin/env python3
-"""What rex drew the blank tile for gets named, and what a person matched stays theirs.
+"""What rex drew the blank tile for gets named by its source's ids, and what a person matched stays theirs.
 
 the production rex held 56 films and 45 shows with no poster on 2026-10-12, every one unidentified.
 Their releases, as zurg pushed them, are `fixtures/feed/blank_tiles.json` with the TMDB and
 Plex answers the native server asked for them:
 
-* zurg's Usenet library filed anime episodes under movies (`Detektiv.Conan.E0221…`), each a
-  film nothing matched: it is an episode of a show now, left for Fix Match (it came with no id,
-  and a name alone is not searched);
-* DMM's id for Knock at the Cabin (tt15679400) is one TMDB's /find does not know and Plex
-  lists beside TMDB's 631842; DMM's for A Serbian Film is Plex's "Film Postcards: Serbia";
-* rows already held that way -- the Conan episode as a film, Boy Meets World on DMM's id for
-  an episode -- are placed again by the retry a start runs, on their own keys, and one nothing
-  names waits for its next try; Zoku Owarimonogatari and Wallace & Gromit, which the name search
-  matched to Plex's shows before it was retired, keep those shows though the retry names nothing;
+* zurg's Usenet library filed anime episodes under movies (`Detektiv.Conan.E0221…`). Pushed with
+  no placement it stays where zurg filed it, an unmatched film for Fix Match: rex reads no
+  episode number off a name (it did until 2026-10-17);
+* placed, the ids are the title: DMM's id for Knock at the Cabin (tt15679400) is one Plex lists
+  beside TMDB's 631842, and DMM's for A Serbian Film is Plex's "Film Postcards: Serbia", which
+  rex shows as DMM named it, for a person to fix;
+* rows already held on the blank tile are retried at start when they came with something to
+  name them by (Boy Meets World, placed), never when they came with nothing (the Conan film, a
+  release with no id); Zoku Owarimonogatari and Wallace & Gromit, which the name search matched
+  to Plex's shows before it was retired, keep those shows;
 * a Fix Match was undone by the next push that named other ids, and a match that merged two
   rows lost the absorbed release, which came back as a row of its own.
 
@@ -42,12 +43,13 @@ PROBE = ENTRIES["movie"]["entry"]["media_info"]
 LOCAL = ("local://", "tv.plex.agents.none://")
 
 
-def item(name, ids=None):
+def item(name, ids=None, **placement):
+    """zurg's push of `name`, with the placement (`kind`, ...) zurg sends what DMM placed."""
     pushed = FIXTURE["pushes"][name]
     path = pushed["path"]
-    return {"id": path, "path": path, "file": "%s/%s" % (MOUNT, path), "name": pushed["name"],
-            "release": "/".join(path.split("/")[:2]), "size": pushed["size"], "hash": pushed["hash"],
-            "ids": pushed["ids"] if ids is None else ids, "media_info": PROBE}
+    return dict({"id": path, "path": path, "file": "%s/%s" % (MOUNT, path), "name": pushed["name"],
+                 "release": "/".join(path.split("/")[:2]), "size": pushed["size"], "hash": pushed["hash"],
+                 "ids": pushed["ids"] if ids is None else ids, "media_info": PROBE}, **placement)
 
 
 def catalog(work, rows=()):
@@ -130,27 +132,25 @@ def pushes(bytes_port):
     catalog(work)
     server = start(work, bytes_port)
     try:
-        # -- an episode zurg filed under movies is an episode ------------------------------
+        # -- an episode zurg filed under movies, with no placement, stays where zurg filed it --
         status, body = server.feed("POST", "items", {"items": [item("conan")]})
         row = server.row(server.keys()[item("conan")["id"]])
-        show = server.row(row.get("grandparentRatingKey")) if row.get("grandparentRatingKey") else {}
-        check("Detektiv.Conan.E0221, filed under movies, is episode 221 in the show library",
-              status == 200 and row.get("type") == "episode" and str(row.get("librarySectionID")) == "2"
-              and row.get("index") == 221, (body, row.get("type"), row.get("librarySectionID"), row.get("index")))
-        check("of a show of its name, left for Fix Match: it came with no id",
-              show.get("title") == "Detektiv Conan" and not guids(show) and str(show.get("guid", "")).startswith(LOCAL),
-              (show.get("title"), show.get("guid"), guids(show)))
+        check("Detektiv.Conan.E0221, filed under movies with no placement, is an unmatched film there, titled as its file",
+              status == 200 and row.get("type") == "movie" and str(row.get("librarySectionID")) == "1"
+              and str(row.get("guid", "")).startswith(LOCAL) and not guids(row)
+              and row.get("title") == FIXTURE["pushes"]["conan"]["path"].rsplit("/", 1)[1].rsplit(".", 1)[0],
+              (body, row.get("type"), row.get("librarySectionID"), row.get("title"), guids(row)))
 
-        # -- ids TMDB does not know ----------------------------------------------------------
-        server.feed("POST", "items", {"items": [item("knock"), item("serbian")]})
+        # -- the ids a placement names are the title, whatever TMDB knows ---------------------
+        server.feed("POST", "items", {"items": [item("knock", kind="movie"), item("serbian", kind="movie")]})
         keys = server.keys()
         knock, serbian = server.row(keys[item("knock")["id"]]), server.row(keys[item("serbian")["id"]])
         check("DMM's tt15679400 names Knock at the Cabin through Plex's TMDB id, with TMDB's poster",
               "tmdb://631842" in guids(knock) and poster(server, knock.get("ratingKey")) is not None,
               (knock.get("title"), guids(knock), poster(server, knock.get("ratingKey"))))
-        check("DMM's tt6257382 (Plex's \"Film Postcards: Serbia\") gives way to the name: A Serbian Film",
-              "tmdb://73861" in guids(serbian) and serbian.get("title") == "A Serbian Film",
-              (serbian.get("title"), guids(serbian)))
+        check("DMM's tt6257382 is the title it names, Plex's \"Film Postcards: Serbia\": no name second-guesses it",
+              serbian.get("title") == "Film Postcards: Serbia" and serbian.get("year") == 2012
+              and "imdb://tt6257382" in guids(serbian), (serbian.get("title"), serbian.get("year"), guids(serbian)))
 
         # -- a person's match is theirs ------------------------------------------------------
         key = serbian.get("ratingKey")
@@ -158,13 +158,13 @@ def pushes(bytes_port):
         matched = server.row(key)
         check("a person Fix Matches it to another film", status == 200 and chosen.get("guid")
               and matched.get("guid") == chosen["guid"], (status, chosen, matched.get("guid")))
-        server.feed("POST", "items", {"items": [item("serbian", {"imdb": "tt0133093"})]})
+        server.feed("POST", "items", {"items": [item("serbian", {"imdb": "tt0133093"}, kind="movie")]})
         after = server.row(key)
         check("a later push naming other ids leaves the match as the person made it",
               after.get("guid") == chosen.get("guid") and after.get("title") == matched.get("title"),
               (after.get("guid"), after.get("title"), chosen.get("guid")))
 
-        server.feed("POST", "items", {"items": [item("elementos")]})
+        server.feed("POST", "items", {"items": [item("elementos", kind="movie")]})
         other = server.keys()[item("elementos")["id"]]
         status, _ = match(server, other, "Elementos", 2023)
         merged = server.keys()
@@ -172,7 +172,7 @@ def pushes(bytes_port):
               status == 200 and merged.get(item("elementos")["id"]) == key and server.row(other) == {},
               (status, merged.get(item("elementos")["id"]), key))
         before = set(merged.values())
-        server.feed("POST", "items", {"items": [item("elementos")]})
+        server.feed("POST", "items", {"items": [item("elementos", kind="movie")]})
         check("and the absorbed release's next push finds it there, not a row of its own",
               server.keys().get(item("elementos")["id"]) == key and set(server.keys().values()) == before,
               (server.keys().get(item("elementos")["id"]), set(server.keys().values()) - before))
@@ -181,7 +181,7 @@ def pushes(bytes_port):
         knock_key = knock.get("ratingKey")
         match(server, knock_key, "Knock at the Cabin", 2023)
         status, _ = server.request("/library/metadata/%s/unmatch" % knock_key, "PUT")
-        server.feed("POST", "items", {"items": [item("knock", {"imdb": "tt8272064"})]})
+        server.feed("POST", "items", {"items": [item("knock", {"imdb": "tt8272064", "tmdb": 631842}, kind="movie")]})
         check("after Unmatch a push naming other ids identifies the row again",
               status == 200 and "tmdb://631842" in guids(server.row(knock_key)),
               (status, server.row(knock_key).get("guid"), guids(server.row(knock_key))))
@@ -195,7 +195,11 @@ def retry(bytes_port):
     by_key = {row["ratingKey"]: row for row in rows}
     conan = next(row for row in rows if row["type"] == "movie")["ratingKey"]
     boy = next(row for row in rows if row.get("title") == "Boy Meets World")["ratingKey"]
-    zoku = next(row for row in rows if row.get("title") == "Zoku Owarimonogatari")["ratingKey"]
+    # Boy Meets World's episodes as zurg pushes them now that DMM places them: the show's ids, not
+    # the pilot's IMDb id the production server held them on, and TMDB's season and episode.
+    rows = [dict(row, _ids={"imdb": "tt0105958", "tmdb": "1777"},
+                 _placed={"kind": "episode", "season": row["parentIndex"], "episode": row["index"]})
+            if row.get("grandparentRatingKey") == boy and row["type"] == "episode" else row for row in rows]
     sweeney = item("sweeney")
     rows.append(dict(by_key[conan], ratingKey="199999", key="/library/metadata/199999", guid="local://199999",
                      title=FIXTURE["pushes"]["sweeney"]["name"], _sid=sweeney["id"], _path=sweeney["path"],
@@ -205,17 +209,16 @@ def retry(bytes_port):
     catalog(work, rows)
     server = start(work, bytes_port)
     try:
-        row = wait_for(server, conan, lambda row: row.get("type") == "episode")
-        show = server.row(row.get("grandparentRatingKey")) if row.get("grandparentRatingKey") else {}
-        check("the production rex's Conan film is retried at start into an episode, on its own key",
-              row.get("type") == "episode" and str(row.get("librarySectionID")) == "2",
-              (row.get("type"), row.get("librarySectionID"), show.get("title")))
         row = wait_for(server, boy, lambda row: not str(row.get("guid", "")).startswith(LOCAL))
-        check("Boy Meets World, held on DMM's id for an episode, is named in place with its poster",
+        check("Boy Meets World, placed, is named in place with its poster",
               "tmdb://1777" in guids(row) and poster(server, boy) is not None,
               (row.get("guid"), guids(row), poster(server, boy)))
-        # Their episodes came with a TVDB id only, which names nothing: the retry keeps the shows
-        # the name search gave them (once, every episode left Wallace & Gromit for a show of its own).
+        row = server.row(conan)
+        check("the production rex's Conan film, held with no id, is not retried: it stays as it was",
+              row.get("type") == "movie" and str(row.get("librarySectionID")) == "1" and row.get("title") == by_key[conan]["title"],
+              (row.get("type"), row.get("librarySectionID"), row.get("title")))
+        # Their episodes came with a TVDB id only, which names nothing: the shows the name search
+        # gave them stay (once, every episode left Wallace & Gromit for a show of its own).
         for title in ("Zoku Owarimonogatari", "Wallace & Gromit"):
             show = next(row for row in rows if row.get("title") == title)
             episodes = [row["ratingKey"] for row in rows if row.get("grandparentRatingKey") == show["ratingKey"]]
@@ -223,14 +226,12 @@ def retry(bytes_port):
                   server.row(show["ratingKey"]).get("guid") == show["guid"]
                   and all(server.row(key).get("grandparentRatingKey") == show["ratingKey"] for key in episodes),
                   (server.row(show["ratingKey"]).get("guid"), [server.row(key).get("grandparentTitle") for key in episodes]))
-        # The retry reaches the row nothing names last: its title is its name's once it has.
-        wait_for(server, "199999", lambda row: row.get("title") == "Sweeney Todd National Broadway Tour LA")
     finally:
         stop(server, work)
     retried = state_row(work, "199999")
-    check("a release nothing names waits for its next try, an hour on",
-          retried.get("_retry", {}).get("n") == 1 and retried["_retry"]["at"] - time.time() > 3000,
-          retried.get("_retry"))
+    check("a release with no id has nothing to retry with: it is never tried, so it waits for nothing",
+          "_retry" not in retried and retried.get("title") == FIXTURE["pushes"]["sweeney"]["name"],
+          (retried.get("_retry"), retried.get("title")))
     shutil.rmtree(work, ignore_errors=True)
 
     # -- what a person matched is not retried ----------------------------------------------------
@@ -238,18 +239,18 @@ def retry(bytes_port):
     catalog(work, [dict(row, _matched=True) if row["ratingKey"] == boy else row for row in rows])
     server = start(work, bytes_port)
     try:
-        wait_for(server, zoku, lambda row: poster(server, zoku) is not None)
+        time.sleep(10)
         check("a show a person matched keeps what they matched it to through the retry",
               server.row(boy).get("guid") == by_key[boy]["guid"], server.row(boy).get("guid"))
-        # And through a push naming its episode by other ids: the episode was identified again
+        # And through a push placing its episode by other ids: the episode was identified again
         # and left the person's show, or took the show's identity with it (`reidentify_show`).
         episode = next(row for row in rows if row.get("grandparentRatingKey") == boy and row["type"] == "episode")
         server.feed("POST", "items", {"items": [{
             "id": episode["_sid"], "path": episode["_path"], "file": episode["Media"][0]["Part"][0]["file"],
             "name": episode["_release"], "size": episode["Media"][0]["Part"][0]["size"], "hash": episode.get("_hash"),
-            "ids": {"imdb": "tt0105958"}, "media_info": PROBE}]})
+            "ids": {"imdb": "tt0105958", "tmdb": 1778}, "kind": "episode", "season": 1, "episode": 1, "media_info": PROBE}]})
         after = server.row(episode["ratingKey"])
-        check("an episode of a show a person matched stays under it when a push names other ids",
+        check("an episode of a show a person matched stays under it when a push places it by other ids",
               after.get("grandparentRatingKey") == boy and server.row(boy).get("guid") == by_key[boy]["guid"],
               (after.get("grandparentRatingKey"), server.row(boy).get("guid")))
     finally:

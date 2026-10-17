@@ -2,18 +2,19 @@
 """A file its source placed is where the source says, and stays there.
 
 zurg asks DMM what each file is and pushes the answer with it (`kind`, the movie's or show's
-`ids`, TMDB's `season`/`episode`; docs/feed-api.md). rex's own reading of the name is the
-fallback. These are real releases rex misplaced by name, as zurg pushed them, with the TMDB
+`ids`, TMDB's `season`/`episode`; docs/feed-api.md). rex reads nothing off a name: a file pushed
+without a placement is season 1 of a show named after its release, in file order. These are
+real releases rex misplaced by name before 2026-10-17, as zurg pushed them, with the TMDB
 answers the native server asked for them (`fixtures/feed/anime.json`, `blank_tiles.json`,
 `blank_1016.json`), pushed with the placement TMDB numbers them by: fansub cours TMDB numbers as
 a season or as episodes further on (`Hibike Euphonium 3 - 01` is S3E1, Uma Musume's `Part 2 - 05`
 S1E18), scene numbers TMDB does not have (`Detective.Conan.S33E01`, TMDB's S1E1103 in the
 placement contract; `Bungo.Stray.Dogs.S04E01`, TMDB's S1E37), and films zurg files under anime.
 
-Each is checked placed as pushed, and still there after every pass a start runs, after the
+Each is checked placed as pushed, and still there after a start, after the
 blank tile retry, and after a later push that places it elsewhere
 (same key, watched). A person's Fix
-Match wins over a placement, and a file pushed without one is placed by its name. Episodes placed
+Match wins over a placement, and a file pushed without one is numbered in file order. Episodes placed
 on season 0 (`specials.json`, Firefly's) are TMDB's specials by name, like any other episode.
 
     python3 tests/test_feed_placement.py
@@ -106,11 +107,11 @@ def live(bytes_port):
     catalog(work, ANIME)
     server = start(work, bytes_port)
     try:
-        # -- a row placed by its name moves once its source places it, on its key -------------
+        # -- a row nothing placed moves once its source places it, on its key -----------------
         status, body = server.feed("POST", "items", {"items": [item(ANIME, "bungo_scene")]})
         bungo = server.keys().get(item(ANIME, "bungo_scene")["id"])
-        check("pushed without a placement, Bungo.Stray.Dogs.S04E01 is placed by its name (S4E1)",
-              status == 200 and placed(server, bungo) == [65931, 4, 1], (body, placed(server, bungo)))
+        check("pushed with its IMDb id and no placement, Bungo.Stray.Dogs.S04E01 is unmatched, its release's first file",
+              status == 200 and placed(server, bungo) == [None, 1, 1], (body, placed(server, bungo)))
         server.request("/:/scrobble?key=%s&identifier=com.plexapp.plugins.library" % bungo)
         server.feed("POST", "items", {"items": [episode("bungo_scene")]})
         check("placed, it is TMDB's S1E37, on the same key", server.keys().get(item(ANIME, "bungo_scene")["id"]) == bungo
@@ -129,7 +130,7 @@ def live(bytes_port):
               server.keys().get(item(ANIME, "ascendance_bd_s02e01")["id"]) == bd and placed(server, bd) == [91768, 1, 15]
               and server.row(bd).get("viewCount") == 1, (placed(server, bd), server.row(bd).get("viewCount")))
 
-        # -- every placement as pushed; a file without one by its name --------------------------
+        # -- every placement as pushed; a file without one in file order ------------------------
         rest = sorted(set(PLACED) - {"bungo_scene", "ascendance_bd_s02e01"})
         status, body = server.feed("POST", "items", {"items": [episode(name) for name in rest] + [item(ANIME, "kingdom_scene")]})
         check("every file is taken", status == 200 and not body.get("rejected"), (status, body))
@@ -138,20 +139,21 @@ def live(bytes_port):
         check("the files of one episode are one row (Ascendance's two S4 - 01)",
               keys[item(ANIME, "ascendance_scene_s04e01")["id"]] == keys[item(ANIME, "ascendance_erai_s4_01")["id"]], keys)
         kingdom = placed(server, keys[item(ANIME, "kingdom_scene")["id"]])
-        check("a file pushed without a placement is numbered by its name (Kingdom.S01E03)", kingdom[1:] == [1, 3], kingdom)
+        check("a file pushed without a placement is its release's first, not its name's S1E3 (Kingdom.S01E03)",
+              kingdom == [None, 1, 1], kingdom)
     finally:
         stop(server, work)
 
-    # -- every pass a start runs leaves each where it was placed -------------------------------
+    # -- a start leaves each where it was placed -----------------------------------------------
     label = "after a start"
-    before = (log_count(work, "FEED placing"), log_count(work, "FEED unfolded"))
+    before = log_count(work, "FEED re-identified")
     server = start(work, bytes_port)
     try:
         time.sleep(20)
         check_placed(label, server, sorted(PLACED), keys)
-        check("%s: every key kept, nothing placed again or unfolded" % label,
-              server.keys() == keys and (log_count(work, "FEED placing"), log_count(work, "FEED unfolded")) == before,
-              (before, log_count(work, "FEED placing"), log_count(work, "FEED unfolded")))
+        check("%s: every key kept, nothing identified again" % label,
+              server.keys() == keys and log_count(work, "FEED re-identified") == before,
+              (before, log_count(work, "FEED re-identified")))
         check("%s: what was watched stays watched" % label, server.row(bungo).get("viewCount") == 1 and server.row(bd).get("viewCount") == 1)
     finally:
         stop(server, work)
@@ -193,7 +195,7 @@ def films(bytes_port):
     server = start(work, bytes_port)
     conan_item = item(TILES, "conan", {"tmdb": 30983}, kind="episode", season=1, episode=221)
     serbian_item = lambda tmdb: item(TILES, "serbian", {"tmdb": tmdb}, kind="movie")
-    eva_item = item(EVA, "eva_111", {"imdb": "tt0923811"}, kind="movie", folder="")
+    eva_item = item(EVA, "eva_111", {"imdb": "tt0923811", "tmdb": 15137}, kind="movie", folder="")
     try:
         status, body = server.feed("POST", "items", {"items": [conan_item, serbian_item(73861), eva_item]})
         keys = server.keys()

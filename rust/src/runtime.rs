@@ -900,11 +900,8 @@ impl Runtime {
             .insert(String::new(), started_at);
         runtime.load_state()?;
         runtime.settle_scan_key();
-        let extras = runtime.drop_extras();
-        if extras > 0 {
-            info!("FEED dropped {extras} release(s) that are no episode (a disc's menus, creditless openings, OVAs)");
-        }
-        // Releases a source pushed before they were folded into one row.
+        // Releases a source pushed before they were folded into one row. No pass at start reads a
+        // row's name: what its source placed, or did not, stays as it is (2026-10-17).
         let folded = runtime.fold_versions(None, &HashSet::new());
         if !folded.is_empty() {
             info!("FEED folded {} row(s) into other releases of their titles", folded.len());
@@ -22951,7 +22948,6 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
     let seasons = Arc::clone(&runtime);
     let _ = thread::Builder::new().name("season-repair".to_string()).spawn(move || {
         feed::repair_seasons(&seasons);
-        feed::replace_misnumbered(&seasons);
         loop {
             feed::retry_blank(&seasons, 50);
             thread::sleep(std::time::Duration::from_secs(600));
