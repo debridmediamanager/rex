@@ -5,6 +5,13 @@ name: CI
 # platforms, and publishes the GitHub release with the tag's own message as its notes. A
 # manual run (workflow_dispatch) builds every platform without publishing anything.
 #
+# A nightly builds every platform and publishes a prerelease tagged YYYY.MM.DD.HHMM-nightly
+# beside zurg's, with the commits since the previous release as its notes and a `nightly`
+# image. It is dispatched with nightly=true from dmm at 00:40 Berlin by the same
+# /home/ben/zurg-nightly-dispatch.sh that fires zurg's (see zurg's build.yml for why the
+# clock lives there), and the cron below is its fallback for a night dmm is down. `gate`
+# skips a nightly when main has nothing the last one did not carry, or when tonight's went out.
+#
 # The platforms are the ones zurg's private releases are actually downloaded for, counted on
 # 2026-10-12 above the flat number every asset gets from whatever fetches them all: linux
 # amd64 and arm64, macOS amd64 and arm64, Windows amd64.
@@ -21,13 +28,21 @@ on:
     branches: [main]
     tags: ['v*']
   pull_request:
+  schedule:
+    - cron: '19 1 * * *'
   workflow_dispatch:
+    inputs:
+      nightly:
+        description: 'Publish a nightly prerelease'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.ref }}
+  # The event too: a push to main queued behind a run would otherwise cancel a pending nightly.
+  group: ci-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
@@ -39,7 +54,48 @@ env:
   REX_PLEXTV_URL: http://127.0.0.1:9
 
 jobs:
+  gate:
+    runs-on: ubuntu-22.04
+    outputs:
+      build: ${{ steps.gate.outputs.build }}
+      nightly: ${{ steps.gate.outputs.nightly }}
+      version: ${{ steps.gate.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NIGHTLY: ${{ github.event_name == 'schedule' || inputs.nightly == true }}
+          FORCED: ${{ inputs.nightly == true }}
+        run: |
+          set -euo pipefail
+          echo "nightly=$NIGHTLY" >> "$GITHUB_OUTPUT"
+          echo "version=$(TZ=Europe/Berlin date +%Y.%m.%d.%H%M-nightly)" >> "$GITHUB_OUTPUT"
+          if [ "$NIGHTLY" != true ]; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # The same two questions zurg's prep asks, against the nightlies that went out.
+          tip=$(git log -1 --format=%ct HEAD)
+          latest=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=30" \
+            --jq '[.[] | select((.draft | not) and (.tag_name | endswith("-nightly"))) | .published_at] | max // ""')
+          build=true
+          if [ -n "$latest" ]; then
+            latest_ts=$(date -u -d "$latest" +%s)
+            age_h=$(( ($(date -u +%s) - latest_ts) / 3600 ))
+            if [ "$tip" -le "$latest_ts" ]; then
+              echo "main's tip is already in the nightly at $latest"; build=false
+            elif [ "$age_h" -lt 20 ] && [ "$FORCED" != true ]; then
+              # The fallback cron behind tonight's dispatch, which the queue may run hours late.
+              echo "the nightly at $latest went out ${age_h}h ago"; build=false
+            fi
+          fi
+          echo "build=$build" >> "$GITHUB_OUTPUT"
+
   test:
+    needs: gate
+    if: needs.gate.outputs.build == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 45
     steps:
@@ -87,7 +143,8 @@ jobs:
           retention-days: 7
 
   linux-arm64:
-    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    needs: gate
+    if: needs.gate.outputs.build == 'true' && (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule')
     runs-on: ubuntu-22.04
     timeout-minutes: 45
     env:
@@ -131,7 +188,8 @@ jobs:
           retention-days: 7
 
   darwin:
-    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    needs: gate
+    if: needs.gate.outputs.build == 'true' && (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule')
     runs-on: macos-14
     timeout-minutes: 45
     steps:
@@ -187,7 +245,8 @@ jobs:
           retention-days: 7
 
   windows-amd64:
-    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    needs: gate
+    if: needs.gate.outputs.build == 'true' && (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule')
     runs-on: ubuntu-22.04
     timeout-minutes: 45
     env:
@@ -284,11 +343,14 @@ jobs:
           python tests/test_native_transcode.py
 
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: [test, linux-arm64, darwin, windows-test]
+    if: startsWith(github.ref, 'refs/tags/v') || needs.gate.outputs.nightly == 'true'
+    needs: [gate, test, linux-arm64, darwin, windows-test]
     runs-on: ubuntu-22.04
     permissions:
       contents: write
+    env:
+      TAG: ${{ needs.gate.outputs.nightly == 'true' && needs.gate.outputs.version || github.ref_name }}
+      NIGHTLY: ${{ needs.gate.outputs.nightly }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -299,6 +361,7 @@ jobs:
           path: artifacts
 
       - name: Check the tag matches Cargo.toml
+        if: env.NIGHTLY != 'true'
         run: |
           tag="${GITHUB_REF_NAME}"
           crate="v$(sed -n 's/^version = "\(.*\)"/\1/p' rust/Cargo.toml | head -1)"
@@ -314,7 +377,7 @@ jobs:
         run: |
           set -e
           for platform in linux-amd64 linux-arm64 darwin-amd64 darwin-arm64 windows-amd64; do
-            name="rex-${GITHUB_REF_NAME}-${platform}"
+            name="rex-${TAG}-${platform}"
             binary=rex; [ "$platform" = windows-amd64 ] && binary=rex.exe
             mkdir -p "$name/rust/target/release"
             install -m 755 "artifacts/rex-$platform/$binary" "$name/rust/target/release/$binary"
@@ -334,6 +397,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          if [ "$NIGHTLY" = true ]; then
+            prev=$(gh release list --limit 1 --json tagName --jq '.[0].tagName // ""')
+            git log --no-merges --format='- %s' ${prev:+"$prev..HEAD"} -n 200 > notes.md
+            test -s notes.md || echo "- no changes" > notes.md
+            gh release create "$TAG" --prerelease --target "$GITHUB_SHA" \
+              --title "rex $TAG" --notes-file notes.md \
+              rex-*.tar.gz rex-*.zip SHA256SUMS
+            exit 0
+          fi
           # actions/checkout leaves the tag as a plain pointer to the commit, so its own
           # message is gone and %(contents) reads the commit's (v0.1.0 went out that way).
           git fetch --force origin "+refs/tags/$GITHUB_REF_NAME:refs/tags/$GITHUB_REF_NAME"
@@ -348,10 +420,10 @@ jobs:
 
   # The image packages the archives the release just published (docker.yml).
   docker:
-    needs: release
+    needs: [gate, release]
     uses: ./.github/workflows/docker.yml
     with:
-      tag: ${{ github.ref_name }}
+      tag: ${{ needs.gate.outputs.nightly == 'true' && needs.gate.outputs.version || github.ref_name }}
     permissions:
       contents: read
       packages: write

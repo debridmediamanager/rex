@@ -585,6 +585,12 @@ MinGW on Linux and then tested on `windows-2022` (the unit tests and every suite
 releases are downloaded for. It never runs on the org's self-hosted runner, which is a
 production host.
 
+A nightly goes out beside zurg's: `/home/ben/zurg-nightly-dispatch.sh` on dmm dispatches
+CI with `nightly=true` at 00:40 Berlin (a `19 1 * * *` UTC cron is the fallback), and it
+publishes every platform as the prerelease `YYYY.MM.DD.HHMM-nightly`, notes being the commits
+since the previous release, plus the `nightly` image; `latest` stays on the last tag. The
+`gate` job skips a night whose `main` the last nightly already carries.
+
 A release is a tag. Set `version` in `rust/Cargo.toml`, push that to `main`, wait for CI,
 then tag the tested commit with the release notes as the tag message and push the tag:
 
