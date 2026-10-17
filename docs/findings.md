@@ -12885,6 +12885,32 @@ linearise-plus-hable tonemap of the HDR10 clip (PSNR, mean U/V of one frame) and
 - The tonemapping is CPU work before any GPU encode (the ladder skips the full device path for
   HDR), so a 4K source's speed on a Celeron is the open question: not measured here.
 
+
+**Real releases, measured the same day.** DMM's `TorrentSnapshot` probes (zurg's ffprobe per file)
+found them: `dv_profile": 7` in the stream side data, profile 5 likewise; no container-level
+probe carries the HDR10+ marker (`HDR Dynamic Metadata SMPTE2094-40` is frame side data), so
+HDR10+ was found by name and confirmed per frame on the clip. 40 s of each main video was cut
+with `-c copy` (RPU and enhancement layer kept), and rex's own CPU chain (`tonemapx` bt2390,
+`scale=1920:1080:flags=bicubic`, libx264) ran under jellyfin-ffmpeg 8.1.3 against a zscale +
+`tonemap=mobius` reference, by mean Y/U/V over 10 s and a frame grid:
+
+| Release (2160p HEVC Main 10) | Kind | rex Y/U/V | Reference Y/U/V | Verdict |
+|---|---|---|---|---|
+| The Fantastic Four: First Steps (2025) UHD BluRay REMUX | DV 7, `el_present_flag=1` | 79/126.6/125.1 | 93/126.8/124.2 | correct |
+| Transformers: Age of Extinction (2014) UHD BluRay REMUX (FGT) | DV 7, `el_present_flag=1` | 43/125.2/127.7 | 51/124.3/127.7 | correct |
+| Arcadian (2024) UHD BluRay REMUX | HDR10+ (per-frame SMPTE2094-40) | 30/126.8/128.6 | 35/126.4/128.8 | correct |
+| Jaws (1975) 4K BDRip x265 | HDR10+ (per-frame SMPTE2094-40) | 48/133.2/125.9 | 59/135.0/125.2 | correct |
+| Predator: Killer of Killers (2025) WEB-DL | DV 5 (no colour tags) | 35/116.9/134.8 | none (zscale has no IPTPQc2) | correct by eye; `apply_dovi=0` gives 48/120.4/129.6, pink and green |
+
+- Profile 7 decodes as its HDR10 base layer: FFmpeg reads the single-track enhancement layer
+  without error, and `tonemapx` with `apply_dovi=0` gives the same Y/U/V (74/127.4/124.5 vs
+  74/127.5/124.4 over 6 s), so its RPU and enhancement layer change nothing. A FEL title's extra
+  dynamic range is lost; the picture is right.
+- HDR10+ takes the HDR10 path; the dynamic metadata is ignored and the colours match.
+- rex runs 10-20% darker than the mobius reference on every kind: bt2390 against mobius, the
+  same gap the synthetic clips showed. Not a fault.
+- Speed, 4K in, 1080p out, on an M3 Pro's CPU: 10 s took 6.0-7.9 s (1.3-1.7x real time). A
+  Celeron (fun's J4105) is still not measured.
 ## The source decides what a file is (2026-10-17)
 
 zurg (36fac6ca, live on the production host) sends rex `ids` only when DMM placed the release --
