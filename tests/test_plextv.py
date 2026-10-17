@@ -678,8 +678,9 @@ with open(os.path.join(HERE, "fixtures", "zurg", "entries.json")) as _handle:
 
 
 def push(instance, release):
-    """zurg's registration, then one probed movie no id names, through the open feed: with
-    Plex's agent on, naming it asks the agent's matcher. Answers the push's status."""
+    """zurg's registration, then one probed movie through the open feed, with an IMDb id no cached
+    answer names (a name alone is never searched): with Plex's agent on, naming it asks the agent's
+    matcher. Answers the push's status."""
     path = "movies/%s/%s.mkv" % (release, release)
     status = None
     for method, target, document in (
@@ -687,6 +688,7 @@ def push(instance, release):
             ("POST", "/rex/feed/zurg/items", {"items": [{
                 "id": path, "path": path, "file": "/zurg/" + path, "name": release, "library": "movie",
                 "release": "movies/" + release, "size": 12345,
+                "ids": {"imdb": "tt9%07d" % (int(hashlib.sha1(release.encode()).hexdigest()[:8], 16) % 10 ** 7)},
                 "hash": hashlib.sha1(release.encode()).hexdigest(), "media_info": MEDIA_INFO}]})):
         conn = http.client.HTTPConnection("127.0.0.1", instance.port, timeout=60)
         try:
