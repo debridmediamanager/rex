@@ -12811,3 +12811,35 @@ show (Wallace & Gromit, Zoku Owarimonogatari in `fixtures/feed/blank_tiles.json`
 carry a TVDB id only) now names nothing, and re-placing the row on that empty answer took every
 episode off its show. An identification that names nothing now leaves a named row as it is
 (`reidentify`).
+
+## Dropped archive members, duplicate episode rows and disc extras (2026-10-17)
+
+Measured on the production server's rows (fun's rex.db, read 06:05 and 07:00 UTC), zurg's records
+and logs, and a rehearsal on a copy of that database.
+
+- **No path was rejected; the snapshot named none.** zurg's Usenet snapshot at 04:21:34 left out
+  seven Freakazoid archive members, so rex trashed 166006 and 166114 and dropped five versions. It
+  pushed no other path for them: afterwards rex held no row and no held item for one, and logged no
+  identification. zurg's mount lists an archive's member at its release's top level (Freakazoid's
+  and 86 Eighty Six's alike) while its feed pushes `<archive>/<member>`, so the mount's path was
+  never an id, and the ids did not change: zurg parsed `rL7Vkz….7z` at 05:59:49, pushed the same id
+  at 06:01:53, and rex restored 166006 on its key. For S01E02, S01E13, S02E01 and S02E02 zurg's
+  Usenet data holds one `.zurgtorrent` named `Freakazoid_.…` whose release is the other post of
+  the upload, `Freakazoid!.…` (hash 3ab8a8be for S01E02, against 058c9693 on the row), with no
+  archive listing; why the `_` releases left zurg's library is zurg's to find. The snapshot's 579
+  rejections were counted and said nowhere; each is logged with its reason now.
+- **Duplicate episodes.** Of 34,045 episode rows, 347 live ones shared show, season and index with
+  another, in 114 episodes, and the fold, which went by the agent's guid, folded none: they were
+  `local://`, on numbers TMDB does not list (SpongeBob's S10). Folding by season and index, with a
+  release's other files kept apart, a start folds 186 rows into 85 (6 of them from the trash) and
+  leaves 49 apart: Daria's, Tales From the Tour Bus's and Beavis and Butt-Head's S01E04 of one Mike
+  Judge collection, seven specials of one Erai-raws batch on One Piece's 892, the Bake Off's
+  `Xtra.Slice…-other` files, Star Wars Rebels' Part1 and Part2.
+- **Disc extras.** A start drops 419 releases: 38 rows of extras alone (Motto To Love-Ru's five,
+  Solo Leveling's Moozzi2 storyboards, The Office's deleted scenes, My Hero Academia's and Bungo
+  Stray Dogs' S02 creditless "episode 64"s) and 378 versions from rows that keep their episode (The
+  Office's `Featurettes/…/Deleted Scenes` on 155 of its episodes, To Love Ru's NCED, CM and
+  OVAs, Dr. STONE's menus and NCOPs).
+- Rehearsed on the Windows rig on the 07:00 copy: both passes run before the server listens and
+  took about 4 s there (listening 9 s after launch, against 5 s for `main`); the next start folds
+  and drops nothing, and the passes after the start logged nothing more on either build.
