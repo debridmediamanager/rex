@@ -63,7 +63,9 @@ def catalog(work, rows=()):
 
 
 def start(work, bytes_port):
-    keys = {"TMDB_KEY": os.environ["TMDB_KEY"], "PLEX_TOKEN": os.environ["PLEX_TOKEN"]} if RECORD else None
+    # A recording asks TMDB, or a metadata provider (docs/metadata-api.md), and Plex's agent.
+    names = ("TMDB_KEY", "PLEX_TOKEN", "REX_METADATA_URL", "REX_METADATA_KEY")
+    keys = {name: os.environ[name] for name in names if name in os.environ} if RECORD else None
     return Server(work, bytes_port, keys=keys)
 
 
