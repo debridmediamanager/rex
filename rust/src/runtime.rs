@@ -534,6 +534,10 @@ pub struct Runtime {
     /// A claim token `POST /myplex/claim` accepted: `handle_connection` redeems it with
     /// plex.tv after the lock is released, so the exchange never holds up the API.
     pending_claim: Option<String>,
+    /// A movie library's automatic collections are due (`collections::auto_collect`): its
+    /// threshold was set, it was refreshed, or a match changed. Run after the lock is released,
+    /// since a movie described before rex kept its collections asks Plex's agent again.
+    pending_auto_collections: bool,
     /// `claim.Claim` and the account threads `main()` wires (`plextv.rs`).
     plextv: Arc<plextv::PlexTv>,
     /// The owner's track settings, read from plex.tv at start and daily; `None` until then
@@ -819,6 +823,7 @@ impl Runtime {
             pending_download: None,
             pending_image: None,
             pending_claim: None,
+            pending_auto_collections: false,
             plextv,
             track_prefs: None,
             requests: Vec::new(),
@@ -8817,6 +8822,9 @@ impl Runtime {
                 _ => value.clone(),
             };
             info!("SECTION PREF {section_key} {name} = {stored}");
+            if name == "autoCollectionThreshold" && stored != "0" {
+                self.pending_auto_collections = true;
+            }
             self.section_prefs
                 .insert((section_key.to_string(), name.clone()), stored);
         }
@@ -19993,6 +20001,7 @@ impl Runtime {
         if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
             metadata::describe(object, &picked, season.as_ref(), episode.as_ref(), show, numbers);
         }
+        self.pending_auto_collections |= !show;
         // `rating` is the CRITIC score (the 1.42.2 reference: 743 of 1,538 matched movies carry
         // one, each beside a critic `ratingImage`); the agent's audience score is not one.
         if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
@@ -23311,6 +23320,10 @@ fn handle_connection<S: Read + Write + PollRead>(
             );
             write_response(&mut stream, &response, keep)?;
             served_any = true;
+            // What a push matched is described with its collections already; only the grouping is due.
+            if request_path.starts_with("/rex/feed/") && response.status == 200 && request.method != "GET" {
+                collections::auto_collect(&runtime, false);
+            }
             if !keep {
                 return Ok(());
             }
@@ -23473,6 +23486,12 @@ fn handle_connection<S: Read + Write + PollRead>(
             download = guard.pending_download.take();
             let image = guard.pending_image.take();
             let claim = guard.pending_claim.take();
+            if std::mem::take(&mut guard.pending_auto_collections) {
+                let shared = Arc::clone(&runtime);
+                let _ = thread::Builder::new()
+                    .name("auto-collections".to_string())
+                    .spawn(move || collections::auto_collect(&shared, true));
+            }
             if guard.refused_for_token {
                 take_error_note();
             } else {

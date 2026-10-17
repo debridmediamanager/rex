@@ -334,6 +334,22 @@ pub fn season_hints(row: &mut Map<String, Value>, season: &Value) {
     }
 }
 
+/// The collections Plex's agent files a movie under (its match's `Collection`: 1,152 of the
+/// 4,109 movie matches the production rex kept, 2026-10-17), as a library's automatic
+/// collections group them: the `plex://collection/` guid, its name and summary.
+pub fn collections_of(title: &Value) -> Value {
+    let entries = title.get("Collection").and_then(Value::as_array).into_iter().flatten();
+    Value::Array(
+        entries
+            .filter_map(|entry| {
+                let guid = entry.get("guid")?.as_str().filter(|guid| !guid.is_empty())?;
+                let tag = entry.get("tag")?.as_str().filter(|tag| !tag.is_empty())?;
+                Some(json!({"guid": guid, "tag": tag, "summary": entry.get("summary").cloned().unwrap_or(json!(""))}))
+            })
+            .collect(),
+    )
+}
+
 /// What Plex's metadata agent says a title is, onto a row: rex reads no TMDB and describes a
 /// title only by its `plex://` guid (Ben, 2026-10-17). `title` is the provider's movie or show
 /// row (its match), `season` and `episode` the rows its `children` list for the numbers the
@@ -388,6 +404,7 @@ pub fn describe(
     put(row, "_show_external_guids", externals.clone());
     if !show {
         put(row, "_kind", "movie");
+        put(row, "_collections", collections_of(title));
         if let Some(guid) = guid {
             put(row, "guid", guid);
         }

@@ -2019,3 +2019,280 @@ fn collection_counts(members: &[Value]) -> Value {
     years.sort();
     json!({"childCount": members.len(), "years": years})
 }
+
+/// One automatic-collection pass at a time: two at once would each create the same collection.
+static AUTO_PASS: Mutex<()> = Mutex::new(());
+
+/// The movie libraries whose "Minimum automatic collection size" (`autoCollectionThreshold`,
+/// 0 Disabled, 1-4) is set, with it.
+fn auto_thresholds(runtime: &Runtime) -> HashMap<String, usize> {
+    runtime
+        .section_prefs
+        .iter()
+        .filter(|((_, name), _)| name == "autoCollectionThreshold")
+        .filter_map(|((section, _), value)| Some((section.clone(), value.parse::<usize>().ok().filter(|n| *n > 0)?)))
+        .filter(|(section, _)| {
+            runtime.section(section).and_then(|row| row.get("type")).and_then(Value::as_str) == Some("movie")
+        })
+        .collect()
+}
+
+/// A library's automatic collections, as a real PMS makes them from its agent: every
+/// collection Plex's agent files at least the threshold's number of the library's movies
+/// under becomes one (its guid, name and summary the agent's), and one that exists already --
+/// by that guid, or a collection of that name -- takes the movies it lacks. Nothing is ever
+/// removed: the setting's own summary says a change "will have no effect on any existing
+/// collections". rex has no metadata refresh to make them on, so a pass runs when the
+/// threshold is set, when the library is refreshed, after a Fix Match, and after each feed
+/// push (`backfill` false: what a push matched carries its collections already). A movie
+/// described before rex kept them is asked of the agent again (`backfill`), off the lock;
+/// its answer is almost always the one the agent's cache already holds.
+pub(super) fn auto_collect(shared: &SharedRuntime, backfill: bool) {
+    let _pass = AUTO_PASS.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    let lock = || shared.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    let (plex, unread) = {
+        let guard = lock();
+        let thresholds = auto_thresholds(&guard);
+        if thresholds.is_empty() {
+            return;
+        }
+        let unread = guard
+            .catalog
+            .items()
+            .iter()
+            .filter(|row| backfill && row.get("type").and_then(Value::as_str) == Some("movie"))
+            .filter(|row| row.get("_collections").is_none() && row.get("deletedAt").is_none())
+            .filter(|row| row.get("librarySectionID").is_some_and(|id| thresholds.contains_key(&string_value(id))))
+            .filter_map(|row| {
+                let externals = row
+                    .get("Guid")
+                    .and_then(Value::as_array)?
+                    .iter()
+                    .filter_map(|entry| entry.get("id")?.as_str().map(str::to_string))
+                    .collect::<Vec<_>>();
+                Some((key_of(row)?, externals)).filter(|(_, externals)| !externals.is_empty())
+            })
+            .collect::<Vec<_>>();
+        (guard.plex.clone(), unread)
+    };
+    let read = plex
+        .map(|plex| {
+            unread
+                .into_iter()
+                .filter_map(|(key, externals)| {
+                    let answer = crate::identify::plex_match(plex.as_ref(), "movie", &externals)?;
+                    Some((key, metadata::collections_of(&answer.row)))
+                })
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    let mut guard = lock();
+    for (key, collections) in read {
+        if let Some(row) = guard.catalog.get_mut(&key).and_then(Value::as_object_mut) {
+            row.insert("_collections".to_string(), collections);
+            guard.dirty = true;
+        }
+    }
+    let thresholds = auto_thresholds(&guard);
+    for (section, threshold) in thresholds {
+        guard.group_auto_collections(&section, threshold, backfill);
+    }
+    let snapshot = guard.flush_state();
+    drop(guard);
+    write_or_log(snapshot);
+}
+
+impl Runtime {
+    /// One library's automatic collections (`auto_collect`). A collection a person deleted
+    /// (`collection_guids` keeps its guid) comes back on an asked-for pass -- a refresh, the
+    /// threshold set -- and never on a feed push, which would bring it back within hours.
+    fn group_auto_collections(&mut self, section: &str, threshold: usize, asked: bool) {
+        let mut groups: std::collections::BTreeMap<String, (Value, Vec<String>)> = std::collections::BTreeMap::new();
+        for row in self.catalog.items() {
+            if row.get("type").and_then(Value::as_str) != Some("movie")
+                || row.get("deletedAt").is_some()
+                || row.get("librarySectionID").map(string_value).as_deref() != Some(section)
+            {
+                continue;
+            }
+            let Some(key) = key_of(row) else {
+                continue;
+            };
+            for entry in row.get("_collections").and_then(Value::as_array).into_iter().flatten() {
+                let Some(guid) = entry.get("guid").and_then(Value::as_str) else {
+                    continue;
+                };
+                groups.entry(guid.to_string()).or_insert_with(|| (entry.clone(), Vec::new())).1.push(key.clone());
+            }
+        }
+        for (guid, (entry, keys)) in groups {
+            let name = entry.get("tag").map(string_value).unwrap_or_default();
+            let existing = self
+                .collections
+                .values()
+                .find(|collection| {
+                    collection.section == section
+                        && !collection.smart
+                        && (collection.guid() == guid || collection.tag_name().eq_ignore_ascii_case(&name))
+                })
+                .map(|collection| collection.id.clone());
+            let id = match existing {
+                Some(id) => id,
+                None if keys.len() >= threshold
+                    && (asked || !self.collection_guids.values().any(|gone| gone.get("guid").and_then(Value::as_str) == Some(guid.as_str()))) =>
+                {
+                    let query = HashMap::from([
+                        ("title".to_string(), name.clone()),
+                        ("sectionId".to_string(), section.to_string()),
+                        ("type".to_string(), "1".to_string()),
+                    ]);
+                    if self.create_collection(&query).status != 200 {
+                        continue;
+                    }
+                    let id = (self.next_collection - 1).to_string();
+                    if let Some(created) = self.collections.get_mut(&id) {
+                        created.extra.insert("guid".to_string(), json!(guid));
+                        created.extra.insert("summary".to_string(), entry.get("summary").cloned().unwrap_or(json!("")));
+                    }
+                    id
+                }
+                None => continue,
+            };
+            let unlocked = keys
+                .iter()
+                .filter(|key| !self.catalog.get(key.as_str()).and_then(Value::as_object).is_some_and(|row| edit::field_locked(row, "collection")))
+                .cloned()
+                .collect::<Vec<_>>();
+            if self.add_collection_items(&id, &keys) > 0 {
+                // The agent's collection, not one a person typed: the members' field stays unlocked.
+                for key in unlocked {
+                    if let Some(row) = self.catalog.get_mut(&key).and_then(Value::as_object_mut) {
+                        edit::set_lock(row, "collection", false);
+                    }
+                }
+                info!("COLLECTION auto {name} in section {section}: {} member(s)", self.collections.get(&id).map_or(0, |c| c.items.len()));
+                self.dirty = true;
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The Matrix, Reloaded and Revolutions as Plex's agent matched them on the production rex
+    /// (tests/fixtures/provider/collections.json, out of its plex_cache.db, 2026-10-17): each filed
+    /// under "The Matrix Collection".
+    fn library(name: &str, threshold: Option<&str>) -> (SharedRuntime, PathBuf) {
+        let file = concat!(env!("CARGO_MANIFEST_DIR"), "/../tests/fixtures/provider/collections.json");
+        let recorded: Vec<Value> = serde_json::from_str(&std::fs::read_to_string(file).unwrap()).unwrap();
+        let mut items = Vec::new();
+        for (index, answer) in recorded.iter().enumerate() {
+            let mut row = Map::new();
+            row.insert("ratingKey".to_string(), json!((100001 + index).to_string()));
+            row.insert("type".to_string(), json!("movie"));
+            row.insert("librarySectionID".to_string(), json!(1));
+            metadata::describe(&mut row, &answer["response"]["MediaContainer"]["Metadata"][0], None, None, false, None);
+            items.push(Value::Object(row));
+        }
+        // Big Buck Bunny is in no collection.
+        items.push(json!({"ratingKey": "100009", "type": "movie", "librarySectionID": 1, "title": "Big Buck Bunny", "_collections": []}));
+        // One directory under the repository, whose data/ holds the library settings (`sidecar_roots`).
+        let dir = PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/.."))
+            .join(format!(".auto-collections-{name}-{}-{}", std::process::id(), threshold.unwrap_or("none")));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let catalog = dir.join("catalog.json");
+        let document = json!({"format": 1, "machineIdentifier": "auto-collections", "friendlyName": "auto",
+            "sections": [{"key": "1", "type": "movie", "title": "Movies", "Location": [{"path": "/movies"}]}], "items": items});
+        std::fs::write(&catalog, serde_json::to_vec(&document).unwrap()).unwrap();
+        let mut runtime = Runtime::load(RuntimeOptions { catalog, state: Some(dir.join("no-state")), ..RuntimeOptions::default() }).unwrap();
+        if let Some(threshold) = threshold {
+            runtime.write_section_prefs("1", "movie", &[("autoCollectionThreshold".to_string(), threshold.to_string())]).unwrap();
+            assert_eq!(runtime.pending_auto_collections, threshold != "0", "setting the threshold leaves the pass due");
+        }
+        (Arc::new(Mutex::new(runtime)), dir)
+    }
+
+    fn collections(shared: &SharedRuntime) -> Vec<(String, String, Vec<String>)> {
+        let guard = shared.lock().unwrap();
+        guard.collections.values().map(|c| (c.title.clone(), c.guid(), c.items.to_vec())).collect()
+    }
+
+    /// wason92 in #rex-support, 2026-10-16: a movie library's automatic collections never came,
+    /// set before or after its movies arrived, because rex runs no metadata refresh to make them.
+    #[test]
+    fn a_threshold_makes_the_agents_collections() {
+        let (shared, dir) = library("made", Some("2"));
+        auto_collect(&shared, true);
+        let made = collections(&shared);
+        assert_eq!(made.len(), 1, "one collection, none for Big Buck Bunny: {made:?}");
+        let (title, guid, members) = &made[0];
+        assert_eq!(title, "The Matrix Collection");
+        assert_eq!(guid, "plex://collection/5ec2fd508509540041a16274", "the agent's guid");
+        assert_eq!(members, &["100001", "100002", "100003"]);
+        {
+            let guard = shared.lock().unwrap();
+            let matrix = guard.catalog.get("100001").unwrap();
+            assert_eq!(matrix["Collection"][0]["tag"], "The Matrix Collection", "a member carries its tag");
+            assert!(!edit::field_locked(matrix.as_object().unwrap(), "collection"), "the agent's collection locks nothing");
+            let summary = guard.collections.values().next().unwrap().extra["summary"].as_str().unwrap().to_string();
+            assert!(!summary.is_empty(), "the agent's summary");
+        }
+        // Another pass, or a refresh, makes no second one.
+        auto_collect(&shared, true);
+        assert_eq!(collections(&shared).len(), 1);
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn below_the_threshold_or_disabled_nothing_is_made() {
+        for threshold in [Some("4"), Some("0"), None] {
+            let (shared, dir) = library("none", threshold);
+            auto_collect(&shared, true);
+            assert!(collections(&shared).is_empty(), "{threshold:?}");
+            let _ = std::fs::remove_dir_all(dir);
+        }
+    }
+
+    /// A movie that arrives later joins the collection it is filed under, and one of that name a
+    /// person made already takes the agent's members rather than a second collection being made.
+    #[test]
+    fn later_arrivals_join_and_a_same_named_collection_is_reused() {
+        let (shared, dir) = library("later", Some("2"));
+        {
+            let mut guard = shared.lock().unwrap();
+            let query = HashMap::from([
+                ("title".to_string(), "The Matrix Collection".to_string()),
+                ("sectionId".to_string(), "1".to_string()),
+                ("type".to_string(), "1".to_string()),
+            ]);
+            assert_eq!(guard.create_collection(&query).status, 200);
+            // Revolutions has not arrived yet.
+            guard.catalog.get_mut("100003").unwrap().as_object_mut().unwrap().insert("deletedAt".to_string(), json!(1));
+        }
+        auto_collect(&shared, false);
+        let made = collections(&shared);
+        assert_eq!(made.len(), 1, "{made:?}");
+        assert_eq!(made[0].2, ["100001", "100002"]);
+        shared.lock().unwrap().catalog.get_mut("100003").unwrap().as_object_mut().unwrap().shift_remove("deletedAt");
+        auto_collect(&shared, false);
+        assert_eq!(collections(&shared)[0].2, ["100001", "100002", "100003"]);
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    /// A collection a person deleted stays deleted through feed pushes; a refresh makes it again.
+    #[test]
+    fn a_deleted_collection_waits_for_a_refresh() {
+        let (shared, dir) = library("deleted", Some("2"));
+        auto_collect(&shared, true);
+        let id = shared.lock().unwrap().collections.keys().next().unwrap().clone();
+        shared.lock().unwrap().delete_collection(&id);
+        auto_collect(&shared, false);
+        assert!(collections(&shared).is_empty(), "a push brought it back");
+        auto_collect(&shared, true);
+        assert_eq!(collections(&shared).len(), 1, "a refresh makes it again");
+        let _ = std::fs::remove_dir_all(dir);
+    }
+}

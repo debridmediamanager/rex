@@ -589,6 +589,7 @@ impl Runtime {
         section: &Value,
         query: &HashMap<String, String>,
     ) {
+        self.pending_auto_collections = true;
         let mut paths = section
             .get("Location")
             .and_then(Value::as_array)
@@ -696,6 +697,9 @@ impl Runtime {
                 .strip_prefix("prefs[")
                 .and_then(|value| value.strip_suffix(']'))
             {
+                if pref == "autoCollectionThreshold" && value != "0" {
+                    self.pending_auto_collections = true;
+                }
                 self.section_prefs
                     .insert((section_key.to_string(), pref.to_string()), value.clone());
             }
