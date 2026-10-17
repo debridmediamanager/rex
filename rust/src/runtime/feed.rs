@@ -1931,6 +1931,54 @@ impl Runtime {
         folded
     }
 
+    /// What a show's rows hold that is no episode (`scan::is_extra`), as a start finds it: a row
+    /// of such files alone is deleted, one holding an episode too keeps that. The production
+    /// server held `[KH] Motto To Love-Ru`'s menus and creditless ending as a show of five episodes
+    /// and To Love-Ru's commercials and OVAs as versions of its first episodes (2026-10-17). A
+    /// file its source placed on numbers stays, and so does what a person matched. Answers how
+    /// many releases went.
+    pub(super) fn drop_extras(&mut self) -> usize {
+        let extra = |row: &Value, index: usize| {
+            let (Some(release), Some(file)) = (version_release(row, index), media_file(row, index)) else {
+                return false;
+            };
+            let folder = row
+                .pointer(&format!("/Media/{index}"))
+                .and_then(Value::as_object)
+                .and_then(super::scan::folder_of)
+                .or_else(|| row.as_object().and_then(super::scan::folder_of).filter(|_| index == 0));
+            super::scan::placed_numbers(version_placed(row, index)).is_none()
+                && super::scan::is_extra(release, folder, file.rsplit('/').next().unwrap_or_default())
+        };
+        let doomed: Vec<(String, Vec<(String, String)>, bool)> = self
+            .catalog
+            .items()
+            .iter()
+            .filter(|row| row.get("type").and_then(Value::as_str) == Some("episode") && !self.matched_by_hand(row))
+            .filter_map(|row| {
+                let all = versions(row);
+                let extras: Vec<(String, String)> =
+                    all.iter().filter(|(_, _, index)| extra(row, *index)).map(|(source, sid, _)| (source.clone(), sid.clone())).collect();
+                Some((key_of(row)?, extras.clone(), extras.len() == all.len())).filter(|_| !extras.is_empty())
+            })
+            .collect();
+        let mut dropped = 0;
+        for (key, extras, whole) in doomed {
+            dropped += extras.len();
+            if whole {
+                self.purge_row(&key);
+            } else {
+                for (source, sid) in extras {
+                    self.drop_version(&key, &source, &sid);
+                }
+            }
+        }
+        if dropped > 0 {
+            self.dirty = true;
+        }
+        dropped
+    }
+
     /// The releases of rows holding several that this pass would place on another episode
     /// than the row's, which an identification that gave a whole pack one guid folded together
     /// (The Boys S03E01-E08 on one episode, Food Wars S01-S05 E01 on S1E1; 232 episodes on the

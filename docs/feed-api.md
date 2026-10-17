@@ -266,6 +266,11 @@ What the fields do:
   is not re-identified by one of them.
 - **Only video.** A `file` that is not a video (by extension) or is a sample is rejected,
   as Plex's scanners skip them.
+- **No extras as episodes.** A show's file its provider lists in a folder of extras (`Extras`,
+  `Featurettes`, `NC`, `Menu`, Plex's local-extras folder names), one tagged `NCOP`/`NCED`, or
+  one named before its number by extras words alone (`Menu - 02`, `CM - 01`, `… - OVA - 03`) is
+  no episode and is not placed, unless its source placed it on numbers. A start deletes the rows
+  of such files only and drops such releases from rows that hold an episode too.
 - **Migration.** The first time an id is seen, a row the old WebDAV scanner made for the
   same `file` (no feed id yet) is adopted with its ratingKey, watch state and
   identification; nothing is re-identified unless the item's ids differ from the ones the

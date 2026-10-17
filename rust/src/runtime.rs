@@ -898,6 +898,10 @@ impl Runtime {
             .insert(String::new(), started_at);
         runtime.load_state()?;
         runtime.settle_scan_key();
+        let extras = runtime.drop_extras();
+        if extras > 0 {
+            info!("FEED dropped {extras} release(s) that are no episode (a disc's menus, creditless openings, OVAs)");
+        }
         // Releases a source pushed before they were folded into one row.
         let folded = runtime.fold_versions(None, &HashSet::new());
         if !folded.is_empty() {

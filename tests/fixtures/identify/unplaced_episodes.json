@@ -1,5 +1,5 @@
 {
- "source": "files the production rex's feed left unplaced as \"no episode number\" on 2026-10-13, and two it placed on the wrong episode; season and episode read by hand from each name; and anime seasons written as `4th Season`, `Season 3` or `[07]` (2026-10-13 afternoon); and names that carry their number only beside their release -- a leading number, the show's name then a number, `10of13`, `2014e06` -- with the shapes deliberately left unread (2026-10-15); and the shapes fun's Plex still held that rex did not (2026-10-15 afternoon): top-level files of a one-folder release, dotted, four-digit, S6EP01, Season.3-09, ep27#, two-episode files on their first episode, a director's cut, a Japanese season numeral, and what stays out; and scene files in an archive that number season and episode as one (`aaf-wilty.302` inside `Would.I.Lie.To.You.S03E01.PROPER`, which holds two episodes), from the production server's Usenet feed (2026-10-16)",
+ "source": "files the production rex's feed left unplaced as \"no episode number\" on 2026-10-13, and two it placed on the wrong episode; season and episode read by hand from each name; and anime seasons written as `4th Season`, `Season 3` or `[07]` (2026-10-13 afternoon); and names that carry their number only beside their release -- a leading number, the show's name then a number, `10of13`, `2014e06` -- with the shapes deliberately left unread (2026-10-15); and the shapes fun's Plex still held that rex did not (2026-10-15 afternoon): top-level files of a one-folder release, dotted, four-digit, S6EP01, Season.3-09, ep27#, two-episode files on their first episode, a director's cut, a Japanese season numeral, and what stays out; and scene files in an archive that number season and episode as one (`aaf-wilty.302` inside `Would.I.Lie.To.You.S03E01.PROPER`, which holds two episodes), from the production server's Usenet feed (2026-10-16); and the creditless openings and endings two Blu-ray seasons on fun list under `Extras`, which the production server put on S02E64 as five and two \"episodes\" (`S02NCED1v1`, `S02.NCED…H.264`, 2026-10-17)",
  "files": [
   {
    "shape": "site",
@@ -639,6 +639,62 @@
    "file": "aaf-wilty.304.avi",
    "season": 3,
    "episode": 4
+  },
+  {
+   "shape": "not an episode",
+   "release": "Bungo.Stray.Dogs.S02.BluRay.1080p.Remux.FLAC2.0.H.264-LYS1TH3A",
+   "folder": "Extras",
+   "file": "Bungo.Stray.Dogs.S02.NCED.BluRay.1080p.Remux.FLAC2.0.H.264-LYS1TH3A.mkv",
+   "season": null,
+   "episode": null
+  },
+  {
+   "shape": "not an episode",
+   "release": "Bungo.Stray.Dogs.S02.BluRay.1080p.Remux.FLAC2.0.H.264-LYS1TH3A",
+   "folder": "Extras",
+   "file": "Bungo.Stray.Dogs.S02.NCOP.BluRay.1080p.Remux.FLAC2.0.H.264-LYS1TH3A.mkv",
+   "season": null,
+   "episode": null
+  },
+  {
+   "shape": "not an episode",
+   "release": "Boku no Hero Academia Season 2 (BD Remux 1080p H.264 FLAC) [Dual Audio] [FLE]",
+   "folder": "Extras",
+   "file": "Boku.no.Hero.Academia.S02NCED1v1.BluRay.Remux.FLAC2.0.H.264-FLE.mkv",
+   "season": null,
+   "episode": null
+  },
+  {
+   "shape": "not an episode",
+   "release": "Boku no Hero Academia Season 2 (BD Remux 1080p H.264 FLAC) [Dual Audio] [FLE]",
+   "folder": "Extras",
+   "file": "Boku.no.Hero.Academia.S02NCED1v2.BluRay.Remux.FLAC2.0.H.264-FLE.mkv",
+   "season": null,
+   "episode": null
+  },
+  {
+   "shape": "not an episode",
+   "release": "Boku no Hero Academia Season 2 (BD Remux 1080p H.264 FLAC) [Dual Audio] [FLE]",
+   "folder": "Extras",
+   "file": "Boku.no.Hero.Academia.S02NCED2.BluRay.Remux.FLAC2.0.H.264-FLE.mkv",
+   "season": null,
+   "episode": null
+  },
+  {
+   "shape": "not an episode",
+   "release": "Boku no Hero Academia Season 2 (BD Remux 1080p H.264 FLAC) [Dual Audio] [FLE]",
+   "folder": "Extras",
+   "file": "Boku.no.Hero.Academia.S02NCOP.BluRay.Remux.FLAC2.0.H.264-FLE.mkv",
+   "season": null,
+   "episode": null
+  },
+  {
+   "shape": "not an episode",
+   "release": "Boku no Hero Academia Season 2 (BD Remux 1080p H.264 FLAC) [Dual Audio] [FLE]",
+   "folder": "Extras",
+   "file": "Boku.no.Hero.Academia.S02NCOP2.BluRay.Remux.FLAC2.0.H.264-FLE.mkv",
+   "season": null,
+   "episode": null
   }
  ]
 }

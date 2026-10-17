@@ -83,10 +83,56 @@ pub(super) fn episode_of(release: &str, folder: Option<&str>, file_name: &str) -
     Some((season.unwrap_or(1), episode))
 }
 
+/// A file a show's release holds besides its episodes: one its provider lists in a folder of
+/// extras, one with a creditless opening's or ending's tag (`S02NCED1v1`), or one named before its
+/// number by `NOT_EPISODE`'s words alone, the show's own aside. `[KH] Motto To Love-Ru (BD …)`
+/// lists `Extras/Menu/Menu - 02.mkv` and `Extras/NC/NCED - 01.mkv` (fun's RD library, 2026-10-17):
+/// numbered as episodes they were a show of their own, and To Love-Ru's `NC/NCED - 01.mkv`,
+/// `Extras/CM/BD & DVD CM - 01.mkv` and `OVAs/… - OVA - 03 - …` versions of its episodes 1 and 3.
+/// Otherwise a file that names its own season (`S00E01`) is an episode.
+pub(super) fn is_extra(release: &str, folder: Option<&str>, file_name: &str) -> bool {
+    extra(&(identify::parse_name(release), identify::parse_name(file_name)), folder, file_name)
+}
+
+fn extra(parsed: &(identify::Parsed, identify::Parsed), folder: Option<&str>, file_name: &str) -> bool {
+    if folder.is_some_and(|folder| folder.split('/').any(|segment| EXTRAS_FOLDER.is_match(segment.trim()))) {
+        return true;
+    }
+    if stem(file_name).split(|c: char| !c.is_ascii_alphanumeric()).any(|token| CREDITLESS.is_match(token)) {
+        return true;
+    }
+    if parsed.1.season.is_some() {
+        return false;
+    }
+    let words = |text: &str| -> Vec<String> {
+        text.split(|c: char| !c.is_alphanumeric()).filter(|word| !word.is_empty()).map(str::to_lowercase).collect()
+    };
+    let (show, head) = (words(&parsed.0.title), words(&parsed.1.title));
+    // `Ed, Edd n Eddy - 01` is its show's.
+    let marks = |word: &String| EXTRA_WORD.is_match(word) && !show.contains(word);
+    head.iter().any(marks) && head.iter().all(|word| marks(word) || show.contains(word) || matches!(word.as_str(), "bd" | "dvd"))
+}
+
+// A folder of extras: Plex's names for a show's local extras, and what discs call theirs.
+static EXTRAS_FOLDER: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?i)^(?:(?:extras?|bonus)(?:[\s._-].*)?|behind the scenes|deleted scenes|featurettes|interviews|scenes|shorts|trailers|other|menus?|nc|cms?|creditless)$").unwrap()
+});
+// `NCOP`, `NCED2`, `S02NCED1v1` (fun's Bungo Stray Dogs and My Hero Academia S02 discs, five
+// "episode 64"s each, 2026-10-17).
+static CREDITLESS: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?i)^(?:s\d{1,2})?nc(?:op|ed)\d*(?:v\d+)?$").unwrap());
+// `NOT_EPISODE`'s words, one at a time.
+static EXTRA_WORD: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^(?:nc(?:op|ed)\w*|nc|ova|oad|op|ed|sp|pv|cm|special|specials|movie|menu|preview|trailer|recap|extra|extras|bonus|featurette|interview|behind|making|creditless|clean|teaser|promo|omake)$").unwrap()
+});
+
 /// The season (if named) and episode a show's file is numbered by: the file's own name, else
 /// its release's, else the shapes only a show's file can be read by (`numbered_in_release`).
+/// None for an extra (`is_extra`).
 fn numbers_of(release: &str, folder: Option<&str>, file_name: &str) -> Option<(Option<i64>, i64)> {
     let parsed = (identify::parse_name(release), identify::parse_name(file_name));
+    if extra(&parsed, folder, file_name) {
+        return None;
+    }
     // `[CyC] Natsume Yuujinchou Shi 01`, `[tlacatlc6] Natsume Yuujinchou San 01v2`: the season as a
     // Japanese numeral (四 shi, 三 san) right before the episode. The second read as season 1.
     let stem = file_name.rsplit_once('.').map_or(file_name, |(stem, _)| stem);
@@ -1445,6 +1491,21 @@ mod tests {
             }
         }
         assert!(wrong.is_empty(), "{wrong:#?}");
+    }
+
+    /// A row the feed made before zurg sent `folder` (2026-10-15) carries none, and the start
+    /// reads it by its name alone: a creditless tag is enough (`CREDITLESS`).
+    #[test]
+    fn a_creditless_tag_is_no_episode_without_its_folder() {
+        let record: Value =
+            serde_json::from_str(include_str!("../../../tests/fixtures/identify/unplaced_episodes.json")).unwrap();
+        let tagged: Vec<&Value> = record["files"].as_array().unwrap().iter().filter(|case| case["folder"] == "Extras").collect();
+        assert_eq!(tagged.len(), 7);
+        for case in tagged {
+            let (release, file) = (case["release"].as_str().unwrap(), case["file"].as_str().unwrap());
+            assert_eq!(episode_of(release, None, file), None, "{file}");
+        }
+        assert!(!is_extra("Ed.Edd.n.Eddy.S01.DVDRip", None, "Ed, Edd n Eddy - 01.mkv"), "a show named with an extras word");
     }
 
     /// TMDB's season lists as `tests/fixtures/identify/segment_titles.json` recorded them.

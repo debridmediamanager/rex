@@ -1,5 +1,5 @@
 {
- "source": "every video file of eight packs on fun's zurg instances (RD, and TorBox's Smallville), 2026-10-15: release name, the folder the provider lists the file in (zurg's .zurgtorrent `path`), and the file as zurg shows it; season and episode read by hand from each pack's naming (`Stagione 6/01 Zod`, `Season 6/601 - …`, `S1 (2007-9)/101a-b - …`, Courage's numbers running on across its season folders); null where the folder holds no episodes (`Extra`, `Kringles (2006)`, `Season TV`) or the file is no episode; Heidi blu-ray complete's files are named by the show's Japanese title (`Alps_no_Shoujo_Heidi_01`), which shares nothing with the release's name, left unread at first because a name before the number that is not the release's is how `OVA 04` and `NCED 07` look too; read since 2026-10-15 evening at Ben's request, as files at the top of a one-folder release whose name before the number holds no extras word (`shape: top-level-of-one-folder`)",
+ "source": "every video file of eight packs on fun's zurg instances (RD, and TorBox's Smallville), 2026-10-15, and of two more on its RD instance, 2026-10-17: [KH] Motto To Love-Ru and [KH] To Love-Ru Darkness, whose discs' menus, creditless openings and endings, commercials and OVAs (`Extras/Menu/Menu - 02`, `NC/NCED - 01`, `Extras/CM/CM - 01`, `OVAs/… - OVA - 03 - …`) are no episodes: release name, the folder the provider lists the file in (zurg's .zurgtorrent `path`), and the file as zurg shows it; season and episode read by hand from each pack's naming (`Stagione 6/01 Zod`, `Season 6/601 - …`, `S1 (2007-9)/101a-b - …`, Courage's numbers running on across its season folders); null where the folder holds no episodes (`Extra`, `Kringles (2006)`, `Season TV`) or the file is no episode; Heidi blu-ray complete's files are named by the show's Japanese title (`Alps_no_Shoujo_Heidi_01`), which shares nothing with the release's name, left unread at first because a name before the number that is not the release's is how `OVA 04` and `NCED 07` look too; read since 2026-10-15 evening at Ben's request, as files at the top of a one-folder release whose name before the number holds no extras word (`shape: top-level-of-one-folder`)",
  "files": [
   {
    "release": "Are You Afraid Of The Dark Complete Series-JUGGALOTUS",
@@ -8107,6 +8107,349 @@
    "release": "[DmonHiro] Digimon Tamers (BD, 1080p)",
    "folder": "",
    "file": "Clean Opening B.mkv",
+   "season": null,
+   "episode": null
+  },
+  {
+   "release": "[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "folder": "Extras/Menu",
+   "file": "Menu - 01.mkv",
+   "season": null,
+   "episode": null
+  },
+  {
+   "release": "[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "folder": "Extras/Menu",
+   "file": "Menu - 02.mkv",
+   "season": null,
+   "episode": null
+  },
+  {
+   "release": "[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "folder": "Extras/Menu",
+   "file": "Menu - 03.mkv",
+   "season": null,
+   "episode": null
+  },
+  {
+   "release": "[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "folder": "Extras/Menu",
+   "file": "Menu - 04.mkv",
+   "season": null,
+   "episode": null
+  },
+  {
+   "release": "[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "folder": "Extras/Menu",
+   "file": "Menu - 05.mkv",
+   "season": null,
+   "episode": null
+  },
+  {
+   "release": "[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "folder": "Extras/Menu",
+   "file": "Menu - 06.mkv",
+   "season": null,
+   "episode": null
+  },
+  {
+   "release": "[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "folder": "Extras/NC",
+   "file": "NCED - 01.mkv",
+   "season": null,
+   "episode": null
+  },
+  {
+   "release": "[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "folder": "Extras/NC",
+   "file": "NCED - 02.mkv",
+   "season": null,
+   "episode": null
+  },
+  {
+   "release": "[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "folder": "Extras/NC",
+   "file": "NCOP.mkv",
+   "season": null,
+   "episode": null
+  },
+  {
+   "release": "[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "folder": "",
+   "file": "[KH] Motto To Love-Ru - 01 - Once Again From The Beginning - War at the Baths - The Sound Of Ticking Love.mkv",
+   "season": 1,
+   "episode": 1
+  },
+  {
+   "release": "[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "folder": "",
+   "file": "[KH] Motto To Love-Ru - 02 - Things That Move in the Dark - Welcome to the Yuuki Household! - Slumber Party.mkv",
+   "season": 1,
+   "episode": 2
+  },
+  {
+   "release": "[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "folder": "",
+   "file": "[KH] Motto To Love-Ru - 03 - Special Love Medicine - Seeing You Through the Lens... - My Dear Beloved Cinderella.mkv",
+   "season": 1,
+   "episode": 3
+  },
+  {
+   "release": "[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "folder": "",
+   "file": "[KH] Motto To Love-Ru - 04 - Yami Yami Fashion - Wonderful Love - Twins' Escape.mkv",
+   "season": 1,
+   "episode": 4
+  },
+  {
+   "release": "[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "folder": "",
+   "file": "[KH] Motto To Love-Ru - 05 - The Queen of Love! - Let's Play - The Flavour of Chocolate is a Sweet Sensation.mkv",
+   "season": 1,
+   "episode": 5
+  },
+  {
+   "release": "[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "folder": "",
+   "file": "[KH] Motto To Love-Ru - 06 - Beach Girls - Late Night Tutor - Master of Love.mkv",
+   "season": 1,
+   "episode": 6
+  },
+  {
+   "release": "[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "folder": "",
+   "file": "[KH] Motto To Love-Ru - 07 - Yami's Clinic - The Antagonist - A Strange Haruna-chan.mkv",
+   "season": 1,
+   "episode": 7
+  },
+  {
+   "release": "[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "folder": "",
+   "file": "[KH] Motto To Love-Ru - 08 - Get Bigger! - Wan-derful Life - The Trance of Feelings.mkv",
+   "season": 1,
+   "episode": 8
+  },
+  {
+   "release": "[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "folder": "",
+   "file": "[KH] Motto To Love-Ru - 09 - For Whom the Bell Tolls - The Troubling Rampage - Loving Idol.mkv",
+   "season": 1,
+   "episode": 9
+  },
+  {
+   "release": "[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "folder": "",
+   "file": "[KH] Motto To Love-Ru - 10 - Pollen Telepathy - A Girl's Feelings - Doki Doki Mail.mkv",
+   "season": 1,
+   "episode": 10
+  },
+  {
+   "release": "[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "folder": "",
+   "file": "[KH] Motto To Love-Ru - 11 - All Quiet On The Sister Front - False Love - Predicting Love.mkv",
+   "season": 1,
+   "episode": 11
+  },
+  {
+   "release": "[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "folder": "",
+   "file": "[KH] Motto To Love-Ru - 12 - I Love You 1 - I Love You 2 - I Love You 3.mkv",
+   "season": 1,
+   "episode": 12
+  },
+  {
+   "release": "[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "folder": "Extras/CM",
+   "file": "BD & DVD CM - 01.mkv",
+   "season": null,
+   "episode": null
+  },
+  {
+   "release": "[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "folder": "Extras/CM",
+   "file": "BD & DVD CM - 02.mkv",
+   "season": null,
+   "episode": null
+  },
+  {
+   "release": "[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "folder": "Extras/CM",
+   "file": "CM - 01.mkv",
+   "season": null,
+   "episode": null
+  },
+  {
+   "release": "[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "folder": "Extras/CM",
+   "file": "CM - 02.mkv",
+   "season": null,
+   "episode": null
+  },
+  {
+   "release": "[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "folder": "Extras/NC",
+   "file": "NCED.mkv",
+   "season": null,
+   "episode": null
+  },
+  {
+   "release": "[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "folder": "Extras/NC",
+   "file": "NCOP.mkv",
+   "season": null,
+   "episode": null
+  },
+  {
+   "release": "[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "folder": "",
+   "file": "[KH] To Love-Ru Darkness - 01 - Continue.mkv",
+   "season": 1,
+   "episode": 1
+  },
+  {
+   "release": "[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "folder": "",
+   "file": "[KH] To Love-Ru Darkness - 02 - Doubt and Dish.mkv",
+   "season": 1,
+   "episode": 2
+  },
+  {
+   "release": "[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "folder": "",
+   "file": "[KH] To Love-Ru Darkness - 03 - Each Speculation.mkv",
+   "season": 1,
+   "episode": 3
+  },
+  {
+   "release": "[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "folder": "",
+   "file": "[KH] To Love-Ru Darkness - 04 - True Smile.mkv",
+   "season": 1,
+   "episode": 4
+  },
+  {
+   "release": "[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "folder": "",
+   "file": "[KH] To Love-Ru Darkness - 05 - A Man! Woman!.mkv",
+   "season": 1,
+   "episode": 5
+  },
+  {
+   "release": "[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "folder": "",
+   "file": "[KH] To Love-Ru Darkness - 06 - Metamorphose.mkv",
+   "season": 1,
+   "episode": 6
+  },
+  {
+   "release": "[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "folder": "",
+   "file": "[KH] To Love-Ru Darkness - 07 - Sisters.mkv",
+   "season": 1,
+   "episode": 7
+  },
+  {
+   "release": "[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "folder": "",
+   "file": "[KH] To Love-Ru Darkness - 08 - Bad Mood.mkv",
+   "season": 1,
+   "episode": 8
+  },
+  {
+   "release": "[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "folder": "",
+   "file": "[KH] To Love-Ru Darkness - 09 - True Self.mkv",
+   "season": 1,
+   "episode": 9
+  },
+  {
+   "release": "[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "folder": "",
+   "file": "[KH] To Love-Ru Darkness - 10 - Past.mkv",
+   "season": 1,
+   "episode": 10
+  },
+  {
+   "release": "[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "folder": "",
+   "file": "[KH] To Love-Ru Darkness - 11 - The Right Thing.mkv",
+   "season": 1,
+   "episode": 11
+  },
+  {
+   "release": "[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "folder": "",
+   "file": "[KH] To Love-Ru Darkness - 12 - Room.mkv",
+   "season": 1,
+   "episode": 12
+  },
+  {
+   "release": "[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "folder": "OVAs",
+   "file": "[KH] To Love-Ru Darkness - OVA - 01 - Prologue - Pollen Plan - Body touch.mkv",
+   "season": null,
+   "episode": null
+  },
+  {
+   "release": "[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "folder": "OVAs",
+   "file": "[KH] To Love-Ru Darkness - OVA - 02 - Nostalgia - The Changing Heart - Flower.mkv",
+   "season": null,
+   "episode": null
+  },
+  {
+   "release": "[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "folder": "OVAs",
+   "file": "[KH] To Love-Ru Darkness - OVA - 03 - Exchange - It feels.mkv",
+   "season": null,
+   "episode": null
+  },
+  {
+   "release": "[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "folder": "OVAs",
+   "file": "[KH] To Love-Ru Darkness - OVA - 04 - Girl of Blaze - Infiltration - Adhesion.mkv",
+   "season": null,
+   "episode": null
+  },
+  {
+   "release": "[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "folder": "OVAs",
+   "file": "[KH] To Love-Ru Darkness - OVA - 05 - Suddenly - Mobile Phone - Moonlight.mkv",
+   "season": null,
+   "episode": null
+  },
+  {
+   "release": "[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "folder": "OVAs",
+   "file": "[KH] To Love-Ru Darkness - OVA - 06 - Photography - Technique - Holiday.mkv",
+   "season": null,
+   "episode": null
+  },
+  {
+   "release": "[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "folder": "OVAs",
+   "file": "[KH] To Love-Ru Darkness - OVA - 07 - Ghost Story -  Clinic.mkv",
+   "season": null,
+   "episode": null
+  },
+  {
+   "release": "[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "folder": "OVAs",
+   "file": "[KH] To Love-Ru Darkness - OVA - 08 - Mother - Charm.mkv",
+   "season": null,
+   "episode": null
+  },
+  {
+   "release": "[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "folder": "OVAs",
+   "file": "[KH] To Love-Ru Darkness - OVA - 09 - First Accident - I Think.mkv",
+   "season": null,
+   "episode": null
+  },
+  {
+   "release": "[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "folder": "OVAs",
+   "file": "[KH] To Love-Ru Darkness - OVA - 10 - Multiplication.mkv",
    "season": null,
    "episode": null
   }

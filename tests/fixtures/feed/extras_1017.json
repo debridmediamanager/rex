@@ -1,0 +1,3601 @@
+{
+ "plex": {},
+ "pushes": {
+  "motto_01": {
+   "folder": "",
+   "hash": "8173b8ced43b9f0111fb9c442e850b65159ff471",
+   "id": "audiobooks/[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/[KH] Motto To Love-Ru - 01 - Once Again From The Beginning - War at the Baths - The Sound Of Ticking Love.mkv",
+   "ids": {
+    "imdb": "tt1743493"
+   },
+   "kind": "episode",
+   "name": "[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "path": "audiobooks/[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/[KH] Motto To Love-Ru - 01 - Once Again From The Beginning - War at the Baths - The Sound Of Ticking Love.mkv",
+   "release": "audiobooks/[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "size": 1819109538,
+   "want": [
+    1,
+    1
+   ]
+  },
+  "motto_menu_01": {
+   "folder": "Extras/Menu",
+   "hash": "8173b8ced43b9f0111fb9c442e850b65159ff471",
+   "id": "audiobooks/[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/Menu - 01.mkv",
+   "ids": {
+    "imdb": "tt1743493"
+   },
+   "kind": "episode",
+   "name": "[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "path": "audiobooks/[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/Menu - 01.mkv",
+   "release": "audiobooks/[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "size": 13225578,
+   "want": null
+  },
+  "motto_ncop": {
+   "folder": "Extras/NC",
+   "hash": "8173b8ced43b9f0111fb9c442e850b65159ff471",
+   "id": "audiobooks/[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/NCOP.mkv",
+   "ids": {
+    "imdb": "tt1743493"
+   },
+   "kind": "episode",
+   "name": "[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "path": "audiobooks/[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/NCOP.mkv",
+   "release": "audiobooks/[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "size": 197425841,
+   "want": null
+  }
+ },
+ "rows": [
+  {
+   "Guid": [
+    {
+     "id": "imdb://tt1743493"
+    }
+   ],
+   "Location": [
+    {
+     "path": "/mnt/zurg/audiobooks/[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]"
+    }
+   ],
+   "UltraBlurColors": {
+    "bottomLeft": "1f1f26",
+    "bottomRight": "15151a",
+    "topLeft": "1a1a1e",
+    "topRight": "24242a"
+   },
+   "_artFor": "",
+   "_art_url": null,
+   "_identity": "imdb:tt1743493",
+   "_poster_url": null,
+   "_scanned": true,
+   "_thumbFor": "",
+   "addedAt": 1792210737,
+   "art": "/library/metadata/169239/art/1792210738",
+   "childCount": 1,
+   "guid": "local://169239",
+   "index": 1,
+   "key": "/library/metadata/169239/children",
+   "leafCount": 5,
+   "librarySectionID": 2,
+   "librarySectionKey": "/library/sections/2",
+   "librarySectionTitle": "TV Shows",
+   "ratingKey": "169239",
+   "slug": "motto-to-love-ru",
+   "summary": "",
+   "thumb": "/library/metadata/169239/thumb/1792210738",
+   "title": "Motto To Love-Ru",
+   "type": "show",
+   "updatedAt": 1792210737,
+   "viewedLeafCount": 0,
+   "year": null
+  },
+  {
+   "Guid": null,
+   "UltraBlurColors": {
+    "bottomLeft": "1f1f26",
+    "bottomRight": "15151a",
+    "topLeft": "1a1a1e",
+    "topRight": "24242a"
+   },
+   "_artFor": "",
+   "_art_url": null,
+   "_poster_url": null,
+   "_scanned": true,
+   "_thumbFor": "",
+   "addedAt": 1792210737,
+   "art": "/library/metadata/169239/art/1792210738",
+   "guid": "local://169246",
+   "index": 1,
+   "key": "/library/metadata/169246/children",
+   "leafCount": 5,
+   "librarySectionID": 2,
+   "librarySectionKey": "/library/sections/2",
+   "librarySectionTitle": "TV Shows",
+   "parentGuid": "local://169187",
+   "parentIndex": 1,
+   "parentKey": "/library/metadata/169239",
+   "parentRatingKey": "169239",
+   "parentSlug": "motto-to-love-ru",
+   "parentStudio": null,
+   "parentThumb": "/library/metadata/169239/thumb/1792210738",
+   "parentTitle": "Motto To Love-Ru",
+   "parentYear": null,
+   "ratingKey": "169246",
+   "summary": "",
+   "thumb": "/library/metadata/169246/thumb/1792210738",
+   "title": "Season 1",
+   "type": "season",
+   "updatedAt": 1792210737,
+   "viewedLeafCount": 0
+  },
+  {
+   "Media": [
+    {
+     "Part": [
+      {
+       "Stream": [
+        {
+         "bitDepth": 10,
+         "chromaLocation": null,
+         "chromaSubsampling": "4:2:0",
+         "codec": "h264",
+         "codecID": null,
+         "codedHeight": null,
+         "codedWidth": null,
+         "colorPrimaries": null,
+         "colorRange": null,
+         "colorSpace": null,
+         "colorTrc": null,
+         "default": true,
+         "displayTitle": "1080p",
+         "extendedDisplayTitle": "1080p (H.264 High 4:4:4 Predictive)",
+         "frameRate": 1.0,
+         "height": 1080,
+         "id": 169187001,
+         "index": 0,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "level": 51,
+         "profile": "high 4:4:4 predictive",
+         "refFrames": null,
+         "scanType": "progressive",
+         "streamIdentifier": null,
+         "streamType": 1,
+         "width": 1920
+        },
+        {
+         "audioChannelLayout": "stereo",
+         "bitDepth": 16,
+         "channels": 2,
+         "codec": "flac",
+         "default": true,
+         "displayTitle": "日本語 (FLAC Stereo)",
+         "extendedDisplayTitle": "日本語 (FLAC Stereo)",
+         "id": 169187002,
+         "index": 1,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "samplingRate": 48000,
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 2
+        }
+       ],
+       "audioProfile": null,
+       "container": "mkv",
+       "duration": 116120,
+       "file": "/mnt/zurg/audiobooks/[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/Menu - 02.mkv",
+       "id": 1691870,
+       "key": "/library/parts/1691870/1792210737/file.mkv",
+       "size": 13089985,
+       "videoProfile": "high 4:4:4 predictive"
+      }
+     ],
+     "aspectRatio": 1.78,
+     "audioChannels": 2,
+     "audioCodec": "flac",
+     "audioProfile": null,
+     "bitrate": 902,
+     "container": "mkv",
+     "duration": 116120,
+     "hasVoiceActivity": false,
+     "height": 1080,
+     "id": 16918700,
+     "videoCodec": "h264",
+     "videoFrameRate": "1p",
+     "videoProfile": "high 4:4:4 predictive",
+     "videoResolution": "1080",
+     "width": 1920
+    }
+   ],
+   "UltraBlurColors": {
+    "bottomLeft": "1f1f26",
+    "bottomRight": "15151a",
+    "topLeft": "1a1a1e",
+    "topRight": "24242a"
+   },
+   "_artFor": "",
+   "_art_url": null,
+   "_folder": "Extras/Menu",
+   "_generatedTitle": true,
+   "_hash": "8173b8ced43b9f0111fb9c442e850b65159ff471",
+   "_identify": {
+    "confidence": "exact",
+    "disputed": null,
+    "imdb": "tt1743493",
+    "plex": null,
+    "source": "placed",
+    "tmdb": null
+   },
+   "_identity": "imdb:tt1743493",
+   "_ids": {
+    "imdb": "tt1743493"
+   },
+   "_path": "audiobooks/[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/Menu - 02.mkv",
+   "_placed": {
+    "kind": "episode"
+   },
+   "_poster_url": null,
+   "_release": "[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "_retry": {
+    "at": 1792222056,
+    "n": 2
+   },
+   "_scanned": true,
+   "_sid": "audiobooks/[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/Menu - 02.mkv",
+   "_source": "rd",
+   "_thumbFor": "",
+   "addedAt": 1792210737,
+   "art": "/library/metadata/169239/art/1792210738",
+   "duration": 116120,
+   "grandparentArt": "/library/metadata/169239/art/1792210738",
+   "grandparentGuid": "local://169239",
+   "grandparentKey": "/library/metadata/169239",
+   "grandparentRatingKey": "169239",
+   "grandparentSlug": "motto-to-love-ru",
+   "grandparentThumb": "/library/metadata/169239/thumb/1792210738",
+   "grandparentTitle": "Motto To Love-Ru",
+   "guid": "local://169187",
+   "index": 2,
+   "key": "/library/metadata/169187",
+   "librarySectionID": 2,
+   "librarySectionKey": "/library/sections/2",
+   "librarySectionTitle": "TV Shows",
+   "parentGuid": "local://169246",
+   "parentIndex": 1,
+   "parentKey": "/library/metadata/169246",
+   "parentRatingKey": "169246",
+   "parentThumb": "/library/metadata/169246/thumb/1792210738",
+   "parentTitle": "Season 1",
+   "ratingKey": "169187",
+   "summary": "",
+   "thumb": "/library/metadata/169187/thumb/1792210738",
+   "title": "Episode 2",
+   "type": "episode",
+   "updatedAt": 1792210737
+  },
+  {
+   "Media": [
+    {
+     "Part": [
+      {
+       "Stream": [
+        {
+         "bitDepth": 10,
+         "chromaLocation": null,
+         "chromaSubsampling": "4:2:0",
+         "codec": "h264",
+         "codecID": null,
+         "codedHeight": null,
+         "codedWidth": null,
+         "colorPrimaries": null,
+         "colorRange": null,
+         "colorSpace": null,
+         "colorTrc": null,
+         "default": true,
+         "displayTitle": "1080p",
+         "extendedDisplayTitle": "1080p (H.264 High 4:4:4 Predictive)",
+         "frameRate": 1.0,
+         "height": 1080,
+         "id": 169188001,
+         "index": 0,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "level": 51,
+         "profile": "high 4:4:4 predictive",
+         "refFrames": null,
+         "scanType": "progressive",
+         "streamIdentifier": null,
+         "streamType": 1,
+         "width": 1920
+        },
+        {
+         "audioChannelLayout": "stereo",
+         "bitDepth": 16,
+         "channels": 2,
+         "codec": "flac",
+         "default": true,
+         "displayTitle": "日本語 (FLAC Stereo)",
+         "extendedDisplayTitle": "日本語 (FLAC Stereo)",
+         "id": 169188002,
+         "index": 1,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "samplingRate": 48000,
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 2
+        }
+       ],
+       "audioProfile": null,
+       "container": "mkv",
+       "duration": 116120,
+       "file": "/mnt/zurg/audiobooks/[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/Menu - 03.mkv",
+       "id": 1691880,
+       "key": "/library/parts/1691880/1792210737/file.mkv",
+       "size": 13166053,
+       "videoProfile": "high 4:4:4 predictive"
+      }
+     ],
+     "aspectRatio": 1.78,
+     "audioChannels": 2,
+     "audioCodec": "flac",
+     "audioProfile": null,
+     "bitrate": 907,
+     "container": "mkv",
+     "duration": 116120,
+     "hasVoiceActivity": false,
+     "height": 1080,
+     "id": 16918800,
+     "videoCodec": "h264",
+     "videoFrameRate": "1p",
+     "videoProfile": "high 4:4:4 predictive",
+     "videoResolution": "1080",
+     "width": 1920
+    }
+   ],
+   "UltraBlurColors": {
+    "bottomLeft": "1f1f26",
+    "bottomRight": "15151a",
+    "topLeft": "1a1a1e",
+    "topRight": "24242a"
+   },
+   "_artFor": "",
+   "_art_url": null,
+   "_folder": "Extras/Menu",
+   "_generatedTitle": true,
+   "_hash": "8173b8ced43b9f0111fb9c442e850b65159ff471",
+   "_identify": {
+    "confidence": "exact",
+    "disputed": null,
+    "imdb": "tt1743493",
+    "plex": null,
+    "source": "placed",
+    "tmdb": null
+   },
+   "_identity": "imdb:tt1743493",
+   "_ids": {
+    "imdb": "tt1743493"
+   },
+   "_path": "audiobooks/[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/Menu - 03.mkv",
+   "_placed": {
+    "kind": "episode"
+   },
+   "_poster_url": null,
+   "_release": "[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "_retry": {
+    "at": 1792222056,
+    "n": 2
+   },
+   "_scanned": true,
+   "_sid": "audiobooks/[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/Menu - 03.mkv",
+   "_source": "rd",
+   "_thumbFor": "",
+   "addedAt": 1792210737,
+   "art": "/library/metadata/169239/art/1792210738",
+   "duration": 116120,
+   "grandparentArt": "/library/metadata/169239/art/1792210738",
+   "grandparentGuid": "local://169239",
+   "grandparentKey": "/library/metadata/169239",
+   "grandparentRatingKey": "169239",
+   "grandparentSlug": "motto-to-love-ru",
+   "grandparentThumb": "/library/metadata/169239/thumb/1792210738",
+   "grandparentTitle": "Motto To Love-Ru",
+   "guid": "local://169188",
+   "index": 3,
+   "key": "/library/metadata/169188",
+   "librarySectionID": 2,
+   "librarySectionKey": "/library/sections/2",
+   "librarySectionTitle": "TV Shows",
+   "parentGuid": "local://169246",
+   "parentIndex": 1,
+   "parentKey": "/library/metadata/169246",
+   "parentRatingKey": "169246",
+   "parentThumb": "/library/metadata/169246/thumb/1792210738",
+   "parentTitle": "Season 1",
+   "ratingKey": "169188",
+   "summary": "",
+   "thumb": "/library/metadata/169188/thumb/1792210738",
+   "title": "Episode 3",
+   "type": "episode",
+   "updatedAt": 1792210737
+  },
+  {
+   "Media": [
+    {
+     "Part": [
+      {
+       "Stream": [
+        {
+         "bitDepth": 10,
+         "chromaLocation": null,
+         "chromaSubsampling": "4:2:0",
+         "codec": "h264",
+         "codecID": null,
+         "codedHeight": null,
+         "codedWidth": null,
+         "colorPrimaries": null,
+         "colorRange": null,
+         "colorSpace": null,
+         "colorTrc": null,
+         "default": true,
+         "displayTitle": "1080p",
+         "extendedDisplayTitle": "1080p (H.264 High 4:4:4 Predictive)",
+         "frameRate": 1.0,
+         "height": 1080,
+         "id": 169189001,
+         "index": 1,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "level": 51,
+         "profile": "high 4:4:4 predictive",
+         "refFrames": null,
+         "scanType": "progressive",
+         "streamIdentifier": null,
+         "streamType": 1,
+         "width": 1920
+        },
+        {
+         "audioChannelLayout": "stereo",
+         "bitDepth": 16,
+         "channels": 2,
+         "codec": "flac",
+         "default": true,
+         "displayTitle": "日本語 (FLAC Stereo)",
+         "extendedDisplayTitle": "日本語 (FLAC Stereo)",
+         "id": 169189002,
+         "index": 0,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "samplingRate": 48000,
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 2
+        }
+       ],
+       "audioProfile": null,
+       "container": "mkv",
+       "duration": 116120,
+       "file": "/mnt/zurg/audiobooks/[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/Menu - 05.mkv",
+       "id": 1691890,
+       "key": "/library/parts/1691890/1792210737/file.mkv",
+       "size": 13206419,
+       "videoProfile": "high 4:4:4 predictive"
+      }
+     ],
+     "aspectRatio": 1.78,
+     "audioChannels": 2,
+     "audioCodec": "flac",
+     "audioProfile": null,
+     "bitrate": 910,
+     "container": "mkv",
+     "duration": 116120,
+     "hasVoiceActivity": false,
+     "height": 1080,
+     "id": 16918900,
+     "videoCodec": "h264",
+     "videoFrameRate": "1p",
+     "videoProfile": "high 4:4:4 predictive",
+     "videoResolution": "1080",
+     "width": 1920
+    }
+   ],
+   "UltraBlurColors": {
+    "bottomLeft": "1f1f26",
+    "bottomRight": "15151a",
+    "topLeft": "1a1a1e",
+    "topRight": "24242a"
+   },
+   "_artFor": "",
+   "_art_url": null,
+   "_folder": "Extras/Menu",
+   "_generatedTitle": true,
+   "_hash": "8173b8ced43b9f0111fb9c442e850b65159ff471",
+   "_identify": {
+    "confidence": "exact",
+    "disputed": null,
+    "imdb": "tt1743493",
+    "plex": null,
+    "source": "placed",
+    "tmdb": null
+   },
+   "_identity": "imdb:tt1743493",
+   "_ids": {
+    "imdb": "tt1743493"
+   },
+   "_path": "audiobooks/[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/Menu - 05.mkv",
+   "_placed": {
+    "kind": "episode"
+   },
+   "_poster_url": null,
+   "_release": "[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "_retry": {
+    "at": 1792222056,
+    "n": 2
+   },
+   "_scanned": true,
+   "_sid": "audiobooks/[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/Menu - 05.mkv",
+   "_source": "rd",
+   "_thumbFor": "",
+   "addedAt": 1792210737,
+   "art": "/library/metadata/169239/art/1792210738",
+   "duration": 116120,
+   "grandparentArt": "/library/metadata/169239/art/1792210738",
+   "grandparentGuid": "local://169239",
+   "grandparentKey": "/library/metadata/169239",
+   "grandparentRatingKey": "169239",
+   "grandparentSlug": "motto-to-love-ru",
+   "grandparentThumb": "/library/metadata/169239/thumb/1792210738",
+   "grandparentTitle": "Motto To Love-Ru",
+   "guid": "local://169189",
+   "index": 5,
+   "key": "/library/metadata/169189",
+   "librarySectionID": 2,
+   "librarySectionKey": "/library/sections/2",
+   "librarySectionTitle": "TV Shows",
+   "parentGuid": "local://169246",
+   "parentIndex": 1,
+   "parentKey": "/library/metadata/169246",
+   "parentRatingKey": "169246",
+   "parentThumb": "/library/metadata/169246/thumb/1792210738",
+   "parentTitle": "Season 1",
+   "ratingKey": "169189",
+   "summary": "",
+   "thumb": "/library/metadata/169189/thumb/1792210738",
+   "title": "Episode 5",
+   "type": "episode",
+   "updatedAt": 1792210737
+  },
+  {
+   "Media": [
+    {
+     "Part": [
+      {
+       "Stream": [
+        {
+         "bitDepth": 10,
+         "chromaLocation": null,
+         "chromaSubsampling": "4:2:0",
+         "codec": "h264",
+         "codecID": null,
+         "codedHeight": null,
+         "codedWidth": null,
+         "colorPrimaries": null,
+         "colorRange": null,
+         "colorSpace": null,
+         "colorTrc": null,
+         "default": true,
+         "displayTitle": "1080p",
+         "extendedDisplayTitle": "1080p (H.264 High 4:4:4 Predictive)",
+         "frameRate": 1.0,
+         "height": 1080,
+         "id": 169190001,
+         "index": 1,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "level": 51,
+         "profile": "high 4:4:4 predictive",
+         "refFrames": null,
+         "scanType": "progressive",
+         "streamIdentifier": null,
+         "streamType": 1,
+         "width": 1920
+        },
+        {
+         "audioChannelLayout": "stereo",
+         "bitDepth": 16,
+         "channels": 2,
+         "codec": "flac",
+         "default": true,
+         "displayTitle": "日本語 (FLAC Stereo)",
+         "extendedDisplayTitle": "日本語 (FLAC Stereo)",
+         "id": 169190002,
+         "index": 0,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "samplingRate": 48000,
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 2
+        }
+       ],
+       "audioProfile": null,
+       "container": "mkv",
+       "duration": 116120,
+       "file": "/mnt/zurg/audiobooks/[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/Menu - 06.mkv",
+       "id": 1691900,
+       "key": "/library/parts/1691900/1792210737/file.mkv",
+       "size": 13178382,
+       "videoProfile": "high 4:4:4 predictive"
+      }
+     ],
+     "aspectRatio": 1.78,
+     "audioChannels": 2,
+     "audioCodec": "flac",
+     "audioProfile": null,
+     "bitrate": 908,
+     "container": "mkv",
+     "duration": 116120,
+     "hasVoiceActivity": false,
+     "height": 1080,
+     "id": 16919000,
+     "videoCodec": "h264",
+     "videoFrameRate": "1p",
+     "videoProfile": "high 4:4:4 predictive",
+     "videoResolution": "1080",
+     "width": 1920
+    }
+   ],
+   "UltraBlurColors": {
+    "bottomLeft": "1f1f26",
+    "bottomRight": "15151a",
+    "topLeft": "1a1a1e",
+    "topRight": "24242a"
+   },
+   "_artFor": "",
+   "_art_url": null,
+   "_folder": "Extras/Menu",
+   "_generatedTitle": true,
+   "_hash": "8173b8ced43b9f0111fb9c442e850b65159ff471",
+   "_identify": {
+    "confidence": "exact",
+    "disputed": null,
+    "imdb": "tt1743493",
+    "plex": null,
+    "source": "placed",
+    "tmdb": null
+   },
+   "_identity": "imdb:tt1743493",
+   "_ids": {
+    "imdb": "tt1743493"
+   },
+   "_path": "audiobooks/[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/Menu - 06.mkv",
+   "_placed": {
+    "kind": "episode"
+   },
+   "_poster_url": null,
+   "_release": "[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "_retry": {
+    "at": 1792222056,
+    "n": 2
+   },
+   "_scanned": true,
+   "_sid": "audiobooks/[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/Menu - 06.mkv",
+   "_source": "rd",
+   "_thumbFor": "",
+   "addedAt": 1792210737,
+   "art": "/library/metadata/169239/art/1792210738",
+   "duration": 116120,
+   "grandparentArt": "/library/metadata/169239/art/1792210738",
+   "grandparentGuid": "local://169239",
+   "grandparentKey": "/library/metadata/169239",
+   "grandparentRatingKey": "169239",
+   "grandparentSlug": "motto-to-love-ru",
+   "grandparentThumb": "/library/metadata/169239/thumb/1792210738",
+   "grandparentTitle": "Motto To Love-Ru",
+   "guid": "local://169190",
+   "index": 6,
+   "key": "/library/metadata/169190",
+   "librarySectionID": 2,
+   "librarySectionKey": "/library/sections/2",
+   "librarySectionTitle": "TV Shows",
+   "parentGuid": "local://169246",
+   "parentIndex": 1,
+   "parentKey": "/library/metadata/169246",
+   "parentRatingKey": "169246",
+   "parentThumb": "/library/metadata/169246/thumb/1792210738",
+   "parentTitle": "Season 1",
+   "ratingKey": "169190",
+   "summary": "",
+   "thumb": "/library/metadata/169190/thumb/1792210738",
+   "title": "Episode 6",
+   "type": "episode",
+   "updatedAt": 1792210737
+  },
+  {
+   "Media": [
+    {
+     "Part": [
+      {
+       "Stream": [
+        {
+         "bitDepth": 10,
+         "chromaLocation": null,
+         "chromaSubsampling": "4:2:0",
+         "codec": "h264",
+         "codecID": null,
+         "codedHeight": null,
+         "codedWidth": null,
+         "colorPrimaries": null,
+         "colorRange": "tv",
+         "colorSpace": "bt709",
+         "colorTrc": null,
+         "default": true,
+         "displayTitle": "1080p",
+         "extendedDisplayTitle": "BDRip by DJATOM & ANtreides (1080p H.264 High 10)",
+         "frameRate": 23.976,
+         "height": 1080,
+         "id": 169191001,
+         "index": 0,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "level": 50,
+         "profile": "high 10",
+         "refFrames": null,
+         "scanType": "progressive",
+         "streamIdentifier": null,
+         "streamType": 1,
+         "title": "BDRip by DJATOM & ANtreides",
+         "width": 1920
+        },
+        {
+         "audioChannelLayout": "stereo",
+         "bitDepth": 16,
+         "channels": 2,
+         "codec": "flac",
+         "default": true,
+         "displayTitle": "日本語 (FLAC Stereo)",
+         "extendedDisplayTitle": "LPCM->FLAC (日本語 Stereo)",
+         "id": 169191002,
+         "index": 1,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "samplingRate": 48000,
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 2,
+         "title": "LPCM->FLAC"
+        }
+       ],
+       "audioProfile": null,
+       "container": "mkv",
+       "duration": 91510,
+       "file": "/mnt/zurg/audiobooks/[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/NCED - 01.mkv",
+       "id": 1691910,
+       "key": "/library/parts/1691910/1792210737/file.mkv",
+       "size": 133184167,
+       "videoProfile": "high 10"
+      }
+     ],
+     "aspectRatio": 1.78,
+     "audioChannels": 2,
+     "audioCodec": "flac",
+     "audioProfile": null,
+     "bitrate": 11643,
+     "container": "mkv",
+     "duration": 91510,
+     "hasVoiceActivity": false,
+     "height": 1080,
+     "id": 16919100,
+     "videoCodec": "h264",
+     "videoFrameRate": "24p",
+     "videoProfile": "high 10",
+     "videoResolution": "1080",
+     "width": 1920
+    }
+   ],
+   "UltraBlurColors": {
+    "bottomLeft": "1f1f26",
+    "bottomRight": "15151a",
+    "topLeft": "1a1a1e",
+    "topRight": "24242a"
+   },
+   "_artFor": "",
+   "_art_url": null,
+   "_folder": "Extras/NC",
+   "_generatedTitle": true,
+   "_hash": "8173b8ced43b9f0111fb9c442e850b65159ff471",
+   "_identify": {
+    "confidence": "exact",
+    "disputed": null,
+    "imdb": "tt1743493",
+    "plex": null,
+    "source": "placed",
+    "tmdb": null
+   },
+   "_identity": "imdb:tt1743493",
+   "_ids": {
+    "imdb": "tt1743493"
+   },
+   "_path": "audiobooks/[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/NCED - 01.mkv",
+   "_placed": {
+    "kind": "episode"
+   },
+   "_poster_url": null,
+   "_release": "[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+   "_retry": {
+    "at": 1792222056,
+    "n": 2
+   },
+   "_scanned": true,
+   "_sid": "audiobooks/[KH] Motto To Love-Ru (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/NCED - 01.mkv",
+   "_source": "rd",
+   "_thumbFor": "",
+   "addedAt": 1792210737,
+   "art": "/library/metadata/169239/art/1792210738",
+   "duration": 91510,
+   "grandparentArt": "/library/metadata/169239/art/1792210738",
+   "grandparentGuid": "local://169239",
+   "grandparentKey": "/library/metadata/169239",
+   "grandparentRatingKey": "169239",
+   "grandparentSlug": "motto-to-love-ru",
+   "grandparentThumb": "/library/metadata/169239/thumb/1792210738",
+   "grandparentTitle": "Motto To Love-Ru",
+   "guid": "local://169191",
+   "index": 1,
+   "key": "/library/metadata/169191",
+   "librarySectionID": 2,
+   "librarySectionKey": "/library/sections/2",
+   "librarySectionTitle": "TV Shows",
+   "parentGuid": "local://169246",
+   "parentIndex": 1,
+   "parentKey": "/library/metadata/169246",
+   "parentRatingKey": "169246",
+   "parentThumb": "/library/metadata/169246/thumb/1792210738",
+   "parentTitle": "Season 1",
+   "ratingKey": "169191",
+   "summary": "",
+   "thumb": "/library/metadata/169191/thumb/1792210738",
+   "title": "Episode 1",
+   "type": "episode",
+   "updatedAt": 1792210737
+  },
+  {
+   "Country": [
+    {
+     "filter": "country=814196",
+     "id": 814196,
+     "tag": "Japan"
+    }
+   ],
+   "Genre": [
+    {
+     "filter": "genre=16771",
+     "id": 16771,
+     "tag": "Animation"
+    },
+    {
+     "filter": "genre=244689",
+     "id": 244689,
+     "tag": "Comedy"
+    },
+    {
+     "filter": "genre=553114",
+     "id": 553114,
+     "tag": "Sci-Fi & Fantasy"
+    }
+   ],
+   "Guid": [
+    {
+     "id": "imdb://tt1216222"
+    },
+    {
+     "id": "tmdb://34742"
+    }
+   ],
+   "Location": [
+    {
+     "path": "/mnt/zurg/anime/[Holomux] To LOVE-Ru"
+    },
+    {
+     "path": "/mnt/zurg/shows/[KH] To Love-Ru Darkness 2nd (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]"
+    },
+    {
+     "path": "/mnt/zurg/music/[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]"
+    }
+   ],
+   "Rating": [
+    {
+     "image": "themoviedb://image.rating",
+     "type": "audience",
+     "value": 8.2
+    }
+   ],
+   "Role": [
+    {
+     "filter": "actor=9318",
+     "id": 9318,
+     "role": "Rito Yuki (voice)",
+     "tag": "Akeno Watanabe",
+     "tagKey": "cee71ac5c86ed9a9124f01f4",
+     "thumb": "https://image.tmdb.org/t/p/w185/4E05IJxvTGNHb2GSaiyxbCZ5nd8.jpg"
+    },
+    {
+     "filter": "actor=453070",
+     "id": 453070,
+     "role": "Lala Satalin Deviluke (voice)",
+     "tag": "Haruka Tomatsu",
+     "tagKey": "e78c5306f06d21a939a0bdf1",
+     "thumb": "https://image.tmdb.org/t/p/w185/geVvuA2zMGE5xzfc20aDelJSelu.jpg"
+    },
+    {
+     "filter": "actor=563061",
+     "id": 563061,
+     "role": "Haruna Sairenji (voice)",
+     "tag": "Sayuri Yahagi",
+     "tagKey": "9bc383a42c35cf998ddd8aba",
+     "thumb": "https://image.tmdb.org/t/p/w185/sM2yxc7ph78w5lYpCek0TW6v5NV.jpg"
+    },
+    {
+     "filter": "actor=582677",
+     "id": 582677,
+     "role": "Golden Darkness (voice)",
+     "tag": "Misato Fukuen",
+     "tagKey": "dcb6e3b3a12f868985e0af4d",
+     "thumb": "https://image.tmdb.org/t/p/w185/wM5ei7qFIvm07dEBDv6HVRU5bDF.jpg"
+    },
+    {
+     "filter": "actor=468643",
+     "id": 468643,
+     "role": "Nana Astar Deviluke (voice)",
+     "tag": "Kanae Itou",
+     "tagKey": "17b728b2c9e42f3f5739cb6a",
+     "thumb": "https://image.tmdb.org/t/p/w185/te4l0fzbfhtKWqNHPYdGZBXMmxt.jpg"
+    },
+    {
+     "filter": "actor=491254",
+     "id": 491254,
+     "role": "Momo Belia Deviluke (voice)",
+     "tag": "Aki Toyosaki",
+     "tagKey": "8ae9eaf16d70408803989149",
+     "thumb": "https://image.tmdb.org/t/p/w185/crZpbb0ILJnH7mIYZV2l4uqQx1J.jpg"
+    }
+   ],
+   "UltraBlurColors": {
+    "bottomLeft": "1f1f26",
+    "bottomRight": "15151a",
+    "topLeft": "1a1a1e",
+    "topRight": "24242a"
+   },
+   "_artFor": "https://image.tmdb.org/t/p/w1280/61vXR9xfgNqidYkBruRXhRTlVzI.jpg",
+   "_art_url": "https://image.tmdb.org/t/p/w1280/61vXR9xfgNqidYkBruRXhRTlVzI.jpg",
+   "_identity": "tmdb:34742",
+   "_poster_url": "https://image.tmdb.org/t/p/w342/vsWNCisRhrBbUaTR56qCk6pLsEn.jpg",
+   "_scanned": true,
+   "_thumbFor": "https://image.tmdb.org/t/p/w342/vsWNCisRhrBbUaTR56qCk6pLsEn.jpg",
+   "addedAt": 1791664369,
+   "art": "/library/metadata/111924/art/1791897222",
+   "audienceRating": 8.2,
+   "audienceRatingImage": "themoviedb://image.rating",
+   "childCount": 3,
+   "contentRating": "TV-MA",
+   "guid": "plex://show/5d9c08356c3e37001ecd5676",
+   "index": 1,
+   "key": "/library/metadata/111924/children",
+   "leafCount": 38,
+   "librarySectionID": 2,
+   "librarySectionKey": "/library/sections/2",
+   "librarySectionTitle": "TV Shows",
+   "ratingKey": "111924",
+   "slug": "to-love-ru",
+   "studio": "XEBEC",
+   "summary": "Rito Yuuki is unlucky when it comes to love — no matter how hard he tries to confess to his crush, his efforts end in failure. After another day’s confession goes down the drain, Rito spends his night sulking in his bathtub. But when a naked girl with a pointed tail teleports into the tub with him, it seems like Rito’s luck is finally looking up! His fortune doesn’t last long when he finds himself accidentally engaged to the buxom beauty who is none other than the princess of the planet Deviluke!",
+   "thumb": "/library/metadata/111924/thumb/1791897222",
+   "title": "To Love Ru",
+   "type": "show",
+   "updatedAt": 1791664369,
+   "viewedLeafCount": 0,
+   "year": 2008
+  },
+  {
+   "Guid": [
+    {
+     "id": "tmdb://45503"
+    }
+   ],
+   "UltraBlurColors": {
+    "bottomLeft": "1f1f26",
+    "bottomRight": "15151a",
+    "topLeft": "1a1a1e",
+    "topRight": "24242a"
+   },
+   "_artFor": "https://image.tmdb.org/t/p/w1280/61vXR9xfgNqidYkBruRXhRTlVzI.jpg",
+   "_art_url": "https://image.tmdb.org/t/p/w1280/61vXR9xfgNqidYkBruRXhRTlVzI.jpg",
+   "_poster_url": "https://image.tmdb.org/t/p/w342/aADZ1drAtQECYsXfr70HWjpohXy.jpg",
+   "_scanned": true,
+   "_thumbFor": "https://image.tmdb.org/t/p/w342/aADZ1drAtQECYsXfr70HWjpohXy.jpg",
+   "addedAt": 1792028923,
+   "art": "/library/metadata/111924/art/1792028923",
+   "guid": "plex://season/5d9c09950aaccd001f8f5d94",
+   "index": 1,
+   "key": "/library/metadata/159040/children",
+   "leafCount": 26,
+   "librarySectionID": 2,
+   "librarySectionKey": "/library/sections/2",
+   "librarySectionTitle": "TV Shows",
+   "parentGuid": "plex://show/5d9c08356c3e37001ecd5676",
+   "parentIndex": 1,
+   "parentKey": "/library/metadata/111924",
+   "parentRatingKey": "111924",
+   "parentSlug": "to-love-ru",
+   "parentStudio": "XEBEC",
+   "parentThumb": "/library/metadata/111924/thumb/1792028923",
+   "parentTitle": "To Love Ru",
+   "parentYear": 2008,
+   "ratingKey": "159040",
+   "summary": "",
+   "thumb": "/library/metadata/159040/thumb/1792028924",
+   "title": "Season 1",
+   "type": "season",
+   "updatedAt": 1792028923,
+   "viewedLeafCount": 0
+  },
+  {
+   "Guid": [
+    {
+     "id": "tmdb://791272"
+    },
+    {
+     "id": "tvdb://362954"
+    }
+   ],
+   "Media": [
+    {
+     "Part": [
+      {
+       "Stream": [
+        {
+         "bitDepth": 8,
+         "chromaLocation": null,
+         "chromaSubsampling": "4:2:0",
+         "codec": "h264",
+         "codecID": null,
+         "codedHeight": null,
+         "codedWidth": null,
+         "colorPrimaries": null,
+         "colorRange": "tv",
+         "colorSpace": "bt470bg",
+         "colorTrc": null,
+         "default": true,
+         "displayTitle": "480p",
+         "extendedDisplayTitle": "01. The Girl Who Fell from the Sky (480p H.264)",
+         "frameRate": 23.976,
+         "height": 576,
+         "id": 159014001,
+         "index": 0,
+         "level": 41,
+         "profile": "high",
+         "refFrames": null,
+         "scanType": "progressive",
+         "streamIdentifier": null,
+         "streamType": 1,
+         "title": "01. The Girl Who Fell from the Sky",
+         "width": 1024
+        },
+        {
+         "audioChannelLayout": "stereo",
+         "bitDepth": 24,
+         "channels": 2,
+         "codec": "flac",
+         "default": true,
+         "displayTitle": "English (FLAC Stereo)",
+         "extendedDisplayTitle": "FLAC 2.0 (English)",
+         "id": 159014002,
+         "index": 1,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "samplingRate": 48000,
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 2,
+         "title": "FLAC 2.0"
+        },
+        {
+         "audioChannelLayout": "stereo",
+         "bitDepth": 16,
+         "channels": 2,
+         "codec": "flac",
+         "displayTitle": "日本語 (FLAC Stereo)",
+         "extendedDisplayTitle": "FLAC 2.0 (日本語)",
+         "id": 159014003,
+         "index": 2,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "samplingRate": 48000,
+         "streamIdentifier": null,
+         "streamType": 2,
+         "title": "FLAC 2.0"
+        },
+        {
+         "canAutoSync": false,
+         "codec": "ass",
+         "default": true,
+         "displayTitle": "English",
+         "extendedDisplayTitle": "Final 8 Signs / Songs (English ASS)",
+         "id": 159014004,
+         "index": 3,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "streamIdentifier": null,
+         "streamType": 3,
+         "title": "Final 8 Signs / Songs"
+        },
+        {
+         "canAutoSync": false,
+         "codec": "ass",
+         "displayTitle": "日本語",
+         "extendedDisplayTitle": "Final 8 Full Subs (日本語 ASS)",
+         "id": 159014005,
+         "index": 4,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "streamIdentifier": null,
+         "streamType": 3,
+         "title": "Final 8 Full Subs"
+        },
+        {
+         "canAutoSync": false,
+         "codec": "ass",
+         "displayTitle": "English",
+         "extendedDisplayTitle": "English Subs (Chihiro) (ASS)",
+         "id": 159014006,
+         "index": 5,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 3,
+         "title": "English Subs (Chihiro)"
+        },
+        {
+         "canAutoSync": false,
+         "codec": "ass",
+         "displayTitle": "English",
+         "extendedDisplayTitle": "[polished] (Chihiro) (English ASS)",
+         "id": 159014007,
+         "index": 6,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "streamIdentifier": null,
+         "streamType": 3,
+         "title": "[polished] (Chihiro)"
+        },
+        {
+         "canAutoSync": false,
+         "codec": "srt",
+         "displayTitle": "English",
+         "extendedDisplayTitle": "[Exiled-Destiny] (English SRT)",
+         "id": 159014008,
+         "index": 7,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "streamIdentifier": null,
+         "streamType": 3,
+         "title": "[Exiled-Destiny]"
+        },
+        {
+         "canAutoSync": false,
+         "codec": "vobsub",
+         "displayTitle": "English",
+         "extendedDisplayTitle": "[DVD] (English VOBSUB)",
+         "id": 159014009,
+         "index": 8,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "streamIdentifier": null,
+         "streamType": 3,
+         "title": "[DVD]"
+        }
+       ],
+       "audioProfile": null,
+       "container": "mkv",
+       "duration": 1451951,
+       "file": "/mnt/zurg/anime/[Holomux] To LOVE-Ru/[Holomux] To LOVE-Ru 01 [DVD x264 576p FLAC 2.0 Dual][57BC035C].mkv",
+       "id": 1590140,
+       "key": "/library/parts/1590140/1792028923/file.mkv",
+       "size": 941564411,
+       "videoProfile": "high"
+      }
+     ],
+     "_folder": "[Holomux] To LOVE-Ru [DVD x264 576p FLAC 2.0 Dual]",
+     "_ids": {
+      "imdb": "tt1216222",
+      "tmdb": "34742"
+     },
+     "_path": "anime/[Holomux] To LOVE-Ru/[Holomux] To LOVE-Ru 01 [DVD x264 576p FLAC 2.0 Dual][57BC035C].mkv",
+     "_placed": {
+      "episode": 1,
+      "kind": "episode",
+      "season": 1
+     },
+     "_release": "[Holomux] To LOVE-Ru",
+     "_sid": "anime/[Holomux] To LOVE-Ru/[Holomux] To LOVE-Ru 01 [DVD x264 576p FLAC 2.0 Dual][57BC035C].mkv",
+     "_source": "rd",
+     "aspectRatio": 1.78,
+     "audioChannels": 2,
+     "audioCodec": "flac",
+     "audioProfile": null,
+     "bitrate": 5188,
+     "container": "mkv",
+     "duration": 1451951,
+     "hasVoiceActivity": false,
+     "height": 576,
+     "id": 15901400,
+     "videoCodec": "h264",
+     "videoFrameRate": "24p",
+     "videoProfile": "high",
+     "videoResolution": "576",
+     "width": 1024
+    },
+    {
+     "Part": [
+      {
+       "Stream": [
+        {
+         "bitDepth": 10,
+         "chromaLocation": null,
+         "chromaSubsampling": "4:2:0",
+         "codec": "h264",
+         "codecID": null,
+         "codedHeight": null,
+         "codedWidth": null,
+         "colorPrimaries": null,
+         "colorRange": "tv",
+         "colorSpace": "bt709",
+         "colorTrc": null,
+         "default": true,
+         "displayTitle": "1080p",
+         "extendedDisplayTitle": "BDRip by DJATOM (1080p H.264 High 10)",
+         "frameRate": 23.976,
+         "height": 1080,
+         "id": 112175001,
+         "index": 0,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "level": 50,
+         "profile": "high 10",
+         "refFrames": null,
+         "scanType": "progressive",
+         "streamIdentifier": null,
+         "streamType": 1,
+         "title": "BDRip by DJATOM",
+         "width": 1920
+        },
+        {
+         "audioChannelLayout": "stereo",
+         "bitDepth": 24,
+         "channels": 2,
+         "codec": "flac",
+         "default": true,
+         "displayTitle": "日本語 (FLAC Stereo)",
+         "extendedDisplayTitle": "LPCM->FLAC (日本語 Stereo)",
+         "id": 112175002,
+         "index": 1,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "samplingRate": 48000,
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 2,
+         "title": "LPCM->FLAC"
+        }
+       ],
+       "audioProfile": null,
+       "container": "mkv",
+       "duration": 91091,
+       "file": "/mnt/zurg/shows/[KH] To Love-Ru Darkness 2nd (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/NCED - 01.mkv",
+       "id": 1121750,
+       "key": "/library/parts/1121750/1791664621/file.mkv",
+       "size": 214216678,
+       "videoProfile": "high 10"
+      }
+     ],
+     "_folder": "NC",
+     "_ids": {
+      "imdb": "tt1216222",
+      "tmdb": "34742"
+     },
+     "_path": "shows/[KH] To Love-Ru Darkness 2nd (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/NCED - 01.mkv",
+     "_placed": {
+      "kind": "episode"
+     },
+     "_release": "[KH] To Love-Ru Darkness 2nd (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+     "_sid": "shows/[KH] To Love-Ru Darkness 2nd (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/NCED - 01.mkv",
+     "_source": "rd",
+     "aspectRatio": 1.78,
+     "audioChannels": 2,
+     "audioCodec": "flac",
+     "audioProfile": null,
+     "bitrate": 18813,
+     "container": "mkv",
+     "duration": 91091,
+     "hasVoiceActivity": false,
+     "height": 1080,
+     "id": 11217500,
+     "videoCodec": "h264",
+     "videoFrameRate": "24p",
+     "videoProfile": "high 10",
+     "videoResolution": "1080",
+     "width": 1920
+    },
+    {
+     "Part": [
+      {
+       "Stream": [
+        {
+         "bitDepth": 10,
+         "chromaLocation": null,
+         "chromaSubsampling": "4:2:0",
+         "codec": "h264",
+         "codecID": null,
+         "codedHeight": null,
+         "codedWidth": null,
+         "colorPrimaries": null,
+         "colorRange": "tv",
+         "colorSpace": "bt709",
+         "colorTrc": null,
+         "default": true,
+         "displayTitle": "1080p",
+         "extendedDisplayTitle": "BDRip by DJATOM & ANtreides (1080p H.264 High 10)",
+         "frameRate": 23.976,
+         "height": 1080,
+         "id": 169213001,
+         "index": 0,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "level": 40,
+         "profile": "high 10",
+         "refFrames": null,
+         "scanType": "progressive",
+         "streamIdentifier": null,
+         "streamType": 1,
+         "title": "BDRip by DJATOM & ANtreides",
+         "width": 1920
+        },
+        {
+         "audioChannelLayout": "stereo",
+         "bitDepth": 16,
+         "channels": 2,
+         "codec": "flac",
+         "default": true,
+         "displayTitle": "日本語 (FLAC Stereo)",
+         "extendedDisplayTitle": "LPCM->FLAC (日本語 Stereo)",
+         "id": 169213002,
+         "index": 1,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "samplingRate": 48000,
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 2,
+         "title": "LPCM->FLAC"
+        }
+       ],
+       "audioProfile": null,
+       "container": "mkv",
+       "duration": 15060,
+       "file": "/mnt/zurg/music/[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/BD & DVD CM - 01.mkv",
+       "id": 1692130,
+       "key": "/library/parts/1692130/1792210737/file.mkv",
+       "size": 25182364,
+       "videoProfile": "high 10"
+      }
+     ],
+     "_folder": "Extras/CM",
+     "_ids": {
+      "imdb": "tt1216222",
+      "tmdb": "34742"
+     },
+     "_path": "music/[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/BD & DVD CM - 01.mkv",
+     "_placed": {
+      "kind": "episode"
+     },
+     "_release": "[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+     "_sid": "music/[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/BD & DVD CM - 01.mkv",
+     "_source": "rd",
+     "aspectRatio": 1.78,
+     "audioChannels": 2,
+     "audioCodec": "flac",
+     "audioProfile": null,
+     "bitrate": 13377,
+     "container": "mkv",
+     "duration": 15060,
+     "hasVoiceActivity": false,
+     "height": 1080,
+     "id": 16921300,
+     "videoCodec": "h264",
+     "videoFrameRate": "24p",
+     "videoProfile": "high 10",
+     "videoResolution": "1080",
+     "width": 1920
+    },
+    {
+     "Part": [
+      {
+       "Stream": [
+        {
+         "bitDepth": 10,
+         "chromaLocation": null,
+         "chromaSubsampling": "4:2:0",
+         "codec": "h264",
+         "codecID": null,
+         "codedHeight": null,
+         "codedWidth": null,
+         "colorPrimaries": null,
+         "colorRange": "tv",
+         "colorSpace": "bt709",
+         "colorTrc": null,
+         "default": true,
+         "displayTitle": "1080p",
+         "extendedDisplayTitle": "BDRip by DJATOM & ANtreides (1080p H.264 High 10)",
+         "frameRate": 23.976,
+         "height": 1080,
+         "id": 169215001,
+         "index": 0,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "level": 40,
+         "profile": "high 10",
+         "refFrames": null,
+         "scanType": "progressive",
+         "streamIdentifier": null,
+         "streamType": 1,
+         "title": "BDRip by DJATOM & ANtreides",
+         "width": 1920
+        },
+        {
+         "audioChannelLayout": "stereo",
+         "bitDepth": 16,
+         "channels": 2,
+         "codec": "flac",
+         "default": true,
+         "displayTitle": "日本語 (FLAC Stereo)",
+         "extendedDisplayTitle": "LPCM->FLAC (日本語 Stereo)",
+         "id": 169215002,
+         "index": 1,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "samplingRate": 48000,
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 2,
+         "title": "LPCM->FLAC"
+        }
+       ],
+       "audioProfile": null,
+       "container": "mkv",
+       "duration": 16015,
+       "file": "/mnt/zurg/music/[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/CM - 01.mkv",
+       "id": 1692150,
+       "key": "/library/parts/1692150/1792210737/file.mkv",
+       "size": 25087682,
+       "videoProfile": "high 10"
+      }
+     ],
+     "_folder": "Extras/CM",
+     "_ids": {
+      "imdb": "tt1216222",
+      "tmdb": "34742"
+     },
+     "_path": "music/[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/CM - 01.mkv",
+     "_placed": {
+      "kind": "episode"
+     },
+     "_release": "[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+     "_sid": "music/[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/CM - 01.mkv",
+     "_source": "rd",
+     "aspectRatio": 1.78,
+     "audioChannels": 2,
+     "audioCodec": "flac",
+     "audioProfile": null,
+     "bitrate": 12532,
+     "container": "mkv",
+     "duration": 16015,
+     "hasVoiceActivity": false,
+     "height": 1080,
+     "id": 16921500,
+     "videoCodec": "h264",
+     "videoFrameRate": "24p",
+     "videoProfile": "high 10",
+     "videoResolution": "1080",
+     "width": 1920
+    },
+    {
+     "Part": [
+      {
+       "Stream": [
+        {
+         "bitDepth": 8,
+         "chromaLocation": null,
+         "chromaSubsampling": "4:2:0",
+         "codec": "h264",
+         "codecID": null,
+         "codedHeight": null,
+         "codedWidth": null,
+         "colorPrimaries": null,
+         "colorRange": null,
+         "colorSpace": null,
+         "colorTrc": null,
+         "default": true,
+         "displayTitle": "480p",
+         "extendedDisplayTitle": "480p (H.264)",
+         "frameRate": 23.976,
+         "height": 576,
+         "id": 169229001,
+         "index": 0,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "level": 50,
+         "profile": "high",
+         "refFrames": null,
+         "scanType": "progressive",
+         "streamIdentifier": null,
+         "streamType": 1,
+         "width": 1024
+        },
+        {
+         "audioChannelLayout": "stereo",
+         "bitDepth": 16,
+         "channels": 2,
+         "codec": "flac",
+         "default": true,
+         "displayTitle": "日本語 (FLAC Stereo)",
+         "extendedDisplayTitle": "日本語 (FLAC Stereo)",
+         "id": 169229002,
+         "index": 1,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "samplingRate": 48000,
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 2
+        },
+        {
+         "canAutoSync": false,
+         "codec": "ass",
+         "default": true,
+         "displayTitle": "English",
+         "extendedDisplayTitle": "[Pomf] (English ASS)",
+         "id": 169229003,
+         "index": 2,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 3,
+         "title": "[Pomf]"
+        },
+        {
+         "canAutoSync": false,
+         "codec": "ass",
+         "displayTitle": "English",
+         "extendedDisplayTitle": "[Doki] (English ASS)",
+         "id": 169229004,
+         "index": 3,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "streamIdentifier": null,
+         "streamType": 3,
+         "title": "[Doki]"
+        }
+       ],
+       "audioProfile": null,
+       "container": "mkv",
+       "duration": 1716479,
+       "file": "/mnt/zurg/music/[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/[KH] To Love-Ru Darkness - OVA - 01 - Prologue - Pollen Plan - Body touch.mkv",
+       "id": 1692290,
+       "key": "/library/parts/1692290/1792210737/file.mkv",
+       "size": 380638398,
+       "videoProfile": "high"
+      }
+     ],
+     "_folder": "OVAs",
+     "_ids": {
+      "imdb": "tt1216222",
+      "tmdb": "34742"
+     },
+     "_path": "music/[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/[KH] To Love-Ru Darkness - OVA - 01 - Prologue - Pollen Plan - Body touch.mkv",
+     "_placed": {
+      "kind": "episode"
+     },
+     "_release": "[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+     "_sid": "music/[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/[KH] To Love-Ru Darkness - OVA - 01 - Prologue - Pollen Plan - Body touch.mkv",
+     "_source": "rd",
+     "aspectRatio": 1.78,
+     "audioChannels": 2,
+     "audioCodec": "flac",
+     "audioProfile": null,
+     "bitrate": 1774,
+     "container": "mkv",
+     "duration": 1716479,
+     "hasVoiceActivity": false,
+     "height": 576,
+     "id": 16922900,
+     "videoCodec": "h264",
+     "videoFrameRate": "24p",
+     "videoProfile": "high",
+     "videoResolution": "576",
+     "width": 1024
+    }
+   ],
+   "Rating": [
+    {
+     "image": "themoviedb://image.rating",
+     "type": "audience",
+     "value": 8.2
+    }
+   ],
+   "Role": [
+    {
+     "filter": "actor=9318",
+     "id": 9318,
+     "role": "Rito Yuki (voice)",
+     "tag": "Akeno Watanabe",
+     "tagKey": "cee71ac5c86ed9a9124f01f4",
+     "thumb": "https://image.tmdb.org/t/p/w185/4E05IJxvTGNHb2GSaiyxbCZ5nd8.jpg"
+    },
+    {
+     "filter": "actor=453070",
+     "id": 453070,
+     "role": "Lala Satalin Deviluke (voice)",
+     "tag": "Haruka Tomatsu",
+     "tagKey": "e78c5306f06d21a939a0bdf1",
+     "thumb": "https://image.tmdb.org/t/p/w185/geVvuA2zMGE5xzfc20aDelJSelu.jpg"
+    },
+    {
+     "filter": "actor=563061",
+     "id": 563061,
+     "role": "Haruna Sairenji (voice)",
+     "tag": "Sayuri Yahagi",
+     "tagKey": "9bc383a42c35cf998ddd8aba",
+     "thumb": "https://image.tmdb.org/t/p/w185/sM2yxc7ph78w5lYpCek0TW6v5NV.jpg"
+    },
+    {
+     "filter": "actor=582677",
+     "id": 582677,
+     "role": "Golden Darkness (voice)",
+     "tag": "Misato Fukuen",
+     "tagKey": "dcb6e3b3a12f868985e0af4d",
+     "thumb": "https://image.tmdb.org/t/p/w185/wM5ei7qFIvm07dEBDv6HVRU5bDF.jpg"
+    },
+    {
+     "filter": "actor=468643",
+     "id": 468643,
+     "role": "Nana Astar Deviluke (voice)",
+     "tag": "Kanae Itou",
+     "tagKey": "17b728b2c9e42f3f5739cb6a",
+     "thumb": "https://image.tmdb.org/t/p/w185/te4l0fzbfhtKWqNHPYdGZBXMmxt.jpg"
+    },
+    {
+     "filter": "actor=491254",
+     "id": 491254,
+     "role": "Momo Belia Deviluke (voice)",
+     "tag": "Aki Toyosaki",
+     "tagKey": "8ae9eaf16d70408803989149",
+     "thumb": "https://image.tmdb.org/t/p/w185/crZpbb0ILJnH7mIYZV2l4uqQx1J.jpg"
+    }
+   ],
+   "UltraBlurColors": {
+    "bottomLeft": "1f1f26",
+    "bottomRight": "15151a",
+    "topLeft": "1a1a1e",
+    "topRight": "24242a"
+   },
+   "Writer": [
+    {
+     "filter": "writer=190550",
+     "id": 190550,
+     "tag": "Atsushi Otsuki",
+     "tagKey": "091d3c12781c03094d116d83"
+    },
+    {
+     "filter": "writer=399032",
+     "id": 399032,
+     "tag": "Saki Hasemi",
+     "tagKey": "15a72a75576cb713633822ff"
+    },
+    {
+     "filter": "writer=246867",
+     "id": 246867,
+     "tag": "Kentaro Yabuki",
+     "tagKey": "c31d476d08aea1ab0537e22c"
+    }
+   ],
+   "_artFor": "https://image.tmdb.org/t/p/w1280/61vXR9xfgNqidYkBruRXhRTlVzI.jpg",
+   "_art_url": "https://image.tmdb.org/t/p/w1280/61vXR9xfgNqidYkBruRXhRTlVzI.jpg",
+   "_folder": "[Holomux] To LOVE-Ru [DVD x264 576p FLAC 2.0 Dual]",
+   "_hash": "b7115397a198554c17fd40caa2664fd981ff14fa",
+   "_identify": {
+    "confidence": "exact",
+    "disputed": null,
+    "imdb": null,
+    "plex": "plex://show/5d9c08356c3e37001ecd5676",
+    "source": "name id",
+    "tmdb": 34742
+   },
+   "_identity": "tmdb:34742",
+   "_ids": {
+    "imdb": "tt1216222"
+   },
+   "_own_content_rating": true,
+   "_path": "anime/[Holomux] To LOVE-Ru/[Holomux] To LOVE-Ru 01 [DVD x264 576p FLAC 2.0 Dual][57BC035C].mkv",
+   "_poster_url": "https://image.tmdb.org/t/p/w1280/rqF5iwQYiaFkpwMCUAm6l2H74pT.jpg",
+   "_release": "[Holomux] To LOVE-Ru",
+   "_scanned": true,
+   "_sid": "anime/[Holomux] To LOVE-Ru/[Holomux] To LOVE-Ru 01 [DVD x264 576p FLAC 2.0 Dual][57BC035C].mkv",
+   "_source": "rd",
+   "_thumbFor": "https://image.tmdb.org/t/p/w1280/rqF5iwQYiaFkpwMCUAm6l2H74pT.jpg",
+   "addedAt": 1792028923,
+   "art": "/library/metadata/111924/art/1791897222",
+   "audienceRating": 8.2,
+   "audienceRatingImage": "themoviedb://image.rating",
+   "contentRating": "TV-MA",
+   "duration": 1451951,
+   "grandparentArt": "/library/metadata/111924/art/1791897222",
+   "grandparentGuid": "plex://show/5d9c08356c3e37001ecd5676",
+   "grandparentKey": "/library/metadata/111924",
+   "grandparentRatingKey": "111924",
+   "grandparentSlug": "to-love-ru",
+   "grandparentThumb": "/library/metadata/111924/thumb/1791897222",
+   "grandparentTitle": "To Love Ru",
+   "guid": "plex://episode/5d9c0fcbba6eb9001fbf3428",
+   "index": 1,
+   "key": "/library/metadata/159014",
+   "librarySectionID": 2,
+   "librarySectionKey": "/library/sections/2",
+   "librarySectionTitle": "TV Shows",
+   "originallyAvailableAt": "2008-04-04",
+   "parentGuid": "plex://season/5d9c09950aaccd001f8f5d94",
+   "parentIndex": 1,
+   "parentKey": "/library/metadata/159040",
+   "parentRatingKey": "159040",
+   "parentThumb": "/library/metadata/159040/thumb/1792028924",
+   "parentTitle": "Season 1",
+   "ratingKey": "159014",
+   "summary": "Rito tries to work up the courage to confess to his long time crush. The universe seems to be against him, dropping a naked runaway alien princess named Lala into his bathtub.",
+   "thumb": "/library/metadata/159014/thumb/1792028924",
+   "title": "The Girl Who Fell From the Sky",
+   "titleSort": "Girl Who Fell From the Sky",
+   "type": "episode",
+   "updatedAt": 1792028923,
+   "year": 2008
+  },
+  {
+   "Guid": [
+    {
+     "id": "tmdb://791273"
+    },
+    {
+     "id": "tvdb://362955"
+    }
+   ],
+   "Media": [
+    {
+     "Part": [
+      {
+       "Stream": [
+        {
+         "bitDepth": 8,
+         "chromaLocation": null,
+         "chromaSubsampling": "4:2:0",
+         "codec": "h264",
+         "codecID": null,
+         "codedHeight": null,
+         "codedWidth": null,
+         "colorPrimaries": null,
+         "colorRange": "tv",
+         "colorSpace": "bt470bg",
+         "colorTrc": null,
+         "default": true,
+         "displayTitle": "480p",
+         "extendedDisplayTitle": "02. A Broken Engagement!? (480p H.264)",
+         "frameRate": 23.976,
+         "height": 576,
+         "id": 159015001,
+         "index": 0,
+         "level": 41,
+         "profile": "high",
+         "refFrames": null,
+         "scanType": "progressive",
+         "streamIdentifier": null,
+         "streamType": 1,
+         "title": "02. A Broken Engagement!?",
+         "width": 1024
+        },
+        {
+         "audioChannelLayout": "stereo",
+         "bitDepth": 24,
+         "channels": 2,
+         "codec": "flac",
+         "default": true,
+         "displayTitle": "English (FLAC Stereo)",
+         "extendedDisplayTitle": "FLAC 2.0 (English)",
+         "id": 159015002,
+         "index": 1,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "samplingRate": 48000,
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 2,
+         "title": "FLAC 2.0"
+        },
+        {
+         "audioChannelLayout": "stereo",
+         "bitDepth": 16,
+         "channels": 2,
+         "codec": "flac",
+         "displayTitle": "日本語 (FLAC Stereo)",
+         "extendedDisplayTitle": "FLAC 2.0 (日本語)",
+         "id": 159015003,
+         "index": 2,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "samplingRate": 48000,
+         "streamIdentifier": null,
+         "streamType": 2,
+         "title": "FLAC 2.0"
+        },
+        {
+         "canAutoSync": false,
+         "codec": "ass",
+         "default": true,
+         "displayTitle": "English",
+         "extendedDisplayTitle": "Final 8 Signs / Songs (English ASS)",
+         "id": 159015004,
+         "index": 3,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "streamIdentifier": null,
+         "streamType": 3,
+         "title": "Final 8 Signs / Songs"
+        },
+        {
+         "canAutoSync": false,
+         "codec": "ass",
+         "displayTitle": "日本語",
+         "extendedDisplayTitle": "Final 8 Full Subs (日本語 ASS)",
+         "id": 159015005,
+         "index": 4,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "streamIdentifier": null,
+         "streamType": 3,
+         "title": "Final 8 Full Subs"
+        },
+        {
+         "canAutoSync": false,
+         "codec": "ass",
+         "displayTitle": "English",
+         "extendedDisplayTitle": "English Subs (Chihiro) (ASS)",
+         "id": 159015006,
+         "index": 5,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 3,
+         "title": "English Subs (Chihiro)"
+        },
+        {
+         "canAutoSync": false,
+         "codec": "ass",
+         "displayTitle": "English",
+         "extendedDisplayTitle": "[polished] (Chihiro) (English ASS)",
+         "id": 159015007,
+         "index": 6,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "streamIdentifier": null,
+         "streamType": 3,
+         "title": "[polished] (Chihiro)"
+        },
+        {
+         "canAutoSync": false,
+         "codec": "srt",
+         "displayTitle": "English",
+         "extendedDisplayTitle": "[Exiled-Destiny] (English SRT)",
+         "id": 159015008,
+         "index": 7,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "streamIdentifier": null,
+         "streamType": 3,
+         "title": "[Exiled-Destiny]"
+        },
+        {
+         "canAutoSync": false,
+         "codec": "vobsub",
+         "displayTitle": "日本語",
+         "extendedDisplayTitle": "[DVD] (日本語 VOBSUB)",
+         "id": 159015009,
+         "index": 8,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "streamIdentifier": null,
+         "streamType": 3,
+         "title": "[DVD]"
+        }
+       ],
+       "audioProfile": null,
+       "container": "mkv",
+       "duration": 1458124,
+       "file": "/mnt/zurg/anime/[Holomux] To LOVE-Ru/[Holomux] To LOVE-Ru 02 [DVD x264 576p FLAC 2.0 Dual][F5C182DB].mkv",
+       "id": 1590150,
+       "key": "/library/parts/1590150/1792028923/file.mkv",
+       "size": 899154432,
+       "videoProfile": "high"
+      }
+     ],
+     "_folder": "[Holomux] To LOVE-Ru [DVD x264 576p FLAC 2.0 Dual]",
+     "_ids": {
+      "imdb": "tt1216222",
+      "tmdb": "34742"
+     },
+     "_path": "anime/[Holomux] To LOVE-Ru/[Holomux] To LOVE-Ru 02 [DVD x264 576p FLAC 2.0 Dual][F5C182DB].mkv",
+     "_placed": {
+      "episode": 2,
+      "kind": "episode",
+      "season": 1
+     },
+     "_release": "[Holomux] To LOVE-Ru",
+     "_sid": "anime/[Holomux] To LOVE-Ru/[Holomux] To LOVE-Ru 02 [DVD x264 576p FLAC 2.0 Dual][F5C182DB].mkv",
+     "_source": "rd",
+     "aspectRatio": 1.78,
+     "audioChannels": 2,
+     "audioCodec": "flac",
+     "audioProfile": null,
+     "bitrate": 4933,
+     "container": "mkv",
+     "duration": 1458124,
+     "hasVoiceActivity": false,
+     "height": 576,
+     "id": 15901500,
+     "videoCodec": "h264",
+     "videoFrameRate": "24p",
+     "videoProfile": "high",
+     "videoResolution": "576",
+     "width": 1024
+    },
+    {
+     "Part": [
+      {
+       "Stream": [
+        {
+         "bitDepth": 10,
+         "chromaLocation": null,
+         "chromaSubsampling": "4:2:0",
+         "codec": "h264",
+         "codecID": null,
+         "codedHeight": null,
+         "codedWidth": null,
+         "colorPrimaries": null,
+         "colorRange": "tv",
+         "colorSpace": "bt709",
+         "colorTrc": null,
+         "default": true,
+         "displayTitle": "1080p",
+         "extendedDisplayTitle": "BDRip by DJATOM (1080p H.264 High 10)",
+         "frameRate": 23.976,
+         "height": 1080,
+         "id": 112176001,
+         "index": 0,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "level": 50,
+         "profile": "high 10",
+         "refFrames": null,
+         "scanType": "progressive",
+         "streamIdentifier": null,
+         "streamType": 1,
+         "title": "BDRip by DJATOM",
+         "width": 1920
+        },
+        {
+         "audioChannelLayout": "stereo",
+         "bitDepth": 24,
+         "channels": 2,
+         "codec": "flac",
+         "default": true,
+         "displayTitle": "日本語 (FLAC Stereo)",
+         "extendedDisplayTitle": "LPCM->FLAC (日本語 Stereo)",
+         "id": 112176002,
+         "index": 1,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "samplingRate": 48000,
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 2,
+         "title": "LPCM->FLAC"
+        }
+       ],
+       "audioProfile": null,
+       "container": "mkv",
+       "duration": 91091,
+       "file": "/mnt/zurg/shows/[KH] To Love-Ru Darkness 2nd (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/NCED - 02 [EP - 14].mkv",
+       "id": 1121760,
+       "key": "/library/parts/1121760/1791664621/file.mkv",
+       "size": 165067517,
+       "videoProfile": "high 10"
+      }
+     ],
+     "_folder": "NC",
+     "_ids": {
+      "imdb": "tt1216222",
+      "tmdb": "34742"
+     },
+     "_path": "shows/[KH] To Love-Ru Darkness 2nd (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/NCED - 02 [EP - 14].mkv",
+     "_placed": {
+      "kind": "episode"
+     },
+     "_release": "[KH] To Love-Ru Darkness 2nd (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+     "_sid": "shows/[KH] To Love-Ru Darkness 2nd (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/NCED - 02 [EP - 14].mkv",
+     "_source": "rd",
+     "aspectRatio": 1.78,
+     "audioChannels": 2,
+     "audioCodec": "flac",
+     "audioProfile": null,
+     "bitrate": 14497,
+     "container": "mkv",
+     "duration": 91091,
+     "hasVoiceActivity": false,
+     "height": 1080,
+     "id": 11217600,
+     "videoCodec": "h264",
+     "videoFrameRate": "24p",
+     "videoProfile": "high 10",
+     "videoResolution": "1080",
+     "width": 1920
+    },
+    {
+     "Part": [
+      {
+       "Stream": [
+        {
+         "bitDepth": 10,
+         "chromaLocation": null,
+         "chromaSubsampling": "4:2:0",
+         "codec": "h264",
+         "codecID": null,
+         "codedHeight": null,
+         "codedWidth": null,
+         "colorPrimaries": null,
+         "colorRange": "tv",
+         "colorSpace": "bt709",
+         "colorTrc": null,
+         "default": true,
+         "displayTitle": "1080p",
+         "extendedDisplayTitle": "BDRip by DJATOM & ANtreides (1080p H.264 High 10)",
+         "frameRate": 23.976,
+         "height": 1080,
+         "id": 169214001,
+         "index": 0,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "level": 40,
+         "profile": "high 10",
+         "refFrames": null,
+         "scanType": "progressive",
+         "streamIdentifier": null,
+         "streamType": 1,
+         "title": "BDRip by DJATOM & ANtreides",
+         "width": 1920
+        },
+        {
+         "audioChannelLayout": "stereo",
+         "bitDepth": 16,
+         "channels": 2,
+         "codec": "flac",
+         "default": true,
+         "displayTitle": "日本語 (FLAC Stereo)",
+         "extendedDisplayTitle": "LPCM->FLAC (日本語 Stereo)",
+         "id": 169214002,
+         "index": 1,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "samplingRate": 48000,
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 2,
+         "title": "LPCM->FLAC"
+        }
+       ],
+       "audioProfile": null,
+       "container": "mkv",
+       "duration": 15060,
+       "file": "/mnt/zurg/music/[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/BD & DVD CM - 02.mkv",
+       "id": 1692140,
+       "key": "/library/parts/1692140/1792210737/file.mkv",
+       "size": 25064322,
+       "videoProfile": "high 10"
+      }
+     ],
+     "_folder": "Extras/CM",
+     "_ids": {
+      "imdb": "tt1216222",
+      "tmdb": "34742"
+     },
+     "_path": "music/[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/BD & DVD CM - 02.mkv",
+     "_placed": {
+      "kind": "episode"
+     },
+     "_release": "[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+     "_sid": "music/[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/BD & DVD CM - 02.mkv",
+     "_source": "rd",
+     "aspectRatio": 1.78,
+     "audioChannels": 2,
+     "audioCodec": "flac",
+     "audioProfile": null,
+     "bitrate": 13314,
+     "container": "mkv",
+     "duration": 15060,
+     "hasVoiceActivity": false,
+     "height": 1080,
+     "id": 16921400,
+     "videoCodec": "h264",
+     "videoFrameRate": "24p",
+     "videoProfile": "high 10",
+     "videoResolution": "1080",
+     "width": 1920
+    },
+    {
+     "Part": [
+      {
+       "Stream": [
+        {
+         "bitDepth": 10,
+         "chromaLocation": null,
+         "chromaSubsampling": "4:2:0",
+         "codec": "h264",
+         "codecID": null,
+         "codedHeight": null,
+         "codedWidth": null,
+         "colorPrimaries": null,
+         "colorRange": "tv",
+         "colorSpace": "bt709",
+         "colorTrc": null,
+         "default": true,
+         "displayTitle": "1080p",
+         "extendedDisplayTitle": "BDRip by DJATOM & ANtreides (1080p H.264 High 10)",
+         "frameRate": 23.976,
+         "height": 1080,
+         "id": 169216001,
+         "index": 0,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "level": 40,
+         "profile": "high 10",
+         "refFrames": null,
+         "scanType": "progressive",
+         "streamIdentifier": null,
+         "streamType": 1,
+         "title": "BDRip by DJATOM & ANtreides",
+         "width": 1920
+        },
+        {
+         "audioChannelLayout": "stereo",
+         "bitDepth": 16,
+         "channels": 2,
+         "codec": "flac",
+         "default": true,
+         "displayTitle": "日本語 (FLAC Stereo)",
+         "extendedDisplayTitle": "LPCM->FLAC (日本語 Stereo)",
+         "id": 169216002,
+         "index": 1,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "samplingRate": 48000,
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 2,
+         "title": "LPCM->FLAC"
+        }
+       ],
+       "audioProfile": null,
+       "container": "mkv",
+       "duration": 16015,
+       "file": "/mnt/zurg/music/[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/CM - 02.mkv",
+       "id": 1692160,
+       "key": "/library/parts/1692160/1792210737/file.mkv",
+       "size": 27052043,
+       "videoProfile": "high 10"
+      }
+     ],
+     "_folder": "Extras/CM",
+     "_ids": {
+      "imdb": "tt1216222",
+      "tmdb": "34742"
+     },
+     "_path": "music/[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/CM - 02.mkv",
+     "_placed": {
+      "kind": "episode"
+     },
+     "_release": "[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+     "_sid": "music/[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/CM - 02.mkv",
+     "_source": "rd",
+     "aspectRatio": 1.78,
+     "audioChannels": 2,
+     "audioCodec": "flac",
+     "audioProfile": null,
+     "bitrate": 13513,
+     "container": "mkv",
+     "duration": 16015,
+     "hasVoiceActivity": false,
+     "height": 1080,
+     "id": 16921600,
+     "videoCodec": "h264",
+     "videoFrameRate": "24p",
+     "videoProfile": "high 10",
+     "videoResolution": "1080",
+     "width": 1920
+    },
+    {
+     "Part": [
+      {
+       "Stream": [
+        {
+         "bitDepth": 8,
+         "chromaLocation": null,
+         "chromaSubsampling": "4:2:0",
+         "codec": "h264",
+         "codecID": null,
+         "codedHeight": null,
+         "codedWidth": null,
+         "colorPrimaries": null,
+         "colorRange": null,
+         "colorSpace": null,
+         "colorTrc": null,
+         "default": true,
+         "displayTitle": "480p",
+         "extendedDisplayTitle": "480p (H.264)",
+         "frameRate": 23.976,
+         "height": 576,
+         "id": 169230001,
+         "index": 0,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "level": 50,
+         "profile": "high",
+         "refFrames": null,
+         "scanType": "progressive",
+         "streamIdentifier": null,
+         "streamType": 1,
+         "width": 1024
+        },
+        {
+         "audioChannelLayout": "stereo",
+         "bitDepth": 16,
+         "channels": 2,
+         "codec": "flac",
+         "default": true,
+         "displayTitle": "日本語 (FLAC Stereo)",
+         "extendedDisplayTitle": "日本語 (FLAC Stereo)",
+         "id": 169230002,
+         "index": 1,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "samplingRate": 48000,
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 2
+        },
+        {
+         "canAutoSync": false,
+         "codec": "ass",
+         "default": true,
+         "displayTitle": "English",
+         "extendedDisplayTitle": "[Pomf] (English ASS)",
+         "id": 169230003,
+         "index": 2,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 3,
+         "title": "[Pomf]"
+        },
+        {
+         "canAutoSync": false,
+         "codec": "ass",
+         "displayTitle": "English",
+         "extendedDisplayTitle": "[Doki] (English ASS)",
+         "id": 169230004,
+         "index": 3,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "streamIdentifier": null,
+         "streamType": 3,
+         "title": "[Doki]"
+        }
+       ],
+       "audioProfile": null,
+       "container": "mkv",
+       "duration": 1566232,
+       "file": "/mnt/zurg/music/[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/[KH] To Love-Ru Darkness - OVA - 02 - Nostalgia - The Changing Heart - Flower.mkv",
+       "id": 1692300,
+       "key": "/library/parts/1692300/1792210737/file.mkv",
+       "size": 453689544,
+       "videoProfile": "high"
+      }
+     ],
+     "_folder": "OVAs",
+     "_ids": {
+      "imdb": "tt1216222",
+      "tmdb": "34742"
+     },
+     "_path": "music/[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/[KH] To Love-Ru Darkness - OVA - 02 - Nostalgia - The Changing Heart - Flower.mkv",
+     "_placed": {
+      "kind": "episode"
+     },
+     "_release": "[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+     "_sid": "music/[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/[KH] To Love-Ru Darkness - OVA - 02 - Nostalgia - The Changing Heart - Flower.mkv",
+     "_source": "rd",
+     "aspectRatio": 1.78,
+     "audioChannels": 2,
+     "audioCodec": "flac",
+     "audioProfile": null,
+     "bitrate": 2317,
+     "container": "mkv",
+     "duration": 1566232,
+     "hasVoiceActivity": false,
+     "height": 576,
+     "id": 16923000,
+     "videoCodec": "h264",
+     "videoFrameRate": "24p",
+     "videoProfile": "high",
+     "videoResolution": "576",
+     "width": 1024
+    }
+   ],
+   "Rating": [
+    {
+     "image": "themoviedb://image.rating",
+     "type": "audience",
+     "value": 8.2
+    }
+   ],
+   "Role": [
+    {
+     "filter": "actor=9318",
+     "id": 9318,
+     "role": "Rito Yuki (voice)",
+     "tag": "Akeno Watanabe",
+     "tagKey": "cee71ac5c86ed9a9124f01f4",
+     "thumb": "https://image.tmdb.org/t/p/w185/4E05IJxvTGNHb2GSaiyxbCZ5nd8.jpg"
+    },
+    {
+     "filter": "actor=453070",
+     "id": 453070,
+     "role": "Lala Satalin Deviluke (voice)",
+     "tag": "Haruka Tomatsu",
+     "tagKey": "e78c5306f06d21a939a0bdf1",
+     "thumb": "https://image.tmdb.org/t/p/w185/geVvuA2zMGE5xzfc20aDelJSelu.jpg"
+    },
+    {
+     "filter": "actor=563061",
+     "id": 563061,
+     "role": "Haruna Sairenji (voice)",
+     "tag": "Sayuri Yahagi",
+     "tagKey": "9bc383a42c35cf998ddd8aba",
+     "thumb": "https://image.tmdb.org/t/p/w185/sM2yxc7ph78w5lYpCek0TW6v5NV.jpg"
+    },
+    {
+     "filter": "actor=582677",
+     "id": 582677,
+     "role": "Golden Darkness (voice)",
+     "tag": "Misato Fukuen",
+     "tagKey": "dcb6e3b3a12f868985e0af4d",
+     "thumb": "https://image.tmdb.org/t/p/w185/wM5ei7qFIvm07dEBDv6HVRU5bDF.jpg"
+    },
+    {
+     "filter": "actor=468643",
+     "id": 468643,
+     "role": "Nana Astar Deviluke (voice)",
+     "tag": "Kanae Itou",
+     "tagKey": "17b728b2c9e42f3f5739cb6a",
+     "thumb": "https://image.tmdb.org/t/p/w185/te4l0fzbfhtKWqNHPYdGZBXMmxt.jpg"
+    },
+    {
+     "filter": "actor=491254",
+     "id": 491254,
+     "role": "Momo Belia Deviluke (voice)",
+     "tag": "Aki Toyosaki",
+     "tagKey": "8ae9eaf16d70408803989149",
+     "thumb": "https://image.tmdb.org/t/p/w185/crZpbb0ILJnH7mIYZV2l4uqQx1J.jpg"
+    }
+   ],
+   "UltraBlurColors": {
+    "bottomLeft": "1f1f26",
+    "bottomRight": "15151a",
+    "topLeft": "1a1a1e",
+    "topRight": "24242a"
+   },
+   "Writer": [
+    {
+     "filter": "writer=190550",
+     "id": 190550,
+     "tag": "Atsushi Otsuki",
+     "tagKey": "091d3c12781c03094d116d83"
+    },
+    {
+     "filter": "writer=399032",
+     "id": 399032,
+     "tag": "Saki Hasemi",
+     "tagKey": "15a72a75576cb713633822ff"
+    },
+    {
+     "filter": "writer=246867",
+     "id": 246867,
+     "tag": "Kentaro Yabuki",
+     "tagKey": "c31d476d08aea1ab0537e22c"
+    }
+   ],
+   "_artFor": "https://image.tmdb.org/t/p/w1280/61vXR9xfgNqidYkBruRXhRTlVzI.jpg",
+   "_art_url": "https://image.tmdb.org/t/p/w1280/61vXR9xfgNqidYkBruRXhRTlVzI.jpg",
+   "_folder": "[Holomux] To LOVE-Ru [DVD x264 576p FLAC 2.0 Dual]",
+   "_hash": "b7115397a198554c17fd40caa2664fd981ff14fa",
+   "_identify": {
+    "confidence": "exact",
+    "disputed": null,
+    "imdb": null,
+    "plex": "plex://show/5d9c08356c3e37001ecd5676",
+    "source": "name id",
+    "tmdb": 34742
+   },
+   "_identity": "tmdb:34742",
+   "_ids": {
+    "imdb": "tt1216222"
+   },
+   "_own_content_rating": true,
+   "_path": "anime/[Holomux] To LOVE-Ru/[Holomux] To LOVE-Ru 02 [DVD x264 576p FLAC 2.0 Dual][F5C182DB].mkv",
+   "_poster_url": "https://image.tmdb.org/t/p/w1280/2NpgYfOWphV33abqIDSk6LJrqyp.jpg",
+   "_release": "[Holomux] To LOVE-Ru",
+   "_scanned": true,
+   "_sid": "anime/[Holomux] To LOVE-Ru/[Holomux] To LOVE-Ru 02 [DVD x264 576p FLAC 2.0 Dual][F5C182DB].mkv",
+   "_source": "rd",
+   "_thumbFor": "https://image.tmdb.org/t/p/w1280/2NpgYfOWphV33abqIDSk6LJrqyp.jpg",
+   "addedAt": 1792028923,
+   "art": "/library/metadata/111924/art/1791897222",
+   "audienceRating": 8.2,
+   "audienceRatingImage": "themoviedb://image.rating",
+   "contentRating": "TV-MA",
+   "duration": 1458124,
+   "grandparentArt": "/library/metadata/111924/art/1791897222",
+   "grandparentGuid": "plex://show/5d9c08356c3e37001ecd5676",
+   "grandparentKey": "/library/metadata/111924",
+   "grandparentRatingKey": "111924",
+   "grandparentSlug": "to-love-ru",
+   "grandparentThumb": "/library/metadata/111924/thumb/1791897222",
+   "grandparentTitle": "To Love Ru",
+   "guid": "plex://episode/5d9c0fcce9d5a1001f4f581a",
+   "index": 2,
+   "key": "/library/metadata/159015",
+   "librarySectionID": 2,
+   "librarySectionKey": "/library/sections/2",
+   "librarySectionTitle": "TV Shows",
+   "originallyAvailableAt": "2008-04-11",
+   "parentGuid": "plex://season/5d9c09950aaccd001f8f5d94",
+   "parentIndex": 1,
+   "parentKey": "/library/metadata/159040",
+   "parentRatingKey": "159040",
+   "parentThumb": "/library/metadata/159040/thumb/1792028924",
+   "parentTitle": "Season 1",
+   "ratingKey": "159015",
+   "summary": "Rito finds that he's engaged to Lala and has three days to save the planet from her alien father, King Deviluke. To make matters worse, his longtime crush is mad at him.",
+   "thumb": "/library/metadata/159015/thumb/1792028924",
+   "title": "A Broken Engagement?!",
+   "titleSort": "Broken Engagement?!",
+   "type": "episode",
+   "updatedAt": 1792028923,
+   "year": 2008
+  },
+  {
+   "Guid": [
+    {
+     "id": "tmdb://791274"
+    },
+    {
+     "id": "tvdb://362956"
+    }
+   ],
+   "Media": [
+    {
+     "Part": [
+      {
+       "Stream": [
+        {
+         "bitDepth": 8,
+         "chromaLocation": null,
+         "chromaSubsampling": "4:2:0",
+         "codec": "h264",
+         "codecID": null,
+         "codedHeight": null,
+         "codedWidth": null,
+         "colorPrimaries": null,
+         "colorRange": "tv",
+         "colorSpace": "bt470bg",
+         "colorTrc": null,
+         "default": true,
+         "displayTitle": "480p",
+         "extendedDisplayTitle": "03. Love Triangle (480p H.264)",
+         "frameRate": 23.976,
+         "height": 576,
+         "id": 159016001,
+         "index": 0,
+         "level": 41,
+         "profile": "high",
+         "refFrames": null,
+         "scanType": "progressive",
+         "streamIdentifier": null,
+         "streamType": 1,
+         "title": "03. Love Triangle",
+         "width": 1024
+        },
+        {
+         "audioChannelLayout": "stereo",
+         "bitDepth": 24,
+         "channels": 2,
+         "codec": "flac",
+         "default": true,
+         "displayTitle": "English (FLAC Stereo)",
+         "extendedDisplayTitle": "FLAC 2.0 (English)",
+         "id": 159016002,
+         "index": 1,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "samplingRate": 48000,
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 2,
+         "title": "FLAC 2.0"
+        },
+        {
+         "audioChannelLayout": "stereo",
+         "bitDepth": 16,
+         "channels": 2,
+         "codec": "flac",
+         "displayTitle": "日本語 (FLAC Stereo)",
+         "extendedDisplayTitle": "FLAC 2.0 (日本語)",
+         "id": 159016003,
+         "index": 2,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "samplingRate": 48000,
+         "streamIdentifier": null,
+         "streamType": 2,
+         "title": "FLAC 2.0"
+        },
+        {
+         "canAutoSync": false,
+         "codec": "ass",
+         "default": true,
+         "displayTitle": "English",
+         "extendedDisplayTitle": "Final 8 Signs / Songs (English ASS)",
+         "id": 159016004,
+         "index": 3,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "streamIdentifier": null,
+         "streamType": 3,
+         "title": "Final 8 Signs / Songs"
+        },
+        {
+         "canAutoSync": false,
+         "codec": "ass",
+         "displayTitle": "日本語",
+         "extendedDisplayTitle": "Final 8 Full Subs (日本語 ASS)",
+         "id": 159016005,
+         "index": 4,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "streamIdentifier": null,
+         "streamType": 3,
+         "title": "Final 8 Full Subs"
+        },
+        {
+         "canAutoSync": false,
+         "codec": "ass",
+         "displayTitle": "English",
+         "extendedDisplayTitle": "English Subs (Chihiro) (ASS)",
+         "id": 159016006,
+         "index": 5,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 3,
+         "title": "English Subs (Chihiro)"
+        },
+        {
+         "canAutoSync": false,
+         "codec": "ass",
+         "displayTitle": "English",
+         "extendedDisplayTitle": "[polished] (Chihiro) (English ASS)",
+         "id": 159016007,
+         "index": 6,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "streamIdentifier": null,
+         "streamType": 3,
+         "title": "[polished] (Chihiro)"
+        },
+        {
+         "canAutoSync": false,
+         "codec": "srt",
+         "displayTitle": "English",
+         "extendedDisplayTitle": "[Exiled-Destiny] (English SRT)",
+         "id": 159016008,
+         "index": 7,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "streamIdentifier": null,
+         "streamType": 3,
+         "title": "[Exiled-Destiny]"
+        },
+        {
+         "canAutoSync": false,
+         "codec": "vobsub",
+         "displayTitle": "English",
+         "extendedDisplayTitle": "[DVD] (English VOBSUB)",
+         "id": 159016009,
+         "index": 8,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "streamIdentifier": null,
+         "streamType": 3,
+         "title": "[DVD]"
+        }
+       ],
+       "audioProfile": null,
+       "container": "mkv",
+       "duration": 1450720,
+       "file": "/mnt/zurg/anime/[Holomux] To LOVE-Ru/[Holomux] To LOVE-Ru 03 [DVD x264 576p FLAC 2.0 Dual][0177B436].mkv",
+       "id": 1590160,
+       "key": "/library/parts/1590160/1792028923/file.mkv",
+       "size": 921875174,
+       "videoProfile": "high"
+      }
+     ],
+     "_folder": "[Holomux] To LOVE-Ru [DVD x264 576p FLAC 2.0 Dual]",
+     "_ids": {
+      "imdb": "tt1216222",
+      "tmdb": "34742"
+     },
+     "_path": "anime/[Holomux] To LOVE-Ru/[Holomux] To LOVE-Ru 03 [DVD x264 576p FLAC 2.0 Dual][0177B436].mkv",
+     "_placed": {
+      "episode": 3,
+      "kind": "episode",
+      "season": 1
+     },
+     "_release": "[Holomux] To LOVE-Ru",
+     "_sid": "anime/[Holomux] To LOVE-Ru/[Holomux] To LOVE-Ru 03 [DVD x264 576p FLAC 2.0 Dual][0177B436].mkv",
+     "_source": "rd",
+     "aspectRatio": 1.78,
+     "audioChannels": 2,
+     "audioCodec": "flac",
+     "audioProfile": null,
+     "bitrate": 5084,
+     "container": "mkv",
+     "duration": 1450720,
+     "hasVoiceActivity": false,
+     "height": 576,
+     "id": 15901600,
+     "videoCodec": "h264",
+     "videoFrameRate": "24p",
+     "videoProfile": "high",
+     "videoResolution": "576",
+     "width": 1024
+    },
+    {
+     "Part": [
+      {
+       "Stream": [
+        {
+         "bitDepth": 8,
+         "chromaLocation": null,
+         "chromaSubsampling": "4:2:0",
+         "codec": "h264",
+         "codecID": null,
+         "codedHeight": null,
+         "codedWidth": null,
+         "colorPrimaries": null,
+         "colorRange": null,
+         "colorSpace": null,
+         "colorTrc": null,
+         "default": true,
+         "displayTitle": "480p",
+         "extendedDisplayTitle": "480p (H.264)",
+         "frameRate": 23.976,
+         "height": 576,
+         "id": 169231001,
+         "index": 0,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "level": 50,
+         "profile": "high",
+         "refFrames": null,
+         "scanType": "progressive",
+         "streamIdentifier": null,
+         "streamType": 1,
+         "width": 1024
+        },
+        {
+         "audioChannelLayout": "stereo",
+         "bitDepth": 16,
+         "channels": 2,
+         "codec": "flac",
+         "default": true,
+         "displayTitle": "日本語 (FLAC Stereo)",
+         "extendedDisplayTitle": "日本語 (FLAC Stereo)",
+         "id": 169231002,
+         "index": 1,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "samplingRate": 48000,
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 2
+        },
+        {
+         "canAutoSync": false,
+         "codec": "ass",
+         "default": true,
+         "displayTitle": "English",
+         "extendedDisplayTitle": "[Doutei] (English ASS)",
+         "id": 169231003,
+         "index": 2,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 3,
+         "title": "[Doutei]"
+        },
+        {
+         "canAutoSync": false,
+         "codec": "ass",
+         "displayTitle": "English",
+         "extendedDisplayTitle": "[Doki] (English ASS)",
+         "id": 169231004,
+         "index": 3,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "streamIdentifier": null,
+         "streamType": 3,
+         "title": "[Doki]"
+        }
+       ],
+       "audioProfile": null,
+       "container": "mkv",
+       "duration": 1418085,
+       "file": "/mnt/zurg/music/[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/[KH] To Love-Ru Darkness - OVA - 03 - Exchange - It feels.mkv",
+       "id": 1692310,
+       "key": "/library/parts/1692310/1792210737/file.mkv",
+       "size": 425089263,
+       "videoProfile": "high"
+      }
+     ],
+     "_folder": "OVAs",
+     "_ids": {
+      "imdb": "tt1216222",
+      "tmdb": "34742"
+     },
+     "_path": "music/[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/[KH] To Love-Ru Darkness - OVA - 03 - Exchange - It feels.mkv",
+     "_placed": {
+      "kind": "episode"
+     },
+     "_release": "[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]",
+     "_sid": "music/[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/[KH] To Love-Ru Darkness - OVA - 03 - Exchange - It feels.mkv",
+     "_source": "rd",
+     "aspectRatio": 1.78,
+     "audioChannels": 2,
+     "audioCodec": "flac",
+     "audioProfile": null,
+     "bitrate": 2398,
+     "container": "mkv",
+     "duration": 1418085,
+     "hasVoiceActivity": false,
+     "height": 576,
+     "id": 16923100,
+     "videoCodec": "h264",
+     "videoFrameRate": "24p",
+     "videoProfile": "high",
+     "videoResolution": "576",
+     "width": 1024
+    }
+   ],
+   "Rating": [
+    {
+     "image": "themoviedb://image.rating",
+     "type": "audience",
+     "value": 8.2
+    }
+   ],
+   "Role": [
+    {
+     "filter": "actor=9318",
+     "id": 9318,
+     "role": "Rito Yuki (voice)",
+     "tag": "Akeno Watanabe",
+     "tagKey": "cee71ac5c86ed9a9124f01f4",
+     "thumb": "https://image.tmdb.org/t/p/w185/4E05IJxvTGNHb2GSaiyxbCZ5nd8.jpg"
+    },
+    {
+     "filter": "actor=453070",
+     "id": 453070,
+     "role": "Lala Satalin Deviluke (voice)",
+     "tag": "Haruka Tomatsu",
+     "tagKey": "e78c5306f06d21a939a0bdf1",
+     "thumb": "https://image.tmdb.org/t/p/w185/geVvuA2zMGE5xzfc20aDelJSelu.jpg"
+    },
+    {
+     "filter": "actor=563061",
+     "id": 563061,
+     "role": "Haruna Sairenji (voice)",
+     "tag": "Sayuri Yahagi",
+     "tagKey": "9bc383a42c35cf998ddd8aba",
+     "thumb": "https://image.tmdb.org/t/p/w185/sM2yxc7ph78w5lYpCek0TW6v5NV.jpg"
+    },
+    {
+     "filter": "actor=582677",
+     "id": 582677,
+     "role": "Golden Darkness (voice)",
+     "tag": "Misato Fukuen",
+     "tagKey": "dcb6e3b3a12f868985e0af4d",
+     "thumb": "https://image.tmdb.org/t/p/w185/wM5ei7qFIvm07dEBDv6HVRU5bDF.jpg"
+    },
+    {
+     "filter": "actor=468643",
+     "id": 468643,
+     "role": "Nana Astar Deviluke (voice)",
+     "tag": "Kanae Itou",
+     "tagKey": "17b728b2c9e42f3f5739cb6a",
+     "thumb": "https://image.tmdb.org/t/p/w185/te4l0fzbfhtKWqNHPYdGZBXMmxt.jpg"
+    },
+    {
+     "filter": "actor=491254",
+     "id": 491254,
+     "role": "Momo Belia Deviluke (voice)",
+     "tag": "Aki Toyosaki",
+     "tagKey": "8ae9eaf16d70408803989149",
+     "thumb": "https://image.tmdb.org/t/p/w185/crZpbb0ILJnH7mIYZV2l4uqQx1J.jpg"
+    }
+   ],
+   "UltraBlurColors": {
+    "bottomLeft": "1f1f26",
+    "bottomRight": "15151a",
+    "topLeft": "1a1a1e",
+    "topRight": "24242a"
+   },
+   "Writer": [
+    {
+     "filter": "writer=190550",
+     "id": 190550,
+     "tag": "Atsushi Otsuki",
+     "tagKey": "091d3c12781c03094d116d83"
+    },
+    {
+     "filter": "writer=399032",
+     "id": 399032,
+     "tag": "Saki Hasemi",
+     "tagKey": "15a72a75576cb713633822ff"
+    },
+    {
+     "filter": "writer=246867",
+     "id": 246867,
+     "tag": "Kentaro Yabuki",
+     "tagKey": "c31d476d08aea1ab0537e22c"
+    }
+   ],
+   "_artFor": "https://image.tmdb.org/t/p/w1280/61vXR9xfgNqidYkBruRXhRTlVzI.jpg",
+   "_art_url": "https://image.tmdb.org/t/p/w1280/61vXR9xfgNqidYkBruRXhRTlVzI.jpg",
+   "_folder": "[Holomux] To LOVE-Ru [DVD x264 576p FLAC 2.0 Dual]",
+   "_hash": "b7115397a198554c17fd40caa2664fd981ff14fa",
+   "_identify": {
+    "confidence": "exact",
+    "disputed": null,
+    "imdb": null,
+    "plex": "plex://show/5d9c08356c3e37001ecd5676",
+    "source": "name id",
+    "tmdb": 34742
+   },
+   "_identity": "tmdb:34742",
+   "_ids": {
+    "imdb": "tt1216222",
+    "tmdb": "34742"
+   },
+   "_own_content_rating": true,
+   "_path": "anime/[Holomux] To LOVE-Ru/[Holomux] To LOVE-Ru 03 [DVD x264 576p FLAC 2.0 Dual][0177B436].mkv",
+   "_placed": {
+    "episode": 3,
+    "kind": "episode",
+    "season": 1
+   },
+   "_poster_url": "https://image.tmdb.org/t/p/w1280/ga6GrOhGJO2eX1mvB6UWikSHQzm.jpg",
+   "_release": "[Holomux] To LOVE-Ru",
+   "_scanned": true,
+   "_sid": "anime/[Holomux] To LOVE-Ru/[Holomux] To LOVE-Ru 03 [DVD x264 576p FLAC 2.0 Dual][0177B436].mkv",
+   "_source": "rd",
+   "_thumbFor": "https://image.tmdb.org/t/p/w1280/ga6GrOhGJO2eX1mvB6UWikSHQzm.jpg",
+   "addedAt": 1792028923,
+   "art": "/library/metadata/111924/art/1791897222",
+   "audienceRating": 8.2,
+   "audienceRatingImage": "themoviedb://image.rating",
+   "contentRating": "TV-MA",
+   "duration": 1450720,
+   "grandparentArt": "/library/metadata/111924/art/1791897222",
+   "grandparentGuid": "plex://show/5d9c08356c3e37001ecd5676",
+   "grandparentKey": "/library/metadata/111924",
+   "grandparentRatingKey": "111924",
+   "grandparentSlug": "to-love-ru",
+   "grandparentThumb": "/library/metadata/111924/thumb/1791897222",
+   "grandparentTitle": "To Love Ru",
+   "guid": "plex://episode/5d9c0fcb4eefaa001f625988",
+   "index": 3,
+   "key": "/library/metadata/159016",
+   "librarySectionID": 2,
+   "librarySectionKey": "/library/sections/2",
+   "librarySectionTitle": "TV Shows",
+   "originallyAvailableAt": "2008-04-18",
+   "parentGuid": "plex://season/5d9c09950aaccd001f8f5d94",
+   "parentIndex": 1,
+   "parentKey": "/library/metadata/159040",
+   "parentRatingKey": "159040",
+   "parentThumb": "/library/metadata/159040/thumb/1792028924",
+   "parentTitle": "Season 1",
+   "ratingKey": "159016",
+   "summary": "Lala is the new transfer student at Rito's school and even though he implores her to keep a low profile, her antics are making her rather popular.",
+   "thumb": "/library/metadata/159016/thumb/1792028924",
+   "title": "Love Triangle",
+   "type": "episode",
+   "updatedAt": 1792028923,
+   "year": 2008
+  }
+ ],
+ "source": "the production rex's rows on 2026-10-17 (fun's rex.db, read 06:05 UTC) built from a disc's extras, and zurg's pushes of the same release: `[KH] Motto To Love-Ru` (RD, zurg's `audiobooks`), whose `Extras/Menu/Menu - 02..06` and `Extras/NC/NCED - 01` were show 169239's five episodes; To Love Ru's S1E1-E3 (159014-159016), which held `NC/NCED - 01`, `Extras/CM/BD & DVD CM - 01`, `CM - 01` and `OVAs/… - OVA - 01..03 - …` of the [KH] Darkness discs as versions beside each episode's Holomux file. Pushes: zurg's held records for `Menu - 01`, `NCOP` and episode 01 (rex.db feedHeld), with the folder and kind DMM's placement gave them (the .zurgtorrent's `path`, Kind tv).",
+ "tmdb": {
+  "https://api.themoviedb.org/3/find/tt1743493?external_source=imdb_id&api_key=KEY": {
+   "_rexCachedAt": 1792220221,
+   "movie_results": [],
+   "person_results": [],
+   "tv_episode_results": [],
+   "tv_results": [],
+   "tv_season_results": []
+  },
+  "https://api.themoviedb.org/3/tv/34742?append_to_response=credits%2Cexternal_ids%2Ccontent_ratings%2Crelease_dates&api_key=KEY": {
+   "adult": false,
+   "backdrop_path": "/61vXR9xfgNqidYkBruRXhRTlVzI.jpg",
+   "content_ratings": {
+    "results": [
+     {
+      "descriptors": [],
+      "iso_3166_1": "DE",
+      "rating": "16"
+     },
+     {
+      "descriptors": [],
+      "iso_3166_1": "US",
+      "rating": "TV-MA"
+     },
+     {
+      "descriptors": [],
+      "iso_3166_1": "AU",
+      "rating": "MA15+"
+     },
+     {
+      "descriptors": [],
+      "iso_3166_1": "KR",
+      "rating": "19"
+     },
+     {
+      "descriptors": [],
+      "iso_3166_1": "RU",
+      "rating": "18+"
+     }
+    ]
+   },
+   "created_by": [],
+   "credits": {
+    "cast": [
+     {
+      "adult": false,
+      "character": "Rito Yuki (voice)",
+      "credit_id": "5258da80760ee3466173989e",
+      "gender": 1,
+      "id": 587350,
+      "known_for_department": "Acting",
+      "name": "Akeno Watanabe",
+      "order": 0,
+      "original_name": "渡辺明乃",
+      "popularity": 2.0436,
+      "profile_path": "/4E05IJxvTGNHb2GSaiyxbCZ5nd8.jpg"
+     },
+     {
+      "adult": false,
+      "character": "Lala Satalin Deviluke (voice)",
+      "credit_id": "5258da80760ee34661739948",
+      "gender": 1,
+      "id": 1248340,
+      "known_for_department": "Acting",
+      "name": "Haruka Tomatsu",
+      "order": 1,
+      "original_name": "戸松遥",
+      "popularity": 2.7662,
+      "profile_path": "/geVvuA2zMGE5xzfc20aDelJSelu.jpg"
+     },
+     {
+      "adult": false,
+      "character": "Haruna Sairenji (voice)",
+      "credit_id": "5258da80760ee346617398e2",
+      "gender": 1,
+      "id": 1182769,
+      "known_for_department": "Acting",
+      "name": "Sayuri Yahagi",
+      "order": 3,
+      "original_name": "矢作紗友里",
+      "popularity": 1.9175,
+      "profile_path": "/sM2yxc7ph78w5lYpCek0TW6v5NV.jpg"
+     },
+     {
+      "adult": false,
+      "character": "Golden Darkness (voice)",
+      "credit_id": "5258da80760ee3466173987c",
+      "gender": 1,
+      "id": 219575,
+      "known_for_department": "Acting",
+      "name": "Misato Fukuen",
+      "order": 4,
+      "original_name": "福圓美里",
+      "popularity": 1.6985,
+      "profile_path": "/wM5ei7qFIvm07dEBDv6HVRU5bDF.jpg"
+     },
+     {
+      "adult": false,
+      "character": "Nana Astar Deviluke (voice)",
+      "credit_id": "5569240a92514174a800052a",
+      "gender": 1,
+      "id": 1245089,
+      "known_for_department": "Acting",
+      "name": "Kanae Itou",
+      "order": 13,
+      "original_name": "伊藤かな恵",
+      "popularity": 1.5325,
+      "profile_path": "/te4l0fzbfhtKWqNHPYdGZBXMmxt.jpg"
+     },
+     {
+      "adult": false,
+      "character": "Momo Belia Deviluke (voice)",
+      "credit_id": "55692430c3a368762c000558",
+      "gender": 1,
+      "id": 235262,
+      "known_for_department": "Acting",
+      "name": "Aki Toyosaki",
+      "order": 14,
+      "original_name": "豊崎愛生",
+      "popularity": 2.0187,
+      "profile_path": "/crZpbb0ILJnH7mIYZV2l4uqQx1J.jpg"
+     },
+     {
+      "adult": false,
+      "character": "Yui Kotegawa (voice)",
+      "credit_id": "5569245bc3a368762c00055e",
+      "gender": 1,
+      "id": 203473,
+      "known_for_department": "Acting",
+      "name": "Kaori Nazuka",
+      "order": 15,
+      "original_name": "名塚佳織",
+      "popularity": 2.7909,
+      "profile_path": "/cIMS99s6jpgGBbMnih8gx9hLPFi.jpg"
+     },
+     {
+      "adult": false,
+      "character": "Saki Tenjōin (voice)",
+      "credit_id": "556926329251416b040008ce",
+      "gender": 1,
+      "id": 151183,
+      "known_for_department": "Acting",
+      "name": "Ayako Kawasumi",
+      "order": 18,
+      "original_name": "川澄綾子",
+      "popularity": 2.485,
+      "profile_path": "/vb4cgQUlZdaZT3P4RI27x2PGwpH.jpg"
+     },
+     {
+      "adult": false,
+      "character": "Celine (voice)",
+      "credit_id": "556925f9c3a368548900083e",
+      "gender": 1,
+      "id": 114906,
+      "known_for_department": "Acting",
+      "name": "Ryoka Yuzuki",
+      "order": 19,
+      "original_name": "柚木涼香",
+      "popularity": 2.5526,
+      "profile_path": "/kRiagleTO13MWYXl77xGDBDerxM.jpg"
+     }
+    ],
+    "crew": [
+     {
+      "adult": false,
+      "credit_id": "6465119b9f37b000e2aa3a39",
+      "department": "Art",
+      "gender": 2,
+      "id": 3071167,
+      "job": "Prop Designer",
+      "known_for_department": "Art",
+      "name": "Yoshitomo Hara",
+      "original_name": "原由知",
+      "popularity": 0.6041,
+      "profile_path": null
+     },
+     {
+      "adult": false,
+      "credit_id": "694aecd229dcd3763f7acb8c",
+      "department": "Art",
+      "gender": 2,
+      "id": 2674826,
+      "job": "Art Direction",
+      "known_for_department": "Art",
+      "name": "Masanori Yamaguchi",
+      "original_name": "山口雅範",
+      "popularity": 0.4081,
+      "profile_path": null
+     },
+     {
+      "adult": false,
+      "credit_id": "601ff82a0e597b003ca2251d",
+      "department": "Writing",
+      "gender": 2,
+      "id": 1746759,
+      "job": "Series Composition",
+      "known_for_department": "Directing",
+      "name": "Atsushi Otsuki",
+      "original_name": "大槻敦史",
+      "popularity": 0.9349,
+      "profile_path": null
+     },
+     {
+      "adult": false,
+      "credit_id": "67bc50eca4bf1c1928beff04",
+      "department": "Production",
+      "gender": 0,
+      "id": 1348282,
+      "job": "Producer",
+      "known_for_department": "Production",
+      "name": "Kentaro Hattori",
+      "original_name": "服部健太郎",
+      "popularity": 0.513,
+      "profile_path": null
+     },
+     {
+      "adult": false,
+      "credit_id": "5a15ce0ac3a36803090002cd",
+      "department": "Editing",
+      "gender": 2,
+      "id": 240290,
+      "job": "Editor",
+      "known_for_department": "Editing",
+      "name": "Naoki Watanabe",
+      "original_name": "渡辺直樹",
+      "popularity": 0.4264,
+      "profile_path": null
+     },
+     {
+      "adult": false,
+      "credit_id": "5a2c2275c3a3680b9613c123",
+      "department": "Production",
+      "gender": 2,
+      "id": 1937906,
+      "job": "Producer",
+      "known_for_department": "Production",
+      "name": "Shinya Shinozaki",
+      "original_name": "篠崎真哉",
+      "popularity": 0.6838,
+      "profile_path": null
+     },
+     {
+      "adult": false,
+      "credit_id": "601ff8195ed962003f1a5cb5",
+      "department": "Directing",
+      "gender": 2,
+      "id": 1746759,
+      "job": "Series Director",
+      "known_for_department": "Directing",
+      "name": "Atsushi Otsuki",
+      "original_name": "大槻敦史",
+      "popularity": 0.9349,
+      "profile_path": null
+     },
+     {
+      "adult": false,
+      "credit_id": "694b53c8bba2840a8a812f72",
+      "department": "Sound",
+      "gender": 2,
+      "id": 570486,
+      "job": "Sound Director",
+      "known_for_department": "Sound",
+      "name": "Jin Aketagawa",
+      "original_name": "明田川仁",
+      "popularity": 0.9593,
+      "profile_path": null
+     },
+     {
+      "adult": false,
+      "credit_id": "694aee1bfda98db1afb1d6b6",
+      "department": "Art",
+      "gender": 1,
+      "id": 934715,
+      "job": "Art Designer",
+      "known_for_department": "Art",
+      "name": "Junko Nagasawa",
+      "original_name": "長澤順子",
+      "popularity": 0.6292,
+      "profile_path": null
+     },
+     {
+      "adult": false,
+      "credit_id": "694aedc2bf7d0585638ced94",
+      "department": "Visual Effects",
+      "gender": 1,
+      "id": 3969771,
+      "job": "Color Designer",
+      "known_for_department": "Visual Effects",
+      "name": "Tamae Matsuoka",
+      "original_name": "松岡珠江",
+      "popularity": 0.4889,
+      "profile_path": null
+     },
+     {
+      "adult": false,
+      "credit_id": "67ca029281fbb12539cb4044",
+      "department": "Production",
+      "gender": 2,
+      "id": 2913367,
+      "job": "Producer",
+      "known_for_department": "Production",
+      "name": "Gou Tanaka",
+      "original_name": "田中豪",
+      "popularity": 0.5488,
+      "profile_path": null
+     },
+     {
+      "adult": false,
+      "credit_id": "67bc5afa55e3994bbd46b4eb",
+      "department": "Production",
+      "gender": 2,
+      "id": 3442537,
+      "job": "Producer",
+      "known_for_department": "Production",
+      "name": "Takatoshi Chino",
+      "original_name": "千野孝敏",
+      "popularity": 0.4386,
+      "profile_path": null
+     },
+     {
+      "adult": false,
+      "credit_id": "694b543e1b3349feaf8cf113",
+      "department": "Sound",
+      "gender": 2,
+      "id": 2435233,
+      "job": "Original Music Composer",
+      "known_for_department": "Sound",
+      "name": "Takeshi Watanabe",
+      "original_name": "渡辺剛",
+      "popularity": 0.56,
+      "profile_path": "/kLwqFAZesHEVjIhgEREbNRKW5By.jpg"
+     },
+     {
+      "adult": false,
+      "credit_id": "67540a2516ec46a77f3ca1e8",
+      "department": "Visual Effects",
+      "gender": 2,
+      "id": 1253059,
+      "job": "Character Designer",
+      "known_for_department": "Writing",
+      "name": "Kentaro Yabuki",
+      "original_name": "矢吹健太朗",
+      "popularity": 0.4773,
+      "profile_path": null
+     },
+     {
+      "adult": false,
+      "credit_id": "67540a1a16ec46a77f3ca1dc",
+      "department": "Art",
+      "gender": 2,
+      "id": 1253059,
+      "job": "Original Series Design",
+      "known_for_department": "Writing",
+      "name": "Kentaro Yabuki",
+      "original_name": "矢吹健太朗",
+      "popularity": 0.4773,
+      "profile_path": null
+     },
+     {
+      "adult": false,
+      "credit_id": "65e7da433fe160017b5c8bc1",
+      "department": "Writing",
+      "gender": 2,
+      "id": 1253058,
+      "job": "Comic Book",
+      "known_for_department": "Writing",
+      "name": "Saki Hasemi",
+      "original_name": "長谷見沙貴",
+      "popularity": 0.3648,
+      "profile_path": null
+     },
+     {
+      "adult": false,
+      "credit_id": "65e7d97ceb093201871ba283",
+      "department": "Writing",
+      "gender": 2,
+      "id": 1253059,
+      "job": "Comic Book",
+      "known_for_department": "Writing",
+      "name": "Kentaro Yabuki",
+      "original_name": "矢吹健太朗",
+      "popularity": 0.4773,
+      "profile_path": null
+     }
+    ]
+   },
+   "episode_run_time": [
+    24
+   ],
+   "external_ids": {
+    "facebook_id": null,
+    "freebase_id": "/en/to_love_ru",
+    "freebase_mid": "",
+    "imdb_id": "tt1216222",
+    "instagram_id": null,
+    "tvdb_id": 81831,
+    "tvrage_id": 18569,
+    "twitter_id": "toloveru_com",
+    "wikidata_id": "Q107353930"
+   },
+   "first_air_date": "2008-04-04",
+   "genres": [
+    {
+     "id": 16,
+     "name": "Animation"
+    },
+    {
+     "id": 35,
+     "name": "Comedy"
+    },
+    {
+     "id": 10765,
+     "name": "Sci-Fi & Fantasy"
+    }
+   ],
+   "homepage": "http://www.j-toloveru.com/",
+   "id": 34742,
+   "in_production": false,
+   "languages": [
+    "ja"
+   ],
+   "last_air_date": "2015-10-29",
+   "last_episode_to_air": {
+    "air_date": "2015-10-29",
+    "episode_number": 14,
+    "episode_type": "finale",
+    "id": 1113722,
+    "name": "Bright Future ~Thank You~",
+    "overview": "Rito decides to carry out Mea's plan, namely, to voluntarily indulge in lewd acts on Darkness so that she becomes Golden Shade again. Will he manage to carry out this operation?",
+    "production_code": "",
+    "runtime": 24,
+    "season_number": 4,
+    "show_id": 34742,
+    "still_path": "/7LX1V2ZiA2Zah2MiCHLqDr22PFI.jpg",
+    "vote_average": 7.7,
+    "vote_count": 3
+   },
+   "name": "To Love Ru",
+   "networks": [
+    {
+     "id": 160,
+     "logo_path": "/lUACMATs6jcscXIrzNCQzbvNVN5.png",
+     "name": "TBS",
+     "origin_country": "JP"
+    },
+    {
+     "id": 614,
+     "logo_path": "/hSdroyVthq3CynxTIIY7lnS8w1.png",
+     "name": "TOKYO MX",
+     "origin_country": "JP"
+    },
+    {
+     "id": 861,
+     "logo_path": "/JQ5bx6n7Qmdmyqz6sqjo5Fz2iR.png",
+     "name": "BS11",
+     "origin_country": "JP"
+    }
+   ],
+   "next_episode_to_air": null,
+   "number_of_episodes": 64,
+   "number_of_seasons": 4,
+   "origin_country": [
+    "JP"
+   ],
+   "original_language": "ja",
+   "original_name": "To LOVEる -とらぶる-",
+   "overview": "Rito Yuuki is unlucky when it comes to love — no matter how hard he tries to confess to his crush, his efforts end in failure. After another day’s confession goes down the drain, Rito spends his night sulking in his bathtub. But when a naked girl with a pointed tail teleports into the tub with him, it seems like Rito’s luck is finally looking up! His fortune doesn’t last long when he finds himself accidentally engaged to the buxom beauty who is none other than the princess of the planet Deviluke!",
+   "popularity": 36.1113,
+   "poster_path": "/vsWNCisRhrBbUaTR56qCk6pLsEn.jpg",
+   "production_companies": [
+    {
+     "id": 5937,
+     "logo_path": "/yelUQVWP72Nw5DirciMc9dqdk60.png",
+     "name": "XEBEC",
+     "origin_country": "JP"
+    },
+    {
+     "id": 7111,
+     "logo_path": "/vHUCDHu63vjfQjDNHvKqlUWOdwE.png",
+     "name": "Geneon Universal Entertainment",
+     "origin_country": "JP"
+    },
+    {
+     "id": 1393,
+     "logo_path": "/lUACMATs6jcscXIrzNCQzbvNVN5.png",
+     "name": "TBS",
+     "origin_country": "JP"
+    },
+    {
+     "id": 2788,
+     "logo_path": "/16p9VkS5ddLMqb4JNMJ4f9omTKx.png",
+     "name": "Avex Entertainment",
+     "origin_country": "JP"
+    },
+    {
+     "id": 2918,
+     "logo_path": "/gyEWUBWwqrm3H5T2hkERD9LxpOq.png",
+     "name": "Shueisha",
+     "origin_country": "JP"
+    }
+   ],
+   "production_countries": [
+    {
+     "iso_3166_1": "JP",
+     "name": "Japan"
+    }
+   ],
+   "seasons": [
+    {
+     "air_date": "2009-04-03",
+     "episode_count": 17,
+     "id": 45505,
+     "name": "Specials",
+     "overview": "",
+     "poster_path": "/khqYP3TNMaNQzqHwPfzfbkvBJn2.jpg",
+     "season_number": 0,
+     "vote_average": 0.0
+    },
+    {
+     "air_date": "2008-04-04",
+     "episode_count": 26,
+     "id": 45503,
+     "name": "Season 1",
+     "overview": "",
+     "poster_path": "/aADZ1drAtQECYsXfr70HWjpohXy.jpg",
+     "season_number": 1,
+     "vote_average": 6.7
+    },
+    {
+     "air_date": "2010-10-06",
+     "episode_count": 12,
+     "id": 45504,
+     "name": "Motto",
+     "overview": "The interstellar insanity continues! Princess Lala has finally started to admit her true feelings for the young man she’s inexplicably engaged to. Unfortunately, her sometimes erratic technology added with the snags and snarls of intergalactic politics are still causing major problems. Love takes a quantum shift into the wrong gear and the star brakes are broken in the extra-special, extra-crazy extraterrestrial romance to end them all, Motto To Love Ru!",
+     "poster_path": "/cIxnWeIr8K2OjaFuNvo0J0beYR9.jpg",
+     "season_number": 2,
+     "vote_average": 7.3
+    },
+    {
+     "air_date": "2012-10-06",
+     "episode_count": 12,
+     "id": 45506,
+     "name": "Darkness",
+     "overview": "",
+     "poster_path": "/6KzSuaKEZotJDfSbAgAiegu3jto.jpg",
+     "season_number": 3,
+     "vote_average": 7.5
+    },
+    {
+     "air_date": "2015-07-07",
+     "episode_count": 14,
+     "id": 68185,
+     "name": "Darkness 2",
+     "overview": "",
+     "poster_path": "/K9EyYFb1C5h3igbIC5SLbQqkIl.jpg",
+     "season_number": 4,
+     "vote_average": 7.7
+    }
+   ],
+   "softcore": false,
+   "spoken_languages": [
+    {
+     "english_name": "Japanese",
+     "iso_639_1": "ja",
+     "name": "日本語"
+    }
+   ],
+   "status": "Ended",
+   "tagline": "",
+   "type": "Scripted",
+   "vote_average": 8.2,
+   "vote_count": 416
+  }
+ }
+}
