@@ -820,14 +820,20 @@ def server_token_setup():
                       asked and set(asked_with(asked)) == {(SERVER_TOKEN, MACHINE)}, asked_with(asked))
                 again.stop()
 
-        # -- (d) PLEX_TOKEN only, unclaimed: as before -----------------------------------
+        # -- (d) PLEX_TOKEN, unclaimed, --announce-url: the agent, never the announce ----
         stub.clear()
-        legacy = start(fresh(False), announce=None)
+        legacy = start(fresh(False))
         if started("(d) an unclaimed server with PLEX_TOKEN starts", legacy):
             asked = agent_after(0, "Plomb.Treska.2021.1080p.WEB-DL", legacy)
             check("(d) unclaimed, Plex's agent is asked with PLEX_TOKEN, as before",
                   asked and set(asked_with(asked)) == {(ACCOUNT_TOKEN, MACHINE)}, asked_with(asked))
+            check("(d) unclaimed, PLEX_TOKEN is never announced with",
+                  not beats() and not visibility(), asked_with(beats()))
             status = claim(legacy)
+            announced = wait_for(beats, 10) or []
+            check("(d) the claim announces, with the server token only",
+                  status == 200 and announced and {token for token, _ in asked_with(announced)} == {SERVER_TOKEN},
+                  (status, asked_with(beats())))
             asked = agent_after(len(stub.taken(AGENT)), "Gruvn.Hollet.2020.1080p.WEB-DL", legacy)
             check("(d) once claimed, the server token replaces PLEX_TOKEN there too",
                   status == 200 and asked and set(asked_with(asked)) == {(SERVER_TOKEN, MACHINE)},
@@ -858,55 +864,19 @@ def main():
         check("the suite's AES-256 encrypts the public NIST block vector",
               aes_encrypt_block(bytes.fromhex("6bc1bee22e409f96e93d7e117393172a"),
                                 aes256_round_keys(key)).hex() == "f3eed1bdb5d2a03c064b5a7e3db181f8")
-        # -- unclaimed, announcing ----------------------------------------------
+        # -- unclaimed, PLEX_TOKEN and --announce-url: nothing announced --------------
+        # plex.tv applies a device PUT to the device that owns the token: the 2026-09-11
+        # spike's unclaimed announce with zurg's PLEX_TOKEN rewrote the account's "zurg"
+        # device row (findings, "Collateral change to the Plex account"; card #293).
         first = Instance(directory, ports[0], ports[2])
-        announces = wait_for(lambda: len(stub.taken("servers.plex.tv", "/devices/.*", "PUT")) >= 2
-                             and stub.taken("servers.plex.tv", "/devices/.*", "PUT"), 12) or []
-        check("the announce is renewed on --heartbeat-interval", len(announces) >= 2,
-              [r["path"] for r in stub.records])
-        if announces:
-            put = announces[0]
-            check("announce is PUT servers.plex.tv/devices/{machineIdentifier}",
-                  put["path"] == "/devices/%s" % MACHINE and put["body"] == b"", put["path"])
-            check("announce query is the recorded five, in order, with PLEX_TOKEN",
-                  put["query"] == [("Connection[][uri]", ANNOUNCE_URL), ("httpsEnabled", "1"),
-                                   ("httpsRequired", "0"), ("dnsRebindingProtection", "0"),
-                                   ("X-Plex-Token", ACCOUNT_TOKEN)], put["query"])
-            check("announce carries the recorded thirteen headers, in order",
-                  sent(put) == [
-                      ("user-agent", "PlexMediaServer/%s" % VERSION), ("accept", "*/*"),
-                      ("accept-encoding", "gzip"),
-                      ("x-plex-client-identifier", MACHINE), ("x-plex-version", VERSION),
-                      ("x-plex-provides", "server"), ("x-plex-platform", "Linux"),
-                      ("x-plex-product", "Plex Media Server"),
-                      ("x-plex-platform-version", "6.1"), ("x-plex-device-name", FRIENDLY),
-                      ("x-plex-device", "PC"), ("x-plex-model", "x86_64"),
-                      ("x-plex-device-vendor", "rex")], sent(put))
-            # The three PUTs a real 1.43.4 PMS made (plexlab's capture/outbound.jsonl).
-            real = ANNOUNCES[0]
-            check("the recorded announces agree with each other",
-                  all(a["url"] == real["url"] and a["query"] == real["query"]
-                      and a["headers"] == real["headers"] for a in ANNOUNCES), len(ANNOUNCES))
-            check("announce goes to the recorded origin with the recorded query keys and headers",
-                  "https://%s" % put["host"] == real["origin"]
-                  and [k for k, _ in put["query"]] == [k for k, _ in real["query"]]
-                  and [k for k, _ in sent(put)] == names(real["headers"])
-                  and dict(sent(put))["accept"] == dict(real["headers"])["accept"]
-                  and "natLoopbackSupported" not in dict(put["query"]),
-                  (put["host"], put["query"], sent(put)))
-            gap = announces[1]["at"] - announces[0]["at"]
-            check("renewal follows the interval, not a busy loop", 1.0 <= gap <= 6.0, gap)
-        visible = stub.taken("plex.tv", "/api/v2/resources", "GET")
-        check("each announce is verified against /api/v2/resources",
-              visible and visible[0]["query"] == [("includeHttps", "1"), ("includeRelay", "1"),
-                                                 ("includeIPv6", "1")]
-              and sent(visible[0]) == [("x-plex-token", ACCOUNT_TOKEN),
-                                       ("x-plex-client-identifier", MACHINE),
-                                       ("accept", "application/json")],
-              visible and (visible[0]["query"], sent(visible[0])))
-        check("nothing but the announce reaches plex.tv while unclaimed",
-              {(r["host"], r["path"]) for r in stub.records}
-              <= {("servers.plex.tv", "/devices/%s" % MACHINE), ("plex.tv", "/api/v2/resources")},
+        time.sleep(5)  # two heartbeat intervals and more
+        check("unclaimed with PLEX_TOKEN, nothing is announced before the claim",
+              not stub.taken("servers.plex.tv", "/devices/.*", "PUT")
+              and not stub.taken("plex.tv", "/api/v2/resources", "GET"),
+              [(r["host"], r["path"]) for r in stub.records])
+        check("nothing reaches plex.tv's device or server records while unclaimed",
+              not {(r["host"], r["path"]) for r in stub.records}
+              & {("servers.plex.tv", "/devices/%s" % MACHINE), ("plex.tv", "/servers.xml")},
               {(r["host"], r["path"]) for r in stub.records})
 
         before = surfaces(first)
@@ -1015,6 +985,53 @@ def main():
         check("the claim announces at once after it, with the server's own token", puts,
               [(r["at"] - claimed_at, dict(r["query"])["X-Plex-Token"])
                for r in stub.taken("servers.plex.tv", "/devices/.*", "PUT")])
+        # -- claimed: the announce, shaped as a real PMS's ------------------------------
+        announces = wait_for(lambda: len([r for r in stub.taken("servers.plex.tv", "/devices/.*", "PUT")
+                                          if r["at"] > publish["at"] + 1.0]) >= 2
+                             and [r for r in stub.taken("servers.plex.tv", "/devices/.*", "PUT")
+                                  if r["at"] > publish["at"] + 1.0], 12) or [] if publish else []
+        check("the announce is renewed on --heartbeat-interval", len(announces) >= 2,
+              [r["path"] for r in stub.records])
+        if announces:
+            put = announces[0]
+            check("announce is PUT servers.plex.tv/devices/{machineIdentifier}",
+                  put["path"] == "/devices/%s" % MACHINE and put["body"] == b"", put["path"])
+            check("announce query is the recorded five, in order, with the server token",
+                  put["query"] == [("Connection[][uri]", ANNOUNCE_URL), ("httpsEnabled", "1"),
+                                   ("httpsRequired", "0"), ("dnsRebindingProtection", "0"),
+                                   ("X-Plex-Token", SERVER_TOKEN)], put["query"])
+            check("announce carries the recorded thirteen headers, in order",
+                  sent(put) == [
+                      ("user-agent", "PlexMediaServer/%s" % VERSION), ("accept", "*/*"),
+                      ("accept-encoding", "gzip"),
+                      ("x-plex-client-identifier", MACHINE), ("x-plex-version", VERSION),
+                      ("x-plex-provides", "server"), ("x-plex-platform", "Linux"),
+                      ("x-plex-product", "Plex Media Server"),
+                      ("x-plex-platform-version", "6.1"), ("x-plex-device-name", FRIENDLY),
+                      ("x-plex-device", "PC"), ("x-plex-model", "x86_64"),
+                      ("x-plex-device-vendor", "rex")], sent(put))
+            # The three PUTs a real 1.43.4 PMS made (plexlab's capture/outbound.jsonl).
+            real = ANNOUNCES[0]
+            check("the recorded announces agree with each other",
+                  all(a["url"] == real["url"] and a["query"] == real["query"]
+                      and a["headers"] == real["headers"] for a in ANNOUNCES), len(ANNOUNCES))
+            check("announce goes to the recorded origin with the recorded query keys and headers",
+                  "https://%s" % put["host"] == real["origin"]
+                  and [k for k, _ in put["query"]] == [k for k, _ in real["query"]]
+                  and [k for k, _ in sent(put)] == names(real["headers"])
+                  and dict(sent(put))["accept"] == dict(real["headers"])["accept"]
+                  and "natLoopbackSupported" not in dict(put["query"]),
+                  (put["host"], put["query"], sent(put)))
+            gap = announces[1]["at"] - announces[0]["at"]
+            check("renewal follows the interval, not a busy loop", 1.0 <= gap <= 6.0, gap)
+        visible = stub.taken("plex.tv", "/api/v2/resources", "GET")
+        check("each announce is verified against /api/v2/resources",
+              visible and visible[0]["query"] == [("includeHttps", "1"), ("includeRelay", "1"),
+                                                 ("includeIPv6", "1")]
+              and sent(visible[0]) == [("x-plex-token", SERVER_TOKEN),
+                                       ("x-plex-client-identifier", MACHINE),
+                                       ("accept", "application/json")],
+              visible and (visible[0]["query"], sent(visible[0])))
         subscriptions = stub.taken("pubsub.plex.tv", "/sub/eventsource/.*", "GET")
         real = RECORDED["pubsub"]["request"]
         check("then subscribes to pubsub as the recording did",

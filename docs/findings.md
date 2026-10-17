@@ -12274,6 +12274,13 @@ PUT by its numeric id.
 
 **Decision needed:** delete device `<device-id>`, or leave it as rex's row.
 
+**2026-10-17 (card #293):** the likely mechanism is that plex.tv applies the PUT to the device
+that owns the token, not the id in the path: the spike's `PLEX_TOKEN` was zurg's, and a Plex
+Web session signed in with that same token later turned the production server's row into "Plex
+Web 4.162.1 / Chrome" too (inferred, not measured on a throwaway account). rex now announces
+with the claim's server token only; an unclaimed server announces nothing, `PLEX_TOKEN` or not
+(`claim_token` in `runtime/plextv.rs`).
+
 ## Not yet done
 
 - **A GUI client.** Nothing is blocking it now — rex is live at

@@ -22,19 +22,14 @@
 # On --port 32400 rex answers Plex's LAN discovery (GDM) on udp/32410 and udp/32414; on a
 # host that runs Plex too, use another port and --gdm off.
 #
-# --announce-url: an unclaimed server announces nothing until it is claimed, then at once.
-# With PLEX_TOKEN set it would announce with that token before the claim, which can make the
-# claim fail (docs/setup.md step 6), so it is left off then until claim_state.json exists.
+# --announce-url: an unclaimed server announces nothing until it is claimed, then at once,
+# PLEX_TOKEN or not.
 # The HTTPS address needs --tls-cert/--tls-key here (a PKCS#8 or RSA key). Not a Cloudflare
 # tunnel: docs/setup.md step 7 says why.
 set -e
 cd "$(dirname "$0")"
 [ -f rex.env ] && { set -a; . ./rex.env; set +a; }
-ANNOUNCE=()
-if [ -f claim_state.json ] || [ -z "${PLEX_TOKEN:-}" ]; then
-  ANNOUNCE=(--announce-url "https://rex.example.com:32400,http://192.168.1.10:32400")
-fi
 exec rust/target/release/rex \
   --catalog rex.db \
   --port 32400 \
-  "${ANNOUNCE[@]}"
+  --announce-url "https://rex.example.com:32400,http://192.168.1.10:32400"

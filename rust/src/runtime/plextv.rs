@@ -605,10 +605,15 @@ fn snapshot(claim: &SharedClaim) -> Claim {
 /// token answers the announce, `/api/v2/resources` and Plex's metadata agent as the account
 /// token does, so `PLEX_TOKEN` is only an unclaimed server's way in.
 pub(crate) fn server_token(claim: &SharedClaim) -> Option<String> {
-    snapshot(claim)
-        .token
-        .filter(|token| !token.is_empty())
-        .or_else(|| std::env::var("PLEX_TOKEN").ok().filter(|token| !token.is_empty()))
+    claim_token(claim).or_else(|| std::env::var("PLEX_TOKEN").ok().filter(|token| !token.is_empty()))
+}
+
+/// The claim's own server token only. The device announce takes nothing else: plex.tv
+/// applies `PUT /devices/{id}` to the device that owns the token, so the 2026-09-11 spike's
+/// unclaimed announce with zurg's `PLEX_TOKEN` rewrote the account's "zurg" device row
+/// (findings, "Collateral change to the Plex account"; card #293).
+fn claim_token(claim: &SharedClaim) -> Option<String> {
+    snapshot(claim).token.filter(|token| !token.is_empty())
 }
 
 /// `Claim.exchange`: redeem a `claim-…` token for this server's own token.
@@ -1261,8 +1266,8 @@ fn is_visible(token: &str, name: &str, machine: &str) -> Result<bool, String> {
     }))
 }
 
-/// `heartbeat.Heartbeat`'s target. Announced with `server_token`, so a claimed PMS announces
-/// with its own token and a claim made after the start announces without a restart.
+/// `heartbeat.Heartbeat`'s target. Announced with the claim's own token only, so a claim
+/// made after the start announces without a restart and an unclaimed server never does.
 #[derive(Debug, Clone)]
 pub(crate) struct Beat {
     pub machine: String,
@@ -1273,7 +1278,7 @@ pub(crate) struct Beat {
 impl Beat {
     /// `Heartbeat.beat`: one announce.
     fn beat(&self, claim: &SharedClaim) -> Result<(), String> {
-        let token = server_token(claim).ok_or("no claim and no PLEX_TOKEN to announce with")?;
+        let token = claim_token(claim).ok_or("no claim to announce with")?;
         announce(&token, &self.machine, &self.url, &self.name)
     }
 }
@@ -1290,13 +1295,13 @@ pub(crate) fn start_heartbeat(beat: Beat, claim: SharedClaim, interval: u64) {
             let mut failures = 0_u64;
             let mut waiting = false;
             loop {
-                // Unclaimed with no PLEX_TOKEN there is nothing to announce with yet; said once,
+                // Unclaimed there is nothing to announce with yet, PLEX_TOKEN or not; said once,
                 // and the claim itself announces at once (`finish_claim`). Announcing nothing
                 // before the claim also keeps the account-token device row that made the
                 // 2026-09-11 claim answer the account token from ever being written.
-                let Some(token) = server_token(&claim) else {
+                let Some(token) = claim_token(&claim) else {
                     if !std::mem::replace(&mut waiting, true) {
-                        info!("--announce-url: waiting for a claim (POST /myplex/claim) or PLEX_TOKEN before announcing");
+                        info!("--announce-url: waiting for a claim (POST /myplex/claim) before announcing");
                     }
                     thread::sleep(Duration::from_secs(interval));
                     continue;

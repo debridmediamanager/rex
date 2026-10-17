@@ -153,8 +153,8 @@ feed, is rex's own, and only its wire shapes are the reference's (`tests/fixture
 requests). Segment lengths, encoder settings and the MPD's `minBufferTime` are ours, chosen
 by measurement (findings, "The universal transcoder").
 
-`--announce-url` announces with the claim's server token, or `PLEX_TOKEN` while unclaimed; with
-neither it waits for the claim and announces the moment it lands, no restart (findings, "A
+`--announce-url` announces with the claim's server token only; unclaimed it waits for the
+claim and announces the moment it lands, no restart (findings, "A
 claimed server needs no account token"). A comma-separated list announces each URI as its own
 connection, as a PMS with several does. The feed is rex's own API, not PMS emulation.
 
@@ -171,11 +171,10 @@ A conversion's own playlist and segments (`/video/:/transcode/universal/session/
 keyed to the session, not the token, as on a real PMS (findings, "A conversion session is its own key").
 An unclaimed server without `--token` answers only its own networks, as an unclaimed PMS
 does (`local_request`; findings, "The gate an unclaimed server keeps").
-With `PLEX_TOKEN` set, start it without `--announce-url` for the claim and add it afterwards:
-the unclaimed heartbeat writes a device row with the account token first, and the 2026-09-11
-spike's claim of an identity that already had such a row got the account token back, not a
-server token. Without `PLEX_TOKEN` nothing is announced before the claim, so `--announce-url`
-can stay on. rex refuses to store a token equal to `PLEX_TOKEN`, and a claimed server answers
+An unclaimed server announces nothing, `PLEX_TOKEN` or not: plex.tv applies a device PUT to
+the device that owns the token, so the 2026-09-11 spike's unclaimed announce with zurg's account
+token rewrote the account's "zurg" device row, and a claim of an identity with such a row got the
+account token back, not a server token (findings, "Collateral change to the Plex account"). rex refuses to store a token equal to `PLEX_TOKEN`, and a claimed server answers
 another claim with 409.
 
 `rex.db`, `rex.env` and `run.sh` are gitignored: the catalog and `rex.env` carry

@@ -207,7 +207,7 @@ beside the catalog and survives restarts. Keep a backup of that file: a lost cla
 means claiming again, and a claim gone wrong has signed every other server on the
 account out of plex.tv before.
 
-1. Start rex. With `PLEX_TOKEN` set, start it **without** `--announce-url` (below).
+1. Start rex, with or without `--announce-url` (below): an unclaimed rex announces nothing.
 2. Open [plex.tv/claim](https://www.plex.tv/claim) signed in as the owner and copy the
    `claim-...` token. It is valid for four minutes.
 3. Redeem it on rex itself:
@@ -226,9 +226,9 @@ with no restart. `PLEX_TOKEN` is not used once there is a claim.
 A claimed rex refuses another claim (409). To move it to another account, stop it, remove
 `claim_state.json` and claim again. rex also refuses to store a claim when plex.tv answers
 with the account's own `PLEX_TOKEN` instead of a server token, which happens when the
-server's identity already has a device row on the account. An unclaimed rex with `PLEX_TOKEN`
-and `--announce-url` writes that row with its first announce, so claim it before adding
-`--announce-url`. Without `PLEX_TOKEN` it announces nothing until it is claimed.
+server's identity already has a device row on the account. An unclaimed rex announces
+nothing, `PLEX_TOKEN` or not, so it never writes that row: plex.tv applies an announce to the
+device that owns its token, and an account token's device is another of your devices.
 
 ### 7. Reach it from outside: HTTPS and the announce
 
@@ -254,8 +254,8 @@ LAN one:
 --announce-url https://rex.example.com:32400,http://192.168.1.10:32400
 ```
 
-Without `PLEX_TOKEN` they can be there from the first start: rex logs that it waits for a
-claim and registers them the moment it is claimed. With `--announce-url` a claimed rex registers with plex.tv at start, with its server token,
+They can be there from the first start: rex logs that it waits for a claim and registers
+them the moment it is claimed. With `--announce-url` a claimed rex registers with plex.tv at start, with its server token,
 holds the event stream plex.tv reads as "online", and re-announces every 10 minutes. The
 server then shows in app.plex.tv and the apps' server list. If it does not, look for the
 `plex.tv` lines in rex's log: a missing claim (`waiting for a claim`) or an address plex.tv
@@ -266,7 +266,7 @@ cannot reach are the usual causes.
 `examples/run.sh.example` is the whole command line as a script: copy it to `run.sh` at the
 top of the checkout or release, beside `rust/` and the catalog, and fill it in. It reads the
 keys from `rex.env` (`TMDB_KEY=`, and `PLEX_TOKEN=` only if you want it; mode 600) and adds
-`--announce-url` unless `PLEX_TOKEN` is set on a server not claimed yet. `run.sh` and `rex.env` are gitignored.
+`--announce-url`. `run.sh` and `rex.env` are gitignored.
 Under systemd (`~/.config/systemd/user/rex.service`, then `systemctl --user enable --now
 rex`, and `loginctl enable-linger` so it runs without a login):
 
@@ -358,7 +358,7 @@ rex must still reach the address zurg registers. The image carries no FFmpeg, so
 | zurg pushed but the library stays empty | Items are held until zurg probes them (step 5) |
 | A part read answers 502, or 401/403 | rex cannot reach the source's `url` (502), or the source refused its credential (its own status): the log line `PART ... upstream` says which |
 | The server is not in the Plex apps | Not claimed, no `--announce-url`, or the announced HTTPS address is not reachable from the internet (step 7) |
-| The log says `--announce-url: waiting for a claim` | The server is not claimed and has no `PLEX_TOKEN`: claim it (step 6) and it announces at once |
+| The log says `--announce-url: waiting for a claim` | The server is not claimed: claim it (step 6) and it announces at once |
 | A second server on the same catalog exits 1 | The state file is locked by the first: one catalog per server |
 
 ### Running several servers: rex manager

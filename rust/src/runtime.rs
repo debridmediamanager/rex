@@ -22896,8 +22896,8 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
         );
     }
     start_gdm(Arc::clone(&runtime), &gdm_mode, port);
-    // Announced with the claim's token, else PLEX_TOKEN; with neither the heartbeat waits for
-    // a claim (`plextv::start_heartbeat`).
+    // Announced with the claim's token only; unclaimed the heartbeat waits for the claim
+    // (`plextv::start_heartbeat`).
     if let Some(url) = announce {
         // Cycle 44: announced on the server's own machineIdentifier.
         let announced = device_id.unwrap_or_else(|| machine.clone());
