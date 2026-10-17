@@ -584,6 +584,27 @@ def main():
         get(port, "/video/:/transcode/universal/stop", [("session", session)])
         status, _, body = get(port, "/transcode/sessions")
         check("every session is gone after stop", json.loads(body)["MediaContainer"].get("size") == 0, "")
+        # "Maximum simultaneous CPU transcodes": past the cap a second video encode is refused,
+        # a remux is not counted, and the slot comes back when the first conversion stops.
+        get(port, "/:/prefs", [("_CPU-TranscodeCountLimit", "1")], method="PUT")
+        _, first = decision(port, "3", "s-cap-a")
+        status, _, _ = get(port, "/video/:/transcode/universal/start.m3u8", plex_web_query("3", "s-cap-a"))
+        _, second = decision(port, "3", "s-cap-b")
+        check("cap 1: a second video conversion is refused while one runs",
+              first.get("generalDecisionCode") == 1001 and status == 200
+              and second.get("generalDecisionCode") == 2000 and second.get("transcodeDecisionCode") == 4005,
+              "%s %s %s" % (first.get("generalDecisionCode"), status, second.get("generalDecisionCode")))
+        _, again = decision(port, "3", "s-cap-a")
+        check("cap 1: the running conversion's own session still converts (a seek)",
+              again.get("generalDecisionCode") == 1001, str(again.get("generalDecisionCode")))
+        _, remux = decision(port, "1", "s-cap-r", directStream="1")
+        check("cap 1: a remux is not counted against the cap",
+              remux.get("generalDecisionCode") == 1001, str(remux.get("generalDecisionCode")))
+        get(port, "/video/:/transcode/universal/stop", [("session", "s-cap-a")])
+        _, freed = decision(port, "3", "s-cap-b")
+        check("cap 1: once the first stops, the next conversion starts",
+              freed.get("generalDecisionCode") == 1001, str(freed.get("generalDecisionCode")))
+        get(port, "/:/prefs", [("_CPU-TranscodeCountLimit", "0")], method="PUT")
         if sys.platform.startswith("linux"):
             # A conversion must not outlive the server: a killed rex once left FFmpeg
             # reading from zurg for an hour into a deleted directory.

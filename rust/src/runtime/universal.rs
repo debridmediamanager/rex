@@ -1695,6 +1695,35 @@ impl Runtime {
     /// with the output's codec, size and bitrate and gains `decision` and `location`.
     /// The decision's copy keeps `deepAnalysisVersion` and `requiredBandwidths`; the
     /// session row's does not.
+    /// Whether `plan` would be one video encode past the owner's "Maximum simultaneous video
+    /// transcode" (`TranscodeCountLimit`, or the 1.42.2 `_CPU-TranscodeCountLimit`; 0 is
+    /// unlimited). A copied video costs almost nothing, so remuxes are never counted or
+    /// refused, and the client's own earlier conversion (a seek, a quality change) is not
+    /// counted against it.
+    // ponytail: hardware and CPU encodes share one count; split them if a GPU host needs the CPU-only cap.
+    pub(super) fn over_conversion_cap(&self, plan: &Plan) -> bool {
+        let Some(transcoder) = &self.transcoder else { return false };
+        if plan.video.as_ref().is_none_or(|video| video.copy) {
+            return false;
+        }
+        let Some(cap) = ["TranscodeCountLimit", "_CPU-TranscodeCountLimit"]
+            .iter()
+            .filter_map(|id| number_of(self.server_pref(id).as_ref()))
+            .map(|limit| limit as i64)
+            .filter(|limit| *limit > 0)
+            .min()
+        else {
+            return false;
+        };
+        let encoding = transcoder
+            .sessions()
+            .iter()
+            .filter(|session| !session.stopped.load(Ordering::SeqCst) && session.plan.playback != plan.playback)
+            .filter(|session| session.plan.video.as_ref().is_some_and(|video| !video.copy))
+            .count();
+        encoding as i64 >= cap
+    }
+
     pub(super) fn converted_media(&self, projected: &Value, plan: &Plan, decision: bool) -> Value {
         let projected = crate::catalog::unpacked(projected);
         let source = projected.as_object().cloned().unwrap_or_default();
@@ -1849,6 +1878,9 @@ impl Runtime {
                     object.insert("Part".to_string(), json!([part]));
                 }
                 let plan = self.transcode_plan(query, &request.headers, &key, &media, &profile, protocol)?;
+                if self.over_conversion_cap(&plan) {
+                    return Some(Response::error(503, "rex: the simultaneous conversion limit is reached"));
+                }
                 let id = query.get("session").filter(|id| !id.is_empty()).cloned().unwrap_or_else(|| playback.clone());
                 let (manifest, content_type) = match plan.protocol {
                     Protocol::Hls => (plan.master_playlist(&id), "application/vnd.apple.mpegurl"),

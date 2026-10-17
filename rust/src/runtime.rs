@@ -10856,6 +10856,8 @@ impl Runtime {
             Some(_) if !all_parts => self.transcode_plan(query, headers, &key, &selected_for_engine, &profile_name, protocol),
             _ => None,
         };
+        let capped = converting.as_ref().is_some_and(|plan| self.over_conversion_cap(plan));
+        let converting = converting.filter(|_| !capped);
         if let Some(refusal) = refusal.clone().filter(|_| converting.is_none()) {
             fields.insert("directPlayDecisionCode".to_string(), json!(3000));
             fields.insert("directPlayDecisionText".to_string(), json!(refusal));
@@ -10878,6 +10880,11 @@ impl Runtime {
                 "transcodeDecisionText".to_string(),
                 json!(if blocked {
                     "File is unplayable. DoVi (Profile 5) color space is not supported."
+                        .to_string()
+                } else if capped {
+                    // Not measured: what a real PMS answers past its transcode limit was never
+                    // recorded, so this is the encoder-less refusal's shape with rex's own text.
+                    "Cannot convert this item. The server's limit of simultaneous video conversions is reached."
                         .to_string()
                 } else {
                     format!("Cannot convert this item. No conversion profile found for protocol {protocol}.")
