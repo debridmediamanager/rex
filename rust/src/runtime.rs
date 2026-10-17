@@ -2013,7 +2013,7 @@ impl Runtime {
     fn has_unwatched(&self, row: &Value) -> bool {
         if matches!(row.get("type").and_then(Value::as_str), Some("show" | "season")) {
             return key_of(row)
-                .is_some_and(|key| self.leaves(&key).iter().any(|leaf| !watched_leaf(leaf)));
+                .is_some_and(|key| self.leaves_refs(&key).iter().any(|leaf| !watched_leaf(leaf)));
         }
         !row.get("viewCount").is_some_and(truthy)
     }
@@ -2049,7 +2049,12 @@ impl Runtime {
     /// `detail_row_prefs`, and with `streams` false a packed Part's streams left out: a
     /// listing drops them (`grid_row`), and unpacking them first cost a parse per row.
     fn projected_row(&self, original: &Value, streams: bool) -> Value {
-        let mut row = if streams { strip_private_value(original) } else { strip_private_fields(original) };
+        let row = if streams { strip_private_value(original) } else { strip_private_fields(original) };
+        self.project_copy(original, row)
+    }
+
+    /// `projected_row` on a copy the caller made of `original`.
+    fn project_copy(&self, original: &Value, mut row: Value) -> Value {
         let Some(object) = row.as_object_mut() else {
             return row;
         };
@@ -2411,7 +2416,16 @@ impl Runtime {
         keep_guid: bool,
         keep_location: bool,
     ) -> Value {
-        let mut row = self.projected_row(original, false);
+        // The copy leaves out what a light row drops, rather than copying it to drop it:
+        // most of an unpaged episode listing was copying each row's people, ratings and
+        // streams (2026-10-17). `Field` stays until the projection has read it.
+        let copy = grid_copy(original, |name| {
+            GRID_DROPPED.contains(&name)
+                || (!keep_location && name == "Location")
+                || (!keep_guid && name == "Guid")
+                || (!keep_section && GRID_SECTION_FIELDS.contains(&name))
+        });
+        let mut row = self.project_copy(original, copy);
         let Some(object) = row.as_object_mut() else {
             return row;
         };
@@ -9312,16 +9326,17 @@ impl Runtime {
         // episode is represented once by its season, dated by the earliest
         // episode in that season; adding the season row itself must not create
         // a second entry beside it.
-        let mut dated = Vec::<(i64, Value)>::new();
+        // Borrowed until the cap: every movie and season was copied to list 50
+        // (2026-10-17). Seasons keep the order their first episode is met in, where a
+        // HashMap's order changed on every start for seasons added in the same second.
+        let mut dated = Vec::<(i64, &Value)>::new();
         for row in self.catalog.items() {
             if row.get("type").and_then(Value::as_str) == Some("movie") {
-                dated.push((
-                    row.get("addedAt").and_then(Value::as_i64).unwrap_or(0),
-                    row.clone(),
-                ));
+                dated.push((row.get("addedAt").and_then(Value::as_i64).unwrap_or(0), row));
             }
         }
-        let mut seasons: HashMap<String, (i64, Value)> = HashMap::new();
+        let mut seasons: Vec<(i64, &Value)> = Vec::new();
+        let mut season_at: HashMap<String, usize> = HashMap::new();
         for episode in self
             .catalog
             .items()
@@ -9331,42 +9346,32 @@ impl Runtime {
             let Some(parent_key) = episode.get("parentRatingKey").map(string_value) else {
                 continue;
             };
+            let stamp = episode.get("addedAt").and_then(Value::as_i64).unwrap_or(0);
+            if let Some(&at) = season_at.get(&parent_key) {
+                seasons[at].0 = seasons[at].0.min(stamp);
+                continue;
+            }
             let Some(season) = self.catalog.get(&parent_key) else {
                 continue;
             };
-            let stamp = episode.get("addedAt").and_then(Value::as_i64).unwrap_or(0);
-            seasons
-                .entry(parent_key)
-                .and_modify(|entry| {
-                    if stamp < entry.0 {
-                        entry.0 = stamp;
-                    }
-                })
-                .or_insert((stamp, season.clone()));
+            season_at.insert(parent_key, seasons.len());
+            seasons.push((stamp, season));
         }
-        dated.extend(seasons.into_values());
+        dated.extend(seasons);
         // Cycle 58: a library kept off Home (Visibility 1 or 2) drops out of this list.
         dated.retain(|(_, row)| {
             self.section_visibility(&string_value(
                 row.get("librarySectionID").unwrap_or(&Value::Null),
             )) < 1
         });
-        dated.sort_by(|left, right| {
-            right.0.cmp(&left.0).then_with(|| {
-                let left_title = left
-                    .1
-                    .get("titleSort")
-                    .or_else(|| left.1.get("title"))
-                    .map(string_value)
-                    .unwrap_or_default();
-                let right_title = right
-                    .1
-                    .get("titleSort")
-                    .or_else(|| right.1.get("title"))
-                    .map(string_value)
-                    .unwrap_or_default();
-                left_title.to_lowercase().cmp(&right_title.to_lowercase())
-            })
+        dated.sort_by_cached_key(|(stamp, row)| {
+            let title = row
+                .get("titleSort")
+                .or_else(|| row.get("title"))
+                .map(string_value)
+                .unwrap_or_default()
+                .to_lowercase();
+            (std::cmp::Reverse(*stamp), title)
         });
         // Cycle 54, measured on plexlab and the 1.42.2 reference: `unwatched=` is a 0/1
         // OPTION here (the `+?0*[01]` grammar, anything else a 400), and at 1 it drops the
@@ -9392,7 +9397,7 @@ impl Runtime {
         let mut rows = Vec::with_capacity(dated.len());
         for (added_at, row) in dated {
             // Cycle 46: the grid row keeping its Guid for the `includeGuids` gate.
-            let mut projected = guid_gate(self.grid_row(&row, true, true, false), query);
+            let mut projected = guid_gate(self.grid_row(row, true, true, false), query);
             if row.get("type").and_then(Value::as_str) == Some("season") {
                 if let Some(parent) = row
                     .get("parentRatingKey")
@@ -10459,7 +10464,7 @@ impl Runtime {
         // `library.scrobble` returns the leaves it marked: a show's or season's
         // episodes, the row itself otherwise, and none for a collection's scrobble.
         let changed = match self.catalog.get(&key).and_then(|row| row.get("type")).and_then(Value::as_str) {
-            Some("show" | "season") => self.leaves(&key).len(),
+            Some("show" | "season") => self.leaves_refs(&key).len(),
             None if watched && self.collections.contains_key(&key) => 0,
             _ => 1,
         };
@@ -12638,7 +12643,7 @@ impl Runtime {
         let mut index = 0;
         while index < keys.len() {
             let parent = keys[index].clone();
-            keys.extend(self.children(&parent).iter().filter_map(key_of));
+            keys.extend(self.children_refs(&parent).into_iter().filter_map(key_of));
             index += 1;
         }
         keys
@@ -14805,7 +14810,7 @@ impl Runtime {
                         // `typed_rows`: a show library's episodes in BROADCAST order --
                         // show title, season index, episode index -- which a season's
                         // index edit moves.
-                        let mut rows = self.typed_section_rows(section_key, type_number);
+                        let mut rows = self.typed_section_refs(section_key, type_number);
                         if let Some(asked) = query.get("type") {
                             let Ok(number) = asked.parse::<i64>() else {
                                 return Response::error(500, "rex: bad request");
@@ -14963,7 +14968,7 @@ impl Runtime {
                                 .unwrap_or(own);
                             let mut roots = self
                                 .sort_rows(
-                                    self.choose_rows(Some(section_key), Some(asked)),
+                                    self.choose_refs(Some(section_key), Some(asked)),
                                     Some("titleSort"),
                                 )
                                 .unwrap_or_default();
@@ -14987,9 +14992,9 @@ impl Runtime {
                             });
                             roots
                         } else if kind == "show" {
-                            self.choose_rows(Some(section_key), Some(4))
+                            self.choose_refs(Some(section_key), Some(4))
                         } else {
-                            self.section_rows(section_key)
+                            self.section_row_refs(section_key)
                         };
                     if leaf == "recentlyViewedShows" {
                         // Cycle 54: this subset runs the listing's FILTERS, where newest,
@@ -15012,7 +15017,7 @@ impl Runtime {
                         let mut seen = HashSet::new();
                         let mut roots = Vec::new();
                         for row in rows {
-                            let mut parent = row.clone();
+                            let mut parent = row;
                             while parent.get("type").and_then(Value::as_str) != Some("show") {
                                 let Some(parent_key) =
                                     parent.get("parentRatingKey").map(string_value)
@@ -15022,7 +15027,7 @@ impl Runtime {
                                 let Some(next) = self.catalog.get(&parent_key) else {
                                     break;
                                 };
-                                parent = next.clone();
+                                parent = next;
                             }
                             if parent.get("type").and_then(Value::as_str) == Some("show") {
                                 let key = key_of(&parent).unwrap_or_default();
@@ -15035,9 +15040,6 @@ impl Runtime {
                         fields.shift_remove("mixedParents");
                     }
                     if !matches!(leaf, "recentlyViewedShows" | "recentlyViewedGrandparents") {
-                        // The subsets start from the listing's default order, titleSort,
-                        // and each re-sorts stably on its own key.
-                        rows = self.sort_rows(rows, Some("titleSort")).unwrap_or_default();
                         let stamp = |row: &Value, name: &str| {
                             row.get(name)
                                 .and_then(|value| {
@@ -15045,6 +15047,29 @@ impl Runtime {
                                 })
                                 .unwrap_or(0)
                         };
+                        if matches!(leaf, "recentlyAdded" | "recentlyAddedGrandparents") {
+                            if query.get("unwatched").is_some_and(|value| value == "1") {
+                                rows.retain(|row| stamp(row, "viewCount") == 0);
+                            }
+                            // Only the 100 newest can be listed, and titleSort only orders
+                            // rows added in the same second: keep the newest 100 and their
+                            // ties before the titleSort pass, which over a show library's
+                            // 30k episodes was most of the request (2026-10-17).
+                            if rows.len() > 100 {
+                                let mut added = rows.iter().map(|row| stamp(row, "addedAt")).collect::<Vec<_>>();
+                                let (_, cutoff, _) = added.select_nth_unstable_by(99, |a, b| b.cmp(a));
+                                let cutoff = *cutoff;
+                                rows.retain(|row| stamp(row, "addedAt") >= cutoff);
+                            }
+                        }
+                        if leaf == "recentlyViewed" {
+                            // A retain commutes with the stable sorts: done first, the
+                            // titleSort pass reads only the viewed rows.
+                            rows.retain(|row| stamp(row, "lastViewedAt") != 0);
+                        }
+                        // The subsets start from the listing's default order, titleSort,
+                        // and each re-sorts stably on its own key.
+                        rows = self.sort_rows(rows, Some("titleSort")).unwrap_or_default();
                         let rating_key = |row: &Value| stamp(row, "ratingKey");
                         match leaf {
                             "recentlyViewed" => {
@@ -15085,6 +15110,11 @@ impl Runtime {
                             }
                         }
                     }
+                    // The default window (below) pages the projected rows; the shared rule
+                    // pages before projecting, so a page of a show library's Recently
+                    // Released projects 50 episodes, not 30k (2026-10-17).
+                    let shared_window = !matches!(leaf, "recentlyViewedShows" | "recentlyViewedGrandparents");
+                    let (rows, window) = if shared_window { page_slice(rows, query) } else { (rows, None) };
                     let rows = rows
                         .iter()
                         .map(|row| guid_gate(self.section_listing_row(row), query))
@@ -15156,28 +15186,8 @@ impl Runtime {
                         fields.insert("Metadata".to_string(), Value::Array(rows));
                     } else {
                         fields.insert("Metadata".to_string(), Value::Array(rows));
-                        page_fields(&mut fields, query);
+                        page_window_fields(&mut fields, window);
                     }
-                    return Response::json(200, self.container(fields, true));
-                }
-                if segments.len() == 4 && matches!(segments[3], "recentlyAdded" | "newest") {
-                    if request.method != "GET" && request.method != "HEAD" {
-                        return Response::error(404, "rex: not found");
-                    }
-                    let mut rows = self
-                        .section_rows(section_key)
-                        .into_iter()
-                        .map(|row| self.section_listing_row(&row))
-                        .collect::<Vec<_>>();
-                    rows.sort_by(|left, right| {
-                        right
-                            .get("addedAt")
-                            .and_then(Value::as_i64)
-                            .unwrap_or(0)
-                            .cmp(&left.get("addedAt").and_then(Value::as_i64).unwrap_or(0))
-                    });
-                    let mut fields = Map::from_iter([("Metadata".to_string(), Value::Array(rows))]);
-                    page_fields(&mut fields, query);
                     return Response::json(200, self.container(fields, true));
                 }
                 if segments.len() == 4 && segments[3] == "allLeaves" {
@@ -26426,20 +26436,31 @@ fn escaped_pref(value: &str) -> String {
 }
 
 fn page_fields(fields: &mut Map<String, Value>, query: &HashMap<String, String>) {
-    if let (Some(start), Some(size)) = (
-        query
-            .get("X-Plex-Container-Start")
-            .and_then(|v| v.parse::<usize>().ok()),
-        query
-            .get("X-Plex-Container-Size")
-            .and_then(|v| v.parse::<usize>().ok()),
-    ) {
-        if let Some(rows) = fields.get_mut("Metadata").and_then(Value::as_array_mut) {
+    if let Some(rows) = fields.get_mut("Metadata").and_then(Value::as_array_mut) {
+        let (page, window) = page_slice(std::mem::take(rows), query);
+        *rows = page;
+        page_window_fields(fields, window);
+    }
+}
+
+/// `page_fields` on rows not yet projected, so only the page is: the window
+/// `X-Plex-Container-Start` and `-Size` name, with the offset and total it reports.
+fn page_slice<T>(rows: Vec<T>, query: &HashMap<String, String>) -> (Vec<T>, Option<(usize, usize)>) {
+    let start = query.get("X-Plex-Container-Start").and_then(|v| v.parse::<usize>().ok());
+    let size = query.get("X-Plex-Container-Size").and_then(|v| v.parse::<usize>().ok());
+    match (start, size) {
+        (Some(start), Some(size)) => {
             let total = rows.len();
-            *rows = rows.iter().skip(start).take(size).cloned().collect();
-            fields.insert("offset".to_string(), json!(start));
-            fields.insert("totalSize".to_string(), json!(total));
+            (rows.into_iter().skip(start).take(size).collect(), Some((start, total)))
         }
+        _ => (rows, None),
+    }
+}
+
+fn page_window_fields(fields: &mut Map<String, Value>, window: Option<(usize, usize)>) {
+    if let Some((start, total)) = window {
+        fields.insert("offset".to_string(), json!(start));
+        fields.insert("totalSize".to_string(), json!(total));
     }
 }
 
@@ -26509,6 +26530,57 @@ fn strip_private_in_place(value: &mut Value) {
         Value::Array(values) => values.iter_mut().for_each(strip_private_in_place),
         _ => {}
     }
+}
+
+/// What `grid_row` drops from a row, and the section fields it drops unless kept.
+const GRID_DROPPED: &[&str] = &[
+    "Rating", "Producer", "CommonSenseMedia", "Label", "Style", "Similar", "Mood", "Preferences",
+    "OnDeck", "Extras",
+];
+const GRID_SECTION_FIELDS: &[&str] = &["librarySectionID", "librarySectionTitle", "librarySectionKey"];
+
+/// `strip_private_fields` of a row without the top-level keys `skip` names and without
+/// its Parts' `Stream` lists, which a light row drops.
+fn grid_copy(value: &Value, skip: impl Fn(&str) -> bool) -> Value {
+    let Value::Object(object) = value else {
+        return strip_private_fields(value);
+    };
+    let part_without_streams = |part: &Value| match part {
+        Value::Object(part) => Value::Object(
+            part.iter()
+                .filter(|(key, _)| !key.starts_with('_') && key.as_str() != "Stream")
+                .map(|(key, value)| (key.clone(), strip_private_fields(value)))
+                .collect(),
+        ),
+        other => strip_private_fields(other),
+    };
+    let media_without_streams = |media: &Value| match media {
+        Value::Object(media) => Value::Object(
+            media
+                .iter()
+                .filter(|(key, _)| !key.starts_with('_'))
+                .map(|(key, value)| match (key.as_str(), value) {
+                    ("Part", Value::Array(parts)) => {
+                        (key.clone(), Value::Array(parts.iter().map(part_without_streams).collect()))
+                    }
+                    _ => (key.clone(), strip_private_fields(value)),
+                })
+                .collect(),
+        ),
+        other => strip_private_fields(other),
+    };
+    Value::Object(
+        object
+            .iter()
+            .filter(|(key, _)| !key.starts_with('_') && !skip(key))
+            .map(|(key, value)| match (key.as_str(), value) {
+                ("Media", Value::Array(media)) => {
+                    (key.clone(), Value::Array(media.iter().map(media_without_streams).collect()))
+                }
+                _ => (key.clone(), strip_private_fields(value)),
+            })
+            .collect(),
+    )
 }
 
 /// `strip_private_value` that leaves packed streams out instead of unpacking them.

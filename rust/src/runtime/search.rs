@@ -1376,9 +1376,17 @@ impl Runtime {
     /// and a season or episode list ordered by (show title, season index, index) --
     /// the listing order a search box and an autocomplete then filter and re-sort.
     pub(super) fn typed_section_rows(&self, section_key: &str, type_number: i64) -> Vec<Value> {
-        let mut rows = self.choose_rows(Some(section_key), Some(type_number));
+        self.typed_section_refs(section_key, type_number).into_iter().cloned().collect()
+    }
+
+    /// `typed_section_rows` borrowed, each row's sort key read once: the comparator
+    /// built both keys -- a title copy and a season lookup each -- on every comparison
+    /// of a show library's 27k episodes, which with the copies was a third of an unpaged
+    /// `allLeaves` (2026-10-17). `sort_by_cached_key` is stable, as `sort_by` is.
+    pub(super) fn typed_section_refs(&self, section_key: &str, type_number: i64) -> Vec<&Value> {
+        let mut rows = self.choose_refs(Some(section_key), Some(type_number));
         if matches!(type_number, 3 | 4) {
-            rows.sort_by(|left, right| {
+            rows.sort_by_cached_key(|row| {
                 let key = |row: &Value| {
                     let title = row
                         .get("grandparentTitle")
@@ -1398,7 +1406,7 @@ impl Runtime {
                         .unwrap_or_else(|| number("parentIndex"));
                     (title, parent_index, number("index"))
                 };
-                key(left).cmp(&key(right))
+                key(row)
             });
         }
         rows

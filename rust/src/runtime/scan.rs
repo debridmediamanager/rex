@@ -916,7 +916,7 @@ impl Runtime {
         }
         let mut restored = false;
         for (index, member) in chain.iter().enumerate() {
-            if index > 0 && self.leaves(member).iter().any(|leaf| leaf.get("deletedAt").is_some() && key_of(leaf).as_deref() != Some(key)) {
+            if index > 0 && self.leaves_refs(member).iter().any(|leaf| leaf.get("deletedAt").is_some() && key_of(leaf).as_deref() != Some(key)) {
                 continue;
             }
             let Some(object) = self.catalog.get_mut(member).and_then(Value::as_object_mut) else {
@@ -962,9 +962,9 @@ impl Runtime {
         });
         let mut doomed = vec![key.to_string()];
         if let Some((season, show)) = &parents {
-            if self.children(season).len() <= 1 {
+            if self.children_refs(season).len() <= 1 {
                 doomed.push(season.clone());
-                if self.children(show).len() <= 1 {
+                if self.children_refs(show).len() <= 1 {
                     doomed.push(show.clone());
                 }
             }

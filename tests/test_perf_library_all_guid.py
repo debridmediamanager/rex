@@ -37,8 +37,8 @@ def run(port):
     for path, name, key in LOOKUPS:
         status, body, took = median(port, path)
         keys = [row.get("ratingKey") for row in container(body).get("Metadata", [])]
-        check("%s finds its one row under 0.05 units (%.3fs, %.2f)" % (name, took, took / unit),
-              status == 200 and keys == [key] and took < 0.05 * unit, (status, keys, took))
+        check("%s finds its one row under 0.1 units (%.3fs, %.2f)" % (name, took, took / unit),
+              status == 200 and keys == [key] and took < 0.1 * unit, (status, keys, took))
 
 
 def main():

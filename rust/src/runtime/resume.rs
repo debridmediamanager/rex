@@ -732,7 +732,12 @@ impl Runtime {
         if section.get("type").and_then(Value::as_str) == Some("show") {
             return self.recently_added_tv(Some(&key), None);
         }
-        let mut rows = self.section_rows(&key);
+        self.section_recent_movie_refs(&key).into_iter().cloned().collect()
+    }
+
+    /// A movie library's rows newest first, borrowed.
+    pub(super) fn section_recent_movie_refs(&self, key: &str) -> Vec<&Value> {
+        let mut rows = self.section_row_refs(key);
         rows.sort_by_key(|row| -row.get("addedAt").and_then(Value::as_i64).unwrap_or(0));
         rows
     }
@@ -901,7 +906,6 @@ impl Runtime {
                 continue;
             }
             let is_show = section_type == "show";
-            let mut rows = self.section_recently_added_rows(section);
             // Cycle 54: with a filter in the request the library's TV shelf is the
             // roll-up of the episodes that pass it.
             let filtered = if is_show {
@@ -909,18 +913,25 @@ impl Runtime {
             } else {
                 None
             };
-            if let Some(leaves) = filtered.clone() {
-                rows = self.recently_added_tv(Some(&section_key), Some(leaves));
-            }
-            if pinned.is_some() {
+            // Only the shelf's own rows are built, and movies stay borrowed: the
+            // library's list was copied and then replaced under a pin, and a movie
+            // shelf copied every movie twice (+320 MB a request, 2026-10-17).
+            use std::borrow::Cow;
+            let owned = |rows: Vec<Value>| rows.into_iter().map(Cow::Owned).collect::<Vec<_>>();
+            let mut rows: Vec<Cow<'_, Value>> = if pinned.is_some() {
                 let merged = if is_show {
-                    self.recently_added_tv(None, filtered)
+                    owned(self.recently_added_tv(None, filtered))
                 } else {
-                    self.recently_added_rows(Some("1"), None)
-                        .unwrap_or_default()
+                    self.recent_movie_refs(None).into_iter().map(Cow::Borrowed).collect()
                 };
-                rows = self.in_directories(merged, &Some(same_type.iter().cloned().collect()));
-            }
+                self.in_directories(merged, &Some(same_type.iter().cloned().collect()))
+            } else if let Some(leaves) = filtered {
+                owned(self.recently_added_tv(Some(&section_key), Some(leaves)))
+            } else if is_show {
+                owned(self.recently_added_tv(Some(&section_key), None))
+            } else {
+                self.section_recent_movie_refs(&section_key).into_iter().map(Cow::Borrowed).collect()
+            };
             let mut key = if is_show {
                 format!("/hubs/home/recentlyAdded?type=2&sectionID={section_key}")
             } else {
