@@ -1088,6 +1088,17 @@ pub(crate) fn start_registration(
         });
 }
 
+/// A claimed server's `POST /servers.xml` again, off the request path, after its
+/// libraries changed.
+pub(crate) fn republish(claim: SharedClaim, local_address: String, sections: Vec<Value>) {
+    let _ = thread::Builder::new()
+        .name("rex-republish".to_string())
+        .spawn(move || match publish(&claim, &local_address, &sections) {
+            Ok(status) => info!("servers.xml POST (libraries changed) -> {status}"),
+            Err(message) => error!("republishing the libraries failed: {message}"),
+        });
+}
+
 // -- heartbeat.py ------------------------------------------------------------------
 
 /// `heartbeat.announce`: one registration PUT, byte-shaped like a real PMS's
@@ -1860,6 +1871,13 @@ impl super::Runtime {
 
     fn claim_snapshot(&self) -> Claim {
         snapshot(&self.plextv.claim)
+    }
+
+    /// Sends plex.tv the libraries again, when a real claim holds a server token.
+    pub(super) fn republish_sections(&self) {
+        if self.claim_snapshot().claimed() {
+            republish(Arc::clone(&self.plextv.claim), self.private_address.clone(), self.published_sections());
+        }
     }
 
     /// `_claimed`: `--assert-claimed`, or a real claim.

@@ -1043,6 +1043,36 @@ def main():
               and sent(connectivity[0]) == PMS_HEADERS
               and names(connectivity[0]["headers"]) == names(real["req_headers"]),
               connectivity and (connectivity[0]["query"], sent(connectivity[0])))
+
+        # -- a library added, renamed or removed is published again ---------------------
+        # A real PMS republishes on every change; plex.tv shares only the libraries it was
+        # last sent, so one added after the claim could not be shared until a restart.
+        def published_titles(after):
+            def latest():
+                posts = [r for r in stub.taken("plex.tv", "/servers.xml", "POST") if r["at"] > after]
+                return posts and re.findall(r'<Directory [^>]*title="([^"]*)"', posts[-1]["body"].decode())
+            return latest
+        titles = [row["title"] for row in libraries]
+        mark = precise_time()
+        status, created = first.request(
+            "POST", "/library/sections?name=Republish+Probe&type=movie&agent=tv.plex.agents.movie"
+            "&scanner=Plex+Movie&language=en-US&location=%2Fdata%2Fprobe", token=ACCOUNT_TOKEN)
+        added = (container(created) or {}).get("Directory", [{}])[0].get("key") if isinstance(created, dict) else None
+        seen = wait_for(lambda: (t := published_titles(mark)()) and "Republish Probe" in t and t, 10)
+        check("a library added after the claim is published to plex.tv at once",
+              status == 201 and added and seen == titles + ["Republish Probe"], (status, seen))
+        mark = precise_time()
+        status, _ = first.request(
+            "PUT", "/library/sections/%s?agent=tv.plex.agents.movie&name=Republish+Renamed" % added,
+            token=ACCOUNT_TOKEN)
+        seen = wait_for(lambda: (t := published_titles(mark)()) and "Republish Renamed" in t and t, 10)
+        check("a renamed library is published again under its new name",
+              status == 200 and seen == titles + ["Republish Renamed"], (status, seen))
+        mark = precise_time()
+        status, _ = first.request("DELETE", "/library/sections/%s" % added, token=ACCOUNT_TOKEN)
+        seen = wait_for(published_titles(mark), 10)
+        check("a removed library is dropped from what plex.tv holds",
+              status == 200 and seen == titles, (status, seen))
         asked = connectivity and dict(connectivity[0]["query"])["asyncIdentifier"]
 
         claim_now = surfaces(first, ACCOUNT_TOKEN)

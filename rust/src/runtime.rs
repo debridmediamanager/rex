@@ -2947,9 +2947,18 @@ impl Runtime {
     }
 
     /// The libraries a claimed server publishes to plex.tv, as `/library/sections` rows.
-    // ponytail: published at start and claim only; a library added or removed later reaches plex.tv on the next restart.
     fn published_sections(&self) -> Vec<Value> {
         self.catalog.sections.iter().map(|section| self.section_directory(section)).collect()
+    }
+
+    /// What plex.tv's copy of the libraries depends on: each one's key, type and title.
+    fn section_names(&self) -> Vec<(Value, Value, Value)> {
+        let field = |section: &Value, name: &str| section.get(name).cloned().unwrap_or(Value::Null);
+        self.catalog
+            .sections
+            .iter()
+            .map(|section| (field(section, "key"), field(section, "type"), field(section, "title")))
+            .collect()
     }
 
     fn section_directory(&self, section: &Value) -> Value {
@@ -7049,7 +7058,14 @@ impl Runtime {
         if before != after || self.device_order.len() != known_devices {
             persist_before_answer = true;
         }
+        let writes = !matches!(request.method.as_str(), "GET" | "HEAD" | "OPTIONS");
+        let libraries = writes.then(|| self.section_names());
         let mut response = self.request_route(request);
+        // A real PMS republishes its libraries when one is added, removed or renamed;
+        // plex.tv only lets an owner share the ones it was last sent.
+        if libraries.is_some_and(|before| before != self.section_names()) {
+            self.republish_sections();
+        }
         self.refresh_session_rows();
         self.alternates_response(request, &mut response);
         exclude_fields_response(request, &mut response);
