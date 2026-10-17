@@ -3,11 +3,9 @@
 # fill in the values, and see README "Setup" for each step. It runs from its own directory.
 #
 # Keys come from rex.env beside run.sh (mode 600; gitignored, as is run.sh):
-# TMDB_KEY names what is pushed and powers Fix Match. PLEX_TOKEN (the owner's account token)
-# is optional: a claimed server asks Plex's metadata agent and plex.tv with its own token, and
-# only an unclaimed one that should still match with Plex's agent needs it.
-# REX_METADATA_URL (+REX_METADATA_KEY) reads TMDB through a metadata provider first, such as
-# DMM for its sponsors (docs/metadata-api.md).
+# PLEX_TOKEN (the owner's account token) is optional: a claimed server asks Plex's metadata
+# agent, which describes every title and powers Fix Match, and plex.tv with its own token; only
+# an unclaimed one that should still use Plex's agent needs it.
 # Under systemd, EnvironmentFile= can load the same file instead.
 #
 # Sources register themselves and push their items (docs/feed-api.md): zurg needs only

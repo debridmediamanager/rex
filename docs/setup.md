@@ -22,8 +22,7 @@ The steps below go through it in order.
 | A Linux, macOS or Windows host | rex is one binary and its `data/` sidecars, with no other runtime dependencies. The same binary writes the catalog (`rex catalog`) and runs several servers (`rex manager`) |
 | Rust, or Docker | to build it (below) |
 | One or more byte sources | [zurg](https://github.com/debridmediamanager/zurg) (a build with the rex feed: `rex_url` in its `config.yml`), or any HTTP server that serves the files plus something that pushes them to rex's feed |
-| A TMDB API key | free from [themoviedb.org](https://www.themoviedb.org/settings/api); it describes the titles your source placed and powers Fix Match |
-| Your Plex account token | not needed. A claimed rex (step 6) asks plex.tv and Plex's own metadata agent with the server token the claim gives it. Only an unclaimed server that should still match with Plex's agent takes `PLEX_TOKEN`: the `X-Plex-Token` in the URL of any "View XML" link in Plex Web ([Plex's guide](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/)) |
+| Your Plex account token | not needed. A claimed rex (step 6) asks plex.tv and Plex's own metadata agent, which describes every title and powers Fix Match, with the server token the claim gives it. Only an unclaimed server that should still match with Plex's agent takes `PLEX_TOKEN`: the `X-Plex-Token` in the URL of any "View XML" link in Plex Web ([Plex's guide](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/)) |
 | An HTTPS address | only for use outside your LAN and in app.plex.tv: a certificate for a hostname you control (a `tailscale cert`, Let's Encrypt) |
 | FFmpeg | optional, for [transcoding](#transcoding) |
 
@@ -113,7 +112,6 @@ server stopped, or with `sqlite3 rex.db ".backup rex.db.bak"`.
 ### 4. First start, on your LAN
 
 ```bash
-export TMDB_KEY=...
 rust/target/release/rex --catalog rex.db --port 32400
 ```
 
@@ -124,19 +122,18 @@ The first lines of the log say whether it seeded the catalog, name each source i
 knows (`source rd: registered, feed at /rex/feed/rd/`, or `no source yet`) and the state
 file.
 
-- **A metadata provider.** `REX_METADATA_URL` points rex at a server that answers TMDB's
-  reads for it ([metadata-api.md](metadata-api.md)), with `REX_METADATA_KEY` if it takes a key.
-  DMM is one for its sponsors (`https://debridmediamanager.com` and the 64-character key from
-  gatekeeper): the same answers from DMM's cache, so a library's shows and seasons are mostly
-  already there. rex asks the provider first and TMDB itself only when it does not answer, so
-  with `TMDB_KEY` as well a lapsed key changes nothing; with the provider alone no `TMDB_KEY`
-  is needed.
+- **What a title looks like comes from Plex.** rex exchanges the ids its source pushed for Plex's
+  own guid and shows what Plex's metadata agent says of it: titles, summaries, posters, seasons
+  and episode names. It reads no TMDB: `TMDB_KEY`, `REX_METADATA_URL` and `REX_METADATA_KEY` are
+  no longer read (2026-10-17), and an install that still sets them starts as before. Until the
+  claim (step 6), or without `PLEX_TOKEN`, titles keep the names they were pushed with and Fix
+  Match has no candidates.
 - **What a file is comes from the source.** zurg with a sponsor `dmm_api_key` asks DMM what each
   file is and pushes it placed: the title's ids and, for an episode, TMDB's season and episode,
   anime and long shows included. rex reads nothing off a name. A file pushed without a placement
   is unmatched, for Fix Match: a film titled as its file, an episode in a show named after its
   release, season 1, numbered in the release's file order until the source places it. A TMDB id
-  set by hand in zurg names its release too, as a title of its library's kind TMDB has. Upgrading: `REX_ANIME_LISTS` and `REX_IMDB_EPISODES`
+  set by hand in zurg names its release too, as a title of its library's kind, trusted as given. Upgrading: `REX_ANIME_LISTS` and `REX_IMDB_EPISODES`
   are no longer read, so an install that still sets them starts as before, and the
   `anime-list-master.xml`, `anime-offline-database.jsonl`, `title.episode.tsv.gz` and
   `imdb-episodes.db` they kept beside the catalog are ignored (delete them if you like). Rows
@@ -223,7 +220,7 @@ account out of plex.tv before.
    `claim_state.json` exists beside the catalog.
 
 From the claim on rex asks plex.tv with the server token it stores there: the announce
-(step 7), and Plex's own metadata agent, which then matches what sources push alongside TMDB
+(step 7), and Plex's own metadata agent, which then names and describes what sources push
 with no restart. `PLEX_TOKEN` is not used once there is a claim.
 
 A claimed rex refuses another claim (409). To move it to another account, stop it, remove
@@ -268,7 +265,7 @@ cannot reach are the usual causes.
 
 `examples/run.sh.example` is the whole command line as a script: copy it to `run.sh` at the
 top of the checkout or release, beside `rust/` and the catalog, and fill it in. It reads the
-keys from `rex.env` (`TMDB_KEY=`, and `PLEX_TOKEN=` only if you want it; mode 600) and adds
+keys from `rex.env` (`PLEX_TOKEN=` only if you want it; mode 600) and adds
 `--announce-url`. `run.sh` and `rex.env` are gitignored.
 Under systemd (`~/.config/systemd/user/rex.service`, then `systemctl --user enable --now
 rex`, and `loginctl enable-linger` so it runs without a login):
@@ -319,7 +316,7 @@ the same as for zurg's image.
 docker login ghcr.io -u YOUR_GITHUB_USERNAME
 ```
 
-Everything rex writes (`rex.db`, `claim_state.json`, the TMDB cache) goes to `/config`.
+Everything rex writes (`rex.db`, `claim_state.json`, Plex's metadata cache) goes to `/config`.
 Arguments that start with a flag run the server on `/config/rex.db` (`REX_CATALOG` moves
 it); a subcommand runs as given, so naming more directories before the first start is:
 
@@ -335,8 +332,6 @@ services:
     container_name: rex
     restart: unless-stopped
     network_mode: host        # LAN discovery (GDM), and zurg's registered address reachable as on the host
-    environment:
-      TMDB_KEY: your_tmdb_key
     volumes:
       - ./rex:/config
 ```
@@ -374,7 +369,7 @@ running when the manager stopped is running again when it starts.
 
 ```bash
 rex manager serve                        # API + page on http://127.0.0.1:32300; prints the admin token once
-export TMDB_KEY=...                      # keys come from the environment, never the command line
+export PLEX_TOKEN=...                    # optional; keys come from the environment, never the command line
 rex manager create living-room --port 32400 --catalog "$PWD/catalog.json" --gdm on
 rex manager start living-room
 rex manager list                         # status | logs | stop | restart | delete [--purge] | build

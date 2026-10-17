@@ -112,7 +112,7 @@ Every endpoint is under `/rex/feed/{source}`, for a source registered above. A n
 16 MiB a request (`400` above that).
 
 A request is applied before it is answered, one feed request at a time per server. New
-releases its source placed are identified on the way in by their ids (TMDB and Plex's matcher, a few lookups
+releases its source placed are identified on the way in by their ids (Plex's matcher, a few lookups
 each, cached on disk after the first), so a first fill of a large library is slow: send chunks of a
 few hundred items and allow minutes per request.
 
@@ -220,21 +220,21 @@ What the fields do:
   Plex Web will not play an item without it (findings, "An item without a probe cannot
   play").
 - **Placement.** An item with a `kind` and ids is placed where its source says: the movie or
-  show is the one its ids name, kept even when TMDB has no record of it, and an episode sits on
+  show is the one its ids name, kept even when Plex has no record of it, and an episode sits on
   its `season` and `episode`. That holds on every push and restart. A later push placing it
   elsewhere moves it there on the same ratingKey, watch state kept; a push without a placement
   leaves it where the last one put it. A person's Fix Match still wins over a placement.
 - **Identification.** rex identifies a file only by its source's placement or by a TMDB id set
-  by hand (`ids.tmdb` with no `kind`: a title of its library's kind, when TMDB has one, since
-  rows pushed before DMM placed them still carry ids zurg's own Plex gave, an episode's among
-  them), and never by its name (`identify.rs`). zurg asks DMM what each file is; on the production server 0.9% of episodes
-  and 1.1% of movies arrive unplaced (2026-10-17). Plex's matcher is asked only for its guid and
-  artwork by the title's external ids, and TMDB, or the metadata provider, only for the title's
-  metadata by its TMDB id: identification searches nothing and asks no `/find` (Fix Match, a
-  person's, is the only search). An IMDb id with no `kind` names nothing: zurg
-  has DMM place a hand-set IMDb id, and one DMM cannot place TMDB's `/find` could not either.
-  An identification that names nothing never takes away a title a row already has. A title only
-  Plex knows takes Plex's own title and artwork.
+  by hand (`ids.tmdb` with no `kind`: a title of its library's kind), trusted as pushed and
+  checked against nothing, and never by its name (`identify.rs`). zurg asks DMM what each file
+  is; on the production server 0.9% of episodes and 1.1% of movies arrive unplaced
+  (2026-10-17). Plex's matcher is asked for its guid by the title's external ids, and its answer
+  -- and, for an episode, its season's and its own row -- is everything the row shows: title,
+  summary, artwork, genres, people. rex reads no TMDB. Identification searches nothing (Fix Match,
+  a person's, is the only search, through Plex's matcher). An IMDb id with no `kind` names
+  nothing: zurg has DMM place a hand-set IMDb id. An identification that names nothing never
+  takes away a title a row already has; a title Plex does not know keeps the name it was pushed
+  with.
 - **Unplaced.** An item nothing identifies is shown unmatched, for Fix Match: a film titled as
   its file (the file name without its extension), an episode in a show titled with its release's
   `name`, season 1, numbered 1..n in the release's file order (its paths sorted; a file arriving
@@ -246,15 +246,15 @@ What the fields do:
   show its new identity names, on the numbers it was placed on, else the ones it had). So does
   any push of a row whose ids named nothing when they came. A
   season takes the identity its episodes bring -- its guid and ids, summary and poster, the
-  show's poster where TMDB has none for it -- whatever its first episode lacked, unless a
+  show's poster -- whatever its first episode lacked, unless a
   person locked the field; seasons left without one are given theirs when the server starts.
 - **Retried.** A row on the blank tile -- a film with no poster, an episode whose show has
   none -- or an episode named as a film (a film's guid, which every season-0 episode got before
   2026-10-16) is identified again when the server starts and every ten minutes after, up to 50
-  films or shows a pass, as its source pushed it -- when it came with a placement or a hand-set
-  TMDB id. A row with neither has nothing to retry with and is left as it is. One still unnamed
-  waits an hour, then twice as long each time, to about five days. A TMDB or Plex answer that
-  found nothing or has no poster is asked again after a day. No other pass at start touches a
+  films or shows a pass, as its source pushed it -- when it came with a placement. A row without
+  one is left as it is: rows pushed before DMM placed anything still carry ids zurg's own Plex
+  gave, an episode's among them. One still unnamed waits an hour, then twice as long each time,
+  to about five days. A Plex answer that found nothing is asked again after a day. No other pass at start touches a
   row by its name: none renumbers, unfolds, moves or re-identifies one.
 - **A person's match wins.** A Fix Match is recorded on the row: no push and no retry
   identifies it, or the episodes of a show a person matched, again. Unmatch hands it back to

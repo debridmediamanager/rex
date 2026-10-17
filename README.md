@@ -9,7 +9,7 @@ rex gets its library from whatever you point at it. Each source sends rex the li
 ## What you get
 
 - Once you add it to your Plex account it shows up in the Plex apps and in app.plex.tv next to your other servers
-- Movies and shows get posters, summaries, cast, seasons and episodes from TMDB and from Plex's own metadata
+- Movies and shows get posters, summaries, cast, seasons and episodes from Plex's own metadata
 - Watched state, Continue Watching, playlists, collections, edits and Fix Match all work and survive a restart
 - Apps on your home network find it on their own when it runs on port 32400
 - Files play in their original quality. With FFmpeg it also converts what a device cannot play and a GPU makes that fast. A converted film starts in about 2 seconds even on a small Intel box
@@ -20,7 +20,7 @@ rex gets its library from whatever you point at it. Each source sends rex the li
 
 This is the short version. [docs/setup.md](docs/setup.md) has every option and a troubleshooting table.
 
-You need a Linux, macOS or Windows machine, at least one source such as zurg and a free [TMDB API key](https://www.themoviedb.org/settings/api). rex never needs your Plex token.
+You need a Linux, macOS or Windows machine and at least one source such as zurg. rex never needs your Plex token.
 
 **1. Get it**
 
@@ -48,7 +48,6 @@ On Windows unpack the zip and use `rust\target\release\rex.exe` where the steps 
 **2. Start it**
 
 ```bash
-export TMDB_KEY=...
 rust/target/release/rex --catalog rex.db
 ```
 
@@ -82,7 +81,7 @@ curl -X POST "http://127.0.0.1:32400/myplex/claim?token=claim-xxxxxxxxxxxx"
 
 Do this once per server. rex saves it in `claim_state.json` next to `rex.db`. Back that file up.
 
-From then on rex talks to plex.tv with the server's own token from the claim. That token also lets rex match your titles with Plex's own metadata as well as TMDB's. If you skip this step and still want Plex's matches, set `PLEX_TOKEN` to your [Plex token](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/) in step 2. A claimed server does not need it.
+From then on rex talks to plex.tv with the server's own token from the claim. That token also lets rex show your titles with Plex's own metadata: until the claim they keep the names your source pushed. If you skip this step and still want Plex's metadata, set `PLEX_TOKEN` to your [Plex token](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/) in step 2. A claimed server does not need it.
 
 **5. Use it outside your home**
 
