@@ -2942,6 +2942,12 @@ impl Runtime {
         )
     }
 
+    /// The libraries a claimed server publishes to plex.tv, as `/library/sections` rows.
+    // ponytail: published at start and claim only; a library added or removed later reaches plex.tv on the next restart.
+    fn published_sections(&self) -> Vec<Value> {
+        self.catalog.sections.iter().map(|section| self.section_directory(section)).collect()
+    }
+
     fn section_directory(&self, section: &Value) -> Value {
         let key = string_value(section.get("key").unwrap_or(&Value::Null));
         let kind = section
@@ -22886,14 +22892,14 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
     }
     if claim.claimed() {
         // A claimed start: the heartbeat's first beat is the device PUT.
-        let local_address = runtime
-            .lock()
-            .map_err(|_| "runtime lock poisoned".to_string())?
-            .private_address
-            .clone();
+        let (local_address, sections) = {
+            let guard = runtime.lock().map_err(|_| "runtime lock poisoned".to_string())?;
+            (guard.private_address.clone(), guard.published_sections())
+        };
         plextv::start_registration(
             Arc::clone(&plextv.claim),
             local_address,
+            sections,
             None,
             Some(Arc::clone(&plextv.access)),
         );

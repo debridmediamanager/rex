@@ -1,0 +1,93 @@
+{
+ "source": "plexlab (kids), a real PMS 1.43.4.10903 with two libraries, its plex.tv traffic recorded in capture/outbound.jsonl",
+ "captured": "2026-10-09T04:00:35",
+ "note": "The last of its POST /servers.xml requests. plex.tv answered 422 and still stored one Section per Directory. pathHash is the SHA-256 of the location path (section_locations.root_path in its library.db).",
+ "section_locations": [
+  {
+   "id": 1,
+   "path": "/data/movies"
+  },
+  {
+   "id": 2,
+   "path": "/data/shows"
+  }
+ ],
+ "request": {
+  "method": "POST",
+  "host": "servers.plex.tv",
+  "path": "/servers.xml",
+  "query": [
+   [
+    "auth_token",
+    "REDACTED"
+   ]
+  ],
+  "req_headers": [
+   [
+    "user-agent",
+    "PlexMediaServer/1.43.4.10903-e5521bd8c"
+   ],
+   [
+    "accept",
+    "*/*"
+   ],
+   [
+    "accept-encoding",
+    "gzip"
+   ],
+   [
+    "x-plex-client-identifier",
+    "15fad815c00463b33e2e644245763ee42ef84757"
+   ],
+   [
+    "x-plex-version",
+    "1.43.4.10903-e5521bd8c"
+   ],
+   [
+    "x-plex-provides",
+    "server"
+   ],
+   [
+    "x-plex-platform",
+    "Linux"
+   ],
+   [
+    "x-plex-product",
+    "Plex Media Server"
+   ],
+   [
+    "x-plex-platform-version",
+    "6.8.0-110-generic"
+   ],
+   [
+    "x-plex-device-name",
+    "plexlab"
+   ],
+   [
+    "x-plex-device",
+    "Docker Container"
+   ],
+   [
+    "x-plex-model",
+    "x86_64"
+   ],
+   [
+    "x-plex-device-vendor",
+    "Docker"
+   ],
+   [
+    "content-type",
+    "application/xml"
+   ],
+   [
+    "content-length",
+    "1102"
+   ]
+  ],
+  "req_body": "<MediaContainer size=\"3\">\n<Server relay=\"0\" name=\"plexlab\" host=\"\" localAddresses=\"172.31.7.2\" machineIdentifier=\"15fad815c00463b33e2e644245763ee42ef84757\" version=\"1.43.4.10903-e5521bd8c\" date=\"1791518435662214\" />\n<Directory key=\"1\" type=\"movie\" title=\"Movies\" agent=\"tv.plex.agents.movie\" scanner=\"Plex Movie\" language=\"en-US\" metadataAgentProviderGroupId=\"1\" uuid=\"e46d000f-bcc4-4b5b-8a7b-1a9d721346ec\" updatedAt=\"1789240743\" createdAt=\"1789187246\" scannedAt=\"1789645051\" content=\"1\" directory=\"1\" contentChangedAt=\"9081\" hidden=\"0\">\n<Location id=\"1\" pathHash=\"67480083d3ab373e93a3633623ce7ba983e17cc1dc4531a2c702666bbb57374b\" />\n</Directory>\n<Directory key=\"2\" type=\"show\" title=\"TV Shows\" agent=\"tv.plex.agents.series\" scanner=\"Plex TV Series\" language=\"en-US\" metadataAgentProviderGroupId=\"2\" uuid=\"d962847e-2c7c-4d45-8355-e45e16287846\" updatedAt=\"1789187257\" createdAt=\"1789187257\" scannedAt=\"1789645059\" content=\"1\" directory=\"1\" contentChangedAt=\"8922\" hidden=\"0\">\n<Location id=\"2\" pathHash=\"64970b801e946f9a63da21bae599507c92989e1f0ff893cdcc52d8f419ab93e8\" />\n</Directory>\n</MediaContainer>\n"
+ },
+ "response": {
+  "status": 422,
+  "body": null
+ }
+}

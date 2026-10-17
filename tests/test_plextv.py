@@ -74,6 +74,10 @@ with open(os.path.join(HERE, "fixtures", "plextv_registration_s1422.json")) as _
 # the 1.42.2 reference itself re-reading it for an unknown token (the 6 s window is measured there).
 with open(os.path.join(HERE, "fixtures", "plextv_access_tokens_s1422.json")) as _handle:
     ACCESS = json.load(_handle)
+# a real 1.43.4 PMS with two libraries publishing itself: one <Directory> per library after the
+# <Server>, which plex.tv keeps as the Sections that sharing offers.
+with open(os.path.join(HERE, "fixtures", "plextv_servers_xml_sections_s1434.json")) as _handle:
+    SECTIONS_PUBLISH = json.load(_handle)
 # the 1.42.2 reference's own PMS announcing its seventeen connections: one Connection[][uri] pair
 # each, in a row.
 with open(os.path.join(HERE, "fixtures", "pms_announce_connections_s1422.json")) as _handle:
@@ -978,11 +982,31 @@ def main():
               and sent(publish) == PMS_HEADERS + [("content-type", "application/xml")]
               and names(publish["headers"], ("host", "content-length", "connection"))
               == names(real["req_headers"], ("host", "content-length", "connection"))
-              and shape(body) == shape(real["req_body"])
+              and shape(re.sub(r'<Directory .*?</Directory>\n', "", body, flags=re.S))
+              == shape(real["req_body"])
               and 'name="%s"' % FRIENDLY in body and 'machineIdentifier="%s"' % MACHINE in body
               and 'version="%s"' % VERSION in body
               and abs(int(re.search(r'date="(\d+)"', body).group(1)) / 1e6 - claimed_at) < 10,
               publish and (publish["query"], sent(publish), body))
+        # ...and, as a PMS with libraries does, one <Directory> per library: without them plex.tv
+        # stores no Sections and the server cannot be shared.
+        libraries = container(first.request("GET", "/library/sections", token=ACCOUNT_TOKEN)[1]).get("Directory") or []
+        directories = re.findall(r'<Directory .*?</Directory>\n', body or "", flags=re.S)
+        real_directories = re.findall(r'<Directory .*?</Directory>\n', SECTIONS_PUBLISH["request"]["req_body"], flags=re.S)
+        hashes = lambda rows: [hashlib.sha256(location["path"].encode()).hexdigest()
+                               for row in rows for location in row.get("Location") or []]
+        check("the claim publishes each library as a Directory, shaped as a real PMS's",
+              libraries and len(directories) == len(libraries)
+              and ('<MediaContainer size="%d">' % (1 + len(libraries))) in body
+              and all(re.sub(r'<Location [^\n]*\n', "", shape(mine))
+                      == re.sub(r'<Location [^\n]*\n', "", shape(real_directories[0]))
+                      for mine in directories)
+              and re.findall(r'pathHash="([0-9a-f]+)"', body) == hashes(libraries)
+              and re.findall(r'pathHash="([0-9a-f]+)"', SECTIONS_PUBLISH["request"]["req_body"])
+              == hashes([{"Location": SECTIONS_PUBLISH["section_locations"]}])
+              and all('key="%s"' % row["key"] in mine and 'uuid="%s"' % row["uuid"] in mine
+                      for row, mine in zip(libraries, directories)),
+              (len(libraries), directories))
         puts = [r for r in stub.taken("servers.plex.tv", "/devices/.*", "PUT")
                 if publish and 0 <= r["at"] - publish["at"] < 1.0
                 and dict(r["query"])["X-Plex-Token"] == SERVER_TOKEN]
@@ -1187,6 +1211,10 @@ def main():
               and stub.taken("pubsub.plex.tv", "/sub/eventsource/%d/%s" % (ACCOUNT_ID, MACHINE))
               and answered and re.fullmatch(UUID4, dict(answered[0]["query"])["asyncIdentifier"]),
               [(r["host"], r["path"]) for r in stub.records])
+        republished = [r["body"].decode() for r in stub.taken("plex.tv", "/servers.xml", "POST")]
+        check("a claimed startup publishes its libraries again, so plex.tv keeps them shareable",
+              republished and len(re.findall(r"<Directory ", republished[-1])) == len(libraries) > 0,
+              republished[-1:])
         beats = stub.taken("servers.plex.tv", "/devices/.*", "PUT")
         check("a claimed startup announces with the server's own token",
               beats and dict(beats[0]["query"])["X-Plex-Token"] == SERVER_TOKEN,

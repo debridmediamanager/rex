@@ -9149,8 +9149,14 @@ thirty-four cycles without anyone reading it.
 
 * A real PMS also `POST`s `servers.plex.tv/servers.xml` with a `MediaContainer` naming its
   `<Server>` and a `<Directory>` per library — 57 times in the recorded capture against three
-  device announces. That is how plex.tv learns a server's libraries. It is a plex.tv WRITE and
-  therefore out of scope; recorded with its shape and cadence, not built.
+  device announces. That is how plex.tv learns a server's libraries. **Built 2026-10-17**: with no
+  Directory, plex.tv stored no Sections for fun-rex, and plex.tv's Share Library and Grant Access
+  screens had nothing to offer. The Directories are siblings after a self-closing `<Server>`, `size` counts all of them,
+  and each `<Location pathHash>` is the SHA-256 of the location's path (plexlab's `/data/movies`
+  and `/data/shows` match; `tests/fixtures/plextv_servers_xml_sections_s1434.json`). Posted once by
+  hand in that shape, plex.tv answered 422 and listed `Section key="1"`/`key="2"` for fun-rex at
+  once; `<Section>` children or Directories nested inside `<Server>` were stored as nothing. rex
+  publishes them on claim and on a claimed start, not yet when a library is added or removed.
 * The `Connection: close` a part read sends instead of the reference's `Keep-Alive`/`timeout=20`
   remains the recorded ffmpeg-seek deviation.
 * `Part.accessible`/`exists` remain hard-coded true. The 1.42.2 reference rows whose file is

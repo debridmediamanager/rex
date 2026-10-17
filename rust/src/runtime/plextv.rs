@@ -931,21 +931,54 @@ fn xml_attr(value: &str) -> String {
     )
 }
 
+/// One `<Directory>` per library after the `<Server>`, as a real 1.43.4 PMS sends them
+/// (`tests/fixtures/plextv_servers_xml_sections_s1434.json`): plex.tv keeps them as the
+/// server's Sections, and sharing a server offers only those. `pathHash` is the SHA-256
+/// of the location's path. `sections` are `/library/sections` rows.
+fn section_directories(sections: &[Value]) -> String {
+    use sha2::{Digest, Sha256};
+    let text = |row: &Value, field: &str| match row.get(field) {
+        Some(Value::Bool(flag)) => u8::from(*flag).to_string(),
+        Some(value) => super::string_value(value),
+        None => String::new(),
+    };
+    let mut out = String::new();
+    for row in sections {
+        out.push_str("<Directory");
+        for field in [
+            "key", "type", "title", "agent", "scanner", "language", "metadataAgentProviderGroupId", "uuid",
+            "updatedAt", "createdAt", "scannedAt", "content", "directory", "contentChangedAt", "hidden",
+        ] {
+            out.push_str(&format!(" {field}={}", xml_attr(&text(row, field))));
+        }
+        out.push_str(">\n");
+        for location in row.get("Location").and_then(Value::as_array).into_iter().flatten() {
+            let hash = Sha256::digest(text(location, "path").as_bytes());
+            let hex: String = hash.iter().map(|byte| format!("{byte:02x}")).collect();
+            out.push_str(&format!("<Location id={} pathHash=\"{hex}\" />\n", xml_attr(&text(location, "id"))));
+        }
+        out.push_str("</Directory>\n");
+    }
+    out
+}
+
 /// `Claim.publish`: `POST /servers.xml`, which creates and then updates plex.tv's SERVER
 /// record. plex.tv answers it 422 every time, for a real PMS too, and writes the record
 /// anyway (docs/findings.md). The status, as a string.
-fn publish(claim: &SharedClaim, local_address: &str) -> Result<String, String> {
+fn publish(claim: &SharedClaim, local_address: &str, sections: &[Value]) -> Result<String, String> {
     let current = snapshot(claim);
     let micros = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()
         .as_micros();
     let body = format!(
-        "<MediaContainer size=\"1\">\n<Server relay=\"0\" name={} host=\"\" localAddresses={} machineIdentifier={} version={} date=\"{micros}\" />\n</MediaContainer>\n",
+        "<MediaContainer size=\"{}\">\n<Server relay=\"0\" name={} host=\"\" localAddresses={} machineIdentifier={} version={} date=\"{micros}\" />\n{}</MediaContainer>\n",
+        1 + sections.len(),
         xml_attr(&current.name),
         xml_attr(local_address),
         xml_attr(&current.machine),
         xml_attr(&current.version),
+        section_directories(sections),
     );
     let url = format!(
         "{SERVERS_URL}?{}",
@@ -1023,6 +1056,7 @@ fn command(payload: &str) {
 pub(crate) fn start_registration(
     claim: SharedClaim,
     local_address: String,
+    sections: Vec<Value>,
     beat: Option<Beat>,
     access: Option<Arc<Access>>,
 ) {
@@ -1033,7 +1067,7 @@ pub(crate) fn start_registration(
                 let mut read = access.read.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
                 access.refresh(&claim, None, &mut read);
             }
-            match publish(&claim, &local_address) {
+            match publish(&claim, &local_address, &sections) {
                 Ok(status) => info!("servers.xml POST -> {status}"),
                 Err(message) => error!("registration failed: {message}"),
             }
@@ -2003,7 +2037,7 @@ pub(super) fn finish_claim(runtime: &SharedRuntime, token: &str, _target: &str) 
     }
     // What the probe PMS did next: POST /servers.xml, the device PUT, then the pubsub
     // stream that makes it present (`do_claim`).
-    let local_address = {
+    let (local_address, sections) = {
         let mut guard = runtime
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
@@ -2013,14 +2047,14 @@ pub(super) fn finish_claim(runtime: &SharedRuntime, token: &str, _target: &str) 
             let agent = super::plexmeta::PlexMeta::new(Arc::clone(&plextv.claim), cache, guard.machine.clone());
             guard.plex = Some(Arc::new(agent));
         }
-        guard.private_address.clone()
+        (guard.private_address.clone(), guard.published_sections())
     };
     let beat = plextv
         .beat
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .clone();
-    start_registration(Arc::clone(&plextv.claim), local_address, beat, None);
+    start_registration(Arc::clone(&plextv.claim), local_address, sections, beat, None);
     plextv.start_account(runtime);
     let guard = runtime
         .lock()
