@@ -39,6 +39,12 @@ const SERVERS_URL: &str = "https://plex.tv/servers.xml";
 const PUBSUB_URL: &str = "https://pubsub.plex.tv/sub/eventsource/%s/%s";
 const ACCESS_TOKENS_URL: &str = "https://plex.tv/api/v2/server/access_tokens";
 const WEBHOOKS_URL: &str = "https://plex.tv/api/v2/server/webhooks";
+/// The public, unauthenticated release list a PMS's updater reads.
+const DOWNLOADS_URL: &str = "https://plex.tv/api/downloads/5.json";
+/// The version rex names itself to plex.tv with until the release list answers: the real
+/// build the 1.42.2 reference runs (`tests/fixtures/plextv_registration_s1422.json`).
+pub(crate) const PMS_VERSION_FALLBACK: &str = "1.42.2.10156-f737b826c";
+const VERSION_REREAD: Duration = Duration::from_secs(24 * 3600);
 /// `claim.ACCESS_REFRESH_WINDOW`: the 1.42.2 reference's 1.42.2 PMS re-reads the
 /// access-token list for an unknown token unless its last read finished about 6 s ago or
 /// less (tests/fixtures/plextv_access_tokens_s1422.json).
@@ -554,7 +560,7 @@ impl Claim {
             ("X-Plex-Device-Name", self.name.clone()),
             ("X-Plex-Device", "PC".to_string()),
             ("X-Plex-Model", "x86_64".to_string()),
-            ("X-Plex-Device-Vendor", "rex".to_string()),
+            ("X-Plex-Device-Vendor", "Docker".to_string()),
         ]);
         headers
     }
@@ -614,6 +620,55 @@ pub(crate) fn server_token(claim: &SharedClaim) -> Option<String> {
 /// (findings, "Collateral change to the Plex account"; card #293).
 fn claim_token(claim: &SharedClaim) -> Option<String> {
     snapshot(claim).token.filter(|token| !token.is_empty())
+}
+
+/// A PMS version as plex.tv's release list spells one: `1.43.4.10903-e5521bd8c`.
+fn pms_version_shape(version: &str) -> bool {
+    version.split_once('-').is_some_and(|(number, build)| {
+        number.split('.').count() == 4
+            && number.split('.').all(|part| !part.is_empty() && part.bytes().all(|b| b.is_ascii_digit()))
+            && !build.is_empty()
+            && build.bytes().all(|b| b.is_ascii_hexdigit())
+    })
+}
+
+/// The newest public PMS for Linux, from the release list; None when plex.tv does not answer
+/// one in the expected shape.
+fn latest_pms_version(claim: &Claim) -> Option<String> {
+    let headers = claim.pms_headers("PlexMediaServer", true);
+    let (_, body) = urlopen("GET", DOWNLOADS_URL, &headers, None, 10).ok()?;
+    let list: Value = serde_json::from_slice(&body).ok()?;
+    list["computer"]["Linux"]["version"]
+        .as_str()
+        .filter(|version| pms_version_shape(version))
+        .map(str::to_string)
+}
+
+/// Names rex to plex.tv as the newest public PMS. Clients keep the measured 1.42.2
+/// (`super::VERSION`): this is plex.tv's view only.
+pub(crate) fn refresh_version(claim: &SharedClaim) {
+    let current = snapshot(claim);
+    let Some(latest) = latest_pms_version(&current) else {
+        warning!("plex.tv's release list did not answer; naming the server {} to plex.tv", current.version);
+        return;
+    };
+    if latest != current.version {
+        info!("naming the server to plex.tv as PMS {latest}");
+        claim.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).version = latest;
+    }
+}
+
+/// Re-reads the release list every day, once a server talks to plex.tv; started once.
+pub(crate) fn watch_version(claim: &SharedClaim) {
+    static STARTED: AtomicBool = AtomicBool::new(false);
+    if STARTED.swap(true, Ordering::SeqCst) {
+        return;
+    }
+    let claim = Arc::clone(claim);
+    let _ = thread::Builder::new().name("rex-pms-version".to_string()).spawn(move || loop {
+        thread::sleep(VERSION_REREAD);
+        refresh_version(&claim);
+    });
 }
 
 /// `Claim.exchange`: redeem a `claim-…` token for this server's own token.
@@ -1202,7 +1257,7 @@ pub(crate) fn republish(claim: SharedClaim, local_address: String, sections: Vec
 /// (`tests/fixtures/outbound-announce.json`). `url` is a comma-separated list: a server
 /// with several connections sends one `Connection[][uri]` pair each, in a row
 /// (`tests/fixtures/pms_announce_connections_s1422.json`).
-fn announce(token: &str, machine: &str, url: &str, name: &str) -> Result<(), String> {
+fn announce(token: &str, machine: &str, url: &str, name: &str, version: &str) -> Result<(), String> {
     let mut pairs = url
         .split(',')
         .filter(|uri| !uri.is_empty())
@@ -1215,7 +1270,7 @@ fn announce(token: &str, machine: &str, url: &str, name: &str) -> Result<(), Str
         ("X-Plex-Token", token.to_string()),
     ]);
     let query = urlencode(&pairs);
-    let version = super::VERSION.to_string();
+    let version = version.to_string();
     let headers = [
         ("User-Agent", format!("PlexMediaServer/{version}")),
         ("Accept", "*/*".to_string()),
@@ -1229,7 +1284,7 @@ fn announce(token: &str, machine: &str, url: &str, name: &str) -> Result<(), Str
         ("X-Plex-Device-Name", name.to_string()),
         ("X-Plex-Device", "PC".to_string()),
         ("X-Plex-Model", "x86_64".to_string()),
-        ("X-Plex-Device-Vendor", "rex".to_string()),
+        ("X-Plex-Device-Vendor", "Docker".to_string()),
     ];
     let (_, body) = urlopen(
         "PUT",
@@ -1279,7 +1334,7 @@ impl Beat {
     /// `Heartbeat.beat`: one announce.
     fn beat(&self, claim: &SharedClaim) -> Result<(), String> {
         let token = claim_token(claim).ok_or("no claim to announce with")?;
-        announce(&token, &self.machine, &self.url, &self.name)
+        announce(&token, &self.machine, &self.url, &self.name, &snapshot(claim).version)
     }
 }
 
@@ -1306,7 +1361,7 @@ pub(crate) fn start_heartbeat(beat: Beat, claim: SharedClaim, interval: u64) {
                     thread::sleep(Duration::from_secs(interval));
                     continue;
                 };
-                let result = announce(&token, &beat.machine, &beat.url, &beat.name).and_then(|_| {
+                let result = announce(&token, &beat.machine, &beat.url, &beat.name, &snapshot(&claim).version).and_then(|_| {
                     failures = 0;
                     // Verifying costs a second request but turns a silent
                     // disappearance into a log line.
@@ -2186,6 +2241,8 @@ pub(super) fn finish_claim(runtime: &SharedRuntime, token: &str, _target: &str) 
             .unwrap_or_else(|poisoned| poisoned.into_inner());
         Arc::clone(&guard.plextv)
     };
+    refresh_version(&plextv.claim);
+    watch_version(&plextv.claim);
     if let Err(message) = exchange(&plextv.claim, token) {
         error!("claim exchange failed: {message}");
         return super::Response::error(500, &format!("rex: claim exchange failed: {message}"));
@@ -2226,6 +2283,15 @@ mod tests {
         let mut encoder = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::fast());
         encoder.write_all(body).expect("gzip body");
         encoder.finish().expect("gzip finish")
+    }
+
+    #[test]
+    fn a_release_version_has_four_numbers_and_a_hex_build() {
+        assert!(pms_version_shape("1.43.4.10903-e5521bd8c"));
+        assert!(pms_version_shape(PMS_VERSION_FALLBACK));
+        for bad in ["", "1.43.4.10903", "1.43.4-e5521bd8c", "1.43.4.x-e5521bd8c", "1.43.4.10903-", "1.43.4.10903-rex"] {
+            assert!(!pms_version_shape(bad), "{bad}");
+        }
     }
 
     #[test]

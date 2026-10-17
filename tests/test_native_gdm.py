@@ -75,7 +75,7 @@ def main():
             b"Port: %d\r\n" % tcp
             + b"Resource-Identifier: " + machine.encode() + b"\r\n"
         )
-        expected_version = b"Version: 1.42.2.10156-rex\r\n"
+        expected_version = b"Version: 1.42.2.10156-f737b826c\r\n"
         for port in gdm_ports:
             for label, payload, answer in (
                 ("proper query", b"M-SEARCH * HTTP/1.1\r\n", True),

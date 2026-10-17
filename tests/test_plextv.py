@@ -87,7 +87,10 @@ with open(os.path.join(HERE, "fixtures", "outbound-announce.json")) as _handle:
     ANNOUNCES = json.load(_handle)["announces"]
 MACHINE = "f1x7u4e0000000000000000000000000000000f1"
 FRIENDLY = "rex-ui-fixture"
-VERSION = "1.42.2.10156-rex"
+# rex names itself to plex.tv as the newest public PMS, read from plex.tv's release list
+# (the stub's answer below); with no list, as the build the 1.42.2 reference runs.
+VERSION = "1.43.4.10903-e5521bd8c"
+VERSION_FALLBACK = "1.42.2.10156-f737b826c"
 CLAIM_TOKEN = "claim-STUB-CLAIM-TOKEN"
 REUSED_CLAIM_TOKEN = "claim-STUB-REUSED"    # plex.tv answers it with the ACCOUNT token
 ACCOUNT_TOKEN = "ACCOUNT-TOKEN-STUB"
@@ -131,7 +134,7 @@ PMS_HEADERS = [
     ("x-plex-version", VERSION), ("x-plex-provides", "server"), ("x-plex-platform", "Linux"),
     ("x-plex-product", "Plex Media Server"), ("x-plex-platform-version", "6.1"),
     ("x-plex-device-name", FRIENDLY), ("x-plex-device", "PC"), ("x-plex-model", "x86_64"),
-    ("x-plex-device-vendor", "rex"),
+    ("x-plex-device-vendor", "Docker"),
 ]
 
 
@@ -288,6 +291,7 @@ class Stub(ThreadingHTTPServer):
         # A later owner read names another account id beside a broken feature table.
         self.user_id = ACCOUNT_ID
         self.broken_features = False
+        self.downloads = True
 
     def handle_error(self, request, client_address):
         # A stopped rex hangs up on its pubsub stream. socketserver printed the
@@ -412,6 +416,11 @@ class StubHandler(BaseHTTPRequestHandler):
             with self.server.lock:
                 extra = [row % (DISABLED_TOKEN, 1)] + [row % (t, 0) for t in self.server.late_tokens]
             return ACCESS["response"]["status"], xml, body.replace("</tokens>", "".join(extra) + "</tokens>")
+        if (method, host, path) == ("GET", "plex.tv", "/api/downloads/5.json"):
+            if not self.server.downloads:
+                return 404, "text/plain", "stub: no release list"
+            return 200, "application/json", json.dumps(
+                {"computer": {"Linux": {"id": "linux", "name": "Linux", "version": VERSION}}})
         if (method, host, path) == ("POST", "plex.tv", "/servers.xml"):
             # 422 every time, to a real PMS too -- and the server record is written anyway.
             return recorded("claim", "POST", "/servers.xml")["status"], xml, ""
@@ -762,8 +771,14 @@ def server_token_setup():
     try:
         # -- (a) claimed, no PLEX_TOKEN, --announce-url -------------------------------
         stub.clear()
+        stub.downloads = False
         claimed = start(fresh(True), plex_token=None)
         if started("(a) a claimed server with --announce-url and no PLEX_TOKEN starts", claimed):
+            announced = wait_for(beats, 10) or []
+            check("(a) with no release list it names itself as the 1.42.2 reference's real build",
+                  announced and dict(sent(announced[0]))["x-plex-version"] == VERSION_FALLBACK
+                  and dict(sent(announced[0]))["x-plex-device-vendor"] == "Docker",
+                  announced and sent(announced[0]))
             announced = wait_for(lambda: len(beats()) >= 2 and visibility() and beats(), 12) or []
             check("(a) it announces with the claim's server token, on the interval",
                   len(announced) >= 2 and {token for token, _ in asked_with(announced)} == {SERVER_TOKEN},
@@ -772,6 +787,7 @@ def server_token_setup():
                   visibility() and set(asked_with(visibility())) == {(SERVER_TOKEN, MACHINE)},
                   asked_with(visibility()))
             claimed.stop()
+        stub.downloads = True
 
         # -- (b) unclaimed, no PLEX_TOKEN, --announce-url; then a claim at runtime ------
         stub.clear()
@@ -933,6 +949,11 @@ def main():
               and myplex.get("subscriptionState") == "Active", (status, body))
         exchanges = stub.taken("plex.tv", "/api/claim/exchange", "POST")
         exchange = exchanges[-1] if exchanges else None
+        releases = stub.taken("plex.tv", "/api/downloads/5.json", "GET")
+        check("the claim reads plex.tv's release list first and names itself its newest PMS",
+              releases and exchange and releases[0]["at"] < exchange["at"]
+              and dict(sent(exchange))["x-plex-version"] == VERSION,
+              (len(releases), exchange and sent(exchange)))
         check("the exchange POSTs the claim token with the server identity",
               exchange and exchange["query"] == [("token", CLAIM_TOKEN)]
               and exchange["body"] == b""
@@ -1009,7 +1030,7 @@ def main():
                       ("x-plex-product", "Plex Media Server"),
                       ("x-plex-platform-version", "6.1"), ("x-plex-device-name", FRIENDLY),
                       ("x-plex-device", "PC"), ("x-plex-model", "x86_64"),
-                      ("x-plex-device-vendor", "rex")], sent(put))
+                      ("x-plex-device-vendor", "Docker")], sent(put))
             # The three PUTs a real 1.43.4 PMS made (plexlab's capture/outbound.jsonl).
             real = ANNOUNCES[0]
             check("the recorded announces agree with each other",

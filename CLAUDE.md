@@ -167,6 +167,9 @@ claimed server gates every request as a real PMS does: its own token, the tokens
 `plex.tv/api/v2/server/access_tokens` lists for it (re-read for an unknown token, and kept in
 `claim_state.json` so a failed read after a restart locks no one out), and the `transient-`
 tokens its own `/security/token` minted (findings, "The token gate a claimed server keeps").
+To plex.tv a claimed server names itself the newest public PMS, read from plex.tv's release
+list (`/api/downloads/5.json`) before the claim and every 24 h, with `X-Plex-Device-Vendor:
+Docker` as the recorded PMS sends; clients keep the measured `1.42.2.10156-f737b826c`.
 A conversion's own playlist and segments (`/video/:/transcode/universal/session/...`) are
 keyed to the session, not the token, as on a real PMS (findings, "A conversion session is its own key").
 An unclaimed server without `--token` answers only its own networks, as an unclaimed PMS

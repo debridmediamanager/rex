@@ -120,7 +120,7 @@ impl crate::identify::PlexSource for PlexMeta {
 /// with the token of the claim beside `catalog`, else `PLEX_TOKEN`. None with neither.
 pub(crate) fn relink(items: &mut [Value], catalog: &Path, client: String) -> Option<usize> {
     let claim_file = super::plextv::claim_path(catalog);
-    let claim = super::plextv::Claim::load(&client, claim_file.clone(), "", VERSION);
+    let claim = super::plextv::Claim::load(&client, claim_file.clone(), "", super::plextv::PMS_VERSION_FALLBACK);
     let claim = Arc::new(Mutex::new(claim));
     super::plextv::server_token(&claim)?;
     let agent = PlexMeta::new(claim, claim_file.with_file_name("plex_cache.json"), client);

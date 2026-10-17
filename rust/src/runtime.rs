@@ -69,7 +69,9 @@ use resume::{
     hub_refusal, int_param, page_window, paging_values, unmatched_guid,
 };
 
-const VERSION: &str = "1.42.2.10156-rex";
+// Clients get the measured build: rex answers as 1.42.2, and a client told a newer PMS may
+// ask for paths rex does not emulate. plex.tv gets the newest (`plextv::refresh_version`).
+const VERSION: &str = "1.42.2.10156-f737b826c";
 const MEDIA_TAG_PREFIX: &str = "/system/bundle/media/flags/";
 const MEDIA_TAG_VERSION: i64 = 1_655_122_614;
 const MAX_HEADER_BYTES: usize = 256 * 1024;
@@ -772,7 +774,7 @@ impl Runtime {
             &machine,
             plextv::claim_path(&options.catalog),
             &friendly,
-            VERSION,
+            plextv::PMS_VERSION_FALLBACK,
         );
         let plextv = Arc::new(plextv::PlexTv::new(claim, options.account_state_interval));
         // Built once the catalog names the machine: the agent is asked as this server, with
@@ -22864,6 +22866,11 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
         .lock()
         .map(|claim| claim.clone())
         .map_err(|_| "claim lock poisoned".to_string())?;
+    if claim.claimed() {
+        // Read before the registration below, so plex.tv hears one version from the start.
+        plextv::refresh_version(&plextv.claim);
+        plextv::watch_version(&plextv.claim);
+    }
     info!(
         "claim state: {}",
         if claim.claimed() {
