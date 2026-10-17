@@ -54,8 +54,11 @@ struct Item {
     ids: Map<String, Value>,
     media_info: Option<Value>,
     /// Where the provider lists the file inside its release; `""` at its top level, `None`
-    /// when the source does not say (`scan::is_extra`).
+    /// when the source does not say.
     folder: Option<String>,
+    /// The `extraType` of a file its source pushed as an extra (`kind: "extra"`,
+    /// `scan::pushed_extra_type`): a clip of its release's title, never an episode or a film.
+    extra: Option<i64>,
     /// Where the source placed the file, kept on the row as `_placed`: its `kind` ("movie" or
     /// "episode") and an episode's TMDB `season`, `episode` and `episode_end`. `None` when it
     /// sends no `kind` rex knows: nothing places the file, and its name is not read.
@@ -109,6 +112,7 @@ impl Item {
         });
         Ok(Self {
             placed,
+            extra: (text("kind").as_deref() == Some("extra")).then(|| super::scan::pushed_extra_type(text("extra_type").as_deref())),
             kept: None,
             library: value.get("library").map(string_value).filter(|v| !v.is_empty() && v != "null"),
             size: value.get("size").and_then(Value::as_u64).unwrap_or(0),
@@ -205,7 +209,7 @@ enum Plan {
     Row { key: String, adopt: bool, reidentify: bool },
     Hold,
     Show,
-    /// A release's extra (`scan::extra_type`): a clip of the title its release's other files are.
+    /// A file its source pushed as an extra: a clip of the title its release's other files are.
     Extra(i64),
 }
 
@@ -603,7 +607,7 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
                 }
                 // A retry names rows that are here; it never makes or holds one.
                 None if retry => continue,
-                None if item.media_info.is_some() => match release_extra(&item, &library) {
+                None if item.media_info.is_some() => match item.extra {
                     Some(extra_type) => Plan::Extra(extra_type),
                     None => Plan::Show,
                 },
@@ -889,20 +893,6 @@ fn retry_after(attempts: i64) -> i64 {
     3600 << (attempts.clamp(1, 8) - 1)
 }
 
-/// The `extraType` a new file is served as when it is its release's extra and not an episode its
-/// source placed: in a show's release what `scan::is_extra` finds, in a film's only Plex's own
-/// folder and suffix names (`scan::extra_type`), never a name's words.
-fn release_extra(item: &Item, library: &Library) -> Option<i64> {
-    if super::scan::placed_numbers(item.placed.as_ref()).is_some() {
-        return None;
-    }
-    let file_name = item.file.rsplit('/').next().unwrap_or_default();
-    if library.kind == "show" && !super::scan::is_extra(item.folder.as_deref(), file_name) {
-        return None;
-    }
-    super::scan::extra_type(item.folder.as_deref(), file_name)
-}
-
 /// Numbers for the new files of a show's release its source did not place: season 1, episodes in
 /// the release's file order (its paths sorted), after any of the release's own rows already here.
 /// rex reads no number off a name: DMM places all but 0.9% of the production server's episodes
@@ -912,12 +902,7 @@ fn release_extra(item: &Item, library: &Library) -> Option<i64> {
 fn number_unplaced(runtime: &Runtime, plans: &mut [(Item, Library, Plan)]) {
     let mut releases: BTreeMap<(String, String), Vec<usize>> = BTreeMap::new();
     for (index, (item, library, plan)) in plans.iter().enumerate() {
-        let file_name = item.file.rsplit('/').next().unwrap_or_default();
-        if matches!(plan, Plan::Show)
-            && library.kind == "show"
-            && super::scan::placed_numbers(item.placed.as_ref()).is_none()
-            && !super::scan::is_extra(item.folder.as_deref(), file_name)
-        {
+        if matches!(plan, Plan::Show) && library.kind == "show" && super::scan::placed_numbers(item.placed.as_ref()).is_none() {
             releases.entry((library.key.clone(), item.name.clone())).or_default().push(index);
         }
     }

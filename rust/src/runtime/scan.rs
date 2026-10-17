@@ -9,10 +9,6 @@
 //! keeps the ratingKey it matched each release to and drops the release's IMDb id when
 //! that key disappears, so a row's key is minted once and kept across pushes and restarts.
 
-use std::sync::LazyLock;
-
-use regex::Regex;
-
 use super::*;
 use crate::identify::{self, PlexSource, TmdbSource};
 use crate::{hierarchy, mediainfo};
@@ -75,48 +71,24 @@ pub(super) fn is_sample(file: &str) -> bool {
         .any(|word| word == "sample")
 }
 
-/// A file a release holds besides its episodes, by the names Plex's scanner knows local extras by:
-/// one its provider lists in a folder of extras, or one with a creditless opening's or ending's tag
-/// (`S02NCED1v1`). `[KH] Motto To Love-Ru (BD …)` lists `Extras/Menu/Menu - 02.mkv` and
-/// `Extras/NC/NCED - 01.mkv` (fun's RD library, 2026-10-17): numbered as episodes they were a show
-/// of their own. Folders and tags only, never a file's words: whether a file is an OVA or an
-/// episode is its source's to say, by placing it.
-pub(super) fn is_extra(folder: Option<&str>, file_name: &str) -> bool {
-    folder.is_some_and(|folder| folder.split('/').any(|segment| EXTRAS_FOLDER.is_match(segment.trim())))
-        || stem(file_name).split(|c: char| !c.is_ascii_alphanumeric()).any(|token| CREDITLESS.is_match(token))
-}
-
-/// The `extraType` a release's extra is served as: by the deepest folder Plex names local extras
-/// by (`Featurettes/…/Deleted Scenes` is a deleted scene), else by Plex's `-trailer`-style
-/// suffix, else a creditless opening (13) or ending (14); only Plex's names, so a pack's `Extra`
-/// folder (Smallville's `Stagione 6/Extra`) is left unplaced as before. The numbers are the web client's own
-/// (4.147.1's extra type table) and the six the 1.42.2 reference serves. `None` for an extra of
-/// no such type -- a disc's menus and commercials -- and for a file that is none.
-pub(super) fn extra_type(folder: Option<&str>, file_name: &str) -> Option<i64> {
-    let by_name = |name: &str| match name.to_ascii_lowercase().as_str() {
-        "trailers" | "trailer" => Some(1),
-        "deleted scenes" | "deleted" => Some(2),
-        "interviews" | "interview" => Some(3),
-        "behind the scenes" | "behindthescenes" => Some(5),
-        "scenes" | "scene" => Some(6),
-        "featurettes" | "featurette" => Some(10),
-        "shorts" | "short" => Some(11),
-        "other" => Some(12),
-        _ => None,
-    };
-    let stem = stem(file_name);
-    // The deepest folder of extras decides: `Extras/Menu` holds menus, which Plex has no type for.
-    let deepest = folder.and_then(|folder| folder.rsplit('/').map(str::trim).find(|segment| EXTRAS_FOLDER.is_match(segment)));
-    if let Some(segment) = deepest {
-        if let Some(found) = by_name(segment) {
-            return Some(found);
-        }
+/// The `extraType` a file its source pushed as an extra (`kind: "extra"`) is served as, by the
+/// `extra_type` it names: the web client's own numbers (4.147.1's extra type table) and the six the
+/// 1.42.2 reference serves. What is an extra, and of which type, is the source's to say: rex read
+/// it off folder names and creditless tags until 2026-10-17, a second answer beside zurg's
+/// (`internal/torrent/extras.go`). A type it does not name is `other`.
+pub(super) fn pushed_extra_type(extra_type: Option<&str>) -> i64 {
+    match extra_type.unwrap_or_default().to_ascii_lowercase().as_str() {
+        "trailer" => 1,
+        "deleted" => 2,
+        "interview" => 3,
+        "behindthescenes" => 5,
+        "scene" => 6,
+        "featurette" => 10,
+        "short" => 11,
+        "opening" => 13,
+        "ending" => 14,
+        _ => 12,
     }
-    if let Some(found) = stem.rsplit_once('-').and_then(|(_, suffix)| by_name(suffix.trim())) {
-        return Some(found);
-    }
-    let token = stem.split(|c: char| !c.is_ascii_alphanumeric()).find(|token| CREDITLESS.is_match(token))?.to_ascii_lowercase();
-    Some(if token.contains("ncop") { 13 } else { 14 })
 }
 
 /// The `subtype` a clip of an `extraType` carries: the web client's name for it.
@@ -134,14 +106,6 @@ pub(super) fn extra_subtype(extra_type: i64) -> &'static str {
         _ => "other",
     }
 }
-
-// A folder of extras: Plex's names for a show's local extras, and what discs call theirs.
-static EXTRAS_FOLDER: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?i)^(?:(?:extras?|bonus)(?:[\s._-].*)?|behind the scenes|deleted scenes|featurettes|interviews|scenes|shorts|trailers|other|menus?|nc|cms?|creditless)$").unwrap()
-});
-// `NCOP`, `NCED2`, `S02NCED1v1` (fun's Bungo Stray Dogs and My Hero Academia S02 discs, five
-// "episode 64"s each, 2026-10-17).
-static CREDITLESS: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?i)^(?:s\d{1,2})?nc(?:op|ed)\d*(?:v\d+)?$").unwrap());
 
 /// The season and episode its source placed a file on (a `_placed`, docs/feed-api.md), on TMDB's
 /// numbering: what a row stays on, whatever its name reads.
@@ -769,9 +733,11 @@ impl Runtime {
         if self.catalog.items().iter().any(|row| row_files(row).contains(file)) {
             return None;
         }
+        // In whichever library its release's title is: an extra is placed by nothing, so the
+        // library its own path picks (Movies, for a release in a folder no library holds) need not
+        // be its title's -- Motto To Love-Ru's NCOP went to Movies, its episodes to TV Shows.
         let parent = self.catalog.items().iter().find(|row| {
             matches!(row.get("type").and_then(Value::as_str), Some("movie" | "episode"))
-                && row.get("librarySectionID").map(string_value).as_deref() == Some(plan.key.as_str())
                 && row_files(row).iter().any(|other| other.rsplit_once('/').map(|(of, _)| of) == Some(directory))
         });
         let Some(parent) = parent else {
@@ -784,7 +750,8 @@ impl Runtime {
         };
         let parent = self.catalog.get(&parent_key)?.clone();
         let index = self.extras_of(&parent_key).into_iter().map(super::clip_index).max().unwrap_or(0) + 1;
-        let film = Library { key: plan.key.clone(), kind: "movie".to_string(), title: plan.title.clone(), tmdb: None, plex: None };
+        let section = parent.get("librarySectionID").map(string_value).unwrap_or_else(|| plan.key.clone());
+        let film = Library { key: section, kind: "movie".to_string(), title: plan.title.clone(), tmdb: None, plex: None };
         let mut clip = self.leaf_for(&film, arrival, None)?;
         let object = clip.as_object_mut()?;
         for field in ["_identity", "year"] {
@@ -1193,48 +1160,25 @@ fn prepare_rows(rows: &mut [Value]) {
 mod tests {
     use super::*;
 
-    /// The creditless openings and endings two Blu-ray seasons on fun list under `Extras`, which
-    /// the production server put on S02E64 as five and two "episodes" (2026-10-17): a row made
-    /// before zurg sent `folder` carries none, and its tag is enough.
+    /// The types a source names, as the web client numbers them; anything else is `other`.
     #[test]
-    fn an_extra_is_its_folder_or_its_creditless_tag() {
-        for file in [
-            "Bungo.Stray.Dogs.S02.NCED.BluRay.1080p.Remux.FLAC2.0.H.264-LYS1TH3A.mkv",
-            "Bungo.Stray.Dogs.S02.NCOP.BluRay.1080p.Remux.FLAC2.0.H.264-LYS1TH3A.mkv",
-            "Boku.no.Hero.Academia.S02NCED1v1.BluRay.Remux.FLAC2.0.H.264-FLE.mkv",
-            "Boku.no.Hero.Academia.S02NCED1v2.BluRay.Remux.FLAC2.0.H.264-FLE.mkv",
-            "Boku.no.Hero.Academia.S02NCED2.BluRay.Remux.FLAC2.0.H.264-FLE.mkv",
-            "Boku.no.Hero.Academia.S02NCOP.BluRay.Remux.FLAC2.0.H.264-FLE.mkv",
-            "Boku.no.Hero.Academia.S02NCOP2.BluRay.Remux.FLAC2.0.H.264-FLE.mkv",
+    fn a_pushed_extra_is_served_as_the_type_its_source_names() {
+        for (named, want) in [
+            (Some("trailer"), 1),
+            (Some("deleted"), 2),
+            (Some("interview"), 3),
+            (Some("behindthescenes"), 5),
+            (Some("scene"), 6),
+            (Some("featurette"), 10),
+            (Some("short"), 11),
+            (Some("opening"), 13),
+            (Some("ending"), 14),
+            (Some("other"), 12),
+            (Some("Trailer"), 1),
+            (Some("menu"), 12),
+            (None, 12),
         ] {
-            assert!(is_extra(None, file), "{file}");
-            assert!(is_extra(Some("Extras"), file), "{file}");
-        }
-        assert!(is_extra(Some("Extras/Menu"), "Menu - 02.mkv"));
-        // A file's words are no folder: an unlisted OVA or a show named with an extras word is
-        // an episode until its source says otherwise.
-        assert!(!is_extra(Some(""), "Ed, Edd n Eddy - 01.mkv"));
-        assert!(!is_extra(Some("OVAs"), "[KH] To Love-Ru Darkness - OVA - 01 - Prologue - Pollen Plan - Body touch.mkv"));
-    }
-
-    /// The deepest folder of extras decides the type; a disc's menus and commercials have none.
-    #[test]
-    fn an_extra_takes_plex_folder_and_suffix_types() {
-        for (folder, file, want) in [
-            (Some("Featurettes/Season 2/Deleted Scenes"), "Diversity Day.mkv", Some(2)),
-            (Some("Featurettes"), "Making Of.mkv", Some(10)),
-            (Some(""), "Feature-trailer.mkv", Some(1)),
-            (Some("Extras/NC"), "NCOP.mkv", Some(13)),
-            (Some("Extras/NC"), "NCED - 01.mkv", Some(14)),
-            (Some("Extras/Menu"), "Menu - 01.mkv", None),
-            (Some("Extras/CM"), "BD & DVD CM - 01.mkv", None),
-            (Some("Extras"), "Bonus.mkv", None),
-            (Some("Smallville/Stagione 6/Extra"), "01 Scene inedite (Stagione 6).mkv", None),
-            (Some("Other"), "Gag Reel.mkv", Some(12)),
-            (Some(""), "Ed, Edd n Eddy - 01.mkv", None),
-            (None, "The Interview.2014.1080p.mkv", None),
-        ] {
-            assert_eq!(extra_type(folder, file), want, "{folder:?}/{file}");
+            assert_eq!(pushed_extra_type(named), want, "{named:?}");
         }
     }
 

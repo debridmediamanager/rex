@@ -8,11 +8,13 @@ episodes 1-6 of a show of their own, with the blank tile. To Love Ru's first thr
 the [KH] Darkness discs' `NCED - 01`, commercials and OVAs as versions beside each episode's own
 file, which a client could play for the episode.
 
-An extra of a type Plex serves -- the creditless opening, a film's `Featurettes/` or `-trailer`
-file -- is a clip of its release's title instead (`extraType`, the shape cycle 29 measured on the
-1.42.2 reference); a disc's menus are no extra Plex has a type for and stay unplaced. Rows already
-held are a person's to delete: no pass at start reads a row's name (2026-10-17), so a start keeps
-them as they are.
+What is an extra is the source's to say (zurg's `internal/torrent/extras.go`, 2026-10-17): a file
+pushed with `kind: "extra"` and an `extra_type` is a clip of its release's title (`extraType`, the
+shape cycle 29 measured on the 1.42.2 reference), whatever folder it sits in, and a file pushed
+without it is no clip, whatever its folder or name says -- rex read `Extras/NC`, `Featurettes/` and
+`-trailer` itself until then. zurg sends no such kind yet, so these are its pushes as the contract
+has it sent: the recorded entries with the kind added. Rows already held are a person's to delete:
+no pass at start reads a row's name (2026-10-17), so a start keeps them as they are.
 
 Record the answers again: `REX_RECORD_ANSWERS=1 TMDB_KEY=... PLEX_TOKEN=... python3 tests/test_feed_extras.py`.
 
@@ -61,10 +63,16 @@ def stop(server, work):
                     FIXTURE[name].update({key: json.loads(value) for key, value in db.execute("SELECT key, value FROM cache")})
 
 
-def item(name):
+# What zurg pushes each extra as (`kind: "extra"`, docs/feed-api.md).
+EXTRA_TYPES = {"motto_ncop": "opening", "motto_menu_01": "other"}
+
+
+def item(name, kind=True):
     pushed = FIXTURE["pushes"][name]
     out = {field: value for field, value in pushed.items() if field != "want"}
     out.update(file="%s/%s" % (MOUNT, pushed["path"]), media_info=PROBE)
+    if kind and name in EXTRA_TYPES:
+        out.update(kind="extra", extra_type=EXTRA_TYPES[name])
     return out
 
 
@@ -118,7 +126,7 @@ def main():
         stop(server, work)
         shutil.rmtree(work, ignore_errors=True)
 
-    # -- pushed: the episode is placed, the menu and the creditless opening are not -----------
+    # -- pushed as extras: the creditless opening and the menu are clips, never episodes ----------
     work = tempfile.mkdtemp(prefix="rex-extras-")
     catalog(work)
     server = start(work, bytes_port)
@@ -137,14 +145,27 @@ def main():
             check("%s is episode %s of season %s" % (name, want[1], want[0]),
                   [row.get("parentIndex"), row.get("index")] == want, (key, row.get("parentIndex"), row.get("index")))
         show = server.row(keys[FIXTURE["pushes"]["motto_01"]["id"]]).get("grandparentRatingKey")
-        check("the menu is no clip either: Plex has no type for a disc's menus",
-              keys.get(FIXTURE["pushes"]["motto_menu_01"]["id"]) is None, keys.get(FIXTURE["pushes"]["motto_menu_01"]["id"]))
         check_clip(server, show, keys.get(FIXTURE["pushes"]["motto_ncop"]["id"]), 13, "opening", "NCOP")
+        check_clip(server, show, keys.get(FIXTURE["pushes"]["motto_menu_01"]["id"]), 12, "other", "Menu - 01")
     finally:
         stop(server, work)
         shutil.rmtree(work, ignore_errors=True)
 
-    # -- a film's extras: Plex's folder and suffix names, each a clip of the film ---------------
+    # -- pushed without kind "extra": rex reads no folder, so `Extras/NC/NCOP` is no clip --------
+    work = tempfile.mkdtemp(prefix="rex-extras-")
+    catalog(work)
+    server = start(work, bytes_port)
+    try:
+        status, body = server.feed("POST", "items", {"items": [item(name, kind=False) for name in ("motto_01", "motto_ncop")]})
+        check("both files are taken", status == 200 and not (body or {}).get("rejected"), (status, body))
+        ncop = server.row(server.keys().get(FIXTURE["pushes"]["motto_ncop"]["id"]))
+        check("NCOP under Extras/NC, pushed with no kind, is no clip: its source did not say so",
+              ncop.get("type") == "episode" and ncop.get("extraType") is None, (ncop.get("type"), ncop.get("extraType")))
+    finally:
+        stop(server, work)
+        shutil.rmtree(work, ignore_errors=True)
+
+    # -- a film's extras: the type its source names, each a clip of the film --------------------
     work = tempfile.mkdtemp(prefix="rex-extras-")
     catalog(work)
     server = start(work, bytes_port)
@@ -152,9 +173,9 @@ def main():
         film = feed_item("movie")
         directory = film["path"].rsplit("/", 1)[0]
         extras = []
-        for folder, name in (("Featurettes", "Making Of.mkv"), ("", "Feature-trailer.mkv")):
+        for folder, name, extra_type in (("Featurettes", "Making Of.mkv", "featurette"), ("", "Feature-trailer.mkv", "trailer")):
             extra = dict(film, id="%s/%s" % (directory, name), path="%s/%s" % (directory, name),
-                         file="%s/%s/%s" % (MOUNT, directory, name), folder=folder, ids={})
+                         file="%s/%s/%s" % (MOUNT, directory, name), folder=folder, ids={}, kind="extra", extra_type=extra_type)
             source.files.add("/dav/" + extra["path"])
             extras.append(extra)
         status, body = server.feed("POST", "items", {"items": extras + [film]})

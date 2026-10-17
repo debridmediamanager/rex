@@ -503,7 +503,7 @@ python3 tests/test_feed_names.py            # releases pushed with no id stay fo
 python3 tests/test_feed_placement.py        # a file its source placed (`kind`, TMDB season/episode) stays there through a start and the retry; Fix Match wins; a season-0 special is TMDB's episode (Firefly's)
 python3 tests/test_feed_delete.py           # a delete removes the files at the source first, as a real PMS's does (zurg's WebDAV DELETE)
 python3 tests/test_feed_rejected.py         # every item the feed rejects is logged with its reason (a real snapshot's sample)
-python3 tests/test_feed_extras.py           # a disc's menus and creditless openings are no episodes when pushed, rows held so stay (Motto To Love-Ru, To Love Ru); a release's Plex-named extras are clips of its title
+python3 tests/test_feed_extras.py           # a file pushed as `kind: extra` is a clip of its release's title by its `extra_type`, one without it is no clip whatever its folder; rows held so stay (Motto To Love-Ru, To Love Ru)
 python3 tests/test_feed_versions_1017.py    # one row per episode whatever its guid, other files of one release apart, a trashed row folded or brought back (SpongeBob S10E64, Freakazoid)
 python3 tests/test_sources.py               # registering sources, and sources that are not zurg: a server ignoring Range,
                                             # a redirect to a CDN, a restart, rows before registration, the two-step delete

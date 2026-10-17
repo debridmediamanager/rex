@@ -199,14 +199,15 @@ The `media_info` above is cut down to show its shape. Send ffprobe's whole outpu
 | `media_info` | yes, in practice | ffprobe's `-show_format -show_streams` JSON (go-ffprobe's `ProbeData` is the same shape). Absent, `null` or with no `streams`: the item is **held**, because Plex Web will not play an item without streams (findings, "An item without a probe cannot play") |
 | `size` | recommended | Bytes. Shown as the Part's size and used to answer a client's `Range`; without it rex passes the client's `Range` to the source as it is |
 | `ids` | recommended | `imdb` (`tt…`), `tmdb`, `tvdb`. With `kind`, the title: `imdb` and `tmdb` are the movie's or the **show's** ids, never an episode's. Without `kind`, only `tmdb` names anything (a TMDB id set by hand at the source): a title of its library's kind, when TMDB has one; `imdb` alone and `tvdb` are kept on the row and name nothing (below) |
-| `kind` | no | `movie` or `episode`: what the source knows the file is. With it the file is **placed** (below): it picks the movie or show library, and its `ids` are the title. Anything else, or absent: nothing places it, and rex does not guess from its name |
+| `kind` | no | `movie`, `episode` or `extra`: what the source knows the file is. `movie` or `episode` **places** the file (below): it picks the movie or show library, and its `ids` are the title. `extra` makes it a clip of its release's title (below). Anything else, or absent: nothing places it, and rex does not guess from its name |
+| `extra_type` | with `kind: extra` | The clip's type: `trailer`, `deleted`, `featurette`, `behindthescenes`, `interview`, `scene`, `short`, `opening`, `ending` or `other` (Plex's local-extras types and creditless openings and endings). Anything else, or absent, is `other` |
 | `season`, `episode` | no | With `kind: episode`, the episode on **TMDB's** numbering of the show `ids.tmdb` names (`season` 0 is Specials). The row is placed exactly there. Absent: season 1, in the release's file order (below) |
 | `episode_end` | no | The last episode of a file holding several (`E01E02` -> 2). Kept on the row; the file is placed on `episode`, as rex places every multi-episode file on its first |
 | `name` | no | The release name, shown as it is: an unplaced episode's show is titled with it. Nothing is read out of it -- no id, no title, no season or episode. Default: the folder above the file |
 | `release` | no | Groups a release's files, identified together (a season's episodes). Default: the folder above `path` |
 | `file` | no | The path clients see in Get Info, and what zurg's matcher reads back (`<mount>/<directory>/<release>/<file>`). Default `<mount>/<path>`, or `/<path>` without a mount |
 | `library` | no | A section key, or `movie`/`show`. Default: the library whose `Location` holds `file`, else one with a folder ending in a directory `path` starts with (`/mnt/zurg/movies` holds `movies/...` whatever prefix `file` has); with a type, that type's library holding `file`, else its first; a folder no library holds goes to the first library of its `kind` (Movies without one). With no `library`, an item placed as an episode that a movie library would take goes to a show library, the one beside it, and one placed as a movie that a show library would take goes to Movies; a row already shown moves when its library changes |
-| `folder` | no | The folder the provider lists the file in inside its release (`Smallville/Stagione 6`), `""` at its top level. A folder Plex names local extras by (`Extras`, `Featurettes`, `NC`, `Menu`, ...) makes the file an extra (below). Kept on the row |
+| `folder` | no | The folder the provider lists the file in inside its release (`Smallville/Stagione 6`), `""` at its top level. Kept on the row; nothing reads it as an extra |
 | `hash` | no | The release's info hash. Kept on the row; nothing reads it yet |
 
 What the fields do:
@@ -274,11 +275,13 @@ What the fields do:
   server starts. A row of several releases is not re-identified by one of them.
 - **Only video.** A `file` that is not a video (by extension) or is a sample is rejected,
   as Plex's scanners skip them.
-- **No extras as episodes.** A show's file its provider lists in a folder of extras (`Extras`,
-  `Featurettes`, `NC`, `Menu`, Plex's local-extras folder names) or one tagged `NCOP`/`NCED` is no
-  episode and is not numbered, unless its source placed it on numbers; one Plex has a type for is
-  a clip of its title. Only folders and tags count, never a file's words. Rows made of such files
-  before 2026-10-17 stay as they are, for a person to delete.
+- **Extras are the source's to name.** A file pushed with `kind: extra` is a clip of the title
+  its release's other files are (the film, or the episodes' show; unmatched or not) with its
+  `extra_type`, in that title's `Extras` and `extras/all` and in no listing, axis or count. One
+  whose release has no title here yet waits for a later push. A file pushed without it is no
+  clip, whatever folder it sits in or its name says: rex read folder names (`Extras`, `NC`,
+  `Featurettes`) and `NCOP`/`NCED` tags itself until 2026-10-17. Rows made of extras before then
+  stay as they are, for a person to delete.
 - **Migration.** The first time an id is seen, a row the old WebDAV scanner made for the
   same `file` (no feed id yet) is adopted with its ratingKey, watch state and
   identification; nothing is re-identified unless the item's placement or ids differ from the
