@@ -467,6 +467,9 @@ class StubHandler(BaseHTTPRequestHandler):
             return 200, "application/json", json.dumps(
                 {"items": items, "pageInfo": {"hasNextPage": False,
                                               "endCursor": "opaque-cursor-%d" % (1 if first else 2)}})
+        if (method, host, path) == ("POST", "scrobbles.plex.tv", "/state"):
+            # The symmetric write of the state read (#515): accept and record it.
+            return 201, "text/plain", "Created"
         return 404, "text/plain", "stub: no such route"
 
 
@@ -1219,6 +1222,34 @@ def main():
         check("an import is not a play: no history row beyond the local scrobble",
               [row.get("ratingKey") for row in history] == history_before,
               [row.get("ratingKey") for row in history])
+
+        # #515: a scrobble by the owner pushes the row's state up to plex.tv, the symmetric
+        # POST of the import read (measured 201). Owner only, and only with the secret set.
+        first.request("GET", "/:/scrobble?key=%s&identifier=com.plexapp.plugins.library" % WATCHED_KEY,
+                      token=ACCOUNT_TOKEN)
+        pushes = wait_for(lambda: stub.taken("scrobbles.plex.tv", "/state", "POST"), 10)
+        push = pushes[-1] if pushes else None
+        body = json.loads(push["body"]) if push else {}
+        item = (body.get("items") or [{}])[0]
+        check("a scrobble pushes the row's watched state to plex.tv, owner in the body",
+              push is not None and body.get("user") == ACCOUNT_ID
+              and item.get("guid") == WATCHED_GUID and item.get("viewState") == "complete",
+              (body.get("user"), item))
+        check("the push carries the same Bearer the read half uses",
+              push is not None and ("authorization", "Bearer " + BEARER) in sent(push)
+              and ("x-plex-product", "Plex Media Server") in sent(push),
+              push and sent(push))
+        before_unplayed = len(stub.taken("scrobbles.plex.tv", "/state", "POST"))
+        first.request("GET", "/:/unscrobble?key=%s&identifier=com.plexapp.plugins.library" % WATCHED_KEY,
+                      token=ACCOUNT_TOKEN)
+        unplayed = wait_for(
+            lambda: len(stub.taken("scrobbles.plex.tv", "/state", "POST")) > before_unplayed, 10)
+        last = stub.taken("scrobbles.plex.tv", "/state", "POST")[-1] if unplayed else None
+        unplayed_item = (json.loads(last["body"]).get("items") or [{}])[0] if last else {}
+        check("an unscrobble pushes the cleared (unplayed) state",
+              last is not None and unplayed_item.get("guid") == WATCHED_GUID
+              and unplayed_item.get("viewState") == "unplayed",
+              unplayed_item)
 
         saved = read_json(claim_file)
         saved.pop("access_tokens", None)

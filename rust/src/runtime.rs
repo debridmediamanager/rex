@@ -10481,6 +10481,58 @@ impl Runtime {
     /// library.scrobble: mark a row played or unplayed (see `route_scrobble`).
     /// `view_type` is the history row's `viewType`: 1 for a scrobble, none for a
     /// play a session completed (cycle 70's offline sync is one).
+    /// Push the owner's watched/rating change for these rows up to plex.tv's scrobbling
+    /// service (#515), so a play on rex reaches the owner's Discover history like a real
+    /// PMS. Owner only: rex holds a scrobbling bearer for the owner alone, so a shared
+    /// user's change stays local. Inert unless the decrypt secret is configured
+    /// (`plextv.sync` is `None` without it).
+    fn push_watch_state(&self, keys: &[String]) {
+        if !self.viewer.is_owner() {
+            return;
+        }
+        let Some(sync) = self.plextv.sync.as_ref() else {
+            return;
+        };
+        let owner = self
+            .plextv
+            .claim
+            .lock()
+            .ok()
+            .and_then(|claim| claim.account_id);
+        let Some(owner) = owner else {
+            return;
+        };
+        let items: Vec<Value> = keys.iter().filter_map(|key| self.watch_state_item(key)).collect();
+        plextv::WatchStateSync::push_async(sync, Arc::clone(&self.plextv.claim), items, owner);
+    }
+
+    /// One scrobbling item for a row: its `plex://` guid and current watched/rating state,
+    /// shaped as a real PMS POSTs (`viewState` complete/unplayed, millisecond timestamps;
+    /// measured). `None` for a row with no `plex://` guid -- an unmatched row cannot sync.
+    /// ponytail: clearing a rating does not push a `rating:-1`; the stars just stop being
+    /// re-sent. Add the explicit clear if an un-rate needs to reach Discover.
+    fn watch_state_item(&self, key: &str) -> Option<Value> {
+        let row = self.catalog.get(key)?;
+        let guid = row
+            .get("guid")
+            .and_then(Value::as_str)
+            .filter(|guid| guid.starts_with("plex://"))?;
+        let ms = |field: &str| row.get(field).and_then(Value::as_i64).map(|seconds| seconds * 1000);
+        let watched = row.get("viewCount").and_then(Value::as_i64).unwrap_or(0) > 0;
+        let mut item = json!({
+            "guid": guid,
+            "viewedAt": ms("lastViewedAt").unwrap_or_else(|| now() * 1000),
+            "viewState": if watched { "complete" } else { "unplayed" },
+        });
+        if let Some(rating) = row.get("userRating").and_then(Value::as_f64) {
+            item["rating"] = json!(rating);
+            if let Some(rated_at) = ms("lastRatedAt") {
+                item["ratedAt"] = json!(rated_at);
+            }
+        }
+        Some(item)
+    }
+
     fn scrobble_key(&mut self, key: &str, watched: bool, view_type: Option<i64>) {
         self.scrobble_key_on(key, watched, view_type, 1);
     }
@@ -10612,6 +10664,7 @@ impl Runtime {
                 .retain(|(_, item)| item != &key);
         }
         self.save_if_dirty();
+        self.push_watch_state(&targets);
     }
 
     /// `/:/rate?key=&identifier=&rating=` -- the star rating.  An unparseable
@@ -10665,6 +10718,7 @@ impl Runtime {
             self.stamp_view(&[key.clone()]);
             self.update_view(&key, "userRating", stars);
             self.update_view(&key, "lastRatedAt", rated_at);
+            self.push_watch_state(std::slice::from_ref(&key));
             self.save_if_dirty();
         }
         Response::empty(200)

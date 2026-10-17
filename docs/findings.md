@@ -9282,6 +9282,21 @@ cursor is opaque and is persisted only after rows apply. `complete` stores at le
 preserves local stars, `rating=-1` clears them and a nonnegative rating sets them. No cloud import
 manufactures a local history row.
 
+**Watch and rating state is pushed back to the scrobbling service (#515).** The symmetric
+write of the import above, measured from a real PMS's outbound capture (plexlab, 26x 201):
+`POST https://scrobbles.plex.tv/state`, no account id in the path, the same `Authorization:
+Bearer <jwt>` the read uses (so the same `REX_SCROBBLING_DECRYPT_SECRET_B64` and nothing more
+-- not a fresh barrier), `Content-Type: application/json`, `X-Plex-Product: Plex Media Server`
+and `X-Plex-Version`. Body `{"items":[{"guid":"plex://...","viewedAt":<ms>,"viewState":
+"complete"|"unplayed"[,"ratedAt":<ms>,"rating":<-1..10>]}],"user":<owner account id>}`;
+`complete` is watched, `unplayed` cleared, `rating` 0-10 (one 400 measured: `rating:99` ->
+"must be <= 10"). rex does this on the owner's scrobble/unscrobble/rate, off the request path
+(`WatchStateSync::push_async`), owner only -- rex mints a scrobbling bearer for the owner alone,
+so a shared user's change stays local -- and only when the secret is set (`plextv.sync`), so it
+is inert otherwise. A row with no `plex://` guid cannot sync. ponytail: clearing a rating does
+not push `rating:-1`; the stars simply stop being re-sent. `tests/test_plextv.py` covers it; the
+checks fail against the pre-push build.
+
 ##### The installed Desktop, finite source universes, and the stopping repeat
 
 The installed Plex Desktop 1.115.0 boundary was completely inventoried: its bundled Plex Web

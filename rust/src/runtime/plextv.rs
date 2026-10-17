@@ -34,6 +34,10 @@ const RESOURCES_URL: &str =
     "https://plex.tv/api/v2/resources?includeHttps=1&includeRelay=1&includeIPv6=1";
 const CONSENT_URL: &str = "https://servers.plex.tv/api/v2/server/users/%s/view_state_sync";
 const STATE_URL: &str = "https://scrobbles.plex.tv/state/%s";
+/// The scrobbling state WRITE (#515): a real PMS POSTs the owner's watched/rating
+/// changes here -- no account id in the path, the owner is in the body (measured:
+/// 201, `tests/fixtures` capture; docs/findings.md). The symmetric write of STATE_URL.
+const STATE_PUSH_URL: &str = "https://scrobbles.plex.tv/state";
 const SERVICES_URL: &str = "https://servers.plex.tv/api/v2/server/users/services";
 const SERVERS_URL: &str = "https://plex.tv/servers.xml";
 const PUBSUB_URL: &str = "https://pubsub.plex.tv/sub/eventsource/%s/%s";
@@ -2045,6 +2049,52 @@ impl WatchStateSync {
         }
         self.failures.store(0, Ordering::SeqCst);
         Ok(applied)
+    }
+
+    /// Push the owner's watched/rating changes up to plex.tv, the symmetric POST of the
+    /// state read: `POST scrobbles.plex.tv/state`, Bearer the same decrypted scrobbling
+    /// credential the read uses, body `{"items":[...],"user":<owner>}` (measured 201).
+    fn push(&self, claim: &SharedClaim, items: &[Value], user: i64) -> Result<(), String> {
+        if items.is_empty() {
+            return Ok(());
+        }
+        if !snapshot(claim).claimed() {
+            return Ok(());
+        }
+        let bearer = self.provider.bearer(claim)?;
+        if bearer.is_empty() {
+            return Err("no scrobbling bearer available".to_string());
+        }
+        let version = snapshot(claim).version;
+        let body = serde_json::to_vec(&json!({"items": items, "user": user})).unwrap_or_default();
+        let headers = [
+            ("User-Agent", format!("PlexMediaServer/{version}")),
+            ("Accept", "*/*".to_string()),
+            ("Authorization", format!("Bearer {bearer}")),
+            ("Content-Type", "application/json".to_string()),
+            ("X-Plex-Version", version),
+            ("X-Plex-Product", "Plex Media Server".to_string()),
+        ];
+        let (status, _) = urlopen("POST", STATE_PUSH_URL, &headers, Some(&body), 30)
+            .map_err(|failure| failure.to_string())?;
+        info!("watch-state push -> {status} ({} item(s))", items.len());
+        Ok(())
+    }
+
+    /// Fire-and-forget the owner's change to plex.tv, off the request path: a scrobble must
+    /// not wait on the network. Only a configured sync (the decrypt secret) ever reaches here.
+    pub(crate) fn push_async(sync: &Arc<Self>, claim: SharedClaim, items: Vec<Value>, user: i64) {
+        if items.is_empty() {
+            return;
+        }
+        let sync = Arc::clone(sync);
+        let _ = thread::Builder::new()
+            .name("rex-watch-push".to_string())
+            .spawn(move || {
+                if let Err(message) = sync.push(&claim, &items, user) {
+                    error!("watch-state push failed: {message}");
+                }
+            });
     }
 
     pub(crate) fn start(self: &Arc<Self>, claim: SharedClaim, runtime: SharedRuntime) {
