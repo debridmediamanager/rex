@@ -336,8 +336,13 @@ pub(crate) enum Path {
 /// A video Stream row that needs tonemapping: PQ or HLG, or any Dolby Vision layer --
 /// profile 5 signals no transfer at all (`tests/fixtures/transcode/hdr_probes.json`).
 fn hdr_stream(stream: &Value) -> bool {
-    let transfer = stream.get("colorTrc").map(string_value).unwrap_or_default();
-    matches!(transfer.as_str(), "smpte2084" | "arib-std-b67") || stream.get("DOVIPresent").is_some_and(truthy)
+    let text = |name: &str| stream.get(name).and_then(Value::as_str).unwrap_or_default();
+    // zurg before d730b399 pushed no color_transfer at all (go-ffprobe v2.2.0 had no field): 2,677
+    // HDR10 rows on rex-fun read 10-bit bt2020nc with colorTrc null and converted grey (2026-10-17).
+    let untagged_bt2020 = text("colorTrc").is_empty()
+        && stream.get("bitDepth").and_then(Value::as_i64) == Some(10)
+        && (text("colorSpace").starts_with("bt2020") || text("colorPrimaries") == "bt2020");
+    matches!(text("colorTrc"), "smpte2084" | "arib-std-b67") || untagged_bt2020 || stream.get("DOVIPresent").is_some_and(truthy)
 }
 
 /// The decoder key the probe stores: `hevc10` for a 10-bit HEVC, `h264` for H.264.
@@ -2321,6 +2326,17 @@ mod tests {
             assert!(hdr_stream(&video), "{name}: {video}");
         }
         assert!(!hdr_stream(&json!({"streamType": 1, "colorTrc": "bt709"})));
+    }
+
+    #[test]
+    fn a_ten_bit_bt2020_row_with_no_transfer_is_tonemapped() {
+        // rex-fun's row for The.Breadwinner.2026.MULTi.2160p.WEB-DL...DV.HDR.HEVC-KiT, whose file
+        // ffprobe reads as smpte2084/bt2020 but zurg pushed without either (2026-10-17).
+        let pushed = json!({"streamType": 1, "codec": "hevc", "profile": "main 10", "bitDepth": 10, "colorPrimaries": null, "colorTrc": null, "colorSpace": "bt2020nc", "colorRange": "tv"});
+        assert!(hdr_stream(&pushed));
+        // A 10-bit SDR encode says nothing of BT.2020 and stays untonemapped.
+        assert!(!hdr_stream(&json!({"streamType": 1, "bitDepth": 10, "colorTrc": null, "colorSpace": null})));
+        assert!(!hdr_stream(&json!({"streamType": 1, "bitDepth": 10, "colorTrc": "bt709", "colorSpace": "bt2020nc"})));
     }
 
     #[test]
