@@ -944,6 +944,15 @@ impl Runtime {
                 .unwrap_or(Value::Null);
             let bitrate = media.get("bitrate").and_then(Value::as_i64).unwrap_or(0);
             let profile = self.session_profile(query, headers);
+            // A playing client beats every 10 s; only a new item or state is worth INFO.
+            let beat_id = plex_value(query, headers, "X-Plex-Session-Identifier")
+                .or_else(|| plex_value(query, headers, "X-Plex-Client-Identifier"))
+                .unwrap_or_else(|| "rex".to_string());
+            let repeat = self.sessions.get(&beat_id).is_some_and(|entry| {
+                entry.rating_key == key
+                    && entry.player.get("state").and_then(Value::as_str)
+                        == Some(state.as_str())
+            });
             let entry = self.touch_session(
                 &key, listed, bitrate, query, headers, &state, offset_ms, profile,
             );
@@ -1078,11 +1087,16 @@ impl Runtime {
                 fields.insert("terminationCode".to_string(), json!(2006));
                 fields.insert("terminationText".to_string(), json!(text));
             }
-            info!(
+            let line = format!(
                 "TIMELINE {rating_key} state={state} t={}ms session={}",
                 logging::py_opt(query.get("time")),
                 entry.session_key
             );
+            if repeat {
+                debug!("{line}");
+            } else {
+                info!("{line}");
+            }
         }
         self.save_if_dirty();
         if !in_catalog && !listed {

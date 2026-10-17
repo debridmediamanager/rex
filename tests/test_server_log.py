@@ -323,6 +323,15 @@ def main():
             "&state=playing&time=1000&duration=10000",
             [("INFO", r"TIMELINE 1007 state=playing t=1000ms session=\S+")], status=200,
             headers={"X-Plex-Session-Identifier": "lp1"})
+        # A playing client beats every 10 s: the same item and state again is DEBUG,
+        # so it leaves no line here; a new state is INFO again.
+        repeat_beat = run("a repeated timeline beat", "GET", "/:/timeline?ratingKey=1007"
+            "&key=%2Flibrary%2Fmetadata%2F1007&state=playing&time=3000&duration=10000",
+            [], status=200, headers={"X-Plex-Session-Identifier": "lp1"})
+        run("a timeline pause", "GET", "/:/timeline?ratingKey=1007&key=%2Flibrary%2Fmetadata%2F1007"
+            "&state=paused&time=4000&duration=10000",
+            [("INFO", r"TIMELINE 1007 state=paused t=4000ms session=\S+")], status=200,
+            headers={"X-Plex-Session-Identifier": "lp1"})
         run("a terminate of no session", "GET", "/status/sessions/terminate?sessionId=zzz&reason=bye",
             [("INFO", E("404 GET /status/sessions/terminate -- rex: no such session"))],
             status=404)
@@ -430,6 +439,9 @@ def main():
               and any(line.startswith("[MainThread] INFO - token gate: OFF") for line in startup),
               startup[:4])
         verify(runs, lines)
+        repeat_lines = [line for line in lines
+                        if line.startswith("[Thread-%d " % repeat_beat["thread"]) and "TIMELINE" in line]
+        check("a repeated timeline beat logs no INFO line", not repeat_lines, repeat_lines)
 
         # An edit pushes its own EDIT line to a `filters=log` channel -- and no invented
         # "metadata updated" row beside it.
