@@ -29,6 +29,16 @@ the client actually sends, so it was missing the same field. Replaying the
 client's exact request is the difference between finding it in an hour and not
 finding it at all. See `docs/findings.md`.
 
+## rex identifies nothing
+
+**rex has no identification of its own.** What a file is -- which film or show, which season
+and episode, whether it is an extra and of which kind -- is decided by its source (zurg,
+asking DMM's placement) and pushed in the feed. rex's only part is exchanging the content id it
+is given (the pushed TMDB/IMDb id, or the TMDB id a person picks in Fix Match) for Plex's guid and
+the metadata that id names. Never add name parsing, number reading, folder or tag rules,
+title searches or `/find` lookups to rex; a misfiled item is fixed in zurg or in DMM's
+placement. Ben's decision, 2026-10-17.
+
 Corollary: when the payload looks right and the client still renders nothing,
 **read the client**. rex serves the web client bundle, so its chunks can be
 searched on disk. The gate is usually one truthiness check in minified code.
