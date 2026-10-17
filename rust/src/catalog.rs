@@ -35,6 +35,15 @@ pub struct Catalog {
     index: RowIndex,
     /// Rows written since `pack_pending` last packed their streams (`PACKED_STREAMS`), or all.
     unpacked: Changes,
+    /// Changes with every mutable access and is never reused (`generation`), so an answer
+    /// computed from the rows can be kept until they change (the runtime's `LibraryMemo`).
+    generation: u64,
+}
+
+static GENERATIONS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+
+fn next_generation() -> u64 {
+    GENERATIONS.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
 }
 
 /// `Catalog::index`: positions by parent and by section, and the positions written since.
@@ -188,6 +197,7 @@ impl Catalog {
             writes: Changes { all: true, keys: HashSet::new() },
             index: RowIndex::default(),
             unpacked: Changes { all: true, keys: HashSet::new() },
+            generation: next_generation(),
         };
         catalog.rebuild_index();
         Ok(catalog)
@@ -211,6 +221,7 @@ impl Catalog {
     }
 
     pub fn rebuild_index(&mut self) {
+        self.generation = next_generation();
         self.index.drop_all();
         self.by_id.clear();
         for (index, item) in self.items.iter().enumerate() {
@@ -226,6 +237,7 @@ impl Catalog {
             .and_then(|index| self.items.get(*index))
     }
     pub fn get_mut(&mut self, rating_key: &str) -> Option<&mut Value> {
+        self.generation = next_generation();
         let index = *self.by_id.get(rating_key)?;
         if !self.changes.all {
             self.changes.keys.insert(rating_key.to_string());
@@ -243,12 +255,18 @@ impl Catalog {
         self.items.get_mut(index)
     }
 
+    /// A value that changes whenever a row may have, never repeated across catalogs.
+    pub fn generation(&self) -> u64 {
+        self.generation
+    }
+
     pub fn items(&self) -> &Vec<Value> {
         &self.items
     }
 
     /// Every row, mutably: a save then looks at them all.
     pub fn items_mut(&mut self) -> &mut Vec<Value> {
+        self.generation = next_generation();
         self.changes.all = true;
         self.touched.all = true;
         self.writes.all = true;
@@ -260,11 +278,13 @@ impl Catalog {
     /// Every row, mutably, marking none of them: only for a change undone before anything
     /// saves or reads them from outside the request (`accounts.rs`, the account overlay).
     pub fn items_unmarked_mut(&mut self) -> &mut Vec<Value> {
+        self.generation = next_generation();
         &mut self.items
     }
 
     /// One row, mutably, marking nothing: the same contract as `items_unmarked_mut`.
     pub fn get_unmarked_mut(&mut self, rating_key: &str) -> Option<&mut Value> {
+        self.generation = next_generation();
         let index = *self.by_id.get(rating_key)?;
         self.items.get_mut(index)
     }
@@ -284,6 +304,10 @@ impl Catalog {
                     packed += usize::from(pack_streams(row));
                 }
             }
+        }
+        // Runs after every request; only a row it packed is a change.
+        if packed > 0 {
+            self.generation = next_generation();
         }
         packed
     }
@@ -320,6 +344,7 @@ impl Catalog {
     /// row (`store.rs` appends it) rather than looking at every row: a scan adds rows to a
     /// live library one release at a time.
     pub fn add(&mut self, item: Value) {
+        self.generation = next_generation();
         let key = key_value(&item);
         self.items.push(item);
         self.index.mark(self.items.len() - 1);
@@ -348,6 +373,7 @@ impl Catalog {
     }
     /// Remove a row; the others keep their order, so a save deletes the one row.
     pub fn remove(&mut self, rating_key: &str) -> Option<Value> {
+        self.generation = next_generation();
         let index = *self.by_id.get(rating_key)?;
         if !self.changes.all {
             self.changes.keys.insert(rating_key.to_string());
@@ -359,6 +385,7 @@ impl Catalog {
 
     /// Remove several rows with one reindex: `remove` reindexes every row each time.
     pub fn remove_many(&mut self, rating_keys: &HashSet<String>) {
+        self.generation = next_generation();
         if rating_keys.is_empty() {
             return;
         }
@@ -378,6 +405,7 @@ impl Catalog {
     /// projections. This is deliberately explicit: callers can load raw rows
     /// for diagnostics without silently changing the evidence document.
     pub fn normalize(&mut self) {
+        self.generation = next_generation();
         self.changes.all = true;
         for item in self.items.iter_mut() {
             if let Some(media) = item.get_mut("Media").and_then(Value::as_array_mut) {
@@ -397,6 +425,7 @@ impl Catalog {
     /// `normalize_rows`, and the `catalog-normalize` parity command mirrors only those
     /// two, which leave the stored titles alone.
     pub fn retitle_streams(&mut self) {
+        self.generation = next_generation();
         self.changes.all = true;
         for item in self.items.iter_mut() {
             for media in item

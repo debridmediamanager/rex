@@ -617,6 +617,8 @@ pub struct Runtime {
     completed_sessions: HashSet<(String, String)>,
     completion_pending_stop: HashSet<(String, String)>,
     pub hidden_continue: HashSet<String>,
+    /// Library-wide answers kept until the rows change (`resume::LibraryMemo`).
+    library_memo: std::cell::RefCell<resume::LibraryMemo>,
     /// The account the request in hand comes from (`accounts.rs`); the owner between
     /// requests, so a background pass reads and writes the owner's state.
     viewer: accounts::Grant,
@@ -877,6 +879,7 @@ impl Runtime {
             completed_sessions: HashSet::new(),
             completion_pending_stop: HashSet::new(),
             hidden_continue: HashSet::new(),
+            library_memo: Default::default(),
             viewer: accounts::Grant::owner(),
             overlay: None,
             account_states: HashMap::new(),

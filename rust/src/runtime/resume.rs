@@ -60,6 +60,25 @@ impl Runtime {
     /// played, in a library with no playback completion, is marked
     /// `_nextUpFromScrobble` (cycles 57-59) for the section shelves to drop.
     pub(super) fn continue_watching(&self, include_hidden: bool) -> Vec<Value> {
+        // Home, its hubs and every item page read this list; it changes only with the rows,
+        // the removed-from-Continue-Watching set and the plays of this session.
+        let key = (self.catalog.generation(), include_hidden);
+        if let Some((_, rows)) = self.library_memo.borrow().continue_watching.iter().find(|(memo, _)| {
+            (memo.0, memo.1) == key && memo.2 == self.hidden_continue && memo.3 == self.viewed_in_session
+        }) {
+            return rows.clone();
+        }
+        let rows = self.continue_watching_uncached(include_hidden);
+        let mut memo = self.library_memo.borrow_mut();
+        memo.continue_watching.retain(|(memo, _)| memo.0 == key.0 && memo.1 != include_hidden);
+        memo.continue_watching.push((
+            (key.0, include_hidden, self.hidden_continue.clone(), self.viewed_in_session.clone()),
+            rows.clone(),
+        ));
+        rows
+    }
+
+    fn continue_watching_uncached(&self, include_hidden: bool) -> Vec<Value> {
         let truthy = |row: &Value, name: &str| match row.get(name) {
             None | Some(Value::Null) => false,
             Some(Value::Number(number)) => number.as_f64().unwrap_or(0.0) != 0.0,
@@ -68,64 +87,56 @@ impl Runtime {
             Some(_) => true,
         };
         let stamp_of = |row: &Value| row.get("lastViewedAt").and_then(Value::as_i64).unwrap_or(0);
-        let mut rows: Vec<(i64, Value)> = self
-            .catalog
-            .items()
-            .iter()
-            .filter(|row| {
-                truthy(row, "viewOffset")
-                    && row.get("type").and_then(Value::as_str) == Some("movie")
-                    && (include_hidden || !self.hidden_from_continue(row))
-            })
-            .map(|row| (stamp_of(row), row.clone()))
-            .collect();
-        let mut order: Vec<String> = Vec::new();
         // References: copying every episode of the library here, once per call and three
         // calls per `/hubs`, was most of the home screen's 1.9 GB (the production server,
         // 2026-10-10). Only a show with a play or a resume point can have a row, so only
-        // those shows' episodes are grouped: grouping all of the production server's 27k
-        // episodes, on every Home read (three times) and every item page, was most of their
-        // cost (2026-10-11).
-        let is_episode = |row: &Value| row.get("type").and_then(Value::as_str) == Some("episode");
+        // those shows' episodes are grouped (2026-10-11). One pass reads each row's type
+        // once: three passes over the 42k rows were most of a Home read (2026-10-17).
         fn show_of(row: &Value) -> std::borrow::Cow<'_, str> {
             match row.get("grandparentRatingKey") {
                 Some(Value::String(text)) => std::borrow::Cow::Borrowed(text.as_str()),
                 other => std::borrow::Cow::Owned(string_value(other.unwrap_or(&Value::Null))),
             }
         }
-        let active: HashSet<String> = self
-            .catalog
-            .items()
-            .iter()
-            .filter(|row| is_episode(row) && (truthy(row, "viewOffset") || truthy(row, "viewCount")))
-            .map(|row| show_of(row).into_owned())
-            .collect();
-        let mut shows: HashMap<String, Vec<&Value>> = HashMap::new();
-        if !active.is_empty() {
-            for row in self.catalog.items() {
-                if is_episode(row) {
-                    let show = show_of(row);
-                    if !active.contains(show.as_ref()) {
-                        continue;
+        let mut rows: Vec<(i64, Value)> = Vec::new();
+        let mut episodes_of_library: Vec<(std::borrow::Cow<'_, str>, &Value)> = Vec::new();
+        let mut active: HashSet<String> = HashSet::new();
+        let mut played_libraries: HashSet<String> = HashSet::new();
+        for row in self.catalog.items() {
+            match row.get("type").and_then(Value::as_str) {
+                Some("movie") => {
+                    if truthy(row, "viewOffset") && (include_hidden || !self.hidden_from_continue(row)) {
+                        rows.push((stamp_of(row), row.clone()));
                     }
-                    if !shows.contains_key(show.as_ref()) {
-                        order.push(show.to_string());
-                    }
-                    shows.entry(show.into_owned()).or_default().push(row);
                 }
+                Some("episode") => {
+                    let show = show_of(row);
+                    if truthy(row, "viewOffset") || truthy(row, "viewCount") {
+                        active.insert(show.to_string());
+                    }
+                    if !self.viewed_in_session.is_empty()
+                        && key_of(row).is_some_and(|key| self.viewed_in_session.contains(&key))
+                    {
+                        played_libraries.insert(string_value(row.get("librarySectionID").unwrap_or(&Value::Null)));
+                    }
+                    episodes_of_library.push((show, row));
+                }
+                _ => {}
             }
         }
-        let played_libraries: HashSet<String> = if self.viewed_in_session.is_empty() {
-            HashSet::new()
-        } else {
-            self.catalog
-                .items()
-                .iter()
-                .filter(|row| is_episode(row))
-                .filter(|row| key_of(row).is_some_and(|key| self.viewed_in_session.contains(&key)))
-                .map(|row| string_value(row.get("librarySectionID").unwrap_or(&Value::Null)))
-                .collect()
-        };
+        let mut order: Vec<String> = Vec::new();
+        let mut shows: HashMap<String, Vec<&Value>> = HashMap::new();
+        if !active.is_empty() {
+            for (show, row) in episodes_of_library {
+                if !active.contains(show.as_ref()) {
+                    continue;
+                }
+                if !shows.contains_key(show.as_ref()) {
+                    order.push(show.to_string());
+                }
+                shows.entry(show.into_owned()).or_default().push(row);
+            }
+        }
         for show in order {
             let mut episodes = shows.remove(&show).unwrap_or_default();
             if !include_hidden && episodes.iter().any(|row| self.hidden_from_continue(row)) {
@@ -198,10 +209,7 @@ impl Runtime {
     /// Rows for CONTINUE WATCHING, which is not On Deck: only those with a stored
     /// `viewOffset` (cycle 25).
     pub(super) fn resuming(&self) -> Vec<Value> {
-        self.continue_watching(false)
-            .into_iter()
-            .filter(|row| row.get("viewOffset").and_then(Value::as_f64).unwrap_or(0.0) != 0.0)
-            .collect()
+        self.continue_watching(false).into_iter().filter(|row| resume_point(row)).collect()
     }
 
     /// The MERGED hub, `/hubs/continueWatching` and its `/items` leaf (cycle 57):
@@ -212,23 +220,6 @@ impl Runtime {
         rows
     }
 
-    /// Whether `/hubs` and `/hubs/promoted` drop the On Deck shelf: exactly when
-    /// every episode on deck is also in Continue Watching (cycle 25).
-    pub(super) fn ondeck_shelf_hidden(&self) -> bool {
-        // One pass: `resuming` is the same rows filtered to a stored viewOffset.
-        let watching = self.continue_watching(false);
-        let deck: HashSet<String> = watching
-            .iter()
-            .filter(|row| row.get("type").and_then(Value::as_str) == Some("episode"))
-            .filter_map(key_of)
-            .collect();
-        let resuming: HashSet<String> = watching
-            .iter()
-            .filter(|row| row.get("viewOffset").and_then(Value::as_f64).unwrap_or(0.0) != 0.0)
-            .filter_map(key_of)
-            .collect();
-        !deck.is_empty() && deck == resuming
-    }
 
     /// Cycle 53: `/hubs/continueWatching` and its `/items` leaf carry `includedAt`
     /// directly after `lastViewedAt`, equal to it.
@@ -333,6 +324,15 @@ pub(super) fn exclude_continue_watching(query: &HashMap<String, String>) -> bool
 const SHELF_COUNT: i64 = 6;
 /// `/hubs/home/recentlyAdded?type=2` caps at 50 (cycle 28, the 1.42.2 reference).
 const TV_RECENT_CAP: usize = 50;
+
+/// Answers read off the whole library, each with what it was computed from: the catalog's
+/// `generation` and the request's other inputs. A stale entry is never served, because a
+/// row cannot change without the generation changing.
+#[derive(Debug, Default)]
+pub(super) struct LibraryMemo {
+    continue_watching: Vec<((u64, bool, HashSet<String>, HashSet<String>), Vec<Value>)>,
+    recently_added_tv: Vec<((u64, Option<String>), Vec<Value>)>,
+}
 
 /// The global hub list, measured identically on both real servers: eight shelves in
 /// this order, all promoted. (identifier, title, key, kind, style)
@@ -531,6 +531,27 @@ impl Runtime {
     /// more recently-added siblings collapse into their parent, recursively, and a
     /// parent row is dated by its NEWEST LEAF.
     pub(super) fn recently_added_tv(
+        &self,
+        section_id: Option<&String>,
+        leaves_in: Option<Vec<Value>>,
+    ) -> Vec<Value> {
+        // Home, the TV hubs and the promoted shelves each roll up the whole library; the
+        // unfiltered roll-up changes only with the rows.
+        if leaves_in.is_some() {
+            return self.recently_added_tv_uncached(section_id, leaves_in);
+        }
+        let key = (self.catalog.generation(), section_id.cloned());
+        if let Some((_, rows)) = self.library_memo.borrow().recently_added_tv.iter().find(|(memo, _)| *memo == key) {
+            return rows.clone();
+        }
+        let rows = self.recently_added_tv_uncached(section_id, None);
+        let mut memo = self.library_memo.borrow_mut();
+        memo.recently_added_tv.retain(|(memo, _)| memo.0 == key.0);
+        memo.recently_added_tv.push((key, rows.clone()));
+        rows
+    }
+
+    fn recently_added_tv_uncached(
         &self,
         section_id: Option<&String>,
         leaves_in: Option<Vec<Value>>,
@@ -769,9 +790,12 @@ impl Runtime {
             })
             .unwrap_or_default();
         let directories = content_directories(query);
-        let watching = self.in_directories(self.continue_watching(false), &directories);
+        // One pass for every shelf that reads it: three per Home read were most of Home
+        // (2026-10-17). `resuming` and `ondeck_shelf_hidden` are this list, filtered.
+        let all = self.continue_watching(false);
+        let watching = self.in_directories(all.iter().collect::<Vec<_>>(), &directories);
         let excluded = exclude_continue_watching(query);
-        let hidden = self.ondeck_shelf_hidden();
+        let hidden = ondeck_hidden_in(&all);
         let mut hubs = Vec::new();
         for (identifier, title, key, kind, style) in GLOBAL_HUBS {
             if !wanted.is_empty() && !wanted.iter().any(|w| w == identifier) {
@@ -789,11 +813,15 @@ impl Runtime {
             use std::borrow::Cow;
             let owned = |rows: Vec<Value>| rows.into_iter().map(Cow::Owned).collect::<Vec<_>>();
             let rows: Vec<Cow<'_, Value>> = match *identifier {
-                "home.continue" => owned(self.in_directories(self.resuming(), &directories)),
+                "home.continue" => self
+                    .in_directories(all.iter().filter(|row| resume_point(row)).collect::<Vec<_>>(), &directories)
+                    .into_iter()
+                    .map(Cow::Borrowed)
+                    .collect(),
                 "home.ondeck" => watching
                     .iter()
                     .filter(|row| row.get("type").and_then(Value::as_str) == Some("episode"))
-                    .map(Cow::Borrowed)
+                    .map(|row| Cow::Borrowed(*row))
                     .collect(),
                 "home.movies.recent" => self
                     .in_directories(self.recent_movie_refs(None), &directories)
@@ -833,8 +861,9 @@ impl Runtime {
     pub(super) fn promoted_hubs(&self, query: &HashMap<String, String>) -> Value {
         let mut hubs = Vec::new();
         let excluded = exclude_continue_watching(query);
+        let all = if excluded { Vec::new() } else { self.continue_watching(false) };
         if !excluded {
-            let rows = self.on_home(self.resuming());
+            let rows = self.on_home(all.iter().filter(|row| resume_point(row)).collect::<Vec<_>>());
             hubs.push(self.home_hub(
                 "home.continue",
                 "Continue Watching",
@@ -846,9 +875,9 @@ impl Runtime {
                 true,
             ));
         }
-        if !excluded && !self.ondeck_shelf_hidden() {
+        if !excluded && !ondeck_hidden_in(&all) {
             let rows = self
-                .on_home(self.continue_watching(false))
+                .on_home(all.iter().collect::<Vec<_>>())
                 .into_iter()
                 .filter(|row| row.get("type").and_then(Value::as_str) == Some("episode"))
                 .collect::<Vec<_>>();
@@ -1201,4 +1230,21 @@ pub(super) fn guid_gate(mut row: Value, query: &HashMap<String, String>) -> Valu
         object.shift_remove("Guid");
     }
     row
+}
+
+/// A row with a stored resume point: Continue Watching rather than On Deck (cycle 25).
+fn resume_point(row: &Value) -> bool {
+    row.get("viewOffset").and_then(Value::as_f64).unwrap_or(0.0) != 0.0
+}
+
+/// Whether `/hubs` and `/hubs/promoted` drop the On Deck shelf: exactly when every
+/// episode on deck is also in Continue Watching (cycle 25), over one `continue_watching`.
+fn ondeck_hidden_in(watching: &[Value]) -> bool {
+    let deck: HashSet<String> = watching
+        .iter()
+        .filter(|row| row.get("type").and_then(Value::as_str) == Some("episode"))
+        .filter_map(key_of)
+        .collect();
+    let resuming: HashSet<String> = watching.iter().filter(|row| resume_point(row)).filter_map(key_of).collect();
+    !deck.is_empty() && deck == resuming
 }

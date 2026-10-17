@@ -11,14 +11,14 @@ fun, swapping, took ten to forty times as long and every other request queued be
 - the movie Recently Added shelf of `/hubs/promoted`: every movie copied twice and the first
   list thrown away under the pin every client sends (+320 MB);
 - `/library/recentlyAdded`: every movie and season copied to list 50;
+- Home (`/hubs`): Continue Watching built three times, each scanning the library three times;
 - search: every row's title and tags folded a character at a time, allocating per character.
-
 
 The library is `test_perf_section_hubs.py`'s, with distinct episode dates, a watched episode in
 every fifth show and a resume point on every tenth movie. Bounds are fractions of an unpaged movie
 listing measured first in the same run. Measured on the Mac (unfixed -> fixed, units): Recently
 Added 0.28 -> 0.05, Recently Released 0.67 -> 0.06, Unplayed 0.21 -> 0.02, the promoted shelf
-0.23 -> 0.01, the server's Recently Added 0.15 -> 0.05, the search 0.33 -> 0.13.
+0.23 -> 0.01, the server's Recently Added 0.15 -> 0.05, Home 0.16 -> 0.09, the search 0.33 -> 0.13.
 
     python3 tests/test_perf_production_walk.py
 """
@@ -27,7 +27,7 @@ import shutil
 import sys
 import tempfile
 
-from test_perf_listing_window import check, container, median, results, start
+from test_perf_listing_window import check, container, median, request, results, start
 from test_perf_section_hubs import catalog as hubs_catalog
 
 PIN = "&pinnedContentDirectoryID=1%2C2&includeMeta=1&excludeFields=summary&count=12&excludeContinueWatching=1"
@@ -39,6 +39,7 @@ BOUNDS = [
     ("/library/sections/2/unwatched?X-Plex-Container-Size=50", "a show library's Unplayed list", 0.1),
     ("/hubs/promoted?contentDirectoryID=1" + PIN, "the movie library's promoted shelf", 0.1),
     ("/library/recentlyAdded", "the server's Recently Added", 0.1),
+    ("/hubs?count=12&includeMeta=1&excludeFields=summary", "Home", 0.12),
     ("/hubs/search?query=show&limit=30", "a search matching every show", 0.25),
 ]
 
@@ -75,6 +76,24 @@ def run(port):
               status == 200 and filled and took < bound * unit, (status, filled, took))
 
 
+def watching(port):
+    _, body, _ = request(port, "/hubs/continueWatching/items")
+    return [row["ratingKey"] for row in container(body).get("Metadata", [])]
+
+
+def follows_writes(port):
+    """Continue Watching is kept between reads (`LibraryMemo`) and must follow every write."""
+    before = watching(port)
+    request(port, "/:/progress?key=500001&identifier=com.plexapp.plugins.library&time=600000&state=stopped")
+    after_progress = watching(port)
+    check("a new resume point is on Continue Watching at once",
+          "500001" not in before and "500001" in after_progress, (before[:5], after_progress[:5]))
+    request(port, "/:/scrobble?key=500010&identifier=com.plexapp.plugins.library")
+    after_scrobble = watching(port)
+    check("a movie marked watched leaves it at once",
+          "500010" in before and "500010" not in after_scrobble, after_scrobble[:5])
+
+
 def main():
     directory = tempfile.mkdtemp(prefix="rex-perf-walk-1017-")
     process = None
@@ -82,6 +101,7 @@ def main():
         path, _ = catalog(directory)
         process, port = start(path)
         run(port)
+        follows_writes(port)
     finally:
         if process is not None:
             process.kill()
