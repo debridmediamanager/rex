@@ -13037,3 +13037,34 @@ never-reaped FFmpeg writing `<REX_TRANSCODE_DIR>/download-<id>/media.mp4`. Not m
 - whether items survive a restart (rex keeps them in memory, and a start clears the transcode
   directory)
 - a real phone saving and playing the file
+
+## Conversion speed on fun's J4105 (2026-10-17)
+
+Measured on fun (Celeron J4105, UHD 600, 8 GB, jellyfin-ffmpeg 8.1.3 at `/usr/lib/jellyfin-ffmpeg`,
+`LIBVA_DRIVER_NAME=iHD`), reading through fun's own zurg mount, with rex's own arguments for a
+1920x1080 8 Mbps conversion (`ffmpeg_args` at main 825d5f6), video only (`-an`), each run
+gated on rex-fun having no session. The host was busy (load average 16-23 during the runs, zurg
+and Sonarr included), so these are a busy production host's numbers, not a quiet one's.
+
+| Source | rex's path | Run | Speed |
+|---|---|---|---|
+| Foundation S02E05, 2160p WEB, Dolby Vision profile 5 | EncodeOnly: CPU HEVC 10-bit decode, `tonemapx` on the CPU, `hwupload`, `scale_vaapi`, `h264_vaapi` | 6 s from the start (first frame) | 0.13x, 46 s wall, CPU 201% |
+| same | same | 60 s from the start | 0.12x (60 s took 498 s), CPU 207% |
+| same | same | 10 s from 20 min in | 0.09x |
+| Evil S04E02, 2160p WEB HDR10 (PQ) | EncodeOnly with `tonemapx`, as rex runs an HDR stream | 10 s from the start | 0.18x, CPU 128% |
+| same | Full: VA-API decode, `scale_vaapi`, `h264_vaapi`, no tonemap | 20 s from the start | 1.9x, CPU 42% |
+
+- **fun cannot convert 4K HDR or Dolby Vision in real time**, not for one viewer: the CPU half
+  (10-bit HEVC software decode at 4K plus `tonemapx`) runs at a tenth to a fifth of real time. A
+  Plex Web viewer would wait about 45 s for the first segment and then stall. The full-GPU path is
+  fast (1.9x) but has no tonemapper, so it is only usable for SDR sources. A GPU tonemapper
+  (`tonemap_vaapi`, or jellyfin's OpenCL/Vulkan tonemap on the UHD 600) is the only route to real
+  time here; it is untested.
+- **rex-fun converts its HDR10 titles untonemapped today.** 2,677 of its 4K 10-bit HEVC rows
+  carry `colorSpace bt2020nc` but `colorTrc` and `colorPrimaries` are null, so `hdr_stream()` is
+  false and they take the Full path above: real time, but grey. The probe of Evil's file itself
+  reads `color_transfer=smpte2084`; the row lost it. Several releases named `DV` also have no
+  `DOVIPresent` on their rows. The 37 rows that do carry `DOVIPresent` (12 of them profile 5, all
+  Foundation S02 2160p) take the CPU path.
+- Not measured: two viewers at once (one does not keep up), 1080p Dolby Vision (rex-fun has none),
+  a quiet host, a GPU tonemapper.
