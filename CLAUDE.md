@@ -439,6 +439,7 @@ python3 tests/test_manager.py               # rex manager end to end: create, st
 python3 tests/test_concurrency.py           # barrier races, 32-thread load, backlog, --state kills, reaper, slow sockets; ~4 min
 python3 tests/test_plextv.py                # claim, announce, account import and restart against a LOCAL stub plex.tv
 python3 tests/test_session_reaper.py        # Now Playing's 180 s + 30 s-tick reaper; ~3.5 min of wall clock
+python3 tests/test_paused_limit.py          # MinutesAllowedPaused ends a paused session through its timeline; ~70 s
 python3 tests/test_cli.py                   # main()'s argparse: --help anywhere, refusals, --flag=value, prefixes, --web-root
                                             # default, a missing catalog seeded on start
 python3 tests/test_server_log.py            # every route's log line and level, Download Logs, filters=log, SSE/websocket channels

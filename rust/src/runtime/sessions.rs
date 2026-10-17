@@ -27,6 +27,8 @@ pub(crate) struct SessionEntry {
     pub user: Value,
     /// Listed from its first `playing` beat (`_listed`).
     pub listed: bool,
+    /// When its run of `paused` beats began, 0 while it is not paused.
+    pub paused_since: f64,
 }
 
 /// `Sessions.PLAYER_FROM`: header (or query parameter) -> the `Player` field it fills.
@@ -435,6 +437,7 @@ impl Runtime {
                     session: Value::Null,
                     user: Value::Null,
                     listed: false,
+                    paused_since: 0.0,
                 },
             );
         }
@@ -478,7 +481,13 @@ impl Runtime {
         if state == "playing" {
             entry.listed = true;
         }
+        if state != "paused" {
+            entry.paused_since = 0.0;
+        } else if entry.paused_since == 0.0 {
+            entry.paused_since = entry.seen;
+        }
         let snapshot = entry.clone();
+        self.end_long_pause(&snapshot);
         if state == "stopped" {
             self.sessions.remove(&session_id);
         }
@@ -486,6 +495,24 @@ impl Runtime {
         let platform = plex_value(query, headers, "X-Plex-Platform").unwrap_or_default();
         self.note_device(&identifier, &name, &platform);
         snapshot
+    }
+
+    /// `MinutesAllowedPaused`: a session paused past it is ended as a terminate ends one,
+    /// through its next timeline; 0 never ends one, and audio is excluded, as the setting's
+    /// own summary says. Neither measured: the termination text is ours, not a real PMS's.
+    fn end_long_pause(&mut self, entry: &SessionEntry) {
+        if entry.paused_since == 0.0
+            || entry.row.get("type").and_then(Value::as_str) == Some("track")
+            || self.terminated_sessions.contains_key(&entry.id)
+        {
+            return;
+        }
+        let minutes = self.server_pref("MinutesAllowedPaused").and_then(|value| value.as_i64()).unwrap_or(0);
+        if minutes > 0 && now_seconds() - entry.paused_since > minutes as f64 * 60.0 {
+            let text = format!("Your playback was stopped after being paused for more than {minutes} minutes");
+            info!("TERMINATE {}: paused over {minutes} min", entry.id);
+            self.terminated_sessions.insert(entry.id.clone(), text);
+        }
     }
 
     /// `entry["row"]` is the catalog row ITSELF, so every edit reaches it, and it

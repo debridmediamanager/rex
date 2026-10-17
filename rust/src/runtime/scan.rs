@@ -676,18 +676,21 @@ impl Runtime {
             .unwrap_or_default()
     }
 
-    /// `autoEmptyTrash`, as `/:/prefs` reports it: a write, else the captured value.
-    fn auto_empty_trash(&self) -> bool {
-        let value = self.prefs.get("autoEmptyTrash").cloned().or_else(|| {
+    /// A server setting as `/:/prefs` reports it: a write, else the captured value.
+    pub(super) fn server_pref(&self, id: &str) -> Option<Value> {
+        self.prefs.get(id).cloned().or_else(|| {
             load_json_sidecar(&self.catalog_path, "server_prefs.json")
                 .and_then(|rows| rows.as_array().cloned())
                 .and_then(|rows| {
                     rows.into_iter()
-                        .find(|row| row.get("id").and_then(Value::as_str) == Some("autoEmptyTrash"))
+                        .find(|row| row.get("id").and_then(Value::as_str) == Some(id))
                 })
                 .and_then(|row| row.get("value").cloned())
-        });
-        match value {
+        })
+    }
+
+    fn auto_empty_trash(&self) -> bool {
+        match self.server_pref("autoEmptyTrash") {
             Some(Value::Bool(on)) => on,
             Some(Value::String(text)) => matches!(text.as_str(), "1" | "true"),
             Some(Value::Number(number)) => number.as_i64() == Some(1),
