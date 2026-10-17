@@ -271,15 +271,28 @@ impl Runtime {
             }
             return Response::json(200, self.container(fields, true));
         }
+        // 2026-10-17, the production server: a guid lookup cloned and twice sorted all 42,806
+        // rows before dropping the other types, 67 s under the runtime lock. The rows are
+        // borrowed and the type filter, which keeps the same rows in the same order, runs first.
+        let wanted = type_number.map(|number| match number {
+            1 => "movie",
+            2 => "show",
+            3 => "season",
+            4 => "episode",
+            _ => "",
+        });
         let mut source = self
             .catalog
             .items()
             .iter()
             .filter(|row| {
-                type_number.is_some() || row.get("type").and_then(Value::as_str) != Some("clip")
+                let kind = row.get("type").and_then(Value::as_str);
+                match wanted {
+                    Some(wanted) => !wanted.is_empty() && kind == Some(wanted),
+                    None => kind != Some("clip"),
+                }
             })
-            .cloned()
-            .collect::<Vec<_>>();
+            .collect::<Vec<&Value>>();
         let scoped = |scope: &str, field: &str| {
             pairs.iter().any(|(name, _)| {
                 let (key, _) = crate::filters::split_key(name);
@@ -299,10 +312,11 @@ impl Runtime {
         if type_number == Some(2) && scoped("season", "index") {
             return Response::error(500, "rex: invalid scoped conjunction");
         }
+        let mut collection_rows = Vec::new();
         if type_number.is_none() {
             // Cycle 25: the UNTYPED query lists collections as well, sorted into the
             // rest by ratingKey.
-            source.extend(self.collections.values().filter(|collection| {
+            collection_rows.extend(self.collections.values().filter(|collection| {
                 // Per library, as `server.py` walks them: a deleted library's
                 // collections are not rows here.
                 self.section(&collection.section).is_some()
@@ -314,6 +328,7 @@ impl Runtime {
                 row
             }));
         }
+        source.extend(collection_rows.iter());
         source.sort_by_key(|row| {
             key_of(row)
                 .and_then(|key| key.parse::<i64>().ok())
@@ -323,18 +338,6 @@ impl Runtime {
             source = self
                 .sort_rows(source, Some("titleSort"))
                 .unwrap_or_default();
-        }
-        if let Some(number) = type_number {
-            let wanted = match number {
-                1 => "movie",
-                2 => "show",
-                3 => "season",
-                4 => "episode",
-                _ => "",
-            };
-            source.retain(|row| {
-                !wanted.is_empty() && row.get("type").and_then(Value::as_str) == Some(wanted)
-            });
         }
         let section_type = if type_number == Some(2) {
             "show"
