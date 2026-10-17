@@ -7110,6 +7110,8 @@ impl Runtime {
             // registers no device and carries no framework cookie.
             return Response::error(500, "rex: unknown method");
         }
+        // A plan only ever belongs to the request that made it.
+        PROJECTION_PLAN.with(|plan| plan.borrow_mut().take());
         // Whatever the feed's threads and earlier requests wrote is answered with its own
         // artwork paths (`restamp_artwork`).
         self.restamp_artwork();
@@ -7161,10 +7163,11 @@ impl Runtime {
             self.republish_sections();
         }
         self.refresh_session_rows();
-        self.alternates_response(request, &mut response);
-        exclude_fields_response(request, &mut response);
-        sync_version_response(request, &mut response);
-        self.stream_titles_response(request, &mut response);
+        // A listing projected in chunks after the lock is released has no rows yet: these
+        // passes run on it once it has them (`project_planned`).
+        if !PROJECTION_PLAN.with(|plan| plan.borrow().is_some()) {
+            self.finish_rows(request, &mut response);
+        }
         if let Some(cookie) = Self::framework_cookie(&request.method, &raw_path) {
             // Cycle 33/52: the plug-in framework's session cookie rides every response it
             // writes itself -- but not the Tornado banner answer, which hands none back.
@@ -7186,7 +7189,6 @@ impl Runtime {
                 response.headers.push(("Set-Cookie".to_string(), cookie));
             }
         }
-        self.localize_response(request, &mut response);
         // The CORS trio is the envelope's (`wire.rs`), written for every response.
         // `Handler.send_response` saves every client write, not only the ones whose
         // handler remembered to mark the state dirty: a play-queue create or add marks
@@ -7198,6 +7200,101 @@ impl Runtime {
             self.save_if_dirty();
         }
         response
+    }
+
+    /// A section grid row (`route_section_all`; `ProjectionPlan` projects the same).
+    fn listing_row(&self, row: &Value, options: &ListingRowOptions) -> Value {
+        // Measured: a LISTING carries `Guid` only under `includeGuids=1`.
+        let mut projected = guid_gate(self.section_listing_row(row), &options.query);
+        // `server.py` `section_listing`: under `type=3` exactly, a season in the
+        // grid carries no leaf counts (its /children row, and every other
+        // listing's, does).
+        // (The oracle reads `type` after its `+?0*` normalisation: `03` and
+        // `+3` are `3`.)
+        if options.query
+            .get("type")
+            .is_some_and(|value| value.trim_start_matches('+').parse::<i64>().ok() == Some(3))
+        {
+            if let Some(object) = projected.as_object_mut() {
+                object.shift_remove("leafCount");
+                object.shift_remove("viewedLeafCount");
+            }
+        }
+        if options.with_storage {
+            let leaves = if row.get("Media").is_some() {
+                vec![(*row).clone()]
+            } else {
+                self.leaves(&key_of(row).unwrap_or_default())
+            };
+            let duration = leaves
+                .iter()
+                .map(|leaf| leaf.get("duration").and_then(Value::as_i64).unwrap_or(0))
+                .sum::<i64>();
+            let storage = leaves
+                .iter()
+                .flat_map(|leaf| {
+                    leaf.get("Media")
+                        .and_then(Value::as_array)
+                        .cloned()
+                        .unwrap_or_default()
+                })
+                .flat_map(|media| {
+                    media
+                        .get("Part")
+                        .and_then(Value::as_array)
+                        .cloned()
+                        .unwrap_or_default()
+                })
+                .filter_map(|part| part.get("size").and_then(Value::as_i64))
+                .sum::<i64>();
+            if let Some(object) = projected.as_object_mut() {
+                object.insert("durationTotal".to_string(), json!(duration.to_string()));
+                object.insert("storageTotal".to_string(), json!(storage.to_string()));
+            }
+        }
+        if let Some(object) = projected.as_object_mut() {
+            if options.exclude_media {
+                let count = row
+                    .get("Media")
+                    .and_then(Value::as_array)
+                    .map_or(0, Vec::len);
+                object.shift_remove("Media");
+                object.insert("mediaCount".to_string(), json!(count));
+                object.insert("mediaCountOptimized".to_string(), json!(0));
+            }
+            for name in &options.excluded_elements {
+                if name != "Media" {
+                    object.shift_remove(name);
+                }
+            }
+            for name in &options.excluded_fields {
+                object.shift_remove(name);
+            }
+        }
+        projected
+    }
+
+    /// A section `allLeaves` row (`ProjectionPlan` projects the same).
+    fn leaf_row(&self, candidate: &Value, query: &HashMap<String, String>, exclude_media: bool) -> Value {
+        let mut shown = self.child_list_row(candidate, query);
+        if exclude_media {
+            if let Some(object) = shown.as_object_mut() {
+                let count = object.get("Media").and_then(Value::as_array).map_or(0, Vec::len);
+                object.shift_remove("Media");
+                object.insert("mediaCount".to_string(), json!(count));
+                object.insert("mediaCountOptimized".to_string(), json!(0));
+            }
+        }
+        shown
+    }
+
+    /// The passes over a response's rows after its route, in their order.
+    fn finish_rows(&self, request: &Request, response: &mut Response) {
+        self.alternates_response(request, response);
+        exclude_fields_response(request, response);
+        sync_version_response(request, response);
+        self.stream_titles_response(request, response);
+        self.localize_response(request, response);
     }
 
     /// The oracle's `_alternates_container`: `includeAlternates=1` is a property of
@@ -14961,24 +15058,23 @@ impl Runtime {
                         let exclude_media = query
                             .get("excludeElements")
                             .is_some_and(|value| value.split(',').any(|name| name == "Media"));
-                        let shown = rows
-                            .iter()
-                            .map(|candidate| {
-                                let mut shown = self.child_list_row(candidate, query);
-                                if exclude_media {
-                                    if let Some(object) = shown.as_object_mut() {
-                                        let count = object
-                                            .get("Media")
-                                            .and_then(Value::as_array)
-                                            .map_or(0, Vec::len);
-                                        object.shift_remove("Media");
-                                        object.insert("mediaCount".to_string(), json!(count));
-                                        object.insert("mediaCountOptimized".to_string(), json!(0));
-                                    }
-                                }
-                                shown
-                            })
-                            .collect::<Vec<_>>();
+                        // A large owner's listing is projected after the lock is released, a
+                        // chunk under it at a time, so the other clients' requests go on
+                        // meanwhile: its 34k rows held every request for seconds (2026-10-17).
+                        let planned = self.viewer.is_owner() && rows.len() >= PLANNED_ROWS;
+                        if planned {
+                            PROJECTION_PLAN.with(|plan| {
+                                *plan.borrow_mut() = Some(ProjectionPlan {
+                                    keys: rows.iter().filter_map(|row| key_of(row)).collect(),
+                                    kind: Projection::Leaf { query: query.clone(), exclude_media },
+                                })
+                            });
+                        }
+                        let shown = if planned {
+                            Vec::new()
+                        } else {
+                            rows.iter().map(|candidate| self.leaf_row(candidate, query, exclude_media)).collect::<Vec<_>>()
+                        };
                         fields.insert(
                             "viewGroup".to_string(),
                             json!(if is_show { "show" } else { "movie" }),
@@ -15253,10 +15349,19 @@ impl Runtime {
                     let shared_window = !matches!(leaf, "recentlyViewedShows" | "recentlyViewedGrandparents");
                     let (rows, window) = if shared_window { page_slice(rows, query) } else { (rows, None) };
                     let window = window.map(|(start, total)| (start, untrimmed.unwrap_or(total)));
-                    let rows = rows
-                        .iter()
-                        .map(|row| guid_gate(self.section_listing_row(row), query))
-                        .collect::<Vec<_>>();
+                    // A large owner's subset is projected after the lock is released.
+                    let planned = shared_window && self.viewer.is_owner() && rows.len() >= PLANNED_ROWS;
+                    let rows = if planned {
+                        PROJECTION_PLAN.with(|plan| {
+                            *plan.borrow_mut() = Some(ProjectionPlan {
+                                keys: rows.iter().filter_map(|row| key_of(row)).collect(),
+                                kind: Projection::Subset { query: query.clone() },
+                            })
+                        });
+                        Vec::new()
+                    } else {
+                        rows.iter().map(|row| guid_gate(self.section_listing_row(row), query)).collect::<Vec<_>>()
+                    };
                     if kind == "show" {
                         // Every subset of a show library carries both, the recently
                         // viewed shows included (only the grandparents roll-up drops
@@ -17478,79 +17583,26 @@ impl Runtime {
             Some((start, size, _)) => rows.into_iter().skip(start).take(size).collect(),
             None => rows,
         };
-        let rows = rows
-            .iter()
-            .map(|row| {
-                // Measured: a LISTING carries `Guid` only under `includeGuids=1`.
-                let mut projected = guid_gate(self.section_listing_row(row), query);
-                // `server.py` `section_listing`: under `type=3` exactly, a season in the
-                // grid carries no leaf counts (its /children row, and every other
-                // listing's, does).
-                // (The oracle reads `type` after its `+?0*` normalisation: `03` and
-                // `+3` are `3`.)
-                if query
-                    .get("type")
-                    .is_some_and(|value| value.trim_start_matches('+').parse::<i64>().ok() == Some(3))
-                {
-                    if let Some(object) = projected.as_object_mut() {
-                        object.shift_remove("leafCount");
-                        object.shift_remove("viewedLeafCount");
-                    }
-                }
-                if with_storage {
-                    let leaves = if row.get("Media").is_some() {
-                        vec![(*row).clone()]
-                    } else {
-                        self.leaves(&key_of(row).unwrap_or_default())
-                    };
-                    let duration = leaves
-                        .iter()
-                        .map(|leaf| leaf.get("duration").and_then(Value::as_i64).unwrap_or(0))
-                        .sum::<i64>();
-                    let storage = leaves
-                        .iter()
-                        .flat_map(|leaf| {
-                            leaf.get("Media")
-                                .and_then(Value::as_array)
-                                .cloned()
-                                .unwrap_or_default()
-                        })
-                        .flat_map(|media| {
-                            media
-                                .get("Part")
-                                .and_then(Value::as_array)
-                                .cloned()
-                                .unwrap_or_default()
-                        })
-                        .filter_map(|part| part.get("size").and_then(Value::as_i64))
-                        .sum::<i64>();
-                    if let Some(object) = projected.as_object_mut() {
-                        object.insert("durationTotal".to_string(), json!(duration.to_string()));
-                        object.insert("storageTotal".to_string(), json!(storage.to_string()));
-                    }
-                }
-                if let Some(object) = projected.as_object_mut() {
-                    if exclude_media {
-                        let count = row
-                            .get("Media")
-                            .and_then(Value::as_array)
-                            .map_or(0, Vec::len);
-                        object.shift_remove("Media");
-                        object.insert("mediaCount".to_string(), json!(count));
-                        object.insert("mediaCountOptimized".to_string(), json!(0));
-                    }
-                    for name in &excluded_elements {
-                        if *name != "Media" {
-                            object.shift_remove(*name);
-                        }
-                    }
-                    for name in &excluded_fields {
-                        object.shift_remove(*name);
-                    }
-                }
-                projected
-            })
-            .collect::<Vec<_>>();
+        let options = ListingRowOptions {
+            query: query.clone(),
+            exclude_media,
+            excluded_elements: excluded_elements.iter().map(|name| name.to_string()).collect(),
+            excluded_fields: excluded_fields.iter().map(|name| name.to_string()).collect(),
+            with_storage,
+        };
+        // A large owner's grid is projected after the lock is released (`ProjectionPlan`).
+        let planned = self.viewer.is_owner() && rows.len() >= PLANNED_ROWS;
+        let rows = if planned {
+            PROJECTION_PLAN.with(|plan| {
+                *plan.borrow_mut() = Some(ProjectionPlan {
+                    keys: rows.iter().filter_map(|row| key_of(row)).collect(),
+                    kind: Projection::Listing(Box::new(options)),
+                })
+            });
+            Vec::new()
+        } else {
+            rows.iter().map(|row| self.listing_row(row, &options)).collect::<Vec<_>>()
+        };
         let mut fields = Map::from_iter([
             ("Metadata".to_string(), Value::Array(rows)),
             // Section grids are synchronisable even though ordinary metadata
@@ -23723,6 +23775,10 @@ fn handle_connection<S: Read + Write + PollRead>(
             // `Handler.send_response`: on disk before the status line, written outside
             // the runtime lock so the other clients' requests go on meanwhile.
             write_or_log(snapshot);
+            let mut response = response;
+            if let Some(plan) = PROJECTION_PLAN.with(|plan| plan.borrow_mut().take()) {
+                project_planned(&runtime, &request, &mut response, plan);
+            }
             let mut response = match (image, claim) {
                 (_, Some(token)) => plextv::finish_claim(&runtime, &token, &request.target),
                 (Some(url), _) if response.status == 200 && response.body.is_empty() && response.doc.is_none() => {
@@ -26691,6 +26747,82 @@ fn page_fields(fields: &mut Map<String, Value>, query: &HashMap<String, String>)
     }
 }
 
+/// A listing this size or larger, asked by the owner, is projected in chunks.
+const PLANNED_ROWS: usize = 2000;
+/// Rows projected per hold of the runtime lock.
+const PLANNED_CHUNK: usize = 256;
+
+/// A section `allLeaves` its route answered without rows: their keys, in order, for the
+/// request loop to project outside the lock (`project_planned`).
+struct ProjectionPlan {
+    keys: Vec<String>,
+    kind: Projection,
+}
+
+/// How a planned listing projects each row.
+enum Projection {
+    /// `leaf_row`: a section `allLeaves`.
+    Leaf { query: HashMap<String, String>, exclude_media: bool },
+    /// `listing_row`: a section grid.
+    Listing(Box<ListingRowOptions>),
+    /// A section subset (`newest` and the rest): its listing row, `includeGuids` gated.
+    Subset { query: HashMap<String, String> },
+}
+
+/// What a section grid row's projection reads off its request (`listing_row`).
+struct ListingRowOptions {
+    query: HashMap<String, String>,
+    exclude_media: bool,
+    excluded_elements: HashSet<String>,
+    excluded_fields: HashSet<String>,
+    with_storage: bool,
+}
+
+thread_local! {
+    static PROJECTION_PLAN: std::cell::RefCell<Option<ProjectionPlan>> = const { std::cell::RefCell::new(None) };
+}
+
+/// Fill a planned listing: each chunk of rows under the lock, released between chunks,
+/// then the passes `route` left for its rows. A row deleted meanwhile is left out and the
+/// container counts what it lists.
+fn project_planned(runtime: &Arc<Mutex<Runtime>>, request: &Request, response: &mut Response, plan: ProjectionPlan) {
+    let mut rows = Vec::with_capacity(plan.keys.len());
+    for chunk in plan.keys.chunks(PLANNED_CHUNK) {
+        let Ok(guard) = runtime.lock() else {
+            return;
+        };
+        for key in chunk {
+            if let Some(row) = guard.catalog.get(key) {
+                let mut shown = match &plan.kind {
+                    Projection::Leaf { query, exclude_media } => guard.leaf_row(row, query, *exclude_media),
+                    Projection::Listing(options) => guard.listing_row(row, options),
+                    Projection::Subset { query } => guid_gate(guard.section_listing_row(row), query),
+                };
+                if crate::catalog::holds_packed_streams(&shown) {
+                    crate::catalog::unpack_streams(&mut shown);
+                }
+                drop_empty_in_place(&mut shown);
+                rows.push(shown);
+            }
+        }
+        drop(guard);
+        // The lock is not fair: released and taken straight back, it went to this thread
+        // again before a woken waiter ran, and a waiting request still waited for every
+        // chunk (measured: a yield did not help). A pause long enough for the waiter to
+        // run costs 13 ms over 34k rows.
+        std::thread::sleep(std::time::Duration::from_micros(100));
+    }
+    if let Some(Value::Object(body)) = response.doc.as_deref_mut().and_then(|doc| doc.get_mut("MediaContainer")) {
+        body.insert("size".to_string(), json!(rows.len()));
+        if !rows.is_empty() {
+            body.insert("Metadata".to_string(), Value::Array(rows));
+        }
+    }
+    if let Ok(guard) = runtime.lock() {
+        guard.finish_rows(request, response);
+    }
+}
+
 /// The container `page_container` writes for a document whose one list the handler
 /// already cut to the window: `size`, `totalSize` and `offset` lead, the rest follows in
 /// order, an emptied list is dropped. `page_container` then leaves it, as it has a total.
@@ -26817,57 +26949,50 @@ fn grid_copy(value: &Value, skip: impl Fn(&str) -> bool) -> Value {
     let Value::Object(object) = value else {
         return strip_private_fields(value);
     };
-    let part_without_streams = |part: &Value| match part {
-        Value::Object(part) => Value::Object(
-            part.iter()
-                .filter(|(key, _)| !key.starts_with('_') && key.as_str() != "Stream")
-                .map(|(key, value)| (key.clone(), strip_private_fields(value)))
-                .collect(),
-        ),
-        other => strip_private_fields(other),
-    };
-    let media_without_streams = |media: &Value| match media {
-        Value::Object(media) => Value::Object(
-            media
-                .iter()
-                .filter(|(key, _)| !key.starts_with('_'))
-                .map(|(key, value)| match (key.as_str(), value) {
-                    ("Part", Value::Array(parts)) => {
-                        (key.clone(), Value::Array(parts.iter().map(part_without_streams).collect()))
-                    }
-                    _ => (key.clone(), strip_private_fields(value)),
-                })
-                .collect(),
-        ),
-        other => strip_private_fields(other),
-    };
     Value::Object(
         object
             .iter()
             .filter(|(key, _)| !key.starts_with('_') && !skip(key))
-            .map(|(key, value)| match (key.as_str(), value) {
-                ("Media", Value::Array(media)) => {
-                    (key.clone(), Value::Array(media.iter().map(media_without_streams).collect()))
+            .map(|(key, value)| {
+                let mut value = value.clone();
+                if key == "Media" {
+                    // A light row's Parts carry no `Stream` list.
+                    for media in value.as_array_mut().into_iter().flatten() {
+                        for part in media.get_mut("Part").and_then(Value::as_array_mut).into_iter().flatten() {
+                            if let Some(part) = part.as_object_mut() {
+                                part.retain(|key, _| key != "Stream");
+                            }
+                        }
+                    }
                 }
-                _ => (key.clone(), strip_private_fields(value)),
+                drop_private_keys(&mut value);
+                (key.clone(), value)
             })
             .collect(),
     )
 }
 
+/// `_` keys out of a copy, at every depth. Copying first and removing after is the cheap
+/// order: a map with no private key is cloned with its hash table, where building it again
+/// hashed every key, most of projecting an episode listing (2026-10-17).
+fn drop_private_keys(value: &mut Value) {
+    match value {
+        Value::Object(object) => {
+            if object.keys().any(|key| key.starts_with('_')) {
+                object.retain(|key, _| !key.starts_with('_'));
+            }
+            object.values_mut().for_each(drop_private_keys);
+        }
+        Value::Array(values) => values.iter_mut().for_each(drop_private_keys),
+        _ => {}
+    }
+}
+
 /// `strip_private_value` that leaves packed streams out instead of unpacking them.
 fn strip_private_fields(value: &Value) -> Value {
-    match value {
-        Value::Object(object) => Value::Object(
-            object
-                .iter()
-                .filter(|(key, _)| !key.starts_with('_'))
-                .map(|(key, value)| (key.clone(), strip_private_fields(value)))
-                .collect(),
-        ),
-        Value::Array(values) => Value::Array(values.iter().map(strip_private_fields).collect()),
-        _ => value.clone(),
-    }
+    let mut copy = value.clone();
+    drop_private_keys(&mut copy);
+    copy
 }
 
 fn strip_private_value(value: &Value) -> Value {
