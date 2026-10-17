@@ -213,6 +213,7 @@ impl Runtime {
                 ("Date".to_string(), http_date()),
             ],
             close: false,
+            doc: None,
         })
     }
 }

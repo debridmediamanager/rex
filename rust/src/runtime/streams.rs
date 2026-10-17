@@ -247,7 +247,7 @@ impl Runtime {
         if !localise && !codec_titles {
             return;
         }
-        let Ok(mut document) = serde_json::from_slice::<Value>(&response.body) else {
+        let Some(mut document) = response.take_document() else {
             return;
         };
         let segments = path
@@ -273,18 +273,19 @@ impl Runtime {
                         row["title"] = json!(title);
                     }
                 }
-                if let Ok(body) = serde_json::to_vec(&document) {
-                    response.body = body;
-                }
+                response.store_document(document);
+                return;
             }
-            return;
+            { response.restore_document(document); return; }
         }
-        if !response
-            .body
-            .windows(10)
-            .any(|window| window == b"streamType")
-        {
-            return;
+        // A deferred answer has no bytes yet: look in the document instead.
+        let streams = if response.body.is_empty() {
+            holds_key(&document, "streamType")
+        } else {
+            response.body.windows(10).any(|window| window == b"streamType")
+        };
+        if !streams {
+            { response.restore_document(document); return; }
         }
         if localise {
             let empty = HashMap::new();
@@ -302,8 +303,15 @@ impl Runtime {
                 .unwrap_or_else(|| "External".to_string());
             client_titles(&mut document, &external);
         }
-        if let Ok(body) = serde_json::to_vec(&document) {
-            response.body = body;
-        }
+        response.store_document(document);
+    }
+}
+
+/// Whether any object in `value` has `key`.
+fn holds_key(value: &Value, key: &str) -> bool {
+    match value {
+        Value::Object(object) => object.contains_key(key) || object.values().any(|value| holds_key(value, key)),
+        Value::Array(values) => values.iter().any(|value| holds_key(value, key)),
+        _ => false,
     }
 }

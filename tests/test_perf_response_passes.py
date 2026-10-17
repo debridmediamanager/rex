@@ -8,7 +8,8 @@ row's attributes inside every comparison, formatting the row's bucket name each 
 
 The library is `test_perf_listing_window.py`'s. The unit is this client parsing the answer once
 (Python's `json.loads`). Measured on the Mac over three runs (unfixed -> fixed, units): JSON
-12.2-15.5 -> 6.6-7.1, XML 12.1-15.1 -> 6.3-6.7.
+12.2-15.5 -> 6.6-7.1, XML 12.1-15.1 -> 6.3-6.7; with the document handed over unserialised
+(`Response::json_deferred`) both 4.2-4.5.
 
     python3 tests/test_perf_response_passes.py
 """
@@ -21,7 +22,7 @@ import time
 from test_perf_listing_window import HEADERS, catalog, check, median, results, start
 
 LISTING = "/library/sections/2/all?type=4"
-BOUND = 10
+BOUND = 5.5
 
 
 def run(port, episodes):
@@ -32,14 +33,14 @@ def run(port, episodes):
     rows = len(json.loads(body)["MediaContainer"].get("Metadata", []))
     unit = time.perf_counter() - began
     print("unit (parsing the %d-byte answer here once): %.3fs" % (len(body), unit), flush=True)
-    check("an unpaged episode listing is under %d units (%.3fs, %.1f)" % (BOUND, took, took / unit),
+    check("an unpaged episode listing is under %.1f units (%.3fs, %.1f)" % (BOUND, took, took / unit),
           status == 200 and rows == episodes and took < BOUND * unit, (status, rows, took))
     HEADERS["Accept"] = "application/xml"
     try:
         status, xml, took = median(port, LISTING)
     finally:
         HEADERS["Accept"] = "application/json"
-    check("and as XML under %d units (%.3fs, %.1f)" % (BOUND, took, took / unit),
+    check("and as XML under %.1f units (%.3fs, %.1f)" % (BOUND, took, took / unit),
           status == 200 and xml.count(b"<Video ") == episodes and took < BOUND * unit, (status, took))
 
 

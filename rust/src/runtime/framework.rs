@@ -259,6 +259,7 @@ impl Response {
             body: Vec::new(),
             headers: Vec::new(),
             close: false,
+            doc: None,
         }
     }
 
@@ -270,6 +271,7 @@ impl Response {
             body,
             headers: vec![("X-Rex-No-Head-Gzip".to_string(), "1".to_string())],
             close: false,
+            doc: None,
         }
     }
 
@@ -282,6 +284,7 @@ impl Response {
             body,
             headers: vec![("Content-type".to_string(), content_type.to_string())],
             close: false,
+            doc: None,
         }
     }
 
@@ -292,6 +295,7 @@ impl Response {
             body,
             headers: Vec::new(),
             close: false,
+            doc: None,
         }
     }
 
@@ -307,6 +311,7 @@ impl Response {
             body,
             headers,
             close: false,
+            doc: None,
         }
     }
 }
@@ -1046,6 +1051,7 @@ impl Runtime {
                         ("Cache-Control".to_string(), "public".to_string()),
                     ],
                     close: false,
+                    doc: None,
                 };
             }
             return Response::plugin_xml(500, plugin_root_error());

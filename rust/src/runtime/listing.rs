@@ -399,7 +399,7 @@ impl Runtime {
                 shown
             })
             .collect::<Vec<_>>();
-        Response::json(
+        Response::json_deferred(
             200,
             self.container(
                 Map::from_iter([("Metadata".to_string(), Value::Array(rows))]),

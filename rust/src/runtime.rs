@@ -6859,6 +6859,7 @@ impl Runtime {
             body: Vec::new(),
             headers,
             close: false,
+            doc: None,
         }
     }
 
@@ -7210,21 +7211,21 @@ impl Runtime {
         if !wanted {
             return;
         }
-        let Ok(mut document) = serde_json::from_slice::<Value>(&response.body) else {
+        let Some(mut document) = response.take_document() else {
             return;
         };
         let original = document.clone();
         let Some(object) = document.as_object_mut() else {
-            return;
+            { response.restore_document(document); return; }
         };
         if object.len() != 1 {
-            return;
+            { response.restore_document(document); return; }
         }
         let Some(body) = object.get_mut("MediaContainer") else {
-            return;
+            { response.restore_document(document); return; }
         };
         if !body.is_object() {
-            return;
+            { response.restore_document(document); return; }
         }
         fn inline(runtime: &Runtime, row: &mut Value) {
             let Some(object) = row.as_object_mut() else {
@@ -7289,11 +7290,9 @@ impl Runtime {
         // parsed body collapses the repeated keys some bodies carry on purpose
         // (`/system/agents`' `Language` list, cycle 83), which the oracle never does.
         if document == original {
-            return;
+            { response.restore_document(document); return; }
         }
-        if let Ok(bytes) = serde_json::to_vec(&document) {
-            response.body = bytes;
-        }
+        response.store_document(document);
     }
 
     fn localize_response(&self, request: &Request, response: &mut Response) {
@@ -7336,7 +7335,7 @@ impl Runtime {
         if !languages.localised.contains(&language) {
             return;
         }
-        let Ok(mut document) = serde_json::from_slice::<Value>(&response.body) else {
+        let Some(mut document) = response.take_document() else {
             return;
         };
         // Cycle 25: the plug-in framework's own container (its signature is
@@ -7345,7 +7344,7 @@ impl Runtime {
             .get("MediaContainer")
             .is_some_and(|body| body.get("noHistory").is_some())
         {
-            return;
+            { response.restore_document(document); return; }
         }
         let templates = load_json_sidecar(&self.catalog_path, "title_templates.json");
         let enum_hook = |text: &str| self.localized_language_enum(text, &language, strings);
@@ -7357,9 +7356,7 @@ impl Runtime {
             language_enum: &enum_hook,
         };
         localiser.walk(&mut document, None, false);
-        if let Ok(body) = serde_json::to_vec(&document) {
-            response.body = body;
-        }
+        response.store_document(document);
     }
 
     /// `server.py` `_localise_item_language_enum` (cycle 59): an item's own
@@ -7996,6 +7993,7 @@ impl Runtime {
                                 .get("X-Plex-Http-Pipeline")
                                 .is_some_and(|value| value == "disable")
                         }),
+                    doc: None,
                 }
             }
             ("POST", "/myplex/claim") => {
@@ -8412,6 +8410,7 @@ impl Runtime {
             body: body.to_vec(),
             headers: vec![("Cache-Control".to_string(), "no-cache".to_string())],
             close: false,
+            doc: None,
         };
         const UNAUTHORIZED: &[u8] =
             b"<html><head><title>Unauthorized</title></head><body><h1>401 Unauthorized</h1></body></html>";
@@ -14895,7 +14894,7 @@ impl Runtime {
                             json!(if is_show { "show" } else { "movie" }),
                         );
                         fields.insert("Metadata".to_string(), Value::Array(shown));
-                        return Response::json(200, self.container(fields, false));
+                        return Response::json_deferred(200, self.container(fields, false));
                     }
                     fields.insert("content".to_string(), json!("secondary"));
                     fields.insert("clusterZoomLevel".to_string(), json!(1));
@@ -15191,7 +15190,7 @@ impl Runtime {
                         fields.insert("Metadata".to_string(), Value::Array(rows));
                         page_window_fields(&mut fields, window);
                     }
-                    return Response::json(200, self.container(fields, true));
+                    return Response::json_deferred(200, self.container(fields, true));
                 }
                 if segments.len() == 4 && segments[3] == "allLeaves" {
                     if request.method != "GET" && request.method != "HEAD" {
@@ -16691,6 +16690,7 @@ impl Runtime {
                                         body: content.as_bytes().to_vec(),
                                         headers: Vec::new(),
                                         close: false,
+                                        doc: None,
                                     };
                                 }
                             }
@@ -16802,6 +16802,7 @@ impl Runtime {
                 body: Vec::new(),
                 headers: Vec::new(),
                 close: false,
+                doc: None,
             };
         }
         let _ = pairs;
@@ -17149,7 +17150,7 @@ impl Runtime {
                 fields.insert("totalSize".to_string(), json!(total));
             }
             fields.insert("Metadata".to_string(), Value::Array(page));
-            return Response::json(200, self.container(fields, true));
+            return Response::json_deferred(200, self.container(fields, true));
         }
         let rows = self
             .choose_refs(Some(section_key), type_number)
@@ -17500,7 +17501,7 @@ impl Runtime {
             fields.insert("offset".to_string(), json!(start));
             fields.insert("totalSize".to_string(), json!(total));
         }
-        Response::json(200, self.container(fields, true))
+        Response::json_deferred(200, self.container(fields, true))
     }
 
     /// The filesystem view is a projection of the catalog's measured Part paths.
@@ -21930,6 +21931,7 @@ impl Runtime {
                     ("Accept-Ranges".to_string(), "bytes".to_string()),
                 ],
                 close: false,
+                doc: None,
             };
         }
         let Some(asset) = assets.get(relative).and_then(Value::as_object) else {
@@ -21963,6 +21965,7 @@ impl Runtime {
                 ("Accept-Ranges".to_string(), "bytes".to_string()),
             ],
             close: false,
+            doc: None,
         }
     }
 
@@ -22153,9 +22156,63 @@ pub struct Response {
     pub body: Vec<u8>,
     pub headers: Vec<(String, String)>,
     pub close: bool,
+    pub doc: Option<Box<Value>>,
 }
 
 impl Response {
+    /// `json` with the document kept unserialised until the runtime lock is released:
+    /// the passes after the route read and rewrite it in place and it is written once, so
+    /// a 96 MB listing no longer holds every other request while it serialises, nor is it
+    /// parsed again (2026-10-17). For answers no route code reads back as bytes.
+    fn json_deferred(status: u16, mut value: Value) -> Self {
+        note_paired_hubs(&value);
+        if crate::catalog::holds_packed_streams(&value) {
+            crate::catalog::unpack_streams(&mut value);
+        }
+        drop_empty_in_place(&mut value);
+        Self {
+            status,
+            content_type: "application/json".to_string(),
+            body: Vec::new(),
+            headers: vec![("Cache-Control".to_string(), "no-cache".to_string())],
+            close: false,
+            doc: Some(Box::new(value)),
+        }
+    }
+
+    /// The JSON document: a deferred one taken out (put it back with `restore_document`
+    /// or `store_document`), else the body parsed.
+    fn take_document(&mut self) -> Option<Value> {
+        match self.doc.take() {
+            Some(document) => Some(*document),
+            None => serde_json::from_slice::<Value>(&self.body).ok(),
+        }
+    }
+
+    /// A document `take_document` gave, unchanged: a deferred answer gets it back, and a
+    /// body that was parsed keeps its own bytes.
+    fn restore_document(&mut self, document: Value) {
+        if self.body.is_empty() {
+            self.doc = Some(Box::new(document));
+        }
+    }
+
+    /// A document `take_document` gave, changed: deferred stays deferred, else written.
+    fn store_document(&mut self, document: Value) {
+        if self.body.is_empty() {
+            self.doc = Some(Box::new(document));
+        } else {
+            self.body = upper_json_escapes(serde_json::to_vec(&document).unwrap_or_default());
+        }
+    }
+
+    /// Write a deferred document into the body, for code that reads the bytes.
+    fn materialize(&mut self) {
+        if let Some(document) = self.doc.take() {
+            self.body = upper_json_escapes(serde_json::to_vec(&*document).unwrap_or_default());
+        }
+    }
+
     fn json(status: u16, mut value: Value) -> Self {
         note_paired_hubs(&value);
         // In place: a copy of a whole-library answer was hundreds of megabytes more.
@@ -22170,6 +22227,7 @@ impl Response {
             body,
             headers: vec![("Cache-Control".to_string(), "no-cache".to_string())],
             close: false,
+            doc: None,
         }
     }
     fn bytes(status: u16, content_type: impl Into<String>) -> Self {
@@ -22179,6 +22237,7 @@ impl Response {
             body: Vec::new(),
             headers: Vec::new(),
             close: false,
+            doc: None,
         }
     }
     fn plain(status: u16, body: Vec<u8>) -> Self {
@@ -22188,6 +22247,7 @@ impl Response {
             body,
             headers: Vec::new(),
             close: false,
+            doc: None,
         }
     }
     /// Cycle 87: Add Library's validation refusal -- no Content-Type, gzipped when
@@ -22199,6 +22259,7 @@ impl Response {
             body,
             headers: vec![(wire::UNTYPED_MARK.to_string(), "1".to_string())],
             close: false,
+            doc: None,
         }
     }
     fn photo_error(status: u16, message: &str) -> Self {
@@ -22213,6 +22274,7 @@ impl Response {
                 ("Date".to_string(), http_date()),
             ],
             close: false,
+            doc: None,
         }
     }
     fn empty(status: u16) -> Self {
@@ -22226,6 +22288,7 @@ impl Response {
             body: Vec::new(),
             headers: Vec::new(),
             close: false,
+            doc: None,
         }
     }
     fn error(status: u16, message: &str) -> Self {
@@ -22239,6 +22302,7 @@ impl Response {
             body: error_document(status),
             headers: Vec::new(),
             close: false,
+            doc: None,
         }
     }
     fn unauthorized() -> Self {
@@ -22248,6 +22312,7 @@ impl Response {
             body: b"<!DOCTYPE html><html><body>401 Unauthorized</body></html>".to_vec(),
             headers: Vec::new(),
             close: false,
+            doc: None,
         };
         response
             .headers
@@ -22261,6 +22326,7 @@ impl Response {
             body: b"\n".to_vec(),
             headers: Vec::new(),
             close: false,
+            doc: None,
         };
         response
             .headers
@@ -23523,7 +23589,7 @@ fn handle_connection<S: Read + Write + PollRead>(
             write_or_log(snapshot);
             let mut response = match (image, claim) {
                 (_, Some(token)) => plextv::finish_claim(&runtime, &token, &request.target),
-                (Some(url), _) if response.status == 200 && response.body.is_empty() => {
+                (Some(url), _) if response.status == 200 && response.body.is_empty() && response.doc.is_none() => {
                     serve_remote_image(response, &url)
                 }
                 _ => response,
@@ -23588,6 +23654,10 @@ fn handle_connection<S: Read + Write + PollRead>(
             .get("x-plex-container-focus-key")
             .or_else(|| query.get("X-Plex-Container-Focus-Key"))
             .cloned();
+        // The focus and element-exclusion passes read the bytes; both are rare.
+        if focus.is_some() || query.contains_key("excludeElements") {
+            response.materialize();
+        }
         if let Some(focus) = focus.filter(|focus| focus.starts_with("/library/metadata/")) {
             if query.contains_key("X-Plex-Container-Size")
                 && !query.contains_key("X-Plex-Container-Start")
@@ -23626,14 +23696,17 @@ fn handle_connection<S: Read + Write + PollRead>(
         wire::exclude_container(&mut response, &query, &request_path);
         // The JSON passes below share one parse of the body, and write it once.
         let accept = request.headers.get("accept").map(String::as_str);
+        // A deferred document is the body, and is always written below.
+        let deferred = response.doc.is_some();
         let parsed = if response.content_type.starts_with("application/json") {
-            serde_json::from_slice::<Value>(&response.body).ok()
+            response.take_document()
         } else {
+            response.materialize();
             None
         };
         match parsed {
             Some(mut document) => {
-                let mut changed = false;
+                let mut changed = deferred;
                 match page_container_doc(&mut response, &mut document, &query, &request_path) {
                     Paged::Same => {}
                     Paged::Changed => changed = true,
@@ -23671,6 +23744,7 @@ fn handle_connection<S: Read + Write + PollRead>(
             // (cycle 32) on the bytes that go out.
             response.body = upper_json_escapes(std::mem::take(&mut response.body));
         }
+        response.materialize();
         let envelope = wire::Wire::of(&request, &request_path, &query);
         let owner = sessions::ByteOwner::of(&request);
         sessions::BYTE_OWNER.with(|cell| *cell.borrow_mut() = owner.clone());
@@ -26131,6 +26205,7 @@ fn static_sidecar_response(catalog: &Path, name: &str, content_type: &str, head:
             ("Accept-Ranges".to_string(), "bytes".to_string()),
         ],
         close: false,
+        doc: None,
     }
 }
 
@@ -27083,6 +27158,7 @@ fn serve_part_proxy<S: Write>(
                     ("Date".to_string(), http_date()),
                 ],
                 close: false,
+                doc: None,
             };
             return wire::write_enveloped(stream, &refusal, envelope, keep);
         }
@@ -27336,6 +27412,7 @@ fn xml_from_doc(response: Response, mut value: Value) -> Response {
         body,
         headers: response.headers,
         close: response.close,
+        doc: None,
     }
 }
 
@@ -27751,15 +27828,15 @@ fn exclude_fields_response(request: &Request, response: &mut Response) {
     if names.is_empty() {
         return;
     }
-    let Ok(mut document) = serde_json::from_slice::<Value>(&response.body) else {
-        return;
-    };
+    let Some(mut document) = response.take_document() else {
+            return;
+        };
     let original = document.clone();
     let Some(body) = document
         .get_mut("MediaContainer")
         .and_then(Value::as_object_mut)
     else {
-        return;
+        { response.restore_document(document); return; }
     };
     for name in &names {
         body.shift_remove(*name);
@@ -27780,11 +27857,9 @@ fn exclude_fields_response(request: &Request, response: &mut Response) {
     }
     // Unchanged: keep the route's bytes (see `alternates_response`).
     if document == original {
-        return;
+        { response.restore_document(document); return; }
     }
-    if let Ok(bytes) = serde_json::to_vec(&document) {
-        response.body = bytes;
-    }
+    response.store_document(document);
 }
 
 /// `_restamped`: a leaf's borrowed artwork versions replaced by its own `addedAt`.
@@ -27873,14 +27948,14 @@ fn sync_version_response(request: &Request, response: &mut Response) {
     if !synced {
         return;
     }
-    let Ok(mut document) = serde_json::from_slice::<Value>(&response.body) else {
-        return;
-    };
+    let Some(mut document) = response.take_document() else {
+            return;
+        };
     let Some(body) = document
         .get_mut("MediaContainer")
         .and_then(Value::as_object_mut)
     else {
-        return;
+        { response.restore_document(document); return; }
     };
     if segments.len() == 3 && segments[2] == "items" {
         body.insert("allowSync".to_string(), json!(true));
@@ -27903,11 +27978,9 @@ fn sync_version_response(request: &Request, response: &mut Response) {
             }
         }
     } else {
-        return;
+        { response.restore_document(document); return; }
     }
-    if let Ok(bytes) = serde_json::to_vec(&document) {
-        response.body = bytes;
-    }
+    response.store_document(document);
 }
 
 /// Cycle 88, measured on plexscratch42 on a collection and a playlist: a list's poster

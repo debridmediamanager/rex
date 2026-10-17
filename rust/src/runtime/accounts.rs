@@ -598,11 +598,11 @@ impl Runtime {
         if !self.viewer.restricted() && !matches!(path, "/" | "/media/providers" | "/library/sections") {
             return;
         }
-        let Ok(mut document) = serde_json::from_slice::<Value>(&response.body) else {
+        let Some(mut document) = response.take_document() else {
             return;
         };
         let Some(container) = document.get_mut("MediaContainer").and_then(Value::as_object_mut) else {
-            return;
+            { response.restore_document(document); return; }
         };
         if matches!(path, "/" | "/media/providers") {
             container.shift_remove("allowMediaDeletion");
@@ -652,9 +652,7 @@ impl Runtime {
                 self.prune(container);
             }
         }
-        if let Ok(bytes) = serde_json::to_vec(&document) {
-            response.body = upper_json_escapes(bytes);
-        }
+        response.store_document(document);
     }
 
     fn directory_visible(&self, directory: &Value) -> bool {
