@@ -24,6 +24,7 @@ impl Runtime {
         query: &HashMap<String, String>,
     ) {
         let include = |name: &str| query.get(name).is_some_and(|value| is_true_option(value));
+        mediainfo::project_chapters(row, detail, include("includeChapters"));
         let kind = row
             .get("type")
             .and_then(Value::as_str)

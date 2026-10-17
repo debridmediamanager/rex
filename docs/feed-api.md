@@ -210,6 +210,20 @@ The `media_info` above is cut down to show its shape. Send ffprobe's whole outpu
 | `folder` | no | The folder the provider lists the file in inside its release (`Smallville/Stagione 6`), `""` at its top level. Kept on the row; nothing reads it as an extra |
 | `hash` | no | The release's info hash. Kept on the row; nothing reads it yet |
 
+Embedded chapters are optional: include ffprobe's `-show_chapters` output in
+`media_info.chapters`. rex keeps the timings and titles with that file version and
+answers clients requesting `includeChapters=1` on metadata or play queues. A later
+push updates chapters on an existing version too. Omitting `chapters` preserves its
+saved chapters; an explicit `"chapters": []` clears them. rex does not generate
+chapter thumbnails.
+
+To populate chapters for items already in rex, have the source resend its saved
+probes through the existing feed. A normal full snapshot updates existing versions
+on their current keys; no database edits or rex restart are needed. With zurg,
+wait for its next full snapshot or restart zurg to trigger one after its library
+loads. Its saved probes must contain chapter data; probes made without
+`-show_chapters` must first be refreshed at the source.
+
 What the fields do:
 
 - **Held until probed.** An item without `media_info` is stored but not shown: it is in no

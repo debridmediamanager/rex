@@ -1061,6 +1061,58 @@ fn subtitle_stream(stream: &Row, stream_id: i64) -> Row {
     row
 }
 
+/// Embedded chapters measured against PMS (2 Fast 2 Furious, 2026-10-17):
+/// one-based indexes, title tags, integer millisecond boundaries. The source's
+/// ffprobe ids can be negative/huge; use stable part-scoped ids instead. No thumb
+/// or thumb filter is advertised because rex has not generated chapter images.
+pub fn build_chapters(probe: &Value, part_id: i64) -> Value {
+    let offset = |chapter: &Value, name: &str| -> Option<i64> {
+        let seconds = chapter.get(format!("{name}_time")).and_then(float_any).or_else(|| {
+            let ticks = chapter.get(name).and_then(float_any)?;
+            let base = chapter.get("time_base")?.as_str().and_then(parse_ratio)?;
+            Some(ticks * base)
+        })?;
+        let millis = seconds * 1000.0;
+        (millis.is_finite() && millis >= 0.0 && millis < i64::MAX as f64)
+            .then(|| millis.round() as i64)
+    };
+    let mut chapters: Vec<(i64, i64, Option<&str>)> = probe.get("chapters")
+        .and_then(Value::as_array).into_iter().flatten().filter_map(|chapter| {
+            let start = offset(chapter, "start")?;
+            let end = offset(chapter, "end")?;
+            (end > start).then(|| (start, end, chapter.pointer("/tags/title")
+                .and_then(Value::as_str).filter(|title| !title.is_empty())))
+        }).collect();
+    chapters.sort_by_key(|chapter| chapter.0);
+    Value::Array(chapters.into_iter().enumerate().map(|(i, (start, end, title))| {
+        let index = i as i64 + 1;
+        let mut chapter = json!({
+            "id": part_id.saturating_mul(10000).saturating_add(index),
+            "index": index, "startTimeOffset": start, "endTimeOffset": end
+        });
+        if let Some(title) = title { chapter["tag"] = json!(title); }
+        chapter
+    }).collect())
+}
+
+/// Chapter timing belongs to a file version, not the shared movie/episode identity.
+/// PMS exposes the first version's chapters on metadata and play queues; keep the
+/// chapterSource flag on ordinary reads, and Chapter only when requested.
+pub fn project_chapters(original: &Value, projected: &mut Value, include: bool) {
+    let chapters = original.pointer("/Media/0/_chapters").or_else(|| original.get("Chapter"))
+        .and_then(Value::as_array);
+    let Some(object) = projected.as_object_mut() else { return; };
+    object.shift_remove("Chapter");
+    if let Some(chapters) = chapters {
+        if chapters.is_empty() {
+            object.shift_remove("chapterSource");
+        } else {
+            object.insert("chapterSource".to_string(), json!("media"));
+            if include { object.insert("Chapter".to_string(), json!(chapters)); }
+        }
+    }
+}
+
 /// Build one Plex Media element from an ffprobe object.
 pub fn build_media(
     probe: &Value,
@@ -1215,6 +1267,11 @@ pub fn build_media(
     put(&mut media, "Part", Value::Array(vec![Value::Object(part)]));
     let mut media = Value::Object(media);
     normalize_media(&mut media);
+    // An absent chapter list is not an authoritative empty one: older sources
+    // may not request -show_chapters. Keep it distinct on subsequent feed pushes.
+    if probe.get("chapters").is_some_and(Value::is_array) {
+        media["_chapters"] = build_chapters(probe, part_id);
+    }
     media
 }
 
@@ -1528,6 +1585,78 @@ pub fn select_media_tracks(media: &mut Value, prefs: &TrackPrefs) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn chapters_match_measured_pms_boundaries_and_titles() {
+        let fixture: Value = serde_json::from_str(include_str!("../../tests/fixtures/chapters/embedded.json")).unwrap();
+        let mut actual = build_chapters(&fixture["probe"], 7);
+        for (i, chapter) in actual.as_array_mut().unwrap().iter_mut().enumerate() {
+            assert_eq!(chapter["id"], json!(70001 + i));
+            chapter.as_object_mut().unwrap().shift_remove("id");
+        }
+        let rows = actual.as_array().unwrap();
+        let expected = fixture["expected"].as_array().unwrap();
+        assert_eq!(rows.len(), expected.len());
+        for (i, (row, reference)) in rows.iter().zip(expected).enumerate() {
+            assert_eq!(row["tag"], reference["tag"]);
+            assert_eq!(row["index"], reference["index"]);
+            // The real PMS boundaries differ
+            // from this exact file's saved probe by up to 4ms. Preserve the
+            // probe's millisecond precision rather than discard that precision.
+            for (field, probe_field) in [("startTimeOffset", "start_time"), ("endTimeOffset", "end_time")] {
+                let value = row[field].as_i64().unwrap();
+                assert!((value - reference[field].as_i64().unwrap()).abs() <= 5);
+                let seconds = fixture["probe"]["chapters"][i][probe_field].as_str().unwrap().parse::<f64>().unwrap();
+                assert_eq!(value, (seconds * 1000.0).round() as i64);
+            }
+        }
+    }
+    #[test]
+    fn chapters_validate_offsets_and_support_tick_timebases() {
+        let probe = json!({"chapters": [
+            {"start_time": "NaN", "end_time": "1"},
+            {"start_time": "-1", "end_time": "1"},
+            {"start_time": "2", "end_time": "2"},
+            {"start_time": "0", "end_time": "inf"},
+            {"start_time": "broken", "end_time": "1"},
+            {"start": 90000, "end": 180000, "time_base": "1/90000"},
+            {"start_time": "0", "end_time": "0.500", "tags": {"title": "Opening"}}
+        ]});
+        let chapters = build_chapters(&probe, 3);
+        let rows = chapters.as_array().unwrap();
+        assert_eq!(rows.len(), 2);
+        assert_eq!(rows[0]["index"], 1);
+        assert_eq!(rows[0]["endTimeOffset"], 500);
+        assert_eq!(rows[1]["startTimeOffset"], 1000);
+        assert_eq!(rows[1]["endTimeOffset"], 2000);
+        assert!(rows[1].get("tag").is_none());
+        assert!(rows[0].get("thumb").is_none());
+    }
+    #[test]
+    fn chapters_survive_media_build_and_normalization() {
+        let probe = json!({"format": {}, "streams": [], "chapters": [
+            {"start_time": "0", "end_time": "1"}]});
+        let mut media = build_media(&probe, 1, 2, "/part", "/file.mkv", 0, Some("mkv"));
+        assert_eq!(media["_chapters"][0]["endTimeOffset"], 1000);
+        normalize_media(&mut media);
+        assert_eq!(media["_chapters"][0]["id"], 20001);
+        let missing = build_media(&json!({"format": {}, "streams": []}), 1, 2, "/part", "/file.mkv", 0, Some("mkv"));
+        assert!(missing.get("_chapters").is_none());
+    }
+    #[test]
+    fn chapters_projection_is_opt_in_and_stays_on_first_version() {
+        let original = json!({"Media": [{"_chapters": [{"index": 1, "startTimeOffset": 0, "endTimeOffset": 100}]},
+            {"_chapters": [{"index": 1, "startTimeOffset": 0, "endTimeOffset": 200}]}]});
+        let mut shown = json!({});
+        project_chapters(&original, &mut shown, false);
+        assert_eq!(shown["chapterSource"], "media");
+        assert!(shown.get("Chapter").is_none());
+        project_chapters(&original, &mut shown, true);
+        assert_eq!(shown["Chapter"][0]["endTimeOffset"], 100);
+        project_chapters(&original, &mut shown, false);
+        assert!(shown.get("Chapter").is_none());
+        project_chapters(&json!({"Media": [{"_chapters": []}]}), &mut shown, true);
+        assert!(shown.get("chapterSource").is_none());
+    }
     #[test]
     fn resolution_boundaries() {
         assert_eq!(video_resolution(Some(360), Some(846)), Some("sd".into()));

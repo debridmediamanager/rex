@@ -1,0 +1,294 @@
+{
+  "_provenance": "2 Fast 2 Furious (2003), same file compared on PMS and rex on 2026-10-17: PMS GET /library/metadata/{ratingKey}?includeChapters=1 returned 19 chapters; rex returned none. probe is the source's saved ffprobe chapter array. expected retains the PMS index, tag and millisecond boundaries, omitting database-specific ids and thumbnail filters. Some PMS boundaries differ from the saved probe by up to 4 ms.",
+  "probe": {
+    "chapters": [
+      {
+        "id": -7014528544468547000,
+        "time_base": "1/1000000000",
+        "start_time": "0",
+        "end_time": "688.688",
+        "tags": {
+          "title": "Time for Ignition"
+        }
+      },
+      {
+        "id": -6709290820950323000,
+        "time_base": "1/1000000000",
+        "start_time": "688.688",
+        "end_time": "859.817",
+        "tags": {
+          "title": "Surprise!"
+        }
+      },
+      {
+        "id": -8054611728772378000,
+        "time_base": "1/1000000000",
+        "start_time": "859.817",
+        "end_time": "961.627",
+        "tags": {
+          "title": "Busted"
+        }
+      },
+      {
+        "id": 1781202522440798700,
+        "time_base": "1/1000000000",
+        "start_time": "961.627",
+        "end_time": "1136.344",
+        "tags": {
+          "title": "In the Interest of Justice"
+        }
+      },
+      {
+        "id": 3292784025801467400,
+        "time_base": "1/1000000000",
+        "start_time": "1136.344",
+        "end_time": "1462.544",
+        "tags": {
+          "title": "The Man for the Job"
+        }
+      },
+      {
+        "id": -3600714808274932000,
+        "time_base": "1/1000000000",
+        "start_time": "1462.544",
+        "end_time": "1695.819",
+        "tags": {
+          "title": "Verone's New Drivers"
+        }
+      },
+      {
+        "id": -8825628806593988000,
+        "time_base": "1/1000000000",
+        "start_time": "1695.819",
+        "end_time": "2113.153",
+        "tags": {
+          "title": "The Audition"
+        }
+      },
+      {
+        "id": 1709691554958201000,
+        "time_base": "1/1000000000",
+        "start_time": "2113.153",
+        "end_time": "2407.322",
+        "tags": {
+          "title": "Hungry"
+        }
+      },
+      {
+        "id": 7804000863188889000,
+        "time_base": "1/1000000000",
+        "start_time": "2407.322",
+        "end_time": "2803.384",
+        "tags": {
+          "title": "The Best of Everything"
+        }
+      },
+      {
+        "id": 4521455971864364000,
+        "time_base": "1/1000000000",
+        "start_time": "2803.384",
+        "end_time": "3534.114",
+        "tags": {
+          "title": "Two More Cars"
+        }
+      },
+      {
+        "id": -6711721902204174000,
+        "time_base": "1/1000000000",
+        "start_time": "3534.114",
+        "end_time": "3902.19",
+        "tags": {
+          "title": "A Little Fun"
+        }
+      },
+      {
+        "id": 2606225617323161600,
+        "time_base": "1/1000000000",
+        "start_time": "3902.19",
+        "end_time": "4224.303",
+        "tags": {
+          "title": "Looking for Monica"
+        }
+      },
+      {
+        "id": -8318750368054857000,
+        "time_base": "1/1000000000",
+        "start_time": "4224.303",
+        "end_time": "4417.038",
+        "tags": {
+          "title": "The Wrong Two Guys"
+        }
+      },
+      {
+        "id": -6788835145795725000,
+        "time_base": "1/1000000000",
+        "start_time": "4417.038",
+        "end_time": "4934.638",
+        "tags": {
+          "title": "Guns, Murderers & Cops"
+        }
+      },
+      {
+        "id": 3591455168089843700,
+        "time_base": "1/1000000000",
+        "start_time": "4934.638",
+        "end_time": "5393.138",
+        "tags": {
+          "title": "Let the Party Begin"
+        }
+      },
+      {
+        "id": -4857966177299808000,
+        "time_base": "1/1000000000",
+        "start_time": "5393.138",
+        "end_time": "5716.628",
+        "tags": {
+          "title": "The New Plan"
+        }
+      },
+      {
+        "id": -5636388010617229000,
+        "time_base": "1/1000000000",
+        "start_time": "5716.628",
+        "end_time": "5851.971",
+        "tags": {
+          "title": "Doing it Big"
+        }
+      },
+      {
+        "id": 1443808233439125500,
+        "time_base": "1/1000000000",
+        "start_time": "5851.971",
+        "end_time": "6032.026",
+        "tags": {
+          "title": "Clean Records"
+        }
+      },
+      {
+        "id": -7006901575016145000,
+        "time_base": "1/1000000000",
+        "start_time": "6032.026",
+        "end_time": "6461.792",
+        "tags": {
+          "title": "End Titles"
+        }
+      }
+    ]
+  },
+  "expected": [
+    {
+      "tag": "Time for Ignition",
+      "index": 1,
+      "startTimeOffset": 0,
+      "endTimeOffset": 688688
+    },
+    {
+      "tag": "Surprise!",
+      "index": 2,
+      "startTimeOffset": 688688,
+      "endTimeOffset": 859817
+    },
+    {
+      "tag": "Busted",
+      "index": 3,
+      "startTimeOffset": 859817,
+      "endTimeOffset": 961627
+    },
+    {
+      "tag": "In the Interest of Justice",
+      "index": 4,
+      "startTimeOffset": 961627,
+      "endTimeOffset": 1136340
+    },
+    {
+      "tag": "The Man for the Job",
+      "index": 5,
+      "startTimeOffset": 1136340,
+      "endTimeOffset": 1462540
+    },
+    {
+      "tag": "Verone's New Drivers",
+      "index": 6,
+      "startTimeOffset": 1462540,
+      "endTimeOffset": 1695820
+    },
+    {
+      "tag": "The Audition",
+      "index": 7,
+      "startTimeOffset": 1695820,
+      "endTimeOffset": 2113150
+    },
+    {
+      "tag": "Hungry",
+      "index": 8,
+      "startTimeOffset": 2113150,
+      "endTimeOffset": 2407320
+    },
+    {
+      "tag": "The Best of Everything",
+      "index": 9,
+      "startTimeOffset": 2407320,
+      "endTimeOffset": 2803380
+    },
+    {
+      "tag": "Two More Cars",
+      "index": 10,
+      "startTimeOffset": 2803380,
+      "endTimeOffset": 3534110
+    },
+    {
+      "tag": "A Little Fun",
+      "index": 11,
+      "startTimeOffset": 3534110,
+      "endTimeOffset": 3902190
+    },
+    {
+      "tag": "Looking for Monica",
+      "index": 12,
+      "startTimeOffset": 3902190,
+      "endTimeOffset": 4224300
+    },
+    {
+      "tag": "The Wrong Two Guys",
+      "index": 13,
+      "startTimeOffset": 4224300,
+      "endTimeOffset": 4417040
+    },
+    {
+      "tag": "Guns, Murderers & Cops",
+      "index": 14,
+      "startTimeOffset": 4417040,
+      "endTimeOffset": 4934640
+    },
+    {
+      "tag": "Let the Party Begin",
+      "index": 15,
+      "startTimeOffset": 4934640,
+      "endTimeOffset": 5393140
+    },
+    {
+      "tag": "The New Plan",
+      "index": 16,
+      "startTimeOffset": 5393140,
+      "endTimeOffset": 5716630
+    },
+    {
+      "tag": "Doing it Big",
+      "index": 17,
+      "startTimeOffset": 5716630,
+      "endTimeOffset": 5851970
+    },
+    {
+      "tag": "Clean Records",
+      "index": 18,
+      "startTimeOffset": 5851970,
+      "endTimeOffset": 6032030
+    },
+    {
+      "tag": "End Titles",
+      "index": 19,
+      "startTimeOffset": 6032030,
+      "endTimeOffset": 6461790
+    }
+  ]
+}

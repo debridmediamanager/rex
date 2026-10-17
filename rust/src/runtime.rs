@@ -22,7 +22,7 @@ use rustls_pemfile::{certs, pkcs8_private_keys, rsa_private_keys};
 use serde_json::{json, Map, Value};
 use sha1::{Digest, Sha1};
 
-use crate::{catalog::Catalog, decision, metadata, store, xmlout};
+use crate::{catalog::Catalog, decision, mediainfo, metadata, store, xmlout};
 
 mod accounts;
 mod artwork;
@@ -2058,6 +2058,7 @@ impl Runtime {
 
     /// `projected_row` on a copy the caller made of `original`.
     fn project_copy(&self, original: &Value, mut row: Value) -> Value {
+        mediainfo::project_chapters(original, &mut row, false);
         let Some(object) = row.as_object_mut() else {
             return row;
         };
@@ -12721,6 +12722,8 @@ impl Runtime {
             .map(|item| {
                 self.catalog.get(&item.rating_key).map(|row| {
                     let mut value = self.detail_row(row);
+                    mediainfo::project_chapters(row, &mut value, query.get("includeChapters")
+                        .is_some_and(|value| is_true_option(value)));
                     if let Some(object) = value.as_object_mut() {
                         object.insert("playQueueItemID".to_string(), json!(item.id));
                     }

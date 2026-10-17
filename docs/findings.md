@@ -13223,3 +13223,26 @@ refreshes an item's metadata, and rex runs no refresh.
   its plain collections' measured shape with the agent's guid and summary; the poster is the
   composite of its members, never the agent's `thumb`/`art`. plexscratch cannot reach the agent and
   plexlab's library has no movie in a collection.
+
+
+## Embedded chapters from a source probe (2026-10-17)
+
+For the same *2 Fast 2 Furious* file, PMS answered 19 `Chapter` rows to
+`GET /library/metadata/{ratingKey}?includeChapters=1`; rex answered none even
+though its source's saved ffprobe output contained all 19. The chapter indexes,
+titles and boundaries are recorded in `tests/fixtures/chapters/embedded.json`.
+Some PMS boundaries differ from that probe by up to 4 ms: retain the probe's
+millisecond precision. Chapter timings belong to the file version, not the
+shared movie or episode description.
+
+Keep `chapterSource: media` on ordinary projections when embedded chapters are
+available, and include `Chapter` only under `includeChapters=1`, on metadata and
+play queues. The Android play request already recorded in
+`tests/fixtures/playqueue_continuous.json` includes that flag. Source chapter ids
+can be negative or very large; use stable part-scoped ids. Do not advertise a
+chapter thumbnail or filter when rex has generated no chapter images.
+
+A source snapshot can enrich an existing version without replacing its streams
+or selected tracks. An omitted chapter array preserves saved timings; an
+explicit empty array clears them. Sources must include `-show_chapters` in their
+probe to supply this data; rex does not read media bytes to obtain it.

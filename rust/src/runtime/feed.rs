@@ -1579,6 +1579,23 @@ impl Runtime {
             }
             changed = true;
         }
+        // Repeated snapshots must enrich existing releases too, not just new or
+        // probe-pending rows. Update only this version; preserve its streams,
+        // selected tracks, playback state and other versions' chapter timings.
+        if let Some(probe) = &item.media_info {
+            if probe.get("chapters").is_some_and(Value::is_array) {
+                let chapters = mediainfo::build_chapters(probe,
+                    current.get("id").and_then(Value::as_i64).unwrap_or(0));
+                if row.pointer(&format!("/Media/{index}/_chapters")) != Some(&chapters) {
+                    if let Some(media) = self.catalog.get_mut(key)
+                        .and_then(|row| row.get_mut("Media"))
+                        .and_then(|media| media.get_mut(index)).and_then(Value::as_object_mut) {
+                        media.insert("_chapters".to_string(), chapters);
+                        changed = true;
+                    }
+                }
+            }
+        }
         if row.get("_probePending").is_some_and(truthy) {
             if let Some(probe) = &item.media_info {
                 probed.push((key.to_string(), probe.clone()));
@@ -1933,6 +1950,86 @@ mod tests {
         })
         .unwrap();
         (Arc::new(Mutex::new(runtime)), "11".to_string())
+    }
+
+    #[test]
+    fn chapters_feed_updates_existing_versions_and_clears_explicit_empty() {
+        let dir = work("chapters");
+        let (shared, key) = runtime_with_episode(&dir);
+        let mut guard = shared.lock().unwrap();
+        guard.catalog.get_mut(&key).unwrap()["Media"] = json!([
+            {"_source": "test", "_sid": "one", "_path": "one.mkv", "_folder": "",
+             "Part": [{"id": 11, "file": "/shows/one.mkv", "Stream": [{"id": 123, "selected": true}]}]},
+            {"_source": "test", "_sid": "two", "_path": "two.mkv", "_folder": "",
+             "Part": [{"id": 22, "file": "/shows/two.mkv", "Stream": [{"id": 223, "selected": true}]}]}
+        ]);
+        let row = guard.catalog.get_mut(&key).unwrap();
+        crate::catalog::pack_streams(row);
+        let streams = row.pointer("/Media/1/Part/0").unwrap().clone();
+        let source = Source::register("test", &json!({"url": "http://127.0.0.1:9"})).unwrap();
+        let mut pushed = json!({"id": "two", "path": "two.mkv", "file": "/shows/two.mkv", "folder": "",
+            "media_info": {"streams": [{"codec_type": "video"}],
+                "chapters": [{"start_time": "0", "end_time": "1", "tags": {"title": "Opening"}}]}});
+        let mut probed = Vec::new();
+        let item = Item::parse(&source, &pushed).unwrap();
+        assert!(guard.feed_update_row(&key, "test", &item, false, &mut probed));
+        assert!(!guard.feed_update_row(&key, "test", &item, false, &mut probed));
+        let row = guard.catalog.get(&key).unwrap();
+        assert_eq!(row.pointer("/Media/1/_chapters/0/id"), Some(&json!(220001)));
+        assert!(row.pointer("/Media/0/_chapters").is_none());
+        assert_eq!(row.pointer("/Media/1/Part/0"), Some(&streams), "chapter updates preserve packed streams and track selections");
+        pushed["media_info"].as_object_mut().unwrap().shift_remove("chapters");
+        assert!(!guard.feed_update_row(&key, "test", &Item::parse(&source, &pushed).unwrap(), false, &mut probed));
+        assert_eq!(guard.catalog.get(&key).unwrap().pointer("/Media/1/_chapters/0/index"), Some(&json!(1)));
+        pushed["media_info"]["chapters"] = json!([]);
+        assert!(guard.feed_update_row(&key, "test", &Item::parse(&source, &pushed).unwrap(), false, &mut probed));
+        assert_eq!(guard.catalog.get(&key).unwrap().pointer("/Media/1/_chapters"), Some(&json!([])));
+        assert!(probed.is_empty());
+        drop(guard);
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn chapters_reach_metadata_and_play_queues_only_when_requested() {
+        let dir = work("chapter-routes");
+        let (shared, key) = runtime_with_episode(&dir);
+        let mut runtime = shared.lock().unwrap();
+        let fixture: Value = serde_json::from_str(include_str!("../../../tests/fixtures/chapters/embedded.json")).unwrap();
+        let chapters = mediainfo::build_chapters(&fixture["probe"], 11);
+        runtime.catalog.get_mut(&key).unwrap()["Media"] = json!([
+            {"Part": [{"id": 11}], "_chapters": chapters},
+            {"Part": [{"id": 22}], "_chapters": []}
+        ]);
+        let request = |method: &str, target: &str| Request {
+            method: method.to_string(), target: target.to_string(), version: "HTTP/1.1".to_string(),
+            headers: HashMap::new(), body: Vec::new(), body_complete: true,
+        };
+        let read = |runtime: &mut Runtime, method: &str, target: &str| -> Value {
+            let response = runtime.request_route(&request(method, target));
+            assert_eq!(response.status, 200, "{method} {target}: {}", String::from_utf8_lossy(&response.body));
+            let body: Value = serde_json::from_slice(&response.body).unwrap();
+            assert!(!String::from_utf8_lossy(&response.body).contains("_chapters"));
+            body
+        };
+        for suffix in ["", "?includeChapters=0", "?includeChapters=1"] {
+            let body = read(&mut runtime, "GET", &format!("/library/metadata/11{suffix}"));
+            let row = &body["MediaContainer"]["Metadata"][0];
+            assert_eq!(row["chapterSource"], "media");
+            if suffix.ends_with('1') { assert_eq!(row["Chapter"], chapters); }
+            else { assert!(row.get("Chapter").is_none()); }
+        }
+        let body = read(&mut runtime, "POST", "/playQueues?type=video&includeChapters=1&uri=server://feed-test-machine/com.plexapp.plugins.library/library/metadata/11");
+        assert_eq!(body["MediaContainer"]["Metadata"][0]["Chapter"], chapters);
+        let id = body["MediaContainer"]["playQueueID"].as_i64().unwrap();
+        for suffix in ["", "?includeChapters=0", "?includeChapters=1"] {
+            let body = read(&mut runtime, "GET", &format!("/playQueues/{id}{suffix}"));
+            let row = &body["MediaContainer"]["Metadata"][0];
+            assert_eq!(row["chapterSource"], "media");
+            if suffix.ends_with('1') { assert_eq!(row["Chapter"], chapters); }
+            else { assert!(row.get("Chapter").is_none()); }
+        }
+        drop(runtime);
+        let _ = std::fs::remove_dir_all(dir);
     }
 
     /// A confirmed delete removes its source holding the feed lock. A push for that source
