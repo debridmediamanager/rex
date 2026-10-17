@@ -135,6 +135,18 @@ def median(port, path, times=3):
     return runs[times // 2]
 
 
+def client_unit(body, times=3):
+    """This client parsing `body` once (the median of three): a yardstick that scales with the
+    answer and the host and that no server change moves, where timing the server's own unpaged
+    listing moved with every change that made that listing cheaper."""
+    runs = []
+    for _ in range(times):
+        began = time.perf_counter()
+        json.loads(body)
+        runs.append(time.perf_counter() - began)
+    return sorted(runs)[times // 2]
+
+
 def container(body):
     return json.loads(body)["MediaContainer"]
 

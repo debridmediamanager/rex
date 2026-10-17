@@ -12,9 +12,11 @@ sat in swap, every beat paged it back in and the requests queued behind it timed
 The library is `test_perf_listing_window.py`'s (the production server's first 120 shows, every
 episode one real row), and the state file is seeded with the production server's counts of
 deleted and retired keys. The unit is one unpaged episode listing measured first in the same
-run. Measured on the test host (arm64 Docker, 4,582 episodes): unfixed a beat cost 0.043 units;
-fixed, 0.008. The bound is 0.04 since the unit itself halved (2026-10-17: an answer is parsed once
-after its route); the beat is the 5-6 ms it was, the unfixed one ~24 ms (0.09 of today's unit).
+run -- since 2026-10-17 this client parsing it, which no server change moves (the server's own
+listing halved twice that day). Measured on the test host (arm64 Docker, 4,582 episodes) in the
+server's unit: unfixed a beat cost 0.043 units, fixed 0.008; the bound, 0.02 of that, is 0.32 of
+this one (16 times, the ratio of the two units on the build that set it). A fixed beat sits at
+about 0.16, the unfixed one at about 0.7.
 
     python3 tests/test_perf_progress_beat.py
 """
@@ -28,7 +30,7 @@ import sys
 import tempfile
 import time
 
-from test_perf_listing_window import ENV, HEADERS, ROOT, catalog, check, container, free_port, median, request, results
+from test_perf_listing_window import ENV, HEADERS, ROOT, catalog, check, client_unit, container, free_port, median, request, results
 from server_command import server_command
 import http.client
 
@@ -92,9 +94,11 @@ def beat(port, key, offset):
 
 
 def run(port):
-    _, body, unit = median(port, "/library/sections/2/all?type=4")
+    _, body, server_unit = median(port, "/library/sections/2/all?type=4")
+    unit = client_unit(body)
     episodes = container(body).get("Metadata", [])
-    print("unit (unpaged episode listing, %d rows): %.3fs" % (len(episodes), unit), flush=True)
+    print("unit (parsing the unpaged episode listing here, %d rows): %.4fs; the server's: %.3fs"
+          % (len(episodes), unit, server_unit), flush=True)
     key = episodes[len(episodes) // 2]["ratingKey"]
     # The first beats write what the seed left keyed differently; the steady state follows.
     for offset in range(5):
@@ -102,8 +106,8 @@ def run(port):
     runs = [beat(port, key, 200000 + n * 10000) for n in range(BEATS)]
     took = sorted(run[1] for run in runs)[BEATS // 2]
     check("every beat answers 200", all(status == 200 for status, _ in runs), runs[:3])
-    check("a progress beat is under 0.04 units (%.4fs, %.4f)" % (took, took / unit),
-          took < 0.04 * unit, (took, unit))
+    check("a progress beat is under 0.32 units (%.4fs, %.4f)" % (took, took / unit),
+          took < 0.32 * unit, (took, unit))
     _, body, _ = median(port, "/library/metadata/%s" % key, 1)
     check("the beat's offset is kept", container(body)["Metadata"][0].get("viewOffset") == 200000 + (BEATS - 1) * 10000)
 

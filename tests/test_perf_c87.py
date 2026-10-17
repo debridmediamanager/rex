@@ -19,10 +19,12 @@ row, clears the list and reads it. The native server took ~1.7 s a pair, the ora
 - and the ORACLE added a section to a collection by rebuilding the member list per row,
   twice (53 s for the create, 43 s for an items PUT).
 
-Every bound is a multiple of one linear request measured first in the same run -- the
-unpaged `/library/sections/1/all` before any list exists -- so a slower host moves the
-bound with it. The fixed servers sit at 0.1 to 2 of that unit; the unfixed ones at 2.4
-(a create) to 48 (twenty pairs).
+Every bound is a multiple of this client parsing the unpaged `/library/sections/1/all`
+before any list exists, so a slower host moves the bound with it. The unit was the server's
+own answer to that request until 2026-10-17, when cheaper serialisation halved it and every
+bound tightened with it; the bounds are the old ones times 11, the ratio of the two units on
+the build that set them. The fixed servers sit at 1 to 22 of this unit; the unfixed ones at 26
+(a create) to 530 (twenty pairs).
 
 Drives a real server process (`tests/server_command.py`).
 
@@ -40,6 +42,7 @@ import time
 import urllib.parse
 
 from server_command import server_command
+from test_perf_listing_window import client_unit
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -125,8 +128,10 @@ def container(body):
 
 
 def run(port):
-    unit = median(port, "GET", "/library/sections/1/all")
-    print("unit (unpaged /library/sections/1/all, no lists yet): %.3fs" % unit, flush=True)
+    server_unit = median(port, "GET", "/library/sections/1/all")
+    unit = client_unit(request(port, "GET", "/library/sections/1/all")[1])
+    print("unit (parsing the unpaged /library/sections/1/all here, no lists yet): %.4fs; the server's: %.3fs"
+          % (unit, server_unit), flush=True)
     bare_page = median(port, "GET", "/library/sections/1/all?type=1&" + PAGE)
     machine = container(request(port, "GET", "/identity")[1])["machineIdentifier"]
     library = urllib.parse.quote("server://%s/com.plexapp.plugins.library/library/sections/1/all"
@@ -135,8 +140,8 @@ def run(port):
     status, body, took = request(port, "POST", "/playlists?type=video&title=Perf&smart=0&uri=%s"
                                  % library)
     playlist = container(body)["Metadata"][0]
-    check("a whole-library playlist create is under 0.5 units (%.3fs)" % took,
-          status == 200 and playlist.get("leafCount", 0) >= ROWS and took < 0.5 * unit,
+    check("a whole-library playlist create is under 5.5 units (%.3fs)" % took,
+          status == 200 and playlist.get("leafCount", 0) >= ROWS and took < 5.5 * unit,
           (status, playlist.get("leafCount"), took))
 
     key = playlist["ratingKey"]
@@ -156,37 +161,35 @@ def run(port):
         if (left.get("Metadata") or [{}])[0].get("leafCount"):
             wrong.append(("not cleared", number))
     took = time.time() - began
-    check("%d pairs of re-add / row delete / clear / read are under 6 units (%.3fs, %.3fs a pair)"
-          % (PAIRS, took, took / PAIRS), not wrong and took < 6 * unit, (wrong[:4], took))
+    check("%d pairs of re-add / row delete / clear / read are under 66 units (%.3fs, %.3fs a pair)"
+          % (PAIRS, took, took / PAIRS), not wrong and took < 66 * unit, (wrong[:4], took))
 
     request(port, "PUT", "/playlists/%s/items?uri=%s" % (key, library))
     took = median(port, "GET", "/playlists/%s/items?%s" % (key, PAGE))
-    check("a page of a 40,000-member playlist is under 0.75 units (%.3fs)" % took,
-          took < 0.75 * unit, took)
+    check("a page of a 40,000-member playlist is under 8 units (%.3fs)" % took,
+          took < 8 * unit, took)
 
     status, body, took = request(port, "POST", "/library/collections?type=1&title=Perf&smart=0"
                                  "&sectionId=1&uri=%s" % library)
     collection = container(body)["Metadata"][0]["ratingKey"] if status == 200 else None
-    check("a whole-library collection create is under 0.75 units (%.3fs)" % took,
-          collection and took < 0.75 * unit, (status, took))
+    check("a whole-library collection create is under 8 units (%.3fs)" % took,
+          collection and took < 8 * unit, (status, took))
     status, body, took = request(port, "PUT", "/library/collections/%s/items?uri=%s"
                                  % (collection, library))
-    check("re-adding the library to it is under 0.75 units (%.3fs)" % took,
-          status == 200 and took < 0.75 * unit, (status, took))
+    check("re-adding the library to it is under 8 units (%.3fs)" % took,
+          status == 200 and took < 8 * unit, (status, took))
 
     took = median(port, "GET", "/library/sections/1/all?type=1&" + PAGE)
     check("a section page with every row in a collection costs what it did before the "
           "collection (%.3fs against %.3fs)" % (took, bare_page),
-          took < max(3 * bare_page, 0.3 * unit), (took, bare_page))
+          took < max(3 * bare_page, 3.3 * unit), (took, bare_page))
     took = median(port, "GET", "/library/collections/%s/children?%s" % (collection, PAGE))
-    check("a page of the collection's children is under 1.5 units (%.3fs)" % took,
-          took < 1.5 * unit, took)
+    check("a page of the collection's children is under 16.5 units (%.3fs)" % took,
+          took < 16.5 * unit, took)
 
     status, _, took = request(port, "DELETE", "/library/collections/%s" % collection)
-    # 2 units since the unit itself got 43% cheaper (2026-10-17, the response passes
-    # parse once); the delete is the 0.29 s it was, the unfixed one 3.5 s.
-    check("deleting the 40,000-member collection is under 2 units (%.3fs)" % took,
-          status == 200 and took < 2 * unit, (status, took))
+    check("deleting the 40,000-member collection is under 11 units (%.3fs)" % took,
+          status == 200 and took < 11 * unit, (status, took))
 
 
 def main():

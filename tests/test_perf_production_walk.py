@@ -15,10 +15,12 @@ fun, swapping, took ten to forty times as long and every other request queued be
 - search: every row's title and tags folded a character at a time, allocating per character.
 
 The library is `test_perf_section_hubs.py`'s, with distinct episode dates, a watched episode in
-every fifth show and a resume point on every tenth movie. Bounds are fractions of an unpaged movie
-listing measured first in the same run. Measured on the Mac (unfixed -> fixed, units): Recently
+every fifth show and a resume point on every tenth movie. Bounds are multiples of this client
+parsing an unpaged movie listing, measured first in the same run (`client_unit`). Measured on the
+Mac in the server's own listing time, which got cheaper since (unfixed -> fixed, units): Recently
 Added 0.28 -> 0.05, Recently Released 0.67 -> 0.06, Unplayed 0.21 -> 0.02, the promoted shelf
-0.23 -> 0.01, the server's Recently Added 0.15 -> 0.05, Home 0.16 -> 0.09, the search 0.33 -> 0.13.
+0.23 -> 0.01, the server's Recently Added 0.15 -> 0.05, Home 0.16 -> 0.09, the search 0.33 ->
+0.13; the bounds are those of that unit times 11.5, the two units' ratio on the unfixed build.
 
     python3 tests/test_perf_production_walk.py
 """
@@ -27,20 +29,20 @@ import shutil
 import sys
 import tempfile
 
-from test_perf_listing_window import check, container, median, request, results, start
+from test_perf_listing_window import check, client_unit, container, median, request, results, start
 from test_perf_section_hubs import catalog as hubs_catalog
 
 PIN = "&pinnedContentDirectoryID=1%2C2&includeMeta=1&excludeFields=summary&count=12&excludeContinueWatching=1"
 BOUNDS = [
     ("/library/sections/2/recentlyAdded?X-Plex-Container-Start=0&X-Plex-Container-Size=50",
-     "a show library's Recently Added page", 0.15),
+     "a show library's Recently Added page", 1.7),
     ("/library/sections/2/newest?X-Plex-Container-Start=0&X-Plex-Container-Size=50",
-     "a show library's Recently Released page", 0.25),
-    ("/library/sections/2/unwatched?X-Plex-Container-Size=50", "a show library's Unplayed list", 0.1),
-    ("/hubs/promoted?contentDirectoryID=1" + PIN, "the movie library's promoted shelf", 0.1),
-    ("/library/recentlyAdded", "the server's Recently Added", 0.1),
-    ("/hubs?count=12&includeMeta=1&excludeFields=summary", "Home", 0.12),
-    ("/hubs/search?query=show&limit=30", "a search matching every show", 0.25),
+     "a show library's Recently Released page", 2.9),
+    ("/library/sections/2/unwatched?X-Plex-Container-Size=50", "a show library's Unplayed list", 1.15),
+    ("/hubs/promoted?contentDirectoryID=1" + PIN, "the movie library's promoted shelf", 1.15),
+    ("/library/recentlyAdded", "the server's Recently Added", 1.15),
+    ("/hubs?count=12&includeMeta=1&excludeFields=summary", "Home", 1.4),
+    ("/hubs/search?query=show&limit=30", "a search matching every show", 2.9),
 ]
 
 
@@ -65,9 +67,10 @@ def catalog(directory):
 
 
 def run(port):
-    _, body, unit = median(port, "/library/sections/1/all")
-    print("unit (unpaged movie listing, %d rows): %.3fs"
-          % (len(container(body).get("Metadata", [])), unit), flush=True)
+    _, body, server_unit = median(port, "/library/sections/1/all")
+    unit = client_unit(body)
+    print("unit (parsing the unpaged movie listing here, %d rows): %.4fs; the server's: %.3fs"
+          % (len(container(body).get("Metadata", [])), unit, server_unit), flush=True)
     for path, name, bound in BOUNDS:
         status, body, took = median(port, path)
         answer = container(body)
