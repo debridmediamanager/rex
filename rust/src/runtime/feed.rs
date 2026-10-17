@@ -1225,19 +1225,39 @@ pub(super) fn tagged_media(row: &Value) -> Vec<Value> {
     media
 }
 
-/// Which title a row a source pushed is, for folding: its type, section, season, agent
-/// guid and edition. None for an unmatched row (a `local://` guid is its own key's), one
-/// in the trash or waiting for a probe, and a row no source pushed.
+/// Which title a row a source pushed is, for folding: a film's section, agent guid and edition;
+/// an episode's season and index, whatever guid identification gave it. None for an unmatched
+/// film (a `local://` guid is its own key's), one waiting for a probe, and a row no source pushed.
 fn version_slot(row: &Value) -> Option<String> {
     let kind = row.get("type").and_then(Value::as_str).filter(|kind| matches!(*kind, "movie" | "episode"))?;
-    if row.get("_sid").is_none() || row.get("deletedAt").is_some() || row.get("_probePending").is_some_and(truthy) {
+    if row.get("_sid").is_none() || row.get("_probePending").is_some_and(truthy) {
         return None;
     }
-    let guid = row.get("guid").and_then(Value::as_str).filter(|guid| !guid.is_empty() && !guid.starts_with("local://"))?;
     let field = |name: &str| row.get(name).map(string_value).unwrap_or_default();
     // The episode's index too: a pack identified as one title gives every episode its guid,
     // and the production server folded The Boys S03E01-E08 into one episode (2026-10-14).
+    // And the index alone: SpongeBob's S10E64, which TMDB and Plex do not list, was five
+    // `local://` rows of four releases on one season (the production server, 2026-10-17); a real
+    // PMS makes every file of one episode one item.
+    let guid = match kind {
+        "episode" => row.get("index").and_then(Value::as_i64).map(|_| "")?,
+        _ => row.get("guid").and_then(Value::as_str).filter(|guid| !guid.is_empty() && !guid.starts_with("local://"))?,
+    };
     Some([kind, &field("librarySectionID"), &field("parentRatingKey"), &field("index"), guid, &field("editionTitle")].join("\u{1}"))
+}
+
+/// Each version's (release, file name): a release's other file on the same episode is no other
+/// version of it. One collection of Mike Judge's shows put Daria's, Tales From the Tour Bus's
+/// and Beavis and Butt-Head's S01E04 on Beavis and Butt-Head's, and one Erai-raws batch seven
+/// specials on One Piece's 892 (the production server, 2026-10-17). The same file listed twice
+/// (`…part1.rar/x.mkv`, `…part6.rar/x.mkv`) is one.
+fn release_files(row: &Value) -> Vec<(String, String)> {
+    (0..row.get("Media").and_then(Value::as_array).map_or(0, Vec::len))
+        .filter_map(|index| {
+            let file = media_file(row, index)?;
+            Some((version_release(row, index)?.to_string(), file.rsplit('/').next()?.to_string()))
+        })
+        .collect()
 }
 
 /// What identification wrote on a row, and the hierarchy fields placing it rewrites. A
@@ -1870,43 +1890,74 @@ impl Runtime {
         info!("FEED re-identified show {show} in place -> {identity}");
     }
 
-    /// Rows a source pushed that are one title -- the same agent guid in the same section
-    /// (an episode: the same season) -- made one row holding each release as a Media, as a
-    /// real PMS's scanner and agent make several files of one movie one item. The row
-    /// someone watched survives, else the oldest. `only` limits it to slots holding one of
-    /// those keys. Answers the keys folded away.
+    /// Rows a source pushed that are one title (`version_slot`) made one row holding each
+    /// release as a Media, as a real PMS's scanner and agent make several files of one movie
+    /// one item. The row someone watched survives, else one not in the trash, else the oldest;
+    /// a row in the trash brings no Media, its files being gone. `only` limits it to slots
+    /// holding one of those keys. Answers the keys folded away.
     /// `unannounced`: rows no client has heard of, folded without a `deleted` frame.
     pub(super) fn fold_versions(&mut self, only: Option<&HashSet<String>>, unannounced: &HashSet<String>) -> HashSet<String> {
-        let mut slots: BTreeMap<String, Vec<(bool, i64, String)>> = BTreeMap::new();
+        // (unwatched, trashed, key): the row someone watched survives, else one not in the trash.
+        let mut slots: BTreeMap<String, Vec<(bool, bool, i64, String)>> = BTreeMap::new();
         for row in self.catalog.items() {
             if let (Some(slot), Some(key)) = (version_slot(row), key_of(row)) {
                 let watched = ["viewCount", "viewOffset", "lastViewedAt", "userRating"].iter().any(|field| row.get(*field).is_some_and(truthy));
-                slots.entry(slot).or_default().push((!watched, key.parse().unwrap_or(i64::MAX), key));
+                slots.entry(slot).or_default().push((!watched, row.get("deletedAt").is_some(), key.parse().unwrap_or(i64::MAX), key));
             }
         }
         let mut folded = HashSet::new();
         let mut gone = Vec::new();
+        let mut untrash = Vec::new();
         for (_, mut rows) in slots {
-            if rows.len() < 2 || only.is_some_and(|only| !rows.iter().any(|(_, _, key)| only.contains(key))) {
+            // Rows in the trash are folded only into what is there: their files are gone.
+            if rows.len() < 2 || rows.iter().all(|row| row.1) || only.is_some_and(|only| !rows.iter().any(|row| only.contains(&row.3))) {
                 continue;
             }
             rows.sort();
-            let survivor = rows[0].2.clone();
-            let mut media = self.catalog.get(&survivor).map(tagged_media).unwrap_or_default();
-            for (_, _, other) in &rows[1..] {
+            let (survivor, revived) = (rows[0].3.clone(), rows[0].1);
+            let Some(first) = self.catalog.get(&survivor).cloned() else {
+                continue;
+            };
+            let mut releases = release_files(&first);
+            let mut media = if revived { Vec::new() } else { tagged_media(&first) };
+            let mut emptied = false;
+            for (_, trashed, _, other) in &rows[1..] {
                 let Some(row) = self.catalog.get(other).cloned() else {
                     continue;
                 };
+                let theirs = release_files(&row);
+                if theirs.iter().any(|(release, file)| releases.iter().any(|(held, name)| held == release && name != file)) {
+                    continue;
+                }
+                releases.extend(theirs);
                 // A save stopped between the survivor's write and the others' deletes
                 // brings an absorbed row back: its release is already a Media here.
                 let held: HashSet<(String, String)> = media.iter().filter_map(media_release).collect();
-                media.extend(tagged_media(&row).into_iter().filter(|version| media_release(version).is_none_or(|release| !held.contains(&release))));
+                if !trashed {
+                    media.extend(tagged_media(&row).into_iter().filter(|version| media_release(version).is_none_or(|release| !held.contains(&release))));
+                }
+                emptied |= *trashed;
                 info!("FEED folded {other} into {survivor} as another version");
                 folded.insert(other.clone());
                 gone.push(row);
             }
-            if let Some(object) = self.catalog.get_mut(&survivor).and_then(Value::as_object_mut) {
-                object.insert("Media".to_string(), Value::Array(media));
+            // A row in the trash that another release of its episode joins leaves it with that
+            // release's files, as a real PMS's item takes a new file of its episode: Freakazoid's
+            // S1E1 and S1E2 were trashed when zurg stopped naming their archives' members, and a
+            // release of them coming later would have been a row beside them.
+            if !(revived && media.is_empty()) {
+                if let Some(object) = self.catalog.get_mut(&survivor).and_then(Value::as_object_mut) {
+                    if revived {
+                        take_release(object, &media[0]);
+                        if let Some(duration) = media[0].get("duration") {
+                            object.insert("duration".to_string(), duration.clone());
+                        }
+                    }
+                    object.insert("Media".to_string(), Value::Array(media));
+                }
+                if revived || emptied {
+                    untrash.push(survivor.clone());
+                }
             }
             if let Some(row) = self.catalog.get(&survivor).cloned() {
                 self.push_timeline_entry(&row, 5, None, None, None, None);
@@ -1918,6 +1969,10 @@ impl Runtime {
         // Movies and episodes have no rows beneath them: retired the way `retire_row`
         // retires one, with one reindex for them all rather than one each.
         self.catalog.remove_many(&folded);
+        // Once the trashed rows are gone, their season and show leave the trash with them.
+        for key in &untrash {
+            self.untrash_row(key);
+        }
         for row in &gone {
             if let Some(key) = key_of(row) {
                 self.forget_row(&key);

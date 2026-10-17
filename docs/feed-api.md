@@ -255,15 +255,20 @@ What the fields do:
 - **A person's match wins.** A Fix Match is recorded on the row: no push and no retry
   identifies it, or the episodes of a show a person matched, again. Unmatch hands it back to
   its source's ids.
-- **Versions.** A release identified as a title already here -- the same agent guid in the
-  same section, and for an episode the same season -- is no new row: it joins that row as
-  another Media, as a real PMS offers several files of one movie as versions (2026-10-11,
-  on one real library 407 movies and ~1,370 episodes were listed twice). The row someone watched
-  survives, else the oldest; a pushed row that is unmatched (`local://`), trashed or
-  awaiting a probe never folds. Each id stays addressable: the listing names every id on
-  the row's key, a push updates its own Part, a part read streams from its own source and
-  path. Rows from before this are folded when the server starts. A row of several releases
-  is not re-identified by one of them.
+- **Versions.** A release of a title already here -- a film with the same agent guid in the
+  same section, an episode on the same season and index, whatever guid identification gave it
+  -- is no new row: it joins that row as another Media, as a real PMS offers several files of
+  one movie as versions (2026-10-11, on one real library 407 movies and ~1,370 episodes were
+  listed twice; 2026-10-17, SpongeBob's S10E64, which TMDB does not list, was five rows). Other
+  files of the same release stay rows of their own: a collection that numbers several shows'
+  episodes alike, a batch's specials on one number. The row someone watched survives, else one
+  not in the trash, else the oldest. A row in the trash folds into the one that is there and
+  brings no Media, its files being gone; when it is the one someone watched, it takes the
+  other release's files and leaves the trash, as a real PMS's item takes a new file of its
+  episode. An unmatched film (`local://`) and a row awaiting a probe never fold. Each id stays
+  addressable: the listing names every id on the row's key, a push updates its own Part, a
+  part read streams from its own source and path. Rows from before this are folded when the
+  server starts. A row of several releases is not re-identified by one of them.
 - **Only video.** A `file` that is not a video (by extension) or is a sample is rejected,
   as Plex's scanners skip them.
 - **No extras as episodes.** A show's file its provider lists in a folder of extras (`Extras`,

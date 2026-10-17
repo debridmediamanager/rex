@@ -1271,6 +1271,7 @@ impl Runtime {
                 chain.extend(row.get("grandparentRatingKey").map(string_value));
             }
         }
+        let mut restored = false;
         for (index, member) in chain.iter().enumerate() {
             if index > 0 && self.leaves(member).iter().any(|leaf| leaf.get("deletedAt").is_some() && key_of(leaf).as_deref() != Some(key)) {
                 continue;
@@ -1287,8 +1288,13 @@ impl Runtime {
                 }
             }
             self.deletion_pair(member);
+            restored |= index == 0;
         }
-        info!("FEED restored {key}");
+        // Also asked of a row that was never in the trash, to take its season and show out once
+        // the episodes that put them there are gone (`fold_versions`).
+        if restored {
+            info!("FEED restored {key}");
+        }
     }
 
     fn deletion_pair(&mut self, key: &str) {
