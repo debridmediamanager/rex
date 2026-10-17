@@ -15,7 +15,7 @@ use std::collections::{HashMap, HashSet};
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
@@ -38,6 +38,7 @@ const SERVICES_URL: &str = "https://servers.plex.tv/api/v2/server/users/services
 const SERVERS_URL: &str = "https://plex.tv/servers.xml";
 const PUBSUB_URL: &str = "https://pubsub.plex.tv/sub/eventsource/%s/%s";
 const ACCESS_TOKENS_URL: &str = "https://plex.tv/api/v2/server/access_tokens";
+const WEBHOOKS_URL: &str = "https://plex.tv/api/v2/server/webhooks";
 /// `claim.ACCESS_REFRESH_WINDOW`: the 1.42.2 reference's 1.42.2 PMS re-reads the
 /// access-token list for an unknown token unless its last read finished about 6 s ago or
 /// less (tests/fixtures/plextv_access_tokens_s1422.json).
@@ -804,6 +805,97 @@ fn fetch_access_tokens(claim: &Claim, unknown: Option<&str>) -> Result<HashSet<S
         .filter_map(|row| row.get("token").filter(|token| !token.is_empty()))
         .map(str::to_string)
         .collect())
+}
+
+/// The owner's webhooks, as a claimed 1.42.2 PMS read them at its start: `GET
+/// plex.tv/api/v2/server/webhooks?X-Plex-Token=<server token>`, answered `<users><user>
+/// <webhooks>` (`tests/fixtures/plextv_registration_s1422.json`, claimed_start). That list was
+/// empty; Plex Web's WebhookModel reads `url` off each entry, so any element under
+/// `<webhooks>` with a `url` is one.
+fn fetch_webhooks(claim: &Claim) -> Result<Vec<String>, String> {
+    let url = format!(
+        "{WEBHOOKS_URL}?{}",
+        urlencode(&[("X-Plex-Token", claim.token.clone().unwrap_or_default())])
+    );
+    let headers = claim.pms_headers("PlexMediaServer", true);
+    let (_, body) =
+        urlopen("GET", &url, &headers, None, 30).map_err(|failure| failure.to_string())?;
+    let root = parse_xml(&body)?;
+    let mut lists = Vec::new();
+    root.iter("webhooks", &mut lists);
+    Ok(lists
+        .iter()
+        .flat_map(|list| &list.children)
+        .filter_map(|hook| hook.get("url").filter(|url| !url.is_empty()))
+        .map(str::to_string)
+        .collect())
+}
+
+/// How long a read of the webhook list is used before the next event reads it again.
+/// ponytail: a real PMS read it at its start only (how it learns of a change is unmeasured).
+const WEBHOOKS_REFRESH: Duration = Duration::from_secs(300);
+
+/// Webhook events, posted in order by one thread off the request path; a burst past the
+/// queue (a source's first snapshot announcing thousands of rows) drops the rest.
+#[derive(Debug, Default)]
+pub(crate) struct Webhooks {
+    queue: Mutex<Option<mpsc::SyncSender<Value>>>,
+}
+
+impl Webhooks {
+    pub(crate) fn send(&self, claim: &SharedClaim, payload: Value) {
+        if !snapshot(claim).claimed() {
+            return;
+        }
+        let mut queue = self.queue.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        let sender = queue.get_or_insert_with(|| {
+            let (sender, events) = mpsc::sync_channel(256);
+            let claim = Arc::clone(claim);
+            let _ = thread::Builder::new()
+                .name("rex-webhooks".to_string())
+                .spawn(move || deliver_webhooks(&claim, events));
+            sender
+        });
+        if sender.try_send(payload).is_err() {
+            warning!("webhook queue full; an event was dropped");
+        }
+    }
+}
+
+fn deliver_webhooks(claim: &SharedClaim, events: mpsc::Receiver<Value>) {
+    let mut urls = Vec::new();
+    let mut read: Option<std::time::Instant> = None;
+    for payload in events {
+        if read.is_none_or(|at| at.elapsed() >= WEBHOOKS_REFRESH) {
+            match fetch_webhooks(&snapshot(claim)) {
+                Ok(found) => urls = found,
+                Err(message) => error!("webhooks read failed: {message}"),
+            }
+            read = Some(std::time::Instant::now());
+        }
+        for url in &urls {
+            post_webhook(url, &payload);
+        }
+    }
+}
+
+/// Plex's documented webhook request (support.plex.tv, "Webhooks"; not recorded from a real
+/// PMS): a multipart POST whose `payload` part is the event's JSON. ponytail: no `thumb` part.
+fn post_webhook(url: &str, payload: &Value) {
+    let boundary = format!("rex-{}", uuid4());
+    let body = format!(
+        "--{boundary}\r\nContent-Disposition: form-data; name=\"payload\"\r\nContent-Type: application/json\r\n\r\n{payload}\r\n--{boundary}--\r\n"
+    );
+    let headers = [
+        ("User-Agent", format!("PlexMediaServer/{}", super::VERSION)),
+        ("Accept", "*/*".to_string()),
+        ("Content-Type", format!("multipart/form-data; boundary={boundary}")),
+    ];
+    let event = payload.get("event").and_then(Value::as_str).unwrap_or("");
+    match upstream::fetch("POST", url, &headers, body.as_bytes(), Duration::from_secs(10)) {
+        Ok((status, _, _)) => info!("webhook {event} -> {status}"),
+        Err(message) => error!("webhook {event} failed: {message}"),
+    }
 }
 
 /// The tokens plex.tv lets reach this server, as last read (`Claim.access_tokens`), and when
@@ -1823,6 +1915,7 @@ pub(crate) struct PlexTv {
     pub beat: Mutex<Option<Beat>>,
     /// The tokens a claimed server lets in besides its own (`Claim.admits`).
     pub access: Arc<Access>,
+    pub webhooks: Webhooks,
 }
 
 impl PlexTv {
@@ -1838,6 +1931,7 @@ impl PlexTv {
             sync,
             beat: Mutex::new(None),
             access: Arc::new(Access::seeded(&claim_tokens)),
+            webhooks: Webhooks::default(),
         }
     }
 
@@ -1871,6 +1965,44 @@ impl super::Runtime {
 
     fn claim_snapshot(&self) -> Claim {
         snapshot(&self.plextv.claim)
+    }
+
+    /// One webhook event in Plex's documented payload (support.plex.tv, "Webhooks"; not
+    /// recorded from a real PMS): Account, Server, the Player when there is one, and the
+    /// item's own scalar fields as Metadata. Everyone is the owner until rex knows accounts.
+    pub(super) fn webhook(&self, event: &str, row: &Value, player: Option<Value>) {
+        let mut metadata = row
+            .as_object()
+            .map(|fields| {
+                fields
+                    .iter()
+                    .filter(|(name, value)| !name.starts_with('_') && !value.is_array() && !value.is_object())
+                    .map(|(name, value)| (name.clone(), value.clone()))
+                    .collect::<serde_json::Map<_, _>>()
+            })
+            .unwrap_or_default();
+        let section = row.get("librarySectionID").map(super::string_value);
+        if let Some(kind) = self
+            .catalog
+            .sections
+            .iter()
+            .find(|candidate| candidate.get("key").map(super::string_value) == section)
+            .and_then(|found| found.get("type"))
+        {
+            metadata.insert("librarySectionType".to_string(), kind.clone());
+        }
+        let mut payload = json!({
+            "event": event,
+            "user": true,
+            "owner": true,
+            "Account": {"id": 1, "thumb": "", "title": self.owner_name()},
+            "Server": {"title": self.friendly, "uuid": self.machine},
+        });
+        if let Some(player) = player {
+            payload["Player"] = player;
+        }
+        payload["Metadata"] = Value::Object(metadata);
+        self.plextv.webhooks.send(&self.plextv.claim, payload);
     }
 
     /// Sends plex.tv the libraries again, when a real claim holds a server token.

@@ -45,6 +45,15 @@ const PLAYER_FROM: &[(&str, &str)] = &[
     ("X-Plex-Playback-Session-Id", "playbackSessionId"),
 ];
 
+/// A session's Player as Plex's webhook payload names it (support.plex.tv, "Webhooks").
+fn webhook_player(player: &Map<String, Value>) -> Value {
+    let field = |name: &str| player.get(name).cloned().unwrap_or(json!(""));
+    json!({"local": player.get("local").cloned().unwrap_or(json!(false)),
+           "publicAddress": field("address"),
+           "title": field("title"),
+           "uuid": field("machineIdentifier")})
+}
+
 /// `filters.RESOLUTION_TITLES`: the label a Bandwidth row names its resolution by.
 fn resolution_title(resolution: &str) -> String {
     match resolution {
@@ -467,6 +476,7 @@ impl Runtime {
         let owner = self.owner_name();
         let row = self.catalog.get(rating_key).cloned().unwrap_or(Value::Null);
         let entry = self.sessions.get_mut(&session_id).expect("session just ensured");
+        let was = entry.player.get("state").and_then(Value::as_str).map(str::to_string);
         entry.rating_key = rating_key.to_string();
         entry.row = row;
         entry.list = list;
@@ -487,6 +497,16 @@ impl Runtime {
             entry.paused_since = entry.seen;
         }
         let snapshot = entry.clone();
+        let event = match (was.as_deref(), state) {
+            (Some(_), "stopped") => Some("media.stop"),
+            (None, "playing" | "") => Some("media.play"),
+            (Some("paused"), "playing" | "") => Some("media.resume"),
+            (Some(before), "paused") if before != "paused" => Some("media.pause"),
+            _ => None,
+        };
+        if let Some(event) = event {
+            self.webhook(event, &snapshot.row, Some(webhook_player(&snapshot.player)));
+        }
         self.end_long_pause(&snapshot);
         if state == "stopped" {
             self.sessions.remove(&session_id);
@@ -892,6 +912,10 @@ impl Runtime {
             );
             if crossed {
                 latch.latched = true;
+                if let Some(row) = self.catalog.get(&key).cloned() {
+                    let player = self.sessions.get(&playing_session).map(|entry| webhook_player(&entry.player));
+                    self.webhook("media.scrobble", &row, player);
+                }
             } else if offset.is_some() && total > 0 && (offset_ms as f64) < total as f64 * 0.9 {
                 // A beat back under 90% is a new play.
                 latch.latched = false;

@@ -1147,6 +1147,7 @@ impl Runtime {
             )
         });
         let episode = parents.is_some();
+        self.webhook("library.new", &row, None);
         self.push_timeline_entry_with(&row, 0, Some("created"), None, None, Some(""), parents);
         let media_states: &[Option<&str>] = if episode {
             &[None, Some("analyzing"), None]

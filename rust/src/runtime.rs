@@ -25277,7 +25277,8 @@ fn unix_year(timestamp: i64) -> i64 {
 /// The account feature names rex reports for the owner (the oracle's `OWNER_FEATURES` with
 /// no claim of its own): the measured 32 less the ones naming what rex cannot do -- DVR and
 /// Live TV, tuners, lyrics and the music agents, downloads, camera upload, photos, plex.direct
-/// certificates, hardware transcoding, webhooks, content filters, trailers. Plex Web 4.147.1
+/// certificates, hardware transcoding, content filters, trailers -- and webhooks, which rex posts
+/// (`plextv::Webhooks`) but no client reads off a server. Plex Web 4.147.1
 /// reads only `session_kick`, `dvr`, `livetv`, `lyrics` and `premium_music_metadata` off a
 /// server (findings, "What ownerFeatures gates"). `pass` stays until remote play without
 /// one is measured.
