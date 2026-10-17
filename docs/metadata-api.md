@@ -30,8 +30,7 @@ ask its other sources each time.
 
 | rex's TMDB read | Provider request | Source read |
 |---|---|---|
-| `/search/movie`, `/search/tv` (`query`, `year` / `first_air_date_year`) | `/api/metadata/search?query=&type=movie\|show&year=` | `tmdb` |
-| `/find/{tt…}` | `/api/metadata/imdb:{tt…}?sources=tmdb` | `tmdbFind` |
+| `/search/movie`, `/search/tv` (`query`, `year` / `first_air_date_year`), for Fix Match only | `/api/metadata/search?query=&type=movie\|show&year=` | `tmdb` |
 | `/movie/{id}`, `/tv/{id}` | `/api/metadata/tmdb:{movie\|tv}:{id}?sources=tmdb` | `tmdb` |
 | `/tv/{id}/season/{n}` | `/api/metadata/tmdb:tv:{id}?season={n}&sources=tmdb` | `tmdbSeason` |
 | `/tv/{id}/season/{n}/episode/{e}` | `...&season={n}&episode={e}` | `tmdbEpisode` |
@@ -40,21 +39,24 @@ ask its other sources each time.
 |---|---|
 | 200 with the source | Uses it, and keeps it |
 | 200 with the source `null` | Asks TMDB |
-| 404 | No such title, as TMDB's own 404 says; for a `find`, TMDB's empty find (TMDB's find does not know some IMDb episode ids DMM releases carry, Courage's `tt0549680` among them) |
+| 404 | No such title, as TMDB's own 404 says |
 | 400, 401, 429, 503, no answer | Asks TMDB |
 
 ## Checking a provider
 
-`tests/test_feed_pack_folders.py` identifies and places real packs' files, and recording it
-with a provider and no TMDB key runs every read above through the provider alone:
+rex asks no `/find` since 2026-10-17: a title is named by the ids its source placed it with,
+and an IMDb id alone is DMM's to place (feed-api.md, "Identification"). `tests/test_feed_blank_tiles.py`
+reads details, a season list, its episodes and a Fix Match search; recording it with a provider
+and no TMDB key runs each of those through the provider alone:
 
 ```bash
-cp tests/fixtures/feed/pack_folders.json /tmp/pack_folders.json
-REX_RECORD_ANSWERS=1 REX_METADATA_URL=https://provider.example REX_METADATA_KEY=... TMDB_KEY= \
-  python3 tests/test_feed_pack_folders.py
-cp /tmp/pack_folders.json tests/fixtures/feed/pack_folders.json   # recording rewrote it
+cp tests/fixtures/feed/blank_tiles.json /tmp/blank_tiles.json
+REX_RECORD_ANSWERS=1 REX_METADATA_URL=https://provider.example REX_METADATA_KEY=... TMDB_KEY= PLEX_TOKEN=... \
+  python3 tests/test_feed_blank_tiles.py
+cp /tmp/blank_tiles.json tests/fixtures/feed/blank_tiles.json   # recording rewrote it
 ```
 
-Every check passes against DMM (18/18, 2026-10-15). The unit test
+It replaces `test_feed_pack_folders.py`, which went with the name parser, and has not been run
+against a provider yet. That suite passed against DMM 18/18 on 2026-10-15. The unit test
 `the_provider_answers_first_and_tmdb_only_when_it_does_not` (`runtime/tmdb.rs`) holds DMM's
 measured answers for each case in the table.

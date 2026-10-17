@@ -12884,3 +12884,47 @@ linearise-plus-hable tonemap of the HDR10 clip (PSNR, mean U/V of one frame) and
   enhancement layer is dropped (not run; no public clip).
 - The tonemapping is CPU work before any GPU encode (the ladder skips the full device path for
   HDR), so a 4K source's speed on a Celeron is the open question: not measured here.
+
+## The source decides what a file is (2026-10-17)
+
+zurg (36fac6ca, live on the production host) sends rex `ids` only when DMM placed the release --
+then with `kind`, and for an episode TMDB's `season`, `episode` and `episode_end` -- or when a
+person set an id by hand in zurg (`tmdb`, `tvdb` or `imdb`, no `kind`). Everything else arrives
+with neither: 0.9% of the production server's episodes and 1.1% of its movies. So rex no longer
+identifies or numbers anything itself:
+
+- **Gone:** the name search (Plex's matcher by title and TMDB's search, their agreement as the
+  confidence, the fallback for an id that named nothing), ids read out of names (`{imdb-tt…}`,
+  `{tmdb-…}`, and the feed writing `{tmdb-N}` onto a release name to reuse that path), TMDB's
+  `/find` for an IMDb id (with "an episode's IMDb id names its show"), the release-name parser
+  that numbered and routed files (`parse_name`: loose and absolute episode numbers, pack season
+  folders, segment titles, a film whose release names an episode moved among the shows and back),
+  and the start passes that renumbered, unfolded and dropped rows by their names. `rust/src` is
+  2,332 lines shorter for 333 new, and 44,846 lines of recorded corpora (`tests/fixtures/identify/`,
+  `unfold.json`) went with them.
+- **Kept:** a placement's ids are the title, kept when nobody knows them; Plex's agent is asked
+  for its guid and artwork by external id and TMDB (or the metadata provider) for metadata by TMDB
+  id, nothing else. A TMDB id with no `kind` is that title in its library's kind when TMDB has
+  one, as a `{tmdb-…}` tag was: rows pushed before DMM placed them still carry ids zurg's own Plex
+  gave, Pawn Stars' episode id 1559521 for its show among them. Fix Match, the
+  blank-tile retry (now only for a row that came with something to retry with), versions folded
+  by season and index, and Plex's local-extras folders and `NCOP`/`NCED` tags as extras, which a
+  real PMS's scanner reads too.
+- **Unplaced:** shown unmatched, for Fix Match: a film titled as its file, an episode season 1 of a
+  show named after its release, numbered in the release's file order. The numbers stay file order
+  until zurg places the files; a placement then moves each row on its key, watch state kept.
+- **Rows already held stay as they are.** No pass at start reads a name, so none renumbers,
+  unfolds, moves or deletes a row, and the blank-tile retry asks again only by the ids a row came
+  with: what the name search and the parser made keeps what it was given until zurg places it,
+  and rows of disc extras made before stay for a person to delete.
+
+`tests/test_feed_source_decides.py` drives it from the feed fixtures' real pushes and the
+production server's held rows of 2026-10-16. Against the code before, 24 of its 33 checks fail:
+`Kingdom.S01E03` landed on S1E3 of a show "Kingdom", Bungo Stray Dogs' S04E01 pushed with its IMDb
+id alone was asked of the provider's `/find` and Plex's matcher by title, Saturday Night Live's
+`01 Rod Stewart.avi` was dropped and its other `01`s put on seasons 13 and 14 by their folders,
+Case Closed placed with its IMDb id was asked of `/find`, Bungo Stray Dogs given TMDB 65931 by hand
+went to S4E1 by its name, and a start moved the held `aaf-wilty.301` row to S3E1 of a new show by
+its archive's release name. Building it also caught the hand-set id read without its row's
+numbers, which made a film's metadata of an episode: a file nothing numbered now keeps the
+numbers its row has before it is identified.

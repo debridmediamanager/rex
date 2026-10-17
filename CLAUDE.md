@@ -43,7 +43,7 @@ searched on disk. The gate is usually one truthiness check in minified code.
 | `tests/` | Conformance and end-to-end suites, plus `catalog_ui.json` and `fixtures/decisions/`, the measured decision corpus |
 | `tests/fixtures/` | Redacted corpora recorded from a real PMS through a real client; `media/` pairs real files' probes with a real PMS's analysis of them |
 | `harness/` | plexlab — the reference PMS and the recorder. See below. |
-| `probes/` | Measurement scripts: the recorders behind checked-in fixtures (`record_episode_id_corpus.py`, `record_unidentified_corpus.py`, which also tops a corpus up, `legacy_scan_fixture.py`, `record_session_gate.py`), `ui_surface.py`, the plex.tv presence probes and `apkcensus.py`. The corpus recorders run the Rust identifier through `identify_replay.py` (the binary's `identify-replay` adapter) |
+| `probes/` | Measurement scripts: the recorders behind checked-in fixtures (`legacy_scan_fixture.py`, `record_session_gate.py`), `ui_surface.py`, the plex.tv presence probes and `apkcensus.py` |
 | `docs/findings.md` | Everything measured. Read before changing behaviour. |
 | `docs/protocol-traps.md`, `docs/setup.md`, `docs/feed-api.md`, `docs/metadata-api.md` | The protocol's edge cases, the operator's guide, the API sources push with, and the API rex reads titles through from a metadata provider (`REX_METADATA_URL`; DMM is one) |
 
@@ -84,10 +84,10 @@ Where things live in `rust/src/`:
 | `runtime.rs` | The request loop, the route table and most projections; `serve` starts GDM, the state saver and the plex.tv threads |
 | `runtime/wire.rs` | The response envelope: header order, Range/416, CORS, gzip, websocket handshake |
 | `runtime/upstream.rs` | The HTTP/HTTPS client (rustls, system roots) behind zurg, provider redirects, TMDB, Plex's metadata agent and artwork |
-| `runtime/source.rs`, `runtime/feed.rs`, `runtime/scan.rs` | Sources (registered over `PUT /rex/sources/{name}`, kept in the state file, deleted with a confirmation: where a Part's bytes are), the feed API sources push items to, open to anyone who can reach rex (`docs/feed-api.md`), and the rows those items become: added, held until probed, filled, re-identified, trashed, keys minted once (`mint_key`) |
+| `runtime/source.rs`, `runtime/feed.rs`, `runtime/scan.rs` | Sources (registered over `PUT /rex/sources/{name}`, kept in the state file, deleted with a confirmation: where a Part's bytes are), the feed API sources push items to, open to anyone who can reach rex (`docs/feed-api.md`), and the rows those items become: added, held until probed, filled, re-identified, trashed, keys minted once (`mint_key`); a show's file its source did not place is numbered in its release's file order (`number_unplaced`), never by its name |
 | `runtime/universal.rs` | The video transcoder (`REX_TRANSCODER`): the conversion decision's plan and Media, `start.m3u8`/`start.mpd`, segments served outside the runtime lock, one FFmpeg per session with the hardware ladder, seeks, throttling and the idle reaper, and the `TranscodeSession` rows |
-| `runtime/plexmeta.rs`, `identify.rs` | Plex's metadata agent (the claim's server token, else `PLEX_TOKEN`), and which title a release is: its source's placement (`Identifier::placed`), else an id in its name, else a known IMDb id for its hash (zurg's); a name alone is never searched and stays for Fix Match (`rust/tests/identify_corpus.rs`) |
-| `runtime/plextv.rs`, `runtime/tmdb.rs` | claim/heartbeat/account state, and TMDB's reads for Fix Match and identification, through a metadata provider first when one is set (`REX_PLEXTV_URL` points plex.tv at a stub) |
+| `runtime/plexmeta.rs`, `identify.rs` | Plex's metadata agent (the claim's server token, else `PLEX_TOKEN`), and which title a release is: the ids its source placed it with, or a TMDB id set by hand at the source (`placed`; `scan::identified_by`), asking Plex's agent only for its guid by external id; nothing is read off a name, and what arrives with neither stays for Fix Match |
+| `runtime/plextv.rs`, `runtime/tmdb.rs` | claim/heartbeat/account state, and TMDB's reads for Fix Match and for the metadata of what a source placed (by TMDB id, never a search or `/find`), through a metadata provider first when one is set (`REX_PLEXTV_URL` points plex.tv at a stub) |
 | `platform.rs` | Everything asked of the OS beyond `std`: local time, CPU time and load, the host name, thread ids, pausing and killing FFmpeg, the GDM socket. A Unix half and a Windows half; nothing else may call `libc` for these |
 | `runtime/*.rs` (the rest) | One subsystem each, named after it: search, listing, axes, edit, collections, playlists, artwork, butler, framework, i18n, resume (On Deck and hubs), logging and so on |
 | `filters.rs`, `hierarchy.rs`, `metadata.rs`, `mediainfo.rs`, `decision.rs`, `xmlout.rs`, `gate.rs`, `catalog.rs` | Plex's filter grammar (the operator is part of the KEY), flat leaves to show/season/episode, TMDB and `plex://` guids, ffprobe JSON to `Media`/`Part`/`Stream`, a plain-form decision against the client's own profile, Plex XML, the direct-play gate, the catalog |
@@ -119,7 +119,7 @@ the old WebDAV scanner reads through the registered source whose `mount` holds i
 so either plays again once its source registers. `DELETE /rex/sources/{name}` answers a
 one-use code valid 300 s; `DELETE .../confirm/<code>` removes the source and what it pushed
 from rex, never its files. With no source a part read is the 502 an unreachable source is. `TMDB_KEY` and
-Plex's matcher fill in what is pushed with ids, and nothing else is identified (Fix Match needs TMDB); the matcher is asked with the
+Plex's matcher fill in what its source placed, or gave a TMDB id by hand, and nothing else is identified (Fix Match needs TMDB); the matcher is asked with the
 claim's server token, or `PLEX_TOKEN` on an unclaimed server, and is off with neither. `--zurg-mount` is zurg's
 `mount_path` (default `/mnt/zurg`): a Part's `file` is `<mount>/<directory>/<release>/<file>`,
 and each library's `Location` is `<mount>/<directory>` -- set in the catalog's sections
@@ -132,9 +132,13 @@ Plex, if there is one: pointed at rex, zurg's matcher learns rex's own matches a
 them back as exact ids, so a wrong match can never be corrected (`docs/setup.md`). zurg then pushes a snapshot of its library once it has
 loaded and every few hours, and every change as it happens: `POST`/`DELETE
 /rex/feed/zurg/items`, `PUT /rex/feed/zurg/snapshot` (`runtime/feed.rs`). An item
-with a `kind` and ids is placed where zurg says (TMDB's season and episode), not by its name,
-and no pass at start renumbers it (`_placed` on the row); the name places only what arrives without. An item
-with no `media_info` is held, not shown, until zurg probes it; a late IMDb id re-identifies
+with a `kind` and ids is the title those ids name, placed where zurg says (TMDB's season and
+episode; `_placed` on the row); one with no `kind` but a TMDB id (set by hand in zurg) is that
+title in its library's kind, when TMDB has one; anything else is unmatched, a film titled as its file and an
+episode season 1 of a show named after its release, in file order, until zurg places it. rex
+reads no name: no pass at start renumbers, unfolds or moves a row, and the blank-tile retry asks
+again only by the ids a row came with. An item
+with no `media_info` is held, not shown, until zurg probes it; a late placement re-identifies
 its row on the same key; a file that is gone is trashed as measured on plexscratch
 (`tests/fixtures/missing_file_scan_s43.json`: soft delete, deleted at once under
 `autoEmptyTrash`, back on its key until `emptyTrash`); a snapshot that names nothing, or
@@ -483,15 +487,13 @@ python3 tests/test_feed.py                  # the feed API against a stub source
                                             # items, trash and return, snapshot reconcile and guards, migration
 python3 tests/test_feed_versions.py         # two releases of one title: one row, a Media each (a real library's 127 Hours)
 python3 tests/test_feed_season_art.py       # a season takes its identification once an episode has it (a real library's Black Mirror S6)
-python3 tests/test_feed_blank_tiles.py      # what a real library drew the blank tile for gets named by its ids; a title held keeps it when a retry names nothing; a person's Fix Match stays theirs
-python3 tests/test_feed_blank_1016.py       # archive members stay versions of their episode, `One Piece 1106` is an episode of One Piece, a film zurg files under anime goes to Movies
+python3 tests/test_feed_blank_tiles.py      # what a real library drew the blank tile for gets named by its source's ids, a row with none is never retried; a person's Fix Match stays theirs
+python3 tests/test_feed_source_decides.py   # the source decides: unplaced pushes unmatched in file order with no lookup, a placement exactly as pushed, a hand-set TMDB id, held rows untouched by a start
 python3 tests/test_feed_names.py            # releases pushed with no id stay for Fix Match, however cleanly they read: a.K.A., THEATRiCAL.CUT, a release in another language than its files
-python3 tests/test_feed_pack_folders.py     # a pack's season folders, which zurg's mount flattens: SNL's and Smallville's 01s each their own season's
-python3 tests/test_feed_unfold.py           # each file of a season batch its own episode; rows that folded several episodes unfolded at start
-python3 tests/test_feed_placement.py        # a file its source placed (`kind`, TMDB season/episode) stays there through every start pass and retry; Fix Match wins; a season-0 special is TMDB's episode (Firefly's)
+python3 tests/test_feed_placement.py        # a file its source placed (`kind`, TMDB season/episode) stays there through a start and the retry; Fix Match wins; a season-0 special is TMDB's episode (Firefly's)
 python3 tests/test_feed_delete.py           # a delete removes the files at the source first, as a real PMS's does (zurg's WebDAV DELETE)
 python3 tests/test_feed_rejected.py         # every item the feed rejects is logged with its reason (a real snapshot's sample)
-python3 tests/test_feed_extras.py           # a disc's menus, creditless openings and OVAs are no episodes, pushed or found at start (Motto To Love-Ru, To Love Ru); a release's Plex-named extras are clips of its title
+python3 tests/test_feed_extras.py           # a disc's menus and creditless openings are no episodes when pushed, rows held so stay (Motto To Love-Ru, To Love Ru); a release's Plex-named extras are clips of its title
 python3 tests/test_feed_versions_1017.py    # one row per episode whatever its guid, other files of one release apart, a trashed row folded or brought back (SpongeBob S10E64, Freakazoid)
 python3 tests/test_sources.py               # registering sources, and sources that are not zurg: a server ignoring Range,
                                             # a redirect to a CDN, a restart, rows before registration, the two-step delete
@@ -502,7 +504,7 @@ python3 tests/parallel_suites.py --workers 4 test_cli test_feed ...
                                             # several suites at once, as CI runs them: each gets its own
                                             # REX_TEST_PORTS range (tests/test_ports.py), output kept per suite
 cargo test --manifest-path rust/Cargo.toml  # the Rust unit tests: the decision corpus (1,872 measured decisions),
-                                            # GDM against four real servers, the identify corpora
+                                            # GDM against four real servers
 ```
 
 Credentials unlock the rest. With `TMDB_KEY`, and a copy of `catalog_ui.json` whose Part

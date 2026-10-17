@@ -22,7 +22,7 @@ The steps below go through it in order.
 | A Linux, macOS or Windows host | rex is one binary and its `data/` sidecars, with no other runtime dependencies. The same binary writes the catalog (`rex catalog`) and runs several servers (`rex manager`) |
 | Rust, or Docker | to build it (below) |
 | One or more byte sources | [zurg](https://github.com/debridmediamanager/zurg) (a build with the rex feed: `rex_url` in its `config.yml`), or any HTTP server that serves the files plus something that pushes them to rex's feed |
-| A TMDB API key | free from [themoviedb.org](https://www.themoviedb.org/settings/api); it names what is pushed and powers Fix Match |
+| A TMDB API key | free from [themoviedb.org](https://www.themoviedb.org/settings/api); it describes the titles your source placed and powers Fix Match |
 | Your Plex account token | not needed. A claimed rex (step 6) asks plex.tv and Plex's own metadata agent with the server token the claim gives it. Only an unclaimed server that should still match with Plex's agent takes `PLEX_TOKEN`: the `X-Plex-Token` in the URL of any "View XML" link in Plex Web ([Plex's guide](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/)) |
 | An HTTPS address | only for use outside your LAN and in app.plex.tv: a certificate for a hostname you control (a `tailscale cert`, Let's Encrypt) |
 | FFmpeg | optional, for [transcoding](#transcoding) |
@@ -131,14 +131,17 @@ file.
   already there. rex asks the provider first and TMDB itself only when it does not answer, so
   with `TMDB_KEY` as well a lapsed key changes nothing; with the provider alone no `TMDB_KEY`
   is needed.
-- **Anime and long shows.** Their TMDB season and episode come from the source: zurg with a
-  sponsor `dmm_api_key` asks DMM and pushes each file placed; rex numbers anything pushed
-  without a placement by its name. Upgrading: `REX_ANIME_LISTS` and `REX_IMDB_EPISODES` are no
-  longer read, so an install that still sets them starts as before, and the
+- **What a file is comes from the source.** zurg with a sponsor `dmm_api_key` asks DMM what each
+  file is and pushes it placed: the title's ids and, for an episode, TMDB's season and episode,
+  anime and long shows included. rex reads nothing off a name. A file pushed without a placement
+  is unmatched, for Fix Match: a film titled as its file, an episode in a show named after its
+  release, season 1, numbered in the release's file order until the source places it. A TMDB id
+  set by hand in zurg names its release too, as a title of its library's kind TMDB has. Upgrading: `REX_ANIME_LISTS` and `REX_IMDB_EPISODES`
+  are no longer read, so an install that still sets them starts as before, and the
   `anime-list-master.xml`, `anime-offline-database.jsonl`, `title.episode.tsv.gz` and
-  `imdb-episodes.db` they kept beside the catalog are ignored (delete them if you like). On the
-  first start, episodes they had renumbered and no source placed go back to the numbers their
-  names give, on the same keys, until the source pushes them placed.
+  `imdb-episodes.db` they kept beside the catalog are ignored (delete them if you like). Rows
+  already in the state file keep their numbers and titles until the source places them: no
+  start renumbers, moves or re-identifies a row by its name.
 
 Check it answers:
 

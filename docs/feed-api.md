@@ -112,7 +112,7 @@ Every endpoint is under `/rex/feed/{source}`, for a source registered above. A n
 16 MiB a request (`400` above that).
 
 A request is applied before it is answered, one feed request at a time per server. New
-releases are identified on the way in by their ids (TMDB and Plex's matcher, a few lookups
+releases its source placed are identified on the way in by their ids (TMDB and Plex's matcher, a few lookups
 each, cached on disk after the first), so a first fill of a large library is slow: send chunks of a
 few hundred items and allow minutes per request.
 
@@ -178,7 +178,8 @@ What rex holds for the source: the shown items with their ratingKeys
   "path": "movies/Blame.It.On.The.Bellboy.1992.1080p/Blame.It.On.The.Bellboy.1992.1080p.mkv",
   "name": "Blame.It.On.The.Bellboy.1992.1080p.BluRay.x264",
   "size": 4567890123,
-  "ids": {"imdb": "tt0103827"},
+  "kind": "movie",
+  "ids": {"imdb": "tt0103827", "tmdb": 31639},
   "media_info": {
     "format": {"format_name": "matroska,webm", "duration": "5032.144000", "bit_rate": "7261654"},
     "streams": [
@@ -197,15 +198,15 @@ The `media_info` above is cut down to show its shape. Send ffprobe's whole outpu
 | `path` | yes | Where the bytes are: `<source url>/<path>`. Its first directory also picks the library (below) |
 | `media_info` | yes, in practice | ffprobe's `-show_format -show_streams` JSON (go-ffprobe's `ProbeData` is the same shape). Absent, `null` or with no `streams`: the item is **held**, because Plex Web will not play an item without streams (findings, "An item without a probe cannot play") |
 | `size` | recommended | Bytes. Shown as the Part's size and used to answer a client's `Range`; without it rex passes the client's `Range` to the source as it is |
-| `ids` | recommended | `imdb` (`tt…`), `tmdb`, `tvdb`. Exact identification; without them (or an id in `name`) the item stays unmatched for Fix Match, and when TMDB has no title for them rex falls back to `name` (below). `tvdb` is kept, not used. With `kind`, `imdb` and `tmdb` are the movie's or the **show's** ids, never an episode's |
-| `kind` | no | `movie` or `episode`: what the source knows the file is. With it the file is **placed**, not guessed (below): it picks the movie or show library, and its `ids` are the title. Anything else, or absent: rex decides as without it |
-| `season`, `episode` | no | With `kind: episode`, the episode on **TMDB's** numbering of the show `ids.tmdb` names (`season` 0 is Specials). The row is placed exactly there; the file's name is not read. Absent: the name numbers it |
+| `ids` | recommended | `imdb` (`tt…`), `tmdb`, `tvdb`. With `kind`, the title: `imdb` and `tmdb` are the movie's or the **show's** ids, never an episode's. Without `kind`, only `tmdb` names anything (a TMDB id set by hand at the source): a title of its library's kind, when TMDB has one; `imdb` alone and `tvdb` are kept on the row and name nothing (below) |
+| `kind` | no | `movie` or `episode`: what the source knows the file is. With it the file is **placed** (below): it picks the movie or show library, and its `ids` are the title. Anything else, or absent: nothing places it, and rex does not guess from its name |
+| `season`, `episode` | no | With `kind: episode`, the episode on **TMDB's** numbering of the show `ids.tmdb` names (`season` 0 is Specials). The row is placed exactly there. Absent: season 1, in the release's file order (below) |
 | `episode_end` | no | The last episode of a file holding several (`E01E02` -> 2). Kept on the row; the file is placed on `episode`, as rex places every multi-episode file on its first |
-| `name` | no | The release name: an id written in it (`{imdb-tt…}`) identifies it, and its season and episode numbers place an episode pushed without them. Default: the folder above the file |
+| `name` | no | The release name, shown as it is: an unplaced episode's show is titled with it. Nothing is read out of it -- no id, no title, no season or episode. Default: the folder above the file |
 | `release` | no | Groups a release's files, identified together (a season's episodes). Default: the folder above `path` |
 | `file` | no | The path clients see in Get Info, and what zurg's matcher reads back (`<mount>/<directory>/<release>/<file>`). Default `<mount>/<path>`, or `/<path>` without a mount |
-| `library` | no | A section key, or `movie`/`show`. Default: the library whose `Location` holds `file`, else one with a folder ending in a directory `path` starts with (`/mnt/zurg/movies` holds `movies/...` whatever prefix `file` has); with a type, that type's library holding `file`, else its first. With no `library`, a release a movie library would take whose `name` carries an episode number (`E0221`, `EP1161`, `Ep.14`, `Name-15`) goes to a show library, the one beside it; a row already shown moves when its library changes |
-| `folder` | no | The folder the provider lists the file in inside its release (`Smallville/Stagione 6`), `""` at its top level. A pack of several seasons that numbers each season's files from `01` says the season only here; without it rex leaves such a pack's files unplaced rather than fold its seasons onto one. Kept on the row |
+| `library` | no | A section key, or `movie`/`show`. Default: the library whose `Location` holds `file`, else one with a folder ending in a directory `path` starts with (`/mnt/zurg/movies` holds `movies/...` whatever prefix `file` has); with a type, that type's library holding `file`, else its first; a folder no library holds goes to the first library of its `kind` (Movies without one). With no `library`, an item placed as an episode that a movie library would take goes to a show library, the one beside it, and one placed as a movie that a show library would take goes to Movies; a row already shown moves when its library changes |
+| `folder` | no | The folder the provider lists the file in inside its release (`Smallville/Stagione 6`), `""` at its top level. A folder Plex names local extras by (`Extras`, `Featurettes`, `NC`, `Menu`, ...) makes the file an extra (below). Kept on the row |
 | `hash` | no | The release's info hash. Kept on the row; nothing reads it yet |
 
 What the fields do:
@@ -217,41 +218,43 @@ What the fields do:
   a file itself, so a source must run ffprobe and send the result: measured on 2026-10-12,
   Plex Web will not play an item without it (findings, "An item without a probe cannot
   play").
-- **Placement.** An item with a `kind` and ids is placed where its source says, and its name
-  only fills what the push leaves out: the movie or show is the one its ids name, kept even
-  when TMDB has no record of it (TMDB is asked only for the other id and its metadata, Plex's
-  matcher only for its guids by external id), and an episode sits on its `season` and
-  `episode`. That holds on every push and restart: the passes that place rows again by their
-  names (misnumbered episodes, versions that fold other episodes, blank-tile retries) leave a
-  placed row on its numbers. A later push placing it elsewhere moves it there on the same
-  ratingKey, watch state kept; a push without a placement leaves it where the last one put it,
-  unless other ids name it again. A placed version of a row holding several moves at the next
-  start. A person's Fix Match still wins over a placement.
-- **Identification.** By id: its placement, `ids`, or an id written in its name
-  (`{imdb-tt…}`, `{tmdb-…}`). An IMDb id is exact: TMDB's `/find`, then Plex's matcher by
-  external id; an episode's or a season's IMDb id names its show, which is how DMM knows most
-  season packs. A release with no id is never searched by its name: searched, one name in six
-  came back a title nobody chose, so it stays unmatched, for Fix Match. Only an id TMDB has no
-  title for (Plex's TMDB id for it is tried first), or one of the other kind than the library's,
-  falls back to the name (`identify.rs`: Plex's matcher and TMDB, their agreement the confidence;
-  when they name different shows and the release's season is one only TMDB's has, TMDB's wins; a
-  film Plex knows by no TMDB id loses to TMDB's search). An identification that names nothing
-  never takes away a title a row already has. A title only Plex knows takes Plex's own artwork. An episode is numbered from
-  `SxxEyy`, `NxNN`, a bare `E06`, `E0221`, `EP1161` or `Ep.14`, a number glued to the title
-  (`Gintama-340`, `Shichi-12 END`), ` - 01v2 -`, or the third of all-bracketed names
-  (`[group][Samurai Champloo][13]`), in the file's name or its release's.
-- **Late ids.** A push whose `ids` name what the row was not identified as re-identifies
-  it on the same ratingKey, keeping its watch state (an episode moves to the show its new
-  identity names). So does any push of a row whose ids named nothing when they came. A
+- **Placement.** An item with a `kind` and ids is placed where its source says: the movie or
+  show is the one its ids name, kept even when TMDB has no record of it, and an episode sits on
+  its `season` and `episode`. That holds on every push and restart. A later push placing it
+  elsewhere moves it there on the same ratingKey, watch state kept; a push without a placement
+  leaves it where the last one put it. A person's Fix Match still wins over a placement.
+- **Identification.** rex identifies a file only by its source's placement or by a TMDB id set
+  by hand (`ids.tmdb` with no `kind`: a title of its library's kind, when TMDB has one, since
+  rows pushed before DMM placed them still carry ids zurg's own Plex gave, an episode's among
+  them), and never by its name (`identify.rs`). zurg asks DMM what each file is; on the production server 0.9% of episodes
+  and 1.1% of movies arrive unplaced (2026-10-17). Plex's matcher is asked only for its guid and
+  artwork by the title's external ids, and TMDB, or the metadata provider, only for the title's
+  metadata by its TMDB id: identification searches nothing and asks no `/find` (Fix Match, a
+  person's, is the only search). An IMDb id with no `kind` names nothing: zurg
+  has DMM place a hand-set IMDb id, and one DMM cannot place TMDB's `/find` could not either.
+  An identification that names nothing never takes away a title a row already has. A title only
+  Plex knows takes Plex's own title and artwork.
+- **Unplaced.** An item nothing identifies is shown unmatched, for Fix Match: a film titled as
+  its file (the file name without its extension), an episode in a show titled with its release's
+  `name`, season 1, numbered 1..n in the release's file order (its paths sorted; a file arriving
+  after its release's others is numbered after them). Nothing is read off either name. The
+  numbers stay file order until the source places the files; a placement then moves each row on
+  its ratingKey.
+- **Late ids.** A push whose placement or hand-set TMDB id names what the row was not identified
+  as re-identifies it on the same ratingKey, keeping its watch state (an episode moves to the
+  show its new identity names, on the numbers it was placed on, else the ones it had). So does
+  any push of a row whose ids named nothing when they came. A
   season takes the identity its episodes bring -- its guid and ids, summary and poster, the
   show's poster where TMDB has none for it -- whatever its first episode lacked, unless a
   person locked the field; seasons left without one are given theirs when the server starts.
 - **Retried.** A row on the blank tile -- a film with no poster, an episode whose show has
-  none, or a film whose release names an episode -- or an episode named as a film (a film's guid,
-  which every season-0 episode got before 2026-10-16) is identified again when the server
-  starts and every ten minutes after, up to 50 films or shows a pass, as its source pushed it.
-  One still unnamed waits an hour, then twice as long each time, to about five days. A TMDB or
-  Plex answer that found nothing or has no poster is asked again after a day.
+  none -- or an episode named as a film (a film's guid, which every season-0 episode got before
+  2026-10-16) is identified again when the server starts and every ten minutes after, up to 50
+  films or shows a pass, as its source pushed it -- when it came with a placement or a hand-set
+  TMDB id. A row with neither has nothing to retry with and is left as it is. One still unnamed
+  waits an hour, then twice as long each time, to about five days. A TMDB or Plex answer that
+  found nothing or has no poster is asked again after a day. No other pass at start touches a
+  row by its name: none renumbers, unfolds, moves or re-identifies one.
 - **A person's match wins.** A Fix Match is recorded on the row: no push and no retry
   identifies it, or the episodes of a show a person matched, again. Unmatch hands it back to
   its source's ids.
@@ -272,14 +275,14 @@ What the fields do:
 - **Only video.** A `file` that is not a video (by extension) or is a sample is rejected,
   as Plex's scanners skip them.
 - **No extras as episodes.** A show's file its provider lists in a folder of extras (`Extras`,
-  `Featurettes`, `NC`, `Menu`, Plex's local-extras folder names), one tagged `NCOP`/`NCED`, or
-  one named before its number by extras words alone (`Menu - 02`, `CM - 01`, `… - OVA - 03`) is
-  no episode and is not placed, unless its source placed it on numbers. A start deletes the rows
-  of such files only and drops such releases from rows that hold an episode too.
+  `Featurettes`, `NC`, `Menu`, Plex's local-extras folder names) or one tagged `NCOP`/`NCED` is no
+  episode and is not numbered, unless its source placed it on numbers; one Plex has a type for is
+  a clip of its title. Only folders and tags count, never a file's words. Rows made of such files
+  before 2026-10-17 stay as they are, for a person to delete.
 - **Migration.** The first time an id is seen, a row the old WebDAV scanner made for the
   same `file` (no feed id yet) is adopted with its ratingKey, watch state and
-  identification; nothing is re-identified unless the item's ids differ from the ones the
-  row was identified by.
+  identification; nothing is re-identified unless the item's placement or ids differ from the
+  ones the row was identified by.
 
 ## What rex sends back: a delete
 
