@@ -12928,3 +12928,49 @@ went to S4E1 by its name, and a start moved the held `aaf-wilty.301` row to S3E1
 its archive's release name. Building it also caught the hand-set id read without its row's
 numbers, which made a film's metadata of an episode: a file nothing numbered now keeps the
 numbers its row has before it is identified.
+
+## Remote play with an owner who has no Plex Pass (2026-10-17)
+
+Fizzy #297. A throwaway rex (CI artifact of c181b2c, its own catalog and port on the test
+host, two generated 60 s h264/aac clips pushed through the feed from a local static server)
+was claimed to an owner account whose plex.tv `subscription` is `active: false`, `Inactive`,
+with no `remote-watch-pass` or Plex Pass feature among its 69 and no entitlement but a
+deprecated Google IAP one. Its only connection was a Cloudflare quick tunnel
+(`https://<name>.trycloudflare.com:443`, `--announce-url`); plex.tv listed it owned,
+`presence` true, `relay` false, `publicAddressMatches` true for the test host's own IP. The
+viewer was headless Chromium 130 on another network (a Hetzner host), app.plex.tv's Plex Web
+4.162.1 signed in as that owner.
+
+Observed:
+
+- The library browsed: home, the section, the film's page, its artwork, all 200 through the
+  tunnel.
+- Play opened Plex Web's **Remote Watch Pass** modal ("The show can't go on...yet. To stream
+  from this library (or any other library you have access to) remotely, you'll need a Remote
+  Watch Pass subscription", EUR 2.99 a month or 27.99 a year, "Try 14 days free").
+- **No play request reached rex**: no `/playQueues`, no decision, no part read, no timeline.
+  The client refused before asking the server.
+- At the same time rex's `/myplex/account` answered `subscriptionActive: true`,
+  `subscriptionState: Active` and `ownerFeatures` named `pass`. Neither moved the gate, as
+  "What ownerFeatures gates (2026-10-13)" read out of the 4.147.1 bundle: the decision is the
+  signed-in user's own account's.
+
+So remote play through rex needs what remote play through any PMS needs: Plex Pass or a
+Remote Watch Pass on the viewing account. rex's `pass` and `subscriptionActive` claims buy
+nothing in Plex Web and can go (Fizzy #300). Not tested: the official TV, iOS, Android TV and
+Android apps, which this rig cannot drive; a LAN play by the same owner (expected free, not
+measured here).
+
+Two traps met on the way:
+
+- `cloudflared tunnel --url` again adopted `~/.cloudflared/config.yml` (another named tunnel on
+  the test host) and answered 404 for everything; an empty `--config` file gave a real quick
+  tunnel, and these hostnames resolved this time (contrast "Cloudflare quick tunnels are
+  broken").
+- Plex Web's sign-in through an injected `myPlexAccessToken` rewrote the token's own device row
+  on plex.tv to `Chrome` -- the device that owns a token is the one plex.tv updates, as in
+  "Collateral change to the Plex account". Use a token minted for the browser, not one shared
+  with another tool.
+
+The test server's device was deleted from the account afterwards, and the rig, tunnel and
+viewer removed.
