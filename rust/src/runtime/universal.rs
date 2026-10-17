@@ -122,6 +122,8 @@ pub(crate) struct AudioPlan {
 pub(crate) enum Protocol {
     Hls,
     Dash,
+    /// A download's one whole MP4 file, the profile's `static` target (offline downloads).
+    File,
 }
 
 impl Protocol {
@@ -129,13 +131,14 @@ impl Protocol {
         match self {
             Protocol::Hls => "hls",
             Protocol::Dash => "dash",
+            Protocol::File => "http",
         }
     }
 
     pub fn container(self) -> &'static str {
         match self {
             Protocol::Hls => "mpegts",
-            Protocol::Dash => "mp4",
+            Protocol::Dash | Protocol::File => "mp4",
         }
     }
 
@@ -143,6 +146,7 @@ impl Protocol {
         match name {
             "hls" => Some(Protocol::Hls),
             "dash" => Some(Protocol::Dash),
+            "static" => Some(Protocol::File),
             _ => None,
         }
     }
@@ -271,7 +275,7 @@ impl Plan {
         match (self.protocol, self.video.as_ref().is_none_or(|video| video.copy)) {
             (_, false) => TRANSCODE_SEGMENT,
             (Protocol::Dash, true) => DASH_COPY_SEGMENT,
-            (Protocol::Hls, true) => COPY_SEGMENT,
+            (Protocol::Hls | Protocol::File, true) => COPY_SEGMENT,
         }
     }
 
@@ -495,6 +499,10 @@ pub(crate) fn ffmpeg_args(plan: &Plan, path: Path, hardware: &Hardware, start: i
     // A remux's pre-roll from the keyframe before the seek keeps its negative time, so
     // with the offset every packet lands on its true time on the title's clock.
     push(&mut args, &["-sn", "-dn", "-map_metadata", "-1", "-map_chapters", "-1", "-avoid_negative_ts", "disabled"]);
+    if plan.protocol == Protocol::File {
+        push(&mut args, &["-movflags", "+faststart", "-f", "mp4", "-y", &dir.join("media.mp4").to_string_lossy()]);
+        return args;
+    }
     if plan.protocol == Protocol::Dash {
         // One fragmented MP4 per representation, `init-<rep>.m4s` and `chunk-<rep>-<n>.m4s`
         // numbered from 1 in the run's own directory. The MP4 muxer rebases every
@@ -648,7 +656,7 @@ impl Session {
     /// Where a run writes: HLS's flat `%05d.ts`, DASH's `r<run>/` directory.
     fn run_dir(&self, run: i64) -> PathBuf {
         match self.plan.protocol {
-            Protocol::Hls => self.dir.clone(),
+            Protocol::Hls | Protocol::File => self.dir.clone(),
             Protocol::Dash => self.dir.join(format!("r{run}")),
         }
     }
@@ -656,7 +664,7 @@ impl Session {
     /// The file holding segment `index` of representation `rep` as run `run` wrote it.
     fn segment_file(&self, index: i64, rep: usize, run: i64) -> PathBuf {
         match self.plan.protocol {
-            Protocol::Hls => self.dir.join(format!("{index:05}.ts")),
+            Protocol::Hls | Protocol::File => self.dir.join(format!("{index:05}.ts")),
             Protocol::Dash => self.run_dir(run).join(format!("chunk-{rep}-{:05}.m4s", index - run + 1)),
         }
     }
@@ -893,6 +901,49 @@ impl Transcoder {
         Ok(session)
     }
 
+    /// A download's conversion: one FFmpeg writing `<root>/download-<id>/media.mp4` to the end,
+    /// unthrottled and never reaped, down the hardware ladder until a path finishes. `progress`
+    /// gets FFmpeg's output seconds, bytes written and speed; `cancel` kills it. Blocks.
+    pub fn convert_file(&self, id: i64, plan: &Plan, cancel: &AtomicBool, progress: impl Fn(f64, u64, f64)) -> Result<PathBuf, String> {
+        let dir = self.root.join(format!("download-{id}"));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).map_err(|error| format!("cannot create {}: {error}", dir.display()))?;
+        let hardware = self.hardware();
+        let mut failure = "no conversion path".to_string();
+        for path in ladder(plan, &hardware) {
+            let mut command = Command::new(&self.ffmpeg);
+            command.args(ffmpeg_args(plan, path, &hardware, 0, &dir)).stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::null());
+            let mut child = spawn_tied(command).map_err(|error| format!("cannot start {}: {error}", self.ffmpeg.display()))?;
+            let (mut seconds, mut bytes, mut speed) = (0.0, 0, 0.0);
+            for line in child.stdout.take().map(BufReader::new).into_iter().flat_map(|out| out.lines().map_while(Result::ok)) {
+                if cancel.load(Ordering::SeqCst) {
+                    let _ = child.kill();
+                    break;
+                }
+                if let Some(value) = line.strip_prefix("out_time_us=") {
+                    seconds = value.trim().parse::<f64>().map_or(seconds, |micros| micros / 1_000_000.0);
+                } else if let Some(value) = line.strip_prefix("total_size=") {
+                    bytes = value.trim().parse().unwrap_or(bytes);
+                } else if let Some(value) = line.strip_prefix("speed=") {
+                    speed = value.trim().trim_end_matches('x').parse().unwrap_or(speed);
+                } else if line.starts_with("progress=") {
+                    progress(seconds, bytes, speed);
+                }
+            }
+            let status = child.wait().map_err(|error| error.to_string())?;
+            if cancel.load(Ordering::SeqCst) {
+                let _ = std::fs::remove_dir_all(&dir);
+                return Err("cancelled".to_string());
+            }
+            if status.success() {
+                return Ok(dir.join("media.mp4"));
+            }
+            failure = format!("{path:?} exited {status}");
+            error!("DOWNLOAD {id}: {failure}");
+        }
+        Err(failure)
+    }
+
     /// `stop` / `DELETE /transcode/sessions/{id}`: whether there was such a session.
     pub fn stop(&self, id: &str) -> bool {
         let removed = self.sessions.lock().ok().and_then(|mut sessions| sessions.remove(id));
@@ -987,7 +1038,7 @@ impl Transcoder {
             // and the segment a killed run was still writing is not a segment.
             state.done.retain(|index, _| *index < start);
             match session.plan.protocol {
-                Protocol::Hls => {
+                Protocol::Hls | Protocol::File => {
                     if let Ok(entries) = std::fs::read_dir(&session.dir) {
                         for entry in entries.flatten() {
                             let name = entry.file_name().to_string_lossy().to_string();
@@ -1537,7 +1588,8 @@ impl Runtime {
         // tonemapx applies the RPU (measured 2026-10-17: Jellyfin's P5 clip tonemaps to its
         // P8.1 and HDR10 twins' colours; untonemapped it is green), so with it rex converts one.
         let refused_as = if tonemapx { None } else { Some(media) };
-        if decision::conversion(profile, protocol, refused_as) != decision::Outcome::Convert {
+        // A download converts to the profile's `static` target, which the streaming check skips.
+        if wire != Protocol::File && decision::conversion(profile, protocol, refused_as) != decision::Outcome::Convert {
             return None;
         }
         let row = self.catalog.get(key)?;
@@ -1552,9 +1604,13 @@ impl Runtime {
             .flatten()
             .filter_map(Value::as_object)
             .find(|target| {
+                let context = target.get("context").and_then(Value::as_str);
                 target.get("tag").and_then(Value::as_str) == Some("VideoProfile")
-                    && target.get("protocol").and_then(Value::as_str) == Some(protocol)
-                    && target.get("context").and_then(Value::as_str) != Some("static")
+                    && if wire == Protocol::File {
+                        context == Some("static")
+                    } else {
+                        target.get("protocol").and_then(Value::as_str) == Some(protocol) && context != Some("static")
+                    }
             })?;
         let list = |value: Option<&Value>| {
             value
@@ -1793,16 +1849,20 @@ impl Runtime {
         }
         media.insert("bitrate".to_string(), json!(plan.bitrate()));
         let dash = plan.protocol == Protocol::Dash;
+        // A download's Media (`download_queue_s1422.json`): optimized, no `protocol`, streams `direct`.
+        let file = plan.protocol == Protocol::File;
         media.insert("container".to_string(), json!(plan.protocol.container()));
         media.insert("duration".to_string(), json!(plan.duration_ms));
         if video.is_some() {
             media.insert("height".to_string(), json!(height));
         }
         // Measured on the DASH decision only (`scratch_dash_copy.json`).
-        if dash {
+        if dash || file {
             media.insert("optimizedForStreaming".to_string(), json!(true));
         }
-        media.insert("protocol".to_string(), json!(plan.protocol.name()));
+        if !file {
+            media.insert("protocol".to_string(), json!(plan.protocol.name()));
+        }
         if let Some(codec) = &video_codec {
             media.insert("videoCodec".to_string(), json!(codec));
             if let Some(rate) = source.get("videoFrameRate") {
@@ -1829,10 +1889,12 @@ impl Runtime {
         if video.is_some() {
             out_part.insert("height".to_string(), json!(height));
         }
-        if dash {
+        if dash || file {
             out_part.insert("optimizedForStreaming".to_string(), json!(true));
         }
-        out_part.insert("protocol".to_string(), json!(plan.protocol.name()));
+        if !file {
+            out_part.insert("protocol".to_string(), json!(plan.protocol.name()));
+        }
         if video.is_some() {
             out_part.insert("width".to_string(), json!(width));
         }
@@ -1878,6 +1940,7 @@ impl Runtime {
                 }
                 // HLS muxes both into one stream; DASH keeps a representation each.
                 let location = match (dash, kind) {
+                    _ if file => "direct",
                     (_, Some(3)) => "segments-video",
                     (false, _) => "segments-av",
                     (true, Some(1)) => "segments-video",
@@ -1934,6 +1997,7 @@ impl Runtime {
                 let (manifest, content_type) = match plan.protocol {
                     Protocol::Hls => (plan.master_playlist(&id), "application/vnd.apple.mpegurl"),
                     Protocol::Dash => (plan.mpd(&id), "application/dash+xml"),
+                    Protocol::File => return Some(Response::error(400, "rex: bad request")),
                 };
                 info!(
                     "TRANSCODE {id} start {} video={} audio={}",

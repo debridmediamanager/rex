@@ -1,0 +1,7629 @@
+{
+ "_provenance": "Recorded 2026-10-17 on a throwaway claimed Plex Media Server 1.42.2.10156-f737b826c (Docker on the test host, owner account with Plex Pass INACTIVE, so downloads need no Pass) through Plex for Android 2026.19.1's download flow: createDownloadQueue -> addItemToDownloadQueue (keys + decision params) -> fetchDownloadQueueItems polled every 3 s -> fetchDecision -> getMediaPath (HEAD, a 1 KiB Range, the whole file) -> removeDownloadQueueItems, with the app's X-Plex-* headers and the token in the query. Library: 30 s 1280x720 h264/aac mkv clips (a movie, two episodes). `original` adds with no quality params; `capped` with maxVideoBitrate=720&videoResolution=640x360. The second run adds directPlay=1&directStream=1 and an X-Plex-Client-Profile-Extra allowing mkv in the query, which changed nothing: every item is converted to one mp4 (the profile's static target), one at a time. Token, Date and Last-Modified removed; media bodies by length only.",
+ "default_params": [
+  {
+   "label": "create",
+   "method": "POST",
+   "path": "/downloadQueue",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-1"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 200,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Content-Length",
+     "137"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "resp_json": {
+    "MediaContainer": {
+     "size": 1,
+     "DownloadQueue": [
+      {
+       "id": 1,
+       "owner": 1,
+       "clientIdentifier": "dlq-probe-android-1",
+       "itemCount": 0,
+       "status": "done"
+      }
+     ]
+    }
+   },
+   "resp_text": null,
+   "resp_len": 137
+  },
+  {
+   "label": "create-again",
+   "method": "POST",
+   "path": "/downloadQueue",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-1"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 200,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Content-Length",
+     "137"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "resp_json": {
+    "MediaContainer": {
+     "size": 1,
+     "DownloadQueue": [
+      {
+       "id": 1,
+       "owner": 1,
+       "clientIdentifier": "dlq-probe-android-1",
+       "itemCount": 0,
+       "status": "done"
+      }
+     ]
+    }
+   },
+   "resp_text": null,
+   "resp_len": 137
+  },
+  {
+   "label": "queue",
+   "method": "GET",
+   "path": "/downloadQueue/1",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-1"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 200,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Content-Length",
+     "137"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "resp_json": {
+    "MediaContainer": {
+     "size": 1,
+     "DownloadQueue": [
+      {
+       "id": 1,
+       "owner": 1,
+       "clientIdentifier": "dlq-probe-android-1",
+       "itemCount": 0,
+       "status": "done"
+      }
+     ]
+    }
+   },
+   "resp_text": null,
+   "resp_len": 137
+  },
+  {
+   "label": "add-original",
+   "method": "POST",
+   "path": "/downloadQueue/1/add",
+   "query": [
+    [
+     "keys",
+     "/library/metadata/1"
+    ]
+   ],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-1"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 200,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Content-Length",
+     "86"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "resp_json": {
+    "MediaContainer": {
+     "size": 1,
+     "AddedQueueItems": [
+      {
+       "key": "/library/metadata/1",
+       "id": 1
+      }
+     ]
+    }
+   },
+   "resp_text": null,
+   "resp_len": 86
+  },
+  {
+   "label": "add-720kbps",
+   "method": "POST",
+   "path": "/downloadQueue/1/add",
+   "query": [
+    [
+     "keys",
+     "/library/metadata/4"
+    ],
+    [
+     "maxVideoBitrate",
+     "720"
+    ],
+    [
+     "videoResolution",
+     "640x360"
+    ],
+    [
+     "videoQuality",
+     "50"
+    ]
+   ],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-1"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 200,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Content-Length",
+     "86"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "resp_json": {
+    "MediaContainer": {
+     "size": 1,
+     "AddedQueueItems": [
+      {
+       "key": "/library/metadata/4",
+       "id": 2
+      }
+     ]
+    }
+   },
+   "resp_text": null,
+   "resp_len": 86
+  },
+  {
+   "label": "add-two-keys",
+   "method": "POST",
+   "path": "/downloadQueue/1/add",
+   "query": [
+    [
+     "keys",
+     "/library/metadata/5,/library/metadata/1"
+    ]
+   ],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-1"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 200,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Content-Length",
+     "123"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "resp_json": {
+    "MediaContainer": {
+     "size": 2,
+     "AddedQueueItems": [
+      {
+       "key": "/library/metadata/5",
+       "id": 3
+      },
+      {
+       "key": "/library/metadata/1",
+       "id": 1
+      }
+     ]
+    }
+   },
+   "resp_text": null,
+   "resp_len": 123
+  },
+  {
+   "label": "items-0",
+   "method": "GET",
+   "path": "/downloadQueue/1/items",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-1"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 200,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Content-Length",
+     "318"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "resp_json": {
+    "MediaContainer": {
+     "size": 3,
+     "DownloadQueueItem": [
+      {
+       "id": 1,
+       "queueId": 1,
+       "key": "/library/metadata/1",
+       "status": "deciding",
+       "DecisionResult": {}
+      },
+      {
+       "id": 2,
+       "queueId": 1,
+       "key": "/library/metadata/4",
+       "status": "deciding",
+       "DecisionResult": {}
+      },
+      {
+       "id": 3,
+       "queueId": 1,
+       "key": "/library/metadata/5",
+       "status": "deciding",
+       "DecisionResult": {}
+      }
+     ]
+    }
+   },
+   "resp_text": null,
+   "resp_len": 318
+  },
+  {
+   "label": "items-1",
+   "method": "GET",
+   "path": "/downloadQueue/1/items",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-1"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 200,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Content-Length",
+     "1953"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "resp_json": {
+    "MediaContainer": {
+     "size": 3,
+     "DownloadQueueItem": [
+      {
+       "id": 1,
+       "queueId": 1,
+       "key": "/library/metadata/1",
+       "status": "processing",
+       "DecisionResult": {
+        "generalDecisionCode": 1001,
+        "generalDecisionText": "Direct play not available; Conversion OK.",
+        "directPlayDecisionCode": 3000,
+        "directPlayDecisionText": "App cannot direct play this item. No direct play video profile exists for protocol http, with container mkv, and video codec h264.",
+        "transcodeDecisionCode": 1001,
+        "transcodeDecisionText": "Direct play not available; Conversion OK."
+       },
+       "TranscodeSession": {
+        "key": "/transcode/sessions/eb4c3739-b276-4ab4-ad7e-c5eb81c09558",
+        "throttled": false,
+        "complete": false,
+        "progress": 33.29999923706055,
+        "size": 5767216,
+        "speed": 5.199999809265137,
+        "error": false,
+        "duration": 30023,
+        "remaining": 3,
+        "context": "static",
+        "sourceVideoCodec": "h264",
+        "sourceAudioCodec": "aac",
+        "videoDecision": "transcode",
+        "audioDecision": "copy",
+        "protocol": "http",
+        "container": "mp4",
+        "videoCodec": "h264",
+        "audioCodec": "aac",
+        "audioChannels": 2,
+        "transcodeHwRequested": false,
+        "offlineTranscode": false
+       }
+      },
+      {
+       "id": 2,
+       "queueId": 1,
+       "key": "/library/metadata/4",
+       "status": "waiting",
+       "DecisionResult": {
+        "generalDecisionCode": 1001,
+        "generalDecisionText": "Direct play not available; Conversion OK.",
+        "directPlayDecisionCode": 3000,
+        "directPlayDecisionText": "App cannot direct play this item. No direct play video profile exists for protocol http, with container mkv, and video codec h264.",
+        "transcodeDecisionCode": 1001,
+        "transcodeDecisionText": "Direct play not available; Conversion OK."
+       }
+      },
+      {
+       "id": 3,
+       "queueId": 1,
+       "key": "/library/metadata/5",
+       "status": "waiting",
+       "DecisionResult": {
+        "generalDecisionCode": 1001,
+        "generalDecisionText": "Direct play not available; Conversion OK.",
+        "directPlayDecisionCode": 3000,
+        "directPlayDecisionText": "App cannot direct play this item. No direct play video profile exists for protocol http, with container mkv, and video codec h264.",
+        "transcodeDecisionCode": 1001,
+        "transcodeDecisionText": "Direct play not available; Conversion OK."
+       }
+      }
+     ]
+    }
+   },
+   "resp_text": null,
+   "resp_len": 1953
+  },
+  {
+   "label": "items-2",
+   "method": "GET",
+   "path": "/downloadQueue/1/items",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-1"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 200,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Content-Length",
+     "1954"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "resp_json": {
+    "MediaContainer": {
+     "size": 3,
+     "DownloadQueueItem": [
+      {
+       "id": 1,
+       "queueId": 1,
+       "key": "/library/metadata/1",
+       "status": "processing",
+       "DecisionResult": {
+        "generalDecisionCode": 1001,
+        "generalDecisionText": "Direct play not available; Conversion OK.",
+        "directPlayDecisionCode": 3000,
+        "directPlayDecisionText": "App cannot direct play this item. No direct play video profile exists for protocol http, with container mkv, and video codec h264.",
+        "transcodeDecisionCode": 1001,
+        "transcodeDecisionText": "Direct play not available; Conversion OK."
+       },
+       "TranscodeSession": {
+        "key": "/transcode/sessions/eb4c3739-b276-4ab4-ad7e-c5eb81c09558",
+        "throttled": false,
+        "complete": false,
+        "progress": 86.69999694824219,
+        "size": 14680112,
+        "speed": 3.799999952316284,
+        "error": false,
+        "duration": 30023,
+        "remaining": 1,
+        "context": "static",
+        "sourceVideoCodec": "h264",
+        "sourceAudioCodec": "aac",
+        "videoDecision": "transcode",
+        "audioDecision": "copy",
+        "protocol": "http",
+        "container": "mp4",
+        "videoCodec": "h264",
+        "audioCodec": "aac",
+        "audioChannels": 2,
+        "transcodeHwRequested": false,
+        "offlineTranscode": false
+       }
+      },
+      {
+       "id": 2,
+       "queueId": 1,
+       "key": "/library/metadata/4",
+       "status": "waiting",
+       "DecisionResult": {
+        "generalDecisionCode": 1001,
+        "generalDecisionText": "Direct play not available; Conversion OK.",
+        "directPlayDecisionCode": 3000,
+        "directPlayDecisionText": "App cannot direct play this item. No direct play video profile exists for protocol http, with container mkv, and video codec h264.",
+        "transcodeDecisionCode": 1001,
+        "transcodeDecisionText": "Direct play not available; Conversion OK."
+       }
+      },
+      {
+       "id": 3,
+       "queueId": 1,
+       "key": "/library/metadata/5",
+       "status": "waiting",
+       "DecisionResult": {
+        "generalDecisionCode": 1001,
+        "generalDecisionText": "Direct play not available; Conversion OK.",
+        "directPlayDecisionCode": 3000,
+        "directPlayDecisionText": "App cannot direct play this item. No direct play video profile exists for protocol http, with container mkv, and video codec h264.",
+        "transcodeDecisionCode": 1001,
+        "transcodeDecisionText": "Direct play not available; Conversion OK."
+       }
+      }
+     ]
+    }
+   },
+   "resp_text": null,
+   "resp_len": 1954
+  },
+  {
+   "label": "items-3",
+   "method": "GET",
+   "path": "/downloadQueue/1/items",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-1"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 200,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Content-Length",
+     "1960"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "resp_json": {
+    "MediaContainer": {
+     "size": 3,
+     "DownloadQueueItem": [
+      {
+       "id": 1,
+       "queueId": 1,
+       "key": "/library/metadata/1",
+       "status": "available",
+       "DecisionResult": {
+        "generalDecisionCode": 1001,
+        "generalDecisionText": "Direct play not available; Conversion OK.",
+        "directPlayDecisionCode": 3000,
+        "directPlayDecisionText": "App cannot direct play this item. No direct play video profile exists for protocol http, with container mkv, and video codec h264.",
+        "transcodeDecisionCode": 1001,
+        "transcodeDecisionText": "Direct play not available; Conversion OK."
+       }
+      },
+      {
+       "id": 2,
+       "queueId": 1,
+       "key": "/library/metadata/4",
+       "status": "processing",
+       "DecisionResult": {
+        "generalDecisionCode": 1001,
+        "generalDecisionText": "Direct play not available; Conversion OK.",
+        "directPlayDecisionCode": 3000,
+        "directPlayDecisionText": "App cannot direct play this item. No direct play video profile exists for protocol http, with container mkv, and video codec h264.",
+        "transcodeDecisionCode": 1001,
+        "transcodeDecisionText": "Direct play not available; Conversion OK."
+       },
+       "TranscodeSession": {
+        "key": "/transcode/sessions/05609bca-b9e2-454c-a407-229864a2148e",
+        "throttled": false,
+        "complete": false,
+        "progress": 43.29999923706055,
+        "size": 524336,
+        "speed": 10.100000381469727,
+        "error": false,
+        "duration": 30023,
+        "remaining": 1,
+        "context": "static",
+        "sourceVideoCodec": "h264",
+        "sourceAudioCodec": "aac",
+        "videoDecision": "transcode",
+        "audioDecision": "transcode",
+        "protocol": "http",
+        "container": "mp4",
+        "videoCodec": "h264",
+        "audioCodec": "aac",
+        "audioChannels": 2,
+        "transcodeHwRequested": false,
+        "offlineTranscode": false
+       }
+      },
+      {
+       "id": 3,
+       "queueId": 1,
+       "key": "/library/metadata/5",
+       "status": "waiting",
+       "DecisionResult": {
+        "generalDecisionCode": 1001,
+        "generalDecisionText": "Direct play not available; Conversion OK.",
+        "directPlayDecisionCode": 3000,
+        "directPlayDecisionText": "App cannot direct play this item. No direct play video profile exists for protocol http, with container mkv, and video codec h264.",
+        "transcodeDecisionCode": 1001,
+        "transcodeDecisionText": "Direct play not available; Conversion OK."
+       }
+      }
+     ]
+    }
+   },
+   "resp_text": null,
+   "resp_len": 1960
+  },
+  {
+   "label": "items-4",
+   "method": "GET",
+   "path": "/downloadQueue/1/items",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-1"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 200,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Content-Length",
+     "1958"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "resp_json": {
+    "MediaContainer": {
+     "size": 3,
+     "DownloadQueueItem": [
+      {
+       "id": 1,
+       "queueId": 1,
+       "key": "/library/metadata/1",
+       "status": "available",
+       "DecisionResult": {
+        "generalDecisionCode": 1001,
+        "generalDecisionText": "Direct play not available; Conversion OK.",
+        "directPlayDecisionCode": 3000,
+        "directPlayDecisionText": "App cannot direct play this item. No direct play video profile exists for protocol http, with container mkv, and video codec h264.",
+        "transcodeDecisionCode": 1001,
+        "transcodeDecisionText": "Direct play not available; Conversion OK."
+       }
+      },
+      {
+       "id": 2,
+       "queueId": 1,
+       "key": "/library/metadata/4",
+       "status": "available",
+       "DecisionResult": {
+        "generalDecisionCode": 1001,
+        "generalDecisionText": "Direct play not available; Conversion OK.",
+        "directPlayDecisionCode": 3000,
+        "directPlayDecisionText": "App cannot direct play this item. No direct play video profile exists for protocol http, with container mkv, and video codec h264.",
+        "transcodeDecisionCode": 1001,
+        "transcodeDecisionText": "Direct play not available; Conversion OK."
+       }
+      },
+      {
+       "id": 3,
+       "queueId": 1,
+       "key": "/library/metadata/5",
+       "status": "processing",
+       "DecisionResult": {
+        "generalDecisionCode": 1001,
+        "generalDecisionText": "Direct play not available; Conversion OK.",
+        "directPlayDecisionCode": 3000,
+        "directPlayDecisionText": "App cannot direct play this item. No direct play video profile exists for protocol http, with container mkv, and video codec h264.",
+        "transcodeDecisionCode": 1001,
+        "transcodeDecisionText": "Direct play not available; Conversion OK."
+       },
+       "TranscodeSession": {
+        "key": "/transcode/sessions/19582c4a-d473-4a2b-821d-7a571b3f0efd",
+        "throttled": false,
+        "complete": false,
+        "progress": 16.700000762939453,
+        "size": 2621488,
+        "speed": 5.800000190734863,
+        "error": false,
+        "duration": 30023,
+        "remaining": 4,
+        "context": "static",
+        "sourceVideoCodec": "h264",
+        "sourceAudioCodec": "aac",
+        "videoDecision": "transcode",
+        "audioDecision": "copy",
+        "protocol": "http",
+        "container": "mp4",
+        "videoCodec": "h264",
+        "audioCodec": "aac",
+        "audioChannels": 2,
+        "transcodeHwRequested": false,
+        "offlineTranscode": false
+       }
+      }
+     ]
+    }
+   },
+   "resp_text": null,
+   "resp_len": 1958
+  },
+  {
+   "label": "items-5",
+   "method": "GET",
+   "path": "/downloadQueue/1/items",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-1"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 200,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Content-Length",
+     "1945"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "resp_json": {
+    "MediaContainer": {
+     "size": 3,
+     "DownloadQueueItem": [
+      {
+       "id": 1,
+       "queueId": 1,
+       "key": "/library/metadata/1",
+       "status": "available",
+       "DecisionResult": {
+        "generalDecisionCode": 1001,
+        "generalDecisionText": "Direct play not available; Conversion OK.",
+        "directPlayDecisionCode": 3000,
+        "directPlayDecisionText": "App cannot direct play this item. No direct play video profile exists for protocol http, with container mkv, and video codec h264.",
+        "transcodeDecisionCode": 1001,
+        "transcodeDecisionText": "Direct play not available; Conversion OK."
+       }
+      },
+      {
+       "id": 2,
+       "queueId": 1,
+       "key": "/library/metadata/4",
+       "status": "available",
+       "DecisionResult": {
+        "generalDecisionCode": 1001,
+        "generalDecisionText": "Direct play not available; Conversion OK.",
+        "directPlayDecisionCode": 3000,
+        "directPlayDecisionText": "App cannot direct play this item. No direct play video profile exists for protocol http, with container mkv, and video codec h264.",
+        "transcodeDecisionCode": 1001,
+        "transcodeDecisionText": "Direct play not available; Conversion OK."
+       }
+      },
+      {
+       "id": 3,
+       "queueId": 1,
+       "key": "/library/metadata/5",
+       "status": "processing",
+       "DecisionResult": {
+        "generalDecisionCode": 1001,
+        "generalDecisionText": "Direct play not available; Conversion OK.",
+        "directPlayDecisionCode": 3000,
+        "directPlayDecisionText": "App cannot direct play this item. No direct play video profile exists for protocol http, with container mkv, and video codec h264.",
+        "transcodeDecisionCode": 1001,
+        "transcodeDecisionText": "Direct play not available; Conversion OK."
+       },
+       "TranscodeSession": {
+        "key": "/transcode/sessions/19582c4a-d473-4a2b-821d-7a571b3f0efd",
+        "throttled": false,
+        "complete": false,
+        "progress": 70.0,
+        "size": 12320816,
+        "speed": 5.900000095367432,
+        "error": false,
+        "duration": 30023,
+        "remaining": 1,
+        "context": "static",
+        "sourceVideoCodec": "h264",
+        "sourceAudioCodec": "aac",
+        "videoDecision": "transcode",
+        "audioDecision": "copy",
+        "protocol": "http",
+        "container": "mp4",
+        "videoCodec": "h264",
+        "audioCodec": "aac",
+        "audioChannels": 2,
+        "transcodeHwRequested": false,
+        "offlineTranscode": false
+       }
+      }
+     ]
+    }
+   },
+   "resp_text": null,
+   "resp_len": 1945
+  },
+  {
+   "label": "items-6",
+   "method": "GET",
+   "path": "/downloadQueue/1/items",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-1"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 200,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Content-Length",
+     "1452"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "resp_json": {
+    "MediaContainer": {
+     "size": 3,
+     "DownloadQueueItem": [
+      {
+       "id": 1,
+       "queueId": 1,
+       "key": "/library/metadata/1",
+       "status": "available",
+       "DecisionResult": {
+        "generalDecisionCode": 1001,
+        "generalDecisionText": "Direct play not available; Conversion OK.",
+        "directPlayDecisionCode": 3000,
+        "directPlayDecisionText": "App cannot direct play this item. No direct play video profile exists for protocol http, with container mkv, and video codec h264.",
+        "transcodeDecisionCode": 1001,
+        "transcodeDecisionText": "Direct play not available; Conversion OK."
+       }
+      },
+      {
+       "id": 2,
+       "queueId": 1,
+       "key": "/library/metadata/4",
+       "status": "available",
+       "DecisionResult": {
+        "generalDecisionCode": 1001,
+        "generalDecisionText": "Direct play not available; Conversion OK.",
+        "directPlayDecisionCode": 3000,
+        "directPlayDecisionText": "App cannot direct play this item. No direct play video profile exists for protocol http, with container mkv, and video codec h264.",
+        "transcodeDecisionCode": 1001,
+        "transcodeDecisionText": "Direct play not available; Conversion OK."
+       }
+      },
+      {
+       "id": 3,
+       "queueId": 1,
+       "key": "/library/metadata/5",
+       "status": "available",
+       "DecisionResult": {
+        "generalDecisionCode": 1001,
+        "generalDecisionText": "Direct play not available; Conversion OK.",
+        "directPlayDecisionCode": 3000,
+        "directPlayDecisionText": "App cannot direct play this item. No direct play video profile exists for protocol http, with container mkv, and video codec h264.",
+        "transcodeDecisionCode": 1001,
+        "transcodeDecisionText": "Direct play not available; Conversion OK."
+       }
+      }
+     ]
+    }
+   },
+   "resp_text": null,
+   "resp_len": 1452
+  },
+  {
+   "label": "item-1",
+   "method": "GET",
+   "path": "/downloadQueue/1/item/1",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-1"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 404,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "resp_json": null,
+   "resp_text": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+   "resp_len": 85
+  },
+  {
+   "label": "decision-1",
+   "method": "GET",
+   "path": "/downloadQueue/1/item/1/decision",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-1"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 200,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "3769"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "resp_json": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": "1",
+     "directPlayDecisionCode": 3000,
+     "directPlayDecisionText": "App cannot direct play this item. No direct play video profile exists for protocol http, with container mkv, and video codec h264.",
+     "generalDecisionCode": 1001,
+     "generalDecisionText": "Direct play not available; Conversion OK.",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": "1",
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "26ae71b8-fb18-4c6f-b56b-82a231b2add9",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": "1758205129",
+     "resourceSession": "dlq-probe-android-1",
+     "transcodeDecisionCode": 1001,
+     "transcodeDecisionText": "Direct play not available; Conversion OK.",
+     "Metadata": [
+      {
+       "addedAt": 1792242736,
+       "art": "/library/metadata/1/art/1792242832",
+       "audienceRating": 5.4,
+       "audienceRatingImage": "rottentomatoes://image.rating.spilled",
+       "contentRating": "G",
+       "duration": 30023,
+       "guid": "plex://movie/5d7768352e80df001ebde4c9",
+       "hasPremiumPrimaryExtra": "1",
+       "key": "/library/metadata/1",
+       "librarySectionID": "1",
+       "librarySectionKey": "/library/sections/1",
+       "librarySectionTitle": "Movies",
+       "originallyAvailableAt": "2008-04-10",
+       "ratingKey": "1",
+       "slug": "big-buck-bunny",
+       "studio": "Blender Foundation",
+       "summary": "In the thick and undisturbed forest, sparkling spring has finally arrived, and all creatures, big or small, enjoy life. However, Big Buck Bunny--an enormous, fluffy, and utterly adorable rabbit--is facing a crisis: the ruthless, loud, bullying gang of a flying squirrel is heartlessly harassing him, determined to squash his happiness. Now, this means war. But who will win?",
+       "tagline": "Don't Mess with the Bunny.",
+       "thumb": "/library/metadata/1/thumb/1792242832",
+       "title": "Big Buck Bunny",
+       "type": "movie",
+       "updatedAt": 1792242832,
+       "year": 2008,
+       "Media": [
+        {
+         "audioProfile": "lc",
+         "id": "1",
+         "videoProfile": "constrained baseline",
+         "audioChannels": 2,
+         "audioCodec": "aac",
+         "bitrate": 9000,
+         "container": "mp4",
+         "duration": 30023,
+         "height": 720,
+         "optimizedForStreaming": true,
+         "videoCodec": "h264",
+         "videoFrameRate": "24p",
+         "videoResolution": "720p",
+         "width": 1280,
+         "selected": true,
+         "Part": [
+          {
+           "audioProfile": "lc",
+           "id": "1",
+           "videoProfile": "constrained baseline",
+           "bitrate": 9000,
+           "container": "mp4",
+           "duration": 30023,
+           "height": 720,
+           "optimizedForStreaming": true,
+           "width": 1280,
+           "decision": "transcode",
+           "selected": true,
+           "Stream": [
+            {
+             "bitDepth": 8,
+             "bitrate": 9000,
+             "codec": "h264",
+             "displayTitle": "720p",
+             "extendedDisplayTitle": "720p (H.264 Constrained Baseline)",
+             "frameRate": 24,
+             "height": 720,
+             "id": "1",
+             "streamType": 1,
+             "width": 1280,
+             "decision": "transcode",
+             "location": "direct"
+            },
+            {
+             "bitrateMode": "cbr",
+             "channels": 2,
+             "codec": "aac",
+             "displayTitle": "Unknown (AAC Stereo)",
+             "extendedDisplayTitle": "Unknown (AAC Stereo)",
+             "id": "2",
+             "profile": "lc",
+             "samplingRate": 44100,
+             "selected": true,
+             "streamType": 2,
+             "decision": "copy",
+             "location": "direct"
+            }
+           ]
+          }
+         ]
+        }
+       ],
+       "UltraBlurColors": [
+        {
+         "bottomLeft": "482c68",
+         "bottomRight": "8b3e39",
+         "topLeft": "492016",
+         "topRight": "60211c"
+        }
+       ],
+       "Genre": [
+        {
+         "filter": "genre=4",
+         "id": "4",
+         "tag": "Animation"
+        },
+        {
+         "filter": "genre=5",
+         "id": "5",
+         "tag": "Comedy"
+        },
+        {
+         "filter": "genre=6",
+         "id": "6",
+         "tag": "Family"
+        },
+        {
+         "filter": "genre=7",
+         "id": "7",
+         "tag": "Short"
+        }
+       ],
+       "Country": [
+        {
+         "filter": "country=11",
+         "id": "11",
+         "tag": "Netherlands"
+        }
+       ],
+       "Rating": [
+        {
+         "image": "imdb://image.rating",
+         "type": "audience",
+         "value": "6.4"
+        },
+        {
+         "image": "rottentomatoes://image.rating.spilled",
+         "type": "audience",
+         "value": "5.4"
+        },
+        {
+         "image": "themoviedb://image.rating",
+         "type": "audience",
+         "value": "6.5"
+        }
+       ],
+       "Director": [
+        {
+         "filter": "director=8",
+         "id": "8",
+         "tag": "Sacha Goedegebure",
+         "tagKey": "5d7768352e80df001ebde5ab"
+        }
+       ],
+       "Writer": [
+        {
+         "filter": "writer=9",
+         "id": "9",
+         "tag": "Sacha Goedegebure",
+         "tagKey": "5d7768352e80df001ebde5ab"
+        }
+       ],
+       "Producer": [
+        {
+         "filter": "producer=10",
+         "id": "10",
+         "tag": "Ton Roosendaal",
+         "tagKey": "5d776834103a2d001f567902",
+         "thumb": "https://metadata-static.plex.tv/d/people/d0cd238b5a00353ddae78dd55720f7e3.jpg"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "resp_text": null,
+   "resp_len": 3769
+  },
+  {
+   "label": "media-head-1",
+   "method": "HEAD",
+   "path": "/downloadQueue/1/item/1/media",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-1"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 200,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/octet-stream"
+    ],
+    [
+     "Content-Disposition",
+     "attachment; filename=\"1.mp4\"; filename*=UTF-8''1%2Emp4"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Accept-Ranges",
+     "bytes"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Content-Length",
+     "17718338"
+    ]
+   ],
+   "resp_json": null,
+   "resp_text": null,
+   "resp_len": 0
+  },
+  {
+   "label": "media-range-1",
+   "method": "GET",
+   "path": "/downloadQueue/1/item/1/media",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-1"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ],
+    [
+     "Range",
+     "bytes=0-1023"
+    ]
+   ],
+   "status": 206,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/octet-stream"
+    ],
+    [
+     "Content-Disposition",
+     "attachment; filename=\"1.mp4\"; filename*=UTF-8''1%2Emp4"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Accept-Ranges",
+     "bytes"
+    ],
+    [
+     "Content-Range",
+     "bytes 0-1023/17718338"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Content-Length",
+     "1024"
+    ]
+   ],
+   "resp_json": null,
+   "resp_text": null,
+   "resp_len": 1024
+  },
+  {
+   "label": "media-full-1",
+   "method": "GET",
+   "path": "/downloadQueue/1/item/1/media",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-1"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 200,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/octet-stream"
+    ],
+    [
+     "Content-Disposition",
+     "attachment; filename=\"1.mp4\"; filename*=UTF-8''1%2Emp4"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Accept-Ranges",
+     "bytes"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Content-Length",
+     "17718338"
+    ]
+   ],
+   "resp_json": null,
+   "resp_text": null,
+   "resp_len": 17718338
+  },
+  {
+   "label": "item-2",
+   "method": "GET",
+   "path": "/downloadQueue/1/item/2",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-1"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 404,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "resp_json": null,
+   "resp_text": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+   "resp_len": 85
+  },
+  {
+   "label": "decision-2",
+   "method": "GET",
+   "path": "/downloadQueue/1/item/2/decision",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-1"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 200,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "8589"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "resp_json": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": "1",
+     "directPlayDecisionCode": 3000,
+     "directPlayDecisionText": "App cannot direct play this item. No direct play video profile exists for protocol http, with container mkv, and video codec h264.",
+     "generalDecisionCode": 1001,
+     "generalDecisionText": "Direct play not available; Conversion OK.",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": "2",
+     "librarySectionTitle": "TV Shows",
+     "librarySectionUUID": "d834186e-8fe4-4a25-9c76-e70f57b4e84d",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": "1758205129",
+     "resourceSession": "dlq-probe-android-1",
+     "transcodeDecisionCode": 1001,
+     "transcodeDecisionText": "Direct play not available; Conversion OK.",
+     "Metadata": [
+      {
+       "addedAt": 1792242740,
+       "art": "/library/metadata/3/art/1792242833",
+       "audienceRating": 7.6,
+       "audienceRatingImage": "themoviedb://image.rating",
+       "contentRating": "TV-14",
+       "duration": 30023,
+       "grandparentArt": "/library/metadata/2/art/1792242833",
+       "grandparentGuid": "plex://show/5d9c086c7d06d9001ffd27aa",
+       "grandparentKey": "/library/metadata/2",
+       "grandparentRatingKey": "2",
+       "grandparentSlug": "firefly",
+       "grandparentTheme": "/library/metadata/2/theme/1792242833",
+       "grandparentThumb": "/library/metadata/2/thumb/1792242833",
+       "grandparentTitle": "Firefly",
+       "guid": "plex://episode/5d9c127e4eefaa001f6449c2",
+       "index": 1,
+       "key": "/library/metadata/4",
+       "librarySectionID": "2",
+       "librarySectionKey": "/library/sections/2",
+       "librarySectionTitle": "TV Shows",
+       "originallyAvailableAt": "2002-09-20",
+       "parentGuid": "plex://season/602e67e766dfdb002c0a1b5b",
+       "parentIndex": 1,
+       "parentKey": "/library/metadata/3",
+       "parentRatingKey": "3",
+       "parentThumb": "/library/metadata/3/thumb/1792242833",
+       "parentTitle": "Season 1",
+       "ratingKey": "4",
+       "summary": "The crew of Serenity take on a train heist commissioned by a crime lord. They steal the goods, only to find it is medicine that's desperately needed by the town.",
+       "thumb": "/library/metadata/4/thumb/1792242833",
+       "title": "The Train Job",
+       "titleSort": "Train Job",
+       "type": "episode",
+       "updatedAt": 1792242833,
+       "year": 2002,
+       "Media": [
+        {
+         "audioProfile": "lc",
+         "id": "2",
+         "videoProfile": "constrained baseline",
+         "audioChannels": 2,
+         "audioCodec": "aac",
+         "bitrate": 425,
+         "container": "mp4",
+         "duration": 30023,
+         "height": 270,
+         "optimizedForStreaming": true,
+         "videoCodec": "h264",
+         "videoFrameRate": "24p",
+         "videoResolution": "SD",
+         "width": 480,
+         "selected": true,
+         "Part": [
+          {
+           "audioProfile": "lc",
+           "id": "2",
+           "videoProfile": "constrained baseline",
+           "bitrate": 425,
+           "container": "mp4",
+           "duration": 30023,
+           "height": 270,
+           "optimizedForStreaming": true,
+           "width": 480,
+           "decision": "transcode",
+           "selected": true,
+           "Stream": [
+            {
+             "bitDepth": 8,
+             "bitrate": 300,
+             "codec": "h264",
+             "displayTitle": "720p",
+             "extendedDisplayTitle": "720p (H.264 Constrained Baseline)",
+             "frameRate": 24,
+             "height": 270,
+             "id": "3",
+             "streamType": 1,
+             "width": 480,
+             "decision": "transcode",
+             "location": "direct"
+            },
+            {
+             "bitrate": 125,
+             "bitrateMode": "cbr",
+             "channels": 2,
+             "codec": "aac",
+             "displayTitle": "Unknown (AAC Stereo)",
+             "extendedDisplayTitle": "Unknown (AAC Stereo)",
+             "id": "4",
+             "selected": true,
+             "streamType": 2,
+             "decision": "transcode",
+             "location": "direct"
+            }
+           ]
+          }
+         ]
+        }
+       ],
+       "UltraBlurColors": [
+        {
+         "bottomLeft": "8c3b33",
+         "bottomRight": "210b05",
+         "topLeft": "4d180f",
+         "topRight": "45240b"
+        }
+       ],
+       "Rating": [
+        {
+         "image": "imdb://image.rating",
+         "type": "audience",
+         "value": "8.3"
+        },
+        {
+         "image": "themoviedb://image.rating",
+         "type": "audience",
+         "value": "7.6"
+        }
+       ],
+       "Director": [
+        {
+         "filter": "director=155",
+         "id": "155",
+         "tag": "Joss Whedon",
+         "tagKey": "5d776828880197001ec90e8f",
+         "thumb": "https://metadata-static.plex.tv/3/people/35ab0f8e713edf5306373298f75629c0.jpg"
+        }
+       ],
+       "Writer": [
+        {
+         "filter": "writer=156",
+         "id": "156",
+         "tag": "Tim Minear",
+         "tagKey": "5d7769ae7a53e9001e6ed3b4",
+         "thumb": "https://metadata-static.plex.tv/3/people/3f8e6f9871b1f895e2c2d8de196bfdae.jpg"
+        },
+        {
+         "filter": "writer=157",
+         "id": "157",
+         "tag": "Joss Whedon",
+         "tagKey": "5d776828880197001ec90e8f",
+         "thumb": "https://metadata-static.plex.tv/3/people/35ab0f8e713edf5306373298f75629c0.jpg"
+        }
+       ],
+       "Role": [
+        {
+         "filter": "actor=26",
+         "id": "26",
+         "role": "Mal Reynolds",
+         "tag": "Nathan Fillion",
+         "tagKey": "5d7768286f4521001ea9945c",
+         "thumb": "https://metadata-static.plex.tv/8/people/8e60c5a6412557c52b32ab5e85a2ce34.jpg"
+        },
+        {
+         "filter": "actor=27",
+         "id": "27",
+         "role": "Zo\u00eb Washburne",
+         "tag": "Gina Torres",
+         "tagKey": "5d776827eb5d26001f1dd912",
+         "thumb": "https://metadata-static.plex.tv/2/people/26bf93701cab6ff4d2f41c1827f5b927.jpg"
+        },
+        {
+         "filter": "actor=28",
+         "id": "28",
+         "role": "Hoban Washburne",
+         "tag": "Alan Tudyk",
+         "tagKey": "5d776826eb5d26001f1dd578",
+         "thumb": "https://metadata-static.plex.tv/0/people/0f92021d49ee0e6cae1e939480e88e6e.jpg"
+        },
+        {
+         "filter": "actor=29",
+         "id": "29",
+         "role": "Inara Serra",
+         "tag": "Morena Baccarin",
+         "tagKey": "5d77683a85719b001f3a4ce4",
+         "thumb": "https://metadata-static.plex.tv/e/people/edf22c1f1824209f6a6bf9f84041fc00.jpg"
+        },
+        {
+         "filter": "actor=30",
+         "id": "30",
+         "role": "Jayne Cobb",
+         "tag": "Adam Baldwin",
+         "tagKey": "5d77682585719b001f3a05e3",
+         "thumb": "https://metadata-static.plex.tv/6/people/6f9025460345b381f41a38d6c771bf2d.jpg"
+        },
+        {
+         "filter": "actor=31",
+         "id": "31",
+         "role": "Kaylee Frye",
+         "tag": "Jewel Staite",
+         "tagKey": "5d77683f6f4521001ea9dced",
+         "thumb": "https://metadata-static.plex.tv/f/people/fee66163823b52bcf3bcef31097d4e0c.jpg"
+        },
+        {
+         "filter": "actor=32",
+         "id": "32",
+         "role": "Simon Tam",
+         "tag": "Sean Maher",
+         "tagKey": "5d77683f6f4521001ea9dcee",
+         "thumb": "https://metadata-static.plex.tv/2/people/2e7061151c60eb5bdb900736f3d71472.jpg"
+        },
+        {
+         "filter": "actor=33",
+         "id": "33",
+         "role": "River Tam",
+         "tag": "Summer Glau",
+         "tagKey": "5d77683f6f4521001ea9dcec",
+         "thumb": "https://metadata-static.plex.tv/c/people/caf83f1c50da149c1f6931ef3ea83b42.jpg"
+        },
+        {
+         "filter": "actor=34",
+         "id": "34",
+         "role": "Derrial Book",
+         "tag": "Ron Glass",
+         "tagKey": "5d77683a961905001eb95063",
+         "thumb": "https://metadata-static.plex.tv/6/people/683d28edb6c360f695fa1b9a055a8b68.jpg"
+        },
+        {
+         "filter": "actor=35",
+         "id": "35",
+         "role": "Adelai Niska",
+         "tag": "Michael Fairman",
+         "tagKey": "5d776829961905001eb91b0d",
+         "thumb": "https://metadata-static.plex.tv/f/people/f64df07695a7d96d61de138bb6d111d9.jpg"
+        },
+        {
+         "filter": "actor=43",
+         "id": "43",
+         "role": "Lund",
+         "tag": "Tom Towles",
+         "tagKey": "5d77682485719b001f3a04e8",
+         "thumb": "https://metadata-static.plex.tv/7/people/776835ac17545486b7ae7d23a947424b.jpg"
+        },
+        {
+         "filter": "actor=44",
+         "id": "44",
+         "role": "Crow",
+         "tag": "Andrew Bryniarski",
+         "tagKey": "5d776826999c64001ec2c378",
+         "thumb": "https://metadata-static.plex.tv/4/people/4ffa741062f5ff131a04f0c1e8b5e359.jpg"
+        },
+        {
+         "filter": "actor=45",
+         "id": "45",
+         "role": "Sheriff Bourne",
+         "tag": "Gregg Henry",
+         "tagKey": "5d7768262e80df001ebdce33",
+         "thumb": "https://metadata-static.plex.tv/5/people/55dd0b4369301cf8772905128d84b905.jpg"
+        },
+        {
+         "filter": "actor=79",
+         "id": "79",
+         "role": "Deputy",
+         "tag": "Valerie Red-Horse",
+         "tagKey": "5d776b407a53e9001e71f57d",
+         "thumb": "https://metadata-static.plex.tv/people/5d776b407a53e9001e71f57d.jpg"
+        },
+        {
+         "filter": "actor=80",
+         "id": "80",
+         "role": "Ensign",
+         "tag": "Lina Patel",
+         "tagKey": "5d776e567a53e9001e773c02",
+         "thumb": "https://metadata-static.plex.tv/c/people/c9834f88628c019069bba0d688b0ad51.jpg"
+        },
+        {
+         "filter": "actor=81",
+         "id": "81",
+         "role": "Officer",
+         "tag": "Kevin Will",
+         "tagKey": "5d776829999c64001ec2cf05",
+         "thumb": "https://metadata-static.plex.tv/e/people/ee21bf4af8451f8948f676247355011b.jpg"
+        },
+        {
+         "filter": "actor=82",
+         "id": "82",
+         "role": "Fed",
+         "tag": "Eric Lange",
+         "tagKey": "5d776858961905001eb998fc",
+         "thumb": "https://metadata-static.plex.tv/0/people/0cbf24b70683c1c46346eb41923f8f7f.jpg"
+        },
+        {
+         "filter": "actor=83",
+         "id": "83",
+         "role": "Henchman",
+         "tag": "David Reynolds",
+         "tagKey": "62fb7cb4aa71b877e94f7981",
+         "thumb": "https://metadata-static.plex.tv/7/people/752dbb16506514674cf95307ef51fb0b.jpg"
+        },
+        {
+         "filter": "actor=36",
+         "id": "36",
+         "role": "Man",
+         "tag": "Jeff Ricketts",
+         "tagKey": "5d7768396f4521001ea9cff5",
+         "thumb": "https://metadata-static.plex.tv/people/5d7768396f4521001ea9cff5.jpg"
+        },
+        {
+         "filter": "actor=37",
+         "id": "37",
+         "role": "Other Man",
+         "tag": "Dennis Cockrum",
+         "tagKey": "5d77682c151a60001f24bf5a",
+         "thumb": "https://metadata-static.plex.tv/people/5d77682c151a60001f24bf5a.jpg"
+        },
+        {
+         "filter": "actor=84",
+         "id": "84",
+         "role": "Immigrant Woman",
+         "tag": "Rene Hamilton",
+         "tagKey": "5d776c84fb0d55001f589ddf"
+        },
+        {
+         "filter": "actor=85",
+         "id": "85",
+         "role": "Immigrant Woman #2",
+         "tag": "Michelle Ferrara",
+         "tagKey": "5f3fdf14bf3e560040b27aa1"
+        },
+        {
+         "filter": "actor=109",
+         "id": "109",
+         "role": "Bellydancer (uncredited)",
+         "tag": "Melody White",
+         "tagKey": "5f4005f903883a0040b0d577"
+        },
+        {
+         "filter": "actor=110",
+         "id": "110",
+         "role": "Bar Guy, Henchman (uncredited)",
+         "tag": "Rick Williamson",
+         "tagKey": "5d77683f6f4521001ea9dd05",
+         "thumb": "https://metadata-static.plex.tv/f/people/fbfff8e0d29e74ee43818f90b1d47e83.jpg"
+        }
+       ],
+       "Producer": [
+        {
+         "filter": "producer=158",
+         "id": "158",
+         "tag": "Gareth Davies",
+         "tagKey": "5dcd495990bd5d00202cec32"
+        },
+        {
+         "filter": "producer=159",
+         "id": "159",
+         "tag": "Ben Edlund",
+         "tagKey": "5d77683161141d001fb14ba1",
+         "thumb": "https://metadata-static.plex.tv/c/people/c9498f9430dd6a652d0a38f7b9f20ba8.jpg"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "resp_text": null,
+   "resp_len": 8589
+  },
+  {
+   "label": "media-head-2",
+   "method": "HEAD",
+   "path": "/downloadQueue/1/item/2/media",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-1"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 200,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/octet-stream"
+    ],
+    [
+     "Content-Disposition",
+     "attachment; filename=\"2.mp4\"; filename*=UTF-8''2%2Emp4"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Accept-Ranges",
+     "bytes"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Content-Length",
+     "1363758"
+    ]
+   ],
+   "resp_json": null,
+   "resp_text": null,
+   "resp_len": 0
+  },
+  {
+   "label": "media-range-2",
+   "method": "GET",
+   "path": "/downloadQueue/1/item/2/media",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-1"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ],
+    [
+     "Range",
+     "bytes=0-1023"
+    ]
+   ],
+   "status": 206,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/octet-stream"
+    ],
+    [
+     "Content-Disposition",
+     "attachment; filename=\"2.mp4\"; filename*=UTF-8''2%2Emp4"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Accept-Ranges",
+     "bytes"
+    ],
+    [
+     "Content-Range",
+     "bytes 0-1023/1363758"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Content-Length",
+     "1024"
+    ]
+   ],
+   "resp_json": null,
+   "resp_text": null,
+   "resp_len": 1024
+  },
+  {
+   "label": "media-full-2",
+   "method": "GET",
+   "path": "/downloadQueue/1/item/2/media",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-1"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 200,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/octet-stream"
+    ],
+    [
+     "Content-Disposition",
+     "attachment; filename=\"2.mp4\"; filename*=UTF-8''2%2Emp4"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Accept-Ranges",
+     "bytes"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Content-Length",
+     "1363758"
+    ]
+   ],
+   "resp_json": null,
+   "resp_text": null,
+   "resp_len": 1363758
+  },
+  {
+   "label": "item-3",
+   "method": "GET",
+   "path": "/downloadQueue/1/item/3",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-1"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 404,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "resp_json": null,
+   "resp_text": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+   "resp_len": 85
+  },
+  {
+   "label": "decision-3",
+   "method": "GET",
+   "path": "/downloadQueue/1/item/3/decision",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-1"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 200,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "6789"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "resp_json": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": "1",
+     "directPlayDecisionCode": 3000,
+     "directPlayDecisionText": "App cannot direct play this item. No direct play video profile exists for protocol http, with container mkv, and video codec h264.",
+     "generalDecisionCode": 1001,
+     "generalDecisionText": "Direct play not available; Conversion OK.",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": "2",
+     "librarySectionTitle": "TV Shows",
+     "librarySectionUUID": "d834186e-8fe4-4a25-9c76-e70f57b4e84d",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": "1758205129",
+     "resourceSession": "dlq-probe-android-1",
+     "transcodeDecisionCode": 1001,
+     "transcodeDecisionText": "Direct play not available; Conversion OK.",
+     "Metadata": [
+      {
+       "addedAt": 1792242743,
+       "art": "/library/metadata/3/art/1792242833",
+       "audienceRating": 7.8,
+       "audienceRatingImage": "themoviedb://image.rating",
+       "contentRating": "TV-14",
+       "duration": 30023,
+       "grandparentArt": "/library/metadata/2/art/1792242833",
+       "grandparentGuid": "plex://show/5d9c086c7d06d9001ffd27aa",
+       "grandparentKey": "/library/metadata/2",
+       "grandparentRatingKey": "2",
+       "grandparentSlug": "firefly",
+       "grandparentTheme": "/library/metadata/2/theme/1792242833",
+       "grandparentThumb": "/library/metadata/2/thumb/1792242833",
+       "grandparentTitle": "Firefly",
+       "guid": "plex://episode/5d9c127e4eefaa001f6449b6",
+       "index": 2,
+       "key": "/library/metadata/5",
+       "librarySectionID": "2",
+       "librarySectionKey": "/library/sections/2",
+       "librarySectionTitle": "TV Shows",
+       "originallyAvailableAt": "2002-09-27",
+       "parentGuid": "plex://season/602e67e766dfdb002c0a1b5b",
+       "parentIndex": 1,
+       "parentKey": "/library/metadata/3",
+       "parentRatingKey": "3",
+       "parentThumb": "/library/metadata/3/thumb/1792242833",
+       "parentTitle": "Season 1",
+       "ratingKey": "5",
+       "summary": "Serenity is pulled in by a Tohoku-class cruiser while investigating a spaceship that was attacked by Reavers. Simon and River must hide to prevent capture, while something is wrong with the lone survivor of the attacked spaceship.",
+       "thumb": "/library/metadata/5/thumb/1792242833",
+       "title": "Bushwhacked",
+       "type": "episode",
+       "updatedAt": 1792242833,
+       "year": 2002,
+       "Media": [
+        {
+         "audioProfile": "lc",
+         "id": "3",
+         "videoProfile": "constrained baseline",
+         "audioChannels": 2,
+         "audioCodec": "aac",
+         "bitrate": 9000,
+         "container": "mp4",
+         "duration": 30023,
+         "height": 720,
+         "optimizedForStreaming": true,
+         "videoCodec": "h264",
+         "videoFrameRate": "24p",
+         "videoResolution": "720p",
+         "width": 1280,
+         "selected": true,
+         "Part": [
+          {
+           "audioProfile": "lc",
+           "id": "3",
+           "videoProfile": "constrained baseline",
+           "bitrate": 9000,
+           "container": "mp4",
+           "duration": 30023,
+           "height": 720,
+           "optimizedForStreaming": true,
+           "width": 1280,
+           "decision": "transcode",
+           "selected": true,
+           "Stream": [
+            {
+             "bitDepth": 8,
+             "bitrate": 9000,
+             "codec": "h264",
+             "displayTitle": "720p",
+             "extendedDisplayTitle": "720p (H.264 Constrained Baseline)",
+             "frameRate": 24,
+             "height": 720,
+             "id": "5",
+             "streamType": 1,
+             "width": 1280,
+             "decision": "transcode",
+             "location": "direct"
+            },
+            {
+             "bitrateMode": "cbr",
+             "channels": 2,
+             "codec": "aac",
+             "displayTitle": "Unknown (AAC Stereo)",
+             "extendedDisplayTitle": "Unknown (AAC Stereo)",
+             "id": "6",
+             "profile": "lc",
+             "samplingRate": 44100,
+             "selected": true,
+             "streamType": 2,
+             "decision": "copy",
+             "location": "direct"
+            }
+           ]
+          }
+         ]
+        }
+       ],
+       "UltraBlurColors": [
+        {
+         "bottomLeft": "46424d",
+         "bottomRight": "54131e",
+         "topLeft": "231d1d",
+         "topRight": "44130e"
+        }
+       ],
+       "Rating": [
+        {
+         "image": "imdb://image.rating",
+         "type": "audience",
+         "value": "8.4"
+        },
+        {
+         "image": "themoviedb://image.rating",
+         "type": "audience",
+         "value": "7.8"
+        }
+       ],
+       "Director": [
+        {
+         "filter": "director=163",
+         "id": "163",
+         "tag": "Tim Minear",
+         "tagKey": "5d7769ae7a53e9001e6ed3b4",
+         "thumb": "https://metadata-static.plex.tv/3/people/3f8e6f9871b1f895e2c2d8de196bfdae.jpg"
+        }
+       ],
+       "Writer": [
+        {
+         "filter": "writer=156",
+         "id": "156",
+         "tag": "Tim Minear",
+         "tagKey": "5d7769ae7a53e9001e6ed3b4",
+         "thumb": "https://metadata-static.plex.tv/3/people/3f8e6f9871b1f895e2c2d8de196bfdae.jpg"
+        },
+        {
+         "filter": "writer=157",
+         "id": "157",
+         "tag": "Joss Whedon",
+         "tagKey": "5d776828880197001ec90e8f",
+         "thumb": "https://metadata-static.plex.tv/3/people/35ab0f8e713edf5306373298f75629c0.jpg"
+        }
+       ],
+       "Role": [
+        {
+         "filter": "actor=26",
+         "id": "26",
+         "role": "Mal Reynolds",
+         "tag": "Nathan Fillion",
+         "tagKey": "5d7768286f4521001ea9945c",
+         "thumb": "https://metadata-static.plex.tv/8/people/8e60c5a6412557c52b32ab5e85a2ce34.jpg"
+        },
+        {
+         "filter": "actor=27",
+         "id": "27",
+         "role": "Zo\u00eb Washburne",
+         "tag": "Gina Torres",
+         "tagKey": "5d776827eb5d26001f1dd912",
+         "thumb": "https://metadata-static.plex.tv/2/people/26bf93701cab6ff4d2f41c1827f5b927.jpg"
+        },
+        {
+         "filter": "actor=28",
+         "id": "28",
+         "role": "Hoban Washburne",
+         "tag": "Alan Tudyk",
+         "tagKey": "5d776826eb5d26001f1dd578",
+         "thumb": "https://metadata-static.plex.tv/0/people/0f92021d49ee0e6cae1e939480e88e6e.jpg"
+        },
+        {
+         "filter": "actor=29",
+         "id": "29",
+         "role": "Inara Serra",
+         "tag": "Morena Baccarin",
+         "tagKey": "5d77683a85719b001f3a4ce4",
+         "thumb": "https://metadata-static.plex.tv/e/people/edf22c1f1824209f6a6bf9f84041fc00.jpg"
+        },
+        {
+         "filter": "actor=30",
+         "id": "30",
+         "role": "Jayne Cobb",
+         "tag": "Adam Baldwin",
+         "tagKey": "5d77682585719b001f3a05e3",
+         "thumb": "https://metadata-static.plex.tv/6/people/6f9025460345b381f41a38d6c771bf2d.jpg"
+        },
+        {
+         "filter": "actor=31",
+         "id": "31",
+         "role": "Kaylee Frye",
+         "tag": "Jewel Staite",
+         "tagKey": "5d77683f6f4521001ea9dced",
+         "thumb": "https://metadata-static.plex.tv/f/people/fee66163823b52bcf3bcef31097d4e0c.jpg"
+        },
+        {
+         "filter": "actor=32",
+         "id": "32",
+         "role": "Simon Tam",
+         "tag": "Sean Maher",
+         "tagKey": "5d77683f6f4521001ea9dcee",
+         "thumb": "https://metadata-static.plex.tv/2/people/2e7061151c60eb5bdb900736f3d71472.jpg"
+        },
+        {
+         "filter": "actor=33",
+         "id": "33",
+         "role": "River Tam",
+         "tag": "Summer Glau",
+         "tagKey": "5d77683f6f4521001ea9dcec",
+         "thumb": "https://metadata-static.plex.tv/c/people/caf83f1c50da149c1f6931ef3ea83b42.jpg"
+        },
+        {
+         "filter": "actor=34",
+         "id": "34",
+         "role": "Derrial Book",
+         "tag": "Ron Glass",
+         "tagKey": "5d77683a961905001eb95063",
+         "thumb": "https://metadata-static.plex.tv/6/people/683d28edb6c360f695fa1b9a055a8b68.jpg"
+        },
+        {
+         "filter": "actor=46",
+         "id": "46",
+         "role": "Commander Harken",
+         "tag": "Doug Savant",
+         "tagKey": "5d7768285af944001f1f7225",
+         "thumb": "https://metadata-static.plex.tv/b/people/b78ab1b658b4e542c927ae0dcaede540.jpg"
+        },
+        {
+         "filter": "actor=47",
+         "id": "47",
+         "role": "Survivor",
+         "tag": "Branden Morgan",
+         "tagKey": "5d776833e6d55c002040c9ec",
+         "thumb": "https://metadata-static.plex.tv/4/people/4eaee94325fc9d22d9e22818b596520f.jpg"
+        },
+        {
+         "filter": "actor=48",
+         "id": "48",
+         "role": "Radio Operator",
+         "tag": "Lancer Dean Shull",
+         "tagKey": "5d77683d8718ba001e316690"
+        },
+        {
+         "filter": "actor=111",
+         "id": "111",
+         "role": "Ensign",
+         "tag": "Jared Poe",
+         "tagKey": "5f3fdf06bf3e560040b279d7"
+        },
+        {
+         "filter": "actor=112",
+         "id": "112",
+         "role": "Rebel Soldier (uncredited)",
+         "tag": "Gary J. Wayton",
+         "tagKey": "5d77690996b655001fdc8c89",
+         "thumb": "https://metadata-static.plex.tv/people/5d77690996b655001fdc8c89.jpg"
+        }
+       ],
+       "Producer": [
+        {
+         "filter": "producer=158",
+         "id": "158",
+         "tag": "Gareth Davies",
+         "tagKey": "5dcd495990bd5d00202cec32"
+        },
+        {
+         "filter": "producer=159",
+         "id": "159",
+         "tag": "Ben Edlund",
+         "tagKey": "5d77683161141d001fb14ba1",
+         "thumb": "https://metadata-static.plex.tv/c/people/c9498f9430dd6a652d0a38f7b9f20ba8.jpg"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "resp_text": null,
+   "resp_len": 6789
+  },
+  {
+   "label": "media-head-3",
+   "method": "HEAD",
+   "path": "/downloadQueue/1/item/3/media",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-1"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 200,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/octet-stream"
+    ],
+    [
+     "Content-Disposition",
+     "attachment; filename=\"3.mp4\"; filename*=UTF-8''3%2Emp4"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Accept-Ranges",
+     "bytes"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Content-Length",
+     "17718330"
+    ]
+   ],
+   "resp_json": null,
+   "resp_text": null,
+   "resp_len": 0
+  },
+  {
+   "label": "media-range-3",
+   "method": "GET",
+   "path": "/downloadQueue/1/item/3/media",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-1"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ],
+    [
+     "Range",
+     "bytes=0-1023"
+    ]
+   ],
+   "status": 206,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/octet-stream"
+    ],
+    [
+     "Content-Disposition",
+     "attachment; filename=\"3.mp4\"; filename*=UTF-8''3%2Emp4"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Accept-Ranges",
+     "bytes"
+    ],
+    [
+     "Content-Range",
+     "bytes 0-1023/17718330"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Content-Length",
+     "1024"
+    ]
+   ],
+   "resp_json": null,
+   "resp_text": null,
+   "resp_len": 1024
+  },
+  {
+   "label": "media-full-3",
+   "method": "GET",
+   "path": "/downloadQueue/1/item/3/media",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-1"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 200,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/octet-stream"
+    ],
+    [
+     "Content-Disposition",
+     "attachment; filename=\"3.mp4\"; filename*=UTF-8''3%2Emp4"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Accept-Ranges",
+     "bytes"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Content-Length",
+     "17718330"
+    ]
+   ],
+   "resp_json": null,
+   "resp_text": null,
+   "resp_len": 17718330
+  },
+  {
+   "label": "item-1",
+   "method": "GET",
+   "path": "/downloadQueue/1/item/1",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-1"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 404,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "resp_json": null,
+   "resp_text": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+   "resp_len": 85
+  },
+  {
+   "label": "decision-1",
+   "method": "GET",
+   "path": "/downloadQueue/1/item/1/decision",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-1"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 200,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "3769"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "resp_json": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": "1",
+     "directPlayDecisionCode": 3000,
+     "directPlayDecisionText": "App cannot direct play this item. No direct play video profile exists for protocol http, with container mkv, and video codec h264.",
+     "generalDecisionCode": 1001,
+     "generalDecisionText": "Direct play not available; Conversion OK.",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": "1",
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "26ae71b8-fb18-4c6f-b56b-82a231b2add9",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": "1758205129",
+     "resourceSession": "dlq-probe-android-1",
+     "transcodeDecisionCode": 1001,
+     "transcodeDecisionText": "Direct play not available; Conversion OK.",
+     "Metadata": [
+      {
+       "addedAt": 1792242736,
+       "art": "/library/metadata/1/art/1792242832",
+       "audienceRating": 5.4,
+       "audienceRatingImage": "rottentomatoes://image.rating.spilled",
+       "contentRating": "G",
+       "duration": 30023,
+       "guid": "plex://movie/5d7768352e80df001ebde4c9",
+       "hasPremiumPrimaryExtra": "1",
+       "key": "/library/metadata/1",
+       "librarySectionID": "1",
+       "librarySectionKey": "/library/sections/1",
+       "librarySectionTitle": "Movies",
+       "originallyAvailableAt": "2008-04-10",
+       "ratingKey": "1",
+       "slug": "big-buck-bunny",
+       "studio": "Blender Foundation",
+       "summary": "In the thick and undisturbed forest, sparkling spring has finally arrived, and all creatures, big or small, enjoy life. However, Big Buck Bunny--an enormous, fluffy, and utterly adorable rabbit--is facing a crisis: the ruthless, loud, bullying gang of a flying squirrel is heartlessly harassing him, determined to squash his happiness. Now, this means war. But who will win?",
+       "tagline": "Don't Mess with the Bunny.",
+       "thumb": "/library/metadata/1/thumb/1792242832",
+       "title": "Big Buck Bunny",
+       "type": "movie",
+       "updatedAt": 1792242832,
+       "year": 2008,
+       "Media": [
+        {
+         "audioProfile": "lc",
+         "id": "1",
+         "videoProfile": "constrained baseline",
+         "audioChannels": 2,
+         "audioCodec": "aac",
+         "bitrate": 9000,
+         "container": "mp4",
+         "duration": 30023,
+         "height": 720,
+         "optimizedForStreaming": true,
+         "videoCodec": "h264",
+         "videoFrameRate": "24p",
+         "videoResolution": "720p",
+         "width": 1280,
+         "selected": true,
+         "Part": [
+          {
+           "audioProfile": "lc",
+           "id": "1",
+           "videoProfile": "constrained baseline",
+           "bitrate": 9000,
+           "container": "mp4",
+           "duration": 30023,
+           "height": 720,
+           "optimizedForStreaming": true,
+           "width": 1280,
+           "decision": "transcode",
+           "selected": true,
+           "Stream": [
+            {
+             "bitDepth": 8,
+             "bitrate": 9000,
+             "codec": "h264",
+             "displayTitle": "720p",
+             "extendedDisplayTitle": "720p (H.264 Constrained Baseline)",
+             "frameRate": 24,
+             "height": 720,
+             "id": "1",
+             "streamType": 1,
+             "width": 1280,
+             "decision": "transcode",
+             "location": "direct"
+            },
+            {
+             "bitrateMode": "cbr",
+             "channels": 2,
+             "codec": "aac",
+             "displayTitle": "Unknown (AAC Stereo)",
+             "extendedDisplayTitle": "Unknown (AAC Stereo)",
+             "id": "2",
+             "profile": "lc",
+             "samplingRate": 44100,
+             "selected": true,
+             "streamType": 2,
+             "decision": "copy",
+             "location": "direct"
+            }
+           ]
+          }
+         ]
+        }
+       ],
+       "UltraBlurColors": [
+        {
+         "bottomLeft": "482c68",
+         "bottomRight": "8b3e39",
+         "topLeft": "492016",
+         "topRight": "60211c"
+        }
+       ],
+       "Genre": [
+        {
+         "filter": "genre=4",
+         "id": "4",
+         "tag": "Animation"
+        },
+        {
+         "filter": "genre=5",
+         "id": "5",
+         "tag": "Comedy"
+        },
+        {
+         "filter": "genre=6",
+         "id": "6",
+         "tag": "Family"
+        },
+        {
+         "filter": "genre=7",
+         "id": "7",
+         "tag": "Short"
+        }
+       ],
+       "Country": [
+        {
+         "filter": "country=11",
+         "id": "11",
+         "tag": "Netherlands"
+        }
+       ],
+       "Rating": [
+        {
+         "image": "imdb://image.rating",
+         "type": "audience",
+         "value": "6.4"
+        },
+        {
+         "image": "rottentomatoes://image.rating.spilled",
+         "type": "audience",
+         "value": "5.4"
+        },
+        {
+         "image": "themoviedb://image.rating",
+         "type": "audience",
+         "value": "6.5"
+        }
+       ],
+       "Director": [
+        {
+         "filter": "director=8",
+         "id": "8",
+         "tag": "Sacha Goedegebure",
+         "tagKey": "5d7768352e80df001ebde5ab"
+        }
+       ],
+       "Writer": [
+        {
+         "filter": "writer=9",
+         "id": "9",
+         "tag": "Sacha Goedegebure",
+         "tagKey": "5d7768352e80df001ebde5ab"
+        }
+       ],
+       "Producer": [
+        {
+         "filter": "producer=10",
+         "id": "10",
+         "tag": "Ton Roosendaal",
+         "tagKey": "5d776834103a2d001f567902",
+         "thumb": "https://metadata-static.plex.tv/d/people/d0cd238b5a00353ddae78dd55720f7e3.jpg"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "resp_text": null,
+   "resp_len": 3769
+  },
+  {
+   "label": "media-head-1",
+   "method": "HEAD",
+   "path": "/downloadQueue/1/item/1/media",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-1"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 200,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/octet-stream"
+    ],
+    [
+     "Content-Disposition",
+     "attachment; filename=\"1.mp4\"; filename*=UTF-8''1%2Emp4"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Accept-Ranges",
+     "bytes"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Content-Length",
+     "17718338"
+    ]
+   ],
+   "resp_json": null,
+   "resp_text": null,
+   "resp_len": 0
+  },
+  {
+   "label": "media-range-1",
+   "method": "GET",
+   "path": "/downloadQueue/1/item/1/media",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-1"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ],
+    [
+     "Range",
+     "bytes=0-1023"
+    ]
+   ],
+   "status": 206,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/octet-stream"
+    ],
+    [
+     "Content-Disposition",
+     "attachment; filename=\"1.mp4\"; filename*=UTF-8''1%2Emp4"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Accept-Ranges",
+     "bytes"
+    ],
+    [
+     "Content-Range",
+     "bytes 0-1023/17718338"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Content-Length",
+     "1024"
+    ]
+   ],
+   "resp_json": null,
+   "resp_text": null,
+   "resp_len": 1024
+  },
+  {
+   "label": "media-full-1",
+   "method": "GET",
+   "path": "/downloadQueue/1/item/1/media",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-1"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 200,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/octet-stream"
+    ],
+    [
+     "Content-Disposition",
+     "attachment; filename=\"1.mp4\"; filename*=UTF-8''1%2Emp4"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Accept-Ranges",
+     "bytes"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Content-Length",
+     "17718338"
+    ]
+   ],
+   "resp_json": null,
+   "resp_text": null,
+   "resp_len": 17718338
+  },
+  {
+   "label": "delete-one",
+   "method": "DELETE",
+   "path": "/downloadQueue/1/items/1",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-1"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 204,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "resp_json": null,
+   "resp_text": "",
+   "resp_len": 0
+  },
+  {
+   "label": "items-after-delete",
+   "method": "GET",
+   "path": "/downloadQueue/1/items",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-1"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 200,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Content-Length",
+     "985"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "resp_json": {
+    "MediaContainer": {
+     "size": 2,
+     "DownloadQueueItem": [
+      {
+       "id": 2,
+       "queueId": 1,
+       "key": "/library/metadata/4",
+       "status": "available",
+       "DecisionResult": {
+        "generalDecisionCode": 1001,
+        "generalDecisionText": "Direct play not available; Conversion OK.",
+        "directPlayDecisionCode": 3000,
+        "directPlayDecisionText": "App cannot direct play this item. No direct play video profile exists for protocol http, with container mkv, and video codec h264.",
+        "transcodeDecisionCode": 1001,
+        "transcodeDecisionText": "Direct play not available; Conversion OK."
+       }
+      },
+      {
+       "id": 3,
+       "queueId": 1,
+       "key": "/library/metadata/5",
+       "status": "available",
+       "DecisionResult": {
+        "generalDecisionCode": 1001,
+        "generalDecisionText": "Direct play not available; Conversion OK.",
+        "directPlayDecisionCode": 3000,
+        "directPlayDecisionText": "App cannot direct play this item. No direct play video profile exists for protocol http, with container mkv, and video codec h264.",
+        "transcodeDecisionCode": 1001,
+        "transcodeDecisionText": "Direct play not available; Conversion OK."
+       }
+      }
+     ]
+    }
+   },
+   "resp_text": null,
+   "resp_len": 985
+  },
+  {
+   "label": "delete-rest",
+   "method": "DELETE",
+   "path": "/downloadQueue/1/items/2,3,1",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-1"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 204,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "resp_json": null,
+   "resp_text": "",
+   "resp_len": 0
+  },
+  {
+   "label": "items-empty",
+   "method": "GET",
+   "path": "/downloadQueue/1/items",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-1"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 200,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Content-Length",
+     "29"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "resp_json": {
+    "MediaContainer": {
+     "size": 0
+    }
+   },
+   "resp_text": null,
+   "resp_len": 29
+  },
+  {
+   "label": "delete-queue",
+   "method": "DELETE",
+   "path": "/downloadQueue/1",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-1"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 404,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "resp_json": null,
+   "resp_text": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+   "resp_len": 85
+  }
+ ],
+ "direct_play_params": [
+  {
+   "label": "create",
+   "method": "POST",
+   "path": "/downloadQueue",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-2"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 200,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Content-Length",
+     "137"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "resp_json": {
+    "MediaContainer": {
+     "size": 1,
+     "DownloadQueue": [
+      {
+       "id": 2,
+       "owner": 1,
+       "clientIdentifier": "dlq-probe-android-2",
+       "itemCount": 0,
+       "status": "done"
+      }
+     ]
+    }
+   },
+   "resp_text": null,
+   "resp_len": 137
+  },
+  {
+   "label": "create-again",
+   "method": "POST",
+   "path": "/downloadQueue",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-2"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 200,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Content-Length",
+     "137"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "resp_json": {
+    "MediaContainer": {
+     "size": 1,
+     "DownloadQueue": [
+      {
+       "id": 2,
+       "owner": 1,
+       "clientIdentifier": "dlq-probe-android-2",
+       "itemCount": 0,
+       "status": "done"
+      }
+     ]
+    }
+   },
+   "resp_text": null,
+   "resp_len": 137
+  },
+  {
+   "label": "queue",
+   "method": "GET",
+   "path": "/downloadQueue/2",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-2"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 200,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Content-Length",
+     "137"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "resp_json": {
+    "MediaContainer": {
+     "size": 1,
+     "DownloadQueue": [
+      {
+       "id": 2,
+       "owner": 1,
+       "clientIdentifier": "dlq-probe-android-2",
+       "itemCount": 0,
+       "status": "done"
+      }
+     ]
+    }
+   },
+   "resp_text": null,
+   "resp_len": 137
+  },
+  {
+   "label": "add-directplay",
+   "method": "POST",
+   "path": "/downloadQueue/2/add",
+   "query": [
+    [
+     "keys",
+     "/library/metadata/1"
+    ],
+    [
+     "directPlay",
+     "1"
+    ],
+    [
+     "directStream",
+     "1"
+    ],
+    [
+     "X-Plex-Client-Profile-Extra",
+     "add-direct-play-profile(type=videoProfile&protocol=http&container=mkv&videoCodec=h264&audioCodec=aac)"
+    ]
+   ],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-2"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 200,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Content-Length",
+     "86"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "resp_json": {
+    "MediaContainer": {
+     "size": 1,
+     "AddedQueueItems": [
+      {
+       "key": "/library/metadata/1",
+       "id": 4
+      }
+     ]
+    }
+   },
+   "resp_text": null,
+   "resp_len": 86
+  },
+  {
+   "label": "add-directplay-capped",
+   "method": "POST",
+   "path": "/downloadQueue/2/add",
+   "query": [
+    [
+     "keys",
+     "/library/metadata/4"
+    ],
+    [
+     "directPlay",
+     "1"
+    ],
+    [
+     "directStream",
+     "1"
+    ],
+    [
+     "maxVideoBitrate",
+     "720"
+    ],
+    [
+     "videoResolution",
+     "640x360"
+    ],
+    [
+     "X-Plex-Client-Profile-Extra",
+     "add-direct-play-profile(type=videoProfile&protocol=http&container=mkv&videoCodec=h264&audioCodec=aac)"
+    ]
+   ],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-2"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 200,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Content-Length",
+     "86"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "resp_json": {
+    "MediaContainer": {
+     "size": 1,
+     "AddedQueueItems": [
+      {
+       "key": "/library/metadata/4",
+       "id": 5
+      }
+     ]
+    }
+   },
+   "resp_text": null,
+   "resp_len": 86
+  },
+  {
+   "label": "items-0",
+   "method": "GET",
+   "path": "/downloadQueue/2/items",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-2"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 200,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Content-Length",
+     "229"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "resp_json": {
+    "MediaContainer": {
+     "size": 2,
+     "DownloadQueueItem": [
+      {
+       "id": 4,
+       "queueId": 2,
+       "key": "/library/metadata/1",
+       "status": "deciding",
+       "DecisionResult": {}
+      },
+      {
+       "id": 5,
+       "queueId": 2,
+       "key": "/library/metadata/4",
+       "status": "deciding",
+       "DecisionResult": {}
+      }
+     ]
+    }
+   },
+   "resp_text": null,
+   "resp_len": 229
+  },
+  {
+   "label": "items-1",
+   "method": "GET",
+   "path": "/downloadQueue/2/items",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-2"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 200,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Content-Length",
+     "1490"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "resp_json": {
+    "MediaContainer": {
+     "size": 2,
+     "DownloadQueueItem": [
+      {
+       "id": 4,
+       "queueId": 2,
+       "key": "/library/metadata/1",
+       "status": "processing",
+       "DecisionResult": {
+        "generalDecisionCode": 1001,
+        "generalDecisionText": "Direct play not available; Conversion OK.",
+        "directPlayDecisionCode": 3000,
+        "directPlayDecisionText": "This app cannot play this item. The reason is: video.profile limitation applies: constrained baseline != baseline|main|high [list].",
+        "transcodeDecisionCode": 1001,
+        "transcodeDecisionText": "Direct play not available; Conversion OK."
+       },
+       "TranscodeSession": {
+        "key": "/transcode/sessions/d436fccc-443b-4f00-8fb5-ba54d92677c4",
+        "throttled": false,
+        "complete": false,
+        "progress": 43.29999923706055,
+        "size": 7340080,
+        "speed": 5.300000190734863,
+        "error": false,
+        "duration": 30023,
+        "remaining": 3,
+        "context": "static",
+        "sourceVideoCodec": "h264",
+        "sourceAudioCodec": "aac",
+        "videoDecision": "transcode",
+        "audioDecision": "copy",
+        "protocol": "http",
+        "container": "mp4",
+        "videoCodec": "h264",
+        "audioCodec": "aac",
+        "audioChannels": 2,
+        "transcodeHwRequested": false,
+        "offlineTranscode": false
+       }
+      },
+      {
+       "id": 5,
+       "queueId": 2,
+       "key": "/library/metadata/4",
+       "status": "waiting",
+       "DecisionResult": {
+        "generalDecisionCode": 1001,
+        "generalDecisionText": "Direct play not available; Conversion OK.",
+        "directPlayDecisionCode": 3000,
+        "directPlayDecisionText": "This app cannot play this item. The reason is: video.profile limitation applies: constrained baseline != baseline|main|high [list].",
+        "transcodeDecisionCode": 1001,
+        "transcodeDecisionText": "Direct play not available; Conversion OK."
+       }
+      }
+     ]
+    }
+   },
+   "resp_text": null,
+   "resp_len": 1490
+  },
+  {
+   "label": "items-2",
+   "method": "GET",
+   "path": "/downloadQueue/2/items",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-2"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 200,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Content-Length",
+     "1477"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "resp_json": {
+    "MediaContainer": {
+     "size": 2,
+     "DownloadQueueItem": [
+      {
+       "id": 4,
+       "queueId": 2,
+       "key": "/library/metadata/1",
+       "status": "available",
+       "DecisionResult": {
+        "generalDecisionCode": 1001,
+        "generalDecisionText": "Direct play not available; Conversion OK.",
+        "directPlayDecisionCode": 3000,
+        "directPlayDecisionText": "This app cannot play this item. The reason is: video.profile limitation applies: constrained baseline != baseline|main|high [list].",
+        "transcodeDecisionCode": 1001,
+        "transcodeDecisionText": "Direct play not available; Conversion OK."
+       }
+      },
+      {
+       "id": 5,
+       "queueId": 2,
+       "key": "/library/metadata/4",
+       "status": "processing",
+       "DecisionResult": {
+        "generalDecisionCode": 1001,
+        "generalDecisionText": "Direct play not available; Conversion OK.",
+        "directPlayDecisionCode": 3000,
+        "directPlayDecisionText": "This app cannot play this item. The reason is: video.profile limitation applies: constrained baseline != baseline|main|high [list].",
+        "transcodeDecisionCode": 1001,
+        "transcodeDecisionText": "Direct play not available; Conversion OK."
+       },
+       "TranscodeSession": {
+        "key": "/transcode/sessions/9511aeae-8c9f-4ec5-9d28-273d89181223",
+        "throttled": false,
+        "complete": false,
+        "progress": 0.0,
+        "size": 0,
+        "speed": 4.300000190734863,
+        "error": false,
+        "duration": 30023,
+        "remaining": 6,
+        "context": "static",
+        "sourceVideoCodec": "h264",
+        "sourceAudioCodec": "aac",
+        "videoDecision": "transcode",
+        "audioDecision": "transcode",
+        "protocol": "http",
+        "container": "mp4",
+        "videoCodec": "h264",
+        "audioCodec": "aac",
+        "audioChannels": 2,
+        "transcodeHwRequested": false,
+        "offlineTranscode": false
+       }
+      }
+     ]
+    }
+   },
+   "resp_text": null,
+   "resp_len": 1477
+  },
+  {
+   "label": "items-3",
+   "method": "GET",
+   "path": "/downloadQueue/2/items",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-2"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 200,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Content-Length",
+     "1497"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "resp_json": {
+    "MediaContainer": {
+     "size": 2,
+     "DownloadQueueItem": [
+      {
+       "id": 4,
+       "queueId": 2,
+       "key": "/library/metadata/1",
+       "status": "available",
+       "DecisionResult": {
+        "generalDecisionCode": 1001,
+        "generalDecisionText": "Direct play not available; Conversion OK.",
+        "directPlayDecisionCode": 3000,
+        "directPlayDecisionText": "This app cannot play this item. The reason is: video.profile limitation applies: constrained baseline != baseline|main|high [list].",
+        "transcodeDecisionCode": 1001,
+        "transcodeDecisionText": "Direct play not available; Conversion OK."
+       }
+      },
+      {
+       "id": 5,
+       "queueId": 2,
+       "key": "/library/metadata/4",
+       "status": "processing",
+       "DecisionResult": {
+        "generalDecisionCode": 1001,
+        "generalDecisionText": "Direct play not available; Conversion OK.",
+        "directPlayDecisionCode": 3000,
+        "directPlayDecisionText": "This app cannot play this item. The reason is: video.profile limitation applies: constrained baseline != baseline|main|high [list].",
+        "transcodeDecisionCode": 1001,
+        "transcodeDecisionText": "Direct play not available; Conversion OK."
+       },
+       "TranscodeSession": {
+        "key": "/transcode/sessions/9511aeae-8c9f-4ec5-9d28-273d89181223",
+        "throttled": false,
+        "complete": false,
+        "progress": 86.69999694824219,
+        "size": 1048624,
+        "speed": 8.399999618530273,
+        "error": false,
+        "duration": 30023,
+        "remaining": 0,
+        "context": "static",
+        "sourceVideoCodec": "h264",
+        "sourceAudioCodec": "aac",
+        "videoDecision": "transcode",
+        "audioDecision": "transcode",
+        "protocol": "http",
+        "container": "mp4",
+        "videoCodec": "h264",
+        "audioCodec": "aac",
+        "audioChannels": 2,
+        "transcodeHwRequested": false,
+        "offlineTranscode": false
+       }
+      }
+     ]
+    }
+   },
+   "resp_text": null,
+   "resp_len": 1497
+  },
+  {
+   "label": "items-4",
+   "method": "GET",
+   "path": "/downloadQueue/2/items",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-2"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 200,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Content-Length",
+     "987"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "resp_json": {
+    "MediaContainer": {
+     "size": 2,
+     "DownloadQueueItem": [
+      {
+       "id": 4,
+       "queueId": 2,
+       "key": "/library/metadata/1",
+       "status": "available",
+       "DecisionResult": {
+        "generalDecisionCode": 1001,
+        "generalDecisionText": "Direct play not available; Conversion OK.",
+        "directPlayDecisionCode": 3000,
+        "directPlayDecisionText": "This app cannot play this item. The reason is: video.profile limitation applies: constrained baseline != baseline|main|high [list].",
+        "transcodeDecisionCode": 1001,
+        "transcodeDecisionText": "Direct play not available; Conversion OK."
+       }
+      },
+      {
+       "id": 5,
+       "queueId": 2,
+       "key": "/library/metadata/4",
+       "status": "available",
+       "DecisionResult": {
+        "generalDecisionCode": 1001,
+        "generalDecisionText": "Direct play not available; Conversion OK.",
+        "directPlayDecisionCode": 3000,
+        "directPlayDecisionText": "This app cannot play this item. The reason is: video.profile limitation applies: constrained baseline != baseline|main|high [list].",
+        "transcodeDecisionCode": 1001,
+        "transcodeDecisionText": "Direct play not available; Conversion OK."
+       }
+      }
+     ]
+    }
+   },
+   "resp_text": null,
+   "resp_len": 987
+  },
+  {
+   "label": "item-4",
+   "method": "GET",
+   "path": "/downloadQueue/2/item/4",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-2"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 404,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "resp_json": null,
+   "resp_text": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+   "resp_len": 85
+  },
+  {
+   "label": "decision-4",
+   "method": "GET",
+   "path": "/downloadQueue/2/item/4/decision",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-2"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 200,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "3770"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "resp_json": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": "1",
+     "directPlayDecisionCode": 3000,
+     "directPlayDecisionText": "This app cannot play this item. The reason is: video.profile limitation applies: constrained baseline != baseline|main|high [list].",
+     "generalDecisionCode": 1001,
+     "generalDecisionText": "Direct play not available; Conversion OK.",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": "1",
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "26ae71b8-fb18-4c6f-b56b-82a231b2add9",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": "1758205129",
+     "resourceSession": "dlq-probe-android-2",
+     "transcodeDecisionCode": 1001,
+     "transcodeDecisionText": "Direct play not available; Conversion OK.",
+     "Metadata": [
+      {
+       "addedAt": 1792242736,
+       "art": "/library/metadata/1/art/1792242832",
+       "audienceRating": 5.4,
+       "audienceRatingImage": "rottentomatoes://image.rating.spilled",
+       "contentRating": "G",
+       "duration": 30023,
+       "guid": "plex://movie/5d7768352e80df001ebde4c9",
+       "hasPremiumPrimaryExtra": "1",
+       "key": "/library/metadata/1",
+       "librarySectionID": "1",
+       "librarySectionKey": "/library/sections/1",
+       "librarySectionTitle": "Movies",
+       "originallyAvailableAt": "2008-04-10",
+       "ratingKey": "1",
+       "slug": "big-buck-bunny",
+       "studio": "Blender Foundation",
+       "summary": "In the thick and undisturbed forest, sparkling spring has finally arrived, and all creatures, big or small, enjoy life. However, Big Buck Bunny--an enormous, fluffy, and utterly adorable rabbit--is facing a crisis: the ruthless, loud, bullying gang of a flying squirrel is heartlessly harassing him, determined to squash his happiness. Now, this means war. But who will win?",
+       "tagline": "Don't Mess with the Bunny.",
+       "thumb": "/library/metadata/1/thumb/1792242832",
+       "title": "Big Buck Bunny",
+       "type": "movie",
+       "updatedAt": 1792242832,
+       "year": 2008,
+       "Media": [
+        {
+         "audioProfile": "lc",
+         "id": "1",
+         "videoProfile": "constrained baseline",
+         "audioChannels": 2,
+         "audioCodec": "aac",
+         "bitrate": 9000,
+         "container": "mp4",
+         "duration": 30023,
+         "height": 720,
+         "optimizedForStreaming": true,
+         "videoCodec": "h264",
+         "videoFrameRate": "24p",
+         "videoResolution": "720p",
+         "width": 1280,
+         "selected": true,
+         "Part": [
+          {
+           "audioProfile": "lc",
+           "id": "1",
+           "videoProfile": "constrained baseline",
+           "bitrate": 9000,
+           "container": "mp4",
+           "duration": 30023,
+           "height": 720,
+           "optimizedForStreaming": true,
+           "width": 1280,
+           "decision": "transcode",
+           "selected": true,
+           "Stream": [
+            {
+             "bitDepth": 8,
+             "bitrate": 9000,
+             "codec": "h264",
+             "displayTitle": "720p",
+             "extendedDisplayTitle": "720p (H.264 Constrained Baseline)",
+             "frameRate": 24,
+             "height": 720,
+             "id": "1",
+             "streamType": 1,
+             "width": 1280,
+             "decision": "transcode",
+             "location": "direct"
+            },
+            {
+             "bitrateMode": "cbr",
+             "channels": 2,
+             "codec": "aac",
+             "displayTitle": "Unknown (AAC Stereo)",
+             "extendedDisplayTitle": "Unknown (AAC Stereo)",
+             "id": "2",
+             "profile": "lc",
+             "samplingRate": 44100,
+             "selected": true,
+             "streamType": 2,
+             "decision": "copy",
+             "location": "direct"
+            }
+           ]
+          }
+         ]
+        }
+       ],
+       "UltraBlurColors": [
+        {
+         "bottomLeft": "482c68",
+         "bottomRight": "8b3e39",
+         "topLeft": "492016",
+         "topRight": "60211c"
+        }
+       ],
+       "Genre": [
+        {
+         "filter": "genre=4",
+         "id": "4",
+         "tag": "Animation"
+        },
+        {
+         "filter": "genre=5",
+         "id": "5",
+         "tag": "Comedy"
+        },
+        {
+         "filter": "genre=6",
+         "id": "6",
+         "tag": "Family"
+        },
+        {
+         "filter": "genre=7",
+         "id": "7",
+         "tag": "Short"
+        }
+       ],
+       "Country": [
+        {
+         "filter": "country=11",
+         "id": "11",
+         "tag": "Netherlands"
+        }
+       ],
+       "Rating": [
+        {
+         "image": "imdb://image.rating",
+         "type": "audience",
+         "value": "6.4"
+        },
+        {
+         "image": "rottentomatoes://image.rating.spilled",
+         "type": "audience",
+         "value": "5.4"
+        },
+        {
+         "image": "themoviedb://image.rating",
+         "type": "audience",
+         "value": "6.5"
+        }
+       ],
+       "Director": [
+        {
+         "filter": "director=8",
+         "id": "8",
+         "tag": "Sacha Goedegebure",
+         "tagKey": "5d7768352e80df001ebde5ab"
+        }
+       ],
+       "Writer": [
+        {
+         "filter": "writer=9",
+         "id": "9",
+         "tag": "Sacha Goedegebure",
+         "tagKey": "5d7768352e80df001ebde5ab"
+        }
+       ],
+       "Producer": [
+        {
+         "filter": "producer=10",
+         "id": "10",
+         "tag": "Ton Roosendaal",
+         "tagKey": "5d776834103a2d001f567902",
+         "thumb": "https://metadata-static.plex.tv/d/people/d0cd238b5a00353ddae78dd55720f7e3.jpg"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "resp_text": null,
+   "resp_len": 3770
+  },
+  {
+   "label": "media-head-4",
+   "method": "HEAD",
+   "path": "/downloadQueue/2/item/4/media",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-2"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 200,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/octet-stream"
+    ],
+    [
+     "Content-Disposition",
+     "attachment; filename=\"4.mp4\"; filename*=UTF-8''4%2Emp4"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Accept-Ranges",
+     "bytes"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Content-Length",
+     "17718330"
+    ]
+   ],
+   "resp_json": null,
+   "resp_text": null,
+   "resp_len": 0
+  },
+  {
+   "label": "media-range-4",
+   "method": "GET",
+   "path": "/downloadQueue/2/item/4/media",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-2"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ],
+    [
+     "Range",
+     "bytes=0-1023"
+    ]
+   ],
+   "status": 206,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/octet-stream"
+    ],
+    [
+     "Content-Disposition",
+     "attachment; filename=\"4.mp4\"; filename*=UTF-8''4%2Emp4"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Accept-Ranges",
+     "bytes"
+    ],
+    [
+     "Content-Range",
+     "bytes 0-1023/17718330"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Content-Length",
+     "1024"
+    ]
+   ],
+   "resp_json": null,
+   "resp_text": null,
+   "resp_len": 1024
+  },
+  {
+   "label": "media-full-4",
+   "method": "GET",
+   "path": "/downloadQueue/2/item/4/media",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-2"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 200,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/octet-stream"
+    ],
+    [
+     "Content-Disposition",
+     "attachment; filename=\"4.mp4\"; filename*=UTF-8''4%2Emp4"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Accept-Ranges",
+     "bytes"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Content-Length",
+     "17718330"
+    ]
+   ],
+   "resp_json": null,
+   "resp_text": null,
+   "resp_len": 17718330
+  },
+  {
+   "label": "item-5",
+   "method": "GET",
+   "path": "/downloadQueue/2/item/5",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-2"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 404,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "resp_json": null,
+   "resp_text": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+   "resp_len": 85
+  },
+  {
+   "label": "decision-5",
+   "method": "GET",
+   "path": "/downloadQueue/2/item/5/decision",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-2"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 200,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "8590"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "resp_json": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": "1",
+     "directPlayDecisionCode": 3000,
+     "directPlayDecisionText": "This app cannot play this item. The reason is: video.profile limitation applies: constrained baseline != baseline|main|high [list].",
+     "generalDecisionCode": 1001,
+     "generalDecisionText": "Direct play not available; Conversion OK.",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": "2",
+     "librarySectionTitle": "TV Shows",
+     "librarySectionUUID": "d834186e-8fe4-4a25-9c76-e70f57b4e84d",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": "1758205129",
+     "resourceSession": "dlq-probe-android-2",
+     "transcodeDecisionCode": 1001,
+     "transcodeDecisionText": "Direct play not available; Conversion OK.",
+     "Metadata": [
+      {
+       "addedAt": 1792242740,
+       "art": "/library/metadata/3/art/1792242833",
+       "audienceRating": 7.6,
+       "audienceRatingImage": "themoviedb://image.rating",
+       "contentRating": "TV-14",
+       "duration": 30023,
+       "grandparentArt": "/library/metadata/2/art/1792242833",
+       "grandparentGuid": "plex://show/5d9c086c7d06d9001ffd27aa",
+       "grandparentKey": "/library/metadata/2",
+       "grandparentRatingKey": "2",
+       "grandparentSlug": "firefly",
+       "grandparentTheme": "/library/metadata/2/theme/1792242833",
+       "grandparentThumb": "/library/metadata/2/thumb/1792242833",
+       "grandparentTitle": "Firefly",
+       "guid": "plex://episode/5d9c127e4eefaa001f6449c2",
+       "index": 1,
+       "key": "/library/metadata/4",
+       "librarySectionID": "2",
+       "librarySectionKey": "/library/sections/2",
+       "librarySectionTitle": "TV Shows",
+       "originallyAvailableAt": "2002-09-20",
+       "parentGuid": "plex://season/602e67e766dfdb002c0a1b5b",
+       "parentIndex": 1,
+       "parentKey": "/library/metadata/3",
+       "parentRatingKey": "3",
+       "parentThumb": "/library/metadata/3/thumb/1792242833",
+       "parentTitle": "Season 1",
+       "ratingKey": "4",
+       "summary": "The crew of Serenity take on a train heist commissioned by a crime lord. They steal the goods, only to find it is medicine that's desperately needed by the town.",
+       "thumb": "/library/metadata/4/thumb/1792242833",
+       "title": "The Train Job",
+       "titleSort": "Train Job",
+       "type": "episode",
+       "updatedAt": 1792242833,
+       "year": 2002,
+       "Media": [
+        {
+         "audioProfile": "lc",
+         "id": "2",
+         "videoProfile": "constrained baseline",
+         "audioChannels": 2,
+         "audioCodec": "aac",
+         "bitrate": 425,
+         "container": "mp4",
+         "duration": 30023,
+         "height": 270,
+         "optimizedForStreaming": true,
+         "videoCodec": "h264",
+         "videoFrameRate": "24p",
+         "videoResolution": "SD",
+         "width": 480,
+         "selected": true,
+         "Part": [
+          {
+           "audioProfile": "lc",
+           "id": "2",
+           "videoProfile": "constrained baseline",
+           "bitrate": 425,
+           "container": "mp4",
+           "duration": 30023,
+           "height": 270,
+           "optimizedForStreaming": true,
+           "width": 480,
+           "decision": "transcode",
+           "selected": true,
+           "Stream": [
+            {
+             "bitDepth": 8,
+             "bitrate": 300,
+             "codec": "h264",
+             "displayTitle": "720p",
+             "extendedDisplayTitle": "720p (H.264 Constrained Baseline)",
+             "frameRate": 24,
+             "height": 270,
+             "id": "3",
+             "streamType": 1,
+             "width": 480,
+             "decision": "transcode",
+             "location": "direct"
+            },
+            {
+             "bitrate": 125,
+             "bitrateMode": "cbr",
+             "channels": 2,
+             "codec": "aac",
+             "displayTitle": "Unknown (AAC Stereo)",
+             "extendedDisplayTitle": "Unknown (AAC Stereo)",
+             "id": "4",
+             "selected": true,
+             "streamType": 2,
+             "decision": "transcode",
+             "location": "direct"
+            }
+           ]
+          }
+         ]
+        }
+       ],
+       "UltraBlurColors": [
+        {
+         "bottomLeft": "8c3b33",
+         "bottomRight": "210b05",
+         "topLeft": "4d180f",
+         "topRight": "45240b"
+        }
+       ],
+       "Rating": [
+        {
+         "image": "imdb://image.rating",
+         "type": "audience",
+         "value": "8.3"
+        },
+        {
+         "image": "themoviedb://image.rating",
+         "type": "audience",
+         "value": "7.6"
+        }
+       ],
+       "Director": [
+        {
+         "filter": "director=155",
+         "id": "155",
+         "tag": "Joss Whedon",
+         "tagKey": "5d776828880197001ec90e8f",
+         "thumb": "https://metadata-static.plex.tv/3/people/35ab0f8e713edf5306373298f75629c0.jpg"
+        }
+       ],
+       "Writer": [
+        {
+         "filter": "writer=156",
+         "id": "156",
+         "tag": "Tim Minear",
+         "tagKey": "5d7769ae7a53e9001e6ed3b4",
+         "thumb": "https://metadata-static.plex.tv/3/people/3f8e6f9871b1f895e2c2d8de196bfdae.jpg"
+        },
+        {
+         "filter": "writer=157",
+         "id": "157",
+         "tag": "Joss Whedon",
+         "tagKey": "5d776828880197001ec90e8f",
+         "thumb": "https://metadata-static.plex.tv/3/people/35ab0f8e713edf5306373298f75629c0.jpg"
+        }
+       ],
+       "Role": [
+        {
+         "filter": "actor=26",
+         "id": "26",
+         "role": "Mal Reynolds",
+         "tag": "Nathan Fillion",
+         "tagKey": "5d7768286f4521001ea9945c",
+         "thumb": "https://metadata-static.plex.tv/8/people/8e60c5a6412557c52b32ab5e85a2ce34.jpg"
+        },
+        {
+         "filter": "actor=27",
+         "id": "27",
+         "role": "Zo\u00eb Washburne",
+         "tag": "Gina Torres",
+         "tagKey": "5d776827eb5d26001f1dd912",
+         "thumb": "https://metadata-static.plex.tv/2/people/26bf93701cab6ff4d2f41c1827f5b927.jpg"
+        },
+        {
+         "filter": "actor=28",
+         "id": "28",
+         "role": "Hoban Washburne",
+         "tag": "Alan Tudyk",
+         "tagKey": "5d776826eb5d26001f1dd578",
+         "thumb": "https://metadata-static.plex.tv/0/people/0f92021d49ee0e6cae1e939480e88e6e.jpg"
+        },
+        {
+         "filter": "actor=29",
+         "id": "29",
+         "role": "Inara Serra",
+         "tag": "Morena Baccarin",
+         "tagKey": "5d77683a85719b001f3a4ce4",
+         "thumb": "https://metadata-static.plex.tv/e/people/edf22c1f1824209f6a6bf9f84041fc00.jpg"
+        },
+        {
+         "filter": "actor=30",
+         "id": "30",
+         "role": "Jayne Cobb",
+         "tag": "Adam Baldwin",
+         "tagKey": "5d77682585719b001f3a05e3",
+         "thumb": "https://metadata-static.plex.tv/6/people/6f9025460345b381f41a38d6c771bf2d.jpg"
+        },
+        {
+         "filter": "actor=31",
+         "id": "31",
+         "role": "Kaylee Frye",
+         "tag": "Jewel Staite",
+         "tagKey": "5d77683f6f4521001ea9dced",
+         "thumb": "https://metadata-static.plex.tv/f/people/fee66163823b52bcf3bcef31097d4e0c.jpg"
+        },
+        {
+         "filter": "actor=32",
+         "id": "32",
+         "role": "Simon Tam",
+         "tag": "Sean Maher",
+         "tagKey": "5d77683f6f4521001ea9dcee",
+         "thumb": "https://metadata-static.plex.tv/2/people/2e7061151c60eb5bdb900736f3d71472.jpg"
+        },
+        {
+         "filter": "actor=33",
+         "id": "33",
+         "role": "River Tam",
+         "tag": "Summer Glau",
+         "tagKey": "5d77683f6f4521001ea9dcec",
+         "thumb": "https://metadata-static.plex.tv/c/people/caf83f1c50da149c1f6931ef3ea83b42.jpg"
+        },
+        {
+         "filter": "actor=34",
+         "id": "34",
+         "role": "Derrial Book",
+         "tag": "Ron Glass",
+         "tagKey": "5d77683a961905001eb95063",
+         "thumb": "https://metadata-static.plex.tv/6/people/683d28edb6c360f695fa1b9a055a8b68.jpg"
+        },
+        {
+         "filter": "actor=35",
+         "id": "35",
+         "role": "Adelai Niska",
+         "tag": "Michael Fairman",
+         "tagKey": "5d776829961905001eb91b0d",
+         "thumb": "https://metadata-static.plex.tv/f/people/f64df07695a7d96d61de138bb6d111d9.jpg"
+        },
+        {
+         "filter": "actor=43",
+         "id": "43",
+         "role": "Lund",
+         "tag": "Tom Towles",
+         "tagKey": "5d77682485719b001f3a04e8",
+         "thumb": "https://metadata-static.plex.tv/7/people/776835ac17545486b7ae7d23a947424b.jpg"
+        },
+        {
+         "filter": "actor=44",
+         "id": "44",
+         "role": "Crow",
+         "tag": "Andrew Bryniarski",
+         "tagKey": "5d776826999c64001ec2c378",
+         "thumb": "https://metadata-static.plex.tv/4/people/4ffa741062f5ff131a04f0c1e8b5e359.jpg"
+        },
+        {
+         "filter": "actor=45",
+         "id": "45",
+         "role": "Sheriff Bourne",
+         "tag": "Gregg Henry",
+         "tagKey": "5d7768262e80df001ebdce33",
+         "thumb": "https://metadata-static.plex.tv/5/people/55dd0b4369301cf8772905128d84b905.jpg"
+        },
+        {
+         "filter": "actor=79",
+         "id": "79",
+         "role": "Deputy",
+         "tag": "Valerie Red-Horse",
+         "tagKey": "5d776b407a53e9001e71f57d",
+         "thumb": "https://metadata-static.plex.tv/people/5d776b407a53e9001e71f57d.jpg"
+        },
+        {
+         "filter": "actor=80",
+         "id": "80",
+         "role": "Ensign",
+         "tag": "Lina Patel",
+         "tagKey": "5d776e567a53e9001e773c02",
+         "thumb": "https://metadata-static.plex.tv/c/people/c9834f88628c019069bba0d688b0ad51.jpg"
+        },
+        {
+         "filter": "actor=81",
+         "id": "81",
+         "role": "Officer",
+         "tag": "Kevin Will",
+         "tagKey": "5d776829999c64001ec2cf05",
+         "thumb": "https://metadata-static.plex.tv/e/people/ee21bf4af8451f8948f676247355011b.jpg"
+        },
+        {
+         "filter": "actor=82",
+         "id": "82",
+         "role": "Fed",
+         "tag": "Eric Lange",
+         "tagKey": "5d776858961905001eb998fc",
+         "thumb": "https://metadata-static.plex.tv/0/people/0cbf24b70683c1c46346eb41923f8f7f.jpg"
+        },
+        {
+         "filter": "actor=83",
+         "id": "83",
+         "role": "Henchman",
+         "tag": "David Reynolds",
+         "tagKey": "62fb7cb4aa71b877e94f7981",
+         "thumb": "https://metadata-static.plex.tv/7/people/752dbb16506514674cf95307ef51fb0b.jpg"
+        },
+        {
+         "filter": "actor=36",
+         "id": "36",
+         "role": "Man",
+         "tag": "Jeff Ricketts",
+         "tagKey": "5d7768396f4521001ea9cff5",
+         "thumb": "https://metadata-static.plex.tv/people/5d7768396f4521001ea9cff5.jpg"
+        },
+        {
+         "filter": "actor=37",
+         "id": "37",
+         "role": "Other Man",
+         "tag": "Dennis Cockrum",
+         "tagKey": "5d77682c151a60001f24bf5a",
+         "thumb": "https://metadata-static.plex.tv/people/5d77682c151a60001f24bf5a.jpg"
+        },
+        {
+         "filter": "actor=84",
+         "id": "84",
+         "role": "Immigrant Woman",
+         "tag": "Rene Hamilton",
+         "tagKey": "5d776c84fb0d55001f589ddf"
+        },
+        {
+         "filter": "actor=85",
+         "id": "85",
+         "role": "Immigrant Woman #2",
+         "tag": "Michelle Ferrara",
+         "tagKey": "5f3fdf14bf3e560040b27aa1"
+        },
+        {
+         "filter": "actor=109",
+         "id": "109",
+         "role": "Bellydancer (uncredited)",
+         "tag": "Melody White",
+         "tagKey": "5f4005f903883a0040b0d577"
+        },
+        {
+         "filter": "actor=110",
+         "id": "110",
+         "role": "Bar Guy, Henchman (uncredited)",
+         "tag": "Rick Williamson",
+         "tagKey": "5d77683f6f4521001ea9dd05",
+         "thumb": "https://metadata-static.plex.tv/f/people/fbfff8e0d29e74ee43818f90b1d47e83.jpg"
+        }
+       ],
+       "Producer": [
+        {
+         "filter": "producer=158",
+         "id": "158",
+         "tag": "Gareth Davies",
+         "tagKey": "5dcd495990bd5d00202cec32"
+        },
+        {
+         "filter": "producer=159",
+         "id": "159",
+         "tag": "Ben Edlund",
+         "tagKey": "5d77683161141d001fb14ba1",
+         "thumb": "https://metadata-static.plex.tv/c/people/c9498f9430dd6a652d0a38f7b9f20ba8.jpg"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "resp_text": null,
+   "resp_len": 8590
+  },
+  {
+   "label": "media-head-5",
+   "method": "HEAD",
+   "path": "/downloadQueue/2/item/5/media",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-2"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 200,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/octet-stream"
+    ],
+    [
+     "Content-Disposition",
+     "attachment; filename=\"5.mp4\"; filename*=UTF-8''5%2Emp4"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Accept-Ranges",
+     "bytes"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Content-Length",
+     "1363758"
+    ]
+   ],
+   "resp_json": null,
+   "resp_text": null,
+   "resp_len": 0
+  },
+  {
+   "label": "media-range-5",
+   "method": "GET",
+   "path": "/downloadQueue/2/item/5/media",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-2"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ],
+    [
+     "Range",
+     "bytes=0-1023"
+    ]
+   ],
+   "status": 206,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/octet-stream"
+    ],
+    [
+     "Content-Disposition",
+     "attachment; filename=\"5.mp4\"; filename*=UTF-8''5%2Emp4"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Accept-Ranges",
+     "bytes"
+    ],
+    [
+     "Content-Range",
+     "bytes 0-1023/1363758"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Content-Length",
+     "1024"
+    ]
+   ],
+   "resp_json": null,
+   "resp_text": null,
+   "resp_len": 1024
+  },
+  {
+   "label": "media-full-5",
+   "method": "GET",
+   "path": "/downloadQueue/2/item/5/media",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-2"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 200,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/octet-stream"
+    ],
+    [
+     "Content-Disposition",
+     "attachment; filename=\"5.mp4\"; filename*=UTF-8''5%2Emp4"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Accept-Ranges",
+     "bytes"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Content-Length",
+     "1363758"
+    ]
+   ],
+   "resp_json": null,
+   "resp_text": null,
+   "resp_len": 1363758
+  },
+  {
+   "label": "delete-one",
+   "method": "DELETE",
+   "path": "/downloadQueue/2/items/4",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-2"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 204,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "resp_json": null,
+   "resp_text": "",
+   "resp_len": 0
+  },
+  {
+   "label": "items-after-delete",
+   "method": "GET",
+   "path": "/downloadQueue/2/items",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-2"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 200,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Content-Length",
+     "519"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "resp_json": {
+    "MediaContainer": {
+     "size": 1,
+     "DownloadQueueItem": [
+      {
+       "id": 5,
+       "queueId": 2,
+       "key": "/library/metadata/4",
+       "status": "available",
+       "DecisionResult": {
+        "generalDecisionCode": 1001,
+        "generalDecisionText": "Direct play not available; Conversion OK.",
+        "directPlayDecisionCode": 3000,
+        "directPlayDecisionText": "This app cannot play this item. The reason is: video.profile limitation applies: constrained baseline != baseline|main|high [list].",
+        "transcodeDecisionCode": 1001,
+        "transcodeDecisionText": "Direct play not available; Conversion OK."
+       }
+      }
+     ]
+    }
+   },
+   "resp_text": null,
+   "resp_len": 519
+  },
+  {
+   "label": "delete-rest",
+   "method": "DELETE",
+   "path": "/downloadQueue/2/items/5",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-2"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 204,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "resp_json": null,
+   "resp_text": "",
+   "resp_len": 0
+  },
+  {
+   "label": "items-empty",
+   "method": "GET",
+   "path": "/downloadQueue/2/items",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-2"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 200,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Content-Length",
+     "29"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "resp_json": {
+    "MediaContainer": {
+     "size": 0
+    }
+   },
+   "resp_text": null,
+   "resp_len": 29
+  },
+  {
+   "label": "delete-queue",
+   "method": "DELETE",
+   "path": "/downloadQueue/2",
+   "query": [],
+   "req_headers": [
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "dlq-probe-android-2"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Model",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "dlq probe"
+    ],
+    [
+     "X-Plex-Provides",
+     "player,controller,sync-target"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ]
+   ],
+   "status": 404,
+   "resp_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "resp_json": null,
+   "resp_text": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+   "resp_len": 85
+  }
+ ]
+}

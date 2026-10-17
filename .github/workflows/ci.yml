@@ -78,6 +78,7 @@ jobs:
           curl -sSfL "${JELLYFIN_FFMPEG}_linux64-gpl.tar.xz" | tar -xJ -C "$RUNNER_TEMP/ffmpeg"
           export REX_TRANSCODER="$RUNNER_TEMP/ffmpeg/ffmpeg" PATH="$RUNNER_TEMP/ffmpeg:$PATH"
           python3 tests/test_native_transcode.py
+          python3 tests/test_download_queue.py
 
       - uses: actions/upload-artifact@v4
         with:
@@ -171,6 +172,7 @@ jobs:
           curl -sSfL "${JELLYFIN_FFMPEG}_macarm64-gpl.tar.xz" | tar -xJ -C "$RUNNER_TEMP/ffmpeg"
           export REX_TRANSCODER="$RUNNER_TEMP/ffmpeg/ffmpeg" PATH="$RUNNER_TEMP/ffmpeg:$PATH"
           python3 tests/test_native_transcode.py
+          python3 tests/test_download_queue.py
 
       - uses: actions/upload-artifact@v4
         with:

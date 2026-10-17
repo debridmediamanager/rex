@@ -31,6 +31,7 @@ mod children;
 mod collections;
 mod detail;
 mod diskcache;
+mod downloads;
 mod edit;
 mod frames;
 mod framework;
@@ -517,6 +518,12 @@ pub struct Runtime {
     pending_segment: Option<universal::SegmentPlan>,
     /// The video transcoder, only with `REX_TRANSCODER` (`universal.rs`).
     transcoder: Option<Arc<universal::Transcoder>>,
+    /// The download queue's items and their conversions (`downloads.rs`).
+    downloads: Arc<Mutex<downloads::Downloads>>,
+    /// The plan a download's decision chose, handed from `route_decision` to the queue.
+    download_plan: Option<universal::Plan>,
+    /// A downloaded file's bytes, streamed after the runtime lock is released.
+    pending_download: Option<downloads::FileRead>,
     /// A remote artwork url the router answered with (`_serve_image`); fetched, cached,
     /// after the lock is released, so a slow image host never holds up the API.
     pending_image: Option<String>,
@@ -790,6 +797,9 @@ impl Runtime {
             pending_file_checks: None,
             pending_segment: None,
             transcoder: universal::Transcoder::from_env(options.port),
+            downloads: Arc::new(Mutex::new(downloads::Downloads::default())),
+            download_plan: None,
+            pending_download: None,
             pending_image: None,
             pending_claim: None,
             plextv,
@@ -10829,9 +10839,15 @@ impl Runtime {
         // With an encoder, a refusal rex can convert is the reference's 3000/1001/1001
         // (`tests/fixtures/transcode/`): the client goes on to `start.m3u8`.
         let converting = match &refusal {
-            Some(_) if !all_parts => self.transcode_plan(query, headers, &key, &selected_for_engine, &profile_name, protocol),
+            Some(_) if !all_parts => {
+                let wire = if query.contains_key(downloads::DOWNLOAD_MARK) { "static" } else { protocol };
+                self.transcode_plan(query, headers, &key, &selected_for_engine, &profile_name, wire)
+            }
             _ => None,
         };
+        if query.contains_key(downloads::DOWNLOAD_MARK) {
+            self.download_plan = converting.clone();
+        }
         let capped = converting.as_ref().is_some_and(|plan| self.over_conversion_cap(plan));
         let converting = converting.filter(|_| !capped);
         if let Some(refusal) = refusal.clone().filter(|_| converting.is_none()) {
@@ -13151,6 +13167,15 @@ impl Runtime {
         let Some(queue) = queue else {
             return Response::error(404, "rex: not found");
         };
+        let id = segments[0];
+        match (request.method.as_str(), &segments[1..]) {
+            ("POST", ["add"]) => return self.download_add(id, request, query),
+            ("GET", ["items"]) => return self.download_items(id),
+            ("DELETE", ["items", ids]) => return self.download_delete(id, ids),
+            ("GET", ["item", item, "decision"]) => return self.download_decision(id, item, request),
+            ("GET" | "HEAD", ["item", item, "media"]) => return self.download_media(id, item, request),
+            _ => {}
+        }
         if !matches!(request.method.as_str(), "GET" | "HEAD") {
             return Response::error(404, "rex: not found");
         }
@@ -23313,6 +23338,7 @@ fn handle_connection<S: Read + Write + PollRead>(
             .get("X-Plex-Container-Size")
             .is_some_and(String::is_empty);
         let mut part_plan = None;
+        let mut download = None;
         let mut response = if invalid_absolute_target || invalid_dot_path {
             Response::error(400, "rex: bad request")
         } else if malformed_query {
@@ -23326,6 +23352,7 @@ fn handle_connection<S: Read + Write + PollRead>(
             guard.pending_part = None;
             guard.pending_file_checks = None;
             guard.pending_segment = None;
+            guard.pending_download = None;
             guard.pending_image = None;
             guard.pending_claim = None;
             guard.refused_for_token = false;
@@ -23347,6 +23374,7 @@ fn handle_connection<S: Read + Write + PollRead>(
             part_plan = guard.pending_part.take();
             let file_checks = guard.pending_file_checks.take();
             let segment = guard.pending_segment.take();
+            download = guard.pending_download.take();
             let image = guard.pending_image.take();
             let claim = guard.pending_claim.take();
             if guard.refused_for_token {
@@ -23484,9 +23512,13 @@ fn handle_connection<S: Read + Write + PollRead>(
         let envelope = wire::Wire::of(&request, &request_path, &query);
         let owner = sessions::ByteOwner::of(&request);
         sessions::BYTE_OWNER.with(|cell| *cell.borrow_mut() = owner.clone());
-        let still_open = match part_plan {
-            Some(plan) if response.status == 200 => {
+        let still_open = match (part_plan, download) {
+            (Some(plan), _) if response.status == 200 => {
                 serve_part_proxy(&mut stream, &runtime, response.clone(), plan, &envelope, keep)?;
+                false
+            }
+            (_, Some(read)) if matches!(response.status, 200 | 206) => {
+                downloads::serve_file(&mut stream, &response, read, &envelope, keep)?;
                 false
             }
             _ => {

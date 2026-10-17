@@ -12974,3 +12974,40 @@ Two traps met on the way:
 
 The test server's device was deleted from the account afterwards, and the rig, tunnel and
 viewer removed.
+
+## Offline downloads: the download queue, measured (2026-10-17)
+
+A throwaway PMS 1.42.2.10156-f737b826c on the test host, claimed to an owner whose Plex Pass
+is **inactive**, answered Plex for Android 2026.19.1's download flow (decompiled bundle:
+`createDownloadQueue`, `addItemToDownloadQueue`, `fetchDownloadQueueItems`, `fetchDecision`,
+`getMediaPath`, `removeDownloadQueueItems`) with the app's headers and the token in the query
+(`tests/fixtures/download_queue_s1422.json`):
+
+- **No Plex Pass is needed** for the server to download: every item came out `available`.
+- `POST /downloadQueue/{id}/add?keys=a,b&<decision params>` answers `AddedQueueItems
+  [{key, id}]` at once; item ids count up across queues, and a key the queue already holds
+  answers that item's id again.
+- `GET .../items` lists `{id, queueId, key, status, DecisionResult}`. Status runs `deciding`
+  (empty `DecisionResult`) -> `waiting` -> `processing` (plus a `TranscodeSession`,
+  `context: static`, `container: mp4`, `protocol: http`) -> `available`, **one item at a
+  time**.
+- Every item converts to one mp4 file: the Android profile's `static` VideoProfile target.
+  Neither `directPlay=1&directStream=1` nor an `X-Plex-Client-Profile-Extra` allowing mkv in
+  the add's query made an h264/aac mkv download as itself. The decision is 3000 "No direct play
+  video profile exists for protocol http, with container mkv, and video codec h264." then
+  1001/1001. Its Media is `container: mp4`, `optimizedForStreaming`, with **no** `protocol`,
+  and the streams are `location: direct`.
+- `GET .../item/{id}/media` is `application/octet-stream`, `Content-Disposition: attachment;
+  filename="<id>.mp4"`, with `Accept-Ranges`, 206 and `Content-Range` for a Range read.
+  `GET .../item/{id}` is a 404, `DELETE .../items/{a,b}` a 204, and `DELETE /downloadQueue/{id}`
+  a 404.
+
+rex (`runtime/downloads.rs`) answers the same shapes. A download's plan is the transcoder's,
+targeted at the profile's `static` target (`Protocol::File`), and runs as one unthrottled,
+never-reaped FFmpeg writing `<REX_TRANSCODE_DIR>/download-<id>/media.mp4`. Not measured:
+- what the reference answers without an encoder (rex: an `error` item carrying its
+  2000/4005 refusal)
+- a direct-play download (rex serves the source bytes)
+- whether items survive a restart (rex keeps them in memory, and a start clears the transcode
+  directory)
+- a real phone saving and playing the file
