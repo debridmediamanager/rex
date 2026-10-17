@@ -376,6 +376,17 @@ def replay_session_gate(port, token):
               status == exchange["status"], "%s, the reference %s" % (status, exchange["status"]))
 
 
+def wait_for_log(path, pattern, timeout=60):
+    """The first group of `pattern` once the server log has it."""
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        found = re.search(pattern, open(path).read())
+        if found:
+            return found.group(1)
+        time.sleep(0.2)
+    return None
+
+
 def decision(port, key, session, **extra):
     status, _, body = get(port, "/video/:/transcode/universal/decision", plex_web_query(key, session, **extra))
     return status, json.loads(body)["MediaContainer"] if status == 200 else {}
@@ -529,6 +540,26 @@ def main():
     streams = probe(MEDIA["subs.mkv"])["streams"]
     items.append(row("6", "Subs", "subs.mkv", streams, os.path.getsize(MEDIA["subs.mkv"]), DURATION,
                      subtitle=next(s for s in streams if s["codec_type"] == "subtitle")))
+    # HDR: a PQ-tagged 10-bit HEVC (HDR10), and a stand-in for a Dolby Vision profile 5
+    # release carrying the real P5 clip's probe fields (tests/fixtures/transcode/hdr_probes.json):
+    # P5 signals no transfer at all, so only its DOVI fields say it needs tonemapping.
+    hdr_probes = json.load(open(os.path.join(ROOT, "tests/fixtures/transcode/hdr_probes.json")))["probes"]
+    hevc10 = ["-c:v", "libx265", "-preset", "ultrafast", "-pix_fmt", "yuv420p10le", "-x265-params"]
+    pq = "log-level=none:colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc:hdr10=1:max-cll=1000,400"
+    for key, name, params in (("7", "hdr10.mkv", pq), ("8", "dvp5.mkv", "log-level=none")):
+        MEDIA[name] = os.path.join(scratch, name)
+        make_clip(MEDIA[name], hevc10 + [params], ["-c:a", "aac", "-ac", "2"], DURATION)
+        item = row(key, name.split(".")[0].title(), name, probe(MEDIA[name])["streams"], os.path.getsize(MEDIA[name]), DURATION)
+        video = item["Media"][0]["Part"][0]["Stream"][0]
+        video["bitDepth"] = 10
+        if key == "7":
+            video["colorTrc"] = "smpte2084"
+        else:
+            dovi = next(d for d in hdr_probes["dv-p5"]["streams"][0]["side_data_list"] if "dv_profile" in d)
+            video.update({"DOVIPresent": True, "DOVIProfile": dovi["dv_profile"], "DOVILevel": dovi["dv_level"],
+                          "DOVIBLCompatID": dovi["dv_bl_signal_compatibility_id"], "DOVIBLPresent": True,
+                          "DOVIRPUPresent": True, "DOVIELPresent": False})
+        items.append(item)
     catalog = os.path.join(scratch, "catalog.json")
     json.dump({"machineIdentifier": "0000000000000000000000000000000000000007", "friendlyName": "rex-transcode",
                "sections": [{"key": "1", "type": "movie", "title": "Clips", "uuid": "0" * 39 + "7"}],
@@ -612,6 +643,29 @@ def main():
         check("subs: the subtitle's white box is in the converted picture",
               burned > 200 and abs(burned - source) > 30, "luma %.0f, the source's %.0f" % (burned, source))
         get(port, "/video/:/transcode/universal/stop", [("session", "s-subs")])
+        # HDR is tonemapped to SDR BT.709: the output segment says so. Dolby Vision profile
+        # 5 (no HDR10 base; a real PMS refuses it, 2003) converts too when tonemapx can apply
+        # its RPU, and keeps the refusal when it cannot: untonemapped it is green.
+        probed = wait_for_log(log, r"tonemapx=(true|false)")
+        tonemapx = probed == "true"
+        for key, label in (("7", "hdr10"), ("8", "dvp5")):
+            status, container = decision(port, key, "s-" + label)
+            if label == "dvp5" and not tonemapx:
+                check("dvp5: without tonemapx profile 5 keeps the reference's refusal",
+                      container.get("transcodeDecisionCode") == 2003, str(container.get("transcodeDecisionCode")))
+                continue
+            check("%s: decision converts the video" % label,
+                  container.get("generalDecisionCode") == 1001, "%s %s" % (status, container.get("transcodeDecisionText")))
+            get(port, "/video/:/transcode/universal/start.m3u8", plex_web_query(key, "s-" + label))
+            status, _, first = get(port, "/video/:/transcode/universal/session/s-%s/base/00000.ts" % label)
+            segment = os.path.join(scratch, "%s-0.ts" % label)
+            open(segment, "wb").write(first)
+            tags = subprocess.run([FFPROBE, "-v", "error", "-select_streams", "v:0", "-show_entries",
+                                   "stream=color_transfer,color_primaries", "-of", "csv=p=0", segment],
+                                  capture_output=True, text=True).stdout.split("\n")[0].strip() if status == 200 else str(status)
+            check("%s: the converted picture is %s" % (label, "tonemapped to BT.709" if tonemapx else "converted untonemapped"),
+                  tags == ("bt709,bt709" if tonemapx else "smpte2084,bt2020"), tags)
+            get(port, "/video/:/transcode/universal/stop", [("session", "s-" + label)])
         # The bundled /web client converts everything over DASH (directStream=0).
         walk_dash(port, "dash-convert", "3", "transcode", "transcode", (1280, 720))
         walk_dash(port, "dash-remux", "1", "copy", "copy", None, directStream="1", directStreamAudio="1")

@@ -329,8 +329,11 @@ pub(crate) enum Path {
     Software,
 }
 
-fn is_hdr(transfer: &str) -> bool {
-    matches!(transfer, "smpte2084" | "arib-std-b67")
+/// A video Stream row that needs tonemapping: PQ or HLG, or any Dolby Vision layer --
+/// profile 5 signals no transfer at all (`tests/fixtures/transcode/hdr_probes.json`).
+fn hdr_stream(stream: &Value) -> bool {
+    let transfer = stream.get("colorTrc").map(string_value).unwrap_or_default();
+    matches!(transfer.as_str(), "smpte2084" | "arib-std-b67") || stream.get("DOVIPresent").is_some_and(truthy)
 }
 
 /// The decoder key the probe stores: `hevc10` for a 10-bit HEVC, `h264` for H.264.
@@ -1525,12 +1528,16 @@ impl Runtime {
         profile_name: &str,
         protocol: &str,
     ) -> Option<Plan> {
-        self.transcoder.as_ref()?;
+        let tonemapx = self.transcoder.as_ref()?.hardware().tonemapx;
         let media = crate::catalog::unpacked(media);
         let media = media.as_ref();
         let wire = Protocol::parse(protocol)?;
         let profile = decision::resolve(&self.decision_profiles, profile_name)?;
-        if decision::conversion(profile, protocol, Some(media)) != decision::Outcome::Convert {
+        // A real PMS refuses Dolby Vision profile 5 (2003): its IPT colour has no HDR10 base.
+        // tonemapx applies the RPU (measured 2026-10-17: Jellyfin's P5 clip tonemaps to its
+        // P8.1 and HDR10 twins' colours; untonemapped it is green), so with it rex converts one.
+        let refused_as = if tonemapx { None } else { Some(media) };
+        if decision::conversion(profile, protocol, refused_as) != decision::Outcome::Convert {
             return None;
         }
         let row = self.catalog.get(key)?;
@@ -1651,7 +1658,6 @@ impl Runtime {
                 .and_then(Value::as_i64)
                 .or_else(|| media.get("bitrate").and_then(Value::as_i64).map(|total| (total - audio_bitrate).max(0)))
                 .unwrap_or(0);
-            let transfer = stream.get("colorTrc").map(string_value).unwrap_or_default();
             let fits = cap.is_none_or(|(w, h)| width <= w && height <= h);
             // A burned subtitle is part of the picture, so the picture is converted.
             let copy = subtitle.is_none()
@@ -1689,7 +1695,7 @@ impl Runtime {
                 copy,
                 source_codec: codec,
                 bit_depth,
-                hdr: is_hdr(&transfer),
+                hdr: hdr_stream(stream),
                 width: out_width,
                 height: out_height,
                 bitrate,
@@ -1699,6 +1705,11 @@ impl Runtime {
             }
         });
         if video.is_none() && audio.is_none() {
+            return None;
+        }
+        // Without tonemapx a re-encoded profile 5 is green, worse than the reference's refusal.
+        let profile_5 = video_stream.and_then(|stream| number_of(stream.get("DOVIProfile"))) == Some(5.0);
+        if profile_5 && !tonemapx && video.as_ref().is_some_and(|video| !video.copy) {
             return None;
         }
         Some(Plan {
@@ -2235,6 +2246,17 @@ mod tests {
         // Upstream FFmpeg has no tonemapx: the conversion goes on without it.
         let upstream = Hardware { tonemapx: false, ..hardware.clone() };
         assert!(!ffmpeg_args(&hdr, Path::EncodeOnly, &upstream, 0, std::path::Path::new("/tmp/x")).join(" ").contains("tonemapx"));
+    }
+
+    #[test]
+    fn every_hdr_and_dolby_vision_kind_is_tonemapped() {
+        let doc: Value = serde_json::from_str(include_str!("../../../tests/fixtures/transcode/hdr_probes.json")).unwrap();
+        for (name, probe) in doc["probes"].as_object().unwrap() {
+            let media = crate::mediainfo::build_media(probe, 1, 1, "/library/parts/1/1/file.mp4", "file.mp4", 0, None);
+            let video = media["Part"][0]["Stream"].as_array().unwrap().iter().find(|s| s["streamType"] == 1).unwrap().clone();
+            assert!(hdr_stream(&video), "{name}: {video}");
+        }
+        assert!(!hdr_stream(&json!({"streamType": 1, "colorTrc": "bt709"})));
     }
 
     #[test]

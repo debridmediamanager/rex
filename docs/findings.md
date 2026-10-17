@@ -12850,3 +12850,37 @@ and logs, and a rehearsal on a copy of that database.
 - Rehearsed on the Windows rig on the 07:00 copy: both passes run before the server listens and
   took about 4 s there (listening 9 s after launch, against 5 s for `main`); the next start folds
   and drops nothing, and the passes after the start logged nothing more on either build.
+
+## HDR and Dolby Vision conversions (2026-10-17)
+
+Every kind of HDR rex's transcoder meets, run through its own software-path arguments
+(`ffmpeg_args`, `Path::Software`: `tonemapx=tonemap=bt2390:desat=0:peak=100:t=bt709:m=bt709:p=bt709`,
+libx264 veryfast) with jellyfin-ffmpeg 8.1.3, on Jellyfin's public 1080p60 test clips
+(`repo.jellyfin.org/test-videos/HDR/`, the same picture in each format; their probes are
+`tests/fixtures/transcode/hdr_probes.json`). Colour is scored against an independent zscale
+linearise-plus-hable tonemap of the HDR10 clip (PSNR, mean U/V of one frame) and by eye.
+
+| Source | ffprobe transfer | Decision before | Path | Colour | Speed (M3 Pro, loaded) |
+|---|---|---|---|---|---|
+| HDR10 HEVC | smpte2084 | converts | tonemapx | correct (PSNR 27.2, U 166 V 135) | 3.0x |
+| HDR10 AV1 | smpte2084 | converts | tonemapx | correct, same as HEVC | 2.5x |
+| HLG (P8.4 with its RPU stripped) | arib-std-b67 | converts | tonemapx | correct, a little darker (Y 78 vs 94), as HLG's scene-referred curve is | 3.0x |
+| DV 8.1 (HDR10 base) | smpte2084 | converts | tonemapx (applies the RPU) | correct, same as HDR10 | 2.8x |
+| DV 8.4 (HLG base) | arib-std-b67 | converts | tonemapx | identical to the plain HLG | 3.0x |
+| DV 5 (IPTPQc2, no base) | **unknown** | **refused, 2003** | none -- **green** when it did convert (U 134 V 100); tonemapx applies the RPU: correct (U 169 V 126) | 2.2x |
+
+- **Profile 5 converted green.** It signals no transfer, primaries or matrix, so rex's `is_hdr`
+  (keyed on `colorTrc`) never asked for tonemapping. Most profiles never got that far -- the
+  decision refuses P5 as the 1.42.2 reference does (`transcodeDecisionCode 2003`, above) -- but
+  a profile whose target names the source codec (Plex Desktop's `h264,hevc,*`) converted it
+  into green-and-purple. Fixed: any Dolby Vision stream (`DOVIPresent`) is HDR to the plan
+  (`hdr_stream`), and with tonemapx rex converts P5 rather than refusing it, since tonemapx's
+  `apply_dovi` (on by default) reshapes the IPT picture through the RPU. Without tonemapx
+  (upstream FFmpeg) P5 keeps the reference's 2003 and a re-encode of one is refused.
+- Without tonemapx every other kind still converts untonemapped, as the transcoder section
+  says: tagged BT.2020/PQ or HLG H.264, a washed-out grey picture on an SDR screen.
+- HDR10+ is PQ with dynamic metadata tonemapx does not read: it takes the HDR10 path (not run;
+  no clip). Profile 7's base layer is HDR10-compatible and tonemapped as one with its RPU; its
+  enhancement layer is dropped (not run; no public clip).
+- The tonemapping is CPU work before any GPU encode (the ladder skips the full device path for
+  HDR), so a 4K source's speed on a Celeron is the open question: not measured here.
