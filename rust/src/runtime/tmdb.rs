@@ -22,9 +22,6 @@ fn incomplete(path: &str, answer: &Value) -> bool {
     if path.starts_with("search/") {
         return empty("results");
     }
-    if path.starts_with("find/") {
-        return ["movie_results", "tv_results", "tv_episode_results", "tv_season_results"].into_iter().all(empty);
-    }
     let segments: Vec<&str> = path.split('/').collect();
     matches!(segments.as_slice(), ["movie" | "tv", id] if id.bytes().all(|byte| byte.is_ascii_digit()))
         && answer.get("poster_path").is_none_or(Value::is_null)
@@ -109,7 +106,6 @@ impl Tmdb {
                 let year = year.map(|year| format!("&year={year}")).unwrap_or_default();
                 (format!("{base}/api/metadata/search?query={}&type={kind}{year}", param("query")?), "tmdb")
             }
-            ["find", imdb] if imdb.starts_with("tt") => (format!("{base}/api/metadata/imdb:{imdb}?{only}"), "tmdbFind"),
             [kind @ ("movie" | "tv"), id] if number(id) => (format!("{base}/api/metadata/tmdb:{kind}:{id}?{only}"), "tmdb"),
             ["tv", id, "season", season] if number(id) && number(season) => {
                 (format!("{base}/api/metadata/tmdb:tv:{id}?season={season}&{only}"), "tmdbSeason")
@@ -133,10 +129,6 @@ impl Tmdb {
                 let answer = serde_json::from_slice::<Value>(&body).map_err(|_| ())?;
                 answer.pointer(&format!("/sources/{field}")).filter(|tmdb| tmdb.is_object()).cloned().map(Some).ok_or(())
             }
-            // An IMDb id TMDB's find does not know is an empty find, as TMDB answers one.
-            Ok((404, _, _)) if field == "tmdbFind" => Ok(Some(
-                json!({"movie_results": [], "person_results": [], "tv_results": [], "tv_episode_results": [], "tv_season_results": []}),
-            )),
             Ok((404, _, _)) => Ok(None),
             _ => Err(()),
         }
@@ -297,8 +289,8 @@ mod tests {
 
     /// The metadata provider is asked first and TMDB only when it does not answer for it. The
     /// answers are DMM's, the first provider, as measured (2026-10-15, production): TMDB's JSON under
-    /// `sources` (`tmdbSeason` for a season list), 404 for a title no source knows (an empty
-    /// find for an IMDb id), 401 for a lapsed key, and a null source when TMDB failed.
+    /// `sources` (`tmdbSeason` for a season list), 404 for a title no source knows, 401 for a
+    /// lapsed key, and a null source when TMDB failed.
     #[test]
     fn the_provider_answers_first_and_tmdb_only_when_it_does_not() {
         let dir = std::env::temp_dir().join(format!("rex-tmdb-dmm-{}", std::process::id()));
@@ -329,17 +321,12 @@ mod tests {
                    Some(("D/api/metadata/tmdb:tv:1877?sources=tmdb".to_string(), "tmdb")));
         assert_eq!(request("tv/1877/season/2/episode/3", &[]),
                    Some(("D/api/metadata/tmdb:tv:1877?season=2&episode=3&sources=tmdb".to_string(), "tmdbEpisode")));
-        assert_eq!(request("find/tt0852863", &[("external_source", "imdb_id".to_string())]),
-                   Some(("D/api/metadata/imdb:tt0852863?sources=tmdb".to_string(), "tmdbFind")));
         assert_eq!(request("search/tv", &[("query", "Phineas and Ferb".to_string()), ("first_air_date_year", "2007".to_string())]),
                    Some(("D/api/metadata/search?query=Phineas+and+Ferb&type=show&year=2007".to_string(), "tmdb")));
 
-        // No source knows the title: no answer, and TMDB is not asked again. An IMDb id
-        // TMDB's find does not know (Courage's tt0549680) is TMDB's own empty find.
+        // No source knows the title: no answer, and TMDB is not asked again.
         let (tmdb, _) = with(404, json!({"error": "No source knows this title"}), "b.json");
         assert_eq!(tmdb.season(&json!(999999999), &json!(1)), None);
-        let find = Tmdb::get(&tmdb, "find/tt0549680", &[("external_source", "imdb_id".to_string())]).unwrap();
-        assert_eq!(find["tv_episode_results"], json!([]));
         assert!(tmdb_seen.lock().unwrap().is_empty());
 
         // A refused key, or TMDB failing behind the provider: TMDB directly, with rex's own key.
@@ -393,7 +380,6 @@ mod tests {
         // A complete answer is never asked again.
         assert!(!expired(incomplete("tv/328629", &json!({"poster_path": "/x.jpg"})), &json!({})));
         assert!(incomplete("search/tv", &json!({"results": []})) && !incomplete("search/tv", &json!({"results": [{"id": 1}]})));
-        assert!(incomplete("find/tt15679400", &json!({"movie_results": [], "tv_results": []})));
         assert!(!incomplete("tv/1/season/2", &json!({"poster_path": null})));
     }
 
