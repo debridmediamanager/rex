@@ -1,0 +1,19 @@
+{
+ "pushes": {
+  "eighty_six_sample": {
+   "folder": "",
+   "hash": "b909fa0931cdaf2ea7a641fc61d823f81eee47b8",
+   "id": "shows/86.Eighty.Six.E02.Spearhead.German.2021.ANiME.DL.1080p.BluRay.x264-STARS/KTBzhP0fHozlSi8BnBQHCH.part01.rar/stars-86.eighty.six.e02.1080p.sample.mkv",
+   "ids": {
+    "imdb": "tt13718450"
+   },
+   "kind": "episode",
+   "name": "86.Eighty.Six.E02.Spearhead.German.2021.ANiME.DL.1080p.BluRay.x264-STARS",
+   "path": "shows/86.Eighty.Six.E02.Spearhead.German.2021.ANiME.DL.1080p.BluRay.x264-STARS/KTBzhP0fHozlSi8BnBQHCH.part01.rar/stars-86.eighty.six.e02.1080p.sample.mkv",
+   "release": "shows/86.Eighty.Six.E02.Spearhead.German.2021.ANiME.DL.1080p.BluRay.x264-STARS",
+   "size": 27489550,
+   "want": "a sample"
+  }
+ },
+ "source": "what fun's Usenet zurg pushes that rex rejects, 2026-10-17: the snapshot at 04:21:34 had 579 such items and rex logged none of them. 86.Eighty.Six.E02's archive (`KTBzhP0fHozlSi8BnBQHCH.part01.rar`, its .zurgtorrent ArchiveCache) holds `Sample/stars-86.eighty.six.e02.1080p.sample.mkv`, pushed under its base name as every unique member is; ids and kind are DMM's placement (tt13718450)."
+}

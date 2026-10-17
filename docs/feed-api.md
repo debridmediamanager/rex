@@ -124,6 +124,7 @@ few hundred items and allow minutes per request.
 
 Answers `200` with what happened:
 `{"created": 1, "updated": 0, "held": 1, "unchanged": 0, "rejected": [{"id": "...", "reason": "..."}]}`.
+The log names each rejected item and why, `FEED {source} rejected {id}: {reason}`.
 
 ### `DELETE /rex/feed/{source}/items` -- remove
 

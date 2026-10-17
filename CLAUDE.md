@@ -486,6 +486,7 @@ python3 tests/test_feed_pack_folders.py     # a pack's season folders, which zur
 python3 tests/test_feed_unfold.py           # each file of a season batch its own episode; rows that folded several episodes unfolded at start
 python3 tests/test_feed_placement.py        # a file its source placed (`kind`, TMDB season/episode) stays there through every start pass and retry; Fix Match wins; a season-0 special is TMDB's episode (Firefly's)
 python3 tests/test_feed_delete.py           # a delete removes the files at the source first, as a real PMS's does (zurg's WebDAV DELETE)
+python3 tests/test_feed_rejected.py         # every item the feed rejects is logged with its reason (a real snapshot's sample)
 python3 tests/test_sources.py               # registering sources, and sources that are not zurg: a server ignoring Range,
                                             # a redirect to a CDN, a restart, rows before registration, the two-step delete
 python3 tests/test_server_command.py        # the launcher's default and REX_SERVER override

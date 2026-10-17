@@ -783,6 +783,10 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
         guard.touch_gdm();
         guard.dirty = true;
     }
+    // The production server's Usenet snapshot rejected 579 items on 2026-10-17 and said why for none.
+    for rejected in &counts.rejected {
+        info!("FEED {} rejected {}: {}", source.name, string_value(&rejected["id"]), string_value(&rejected["reason"]));
+    }
     info!(
         "FEED {} upsert: {} created, {} updated, {} held, {} unchanged, {} rejected",
         source.name,
