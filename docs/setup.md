@@ -456,6 +456,15 @@ HDR, which is tonemapped on the CPU), and falls back to x264 when there is no de
 Every conversion is one FFmpeg reading the source over HTTP; nothing is downloaded
 first.
 
+Each stream is decided on its own: what the client can play is copied, the rest is
+converted. A DTS or TrueHD track the client refuses becomes AAC (or the profile's own
+audio codec) beside the copied video, and a quality below Original (the client's
+`maxVideoBitrate` and `videoResolution`) converts the video down while the audio is
+copied. On cellular the mobile apps cap quality at 720p and 4 Mbps (`rust/src/gate.rs`),
+so a 1080p title there needs one or the other: `REX_TRANSCODER`, or the app's cellular
+quality raised to Original. Without an encoder rex refuses such a play (decision
+2000/4005).
+
 
 ### By platform
 

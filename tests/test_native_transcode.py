@@ -119,6 +119,8 @@ def probe(path):
 def row(key, title, file, streams, size, duration):
     video = next(s for s in streams if s["codec_type"] == "video")
     audio = next(s for s in streams if s["codec_type"] == "audio")
+    # A real PMS names DTS `dca`, as rex's mediainfo does.
+    audio = dict(audio, codec_name={"dts": "dca"}.get(audio["codec_name"], audio["codec_name"]))
     return {
         "ratingKey": key, "key": "/library/metadata/%s" % key,
         "librarySectionID": 1, "librarySectionTitle": "Clips",
@@ -469,6 +471,9 @@ def main():
         # Five minutes, tiny: long enough to play past the 120 s kept behind the player.
         "long.mkv": (["-c:v", "libx265", "-preset", "ultrafast", "-x265-params", "log-level=none", "-pix_fmt", "yuv420p"],
                      ["-c:a", "aac", "-ac", "2"], 300),
+        # DTS 5.1 beside h264: a client that plays the video but not the audio.
+        "dts.mkv": (["-c:v", "libx264", "-preset", "ultrafast", "-g", "48", "-pix_fmt", "yuv420p"],
+                    ["-c:a", "dca", "-strict", "-2", "-ac", "6", "-ar", "48000"], DURATION),
     }
     items = []
     for number, (name, (video, audio, duration)) in enumerate(clips.items(), start=1):
@@ -535,6 +540,8 @@ def main():
         walk(port, scratch, "convert", "3", "transcode", "transcode", (1280, 720))
         walk(port, scratch, "capped", "1", "transcode", "copy", (640, 360),
              videoResolution="640x360", maxVideoBitrate="1000", directStream="1")
+        # Audio only: the video is copied and the DTS the client refuses becomes AAC.
+        walk(port, scratch, "audio-only", "5", "copy", "transcode", None, directStream="1", directStreamAudio="1")
         # The bundled /web client converts everything over DASH (directStream=0).
         walk_dash(port, "dash-convert", "3", "transcode", "transcode", (1280, 720))
         walk_dash(port, "dash-remux", "1", "copy", "copy", None, directStream="1", directStreamAudio="1")
