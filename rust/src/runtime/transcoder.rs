@@ -284,10 +284,38 @@ pub(super) fn fetch_remote_image(url: &str) -> Option<(Vec<u8>, String)> {
         .unwrap_or_else(|| "image/jpeg".to_string());
     let hit = (body, content_type);
     if let Ok(mut map) = cache.lock() {
-        if map.len() > 512 {
-            map.clear();
-        }
-        map.insert(url.to_string(), hit.clone());
+        remember_image(&mut map, url, hit.clone());
     }
     Some(hit)
+}
+
+/// Plex's artwork is full size (a background runs to megabytes), so 512 entries alone could
+/// hold a gigabyte on a host with 8 GB; the cache is bounded by bytes too.
+const IMAGE_CACHE_BYTES: usize = 64 << 20;
+
+fn remember_image(map: &mut HashMap<String, (Vec<u8>, String)>, url: &str, hit: (Vec<u8>, String)) {
+    let held: usize = map.values().map(|(body, _)| body.len()).sum();
+    if map.len() > 512 || held + hit.0.len() > IMAGE_CACHE_BYTES {
+        map.clear();
+    }
+    if hit.0.len() <= IMAGE_CACHE_BYTES {
+        map.insert(url.to_string(), hit);
+    }
+}
+
+#[cfg(test)]
+mod image_cache_tests {
+    use super::*;
+
+    #[test]
+    fn the_image_cache_never_holds_more_than_its_byte_budget() {
+        let mut map = HashMap::new();
+        let image = |n: usize| (vec![0u8; n], "image/jpeg".to_string());
+        for i in 0..40 {
+            remember_image(&mut map, &format!("u{i}"), image(3 << 20));
+            assert!(map.values().map(|(body, _)| body.len()).sum::<usize>() <= IMAGE_CACHE_BYTES);
+        }
+        remember_image(&mut map, "huge", image(IMAGE_CACHE_BYTES + 1));
+        assert!(!map.contains_key("huge"));
+    }
 }
