@@ -10,13 +10,15 @@ fun, swapping, took ten to forty times as long and every other request queued be
 - a show library's Unplayed list: every episode of every show copied to read its view count;
 - the movie Recently Added shelf of `/hubs/promoted`: every movie copied twice and the first
   list thrown away under the pin every client sends (+320 MB);
-- `/library/recentlyAdded`: every movie and season copied to list 50.
+- `/library/recentlyAdded`: every movie and season copied to list 50;
+- search: every row's title and tags folded a character at a time, allocating per character.
+
 
 The library is `test_perf_section_hubs.py`'s, with distinct episode dates, a watched episode in
 every fifth show and a resume point on every tenth movie. Bounds are fractions of an unpaged movie
 listing measured first in the same run. Measured on the Mac (unfixed -> fixed, units): Recently
 Added 0.28 -> 0.05, Recently Released 0.67 -> 0.06, Unplayed 0.21 -> 0.02, the promoted shelf
-0.23 -> 0.01, the server's Recently Added 0.15 -> 0.05.
+0.23 -> 0.01, the server's Recently Added 0.15 -> 0.05, the search 0.33 -> 0.13.
 
     python3 tests/test_perf_production_walk.py
 """
@@ -37,6 +39,7 @@ BOUNDS = [
     ("/library/sections/2/unwatched?X-Plex-Container-Size=50", "a show library's Unplayed list", 0.1),
     ("/hubs/promoted?contentDirectoryID=1" + PIN, "the movie library's promoted shelf", 0.1),
     ("/library/recentlyAdded", "the server's Recently Added", 0.1),
+    ("/hubs/search?query=show&limit=30", "a search matching every show", 0.25),
 ]
 
 
