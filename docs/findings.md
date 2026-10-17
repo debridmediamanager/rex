@@ -13150,3 +13150,33 @@ its first 40 s) and a generated 1080p 10-bit HEVC control
   to the decision.
 - Not seen: which non-MDE clients send this limitation. The Android bundle is the only one read; iOS,
   tvOS and the TV apps were not.
+
+## Automatic collections (2026-10-17)
+
+A movie library's "Minimum automatic collection size" (`autoCollectionThreshold`, 0 Disabled, 1-4)
+was stored and read back, and did nothing: wason92 in #rex-support (2026-10-16) set it on a library
+created without it and no collection ever came. A real PMS builds them from its agent while it
+refreshes an item's metadata, and rex runs no refresh.
+
+- **What the agent says.** Plex's metadata agent files a movie under its collection in the match
+  itself: `Collection: [{"guid": "plex://collection/<24hex>", "tag", "summary", "thumb", "art",
+  "key"}]`. The production rex's cache held 4,109 movie matches on 2026-10-17, 1,152 of them with
+  one, never more than one per movie. `tests/fixtures/provider/collections.json` is The Matrix
+  trilogy's three, out of that cache.
+- **What rex does now.** `metadata::describe` keeps a movie's on the row (`_collections`), and
+  `collections::auto_collect` makes a plain collection for every one the threshold's number of a
+  library's movies share, named, identified and summarised as the agent's, its members tagged as a
+  person's collection's are but with the field left unlocked. One that exists by that guid, or by
+  that name, takes the movies it lacks; nothing is removed, as the setting's own summary says. It
+  runs when the threshold is set (the prefs PUT or Edit Library's `prefs[...]`), on a library
+  refresh, after a Fix Match, and after every feed push. A movie described before this asks the
+  agent again on the asked-for passes, off the lock. A collection a person deleted comes back on an
+  asked-for pass and never on a push.
+- **On the production library** (a copy of rex-fun's 2026-10-17 state, agent answers from its cache
+  only): threshold 2 made 261 collections, each of 2 or more movies and each with the agent's guid,
+  within 2 s of the edit; a refresh and a restart left 261; a pushed sequel made the 262nd
+  ("That Time I Got Reincarnated as a Slime Collection"). The build before made none.
+- **Not measured on a real PMS:** how its automatic collection rows differ from a person's. rex's are
+  its plain collections' measured shape with the agent's guid and summary; the poster is the
+  composite of its members, never the agent's `thumb`/`art`. plexscratch cannot reach the agent and
+  plexlab's library has no movie in a collection.
