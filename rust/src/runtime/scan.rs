@@ -397,9 +397,9 @@ pub(super) fn by_title(
     }
 }
 
-/// Identification, off the lock, once per release: who it is (`identify.rs` -- an IMDb
-/// id the source pushed is exact; otherwise its name to Plex's matcher and TMDB, their agreement
-/// the confidence), then for each new file the fields TMDB gives its row and Plex's own
+/// Identification, off the lock, once per release: who it is (`identify.rs` -- its placement
+/// or an id the source pushed is exact; only an id that names nothing usable falls back to its
+/// name, to Plex's matcher and TMDB, their agreement the confidence; no id, no lookup), then for each new file the fields TMDB gives its row and Plex's own
 /// guids for it. A release named as the other kind of title than its library's, or not
 /// at all, stays unmatched for Fix Match.
 pub(super) fn name_release(plan: &Library, arrivals: &mut [Arrival], files: usize) {
@@ -454,7 +454,9 @@ pub(super) fn name_release(plan: &Library, arrivals: &mut [Arrival], files: usiz
         identity.kind != plan.kind || (identity.tmdb.is_none() && identity.plex.is_none() && identity.imdb.is_none())
     };
     if named_nothing(&identity) && !first_file.is_empty() && first_file != release {
-        let by_file = identifier.identify_as(stem(&first_file), None, 1, Some(&plan.kind));
+        // The same ids, so a file names its title only where its release could have.
+        let tag = &named[release.len()..];
+        let by_file = identifier.identify_as(&format!("{}{tag}", stem(&first_file)), Some(&hash), 1, Some(&plan.kind));
         if !named_nothing(&by_file) {
             identity = by_file;
         }

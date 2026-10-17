@@ -318,9 +318,9 @@ def matcher_identity(bytes_port):
     machine = json.load(open(os.path.join(work, "catalog.json")))["machineIdentifier"]
     server = Server(work, bytes_port, keys={"REX_PLEXTV_URL": "http://127.0.0.1:%d" % stub})
     try:
-        # A release no cached answer names, so the agent is asked.
+        # A release with an id no cached answer names, so the agent is asked (a name alone is not).
         name = "Vrqz.Klmw.2023.1080p.WEB-DL"
-        unknown = dict(item("new"), name=name, release="movies/" + name,
+        unknown = dict(item("new"), name=name, release="movies/" + name, ids={"imdb": "tt99999991"},
                        id="movies/%s/%s.mkv" % (name, name), path="movies/%s/%s.mkv" % (name, name),
                        file="%s/movies/%s/%s.mkv" % (MOUNT, name, name), hash="b" * 40)
         server.feed("POST", "items", {"items": [unknown]})

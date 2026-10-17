@@ -233,9 +233,7 @@ def self_check():
     port = server.server_address[1]
     work = tempfile.mkdtemp(prefix="identify-selfcheck-")
     # (corpus, the recorder that wrote it, the mode that recorder identifies in)
-    for name, recorder, mode in (("corpus.json", "record_identify_corpus.py", "name"),
-                                 ("tom_and_jerry.json", "record_episode_id_corpus.py", "hash"),
-                                 ("blank_tile_releases.json", "record_unidentified_corpus.py", "release"),
+    for name, recorder, mode in (("blank_tile_releases.json", "record_unidentified_corpus.py", "release"),
                                  ("episode_ids.json", "record_episode_id_corpus.py", "hash")):
         original = os.path.join(fixtures, name)
         corpus = json.load(open(original))

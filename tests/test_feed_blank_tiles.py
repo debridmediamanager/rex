@@ -6,12 +6,14 @@ Their releases, as zurg pushed them, are `fixtures/feed/blank_tiles.json` with t
 Plex answers the native server asked for them:
 
 * zurg's Usenet library filed anime episodes under movies (`Detektiv.Conan.E0221…`), each a
-  film nothing matched: it is an episode of a show now;
+  film nothing matched: it is an episode of a show now, left for Fix Match (it came with no id,
+  and a name alone is not searched);
 * DMM's id for Knock at the Cabin (tt15679400) is one TMDB's /find does not know and Plex
   lists beside TMDB's 631842; DMM's for A Serbian Film is Plex's "Film Postcards: Serbia";
 * rows already held that way -- the Conan episode as a film, Boy Meets World on DMM's id for
-  an episode, Zoku Owarimonogatari and Wallace & Gromit known only to Plex -- are named again
-  by the retry a start runs, on their own keys, and one nothing names waits for its next try;
+  an episode -- are placed again by the retry a start runs, on their own keys, and one nothing
+  names waits for its next try; Zoku Owarimonogatari and Wallace & Gromit, which the name search
+  matched to Plex's shows before it was retired, keep those shows though the retry names nothing;
 * a Fix Match was undone by the next push that named other ids, and a match that merged two
   rows lost the absorbed release, which came back as a row of its own.
 
@@ -135,9 +137,9 @@ def pushes(bytes_port):
         check("Detektiv.Conan.E0221, filed under movies, is episode 221 in the show library",
               status == 200 and row.get("type") == "episode" and str(row.get("librarySectionID")) == "2"
               and row.get("index") == 221, (body, row.get("type"), row.get("librarySectionID"), row.get("index")))
-        check("of the show TMDB and Plex both name (Case Closed, 30983), with its poster",
-              "tmdb://30983" in guids(show) and poster(server, show.get("ratingKey")) is not None,
-              (show.get("title"), guids(show), poster(server, show.get("ratingKey"))))
+        check("of a show of its name, left for Fix Match: it came with no id",
+              show.get("title") == "Detektiv Conan" and not guids(show) and str(show.get("guid", "")).startswith(LOCAL),
+              (show.get("title"), show.get("guid"), guids(show)))
 
         # -- ids TMDB does not know ----------------------------------------------------------
         server.feed("POST", "items", {"items": [item("knock"), item("serbian")]})
@@ -206,27 +208,23 @@ def retry(bytes_port):
         row = wait_for(server, conan, lambda row: row.get("type") == "episode")
         show = server.row(row.get("grandparentRatingKey")) if row.get("grandparentRatingKey") else {}
         check("the production rex's Conan film is retried at start into an episode, on its own key",
-              row.get("type") == "episode" and str(row.get("librarySectionID")) == "2"
-              and poster(server, show.get("ratingKey")) is not None,
+              row.get("type") == "episode" and str(row.get("librarySectionID")) == "2",
               (row.get("type"), row.get("librarySectionID"), show.get("title")))
         row = wait_for(server, boy, lambda row: not str(row.get("guid", "")).startswith(LOCAL))
         check("Boy Meets World, held on DMM's id for an episode, is named in place with its poster",
               "tmdb://1777" in guids(row) and poster(server, boy) is not None,
               (row.get("guid"), guids(row), poster(server, boy)))
-        row = wait_for(server, zoku, lambda row: poster(server, zoku) is not None)
-        plex_thumb = next(answer["MediaContainer"]["Metadata"][0].get("thumb") for key, answer in FIXTURE["plex"].items()
-                          if "Zoku Owarimonogatari" in key and answer.get("MediaContainer", {}).get("Metadata"))
-        check("Zoku Owarimonogatari, known only to Plex, draws Plex's own poster",
-              plex_thumb and poster(server, zoku) == plex_thumb, (poster(server, zoku), plex_thumb))
-        # Each season of a show draws its poster too, whichever season's episodes gave the show its own
-        # (a rehearsal on the production rex's rows left Wallace & Gromit's Specials blank).
-        wallace = next(row for row in rows if row.get("title") == "Wallace & Gromit")["ratingKey"]
-        wait_for(server, wallace, lambda row: poster(server, wallace) is not None)
-        seasons = server.rows("/library/metadata/%s/children" % wallace)
-        check("Wallace & Gromit, known only to Plex, draws its poster on the show and both its seasons",
-              poster(server, wallace) is not None and len(seasons) == 2
-              and all(poster(server, season["ratingKey"]) is not None for season in seasons),
-              (poster(server, wallace), [(season.get("title"), poster(server, season["ratingKey"])) for season in seasons]))
+        # Their episodes came with a TVDB id only, which names nothing: the retry keeps the shows
+        # the name search gave them (once, every episode left Wallace & Gromit for a show of its own).
+        for title in ("Zoku Owarimonogatari", "Wallace & Gromit"):
+            show = next(row for row in rows if row.get("title") == title)
+            episodes = [row["ratingKey"] for row in rows if row.get("grandparentRatingKey") == show["ratingKey"]]
+            check("%s keeps Plex's show it was matched to, and every episode under it" % title,
+                  server.row(show["ratingKey"]).get("guid") == show["guid"]
+                  and all(server.row(key).get("grandparentRatingKey") == show["ratingKey"] for key in episodes),
+                  (server.row(show["ratingKey"]).get("guid"), [server.row(key).get("grandparentTitle") for key in episodes]))
+        # The retry reaches the row nothing names last: its title is its name's once it has.
+        wait_for(server, "199999", lambda row: row.get("title") == "Sweeney Todd National Broadway Tour LA")
     finally:
         stop(server, work)
     retried = state_row(work, "199999")

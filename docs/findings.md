@@ -12791,3 +12791,23 @@ parser stays the fallback for what arrives unplaced, and so does a year-numbered
 season of that year (MythBusters 2004x01). An install that still sets them starts and ignores
 them; on its first start, rows they renumbered without a placement go back to their names' numbers
 on their keys.
+
+## A name alone is no longer searched (2026-10-17)
+
+A release pushed with no id -- no placement, no `ids`, no `{imdb-tt…}`/`{tmdb-…}` in its name and
+no IMDb id for its hash -- comes back unidentified without a request and stays for Fix Match. The
+name search named 193 of the 200 releases in `tests/fixtures/identify/corpus.json` right; the
+other 7 were titles nobody chose, set where no one looks for them. On the production rex
+(2026-10-17) it had named 2,003 unplaced episodes and 55 unplaced films, against 26,495 and 3,800
+named by DMM's id for their hash; those rows keep what they were given.
+
+The search stays as the fallback for an id that names nothing usable (TMDB has no title for it,
+or it is the other kind than the library's): of the 56 labelled releases in
+`blank_tile_releases.json` that came with an id, both the old and the new code name 41. The 41 of
+the 56 labelled ones with no id that the name search named are now left alone.
+
+Measured on the way: the start's blank-tile retry of a row the name search had matched to a Plex
+show (Wallace & Gromit, Zoku Owarimonogatari in `fixtures/feed/blank_tiles.json`, whose episodes
+carry a TVDB id only) now names nothing, and re-placing the row on that empty answer took every
+episode off its show. An identification that names nothing now leaves a named row as it is
+(`reidentify`).

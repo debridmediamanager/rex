@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Releases named in a way identification read wrong, each a real one the production rex left on
-`local://` (2026-10-13): a film named twice with a dotted `a.K.A.`, a `THEATRiCAL.CUT` whose
-`CUT` stayed in the title, and a show whose release is named in Russian while its files say
-`Lovely.Runner.2024.S01E01` -- named by its files, it joins the show of that name instead of
-standing beside it. zurg's real entries are `fixtures/feed/names.json`.
+"""Releases pushed with no id are left for Fix Match, however cleanly their names read. Each is a
+real one the production rex left on `local://` (2026-10-13) that the name search, since retired,
+later named: a film named twice with a dotted `a.K.A.`, a `THEATRiCAL.CUT`, and a show whose
+release is named in Russian while its files say `Lovely.Runner.2024.S01E01` (a TVDB id, which rex
+does not read). zurg's real entries are `fixtures/feed/names.json`; `want` is the title each is.
 
 Record the answers again: `REX_RECORD_ANSWERS=1 TMDB_KEY=... python3 tests/test_feed_names.py`.
 
@@ -52,8 +52,8 @@ def main():
             row = server.row(placed[FIXTURE["pushes"][name]["path"]])
             named = server.row(row["grandparentRatingKey"]) if row.get("grandparentRatingKey") else row
             ids = [guid.get("id") for guid in named.get("Guid") or []]
-            want = "tmdb://%d" % FIXTURE["pushes"][name]["want"]
-            check("%s is TMDB's %s (%s)" % (name, want, named.get("title")), want in ids, (named.get("title"), ids))
+            check("%s, pushed with no id, is left for Fix Match (%s)" % (name, named.get("title")),
+                  not ids and str(named.get("guid", "")).startswith(("local://", "tv.plex.agents.none://")), (named.get("title"), named.get("guid"), ids))
     finally:
         server.stop()
         if RECORD:

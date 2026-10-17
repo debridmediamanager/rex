@@ -1,8 +1,5 @@
-//! `identify.rs` against the user's own Real-Debrid library, with DMM's labels as the
-//! key: `tests/fixtures/identify/corpus.json` replayed offline. Every request the port
-//! makes must be one the recording holds (the Python identifier's, when the corpus was
-//! recorded); a miss answers `{}` and fails the test, which is what proves the two send
-//! the same requests.
+//! `identify.rs` against recorded provider answers, replayed offline. Every request it
+//! makes must be one the recording holds; a miss answers `{}` and fails the test.
 //!
 //! The keys are Python's `json.dumps` text, so they are parsed and indexed by value,
 //! never reproduced: TMDB's by `(path, sorted params)` with each value as `str()` puts
@@ -12,7 +9,7 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 
-use rex::identify::{Identifier, Identity, PlexSource, TmdbSource, AGREED};
+use rex::identify::{explicit_ids, Identifier, PlexSource, TmdbSource, EXACT, NONE};
 use serde_json::{json, Value};
 
 type TmdbKey = (String, Vec<(String, String)>);
@@ -42,6 +39,7 @@ fn sorted_keys(value: &Value) -> Value {
 struct ReplayTmdb {
     record: HashMap<TmdbKey, Value>,
     missed: RefCell<Vec<String>>,
+    asked: RefCell<usize>,
 }
 
 impl TmdbSource for ReplayTmdb {
@@ -52,6 +50,7 @@ impl TmdbSource for ReplayTmdb {
             .collect::<Vec<_>>();
         pairs.sort();
         let key = (path.to_string(), pairs);
+        *self.asked.borrow_mut() += 1;
         let answer = self.record.get(&key).cloned();
         if answer.is_none() {
             self.missed.borrow_mut().push(format!("{key:?}"));
@@ -63,11 +62,13 @@ impl TmdbSource for ReplayTmdb {
 struct ReplayPlex {
     record: HashMap<String, Value>,
     missed: RefCell<Vec<String>>,
+    asked: RefCell<usize>,
 }
 
 impl PlexSource for ReplayPlex {
     fn call(&self, method: &str, path: &str, body: Option<&Value>) -> Option<Value> {
         let key = sorted_keys(&json!([method, path, body])).to_string();
+        *self.asked.borrow_mut() += 1;
         let answer = self.record.get(&key).cloned();
         if answer.is_none() {
             self.missed.borrow_mut().push(key);
@@ -95,6 +96,7 @@ fn replay(path: &str) -> (Value, ReplayTmdb, ReplayPlex) {
             })
             .collect(),
         missed: RefCell::default(),
+        asked: RefCell::default(),
     };
     let plex = ReplayPlex {
         record: corpus["plex"]
@@ -107,12 +109,17 @@ fn replay(path: &str) -> (Value, ReplayTmdb, ReplayPlex) {
             })
             .collect(),
         missed: RefCell::default(),
+        asked: RefCell::default(),
     };
     (corpus, tmdb, plex)
 }
 
+/// 200 releases of the user's own Real-Debrid library by name alone, with the answers Plex's
+/// matcher and TMDB's search gave for them (recorded 2026-10-06). The name search named 193
+/// of them right and 7 wrong, each wrong one a title nobody chose; a release with no id is
+/// now left for Fix Match, so it is not named and neither provider is asked.
 #[test]
-fn identify_corpus() {
+fn a_name_alone_is_never_searched() {
     let (corpus, tmdb, plex) = replay(concat!(
         env!("CARGO_MANIFEST_DIR"),
         "/../tests/fixtures/identify/corpus.json"
@@ -123,96 +130,26 @@ fn identify_corpus() {
         known: HashMap::new(),
     };
     let torrents = corpus["torrents"].as_array().unwrap();
-    let identities = torrents
-        .iter()
-        .map(|torrent| {
-            let files = torrent["files"].as_u64().unwrap() as usize;
-            (
-                torrent["truth"].as_str(),
-                identifier.identify(torrent["name"].as_str().unwrap(), None, files),
-            )
-        })
-        .collect::<Vec<(Option<&str>, Identity)>>();
-
-    let (tmdb_missed, plex_missed) = (tmdb.missed.borrow(), plex.missed.borrow());
-    assert!(
-        tmdb_missed.is_empty() && plex_missed.is_empty(),
-        "requests the recording does not hold: tmdb {tmdb_missed:?} plex {plex_missed:?}"
-    );
-
-    for (truth, identity) in &identities {
-        if identity.imdb.as_deref() != *truth {
-            println!(
-                "differs from the label {}: {:?} ({}, {:?}) for {:?}",
-                truth.unwrap_or("-"),
-                identity.imdb,
-                identity.confidence,
-                identity.disputed,
-                identity.name
-            );
+    assert_eq!(torrents.len(), 200);
+    let mut unnamed = 0;
+    for torrent in torrents {
+        let name = torrent["name"].as_str().unwrap();
+        let files = torrent["files"].as_u64().unwrap() as usize;
+        let asked = (*tmdb.asked.borrow(), *plex.asked.borrow());
+        let identity = identifier.identify(name, None, files);
+        // `{imdb-tt…}` written into the name is an id, not a name.
+        if explicit_ids(name) != (None, None) {
+            assert_eq!(identity.confidence, EXACT, "{identity:?}");
+            continue;
         }
-    }
-    let right = identities
-        .iter()
-        .filter(|(truth, identity)| identity.imdb.as_deref() == *truth)
-        .count();
-    let agreed = identities
-        .iter()
-        .filter(|(_, identity)| identity.confidence == AGREED)
-        .collect::<Vec<_>>();
-    let agreed_right = agreed
-        .iter()
-        .filter(|(truth, identity)| identity.imdb.as_deref() == *truth)
-        .count();
-    let undisputed_wrong = identities
-        .iter()
-        .filter(|(truth, identity)| {
-            identity
-                .imdb
-                .as_deref()
-                .is_some_and(|imdb| !imdb.is_empty() && Some(imdb) != *truth)
-                && identity.confidence != AGREED
-                && identity.disputed.is_none()
-        })
-        .map(|(_, identity)| identity.name.as_str())
-        .collect::<Vec<_>>();
-    println!(
-        "right {right} of {}; agreed right {agreed_right} of {}; undisputed wrong {}",
-        identities.len(),
-        agreed.len(),
-        undisputed_wrong.len()
-    );
-
-    // The Python oracle scores 193 of 200 and 169 of 173 agreed.
-    assert!(right >= 193, "right {right}");
-    assert!(
-        agreed.len() >= 150 && agreed_right as f64 / agreed.len() as f64 >= 0.97,
-        "agreed right {agreed_right} of {}",
-        agreed.len()
-    );
-    assert!(
-        undisputed_wrong.len() <= 2,
-        "undisputed wrong: {undisputed_wrong:?}"
-    );
-    for (_, identity) in identities.iter().filter(|(_, identity)| {
-        identity
-            .imdb
-            .as_deref()
-            .is_some_and(|imdb| !imdb.is_empty())
-    }) {
+        unnamed += 1;
         assert!(
-            identity
-                .plex
-                .as_deref()
-                .is_some_and(|plex| !plex.is_empty())
-                && ["movie", "show"].contains(&identity.kind.as_str())
-                && identity
-                    .source
-                    .as_deref()
-                    .is_some_and(|source| !source.is_empty()),
-            "an answer without a Plex guid, kind or source: {identity:?}"
+            identity.confidence == NONE && identity.imdb.is_none() && identity.tmdb.is_none() && identity.plex.is_none(),
+            "named by its name alone: {identity:?}"
         );
+        assert_eq!((*tmdb.asked.borrow(), *plex.asked.borrow()), asked, "providers asked for {name:?}");
     }
+    assert!(unnamed >= 190, "{unnamed} releases without an id");
 }
 
 /// One release of each of the 285 shows the production rex left unmatched on 2026-10-11
@@ -273,22 +210,25 @@ fn episode_ids_name_their_show() {
 /// Recorded on the test host 2026-10-11. Plex's matcher answers
 /// `The.Tom.and.Jerry.Show.S02E05` with the 1975 series, one season long; TMDB's first hit
 /// is the 2014 series, five seasons. Plex won the dispute and every episode sat under a
-/// show with no season 2 or 3.
+/// show with no season 2 or 3. A name is searched only once its id names nothing, so each
+/// comes with an IMDb id TMDB and Plex have no title for.
 #[test]
 fn a_season_only_tmdb_has_decides_the_dispute() {
     let (corpus, tmdb, plex) = replay(concat!(
         env!("CARGO_MANIFEST_DIR"),
         "/../tests/fixtures/identify/tom_and_jerry.json"
     ));
+    const NOTHING: &str = "tt0000000";
+    let torrents = corpus["torrents"].as_array().unwrap();
     let identifier = Identifier {
         tmdb: Some(&tmdb),
         plex: Some(&plex),
-        known: HashMap::new(),
+        known: torrents.iter().enumerate().map(|(index, _)| (format!("{index:040}"), NOTHING.to_string())).collect(),
     };
-    for torrent in corpus["torrents"].as_array().unwrap() {
+    for (index, torrent) in torrents.iter().enumerate() {
         let identity = identifier.identify(
             torrent["name"].as_str().unwrap(),
-            None,
+            Some(&format!("{index:040}")),
             torrent["files"].as_u64().unwrap() as usize,
         );
         assert_eq!(identity.tmdb, torrent["truth"].as_i64(), "{identity:?}");
@@ -298,7 +238,10 @@ fn a_season_only_tmdb_has_decides_the_dispute() {
         );
         assert_eq!(identity.disputed.as_ref().and_then(|disputed| disputed.tmdb), Some(7842), "{identity:?}");
     }
-    let (tmdb_missed, plex_missed) = (tmdb.missed.borrow(), plex.missed.borrow());
+    // The id's own lookups are the only ones the recording lacks.
+    let (mut tmdb_missed, mut plex_missed) = (tmdb.missed.borrow().clone(), plex.missed.borrow().clone());
+    tmdb_missed.retain(|key| !key.contains(NOTHING));
+    plex_missed.retain(|key| !key.contains(NOTHING));
     assert!(
         tmdb_missed.is_empty() && plex_missed.is_empty(),
         "requests the recording does not hold: tmdb {tmdb_missed:?} plex {plex_missed:?}"
@@ -309,7 +252,9 @@ fn a_season_only_tmdb_has_decides_the_dispute() {
 /// zurg pushed it (the IMDb id DMM gave its hash, or the TMDB id zurg's own Plex gave it),
 /// identified as the feed identifies it (`name_release`): in its library's kind, a TMDB id
 /// with no IMDb id read as a `{tmdb-…}` tag. The TMDB id each is was labelled by hand.
-/// The oracle names 82 of the 112 labelled; before this the port named 10.
+/// The oracle named 82 of the 112 labelled; before this the port named 10. Of the 56 labelled
+/// that came with no id it named 41 by name alone; those are now left for Fix Match, and the 56
+/// with an id are named as before, by the id or, where it names nothing, by the name.
 #[test]
 fn releases_on_the_blank_tile_are_named_in_their_library_kind() {
     let (corpus, tmdb, plex) = replay(concat!(
@@ -326,6 +271,7 @@ fn releases_on_the_blank_tile_are_named_in_their_library_kind() {
             .collect(),
     };
     let (mut labelled, mut right, mut missed) = (0, 0, Vec::new());
+    let mut unnamed = 0;
     for torrent in torrents {
         let mut name = torrent["name"].as_str().unwrap().to_string();
         if let (Some(id), None) = (torrent["tmdb"].as_str(), torrent["known"].as_str()) {
@@ -340,6 +286,11 @@ fn releases_on_the_blank_tile_are_named_in_their_library_kind() {
         );
         if identity.tmdb.is_some() && identity.confidence != rex::identify::EXACT {
             assert_eq!(identity.kind, kind, "{identity:?}");
+        }
+        if name == torrent["name"].as_str().unwrap() && torrent["known"].as_str().is_none() && explicit_ids(&name) == (None, None) {
+            unnamed += 1;
+            assert!(identity.confidence == NONE && identity.tmdb.is_none() && identity.plex.is_none(), "{identity:?}");
+            continue;
         }
         let Some(truth) = torrent["truth"].as_i64() else {
             continue;
@@ -356,6 +307,7 @@ fn releases_on_the_blank_tile_are_named_in_their_library_kind() {
         tmdb_missed.is_empty() && plex_missed.is_empty(),
         "requests the recording does not hold: tmdb {tmdb_missed:?} plex {plex_missed:?}"
     );
-    assert_eq!(labelled, 112);
-    assert!(right >= 82, "{right} of {labelled} named; missed {:?}", &missed[..missed.len().min(5)]);
+    println!("{right} of {labelled} with an id named; {unnamed} without one left alone");
+    assert_eq!((labelled, unnamed), (56, 58));
+    assert!(right >= 41, "{right} of {labelled} named; missed {:?}", &missed[..missed.len().min(5)]);
 }

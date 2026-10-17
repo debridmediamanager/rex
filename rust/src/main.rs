@@ -1007,13 +1007,11 @@ fn run_core(command: &str, args: &[String]) -> Result<(), String> {
                 let parsed: Value = serde_json::from_str(key).map_err(|_| bad(key))?;
                 replay.plex.insert(sorted_keys(&parsed).to_string(), answer.clone());
             }
-            let mode = input["mode"].as_str().unwrap_or("name");
+            let mode = input["mode"].as_str().unwrap_or("hash");
             let torrents = input["torrents"]
                 .as_array()
                 .ok_or_else(|| "torrents must be an array".to_string())?;
-            let known = if mode == "name" {
-                HashMap::new()
-            } else {
+            let known = {
                 torrents
                     .iter()
                     .filter_map(|torrent| {
@@ -1036,7 +1034,6 @@ fn run_core(command: &str, args: &[String]) -> Result<(), String> {
                     .ok_or_else(|| "a torrent without a name".to_string())?;
                 let files = torrent["files"].as_u64().unwrap_or(1) as usize;
                 let identity = match mode {
-                    "name" => identifier.identify(name, None, files),
                     "hash" => identifier.identify(name, torrent["hash"].as_str(), files),
                     // `identify_release`, as the feed names a release: a TMDB id sent
                     // without an IMDb id is read as a `{tmdb-…}` tag, in its library's kind.

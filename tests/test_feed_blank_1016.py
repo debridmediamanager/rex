@@ -11,7 +11,7 @@ native server asked for them:
   holds two episodes, and its `aaf-wilty.302` is S03E02.
 * `[HatSubs] One Piece 1106 (WEB 1080p) [97566ECF]`: the episode number spaced after the title
   was read as part of it, and each episode became a show of its own. It is an episode of One
-  Piece; TMDB's S22E1106 comes with its source's placement, not from its name.
+  Piece; pushed with no id, it is left on that show for Fix Match, never named by its name.
 * `Fairy.Tail.E233.Song.of.the.Faries`, an episode of Fairy Tail (TMDB's S6E7, likewise placed).
 * `[Zoku] One Piece - Season 19 (Whole Cake) (783-842)/One Piece - 783 - Sanji's Homecoming!` and
   `[Koten_Gars] One Piece - Season 04-09/… One Piece - 0207`: the pack names a season and the file
@@ -19,7 +19,8 @@ native server asked for them:
 * The three Evangelion Rebuild films, which zurg files under anime and so under TV Shows: their
   exact ids are films, refused as shows. They go to Movies.
 
-The rows the production server already held that way (`rows`) are named by the retry a start runs.
+The rows the production server already held that way (`rows`) are placed again by the retry a
+start runs; held with no id, they stay unmatched.
 
 Record the answers again: `REX_RECORD_ANSWERS=1 TMDB_KEY=... PLEX_TOKEN=... python3 tests/test_feed_blank_1016.py`.
 
@@ -84,8 +85,9 @@ def check_named(label, server):
                   and not re.fullmatch(r"Episode \d+", row.get("title") or ""),
                   (show.get("title"), tmdb_of(show), row.get("parentIndex"), row.get("index"), row.get("title")))
         else:
-            check("%s: %s is an episode of %s" % (label, name, want["show_title"]),
-                  named and show.get("title") == want["show_title"], (show.get("title"), show.get("guid")))
+            pushed_ids = bool(FIXTURE["pushes"][name].get("ids"))
+            check("%s: %s is an episode of %s%s" % (label, name, want["show_title"], "" if pushed_ids else ", left for Fix Match"),
+                  named == pushed_ids and show.get("title") == want["show_title"], (show.get("title"), show.get("guid")))
     shows = [server.row(key(name)).get("grandparentTitle") or "" for name in NAMES]
     check("%s: no show is named after an archive or an episode number" % label,
           not any(title.startswith(("aaf-wilty", "One Piece 11")) for title in shows), shows)
@@ -130,8 +132,8 @@ def main():
         named = lambda row: not str(row.get("guid", "local://")).startswith(blank.LOCAL)
         wilty = blank.wait_for(server, episode("aaf-wilty"), lambda row: [row.get("parentIndex"), row.get("index")] == [3, 1])
         show = server.row(wilty.get("grandparentRatingKey")) if wilty.get("grandparentRatingKey") else {}
-        check("the row held as the show `aaf-wilty 301 rar` is TMDB 4775's S03E01 again",
-              tmdb_of(show) == 4775 and [wilty.get("parentIndex"), wilty.get("index")] == [3, 1],
+        check("the row held as the show `aaf-wilty 301 rar`, which has no id, is S03E01 again, left for Fix Match",
+              show.get("title") == "Would I Lie To You" and tmdb_of(show) is None and [wilty.get("parentIndex"), wilty.get("index")] == [3, 1],
               (show.get("title"), tmdb_of(show), wilty.get("parentIndex"), wilty.get("index")))
         piece = blank.wait_for(server, episode("[HatSubs] One Piece"), lambda row: row.get("grandparentTitle") == "One Piece")
         check("the row held as the show `One Piece 1106` is an episode of One Piece",

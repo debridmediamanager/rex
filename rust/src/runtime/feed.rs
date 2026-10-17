@@ -1733,6 +1733,15 @@ impl Runtime {
             row.and_then(|row| row.get(field)).is_some_and(|value| !value.is_null() && value.as_str() != Some(""))
         };
         let parent = |field: &str| old.get(field).map(string_value).and_then(|key| self.catalog.get(&key));
+        // An identification that names nothing takes no title away: since a name alone is no
+        // longer searched (2026-10-17), the start's retry found nothing for the rows the name
+        // search had named, and placed Wallace & Gromit's episodes off their show.
+        let named = |row: Option<&Value>| {
+            row.and_then(|row| row.get("guid")).and_then(Value::as_str).is_some_and(|guid| !guid.starts_with("local://"))
+        };
+        if !meta.contains_key("_identity") && !moved && (named(Some(&old)) || named(parent("grandparentRatingKey"))) {
+            return false;
+        }
         let brought = Value::Object(meta.clone());
         // A show's poster draws its seasons' too, but only the episodes that brought it would
         // place their season again: Wallace & Gromit's Specials stayed blank in a rehearsal

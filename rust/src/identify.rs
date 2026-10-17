@@ -8,10 +8,11 @@
 //! 167 of 200 right. Plex's own matcher, sent what a real PMS sends, and TMDB together
 //! name 193, and where the two agree they are right 169 of 173 times.
 //!
-//! So, in order: an id written into the name, the hash's known IMDb id (`known`: zurg
-//! asks DMM and hands it over), then the cleaned name to Plex's matcher and TMDB, with
-//! their agreement as the confidence. Nothing is guessed: a release no source names
-//! stays unidentified, for Fix Match.
+//! So, in order: its source's placement, an id written into the name, the hash's known
+//! IMDb id (`known`: zurg asks DMM and hands it over). A release with none of those stays
+//! unidentified, for Fix Match: one wrong title in six is worse than a blank tile a person
+//! fixes once. Only an id that names nothing usable falls back to the cleaned name, to Plex's
+//! matcher and TMDB, with their agreement as the confidence.
 //!
 //! The patterns are `identify.py`'s, kept Unicode-aware as Python's `re` is on str.
 //! ponytail: the regex crate's `\w` also counts combining marks and connector
@@ -655,7 +656,8 @@ impl Identifier<'_> {
 
     /// The same, with the movie/show decision taken from the caller (a library
     /// section's type, "movie" or "show") instead of the name heuristic: an answer of the
-    /// other kind places nothing there, so the name is asked as that kind.
+    /// other kind places nothing there, so the name is asked as that kind. A release with no
+    /// id comes back unidentified (`NONE`) without a request.
     pub fn identify_as(
         &self,
         name: &str,
@@ -696,7 +698,7 @@ impl Identifier<'_> {
             })
             .filter(|imdb| !imdb.is_empty());
         if imdb.is_none() && name_tmdb.is_none() {
-            return self.by_name(identity, fixed.is_some());
+            return identity;
         }
         let blank = identity.clone();
         identity.confidence = EXACT;
@@ -822,7 +824,8 @@ impl Identifier<'_> {
         identity
     }
 
-    /// The cleaned name to Plex's matcher and TMDB, their agreement the confidence.
+    /// The cleaned name to Plex's matcher and TMDB, their agreement the confidence: only for
+    /// a release whose id named nothing usable.
     fn by_name(&self, mut identity: Identity, fixed: bool) -> Identity {
         if identity.parsed.title.is_empty() {
             return identity;
@@ -1118,7 +1121,9 @@ mod tests {
             (tagged.confidence, tagged.source.as_deref()),
             (EXACT, Some("name id"))
         );
-        // With no source, nothing is guessed.
+        // With no id, nothing is guessed, whoever could be asked.
+        let unnamed = identifier.identify("The.Matrix.1999.1080p.BluRay.mkv", None, 1);
+        assert_eq!((unnamed.confidence, unnamed.imdb, unnamed.plex), (NONE, None, None));
         let bare = Identifier {
             tmdb: None,
             plex: None,
