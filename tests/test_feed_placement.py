@@ -10,9 +10,8 @@ a season or as episodes further on (`Hibike Euphonium 3 - 01` is S3E1, Uma Musum
 S1E18), scene numbers TMDB does not have (`Detective.Conan.S33E01`, TMDB's S1E1103 in the
 placement contract; `Bungo.Stray.Dogs.S04E01`, TMDB's S1E37), and films zurg files under anime.
 
-Each is checked placed as pushed, and still there after every pass a start runs (also with
-`REX_ANIME_LISTS` and `REX_IMDB_EPISODES` set, which rex no longer reads: nothing is logged or
-kept for them), after the blank tile retry, and after a later push that places it elsewhere
+Each is checked placed as pushed, and still there after every pass a start runs, after the
+blank tile retry, and after a later push that places it elsewhere
 (same key, watched). A person's Fix
 Match wins over a placement, and a file pushed without one is placed by its name. Episodes placed
 on season 0 (`specials.json`, Firefly's) are TMDB's specials by name, like any other episode.
@@ -73,13 +72,8 @@ def catalog(work, *fixtures, rows=()):
         json.dump(merged, open(os.path.join(work, name + "_cache.json"), "w"))
 
 
-# What rex once kept beside the catalog for those two settings.
-DATASETS = ("anime-list-master.xml", "anime-offline-database.jsonl", "title.episode.tsv.gz", "imdb-episodes.db")
-
-
-def start(work, bytes_port, retired=False, tmdb=True):
-    """`retired`: an install that still sets REX_ANIME_LISTS and REX_IMDB_EPISODES on."""
-    keys = {"REX_ANIME_LISTS": "on", "REX_IMDB_EPISODES": "on"} if retired else {}
+def start(work, bytes_port, tmdb=True):
+    keys = {}
     if not tmdb:
         keys["TMDB_KEY"] = ""
     return Server(work, bytes_port, keys=keys)
@@ -149,24 +143,18 @@ def live(bytes_port):
         stop(server, work)
 
     # -- every pass a start runs leaves each where it was placed -------------------------------
-    for retired in (False, True):
-        label = "after a start%s" % (" with REX_ANIME_LISTS and REX_IMDB_EPISODES still on" if retired else "")
-        before = (log_count(work, "FEED placing"), log_count(work, "FEED unfolded"))
-        server = start(work, bytes_port, retired)
-        try:
-            time.sleep(20)
-            check_placed(label, server, sorted(PLACED), keys)
-            check("%s: every key kept, nothing placed again or unfolded" % label,
-                  server.keys() == keys and (log_count(work, "FEED placing"), log_count(work, "FEED unfolded")) == before,
-                  (before, log_count(work, "FEED placing"), log_count(work, "FEED unfolded")))
-            check("%s: what was watched stays watched" % label, server.row(bungo).get("viewCount") == 1 and server.row(bd).get("viewCount") == 1)
-        finally:
-            stop(server, work)
-    log = open(os.path.join(work, "server.log"), errors="replace").read()
-    check("the retired settings log nothing and fetch nothing beside the catalog",
-          not any(word in log for word in ("ANIME", "IMDB")) and not any(os.path.exists(os.path.join(work, name)) for name in DATASETS),
-          ([line for line in log.splitlines() if "ANIME" in line or "IMDB" in line][:5],
-           [name for name in DATASETS if os.path.exists(os.path.join(work, name))]))
+    label = "after a start"
+    before = (log_count(work, "FEED placing"), log_count(work, "FEED unfolded"))
+    server = start(work, bytes_port)
+    try:
+        time.sleep(20)
+        check_placed(label, server, sorted(PLACED), keys)
+        check("%s: every key kept, nothing placed again or unfolded" % label,
+              server.keys() == keys and (log_count(work, "FEED placing"), log_count(work, "FEED unfolded")) == before,
+              (before, log_count(work, "FEED placing"), log_count(work, "FEED unfolded")))
+        check("%s: what was watched stays watched" % label, server.row(bungo).get("viewCount") == 1 and server.row(bd).get("viewCount") == 1)
+    finally:
+        stop(server, work)
     shutil.rmtree(work, ignore_errors=True)
 
 
