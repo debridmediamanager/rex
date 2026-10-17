@@ -431,16 +431,21 @@ WantedBy=multi-user.target
 
 Off by default: rex then answers a conversion request the way a server with no
 encoder does. Point `REX_TRANSCODER` at an FFmpeg to turn it on. jellyfin-ffmpeg is
-the one it is measured with: its `.deb` carries its own Intel driver, so it runs
-from wherever it is unpacked.
+the one it is measured with. Install its `.deb` as a package: it lands in
+`/usr/lib/jellyfin-ffmpeg` beside any system FFmpeg, with its own Intel driver. Unpacked
+anywhere else (`dpkg -x`) its libva still looks for that driver under
+`/usr/lib/jellyfin-ffmpeg/lib/dri`, ignores `LIBVA_DRIVERS_PATH`, and falls back to the
+system's older iHD, which on a J4105 could not convert 10-bit HEVC (measured 2026-10-17).
 
 ```bash
 curl -LO https://github.com/jellyfin/jellyfin-ffmpeg/releases/download/v8.1.3-1/jellyfin-ffmpeg8_8.1.3-1-jammy_amd64.deb
-dpkg -x jellyfin-ffmpeg8_8.1.3-1-jammy_amd64.deb ~/rex-ffmpeg
-J=~/rex-ffmpeg/usr/lib/jellyfin-ffmpeg
-export REX_TRANSCODER=$J/ffmpeg LD_LIBRARY_PATH=$J/lib LIBVA_DRIVERS_PATH=$J/lib/dri LIBVA_DRIVER_NAME=iHD
+sudo apt install ./jellyfin-ffmpeg8_8.1.3-1-jammy_amd64.deb
+export REX_TRANSCODER=/usr/lib/jellyfin-ffmpeg/ffmpeg LIBVA_DRIVER_NAME=iHD
 sudo usermod -aG render "$USER"      # the GPU's /dev/dri/renderD128; log in again after
 ```
+
+A systemd user service only gets the new group once its user manager restarts (a
+reboot, or the last login session ending); until then start rex under `sg render`.
 
 | Variable | Default | |
 |---|---|---|
