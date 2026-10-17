@@ -24,6 +24,7 @@ use sha1::{Digest, Sha1};
 
 use crate::{catalog::Catalog, decision, metadata, store, xmlout};
 
+mod accounts;
 mod artwork;
 mod axes;
 mod butler;
@@ -332,6 +333,9 @@ struct Playlist {
     item_ids: Vec<i64>,
     smart: bool,
     uri: String,
+    /// The account that made it: plexlab listed a shared user's playlist to that user
+    /// alone, and the owner's to the owner alone.
+    account: i64,
 }
 
 #[derive(Debug, Clone)]
@@ -609,6 +613,19 @@ pub struct Runtime {
     completed_sessions: HashSet<(String, String)>,
     completion_pending_stop: HashSet<(String, String)>,
     pub hidden_continue: HashSet<String>,
+    /// The account the request in hand comes from (`accounts.rs`); the owner between
+    /// requests, so a background pass reads and writes the owner's state.
+    viewer: accounts::Grant,
+    /// The owner's state, moved aside while another account's request runs.
+    overlay: Option<accounts::Overlay>,
+    /// Every other account's watch state, hides and track picks, by account id.
+    account_states: HashMap<i64, accounts::AccountState>,
+    /// The `accountViews` members written since the last snapshot (`<account>/<key>`).
+    account_views_changed: HashSet<String>,
+    /// The rows holding the owner's view fields, as of the last account overlay (`accounts.rs`).
+    owner_views: Option<HashSet<String>>,
+    /// Other accounts' playlists, out of `playlists` while a request runs.
+    hidden_playlists: HashMap<String, Playlist>,
     /// Leaves completed in a PLAYBACK SESSION (Python's `_viewedInSession`): history,
     /// not view state, so a later scrobble or unscrobble leaves it standing.
     viewed_in_session: HashSet<String>,
@@ -855,6 +872,12 @@ impl Runtime {
             completed_sessions: HashSet::new(),
             completion_pending_stop: HashSet::new(),
             hidden_continue: HashSet::new(),
+            viewer: accounts::Grant::owner(),
+            overlay: None,
+            account_states: HashMap::new(),
+            account_views_changed: HashSet::new(),
+            hidden_playlists: HashMap::new(),
+            owner_views: None,
             viewed_in_session: HashSet::new(),
             theme_rows: HashMap::new(),
             theme_next: 0,
@@ -1232,6 +1255,7 @@ impl Runtime {
                                     .and_then(Value::as_str)
                                     .unwrap_or_default()
                                     .to_string(),
+                                account: row.get("accountID").and_then(Value::as_i64).unwrap_or(accounts::OWNER),
                             },
                         );
                     }
@@ -1438,6 +1462,7 @@ impl Runtime {
                     set.insert(string_value(key));
                 }
             }
+            self.restore_accounts(state.get("accountViews"), state.get("accountSets"));
             // The history key is monotonic and never reused; a file from before the
             // counter was kept starts it above the highest key a restored row holds.
             let highest_history = self
@@ -1650,6 +1675,11 @@ impl Runtime {
     /// The state as the file will hold it, taken under the runtime lock; writing it is
     /// `write_snapshot`'s, which needs no lock but the file's own.
     fn snapshot_state(&mut self) -> Result<Option<StateSnapshot>, String> {
+        // Never while another account's state sits on the rows: the save would write it as
+        // the owner's. `dirty` stays set for the save after `leave_account`.
+        if self.overlay.is_some() {
+            return Ok(None);
+        }
         // Background passes write rows outside a request; theirs are packed here.
         self.catalog.pack_pending();
         let Some(path) = self.state_path.clone() else {
@@ -1659,7 +1689,7 @@ impl Runtime {
         let mut state = self.state_document(false);
         self.dirty = false;
         // The vocabulary only when it was replaced since the last snapshot.
-        let mut separate = vec!["items", "feedHeld"];
+        let mut separate = vec!["items", "feedHeld", "accountViews"];
         if self.spelling_serial == self.spelling_saved {
             separate.push("spelling");
         } else if let Some(object) = state.as_object_mut() {
@@ -1680,6 +1710,14 @@ impl Runtime {
             &held_changes,
             |key| held.get(key),
             || held.iter().map(|(key, value)| (key.clone(), value.clone())).collect(),
+        ));
+        let account_changes = std::mem::take(&mut self.account_views_changed);
+        let states = &self.account_states;
+        delta.extend(self.store_cache.diff_members(
+            "accountViews",
+            &account_changes,
+            |key| accounts::account_view(states, key),
+            || accounts::account_views_all(states),
         ));
         // The catalog rows by key: only those written since the last snapshot are
         // serialised, unless rows were added, removed or reordered.
@@ -1750,7 +1788,20 @@ impl Runtime {
             "history": self.history,
             "viewCounts": self.view_counts.borrow().clone(),
             "devices": self.devices.iter().map(|(key, value)| (key.clone(), json!({"name":value.name,"product":value.product,"platform":value.platform,"lastSeenAt":value.last_seen}))).collect::<Map<String, Value>>(),
-            "playlists": self.playlists.values().map(|value| json!({"id":value.id,"title":value.title,"items":value.items,"itemIds":value.item_ids,"smart":value.smart,"uri":value.uri})).collect::<Vec<_>>(),
+            "playlists": self.playlists.values().map(|value| {
+                let mut row = json!({"id":value.id,"title":value.title,"items":value.items,"itemIds":value.item_ids,"smart":value.smart,"uri":value.uri});
+                // Only another account's: an owner's playlist is saved as it always was.
+                if value.account != accounts::OWNER {
+                    row["accountID"] = json!(value.account);
+                }
+                row
+            }).chain(self.hidden_playlists.values().map(|value| {
+                let mut row = json!({"id":value.id,"title":value.title,"items":value.items,"itemIds":value.item_ids,"smart":value.smart,"uri":value.uri});
+                if value.account != accounts::OWNER {
+                    row["accountID"] = json!(value.account);
+                }
+                row
+            })).collect::<Vec<_>>(),
             "collections": self.collections.values().map(|value| json!({"id":value.id,"title":value.title,"items":value.items.order,"smart":value.smart,"section":value.section,"subtype":value.subtype,"prefs":value.prefs,"uri":value.uri,"tag":value.tag,"extra":value.extra})).collect::<Vec<_>>(),
             // `persist.py` SIM_FIELDS `play_queues`, `next_play_queue(_item)` and the
             // library's own counters: cycle 73 measured a restart keeping play queues
@@ -1801,9 +1852,15 @@ impl Runtime {
             ("collectionGuids", json!(self.collection_guids.iter().map(|(k, v)| (k.clone(), v.clone())).collect::<Map<String, Value>>())),
             ("hiddenContinue", json!(self.hidden_continue.iter().collect::<Vec<_>>())),
             ("viewedInSession", json!(self.viewed_in_session.iter().collect::<Vec<_>>())),
+            ("accountSets", self.account_sets_document()),
+            // A snapshot diffs it by key instead (`diff_members`).
+            ("accountViews", if full { Value::Object(self.account_views_all()) } else { Value::Null }),
         ];
         if let Some(object) = state.as_object_mut() {
-            for (name, value) in extra.into_iter().filter(|(name, value)| *name != "feedHeld" || !value.is_null()) {
+            for (name, value) in extra
+                .into_iter()
+                .filter(|(name, value)| !matches!(*name, "feedHeld" | "accountViews") || !value.is_null())
+            {
                 object.insert(name.to_string(), value);
             }
         }
@@ -1840,7 +1897,13 @@ impl Runtime {
     /// the section per call was most of `/library/sections` and Related (the production
     /// server, 2026-10-11).
     fn section_row_refs(&self, key: &str) -> Vec<&Value> {
-        self.catalog.section_refs(key)
+        let mut rows = self.catalog.section_refs(key);
+        // Before any paging or count, so a filtered share's pages are full and its totals
+        // its own (`accounts.rs`).
+        if !self.viewer.is_owner() {
+            rows.retain(|row| self.visible(row));
+        }
+        rows
     }
 
     fn children(&self, key: &str) -> Vec<Value> {
@@ -5190,7 +5253,7 @@ impl Runtime {
             row.get("type").cloned().unwrap_or(Value::Null),
         );
         entry.insert("viewedAt".to_string(), json!(now()));
-        entry.insert("accountID".to_string(), json!(1));
+        entry.insert("accountID".to_string(), json!(self.viewer.id));
         entry.insert("deviceID".to_string(), json!(1));
         entry.insert("_history".to_string(), json!(true));
         let detail = self.detail_row(row);
@@ -5269,6 +5332,8 @@ impl Runtime {
                 })
             })
             .filter(|row| kind.is_none_or(|kind| row.get("type").and_then(Value::as_str) == Some(kind)))
+            // A share's libraries and filter, before the listing pages or counts.
+            .filter(|row| self.viewer.is_owner() || self.visible(row))
             .collect()
     }
 
@@ -7046,7 +7111,15 @@ impl Runtime {
         }
         let writes = !matches!(request.method.as_str(), "GET" | "HEAD" | "OPTIONS");
         let libraries = writes.then(|| self.section_names());
+        // The account asking, with its own state on the rows while it is answered.
+        self.viewer = self.grant_for(request);
+        self.enter_account(request);
+        self.hide_other_playlists();
         let mut response = self.request_route(request);
+        self.share_response(&raw_path, &mut response);
+        self.restore_playlists();
+        self.leave_account();
+        self.viewer = accounts::Grant::owner();
         // A real PMS republishes its libraries when one is added, removed or renamed;
         // plex.tv only lets an owner share the ones it was last sent.
         if libraries.is_some_and(|before| before != self.section_names()) {
@@ -7670,6 +7743,9 @@ impl Runtime {
                 split_target(&request.target).0
             );
             return response;
+        }
+        if let Some(refusal) = self.share_refusal(request, &path) {
+            return refusal;
         }
         // A bare `/player` falls to the plug-in dispatcher for every verb but GET and
         // HEAD, as server.py's single-segment fallthrough runs before its player rule.
@@ -9400,6 +9476,11 @@ impl Runtime {
 
     fn route_history(&self, query: &HashMap<String, String>) -> Response {
         let mut rows = self.history.clone();
+        // Another account reads its own plays alone, whatever `accountID` it asks for: plexlab
+        // answered its shared user that user's row for `accountID=1` too.
+        if !self.viewer.is_owner() {
+            rows.retain(|row| row.get("accountID").and_then(Value::as_i64) == Some(self.viewer.id));
+        }
         // Cycle 14, measured case by case on plexlab (1.43.4) and the 1.42.2 reference:
         // this page VALIDATES its ids.  `accountID`, `librarySectionID` and
         // `metadataItemID` are 400 for anything that is not a whole number -- `abc`, empty
@@ -9485,6 +9566,9 @@ impl Runtime {
             let Some(wanted) = query.get(name).filter(|value| !value.is_empty()) else {
                 continue;
             };
+            if name == "accountID" && !self.viewer.is_owner() {
+                continue;
+            }
             if name == "deviceID" {
                 rows.retain(|row| string_value(row.get(field).unwrap_or(&Value::Null)) == *wanted);
             } else {
@@ -9852,7 +9936,7 @@ impl Runtime {
         }
         // Each call answers a DIFFERENT token, in server.py's `transient-<uuid4>` form.
         let token = if self.gated() {
-            self.plextv.access.mint()
+            self.plextv.access.mint(self.viewer.clone())
         } else {
             format!("transient-{}", plextv::uuid4())
         };
@@ -10417,7 +10501,7 @@ impl Runtime {
                     entry.insert("ratingKey".to_string(), json!(key));
                     entry.insert("librarySectionID".to_string(), json!(""));
                     entry.insert("viewedAt".to_string(), json!(now()));
-                    entry.insert("accountID".to_string(), json!(1));
+                    entry.insert("accountID".to_string(), json!(self.viewer.id));
                     entry.insert("deviceID".to_string(), json!(1));
                     if let Some(view_type) = view_type {
                         entry.insert("viewType".to_string(), json!(view_type));

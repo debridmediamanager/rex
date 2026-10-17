@@ -54,7 +54,7 @@ searched on disk. The gate is usually one truthiness check in minified code.
 | `tests/` | Conformance and end-to-end suites, plus `catalog_ui.json` and `fixtures/decisions/`, the measured decision corpus |
 | `tests/fixtures/` | Redacted corpora recorded from a real PMS through a real client; `media/` pairs real files' probes with a real PMS's analysis of them |
 | `harness/` | plexlab — the reference PMS and the recorder. See below. |
-| `probes/` | Measurement scripts: the recorders behind checked-in fixtures (`legacy_scan_fixture.py`, `record_session_gate.py`), `ui_surface.py`, the plex.tv presence probes and `apkcensus.py` |
+| `probes/` | Measurement scripts: the recorders behind checked-in fixtures (`legacy_scan_fixture.py`, `record_session_gate.py`, `record_shared_user.py`), `ui_surface.py`, the plex.tv presence probes and `apkcensus.py` |
 | `docs/findings.md` | Everything measured. Read before changing behaviour. |
 | `docs/protocol-traps.md`, `docs/setup.md`, `docs/feed-api.md` | The protocol's edge cases, the operator's guide, and the API sources push with |
 
@@ -99,6 +99,7 @@ Where things live in `rust/src/`:
 | `runtime/universal.rs` | The video transcoder (`REX_TRANSCODER`): the conversion decision's plan and Media, `start.m3u8`/`start.mpd`, segments served outside the runtime lock, one FFmpeg per session with the hardware ladder, seeks, throttling and the idle reaper, and the `TranscodeSession` rows |
 | `runtime/plexmeta.rs`, `identify.rs` | Plex's metadata agent (the claim's server token, else `PLEX_TOKEN`), and which title a release is: the ids its source placed it with, or a TMDB id set by hand at the source (`placed`; `scan::identified_by`), asking Plex's agent for its guid by external id, whose answer and children rows are all a row shows (`metadata::describe`); nothing is read off a name, and what arrives with neither stays for Fix Match, which searches Plex's agent |
 | `runtime/plextv.rs` | claim/heartbeat/account state (`REX_PLEXTV_URL` points plex.tv and Plex's agent at a stub) |
+| `runtime/accounts.rs` | Which plex.tv account each request comes from (the access-token list: owner 1, a share its plex.tv id, with its libraries, filters, flags and track settings) and what that account keeps and sees: its watch state, ratings, hides and track picks swapped onto the rows while its request runs, its own playlists and history, the share's libraries and filters pruned from every answer, the owner's routes refused (findings, "Each account its own") |
 | `platform.rs` | Everything asked of the OS beyond `std`: local time, CPU time and load, the host name, thread ids, pausing and killing FFmpeg, the GDM socket. A Unix half and a Windows half; nothing else may call `libc` for these |
 | `runtime/*.rs` (the rest) | One subsystem each, named after it: search, listing, axes, edit, collections, playlists, artwork, butler, framework, i18n, resume (On Deck and hubs), logging and so on |
 | `filters.rs`, `hierarchy.rs`, `metadata.rs`, `mediainfo.rs`, `decision.rs`, `xmlout.rs`, `gate.rs`, `catalog.rs` | Plex's filter grammar (the operator is part of the KEY), flat leaves to show/season/episode, Plex's description of a title and `plex://` guids, ffprobe JSON to `Media`/`Part`/`Stream`, a plain-form decision against the client's own profile, Plex XML, the direct-play gate, the catalog |
@@ -514,7 +515,9 @@ python3 tests/test_sources.py               # registering sources, and sources t
                                             # a redirect to a CDN, a restart, rows before registration, the two-step delete
 python3 tests/test_server_command.py        # the launcher's default and REX_SERVER override
 python3 tests/test_unclaimed_gate.py        # what an unclaimed server answers: local networks, Host names, allowedNetworks
-python3 tests/test_track_prefs.py           # a real Part starts on the owner's plex.tv audio/subtitle languages; a hand pick stays
+python3 tests/test_track_prefs.py           # a real Part starts on its account's plex.tv audio/subtitle languages; a hand pick stays that account's
+python3 tests/test_accounts.py              # plexlab's owner and shared user replayed: per-account watch state, ratings, playlists,
+                                            # history and sessions, a share's libraries, filters and flags, the owner's routes
 python3 tests/parallel_suites.py --workers 4 test_cli test_feed ...
                                             # several suites at once, as CI runs them: each gets its own
                                             # REX_TEST_PORTS range (tests/test_ports.py), output kept per suite

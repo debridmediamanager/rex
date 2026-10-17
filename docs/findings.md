@@ -12114,6 +12114,56 @@ against the unfixed servers, which answered 200 with no token. Not reproduced: P
 /api/v2/server/users` after each read (per-user restrictions; rex keeps no per-user state),
 the allowed-networks fallback, and admitting back the transient tokens `/security/token` mints.
 
+**Each account its own, as a real PMS keeps it (2026-10-17).** rex let in every token plex.tv
+listed and answered each one as the owner: a shared user saw every library, scrobbled onto the
+owner's rows, played as "owner" in Now Playing and history, and could reach every admin route.
+Measured on plexlab (1.43.4, claimed) shared with a managed Home user, owner and user asking the
+same requests side by side (`probes/record_shared_user.py`; `tests/fixtures/shared_user_s1434.json`
+with Movies only, allowSync=0, `filterMovies=contentRating=G,PG`, and `shared_user_label_s1434.json`
+with allowSync=1, `label!=Rexhide`):
+
+- plex.tv's `access_tokens` list names each share as `<token type="server" owned="0">` with
+  `<invited id title thumb>`, its `<profile>` track settings, `<settings filterMovies
+  filterTelevision allowSync ...>` and `<sections><section key=…>` (the local section ids;
+  `plextv_access_tokens_shared_s1434.json`). A friend's share (fun's Plex had three) and a Home
+  user's have the same shape. The client uses the share's own token, the `accessToken`
+  `/api/v2/resources` gives that user; the user's account token is a 401. The owner is local
+  account 1 and everyone else their plex.tv id (fun's old Plex DB `accounts`). The list is read
+  only at start and for an unknown token; plex.tv sends `notifySharingChange` (a share's settings
+  changed) and `notifyHomeChange` (a Home user added) over pubsub, seen on rex-fun the moment they
+  were made, and plexlab, whose pubsub was failing, kept the old settings until a restart.
+- Watch state, ratings, Continue Watching, playlists and history are per account: the user's
+  scrobble and 8-star rating showed to that user only, the owner's watched films stayed unwatched
+  for the user, a user's playlist was listed to that user alone and the owner's to the owner.
+  History rows carry the player's `accountID`; the owner can filter by it, the user reads only
+  its own rows whatever `accountID` it asks for. The session listing shows the player's `User`
+  (`id`, `title`, `thumb` from plex.tv) and `Player userID`, and the row as that user holds it.
+- A share hides: `/library/sections` lists only its libraries; `/library/sections/{other}...`
+  is 403, `/hubs/sections/{other}` 404; a row of another library, or one the filter drops, is 404
+  at `/library/metadata/{key}` and its children, and missing from every listing, hub (`hubKey`
+  and `size` follow; a hub left empty goes) and search. An allow-list of ratings drops a row with
+  none (Cosmos Laundromat); `label!=` drops a labelled row.
+- The owner's routes are 403: `/accounts`, `/myplex/account`, `/status/sessions` (and
+  `background`), `/butler`, `/devices`, `/system`, `/diagnostics/logs`, `/updater/status`,
+  `/media/grabbers`, `/livetv/dvrs`, `/channels/all`, `/library/metadata/{key}/matches`, `GET
+  /downloadQueue`, `PUT /:/prefs`, an edit of a row. `DELETE` of a row that does not exist and `PUT
+  /library/sections/1/refresh` were 404. `/:/prefs`, `/statistics/*`, `/activities`, `/clients`
+  and `/transcode/sessions` were 200.
+- The server's own flags are the share's: `/` and `/media/providers` drop `allowMediaDeletion`,
+  carry the share's `allowSync`, `allowCameraUpload`, `allowChannelAccess`, `allowTuners`; the
+  library provider's `protocols` is `stream` (no `download`) even at allowSync=1, its `manage`
+  Feature goes, and its download `subscribe` Feature goes at allowSync=0. A section's
+  `allowSync` is the share's. `POST /downloadQueue` was 403 at allowSync=0 and 200 at 1.
+- A shared user's Part starts on that user's plex.tv track settings, and what that user picks by
+  hand is theirs (`tests/test_track_prefs.py`).
+
+rex does the same (`runtime/accounts.rs`): each listed token maps to its account and share
+(`accounts::Grant`, kept in `claim_state.json` as `access_grants`), the request runs with that
+account's view fields, Continue Watching hides and track picks swapped onto the rows and back
+before anything saves (an owner's request pays nothing), and the answer is pruned and its flags
+set from the share.
+`tests/test_accounts.py` replays both recordings against a rex claimed with plexlab's list.
+
 **A resubscribe within seconds of the old stream closing reads absent (2026-10-10).** On
 rex-e2e, `systemctl restart` (old process gone at 07:59:04, new stream subscribed at
 07:59:06) was listed `presence=true` until 07:59:38 and `false` from 07:59:43 for six minutes,

@@ -23,6 +23,9 @@ pub struct Catalog {
     /// The rows written since the last `take_touched`, kept apart from `changes` because a
     /// save takes those: the runtime re-stamps the artwork paths of these (`restamp_artwork`).
     touched: Changes,
+    /// The rows written since the last `take_writes`, kept apart again: the account overlay
+    /// (`accounts.rs`) follows which rows hold the owner's watch state by them.
+    writes: Changes,
     /// `children`'s rows by parent key and each section's movies and shows, built on first
     /// use. Without it a listing scanned all rows once per show and per season: 9 s for a
     /// page of the production server's 1,500 movies and over 30 s for its 13,500 episodes
@@ -182,6 +185,7 @@ impl Catalog {
             by_id: HashMap::new(),
             changes: Changes { all: true, keys: HashSet::new() },
             touched: Changes { all: true, keys: HashSet::new() },
+            writes: Changes { all: true, keys: HashSet::new() },
             index: RowIndex::default(),
             unpacked: Changes { all: true, keys: HashSet::new() },
         };
@@ -229,6 +233,9 @@ impl Catalog {
         if !self.touched.all {
             self.touched.keys.insert(rating_key.to_string());
         }
+        if !self.writes.all {
+            self.writes.keys.insert(rating_key.to_string());
+        }
         if !self.unpacked.all {
             self.unpacked.keys.insert(rating_key.to_string());
         }
@@ -244,9 +251,22 @@ impl Catalog {
     pub fn items_mut(&mut self) -> &mut Vec<Value> {
         self.changes.all = true;
         self.touched.all = true;
+        self.writes.all = true;
         self.unpacked.all = true;
         self.index.drop_all();
         &mut self.items
+    }
+
+    /// Every row, mutably, marking none of them: only for a change undone before anything
+    /// saves or reads them from outside the request (`accounts.rs`, the account overlay).
+    pub fn items_unmarked_mut(&mut self) -> &mut Vec<Value> {
+        &mut self.items
+    }
+
+    /// One row, mutably, marking nothing: the same contract as `items_unmarked_mut`.
+    pub fn get_unmarked_mut(&mut self, rating_key: &str) -> Option<&mut Value> {
+        let index = *self.by_id.get(rating_key)?;
+        self.items.get_mut(index)
     }
 
     /// Pack the streams of the rows written since the last call. Packing changes no row's
@@ -274,6 +294,10 @@ impl Catalog {
 
     pub fn take_touched(&mut self) -> Changes {
         std::mem::take(&mut self.touched)
+    }
+
+    pub fn take_writes(&mut self) -> Changes {
+        std::mem::take(&mut self.writes)
     }
 
     pub fn children(&self, parent_key: &str) -> Vec<Value> {
@@ -307,6 +331,9 @@ impl Catalog {
                 }
                 if !self.unpacked.all {
                     self.unpacked.keys.insert(key.clone());
+                }
+                if !self.writes.all {
+                    self.writes.keys.insert(key.clone());
                 }
                 if !self.touched.all {
                     self.touched.keys.insert(key);

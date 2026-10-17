@@ -29,6 +29,8 @@ pub(crate) struct SessionEntry {
     pub listed: bool,
     /// When its run of `paused` beats began, 0 while it is not paused.
     pub paused_since: f64,
+    /// The account playing it (`accounts.rs`).
+    pub account: i64,
 }
 
 /// `Sessions.PLAYER_FROM`: header (or query parameter) -> the `Player` field it fills.
@@ -447,6 +449,7 @@ impl Runtime {
                     user: Value::Null,
                     listed: false,
                     paused_since: 0.0,
+                    account: self.viewer.id,
                 },
             );
         }
@@ -461,7 +464,9 @@ impl Runtime {
         player.insert("local".to_string(), json!(local));
         player.insert("relayed".to_string(), json!(false));
         player.insert("secure".to_string(), json!(false));
-        player.insert("userID".to_string(), json!(1));
+        // plexlab's session of its shared user: `userID` and `User` are that user's plex.tv id,
+        // name and avatar.
+        player.insert("userID".to_string(), json!(self.viewer.id));
         if let Some(profile) = profile {
             player.insert("profile".to_string(), json!(profile));
         }
@@ -487,7 +492,12 @@ impl Runtime {
         entry.session = json!({"id": session_id,
                                "bandwidth": round_half_even(bitrate as f64 * 2.1),
                                "location": if local { "lan" } else { "wan" }});
-        entry.user = json!({"id": "1", "thumb": "", "title": owner});
+        entry.account = self.viewer.id;
+        entry.user = if self.viewer.is_owner() {
+            json!({"id": "1", "thumb": "", "title": owner})
+        } else {
+            json!({"id": self.viewer.id.to_string(), "thumb": self.viewer.thumb, "title": self.viewer.title})
+        };
         if state == "playing" {
             entry.listed = true;
         }
@@ -608,6 +618,9 @@ impl Runtime {
                 None if entry.row.is_object() => &entry.row,
                 None => continue,
             };
+            // The row as its player's account holds it: plexlab listed its shared user's
+            // session with that user's rating and play count.
+            let row = &self.with_account_views(row, entry.account);
             let mut item = self.detail_row(row);
             let decided = self
                 .decided_sessions

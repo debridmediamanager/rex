@@ -124,7 +124,7 @@ jobs:
             test_startup_wait test_test_ports test_parallel_suites test_cli test_server_command \
             test_native_runtime_smoke test_build_catalog test_tls test_part_bytes \
             test_sources test_feed test_feed_versions test_feed_season_art \
-            test_feed_blank_tiles test_feed_source_decides test_feed_placement test_feed_rejected test_feed_extras test_feed_versions_1017 test_plextv test_track_prefs \
+            test_feed_blank_tiles test_feed_source_decides test_feed_placement test_feed_rejected test_feed_extras test_feed_versions_1017 test_plextv test_track_prefs test_accounts \
             test_unclaimed_gate test_manager test_paused_limit test_webhooks
 
       # No GPU on the runner: this is the CPU (x264) path, with the hardware probe on auto.
@@ -326,7 +326,7 @@ jobs:
           export PATH="/c/Program Files/Git/usr/bin:$PATH"
           for suite in test_cli test_server_command test_native_runtime_smoke test_build_catalog \
                        test_tls test_part_bytes test_sources test_feed test_feed_versions \
-                       test_feed_season_art test_feed_blank_tiles test_feed_source_decides test_plextv test_unclaimed_gate; do
+                       test_feed_season_art test_feed_blank_tiles test_feed_source_decides test_plextv test_unclaimed_gate test_accounts; do
             echo "::group::$suite"
             python "tests/$suite.py"
             echo "::endgroup::"

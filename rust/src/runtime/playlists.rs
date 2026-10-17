@@ -225,6 +225,7 @@ impl Runtime {
             item_ids: Vec::new(),
             smart,
             uri: if smart { uri.clone() } else { String::new() },
+            account: self.viewer.id,
         };
         if !smart {
             // A set beside the list: a whole-library uri is 40,000 rows, and a scan of

@@ -11,7 +11,7 @@
 //! test identity claiming or announcing against the real one is what reset the
 //! account's tokens on 2026-09-11.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -396,6 +396,9 @@ pub(crate) struct Claim {
     /// The access-token list as last read, sorted: kept in the claim file, so a start whose
     /// read fails still lets the owner's and shared users' clients in.
     pub access_tokens: Vec<String>,
+    /// The shares among them, by token: whose account each is and what it grants
+    /// (`accounts::Grant`), so a start whose read fails still knows who is asking.
+    pub access_grants: Vec<(String, super::accounts::Grant)>,
 }
 
 pub(crate) type SharedClaim = Arc<Mutex<Claim>>;
@@ -421,6 +424,7 @@ impl Claim {
             account_id: None,
             view_state_cursor: None,
             access_tokens: Vec::new(),
+            access_grants: Vec::new(),
         };
         if !claim.path.exists() {
             return claim;
@@ -463,6 +467,17 @@ impl Claim {
                 tokens.sort();
                 tokens.dedup();
                 claim.access_tokens = tokens;
+                claim.access_grants = state
+                    .get("access_grants")
+                    .and_then(Value::as_object)
+                    .map(|grants| {
+                        grants
+                            .iter()
+                            .filter_map(|(token, grant)| Some((token.clone(), super::accounts::Grant::from_value(grant)?)))
+                            .collect()
+                    })
+                    .unwrap_or_default();
+                claim.access_grants.sort_by(|left, right| left.0.cmp(&right.0));
                 info!(
                     "loaded claim for {} (owner {})",
                     claim.machine,
@@ -491,7 +506,7 @@ impl Claim {
                 .map_or_else(|| "null".to_string(), |text| python_json_string(text))
         };
         let document = format!(
-            "{{\"machine\": {}, \"token\": {}, \"owner\": {}, \"email\": {}, \"feature_uuids\": [{}], \"account_id\": {}, \"view_state_cursor\": {}, \"access_tokens\": [{}]}}",
+            "{{\"machine\": {}, \"token\": {}, \"owner\": {}, \"email\": {}, \"feature_uuids\": [{}], \"account_id\": {}, \"view_state_cursor\": {}, \"access_tokens\": [{}]{}}}",
             python_json_string(&self.machine),
             string(&self.token),
             string(&self.owner),
@@ -509,6 +524,17 @@ impl Claim {
                 .map(|token| python_json_string(token))
                 .collect::<Vec<_>>()
                 .join(", "),
+            // Only once there are shares, so a file with none is byte for byte the old one.
+            if self.access_grants.is_empty() {
+                String::new()
+            } else {
+                format!(
+                    ", \"access_grants\": {}",
+                    Value::Object(
+                        self.access_grants.iter().map(|(token, grant)| (token.clone(), grant.to_value())).collect()
+                    )
+                )
+            },
         );
         // The claim holds the server's token: owner-only on Unix. A Windows profile's
         // folders are already private to their user.
@@ -766,13 +792,7 @@ fn fetch_account(claim: &Claim) -> Result<(Option<i64>, Option<crate::mediainfo:
         .filter(|id| !id.is_empty() && id.bytes().all(|byte| byte.is_ascii_digit()))
         .and_then(|id| id.parse::<i64>().ok())
         .ok_or_else(|| "account response returned no numeric id".to_string())?;
-    let language = |profile: &Element, name: &str| profile.get(name).filter(|code| !code.is_empty()).map(str::to_string);
-    let prefs = root.all("profile").first().map(|profile| crate::mediainfo::TrackPrefs {
-        auto_audio: profile.get("autoSelectAudio") == Some("1"),
-        audio: language(profile, "defaultAudioLanguage"),
-        subtitles: profile.get("autoSelectSubtitle").and_then(|mode| mode.parse().ok()).unwrap_or(0),
-        subtitle: language(profile, "defaultSubtitleLanguage"),
-    });
+    let prefs = root.all("profile").first().map(|profile| profile_prefs(profile));
     Ok((Some(id), prefs))
 }
 
@@ -846,8 +866,10 @@ pub(crate) fn announce_connectivity(
 
 /// `Claim.fetch_access_tokens`: every token plex.tv lets reach this server -- its own, the
 /// owner's devices' and shared users' -- one `<token>` row each; `tokenDisabled="1"` is not
-/// let in.
-fn fetch_access_tokens(claim: &Claim, unknown: Option<&str>) -> Result<HashSet<String>, String> {
+/// let in. Each maps to its account: an owned `type="device"` row is the owner's, a
+/// `type="server"` row a share, named by its `<invited>` user and granting its `<sections>`
+/// and `<settings>` (`tests/fixtures/plextv_access_tokens_shared_s1434.json`).
+fn fetch_access_tokens(claim: &Claim, unknown: Option<&str>) -> Result<HashMap<String, super::accounts::Grant>, String> {
     let token = claim.token.clone().unwrap_or_default();
     let mut pairs = vec![("auth_token", token.clone())];
     if let Some(unknown) = unknown.filter(|unknown| !unknown.is_empty()) {
@@ -862,9 +884,50 @@ fn fetch_access_tokens(claim: &Claim, unknown: Option<&str>) -> Result<HashSet<S
         .all("token")
         .into_iter()
         .filter(|row| row.get("tokenDisabled") != Some("1"))
-        .filter_map(|row| row.get("token").filter(|token| !token.is_empty()))
-        .map(str::to_string)
+        .filter_map(|row| Some((row.get("token").filter(|token| !token.is_empty())?.to_string(), grant_of(row))))
         .collect())
+}
+
+/// The account behind one `<token>` row.
+fn grant_of(row: &Element) -> super::accounts::Grant {
+    let mut grant = super::accounts::Grant::owner();
+    let Some(invited) = row.all("invited").into_iter().next().filter(|_| row.get("owned") != Some("1")) else {
+        return grant;
+    };
+    let Some(id) = invited.get("id").and_then(|id| id.parse::<i64>().ok()) else {
+        return grant;
+    };
+    grant.id = id;
+    grant.title = invited.get("title").or(invited.get("username")).unwrap_or_default().to_string();
+    grant.thumb = invited.get("thumb").unwrap_or_default().to_string();
+    grant.prefs = invited.all("profile").first().map(|profile| profile_prefs(profile));
+    grant.sections = Some(
+        row.all("section")
+            .into_iter()
+            .filter_map(|section| section.get("key").map(str::to_string))
+            .collect(),
+    );
+    if let Some(settings) = row.all("settings").first() {
+        let flag = |name: &str| settings.get(name) == Some("1");
+        grant.filter_movies = settings.get("filterMovies").unwrap_or_default().to_string();
+        grant.filter_television = settings.get("filterTelevision").unwrap_or_default().to_string();
+        grant.allow_sync = flag("allowSync");
+        grant.allow_camera_upload = flag("allowCameraUpload");
+        grant.allow_channels = flag("allowChannels");
+        grant.allow_tuners = flag("allowTuners");
+    }
+    grant
+}
+
+/// An account's track settings, from its plex.tv `<profile>`.
+fn profile_prefs(profile: &Element) -> crate::mediainfo::TrackPrefs {
+    let language = |name: &str| profile.get(name).filter(|code| !code.is_empty()).map(str::to_string);
+    crate::mediainfo::TrackPrefs {
+        auto_audio: profile.get("autoSelectAudio") == Some("1"),
+        audio: language("defaultAudioLanguage"),
+        subtitles: profile.get("autoSelectSubtitle").and_then(|mode| mode.parse().ok()).unwrap_or(0),
+        subtitle: language("defaultSubtitleLanguage"),
+    }
 }
 
 /// The owner's webhooks, as a claimed 1.42.2 PMS read them at its start: `GET
@@ -963,33 +1026,34 @@ fn post_webhook(url: &str, payload: &Value) {
 /// changes it saves it there.
 #[derive(Debug, Default)]
 pub(crate) struct Access {
-    tokens: Mutex<HashSet<String>>,
+    tokens: Mutex<HashMap<String, super::accounts::Grant>>,
     /// Held for a whole read, so a request arriving meanwhile waits for its answer ("Auth:
     /// tokens were just refreshed, caller should check again") instead of reading again.
     read: Mutex<Option<std::time::Instant>>,
     /// The `transient-` tokens `/security/token` minted, let back in for this run: a claimed
     /// 1.42.2 PMS admitted one to the library, sessions, prefs and account (2026-10-13).
     /// ponytail: kept until a restart; how long a real PMS keeps one is unmeasured.
-    transient: Mutex<HashSet<String>>,
+    /// Each answers for the account that minted it.
+    transient: Mutex<HashMap<String, super::accounts::Grant>>,
 }
 
 impl Access {
-    fn seeded(tokens: &[String]) -> Self {
+    fn seeded(tokens: &[String], grants: &[(String, super::accounts::Grant)]) -> Self {
         let access = Self::default();
-        access
-            .tokens
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .extend(tokens.iter().cloned());
+        {
+            let mut held = access.tokens.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+            held.extend(tokens.iter().map(|token| (token.clone(), super::accounts::Grant::owner())));
+            held.extend(grants.iter().cloned());
+        }
         access
     }
 
-    pub(crate) fn mint(&self) -> String {
+    pub(crate) fn mint(&self, grant: super::accounts::Grant) -> String {
         let token = format!("transient-{}", uuid4());
         self.transient
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .insert(token.clone());
+            .insert(token.clone(), grant);
         token
     }
 
@@ -997,14 +1061,33 @@ impl Access {
         self.transient
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .contains(token)
+            .contains_key(token)
     }
 
     fn holds(&self, token: &str) -> bool {
         self.tokens
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .contains(token)
+            .contains_key(token)
+    }
+
+    /// The account `token` belongs to, as last read; `None` for one this server does not know.
+    pub(crate) fn grant(&self, token: &str) -> Option<super::accounts::Grant> {
+        if let Some(grant) = self.transient.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).get(token) {
+            return Some(grant.clone());
+        }
+        self.tokens.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).get(token).cloned()
+    }
+
+    /// Every account the list names, the owner's devices included.
+    pub(crate) fn grants(&self) -> Vec<super::accounts::Grant> {
+        self.tokens.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).values().cloned().collect()
+    }
+
+    /// Read the list again now: plex.tv sent `notifySharingChange` or `notifyHomeChange`.
+    pub(crate) fn reread(&self, claim: &SharedClaim) {
+        let mut read = self.read.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        self.refresh(claim, None, &mut read);
     }
 
     /// `Claim.refresh_access_tokens`, with the read lock already held: a failed read keeps
@@ -1013,12 +1096,19 @@ impl Access {
         match fetch_access_tokens(&snapshot(claim), unknown) {
             Ok(tokens) => {
                 info!("plex.tv lists {} access tokens", tokens.len());
-                let mut sorted = tokens.iter().cloned().collect::<Vec<_>>();
+                let mut sorted = tokens.keys().cloned().collect::<Vec<_>>();
                 sorted.sort();
+                let mut grants = tokens
+                    .iter()
+                    .filter(|(_, grant)| !grant.is_owner())
+                    .map(|(token, grant)| (token.clone(), grant.clone()))
+                    .collect::<Vec<_>>();
+                grants.sort_by(|left, right| left.0.cmp(&right.0));
                 {
                     let mut state = claim.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-                    if state.access_tokens != sorted {
+                    if state.access_tokens != sorted || state.access_grants != grants {
                         state.access_tokens = sorted;
+                        state.access_grants = grants;
                         state.save();
                     }
                 }
@@ -1146,7 +1236,7 @@ fn publish(claim: &SharedClaim, local_address: &str, sections: &[Value]) -> Resu
 
 /// `Claim.subscribe`: one pubsub subscription, read until plex.tv or the network ends
 /// it. `presence` is this stream (docs/findings.md).
-fn subscribe(claim: &SharedClaim) -> Result<(), String> {
+fn subscribe(claim: &SharedClaim, access: Option<&Arc<Access>>) -> Result<(), String> {
     let account_id = ensure_account_id(claim)?;
     let current = snapshot(claim);
     let url = format!(
@@ -1176,14 +1266,14 @@ fn subscribe(claim: &SharedClaim) -> Result<(), String> {
     while let Some(line) = lines.next() {
         let line = line.map_err(|error| error.to_string())?;
         if let Some(payload) = line.strip_prefix("data:") {
-            command(payload.trim());
+            command(payload.trim(), claim, access);
         }
     }
     Ok(())
 }
 
 /// `Claim._command`: the one measured message is `notifyConnectivity`, plex.tv's verdict.
-fn command(payload: &str) {
+fn command(payload: &str, claim: &SharedClaim, access: Option<&Arc<Access>>) {
     let Ok(message) = parse_xml(payload.as_bytes()) else {
         let clip: String = payload.chars().take(200).collect();
         warning!("pubsub: unparsable message {clip:?}");
@@ -1195,7 +1285,16 @@ fn command(payload: &str) {
             message.get("connectivity").unwrap_or("None"),
             message.get("asyncIdentifier").unwrap_or("None")
         ),
-        // ponytail: only notifyConnectivity is measured; other commands are logged, not acted on.
+        // plex.tv sent these to rex-fun the moment a Home user was added (notifyHomeChange,
+        // with notifyAccountChange) and a share's settings were changed (notifySharingChange),
+        // 2026-10-17: the access-token list is what changed.
+        Some(name @ ("notifySharingChange" | "notifyHomeChange")) => {
+            info!("pubsub: {name}; re-reading the access tokens");
+            if let Some(access) = access {
+                access.reread(claim);
+            }
+        }
+        // ponytail: other commands are logged, not acted on.
         other => info!("pubsub: unhandled command {}", other.unwrap_or("None")),
     }
 }
@@ -1229,7 +1328,7 @@ pub(crate) fn start_registration(
                 }
             }
             loop {
-                match subscribe(&claim) {
+                match subscribe(&claim, access.as_ref()) {
                     Ok(()) => warning!("pubsub stream ended; resubscribing in {PUBSUB_RETRY}s"),
                     Err(message) => {
                         error!("pubsub failed: {message}; resubscribing in {PUBSUB_RETRY}s")
@@ -1985,12 +2084,13 @@ impl PlexTv {
             .filter(|value| !value.is_empty())
             .map(|_| Arc::new(WatchStateSync::new(account_state_interval)));
         let claim_tokens = claim.access_tokens.clone();
+        let claim_grants = claim.access_grants.clone();
         Self {
             claim: Arc::new(Mutex::new(claim)),
             refresh: AccountRefresh::default(),
             sync,
             beat: Mutex::new(None),
-            access: Arc::new(Access::seeded(&claim_tokens)),
+            access: Arc::new(Access::seeded(&claim_tokens, &claim_grants)),
             webhooks: Webhooks::default(),
         }
     }
@@ -2051,11 +2151,14 @@ impl super::Runtime {
         {
             metadata.insert("librarySectionType".to_string(), kind.clone());
         }
+        // ponytail: a shared user's play as Plex's webhook docs describe it ("user" false, its
+        // Account); only the owner's own payloads are measured.
+        let (title, thumb) = self.account_user(self.viewer.id);
         let mut payload = json!({
             "event": event,
-            "user": true,
+            "user": self.viewer.is_owner(),
             "owner": true,
-            "Account": {"id": 1, "thumb": "", "title": self.owner_name()},
+            "Account": {"id": self.viewer.id, "thumb": thumb, "title": title},
             "Server": {"title": self.friendly, "uuid": self.machine},
         });
         if let Some(player) = player {

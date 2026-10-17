@@ -808,32 +808,37 @@ impl Runtime {
 
 impl Runtime {
     /// `/accounts` and `/accounts/{id}` (`accounts` in server.py): the server's own user
-    /// row, in a bare container carrying only its `identifier`; any other id is a 404.
+    /// row, then every share plex.tv lists, by plex.tv id (plexlab's `/accounts` once shared
+    /// with a Home user), in a bare container carrying only its `identifier`; any other id
+    /// is a 404.
     pub(super) fn route_account(&self, account_id: Option<&str>) -> Response {
+        let mut rows = vec![json!({
+            "id": 1,
+            "key": "/accounts/1",
+            "name": self.owner_name(),
+            "defaultAudioLanguage": "en",
+            "autoSelectAudio": true,
+            "defaultSubtitleLanguage": "en",
+            "subtitleMode": 2,
+            "thumb": "",
+        })];
+        rows.extend(self.shared_account_rows());
         if let Some(id) = account_id {
             let digits = id.strip_prefix('+').unwrap_or(id);
-            let one = !digits.is_empty()
-                && digits.bytes().all(|b| b.is_ascii_digit())
-                && digits.trim_start_matches('0') == "1";
-            if !one {
+            let wanted = (!digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit()))
+                .then(|| digits.trim_start_matches('0').parse::<i64>().ok())
+                .flatten();
+            rows.retain(|row| wanted.is_some() && row.get("id").and_then(Value::as_i64) == wanted);
+            if rows.is_empty() {
                 return Response::error(404, "rex: no such account");
             }
         }
         Response::json(
             200,
             json!({"MediaContainer": {
-                "size": 1,
+                "size": rows.len(),
                 "identifier": "com.plexapp.system.accounts",
-                "Account": [{
-                    "id": 1,
-                    "key": "/accounts/1",
-                    "name": self.owner_name(),
-                    "defaultAudioLanguage": "en",
-                    "autoSelectAudio": true,
-                    "defaultSubtitleLanguage": "en",
-                    "subtitleMode": 2,
-                    "thumb": "",
-                }],
+                "Account": rows,
             }}),
         )
     }

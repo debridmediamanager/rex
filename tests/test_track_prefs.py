@@ -9,6 +9,11 @@ as default. A real PMS with that account started it on English audio and English
 subtitles; rex started it on German with none, on every episode. A track chosen by hand
 stays chosen, across a restart and the next settings read.
 
+A shared user's Part starts on that user's own settings, which plex.tv hands the server in
+the access-token list (`fixtures/plextv_access_tokens_shared_s1434.json`'s shape, with the
+`<profile>` of a user who wants German audio and no subtitles), and what that user picks by
+hand is theirs alone: the owner's selection never moves.
+
     python3 tests/test_track_prefs.py
 """
 import http.server
@@ -33,11 +38,25 @@ PROBE = json.load(open(os.path.join(FIXTURES, "track_selection", "dark_matter_s0
 LEGACY = json.load(open(os.path.join(FIXTURES, "feed", "legacy_scan_rows.json")))
 MACHINE = "00000000000000000000000000000000000000fe"
 SERVER_TOKEN = "track-prefs-server-token"
+SHARED_TOKEN = "track-prefs-shared-token"
 # The profile element a real account's /api/v2/user carried on 2026-10-15.
 PROFILE = ('<profile autoSelectAudio="1" defaultAudioAccessibility="0" defaultAudioLanguage="en" '
            'defaultAudioLanguages="" defaultSubtitleLanguage="en" defaultSubtitleLanguages="" '
            'autoSelectSubtitle="2" defaultSubtitleAccessibility="0" defaultSubtitleForced="0" '
            'watchedIndicator="1" mediaReviewsVisibility="0" mediaReviewsLanguages="" mediaPostsVisibility="1"/>')
+SHARED_PROFILE = ('<profile autoSelectAudio="1" defaultAudioAccessibility="0" defaultAudioLanguage="de" '
+                  'defaultAudioLanguages="" defaultSubtitleLanguage="" defaultSubtitleLanguages="" '
+                  'autoSelectSubtitle="0" defaultSubtitleAccessibility="0" defaultSubtitleForced="0" '
+                  'watchedIndicator="1" mediaReviewsVisibility="0" mediaReviewsLanguages="" mediaPostsVisibility="1"/>')
+TOKENS = ('<?xml version="1.0" encoding="UTF-8"?>\n<tokens>\n'
+          '<token type="device" device="DEVICE" token="%s" tokenDisabled="0" owned="1" createdAt="2026-10-17 15:35:28 UTC"/>\n'
+          '<token type="server" token="%s" owned="0" createdAt="2026-10-17 15:35:28 UTC">\n'
+          '  <invited id="873552796" uuid="5d6c4f1557e501e9" title="rex-test" username="" thumb="" scrobbleTypes="">\n'
+          '    %s\n    <scrobbling>\n    </scrobbling>\n  </invited>\n'
+          '  <settings allowChannels="0" filterMovies="" filterMusic="" filterPhotos="" filterTelevision="" filterAll="" '
+          'allowSync="1" allowCameraUpload="0" allowSubtitleAdmin="0" allowTuners="0" />\n'
+          '  <sections>\n    <section key="1" createdAt="2026-10-17 15:35:28 UTC" />\n'
+          '    <section key="2" createdAt="2026-10-17 15:35:28 UTC" />\n  </sections>\n</token>\n</tokens>\n')
 RELEASE = "shows/Dark.Matter.2024.S01.German.DL.Atmos.2160p.ATVP.WEB.H265-ZeroTwo"
 FILE = "Dark.Matter.2024.S01E03.German.DL.Atmos.2160p.ATVP.WEB.H265-ZeroTwo.mkv"
 
@@ -61,6 +80,8 @@ class PlexTv(http.server.BaseHTTPRequestHandler):
         if path == "/servers.plex.tv/api/v2/user":
             PlexTv.users.append(self.path)
             body = '<?xml version="1.0" encoding="UTF-8"?>\n<user id="1" username="owner">%s</user>\n' % PROFILE
+        elif path == "/plex.tv/api/v2/server/access_tokens":
+            body = TOKENS % (SERVER_TOKEN, SHARED_TOKEN, SHARED_PROFILE)
         else:
             body = '<?xml version="1.0" encoding="UTF-8"?>\n<MediaContainer size="0"/>\n'
         raw = body.encode()
@@ -86,11 +107,11 @@ class Server:
             cwd=ROOT, env=env, stdout=self.log, stderr=subprocess.STDOUT)
         poll_until(lambda: self.request("/identity")[0] == 200, 40)
 
-    def request(self, path, method="GET", body=None):
+    def request(self, path, method="GET", body=None, token=SERVER_TOKEN):
         data = None if body is None else json.dumps(body).encode()
         request = urllib.request.Request(
             "http://127.0.0.1:%d%s" % (self.port, path), data=data, method=method,
-            headers={"Accept": "application/json", "X-Plex-Token": SERVER_TOKEN,
+            headers={"Accept": "application/json", "X-Plex-Token": token,
                      "Content-Type": "application/json"})
         try:
             with urllib.request.urlopen(request, timeout=60) as response:
@@ -99,8 +120,8 @@ class Server:
         except (urllib.error.HTTPError, urllib.error.URLError, ConnectionError) as error:
             return getattr(error, "code", 0), None
 
-    def streams(self, key):
-        status, body = self.request("/library/metadata/%s" % key)
+    def streams(self, key, token=SERVER_TOKEN):
+        status, body = self.request("/library/metadata/%s" % key, token=token)
         if status != 200:
             return []
         return body["MediaContainer"]["Metadata"][0]["Media"][0]["Part"][0].get("Stream") or []
@@ -143,7 +164,25 @@ def main():
         check("and on the English subtitle, not the forced German one flagged default",
               selected(streams, 3) == [("eng", False)], selected(streams, 3))
         german = next(s["id"] for s in streams if s.get("streamType") == 2 and s.get("languageCode") == "deu")
+        # The full German subtitle: one the owner's selection does not hold.
+        german_subtitle = next(s["id"] for s in streams if s.get("streamType") == 3 and s.get("languageCode") == "deu"
+                               and not s.get("forced"))
         part = server.request("/library/metadata/%s" % key)[1]["MediaContainer"]["Metadata"][0]["Media"][0]["Part"][0]["id"]
+        poll_until(lambda: server.request("/library/sections", token=SHARED_TOKEN)[0] == 200, 30)
+        shared = server.streams(key, SHARED_TOKEN)
+        check("the shared user's Part starts on that user's German audio",
+              selected(shared, 2) == [("deu", False)], selected(shared, 2))
+        check("and on no subtitle, as that user's settings say", selected(shared, 3) == [], selected(shared, 3))
+        status, _ = server.request("/library/parts/%s?subtitleStreamID=%s&allParts=1" % (part, german_subtitle), "PUT",
+                                   token=SHARED_TOKEN)
+        shared = server.streams(key, SHARED_TOKEN)
+        check("the shared user's subtitle chosen by hand is selected for that user",
+              status == 200 and selected(shared, 3) == [("deu", False)] and selected(shared, 2) == [("deu", False)],
+              (status, selected(shared, 2), selected(shared, 3)))
+        streams = server.streams(key)
+        check("and the owner's selection did not move",
+              selected(streams, 2) == [("eng", False)] and selected(streams, 3) == [("eng", False)],
+              (selected(streams, 2), selected(streams, 3)))
         status, _ = server.request("/library/parts/%s?audioStreamID=%s&allParts=1" % (part, german), "PUT")
         check("German chosen by hand is selected", status == 200 and selected(server.streams(key), 2) == [("deu", False)],
               (status, selected(server.streams(key), 2)))
@@ -154,6 +193,10 @@ def main():
         check("after a restart and the next settings read, the hand-chosen German stays",
               len(PlexTv.users) > reads and selected(server.streams(key), 2) == [("deu", False)],
               (len(PlexTv.users), selected(server.streams(key), 2)))
+        shared = server.streams(key, SHARED_TOKEN)
+        check("and the shared user's hand-chosen subtitle stays theirs",
+              selected(shared, 2) == [("deu", False)] and selected(shared, 3) == [("deu", False)],
+              (selected(shared, 2), selected(shared, 3)))
     finally:
         server.stop()
         stub.shutdown()
