@@ -158,6 +158,8 @@ pub(crate) struct Plan {
     pub duration_ms: i64,
     pub video: Option<VideoPlan>,
     pub audio: Option<AudioPlan>,
+    /// The selected embedded image subtitle's ffprobe index, burned into the picture.
+    pub subtitle: Option<i64>,
     pub incomplete_segments: bool,
     /// The playback session (`X-Plex-Session-Identifier`) the conversion belongs to.
     pub playback: String,
@@ -353,7 +355,8 @@ pub(crate) fn ladder(plan: &Plan, hardware: &Hardware) -> Vec<Path> {
     if hardware.encode && hardware.accel != Accel::None {
         // HDR is tonemapped on the CPU (jellyfin's `tonemapx`): no probe here says the
         // device's own tonemapper works, and a wrong guess is a green picture.
-        if !video.hdr && hardware.decode.contains(&decode_key(&video.source_codec, video.bit_depth)) {
+        // A burned subtitle is overlaid on CPU frames, so the decode stays on the CPU.
+        if !video.hdr && plan.subtitle.is_none() && hardware.decode.contains(&decode_key(&video.source_codec, video.bit_depth)) {
             paths.push(Path::Full);
         }
         paths.push(Path::EncodeOnly);
@@ -415,8 +418,42 @@ pub(crate) fn ffmpeg_args(plan: &Plan, path: Path, hardware: &Hardware, start: i
     }
     push(&mut args, &["-i", &plan.url]);
     // A row without ffprobe's stream `index` maps the first stream of the kind.
-    if let Some(video) = video {
-        push(&mut args, &["-map", &if video.index >= 0 { format!("0:{}", video.index) } else { "0:v:0".to_string() }]);
+    let video_input = video.map(|video| if video.index >= 0 { format!("0:{}", video.index) } else { "0:v:0".to_string() });
+    let burn = plan.subtitle.filter(|_| converting);
+    if let (Some(input), None) = (&video_input, burn) {
+        push(&mut args, &["-map", input]);
+    }
+    let video_filter = video.filter(|video| !video.copy).map(|video| {
+        let (w, h) = (video.width, video.height);
+        match path {
+            Path::Full if device.is_some() => format!("scale_vaapi=w={w}:h={h}:format=nv12"),
+            Path::Full if cuda => format!("scale_cuda=w={w}:h={h}:format=nv12"),
+            _ => {
+                let mut chain = Vec::new();
+                if video.hdr && hardware.tonemapx {
+                    chain.push("tonemapx=tonemap=bt2390:desat=0:peak=100:t=bt709:m=bt709:p=bt709:format=yuv420p".to_string());
+                }
+                if device.is_some() {
+                    chain.push("format=nv12".to_string());
+                    chain.push("hwupload".to_string());
+                    chain.push(format!("scale_vaapi=w={w}:h={h}:format=nv12"));
+                } else if cuda {
+                    chain.push("format=nv12".to_string());
+                    chain.push("hwupload_cuda".to_string());
+                    chain.push(format!("scale_cuda=w={w}:h={h}:format=nv12"));
+                } else {
+                    chain.push(format!("scale={w}:{h}:flags=bicubic"));
+                    chain.push("format=yuv420p".to_string());
+                }
+                chain.join(",")
+            }
+        }
+    });
+    if let (Some(input), Some(subtitle), Some(filter)) = (&video_input, burn, &video_filter) {
+        // The subtitle is drawn at the source's size, before the scale and any upload;
+        // FFmpeg turns the bitmap stream into frames for `overlay` itself.
+        let graph = format!("[{input}][0:{subtitle}]overlay=eof_action=pass,{filter}[v]");
+        push(&mut args, &["-filter_complex", &graph, "-map", "[v]"]);
     }
     if let Some(audio) = plan.audio.as_ref() {
         push(&mut args, &["-map", &if audio.index >= 0 { format!("0:{}", audio.index) } else { "0:a:0".to_string() }]);
@@ -424,31 +461,9 @@ pub(crate) fn ffmpeg_args(plan: &Plan, path: Path, hardware: &Hardware, start: i
     match video {
         Some(video) if video.copy => push(&mut args, &["-c:v", "copy"]),
         Some(video) => {
-            let (w, h) = (video.width, video.height);
-            let filter = match path {
-                Path::Full if device.is_some() => format!("scale_vaapi=w={w}:h={h}:format=nv12"),
-                Path::Full if cuda => format!("scale_cuda=w={w}:h={h}:format=nv12"),
-                _ => {
-                    let mut chain = Vec::new();
-                    if video.hdr && hardware.tonemapx {
-                        chain.push("tonemapx=tonemap=bt2390:desat=0:peak=100:t=bt709:m=bt709:p=bt709:format=yuv420p".to_string());
-                    }
-                    if device.is_some() {
-                        chain.push("format=nv12".to_string());
-                        chain.push("hwupload".to_string());
-                        chain.push(format!("scale_vaapi=w={w}:h={h}:format=nv12"));
-                    } else if cuda {
-                        chain.push("format=nv12".to_string());
-                        chain.push("hwupload_cuda".to_string());
-                        chain.push(format!("scale_cuda=w={w}:h={h}:format=nv12"));
-                    } else {
-                        chain.push(format!("scale={w}:{h}:flags=bicubic"));
-                        chain.push("format=yuv420p".to_string());
-                    }
-                    chain.join(",")
-                }
-            };
-            push(&mut args, &["-vf", &filter]);
+            if burn.is_none() {
+                push(&mut args, &["-vf", video_filter.as_deref().unwrap_or_default()]);
+            }
             let rate = format!("{}k", video.bitrate);
             let buffer = format!("{}k", video.bitrate * 2);
             let gop = ((video.frame_rate.max(1.0)) * length as f64).round() as i64;
@@ -1561,6 +1576,20 @@ impl Runtime {
             .find(|stream| kind(stream) == Some(2) && stream.get("selected").is_some_and(truthy))
             .or_else(|| streams.iter().find(|stream| kind(stream) == Some(2)));
         let flag = |name: &str| query.get(name).map(String::as_str) != Some("0");
+        // ponytail: only an embedded image subtitle is burned, in the conversion's own pass. A
+        // text one is not: FFmpeg's `subtitles` filter reads the whole file before its first
+        // frame, a full download of a remote release. Needs extraction or WebVTT segments.
+        let burn = matches!(query.get("subtitles").map(String::as_str), None | Some("burn" | "auto"));
+        let subtitle = streams
+            .iter()
+            .filter(|_| burn)
+            .find(|stream| kind(stream) == Some(3) && stream.get("selected").is_some_and(truthy) && stream.get("key").is_none())
+            .filter(|stream| {
+                let codec = stream.get("codec").map(string_value).unwrap_or_default().to_ascii_lowercase();
+                decision::IMAGE_SUBTITLES.contains(&codec.as_str())
+            })
+            .and_then(|stream| stream.get("index").and_then(Value::as_i64))
+            .filter(|index| *index >= 0 && video_stream.is_some());
         let max_kbps = query.get("maxVideoBitrate").and_then(|value| value.parse::<i64>().ok()).filter(|value| *value > 0);
         let cap = query.get("videoResolution").and_then(|value| {
             let (w, h) = value.split_once('x')?;
@@ -1624,7 +1653,9 @@ impl Runtime {
                 .unwrap_or(0);
             let transfer = stream.get("colorTrc").map(string_value).unwrap_or_default();
             let fits = cap.is_none_or(|(w, h)| width <= w && height <= h);
-            let copy = flag("directStream")
+            // A burned subtitle is part of the picture, so the picture is converted.
+            let copy = subtitle.is_none()
+                && flag("directStream")
                 && video_codecs.contains(&codec)
                 && decision::codec_limitation(profile, "VideoCodec", &codec, media).is_none()
                 && max_kbps.is_none_or(|max| source_bitrate <= max)
@@ -1681,6 +1712,7 @@ impl Runtime {
                 .unwrap_or(0),
             video,
             audio,
+            subtitle,
             incomplete_segments: query.get("X-Plex-Incomplete-Segments").map(String::as_str) == Some("1")
                 || headers.get("x-plex-incomplete-segments").map(String::as_str) == Some("1"),
             playback: self.playback_session(query, headers),
@@ -1825,11 +1857,17 @@ impl Runtime {
                         }
                         stream.insert("decision".to_string(), json!(if audio.copy { "copy" } else { "transcode" }));
                     }
-                    // A subtitle is not carried through a conversion yet.
+                    (Some(3), _, _) if plan.subtitle.is_some() && stream.get("index").and_then(Value::as_i64) == plan.subtitle => {
+                        // Not measured: no recording holds a reference's burn decision; the
+                        // shape is Plex's documented `decision="burn"` in the video's segments.
+                        stream.insert("decision".to_string(), json!("burn"));
+                    }
+                    // Any other subtitle is not carried through a conversion.
                     _ => return None,
                 }
                 // HLS muxes both into one stream; DASH keeps a representation each.
                 let location = match (dash, kind) {
+                    (_, Some(3)) => "segments-video",
                     (false, _) => "segments-av",
                     (true, Some(1)) => "segments-video",
                     (true, _) => "segments-audio",
@@ -2067,6 +2105,7 @@ mod tests {
                 source_level: 120,
             }),
             audio: Some(AudioPlan { index: 1, copy: false, source_codec: "eac3".into(), codec: "aac".into(), channels: 2, bitrate: 192, sampling_rate: 48000 }),
+            subtitle: None,
             incomplete_segments: true,
             playback: "p".into(),
             protocol: Protocol::Hls,
@@ -2196,6 +2235,19 @@ mod tests {
         // Upstream FFmpeg has no tonemapx: the conversion goes on without it.
         let upstream = Hardware { tonemapx: false, ..hardware.clone() };
         assert!(!ffmpeg_args(&hdr, Path::EncodeOnly, &upstream, 0, std::path::Path::new("/tmp/x")).join(" ").contains("tonemapx"));
+    }
+
+    #[test]
+    fn a_burned_subtitle_is_overlaid_before_the_scale_and_upload() {
+        let hardware = Hardware { accel: Accel::Vaapi("/dev/dri/renderD128".into()), decode: HashSet::from(["hevc".to_string()]), encode: true, tonemapx: true, bounded_http: false };
+        let mut burned = plan(false, 60_000);
+        burned.subtitle = Some(3);
+        assert_eq!(ladder(&burned, &hardware), vec![Path::EncodeOnly, Path::Software]);
+        let soft = ffmpeg_args(&burned, Path::Software, &Hardware::software(), 0, std::path::Path::new("/tmp/x")).join(" ");
+        assert!(soft.contains("-filter_complex [0:0][0:3]overlay=eof_action=pass,scale=1280:720:flags=bicubic,format=yuv420p[v] -map [v] -map 0:1"), "{soft}");
+        assert!(!soft.contains("-vf ") && !soft.contains("-map 0:0"), "{soft}");
+        let upload = ffmpeg_args(&burned, Path::EncodeOnly, &hardware, 0, std::path::Path::new("/tmp/x")).join(" ");
+        assert!(upload.contains("overlay=eof_action=pass,format=nv12,hwupload,scale_vaapi"), "{upload}");
     }
 
     #[test]

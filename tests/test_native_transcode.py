@@ -110,13 +110,48 @@ def make_clip(path, video, audio, duration, size="1280x720"):
                     *video, *audio, "-shortest", path], check=True)
 
 
+# A white box of a PGS subtitle, shown for the whole clip: FFmpeg can encode no bitmap
+# subtitle from text, so the .sup is written by hand (PCS, WDS, PDS, ODS, END segments).
+BOX = (540, 500, 200, 60)
+
+
+def make_pgs(path, width, height, duration):
+    import struct
+    x, y, w, h = BOX
+
+    def segment(pts, kind, body):
+        return b"PG" + struct.pack(">IIBH", pts, pts, kind, len(body)) + body
+
+    def show(pts, objects):
+        pcs = struct.pack(">HHBHBBBB", width, height, 0x10, 0 if objects else 1, 0x80 if objects else 0, 0, 0, len(objects))
+        for _ in objects:
+            pcs += struct.pack(">HBBHH", 0, 0, 0, x, y)
+        return segment(pts, 0x16, pcs) + segment(pts, 0x17, struct.pack(">BBHHHH", 1, 0, x, y, w, h))
+
+    line = (bytes([0, 0x80 | w, 1]) if w < 64 else bytes([0, 0xC0 | (w >> 8), w & 0xFF, 1])) + b"\0\0"
+    rle = line * h
+    ods = struct.pack(">HBB", 0, 0, 0xC0) + (len(rle) + 4).to_bytes(3, "big") + struct.pack(">HH", w, h) + rle
+    data = (show(0, [0]) + segment(0, 0x14, bytes([0, 0, 1, 235, 128, 128, 255])) + segment(0, 0x15, ods)
+            + segment(0, 0x80, b"") + show(duration * 90000, []) + segment(duration * 90000, 0x80, b""))
+    open(path, "wb").write(data)
+
+
+def luma(path, at, crop):
+    """The mean luma of a crop of the frame at `at` seconds."""
+    x, y, w, h = crop
+    raw = subprocess.run([FFMPEG, "-v", "error", "-ss", str(at), "-i", path, "-frames:v", "1",
+                          "-vf", "crop=%d:%d:%d:%d,format=gray" % (w, h, x, y), "-f", "rawvideo", "-"],
+                         capture_output=True, check=True).stdout
+    return sum(raw) / max(len(raw), 1)
+
+
 def probe(path):
     out = subprocess.run([FFPROBE, "-v", "error", "-show_streams", "-show_format", "-of", "json", path],
                          capture_output=True, text=True, check=True).stdout
     return json.loads(out)
 
 
-def row(key, title, file, streams, size, duration):
+def row(key, title, file, streams, size, duration, subtitle=None):
     video = next(s for s in streams if s["codec_type"] == "video")
     audio = next(s for s in streams if s["codec_type"] == "audio")
     # A real PMS names DTS `dca`, as rex's mediainfo does.
@@ -144,7 +179,9 @@ def row(key, title, file, streams, size, duration):
                                  {"id": int(key) * 1000 + 2, "streamType": 2, "codec": audio["codec_name"],
                                   "index": audio["index"], "channels": int(audio["channels"]),
                                   "bitrate": 192, "selected": True, "displayTitle": "Unknown"},
-                             ]}]}],
+                             ] + ([{"id": int(key) * 1000 + 3, "streamType": 3, "codec": "pgs",
+                                    "index": subtitle["index"], "selected": True, "displayTitle": "English (PGS)"}]
+                                  if subtitle else [])}]}],
     }
 
 
@@ -481,6 +518,17 @@ def main():
         make_clip(path, video, audio, duration, "320x180" if name == "long.mkv" else "1280x720")
         MEDIA[name] = path
         items.append(row(str(number), name.split(".")[0].title(), name, probe(path)["streams"], os.path.getsize(path), duration))
+    # The remux's h264/aac with a selected PGS subtitle, which only a conversion can show.
+    plain = os.path.join(scratch, "plain.mkv")
+    make_clip(plain, ["-c:v", "libx264", "-preset", "ultrafast", "-g", "48", "-pix_fmt", "yuv420p"], ["-c:a", "aac", "-ac", "2"], DURATION)
+    sup = os.path.join(scratch, "box.sup")
+    make_pgs(sup, 1280, 720, DURATION)
+    MEDIA["subs.mkv"] = os.path.join(scratch, "subs.mkv")
+    subprocess.run([FFMPEG, "-v", "error", "-y", "-i", plain, "-i", sup, "-map", "0", "-map", "1", "-c", "copy",
+                    MEDIA["subs.mkv"]], check=True)
+    streams = probe(MEDIA["subs.mkv"])["streams"]
+    items.append(row("6", "Subs", "subs.mkv", streams, os.path.getsize(MEDIA["subs.mkv"]), DURATION,
+                     subtitle=next(s for s in streams if s["codec_type"] == "subtitle")))
     catalog = os.path.join(scratch, "catalog.json")
     json.dump({"machineIdentifier": "0000000000000000000000000000000000000007", "friendlyName": "rex-transcode",
                "sections": [{"key": "1", "type": "movie", "title": "Clips", "uuid": "0" * 39 + "7"}],
@@ -542,6 +590,28 @@ def main():
              videoResolution="640x360", maxVideoBitrate="1000", directStream="1")
         # Audio only: the video is copied and the DTS the client refuses becomes AAC.
         walk(port, scratch, "audio-only", "5", "copy", "transcode", None, directStream="1", directStreamAudio="1")
+        # A selected image subtitle cannot reach the client inside a conversion's
+        # MPEG-TS: it is burned into the picture, which converts the video even where the
+        # codec alone would be copied. The decision's shape is not measured (no recording).
+        status, container = decision(port, "6", "s-subs")
+        part = container.get("Metadata", [{}])[0].get("Media", [{}])[0].get("Part", [{}])[0]
+        kinds = {s.get("streamType"): s for s in part.get("Stream", [])}
+        check("subs: the selected PGS subtitle is burned, the video converted for it",
+              kinds.get(3, {}).get("decision") == "burn" and kinds.get(1, {}).get("decision") == "transcode"
+              and kinds.get(2, {}).get("decision") == "copy",
+              "/".join(str(kinds.get(k, {}).get("decision")) for k in (1, 2, 3)))
+        get(port, "/video/:/transcode/universal/start.m3u8", plex_web_query("6", "s-subs"))
+        status, _, first = get(port, "/video/:/transcode/universal/session/s-subs/base/00000.ts")
+        segment = os.path.join(scratch, "subs-0.ts")
+        open(segment, "wb").write(first)
+        x, y, w, h = BOX
+        centre = (x + w // 2 - 10, y + h // 2 - 10, 20, 20)
+        # The first frame: the segment's timestamps start at the muxer's delay, not 0.
+        burned = luma(segment, 0, centre) if status == 200 and first[:1] == b"\x47" else -1
+        source = luma(plain, 0, centre)
+        check("subs: the subtitle's white box is in the converted picture",
+              burned > 200 and abs(burned - source) > 30, "luma %.0f, the source's %.0f" % (burned, source))
+        get(port, "/video/:/transcode/universal/stop", [("session", "s-subs")])
         # The bundled /web client converts everything over DASH (directStream=0).
         walk_dash(port, "dash-convert", "3", "transcode", "transcode", (1280, 720))
         walk_dash(port, "dash-remux", "1", "copy", "copy", None, directStream="1", directStreamAudio="1")

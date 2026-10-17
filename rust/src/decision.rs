@@ -14,7 +14,7 @@ use serde_json::{Map, Value};
 pub type Profile = Map<String, Value>;
 pub type Profiles = HashMap<String, Profile>;
 
-const IMAGE_SUBTITLES: &[&str] = &[
+pub(crate) const IMAGE_SUBTITLES: &[&str] = &[
     "pgs",
     "hdmv_pgs_subtitle",
     "dvd_subtitle",
