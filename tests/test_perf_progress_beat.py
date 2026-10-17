@@ -13,7 +13,8 @@ The library is `test_perf_listing_window.py`'s (the production server's first 12
 episode one real row), and the state file is seeded with the production server's counts of
 deleted and retired keys. The unit is one unpaged episode listing measured first in the same
 run. Measured on the test host (arm64 Docker, 4,582 episodes): unfixed a beat cost 0.043 units;
-fixed, 0.008.
+fixed, 0.008. The bound is 0.04 since the unit itself halved (2026-10-17: an answer is parsed once
+after its route); the beat is the 5-6 ms it was, the unfixed one ~24 ms (0.09 of today's unit).
 
     python3 tests/test_perf_progress_beat.py
 """
@@ -101,8 +102,8 @@ def run(port):
     runs = [beat(port, key, 200000 + n * 10000) for n in range(BEATS)]
     took = sorted(run[1] for run in runs)[BEATS // 2]
     check("every beat answers 200", all(status == 200 for status, _ in runs), runs[:3])
-    check("a progress beat is under 0.02 units (%.4fs, %.4f)" % (took, took / unit),
-          took < 0.02 * unit, (took, unit))
+    check("a progress beat is under 0.04 units (%.4fs, %.4f)" % (took, took / unit),
+          took < 0.04 * unit, (took, unit))
     _, body, _ = median(port, "/library/metadata/%s" % key, 1)
     check("the beat's offset is kept", container(body)["Metadata"][0].get("viewOffset") == 200000 + (BEATS - 1) * 10000)
 

@@ -183,8 +183,10 @@ def run(port):
           took < 1.5 * unit, took)
 
     status, _, took = request(port, "DELETE", "/library/collections/%s" % collection)
-    check("deleting the 40,000-member collection is under 1 unit (%.3fs)" % took,
-          status == 200 and took < unit, (status, took))
+    # 2 units since the unit itself got 43% cheaper (2026-10-17, the response passes
+    # parse once); the delete is the 0.29 s it was, the unfixed one 3.5 s.
+    check("deleting the 40,000-member collection is under 2 units (%.3fs)" % took,
+          status == 200 and took < 2 * unit, (status, took))
 
 
 def main():

@@ -23624,14 +23624,48 @@ fn handle_connection<S: Read + Write + PollRead>(
             }
         }
         wire::exclude_container(&mut response, &query, &request_path);
-        page_container(&mut response, &query, &request_path);
-        // server.py cycle 18: `/system/search` does not page at all -- no body fields
-        // and no paging headers, even with both parameters.
-        if request_path.trim_end_matches('/') != "/system/search" {
-            add_paging_headers(&mut response, &query);
+        // The JSON passes below share one parse of the body, and write it once.
+        let accept = request.headers.get("accept").map(String::as_str);
+        let parsed = if response.content_type.starts_with("application/json") {
+            serde_json::from_slice::<Value>(&response.body).ok()
+        } else {
+            None
+        };
+        match parsed {
+            Some(mut document) => {
+                let mut changed = false;
+                match page_container_doc(&mut response, &mut document, &query, &request_path) {
+                    Paged::Same => {}
+                    Paged::Changed => changed = true,
+                    Paged::Refused => {
+                        document = serde_json::from_slice::<Value>(&response.body).unwrap_or(Value::Null);
+                    }
+                }
+                // server.py cycle 18: `/system/search` does not page at all -- no body
+                // fields and no paging headers, even with both parameters.
+                if request_path.trim_end_matches('/') != "/system/search" {
+                    add_paging_headers_doc(&mut response, &document, &query);
+                }
+                if wants_xml_body(&response, accept) {
+                    response = xml_from_doc(response, document);
+                } else {
+                    PAIRED_HUBS.with(|noted| noted.borrow_mut().clear());
+                    if document.is_null() {
+                        order_json_body(&mut response, &request_path);
+                    } else {
+                        order_json_doc(&mut response, document, &request_path, changed);
+                    }
+                }
+            }
+            None => {
+                page_container(&mut response, &query, &request_path);
+                if request_path.trim_end_matches('/') != "/system/search" {
+                    add_paging_headers(&mut response, &query);
+                }
+                response = xml_or_json(response, accept);
+                order_json_body(&mut response, &request_path);
+            }
         }
-        response = xml_or_json(response, request.headers.get("accept").map(String::as_str));
-        order_json_body(&mut response, &request_path);
         if response.content_type.starts_with("application/json") {
             // The post-passes re-serialise; keep the upper-case control escapes
             // (cycle 32) on the bytes that go out.
@@ -27270,18 +27304,28 @@ fn http_date_at(seconds: i64) -> String {
 }
 
 pub fn xml_or_json(response: Response, accept: Option<&str>) -> Response {
-    let paired = PAIRED_HUBS.with(|noted| std::mem::take(&mut *noted.borrow_mut()));
-    let want_xml = accept_wants_xml(accept.unwrap_or(""));
-    // `server.py`'s "created" answer (Add Library's 201) negotiates XML too.
-    if !matches!(response.status, 200 | 201)
-        || !want_xml
-        || response.content_type != "application/json"
-    {
+    if !wants_xml_body(&response, accept) {
+        PAIRED_HUBS.with(|noted| noted.borrow_mut().clear());
         return response;
     }
-    let Ok(mut value) = serde_json::from_slice::<Value>(&response.body) else {
+    let Ok(value) = serde_json::from_slice::<Value>(&response.body) else {
+        PAIRED_HUBS.with(|noted| noted.borrow_mut().clear());
         return response;
     };
+    xml_from_doc(response, value)
+}
+
+/// Whether `xml_or_json` turns this response into XML.
+fn wants_xml_body(response: &Response, accept: Option<&str>) -> bool {
+    // `server.py`'s "created" answer (Add Library's 201) negotiates XML too.
+    matches!(response.status, 200 | 201)
+        && accept_wants_xml(accept.unwrap_or(""))
+        && response.content_type == "application/json"
+}
+
+/// `xml_or_json`'s XML answer from the parsed body.
+fn xml_from_doc(response: Response, mut value: Value) -> Response {
+    let paired = PAIRED_HUBS.with(|noted| std::mem::take(&mut *noted.borrow_mut()));
     if !paired.is_empty() {
         restore_paired_hubs(&mut value, &paired);
     }
@@ -27315,10 +27359,23 @@ fn order_json_body(response: &mut Response, path: &str) {
     let Ok(document) = serde_json::from_slice::<Value>(&response.body) else {
         return;
     };
-    let Some(object) = document.as_object() else {
-        return;
-    };
-    if object.len() != 1 || !object.values().next().is_some_and(Value::is_object) {
+    order_json_doc(response, document, path, false);
+}
+
+/// `order_json_body` on the parsed body. `changed` says the document is no longer the
+/// body's bytes, so a body left unordered is written from it.
+fn order_json_doc(response: &mut Response, document: Value, path: &str, changed: bool) {
+    let orders = response.content_type.starts_with("application/json")
+        && path != "/system"
+        && !path.starts_with("/system/")
+        && !path.starts_with("/:/plugins")
+        && document.as_object().is_some_and(|object| {
+            object.len() == 1 && object.values().next().is_some_and(Value::is_object)
+        });
+    if !orders {
+        if changed {
+            response.body = serde_json::to_vec(&document).unwrap_or_default();
+        }
         return;
     }
     let mut ordered = xmlout::into_ordered(document, None);
@@ -27346,22 +27403,44 @@ fn page_container(response: &mut Response, query: &HashMap<String, String>, path
     let Ok(mut document) = serde_json::from_slice::<Value>(&response.body) else {
         return;
     };
+    if page_container_doc(response, &mut document, query, path) == Paged::Changed {
+        response.body = serde_json::to_vec(&document).unwrap_or_default();
+    }
+}
+
+/// What `page_container_doc` did to the document it was handed.
+#[derive(PartialEq)]
+enum Paged {
+    Same,
+    Changed,
+    /// The response was replaced (a bad paging value's 500); the document is not its body.
+    Refused,
+}
+
+/// `page_container` on the parsed body, so the response passes parse it once: each pass
+/// parsed and re-wrote the whole body, five times over for a 96 MB listing (2026-10-17).
+fn page_container_doc(
+    response: &mut Response,
+    document: &mut Value,
+    query: &HashMap<String, String>,
+    path: &str,
+) -> Paged {
+    if response.status != 200 || !response.content_type.starts_with("application/json") {
+        return Paged::Same;
+    }
     let Some(object) = document.as_object() else {
-        return;
+        return Paged::Same;
     };
     if object.len() != 1 || !object.contains_key("MediaContainer") {
-        return;
+        return Paged::Same;
     }
     let Some(body) = document
         .get_mut("MediaContainer")
         .and_then(Value::as_object_mut)
     else {
-        return;
+        return Paged::Same;
     };
     let flat = body.shift_remove("_pageflat");
-    let rewrite = |response: &mut Response, document: &Value| {
-        response.body = serde_json::to_vec(document).unwrap_or_default();
-    };
     let exempt =
         body.contains_key("noHistory") || path.trim_end_matches('/') == "/system/search";
     // Cycle 83, plexlab and the 1.42.2 reference: the paging values are parsed wherever
@@ -27378,15 +27457,12 @@ fn page_container(response: &mut Response, query: &HashMap<String, String>, path
             Ok(_) => None,
             Err(status) => {
                 *response = Response::error(status, "rex: bad container parameter");
-                return;
+                return Paged::Refused;
             }
         }
     };
     if exempt || body.contains_key("totalSize") {
-        if flat.is_some() {
-            rewrite(response, &document);
-        }
-        return;
+        return if flat.is_some() { Paged::Changed } else { Paged::Same };
     }
     if let Some(flat) = flat {
         let names = flat
@@ -27409,8 +27485,7 @@ fn page_container(response: &mut Response, query: &HashMap<String, String>, path
             .collect::<Vec<_>>();
         let Some((start, size)) = window else {
             body.insert("size".to_string(), json!(order.len()));
-            rewrite(response, &document);
-            return;
+            return Paged::Changed;
         };
         let shown = order
             .iter()
@@ -27437,11 +27512,11 @@ fn page_container(response: &mut Response, query: &HashMap<String, String>, path
                 out.insert(name.clone(), Value::Array(rows));
             }
         }
-        rewrite(response, &json!({"MediaContainer": out}));
-        return;
+        *document = json!({"MediaContainer": out});
+        return Paged::Changed;
     }
     let Some((start, size)) = window else {
-        return;
+        return if flat.is_some() { Paged::Changed } else { Paged::Same };
     };
     let mut lists = body
         .iter()
@@ -27537,7 +27612,8 @@ fn page_container(response: &mut Response, query: &HashMap<String, String>, path
         }
         out.insert(key.clone(), value);
     }
-    rewrite(response, &json!({"MediaContainer": out}));
+    *document = json!({"MediaContainer": out});
+    Paged::Changed
 }
 
 fn add_paging_headers(response: &mut Response, query: &HashMap<String, String>) {
@@ -27556,6 +27632,21 @@ fn add_paging_headers(response: &mut Response, query: &HashMap<String, String>) 
     let Ok(document) = serde_json::from_slice::<Value>(&response.body) else {
         return;
     };
+    add_paging_headers_doc(response, &document, query);
+}
+
+/// `add_paging_headers` on the parsed body.
+fn add_paging_headers_doc(response: &mut Response, document: &Value, query: &HashMap<String, String>) {
+    if response.status != 200 {
+        return;
+    }
+    if response
+        .headers
+        .iter()
+        .any(|(name, _)| name.eq_ignore_ascii_case("X-Plex-Container-Start"))
+    {
+        return;
+    }
     let Some(container) = document.get("MediaContainer") else {
         return;
     };

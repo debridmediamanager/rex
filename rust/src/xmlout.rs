@@ -176,36 +176,45 @@ fn child_rank(name: &str, key: &str, row: &Map<String, Value>) -> usize {
     };
     list.iter().position(|v| *v == key).unwrap_or(list.len())
 }
-fn attr_order(name: &str, row: &Map<String, Value>, key: &str) -> usize {
+/// `attr_order` for one row, its table and search lead worked out once.
+fn attr_orderer<'a>(name: &str, row: &'a Map<String, Value>) -> impl Fn(&str) -> usize + 'a {
+    let table = attr_table(name, row);
     // `xmlout.py` applies `_SEARCH_LEAD` only where the row's bucket HAS an attribute
     // table (`if index:`); a bucket without one -- a playlist hit -- keeps its own
     // order, `score` last where the builder appended it.
-    if row.get("_searchhit").is_some()
-        && row
-            .keys()
-            .any(|known| attr_order_base(name, row, known) != usize::MAX)
-    {
-        // `xmlout.py` `_SEARCH_LEAD`: a search hit LEADS with `librarySectionTitle`
-        // and then its `score`, ahead of the row's own order (cycle 25).
-        return match key {
-            "librarySectionTitle" => 0,
-            "score" => 1,
-            _ => attr_order_base(name, row, key).saturating_add(2),
-        };
+    let search_lead = row.get("_searchhit").is_some()
+        && row.keys().any(|known| attr_rank(&table, known) != usize::MAX);
+    move |key: &str| {
+        if search_lead {
+            // `xmlout.py` `_SEARCH_LEAD`: a search hit LEADS with `librarySectionTitle`
+            // and then its `score`, ahead of the row's own order (cycle 25).
+            return match key {
+                "librarySectionTitle" => 0,
+                "score" => 1,
+                _ => attr_rank(&table, key).saturating_add(2),
+            };
+        }
+        attr_rank(&table, key)
     }
-    attr_order_base(name, row, key)
 }
 
-fn attr_order_base(name: &str, row: &Map<String, Value>, key: &str) -> usize {
-    if row.get("_session").is_some() {
-        return match key {
+/// Which attribute order a row's element takes, chosen once per row: `attr_order_base`
+/// chose it -- a bucket name formatted and matched -- for every comparison of every
+/// attribute, most of an unpaged episode listing's ordering pass (2026-10-17).
+enum AttrTable {
+    Session,
+    Plugin,
+    Order(&'static [&'static str]),
+}
+
+fn attr_rank(table: &AttrTable, key: &str) -> usize {
+    match table {
+        AttrTable::Session => match key {
             "selected" => 1,
             "decision" => 2,
             _ => 0,
-        };
-    }
-    if row.get("_pluginLibrary").is_some() {
-        return match key {
+        },
+        AttrTable::Plugin => match key {
             "art" => 0,
             "thumb" => 1,
             "key" => 2,
@@ -213,7 +222,17 @@ fn attr_order_base(name: &str, row: &Map<String, Value>, key: &str) -> usize {
             "share" => 4,
             "identifier" => 5,
             _ => 6,
-        };
+        },
+        AttrTable::Order(order) => order.iter().position(|value| *value == key).unwrap_or(usize::MAX),
+    }
+}
+
+fn attr_table(name: &str, row: &Map<String, Value>) -> AttrTable {
+    if row.get("_session").is_some() {
+        return AttrTable::Session;
+    }
+    if row.get("_pluginLibrary").is_some() {
+        return AttrTable::Plugin;
     }
     let bucket = if name == "Video" && row.get("_history1").is_some() {
         "Video[history1]".to_string()
@@ -240,7 +259,7 @@ fn attr_order_base(name: &str, row: &Map<String, Value>, key: &str) -> usize {
     } else {
         name.to_string()
     };
-    let order: &[&str] = match bucket.as_str() {
+    let order: &'static [&'static str] = match bucket.as_str() {
         "Common" => &[
             "grandparentRatingKey",
             "grandparentTitle",
@@ -689,10 +708,7 @@ fn attr_order_base(name: &str, row: &Map<String, Value>, key: &str) -> usize {
         "Writer" => &["id", "filter", "tag", "tagKey", "thumb"],
         _ => &[],
     };
-    order
-        .iter()
-        .position(|value| *value == key)
-        .unwrap_or(usize::MAX)
+    AttrTable::Order(order)
 }
 fn split(name: &str, row: &Map<String, Value>, container: bool) -> (Vec<String>, Vec<String>) {
     let mut attrs = Vec::new();
@@ -750,7 +766,8 @@ fn split(name: &str, row: &Map<String, Value>, container: bool) -> (Vec<String>,
                 )
             });
         } else if row.get("_session").is_some() || row.get("_pluginLibrary").is_some() {
-            attrs.sort_by_key(|k| (attr_order(name, row, k), k.clone()));
+            let rank = attr_orderer(name, row);
+            attrs.sort_by_cached_key(|k| (rank(k), k.clone()));
         } else if row.get("allowSync").is_some_and(|value| !value.is_null()) {
             // Cycle 19: the rows of `/library/recentlyAdded` and `/library/onDeck` -- the
             // only rows carrying `allowSync` -- LEAD with it and the librarySection
@@ -764,12 +781,16 @@ fn split(name: &str, row: &Map<String, Value>, container: bool) -> (Vec<String>,
                 "sourceTitle" => 5,
                 _ => 6,
             };
-            attrs.sort_by_key(|k| (lead(k), attr_order(name, row, k)));
+            let rank = attr_orderer(name, row);
+            attrs.sort_by_cached_key(|k| (lead(k), rank(k)));
         } else {
-            attrs.sort_by_key(|k| attr_order(name, row, k));
+            // Each key's rank once (`sort_by_cached_key` is stable too): ranking inside
+            // the comparisons was 40% of an unpaged episode listing (2026-10-17).
+            let rank = attr_orderer(name, row);
+            attrs.sort_by_cached_key(|k| rank(k));
         }
         // A STABLE sort, as Python's: unknown children keep their order.
-        children.sort_by_key(|k| child_rank(name, k, row));
+        children.sort_by_cached_key(|k| child_rank(name, k, row));
     }
     (attrs, children)
 }
