@@ -129,7 +129,11 @@ pub(super) fn search_tier(row: &Value, query: &str) -> &'static str {
 
 /// The tier one tag NAME earns, or None when the query does not reach it.
 pub(super) fn tag_tier(name: &str, terms: &[String]) -> Option<&'static str> {
-    let name_words = words(&fold_query(name));
+    tag_tier_words(&words(&fold_query(name)), terms)
+}
+
+/// `tag_tier` on a name already folded into words (`SearchCorpus`).
+fn tag_tier_words(name_words: &[String], terms: &[String]) -> Option<&'static str> {
     if name_words.is_empty() || terms.is_empty() {
         return None;
     }
@@ -392,6 +396,83 @@ pub(super) struct TagEntry {
 // Borrowed from the catalog unless search changed the row: copying every match --
 // every movie for "movie", thousands of episodes for "the" -- was most of a search on
 // the production server (2026-10-11).
+/// What every search reads off every row, folded once per library generation (memoised in
+/// `resume::LibraryMemo`): a search folded and split each row's title and each of its people,
+/// genres and collections again, with a map lookup per field -- most of a search on the
+/// production library (2026-10-17). Rows are by position; a tag is its index in its row's
+/// list and an id into `names`, the distinct tag names' words.
+#[derive(Debug, Default)]
+pub(super) struct SearchCorpus {
+    rows: Vec<CorpusRow>,
+    names: Vec<Vec<String>>,
+}
+
+#[derive(Debug, Default)]
+struct CorpusRow {
+    searchable: bool,
+    section: String,
+    title_trimmed: String,
+    title_words: Vec<String>,
+    original_words: Vec<String>,
+    /// By `CORPUS_TAG_FIELDS`: (index in the row's list, name id).
+    tags: [Vec<(u32, u32)>; 4],
+}
+
+/// The tag lists a search reads: the three `SEARCH_TAG_HUBS` fields, then `Collection`.
+const CORPUS_TAG_FIELDS: [&str; 4] = ["Role", "Director", "Genre", "Collection"];
+
+pub(super) fn search_corpus(items: &[Value]) -> SearchCorpus {
+    let mut ids: HashMap<String, u32> = HashMap::new();
+    let mut names: Vec<Vec<String>> = Vec::new();
+    let rows = items
+        .iter()
+        .map(|row| {
+            let title = fold_query(text_of(row, "title"));
+            let mut tags: [Vec<(u32, u32)>; 4] = Default::default();
+            for (slot, field) in CORPUS_TAG_FIELDS.iter().enumerate() {
+                for (index, tag) in row.get(*field).and_then(Value::as_array).into_iter().flatten().enumerate() {
+                    let name = text_of(tag, "tag");
+                    let id = *ids.entry(name.to_string()).or_insert_with(|| {
+                        names.push(words(&fold_query(name)));
+                        (names.len() - 1) as u32
+                    });
+                    tags[slot].push((index as u32, id));
+                }
+            }
+            CorpusRow {
+                searchable: matches!(
+                    row.get("type").and_then(Value::as_str),
+                    Some("movie" | "show" | "season" | "episode")
+                ),
+                section: string_value(row.get("librarySectionID").unwrap_or(&Value::Null)),
+                title_trimmed: title.trim().to_string(),
+                title_words: words(&title),
+                original_words: words(&fold_query(text_of(row, "originalTitle"))),
+                tags,
+            }
+        })
+        .collect();
+    SearchCorpus { rows, names }
+}
+
+/// Each distinct name's tier for one query, worked out the first time a row asks.
+struct NameTiers<'a> {
+    corpus: &'a SearchCorpus,
+    terms: &'a [String],
+    tiers: Vec<Option<Option<&'static str>>>,
+}
+
+impl<'a> NameTiers<'a> {
+    fn new(corpus: &'a SearchCorpus, terms: &'a [String]) -> Self {
+        Self { corpus, terms, tiers: vec![None; corpus.names.len()] }
+    }
+
+    fn tier(&mut self, name: u32) -> Option<&'static str> {
+        let slot = &mut self.tiers[name as usize];
+        *slot.get_or_insert_with(|| tag_tier_words(&self.corpus.names[name as usize], self.terms))
+    }
+}
+
 type Typed<'a> = HashMap<String, Vec<Cow<'a, Value>>>;
 type Tags = HashMap<String, Vec<TagEntry>>;
 
@@ -403,23 +484,13 @@ impl Runtime {
         if needle.is_empty() {
             return Vec::new();
         }
-        let searchable = |row: &&Value| {
-            matches!(
-                row.get("type").and_then(Value::as_str),
-                Some("movie" | "show" | "season" | "episode")
-            )
-        };
+        let corpus = self.search_corpus();
+        let items = self.catalog.items();
+        let rows = || corpus.rows.iter().zip(items).filter(|(row, _)| row.searchable);
         if needle.chars().count() == 1 {
-            return self
-                .catalog
-                .items()
-                .iter()
-                .filter(searchable)
-                .filter(|row| fold_query(text_of(row, "title")).trim() == needle)
-                .collect();
+            return rows().filter(|(row, _)| row.title_trimmed == needle).map(|(_, item)| item).collect();
         }
-        let hit = |text: &str| -> bool {
-            let title_words = words(&fold_query(text));
+        let hit = |title_words: &[String]| -> bool {
             if title_words
                 .iter()
                 .any(|word| word.starts_with(needle.as_str()))
@@ -453,11 +524,9 @@ impl Runtime {
                 .iter()
                 .all(|term| title_words.iter().any(|word| word.starts_with(term)))
         };
-        self.catalog
-            .items()
-            .iter()
-            .filter(searchable)
-            .filter(|row| hit(text_of(row, "title")) || hit(text_of(row, "originalTitle")))
+        rows()
+            .filter(|(row, _)| hit(&row.title_words) || hit(&row.original_words))
+            .map(|(_, item)| item)
             .collect()
     }
 
@@ -535,33 +604,25 @@ impl Runtime {
                 }
             }
         }
+        let corpus = self.search_corpus();
+        let items = self.catalog.items();
+        let mut tiers = NameTiers::new(&corpus, &needle_terms);
         // (hub, row, tag, name, tier)
         let mut direct_tags: Vec<(&str, Value, Value, String, &'static str)> = Vec::new();
-        for (hub, field) in SEARCH_TAG_HUBS {
-            for row in self.catalog.items() {
-                for tag in row
-                    .get(*field)
-                    .and_then(Value::as_array)
-                    .into_iter()
-                    .flatten()
-                {
-                    let name = text_of(tag, "tag").to_string();
-                    if let Some(tier) = tag_tier(&name, &needle_terms) {
-                        if needle.chars().count() >= 2 {
-                            direct_tags.push((hub, row.clone(), tag.clone(), name, tier));
+        if needle.chars().count() >= 2 {
+            for (slot, (hub, field)) in SEARCH_TAG_HUBS.iter().enumerate() {
+                for (row, item) in corpus.rows.iter().zip(items) {
+                    for &(index, name) in &row.tags[slot] {
+                        if let Some(tier) = tiers.tier(name) {
+                            let tag = &item[*field][index as usize];
+                            direct_tags.push((hub, item.clone(), tag.clone(), text_of(tag, "tag").to_string(), tier));
                         }
                     }
                 }
             }
         }
         let collection_hit = needle.chars().count() >= 2
-            && self.catalog.items().iter().any(|row| {
-                row.get("Collection")
-                    .and_then(Value::as_array)
-                    .into_iter()
-                    .flatten()
-                    .any(|tag| tag_tier(text_of(tag, "tag"), &needle_terms).is_some())
-            });
+            && corpus.rows.iter().any(|row| row.tags[3].iter().any(|&(_, name)| tiers.tier(name).is_some()));
         let normal_gate = rows.iter().any(|row| {
             matches!(
                 row.get("type").and_then(Value::as_str),
@@ -878,6 +939,8 @@ impl Runtime {
         section_filter: Option<&str>,
     ) -> Vec<Map<String, Value>> {
         let terms = words(&fold_query(needle));
+        let corpus = self.search_corpus();
+        let mut tiers = NameTiers::new(&corpus, &terms);
         let mut found = Vec::new();
         for section in &self.catalog.sections {
             let section_key = string_value(section.get("key").unwrap_or(&Value::Null));
@@ -887,22 +950,16 @@ impl Runtime {
             // name -> (tag, rows, tier)
             let mut seen: BTreeMap<String, (Value, Vec<String>, &'static str)> = BTreeMap::new();
             if needle.chars().count() >= 2 {
-                for row in self.catalog.items() {
-                    if string_value(row.get("librarySectionID").unwrap_or(&Value::Null))
-                        != section_key
-                    {
+                for (corpus_row, row) in corpus.rows.iter().zip(self.catalog.items()) {
+                    if corpus_row.section != section_key {
                         continue;
                     }
-                    for tag in row
-                        .get("Collection")
-                        .and_then(Value::as_array)
-                        .into_iter()
-                        .flatten()
-                    {
-                        let name = text_of(tag, "tag").to_string();
-                        let Some(tier) = tag_tier(&name, &terms) else {
+                    for &(index, name_id) in &corpus_row.tags[3] {
+                        let Some(tier) = tiers.tier(name_id) else {
                             continue;
                         };
+                        let tag = &row["Collection"][index as usize];
+                        let name = text_of(tag, "tag").to_string();
                         let entry = seen
                             .entry(name)
                             .or_insert_with(|| (tag.clone(), Vec::new(), tier));

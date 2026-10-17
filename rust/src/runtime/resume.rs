@@ -17,11 +17,23 @@ impl Runtime {
     /// `rows` without the libraries Edit Library > Visibility keeps off Home
     /// (cycle 58: `hidden=1` and `2` empty every Home shelf of that library).
     pub(super) fn on_home<R: std::borrow::Borrow<Value>>(&self, rows: Vec<R>) -> Vec<R> {
+        // The hidden libraries once, not a prefs lookup with three allocations per row:
+        // Home ran this over every movie on each read (2026-10-17). Usually none is hidden.
+        let hidden = self
+            .section_prefs
+            .keys()
+            .filter(|(_, name)| name == "hidden")
+            .map(|(section, _)| section.as_str())
+            .filter(|section| self.section_visibility(section) >= 1)
+            .collect::<HashSet<&str>>();
+        if hidden.is_empty() {
+            return rows;
+        }
         rows.into_iter()
             .filter(|row| {
-                self.section_visibility(&string_value(
-                    row.borrow().get("librarySectionID").unwrap_or(&Value::Null),
-                )) < 1
+                !hidden.contains(
+                    string_value(row.borrow().get("librarySectionID").unwrap_or(&Value::Null)).as_str(),
+                )
             })
             .collect()
     }
@@ -60,22 +72,114 @@ impl Runtime {
     /// played, in a library with no playback completion, is marked
     /// `_nextUpFromScrobble` (cycles 57-59) for the section shelves to drop.
     pub(super) fn continue_watching(&self, include_hidden: bool) -> Vec<Value> {
+        self.continue_watching_shared(include_hidden).as_ref().clone()
+    }
+
+    /// `continue_watching` without a copy, for the readers that only borrow its rows.
+    pub(super) fn continue_watching_shared(&self, include_hidden: bool) -> std::sync::Arc<Vec<Value>> {
         // Home, its hubs and every item page read this list; it changes only with the rows,
         // the removed-from-Continue-Watching set and the plays of this session.
         let key = (self.catalog.generation(), include_hidden);
         if let Some((_, rows)) = self.library_memo.borrow().continue_watching.iter().find(|(memo, _)| {
             (memo.0, memo.1) == key && memo.2 == self.hidden_continue && memo.3 == self.viewed_in_session
         }) {
-            return rows.clone();
+            return std::sync::Arc::clone(rows);
         }
-        let rows = self.continue_watching_uncached(include_hidden);
+        let rows = std::sync::Arc::new(self.continue_watching_uncached(include_hidden));
         let mut memo = self.library_memo.borrow_mut();
         memo.continue_watching.retain(|(memo, _)| memo.0 == key.0 && memo.1 != include_hidden);
         memo.continue_watching.push((
             (key.0, include_hidden, self.hidden_continue.clone(), self.viewed_in_session.clone()),
-            rows.clone(),
+            std::sync::Arc::clone(&rows),
         ));
         rows
+    }
+
+    pub(super) fn cached_subset(&self, key: &SubsetKey) -> Option<(Vec<usize>, Option<usize>)> {
+        let memo = self.library_memo.borrow();
+        memo.subsets.iter().find(|(stored, _)| stored == key).map(|(_, found)| found.clone())
+    }
+
+    /// Keep a subset's ordered rows; a row without a catalog position (none should lack
+    /// one) keeps the subset out of the memo.
+    pub(super) fn store_subset(&self, key: SubsetKey, rows: &[&Value], untrimmed: Option<usize>) {
+        let positions = rows
+            .iter()
+            .map(|row| key_of(row).and_then(|key| self.catalog.position(&key)))
+            .collect::<Option<Vec<usize>>>();
+        let Some(positions) = positions else {
+            return;
+        };
+        if positions.iter().zip(rows).any(|(&position, row)| !std::ptr::eq(&self.catalog.items()[position], *row)) {
+            return;
+        }
+        let mut memo = self.library_memo.borrow_mut();
+        memo.subsets.retain(|(stored, _)| stored.0 == key.0);
+        if memo.subsets.len() >= 64 {
+            memo.subsets.remove(0);
+        }
+        memo.subsets.push((key, (positions, untrimmed)));
+    }
+
+    /// The search corpus of the library as it is now (`search::SearchCorpus`).
+    pub(super) fn search_corpus(&self) -> std::sync::Arc<super::search::SearchCorpus> {
+        let generation = self.catalog.generation();
+        let mut memo = self.library_memo.borrow_mut();
+        if let Some((built, corpus)) = &memo.search {
+            if *built == generation {
+                return std::sync::Arc::clone(corpus);
+            }
+        }
+        let corpus = std::sync::Arc::new(super::search::search_corpus(self.catalog.items()));
+        memo.search = Some((generation, std::sync::Arc::clone(&corpus)));
+        corpus
+    }
+
+    /// The positions of a section's rows of one type, in library order (`choose_refs`).
+    pub(super) fn typed_section_positions(&self, kind: &str, section: &str) -> Vec<usize> {
+        let generation = self.catalog.generation();
+        let mut memo = self.library_memo.borrow_mut();
+        if memo.typed_sections.as_ref().is_none_or(|(built, _)| *built != generation) {
+            let mut index: HashMap<(String, String), Vec<usize>> = HashMap::new();
+            for (position, row) in self.catalog.items().iter().enumerate() {
+                let kind = row.get("type").and_then(Value::as_str).unwrap_or_default().to_string();
+                let section = string_value(row.get("librarySectionID").unwrap_or(&Value::Null));
+                index.entry((kind, section)).or_default().push(position);
+            }
+            memo.typed_sections = Some((generation, index));
+        }
+        let (_, index) = memo.typed_sections.as_ref().expect("built above");
+        index.get(&(kind.to_string(), section.to_string())).cloned().unwrap_or_default()
+    }
+
+    /// The rows whose `guid` starts with any of `prefixes`, each once, in library order: a
+    /// guid lookup read every row of the library to answer one (2026-10-17).
+    pub(super) fn guid_prefix_rows(&self, prefixes: &[&str]) -> Vec<&Value> {
+        let generation = self.catalog.generation();
+        let mut memo = self.library_memo.borrow_mut();
+        if memo.guid_index.as_ref().is_none_or(|(built, _)| *built != generation) {
+            let mut index: std::collections::BTreeMap<String, Vec<usize>> = Default::default();
+            for (position, row) in self.catalog.items().iter().enumerate() {
+                if let Some(guid) = row.get("guid").and_then(Value::as_str) {
+                    index.entry(guid.to_string()).or_default().push(position);
+                }
+            }
+            memo.guid_index = Some((generation, index));
+        }
+        let (_, index) = memo.guid_index.as_ref().expect("built above");
+        let mut positions = prefixes
+            .iter()
+            .flat_map(|prefix| {
+                index
+                    .range::<str, _>((std::ops::Bound::Included(*prefix), std::ops::Bound::Unbounded))
+                    .take_while(move |(guid, _)| guid.starts_with(prefix))
+                    .flat_map(|(_, positions)| positions.iter().copied())
+            })
+            .collect::<Vec<_>>();
+        positions.sort_unstable();
+        positions.dedup();
+        let items = self.catalog.items();
+        positions.into_iter().filter_map(|position| items.get(position)).collect()
     }
 
     fn continue_watching_uncached(&self, include_hidden: bool) -> Vec<Value> {
@@ -325,13 +429,27 @@ const SHELF_COUNT: i64 = 6;
 /// `/hubs/home/recentlyAdded?type=2` caps at 50 (cycle 28, the 1.42.2 reference).
 const TV_RECENT_CAP: usize = 50;
 
+/// (generation, section, leaf, `unwatched`, page end): what a section subset depends on.
+pub(super) type SubsetKey = (u64, String, String, Option<String>, Option<usize>);
+
 /// Answers read off the whole library, each with what it was computed from: the catalog's
 /// `generation` and the request's other inputs. A stale entry is never served, because a
 /// row cannot change without the generation changing.
 #[derive(Debug, Default)]
 pub(super) struct LibraryMemo {
-    continue_watching: Vec<((u64, bool, HashSet<String>, HashSet<String>), Vec<Value>)>,
-    recently_added_tv: Vec<((u64, Option<String>), Vec<Value>)>,
+    continue_watching: Vec<((u64, bool, HashSet<String>, HashSet<String>), std::sync::Arc<Vec<Value>>)>,
+    recently_added_tv: Vec<((u64, Option<String>), std::sync::Arc<Vec<Value>>)>,
+    /// What every search reads off every row (`search::SearchCorpus`).
+    search: Option<(u64, std::sync::Arc<super::search::SearchCorpus>)>,
+    /// Every row's position by (type, `librarySectionID` as `string_value` reads it).
+    typed_sections: Option<(u64, HashMap<(String, String), Vec<usize>>)>,
+    /// A section subset's ordered rows by request (`cached_subset`): positions and the
+    /// count `newest` had before keeping only what its page can hold.
+    subsets: Vec<(SubsetKey, (Vec<usize>, Option<usize>))>,
+    /// The newest-first movie list's positions, by section (`recent_movie_refs`).
+    recent_movies: Vec<((u64, Option<String>), Vec<usize>)>,
+    /// Every row's position by its `guid`, sorted so a prefix is a range (`guid_prefix_rows`).
+    guid_index: Option<(u64, std::collections::BTreeMap<String, Vec<usize>>)>,
 }
 
 /// The global hub list, measured identically on both real servers: eight shelves in
@@ -540,14 +658,19 @@ impl Runtime {
         if leaves_in.is_some() {
             return self.recently_added_tv_uncached(section_id, leaves_in);
         }
+        self.recently_added_tv_shared(section_id).as_ref().clone()
+    }
+
+    /// The unfiltered roll-up without a copy (`recently_added_tv`).
+    pub(super) fn recently_added_tv_shared(&self, section_id: Option<&String>) -> std::sync::Arc<Vec<Value>> {
         let key = (self.catalog.generation(), section_id.cloned());
         if let Some((_, rows)) = self.library_memo.borrow().recently_added_tv.iter().find(|(memo, _)| *memo == key) {
-            return rows.clone();
+            return std::sync::Arc::clone(rows);
         }
-        let rows = self.recently_added_tv_uncached(section_id, None);
+        let rows = std::sync::Arc::new(self.recently_added_tv_uncached(section_id, None));
         let mut memo = self.library_memo.borrow_mut();
         memo.recently_added_tv.retain(|(memo, _)| memo.0 == key.0);
-        memo.recently_added_tv.push((key, rows.clone()));
+        memo.recently_added_tv.push((key, std::sync::Arc::clone(&rows)));
         rows
     }
 
@@ -730,19 +853,27 @@ impl Runtime {
     /// The movie half of `recently_added_rows` by reference: Home's shelf and the
     /// movie list copied every movie to show twelve (the production server, 2026-10-11).
     pub(super) fn recent_movie_refs(&self, section_id: Option<&String>) -> Vec<&Value> {
-        let mut rows = self
-            .catalog
-            .items()
-            .iter()
-            .filter(|row| row.get("type").and_then(Value::as_str) == Some("movie"))
+        // Home, its hubs and the promoted shelves read this list on every request; it
+        // changes only with the rows (59% of a Home read, 2026-10-17).
+        let key = (self.catalog.generation(), section_id.cloned());
+        let items = self.catalog.items();
+        if let Some((_, positions)) = self.library_memo.borrow().recent_movies.iter().find(|(memo, _)| *memo == key) {
+            return positions.iter().filter_map(|position| items.get(*position)).collect();
+        }
+        let mut positions = (0..items.len())
+            .filter(|&position| items[position].get("type").and_then(Value::as_str) == Some("movie"))
             .collect::<Vec<_>>();
         if let Some(section) = section_number(section_id) {
             let section = section.to_string();
-            rows.retain(|row| {
-                string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == section
+            positions.retain(|&position| {
+                string_value(items[position].get("librarySectionID").unwrap_or(&Value::Null)) == section
             });
         }
-        rows.sort_by_key(|row| -row.get("addedAt").and_then(Value::as_i64).unwrap_or(0));
+        positions.sort_by_key(|&position| -items[position].get("addedAt").and_then(Value::as_i64).unwrap_or(0));
+        let rows = positions.iter().map(|&position| &items[position]).collect();
+        let mut memo = self.library_memo.borrow_mut();
+        memo.recent_movies.retain(|(memo, _)| memo.0 == key.0);
+        memo.recent_movies.push((key, positions));
         rows
     }
 
@@ -792,8 +923,10 @@ impl Runtime {
         let directories = content_directories(query);
         // One pass for every shelf that reads it: three per Home read were most of Home
         // (2026-10-17). `resuming` and `ondeck_shelf_hidden` are this list, filtered.
-        let all = self.continue_watching(false);
+        let all = self.continue_watching_shared(false);
         let watching = self.in_directories(all.iter().collect::<Vec<_>>(), &directories);
+        // Borrowed by the TV shelf below when it has no filter.
+        let tv_recent = self.recently_added_tv_shared(None);
         let excluded = exclude_continue_watching(query);
         let hidden = ondeck_hidden_in(&all);
         let mut hubs = Vec::new();
@@ -828,10 +961,14 @@ impl Runtime {
                     .into_iter()
                     .map(Cow::Borrowed)
                     .collect(),
-                "home.television.recent" => {
-                    let leaves = self.filtered_tv_leaves(query, true).ok().flatten();
-                    owned(self.in_directories(self.recently_added_tv(None, leaves), &directories))
-                }
+                "home.television.recent" => match self.filtered_tv_leaves(query, true).ok().flatten() {
+                    Some(leaves) => owned(self.in_directories(self.recently_added_tv(None, Some(leaves)), &directories)),
+                    None => self
+                        .in_directories(tv_recent.iter().collect::<Vec<_>>(), &directories)
+                        .into_iter()
+                        .map(Cow::Borrowed)
+                        .collect(),
+                },
                 "home.playlists" => owned(self.recent_playlists()),
                 _ => Vec::new(),
             };
@@ -861,7 +998,7 @@ impl Runtime {
     pub(super) fn promoted_hubs(&self, query: &HashMap<String, String>) -> Value {
         let mut hubs = Vec::new();
         let excluded = exclude_continue_watching(query);
-        let all = if excluded { Vec::new() } else { self.continue_watching(false) };
+        let all = if excluded { std::sync::Arc::new(Vec::new()) } else { self.continue_watching_shared(false) };
         if !excluded {
             let rows = self.on_home(all.iter().filter(|row| resume_point(row)).collect::<Vec<_>>());
             hubs.push(self.home_hub(
@@ -947,17 +1084,26 @@ impl Runtime {
             // shelf copied every movie twice (+320 MB a request, 2026-10-17).
             use std::borrow::Cow;
             let owned = |rows: Vec<Value>| rows.into_iter().map(Cow::Owned).collect::<Vec<_>>();
+            let tv_all = if is_show && filtered.is_none() { Some(self.recently_added_tv_shared(None)) } else { None };
+            let tv_section = if is_show && filtered.is_none() && pinned.is_none() {
+                Some(self.recently_added_tv_shared(Some(&section_key)))
+            } else {
+                None
+            };
             let mut rows: Vec<Cow<'_, Value>> = if pinned.is_some() {
                 let merged = if is_show {
-                    owned(self.recently_added_tv(None, filtered))
+                    match (&tv_all, filtered) {
+                        (Some(shared), _) => shared.iter().map(Cow::Borrowed).collect(),
+                        (None, filtered) => owned(self.recently_added_tv(None, filtered)),
+                    }
                 } else {
                     self.recent_movie_refs(None).into_iter().map(Cow::Borrowed).collect()
                 };
                 self.in_directories(merged, &Some(same_type.iter().cloned().collect()))
             } else if let Some(leaves) = filtered {
                 owned(self.recently_added_tv(Some(&section_key), Some(leaves)))
-            } else if is_show {
-                owned(self.recently_added_tv(Some(&section_key), None))
+            } else if let Some(shared) = &tv_section {
+                shared.iter().map(Cow::Borrowed).collect()
             } else {
                 self.section_recent_movie_refs(&section_key).into_iter().map(Cow::Borrowed).collect()
             };

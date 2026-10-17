@@ -281,18 +281,26 @@ impl Runtime {
             4 => "episode",
             _ => "",
         });
-        let mut source = self
-            .catalog
-            .items()
+        let of_type = |row: &&Value| {
+            let kind = row.get("type").and_then(Value::as_str);
+            match wanted {
+                Some(wanted) => !wanted.is_empty() && kind == Some(wanted),
+                None => kind != Some("clip"),
+            }
+        };
+        // A plain `guid=` in a query with no OR grouping is ANDed with every other rule,
+        // so only rows whose guid starts with one of its values can pass: read those off
+        // the guid index, and the filter below still decides (cycle 83's grammar).
+        let guid_prefixes = pairs
             .iter()
-            .filter(|row| {
-                let kind = row.get("type").and_then(Value::as_str);
-                match wanted {
-                    Some(wanted) => !wanted.is_empty() && kind == Some(wanted),
-                    None => kind != Some("clip"),
-                }
-            })
-            .collect::<Vec<&Value>>();
+            .find(|(name, _)| name == "guid")
+            .filter(|_| !pairs.iter().any(|(name, _)| matches!(name.as_str(), "or" | "push" | "pop")))
+            .map(|(_, value)| value.split(',').filter(|part| !part.is_empty()).collect::<Vec<_>>())
+            .filter(|prefixes| !prefixes.is_empty());
+        let mut source = match &guid_prefixes {
+            Some(prefixes) => self.guid_prefix_rows(prefixes).into_iter().filter(of_type).collect(),
+            None => self.catalog.items().iter().filter(of_type).collect::<Vec<&Value>>(),
+        };
         let scoped = |scope: &str, field: &str| {
             pairs.iter().any(|(name, _)| {
                 let (key, _) = crate::filters::split_key(name);
@@ -329,6 +337,20 @@ impl Runtime {
             }));
         }
         source.extend(collection_rows.iter());
+        let section_type = if type_number == Some(2) {
+            "show"
+        } else {
+            "movie"
+        };
+        // Cycle 83: `guid=` is the grammar's own field (a case-sensitive prefix whose
+        // comma is OR -- plexlab answers `guid=<a>,<b>` with both rows), so no private
+        // prefix pass reads it here any more. Filtered before the two stable sorts, which
+        // keeps the same rows in the same order: sorting all 34k episodes by key and title
+        // to answer one guid was most of the lookup (2026-10-17).
+        let mut source = match self.filter_rows(source, pairs, section_type) {
+            Ok(rows) => rows,
+            Err(status) => return Response::error(status, "rex: bad request"),
+        };
         source.sort_by_key(|row| {
             key_of(row)
                 .and_then(|key| key.parse::<i64>().ok())
@@ -339,18 +361,7 @@ impl Runtime {
                 .sort_rows(source, Some("titleSort"))
                 .unwrap_or_default();
         }
-        let section_type = if type_number == Some(2) {
-            "show"
-        } else {
-            "movie"
-        };
-        // Cycle 83: `guid=` is the grammar's own field (a case-sensitive prefix whose
-        // comma is OR -- plexlab answers `guid=<a>,<b>` with both rows), so no private
-        // prefix pass reads it here any more.
-        let mut rows = match self.filter_rows(source, pairs, section_type) {
-            Ok(rows) => rows,
-            Err(status) => return Response::error(status, "rex: bad request"),
-        };
+        let mut rows = source;
         if let Some(group) = query.get("group") {
             // Cycle 29: `group=` is honoured here too, and refused as on a listing.
             rows = match self.grouped(rows, group) {

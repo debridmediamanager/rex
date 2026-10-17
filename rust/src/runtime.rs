@@ -5346,6 +5346,17 @@ impl Runtime {
             8 => "clip",
             _ => "",
         });
+        if let (Some(section), Some(kind)) = (section, kind.filter(|kind| !kind.is_empty())) {
+            // A section's rows of one type from the index (`typed_section_positions`):
+            // scanning all 42k rows for a library's episodes was most of a TV page.
+            let items = self.catalog.items();
+            return self
+                .typed_section_positions(kind, section)
+                .into_iter()
+                .map(|position| &items[position])
+                .filter(|row| self.viewer.is_owner() || self.visible(row))
+                .collect();
+        }
         self.catalog
             .items()
             .iter()
@@ -9455,9 +9466,10 @@ impl Runtime {
         }
         // Cycle 28 (the 1.42.2 reference) and cycle 30 (plexscratch42): the FULL detail row
         // minus `Field` and `librarySectionKey`, led by `allowSync` and the section UUID.
+        let watching = self.continue_watching_shared(false);
         let rows = self
-            .on_home(self.continue_watching(false))
-            .iter()
+            .on_home(watching.iter().collect::<Vec<_>>())
+            .into_iter()
             .map(|row| {
                 let mut entry = self.detail_row(row);
                 if let Some(object) = entry.as_object_mut() {
@@ -12028,8 +12040,24 @@ impl Runtime {
             return Response::error(404, "rex: not found");
         }
         // Cycle 30: no resume list carries `Field`; cycle 53: `includedAt`.
-        let rows = self
-            .on_home(self.merged_continue_watching())
+        // `merged_continue_watching` borrowed: the same stable newest-viewed-first order.
+        let shared = self.continue_watching_shared(false);
+        let mut merged = shared.iter().collect::<Vec<&Value>>();
+        merged.sort_by_key(|row| -row.get("lastViewedAt").and_then(Value::as_i64).unwrap_or(0));
+        let all = self.on_home(merged);
+        // Paged before the detail projection, which carries every stream: Plex Web asks
+        // for 6 and every row was projected first (0.3-1 s on the production server,
+        // 2026-10-17). The container is the one `page_container` would have written.
+        let window = match resume::paging_values(query) {
+            Ok(Some((start, size))) if start >= 0 && size >= 0 => Some((start as usize, size as usize)),
+            _ => None,
+        };
+        let total = all.len();
+        let shown = match window {
+            Some((start, size)) => &all[start.min(total)..(start.saturating_add(size)).min(total)],
+            None => &all[..],
+        };
+        let rows = shown
             .iter()
             .map(|row| {
                 let mut entry = self.detail_row(row);
@@ -12039,12 +12067,16 @@ impl Runtime {
                 Self::with_included_at(entry)
             })
             .collect::<Vec<_>>();
+        let container = self.hub_container(Map::from_iter([
+            ("size".to_string(), json!(rows.len())),
+            ("Metadata".to_string(), Value::Array(rows)),
+        ]));
         Response::json(
             200,
-            self.hub_container(Map::from_iter([
-                ("size".to_string(), json!(rows.len())),
-                ("Metadata".to_string(), Value::Array(rows)),
-            ])),
+            match window {
+                Some((start, _)) => prewindowed(container, total, start),
+                None => container,
+            },
         )
     }
 
@@ -13998,12 +14030,13 @@ impl Runtime {
             // `Field` and KEEPS `librarySectionKey`, which is what separates it from
             // `/library/onDeck`. Its rows are On Deck's episodes alone.
             let directories = content_directories(query);
+            let watching = self.continue_watching_shared(false);
             let rows = self
-                .in_directories(self.continue_watching(false), &directories)
+                .in_directories(watching.iter().collect::<Vec<_>>(), &directories)
                 .into_iter()
                 .filter(|row| row.get("type").and_then(Value::as_str) == Some("episode"))
                 .map(|row| {
-                    let mut entry = self.detail_row(&row);
+                    let mut entry = self.detail_row(row);
                     if let Some(object) = entry.as_object_mut() {
                         object.shift_remove("Field");
                     }
@@ -15098,7 +15131,34 @@ impl Runtime {
                         rows = roots;
                         fields.shift_remove("mixedParents");
                     }
-                    if !matches!(leaf, "recentlyViewedShows" | "recentlyViewedGrandparents") {
+                    // The count before `newest` keeps only what its page can hold.
+                    let mut untrimmed: Option<usize> = None;
+                    // The ordered rows by request, until the library changes: clients reload
+                    // the same page, and each reload sorted the library again (2026-10-17). The
+                    // owner's only, as a share's filter changes the rows.
+                    let subset_key = (self.viewer.is_owner()
+                        && !matches!(leaf, "recentlyViewedShows" | "recentlyViewedGrandparents"))
+                    .then(|| {
+                        let end = query
+                            .get("X-Plex-Container-Start")
+                            .and_then(|v| v.parse::<usize>().ok())
+                            .zip(query.get("X-Plex-Container-Size").and_then(|v| v.parse::<usize>().ok()))
+                            .map(|(start, size)| start.saturating_add(size));
+                        (
+                            self.catalog.generation(),
+                            section_key.to_string(),
+                            leaf.to_string(),
+                            query.get("unwatched").cloned(),
+                            end,
+                        )
+                    });
+                    let cached = subset_key.as_ref().and_then(|key| self.cached_subset(key));
+                    let computed = cached.is_none();
+                    if let Some((positions, total)) = cached {
+                        let items = self.catalog.items();
+                        rows = positions.into_iter().map(|position| &items[position]).collect();
+                        untrimmed = total;
+                    } else if !matches!(leaf, "recentlyViewedShows" | "recentlyViewedGrandparents") {
                         let stamp = |row: &Value, name: &str| {
                             row.get(name)
                                 .and_then(|value| {
@@ -15125,6 +15185,27 @@ impl Runtime {
                             // A retain commutes with the stable sorts: done first, the
                             // titleSort pass reads only the viewed rows.
                             rows.retain(|row| stamp(row, "lastViewedAt") != 0);
+                        }
+                        let released = |row: &Value| {
+                            string_value(row.get("originallyAvailableAt").unwrap_or(&Value::Null))
+                        };
+                        if leaf == "newest" {
+                            untrimmed = Some(rows.len());
+                            // A page can only hold rows released on or after the page's last
+                            // date: keep those and their ties before the titleSort pass, as
+                            // Recently Added keeps its newest 100 (2026-10-17: a page of 50
+                            // sorted all 34k episodes by title, then by date).
+                            let start = query.get("X-Plex-Container-Start").and_then(|v| v.parse::<usize>().ok());
+                            let size = query.get("X-Plex-Container-Size").and_then(|v| v.parse::<usize>().ok());
+                            if let (Some(start), Some(size)) = (start, size) {
+                                let end = start.saturating_add(size);
+                                if end > 0 && rows.len() > end {
+                                    let mut dates = rows.iter().map(|row| released(row)).collect::<Vec<_>>();
+                                    let (_, cutoff, _) = dates.select_nth_unstable_by(end - 1, |a, b| b.cmp(a));
+                                    let cutoff = cutoff.clone();
+                                    rows.retain(|row| released(row) >= cutoff);
+                                }
+                            }
                         }
                         // The subsets start from the listing's default order, titleSort,
                         // and each re-sorts stably on its own key.
@@ -15158,22 +15239,20 @@ impl Runtime {
                                 rows.truncate(100);
                             }
                             _ => {
-                                rows.sort_by(|left, right| {
-                                    string_value(
-                                        right.get("originallyAvailableAt").unwrap_or(&Value::Null),
-                                    )
-                                    .cmp(&string_value(
-                                        left.get("originallyAvailableAt").unwrap_or(&Value::Null),
-                                    ))
-                                });
+                                // Each row's date once; stable and descending, as before.
+                                rows.sort_by_cached_key(|row| std::cmp::Reverse(released(row)));
                             }
                         }
+                    }
+                    if let (true, Some(key)) = (computed, subset_key) {
+                        self.store_subset(key, &rows, untrimmed);
                     }
                     // The default window (below) pages the projected rows; the shared rule
                     // pages before projecting, so a page of a show library's Recently
                     // Released projects 50 episodes, not 30k (2026-10-17).
                     let shared_window = !matches!(leaf, "recentlyViewedShows" | "recentlyViewedGrandparents");
                     let (rows, window) = if shared_window { page_slice(rows, query) } else { (rows, None) };
+                    let window = window.map(|(start, total)| (start, untrimmed.unwrap_or(total)));
                     let rows = rows
                         .iter()
                         .map(|row| guid_gate(self.section_listing_row(row), query))
@@ -26610,6 +26689,30 @@ fn page_fields(fields: &mut Map<String, Value>, query: &HashMap<String, String>)
         *rows = page;
         page_window_fields(fields, window);
     }
+}
+
+/// The container `page_container` writes for a document whose one list the handler
+/// already cut to the window: `size`, `totalSize` and `offset` lead, the rest follows in
+/// order, an emptied list is dropped. `page_container` then leaves it, as it has a total.
+fn prewindowed(document: Value, total: usize, start: usize) -> Value {
+    let Value::Object(mut root) = document else {
+        return document;
+    };
+    let Some(Value::Object(body)) = root.shift_remove("MediaContainer") else {
+        return Value::Object(root);
+    };
+    let count: usize = body.values().filter_map(Value::as_array).map(Vec::len).sum();
+    let mut out = Map::new();
+    out.insert("size".to_string(), json!(count));
+    out.insert("totalSize".to_string(), json!(total));
+    out.insert("offset".to_string(), json!(start));
+    for (key, value) in body {
+        if key == "size" || value.as_array().is_some_and(Vec::is_empty) {
+            continue;
+        }
+        out.insert(key, value);
+    }
+    json!({"MediaContainer": out})
 }
 
 /// `page_fields` on rows not yet projected, so only the page is: the window
