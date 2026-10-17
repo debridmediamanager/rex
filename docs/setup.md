@@ -453,9 +453,19 @@ reboot, or the last login session ending); until then start rex under `sg render
 | `REX_TRANSCODE_DIR` | `$TMPDIR/rex-transcode-<port>` | segments; cleared at start |
 
 The startup log says what the probe found (`transcoder: ... hardware vaapi encode=true
-decode=[h264,hevc,mpeg2video]`). A conversion runs on the GPU end to end when it can
-decode the source there, uploads CPU-decoded frames when it cannot (AV1 on older Intel,
-HDR, which is tonemapped on the CPU), and falls back to x264 when there is no device.
+tonemapx=true opencl_tonemap=true decode=[h264,hevc,mpeg2video]`). A conversion runs on the
+GPU end to end when it can decode the source there, uploads CPU-decoded frames when it cannot
+(AV1 on older Intel), and falls back to x264 when there is no device. HDR and Dolby Vision
+are tonemapped on the GPU through OpenCL when the probe tonemapped a frame that way, else on
+the CPU, which on a low-power Intel is a tenth of real time at 4K. The OpenCL runtime is a
+package of its own:
+
+```bash
+sudo apt install intel-opencl-icd   # Ubuntu 22.04: 22.14, enough for a Gemini Lake J4105
+```
+
+On a J4105 that took 4K HDR10 and Dolby Vision profile 5 to 1080p at 1.2-1.7x real time,
+against 0.1-0.2x on its CPU (findings, "OpenCL tonemapping on fun's J4105").
 Every conversion is one FFmpeg reading the source over HTTP; nothing is downloaded
 first.
 

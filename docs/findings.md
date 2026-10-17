@@ -13119,6 +13119,34 @@ and Sonarr included), so these are a busy production host's numbers, not a quiet
 - Not measured: two viewers at once (one does not keep up), 1080p Dolby Vision (rex-fun has none),
   a quiet host, a GPU tonemapper.
 
+## OpenCL tonemapping on fun's J4105 (2026-10-17)
+
+The GPU tonemapper the section above found missing. Installed on fun: Ubuntu 22.04's
+`intel-opencl-icd` 22.14.22890-1 (pulling `libigc1` and `libigdfcl1` 1.0.10840-1,
+`libopencl-clang12`, `libclang-cpp12`, `libllvmspirvlib12`, `libllvm12`). jellyfin-ffmpeg 8.1.3
+then derives OpenCL from VA-API (`-init_hw_device opencl=ocl@va`: "Intel(R) UHD Graphics 600
+[0x3185]", with the zero-copy `clCreateFromVA_APIMediaSurfaceINTEL` mapping) and its
+`tonemap_opencl` has `apply_dovi`. Without the runtime the same command fails at start with "No
+such device", which is what the startup probe now catches.
+
+The chain is Jellyfin's Intel pipeline: VA-API decode, `scale_vaapi` to the output size in
+p010, `hwmap` into OpenCL, `tonemap_opencl` (bt2390, peak 100, to bt709 nv12), `hwmap` back,
+`h264_vaapi`. rex's own command line for it (Plex Web, 1080p 8 Mbps, AAC stereo, 6 s
+segments), each run with 0 sessions on rex-fun, load 7-10:
+
+| Source (2160p HEVC 10-bit) | 30 s from 20 min in | CPU | Output |
+|---|---|---|---|
+| Foundation S02E05, Dolby Vision 5 (.mp4) | 25.1 s (1.2x) | 92% | h264 1080p bt709 |
+| Evil S04E02, HDR10 (.mkv) | 18.3 s (1.6x) | 97% | h264 1080p bt709 |
+
+Video only, the same chain did 30 s in 23.1 s (DV5) and 18.1 s (HDR10), and the first 6 s from
+the start in 10.0 s and 6.5 s (opening the file included). The CPU path measured above did 0.09-0.18x
+at 207% CPU. Colour against that CPU path (`tonemapx`) at the same timestamp: PSNR 37.0 dB (DV5)
+and 36.2 dB (HDR10), mean Y/U/V within about one code value (DV5 49.4/124.8/123.5 against
+49.8/124.7/123.5; HDR10 55.7/133.6/117.3 against 55.1/133.7/116.5); DV5 is natural, not pink and
+green, so the RPU is applied. Not measured: HLG and Dolby Vision 7/8 on this path (the same
+filter; tonemapx is the step down if a run fails), two viewers at once, a busy host.
+
 ## Dolby Vision profile 5 on a device without it: the client's limitation (2026-10-17)
 
 Measured on a throwaway, unclaimed PMS 1.42.2.10156-f737b826c on the test host, over loopback with its

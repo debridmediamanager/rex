@@ -78,6 +78,11 @@ pub(crate) struct Hardware {
     /// jellyfin-ffmpeg's `tonemapx`; upstream FFmpeg has none, and an HDR source then
     /// converts untonemapped rather than failing on every path.
     pub tonemapx: bool,
+    /// The device tonemaps through OpenCL derived from VA-API (jellyfin-ffmpeg's
+    /// `tonemap_opencl`, which applies a profile 5 RPU): HDR then stays on the GPU end to end.
+    /// fun's J4105 converts 4K HDR10 and DV5 at 1.3-1.7x so, against 0.1-0.2x through the
+    /// CPU's tonemapx (measured 2026-10-17).
+    pub opencl_tonemap: bool,
     /// Ask the source for bounded ranges (`-request_size`). Windows only: jellyfin-ffmpeg
     /// 8.1.3's Windows build reads an abandoned open-ended range to its end, so a seek into
     /// a 74 MB file read 150 MB and took 78 s at 2 MB/s, against 2.2 MB on Linux, macOS and
@@ -87,7 +92,7 @@ pub(crate) struct Hardware {
 
 impl Hardware {
     fn software() -> Self {
-        Self { accel: Accel::None, decode: HashSet::new(), encode: false, tonemapx: false, bounded_http: false }
+        Self { accel: Accel::None, decode: HashSet::new(), encode: false, tonemapx: false, opencl_tonemap: false, bounded_http: false }
     }
 }
 
@@ -324,6 +329,10 @@ impl Plan {
     }
 }
 
+/// HDR to SDR on the device: VA-API frames mapped into OpenCL, tonemapped there (a profile 5
+/// RPU applied), and mapped back for the encoder -- Jellyfin's Intel pipeline.
+const OPENCL_TONEMAP: &str = "hwmap=derive_device=opencl:mode=read,tonemap_opencl=format=nv12:p=bt709:t=bt709:m=bt709:tonemap=bt2390:peak=100:desat=0,hwmap=derive_device=vaapi:mode=write:reverse=1,format=vaapi";
+
 /// The encoder ladder a session tries in order: the device for decode and encode, the
 /// device for encode only, then the CPU.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -365,10 +374,11 @@ pub(crate) fn ladder(plan: &Plan, hardware: &Hardware) -> Vec<Path> {
     };
     let mut paths = Vec::new();
     if hardware.encode && hardware.accel != Accel::None {
-        // HDR is tonemapped on the CPU (jellyfin's `tonemapx`): no probe here says the
-        // device's own tonemapper works, and a wrong guess is a green picture.
-        // A burned subtitle is overlaid on CPU frames, so the decode stays on the CPU.
-        if !video.hdr && plan.subtitle.is_none() && hardware.decode.contains(&decode_key(&video.source_codec, video.bit_depth)) {
+        // HDR stays on the device only where the probe tonemapped a frame through OpenCL;
+        // otherwise it is tonemapped on the CPU (`tonemapx`), since a wrong guess is a green
+        // picture. A burned subtitle is overlaid on CPU frames, so the decode stays on the CPU.
+        let tonemaps = !video.hdr || (hardware.opencl_tonemap && matches!(hardware.accel, Accel::Vaapi(_)));
+        if tonemaps && plan.subtitle.is_none() && hardware.decode.contains(&decode_key(&video.source_codec, video.bit_depth)) {
             paths.push(Path::Full);
         }
         paths.push(Path::EncodeOnly);
@@ -395,7 +405,11 @@ pub(crate) fn ffmpeg_args(plan: &Plan, path: Path, hardware: &Hardware, start: i
     let cuda = hardware.accel == Accel::Cuda && matches!(path, Path::Full | Path::EncodeOnly);
     if converting {
         if let Some(device) = &device {
-            push(&mut args, &["-init_hw_device", &format!("vaapi=va:{device}"), "-filter_hw_device", "va"]);
+            push(&mut args, &["-init_hw_device", &format!("vaapi=va:{device}")]);
+            if path == Path::Full && video.is_some_and(|video| video.hdr) {
+                push(&mut args, &["-init_hw_device", "opencl=ocl@va"]);
+            }
+            push(&mut args, &["-filter_hw_device", "va"]);
             if path == Path::Full {
                 push(&mut args, &["-hwaccel", "vaapi", "-hwaccel_device", "va", "-hwaccel_output_format", "vaapi"]);
             }
@@ -438,6 +452,7 @@ pub(crate) fn ffmpeg_args(plan: &Plan, path: Path, hardware: &Hardware, start: i
     let video_filter = video.filter(|video| !video.copy).map(|video| {
         let (w, h) = (video.width, video.height);
         match path {
+            Path::Full if device.is_some() && video.hdr => format!("scale_vaapi=w={w}:h={h}:format=p010,{OPENCL_TONEMAP}"),
             Path::Full if device.is_some() => format!("scale_vaapi=w={w}:h={h}:format=nv12"),
             Path::Full if cuda => format!("scale_cuda=w={w}:h={h}:format=nv12"),
             _ => {
@@ -743,12 +758,13 @@ impl Transcoder {
         thread::spawn(move || {
             let found = probing.probe();
             info!(
-                "transcoder: {} ({}), hardware {} encode={} tonemapx={} bounded_http={} decode=[{}]",
+                "transcoder: {} ({}), hardware {} encode={} tonemapx={} opencl_tonemap={} bounded_http={} decode=[{}]",
                 probing.ffmpeg.display(),
                 probing.root.display(),
                 found.accel.name(),
                 found.encode,
                 found.tonemapx,
+                found.opencl_tonemap,
                 found.bounded_http,
                 {
                     let mut names = found.decode.iter().cloned().collect::<Vec<_>>();
@@ -789,7 +805,18 @@ impl Transcoder {
     fn probe(&self) -> Hardware {
         let mut found = self.probe_device();
         let filters = Command::new(&self.ffmpeg).args(["-hide_banner", "-filters"]).stdin(Stdio::null()).stderr(Stdio::null()).output();
-        found.tonemapx = filters.is_ok_and(|output| String::from_utf8_lossy(&output.stdout).contains(" tonemapx "));
+        let filters = filters.map(|output| String::from_utf8_lossy(&output.stdout).to_string()).unwrap_or_default();
+        found.tonemapx = filters.contains(" tonemapx ");
+        // A frame tagged PQ tonemapped through OpenCL derived from the device: an OpenCL
+        // runtime missing or refusing the device fails here, not in a viewer's session.
+        if let (Accel::Vaapi(device), true) = (&found.accel, filters.contains(" tonemap_opencl ")) {
+            let chain = format!("setparams=color_primaries=bt2020:color_trc=smpte2084:colorspace=bt2020nc,format=p010,hwupload,{OPENCL_TONEMAP}");
+            found.opencl_tonemap = self.quiet(&[
+                "-v", "error", "-init_hw_device", &format!("vaapi=va:{device}"), "-init_hw_device", "opencl=ocl@va",
+                "-filter_hw_device", "va", "-f", "lavfi", "-i", "testsrc2=s=320x240:r=10", "-frames:v", "5",
+                "-vf", &chain, "-c:v", "h264_vaapi", "-f", "null", "-",
+            ].map(str::to_string));
+        }
         // An FFmpeg too old for the option refuses to start with it, so ask first.
         found.bounded_http = cfg!(windows) && {
             let help = Command::new(&self.ffmpeg).args(["-hide_banner", "-h", "protocol=http"]).stdin(Stdio::null()).stderr(Stdio::null()).output();
@@ -854,7 +881,7 @@ impl Transcoder {
                 }
                 let _ = std::fs::remove_file(&sample);
             }
-            return Hardware { accel, decode, encode: true, tonemapx: false, bounded_http: false };
+            return Hardware { accel, decode, encode: true, tonemapx: false, opencl_tonemap: false, bounded_http: false };
         }
         Hardware::software()
     }
@@ -2293,7 +2320,7 @@ mod tests {
 
     #[test]
     fn the_device_path_keeps_frames_on_the_device() {
-        let hardware = Hardware { accel: Accel::Vaapi("/dev/dri/renderD128".into()), decode: HashSet::from(["hevc".to_string()]), encode: true, tonemapx: true, bounded_http: false };
+        let hardware = Hardware { accel: Accel::Vaapi("/dev/dri/renderD128".into()), decode: HashSet::from(["hevc".to_string()]), encode: true, tonemapx: true, opencl_tonemap: false, bounded_http: false };
         let video_plan = plan(false, 60_000);
         assert_eq!(ladder(&video_plan, &hardware), vec![Path::Full, Path::EncodeOnly, Path::Software]);
         let full = ffmpeg_args(&video_plan, Path::Full, &hardware, 0, std::path::Path::new("/tmp/x")).join(" ");
@@ -2315,6 +2342,29 @@ mod tests {
         // Upstream FFmpeg has no tonemapx: the conversion goes on without it.
         let upstream = Hardware { tonemapx: false, ..hardware.clone() };
         assert!(!ffmpeg_args(&hdr, Path::EncodeOnly, &upstream, 0, std::path::Path::new("/tmp/x")).join(" ").contains("tonemapx"));
+    }
+
+    #[test]
+    fn hdr_stays_on_the_device_where_opencl_tonemaps() {
+        let hardware = Hardware { accel: Accel::Vaapi("/dev/dri/renderD128".into()), decode: HashSet::from(["hevc".to_string()]), encode: true, tonemapx: true, opencl_tonemap: true, bounded_http: false };
+        let mut hdr = plan(false, 60_000);
+        hdr.video.as_mut().unwrap().hdr = true;
+        // The CPU's tonemapx stays the step down when the device path fails.
+        assert_eq!(ladder(&hdr, &hardware), vec![Path::Full, Path::EncodeOnly, Path::Software]);
+        let full = ffmpeg_args(&hdr, Path::Full, &hardware, 0, std::path::Path::new("/tmp/x")).join(" ");
+        assert!(full.contains("-init_hw_device vaapi=va:/dev/dri/renderD128 -init_hw_device opencl=ocl@va -filter_hw_device va"), "{full}");
+        assert!(full.contains(&format!("-vf scale_vaapi=w=1280:h=720:format=p010,{OPENCL_TONEMAP} ")), "{full}");
+        assert!(full.contains("h264_vaapi") && !full.contains("tonemapx"), "{full}");
+        assert!(ffmpeg_args(&hdr, Path::EncodeOnly, &hardware, 0, std::path::Path::new("/tmp/x")).join(" ").contains("tonemapx="));
+        // An SDR source on the same device opens no OpenCL device.
+        let sdr = ffmpeg_args(&plan(false, 60_000), Path::Full, &hardware, 0, std::path::Path::new("/tmp/x")).join(" ");
+        assert!(!sdr.contains("opencl"), "{sdr}");
+        // OpenCL is derived from VA-API only: NVENC keeps HDR off its full path.
+        let cuda = Hardware { accel: Accel::Cuda, ..hardware.clone() };
+        assert_eq!(ladder(&hdr, &cuda)[0], Path::EncodeOnly);
+        // A device whose probe failed to tonemap keeps HDR on the CPU.
+        let without = Hardware { opencl_tonemap: false, ..hardware };
+        assert_eq!(ladder(&hdr, &without)[0], Path::EncodeOnly);
     }
 
     #[test]
@@ -2341,7 +2391,7 @@ mod tests {
 
     #[test]
     fn a_burned_subtitle_is_overlaid_before_the_scale_and_upload() {
-        let hardware = Hardware { accel: Accel::Vaapi("/dev/dri/renderD128".into()), decode: HashSet::from(["hevc".to_string()]), encode: true, tonemapx: true, bounded_http: false };
+        let hardware = Hardware { accel: Accel::Vaapi("/dev/dri/renderD128".into()), decode: HashSet::from(["hevc".to_string()]), encode: true, tonemapx: true, opencl_tonemap: false, bounded_http: false };
         let mut burned = plan(false, 60_000);
         burned.subtitle = Some(3);
         assert_eq!(ladder(&burned, &hardware), vec![Path::EncodeOnly, Path::Software]);
