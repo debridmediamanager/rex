@@ -11,9 +11,10 @@ WebDAV, because a source is any HTTP server that honours Range; the source regis
 (`PUT /rex/sources/zurg`) before it pushes, as zurg does, and pushes with no token: the feed
 is open to anyone who can reach rex.
 
-TMDB and Plex answer from `fixtures/feed/provider_cache.json` (real ids) written beside
-the catalog; a lookup they miss goes out with a fake key and is refused, so a release
-pushed without ids stays unmatched until a later push names it.
+Plex's metadata agent answers from `fixtures/feed/provider_cache.json` (recorded from
+metadata.provider.plex.tv) written beside the catalog; a lookup it misses goes nowhere, so a
+release pushed without ids stays unmatched until a later push names it. rex reads no TMDB: the
+server runs with a garbage `TMDB_KEY` that nothing may read.
 
 The migration leg starts from rows the old WebDAV scanner really made
 (`fixtures/feed/legacy_scan_rows.json`, recorded by `probes/legacy_scan_fixture.py`).
@@ -43,6 +44,11 @@ ROOT = os.path.dirname(HERE)
 FIXTURES = os.path.join(HERE, "fixtures")
 ENTRIES = json.load(open(os.path.join(FIXTURES, "zurg", "entries.json")))["entries"]
 CACHE = json.load(open(os.path.join(FIXTURES, "feed", "provider_cache.json")))
+# Plex's guid for Blame It on the Bellboy (matched by its IMDb id), and its S5E7 of American Dad!,
+# Phantom of the Telethon, as its agent lists the season.
+MOVIE_GUID = CACHE["plex"]['POST /library/metadata/matches {"guid": "imdb://tt0103827", "type": 1}']["MediaContainer"]["Metadata"][0]["guid"]
+EPISODE_GUID = next(row["guid"] for row in CACHE["plex"]["GET /library/metadata/65dcf71e18dc3e356e60cc32/children "]
+                    ["MediaContainer"]["Metadata"] if row["index"] == 7)
 LEGACY = json.load(open(os.path.join(FIXTURES, "feed", "legacy_scan_rows.json")))
 BYTES_TOKEN = "bytes-secret-for-tests"
 BODY = bytes((i * 7 + 13) % 251 for i in range(65536))
@@ -241,8 +247,7 @@ def catalog(work, items=(), name="catalog.json", next_key=None):
     document = {"machineIdentifier": "00000000000000000000000000000000000000fe",
                 "friendlyName": "rex-feed", "sections": LEGACY["sections"], "items": list(items)}
     json.dump(document, open(os.path.join(work, name), "w"))
-    for cache, rows in (("tmdb_cache.json", CACHE["tmdb"]), ("plex_cache.json", CACHE["plex"])):
-        json.dump(rows, open(os.path.join(work, cache), "w"))
+    json.dump(CACHE["plex"], open(os.path.join(work, "plex_cache.json"), "w"))
 
 
 def matcher_identity(bytes_port):
@@ -389,9 +394,14 @@ def main():
         row = server.row(movie_key)
         check("a push that places it re-identifies the row", status == 200 and body.get("updated") == 1
               and row.get("title") == "Blame It on the Bellboy" and row.get("year") == 1992, (body, row.get("title")))
+        described = CACHE["plex"]['POST /library/metadata/matches {"guid": "imdb://tt0103827", "type": 1}']["MediaContainer"]["Metadata"][0]
+        check("described by Plex's agent alone, a garbage TMDB_KEY beside it: its summary and poster",
+              row.get("summary") == described["summary"]
+              and described["thumb"] in [poster.get("key") for poster in server.rows("/library/metadata/%s/posters" % movie_key)],
+              (row.get("summary", "")[:40], server.rows("/library/metadata/%s/posters" % movie_key)[:2]))
         check("on the same ratingKey, with Plex's guid and both external ids",
               server.keys().get(movie["id"]) == movie_key
-              and row.get("guid") == "plex://movie/5d7768279ab5440020ad6e0e"
+              and row.get("guid") == MOVIE_GUID
               and {"id": "imdb://tt0103827"} in (row.get("Guid") or []), (row.get("guid"), row.get("Guid")))
         check("and keeps its watch state", row.get("viewCount") == 1, row.get("viewCount"))
         status, body = server.feed("POST", "items", {"items": [item("movie")]})
@@ -422,14 +432,14 @@ def main():
         status, body = server.feed("POST", "items", {"items": [episode]})
         ep = server.row(episode_key)
         shows = server.rows("/library/sections/2/all?includeGuids=1")
-        check("its ids re-identify the episode on its key: TMDB's title, Plex's guid",
+        check("its ids re-identify the episode on its key: Plex's title and guid",
               body.get("updated") == 1 and server.keys().get(episode["id"]) == episode_key
               and ep.get("title") == "Phantom of the Telethon"
-              and ep.get("guid") == "plex://episode/5d9c0ab4705e7a001e6d4a2b", (body, ep.get("title"), ep.get("guid")))
+              and ep.get("guid") == EPISODE_GUID, (body, ep.get("title"), ep.get("guid")))
         check("and its show, all of whose episodes moved, is re-identified on ITS key too",
               ep.get("grandparentRatingKey") == local_show and ep.get("parentRatingKey") == local_season
               and [row.get("ratingKey") for row in shows] == [local_show]
-              and shows[0].get("guid") == "plex://show/5d9c086c46115600200aa2fe"
+              and shows[0].get("guid") == "plex://show/5d9c086c7d06d9001ffd27b2"
               and shows[0].get("title") == "American Dad!" and ep.get("grandparentTitle") == "American Dad!",
               (ep.get("grandparentRatingKey"), local_show, [(r.get("ratingKey"), r.get("title"), r.get("guid"))
                                                              for r in shows]))
@@ -578,8 +588,9 @@ def main():
         check("every file keeps the ratingKey the scanner minted",
               all(keys.get(entry["id"]) == by_file.get(entry["file"]) for entry in pushed), (keys, by_file))
         bellboy = server.row(by_file[item("movie")["file"]])
-        check("adopted with its watch state and identification untouched",
-              bellboy.get("viewCount") == 1 and bellboy.get("guid") == legacy_keys[bellboy.get("ratingKey")]["guid"],
+        # The scanner's guid came from a hand-written agent answer; Plex's own for the same ids is this.
+        check("adopted with its watch state, named as its ids name it",
+              bellboy.get("viewCount") == 1 and bellboy.get("guid") == MOVIE_GUID,
               (bellboy.get("viewCount"), bellboy.get("guid")))
         shows = server.rows("/library/sections/2/all")
         check("the show and season the scanner made stay on their keys",

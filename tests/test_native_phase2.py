@@ -34,7 +34,6 @@ GROUPS = {
     "hierarchy-build": "hierarchy rows", "hierarchy-normalize": "hierarchy rows",
     "hierarchy-fold": "hierarchy rows", "hierarchy-case": "hierarchy rows",
     "xml": "XML documents", "ordered": "XML documents", "system-xml": "XML documents",
-    "metadata-enrich": "metadata/provider rows",
     "provider-guids": "metadata/provider rows",
     "gate": "gate/catalog rows", "catalog-normalize": "gate/catalog rows",
 }
@@ -102,8 +101,6 @@ def agrees(compare, expect, result):
         return ordered_equivalent(expect, got)
     if compare == "equal":
         return expect == got
-    if compare == "enrich":
-        return got["ok"] == expect["ok"] and equivalent(expect["row"], got["row"])
     if compare == "guids":
         return got["count"] == expect["count"] and equivalent(expect["items"], got["items"])
     if compare == "parse":

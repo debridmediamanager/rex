@@ -22,7 +22,7 @@
 //! manager.db              the servers and their configurations (mode 600: it holds keys)
 //! admin.token             the API's bearer token, generated on first start (mode 600)
 //! servers/<name>/         rex.db (the catalog and the server's state in the same file),
-//!                         server.log, build.log, tmdb_cache.json ...
+//!                         server.log, build.log, plex_cache.db ...
 //! ```
 //!
 //! The API (JSON, `Authorization: Bearer <admin token>` on every route but the page at /):
@@ -39,7 +39,7 @@
 //! GET    /servers/<name>/build        that job's status and log tail
 //! ```
 //!
-//! Secrets reach a server through its environment (TMDB_KEY, PLEX_TOKEN, REX_TOKEN), never
+//! Secrets reach a server through its environment (PLEX_TOKEN, REX_TOKEN), never
 //! its command line, which `ps` shows. A server's sources register with it themselves
 //! (docs/feed-api.md): nothing about them is configured here. Linux and
 //! macOS only: servers are process groups of their own, stopped with signals.
@@ -65,10 +65,11 @@ use crate::catalog_tool::{checkout_root, py_dumps, sha1_hex};
 use crate::{platform, store};
 
 const DEFAULT_LISTEN: &str = "127.0.0.1:32300";
+// `tmdb_key` reaches no server since rex reads no TMDB (2026-10-17); a configuration saved
+// before then still carries one, which stays accepted and redacted.
 const SECRETS: &[&str] = &["tmdb_key", "plex_token", "token"];
 /// What each environment field is called in the server's environment.
 const SECRET_ENV: &[(&str, &str)] = &[
-    ("tmdb_key", "TMDB_KEY"),
     ("plex_token", "PLEX_TOKEN"),
     ("token", "REX_TOKEN"),
 ];
@@ -982,7 +983,6 @@ pre{background:#f4f4f4;padding:8px;max-height:300px;overflow:auto}</style></head
 <input name=name placeholder="name" required> <input name=port type=number placeholder="port" required>
 <input name=catalog placeholder="catalog .json/.db (optional: else seed an empty library)" size=48><br>
 <input name=zurg_mount placeholder="zurg mount_path (default /mnt/zurg)"><br>
-<input name=tmdb_key type=password placeholder="TMDB key (optional)">
 <input name=plex_token type=password placeholder="Plex token (optional)">
 <input name=token type=password placeholder="server token (optional)"><br>
 <input name=friendly_name placeholder="friendly name (optional)">
@@ -1010,7 +1010,7 @@ async function logs(n){try{out.textContent=(await api('GET','/servers/'+n+'/logs
 async function del(n){if(!confirm('Delete '+n+'? Its files are kept.'))return;try{await api('DELETE','/servers/'+n)}catch(e){out.textContent=e.message};load()}
 async function create(ev){ev.preventDefault();const d=Object.fromEntries(new FormData(ev.target));
 const c={name:d.name,port:+d.port,part_mode:d.part_mode,gdm:d.gdm,assert_claimed:!!d.assert_claimed};
-for(const k of ['catalog','zurg_mount','tmdb_key','plex_token','token','friendly_name'])if(d[k])c[k]=d[k];
+for(const k of ['catalog','zurg_mount','plex_token','token','friendly_name'])if(d[k])c[k]=d[k];
 try{await api('POST','/servers',c);ev.target.reset()}catch(e){out.textContent=e.message};load()}
 load();setInterval(load,3000);
 </script></body></html>"##;
@@ -1375,8 +1375,8 @@ const USAGE: &str = "usage: rex manager [--root ROOT] {serve,create,list,start,s
 
 Every command but serve also takes --url URL (default http://127.0.0.1:32300) and
 --token-file FILE (default <root>/admin.token; or $REX_MANAGER_TOKEN). Keys come from the
-environment (TMDB_KEY, PLEX_TOKEN, REX_TOKEN, or the variable --tmdb-key-env,
---plex-token-env and --token-env name), never the command line. Sources register with
+environment (PLEX_TOKEN, REX_TOKEN, or the variable --plex-token-env and
+--token-env name), never the command line. Sources register with
 the server themselves (docs/feed-api.md).";
 
 fn usage_error(message: &str) -> String {
@@ -1435,7 +1435,7 @@ fn parse(args: &[String]) -> Result<Option<Cli>, String> {
                 let mut values = vec![
                     "--port", "--catalog", "--friendly-name", "--zurg-mount", "--part-mode", "--gdm", "--host",
                     "--announce-url", "--public-url", "--web-root", "--restart", "--extra-arg",
-                    "--tmdb-key-env", "--plex-token-env", "--token-env",
+                    "--plex-token-env", "--token-env",
                 ];
                 values.extend(CLIENT);
                 (values, &["--assert-claimed", "--verbose"][..])

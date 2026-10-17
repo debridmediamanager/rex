@@ -7,8 +7,8 @@ summary and no poster. A season was made once, from its first episode. Its show 
 re-identified in place when zurg's later push named the release (imdb:tt27731671 ->
 tmdb:42009), but the season was found again by its index and left as it was made.
 
-This drives the feed with the season's five real files and the TMDB and Plex answers
-the production rex had cached for them (`fixtures/feed/season_art.json`): pushed first with no ids,
+This drives the feed with the season's five real files and Plex's metadata agent's answers
+for them (`fixtures/feed/season_art.json`): pushed first with no ids,
 so nothing names them, then placed as zurg pushes what DMM placed, which re-identifies the show
 in place.
 Then it starts on the rows the production rex actually held, which a restart must repair, and on
@@ -29,10 +29,11 @@ from test_feed import LEGACY, MOUNT, Bytes, Server, check, results, serve
 HERE = os.path.dirname(os.path.abspath(__file__))
 FIXTURE = json.load(open(os.path.join(HERE, "fixtures", "feed", "season_art.json")))
 SHOW_GUID = "plex://show/5d9c0863ef619b002047f234"
-# Plex's own guid for Season 6 (its answer for the show's children), and TMDB's season.
+# Plex's own Season 6, as its agent lists the show's children: its guid, ids, summary and poster.
 SEASON_GUID = "plex://season/640b5417e96cd974790c094f"
-TMDB_SEASON = FIXTURE["tmdb"]["https://api.themoviedb.org/3/tv/42009/season/6?api_key=KEY"]
-POSTER = "https://image.tmdb.org/t/p/w342" + TMDB_SEASON["poster_path"]
+PLEX_SEASON = next(row for row in FIXTURE["plex"]["GET /library/metadata/5d9c0863ef619b002047f234/children "]
+                   ["MediaContainer"]["Metadata"] if row["guid"] == SEASON_GUID)
+POSTER = PLEX_SEASON["thumb"]
 HELD_SEASON = "112196"
 
 
@@ -53,11 +54,10 @@ def catalog(work, items=(), answers=True):
     json.dump({"machineIdentifier": "00000000000000000000000000000000000000fc", "friendlyName": "rex-seasons",
                "sections": LEGACY["sections"], "items": list(items)}, open(os.path.join(work, "catalog.json"), "w"))
     # The caches import their JSON once, into a database beside it.
-    for name in ("tmdb_cache.db", "plex_cache.db"):
+    for name in ("plex_cache.db",):
         for suffix in ("", "-wal", "-shm"):
             if os.path.exists(os.path.join(work, name + suffix)):
                 os.remove(os.path.join(work, name + suffix))
-    json.dump(FIXTURE["tmdb"] if answers else {}, open(os.path.join(work, "tmdb_cache.json"), "w"))
     json.dump(FIXTURE["plex"] if answers else {}, open(os.path.join(work, "plex_cache.json"), "w"))
 
 
@@ -67,7 +67,7 @@ def season_of(server, show):
 
 
 def poster(server, key):
-    """The image the season's poster reads: the stored one `/posters` lists from TMDB."""
+    """The image the season's poster reads: the stored remote one `/posters` lists."""
     listed = server.rows("/library/metadata/%s/posters" % key)
     return next((row.get("key") for row in listed if row.get("provider") == "tmdb"), None)
 
@@ -81,8 +81,8 @@ def identified(server, season, show_guid, what):
     ids = [guid.get("id") for guid in season.get("Guid") or []]
     check("%s: the season takes Plex's guid for it" % what, season.get("guid") == SEASON_GUID,
           (season.get("guid"), key))
-    check("%s: and TMDB's season id, and its summary" % what,
-          "tmdb://%s" % TMDB_SEASON["id"] in ids and season.get("summary") == TMDB_SEASON["overview"],
+    check("%s: and Plex's ids for the season, and its summary" % what,
+          {guid["id"] for guid in PLEX_SEASON["Guid"]} <= set(ids) and season.get("summary") == PLEX_SEASON["summary"],
           (ids, (season.get("summary") or "")[:60]))
     check("%s: and its parent is the show as it is now" % what, season.get("parentGuid") == show_guid,
           season.get("parentGuid"))
@@ -127,12 +127,12 @@ def main():
         check("zurg's placement re-identifies the show in place, as its IMDb id did in production",
               status == 200 and body.get("updated") == 5 and server.row(show).get("guid") == SHOW_GUID
               and server.keys() == keys, (body, server.row(show).get("guid")))
-        # Unplaced, the files were season 1 in file order; placed, they are TMDB's season 6.
+        # Unplaced, the files were season 1 in file order; placed, they are season 6.
         row = season_of(server, show)
         season = row.get("ratingKey")
         check("the show holds one season, the one its source placed them in", row.get("index") == 6, row.get("index"))
         identified(server, row, SHOW_GUID, "re-identified")
-        check("re-identified: its poster is TMDB's for the season, not the blank tile", poster(server, season) == POSTER,
+        check("re-identified: its poster is Plex's for the season, not the blank tile", poster(server, season) == POSTER,
               poster(server, season))
         # Plex for Mac caches a poster by its path: on the production server it kept drawing the blank
         # tile it had fetched for Ahsoka before the show was re-identified (2026-10-13).
@@ -155,11 +155,11 @@ def main():
     try:
         row = wait_for(server, HELD_SEASON, lambda row: row.get("guid") == SEASON_GUID)
         identified(server, row, SHOW_GUID, "the production Season 6 after a restart")
-        check("the production Season 6 after a restart: its poster is TMDB's for the season", poster(server, HELD_SEASON) == POSTER,
+        check("the production Season 6 after a restart: its poster is Plex's for the season", poster(server, HELD_SEASON) == POSTER,
               poster(server, HELD_SEASON))
     finally:
         server.stop()
-    # The repair was saved, not made again: no TMDB or Plex answers this time.
+    # The repair was saved, not made again: no Plex answers this time.
     catalog(work, rows, answers=False)
     server = Server(work, bytes_port)
     try:

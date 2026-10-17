@@ -3,8 +3,8 @@
 
 Black-box: every check drives a server process (`tests/server_command.py`, the native binary
 by default) on `tests/catalog_features.json`, or on a temporary copy carrying the rows or the
-edit a check needs, as a client would. Three facts with no route of their own -- the title
-fold, the TMDB enrichment and the catalog builder -- are read off the native CLI's test
+edit a check needs, as a client would. Two facts with no route of their own -- the title
+fold and the catalog builder -- are read off the native CLI's test
 adapters (`rust/src/main.rs`).
 
     python3 tests/test_catalog_features.py
@@ -295,7 +295,6 @@ def main():
     run_zurg(check)
     run_gdm(check)
     run_specials(check)
-    run_enrichment(check)
 
     if failures:
         print("FAIL %d catalog feature check(s)" % len(failures))
@@ -1429,48 +1428,6 @@ def run_specials(check):
                   "childCount=%s seasonCount=%s" % (after.get("childCount"), after.get("seasonCount")))
         finally:
             server.stop()
-
-
-def run_enrichment(check):
-    """Cycle 44: the TMDB pipeline's own output, driven through the native enrichment with a
-    stubbed TMDB answer. Two things it got wrong, both measured on the references:
-
-     * a SEASON was given TMDB's season air-date year as its own `year`. 689 of the 1.42.2
-       reference's 742 seasons carry `parentYear` and exactly ONE carries a `year` of its
-       own, so a Plex series agent does not produce one -- and carrying it takes
-       `parentYear` away, because the year rule reads "has a year of its own" off that
-       column;
-     * a SEASON and an EPISODE carried no `Guid` at all. The ids were fetched and discarded
-       on a note claiming a real PMS leaves those arrays empty. plexlab's season 7 answers
-       `tmdb://3846` and `tvdb://15791` and its episode 8 answers three ids; 58 of 60
-       episodes of the 1.42.2 reference surveyed carry a block."""
-    try:
-        answer = native_json("metadata-enrich", {
-            "row": {"title": "Stub Show S01E07", "type": "episode"},
-            "details": {"id": 1396, "name": "Stub Show", "first_air_date": "2008-09-23",
-                        "external_ids": {"imdb_id": "tt0903747"}, "genres": [],
-                        "credits": {"cast": [], "crew": []}},
-            "season": {"id": 3572, "air_date": "2009-03-08",
-                       "external_ids": {"tvdb_id": 15791}, "overview": "Stub season."},
-            "episode": {"id": 62085, "name": "Stub Episode", "air_date": "2009-03-08",
-                        "external_ids": {"imdb_id": "tt1234567", "tvdb_id": 297989}},
-            "parsed": {"title": "Stub Show", "year": None, "season": 1, "episode": 7},
-            "kind": "tv", "tmdbId": 1396,
-        })
-    except AssertionError as error:
-        answer = {"ok": False, "row": {}, "error": str(error)}
-    check("the pipeline identifies a stub episode", answer.get("ok"), str(answer.get("error", "")))
-    probe_row = answer.get("row") or {}
-    if answer.get("ok"):
-        check("an identified episode carries its own Guid",
-              [g["id"] for g in probe_row.get("Guid") or []]
-              == ["imdb://tt1234567", "tmdb://62085", "tvdb://297989"],
-              str(probe_row.get("Guid")))
-        check("the pipeline stores no season year of its own",
-              "_season_year" not in probe_row, str(probe_row.get("_season_year")))
-        check("the pipeline stores the season's external ids",
-              [g["id"] for g in probe_row.get("_season_guids") or []]
-              == ["tmdb://3572", "tvdb://15791"], str(probe_row.get("_season_guids")))
 
 
 if __name__ == "__main__":

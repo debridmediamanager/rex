@@ -2,8 +2,8 @@
 """What rex drew the blank tile for gets named by its source's ids, and what a person matched stays theirs.
 
 the production rex held 56 films and 45 shows with no poster on 2026-10-12, every one unidentified.
-Their releases, as zurg pushed them, are `fixtures/feed/blank_tiles.json` with the TMDB and
-Plex answers the native server asked for them:
+Their releases, as zurg pushed them, are `fixtures/feed/blank_tiles.json` with Plex's
+metadata agent's answers for what the server asks of them (rex reads no TMDB):
 
 * zurg's Usenet library filed anime episodes under movies (`Detektiv.Conan.E0221…`). Pushed with
   no placement it stays where zurg filed it, an unmatched film for Fix Match: rex reads no
@@ -18,8 +18,8 @@ Plex answers the native server asked for them:
 * a Fix Match was undone by the next push that named other ids, and a match that merged two
   rows lost the absorbed release, which came back as a row of its own.
 
-Record the answers again (asks TMDB and Plex; no key is written, TMDB's cache keys hold
-`KEY` and Plex's none): `REX_RECORD_ANSWERS=1 TMDB_KEY=... PLEX_TOKEN=... python3 tests/test_feed_blank_tiles.py`.
+Record the answers again (asks Plex's agent; no key is written, its cache keys hold none):
+`REX_RECORD_ANSWERS=1 PLEX_TOKEN=... python3 tests/test_feed_blank_tiles.py`.
 
     python3 tests/test_feed_blank_tiles.py
 """
@@ -58,37 +58,20 @@ def catalog(work, rows=()):
     next(section for section in sections if section["type"] == "show")["Location"].append({"id": 3, "path": "/zurg/anime"})
     json.dump({"machineIdentifier": "00000000000000000000000000000000000000fb", "friendlyName": "rex-blank",
                "sections": sections, "items": list(rows)}, open(os.path.join(work, "catalog.json"), "w"))
-    for name in ("tmdb", "plex"):
-        json.dump({} if RECORD else FIXTURE[name], open(os.path.join(work, name + "_cache.json"), "w"))
+    json.dump({} if RECORD else FIXTURE["plex"], open(os.path.join(work, "plex_cache.json"), "w"))
 
 
 def start(work, bytes_port):
-    # A recording asks TMDB, or a metadata provider (docs/metadata-api.md), and Plex's agent.
-    names = ("TMDB_KEY", "PLEX_TOKEN", "REX_METADATA_URL", "REX_METADATA_KEY")
-    keys = {name: os.environ[name] for name in names if name in os.environ} if RECORD else None
+    # A recording asks Plex's agent.
+    keys = {"PLEX_TOKEN": os.environ["PLEX_TOKEN"]} if RECORD else None
     return Server(work, bytes_port, keys=keys)
-
-
-def trimmed(key, answer):
-    """An answer kept to what rex reads of it: a TMDB season's own fields, not its episodes
-    (Case Closed's first season lists over a thousand), and a Plex children list's indexes
-    and guids."""
-    if "/season/" in key and "/episode/" not in key:
-        return {field: value for field, value in answer.items() if field != "episodes"}
-    if key.startswith("GET ") and "/children" in key:
-        rows = (answer.get("MediaContainer") or {}).get("Metadata") or []
-        return dict(answer, MediaContainer={"Metadata": [{"index": row.get("index"), "guid": row.get("guid")}
-                                                          for row in rows]})
-    return answer
 
 
 def stop(server, work):
     server.stop()
     if RECORD:
-        for name in ("tmdb", "plex"):
-            with sqlite3.connect(os.path.join(work, name + "_cache.db")) as db:
-                FIXTURE[name].update({key: trimmed(key, json.loads(value))
-                                      for key, value in db.execute("SELECT key, value FROM cache")})
+        with sqlite3.connect(os.path.join(work, "plex_cache.db")) as db:
+            FIXTURE["plex"].update({key: json.loads(value) for key, value in db.execute("SELECT key, value FROM cache")})
 
 
 def poster(server, key):
@@ -143,11 +126,11 @@ def pushes(bytes_port):
               and row.get("title") == FIXTURE["pushes"]["conan"]["path"].rsplit("/", 1)[1].rsplit(".", 1)[0],
               (body, row.get("type"), row.get("librarySectionID"), row.get("title"), guids(row)))
 
-        # -- the ids a placement names are the title, whatever TMDB knows ---------------------
+        # -- the ids a placement names are the title --------------------------------------------
         server.feed("POST", "items", {"items": [item("knock", kind="movie"), item("serbian", kind="movie")]})
         keys = server.keys()
         knock, serbian = server.row(keys[item("knock")["id"]]), server.row(keys[item("serbian")["id"]])
-        check("DMM's tt15679400 names Knock at the Cabin through Plex's TMDB id, with TMDB's poster",
+        check("DMM's tt15679400 names Knock at the Cabin through Plex's TMDB id, with Plex's poster",
               "tmdb://631842" in guids(knock) and poster(server, knock.get("ratingKey")) is not None,
               (knock.get("title"), guids(knock), poster(server, knock.get("ratingKey"))))
         check("DMM's tt6257382 is the title it names, Plex's \"Film Postcards: Serbia\": no name second-guesses it",
@@ -166,7 +149,9 @@ def pushes(bytes_port):
               after.get("guid") == chosen.get("guid") and after.get("title") == matched.get("title"),
               (after.get("guid"), after.get("title"), chosen.get("guid")))
 
-        server.feed("POST", "items", {"items": [item("elementos", kind="movie")]})
+        # Pushed with its ids it would join the matched row at once (both are Plex's Elementos);
+        # unplaced, it is a row of its own for a person to match.
+        server.feed("POST", "items", {"items": [item("elementos", {})]})
         other = server.keys()[item("elementos")["id"]]
         status, _ = match(server, other, "Elementos", 2023)
         merged = server.keys()

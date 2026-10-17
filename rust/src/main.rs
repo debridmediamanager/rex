@@ -8,7 +8,7 @@ use rex::{catalog, decision, filters, gate, hierarchy, mediainfo, metadata, runt
 use serde_json::json;
 
 fn usage() -> &'static str {
-    "Usage: rex [server options] | rex catalog ... | rex manager ... | rex <decision|mediainfo|normalize-media|stream-titles|hierarchy-build|hierarchy-normalize|hierarchy-fold|hierarchy-case|catalog-normalize|xml|system-xml|ordered|guid|provider-guids|gate|metadata-enrich|filter-compare|filter-parse|filter-evaluate|filter-describe|filter-document|filter-orders|filter-source-order> ..."
+    "Usage: rex [server options] | rex catalog ... | rex manager ... | rex <decision|mediainfo|normalize-media|stream-titles|hierarchy-build|hierarchy-normalize|hierarchy-fold|hierarchy-case|catalog-normalize|xml|system-xml|ordered|guid|provider-guids|gate|filter-compare|filter-parse|filter-evaluate|filter-describe|filter-document|filter-orders|filter-source-order> ..."
 }
 
 /// `main()`'s `argparse` options, in its declaration order: (flag, metavar, takes a value).
@@ -666,37 +666,6 @@ fn run_core(command: &str, args: &[String]) -> Result<(), String> {
                 allow_hevc,
                 p60,
             ))
-        }
-        "metadata-enrich" => {
-            let options = parse_core_args(args, &["--input"])?;
-            let input = read_json(required(&options, "--input")?)?;
-            let object = input
-                .as_object()
-                .ok_or_else(|| "metadata-enrich input must be an object".to_string())?;
-            let mut row = object
-                .get("row")
-                .and_then(serde_json::Value::as_object)
-                .cloned()
-                .ok_or_else(|| "metadata-enrich row must be an object".to_string())?;
-            let details = object
-                .get("details")
-                .ok_or_else(|| "metadata-enrich details is required".to_string())?;
-            let parsed = object
-                .get("parsed")
-                .and_then(serde_json::Value::as_object)
-                .ok_or_else(|| "metadata-enrich parsed must be an object".to_string())?;
-            let episode = object.get("episode").filter(|value| !value.is_null());
-            let season = object.get("season").filter(|value| !value.is_null());
-            let kind = object
-                .get("kind")
-                .and_then(serde_json::Value::as_str)
-                .ok_or_else(|| "metadata-enrich kind is required".to_string())?;
-            let tmdb_id = object
-                .get("tmdbId")
-                .and_then(serde_json::Value::as_i64)
-                .ok_or_else(|| "metadata-enrich tmdbId is required".to_string())?;
-            let ok = metadata::enrich(&mut row, details, parsed, episode, season, kind, tmdb_id);
-            print_json(&json!({"ok": ok, "row": row}))
         }
         "filter-compare" => {
             let options = parse_core_args(

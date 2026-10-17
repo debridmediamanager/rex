@@ -15,6 +15,22 @@ use super::*;
 use std::time::Duration;
 
 const PROVIDER: &str = "https://metadata.provider.plex.tv";
+/// How long an answer the provider may complete later is kept before it is asked again.
+const INCOMPLETE_FOR: i64 = 86_400;
+
+/// A kept answer that is incomplete and older than `INCOMPLETE_FOR` (or kept before
+/// answers were stamped).
+fn expired(incomplete: bool, answer: &Value) -> bool {
+    incomplete && answer.get("_rexCachedAt").and_then(Value::as_i64).is_none_or(|at| now() - at >= INCOMPLETE_FOR)
+}
+
+/// Stamp an incomplete answer with when it was kept.
+fn stamped(incomplete: bool, mut answer: Value) -> Value {
+    if let (true, Some(object)) = (incomplete, answer.as_object_mut()) {
+        object.insert("_rexCachedAt".to_string(), json!(now()));
+    }
+    answer
+}
 
 pub(crate) struct PlexMeta {
     /// Read per call, so a claim made at runtime is asked with at once.
@@ -69,13 +85,14 @@ impl PlexMeta {
 impl crate::identify::PlexSource for PlexMeta {
     fn call(&self, method: &str, path: &str, body: Option<&Value>) -> Option<Value> {
         let key = format!("{method} {path} {}", body.map(python_json).unwrap_or_default());
-        // A match or children list with no rows may be filled later, as TMDB's may
-        // (`tmdb::incomplete`): kept a day, then asked again.
+        // A match or children list with no rows may be filled later: kept a day, then asked
+        // again (the production rex drew Camp CrunchLabs on the blank tile after its poster was
+        // added, 2026-10-12, when every answer was kept for good).
         let incomplete = |answer: &Value| {
             answer.pointer("/MediaContainer/Metadata").and_then(Value::as_array).is_none_or(Vec::is_empty)
         };
         let cached = self.cache.get(&key);
-        if let Some(hit) = cached.as_ref().filter(|hit| !super::tmdb::expired(incomplete(hit), hit)) {
+        if let Some(hit) = cached.as_ref().filter(|hit| !expired(incomplete(hit), hit)) {
             return Some(hit.clone());
         }
         let Some(token) = super::plextv::server_token(&self.claim) else {
@@ -109,7 +126,7 @@ impl crate::identify::PlexSource for PlexMeta {
         let Some(answer) = fetched else {
             return cached;
         };
-        let answer = super::tmdb::stamped(incomplete(&answer), answer);
+        let answer = stamped(incomplete(&answer), answer);
         self.cache.put(&key, &answer);
         Some(answer)
     }

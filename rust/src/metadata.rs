@@ -5,8 +5,6 @@ use std::collections::HashMap;
 use serde_json::{json, Map, Value};
 use sha1::{Digest, Sha1};
 
-pub const IMAGE_BASE: &str = "https://image.tmdb.org/t/p/";
-
 fn put(row: &mut Map<String, Value>, key: &str, value: impl Into<Value>) {
     row.insert(key.to_string(), value.into());
 }
@@ -276,577 +274,214 @@ fn value_truthy(value: &Value) -> bool {
     }
 }
 
-fn truthy_string(object: &Map<String, Value>, keys: &[&str]) -> Option<String> {
-    keys.iter().find_map(|key| {
-        object
-            .get(*key)
-            .filter(|value| value_truthy(value))
-            .and_then(Value::as_str)
-            .map(str::to_string)
-    })
+/// A provider field that says something: a non-empty string or a number.
+fn said<'a>(row: &'a Value, field: &str) -> Option<&'a Value> {
+    row.get(field).filter(|value| value_truthy(value))
 }
 
-fn value_id(value: Option<&Value>) -> Option<String> {
-    let value = value?;
-    if !value_truthy(value) {
-        return None;
-    }
-    match value {
-        Value::String(value) => Some(value.clone()),
-        Value::Number(value) => Some(value.to_string()),
-        _ => None,
-    }
+/// The provider sends `year` as a number or a string (tests/fixtures/provider/matches.json).
+fn year_of(row: &Value) -> Option<i64> {
+    let year = said(row, "year")?;
+    year.as_i64().or_else(|| year.as_str()?.parse().ok())
 }
 
-fn year_prefix(value: Option<&Value>) -> Option<i64> {
-    let text = value?.as_str()?;
-    let prefix = text.chars().take(4).collect::<String>();
-    if prefix.chars().count() == 4 && prefix.chars().all(|c| c.is_ascii_digit()) {
-        prefix.parse().ok()
-    } else {
-        None
-    }
+/// A row's external ids (`Guid`), as the provider lists them.
+fn external_ids(row: &Value) -> Vec<Value> {
+    row.get("Guid")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|entry| Some(json!({"id": entry.get("id")?.as_str().filter(|id| !id.is_empty())?})))
+        .collect()
 }
 
-fn round_ties_even(value: f64, digits: i32) -> f64 {
-    if !value.is_finite() {
-        return value;
-    }
-    // Scaling first can erase the binary-float side of a decimal midpoint:
-    // Python round(8.65, 1) is 8.7, whereas round(86.5) is 86.
-    format!("{:.*}", digits.max(0) as usize, value)
-        .parse()
-        .unwrap_or(value)
-}
-
-fn people(details: &Map<String, Value>, mode: &str) -> Vec<Value> {
-    let credits = details.get("credits").and_then(Value::as_object);
-    let mut rows = Vec::new();
-    if mode == "cast" {
-        for person in credits
-            .and_then(|credits| credits.get("cast"))
-            .and_then(Value::as_array)
-            .into_iter()
-            .flatten()
-            .take(6)
-        {
-            let Some(person) = person.as_object() else {
-                continue;
-            };
-            let mut row = Map::new();
-            put(
-                &mut row,
-                "tag",
-                person.get("name").cloned().unwrap_or(Value::Null),
-            );
-            put(
-                &mut row,
-                "role",
-                person.get("character").cloned().unwrap_or(Value::Null),
-            );
-            if let Some(path) = person
-                .get("profile_path")
-                .filter(|value| value_truthy(value))
-                .and_then(Value::as_str)
-            {
-                put(&mut row, "thumb", format!("{}w185{}", IMAGE_BASE, path));
-            }
-            rows.push(Value::Object(row));
-        }
-    } else {
-        for person in credits
-            .and_then(|credits| credits.get("crew"))
-            .and_then(Value::as_array)
-            .into_iter()
-            .flatten()
-        {
-            let Some(person) = person.as_object() else {
-                continue;
-            };
-            let matches = match mode {
-                "director" => person.get("job").and_then(Value::as_str) == Some("Director"),
-                "writer" => person.get("department").and_then(Value::as_str) == Some("Writing"),
-                _ => false,
-            };
-            if matches {
-                let mut row = Map::new();
-                put(
-                    &mut row,
-                    "tag",
-                    person.get("name").cloned().unwrap_or(Value::Null),
-                );
-                rows.push(Value::Object(row));
-            }
-        }
-    }
-    let mut unique = Vec::new();
-    let mut seen = std::collections::HashSet::new();
-    for row in rows.into_iter().take(6) {
-        let key = serde_json::to_string(row.get("tag").unwrap_or(&Value::Null))
-            .unwrap_or_else(|_| "null".to_string());
-        if seen.insert(key) {
-            unique.push(row);
-        }
-        if unique.len() == 6 {
-            break;
-        }
-    }
-    unique
-}
-
-fn content_rating(details: &Map<String, Value>, kind: &str) -> Option<String> {
-    if kind == "tv" {
-        for entry in details
-            .get("content_ratings")
-            .and_then(|v| v.get("results"))
-            .and_then(Value::as_array)
-            .into_iter()
-            .flatten()
-        {
-            let Some(entry) = entry.as_object() else {
-                continue;
-            };
-            if matches!(
-                entry.get("iso_3166_1").and_then(Value::as_str),
-                Some("US") | Some("GB")
-            ) {
-                if let Some(rating) = entry
-                    .get("rating")
-                    .and_then(Value::as_str)
-                    .filter(|v| !v.is_empty())
-                {
-                    return Some(rating.to_string());
+/// A tag list (`Genre`, `Role`, ...) in the shape a row carries it: the provider's own entries,
+/// down to the fields rows keep, at most `limit` of them.
+fn tags(row: &Value, field: &str, limit: usize) -> Option<Vec<Value>> {
+    let tags: Vec<Value> = row
+        .get(field)?
+        .as_array()?
+        .iter()
+        .filter_map(|entry| {
+            let entry = entry.as_object()?;
+            let mut tag = Map::new();
+            for key in ["tag", "role", "thumb"] {
+                if let Some(value) = entry.get(key).filter(|value| value_truthy(value)) {
+                    tag.insert(key.to_string(), value.clone());
                 }
             }
-        }
-    } else {
-        for entry in details
-            .get("release_dates")
-            .and_then(|v| v.get("results"))
-            .and_then(Value::as_array)
-            .into_iter()
-            .flatten()
-        {
-            let Some(entry) = entry.as_object() else {
-                continue;
-            };
-            if entry.get("iso_3166_1").and_then(Value::as_str) != Some("US") {
-                continue;
-            }
-            for release in entry
-                .get("release_dates")
-                .and_then(Value::as_array)
-                .into_iter()
-                .flatten()
-            {
-                if let Some(certification) = release
-                    .get("certification")
-                    .and_then(Value::as_str)
-                    .filter(|v| !v.is_empty())
-                {
-                    return Some(certification.to_string());
-                }
-            }
-        }
-    }
-    None
-}
-
-/// Add the measured subset of TMDB metadata to a row. `details`, episode, and
-/// season payloads are supplied by an injected resolver.
-pub fn enrich(
-    row: &mut Map<String, Value>,
-    details: &Value,
-    parsed: &Map<String, Value>,
-    episode: Option<&Value>,
-    season: Option<&Value>,
-    kind: &str,
-    tmdb_id: i64,
-) -> bool {
-    let Some(details) = details.as_object() else {
-        return false;
-    };
-    // Python treats an empty details mapping as an identification miss.
-    if details.is_empty() {
-        return false;
-    }
-    let title = truthy_string(details, &["title", "name"])
-        .or_else(|| {
-            parsed
-                .get("title")
-                .filter(|value| value_truthy(value))
-                .and_then(Value::as_str)
-                .map(str::to_string)
+            tag.contains_key("tag").then_some(Value::Object(tag))
         })
+        .take(limit)
+        .collect();
+    (!tags.is_empty()).then_some(tags)
+}
+
+/// What the provider's season row gives the season a leaf builds (`hierarchy::build`): its guid
+/// and ids, poster, air date and summary.
+pub fn season_hints(row: &mut Map<String, Value>, season: &Value) {
+    if let Some(guid) = said(season, "guid") {
+        put(row, "_season_guid", guid.clone());
+    }
+    let ids = external_ids(season);
+    if !ids.is_empty() {
+        put(row, "_season_guids", ids);
+    }
+    for (from, to) in [("thumb", "_season_poster"), ("originallyAvailableAt", "_season_air"), ("summary", "_season_summary")] {
+        if let Some(value) = said(season, from) {
+            put(row, to, value.clone());
+        }
+    }
+}
+
+/// What Plex's metadata agent says a title is, onto a row: rex reads no TMDB and describes a
+/// title only by its `plex://` guid (Ben, 2026-10-17). `title` is the provider's movie or show
+/// row (its match), `season` and `episode` the rows its `children` list for the numbers the
+/// source placed the file on; the underscored fields are what `hierarchy::build` makes the show
+/// and season of. An episode the provider has no row for keeps the guid it had.
+pub fn describe(
+    row: &mut Map<String, Value>,
+    title: &Value,
+    season: Option<&Value>,
+    episode: Option<&Value>,
+    show: bool,
+    numbers: Option<(i64, i64)>,
+) {
+    let name = said(title, "title")
+        .and_then(Value::as_str)
+        .map(str::to_string)
+        .or_else(|| row.get("title").and_then(Value::as_str).map(str::to_string))
         .unwrap_or_default();
-    let date = truthy_string(details, &["release_date", "first_air_date"]).unwrap_or_default();
-    put(row, "title", title.clone());
-    // The load-time rule (`hierarchy.sort_title`): titleSort only when the derived
-    // sort title differs from the title. The bare article strip wrote one equal to the
-    // title on every article-less Fix Match, which a real PMS never sends.
-    let derived = crate::hierarchy::sort_title(&title);
-    if !derived.is_empty() && derived != title {
+    put(row, "title", name.clone());
+    // The load-time rule (`hierarchy.sort_title`): titleSort only when it differs from the title.
+    let derived = crate::hierarchy::sort_title(&name);
+    if !derived.is_empty() && derived != name {
         put(row, "titleSort", derived);
     } else {
         row.shift_remove("titleSort");
     }
-    let summary = details
-        .get("overview")
-        .filter(|value| value_truthy(value))
-        .cloned()
-        .or_else(|| {
-            row.get("summary")
-                .filter(|value| value_truthy(value))
-                .cloned()
-        })
-        .unwrap_or_else(|| Value::String(String::new()));
-    put(row, "summary", summary);
-    if year_prefix(Some(&Value::String(date.clone()))).is_some() {
-        put(row, "year", year_prefix(Some(&Value::String(date.clone()))));
-        put(row, "originallyAvailableAt", date.clone());
+    let summary = said(title, "summary").cloned().unwrap_or_else(|| json!(""));
+    put(row, "summary", summary.clone());
+    if let Some(year) = year_of(title) {
+        put(row, "year", year);
     }
-    if let Some(tagline) = details.get("tagline").filter(|value| value_truthy(value)) {
-        put(row, "tagline", tagline.clone());
-    }
-    if let Some(vote) = details
-        .get("vote_average")
-        .filter(|value| value_truthy(value))
-        .and_then(|value| match value {
-            Value::Number(number) => number.as_f64(),
-            Value::String(string) => string.parse().ok(),
-            _ => None,
-        })
-    {
-        let v = round_ties_even(vote, 1);
-        put(row, "rating", v);
-        put(row, "audienceRating", v);
-    }
-    if let Some(rating) = content_rating(details, kind) {
-        put(row, "contentRating", rating);
-    }
-    let companies = details
-        .get("production_companies")
-        .filter(|value| value_truthy(value))
-        .or_else(|| details.get("networks").filter(|value| value_truthy(value)))
-        .and_then(Value::as_array);
-    if let Some(companies) = companies.filter(|companies| !companies.is_empty()) {
-        let name = companies
-            .first()
-            .and_then(Value::as_object)
-            .and_then(|company| company.get("name"))
-            .cloned()
-            .unwrap_or(Value::Null);
-        put(row, "studio", name);
-    }
-    if let Some(genres) = details
-        .get("genres")
-        .filter(|value| value_truthy(value))
-        .and_then(Value::as_array)
-    {
-        let genres: Vec<Value> = genres
-            .iter()
-            .filter_map(|g| {
-                g.as_object()
-                    .map(|g| json!({"tag":g.get("name").cloned().unwrap_or(Value::Null)}))
-            })
-            .collect();
-        if !genres.is_empty() {
-            put(row, "Genre", genres);
+    for field in ["originallyAvailableAt", "tagline", "contentRating", "studio", "audienceRating"] {
+        if let Some(value) = said(title, field) {
+            put(row, field, value.clone());
         }
     }
-    if let Some(countries) = details
-        .get("production_countries")
-        .and_then(Value::as_array)
-    {
-        let countries: Vec<Value> = countries
-            .iter()
-            .take(2)
-            .filter_map(|country| {
-                country.as_object().map(
-                    |country| json!({"tag":country.get("name").cloned().unwrap_or(Value::Null)}),
-                )
-            })
-            .collect();
-        if !countries.is_empty() {
-            put(row, "Country", countries);
+    for (field, limit) in [("Genre", usize::MAX), ("Country", 2), ("Role", 6), ("Director", 6), ("Writer", 6)] {
+        if let Some(tags) = tags(title, field, limit) {
+            put(row, field, tags);
         }
     }
-    for (field, mode) in [
-        ("Role", "cast"),
-        ("Director", "director"),
-        ("Writer", "writer"),
-    ] {
-        let people = people(details, mode);
-        if !people.is_empty() {
-            put(row, field, people);
-        }
+    let externals = external_ids(title);
+    let guid = said(title, "guid").cloned();
+    let thumb = said(title, "thumb").cloned();
+    let art = said(title, "art").cloned();
+    if let Some(thumb) = &thumb {
+        put(row, "_poster_url", thumb.clone());
     }
-    let imdb = details
-        .get("external_ids")
-        .and_then(|x| x.get("imdb_id"))
-        .filter(|value| value_truthy(value))
-        .and_then(|value| value_id(Some(value)))
-        .or_else(|| value_id(details.get("imdb_id")));
-    let externals = if let Some(imdb) = imdb.as_deref() {
-        json!([{"id":format!("imdb://{}",imdb)},{"id":format!("tmdb://{}",tmdb_id)}])
-    } else {
-        json!([{"id":format!("tmdb://{}",tmdb_id)}])
+    if let Some(art) = &art {
+        put(row, "_art_url", art.clone());
+    }
+    put(row, "_show_external_guids", externals.clone());
+    if !show {
+        put(row, "_kind", "movie");
+        if let Some(guid) = guid {
+            put(row, "guid", guid);
+        }
+        put(row, "Guid", externals);
+        return;
+    }
+    put(row, "_kind", "tv");
+    put(row, "_show_title", name.clone());
+    put(row, "_show_summary", summary);
+    put(row, "_show_year", year_of(title));
+    put(row, "_show_poster", thumb.unwrap_or(Value::Null));
+    put(row, "_show_art", art.unwrap_or(Value::Null));
+    if let Some(guid) = guid {
+        put(row, "_show_guid", guid);
+    }
+    put(row, "_season", numbers.map(|n| n.0));
+    put(row, "_episode", numbers.map(|n| n.1));
+    if let Some(season) = season {
+        season_hints(row, season);
+    }
+    let (Some(episode), Some((season_index, episode_index))) = (episode, numbers) else {
+        return;
     };
-    let mut episode_imdb: Option<String> = None;
-    let mut episode_tmdb: Option<String> = None;
-    let mut episode_tvdb: Option<String> = None;
-    let mut episode_found = false;
-    let poster = details
-        .get("poster_path")
-        .filter(|value| value_truthy(value))
-        .and_then(Value::as_str)
-        .map(str::to_string);
-    let mut backdrop = details
-        .get("backdrop_path")
-        .filter(|value| value_truthy(value))
-        .and_then(Value::as_str)
-        .map(str::to_string);
-    // Season 0 is TMDB's Specials, a season like the others. Read as Python's truthiness, its
-    // episodes kept the show's title, summary and art and were minted the show's MOVIE guid:
-    // zen's Firefly S0E1-E3 (Trash, The Message, Heart of Gold) all drew `Episode N` under
-    // `plex://movie/290798…`, with TMDB's answers for them in the cache (2026-10-16).
-    let episode_requested = kind == "tv"
-        && parsed.get("season").is_some_and(|season| value_truthy(season) || season.as_i64() == Some(0))
-        && parsed.get("episode").is_some_and(value_truthy);
-    if episode_requested {
-        if let Some(ep_value) = episode.filter(|value| value_truthy(value)) {
-            let Some(ep) = ep_value.as_object() else {
-                return false;
-            };
-            episode_found = true;
-            if let Some(v) = ep.get("name").filter(|value| value_truthy(value)) {
-                put(row, "title", v.clone());
-            }
-            if let Some(v) = ep.get("overview").filter(|value| value_truthy(value)) {
-                put(row, "summary", v.clone());
-            }
-            if let Some(v) = parsed.get("episode") {
-                put(row, "index", v.clone());
-            }
-            if let Some(v) = parsed.get("season") {
-                put(row, "parentIndex", v.clone());
-            }
-            put(row, "grandparentTitle", title.clone());
-            if let Some(air) = ep.get("air_date").filter(|value| value_truthy(value)) {
-                put(row, "originallyAvailableAt", air.clone());
-                if let Some(year) = year_prefix(Some(air)) {
-                    put(row, "year", year);
-                }
-            }
-            if let Some(v) = ep
-                .get("still_path")
-                .filter(|value| value_truthy(value))
-                .and_then(Value::as_str)
-            {
-                backdrop = Some(v.to_string());
-            }
-            let ext = ep.get("external_ids").and_then(Value::as_object);
-            episode_imdb = ext
-                .and_then(|x| x.get("imdb_id"))
-                .and_then(|value| value_id(Some(value)));
-            episode_tmdb = value_id(ep.get("id"));
-            episode_tvdb = ext
-                .and_then(|x| x.get("tvdb_id"))
-                .and_then(|value| value_id(Some(value)));
+    put(row, "index", episode_index);
+    put(row, "parentIndex", season_index);
+    put(row, "grandparentTitle", name);
+    for field in ["title", "summary", "originallyAvailableAt"] {
+        if let Some(value) = said(episode, field) {
+            put(row, field, value.clone());
         }
     }
-    // Replace the base identity only when the injected episode payload supplied
-    // one; a missing payload follows the same identity path as Python.
-    if episode_found && (episode_imdb.is_some() || episode_tmdb.is_some()) {
-        let seed = episode_imdb
-            .clone()
-            .unwrap_or_else(|| format!("tmdb:{}", episode_tmdb.as_deref().unwrap_or_default()));
-        put(row, "guid", plex_guid("episode", &seed));
-        let mut ids = Vec::new();
-        if let Some(v) = episode_imdb.as_deref() {
-            ids.push(json!({"id":format!("imdb://{}",v)}));
-        }
-        if let Some(v) = episode_tmdb.as_deref() {
-            ids.push(json!({"id":format!("tmdb://{}",v)}));
-        }
-        if let Some(v) = episode_tvdb {
-            ids.push(json!({"id":format!("tvdb://{}",v)}));
-        }
-        if ids.is_empty() {
-            row.shift_remove("Guid");
-        } else {
-            put(row, "Guid", ids);
-        }
-    } else if !episode_requested {
-        let seed = imdb.clone().unwrap_or_else(|| format!("tmdb:{}", tmdb_id));
-        put(row, "guid", plex_guid("movie", &seed));
-        put(row, "Guid", externals.clone());
+    if let Some(year) = year_of(episode) {
+        put(row, "year", year);
     }
-    // An episode TMDB does not have keeps the guid it had: it was minted a MOVIE guid
-    // and given its show's ids (the test host's Tom and Jerry S02E05 under a
-    // one-season show).
-    put(row, "_show_external_guids", externals);
-    if let Some(path) = poster.as_deref() {
-        put(row, "_poster_url", format!("{}w342{}", IMAGE_BASE, path));
+    // An episode's still draws its background, as a real PMS's episode rows do.
+    if let Some(still) = said(episode, "thumb") {
+        put(row, "_art_url", still.clone());
     }
-    if let Some(path) = backdrop.as_deref() {
-        put(row, "_art_url", format!("{}w1280{}", IMAGE_BASE, path));
+    if let Some(guid) = said(episode, "guid") {
+        put(row, "guid", guid.clone());
     }
-    put(row, "_kind", kind);
-    put(row, "_tmdb_id", tmdb_id);
-    if kind == "tv" {
-        put(row, "_show_title", title.clone());
-        put(
-            row,
-            "_show_summary",
-            details
-                .get("overview")
-                .filter(|value| value_truthy(value))
-                .cloned()
-                .unwrap_or_else(|| Value::String(String::new())),
-        );
-        let show_year = year_prefix(Some(&Value::String(date.clone())));
-        put(row, "_show_year", show_year);
-        put(
-            row,
-            "_show_poster",
-            details
-                .get("poster_path")
-                .filter(|value| value_truthy(value))
-                .and_then(Value::as_str)
-                .map(|v| format!("{}w342{}", IMAGE_BASE, v)),
-        );
-        put(
-            row,
-            "_show_art",
-            details
-                .get("backdrop_path")
-                .filter(|value| value_truthy(value))
-                .and_then(Value::as_str)
-                .map(|v| format!("{}w1280{}", IMAGE_BASE, v)),
-        );
-        let show_seed = imdb.clone().unwrap_or_else(|| format!("tmdb:{}", tmdb_id));
-        put(row, "_show_guid", plex_guid("show", &show_seed));
-        put(
-            row,
-            "_season",
-            parsed.get("season").cloned().unwrap_or(Value::Null),
-        );
-        put(
-            row,
-            "_episode",
-            parsed.get("episode").cloned().unwrap_or(Value::Null),
-        );
-        if parsed.get("season").is_some() && !parsed.get("season").is_some_and(Value::is_null) {
-            if let Some(season) = season
-                .filter(|value| value_truthy(value))
-                .and_then(Value::as_object)
-            {
-                season_hints(row, season);
-            }
-        }
-    }
-    true
-}
-
-/// What TMDB's season document gives the season a leaf builds (`hierarchy::build`): its
-/// minted guid and ids, poster, air date and summary.
-pub fn season_hints(row: &mut Map<String, Value>, season: &Map<String, Value>) {
-    if let Some(id) = value_id(season.get("id")) {
-        put(row, "_season_guid", plex_guid("season", &id));
-        let mut ids = vec![json!({"id":format!("tmdb://{}",id)})];
-        if let Some(tvdb) = season
-            .get("external_ids")
-            .and_then(|x| x.get("tvdb_id"))
-            .and_then(|value| value_id(Some(value)))
-        {
-            ids.push(json!({"id":format!("tvdb://{}",tvdb)}));
-        }
-        put(row, "_season_guids", ids);
-    }
-    if let Some(v) = season
-        .get("poster_path")
-        .filter(|value| value_truthy(value))
-        .and_then(Value::as_str)
-    {
-        put(row, "_season_poster", format!("{}w342{}", IMAGE_BASE, v));
-    }
-    if let Some(v) = season.get("air_date").filter(|value| value_truthy(value)) {
-        if year_prefix(Some(v)).is_some() {
-            put(row, "_season_air", v.clone());
-        }
-    }
-    if let Some(v) = season.get("overview").filter(|value| value_truthy(value)) {
-        put(row, "_season_summary", v.clone());
+    let ids = external_ids(episode);
+    if ids.is_empty() {
+        row.shift_remove("Guid");
+    } else {
+        put(row, "Guid", ids);
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[test]
-    fn enrichment_preserves_python_rounding_and_credit_limit() {
-        assert_eq!(round_ties_even(8.65, 1), 8.7);
-        assert_eq!(round_ties_even(8.55, 1), 8.6);
-        let details = json!({"credits":{"crew":[
-            {"name":"A","job":"Director"}, {"name":"A","job":"Director"},
-            {"name":"B","job":"Director"}, {"name":"C","job":"Director"},
-            {"name":"D","job":"Director"}, {"name":"E","job":"Director"},
-            {"name":"F","job":"Director"}
-        ]}});
-        let result = people(details.as_object().unwrap(), "director");
-        assert_eq!(
-            result,
-            vec![
-                json!({"tag":"A"}),
-                json!({"tag":"B"}),
-                json!({"tag":"C"}),
-                json!({"tag":"D"}),
-                json!({"tag":"E"})
-            ]
-        );
+
+    /// The provider's own rows, recorded from metadata.provider.plex.tv
+    /// (tests/fixtures/provider/matches.json): Big Buck Bunny's match.
+    fn recorded(path: &str) -> Value {
+        let file = concat!(env!("CARGO_MANIFEST_DIR"), "/../tests/fixtures/provider/matches.json");
+        let rows: Value = serde_json::from_str(&std::fs::read_to_string(file).unwrap()).unwrap();
+        rows.as_array().unwrap().iter().find(|row| row["path"].as_str().unwrap().contains(path)).unwrap()["response"].clone()
     }
-    /// The test host, 2026-10-10: `The.Tom.and.Jerry.Show.S02E05` under the 1975 show,
-    /// which has no season 2. TMDB answered the show and nothing for the episode; the
-    /// episode row was minted `plex://movie/...` and given the show's ids.
+
     #[test]
-    fn an_episode_tmdb_lacks_keeps_its_guid() {
-        let mut row = Map::from_iter([("guid".to_string(), json!("local://100095"))]);
-        let details = json!({"id": 7842, "name": "The Tom and Jerry Show", "first_air_date": "1975-09-06",
-                             "external_ids": {"imdb_id": "tt0130417"}});
-        let parsed = Map::from_iter([
-            ("title".to_string(), json!("The Tom and Jerry Show")),
-            ("year".to_string(), Value::Null),
-            ("season".to_string(), json!(2)),
-            ("episode".to_string(), json!(5)),
-        ]);
-        assert!(enrich(&mut row, &details, &parsed, None, Some(&json!({})), "tv", 7842));
-        assert_eq!(row["guid"], "local://100095");
-        assert!(!row.contains_key("Guid"), "{:?}", row.get("Guid"));
-        assert_eq!(row["_show_external_guids"], json!([{"id": "imdb://tt0130417"}, {"id": "tmdb://7842"}]));
+    fn a_title_is_described_by_plex_alone() {
+        let show = recorded("/library/metadata/matches")["MediaContainer"]["Metadata"][0].clone();
+        assert_eq!(show["title"], "Big Buck Bunny");
+        let mut movie = Map::new();
+        describe(&mut movie, &show, None, None, false, None);
+        assert_eq!(movie["title"], show["title"]);
+        assert_eq!(movie["summary"], show["summary"]);
+        assert_eq!(movie["_poster_url"], show["thumb"]);
+        assert_eq!(movie["guid"], show["guid"]);
+        assert!(movie["Guid"].as_array().is_some_and(|ids| !ids.is_empty()));
+        assert!(!movie.contains_key("_show_title"));
+        // An episode: the show's row, its season's and its episode's, all the provider's.
+        let episode = json!({"title": "Pilot", "summary": "s", "thumb": "https://x/still.jpg",
+                             "guid": "plex://episode/5d9c0fd6e264b7001fc8c9d3", "Guid": [{"id": "tmdb://62"}], "year": 2008});
+        let season = json!({"guid": "plex://season/5d9c0996e264b7001fc52f30", "thumb": "https://x/s1.jpg", "summary": "first"});
+        let mut row = Map::from_iter([("guid".to_string(), json!("local://100001"))]);
+        describe(&mut row, &show, Some(&season), Some(&episode), true, Some((1, 1)));
+        assert_eq!((&row["title"], &row["index"], &row["parentIndex"]), (&json!("Pilot"), &json!(1), &json!(1)));
+        assert_eq!(row["guid"], "plex://episode/5d9c0fd6e264b7001fc8c9d3");
+        assert_eq!(row["_show_title"], show["title"]);
+        assert_eq!(row["_season_guid"], season["guid"]);
+        assert_eq!((&row["_season_poster"], &row["_art_url"]), (&season["thumb"], &episode["thumb"]));
+        // An episode carries its own ids, and its season none of a year (cycle 44: 689 of the 1.42.2
+        // reference's 742 seasons carry `parentYear` and one a `year` of its own).
+        assert_eq!(row["Guid"], json!([{"id": "tmdb://62"}]));
+        assert!(!row.contains_key("_season_year"));
+        // No episode row: the show's description, and the guid the row had.
+        let mut unknown = Map::from_iter([("guid".to_string(), json!("local://100002"))]);
+        describe(&mut unknown, &show, None, None, true, Some((9, 99)));
+        assert_eq!((&unknown["guid"], &unknown["_show_title"]), (&json!("local://100002"), &show["title"]));
     }
-    /// zen's end-to-end rig (2026-10-16, `tests/fixtures/feed/specials.json`): zurg placed
-    /// Firefly's Trash on TMDB's S0E1, and TMDB's answer for it named the row -- not the show's
-    /// title, summary and movie guid.
-    #[test]
-    fn a_special_is_its_tmdb_episode() {
-        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../tests/fixtures/feed/specials.json");
-        let fixture: Value = serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
-        let answer = |path: &str| {
-            fixture["tmdb"].as_object().unwrap().iter().find(|(key, _)| key.contains(&format!("/3/{path}?"))).map(|(_, v)| v.clone()).unwrap()
-        };
-        let (details, season, episode) = (answer("tv/1437"), answer("tv/1437/season/0"), answer("tv/1437/season/0/episode/1"));
-        let parsed = Map::from_iter(
-            [("title", json!("Firefly")), ("year", Value::Null), ("season", json!(0)), ("episode", json!(1))].map(|(k, v)| (k.to_string(), v)),
-        );
-        let mut row = Map::new();
-        assert!(enrich(&mut row, &details, &parsed, Some(&episode), Some(&season), "tv", 1437));
-        assert_eq!((&row["title"], &row["index"], &row["parentIndex"]), (&json!("Trash"), &json!(1), &json!(0)));
-        assert_eq!(row["summary"], episode["overview"]);
-        assert!(row["guid"].as_str().unwrap().starts_with("plex://episode/"), "{}", row["guid"]);
-        assert!(row["Guid"].as_array().unwrap().contains(&json!({"id": format!("tmdb://{}", episode["id"])})), "{}", row["Guid"]);
-        assert_eq!(row["_season_guids"][0], json!({"id": format!("tmdb://{}", season["id"])}));
-    }
+
     #[test]
     fn guid() {
         assert_eq!(

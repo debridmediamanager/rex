@@ -8,9 +8,9 @@ against a stub zurg serving zurg's two real entries (`tests/fixtures/zurg/entrie
 and a third release zurg had neither identified nor probed, scrobbles one row, and dumps
 the state database's rows to `tests/fixtures/feed/legacy_scan_rows.json`.
 
-TMDB and Plex answer from the same on-disk caches `rust/src/runtime/scan.rs`'s unit test
-writes (real ids); a lookup they miss goes out with a fake key and is refused, so the
-unidentified release stays unmatched.
+Plex's agent answers from `tests/fixtures/feed/provider_cache.json` (recorded); a lookup it
+misses goes nowhere, so the unidentified release stays unmatched. (The rows were recorded on
+2026-10-14, when rex also read TMDB.)
 
     python3 probes/legacy_scan_fixture.py --bin <acaa3cc build>/rex --root <acaa3cc tree>
 """
@@ -33,7 +33,7 @@ HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ENTRIES = json.load(open(os.path.join(HERE, "tests", "fixtures", "zurg", "entries.json")))["entries"]
 NEW = "Qzxv.Wmplk.2024.1080p.WEB-DL"
 CACHE = json.load(open(os.path.join(HERE, "tests", "fixtures", "feed", "provider_cache.json")))
-TMDB_CACHE, PLEX_CACHE = CACHE["tmdb"], CACHE["plex"]
+PLEX_CACHE = CACHE["plex"]
 
 
 def free_port():
@@ -115,7 +115,6 @@ def main():
                  "uuid": "0000000000000000000000000000000000000002", "Location": [{"id": 2, "path": "/zurg/shows"}]}]
     json.dump({"machineIdentifier": "00000000000000000000000000000000000000ff", "friendlyName": "legacy",
                "sections": sections, "items": []}, open(os.path.join(work, "catalog.json"), "w"))
-    json.dump(TMDB_CACHE, open(os.path.join(work, "tmdb_cache.json"), "w"))
     json.dump(PLEX_CACHE, open(os.path.join(work, "plex_cache.json"), "w"))
     port = free_port()
     env = dict(os.environ, ZURG_URL="http://127.0.0.1:%d" % zurg_port, TMDB_KEY="fake", PLEX_TOKEN="fake",

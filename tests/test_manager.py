@@ -204,17 +204,17 @@ def main():
 
         a, b, c = free_port(), free_port(), free_port()
         status, made = manager.api("POST", "/servers", config("alpha", a, token="gate-secret",
-                                                               tmdb_key="tmdb-secret",
+                                                               plex_token="plex-secret",
                                                                friendly_name="Managed Alpha"))
         check("create answers 201 and leaves the server stopped",
               status == 201 and made.get("status") == "stopped" and made.get("desired") == "stopped",
               made)
         check("a created server does not listen", not answers(a))
         cfg = (made or {}).get("config") or {}
-        check("keys are redacted", cfg.get("token") == "***" and cfg.get("tmdb_key") == "***", cfg)
+        check("keys are redacted", cfg.get("token") == "***" and cfg.get("plex_token") == "***", cfg)
         listed_text = json.dumps(manager.api("GET", "/servers")[1])
         check("no key appears in the listing",
-              "gate-secret" not in listed_text and "tmdb-secret" not in listed_text)
+              "gate-secret" not in listed_text and "plex-secret" not in listed_text)
         check("the catalog is copied into the server's database",
               os.path.exists(os.path.join(root, "servers", "alpha", "rex.db")))
         for label, body, want in (
@@ -284,11 +284,11 @@ def main():
         # -- a server from its keys alone: no catalog until it is built ----------
         e = free_port()
         status, keyed = manager.api("POST", "/servers", {
-            "name": "keyed", "port": e, "tmdb_key": "keyed-secret", "zurg_mount": "/mnt/zurg",
+            "name": "keyed", "port": e, "plex_token": "keyed-secret", "zurg_mount": "/mnt/zurg",
             "gdm": "off", "assert_claimed": True})
         check("a server can be created from its keys alone",
               status == 201 and keyed["status"] == "stopped"
-              and keyed["config"]["tmdb_key"] == "***"
+              and keyed["config"]["plex_token"] == "***"
               and keyed["config"]["zurg_mount"] == "/mnt/zurg", keyed)
         status, refused = manager.api("POST", "/servers", {"name": "zurgkeys", "port": free_port(),
                                                            "zurg_url": "http://127.0.0.1:9"})
@@ -370,9 +370,9 @@ def main():
                                  env=dict(os.environ, **(env or {})), timeout=120)
             return run.returncode, run.stdout + run.stderr
         code, text = cli("create", "cli", "--port", str(d), "--catalog", CATALOG, "--gdm", "off",
-                         "--assert-claimed", env={"TMDB_KEY": "cli-secret"})
-        check("cli create takes TMDB_KEY from the environment",
-              code == 0 and '"tmdb_key": "***"' in text and "cli-secret" not in text, text)
+                         "--assert-claimed", env={"PLEX_TOKEN": "cli-secret"})
+        check("cli create takes PLEX_TOKEN from the environment",
+              code == 0 and '"plex_token": "***"' in text and "cli-secret" not in text, text)
         code, text = cli("start", "cli")
         check("cli start", code == 0 and wait_for(lambda: answers(d), 90), text)
         code, text = cli("list")

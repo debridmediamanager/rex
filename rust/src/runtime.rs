@@ -53,7 +53,6 @@ mod spellfix;
 mod stats;
 mod streams;
 mod structural;
-mod tmdb;
 mod transcoder;
 mod universal;
 pub(crate) mod upstream;
@@ -501,13 +500,11 @@ pub struct Runtime {
     feed_held: std::collections::BTreeMap<String, Value>,
     /// The `feed_held` keys written or removed since the last snapshot (`hold`, `release`).
     feed_held_changed: HashSet<String>,
-    /// `metadata.Tmdb`, only with `TMDB_KEY`: without it Fix Match has no candidates.
-    tmdb: Option<Arc<tmdb::Tmdb>>,
-    /// Plex's metadata agent, once claimed or with `PLEX_TOKEN`: what a scan matches a release
-    /// with and where a matched row's real `plex://` guid comes from.
+    /// Plex's metadata agent, once claimed or with `PLEX_TOKEN`: a pushed id's `plex://` guid,
+    /// everything shown about the title, and Fix Match's candidates. rex reads no TMDB.
     plex: Option<Arc<plexmeta::PlexMeta>>,
-    /// Fix Match guid -> the TMDB `(kind, id)` that minted it, so `PUT .../match`
-    /// re-identifies the row from what the person picked.
+    /// Fix Match guid -> the `(kind, provider row)` it was offered with, so `PUT .../match`
+    /// describes the row from what the person picked.
     match_candidates: HashMap<String, (String, Value)>,
     /// A part read the router accepted; `handle_connection` streams it after the
     /// runtime lock is released, so a media body never holds up the rest of the API.
@@ -675,24 +672,6 @@ const HIDDEN_METADATA_PROVIDER: &str = r#"{"id":4,"identifier":"org.musicbrainz.
 
 impl Runtime {
     pub fn load(options: RuntimeOptions) -> Result<Self, String> {
-        // Fix Match needs a live agent, keyed like build_catalog.py; the response cache
-        // lives beside the catalog.
-        // A metadata provider (`REX_METADATA_URL`, `docs/metadata-api.md`; DMM is one) answers
-        // TMDB's reads first, with or without a TMDB key of rex's own to fall back on.
-        let env = |name: &str| std::env::var(name).ok().filter(|value| !value.is_empty());
-        let provider = env("REX_METADATA_URL");
-        let tmdb = (env("TMDB_KEY").is_some() || provider.is_some()).then(|| {
-            // `os.path.dirname(os.path.abspath(catalog))`: absolute, symlinks kept.
-            let directory = std::path::absolute(&options.catalog)
-                .ok()
-                .and_then(|path| path.parent().map(Path::to_path_buf))
-                .unwrap_or_else(|| PathBuf::from("."));
-            let tmdb = tmdb::Tmdb::new(env("TMDB_KEY").unwrap_or_default(), directory.join("tmdb_cache.json"));
-            Arc::new(match provider {
-                Some(url) => tmdb.with_provider(url, env("REX_METADATA_KEY")),
-                None => tmdb,
-            })
-        });
         // A catalog `build_catalog.py` wrote into a database carries the digest of the
         // JSON it came from, so a state saved over that JSON is still this catalog's.
         let from_database = store::is_sqlite(&options.catalog);
@@ -805,8 +784,6 @@ impl Runtime {
             sources: Vec::new(),
             feed_held: std::collections::BTreeMap::new(),
             feed_held_changed: HashSet::new(),
-            // Fix Match needs a live agent; the cache lives beside the catalog.
-            tmdb,
             plex,
             match_candidates: HashMap::new(),
             pending_part: None,
@@ -19801,20 +19778,17 @@ impl Runtime {
         response
     }
 
-    /// `GET /library/metadata/{id}/matches` -- Fix Match candidates.
+    /// `GET /library/metadata/{id}/matches` -- Fix Match candidates, from Plex's agent.
     ///
     /// Shape measured on a real PMS: SearchResult rows of {guid, name, year, score,
-    /// thumb, type, lifespanEnded, summary}. The guid each row carries is the one the
-    /// client sends straight back to `PUT .../match`, so it has to be a guid rex can
-    /// resolve again -- hence the candidate map, which remembers which TMDB id minted it.
+    /// thumb, type, lifespanEnded, summary}. Each guid is the agent's own `plex://` one, which
+    /// the client sends straight back to `PUT .../match`; the candidate map keeps the row it
+    /// came with, so the match describes the row from what the person picked.
     fn route_item_matches(&mut self, row: &Value, query: &HashMap<String, String>) -> Response {
-        let Some(tmdb) = &self.tmdb else {
-            // No TMDB key: the honest answer is no candidates. The client says "No
-            // matches were found using this agent", which is true.
-            info!(
-                "MATCHES {} -- no TMDB key configured",
-                key_of(row).unwrap_or_default()
-            );
+        let Some(plex) = self.plex.clone() else {
+            // No agent (unclaimed, no PLEX_TOKEN): the honest answer is no candidates. The
+            // client says "No matches were found using this agent", which is true.
+            info!("MATCHES {} -- no Plex agent (unclaimed, no PLEX_TOKEN)", key_of(row).unwrap_or_default());
             // `tag_container(size=0)`: identifier and the media-tag pair, as the
             // candidate answer carries them.
             return Response::json(200, self.tag_container(Map::new()));
@@ -19827,75 +19801,41 @@ impl Runtime {
             .unwrap_or_default();
         let year = query
             .get("year")
-            .filter(|year| !year.is_empty())
-            .map(|year| json!(year))
-            .or_else(|| row.get("year").cloned());
+            .and_then(|year| year.trim().parse::<i64>().ok())
+            .or_else(|| row.get("year").and_then(Value::as_i64));
         // A show's episodes match against the SHOW, the way the agent does.
         let kinds: &[&str] = if matches!(
             row.get("type").and_then(Value::as_str),
             Some("show" | "season" | "episode")
         ) {
-            &["tv"]
+            &["show"]
         } else {
-            &["movie", "tv"]
+            &["movie", "show"]
         };
         let mut results = Vec::new();
-        let mut minted = Vec::new();
+        let mut offered = Vec::new();
         for kind in kinds {
-            let plex_kind = if *kind == "movie" { "movie" } else { "show" };
-            for found in tmdb.search(kind, &title, year.as_ref()).iter().take(20) {
-                let name = ["title", "name"]
-                    .iter()
-                    .filter_map(|field| found.get(*field))
-                    .find(|value| truthy(value))
-                    .map(string_value)
-                    .unwrap_or_default();
-                let date = ["release_date", "first_air_date"]
-                    .iter()
-                    .filter_map(|field| found.get(*field))
-                    .find(|value| truthy(value))
-                    .map(string_value)
-                    .unwrap_or_default();
-                let id = found.get("id").cloned().unwrap_or(Value::Null);
-                let guid = metadata::plex_guid(plex_kind, &tmdb_seed(&id));
-                minted.push((guid.clone(), (kind.to_string(), id)));
-                // `int(round(min(popularity or 0, 100)))`, Python's round-half-even.
-                let popularity = found
-                    .get("popularity")
-                    .and_then(Value::as_f64)
-                    .unwrap_or(0.0)
-                    .min(100.0);
+            for found in crate::identify::plex_search(plex.as_ref(), kind, &title, year).into_iter().take(20) {
+                let text = |field: &str| found.get(field).filter(|value| truthy(value)).map(string_value);
+                let guid = text("guid").unwrap_or_default();
                 let mut entry = Map::new();
                 entry.insert("guid".to_string(), json!(guid));
-                entry.insert("name".to_string(), json!(name));
-                entry.insert("type".to_string(), json!(plex_kind));
-                entry.insert("score".to_string(), json!(popularity.round_ties_even() as i64));
+                entry.insert("name".to_string(), json!(text("title").unwrap_or_default()));
+                entry.insert("type".to_string(), json!(kind));
+                entry.insert("score".to_string(), json!(found.get("score").and_then(Value::as_i64).unwrap_or(0)));
                 entry.insert("lifespanEnded".to_string(), json!(false));
-                entry.insert(
-                    "summary".to_string(),
-                    json!(found
-                        .get("overview")
-                        .filter(|value| truthy(value))
-                        .map(string_value)
-                        .unwrap_or_default()),
-                );
-                if date.len() >= 4 && date[..4].bytes().all(|b| b.is_ascii_digit()) {
-                    entry.insert("year".to_string(), json!(date[..4].parse::<i64>().unwrap_or(0)));
+                entry.insert("summary".to_string(), json!(text("summary").unwrap_or_default()));
+                if let Some(year) = found.get("year").and_then(|year| year.as_i64().or_else(|| year.as_str()?.parse().ok())) {
+                    entry.insert("year".to_string(), json!(year));
                 }
-                if let Some(poster) = found
-                    .get("poster_path")
-                    .filter(|value| truthy(value))
-                    .map(string_value)
-                {
-                    entry.insert(
-                        "thumb".to_string(),
-                        json!(format!("{}w342{}", metadata::IMAGE_BASE, poster)),
-                    );
+                if let Some(thumb) = text("thumb") {
+                    entry.insert("thumb".to_string(), json!(thumb));
                 }
+                offered.push((guid, (kind.to_string(), found)));
                 results.push(Value::Object(entry));
             }
         }
-        self.match_candidates.extend(minted);
+        self.match_candidates.extend(offered);
         info!(
             "MATCHES {} {} -> {} candidate(s)",
             key_of(row).unwrap_or_default(),
@@ -19911,57 +19851,29 @@ impl Runtime {
         )
     }
 
-    /// Re-identify a row after a manual match. The guid came out of `matches`, so it
-    /// maps back to the TMDB id the person picked and the row is rebuilt from that --
-    /// not from a fresh search, which is the thing that got it wrong in the first place.
+    /// Re-identify a row after a manual match. The guid came out of `matches`, so it maps
+    /// back to the agent's row the person picked and the row is described from that -- not
+    /// from a fresh search, which is the thing that got it wrong in the first place. An
+    /// episode takes its own row by its season and episode under the picked show.
     fn identify_guid(&mut self, key: &str, guid: &str) {
-        let (Some(tmdb), Some((kind, id))) = (&self.tmdb, self.match_candidates.get(guid)) else {
+        let (Some(plex), Some((kind, picked))) = (self.plex.clone(), self.match_candidates.get(guid).cloned()) else {
             return;
         };
         let Some(row) = self.catalog.get(key).cloned() else {
             return;
         };
-        let parsed = Map::from_iter([
-            (
-                "title".to_string(),
-                json!(row.get("title").filter(|v| truthy(v)).map(string_value).unwrap_or_default()),
-            ),
-            ("year".to_string(), row.get("year").cloned().unwrap_or(Value::Null)),
-            ("season".to_string(), row.get("parentIndex").cloned().unwrap_or(Value::Null)),
-            ("episode".to_string(), row.get("index").cloned().unwrap_or(Value::Null)),
-        ]);
-        // `enrich` treats a failed details lookup as a miss and changes nothing.
-        let details = tmdb.details(kind, id).unwrap_or(Value::Null);
-        // Season 0 (Specials) is a season: `metadata::enrich`.
-        let season = parsed.get("season").filter(|v| truthy(v) || v.as_i64() == Some(0)).cloned();
-        let episode_number = parsed.get("episode").filter(|v| truthy(v)).cloned();
-        let found = details.as_object().is_some_and(|object| !object.is_empty());
-        let episode = match (kind.as_str(), &season, &episode_number) {
-            ("tv", Some(season), Some(episode)) if found => tmdb.episode(id, season, episode),
-            _ => None,
-        };
-        let season_details = match (kind.as_str(), parsed.get("season")) {
-            ("tv", Some(season)) if found && !season.is_null() => tmdb.season(id, season),
-            _ => None,
-        };
-        let tmdb_id = id.as_i64().unwrap_or_default();
-        let kind = kind.clone();
+        let show = kind == "show";
+        let numbers = row.get("parentIndex").and_then(Value::as_i64).zip(row.get("index").and_then(Value::as_i64)).filter(|_| show);
+        let season = numbers.and_then(|(season, _)| crate::identify::plex_children_rows(plex.as_ref(), guid).remove(&season.to_string()));
+        let episode = numbers.zip(season.as_ref()).and_then(|((_, episode), season)| {
+            let season_guid = season.get("guid")?.as_str()?;
+            crate::identify::plex_children_rows(plex.as_ref(), season_guid).remove(&episode.to_string())
+        });
         if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
-            metadata::enrich(
-                object,
-                &details,
-                &parsed,
-                episode.as_ref(),
-                // `tmdb.season(...) or {}`: a failed season lookup is an empty mapping.
-                Some(season_details.as_ref().unwrap_or(&json!({}))),
-                &kind,
-                tmdb_id,
-            );
+            metadata::describe(object, &picked, season.as_ref(), episode.as_ref(), show, numbers);
         }
-        // `enrich` writes the TMDB vote into `rating` as well as `audienceRating`; load
-        // drops it, because `rating` is the CRITIC score (the 1.42.2 reference: 743 of
-        // 1,538 matched movies carry one, each beside a critic `ratingImage`). A Fix Match
-        // skipped that rule and put a TMDB vote back as a critic rating.
+        // `rating` is the CRITIC score (the 1.42.2 reference: 743 of 1,538 matched movies carry
+        // one, each beside a critic `ratingImage`); the agent's audience score is not one.
         if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
             if matches!(
                 object.get("type").and_then(Value::as_str),
@@ -20046,12 +19958,21 @@ impl Runtime {
             info!("MATCH {key} merged into {existing_key} ({guid})");
         } else {
             // Order matters: the re-identification runs FIRST and the chosen guid is
-            // written last, because enrich mints its own guid from whichever external id
-            // it finds -- running it afterwards replaces the identity the person picked.
+            // written last, because describing an episode writes the episode's own guid --
+            // running it afterwards replaces the identity the person picked.
             if !guid.is_empty() {
                 self.identify_guid(key, &guid);
             }
-            let chosen = self.match_candidates.get(&guid).and_then(|(_, id)| id.as_i64());
+            // The identity a later push of this title joins: its TMDB id, else the agent's guid.
+            let chosen = self.match_candidates.get(&guid).map(|(_, picked)| {
+                picked
+                    .get("Guid")
+                    .and_then(Value::as_array)
+                    .into_iter()
+                    .flatten()
+                    .find_map(|id| id.get("id")?.as_str()?.strip_prefix("tmdb://").map(|id| format!("tmdb:{id}")))
+                    .unwrap_or_else(|| guid.clone())
+            });
             if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
                 if !guid.is_empty() {
                     object.insert("guid".to_string(), json!(guid));
@@ -20060,8 +19981,8 @@ impl Runtime {
                     // undid the match (`matched_by_hand`). The show it names is the one later
                     // episodes of that title join.
                     object.insert("_matched".to_string(), json!(true));
-                    if let Some(id) = chosen {
-                        object.insert("_identity".to_string(), json!(format!("tmdb:{id}")));
+                    if let Some(identity) = chosen {
+                        object.insert("_identity".to_string(), json!(identity));
                     }
                 }
                 if !name.is_empty() {
@@ -22724,7 +22645,7 @@ fn start_state_saver(runtime: SharedRuntime) {
 
 /// `server.py` `main()`'s state file. A real PMS keeps everything a client changes in
 /// its database, so a state database is the default: `rex.db` beside a JSON
-/// catalog, like `tmdb_cache.json` and `claim_state.json`, or the catalog's own
+/// catalog, like `plex_cache.db` and `claim_state.json`, or the catalog's own
 /// database when the catalog is one (`build_catalog.py --out *.db`). `--no-state` (or an empty
 /// `REX_STATE`) turns it off, which is what the test suites run with: their
 /// checks assume a restart reloads the fixture. The default is the server's data
@@ -22793,9 +22714,6 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
     let heartbeat_interval = options.heartbeat_interval;
     let gated = options.token.is_some();
     let tls_cert = options.tls_cert.clone();
-    if std::env::var("TMDB_KEY").map_or(true, |key| key.is_empty()) {
-        info!("no TMDB_KEY: Fix Match will report no candidates");
-    }
     let tls_config = match options.tls_cert.as_deref() {
         Some(cert_path) => Some(Arc::new(load_tls_config(
             cert_path,
@@ -22943,7 +22861,7 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
         }
     }
     start_state_saver(Arc::clone(&runtime));
-    // Off the request path: a TMDB miss waits on the network. Then, every ten minutes, a
+    // Off the request path: a miss of Plex's agent waits on the network. Then, every ten minutes, a
     // batch of what identification left on the blank tile is named again (`retry_blank`).
     let seasons = Arc::clone(&runtime);
     let _ = thread::Builder::new().name("season-repair".to_string()).spawn(move || {
@@ -26750,15 +26668,6 @@ fn generated_jpeg(width: u32, height: u32, rgb: [u8; 3]) -> Vec<u8> {
     document.extend_from_slice(&scan);
     document.extend_from_slice(&[0xff, 0xd9]);
     document
-}
-
-/// The seed `plex_guid` hashes for a TMDB id: Python's `str()` of the JSON value.
-fn tmdb_seed(id: &Value) -> String {
-    match id {
-        Value::String(text) => text.clone(),
-        Value::Null => "None".to_string(),
-        other => other.to_string(),
-    }
 }
 
 /// `_download_disposition`: both filename forms PMS writes on a download. Cycle 41: the

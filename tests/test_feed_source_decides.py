@@ -6,20 +6,20 @@ season and episode), or a TMDB id a person set by hand in zurg; anything else ar
 neither, 0.9% of the production server's episodes and 1.1% of its movies (2026-10-17). rex read
 names until then: it searched them, read ids out of them, asked TMDB's /find for an IMDb id, and
 numbered and moved episodes by them, at every push and every start. These are real pushes and
-rows from the feed fixtures, against a server whose metadata provider (`REX_METADATA_URL`) and
-Plex agent (`REX_PLEXTV_URL`) are a local recorder, so every question rex asks is seen:
+rows from the feed fixtures, against a server whose Plex agent (`REX_PLEXTV_URL`) is a local
+recorder, so every question rex asks is seen; rex reads no TMDB (2026-10-17):
 
 (a) Pushed unplaced -- `Kingdom.S01E03` (`anime.json`), Bungo Stray Dogs' S04E01 with only its IMDb
     id (`anime.json`), Lovely Runner with only a TVDB id (`names.json`), and Saturday Night Live's
     three `01`s of one pack (`pack_folders.json`): each is unmatched, in a show named after its
     release, season 1, numbered in its release's file order, and nobody is asked anything.
-(b) Placed -- Case Closed on TMDB's S1E1103 with only its IMDb id: exactly there, and TMDB is not
-    asked to find it (`/find`); Plex's agent only by its external id.
+(b) Placed -- Case Closed on TMDB's S1E1103 with only its IMDb id: exactly there, and Plex's
+    agent is asked only by its external id.
 (c) A TMDB id set by hand, no `kind` -- the same Bungo Stray Dogs file, and A Serbian Film
-    (`blank_tiles.json`), with the TMDB answers recorded for them: that title, in its library's
-    kind, the episode still on its file-order number. An id TMDB has no title of that kind for
-    (Pawn Stars' episode id 1559521, which zurg's own Plex once pushed as the show's) names
-    nothing, and nothing is searched instead.
+    (`blank_tiles.json`), with Plex's answers recorded for them: that title, in its library's
+    kind, the episode still on its file-order number. The id is trusted as pushed, checked
+    against nothing (Pawn Stars' episode id 1559521 too, which zurg's own Plex once pushed as a
+    show's): a title Plex does not know keeps its release's name, and nothing is searched.
 (d) Rows held -- the production server's rows of 2026-10-16 (`blank_1016.json`), a show named after
     an archive, one after an episode number, a film among the shows: through two starts nothing
     is renumbered, unfolded, moved or identified again, and nobody is asked anything.
@@ -58,7 +58,7 @@ def item(fixture, name, **override):
 
 
 class Recorder:
-    """The metadata provider and Plex's agent: every request kept, nothing known."""
+    """Plex's agent: every request kept, nothing known."""
 
     def __init__(self):
         self.seen = []
@@ -71,9 +71,8 @@ class Recorder:
             def do_GET(self):
                 body = self.rfile.read(int(self.headers.get("Content-Length") or 0))
                 recorder.seen.append((self.path, body.decode("utf-8", "replace")))
-                # The provider's "no such title" (rex then asks TMDB nothing), the agent's no match.
-                status, answer = (404, b"{}") if self.path.startswith("/api/metadata/") else \
-                    (200, b'{"MediaContainer": {"size": 0, "Metadata": []}}')
+                # The agent's no match.
+                status, answer = 200, b'{"MediaContainer": {"size": 0, "Metadata": []}}'
                 self.send_response(status)
                 self.send_header("Content-Type", "application/json")
                 self.send_header("Content-Length", str(len(answer)))
@@ -84,9 +83,8 @@ class Recorder:
         return Handler
 
     def asked(self):
-        """What identification asked: TMDB through the provider, and Plex's agent."""
-        return [(path, body) for path, body in self.seen
-                if path.startswith("/api/metadata/") or path.startswith("/metadata.provider.plex.tv/")]
+        """What identification asked of Plex's agent."""
+        return [(path, body) for path, body in self.seen if path.startswith("/metadata.provider.plex.tv/")]
 
 
 def catalog(work, rows=(), answers=None):
@@ -97,15 +95,14 @@ def catalog(work, rows=(), answers=None):
     next(section for section in sections if section["type"] == "show")["Location"].append({"id": 3, "path": "/zurg/anime"})
     json.dump({"machineIdentifier": "00000000000000000000000000000000000000f6", "friendlyName": "rex-source-decides",
                "sections": sections, "items": list(rows)}, open(os.path.join(work, "catalog.json"), "w"))
-    for name in ("tmdb", "plex"):
-        kept = {key: value for fixture, wanted in (answers or {}).items() for key, value in FIXTURES[fixture][name].items()
-                if any(part in key for part in wanted)}
-        json.dump(kept, open(os.path.join(work, name + "_cache.json"), "w"))
+    kept = {key: value for fixture, wanted in (answers or {}).items() for key, value in FIXTURES[fixture].get("plex", {}).items()
+            if any(part in key for part in wanted)}
+    json.dump(kept, open(os.path.join(work, "plex_cache.json"), "w"))
 
 
 def start(work, bytes_port, recorder_port):
     base = "http://127.0.0.1:%d" % recorder_port
-    return Server(work, bytes_port, keys={"REX_METADATA_URL": base, "REX_PLEXTV_URL": base})
+    return Server(work, bytes_port, keys={"REX_PLEXTV_URL": base})
 
 
 def where(server, pushed):
@@ -145,7 +142,7 @@ def pushes(bytes_port, recorder, recorder_port):
         status, body = server.feed("POST", "items", {"items": unplaced + snl})
         check("pushed again, nothing is numbered or named again", body.get("unchanged") == 6 and server.keys() == keys, body)
 
-        # -- (b) placed: exactly where pushed, TMDB asked nothing but by TMDB id ---------------------
+        # -- (b) placed: exactly where pushed, Plex asked only by its external id ---------------------
         recorder.seen.clear()
         conan = item("anime", "case_closed", kind="episode", season=1, episode=1103)
         server.feed("POST", "items", {"items": [conan]})
@@ -153,9 +150,9 @@ def pushes(bytes_port, recorder, recorder_port):
         check("Case Closed, placed on TMDB's S1E1103, is there and known by its id, whatever its name numbers",
               (season, episode) == (1, 1103) and "imdb://tt0131179" in ids, (title, ids, season, episode))
         asked = recorder.asked()
-        check("TMDB is not asked to find it, and Plex's agent only by its external id",
-              not any(path.startswith("/api/metadata/imdb:") for path, _ in asked)
-              and all('"guid"' in body and '"title"' not in body for path, body in asked if path.startswith("/metadata.provider")),
+        check("Plex's agent is asked only by its external id, and nothing else is asked",
+              all(path.startswith("/metadata.provider") for path, _ in asked)
+              and all('"guid"' in body and '"title"' not in body for path, body in asked if path.endswith("/matches")),
               asked)
 
         # -- (c) a TMDB id set by hand: that title in its library's kind ---------------------------
@@ -174,8 +171,8 @@ def pushes(bytes_port, recorder, recorder_port):
         runner = item("names", "lovely_runner", ids={"tmdb": 1559521})
         server.feed("POST", "items", {"items": [runner]})
         title, guid, ids, season, episode = where(server, runner)
-        check("Lovely Runner given 1559521, which no show on TMDB has, is left as it was: unmatched, its release's first file",
-              title == runner["name"] and guid.startswith("local://") and not ids and (season, episode) == (1, 1),
+        check("Lovely Runner given 1559521 by hand is trusted as that id: Plex knows none, so it keeps its release's name, its first file",
+              title == runner["name"] and guid.startswith("local://") and ids == ["tmdb://1559521"] and (season, episode) == (1, 1),
               (title, guid, ids, season, episode))
         check("and no title was searched for, by any of them", not any("/search" in path for path, _ in recorder.asked()), recorder.asked())
     finally:

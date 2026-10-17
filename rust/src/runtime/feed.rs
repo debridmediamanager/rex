@@ -2,7 +2,7 @@
 //!
 //! `docs/feed-api.md` is the reference. A request is admitted from anyone (no token, no
 //! network gate, never the Plex gate), parsed, classified under the
-//! runtime lock, identified off it (TMDB and Plex's matcher are network lookups), and
+//! runtime lock, identified off it (Plex's matcher is a network lookup), and
 //! applied under it again, then saved before it is answered. Feed requests apply one at a
 //! time (`FEED`), which is also what keeps a snapshot's chunks in order. A source pushes
 //! under the name it registered with `PUT /rex/sources/{name}` (`sources`).
@@ -550,7 +550,7 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
         let guard = lock(shared);
         let rows = guard.feed_rows(&source.name);
         let legacy = guard.legacy_rows_by_file();
-        let named = guard.tmdb.is_some() || guard.plex.is_some();
+        let named = guard.plex.is_some();
         for mut item in items {
             // A `kind` the source sent says which it is (`feed_library`); no name guesses.
             let Some(library) = guard.feed_library(&item) else {
@@ -569,8 +569,8 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
                     let had = row.map(row_ids).unwrap_or_default();
                     // ponytail: a row holding several releases is not re-identified by one of
                     // them; splitting the release back out is Split's job.
-                    // An id that named nothing when it came (TMDB or Plex unreachable, a key
-                    // missing) is tried again on each push.
+                    // An id that named nothing when it came (Plex unreachable, no token) is tried
+                    // again on each push.
                     let unnamed = row.and_then(|row| row.get("_identify")).is_some_and(|report| {
                         ["tmdb", "plex"].iter().all(|field| report.get(*field).is_none_or(Value::is_null))
                     });
@@ -705,7 +705,7 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
                             guard = lock(shared);
                         }
                     }
-                    if guard.tmdb.is_some() || guard.plex.is_some() {
+                    if guard.plex.is_some() {
                         if let Some(row) = guard.catalog.get_mut(&key).and_then(Value::as_object_mut) {
                             row.insert("_ids".to_string(), Value::Object(item.ids.clone()));
                         }
@@ -805,20 +805,20 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
 }
 
 /// Seasons left as they were made from an unidentified first episode -- the local agent's
-/// guid, or no poster -- under a show TMDB names (the production server, 2026-10-12: Black
+/// guid, or no poster -- under a show Plex names (the production server, 2026-10-12: Black
 /// Mirror's Season 6 on `local://` with the blank tile, its show re-identified in place the
 /// day before). Run once at start: each is built again as a leaf of its show's identity
-/// builds it, from TMDB's season and Plex's guid for it (both cached when its episodes were
-/// identified), and refreshed with that (`refresh_season`). Answers how many changed.
+/// builds it, from Plex's row for the season (cached when its episodes were identified), and
+/// refreshed with that (`refresh_season`). Answers how many changed.
 pub(super) fn repair_seasons(shared: &SharedRuntime) -> usize {
     let present = |value: &&Value| !value.is_null() && value.as_str() != Some("");
     // -- under the lock: which seasons, and what names them ---------------------------------
-    let (wanted, tmdb, plex) = {
+    let (wanted, plex) = {
         let guard = lock(shared);
-        let Some(tmdb) = guard.tmdb.clone() else {
+        let Some(plex) = guard.plex.clone() else {
             return 0;
         };
-        let wanted: Vec<(String, i64, i64, Option<String>, Map<String, Value>)> = guard
+        let wanted: Vec<(String, Value, i64, String, Map<String, Value>)> = guard
             .catalog
             .items()
             .iter()
@@ -832,42 +832,36 @@ pub(super) fn repair_seasons(shared: &SharedRuntime) -> usize {
                 let key = key_of(season)?;
                 let index = season.get("index").and_then(Value::as_i64)?;
                 let show = guard.catalog.get(&season.get("parentRatingKey").map(string_value)?)?;
-                let id = show.get("_identity").and_then(Value::as_str)?.strip_prefix("tmdb:")?.parse::<i64>().ok()?;
+                // A show an id names: `title:` ones are the retired name search's, left as they are.
+                let identity = show.get("_identity").filter(present).filter(|id| !string_value(id).starts_with("title:"))?.clone();
                 // Plex's guid for the show, as the episodes' identification named it.
                 let named = guard.catalog.children_refs(&key).into_iter().find_map(|episode| {
-                    episode.pointer("/_identify/plex").and_then(Value::as_str).map(str::to_string)
-                });
+                    episode.pointer("/_identify/plex").and_then(Value::as_str).filter(|guid| guid.starts_with("plex://show/")).map(str::to_string)
+                })?;
                 let artwork = [("_show_poster", "_poster_url"), ("_show_art", "_art_url")]
                     .into_iter()
                     .filter_map(|(hint, field)| Some((hint.to_string(), show.get(field).filter(present)?.clone())))
                     .collect();
-                Some((key, id, index, named, artwork))
+                Some((key, identity, index, named, artwork))
             })
             .collect();
-        (wanted, tmdb, guard.plex.clone())
+        (wanted, plex)
     };
     if wanted.is_empty() {
         return 0;
     }
     // -- off the lock: the season each one's identity builds --------------------------------
-    let mut children: HashMap<String, HashMap<String, String>> = HashMap::new();
+    let mut children: HashMap<String, HashMap<String, Value>> = HashMap::new();
     let built: Vec<(String, Value)> = wanted
         .into_iter()
-        .filter_map(|(key, id, index, named, artwork)| {
+        .filter_map(|(key, identity, index, show, artwork)| {
             let mut leaf = artwork;
-            for (field, value) in [("_kind", json!("tv")), ("_tmdb_id", json!(format!("tmdb:{id}"))), ("_season", json!(index)), ("_episode", json!(0))] {
+            for (field, value) in [("_kind", json!("tv")), ("_tmdb_id", identity), ("_season", json!(index)), ("_episode", json!(0))] {
                 leaf.insert(field.to_string(), value);
             }
-            if let Some(season) = tmdb.season(&json!(id), &json!(index)).filter(truthy) {
-                if let Some(season) = season.as_object() {
-                    crate::metadata::season_hints(&mut leaf, season);
-                }
-            }
-            if let (Some(plex), Some(show)) = (plex.as_deref(), named) {
-                let seasons = children.entry(show.clone()).or_insert_with(|| crate::identify::plex_children(plex, &show));
-                if let Some(guid) = seasons.get(&index.to_string()) {
-                    leaf.insert("_season_guid".to_string(), json!(guid));
-                }
+            let seasons = children.entry(show.clone()).or_insert_with(|| crate::identify::plex_children_rows(plex.as_ref(), &show));
+            if let Some(season) = seasons.get(&index.to_string()) {
+                crate::metadata::season_hints(&mut leaf, season);
             }
             let season = crate::hierarchy::build(vec![Value::Object(leaf)])
                 .into_iter()
@@ -957,7 +951,7 @@ fn version_placed(row: &Value, index: usize) -> Option<&Value> {
 /// Rows identification left on the blank tile -- a film with no poster, or an episode whose
 /// show has none -- identified again as their source pushed them, `limit` films or shows a
 /// pass. The feed names a row again only when its source's ids change, so a lookup that failed
-/// once (TMDB or Plex down, a key missing) and a title TMDB has learned since stayed blank for
+/// once (Plex down, no token) and a title Plex has learned since stayed blank for
 /// good: the production rex held 56 films and 45 shows so on 2026-10-12. Only a row that came
 /// with something to name it by (`scan::identified_by`) is tried; one with no ids has nothing
 /// to retry with and stays as it is, for Fix Match. Each row still blank afterwards waits
@@ -968,15 +962,19 @@ pub(super) fn retry_blank(shared: &SharedRuntime, limit: usize) -> usize {
     // -- under the lock: which rows, a show's episodes together so it is named whole --------
     let (by_source, keys, sources) = {
         let guard = lock(shared);
-        if guard.tmdb.is_none() && guard.plex.is_none() {
+        if guard.plex.is_none() {
             return 0;
         }
         let mut groups: BTreeMap<String, Vec<(String, (String, Value))>> = BTreeMap::new();
         for row in guard.catalog.items() {
             let due = row.pointer("/_retry/at").and_then(Value::as_i64).is_none_or(|at| at <= stamp);
             let library = if row.get("type").and_then(Value::as_str) == Some("movie") { "movie" } else { "show" };
+            // Only what its source placed: rows pushed before DMM placed anything still carry ids
+            // zurg's own Plex gave, an episode's among them (Pawn Stars' 1559521), and trusted
+            // as they are those would name junk titles; they stay as they are, for Fix Match.
             if !due
                 || !guard.blank(row)
+                || version_placed(row, 0).is_none()
                 || super::scan::identified_by(row.get("_ids").and_then(Value::as_object), version_placed(row, 0), library).is_none()
             {
                 continue;
@@ -1324,7 +1322,6 @@ impl Runtime {
             key: string_value(section.get("key").unwrap_or(&Value::Null)),
             kind: section.get("type").and_then(Value::as_str).unwrap_or_default().to_string(),
             title: string_value(section.get("title").unwrap_or(&Value::Null)),
-            tmdb: self.tmdb.clone(),
             plex: self.plex.clone(),
         };
         let playable = |section: &&Value| matches!(section.get("type").and_then(Value::as_str), Some("movie" | "show"));

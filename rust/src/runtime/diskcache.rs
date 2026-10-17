@@ -1,4 +1,4 @@
-//! The on-disk answer cache behind `Tmdb` and `PlexMeta`: one SQLite row per answer.
+//! The on-disk answer cache behind `PlexMeta`: one SQLite row per answer.
 //!
 //! Both caches used to live in memory as one JSON object, rewritten whole to
 //! `tmdb_cache.json` / `plex_cache.json` on every miss. Measured on the production server

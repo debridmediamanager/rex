@@ -10,7 +10,7 @@
 //! that key disappears, so a row's key is minted once and kept across pushes and restarts.
 
 use super::*;
-use crate::identify::{self, PlexSource, TmdbSource};
+use crate::identify::{self, PlexSource};
 use crate::{hierarchy, mediainfo};
 
 /// Where minted keys start: above the catalog's own ranges (movies and episodes 1000+,
@@ -29,7 +29,6 @@ pub(super) struct Library {
     pub key: String,
     pub kind: String,
     pub title: String,
-    pub tmdb: Option<Arc<tmdb::Tmdb>>,
     pub plex: Option<Arc<plexmeta::PlexMeta>>,
 }
 
@@ -43,10 +42,10 @@ pub(super) struct Arrival {
     pub entry: Value,
     /// Fields the row carries for its source (`_source`, `_sid`, `_path`, `_ids`).
     pub extra: Map<String, Value>,
-    /// What identification gave this file's row: TMDB's fields (`metadata::enrich`),
-    /// Plex's guids, and how sure (`identify.rs`).
+    /// What identification gave this file's row: Plex's description (`metadata::describe`)
+    /// and guids, and what named it (`identify.rs`).
     pub meta: Option<Map<String, Value>>,
-    /// The season and episode TMDB knows the file by, once its show is identified (`on_tmdb`).
+    /// The season and episode the file sits on: its source's placement, else the release's file order.
     pub numbers: Option<(i64, i64)>,
 }
 
@@ -137,35 +136,22 @@ pub(super) fn identified_by(
 
 /// Identification, off the lock, once per release: the title its source placed it as, or the
 /// TMDB id a person set by hand at the source (`identified_by`, `identify::placed`), then for each
-/// new file the fields TMDB gives its row and Plex's own guids for it. TMDB's episode and Plex's
-/// season and episode guids are asked only for numbers the source placed a file on: the file
-/// order rex numbers anything else by (`feed::number_unplaced`) names no TMDB episode. A release
-/// named as the other kind of title than its library's, or not at all, stays unmatched for Fix
-/// Match: nothing is asked for it.
+/// new file Plex's description of it (`metadata::describe`): the title's match, and for an episode
+/// its season's and its own row for the numbers its source placed it on. What the source pushed is
+/// the title, checked against nothing, and rex asks no TMDB (Ben, 2026-10-17); a title Plex does
+/// not know keeps the name it was pushed with. The file order rex numbers anything else by
+/// (`feed::number_unplaced`) names no episode of Plex's. A release named as the other kind of title
+/// than its library's, or not at all, stays unmatched for Fix Match: nothing is asked for it.
 pub(super) fn name_release(plan: &Library, arrivals: &mut [Arrival]) {
-    let (tmdb, plex) = (plan.tmdb.as_deref(), plan.plex.as_deref());
+    let plex = plan.plex.as_deref();
     let Some(first) = arrivals.first() else {
         return;
     };
-    if tmdb.is_none() && plex.is_none() {
-        return;
-    }
     let placed = first.extra.get("_placed");
     let Some((kind, tmdb_id, imdb)) = identified_by(first.extra.get("_ids").and_then(Value::as_object), placed, &plan.kind) else {
         return;
     };
     let show = plan.kind == "show";
-    let tmdb_kind = if show { "tv" } else { "movie" };
-    // A TMDB id with no placement names a title only if TMDB has one of the library's kind, as a
-    // `{tmdb-…}` tag did: zurg's own Plex once handed over episodes' ids as their show's (the
-    // production server's Pawn Stars came as 1559521, which no show has, 2026-10-12), and rows
-    // pushed before DMM placed them still carry such ids. With no TMDB to ask, the id stands.
-    let known = |t: &dyn TmdbSource| {
-        tmdb_id.and_then(|id| identify::tmdb_details(t, tmdb_kind, id)).is_some_and(|details| details.as_object().is_some_and(|d| !d.is_empty()))
-    };
-    if placed.is_none() && !tmdb.is_none_or(|t| known(t)) {
-        return;
-    }
     let source = if placed.is_some() { "placed" } else { "set by hand" };
     let release = first.release.clone();
     let identity = identify::placed(plex.map(|p| p as &dyn PlexSource), kind, tmdb_id, imdb.as_deref());
@@ -178,7 +164,6 @@ pub(super) fn name_release(plan: &Library, arrivals: &mut [Arrival]) {
         }
         return;
     }
-    let details = tmdb.zip(identity.tmdb).and_then(|(t, id)| identify::tmdb_details(t, tmdb_kind, id));
     let externals: Vec<Value> = identity
         .imdb
         .iter()
@@ -186,66 +171,36 @@ pub(super) fn name_release(plan: &Library, arrivals: &mut [Arrival]) {
         .chain(identity.tmdb.iter().map(|id| json!({"id": format!("tmdb://{id}")})))
         .collect();
     let seasons = match (show, plex, identity.plex.as_deref()) {
-        (true, Some(p), Some(guid)) => identify::plex_children(p, guid),
+        (true, Some(p), Some(guid)) => identify::plex_children_rows(p, guid),
         _ => HashMap::new(),
     };
-    // Plex's title for a title TMDB does not describe, else the release's name as pushed.
     let title = identity.title.clone().unwrap_or_else(|| release.clone());
-    let mut episodes: HashMap<String, HashMap<String, String>> = HashMap::new();
+    let mut episodes: HashMap<String, HashMap<String, Value>> = HashMap::new();
     for arrival in arrivals.iter_mut() {
-        // Numbers its source placed the file on are TMDB's; any other is rex's own file order.
+        // Numbers its source placed the file on are TMDB's, which Plex's agent keeps; any other
+        // is rex's own file order and names no row of Plex's.
         let pushed = placed_numbers(arrival.extra.get("_placed")).filter(|_| show);
         let numbers = arrival.numbers.filter(|_| show);
         let mut meta = Map::new();
         meta.insert("title".to_string(), json!(title));
         meta.insert("summary".to_string(), json!(""));
-        if let (Some(details), Some(id), Some(t)) = (&details, identity.tmdb, plan.tmdb.as_deref()) {
-            let parsed = Map::from_iter([
-                ("title".to_string(), json!(title)),
-                ("season".to_string(), json!(numbers.map(|n| n.0))),
-                ("episode".to_string(), json!(numbers.map(|n| n.1))),
-            ]);
-            let (episode, season) = match pushed {
-                Some((season, episode)) => (
-                    t.episode(&json!(id), &json!(season), &json!(episode)),
-                    t.season(&json!(id), &json!(season)),
-                ),
-                None => (None, None),
-            };
-            metadata::enrich(
-                &mut meta,
-                details,
-                &parsed,
-                episode.as_ref(),
-                Some(season.as_ref().unwrap_or(&json!({}))),
-                tmdb_kind,
-                id,
-            );
+        if let Some(described) = &identity.row {
+            let season = pushed.and_then(|(season, _)| seasons.get(&season.to_string()));
+            let episode = pushed.zip(season).and_then(|((_, episode), season)| {
+                let guid = season.get("guid")?.as_str()?.to_string();
+                let rows = episodes
+                    .entry(guid.clone())
+                    .or_insert_with(|| plex.map(|p| identify::plex_children_rows(p, &guid)).unwrap_or_default());
+                rows.get(&episode.to_string()).cloned()
+            });
+            metadata::describe(&mut meta, described, season, episode.as_ref(), show, numbers);
         } else {
-            // Named, but no TMDB to describe it: the ids alone, and Plex's title and year.
+            // Named, but no Plex row for it: the ids alone, and the name it was pushed with.
             let field = if show { "_show_external_guids" } else { "Guid" };
             meta.insert(field.to_string(), Value::Array(externals.clone()));
             if show {
                 meta.insert("_show_title".to_string(), json!(title));
-                if let Some(year) = identity.year {
-                    meta.insert("_show_year".to_string(), json!(year));
-                }
             }
-        }
-        // TMDB has no poster for this title, or does not know it, and Plex does: its own
-        // artwork draws the tile (the production server, 2026-10-12: the Monogatari seasons Plex keeps as shows
-        // of their own, Wallace & Gromit, Tears of Steel).
-        // ponytail: Plex serves its artwork at full size (about 2 MB a poster), and
-        // `fetch_remote_image` keeps 512 images in memory; fine for the few titles only Plex
-        // draws, worth a size cap if that set grows.
-        let (poster, art) = if show { ("_show_poster", "_show_art") } else { ("_poster_url", "_art_url") };
-        for (field, plex) in [(poster, &identity.thumb), (art, &identity.art)] {
-            if let Some(url) = plex.as_ref().filter(|_| meta.get(field).is_none_or(Value::is_null)) {
-                meta.insert(field.to_string(), json!(url));
-            }
-        }
-        if let Some(year) = identity.year.filter(|_| !meta.contains_key("year") && !show) {
-            meta.insert("year".to_string(), json!(year));
         }
         let identity_key = identity
             .tmdb
@@ -256,25 +211,6 @@ pub(super) fn name_release(plan: &Library, arrivals: &mut [Arrival]) {
         meta.insert("_identity".to_string(), json!(identity_key));
         if show {
             meta.insert("_tmdb_id".to_string(), json!(identity_key));
-        }
-        // Plex's own guids, which a real PMS's rows carry and plex.tv knows (cycle 70).
-        if let Some(guid) = &identity.plex {
-            if !show {
-                meta.insert("guid".to_string(), json!(guid));
-            } else {
-                meta.insert("_show_guid".to_string(), json!(guid));
-                if let Some((season, episode)) = pushed {
-                    if let Some(season_guid) = seasons.get(&season.to_string()) {
-                        meta.insert("_season_guid".to_string(), json!(season_guid));
-                        let children = episodes.entry(season_guid.clone()).or_insert_with(|| {
-                            plex.map(|p| identify::plex_children(p, season_guid)).unwrap_or_default()
-                        });
-                        if let Some(episode_guid) = children.get(&episode.to_string()) {
-                            meta.insert("guid".to_string(), json!(episode_guid));
-                        }
-                    }
-                }
-            }
         }
         meta.insert("_identify".to_string(), report.clone());
         arrival.meta = Some(meta);
@@ -751,7 +687,7 @@ impl Runtime {
         let parent = self.catalog.get(&parent_key)?.clone();
         let index = self.extras_of(&parent_key).into_iter().map(super::clip_index).max().unwrap_or(0) + 1;
         let section = parent.get("librarySectionID").map(string_value).unwrap_or_else(|| plan.key.clone());
-        let film = Library { key: section, kind: "movie".to_string(), title: plan.title.clone(), tmdb: None, plex: None };
+        let film = Library { key: section, kind: "movie".to_string(), title: plan.title.clone(), plex: None };
         let mut clip = self.leaf_for(&film, arrival, None)?;
         let object = clip.as_object_mut()?;
         for field in ["_identity", "year"] {
@@ -1361,38 +1297,29 @@ mod tests {
     }
 
     /// The identification pass on zurg's two real entries (`fixtures/zurg/entries.json`), pushed
-    /// as zurg pushes what DMM placed, offline: TMDB's and Plex's answers sit in their on-disk
-    /// caches, which is where a live lookup would have put them. The answers are written for the
-    /// test, and none is TMDB's /find: a placement names the title.
+    /// as zurg pushes what DMM placed, offline: Plex's answers sit in its on-disk cache, which is
+    /// where a live lookup would have put them, and are written for the test. Nothing else is
+    /// asked: no TMDB, and a placement names the title.
     #[test]
-    fn a_placement_names_the_release_and_plex_names_its_guids() {
+    fn a_placement_names_the_release_and_plex_describes_it() {
         let dir = std::env::temp_dir().join(format!("rex-name-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
-        let api = "https://api.themoviedb.org/3";
-        let details = "append_to_response=credits%2Cexternal_ids%2Ccontent_ratings%2Crelease_dates";
-        let tmdb_cache = json!({
-            format!("{api}/movie/31639?{details}&api_key=KEY"):
-                {"title": "Blame It on the Bellboy", "release_date": "1992-03-06",
-                 "overview": "A hotel mix-up.", "external_ids": {"imdb_id": "tt0103827"}},
-            format!("{api}/tv/1433?{details}&api_key=KEY"):
-                {"name": "American Dad!", "first_air_date": "2005-02-06",
-                 "external_ids": {"imdb_id": "tt0397306"}},
-            format!("{api}/tv/1433/season/5?api_key=KEY"): {"id": 3626, "air_date": "2009-09-27"},
-            format!("{api}/tv/1433/season/5/episode/7?append_to_response=external_ids&api_key=KEY"):
-                {"id": 512000, "name": "Phantom of the Telethon", "air_date": "2009-11-15",
-                 "external_ids": {"imdb_id": "tt1508003"}},
-        });
-        fs::write(dir.join("tmdb_cache.json"), tmdb_cache.to_string()).unwrap();
         let plex_cache = json!({
             r#"POST /library/metadata/matches {"guid": "tmdb://31639", "type": 1}"#:
-                {"MediaContainer": {"Metadata": [{"guid": "plex://movie/5d7768279ab5440020ad6e0e"}]}},
+                {"MediaContainer": {"Metadata": [{"guid": "plex://movie/5d7768279ab5440020ad6e0e", "title": "Blame It on the Bellboy",
+                 "year": 1992, "summary": "A hotel mix-up.", "thumb": "https://metadata-static.plex.tv/b/poster.jpg",
+                 "Guid": [{"id": "imdb://tt0103827"}, {"id": "tmdb://31639"}]}]}},
             r#"POST /library/metadata/matches {"guid": "tmdb://1433", "type": 2}"#:
-                {"MediaContainer": {"Metadata": [{"guid": "plex://show/5d9c086c46115600200aa2fe"}]}},
+                {"MediaContainer": {"Metadata": [{"guid": "plex://show/5d9c086c46115600200aa2fe", "title": "American Dad!", "year": 2005,
+                 "Guid": [{"id": "imdb://tt0397306"}, {"id": "tmdb://1433"}]}]}},
             "GET /library/metadata/5d9c086c46115600200aa2fe/children ":
                 {"MediaContainer": {"Metadata": [{"index": 5, "guid": "plex://season/602e67d31d3358002c411c37"}]}},
             "GET /library/metadata/602e67d31d3358002c411c37/children ":
-                {"MediaContainer": {"Metadata": [{"index": 7, "guid": "plex://episode/5d9c0ab4705e7a001e6d4a2b"}]}},
+                {"MediaContainer": {"Metadata": [{"index": 7, "guid": "plex://episode/5d9c0ab4705e7a001e6d4a2b",
+                 "title": "Phantom of the Telethon", "Guid": [{"id": "imdb://tt1508003"}]}]}},
+            r#"POST /library/metadata/matches {"guid": "tmdb://999999", "type": 1}"#:
+                {"MediaContainer": {"Metadata": []}},
         });
         fs::write(dir.join("plex_cache.json"), plex_cache.to_string()).unwrap();
         let entries: Value = serde_json::from_str(
@@ -1430,14 +1357,14 @@ mod tests {
             key: "1".to_string(),
             kind: kind.to_string(),
             title: "x".to_string(),
-            tmdb: Some(Arc::new(tmdb::Tmdb::new("testkey".to_string(), dir.join("tmdb_cache.json")))),
             plex: Some(Arc::new(plexmeta::PlexMeta::new(Arc::clone(&claim), dir.join("plex_cache.json"), "f".repeat(40)))),
         };
         let mut movie = vec![film()];
         name_release(&plan("movie"), &mut movie);
         let meta = movie[0].meta.clone().unwrap();
         assert_eq!(meta["title"], "Blame It on the Bellboy");
-        assert_eq!(meta["year"], 1992);
+        assert_eq!((meta["year"].clone(), meta["summary"].clone()), (json!(1992), json!("A hotel mix-up.")));
+        assert_eq!(meta["_poster_url"], "https://metadata-static.plex.tv/b/poster.jpg");
         assert_eq!(meta["guid"], "plex://movie/5d7768279ab5440020ad6e0e");
         assert_eq!(meta["Guid"], json!([{"id": "imdb://tt0103827"}, {"id": "tmdb://31639"}]));
         assert_eq!(meta["_identify"]["source"], "placed");
@@ -1446,6 +1373,11 @@ mod tests {
         name_release(&plan("movie"), &mut by_hand);
         let meta = by_hand[0].meta.clone().unwrap();
         assert_eq!((meta["title"].clone(), meta["_identify"]["source"].clone()), (json!("Blame It on the Bellboy"), json!("set by hand")));
+        // A placed title Plex does not know is still that title, shown with the name it was pushed with.
+        let mut unknown = vec![arrival("movie", Some(json!({"kind": "movie"})), json!({"tmdb": "999999"}))];
+        name_release(&plan("movie"), &mut unknown);
+        let meta = unknown[0].meta.clone().unwrap();
+        assert_eq!((meta["title"].clone(), meta["_identity"].clone()), (json!(unknown[0].release), json!("tmdb:999999")));
         // An IMDb id with no placement, or no id at all, names nothing and asks nobody.
         for ids in [json!({"imdb": "tt0103827"}), json!({"tvdb": "71256"}), json!({})] {
             let mut unplaced = vec![arrival("movie", None, ids.clone())];

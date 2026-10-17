@@ -2,10 +2,10 @@
 //!
 //! zurg asks DMM what each file is and pushes the answer with it (`kind`, the movie's or show's
 //! ids, TMDB's season and episode; docs/feed-api.md), or a TMDB id a person set by hand in zurg.
-//! Those ids are the title. Plex's metadata agent is asked only for its `plex://` guid and artwork
-//! by external id ([`placed`]), TMDB only for display metadata by TMDB id ([`tmdb_details`]). A
-//! release pushed with neither stays unmatched, for Fix Match. No HTTP and no cache live here; the
-//! providers arrive as [`TmdbSource`] and [`PlexSource`].
+//! Those ids are the title. Plex's metadata agent is asked for its `plex://` guid by external id
+//! ([`placed`]), and its answer is everything shown about the title: rex reads no TMDB (Ben,
+//! 2026-10-17). A release pushed with neither stays unmatched, for Fix Match. No HTTP and no cache
+//! live here; the agent arrives as a [`PlexSource`].
 //!
 //! rex identified by name until 2026-10-17 -- a cleaned name to Plex's matcher and TMDB's search,
 //! which named one release in six as a title nobody chose on the user's library, an id written
@@ -17,27 +17,10 @@ use std::collections::HashMap;
 
 use serde_json::{json, Value};
 
-/// TMDB as identify reads it: Python `Tmdb._get(path, **params)`, params in the
-/// order given, api key NOT included.
-pub trait TmdbSource {
-    fn get(&self, path: &str, params: &[(&str, String)]) -> Option<Value>;
-}
-
 /// Plex's metadata provider as identify reads it: Python
 /// `PlexProvider._call(method, path, body)`.
 pub trait PlexSource {
     fn call(&self, method: &str, path: &str, body: Option<&Value>) -> Option<Value>;
-}
-
-/// `Tmdb.details`.
-pub fn tmdb_details(t: &dyn TmdbSource, kind: &str, id: i64) -> Option<Value> {
-    t.get(
-        &format!("{kind}/{id}"),
-        &[(
-            "append_to_response",
-            "credits,external_ids,content_ratings,release_dates".to_string(),
-        )],
-    )
 }
 
 fn kind_type(kind: &str) -> Option<i64> {
@@ -78,11 +61,32 @@ pub fn plex_match(p: &dyn PlexSource, kind: &str, external_ids: &[String]) -> Op
     None
 }
 
-/// What `PlexProvider.answer` reads off a matched row. The provider's own artwork rides
-/// along: a title only Plex knows has no TMDB poster (the production server, 2026-10-12: the Monogatari
-/// seasons Plex keeps as shows of their own drew the blank tile).
+/// Fix Match's candidates for a title and year: the provider's rows for them. A claimed server's
+/// token answered `{"type":1,"title":"The Matrix","year":1999}` with The Matrix's guid (findings,
+/// "A claimed server needs no account token"); the body a real PMS sends for its own Fix Match
+/// search is not recorded (plexmeta_matches_s143.json kept only its length, 84 bytes).
+pub fn plex_search(p: &dyn PlexSource, kind: &str, title: &str, year: Option<i64>) -> Vec<Value> {
+    let Some(kind_type) = kind_type(kind) else {
+        return Vec::new();
+    };
+    let mut body = json!({"type": kind_type, "title": title});
+    if let Some(year) = year {
+        body["year"] = json!(year);
+    }
+    p.call("POST", "/library/metadata/matches", Some(&body))
+        .and_then(|answer| answer.pointer("/MediaContainer/Metadata")?.as_array().cloned())
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|row| row.get("guid").and_then(Value::as_str).is_some_and(|guid| guid.starts_with(&format!("plex://{kind}/"))))
+        .collect()
+}
+
+/// What `PlexProvider.answer` reads off a matched row, and the row itself: the provider's match
+/// carries the title's whole description (summary, artwork, genres, people; tests/fixtures/provider/
+/// matches.json).
 #[derive(Debug, Clone, PartialEq)]
 pub struct PlexAnswer {
+    pub row: Value,
     pub guid: String,
     pub kind: String,
     pub title: Option<String>,
@@ -111,6 +115,7 @@ impl PlexAnswer {
             tail("tmdb://").filter(|id| !id.is_empty() && id.chars().all(|c| c.is_ascii_digit()));
         let text = |field: &str| row.get(field).and_then(Value::as_str).filter(|value| !value.is_empty()).map(str::to_string);
         PlexAnswer {
+            row: row.clone(),
             guid,
             kind: kind.to_string(),
             title: text("title"),
@@ -125,6 +130,14 @@ impl PlexAnswer {
 
 /// {index: guid} of a show's seasons or a season's episodes.
 pub fn plex_children(p: &dyn PlexSource, guid: &str) -> HashMap<String, String> {
+    plex_children_rows(p, guid)
+        .into_iter()
+        .filter_map(|(index, row)| Some((index, row.get("guid")?.as_str().filter(|guid| !guid.is_empty())?.to_string())))
+        .collect()
+}
+
+/// {index: row} of a show's seasons or a season's episodes, each the provider's whole row.
+pub fn plex_children_rows(p: &dyn PlexSource, guid: &str) -> HashMap<String, Value> {
     let tail = guid.rsplit('/').next().unwrap_or_default();
     let payload = p.call("GET", &format!("/library/metadata/{tail}/children"), None);
     let rows = payload
@@ -144,8 +157,8 @@ pub fn plex_children(p: &dyn PlexSource, guid: &str) -> HashMap<String, String> 
                 Value::Number(index) => index.to_string(),
                 _ => return None,
             };
-            let guid = row.get("guid")?.as_str().filter(|guid| !guid.is_empty())?;
-            Some((index, guid.to_string()))
+            row.get("guid")?.as_str().filter(|guid| !guid.is_empty())?;
+            Some((index, row.clone()))
         })
         .collect()
 }
@@ -158,7 +171,8 @@ pub struct Identity {
     pub imdb: Option<String>,
     pub tmdb: Option<i64>,
     pub plex: Option<String>,
-    /// Plex's title, year and artwork for `plex`, for a title TMDB does not describe.
+    /// The provider's row for `plex`: what the title is shown as.
+    pub row: Option<Value>,
     pub title: Option<String>,
     pub year: Option<i64>,
     pub thumb: Option<String>,
@@ -167,15 +181,15 @@ pub struct Identity {
 
 /// A title its source named (`kind` and the movie's or show's ids, docs/feed-api.md): those ids
 /// are the title, whatever its name reads and whether or not TMDB knows them, so nothing is
-/// guessed. Plex's agent is asked for its guid and artwork by external id, and an id the push
-/// left out is taken from its answer. TMDB is not asked here: its /find read an episode's IMDb
-/// id as its show and an id it did not know as no title, and DMM's placement already names both.
+/// guessed. Plex's agent is asked for its guid and description by external id, and an id the push
+/// left out is taken from its answer.
 pub fn placed(plex: Option<&dyn PlexSource>, kind: &str, tmdb: Option<i64>, imdb: Option<&str>) -> Identity {
     let mut identity = Identity {
         kind: kind.to_string(),
         imdb: imdb.filter(|imdb| imdb.starts_with("tt")).map(str::to_string),
         tmdb: tmdb.filter(|id| *id > 0),
         plex: None,
+        row: None,
         title: None,
         year: None,
         thumb: None,
@@ -190,6 +204,7 @@ pub fn placed(plex: Option<&dyn PlexSource>, kind: &str, tmdb: Option<i64>, imdb
             .collect();
         if let Some(answer) = plex_match(p, kind, &externals) {
             identity.plex = Some(answer.guid);
+            identity.row = Some(answer.row);
             (identity.thumb, identity.art) = (answer.thumb, answer.art);
             (identity.title, identity.year) = (answer.title, answer.year);
             identity.tmdb = identity.tmdb.or(answer.tmdb);
