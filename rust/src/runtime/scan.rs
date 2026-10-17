@@ -113,6 +113,55 @@ fn extra(parsed: &(identify::Parsed, identify::Parsed), folder: Option<&str>, fi
     head.iter().any(marks) && head.iter().all(|word| marks(word) || show.contains(word) || matches!(word.as_str(), "bd" | "dvd"))
 }
 
+/// The `extraType` a release's extra is served as: by the deepest folder Plex names local extras
+/// by (`Featurettes/…/Deleted Scenes` is a deleted scene), else by Plex's `-trailer`-style
+/// suffix, else a creditless opening (13) or ending (14); only Plex's names, so a pack's `Extra`
+/// folder (Smallville's `Stagione 6/Extra`) is left unplaced as before. The numbers are the web client's own
+/// (4.147.1's extra type table) and the six the 1.42.2 reference serves. `None` for an extra of
+/// no such type -- a disc's menus and commercials -- and for a file that is none.
+pub(super) fn extra_type(folder: Option<&str>, file_name: &str) -> Option<i64> {
+    let by_name = |name: &str| match name.to_ascii_lowercase().as_str() {
+        "trailers" | "trailer" => Some(1),
+        "deleted scenes" | "deleted" => Some(2),
+        "interviews" | "interview" => Some(3),
+        "behind the scenes" | "behindthescenes" => Some(5),
+        "scenes" | "scene" => Some(6),
+        "featurettes" | "featurette" => Some(10),
+        "shorts" | "short" => Some(11),
+        "other" => Some(12),
+        _ => None,
+    };
+    let stem = stem(file_name);
+    // The deepest folder of extras decides: `Extras/Menu` holds menus, which Plex has no type for.
+    let deepest = folder.and_then(|folder| folder.rsplit('/').map(str::trim).find(|segment| EXTRAS_FOLDER.is_match(segment)));
+    if let Some(segment) = deepest {
+        if let Some(found) = by_name(segment) {
+            return Some(found);
+        }
+    }
+    if let Some(found) = stem.rsplit_once('-').and_then(|(_, suffix)| by_name(suffix.trim())) {
+        return Some(found);
+    }
+    let token = stem.split(|c: char| !c.is_ascii_alphanumeric()).find(|token| CREDITLESS.is_match(token))?.to_ascii_lowercase();
+    Some(if token.contains("ncop") { 13 } else { 14 })
+}
+
+/// The `subtype` a clip of an `extraType` carries: the web client's name for it.
+pub(super) fn extra_subtype(extra_type: i64) -> &'static str {
+    match extra_type {
+        1 => "trailer",
+        2 => "deletedScene",
+        3 => "interview",
+        5 => "behindTheScenes",
+        6 => "sceneOrSample",
+        10 => "featurette",
+        11 => "short",
+        13 => "opening",
+        14 => "ending",
+        _ => "other",
+    }
+}
+
 // A folder of extras: Plex's names for a show's local extras, and what discs call theirs.
 static EXTRAS_FOLDER: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"(?i)^(?:(?:extras?|bonus)(?:[\s._-].*)?|behind the scenes|deleted scenes|featurettes|interviews|scenes|shorts|trailers|other|menus?|nc|cms?|creditless)$").unwrap()
@@ -1083,6 +1132,67 @@ impl Runtime {
         Some(leaf)
     }
 
+    /// A release's extra as a clip of the title its release's other files are (`_parentRatingKey`:
+    /// the film, or the episodes' show), in the shape cycle 29 measured: served in the parent's
+    /// `Extras` and `extras/all`, in no listing, axis or count. `None` while no title of its release
+    /// is here, so a later push places it, or when a row already reads the file.
+    pub(super) fn add_clip(&mut self, plan: &Library, arrival: &Arrival, extra_type: i64) -> Option<String> {
+        let file = &arrival.found.file;
+        // zurg's mount lists a release's files flat in its directory, extras folders included.
+        let directory = file.rsplit_once('/')?.0;
+        if self.catalog.items().iter().any(|row| row_files(row).contains(file)) {
+            return None;
+        }
+        let parent = self.catalog.items().iter().find(|row| {
+            matches!(row.get("type").and_then(Value::as_str), Some("movie" | "episode"))
+                && row.get("librarySectionID").map(string_value).as_deref() == Some(plan.key.as_str())
+                && row_files(row).iter().any(|other| other.rsplit_once('/').map(|(of, _)| of) == Some(directory))
+        });
+        let Some(parent) = parent else {
+            info!("FEED {file}: an extra with no title of its release here yet; not placed");
+            return None;
+        };
+        let parent_key = match parent.get("type").and_then(Value::as_str) {
+            Some("episode") => parent.get("grandparentRatingKey").map(string_value)?,
+            _ => key_of(parent)?,
+        };
+        let parent = self.catalog.get(&parent_key)?.clone();
+        let index = self.extras_of(&parent_key).into_iter().map(super::clip_index).max().unwrap_or(0) + 1;
+        let film = Library { key: plan.key.clone(), kind: "movie".to_string(), title: plan.title.clone(), tmdb: None, plex: None };
+        let mut clip = self.leaf_for(&film, arrival, None)?;
+        let object = clip.as_object_mut()?;
+        for field in ["_identity", "year"] {
+            object.shift_remove(field);
+        }
+        let name = file.rsplit('/').next().unwrap_or_default();
+        object.insert("type".to_string(), json!("clip"));
+        object.insert("title".to_string(), json!(stem(name)));
+        object.insert("index".to_string(), json!(index));
+        object.insert("subtype".to_string(), json!(extra_subtype(extra_type)));
+        object.insert("art".to_string(), parent.get("art").cloned().unwrap_or(Value::Null));
+        object.insert("extraType".to_string(), json!(extra_type));
+        // Measured: only a trailer carries its parent's `plex://` guid.
+        if let Some(guid) = parent.get("guid").and_then(Value::as_str).filter(|guid| extra_type == 1 && guid.starts_with("plex://")) {
+            object.insert("primaryGuid".to_string(), json!(guid));
+        }
+        object.insert("_parentRatingKey".to_string(), json!(parent_key));
+        object.insert("_librarySectionID".to_string(), parent.get("librarySectionID").cloned().unwrap_or(Value::Null));
+        let key = key_of(&clip)?;
+        self.catalog.add(clip);
+        // The parent's `primaryExtraKey` is its lowest-index trailer's key (`clip_extras`).
+        let trailer = self
+            .extras_of(&parent_key)
+            .into_iter()
+            .find(|row| row.get("extraType").and_then(Value::as_i64) == Some(1))
+            .and_then(|row| row.get("key").cloned());
+        if let (Some(trailer), Some(row)) = (trailer, self.catalog.get_mut(&parent_key).and_then(Value::as_object_mut)) {
+            row.insert("primaryExtraKey".to_string(), trailer);
+        }
+        self.dirty = true;
+        info!("FEED {file} is an extra of {parent_key}: clip {key}, extraType {extra_type}");
+        Some(key)
+    }
+
     /// An episode's parent fields, read off the rows it now sits under.
     pub(super) fn inherit_parents(&mut self, key: &str) {
         let Some(episode) = self.catalog.get(key).cloned() else {
@@ -1516,6 +1626,27 @@ mod tests {
             assert_eq!(episode_of(release, None, file), None, "{file}");
         }
         assert!(!is_extra("Ed.Edd.n.Eddy.S01.DVDRip", None, "Ed, Edd n Eddy - 01.mkv"), "a show named with an extras word");
+    }
+
+    /// The deepest folder of extras decides the type; a disc's menus and commercials have none.
+    #[test]
+    fn an_extra_takes_plex_folder_and_suffix_types() {
+        for (folder, file, want) in [
+            (Some("Featurettes/Season 2/Deleted Scenes"), "Diversity Day.mkv", Some(2)),
+            (Some("Featurettes"), "Making Of.mkv", Some(10)),
+            (Some(""), "Feature-trailer.mkv", Some(1)),
+            (Some("Extras/NC"), "NCOP.mkv", Some(13)),
+            (Some("Extras/NC"), "NCED - 01.mkv", Some(14)),
+            (Some("Extras/Menu"), "Menu - 01.mkv", None),
+            (Some("Extras/CM"), "BD & DVD CM - 01.mkv", None),
+            (Some("Extras"), "Bonus.mkv", None),
+            (Some("Smallville/Stagione 6/Extra"), "01 Scene inedite (Stagione 6).mkv", None),
+            (Some("Other"), "Gag Reel.mkv", Some(12)),
+            (Some(""), "Ed, Edd n Eddy - 01.mkv", None),
+            (None, "The Interview.2014.1080p.mkv", None),
+        ] {
+            assert_eq!(extra_type(folder, file), want, "{folder:?}/{file}");
+        }
     }
 
     /// TMDB's season lists as `tests/fixtures/identify/segment_titles.json` recorded them.

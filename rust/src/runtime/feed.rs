@@ -195,6 +195,8 @@ enum Plan {
     Row { key: String, adopt: bool, reidentify: bool },
     Hold,
     Show,
+    /// A release's extra (`scan::extra_type`): a clip of the title its release's other files are.
+    Extra(i64),
 }
 
 fn held_key(source: &str, id: &str) -> String {
@@ -585,7 +587,8 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
                     // unknown), unless other ids name it again by its name.
                     let replaced = item.placed.is_some() && row.is_some_and(|row| version_placed(row, 0) != item.placed.as_ref());
                     // What a person matched is theirs: no push and no retry identifies it again.
-                    let reidentify = !row.is_some_and(|row| guard.matched_by_hand(row))
+                    // A clip is its parent's: no library, so never "moved", and no title of its own.
+                    let reidentify = !row.is_some_and(|row| guard.matched_by_hand(row) || row.get("type").and_then(Value::as_str) == Some("clip"))
                         && row.is_some_and(|row| versions(row).len() < 2)
                         && (moved
                             || replaced
@@ -600,7 +603,10 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
                 }
                 // A retry names rows that are here; it never makes or holds one.
                 None if retry => continue,
-                None if item.media_info.is_some() => Plan::Show,
+                None if item.media_info.is_some() => match release_extra(&item, &library) {
+                    Some(extra_type) => Plan::Extra(extra_type),
+                    None => Plan::Show,
+                },
                 None => Plan::Hold,
             };
             plans.push((item, library, plan));
@@ -669,9 +675,14 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
         })
         .collect();
     let mut placed = 0;
+    let mut extras = Vec::new();
     for (index, (item, library, plan)) in plans.into_iter().enumerate() {
         let held = held_key(&source.name, &item.id);
         match plan {
+            Plan::Extra(extra_type) => {
+                guard.release(&held);
+                extras.push((item, library, extra_type));
+            }
             Plan::Hold => {
                 let since = guard.feed_held.get(&held).and_then(|old| old.get("since")).and_then(Value::as_i64).unwrap_or(stamp);
                 let record = item.held(since);
@@ -763,6 +774,16 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
         activity.insert("subtitle".to_string(), json!(last));
         guard.scan_finished(&mut activity, &section);
         created.extend(keys);
+    }
+    // After the new rows: a release's extras arrive with its feature, in one push or a snapshot.
+    for (item, library, extra_type) in extras {
+        match guard.add_clip(&library, &item.arrival(&source.name), extra_type) {
+            Some(key) => {
+                counts.created += 1;
+                touched.insert(key);
+            }
+            None => counts.unchanged += 1,
+        }
     }
     let filled = guard.fill_probes(probed);
     touched.extend(created.iter().cloned());
@@ -892,6 +913,20 @@ fn retry_after(attempts: i64) -> i64 {
 }
 
 /// A release name a film could have: no season, episode or pack in it.
+/// The `extraType` a new file is served as when it is its release's extra and not an episode its
+/// source placed: in a show's release what `scan::is_extra` finds, in a film's only Plex's own
+/// folder and suffix names (`scan::extra_type`), never a name's words.
+fn release_extra(item: &Item, library: &Library) -> Option<i64> {
+    if super::scan::placed_numbers(item.placed.as_ref()).is_some() {
+        return None;
+    }
+    let file_name = item.file.rsplit('/').next().unwrap_or_default();
+    if library.kind == "show" && !super::scan::is_extra(&item.name, item.folder.as_deref(), file_name) {
+        return None;
+    }
+    super::scan::extra_type(item.folder.as_deref(), file_name)
+}
+
 fn film_shaped(name: &str) -> bool {
     let parsed = crate::identify::parse_name(name);
     parsed.season.is_none() && parsed.episode.is_none() && !parsed.pack
