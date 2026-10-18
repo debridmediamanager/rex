@@ -553,11 +553,14 @@ so a 1080p title there needs one or the other: `REX_TRANSCODER`, or the app's ce
 quality raised to Original. Without an encoder rex refuses such a play (decision
 2000/4005).
 
-A conversion keeps a selected image subtitle, burned into the picture, and a subtitle
-uploaded to rex (copied, or burned for an MPEG-TS client). A client whose target is `mkv`
-(Plex for Android and iOS) gets Matroska HLS with the selected embedded text subtitle
-copied in, ASS included. Plex Web and other MPEG-TS clients still lose an embedded text
-subtitle: Plex Web's `segments-subs` and burning text for MPEG-TS are not built.
+A conversion carries the selected subtitle. An image one (PGS, VobSub) is burned into the
+picture. A text one (SRT, ASS) inside an MKV is copied into Plex for Android's and iOS's
+Matroska stream and burned for every other app: rex reads the track out of the release
+through its index, the first ten minutes before the play starts (about 2-4 s) and the rest
+while it plays, then carries on from the next segment with all of it (findings,
+"Subtitles through a conversion"). A subtitle uploaded to rex is copied or burned the same
+way. A text subtitle inside an MP4 or M2TS, or in a download's conversion, is dropped. An
+ASS track is drawn with the host's fonts, not the fonts attached to the release.
 
 
 ### By platform
