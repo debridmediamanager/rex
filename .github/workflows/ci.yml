@@ -113,7 +113,19 @@ jobs:
       - name: Rust unit tests
         run: cargo test --release --locked --manifest-path rust/Cargo.toml
 
+      # zurg's main generates what its feed sends rex (internal/rexfeed/contract_test.go);
+      # test_zurg_contract replays it. A read-only deploy key on zurg, since both are private.
+      - uses: actions/checkout@v4
+        with:
+          repository: debridmediamanager/zurg
+          ssh-key: ${{ secrets.ZURG_CONTRACT_KEY }}
+          path: zurg-contract
+          sparse-checkout: internal/rexfeed/testdata
+          sparse-checkout-cone-mode: false
+
       - name: Black-box suites
+        env:
+          ZURG_CONTRACT: ${{ github.workspace }}/zurg-contract/internal/rexfeed/testdata/rex-contract.json
         run: |
           # These suites use throwaway catalogs and loopback ports. The runner
           # captures each child's output before emitting its own log group, so
@@ -124,7 +136,7 @@ jobs:
             test_startup_wait test_test_ports test_parallel_suites test_cli test_server_command \
             test_native_runtime_smoke test_build_catalog test_tls test_part_bytes \
             test_sources test_feed test_feed_versions test_feed_season_art \
-            test_feed_blank_tiles test_feed_source_decides test_feed_placement test_feed_rejected test_feed_extras test_feed_versions_1017 test_plextv test_rex_direct test_track_prefs test_accounts \
+            test_feed_blank_tiles test_feed_source_decides test_feed_placement test_feed_rejected test_feed_extras test_feed_versions_1017 test_zurg_contract test_plextv test_rex_direct test_track_prefs test_accounts \
             test_unclaimed_gate test_manager test_paused_limit test_webhooks test_auto_collections
 
       # No GPU on the runner: this is the CPU (x264) path, with the hardware probe on auto.
