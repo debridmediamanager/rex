@@ -2185,8 +2185,12 @@ mod tests {
     /// (tests/fixtures/provider/collections.json, out of its plex_cache.db, 2026-10-17): each filed
     /// under "The Matrix Collection".
     fn library(name: &str, threshold: Option<&str>) -> (SharedRuntime, PathBuf) {
+        // The build's own path, else the tree the test runs in (Windows runs a cross-built binary).
         let file = concat!(env!("CARGO_MANIFEST_DIR"), "/../tests/fixtures/provider/collections.json");
-        let recorded: Vec<Value> = serde_json::from_str(&std::fs::read_to_string(file).unwrap()).unwrap();
+        let text = std::fs::read_to_string(file)
+            .or_else(|_| std::fs::read_to_string("../tests/fixtures/provider/collections.json"))
+            .unwrap();
+        let recorded: Vec<Value> = serde_json::from_str(&text).unwrap();
         let mut items = Vec::new();
         for (index, answer) in recorded.iter().enumerate() {
             let mut row = Map::new();
