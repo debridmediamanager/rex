@@ -36,7 +36,8 @@ impl Runtime {
         };
         if kind == "show" {
             // `show_detail`: the stored columns win; these fill only what is absent.
-            let leaves = self.leaves(&key);
+            // Read from the hot fields, as no episode needs reading whole for these.
+            let leaves = self.leaves_refs(&key);
             object.entry("index".to_string()).or_insert(json!(1));
             let durations = leaves
                 .iter()

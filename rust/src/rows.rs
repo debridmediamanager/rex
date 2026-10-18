@@ -585,10 +585,12 @@ impl Rows {
 }
 
 /// A row's text parsed for a listing: every Part without its `Stream` list, which a listing
-/// row drops and which is most of a row's text.
+/// row drops and which is most of a row's text, and without the fields every listing row
+/// drops (`runtime::GRID_DROPPED`): parsed here only to be freed by the projecting thread.
 pub(crate) fn listed(text: &str) -> Option<Value> {
     use serde::de::{DeserializeSeed, Deserializer, IgnoredAny, MapAccess, SeqAccess, Visitor};
     struct Pruned {
+        top: bool,
         in_part: bool,
         parts: bool,
     }
@@ -630,7 +632,7 @@ pub(crate) fn listed(text: &str) -> Option<Value> {
         fn visit_seq<S: SeqAccess<'de>>(self, mut seq: S) -> Result<Value, S::Error> {
             let mut out = Vec::new();
             // The elements of a `Part` list are Parts.
-            while let Some(value) = seq.next_element_seed(Pruned { in_part: self.parts, parts: false })? {
+            while let Some(value) = seq.next_element_seed(Pruned { top: false, in_part: self.parts, parts: false })? {
                 out.push(value);
             }
             Ok(Value::Array(out))
@@ -638,19 +640,19 @@ pub(crate) fn listed(text: &str) -> Option<Value> {
         fn visit_map<M: MapAccess<'de>>(self, mut map: M) -> Result<Value, M::Error> {
             let mut out = serde_json::Map::new();
             while let Some(key) = map.next_key::<String>()? {
-                if self.in_part && key == "Stream" {
+                if (self.in_part && key == "Stream") || (self.top && crate::runtime::GRID_DROPPED.contains(&key.as_str())) {
                     map.next_value::<IgnoredAny>()?;
                     continue;
                 }
                 let parts = key == "Part";
-                let value = map.next_value_seed(Pruned { in_part: false, parts })?;
+                let value = map.next_value_seed(Pruned { top: false, in_part: false, parts })?;
                 out.insert(key, value);
             }
             Ok(Value::Object(out))
         }
     }
     let mut deserializer = serde_json::Deserializer::from_str(text);
-    Pruned { in_part: false, parts: false }.deserialize(&mut deserializer).ok()
+    Pruned { top: true, in_part: false, parts: false }.deserialize(&mut deserializer).ok()
 }
 
 /// How many threads read a listing's rows (`prefetch_listed`, `read_listed`): two kept ahead of
@@ -870,5 +872,17 @@ mod tests {
             same(&disk, &memory, step);
         }
         let _ = std::fs::remove_dir_all(&directory);
+    }
+}
+
+#[cfg(test)]
+mod listed_tests {
+    #[test]
+    fn a_listed_row_is_the_row_less_what_every_listing_row_drops() {
+        let text = r#"{"ratingKey":"7","Rating":[{"image":"x"}],"Extras":{"size":1},"Genre":[{"tag":"Drama"}],
+            "Media":[{"id":1,"Part":[{"id":2,"Stream":[{"id":3}],"Rating":"kept below the top"}]}]}"#;
+        let expected = serde_json::json!({"ratingKey":"7","Genre":[{"tag":"Drama"}],
+            "Media":[{"id":1,"Part":[{"id":2,"Rating":"kept below the top"}]}]});
+        assert_eq!(super::listed(text), Some(expected));
     }
 }

@@ -647,6 +647,18 @@ impl Runtime {
         subtype: &str,
         create: bool,
     ) -> Vec<Value> {
+        self.collection_uri_refs(uri, section, number, subtype, create).into_iter().map(AnyRow::into_value).collect()
+    }
+
+    /// `collection_uri_rows`, the catalog's rows read in place (`uri_rows_at`).
+    fn collection_uri_refs(
+        &self,
+        uri: &str,
+        section: &str,
+        number: i64,
+        subtype: &str,
+        create: bool,
+    ) -> Vec<AnyRow<'_>> {
         let decoded = percent_decode(uri);
         let named = decoded.find("/library/sections/").and_then(|start| {
             let tail = &decoded[start + "/library/sections/".len()..];
@@ -661,9 +673,9 @@ impl Runtime {
             if create && named != section {
                 return Vec::new();
             }
-            return self.rows_for_uri_at(uri, Some(number));
+            return self.uri_rows_at(uri, Some(number));
         }
-        let rows = self.rows_for_uri(uri);
+        let rows = self.uri_rows_at(uri, None);
         if !create {
             return rows;
         }
@@ -693,7 +705,10 @@ impl Runtime {
         else {
             return Response::error(400, "rex: bad request");
         };
-        let rows = self.collection_uri_rows(&uri, section, number, &subtype, true);
+        let (count, keys) = {
+            let rows = self.collection_uri_refs(&uri, section, number, &subtype, true);
+            (rows.len(), rows.iter().filter_map(key_of).collect::<Vec<_>>())
+        };
         let smart = query.get("smart").map(String::as_str) == Some("1");
         let id = self.next_collection.to_string();
         self.next_collection += 1;
@@ -780,7 +795,6 @@ impl Runtime {
         }
         self.collections.insert(id.clone(), stored);
         if !smart {
-            let keys = rows.iter().filter_map(key_of).collect::<Vec<_>>();
             self.add_collection_items(&id, &keys);
         }
         let collection = self.collections.get(&id).cloned().expect("just inserted");
@@ -788,7 +802,7 @@ impl Runtime {
             "COLLECTION create {} smart={} ({} item(s))",
             collection.title,
             if smart { "True" } else { "False" },
-            rows.len()
+            count
         );
         let frame_row = json!({"ratingKey": id, "type": "collection", "title": collection.title,
             "librarySectionID": collection.section});
@@ -1558,7 +1572,7 @@ impl Runtime {
                 "episode" => 4,
                 _ => 0,
             };
-            let rows = self.collection_uri_rows(
+            let rows = self.collection_uri_refs(
                 query.get("uri").map(String::as_str).unwrap_or(""),
                 &collection.section,
                 level,

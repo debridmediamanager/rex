@@ -6446,6 +6446,12 @@ impl Runtime {
     /// `rows_for_uri`, with a section uri listed at `level` (a Plex type number)
     /// when one is given instead of at the uri's own.
     fn rows_for_uri_at(&self, uri: &str, level: Option<i64>) -> Vec<Value> {
+        self.uri_rows_at(uri, level).into_iter().map(AnyRow::into_value).collect()
+    }
+
+    /// `rows_for_uri_at`, the catalog's rows read in place: a collection given the whole
+    /// library copied every row of it to read each one's type and key.
+    fn uri_rows_at(&self, uri: &str, level: Option<i64>) -> Vec<AnyRow<'_>> {
         let decoded = percent_decode(uri);
         // Cycle 16, measured on plexscratch: a uri that is not this server's own
         // `server://<machine>/...` or a stored `library://` resolves to NOTHING -- a
@@ -6469,7 +6475,7 @@ impl Runtime {
                     return self
                         .playlist_keys(playlist)
                         .iter()
-                        .filter_map(|key| self.catalog.get(key).cloned())
+                        .filter_map(|key| self.catalog.lazy_get(key).map(AnyRow::Ref))
                         .collect();
                 }
             }
@@ -6478,7 +6484,7 @@ impl Runtime {
         if !keys.is_empty() {
             return keys
                 .into_iter()
-                .filter_map(|key| self.catalog.get(&key).cloned())
+                .filter_map(|key| self.catalog.lazy_get(&key).map(AnyRow::Ref))
                 .collect();
         }
         if let Some(start) = decoded.find("/library/sections/") {
@@ -6501,10 +6507,13 @@ impl Runtime {
                         .rev()
                         .find(|(name, _)| name == "type")
                         .and_then(|(_, value)| value.parse::<i64>().ok());
-                    let rows = match level.or(uri_type) {
-                        Some(number) => self.typed_section_rows(section, number),
-                        None => self.section_rows(section),
-                    };
+                    let rows: Vec<AnyRow<'_>> = match level.or(uri_type) {
+                        Some(number) => self.typed_section_refs(section, number),
+                        None => self.section_row_refs(section),
+                    }
+                    .into_iter()
+                    .map(AnyRow::Ref)
+                    .collect();
                     if !query_tail.is_empty() {
                         let pairs = parse_query(query_tail);
                         let section_type = self
@@ -6552,7 +6561,7 @@ impl Runtime {
             let tail = &decoded[start + "/library/metadata/".len()..];
             let key = tail.split(['/', '?', ',']).next().unwrap_or("");
             if !key.is_empty() {
-                return self.children(key);
+                return self.children_refs(key).into_iter().map(AnyRow::Ref).collect();
             }
         }
         Vec::new()
@@ -19216,7 +19225,8 @@ impl Runtime {
                     .section(&section_key)
                     .and_then(|section| section.get("type").and_then(Value::as_str))
                     .unwrap_or("movie");
-                let mut children = self.children(key);
+                // Read in place: each child was copied whole, then copied again to project it.
+                let mut children = self.children_refs(key);
                 if self.season_children_newest_first(row) {
                     // Cycle 14: the show's effective episodeSort=1, newest first.
                     children.reverse();
@@ -19276,9 +19286,9 @@ impl Runtime {
                 let mut rows = children
                     .iter()
                     .map(|child| {
-                        let mut shown = self.grid_row(child, false, include_guids, false);
+                        let mut shown = self.grid_row(child.body(), false, include_guids, false);
                         if include_guids {
-                            apply_listing_guids(&mut shown, child);
+                            apply_listing_guids(&mut shown, child.body());
                         }
                         shown
                     })
@@ -19293,7 +19303,8 @@ impl Runtime {
                 );
                 fields.insert("Metadata".to_string(), Value::Array(rows.clone()));
                 if group {
-                    let leaves = self.leaves(key);
+                    // Counted from the hot fields: a show's every episode read whole, to count them.
+                    let leaves = self.leaves_refs(key);
                     // Re-measured on the 1.42.2 reference against a 24-season show: the
                     // "All episodes" row is present exactly when the PAGE holds more than
                     // one season row -- Start=10 Size=10 carries it, Start=0 Size=1
@@ -27070,7 +27081,7 @@ fn strip_private_in_place(value: &mut Value) {
 }
 
 /// What `grid_row` drops from a row, and the section fields it drops unless kept.
-const GRID_DROPPED: &[&str] = &[
+pub(crate) const GRID_DROPPED: &[&str] = &[
     "Rating", "Producer", "CommonSenseMedia", "Label", "Style", "Similar", "Mood", "Preferences",
     "OnDeck", "Extras",
 ];
