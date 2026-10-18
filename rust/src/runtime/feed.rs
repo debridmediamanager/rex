@@ -1436,7 +1436,7 @@ impl Runtime {
             .hot()
             .lazy()
             .filter(|row| row.get("deletedAt").is_none())
-            .flat_map(|row| versions(row.body()).into_iter().filter(|(of, _, _)| of == source).map(|(_, sid, _)| sid))
+            .flat_map(|row| row.hot.releases.iter().filter(|release| &*release.source == source).map(|release| release.sid.to_string()))
             .chain(self.feed_held.keys().filter_map(|key| key.strip_prefix(&prefix).map(str::to_string)))
             .collect()
     }
@@ -1447,8 +1447,8 @@ impl Runtime {
             .hot()
             .lazy()
             .flat_map(|row| {
-                versions(row.body()).into_iter().filter(|(of, _, _)| *of == source.name).map(move |(_, sid, index)| {
-                    json!({"id": sid, "ratingKey": key_of(&row), "file": media_file(row.body(), index),
+                row.hot.releases.iter().filter(|release| *release.source == *source.name).map(move |release| {
+                    json!({"id": release.sid, "ratingKey": key_of(&row), "file": release.file(),
                            "deleted": row.get("deletedAt").is_some()})
                 })
             })

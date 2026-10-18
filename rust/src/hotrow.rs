@@ -72,6 +72,27 @@ pub struct HotRow {
     /// value by seven bytes.
     ids: Box<[u8]>,
     values: Box<[Value]>,
+    /// The row's releases (`catalog::versions`): a source's listing and a snapshot's end walk
+    /// every row for them, and on the production server reading each row for its Media took
+    /// 26 s for one source's 40,335 rows, holding every Plex request (2026-10-18).
+    pub releases: Box<[Release]>,
+}
+
+/// A release on a row: its source, its id there, its Media and the file that Media reads.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Release {
+    pub source: Box<str>,
+    pub sid: Box<str>,
+    pub index: usize,
+    /// The file, or what comes before `sid` in it when it ends with `sid`: 56% of the production
+    /// server's files are their mount and their id, so half the bytes are kept once.
+    file: Option<(Box<str>, bool)>,
+}
+
+impl Release {
+    pub fn file(&self) -> Option<String> {
+        self.file.as_ref().map(|(file, before_sid)| if *before_sid { format!("{file}{}", self.sid) } else { file.to_string() })
+    }
 }
 
 impl HotRow {
@@ -86,7 +107,19 @@ impl HotRow {
                 }
             }
         }
-        Self { position, ids: ids.into_boxed_slice(), values: values.into_boxed_slice() }
+        let releases = crate::catalog::versions(row)
+            .into_iter()
+            .map(|(source, sid, index)| {
+                let file = row.pointer(&format!("/Media/{index}/Part/0/file")).and_then(Value::as_str).map(|file| {
+                    match file.strip_suffix(sid.as_str()) {
+                        Some(before) => (before.into(), true),
+                        None => (file.into(), false),
+                    }
+                });
+                Release { source: source.into(), sid: sid.into(), index, file }
+            })
+            .collect();
+        Self { position, ids: ids.into_boxed_slice(), values: values.into_boxed_slice(), releases }
     }
 
     /// The field as the row holds it. Panics for a field a hot row does not keep.
@@ -267,6 +300,23 @@ mod tests {
             assert_eq!(hot.get(name), row.get(name), "{name}");
         }
         assert_eq!(hot.position, 3);
+    }
+
+    #[test]
+    fn releases_keep_each_media_s_source_id_and_file() {
+        let row = serde_json::json!({"Media": [
+            {"_source": "rd", "_sid": "movies/A/a.mkv", "Part": [{"file": "/mnt/zurg/movies/A/a.mkv"}]},
+            {"_source": "ad", "_sid": "x1", "Part": [{"file": "/mnt/zurg/movies/B/b.mkv"}]},
+            {"_source": "tb", "_sid": "x2"}]});
+        let releases = HotRow::of(0, &row).releases;
+        let got: Vec<_> = releases.iter().map(|r| (&*r.source, &*r.sid, r.index, r.file())).collect();
+        assert_eq!(got, vec![("rd", "movies/A/a.mkv", 0, Some("/mnt/zurg/movies/A/a.mkv".into())),
+                             ("ad", "x1", 1, Some("/mnt/zurg/movies/B/b.mkv".into())),
+                             ("tb", "x2", 2, None)]);
+        // A row tagged on itself, not on its Media.
+        let row = serde_json::json!({"_source": "zurg", "_sid": "s", "Media": [{"Part": [{"file": "/f/s"}]}]});
+        let got: Vec<_> = HotRow::of(0, &row).releases.iter().map(|r| (r.sid.to_string(), r.file())).collect();
+        assert_eq!(got, vec![("s".to_string(), Some("/f/s".to_string()))]);
     }
 
     #[test]
