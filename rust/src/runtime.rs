@@ -16,9 +16,10 @@ use std::thread;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use flate2::Compression;
-use rustls::pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs1KeyDer, PrivatePkcs8KeyDer};
+use rustls::pki_types::CertificateDer;
+use rustls::sign::CertifiedKey;
 use rustls::{ServerConfig, ServerConnection, StreamOwned};
-use rustls_pemfile::{certs, pkcs8_private_keys, rsa_private_keys};
+use rustls_pemfile::certs;
 use serde_json::{json, Map, Value};
 use sha1::{Digest, Sha1};
 
@@ -49,6 +50,7 @@ mod playlists;
 pub(crate) mod plexmeta;
 mod plextv;
 mod resume;
+mod rexdirect;
 mod scan;
 mod search;
 mod sessions;
@@ -22758,63 +22760,47 @@ fn drop_empty_value(value: &Value) -> Value {
     }
 }
 
-fn load_tls_config(cert_path: &Path, key_path: Option<&Path>) -> Result<ServerConfig, String> {
-    let cert_file = fs::File::open(cert_path).map_err(|error| {
+/// `--tls-cert` and `--tls-key` (default: the certificate file itself).
+fn load_tls_certificate(cert_path: &Path, key_path: Option<&Path>) -> Result<Arc<CertifiedKey>, String> {
+    let chain = fs::read(cert_path).map_err(|error| {
         format!(
             "cannot open TLS certificate {}: {error}",
             cert_path.display()
         )
     })?;
-    let mut cert_reader = BufReader::new(cert_file);
-    let certificates = certs(&mut cert_reader)
+    let key = match key_path {
+        Some(key_path) => fs::read(key_path)
+            .map_err(|error| format!("cannot read TLS key {}: {error}", key_path.display()))?,
+        None => chain.clone(),
+    };
+    certified_key(&chain, &key, &cert_path.display().to_string())
+}
+
+/// A PEM chain and its key: PKCS#8, RSA, or SEC1 EC (`BEGIN EC PRIVATE KEY`, which
+/// `tailscale cert`, many ACME clients and DMM's rex-direct certificate come with).
+fn certified_key(chain: &[u8], key: &[u8], name: &str) -> Result<Arc<CertifiedKey>, String> {
+    let certificates = certs(&mut BufReader::new(chain))
         .collect::<Result<Vec<CertificateDer<'static>>, _>>()
         .map_err(|error| format!("cannot parse TLS certificate: {error}"))?;
     if certificates.is_empty() {
-        return Err(format!(
-            "TLS certificate {} contains no certificates",
-            cert_path.display()
-        ));
+        return Err(format!("TLS certificate {name} contains no certificates"));
     }
+    let key = rustls_pemfile::private_key(&mut BufReader::new(key))
+        .map_err(|error| format!("cannot parse TLS key: {error}"))?
+        .ok_or_else(|| "TLS key file contains no PKCS#8, RSA or EC private key".to_string())?;
+    CertifiedKey::from_der(certificates, key, ServerConfig::builder().crypto_provider())
+        .map(Arc::new)
+        .map_err(|error| format!("cannot build TLS server configuration: {error}"))
+}
 
-    let key_bytes = if let Some(key_path) = key_path {
-        fs::read(key_path)
-            .map_err(|error| format!("cannot read TLS key {}: {error}", key_path.display()))?
-    } else {
-        fs::read(cert_path).map_err(|error| {
-            format!(
-                "cannot read TLS certificate {}: {error}",
-                cert_path.display()
-            )
-        })?
-    };
-    let mut key_reader = BufReader::new(key_bytes.as_slice());
-    let key = pkcs8_private_keys(&mut key_reader)
-        .next()
-        .transpose()
-        .map_err(|error| format!("cannot parse PKCS#8 TLS key: {error}"))?
-        .map(PrivatePkcs8KeyDer::from)
-        .map(PrivateKeyDer::Pkcs8)
-        .or_else(|| {
-            let mut key_reader = BufReader::new(key_bytes.as_slice());
-            let parsed = rsa_private_keys(&mut key_reader)
-                .next()
-                .transpose()
-                .ok()
-                .flatten()
-                .map(PrivatePkcs1KeyDer::from)
-                .map(PrivateKeyDer::Pkcs1);
-            parsed
-        })
-        .ok_or_else(|| "TLS key file contains no PKCS#8 or RSA private key".to_string())?;
-
+fn tls_config(certificates: Arc<rexdirect::Certificates>) -> ServerConfig {
     let mut config = ServerConfig::builder()
         .with_no_client_auth()
-        .with_single_cert(certificates, key)
-        .map_err(|error| format!("cannot build TLS server configuration: {error}"))?;
+        .with_cert_resolver(certificates);
     // PMS deliberately does not negotiate HTTP/2, even when a client offers
     // ALPN.  An empty list retains that measured no-ALPN result.
     config.alpn_protocols.clear();
-    Ok(config)
+    config
 }
 
 
@@ -23205,13 +23191,10 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
     let heartbeat_interval = options.heartbeat_interval;
     let gated = options.token.is_some();
     let tls_cert = options.tls_cert.clone();
-    let tls_config = match options.tls_cert.as_deref() {
-        Some(cert_path) => Some(Arc::new(load_tls_config(
-            cert_path,
-            options.tls_key.as_deref(),
-        )?)),
+    let certificates = Arc::new(rexdirect::Certificates::new(match options.tls_cert.as_deref() {
+        Some(cert_path) => Some(load_tls_certificate(cert_path, options.tls_key.as_deref())?),
         None => None,
-    };
+    }));
     let mut options = options;
     // One command sets a server up: a catalog that does not exist yet is seeded here as
     // `rex catalog --seed` seeds one, before the state path is chosen beside it.
@@ -23253,9 +23236,7 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
     if let Some(cert) = &tls_cert {
         info!("TLS multiplexed on tcp/{port} from {}", cert.display());
     }
-    let listener = TcpListener::bind((host.as_str(), port))
-        .map_err(|e| format!("cannot bind {host}:{port}: {e}"))?;
-    let (plextv, machine, friendly, items, part_mode) = {
+    let (plextv, machine, friendly, items, part_mode, catalog_path) = {
         let guard = runtime
             .lock()
             .map_err(|_| "runtime lock poisoned".to_string())?;
@@ -23265,8 +23246,36 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
             guard.friendly.clone(),
             guard.catalog.len(),
             guard.part_mode.clone(),
+            guard.catalog_path.clone(),
         )
     };
+    // Cycle 44: announced on the server's own machineIdentifier.
+    let announced = device_id.unwrap_or_else(|| machine.clone());
+    if announce.is_some() && placeholder_machine(&announced) {
+        return Err("--announce-url needs a machineIdentifier of this server's own; the \
+                    catalog's is a placeholder (seed one with rex catalog --seed)"
+            .to_string());
+    }
+    if let Some(url) = &announce {
+        *plextv
+            .beat
+            .lock()
+            .map_err(|_| "beat lock poisoned".to_string())? = Some(plextv::Beat {
+            machine: announced.clone(),
+            url: url.clone(),
+            name: friendly.clone(),
+        });
+    }
+    // Before the port opens, so its first TLS client already gets the rex-direct certificate.
+    let direct = rexdirect::RexDirect::configured(&announced, &friendly, announce.clone(), port, &catalog_path);
+    let heartbeat = announce.is_some() || direct.is_some();
+    let tls_config = (certificates.base.is_some() || direct.is_some())
+        .then(|| Arc::new(tls_config(Arc::clone(&certificates))));
+    if let Some(direct) = direct {
+        direct.start(Arc::clone(&certificates), Arc::clone(&plextv));
+    }
+    let listener = TcpListener::bind((host.as_str(), port))
+        .map_err(|e| format!("cannot bind {host}:{port}: {e}"))?;
     let claim = plextv
         .claim
         .lock()
@@ -23311,24 +23320,8 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
     start_gdm(Arc::clone(&runtime), &gdm_mode, port);
     // Announced with the claim's token only; unclaimed the heartbeat waits for the claim
     // (`plextv::start_heartbeat`).
-    if let Some(url) = announce {
-        // Cycle 44: announced on the server's own machineIdentifier.
-        let announced = device_id.unwrap_or_else(|| machine.clone());
-        if placeholder_machine(&announced) {
-            return Err("--announce-url needs a machineIdentifier of this server's own; the \
-                        catalog's is a placeholder (seed one with rex catalog --seed)"
-                .to_string());
-        }
-        let beat = plextv::Beat {
-            machine: announced,
-            url,
-            name: friendly,
-        };
-        *plextv
-            .beat
-            .lock()
-            .map_err(|_| "beat lock poisoned".to_string())? = Some(beat.clone());
-        plextv::start_heartbeat(beat, Arc::clone(&plextv.claim), heartbeat_interval);
+    if heartbeat {
+        plextv::start_heartbeat(Arc::clone(&plextv), heartbeat_interval);
     }
     if claim.claimed() {
         // A claimed start: the heartbeat's first beat is the device PUT.

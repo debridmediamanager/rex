@@ -499,6 +499,8 @@ python3 tests/test_native_gdm.py            # native GDM answers and the /server
 REX_NATIVE_BIN=rust/target/release/rex python3 tests/test_native_phase2.py
                                             # the core modules against the oracle's recorded answers, row by row
 python3 tests/test_tls.py                   # HTTPS and plain HTTP on one port
+python3 tests/test_rex_direct.py            # rex-direct against a LOCAL stub DMM and plex.tv: its certificate by SNI beside
+                                            # --tls-cert's, the announce, rex-direct.json kept and reused, a 401 runs on without
 python3 tests/test_prefix_registry.py       # 58 measured prefix shapes
 python3 tests/test_regional_prefs.py        # the regional prefs documents, cell by cell
 python3 tests/test_part_bytes.py            # part reads against a local zurg stub

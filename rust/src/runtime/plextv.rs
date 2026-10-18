@@ -1441,18 +1441,25 @@ impl Beat {
     }
 }
 
-/// `heartbeat.Heartbeat.start`: re-announce on an interval, on its own thread.
-pub(crate) fn start_heartbeat(beat: Beat, claim: SharedClaim, interval: u64) {
-    let started = format!(
-        "heartbeat every {interval}s for machine {} -> {}",
-        beat.machine, beat.url
-    );
+/// `heartbeat.Heartbeat.start`: re-announce on an interval, on its own thread. The target is
+/// re-read each beat: rex-direct sets it, late when DMM answered only after the start, and
+/// anew if DMM ever names the server differently.
+pub(crate) fn start_heartbeat(plextv: Arc<PlexTv>, interval: u64) {
+    if let Some(beat) = plextv.beat.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).as_ref() {
+        info!("heartbeat every {interval}s for machine {} -> {}", beat.machine, beat.url);
+    }
+    let claim = Arc::clone(&plextv.claim);
     let _ = thread::Builder::new()
         .name("rex-heartbeat".to_string())
         .spawn(move || {
             let mut failures = 0_u64;
             let mut waiting = false;
             loop {
+                let beat = plextv.beat.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).clone();
+                let Some(beat) = beat else {
+                    thread::sleep(Duration::from_secs(interval));
+                    continue;
+                };
                 // Unclaimed there is nothing to announce with yet, PLEX_TOKEN or not; said once,
                 // and the claim itself announces at once (`finish_claim`). Announcing nothing
                 // before the claim also keeps the account-token device row that made the
@@ -1482,7 +1489,6 @@ pub(crate) fn start_heartbeat(beat: Beat, claim: SharedClaim, interval: u64) {
                 thread::sleep(Duration::from_secs(interval));
             }
         });
-    info!("{started}");
 }
 
 // -- accountstate.py ---------------------------------------------------------------

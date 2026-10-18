@@ -1,6 +1,7 @@
 # Runtime state and anything carrying a live credential.
 catalog.json
 claim_state.json
+rex-direct.json
 run.sh
 rex.env
 sources.json
