@@ -42,7 +42,7 @@ impl Runtime {
     /// The EFFECTIVE value of a show setting: the item's unless it inherits (`-1`),
     /// then the library's, then the library default. Measured on the copy across all
     /// four combinations for `flattenSeasons` and `episodeSort` (cycle 15).
-    pub(super) fn show_pref(&self, show: &Value, name: &str) -> String {
+    pub(super) fn show_pref(&self, show: &(impl Row + ?Sized), name: &str) -> String {
         let mut stored = show
             .get("_prefs")
             .and_then(|prefs| prefs.get(name))
@@ -67,7 +67,7 @@ impl Runtime {
 
     /// Whether a show's effective `flattenSeasons` skips the season level: `1`, or
     /// `2` ("hide for single-season series") on a show with at most one season.
-    pub(super) fn show_flattened(&self, show: &Value) -> bool {
+    pub(super) fn show_flattened(&self, show: &(impl Row + ?Sized)) -> bool {
         let value = self.show_pref(show, "flattenSeasons");
         value == "1"
             || (value == "2" && self.children_refs(&key_of(show).unwrap_or_default()).len() <= 1)
@@ -80,10 +80,11 @@ impl Runtime {
     pub(super) fn apply_flatten_projection(&self, object: &mut Map<String, Value>) {
         match object.get("type").and_then(Value::as_str) {
             Some("show") => {
-                // The projected row has lost its private `_prefs`; read the stored one.
-                let stored = object.get("ratingKey").map(string_value).and_then(|key| self.catalog.get(&key));
+                // The projected row has lost its private `_prefs`; read the stored one, off its
+                // hot fields (`_prefs` is one): a listing read every show and season whole.
+                let stored = object.get("ratingKey").map(string_value).and_then(|key| self.catalog.lazy_get(&key));
                 let flattened = match stored {
-                    Some(row) => self.show_flattened(row),
+                    Some(row) => self.show_flattened(&row),
                     None => self.show_flattened(&Value::Object(object.clone())),
                 };
                 if flattened {
@@ -96,8 +97,8 @@ impl Runtime {
                 let show = object
                     .get("grandparentRatingKey")
                     .map(string_value)
-                    .and_then(|key| self.catalog.get(&key));
-                if show.is_some_and(|show| self.show_flattened(show)) {
+                    .and_then(|key| self.catalog.lazy_get(&key));
+                if show.is_some_and(|show| self.show_flattened(&show)) {
                     object.insert("skipParent".to_string(), json!(true));
                     object.shift_remove("parentRatingKey");
                     object.shift_remove("parentKey");

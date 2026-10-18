@@ -32,7 +32,7 @@ impl Runtime {
         rows.into_iter()
             .filter(|row| {
                 !hidden.contains(
-                    string_value(row.whole().get("librarySectionID").unwrap_or(&Value::Null)).as_str(),
+                    string_value(row.get("librarySectionID").unwrap_or(&Value::Null)).as_str(),
                 )
             })
             .collect()
@@ -51,7 +51,7 @@ impl Runtime {
                 .into_iter()
                 .filter(|row| {
                     wanted.contains(&string_value(
-                        row.whole().get("librarySectionID").unwrap_or(&Value::Null),
+                        row.get("librarySectionID").unwrap_or(&Value::Null),
                     ))
                 })
                 .collect(),
@@ -102,17 +102,8 @@ impl Runtime {
 
     /// Keep a subset's ordered rows; a row without a catalog position (none should lack
     /// one) keeps the subset out of the memo.
-    pub(super) fn store_subset(&self, key: SubsetKey, rows: &[&Value], untrimmed: Option<usize>) {
-        let positions = rows
-            .iter()
-            .map(|row| key_of(row).and_then(|key| self.catalog.position(&key)))
-            .collect::<Option<Vec<usize>>>();
-        let Some(positions) = positions else {
-            return;
-        };
-        if positions.iter().zip(rows).any(|(&position, row)| !self.catalog.row_at(position).is_some_and(|held| std::ptr::eq(held, *row))) {
-            return;
-        }
+    pub(super) fn store_subset(&self, key: SubsetKey, rows: &[RowRef<'_>], untrimmed: Option<usize>) {
+        let positions = rows.iter().map(|row| row.hot.position).collect::<Vec<usize>>();
         let mut memo = self.library_memo.borrow_mut();
         memo.subsets.retain(|(stored, _)| stored.0 == key.0);
         if memo.subsets.len() >= 64 {
@@ -625,7 +616,7 @@ impl Runtime {
     }
 
     /// The newest leaf's `addedAt`, or the row's own with no leaves.
-    fn newest_leaf_stamp(&self, row: &Value) -> i64 {
+    fn newest_leaf_stamp(&self, row: &(impl Row + ?Sized)) -> i64 {
         let key = key_of(row).unwrap_or_default();
         self.leaves_refs(&key)
             .iter()
@@ -689,7 +680,7 @@ impl Runtime {
         /// A row of the roll-up: a leaf, or the show or season it rolled up into.
         enum Pick<'r, R> {
             Leaf(&'r R),
-            Parent(&'r Value),
+            Parent(RowRef<'r>),
         }
         impl<R: Row> Pick<'_, R> {
             fn get(&self, name: &str) -> Option<&Value> {
@@ -742,7 +733,7 @@ impl Runtime {
         let mut rows: Vec<(Pick<'_, R>, Option<&str>)> = Vec::new();
         let mut claimed: HashSet<&str> = HashSet::new();
         for show_key in &show_order {
-            let show = self.catalog.get(show_key);
+            let show = self.catalog.lazy_get(show_key);
             let mut seasons: Vec<&str> = Vec::new();
             for key in &by_show[show_key] {
                 let season = leaf_season.get(key).copied().unwrap_or_default();
@@ -759,7 +750,7 @@ impl Runtime {
             }
             for season_key in seasons {
                 let members = by_season.get(season_key).map(Vec::as_slice).unwrap_or_default();
-                match self.catalog.get(season_key) {
+                match self.catalog.lazy_get(season_key) {
                     Some(season) if members.len() > 1 => {
                         rows.push((Pick::Parent(season), None));
                         claimed.insert(season_key);
@@ -785,7 +776,7 @@ impl Runtime {
                 } else {
                     let stamp = match &row {
                         Pick::Leaf(leaf) => self.newest_leaf_stamp(&own(leaf)),
-                        Pick::Parent(parent) => self.newest_leaf_stamp(parent),
+                        Pick::Parent(parent) => self.newest_leaf_stamp(&parent),
                     };
                     (stamp, row)
                 }
@@ -798,7 +789,7 @@ impl Runtime {
             .map(|(stamp, row)| {
                 let mut row = match row {
                     Pick::Leaf(leaf) => own(leaf),
-                    Pick::Parent(parent) => parent.clone(),
+                    Pick::Parent(parent) => parent.body().clone(),
                 };
                 if row.get("addedAt").and_then(Value::as_i64) != Some(stamp) {
                     if let Some(object) = row.as_object_mut() {
@@ -856,19 +847,19 @@ impl Runtime {
     ) -> Option<Vec<Value>> {
         match type_id {
             Some("2") => Some(self.recently_added_tv(section_id, None)),
-            Some("1") => Some(self.recent_movie_refs(section_id).into_iter().cloned().collect()),
+            Some("1") => Some(self.recent_movie_refs(section_id).into_iter().map(|row| row.body().clone()).collect()),
             _ => None,
         }
     }
 
     /// The movie half of `recently_added_rows` by reference: Home's shelf and the
     /// movie list copied every movie to show twelve (the production server, 2026-10-11).
-    pub(super) fn recent_movie_refs(&self, section_id: Option<&String>) -> Vec<&Value> {
+    pub(super) fn recent_movie_refs(&self, section_id: Option<&String>) -> Vec<RowRef<'_>> {
         // Home, its hubs and the promoted shelves read this list on every request; it
         // changes only with the rows (59% of a Home read, 2026-10-17).
         let key = (self.catalog.generation(), section_id.cloned());
         if let Some((_, positions)) = self.library_memo.borrow().recent_movies.iter().find(|(memo, _)| *memo == key) {
-            return positions.iter().filter_map(|position| self.catalog.row_at(*position)).collect();
+            return positions.iter().filter_map(|position| self.catalog.lazy_at(*position)).collect();
         }
         let hot = self.catalog.hot();
         let mut movies = hot.rows().filter(|row| row.get("type").and_then(Value::as_str) == Some("movie")).collect::<Vec<_>>();
@@ -879,8 +870,7 @@ impl Runtime {
         movies.sort_by_key(|row| -row.get("addedAt").and_then(Value::as_i64).unwrap_or(0));
         let positions = movies.iter().map(|row| row.position).collect::<Vec<_>>();
         drop(movies);
-        drop(hot);
-        let rows = positions.iter().filter_map(|&position| self.catalog.row_at(position)).collect();
+        let rows = positions.iter().filter_map(|&position| self.catalog.lazy_at(position)).collect();
         let mut memo = self.library_memo.borrow_mut();
         memo.recent_movies.retain(|(memo, _)| memo.0 == key.0);
         memo.recent_movies.push((key, positions));
@@ -894,11 +884,11 @@ impl Runtime {
         if section.get("type").and_then(Value::as_str) == Some("show") {
             return self.recently_added_tv(Some(&key), None);
         }
-        self.section_recent_movie_refs(&key).into_iter().cloned().collect()
+        self.section_recent_movie_refs(&key).into_iter().map(|row| row.body().clone()).collect()
     }
 
     /// A movie library's rows newest first, borrowed.
-    pub(super) fn section_recent_movie_refs(&self, key: &str) -> Vec<&Value> {
+    pub(super) fn section_recent_movie_refs(&self, key: &str) -> Vec<RowRef<'_>> {
         let mut rows = self.section_row_refs(key);
         rows.sort_by_key(|row| -row.get("addedAt").and_then(Value::as_i64).unwrap_or(0));
         rows
@@ -953,30 +943,30 @@ impl Runtime {
             if *identifier == "home.playlists" && directories.is_some() {
                 continue;
             }
-            use std::borrow::Cow;
-            let owned = |rows: Vec<Value>| rows.into_iter().map(Cow::Owned).collect::<Vec<_>>();
-            let rows: Vec<Cow<'_, Value>> = match *identifier {
+            let owned = |rows: Vec<Value>| rows.into_iter().map(AnyRow::Owned).collect::<Vec<_>>();
+            let rows: Vec<AnyRow<'_>> = match *identifier {
                 "home.continue" => self
                     .in_directories(all.iter().filter(|row| resume_point(row)).collect::<Vec<_>>(), &directories)
                     .into_iter()
-                    .map(Cow::Borrowed)
+                    .map(AnyRow::Borrowed)
                     .collect(),
                 "home.ondeck" => watching
                     .iter()
                     .filter(|row| row.get("type").and_then(Value::as_str) == Some("episode"))
-                    .map(|row| Cow::Borrowed(*row))
+                    .map(|row| AnyRow::Borrowed(*row))
                     .collect(),
+                // Read through their hot fields: only the shelf's twelve are read whole.
                 "home.movies.recent" => self
                     .in_directories(self.recent_movie_refs(None), &directories)
                     .into_iter()
-                    .map(Cow::Borrowed)
+                    .map(AnyRow::Ref)
                     .collect(),
                 "home.television.recent" => match self.filtered_tv_leaves(query, true).ok().flatten() {
                     Some(leaves) => owned(self.in_directories(self.recently_added_tv(None, Some(leaves)), &directories)),
                     None => self
                         .in_directories(tv_recent.iter().collect::<Vec<_>>(), &directories)
                         .into_iter()
-                        .map(Cow::Borrowed)
+                        .map(AnyRow::Borrowed)
                         .collect(),
                 },
                 "home.playlists" => owned(self.recent_playlists()),
@@ -1092,30 +1082,29 @@ impl Runtime {
             // Only the shelf's own rows are built, and movies stay borrowed: the
             // library's list was copied and then replaced under a pin, and a movie
             // shelf copied every movie twice (+320 MB a request, 2026-10-17).
-            use std::borrow::Cow;
-            let owned = |rows: Vec<Value>| rows.into_iter().map(Cow::Owned).collect::<Vec<_>>();
+            let owned = |rows: Vec<Value>| rows.into_iter().map(AnyRow::Owned).collect::<Vec<_>>();
             let tv_all = if is_show && filtered.is_none() { Some(self.recently_added_tv_shared(None)) } else { None };
             let tv_section = if is_show && filtered.is_none() && pinned.is_none() {
                 Some(self.recently_added_tv_shared(Some(&section_key)))
             } else {
                 None
             };
-            let mut rows: Vec<Cow<'_, Value>> = if pinned.is_some() {
+            let mut rows: Vec<AnyRow<'_>> = if pinned.is_some() {
                 let merged = if is_show {
                     match (&tv_all, filtered) {
-                        (Some(shared), _) => shared.iter().map(Cow::Borrowed).collect(),
+                        (Some(shared), _) => shared.iter().map(AnyRow::Borrowed).collect(),
                         (None, filtered) => owned(self.recently_added_tv(None, filtered)),
                     }
                 } else {
-                    self.recent_movie_refs(None).into_iter().map(Cow::Borrowed).collect()
+                    self.recent_movie_refs(None).into_iter().map(AnyRow::Ref).collect()
                 };
                 self.in_directories(merged, &Some(same_type.iter().cloned().collect()))
             } else if let Some(leaves) = filtered {
                 owned(self.recently_added_tv(Some(&section_key), Some(leaves)))
             } else if let Some(shared) = &tv_section {
-                shared.iter().map(Cow::Borrowed).collect()
+                shared.iter().map(AnyRow::Borrowed).collect()
             } else {
-                self.section_recent_movie_refs(&section_key).into_iter().map(Cow::Borrowed).collect()
+                self.section_recent_movie_refs(&section_key).into_iter().map(AnyRow::Ref).collect()
             };
             let mut key = if is_show {
                 format!("/hubs/home/recentlyAdded?type=2&sectionID={section_key}")

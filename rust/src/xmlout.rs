@@ -939,6 +939,108 @@ pub fn into_ordered(container: Value, overrides: Option<&HashMap<String, String>
         None => Value::Object(root_map),
     }
 }
+/// `into_ordered` and `runtime::strip_private_in_place`, then `serde_json::to_vec`, in one
+/// pass over the document as it is: the same bytes, without building the ordered copy --
+/// each of its maps hashed every key twice, half of an unpaged 34k-row listing (2026-10-18).
+/// `None` when the document is not `{"<root>": {...}}`, which `into_ordered` leaves as it is.
+pub fn write_ordered_json(container: &Value, overrides: Option<&HashMap<String, String>>) -> Option<Vec<u8>> {
+    fn write_key(out: &mut Vec<u8>, key: &str) {
+        let _ = serde_json::to_writer(&mut *out, key);
+        out.push(b':');
+    }
+    fn walk(out: &mut Vec<u8>, key: &str, row: &Map<String, Value>, overrides: Option<&HashMap<String, String>>, container: bool) {
+        let name = element_name(key, row, overrides);
+        let (attrs, children) = split(&name, row, container);
+        out.push(b'{');
+        let mut first = true;
+        let mut comma = |out: &mut Vec<u8>| {
+            if !std::mem::take(&mut first) {
+                out.push(b',');
+            }
+        };
+        for k in &attrs {
+            comma(out);
+            write_key(out, k);
+            stripped(out, row.get(k).unwrap_or(&Value::Null));
+        }
+        for k in &children {
+            match row.get(k) {
+                Some(Value::Object(child)) => {
+                    comma(out);
+                    write_key(out, k);
+                    walk(out, k, child, overrides, false);
+                }
+                Some(Value::Array(values)) => {
+                    comma(out);
+                    write_key(out, k);
+                    out.push(b'[');
+                    let mut first = true;
+                    for child in values.iter().filter_map(Value::as_object) {
+                        if !std::mem::take(&mut first) {
+                            out.push(b',');
+                        }
+                        walk(out, k, child, overrides, false);
+                    }
+                    out.push(b']');
+                }
+                _ => {}
+            }
+        }
+        out.push(b'}');
+    }
+    /// A value as `strip_private_in_place` leaves it: each map's packed streams unpacked in
+    /// their place (`catalog::unpack_part`) and its `_` keys gone, at every depth.
+    fn stripped(out: &mut Vec<u8>, value: &Value) {
+        match value {
+            Value::Object(object) => {
+                out.push(b'{');
+                let mut first = true;
+                for (k, v) in object {
+                    let unpacked;
+                    let (k, v) = match (k.as_str(), v) {
+                        (crate::catalog::PACKED_STREAMS, Value::String(text)) => {
+                            unpacked = serde_json::from_str(text).unwrap_or_else(|_| Value::Array(Vec::new()));
+                            ("Stream", &unpacked)
+                        }
+                        (k, _) if k.starts_with('_') => continue,
+                        (k, v) => (k, v),
+                    };
+                    if !std::mem::take(&mut first) {
+                        out.push(b',');
+                    }
+                    write_key(out, k);
+                    stripped(out, v);
+                }
+                out.push(b'}');
+            }
+            Value::Array(values) => {
+                out.push(b'[');
+                for (index, value) in values.iter().enumerate() {
+                    if index > 0 {
+                        out.push(b',');
+                    }
+                    stripped(out, value);
+                }
+                out.push(b']');
+            }
+            scalar => {
+                let _ = serde_json::to_writer(&mut *out, scalar);
+            }
+        }
+    }
+    let root = container.as_object().filter(|root| root.len() == 1)?;
+    let (root_name, Value::Object(body)) = root.iter().next()? else {
+        return None;
+    };
+    let is_container = root_name.ends_with("Container") || root_name == "ButlerTasks" || root_name == "Query";
+    let mut out = Vec::with_capacity(1 << 16);
+    out.push(b'{');
+    write_key(&mut out, root_name);
+    walk(&mut out, root_name, body, overrides, is_container);
+    out.push(b'}');
+    Some(out)
+}
+
 /// Serialize the plug-in framework's compact `/system` response form.
 ///
 /// This is a separate measured writer: it uses a lowercase XML declaration,
@@ -1032,5 +1134,49 @@ mod tests {
             None,
         )).unwrap();
         assert_eq!(xml, "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer size=\"1\">\n  <Video ratingKey=\"1\" type=\"movie\" title=\"A&amp;B\"/>\n</MediaContainer>\n");
+    }
+}
+
+#[cfg(test)]
+mod ordered_json_tests {
+    use super::*;
+    use serde_json::json;
+
+    fn old(document: &Value) -> Vec<u8> {
+        fn strip(value: &mut Value) {
+            match value {
+                Value::Object(object) => {
+                    crate::catalog::unpack_part(object);
+                    object.retain(|key, _| !key.starts_with('_'));
+                    object.values_mut().for_each(strip);
+                }
+                Value::Array(values) => values.iter_mut().for_each(strip),
+                _ => {}
+            }
+        }
+        let mut ordered = into_ordered(document.clone(), None);
+        strip(&mut ordered);
+        serde_json::to_vec(&ordered).unwrap()
+    }
+
+    /// Every row of the UI suite's catalog, its streams packed as the catalog holds them,
+    /// listed: the one-pass writer answers the bytes the ordered copy did.
+    #[test]
+    fn writing_in_order_answers_what_the_ordered_copy_did() {
+        let catalog: Value = serde_json::from_str(include_str!("../../tests/catalog_ui.json")).unwrap();
+        let mut rows = catalog["items"].as_array().unwrap().clone();
+        for row in rows.iter_mut() {
+            crate::catalog::pack_streams(row);
+        }
+        rows[0]["allowSync"] = json!(true);
+        rows[1]["Extra"] = json!([{"a": 1, "_b": 2}, 3, null]);
+        rows[2]["Empty"] = json!([]);
+        rows[3]["Nothing"] = Value::Null;
+        let listing = json!({"MediaContainer": {"title1": "x", "size": rows.len(), "offset": 0, "totalSize": 9, "Metadata": rows.clone()}});
+        assert_eq!(write_ordered_json(&listing, None).unwrap(), old(&listing));
+        let paged = json!({"MediaContainer": {"noHistory": true, "replaceParent": false, "size": 2, "Directory": rows[..2].to_vec()}});
+        assert_eq!(write_ordered_json(&paged, None).unwrap(), old(&paged));
+        let hub = json!({"MediaContainer": {"size": 1, "Hub": [{"hubIdentifier": "h", "Metadata": rows[..5].to_vec()}]}});
+        assert_eq!(write_ordered_json(&hub, None).unwrap(), old(&hub));
     }
 }

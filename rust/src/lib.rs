@@ -18,6 +18,7 @@ pub mod manager;
 pub mod mediainfo;
 pub mod metadata;
 pub(crate) mod platform;
+pub mod rows;
 pub mod runtime;
 pub mod store;
 pub mod xmlout;

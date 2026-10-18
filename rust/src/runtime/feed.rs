@@ -465,7 +465,7 @@ fn snapshot(shared: &SharedRuntime, source: &Source, body: &Value, sessions: &mu
 /// `autoEmptyTrash`), as a real PMS treats a file that is gone.
 fn remove(shared: &SharedRuntime, source: &Source, ids: &[String], keys: &[String]) -> Map<String, Value> {
     let mut guard = lock(shared);
-    let rows = guard.feed_rows(&source.name);
+    let rows = guard.feed_rows(&source.name, ids.iter().map(String::as_str));
     let (mut trashed, mut deleted, mut released, mut unknown) = (0, 0, 0, 0);
     let mut sections = BTreeMap::new();
     let mut doomed = Vec::new();
@@ -548,8 +548,8 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
     let mut plans: Vec<(Item, Library, Plan)> = Vec::new();
     {
         let guard = lock(shared);
-        let rows = guard.feed_rows(&source.name);
-        let legacy = guard.legacy_rows_by_file();
+        let rows = guard.feed_rows(&source.name, items.iter().map(|item| item.id.as_str()));
+        let legacy = guard.legacy_rows_by_file(items.iter().map(|item| item.file.as_str()));
         let named = guard.plex.is_some();
         for mut item in items {
             // A `kind` the source sent says which it is (`feed_library`); no name guesses.
@@ -1081,7 +1081,7 @@ pub(super) fn tagged_media(row: &Value) -> Vec<Value> {
 /// Which title a row a source pushed is, for folding: a film's section, agent guid and edition;
 /// an episode's season and index, whatever guid identification gave it. None for an unmatched
 /// film (a `local://` guid is its own key's), one waiting for a probe, and a row no source pushed.
-fn version_slot(row: &Value) -> Option<String> {
+fn version_slot(row: &(impl Row + ?Sized)) -> Option<String> {
     let kind = row.get("type").and_then(Value::as_str).filter(|kind| matches!(*kind, "movie" | "episode"))?;
     if row.get("_sid").is_none() || row.get("_probePending").is_some_and(truthy) {
         return None;
@@ -1357,25 +1357,40 @@ impl Runtime {
         Some(library(found))
     }
 
-    /// This source's rows, by the source's id.
-    fn feed_rows(&self, source: &str) -> HashMap<String, String> {
-        self.catalog
-            .hot()
-            .lazy()
-            .flat_map(|row| {
-                let key = key_of(&row);
-                versions(row.body()).into_iter().filter(|(of, _, _)| of == source).filter_map(move |(_, sid, _)| Some((sid, key.clone()?)))
-            })
-            .collect()
+    /// The rows of this source's `ids`, by id; of two rows of one id, the later. Found by
+    /// release (`catalog::By::Release`): a map of the source's every row read the library on
+    /// each push.
+    fn feed_rows<'a>(&self, source: &str, ids: impl Iterator<Item = &'a str>) -> HashMap<String, String> {
+        ids.filter_map(|sid| {
+            let key = crate::catalog::release_key(source, sid);
+            let row = self
+                .catalog
+                .rows_by(crate::catalog::By::Release, &key)
+                .into_iter()
+                .filter(|row| versions(row).iter().any(|(of, id, _)| of == source && id == sid))
+                .next_back()?;
+            Some((sid.to_string(), key_of(row)?))
+        })
+        .collect()
     }
 
-    /// Rows no feed has claimed (what the WebDAV scanner made), by their Part's file.
-    fn legacy_rows_by_file(&self) -> HashMap<String, String> {
-        self.catalog
-            .hot()
-            .lazy()
-            .filter(|row| row.get("_sid").is_none() && matches!(row.get("type").and_then(Value::as_str), Some("movie" | "episode")))
-            .filter_map(|row| Some((row_files(row.body()).into_iter().next()?, key_of(&row)?)))
+    /// Rows no feed has claimed (what the WebDAV scanner made) by their first Part's file, for
+    /// `files`; of two rows of one file, the later (`catalog::By::File`).
+    fn legacy_rows_by_file<'a>(&self, files: impl Iterator<Item = &'a str>) -> HashMap<String, String> {
+        files
+            .filter_map(|file| {
+                let row = self
+                    .catalog
+                    .rows_by(crate::catalog::By::File, file)
+                    .into_iter()
+                    .filter(|row| {
+                        row.get("_sid").is_none()
+                            && matches!(row.get("type").and_then(Value::as_str), Some("movie" | "episode"))
+                            && row_files(row).first().map(String::as_str) == Some(file)
+                    })
+                    .next_back()?;
+                Some((file.to_string(), key_of(row)?))
+            })
             .collect()
     }
 
@@ -1739,7 +1754,7 @@ impl Runtime {
         // (unwatched, trashed, key): the row someone watched survives, else one not in the trash.
         let mut slots: BTreeMap<String, Vec<(bool, bool, i64, String)>> = BTreeMap::new();
         for row in self.catalog.hot().lazy() {
-            if let (Some(slot), Some(key)) = (version_slot(row.body()), key_of(&row)) {
+            if let (Some(slot), Some(key)) = (version_slot(&row), key_of(&row)) {
                 let watched = ["viewCount", "viewOffset", "lastViewedAt", "userRating"].iter().any(|field| row.get(*field).is_some_and(truthy));
                 slots.entry(slot).or_default().push((!watched, row.get("deletedAt").is_some(), key.parse().unwrap_or(i64::MAX), key));
             }

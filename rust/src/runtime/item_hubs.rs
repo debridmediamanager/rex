@@ -18,32 +18,6 @@ fn tag_names(tags: Option<&Value>, limit: Option<usize>) -> HashSet<String> {
         .collect()
 }
 
-/// `wanted.intersection(&tag_names(tags, None)).count()` without building the set: a
-/// lowercased set of every genre and every cast member of every candidate, per request,
-/// was most of an item page's Related shelf on the production server (2026-10-11).
-fn shared_tags(wanted: &HashSet<String>, tags: Option<&Value>) -> usize {
-    if wanted.is_empty() {
-        return 0;
-    }
-    let mut hit: Vec<&String> = Vec::new();
-    for tag in tags.and_then(Value::as_array).into_iter().flatten() {
-        let Some(name) = tag.get("tag") else {
-            continue;
-        };
-        let found = match name.as_str() {
-            // An ASCII name lowercases to its ASCII lowercase, so no copy is needed.
-            Some(text) if text.is_ascii() => wanted.iter().find(|known| known.eq_ignore_ascii_case(text)),
-            _ => wanted.get(&string_value(name).to_lowercase()),
-        };
-        if let Some(known) = found {
-            if !hit.contains(&known) {
-                hit.push(known);
-            }
-        }
-    }
-    hit.len()
-}
-
 impl Runtime {
     /// Rows a client should offer as "Related".  Cycle 55 REFUTED "the reference
     /// fills this from its metadata agent": the binary counts the item's FIRST THREE
@@ -62,14 +36,21 @@ impl Runtime {
         // The candidates are the library's own TOP-LEVEL rows (`section_items`), so an
         // episode or a season never has a Related shelf.
         let candidates = self.section_row_refs(&section);
+        // Each candidate's genres and cast as its search entry holds them, lowercased
+        // (`corpus.rs`): read off the rows, Related read every title of the library.
+        let hot = self.catalog.hot();
+        let (entries, _) = hot.corpus();
+        let wanted = |names: &HashSet<String>| names.iter().filter_map(|name| hot.lower_tag(name)).collect::<HashSet<u32>>();
+        let (genre_ids, role_ids) = (wanted(&genres), wanted(&roles));
+        let shared = |ids: &HashSet<u32>, held: &[u32]| if ids.is_empty() { 0 } else { held.iter().filter(|id| ids.contains(id)).count() };
         let mut scored = candidates
             .iter()
             .filter(|other| {
                 other.get("type") == row.get("type") && key_of(other).unwrap_or_default() != key
             })
             .filter_map(|other| {
-                let shared =
-                    shared_tags(&genres, other.get("Genre")) + shared_tags(&roles, other.get("Role"));
+                let related = entries.get(other.hot.position).and_then(|entry| entry.related.as_deref())?;
+                let shared = shared(&genre_ids, &related[0]) + shared(&role_ids, &related[1]);
                 (shared >= 2).then(|| {
                     let released = other
                         .get("originallyAvailableAt")
@@ -89,7 +70,7 @@ impl Runtime {
         scored
             .into_iter()
             .take(SIMILAR_CAP)
-            .map(|(_, _, row)| row.clone())
+            .map(|(_, _, row)| row.body().clone())
             .collect()
     }
 

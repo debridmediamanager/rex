@@ -8,6 +8,7 @@ use serde_json::{Map, Value};
 
 use crate::corpus::{corpus_row, CorpusRow, Names};
 use crate::hotrow::{HotRow, Lazy};
+use crate::rows::Rows;
 use crate::{hierarchy, mediainfo};
 
 #[derive(Debug, Clone)]
@@ -18,8 +19,9 @@ pub struct Catalog {
     pub sections: Vec<Value>,
     /// Private so that every mutable path is seen: `get_mut` records its row and
     /// `items_mut` marks them all, which is how a save writes only what changed
-    /// (`store.rs`) instead of serialising every row to find out.
-    items: Vec<Value>,
+    /// (`store.rs`) instead of serialising every row to find out. In memory, or in the state
+    /// database once `attach`ed (`rows.rs`).
+    rows: Rows,
     pub by_id: HashMap<String, usize>,
     changes: Changes,
     /// The rows written since the last `take_touched`, kept apart from `changes` because a
@@ -200,7 +202,11 @@ impl Positions {
         }
         let entry = corpus_row(item, &mut self.names);
         match self.corpus.get_mut(position) {
-            Some(slot) => *slot = entry,
+            Some(slot) => {
+                self.names.release(slot);
+                *slot = entry;
+                self.names.compact(&mut self.corpus);
+            }
             None => {
                 self.corpus.resize_with(position, CorpusRow::default);
                 self.corpus.push(entry);
@@ -307,9 +313,14 @@ impl RowIndex {
         });
         positions.hot.retain(|hot| !is_gone(hot.position));
         let mut index = 0;
-        positions.corpus.retain(|_| {
+        let names = &mut positions.names;
+        positions.corpus.retain(|entry| {
             index += 1;
-            !is_gone(index - 1)
+            let keep = !is_gone(index - 1);
+            if !keep {
+                names.release(entry);
+            }
+            keep
         });
         for hot in positions.hot.iter_mut() {
             hot.position = moved(hot.position);
@@ -337,7 +348,7 @@ impl RowIndex {
     /// Bring the index up to date with `items`. Only this borrows it mutably, and only when a
     /// row was written since, which needs `&mut Catalog`: so a read inside another read (a
     /// pass over `hot` asking for a row's children) never finds it borrowed.
-    fn fresh(&self, items: &[Value]) {
+    fn fresh(&self, rows: &Rows) {
         let needed = {
             let state = self.0.borrow();
             state.built.is_none() || !state.stale.is_empty()
@@ -349,70 +360,101 @@ impl RowIndex {
         let stale = std::mem::take(&mut state.stale);
         let positions = state.built.get_or_insert_with(|| {
             let mut positions = Positions::default();
-            for (position, item) in items.iter().enumerate() {
-                positions.file(position, item);
-            }
+            rows.each(|position, item| positions.file(position, item));
             positions
         });
+        // A row written is held (`Rows::get_mut`), so this reads nothing from the file.
         for position in stale {
-            if let Some(item) = items.get(position) {
+            if let Some(item) = rows.get(position) {
                 positions.file(position, item);
             }
         }
     }
 
     /// The positions under `key` in the `by` lookup.
-    fn read(&self, items: &[Value], by: By, key: &str) -> Vec<usize> {
-        self.fresh(items);
+    fn read(&self, rows: &Rows, by: By, key: &str) -> Vec<usize> {
+        self.fresh(rows);
         let state = self.0.borrow();
         let positions = state.built.as_ref().expect("fresh builds it");
         positions.under(by, key).iter().map(|position| *position as usize).collect()
     }
 
-    fn positions(&self, items: &[Value]) -> std::cell::Ref<'_, Positions> {
-        self.fresh(items);
-        std::cell::Ref::map(self.0.borrow(), |state| state.built.as_ref().expect("fresh builds it"))
+    /// The index, borrowed for as long as the catalog is: like a row from `get`.
+    fn positions(&self, rows: &Rows) -> &Positions {
+        self.fresh(rows);
+        // SAFETY: the index changes only in `fresh` -- when a row was written since, which takes
+        // `&mut Catalog` and so ends every borrow handed out before it, and before this one is
+        // handed out -- and through `&mut Catalog` (`mark`, `removed`, `drop_all`). While the
+        // catalog is borrowed shared, `fresh` finds nothing to do and the index stands still.
+        let state = unsafe { &*self.0.as_ptr() };
+        state.built.as_ref().expect("fresh builds it")
     }
 }
 
 const BY: [By; LOOKUPS] = [By::Parent, By::Section, By::Part, By::File, By::ClipParent, By::Directory, By::Release];
 
+/// A row as a pass over the library holds it: its hot fields, and the row read only for
+/// what they do not hold (`hotrow::Lazy`).
+pub type RowRef<'a> = Lazy<'a, 'a>;
+
 /// The catalog's hot rows, read in row order (`Catalog::hot`).
+#[derive(Clone, Copy)]
 pub struct Hot<'a> {
-    positions: std::cell::Ref<'a, Positions>,
-    items: &'a [Value],
+    positions: &'a Positions,
+    rows: &'a Rows,
 }
 
+/// What a row that cannot be read is read as.
+static UNREAD: Value = Value::Null;
+
 impl<'a> Hot<'a> {
-    pub fn rows(&self) -> impl Iterator<Item = &HotRow> {
-        self.positions.hot.iter().take(self.items.len())
+    pub fn rows(&self) -> impl Iterator<Item = &'a HotRow> {
+        self.positions.hot.iter().take(self.rows.len())
     }
 
     /// The whole row a hot row stands for.
     pub fn row(&self, hot: &HotRow) -> &'a Value {
-        &self.items[hot.position]
+        self.rows.get(hot.position).unwrap_or(&UNREAD)
     }
 
     /// Every row, read through its hot fields first (`hotrow::Lazy`).
-    pub fn lazy(&self) -> impl Iterator<Item = Lazy<'_, 'a>> {
-        self.rows().map(|hot| Lazy::new(hot, &self.items[hot.position]))
+    pub fn lazy(&self) -> impl Iterator<Item = Lazy<'a, 'a>> {
+        let rows = self.rows;
+        self.rows().map(move |hot| Lazy::new(hot, rows))
     }
 
     /// The row at a position, read through its hot fields first.
-    pub fn at(&self, position: usize) -> Option<Lazy<'_, 'a>> {
-        Some(Lazy::new(self.positions.hot.get(position)?, self.items.get(position)?))
+    pub fn at(&self, position: usize) -> Option<Lazy<'a, 'a>> {
+        (position < self.rows.len()).then(|| Lazy::new(&self.positions.hot[position], self.rows))
     }
 
     /// Every row's search entry, in row order (its index is the row's position), and the tag
     /// names their ids name.
-    pub fn corpus(&self) -> (&[CorpusRow], &[Vec<String>]) {
+    pub fn corpus(&self) -> (&'a [CorpusRow], &'a Names) {
         let rows = &self.positions.corpus;
-        (&rows[..rows.len().min(self.items.len())], &self.positions.names.words)
+        (&rows[..rows.len().min(self.rows.len())], &self.positions.names)
+    }
+
+    /// The id of a tag name in the rows' search entries (`CorpusRow::tags`).
+    pub fn raw_tag(&self, name: &str) -> Option<u32> {
+        self.positions.names.raw(name)
+    }
+
+    /// The id of a lowercased tag name in the rows' search entries (`CorpusRow::related`).
+    pub fn lower_tag(&self, name: &str) -> Option<u32> {
+        self.positions.names.lower(name)
     }
 
     /// The hot rows filed under `key` in the `by` lookup, in row order.
-    pub fn by(&self, by: By, key: &str) -> impl Iterator<Item = &HotRow> {
-        self.positions.under(by, key).iter().map(|position| &self.positions.hot[*position as usize])
+    pub fn by(&self, by: By, key: &str) -> impl Iterator<Item = &'a HotRow> {
+        let positions = self.positions;
+        positions.under(by, key).iter().map(move |position| &positions.hot[*position as usize])
+    }
+
+    /// `by`, each read through its hot fields first.
+    pub fn lazy_by(&self, by: By, key: &str) -> impl Iterator<Item = Lazy<'a, 'a>> {
+        let rows = self.rows;
+        self.by(by, key).map(move |hot| Lazy::new(hot, rows))
     }
 }
 
@@ -439,7 +481,7 @@ impl Catalog {
         let mut catalog = Self {
             document,
             sections,
-            items,
+            rows: Rows::new(items),
             by_id: HashMap::new(),
             changes: Changes { all: true, keys: HashSet::new() },
             touched: Changes { all: true, keys: HashSet::new() },
@@ -463,7 +505,9 @@ impl Catalog {
     pub fn to_value(&self) -> Value {
         let mut document = self.document.clone();
         document.insert("sections".to_string(), Value::Array(self.sections.clone()));
-        let mut items = Value::Array(self.items.clone());
+        let mut all = Vec::with_capacity(self.rows.len());
+        self.rows.each(|_, row| all.push(row.clone()));
+        let mut items = Value::Array(all);
         unpack_streams(&mut items);
         document.insert("items".to_string(), items);
         Value::Object(document)
@@ -474,21 +518,31 @@ impl Catalog {
         self.rekey();
     }
 
-    /// `by_id` again, after rows moved.
+    /// `by_id` again, from every row's hot `ratingKey`.
     fn rekey(&mut self) {
         self.generation = next_generation();
         self.by_id.clear();
-        for (index, item) in self.items.iter().enumerate() {
-            if let Some(key) = key_value(item) {
-                self.by_id.insert(key, index);
+        let hot = Hot { positions: self.index.positions(&self.rows), rows: &self.rows };
+        for row in hot.rows() {
+            if let Some(key) = key_value_of(row.get("ratingKey")) {
+                self.by_id.insert(key, row.position);
             }
+        }
+    }
+
+    /// `by_id` after the rows at `gone` (ascending) were removed: the rows after them moved down.
+    fn rekey_removed(&mut self, gone: &[usize]) {
+        self.generation = next_generation();
+        self.by_id.retain(|_, position| gone.binary_search(position).is_err());
+        for position in self.by_id.values_mut() {
+            *position -= gone.partition_point(|&at| at < *position);
         }
     }
 
     pub fn get(&self, rating_key: &str) -> Option<&Value> {
         self.by_id
             .get(rating_key)
-            .and_then(|index| self.items.get(*index))
+            .and_then(|index| self.rows.get(*index))
     }
     pub fn get_mut(&mut self, rating_key: &str) -> Option<&mut Value> {
         self.generation = next_generation();
@@ -506,7 +560,7 @@ impl Catalog {
             self.unpacked.keys.insert(rating_key.to_string());
         }
         self.index.mark(index);
-        self.items.get_mut(index)
+        self.rows.get_mut(index)
     }
 
     /// A value that changes whenever a row may have, never repeated across catalogs.
@@ -514,8 +568,31 @@ impl Catalog {
         self.generation
     }
 
+    /// Every row, while all are in memory: before `attach`, or with no state file.
     pub fn items(&self) -> &Vec<Value> {
-        &self.items
+        self.rows.all()
+    }
+
+    /// Keep the rows in the state database at `path` (`rows.rs`): `clean` when it holds every
+    /// row as it is now (a start that restored them unchanged).
+    pub fn attach(&mut self, path: &Path, key_of: impl Fn(&Value) -> Option<String>, clean: bool) {
+        self.rows.attach(path, key_of, clean);
+    }
+
+    /// The state database the rows are kept in.
+    pub fn attached(&self) -> Option<&Path> {
+        self.rows.attached()
+    }
+
+    /// A save took the changes and queued them as `serial` (`None`: there was nothing to
+    /// write): the rows it took are let go of once the file has it (`pack_pending`).
+    pub fn saved(&mut self, serial: Option<u64>, key_of: impl Fn(&Value) -> Option<String>) {
+        self.rows.saved(serial, key_of);
+    }
+
+    /// Call `visit` with every row in order, reading those not in memory one at a time.
+    pub fn each_row(&self, visit: impl FnMut(usize, &Value)) {
+        self.rows.each(visit);
     }
 
     /// Every row, mutably: a save then looks at them all.
@@ -526,21 +603,14 @@ impl Catalog {
         self.writes.all = true;
         self.unpacked.all = true;
         self.index.drop_all();
-        &mut self.items
-    }
-
-    /// Every row, mutably, marking none of them: only for a change undone before anything
-    /// saves or reads them from outside the request (`accounts.rs`, the account overlay).
-    pub fn items_unmarked_mut(&mut self) -> &mut Vec<Value> {
-        self.generation = next_generation();
-        &mut self.items
+        self.rows.all_mut()
     }
 
     /// One row, mutably, marking nothing: the same contract as `items_unmarked_mut`.
     pub fn get_unmarked_mut(&mut self, rating_key: &str) -> Option<&mut Value> {
         self.generation = next_generation();
         let index = *self.by_id.get(rating_key)?;
-        self.items.get_mut(index)
+        self.rows.get_unmarked_mut(index)
     }
 
     /// Pack the streams of the rows written since the last call. Packing changes no row's
@@ -548,24 +618,29 @@ impl Catalog {
     pub fn pack_pending(&mut self) -> usize {
         let pending = std::mem::take(&mut self.unpacked);
         let mut packed = 0;
-        if pending.all {
-            for row in self.items.iter_mut() {
+        // A row read from the file is packed and fitted as it is read (`rows.rs`).
+        let positions: Vec<usize> = if pending.all {
+            (0..self.rows.len()).filter(|position| self.rows.held(*position)).collect()
+        } else {
+            pending.keys.iter().filter_map(|key| self.by_id.get(key).copied()).collect()
+        };
+        for position in positions {
+            if let Some(row) = self.rows.get_unmarked_mut(position) {
                 packed += usize::from(pack_streams(row));
                 compact(row);
             }
-        } else {
-            for key in &pending.keys {
-                if let Some(row) = self.by_id.get(key).and_then(|index| self.items.get_mut(*index)) {
-                    packed += usize::from(pack_streams(row));
-                    compact(row);
-                }
-            }
         }
+        self.rows.trim();
         // Runs after every request; only a row it packed is a change.
         if packed > 0 {
             self.generation = next_generation();
         }
         packed
+    }
+
+    /// Whether no row changed since the last `take_changes`.
+    pub fn unchanged(&self) -> bool {
+        !self.changes.all && self.changes.keys.is_empty()
     }
 
     pub fn take_changes(&mut self) -> Changes {
@@ -596,25 +671,46 @@ impl Catalog {
 
     /// Every row's hot fields (`hotrow.rs`), for a pass over the library that needs no more.
     pub fn hot(&self) -> Hot<'_> {
-        Hot { positions: self.index.positions(&self.items), items: &self.items }
+        Hot { positions: self.index.positions(&self.rows), rows: &self.rows }
     }
 
     /// The rows `keep` keeps, in row order, each tested through its hot fields first: a pass
     /// over the library that reads the rows it answers and nothing of the others.
     pub fn rows_where(&self, mut keep: impl FnMut(&Lazy<'_, '_>) -> bool) -> Vec<&Value> {
         let positions: Vec<usize> = self.hot().lazy().filter(|row| keep(row)).map(|row| row.hot.position).collect();
-        positions.into_iter().filter_map(|position| self.items.get(position)).collect()
+        positions.into_iter().filter_map(|position| self.rows.get(position)).collect()
     }
 
     /// The first row `keep` keeps (`rows_where`).
     pub fn find_where(&self, mut keep: impl FnMut(&Lazy<'_, '_>) -> bool) -> Option<&Value> {
         let position = self.hot().lazy().find(|row| keep(row)).map(|row| row.hot.position)?;
-        self.items.get(position)
+        self.rows.get(position)
+    }
+
+    /// The rows filed under `key` in the `by` lookup, in row order, read through their hot
+    /// fields first.
+    pub fn lazy_by(&self, by: By, key: &str) -> Vec<RowRef<'_>> {
+        self.hot().lazy_by(by, key).collect()
+    }
+
+    /// The rows `keep` keeps, in row order, as `RowRef`s (`rows_where`).
+    pub fn lazy_where(&self, mut keep: impl FnMut(&RowRef<'_>) -> bool) -> Vec<RowRef<'_>> {
+        self.hot().lazy().filter(|row| keep(row)).collect()
+    }
+
+    /// The row with `rating_key` as a `RowRef`.
+    pub fn lazy_get(&self, rating_key: &str) -> Option<RowRef<'_>> {
+        self.lazy_at(*self.by_id.get(rating_key)?)
+    }
+
+    /// The row at a position as a `RowRef`.
+    pub fn lazy_at(&self, position: usize) -> Option<RowRef<'_>> {
+        self.hot().at(position)
     }
 
     /// The rows filed under `key` in the `by` lookup, in row order.
     pub fn rows_by(&self, by: By, key: &str) -> Vec<&Value> {
-        self.index.read(&self.items, by, key).into_iter().filter_map(|position| self.items.get(position)).collect()
+        self.index.read(&self.rows, by, key).into_iter().filter_map(|position| self.rows.get(position)).collect()
     }
 
     /// Append a row. A row with a key is recorded by its key, so a save writes that one
@@ -623,11 +719,11 @@ impl Catalog {
     pub fn add(&mut self, item: Value) {
         self.generation = next_generation();
         let key = key_value(&item);
-        self.items.push(item);
-        self.index.mark(self.items.len() - 1);
+        self.rows.push(item);
+        self.index.mark(self.rows.len() - 1);
         match key {
             Some(key) => {
-                self.by_id.insert(key.clone(), self.items.len() - 1);
+                self.by_id.insert(key.clone(), self.rows.len() - 1);
                 if !self.changes.all {
                     self.changes.keys.insert(key.clone());
                 }
@@ -655,9 +751,9 @@ impl Catalog {
         if !self.changes.all {
             self.changes.keys.insert(rating_key.to_string());
         }
-        let removed = self.items.remove(index);
+        let removed = self.rows.remove(index)?;
         self.index.removed(&[index]);
-        self.rekey();
+        self.rekey_removed(&[index]);
         Some(removed)
     }
 
@@ -671,25 +767,81 @@ impl Catalog {
             self.changes.keys.extend(rating_keys.iter().cloned());
         }
         let gone: Vec<usize> = self
-            .items
-            .iter()
-            .enumerate()
-            .filter(|(_, item)| key_value(item).is_some_and(|key| rating_keys.contains(&key)))
-            .map(|(position, _)| position)
+            .hot()
+            .rows()
+            .filter(|row| key_value_of(row.get("ratingKey")).is_some_and(|key| rating_keys.contains(&key)))
+            .map(|row| row.position)
             .collect();
-        self.items.retain(|item| key_value(item).is_none_or(|key| !rating_keys.contains(&key)));
+        self.rows.remove_all(&gone);
         self.index.removed(&gone);
-        self.rekey();
+        self.rekey_removed(&gone);
+    }
+
+    /// The rows with `keys` for a listing to project, in order: read in parallel and kept
+    /// nowhere, without their Parts' `Stream` lists (`Rows::read_listed`); `None` for a key
+    /// with no row.
+    pub fn read_listed(&self, keys: &[String]) -> Vec<Option<std::borrow::Cow<'_, Value>>> {
+        let threads = crate::rows::listing_threads();
+        let positions: Vec<Option<usize>> = keys.iter().map(|key| self.by_id.get(key).copied()).collect();
+        let found: Vec<usize> = positions.iter().flatten().copied().collect();
+        let mut read = self.rows.read_listed(&found, threads).into_iter();
+        positions.into_iter().map(|position| position.and_then(|_| read.next().flatten())).collect()
+    }
+
+    /// Show another account's view fields in place of the owner's until `end_view_overlay`
+    /// (`rows::Overlay`): on the rows `hide` names (those holding the owner's), and `show`'s
+    /// fields by row. A row is changed only once it is written to.
+    pub fn overlay_views(&mut self, fields: &'static [&'static str], hide: &HashSet<String>, show: &HashMap<String, Value>) {
+        self.generation = next_generation();
+        let hide = hide.iter().filter_map(|key| self.by_id.get(key).copied()).collect();
+        let show = show
+            .iter()
+            .filter_map(|(key, fields)| Some((*self.by_id.get(key)?, fields.as_object()?.clone())))
+            .collect();
+        self.rows.overlay(fields, hide, show);
+    }
+
+    /// End the overlay: the rows changed in place, each with the owner's fields it took off,
+    /// by key; `refile` each once it is put back.
+    pub fn end_view_overlay(&mut self) -> HashMap<String, Vec<(usize, String, Value)>> {
+        self.generation = next_generation();
+        let swapped = self.rows.end_overlay();
+        let hot = self.hot();
+        swapped
+            .into_iter()
+            .filter_map(|(position, taken)| Some((key_value_of(hot.at(position)?.hot.get("ratingKey"))?, taken)))
+            .collect()
+    }
+
+    /// Read a row's hot fields and keys again (`end_view_overlay`'s rows, once put back).
+    pub fn refile(&mut self, rating_key: &str) {
+        if let Some(position) = self.by_id.get(rating_key) {
+            self.index.mark(*position);
+        }
+    }
+
+    /// Changes whenever a row may differ from what a read of the file returned before:
+    /// with every write (`generation`) and whenever rows held in memory are let go of.
+    pub fn listing_epoch(&self) -> (u64, u64) {
+        (self.generation, self.rows.evictions())
+    }
+
+    /// For a listing that read the row `rating_key` from the file itself (`rows::prefetch_listed`):
+    /// the row as it is in memory when it is held, `Some(None)` when the file's copy is the row,
+    /// `None` when there is no such row any more.
+    pub fn held_row(&self, rating_key: &str) -> Option<Option<&Value>> {
+        let position = *self.by_id.get(rating_key)?;
+        Some(if self.rows.held(position) { self.rows.get(position) } else { None })
     }
 
     /// The row at a position (`position`, the hot rows' `position`).
     pub fn row_at(&self, position: usize) -> Option<&Value> {
-        self.items.get(position)
+        self.rows.get(position)
     }
 
     /// How many rows there are.
     pub fn len(&self) -> usize {
-        self.items.len()
+        self.rows.len()
     }
 
     /// Where a row sits in `items`, which is the order a save stores rows in.
@@ -703,14 +855,14 @@ impl Catalog {
     pub fn normalize(&mut self) {
         self.generation = next_generation();
         self.changes.all = true;
-        for item in self.items.iter_mut() {
+        for item in self.rows.all_mut().iter_mut() {
             if let Some(media) = item.get_mut("Media").and_then(Value::as_array_mut) {
                 for media in media.iter_mut() {
                     mediainfo::normalize_media(media);
                 }
             }
         }
-        hierarchy::normalize_rows(&mut self.items);
+        hierarchy::normalize_rows(self.rows.all_mut());
         self.rebuild_index();
     }
 
@@ -723,7 +875,7 @@ impl Catalog {
     pub fn retitle_streams(&mut self) {
         self.generation = next_generation();
         self.changes.all = true;
-        for item in self.items.iter_mut() {
+        for item in self.rows.all_mut().iter_mut() {
             for media in item
                 .get_mut("Media")
                 .and_then(Value::as_array_mut)
@@ -943,7 +1095,11 @@ pub fn versions(row: &Value) -> Vec<(String, String, usize)> {
 }
 
 fn key_value(item: &Value) -> Option<String> {
-    item.get("ratingKey").and_then(|v| match v {
+    key_value_of(item.get("ratingKey"))
+}
+
+fn key_value_of(key: Option<&Value>) -> Option<String> {
+    key.and_then(|v| match v {
         Value::String(v) => Some(v.clone()),
         Value::Number(v) => Some(v.to_string()),
         _ => None,

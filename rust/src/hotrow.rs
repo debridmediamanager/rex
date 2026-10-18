@@ -16,9 +16,11 @@ use serde_json::Value;
 pub const FIELDS: &[&str] = &[
     "_librarySectionID",
     "_parentRatingKey",
+    "_prefs",
     "_probePending",
     "_retry",
     "_scanned",
+    "_sid",
     "_viewUpdatedAt",
     "addedAt",
     "audienceRating",
@@ -29,6 +31,7 @@ pub const FIELDS: &[&str] = &[
     "editionTitle",
     "extraType",
     "grandparentRatingKey",
+    "grandparentTitle",
     "guid",
     "index",
     "lastRatedAt",
@@ -40,6 +43,7 @@ pub const FIELDS: &[&str] = &[
     "originallyAvailableAt",
     "parentIndex",
     "parentRatingKey",
+    "parentTitle",
     "rating",
     "ratingKey",
     "skipCount",
@@ -176,23 +180,66 @@ impl<T: Row + ?Sized> Row for &T {
 #[derive(Clone, Copy)]
 pub struct Lazy<'h, 'a> {
     pub hot: &'h HotRow,
-    body: &'a Value,
+    rows: &'a crate::rows::Rows,
 }
 
+/// What a row that cannot be read is read as.
+static UNREAD: Value = Value::Null;
+
 impl<'h, 'a: 'h> Lazy<'h, 'a> {
-    pub fn new(hot: &'h HotRow, body: &'a Value) -> Self {
-        Self { hot, body }
+    pub fn new(hot: &'h HotRow, rows: &'a crate::rows::Rows) -> Self {
+        Self { hot, rows }
     }
 
-    /// The whole row, which outlives the hot rows it was read beside.
+    /// The whole row, which outlives the hot rows it was read beside: read from the state
+    /// file when it is not in memory (`rows.rs`).
     pub fn body(&self) -> &'a Value {
-        self.body
+        self.rows.get(self.hot.position).unwrap_or(&UNREAD)
     }
 
     pub fn get(&self, name: &str) -> Option<&'h Value> {
+        if let Some(value) = self.rows.view_field(self.hot.position, name) {
+            return value;
+        }
         match self.hot.lookup(name) {
             Some(value) => value,
-            None => self.body.get(name),
+            None => self.body().get(name),
+        }
+    }
+}
+
+/// A row a list holds: the catalog's, read through its hot fields, or one built for the answer.
+#[derive(Clone)]
+pub enum AnyRow<'a> {
+    Ref(Lazy<'a, 'a>),
+    Owned(Value),
+    Borrowed(&'a Value),
+}
+
+impl AnyRow<'_> {
+    /// The row as a value of its own.
+    pub fn into_value(self) -> Value {
+        match self {
+            AnyRow::Ref(row) => row.body().clone(),
+            AnyRow::Owned(row) => row,
+            AnyRow::Borrowed(row) => row.clone(),
+        }
+    }
+}
+
+impl Row for AnyRow<'_> {
+    fn get(&self, name: &str) -> Option<&Value> {
+        match self {
+            AnyRow::Ref(row) => Row::get(row, name),
+            AnyRow::Owned(row) => row.get(name),
+            AnyRow::Borrowed(row) => row.get(name),
+        }
+    }
+    fn whole(&self) -> &Value {
+        match self {
+            AnyRow::Ref(row) => row.body(),
+            AnyRow::Owned(row) => row,
+            AnyRow::Borrowed(row) => row,
         }
     }
 }
@@ -202,7 +249,7 @@ impl<'h, 'a: 'h> Row for Lazy<'h, 'a> {
         Lazy::get(self, name)
     }
     fn whole(&self) -> &Value {
-        self.body
+        self.body()
     }
 }
 

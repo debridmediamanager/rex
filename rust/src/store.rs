@@ -83,6 +83,17 @@ fn open_read(path: &Path) -> Result<Connection, String> {
     Ok(connection)
 }
 
+/// The connection the catalog reads rows it does not hold through (`rows.rs`): read-only,
+/// the file mapped rather than copied, SQLite's own page cache small (the rows are cached
+/// parsed, beside it).
+pub fn open_rows(path: &Path) -> Result<Connection, String> {
+    let connection = open_read(path)?;
+    connection
+        .execute_batch("PRAGMA mmap_size=0; PRAGMA cache_size=-8192;")
+        .map_err(|e| e.to_string())?;
+    Ok(connection)
+}
+
 fn has_table(connection: &Connection, table: &str) -> Result<bool, String> {
     connection
         .query_row(
@@ -614,7 +625,7 @@ impl Cache {
     pub fn diff_rows<'a>(
         &mut self,
         field: &str,
-        rows: &'a [Value],
+        rows: &dyn Fn(&mut dyn FnMut(&Value)),
         changed: Option<&HashSet<String>>,
         key_of: impl Fn(&Value) -> Option<String>,
         get: impl Fn(&str) -> Option<&'a Value>,
@@ -704,25 +715,24 @@ impl Cache {
             self.docs.insert(field.to_string(), (Kind::Array, 0));
             self.collections.remove(field);
         }
-        let mut taken: HashSet<String> = HashSet::with_capacity(rows.len());
+        let mut taken: HashSet<String> = HashSet::new();
         let mut seen: HashMap<u64, usize> = HashMap::new();
-        let entries = rows
-            .iter()
-            .map(|row| {
-                let body = crate::catalog::unpacked(row).to_string();
-                let key = match key_of(row) {
-                    Some(key) if !key.starts_with('#') && taken.insert(key.clone()) => key,
-                    _ => {
-                        let hash = hash_text(&body);
-                        let occurrence = seen.entry(hash).or_insert(0);
-                        let key = format!("#{hash:016x}.{occurrence}");
-                        *occurrence += 1;
-                        key
-                    }
-                };
-                (key, body)
-            })
-            .collect();
+        // Visited one at a time: a catalog keeps most rows in this file (`rows.rs`).
+        let mut entries = Vec::new();
+        rows(&mut |row| {
+            let body = crate::catalog::unpacked(row).to_string();
+            let key = match key_of(row) {
+                Some(key) if !key.starts_with('#') && taken.insert(key.clone()) => key,
+                _ => {
+                    let hash = hash_text(&body);
+                    let occurrence = seen.entry(hash).or_insert(0);
+                    let key = format!("#{hash:016x}.{occurrence}");
+                    *occurrence += 1;
+                    key
+                }
+            };
+            entries.push((key, body));
+        });
         let collection = self.collections.entry(field.to_string()).or_default();
         diff_collection(&name, collection, entries, &mut delta);
         collection.whole = 0;
@@ -923,6 +933,11 @@ impl Writer {
             Some(entry) => entry.1 = serial,
             None => self.written.push((path.to_path_buf(), serial)),
         }
+        let mut durable = DURABLE.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        match durable.iter_mut().find(|(of, _)| of == path) {
+            Some(entry) => entry.1 = serial,
+            None => durable.push((path.to_path_buf(), serial)),
+        }
     }
 }
 
@@ -934,6 +949,16 @@ static WRITER: Mutex<Writer> = Mutex::new(Writer {
     connection: None,
     written: Vec::new(),
 });
+
+/// `Writer::written` apart from the writer, whose lock a flush holds while it writes: the
+/// catalog asks after every request (`rows.rs`).
+static DURABLE: Mutex<Vec<(PathBuf, u64)>> = Mutex::new(Vec::new());
+
+/// The last snapshot serial durable in `path`: every save up to it is in the file.
+pub fn written(path: &Path) -> u64 {
+    let durable = DURABLE.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    durable.iter().find(|(of, _)| of == path).map_or(0, |(_, serial)| *serial)
+}
 
 /// The serial of the next snapshot, for the whole process. A counter per runtime let a
 /// second runtime's first saves look already written and be dropped: a runtime loaded
@@ -1018,6 +1043,10 @@ mod tests {
     use super::*;
     use serde_json::json;
 
+    fn each(rows: &[Value]) -> impl Fn(&mut dyn FnMut(&Value)) + '_ {
+        move |visit| rows.iter().for_each(|row| visit(row))
+    }
+
     fn state(value: Value) -> Map<String, Value> {
         value.as_object().cloned().unwrap()
     }
@@ -1064,7 +1093,7 @@ mod tests {
         let mut rows: Vec<Value> = (0..1000).map(|n| json!({"ratingKey": n.to_string()})).collect();
         let key = |row: &Value| row.get("ratingKey").and_then(Value::as_str).map(str::to_string);
         let snapshot = rows.clone();
-        let first = cache.diff_rows("items", &snapshot, None, key, |_| None, |_| None);
+        let first = cache.diff_rows("items", &each(&snapshot), None, key, |_| None, |_| None);
         assert_eq!(first.len(), 1001);
         rows[7] = json!({"ratingKey": "7", "userRating": 8});
         let changed: HashSet<String> = ["7".to_string(), "8".to_string()].into();
@@ -1072,7 +1101,7 @@ mod tests {
         let find = |rows: &[Value], k: &str| {
             rows.iter().position(|row| row.get("ratingKey").and_then(Value::as_str) == Some(k))
         };
-        let second = cache.diff_rows("items", &lookup, Some(&changed), key, |k| {
+        let second = cache.diff_rows("items", &each(&lookup), Some(&changed), key, |k| {
             find(&lookup, k).map(|at| &lookup[at])
         }, |k| find(&lookup, k));
         // Row 8 was touched but is unchanged: only row 7 is written.
@@ -1091,7 +1120,7 @@ mod tests {
         let mut rows: Vec<Value> = (0..100).map(|n| json!({"ratingKey": n.to_string()})).collect();
         let mut cache = write_fresh(&path, &state(json!({"format": 1}))).unwrap();
         let mut connection = open(&path).unwrap();
-        let first = cache.diff_rows("items", &rows, None, key, |_| None, |_| None);
+        let first = cache.diff_rows("items", &each(&rows), None, key, |_| None, |_| None);
         apply(&mut connection, &[first]).unwrap();
         rows.remove(40);
         rows.push(json!({"ratingKey": "new-1"}));
@@ -1099,7 +1128,7 @@ mod tests {
         let changed: HashSet<String> =
             ["40".to_string(), "new-2".to_string(), "new-1".to_string()].into();
         let snapshot = rows.clone();
-        let delta = cache.diff_rows("items", &snapshot, Some(&changed), key, |k| {
+        let delta = cache.diff_rows("items", &each(&snapshot), Some(&changed), key, |k| {
             find(&snapshot, k).map(|at| &snapshot[at])
         }, |k| find(&snapshot, k));
         // One delete and two appends: no other row is serialised or moved.

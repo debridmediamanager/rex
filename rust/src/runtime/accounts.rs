@@ -208,9 +208,6 @@ pub(crate) struct AccountState {
 #[derive(Debug, Default)]
 pub(crate) struct Overlay {
     account: i64,
-    /// By ratingKey: the owner's view fields, each with its place in the row, so the row's
-    /// field order -- which the serialisers keep -- comes back as it was.
-    owner: HashMap<String, Vec<(usize, String, Value)>>,
     hidden_continue: HashSet<String>,
     viewed_in_session: HashSet<String>,
     /// By ratingKey: the `Media` of each row the request names, before its tracks were
@@ -404,31 +401,10 @@ impl Runtime {
             }
             _ => self.catalog.hot().lazy().filter(|row| holds_view(row)).filter_map(|row| key_of(&row)).collect(),
         };
-        for key in &held {
-            let Some(object) = self.catalog.get_unmarked_mut(key).and_then(Value::as_object_mut) else {
-                continue;
-            };
-            let mut taken = Vec::new();
-            for (index, (name, _)) in object.iter().enumerate() {
-                if VIEW_FIELDS.contains(&name.as_str()) {
-                    taken.push((index, name.clone(), Value::Null));
-                }
-            }
-            for entry in taken.iter_mut() {
-                entry.2 = object.shift_remove(&entry.1).unwrap_or(Value::Null);
-            }
-            overlay.owner.insert(key.clone(), taken);
-        }
+        // Read through, not written onto every row: a row read shows the account's fields, and
+        // only a row written to is changed (`rows::Overlay`).
+        self.catalog.overlay_views(&VIEW_FIELDS, &held, &state.views);
         self.owner_views = Some(held);
-        for (key, fields) in &state.views {
-            if let (Some(object), Value::Object(fields)) =
-                (self.catalog.get_unmarked_mut(key).and_then(Value::as_object_mut), fields)
-            {
-                for (name, value) in fields {
-                    object.insert(name.clone(), value.clone());
-                }
-            }
-        }
         overlay.hidden_continue = std::mem::replace(&mut self.hidden_continue, std::mem::take(&mut state.hidden_continue));
         overlay.viewed_in_session =
             std::mem::replace(&mut self.viewed_in_session, std::mem::take(&mut state.viewed_in_session));
@@ -496,40 +472,33 @@ impl Runtime {
                 object.insert("Media".to_string(), media);
             }
         }
-        // The rows that can hold this account's fields now: those it held, and those the
-        // request wrote.
+        // The account's fields now: those it held, and those of the rows the request changed,
+        // read off them before the owner's go back (`Catalog::end_view_overlay`).
         let writes = self.catalog.take_writes();
-        let candidates: Vec<String> = if writes.all {
-            self.catalog.hot().lazy().filter(|row| holds_view(row)).filter_map(|row| key_of(&row)).collect()
-        } else {
-            state.views.keys().chain(writes.keys.iter()).cloned().collect::<HashSet<_>>().into_iter().collect()
-        };
         if writes.all {
             self.owner_views = None;
         }
-        let mut views = HashMap::new();
-        for key in candidates {
+        let mut views = state.views.clone();
+        for (key, owner) in self.catalog.end_view_overlay() {
             let Some(object) = self.catalog.get_unmarked_mut(&key).and_then(Value::as_object_mut) else {
                 continue;
             };
-            if !VIEW_FIELDS.iter().any(|name| object.contains_key(*name)) {
-                continue;
-            }
             let mut fields = Map::new();
             for name in VIEW_FIELDS {
                 if let Some(value) = object.shift_remove(name) {
                     fields.insert(name.to_string(), value);
                 }
             }
-            views.insert(key, Value::Object(fields));
-        }
-        for (key, owner) in std::mem::take(&mut overlay.owner) {
-            if let Some(object) = self.catalog.get_unmarked_mut(&key).and_then(Value::as_object_mut) {
-                for (index, name, value) in owner {
-                    let index = index.min(object.len());
-                    object.shift_insert(index, name, value);
-                }
+            if fields.is_empty() {
+                views.remove(&key);
+            } else {
+                views.insert(key.clone(), Value::Object(fields));
             }
+            for (index, name, value) in owner {
+                let index = index.min(object.len());
+                object.shift_insert(index, name, value);
+            }
+            self.catalog.refile(&key);
         }
         for key in views.keys().chain(state.views.keys()) {
             if views.get(key) != state.views.get(key) {

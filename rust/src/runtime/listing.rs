@@ -154,9 +154,12 @@ impl Runtime {
         let (scope, column) = field.rsplit_once('.').unwrap_or(("", field));
         let mut best: HashMap<String, ((i64, i64), usize)> = HashMap::new();
         for (index, row) in rows.iter().enumerate() {
-            let row = row.whole();
-            let target = self.scope_first(scope, row);
-            let marker = string_value(&self.filter_value(target.as_ref().unwrap_or(row), column));
+            // A scope reads the row's relatives off the whole row; a bare field, its hot fields.
+            let target = if scope.is_empty() { None } else { self.scope_first(scope, row.whole()) };
+            let marker = string_value(&match &target {
+                Some(target) => self.filter_value(target, column),
+                None => self.filter_value(row, column),
+            });
             let rank = (
                 row.get("addedAt").and_then(Value::as_i64).unwrap_or(0),
                 key_of(row)

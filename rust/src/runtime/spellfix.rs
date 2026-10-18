@@ -1018,12 +1018,13 @@ const TAG_FIELDS: &[&str] = &[
 const TAG_CHILDREN: &[&str] = &["Chapter", "Review", "Marker", "CommonSenseMedia", "Network"];
 
 impl SearchIndex {
-    pub fn build(rows: &[serde_json::Value], static_tags: &[String]) -> Self {
+    pub fn build(rows: &dyn Fn(&mut dyn FnMut(&serde_json::Value)), static_tags: &[String]) -> Self {
         use serde_json::Value;
         let text = |value: Option<&Value>| value.and_then(Value::as_str).map(str::to_string);
         let mut titles = Vec::new();
         let mut tags: Vec<String> = static_tags.to_vec();
-        for row in rows {
+        // Every row once, read one at a time (`Catalog::each_row`).
+        rows(&mut |row: &Value| {
             if let Some(title) = text(row.get("title")) {
                 let sort = text(row.get("titleSort"))
                     .filter(|s| !s.is_empty())
@@ -1065,7 +1066,7 @@ impl SearchIndex {
             if row.get("_clearLogo").is_some_and(|v| !v.is_null()) {
                 tags.push("ClearLogo".to_string());
             }
-        }
+        });
         Self {
             metadata: Vocabulary::new(titles.into_iter()),
             tags: Vocabulary::new(tags.into_iter()),
@@ -1146,7 +1147,7 @@ mod tests {
         let document: Value = serde_json::from_str(include_str!("../../../tests/catalog_features.json"))
             .expect("the features fixture parses");
         let catalog = crate::catalog::Catalog::from_value(document).expect("the features fixture loads");
-        SearchIndex::build(catalog.items(), &static_tags())
+        SearchIndex::build(&|visit| catalog.each_row(|_, row| visit(row)), &static_tags())
     }
 
     fn words(vocabulary: &Vocabulary, query: &str) -> Vec<String> {
@@ -1182,7 +1183,8 @@ mod tests {
             "theme": "/theme/path",
             "_clearLogo": "/logo/path",
         });
-        let index = SearchIndex::build(&[row], &[]);
+        let rows = [row];
+        let index = SearchIndex::build(&|visit| rows.iter().for_each(|row| visit(row)), &[]);
         let ranks = index.tags.rows.iter().map(|word| (word.word.as_str(), word.rank)).collect::<HashMap<_, _>>();
         for word in [
             "measured", "grey", "reviewer", "marker", "twelve", "imdb", "rottentomatoes", "studio",
@@ -1217,7 +1219,8 @@ mod tests {
             .flat_map(|(word, count)| (0..*count).map(move |index| json!({"tag": format!("{word}{}", " ".repeat(index))})))
             .collect::<Vec<_>>();
         let guids = (0..5785).map(|index| json!({"id": format!("imdb://tt{index:07}")})).collect::<Vec<_>>();
-        let index = SearchIndex::build(&[json!({"title": "Vocabulary Witness", "Role": roles, "Guid": guids})], &[]);
+        let rows = [json!({"title": "Vocabulary Witness", "Role": roles, "Guid": guids})];
+        let index = SearchIndex::build(&|visit| rows.iter().for_each(|row| visit(row)), &[]);
         let emtz = words(&index.tags, "emtz");
         assert_eq!(emtz.last().map(String::as_str), Some("imdb"), "{emtz:?}");
         assert!(!emtz.contains(&"imtiaz".to_string()), "{emtz:?}");

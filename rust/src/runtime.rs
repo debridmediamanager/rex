@@ -23,7 +23,8 @@ use serde_json::{json, Map, Value};
 use sha1::{Digest, Sha1};
 
 use crate::{catalog::Catalog, decision, mediainfo, metadata, store, xmlout};
-use crate::hotrow::{Lazy, Row};
+use crate::catalog::RowRef;
+use crate::hotrow::{AnyRow, Lazy, Row};
 
 mod accounts;
 mod artwork;
@@ -41,7 +42,7 @@ mod gates;
 mod i18n;
 mod item_hubs;
 mod listing;
-mod logging;
+pub(crate) mod logging;
 mod merge;
 mod notify;
 mod playlists;
@@ -932,6 +933,15 @@ impl Runtime {
         if runtime.spelling.is_none() {
             runtime.rebuild_spelling();
         }
+        // From here the rows live in the state file, and memory holds those written since the
+        // last save reached it and those read this request (`rows.rs`). The first request's
+        // artwork pass looks at every row (`restamp_artwork`): done here, while they are in
+        // memory, it reads none of them back from the file.
+        runtime.restamp_artwork();
+        if let Some(path) = runtime.state_path.clone() {
+            let clean = runtime.catalog.unchanged();
+            runtime.catalog.attach(&path, key_of, clean);
+        }
         Ok(runtime)
     }
 
@@ -1734,18 +1744,21 @@ impl Runtime {
         let catalog = &self.catalog;
         delta.extend(self.store_cache.diff_rows(
             "items",
-            catalog.items(),
+            &|visit| catalog.each_row(|_, row| visit(row)),
             (!changes.all).then_some(&changes.keys),
             key_of,
             |key| catalog.get(key),
             |key| catalog.position(key),
         ));
         if delta.is_empty() {
+            self.catalog.saved(None, key_of);
             return Ok(None);
         }
         self.save_serial = store::next_serial();
         // Queued under the runtime lock, so deltas are written in the order taken.
         store::enqueue(&path, self.save_serial, delta);
+        // Its rows stay in memory until the file has them (`rows.rs`).
+        self.catalog.saved(Some(self.save_serial), key_of);
         Ok(Some(StateSnapshot {
             serial: self.save_serial,
             path,
@@ -1758,7 +1771,8 @@ impl Runtime {
         // `viewState` is the overlay a file from before the rows were kept restores
         // from; the database keeps the rows, so only the full (legacy) document needs it.
         let mut view = Map::new();
-        for item in self.catalog.items().iter().filter(|_| full) {
+        let none = Vec::new();
+        for item in if full { self.catalog.items() } else { &none } {
             let Some(key) = key_of(item) else {
                 continue;
             };
@@ -1899,14 +1913,14 @@ impl Runtime {
     }
 
     fn section_rows(&self, key: &str) -> Vec<Value> {
-        self.section_row_refs(key).into_iter().cloned().collect()
+        self.section_row_refs(key).into_iter().map(|row| row.body().clone()).collect()
     }
 
     /// `section_rows` by reference, for what only reads them: a copy of every movie of
     /// the section per call was most of `/library/sections` and Related (the production
     /// server, 2026-10-11).
-    fn section_row_refs(&self, key: &str) -> Vec<&Value> {
-        let mut rows = self.catalog.section_refs(key);
+    fn section_row_refs(&self, key: &str) -> Vec<RowRef<'_>> {
+        let mut rows = self.catalog.lazy_by(crate::catalog::By::Section, key);
         // Before any paging or count, so a filtered share's pages are full and its totals
         // its own (`accounts.rs`).
         if !self.viewer.is_owner() {
@@ -1916,11 +1930,11 @@ impl Runtime {
     }
 
     fn children(&self, key: &str) -> Vec<Value> {
-        self.children_refs(key).into_iter().cloned().collect()
+        self.children_refs(key).into_iter().map(|row| row.body().clone()).collect()
     }
 
     fn leaves(&self, key: &str) -> Vec<Value> {
-        self.leaves_refs(key).into_iter().cloned().collect()
+        self.leaves_refs(key).into_iter().map(|row| row.body().clone()).collect()
     }
 
     /// `server.py` `Catalog.extras`: a parent's clips (owned through `_parentRatingKey`,
@@ -1988,18 +2002,18 @@ impl Runtime {
     /// `children` and `leaves` by reference, for what only reads or counts them: a
     /// show's row counted its episodes by copying every one of them (the production server,
     /// 2026-10-10).
-    fn children_refs(&self, key: &str) -> Vec<&Value> {
-        let mut rows = self.catalog.children_refs(key);
+    fn children_refs(&self, key: &str) -> Vec<RowRef<'_>> {
+        let mut rows = self.catalog.lazy_by(crate::catalog::By::Parent, key);
         rows.sort_by_key(|row| row.get("index").and_then(Value::as_i64).unwrap_or(0));
         rows
     }
 
-    fn leaves_refs(&self, key: &str) -> Vec<&Value> {
+    fn leaves_refs(&self, key: &str) -> Vec<RowRef<'_>> {
         let mut out = Vec::new();
         for child in self.children_refs(key) {
             if child.get("type").and_then(Value::as_str) == Some("episode") {
                 out.push(child);
-            } else if let Some(child_key) = key_of(child) {
+            } else if let Some(child_key) = key_of(&child) {
                 out.extend(self.leaves_refs(&child_key));
             }
         }
@@ -2012,7 +2026,7 @@ impl Runtime {
     /// 83, measured on the 1.42.2 reference (`tests/fixtures/unwatched_zen.json`) and cycle
     /// 71 on both copies.  Not the `unwatched` filter column, which is the row's own
     /// counter.
-    fn has_unwatched(&self, row: &Value) -> bool {
+    fn has_unwatched(&self, row: &(impl Row + ?Sized)) -> bool {
         if matches!(row.get("type").and_then(Value::as_str), Some("show" | "season")) {
             return key_of(row)
                 .is_some_and(|key| self.leaves_refs(&key).iter().any(|leaf| !watched_leaf(leaf)));
@@ -2174,7 +2188,7 @@ impl Runtime {
                     .count()),
             );
             if let Some(parent_key) = object.get("parentRatingKey").map(string_value) {
-                if let Some(parent) = self.catalog.get(&parent_key) {
+                if let Some(parent) = self.catalog.lazy_get(&parent_key) {
                     // `parentThumb` and `parentYear` are STORED on the season, as the
                     // oracle keeps them: derived at load, moved by an artwork cascade or
                     // a season year edit, dropped by a show unmatch -- and NOT re-derived
@@ -2199,7 +2213,7 @@ impl Runtime {
             }
         } else if kind == "episode" {
             if let Some(parent_key) = object.get("parentRatingKey").map(string_value) {
-                if let Some(parent) = self.catalog.get(&parent_key) {
+                if let Some(parent) = self.catalog.lazy_get(&parent_key) {
                     if let Some(value) = parent
                         .get("title")
                         .filter(|value| !string_value(value).is_empty())
@@ -2228,7 +2242,7 @@ impl Runtime {
                 }
             }
             if let Some(show_key) = object.get("grandparentRatingKey").map(string_value) {
-                if let Some(show) = self.catalog.get(&show_key) {
+                if let Some(show) = self.catalog.lazy_get(&show_key) {
                     if let Some(value) = show
                         .get("title")
                         .filter(|value| !string_value(value).is_empty())
@@ -2238,10 +2252,7 @@ impl Runtime {
                         object.shift_remove("grandparentTitle");
                     }
                     if object.get("summary").is_none() {
-                        if let Some(value) = self
-                            .catalog
-                            .get(&show_key)
-                            .and_then(|show| show.get("summary"))
+                        if let Some(value) = show.get("summary")
                         {
                             object.insert("summary".to_string(), value.clone());
                         }
@@ -2422,12 +2433,20 @@ impl Runtime {
         // The copy leaves out what a light row drops, rather than copying it to drop it:
         // most of an unpaged episode listing was copying each row's people, ratings and
         // streams (2026-10-17). `Field` stays until the projection has read it.
-        let copy = grid_copy(original, |name| {
-            GRID_DROPPED.contains(&name)
-                || (!keep_location && name == "Location")
-                || (!keep_guid && name == "Guid")
-                || (!keep_section && GRID_SECTION_FIELDS.contains(&name))
-        });
+        let copy = grid_copy(original, |name| grid_skips(name, keep_section, keep_guid, keep_location));
+        self.grid_row_of(original, copy, keep_section, keep_guid, keep_location)
+    }
+
+    /// `grid_row` of a row the caller gives up: its fields are moved into the answer rather
+    /// than copied (`project_planned`), and what the projection reads of the row itself is
+    /// kept apart (`grid_original`) and answered with it.
+    fn grid_row_owned(&self, row: Value, keep_section: bool, keep_guid: bool, keep_location: bool) -> (Value, Value) {
+        let original = grid_original(&row);
+        let copy = grid_take(row, |name| grid_skips(name, keep_section, keep_guid, keep_location));
+        (self.grid_row_of(&original, copy, keep_section, keep_guid, keep_location), original)
+    }
+
+    fn grid_row_of(&self, original: &Value, copy: Value, keep_section: bool, keep_guid: bool, keep_location: bool) -> Value {
         let mut row = self.project_copy(original, copy);
         let Some(object) = row.as_object_mut() else {
             return row;
@@ -2542,7 +2561,19 @@ impl Runtime {
     }
 
     fn section_listing_row(&self, original: &Value) -> Value {
-        let mut row = self.grid_row(original, false, true, false);
+        section_listing_finish(self.grid_row(original, false, true, false))
+    }
+
+    /// `section_listing_row` of a row the caller gives up (`grid_row_owned`).
+    fn section_listing_row_owned(&self, row: Value) -> (Value, Value) {
+        let (row, original) = self.grid_row_owned(row, false, true, false);
+        (section_listing_finish(row), original)
+    }
+}
+
+/// What `section_listing_row` drops of a grid row.
+fn section_listing_finish(mut row: Value) -> Value {
+    {
         if let Some(object) = row.as_object_mut() {
             for name in [
                 "librarySectionID",
@@ -2577,7 +2608,9 @@ impl Runtime {
         }
         row
     }
+}
 
+impl Runtime {
     fn leaf_listing_row(&self, original: &Value) -> Value {
         // `/allLeaves` keeps Media so clients can calculate storage and
         // duration without opening every item. Ordinary grid rows omit Media;
@@ -5326,14 +5359,14 @@ impl Runtime {
 
 
     fn choose_rows(&self, section: Option<&str>, type_number: Option<i64>) -> Vec<Value> {
-        self.choose_refs(section, type_number).into_iter().cloned().collect()
+        self.choose_refs(section, type_number).into_iter().map(|row| row.body().clone()).collect()
     }
 
     /// `choose_rows` without the copies: section and type are tested BEFORE a row is
     /// cloned. Copying every row of a section first and dropping the other types after
     /// put the production server's whole show library -- 13,500 episodes -- in memory again
     /// for a page of 50 shows (+650 MB per request, 2026-10-10).
-    fn choose_refs(&self, section: Option<&str>, type_number: Option<i64>) -> Vec<&Value> {
+    fn choose_refs(&self, section: Option<&str>, type_number: Option<i64>) -> Vec<RowRef<'_>> {
         let kind = type_number.map(|number| match number {
             1 => "movie",
             2 => "show",
@@ -5348,7 +5381,7 @@ impl Runtime {
             return self
                 .typed_section_positions(kind, section)
                 .into_iter()
-                .filter_map(|position| self.catalog.row_at(position))
+                .filter_map(|position| self.catalog.lazy_at(position))
                 .filter(|row| self.viewer.is_owner() || self.visible(row))
                 .collect();
         }
@@ -5363,7 +5396,6 @@ impl Runtime {
             .filter(|row| kind.is_none_or(|kind| row.get("type").and_then(Value::as_str) == Some(kind)))
             // A share's libraries and filter, before the listing pages or counts.
             .filter(|row| self.viewer.is_owner() || self.visible(row))
-            .map(|row| row.body())
             .collect()
     }
 
@@ -6166,7 +6198,7 @@ impl Runtime {
         if !specs.is_empty() && !only_title && !any_random {
             let natural = !rows.is_empty()
                 && rows.iter().all(|row| {
-                    matches!(row.whole().get("type").and_then(Value::as_str), Some("season" | "episode"))
+                    matches!(row.get("type").and_then(Value::as_str), Some("season" | "episode"))
                 });
             specs.push((
                 if natural { "_natural" } else { "titleSort" }.to_string(),
@@ -6195,7 +6227,7 @@ impl Runtime {
                     shuffle_in_place(&mut rows);
                 } else {
                     rows.sort_by_key(|row| {
-                        let key = row.whole().get("ratingKey").map(string_value).unwrap_or_else(|| "None".to_string());
+                        let key = row.get("ratingKey").map(string_value).unwrap_or_else(|| "None".to_string());
                         crc32(format!("{seed}/{key}").as_bytes())
                     });
                 }
@@ -6205,20 +6237,23 @@ impl Runtime {
                 continue;
             }
             if field == "_natural" {
-                let natural = |row: &Value| {
+                let natural = |row: &dyn Row| {
                     let kind = row.get("type").and_then(Value::as_str).unwrap_or_default();
-                    let show = match kind {
+                    let parent = match kind {
                         "episode" => row
                             .get("grandparentRatingKey")
                             .map(string_value)
-                            .and_then(|key| self.catalog.get(&key)),
+                            .and_then(|key| self.catalog.lazy_get(&key)),
                         "season" => row
                             .get("parentRatingKey")
                             .map(string_value)
-                            .and_then(|key| self.catalog.get(&key)),
+                            .and_then(|key| self.catalog.lazy_get(&key)),
                         _ => None,
-                    }
-                    .unwrap_or(row);
+                    };
+                    let show: &dyn Row = match &parent {
+                        Some(parent) => parent,
+                        None => row,
+                    };
                     let title = show
                         .get("titleSort")
                         .map(string_value)
@@ -6233,7 +6268,7 @@ impl Runtime {
                         (title, index, 0)
                     }
                 };
-                rows.sort_by_cached_key(|row| natural(row.whole()));
+                rows.sort_by_cached_key(|row| natural(row));
                 continue;
             }
             let title_sort = field.rsplit('.').next() == Some("titleSort");
@@ -6242,7 +6277,7 @@ impl Runtime {
             let mut keyed: Vec<(Value, R)> = rows
                 .into_iter()
                 .map(|row| {
-                    let key = self.sort_value(row.whole(), &field);
+                    let key = self.sort_value(&row, &field);
                     (if title_sort { Value::String(folded(&key)) } else { key }, row)
                 })
                 .collect();
@@ -6272,11 +6307,12 @@ impl Runtime {
     /// `season.index`, and so on) against the row's owning hierarchy.  The
     /// bare field is deliberately kept separate from this lookup: the same
     /// field name means a different object when a client scopes it.
-    fn sort_value(&self, row: &Value, field: &str) -> Value {
+    fn sort_value(&self, row: &dyn Row, field: &str) -> Value {
         let (scope, bare) = field
             .rsplit_once('.')
             .map_or(("", field), |(scope, bare)| (scope, bare));
-        let target = if scope.is_empty() {
+        let scoped: Option<RowRef<'_>>;
+        let target: Option<&dyn Row> = if scope.is_empty() {
             Some(row)
         } else {
             let kind = row.get("type").and_then(Value::as_str).unwrap_or_default();
@@ -6289,12 +6325,13 @@ impl Runtime {
             }) else {
                 return Value::Null;
             };
-            self.catalog.get(&key)
+            scoped = self.catalog.lazy_get(&key);
+            scoped.as_ref().map(|scoped| scoped as &dyn Row)
         };
         if bare == "id" {
             // The row's id is its ratingKey, ordered as a number.
             return target
-                .and_then(key_of)
+                .and_then(|target| key_of(target))
                 .and_then(|key| key.parse::<i64>().ok())
                 .map(|id| json!(id))
                 .unwrap_or(Value::Null);
@@ -6358,8 +6395,7 @@ impl Runtime {
         }
         if bare == "titleSort" {
             return target
-                .and_then(Value::as_object)
-                .map(|object| json!(crate::hierarchy::stored_sort_title(object)))
+                .map(|target| json!(crate::hierarchy::stored_sort_title(target)))
                 .unwrap_or(Value::Null);
         }
         if bare == "createdAt" {
@@ -7067,10 +7103,8 @@ impl Runtime {
                     .collect::<Vec<_>>()
             })
             .unwrap_or_default();
-        self.spelling = Some(spellfix::SearchIndex::build(
-            self.catalog.items(),
-            &static_tags,
-        ));
+        let catalog = &self.catalog;
+        self.spelling = Some(spellfix::SearchIndex::build(&|visit| catalog.each_row(|_, row| visit(row)), &static_tags));
         self.spelling_serial += 1;
     }
 
@@ -7197,7 +7231,42 @@ impl Runtime {
     /// A section grid row (`route_section_all`; `ProjectionPlan` projects the same).
     fn listing_row(&self, row: &Value, options: &ListingRowOptions) -> Value {
         // Measured: a LISTING carries `Guid` only under `includeGuids=1`.
-        let mut projected = guid_gate(self.section_listing_row(row), &options.query);
+        let projected = guid_gate(self.section_listing_row(row), &options.query);
+        self.listing_finish(projected, row, options)
+    }
+
+    /// A listing's rows projected: past `LISTED_ROWS` of them, read at once, in parallel and
+    /// kept nowhere (`Catalog::read_listed`), and taken apart rather than copied (`owned`); a
+    /// library's 1,500 films read one at a time came through the row cache, which they outgrew,
+    /// on every listing (2026-10-18). Fewer, and those in memory, as they are (`borrowed`).
+    fn project_listed(&self, rows: &[RowRef<'_>], owned: impl Fn(Value) -> Value, borrowed: impl Fn(&Value) -> Value) -> Vec<Value> {
+        let keys: Vec<String> = rows.iter().filter_map(|row| key_of(row)).collect();
+        if rows.len() < LISTED_ROWS || keys.len() != rows.len() || self.catalog.attached().is_none() {
+            return rows.iter().map(|row| borrowed(row.body())).collect();
+        }
+        self.catalog
+            .read_listed(&keys)
+            .into_iter()
+            .zip(rows)
+            .map(|(body, row)| match body {
+                Some(std::borrow::Cow::Owned(body)) => owned(body),
+                Some(std::borrow::Cow::Borrowed(body)) => borrowed(body),
+                None => borrowed(row.body()),
+            })
+            .collect()
+    }
+
+    /// `listing_row` of a row the caller gives up (`grid_row_owned`); its storage totals read
+    /// the row whole, so a grid that asks for them copies.
+    fn listing_row_owned(&self, row: Value, options: &ListingRowOptions) -> Value {
+        if options.with_storage {
+            return self.listing_row(&row, options);
+        }
+        let (shown, original) = self.section_listing_row_owned(row);
+        self.listing_finish(guid_gate(shown, &options.query), &original, options)
+    }
+
+    fn listing_finish(&self, mut projected: Value, row: &Value, options: &ListingRowOptions) -> Value {
         // `server.py` `section_listing`: under `type=3` exactly, a season in the
         // grid carries no leaf counts (its /children row, and every other
         // listing's, does).
@@ -7268,7 +7337,23 @@ impl Runtime {
 
     /// A section `allLeaves` row (`ProjectionPlan` projects the same).
     fn leaf_row(&self, candidate: &Value, query: &HashMap<String, String>, exclude_media: bool) -> Value {
-        let mut shown = self.child_list_row(candidate, query);
+        leaf_finish(self.child_list_row(candidate, query), exclude_media)
+    }
+
+    /// `leaf_row` of a row the caller gives up (`grid_row_owned`).
+    fn leaf_row_owned(&self, row: Value, query: &HashMap<String, String>, exclude_media: bool) -> Value {
+        let include_guids = query.get("includeGuids").is_some_and(|value| value == "1");
+        let (mut shown, original) = self.grid_row_owned(row, false, include_guids, false);
+        if include_guids {
+            apply_listing_guids(&mut shown, &original);
+        }
+        leaf_finish(shown, exclude_media)
+    }
+}
+
+/// What `leaf_row` does to a child-list row.
+fn leaf_finish(mut shown: Value, exclude_media: bool) -> Value {
+    {
         if exclude_media {
             if let Some(object) = shown.as_object_mut() {
                 let count = object.get("Media").and_then(Value::as_array).map_or(0, Vec::len);
@@ -7279,7 +7364,9 @@ impl Runtime {
         }
         shown
     }
+}
 
+impl Runtime {
     /// The passes over a response's rows after its route, in their order.
     fn finish_rows(&self, request: &Request, response: &mut Response) {
         self.alternates_response(request, response);
@@ -9432,13 +9519,14 @@ impl Runtime {
         // Borrowed until the cap: every movie and season was copied to list 50
         // (2026-10-17). Seasons keep the order their first episode is met in, where a
         // HashMap's order changed on every start for seasons added in the same second.
-        let mut dated = Vec::<(i64, &Value)>::new();
+        // Read through their hot fields; only the fifty it answers are read whole.
+        let mut dated = Vec::<(i64, RowRef<'_>)>::new();
         for row in self.catalog.hot().lazy() {
             if row.get("type").and_then(Value::as_str) == Some("movie") {
-                dated.push((row.get("addedAt").and_then(Value::as_i64).unwrap_or(0), row.body()));
+                dated.push((row.get("addedAt").and_then(Value::as_i64).unwrap_or(0), row));
             }
         }
-        let mut seasons: Vec<(i64, &Value)> = Vec::new();
+        let mut seasons: Vec<(i64, RowRef<'_>)> = Vec::new();
         let mut season_at: HashMap<String, usize> = HashMap::new();
         for episode in self
             .catalog
@@ -9454,7 +9542,7 @@ impl Runtime {
                 seasons[at].0 = seasons[at].0.min(stamp);
                 continue;
             }
-            let Some(season) = self.catalog.get(&parent_key) else {
+            let Some(season) = self.catalog.lazy_get(&parent_key) else {
                 continue;
             };
             season_at.insert(parent_key, seasons.len());
@@ -9500,12 +9588,12 @@ impl Runtime {
         let mut rows = Vec::with_capacity(dated.len());
         for (added_at, row) in dated {
             // Cycle 46: the grid row keeping its Guid for the `includeGuids` gate.
-            let mut projected = guid_gate(self.grid_row(row, true, true, false), query);
+            let mut projected = guid_gate(self.grid_row(row.body(), true, true, false), query);
             if row.get("type").and_then(Value::as_str) == Some("season") {
                 if let Some(parent) = row
                     .get("parentRatingKey")
                     .map(string_value)
-                    .and_then(|key| self.catalog.get(&key))
+                    .and_then(|key| self.catalog.lazy_get(&key))
                 {
                     if parent
                         .get("summary")
@@ -11417,30 +11505,21 @@ impl Runtime {
         // shelf copied and projected the whole section to answer 12 rows -- 10-37 s for
         // the production server's 27k episodes (2026-10-11), with every other request
         // waiting on the lock.
-        let items = self
-            .catalog
-            .hot()
-            .lazy()
-            .filter(|item| {
-                matches!(item.get("type").and_then(Value::as_str), Some("movie" | "show"))
-                    && string_value(item.get("librarySectionID").unwrap_or(&Value::Null))
-                        == section_key
+        // Read through their hot fields: a shelf reads its rows whole only for those it shows.
+        let item_refs = self.catalog.lazy_where(|item| {
+            matches!(item.get("type").and_then(Value::as_str), Some("movie" | "show"))
+                && string_value(item.get("librarySectionID").unwrap_or(&Value::Null)) == section_key
+        });
+        let items = item_refs.iter().map(|row| row as &dyn Row).collect::<Vec<_>>();
+        let episode_refs = if is_show {
+            self.catalog.lazy_where(|row| {
+                row.get("type").and_then(Value::as_str) == Some("episode")
+                    && string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == section_key
             })
-            .map(|row| row.body()).collect::<Vec<&Value>>();
-        let episodes = if is_show {
-            self.catalog
-                .hot()
-                .lazy()
-                .filter(|row| {
-                    row.get("type").and_then(Value::as_str) == Some("episode")
-                        && string_value(row.get("librarySectionID").unwrap_or(&Value::Null))
-                            == section_key
-                })
-                .map(|row| row.body())
-                .collect::<Vec<&Value>>()
         } else {
             Vec::new()
         };
+        let episodes = episode_refs.iter().map(|row| row as &dyn Row).collect::<Vec<_>>();
 
         // Cycle 57/58: the section's Continue Watching shelf is the same list as its
         // see-all leaf (`section_continue_watching`): the library's resume rows, a
@@ -11498,7 +11577,7 @@ impl Runtime {
         });
 
         let mut added_tv = if is_show { self.section_recently_added_rows(section) } else { Vec::new() };
-        let mut added: Vec<&Value>;
+        let mut added: Vec<&dyn Row>;
         if is_show {
             // Cycle 54, measured on plexlab and the 1.42.2 reference: the TV shelf here
             // runs the request's filters over the episodes, and `contentDirectoryID` naming
@@ -11513,7 +11592,7 @@ impl Runtime {
             if content_directories(query).is_some_and(|wanted| !wanted.contains(section_key)) {
                 added_tv.clear();
             }
-            added = added_tv.iter().collect();
+            added = added_tv.iter().map(|row| row as &dyn Row).collect();
         } else {
             // `section_recently_added_rows`' movie order: the section's rows, newest first.
             added = items.clone();
@@ -11588,27 +11667,33 @@ impl Runtime {
             // way Python's `max` over a dict picks it: a hash map's order made the
             // shelf's genre (and so its hubIdentifier) change from one read to the
             // next, and `count=1` then named a different hub than the full read.
-            let mut counts: Vec<(String, (Value, Vec<&Value>))> = Vec::new();
-            for &row in &items {
-                for tag in row
-                    .get("Genre")
-                    .and_then(Value::as_array)
-                    .into_iter()
-                    .flatten()
-                {
-                    let Some(name) = tag.get("tag").and_then(Value::as_str) else {
-                        continue;
-                    };
-                    if name.is_empty() {
+            // Counted off the rows' search entries (`corpus.rs`, Genre's names in list order;
+            // a name that is not text is ""), and the winning tag read off its first row:
+            // reading every film's Genre read the library.
+            let hot = self.catalog.hot();
+            let (entries, names) = hot.corpus();
+            let blank = hot.raw_tag("");
+            let mut counted: Vec<(u32, (RowRef<'_>, u32), Vec<&dyn Row>)> = Vec::new();
+            for (&row, item) in items.iter().zip(&item_refs) {
+                for &(index, name) in entries.get(item.hot.position).map_or(&[][..], |entry| names.tags(entry, 2)) {
+                    if Some(name) == blank {
                         continue;
                     }
-                    if let Some(entry) = counts.iter_mut().find(|(known, _)| known == name) {
-                        entry.1 .1.push(row);
+                    if let Some(entry) = counted.iter_mut().find(|(known, _, _)| *known == name) {
+                        entry.2.push(row);
                     } else {
-                        counts.push((name.to_string(), (tag.clone(), vec![row])));
+                        counted.push((name, (*item, index), vec![row]));
                     }
                 }
             }
+            let counts: Vec<(String, (Value, Vec<&dyn Row>))> = counted
+                .into_iter()
+                .map(|(_, (first, index), rows)| {
+                    let tag = first.body().get("Genre").and_then(|tags| tags.get(index as usize)).cloned().unwrap_or(Value::Null);
+                    let name = tag.get("tag").and_then(Value::as_str).unwrap_or_default().to_string();
+                    (name, (tag, rows))
+                })
+                .collect();
             let best = counts
                 .iter()
                 .map(|(_, (_, rows))| rows.len())
@@ -11642,7 +11727,7 @@ impl Runtime {
         let mut hubs = Vec::new();
         let mut make_shelf = |identifier: String,
                               shelf_title: String,
-                              source_rows: Vec<&Value>,
+                              source_rows: Vec<&dyn Row>,
                               kind: &str,
                               key: String,
                               context: &str,
@@ -11674,6 +11759,7 @@ impl Runtime {
             let mut rows = source_rows
                 .into_iter()
                 .map(|row| {
+                    let row = row.whole();
                     if identifier.starts_with("tv.recentlyadded.")
                         && row.get("type").and_then(Value::as_str) == Some("show")
                     {
@@ -11743,7 +11829,7 @@ impl Runtime {
         make_shelf(
             format!("{prefix}.inprogress.{section_key}"),
             "Continue Watching".to_string(),
-            in_progress.iter().collect(),
+            in_progress.iter().map(|row| row as &dyn Row).collect(),
             if is_show { "episode" } else { "movie" },
             format!("/hubs/sections/{section_key}/continueWatching/items"),
             if is_show {
@@ -12822,7 +12908,7 @@ impl Runtime {
         let mut index = 0;
         while index < keys.len() {
             let parent = keys[index].clone();
-            keys.extend(self.children_refs(&parent).into_iter().filter_map(key_of));
+            keys.extend(self.children_refs(&parent).into_iter().filter_map(|row| key_of(&row)));
             index += 1;
         }
         keys
@@ -14153,12 +14239,11 @@ impl Runtime {
                 }
             }
             // The movie list by reference: it copied every movie to answer twelve.
-            use std::borrow::Cow;
-            let mut rows: Option<Vec<Cow<'_, Value>>> = if type_id == "1" {
-                Some(self.recent_movie_refs(query.get("sectionID")).into_iter().map(Cow::Borrowed).collect())
+            let mut rows: Option<Vec<AnyRow<'_>>> = if type_id == "1" {
+                Some(self.recent_movie_refs(query.get("sectionID")).into_iter().map(AnyRow::Ref).collect())
             } else {
                 self.recently_added_rows(Some(type_id), query.get("sectionID"))
-                    .map(|rows| rows.into_iter().map(Cow::Owned).collect())
+                    .map(|rows| rows.into_iter().map(AnyRow::Owned).collect())
             };
             if type_id == "2" {
                 // Cycle 54: the request's listing filters run over the episodes before
@@ -14168,7 +14253,7 @@ impl Runtime {
                         rows = Some(
                             self.recently_added_tv(query.get("sectionID"), Some(leaves))
                                 .into_iter()
-                                .map(Cow::Owned)
+                                .map(AnyRow::Owned)
                                 .collect(),
                         );
                     }
@@ -14232,13 +14317,13 @@ impl Runtime {
                     if row.get("type").and_then(Value::as_str) == Some("show") {
                         // Cycle 83 (plexlab), cycle 55 (the 1.42.2 reference): on the TV
                         // list the full show row takes the `include*` blocks.
-                        let mut full = self.detail_row(row);
+                        let mut full = self.detail_row(row.whole());
                         if type_id == "2" {
                             self.expand_full_rows(std::slice::from_mut(&mut full), query);
                         }
                         full
                     } else {
-                        guid_gate(self.grid_row(row, true, true, false), query)
+                        guid_gate(self.grid_row(row.whole(), true, true, false), query)
                     }
                 })
                 .collect::<Vec<_>>();
@@ -15064,7 +15149,7 @@ impl Runtime {
                         let shown = if planned {
                             Vec::new()
                         } else {
-                            rows.iter().map(|candidate| self.leaf_row(candidate, query, exclude_media)).collect::<Vec<_>>()
+                            self.project_listed(&rows, |row| self.leaf_row_owned(row, query, exclude_media), |row| self.leaf_row(row, query, exclude_media))
                         };
                         fields.insert(
                             "viewGroup".to_string(),
@@ -15203,7 +15288,7 @@ impl Runtime {
                                 else {
                                     break;
                                 };
-                                let Some(next) = self.catalog.get(&parent_key) else {
+                                let Some(next) = self.catalog.lazy_get(&parent_key) else {
                                     break;
                                 };
                                 parent = next;
@@ -15242,10 +15327,10 @@ impl Runtime {
                     let cached = subset_key.as_ref().and_then(|key| self.cached_subset(key));
                     let computed = cached.is_none();
                     if let Some((positions, total)) = cached {
-                        rows = positions.into_iter().filter_map(|position| self.catalog.row_at(position)).collect();
+                        rows = positions.into_iter().filter_map(|position| self.catalog.lazy_at(position)).collect();
                         untrimmed = total;
                     } else if !matches!(leaf, "recentlyViewedShows" | "recentlyViewedGrandparents") {
-                        let stamp = |row: &Value, name: &str| {
+                        let stamp = |row: &dyn Row, name: &str| {
                             row.get(name)
                                 .and_then(|value| {
                                     value.as_i64().or_else(|| string_value(value).parse().ok())
@@ -15272,7 +15357,7 @@ impl Runtime {
                             // titleSort pass reads only the viewed rows.
                             rows.retain(|row| stamp(row, "lastViewedAt") != 0);
                         }
-                        let released = |row: &Value| {
+                        let released = |row: &dyn Row| {
                             string_value(row.get("originallyAvailableAt").unwrap_or(&Value::Null))
                         };
                         if leaf == "newest" {
@@ -15296,7 +15381,7 @@ impl Runtime {
                         // The subsets start from the listing's default order, titleSort,
                         // and each re-sorts stably on its own key.
                         rows = self.sort_rows(rows, Some("titleSort")).unwrap_or_default();
-                        let rating_key = |row: &Value| stamp(row, "ratingKey");
+                        let rating_key = |row: &dyn Row| stamp(row, "ratingKey");
                         match leaf {
                             "recentlyViewed" => {
                                 // Cycle 55, from `order by metadata_item_settings.updated_at
@@ -15350,7 +15435,11 @@ impl Runtime {
                         });
                         Vec::new()
                     } else {
-                        rows.iter().map(|row| guid_gate(self.section_listing_row(row), query)).collect::<Vec<_>>()
+                        self.project_listed(
+                            &rows,
+                            |row| guid_gate(self.section_listing_row_owned(row).0, query),
+                            |row| guid_gate(self.section_listing_row(row), query),
+                        )
                     };
                     if kind == "show" {
                         // Every subset of a show library carries both, the recently
@@ -17460,7 +17549,9 @@ impl Runtime {
             && matches!(query.get("type").map(String::as_str), Some("3" | "4"));
         let rows = if show_order && query.get("sort").is_none_or(|sort| sort.is_empty()) && !by_id {
             let mut rows = rows;
-            let show_title = |row: &Value| {
+            // The show's and the season's fields from their hot rows: read whole, every
+            // comparison of the sort read two rows.
+            let show_title = |row: &RowRef<'_>| {
                 let key = row
                     .get("grandparentRatingKey")
                     .or_else(|| row.get("parentRatingKey"))
@@ -17472,23 +17563,23 @@ impl Runtime {
                     key
                 };
                 self.catalog
-                    .get(&key)
+                    .lazy_get(&key)
                     .and_then(|show| show.get("title"))
                     .map(string_value)
                     .unwrap_or_default()
             };
-            let number = |row: &Value, name: &str| {
+            let number = |row: &dyn Row, name: &str| {
                 row.get(name)
                     .map(string_value)
                     .and_then(|v| v.parse::<i64>().ok())
                     .unwrap_or(0)
             };
-            let parent_index = |row: &Value| {
+            let parent_index = |row: &RowRef<'_>| {
                 if row.get("type").and_then(Value::as_str) == Some("episode") {
                     row.get("parentRatingKey")
                         .map(string_value)
-                        .and_then(|key| self.catalog.get(&key))
-                        .map(|season| number(season, "index"))
+                        .and_then(|key| self.catalog.lazy_get(&key))
+                        .map(|season| number(&season, "index"))
                         .unwrap_or_else(|| number(row, "parentIndex"))
                 } else {
                     number(row, "parentIndex")
@@ -17569,7 +17660,7 @@ impl Runtime {
             (Some(start), Some(size)) => Some((start, size, rows.len())),
             _ => None,
         };
-        let rows: Vec<&Value> = match window {
+        let rows: Vec<RowRef<'_>> = match window {
             Some((start, size, _)) => rows.into_iter().skip(start).take(size).collect(),
             None => rows,
         };
@@ -17591,7 +17682,7 @@ impl Runtime {
             });
             Vec::new()
         } else {
-            rows.iter().map(|row| self.listing_row(row, &options)).collect::<Vec<_>>()
+            self.project_listed(&rows, |row| self.listing_row_owned(row, &options), |row| self.listing_row(row, &options))
         };
         let mut fields = Map::from_iter([
             ("Metadata".to_string(), Value::Array(rows)),
@@ -18695,8 +18786,7 @@ impl Runtime {
                     let seasons = self
                         .children_refs(&show_key)
                         .into_iter()
-                        .filter_map(Value::as_object)
-                        .cloned()
+                        .filter_map(|row| row.body().as_object().cloned())
                         .collect::<Vec<_>>();
                     if let Some(show) =
                         self.catalog.get_mut(&show_key).and_then(Value::as_object_mut)
@@ -25660,7 +25750,7 @@ const OWNER_FEATURES: &str = "collections,federated-auth,home,item_clusters,kevi
 
 /// Cycle 54: the rows `unwatched=1` drops from a list that is not a query -- a movie
 /// or an episode with a play recorded.  A parent row is never dropped for it.
-fn watched_leaf(row: &Value) -> bool {
+fn watched_leaf(row: &(impl Row + ?Sized)) -> bool {
     matches!(
         row.get("type").and_then(Value::as_str),
         Some("movie" | "episode")
@@ -26744,6 +26834,8 @@ fn page_fields(fields: &mut Map<String, Value>, query: &HashMap<String, String>)
 const PLANNED_ROWS: usize = 2000;
 /// Rows projected per hold of the runtime lock.
 const PLANNED_CHUNK: usize = 256;
+/// From how many rows a listing reads them at once (`project_listed`).
+const LISTED_ROWS: usize = 64;
 
 /// A section `allLeaves` its route answered without rows: their keys, in order, for the
 /// request loop to project outside the lock (`project_planned`).
@@ -26780,16 +26872,64 @@ thread_local! {
 /// container counts what it lists.
 fn project_planned(runtime: &Arc<Mutex<Runtime>>, request: &Request, response: &mut Response, plan: ProjectionPlan) {
     let mut rows = Vec::with_capacity(plan.keys.len());
-    for chunk in plan.keys.chunks(PLANNED_CHUNK) {
+    // The rows the file holds are read ahead, outside the lock, on threads of their own, while
+    // the chunk before is projected; a chunk read before any row changed is used as it was read,
+    // else read again (`rows::prefetch_listed`). Read a chunk at a time under the lock, a
+    // show library's 34k episodes took a fifth longer than they did from memory (2026-10-18).
+    let Ok(guard) = runtime.lock() else {
+        return;
+    };
+    let threads = crate::rows::listing_threads();
+    let ahead = guard
+        .catalog
+        .attached()
+        .map(|path| crate::rows::prefetch_listed(path.to_path_buf(), plan.keys.clone(), PLANNED_CHUNK, threads, threads * 2));
+    let epoch = guard.catalog.listing_epoch();
+    drop(guard);
+    let mut ready: std::collections::BTreeMap<usize, Vec<Option<Value>>> = Default::default();
+    for (index, chunk) in plan.keys.chunks(PLANNED_CHUNK).enumerate() {
+        let mut read = None;
+        if let Some(receiver) = &ahead {
+            while !ready.contains_key(&index) {
+                match receiver.recv() {
+                    Ok((at, rows)) => {
+                        ready.insert(at, rows);
+                    }
+                    Err(_) => break,
+                }
+            }
+            read = ready.remove(&index);
+        }
         let Ok(guard) = runtime.lock() else {
             return;
         };
-        for key in chunk {
-            if let Some(row) = guard.catalog.get(key) {
-                let mut shown = match &plan.kind {
-                    Projection::Leaf { query, exclude_media } => guard.leaf_row(row, query, *exclude_media),
-                    Projection::Listing(options) => guard.listing_row(row, options),
-                    Projection::Subset { query } => guid_gate(guard.section_listing_row(row), query),
+        let bodies: Vec<Option<std::borrow::Cow<'_, Value>>> = match read {
+            Some(read) if guard.catalog.listing_epoch() == epoch => chunk
+                .iter()
+                .zip(read)
+                .map(|(key, parsed)| match guard.catalog.held_row(key) {
+                    None => None,
+                    Some(Some(held)) => Some(std::borrow::Cow::Borrowed(held)),
+                    Some(None) => parsed.map(std::borrow::Cow::Owned),
+                })
+                .collect(),
+            // The chunk's rows read at once, in parallel, and dropped once projected.
+            _ => guard.catalog.read_listed(chunk),
+        };
+        for body in bodies {
+            let Some(body) = body else {
+                continue;
+            };
+            {
+                // A row read for this listing is the listing's to take apart; one in memory is
+                // the catalog's, and copied as before.
+                let mut shown = match (body, &plan.kind) {
+                    (std::borrow::Cow::Owned(row), Projection::Leaf { query, exclude_media }) => guard.leaf_row_owned(row, query, *exclude_media),
+                    (std::borrow::Cow::Owned(row), Projection::Listing(options)) => guard.listing_row_owned(row, options),
+                    (std::borrow::Cow::Owned(row), Projection::Subset { query }) => guid_gate(guard.section_listing_row_owned(row).0, query),
+                    (std::borrow::Cow::Borrowed(row), Projection::Leaf { query, exclude_media }) => guard.leaf_row(row, query, *exclude_media),
+                    (std::borrow::Cow::Borrowed(row), Projection::Listing(options)) => guard.listing_row(row, options),
+                    (std::borrow::Cow::Borrowed(row), Projection::Subset { query }) => guid_gate(guard.section_listing_row(row), query),
                 };
                 if crate::catalog::holds_packed_streams(&shown) {
                     crate::catalog::unpack_streams(&mut shown);
@@ -26935,6 +27075,62 @@ const GRID_DROPPED: &[&str] = &[
     "OnDeck", "Extras",
 ];
 const GRID_SECTION_FIELDS: &[&str] = &["librarySectionID", "librarySectionTitle", "librarySectionKey"];
+
+/// The top-level fields a light row drops (`grid_row`).
+fn grid_skips(name: &str, keep_section: bool, keep_guid: bool, keep_location: bool) -> bool {
+    GRID_DROPPED.contains(&name)
+        || (!keep_location && name == "Location")
+        || (!keep_guid && name == "Guid")
+        || (!keep_section && GRID_SECTION_FIELDS.contains(&name))
+}
+
+/// `grid_copy` of a row given up: the same fields, moved.
+fn grid_take(value: Value, skip: impl Fn(&str) -> bool) -> Value {
+    let Value::Object(mut object) = value else {
+        return strip_private_fields(&value);
+    };
+    object.retain(|key, _| !key.starts_with('_') && !skip(key));
+    for (key, value) in object.iter_mut() {
+        if key == "Media" {
+            for media in value.as_array_mut().into_iter().flatten() {
+                for part in media.get_mut("Part").and_then(Value::as_array_mut).into_iter().flatten() {
+                    if let Some(part) = part.as_object_mut() {
+                        part.retain(|key, _| key != "Stream");
+                    }
+                }
+            }
+        }
+        drop_private_keys(value);
+    }
+    Value::Object(object)
+}
+
+/// What a light row's projection reads of the row itself, for `grid_row_owned`: its private
+/// fields, its key, type, guids and chapters, and a Media entry for each of its Media (the
+/// first with its `_chapters`), which `listing_row` counts.
+fn grid_original(row: &Value) -> Value {
+    let Some(object) = row.as_object() else {
+        return Value::Null;
+    };
+    let mut original = Map::new();
+    for (key, value) in object {
+        if key.starts_with('_') || matches!(key.as_str(), "ratingKey" | "type" | "guid" | "Guid" | "Chapter") {
+            original.insert(key.clone(), value.clone());
+        }
+    }
+    if let Some(media) = object.get("Media").and_then(Value::as_array) {
+        let entries = media
+            .iter()
+            .enumerate()
+            .map(|(index, media)| match media.get("_chapters").filter(|_| index == 0) {
+                Some(chapters) => json!({"_chapters": chapters}),
+                None => json!({}),
+            })
+            .collect();
+        original.insert("Media".to_string(), Value::Array(entries));
+    }
+    Value::Object(original)
+}
 
 /// `strip_private_fields` of a row without the top-level keys `skip` names and without
 /// its Parts' `Stream` lists, which a light row drops.
@@ -27731,6 +27927,10 @@ fn order_json_doc(response: &mut Response, document: Value, path: &str, changed:
         if changed {
             response.body = serde_json::to_vec(&document).unwrap_or_default();
         }
+        return;
+    }
+    if let Some(body) = xmlout::write_ordered_json(&document, None) {
+        response.body = body;
         return;
     }
     let mut ordered = xmlout::into_ordered(document, None);

@@ -7,7 +7,6 @@
 use super::resume::int_param;
 use super::*;
 use crate::corpus::CorpusRow;
-use std::borrow::Cow;
 use crate::hierarchy::{fold_query, fold_title};
 
 /// The seventeen hubs `/hubs/search` answers, in the reference's base order.
@@ -59,7 +58,7 @@ fn score_text(rank: f64) -> String {
     format!("{:.5}", rank.clamp(0.0, 1.0))
 }
 
-fn text_of<'a>(row: &'a Value, field: &str) -> &'a str {
+fn text_of<'a>(row: &'a (impl Row + ?Sized), field: &str) -> &'a str {
     row.get(field).and_then(Value::as_str).unwrap_or("")
 }
 
@@ -96,7 +95,7 @@ fn whole_title_equal(title: &str, query: &str) -> bool {
 }
 
 /// Which of the four score tiers a row's title earns (cycle 36, 50).
-pub(super) fn search_tier(row: &Value, query: &str) -> &'static str {
+pub(super) fn search_tier(row: &(impl Row + ?Sized), query: &str) -> &'static str {
     let terms = tier_words(query);
     if terms.is_empty() {
         return "fuzzy";
@@ -167,7 +166,7 @@ fn tag_score(tier: &str) -> String {
 
 /// The full-precision score PMS compares (cycle 36/38): the type's ladder base, the
 /// tier drop, plus `audienceRating / 10000` capped at 10.
-pub(super) fn search_score_value(row: &Value, needle: &str) -> f64 {
+pub(super) fn search_score_value(row: &(impl Row + ?Sized), needle: &str) -> f64 {
     let base = match row.get("type").and_then(Value::as_str) {
         Some("episode") => 0.91,
         Some("playlist") => 0.92,
@@ -397,16 +396,14 @@ pub(super) struct TagEntry {
 // Borrowed from the catalog unless search changed the row: copying every match --
 // every movie for "movie", thousands of episodes for "the" -- was most of a search on
 // the production server (2026-10-11).
-/// What every search reads off every row, folded once per library generation (memoised in
-/// `resume::LibraryMemo`): a search folded and split each row's title and each of its people,
-/// genres and collections again, with a map lookup per field -- most of a search on the
-/// production library (2026-10-17). Rows are by position; a tag is its index in its row's
-/// list and an id into `names`, the distinct tag names' words.
-#[derive(Debug, Default)]
-/// The catalog's search entries (`corpus.rs`), borrowed from its index for one search.
+/// The catalog's search entries (`corpus.rs`), borrowed from its index for one search: a
+/// search folded and split each row's title and each of its people, genres and collections
+/// again, with a map lookup per field -- most of a search on the production library
+/// (2026-10-17). Rows are by position; a tag is its index in its row's list and an id into
+/// the distinct tag names' words.
 pub(super) struct SearchCorpus<'a> {
     rows: &'a [CorpusRow],
-    names: &'a [Vec<String>],
+    names: &'a crate::corpus::Names,
 }
 
 /// Each distinct name's tier for one query, worked out the first time a row asks.
@@ -418,22 +415,22 @@ struct NameTiers<'a> {
 
 impl<'a> NameTiers<'a> {
     fn new(corpus: &'a SearchCorpus<'a>, terms: &'a [String]) -> Self {
-        Self { corpus, terms, tiers: vec![None; corpus.names.len()] }
+        Self { corpus, terms, tiers: vec![None; corpus.names.words.len()] }
     }
 
     fn tier(&mut self, name: u32) -> Option<&'static str> {
         let slot = &mut self.tiers[name as usize];
-        *slot.get_or_insert_with(|| tag_tier_words(&self.corpus.names[name as usize], self.terms))
+        *slot.get_or_insert_with(|| tag_tier_words(&self.corpus.names.words[name as usize], self.terms))
     }
 }
 
-type Typed<'a> = HashMap<String, Vec<Cow<'a, Value>>>;
+type Typed<'a> = HashMap<String, Vec<AnyRow<'a>>>;
 type Tags = HashMap<String, Vec<TagEntry>>;
 
 impl Runtime {
     /// The normal title pass (`Catalog.search`): word PREFIX, tokenised on whitespace,
     /// a one-character query equal to a title, a multi-word query in order or not.
-    fn catalog_search(&self, query: &str) -> Vec<&Value> {
+    fn catalog_search(&self, query: &str) -> Vec<RowRef<'_>> {
         let needle = fold_query(query).trim().to_string();
         if needle.is_empty() {
             return Vec::new();
@@ -443,27 +440,25 @@ impl Runtime {
         let corpus = SearchCorpus { rows, names };
         // A row is read only once it matched: the entries say everything the pass asks.
         let rows = || corpus.rows.iter().enumerate().filter(|(_, row)| row.searchable);
-        let item = |position: usize| self.catalog.row_at(position);
+        let item = |position: usize| self.catalog.lazy_at(position);
         if needle.chars().count() == 1 {
             return rows().filter(|(_, row)| *row.title_trimmed == *needle).filter_map(|(at, _)| item(at)).collect();
         }
         // A title's words are its entry's one string, split where it was joined: a list of
         // words a row, and the query split again for every row, were most of a search.
         let terms = needle.split(' ').filter(|t| !t.is_empty()).collect::<Vec<_>>();
+        // A word of a title starts with `term` exactly where the joined title starts with it or
+        // holds it after a space (words hold no space): one substring search a row, where
+        // walking every title's words for every term was most of a search (2026-10-18).
+        let spaced = |term: &str| format!(" {term}");
+        let (needle_spaced, terms_spaced) = (spaced(&needle), terms.iter().map(|term| spaced(term)).collect::<Vec<_>>());
+        let starts_word = |joined: &str, term: &str, spaced: &str| joined.starts_with(term) || joined.contains(spaced);
         let hit = |joined: &str| -> bool {
-            let words = || joined.split(' ').filter(|word| !word.is_empty());
-            if words().any(|word| word.starts_with(needle.as_str())) || joined.starts_with(needle.as_str()) {
+            if (!needle.contains(' ') && starts_word(joined, &needle, &needle_spaced)) || joined.starts_with(needle.as_str()) {
                 return true;
             }
-            if terms.len() < 2 {
-                return false;
-            }
-            let mut rest = words();
-            let in_order = terms.iter().all(|term| rest.any(|word| word.starts_with(term)));
-            if in_order {
-                return true;
-            }
-            terms.iter().all(|term| words().any(|word| word.starts_with(term)))
+            // Terms in order or not: a hit is every term starting a word.
+            terms.len() >= 2 && terms.iter().zip(&terms_spaced).all(|(term, spaced)| starts_word(joined, term, spaced))
         };
         rows()
             .filter(|(_, row)| hit(&row.title_words) || hit(&row.original_words))
@@ -493,7 +488,7 @@ impl Runtime {
         rows
     }
 
-    fn search_row_sections(&self, kind: &str, row: &Value) -> HashSet<String> {
+    fn search_row_sections(&self, kind: &str, row: &(impl Row + ?Sized)) -> HashSet<String> {
         if kind == "playlist" {
             let id = row.get("ratingKey").map(string_value).unwrap_or_default();
             return self
@@ -526,8 +521,7 @@ impl Runtime {
         limit: Option<usize>,
         tagged_items: bool,
     ) -> (Typed<'_>, Tags) {
-        let mut rows: Vec<Cow<'_, Value>> =
-            self.catalog_search(text).into_iter().map(Cow::Borrowed).collect();
+        let mut rows: Vec<AnyRow<'_>> = self.catalog_search(text).into_iter().map(AnyRow::Ref).collect();
         let score_query = text.trim().to_string();
         let needle = score_query.to_lowercase();
         let needle_terms = words(&fold_query(text));
@@ -554,7 +548,7 @@ impl Runtime {
         if needle.chars().count() >= 2 {
             for (slot, (hub, field)) in SEARCH_TAG_HUBS.iter().enumerate() {
                 for (at, row) in corpus.rows.iter().enumerate() {
-                    for &(index, name) in &row.tags[slot] {
+                    for &(index, name) in corpus.names.tags(row, slot) {
                         if let Some(tier) = tiers.tier(name) {
                             let Some(item) = self.catalog.row_at(at) else {
                                 continue;
@@ -567,7 +561,7 @@ impl Runtime {
             }
         }
         let collection_hit = needle.chars().count() >= 2
-            && corpus.rows.iter().any(|row| row.tags[3].iter().any(|&(_, name)| tiers.tier(name).is_some()));
+            && corpus.rows.iter().any(|row| corpus.names.tags(row, 3).iter().any(|&(_, name)| tiers.tier(name).is_some()));
         let normal_gate = rows.iter().any(|row| {
             matches!(
                 row.get("type").and_then(Value::as_str),
@@ -595,7 +589,7 @@ impl Runtime {
                     continue;
                 }
                 if spelling.metadata_matches(row.body(), text) {
-                    rows.push(Cow::Borrowed(row.body()));
+                    rows.push(AnyRow::Ref(row));
                     seen.insert(key);
                 }
             }
@@ -706,7 +700,7 @@ impl Runtime {
                 .push(row);
         }
         if !playlist_rows.is_empty() {
-            typed.insert("playlist".to_string(), playlist_rows.into_iter().map(Cow::Owned).collect());
+            typed.insert("playlist".to_string(), playlist_rows.into_iter().map(AnyRow::Owned).collect());
         }
         if tagged_items {
             for (hub, row, tag, _name, _tier) in &tag_matches {
@@ -726,7 +720,7 @@ impl Runtime {
                             .to_string(),
                     )
                     .or_default()
-                    .push(Cow::Owned(reasoned));
+                    .push(AnyRow::Owned(reasoned));
                 seen.insert(key);
             }
         }
@@ -734,9 +728,10 @@ impl Runtime {
             if matches!(kind.as_str(), "movie" | "show" | "episode") {
                 let (mut title_hits, associated): (Vec<_>, Vec<_>) = std::mem::take(candidates)
                     .into_iter()
-                    .partition(|r| r.get("_searchReason").is_none());
+                    // Only a tag hit's own copy is reasoned: a catalog row is not read for it.
+                    .partition(|r| !matches!(r, AnyRow::Owned(row) if row.get("_searchReason").is_some()));
                 title_hits.sort_by(|a, b| {
-                    let key = |row: &Value| {
+                    let key = |row: &AnyRow<'_>| {
                         (
                             text_of(row, "title").as_bytes().to_vec(),
                             key_of(row).and_then(|k| k.parse::<i64>().ok()).unwrap_or(0),
@@ -750,7 +745,7 @@ impl Runtime {
                 *candidates = exact.into_iter().chain(rest).chain(associated).collect();
             }
             let query = score_query.clone();
-            comparison_sort(candidates, &|row: &Cow<'_, Value>| search_score_value(row, &query));
+            comparison_sort(candidates, &|row: &AnyRow<'_>| search_score_value(row, &query));
             if let Some(limit) = limit {
                 candidates.truncate(limit);
             }
@@ -897,11 +892,12 @@ impl Runtime {
             // name -> (tag, rows, tier)
             let mut seen: BTreeMap<String, (Value, Vec<String>, &'static str)> = BTreeMap::new();
             if needle.chars().count() >= 2 {
+                let section_id = corpus.names.section_id(&section_key);
                 for (at, corpus_row) in corpus.rows.iter().enumerate() {
-                    if corpus_row.section != section_key {
+                    if Some(corpus_row.section) != section_id {
                         continue;
                     }
-                    for &(index, name_id) in &corpus_row.tags[3] {
+                    for &(index, name_id) in corpus.names.tags(corpus_row, 3) {
                         let Some(tier) = tiers.tier(name_id) else {
                             continue;
                         };
@@ -1117,7 +1113,7 @@ impl Runtime {
                 let tier = search_tier(&row, &score_query);
                 classes.push(tier_class(tier));
                 let mut entry = self.search_hit_row(
-                    &row,
+                    row.whole(),
                     query,
                     Some(score_text(search_score_value(&row, &score_query))),
                     false,
@@ -1224,7 +1220,7 @@ impl Runtime {
         &self,
         tokens: &Option<HashSet<String>>,
         kind: &str,
-        row: &Value,
+        row: &(impl Row + ?Sized),
     ) -> bool {
         let Some(tokens) = tokens else { return true };
         if matches!(kind, "actor" | "director") {
@@ -1291,7 +1287,7 @@ impl Runtime {
                 let score = score_text(search_score_value(row, &score_query))
                     .parse::<f64>()
                     .unwrap_or(0.0);
-                results.push(json!({"score": score, "Metadata": self.search_hit_row(row, query, None, true)}));
+                results.push(json!({"score": score, "Metadata": self.search_hit_row(row.whole(), query, None, true)}));
             }
         };
         let flat_tag = |mut shown: Map<String, Value>| {
@@ -1383,18 +1379,18 @@ impl Runtime {
     /// and a season or episode list ordered by (show title, season index, index) --
     /// the listing order a search box and an autocomplete then filter and re-sort.
     pub(super) fn typed_section_rows(&self, section_key: &str, type_number: i64) -> Vec<Value> {
-        self.typed_section_refs(section_key, type_number).into_iter().cloned().collect()
+        self.typed_section_refs(section_key, type_number).into_iter().map(|row| row.body().clone()).collect()
     }
 
     /// `typed_section_rows` borrowed, each row's sort key read once: the comparator
     /// built both keys -- a title copy and a season lookup each -- on every comparison
     /// of a show library's 27k episodes, which with the copies was a third of an unpaged
     /// `allLeaves` (2026-10-17). `sort_by_cached_key` is stable, as `sort_by` is.
-    pub(super) fn typed_section_refs(&self, section_key: &str, type_number: i64) -> Vec<&Value> {
+    pub(super) fn typed_section_refs(&self, section_key: &str, type_number: i64) -> Vec<RowRef<'_>> {
         let mut rows = self.choose_refs(Some(section_key), Some(type_number));
         if matches!(type_number, 3 | 4) {
             rows.sort_by_cached_key(|row| {
-                let key = |row: &Value| {
+                let key = |row: &RowRef<'_>| {
                     let title = row
                         .get("grandparentTitle")
                         .filter(|value| truthy(value))
@@ -1407,7 +1403,7 @@ impl Runtime {
                     let parent_index = row
                         .get("parentRatingKey")
                         .map(string_value)
-                        .and_then(|key| self.catalog.get(&key))
+                        .and_then(|key| self.catalog.lazy_get(&key))
                         .and_then(|season| season.get("index"))
                         .and_then(value_as_i64)
                         .unwrap_or_else(|| number("parentIndex"));
@@ -1749,9 +1745,9 @@ impl Runtime {
                 lead.insert("personal".to_string(), json!(true));
                 lead.insert("sourceTitle".to_string(), json!(self.friendly));
                 let body = if key_of(row).is_some_and(|key| self.catalog.get(&key).is_some()) {
-                    self.grid_row(row, false, false, false)
+                    self.grid_row(row.whole(), false, false, false)
                 } else {
-                    let mut plain = row.clone().into_owned();
+                    let mut plain = row.clone().into_value();
                     if let Some(object) = plain.as_object_mut() {
                         for name in [
                             "librarySectionID",
