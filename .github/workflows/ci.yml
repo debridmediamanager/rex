@@ -418,6 +418,17 @@ jobs:
             --notes-file notes.md \
             rex-*.tar.gz rex-*.zip SHA256SUMS
 
+      # Nightlies only, to #general through the webhook zurg's nightlies use. A tag is
+      # announced by whoever cut it. The release is already out, so a failure here loses
+      # only the post.
+      - name: Announce the nightly on Discord
+        if: env.NIGHTLY == 'true'
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_RELEASE_WEBHOOK }}
+        run: |
+          python3 .github/announce_nightly.py "$TAG" \
+            "https://github.com/$GITHUB_REPOSITORY/releases/tag/$TAG" "$GITHUB_SHA" notes.md
+
   # The image packages the archives the release just published (docker.yml).
   docker:
     needs: [gate, release]

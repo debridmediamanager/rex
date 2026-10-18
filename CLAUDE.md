@@ -592,7 +592,9 @@ production host.
 A nightly goes out beside zurg's: `/home/ben/zurg-nightly-dispatch.sh` on dmm dispatches
 CI with `nightly=true` at 00:40 Berlin (a `19 1 * * *` UTC cron is the fallback), and it
 publishes every platform as the prerelease `YYYY.MM.DD.HHMM-nightly`, notes being the commits
-since the previous release, plus the `nightly` image; `latest` stays on the last tag. The
+since the previous release, plus the `nightly` image, and posts it to Discord's #general
+through the webhook zurg's nightlies use (`DISCORD_RELEASE_WEBHOOK`, `.github/announce_nightly.py`;
+`--dry-run` prints the post); `latest` stays on the last tag. The
 `gate` job skips a night whose `main` the last nightly already carries.
 
 A release is a tag. Set `version` in `rust/Cargo.toml`, push that to `main`, wait for CI,
