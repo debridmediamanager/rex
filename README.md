@@ -30,8 +30,9 @@ Download the build for your machine from [Releases](https://github.com/debridmed
 tar xzf rex-vX.Y.Z-linux-amd64.tar.gz && cd rex-vX.Y.Z-linux-amd64
 ```
 
-The steps below need v0.3.0 or newer: v0.2.0 predates sources registering themselves and
-the catalog seeding itself on first start. To build it yourself instead (no Rust on the
+Take the newest nightly (`YYYY.MM.DD.HHMM-nightly`) until the next release: v0.3.0 predates
+the server naming itself, taking its owner from the claim and trusting what zurg and DMM say
+each file is, which the steps below rely on. To build it yourself instead (no Rust on the
 machine? the full guide has a Docker build):
 
 ```bash
@@ -41,7 +42,7 @@ cargo build --release --manifest-path rust/Cargo.toml
 
 Both put rex at `rust/target/release/rex`.
 
-Or run the Docker image, `ghcr.io/debridmediamanager/rex` (private, like zurg's): [docs/setup.md](docs/setup.md#docker) has a compose file.
+Or run the Docker image, `ghcr.io/debridmediamanager/rex:nightly` (private, like zurg's): [docs/setup.md](docs/setup.md#docker) has a compose file.
 
 On Windows unpack the zip and use `rust\target\release\rex.exe` where the steps say `rust/target/release/rex`. `examples/run.sh.example` and `rex manager` are for Linux and macOS only.
 
@@ -53,7 +54,9 @@ rust/target/release/rex --catalog rex.db
 
 The first start makes `rex.db` with an empty Movies and TV library, named after the machine (`--friendly-name` picks another name). Files under a `movies` directory go to Movies and files under `shows` go to TV, whichever source they come from; a file under any other directory, like `anime`, goes to the one of its kind. Once claimed, rex takes the owner's Plex username from the claim.
 
-Until you add it to your Plex account in step 4 anyone on your home network can browse it. Keep it there until then.
+Until you add it to a Plex account in step 4 anyone on your home network can browse it. Keep it there until then.
+
+Plex Media Server runs on the same machine? Add `--port 32500 --gdm off` and use `32500` wherever this page says `32400`: Plex already holds port 32400 and the ports apps use to find servers.
 
 **3. Point zurg at it**
 
@@ -61,25 +64,30 @@ Add this to zurg's `config.yml` and restart zurg.
 
 ```yaml
 rex_url: http://<rex's address>:32400
+dmm_api_key: <your DMM API key>
 ```
 
-That is all rex needs. zurg tells rex where its files are and how to log in to them, then sends its whole library and every change as it happens. A movie or episode shows up once zurg has analyzed it, which zurg starts as soon as its library has loaded.
+`dmm_api_key` is the key you get by sponsoring DMM. zurg asks DMM which movie or episode each file is. Without it nothing is matched: films keep their file names and episodes are numbered in file order. Leave `plex_server_url` pointing at your real Plex, or empty: pointed at rex, zurg learns rex's own matches and a wrong one could never be fixed.
+
+zurg tells rex where its files are and how to log in to them, then sends its whole library and every change as it happens. A movie or episode shows up once zurg has analyzed it, which zurg starts as soon as its library has loaded.
 
 Anyone who can reach rex's port can push to its library or delete what a source pushed, so keep that port off the open internet. Running two zurgs? Give each a name of its own with `rex_source: rd` and `rex_source: ad`. Anything else that serves files can register the same way, see the [feed API](docs/feed-api.md).
 
 A zurg from before this does not tell rex where its files are, so update zurg first.
 
-**4. Add it to your Plex account**
+**4. Add it to a Plex account**
 
-This step is optional and at your own risk. rex is not made by Plex and Plex could take action against an account that registers it. Skip it and rex only answers on your own network.
+This step is optional and at your own risk. rex is not made by Plex and Plex could take action against an account that registers it, so use a fresh free Plex account made just for rex, not your own. Skip it and rex only answers on your own network, with file names instead of posters.
 
-Open [plex.tv/claim](https://www.plex.tv/claim) and copy the code. It expires in four minutes.
+Sign in to plex.tv as the fresh account, open [plex.tv/claim](https://www.plex.tv/claim) and copy the code. It expires in four minutes.
 
 ```bash
 curl -X POST "http://127.0.0.1:32400/myplex/claim?token=claim-xxxxxxxxxxxx"
 ```
 
 Do this once per server. rex saves it in `claim_state.json` next to `rex.db`. Back that file up.
+
+Then, still as the fresh account, share rex with your own account in app.plex.tv (Settings, Manage Library Access, Grant Library Access) and accept the invite as yourself. You watch signed in as yourself, with your own watch history. Add `--announce-url http://<rex's LAN IP>:32400` to the start command so Plex apps signed in as you know where to reach it.
 
 From then on rex talks to plex.tv with the server's own token from the claim. That token also lets rex show your titles with Plex's own metadata: until the claim they keep the names your source pushed. If you skip this step and still want Plex's metadata, set `PLEX_TOKEN` to your [Plex token](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/) in step 2. A claimed server does not need it.
 
@@ -101,14 +109,14 @@ rex is written in Rust. [CLAUDE.md](CLAUDE.md) covers the code, the tests and ho
 
 ## Status
 
-It started as an experiment and got further than expected. It is not a product. It has no multi user story and it does not try to replace Plex.
+It started as an experiment and got further than expected. It is not a product. It does not try to replace Plex. Everyone you share it with gets their own watch state, ratings and playlists.
 
 What it does not do:
 
 - Movies and TV only. Music and photo libraries stay empty
 - No Live TV or DVR
-- People you share it with see it as the owner does, with the owner's watch state
-- A converted stream carries no subtitles yet
+- A converted stream carries only an embedded image subtitle, burned into the picture. Text subtitles are dropped from a conversion
+- Playing outside your home needs a Plex Pass or Remote Watch Pass on the account you watch with, as with any Plex server: the Plex app asks for it before it ever reaches rex. Converting video, GPU included, needs no Plex Pass
 
 ## License
 
