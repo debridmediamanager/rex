@@ -2186,11 +2186,10 @@ mod tests {
     /// under "The Matrix Collection".
     fn library(name: &str, threshold: Option<&str>) -> (SharedRuntime, PathBuf) {
         // The build's own path, else the tree the test runs in (Windows runs a cross-built binary).
-        let file = concat!(env!("CARGO_MANIFEST_DIR"), "/../tests/fixtures/provider/collections.json");
-        let text = std::fs::read_to_string(file)
-            .or_else(|_| std::fs::read_to_string("../tests/fixtures/provider/collections.json"))
-            .unwrap();
-        let recorded: Vec<Value> = serde_json::from_str(&text).unwrap();
+        let built = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let crate_dir = if built.exists() { built } else { PathBuf::from(".") };
+        let file = crate_dir.join("../tests/fixtures/provider/collections.json");
+        let recorded: Vec<Value> = serde_json::from_str(&std::fs::read_to_string(file).unwrap()).unwrap();
         let mut items = Vec::new();
         for (index, answer) in recorded.iter().enumerate() {
             let mut row = Map::new();
@@ -2203,7 +2202,8 @@ mod tests {
         // Big Buck Bunny is in no collection.
         items.push(json!({"ratingKey": "100009", "type": "movie", "librarySectionID": 1, "title": "Big Buck Bunny", "_collections": []}));
         // One directory under the repository, whose data/ holds the library settings (`sidecar_roots`).
-        let dir = PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/.."))
+        let dir = crate_dir
+            .join("..")
             .join(format!(".auto-collections-{name}-{}-{}", std::process::id(), threshold.unwrap_or("none")));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
