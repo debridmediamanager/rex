@@ -516,6 +516,13 @@ pub(crate) fn ffmpeg_args(plan: &Plan, path: Path, hardware: &Hardware, start: i
             ]);
         }
     }
+    // A converted run's seek decodes from the keyframe before it and drops frames up to it,
+    // but a copied audio stream keeps every packet from that keyframe: with x265's ~10 s GOP
+    // a restart at 26 s started its AC3 5.3 s early on the title's clock (measured, FFmpeg 8).
+    // An output `-ss 0` drops the copied packets before the seek too.
+    if converting && offset > 0 && plan.audio.as_ref().is_some_and(|audio| audio.copy) {
+        push(&mut args, &["-ss", "0"]);
+    }
     // A remux's pre-roll from the keyframe before the seek keeps its negative time, so
     // with the offset every packet lands on its true time on the title's clock.
     push(&mut args, &["-sn", "-dn", "-map_metadata", "-1", "-map_chapters", "-1", "-avoid_negative_ts", "disabled"]);
@@ -2322,6 +2329,15 @@ mod tests {
         assert!(!joined.contains("-copyts"));
         assert!(joined.contains("expr:gte(t,n_forced*2)"));
         assert!(!joined.contains("-noaccurate_seek"));
+        assert!(!joined.contains("-ss 0"), "a converted audio stream is cut by the decode: {joined}");
+        let mut copied = plan(false, 60_000);
+        if let Some(audio) = copied.audio.as_mut() {
+            audio.copy = true;
+        }
+        let seek = ffmpeg_args(&copied, Path::Software, &Hardware::software(), 5, dir).join(" ");
+        assert!(seek.contains("-c:a copy -ss 0 -sn"), "{seek}");
+        let start = ffmpeg_args(&copied, Path::Software, &Hardware::software(), 0, dir).join(" ");
+        assert!(!start.contains("-ss"), "{start}");
     }
 
     #[test]
