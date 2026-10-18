@@ -2570,7 +2570,8 @@ mod tests {
         let args = ffmpeg_args(&mkv, Path::Software, &Hardware::software(), 0, dir).join(" ");
         assert!(args.contains("-map 0:2 -c:s copy"), "{args}");
         assert!(!args.contains("-sn"), "{args}");
-        assert!(args.contains("-f segment -segment_format matroska -segment_header_filename /tmp/x/init-0.m4s"), "{args}");
+        // The paths are joined with the OS's separator, `\` on Windows.
+        assert!(args.contains(&format!("-f segment -segment_format matroska -segment_header_filename {}", dir.join("init-0.m4s").display())), "{args}");
         assert!(!args.contains("mpegts"), "{args}");
         // A seek drops the copied subtitle's packets from before it, as the copied audio's.
         let seek = ffmpeg_args(&mkv, Path::Software, &Hardware::software(), 5, dir).join(" ");
@@ -2592,7 +2593,7 @@ mod tests {
         mkv.sidecar = Some(sidecar.clone());
         let dir = std::path::Path::new("C:/rex/s");
         let copied = ffmpeg_args(&mkv, Path::Software, &Hardware::software(), 5, dir).join(" ");
-        assert!(copied.contains("-ss 10 -i http://zurg/dav/movies/a.mkv -ss 10 -i C:/rex/s/sidecar.srt"), "{copied}");
+        assert!(copied.contains(&format!("-ss 10 -i http://zurg/dav/movies/a.mkv -ss 10 -i {}", dir.join("sidecar.srt").display())), "{copied}");
         assert!(copied.contains("-map 1:0 -c:s copy"), "{copied}");
         assert!(!copied.contains("subtitles="), "{copied}");
         let mut ts = plan(false, 30_000);
