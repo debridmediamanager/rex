@@ -136,6 +136,18 @@ def make_pgs(path, width, height, duration):
     open(path, "wb").write(data)
 
 
+def box_script():
+    """An ASS script drawing a white box over BOX for 30 s, which libass renders without a font."""
+    x, y, w, h = BOX
+    return ("[Script Info]\nScriptType: v4.00+\nPlayResX: 1280\nPlayResY: 720\n\n[V4+ Styles]\n"
+            "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, "
+            "Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, "
+            "MarginR, MarginV, Encoding\nStyle: Default,Arial,20,&H00FFFFFF,&H00FFFFFF,&H00FFFFFF,&H00FFFFFF,0,0,0,0,"
+            "100,100,0,0,1,0,0,7,0,0,0,1\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, "
+            "MarginV, Effect, Text\nDialogue: 0,0:00:00.00,0:00:30.00,Default,,0,0,0,,"
+            "{\\pos(%d,%d)\\p1}m 0 0 l %d 0 %d %d 0 %d{\\p0}\n" % (x, y, w, w, h, h))
+
+
 def luma(path, at, crop):
     """The mean luma of a crop of the frame at `at` seconds."""
     x, y, w, h = crop
@@ -558,6 +570,15 @@ def main():
     streams = probe(MEDIA["srt.mkv"])["streams"]
     items.append(row("9", "Srt", "srt.mkv", streams, os.path.getsize(MEDIA["srt.mkv"]), DURATION,
                      subtitle=next(s for s in streams if s["codec_type"] == "subtitle"), subtitle_codec="srt"))
+    # The same box drawn by an embedded ASS track, which an MPEG-TS client gets burned.
+    script = os.path.join(scratch, "box.ass")
+    open(script, "w").write(box_script())
+    MEDIA["boxass.mkv"] = os.path.join(scratch, "boxass.mkv")
+    subprocess.run([FFMPEG, "-v", "error", "-y", "-i", plain, "-i", script, "-map", "0", "-map", "1", "-c", "copy",
+                    MEDIA["boxass.mkv"]], check=True)
+    streams = probe(MEDIA["boxass.mkv"])["streams"]
+    items.append(row("11", "Boxass", "boxass.mkv", streams, os.path.getsize(MEDIA["boxass.mkv"]), DURATION,
+                     subtitle=next(s for s in streams if s["codec_type"] == "subtitle"), subtitle_codec="ass"))
     # The plain clip on its own, for a subtitle uploaded to rex.
     MEDIA["plain.mkv"] = plain
     items.append(row("10", "Plain", "plain.mkv", probe(plain)["streams"], os.path.getsize(plain), DURATION))
@@ -671,13 +692,7 @@ def main():
         # burned into an MPEG-TS client's picture. Its drawing is a white box over BOX, which
         # libass renders without a font.
         x, y, w, h = BOX
-        box = ("[Script Info]\nScriptType: v4.00+\nPlayResX: 1280\nPlayResY: 720\n\n[V4+ Styles]\n"
-               "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, "
-               "Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, "
-               "MarginR, MarginV, Encoding\nStyle: Default,Arial,20,&H00FFFFFF,&H00FFFFFF,&H00FFFFFF,&H00FFFFFF,0,0,0,0,"
-               "100,100,0,0,1,0,0,7,0,0,0,1\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, "
-               "MarginV, Effect, Text\nDialogue: 0,0:00:00.00,0:00:30.00,Default,,0,0,0,,"
-               "{\\pos(%d,%d)\\p1}m 0 0 l %d 0 %d %d 0 %d{\\p0}\n" % (x, y, w, w, h, h))
+        box = box_script()
         upload = urllib.request.Request("http://127.0.0.1:%d/library/metadata/10/subtitles?title=box.ass" % port,
                                         data=box.encode(), method="POST")
         status = urllib.request.urlopen(upload, timeout=30).status
@@ -714,6 +729,28 @@ def main():
         check("sidecar: its white box is in the converted picture",
               burned > 200 and abs(burned - source) > 30, "luma %.0f, the source's %.0f" % (burned, source))
         get(port, "/video/:/transcode/universal/stop", [("session", "s-side-ts")])
+        # An embedded text subtitle was dropped for every client not given Matroska. The
+        # reference burns an SRT for the iOS profile's MPEG-TS (`subtitles_s1422.json`); rex
+        # burns it for Plex Web too, reading the track through the release's Cues.
+        for key, label in (("9", "s-srt-ts"), ("11", "s-ass-ts")):
+            status, container = decision(port, key, label, directStream="1", subtitles="auto")
+            part = container.get("Metadata", [{}])[0].get("Media", [{}])[0].get("Part", [{}])[0]
+            kinds = {s.get("streamType"): s for s in part.get("Stream", [])}
+            check("%s: Plex Web gets the embedded text subtitle burned, the picture converted for it" % label,
+                  kinds.get(3, {}).get("decision") == "burn" and kinds.get(3, {}).get("burn") == "1"
+                  and kinds.get(1, {}).get("decision") == "transcode",
+                  "/".join(str(kinds.get(k, {}).get("decision")) for k in (1, 2, 3)))
+        get(port, "/video/:/transcode/universal/start.m3u8", plex_web_query("11", "s-ass-ts", directStream="1", subtitles="auto"))
+        status, _, first = get(port, "/video/:/transcode/universal/session/s-ass-ts/base/00000.ts")
+        segment = os.path.join(scratch, "ass-ts-0.ts")
+        open(segment, "wb").write(first)
+        burned = luma(segment, 0, centre) if status == 200 and first[:1] == b"\x47" else -1
+        source = luma(plain, 0, centre)
+        check("s-ass-ts: the embedded track's white box is in the converted picture",
+              burned > 200 and abs(burned - source) > 30, "luma %.0f, the source's %.0f" % (burned, source))
+        check("s-ass-ts: the track was read through its Cues",
+              wait_for_log(log, r"s-ass-ts subtitle stream \d+: (1) of 1 cues") == "1", "")
+        get(port, "/video/:/transcode/universal/stop", [("session", "s-ass-ts")])
         walk(port, scratch, "capped", "1", "transcode", "copy", (640, 360),
              videoResolution="640x360", maxVideoBitrate="1000", directStream="1")
         # Audio only: the video is copied and the DTS the client refuses becomes AAC.

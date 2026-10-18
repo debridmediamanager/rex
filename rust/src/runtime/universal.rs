@@ -50,6 +50,12 @@ const IDLE: Duration = Duration::from_secs(120);
 const SEEK_GAP: i64 = 4;
 /// Segments more than this far behind the player are deleted.
 const KEEP_BEHIND: f64 = 120.0;
+/// An embedded text subtitle is read for the minutes from where the player is first, and the
+/// run starts on those: 126 of a film's 1,468 cues, read in 2.3 s of the 20.9 s the whole track
+/// took through zurg on AllDebrid (`mkvsubs`). The run moves onto the whole track once it is read.
+const FIRST_SUBTITLES_MS: i64 = 10 * 60 * 1000;
+/// Range requests in flight for one track; zurg answered ~80 a second at 16 and at 48 alike.
+const SUBTITLE_READERS: usize = 16;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum Accel {
@@ -88,11 +94,17 @@ pub(crate) struct Hardware {
     /// a 74 MB file read 150 MB and took 78 s at 2 MB/s, against 2.2 MB on Linux, macOS and
     /// Gyan's Windows build (measured 2026-10-12). Bounded, it read 3.9 MB in 2 s.
     pub bounded_http: bool,
+    /// A burned text subtitle is drawn on a transparent canvas at 10 frames a second and laid
+    /// over the picture on the device (jellyfin-ffmpeg's `alphasrc` and the `subtitles` filter's
+    /// `alpha`/`sub2video`, with `overlay_vaapi`), as Jellyfin does on Intel. Downloading every
+    /// frame to draw on it and uploading it again ran a 4K HDR remux on fun's J4105 at 0.32x,
+    /// against 1.94x without the subtitle; the overlay ran it at 1.53x (measured 2026-10-19).
+    pub alpha_subtitles: bool,
 }
 
 impl Hardware {
     fn software() -> Self {
-        Self { accel: Accel::None, decode: HashSet::new(), encode: false, tonemapx: false, opencl_tonemap: false, bounded_http: false }
+        Self { accel: Accel::None, decode: HashSet::new(), encode: false, tonemapx: false, opencl_tonemap: false, bounded_http: false, alpha_subtitles: false }
     }
 }
 
@@ -176,6 +188,9 @@ pub(crate) struct Plan {
     pub text_subtitle: Option<i64>,
     /// A selected subtitle uploaded to rex: copied into Matroska segments, burned otherwise.
     pub sidecar: Option<Sidecar>,
+    /// A selected embedded text subtitle of a Matroska release, burned for a client that is
+    /// not given Matroska: read out of the release before the run (`mkvsubs`).
+    pub text_burn: Option<TextBurn>,
     pub incomplete_segments: bool,
     /// The playback session (`X-Plex-Session-Identifier`) the conversion belongs to.
     pub playback: String,
@@ -190,6 +205,19 @@ pub(crate) struct Sidecar {
     pub id: String,
     pub format: String,
     pub content: String,
+}
+
+/// An embedded text subtitle to burn: its ffprobe index, and whether it is ASS/SSA.
+#[derive(Clone, Debug)]
+pub(crate) struct TextBurn {
+    pub index: i64,
+    pub ass: bool,
+}
+
+impl TextBurn {
+    pub fn file_name(&self) -> &'static str {
+        if self.ass { "embedded.ass" } else { "embedded.srt" }
+    }
 }
 
 impl Sidecar {
@@ -415,9 +443,10 @@ pub(crate) fn ladder(plan: &Plan, hardware: &Hardware) -> Vec<Path> {
     if hardware.encode && hardware.accel != Accel::None {
         // HDR stays on the device only where the probe tonemapped a frame through OpenCL;
         // otherwise it is tonemapped on the CPU (`tonemapx`), since a wrong guess is a green
-        // picture. A burned subtitle is overlaid on CPU frames, so the decode stays on the CPU.
+        // picture. A burned image subtitle is overlaid on CPU frames at the source's size, so
+        // its decode stays on the CPU; a text one is drawn on the scaled frame, downloaded.
         let tonemaps = !video.hdr || (hardware.opencl_tonemap && matches!(hardware.accel, Accel::Vaapi(_)));
-        if tonemaps && plan.subtitle.is_none() && !Sidecar::burned(plan) && hardware.decode.contains(&decode_key(&video.source_codec, video.bit_depth)) {
+        if tonemaps && plan.subtitle.is_none() && hardware.decode.contains(&decode_key(&video.source_codec, video.bit_depth)) {
             paths.push(Path::Full);
         }
         paths.push(Path::EncodeOnly);
@@ -490,31 +519,53 @@ pub(crate) fn ffmpeg_args(plan: &Plan, path: Path, hardware: &Hardware, start: i
         }
         push(&mut args, &["-i", file]);
     }
+    // The text drawn into the picture: an upload, or an embedded track once it has been read.
+    let text_file = sidecar_file
+        .clone()
+        .filter(|_| Sidecar::burned(plan))
+        .or_else(|| {
+            let file = dir.join(plan.text_burn.as_ref()?.file_name());
+            file.exists().then(|| file.to_string_lossy().into_owned())
+        })
+        .map(|file| filter_path(&file));
+    // libass draws by the frame's time, which a seek restarts at 0: shift it to the title's clock.
+    let shifted = |subtitles: String| {
+        if offset > 0 {
+            format!("setpts=PTS+{offset}/TB,{subtitles},setpts=PTS-{offset}/TB")
+        } else {
+            subtitles
+        }
+    };
+    let burn_file = text_file.as_ref().map(|file| shifted(format!("subtitles=f='{file}'")));
+    let canvas = text_file.as_ref().zip(video).filter(|_| path == Path::Full && device.is_some() && hardware.alpha_subtitles && converting).map(|(file, video)| {
+        format!(
+            "alphasrc=s={}x{}:r=10:start=0,format=yuva420p,{},hwupload",
+            video.width,
+            video.height,
+            shifted(format!("subtitles=f='{file}':alpha=1:sub2video=1"))
+        )
+    });
+    // On the device the text is drawn on the scaled frame: downloaded, drawn, uploaded.
+    let drawn = |chain: String, upload: &str| match burn_file.as_ref().filter(|_| canvas.is_none()) {
+        Some(subtitles) => format!("{chain},hwdownload,format=nv12,{subtitles},format=nv12,{upload}"),
+        None => chain,
+    };
     // A row without ffprobe's stream `index` maps the first stream of the kind.
     let video_input = video.map(|video| if video.index >= 0 { format!("0:{}", video.index) } else { "0:v:0".to_string() });
     let burn = plan.subtitle.filter(|_| converting);
-    if let (Some(input), None) = (&video_input, burn) {
+    if let (Some(input), None, None) = (&video_input, burn, &canvas) {
         push(&mut args, &["-map", input]);
     }
     let video_filter = video.filter(|video| !video.copy).map(|video| {
         let (w, h) = (video.width, video.height);
         match path {
-            Path::Full if device.is_some() && video.hdr => format!("scale_vaapi=w={w}:h={h}:format=p010,{OPENCL_TONEMAP}"),
-            Path::Full if device.is_some() => format!("scale_vaapi=w={w}:h={h}:format=nv12"),
-            Path::Full if cuda => format!("scale_cuda=w={w}:h={h}:format=nv12"),
+            Path::Full if device.is_some() && video.hdr => drawn(format!("scale_vaapi=w={w}:h={h}:format=p010,{OPENCL_TONEMAP}"), "hwupload"),
+            Path::Full if device.is_some() => drawn(format!("scale_vaapi=w={w}:h={h}:format=nv12"), "hwupload"),
+            Path::Full if cuda => drawn(format!("scale_cuda=w={w}:h={h}:format=nv12"), "hwupload_cuda"),
             _ => {
                 let mut chain = Vec::new();
-                if let (Some(file), true) = (&sidecar_file, Sidecar::burned(plan)) {
-                    // libass draws by the frame's time, which a seek restarts at 0: shift it to
-                    // the title's clock around the filter. Quoted, so only `:` needs escaping.
-                    let file = file.replace('\\', "/").replace(':', "\\:").replace('\'', "");
-                    if offset > 0 {
-                        chain.push(format!("setpts=PTS+{offset}/TB"));
-                    }
-                    chain.push(format!("subtitles=f='{file}'"));
-                    if offset > 0 {
-                        chain.push(format!("setpts=PTS-{offset}/TB"));
-                    }
+                if let Some(subtitles) = &burn_file {
+                    chain.push(subtitles.clone());
                 }
                 if video.hdr && hardware.tonemapx {
                     chain.push("tonemapx=tonemap=bt2390:desat=0:peak=100:t=bt709:m=bt709:p=bt709:format=yuv420p".to_string());
@@ -541,6 +592,10 @@ pub(crate) fn ffmpeg_args(plan: &Plan, path: Path, hardware: &Hardware, start: i
         let graph = format!("[{input}][0:{subtitle}]overlay=eof_action=pass,{filter}[v]");
         push(&mut args, &["-filter_complex", &graph, "-map", "[v]"]);
     }
+    if let (Some(input), Some(canvas), Some(filter)) = (&video_input, &canvas, &video_filter) {
+        let graph = format!("[{input}]{filter}[main];{canvas}[sub];[main][sub]overlay_vaapi=eof_action=pass:repeatlast=0[v]");
+        push(&mut args, &["-filter_complex", &graph, "-map", "[v]"]);
+    }
     if let Some(audio) = plan.audio.as_ref() {
         push(&mut args, &["-map", &if audio.index >= 0 { format!("0:{}", audio.index) } else { "0:a:0".to_string() }]);
     }
@@ -552,7 +607,7 @@ pub(crate) fn ffmpeg_args(plan: &Plan, path: Path, hardware: &Hardware, start: i
     match video {
         Some(video) if video.copy => push(&mut args, &["-c:v", "copy"]),
         Some(video) => {
-            if burn.is_none() {
+            if burn.is_none() && canvas.is_none() {
                 push(&mut args, &["-vf", video_filter.as_deref().unwrap_or_default()]);
             }
             let rate = format!("{}k", video.bitrate);
@@ -842,7 +897,7 @@ impl Transcoder {
         thread::spawn(move || {
             let found = probing.probe();
             info!(
-                "transcoder: {} ({}), hardware {} encode={} tonemapx={} opencl_tonemap={} bounded_http={} decode=[{}]",
+                "transcoder: {} ({}), hardware {} encode={} tonemapx={} opencl_tonemap={} bounded_http={} alpha_subtitles={} decode=[{}]",
                 probing.ffmpeg.display(),
                 probing.root.display(),
                 found.accel.name(),
@@ -850,6 +905,7 @@ impl Transcoder {
                 found.tonemapx,
                 found.opencl_tonemap,
                 found.bounded_http,
+                found.alpha_subtitles,
                 {
                     let mut names = found.decode.iter().cloned().collect::<Vec<_>>();
                     names.sort();
@@ -900,6 +956,22 @@ impl Transcoder {
                 "-filter_hw_device", "va", "-f", "lavfi", "-i", "testsrc2=s=320x240:r=10", "-frames:v", "5",
                 "-vf", &chain, "-c:v", "h264_vaapi", "-f", "null", "-",
             ].map(str::to_string));
+        }
+        // A subtitle drawn on a canvas and laid over a frame on the device, end to end.
+        if let (Accel::Vaapi(device), true) = (&found.accel, filters.contains(" alphasrc ") && filters.contains(" overlay_vaapi ")) {
+            let srt = self.root.join("probe.srt");
+            if std::fs::write(&srt, "1\n00:00:00,000 --> 00:00:01,000\nrex\n").is_ok() {
+                let graph = format!(
+                    "[0:v]format=nv12,hwupload[main];alphasrc=s=320x240:r=10:start=0,format=yuva420p,subtitles=f='{}':alpha=1:sub2video=1,hwupload[sub];[main][sub]overlay_vaapi[v]",
+                    filter_path(&srt.to_string_lossy())
+                );
+                found.alpha_subtitles = self.quiet(&[
+                    "-v", "error", "-init_hw_device", &format!("vaapi=va:{device}"), "-filter_hw_device", "va",
+                    "-f", "lavfi", "-i", "testsrc2=s=320x240:r=10", "-frames:v", "5", "-filter_complex", &graph,
+                    "-map", "[v]", "-c:v", "h264_vaapi", "-f", "null", "-",
+                ].map(str::to_string));
+                let _ = std::fs::remove_file(&srt);
+            }
         }
         // An FFmpeg too old for the option refuses to start with it, so ask first.
         found.bounded_http = cfg!(windows) && {
@@ -965,7 +1037,7 @@ impl Transcoder {
                 }
                 let _ = std::fs::remove_file(&sample);
             }
-            return Hardware { accel, decode, encode: true, tonemapx: false, opencl_tonemap: false, bounded_http: false };
+            return Hardware { accel, decode, encode: true, tonemapx: false, opencl_tonemap: false, bounded_http: false, alpha_subtitles: false };
         }
         Hardware::software()
     }
@@ -1014,7 +1086,14 @@ impl Transcoder {
             .lock()
             .map_err(|_| "transcoder lock poisoned".to_string())?
             .insert(id.to_string(), Arc::clone(&session));
-        self.launch(&session, 0, None);
+        match session.plan.text_burn.clone() {
+            Some(text) => {
+                let transcoder = Arc::clone(self);
+                let reading = Arc::clone(&session);
+                thread::spawn(move || transcoder.read_text(&reading, &text));
+            }
+            None => self.launch(&session, 0, None),
+        }
         Ok(session)
     }
 
@@ -1100,6 +1179,81 @@ impl Transcoder {
                 info!("TRANSCODE {} idle, killed", session.id);
                 self.stop(&session.id);
             }
+        }
+    }
+
+    /// Read the burned embedded subtitle out of its release beside the run's segments, the
+    /// minutes from the player's position first; the run starts on those and restarts on the
+    /// whole track. A track already read this start is reused. One that cannot be read (no
+    /// Cues for it, a source refusing ranges) leaves the conversion without it, as before.
+    fn read_text(self: &Arc<Self>, session: &Arc<Session>, text: &TextBurn) {
+        let file = session.dir.join(text.file_name());
+        let digest = sha1::Sha1::digest(format!("{}#{}", session.plan.url, text.index).as_bytes());
+        let cached = self.root.join("subtitles").join(format!("{}.{}", digest.iter().map(|byte| format!("{byte:02x}")).collect::<String>(), if text.ass { "ass" } else { "srt" }));
+        if std::fs::copy(&cached, &file).is_ok() {
+            self.relaunch(session);
+            return;
+        }
+        let plan = &session.plan;
+        let read = |offset: u64, length: usize| read_range(&plan.url, plan.auth.as_deref(), offset, length);
+        let begun = Instant::now();
+        let index = match super::mkvsubs::index(&read, text.index) {
+            Ok(index) => index,
+            Err(error) => {
+                warning!("TRANSCODE {} cannot read subtitle stream {}, converting without it: {error}", session.id, text.index);
+                self.relaunch(session);
+                return;
+            }
+        };
+        let from = session.state.lock().map(|state| state.run_start).unwrap_or(0) * plan.segment_seconds() as i64 * 1000;
+        let (first, rest): (Vec<_>, Vec<_>) = index.cues.iter().cloned().partition(|cue| cue.start >= from && cue.start < from + FIRST_SUBTITLES_MS);
+        let (mut events, mut failed) = index.events(&read, &first, SUBTITLE_READERS);
+        if let Err(error) = std::fs::write(&file, index.render(&events)) {
+            warning!("TRANSCODE {} cannot write its subtitle: {error}", session.id);
+        }
+        info!("TRANSCODE {} subtitle stream {}: {} of {} cues from {}s read in {:.1}s", session.id, text.index, events.len(), index.cues.len(), from / 1000, begun.elapsed().as_secs_f64());
+        if session.stopped.load(Ordering::SeqCst) {
+            return;
+        }
+        self.relaunch(session);
+        if rest.is_empty() {
+            return;
+        }
+        let (more, more_failed) = index.events(&read, &rest, SUBTITLE_READERS);
+        events.extend(more);
+        events.sort_by_key(|event| event.start);
+        failed += more_failed;
+        if session.stopped.load(Ordering::SeqCst) {
+            return;
+        }
+        let script = index.render(&events);
+        if let Err(error) = std::fs::write(&file, &script) {
+            warning!("TRANSCODE {} cannot write its subtitle: {error}", session.id);
+        }
+        if std::fs::create_dir_all(self.root.join("subtitles")).is_ok() {
+            let _ = std::fs::write(&cached, &script);
+        }
+        info!("TRANSCODE {} subtitle stream {}: {} cues read, {failed} unreadable, in {:.1}s", session.id, text.index, events.len(), begun.elapsed().as_secs_f64());
+        self.relaunch(session);
+    }
+
+    /// Restart the run from the first segment it has not finished, on its own path, so it
+    /// reads the subtitle file as it now is; with no run yet, the first one.
+    fn relaunch(self: &Arc<Self>, session: &Arc<Session>) {
+        if session.stopped.load(Ordering::SeqCst) {
+            return;
+        }
+        let _launching = session.launching.lock();
+        let Ok((resume, path, finished)) = session.state.lock().map(|state| {
+            let resume = state.done.range(state.run_start..).next_back().map_or(state.run_start, |(key, _)| key + 1);
+            (resume, state.path, state.finished)
+        }) else {
+            return;
+        };
+        match path {
+            None => self.launch(session, resume, None),
+            Some(_) if finished => {}
+            Some(path) => self.launch_on(session, resume, path),
         }
     }
 
@@ -1469,6 +1623,28 @@ impl Transcoder {
     }
 }
 
+/// A file path as a filter option takes it: quoted, so only `:` needs escaping.
+fn filter_path(path: &str) -> String {
+    path.replace('\\', "/").replace(':', "\\:").replace('\'', "")
+}
+
+/// `length` bytes of a source's file from `offset`, as `mkvsubs` reads a subtitle track.
+fn read_range(url: &str, auth: Option<&str>, offset: u64, length: usize) -> Result<Vec<u8>, String> {
+    let mut headers = vec![
+        ("User-Agent", super::upstream::UPSTREAM_UA.to_string()),
+        ("Range", format!("bytes={offset}-{}", offset + length.max(1) as u64 - 1)),
+    ];
+    if let Some(auth) = auth {
+        headers.push(("Authorization", auth.to_string()));
+    }
+    let mut response = super::upstream::open("GET", url, &headers, b"", Duration::from_secs(30))?;
+    // A source that ignores Range would answer the whole release.
+    if response.status != 206 {
+        return Err(format!("the source answered {} to a range", response.status));
+    }
+    response.read_body(length + 1024)
+}
+
 /// Spawn FFmpeg so it dies with rex. On Linux the child asks for SIGKILL when its parent
 /// goes (`PR_SET_PDEATHSIG`), which fires when the spawning THREAD exits -- so every
 /// child is spawned from one thread that lives as long as the process, never from the
@@ -1770,9 +1946,9 @@ impl Runtime {
             .find(|stream| kind(stream) == Some(2) && stream.get("selected").is_some_and(truthy))
             .or_else(|| streams.iter().find(|stream| kind(stream) == Some(2)));
         let flag = |name: &str| query.get(name).map(String::as_str) != Some("0");
-        // ponytail: only an embedded image subtitle is burned, in the conversion's own pass. A
-        // text one is not: FFmpeg's `subtitles` filter reads the whole file before its first
-        // frame, a full download of a remote release. Needs extraction or WebVTT segments.
+        // An embedded image subtitle is burned in the conversion's own pass; a text one is read
+        // out of the release first (`text_burn`), since FFmpeg's `subtitles` filter reads its
+        // whole file before the first frame.
         let burn = matches!(query.get("subtitles").map(String::as_str), None | Some("burn" | "auto"));
         let subtitle = streams
             .iter()
@@ -1800,10 +1976,24 @@ impl Runtime {
             })
             .and_then(|stream| stream.get("index").and_then(Value::as_i64))
             .filter(|index| *index >= 0);
+        // Any other client gets a selected embedded text subtitle burned, as the reference
+        // burns an SRT for the iOS profile's MPEG-TS (Plex Web's `segments-subs` is not built,
+        // so it is burned for Plex Web too). Only a Matroska release: `mkvsubs` reads the
+        // track through its Cues, where FFmpeg would read the whole release first.
+        let text_burn = streams
+            .iter()
+            .filter(|_| burn && !matroska && wire != Protocol::File && video_stream.is_some())
+            .filter(|_| media.get("container").and_then(Value::as_str) == Some("mkv"))
+            .find(|stream| kind(stream) == Some(3) && stream.get("selected").is_some_and(truthy) && stream.get("key").is_none())
+            .and_then(|stream| {
+                let codec = stream.get("codec").map(string_value).unwrap_or_default().to_ascii_lowercase();
+                let index = stream.get("index").and_then(Value::as_i64).filter(|index| *index >= 0)?;
+                matches!(codec.as_str(), "srt" | "ass" | "ssa").then_some(TextBurn { index, ass: codec != "srt" })
+            });
         // A selected upload carries its text on its Stream row (`_content`).
         let sidecar = streams
             .iter()
-            .filter(|_| burn && subtitle.is_none() && text_subtitle.is_none())
+            .filter(|_| burn && subtitle.is_none() && text_subtitle.is_none() && text_burn.is_none())
             .find(|stream| kind(stream) == Some(3) && stream.get("selected").is_some_and(truthy) && stream.get("key").is_some())
             .and_then(|stream| {
                 let id = stream.get("id").map(string_value)?;
@@ -1876,6 +2066,7 @@ impl Runtime {
             let fits = cap.is_none_or(|(w, h)| width <= w && height <= h);
             // A burned subtitle is part of the picture, so the picture is converted.
             let copy = subtitle.is_none()
+                && text_burn.is_none()
                 && !(sidecar.is_some() && !matroska)
                 && flag("directStream")
                 && video_codecs.contains(&codec)
@@ -1943,6 +2134,7 @@ impl Runtime {
             matroska,
             text_subtitle,
             sidecar,
+            text_burn,
             incomplete_segments: query.get("X-Plex-Incomplete-Segments").map(String::as_str) == Some("1")
                 || headers.get("x-plex-incomplete-segments").map(String::as_str) == Some("1"),
             playback: self.playback_session(query, headers),
@@ -2095,7 +2287,8 @@ impl Runtime {
                     }
                     // The reference's rows (`subtitles_s1422.json`): a burned subtitle says
                     // `burn: "1"`, a copied one its `format`, both in the HLS segments.
-                    (Some(3), _, _) if plan.subtitle.is_some() && stream.get("index").and_then(Value::as_i64) == plan.subtitle => {
+                    (Some(3), _, _) if plan.subtitle.is_some() && stream.get("index").and_then(Value::as_i64) == plan.subtitle
+                        || plan.text_burn.as_ref().is_some_and(|text| stream.get("index").and_then(Value::as_i64) == Some(text.index)) => {
                         stream.insert("burn".to_string(), json!("1"));
                         stream.insert("decision".to_string(), json!("burn"));
                     }
@@ -2375,6 +2568,7 @@ mod tests {
             matroska: false,
             text_subtitle: None,
             sidecar: None,
+            text_burn: None,
             incomplete_segments: true,
             playback: "p".into(),
             protocol: Protocol::Hls,
@@ -2491,7 +2685,7 @@ mod tests {
 
     #[test]
     fn the_device_path_keeps_frames_on_the_device() {
-        let hardware = Hardware { accel: Accel::Vaapi("/dev/dri/renderD128".into()), decode: HashSet::from(["hevc".to_string()]), encode: true, tonemapx: true, opencl_tonemap: false, bounded_http: false };
+        let hardware = Hardware { accel: Accel::Vaapi("/dev/dri/renderD128".into()), decode: HashSet::from(["hevc".to_string()]), encode: true, tonemapx: true, opencl_tonemap: false, bounded_http: false, alpha_subtitles: false };
         let video_plan = plan(false, 60_000);
         assert_eq!(ladder(&video_plan, &hardware), vec![Path::Full, Path::EncodeOnly, Path::Software]);
         let full = ffmpeg_args(&video_plan, Path::Full, &hardware, 0, std::path::Path::new("/tmp/x")).join(" ");
@@ -2517,7 +2711,7 @@ mod tests {
 
     #[test]
     fn hdr_stays_on_the_device_where_opencl_tonemaps() {
-        let hardware = Hardware { accel: Accel::Vaapi("/dev/dri/renderD128".into()), decode: HashSet::from(["hevc".to_string()]), encode: true, tonemapx: true, opencl_tonemap: true, bounded_http: false };
+        let hardware = Hardware { accel: Accel::Vaapi("/dev/dri/renderD128".into()), decode: HashSet::from(["hevc".to_string()]), encode: true, tonemapx: true, opencl_tonemap: true, bounded_http: false, alpha_subtitles: false };
         let mut hdr = plan(false, 60_000);
         hdr.video.as_mut().unwrap().hdr = true;
         // The CPU's tonemapx stays the step down when the device path fails.
@@ -2604,15 +2798,51 @@ mod tests {
         assert!(burned.contains("-sn"), "{burned}");
         let start = ffmpeg_args(&ts, Path::Software, &Hardware::software(), 0, dir).join(" ");
         assert!(start.contains("-vf subtitles=f='C\\:/rex/s/sidecar.srt',scale="), "{start}");
-        // libass draws on CPU frames, so the device never decodes a burned plan.
-        let hardware = Hardware { accel: Accel::Vaapi("/dev/dri/renderD128".into()), decode: HashSet::from(["h264".to_string(), "hevc".to_string()]), encode: true, tonemapx: true, opencl_tonemap: false, bounded_http: false };
-        assert!(!ladder(&ts, &hardware).contains(&Path::Full));
+        // libass draws on CPU frames: the device decodes and scales, the frame comes down
+        // for the text and goes back up for the encoder.
+        let hardware = Hardware { accel: Accel::Vaapi("/dev/dri/renderD128".into()), decode: HashSet::from(["h264".to_string(), "hevc".to_string()]), encode: true, tonemapx: true, opencl_tonemap: false, bounded_http: false, alpha_subtitles: false };
+        assert_eq!(ladder(&ts, &hardware)[0], Path::Full);
+        let full = ffmpeg_args(&ts, Path::Full, &hardware, 5, dir).join(" ");
+        assert!(full.contains("-vf scale_vaapi=w=1280:h=720:format=nv12,hwdownload,format=nv12,setpts=PTS+10/TB,subtitles=f='C\\:/rex/s/sidecar.srt',setpts=PTS-10/TB,format=nv12,hwupload -c:v h264_vaapi"), "{full}");
         assert!(ladder(&mkv, &hardware).contains(&Path::Full));
     }
 
     #[test]
+    fn an_embedded_text_subtitle_is_burned_once_it_has_been_read() {
+        let dir = std::env::temp_dir().join(format!("rex-text-burn-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let mut ts = plan(false, 30_000);
+        ts.text_burn = Some(TextBurn { index: 2, ass: true });
+        // Until the track is read the run converts without it.
+        let before = ffmpeg_args(&ts, Path::Software, &Hardware::software(), 0, &dir).join(" ");
+        assert!(!before.contains("subtitles="), "{before}");
+        assert!(before.contains("-sn"), "{before}");
+        std::fs::write(dir.join("embedded.ass"), "[Script Info]\n").unwrap();
+        // As the filter takes it: `/` on Windows too, `:` escaped.
+        let file = filter_path(&dir.join("embedded.ass").to_string_lossy());
+        let after = ffmpeg_args(&ts, Path::Software, &Hardware::software(), 0, &dir).join(" ");
+        assert!(after.contains(&format!("-vf subtitles=f='{file}',scale=")), "{after}");
+        assert!(after.contains("-sn") && after.matches(" -i ").count() == 1, "{after}");
+        let cuda = Hardware { accel: Accel::Cuda, decode: HashSet::from(["hevc".to_string()]), encode: true, tonemapx: false, opencl_tonemap: false, bounded_http: false, alpha_subtitles: false };
+        let full = ffmpeg_args(&ts, Path::Full, &cuda, 0, &dir).join(" ");
+        assert!(full.contains(&format!("scale_cuda=w=1280:h=720:format=nv12,hwdownload,format=nv12,subtitles=f='{file}',format=nv12,hwupload_cuda")), "{full}");
+        // With jellyfin-ffmpeg's canvas the frames stay on the device, the text laid over them.
+        let vaapi = Hardware { accel: Accel::Vaapi("/dev/dri/renderD128".into()), decode: HashSet::from(["hevc".to_string()]), encode: true, tonemapx: true, opencl_tonemap: false, bounded_http: false, alpha_subtitles: true };
+        let overlay = ffmpeg_args(&ts, Path::Full, &vaapi, 5, &dir).join(" ");
+        assert!(overlay.contains(&format!(
+            "-filter_complex [0:0]scale_vaapi=w=1280:h=720:format=nv12[main];alphasrc=s=1280x720:r=10:start=0,format=yuva420p,setpts=PTS+10/TB,subtitles=f='{file}':alpha=1:sub2video=1,setpts=PTS-10/TB,hwupload[sub];[main][sub]overlay_vaapi=eof_action=pass:repeatlast=0[v] -map [v] -map 0:1"
+        )), "{overlay}");
+        assert!(!overlay.contains("hwdownload") && !overlay.contains("-vf ") && !overlay.contains("-map 0:0"), "{overlay}");
+        // Decoded on the CPU, the frame is drawn on before its upload, as before.
+        let upload = ffmpeg_args(&ts, Path::EncodeOnly, &vaapi, 0, &dir).join(" ");
+        assert!(upload.contains(&format!("-vf subtitles=f='{file}',format=nv12,hwupload,scale_vaapi")), "{upload}");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
     fn a_burned_subtitle_is_overlaid_before_the_scale_and_upload() {
-        let hardware = Hardware { accel: Accel::Vaapi("/dev/dri/renderD128".into()), decode: HashSet::from(["hevc".to_string()]), encode: true, tonemapx: true, opencl_tonemap: false, bounded_http: false };
+        let hardware = Hardware { accel: Accel::Vaapi("/dev/dri/renderD128".into()), decode: HashSet::from(["hevc".to_string()]), encode: true, tonemapx: true, opencl_tonemap: false, bounded_http: false, alpha_subtitles: false };
         let mut burned = plan(false, 60_000);
         burned.subtitle = Some(3);
         assert_eq!(ladder(&burned, &hardware), vec![Path::EncodeOnly, Path::Software]);
