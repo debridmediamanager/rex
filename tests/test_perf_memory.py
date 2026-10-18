@@ -14,7 +14,9 @@ start. The bounds are ratios to the rows' own JSON size and to the resident size
 so they hold on any host. Linux only: it reads `/proc/<pid>/status`. Measured on the test host:
 unfixed, the start peaked at 16.6x the rows' JSON and the requests added 1,440 MB; fixed,
 8.2x and 6 MB. Each stream was then a map of its own, half of the production server's 2.6 GB on
-2026-10-16; held as text, the restored library is 4.0x its JSON (8.1x before, arm64 Docker).
+2026-10-16; held as text, the restored library is 4.0x its JSON (8.1x before, arm64 Docker), and with
+every map, list and string fitted to its size as it is read (`catalog::compact`, 2026-10-18;
+302 MB of the production server's 1.61 GB was room parsing grew into) 3.2x.
 An unpaged listing of every episode built its body in several full copies the allocator then
 kept (the production server's library: +2.4 GB a request, 6.5 GB after three); here two of them left
 +131 MB on 363 MB before and +19 MB on 182 MB after.
@@ -45,7 +47,7 @@ HEADERS = {"X-Plex-Product": "Plex Web", "X-Plex-Platform": "Chrome",
            "X-Plex-Client-Identifier": "perf-memory", "Accept": "application/json"}
 SHOWS = 120
 # Each Part's streams are held as their JSON text (`catalog::PACKED_STREAMS`).
-RESIDENT = 6
+RESIDENT = 3.6
 results = []
 
 
@@ -175,7 +177,7 @@ def main():
               % (rows_mb, loaded, load_peak), flush=True)
         check("the start peaks under 12x the rows' JSON (%.1fx)" % (load_peak / rows_mb),
               load_peak < 12 * rows_mb, (load_peak, rows_mb))
-        check("the restored library holds under %dx its rows' JSON (%%.1fx)" % RESIDENT % (loaded / rows_mb),
+        check("the restored library holds under %.1fx its rows' JSON (%%.1fx)" % RESIDENT % (loaded / rows_mb),
               loaded < RESIDENT * rows_mb, (loaded, rows_mb))
 
         for path_ in ("/hubs", "/library/sections/2/all?X-Plex-Container-Start=0&X-Plex-Container-Size=50",

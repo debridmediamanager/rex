@@ -297,11 +297,13 @@ impl Catalog {
         if pending.all {
             for row in self.items.iter_mut() {
                 packed += usize::from(pack_streams(row));
+                compact(row);
             }
         } else {
             for key in &pending.keys {
                 if let Some(row) = self.by_id.get(key).and_then(|index| self.items.get_mut(*index)) {
                     packed += usize::from(pack_streams(row));
+                    compact(row);
                 }
             }
         }
@@ -546,6 +548,27 @@ fn rename(object: &mut Map<String, Value>, from: &str, to: &str, value: Value) {
 }
 
 /// Pack every Part's `Stream` rows of a row. Answers whether any were packed.
+/// Every map, list and string in `value` at exactly its size. A parsed row keeps the room
+/// each grew into while it was read -- a fifth of the library's memory, 302 MB of the
+/// production server's 1.61 GB (2026-10-18) -- and nothing reads capacity, so this changes
+/// no answer. Rows written since the last pack are compacted with it (`pack_pending`).
+pub fn compact(value: &mut Value) {
+    match value {
+        Value::Object(object) => {
+            object.values_mut().for_each(compact);
+            // `Map` has no `shrink_to_fit`; collecting allocates exactly its entries.
+            let entries = std::mem::take(object);
+            *object = entries.into_iter().collect();
+        }
+        Value::Array(values) => {
+            values.iter_mut().for_each(compact);
+            values.shrink_to_fit();
+        }
+        Value::String(text) => text.shrink_to_fit(),
+        _ => {}
+    }
+}
+
 pub fn pack_streams(row: &mut Value) -> bool {
     let mut packed = false;
     for media in row.get_mut("Media").and_then(Value::as_array_mut).into_iter().flatten() {

@@ -157,9 +157,11 @@ fn read_prefix(
                     let (key, pos, body) = listed.map_err(|e| e.to_string())?;
                     let mut value: Value =
                         serde_json::from_str(&body).map_err(|e| format!("{name}/{key}: {e}"))?;
-                    // Packed as it is read, so the next row reuses what its streams held.
+                    // Packed and fitted as it is read, so the next row reuses what its
+                    // streams and the room it grew into held (`catalog::compact`).
                     if field == "items" {
                         crate::catalog::pack_streams(&mut value);
+                        crate::catalog::compact(&mut value);
                     }
                     collection.rows.insert(key.clone(), (pos, hash_text(&body)));
                     collection.order.push(key.clone());
