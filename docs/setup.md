@@ -1,13 +1,14 @@
 # Setting up rex
 
-The README has the short version. This is the full one with every option.
+The README has the short version. This is the full one.
 
 ## The steps
 
 A rex server is four things: the binary, a **catalog** (its identity and two empty
 libraries, made on its first start), the **sources** that register with it, push the
-library and serve its bytes, and, if it is to appear in your Plex apps, a **claim** on your
-Plex account with an HTTPS address. Setting one up is one command:
+library and serve its bytes, and, if it is to appear in your Plex apps, a **claim** on a
+Plex account (a fresh one, shared with yours: step 5) and, for use outside your LAN, an
+HTTPS address. Setting one up is one command:
 
 ```bash
 rust/target/release/rex --catalog rex.db
@@ -20,9 +21,9 @@ The steps below go through it in order.
 | | |
 |---|---|
 | A Linux, macOS or Windows host | rex is one binary and its `data/` sidecars, with no other runtime dependencies. The same binary writes the catalog (`rex catalog`) and runs several servers (`rex manager`) |
-| Rust, or Docker | to build it (below) |
+| Rust 1.89 or newer (rustup), or Docker | only to build it (below); or download a release or nightly archive (README step 1) |
 | One or more byte sources | [zurg](https://github.com/debridmediamanager/zurg) (a build with the rex feed: `rex_url` in its `config.yml`), or any HTTP server that serves the files plus something that pushes them to rex's feed |
-| Your Plex account token | not needed. A claimed rex (step 6) asks plex.tv and Plex's own metadata agent, which describes every title and powers Fix Match, with the server token the claim gives it. Only an unclaimed server that should still match with Plex's agent takes `PLEX_TOKEN`: the `X-Plex-Token` in the URL of any "View XML" link in Plex Web ([Plex's guide](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/)) |
+| Your Plex account token | not needed. A claimed rex (step 5) asks plex.tv and Plex's own metadata agent, which describes every title and powers Fix Match, with the server token the claim gives it. Only an unclaimed server that should still match with Plex's agent takes `PLEX_TOKEN`: the `X-Plex-Token` in the URL of any "View XML" link in Plex Web ([Plex's guide](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/)) |
 | An HTTPS address | only for use outside your LAN and in app.plex.tv: a certificate for a hostname you control (a `tailscale cert`, Let's Encrypt) |
 | FFmpeg | optional, for [transcoding](#transcoding) |
 
@@ -33,8 +34,9 @@ git clone https://github.com/debridmediamanager/rex && cd rex
 cargo build --release --manifest-path rust/Cargo.toml       # -> rust/target/release/rex
 ```
 
-Without a Rust toolchain on the host, build in Docker. The binary runs on any glibc
-Linux of the same architecture:
+Without a Rust toolchain on the host, build in Docker. The binary runs on any Linux of the
+same architecture with glibc 2.31 (Debian 11's) or newer. The `rust:1-bullseye` image stopped
+updating at Rust 1.98 (2026-08-25), which is still new enough:
 
 ```bash
 docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -v "$PWD":/src -w /src/rust \
@@ -56,9 +58,9 @@ redirects are handled, and as many sources as you like feed the same libraries. 
 each registration, credential included, in `rex.db`, so a restart keeps playing before the
 source registers again.
 
-zurg does both with nothing but `rex_url` in its `config.yml` (step 5). Anything else
-registers and pushes the same way: [`docs/feed-api.md`](feed-api.md) is the full contract,
-for writing a pusher of your own.
+zurg does both with nothing but `rex_url` in its `config.yml` (step 6); add `dmm_api_key` so
+it also says what each file is. Anything else registers and pushes the same way:
+[`docs/feed-api.md`](feed-api.md) is the full contract, for writing a pusher of your own.
 
 Registering and pushing take no token and check no network, claimed or not, so a source may
 name rex by address or host name. Anyone who can reach rex's port can register a source and
@@ -85,10 +87,12 @@ Either way this is a SQLite database holding a fixed `machineIdentifier` (random
 Plex Media Server's is, and kept if you re-seed), a movie library titled Debrid Movies holding the `movies`
 directory and a show library titled Debrid TV holding `shows`. A pushed item lands in the library holding the
 directory its `path` starts with (`movies/<release>/<file>`), whichever source sent it
-and whatever path prefix its `file` carries. An item in no library's directory goes to
-the first library of its kind: an episode (by the source's `kind`, else an episode number
-in its name) to a show library, anything else to a movie library. To give a directory a
-library of its own, name it when seeding:
+and whatever path prefix its `file` carries, unless the source placed it as the other kind:
+an episode under `movies` goes to a show library, a movie under `shows` to a movie library.
+An item in no library's directory goes to the first library of its kind: one its source
+placed as an episode to a show library, anything else, unplaced files included, to a movie
+library. To add more directories to the movie or show library, name them when seeding
+(`--shows anime` makes `anime` a second folder of Debrid TV):
 
 ```bash
 rust/target/release/rex catalog --seed --name den --out rex.db \
@@ -97,7 +101,8 @@ rust/target/release/rex catalog --seed --name den --out rex.db \
 
 The folders are shown in Plex as `/mnt/zurg/<directory>`. `--mount` changes that prefix,
 and it only matters for zurg's own Plex matcher, which matches a file by its full path,
-so set it to zurg's `mount_path` if you point zurg's `plex_server_url` at rex.
+so set it to zurg's `mount_path` if you point zurg's `plex_server_url` at rex (which step 6
+advises against).
 
 **Name every directory before the first start.** Once rex has started, the
 libraries it saved in `rex.db` win over the catalog, so re-seeding changes nothing, and
@@ -106,17 +111,21 @@ a library of its own instead: Manage → Libraries → Add Library on it.
 
 rex keeps everything clients change (watch state, edits, playlists, collections,
 history, preferences), and each source's registration, in the same `rex.db`, written as it
-changes. It holds the sources' credentials, so keep it private. Back it up with the
-server stopped, or with `sqlite3 rex.db ".backup rex.db.bak"`.
+changes. It holds the sources' credentials, so keep it private: rex creates it, and its
+`-wal` and `-shm`, with your umask, which usually lets every user on the host read them. Run
+`chmod 600 rex.db*`, or start rex under `umask 077` as the Docker image does (`UMask=0077` in
+step 8's systemd unit). Back it up with the server stopped, or with
+`sqlite3 rex.db ".backup rex.db.bak"`; in Docker,
+`docker exec rex sqlite3 /config/rex.db ".backup /config/rex.db.bak"`.
 
 ### 4. First start, on your LAN
 
 ```bash
-rust/target/release/rex --catalog rex.db --port 32400
+rust/target/release/rex --catalog rex.db
 ```
 
-`--owner-username` and `--owner-email` are only display names before a claim; a claimed
-server takes both from the claim.
+Leave `--owner-username` and `--owner-email` unset: a claimed server takes both from the
+claim, and a given `--owner-username` still wins over it.
 
 The first lines of the log say whether it seeded the catalog, name each source it already
 knows (`source rd: registered, feed at /rex/feed/rd/`, or `no source yet`) and the state
@@ -125,9 +134,9 @@ file.
 - **What a title looks like comes from Plex.** rex exchanges the ids its source pushed for Plex's
   own guid and shows what Plex's metadata agent says of it: titles, summaries, posters, seasons
   and episode names. It reads no TMDB: `TMDB_KEY`, `REX_METADATA_URL` and `REX_METADATA_KEY` are
-  no longer read (2026-10-17), and an install that still sets them starts as before. Until the
-  claim (step 6), or without `PLEX_TOKEN`, titles keep the names they were pushed with and Fix
-  Match has no candidates.
+  no longer read (2026-10-17), and an install that still sets them starts as before. Without a
+  claim (step 5) or `PLEX_TOKEN`, titles keep the names they were pushed with and Fix Match has
+  no candidates.
 - **What a file is comes from the source.** zurg with a sponsor `dmm_api_key` asks DMM what each
   file is and pushes it placed: the title's ids and, for an episode, TMDB's season and episode,
   anime and long shows included. rex reads nothing off a name. A file pushed without a placement
@@ -150,8 +159,8 @@ curl -s http://127.0.0.1:32400/rex/feed/rd/items       # what rd pushed, once it
 
 - **Port 32400 and LAN discovery.** On 32400 rex answers Plex's LAN discovery (GDM) on
   udp/32410 and 32414, so apps on the same network find it. On a host that already runs
-  Plex, give rex another port and `--gdm off`.
-- **Who may connect.** Until it is claimed (step 6), rex answers only this machine and
+  Plex, give rex another port: there the default `--gdm auto` answers no discovery.
+- **Who may connect.** Until it is claimed (step 5), rex answers only this machine and
   private addresses (10.x, 172.16-31.x, 192.168.x, IPv6 fc00::/7), as an unclaimed Plex
   Media Server does. Tailscale's 100.x addresses and anything arriving through a proxy with
   a public `X-Forwarded-For` are refused, and so is a request whose `Host` is a hostname
@@ -159,57 +168,35 @@ curl -s http://127.0.0.1:32400/rex/feed/rd/items       # what rd pushed, once it
   other networks, set **List of IP addresses and networks that are allowed without auth**
   (`allowedNetworks`) in Settings > Network from the machine itself; once set, only
   localhost and those networks get in. Or start rex with `--token <secret>`, which makes
-  it refuse everything but `/identity` and `/web` without that `X-Plex-Token`. Once
+  it refuse everything but `/identity`, `/web` and the source API (`/rex/sources`,
+  `/rex/feed`) without that `X-Plex-Token`. Once
   claimed it accepts only its own token and the tokens plex.tv lists for it, as a real
   Plex Media Server does.
 - **The web client at `/web`** is optional and comes from a Plex Media Server install:
   pass `--web-root .../Resources/Plug-ins-*/WebClient.bundle/Contents/Resources` (on
   Linux under `/usr/lib/plexmediaserver`). app.plex.tv works without it once the server
-  is claimed.
+  is claimed and announced over HTTPS (step 7).
 
-### 5. Point zurg at it
-
-In each zurg's `config.yml` (zurg's [`docs/config.md`](https://github.com/debridmediamanager/zurg/blob/main/docs/config.md) has the details):
-
-```yaml
-rex_url: http://<rex's address>:32400   # turns on zurg's ffprobe and IMDb lookups for new releases
-rex_source: rd                          # optional: the name it registers as (default "zurg")
-```
-
-That is all rex needs from zurg: an address or a host name (`http://rex:32400` from a
-container) both work. Restart zurg. Once its library has loaded it registers with rex,
-pushes everything it holds, then each change as it happens, and the whole library again
-every `rex_snapshot_every_hours` (6), registering again at the start of each. Watch it
-arrive in rex's log (`SOURCES rd registered ...`, `FEED POST /rex/feed/rd/items -> 200`) and with the
-`/rex/sources` and `/rex/feed/rd/items` calls above.
-
-**An item appears only once zurg has probed it with ffprobe**, because rex lists each
-file with its streams. Items zurg never probed are held, not shown. For a library that
-existed before you turned rex on, start the probing once with **Analyze & Tag Library**
-on zurg's dashboard (or `POST /torrents/analyze`). It runs at about 50 files a minute,
-so a large library fills over hours. Re-run it after a zurg restart until it finishes:
-it skips what is already probed.
-
-Leave zurg's `plex_server_url` pointing at your real Plex, if you have one. Pointed
-at rex, zurg's matcher learns rex's own matches and pushes them back as exact ids, so
-a wrong match can never be corrected by a later push.
-
-### 6. Claim it, so it appears in your Plex apps
+### 5. Claim it, so it appears in your Plex apps
 
 Claiming is optional and at your own risk. rex is not made by Plex and Plex could take
-action against an account that registers it. Skip it and rex only answers on your own
-network (step 4 "Who may connect"), or start it with `--token` and give that token to your
-clients.
+action against an account that registers it, so claim it with a fresh free Plex account
+made for rex, not your own, and share it with yours (item 5 below). Skip it and rex only
+answers on your own network (step 4 "Who may connect"), or start it with `--token` and give
+that token to your clients.
 
-Claiming registers the server on your Plex account, the same way a real Plex Media
-Server is claimed. **Do it once per server.** The claim is saved in `claim_state.json`
+Do it before you point zurg at it (step 6): titles pushed before the claim keep the names
+they were pushed with until rex names them in the background, about 300 an hour.
+
+Claiming registers the server on the Plex account you claim with, the same way a real Plex
+Media Server is claimed. **Do it once per server.** The claim is saved in `claim_state.json`
 beside the catalog and survives restarts. Keep a backup of that file: a lost claim
 means claiming again, and a claim gone wrong has signed every other server on the
 account out of plex.tv before.
 
 1. Start rex, with or without `--announce-url` (below): an unclaimed rex announces nothing.
-2. Open [plex.tv/claim](https://www.plex.tv/claim) signed in as the owner and copy the
-   `claim-...` token. It is valid for four minutes.
+2. Open [plex.tv/claim](https://www.plex.tv/claim) signed in as the fresh account and copy
+   the `claim-...` token. It is valid for four minutes.
 3. Redeem it on rex itself:
 
    ```bash
@@ -218,10 +205,21 @@ account out of plex.tv before.
 
 4. `curl -s http://127.0.0.1:32400/identity` now reports `claimed="1"`, and
    `claim_state.json` exists beside the catalog.
+5. Still as the fresh account, share rex with your own account in app.plex.tv (Settings,
+   Manage Library Access, Grant Library Access, both libraries) and accept the invite as
+   yourself. Add `--announce-url http://<rex's LAN IP>:32400` (step 7) so Plex apps signed in
+   as you know where to reach it.
+
+You then watch signed in as yourself, with your own watch state. Fix Match works only for
+the account rex is claimed with: rex refuses it (403) to the accounts it is shared with, as a
+real Plex Media Server does.
 
 From the claim on rex asks plex.tv with the server token it stores there: the announce
 (step 7), and Plex's own metadata agent, which then names and describes what sources push
-with no restart. `PLEX_TOKEN` is not used once there is a claim.
+with no restart. `PLEX_TOKEN` is not used once there is a claim. A claimed start logs
+`claimed-account watch/rating sync is OFF: REX_SCROBBLING_DECRYPT_SECRET_B64 is not configured`.
+That is expected: the secret only syncs the owner's watch state with plex.tv, and each
+account's watch state in rex works without it.
 
 A claimed rex refuses another claim (409). To move it to another account, stop it, remove
 `claim_state.json` and claim again. rex also refuses to store a claim when plex.tv answers
@@ -230,15 +228,43 @@ server's identity already has a device row on the account. An unclaimed rex anno
 nothing, `PLEX_TOKEN` or not, so it never writes that row: plex.tv applies an announce to the
 device that owns its token, and an account token's device is another of your devices.
 
+### 6. Point zurg at it
+
+In each zurg's `config.yml` (zurg's [`docs/config.md`](https://github.com/debridmediamanager/zurg/blob/main/docs/config.md) has the details):
+
+```yaml
+rex_url: http://<rex's address>:32400   # turns on zurg's ffprobe analysis (whole library, then new releases)
+dmm_api_key: <your DMM API key>         # sponsor key: DMM says what each file is (step 4)
+rex_source: rd                          # optional: the name it registers as (default "zurg")
+```
+
+An address or a host name (`http://rex:32400` from a container) both work. It needs a zurg
+nightly from 2026.10.17 or later: the latest zurg release, v1.0.0, has no rex feed. Restart
+zurg. Once its library has loaded it registers with rex, pushes everything it holds, then
+each change as it happens, and the whole library again
+every `rex_snapshot_every_hours` (6), registering again at the start of each. Watch it
+arrive in rex's log (`SOURCES rd registered ...`, `FEED POST /rex/feed/rd/items -> 200`) and with the
+`/rex/sources` and `/rex/feed/rd/items` calls above.
+
+**An item appears only once zurg has probed it with ffprobe**, because rex lists each
+file with its streams. Items zurg never probed are held, not shown. zurg probes the whole
+library on its own once it has loaded, four releases at a time, then each new release, and
+tries a failed probe again a day later, so a large library fills over hours. **Analyze & Tag
+Library** on zurg's dashboard (or `POST /torrents/analyze`) retries failed probes at once.
+
+Leave zurg's `plex_server_url` pointing at your real Plex, if you have one. Pointed
+at rex, zurg's matcher learns rex's own matches and hands them to DMM as the release's id, so
+a wrong match can never be corrected by a later push.
+
 ### 7. Reach it from outside: HTTPS and the announce
 
-Plex apps outside your LAN, and app.plex.tv in a browser, connect only to an HTTPS
-address that plex.tv lists for the server. rex has no `*.plex.direct` certificate, so
+app.plex.tv connects only to an HTTPS address that plex.tv lists for the server, and the
+other Plex apps outside your LAN prefer one. rex has no `*.plex.direct` certificate, so
 give it your own hostname, with rex terminating TLS:
 
 - **rex terminates TLS**, on the same port as plain HTTP:
   `--tls-cert host.crt --tls-key host.key`. The key must be PKCS#8 or RSA PEM; an EC
-  key, which is what `tailscale cert` and many ACME clients write, needs converting
+  key (`BEGIN EC PRIVATE KEY`), which is what `tailscale cert` and many ACME clients write, needs converting
   first: `openssl pkcs8 -topk8 -nocrypt -in host.key -out host.pkcs8.key`. A
   `tailscale cert` hostname works for apps on your tailnet.
 
@@ -247,8 +273,8 @@ Cloudflare. Cloudflare also drops the `Range` of a file's first read. rex then s
 whole file and every play start pulls all of it from your source (measured in
 docs/findings.md under "The unavoidable trade-off").
 
-Then restart rex with the addresses to register, the HTTPS one first and, optionally, a
-LAN one:
+Then restart rex with the addresses to register, the HTTPS one first and step 5's LAN one
+after it, in one comma-separated flag (a second `--announce-url` replaces the first):
 
 ```bash
 --announce-url https://rex.example.com:32400,http://192.168.1.10:32400
@@ -258,8 +284,13 @@ They can be there from the first start: rex logs that it waits for a claim and r
 them the moment it is claimed. With `--announce-url` a claimed rex registers with plex.tv at start, with its server token,
 holds the event stream plex.tv reads as "online", and re-announces every 10 minutes. The
 server then shows in app.plex.tv and the apps' server list. If it does not, look for the
-`plex.tv` lines in rex's log: a missing claim (`waiting for a claim`) or an address plex.tv
-cannot reach are the usual causes.
+`plex.tv` lines in rex's log: a missing claim (`waiting for a claim`), or an address your apps
+cannot reach. plex.tv does not test the addresses, so `pubsub: reachability 0` in the log
+means nothing either way.
+
+Playing from outside your home needs a Plex Pass or Remote Watch Pass on the account you
+watch with, as with any Plex server: the app asks for it before the play reaches rex
+(measured in Plex Web only).
 
 ### 8. Run it as a service
 
@@ -278,6 +309,7 @@ After=network-online.target
 [Service]
 WorkingDirectory=%h/rex
 ExecStart=%h/rex/run.sh
+UMask=0077
 Restart=always
 RestartSec=5
 
@@ -285,38 +317,43 @@ RestartSec=5
 WantedBy=default.target
 ```
 
-Under launchd:
-`launchctl submit -l com.rex -o rex.log -e rex.err -- /bin/bash "$PWD/run.sh"`. To run
-several servers on one host, use `rex manager` (below).
+Under launchd, with absolute log paths (relative ones make the job exit 78 without a log):
+`launchctl submit -l com.rex -o "$PWD/rex.log" -e "$PWD/rex.err" -- /bin/bash "$PWD/run.sh"`.
+A submitted job does not survive a reboot; a LaunchAgent plist like the manager's (below)
+does. To run several servers on one host, use `rex manager` (below).
 
-rex logs a request's query string, so a client that sends its token as
-`?X-Plex-Token=` leaves it in the log. Keep the log private.
+rex logs requests only under `--verbose`, and masks `X-Plex-Token` values (not the
+single-use claim token); the log still names your titles and addresses, so keep it private.
 
-Memory: the library's rows live in the state file (`rex.db`), not in memory. rex keeps an index
-of the fields its lists and searches read, the rows written since they were last saved, and up
-to `REX_ROW_CACHE_MB` (default 64) of rows read recently; a library of 40,000 titles runs in
-about 500 MB. Upgrading needs nothing: the file is the one earlier releases wrote and read, so
-going back to an earlier release reads it too.
+Memory: in builds after 2026.10.18.0753-nightly, the library's rows live in the state file
+(`rex.db`), not in memory. rex keeps an index of the fields its lists and searches read, the
+rows written since they were last saved, and up to `REX_ROW_CACHE_MB` (default 64) of rows
+read recently, which cut the production server's memory to about a third. Upgrading needs
+nothing: the file is the one earlier releases wrote and read, so going back to an earlier
+release reads it too.
 
 ### Windows
 
 The Windows build is `rust\target\release\rex.exe` in the zip, and every step above works
-the same in PowerShell with `rust\target\release\rex.exe` for `rust/target/release/rex`. Three things differ:
+the same in PowerShell with `rust\target\release\rex.exe` for `rust/target/release/rex`,
+`curl.exe` for `curl`, `$env:NAME = '...'` for `export`, and quotes around a comma-separated
+`--announce-url`. Three things differ:
 
 - `examples/run.sh.example` and `rex manager` are Linux and macOS only. Start `rex.exe` from a
   scheduled task (Task Scheduler, "At startup", "Run whether user is logged on or not") to
   keep it running.
-- `claim_state.json` and `rex.db`, which holds the sources' credentials, are protected by
-  the folder they sit in, not by file modes, so keep the rex folder inside your user profile.
-- LAN discovery cannot share its port with a Plex Media Server on the same Windows machine.
-  Run rex with `--gdm off` there, as you would with another port on Linux.
+- `claim_state.json` and `rex.db`, which holds the sources' credentials, are protected only by
+  the folder they sit in, so keep the rex folder inside your user profile.
+- LAN discovery cannot share its ports with a Plex Media Server on the same Windows machine.
+  If rex runs on 32400 beside one there, run it with `--gdm off`.
 
 ### Docker
 
-`ghcr.io/debridmediamanager/rex` is each release's Linux build (amd64 and arm64) in an image,
-published by `.github/workflows/docker.yml`: `latest`, `X.Y.Z` and `X.Y`. It is private, as
-the repository is: log in with a classic GitHub token that has `read:packages` and `repo`,
-the same as for zurg's image.
+`ghcr.io/debridmediamanager/rex` is each release's and nightly's Linux build (amd64 and arm64)
+in an image, published by `.github/workflows/docker.yml`: `latest`, `X.Y.Z` and `X.Y` for
+releases, `nightly` and `<YYYY.MM.DD.HHMM>-nightly` for nightlies. Use `nightly` until the
+next release (README step 1). It is private, as the repository is: log in with a classic
+GitHub token that has `read:packages` and `repo`, the same as for zurg's image.
 
 ```bash
 docker login ghcr.io -u YOUR_GITHUB_USERNAME
@@ -324,17 +361,18 @@ docker login ghcr.io -u YOUR_GITHUB_USERNAME
 
 Everything rex writes (`rex.db`, `claim_state.json`, Plex's metadata cache) goes to `/config`.
 Arguments that start with a flag run the server on `/config/rex.db` (`REX_CATALOG` moves
-it); a subcommand runs as given, so naming more directories before the first start is:
+it); a subcommand runs as given, so adding directories to the libraries before the first
+start (step 3; `--mount` matches the image's own zurg mount) is:
 
 ```bash
 docker compose run --rm rex catalog --seed --name den --out /config/rex.db \
-  --movies movies --shows shows --shows anime
+  --mount /zurg_mnt/zurg --movies movies --shows shows --shows anime
 ```
 
 ```yaml
 services:
   rex:
-    image: ghcr.io/debridmediamanager/rex:latest
+    image: ghcr.io/debridmediamanager/rex:nightly
     container_name: rex
     restart: unless-stopped
     network_mode: host        # LAN discovery (GDM), and zurg's registered address reachable as on the host
@@ -345,7 +383,7 @@ services:
 The image starts rex on `/config/rex.db` with `--zurg-mount /zurg_mnt/zurg`, where zurg's
 Docker setup mounts, so the compose file needs no `command:`; one given adds to those.
 
-zurg's `rex_url` is then `http://<the host's LAN IP>:32400`, and the claim (step 6) is the
+zurg's `rex_url` is then `http://<the host's LAN IP>:32400`, and the claim (step 5) is the
 same `curl` on the host. Certificates for step 7 go in `/config` too:
 `--tls-cert /config/host.crt --tls-key /config/host.pkcs8.key`. Without host networking,
 publish `32400:32400` and add `--gdm off`; apps then find rex only once it is claimed, and
@@ -356,13 +394,13 @@ rex must still reach the address zurg registers. The image carries no FFmpeg, so
 
 | Symptom | Cause |
 |---|---|
-| A push answers 404 `no such source: PUT /rex/sources/... first` | The source has not registered: a zurg from before the sources API never does, update it (step 2) |
+| A push answers 404 `no such source: PUT /rex/sources/... first` | The source has not registered: a zurg from before the sources API never does, update it to a nightly from 2026.10.17 or later (step 6) |
 | Every part read answers 502 | No source is registered (`curl -s http://127.0.0.1:32400/rex/sources`), or rex cannot reach the one that is |
-| A push answers `rejected: no movie or show library holds ...` | The catalog has no movie or show library at all: name one with `--movies`/`--shows` before the first start, or Add Library on it (step 3) |
-| zurg pushed but the library stays empty | Items are held until zurg probes them (step 5) |
+| A push answers `rejected: no movie or show library holds ...` | The catalog has no movie or show library of that item's kind: name one with `--movies`/`--shows` before the first start, or Add Library on it (step 3) |
+| zurg pushed but the library stays empty | Items are held until zurg probes them (step 6) |
 | A part read answers 502, or 401/403 | rex cannot reach the source's `url` (502), or the source refused its credential (its own status): the log line `PART ... upstream` says which |
 | The server is not in the Plex apps | Not claimed, no `--announce-url`, or the announced HTTPS address is not reachable from the internet (step 7) |
-| The log says `--announce-url: waiting for a claim` | The server is not claimed: claim it (step 6) and it announces at once |
+| The log says `--announce-url: waiting for a claim` | The server is not claimed: claim it (step 5) and it announces at once |
 | A second server on the same catalog exits 1 | The state file is locked by the first: one catalog per server |
 
 ### Running several servers: rex manager
@@ -376,6 +414,7 @@ running when the manager stopped is running again when it starts.
 ```bash
 rex manager serve                        # API + page on http://127.0.0.1:32300; prints the admin token once
 export PLEX_TOKEN=...                    # optional; keys come from the environment, never the command line
+# from a catalog seeded first (rex catalog --seed --out catalog.json, step 3)
 rex manager create living-room --port 32400 --catalog "$PWD/catalog.json" --gdm on
 rex manager start living-room
 rex manager list                         # status | logs | stop | restart | delete [--purge] | build
@@ -387,7 +426,7 @@ rex manager build den --start            # rex catalog --seed, then start (resta
 ```
 
 Each server gets `managed/servers/<name>/`, whose `rex.db` holds its catalog (copied
-in; a JSON catalog is converted) and, on the native server, its state. Keys are stored in
+in; a JSON catalog is converted) and its state. Keys are stored in
 `managed/manager.db` (mode 600) and passed to each server through its environment; the
 API redacts them. `http://127.0.0.1:32300/` is a small page for the same operations (paste
 the admin token from `managed/admin.token`). `build NAME` runs `rex catalog --seed`
@@ -436,20 +475,21 @@ WantedBy=multi-user.target
 Off by default: rex then answers a conversion request the way a server with no
 encoder does. Point `REX_TRANSCODER` at an FFmpeg to turn it on. jellyfin-ffmpeg is
 the one it is measured with. Install its `.deb` as a package: it lands in
-`/usr/lib/jellyfin-ffmpeg` beside any system FFmpeg, with its own Intel driver. Unpacked
-anywhere else (`dpkg -x`) its libva still looks for that driver under
-`/usr/lib/jellyfin-ffmpeg/lib/dri`, ignores `LIBVA_DRIVERS_PATH`, and falls back to the
-system's older iHD, which on a J4105 could not convert 10-bit HEVC (measured 2026-10-17).
+`/usr/lib/jellyfin-ffmpeg` beside any system FFmpeg, with its own Intel driver. On a J4105
+(2026-10-17), a copy unpacked anywhere else (`dpkg -x`) fell back to the system's older iHD,
+which could not convert 10-bit HEVC.
 
 ```bash
-curl -LO https://github.com/jellyfin/jellyfin-ffmpeg/releases/download/v8.1.3-1/jellyfin-ffmpeg8_8.1.3-1-jammy_amd64.deb
-sudo apt install ./jellyfin-ffmpeg8_8.1.3-1-jammy_amd64.deb
-export REX_TRANSCODER=/usr/lib/jellyfin-ffmpeg/ffmpeg LIBVA_DRIVER_NAME=iHD
+DEB=jellyfin-ffmpeg8_8.1.3-1-$(. /etc/os-release; echo "$VERSION_CODENAME")_$(dpkg --print-architecture).deb   # Ubuntu 22.04/24.04/26.04, Debian 12/13
+curl -fLO "https://github.com/jellyfin/jellyfin-ffmpeg/releases/download/v8.1.3-1/$DEB"
+sudo apt install "./$DEB"
+export REX_TRANSCODER=/usr/lib/jellyfin-ffmpeg/ffmpeg LIBVA_DRIVER_NAME=iHD   # iHD: Intel only, leave it out on AMD
 sudo usermod -aG render "$USER"      # the GPU's /dev/dri/renderD128; log in again after
 ```
 
-A systemd user service only gets the new group once its user manager restarts (a
-reboot, or the last login session ending); until then start rex under `sg render`.
+`export` reaches only the current shell: under run.sh or systemd, put the two variables in
+`rex.env` instead. A systemd user service only gets the new group once its user manager
+restarts (a reboot, or the last login session ending); until then start rex under `sg render`.
 
 | Variable | Default | |
 |---|---|---|
@@ -459,8 +499,8 @@ reboot, or the last login session ending); until then start rex under `sg render
 | `REX_TRANSCODE_DIR` | `$TMPDIR/rex-transcode-<port>` | segments; cleared at start |
 
 The startup log says what the probe found (`transcoder: ... hardware vaapi encode=true
-tonemapx=true opencl_tonemap=true decode=[h264,hevc,mpeg2video]`). A conversion runs on the
-GPU end to end when it can decode the source there, uploads CPU-decoded frames when it cannot
+tonemapx=true opencl_tonemap=true bounded_http=false decode=[h264,hevc,mpeg2video]`). A
+conversion runs on the GPU end to end when it can decode the source there, uploads CPU-decoded frames when it cannot
 (AV1 on older Intel), and falls back to x264 when there is no device. HDR and Dolby Vision
 are tonemapped on the GPU through OpenCL when the probe tonemapped a frame that way, else on
 the CPU, which on a low-power Intel is a tenth of real time at 4K. The OpenCL runtime is a
@@ -484,11 +524,15 @@ so a 1080p title there needs one or the other: `REX_TRANSCODER`, or the app's ce
 quality raised to Original. Without an encoder rex refuses such a play (decision
 2000/4005).
 
+A conversion carries only an embedded image subtitle, burned into the picture; text
+subtitles are dropped from it.
+
 
 ### By platform
 
-Each platform runs the transcoder suite in CI (`tests/test_native_transcode.py`, against
-jellyfin-ffmpeg 8.1.3), on the CPU path, since the runners have no GPU.
+Every platform but Linux arm64 runs the transcoder suite in CI
+(`tests/test_native_transcode.py`, against jellyfin-ffmpeg 8.1.3), on the CPU path, since the
+runners have no GPU.
 
 | Platform | GPU paths rex knows | Notes |
 |---|---|---|

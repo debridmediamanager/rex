@@ -8,17 +8,17 @@ rex gets its library from whatever you point at it. Each source sends rex the li
 
 ## What you get
 
-- Once you add it to your Plex account it shows up in the Plex apps and in app.plex.tv next to your other servers
+- Once it is added to a Plex account, shared with yours and given an address (HTTPS for app.plex.tv), it shows up in the Plex apps next to your other servers
 - Movies and shows get posters, summaries, cast, seasons and episodes from Plex's own metadata
 - Watched state, Continue Watching, playlists, collections, edits and Fix Match all work and survive a restart
 - Apps on your home network find it on their own when it runs on port 32400
-- Files play in their original quality. With FFmpeg it also converts what a device cannot play and a GPU makes that fast. A converted film starts in about 2 seconds even on a small Intel box
+- Files play in their original quality. With FFmpeg (set `REX_TRANSCODER`, see [Transcoding](docs/setup.md#transcoding)) it also converts what a device cannot play, and a GPU makes that fast. A 1080p film converted on a small Intel GPU starts in about 2 seconds
 - Several sources can fill the same Movies and TV libraries. Two zurgs on two debrid accounts end up in one library
 - When a source reports a file gone it leaves the library the same way it would in Plex
 
 ## Setup
 
-This is the short version. [docs/setup.md](docs/setup.md) has every option and a troubleshooting table.
+This is the short version. [docs/setup.md](docs/setup.md) has the details and a troubleshooting table.
 
 You need a Linux, macOS or Windows machine and at least one source such as zurg. rex never needs your Plex token.
 
@@ -27,13 +27,23 @@ You need a Linux, macOS or Windows machine and at least one source such as zurg.
 Download the build for your machine from [Releases](https://github.com/debridmediamanager/rex/releases) and unpack it. There are builds for Linux (amd64 and arm64, glibc 2.35 or newer, so Ubuntu 22.04 and up), for macOS (Intel and Apple Silicon) and for Windows (64 bit).
 
 ```bash
-tar xzf rex-vX.Y.Z-linux-amd64.tar.gz && cd rex-vX.Y.Z-linux-amd64
+tar xzf rex-<tag>-linux-amd64.tar.gz && cd rex-<tag>-linux-amd64
 ```
 
+`<tag>` is the build's name, such as `2026.10.18.0753-nightly` or `v0.3.0`.
 Take the newest nightly (`YYYY.MM.DD.HHMM-nightly`) until the next release: v0.3.0 predates
 the server naming itself, taking its owner from the claim and trusting what zurg and DMM say
-each file is, which the steps below rely on. To build it yourself instead (no Rust on the
-machine? the full guide has a Docker build):
+each file is, which the steps below rely on.
+
+On macOS, Gatekeeper will not run a rex downloaded in a browser. After unpacking, run `xattr -dr com.apple.quarantine .` in the unpacked folder, or download it with the [GitHub CLI](https://cli.github.com) (signed in with `gh auth login`), which does not quarantine it (`darwin-amd64` on Intel):
+
+```bash
+TAG=$(gh api 'repos/debridmediamanager/rex/releases?per_page=1' --jq '.[0].tag_name')
+gh release download "$TAG" -R debridmediamanager/rex -p '*-darwin-arm64.tar.gz'
+```
+
+To build it yourself instead (Rust 1.89 or newer from rustup, as distro packages are often
+older; no Rust on the machine? the full guide has a Docker build):
 
 ```bash
 git clone https://github.com/debridmediamanager/rex && cd rex
@@ -52,13 +62,31 @@ On Windows unpack the zip and use `rust\target\release\rex.exe` where the steps 
 rust/target/release/rex --catalog rex.db
 ```
 
-The first start makes `rex.db` with an empty Movies and TV library, named after the machine (`--friendly-name` picks another name). Files under a `movies` directory go to Movies and files under `shows` go to TV, whichever source they come from; a file under any other directory, like `anime`, goes to the one of its kind. Once claimed, rex takes the owner's Plex username from the claim.
+The first start makes `rex.db` with two empty libraries, Debrid Movies and Debrid TV, and names the server after the machine (`--friendly-name` picks another name). Files under a `movies` directory go to Movies and files under `shows` go to TV, whichever source they come from, unless the source placed a file as the other kind. A file under any other directory, like `anime`, goes to TV if its source placed it as an episode and to Movies otherwise. Once claimed, rex takes the owner's Plex username from the claim.
 
-Until you add it to a Plex account in step 4 anyone on your home network can browse it. Keep it there until then.
+Until you add it to a Plex account in step 3 anyone on your home network can browse it. Keep it there until then.
 
-Plex Media Server runs on the same machine? Add `--port 32500 --gdm off` and use `32500` wherever this page says `32400`: Plex already holds port 32400 and the ports apps use to find servers.
+Plex Media Server runs on the same machine? Add `--port 32500` and use `32500` wherever this page says `32400`. On any port but 32400 rex stays out of LAN discovery, so apps find it through the Plex account it is shared with in step 3.
 
-**3. Point zurg at it**
+**3. Add it to a Plex account**
+
+This step is optional and at your own risk. rex is not made by Plex and Plex could take action against an account that registers it, so use a fresh free Plex account made just for rex, not your own. Skip it and rex only answers on your own network, with file names instead of posters (unless you set `PLEX_TOKEN`, below).
+
+Do it before step 4. Titles zurg sends before the claim keep their file names until rex names them in the background, about 300 an hour.
+
+Sign in to plex.tv as the fresh account, open [plex.tv/claim](https://www.plex.tv/claim) and copy the code. It expires in four minutes.
+
+```bash
+curl -X POST "http://127.0.0.1:32400/myplex/claim?token=claim-xxxxxxxxxxxx"
+```
+
+Do this once per server. rex saves it in `claim_state.json` next to `rex.db`. Back that file up.
+
+Then, still as the fresh account, share rex with your own account in app.plex.tv (Settings, Manage Library Access, Grant Library Access) and accept the invite as yourself. You watch signed in as yourself, with your own watch history. Fix Match works only for the fresh account: rex refuses it to the accounts it is shared with, as Plex does. Add `--announce-url http://<rex's LAN IP>:32400` to the start command so Plex apps signed in as you know where to reach it.
+
+From then on rex talks to plex.tv with the server's own token from the claim. That token also lets rex show your titles with Plex's own metadata: until the claim they keep the names your source pushed. If you skip this step and still want Plex's metadata, set `PLEX_TOKEN` to your [Plex token](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/) in step 2. A claimed server does not need it.
+
+**4. Point zurg at it**
 
 Add this to zurg's `config.yml` and restart zurg.
 
@@ -73,31 +101,17 @@ zurg tells rex where its files are and how to log in to them, then sends its who
 
 Anyone who can reach rex's port can push to its library or delete what a source pushed, so keep that port off the open internet. Running two zurgs? Give each a name of its own with `rex_source: rd` and `rex_source: ad`. Anything else that serves files can register the same way, see the [feed API](docs/feed-api.md).
 
-A zurg from before this does not tell rex where its files are, so update zurg first.
-
-**4. Add it to a Plex account**
-
-This step is optional and at your own risk. rex is not made by Plex and Plex could take action against an account that registers it, so use a fresh free Plex account made just for rex, not your own. Skip it and rex only answers on your own network, with file names instead of posters.
-
-Sign in to plex.tv as the fresh account, open [plex.tv/claim](https://www.plex.tv/claim) and copy the code. It expires in four minutes.
-
-```bash
-curl -X POST "http://127.0.0.1:32400/myplex/claim?token=claim-xxxxxxxxxxxx"
-```
-
-Do this once per server. rex saves it in `claim_state.json` next to `rex.db`. Back that file up.
-
-Then, still as the fresh account, share rex with your own account in app.plex.tv (Settings, Manage Library Access, Grant Library Access) and accept the invite as yourself. You watch signed in as yourself, with your own watch history. Add `--announce-url http://<rex's LAN IP>:32400` to the start command so Plex apps signed in as you know where to reach it.
-
-From then on rex talks to plex.tv with the server's own token from the claim. That token also lets rex show your titles with Plex's own metadata: until the claim they keep the names your source pushed. If you skip this step and still want Plex's metadata, set `PLEX_TOKEN` to your [Plex token](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/) in step 2. A claimed server does not need it.
+This needs a zurg nightly from 2026.10.17 or later, so update zurg first. The latest zurg release, v1.0.0, has no rex feed.
 
 **5. Use it outside your home**
 
-app.plex.tv only connects to an HTTPS address and the other Plex apps prefer one. rex has no relay so the address has to be reachable from the internet. Give rex a certificate for your own hostname with `--tls-cert` and `--tls-key`. Then restart it with that address. rex registers the address once it is claimed. Without `PLEX_TOKEN` it can have the address from the first start: it waits and registers the moment you claim it. Do not put a Cloudflare tunnel in front. Cloudflare drops the range of the first read so every play start pulls the whole file from your source.
+app.plex.tv only connects to an HTTPS address and the other Plex apps outside your home prefer one. rex has no relay so the address has to be reachable from the internet. Give rex a certificate for your own hostname with `--tls-cert` and `--tls-key`. The key has to be PKCS#8 or RSA. `tailscale cert` and many ACME clients write an EC key (`BEGIN EC PRIVATE KEY`), which `openssl pkcs8 -topk8 -nocrypt -in host.key -out host.pkcs8.key` converts. Then restart it with that address. rex registers the address once it is claimed. It can have the address from the first start: unclaimed, it waits and registers the moment you claim it. Do not put a Cloudflare tunnel in front. Cloudflare drops the range of the first read so every play start pulls the whole file from your source.
 
 ```bash
---announce-url https://rex.example.com:32400
+--announce-url https://rex.example.com:32400,http://<rex's LAN IP>:32400
 ```
+
+Keep step 3's LAN address after the HTTPS one in the same flag: a second `--announce-url` replaces the first.
 
 Your Plex apps can then reach it from anywhere.
 
@@ -116,7 +130,7 @@ What it does not do:
 - Movies and TV only. Music and photo libraries stay empty
 - No Live TV or DVR
 - A converted stream carries only an embedded image subtitle, burned into the picture. Text subtitles are dropped from a conversion
-- Playing outside your home needs a Plex Pass or Remote Watch Pass on the account you watch with, as with any Plex server: the Plex app asks for it before it ever reaches rex. Converting video, GPU included, needs no Plex Pass
+- Playing outside your home needs a Plex Pass or Remote Watch Pass on the account you watch with, as with any Plex server: Plex Web asks for it before the play ever reaches rex (the other Plex apps were not tested). Converting video, GPU included, needs no Plex Pass
 
 ## License
 

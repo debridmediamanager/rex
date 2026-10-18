@@ -18,7 +18,7 @@
 # history, prefs, the sources' registrations) in the same file.
 #
 # On --port 32400 rex answers Plex's LAN discovery (GDM) on udp/32410 and udp/32414; on a
-# host that runs Plex too, use another port and --gdm off.
+# host that runs Plex too, use another port: off 32400 rex stays out of discovery.
 #
 # --announce-url: an unclaimed server announces nothing until it is claimed, then at once,
 # PLEX_TOKEN or not.
