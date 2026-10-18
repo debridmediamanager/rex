@@ -311,6 +311,24 @@ def main():
         check("...the refusal is a WARN with DMM's status and reason",
               logged(log, "WARNING", r"rex-direct: registration failed: HTTP 401 \(Invalid API key\).*"),
               log[-3000:])
+
+        # 4. Unclaimed it announces nothing, and its wait names the rex-direct URL, not a
+        #    --announce-url it was never given.
+        unclaimed = os.path.join(work, "unclaimed")
+        setup(unclaimed, claimed=False)
+        stub.status = 200
+        with stub.lock:
+            stub.records = []
+        instance = Instance(unclaimed, free_port(), stub.server_address[1], register_url)
+        live.append(instance)
+        time.sleep(3)
+        check("unclaimed, it announces nothing", announced(stub) == [], announced(stub))
+        instance.stop()
+        log = instance.output()
+        check("...and says it waits for a claim to announce the rex-direct URL",
+              logged(log, "INFO", re.escape("waiting for a claim (POST /myplex/claim) before announcing "
+                                            "https://%s:%d" % (HOSTNAME, instance.port)))
+              and "--announce-url" not in log, log[-3000:])
     finally:
         for instance in live:
             if instance.proc.poll() is None:

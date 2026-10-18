@@ -1466,7 +1466,7 @@ pub(crate) fn start_heartbeat(plextv: Arc<PlexTv>, interval: u64) {
                 // 2026-09-11 claim answer the account token from ever being written.
                 let Some(token) = claim_token(&claim) else {
                     if !std::mem::replace(&mut waiting, true) {
-                        info!("--announce-url: waiting for a claim (POST /myplex/claim) before announcing");
+                        info!("waiting for a claim (POST /myplex/claim) before announcing {}", beat.url);
                     }
                     thread::sleep(Duration::from_secs(interval));
                     continue;

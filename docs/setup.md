@@ -418,7 +418,7 @@ rex must still reach the address zurg registers. The image carries no FFmpeg, so
 | zurg pushed but the library stays empty | Items are held until zurg probes them (step 6) |
 | A part read answers 502, or 401/403 | rex cannot reach the source's `url` (502), or the source refused its credential (its own status): the log line `PART ... upstream` says which |
 | The server is not in the Plex apps | Not claimed, no `--announce-url`, or the announced HTTPS address is not reachable from the internet (step 7) |
-| The log says `--announce-url: waiting for a claim` | The server is not claimed: claim it (step 5) and it announces at once |
+| The log says `waiting for a claim` | The server is not claimed: claim it (step 5) and it announces at once |
 | The log says `rex-direct: registration failed: HTTP 401` | DMM refused `DMM_API_KEY`: the key is wrong or the sponsorship has lapsed (step 7) |
 | A second server on the same catalog exits 1 | The state file is locked by the first: one catalog per server |
 
