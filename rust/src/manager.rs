@@ -39,7 +39,7 @@
 //! GET    /servers/<name>/build        that job's status and log tail
 //! ```
 //!
-//! Secrets reach a server through its environment (PLEX_TOKEN, REX_TOKEN), never
+//! Secrets reach a server through its environment (PLEX_TOKEN, REX_TOKEN, DMM_API_KEY), never
 //! its command line, which `ps` shows. A server's sources register with it themselves
 //! (docs/feed-api.md): nothing about them is configured here. Linux and
 //! macOS only: servers are process groups of their own, stopped with signals.
@@ -67,11 +67,13 @@ use crate::{platform, store};
 const DEFAULT_LISTEN: &str = "127.0.0.1:32300";
 // `tmdb_key` reaches no server since rex reads no TMDB (2026-10-17); a configuration saved
 // before then still carries one, which stays accepted and redacted.
-const SECRETS: &[&str] = &["tmdb_key", "plex_token", "token"];
+const SECRETS: &[&str] = &["tmdb_key", "plex_token", "token", "dmm_api_key"];
 /// What each environment field is called in the server's environment.
 const SECRET_ENV: &[(&str, &str)] = &[
     ("plex_token", "PLEX_TOKEN"),
     ("token", "REX_TOKEN"),
+    // rex-direct's DMM sponsor key (`runtime/rexdirect.rs`).
+    ("dmm_api_key", "DMM_API_KEY"),
 ];
 /// Seconds between SIGTERM and SIGKILL; the server saves on SIGTERM.
 const STOP_GRACE: Duration = Duration::from_secs(15);
@@ -148,7 +150,7 @@ fn validate(config: Value, partial: bool) -> Answer<Map<String, Value>> {
     };
     const KNOWN: &[&str] = &[
         "name", "port", "catalog", "zurg_mount", "tmdb_key",
-        "plex_token", "token", "friendly_name", "part_mode", "host", "gdm", "announce_url", "public_url",
+        "plex_token", "token", "dmm_api_key", "friendly_name", "part_mode", "host", "gdm", "announce_url", "public_url",
         "web_root", "assert_claimed", "verbose", "extra_args", "restart",
     ];
     let mut unknown = out.keys().filter(|key| !KNOWN.contains(&key.as_str())).cloned().collect::<Vec<_>>();
@@ -190,7 +192,7 @@ fn validate(config: Value, partial: bool) -> Answer<Map<String, Value>> {
         out.insert("catalog".to_string(), Value::String(path));
     }
     for field in [
-        "zurg_mount", "tmdb_key", "plex_token", "token",
+        "zurg_mount", "tmdb_key", "plex_token", "token", "dmm_api_key",
         "friendly_name", "announce_url", "public_url", "web_root", "host",
     ] {
         if out.get(field).is_some_and(|value| !value.is_null() && !value.is_string()) {
@@ -1375,8 +1377,8 @@ const USAGE: &str = "usage: rex manager [--root ROOT] {serve,create,list,start,s
 
 Every command but serve also takes --url URL (default http://127.0.0.1:32300) and
 --token-file FILE (default <root>/admin.token; or $REX_MANAGER_TOKEN). Keys come from the
-environment (PLEX_TOKEN, REX_TOKEN, or the variable --plex-token-env and
---token-env name), never the command line. Sources register with
+environment (PLEX_TOKEN, REX_TOKEN, DMM_API_KEY, or the variable --plex-token-env,
+--token-env and --dmm-api-key-env name), never the command line. Sources register with
 the server themselves (docs/feed-api.md).";
 
 fn usage_error(message: &str) -> String {
@@ -1435,7 +1437,7 @@ fn parse(args: &[String]) -> Result<Option<Cli>, String> {
                 let mut values = vec![
                     "--port", "--catalog", "--friendly-name", "--zurg-mount", "--part-mode", "--gdm", "--host",
                     "--announce-url", "--public-url", "--web-root", "--restart", "--extra-arg",
-                    "--plex-token-env", "--token-env",
+                    "--plex-token-env", "--token-env", "--dmm-api-key-env",
                 ];
                 values.extend(CLIENT);
                 (values, &["--assert-claimed", "--verbose"][..])
@@ -1684,10 +1686,10 @@ mod tests {
 
     #[test]
     fn keys_are_redacted() {
-        let config = json!({"name": "den", "token": "secret", "tmdb_key": "", "plex_token": "p", "zurg_mount": "/mnt/zurg"});
+        let config = json!({"name": "den", "token": "secret", "tmdb_key": "", "plex_token": "p", "dmm_api_key": "d", "zurg_mount": "/mnt/zurg"});
         assert_eq!(
             redact(config.as_object().unwrap()),
-            json!({"name": "den", "token": "***", "tmdb_key": "", "plex_token": "***", "zurg_mount": "/mnt/zurg"})
+            json!({"name": "den", "token": "***", "tmdb_key": "", "plex_token": "***", "dmm_api_key": "***", "zurg_mount": "/mnt/zurg"})
         );
     }
 
