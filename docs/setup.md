@@ -8,13 +8,8 @@ A rex server is four things: the binary, a **catalog** (its identity and two emp
 libraries, made on its first start), the **sources** that register with it, push the
 library and serve its bytes, and, if it is to appear in your Plex apps, a **claim** on a
 Plex account (a fresh one, shared with yours: step 5) and, for use outside your LAN, an
-HTTPS address. Setting one up is one command:
-
-```bash
-rust/target/release/rex --catalog rex.db
-```
-
-The steps below go through it in order.
+HTTPS address. rex starts once, with every flag and key the later steps need (step 4), and
+nothing after that needs a restart. The steps below go through it in order.
 
 ### What you need
 
@@ -123,8 +118,15 @@ step 8's systemd unit). Back it up with the server stopped, or with
 ### 4. First start, on your LAN
 
 ```bash
-rust/target/release/rex --catalog rex.db
+export DMM_API_KEY=<your DMM API key>    # optional: rex-direct (step 7)
+rust/target/release/rex --catalog rex.db --announce-url http://<rex's LAN IP>:32400
 ```
+
+`--announce-url` is the address plex.tv gives Plex apps signed in as you, so they reach rex at
+home. An unclaimed rex announces nothing and logs `waiting for a claim`; the claim (step 5)
+starts the announce at once. `DMM_API_KEY`, a DMM sponsor's key, turns on rex-direct (step 7);
+leave it out without a sponsorship. With an HTTPS address of your own (step 7), its flags go
+here too. Everything here is read at start, so a flag or key added later needs a restart.
 
 Leave `--owner-username` and `--owner-email` unset: a claimed server takes both from the
 claim, and a given `--owner-username` still wins over it.
@@ -183,7 +185,7 @@ curl -s http://127.0.0.1:32400/rex/feed/rd/items       # what rd pushed, once it
 
 Claiming is optional and at your own risk. rex is not made by Plex and Plex could take
 action against an account that registers it, so claim it with a fresh free Plex account
-made for rex, not your own, and share it with yours (item 5 below). Skip it and rex only
+made for rex, not your own, and share it with yours (item 4 below). Skip it and rex only
 answers on your own network (step 4 "Who may connect"), or start it with `--token` and give
 that token to your clients.
 
@@ -196,28 +198,26 @@ beside the catalog and survives restarts. Keep a backup of that file: a lost cla
 means claiming again, and a claim gone wrong has signed every other server on the
 account out of plex.tv before.
 
-1. Start rex, with or without `--announce-url` (below): an unclaimed rex announces nothing.
-2. Open [plex.tv/claim](https://www.plex.tv/claim) signed in as the fresh account and copy
+1. Open [plex.tv/claim](https://www.plex.tv/claim) signed in as the fresh account and copy
    the `claim-...` token. It is valid for four minutes.
-3. Redeem it on rex itself:
+2. Redeem it on rex itself:
 
    ```bash
    curl -s -X POST "http://127.0.0.1:32400/myplex/claim?token=claim-xxxxxxxxxxxxxxxx"
    ```
 
-4. `curl -s http://127.0.0.1:32400/identity` now reports `claimed="1"`, and
+3. `curl -s http://127.0.0.1:32400/identity` now reports `claimed="1"`, and
    `claim_state.json` exists beside the catalog.
-5. Still as the fresh account, share rex with your own account in app.plex.tv (Settings,
+4. Still as the fresh account, share rex with your own account in app.plex.tv (Settings,
    Manage Library Access, Grant Library Access, both libraries) and accept the invite as
-   yourself. Add `--announce-url http://<rex's LAN IP>:32400` (step 7) so Plex apps signed in
-   as you know where to reach it.
+   yourself.
 
 You then watch signed in as yourself, with your own watch state. Fix Match works only for
 the account rex is claimed with: rex refuses it (403) to the accounts it is shared with, as a
 real Plex Media Server does.
 
 From the claim on rex asks plex.tv with the server token it stores there: the announce
-(step 7), and Plex's own metadata agent, which then names and describes what sources push
+(step 4's addresses), and Plex's own metadata agent, which then names and describes what sources push
 with no restart. `PLEX_TOKEN` is not used once there is a claim. A claimed start logs
 `claimed-account watch/rating sync is OFF: REX_SCROBBLING_DECRYPT_SECRET_B64 is not configured`.
 That is expected: the secret only syncs the owner's watch state with plex.tv, and each
@@ -266,14 +266,13 @@ other Plex apps outside your LAN prefer one. rex has no `*.plex.direct` certific
 simplest address is rex-direct, DMM's own plex.direct. Your own hostname works too. Either
 way rex terminates TLS itself, on the same port as plain HTTP.
 
-- **rex-direct**: put `DMM_API_KEY=<your DMM API key>` in `rex.env` (Docker: under
-  `environment:`; rex does not read `rex.env` itself, `run.sh` (step 8) loads it, so
-  started by hand `export` it), forward rex's port (32400) on your router to the rex machine, and
-  restart rex. At start rex registers with DMM, which points
+- **rex-direct**: with step 4's `DMM_API_KEY` (in `rex.env` under `run.sh`, step 8; Docker:
+  under `environment:`), forward rex's port (32400) on your router to the rex machine. Nothing
+  to restart: at start rex registered with DMM, which points
   `<hash>.rex-direct.debridmediamanager.com` at the public IP rex called from and hands rex
   a certificate for that name. rex serves it and adds
   `https://<hash>.rex-direct.debridmediamanager.com:32400` after the addresses in
-  `--announce-url`, so `--announce-url` needs only step 5's LAN address. The log says
+  `--announce-url`, so `--announce-url` needs only step 4's LAN address. The log says
   `rex-direct: https://<name>:32400 -> <ip>`. rex registers again every six hours, which
   picks up a new IP and a renewed certificate without a restart. It keeps DMM's answer in
   `rex-direct.json` beside the catalog (mode 600, since it holds the certificate's key) and
@@ -281,7 +280,7 @@ way rex terminates TLS itself, on the same port as plain HTTP.
   It needs an active DMM sponsorship. A refused key is a `WARNING` in the log and rex runs
   on without rex-direct. The name points at the public IPv4 address rex calls DMM from, so
   behind CGNAT it cannot work. Plex apps at home still use the LAN address. If your router
-  forwards another outside port to rex, set `REX_DIRECT_PORT=<that port>` in `rex.env`.
+  forwards another outside port to rex, set `REX_DIRECT_PORT=<that port>` beside `DMM_API_KEY`.
 - **Your own hostname**: `--tls-cert host.crt --tls-key host.key`. The key can be PKCS#8,
   RSA or EC (`BEGIN EC PRIVATE KEY`, which `tailscale cert` and many ACME clients write). A
   `tailscale cert` hostname works for apps on your tailnet. With rex-direct as well, rex
@@ -292,15 +291,14 @@ Cloudflare. Cloudflare also drops the `Range` of a file's first read. rex then s
 whole file and every play start pulls all of it from your source (measured in
 docs/findings.md under "The unavoidable trade-off").
 
-With your own hostname, restart rex with the addresses to register, the HTTPS one first and
-step 5's LAN one after it, in one comma-separated flag (a second `--announce-url` replaces the first):
+With your own hostname, step 4's flag lists the HTTPS address first and the LAN one after it,
+comma-separated (a second `--announce-url` replaces the first):
 
 ```bash
 --announce-url https://rex.example.com:32400,http://192.168.1.10:32400
 ```
 
-They can be there from the first start: rex logs that it waits for a claim and registers
-them the moment it is claimed. With `--announce-url` a claimed rex registers with plex.tv at start, with its server token,
+With `--announce-url` a claimed rex registers with plex.tv at start, with its server token,
 holds the event stream plex.tv reads as "online", and re-announces every 10 minutes. The
 server then shows in app.plex.tv and the apps' server list. If it does not, look for the
 `plex.tv` lines in rex's log: a missing claim (`waiting for a claim`), or an address your apps
@@ -406,11 +404,12 @@ services:
 ```
 
 The image starts rex on `/config/rex.db` with `--zurg-mount /zurg_mnt/zurg`, where zurg's
-Docker setup mounts, so the compose file needs no `command:`; one given adds to those.
+Docker setup mounts. A `command:` adds to those: step 4's `--announce-url` goes there
+(`command: --announce-url http://<the host's LAN IP>:32400`) and `DMM_API_KEY` under
+`environment:`, both before the first `docker compose up`.
 
 zurg's `rex_url` is then `http://<the host's LAN IP>:32400`, and the claim (step 5) is the
-same `curl` on the host. rex-direct (step 7) needs only `DMM_API_KEY` under `environment:`,
-and keeps `rex-direct.json` in `/config`. Certificates of your own go in `/config` too:
+same `curl` on the host. rex-direct (step 7) keeps `rex-direct.json` in `/config`. Certificates of your own go in `/config` too:
 `--tls-cert /config/host.crt --tls-key /config/host.key`. Without host networking,
 publish `32400:32400` and add `--gdm off` and `--friendly-name <name>` (the container's
 hostname is its ID); apps then find rex only once it is claimed, and

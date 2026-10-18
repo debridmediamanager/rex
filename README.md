@@ -58,9 +58,14 @@ On Windows unpack the zip and use `rust\target\release\rex.exe` where the steps 
 
 **2. Start it**
 
+Start it once with everything the later steps need. Nothing below asks for a restart.
+
 ```bash
-rust/target/release/rex --catalog rex.db
+export DMM_API_KEY=<your DMM API key>      # optional: rex-direct (step 5)
+rust/target/release/rex --catalog rex.db --announce-url http://<rex's LAN IP>:32400
 ```
+
+`--announce-url` tells plex.tv where Plex apps signed in as you reach rex at home. rex announces nothing until it is claimed in step 3, then at once. `DMM_API_KEY` is the key you get by sponsoring DMM: it gives rex an HTTPS address of its own (step 5). Leave it out if you do not sponsor.
 
 The first start makes `rex.db` with two empty libraries, Debrid Movies and Debrid TV, and names the server after the machine (`--friendly-name` picks another name). Files under a `movies` directory go to Movies and files under `shows` go to TV, whichever source they come from, unless the source placed a file as the other kind. A file under any other directory, like `anime`, goes to TV if its source placed it as an episode and to Movies otherwise. Once claimed, rex takes the owner's Plex username from the claim.
 
@@ -84,9 +89,9 @@ curl -X POST "http://127.0.0.1:32400/myplex/claim?token=claim-xxxxxxxxxxxx"
 
 Do this once per server. rex saves it in `claim_state.json` next to `rex.db`. Back that file up.
 
-Then, still as the fresh account, share rex with your own account in app.plex.tv (Settings, Manage Library Access, Grant Library Access) and accept the invite as yourself. You watch signed in as yourself, with your own watch history. Fix Match works only for the fresh account: rex refuses it to the accounts it is shared with, as Plex does. Add `--announce-url http://<rex's LAN IP>:32400` to the start command so Plex apps signed in as you know where to reach it.
+Then, still as the fresh account, share rex with your own account in app.plex.tv (Settings, Manage Library Access, Grant Library Access) and accept the invite as yourself. You watch signed in as yourself, with your own watch history. Fix Match works only for the fresh account: rex refuses it to the accounts it is shared with, as Plex does.
 
-From then on rex talks to plex.tv with the server's own token from the claim. That token also lets rex show your titles with Plex's own metadata: until the claim they keep the names your source pushed. If you skip this step and still want Plex's metadata, set `PLEX_TOKEN` to your [Plex token](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/) in step 2. A claimed server does not need it.
+The claim gives rex a token of its own. With it rex announces the address from step 2 and shows your titles with Plex's own metadata, with no restart. Until the claim they keep the names your source pushed. If you skip this step and still want Plex's metadata, set `PLEX_TOKEN` to your [Plex token](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/) in step 2. A claimed server does not need it.
 
 **4. Point zurg at it**
 
@@ -97,7 +102,7 @@ rex_url: http://<rex's address>:32400
 dmm_api_key: <your DMM API key>
 ```
 
-`dmm_api_key` is the key you get by sponsoring DMM. zurg asks DMM which movie or episode each file is. Without it nothing is matched: films keep their file names and episodes are numbered in file order. Leave `plex_server_url` pointing at your real Plex, or empty: pointed at rex, zurg learns rex's own matches and a wrong one could never be fixed.
+With `dmm_api_key` zurg asks DMM which movie or episode each file is. Without it nothing is matched: films keep their file names and episodes are numbered in file order. Leave `plex_server_url` pointing at your real Plex, or empty: pointed at rex, zurg learns rex's own matches and a wrong one could never be fixed.
 
 zurg tells rex where its files are and how to log in to them, then sends its whole library and every change as it happens. A movie or episode shows up once zurg has analyzed it, which zurg starts as soon as its library has loaded.
 
@@ -109,27 +114,21 @@ This needs a zurg nightly from 2026.10.17 or later, so update zurg first. The la
 
 app.plex.tv only connects to an HTTPS address and the other Plex apps outside your home prefer one. rex has no relay so the address has to be reachable from the internet.
 
-The simplest way is rex-direct. It needs an active DMM sponsorship. Put your DMM API key in `rex.env` (with Docker, under `environment:`). rex does not read that file itself: `run.sh` (below) loads it. Started by hand, `export` the line first.
+The simplest way is rex-direct, which the `DMM_API_KEY` from step 2 turns on. Forward rex's port (32400) on your router to the rex machine. That is all: rex got a name of its own from DMM and a certificate for it when it started, and once it is claimed it announces `https://<hash>.rex-direct.debridmediamanager.com:32400` after the address in `--announce-url`. The name points at the public IP rex calls DMM from, and rex checks it every six hours, so a new IP is picked up on its own. Behind CGNAT it cannot work, because nothing outside reaches your router's port. Plex apps at home still use the LAN address. If your router forwards another outside port to rex, set `REX_DIRECT_PORT` to that port beside `DMM_API_KEY`.
 
-```bash
-DMM_API_KEY=<your DMM API key>
-```
-
-Forward rex's port (32400) on your router to the rex machine, then restart rex. rex gets a name of its own from DMM and a certificate for it. Once it is claimed it announces `https://<hash>.rex-direct.debridmediamanager.com:32400` after the addresses in `--announce-url`. The name points at the public IP rex calls DMM from, and rex checks it every six hours, so a new IP is picked up on its own. Behind CGNAT it cannot work, because nothing outside reaches your router's port. Plex apps at home still use the LAN address from step 3. If your router forwards another outside port to rex, set `REX_DIRECT_PORT` to that port.
-
-You can use your own hostname instead. Give rex a certificate for it with `--tls-cert` and `--tls-key`. The key can be PKCS#8, RSA or EC, so the files `tailscale cert` and ACME clients write work as they are. Then restart it with that address:
+You can use your own hostname instead. Give rex a certificate for it with `--tls-cert` and `--tls-key` (PKCS#8, RSA or EC, so the files `tailscale cert` and ACME clients write work as they are) and put the address first in step 2's flag, the LAN address after it:
 
 ```bash
 --announce-url https://rex.example.com:32400,http://<rex's LAN IP>:32400
 ```
 
-Keep step 3's LAN address after the HTTPS one in the same flag: a second `--announce-url` replaces the first. rex registers the address once it is claimed. It can have the address from the first start: unclaimed, it waits and registers the moment you claim it.
+A second `--announce-url` replaces the first, so keep both in one. Known before the first start, these flags go in step 2's command. Added later, they need a restart.
 
 Do not put a Cloudflare tunnel in front. Cloudflare drops the range of the first read so every play start pulls the whole file from your source.
 
 Your Plex apps can then reach it from anywhere.
 
-To keep it running copy `examples/run.sh.example` to `run.sh` next to `rust/`, set its `--announce-url` to step 3's LAN address (after your HTTPS address, if you have your own) and start it as a service. The full guide has a systemd unit and a way to run several servers on one machine.
+To keep it running copy `examples/run.sh.example` to `run.sh` next to `rust/`, give it step 2's flags, put `DMM_API_KEY=...` in `rex.env` beside it (with Docker, under `environment:`) and start it as a service. The full guide has a systemd unit and a way to run several servers on one machine.
 
 To update, unpack a newer build into `~/rex` as in step 1 and restart rex. It replaces `rust/`, `data/` and `examples/` and leaves `rex.db`, `rex.env`, `run.sh`, `claim_state.json` and `rex-direct.json` alone. With Docker, `docker compose pull && docker compose up -d`.
 
