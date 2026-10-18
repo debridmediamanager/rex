@@ -690,22 +690,26 @@ def main():
         # Each restarting FFmpeg at its own segment in turn was a loop (3 531 restarts in
         # seconds against Plex Web on the 1.42.2 reference); the newest request wins, the older
         # gives up.
-        session = "s-race"
-        get(port, "/video/:/transcode/universal/decision", plex_web_query("4", session))
-        get(port, "/video/:/transcode/universal/start.m3u8", plex_web_query("4", session))
-        base = "/video/:/transcode/universal/session/%s/base/" % session
-        get(port, base + "00000.ts")
-        answers = {}
-        old = threading.Thread(target=lambda: answers.__setitem__("old", get(port, base + "00140.ts", timeout=30)[0]))
-        old.start()
-        time.sleep(0.05)
-        status, _, seeked = get(port, base + "00060.ts", timeout=30)
-        old.join()
-        restarts = sum(1 for line in open(log) if "TRANSCODE %s seek to" % session in line)
-        check("race: the newest request is served after at most two restarts",
-              status == 200 and seeked[:1] == b"\x47" and restarts <= 2,
-              "%s, %d restarts, the old request answered %s" % (status, restarts, answers.get("old")))
-        get(port, "/video/:/transcode/universal/stop", [("session", session)])
+        # Five times: on the Windows runner the older seek's launch landed after the newer's and
+        # replaced it, leaving the newest request waiting on a run that was gone, in one run of
+        # two (CI 2026-10-18).
+        for attempt in range(5):
+            session = "s-race-%d" % attempt
+            get(port, "/video/:/transcode/universal/decision", plex_web_query("4", session))
+            get(port, "/video/:/transcode/universal/start.m3u8", plex_web_query("4", session))
+            base = "/video/:/transcode/universal/session/%s/base/" % session
+            get(port, base + "00000.ts")
+            answers = {}
+            old = threading.Thread(target=lambda: answers.__setitem__("old", get(port, base + "00140.ts", timeout=30)[0]))
+            old.start()
+            time.sleep(0.05)
+            status, _, seeked = get(port, base + "00060.ts", timeout=30)
+            old.join()
+            restarts = sum(1 for line in open(log) if "TRANSCODE %s seek to" % session in line)
+            check("race %d: the newest request is served after at most two restarts" % attempt,
+                  status == 200 and seeked[:1] == b"\x47" and restarts <= 2,
+                  "%s, %d restarts, the old request answered %s" % (status, restarts, answers.get("old")))
+            get(port, "/video/:/transcode/universal/stop", [("session", session)])
         status, _, body = get(port, "/transcode/sessions")
         check("every session is gone after stop", json.loads(body)["MediaContainer"].get("size") == 0, "")
         # "Maximum simultaneous CPU transcodes": past the cap a second video encode is refused,

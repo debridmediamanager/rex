@@ -592,6 +592,8 @@ struct Progress {
     last_request: Option<i64>,
     /// Counts segment requests; only the newest may move FFmpeg (`segment`).
     requests: u64,
+    /// The request whose seek claimed the latest restart.
+    seek: u64,
     /// Input failures (the source answering 5xx, a dropped connection) retried so far.
     input_retries: u32,
     touched: Option<Instant>,
@@ -603,6 +605,8 @@ pub(crate) struct Session {
     dir: PathBuf,
     state: Mutex<Progress>,
     child: Mutex<Option<Child>>,
+    /// Held across a seek's launch, so two seeks' launches cannot cross (`segment`).
+    launching: Mutex<()>,
     run: std::sync::atomic::AtomicU64,
     stopped: AtomicBool,
     pub started: f64,
@@ -921,6 +925,7 @@ impl Transcoder {
             dir,
             state: Mutex::new(Progress { touched: Some(Instant::now()), ..Progress::default() }),
             child: Mutex::new(None),
+            launching: Mutex::new(()),
             run: std::sync::atomic::AtomicU64::new(0),
             stopped: AtomicBool::new(false),
             started: now_seconds(),
@@ -1298,6 +1303,7 @@ impl Transcoder {
                                 // Claimed under the lock, so the other representation's request
                                 // for the same segment waits for this restart.
                                 state.run_start = index;
+                                state.seek = ticket;
                                 state.finished = false;
                                 state.input_retries = 0;
                                 restart = true;
@@ -1325,7 +1331,15 @@ impl Transcoder {
             }
             if restart {
                 restarted = true;
-                self.launch(session, index, None);
+                // The claim above is made under the lock, the launch after it. On the Windows
+                // runner killing the old FFmpeg took long enough that a newer seek claimed and
+                // launched in between, and this older launch then replaced it: the newest
+                // request waited on a run that was gone (CI 2026-10-18). Launches go one at a
+                // time, and one a newer seek has overtaken is dropped.
+                let _launching = session.launching.lock();
+                if session.state.lock().is_ok_and(|state| state.seek == ticket) {
+                    self.launch(session, index, None);
+                }
             } else if session.throttled() {
                 session.set_paused(false);
                 if let Ok(mut state) = session.state.lock() {
