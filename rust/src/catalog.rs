@@ -46,23 +46,9 @@ fn next_generation() -> u64 {
     GENERATIONS.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
 }
 
-/// `Catalog::index`: positions by parent and by section, and the positions written since.
+/// `Catalog::index`: the rows under each key of every `By` lookup, and the positions written since.
 #[derive(Default)]
 struct RowIndex(std::sync::Mutex<IndexState>);
-
-#[derive(Default)]
-struct IndexState {
-    built: Option<Positions>,
-    stale: Vec<usize>,
-}
-
-#[derive(Default)]
-struct Positions {
-    parent_of: Vec<Option<String>>,
-    children: HashMap<String, Vec<usize>>,
-    section_of: Vec<Option<String>>,
-    sections: HashMap<String, Vec<usize>>,
-}
 
 /// A clone builds its own index when it is first read.
 impl Clone for RowIndex {
@@ -75,6 +61,96 @@ impl std::fmt::Debug for RowIndex {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         formatter.write_str("RowIndex")
     }
+}
+
+#[derive(Default)]
+struct IndexState {
+    built: Option<Positions>,
+    stale: Vec<usize>,
+}
+
+/// What a row is looked up by without reading every row. Each lookup keeps the text its
+/// callers compared before it existed, so an answer read through it is the same.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum By {
+    /// `parentRatingKey`, a string or a number (`children`).
+    Parent,
+    /// A movie's or show's `librarySectionID` (`section_refs`).
+    Section,
+    /// Each `Media[].Part[].id`, as `string_value` writes it: the byte reads find their Part by it.
+    Part,
+    /// Each `Media[].Part[].file`.
+    File,
+    /// A clip's owner, `_parentRatingKey` as `string_value` writes it (`extras_of`).
+    ClipParent,
+}
+
+const LOOKUPS: usize = 5;
+
+impl By {
+    fn slot(self) -> usize {
+        self as usize
+    }
+
+    fn keys(self, item: &Value) -> Vec<Box<str>> {
+        let parts = || {
+            item.get("Media")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+                .flat_map(|media| media.get("Part").and_then(Value::as_array).into_iter().flatten())
+        };
+        let mut keys: Vec<Box<str>> = match self {
+            By::Parent => key_text(item.get("parentRatingKey")).into_iter().map(Into::into).collect(),
+            By::Section => section_of(item).into_iter().map(Into::into).collect(),
+            By::Part => parts().filter_map(|part| part.get("id")).map(|id| text_of(id).into()).collect(),
+            By::File => parts().filter_map(|part| part.get("file").and_then(Value::as_str)).map(Into::into).collect(),
+            By::ClipParent => item.get("_parentRatingKey").map(|key| text_of(key).into()).into_iter().collect(),
+        };
+        keys.sort();
+        keys.dedup();
+        keys
+    }
+}
+
+/// `runtime::string_value`: the text a key field is compared by.
+fn text_of(value: &Value) -> String {
+    match value {
+        Value::String(value) => value.clone(),
+        Value::Number(value) => value.to_string(),
+        Value::Bool(value) => value.to_string(),
+        _ => String::new(),
+    }
+}
+
+/// One lookup: each row's keys under it, and the rows under each key in row order.
+#[derive(Default)]
+struct Lookup {
+    of: Vec<Vec<Box<str>>>,
+    at: HashMap<Box<str>, Vec<usize>>,
+}
+
+impl Lookup {
+    fn set(&mut self, position: usize, keys: Vec<Box<str>>) {
+        if self.of.len() <= position {
+            self.of.resize_with(position + 1, Vec::new);
+        }
+        if self.of[position] == keys {
+            return;
+        }
+        for key in std::mem::take(&mut self.of[position]) {
+            file(&mut self.at, key, position, false);
+        }
+        for key in &keys {
+            file(&mut self.at, key.clone(), position, true);
+        }
+        self.of[position] = keys;
+    }
+}
+
+#[derive(Default)]
+struct Positions {
+    lookups: [Lookup; LOOKUPS],
 }
 
 fn key_text(value: Option<&Value>) -> Option<String> {
@@ -94,11 +170,8 @@ fn section_of(item: &Value) -> Option<String> {
         })
 }
 
-fn file(map: &mut HashMap<String, Vec<usize>>, key: Option<&String>, position: usize, add: bool) {
-    let Some(key) = key else {
-        return;
-    };
-    let list = map.entry(key.clone()).or_default();
+fn file(map: &mut HashMap<Box<str>, Vec<usize>>, key: Box<str>, position: usize, add: bool) {
+    let list = map.entry(key).or_default();
     match (list.binary_search(&position), add) {
         (Err(at), true) => list.insert(at, position),
         (Ok(at), false) => {
@@ -122,23 +195,16 @@ impl RowIndex {
         }
     }
 
-    /// The positions `pick` reads out of the index, brought up to date with `items` first.
-    fn read<T>(&self, items: &[Value], pick: impl FnOnce(&Positions) -> T) -> T {
+    /// The positions under `key` in the `by` lookup, brought up to date with `items` first.
+    fn read(&self, items: &[Value], by: By, key: &str) -> Vec<usize> {
         let mut state = self.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         let stale = std::mem::take(&mut state.stale);
         let positions = state.built.get_or_insert_with(|| {
             let mut positions = Positions::default();
             for (position, item) in items.iter().enumerate() {
-                let parent = key_text(item.get("parentRatingKey"));
-                let section = section_of(item);
-                if let Some(parent) = &parent {
-                    positions.children.entry(parent.clone()).or_default().push(position);
+                for (slot, lookup) in positions.lookups.iter_mut().enumerate() {
+                    lookup.set(position, BY[slot].keys(item));
                 }
-                if let Some(section) = &section {
-                    positions.sections.entry(section.clone()).or_default().push(position);
-                }
-                positions.parent_of.push(parent);
-                positions.section_of.push(section);
             }
             positions
         });
@@ -146,26 +212,15 @@ impl RowIndex {
             let Some(item) = items.get(position) else {
                 continue;
             };
-            if positions.parent_of.len() <= position {
-                positions.parent_of.resize(position + 1, None);
-                positions.section_of.resize(position + 1, None);
-            }
-            let parent = key_text(item.get("parentRatingKey"));
-            if parent != positions.parent_of[position] {
-                file(&mut positions.children, positions.parent_of[position].as_ref(), position, false);
-                file(&mut positions.children, parent.as_ref(), position, true);
-                positions.parent_of[position] = parent;
-            }
-            let section = section_of(item);
-            if section != positions.section_of[position] {
-                file(&mut positions.sections, positions.section_of[position].as_ref(), position, false);
-                file(&mut positions.sections, section.as_ref(), position, true);
-                positions.section_of[position] = section;
+            for (slot, lookup) in positions.lookups.iter_mut().enumerate() {
+                lookup.set(position, BY[slot].keys(item));
             }
         }
-        pick(positions)
+        positions.lookups[by.slot()].at.get(key).cloned().unwrap_or_default()
     }
 }
+
+const BY: [By; LOOKUPS] = [By::Parent, By::Section, By::Part, By::File, By::ClipParent];
 
 /// The rows changed since the last `take_changes`: by key, or all of them.
 #[derive(Debug, Clone, Default)]
@@ -332,14 +387,17 @@ impl Catalog {
 
     /// `children` without the copies, for callers that only read or count.
     pub fn children_refs(&self, parent_key: &str) -> Vec<&Value> {
-        let positions = self.index.read(&self.items, |index| index.children.get(parent_key).cloned());
-        positions.into_iter().flatten().filter_map(|position| self.items.get(position)).collect()
+        self.rows_by(By::Parent, parent_key)
     }
 
     /// A section's movies and shows, in row order.
     pub fn section_refs(&self, section_key: &str) -> Vec<&Value> {
-        let positions = self.index.read(&self.items, |index| index.sections.get(section_key).cloned());
-        positions.into_iter().flatten().filter_map(|position| self.items.get(position)).collect()
+        self.rows_by(By::Section, section_key)
+    }
+
+    /// The rows filed under `key` in the `by` lookup, in row order.
+    pub fn rows_by(&self, by: By, key: &str) -> Vec<&Value> {
+        self.index.read(&self.items, by, key).into_iter().filter_map(|position| self.items.get(position)).collect()
     }
 
     /// Append a row. A row with a key is recorded by its key, so a save writes that one

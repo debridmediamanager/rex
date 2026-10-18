@@ -21841,7 +21841,8 @@ impl Runtime {
             .unwrap_or(0);
         let mut part = None;
         let mut owner = Value::Null;
-        for row in self.catalog.items() {
+        // Only the rows filed under the id: a pass over every row was each byte read's.
+        for row in self.catalog.rows_by(crate::catalog::By::Part, &part_id.to_string()) {
             for media in row
                 .get("Media")
                 .and_then(Value::as_array)

@@ -570,7 +570,7 @@ impl Runtime {
         }
         if let Some(part) = path.strip_prefix("/library/parts/") {
             let part = part.split('/').next().unwrap_or_default();
-            if let Some(key) = self.catalog.items().iter().find_map(|row| {
+            if let Some(key) = self.catalog.rows_by(crate::catalog::By::Part, part).into_iter().find_map(|row| {
                 row.get("Media")
                     .and_then(Value::as_array)
                     .into_iter()
