@@ -963,7 +963,7 @@ impl Vocabulary {
         selected
     }
 
-    fn groups(&self, query: &str) -> Vec<(HashSet<String>, String)> {
+    fn groups(&self, query: &str) -> Groups {
         query
             .split(' ')
             .filter(|original| original.len() >= 3)
@@ -977,21 +977,45 @@ impl Vocabulary {
             })
             .collect()
     }
+}
 
-    fn matches(&self, text: &str, query: &str) -> bool {
-        let groups = self.groups(query);
-        if groups.is_empty() {
-            return false;
-        }
-        let haystack = tokens(text)
-            .into_iter()
-            .map(|word| collation_key(&word))
-            .collect::<Vec<_>>();
-        groups.iter().all(|(candidates, prefix)| {
-            haystack
-                .iter()
-                .any(|word| candidates.contains(word) || word.starts_with(prefix.as_str()))
-        })
+/// Each query word's candidate keys and its own, as `Vocabulary::groups` makes them.
+type Groups = Vec<(HashSet<String>, String)>;
+
+fn hits(groups: &Groups, text: &str) -> bool {
+    if groups.is_empty() {
+        return false;
+    }
+    let haystack = tokens(text)
+        .into_iter()
+        .map(|word| collation_key(&word))
+        .collect::<Vec<_>>();
+    groups.iter().all(|(candidates, prefix)| {
+        haystack
+            .iter()
+            .any(|word| candidates.contains(word) || word.starts_with(prefix.as_str()))
+    })
+}
+
+/// One query's candidates, scanned once for every title and name a search tests: scanned
+/// again for each, a misspelt query held the server for seconds on a 100k-row library.
+pub struct Fuzzy {
+    metadata: Groups,
+    tags: Groups,
+}
+
+impl Fuzzy {
+    pub fn metadata_matches<'v>(&self, get: impl Fn(&str) -> Option<&'v serde_json::Value>) -> bool {
+        let text = ["title", "titleSort", "originalTitle"]
+            .iter()
+            .map(|field| get(field).and_then(serde_json::Value::as_str).unwrap_or(""))
+            .collect::<Vec<_>>()
+            .join(" ");
+        hits(&self.metadata, &text)
+    }
+
+    pub fn tag_matches(&self, name: &str) -> bool {
+        hits(&self.tags, name)
     }
 }
 
@@ -1073,21 +1097,8 @@ impl SearchIndex {
         }
     }
 
-    pub fn metadata_matches(&self, row: &serde_json::Value, query: &str) -> bool {
-        let text = ["title", "titleSort", "originalTitle"]
-            .iter()
-            .map(|field| {
-                row.get(*field)
-                    .and_then(serde_json::Value::as_str)
-                    .unwrap_or("")
-            })
-            .collect::<Vec<_>>()
-            .join(" ");
-        self.metadata.matches(&text, query)
-    }
-
-    pub fn tag_matches(&self, name: &str, query: &str) -> bool {
-        self.tags.matches(name, query)
+    pub fn fuzzy(&self, query: &str) -> Fuzzy {
+        Fuzzy { metadata: self.metadata.groups(query), tags: self.tags.groups(query) }
     }
 
     /// `persist.py` keeps `(spelling.metadata.rows, spelling.tags.rows)`: cycle 73
@@ -1224,6 +1235,6 @@ mod tests {
         let emtz = words(&index.tags, "emtz");
         assert_eq!(emtz.last().map(String::as_str), Some("imdb"), "{emtz:?}");
         assert!(!emtz.contains(&"imtiaz".to_string()), "{emtz:?}");
-        assert!(!index.tag_matches("Imtiaz Ali", "emtz"));
+        assert!(!index.fuzzy("emtz").tag_matches("Imtiaz Ali"));
     }
 }

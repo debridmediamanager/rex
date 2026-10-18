@@ -510,10 +510,6 @@ impl Runtime {
         )])
     }
 
-    fn spelling_index(&self) -> crate::runtime::spellfix::SearchIndex {
-        self.spelling.clone().unwrap_or_default()
-    }
-
     /// (typed row lists, tag hits) for one query, both ranked (`search_matches`).
     pub(super) fn search_matches(
         &self,
@@ -573,8 +569,12 @@ impl Runtime {
         let spelling = if normal_gate {
             None
         } else {
-            Some(self.spelling_index())
+            Some(self.spelling.as_ref().map(|index| index.fuzzy(text)).unwrap_or_else(|| {
+                crate::runtime::spellfix::SearchIndex::default().fuzzy(text)
+            }))
         };
+        // Both passes read the hot fields and the search corpus, and a row only for a hit: read
+        // whole, every row of a production library came off disk under the runtime lock.
         if let Some(spelling) = &spelling {
             let mut seen = rows.iter().filter_map(|row| key_of(row)).collect::<HashSet<_>>();
             for row in self.catalog.hot().lazy() {
@@ -588,7 +588,7 @@ impl Runtime {
                 if seen.contains(&key) {
                     continue;
                 }
-                if spelling.metadata_matches(row.body(), text) {
+                if spelling.metadata_matches(|field| row.get(field)) {
                     rows.push(AnyRow::Ref(row));
                     seen.insert(key);
                 }
@@ -607,29 +607,36 @@ impl Runtime {
                         )
                     })
                     .collect::<HashSet<_>>();
-                for (hub, field) in SEARCH_TAG_HUBS
+                let matched = corpus
+                    .names
+                    .each()
+                    .filter(|(name, _)| spelling.tag_matches(name))
+                    .map(|(_, id)| id)
+                    .collect::<HashSet<_>>();
+                for (slot, (hub, field)) in SEARCH_TAG_HUBS
                     .iter()
-                    .filter(|(hub, _)| matches!(*hub, "actor" | "director"))
+                    .enumerate()
+                    .filter(|(_, (hub, _))| matches!(*hub, "actor" | "director"))
                 {
-                    for row in self.catalog.hot().lazy() {
-                        for tag in row
-                            .get(*field)
-                            .and_then(Value::as_array)
-                            .into_iter()
-                            .flatten()
-                        {
+                    for (at, row) in corpus.rows.iter().enumerate() {
+                        for &(index, id) in corpus.names.tags(row, slot) {
+                            if !matched.contains(&id) {
+                                continue;
+                            }
+                            let Some(item) = self.catalog.row_at(at) else {
+                                continue;
+                            };
+                            let tag = &item[*field][index as usize];
                             let name = text_of(tag, "tag").to_string();
                             let key = (
                                 hub.to_string(),
                                 name.clone(),
-                                string_value(row.get("librarySectionID").unwrap_or(&Value::Null)),
+                                string_value(item.get("librarySectionID").unwrap_or(&Value::Null)),
                             );
                             if direct_keys.contains(&key) {
                                 continue;
                             }
-                            if spelling.tag_matches(&name, text) {
-                                tag_matches.push((hub, row.body().clone(), tag.clone(), name, "fuzzy"));
-                            }
+                            tag_matches.push((hub, item.clone(), tag.clone(), name, "fuzzy"));
                         }
                     }
                 }

@@ -89,6 +89,11 @@ impl Names {
         self.ids.get(name).copied()
     }
 
+    /// Every tag name and its id, each once.
+    pub fn each(&self) -> impl Iterator<Item = (&str, u32)> {
+        self.ids.iter().map(|(name, id)| (name.as_str(), *id))
+    }
+
     /// The id of a lowercased tag name (`CorpusRow::related`), if a row ever held it.
     pub fn lower(&self, name: &str) -> Option<u32> {
         self.lower.get(name).copied()
