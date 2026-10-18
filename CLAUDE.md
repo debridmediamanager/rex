@@ -70,8 +70,8 @@ real PMS localises per `X-Plex-Language` (`activity_strings.json`, `item_languag
 `media_flags.json`); and three files served at the top of the surface with no token
 (`crossdomain.xml`, `clientaccesspolicy.xml`, and `favicon.ico`, which is rex's own icon:
 rex ships none of Plex's artwork). Runtime files never go in
-`data/`: `plex_cache.db` and `claim_state.json` are resolved beside the **catalog**,
-because they are state rather than measurement.
+`data/`: `plex_cache.db`, `claim_state.json` and `rex-direct.json` are resolved beside the
+**catalog**, because they are state rather than measurement.
 The state file is state too: a SQLite database beside the catalog by default
 (`rex.db`), the catalog itself when the catalog is a database, or wherever `--state`
 names.
@@ -99,6 +99,7 @@ Where things live in `rust/src/`:
 | `runtime/universal.rs` | The video transcoder (`REX_TRANSCODER`): the conversion decision's plan and Media, `start.m3u8`/`start.mpd`, segments served outside the runtime lock, one FFmpeg per session with the hardware ladder, seeks, throttling and the idle reaper, and the `TranscodeSession` rows |
 | `runtime/plexmeta.rs`, `identify.rs` | Plex's metadata agent (the claim's server token, else `PLEX_TOKEN`), and which title a release is: the ids its source placed it with, or a TMDB id set by hand at the source (`placed`; `scan::identified_by`), asking Plex's agent for its guid by external id, whose answer and children rows are all a row shows (`metadata::describe`); nothing is read off a name, and what arrives with neither stays for Fix Match, which searches Plex's agent |
 | `runtime/plextv.rs` | claim/heartbeat/account state (`REX_PLEXTV_URL` points plex.tv and Plex's agent at a stub) |
+| `runtime/rexdirect.rs` | rex-direct, DMM's plex.direct: with `DMM_API_KEY` it registers the machineIdentifier with DMM (`REX_DIRECT_URL` points it at a stub), serves the `<hash>.rex-direct.debridmediamanager.com` wildcard certificate by SNI beside `--tls-cert`'s (`Certificates`, the TLS port's cert resolver), appends `https://<name>:<REX_DIRECT_PORT or --port>` to the announce, keeps the answer in `rex-direct.json`, and registers again every 6 h (10 min after a failure) |
 | `runtime/accounts.rs` | Which plex.tv account each request comes from (the access-token list: owner 1, a share its plex.tv id, with its libraries, filters, flags and track settings) and what that account keeps and sees: its watch state, ratings, hides and track picks shown over the rows while its request runs (`rows::Overlay`), its own playlists and history, the share's libraries and filters pruned from every answer, the owner's routes refused (findings, "Each account its own") |
 | `platform.rs` | Everything asked of the OS beyond `std`: local time, CPU time and load, the host name, thread ids, pausing and killing FFmpeg, the GDM socket. A Unix half and a Windows half; nothing else may call `libc` for these |
 | `runtime/*.rs` (the rest) | One subsystem each, named after it: search, listing, axes, edit, collections, playlists, artwork, butler, framework, i18n, resume (On Deck and hubs), logging and so on |
@@ -178,6 +179,20 @@ claim and announces the moment it lands, no restart (findings, "A
 claimed server needs no account token"). A comma-separated list announces each URI as its own
 connection, as a PMS with several does. The feed is rex's own API, not PMS emulation.
 
+rex-direct is DMM's own plex.direct, rex's and not a PMS's (`runtime/rexdirect.rs`). With
+`DMM_API_KEY` (a sponsor's key, from the environment only) rex POSTs its machineIdentifier to
+DMM's `/api/rex-direct/register` before the port opens; DMM points
+`<hash>.rex-direct.debridmediamanager.com` at the request's source IP (IPv4) and answers the
+name and the shared Let's Encrypt wildcard certificate. rex serves that certificate to a client
+whose SNI is under that wildcard and `--tls-cert`'s to every other (to every name when there is
+no `--tls-cert`; with neither, the port is plain only as before), and appends
+`https://<name>:<REX_DIRECT_PORT or --port>` to `--announce-url`'s list, the heartbeat
+reading its target each beat. The answer is kept in `rex-direct.json` beside the catalog
+(0600: it holds the private key) and serves a start DMM does not answer; a refusal or an
+unreachable DMM is a WARN and never fatal. A thread registers again every 6 h, which is the
+dynamic DNS and swaps in a renewed certificate without a restart, and every 10 min after a
+failure. `tests/test_rex_direct.py` drives it against a stub DMM.
+
 A real claim -- `POST /myplex/claim?token=` with a token from `plex.tv/api/claim/token.json`,
 once per machineIdentifier -- makes rex register the way a real PMS does (findings, "The
 experiment, run"): `POST /servers.xml` writes plex.tv's server record (422 is its normal
@@ -200,8 +215,8 @@ token rewrote the account's "zurg" device row, and a claim of an identity with s
 account token back, not a server token (findings, "Collateral change to the Plex account"). rex refuses to store a token equal to `PLEX_TOKEN`, and a claimed server answers
 another claim with 409.
 
-`rex.db`, `rex.env` and `run.sh` are gitignored: the catalog and `rex.env` carry
-account-scoped credentials. `examples/catalog.example.json` keeps the shape.
+`rex.db`, `rex.env`, `run.sh` and `rex-direct.json` are gitignored: the catalog and
+`rex.env` carry account-scoped credentials, `rex-direct.json` a private key. `examples/catalog.example.json` keeps the shape.
 
 Under launchd, so it outlives the shell that starts it:
 
@@ -214,7 +229,7 @@ A plain `nohup ... &` from an agent tool call **does not survive** the call.
 
 Several servers, started and stopped on demand: `rex manager serve`, then
 `rex manager create NAME --port P [--catalog PATH] [--zurg-mount M] [--friendly-name N]` (keys from
-`TMDB_KEY`/`PLEX_TOKEN`/`REX_TOKEN` in the environment; sources register with each server) and `start|stop|list|logs NAME`; a server with no catalog seeds one on its first start
+`TMDB_KEY`/`PLEX_TOKEN`/`REX_TOKEN`/`DMM_API_KEY` in the environment; sources register with each server) and `start|stop|list|logs NAME`; a server with no catalog seeds one on its first start
 (`build NAME` seeds it ahead of time). Its data
 lives in `managed/` at the repository root (gitignored, mode 700); `tests/test_manager.py` drives it end to end and
 starts its own manager on a temporary root.

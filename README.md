@@ -105,13 +105,25 @@ This needs a zurg nightly from 2026.10.17 or later, so update zurg first. The la
 
 **5. Use it outside your home**
 
-app.plex.tv only connects to an HTTPS address and the other Plex apps outside your home prefer one. rex has no relay so the address has to be reachable from the internet. Give rex a certificate for your own hostname with `--tls-cert` and `--tls-key`. The key has to be PKCS#8 or RSA. `tailscale cert` and many ACME clients write an EC key (`BEGIN EC PRIVATE KEY`), which `openssl pkcs8 -topk8 -nocrypt -in host.key -out host.pkcs8.key` converts. Then restart it with that address. rex registers the address once it is claimed. It can have the address from the first start: unclaimed, it waits and registers the moment you claim it. Do not put a Cloudflare tunnel in front. Cloudflare drops the range of the first read so every play start pulls the whole file from your source.
+app.plex.tv only connects to an HTTPS address and the other Plex apps outside your home prefer one. rex has no relay so the address has to be reachable from the internet.
+
+The simplest way is rex-direct. It needs an active DMM sponsorship. Put your DMM API key in `rex.env` next to `run.sh` (with Docker, under `environment:`):
+
+```bash
+DMM_API_KEY=<your DMM API key>
+```
+
+Forward rex's port (32400) on your router to the rex machine, then restart rex. rex gets a name of its own from DMM and a certificate for it. Once it is claimed it announces `https://<hash>.rex-direct.debridmediamanager.com:32400` after the addresses in `--announce-url`. The name points at the public IP rex calls DMM from, and rex checks it every six hours, so a new IP is picked up on its own. Behind CGNAT it cannot work, because nothing outside reaches your router's port. Plex apps at home still use the LAN address from step 3. If your router forwards another outside port to rex, set `REX_DIRECT_PORT` to that port.
+
+You can use your own hostname instead. Give rex a certificate for it with `--tls-cert` and `--tls-key`. The key can be PKCS#8, RSA or EC, so the files `tailscale cert` and ACME clients write work as they are. Then restart it with that address:
 
 ```bash
 --announce-url https://rex.example.com:32400,http://<rex's LAN IP>:32400
 ```
 
-Keep step 3's LAN address after the HTTPS one in the same flag: a second `--announce-url` replaces the first.
+Keep step 3's LAN address after the HTTPS one in the same flag: a second `--announce-url` replaces the first. rex registers the address once it is claimed. It can have the address from the first start: unclaimed, it waits and registers the moment you claim it.
+
+Do not put a Cloudflare tunnel in front. Cloudflare drops the range of the first read so every play start pulls the whole file from your source.
 
 Your Plex apps can then reach it from anywhere.
 

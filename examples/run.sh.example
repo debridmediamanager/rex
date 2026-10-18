@@ -5,7 +5,8 @@
 # Keys come from rex.env beside run.sh (mode 600; gitignored, as is run.sh):
 # PLEX_TOKEN (the owner's account token) is optional: a claimed server asks Plex's metadata
 # agent, which describes every title and powers Fix Match, and plex.tv with its own token; only
-# an unclaimed one that should still use Plex's agent needs it.
+# an unclaimed one that should still use Plex's agent needs it. DMM_API_KEY (a DMM sponsor's key)
+# turns on rex-direct: an HTTPS name and certificate of its own, announced after --announce-url's.
 # Under systemd, EnvironmentFile= can load the same file instead.
 #
 # Sources register themselves and push their items (docs/feed-api.md): zurg needs only
@@ -22,8 +23,8 @@
 #
 # --announce-url: an unclaimed server announces nothing until it is claimed, then at once,
 # PLEX_TOKEN or not.
-# The HTTPS address needs --tls-cert/--tls-key here (a PKCS#8 or RSA key). Not a Cloudflare
-# tunnel: docs/setup.md step 7 says why.
+# An HTTPS address of your own needs --tls-cert/--tls-key here (a PKCS#8, RSA or EC key). Not a
+# Cloudflare tunnel: docs/setup.md step 7 says why.
 set -e
 cd "$(dirname "$0")"
 [ -f rex.env ] && { set -a; . ./rex.env; set +a; }
