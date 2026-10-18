@@ -617,6 +617,13 @@ def main():
         check("slow: the first segment comes while the run is still reading",
               ttfs < whole * 0.6, "%.2fs, the whole file takes %.1fs" % (ttfs, whole))
         walk(port, scratch, "convert", "3", "transcode", "transcode", (1280, 720))
+        # Plex for iOS and Plex for Android (Mobile) name the empty Generic profile and bring
+        # their whole HLS target in X-Plex-Client-Profile-Extra, which a real 1.42.2 converts to (rex#5).
+        recorded = json.load(open(os.path.join(ROOT, "tests/fixtures/decisions/generic_transcode_target_s1422.json")))
+        for asked in recorded["decisions"]:
+            if asked["label"].endswith("generic-target"):
+                walk(port, scratch, asked["label"], "1", "transcode", "copy", (1280, 720), directStream="0",
+                     **{name: asked["req_headers"][name] for name in ("X-Plex-Client-Profile-Name", "X-Plex-Client-Profile-Extra")})
         walk(port, scratch, "capped", "1", "transcode", "copy", (640, 360),
              videoResolution="640x360", maxVideoBitrate="1000", directStream="1")
         # Audio only: the video is copied and the DTS the client refuses becomes AAC.

@@ -1629,7 +1629,12 @@ impl Runtime {
         let media = crate::catalog::unpacked(media);
         let media = media.as_ref();
         let wire = Protocol::parse(protocol)?;
-        let profile = decision::resolve(&self.decision_profiles, profile_name)?;
+        let extra = query
+            .get("X-Plex-Client-Profile-Extra")
+            .or_else(|| headers.get("x-plex-client-profile-extra"))
+            .cloned()
+            .unwrap_or_default();
+        let profile = &decision::with_extra(decision::resolve(&self.decision_profiles, profile_name)?, &extra);
         // A real PMS refuses Dolby Vision profile 5 (2003): its IPT colour has no HDR10 base.
         // tonemapx applies the RPU (measured 2026-10-17: Jellyfin's P5 clip tonemaps to its
         // P8.1 and HDR10 twins' colours; untonemapped it is green), so with it rex converts one.
@@ -1669,11 +1674,6 @@ impl Runtime {
         };
         let mut video_codecs = list(target.get("codec").or_else(|| target.get("videoCodec")));
         let mut audio_codecs = list(target.get("audioCodec"));
-        let extra = query
-            .get("X-Plex-Client-Profile-Extra")
-            .or_else(|| headers.get("x-plex-client-profile-extra"))
-            .cloned()
-            .unwrap_or_default();
         let (more_video, more_audio) = profile_extra_codecs(&extra, wire);
         video_codecs.extend(more_video);
         audio_codecs.extend(more_audio);

@@ -13194,6 +13194,24 @@ its first 40 s) and a generated 1080p 10-bit HEVC control
 - Not seen: which non-MDE clients send this limitation. The Android bundle is the only one read; iOS,
   tvOS and the TV apps were not.
 
+## Plex for iOS and Android name the empty Generic profile (2026-10-18, rex#5)
+
+Plex for iOS 2026.20.0 (rex#5, an iPad) and Plex for Android (Mobile) 2026.19.1 (a Pixel 6, through
+rex-fun) both send `X-Plex-Client-Profile-Name=Generic`, the profile that declares nothing, and bring
+their whole HLS conversion target in `X-Plex-Client-Profile-Extra`:
+`add-transcode-target(type=videoProfile&context=all&protocol=hls&container=mkv&videoCodec=...&audioCodec=...)`,
+then `add-limitation(scope=videoTranscodeTarget...)` entries and `add-transcode-target-settings`.
+Measured on a throwaway, unclaimed PMS 1.42.2.10156-f737b826c on zen with a generated 4K HEVC Main 10 +
+FLAC mkv (`tests/fixtures/decisions/generic_transcode_target_s1422.json`):
+
+- Generic with the app's extra, iOS's and Android's exact requests both: 3000/1001/1001, conversion.
+- Generic without it: 3000/2000/4005 "No conversion profile found for protocol hls."
+- iOS's target declared for dash, its hls limitations left in: the PMS crashes (crash report written,
+  container restarts), twice. Not a client shape.
+- **rex before:** `with_extra` skipped `add-transcode-target`, so Generic had no target and every lower
+  quality on either app was refused ("Playback Error" on the Pixel, `DECISION refused` in the log). Now
+  the target joins the profile's `targets`, for the decision and for the conversion's plan.
+
 ## Automatic collections (2026-10-17)
 
 A movie library's "Minimum automatic collection size" (`autoCollectionThreshold`, 0 Disabled, 1-4)

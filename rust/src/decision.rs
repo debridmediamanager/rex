@@ -710,8 +710,10 @@ pub fn resolve<'a>(profiles: &'a Profiles, name: &str) -> Option<&'a Profile> {
 /// and `add-limitation`. Plex for Android adds `type=notMatch&name=video.DOVIProfile&value=5`
 /// for HEVC on a device without Dolby Vision profile 5, and a real 1.42.2 then refuses that
 /// direct play ("video.DOVIProfile limitation applies: 5 == 5") while a non-DV HEVC file still
-/// plays (`tests/fixtures/decisions/dovi_profile5_limitation_s1422.json`).
-// ponytail: the other directives (transcode targets, settings) are not applied to the decision.
+/// plays (`tests/fixtures/decisions/dovi_profile5_limitation_s1422.json`). Plex for iOS names
+/// the empty `Generic` profile and brings its whole HLS target in an `add-transcode-target`,
+/// which a real 1.42.2 converts to (`tests/fixtures/decisions/generic_transcode_target_s1422.json`).
+// ponytail: the other directives (settings) are not applied to the decision.
 pub fn with_extra(profile: &Profile, extra: &str) -> Profile {
     let mut profile = profile.clone();
     let capital = |word: &str| {
@@ -734,6 +736,11 @@ pub fn with_extra(profile: &Profile, extra: &str) -> Profile {
                 "directplay",
                 serde_json::json!({"tag": "VideoProfile", "container": field("container"),
                     "codec": field("videoCodec"), "audioCodec": field("audioCodec")}),
+            ),
+            "add-transcode-target" if pairs.get("type") == Some(&"videoProfile") => (
+                "targets",
+                serde_json::json!({"tag": "VideoProfile", "context": field("context"), "protocol": field("protocol"),
+                    "container": field("container"), "codec": field("videoCodec"), "audioCodec": field("audioCodec")}),
             ),
             "add-limitation" => (
                 "codecprofiles",
@@ -928,5 +935,24 @@ mod tests {
             checked += 1;
         }
         assert_eq!(checked, 6);
+    }
+
+    const GENERIC: &str = include_str!("../../tests/fixtures/decisions/generic_transcode_target_s1422.json");
+
+    #[test]
+    fn a_client_extra_transcode_target_lets_the_generic_profile_convert_as_a_real_pms_does() {
+        let profiles = parse_profiles(PROFILES).expect("profile fixture parses");
+        let fixture: Value = serde_json::from_str(GENERIC).expect("generic fixture parses");
+        let media = &fixture["items"]["1"]["Media"][0];
+        let rows = fixture["decisions"].as_array().expect("decisions");
+        for row in rows {
+            let name = row["req_headers"]["X-Plex-Client-Profile-Name"].as_str().expect("profile name");
+            let extra = row["req_headers"]["X-Plex-Client-Profile-Extra"].as_str().unwrap_or("");
+            let profile = with_extra(resolve(&profiles, name).expect("profile"), extra);
+            let answer = decide_profile(&profile, media, "hls", false);
+            let converts = row["response"]["generalDecisionCode"].as_i64() == Some(1001);
+            assert_eq!(answer.outcome == Outcome::Convert, converts, "{}", row["label"]);
+        }
+        assert_eq!(rows.len(), 4);
     }
 }

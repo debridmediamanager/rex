@@ -1,0 +1,1017 @@
+{
+ "_provenance": "Recorded 2026-10-18 on a throwaway, unclaimed Plex Media Server 1.42.2.10156-f737b826c (plexinc/pms-docker) on zen, over loopback with its .LocalAdminToken. Item 1 is a generated 20 s 3840x2160 HEVC Main 10 + FLAC 2.0 mkv, the codecs of rex#5's item without its Dolby Vision. `decisions` are GET /video/:/transcode/universal/decision answers to Plex for iOS 2026.20.0's request shape from rex#5 (directPlay=0, directStream=0, protocol=hls, 1080p 8 Mbps, X-Plex-Client-Profile-Name=Generic). X-Plex-Client-Profile-Extra is the app's own, copied from a Plex for iOS decision in rex-fun's log (the shape sent 16 times there, for an eac3 item). Controls: Generic without the extra, and the iOS profile. (The same target declared for dash, with the app's hls limitations left in, crashes this PMS, so it is not recorded.) The last row is Plex for Android (Mobile) 2026.19.1's own conversion request, copied from rex-fun's log on 2026-10-18 when a Pixel 6 picked 720p HD (2 Mbps): every query pair as sent, its path pointed at item 1, the token dropped and the device identifiers replaced.",
+ "items": {
+  "1": {
+   "ratingKey": "1",
+   "key": "/library/metadata/1",
+   "guid": "plex://movie/677eb1ff767780ab8a6bc81b",
+   "slug": "missing-clip",
+   "studio": "Koma Dua Empat",
+   "type": "movie",
+   "title": "Missing clip",
+   "librarySectionTitle": "Movies",
+   "librarySectionID": 1,
+   "librarySectionKey": "/library/sections/1",
+   "summary": "Echa, a game streamer, received a large donation from a mysterious user named Dorobo.",
+   "year": 2024,
+   "thumb": "/library/metadata/1/thumb/1792350090",
+   "art": "/library/metadata/1/art/1792350090",
+   "duration": 20000,
+   "originallyAvailableAt": "2024-10-21",
+   "addedAt": 1792349937,
+   "updatedAt": 1792350090,
+   "Media": [
+    {
+     "id": 1,
+     "duration": 20000,
+     "bitrate": 12308,
+     "width": 3840,
+     "height": 2160,
+     "aspectRatio": 1.78,
+     "audioChannels": 2,
+     "audioCodec": "flac",
+     "videoCodec": "hevc",
+     "videoResolution": "4k",
+     "container": "mkv",
+     "videoFrameRate": "24p",
+     "videoProfile": "main 10",
+     "Part": [
+      {
+       "id": 1,
+       "key": "/library/parts/1/1792349937/file.mkv",
+       "duration": 20000,
+       "file": "/data/movies/Clip (2024)/Clip (2024).mkv",
+       "size": 30770411,
+       "container": "mkv",
+       "videoProfile": "main 10",
+       "Stream": [
+        {
+         "id": 1,
+         "streamType": 1,
+         "default": true,
+         "codec": "hevc",
+         "index": 0,
+         "bitrate": 12308,
+         "bitDepth": 10,
+         "chromaLocation": "left",
+         "chromaSubsampling": "4:2:0",
+         "codedHeight": 2160,
+         "codedWidth": 3840,
+         "colorRange": "tv",
+         "frameRate": 24.0,
+         "height": 2160,
+         "level": 150,
+         "profile": "main 10",
+         "refFrames": 1,
+         "scanType": "progressive",
+         "width": 3840,
+         "displayTitle": "4K",
+         "extendedDisplayTitle": "4K (HEVC Main 10)"
+        },
+        {
+         "id": 2,
+         "streamType": 2,
+         "selected": true,
+         "default": true,
+         "codec": "flac",
+         "index": 1,
+         "channels": 2,
+         "audioChannelLayout": "stereo",
+         "bitDepth": 16,
+         "samplingRate": 48000,
+         "displayTitle": "Unknown (FLAC Stereo)",
+         "extendedDisplayTitle": "Unknown (FLAC Stereo)"
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "Image": [
+    {
+     "alt": "Missing clip",
+     "type": "coverPoster",
+     "url": "/library/metadata/1/thumb/1792350090"
+    },
+    {
+     "alt": "Missing clip",
+     "type": "background",
+     "url": "/library/metadata/1/art/1792350090"
+    }
+   ],
+   "UltraBlurColors": {
+    "topLeft": "4b0908",
+    "topRight": "0505f8",
+    "bottomRight": "0408f6",
+    "bottomLeft": "00401b"
+   },
+   "Genre": [
+    {
+     "id": 4,
+     "filter": "genre=4",
+     "tag": "Short"
+    },
+    {
+     "id": 5,
+     "filter": "genre=5",
+     "tag": "Drama"
+    }
+   ],
+   "Country": [
+    {
+     "id": 12,
+     "filter": "country=12",
+     "tag": "Indonesia"
+    }
+   ],
+   "Guid": [
+    {
+     "id": "imdb://tt35269370"
+    }
+   ],
+   "Director": [
+    {
+     "id": 6,
+     "filter": "director=6",
+     "tag": "Jonathan Alfa",
+     "tagKey": "677a3ef1e9bc0f3c1cee86e2"
+    }
+   ],
+   "Writer": [
+    {
+     "id": 7,
+     "filter": "writer=7",
+     "tag": "Ardi Bhaktiar",
+     "tagKey": "665ecc10c0d7c07052016c30"
+    }
+   ],
+   "Role": [
+    {
+     "id": 8,
+     "filter": "actor=8",
+     "tag": "Azis Friananda",
+     "tagKey": "677a3ef1e9bc0f3c1cee86d8",
+     "role": "Dorobo"
+    },
+    {
+     "id": 9,
+     "filter": "actor=9",
+     "tag": "Daniella Kanani",
+     "tagKey": "677a3ef13f4d1c3ed018123e",
+     "role": "Echa"
+    },
+    {
+     "id": 10,
+     "filter": "actor=10",
+     "tag": "Aissyta Prameswara",
+     "tagKey": "677a3ef152303ce2414325f4",
+     "role": "Anna"
+    }
+   ],
+   "Producer": [
+    {
+     "id": 11,
+     "filter": "producer=11",
+     "tag": "Sapto Nugroho",
+     "tagKey": "677a3ef1bc8771e0cf1cfd8d"
+    }
+   ]
+  }
+ },
+ "decisions": [
+  {
+   "label": "generic-target",
+   "query": {
+    "path": "/library/metadata/1",
+    "mediaIndex": "0",
+    "partIndex": "0",
+    "protocol": "hls",
+    "directPlay": "0",
+    "directStream": "0",
+    "directStreamAudio": "1",
+    "maxVideoBitrate": "8000",
+    "videoResolution": "1920x1080",
+    "videoQuality": "100",
+    "fastSeek": "1",
+    "subtitles": "auto",
+    "session": "rex5",
+    "X-Plex-Session-Identifier": "rex5"
+   },
+   "req_headers": {
+    "X-Plex-Client-Profile-Name": "Generic",
+    "X-Plex-Platform": "iOS",
+    "X-Plex-Product": "Plex for iOS",
+    "X-Plex-Version": "2026.20.0",
+    "X-Plex-Client-Identifier": "rex5-generic-target",
+    "X-Plex-Client-Profile-Extra": "add-transcode-target(type=videoProfile&context=all&protocol=hls&container=mkv&videoCodec=h264,png,apng,bmp,mjpeg,thp,gif,vp8,vp9,dirac,ffv1,ffvhuff,huffyuv,rawvideo,ayuv,r210,v210,v210x,v308,v408,v410,y41p,yuv4,ansi,h263,mpeg1video,mpeg2video,mpeg4,hevc,av1,vc1&audioCodec=ape,aac,aac_latm,alac,dca,vorbis,opus,pcm,pcm_alaw,pcm_mulaw,pcm_bluray,pcm_dvd,mp1,mp2,ac3,eac3,mp3&subtitleCodec=ass,dvb_subtitle,eia_608,jacosub,microdvd,mov_text,mpl2,pgs,pjs,realtext,sami,srt,ssa,stl,subviewer,subviewer1,text,vobsub,vplayer,xsub)+add-limitation(scope=videoAudioCodec&scopeName=eac3&type=upperBound&name=audio.channels&value=10)+add-limitation(scope=videoTranscodeTarget&scopeName=hevc&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.bitDepth&value=10)+add-limitation(scope=videoTranscodeTarget&scopeName=hevc&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.width&value=3840)+add-limitation(scope=videoTranscodeTarget&scopeName=hevc&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.height&value=2160)+add-limitation(scope=videoTranscodeTarget&scopeName=h264&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.width&value=3840)+add-limitation(scope=videoTranscodeTarget&scopeName=h264&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.height&value=2160)+add-limitation(scope=videoTranscodeTarget&scopeName=av1&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.width&value=3840)+add-limitation(scope=videoTranscodeTarget&scopeName=av1&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.height&value=2160)+add-transcode-target-settings(type=videoProfile&context=all&protocol=hls&CopyMatroskaAttachments=true)"
+   },
+   "status": 200,
+   "response": {
+    "size": 1,
+    "allowSync": "1",
+    "directPlayDecisionCode": 3000,
+    "directPlayDecisionText": "App cannot direct play this item. Direct play is disabled.",
+    "generalDecisionCode": 1001,
+    "generalDecisionText": "Direct play not available; Conversion OK.",
+    "identifier": "com.plexapp.plugins.library",
+    "librarySectionID": "1",
+    "librarySectionTitle": "Movies",
+    "librarySectionUUID": "<section-uuid>",
+    "mediaTagPrefix": "/system/bundle/media/flags/",
+    "mediaTagVersion": "1758205129",
+    "resourceSession": "rex5",
+    "transcodeDecisionCode": 1001,
+    "transcodeDecisionText": "Direct play not available; Conversion OK.",
+    "Metadata": [
+     {
+      "addedAt": 1792349937,
+      "art": "/library/metadata/1/art/1792350090",
+      "duration": 20000,
+      "guid": "plex://movie/677eb1ff767780ab8a6bc81b",
+      "key": "/library/metadata/1",
+      "librarySectionID": "1",
+      "librarySectionKey": "/library/sections/1",
+      "librarySectionTitle": "Movies",
+      "originallyAvailableAt": "2024-10-21",
+      "ratingKey": "1",
+      "slug": "missing-clip",
+      "studio": "Koma Dua Empat",
+      "summary": "Echa, a game streamer, received a large donation from a mysterious user named Dorobo.",
+      "thumb": "/library/metadata/1/thumb/1792350090",
+      "title": "Missing clip",
+      "type": "movie",
+      "updatedAt": 1792350090,
+      "year": 2024,
+      "Media": [
+       {
+        "id": "1",
+        "videoProfile": "main 10",
+        "audioChannels": 2,
+        "audioCodec": "opus",
+        "bitrate": 7502,
+        "container": "mkv",
+        "duration": 20000,
+        "height": 1080,
+        "protocol": "hls",
+        "videoCodec": "png",
+        "videoFrameRate": "24p",
+        "videoResolution": "1080p",
+        "width": 1920,
+        "selected": true,
+        "Part": [
+         {
+          "id": "1",
+          "videoProfile": "main 10",
+          "bitrate": 7502,
+          "container": "mkv",
+          "duration": 20000,
+          "height": 1080,
+          "protocol": "hls",
+          "width": 1920,
+          "decision": "transcode",
+          "selected": true,
+          "Stream": [
+           {
+            "bitDepth": 8,
+            "bitrate": 7393,
+            "codec": "png",
+            "default": true,
+            "displayTitle": "4K",
+            "extendedDisplayTitle": "4K (HEVC Main 10)",
+            "frameRate": 24.0,
+            "height": 1080,
+            "id": "1",
+            "streamType": 1,
+            "width": 1920,
+            "decision": "transcode",
+            "location": "segments-av"
+           },
+           {
+            "bitrate": 109,
+            "bitrateMode": "cbr",
+            "channels": 2,
+            "codec": "opus",
+            "default": true,
+            "displayTitle": "Unknown (FLAC Stereo)",
+            "extendedDisplayTitle": "Unknown (FLAC Stereo)",
+            "id": "2",
+            "selected": true,
+            "streamType": 2,
+            "decision": "transcode",
+            "location": "segments-av"
+           }
+          ]
+         }
+        ]
+       }
+      ],
+      "UltraBlurColors": [
+       {
+        "bottomLeft": "00401b",
+        "bottomRight": "0408f6",
+        "topLeft": "4b0908",
+        "topRight": "0505f8"
+       }
+      ],
+      "Genre": [
+       {
+        "filter": "genre=4",
+        "id": "4",
+        "tag": "Short"
+       },
+       {
+        "filter": "genre=5",
+        "id": "5",
+        "tag": "Drama"
+       }
+      ],
+      "Country": [
+       {
+        "filter": "country=12",
+        "id": "12",
+        "tag": "Indonesia"
+       }
+      ],
+      "Director": [
+       {
+        "filter": "director=6",
+        "id": "6",
+        "tag": "Jonathan Alfa",
+        "tagKey": "677a3ef1e9bc0f3c1cee86e2"
+       }
+      ],
+      "Writer": [
+       {
+        "filter": "writer=7",
+        "id": "7",
+        "tag": "Ardi Bhaktiar",
+        "tagKey": "665ecc10c0d7c07052016c30"
+       }
+      ],
+      "Role": [
+       {
+        "filter": "actor=8",
+        "id": "8",
+        "role": "Dorobo",
+        "tag": "Azis Friananda",
+        "tagKey": "677a3ef1e9bc0f3c1cee86d8"
+       },
+       {
+        "filter": "actor=9",
+        "id": "9",
+        "role": "Echa",
+        "tag": "Daniella Kanani",
+        "tagKey": "677a3ef13f4d1c3ed018123e"
+       },
+       {
+        "filter": "actor=10",
+        "id": "10",
+        "role": "Anna",
+        "tag": "Aissyta Prameswara",
+        "tagKey": "677a3ef152303ce2414325f4"
+       }
+      ],
+      "Producer": [
+       {
+        "filter": "producer=11",
+        "id": "11",
+        "tag": "Sapto Nugroho",
+        "tagKey": "677a3ef1bc8771e0cf1cfd8d"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "label": "generic-none",
+   "query": {
+    "path": "/library/metadata/1",
+    "mediaIndex": "0",
+    "partIndex": "0",
+    "protocol": "hls",
+    "directPlay": "0",
+    "directStream": "0",
+    "directStreamAudio": "1",
+    "maxVideoBitrate": "8000",
+    "videoResolution": "1920x1080",
+    "videoQuality": "100",
+    "fastSeek": "1",
+    "subtitles": "auto",
+    "session": "rex5",
+    "X-Plex-Session-Identifier": "rex5"
+   },
+   "req_headers": {
+    "X-Plex-Client-Profile-Name": "Generic",
+    "X-Plex-Platform": "iOS",
+    "X-Plex-Product": "Plex for iOS",
+    "X-Plex-Version": "2026.20.0",
+    "X-Plex-Client-Identifier": "rex5-generic-none"
+   },
+   "status": 200,
+   "response": {
+    "size": 0,
+    "allowSync": "1",
+    "directPlayDecisionCode": 3000,
+    "directPlayDecisionText": "App cannot direct play this item. Direct play is disabled.",
+    "generalDecisionCode": 2000,
+    "generalDecisionText": "Neither direct play nor conversion is available.",
+    "identifier": "com.plexapp.plugins.library",
+    "librarySectionID": "1",
+    "librarySectionTitle": "Movies",
+    "librarySectionUUID": "<section-uuid>",
+    "mediaTagPrefix": "/system/bundle/media/flags/",
+    "mediaTagVersion": "1758205129",
+    "transcodeDecisionCode": 4005,
+    "transcodeDecisionText": "Cannot convert this item. No conversion profile found for protocol hls."
+   }
+  },
+  {
+   "label": "ios-none",
+   "query": {
+    "path": "/library/metadata/1",
+    "mediaIndex": "0",
+    "partIndex": "0",
+    "protocol": "hls",
+    "directPlay": "0",
+    "directStream": "0",
+    "directStreamAudio": "1",
+    "maxVideoBitrate": "8000",
+    "videoResolution": "1920x1080",
+    "videoQuality": "100",
+    "fastSeek": "1",
+    "subtitles": "auto",
+    "session": "rex5",
+    "X-Plex-Session-Identifier": "rex5"
+   },
+   "req_headers": {
+    "X-Plex-Client-Profile-Name": "iOS",
+    "X-Plex-Platform": "iOS",
+    "X-Plex-Product": "Plex for iOS",
+    "X-Plex-Version": "2026.20.0",
+    "X-Plex-Client-Identifier": "rex5-ios-none"
+   },
+   "status": 200,
+   "response": {
+    "size": 1,
+    "allowSync": "1",
+    "directPlayDecisionCode": 3000,
+    "directPlayDecisionText": "App cannot direct play this item. Direct play is disabled.",
+    "generalDecisionCode": 1001,
+    "generalDecisionText": "Direct play not available; Conversion OK.",
+    "identifier": "com.plexapp.plugins.library",
+    "librarySectionID": "1",
+    "librarySectionTitle": "Movies",
+    "librarySectionUUID": "<section-uuid>",
+    "mediaTagPrefix": "/system/bundle/media/flags/",
+    "mediaTagVersion": "1758205129",
+    "resourceSession": "rex5",
+    "transcodeDecisionCode": 1001,
+    "transcodeDecisionText": "Direct play not available; Conversion OK.",
+    "Metadata": [
+     {
+      "addedAt": 1792349937,
+      "art": "/library/metadata/1/art/1792350090",
+      "duration": 20000,
+      "guid": "plex://movie/677eb1ff767780ab8a6bc81b",
+      "key": "/library/metadata/1",
+      "librarySectionID": "1",
+      "librarySectionKey": "/library/sections/1",
+      "librarySectionTitle": "Movies",
+      "originallyAvailableAt": "2024-10-21",
+      "ratingKey": "1",
+      "slug": "missing-clip",
+      "studio": "Koma Dua Empat",
+      "summary": "Echa, a game streamer, received a large donation from a mysterious user named Dorobo.",
+      "thumb": "/library/metadata/1/thumb/1792350090",
+      "title": "Missing clip",
+      "type": "movie",
+      "updatedAt": 1792350090,
+      "year": 2024,
+      "Media": [
+       {
+        "id": "1",
+        "videoProfile": "main 10",
+        "audioChannels": 2,
+        "audioCodec": "mp3",
+        "bitrate": 7502,
+        "container": "mpegts",
+        "duration": 20000,
+        "height": 1080,
+        "protocol": "hls",
+        "videoCodec": "h264",
+        "videoFrameRate": "24p",
+        "videoResolution": "1080p",
+        "width": 1920,
+        "selected": true,
+        "Part": [
+         {
+          "id": "1",
+          "videoProfile": "main 10",
+          "bitrate": 7502,
+          "container": "mpegts",
+          "duration": 20000,
+          "height": 1080,
+          "protocol": "hls",
+          "width": 1920,
+          "decision": "transcode",
+          "selected": true,
+          "Stream": [
+           {
+            "bitDepth": 8,
+            "bitrate": 7393,
+            "codec": "h264",
+            "default": true,
+            "displayTitle": "4K",
+            "extendedDisplayTitle": "4K (HEVC Main 10)",
+            "frameRate": 24.0,
+            "height": 1080,
+            "id": "1",
+            "streamType": 1,
+            "width": 1920,
+            "decision": "transcode",
+            "location": "segments-av"
+           },
+           {
+            "bitrate": 109,
+            "bitrateMode": "vbr",
+            "channels": 2,
+            "codec": "mp3",
+            "default": true,
+            "displayTitle": "Unknown (FLAC Stereo)",
+            "extendedDisplayTitle": "Unknown (FLAC Stereo)",
+            "id": "2",
+            "selected": true,
+            "streamType": 2,
+            "decision": "transcode",
+            "location": "segments-av"
+           }
+          ]
+         }
+        ]
+       }
+      ],
+      "UltraBlurColors": [
+       {
+        "bottomLeft": "00401b",
+        "bottomRight": "0408f6",
+        "topLeft": "4b0908",
+        "topRight": "0505f8"
+       }
+      ],
+      "Genre": [
+       {
+        "filter": "genre=4",
+        "id": "4",
+        "tag": "Short"
+       },
+       {
+        "filter": "genre=5",
+        "id": "5",
+        "tag": "Drama"
+       }
+      ],
+      "Country": [
+       {
+        "filter": "country=12",
+        "id": "12",
+        "tag": "Indonesia"
+       }
+      ],
+      "Director": [
+       {
+        "filter": "director=6",
+        "id": "6",
+        "tag": "Jonathan Alfa",
+        "tagKey": "677a3ef1e9bc0f3c1cee86e2"
+       }
+      ],
+      "Writer": [
+       {
+        "filter": "writer=7",
+        "id": "7",
+        "tag": "Ardi Bhaktiar",
+        "tagKey": "665ecc10c0d7c07052016c30"
+       }
+      ],
+      "Role": [
+       {
+        "filter": "actor=8",
+        "id": "8",
+        "role": "Dorobo",
+        "tag": "Azis Friananda",
+        "tagKey": "677a3ef1e9bc0f3c1cee86d8"
+       },
+       {
+        "filter": "actor=9",
+        "id": "9",
+        "role": "Echa",
+        "tag": "Daniella Kanani",
+        "tagKey": "677a3ef13f4d1c3ed018123e"
+       },
+       {
+        "filter": "actor=10",
+        "id": "10",
+        "role": "Anna",
+        "tag": "Aissyta Prameswara",
+        "tagKey": "677a3ef152303ce2414325f4"
+       }
+      ],
+      "Producer": [
+       {
+        "filter": "producer=11",
+        "id": "11",
+        "tag": "Sapto Nugroho",
+        "tagKey": "677a3ef1bc8771e0cf1cfd8d"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "label": "android-generic-target",
+   "query": [
+    [
+     "directPlay",
+     "0"
+    ],
+    [
+     "directStream",
+     "0"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "protocol",
+     "hls"
+    ],
+    [
+     "fastSeek",
+     "1"
+    ],
+    [
+     "path",
+     "/library/metadata/1"
+    ],
+    [
+     "session",
+     "rex5-android"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "mediaBufferSize",
+     "50000"
+    ],
+    [
+     "hasMDE",
+     "1"
+    ],
+    [
+     "subtitleSize",
+     "0"
+    ],
+    [
+     "videoQuality",
+     "60"
+    ],
+    [
+     "videoResolution",
+     "1024x720"
+    ],
+    [
+     "audioBoost",
+     "100"
+    ],
+    [
+     "autoAdjustSubtitle",
+     "1"
+    ],
+    [
+     "boostDialog",
+     "0"
+    ],
+    [
+     "normalizeLoudness",
+     "0"
+    ],
+    [
+     "subtitles",
+     "none"
+    ],
+    [
+     "maxVideoBitrate",
+     "2000"
+    ],
+    [
+     "location",
+     "wan"
+    ],
+    [
+     "X-Plex-Client-Profile-Extra",
+     "add-transcode-target(type=videoProfile&context=all&protocol=hls&container=mkv&videoCodec=h264,hevc,vp8,vp9&audioCodec=aac,pcm,mp3,ac3,dca,eac3&subtitleCodec=ass,ssa,pgs,srt,smi,dvd_subtitle,mov_text,eia_608,eia_708,vobsub,vtt,webvtt,text,ttxt,tx3g)+add-limitation(scope=videoTranscodeTarget&scopeName=h264&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.width&value=3840)+add-limitation(scope=videoTranscodeTarget&scopeName=h264&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.height&value=3840)+add-limitation(scope=videoTranscodeTarget&scopeName=hevc&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.bitDepth&value=10)+add-limitation(scope=videoTranscodeTarget&scopeName=hevc&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.width&value=3840)+add-limitation(scope=videoTranscodeTarget&scopeName=hevc&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.height&value=3840)+add-transcode-target-codec(scope=videoTranscodeTarget&scopeName=mp3&scopeType=audioCodec&context=all&protocol=http)+add-transcode-target-codec(scope=videoTranscodeTarget&scopeName=ac3&scopeType=audioCodec&context=all&protocol=http)+add-transcode-target-codec(scope=videoTranscodeTarget&scopeName=eac3&scopeType=audioCodec&context=all&protocol=http)+add-transcode-target-codec(scope=videoTranscodeTarget&scopeName=dca&scopeType=audioCodec&context=all&protocol=http)+add-transcode-target-codec(scope=videoTranscodeTarget&scopeName=opus&scopeType=audioCodec&context=all&protocol=http)"
+    ],
+    [
+     "X-Plex-Client-Profile-Name",
+     "Generic"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "16"
+    ],
+    [
+     "X-Plex-Model",
+     "oriole"
+    ],
+    [
+     "X-Plex-Device",
+     "Pixel 6"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "Pixel 6"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Google"
+    ],
+    [
+     "X-Plex-Device-Screen-Resolution",
+     "1080x2400"
+    ],
+    [
+     "X-Plex-Device-Screen-Density",
+     "2.625"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Language",
+     "en"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media"
+    ],
+    [
+     "X-Plex-Provider-Version",
+     "7.6.0"
+    ],
+    [
+     "X-Plex-DRM",
+     "widevine:video"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "<client-id>"
+    ],
+    [
+     "X-Plex-Advertising-Identifier",
+     "<ad-id>"
+    ],
+    [
+     "X-Plex-Session-Id",
+     "<session-id>"
+    ]
+   ],
+   "req_headers": {
+    "directPlay": "0",
+    "directStream": "0",
+    "directStreamAudio": "1",
+    "protocol": "hls",
+    "fastSeek": "1",
+    "path": "/library/metadata/1",
+    "session": "rex5-android",
+    "mediaIndex": "0",
+    "partIndex": "0",
+    "mediaBufferSize": "50000",
+    "hasMDE": "1",
+    "subtitleSize": "0",
+    "videoQuality": "60",
+    "videoResolution": "1024x720",
+    "audioBoost": "100",
+    "autoAdjustSubtitle": "1",
+    "boostDialog": "0",
+    "normalizeLoudness": "0",
+    "subtitles": "none",
+    "maxVideoBitrate": "2000",
+    "location": "wan",
+    "X-Plex-Client-Profile-Extra": "add-transcode-target(type=videoProfile&context=all&protocol=hls&container=mkv&videoCodec=h264,hevc,vp8,vp9&audioCodec=aac,pcm,mp3,ac3,dca,eac3&subtitleCodec=ass,ssa,pgs,srt,smi,dvd_subtitle,mov_text,eia_608,eia_708,vobsub,vtt,webvtt,text,ttxt,tx3g)+add-limitation(scope=videoTranscodeTarget&scopeName=h264&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.width&value=3840)+add-limitation(scope=videoTranscodeTarget&scopeName=h264&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.height&value=3840)+add-limitation(scope=videoTranscodeTarget&scopeName=hevc&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.bitDepth&value=10)+add-limitation(scope=videoTranscodeTarget&scopeName=hevc&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.width&value=3840)+add-limitation(scope=videoTranscodeTarget&scopeName=hevc&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.height&value=3840)+add-transcode-target-codec(scope=videoTranscodeTarget&scopeName=mp3&scopeType=audioCodec&context=all&protocol=http)+add-transcode-target-codec(scope=videoTranscodeTarget&scopeName=ac3&scopeType=audioCodec&context=all&protocol=http)+add-transcode-target-codec(scope=videoTranscodeTarget&scopeName=eac3&scopeType=audioCodec&context=all&protocol=http)+add-transcode-target-codec(scope=videoTranscodeTarget&scopeName=dca&scopeType=audioCodec&context=all&protocol=http)+add-transcode-target-codec(scope=videoTranscodeTarget&scopeName=opus&scopeType=audioCodec&context=all&protocol=http)",
+    "X-Plex-Client-Profile-Name": "Generic",
+    "X-Plex-Product": "Plex for Android (Mobile)",
+    "X-Plex-Platform": "Android",
+    "X-Plex-Platform-Version": "16",
+    "X-Plex-Model": "oriole",
+    "X-Plex-Device": "Pixel 6",
+    "X-Plex-Device-Name": "Pixel 6",
+    "X-Plex-Device-Vendor": "Google",
+    "X-Plex-Device-Screen-Resolution": "1080x2400",
+    "X-Plex-Device-Screen-Density": "2.625",
+    "X-Plex-Version": "2026.19.1",
+    "X-Plex-Language": "en",
+    "X-Plex-Features": "external-media,indirect-media",
+    "X-Plex-Provider-Version": "7.6.0",
+    "X-Plex-DRM": "widevine:video",
+    "X-Plex-Client-Identifier": "<client-id>",
+    "X-Plex-Advertising-Identifier": "<ad-id>",
+    "X-Plex-Session-Id": "<session-id>"
+   },
+   "status": 200,
+   "response": {
+    "size": 1,
+    "allowSync": "1",
+    "directPlayDecisionCode": 3000,
+    "directPlayDecisionText": "App cannot direct play this item. Direct play is disabled.",
+    "generalDecisionCode": 1001,
+    "generalDecisionText": "Direct play not available; Conversion OK.",
+    "identifier": "com.plexapp.plugins.library",
+    "librarySectionID": "1",
+    "librarySectionTitle": "Movies",
+    "librarySectionUUID": "<section-uuid>",
+    "mediaTagPrefix": "/system/bundle/media/flags/",
+    "mediaTagVersion": "1758205129",
+    "resourceSession": "<client-id>",
+    "transcodeDecisionCode": 1001,
+    "transcodeDecisionText": "Direct play not available; Conversion OK.",
+    "Metadata": [
+     {
+      "addedAt": 1792349937,
+      "art": "/library/metadata/1/art/1792350090",
+      "duration": 20000,
+      "guid": "plex://movie/677eb1ff767780ab8a6bc81b",
+      "key": "/library/metadata/1",
+      "librarySectionID": "1",
+      "librarySectionKey": "/library/sections/1",
+      "librarySectionTitle": "Movies",
+      "originallyAvailableAt": "2024-10-21",
+      "ratingKey": "1",
+      "slug": "missing-clip",
+      "studio": "Koma Dua Empat",
+      "summary": "Echa, a game streamer, received a large donation from a mysterious user named Dorobo.",
+      "thumb": "/library/metadata/1/thumb/1792350090",
+      "title": "Missing clip",
+      "type": "movie",
+      "updatedAt": 1792350090,
+      "year": 2024,
+      "Media": [
+       {
+        "id": "1",
+        "videoProfile": "main 10",
+        "audioChannels": 2,
+        "audioCodec": "mp3",
+        "bitrate": 1865,
+        "container": "mkv",
+        "duration": 20000,
+        "height": 576,
+        "protocol": "hls",
+        "videoCodec": "h264",
+        "videoFrameRate": "24p",
+        "videoResolution": "480p",
+        "width": 1024,
+        "selected": true,
+        "Part": [
+         {
+          "id": "1",
+          "videoProfile": "main 10",
+          "bitrate": 1865,
+          "container": "mkv",
+          "duration": 20000,
+          "height": 576,
+          "protocol": "hls",
+          "width": 1024,
+          "decision": "transcode",
+          "selected": true,
+          "Stream": [
+           {
+            "bitDepth": 8,
+            "bitrate": 1769,
+            "codec": "h264",
+            "default": true,
+            "displayTitle": "4K",
+            "extendedDisplayTitle": "4K (HEVC Main 10)",
+            "frameRate": 24.0,
+            "height": 576,
+            "id": "1",
+            "streamType": 1,
+            "width": 1024,
+            "decision": "transcode",
+            "location": "segments-av"
+           },
+           {
+            "bitrate": 96,
+            "bitrateMode": "vbr",
+            "channels": 2,
+            "codec": "mp3",
+            "default": true,
+            "displayTitle": "Unknown (FLAC Stereo)",
+            "extendedDisplayTitle": "Unknown (FLAC Stereo)",
+            "id": "2",
+            "selected": true,
+            "streamType": 2,
+            "decision": "transcode",
+            "location": "segments-av"
+           }
+          ]
+         }
+        ]
+       }
+      ],
+      "UltraBlurColors": [
+       {
+        "bottomLeft": "00401b",
+        "bottomRight": "0408f6",
+        "topLeft": "4b0908",
+        "topRight": "0505f8"
+       }
+      ],
+      "Genre": [
+       {
+        "filter": "genre=4",
+        "id": "4",
+        "tag": "Short"
+       },
+       {
+        "filter": "genre=5",
+        "id": "5",
+        "tag": "Drama"
+       }
+      ],
+      "Country": [
+       {
+        "filter": "country=12",
+        "id": "12",
+        "tag": "Indonesia"
+       }
+      ],
+      "Director": [
+       {
+        "filter": "director=6",
+        "id": "6",
+        "tag": "Jonathan Alfa",
+        "tagKey": "677a3ef1e9bc0f3c1cee86e2"
+       }
+      ],
+      "Writer": [
+       {
+        "filter": "writer=7",
+        "id": "7",
+        "tag": "Ardi Bhaktiar",
+        "tagKey": "665ecc10c0d7c07052016c30"
+       }
+      ],
+      "Role": [
+       {
+        "filter": "actor=8",
+        "id": "8",
+        "role": "Dorobo",
+        "tag": "Azis Friananda",
+        "tagKey": "677a3ef1e9bc0f3c1cee86d8"
+       },
+       {
+        "filter": "actor=9",
+        "id": "9",
+        "role": "Echa",
+        "tag": "Daniella Kanani",
+        "tagKey": "677a3ef13f4d1c3ed018123e"
+       },
+       {
+        "filter": "actor=10",
+        "id": "10",
+        "role": "Anna",
+        "tag": "Aissyta Prameswara",
+        "tagKey": "677a3ef152303ce2414325f4"
+       }
+      ],
+      "Producer": [
+       {
+        "filter": "producer=11",
+        "id": "11",
+        "tag": "Sapto Nugroho",
+        "tagKey": "677a3ef1bc8771e0cf1cfd8d"
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ]
+}
