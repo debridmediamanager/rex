@@ -137,7 +137,19 @@ fn format_value(key: &str, value: &Value, row: &Map<String, Value>) -> String {
     attr_value(value)
 }
 fn escape(text: &str) -> String {
-    let mut out = String::from("\"");
+    let mut out = String::new();
+    escape_into(&mut out, text);
+    out
+}
+/// `escape`, written onto `out`.
+fn escape_into(out: &mut String, text: &str) {
+    out.push('"');
+    // Most values need no escaping at all.
+    if text.bytes().all(|b| (0x20..0x7f).contains(&b) && !matches!(b, b'&' | b'<' | b'>' | b'"' | b'\'')) {
+        out.push_str(text);
+        out.push('"');
+        return;
+    }
     for c in text.chars() {
         match c {
             '&' => out.push_str("&amp;"),
@@ -155,12 +167,14 @@ fn escape(text: &str) -> String {
             {
                 out.push('?')
             }
-            c if c as u32 >= 0x80 => out.push_str(&format!("&#{};", c as u32)),
+            c if c as u32 >= 0x80 => {
+                use std::fmt::Write;
+                let _ = write!(out, "&#{};", c as u32);
+            }
             c => out.push(c),
         }
     }
     out.push('"');
-    out
 }
 fn child_rank(name: &str, key: &str, row: &Map<String, Value>) -> usize {
     // xmlout.py `_split`: the ELEMENT decides the table -- a `Type` row orders
@@ -710,7 +724,8 @@ fn attr_table(name: &str, row: &Map<String, Value>) -> AttrTable {
     };
     AttrTable::Order(order)
 }
-fn split(name: &str, row: &Map<String, Value>, container: bool) -> (Vec<String>, Vec<String>) {
+/// A row's attributes and child elements, in the order the XML writes them, borrowed from it.
+fn split<'r>(name: &str, row: &'r Map<String, Value>, container: bool) -> (Vec<(&'r str, &'r Value)>, Vec<(&'r str, &'r Value)>) {
     let mut attrs = Vec::new();
     let mut children = Vec::new();
     for (k, v) in row {
@@ -718,15 +733,15 @@ fn split(name: &str, row: &Map<String, Value>, container: bool) -> (Vec<String>,
             continue;
         }
         match v {
-            Value::Object(_) => children.push(k.clone()),
+            Value::Object(_) => children.push((k.as_str(), v)),
             Value::Array(values) => {
                 if !values.is_empty() && values.iter().all(Value::is_object) {
-                    children.push(k.clone())
+                    children.push((k.as_str(), v))
                 } else if !values.is_empty() {
-                    attrs.push(k.clone())
+                    attrs.push((k.as_str(), v))
                 }
             }
-            _ => attrs.push(k.clone()),
+            _ => attrs.push((k.as_str(), v)),
         }
     }
     if container {
@@ -748,26 +763,17 @@ fn split(name: &str, row: &Map<String, Value>, container: bool) -> (Vec<String>,
                 }
             }
         };
-        attrs.sort_by_key(|k| (lead(k), k.clone()));
-        children.sort_by_key(|k| if k == "Meta" { 0 } else { 1 });
+        attrs.sort_by_key(|&(k, _)| (lead(k), k));
+        children.sort_by_key(|&(k, _)| if k == "Meta" { 0 } else { 1 });
     } else {
         // Row ordering is a stable topological order. Unknown fields retain the
         // insertion order supplied by the measured JSON document; alphabetising
         // the tie changes the byte stream for DOVI and other agent extensions.
         if name == "Player" {
-            attrs.sort_by_key(|key| {
-                (
-                    if row.get(key).and_then(Value::as_str).is_some() {
-                        0
-                    } else {
-                        1
-                    },
-                    key.clone(),
-                )
-            });
+            attrs.sort_by_key(|&(key, value)| (if value.as_str().is_some() { 0 } else { 1 }, key));
         } else if row.get("_session").is_some() || row.get("_pluginLibrary").is_some() {
             let rank = attr_orderer(name, row);
-            attrs.sort_by_cached_key(|k| (rank(k), k.clone()));
+            attrs.sort_by_cached_key(|&(k, _)| (rank(k), k));
         } else if row.get("allowSync").is_some_and(|value| !value.is_null()) {
             // Cycle 19: the rows of `/library/recentlyAdded` and `/library/onDeck` -- the
             // only rows carrying `allowSync` -- LEAD with it and the librarySection
@@ -782,15 +788,15 @@ fn split(name: &str, row: &Map<String, Value>, container: bool) -> (Vec<String>,
                 _ => 6,
             };
             let rank = attr_orderer(name, row);
-            attrs.sort_by_cached_key(|k| (lead(k), rank(k)));
+            attrs.sort_by_cached_key(|&(k, _)| (lead(k), rank(k)));
         } else {
             // Each key's rank once (`sort_by_cached_key` is stable too): ranking inside
             // the comparisons was 40% of an unpaged episode listing (2026-10-17).
             let rank = attr_orderer(name, row);
-            attrs.sort_by_cached_key(|k| rank(k));
+            attrs.sort_by_cached_key(|&(k, _)| rank(k));
         }
         // A STABLE sort, as Python's: unknown children keep their order.
-        children.sort_by_cached_key(|k| child_rank(name, k, row));
+        children.sort_by_cached_key(|&(k, _)| child_rank(name, k, row));
     }
     (attrs, children)
 }
@@ -805,15 +811,15 @@ fn render(
     let (attrs, children) = split(name, row, container);
     out.push('<');
     out.push_str(name);
-    for key in &attrs {
-        let value = match row.get(key).unwrap() {
-            Value::Array(values) => values.iter().map(attr_value).collect::<Vec<_>>().join(","),
-            value => format_value(key, value, row),
-        };
+    for &(key, value) in &attrs {
         out.push(' ');
         out.push_str(key);
         out.push('=');
-        out.push_str(&escape(&value));
+        match value {
+            Value::Array(values) => escape_into(out, &values.iter().map(attr_value).collect::<Vec<_>>().join(",")),
+            Value::String(text) => escape_into(out, text),
+            value => escape_into(out, &format_value(key, value, row)),
+        }
     }
     if children.is_empty() {
         let paired = ALWAYS_PAIRED.contains(&name)
@@ -832,23 +838,21 @@ fn render(
         return;
     }
     out.push_str(">\n");
-    for key in children {
-        if let Some(value) = row.get(&key) {
-            match value {
-                Value::Object(child) => {
-                    let child_name = element_name(&key, child, overrides);
-                    render(&child_name, child, out, None, false)
-                }
-                Value::Array(values) => {
-                    for child in values {
-                        if let Some(child) = child.as_object() {
-                            let child_name = element_name(&key, child, overrides);
-                            render(&child_name, child, out, None, false);
-                        }
+    for (key, value) in children {
+        match value {
+            Value::Object(child) => {
+                let child_name = element_name(key, child, overrides);
+                render(&child_name, child, out, None, false)
+            }
+            Value::Array(values) => {
+                for child in values {
+                    if let Some(child) = child.as_object() {
+                        let child_name = element_name(key, child, overrides);
+                        render(&child_name, child, out, None, false);
                     }
                 }
-                _ => {}
             }
+            _ => {}
         }
     }
     out.push_str("</");
@@ -892,6 +896,8 @@ pub fn into_ordered(container: Value, overrides: Option<&HashMap<String, String>
     ) -> Value {
         let name = element_name(key, &row, overrides);
         let (attrs, children) = split(&name, &row, container);
+        let owned = |keys: Vec<(&str, &Value)>| keys.into_iter().map(|(k, _)| k.to_string()).collect::<Vec<_>>();
+        let (attrs, children) = (owned(attrs), owned(children));
         let mut out = Map::new();
         for k in attrs {
             let value = row.swap_remove(&k).unwrap_or(Value::Null);
@@ -958,19 +964,19 @@ pub fn write_ordered_json(container: &Value, overrides: Option<&HashMap<String, 
                 out.push(b',');
             }
         };
-        for k in &attrs {
+        for &(k, value) in &attrs {
             comma(out);
             write_key(out, k);
-            stripped(out, row.get(k).unwrap_or(&Value::Null));
+            stripped(out, value);
         }
-        for k in &children {
-            match row.get(k) {
-                Some(Value::Object(child)) => {
+        for &(k, value) in &children {
+            match value {
+                Value::Object(child) => {
                     comma(out);
                     write_key(out, k);
                     walk(out, k, child, overrides, false);
                 }
-                Some(Value::Array(values)) => {
+                Value::Array(values) => {
                     comma(out);
                     write_key(out, k);
                     out.push(b'[');
@@ -1059,23 +1065,19 @@ pub fn to_system_xml(container: &Value, overrides: Option<&HashMap<String, Strin
     };
     let (attrs, children) = split(root, body, true);
     let mut out = format!("<?xml version='1.0' encoding='utf-8'?>\n<{}", root);
-    for key in attrs {
-        let value = body.get(&key).unwrap_or(&Value::Null);
+    for (key, value) in attrs {
         let value = if let Value::Array(values) = value {
             values.iter().map(attr_value).collect::<Vec<_>>().join(",")
         } else {
-            format_value(&key, value, body)
+            format_value(key, value, body)
         };
         out.push(' ');
-        out.push_str(&key);
+        out.push_str(key);
         out.push('=');
         out.push_str(&escape(&value));
     }
     let mut rows = Vec::new();
-    for key in children {
-        let Some(value) = body.get(&key) else {
-            continue;
-        };
+    for (key, value) in children {
         let values: Vec<&Value> = match value {
             Value::Array(values) => values.iter().collect(),
             value => vec![value],
@@ -1084,18 +1086,17 @@ pub fn to_system_xml(container: &Value, overrides: Option<&HashMap<String, Strin
             let Some(row) = value.as_object() else {
                 continue;
             };
-            let name = element_name(&key, row, overrides);
+            let name = element_name(key, row, overrides);
             let (row_attrs, _) = split(&name, row, false);
             let mut rendered = format!("  <{}", name);
-            for attr in row_attrs {
-                let value = row.get(&attr).unwrap_or(&Value::Null);
+            for (attr, value) in row_attrs {
                 let value = if let Value::Array(values) = value {
                     values.iter().map(attr_value).collect::<Vec<_>>().join(",")
                 } else {
-                    format_value(&attr, value, row)
+                    format_value(attr, value, row)
                 };
                 rendered.push(' ');
-                rendered.push_str(&attr);
+                rendered.push_str(attr);
                 rendered.push('=');
                 rendered.push_str(&escape(&value));
             }
@@ -1121,6 +1122,9 @@ mod tests {
     #[test]
     fn escape_ascii() {
         assert_eq!(escape("a\"é\n"), "\"a&#34;&#233;&#xA;\"");
+        // Text with nothing to escape takes the short way, and comes out the same.
+        assert_eq!(escape("plain text 1080p"), "\"plain text 1080p\"");
+        assert_eq!(escape("it's <a>&\u{7f}\u{1}"), "\"it&#39;s &lt;a&gt;&amp;??\"");
     }
     #[test]
     fn clip_extra_type_last() {
