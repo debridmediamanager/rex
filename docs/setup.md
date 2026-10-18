@@ -155,7 +155,7 @@ Check it answers:
 
 ```bash
 curl -s http://127.0.0.1:32400/identity      # machineIdentifier, version
-curl -s http://127.0.0.1:32400/rex/sources            # {"size":0} until a source registers
+curl -s http://127.0.0.1:32400/rex/sources            # {"size":0,"sources":[]} until a source registers
 curl -s http://127.0.0.1:32400/rex/feed/rd/items       # what rd pushed, once it has registered
 ```
 
@@ -250,7 +250,8 @@ arrive in rex's log (`SOURCES rd registered ...`, `FEED POST /rex/feed/rd/items 
 
 **An item appears only once zurg has probed it with ffprobe**, because rex lists each
 file with its streams. Items zurg never probed are held, not shown. zurg probes the whole
-library on its own once it has loaded, four releases at a time, then each new release, and
+library on its own once it has loaded, one release at a time by default (zurg's
+`analysis_workers`), up to about 20 a minute, then each new release, and
 tries a failed probe again a day later, so a large library fills over hours. **Analyze & Tag
 Library** on zurg's dashboard (or `POST /torrents/analyze`) retries failed probes at once.
 
@@ -266,7 +267,8 @@ simplest address is rex-direct, DMM's own plex.direct. Your own hostname works t
 way rex terminates TLS itself, on the same port as plain HTTP.
 
 - **rex-direct**: put `DMM_API_KEY=<your DMM API key>` in `rex.env` (Docker: under
-  `environment:`), forward rex's port (32400) on your router to the rex machine, and
+  `environment:`; rex does not read `rex.env` itself, `run.sh` (step 8) loads it, so
+  started by hand `export` it), forward rex's port (32400) on your router to the rex machine, and
   restart rex. At start rex registers with DMM, which points
   `<hash>.rex-direct.debridmediamanager.com` at the public IP rex called from and hands rex
   a certificate for that name. rex serves it and adds
@@ -339,6 +341,12 @@ Under launchd, with absolute log paths (relative ones make the job exit 78 witho
 A submitted job does not survive a reboot; a LaunchAgent plist like the manager's (below)
 does. To run several servers on one host, use `rex manager` (below).
 
+To update a release, unpack the newer archive with `--strip-components=1` in the same
+folder and restart rex. It replaces `rust/`, `data/`, `examples/` and the docs, and leaves
+`rex.db`, `rex.env`, `run.sh`, `claim_state.json` and `rex-direct.json` alone. A checkout
+updates with `git pull` and the build in step 1. In Docker, `docker compose pull &&
+docker compose up -d`.
+
 rex logs requests only under `--verbose`, and masks `X-Plex-Token` values (not the
 single-use claim token); the log still names your titles and addresses, so keep it private.
 
@@ -362,7 +370,7 @@ the same in PowerShell with `rust\target\release\rex.exe` for `rust/target/relea
 - `claim_state.json` and `rex.db`, which holds the sources' credentials, are protected only by
   the folder they sit in, so keep the rex folder inside your user profile.
 - LAN discovery cannot share its ports with a Plex Media Server on the same Windows machine.
-  If rex runs on 32400 beside one there, run it with `--gdm off`.
+  Beside one, give rex another port (`--port 32500`), which keeps discovery off.
 
 ### Docker
 
@@ -404,9 +412,10 @@ zurg's `rex_url` is then `http://<the host's LAN IP>:32400`, and the claim (step
 same `curl` on the host. rex-direct (step 7) needs only `DMM_API_KEY` under `environment:`,
 and keeps `rex-direct.json` in `/config`. Certificates of your own go in `/config` too:
 `--tls-cert /config/host.crt --tls-key /config/host.key`. Without host networking,
-publish `32400:32400` and add `--gdm off`; apps then find rex only once it is claimed, and
-rex must still reach the address zurg registers. The image carries no FFmpeg, so
-`REX_TRANSCODER` needs one mounted in. rex saves its state on `docker stop`.
+publish `32400:32400` and add `--gdm off` and `--friendly-name <name>` (the container's
+hostname is its ID); apps then find rex only once it is claimed, and
+rex must still reach the address zurg registers. The image carries no FFmpeg. Mounting
+one in and setting `REX_TRANSCODER` is untested; to convert video, run rex without Docker. rex saves its state on `docker stop`.
 
 ### Troubleshooting
 
@@ -544,8 +553,11 @@ so a 1080p title there needs one or the other: `REX_TRANSCODER`, or the app's ce
 quality raised to Original. Without an encoder rex refuses such a play (decision
 2000/4005).
 
-A conversion carries only an embedded image subtitle, burned into the picture; text
-subtitles are dropped from it.
+A conversion keeps a selected image subtitle, burned into the picture, and a subtitle
+uploaded to rex (copied, or burned for an MPEG-TS client). A client whose target is `mkv`
+(Plex for Android and iOS) gets Matroska HLS with the selected embedded text subtitle
+copied in, ASS included. Plex Web and other MPEG-TS clients still lose an embedded text
+subtitle: Plex Web's `segments-subs` and burning text for MPEG-TS are not built.
 
 
 ### By platform

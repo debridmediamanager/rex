@@ -27,7 +27,7 @@ You need a Linux, macOS or Windows machine and at least one source such as zurg.
 Download the build for your machine from [Releases](https://github.com/debridmediamanager/rex/releases) and unpack it. There are builds for Linux (amd64 and arm64, glibc 2.35 or newer, so Ubuntu 22.04 and up), for macOS (Intel and Apple Silicon) and for Windows (64 bit).
 
 ```bash
-tar xzf rex-<tag>-linux-amd64.tar.gz && cd rex-<tag>-linux-amd64
+mkdir -p ~/rex && tar xzf rex-<tag>-linux-amd64.tar.gz -C ~/rex --strip-components=1 && cd ~/rex
 ```
 
 `<tag>` is the build's name, such as `2026.10.18.0753-nightly` or `v0.3.0`.
@@ -50,7 +50,7 @@ git clone https://github.com/debridmediamanager/rex && cd rex
 cargo build --release --manifest-path rust/Cargo.toml
 ```
 
-Both put rex at `rust/target/release/rex`.
+Both put rex at `rust/target/release/rex` (in `~/rex`, or in the clone).
 
 Or run the Docker image, `ghcr.io/debridmediamanager/rex:nightly` (private, like zurg's): [docs/setup.md](docs/setup.md#docker) has a compose file.
 
@@ -63,6 +63,8 @@ rust/target/release/rex --catalog rex.db
 ```
 
 The first start makes `rex.db` with two empty libraries, Debrid Movies and Debrid TV, and names the server after the machine (`--friendly-name` picks another name). Files under a `movies` directory go to Movies and files under `shows` go to TV, whichever source they come from, unless the source placed a file as the other kind. A file under any other directory, like `anime`, goes to TV if its source placed it as an episode and to Movies otherwise. Once claimed, rex takes the owner's Plex username from the claim.
+
+`rex.db` holds your library, watch history and your sources' logins. Back it up with `sqlite3 rex.db ".backup rex.db.bak"` and keep it private.
 
 Until you add it to a Plex account in step 3 anyone on your home network can browse it. Keep it there until then.
 
@@ -107,7 +109,7 @@ This needs a zurg nightly from 2026.10.17 or later, so update zurg first. The la
 
 app.plex.tv only connects to an HTTPS address and the other Plex apps outside your home prefer one. rex has no relay so the address has to be reachable from the internet.
 
-The simplest way is rex-direct. It needs an active DMM sponsorship. Put your DMM API key in `rex.env` next to `run.sh` (with Docker, under `environment:`):
+The simplest way is rex-direct. It needs an active DMM sponsorship. Put your DMM API key in `rex.env` (with Docker, under `environment:`). rex does not read that file itself: `run.sh` (below) loads it. Started by hand, `export` the line first.
 
 ```bash
 DMM_API_KEY=<your DMM API key>
@@ -127,7 +129,9 @@ Do not put a Cloudflare tunnel in front. Cloudflare drops the range of the first
 
 Your Plex apps can then reach it from anywhere.
 
-To keep it running copy `examples/run.sh.example` to `run.sh` next to `rust/` and start it as a service. The full guide has a systemd unit and a way to run several servers on one machine.
+To keep it running copy `examples/run.sh.example` to `run.sh` next to `rust/`, set its `--announce-url` to step 3's LAN address (after your HTTPS address, if you have your own) and start it as a service. The full guide has a systemd unit and a way to run several servers on one machine.
+
+To update, unpack a newer build into `~/rex` as in step 1 and restart rex. It replaces `rust/`, `data/` and `examples/` and leaves `rex.db`, `rex.env`, `run.sh`, `claim_state.json` and `rex-direct.json` alone. With Docker, `docker compose pull && docker compose up -d`.
 
 ## For developers
 
@@ -141,7 +145,7 @@ What it does not do:
 
 - Movies and TV only. Music and photo libraries stay empty
 - No Live TV or DVR
-- A converted stream carries only an embedded image subtitle, burned into the picture. Text subtitles are dropped from a conversion
+- A converted stream keeps an image subtitle (burned into the picture) and a subtitle uploaded to rex. Plex for Android and iOS also keep an embedded text subtitle; Plex Web and other players lose it
 - Playing outside your home needs a Plex Pass or Remote Watch Pass on the account you watch with, as with any Plex server: Plex Web asks for it before the play ever reaches rex (the other Plex apps were not tested). Converting video, GPU included, needs no Plex Pass
 
 ## License
