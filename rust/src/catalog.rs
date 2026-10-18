@@ -6,6 +6,8 @@ use std::path::Path;
 
 use serde_json::{Map, Value};
 
+use crate::corpus::{corpus_row, CorpusRow, Names};
+use crate::hotrow::{HotRow, Lazy};
 use crate::{hierarchy, mediainfo};
 
 #[derive(Debug, Clone)]
@@ -48,7 +50,7 @@ fn next_generation() -> u64 {
 
 /// `Catalog::index`: the rows under each key of every `By` lookup, and the positions written since.
 #[derive(Default)]
-struct RowIndex(std::sync::Mutex<IndexState>);
+struct RowIndex(std::cell::RefCell<IndexState>);
 
 /// A clone builds its own index when it is first read.
 impl Clone for RowIndex {
@@ -83,16 +85,38 @@ pub enum By {
     File,
     /// A clip's owner, `_parentRatingKey` as `string_value` writes it (`extras_of`).
     ClipParent,
+    /// The directory of each `Media[].Part[].file`: a pushed extra finds the title of its
+    /// release by it (`scan::add_clip`).
+    Directory,
+    /// Each (source, source id) the row's Media came from (`feed::versions`), as `release_key`
+    /// joins them: a feed push finds the rows its items are by it.
+    Release,
 }
 
-const LOOKUPS: usize = 5;
+const LOOKUPS: usize = 7;
+
+/// The `By::Release` key of a source's item.
+pub fn release_key(source: &str, sid: &str) -> String {
+    format!("{source}\0{sid}")
+}
+
+/// What a lookup files a key under: the lookup and the key's text, hashed. Two keys sharing
+/// a hash -- about one chance in 10^10 for a library of a million keys -- would list each
+/// other's rows; the text is not kept, which was half the index (2026-10-18).
+fn hash_key(by: By, key: &str) -> u64 {
+    use std::hash::{Hash, Hasher};
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    by.slot().hash(&mut hasher);
+    key.hash(&mut hasher);
+    hasher.finish()
+}
 
 impl By {
     fn slot(self) -> usize {
         self as usize
     }
 
-    fn keys(self, item: &Value) -> Vec<Box<str>> {
+    fn keys(self, item: &Value, into: &mut Vec<u64>) {
         let parts = || {
             item.get("Media")
                 .and_then(Value::as_array)
@@ -100,16 +124,21 @@ impl By {
                 .flatten()
                 .flat_map(|media| media.get("Part").and_then(Value::as_array).into_iter().flatten())
         };
-        let mut keys: Vec<Box<str>> = match self {
-            By::Parent => key_text(item.get("parentRatingKey")).into_iter().map(Into::into).collect(),
-            By::Section => section_of(item).into_iter().map(Into::into).collect(),
-            By::Part => parts().filter_map(|part| part.get("id")).map(|id| text_of(id).into()).collect(),
-            By::File => parts().filter_map(|part| part.get("file").and_then(Value::as_str)).map(Into::into).collect(),
-            By::ClipParent => item.get("_parentRatingKey").map(|key| text_of(key).into()).into_iter().collect(),
-        };
-        keys.sort();
-        keys.dedup();
-        keys
+        let hash = |key: &str| hash_key(self, key);
+        match self {
+            By::Parent => into.extend(key_text(item.get("parentRatingKey")).as_deref().map(hash)),
+            By::Section => into.extend(section_of(item).as_deref().map(hash)),
+            By::Part => into.extend(parts().filter_map(|part| part.get("id")).map(|id| hash(&text_of(id)))),
+            By::File => into.extend(parts().filter_map(|part| part.get("file").and_then(Value::as_str)).map(hash)),
+            By::ClipParent => into.extend(item.get("_parentRatingKey").map(|key| hash(&text_of(key)))),
+            By::Directory => into.extend(
+                parts()
+                    .filter_map(|part| part.get("file").and_then(Value::as_str))
+                    .filter_map(|file| file.rsplit_once('/').map(|(directory, _)| directory))
+                    .map(hash),
+            ),
+            By::Release => into.extend(versions(item).iter().map(|(source, sid, _)| hash(&release_key(source, sid)))),
+        }
     }
 }
 
@@ -123,34 +152,111 @@ fn text_of(value: &Value) -> String {
     }
 }
 
-/// One lookup: each row's keys under it, and the rows under each key in row order.
-#[derive(Default)]
-struct Lookup {
-    of: Vec<Vec<Box<str>>>,
-    at: HashMap<Box<str>, Vec<usize>>,
+/// The positions filed under one key, in row order; most keys name one row.
+enum Filed {
+    One(u32),
+    Many(Vec<u32>),
 }
 
-impl Lookup {
-    fn set(&mut self, position: usize, keys: Vec<Box<str>>) {
-        if self.of.len() <= position {
-            self.of.resize_with(position + 1, Vec::new);
+impl Filed {
+    fn positions(&self) -> &[u32] {
+        match self {
+            Filed::One(position) => std::slice::from_ref(position),
+            Filed::Many(positions) => positions,
         }
-        if self.of[position] == keys {
-            return;
-        }
-        for key in std::mem::take(&mut self.of[position]) {
-            file(&mut self.at, key, position, false);
-        }
-        for key in &keys {
-            file(&mut self.at, key.clone(), position, true);
-        }
-        self.of[position] = keys;
     }
 }
 
 #[derive(Default)]
 struct Positions {
-    lookups: [Lookup; LOOKUPS],
+    /// Each row's keys in every lookup, so a row written again leaves the keys it had.
+    of: Vec<Box<[u64]>>,
+    at: HashMap<u64, Filed>,
+    hot: Vec<HotRow>,
+    /// Each row's search entry (`corpus.rs`), and the tag names they share.
+    corpus: Vec<CorpusRow>,
+    names: Names,
+}
+
+impl Positions {
+    fn file(&mut self, position: usize, item: &Value) {
+        let mut keys = Vec::new();
+        for by in BY {
+            by.keys(item, &mut keys);
+        }
+        keys.sort_unstable();
+        keys.dedup();
+        if self.of.len() <= position {
+            self.of.resize_with(position + 1, Default::default);
+        }
+        if *self.of[position] != *keys {
+            for key in std::mem::take(&mut self.of[position]).iter() {
+                self.unfile(*key, position as u32);
+            }
+            for key in &keys {
+                self.refile(*key, position as u32);
+            }
+            self.of[position] = keys.into_boxed_slice();
+        }
+        let entry = corpus_row(item, &mut self.names);
+        match self.corpus.get_mut(position) {
+            Some(slot) => *slot = entry,
+            None => {
+                self.corpus.resize_with(position, CorpusRow::default);
+                self.corpus.push(entry);
+            }
+        }
+        let hot = HotRow::of(position, item);
+        match self.hot.get_mut(position) {
+            Some(slot) => *slot = hot,
+            None => {
+                while self.hot.len() < position {
+                    self.hot.push(HotRow::of(self.hot.len(), &Value::Null));
+                }
+                self.hot.push(hot);
+            }
+        }
+    }
+
+    fn refile(&mut self, key: u64, position: u32) {
+        match self.at.get_mut(&key) {
+            None => {
+                self.at.insert(key, Filed::One(position));
+            }
+            Some(Filed::One(one)) if *one == position => {}
+            Some(Filed::One(one)) => {
+                let mut positions = vec![*one, position];
+                positions.sort_unstable();
+                self.at.insert(key, Filed::Many(positions));
+            }
+            Some(Filed::Many(positions)) => {
+                if let Err(at) = positions.binary_search(&position) {
+                    positions.insert(at, position);
+                }
+            }
+        }
+    }
+
+    fn unfile(&mut self, key: u64, position: u32) {
+        match self.at.get_mut(&key) {
+            Some(Filed::One(one)) if *one == position => {
+                self.at.remove(&key);
+            }
+            Some(Filed::Many(positions)) => {
+                if let Ok(at) = positions.binary_search(&position) {
+                    positions.remove(at);
+                }
+                if let [only] = positions[..] {
+                    self.at.insert(key, Filed::One(only));
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn under(&self, by: By, key: &str) -> &[u32] {
+        self.at.get(&hash_key(by, key)).map_or(&[], Filed::positions)
+    }
 }
 
 fn key_text(value: Option<&Value>) -> Option<String> {
@@ -170,57 +276,145 @@ fn section_of(item: &Value) -> Option<String> {
         })
 }
 
-fn file(map: &mut HashMap<Box<str>, Vec<usize>>, key: Box<str>, position: usize, add: bool) {
-    let list = map.entry(key).or_default();
-    match (list.binary_search(&position), add) {
-        (Err(at), true) => list.insert(at, position),
-        (Ok(at), false) => {
-            list.remove(at);
-        }
-        _ => {}
-    }
-}
-
 impl RowIndex {
     fn drop_all(&self) {
-        let mut state = self.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        let mut state = self.0.borrow_mut();
         state.built = None;
         state.stale.clear();
     }
 
+    /// Rows were removed at `gone` (ascending positions before the removal): the rows after
+    /// them moved down. Shifted rather than rebuilt: a rebuild derives every row's hot fields
+    /// again, which on a 40,000-row library made each row delete cost 0.15 s (`test_perf_c87`).
+    fn removed(&self, gone: &[usize]) {
+        let mut state = self.0.borrow_mut();
+        let Some(positions) = state.built.as_mut() else {
+            return;
+        };
+        let moved = |position: usize| position - gone.partition_point(|&at| at < position);
+        for &at in gone.iter().rev() {
+            if at < positions.of.len() {
+                for key in std::mem::take(&mut positions.of[at]).iter() {
+                    positions.unfile(*key, at as u32);
+                }
+            }
+        }
+        let is_gone = |position: usize| gone.binary_search(&position).is_ok();
+        let mut index = 0;
+        positions.of.retain(|_| {
+            index += 1;
+            !is_gone(index - 1)
+        });
+        positions.hot.retain(|hot| !is_gone(hot.position));
+        let mut index = 0;
+        positions.corpus.retain(|_| {
+            index += 1;
+            !is_gone(index - 1)
+        });
+        for hot in positions.hot.iter_mut() {
+            hot.position = moved(hot.position);
+        }
+        for filed in positions.at.values_mut() {
+            match filed {
+                Filed::One(one) => *one = moved(*one as usize) as u32,
+                Filed::Many(many) => many.iter_mut().for_each(|one| *one = moved(*one as usize) as u32),
+            }
+        }
+        state.stale = std::mem::take(&mut state.stale)
+            .into_iter()
+            .filter(|position| !is_gone(*position))
+            .map(moved)
+            .collect();
+    }
+
     fn mark(&self, position: usize) {
-        let mut state = self.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        let mut state = self.0.borrow_mut();
         if state.built.is_some() {
             state.stale.push(position);
         }
     }
 
-    /// The positions under `key` in the `by` lookup, brought up to date with `items` first.
-    fn read(&self, items: &[Value], by: By, key: &str) -> Vec<usize> {
-        let mut state = self.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    /// Bring the index up to date with `items`. Only this borrows it mutably, and only when a
+    /// row was written since, which needs `&mut Catalog`: so a read inside another read (a
+    /// pass over `hot` asking for a row's children) never finds it borrowed.
+    fn fresh(&self, items: &[Value]) {
+        let needed = {
+            let state = self.0.borrow();
+            state.built.is_none() || !state.stale.is_empty()
+        };
+        if !needed {
+            return;
+        }
+        let mut state = self.0.borrow_mut();
         let stale = std::mem::take(&mut state.stale);
         let positions = state.built.get_or_insert_with(|| {
             let mut positions = Positions::default();
             for (position, item) in items.iter().enumerate() {
-                for (slot, lookup) in positions.lookups.iter_mut().enumerate() {
-                    lookup.set(position, BY[slot].keys(item));
-                }
+                positions.file(position, item);
             }
             positions
         });
         for position in stale {
-            let Some(item) = items.get(position) else {
-                continue;
-            };
-            for (slot, lookup) in positions.lookups.iter_mut().enumerate() {
-                lookup.set(position, BY[slot].keys(item));
+            if let Some(item) = items.get(position) {
+                positions.file(position, item);
             }
         }
-        positions.lookups[by.slot()].at.get(key).cloned().unwrap_or_default()
+    }
+
+    /// The positions under `key` in the `by` lookup.
+    fn read(&self, items: &[Value], by: By, key: &str) -> Vec<usize> {
+        self.fresh(items);
+        let state = self.0.borrow();
+        let positions = state.built.as_ref().expect("fresh builds it");
+        positions.under(by, key).iter().map(|position| *position as usize).collect()
+    }
+
+    fn positions(&self, items: &[Value]) -> std::cell::Ref<'_, Positions> {
+        self.fresh(items);
+        std::cell::Ref::map(self.0.borrow(), |state| state.built.as_ref().expect("fresh builds it"))
     }
 }
 
-const BY: [By; LOOKUPS] = [By::Parent, By::Section, By::Part, By::File, By::ClipParent];
+const BY: [By; LOOKUPS] = [By::Parent, By::Section, By::Part, By::File, By::ClipParent, By::Directory, By::Release];
+
+/// The catalog's hot rows, read in row order (`Catalog::hot`).
+pub struct Hot<'a> {
+    positions: std::cell::Ref<'a, Positions>,
+    items: &'a [Value],
+}
+
+impl<'a> Hot<'a> {
+    pub fn rows(&self) -> impl Iterator<Item = &HotRow> {
+        self.positions.hot.iter().take(self.items.len())
+    }
+
+    /// The whole row a hot row stands for.
+    pub fn row(&self, hot: &HotRow) -> &'a Value {
+        &self.items[hot.position]
+    }
+
+    /// Every row, read through its hot fields first (`hotrow::Lazy`).
+    pub fn lazy(&self) -> impl Iterator<Item = Lazy<'_, 'a>> {
+        self.rows().map(|hot| Lazy::new(hot, &self.items[hot.position]))
+    }
+
+    /// The row at a position, read through its hot fields first.
+    pub fn at(&self, position: usize) -> Option<Lazy<'_, 'a>> {
+        Some(Lazy::new(self.positions.hot.get(position)?, self.items.get(position)?))
+    }
+
+    /// Every row's search entry, in row order (its index is the row's position), and the tag
+    /// names their ids name.
+    pub fn corpus(&self) -> (&[CorpusRow], &[Vec<String>]) {
+        let rows = &self.positions.corpus;
+        (&rows[..rows.len().min(self.items.len())], &self.positions.names.words)
+    }
+
+    /// The hot rows filed under `key` in the `by` lookup, in row order.
+    pub fn by(&self, by: By, key: &str) -> impl Iterator<Item = &HotRow> {
+        self.positions.under(by, key).iter().map(|position| &self.positions.hot[*position as usize])
+    }
+}
 
 /// The rows changed since the last `take_changes`: by key, or all of them.
 #[derive(Debug, Clone, Default)]
@@ -276,8 +470,13 @@ impl Catalog {
     }
 
     pub fn rebuild_index(&mut self) {
-        self.generation = next_generation();
         self.index.drop_all();
+        self.rekey();
+    }
+
+    /// `by_id` again, after rows moved.
+    fn rekey(&mut self) {
+        self.generation = next_generation();
         self.by_id.clear();
         for (index, item) in self.items.iter().enumerate() {
             if let Some(key) = key_value(item) {
@@ -395,6 +594,24 @@ impl Catalog {
         self.rows_by(By::Section, section_key)
     }
 
+    /// Every row's hot fields (`hotrow.rs`), for a pass over the library that needs no more.
+    pub fn hot(&self) -> Hot<'_> {
+        Hot { positions: self.index.positions(&self.items), items: &self.items }
+    }
+
+    /// The rows `keep` keeps, in row order, each tested through its hot fields first: a pass
+    /// over the library that reads the rows it answers and nothing of the others.
+    pub fn rows_where(&self, mut keep: impl FnMut(&Lazy<'_, '_>) -> bool) -> Vec<&Value> {
+        let positions: Vec<usize> = self.hot().lazy().filter(|row| keep(row)).map(|row| row.hot.position).collect();
+        positions.into_iter().filter_map(|position| self.items.get(position)).collect()
+    }
+
+    /// The first row `keep` keeps (`rows_where`).
+    pub fn find_where(&self, mut keep: impl FnMut(&Lazy<'_, '_>) -> bool) -> Option<&Value> {
+        let position = self.hot().lazy().find(|row| keep(row)).map(|row| row.hot.position)?;
+        self.items.get(position)
+    }
+
     /// The rows filed under `key` in the `by` lookup, in row order.
     pub fn rows_by(&self, by: By, key: &str) -> Vec<&Value> {
         self.index.read(&self.items, by, key).into_iter().filter_map(|position| self.items.get(position)).collect()
@@ -439,7 +656,8 @@ impl Catalog {
             self.changes.keys.insert(rating_key.to_string());
         }
         let removed = self.items.remove(index);
-        self.rebuild_index();
+        self.index.removed(&[index]);
+        self.rekey();
         Some(removed)
     }
 
@@ -452,8 +670,26 @@ impl Catalog {
         if !self.changes.all {
             self.changes.keys.extend(rating_keys.iter().cloned());
         }
+        let gone: Vec<usize> = self
+            .items
+            .iter()
+            .enumerate()
+            .filter(|(_, item)| key_value(item).is_some_and(|key| rating_keys.contains(&key)))
+            .map(|(position, _)| position)
+            .collect();
         self.items.retain(|item| key_value(item).is_none_or(|key| !rating_keys.contains(&key)));
-        self.rebuild_index();
+        self.index.removed(&gone);
+        self.rekey();
+    }
+
+    /// The row at a position (`position`, the hot rows' `position`).
+    pub fn row_at(&self, position: usize) -> Option<&Value> {
+        self.items.get(position)
+    }
+
+    /// How many rows there are.
+    pub fn len(&self) -> usize {
+        self.items.len()
     }
 
     /// Where a row sits in `items`, which is the order a save stores rows in.
@@ -685,6 +921,27 @@ pub fn unpacked(value: &Value) -> std::borrow::Cow<'_, Value> {
     }
 }
 
+/// A row's releases as (source, source id, Media index): each Media's own tags on a row
+/// that holds several, else the row's.
+pub fn versions(row: &Value) -> Vec<(String, String, usize)> {
+    let tag = |value: &Value, field: &str| value.get(field).and_then(Value::as_str).map(str::to_string);
+    let tagged: Vec<_> = row
+        .get("Media")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .enumerate()
+        .filter_map(|(index, media)| Some((tag(media, "_source")?, tag(media, "_sid")?, index)))
+        .collect();
+    if !tagged.is_empty() {
+        return tagged;
+    }
+    match (tag(row, "_source"), tag(row, "_sid")) {
+        (Some(source), Some(sid)) => vec![(source, sid, 0)],
+        _ => Vec::new(),
+    }
+}
+
 fn key_value(item: &Value) -> Option<String> {
     item.get("ratingKey").and_then(|v| match v {
         Value::String(v) => Some(v.clone()),
@@ -840,6 +1097,51 @@ mod tests {
         }
         let elapsed = started.elapsed();
         assert!(elapsed < std::time::Duration::from_millis(500), "2,000 beats took {elapsed:?}");
+    }
+
+    /// A removal shifts the index instead of rebuilding it; whatever it answers afterwards is
+    /// what an index built from the remaining rows answers.
+    #[test]
+    fn an_index_shifted_by_removals_answers_as_one_built_afresh() {
+        let mut items = Vec::new();
+        for show in 0..30u64 {
+            let show_key = (1000 + show * 100).to_string();
+            items.push(serde_json::json!({"ratingKey": show_key, "type": "show", "librarySectionID": 2}));
+            for episode in 1..8u64 {
+                let key = 1000 + show * 100 + episode;
+                items.push(serde_json::json!({"ratingKey": key.to_string(), "type": "episode",
+                    "parentRatingKey": show_key, "viewCount": episode % 2,
+                    "Media": [{"_source": "zurg", "_sid": format!("s{key}"), "Part": [{"id": key, "file": format!("/f/{key}.mkv")}]}]}));
+            }
+        }
+        let mut catalog = Catalog::from_value(serde_json::json!({"items": items})).unwrap();
+        let answers = |catalog: &Catalog| {
+            let mut out = Vec::new();
+            for key in 1000..4000u64 {
+                let key = key.to_string();
+                for by in BY {
+                    let lookup = match by {
+                        By::File => format!("/f/{key}.mkv"),
+                        By::Release => release_key("zurg", &format!("s{key}")),
+                        _ => key.clone(),
+                    };
+                    let rows: Vec<Option<String>> = catalog.rows_by(by, &lookup).into_iter().map(key_value).collect();
+                    if !rows.is_empty() {
+                        out.push((format!("{by:?}"), lookup, rows));
+                    }
+                }
+            }
+            let hot = catalog.hot();
+            let rows: Vec<(usize, Option<Value>)> = hot.rows().map(|row| (row.position, row.get("ratingKey").cloned())).collect();
+            (out, rows)
+        };
+        answers(&catalog);
+        catalog.remove("1203");
+        catalog.remove_many(&HashSet::from(["1000".to_string(), "1001".to_string(), "2907".to_string(), "1500".to_string()]));
+        catalog.get_mut("1105").unwrap()["parentRatingKey"] = serde_json::json!("1200");
+        catalog.add(serde_json::json!({"ratingKey": "3999", "type": "episode", "parentRatingKey": "1200"}));
+        let fresh = Catalog::from_value(serde_json::json!({"items": catalog.items().clone()})).unwrap();
+        assert_eq!(answers(&catalog), answers(&fresh));
     }
 
     use super::*;

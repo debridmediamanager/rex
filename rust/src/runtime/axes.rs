@@ -225,16 +225,10 @@ impl Runtime {
             }
             return self.section_row_refs(section_id);
         };
-        let mut rows = self
-            .catalog
-            .items()
-            .iter()
-            .filter(|row| {
-                row.get("type").and_then(Value::as_str) == Some(wanted)
-                    && string_value(row.get("librarySectionID").unwrap_or(&Value::Null))
-                        == section_id
-            })
-            .collect::<Vec<_>>();
+        let mut rows = self.catalog.rows_where(|row| {
+            row.get("type").and_then(Value::as_str) == Some(wanted)
+                && string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == section_id
+        });
         if wanted == "season" || wanted == "episode" {
             let show_title = |row: &Value| -> String {
                 row.get("grandparentTitle")
@@ -258,7 +252,7 @@ impl Runtime {
     }
 
     /// The listing grammar's filters over rows, or the status a real PMS refuses with.
-    pub(super) fn axis_filters<R: std::borrow::Borrow<Value>>(
+    pub(super) fn axis_filters<R: Row>(
         &self,
         rows: Vec<R>,
         pairs: &[(String, String)],

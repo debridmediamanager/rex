@@ -6,10 +6,12 @@
 
 pub mod catalog;
 pub mod catalog_tool;
+pub mod corpus;
 pub mod decision;
 pub mod filters;
 pub mod gate;
 pub mod hierarchy;
+pub mod hotrow;
 pub mod identify;
 #[cfg(unix)]
 pub mod manager;

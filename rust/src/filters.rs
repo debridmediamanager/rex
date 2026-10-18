@@ -8,6 +8,7 @@ use std::collections::HashMap;
 use std::sync::OnceLock;
 use std::time::UNIX_EPOCH;
 
+use crate::hotrow::Row;
 use serde_json::{json, Map, Value};
 
 use crate::hierarchy::{fold_case, fold_query};
@@ -88,7 +89,7 @@ pub struct FilterError {
     pub detail: String,
 }
 
-pub type ResolveFn<'a> = &'a dyn Fn(&str, &Value) -> Vec<Value>;
+pub type ResolveFn<'a> = &'a dyn Fn(&str, &dyn crate::hotrow::Row) -> Vec<Value>;
 impl FilterError {
     fn new(detail: impl Into<String>) -> Self {
         refusal(500, detail)
@@ -1001,8 +1002,8 @@ pub fn parse(
 
 pub fn evaluate(
     tree: &Value,
-    row: &Value,
-    value_of: &dyn Fn(&str, &Value) -> Value,
+    row: &dyn Row,
+    value_of: &dyn Fn(&str, &dyn Row) -> Value,
 ) -> Result<bool, FilterError> {
     evaluate_with(tree, row, value_of, None)
 }
@@ -1012,8 +1013,8 @@ pub fn evaluate(
 /// server layer; a scoped leaf succeeds when any resolved row satisfies it.
 pub fn evaluate_with(
     tree: &Value,
-    row: &Value,
-    value_of: &dyn Fn(&str, &Value) -> Value,
+    row: &dyn Row,
+    value_of: &dyn Fn(&str, &dyn Row) -> Value,
     resolve: Option<ResolveFn<'_>>,
 ) -> Result<bool, FilterError> {
     if tree.is_null() {
@@ -1044,34 +1045,34 @@ pub fn evaluate_with(
     let operator = tree.get("operator").and_then(Value::as_str).unwrap_or("=");
     let wanted = tree.get("value").and_then(str_actual).unwrap_or_default();
     let scope = tree.get("scope").and_then(Value::as_str).filter(|scope| !scope.is_empty());
-    let candidates: Vec<std::borrow::Cow<'_, Value>> = match (resolve, scope) {
-        (Some(resolve), Some(scope)) => resolve(scope, row)
-            .into_iter()
-            .map(std::borrow::Cow::Owned)
-            .collect(),
-        _ => vec![std::borrow::Cow::Borrowed(row)],
+    let resolved: Vec<Value>;
+    let candidates: Vec<&dyn Row> = match (resolve, scope) {
+        (Some(resolve), Some(scope)) => {
+            resolved = resolve(scope, row);
+            resolved.iter().map(|row| row as &dyn Row).collect()
+        }
+        _ => vec![row],
     };
     for candidate in candidates {
         if field == "title" && operator == "=" {
             // Cycle 18, measured on the 1.42.2 reference: the bare `title=` matcher -- and
             // ONLY it -- also reads the row's ORIGINAL title, and (cycle 32) its folded
             // pass reads the stored SORT title; both travel with the value in Python.
-            if let Some(object) = candidate.as_object() {
-                let text = value_of(field, &candidate);
-                let text = str_actual(&text).unwrap_or_default();
-                let sort = crate::hierarchy::stored_sort_title(object);
-                let original = object
-                    .get("originalTitle")
-                    .and_then(Value::as_str)
-                    .unwrap_or("")
-                    .to_string();
-                if title_match(&wanted, &text, Some(&sort), Some(&original)) {
-                    return Ok(true);
-                }
-                continue;
+            // Every row is an object; `get` reads the hot fields of a hot row.
+            let text = value_of(field, candidate);
+            let text = str_actual(&text).unwrap_or_default();
+            let sort = crate::hierarchy::stored_sort_title(candidate);
+            let original = candidate
+                .get("originalTitle")
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .to_string();
+            if title_match(&wanted, &text, Some(&sort), Some(&original)) {
+                return Ok(true);
             }
+            continue;
         }
-        if compare(kind, operator, &value_of(field, &candidate), &wanted, field)? {
+        if compare(kind, operator, &value_of(field, candidate), &wanted, field)? {
             return Ok(true);
         }
     }

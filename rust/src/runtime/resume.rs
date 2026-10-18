@@ -16,7 +16,7 @@ impl Runtime {
 
     /// `rows` without the libraries Edit Library > Visibility keeps off Home
     /// (cycle 58: `hidden=1` and `2` empty every Home shelf of that library).
-    pub(super) fn on_home<R: std::borrow::Borrow<Value>>(&self, rows: Vec<R>) -> Vec<R> {
+    pub(super) fn on_home<R: Row>(&self, rows: Vec<R>) -> Vec<R> {
         // The hidden libraries once, not a prefs lookup with three allocations per row:
         // Home ran this over every movie on each read (2026-10-17). Usually none is hidden.
         let hidden = self
@@ -32,14 +32,14 @@ impl Runtime {
         rows.into_iter()
             .filter(|row| {
                 !hidden.contains(
-                    string_value(row.borrow().get("librarySectionID").unwrap_or(&Value::Null)).as_str(),
+                    string_value(row.whole().get("librarySectionID").unwrap_or(&Value::Null)).as_str(),
                 )
             })
             .collect()
     }
 
     /// `rows` narrowed to the libraries `contentDirectoryID` named, off Home's hidden.
-    pub(super) fn in_directories<R: std::borrow::Borrow<Value>>(
+    pub(super) fn in_directories<R: Row>(
         &self,
         rows: Vec<R>,
         wanted: &Option<HashSet<String>>,
@@ -51,14 +51,14 @@ impl Runtime {
                 .into_iter()
                 .filter(|row| {
                     wanted.contains(&string_value(
-                        row.borrow().get("librarySectionID").unwrap_or(&Value::Null),
+                        row.whole().get("librarySectionID").unwrap_or(&Value::Null),
                     ))
                 })
                 .collect(),
         }
     }
 
-    fn hidden_from_continue(&self, row: &Value) -> bool {
+    fn hidden_from_continue(&self, row: &impl Row) -> bool {
         key_of(row).is_some_and(|key| self.hidden_continue.contains(&key))
     }
 
@@ -110,7 +110,7 @@ impl Runtime {
         let Some(positions) = positions else {
             return;
         };
-        if positions.iter().zip(rows).any(|(&position, row)| !std::ptr::eq(&self.catalog.items()[position], *row)) {
+        if positions.iter().zip(rows).any(|(&position, row)| !self.catalog.row_at(position).is_some_and(|held| std::ptr::eq(held, *row))) {
             return;
         }
         let mut memo = self.library_memo.borrow_mut();
@@ -121,30 +121,16 @@ impl Runtime {
         memo.subsets.push((key, (positions, untrimmed)));
     }
 
-    /// The search corpus of the library as it is now (`search::SearchCorpus`).
-    pub(super) fn search_corpus(&self) -> std::sync::Arc<super::search::SearchCorpus> {
-        let generation = self.catalog.generation();
-        let mut memo = self.library_memo.borrow_mut();
-        if let Some((built, corpus)) = &memo.search {
-            if *built == generation {
-                return std::sync::Arc::clone(corpus);
-            }
-        }
-        let corpus = std::sync::Arc::new(super::search::search_corpus(self.catalog.items()));
-        memo.search = Some((generation, std::sync::Arc::clone(&corpus)));
-        corpus
-    }
-
     /// The positions of a section's rows of one type, in library order (`choose_refs`).
     pub(super) fn typed_section_positions(&self, kind: &str, section: &str) -> Vec<usize> {
         let generation = self.catalog.generation();
         let mut memo = self.library_memo.borrow_mut();
         if memo.typed_sections.as_ref().is_none_or(|(built, _)| *built != generation) {
             let mut index: HashMap<(String, String), Vec<usize>> = HashMap::new();
-            for (position, row) in self.catalog.items().iter().enumerate() {
+            for row in self.catalog.hot().rows() {
                 let kind = row.get("type").and_then(Value::as_str).unwrap_or_default().to_string();
                 let section = string_value(row.get("librarySectionID").unwrap_or(&Value::Null));
-                index.entry((kind, section)).or_default().push(position);
+                index.entry((kind, section)).or_default().push(row.position);
             }
             memo.typed_sections = Some((generation, index));
         }
@@ -159,9 +145,9 @@ impl Runtime {
         let mut memo = self.library_memo.borrow_mut();
         if memo.guid_index.as_ref().is_none_or(|(built, _)| *built != generation) {
             let mut index: std::collections::BTreeMap<String, Vec<usize>> = Default::default();
-            for (position, row) in self.catalog.items().iter().enumerate() {
+            for row in self.catalog.hot().rows() {
                 if let Some(guid) = row.get("guid").and_then(Value::as_str) {
-                    index.entry(guid.to_string()).or_default().push(position);
+                    index.entry(guid.to_string()).or_default().push(row.position);
                 }
             }
             memo.guid_index = Some((generation, index));
@@ -178,48 +164,53 @@ impl Runtime {
             .collect::<Vec<_>>();
         positions.sort_unstable();
         positions.dedup();
-        let items = self.catalog.items();
-        positions.into_iter().filter_map(|position| items.get(position)).collect()
+        positions.into_iter().filter_map(|position| self.catalog.row_at(position)).collect()
     }
 
     fn continue_watching_uncached(&self, include_hidden: bool) -> Vec<Value> {
-        let truthy = |row: &Value, name: &str| match row.get(name) {
-            None | Some(Value::Null) => false,
-            Some(Value::Number(number)) => number.as_f64().unwrap_or(0.0) != 0.0,
-            Some(Value::String(text)) => !text.is_empty(),
-            Some(Value::Bool(flag)) => *flag,
-            Some(_) => true,
-        };
-        let stamp_of = |row: &Value| row.get("lastViewedAt").and_then(Value::as_i64).unwrap_or(0);
+        fn truthy(row: &impl Row, name: &str) -> bool {
+            match row.get(name) {
+                None | Some(Value::Null) => false,
+                Some(Value::Number(number)) => number.as_f64().unwrap_or(0.0) != 0.0,
+                Some(Value::String(text)) => !text.is_empty(),
+                Some(Value::Bool(flag)) => *flag,
+                Some(_) => true,
+            }
+        }
+        fn stamp_of(row: &impl Row) -> i64 {
+            row.get("lastViewedAt").and_then(Value::as_i64).unwrap_or(0)
+        }
         // References: copying every episode of the library here, once per call and three
         // calls per `/hubs`, was most of the home screen's 1.9 GB (the production server,
         // 2026-10-10). Only a show with a play or a resume point can have a row, so only
         // those shows' episodes are grouped (2026-10-11). One pass reads each row's type
-        // once: three passes over the 42k rows were most of a Home read (2026-10-17).
-        fn show_of(row: &Value) -> std::borrow::Cow<'_, str> {
+        // once: three passes over the 42k rows were most of a Home read (2026-10-17). The
+        // pass reads the hot fields (`hotrow.rs`), and copies only the rows it answers.
+        fn show_of<'a>(row: Lazy<'a, 'a>) -> std::borrow::Cow<'a, str> {
             match row.get("grandparentRatingKey") {
                 Some(Value::String(text)) => std::borrow::Cow::Borrowed(text.as_str()),
                 other => std::borrow::Cow::Owned(string_value(other.unwrap_or(&Value::Null))),
             }
         }
+        let hot = self.catalog.hot();
         let mut rows: Vec<(i64, Value)> = Vec::new();
-        let mut episodes_of_library: Vec<(std::borrow::Cow<'_, str>, &Value)> = Vec::new();
+        let mut episodes_of_library: Vec<(std::borrow::Cow<'_, str>, Lazy<'_, '_>)> = Vec::new();
         let mut active: HashSet<String> = HashSet::new();
         let mut played_libraries: HashSet<String> = HashSet::new();
-        for row in self.catalog.items() {
+        for row in hot.lazy() {
             match row.get("type").and_then(Value::as_str) {
                 Some("movie") => {
-                    if truthy(row, "viewOffset") && (include_hidden || !self.hidden_from_continue(row)) {
-                        rows.push((stamp_of(row), row.clone()));
+                    if truthy(&row, "viewOffset") && (include_hidden || !self.hidden_from_continue(&row)) {
+                        rows.push((stamp_of(&row), row.body().clone()));
                     }
                 }
                 Some("episode") => {
                     let show = show_of(row);
-                    if truthy(row, "viewOffset") || truthy(row, "viewCount") {
+                    if truthy(&row, "viewOffset") || truthy(&row, "viewCount") {
                         active.insert(show.to_string());
                     }
                     if !self.viewed_in_session.is_empty()
-                        && key_of(row).is_some_and(|key| self.viewed_in_session.contains(&key))
+                        && key_of(&row).is_some_and(|key| self.viewed_in_session.contains(&key))
                     {
                         played_libraries.insert(string_value(row.get("librarySectionID").unwrap_or(&Value::Null)));
                     }
@@ -229,7 +220,7 @@ impl Runtime {
             }
         }
         let mut order: Vec<String> = Vec::new();
-        let mut shows: HashMap<String, Vec<&Value>> = HashMap::new();
+        let mut shows: HashMap<String, Vec<Lazy<'_, '_>>> = HashMap::new();
         if !active.is_empty() {
             for (show, row) in episodes_of_library {
                 if !active.contains(show.as_ref()) {
@@ -254,9 +245,9 @@ impl Runtime {
             });
             // `max` keeps the FIRST maximal element in Python; iterate in order and
             // replace only on a strictly greater stamp.
-            let mut chosen: Option<&Value> = None;
+            let mut chosen: Option<Lazy<'_, '_>> = None;
             for row in episodes.iter().copied().filter(|row| truthy(row, "viewOffset")) {
-                if chosen.map_or(true, |best| stamp_of(row) > stamp_of(best)) {
+                if chosen.map_or(true, |best| stamp_of(&row) > stamp_of(&best)) {
                     chosen = Some(row);
                 }
             }
@@ -266,7 +257,7 @@ impl Runtime {
                 let mut anchor: Option<usize> = None;
                 for (index, row) in episodes.iter().enumerate() {
                     if truthy(row, "viewCount")
-                        && anchor.map_or(true, |best| stamp_of(row) > stamp_of(episodes[best]))
+                        && anchor.map_or(true, |best| stamp_of(row) > stamp_of(&episodes[best]))
                     {
                         anchor = Some(index);
                     }
@@ -290,7 +281,7 @@ impl Runtime {
                 }
             }
             if let Some(chosen) = chosen {
-                let mut chosen = chosen.clone();
+                let mut chosen = chosen.body().clone();
                 if let (Some(stamp), Some(object)) = (anchor_stamp, chosen.as_object_mut()) {
                     if stamp != 0 {
                         object.insert("lastViewedAt".to_string(), json!(stamp));
@@ -301,7 +292,7 @@ impl Runtime {
                         object.insert("_nextUpFromScrobble".to_string(), json!(true));
                     }
                 }
-                let stamp = episodes.iter().map(|row| stamp_of(row)).max().unwrap_or(0);
+                let stamp = episodes.iter().map(stamp_of).max().unwrap_or(0);
                 rows.push((stamp, chosen));
             }
         }
@@ -439,8 +430,6 @@ pub(super) type SubsetKey = (u64, String, String, Option<String>, Option<usize>)
 pub(super) struct LibraryMemo {
     continue_watching: Vec<((u64, bool, HashSet<String>, HashSet<String>), std::sync::Arc<Vec<Value>>)>,
     recently_added_tv: Vec<((u64, Option<String>), std::sync::Arc<Vec<Value>>)>,
-    /// What every search reads off every row (`search::SearchCorpus`).
-    search: Option<(u64, std::sync::Arc<super::search::SearchCorpus>)>,
     /// Every row's position by (type, `librarySectionID` as `string_value` reads it).
     typed_sections: Option<(u64, HashMap<(String, String), Vec<usize>>)>,
     /// A section subset's ordered rows by request (`cached_subset`): positions and the
@@ -529,7 +518,7 @@ impl Runtime {
     /// One shelf, capped at `count` with `more` saying whether it was cut.  `rows`
     /// are CATALOG rows; a show on a `mixed` shelf (or every row when `full`) is the
     /// full row and every other row the light grid one.
-    pub(super) fn hub<R: std::borrow::Borrow<Value>>(
+    pub(super) fn hub<R: Row>(
         &self,
         identifier: &str,
         title: &str,
@@ -558,7 +547,7 @@ impl Runtime {
             .iter()
             .take(limit.max(0) as usize)
             .map(|row| {
-                let row = row.borrow();
+                let row = row.whole();
                 if full || (full_shows && row.get("type").and_then(Value::as_str) == Some("show")) {
                     self.detail_row(row)
                 } else {
@@ -585,7 +574,7 @@ impl Runtime {
 
     /// One Home-screen shelf: `key`, `context` (the identifier with a trailing section
     /// id stripped), `style`, and `hubKey` naming the rows THIS shelf holds.
-    pub(super) fn home_hub<R: std::borrow::Borrow<Value>>(
+    pub(super) fn home_hub<R: Row>(
         &self,
         identifier: &str,
         title: &str,
@@ -681,16 +670,35 @@ impl Runtime {
     ) -> Vec<Value> {
         // References into the catalog (or the caller's filtered leaves): every episode
         // was copied three times here -- the list, then by season and by show -- and
-        // only the capped rows it answers are copied now.
-        let mut leaves: Vec<&Value> = match &leaves_in {
-            Some(rows) => rows.iter().collect(),
-            None => self
-                .catalog
-                .items()
-                .iter()
-                .filter(|row| row.get("type").and_then(Value::as_str) == Some("episode"))
-                .collect(),
-        };
+        // only the capped rows it answers are copied now. The catalog's are read through
+        // their hot fields (`hotrow.rs`).
+        match &leaves_in {
+            Some(rows) => self.roll_up_tv(section_id, rows.iter().collect(), |row| (*row).clone()),
+            None => {
+                let hot = self.catalog.hot();
+                let leaves = hot
+                    .lazy()
+                    .filter(|row| row.get("type").and_then(Value::as_str) == Some("episode"))
+                    .collect::<Vec<_>>();
+                self.roll_up_tv(section_id, leaves, |row| row.body().clone())
+            }
+        }
+    }
+
+    fn roll_up_tv<R: Row>(&self, section_id: Option<&String>, mut leaves: Vec<R>, own: impl Fn(&R) -> Value) -> Vec<Value> {
+        /// A row of the roll-up: a leaf, or the show or season it rolled up into.
+        enum Pick<'r, R> {
+            Leaf(&'r R),
+            Parent(&'r Value),
+        }
+        impl<R: Row> Pick<'_, R> {
+            fn get(&self, name: &str) -> Option<&Value> {
+                match self {
+                    Pick::Leaf(row) => row.get(name),
+                    Pick::Parent(row) => row.get(name),
+                }
+            }
+        }
         if let Some(section) = section_number(section_id) {
             let section = section.to_string();
             leaves.retain(|row| {
@@ -711,14 +719,14 @@ impl Runtime {
             .iter()
             .map(|leaf| {
                 (
-                    *leaf,
+                    leaf,
                     key_of(leaf).unwrap_or_default(),
                     string_value(leaf.get("parentRatingKey").unwrap_or(&Value::Null)),
                     string_value(leaf.get("grandparentRatingKey").unwrap_or(&Value::Null)),
                 )
             })
             .collect::<Vec<_>>();
-        let mut by_season: HashMap<&str, Vec<(&Value, &str)>> = HashMap::new();
+        let mut by_season: HashMap<&str, Vec<(&R, &str)>> = HashMap::new();
         let mut show_order: Vec<&str> = Vec::new();
         let mut by_show: HashMap<&str, Vec<&str>> = HashMap::new();
         let mut leaf_season: HashMap<&str, &str> = HashMap::new();
@@ -731,7 +739,7 @@ impl Runtime {
             by_show.entry(show.as_str()).or_default().push(key.as_str());
         }
         // An episode row carries its key for the claimed-season pass at the end.
-        let mut rows: Vec<(&Value, Option<&str>)> = Vec::new();
+        let mut rows: Vec<(Pick<'_, R>, Option<&str>)> = Vec::new();
         let mut claimed: HashSet<&str> = HashSet::new();
         for show_key in &show_order {
             let show = self.catalog.get(show_key);
@@ -744,7 +752,7 @@ impl Runtime {
             }
             if let Some(show) = show {
                 if seasons.len() > 1 {
-                    rows.push((show, None));
+                    rows.push((Pick::Parent(show), None));
                     claimed.extend(seasons);
                     continue;
                 }
@@ -753,10 +761,10 @@ impl Runtime {
                 let members = by_season.get(season_key).map(Vec::as_slice).unwrap_or_default();
                 match self.catalog.get(season_key) {
                     Some(season) if members.len() > 1 => {
-                        rows.push((season, None));
+                        rows.push((Pick::Parent(season), None));
                         claimed.insert(season_key);
                     }
-                    _ => rows.extend(members.iter().map(|(leaf, key)| (*leaf, Some(*key)))),
+                    _ => rows.extend(members.iter().map(|(leaf, key)| (Pick::Leaf(*leaf), Some(*key)))),
                 }
             }
         }
@@ -775,7 +783,11 @@ impl Runtime {
                 if row.get("type").and_then(Value::as_str) == Some("episode") {
                     (row.get("addedAt").and_then(Value::as_i64).unwrap_or(0), row)
                 } else {
-                    (self.newest_leaf_stamp(row), row)
+                    let stamp = match &row {
+                        Pick::Leaf(leaf) => self.newest_leaf_stamp(&own(leaf)),
+                        Pick::Parent(parent) => self.newest_leaf_stamp(parent),
+                    };
+                    (stamp, row)
                 }
             })
             .collect::<Vec<_>>();
@@ -784,7 +796,10 @@ impl Runtime {
             .into_iter()
             .take(TV_RECENT_CAP)
             .map(|(stamp, row)| {
-                let mut row = row.clone();
+                let mut row = match row {
+                    Pick::Leaf(leaf) => own(leaf),
+                    Pick::Parent(parent) => parent.clone(),
+                };
                 if row.get("addedAt").and_then(Value::as_i64) != Some(stamp) {
                     if let Some(object) = row.as_object_mut() {
                         object.insert("addedAt".to_string(), json!(stamp));
@@ -826,14 +841,10 @@ impl Runtime {
         if crate::filters::parse(&pairs, &types, &mut errors).is_none() {
             return Ok(None);
         }
-        let leaves = self
-            .catalog
-            .items()
-            .iter()
-            .filter(|row| row.get("type").and_then(Value::as_str) == Some("episode"))
-            .cloned()
-            .collect::<Vec<_>>();
-        self.filter_rows(leaves, &pairs, "show").map(Some)
+        // Filtered through their hot fields; only the episodes it keeps are copied.
+        let hot = self.catalog.hot();
+        let leaves = hot.lazy().filter(|row| row.get("type").and_then(Value::as_str) == Some("episode")).collect::<Vec<_>>();
+        self.filter_rows(leaves, &pairs, "show").map(|rows| Some(rows.into_iter().map(|row| row.body().clone()).collect()))
     }
 
     /// Newest first, by TYPE (1 movies, 2 the TV roll-up); None for every other type
@@ -856,21 +867,20 @@ impl Runtime {
         // Home, its hubs and the promoted shelves read this list on every request; it
         // changes only with the rows (59% of a Home read, 2026-10-17).
         let key = (self.catalog.generation(), section_id.cloned());
-        let items = self.catalog.items();
         if let Some((_, positions)) = self.library_memo.borrow().recent_movies.iter().find(|(memo, _)| *memo == key) {
-            return positions.iter().filter_map(|position| items.get(*position)).collect();
+            return positions.iter().filter_map(|position| self.catalog.row_at(*position)).collect();
         }
-        let mut positions = (0..items.len())
-            .filter(|&position| items[position].get("type").and_then(Value::as_str) == Some("movie"))
-            .collect::<Vec<_>>();
+        let hot = self.catalog.hot();
+        let mut movies = hot.rows().filter(|row| row.get("type").and_then(Value::as_str) == Some("movie")).collect::<Vec<_>>();
         if let Some(section) = section_number(section_id) {
             let section = section.to_string();
-            positions.retain(|&position| {
-                string_value(items[position].get("librarySectionID").unwrap_or(&Value::Null)) == section
-            });
+            movies.retain(|row| string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == section);
         }
-        positions.sort_by_key(|&position| -items[position].get("addedAt").and_then(Value::as_i64).unwrap_or(0));
-        let rows = positions.iter().map(|&position| &items[position]).collect();
+        movies.sort_by_key(|row| -row.get("addedAt").and_then(Value::as_i64).unwrap_or(0));
+        let positions = movies.iter().map(|row| row.position).collect::<Vec<_>>();
+        drop(movies);
+        drop(hot);
+        let rows = positions.iter().filter_map(|&position| self.catalog.row_at(position)).collect();
         let mut memo = self.library_memo.borrow_mut();
         memo.recent_movies.retain(|(memo, _)| memo.0 == key.0);
         memo.recent_movies.push((key, positions));

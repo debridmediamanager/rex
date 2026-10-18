@@ -166,7 +166,7 @@ fn percent_decode(text: &str) -> String {
 
 /// Whether `row` passes a share filter. A row with no content rating fails an allow-list
 /// of ratings: plexlab hid Cosmos Laundromat, which has none, from `contentRating=G,PG`.
-fn passes(row: &Value, spec: &str) -> bool {
+fn passes(row: &(impl Row + ?Sized), spec: &str) -> bool {
     clauses(spec).into_iter().all(|(field, negate, values)| {
         let held: Vec<String> = match field.as_str() {
             "contentRating" => row
@@ -299,7 +299,7 @@ impl Runtime {
     /// Whether the requesting account may see `row`: its library is shared, and it passes
     /// the share's filter -- a film by the film filter, a show, season or episode by the
     /// television filter, read off the show.
-    pub(super) fn visible(&self, row: &Value) -> bool {
+    pub(super) fn visible(&self, row: &(impl Row + ?Sized)) -> bool {
         if self.viewer.is_owner() || !self.viewer.restricted() {
             return true;
         }
@@ -402,7 +402,7 @@ impl Runtime {
                 }
                 held
             }
-            _ => self.catalog.items().iter().filter(|row| holds_view(row)).filter_map(key_of).collect(),
+            _ => self.catalog.hot().lazy().filter(|row| holds_view(row)).filter_map(|row| key_of(&row)).collect(),
         };
         for key in &held {
             let Some(object) = self.catalog.get_unmarked_mut(key).and_then(Value::as_object_mut) else {
@@ -500,7 +500,7 @@ impl Runtime {
         // request wrote.
         let writes = self.catalog.take_writes();
         let candidates: Vec<String> = if writes.all {
-            self.catalog.items().iter().filter(|row| holds_view(row)).filter_map(key_of).collect()
+            self.catalog.hot().lazy().filter(|row| holds_view(row)).filter_map(|row| key_of(&row)).collect()
         } else {
             state.views.keys().chain(writes.keys.iter()).cloned().collect::<HashSet<_>>().into_iter().collect()
         };
@@ -834,8 +834,8 @@ impl Runtime {
     }
 }
 
-fn holds_view(row: &Value) -> bool {
-    row.as_object().is_some_and(|object| VIEW_FIELDS.iter().any(|name| object.contains_key(*name)))
+fn holds_view(row: &(impl Row + ?Sized)) -> bool {
+    VIEW_FIELDS.iter().any(|name| row.get(name).is_some())
 }
 
 /// One `accountViews` member, by `<account>/<ratingKey>`.

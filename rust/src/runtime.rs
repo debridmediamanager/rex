@@ -23,6 +23,7 @@ use serde_json::{json, Map, Value};
 use sha1::{Digest, Sha1};
 
 use crate::{catalog::Catalog, decision, mediainfo, metadata, store, xmlout};
+use crate::hotrow::{Lazy, Row};
 
 mod accounts;
 mod artwork;
@@ -1925,14 +1926,12 @@ impl Runtime {
     /// `server.py` `Catalog.extras`: a parent's clips (owned through `_parentRatingKey`,
     /// never `parentRatingKey`) in their measured index order.
     fn extras_of(&self, key: &str) -> Vec<&Value> {
+        // The clips filed under their owner: every item page read every row for them.
         let mut rows = self
             .catalog
-            .items()
-            .iter()
-            .filter(|row| {
-                row.get("type").and_then(Value::as_str) == Some("clip")
-                    && row.get("_parentRatingKey").map(string_value).as_deref() == Some(key)
-            })
+            .rows_by(crate::catalog::By::ClipParent, key)
+            .into_iter()
+            .filter(|row| row.get("type").and_then(Value::as_str) == Some("clip"))
             .collect::<Vec<_>>();
         rows.sort_by_key(|row| clip_index(row));
         rows
@@ -1943,7 +1942,7 @@ impl Runtime {
     /// (`_librarySectionID`, stamped at load by `clip_extras`).
     fn section_clips(&self, section_key: &str) -> Vec<Value> {
         let mut parents = Vec::new();
-        for row in self.catalog.items() {
+        for row in self.catalog.hot().lazy() {
             if row.get("type").and_then(Value::as_str) == Some("clip")
                 && row.get("_librarySectionID").map(string_value).as_deref() == Some(section_key)
             {
@@ -4127,8 +4126,8 @@ impl Runtime {
         if type_number == 318 {
             let mut names = self
                 .catalog
-                .items()
-                .iter()
+                .hot()
+                .lazy()
                 .filter_map(|row| row.get("studio").and_then(Value::as_str))
                 .map(str::to_string)
                 .collect::<HashSet<_>>()
@@ -4171,11 +4170,8 @@ impl Runtime {
             .iter()
             .filter(|((field, _), _)| field == element)
             .map(|(_, tag)| tag);
-        let on_rows = self
-            .catalog
-            .items()
-            .iter()
-            .flat_map(|row| row.get(element).and_then(Value::as_array).into_iter().flatten());
+        let hot = self.catalog.hot();
+        let on_rows = hot.lazy().flat_map(|row| row.get(element).and_then(Value::as_array).into_iter().flatten());
         for tag in on_rows.chain(table) {
             let Some(id) = tag.get("id").filter(|value| !value.is_null()).map(string_value) else {
                 continue;
@@ -4250,7 +4246,7 @@ impl Runtime {
         let mut found = None;
         let mut rows = Vec::new();
         let mut seen = HashSet::new();
-        for row in self.catalog.items() {
+        for row in self.catalog.hot().lazy() {
             for (element, name, tag_type) in [
                 ("Role", "actor", 6_i64),
                 ("Director", "director", 4_i64),
@@ -4294,8 +4290,8 @@ impl Runtime {
                         }
                         found = Some(Value::Object(person));
                     }
-                    if seen.insert(key_of(row).unwrap_or_default()) {
-                        rows.push(row.clone());
+                    if seen.insert(key_of(&row).unwrap_or_default()) {
+                        rows.push(row.body().clone());
                     }
                 }
             }
@@ -4396,13 +4392,13 @@ impl Runtime {
                 .unwrap_or("movie");
             let members = if section_filter.is_some() {
                 self.catalog
-                    .items()
-                    .iter()
+                    .hot()
+                    .lazy()
                     .filter(|row| {
                         string_value(row.get("librarySectionID").unwrap_or(&Value::Null))
                             == section_key
                     })
-                    .cloned()
+                    .map(|row| row.body().clone())
                     .collect::<Vec<_>>()
             } else {
                 self.section_rows(&section_key)
@@ -4552,8 +4548,8 @@ impl Runtime {
         };
         let rows = self
             .catalog
-            .items()
-            .iter()
+            .hot()
+            .lazy()
             .filter(|row| row.get("type").and_then(Value::as_str) == Some(wanted))
             .filter(|row| {
                 if let Some(guid) = query.get("guid") {
@@ -4590,7 +4586,7 @@ impl Runtime {
                         })
                         .unwrap_or(true)
             })
-            .cloned()
+            .map(|row| row.body().clone())
             .collect::<Vec<_>>();
         // `self._sorted(rows, "titleSort")` on the stored rows, then each one as a light
         // grid row WITHOUT its library fields (`_grid_row(..., keep_section=False)`).
@@ -5069,13 +5065,13 @@ impl Runtime {
                 let guid = format!("local://{key}");
                 let episodes = self
                     .catalog
-                    .items()
-                    .iter()
+                    .hot()
+                    .lazy()
                     .filter(|leaf| {
                         leaf.get("type").and_then(Value::as_str) == Some("episode")
                             && leaf.get("parentRatingKey").map(string_value).as_deref() == Some(key)
                     })
-                    .filter_map(key_of)
+                    .filter_map(|row| key_of(&row))
                     .collect::<Vec<_>>();
                 for episode in episodes {
                     self.unmatch_row(&episode);
@@ -5349,17 +5345,16 @@ impl Runtime {
         if let (Some(section), Some(kind)) = (section, kind.filter(|kind| !kind.is_empty())) {
             // A section's rows of one type from the index (`typed_section_positions`):
             // scanning all 42k rows for a library's episodes was most of a TV page.
-            let items = self.catalog.items();
             return self
                 .typed_section_positions(kind, section)
                 .into_iter()
-                .map(|position| &items[position])
+                .filter_map(|position| self.catalog.row_at(position))
                 .filter(|row| self.viewer.is_owner() || self.visible(row))
                 .collect();
         }
         self.catalog
-            .items()
-            .iter()
+            .hot()
+            .lazy()
             .filter(|row| {
                 section.is_none_or(|section| {
                     string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == section
@@ -5368,6 +5363,7 @@ impl Runtime {
             .filter(|row| kind.is_none_or(|kind| row.get("type").and_then(Value::as_str) == Some(kind)))
             // A share's libraries and filter, before the listing pages or counts.
             .filter(|row| self.viewer.is_owner() || self.visible(row))
+            .map(|row| row.body())
             .collect()
     }
 
@@ -5595,11 +5591,9 @@ impl Runtime {
             .clone()
     }
 
-    fn filter_value(&self, row: &Value, field: &str) -> Value {
+    fn filter_value(&self, row: &dyn Row, field: &str) -> Value {
         if field == "title" {
-            return json!(crate::hierarchy::stored_title(
-                row.as_object().unwrap_or(&Map::new())
-            ));
+            return json!(crate::hierarchy::stored_title(row));
         }
         // A few query columns intentionally do not appear on the row itself.
         // They are projections over hierarchy, view state, tags, or Media and
@@ -5684,9 +5678,7 @@ impl Runtime {
             return row.get(&element).cloned().unwrap_or_else(|| json!([]));
         }
         if field == "titleSort" {
-            return json!(crate::hierarchy::stored_sort_title(
-                row.as_object().unwrap_or(&Map::new()),
-            ));
+            return json!(crate::hierarchy::stored_sort_title(row));
         }
         if field == "index" && row.get("type").and_then(Value::as_str) == Some("movie") {
             return row.get("index").cloned().unwrap_or_else(|| json!(1));
@@ -5934,7 +5926,7 @@ impl Runtime {
                 // Cycle 15: a case-insensitive substring of ANY Part path, the
                 // paths joined on a newline so no match spans two; cycle 20: a
                 // SEASON with no Media reads its leaves'.
-                let files = |row: &Value| {
+                let files = |row: &dyn Row| {
                     row.get("Media")
                         .and_then(Value::as_array)
                         .into_iter()
@@ -5973,7 +5965,7 @@ impl Runtime {
 
     /// The leaves a leaf-count filter counts: a show's own, and -- cycles 14/54 -- the
     /// SHOW's for a season or an episode row.
-    fn show_leaves_for_counts(&self, row: &Value) -> Vec<Value> {
+    fn show_leaves_for_counts(&self, row: &dyn Row) -> Vec<Value> {
         let key = string_value(row.get("ratingKey").unwrap_or(&Value::Null));
         match row.get("type").and_then(Value::as_str) {
             Some("show") => self.leaves(&key),
@@ -5991,7 +5983,7 @@ impl Runtime {
         }
     }
 
-    fn filter_rows<R: std::borrow::Borrow<Value>>(
+    fn filter_rows<R: Row>(
         &self,
         rows: Vec<R>,
         pairs: &[(String, String)],
@@ -6014,15 +6006,15 @@ impl Runtime {
         };
         let mut output = Vec::new();
         for row in rows {
-            let value_of = |field: &str, value: &Value| self.filter_value(value, field);
-            let resolve = |scope: &str, value: &Value| -> Vec<Value> {
+            let value_of = |field: &str, value: &dyn Row| self.filter_value(value, field);
+            let resolve = |scope: &str, value: &dyn Row| -> Vec<Value> {
                 let kind = value
                     .get("type")
                     .and_then(Value::as_str)
                     .unwrap_or_default();
                 match (scope, kind) {
                     ("show", "show") | ("season", "season") | ("episode", "episode") => {
-                        vec![value.clone()]
+                        vec![value.whole().clone()]
                     }
                     // A scoped filter on a parent row ranges over the
                     // descendants named by its prefix.  The previous
@@ -6062,10 +6054,10 @@ impl Runtime {
                     // Sintel, and an empty `episode.addedAt=` is the date column's 500 --
                     // the oracle's `scope_rows`. An empty list matched nothing and never
                     // parsed the value.
-                    _ => vec![value.clone()],
+                    _ => vec![value.whole().clone()],
                 }
             };
-            match crate::filters::evaluate_with(&tree, row.borrow(), &value_of, Some(&resolve)) {
+            match crate::filters::evaluate_with(&tree, &row, &value_of, Some(&resolve)) {
                 Ok(true) => output.push(row),
                 Ok(false) => {}
                 Err(error) => return Err(error.status),
@@ -6076,7 +6068,7 @@ impl Runtime {
 
     /// Owned rows or references (`choose_refs`): a listing sorts references and copies
     /// only the page it answers.
-    fn sort_rows<R: std::borrow::Borrow<Value>>(&self, mut rows: Vec<R>, sort: Option<&str>) -> Result<Vec<R>, u16> {
+    fn sort_rows<R: Row>(&self, mut rows: Vec<R>, sort: Option<&str>) -> Result<Vec<R>, u16> {
         let Some(sort) = sort else {
             return Ok(rows);
         };
@@ -6174,7 +6166,7 @@ impl Runtime {
         if !specs.is_empty() && !only_title && !any_random {
             let natural = !rows.is_empty()
                 && rows.iter().all(|row| {
-                    matches!(row.borrow().get("type").and_then(Value::as_str), Some("season" | "episode"))
+                    matches!(row.whole().get("type").and_then(Value::as_str), Some("season" | "episode"))
                 });
             specs.push((
                 if natural { "_natural" } else { "titleSort" }.to_string(),
@@ -6203,7 +6195,7 @@ impl Runtime {
                     shuffle_in_place(&mut rows);
                 } else {
                     rows.sort_by_key(|row| {
-                        let key = row.borrow().get("ratingKey").map(string_value).unwrap_or_else(|| "None".to_string());
+                        let key = row.whole().get("ratingKey").map(string_value).unwrap_or_else(|| "None".to_string());
                         crc32(format!("{seed}/{key}").as_bytes())
                     });
                 }
@@ -6241,7 +6233,7 @@ impl Runtime {
                         (title, index, 0)
                     }
                 };
-                rows.sort_by_cached_key(|row| natural(row.borrow()));
+                rows.sort_by_cached_key(|row| natural(row.whole()));
                 continue;
             }
             let title_sort = field.rsplit('.').next() == Some("titleSort");
@@ -6250,7 +6242,7 @@ impl Runtime {
             let mut keyed: Vec<(Value, R)> = rows
                 .into_iter()
                 .map(|row| {
-                    let key = self.sort_value(row.borrow(), &field);
+                    let key = self.sort_value(row.whole(), &field);
                     (if title_sort { Value::String(folded(&key)) } else { key }, row)
                 })
                 .collect();
@@ -6885,9 +6877,9 @@ impl Runtime {
             None => {
                 let highest = self
                     .catalog
-                    .items()
-                    .iter()
-                    .filter_map(|row| key_of(row).and_then(|k| k.parse::<i64>().ok()))
+                    .hot()
+                    .lazy()
+                    .filter_map(|row| key_of(&row).and_then(|k| k.parse::<i64>().ok()))
                     .max()
                     .unwrap_or(0);
                 self.theme_next = self.theme_next.max(highest + 1);
@@ -8626,7 +8618,7 @@ impl Runtime {
         let section_key = string_value(section.get("key").unwrap_or(&Value::Null));
         let mut counts: HashMap<String, i64> = HashMap::new();
         let mut duration = 0i64;
-        for row in self.catalog.items() {
+        for row in self.catalog.hot().lazy() {
             if string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) != section_key {
                 continue;
             }
@@ -9441,17 +9433,17 @@ impl Runtime {
         // (2026-10-17). Seasons keep the order their first episode is met in, where a
         // HashMap's order changed on every start for seasons added in the same second.
         let mut dated = Vec::<(i64, &Value)>::new();
-        for row in self.catalog.items() {
+        for row in self.catalog.hot().lazy() {
             if row.get("type").and_then(Value::as_str) == Some("movie") {
-                dated.push((row.get("addedAt").and_then(Value::as_i64).unwrap_or(0), row));
+                dated.push((row.get("addedAt").and_then(Value::as_i64).unwrap_or(0), row.body()));
             }
         }
         let mut seasons: Vec<(i64, &Value)> = Vec::new();
         let mut season_at: HashMap<String, usize> = HashMap::new();
         for episode in self
             .catalog
-            .items()
-            .iter()
+            .hot()
+            .lazy()
             .filter(|row| row.get("type").and_then(Value::as_str) == Some("episode"))
         {
             let Some(parent_key) = episode.get("parentRatingKey").map(string_value) else {
@@ -11427,23 +11419,24 @@ impl Runtime {
         // waiting on the lock.
         let items = self
             .catalog
-            .items()
-            .iter()
+            .hot()
+            .lazy()
             .filter(|item| {
                 matches!(item.get("type").and_then(Value::as_str), Some("movie" | "show"))
                     && string_value(item.get("librarySectionID").unwrap_or(&Value::Null))
                         == section_key
             })
-            .collect::<Vec<&Value>>();
+            .map(|row| row.body()).collect::<Vec<&Value>>();
         let episodes = if is_show {
             self.catalog
-                .items()
-                .iter()
+                .hot()
+                .lazy()
                 .filter(|row| {
                     row.get("type").and_then(Value::as_str) == Some("episode")
                         && string_value(row.get("librarySectionID").unwrap_or(&Value::Null))
                             == section_key
                 })
+                .map(|row| row.body())
                 .collect::<Vec<&Value>>()
         } else {
             Vec::new()
@@ -13542,7 +13535,7 @@ impl Runtime {
         let mut files = Vec::new();
         if query.get("includeFiles").map(String::as_str) == Some("1") {
             let mut unique = BTreeSet::new();
-            for row in self.catalog.items() {
+            for row in self.catalog.hot().lazy() {
                 for media in row.get("Media").and_then(Value::as_array).into_iter().flatten() {
                     for part in media.get("Part").and_then(Value::as_array).into_iter().flatten()
                     {
@@ -14627,7 +14620,7 @@ impl Runtime {
                     // under every Accept -- and so is `/photo/:/transcode` of it. A
                     // library with members is a jpeg (plexlab). rex drew a generated
                     // tile for it.
-                    if !self.catalog.items().iter().any(|row| {
+                    if !self.catalog.hot().lazy().any(|row| {
                         string_value(row.get("librarySectionID").unwrap_or(&Value::Null))
                             == section_key
                     }) {
@@ -14635,8 +14628,8 @@ impl Runtime {
                     }
                     let art = self
                         .catalog
-                        .items()
-                        .iter()
+                        .hot()
+                        .lazy()
                         .filter(|row| {
                             string_value(row.get("librarySectionID").unwrap_or(&Value::Null))
                                 == section_key
@@ -14709,19 +14702,19 @@ impl Runtime {
                         // happened to share the section's number.
                         let mut doomed = self
                             .catalog
-                            .items()
-                            .iter()
+                            .hot()
+                            .lazy()
                             .filter(|row| {
                                 row.get("librarySectionID").map(string_value).as_deref()
                                     == Some(section_key)
                             })
-                            .filter_map(key_of)
+                            .filter_map(|row| key_of(&row))
                             .collect::<HashSet<_>>();
                         loop {
                             let below = self
                                 .catalog
-                                .items()
-                                .iter()
+                                .hot()
+                                .lazy()
                                 .filter(|row| {
                                     ["parentRatingKey", "grandparentRatingKey"].iter().any(|name| {
                                         row.get(*name)
@@ -14729,7 +14722,7 @@ impl Runtime {
                                             .is_some_and(|parent| doomed.contains(&parent))
                                     })
                                 })
-                                .filter_map(key_of)
+                                .filter_map(|row| key_of(&row))
                                 .filter(|key| !doomed.contains(key))
                                 .collect::<Vec<_>>();
                             if below.is_empty() {
@@ -14737,10 +14730,8 @@ impl Runtime {
                             }
                             doomed.extend(below);
                         }
-                        self.catalog
-                            .items_mut()
-                            .retain(|row| key_of(row).is_none_or(|key| !doomed.contains(&key)));
-                        self.catalog.rebuild_index();
+                        let doomed: HashSet<String> = doomed.into_iter().collect();
+                        self.catalog.remove_many(&doomed);
                         // Measured on a writable copy of the reference, frame for frame: a
                         // `library.delete` activity titled `Deleting Library`, started at 0,
                         // updated at 0 with `Deleting section N`, then at 50, 0, 10, 40 and 60
@@ -15251,8 +15242,7 @@ impl Runtime {
                     let cached = subset_key.as_ref().and_then(|key| self.cached_subset(key));
                     let computed = cached.is_none();
                     if let Some((positions, total)) = cached {
-                        let items = self.catalog.items();
-                        rows = positions.into_iter().map(|position| &items[position]).collect();
+                        rows = positions.into_iter().filter_map(|position| self.catalog.row_at(position)).collect();
                         untrimmed = total;
                     } else if !matches!(leaf, "recentlyViewedShows" | "recentlyViewedGrandparents") {
                         let stamp = |row: &Value, name: &str| {
@@ -15604,7 +15594,7 @@ impl Runtime {
                             self.meta_field_title(scope, field)
                         },
                         value_title_of: &|_field, value| {
-                            self.catalog.items().iter().find_map(|row| {
+                            self.catalog.hot().lazy().find_map(|row| {
                                 [
                                     "Genre",
                                     "Collection",
@@ -16899,7 +16889,7 @@ impl Runtime {
                 return Response::error(404, "rex: not found");
             };
             if request.method == "GET" || request.method == "HEAD" {
-                for row in self.catalog.items() {
+                for row in self.catalog.hot().lazy() {
                     for media in row
                         .get("Media")
                         .and_then(Value::as_array)
@@ -16943,7 +16933,7 @@ impl Runtime {
             if request.method == "PUT" {
                 // Measured on a writable copy: a PUT to a stream it HAS is 200 with an
                 // empty body and stores nothing; one it does not have is a 400.
-                let known = self.catalog.items().iter().any(|row| row_has_stream(row, stream_id));
+                let known = self.catalog.hot().lazy().any(|row| row_has_stream(row.body(), stream_id));
                 if known {
                     return Response::empty(200);
                 }
@@ -16956,10 +16946,10 @@ impl Runtime {
                 // re-diffs the whole library under the lock (see `select_stream`).
                 let owners = self
                     .catalog
-                    .items()
-                    .iter()
-                    .filter(|row| row_has_stream(row, stream_id))
-                    .filter_map(key_of)
+                    .hot()
+                    .lazy()
+                    .filter(|row| row_has_stream(row.body(), stream_id))
+                    .filter_map(|row| key_of(&row))
                     .collect::<Vec<_>>();
                 for key in &owners {
                     let Some(row) = self.catalog.get_mut(key) else {
@@ -18634,10 +18624,10 @@ impl Runtime {
                 let mut index = 0;
                 while index < doomed.len() {
                     let parent = doomed[index].clone();
-                    for item in self.catalog.items() {
+                    for item in self.catalog.hot().lazy() {
                         let child = item.get("parentRatingKey").map(string_value);
                         if child.as_deref() == Some(parent.as_str()) {
-                            if let Some(child_key) = key_of(item) {
+                            if let Some(child_key) = key_of(&item) {
                                 if !doomed.contains(&child_key) {
                                     doomed.push(child_key);
                                 }
@@ -18657,8 +18647,8 @@ impl Runtime {
                         .unwrap_or_default();
                     let siblings = self
                         .catalog
-                        .items()
-                        .iter()
+                        .hot()
+                        .lazy()
                         .filter(|item| {
                             item.get("parentRatingKey").map(string_value).as_deref()
                                 == Some(season.as_str())
@@ -19582,8 +19572,8 @@ impl Runtime {
                 // `/library/streams/{id}` key, `transient: "0"`, selected -- no language.
                 let id = self
                     .catalog
-                    .items()
-                    .iter()
+                    .hot()
+                    .lazy()
                     .flat_map(|item| {
                         item.get("Media")
                             .and_then(Value::as_array)
@@ -19972,9 +19962,11 @@ impl Runtime {
             .get("type")
             .and_then(Value::as_str)
             .unwrap_or_default();
-        let snapshot = self.catalog.items().clone();
-        let descendants = snapshot
-            .iter()
+        // Read off the hot fields: a copy of every row was made here for three keys a row.
+        let descendants = self
+            .catalog
+            .hot()
+            .rows()
             .filter_map(|candidate| {
                 let parent = candidate
                     .get("parentRatingKey")
@@ -20246,7 +20238,7 @@ impl Runtime {
             .unwrap_or_default();
         let existing = (!guid.is_empty())
             .then(|| {
-                self.catalog.items().iter().find(|other| {
+                self.catalog.find_where(|other| {
                     key_of(other).as_deref() != Some(key)
                         && other.get("guid").and_then(Value::as_str) == Some(guid.as_str())
                         && other.get("librarySectionID").map(string_value).as_deref()
@@ -21622,7 +21614,7 @@ impl Runtime {
                 wanted.push((2, number.to_string()));
             }
         }
-        let owner_index = self.catalog.items().iter().position(|row| {
+        let owner_index = self.catalog.hot().lazy().position(|row| {
             row.get("Media")
                 .and_then(Value::as_array)
                 .into_iter()
@@ -21642,7 +21634,7 @@ impl Runtime {
         if wanted.is_empty() {
             return Response::empty(200);
         }
-        let mut owner = self.catalog.items()[owner_index].clone();
+        let mut owner = self.catalog.row_at(owner_index).cloned().unwrap_or_default();
         crate::catalog::unpack_streams(&mut owner);
         let streams_of = |stream_type: i64| {
             owner
@@ -21771,10 +21763,10 @@ impl Runtime {
         };
         let keys: Vec<String> = self
             .catalog
-            .items()
-            .iter()
-            .filter(|row| differ(row))
-            .filter_map(key_of)
+            .hot()
+            .lazy()
+            .filter(|row| differ(row.body()))
+            .filter_map(|row| key_of(&row))
             .collect();
         for key in &keys {
             if let Some(media) = self.catalog.get_mut(key).and_then(|row| row.get_mut("Media")) {
@@ -23170,7 +23162,7 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
             Arc::clone(&guard.plextv),
             guard.machine.clone(),
             guard.friendly.clone(),
-            guard.catalog.items().len(),
+            guard.catalog.len(),
             guard.part_mode.clone(),
         )
     };
@@ -25124,7 +25116,7 @@ fn hex(value: u8) -> Result<u8, ()> {
         _ => Err(()),
     }
 }
-fn key_of(value: &Value) -> Option<String> {
+fn key_of(value: &(impl Row + ?Sized)) -> Option<String> {
     value.get("ratingKey").map(string_value)
 }
 
@@ -26619,7 +26611,7 @@ fn advanced_sort_order(entry_type: &str) -> Option<&'static [&'static str]> {
 
 /// Cycle 56: whether a row carries a per-user settings record -- any view-state
 /// write stamps `_viewUpdatedAt`, and a catalog row may arrive with state already.
-fn has_settings(row: &Value) -> bool {
+fn has_settings(row: &(impl Row + ?Sized)) -> bool {
     [
         "_viewUpdatedAt",
         "viewCount",

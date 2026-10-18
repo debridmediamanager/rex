@@ -143,7 +143,7 @@ pub(super) fn limited<R>(
 impl Runtime {
     /// `group=<field>` -- one row per distinct value, the survivor being the group's
     /// minimum `addedAt` (then ratingKey), chosen BEFORE the sort (cycle 14).
-    pub(super) fn grouped<R: std::borrow::Borrow<Value>>(&self, rows: Vec<R>, field: &str) -> Result<Vec<R>, u16> {
+    pub(super) fn grouped<R: Row>(&self, rows: Vec<R>, field: &str) -> Result<Vec<R>, u16> {
         let bare = field.split_once('.').map_or(field, |(_, bare)| bare);
         if bare.is_empty() || !GROUPABLE.contains(&bare) {
             return Err(500);
@@ -154,7 +154,7 @@ impl Runtime {
         let (scope, column) = field.rsplit_once('.').unwrap_or(("", field));
         let mut best: HashMap<String, ((i64, i64), usize)> = HashMap::new();
         for (index, row) in rows.iter().enumerate() {
-            let row = row.borrow();
+            let row = row.whole();
             let target = self.scope_first(scope, row);
             let marker = string_value(&self.filter_value(target.as_ref().unwrap_or(row), column));
             let rank = (
@@ -281,7 +281,7 @@ impl Runtime {
             4 => "episode",
             _ => "",
         });
-        let of_type = |row: &&Value| {
+        let of_type = |row: &dyn Row| {
             let kind = row.get("type").and_then(Value::as_str);
             match wanted {
                 Some(wanted) => !wanted.is_empty() && kind == Some(wanted),
@@ -298,8 +298,8 @@ impl Runtime {
             .map(|(_, value)| value.split(',').filter(|part| !part.is_empty()).collect::<Vec<_>>())
             .filter(|prefixes| !prefixes.is_empty());
         let mut source = match &guid_prefixes {
-            Some(prefixes) => self.guid_prefix_rows(prefixes).into_iter().filter(of_type).collect(),
-            None => self.catalog.items().iter().filter(of_type).collect::<Vec<&Value>>(),
+            Some(prefixes) => self.guid_prefix_rows(prefixes).into_iter().filter(|row| of_type(*row)).collect(),
+            None => self.catalog.rows_where(|row| of_type(row)),
         };
         let scoped = |scope: &str, field: &str| {
             pairs.iter().any(|(name, _)| {

@@ -228,9 +228,9 @@ impl Runtime {
     pub(super) fn settle_scan_key(&mut self) {
         let highest = self
             .catalog
-            .items()
-            .iter()
-            .filter_map(|row| key_of(row).and_then(|key| key.parse::<i64>().ok()))
+            .hot()
+            .lazy()
+            .filter_map(|row| key_of(&row).and_then(|key| key.parse::<i64>().ok()))
             .chain(self.retired_keys.iter().copied())
             .max()
             .unwrap_or(0);
@@ -328,11 +328,10 @@ impl Runtime {
     /// placed under the show and season they belong to (existing ones kept, by identity).
     /// Answers the keys of every row created, parents first.
     pub(super) fn place_arrivals(&mut self, plan: &Library, arrivals: Vec<Arrival>) -> Vec<String> {
-        let taken: HashSet<String> = self.catalog.items().iter().flat_map(row_files).collect();
         let mut leaves = Vec::new();
         for arrival in arrivals {
-            // A file another row already reads.
-            if taken.contains(&arrival.found.file) {
+            // A file another row already reads, found by it (`By::File`).
+            if !self.catalog.rows_by(crate::catalog::By::File, &arrival.found.file).is_empty() {
                 continue;
             }
             match self.leaf_for(plan, &arrival, None) {
@@ -368,7 +367,7 @@ impl Runtime {
             }
             let temporary = key_of(&rows[index]).unwrap_or_default();
             let identity = identity_of(&rows, &temporary).unwrap_or(Value::Null);
-            let found = self.catalog.items().iter().find(|row| {
+            let found = self.catalog.find_where(|row| {
                 row.get("type").and_then(Value::as_str) == Some("show")
                     && string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == plan.key
                     && row.get("_identity") == Some(&identity)
@@ -391,7 +390,7 @@ impl Runtime {
             let show = rows[index].get("parentRatingKey").map(string_value).unwrap_or_default();
             let show = rekeyed.get(&show).cloned().unwrap_or(show);
             let season_index = rows[index].get("index").and_then(Value::as_i64);
-            let found = self.catalog.items().iter().find(|row| {
+            let found = self.catalog.find_where(|row| {
                 row.get("type").and_then(Value::as_str) == Some("season")
                     && row.get("parentRatingKey").map(string_value).as_deref() == Some(show.as_str())
                     && row.get("index").and_then(Value::as_i64) == season_index
@@ -666,13 +665,14 @@ impl Runtime {
         let file = &arrival.found.file;
         // zurg's mount lists a release's files flat in its directory, extras folders included.
         let directory = file.rsplit_once('/')?.0;
-        if self.catalog.items().iter().any(|row| row_files(row).contains(file)) {
+        if !self.catalog.rows_by(crate::catalog::By::File, file).is_empty() {
             return None;
         }
         // In whichever library its release's title is: an extra is placed by nothing, so the
         // library its own path picks (Movies, for a release in a folder no library holds) need not
         // be its title's -- Motto To Love-Ru's NCOP went to Movies, its episodes to TV Shows.
-        let parent = self.catalog.items().iter().find(|row| {
+        // The rows with a file in that directory (`By::Directory`), in row order.
+        let parent = self.catalog.rows_by(crate::catalog::By::Directory, directory).into_iter().find(|row| {
             matches!(row.get("type").and_then(Value::as_str), Some("movie" | "episode"))
                 && row_files(row).iter().any(|other| other.rsplit_once('/').map(|(of, _)| of) == Some(directory))
         });
@@ -988,14 +988,14 @@ impl Runtime {
     pub(super) fn empty_section_trash(&mut self, section: &str) -> usize {
         let trashed: Vec<Value> = self
             .catalog
-            .items()
-            .iter()
+            .hot()
+            .lazy()
             .filter(|row| {
                 string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == section
                     && matches!(row.get("type").and_then(Value::as_str), Some("movie" | "episode"))
                     && row.get("deletedAt").is_some()
             })
-            .cloned()
+            .map(|row| row.body().clone())
             .collect();
         for row in &trashed {
             for parent in ["parentRatingKey", "grandparentRatingKey"] {

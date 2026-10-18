@@ -534,7 +534,7 @@ impl Runtime {
         {
             return Some(found.clone());
         }
-        for other in self.catalog.items() {
+        for other in self.catalog.hot().lazy() {
             if let Some(found) = other
                 .get(key)
                 .and_then(Value::as_array)
@@ -1290,14 +1290,14 @@ impl Runtime {
         // save then re-diffs the whole library under the lock for one show edit.
         let beneath = self
             .catalog
-            .items()
-            .iter()
+            .hot()
+            .lazy()
             .filter(|child| {
                 ["parentRatingKey", "grandparentRatingKey"]
                     .iter()
                     .any(|name| child.get(*name).map(string_value).as_deref() == Some(key.as_str()))
             })
-            .filter_map(key_of)
+            .filter_map(|row| key_of(&row))
             .collect::<Vec<_>>();
         for child_key in &beneath {
             let Some(child) = self.catalog.get_mut(child_key).and_then(Value::as_object_mut) else {

@@ -104,6 +104,7 @@ Where things live in `rust/src/`:
 | `runtime/*.rs` (the rest) | One subsystem each, named after it: search, listing, axes, edit, collections, playlists, artwork, butler, framework, i18n, resume (On Deck and hubs), logging and so on |
 | `filters.rs`, `hierarchy.rs`, `metadata.rs`, `mediainfo.rs`, `decision.rs`, `xmlout.rs`, `gate.rs`, `catalog.rs` | Plex's filter grammar (the operator is part of the KEY), flat leaves to show/season/episode, Plex's description of a title and `plex://` guids, ffprobe JSON to `Media`/`Part`/`Stream`, a plain-form decision against the client's own profile, Plex XML, the direct-play gate, the catalog |
 | `store.rs` | The state file: a SQLite database written by the row, holding the catalog too when the catalog is a database |
+| `hotrow.rs`, `corpus.rs` | The fields of a row that passes over the whole library read (`HotRow`; `Lazy` reads the row for any other), and each row's search entry: both kept in the catalog's index beside its lookups (`catalog::By`), re-derived for a row written |
 
 A movie library and a show library have **different**
 `Meta` descriptors, which is why there are two: retargeting one onto the other

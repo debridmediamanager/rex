@@ -1190,8 +1190,8 @@ impl Runtime {
             let lowered = wanted.to_lowercase();
             let mut taken = self
                 .catalog
-                .items()
-                .iter()
+                .hot()
+                .lazy()
                 .filter(|row| {
                     string_value(row.get("librarySectionID").unwrap_or(&Value::Null))
                         == collection.section
@@ -2058,8 +2058,8 @@ pub(super) fn auto_collect(shared: &SharedRuntime, backfill: bool) {
         }
         let unread = guard
             .catalog
-            .items()
-            .iter()
+            .hot()
+            .lazy()
             .filter(|row| backfill && row.get("type").and_then(Value::as_str) == Some("movie"))
             .filter(|row| row.get("_collections").is_none() && row.get("deletedAt").is_none())
             .filter(|row| row.get("librarySectionID").is_some_and(|id| thresholds.contains_key(&string_value(id))))
@@ -2070,7 +2070,7 @@ pub(super) fn auto_collect(shared: &SharedRuntime, backfill: bool) {
                     .iter()
                     .filter_map(|entry| entry.get("id")?.as_str().map(str::to_string))
                     .collect::<Vec<_>>();
-                Some((key_of(row)?, externals)).filter(|(_, externals)| !externals.is_empty())
+                Some((key_of(&row)?, externals)).filter(|(_, externals)| !externals.is_empty())
             })
             .collect::<Vec<_>>();
         (guard.plex.clone(), unread)
@@ -2108,14 +2108,14 @@ impl Runtime {
     /// threshold set -- and never on a feed push, which would bring it back within hours.
     fn group_auto_collections(&mut self, section: &str, threshold: usize, asked: bool) {
         let mut groups: std::collections::BTreeMap<String, (Value, Vec<String>)> = std::collections::BTreeMap::new();
-        for row in self.catalog.items() {
+        for row in self.catalog.hot().lazy() {
             if row.get("type").and_then(Value::as_str) != Some("movie")
                 || row.get("deletedAt").is_some()
                 || row.get("librarySectionID").map(string_value).as_deref() != Some(section)
             {
                 continue;
             }
-            let Some(key) = key_of(row) else {
+            let Some(key) = key_of(&row) else {
                 continue;
             };
             for entry in row.get("_collections").and_then(Value::as_array).into_iter().flatten() {

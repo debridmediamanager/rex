@@ -2311,11 +2311,11 @@ impl super::Runtime {
         };
         let Some((key, count)) = self
             .catalog
-            .items()
-            .iter()
+            .hot()
+            .lazy()
             .filter(|row| row.get("guid").and_then(Value::as_str) == Some(guid))
             .find_map(|row| {
-                let key = super::key_of(row)?;
+                let key = super::key_of(&row)?;
                 (!self.deleted.contains(&key)).then(|| {
                     (
                         key,

@@ -134,7 +134,7 @@ impl Runtime {
     pub(super) fn restamp_artwork(&mut self) {
         let touched = self.catalog.take_touched();
         let keys: Vec<String> = if touched.all {
-            self.catalog.items().iter().filter_map(key_of).collect()
+            self.catalog.hot().lazy().filter_map(|row| key_of(&row)).collect()
         } else {
             touched.keys.into_iter().collect()
         };

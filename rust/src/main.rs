@@ -739,14 +739,16 @@ fn run_core(command: &str, args: &[String]) -> Result<(), String> {
             let row = object
                 .get("row")
                 .ok_or_else(|| "filter-evaluate row is required".to_string())?;
-            let value_of = |field: &str, row: &serde_json::Value| {
-                row.as_object()
+            let value_of = |field: &str, row: &dyn rex::hotrow::Row| {
+                row.whole()
+                    .as_object()
                     .and_then(|row| row.get(field))
                     .cloned()
                     .unwrap_or(serde_json::Value::Null)
             };
-            let resolve = |scope: &str, row: &serde_json::Value| {
-                row.as_object()
+            let resolve = |scope: &str, row: &dyn rex::hotrow::Row| {
+                row.whole()
+                    .as_object()
                     .and_then(|row| row.get(scope))
                     .and_then(serde_json::Value::as_array)
                     .cloned()
@@ -754,9 +756,9 @@ fn run_core(command: &str, args: &[String]) -> Result<(), String> {
             };
             let use_resolver = object.get("resolve").is_some();
             let matched = if use_resolver {
-                filters::evaluate_with(tree, row, &value_of, Some(&resolve))
+                filters::evaluate_with(tree, row as &dyn rex::hotrow::Row, &value_of, Some(&resolve))
             } else {
-                filters::evaluate(tree, row, &value_of)
+                filters::evaluate(tree, row as &dyn rex::hotrow::Row, &value_of)
             }
             .map_err(|error| format!("filter {}: {}", error.status, error.detail))?;
             print_json(&json!({"match": matched}))

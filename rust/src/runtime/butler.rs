@@ -325,8 +325,8 @@ impl Runtime {
         let mut deferred = Vec::new();
         let count = |kind: &[&str]| {
             self.catalog
-                .items()
-                .iter()
+                .hot()
+                .lazy()
                 .filter(|row| {
                     row.get("type")
                         .and_then(Value::as_str)

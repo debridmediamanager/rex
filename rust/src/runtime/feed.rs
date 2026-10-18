@@ -820,8 +820,8 @@ pub(super) fn repair_seasons(shared: &SharedRuntime) -> usize {
         };
         let wanted: Vec<(String, Value, i64, String, Map<String, Value>)> = guard
             .catalog
-            .items()
-            .iter()
+            .hot()
+            .lazy()
             .filter(|row| {
                 row.get("type").and_then(Value::as_str) == Some("season")
                     && row.get("_scanned").is_some_and(truthy)
@@ -829,7 +829,7 @@ pub(super) fn repair_seasons(shared: &SharedRuntime) -> usize {
                         || row.get("_poster_url").filter(present).is_none())
             })
             .filter_map(|season| {
-                let key = key_of(season)?;
+                let key = key_of(&season)?;
                 let index = season.get("index").and_then(Value::as_i64)?;
                 let show = guard.catalog.get(&season.get("parentRatingKey").map(string_value)?)?;
                 // A show an id names: `title:` ones are the retired name search's, left as they are.
@@ -904,7 +904,7 @@ fn number_unplaced(runtime: &Runtime, plans: &mut [(Item, Library, Plan)]) {
         return;
     }
     let mut numbered: HashMap<(String, String), i64> = HashMap::new();
-    for row in runtime.catalog.items() {
+    for row in runtime.catalog.hot().lazy() {
         let (Some(release), Some(index)) = (row.get("_release").and_then(Value::as_str), row.get("index").and_then(Value::as_i64)) else {
             continue;
         };
@@ -966,20 +966,20 @@ pub(super) fn retry_blank(shared: &SharedRuntime, limit: usize) -> usize {
             return 0;
         }
         let mut groups: BTreeMap<String, Vec<(String, (String, Value))>> = BTreeMap::new();
-        for row in guard.catalog.items() {
-            let due = row.pointer("/_retry/at").and_then(Value::as_i64).is_none_or(|at| at <= stamp);
+        for row in guard.catalog.hot().lazy() {
+            let due = row.body().pointer("/_retry/at").and_then(Value::as_i64).is_none_or(|at| at <= stamp);
             let library = if row.get("type").and_then(Value::as_str) == Some("movie") { "movie" } else { "show" };
             // Only what its source placed: rows pushed before DMM placed anything still carry ids
             // zurg's own Plex gave, an episode's among them (Pawn Stars' 1559521), and trusted
             // as they are those would name junk titles; they stay as they are, for Fix Match.
             if !due
-                || !guard.blank(row)
-                || version_placed(row, 0).is_none()
-                || super::scan::identified_by(row.get("_ids").and_then(Value::as_object), version_placed(row, 0), library).is_none()
+                || !guard.blank(row.body())
+                || version_placed(row.body(), 0).is_none()
+                || super::scan::identified_by(row.get("_ids").and_then(Value::as_object), version_placed(row.body(), 0), library).is_none()
             {
                 continue;
             }
-            let (Some(key), Some(item)) = (key_of(row), pushed_item(row)) else {
+            let (Some(key), Some(item)) = (key_of(&row), pushed_item(row.body())) else {
                 continue;
             };
             let group = row.get("grandparentRatingKey").map(string_value).unwrap_or_else(|| key.clone());
@@ -1051,26 +1051,7 @@ fn row_ids(row: &Value) -> Map<String, Value> {
         .unwrap_or_default()
 }
 
-/// A row's releases as (source, source id, Media index): each Media's own tags on a row
-/// that holds several, else the row's.
-pub(super) fn versions(row: &Value) -> Vec<(String, String, usize)> {
-    let tag = |value: &Value, field: &str| value.get(field).and_then(Value::as_str).map(str::to_string);
-    let tagged: Vec<_> = row
-        .get("Media")
-        .and_then(Value::as_array)
-        .into_iter()
-        .flatten()
-        .enumerate()
-        .filter_map(|(index, media)| Some((tag(media, "_source")?, tag(media, "_sid")?, index)))
-        .collect();
-    if !tagged.is_empty() {
-        return tagged;
-    }
-    match (tag(row, "_source"), tag(row, "_sid")) {
-        (Some(source), Some(sid)) => vec![(source, sid, 0)],
-        _ => Vec::new(),
-    }
-}
+pub(super) use crate::catalog::versions;
 
 /// The (source, source id) a tagged Media came from.
 fn media_release(media: &Value) -> Option<(String, String)> {
@@ -1234,13 +1215,13 @@ impl Runtime {
     /// release of the row is this source's).
     fn source_items(&self, source: &str) -> Vec<(String, Vec<String>, bool)> {
         self.catalog
-            .items()
-            .iter()
+            .hot()
+            .lazy()
             .filter_map(|row| {
-                let all = versions(row);
+                let all = versions(row.body());
                 let mine: Vec<String> = all.iter().filter(|(of, _, _)| of == source).map(|(_, sid, _)| sid.clone()).collect();
                 let whole = mine.len() == all.len();
-                Some((key_of(row)?, mine, whole)).filter(|(_, mine, _)| !mine.is_empty())
+                Some((key_of(&row)?, mine, whole)).filter(|(_, mine, _)| !mine.is_empty())
             })
             .collect()
     }
@@ -1379,11 +1360,11 @@ impl Runtime {
     /// This source's rows, by the source's id.
     fn feed_rows(&self, source: &str) -> HashMap<String, String> {
         self.catalog
-            .items()
-            .iter()
+            .hot()
+            .lazy()
             .flat_map(|row| {
-                let key = key_of(row);
-                versions(row).into_iter().filter(|(of, _, _)| of == source).filter_map(move |(_, sid, _)| Some((sid, key.clone()?)))
+                let key = key_of(&row);
+                versions(row.body()).into_iter().filter(|(of, _, _)| of == source).filter_map(move |(_, sid, _)| Some((sid, key.clone()?)))
             })
             .collect()
     }
@@ -1391,10 +1372,10 @@ impl Runtime {
     /// Rows no feed has claimed (what the WebDAV scanner made), by their Part's file.
     fn legacy_rows_by_file(&self) -> HashMap<String, String> {
         self.catalog
-            .items()
-            .iter()
+            .hot()
+            .lazy()
             .filter(|row| row.get("_sid").is_none() && matches!(row.get("type").and_then(Value::as_str), Some("movie" | "episode")))
-            .filter_map(|row| Some((row_files(row).into_iter().next()?, key_of(row)?)))
+            .filter_map(|row| Some((row_files(row.body()).into_iter().next()?, key_of(&row)?)))
             .collect()
     }
 
@@ -1402,16 +1383,16 @@ impl Runtime {
     /// yet, not in the trash: what a first snapshot must also account for.
     fn unadopted_rows(&self, source: &Source) -> Vec<String> {
         self.catalog
-            .items()
-            .iter()
+            .hot()
+            .lazy()
             .filter(|row| {
                 row.get("_sid").is_none()
                     && row.get("_scanned").is_some_and(truthy)
                     && row.get("deletedAt").is_none()
                     && matches!(row.get("type").and_then(Value::as_str), Some("movie" | "episode"))
-                    && row_files(row).first().is_some_and(|file| source.path_under_mount(file).is_some())
+                    && row_files(row.body()).first().is_some_and(|file| source.path_under_mount(file).is_some())
             })
-            .filter_map(key_of)
+            .filter_map(|row| key_of(&row))
             .collect()
     }
 
@@ -1420,10 +1401,10 @@ impl Runtime {
     fn feed_ids(&self, source: &str) -> Vec<String> {
         let prefix = held_key(source, "");
         self.catalog
-            .items()
-            .iter()
+            .hot()
+            .lazy()
             .filter(|row| row.get("deletedAt").is_none())
-            .flat_map(|row| versions(row).into_iter().filter(|(of, _, _)| of == source).map(|(_, sid, _)| sid))
+            .flat_map(|row| versions(row.body()).into_iter().filter(|(of, _, _)| of == source).map(|(_, sid, _)| sid))
             .chain(self.feed_held.keys().filter_map(|key| key.strip_prefix(&prefix).map(str::to_string)))
             .collect()
     }
@@ -1431,11 +1412,11 @@ impl Runtime {
     fn feed_listing(&self, source: &Source) -> Value {
         let items: Vec<Value> = self
             .catalog
-            .items()
-            .iter()
+            .hot()
+            .lazy()
             .flat_map(|row| {
-                versions(row).into_iter().filter(|(of, _, _)| *of == source.name).map(move |(_, sid, index)| {
-                    json!({"id": sid, "ratingKey": key_of(row), "file": media_file(row, index),
+                versions(row.body()).into_iter().filter(|(of, _, _)| *of == source.name).map(move |(_, sid, index)| {
+                    json!({"id": sid, "ratingKey": key_of(&row), "file": media_file(row.body(), index),
                            "deleted": row.get("deletedAt").is_some()})
                 })
             })
@@ -1709,7 +1690,7 @@ impl Runtime {
         let Some(identity) = leaf.get("_identity").map(string_value) else {
             return;
         };
-        let taken = self.catalog.items().iter().any(|row| {
+        let taken = self.catalog.hot().lazy().any(|row| {
             row.get("type").and_then(Value::as_str) == Some("show")
                 && string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == library.key
                 && row.get("_identity").map(string_value).as_deref() == Some(identity.as_str())
@@ -1757,8 +1738,8 @@ impl Runtime {
     pub(super) fn fold_versions(&mut self, only: Option<&HashSet<String>>, unannounced: &HashSet<String>) -> HashSet<String> {
         // (unwatched, trashed, key): the row someone watched survives, else one not in the trash.
         let mut slots: BTreeMap<String, Vec<(bool, bool, i64, String)>> = BTreeMap::new();
-        for row in self.catalog.items() {
-            if let (Some(slot), Some(key)) = (version_slot(row), key_of(row)) {
+        for row in self.catalog.hot().lazy() {
+            if let (Some(slot), Some(key)) = (version_slot(row.body()), key_of(&row)) {
                 let watched = ["viewCount", "viewOffset", "lastViewedAt", "userRating"].iter().any(|field| row.get(*field).is_some_and(truthy));
                 slots.entry(slot).or_default().push((!watched, row.get("deletedAt").is_some(), key.parse().unwrap_or(i64::MAX), key));
             }

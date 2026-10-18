@@ -273,31 +273,40 @@ fn generated_title(title: &str) -> bool {
         || title == "[Unknown Season]"
         || (title.starts_with("Season ") && title[7..].chars().all(|c| c.is_ascii_digit()))
 }
-pub fn stored_title(row: &Row) -> String {
-    let title = str_value(row, "title").unwrap_or_default();
-    if str_value(row, "type").as_deref() == Some("season") && generated_title(&title) {
+pub fn stored_title(row: &(impl crate::hotrow::Row + ?Sized)) -> String {
+    let title = row_text(row, "title").unwrap_or_default();
+    if row_text(row, "type").as_deref() == Some("season") && generated_title(&title) {
         String::new()
     } else {
         title
     }
 }
-pub fn stored_sort_title(row: &Row) -> String {
-    let title = str_value(row, "title").unwrap_or_default();
+pub fn stored_sort_title(row: &(impl crate::hotrow::Row + ?Sized)) -> String {
+    let title = row_text(row, "title").unwrap_or_default();
     // Python's `if not row.get("titleSort")`: a stored sort title -- even one
     // equal to the generated title (plexlab's season 7, cycle 31) -- counts; only a
     // row storing none (or an empty one) stores the empty string.
-    if str_value(row, "type").as_deref() == Some("season")
+    if row_text(row, "type").as_deref() == Some("season")
         && generated_title(&title)
-        && str_value(row, "titleSort")
+        && row_text(row, "titleSort")
             .filter(|sort| !sort.is_empty())
             .is_none()
     {
         String::new()
     } else {
-        str_value(row, "titleSort")
+        row_text(row, "titleSort")
             .filter(|sort| !sort.is_empty())
             .unwrap_or(title)
     }
+}
+/// `str_value` for any `hotrow::Row`.
+fn row_text(row: &(impl crate::hotrow::Row + ?Sized), key: &str) -> Option<String> {
+    row.get(key).and_then(|value| match value {
+        Value::String(value) => Some(value.clone()),
+        Value::Number(value) => Some(value.to_string()),
+        Value::Bool(value) => Some(value.to_string()),
+        _ => None,
+    })
 }
 pub fn person_tag_key(name: &str) -> String {
     // "plexsim" is the pre-rename namespace, frozen: changing it re-mints every id it seeds.
