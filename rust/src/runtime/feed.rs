@@ -1,7 +1,7 @@
 //! The feed: sources push their items here, and rex lists or queries no source.
 //!
-//! `docs/feed-api.md` is the reference. A request is admitted from anyone (no token, no
-//! network gate, never the Plex gate), parsed, classified under the
+//! `docs/feed-api.md` is the reference. A request is admitted from any peer on a private
+//! network (no token, never the Plex gate; `source_peer`), parsed, classified under the
 //! runtime lock, identified off it (Plex's matcher is a network lookup), and
 //! applied under it again, then saved before it is answered. Feed requests apply one at a
 //! time (`FEED`), which is also what keeps a snapshot's chunks in order. A source pushes
@@ -217,6 +217,19 @@ fn held_key(source: &str, id: &str) -> String {
     format!("{source}:{id}")
 }
 
+/// A peer the source API answers, by its socket address alone (never `X-Forwarded-For` or
+/// `Host`): this host, the unclaimed gate's private networks, Tailscale's 100.64/10 and
+/// link-local, IPv4-mapped ones included.
+fn source_peer(peer: std::net::IpAddr) -> bool {
+    let peer = peer.to_canonical();
+    peer.is_loopback()
+        || private_address(peer)
+        || ["100.64.0.0/10", "169.254.0.0/16", "fe80::/10"]
+            .into_iter()
+            .filter_map(network)
+            .any(|(net, bits)| in_network(peer, net, bits))
+}
+
 fn lock(shared: &SharedRuntime) -> std::sync::MutexGuard<'_, Runtime> {
     shared.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
 }
@@ -226,10 +239,14 @@ fn answer(status: u16, body: Value) -> Response {
 }
 
 /// `/rex/feed/{source}/{items|snapshot|held}` and `/rex/sources[/{name}]`, outside the Plex
-/// gate and open to anyone who can reach rex: a feed token per source, set by hand on both
-/// sides, guarded it before, and a local-network gate refused sources that name rex by host
-/// name (a Docker service, Tailscale). The owner chose an open feed over either.
+/// gate and open to any peer on a private network: a feed token per source, set by hand on
+/// both sides, guarded it before, and the unclaimed gate's check refused sources that name rex
+/// by host name (a Docker service) or reach it over Tailscale. This one reads the peer alone.
 pub(super) fn handle(shared: &SharedRuntime, request: &Request, path: &str) -> Response {
+    // rex-direct has rex's port forwarded from the internet and the feed takes no token.
+    if CONNECTION.with(std::cell::Cell::get).is_some_and(|(peer, _)| !source_peer(peer)) {
+        return answer(403, json!({"error": "the source API only answers private networks"}));
+    }
     if let Some(rest) = path.strip_prefix("/rex/sources") {
         return sources(shared, request, rest.trim_matches('/'));
     }
@@ -2057,6 +2074,67 @@ mod tests {
         shared.lock().unwrap().delete_source("b");
         drop(feed);
         assert_eq!(push.join().unwrap(), 404, "a push behind the delete was applied to a source that is gone");
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn source_peers_are_this_host_private_networks_tailscale_and_link_local() {
+        for (peer, answered) in [
+            ("127.0.0.1", true), ("127.8.9.10", true), ("::1", true),
+            ("10.1.2.3", true), ("172.16.0.1", true), ("172.31.255.255", true), ("192.168.1.10", true),
+            ("100.64.0.1", true), ("100.101.20.2", true), ("100.127.255.254", true),
+            ("169.254.1.1", true), ("fd7a:115c:a1e0::1", true), ("fc00::1", true), ("fe80::1", true),
+            ("febf::1", true), ("::ffff:192.168.1.10", true), ("::ffff:100.64.0.1", true),
+            ("203.0.113.7", false), ("8.8.8.8", false), ("172.32.0.1", false), ("172.15.255.255", false),
+            ("100.63.255.255", false), ("100.128.0.1", false), ("169.255.0.1", false),
+            ("192.169.0.1", false), ("::ffff:203.0.113.7", false), ("2001:db8::1", false),
+            ("2a00:1450:4001::1", false), ("fec0::1", false), ("0.0.0.0", false), ("::", false),
+        ] {
+            assert_eq!(source_peer(peer.parse().unwrap()), answered, "{peer}");
+        }
+    }
+
+    /// rex-direct forwards rex's port from the internet, and the source API takes no token:
+    /// a peer that is not on a private network is refused on every route and method, and
+    /// headers naming a local client do not change who the socket's peer is.
+    #[test]
+    fn the_source_api_refuses_a_public_peer_whatever_its_headers_say() {
+        let dir = work("source-gate");
+        let (shared, _) = runtime_with_episode(&dir);
+        shared.lock().unwrap().put_source(Source::register("b", &json!({"url": "http://127.0.0.1:9"})).unwrap());
+        let local: std::net::IpAddr = "192.168.1.2".parse().unwrap();
+        let request = |method: &str, target: &str, headers: &[(&str, &str)]| Request {
+            method: method.to_string(),
+            target: target.to_string(),
+            version: "HTTP/1.1".to_string(),
+            headers: headers.iter().map(|(name, value)| (name.to_string(), value.to_string())).collect(),
+            body: br#"{"items": [], "url": "http://127.0.0.1:9"}"#.to_vec(),
+            body_complete: true,
+        };
+        let forged = [("x-forwarded-for", "127.0.0.1"), ("host", "localhost")];
+        for peer in ["203.0.113.7", "::ffff:203.0.113.7", "2001:db8::7"] {
+            CONNECTION.with(|cell| cell.set(Some((peer.parse().unwrap(), local))));
+            for (method, target) in [
+                ("GET", "/rex/sources"),
+                ("PUT", "/rex/sources/c"),
+                ("DELETE", "/rex/sources/b"),
+                ("DELETE", "/rex/sources/b/confirm/0123456789abcdef0123456789abcdef"),
+                ("GET", "/rex/feed/b/items"),
+                ("POST", "/rex/feed/b/items"),
+                ("PUT", "/rex/feed/b/snapshot"),
+            ] {
+                for headers in [&[][..], &forged[..]] {
+                    let response = handle(&shared, &request(method, target, headers), target);
+                    assert_eq!(response.status, 403, "{peer} {method} {target} {headers:?}");
+                }
+            }
+        }
+        assert_eq!(shared.lock().unwrap().sources.len(), 1, "a refused PUT registered a source");
+        for peer in ["127.0.0.1", "192.168.1.10", "100.101.20.2", "fd7a:115c:a1e0::1", "::ffff:10.0.0.5"] {
+            CONNECTION.with(|cell| cell.set(Some((peer.parse().unwrap(), local))));
+            assert_eq!(handle(&shared, &request("GET", "/rex/sources", &[]), "/rex/sources").status, 200, "{peer}");
+        }
+        CONNECTION.with(|cell| cell.set(None));
         let _ = std::fs::remove_dir_all(dir);
     }
 

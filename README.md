@@ -99,7 +99,7 @@ dmm_api_key: <your DMM API key>
 
 zurg tells rex where its files are and how to log in to them, then sends its whole library and every change as it happens. A movie or episode shows up once zurg has analyzed it, which zurg starts as soon as its library has loaded.
 
-Anyone who can reach rex's port can push to its library or delete what a source pushed, so keep that port off the open internet. Running two zurgs? Give each a name of its own with `rex_source: rd` and `rex_source: ad`. Anything else that serves files can register the same way, see the [feed API](docs/feed-api.md).
+Only this machine, your home network and Tailscale can push to rex's library or delete what a source pushed. rex refuses that API to any other address, so forwarding rex's port for rex-direct (step 5) puts Plex's API on the internet, which needs a token once rex is claimed, but not the feed. Running two zurgs? Give each a name of its own with `rex_source: rd` and `rex_source: ad`. Anything else that serves files can register the same way, see the [feed API](docs/feed-api.md).
 
 This needs a zurg nightly from 2026.10.17 or later, so update zurg first. The latest zurg release, v1.0.0, has no rex feed.
 

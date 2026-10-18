@@ -62,10 +62,12 @@ zurg does both with nothing but `rex_url` in its `config.yml` (step 6); add `dmm
 it also says what each file is. Anything else registers and pushes the same way:
 [`docs/feed-api.md`](feed-api.md) is the full contract, for writing a pusher of your own.
 
-Registering and pushing take no token and check no network, claimed or not, so a source may
-name rex by address or host name. Anyone who can reach rex's port can register a source and
-delete one with everything it pushed: keep the port off the open internet
-([`docs/feed-api.md`](feed-api.md), "Who may call it").
+Registering and pushing take no token, claimed or not, so a source may name rex by address
+or host name. They answer only this machine, your home network and Tailscale (private,
+100.64/10 and link-local addresses): any other address gets 403. So forwarding rex's port
+for rex-direct (step 7) puts Plex's API on the internet, which needs a token once rex is
+claimed, but not the feed. A reverse proxy on rex's own machine looks local to rex, so block
+`/rex/` in it ([`docs/feed-api.md`](feed-api.md), "Who may call it").
 
 Registering is the only way a source exists: `ZURG_URL` is no longer read, and a zurg build
 from before the sources API, which never registers, needs updating. Rows rex already has keep

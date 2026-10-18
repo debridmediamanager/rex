@@ -32,12 +32,19 @@ zurg's WebDAV, nginx, a NAS, object storage or `python3 -m http.server`
 
 ### Who may call it
 
-Anyone who can reach rex. The feed and the sources API read no token, check no network and
-are not behind the Plex gate, claimed or not, so a source may name rex by address or host
-name (`http://rex:32400` from a container, a Tailscale name). That also means anyone who can
-reach rex's port can register a source, push items and delete a source with everything it
-pushed: keep rex's port off the open internet, or put a proxy in front of it that passes
-`/rex/feed/` and `/rex/sources` only from where your sources run.
+Any source on your own networks. The feed and the sources API read no token and are not
+behind the Plex gate, claimed or not, with or without `--token`, so a source may name rex by
+address or host name (`http://rex:32400` from a container, a Tailscale name). They answer
+only a peer whose address is this machine (127.0.0.0/8, `::1`), a home network (10/8,
+172.16/12, 192.168/16, IPv6 fc00::/7), Tailscale (100.64/10) or link-local (169.254/16,
+fe80::/10), an IPv4-mapped IPv6 address of those included. Any other peer gets 403
+`{"error": "the source API only answers private networks"}` on every route and method,
+the delete confirmation included.
+
+rex reads the connection's own peer address, never `X-Forwarded-For` or `Host`, so a header
+cannot open it. A reverse proxy on the same machine therefore reaches it as a local peer:
+block `/rex/` there. Forwarding rex's port for rex-direct (setup step 7) puts Plex's API on the
+internet, which needs a token once rex is claimed, but not the feed.
 
 ### Rows keep their source
 

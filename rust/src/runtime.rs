@@ -8571,10 +8571,7 @@ impl Runtime {
             let ip = ip.to_canonical();
             ip.is_loopback()
                 || if listed.is_empty() {
-                    match ip {
-                        std::net::IpAddr::V4(v4) => v4.is_private(),
-                        std::net::IpAddr::V6(v6) => v6.segments()[0] & 0xfe00 == 0xfc00,
-                    }
+                    private_address(ip)
                 } else {
                     listed.iter().any(|&(net, bits)| in_network(ip, net, bits))
                 }
@@ -22971,6 +22968,15 @@ fn network(entry: &str) -> Option<(std::net::IpAddr, u32)> {
     (bits <= full).then_some((address, bits))
 }
 
+/// RFC 1918 or IPv6 unique-local (fc00::/7): what an unclaimed PMS counts as private
+/// (`Runtime::local_request`).
+fn private_address(ip: std::net::IpAddr) -> bool {
+    match ip.to_canonical() {
+        std::net::IpAddr::V4(v4) => v4.is_private(),
+        std::net::IpAddr::V6(v6) => v6.segments()[0] & 0xfe00 == 0xfc00,
+    }
+}
+
 fn in_network(ip: std::net::IpAddr, net: std::net::IpAddr, bits: u32) -> bool {
     match (ip, net) {
         (std::net::IpAddr::V4(ip), std::net::IpAddr::V4(net)) => {
@@ -23655,8 +23661,8 @@ fn handle_connection<S: Read + Write + PollRead>(
         };
         let (request_path, request_query) = split_target(&request.target);
         // The feed and the sources it pushes as are rex's own API, not emulated PMS routes:
-        // open to anyone who can reach rex, outside the Plex gate and any network check
-        // (`feed.rs`, `docs/feed-api.md`).
+        // outside the Plex gate, open to any peer on a private network (`feed::source_peer`,
+        // `docs/feed-api.md`).
         if request_path.starts_with("/rex/feed/") || request_path == "/rex/sources" || request_path.starts_with("/rex/sources/") {
             let keep = request.version == "HTTP/1.1"
                 && request

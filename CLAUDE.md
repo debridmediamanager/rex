@@ -95,7 +95,7 @@ Where things live in `rust/src/`:
 | `runtime.rs` | The request loop, the route table and most projections; `serve` starts GDM, the state saver and the plex.tv threads |
 | `runtime/wire.rs` | The response envelope: header order, Range/416, CORS, gzip, websocket handshake |
 | `runtime/upstream.rs` | The HTTP/HTTPS client (rustls, system roots) behind zurg, provider redirects, Plex's metadata agent and artwork |
-| `runtime/source.rs`, `runtime/feed.rs`, `runtime/scan.rs` | Sources (registered over `PUT /rex/sources/{name}`, kept in the state file, deleted with a confirmation: where a Part's bytes are), the feed API sources push items to, open to anyone who can reach rex (`docs/feed-api.md`), and the rows those items become: added, held until probed, filled, re-identified, trashed, keys minted once (`mint_key`); a show's file its source did not place is numbered in its release's file order (`number_unplaced`), never by its name |
+| `runtime/source.rs`, `runtime/feed.rs`, `runtime/scan.rs` | Sources (registered over `PUT /rex/sources/{name}`, kept in the state file, deleted with a confirmation: where a Part's bytes are), the feed API sources push items to, open to any peer on a private network (`feed::source_peer`, `docs/feed-api.md`), and the rows those items become: added, held until probed, filled, re-identified, trashed, keys minted once (`mint_key`); a show's file its source did not place is numbered in its release's file order (`number_unplaced`), never by its name |
 | `runtime/universal.rs` | The video transcoder (`REX_TRANSCODER`): the conversion decision's plan and Media, `start.m3u8`/`start.mpd`, segments served outside the runtime lock, one FFmpeg per session with the hardware ladder, seeks, throttling and the idle reaper, and the `TranscodeSession` rows |
 | `runtime/plexmeta.rs`, `identify.rs` | Plex's metadata agent (the claim's server token, else `PLEX_TOKEN`), and which title a release is: the ids its source placed it with, or a TMDB id set by hand at the source (`placed`; `scan::identified_by`), asking Plex's agent for its guid by external id, whose answer and children rows are all a row shows (`metadata::describe`); nothing is read off a name, and what arrives with neither stays for Fix Match, which searches Plex's agent |
 | `runtime/plextv.rs` | claim/heartbeat/account state (`REX_PLEXTV_URL` points plex.tv and Plex's agent at a stub) |
@@ -126,9 +126,14 @@ seeded on start as `rex catalog --seed` seeds one (`--friendly-name`, default th
 libraries under `--zurg-mount`); `rex catalog --seed` stays for naming more directories or
 re-seeding. A source registers itself -- `PUT /rex/sources/{name}`: its byte url, `user`/
 `password` or `bearer`, `mount` -- and rex keeps the registration in the state file; it then
-pushes to `/rex/feed/{name}`. Both are open to anyone who can reach rex, claimed or not:
-no token (a feed token per source, set by hand on both sides, was the setup's longest
-step) and no network gate (one refused zurgs naming rex by host name or over Tailscale). Registering is the only way a source
+pushes to `/rex/feed/{name}`. Both take no token, claimed or not and with or without
+`--token` (a feed token per source, set by hand on both sides, was the setup's longest
+step), and answer only a peer on a private network: loopback, RFC 1918, 100.64/10
+(Tailscale), link-local, fc00::/7 and fe80::/10, IPv4-mapped ones included, read off the
+socket alone and never `X-Forwarded-For` or `Host`; any other peer is a 403 (`feed::source_peer`,
+which adds Tailscale and link-local to `private_address`, the unclaimed gate's rule). The
+unclaimed gate itself refused zurgs naming rex by host name or over Tailscale, so it is not
+this one. rex-direct forwards rex's port from the internet, and this keeps the feed off it. Registering is the only way a source
 exists (`ZURG_URL` is not read): a row keeps its `_source`/`_path`, and a catalog row from
 the old WebDAV scanner reads through the registered source whose `mount` holds its file,
 so either plays again once its source registers. `DELETE /rex/sources/{name}` answers a
