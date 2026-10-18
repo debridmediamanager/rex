@@ -151,7 +151,7 @@ def probe(path):
     return json.loads(out)
 
 
-def row(key, title, file, streams, size, duration, subtitle=None):
+def row(key, title, file, streams, size, duration, subtitle=None, subtitle_codec="pgs"):
     video = next(s for s in streams if s["codec_type"] == "video")
     audio = next(s for s in streams if s["codec_type"] == "audio")
     # A real PMS names DTS `dca`, as rex's mediainfo does.
@@ -179,8 +179,9 @@ def row(key, title, file, streams, size, duration, subtitle=None):
                                  {"id": int(key) * 1000 + 2, "streamType": 2, "codec": audio["codec_name"],
                                   "index": audio["index"], "channels": int(audio["channels"]),
                                   "bitrate": 192, "selected": True, "displayTitle": "Unknown"},
-                             ] + ([{"id": int(key) * 1000 + 3, "streamType": 3, "codec": "pgs",
-                                    "index": subtitle["index"], "selected": True, "displayTitle": "English (PGS)"}]
+                             ] + ([{"id": int(key) * 1000 + 3, "streamType": 3, "codec": subtitle_codec,
+                                    "index": subtitle["index"], "selected": True,
+                                    "displayTitle": "English (%s)" % subtitle_codec.upper()}]
                                   if subtitle else [])}]}],
     }
 
@@ -392,8 +393,9 @@ def decision(port, key, session, **extra):
     return status, json.loads(body)["MediaContainer"] if status == 200 else {}
 
 
-def walk(port, scratch, label, key, expect_video, expect_audio, size, duration=DURATION, **extra):
+def walk(port, scratch, label, key, expect_video, expect_audio, size, duration=DURATION, muxer="mpegts", **extra):
     session = "s-" + label
+    mkv = muxer == "mkv"
     status, container = decision(port, key, session, **extra)
     check("%s: decision is Conversion OK (1001)" % label,
           status == 200 and container.get("generalDecisionCode") == 1001
@@ -403,8 +405,8 @@ def walk(port, scratch, label, key, expect_video, expect_audio, size, duration=D
     media = container.get("Metadata", [{}])[0].get("Media", [{}])[0]
     part = media.get("Part", [{}])[0]
     streams = {s.get("streamType"): s for s in part.get("Stream", [])}
-    check("%s: decision Media is the mpegts/hls output" % label,
-          media.get("container") == "mpegts" and media.get("protocol") == "hls"
+    check("%s: decision Media is the %s/hls output" % (label, muxer),
+          media.get("container") == muxer and media.get("protocol") == "hls"
           and part.get("decision") == "transcode" and "key" not in part and "file" not in part,
           json.dumps({k: media.get(k) for k in ("container", "protocol", "width", "height", "videoCodec", "audioCodec")}))
     check("%s: stream decisions %s/%s" % (label, expect_video, expect_audio),
@@ -427,16 +429,23 @@ def walk(port, scratch, label, key, expect_video, expect_audio, size, duration=D
     names = [line for line in playlist.splitlines() if line and not line.startswith("#")]
     check("%s: media playlist lists the whole title, then ENDLIST" % label,
           status == 200 and playlist.rstrip().endswith("#EXT-X-ENDLIST") and len(names) >= 3
-          and names[0] == "00000.ts", "%d segments" % len(names))
+          and names[0] == "00000.ts" and ('#EXT-X-MAP:URI="header"' in playlist) == mkv, "%d segments" % len(names))
     length = int(re.search(r"TARGETDURATION:(\d+)", playlist).group(1)) if status == 200 else 4
     base = "/video/:/transcode/universal/session/%s/base/" % session
+    # Matroska clusters only parse behind the run's header, the playlist's EXT-X-MAP.
+    header = b""
     status, headers, first = get(port, base + "00000.ts")
     ttfs = time.time() - started
-    check("%s: first segment is MPEG-TS" % label,
-          status == 200 and headers.get("Content-Type") == "video/MP2T" and first[:1] == b"\x47",
+    if mkv:
+        status_h, headers_h, header = get(port, base + "header")
+        check("%s: the header is Matroska's, as application/octet-stream" % label,
+              status_h == 200 and headers_h.get("Content-Type") == "application/octet-stream"
+              and header[:4] == b"\x1a\x45\xdf\xa3", "%s %s" % (status_h, headers_h.get("Content-Type")))
+    check("%s: first segment is %s" % (label, "a Matroska cluster" if mkv else "MPEG-TS"),
+          status == 200 and headers.get("Content-Type") == "video/MP2T" and (first[:4] == b"\x1f\x43\xb6\x75" if mkv else first[:1] == b"\x47"),
           "%s %d bytes, %.2fs from start.m3u8" % (status, len(first), ttfs))
     path = os.path.join(scratch, "%s-0.ts" % label)
-    open(path, "wb").write(first)
+    open(path, "wb").write(header + first)
     info = probe(path) if status == 200 else {"streams": [], "format": {}}
     # The MPEG-TS muxer offsets every timestamp by the same constant (`-max_delay`, as
     # Plex's own segments are); a player anchors on the first segment, so offsets are
@@ -453,17 +462,17 @@ def walk(port, scratch, label, key, expect_video, expect_audio, size, duration=D
               (video.get("width"), video.get("height")) == size, "%sx%s" % (video.get("width"), video.get("height")))
     status, _, second = get(port, base + "00001.ts")
     path1 = os.path.join(scratch, "%s-1.ts" % label)
-    open(path1, "wb").write(second)
+    open(path1, "wb").write(header + second)
     start1 = float(probe(path1)["format"].get("start_time", -1)) if status == 200 else -1
     check("%s: segment 1 starts where segment 0 ends" % label,
           status == 200 and abs(start1 - start0 - length) < 1.6, "offset %.3f, length %d" % (start1 - start0, length))
     far = len(names) - 2
     status, _, tail = get(port, base + "%05d.ts" % far)
     path_far = os.path.join(scratch, "%s-far.ts" % label)
-    open(path_far, "wb").write(tail)
+    open(path_far, "wb").write(header + tail)
     start_far = float(probe(path_far)["format"].get("start_time", -1)) if status == 200 else -1
     check("%s: a far seek (segment %d) restarts at its own time" % (label, far),
-          status == 200 and tail[:1] == b"\x47" and abs(start_far - start0 - far * length) < 1.6,
+          status == 200 and tail[:1] == (b"\x1f" if mkv else b"\x47") and abs(start_far - start0 - far * length) < 1.6,
           "offset %.3f, want %d" % (start_far - start0, far * length))
 
     status, _, body = get(port, "/transcode/sessions")
@@ -471,7 +480,7 @@ def walk(port, scratch, label, key, expect_video, expect_audio, size, duration=D
     mine = [r for r in rows if r.get("key") == session]
     check("%s: /transcode/sessions lists it" % label,
           len(mine) == 1 and mine[0].get("videoDecision") == expect_video
-          and mine[0].get("protocol") == "hls" and mine[0].get("container") == "mpegts",
+          and mine[0].get("protocol") == "hls" and mine[0].get("container") == muxer,
           json.dumps({k: mine[0].get(k) for k in ("videoDecision", "audioDecision", "speed", "maxOffsetAvailable")}) if mine else "none")
     beat = [("ratingKey", key), ("key", "/library/metadata/%s" % key), ("state", "playing"),
             ("time", str(length * 1000)), ("duration", str(duration * 1000)), ("hasMDE", "1"),
@@ -489,7 +498,7 @@ def walk(port, scratch, label, key, expect_video, expect_audio, size, duration=D
     row_ = next((r for r in listing if r.get("ratingKey") == key), {})
     check("%s: Now Playing shows the converted Media and TranscodeSession" % label,
           row_.get("TranscodeSession", {}).get("key") == "/transcode/sessions/%s" % session
-          and row_.get("Media", [{}])[0].get("container") == "mpegts", "")
+          and row_.get("Media", [{}])[0].get("container") == muxer, "")
     output = row_.get("Media", [{}])[0].get("bitrate", 0)
     check("%s: its Session bandwidth is ~1.05x the output" % label,
           row_.get("Session", {}).get("bandwidth") == round(output * 1.05), "%s for %s kbps" % (row_.get("Session", {}).get("bandwidth"), output))
@@ -540,6 +549,18 @@ def main():
     streams = probe(MEDIA["subs.mkv"])["streams"]
     items.append(row("6", "Subs", "subs.mkv", streams, os.path.getsize(MEDIA["subs.mkv"]), DURATION,
                      subtitle=next(s for s in streams if s["codec_type"] == "subtitle")))
+    # The same with a selected embedded SRT, which a Matroska target carries in its segments.
+    srt = os.path.join(scratch, "line.srt")
+    open(srt, "w").write("1\n00:00:00,500 --> 00:00:29,000\nHello from the SRT\n")
+    MEDIA["srt.mkv"] = os.path.join(scratch, "srt.mkv")
+    subprocess.run([FFMPEG, "-v", "error", "-y", "-i", plain, "-i", srt, "-map", "0", "-map", "1", "-c", "copy",
+                    "-c:s", "srt", MEDIA["srt.mkv"]], check=True)
+    streams = probe(MEDIA["srt.mkv"])["streams"]
+    items.append(row("9", "Srt", "srt.mkv", streams, os.path.getsize(MEDIA["srt.mkv"]), DURATION,
+                     subtitle=next(s for s in streams if s["codec_type"] == "subtitle"), subtitle_codec="srt"))
+    # The plain clip on its own, for a subtitle uploaded to rex.
+    MEDIA["plain.mkv"] = plain
+    items.append(row("10", "Plain", "plain.mkv", probe(plain)["streams"], os.path.getsize(plain), DURATION))
     # HDR: a PQ-tagged 10-bit HEVC (HDR10), and a stand-in for a Dolby Vision profile 5
     # release carrying the real P5 clip's probe fields (tests/fixtures/transcode/hdr_probes.json):
     # P5 signals no transfer at all, so only its DOVI fields say it needs tonemapping.
@@ -624,8 +645,75 @@ def main():
         recorded = json.load(open(os.path.join(ROOT, "tests/fixtures/decisions/generic_transcode_target_s1422.json")))
         for asked in recorded["decisions"]:
             if asked["label"].endswith("generic-target"):
-                walk(port, scratch, asked["label"], "3", "transcode", "copy", (1280, 720), directStream="0",
+                walk(port, scratch, asked["label"], "3", "transcode", "copy", (1280, 720), directStream="0", muxer="mkv",
                      **{name: asked["req_headers"][name] for name in ("X-Plex-Client-Profile-Name", "X-Plex-Client-Profile-Extra")})
+        # A selected text subtitle was dropped from every conversion. The reference copies an
+        # SRT into these apps' Matroska segments (`subtitles_s1422.json`).
+        android = next(asked for asked in recorded["decisions"] if asked["label"] == "android-generic-target")
+        profile = {name: android["req_headers"][name] for name in ("X-Plex-Client-Profile-Name", "X-Plex-Client-Profile-Extra")}
+        status, container = decision(port, "9", "s-srt", directStream="0", subtitles="auto", **profile)
+        part = container.get("Metadata", [{}])[0].get("Media", [{}])[0].get("Part", [{}])[0]
+        text = next((s for s in part.get("Stream", []) if s.get("streamType") == 3), {})
+        check("srt: the selected SRT is copied into the segments, as the reference's row says",
+              (text.get("decision"), text.get("format"), text.get("location")) == ("copy", "srt", "segments-av"),
+              json.dumps(text))
+        get(port, "/video/:/transcode/universal/start.m3u8", plex_web_query("9", "s-srt", directStream="0", subtitles="auto", **profile))
+        base = "/video/:/transcode/universal/session/s-srt/base/"
+        _, _, header = get(port, base + "header")
+        status, _, first = get(port, base + "00000.ts")
+        joined = os.path.join(scratch, "srt-0.mkv")
+        open(joined, "wb").write(header + first)
+        lines = subprocess.run([FFMPEG, "-v", "error", "-i", joined, "-map", "0:s:0", "-f", "srt", "-"],
+                               capture_output=True, text=True).stdout
+        check("srt: the first segment carries the subtitle's text", "Hello from the SRT" in lines, repr(lines[:120]))
+        get(port, "/video/:/transcode/universal/stop", [("session", "s-srt")])
+        # A subtitle uploaded to rex was dropped too: copied into the apps' Matroska segments,
+        # burned into an MPEG-TS client's picture. Its drawing is a white box over BOX, which
+        # libass renders without a font.
+        x, y, w, h = BOX
+        box = ("[Script Info]\nScriptType: v4.00+\nPlayResX: 1280\nPlayResY: 720\n\n[V4+ Styles]\n"
+               "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, "
+               "Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, "
+               "MarginR, MarginV, Encoding\nStyle: Default,Arial,20,&H00FFFFFF,&H00FFFFFF,&H00FFFFFF,&H00FFFFFF,0,0,0,0,"
+               "100,100,0,0,1,0,0,7,0,0,0,1\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, "
+               "MarginV, Effect, Text\nDialogue: 0,0:00:00.00,0:00:30.00,Default,,0,0,0,,"
+               "{\\pos(%d,%d)\\p1}m 0 0 l %d 0 %d %d 0 %d{\\p0}\n" % (x, y, w, w, h, h))
+        upload = urllib.request.Request("http://127.0.0.1:%d/library/metadata/10/subtitles?title=box.ass" % port,
+                                        data=box.encode(), method="POST")
+        status = urllib.request.urlopen(upload, timeout=30).status
+        check("sidecar: the upload is accepted", status == 200, str(status))
+        status, container = decision(port, "10", "s-side-mkv", directStream="0", subtitles="auto", **profile)
+        part = container.get("Metadata", [{}])[0].get("Media", [{}])[0].get("Part", [{}])[0]
+        text = next((s for s in part.get("Stream", []) if s.get("streamType") == 3), {})
+        check("sidecar: the apps get the upload copied, as the reference copies its sidecar",
+              (text.get("decision"), text.get("format"), text.get("location")) == ("copy", "ass", "segments-av")
+              and text.get("key", "").startswith("/library/streams/"), json.dumps(text))
+        get(port, "/video/:/transcode/universal/start.m3u8", plex_web_query("10", "s-side-mkv", directStream="0", subtitles="auto", **profile))
+        base = "/video/:/transcode/universal/session/s-side-mkv/base/"
+        _, _, header = get(port, base + "header")
+        status, _, first = get(port, base + "00000.ts")
+        joined = os.path.join(scratch, "side-0.mkv")
+        open(joined, "wb").write(header + first)
+        kinds = [s["codec_name"] for s in probe(joined)["streams"]] if status == 200 else []
+        check("sidecar: the Matroska segment carries it as a subtitle stream", "ass" in kinds, " ".join(kinds))
+        get(port, "/video/:/transcode/universal/stop", [("session", "s-side-mkv")])
+        status, container = decision(port, "10", "s-side-ts", directStream="1")
+        part = container.get("Metadata", [{}])[0].get("Media", [{}])[0].get("Part", [{}])[0]
+        kinds = {s.get("streamType"): s for s in part.get("Stream", [])}
+        check("sidecar: an MPEG-TS client gets it burned, the picture converted for it",
+              kinds.get(3, {}).get("decision") == "burn" and kinds.get(3, {}).get("burn") == "1"
+              and kinds.get(1, {}).get("decision") == "transcode",
+              "/".join(str(kinds.get(k, {}).get("decision")) for k in (1, 2, 3)))
+        get(port, "/video/:/transcode/universal/start.m3u8", plex_web_query("10", "s-side-ts", directStream="1"))
+        status, _, first = get(port, "/video/:/transcode/universal/session/s-side-ts/base/00000.ts")
+        segment = os.path.join(scratch, "side-ts-0.ts")
+        open(segment, "wb").write(first)
+        centre = (x + w // 2 - 10, y + h // 2 - 10, 20, 20)
+        burned = luma(segment, 0, centre) if status == 200 and first[:1] == b"\x47" else -1
+        source = luma(plain, 0, centre)
+        check("sidecar: its white box is in the converted picture",
+              burned > 200 and abs(burned - source) > 30, "luma %.0f, the source's %.0f" % (burned, source))
+        get(port, "/video/:/transcode/universal/stop", [("session", "s-side-ts")])
         walk(port, scratch, "capped", "1", "transcode", "copy", (640, 360),
              videoResolution="640x360", maxVideoBitrate="1000", directStream="1")
         # Audio only: the video is copied and the DTS the client refuses becomes AAC.

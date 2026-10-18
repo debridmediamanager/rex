@@ -169,10 +169,38 @@ pub(crate) struct Plan {
     pub audio: Option<AudioPlan>,
     /// The selected embedded image subtitle's ffprobe index, burned into the picture.
     pub subtitle: Option<i64>,
+    /// HLS in Matroska segments behind an `EXT-X-MAP` header, for a target whose container is
+    /// `mkv` (Plex for Android and iOS: `subtitles_s1422.json`), carrying `text_subtitle`.
+    pub matroska: bool,
+    /// The selected embedded text subtitle's ffprobe index, copied into the Matroska segments.
+    pub text_subtitle: Option<i64>,
+    /// A selected subtitle uploaded to rex: copied into Matroska segments, burned otherwise.
+    pub sidecar: Option<Sidecar>,
     pub incomplete_segments: bool,
     /// The playback session (`X-Plex-Session-Identifier`) the conversion belongs to.
     pub playback: String,
     pub protocol: Protocol,
+}
+
+/// A subtitle file uploaded to rex (`_content` on its Stream row), written beside the run's
+/// segments as FFmpeg's second input.
+#[derive(Clone, Debug)]
+pub(crate) struct Sidecar {
+    /// The Stream row's `id`, which the decision's row is matched by.
+    pub id: String,
+    pub format: String,
+    pub content: String,
+}
+
+impl Sidecar {
+    pub fn file_name(&self) -> String {
+        format!("sidecar.{}", if self.format == "ssa" { "ass" } else { self.format.as_str() })
+    }
+
+    /// Whether this plan draws it into the picture rather than carrying it as a stream.
+    fn burned(plan: &Plan) -> bool {
+        plan.sidecar.is_some() && !plan.matroska
+    }
 }
 
 /// `PT0H30M0.689941S`, as the reference writes a DASH duration.
@@ -185,6 +213,15 @@ fn dash_duration(milliseconds: i64) -> String {
 }
 
 impl Plan {
+    /// The output's container, as the decision and the session rows name it.
+    pub fn container(&self) -> &'static str {
+        if self.matroska {
+            "mkv"
+        } else {
+            self.protocol.container()
+        }
+    }
+
     /// The DASH representations in output order: the video's id 0, the audio's next.
     pub fn representations(&self) -> usize {
         self.video.is_some() as usize + self.audio.is_some() as usize
@@ -312,8 +349,10 @@ impl Plan {
     pub fn media_playlist(&self) -> String {
         let length = self.segment_seconds() as i64;
         let count = self.segment_count();
+        // Matroska segments are headerless clusters; the header is its own URI.
+        let map = if self.matroska { "#EXT-X-VERSION:7\n#EXT-X-MAP:URI=\"header\"\n" } else { "" };
         let mut out = format!(
-            "#EXTM3U\n#EXT-X-TARGETDURATION:{length}\n#EXT-X-ALLOW-CACHE:NO\n#EXT-X-MEDIA-SEQUENCE:0\n"
+            "#EXTM3U\n{map}#EXT-X-TARGETDURATION:{length}\n#EXT-X-ALLOW-CACHE:NO\n#EXT-X-MEDIA-SEQUENCE:0\n"
         );
         for index in 0..count {
             let remaining = (self.duration_ms - index * length * 1000).max(0);
@@ -378,7 +417,7 @@ pub(crate) fn ladder(plan: &Plan, hardware: &Hardware) -> Vec<Path> {
         // otherwise it is tonemapped on the CPU (`tonemapx`), since a wrong guess is a green
         // picture. A burned subtitle is overlaid on CPU frames, so the decode stays on the CPU.
         let tonemaps = !video.hdr || (hardware.opencl_tonemap && matches!(hardware.accel, Accel::Vaapi(_)));
-        if tonemaps && plan.subtitle.is_none() && hardware.decode.contains(&decode_key(&video.source_codec, video.bit_depth)) {
+        if tonemaps && plan.subtitle.is_none() && !Sidecar::burned(plan) && hardware.decode.contains(&decode_key(&video.source_codec, video.bit_depth)) {
             paths.push(Path::Full);
         }
         paths.push(Path::EncodeOnly);
@@ -443,6 +482,14 @@ pub(crate) fn ffmpeg_args(plan: &Plan, path: Path, hardware: &Hardware, start: i
         }
     }
     push(&mut args, &["-i", &plan.url]);
+    let sidecar_file = plan.sidecar.as_ref().map(|sidecar| dir.join(sidecar.file_name()).to_string_lossy().into_owned());
+    if let (Some(file), false) = (&sidecar_file, Sidecar::burned(plan)) {
+        // Its own seek, so its events land on the run's clock as the source's packets do.
+        if offset > 0 {
+            push(&mut args, &["-ss", &offset.to_string()]);
+        }
+        push(&mut args, &["-i", file]);
+    }
     // A row without ffprobe's stream `index` maps the first stream of the kind.
     let video_input = video.map(|video| if video.index >= 0 { format!("0:{}", video.index) } else { "0:v:0".to_string() });
     let burn = plan.subtitle.filter(|_| converting);
@@ -457,6 +504,18 @@ pub(crate) fn ffmpeg_args(plan: &Plan, path: Path, hardware: &Hardware, start: i
             Path::Full if cuda => format!("scale_cuda=w={w}:h={h}:format=nv12"),
             _ => {
                 let mut chain = Vec::new();
+                if let (Some(file), true) = (&sidecar_file, Sidecar::burned(plan)) {
+                    // libass draws by the frame's time, which a seek restarts at 0: shift it to
+                    // the title's clock around the filter. Quoted, so only `:` needs escaping.
+                    let file = file.replace('\\', "/").replace(':', "\\:").replace('\'', "");
+                    if offset > 0 {
+                        chain.push(format!("setpts=PTS+{offset}/TB"));
+                    }
+                    chain.push(format!("subtitles=f='{file}'"));
+                    if offset > 0 {
+                        chain.push(format!("setpts=PTS-{offset}/TB"));
+                    }
+                }
                 if video.hdr && hardware.tonemapx {
                     chain.push("tonemapx=tonemap=bt2390:desat=0:peak=100:t=bt709:m=bt709:p=bt709:format=yuv420p".to_string());
                 }
@@ -484,6 +543,11 @@ pub(crate) fn ffmpeg_args(plan: &Plan, path: Path, hardware: &Hardware, start: i
     }
     if let Some(audio) = plan.audio.as_ref() {
         push(&mut args, &["-map", &if audio.index >= 0 { format!("0:{}", audio.index) } else { "0:a:0".to_string() }]);
+    }
+    let text = plan.text_subtitle.filter(|_| plan.matroska).map(|index| format!("0:{index}"))
+        .or_else(|| plan.sidecar.as_ref().filter(|_| plan.matroska).map(|_| "1:0".to_string()));
+    if let Some(input) = &text {
+        push(&mut args, &["-map", input, "-c:s", "copy"]);
     }
     match video {
         Some(video) if video.copy => push(&mut args, &["-c:v", "copy"]),
@@ -520,12 +584,15 @@ pub(crate) fn ffmpeg_args(plan: &Plan, path: Path, hardware: &Hardware, start: i
     // but a copied audio stream keeps every packet from that keyframe: with x265's ~10 s GOP
     // a restart at 26 s started its AC3 5.3 s early on the title's clock (measured, FFmpeg 8).
     // An output `-ss 0` drops the copied packets before the seek too.
-    if converting && offset > 0 && plan.audio.as_ref().is_some_and(|audio| audio.copy) {
+    if converting && offset > 0 && (plan.audio.as_ref().is_some_and(|audio| audio.copy) || text.is_some()) {
         push(&mut args, &["-ss", "0"]);
+    }
+    if text.is_none() {
+        push(&mut args, &["-sn"]);
     }
     // A remux's pre-roll from the keyframe before the seek keeps its negative time, so
     // with the offset every packet lands on its true time on the title's clock.
-    push(&mut args, &["-sn", "-dn", "-map_metadata", "-1", "-map_chapters", "-1", "-avoid_negative_ts", "disabled"]);
+    push(&mut args, &["-dn", "-map_metadata", "-1", "-map_chapters", "-1", "-avoid_negative_ts", "disabled"]);
     if plan.protocol == Protocol::File {
         push(&mut args, &["-movflags", "+faststart", "-f", "mp4", "-y", &dir.join("media.mp4").to_string_lossy()]);
         return args;
@@ -567,9 +634,15 @@ pub(crate) fn ffmpeg_args(plan: &Plan, path: Path, hardware: &Hardware, start: i
         ]);
         return args;
     }
-    push(&mut args, &["-max_delay", "5000000"]);
-    push(&mut args, &["-f", "segment", "-segment_format", "mpegts", "-segment_start_number", &start.to_string(),
-        "-segment_time", &length.to_string()]);
+    if plan.matroska {
+        // One header for every run: a restart's differs only in its random segment and track
+        // UIDs, and clusters name tracks by number (measured, FFmpeg 8.1).
+        let header = dir.join("init-0.m4s").to_string_lossy().into_owned();
+        push(&mut args, &["-f", "segment", "-segment_format", "matroska", "-segment_header_filename", &header]);
+    } else {
+        push(&mut args, &["-max_delay", "5000000", "-f", "segment", "-segment_format", "mpegts"]);
+    }
+    push(&mut args, &["-segment_start_number", &start.to_string(), "-segment_time", &length.to_string()]);
     if offset > 0 {
         push(&mut args, &["-initial_offset", &offset.to_string()]);
     }
@@ -1061,6 +1134,11 @@ impl Transcoder {
             },
         };
         let args = ffmpeg_args(&session.plan, path, &hardware, start, &session.dir);
+        if let Some(sidecar) = &session.plan.sidecar {
+            if let Err(err) = std::fs::write(session.dir.join(sidecar.file_name()), &sidecar.content) {
+                warning!("TRANSCODE {} cannot write its subtitle: {err}", session.id);
+            }
+        }
         let run = session.run.fetch_add(1, Ordering::SeqCst) + 1;
         debug!(
             "TRANSCODE {} run {run}: {}",
@@ -1504,7 +1582,7 @@ pub(crate) fn transcode_session_row(session: &Session, hardware: &Hardware, nest
         row.insert("audioDecision".to_string(), json!(if audio.copy { "copy" } else { "transcode" }));
     }
     row.insert("protocol".to_string(), json!(plan.protocol.name()));
-    row.insert("container".to_string(), json!(plan.protocol.container()));
+    row.insert("container".to_string(), json!(plan.container()));
     if let Some(video) = video {
         row.insert("videoCodec".to_string(), json!(if video.copy { video.source_codec.clone() } else { "h264".to_string() }));
     }
@@ -1706,6 +1784,34 @@ impl Runtime {
             })
             .and_then(|stream| stream.get("index").and_then(Value::as_i64))
             .filter(|index| *index >= 0 && video_stream.is_some());
+        // A target in Matroska carries a selected embedded text subtitle it lists, as the
+        // reference copies an SRT into Plex for Android's and iOS's segments; an image one is
+        // still burned. ASS is copied too: the reference burns it, which rex cannot without
+        // reading the whole file first, and both apps list it.
+        let matroska = wire == Protocol::Hls && target.get("container").and_then(Value::as_str) == Some("mkv");
+        let subtitle_codecs = list(target.get("subtitleCodec"));
+        let text_subtitle = streams
+            .iter()
+            .filter(|_| burn && matroska)
+            .find(|stream| kind(stream) == Some(3) && stream.get("selected").is_some_and(truthy) && stream.get("key").is_none())
+            .filter(|stream| {
+                let codec = stream.get("codec").map(string_value).unwrap_or_default().to_ascii_lowercase();
+                !decision::IMAGE_SUBTITLES.contains(&codec.as_str()) && subtitle_codecs.contains(&codec)
+            })
+            .and_then(|stream| stream.get("index").and_then(Value::as_i64))
+            .filter(|index| *index >= 0);
+        // A selected upload carries its text on its Stream row (`_content`).
+        let sidecar = streams
+            .iter()
+            .filter(|_| burn && subtitle.is_none() && text_subtitle.is_none())
+            .find(|stream| kind(stream) == Some(3) && stream.get("selected").is_some_and(truthy) && stream.get("key").is_some())
+            .and_then(|stream| {
+                let id = stream.get("id").map(string_value)?;
+                let format = stream.get("codec").map(string_value).unwrap_or_default().to_ascii_lowercase();
+                let fits = if matroska { subtitle_codecs.contains(&format) } else { video_stream.is_some() };
+                let content = stream.get("_content").and_then(Value::as_str)?.to_string();
+                (fits && matches!(format.as_str(), "srt" | "ass" | "ssa")).then_some(Sidecar { id, format, content })
+            });
         let max_kbps = query.get("maxVideoBitrate").and_then(|value| value.parse::<i64>().ok()).filter(|value| *value > 0);
         let cap = query.get("videoResolution").and_then(|value| {
             let (w, h) = value.split_once('x')?;
@@ -1770,6 +1876,7 @@ impl Runtime {
             let fits = cap.is_none_or(|(w, h)| width <= w && height <= h);
             // A burned subtitle is part of the picture, so the picture is converted.
             let copy = subtitle.is_none()
+                && !(sidecar.is_some() && !matroska)
                 && flag("directStream")
                 && video_codecs.contains(&codec)
                 && decision::codec_limitation(profile, "VideoCodec", &codec, media).is_none()
@@ -1833,6 +1940,9 @@ impl Runtime {
             video,
             audio,
             subtitle,
+            matroska,
+            text_subtitle,
+            sidecar,
             incomplete_segments: query.get("X-Plex-Incomplete-Segments").map(String::as_str) == Some("1")
                 || headers.get("x-plex-incomplete-segments").map(String::as_str) == Some("1"),
             playback: self.playback_session(query, headers),
@@ -1904,7 +2014,7 @@ impl Runtime {
         let dash = plan.protocol == Protocol::Dash;
         // A download's Media (`download_queue_s1422.json`): optimized, no `protocol`, streams `direct`.
         let file = plan.protocol == Protocol::File;
-        media.insert("container".to_string(), json!(plan.protocol.container()));
+        media.insert("container".to_string(), json!(plan.container()));
         media.insert("duration".to_string(), json!(plan.duration_ms));
         if video.is_some() {
             media.insert("height".to_string(), json!(height));
@@ -1937,7 +2047,7 @@ impl Runtime {
             }
         }
         out_part.insert("bitrate".to_string(), json!(plan.bitrate()));
-        out_part.insert("container".to_string(), json!(plan.protocol.container()));
+        out_part.insert("container".to_string(), json!(plan.container()));
         out_part.insert("duration".to_string(), json!(plan.duration_ms));
         if video.is_some() {
             out_part.insert("height".to_string(), json!(height));
@@ -1983,10 +2093,28 @@ impl Runtime {
                         }
                         stream.insert("decision".to_string(), json!(if audio.copy { "copy" } else { "transcode" }));
                     }
+                    // The reference's rows (`subtitles_s1422.json`): a burned subtitle says
+                    // `burn: "1"`, a copied one its `format`, both in the HLS segments.
                     (Some(3), _, _) if plan.subtitle.is_some() && stream.get("index").and_then(Value::as_i64) == plan.subtitle => {
-                        // Not measured: no recording holds a reference's burn decision; the
-                        // shape is Plex's documented `decision="burn"` in the video's segments.
+                        stream.insert("burn".to_string(), json!("1"));
                         stream.insert("decision".to_string(), json!("burn"));
+                    }
+                    (Some(3), _, _) if plan.matroska && plan.text_subtitle.is_some() && stream.get("index").and_then(Value::as_i64) == plan.text_subtitle => {
+                        let codec = stream.get("codec").cloned().unwrap_or(Value::Null);
+                        stream.insert("format".to_string(), codec);
+                        stream.insert("decision".to_string(), json!("copy"));
+                    }
+                    // The reference's sidecar rows keep their `key` (stream 5 there).
+                    (Some(3), _, _) if plan.sidecar.as_ref().is_some_and(|sidecar| stream.get("id").map(string_value).as_deref() == Some(sidecar.id.as_str())) => {
+                        stream.shift_remove("_content");
+                        if Sidecar::burned(plan) {
+                            stream.insert("burn".to_string(), json!("1"));
+                            stream.insert("decision".to_string(), json!("burn"));
+                        } else {
+                            let codec = stream.get("codec").cloned().unwrap_or(Value::Null);
+                            stream.insert("format".to_string(), codec);
+                            stream.insert("decision".to_string(), json!("copy"));
+                        }
                     }
                     // Any other subtitle is not carried through a conversion.
                     _ => return None,
@@ -1994,8 +2122,8 @@ impl Runtime {
                 // HLS muxes both into one stream; DASH keeps a representation each.
                 let location = match (dash, kind) {
                     _ if file => "direct",
-                    (_, Some(3)) => "segments-video",
                     (false, _) => "segments-av",
+                    (_, Some(3)) => "segments-video",
                     (true, Some(1)) => "segments-video",
                     (true, _) => "segments-audio",
                 };
@@ -2079,6 +2207,16 @@ impl Runtime {
                         let mut response = Response::bytes(200, "application/vnd.apple.mpegurl");
                         response.body = session.plan.media_playlist().into_bytes();
                         response.headers.push(("Cache-Control".to_string(), "no-cache".to_string()));
+                        Some(response)
+                    }
+                    // Matroska's `EXT-X-MAP` header, `application/octet-stream` on the
+                    // reference while its clusters stay `video/MP2T` (`subtitles_s1422.json`).
+                    (Some("base"), Some("header"), 8) if session.plan.matroska => {
+                        let mut response = Response::bytes(200, "application/octet-stream");
+                        response.headers.push(("Cache-Control".to_string(), "no-cache".to_string()));
+                        response.headers.push(("Accept-Ranges".to_string(), "bytes".to_string()));
+                        response.close = true;
+                        self.pending_segment = Some(SegmentPlan { session, index: 0, rep: 0, header: true, transcoder });
                         Some(response)
                     }
                     (Some("base"), Some(name), 8) if name.ends_with(".ts") => {
@@ -2234,6 +2372,9 @@ mod tests {
             }),
             audio: Some(AudioPlan { index: 1, copy: false, source_codec: "eac3".into(), codec: "aac".into(), channels: 2, bitrate: 192, sampling_rate: 48000 }),
             subtitle: None,
+            matroska: false,
+            text_subtitle: None,
+            sidecar: None,
             incomplete_segments: true,
             playback: "p".into(),
             protocol: Protocol::Hls,
@@ -2417,6 +2558,55 @@ mod tests {
         // A 10-bit SDR encode says nothing of BT.2020 and stays untonemapped.
         assert!(!hdr_stream(&json!({"streamType": 1, "bitDepth": 10, "colorTrc": null, "colorSpace": null})));
         assert!(!hdr_stream(&json!({"streamType": 1, "bitDepth": 10, "colorTrc": "bt709", "colorSpace": "bt2020nc"})));
+    }
+
+    #[test]
+    fn a_matroska_target_copies_its_text_subtitle_behind_one_header() {
+        let recorded: Value = serde_json::from_str(include_str!("../../../tests/fixtures/transcode/subtitles_s1422.json")).unwrap();
+        let mut mkv = plan(false, 30_000);
+        mkv.matroska = true;
+        mkv.text_subtitle = Some(2);
+        let dir = std::path::Path::new("/tmp/x");
+        let args = ffmpeg_args(&mkv, Path::Software, &Hardware::software(), 0, dir).join(" ");
+        assert!(args.contains("-map 0:2 -c:s copy"), "{args}");
+        assert!(!args.contains("-sn"), "{args}");
+        assert!(args.contains("-f segment -segment_format matroska -segment_header_filename /tmp/x/init-0.m4s"), "{args}");
+        assert!(!args.contains("mpegts"), "{args}");
+        // A seek drops the copied subtitle's packets from before it, as the copied audio's.
+        let seek = ffmpeg_args(&mkv, Path::Software, &Hardware::software(), 5, dir).join(" ");
+        assert!(seek.contains("-ss 10 -i") && seek.contains("-ss 0 -dn"), "{seek}");
+        // The reference's playlist opens with the version and the header's map; the rest is
+        // the MPEG-TS one (its 5 s segments are its own choice, as rex's 2 s are).
+        let reference = recorded["sessions"]["android"]["index.m3u8"].as_str().unwrap();
+        let head = |text: &str| text.lines().take(3).collect::<Vec<_>>().join("\n");
+        assert_eq!(head(&mkv.media_playlist()), head(reference));
+        assert_eq!(mkv.container(), "mkv");
+        assert!(!plan(false, 30_000).media_playlist().contains("EXT-X-MAP"));
+    }
+
+    #[test]
+    fn an_uploaded_subtitle_is_copied_into_matroska_or_burned_on_the_titles_clock() {
+        let sidecar = Sidecar { id: "7".into(), format: "srt".into(), content: "1\n".into() };
+        let mut mkv = plan(false, 30_000);
+        mkv.matroska = true;
+        mkv.sidecar = Some(sidecar.clone());
+        let dir = std::path::Path::new("C:/rex/s");
+        let copied = ffmpeg_args(&mkv, Path::Software, &Hardware::software(), 5, dir).join(" ");
+        assert!(copied.contains("-ss 10 -i http://zurg/dav/movies/a.mkv -ss 10 -i C:/rex/s/sidecar.srt"), "{copied}");
+        assert!(copied.contains("-map 1:0 -c:s copy"), "{copied}");
+        assert!(!copied.contains("subtitles="), "{copied}");
+        let mut ts = plan(false, 30_000);
+        ts.sidecar = Some(sidecar);
+        let burned = ffmpeg_args(&ts, Path::Software, &Hardware::software(), 5, dir).join(" ");
+        assert!(burned.contains("-vf setpts=PTS+10/TB,subtitles=f='C\\:/rex/s/sidecar.srt',setpts=PTS-10/TB,scale="), "{burned}");
+        assert_eq!(burned.matches(" -i ").count(), 1, "{burned}");
+        assert!(burned.contains("-sn"), "{burned}");
+        let start = ffmpeg_args(&ts, Path::Software, &Hardware::software(), 0, dir).join(" ");
+        assert!(start.contains("-vf subtitles=f='C\\:/rex/s/sidecar.srt',scale="), "{start}");
+        // libass draws on CPU frames, so the device never decodes a burned plan.
+        let hardware = Hardware { accel: Accel::Vaapi("/dev/dri/renderD128".into()), decode: HashSet::from(["h264".to_string(), "hevc".to_string()]), encode: true, tonemapx: true, opencl_tonemap: false, bounded_http: false };
+        assert!(!ladder(&ts, &hardware).contains(&Path::Full));
+        assert!(ladder(&mkv, &hardware).contains(&Path::Full));
     }
 
     #[test]

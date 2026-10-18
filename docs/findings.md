@@ -13212,6 +13212,36 @@ FLAC mkv (`tests/fixtures/decisions/generic_transcode_target_s1422.json`):
   quality on either app was refused ("Playback Error" on the Pixel, `DECISION refused` in the log). Now
   the target joins the profile's `targets`, for the decision and for the conversion's plan.
 
+## Subtitles through a conversion (2026-10-18)
+
+A user: "if i transcode i lost the subtitles." rex carried only an embedded image subtitle (burned);
+every text one was dropped. Measured on a throwaway, unclaimed PMS 1.42.2.10156-f737b826c on zen with
+a 1080p h264/aac mkv carrying an embedded SRT, an embedded ASS and a sidecar `.fr.srt`, each selected in
+turn and converted (directPlay=0, subtitles=auto) in four clients' own shapes
+(`tests/fixtures/transcode/subtitles_s1422.json`):
+
+| Client (target) | Embedded SRT | Embedded ASS | Sidecar SRT |
+|---|---|---|---|
+| Plex for Android / iOS (Generic, `container=mkv`) | copy, `segments-av` | burn | copy, `segments-av` |
+| iOS profile (mpegts) | burn | burn | burn |
+| Plex Web 4.160 (mpegts) | `transcode` to ASS, `segments-subs` | burn | `segments-subs` |
+
+- **The apps' Matroska HLS:** media playlist `#EXT-X-VERSION:7` + `#EXT-X-MAP:URI="header"`; the
+  header is `application/octet-stream`, each `%05d.ts` a headerless cluster chunk served as
+  `video/MP2T`. A copied row adds `format`; a burned one `burn: "1"`; both `location: segments-av`
+  (rex wrote `segments-video` for a burn).
+- **rex now:** a target in `mkv` gets Matroska segments (FFmpeg's segment muxer with
+  `-segment_header_filename`); the selected embedded text subtitle it lists is copied in, ASS too (the
+  reference burns ASS; FFmpeg's `subtitles` filter reads the whole file before its first frame, a full
+  download of a remote release). A restart's header differs only in its random segment and track UIDs,
+  so the first one serves every run. A subtitle uploaded to rex is copied the same way, or burned
+  (libass, CPU decode) for an MPEG-TS client.
+- Not built: Plex Web's `segments-subs` (its subtitle chunks) and burning an embedded text subtitle
+  for MPEG-TS clients; both still drop it.
+- **Seek with a copied audio stream:** a converted run decodes from the keyframe before its seek and
+  trims to it, but a copied stream keeps every packet from that keyframe: with x265's ~10 s GOP the
+  copied AC3 of a restart at 26 s started 5.3 s early. An output `-ss 0` drops them (52212e66).
+
 ## Automatic collections (2026-10-17)
 
 A movie library's "Minimum automatic collection size" (`autoCollectionThreshold`, 0 Disabled, 1-4)

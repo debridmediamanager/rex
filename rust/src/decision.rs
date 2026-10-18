@@ -740,7 +740,8 @@ pub fn with_extra(profile: &Profile, extra: &str) -> Profile {
             "add-transcode-target" if pairs.get("type") == Some(&"videoProfile") => (
                 "targets",
                 serde_json::json!({"tag": "VideoProfile", "context": field("context"), "protocol": field("protocol"),
-                    "container": field("container"), "codec": field("videoCodec"), "audioCodec": field("audioCodec")}),
+                    "container": field("container"), "codec": field("videoCodec"), "audioCodec": field("audioCodec"),
+                    "subtitleCodec": field("subtitleCodec")}),
             ),
             "add-limitation" => (
                 "codecprofiles",

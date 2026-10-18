@@ -1,0 +1,3307 @@
+{
+ "_provenance": "Recorded 2026-10-18 on a throwaway, unclaimed Plex Media Server 1.42.2.10156-f737b826c (plexinc/pms-docker) on zen, over loopback with its .LocalAdminToken. Item 1 is a generated 30 s 1080p h264/aac mkv carrying an embedded SRT (stream 3, eng), an embedded ASS (stream 4, ger) and a sidecar `.fr.srt` (stream 5). For each subtitle, selected with PUT /library/parts/1?subtitleStreamID=, each client's conversion request was sent with directPlay=0 and subtitles=auto: `android` is Plex for Android (Mobile) 2026.19.1's own request from a Pixel 6, `ios-generic` Plex for iOS 2026.20.0's Generic profile with its own X-Plex-Client-Profile-Extra, `ios-profile` the iOS profile alone, `web` Plex Web 4.160's (scratch_copy_mkv.json). `rows` keep each decision and start answer; `sessions` the media playlist and the header and first segment's heads (bodies by length) of the SRT session for android and web.",
+ "item": {
+  "ratingKey": "1",
+  "key": "/library/metadata/1",
+  "guid": "local://1",
+  "type": "movie",
+  "title": "Subclip",
+  "librarySectionTitle": "Movies",
+  "librarySectionID": 1,
+  "librarySectionKey": "/library/sections/1",
+  "summary": "",
+  "year": 2024,
+  "thumb": "/library/metadata/1/thumb/1792353884",
+  "art": "/library/metadata/1/art/1792353884",
+  "duration": 30021,
+  "addedAt": 1792353766,
+  "updatedAt": 1792353884,
+  "Media": [
+   {
+    "id": 1,
+    "duration": 30021,
+    "bitrate": 13112,
+    "width": 1920,
+    "height": 1080,
+    "aspectRatio": 1.78,
+    "audioChannels": 2,
+    "audioCodec": "aac",
+    "videoCodec": "h264",
+    "videoResolution": "1080",
+    "container": "mkv",
+    "videoFrameRate": "24p",
+    "audioProfile": "lc",
+    "videoProfile": "constrained baseline",
+    "Part": [
+     {
+      "id": 1,
+      "key": "/library/parts/1/1792353766/file.mkv",
+      "duration": 30021,
+      "file": "/data/movies/Subclip (2024)/Subclip (2024).mkv",
+      "size": 49205301,
+      "audioProfile": "lc",
+      "container": "mkv",
+      "videoProfile": "constrained baseline",
+      "Stream": [
+       {
+        "id": 1,
+        "streamType": 1,
+        "default": true,
+        "codec": "h264",
+        "index": 0,
+        "bitrate": 13112,
+        "bitDepth": 8,
+        "chromaLocation": "left",
+        "chromaSubsampling": "4:2:0",
+        "codedHeight": 1088,
+        "codedWidth": 1920,
+        "frameRate": 24.0,
+        "hasScalingMatrix": false,
+        "height": 1080,
+        "level": 40,
+        "profile": "constrained baseline",
+        "refFrames": 1,
+        "scanType": "progressive",
+        "width": 1920,
+        "displayTitle": "1080p",
+        "extendedDisplayTitle": "1080p (H.264 Constrained Baseline)"
+       },
+       {
+        "id": 2,
+        "streamType": 2,
+        "selected": true,
+        "default": true,
+        "codec": "aac",
+        "index": 1,
+        "channels": 2,
+        "profile": "lc",
+        "samplingRate": 48000,
+        "displayTitle": "Unknown (AAC Stereo)",
+        "extendedDisplayTitle": "Unknown (AAC Stereo)"
+       },
+       {
+        "id": 3,
+        "streamType": 3,
+        "selected": true,
+        "default": true,
+        "codec": "srt",
+        "index": 2,
+        "language": "English",
+        "languageTag": "en",
+        "languageCode": "eng",
+        "displayTitle": "English",
+        "extendedDisplayTitle": "English (SRT)"
+       },
+       {
+        "id": 4,
+        "streamType": 3,
+        "codec": "ass",
+        "index": 3,
+        "language": "Deutsch",
+        "languageTag": "de",
+        "languageCode": "deu",
+        "displayTitle": "Deutsch",
+        "extendedDisplayTitle": "Deutsch (ASS)"
+       },
+       {
+        "id": 5,
+        "key": "/library/streams/5",
+        "streamType": 3,
+        "codec": "srt",
+        "language": "Fran\u00e7ais",
+        "languageTag": "fr",
+        "languageCode": "fra",
+        "format": "srt",
+        "displayTitle": "Fran\u00e7ais",
+        "extendedDisplayTitle": "Fran\u00e7ais (SRT External)"
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "Image": [
+   {
+    "alt": "Subclip",
+    "type": "coverPoster",
+    "url": "/library/metadata/1/thumb/1792353884"
+   },
+   {
+    "alt": "Subclip",
+    "type": "background",
+    "url": "/library/metadata/1/art/1792353884"
+   }
+  ]
+ },
+ "rows": [
+  {
+   "shape": "ios-generic",
+   "subtitle": "3",
+   "query": [
+    [
+     "path",
+     "/library/metadata/1"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "protocol",
+     "hls"
+    ],
+    [
+     "directPlay",
+     "0"
+    ],
+    [
+     "directStream",
+     "0"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "maxVideoBitrate",
+     "8000"
+    ],
+    [
+     "videoResolution",
+     "1920x1080"
+    ],
+    [
+     "videoQuality",
+     "100"
+    ],
+    [
+     "fastSeek",
+     "1"
+    ],
+    [
+     "subtitles",
+     "auto"
+    ],
+    [
+     "session",
+     "subs-ios-generic-3"
+    ],
+    [
+     "X-Plex-Session-Identifier",
+     "subs-ios-generic-3"
+    ],
+    [
+     "X-Plex-Client-Profile-Name",
+     "Generic"
+    ],
+    [
+     "X-Plex-Platform",
+     "iOS"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for iOS"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.20.0"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "rexsubs-ios-generic"
+    ],
+    [
+     "X-Plex-Client-Profile-Extra",
+     "add-transcode-target(type=videoProfile&context=all&protocol=hls&container=mkv&videoCodec=h264,png,apng,bmp,mjpeg,thp,gif,vp8,vp9,dirac,ffv1,ffvhuff,huffyuv,rawvideo,ayuv,r210,v210,v210x,v308,v408,v410,y41p,yuv4,ansi,h263,mpeg1video,mpeg2video,mpeg4,hevc,av1,vc1&audioCodec=ape,aac,aac_latm,alac,dca,vorbis,opus,pcm,pcm_alaw,pcm_mulaw,pcm_bluray,pcm_dvd,mp1,mp2,ac3,eac3,mp3&subtitleCodec=ass,dvb_subtitle,eia_608,jacosub,microdvd,mov_text,mpl2,pgs,pjs,realtext,sami,srt,ssa,stl,subviewer,subviewer1,text,vobsub,vplayer,xsub)+add-limitation(scope=videoAudioCodec&scopeName=eac3&type=upperBound&name=audio.channels&value=10)+add-limitation(scope=videoTranscodeTarget&scopeName=hevc&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.bitDepth&value=10)+add-limitation(scope=videoTranscodeTarget&scopeName=hevc&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.width&value=3840)+add-limitation(scope=videoTranscodeTarget&scopeName=hevc&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.height&value=2160)+add-limitation(scope=videoTranscodeTarget&scopeName=h264&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.width&value=3840)+add-limitation(scope=videoTranscodeTarget&scopeName=h264&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.height&value=2160)+add-limitation(scope=videoTranscodeTarget&scopeName=av1&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.width&value=3840)+add-limitation(scope=videoTranscodeTarget&scopeName=av1&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.height&value=2160)+add-transcode-target-settings(type=videoProfile&context=all&protocol=hls&CopyMatroskaAttachments=true)"
+    ]
+   ],
+   "decision_status": 200,
+   "decision": {
+    "size": 1,
+    "allowSync": "1",
+    "directPlayDecisionCode": 3000,
+    "directPlayDecisionText": "App cannot direct play this item. Direct play is disabled.",
+    "generalDecisionCode": 1001,
+    "generalDecisionText": "Direct play not available; Conversion OK.",
+    "identifier": "com.plexapp.plugins.library",
+    "librarySectionID": "1",
+    "librarySectionTitle": "Movies",
+    "librarySectionUUID": "<section-uuid>",
+    "mediaTagPrefix": "/system/bundle/media/flags/",
+    "mediaTagVersion": "1758205129",
+    "resourceSession": "subs-ios-generic-3",
+    "transcodeDecisionCode": 1001,
+    "transcodeDecisionText": "Direct play not available; Conversion OK.",
+    "Metadata": [
+     {
+      "addedAt": 1792353766,
+      "art": "/library/metadata/1/art/1792353884",
+      "duration": 30021,
+      "guid": "local://1",
+      "key": "/library/metadata/1",
+      "librarySectionID": "1",
+      "librarySectionKey": "/library/sections/1",
+      "librarySectionTitle": "Movies",
+      "ratingKey": "1",
+      "thumb": "/library/metadata/1/thumb/1792353884",
+      "title": "Subclip",
+      "type": "movie",
+      "updatedAt": 1792353884,
+      "year": 2024,
+      "Media": [
+       {
+        "audioProfile": "lc",
+        "id": "1",
+        "videoProfile": "constrained baseline",
+        "audioChannels": 2,
+        "audioCodec": "opus",
+        "bitrate": 7502,
+        "container": "mkv",
+        "duration": 30021,
+        "height": 1080,
+        "protocol": "hls",
+        "videoCodec": "png",
+        "videoFrameRate": "24p",
+        "videoResolution": "1080p",
+        "width": 1920,
+        "selected": true,
+        "Part": [
+         {
+          "audioProfile": "lc",
+          "id": "1",
+          "videoProfile": "constrained baseline",
+          "bitrate": 7502,
+          "container": "mkv",
+          "duration": 30021,
+          "height": 1080,
+          "protocol": "hls",
+          "width": 1920,
+          "decision": "transcode",
+          "selected": true,
+          "Stream": [
+           {
+            "bitDepth": 8,
+            "bitrate": 7393,
+            "codec": "png",
+            "default": true,
+            "displayTitle": "1080p",
+            "extendedDisplayTitle": "1080p (H.264 Constrained Baseline)",
+            "frameRate": 24.0,
+            "height": 1080,
+            "id": "1",
+            "streamType": 1,
+            "width": 1920,
+            "decision": "transcode",
+            "location": "segments-av"
+           },
+           {
+            "bitrate": 109,
+            "bitrateMode": "cbr",
+            "channels": 2,
+            "codec": "opus",
+            "default": true,
+            "displayTitle": "Unknown (AAC Stereo)",
+            "extendedDisplayTitle": "Unknown (AAC Stereo)",
+            "id": "2",
+            "selected": true,
+            "streamType": 2,
+            "decision": "transcode",
+            "location": "segments-av"
+           },
+           {
+            "codec": "srt",
+            "default": true,
+            "displayTitle": "English",
+            "extendedDisplayTitle": "English (SRT)",
+            "format": "srt",
+            "id": "3",
+            "language": "English",
+            "languageCode": "eng",
+            "languageTag": "en",
+            "selected": true,
+            "streamType": 3,
+            "decision": "copy",
+            "location": "segments-av"
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "start": {
+    "path": "start.m3u8",
+    "status": 200,
+    "body": "#EXTM3U\n#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=7502000,RESOLUTION=1920x1080,FRAME-RATE=24.000000\nsession/subs-ios-generic-3/base/index.m3u8\n"
+   },
+   "sub_streams": [
+    [
+     "3",
+     3,
+     "srt",
+     "copy",
+     "segments-av",
+     "srt",
+     null,
+     null
+    ]
+   ]
+  },
+  {
+   "shape": "ios-profile",
+   "subtitle": "3",
+   "query": [
+    [
+     "path",
+     "/library/metadata/1"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "protocol",
+     "hls"
+    ],
+    [
+     "directPlay",
+     "0"
+    ],
+    [
+     "directStream",
+     "0"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "maxVideoBitrate",
+     "8000"
+    ],
+    [
+     "videoResolution",
+     "1920x1080"
+    ],
+    [
+     "videoQuality",
+     "100"
+    ],
+    [
+     "fastSeek",
+     "1"
+    ],
+    [
+     "subtitles",
+     "auto"
+    ],
+    [
+     "session",
+     "subs-ios-profile-3"
+    ],
+    [
+     "X-Plex-Session-Identifier",
+     "subs-ios-profile-3"
+    ],
+    [
+     "X-Plex-Client-Profile-Name",
+     "iOS"
+    ],
+    [
+     "X-Plex-Platform",
+     "iOS"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for iOS"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.20.0"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "rexsubs-ios-profile"
+    ]
+   ],
+   "decision_status": 200,
+   "decision": {
+    "size": 1,
+    "allowSync": "1",
+    "directPlayDecisionCode": 3000,
+    "directPlayDecisionText": "App cannot direct play this item. Direct play is disabled.",
+    "generalDecisionCode": 1001,
+    "generalDecisionText": "Direct play not available; Conversion OK.",
+    "identifier": "com.plexapp.plugins.library",
+    "librarySectionID": "1",
+    "librarySectionTitle": "Movies",
+    "librarySectionUUID": "<section-uuid>",
+    "mediaTagPrefix": "/system/bundle/media/flags/",
+    "mediaTagVersion": "1758205129",
+    "resourceSession": "subs-ios-profile-3",
+    "transcodeDecisionCode": 1001,
+    "transcodeDecisionText": "Direct play not available; Conversion OK.",
+    "Metadata": [
+     {
+      "addedAt": 1792353766,
+      "art": "/library/metadata/1/art/1792353884",
+      "duration": 30021,
+      "guid": "local://1",
+      "key": "/library/metadata/1",
+      "librarySectionID": "1",
+      "librarySectionKey": "/library/sections/1",
+      "librarySectionTitle": "Movies",
+      "ratingKey": "1",
+      "thumb": "/library/metadata/1/thumb/1792353884",
+      "title": "Subclip",
+      "type": "movie",
+      "updatedAt": 1792353884,
+      "year": 2024,
+      "Media": [
+       {
+        "audioProfile": "lc",
+        "id": "1",
+        "videoProfile": "constrained baseline",
+        "audioChannels": 2,
+        "audioCodec": "mp3",
+        "bitrate": 7502,
+        "container": "mpegts",
+        "duration": 30021,
+        "height": 1080,
+        "protocol": "hls",
+        "videoCodec": "h264",
+        "videoFrameRate": "24p",
+        "videoResolution": "1080p",
+        "width": 1920,
+        "selected": true,
+        "Part": [
+         {
+          "audioProfile": "lc",
+          "id": "1",
+          "videoProfile": "constrained baseline",
+          "bitrate": 7502,
+          "container": "mpegts",
+          "duration": 30021,
+          "height": 1080,
+          "protocol": "hls",
+          "width": 1920,
+          "decision": "transcode",
+          "selected": true,
+          "Stream": [
+           {
+            "bitDepth": 8,
+            "bitrate": 7393,
+            "codec": "h264",
+            "default": true,
+            "displayTitle": "1080p",
+            "extendedDisplayTitle": "1080p (H.264 Constrained Baseline)",
+            "frameRate": 24.0,
+            "height": 1080,
+            "id": "1",
+            "streamType": 1,
+            "width": 1920,
+            "decision": "transcode",
+            "location": "segments-av"
+           },
+           {
+            "bitrate": 109,
+            "bitrateMode": "vbr",
+            "channels": 2,
+            "codec": "mp3",
+            "default": true,
+            "displayTitle": "Unknown (AAC Stereo)",
+            "extendedDisplayTitle": "Unknown (AAC Stereo)",
+            "id": "2",
+            "selected": true,
+            "streamType": 2,
+            "decision": "transcode",
+            "location": "segments-av"
+           },
+           {
+            "burn": "1",
+            "codec": "srt",
+            "default": true,
+            "displayTitle": "English",
+            "extendedDisplayTitle": "English (SRT)",
+            "id": "3",
+            "language": "English",
+            "languageCode": "eng",
+            "languageTag": "en",
+            "selected": true,
+            "streamType": 3,
+            "decision": "burn",
+            "location": "segments-av"
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "start": {
+    "path": "start.m3u8",
+    "status": 200,
+    "body": "#EXTM3U\n#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=7502000,RESOLUTION=1920x1080,FRAME-RATE=24.000000\nsession/subs-ios-profile-3/base/index.m3u8\n"
+   },
+   "sub_streams": [
+    [
+     "3",
+     3,
+     "srt",
+     "burn",
+     "segments-av",
+     null,
+     "1",
+     null
+    ]
+   ]
+  },
+  {
+   "shape": "android",
+   "subtitle": "3",
+   "query": [
+    [
+     "directPlay",
+     "0"
+    ],
+    [
+     "directStream",
+     "0"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "protocol",
+     "hls"
+    ],
+    [
+     "fastSeek",
+     "1"
+    ],
+    [
+     "path",
+     "/library/metadata/1"
+    ],
+    [
+     "session",
+     "subs-android-3"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "mediaBufferSize",
+     "50000"
+    ],
+    [
+     "hasMDE",
+     "1"
+    ],
+    [
+     "subtitleSize",
+     "0"
+    ],
+    [
+     "videoQuality",
+     "60"
+    ],
+    [
+     "videoResolution",
+     "1024x720"
+    ],
+    [
+     "audioBoost",
+     "100"
+    ],
+    [
+     "autoAdjustSubtitle",
+     "1"
+    ],
+    [
+     "boostDialog",
+     "0"
+    ],
+    [
+     "normalizeLoudness",
+     "0"
+    ],
+    [
+     "subtitles",
+     "auto"
+    ],
+    [
+     "maxVideoBitrate",
+     "2000"
+    ],
+    [
+     "location",
+     "wan"
+    ],
+    [
+     "X-Plex-Client-Profile-Extra",
+     "add-transcode-target(type=videoProfile&context=all&protocol=hls&container=mkv&videoCodec=h264,hevc,vp8,vp9&audioCodec=aac,pcm,mp3,ac3,dca,eac3&subtitleCodec=ass,ssa,pgs,srt,smi,dvd_subtitle,mov_text,eia_608,eia_708,vobsub,vtt,webvtt,text,ttxt,tx3g)+add-limitation(scope=videoTranscodeTarget&scopeName=h264&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.width&value=3840)+add-limitation(scope=videoTranscodeTarget&scopeName=h264&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.height&value=3840)+add-limitation(scope=videoTranscodeTarget&scopeName=hevc&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.bitDepth&value=10)+add-limitation(scope=videoTranscodeTarget&scopeName=hevc&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.width&value=3840)+add-limitation(scope=videoTranscodeTarget&scopeName=hevc&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.height&value=3840)+add-transcode-target-codec(scope=videoTranscodeTarget&scopeName=mp3&scopeType=audioCodec&context=all&protocol=http)+add-transcode-target-codec(scope=videoTranscodeTarget&scopeName=ac3&scopeType=audioCodec&context=all&protocol=http)+add-transcode-target-codec(scope=videoTranscodeTarget&scopeName=eac3&scopeType=audioCodec&context=all&protocol=http)+add-transcode-target-codec(scope=videoTranscodeTarget&scopeName=dca&scopeType=audioCodec&context=all&protocol=http)+add-transcode-target-codec(scope=videoTranscodeTarget&scopeName=opus&scopeType=audioCodec&context=all&protocol=http)"
+    ],
+    [
+     "X-Plex-Client-Profile-Name",
+     "Generic"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "16"
+    ],
+    [
+     "X-Plex-Model",
+     "oriole"
+    ],
+    [
+     "X-Plex-Device",
+     "Pixel 6"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "Pixel 6"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Google"
+    ],
+    [
+     "X-Plex-Device-Screen-Resolution",
+     "1080x2400"
+    ],
+    [
+     "X-Plex-Device-Screen-Density",
+     "2.625"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Language",
+     "en"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media"
+    ],
+    [
+     "X-Plex-Provider-Version",
+     "7.6.0"
+    ],
+    [
+     "X-Plex-DRM",
+     "widevine:video"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "rexsubs-android"
+    ],
+    [
+     "X-Plex-Advertising-Identifier",
+     "<ad-id>"
+    ],
+    [
+     "X-Plex-Session-Id",
+     "<session-id>"
+    ]
+   ],
+   "decision_status": 200,
+   "decision": {
+    "size": 1,
+    "allowSync": "1",
+    "directPlayDecisionCode": 3000,
+    "directPlayDecisionText": "App cannot direct play this item. Direct play is disabled.",
+    "generalDecisionCode": 1001,
+    "generalDecisionText": "Direct play not available; Conversion OK.",
+    "identifier": "com.plexapp.plugins.library",
+    "librarySectionID": "1",
+    "librarySectionTitle": "Movies",
+    "librarySectionUUID": "<section-uuid>",
+    "mediaTagPrefix": "/system/bundle/media/flags/",
+    "mediaTagVersion": "1758205129",
+    "resourceSession": "rexsubs-android",
+    "transcodeDecisionCode": 1001,
+    "transcodeDecisionText": "Direct play not available; Conversion OK.",
+    "Metadata": [
+     {
+      "addedAt": 1792353766,
+      "art": "/library/metadata/1/art/1792353884",
+      "duration": 30021,
+      "guid": "local://1",
+      "key": "/library/metadata/1",
+      "librarySectionID": "1",
+      "librarySectionKey": "/library/sections/1",
+      "librarySectionTitle": "Movies",
+      "ratingKey": "1",
+      "thumb": "/library/metadata/1/thumb/1792353884",
+      "title": "Subclip",
+      "type": "movie",
+      "updatedAt": 1792353884,
+      "year": 2024,
+      "Media": [
+       {
+        "audioProfile": "lc",
+        "id": "1",
+        "videoProfile": "constrained baseline",
+        "audioChannels": 2,
+        "audioCodec": "mp3",
+        "bitrate": 1865,
+        "container": "mkv",
+        "duration": 30021,
+        "height": 576,
+        "protocol": "hls",
+        "videoCodec": "h264",
+        "videoFrameRate": "24p",
+        "videoResolution": "480p",
+        "width": 1024,
+        "selected": true,
+        "Part": [
+         {
+          "audioProfile": "lc",
+          "id": "1",
+          "videoProfile": "constrained baseline",
+          "bitrate": 1865,
+          "container": "mkv",
+          "duration": 30021,
+          "height": 576,
+          "protocol": "hls",
+          "width": 1024,
+          "decision": "transcode",
+          "selected": true,
+          "Stream": [
+           {
+            "bitDepth": 8,
+            "bitrate": 1769,
+            "codec": "h264",
+            "default": true,
+            "displayTitle": "1080p",
+            "extendedDisplayTitle": "1080p (H.264 Constrained Baseline)",
+            "frameRate": 24.0,
+            "height": 576,
+            "id": "1",
+            "streamType": 1,
+            "width": 1024,
+            "decision": "transcode",
+            "location": "segments-av"
+           },
+           {
+            "bitrate": 96,
+            "bitrateMode": "vbr",
+            "channels": 2,
+            "codec": "mp3",
+            "default": true,
+            "displayTitle": "Unknown (AAC Stereo)",
+            "extendedDisplayTitle": "Unknown (AAC Stereo)",
+            "id": "2",
+            "selected": true,
+            "streamType": 2,
+            "decision": "transcode",
+            "location": "segments-av"
+           },
+           {
+            "codec": "srt",
+            "default": true,
+            "displayTitle": "English",
+            "extendedDisplayTitle": "English (SRT)",
+            "format": "srt",
+            "id": "3",
+            "language": "English",
+            "languageCode": "eng",
+            "languageTag": "en",
+            "selected": true,
+            "streamType": 3,
+            "decision": "copy",
+            "location": "segments-av"
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "start": {
+    "path": "start.m3u8",
+    "status": 200,
+    "body": "#EXTM3U\n#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=1865000,RESOLUTION=1024x576,FRAME-RATE=24.000000\nsession/subs-android-3/base/index.m3u8\n"
+   },
+   "sub_streams": [
+    [
+     "3",
+     3,
+     "srt",
+     "copy",
+     "segments-av",
+     "srt",
+     null,
+     null
+    ]
+   ]
+  },
+  {
+   "shape": "web",
+   "subtitle": "3",
+   "query": [
+    [
+     "hasMDE",
+     "1"
+    ],
+    [
+     "path",
+     "/library/metadata/1"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "protocol",
+     "hls"
+    ],
+    [
+     "fastSeek",
+     "1"
+    ],
+    [
+     "directPlay",
+     "0"
+    ],
+    [
+     "directStream",
+     "1"
+    ],
+    [
+     "subtitleSize",
+     "100"
+    ],
+    [
+     "audioBoost",
+     "100"
+    ],
+    [
+     "location",
+     "lan"
+    ],
+    [
+     "addDebugOverlay",
+     "0"
+    ],
+    [
+     "autoAdjustQuality",
+     "0"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "autoAdjustSubtitle",
+     "1"
+    ],
+    [
+     "mediaBufferSize",
+     "102400"
+    ],
+    [
+     "session",
+     "subs-web-3"
+    ],
+    [
+     "subtitles",
+     "auto"
+    ],
+    [
+     "Accept-Language",
+     "en"
+    ],
+    [
+     "X-Plex-Session-Identifier",
+     "subs-web-3"
+    ],
+    [
+     "X-Plex-Client-Profile-Extra",
+     "append-transcode-target-codec(type=videoProfile&context=streaming&videoCodec=h264&audioCodec=aac&protocol=hls)"
+    ],
+    [
+     "X-Plex-Incomplete-Segments",
+     "1"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Web"
+    ],
+    [
+     "X-Plex-Version",
+     "4.160.0"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "rexsubs-web"
+    ],
+    [
+     "X-Plex-Platform",
+     "Chrome"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "151.0"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ],
+    [
+     "X-Plex-Model",
+     "standalone"
+    ],
+    [
+     "X-Plex-Device",
+     "Linux"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "Chrome"
+    ],
+    [
+     "X-Plex-Device-Screen-Resolution",
+     "1280x596,1280x720"
+    ],
+    [
+     "X-Plex-Language",
+     "en"
+    ],
+    [
+     "X-Plex-Session-Id",
+     "cb22220f-1e9f-4a50-8c54-1fd96224c096"
+    ],
+    [
+     "X-Plex-Playback-Session-Id",
+     "8a6deb6f-b9c0-4e42-81eb-6ae0bc1fb5d5"
+    ],
+    [
+     "X-Plex-Playback-Id",
+     "4698bde6-cc4c-44b9-83d7-a52a4cad98e5"
+    ]
+   ],
+   "decision_status": 200,
+   "decision": {
+    "size": 1,
+    "allowSync": "1",
+    "directPlayDecisionCode": 3000,
+    "directPlayDecisionText": "App cannot direct play this item. Direct play is disabled.",
+    "generalDecisionCode": 1001,
+    "generalDecisionText": "Direct play not available; Conversion OK.",
+    "identifier": "com.plexapp.plugins.library",
+    "librarySectionID": "1",
+    "librarySectionTitle": "Movies",
+    "librarySectionUUID": "<section-uuid>",
+    "mediaTagPrefix": "/system/bundle/media/flags/",
+    "mediaTagVersion": "1758205129",
+    "resourceSession": "subs-web-3",
+    "transcodeDecisionCode": 1001,
+    "transcodeDecisionText": "Direct play not available; Conversion OK.",
+    "Metadata": [
+     {
+      "addedAt": 1792353766,
+      "art": "/library/metadata/1/art/1792353884",
+      "duration": 30021,
+      "guid": "local://1",
+      "key": "/library/metadata/1",
+      "librarySectionID": "1",
+      "librarySectionKey": "/library/sections/1",
+      "librarySectionTitle": "Movies",
+      "ratingKey": "1",
+      "thumb": "/library/metadata/1/thumb/1792353884",
+      "title": "Subclip",
+      "type": "movie",
+      "updatedAt": 1792353884,
+      "year": 2024,
+      "Media": [
+       {
+        "audioProfile": "lc",
+        "id": "1",
+        "videoProfile": "constrained baseline",
+        "audioChannels": 2,
+        "audioCodec": "aac",
+        "bitrate": 13112,
+        "container": "mpegts",
+        "duration": 30021,
+        "height": 1080,
+        "protocol": "hls",
+        "videoCodec": "h264",
+        "videoFrameRate": "24p",
+        "videoResolution": "1080p",
+        "width": 1920,
+        "selected": true,
+        "Part": [
+         {
+          "audioProfile": "lc",
+          "id": "1",
+          "videoProfile": "constrained baseline",
+          "bitrate": 13112,
+          "container": "mpegts",
+          "duration": 30021,
+          "height": 1080,
+          "protocol": "hls",
+          "width": 1920,
+          "decision": "transcode",
+          "selected": true,
+          "Stream": [
+           {
+            "bitDepth": 8,
+            "bitrate": 13112,
+            "chromaLocation": "left",
+            "chromaSubsampling": "4:2:0",
+            "codec": "h264",
+            "codedHeight": 1088,
+            "codedWidth": 1920,
+            "default": true,
+            "displayTitle": "1080p",
+            "extendedDisplayTitle": "1080p (H.264 Constrained Baseline)",
+            "frameRate": 24.0,
+            "hasScalingMatrix": false,
+            "height": 1080,
+            "id": "1",
+            "level": 40,
+            "profile": "constrained baseline",
+            "refFrames": 1,
+            "scanType": "progressive",
+            "streamType": 1,
+            "width": 1920,
+            "decision": "copy",
+            "location": "segments-av"
+           },
+           {
+            "bitrateMode": "cbr",
+            "channels": 2,
+            "codec": "aac",
+            "default": true,
+            "displayTitle": "Unknown (AAC Stereo)",
+            "extendedDisplayTitle": "Unknown (AAC Stereo)",
+            "id": "2",
+            "profile": "lc",
+            "samplingRate": 48000,
+            "selected": true,
+            "streamType": 2,
+            "decision": "copy",
+            "location": "segments-av"
+           },
+           {
+            "codec": "ass",
+            "container": "ass",
+            "default": true,
+            "displayTitle": "English",
+            "extendedDisplayTitle": "English (SRT)",
+            "format": "ass",
+            "id": "3",
+            "language": "English",
+            "languageCode": "eng",
+            "languageTag": "en",
+            "selected": true,
+            "streamType": 3,
+            "decision": "transcode",
+            "location": "segments-subs"
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "start": {
+    "path": "start.m3u8",
+    "status": 200,
+    "body": "#EXTM3U\n#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=13368000,RESOLUTION=1920x1080,FRAME-RATE=24.000000\nsession/subs-web-3/base/index.m3u8?X-Plex-Incomplete-Segments=1\n"
+   },
+   "sub_streams": [
+    [
+     "3",
+     3,
+     "ass",
+     "transcode",
+     "segments-subs",
+     "ass",
+     null,
+     null
+    ]
+   ]
+  },
+  {
+   "shape": "ios-generic",
+   "subtitle": "4",
+   "query": [
+    [
+     "path",
+     "/library/metadata/1"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "protocol",
+     "hls"
+    ],
+    [
+     "directPlay",
+     "0"
+    ],
+    [
+     "directStream",
+     "0"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "maxVideoBitrate",
+     "8000"
+    ],
+    [
+     "videoResolution",
+     "1920x1080"
+    ],
+    [
+     "videoQuality",
+     "100"
+    ],
+    [
+     "fastSeek",
+     "1"
+    ],
+    [
+     "subtitles",
+     "auto"
+    ],
+    [
+     "session",
+     "subs-ios-generic-4"
+    ],
+    [
+     "X-Plex-Session-Identifier",
+     "subs-ios-generic-4"
+    ],
+    [
+     "X-Plex-Client-Profile-Name",
+     "Generic"
+    ],
+    [
+     "X-Plex-Platform",
+     "iOS"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for iOS"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.20.0"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "rexsubs-ios-generic"
+    ],
+    [
+     "X-Plex-Client-Profile-Extra",
+     "add-transcode-target(type=videoProfile&context=all&protocol=hls&container=mkv&videoCodec=h264,png,apng,bmp,mjpeg,thp,gif,vp8,vp9,dirac,ffv1,ffvhuff,huffyuv,rawvideo,ayuv,r210,v210,v210x,v308,v408,v410,y41p,yuv4,ansi,h263,mpeg1video,mpeg2video,mpeg4,hevc,av1,vc1&audioCodec=ape,aac,aac_latm,alac,dca,vorbis,opus,pcm,pcm_alaw,pcm_mulaw,pcm_bluray,pcm_dvd,mp1,mp2,ac3,eac3,mp3&subtitleCodec=ass,dvb_subtitle,eia_608,jacosub,microdvd,mov_text,mpl2,pgs,pjs,realtext,sami,srt,ssa,stl,subviewer,subviewer1,text,vobsub,vplayer,xsub)+add-limitation(scope=videoAudioCodec&scopeName=eac3&type=upperBound&name=audio.channels&value=10)+add-limitation(scope=videoTranscodeTarget&scopeName=hevc&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.bitDepth&value=10)+add-limitation(scope=videoTranscodeTarget&scopeName=hevc&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.width&value=3840)+add-limitation(scope=videoTranscodeTarget&scopeName=hevc&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.height&value=2160)+add-limitation(scope=videoTranscodeTarget&scopeName=h264&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.width&value=3840)+add-limitation(scope=videoTranscodeTarget&scopeName=h264&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.height&value=2160)+add-limitation(scope=videoTranscodeTarget&scopeName=av1&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.width&value=3840)+add-limitation(scope=videoTranscodeTarget&scopeName=av1&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.height&value=2160)+add-transcode-target-settings(type=videoProfile&context=all&protocol=hls&CopyMatroskaAttachments=true)"
+    ]
+   ],
+   "decision_status": 200,
+   "decision": {
+    "size": 1,
+    "allowSync": "1",
+    "directPlayDecisionCode": 3000,
+    "directPlayDecisionText": "App cannot direct play this item. Direct play is disabled.",
+    "generalDecisionCode": 1001,
+    "generalDecisionText": "Direct play not available; Conversion OK.",
+    "identifier": "com.plexapp.plugins.library",
+    "librarySectionID": "1",
+    "librarySectionTitle": "Movies",
+    "librarySectionUUID": "<section-uuid>",
+    "mediaTagPrefix": "/system/bundle/media/flags/",
+    "mediaTagVersion": "1758205129",
+    "resourceSession": "subs-ios-generic-4",
+    "transcodeDecisionCode": 1001,
+    "transcodeDecisionText": "Direct play not available; Conversion OK.",
+    "Metadata": [
+     {
+      "addedAt": 1792353766,
+      "art": "/library/metadata/1/art/1792353884",
+      "duration": 30021,
+      "guid": "local://1",
+      "key": "/library/metadata/1",
+      "librarySectionID": "1",
+      "librarySectionKey": "/library/sections/1",
+      "librarySectionTitle": "Movies",
+      "ratingKey": "1",
+      "thumb": "/library/metadata/1/thumb/1792353884",
+      "title": "Subclip",
+      "type": "movie",
+      "updatedAt": 1792353884,
+      "year": 2024,
+      "Media": [
+       {
+        "audioProfile": "lc",
+        "id": "1",
+        "videoProfile": "constrained baseline",
+        "audioChannels": 2,
+        "audioCodec": "opus",
+        "bitrate": 7502,
+        "container": "mkv",
+        "duration": 30021,
+        "height": 1080,
+        "protocol": "hls",
+        "videoCodec": "png",
+        "videoFrameRate": "24p",
+        "videoResolution": "1080p",
+        "width": 1920,
+        "selected": true,
+        "Part": [
+         {
+          "audioProfile": "lc",
+          "id": "1",
+          "videoProfile": "constrained baseline",
+          "bitrate": 7502,
+          "container": "mkv",
+          "duration": 30021,
+          "height": 1080,
+          "protocol": "hls",
+          "width": 1920,
+          "decision": "transcode",
+          "selected": true,
+          "Stream": [
+           {
+            "bitDepth": 8,
+            "bitrate": 7393,
+            "codec": "png",
+            "default": true,
+            "displayTitle": "1080p",
+            "extendedDisplayTitle": "1080p (H.264 Constrained Baseline)",
+            "frameRate": 24.0,
+            "height": 1080,
+            "id": "1",
+            "streamType": 1,
+            "width": 1920,
+            "decision": "transcode",
+            "location": "segments-av"
+           },
+           {
+            "bitrate": 109,
+            "bitrateMode": "cbr",
+            "channels": 2,
+            "codec": "opus",
+            "default": true,
+            "displayTitle": "Unknown (AAC Stereo)",
+            "extendedDisplayTitle": "Unknown (AAC Stereo)",
+            "id": "2",
+            "selected": true,
+            "streamType": 2,
+            "decision": "transcode",
+            "location": "segments-av"
+           },
+           {
+            "burn": "1",
+            "codec": "ass",
+            "displayTitle": "Deutsch",
+            "extendedDisplayTitle": "Deutsch (ASS)",
+            "id": "4",
+            "language": "Deutsch",
+            "languageCode": "deu",
+            "languageTag": "de",
+            "selected": true,
+            "streamType": 3,
+            "decision": "burn",
+            "location": "segments-av"
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "start": {
+    "path": "start.m3u8",
+    "status": 200,
+    "body": "#EXTM3U\n#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=7502000,RESOLUTION=1920x1080,FRAME-RATE=24.000000\nsession/subs-ios-generic-4/base/index.m3u8\n"
+   },
+   "sub_streams": [
+    [
+     "4",
+     3,
+     "ass",
+     "burn",
+     "segments-av",
+     null,
+     "1",
+     null
+    ]
+   ]
+  },
+  {
+   "shape": "ios-profile",
+   "subtitle": "4",
+   "query": [
+    [
+     "path",
+     "/library/metadata/1"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "protocol",
+     "hls"
+    ],
+    [
+     "directPlay",
+     "0"
+    ],
+    [
+     "directStream",
+     "0"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "maxVideoBitrate",
+     "8000"
+    ],
+    [
+     "videoResolution",
+     "1920x1080"
+    ],
+    [
+     "videoQuality",
+     "100"
+    ],
+    [
+     "fastSeek",
+     "1"
+    ],
+    [
+     "subtitles",
+     "auto"
+    ],
+    [
+     "session",
+     "subs-ios-profile-4"
+    ],
+    [
+     "X-Plex-Session-Identifier",
+     "subs-ios-profile-4"
+    ],
+    [
+     "X-Plex-Client-Profile-Name",
+     "iOS"
+    ],
+    [
+     "X-Plex-Platform",
+     "iOS"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for iOS"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.20.0"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "rexsubs-ios-profile"
+    ]
+   ],
+   "decision_status": 200,
+   "decision": {
+    "size": 1,
+    "allowSync": "1",
+    "directPlayDecisionCode": 3000,
+    "directPlayDecisionText": "App cannot direct play this item. Direct play is disabled.",
+    "generalDecisionCode": 1001,
+    "generalDecisionText": "Direct play not available; Conversion OK.",
+    "identifier": "com.plexapp.plugins.library",
+    "librarySectionID": "1",
+    "librarySectionTitle": "Movies",
+    "librarySectionUUID": "<section-uuid>",
+    "mediaTagPrefix": "/system/bundle/media/flags/",
+    "mediaTagVersion": "1758205129",
+    "resourceSession": "subs-ios-profile-4",
+    "transcodeDecisionCode": 1001,
+    "transcodeDecisionText": "Direct play not available; Conversion OK.",
+    "Metadata": [
+     {
+      "addedAt": 1792353766,
+      "art": "/library/metadata/1/art/1792353884",
+      "duration": 30021,
+      "guid": "local://1",
+      "key": "/library/metadata/1",
+      "librarySectionID": "1",
+      "librarySectionKey": "/library/sections/1",
+      "librarySectionTitle": "Movies",
+      "ratingKey": "1",
+      "thumb": "/library/metadata/1/thumb/1792353884",
+      "title": "Subclip",
+      "type": "movie",
+      "updatedAt": 1792353884,
+      "year": 2024,
+      "Media": [
+       {
+        "audioProfile": "lc",
+        "id": "1",
+        "videoProfile": "constrained baseline",
+        "audioChannels": 2,
+        "audioCodec": "mp3",
+        "bitrate": 7502,
+        "container": "mpegts",
+        "duration": 30021,
+        "height": 1080,
+        "protocol": "hls",
+        "videoCodec": "h264",
+        "videoFrameRate": "24p",
+        "videoResolution": "1080p",
+        "width": 1920,
+        "selected": true,
+        "Part": [
+         {
+          "audioProfile": "lc",
+          "id": "1",
+          "videoProfile": "constrained baseline",
+          "bitrate": 7502,
+          "container": "mpegts",
+          "duration": 30021,
+          "height": 1080,
+          "protocol": "hls",
+          "width": 1920,
+          "decision": "transcode",
+          "selected": true,
+          "Stream": [
+           {
+            "bitDepth": 8,
+            "bitrate": 7393,
+            "codec": "h264",
+            "default": true,
+            "displayTitle": "1080p",
+            "extendedDisplayTitle": "1080p (H.264 Constrained Baseline)",
+            "frameRate": 24.0,
+            "height": 1080,
+            "id": "1",
+            "streamType": 1,
+            "width": 1920,
+            "decision": "transcode",
+            "location": "segments-av"
+           },
+           {
+            "bitrate": 109,
+            "bitrateMode": "vbr",
+            "channels": 2,
+            "codec": "mp3",
+            "default": true,
+            "displayTitle": "Unknown (AAC Stereo)",
+            "extendedDisplayTitle": "Unknown (AAC Stereo)",
+            "id": "2",
+            "selected": true,
+            "streamType": 2,
+            "decision": "transcode",
+            "location": "segments-av"
+           },
+           {
+            "burn": "1",
+            "codec": "ass",
+            "displayTitle": "Deutsch",
+            "extendedDisplayTitle": "Deutsch (ASS)",
+            "id": "4",
+            "language": "Deutsch",
+            "languageCode": "deu",
+            "languageTag": "de",
+            "selected": true,
+            "streamType": 3,
+            "decision": "burn",
+            "location": "segments-av"
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "start": {
+    "path": "start.m3u8",
+    "status": 200,
+    "body": "#EXTM3U\n#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=7502000,RESOLUTION=1920x1080,FRAME-RATE=24.000000\nsession/subs-ios-profile-4/base/index.m3u8\n"
+   },
+   "sub_streams": [
+    [
+     "4",
+     3,
+     "ass",
+     "burn",
+     "segments-av",
+     null,
+     "1",
+     null
+    ]
+   ]
+  },
+  {
+   "shape": "android",
+   "subtitle": "4",
+   "query": [
+    [
+     "directPlay",
+     "0"
+    ],
+    [
+     "directStream",
+     "0"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "protocol",
+     "hls"
+    ],
+    [
+     "fastSeek",
+     "1"
+    ],
+    [
+     "path",
+     "/library/metadata/1"
+    ],
+    [
+     "session",
+     "subs-android-4"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "mediaBufferSize",
+     "50000"
+    ],
+    [
+     "hasMDE",
+     "1"
+    ],
+    [
+     "subtitleSize",
+     "0"
+    ],
+    [
+     "videoQuality",
+     "60"
+    ],
+    [
+     "videoResolution",
+     "1024x720"
+    ],
+    [
+     "audioBoost",
+     "100"
+    ],
+    [
+     "autoAdjustSubtitle",
+     "1"
+    ],
+    [
+     "boostDialog",
+     "0"
+    ],
+    [
+     "normalizeLoudness",
+     "0"
+    ],
+    [
+     "subtitles",
+     "auto"
+    ],
+    [
+     "maxVideoBitrate",
+     "2000"
+    ],
+    [
+     "location",
+     "wan"
+    ],
+    [
+     "X-Plex-Client-Profile-Extra",
+     "add-transcode-target(type=videoProfile&context=all&protocol=hls&container=mkv&videoCodec=h264,hevc,vp8,vp9&audioCodec=aac,pcm,mp3,ac3,dca,eac3&subtitleCodec=ass,ssa,pgs,srt,smi,dvd_subtitle,mov_text,eia_608,eia_708,vobsub,vtt,webvtt,text,ttxt,tx3g)+add-limitation(scope=videoTranscodeTarget&scopeName=h264&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.width&value=3840)+add-limitation(scope=videoTranscodeTarget&scopeName=h264&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.height&value=3840)+add-limitation(scope=videoTranscodeTarget&scopeName=hevc&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.bitDepth&value=10)+add-limitation(scope=videoTranscodeTarget&scopeName=hevc&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.width&value=3840)+add-limitation(scope=videoTranscodeTarget&scopeName=hevc&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.height&value=3840)+add-transcode-target-codec(scope=videoTranscodeTarget&scopeName=mp3&scopeType=audioCodec&context=all&protocol=http)+add-transcode-target-codec(scope=videoTranscodeTarget&scopeName=ac3&scopeType=audioCodec&context=all&protocol=http)+add-transcode-target-codec(scope=videoTranscodeTarget&scopeName=eac3&scopeType=audioCodec&context=all&protocol=http)+add-transcode-target-codec(scope=videoTranscodeTarget&scopeName=dca&scopeType=audioCodec&context=all&protocol=http)+add-transcode-target-codec(scope=videoTranscodeTarget&scopeName=opus&scopeType=audioCodec&context=all&protocol=http)"
+    ],
+    [
+     "X-Plex-Client-Profile-Name",
+     "Generic"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "16"
+    ],
+    [
+     "X-Plex-Model",
+     "oriole"
+    ],
+    [
+     "X-Plex-Device",
+     "Pixel 6"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "Pixel 6"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Google"
+    ],
+    [
+     "X-Plex-Device-Screen-Resolution",
+     "1080x2400"
+    ],
+    [
+     "X-Plex-Device-Screen-Density",
+     "2.625"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Language",
+     "en"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media"
+    ],
+    [
+     "X-Plex-Provider-Version",
+     "7.6.0"
+    ],
+    [
+     "X-Plex-DRM",
+     "widevine:video"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "rexsubs-android"
+    ],
+    [
+     "X-Plex-Advertising-Identifier",
+     "<ad-id>"
+    ],
+    [
+     "X-Plex-Session-Id",
+     "<session-id>"
+    ]
+   ],
+   "decision_status": 200,
+   "decision": {
+    "size": 1,
+    "allowSync": "1",
+    "directPlayDecisionCode": 3000,
+    "directPlayDecisionText": "App cannot direct play this item. Direct play is disabled.",
+    "generalDecisionCode": 1001,
+    "generalDecisionText": "Direct play not available; Conversion OK.",
+    "identifier": "com.plexapp.plugins.library",
+    "librarySectionID": "1",
+    "librarySectionTitle": "Movies",
+    "librarySectionUUID": "<section-uuid>",
+    "mediaTagPrefix": "/system/bundle/media/flags/",
+    "mediaTagVersion": "1758205129",
+    "resourceSession": "rexsubs-android",
+    "transcodeDecisionCode": 1001,
+    "transcodeDecisionText": "Direct play not available; Conversion OK.",
+    "Metadata": [
+     {
+      "addedAt": 1792353766,
+      "art": "/library/metadata/1/art/1792353884",
+      "duration": 30021,
+      "guid": "local://1",
+      "key": "/library/metadata/1",
+      "librarySectionID": "1",
+      "librarySectionKey": "/library/sections/1",
+      "librarySectionTitle": "Movies",
+      "ratingKey": "1",
+      "thumb": "/library/metadata/1/thumb/1792353884",
+      "title": "Subclip",
+      "type": "movie",
+      "updatedAt": 1792353884,
+      "year": 2024,
+      "Media": [
+       {
+        "audioProfile": "lc",
+        "id": "1",
+        "videoProfile": "constrained baseline",
+        "audioChannels": 2,
+        "audioCodec": "mp3",
+        "bitrate": 1865,
+        "container": "mkv",
+        "duration": 30021,
+        "height": 576,
+        "protocol": "hls",
+        "videoCodec": "h264",
+        "videoFrameRate": "24p",
+        "videoResolution": "480p",
+        "width": 1024,
+        "selected": true,
+        "Part": [
+         {
+          "audioProfile": "lc",
+          "id": "1",
+          "videoProfile": "constrained baseline",
+          "bitrate": 1865,
+          "container": "mkv",
+          "duration": 30021,
+          "height": 576,
+          "protocol": "hls",
+          "width": 1024,
+          "decision": "transcode",
+          "selected": true,
+          "Stream": [
+           {
+            "bitDepth": 8,
+            "bitrate": 1769,
+            "codec": "h264",
+            "default": true,
+            "displayTitle": "1080p",
+            "extendedDisplayTitle": "1080p (H.264 Constrained Baseline)",
+            "frameRate": 24.0,
+            "height": 576,
+            "id": "1",
+            "streamType": 1,
+            "width": 1024,
+            "decision": "transcode",
+            "location": "segments-av"
+           },
+           {
+            "bitrate": 96,
+            "bitrateMode": "vbr",
+            "channels": 2,
+            "codec": "mp3",
+            "default": true,
+            "displayTitle": "Unknown (AAC Stereo)",
+            "extendedDisplayTitle": "Unknown (AAC Stereo)",
+            "id": "2",
+            "selected": true,
+            "streamType": 2,
+            "decision": "transcode",
+            "location": "segments-av"
+           },
+           {
+            "burn": "1",
+            "codec": "ass",
+            "displayTitle": "Deutsch",
+            "extendedDisplayTitle": "Deutsch (ASS)",
+            "id": "4",
+            "language": "Deutsch",
+            "languageCode": "deu",
+            "languageTag": "de",
+            "selected": true,
+            "streamType": 3,
+            "decision": "burn",
+            "location": "segments-av"
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "start": {
+    "path": "start.m3u8",
+    "status": 200,
+    "body": "#EXTM3U\n#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=1865000,RESOLUTION=1024x576,FRAME-RATE=24.000000\nsession/subs-android-4/base/index.m3u8\n"
+   },
+   "sub_streams": [
+    [
+     "4",
+     3,
+     "ass",
+     "burn",
+     "segments-av",
+     null,
+     "1",
+     null
+    ]
+   ]
+  },
+  {
+   "shape": "web",
+   "subtitle": "4",
+   "query": [
+    [
+     "hasMDE",
+     "1"
+    ],
+    [
+     "path",
+     "/library/metadata/1"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "protocol",
+     "hls"
+    ],
+    [
+     "fastSeek",
+     "1"
+    ],
+    [
+     "directPlay",
+     "0"
+    ],
+    [
+     "directStream",
+     "1"
+    ],
+    [
+     "subtitleSize",
+     "100"
+    ],
+    [
+     "audioBoost",
+     "100"
+    ],
+    [
+     "location",
+     "lan"
+    ],
+    [
+     "addDebugOverlay",
+     "0"
+    ],
+    [
+     "autoAdjustQuality",
+     "0"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "autoAdjustSubtitle",
+     "1"
+    ],
+    [
+     "mediaBufferSize",
+     "102400"
+    ],
+    [
+     "session",
+     "subs-web-4"
+    ],
+    [
+     "subtitles",
+     "auto"
+    ],
+    [
+     "Accept-Language",
+     "en"
+    ],
+    [
+     "X-Plex-Session-Identifier",
+     "subs-web-4"
+    ],
+    [
+     "X-Plex-Client-Profile-Extra",
+     "append-transcode-target-codec(type=videoProfile&context=streaming&videoCodec=h264&audioCodec=aac&protocol=hls)"
+    ],
+    [
+     "X-Plex-Incomplete-Segments",
+     "1"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Web"
+    ],
+    [
+     "X-Plex-Version",
+     "4.160.0"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "rexsubs-web"
+    ],
+    [
+     "X-Plex-Platform",
+     "Chrome"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "151.0"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ],
+    [
+     "X-Plex-Model",
+     "standalone"
+    ],
+    [
+     "X-Plex-Device",
+     "Linux"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "Chrome"
+    ],
+    [
+     "X-Plex-Device-Screen-Resolution",
+     "1280x596,1280x720"
+    ],
+    [
+     "X-Plex-Language",
+     "en"
+    ],
+    [
+     "X-Plex-Session-Id",
+     "cb22220f-1e9f-4a50-8c54-1fd96224c096"
+    ],
+    [
+     "X-Plex-Playback-Session-Id",
+     "8a6deb6f-b9c0-4e42-81eb-6ae0bc1fb5d5"
+    ],
+    [
+     "X-Plex-Playback-Id",
+     "4698bde6-cc4c-44b9-83d7-a52a4cad98e5"
+    ]
+   ],
+   "decision_status": 200,
+   "decision": {
+    "size": 1,
+    "allowSync": "1",
+    "directPlayDecisionCode": 3000,
+    "directPlayDecisionText": "App cannot direct play this item. Direct play is disabled.",
+    "generalDecisionCode": 1001,
+    "generalDecisionText": "Direct play not available; Conversion OK.",
+    "identifier": "com.plexapp.plugins.library",
+    "librarySectionID": "1",
+    "librarySectionTitle": "Movies",
+    "librarySectionUUID": "<section-uuid>",
+    "mediaTagPrefix": "/system/bundle/media/flags/",
+    "mediaTagVersion": "1758205129",
+    "resourceSession": "subs-web-4",
+    "transcodeDecisionCode": 1001,
+    "transcodeDecisionText": "Direct play not available; Conversion OK.",
+    "Metadata": [
+     {
+      "addedAt": 1792353766,
+      "art": "/library/metadata/1/art/1792353884",
+      "duration": 30021,
+      "guid": "local://1",
+      "key": "/library/metadata/1",
+      "librarySectionID": "1",
+      "librarySectionKey": "/library/sections/1",
+      "librarySectionTitle": "Movies",
+      "ratingKey": "1",
+      "thumb": "/library/metadata/1/thumb/1792353884",
+      "title": "Subclip",
+      "type": "movie",
+      "updatedAt": 1792353884,
+      "year": 2024,
+      "Media": [
+       {
+        "audioProfile": "lc",
+        "id": "1",
+        "videoProfile": "constrained baseline",
+        "audioChannels": 2,
+        "audioCodec": "aac",
+        "bitrate": 20000,
+        "container": "mpegts",
+        "duration": 30021,
+        "height": 1080,
+        "protocol": "hls",
+        "videoCodec": "h264",
+        "videoFrameRate": "24p",
+        "videoResolution": "1080p",
+        "width": 1920,
+        "selected": true,
+        "Part": [
+         {
+          "audioProfile": "lc",
+          "id": "1",
+          "videoProfile": "constrained baseline",
+          "bitrate": 20000,
+          "container": "mpegts",
+          "duration": 30021,
+          "height": 1080,
+          "protocol": "hls",
+          "width": 1920,
+          "decision": "transcode",
+          "selected": true,
+          "Stream": [
+           {
+            "bitDepth": 8,
+            "bitrate": 20000,
+            "codec": "h264",
+            "default": true,
+            "displayTitle": "1080p",
+            "extendedDisplayTitle": "1080p (H.264 Constrained Baseline)",
+            "frameRate": 24.0,
+            "height": 1080,
+            "id": "1",
+            "streamType": 1,
+            "width": 1920,
+            "decision": "transcode",
+            "location": "segments-av"
+           },
+           {
+            "bitrateMode": "cbr",
+            "channels": 2,
+            "codec": "aac",
+            "default": true,
+            "displayTitle": "Unknown (AAC Stereo)",
+            "extendedDisplayTitle": "Unknown (AAC Stereo)",
+            "id": "2",
+            "profile": "lc",
+            "samplingRate": 48000,
+            "selected": true,
+            "streamType": 2,
+            "decision": "copy",
+            "location": "segments-av"
+           },
+           {
+            "burn": "1",
+            "codec": "ass",
+            "displayTitle": "Deutsch",
+            "extendedDisplayTitle": "Deutsch (ASS)",
+            "id": "4",
+            "language": "Deutsch",
+            "languageCode": "deu",
+            "languageTag": "de",
+            "selected": true,
+            "streamType": 3,
+            "decision": "burn",
+            "location": "segments-av"
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "start": {
+    "path": "start.m3u8",
+    "status": 200,
+    "body": "#EXTM3U\n#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=8135000,RESOLUTION=1920x1080,FRAME-RATE=24.000000\nsession/subs-web-4/base/index.m3u8?X-Plex-Incomplete-Segments=1\n"
+   },
+   "sub_streams": [
+    [
+     "4",
+     3,
+     "ass",
+     "burn",
+     "segments-av",
+     null,
+     "1",
+     null
+    ]
+   ]
+  },
+  {
+   "shape": "ios-generic",
+   "subtitle": "5",
+   "query": [
+    [
+     "path",
+     "/library/metadata/1"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "protocol",
+     "hls"
+    ],
+    [
+     "directPlay",
+     "0"
+    ],
+    [
+     "directStream",
+     "0"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "maxVideoBitrate",
+     "8000"
+    ],
+    [
+     "videoResolution",
+     "1920x1080"
+    ],
+    [
+     "videoQuality",
+     "100"
+    ],
+    [
+     "fastSeek",
+     "1"
+    ],
+    [
+     "subtitles",
+     "auto"
+    ],
+    [
+     "session",
+     "subs-ios-generic-5"
+    ],
+    [
+     "X-Plex-Session-Identifier",
+     "subs-ios-generic-5"
+    ],
+    [
+     "X-Plex-Client-Profile-Name",
+     "Generic"
+    ],
+    [
+     "X-Plex-Platform",
+     "iOS"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for iOS"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.20.0"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "rexsubs-ios-generic"
+    ],
+    [
+     "X-Plex-Client-Profile-Extra",
+     "add-transcode-target(type=videoProfile&context=all&protocol=hls&container=mkv&videoCodec=h264,png,apng,bmp,mjpeg,thp,gif,vp8,vp9,dirac,ffv1,ffvhuff,huffyuv,rawvideo,ayuv,r210,v210,v210x,v308,v408,v410,y41p,yuv4,ansi,h263,mpeg1video,mpeg2video,mpeg4,hevc,av1,vc1&audioCodec=ape,aac,aac_latm,alac,dca,vorbis,opus,pcm,pcm_alaw,pcm_mulaw,pcm_bluray,pcm_dvd,mp1,mp2,ac3,eac3,mp3&subtitleCodec=ass,dvb_subtitle,eia_608,jacosub,microdvd,mov_text,mpl2,pgs,pjs,realtext,sami,srt,ssa,stl,subviewer,subviewer1,text,vobsub,vplayer,xsub)+add-limitation(scope=videoAudioCodec&scopeName=eac3&type=upperBound&name=audio.channels&value=10)+add-limitation(scope=videoTranscodeTarget&scopeName=hevc&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.bitDepth&value=10)+add-limitation(scope=videoTranscodeTarget&scopeName=hevc&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.width&value=3840)+add-limitation(scope=videoTranscodeTarget&scopeName=hevc&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.height&value=2160)+add-limitation(scope=videoTranscodeTarget&scopeName=h264&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.width&value=3840)+add-limitation(scope=videoTranscodeTarget&scopeName=h264&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.height&value=2160)+add-limitation(scope=videoTranscodeTarget&scopeName=av1&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.width&value=3840)+add-limitation(scope=videoTranscodeTarget&scopeName=av1&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.height&value=2160)+add-transcode-target-settings(type=videoProfile&context=all&protocol=hls&CopyMatroskaAttachments=true)"
+    ]
+   ],
+   "decision_status": 200,
+   "decision": {
+    "size": 1,
+    "allowSync": "1",
+    "directPlayDecisionCode": 3000,
+    "directPlayDecisionText": "App cannot direct play this item. Direct play is disabled.",
+    "generalDecisionCode": 1001,
+    "generalDecisionText": "Direct play not available; Conversion OK.",
+    "identifier": "com.plexapp.plugins.library",
+    "librarySectionID": "1",
+    "librarySectionTitle": "Movies",
+    "librarySectionUUID": "<section-uuid>",
+    "mediaTagPrefix": "/system/bundle/media/flags/",
+    "mediaTagVersion": "1758205129",
+    "resourceSession": "subs-ios-generic-5",
+    "transcodeDecisionCode": 1001,
+    "transcodeDecisionText": "Direct play not available; Conversion OK.",
+    "Metadata": [
+     {
+      "addedAt": 1792353766,
+      "art": "/library/metadata/1/art/1792353884",
+      "duration": 30021,
+      "guid": "local://1",
+      "key": "/library/metadata/1",
+      "librarySectionID": "1",
+      "librarySectionKey": "/library/sections/1",
+      "librarySectionTitle": "Movies",
+      "ratingKey": "1",
+      "thumb": "/library/metadata/1/thumb/1792353884",
+      "title": "Subclip",
+      "type": "movie",
+      "updatedAt": 1792353884,
+      "year": 2024,
+      "Media": [
+       {
+        "audioProfile": "lc",
+        "id": "1",
+        "videoProfile": "constrained baseline",
+        "audioChannels": 2,
+        "audioCodec": "opus",
+        "bitrate": 7502,
+        "container": "mkv",
+        "duration": 30021,
+        "height": 1080,
+        "protocol": "hls",
+        "videoCodec": "png",
+        "videoFrameRate": "24p",
+        "videoResolution": "1080p",
+        "width": 1920,
+        "selected": true,
+        "Part": [
+         {
+          "audioProfile": "lc",
+          "id": "1",
+          "videoProfile": "constrained baseline",
+          "bitrate": 7502,
+          "container": "mkv",
+          "duration": 30021,
+          "height": 1080,
+          "protocol": "hls",
+          "width": 1920,
+          "decision": "transcode",
+          "selected": true,
+          "Stream": [
+           {
+            "bitDepth": 8,
+            "bitrate": 7393,
+            "codec": "png",
+            "default": true,
+            "displayTitle": "1080p",
+            "extendedDisplayTitle": "1080p (H.264 Constrained Baseline)",
+            "frameRate": 24.0,
+            "height": 1080,
+            "id": "1",
+            "streamType": 1,
+            "width": 1920,
+            "decision": "transcode",
+            "location": "segments-av"
+           },
+           {
+            "bitrate": 109,
+            "bitrateMode": "cbr",
+            "channels": 2,
+            "codec": "opus",
+            "default": true,
+            "displayTitle": "Unknown (AAC Stereo)",
+            "extendedDisplayTitle": "Unknown (AAC Stereo)",
+            "id": "2",
+            "selected": true,
+            "streamType": 2,
+            "decision": "transcode",
+            "location": "segments-av"
+           },
+           {
+            "codec": "srt",
+            "displayTitle": "Fran\u00e7ais",
+            "extendedDisplayTitle": "Fran\u00e7ais (SRT External)",
+            "file": "/data/movies/Subclip (2024)/Subclip (2024).fr.srt",
+            "format": "srt",
+            "id": "5",
+            "key": "/library/streams/5",
+            "language": "Fran\u00e7ais",
+            "languageCode": "fra",
+            "languageTag": "fr",
+            "selected": true,
+            "streamType": 3,
+            "decision": "copy",
+            "location": "segments-av"
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "start": {
+    "path": "start.m3u8",
+    "status": 200,
+    "body": "#EXTM3U\n#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=7502000,RESOLUTION=1920x1080,FRAME-RATE=24.000000\nsession/subs-ios-generic-5/base/index.m3u8\n"
+   },
+   "sub_streams": [
+    [
+     "5",
+     3,
+     "srt",
+     "copy",
+     "segments-av",
+     "srt",
+     null,
+     "/library/streams/5"
+    ]
+   ]
+  },
+  {
+   "shape": "ios-profile",
+   "subtitle": "5",
+   "query": [
+    [
+     "path",
+     "/library/metadata/1"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "protocol",
+     "hls"
+    ],
+    [
+     "directPlay",
+     "0"
+    ],
+    [
+     "directStream",
+     "0"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "maxVideoBitrate",
+     "8000"
+    ],
+    [
+     "videoResolution",
+     "1920x1080"
+    ],
+    [
+     "videoQuality",
+     "100"
+    ],
+    [
+     "fastSeek",
+     "1"
+    ],
+    [
+     "subtitles",
+     "auto"
+    ],
+    [
+     "session",
+     "subs-ios-profile-5"
+    ],
+    [
+     "X-Plex-Session-Identifier",
+     "subs-ios-profile-5"
+    ],
+    [
+     "X-Plex-Client-Profile-Name",
+     "iOS"
+    ],
+    [
+     "X-Plex-Platform",
+     "iOS"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for iOS"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.20.0"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "rexsubs-ios-profile"
+    ]
+   ],
+   "decision_status": 200,
+   "decision": {
+    "size": 1,
+    "allowSync": "1",
+    "directPlayDecisionCode": 3000,
+    "directPlayDecisionText": "App cannot direct play this item. Direct play is disabled.",
+    "generalDecisionCode": 1001,
+    "generalDecisionText": "Direct play not available; Conversion OK.",
+    "identifier": "com.plexapp.plugins.library",
+    "librarySectionID": "1",
+    "librarySectionTitle": "Movies",
+    "librarySectionUUID": "<section-uuid>",
+    "mediaTagPrefix": "/system/bundle/media/flags/",
+    "mediaTagVersion": "1758205129",
+    "resourceSession": "subs-ios-profile-5",
+    "transcodeDecisionCode": 1001,
+    "transcodeDecisionText": "Direct play not available; Conversion OK.",
+    "Metadata": [
+     {
+      "addedAt": 1792353766,
+      "art": "/library/metadata/1/art/1792353884",
+      "duration": 30021,
+      "guid": "local://1",
+      "key": "/library/metadata/1",
+      "librarySectionID": "1",
+      "librarySectionKey": "/library/sections/1",
+      "librarySectionTitle": "Movies",
+      "ratingKey": "1",
+      "thumb": "/library/metadata/1/thumb/1792353884",
+      "title": "Subclip",
+      "type": "movie",
+      "updatedAt": 1792353884,
+      "year": 2024,
+      "Media": [
+       {
+        "audioProfile": "lc",
+        "id": "1",
+        "videoProfile": "constrained baseline",
+        "audioChannels": 2,
+        "audioCodec": "mp3",
+        "bitrate": 7502,
+        "container": "mpegts",
+        "duration": 30021,
+        "height": 1080,
+        "protocol": "hls",
+        "videoCodec": "h264",
+        "videoFrameRate": "24p",
+        "videoResolution": "1080p",
+        "width": 1920,
+        "selected": true,
+        "Part": [
+         {
+          "audioProfile": "lc",
+          "id": "1",
+          "videoProfile": "constrained baseline",
+          "bitrate": 7502,
+          "container": "mpegts",
+          "duration": 30021,
+          "height": 1080,
+          "protocol": "hls",
+          "width": 1920,
+          "decision": "transcode",
+          "selected": true,
+          "Stream": [
+           {
+            "bitDepth": 8,
+            "bitrate": 7393,
+            "codec": "h264",
+            "default": true,
+            "displayTitle": "1080p",
+            "extendedDisplayTitle": "1080p (H.264 Constrained Baseline)",
+            "frameRate": 24.0,
+            "height": 1080,
+            "id": "1",
+            "streamType": 1,
+            "width": 1920,
+            "decision": "transcode",
+            "location": "segments-av"
+           },
+           {
+            "bitrate": 109,
+            "bitrateMode": "vbr",
+            "channels": 2,
+            "codec": "mp3",
+            "default": true,
+            "displayTitle": "Unknown (AAC Stereo)",
+            "extendedDisplayTitle": "Unknown (AAC Stereo)",
+            "id": "2",
+            "selected": true,
+            "streamType": 2,
+            "decision": "transcode",
+            "location": "segments-av"
+           },
+           {
+            "burn": "1",
+            "codec": "srt",
+            "displayTitle": "Fran\u00e7ais",
+            "extendedDisplayTitle": "Fran\u00e7ais (SRT External)",
+            "file": "/data/movies/Subclip (2024)/Subclip (2024).fr.srt",
+            "id": "5",
+            "key": "/library/streams/5",
+            "language": "Fran\u00e7ais",
+            "languageCode": "fra",
+            "languageTag": "fr",
+            "selected": true,
+            "streamType": 3,
+            "decision": "burn",
+            "location": "segments-av"
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "start": {
+    "path": "start.m3u8",
+    "status": 200,
+    "body": "#EXTM3U\n#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=7502000,RESOLUTION=1920x1080,FRAME-RATE=24.000000\nsession/subs-ios-profile-5/base/index.m3u8\n"
+   },
+   "sub_streams": [
+    [
+     "5",
+     3,
+     "srt",
+     "burn",
+     "segments-av",
+     null,
+     "1",
+     "/library/streams/5"
+    ]
+   ]
+  },
+  {
+   "shape": "android",
+   "subtitle": "5",
+   "query": [
+    [
+     "directPlay",
+     "0"
+    ],
+    [
+     "directStream",
+     "0"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "protocol",
+     "hls"
+    ],
+    [
+     "fastSeek",
+     "1"
+    ],
+    [
+     "path",
+     "/library/metadata/1"
+    ],
+    [
+     "session",
+     "subs-android-5"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "mediaBufferSize",
+     "50000"
+    ],
+    [
+     "hasMDE",
+     "1"
+    ],
+    [
+     "subtitleSize",
+     "0"
+    ],
+    [
+     "videoQuality",
+     "60"
+    ],
+    [
+     "videoResolution",
+     "1024x720"
+    ],
+    [
+     "audioBoost",
+     "100"
+    ],
+    [
+     "autoAdjustSubtitle",
+     "1"
+    ],
+    [
+     "boostDialog",
+     "0"
+    ],
+    [
+     "normalizeLoudness",
+     "0"
+    ],
+    [
+     "subtitles",
+     "auto"
+    ],
+    [
+     "maxVideoBitrate",
+     "2000"
+    ],
+    [
+     "location",
+     "wan"
+    ],
+    [
+     "X-Plex-Client-Profile-Extra",
+     "add-transcode-target(type=videoProfile&context=all&protocol=hls&container=mkv&videoCodec=h264,hevc,vp8,vp9&audioCodec=aac,pcm,mp3,ac3,dca,eac3&subtitleCodec=ass,ssa,pgs,srt,smi,dvd_subtitle,mov_text,eia_608,eia_708,vobsub,vtt,webvtt,text,ttxt,tx3g)+add-limitation(scope=videoTranscodeTarget&scopeName=h264&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.width&value=3840)+add-limitation(scope=videoTranscodeTarget&scopeName=h264&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.height&value=3840)+add-limitation(scope=videoTranscodeTarget&scopeName=hevc&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.bitDepth&value=10)+add-limitation(scope=videoTranscodeTarget&scopeName=hevc&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.width&value=3840)+add-limitation(scope=videoTranscodeTarget&scopeName=hevc&scopeType=videoCodec&context=all&protocol=hls&type=upperBound&name=video.height&value=3840)+add-transcode-target-codec(scope=videoTranscodeTarget&scopeName=mp3&scopeType=audioCodec&context=all&protocol=http)+add-transcode-target-codec(scope=videoTranscodeTarget&scopeName=ac3&scopeType=audioCodec&context=all&protocol=http)+add-transcode-target-codec(scope=videoTranscodeTarget&scopeName=eac3&scopeType=audioCodec&context=all&protocol=http)+add-transcode-target-codec(scope=videoTranscodeTarget&scopeName=dca&scopeType=audioCodec&context=all&protocol=http)+add-transcode-target-codec(scope=videoTranscodeTarget&scopeName=opus&scopeType=audioCodec&context=all&protocol=http)"
+    ],
+    [
+     "X-Plex-Client-Profile-Name",
+     "Generic"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "16"
+    ],
+    [
+     "X-Plex-Model",
+     "oriole"
+    ],
+    [
+     "X-Plex-Device",
+     "Pixel 6"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "Pixel 6"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Google"
+    ],
+    [
+     "X-Plex-Device-Screen-Resolution",
+     "1080x2400"
+    ],
+    [
+     "X-Plex-Device-Screen-Density",
+     "2.625"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.19.1"
+    ],
+    [
+     "X-Plex-Language",
+     "en"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media"
+    ],
+    [
+     "X-Plex-Provider-Version",
+     "7.6.0"
+    ],
+    [
+     "X-Plex-DRM",
+     "widevine:video"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "rexsubs-android"
+    ],
+    [
+     "X-Plex-Advertising-Identifier",
+     "<ad-id>"
+    ],
+    [
+     "X-Plex-Session-Id",
+     "<session-id>"
+    ]
+   ],
+   "decision_status": 200,
+   "decision": {
+    "size": 1,
+    "allowSync": "1",
+    "directPlayDecisionCode": 3000,
+    "directPlayDecisionText": "App cannot direct play this item. Direct play is disabled.",
+    "generalDecisionCode": 1001,
+    "generalDecisionText": "Direct play not available; Conversion OK.",
+    "identifier": "com.plexapp.plugins.library",
+    "librarySectionID": "1",
+    "librarySectionTitle": "Movies",
+    "librarySectionUUID": "<section-uuid>",
+    "mediaTagPrefix": "/system/bundle/media/flags/",
+    "mediaTagVersion": "1758205129",
+    "resourceSession": "rexsubs-android",
+    "transcodeDecisionCode": 1001,
+    "transcodeDecisionText": "Direct play not available; Conversion OK.",
+    "Metadata": [
+     {
+      "addedAt": 1792353766,
+      "art": "/library/metadata/1/art/1792353884",
+      "duration": 30021,
+      "guid": "local://1",
+      "key": "/library/metadata/1",
+      "librarySectionID": "1",
+      "librarySectionKey": "/library/sections/1",
+      "librarySectionTitle": "Movies",
+      "ratingKey": "1",
+      "thumb": "/library/metadata/1/thumb/1792353884",
+      "title": "Subclip",
+      "type": "movie",
+      "updatedAt": 1792353884,
+      "year": 2024,
+      "Media": [
+       {
+        "audioProfile": "lc",
+        "id": "1",
+        "videoProfile": "constrained baseline",
+        "audioChannels": 2,
+        "audioCodec": "mp3",
+        "bitrate": 1865,
+        "container": "mkv",
+        "duration": 30021,
+        "height": 576,
+        "protocol": "hls",
+        "videoCodec": "h264",
+        "videoFrameRate": "24p",
+        "videoResolution": "480p",
+        "width": 1024,
+        "selected": true,
+        "Part": [
+         {
+          "audioProfile": "lc",
+          "id": "1",
+          "videoProfile": "constrained baseline",
+          "bitrate": 1865,
+          "container": "mkv",
+          "duration": 30021,
+          "height": 576,
+          "protocol": "hls",
+          "width": 1024,
+          "decision": "transcode",
+          "selected": true,
+          "Stream": [
+           {
+            "bitDepth": 8,
+            "bitrate": 1769,
+            "codec": "h264",
+            "default": true,
+            "displayTitle": "1080p",
+            "extendedDisplayTitle": "1080p (H.264 Constrained Baseline)",
+            "frameRate": 24.0,
+            "height": 576,
+            "id": "1",
+            "streamType": 1,
+            "width": 1024,
+            "decision": "transcode",
+            "location": "segments-av"
+           },
+           {
+            "bitrate": 96,
+            "bitrateMode": "vbr",
+            "channels": 2,
+            "codec": "mp3",
+            "default": true,
+            "displayTitle": "Unknown (AAC Stereo)",
+            "extendedDisplayTitle": "Unknown (AAC Stereo)",
+            "id": "2",
+            "selected": true,
+            "streamType": 2,
+            "decision": "transcode",
+            "location": "segments-av"
+           },
+           {
+            "codec": "srt",
+            "displayTitle": "Fran\u00e7ais",
+            "extendedDisplayTitle": "Fran\u00e7ais (SRT External)",
+            "file": "/data/movies/Subclip (2024)/Subclip (2024).fr.srt",
+            "format": "srt",
+            "id": "5",
+            "key": "/library/streams/5",
+            "language": "Fran\u00e7ais",
+            "languageCode": "fra",
+            "languageTag": "fr",
+            "selected": true,
+            "streamType": 3,
+            "decision": "copy",
+            "location": "segments-av"
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "start": {
+    "path": "start.m3u8",
+    "status": 200,
+    "body": "#EXTM3U\n#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=1865000,RESOLUTION=1024x576,FRAME-RATE=24.000000\nsession/subs-android-5/base/index.m3u8\n"
+   },
+   "sub_streams": [
+    [
+     "5",
+     3,
+     "srt",
+     "copy",
+     "segments-av",
+     "srt",
+     null,
+     "/library/streams/5"
+    ]
+   ]
+  },
+  {
+   "shape": "web",
+   "subtitle": "5",
+   "query": [
+    [
+     "hasMDE",
+     "1"
+    ],
+    [
+     "path",
+     "/library/metadata/1"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "protocol",
+     "hls"
+    ],
+    [
+     "fastSeek",
+     "1"
+    ],
+    [
+     "directPlay",
+     "0"
+    ],
+    [
+     "directStream",
+     "1"
+    ],
+    [
+     "subtitleSize",
+     "100"
+    ],
+    [
+     "audioBoost",
+     "100"
+    ],
+    [
+     "location",
+     "lan"
+    ],
+    [
+     "addDebugOverlay",
+     "0"
+    ],
+    [
+     "autoAdjustQuality",
+     "0"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "autoAdjustSubtitle",
+     "1"
+    ],
+    [
+     "mediaBufferSize",
+     "102400"
+    ],
+    [
+     "session",
+     "subs-web-5"
+    ],
+    [
+     "subtitles",
+     "auto"
+    ],
+    [
+     "Accept-Language",
+     "en"
+    ],
+    [
+     "X-Plex-Session-Identifier",
+     "subs-web-5"
+    ],
+    [
+     "X-Plex-Client-Profile-Extra",
+     "append-transcode-target-codec(type=videoProfile&context=streaming&videoCodec=h264&audioCodec=aac&protocol=hls)"
+    ],
+    [
+     "X-Plex-Incomplete-Segments",
+     "1"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Web"
+    ],
+    [
+     "X-Plex-Version",
+     "4.160.0"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "rexsubs-web"
+    ],
+    [
+     "X-Plex-Platform",
+     "Chrome"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "151.0"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ],
+    [
+     "X-Plex-Model",
+     "standalone"
+    ],
+    [
+     "X-Plex-Device",
+     "Linux"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "Chrome"
+    ],
+    [
+     "X-Plex-Device-Screen-Resolution",
+     "1280x596,1280x720"
+    ],
+    [
+     "X-Plex-Language",
+     "en"
+    ],
+    [
+     "X-Plex-Session-Id",
+     "cb22220f-1e9f-4a50-8c54-1fd96224c096"
+    ],
+    [
+     "X-Plex-Playback-Session-Id",
+     "8a6deb6f-b9c0-4e42-81eb-6ae0bc1fb5d5"
+    ],
+    [
+     "X-Plex-Playback-Id",
+     "4698bde6-cc4c-44b9-83d7-a52a4cad98e5"
+    ]
+   ],
+   "decision_status": 200,
+   "decision": {
+    "size": 1,
+    "allowSync": "1",
+    "directPlayDecisionCode": 3000,
+    "directPlayDecisionText": "App cannot direct play this item. Direct play is disabled.",
+    "generalDecisionCode": 1001,
+    "generalDecisionText": "Direct play not available; Conversion OK.",
+    "identifier": "com.plexapp.plugins.library",
+    "librarySectionID": "1",
+    "librarySectionTitle": "Movies",
+    "librarySectionUUID": "<section-uuid>",
+    "mediaTagPrefix": "/system/bundle/media/flags/",
+    "mediaTagVersion": "1758205129",
+    "resourceSession": "subs-web-5",
+    "transcodeDecisionCode": 1001,
+    "transcodeDecisionText": "Direct play not available; Conversion OK.",
+    "Metadata": [
+     {
+      "addedAt": 1792353766,
+      "art": "/library/metadata/1/art/1792353884",
+      "duration": 30021,
+      "guid": "local://1",
+      "key": "/library/metadata/1",
+      "librarySectionID": "1",
+      "librarySectionKey": "/library/sections/1",
+      "librarySectionTitle": "Movies",
+      "ratingKey": "1",
+      "thumb": "/library/metadata/1/thumb/1792353884",
+      "title": "Subclip",
+      "type": "movie",
+      "updatedAt": 1792353884,
+      "year": 2024,
+      "Media": [
+       {
+        "audioProfile": "lc",
+        "id": "1",
+        "videoProfile": "constrained baseline",
+        "audioChannels": 2,
+        "audioCodec": "aac",
+        "bitrate": 13112,
+        "container": "mpegts",
+        "duration": 30021,
+        "height": 1080,
+        "protocol": "hls",
+        "videoCodec": "h264",
+        "videoFrameRate": "24p",
+        "videoResolution": "1080p",
+        "width": 1920,
+        "selected": true,
+        "Part": [
+         {
+          "audioProfile": "lc",
+          "id": "1",
+          "videoProfile": "constrained baseline",
+          "bitrate": 13112,
+          "container": "mpegts",
+          "duration": 30021,
+          "height": 1080,
+          "protocol": "hls",
+          "width": 1920,
+          "decision": "transcode",
+          "selected": true,
+          "Stream": [
+           {
+            "bitDepth": 8,
+            "bitrate": 13112,
+            "chromaLocation": "left",
+            "chromaSubsampling": "4:2:0",
+            "codec": "h264",
+            "codedHeight": 1088,
+            "codedWidth": 1920,
+            "default": true,
+            "displayTitle": "1080p",
+            "extendedDisplayTitle": "1080p (H.264 Constrained Baseline)",
+            "frameRate": 24.0,
+            "hasScalingMatrix": false,
+            "height": 1080,
+            "id": "1",
+            "level": 40,
+            "profile": "constrained baseline",
+            "refFrames": 1,
+            "scanType": "progressive",
+            "streamType": 1,
+            "width": 1920,
+            "decision": "copy",
+            "location": "segments-av"
+           },
+           {
+            "bitrateMode": "cbr",
+            "channels": 2,
+            "codec": "aac",
+            "default": true,
+            "displayTitle": "Unknown (AAC Stereo)",
+            "extendedDisplayTitle": "Unknown (AAC Stereo)",
+            "id": "2",
+            "profile": "lc",
+            "samplingRate": 48000,
+            "selected": true,
+            "streamType": 2,
+            "decision": "copy",
+            "location": "segments-av"
+           },
+           {
+            "codec": "ass",
+            "container": "ass",
+            "displayTitle": "Fran\u00e7ais",
+            "extendedDisplayTitle": "Fran\u00e7ais (SRT External)",
+            "file": "/data/movies/Subclip (2024)/Subclip (2024).fr.srt",
+            "format": "ass",
+            "id": "5",
+            "key": "/library/streams/5",
+            "language": "Fran\u00e7ais",
+            "languageCode": "fra",
+            "languageTag": "fr",
+            "selected": true,
+            "streamType": 3,
+            "decision": "transcode",
+            "location": "segments-subs"
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "start": {
+    "path": "start.m3u8",
+    "status": 200,
+    "body": "#EXTM3U\n#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=13368000,RESOLUTION=1920x1080,FRAME-RATE=24.000000\nsession/subs-web-5/base/index.m3u8?X-Plex-Incomplete-Segments=1\n"
+   },
+   "sub_streams": [
+    [
+     "5",
+     3,
+     "ass",
+     "transcode",
+     "segments-subs",
+     "ass",
+     null,
+     "/library/streams/5"
+    ]
+   ]
+  }
+ ],
+ "sessions": {
+  "android": {
+   "index.m3u8": "#EXTM3U\n#EXT-X-VERSION:7\n#EXT-X-MAP:URI=\"header\"\n#EXT-X-TARGETDURATION:5\n#EXT-X-ALLOW-CACHE:NO\n#EXT-X-MEDIA-SEQUENCE:0\n#EXTINF:5, nodesc\n00000.ts\n#EXTINF:5, nodesc\n00001.ts\n#EXTINF:5, nodesc\n00002.ts\n#EXTINF:5, nodesc\n00003.ts\n#EXTINF:5, nodesc\n00004.ts\n#EXTINF:5, nodesc\n00005.ts\n#EXTINF:1, nodesc\n00006.ts\n#EXT-X-ENDLIST\n",
+   "header": {
+    "status": 200,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ],
+     [
+      "Accept-Ranges",
+      "bytes"
+     ],
+     [
+      "Connection",
+      "close"
+     ],
+     [
+      "Content-Length",
+      "726"
+     ],
+     [
+      "Content-Type",
+      "application/octet-stream"
+     ]
+    ],
+    "length": 726
+   },
+   "00000.ts": {
+    "status": 200,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ],
+     [
+      "Accept-Ranges",
+      "bytes"
+     ],
+     [
+      "Connection",
+      "close"
+     ],
+     [
+      "Content-Length",
+      "479987"
+     ],
+     [
+      "Content-Type",
+      "video/MP2T"
+     ]
+    ],
+    "length": 479987
+   }
+  },
+  "web": {
+   "index.m3u8": "#EXTM3U\n#EXT-X-TARGETDURATION:10\n#EXT-X-ALLOW-CACHE:NO\n#EXT-X-MEDIA-SEQUENCE:0\n#EXTINF:10, nodesc\n00000.ts\n#EXTINF:10, nodesc\n00001.ts\n#EXTINF:10, nodesc\n00002.ts\n#EXTINF:1, nodesc\n00003.ts\n#EXT-X-ENDLIST\n",
+   "00000.ts": {
+    "status": 200,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ],
+     [
+      "Accept-Ranges",
+      "bytes"
+     ],
+     [
+      "Connection",
+      "close"
+     ],
+     [
+      "Content-Length",
+      "16792912"
+     ],
+     [
+      "Content-Type",
+      "video/MP2T"
+     ]
+    ],
+    "length": 16792912
+   }
+  }
+ }
+}
