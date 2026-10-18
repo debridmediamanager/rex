@@ -99,11 +99,12 @@ Where things live in `rust/src/`:
 | `runtime/universal.rs` | The video transcoder (`REX_TRANSCODER`): the conversion decision's plan and Media, `start.m3u8`/`start.mpd`, segments served outside the runtime lock, one FFmpeg per session with the hardware ladder, seeks, throttling and the idle reaper, and the `TranscodeSession` rows |
 | `runtime/plexmeta.rs`, `identify.rs` | Plex's metadata agent (the claim's server token, else `PLEX_TOKEN`), and which title a release is: the ids its source placed it with, or a TMDB id set by hand at the source (`placed`; `scan::identified_by`), asking Plex's agent for its guid by external id, whose answer and children rows are all a row shows (`metadata::describe`); nothing is read off a name, and what arrives with neither stays for Fix Match, which searches Plex's agent |
 | `runtime/plextv.rs` | claim/heartbeat/account state (`REX_PLEXTV_URL` points plex.tv and Plex's agent at a stub) |
-| `runtime/accounts.rs` | Which plex.tv account each request comes from (the access-token list: owner 1, a share its plex.tv id, with its libraries, filters, flags and track settings) and what that account keeps and sees: its watch state, ratings, hides and track picks swapped onto the rows while its request runs, its own playlists and history, the share's libraries and filters pruned from every answer, the owner's routes refused (findings, "Each account its own") |
+| `runtime/accounts.rs` | Which plex.tv account each request comes from (the access-token list: owner 1, a share its plex.tv id, with its libraries, filters, flags and track settings) and what that account keeps and sees: its watch state, ratings, hides and track picks shown over the rows while its request runs (`rows::Overlay`), its own playlists and history, the share's libraries and filters pruned from every answer, the owner's routes refused (findings, "Each account its own") |
 | `platform.rs` | Everything asked of the OS beyond `std`: local time, CPU time and load, the host name, thread ids, pausing and killing FFmpeg, the GDM socket. A Unix half and a Windows half; nothing else may call `libc` for these |
 | `runtime/*.rs` (the rest) | One subsystem each, named after it: search, listing, axes, edit, collections, playlists, artwork, butler, framework, i18n, resume (On Deck and hubs), logging and so on |
 | `filters.rs`, `hierarchy.rs`, `metadata.rs`, `mediainfo.rs`, `decision.rs`, `xmlout.rs`, `gate.rs`, `catalog.rs` | Plex's filter grammar (the operator is part of the KEY), flat leaves to show/season/episode, Plex's description of a title and `plex://` guids, ffprobe JSON to `Media`/`Part`/`Stream`, a plain-form decision against the client's own profile, Plex XML, the direct-play gate, the catalog |
 | `store.rs` | The state file: a SQLite database written by the row, holding the catalog too when the catalog is a database |
+| `rows.rs` | Where the rows are: in the state file once a start has restored them (`Catalog::attach`), memory holding the rows written since their save reached the file and a byte-capped cache of rows read (`REX_ROW_CACHE_MB`, trimmed after each request); a listing's rows read in parallel without their streams and kept nowhere (`read_listed`, `prefetch_listed`); another account's view fields shown over the rows for its request, a row changed only once written (`Overlay`). With `--no-state` every row stays in memory |
 | `hotrow.rs`, `corpus.rs` | The fields of a row that passes over the whole library read (`HotRow`; `Lazy` reads the row for any other), and each row's search entry: both kept in the catalog's index beside its lookups (`catalog::By`), re-derived for a row written |
 
 A movie library and a show library have **different**
@@ -234,7 +235,9 @@ catalog's digest; after a catalog rebuild only view state (by guid, then part fi
 the server-level settings carry over, and the old file is kept as `<file>.stale` --
 unless the saved rows include scanned ones (`_scanned`): a library a source pushed is the
 state's own and is kept row by row whatever the catalog file says, its new rows joining.
-Held items (`feedHeld`) are kept with it.
+Held items (`feedHeld`) are kept with it. Its rows are where the catalog keeps them (`rust/src/rows.rs`):
+the file's shape is unchanged, so every release reads what another wrote
+(`tests/test_state_compat.py` against an older release's binary).
 
 ## The reference harness
 
@@ -456,6 +459,9 @@ python3 tests/conformance.py                # drives rex with python-plexapi
 python3 tests/test_mediainfo.py             # the mediainfo adapter against a real PMS's analysis; no server
 python3 tests/test_persist.py               # --state across SIGTERM, SIGKILL and a rebuilt catalog; starts its own
 python3 tests/test_sqlite_store.py          # the state/catalog database: rows written per save, legacy import; starts its own
+REX_OLD_SERVER=<an older release's rex> python3 tests/test_state_compat.py
+                                            # one state file across releases, up and back down; skips without REX_OLD_SERVER
+python3 tests/test_perf_part_read.py        # a byte read finds its Part without reading the library
 python3 tests/test_manager.py               # rex manager end to end: create, start, crash restart, give-up, restore; starts its own
 python3 tests/test_concurrency.py           # barrier races, 32-thread load, backlog, --state kills, reaper, slow sockets; ~4 min
 python3 tests/test_plextv.py                # claim, announce, account import and restart against a LOCAL stub plex.tv

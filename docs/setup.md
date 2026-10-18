@@ -292,6 +292,12 @@ several servers on one host, use `rex manager` (below).
 rex logs a request's query string, so a client that sends its token as
 `?X-Plex-Token=` leaves it in the log. Keep the log private.
 
+Memory: the library's rows live in the state file (`rex.db`), not in memory. rex keeps an index
+of the fields its lists and searches read, the rows written since they were last saved, and up
+to `REX_ROW_CACHE_MB` (default 64) of rows read recently; a library of 40,000 titles runs in
+about 500 MB. Upgrading needs nothing: the file is the one earlier releases wrote and read, so
+going back to an earlier release reads it too.
+
 ### Windows
 
 The Windows build is `rust\target\release\rex.exe` in the zip, and every step above works
