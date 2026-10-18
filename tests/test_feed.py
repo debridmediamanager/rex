@@ -322,9 +322,11 @@ def matcher_identity(bytes_port):
 
 
 def other_folders(bytes_port):
-    """A folder no library holds is not refused: zurg's `anime` or `kids` sent every item
-    back as `rejected: no movie or show library holds ...` unless the libraries were seeded
-    with that folder before the first start. An item goes to the library of its kind."""
+    """A folder no library holds is a library of its own: zurg's `anime` or `kids` sent every
+    item back as `rejected: no movie or show library holds ...` unless the libraries were seeded
+    with that folder before the first start, and from then until 2026-10-19 put it in the first
+    library of its kind. rex makes the folder's library of the item's kind, titled with its name;
+    a library a person deletes is not made again."""
     work = tempfile.mkdtemp(prefix="rex-feed-folders-")
     catalog(work)
     server = Server(work, bytes_port)
@@ -339,10 +341,27 @@ def other_folders(bytes_port):
         check("an item in a folder no library holds is taken, not refused",
               status == 200 and body.get("created") == 2 and not body.get("rejected"), (status, body))
         keys = server.keys()
-        check("the film goes to the movie library and the episode to the show library",
-              [row.get("ratingKey") for row in server.rows("/library/sections/1/all")] == [keys.get(items[0]["id"])]
-              and server.row(keys.get(items[1]["id"])).get("type") == "episode"
-              and len(server.rows("/library/sections/2/all")) == 1, (keys, body))
+        status, listing = server.request("/library/sections")
+        made = {row["title"]: row for row in listing["MediaContainer"]["Directory"] if row["title"] in ("kids", "anime")}
+        check("each folder is a library of its own, of its item's kind, on the folder it is in",
+              {title: (row["type"], [location["path"] for location in row["Location"]]) for title, row in made.items()}
+              == {"kids": ("movie", [MOUNT + "/kids"]), "anime": ("show", [MOUNT + "/anime"])}, listing)
+        check("the film and the episode are in their folders' libraries, the seeded ones left empty",
+              [row.get("ratingKey") for row in server.rows("/library/sections/%s/all" % made.get("kids", {}).get("key"))]
+              == [keys.get(items[0]["id"])]
+              and server.row(keys.get(items[1]["id"])).get("librarySectionID") == int(made.get("anime", {}).get("key", 0))
+              and not server.rows("/library/sections/1/all") and not server.rows("/library/sections/2/all"), (keys, body))
+        status, _ = server.request("/library/sections/%s" % made.get("kids", {}).get("key"), "DELETE")
+        another = dict(items[0], id=items[0]["id"] + ".2", path=items[0]["path"].replace(".mkv", ".2.mkv"),
+                       file=items[0]["file"].replace(".mkv", ".2.mkv"))
+        _, body = server.feed("POST", "items", {"items": [another]})
+        server.stop()
+        server = Server(work, bytes_port)
+        _, again = server.feed("POST", "items", {"items": [another]})
+        _, listing = server.request("/library/sections")
+        check("a deleted library's folder is refused, across a restart, and not made again",
+              status == 200 and body.get("rejected") and again.get("rejected")
+              and "kids" not in [row["title"] for row in listing["MediaContainer"]["Directory"]], (status, body, again))
     finally:
         server.stop()
         shutil.rmtree(work, ignore_errors=True)

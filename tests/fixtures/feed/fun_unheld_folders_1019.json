@@ -1,0 +1,201 @@
+{
+ "_about": "rex-fun on 2026-10-19: its two libraries as its state holds them, and one feed row (fields the library pick reads) for each type of each folder no Location held, which the feed put in the first library of its kind until then.",
+ "sections": [
+  {
+   "key": "1",
+   "type": "movie",
+   "title": "Movies",
+   "uuid": "767b90ca724cbb263c8086c0983437d9170f9f0d",
+   "Location": [
+    {
+     "id": 100,
+     "path": "/mnt/zurg_tb/movies"
+    },
+    {
+     "id": 101,
+     "path": "/mnt/zurg_ad/movies"
+    },
+    {
+     "id": 102,
+     "path": "/mnt/zurg_usenet/__magic__/movies"
+    },
+    {
+     "id": 103,
+     "path": "/mnt/zurg/movies"
+    },
+    {
+     "id": 206,
+     "path": "/mnt/zurg_usenet/movies"
+    }
+   ]
+  },
+  {
+   "key": "2",
+   "type": "show",
+   "title": "TV Shows",
+   "uuid": "0f1320600c2da7b5de34c967b4e5b1697e89359a",
+   "Location": [
+    {
+     "id": 200,
+     "path": "/mnt/zurg_tb/shows"
+    },
+    {
+     "id": 201,
+     "path": "/mnt/zurg_tb/anime"
+    },
+    {
+     "id": 202,
+     "path": "/mnt/zurg_ad/shows"
+    },
+    {
+     "id": 203,
+     "path": "/mnt/zurg_usenet/__magic__/tv"
+    },
+    {
+     "id": 204,
+     "path": "/mnt/zurg/shows"
+    },
+    {
+     "id": 205,
+     "path": "/mnt/zurg/anime"
+    },
+    {
+     "id": 206,
+     "path": "/mnt/zurg_usenet/shows"
+    },
+    {
+     "id": 207,
+     "path": "/mnt/zurg_usenet/anime"
+    }
+   ]
+  }
+ ],
+ "items": [
+  {
+   "ratingKey": "102223",
+   "type": "episode",
+   "title": "Bart Gets an 'F'",
+   "librarySectionID": 2,
+   "Media": [
+    {
+     "_source": "usenet",
+     "_sid": "recent/The.Simpsons.S02.iNTERNAL.MULTi.1080p.WEB.H264-CiELOS/The.Simpsons.S02.iNTERNAL.MULTi.1080p.WEB.H264-CiELOS.part001.rar/The.Simpsons.S02E01.iNTERNAL.MULTi.1080p.WEB.H264-CiELOS.mkv",
+     "_path": "recent/The.Simpsons.S02.iNTERNAL.MULTi.1080p.WEB.H264-CiELOS/The.Simpsons.S02.iNTERNAL.MULTi.1080p.WEB.H264-CiELOS.part001.rar/The.Simpsons.S02E01.iNTERNAL.MULTi.1080p.WEB.H264-CiELOS.mkv",
+     "Part": [
+      {
+       "file": "/mnt/zurg_usenet/recent/The.Simpsons.S02.iNTERNAL.MULTi.1080p.WEB.H264-CiELOS/The.Simpsons.S02.iNTERNAL.MULTi.1080p.WEB.H264-CiELOS.part001.rar/The.Simpsons.S02E01.iNTERNAL.MULTi.1080p.WEB.H264-CiELOS.mkv"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ratingKey": "111839",
+   "type": "episode",
+   "title": "Continue",
+   "librarySectionID": 2,
+   "Media": [
+    {
+     "_source": "rd",
+     "_sid": "music/[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/[KH] To Love-Ru Darkness - 01 - Continue.mkv",
+     "_path": "music/[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/[KH] To Love-Ru Darkness - 01 - Continue.mkv",
+     "Part": [
+      {
+       "file": "/mnt/zurg/music/[KH] To Love-Ru Darkness (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/[KH] To Love-Ru Darkness - 01 - Continue.mkv"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ratingKey": "123470",
+   "type": "movie",
+   "title": "Das Boot",
+   "librarySectionID": 1,
+   "Media": [
+    {
+     "_source": "usenet",
+     "_sid": "audiobooks/Das.Boot.(1981).2160p.4K.SDR.DTS-HD.GER-ITA/Das Boot (1981) 4K 2160p DTS-HD GER-ITA (moviesbyrizzo).mkv",
+     "_path": "audiobooks/Das.Boot.(1981).2160p.4K.SDR.DTS-HD.GER-ITA/Das Boot (1981) 4K 2160p DTS-HD GER-ITA (moviesbyrizzo).mkv",
+     "Part": [
+      {
+       "file": "/mnt/zurg_usenet/audiobooks/Das.Boot.(1981).2160p.4K.SDR.DTS-HD.GER-ITA/Das Boot (1981) 4K 2160p DTS-HD GER-ITA (moviesbyrizzo).mkv"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ratingKey": "149005",
+   "type": "episode",
+   "title": "Elbaph in Despair - Diabolical Covenant, Domi Reversi",
+   "librarySectionID": 2,
+   "Media": [
+    {
+     "_source": "rd",
+     "_sid": "OnePieceLatest/[SubsPlease] One Piece - 1180 (1080p) [97492A4D]/[SubsPlease] One Piece - 1180 (1080p) [97492A4D].mkv",
+     "_path": "OnePieceLatest/[SubsPlease] One Piece - 1180 (1080p) [97492A4D]/[SubsPlease] One Piece - 1180 (1080p) [97492A4D].mkv",
+     "Part": [
+      {
+       "file": "/mnt/zurg/OnePieceLatest/[SubsPlease] One Piece - 1180 (1080p) [97492A4D]/[SubsPlease] One Piece - 1180 (1080p) [97492A4D].mkv"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ratingKey": "144705",
+   "type": "movie",
+   "title": "Bleach: Thousand-Year Blood War - The Calamity",
+   "librarySectionID": 1,
+   "Media": [
+    {
+     "_source": "usenet",
+     "_sid": "recent/Bleach.Thousand-Year.Blood.War.Part.4.E03.MULTi.1080p.WEB.H264-AMB3R/bleach.thousand-year.blood.war.part.4.e03.multi.1080p.web.h264-amb3r.mkv",
+     "_path": "recent/Bleach.Thousand-Year.Blood.War.Part.4.E03.MULTi.1080p.WEB.H264-AMB3R/bleach.thousand-year.blood.war.part.4.e03.multi.1080p.web.h264-amb3r.mkv",
+     "Part": [
+      {
+       "file": "/mnt/zurg_usenet/recent/Bleach.Thousand-Year.Blood.War.Part.4.E03.MULTi.1080p.WEB.H264-AMB3R/bleach.thousand-year.blood.war.part.4.e03.multi.1080p.web.h264-amb3r.mkv"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ratingKey": "168671",
+   "type": "episode",
+   "title": "Pilot",
+   "librarySectionID": 2,
+   "Media": [
+    {
+     "Part": [
+      {
+       "file": "/mnt/zurg/audiobooks/QI/QI - s00e01 - Pilot.mkv"
+      }
+     ]
+    }
+   ],
+   "_source": "rd",
+   "_sid": "audiobooks/QI/QI - s00e01 - Pilot.mkv",
+   "_path": "audiobooks/QI/QI - s00e01 - Pilot.mkv"
+  },
+  {
+   "ratingKey": "169092",
+   "type": "movie",
+   "title": "Sword Art Online: Extra Edition",
+   "librarySectionID": 1,
+   "Media": [
+    {
+     "_source": "rd",
+     "_sid": "music/[KH] Sword Art Online - Extra Edition (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/[KH] Sword Art Offline - Extra Edition.mkv",
+     "_path": "music/[KH] Sword Art Online - Extra Edition (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/[KH] Sword Art Offline - Extra Edition.mkv",
+     "Part": [
+      {
+       "file": "/mnt/zurg/music/[KH] Sword Art Online - Extra Edition (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/[KH] Sword Art Offline - Extra Edition.mkv"
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

@@ -577,7 +577,7 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
     // -- under the lock: which library, which row, what has to be identified ---------------
     let mut plans: Vec<(Item, Library, Plan)> = Vec::new();
     {
-        let guard = lock(shared);
+        let mut guard = lock(shared);
         let rows = guard.feed_rows(&source.name, items.iter().map(|item| item.id.as_str()));
         let legacy = guard.legacy_rows_by_file(items.iter().map(|item| item.file.as_str()));
         let named = guard.plex.is_some();
@@ -1359,10 +1359,137 @@ impl Runtime {
         self.section(key).map(|section| string_value(section.get("title").unwrap_or(&Value::Null))).unwrap_or_default()
     }
 
+    /// Until 2026-10-19 an item from a directory no library held went to the first library of
+    /// its kind (rex-fun's `recent`, `music`, `audiobooks` and `OnePieceLatest`, ~1,500 rows,
+    /// `tests/fixtures/feed/fun_unheld_folders_1019.json`). Each library holding such rows takes
+    /// their directory as a folder, so they stay where they are instead of moving to a library
+    /// made for it. Run at every start: once a library holds the directory there is nothing to do.
+    pub(super) fn adopt_feed_directories(&mut self) -> usize {
+        let mut adopted: Vec<(String, String)> = Vec::new();
+        for row in self.catalog.hot().lazy() {
+            let Some(section) = row.get("librarySectionID").map(string_value).filter(|key| !key.is_empty()) else {
+                continue;
+            };
+            if row.get("extraType").is_some() || !matches!(row.get("type").and_then(Value::as_str), Some("movie" | "episode")) {
+                continue;
+            }
+            for (_, _, index) in versions(row.body()) {
+                let path = row.body().pointer(&format!("/Media/{index}/_path")).or_else(|| row.body().get("_path"));
+                let (Some(path), Some(file)) = (path.and_then(Value::as_str), media_file(row.body(), index)) else {
+                    continue;
+                };
+                let Some((directory, rest)) = path.split_once('/') else {
+                    continue;
+                };
+                let held = |location: &str| under(&file, location) || names_directory(location, path);
+                if self.catalog.sections.iter().any(|section| self.locations(section).iter().any(|location| held(location)))
+                    || adopted.iter().any(|(key, location)| *key == section && held(location))
+                {
+                    continue;
+                }
+                let folder = file
+                    .strip_suffix(&format!("/{rest}"))
+                    .filter(|folder| folder.ends_with(&format!("/{directory}")))
+                    .map_or_else(|| format!("/{directory}"), str::to_string);
+                adopted.push((section.clone(), folder));
+            }
+        }
+        let mut next_id = self
+            .catalog
+            .sections
+            .iter()
+            .flat_map(|section| section.get("Location").and_then(Value::as_array).cloned().unwrap_or_default())
+            .filter_map(|location| location.get("id").and_then(Value::as_i64))
+            .max()
+            .unwrap_or(0);
+        for (key, folder) in &adopted {
+            let Some(section) = self.catalog.sections.iter_mut().find(|section| section.get("key").map(string_value).as_deref() == Some(key))
+            else {
+                continue;
+            };
+            next_id += 1;
+            info!("SECTION {key} takes the feed's {folder}, which its rows came from");
+            match section.get_mut("Location").and_then(Value::as_array_mut) {
+                Some(locations) => locations.push(json!({"id": next_id, "path": folder})),
+                None => section["Location"] = json!([{"id": next_id, "path": folder}]),
+            }
+        }
+        if !adopted.is_empty() {
+            self.catalog.document.insert("sections".to_string(), Value::Array(self.catalog.sections.clone()));
+            self.dirty = true;
+        }
+        adopted.len()
+    }
+
+    /// The library an item belongs in, made first when its directory has none
+    /// (`library_to_make`).
+    fn feed_library(&mut self, item: &Item) -> Option<Library> {
+        match self.library_to_make(item) {
+            Err(()) => return None,
+            Ok(Some(kind)) => self.make_feed_library(item, kind),
+            Ok(None) => {}
+        }
+        self.find_feed_library(item)
+    }
+
+    /// The type of library rex makes for an item that names none: the first directory of its
+    /// `path` is a library of its own (zurg's `anime`, `kids`), one of each type its source places
+    /// in it. A directory a library rex did not make holds -- one seeded, added by hand, or given
+    /// to the library its rows were in (`adopt_feed_directories`) -- gets none, and neither does a
+    /// clip, which goes where its title is. A directory only a deleted library held
+    /// (`deleted_locations`) is refused: deleting it is how a person stops showing it.
+    fn library_to_make(&self, item: &Item) -> Result<Option<&'static str>, ()> {
+        if item.library.is_some() || item.extra.is_some() || !item.path.contains('/') {
+            return Ok(None);
+        }
+        let kind = if item.kind() == Some("episode") { "show" } else { "movie" };
+        let holds = |location: &str| under(&item.file, location) || names_directory(location, &item.path);
+        let holders: Vec<&Value> = self
+            .catalog
+            .sections
+            .iter()
+            .filter(|section| matches!(section.get("type").and_then(Value::as_str), Some("movie" | "show")))
+            .filter(|section| self.locations(section).iter().any(|location| holds(location)))
+            .collect();
+        if holders.is_empty() {
+            return if self.deleted_locations.iter().any(|location| holds(location)) { Err(()) } else { Ok(Some(kind)) };
+        }
+        let made = holders.iter().all(|section| section.get("_feedDirectory").is_some());
+        let of_kind = holders.iter().any(|section| section.get("type").and_then(Value::as_str) == Some(kind));
+        Ok((made && item.kind().is_some() && !of_kind).then_some(kind))
+    }
+
+    /// A library of `kind` for the item's directory, on the folder its `file` shows the
+    /// directory as (`/mnt/zurg/anime`), titled with the directory's name.
+    fn make_feed_library(&mut self, item: &Item, kind: &str) {
+        let directory = item.path.split('/').next().unwrap_or_default().to_string();
+        let location = item
+            .file
+            .strip_suffix(&item.path[directory.len()..])
+            .filter(|folder| folder.ends_with(&format!("/{directory}")))
+            .map_or_else(|| format!("/{directory}"), str::to_string);
+        let key = self.next_section_key();
+        let section = json!({
+            "key": key.to_string(),
+            "type": kind,
+            "title": directory,
+            "uuid": format!("{:032x}", super::crc32(format!("{directory}-{kind}").as_bytes())),
+            "createdAt": super::now(),
+            "Location": [{"id": key, "path": location}],
+            "_feedDirectory": directory,
+        });
+        info!("SECTION create {directory} ({kind}) for the feed's {location}");
+        self.push_section(section.clone());
+        self.notify_section_scan(&key.to_string(), &section);
+        self.notify_queue_regenerated();
+        self.republish_sections();
+        self.dirty = true;
+    }
+
     /// The library an item belongs in: the section it names, else the movie or show
     /// library (of its type, when it names one) whose `Location` holds its file, else the
     /// first library of that type.
-    fn feed_library(&self, item: &Item) -> Option<Library> {
+    fn find_feed_library(&self, item: &Item) -> Option<Library> {
         let library = |section: &Value| Library {
             key: string_value(section.get("key").unwrap_or(&Value::Null)),
             kind: section.get("type").and_then(Value::as_str).unwrap_or_default().to_string(),
@@ -1388,8 +1515,8 @@ impl Runtime {
         // one beside that movie library's folder when there is one, and a film filed with the
         // shows to Movies; the name is never read (it was until 2026-10-17).
         let episode = || item.kind() == Some("episode");
-        // A folder no library holds (zurg's `anime`) goes to the first library of its kind:
-        // refusing it made every setup with such a folder seed its libraries by hand first.
+        // A folder no library holds is given its own library first (`library_to_make`); only a
+        // clip, or a folder a deleted library held, falls through to the first of its kind.
         let of_its_kind = || {
             let kind = if episode() { "show" } else { "movie" };
             of_kind.iter().find(|section| section.get("type").and_then(Value::as_str) == Some(kind))
@@ -1401,7 +1528,7 @@ impl Runtime {
             .or_else(|| wanted.and(of_kind.first()))
             .or_else(of_its_kind)?;
         if wanted.is_none() && found.get("type").and_then(Value::as_str) == Some("show") && item.kind() == Some("movie") {
-            if let Some(movies) = self.feed_library(&Item { library: Some("movie".to_string()), ..item.clone() }) {
+            if let Some(movies) = self.find_feed_library(&Item { library: Some("movie".to_string()), ..item.clone() }) {
                 return Some(movies);
             }
         }
@@ -1410,9 +1537,12 @@ impl Runtime {
             let beside = holds(found).and_then(|location| parent(&location));
             let shows: Vec<&Value> =
                 self.catalog.sections.iter().filter(|section| section.get("type").and_then(Value::as_str) == Some("show")).collect();
+            // A show library holding the folder too (rex makes one beside its own movie library
+            // for a directory, on the same folder) comes before one beside it.
             if let Some(show) = shows
                 .iter()
-                .find(|section| beside.is_some() && self.locations(section).iter().any(|location| parent(location) == beside))
+                .find(|section| holds(section).is_some())
+                .or_else(|| shows.iter().find(|section| beside.is_some() && self.locations(section).iter().any(|location| parent(location) == beside)))
                 .or(shows.first())
             {
                 return Some(library(show));
@@ -2341,5 +2471,55 @@ mod tests {
         let mut again = second.clone();
         again["_sid"] = json!("shows/The.Boys.S03.2160p/The.Boys.S03E02.2160p.mkv");
         assert_eq!(version_slot(&second), version_slot(&again), "another release of E02 is still a version of it");
+    }
+
+    /// rex-fun's two libraries and its rows from the folders no Location held
+    /// (`fun_unheld_folders_1019.json`): each library takes the folders its rows came from, so
+    /// they and later items there stay where they were, and only a new directory gets a library.
+    #[test]
+    fn rows_from_unheld_folders_keep_their_library_and_new_directories_get_one() {
+        let dir = work("unheld");
+        let fixture: Value = serde_json::from_str(include_str!("../../../tests/fixtures/feed/fun_unheld_folders_1019.json")).unwrap();
+        let catalog_path = dir.join("catalog.json");
+        let catalog = json!({"machineIdentifier": "feed-test-machine", "friendlyName": "feed-test",
+                             "sections": fixture["sections"], "items": fixture["items"]});
+        std::fs::write(&catalog_path, serde_json::to_vec(&catalog).unwrap()).unwrap();
+        let runtime = Runtime::load(RuntimeOptions { catalog: catalog_path, state: Some(dir.join("no-state")), ..RuntimeOptions::default() }).unwrap();
+        let mut guard = runtime;
+        assert_eq!(guard.catalog.sections.len(), 2, "no library is made for rows already shown");
+        fn pick(runtime: &mut Runtime, path: &str, kind: Option<&str>) -> Option<(String, String)> {
+            let rd = Source::register("rd", &json!({"url": "http://127.0.0.1:9", "mount": "/mnt/zurg"})).unwrap();
+            let mut pushed = json!({"id": path, "path": path, "file": format!("/mnt/zurg/{path}"), "media_info": {"streams": [{"codec_type": "video"}]}});
+            if let Some(kind) = kind {
+                pushed["kind"] = json!(kind);
+                pushed["ids"] = json!({"tmdb": 1});
+            }
+            runtime.feed_library(&Item::parse(&rd, &pushed).unwrap()).map(|library| (library.kind, library.title))
+        }
+        for row in fixture["items"].as_array().unwrap() {
+            let path = row.pointer("/Media/0/_path").or_else(|| row.get("_path")).and_then(Value::as_str).unwrap();
+            let kind = if row["type"] == "movie" { "movie" } else { "episode" };
+            let want = if kind == "movie" { "Movies" } else { "TV Shows" };
+            assert_eq!(pick(&mut guard, path, Some(kind)).map(|(_, title)| title).as_deref(), Some(want), "{path}");
+        }
+        assert_eq!(pick(&mut guard, "anime/Release/file.mkv", Some("episode")), Some(("show".to_string(), "TV Shows".to_string())), "a seeded folder");
+        assert_eq!(pick(&mut guard, "kids/Bluey.S01/Bluey.S01E01.mkv", Some("episode")), Some(("show".to_string(), "kids".to_string())));
+        assert_eq!(pick(&mut guard, "kids/Bluey.Film/Bluey.Film.mkv", Some("movie")), Some(("movie".to_string(), "kids".to_string())));
+        assert_eq!(pick(&mut guard, "kids/Bluey.S01/Bluey.S01E02.mkv", Some("episode")), Some(("show".to_string(), "kids".to_string())));
+        assert_eq!(pick(&mut guard, "kids/Unplaced/Unplaced.mkv", None).map(|(_, title)| title).as_deref(), Some("kids"));
+        assert_eq!(pick(&mut guard, "docs/Unplaced/Unplaced.mkv", None), Some(("movie".to_string(), "docs".to_string())));
+        assert_eq!(guard.catalog.sections.len(), 5, "kids twice, docs once");
+        let kids = guard.catalog.sections.iter().find(|section| section["title"] == "kids").unwrap();
+        assert_eq!(kids.pointer("/Location/0/path"), Some(&json!("/mnt/zurg/kids")));
+        // A person deleting a made library: its directory is refused, not made again.
+        let key = string_value(&kids["key"]);
+        guard.deleted_locations.extend(guard.locations(&guard.section(&key).unwrap().clone()));
+        guard.catalog.sections.retain(|section| section["title"] != "kids");
+        assert_eq!(pick(&mut guard, "kids/Bluey.S02/Bluey.S02E01.mkv", Some("episode")), None);
+        assert_eq!(guard.catalog.sections.len(), 3);
+        let before = guard.catalog.sections.clone();
+        assert_eq!(guard.adopt_feed_directories(), 0, "adoption is done once its libraries hold the folders");
+        assert_eq!(before, guard.catalog.sections);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

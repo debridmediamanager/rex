@@ -66,7 +66,7 @@ rust/target/release/rex --catalog rex.db --announce-url http://<rex's LAN IP>:32
 
 `<rex's LAN IP>` is the rex machine's address on your home network, such as `192.168.1.20` (`hostname -I` on Linux). Every command on this page uses it, run on the rex machine or anywhere else at home. `--announce-url` tells plex.tv where Plex apps signed in as you reach rex at home. rex announces nothing until it is claimed in step 3, then at once.
 
-The first start makes `rex.db` with two empty libraries, Debrid Movies and Debrid TV, and names the server after the machine (`--friendly-name` picks another name). Files under a `movies` directory go to Movies and files under `shows` go to TV, whichever source they come from, unless the source placed a file as the other kind. A file under any other directory, like `anime`, goes to TV if its source placed it as an episode and to Movies otherwise. Once claimed, rex takes the owner's Plex username from the claim.
+The first start makes `rex.db` with two empty libraries, Debrid Movies and Debrid TV, and names the server after the machine (`--friendly-name` picks another name). Files under a `movies` directory go to Movies and files under `shows` go to TV, whichever source they come from, unless the source placed a file as the other kind. Any other directory, like `anime`, becomes a library of its own, named after it: a TV library for files its source placed as episodes, a movie library for the rest. Once claimed, rex takes the owner's Plex username from the claim.
 
 `rex.db` holds your library, watch history and your sources' logins. Back it up with `sqlite3 rex.db ".backup rex.db.bak"` and keep it private.
 

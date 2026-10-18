@@ -570,6 +570,8 @@ pub struct Runtime {
     pub edits: HashMap<String, Map<String, Value>>,
     pub section_prefs: HashMap<(String, String), String>,
     pub added_sections: Vec<Value>,
+    /// The folders of the libraries a person deleted: the feed makes no library for them again.
+    pub deleted_locations: Vec<String>,
     pub deleted: HashSet<String>,
     devices: HashMap<String, Device>,
     gdm_peers: HashMap<String, GdmPeer>,
@@ -852,6 +854,7 @@ impl Runtime {
             edits: HashMap::new(),
             section_prefs: HashMap::new(),
             added_sections: Vec::new(),
+            deleted_locations: Vec::new(),
             deleted: HashSet::new(),
             devices: HashMap::new(),
             gdm_peers: HashMap::new(),
@@ -936,6 +939,7 @@ impl Runtime {
         if !folded.is_empty() {
             info!("FEED folded {} row(s) into other releases of their titles", folded.len());
         }
+        runtime.adopt_feed_directories();
         // The claim reports the server's name to plex.tv; a restored rename is it.
         runtime.claim_mut().name = runtime.friendly.clone();
         // A restored vocabulary is kept as it stood (cycle 73); only a fresh start, or
@@ -1202,6 +1206,9 @@ impl Runtime {
         }
         *self.view_counts.borrow_mut() = counts;
         if !rebuilt {
+            if let Some(locations) = state.get("deletedLocations").and_then(Value::as_array) {
+                self.deleted_locations = locations.iter().map(string_value).collect();
+            }
             if let Some(sections) = state.get("addedSections").and_then(Value::as_array) {
                 self.added_sections = sections.clone();
                 if !restored_rows {
@@ -1834,6 +1841,7 @@ impl Runtime {
             "prefs": self.prefs,
             "edits": self.edits,
             "addedSections": self.added_sections,
+            "deletedLocations": self.deleted_locations,
             "deleted": self.deleted.iter().map(|value| Value::String(value.clone())).collect::<Vec<_>>(),
             "viewState": view,
             "history": self.history,
@@ -9174,6 +9182,33 @@ impl Runtime {
         Some(Response::untyped(400, body.into_bytes()))
     }
 
+    /// The key a new library takes: one above every library's and every deleted one's.
+    fn next_section_key(&mut self) -> i64 {
+        let key = self
+            .catalog
+            .sections
+            .iter()
+            .filter_map(|section| section.get("key").map(string_value))
+            .filter_map(|value| value.parse::<i64>().ok())
+            .max()
+            .unwrap_or(0)
+            .saturating_add(1)
+            .max(self.section_next);
+        self.section_next = key.saturating_add(1);
+        key
+    }
+
+    /// A new library, kept in the state: Add Library's, or one the feed makes for a directory.
+    fn push_section(&mut self, section: Value) {
+        self.touch_gdm();
+        self.catalog.sections.push(section.clone());
+        self.added_sections.push(section);
+        self.catalog.document.insert(
+            "sections".to_string(),
+            Value::Array(self.catalog.sections.clone()),
+        );
+    }
+
     /// `server.py` `create_section`: `POST /library/sections` -- Add Library.  The
     /// form is validated by `add_library_refusal`, a numeric type names a library type, the new library's
     /// uuid is the CRC-32 of `<name>-<type>`, its `prefs[...]` are applied as a prefs
@@ -9192,17 +9227,7 @@ impl Runtime {
         let location = query.get("location").cloned().unwrap_or_default();
         let title = query.get("name").cloned().unwrap_or_default();
         let language = query.get("language").cloned().unwrap_or_default();
-        let key = self
-            .catalog
-            .sections
-            .iter()
-            .filter_map(|section| section.get("key").map(string_value))
-            .filter_map(|value| value.parse::<i64>().ok())
-            .max()
-            .unwrap_or(0)
-            .saturating_add(1)
-            .max(self.section_next);
-        self.section_next = key.saturating_add(1);
+        let key = self.next_section_key();
         let seed = format!("{title}-{kind}");
         let mut section = json!({
             "key": key.to_string(),
@@ -9249,13 +9274,7 @@ impl Runtime {
             }
         }
         info!("SECTION create {title} ({kind})");
-        self.touch_gdm();
-        self.catalog.sections.push(section.clone());
-        self.added_sections.push(section.clone());
-        self.catalog.document.insert(
-            "sections".to_string(),
-            Value::Array(self.catalog.sections.clone()),
-        );
+        self.push_section(section.clone());
         let mut prefs = query
             .iter()
             .filter_map(|(name, value)| {
@@ -14737,7 +14756,13 @@ impl Runtime {
                         }
                         let title =
                             section.get("title").map_or_else(|| "None".to_string(), string_value);
+                        let locations = self.locations(section);
+                        self.deleted_locations.extend(locations);
                         self.catalog.sections.retain(|row| {
+                            string_value(row.get("key").unwrap_or(&Value::Null)) != section_key
+                        });
+                        // An added library deleted stays deleted when the state is replayed.
+                        self.added_sections.retain(|row| {
                             string_value(row.get("key").unwrap_or(&Value::Null)) != section_key
                         });
                         // `server.py` `Catalog.remove_section`: the library's rows go with

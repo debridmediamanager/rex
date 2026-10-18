@@ -213,7 +213,7 @@ The `media_info` above is cut down to show its shape. Send ffprobe's whole outpu
 | `name` | no | The release name, shown as it is: an unplaced episode's show is titled with it. Nothing is read out of it -- no id, no title, no season or episode. Default: the folder above the file |
 | `release` | no | Groups a release's files, identified together (a season's episodes). Default: the folder above `path` |
 | `file` | no | The path clients see in Get Info, and what zurg's matcher reads back (`<mount>/<directory>/<release>/<file>`). Default `<mount>/<path>`, or `/<path>` without a mount |
-| `library` | no | A section key, or `movie`/`show`. Default: the library whose `Location` holds `file`, else one with a folder ending in a directory `path` starts with (`/mnt/zurg/movies` holds `movies/...` whatever prefix `file` has); with a type, that type's library holding `file`, else its first; a folder no library holds goes to the first library of its `kind` (Movies without one). With no `library`, an item placed as an episode that a movie library would take goes to a show library, the one beside it, and one placed as a movie that a show library would take goes to Movies; a row already shown moves when its library changes |
+| `library` | no | A section key, or `movie`/`show`. Default: the library whose `Location` holds `file`, else one with a folder ending in a directory `path` starts with (`/mnt/zurg/movies` holds `movies/...` whatever prefix `file` has); a directory no library holds is **made a library** (below). With a type, that type's library holding `file`, else its first. With no `library`, an item placed as an episode that a movie library would take goes to a show library -- one holding its folder, else the one beside it -- and one placed as a movie that a show library would take goes to a movie library, one holding its folder first; a row already shown moves when its library changes |
 | `folder` | no | The folder the provider lists the file in inside its release (`Smallville/Stagione 6`), `""` at its top level. Kept on the row; nothing reads it as an extra |
 | `hash` | no | The release's info hash. Kept on the row; nothing reads it yet |
 
@@ -307,6 +307,28 @@ What the fields do:
   same `file` (no feed id yet) is adopted with its ratingKey, watch state and
   identification; nothing is re-identified unless the item's placement or ids differ from the
   ones the row was identified by.
+
+## Libraries: one per directory
+
+The first directory of an item's `path` is its library. rex makes one the first time a
+directory no library holds is pushed (zurg's `anime`, `kids`): titled with the directory's name,
+of the type the item is (a show library for `kind: episode`, a movie library otherwise), on the
+folder its `file` shows the directory as (`/mnt/zurg/anime`, else `/anime`). A directory
+holding both films and episodes is two libraries of that name, one of each type, the second
+made when the first item of its type arrives. Nothing else makes a library: a clip goes where its
+title is, and an item naming its `library` goes there.
+
+- **A library that already holds the folder is used**, whichever made it: the seed's Movies and
+  TV, one added in Add Library, or one rex made. A person can rename either; the folder, not
+  the title, is what matches. Two sources pushing `anime/` fill one library.
+- **Deleting a library stops its directory.** Its folders are remembered in the state file, and
+  an item of its directory is then rejected (`no movie or show library holds ...`), not given a
+  new library. Adding a library with that folder in Add Library takes it again.
+- **Rows from before 2026-10-19 stay where they are.** Until then a directory no library held
+  went to the first library of its kind. At every start, a library holding rows from a
+  directory no library holds takes that directory as a folder, so those rows -- and later items
+  there -- keep the library they had instead of moving to a new one. rex-fun's `recent`,
+  `music`, `audiobooks` and `OnePieceLatest` stayed in Movies and TV Shows this way.
 
 ## What rex sends back: a delete
 
