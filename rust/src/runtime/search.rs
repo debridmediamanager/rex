@@ -1909,3 +1909,46 @@ fn begins_word(text: &str, wanted: &str) -> bool {
         (at == 0 || lowered[at - 1].is_whitespace()) && lowered[at..].starts_with(&needle)
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// `ascii_tier` against the fold it skips: `tier_words` of the title and sort title.
+    fn folded_tier(title: &str, sort: Option<&str>, terms: &[String]) -> &'static str {
+        let title_words = tier_words(title);
+        if title_words.is_empty() {
+            return "fuzzy";
+        }
+        let anchored = sort.map(tier_words).unwrap_or_else(|| title_words.clone());
+        if anchored.first() == terms.first() && !anchored.is_empty() {
+            return "anchored";
+        }
+        if terms.len() <= title_words.len()
+            && (0..terms.len()).all(|index| title_words[index].starts_with(terms[index].as_str()))
+        {
+            return "prefix";
+        }
+        "fuzzy"
+    }
+
+    #[test]
+    fn ascii_tiers_match_the_folded_pass() {
+        let titles = ["The Box", "THE END", "the", "  The  Office ", "Theatre", "Them!", "Other", "", "   ",
+                      "X-Men", "The.Thing", "Star Trek II", "the 100", "A Thé"];
+        let sorts = [None, Some("Box, The"), Some("Office"), Some("  "), Some("THEATRE"), Some("Thé")];
+        let queries = ["the", "THE", "the box", "the office", "th", "star tr", "x-", "box the", "the 1", "thé"];
+        for title in titles.iter().filter(|title| title.is_ascii()) {
+            for sort in sorts.iter().filter(|sort| sort.is_none_or(str::is_ascii)) {
+                for query in queries {
+                    let terms = tier_words(query);
+                    if terms.is_empty() {
+                        continue;
+                    }
+                    assert_eq!(ascii_tier(title, *sort, &terms), folded_tier(title, *sort, &terms),
+                               "{title:?} {sort:?} {query:?}");
+                }
+            }
+        }
+    }
+}
