@@ -81,7 +81,7 @@ pub(crate) fn index(read: Read, stream: i64) -> Result<Index, String> {
             }
             break read(at + header, (size - header) as usize)?;
         }
-        at += size;
+        at = at.checked_add(size).ok_or("a box past any file's end")?;
     };
     let movie_scale = child(&moov, b"mvhd").and_then(timescale).unwrap_or(1000);
     let trak = boxes(&moov, 0, moov.len())
@@ -118,7 +118,9 @@ pub(crate) fn index(read: Read, stream: i64) -> Result<Index, String> {
     let stbl = path(trak, &[b"mdia", b"minf", b"stbl"]).ok_or("no sample table")?;
     let stsz = child(stbl, b"stsz").ok_or("no stsz")?;
     let fixed = u32_at(stsz, 4).unwrap_or(0) as usize;
-    let count = u32_at(stsz, 8).unwrap_or(0) as usize;
+    // The count is the file's word: one fixed size for 4 billion samples asked a 32 GiB
+    // table. A text track has thousands of lines.
+    let count = (u32_at(stsz, 8).unwrap_or(0) as usize).min(1 << 20);
     let sizes: Vec<usize> = if fixed > 0 { vec![fixed; count] } else { table(stsz, 4, 4).into_iter().map(|row| be(row) as usize).collect() };
     let chunks: Vec<u64> = match child(stbl, b"co64") {
         Some(co64) => table(co64, 0, 8).into_iter().map(be).collect(),
@@ -141,6 +143,11 @@ pub(crate) fn index(read: Read, stream: i64) -> Result<Index, String> {
     for row in table(child(stbl, b"stts").ok_or("no stts")?, 0, 8) {
         let (repeat, delta) = (be(&row[..4]), be(&row[4..8]) as i64);
         for _ in 0..repeat {
+            // Past the last sample the table addresses nothing more: a row claiming billions
+            // of repeats spun here for seconds.
+            if sample >= offsets.len() {
+                break;
+            }
             let to_ms = |ticks: i64| ticks * 1000 / scale as i64;
             // An empty sample (its two length bytes alone) is a gap between lines.
             if let Some(&(offset, size)) = offsets.get(sample).filter(|entry| entry.1 > 2 && entry.1 <= 64 * 1024) {
@@ -187,6 +194,34 @@ mod tests {
                 "1\n00:00:00,100 --> 00:00:00,400\nFirst line\n\n2\n00:00:00,500 --> 00:00:00,700\nSecond\nline\n\n3\n00:00:00,800 --> 00:00:00,950\nThird, last\n\n"
             );
         }
+    }
+
+    /// `AT_FRONT` with 32-bit words written into its text track's `kind` box, at offsets from
+    /// the box's type: the text track is the second `trak`, so its tables are the last ones.
+    fn patched(kind: &[u8; 4], words: &[(usize, u32)]) -> &'static [u8] {
+        let mut release = AT_FRONT.to_vec();
+        let at = release.windows(4).rposition(|window| window == kind).unwrap();
+        for (offset, value) in words {
+            release[at + offset..at + offset + 4].copy_from_slice(&value.to_be_bytes());
+        }
+        Box::leak(release.into_boxed_slice())
+    }
+
+    #[test]
+    fn a_sample_table_claiming_billions_of_samples_is_read_as_far_as_it_reaches() {
+        // stts (version and flags at +4, its count at +8, rows of 8 from +12): the last of its
+        // seven rows repeats 4,294,967,295 times, past the seven samples there are.
+        let read = reader(patched(b"stts", &[(12 + 8 * 6, u32::MAX)]));
+        let started = std::time::Instant::now();
+        let index = mkvsubs::index(&read, 1).unwrap();
+        assert!(started.elapsed() < std::time::Duration::from_millis(500), "{:?}", started.elapsed());
+        assert_eq!(index.cues.len(), 3);
+        // stsz (sample size at +8, count at +12): one size for 4,294,967,295 samples asked for
+        // a 32 GiB table before anything was read.
+        let read = reader(patched(b"stsz", &[(8, 1), (12, u32::MAX)]));
+        let started = std::time::Instant::now();
+        let _ = mkvsubs::index(&read, 1);
+        assert!(started.elapsed() < std::time::Duration::from_millis(500), "{:?}", started.elapsed());
     }
 
     #[test]
