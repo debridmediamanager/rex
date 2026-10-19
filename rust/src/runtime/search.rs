@@ -77,31 +77,46 @@ fn tier_words(text: &str) -> Vec<String> {
     )
 }
 
-/// Cycle 39's whole-title equality pass.
-fn whole_title_equal(title: &str, query: &str) -> bool {
-    let raw_terms = words(query);
-    if raw_terms.iter().any(|word| word == "ōf" || word == "Ōf") {
-        return false;
+/// The query's half of `search_tier`, worked out once a search: redone for every row, it was
+/// most of a search for "the" over rex-fun's library once the sorts kept their keys (2026-10-19).
+pub(super) struct TierQuery {
+    terms: Vec<String>,
+    /// Cycle 39's whole-title equality pass refuses these queries outright.
+    no_exact: bool,
+    folded: Vec<String>,
+}
+
+impl TierQuery {
+    pub(super) fn new(query: &str) -> Self {
+        let raw_terms = words(query);
+        let no_exact = raw_terms.iter().any(|word| word == "ōf" || word == "Ōf")
+            || raw_terms.iter().any(|word| word.chars().skip(1).any(|c| c == 'ſ'));
+        Self { terms: tier_words(query), no_exact, folded: words(&fold_query(&query.to_lowercase())) }
     }
-    if raw_terms
-        .iter()
-        .any(|word| word.chars().skip(1).any(|c| c == 'ſ'))
-    {
-        return false;
+
+    /// Cycle 39's whole-title equality pass.
+    fn whole_title_equal(&self, title: &str) -> bool {
+        if self.no_exact {
+            return false;
+        }
+        let left = fold_query(&title.to_lowercase());
+        let mut left = left.split_whitespace().peekable();
+        left.peek().is_some() && left.eq(self.folded.iter().map(String::as_str))
     }
-    let left = words(&fold_query(&title.to_lowercase()));
-    let right = words(&fold_query(&query.to_lowercase()));
-    !left.is_empty() && left == right
 }
 
 /// Which of the four score tiers a row's title earns (cycle 36, 50).
 pub(super) fn search_tier(row: &(impl Row + ?Sized), query: &str) -> &'static str {
-    let terms = tier_words(query);
+    query_tier(row, &TierQuery::new(query))
+}
+
+pub(super) fn query_tier(row: &(impl Row + ?Sized), query: &TierQuery) -> &'static str {
+    let terms = &query.terms;
     if terms.is_empty() {
         return "fuzzy";
     }
     for field in ["title", "titleSort", "originalTitle"] {
-        if whole_title_equal(text_of(row, field), query) {
+        if query.whole_title_equal(text_of(row, field)) {
             return "exact";
         }
     }
@@ -109,12 +124,14 @@ pub(super) fn search_tier(row: &(impl Row + ?Sized), query: &str) -> &'static st
     if title_words.is_empty() {
         return "fuzzy";
     }
-    let sort = row
-        .get("titleSort")
-        .and_then(Value::as_str)
-        .filter(|s| !s.is_empty())
-        .unwrap_or(text_of(row, "title"));
-    let anchored = tier_words(sort);
+    let sorted;
+    let anchored = match row.get("titleSort").and_then(Value::as_str).filter(|s| !s.is_empty()) {
+        Some(sort) if sort != text_of(row, "title") => {
+            sorted = tier_words(sort);
+            &sorted
+        }
+        _ => &title_words,
+    };
     if anchored.first() == terms.first() && !anchored.is_empty() {
         return "anchored";
     }
@@ -167,12 +184,16 @@ fn tag_score(tier: &str) -> String {
 /// The full-precision score PMS compares (cycle 36/38): the type's ladder base, the
 /// tier drop, plus `audienceRating / 10000` capped at 10.
 pub(super) fn search_score_value(row: &(impl Row + ?Sized), needle: &str) -> f64 {
+    tier_score_value(row, search_tier(row, needle))
+}
+
+/// `search_score_value` for a row whose tier is already known.
+fn tier_score_value(row: &(impl Row + ?Sized), tier: &str) -> f64 {
     let base = match row.get("type").and_then(Value::as_str) {
         Some("episode") => 0.91,
         Some("playlist") => 0.92,
         _ => 0.93,
     };
-    let tier = search_tier(row, needle);
     let tail = row
         .get("audienceRating")
         .and_then(|value| {
@@ -594,10 +615,11 @@ impl Runtime {
                 }
             }
         }
-        let mut tag_matches = direct_tags.clone();
+        // Moved, not copied: each is a whole row, and "the" names thousands of tags.
+        let mut tag_matches = direct_tags;
         if let Some(spelling) = &spelling {
             if needle.chars().count() >= 2 {
-                let direct_keys = direct_tags
+                let direct_keys = tag_matches
                     .iter()
                     .map(|(hub, row, _, name, _)| {
                         (
@@ -731,31 +753,40 @@ impl Runtime {
                 seen.insert(key);
             }
         }
+        let tier_query = TierQuery::new(&score_query);
+        fn tiered<'r>(rows: Vec<AnyRow<'r>>, query: &TierQuery) -> Vec<(&'static str, AnyRow<'r>)> {
+            rows.into_iter().map(|row| (query_tier(&row, query), row)).collect()
+        }
         for (kind, candidates) in typed.iter_mut() {
-            if matches!(kind.as_str(), "movie" | "show" | "episode") {
+            let tiered = if matches!(kind.as_str(), "movie" | "show" | "episode") {
                 let (mut title_hits, associated): (Vec<_>, Vec<_>) = std::mem::take(candidates)
                     .into_iter()
                     // Only a tag hit's own copy is reasoned: a catalog row is not read for it.
                     .partition(|r| !matches!(r, AnyRow::Owned(row) if row.get("_searchReason").is_some()));
-                title_hits.sort_by(|a, b| {
-                    let key = |row: &AnyRow<'_>| {
-                        (
-                            text_of(row, "title").as_bytes().to_vec(),
-                            key_of(row).and_then(|k| k.parse::<i64>().ok()).unwrap_or(0),
-                        )
-                    };
-                    key(b).cmp(&key(a))
+                // Keyed once a row: building the key on every comparison, and the tier once
+                // for this split and again for the score, were most of a search for "the" over
+                // rex-fun's library (2026-10-19).
+                title_hits.sort_by_cached_key(|row| {
+                    std::cmp::Reverse((
+                        text_of(row, "title").as_bytes().to_vec(),
+                        key_of(row).and_then(|k| k.parse::<i64>().ok()).unwrap_or(0),
+                    ))
                 });
-                let (exact, rest): (Vec<_>, Vec<_>) = title_hits
-                    .into_iter()
-                    .partition(|row| search_tier(row, &score_query) == "exact");
-                *candidates = exact.into_iter().chain(rest).chain(associated).collect();
-            }
-            let query = score_query.clone();
-            comparison_sort(candidates, &|row: &AnyRow<'_>| search_score_value(row, &query));
+                let (exact, rest): (Vec<_>, Vec<_>) =
+                    tiered(title_hits, &tier_query).into_iter().partition(|(tier, _)| *tier == "exact");
+                exact.into_iter().chain(rest).chain(tiered(associated, &tier_query)).collect::<Vec<_>>()
+            } else {
+                tiered(std::mem::take(candidates), &tier_query)
+            };
+            let mut keyed = tiered
+                .into_iter()
+                .map(|(tier, row)| (tier_score_value(&row, tier), row))
+                .collect::<Vec<_>>();
+            comparison_sort_by(&mut keyed, &|pair: &(f64, AnyRow<'_>)| pair.0);
             if let Some(limit) = limit {
-                candidates.truncate(limit);
+                keyed.truncate(limit);
             }
+            *candidates = keyed.into_iter().map(|(_, row)| row).collect();
         }
         (typed, tags)
     }
@@ -1286,8 +1317,13 @@ impl Runtime {
         let score_query = text.trim().to_string();
         let needle = score_query.to_lowercase();
         let mut results: Vec<Value> = Vec::new();
+        // A row past `limit` is cut below, and projecting one is most of what is left of a
+        // search: for "the", movies alone fill the web client's 100 (2026-10-19).
         let metadata = |results: &mut Vec<Value>, kind: &str| {
             for row in typed.get(kind).into_iter().flatten() {
+                if results.len() >= limit {
+                    return;
+                }
                 if !self.search_type_selects(&tokens, kind, row) {
                     continue;
                 }
@@ -1311,6 +1347,9 @@ impl Runtime {
         };
         let tag_rows = |results: &mut Vec<Value>, kind: &str| {
             for entry in tags.get(kind).into_iter().flatten() {
+                if results.len() >= limit {
+                    return;
+                }
                 if !self.search_type_selects(&tokens, kind, &entry.row) {
                     continue;
                 }
@@ -1335,6 +1374,9 @@ impl Runtime {
             tag_rows(&mut results, kind);
         }
         for row in self.collection_matches(&needle, None) {
+            if results.len() >= limit {
+                break;
+            }
             if !self.search_type_selects(&tokens, "collection", &Value::Object(row.clone())) {
                 continue;
             }
