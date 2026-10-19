@@ -39,7 +39,7 @@
 //! GET    /servers/<name>/build        that job's status and log tail
 //! ```
 //!
-//! Secrets reach a server through its environment (PLEX_TOKEN, REX_TOKEN, DMM_API_KEY), never
+//! Secrets reach a server through its environment (PLEX_TOKEN, REX_TOKEN, REX_DIRECT_KEY), never
 //! its command line, which `ps` shows. A server's sources register with it themselves
 //! (docs/feed-api.md): nothing about them is configured here. Linux and
 //! macOS only: servers are process groups of their own, stopped with signals.
@@ -65,15 +65,18 @@ use crate::catalog_tool::{checkout_root, py_dumps, sha1_hex};
 use crate::{platform, store};
 
 const DEFAULT_LISTEN: &str = "127.0.0.1:32300";
-// `tmdb_key` reaches no server since rex reads no TMDB (2026-10-17); a configuration saved
-// before then still carries one, which stays accepted and redacted.
-const SECRETS: &[&str] = &["tmdb_key", "plex_token", "token", "dmm_api_key"];
+// `tmdb_key` reaches no server since rex reads no TMDB (2026-10-17), nor `dmm_api_key` since
+// rex-direct needs no key (2026-10-19); a configuration saved before then still carries one,
+// which stays accepted and redacted.
+const SECRETS: &[&str] = &["tmdb_key", "plex_token", "token", "dmm_api_key", "rex_direct_key"];
 /// What each environment field is called in the server's environment.
 const SECRET_ENV: &[(&str, &str)] = &[
     ("plex_token", "PLEX_TOKEN"),
     ("token", "REX_TOKEN"),
-    // rex-direct's DMM sponsor key (`runtime/rexdirect.rs`).
-    ("dmm_api_key", "DMM_API_KEY"),
+    // rex-direct's provider and its key (`runtime/rexdirect.rs`); the URL is no secret, but
+    // reaches the server the same way.
+    ("rex_direct_key", "REX_DIRECT_KEY"),
+    ("rex_direct_url", "REX_DIRECT_URL"),
 ];
 /// Seconds between SIGTERM and SIGKILL; the server saves on SIGTERM.
 const STOP_GRACE: Duration = Duration::from_secs(15);
@@ -150,7 +153,7 @@ fn validate(config: Value, partial: bool) -> Answer<Map<String, Value>> {
     };
     const KNOWN: &[&str] = &[
         "name", "port", "catalog", "zurg_mount", "tmdb_key",
-        "plex_token", "token", "dmm_api_key", "friendly_name", "part_mode", "host", "gdm", "announce_url", "public_url",
+        "plex_token", "token", "dmm_api_key", "rex_direct_key", "rex_direct_url", "friendly_name", "part_mode", "host", "gdm", "announce_url", "public_url",
         "web_root", "assert_claimed", "verbose", "extra_args", "restart",
     ];
     let mut unknown = out.keys().filter(|key| !KNOWN.contains(&key.as_str())).cloned().collect::<Vec<_>>();
@@ -192,7 +195,7 @@ fn validate(config: Value, partial: bool) -> Answer<Map<String, Value>> {
         out.insert("catalog".to_string(), Value::String(path));
     }
     for field in [
-        "zurg_mount", "tmdb_key", "plex_token", "token", "dmm_api_key",
+        "zurg_mount", "tmdb_key", "plex_token", "token", "dmm_api_key", "rex_direct_key", "rex_direct_url",
         "friendly_name", "announce_url", "public_url", "web_root", "host",
     ] {
         if out.get(field).is_some_and(|value| !value.is_null() && !value.is_string()) {
@@ -1377,9 +1380,9 @@ const USAGE: &str = "usage: rex manager [--root ROOT] {serve,create,list,start,s
 
 Every command but serve also takes --url URL (default http://127.0.0.1:32300) and
 --token-file FILE (default <root>/admin.token; or $REX_MANAGER_TOKEN). Keys come from the
-environment (PLEX_TOKEN, REX_TOKEN, DMM_API_KEY, or the variable --plex-token-env,
---token-env and --dmm-api-key-env name), never the command line. Sources register with
-the server themselves (docs/feed-api.md).";
+environment (PLEX_TOKEN, REX_TOKEN, REX_DIRECT_KEY, REX_DIRECT_URL, or the variable
+--plex-token-env, --token-env, --rex-direct-key-env and --rex-direct-url-env name), never
+the command line. Sources register with the server themselves (docs/feed-api.md).";
 
 fn usage_error(message: &str) -> String {
     format!("{}\nrex: error: {message}", USAGE.lines().next().unwrap_or_default())
@@ -1437,7 +1440,7 @@ fn parse(args: &[String]) -> Result<Option<Cli>, String> {
                 let mut values = vec![
                     "--port", "--catalog", "--friendly-name", "--zurg-mount", "--part-mode", "--gdm", "--host",
                     "--announce-url", "--public-url", "--web-root", "--restart", "--extra-arg",
-                    "--plex-token-env", "--token-env", "--dmm-api-key-env",
+                    "--plex-token-env", "--token-env", "--rex-direct-key-env", "--rex-direct-url-env",
                 ];
                 values.extend(CLIENT);
                 (values, &["--assert-claimed", "--verbose"][..])
@@ -1681,15 +1684,20 @@ mod tests {
         assert_eq!(refused(json!({"name": "den", "port": 32401, "extra_args": [1]}), false).unwrap().1, "extra_args must be a list of strings");
         // A claimed server announces with its own token; an unclaimed one waits for its claim.
         assert!(validate(json!({"name": "den", "port": 32401, "announce_url": "https://x"}), false).is_ok());
+        // Saved before rex-direct needed no key: still accepted, and reaches no server.
+        assert!(validate(json!({"name": "den", "port": 32401, "dmm_api_key": "old"}), false).is_ok());
+        assert_eq!(refused(json!({"name": "den", "port": 32401, "rex_direct_url": 1}), false).unwrap().1, "rex_direct_url must be a string");
         assert_eq!(refused(json!([]), true).unwrap().1, "the configuration must be a JSON object");
     }
 
     #[test]
     fn keys_are_redacted() {
-        let config = json!({"name": "den", "token": "secret", "tmdb_key": "", "plex_token": "p", "dmm_api_key": "d", "zurg_mount": "/mnt/zurg"});
+        let config = json!({"name": "den", "token": "secret", "tmdb_key": "", "plex_token": "p", "dmm_api_key": "d",
+                            "rex_direct_key": "k", "rex_direct_url": "https://provider.example/r", "zurg_mount": "/mnt/zurg"});
         assert_eq!(
             redact(config.as_object().unwrap()),
-            json!({"name": "den", "token": "***", "tmdb_key": "", "plex_token": "***", "dmm_api_key": "***", "zurg_mount": "/mnt/zurg"})
+            json!({"name": "den", "token": "***", "tmdb_key": "", "plex_token": "***", "dmm_api_key": "***",
+                   "rex_direct_key": "***", "rex_direct_url": "https://provider.example/r", "zurg_mount": "/mnt/zurg"})
         );
     }
 

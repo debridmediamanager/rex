@@ -242,7 +242,8 @@ A plain `nohup ... &` from an agent tool call **does not survive** the call.
 
 Several servers, started and stopped on demand: `rex manager serve`, then
 `rex manager create NAME --port P [--catalog PATH] [--zurg-mount M] [--friendly-name N]` (keys from
-`TMDB_KEY`/`PLEX_TOKEN`/`REX_TOKEN`/`DMM_API_KEY` in the environment; sources register with each server) and `start|stop|list|logs NAME`; a server with no catalog seeds one on its first start
+`PLEX_TOKEN`/`REX_TOKEN`/`REX_DIRECT_KEY`, and `REX_DIRECT_URL`, in the environment; a saved `dmm_api_key`
+loads and reaches no server; sources register with each server) and `start|stop|list|logs NAME`; a server with no catalog seeds one on its first start
 (`build NAME` seeds it ahead of time). Its data
 lives in `managed/` at the repository root (gitignored, mode 700); `tests/test_manager.py` drives it end to end and
 starts its own manager on a temporary root.
