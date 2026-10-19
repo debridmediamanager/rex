@@ -20,6 +20,10 @@ use std::time::Duration;
 pub(super) const UPSTREAM_UA: &str = "rex/0.1";
 /// Shared cap for complete upstream responses, including responses decoded by plex.tv.
 pub(crate) const MAX_BODY_BYTES: usize = 64 * 1024 * 1024;
+/// Response headers, and a chunked body's trailers, a response may carry.
+const MAX_HEADERS: usize = 200;
+/// How long a whole body read by `read_body` may take, whatever each read's timeout.
+const BODY_DEADLINE: Duration = Duration::from_secs(120);
 
 /// The roots urllib uses on the Linux hosts rex runs on. Loaded once.
 fn client_config() -> Option<Arc<ClientConfig>> {
@@ -119,7 +123,13 @@ impl Upstream {
     pub(super) fn read_body(&mut self, limit: usize) -> Result<Vec<u8>, String> {
         let mut body = Vec::new();
         let mut chunk = [0_u8; 64 * 1024];
+        // Bounded in time too: each read has the socket timeout, but a peer that drips a byte
+        // under it held the request's thread for as long as it liked.
+        let deadline = std::time::Instant::now() + BODY_DEADLINE;
         loop {
+            if std::time::Instant::now() > deadline {
+                return Err("upstream body too slow".to_string());
+            }
             let count = self.read(&mut chunk).map_err(|error| error.to_string())?;
             if count == 0 {
                 return Ok(body);
@@ -178,8 +188,15 @@ impl Read for Upstream {
                     let size = u64::from_str_radix(line.split(';').next().unwrap_or("").trim(), 16)
                         .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "bad chunk size"))?;
                     if size == 0 {
-                        // Trailers, up to the blank line.
-                        while !read_line(&mut self.reader)?.is_empty() {}
+                        // Trailers, up to the blank line, as many as `exchange` takes headers:
+                        // a peer sending one every few seconds never ended this loop.
+                        let mut trailers = 0;
+                        while !read_line(&mut self.reader)?.is_empty() {
+                            trailers += 1;
+                            if trailers > MAX_HEADERS {
+                                return Err(io::Error::new(io::ErrorKind::InvalidData, "too many trailers"));
+                            }
+                        }
                         *done = true;
                         return Ok(0);
                     }
@@ -210,6 +227,11 @@ struct Target {
 }
 
 fn parse_url(url: &str) -> Option<Target> {
+    // A URL is written into the request line as it is: a space, CR or LF in one (a client's
+    // percent-decoded `/photo/:/transcode?url=`) wrote a second request of its choosing.
+    if url.bytes().any(|byte| !(0x21..=0x7e).contains(&byte)) {
+        return None;
+    }
     let (scheme, rest) = url.split_once("://")?;
     let tls = if scheme.eq_ignore_ascii_case("https") {
         true
@@ -405,7 +427,7 @@ fn exchange(
         if line.is_empty() {
             break;
         }
-        if response_headers.len() > 200 {
+        if response_headers.len() > MAX_HEADERS {
             return Err("too many upstream headers".to_string());
         }
         if let Some((name, value)) = line.split_once(':') {
@@ -467,7 +489,10 @@ fn open_checked(
         // presigned link) goes without it, as curl and browsers send it. S3 refuses a
         // presigned URL that also carries one ("Only one auth mechanism allowed").
         if origin.as_ref() != Some(&(target.tls, target.host.clone(), target.port)) {
-            headers.retain(|(name, _)| !name.eq_ignore_ascii_case("authorization"));
+            // The claim's server token rides in `X-Plex-Token`, and is the same kind of credential.
+            headers.retain(|(name, _)| {
+                !name.eq_ignore_ascii_case("authorization") && !name.eq_ignore_ascii_case("x-plex-token")
+            });
         }
         let response = exchange(method, &target, &headers, body, timeout)?;
         let redirect = matches!(response.status, 301 | 302 | 303 | 307 | 308)
@@ -742,5 +767,58 @@ mod tests {
     fn windows_root_store_configures_tls() {
         assert!(!crate::platform::system_root_certificates().expect("Windows ROOT store").is_empty());
         assert!(client_config().is_some());
+    }
+
+    #[test]
+    fn a_url_with_a_space_or_line_break_is_no_url() {
+        for url in ["http://h.example/a b", "http://h.example/a\r\nX-A: b", "http://h.example/\x7f"] {
+            assert!(parse_url(url).is_none(), "{url:?}");
+        }
+        let error = fetch("GET", "http://127.0.0.1:9/a HTTP/1.1\r\nX-A: b", &[], b"", Duration::from_secs(1))
+            .map(|_| ())
+            .expect_err("refused before dialling");
+        assert!(error.contains("unsupported url"), "{error}");
+    }
+
+    #[test]
+    fn a_redirect_to_another_origin_carries_no_plex_token() {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).expect("target listener");
+        let target = listener.local_addr().expect("target address");
+        let seen = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().expect("redirected request");
+            let mut request = Vec::new();
+            let mut byte = [0u8; 1];
+            while !request.ends_with(b"\r\n\r\n") && matches!(stream.read(&mut byte), Ok(1)) {
+                request.push(byte[0]);
+            }
+            stream.write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n").expect("answer");
+            String::from_utf8_lossy(&request).to_ascii_lowercase()
+        });
+        // `localhost` is another origin than `127.0.0.1`, as a CDN is.
+        let location = format!("HTTP/1.1 302 Found\r\nLocation: http://localhost:{}/x\r\nContent-Length: 0\r\n\r\n", target.port());
+        let (url, release, thread) = stub(location.into_bytes(), false);
+        let headers = [("X-Plex-Token", "server-token".to_string()), ("Accept", "a/b".to_string())];
+        let (status, _, _) = fetch("GET", &url, &headers, b"", Duration::from_secs(5)).expect("followed");
+        assert_eq!(status, 200);
+        let request = seen.join().expect("target thread");
+        assert!(!request.contains("x-plex-token"), "{request}");
+        assert!(request.contains("accept: a/b"), "{request}");
+        drop(release);
+        thread.join().expect("stub thread");
+    }
+
+    #[test]
+    fn endless_chunked_trailers_end_the_read() {
+        let mut response = b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n1\r\nx\r\n0\r\n".to_vec();
+        for _ in 0..300 {
+            response.extend_from_slice(b"X-Trailer: y\r\n");
+        }
+        response.extend_from_slice(b"\r\n");
+        let (url, release, thread) = stub(response, false);
+        let mut upstream = open("GET", &url, &[], b"", Duration::from_secs(5)).expect("response head");
+        let error = upstream.read_body(1024).expect_err("trailers refused");
+        assert!(error.contains("too many trailers"), "{error}");
+        drop(release);
+        thread.join().expect("stub thread");
     }
 }
