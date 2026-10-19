@@ -2293,8 +2293,8 @@ impl super::Runtime {
                 "privateAddress": self.private_address,
                 "privatePort": if private { self.private_port } else { 0 },
                 "subscriptionFeatures": self.owner_features(),
-                "subscriptionActive": claimed,
-                "subscriptionState": if claimed { "Active" } else { "Unknown" },
+                "subscriptionActive": true,
+                "subscriptionState": "Active",
             }}),
         )
     }

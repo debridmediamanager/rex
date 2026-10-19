@@ -3520,7 +3520,8 @@ impl Runtime {
                 "myPlexSigninState",
                 json!(if claimed { "ok" } else { "none" }),
             ),
-            ("myPlexSubscription", json!(claimed)),
+            // A local capability claim, not the owner's plex.tv subscription or sign-in.
+            ("myPlexSubscription", json!(true)),
             (
                 "myPlexUsername",
                 if claimed {
@@ -25764,8 +25765,8 @@ fn unix_year(timestamp: i64) -> i64 {
 /// certificates, hardware transcoding, content filters, trailers -- and webhooks, which rex posts
 /// (`plextv::Webhooks`) but no client reads off a server. Plex Web 4.147.1
 /// reads only `session_kick`, `dvr`, `livetv`, `lyrics` and `premium_music_metadata` off a
-/// server (findings, "What ownerFeatures gates"). `pass` stays until remote play without
-/// one is measured.
+/// server (findings, "What ownerFeatures gates"). `pass` is always advertised, regardless
+/// of claim or account status; it does not change plex.tv's own playback checks.
 const OWNER_FEATURES: &str = "collections,federated-auth,home,item_clusters,kevin-bacon,pass,server-manager,session_kick,type-first";
 
 /// Cycle 54: the rows `unwatched=1` drops from a list that is not a query -- a movie

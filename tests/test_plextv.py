@@ -614,6 +614,22 @@ def surfaces(instance, token=None):
     }
 
 
+def check_plex_pass(label, responses):
+    """The local Pass claim is independent of sign-in and upstream feature refresh."""
+    for name in ("root", "providers"):
+        status, body = responses[name]
+        info = container(body)
+        check("%s %s advertises Plex Pass" % (label, name),
+              status == 200 and truthy(info.get("myPlexSubscription"))
+              and "pass" in info.get("ownerFeatures", "").split(","), (status, info))
+    status, body = responses["account"]
+    account = body.get("MyPlex", {}) if isinstance(body, dict) else {}
+    check("%s /myplex/account advertises an active Plex Pass" % label,
+          status == 200 and truthy(account.get("subscriptionActive"))
+          and account.get("subscriptionState") == "Active"
+          and "pass" in account.get("subscriptionFeatures", "").split(","), (status, account))
+
+
 def read_json(path):
     try:
         with open(path) as handle:
@@ -888,6 +904,13 @@ def main():
         check("the suite's AES-256 encrypts the public NIST block vector",
               aes_encrypt_block(bytes.fromhex("6bc1bee22e409f96e93d7e117393172a"),
                                 aes256_round_keys(key)).hex() == "f3eed1bdb5d2a03c064b5a7e3db181f8")
+        token_only = Instance(directory, ports[0], ports[2], extra=("--token", SERVER_TOKEN),
+                              announce=None, plex_token=None)
+        local = surfaces(token_only, SERVER_TOKEN)
+        check_plex_pass("token-gated without a plex.tv claim", local)
+        check("advertising Plex Pass does not claim the token-gated server",
+              not truthy(container(local["identity"][1]).get("claimed")), local["identity"])
+        token_only.stop()
         # Watch state the cloud import is to clear: a watched, part-played, rated row the
         # cloud calls unplayed with no rating, and a rated row it sends the -1 clear for. An
         # unclaimed server serves no client (2026-10-19), so it is kept in a state file by a
@@ -1128,6 +1151,7 @@ def main():
               (status, body))
         check("claimed /identity reports claimed true at once",
               truthy(container(claim_now["identity"][1]).get("claimed")), claim_now["identity"])
+        check_plex_pass("claimed before the owner refresh", claim_now)
         root = container(claim_now["root"][1])
         check("claimed / names the owner's email and signs in",
               root.get("myPlexUsername") == EMAIL and root.get("myPlexSigninState") == "ok"
@@ -1163,6 +1187,7 @@ def main():
               refreshed and users and (refreshed[0]["at"] - users[0]["at"], sent(refreshed[0])))
         time.sleep(0.5)
         after = surfaces(first, ACCOUNT_TOKEN)
+        check_plex_pass("after an upstream feature list with no pass", after)
         check("ownerFeatures gain the account's feature UUIDs",
               container(after["root"][1]).get("ownerFeatures") == features,
               container(after["root"][1]).get("ownerFeatures"))
@@ -1299,6 +1324,7 @@ def main():
         # -- restart: the claim survives -------------------------------------------
         second = Instance(directory, ports[1], ports[2], extra=("--verbose",), announce=ANNOUNCE_URLS)
         restarted = surfaces(second, ACCOUNT_TOKEN)
+        check_plex_pass("after a claimed restart", restarted)
         check("after a restart /identity is still claimed",
               truthy(container(restarted["identity"][1]).get("claimed")), restarted["identity"])
         check("after a restart / still names the owner and the account's features",

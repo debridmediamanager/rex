@@ -2251,6 +2251,13 @@ are changing; replay the client's exact request before altering behavior.
   and every 86,400 seconds, with the feature read about 11 seconds after the user read; commit the
   pair atomically and retain the whole last-good pair on failure. Plex Web reads `ownerFeatures`
   in 28 places in its bundle.
+- **rex always advertises Plex Pass locally**, regardless of claim or account subscription
+  status (intentional policy, 2026-10-19): `/` and `/media/providers` answer
+  `myPlexSubscription=true`, `/myplex/account` answers `subscriptionActive=true` and
+  `subscriptionState=Active`, and both feature strings include `pass`. Sign-in, ownership
+  and token gates still follow the actual claim. This changes no plex.tv entitlement and
+  does not bypass a client's direct plex.tv subscription check (findings, "Remote play with
+  an owner who has no Plex Pass").
 - **An axis BUCKET resolves against the server's global tag TABLE, not the leaf's own column.** A
   genre tag id answers the identical container under `genre`, `director`, `actor`, `mood`,
   `style`, `similar`, `tag` and eleven more; only `studio` and `platform` are not bucket names at
