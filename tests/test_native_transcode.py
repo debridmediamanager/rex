@@ -579,6 +579,15 @@ def main():
     streams = probe(MEDIA["boxass.mkv"])["streams"]
     items.append(row("11", "Boxass", "boxass.mkv", streams, os.path.getsize(MEDIA["boxass.mkv"]), DURATION,
                      subtitle=next(s for s in streams if s["codec_type"] == "subtitle"), subtitle_codec="ass"))
+    # The SRT as an MP4's timed text (mov_text), which Matroska cannot hold.
+    MEDIA["movtext.mp4"] = os.path.join(scratch, "movtext.mp4")
+    subprocess.run([FFMPEG, "-v", "error", "-y", "-i", plain, "-i", srt, "-map", "0", "-map", "1", "-c", "copy",
+                    "-c:s", "mov_text", MEDIA["movtext.mp4"]], check=True)
+    streams = probe(MEDIA["movtext.mp4"])["streams"]
+    item = row("12", "Movtext", "movtext.mp4", streams, os.path.getsize(MEDIA["movtext.mp4"]), DURATION,
+               subtitle=next(s for s in streams if s["codec_type"] == "subtitle"), subtitle_codec="mov_text")
+    item["Media"][0]["container"] = item["Media"][0]["Part"][0]["container"] = "mp4"
+    items.append(item)
     # The plain clip on its own, for a subtitle uploaded to rex.
     MEDIA["plain.mkv"] = plain
     items.append(row("10", "Plain", "plain.mkv", probe(plain)["streams"], os.path.getsize(plain), DURATION))
@@ -688,6 +697,24 @@ def main():
                                capture_output=True, text=True).stdout
         check("srt: the first segment carries the subtitle's text", "Hello from the SRT" in lines, repr(lines[:120]))
         get(port, "/video/:/transcode/universal/stop", [("session", "s-srt")])
+        # An MP4's timed text was dropped for them too: Matroska cannot hold mov_text, so it is
+        # converted to SRT in the pass.
+        status, container = decision(port, "12", "s-mov", directStream="0", subtitles="auto", **profile)
+        part = container.get("Metadata", [{}])[0].get("Media", [{}])[0].get("Part", [{}])[0]
+        text = next((s for s in part.get("Stream", []) if s.get("streamType") == 3), {})
+        check("mov_text: the apps get the MP4's timed text converted to SRT",
+              (text.get("decision"), text.get("format"), text.get("location")) == ("transcode", "srt", "segments-av"),
+              json.dumps(text))
+        get(port, "/video/:/transcode/universal/start.m3u8", plex_web_query("12", "s-mov", directStream="0", subtitles="auto", **profile))
+        base = "/video/:/transcode/universal/session/s-mov/base/"
+        _, _, header = get(port, base + "header")
+        status, _, first = get(port, base + "00000.ts")
+        joined = os.path.join(scratch, "mov-0.mkv")
+        open(joined, "wb").write(header + first)
+        lines = subprocess.run([FFMPEG, "-v", "error", "-i", joined, "-map", "0:s:0", "-f", "srt", "-"],
+                               capture_output=True, text=True).stdout
+        check("mov_text: the first segment carries the subtitle's text", "Hello from the SRT" in lines, repr(lines[:120]))
+        get(port, "/video/:/transcode/universal/stop", [("session", "s-mov")])
         # A subtitle uploaded to rex was dropped too: copied into the apps' Matroska segments,
         # burned into an MPEG-TS client's picture. Its drawing is a white box over BOX, which
         # libass renders without a font.
@@ -732,7 +759,7 @@ def main():
         # An embedded text subtitle was dropped for every client not given Matroska. The
         # reference burns an SRT for the iOS profile's MPEG-TS (`subtitles_s1422.json`); rex
         # burns it for Plex Web too, reading the track through the release's Cues.
-        for key, label in (("9", "s-srt-ts"), ("11", "s-ass-ts")):
+        for key, label in (("9", "s-srt-ts"), ("11", "s-ass-ts"), ("12", "s-mov-ts")):
             status, container = decision(port, key, label, directStream="1", subtitles="auto")
             part = container.get("Metadata", [{}])[0].get("Media", [{}])[0].get("Part", [{}])[0]
             kinds = {s.get("streamType"): s for s in part.get("Stream", [])}
@@ -751,6 +778,12 @@ def main():
         check("s-ass-ts: the track was read through its Cues",
               wait_for_log(log, r"s-ass-ts subtitle stream \d+: (1) of 1 cues") == "1", "")
         get(port, "/video/:/transcode/universal/stop", [("session", "s-ass-ts")])
+        # An MP4's timed text is read through its sample tables the same way.
+        get(port, "/video/:/transcode/universal/start.m3u8", plex_web_query("12", "s-mov-ts", directStream="1", subtitles="auto"))
+        status, _, first = get(port, "/video/:/transcode/universal/session/s-mov-ts/base/00000.ts")
+        check("s-mov-ts: the MP4's timed text was read through its sample tables",
+              status == 200 and wait_for_log(log, r"s-mov-ts subtitle stream \d+: (1) of 1 cues") == "1", str(status))
+        get(port, "/video/:/transcode/universal/stop", [("session", "s-mov-ts")])
         walk(port, scratch, "capped", "1", "transcode", "copy", (640, 360),
              videoResolution="640x360", maxVideoBitrate="1000", directStream="1")
         # Audio only: the video is copied and the DTS the client refuses becomes AAC.

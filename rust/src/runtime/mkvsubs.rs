@@ -1,4 +1,5 @@
-//! A Matroska release's text subtitle track, read without reading the release.
+//! A release's text subtitle track, read without reading the release: a Matroska one
+//! through its Cues, an MP4 one through its sample tables (`mp4subs`).
 //!
 //! Burning a text subtitle takes FFmpeg's `subtitles` filter, which reads its whole file
 //! before the first frame: pointed at the release itself that is a full download (30-67 GB
@@ -6,11 +7,9 @@
 //! Cues with its exact place in its Cluster (`CueRelativePosition`, and `CueDuration`):
 //! measured on two real releases, a WEB-DL's one SRT (1,468 cues) and a remux's two SRTs and
 //! seven PGS tracks, every block of every subtitle track. So the track is read block by block
-//! with Range requests, a few hundred bytes each: 1,468 of them took 19 s through zurg on
-//! AllDebrid, at 16 or 48 at once alike (2026-10-19).
+//! with Range requests, a few hundred bytes each, one at a time (`Index::events`).
 
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 const SEGMENT: u64 = 0x1853_8067;
 const SEEK_HEAD: u64 = 0x114D_9B74;
@@ -50,18 +49,19 @@ pub(crate) type Read<'a> = &'a (dyn Fn(u64, usize) -> Result<Vec<u8>, String> + 
 /// The subtitle track and where each of its blocks is.
 #[derive(Debug)]
 pub(crate) struct Index {
-    number: u64,
-    codec: String,
+    pub(super) number: u64,
+    /// The Matroska CodecID, or `tx3g` for an MP4's timed text.
+    pub(super) codec: String,
     /// An ASS/SSA track's script header: its styles and the `[Events]` format.
-    private: Vec<u8>,
-    compression: Compression,
+    pub(super) private: Vec<u8>,
+    pub(super) compression: Compression,
     /// Nanoseconds per tick (`TimestampScale`).
-    scale: u64,
+    pub(super) scale: u64,
     pub cues: Vec<Cue>,
 }
 
 #[derive(Debug, PartialEq)]
-enum Compression {
+pub(super) enum Compression {
     None,
     Zlib,
     /// Header stripping: these bytes were removed from the front of every block.
@@ -72,10 +72,16 @@ enum Compression {
 pub(crate) struct Cue {
     /// Milliseconds on the title's clock.
     pub start: i64,
-    duration: Option<i64>,
-    /// The Cluster's absolute offset and the block's offset in its data.
-    cluster: u64,
-    relative: u64,
+    pub(super) duration: Option<i64>,
+    pub(super) place: Place,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub(super) enum Place {
+    /// A Matroska block: its Cluster's absolute offset and its offset in the Cluster's data.
+    Block { cluster: u64, relative: u64 },
+    /// An MP4 sample: where it is and how long.
+    Sample { offset: u64, size: usize },
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -132,6 +138,9 @@ fn child<'a>(bytes: &'a [u8], start: usize, end: usize, id: u64) -> Option<&'a [
 /// Matroska file's streams in `TrackEntry` order, attachments after them.
 pub(crate) fn index(read: Read, stream: i64) -> Result<Index, String> {
     let head = read(0, 64 * 1024)?;
+    if !head.starts_with(&[0x1A, 0x45, 0xDF, 0xA3]) {
+        return super::mp4subs::index(read, stream);
+    }
     let (_, segment, segment_end) = children(&head, 0, head.len())
         .into_iter()
         .find(|entry| entry.0 == SEGMENT)
@@ -201,26 +210,37 @@ pub(crate) fn index(read: Read, stream: i64) -> Result<Index, String> {
                 continue;
             };
             let duration = child(&cues_bytes, a, e, CUE_DURATION).map(uint).map(to_ms);
-            cues.push(Cue { start: to_ms(time), duration, cluster: segment as u64 + cluster, relative });
+            cues.push(Cue { start: to_ms(time), duration, place: Place::Block { cluster: segment as u64 + cluster, relative } });
         }
     }
     if cues.is_empty() {
         return Err(format!("the Cues place no block of track {number}"));
     }
-    cues.sort_by_key(|cue| (cue.start, cue.cluster, cue.relative));
-    cues.dedup_by_key(|cue| (cue.cluster, cue.relative));
+    cues.sort_by_key(|cue| cue.start);
+    let mut seen = std::collections::HashSet::new();
+    cues.retain(|cue| seen.insert(format!("{:?}", cue.place)));
     Ok(Index { number, codec, private, compression, scale, cues })
 }
 
 impl Index {
     pub fn ass(&self) -> bool {
-        self.codec != "S_TEXT/UTF8"
+        matches!(self.codec.as_str(), "S_TEXT/ASS" | "S_TEXT/SSA")
     }
 
     /// One block's text. `CueRelativePosition` counts from the Cluster's data, whose header
     /// is 5 to 12 bytes; each length is tried and the block must name this track.
     fn block(&self, read: Read, cue: &Cue) -> Result<Event, String> {
-        let at = cue.cluster + cue.relative + 5;
+        let (cluster, relative) = match cue.place {
+            Place::Block { cluster, relative } => (cluster, relative),
+            Place::Sample { offset, size } => {
+                // A 3GPP timed-text sample: the text's length, the text, then style boxes.
+                let bytes = read(offset, size)?;
+                let length = bytes.get(..2).map_or(0, |len| u16::from_be_bytes([len[0], len[1]]) as usize);
+                let text = bytes.get(2..2 + length).ok_or_else(|| format!("a {size} byte sample at {offset} holds no {length} bytes of text"))?;
+                return Ok(Event { start: cue.start, duration: cue.duration, text: String::from_utf8_lossy(text).to_string() });
+            }
+        };
+        let at = cluster + relative + 5;
         let mut bytes = read(at, 7 + 4096)?;
         for skip in 0..8 {
             let Some((id, data)) = vint(&bytes, skip, true) else { continue };
@@ -263,27 +283,30 @@ impl Index {
         Err(format!("no block of track {} at {at}", self.number))
     }
 
-    /// The text of `cues`, read `workers` at a time. A block that cannot be read is left out.
-    pub fn events(&self, read: Read, cues: &[Cue], workers: usize) -> (Vec<Event>, usize) {
-        let next = AtomicUsize::new(0);
-        let found = Mutex::new(Vec::with_capacity(cues.len()));
-        let failed = AtomicUsize::new(0);
-        std::thread::scope(|scope| {
-            for _ in 0..workers.max(1).min(cues.len().max(1)) {
-                scope.spawn(|| loop {
-                    let Some(cue) = cues.get(next.fetch_add(1, Ordering::SeqCst)) else { break };
-                    match self.block(read, cue) {
-                        Ok(event) => found.lock().unwrap_or_else(|poison| poison.into_inner()).push(event),
-                        Err(_) => {
-                            failed.fetch_add(1, Ordering::SeqCst);
-                        }
-                    }
-                });
+    /// The text of `cues`, one read at a time, the blocks that could not be found, and whether
+    /// the source refused a read. A refusal ends the reading: zurg answers parallel reads of a
+    /// Real-Debrid or TorBox file with 503s, and after three network errors holds the whole
+    /// file off for 5 minutes, its playback with it (measured 2026-10-19: 16 at once, every
+    /// read refused; one at a time beside a stream, none). The caller paces them.
+    pub fn events(&self, read: Read, cues: &[Cue]) -> (Vec<Event>, usize, bool) {
+        let refused = AtomicBool::new(false);
+        let guarded = |offset: u64, length: usize| read(offset, length).inspect_err(|_| refused.store(true, Ordering::SeqCst));
+        let mut events = Vec::with_capacity(cues.len());
+        let mut failed = 0;
+        for (number, cue) in cues.iter().enumerate() {
+            match self.block(&guarded, cue) {
+                Ok(event) => events.push(event),
+                Err(_) if refused.load(Ordering::SeqCst) => {
+                    failed += cues.len() - number;
+                    break;
+                }
+                Err(_) => failed += 1,
             }
-        });
-        let mut events = found.into_inner().unwrap_or_else(|poison| poison.into_inner());
+        }
+        // An MP4 track's empty samples are its gaps.
+        events.retain(|event| !event.text.trim().is_empty());
         events.sort_by_key(|event| event.start);
-        (events, failed.into_inner())
+        (events, failed, refused.into_inner())
     }
 
     /// The subtitle file FFmpeg's `subtitles` filter reads: SRT for `S_TEXT/UTF8`, the
@@ -342,7 +365,7 @@ mod tests {
         let index = index(&read, 1).unwrap();
         assert!(!index.ass());
         assert_eq!(index.cues.len(), 3);
-        let (events, failed) = index.events(&read, &index.cues, 4);
+        let (events, failed, _) = index.events(&read, &index.cues);
         assert_eq!(failed, 0);
         assert_eq!(
             index.render(&events),
@@ -354,7 +377,7 @@ mod tests {
     fn a_compressed_track_is_inflated() {
         let index = index(&read, 2).unwrap();
         assert_eq!(index.compression, Compression::Zlib);
-        let (events, failed) = index.events(&read, &index.cues, 4);
+        let (events, failed, _) = index.events(&read, &index.cues);
         assert_eq!(failed, 0);
         assert_eq!(events.iter().map(|event| event.text.as_str()).collect::<Vec<_>>(), ["First line", "Second\r\nline", "Third, last"]);
     }
@@ -363,7 +386,7 @@ mod tests {
     fn an_ass_track_keeps_its_script_header_and_styles() {
         let index = index(&read, 3).unwrap();
         assert!(index.ass());
-        let (events, _) = index.events(&read, &index.cues, 4);
+        let (events, _, _) = index.events(&read, &index.cues);
         let script = index.render(&events);
         assert!(script.contains("Style: Big,"), "{script}");
         assert!(script.contains("\nDialogue: 0,0:00:00.10,0:00:00.40,Big,,0,0,0,,{\\an8}Top line\n"), "{script}");
@@ -374,5 +397,21 @@ mod tests {
     fn a_stream_that_is_not_text_is_refused() {
         assert!(index(&read, 0).unwrap_err().contains("not a text subtitle"));
         assert!(index(&read, 9).is_err());
+    }
+
+    #[test]
+    fn a_refused_read_ends_the_reading() {
+        let index = index(&read, 1).unwrap();
+        let reads = std::sync::atomic::AtomicUsize::new(0);
+        let refusing = |offset: u64, length: usize| {
+            if reads.fetch_add(1, Ordering::SeqCst) == 1 {
+                return Err("the source answered 503 to a range".to_string());
+            }
+            read(offset, length)
+        };
+        let (events, failed, refused) = index.events(&refusing, &index.cues);
+        assert!(refused);
+        assert_eq!((events.len(), failed), (1, 2));
+        assert_eq!(reads.load(Ordering::SeqCst), 2, "no read after the refusal");
     }
 }

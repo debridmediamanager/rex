@@ -50,12 +50,18 @@ const IDLE: Duration = Duration::from_secs(120);
 const SEEK_GAP: i64 = 4;
 /// Segments more than this far behind the player are deleted.
 const KEEP_BEHIND: f64 = 120.0;
-/// An embedded text subtitle is read for the minutes from where the player is first, and the
-/// run starts on those: 126 of a film's 1,468 cues, read in 2.3 s of the 20.9 s the whole track
-/// took through zurg on AllDebrid (`mkvsubs`). The run moves onto the whole track once it is read.
-const FIRST_SUBTITLES_MS: i64 = 10 * 60 * 1000;
-/// Range requests in flight for one track; zurg answered ~80 a second at 16 and at 48 alike.
-const SUBTITLE_READERS: usize = 16;
+/// An embedded text subtitle is read one line at a time (`mkvsubs::Index::events`), in time
+/// order from where the player is: the run starts on the first two minutes and restarts on
+/// fifteen, then on all of it. At `SUBTITLE_RATE` that is 12-18 minutes of a film read each
+/// minute, many times what a conversion makes, so the run never reaches a minute not yet read.
+const SUBTITLE_WINDOWS_MS: [i64; 2] = [2 * 60 * 1000, 15 * 60 * 1000];
+/// Reads of one track: `SUBTITLE_BURST` at once, then `SUBTITLE_RATE` a second. Real-Debrid's
+/// CDN resets the connection after a budget of reads of one link, which zurg answers with a
+/// 500 and, after three, a 5-minute hold on the file: unpaced (~10 a second) the 219th read
+/// failed, at 6 a second the 399th, at 4 a second 450 passed (zurg on fun, 2026-10-19). That
+/// reads as a burst of ~120 refilled at ~4 a second; rex stays under both, on every source.
+const SUBTITLE_BURST: f64 = 100.0;
+const SUBTITLE_RATE: f64 = 3.0;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum Accel {
@@ -186,6 +192,8 @@ pub(crate) struct Plan {
     pub matroska: bool,
     /// The selected embedded text subtitle's ffprobe index, copied into the Matroska segments.
     pub text_subtitle: Option<i64>,
+    /// It is an MP4's timed text (`mov_text`), which Matroska cannot hold: converted to SRT.
+    pub text_to_srt: bool,
     /// A selected subtitle uploaded to rex: copied into Matroska segments, burned otherwise.
     pub sidecar: Option<Sidecar>,
     /// A selected embedded text subtitle of a Matroska release, burned for a client that is
@@ -602,7 +610,7 @@ pub(crate) fn ffmpeg_args(plan: &Plan, path: Path, hardware: &Hardware, start: i
     let text = plan.text_subtitle.filter(|_| plan.matroska).map(|index| format!("0:{index}"))
         .or_else(|| plan.sidecar.as_ref().filter(|_| plan.matroska).map(|_| "1:0".to_string()));
     if let Some(input) = &text {
-        push(&mut args, &["-map", input, "-c:s", "copy"]);
+        push(&mut args, &["-map", input, "-c:s", if plan.text_to_srt && plan.text_subtitle.is_some() { "srt" } else { "copy" }]);
     }
     match video {
         Some(video) if video.copy => push(&mut args, &["-c:v", "copy"]),
@@ -1183,8 +1191,8 @@ impl Transcoder {
     }
 
     /// Read the burned embedded subtitle out of its release beside the run's segments, the
-    /// minutes from the player's position first; the run starts on those and restarts on the
-    /// whole track. A track already read this start is reused. One that cannot be read (no
+    /// minutes from the player's position first; the run starts on those and restarts as more
+    /// is read (`SUBTITLE_WINDOWS_MS`). A track already read this start is reused. One that cannot be read (no
     /// Cues for it, a source refusing ranges) leaves the conversion without it, as before.
     fn read_text(self: &Arc<Self>, session: &Arc<Session>, text: &TextBurn) {
         let file = session.dir.join(text.file_name());
@@ -1195,7 +1203,26 @@ impl Transcoder {
             return;
         }
         let plan = &session.plan;
-        let read = |offset: u64, length: usize| read_range(&plan.url, plan.auth.as_deref(), offset, length);
+        let bucket = Mutex::new((SUBTITLE_BURST, Instant::now()));
+        let read = |offset: u64, length: usize| {
+            loop {
+                if session.stopped.load(Ordering::SeqCst) {
+                    return Err("the session stopped".to_string());
+                }
+                let wait = {
+                    let mut bucket = bucket.lock().unwrap_or_else(|poison| poison.into_inner());
+                    bucket.0 = (bucket.0 + bucket.1.elapsed().as_secs_f64() * SUBTITLE_RATE).min(SUBTITLE_BURST);
+                    bucket.1 = Instant::now();
+                    if bucket.0 >= 1.0 {
+                        bucket.0 -= 1.0;
+                        break;
+                    }
+                    (1.0 - bucket.0) / SUBTITLE_RATE
+                };
+                thread::sleep(Duration::from_secs_f64(wait));
+            }
+            read_range(&plan.url, plan.auth.as_deref(), offset, length)
+        };
         let begun = Instant::now();
         let index = match super::mkvsubs::index(&read, text.index) {
             Ok(index) => index,
@@ -1206,31 +1233,36 @@ impl Transcoder {
             }
         };
         let from = session.state.lock().map(|state| state.run_start).unwrap_or(0) * plan.segment_seconds() as i64 * 1000;
-        let (first, rest): (Vec<_>, Vec<_>) = index.cues.iter().cloned().partition(|cue| cue.start >= from && cue.start < from + FIRST_SUBTITLES_MS);
-        let (mut events, mut failed) = index.events(&read, &first, SUBTITLE_READERS);
-        if let Err(error) = std::fs::write(&file, index.render(&events)) {
-            warning!("TRANSCODE {} cannot write its subtitle: {error}", session.id);
+        let mut stages = vec![Vec::new(); SUBTITLE_WINDOWS_MS.len() + 1];
+        for cue in &index.cues {
+            let stage = SUBTITLE_WINDOWS_MS.iter().position(|window| cue.start >= from && cue.start < from + window);
+            stages[stage.unwrap_or(SUBTITLE_WINDOWS_MS.len())].push(cue.clone());
         }
-        info!("TRANSCODE {} subtitle stream {}: {} of {} cues from {}s read in {:.1}s", session.id, text.index, events.len(), index.cues.len(), from / 1000, begun.elapsed().as_secs_f64());
-        if session.stopped.load(Ordering::SeqCst) {
-            return;
+        let (mut events, mut failed, mut script) = (Vec::new(), 0, String::new());
+        for (stage, cues) in stages.iter().enumerate() {
+            // The first stage starts the run even when it holds no line.
+            if stage > 0 && cues.is_empty() {
+                continue;
+            }
+            let (more, more_failed, refused) = index.events(&read, cues);
+            events.extend(more);
+            events.sort_by_key(|event| event.start);
+            failed += more_failed;
+            if session.stopped.load(Ordering::SeqCst) {
+                return;
+            }
+            script = index.render(&events);
+            if let Err(error) = std::fs::write(&file, &script) {
+                warning!("TRANSCODE {} cannot write its subtitle: {error}", session.id);
+            }
+            info!("TRANSCODE {} subtitle stream {}: {} of {} cues from {}s read in {:.1}s", session.id, text.index, events.len(), index.cues.len(), from / 1000, begun.elapsed().as_secs_f64());
+            self.relaunch(session);
+            if refused {
+                warning!("TRANSCODE {} subtitle stream {}: the source refused a read, carrying on with {} lines", session.id, text.index, events.len());
+                return;
+            }
         }
-        self.relaunch(session);
-        if rest.is_empty() {
-            return;
-        }
-        let (more, more_failed) = index.events(&read, &rest, SUBTITLE_READERS);
-        events.extend(more);
-        events.sort_by_key(|event| event.start);
-        failed += more_failed;
-        if session.stopped.load(Ordering::SeqCst) {
-            return;
-        }
-        let script = index.render(&events);
-        if let Err(error) = std::fs::write(&file, &script) {
-            warning!("TRANSCODE {} cannot write its subtitle: {error}", session.id);
-        }
-        if std::fs::create_dir_all(self.root.join("subtitles")).is_ok() {
+        if failed == 0 && std::fs::create_dir_all(self.root.join("subtitles")).is_ok() {
             let _ = std::fs::write(&cached, &script);
         }
         info!("TRANSCODE {} subtitle stream {}: {} cues read, {failed} unreadable, in {:.1}s", session.id, text.index, events.len(), begun.elapsed().as_secs_f64());
@@ -1972,23 +2004,25 @@ impl Runtime {
             .find(|stream| kind(stream) == Some(3) && stream.get("selected").is_some_and(truthy) && stream.get("key").is_none())
             .filter(|stream| {
                 let codec = stream.get("codec").map(string_value).unwrap_or_default().to_ascii_lowercase();
-                !decision::IMAGE_SUBTITLES.contains(&codec.as_str()) && subtitle_codecs.contains(&codec)
-            })
-            .and_then(|stream| stream.get("index").and_then(Value::as_i64))
-            .filter(|index| *index >= 0);
+                !decision::IMAGE_SUBTITLES.contains(&codec.as_str())
+                    && (subtitle_codecs.contains(&codec) || codec == "mov_text" && subtitle_codecs.iter().any(|listed| listed == "srt"))
+            });
+        // An MP4's timed text is converted to SRT as it is read; its packets come in the pass.
+        let text_to_srt = text_subtitle.is_some_and(|stream| stream.get("codec").map(string_value).is_some_and(|codec| codec.eq_ignore_ascii_case("mov_text")));
+        let text_subtitle = text_subtitle.and_then(|stream| stream.get("index").and_then(Value::as_i64)).filter(|index| *index >= 0);
         // Any other client gets a selected embedded text subtitle burned, as the reference
         // burns an SRT for the iOS profile's MPEG-TS (Plex Web's `segments-subs` is not built,
-        // so it is burned for Plex Web too). Only a Matroska release: `mkvsubs` reads the
-        // track through its Cues, where FFmpeg would read the whole release first.
+        // so it is burned for Plex Web too). A Matroska or MP4 release: `mkvsubs` reads the
+        // track through its Cues or sample tables, where FFmpeg would read the whole release.
         let text_burn = streams
             .iter()
             .filter(|_| burn && !matroska && wire != Protocol::File && video_stream.is_some())
-            .filter(|_| media.get("container").and_then(Value::as_str) == Some("mkv"))
+            .filter(|_| matches!(media.get("container").and_then(Value::as_str), Some("mkv" | "mp4" | "mov")))
             .find(|stream| kind(stream) == Some(3) && stream.get("selected").is_some_and(truthy) && stream.get("key").is_none())
             .and_then(|stream| {
                 let codec = stream.get("codec").map(string_value).unwrap_or_default().to_ascii_lowercase();
                 let index = stream.get("index").and_then(Value::as_i64).filter(|index| *index >= 0)?;
-                matches!(codec.as_str(), "srt" | "ass" | "ssa").then_some(TextBurn { index, ass: codec != "srt" })
+                matches!(codec.as_str(), "srt" | "ass" | "ssa" | "mov_text").then_some(TextBurn { index, ass: matches!(codec.as_str(), "ass" | "ssa") })
             });
         // A selected upload carries its text on its Stream row (`_content`).
         let sidecar = streams
@@ -2133,6 +2167,7 @@ impl Runtime {
             subtitle,
             matroska,
             text_subtitle,
+            text_to_srt,
             sidecar,
             text_burn,
             incomplete_segments: query.get("X-Plex-Incomplete-Segments").map(String::as_str) == Some("1")
@@ -2293,9 +2328,16 @@ impl Runtime {
                         stream.insert("decision".to_string(), json!("burn"));
                     }
                     (Some(3), _, _) if plan.matroska && plan.text_subtitle.is_some() && stream.get("index").and_then(Value::as_i64) == plan.text_subtitle => {
-                        let codec = stream.get("codec").cloned().unwrap_or(Value::Null);
-                        stream.insert("format".to_string(), codec);
-                        stream.insert("decision".to_string(), json!("copy"));
+                        // A converted subtitle names its new format and says `transcode`, as the
+                        // reference's SRT turned ASS for Plex Web does (`subtitles_s1422.json`).
+                        if plan.text_to_srt {
+                            stream.insert("format".to_string(), json!("srt"));
+                            stream.insert("decision".to_string(), json!("transcode"));
+                        } else {
+                            let codec = stream.get("codec").cloned().unwrap_or(Value::Null);
+                            stream.insert("format".to_string(), codec);
+                            stream.insert("decision".to_string(), json!("copy"));
+                        }
                     }
                     // The reference's sidecar rows keep their `key` (stream 5 there).
                     (Some(3), _, _) if plan.sidecar.as_ref().is_some_and(|sidecar| stream.get("id").map(string_value).as_deref() == Some(sidecar.id.as_str())) => {
@@ -2567,6 +2609,7 @@ mod tests {
             subtitle: None,
             matroska: false,
             text_subtitle: None,
+            text_to_srt: false,
             sidecar: None,
             text_burn: None,
             incomplete_segments: true,

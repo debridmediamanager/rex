@@ -61,6 +61,7 @@ mod streams;
 mod structural;
 mod transcoder;
 mod mkvsubs;
+mod mp4subs;
 mod universal;
 pub(crate) mod upstream;
 mod wire;

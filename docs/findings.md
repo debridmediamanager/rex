@@ -13245,20 +13245,31 @@ turn and converted (directPlay=0, subtitles=auto) in four clients' own shapes
   1,468 cues) and a remux (two SRTs and seven PGS tracks, 34-4,744 cues each) every block of every
   subtitle track had one, and FFmpeg's own muxer writes them too. A cue's position counts from
   the Cluster's data, behind a 5-12 byte header (7 on both releases), so rex tries each length and
-  keeps the block that names the track. Through zurg on AllDebrid one 1 KB range takes ~120 ms;
-  ~80 a second come back whether 16 or 48 are in flight. From zen: the WEB-DL's first ten minutes
-  (126 cues) in 2.3 s and all of it in 20.9 s; the remux's English SRT (1,886) in 3.5 s and
-  28.5 s, every block read (`rust/src/runtime/mkvsubs.rs`). So the run starts on the first ten
-  minutes and restarts from its next segment once the whole track is in; a later session reuses
-  the file. Drawing it cost more than reading it. On fun's J4105 a 4K HDR remux converting to
+  keeps the block that names the track (`rust/src/runtime/mkvsubs.rs`). An MP4's timed text
+  (`mov_text`, 284 titles on the production server, all streaming-service WEB-DLs with 30-45
+  tracks each) is placed the same way by its sample tables (`mp4subs.rs`).
+- **Read one at a time, and slowly.** Through zurg on AllDebrid 16 reads in flight were fine (a
+  WEB-DL's 1,468 cues in 20.9 s), but on TorBox and Real-Debrid zurg answered 4 in flight with some
+  503s (`delivery cooldown`, `network cooldown`) and 16 with nothing else. Those holds are per
+  file and stop its playback too: three network errors put a Real-Debrid file in a 5-minute
+  cooldown. One read at a time beside a stream of the same file was clean on TorBox, but
+  Real-Debrid's CDN still reset the connection after a budget: unpaced (~10 a second) the 219th
+  read failed, at 6 a second the 399th, at 4 a second 450 passed. rex reads 100 at once, then 3
+  a second, stops at the first refusal, and checked that pattern on the same file: 600 reads in
+  167 s, none refused. A film's 1,500 lines then take ~8 minutes, read in time order from the
+  player's position: the run starts on the first two minutes (2-3 s on every source) and
+  restarts from its next segment on fifteen, then on all of it, far ahead of the conversion. A
+  later session of the same title reuses the file.
+- **Drawing it cost more than reading it.** On fun's J4105 a 4K HDR remux converting to
   1080p on the device ran at 1.94x; downloading each frame to draw on and uploading it again ran
   0.34x with no text at all, 0.32x with it. Jellyfin's Intel way, the text drawn on a transparent
   10 fps canvas (`alphasrc`, the `subtitles` filter's `alpha`/`sub2video`: jellyfin-ffmpeg's own)
   and laid over the frame with `overlay_vaapi`, ran 1.53x, tonemapped and readable. rex probes
   for that at start (`alpha_subtitles`) and downloads the frame only without it (CUDA, upstream
   FFmpeg); the canvas is shifted to the title's clock as the frame is, checked after a 3 s seek
-  on zen: no text between cues, text on them. Only a Matroska release:
-  a text subtitle in an MP4 or M2TS is still dropped, as it is from a download's conversion.
+  on zen: no text between cues, text on them. A download's conversion still drops a text
+  subtitle. Plex for Android and iOS get an MP4's timed text converted to SRT in the pass, since
+  Matroska cannot carry `mov_text`; it needs no reading ahead.
 - **Seek with a copied audio stream:** a converted run decodes from the keyframe before its seek and
   trims to it, but a copied stream keeps every packet from that keyframe: with x265's ~10 s GOP the
   copied AC3 of a restart at 26 s started 5.3 s early. An output `-ss 0` drops them (52212e66).
