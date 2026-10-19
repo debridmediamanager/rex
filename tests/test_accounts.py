@@ -381,6 +381,7 @@ def run(variant, name, tokens):
         row = rex_rows(document).get("1", {})
         check(variant + ": and the shared user's watch and rating came back",
               status == 200 and row.get("viewCount") == 1 and number(row.get("userRating")) == 7, row)
+        share_gaps(server, variant)
     finally:
         server.stop()
         stub.shutdown()
@@ -388,6 +389,119 @@ def run(variant, name, tokens):
             shutil.rmtree(work, ignore_errors=True)
         else:
             print("work kept in", work)
+
+
+def raw(server, method, path, query=(), headers=None, body=None):
+    """One request with no token added: (status, headers, text)."""
+    url = "http://127.0.0.1:%d%s%s" % (server.port, path, "?" + urllib.parse.urlencode(list(query)) if query else "")
+    request = urllib.request.Request(url, method=method, data=body, headers=dict(
+        {"Accept": "application/json", "X-Plex-Product": "Plex Web"}, **(headers or {})))
+    try:
+        with urllib.request.urlopen(request, timeout=60) as response:
+            return response.status, dict(response.headers), response.read().decode("utf-8", "replace")
+    except urllib.error.HTTPError as error:
+        return error.code, dict(error.headers), error.read().decode("utf-8", "replace")
+
+
+def share_gaps(server, variant):
+    """What a share must not reach however it spells the request (audit 2026-10-20): every
+    route below answered the share as the owner, or let it change the owner's things."""
+    _, whole = server.ask(SHARED, "GET", "/library/sections/1/all")
+    visible = sorted(rex_rows(whole))
+    hidden = [key for key, *_ in MOVIES if key not in visible]
+    # A repeated query token: the gate took the last, the account the first, and an unknown
+    # first one fell back to the owner.
+    plain = server.ask(SHARED, "GET", "/library/sections/2/all")[0]
+    doubled = server.ask(SHARED, "GET", "/library/sections/2/all", [("X-Plex-Token", "zz")])[0]
+    check(variant + ": a repeated query token answers the share's 403, not the owner's 200",
+          plain == 403 and doubled == 403, (plain, doubled))
+    # A zero-padded id names the row the route serves, so it is the share's 404 too.
+    if hidden:
+        part = int(hidden[0]) * 10
+        plain = server.ask(SHARED, "GET", "/library/parts/%d/1789187071/file.mkv" % part)[0]
+        padded = server.ask(SHARED, "GET", "/library/parts/0%d/1789187071/file.mkv" % part)[0]
+        check(variant + ": a hidden row's part read is a 404 however its id is padded",
+              plain == 404 and padded == 404, (plain, padded))
+    # A comma list of keys is the owner's edit route as one key is.
+    status = server.ask(SHARED, "PUT", "/library/metadata/1,4", [("title.value", "shared edit")])[0]
+    titles = [rex_rows(server.ask(OWNER, "GET", "/library/metadata/" + key)[1]).get(key, {}).get("title")
+              for key in ("1", "4")]
+    check(variant + ": a share's edit of a comma list is the owner's 403 and changes nothing",
+          status == 403 and "shared edit" not in titles, (status, titles))
+    # A collection is the owner's: its metadata alias is refused as a row's is.
+    uri = "server://%s/com.plexapp.plugins.library/library/metadata/1" % MACHINE
+    _, made = server.ask(OWNER, "POST", "/library/collections", [("type", "1"), ("title", "Owner set"),
+                                                                ("smart", "0"), ("sectionId", "1"), ("uri", uri)])
+    collection = str(((made or {}).get("MediaContainer", {}).get("Metadata") or [{}])[0].get("ratingKey"))
+    edited = server.ask(SHARED, "PUT", "/library/metadata/" + collection, [("title.value", "shared edit")])[0]
+    deleted = server.ask(SHARED, "DELETE", "/library/metadata/" + collection)[0]
+    status, kept = server.ask(OWNER, "GET", "/library/collections/" + collection)
+    title = ((kept or {}).get("MediaContainer", {}).get("Metadata") or [{}])[0].get("title")
+    check(variant + ": a share can neither retitle nor delete the owner's collection",
+          edited == 403 and deleted == 403 and status == 200 and title == "Owner set",
+          (collection, edited, deleted, status, title))
+    # An uploaded subtitle is the owner's library: a share's delete is refused.
+    status, _, _ = raw(server, "POST", "/library/metadata/1/subtitles",
+                       [("language", "en"), ("title", "owner.srt"), ("X-Plex-Token", OWNER)],
+                       body=b"1\n00:00:01,000 --> 00:00:02,000\nhello\n")
+    streams = [stream for media in rex_rows(server.ask(OWNER, "GET", "/library/metadata/1")[1]).get("1", {}).get("Media", [])
+               for part in media.get("Part", []) for stream in part.get("Stream", []) if stream.get("title") == "owner"]
+    if status == 200 and streams:
+        stream = str(streams[0]["id"])
+        refused = server.ask(SHARED, "DELETE", "/library/streams/" + stream)[0]
+        still = server.ask(OWNER, "GET", "/library/streams/%s.srt" % stream)[0]
+        check(variant + ": a share cannot delete the owner's uploaded subtitle", refused == 403 and still == 200,
+              (refused, still))
+    else:
+        check(variant + ": the owner's subtitle upload", False, (status, streams))
+    # Another account's history row is not the share's to read or delete.
+    for state, time in (("playing", 1000), ("playing", 5000), ("stopped", 10000)):
+        server.ask(OWNER, "GET", "/:/timeline", [("ratingKey", "4"), ("key", "/library/metadata/4"),
+                                                  ("state", state), ("time", str(time)), ("duration", "10031")])
+    _, history = server.ask(OWNER, "GET", "/status/sessions/history/all")
+    owners = [str(entry.get("historyKey", "")).rsplit("/", 1)[-1]
+              for entry in (history or {}).get("MediaContainer", {}).get("Metadata", [])
+              if str(entry.get("accountID")) == "1"]
+    if owners:
+        read = server.ask(SHARED, "GET", "/status/sessions/history/" + owners[0])[0]
+        gone = server.ask(SHARED, "DELETE", "/status/sessions/history/" + owners[0])[0]
+        kept = server.ask(OWNER, "GET", "/status/sessions/history/" + owners[0])[0]
+        check(variant + ": the owner's history row is a 404 to the share and survives its delete",
+              read == 404 and gone == 404 and kept == 200, (read, gone, kept))
+    else:
+        check(variant + ": the owner has a history row to ask for", False, history)
+    # The most-played list counts the share's own plays, as its history lists them.
+    _, top = server.ask(SHARED, "GET", "/library/all/top", [("type", "1")])
+    users = {str(user.get("id")) for row in (top or {}).get("MediaContainer", {}).get("Metadata", [])
+             for user in row.get("User", [])}
+    check(variant + ": the share's most-played names no other account", users <= {SHARED_ID}, users)
+    # A trailing slash is the same route, pruned the same way.
+    _, bare = server.ask(SHARED, "GET", "/media/providers")
+    _, slashed = server.ask(SHARED, "GET", "/media/providers/")
+    check(variant + ": the share's /media/providers/ is its /media/providers", bare == slashed and bare,
+          (bare, slashed))
+    # A typed axis lists the share's rows alone.
+    _, letters = server.ask(SHARED, "GET", "/library/sections/1/firstCharacter", [("type", "1")])
+    counted = sum(entry.get("size", 0) for entry in (letters or {}).get("MediaContainer", {}).get("Directory", []))
+    check(variant + ": the share's firstCharacter counts its own films", counted == len(visible), (counted, visible))
+    # A live connection's line carries no other account's token.
+    import socket
+    held = socket.create_connection(("127.0.0.1", server.port), timeout=10)
+    held.sendall(("GET /:/eventsource/notifications?filters=activity&X-Plex-Token=%s HTTP/1.1\r\n"
+                  "Host: 127.0.0.1\r\nX-Plex-Client-Identifier: owner-sse\r\n\r\n" % OWNER).encode())
+    held.recv(1024)
+    try:
+        status, _, text = raw(server, "GET", "/connections", [("X-Plex-Token", SHARED)])
+        check(variant + ": /connections shows the share no other account's token",
+              status != 200 or OWNER not in text, text[:300])
+    finally:
+        held.close()
+    # A request without a valid token is no device of this server's.
+    for number in range(3):
+        raw(server, "GET", "/library/sections", headers={"X-Plex-Client-Identifier": "unauthenticated-%d" % number,
+                                                          "X-Plex-Token": "not-a-token"})
+    _, _, devices = raw(server, "GET", "/devices", [("X-Plex-Token", OWNER)])
+    check(variant + ": a refused request registers no device", "unauthenticated-" not in devices, devices[:300])
 
 
 def main():

@@ -241,6 +241,7 @@ fn admin_only(method: &str, path: &str) -> bool {
             || path.starts_with("/library/metadata/")
             || (path.starts_with("/library/sections") && !path.ends_with("/refresh"))
             || path.starts_with("/library/collections")
+            || path.starts_with("/library/streams/")
             || path.starts_with("/library/parts/") && path.matches('/').count() > 3)
 }
 
@@ -255,8 +256,12 @@ impl Runtime {
             .filter(|value| !value.is_empty())
             .cloned()
             .or_else(|| {
+                // The gate reads the query as a map, where a repeated name keeps its last
+                // value; the first one here let `?X-Plex-Token=zz&X-Plex-Token=<share>` in as
+                // the owner (audit 2026-10-20).
                 parse_query(&raw_query)
                     .into_iter()
+                    .rev()
                     .find(|(name, _)| name == "X-Plex-Token")
                     .map(|(_, value)| value)
             })
@@ -335,7 +340,11 @@ impl Runtime {
         let missing_row = path
             .strip_prefix("/library/metadata/")
             .map(|rest| rest.split('/').next().unwrap_or_default())
-            .is_some_and(|key| self.catalog.get(key).is_none());
+            // A comma list is the multi-row edit and a collection is no catalog row: both
+            // skipped the owner's 403 as "missing" (audit 2026-10-20).
+            .is_some_and(|keys| {
+                keys.split(',').all(|key| self.catalog.get(key).is_none() && !self.collections.contains_key(key))
+            });
         if admin_only(method, path) && !missing_row {
             return Some(Response::error(403, "rex: the owner's route"));
         }
@@ -521,8 +530,7 @@ impl Runtime {
         let (path, raw_query) = split_target(&request.target);
         fn from(text: &str, keys: &mut Vec<String>) {
             for (index, _) in text.match_indices("/library/metadata/") {
-                let rest = &text[index + "/library/metadata/".len()..];
-                let key: String = rest.chars().take_while(char::is_ascii_digit).collect();
+                let key = route_id(&text[index + "/library/metadata/".len()..]);
                 if !key.is_empty() {
                     keys.push(key);
                 }
@@ -538,7 +546,8 @@ impl Runtime {
             }
         }
         if let Some(part) = path.strip_prefix("/library/parts/") {
-            let part = part.split('/').next().unwrap_or_default();
+            let part = route_id(part);
+            let part = part.as_str();
             if let Some(key) = self.catalog.rows_by(crate::catalog::By::Part, part).into_iter().find_map(|row| {
                 row.get("Media")
                     .and_then(Value::as_array)
@@ -560,6 +569,12 @@ impl Runtime {
     /// Another account's answer as plexlab gave its shared user one: the libraries and rows
     /// the share hides pruned, and the server's own flags those of the share.
     pub(super) fn share_response(&self, path: &str, response: &mut Response) {
+        // The router pops a trailing slash (and folds the measured `//` forms), so the share's
+        // pass must too: `/media/providers/` answered the owner's libraries and flags.
+        let path = match path.trim_end_matches('/') {
+            "" => "/",
+            trimmed => trimmed,
+        };
         if self.viewer.is_owner() || response.status != 200 || !response.content_type.starts_with("application/json") {
             return;
         }
@@ -724,7 +739,9 @@ impl Runtime {
         let (mine, others): (HashMap<_, _>, HashMap<_, _>) =
             std::mem::take(&mut self.playlists).into_iter().partition(|(_, playlist)| playlist.account == viewer);
         self.playlists = mine;
-        self.hidden_playlists = others;
+        // Added to, never assigned: after a request that never restored them (a handler's
+        // panic), assigning dropped the owner's playlists from memory and the next save.
+        self.hidden_playlists.extend(others);
     }
 
     pub(super) fn restore_playlists(&mut self) {
@@ -876,5 +893,16 @@ mod tests {
         assert!(passes(&sintel, "label=rexhide"));
         assert!(!passes(&sintel, "contentRating=G|label!=Rexhide"));
         assert!(passes(&sintel, ""));
+    }
+}
+
+/// The id a path segment names as the router reads it (`request_route`, cycle 36): an
+/// optional `+`, then digits with their leading zeros dropped. A padded id read raw named no
+/// row here while the route served the row (audit 2026-10-20).
+fn route_id(text: &str) -> String {
+    let digits: String = text.strip_prefix('+').unwrap_or(text).chars().take_while(char::is_ascii_digit).collect();
+    match digits.trim_start_matches('0') {
+        "" if !digits.is_empty() => "0".to_string(),
+        trimmed => trimmed.to_string(),
     }
 }

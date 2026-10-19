@@ -212,43 +212,16 @@ impl Runtime {
             .parse::<i64>()
             .map(|number| number.to_string())
             .unwrap_or_else(|_| raw.to_string());
-        let wanted = match normal.as_str() {
-            "1" => Some("movie"),
-            "2" => Some("show"),
-            "3" => Some("season"),
-            "4" => Some("episode"),
-            _ => None,
-        };
-        let Some(wanted) = wanted else {
+        let Some(number) = normal.parse::<i64>().ok().filter(|number| (1..=4).contains(number)) else {
             if !raw.is_empty() {
                 return Vec::new();
             }
             return self.section_row_refs(section_id);
         };
-        let mut rows = self.catalog.lazy_where(|row| {
-            row.get("type").and_then(Value::as_str) == Some(wanted)
-                && string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == section_id
-        });
-        if wanted == "season" || wanted == "episode" {
-            let show_title = |row: &RowRef<'_>| -> String {
-                row.get("grandparentTitle")
-                    .filter(|value| truthy(value))
-                    .or_else(|| row.get("parentTitle").filter(|value| truthy(value)))
-                    .map(string_value)
-                    .unwrap_or_default()
-            };
-            rows.sort_by(|left, right| {
-                let key = |row: &RowRef<'_>| {
-                    (
-                        show_title(row),
-                        row.get("parentIndex").and_then(value_as_i64).unwrap_or(0),
-                        row.get("index").and_then(value_as_i64).unwrap_or(0),
-                    )
-                };
-                key(left).cmp(&key(right))
-            });
-        }
-        rows
+        // The typed rows every listing reads: a share's filter applied before any count or
+        // page, and episodes in their season's current order. This read its own copy of the
+        // rows with neither, so a filtered share's typed axes counted the owner's films.
+        self.typed_section_refs(section_id, number)
     }
 
     /// The listing grammar's filters over rows, or the status a real PMS refuses with.

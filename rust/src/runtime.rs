@@ -7177,8 +7177,13 @@ impl Runtime {
             .get(&identifier)
             .map(|device| (device.name.clone(), device.platform.clone()));
         let known_devices = self.device_order.len();
-        self.mark_device(request);
-        self.register_request_device(request);
+        // Only a request the gate admits is a device of this server's, as the websocket
+        // branch already had it: a refused one, from any peer rex-direct lets reach the port,
+        // grew the persisted device table and wrote the state file per request.
+        if self.admitted(request) {
+            self.mark_device(request);
+            self.register_request_device(request);
+        }
         let after = self
             .devices
             .get(&identifier)
@@ -8526,6 +8531,17 @@ impl Runtime {
                 || self.plextv.access.knows(&self.plextv.claim, given))
     }
 
+    /// Whether the request carries what the gate admits on a gated route, whichever route it
+    /// asks for: an admitted token, or an unclaimed server's own networks.
+    fn admitted(&self, request: &Request) -> bool {
+        if !self.gated() {
+            return self.local_request(request);
+        }
+        let (_, raw_query) = split_target(&request.target);
+        let query = parse_query(&raw_query).into_iter().collect::<HashMap<_, _>>();
+        request_token(request, &query).is_some_and(|value| self.token_admitted(value))
+    }
+
     fn authorized(&self, path: &str, request: &Request, query: &HashMap<String, String>) -> bool {
         if path == "/identity"
             || path == "/web"
@@ -9435,7 +9451,7 @@ impl Runtime {
         let mut viewers: HashMap<i64, BTreeSet<i64>> = HashMap::new();
         let mut seen_at: HashMap<i64, i64> = HashMap::new();
         if let Some(wanted) = wanted {
-            for entry in &self.history {
+            for entry in self.history.iter().filter(|entry| history_mine(&self.viewer, entry)) {
                 let key = string_value(entry.get("ratingKey").unwrap_or(&Value::Null));
                 if key.is_empty() || !key.bytes().all(|b| b.is_ascii_digit()) {
                     continue;
@@ -9697,9 +9713,7 @@ impl Runtime {
         let mut rows = self.history.clone();
         // Another account reads its own plays alone, whatever `accountID` it asks for: plexlab
         // answered its shared user that user's row for `accountID=1` too.
-        if !self.viewer.is_owner() {
-            rows.retain(|row| row.get("accountID").and_then(Value::as_i64) == Some(self.viewer.id));
-        }
+        rows.retain(|row| history_mine(&self.viewer, row));
         // Cycle 14, measured case by case on plexlab (1.43.4) and the 1.42.2 reference:
         // this page VALIDATES its ids.  `accountID`, `librarySectionID` and
         // `metadataItemID` are 400 for anything that is not a whole number -- `abc`, empty
@@ -14113,9 +14127,11 @@ impl Runtime {
         {
             let history_key = segments[3];
             let before = self.history.len();
+            let viewer = self.viewer.clone();
             self.history.retain(|row| {
                 let full = string_value(row.get("historyKey").unwrap_or(&Value::Null));
-                full != history_key && full.rsplit('/').next().unwrap_or_default() != history_key
+                (full != history_key && full.rsplit('/').next().unwrap_or_default() != history_key)
+                    || !history_mine(&viewer, row)
             });
             if self.history.len() == before {
                 return Response::error(404, "rex: no such history row");
@@ -14134,7 +14150,8 @@ impl Runtime {
             let requested = segments[3];
             let Some(row) = self.history.iter().find(|row| {
                 let full = string_value(row.get("historyKey").unwrap_or(&Value::Null));
-                full == requested || full.rsplit('/').next().unwrap_or_default() == requested
+                (full == requested || full.rsplit('/').next().unwrap_or_default() == requested)
+                    && history_mine(&self.viewer, row)
             }) else {
                 return Response::error(404, "rex: not found");
             };
@@ -22995,6 +23012,13 @@ fn in_network(ip: std::net::IpAddr, net: std::net::IpAddr, bits: u32) -> bool {
     }
 }
 
+/// Whether a history row is the asking account's to see: every row for the owner, its own
+/// plays for anyone else (plexlab answered its shared user that user's rows alone). The list,
+/// one row, its delete and the most-played counts all read history through this.
+fn history_mine(viewer: &accounts::Grant, row: &Value) -> bool {
+    viewer.is_owner() || row.get("accountID").and_then(Value::as_i64) == Some(viewer.id)
+}
+
 fn request_token<'a>(request: &'a Request, query: &'a HashMap<String, String>) -> Option<&'a String> {
     request
         .headers
@@ -23491,7 +23515,9 @@ fn note_live_request(request: &Request) {
     };
     if let Ok(mut rows) = LIVE_CONNECTIONS.lock() {
         if let Some(row) = rows.iter_mut().find(|row| row.slot == slot) {
-            row.request = format!("{} {}", request.method, request.target);
+            // `/connections` shows these lines to any account: a query token in them was
+            // another account's credential (audit 2026-10-20).
+            row.request = format!("{} {}", request.method, logging::redact_tokens(&request.target));
             row.number = number;
             row.agent = agent;
         }
@@ -23846,7 +23872,12 @@ fn handle_connection<S: Read + Write + PollRead>(
             })) {
                 Ok(response) => response,
                 Err(_) => {
-                    error!("handler failed for {} {}", request.method, request.target);
+                    error!("handler failed for {} {}", request.method, logging::redact_tokens(&request.target));
+                    // The panic skipped `route`'s own undo: another account's overlay and
+                    // playlists stayed on, and the next request saved the owner's away.
+                    guard.restore_playlists();
+                    guard.leave_account();
+                    guard.viewer = accounts::Grant::owner();
                     Response::error(500, "rex: internal error")
                 }
             };
@@ -24057,8 +24088,12 @@ fn handle_connection<S: Read + Write + PollRead>(
                 let open = wire::write_enveloped(&mut stream, &response, &envelope, keep)?;
                 // Every response counts towards the bandwidth statistics (`_count_bytes`).
                 let payload = wire::LAST_PAYLOAD.with(|cell| cell.get());
+                // Counting registers the client as a device, so only an admitted request is
+                // counted (`route` registers on the same rule).
                 if let Ok(mut guard) = runtime.lock() {
-                    guard.record_bytes(&owner, payload);
+                    if guard.admitted(&request) {
+                        guard.record_bytes(&owner, payload);
+                    }
                 }
                 open
             }
