@@ -234,6 +234,14 @@ fn lock(shared: &SharedRuntime) -> std::sync::MutexGuard<'_, Runtime> {
     shared.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
+fn listing(listed: Vec<(String, Option<String>, Option<String>, bool)>) -> Value {
+    let items: Vec<Value> = listed
+        .into_iter()
+        .map(|(id, key, file, deleted)| json!({"id": id, "ratingKey": key, "file": file, "deleted": deleted}))
+        .collect();
+    json!({"size": items.len(), "items": items})
+}
+
 fn answer(status: u16, body: Value) -> Response {
     Response::json(status, body)
 }
@@ -266,7 +274,12 @@ pub(super) fn handle(shared: &SharedRuntime, request: &Request, path: &str) -> R
             .ok_or_else(|| answer(400, json!({"error": "the body must be a JSON object"})))
     };
     let response = match (request.method.as_str(), leaf) {
-        ("GET" | "HEAD", "items") => answer(200, lock(shared).feed_listing(&source)),
+        ("GET" | "HEAD", "items") => {
+            // Its own statement, so the runtime lock is let go before 40,000 entries are built
+            // and written: built under it, rex-fun's RD listing held a Plex request 0.6-2 s.
+            let listed = lock(shared).feed_listed(&source);
+            answer(200, listing(listed))
+        }
         ("GET" | "HEAD", "held") => answer(200, lock(shared).feed_held_listing(&source)),
         ("POST", "items") => match body() {
             Ok(body) => match body.get("items").and_then(Value::as_array) {
@@ -1441,19 +1454,17 @@ impl Runtime {
             .collect()
     }
 
-    fn feed_listing(&self, source: &Source) -> Value {
-        let items: Vec<Value> = self
-            .catalog
+    /// The source's releases as its listing names them: id, key, file and whether trashed.
+    fn feed_listed(&self, source: &Source) -> Vec<(String, Option<String>, Option<String>, bool)> {
+        self.catalog
             .hot()
             .lazy()
             .flat_map(|row| {
                 row.hot.releases.iter().filter(|release| *release.source == *source.name).map(move |release| {
-                    json!({"id": release.sid, "ratingKey": key_of(&row), "file": release.file(),
-                           "deleted": row.get("deletedAt").is_some()})
+                    (release.sid.to_string(), key_of(&row), release.file(), row.get("deletedAt").is_some())
                 })
             })
-            .collect();
-        json!({"size": items.len(), "items": items})
+            .collect()
     }
 
     /// Hold an item, recording its key for the next snapshot's keyed write.

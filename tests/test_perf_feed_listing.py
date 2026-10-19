@@ -15,6 +15,11 @@ library and the host and no server change moves it. Measured on the Mac (6,000 m
 the listing cost 45 units, a Plex request beside it 38 and the snapshot's end 42; reading the
 releases kept beside each row's hot fields, 3.6, 0.8 and 1.3. The bounds are 10, 1 and 3.
 
+That listing still built and wrote its answer holding the runtime lock: on rex-fun the RD listing
+(41,419 items, 13 MB) took 0.46-0.6 s alone and a 50 ms Plex request sent beside it 0.6-2.0 s.
+Here, with 100,000 movies, a Plex request sent halfway through waited 40% of the listing; taking
+only the releases under the lock, 8%. The bound is a fifth.
+
     python3 tests/test_perf_feed_listing.py
 """
 import json
@@ -33,7 +38,7 @@ from test_perf_listing_window import ENV, check, client_unit, free_port, request
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 PROBE = json.load(open(os.path.join(HERE, "fixtures", "zurg", "entries.json")))["entries"]["movie"]["entry"]["media_info"]
-MOVIES = int(os.environ.get("REX_PERF_FEED_MOVIES", "6000"))
+MOVIES = int(os.environ.get("REX_PERF_FEED_MOVIES", "100000"))
 CHUNK = 500
 MOUNT = "/zurg"
 
@@ -113,27 +118,29 @@ def main():
             listed = json.loads(body).get("size")
             check("the listing names every movie", status == 200 and listed == MOVIES, (status, listed))
 
+            alone = sorted(request(port, "/rex/feed/test/items")[2] for _ in range(3))[1]
             runs, waits = [], []
-            for _ in range(3):
-                done = threading.Event()
+            for _ in range(7):
                 timing = {}
 
                 def listing():
                     timing["listing"] = request(port, "/rex/feed/test/items")[2]
-                    done.set()
 
                 thread = threading.Thread(target=listing)
                 thread.start()
-                time.sleep(0.02)
+                # Halfway through, when a listing that held the server would still hold it.
+                time.sleep(alone / 2)
                 waits.append(request(port, "/library/sections")[2])
                 thread.join()
                 runs.append(timing["listing"])
-            took, waited = sorted(runs)[1], sorted(waits)[1]
+            took, waited = sorted(runs)[3], sorted(waits)[3]
             print("unit (parsing the %d-item listing here): %.4fs; listing %.3fs; a Plex request beside it %.3fs"
                   % (listed, unit, took, waited), flush=True)
             check("the listing costs under 10 units (%.3fs, %.1f)" % (took, took / unit), took < 10 * unit, (took, unit))
             check("a Plex request beside it waits under 1 unit (%.3fs, %.1f)" % (waited, waited / unit),
                   waited < unit, (waited, unit))
+            check("a Plex request sent halfway waits under a fifth of the listing (%.3fs of %.3fs)" % (waited, took),
+                  waited < took / 5, (waited, took))
 
             # A snapshot's final chunk works out what the session left out: here it would remove
             # all but one movie, so it is refused, after the same pass a real removal makes.
