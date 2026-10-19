@@ -631,10 +631,12 @@ precisely how the Seasons bug survived a fix attempt.
 
 ## CI and releases
 
-`.github/workflows/ci.yml` runs on every push to `main` and every pull request: a release
-build on GitHub's `ubuntu-22.04` (glibc 2.35, so the binary runs on 22.04 and newer), `cargo test`, and the
-black-box suites that need no credentials. A tag or a manual run (Actions, "Run workflow")
-also builds linux arm64 (cross-compiled, smoke-tested under qemu) and macOS arm64 and amd64
+`.github/workflows/ci.yml` runs, like zurg's, only for a tag, the nightly or a manual run
+(Actions, "Run workflow", or `gh workflow run ci.yml`), never for a push or a pull request:
+pushes spent the org's Actions budget, which ran out on 2026-10-19 and blocked every run.
+Prove a push locally with `cargo test` and the suites ci.yml lists. Each run does a release
+build on GitHub's `ubuntu-22.04` (glibc 2.35, so the binary runs on 22.04 and newer), `cargo test`,
+the black-box suites that need no credentials, and also builds linux arm64 (cross-compiled, smoke-tested under qemu) and macOS arm64 and amd64
 on `macos-14` (the arm64 one runs suites natively), and Windows amd64, cross-compiled with
 MinGW on Linux and then tested on `windows-2022` (the unit tests and every suite but
 `test_manager`, since `rex manager` is Unix only). Those are the platforms zurg's own
@@ -649,7 +651,7 @@ through the webhook zurg's nightlies use (`DISCORD_RELEASE_WEBHOOK`, `.github/an
 `--dry-run` prints the post); `latest` stays on the last tag. The
 `gate` job skips a night whose `main` the last nightly already carries.
 
-A release is a tag. Set `version` in `rust/Cargo.toml`, push that to `main`, wait for CI,
+A release is a tag. Set `version` in `rust/Cargo.toml`, push that to `main`, run `gh workflow run ci.yml` and wait for it to pass,
 then tag the tested commit with the release notes as the tag message and push the tag:
 
 ```bash
