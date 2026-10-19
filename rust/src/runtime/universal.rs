@@ -1266,7 +1266,6 @@ impl Transcoder {
             let _ = std::fs::write(&cached, &script);
         }
         info!("TRANSCODE {} subtitle stream {}: {} cues read, {failed} unreadable, in {:.1}s", session.id, text.index, events.len(), begun.elapsed().as_secs_f64());
-        self.relaunch(session);
     }
 
     /// Restart the run from the first segment it has not finished, on its own path, so it

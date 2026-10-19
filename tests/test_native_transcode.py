@@ -776,8 +776,11 @@ def main():
         check("s-ass-ts: the embedded track's white box is in the converted picture",
               burned > 200 and abs(burned - source) > 30, "luma %.0f, the source's %.0f" % (burned, source))
         check("s-ass-ts: the track was read through its Cues",
-              wait_for_log(log, r"s-ass-ts subtitle stream \d+: (1) of 1 cues") == "1", "")
+              wait_for_log(log, r"s-ass-ts subtitle stream \d+: (1) cues read") == "1", "")
+        # One stage read is one run: the reader restarted the run once more after its last stage.
         get(port, "/video/:/transcode/universal/stop", [("session", "s-ass-ts")])
+        runs = re.findall(r"TRANSCODE s-ass-ts run (\d+) from", open(log).read())
+        check("s-ass-ts: a track read in one stage starts one run", runs == ["1"], str(runs))
         # An MP4's timed text is read through its sample tables the same way.
         get(port, "/video/:/transcode/universal/start.m3u8", plex_web_query("12", "s-mov-ts", directStream="1", subtitles="auto"))
         status, _, first = get(port, "/video/:/transcode/universal/session/s-mov-ts/base/00000.ts")
