@@ -236,13 +236,14 @@ jobs:
 
   windows-test:
     needs: windows-amd64
-    # ben@windows, repo-scoped like zurg's winbox runner, running as NETWORK SERVICE. Its .path
-    # puts Git's bash ahead of System32, so `bash` is Git for Windows'.
+    # ben@windows, repo-scoped like zurg's winbox runner, running as NETWORK SERVICE, whose PATH
+    # has no bash: `shell: bash` failed "bash: command not found". Git for Windows' by its 8.3
+    # path, since the runner splits a custom shell at its first space.
     runs-on: [self-hosted, Windows, X64, winbox]
     timeout-minutes: 45
     defaults:
       run:
-        shell: bash
+        shell: C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -eo pipefail {0}
     env:
       # The suites read their fixtures without naming an encoding.
       PYTHONUTF8: "1"
