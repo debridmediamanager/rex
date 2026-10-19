@@ -78,7 +78,7 @@ def main():
         server.feed("POST", "items", {"items": [one]})
         key = server.keys().get(one["id"])
         server.request("/:/scrobble?key=%s&identifier=com.plexapp.plugins.library" % key)
-        events = Events(server.port)
+        events = Events(server.port, server.token)
         mark = events.mark()
         status, body = server.feed("POST", "items", {"items": [two]})
         # Plex for Mac drew a release announced as a new row and then folded away in Recently

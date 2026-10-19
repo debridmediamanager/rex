@@ -143,8 +143,9 @@ def main():
     # named by --friendly-name, its libraries under --zurg-mount.
     scratch = tempfile.mkdtemp(prefix="rex-cli-seed-")
     seeded = os.path.join(scratch, "rex.db")
+    # --assert-claimed: an unclaimed server serves no client, and this reads the library.
     process, port = serving("--port", "PORT", "--catalog", seeded, "--friendly-name", "Seeded Den",
-                            "--zurg-mount", "/srv/zurg", "--gdm", "off")
+                            "--zurg-mount", "/srv/zurg", "--gdm", "off", "--assert-claimed")
     try:
         def get(path):
             request = urllib.request.Request("http://127.0.0.1:%d%s" % (port, path),
@@ -167,7 +168,8 @@ def main():
     # With neither flag the guide's one command is `rex --catalog rex.db`: the server is named
     # after its host, as a real PMS is, and its libraries are under zurg's default mount.
     scratch = tempfile.mkdtemp(prefix="rex-cli-seed-")
-    process, port = serving("--port", "PORT", "--catalog", os.path.join(scratch, "rex.db"), "--gdm", "off")
+    process, port = serving("--port", "PORT", "--catalog", os.path.join(scratch, "rex.db"), "--gdm", "off",
+                            "--assert-claimed")
     try:
         request = urllib.request.Request("http://127.0.0.1:%d/library/sections" % port,
                                          headers={"Accept": "application/json"}) if port else None

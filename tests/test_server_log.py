@@ -285,8 +285,8 @@ def main():
             [("INFO", E("REFRESH 20001 (The Simpsons) -- cascaded"))], status=200)
         run("an item analyze", "PUT", M + "1007/analyze",
             [("INFO", E("ANALYZE 1007 -- 1 leaf frame set(s)"))], status=200)
-        run("a match search with no TMDB key", "GET", M + "1008/matches?manual=1",
-            [("INFO", E("MATCHES 1008 -- no TMDB key configured"))], status=200)
+        run("a match search with no Plex agent", "GET", M + "1008/matches?manual=1",
+            [("INFO", E("MATCHES 1008 -- no Plex agent (not claimed)"))], status=200)
         run("an unmatch", "PUT", M + "1009/unmatch",
             [("INFO", E("UNMATCH 1009 -> guid=tv.plex.agents.none://1009"))], status=200)
         run("a match", "PUT", M + "1009/match?guid=plex%3A%2F%2Fmovie%2F5d7768265af944001f1f6a4e"

@@ -636,19 +636,13 @@ fn snapshot(claim: &SharedClaim) -> Claim {
         .clone()
 }
 
-/// The token rex asks plex.tv with: the claim's own server token, else `PLEX_TOKEN`.
-/// Measured 2026-10-15 (findings, "A claimed server needs no account token"): the server
-/// token answers the announce, `/api/v2/resources` and Plex's metadata agent as the account
-/// token does, so `PLEX_TOKEN` is only an unclaimed server's way in.
-pub(crate) fn server_token(claim: &SharedClaim) -> Option<String> {
-    claim_token(claim).or_else(|| std::env::var("PLEX_TOKEN").ok().filter(|token| !token.is_empty()))
-}
-
-/// The claim's own server token only. The device announce takes nothing else: plex.tv
-/// applies `PUT /devices/{id}` to the device that owns the token, so the 2026-09-11 spike's
-/// unclaimed announce with zurg's `PLEX_TOKEN` rewrote the account's "zurg" device row
-/// (findings, "Collateral change to the Plex account"; card #293). rex-direct's provider gets
-/// nothing else either: `PLEX_TOKEN` is the account's, and that provider is a third party.
+/// The claim's own server token, the only token rex asks plex.tv, Plex's agent and
+/// rex-direct's provider with; rex reads no account token (2026-10-19). Measured 2026-10-15
+/// (findings, "A claimed server needs no account token"): it answers the announce,
+/// `/api/v2/resources` and Plex's metadata agent as the account token does. An announce with
+/// the account token rewrote the account's "zurg" device row on 2026-09-11 (findings,
+/// "Collateral change to the Plex account"; card #293), as plex.tv applies `PUT /devices/{id}`
+/// to the device that owns the token.
 pub(crate) fn claim_token(claim: &SharedClaim) -> Option<String> {
     snapshot(claim).token.filter(|token| !token.is_empty())
 }
@@ -720,13 +714,6 @@ pub(crate) fn exchange(claim: &SharedClaim, claim_token: &str) -> Result<(), Str
         .filter(|token| !token.is_empty())
         .ok_or_else(|| "claim exchange returned no authToken".to_string())?
         .to_string();
-    // The 2026-09-11 spike claimed an identity that already had a device row and got the
-    // ACCOUNT token back. Stored as the server's, every plex.tv write would then carry it.
-    if std::env::var("PLEX_TOKEN").ok().as_deref() == Some(token.as_str()) {
-        return Err("plex.tv answered the account token, not a server token; not stored \
-                    (this identity already has a device row)"
-            .to_string());
-    }
     let owner = {
         let mut state = claim
             .lock()
@@ -1461,7 +1448,7 @@ pub(crate) fn start_heartbeat(plextv: Arc<PlexTv>, interval: u64) {
                     thread::sleep(Duration::from_secs(interval));
                     continue;
                 };
-                // Unclaimed there is nothing to announce with yet, PLEX_TOKEN or not; said once,
+                // Unclaimed there is nothing to announce with yet; said once,
                 // and the claim itself announces at once (`finish_claim`). Announcing nothing
                 // before the claim also keeps the account-token device row that made the
                 // 2026-09-11 claim answer the account token from ever being written.
@@ -2416,7 +2403,7 @@ pub(super) fn finish_claim(runtime: &SharedRuntime, token: &str, _target: &str) 
         let mut guard = runtime
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
-        // A server started with no PLEX_TOKEN matches with Plex's agent from its claim on.
+        // An unclaimed start has no agent: it matches with Plex's agent from its claim on.
         if guard.plex.is_none() {
             let cache = claim_path(&guard.catalog_path).with_file_name("plex_cache.json");
             let agent = super::plexmeta::PlexMeta::new(Arc::clone(&plextv.claim), cache, guard.machine.clone());

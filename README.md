@@ -70,13 +70,13 @@ The first start makes `rex.db` with two empty libraries, Debrid Movies and Debri
 
 `rex.db` holds your library, watch history and your sources' logins. Back it up with `sqlite3 rex.db ".backup rex.db.bak"` and keep it private.
 
-Until you add it to a Plex account in step 3 anyone on your home network can browse it. Keep it there until then.
+Until you add it to a Plex account in step 3 rex serves no Plex app: it answers only its claim and, from this machine and your home network, your sources (step 4).
 
 Plex Media Server runs on the same machine? Add `--port 32500` and use `32500` wherever this page says `32400`. On any port but 32400 rex stays out of LAN discovery, so apps find it through the Plex account it is shared with in step 3.
 
 **3. Add it to a Plex account**
 
-This step is optional and at your own risk. rex is not made by Plex and Plex could take action against an account that registers it, so use a fresh free Plex account made just for rex, not your own. Skip it and rex only answers on your own network, with file names instead of posters (unless you set `PLEX_TOKEN`, below).
+rex plays nothing until this step. It is at your own risk: rex is not made by Plex and Plex could take action against an account that registers it, so use a fresh free Plex account made just for rex, not your own.
 
 Do it before step 4. Titles zurg sends before the claim keep their file names until rex names them in the background, about 300 an hour.
 
@@ -90,7 +90,7 @@ Do this once per server. rex saves it in `claim_state.json` next to `rex.db`. Ba
 
 Then, still as the fresh account, share rex with your own account in app.plex.tv (Settings, Manage Library Access, Grant Library Access) and accept the invite as yourself. You watch signed in as yourself, with your own watch history. Fix Match works only for the fresh account: rex refuses it to the accounts it is shared with, as Plex does.
 
-The claim gives rex a token of its own. With it rex announces the address from step 2, gets its HTTPS address (step 5) and shows your titles with Plex's own metadata, with no restart. Until the claim they keep the names your source pushed. If you skip this step and still want Plex's metadata, set `PLEX_TOKEN` to your [Plex token](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/) in step 2. A claimed server does not need it.
+The claim gives rex a token of its own. With it rex announces the address from step 2, gets its HTTPS address (step 5) and shows your titles with Plex's own metadata, with no restart. rex needs no Plex token of yours.
 
 **4. Point zurg at it**
 

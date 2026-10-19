@@ -47,7 +47,7 @@ options:
   --convert JSON        write an existing JSON catalog into the --out database
                         and stop
   --relink              only relink the guids of the existing --out catalog to
-                        Plex's (needs a claim beside it, or PLEX_TOKEN)
+                        Plex's (needs a claim beside it)
 ";
 
 fn usage_error(message: &str) -> String {
@@ -224,11 +224,11 @@ fn save_catalog(path: &str, document: &Value) -> Result<(), String> {
     fs::write(path, text).map_err(|e| format!("cannot write {path}: {e}"))
 }
 
-/// Give the rows Plex's own guids (metadata.PlexProvider); a no-op with neither a claim
-/// beside the catalog nor PLEX_TOKEN.
+/// Give the rows Plex's own guids (metadata.PlexProvider); a no-op without a claim beside
+/// the catalog.
 fn relink_guids(items: &mut [Value], out: &str, machine: String) -> usize {
     crate::runtime::plexmeta::relink(items, Path::new(out), machine).unwrap_or_else(|| {
-        println!("no claim and no PLEX_TOKEN: guids stay minted, and the Android app's detail pages stay empty");
+        println!("no claim: guids stay minted, and the Android app's detail pages stay empty");
         0
     })
 }

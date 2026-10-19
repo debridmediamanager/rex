@@ -511,7 +511,7 @@ pub struct Runtime {
     feed_held: std::collections::BTreeMap<String, Value>,
     /// The `feed_held` keys written or removed since the last snapshot (`hold`, `release`).
     feed_held_changed: HashSet<String>,
-    /// Plex's metadata agent, once claimed or with `PLEX_TOKEN`: a pushed id's `plex://` guid,
+    /// Plex's metadata agent, once claimed: a pushed id's `plex://` guid,
     /// everything shown about the title, and Fix Match's candidates. rex reads no TMDB.
     plex: Option<Arc<plexmeta::PlexMeta>>,
     /// Fix Match guid -> the `(kind, provider row)` it was offered with, so `PUT .../match`
@@ -793,8 +793,8 @@ impl Runtime {
         );
         let plextv = Arc::new(plextv::PlexTv::new(claim, options.account_state_interval));
         // Built once the catalog names the machine: the agent is asked as this server, with
-        // the claim's token or PLEX_TOKEN (a claim made later builds it then, `finish_claim`).
-        let plex = plextv::server_token(&plextv.claim).map(|_| {
+        // the claim's token (a claim made later builds it then, `finish_claim`).
+        let plex = plextv::claim_token(&plextv.claim).map(|_| {
             let cache = plextv::claim_path(&options.catalog).with_file_name("plex_cache.json");
             Arc::new(plexmeta::PlexMeta::new(Arc::clone(&plextv.claim), cache, machine.clone()))
         });
@@ -8544,14 +8544,17 @@ impl Runtime {
         {
             return true;
         }
+        // An unclaimed server serves no client, only its claim (2026-10-19): with no claim it
+        // has no token to ask Plex's agent with, so nothing it could show would have a name.
+        // `--assert-claimed` is the suites' stand-in and keeps the unclaimed PMS's gate.
         if !self.gated() {
-            return self.local_request(request);
+            return (self.assert_claimed || path == "/myplex/claim") && self.local_request(request);
         }
         request_token(request, query).is_some_and(|value| self.token_admitted(value))
     }
 
-    /// The gate of an unclaimed server with no `--token`, as a never-claimed PMS 1.43.4 keeps
-    /// it (plexscratch, 2026-10-13); the same paths stay open (`authorized`). The peer and
+    /// Who may claim an unclaimed server with no `--token` (and, under `--assert-claimed`, use
+    /// it): the gate a never-claimed PMS 1.43.4 keeps (plexscratch, 2026-10-13). The peer and
     /// every `X-Forwarded-For` hop must be loopback or, with `allowedNetworks` empty, a
     /// private address (10/8, 172.16/12, 192.168/16, fc00::/7 -- not 100.64/10 or
     /// link-local), or with it set, in it; a forwarded hop cannot vouch for a refused peer.
@@ -20211,9 +20214,9 @@ impl Runtime {
     /// came with, so the match describes the row from what the person picked.
     fn route_item_matches(&mut self, row: &Value, query: &HashMap<String, String>) -> Response {
         let Some(plex) = self.plex.clone() else {
-            // No agent (unclaimed, no PLEX_TOKEN): the honest answer is no candidates. The
+            // No agent (not claimed): the honest answer is no candidates. The
             // client says "No matches were found using this agent", which is true.
-            info!("MATCHES {} -- no Plex agent (unclaimed, no PLEX_TOKEN)", key_of(row).unwrap_or_default());
+            info!("MATCHES {} -- no Plex agent (not claimed)", key_of(row).unwrap_or_default());
             // `tag_container(size=0)`: identifier and the media-tag pair, as the
             // candidate answer carries them.
             return Response::json(200, self.tag_container(Map::new()));
@@ -26267,6 +26270,8 @@ mod file_check_tests {
         let mut runtime = Runtime::load(RuntimeOptions {
             catalog: catalog_path,
             state: Some(dir.join("state.disabled")),
+            // The suites' stand-in for a claim: an unclaimed server serves no client.
+            assert_claimed: true,
             ..RuntimeOptions::default()
         })
         .unwrap();
@@ -26335,6 +26340,8 @@ mod file_check_tests {
         let mut runtime = Runtime::load(RuntimeOptions {
             catalog: catalog_path,
             state: Some(dir.join("state.disabled")),
+            // The suites' stand-in for a claim: an unclaimed server serves no client.
+            assert_claimed: true,
             ..RuntimeOptions::default()
         })
         .unwrap();

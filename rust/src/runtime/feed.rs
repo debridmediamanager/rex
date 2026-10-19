@@ -1970,6 +1970,8 @@ mod tests {
         let runtime = Runtime::load(RuntimeOptions {
             catalog: catalog_path,
             state: Some(dir.join("no-state")),
+            // The suites' stand-in for a claim: an unclaimed server serves no client.
+            assert_claimed: true,
             ..RuntimeOptions::default()
         })
         .unwrap();

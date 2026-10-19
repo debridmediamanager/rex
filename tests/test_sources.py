@@ -37,7 +37,7 @@ import urllib.request
 
 from server_command import server_command
 from startup_wait import poll_until
-from test_feed import BODY, BYTES_TOKEN, LEGACY, MOUNT, ROOT, Bytes, check, results, item, catalog, serve
+from test_feed import BODY, BYTES_TOKEN, LEGACY, MOUNT, ROOT, Bytes, check, results, item, catalog, claim, serve
 from test_ports import free_port
 import test_feed_versions as versions
 
@@ -117,13 +117,18 @@ def front_handler(cdn_port, seen):
     return Handler
 
 
+TOKEN = "fake"  # the claim's own token beside each catalog
+
+
 def start(work, sources, env_extra=None, *args):
     """A server on `work`'s catalog and state, each of `sources` registered as zurg does it."""
     port = free_port()
-    env = dict(os.environ, TMDB_KEY="fake", PLEX_TOKEN="fake", REX_PLEXTV_URL="http://127.0.0.1:9")
-    for name in ("REX_STATE", "REX_TOKEN"):
+    env = dict(os.environ, TMDB_KEY="fake", REX_PLEXTV_URL="http://127.0.0.1:9")
+    for name in ("REX_STATE", "REX_TOKEN", "PLEX_TOKEN"):
         env.pop(name, None)
     env.update(env_extra or {})
+    # Plex's agent is asked with the claim's token only (`test_feed.claim`).
+    claim(os.path.join(work, "catalog.json"), TOKEN)
     log = open(os.path.join(work, "server.log"), "ab")
     process = subprocess.Popen(
         server_command("--port", port, "--catalog", os.path.join(work, "catalog.json"), "--state",
@@ -160,7 +165,8 @@ def register(port, name, body, headers=None):
 def call(port, path, method="GET", body=None, headers=None):
     data = body if body is None or isinstance(body, bytes) else json.dumps(body).encode()
     request = urllib.request.Request("http://127.0.0.1:%d%s" % (port, path), data=data, method=method,
-                                     headers=dict({"Accept": "application/json"}, **(headers or {})))
+                                     headers=dict({"Accept": "application/json", "X-Plex-Token": TOKEN},
+                                                  **(headers or {})))
     try:
         with urllib.request.urlopen(request, timeout=60) as response:
             try:
@@ -207,7 +213,8 @@ def gated():
                            {"Content-Type": "application/json"})
         check("a gated server takes a push with no token", status == 200 and loads(raw).get("created") == 1,
               (status, raw))
-        check("while its library still wants one", call(port, "/library/sections")[0] == 401)
+        check("while its library still wants one",
+              call(port, "/library/sections", headers={"X-Plex-Token": ""})[0] == 401)
     finally:
         stop(process, log)
         shutil.rmtree(work, ignore_errors=True)

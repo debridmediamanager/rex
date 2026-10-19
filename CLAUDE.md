@@ -97,7 +97,7 @@ Where things live in `rust/src/`:
 | `runtime/upstream.rs` | The HTTP/HTTPS client (rustls, system roots) behind zurg, provider redirects, Plex's metadata agent and artwork |
 | `runtime/source.rs`, `runtime/feed.rs`, `runtime/scan.rs` | Sources (registered over `PUT /rex/sources/{name}`, kept in the state file, deleted with a confirmation: where a Part's bytes are), the feed API sources push items to, open to any peer on a private network (`feed::source_peer`, `docs/feed-api.md`), and the rows those items become: added, held until probed, filled, re-identified, trashed, keys minted once (`mint_key`); a show's file its source did not place is numbered in its release's file order (`number_unplaced`), never by its name |
 | `runtime/universal.rs` | The video transcoder (`REX_TRANSCODER`): the conversion decision's plan and Media, `start.m3u8`/`start.mpd`, segments served outside the runtime lock, one FFmpeg per session with the hardware ladder, seeks, throttling and the idle reaper, and the `TranscodeSession` rows |
-| `runtime/plexmeta.rs`, `identify.rs` | Plex's metadata agent (the claim's server token, else `PLEX_TOKEN`), and which title a release is: the ids its source placed it with, or a TMDB id set by hand at the source (`placed`; `scan::identified_by`), asking Plex's agent for its guid by external id, whose answer and children rows are all a row shows (`metadata::describe`); nothing is read off a name, and what arrives with neither stays for Fix Match, which searches Plex's agent |
+| `runtime/plexmeta.rs`, `identify.rs` | Plex's metadata agent (the claim's server token), and which title a release is: the ids its source placed it with, or a TMDB id set by hand at the source (`placed`; `scan::identified_by`), asking Plex's agent for its guid by external id, whose answer and children rows are all a row shows (`metadata::describe`); nothing is read off a name, and what arrives with neither stays for Fix Match, which searches Plex's agent |
 | `runtime/plextv.rs` | claim/heartbeat/account state (`REX_PLEXTV_URL` points plex.tv and Plex's agent at a stub) |
 | `runtime/rexdirect.rs` | rex-direct, a plex.direct of rex's own (`docs/rex-direct-api.md`): on by default, once claimed it registers the machineIdentifier with the claim's server token at its provider (`REX_DIRECT_URL`, DMM's by default, `off`, https or loopback only; `REX_DIRECT_KEY` an optional bearer key), serves the certificate it answers by SNI beside `--tls-cert`'s (`Certificates`, the TLS port's cert resolver), appends `https://<name>:<REX_DIRECT_PORT or --port>` to the announce, keeps the answer in `rex-direct.json`, and registers again every 6 h (10 min after a failure, a 202's `retryAfter` within 15 s..10 min); unclaimed it waits in `PlexTv::direct` for the claim (`plextv::finish_claim`) |
 | `runtime/accounts.rs` | Which plex.tv account each request comes from (the access-token list: owner 1, a share its plex.tv id, with its libraries, filters, flags and track settings) and what that account keeps and sees: its watch state, ratings, hides and track picks shown over the rows while its request runs (`rows::Overlay`), its own playlists and history, the share's libraries and filters pruned from every answer, the owner's routes refused (findings, "Each account its own") |
@@ -117,7 +117,7 @@ gives the client a grid whose filter bar can only talk about the wrong type.
 ```bash
 cargo build --release --manifest-path rust/Cargo.toml
 rust/target/release/rex --catalog rex.db   # seeds rex.db on its first start, named after the host, under /mnt/zurg
-cp examples/run.sh.example run.sh   # keys go in rex.env beside it (PLEX_TOKEN optional; mode 600)
+cp examples/run.sh.example run.sh   # keys go in rex.env beside it (mode 600)
 ```
 
 Sources push the library; rex reads no media itself, lists and queries nothing, and
@@ -140,8 +140,8 @@ so either plays again once its source registers. `DELETE /rex/sources/{name}` an
 one-use code valid 300 s; `DELETE .../confirm/<code>` removes the source and what it pushed
 from rex, never its files. With no source a part read is the 502 an unreachable source is. Plex's
 matcher names and describes what its source placed, or gave a TMDB id by hand, and nothing else is
-identified; it is asked with the claim's server token, or `PLEX_TOKEN` on an unclaimed server, and
-is off with neither, which leaves every title its pushed name and Fix Match no candidates. `--zurg-mount` is zurg's
+identified; it is asked with the claim's server token, and is off without a claim (under
+`--assert-claimed`), which leaves every title its pushed name and Fix Match no candidates. `--zurg-mount` is zurg's
 `mount_path` (default `/mnt/zurg`): a Part's `file` is `<mount>/<directory>/<release>/<file>`,
 and each library's `Location` is `<mount>/<directory>` -- set in the catalog's sections
 (`rex catalog --seed`, or the seed on start), or through Add Library's `location`.
@@ -191,7 +191,7 @@ provider (default DMM's `/api/rex-direct/register`) or `off`, and must be https,
 to loopback only, since the answer carries a private key and the request the claim's token.
 The provider knows the caller by the claim, so rex registers only once claimed: a claimed start
 POSTs its machineIdentifier before the port opens, with `X-Plex-Token` (the claim's server
-token, never `PLEX_TOKEN`) and `X-Plex-Client-Identifier`, plus `Authorization: Bearer
+token) and `X-Plex-Client-Identifier`, plus `Authorization: Bearer
 <REX_DIRECT_KEY>` when that is set; an unclaimed one registers the moment `/myplex/claim` lands,
 in the background before the claim's device PUT, no restart. The provider checks the token
 with plex.tv's `/api/v2/resources`, points its name at the request's source IP and answers the
@@ -220,13 +220,16 @@ list (`/api/downloads/5.json`) before the claim and every 24 h, with `X-Plex-Dev
 Docker` as the recorded PMS sends; clients keep the measured `1.42.2.10156-f737b826c`.
 A conversion's own playlist and segments (`/video/:/transcode/universal/session/...`) are
 keyed to the session, not the token, as on a real PMS (findings, "A conversion session is its own key").
-An unclaimed server without `--token` answers only its own networks, as an unclaimed PMS
-does (`local_request`; findings, "The gate an unclaimed server keeps").
-An unclaimed server announces nothing, `PLEX_TOKEN` or not: plex.tv applies a device PUT to
-the device that owns the token, so the 2026-09-11 spike's unclaimed announce with zurg's account
-token rewrote the account's "zurg" device row, and a claim of an identity with such a row got the
-account token back, not a server token (findings, "Collateral change to the Plex account"). rex refuses to store a token equal to `PLEX_TOKEN`, and a claimed server answers
-another claim with 409.
+An unclaimed server without `--token` serves no client (Ben, 2026-10-19): with no claim it
+has no token to ask Plex's agent with. It answers the always-open paths (`/identity`, `/web`,
+the source API) and takes `POST /myplex/claim` only from its own networks, as an unclaimed PMS
+gates every request (`local_request`; findings, "The gate an unclaimed server keeps").
+`--assert-claimed`, the suites' stand-in for a claim, keeps that gate for every route. rex reads
+no account token: `PLEX_TOKEN` is not read since 2026-10-19. An unclaimed server announces
+nothing: plex.tv applies a device PUT to the device that owns the token, so the 2026-09-11
+spike's unclaimed announce with zurg's account token rewrote the account's "zurg" device row
+(findings, "Collateral change to the Plex account"). A claimed server answers another claim
+with 409.
 
 `rex.db`, `rex.env`, `run.sh` and `rex-direct.json` are gitignored: the catalog and
 `rex.env` carry account-scoped credentials, `rex-direct.json` a private key. `examples/catalog.example.json` keeps the shape.
@@ -242,8 +245,8 @@ A plain `nohup ... &` from an agent tool call **does not survive** the call.
 
 Several servers, started and stopped on demand: `rex manager serve`, then
 `rex manager create NAME --port P [--catalog PATH] [--zurg-mount M] [--friendly-name N]` (keys from
-`PLEX_TOKEN`/`REX_TOKEN`/`REX_DIRECT_KEY`, and `REX_DIRECT_URL`, in the environment; a saved `dmm_api_key`
-loads and reaches no server; sources register with each server) and `start|stop|list|logs NAME`; a server with no catalog seeds one on its first start
+`REX_TOKEN`/`REX_DIRECT_KEY`, and `REX_DIRECT_URL`, in the environment; a saved `dmm_api_key`
+or `plex_token` loads and reaches no server; sources register with each server) and `start|stop|list|logs NAME`; a server with no catalog seeds one on its first start
 (`build NAME` seeds it ahead of time). Its data
 lives in `managed/` at the repository root (gitignored, mode 700); `tests/test_manager.py` drives it end to end and
 starts its own manager on a temporary root.
@@ -560,7 +563,7 @@ python3 tests/test_auto_collections.py      # "Minimum automatic collection size
 python3 tests/test_sources.py               # registering sources, and sources that are not zurg: a server ignoring Range,
                                             # a redirect to a CDN, a restart, rows before registration, the two-step delete
 python3 tests/test_server_command.py        # the launcher's default and REX_SERVER override
-python3 tests/test_unclaimed_gate.py        # what an unclaimed server answers: local networks, Host names, allowedNetworks
+python3 tests/test_unclaimed_gate.py        # what an unclaimed server answers: no client, its claim from local networks only, Host names, allowedNetworks
 python3 tests/test_photo_ssrf.py            # /photo/:/transcode?url= dials nothing on rex's own networks (loopback, LAN, 0.0.0.0)
 python3 tests/test_track_prefs.py           # a real Part starts on its account's plex.tv audio/subtitle languages; a hand pick stays that account's
 python3 tests/test_accounts.py              # plexlab's owner and shared user replayed: per-account watch state, ratings, playlists,
@@ -572,11 +575,13 @@ cargo test --manifest-path rust/Cargo.toml  # the Rust unit tests: the decision 
                                             # GDM against four real servers
 ```
 
-Credentials unlock the rest. With `PLEX_TOKEN`, and a copy of `catalog_ui.json` whose Part
+Credentials unlock the rest. With a copy of `catalog_ui.json` whose Part
 files a zurg serves (made on the test host, never committed) and that zurg registered with
-the test server (`PUT /rex/sources/zurg` with its url, login and `mount`), the UI suite runs
-with **no skips** (1,979/1,979 when it was RD-backed).
-Keyless and zurg-less it is 1,975/1,975 with exactly three skips (two Fix Match, Download):
+the test server (`PUT /rex/sources/zurg` with its url, login and `mount`), the UI suite skips
+only its two Fix Match checks (1,979/1,979 with none skipped when it was RD-backed and read
+`PLEX_TOKEN`): they need Plex's agent, which only a real claim gives, and `--assert-claimed`
+is none (2026-10-19).
+Zurg-less it is 1,975/1,975 with exactly three skips (two Fix Match, Download):
 with no source registered a part read is the routed 502 its checks expect.
 `test_all.py` and `conformance.py` need a live catalog and the same credentials.
 A provider account behind zurg is read-only in tests: read bytes, never add or delete.

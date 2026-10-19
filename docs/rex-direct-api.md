@@ -48,8 +48,8 @@ Authorization: Bearer <REX_DIRECT_KEY>          (only when REX_DIRECT_KEY is set
 {"machineIdentifier": "<machineIdentifier>"}
 ```
 
-`X-Plex-Token` is the server token plex.tv issued at the claim, never `PLEX_TOKEN` (an
-account token). The body's `machineIdentifier` and `X-Plex-Client-Identifier` are the same
+`X-Plex-Token` is the server token plex.tv issued at the claim; rex holds no account token.
+The body's `machineIdentifier` and `X-Plex-Client-Identifier` are the same
 value: the identity rex announces to plex.tv on. rex logs neither the token nor the key.
 
 ## Verifying the caller

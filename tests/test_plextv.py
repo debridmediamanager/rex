@@ -729,8 +729,8 @@ def asked_with(records):
 def server_token_setup():
     """Setup needs no account token (2026-10-15). A claimed server asks plex.tv with its own
     token -- the announce, the visibility check and Plex's metadata agent, each measured to
-    answer it (findings, "A claimed server needs no account token") -- and PLEX_TOKEN is only
-    an unclaimed server's fallback. Each leg starts a server of its own on a fresh copy."""
+    answer it (findings, "A claimed server needs no account token") -- and PLEX_TOKEN is read
+    nowhere since 2026-10-19. Each leg starts a server of its own on a fresh copy."""
     stub = Stub(free_port())
     threading.Thread(target=stub.serve_forever, daemon=True).start()
     stub_port = stub.server_address[1]
@@ -839,13 +839,14 @@ def server_token_setup():
                       asked and set(asked_with(asked)) == {(SERVER_TOKEN, MACHINE)}, asked_with(asked))
                 again.stop()
 
-        # -- (d) PLEX_TOKEN, unclaimed, --announce-url: the agent, never the announce ----
+        # -- (d) PLEX_TOKEN, unclaimed: no longer read (2026-10-19), not even by the agent --
         stub.clear()
         legacy = start(fresh(False))
         if started("(d) an unclaimed server with PLEX_TOKEN starts", legacy):
-            asked = agent_after(0, "Plomb.Treska.2021.1080p.WEB-DL", legacy)
-            check("(d) unclaimed, Plex's agent is asked with PLEX_TOKEN, as before",
-                  asked and set(asked_with(asked)) == {(ACCOUNT_TOKEN, MACHINE)}, asked_with(asked))
+            status = push(legacy, "Plomb.Treska.2021.1080p.WEB-DL")
+            time.sleep(2)
+            check("(d) unclaimed, PLEX_TOKEN is not read: Plex's agent is asked nothing",
+                  status == 200 and not stub.taken(AGENT), (status, asked_with(stub.taken(AGENT))))
             check("(d) unclaimed, PLEX_TOKEN is never announced with",
                   not beats() and not visibility(), asked_with(beats()))
             status = claim(legacy)
@@ -854,9 +855,13 @@ def server_token_setup():
                   status == 200 and announced and {token for token, _ in asked_with(announced)} == {SERVER_TOKEN},
                   (status, asked_with(beats())))
             asked = agent_after(len(stub.taken(AGENT)), "Gruvn.Hollet.2020.1080p.WEB-DL", legacy)
-            check("(d) once claimed, the server token replaces PLEX_TOKEN there too",
+            check("(d) once claimed, Plex's agent is asked with the server token",
                   status == 200 and asked and set(asked_with(asked)) == {(SERVER_TOKEN, MACHINE)},
                   (status, asked_with(asked)))
+            check("(d) PLEX_TOKEN reaches plex.tv nowhere",
+                  all(token != ACCOUNT_TOKEN for token, _ in asked_with(stub.records)),
+                  [(r["host"], r["path"]) for r in stub.records
+                   if (dict(r["headers"]).get("x-plex-token") or dict(r["query"]).get("X-Plex-Token")) == ACCOUNT_TOKEN])
             legacy.stop()
     finally:
         for instance in LIVE:
@@ -883,16 +888,43 @@ def main():
         check("the suite's AES-256 encrypts the public NIST block vector",
               aes_encrypt_block(bytes.fromhex("6bc1bee22e409f96e93d7e117393172a"),
                                 aes256_round_keys(key)).hex() == "f3eed1bdb5d2a03c064b5a7e3db181f8")
+        # Watch state the cloud import is to clear: a watched, part-played, rated row the
+        # cloud calls unplayed with no rating, and a rated row it sends the -1 clear for. An
+        # unclaimed server serves no client (2026-10-19), so it is kept in a state file by a
+        # start under --assert-claimed, as an install from before then kept its own.
+        seed_state = os.path.join(directory, "seed.db")
+        seed = Instance(directory, ports[0], ports[2], extra=("--assert-claimed", "--state", seed_state),
+                        announce=None)
+        library = "&identifier=com.plexapp.plugins.library"
+        for path in ("/:/scrobble?key=%s" % UNPLAYED_KEY,
+                     "/:/progress?key=%s&time=61000&state=stopped" % UNPLAYED_KEY,
+                     "/:/rate?key=%s&rating=7" % UNPLAYED_KEY, "/:/rate?key=%s&rating=6" % CLEARED_KEY):
+            seed.request("GET", path + library)
+        local_state = {key: first_row(seed.request("GET", "/library/metadata/%s" % key))
+                       for key in (UNPLAYED_KEY, CLEARED_KEY)}
+        history_before = [row.get("ratingKey") for row in container(seed.request(
+            "GET", "/status/sessions/history/all?type=0,1")[1]).get("Metadata") or []]
+        check("before the claim the rows hold local view state and stars",
+              all(local_state[UNPLAYED_KEY].get(k) for k in ("viewCount", "viewOffset", "lastViewedAt"))
+              and local_state[UNPLAYED_KEY].get("userRating") == 7.0
+              and local_state[CLEARED_KEY].get("userRating") == 6.0
+              and local_state[CLEARED_KEY].get("lastRatedAt"),
+              {key: {k: row.get(k) for k in ("viewCount", "viewOffset", "lastViewedAt", "userRating",
+                                             "lastRatedAt")} for key, row in local_state.items()})
+        seed.stop()
+
         # -- unclaimed, PLEX_TOKEN and --announce-url: nothing announced --------------
         # plex.tv applies a device PUT to the device that owns the token: the 2026-09-11
         # spike's unclaimed announce with zurg's PLEX_TOKEN rewrote the account's "zurg"
         # device row (findings, "Collateral change to the Plex account"; card #293).
-        first = Instance(directory, ports[0], ports[2])
+        first = Instance(directory, ports[0], ports[2], extra=("--state", seed_state))
         time.sleep(5)  # two heartbeat intervals and more
         check("unclaimed with PLEX_TOKEN, nothing is announced before the claim",
               not stub.taken("servers.plex.tv", "/devices/.*", "PUT")
               and not stub.taken("plex.tv", "/api/v2/resources", "GET"),
               [(r["host"], r["path"]) for r in stub.records])
+        check("unclaimed, a client is refused the rows",
+              first.request("GET", "/library/metadata/%s" % UNPLAYED_KEY)[0] == 401)
         check("nothing reaches plex.tv's device or server records while unclaimed",
               not {(r["host"], r["path"]) for r in stub.records}
               & {("servers.plex.tv", "/devices/%s" % MACHINE), ("plex.tv", "/servers.xml")},
@@ -901,12 +933,8 @@ def main():
         before = surfaces(first)
         check("unclaimed /identity reports claimed false",
               not truthy(container(before["identity"][1]).get("claimed")), before["identity"])
-        check("unclaimed /myplex/account signs in as nobody",
-              before["account"][1]["MyPlex"].get("signInState") == "none"
-              and before["account"][1]["MyPlex"].get("username") is None, before["account"])
-        check("unclaimed ownerFeatures are the named defaults",
-              container(before["root"][1]).get("ownerFeatures") == NAMED_FEATURES,
-              container(before["root"][1]).get("ownerFeatures"))
+        check("unclaimed / and /myplex/account are refused",
+              before["root"][0] == 401 and before["account"][0] == 401, (before["root"][0], before["account"][0]))
         check("no claim file before a claim", not os.path.exists(claim_file))
 
         status, body = first.request("POST", "/myplex/claim")
@@ -916,30 +944,6 @@ def main():
         check("a refused exchange is a 500 and leaves the server unclaimed",
               status == 500 and not truthy(container(first.request("GET", "/identity")[1])
                                            .get("claimed")), (status, body))
-        status, body = first.request("POST", "/myplex/claim?token=%s" % REUSED_CLAIM_TOKEN)
-        check("an exchange that answers the account token is refused, and nothing is stored",
-              status == 500 and not os.path.exists(claim_file)
-              and not truthy(container(first.request("GET", "/identity")[1]).get("claimed")),
-              (status, body))
-
-        # Watch state the cloud import is to clear: a watched, part-played, rated row the
-        # cloud calls unplayed with no rating, and a rated row it sends the -1 clear for.
-        library = "&identifier=com.plexapp.plugins.library"
-        for path in ("/:/scrobble?key=%s" % UNPLAYED_KEY,
-                     "/:/progress?key=%s&time=61000&state=stopped" % UNPLAYED_KEY,
-                     "/:/rate?key=%s&rating=7" % UNPLAYED_KEY, "/:/rate?key=%s&rating=6" % CLEARED_KEY):
-            first.request("GET", path + library)
-        local_state = {key: first_row(first.request("GET", "/library/metadata/%s" % key))
-                       for key in (UNPLAYED_KEY, CLEARED_KEY)}
-        history_before = [row.get("ratingKey") for row in container(first.request(
-            "GET", "/status/sessions/history/all?type=0,1")[1]).get("Metadata") or []]
-        check("before the claim the rows hold local view state and stars",
-              all(local_state[UNPLAYED_KEY].get(k) for k in ("viewCount", "viewOffset", "lastViewedAt"))
-              and local_state[UNPLAYED_KEY].get("userRating") == 7.0
-              and local_state[CLEARED_KEY].get("userRating") == 6.0
-              and local_state[CLEARED_KEY].get("lastRatedAt"),
-              {key: {k: row.get(k) for k in ("viewCount", "viewOffset", "lastViewedAt", "userRating",
-                                             "lastRatedAt")} for key, row in local_state.items()})
 
         # -- the claim --------------------------------------------------------------
         claimed_at = time.time()

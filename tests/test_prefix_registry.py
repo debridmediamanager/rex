@@ -65,7 +65,7 @@ def main():
     env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1")
     proc = subprocess.Popen(
         server_command("--port", port, "--catalog", os.path.join(HERE, "catalog_ui.json"),
-                        "--gdm", "off", root=ROOT),
+                        "--gdm", "off", "--assert-claimed", root=ROOT),
         cwd=ROOT, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
         for _ in range(80):

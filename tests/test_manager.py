@@ -370,9 +370,11 @@ def main():
                                  env=dict(os.environ, **(env or {})), timeout=120)
             return run.returncode, run.stdout + run.stderr
         code, text = cli("create", "cli", "--port", str(d), "--catalog", CATALOG, "--gdm", "off",
-                         "--assert-claimed", env={"PLEX_TOKEN": "cli-secret"})
-        check("cli create takes PLEX_TOKEN from the environment",
-              code == 0 and '"plex_token": "***"' in text and "cli-secret" not in text, text)
+                         "--assert-claimed", env={"REX_DIRECT_KEY": "cli-secret", "PLEX_TOKEN": "cli-plex"})
+        check("cli create takes REX_DIRECT_KEY from the environment",
+              code == 0 and '"rex_direct_key": "***"' in text and "cli-secret" not in text, text)
+        check("cli create no longer takes PLEX_TOKEN (rex reads none since 2026-10-19)",
+              code == 0 and "plex_token" not in text and "cli-plex" not in text, text)
         code, text = cli("start", "cli")
         check("cli start", code == 0 and wait_for(lambda: answers(d), 90), text)
         code, text = cli("list")

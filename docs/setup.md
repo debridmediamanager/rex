@@ -18,7 +18,7 @@ nothing after that needs a restart. The steps below go through it in order.
 | A Linux, macOS or Windows host | rex is one binary and its `data/` sidecars, with no other runtime dependencies. The same binary writes the catalog (`rex catalog`) and runs several servers (`rex manager`) |
 | Rust 1.89 or newer (rustup), or Docker | only to build it (below); or download a release or nightly archive (README step 1) |
 | One or more byte sources | [zurg](https://github.com/debridmediamanager/zurg) (a build with the rex feed: `rex_url` in its `config.yml`), or any HTTP server that serves the files plus something that pushes them to rex's feed |
-| Your Plex account token | not needed. A claimed rex (step 5) asks plex.tv and Plex's own metadata agent, which describes every title and powers Fix Match, with the server token the claim gives it. Only an unclaimed server that should still match with Plex's agent takes `PLEX_TOKEN`: the `X-Plex-Token` in the URL of any "View XML" link in Plex Web ([Plex's guide](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/)) |
+| Your Plex account token | not needed. rex asks plex.tv and Plex's own metadata agent, which describes every title and powers Fix Match, with the server token the claim (step 5) gives it. `PLEX_TOKEN` is no longer read (2026-10-19), and an install that still sets it starts as before |
 | An HTTPS address | only for use outside your LAN and in app.plex.tv: rex-direct, on by default once claimed (step 7), or a certificate for a hostname you control (a `tailscale cert`, Let's Encrypt) |
 | FFmpeg | optional, for [transcoding](#transcoding) |
 
@@ -123,7 +123,7 @@ rust/target/release/rex --catalog rex.db --announce-url http://<rex's LAN IP>:32
 
 `<rex's LAN IP>` is the rex machine's address on your home network, such as `192.168.1.20`
 (`hostname -I` on Linux). Every command in this guide uses it, from the rex machine or anywhere
-else at home: an unclaimed rex answers private addresses, a claimed one checks tokens instead.
+else at home: an unclaimed rex takes its claim from private addresses, a claimed one checks tokens instead.
 `--announce-url` is the address plex.tv gives Plex apps signed in as you, so they reach rex at
 home. An unclaimed rex announces nothing and logs `waiting for a claim`; the claim (step 5)
 starts the announce, and rex-direct (step 7), at once. With an HTTPS address of your own
@@ -139,9 +139,8 @@ file.
 - **What a title looks like comes from Plex.** rex exchanges the ids its source pushed for Plex's
   own guid and shows what Plex's metadata agent says of it: titles, summaries, posters, seasons
   and episode names. It reads no TMDB: `TMDB_KEY`, `REX_METADATA_URL` and `REX_METADATA_KEY` are
-  no longer read (2026-10-17), and an install that still sets them starts as before. Without a
-  claim (step 5) or `PLEX_TOKEN`, titles keep the names they were pushed with and Fix Match has
-  no candidates.
+  no longer read (2026-10-17), and an install that still sets them starts as before. Plex's
+  agent is asked with the token the claim (step 5) gives rex, which serves no Plex app before it.
 - **What a file is comes from the source.** zurg with a sponsor `dmm_api_key` asks DMM what each
   file is and pushes it placed: the title's ids and, for an episode, TMDB's season and episode,
   anime and long shows included. Without the key zurg reads it off the release name: the title
@@ -167,17 +166,13 @@ curl -s http://<rex's LAN IP>:32400/rex/feed/rd/items       # what rd pushed, on
 - **Port 32400 and LAN discovery.** On 32400 rex answers Plex's LAN discovery (GDM) on
   udp/32410 and 32414, so apps on the same network find it. On a host that already runs
   Plex, give rex another port: there the default `--gdm auto` answers no discovery.
-- **Who may connect.** Until it is claimed (step 5), rex answers only this machine and
-  private addresses (10.x, 172.16-31.x, 192.168.x, IPv6 fc00::/7), as an unclaimed Plex
-  Media Server does. Tailscale's 100.x addresses and anything arriving through a proxy with
-  a public `X-Forwarded-For` are refused, and so is a request whose `Host` is a hostname
-  rather than localhost or the address it reached: use `http://<rex's LAN IP>:32400`. To admit
-  other networks, set **List of IP addresses and networks that are allowed without auth**
-  (`allowedNetworks`) in Settings > Network from the machine itself; once set, only
-  localhost and those networks get in. Or start rex with `--token <secret>`, which makes
-  it refuse everything but `/identity`, `/web` and the source API (`/rex/sources`,
-  `/rex/feed`) without that `X-Plex-Token`. Once
-  claimed it accepts only its own token and the tokens plex.tv lists for it, as a real
+- **Who may connect.** Until it is claimed (step 5), rex serves no Plex app: it answers
+  `/identity`, the source API (step 6) and the claim, and takes the claim only from this
+  machine and private addresses (10.x, 172.16-31.x, 192.168.x, IPv6 fc00::/7), as an
+  unclaimed Plex Media Server does. Tailscale's 100.x addresses and anything arriving through
+  a proxy with a public `X-Forwarded-For` are refused, and so is a request whose `Host` is a
+  hostname rather than localhost or the address it reached: use `http://<rex's LAN IP>:32400`.
+  Once claimed it accepts only its own token and the tokens plex.tv lists for it, as a real
   Plex Media Server does.
 - **The web client at `/web`** is optional and comes from a Plex Media Server install:
   pass `--web-root .../Resources/Plug-ins-*/WebClient.bundle/Contents/Resources` (on
@@ -186,11 +181,9 @@ curl -s http://<rex's LAN IP>:32400/rex/feed/rd/items       # what rd pushed, on
 
 ### 5. Claim it, so it appears in your Plex apps
 
-Claiming is optional and at your own risk. rex is not made by Plex and Plex could take
-action against an account that registers it, so claim it with a fresh free Plex account
-made for rex, not your own, and share it with yours (item 4 below). Skip it and rex only
-answers on your own network (step 4 "Who may connect"), or start it with `--token` and give
-that token to your clients.
+rex serves no Plex app until it is claimed. Claiming is at your own risk: rex is not made by
+Plex and Plex could take action against an account that registers it, so claim it with a
+fresh free Plex account made for rex, not your own, and share it with yours (item 4 below).
 
 Do it before you point zurg at it (step 6): titles pushed before the claim keep the names
 they were pushed with until rex names them in the background, about 300 an hour.
@@ -221,17 +214,14 @@ real Plex Media Server does.
 
 From the claim on rex asks plex.tv with the server token it stores there: the announce
 (step 4's addresses), and Plex's own metadata agent, which then names and describes what sources push
-with no restart. `PLEX_TOKEN` is not used once there is a claim. A claimed start logs
+with no restart. rex holds no account token. A claimed start logs
 `claimed-account watch/rating sync is OFF: REX_SCROBBLING_DECRYPT_SECRET_B64 is not configured`.
 That is expected: the secret only syncs the owner's watch state with plex.tv, and each
 account's watch state in rex works without it.
 
 A claimed rex refuses another claim (409). To move it to another account, stop it, remove
-`claim_state.json` and claim again. rex also refuses to store a claim when plex.tv answers
-with the account's own `PLEX_TOKEN` instead of a server token, which happens when the
-server's identity already has a device row on the account. An unclaimed rex announces
-nothing, `PLEX_TOKEN` or not, so it never writes that row: plex.tv applies an announce to the
-device that owns its token, and an account token's device is another of your devices.
+`claim_state.json` and claim again. An unclaimed rex announces nothing, so it never writes a
+device row of its own before the claim.
 
 ### 6. Point zurg at it
 
@@ -327,7 +317,7 @@ watch with, as with any Plex server: the app asks for it before the play reaches
 
 `examples/run.sh.example` is the whole command line as a script: copy it to `run.sh` at the
 top of the checkout or release, beside `rust/` and the catalog, and fill it in. It reads the
-keys from `rex.env` (`PLEX_TOKEN=` only if you want it; mode 600) and adds
+keys from `rex.env` (mode 600) and adds
 `--announce-url`. `run.sh` and `rex.env` are gitignored.
 Under systemd (`~/.config/systemd/user/rex.service`, then `systemctl --user enable --now
 rex`, and `loginctl enable-linger` so it runs without a login):
@@ -453,7 +443,6 @@ running when the manager stopped is running again when it starts.
 
 ```bash
 rex manager serve                        # API + page on http://127.0.0.1:32300; prints the admin token once
-export PLEX_TOKEN=...                    # optional; keys come from the environment, never the command line
 # from a catalog seeded first (rex catalog --seed --out catalog.json, step 3)
 rex manager create living-room --port 32400 --catalog "$PWD/catalog.json" --gdm on
 rex manager start living-room

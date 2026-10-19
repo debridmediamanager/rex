@@ -97,8 +97,8 @@ class PlexTv(http.server.BaseHTTPRequestHandler):
 class Server:
     def __init__(self, work, stub_port):
         self.port = free_port()
-        env = dict(os.environ, PLEX_TOKEN="fake", REX_PLEXTV_URL="http://127.0.0.1:%d" % stub_port)
-        for name in ("REX_STATE", "REX_TOKEN", "TMDB_KEY", "REX_METADATA_URL", "REX_METADATA_KEY"):
+        env = dict(os.environ, REX_PLEXTV_URL="http://127.0.0.1:%d" % stub_port)
+        for name in ("REX_STATE", "REX_TOKEN", "PLEX_TOKEN", "TMDB_KEY", "REX_METADATA_URL", "REX_METADATA_KEY"):
             env.pop(name, None)
         self.log = open(os.path.join(work, "server.log"), "ab")
         self.process = subprocess.Popen(

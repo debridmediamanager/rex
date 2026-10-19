@@ -100,7 +100,7 @@ def check_clip(server, parent, key, extra_type, subtype, title):
     check("%s is in its parent's extras leaf" % title,
           key and key in [row.get("ratingKey") for row in server.rows("/library/metadata/%s/extras" % parent)])
     part = ((clip.get("Media") or [{}])[0].get("Part") or [{}])[0].get("key")
-    read = urllib.request.Request("http://127.0.0.1:%d%s" % (server.port, part), headers={"Range": "bytes=0-15"})
+    read = urllib.request.Request("http://127.0.0.1:%d%s" % (server.port, part), headers={"Range": "bytes=0-15", "X-Plex-Token": server.token})
     try:
         with urllib.request.urlopen(read, timeout=30) as response:
             got = response.status, response.read()

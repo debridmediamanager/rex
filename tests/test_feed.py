@@ -146,11 +146,12 @@ def serve(handler):
 class Events:
     """Every notification frame off the eventsource channel, in arrival order."""
 
-    def __init__(self, port):
+    def __init__(self, port, token=None):
         self.frames = []
         response = urllib.request.urlopen(urllib.request.Request(
             "http://127.0.0.1:%d/:/eventsource/notifications" % port,
-            headers={"Accept": "text/event-stream"}), timeout=3600)
+            headers=dict({"Accept": "text/event-stream"}, **({"X-Plex-Token": token} if token else {}))),
+            timeout=3600)
 
         def read():
             name = None
@@ -184,11 +185,16 @@ class Events:
 class Server:
     def __init__(self, work, bytes_port, catalog="catalog.json", keys=None):
         self.port = free_port()
-        env = dict(os.environ, TMDB_KEY="fake", PLEX_TOKEN="fake", REX_PLEXTV_URL="http://127.0.0.1:9")
-        for name in ("REX_STATE", "REX_TOKEN", "REX_METADATA_URL", "REX_METADATA_KEY"):
+        env = dict(os.environ, TMDB_KEY="fake", REX_PLEXTV_URL="http://127.0.0.1:9")
+        for name in ("REX_STATE", "REX_TOKEN", "PLEX_TOKEN", "REX_METADATA_URL", "REX_METADATA_KEY"):
             env.pop(name, None)
         # After the clean-up, so a recording run's metadata provider reaches the server.
         env.update(keys or {})
+        # Plex's agent is asked with the claim's token only: a claim beside the catalog, under a
+        # recording run the Plex token it was given, gives the server its agent, and every
+        # request carries that token through the claimed server's gate.
+        self.token = (keys or {}).get("PLEX_TOKEN", "fake")
+        claim(os.path.join(work, catalog), self.token)
         self.log = open(os.path.join(work, "server.log"), "ab")
         self.process = subprocess.Popen(
             server_command("--port", self.port, "--catalog", os.path.join(work, catalog),
@@ -201,7 +207,7 @@ class Server:
             except Exception:
                 return False
         poll_until(ready, 40)
-        self.events = Events(self.port)
+        self.events = Events(self.port, self.token)
         # What zurg does at the start of every push session.
         self.request("/rex/sources/zurg", "PUT", {"url": "http://127.0.0.1:%d/dav" % bytes_port,
                                                   "bearer": BYTES_TOKEN, "mount": MOUNT},
@@ -210,7 +216,8 @@ class Server:
     def request(self, path, method="GET", body=None, headers=None):
         data = body if body is None or isinstance(body, bytes) else json.dumps(body).encode()
         request = urllib.request.Request("http://127.0.0.1:%d%s" % (self.port, path), data=data, method=method,
-                                         headers=dict({"Accept": "application/json"}, **(headers or {})))
+                                         headers=dict({"Accept": "application/json", "X-Plex-Token": self.token},
+                                                      **(headers or {})))
         try:
             with urllib.request.urlopen(request, timeout=120) as response:
                 raw = response.read()
@@ -241,6 +248,18 @@ class Server:
         except subprocess.TimeoutExpired:
             self.process.kill()
         self.log.close()
+
+
+def claim(catalog_path, token):
+    """A claim beside a JSON catalog, as `POST /myplex/claim` leaves one (`claim_state.json`, for
+    the catalog's machineIdentifier). A catalog not written yet, or a database, gets none."""
+    try:
+        machine = json.load(open(catalog_path)).get("machineIdentifier")
+    except (OSError, ValueError):
+        return
+    if machine:
+        json.dump({"machine": machine, "token": token},
+                  open(os.path.join(os.path.dirname(catalog_path), "claim_state.json"), "w"))
 
 
 def catalog(work, items=(), name="catalog.json", next_key=None):
