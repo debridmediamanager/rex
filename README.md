@@ -64,7 +64,7 @@ Start it once with everything the later steps need. Nothing below asks for a res
 rust/target/release/rex --catalog rex.db --announce-url http://<rex's LAN IP>:32400
 ```
 
-`--announce-url` tells plex.tv where Plex apps signed in as you reach rex at home. rex announces nothing until it is claimed in step 3, then at once.
+`<rex's LAN IP>` is the rex machine's address on your home network, such as `192.168.1.20` (`hostname -I` on Linux). Every command on this page uses it, run on the rex machine or anywhere else at home. `--announce-url` tells plex.tv where Plex apps signed in as you reach rex at home. rex announces nothing until it is claimed in step 3, then at once.
 
 The first start makes `rex.db` with two empty libraries, Debrid Movies and Debrid TV, and names the server after the machine (`--friendly-name` picks another name). Files under a `movies` directory go to Movies and files under `shows` go to TV, whichever source they come from, unless the source placed a file as the other kind. A file under any other directory, like `anime`, goes to TV if its source placed it as an episode and to Movies otherwise. Once claimed, rex takes the owner's Plex username from the claim.
 
@@ -83,7 +83,7 @@ Do it before step 4. Titles zurg sends before the claim keep their file names un
 Sign in to plex.tv as the fresh account, open [plex.tv/claim](https://www.plex.tv/claim) and copy the code. It expires in four minutes.
 
 ```bash
-curl -X POST "http://127.0.0.1:32400/myplex/claim?token=claim-xxxxxxxxxxxx"
+curl -X POST "http://<rex's LAN IP>:32400/myplex/claim?token=claim-xxxxxxxxxxxx"
 ```
 
 Do this once per server. rex saves it in `claim_state.json` next to `rex.db`. Back that file up.
@@ -97,7 +97,7 @@ The claim gives rex a token of its own. With it rex announces the address from s
 Add this to zurg's `config.yml` and restart zurg.
 
 ```yaml
-rex_url: http://<rex's address>:32400
+rex_url: http://<rex's LAN IP>:32400
 dmm_api_key: <your DMM API key>
 ```
 

@@ -121,6 +121,9 @@ step 8's systemd unit). Back it up with the server stopped, or with
 rust/target/release/rex --catalog rex.db --announce-url http://<rex's LAN IP>:32400
 ```
 
+`<rex's LAN IP>` is the rex machine's address on your home network, such as `192.168.1.20`
+(`hostname -I` on Linux). Every command in this guide uses it, from the rex machine or anywhere
+else at home: an unclaimed rex answers private addresses, a claimed one checks tokens instead.
 `--announce-url` is the address plex.tv gives Plex apps signed in as you, so they reach rex at
 home. An unclaimed rex announces nothing and logs `waiting for a claim`; the claim (step 5)
 starts the announce, and rex-direct (step 7), at once. With an HTTPS address of your own
@@ -154,9 +157,9 @@ file.
 Check it answers:
 
 ```bash
-curl -s http://127.0.0.1:32400/identity      # machineIdentifier, version
-curl -s http://127.0.0.1:32400/rex/sources            # {"size":0,"sources":[]} until a source registers
-curl -s http://127.0.0.1:32400/rex/feed/rd/items       # what rd pushed, once it has registered
+curl -s http://<rex's LAN IP>:32400/identity      # machineIdentifier, version
+curl -s http://<rex's LAN IP>:32400/rex/sources            # {"size":0,"sources":[]} until a source registers
+curl -s http://<rex's LAN IP>:32400/rex/feed/rd/items       # what rd pushed, once it has registered
 ```
 
 - **Port 32400 and LAN discovery.** On 32400 rex answers Plex's LAN discovery (GDM) on
@@ -166,7 +169,7 @@ curl -s http://127.0.0.1:32400/rex/feed/rd/items       # what rd pushed, once it
   private addresses (10.x, 172.16-31.x, 192.168.x, IPv6 fc00::/7), as an unclaimed Plex
   Media Server does. Tailscale's 100.x addresses and anything arriving through a proxy with
   a public `X-Forwarded-For` are refused, and so is a request whose `Host` is a hostname
-  rather than localhost or the address it reached: use `http://<LAN IP>:32400`. To admit
+  rather than localhost or the address it reached: use `http://<rex's LAN IP>:32400`. To admit
   other networks, set **List of IP addresses and networks that are allowed without auth**
   (`allowedNetworks`) in Settings > Network from the machine itself; once set, only
   localhost and those networks get in. Or start rex with `--token <secret>`, which makes
@@ -201,10 +204,10 @@ account out of plex.tv before.
 2. Redeem it on rex itself:
 
    ```bash
-   curl -s -X POST "http://127.0.0.1:32400/myplex/claim?token=claim-xxxxxxxxxxxxxxxx"
+   curl -s -X POST "http://<rex's LAN IP>:32400/myplex/claim?token=claim-xxxxxxxxxxxxxxxx"
    ```
 
-3. `curl -s http://127.0.0.1:32400/identity` now reports `claimed="1"`, and
+3. `curl -s http://<rex's LAN IP>:32400/identity` now reports `claimed="1"`, and
    `claim_state.json` exists beside the catalog.
 4. Still as the fresh account, share rex with your own account in app.plex.tv (Settings,
    Manage Library Access, Grant Library Access, both libraries) and accept the invite as
@@ -233,12 +236,12 @@ device that owns its token, and an account token's device is another of your dev
 In each zurg's `config.yml` (zurg's [`docs/config.md`](https://github.com/debridmediamanager/zurg/blob/main/docs/config.md) has the details):
 
 ```yaml
-rex_url: http://<rex's address>:32400   # turns on zurg's ffprobe analysis (whole library, then new releases)
+rex_url: http://<rex's LAN IP>:32400   # turns on zurg's ffprobe analysis (whole library, then new releases)
 dmm_api_key: <your DMM API key>         # sponsor key: DMM says what each file is (step 4)
 rex_source: rd                          # optional: the name it registers as (default "zurg")
 ```
 
-An address or a host name (`http://rex:32400` from a container) both work. It needs a zurg
+rex's LAN IP works from the same machine, another one and a container alike. It needs a zurg
 nightly from 2026.10.17 or later: the latest zurg release, v1.0.0, has no rex feed. Restart
 zurg. Once its library has loaded it registers with rex, pushes everything it holds, then
 each change as it happens, and the whole library again
@@ -296,7 +299,7 @@ With your own hostname, step 4's flag lists the HTTPS address first and the LAN 
 comma-separated (a second `--announce-url` replaces the first):
 
 ```bash
---announce-url https://rex.example.com:32400,http://192.168.1.10:32400
+--announce-url https://rex.example.com:32400,http://<rex's LAN IP>:32400
 ```
 
 With `--announce-url` a claimed rex registers with plex.tv at start, with its server token,
@@ -406,11 +409,10 @@ services:
 
 The image starts rex on `/config/rex.db` with `--zurg-mount /zurg_mnt/zurg`, where zurg's
 Docker setup mounts. A `command:` adds to those: step 4's `--announce-url` goes there
-(`command: --announce-url http://<the host's LAN IP>:32400`) before the first
+(`command: --announce-url http://<rex's LAN IP>:32400`) before the first
 `docker compose up`.
 
-zurg's `rex_url` is then `http://<the host's LAN IP>:32400`, and the claim (step 5) is the
-same `curl` on the host. rex-direct (step 7) keeps `rex-direct.json` in `/config`. Certificates of your own go in `/config` too:
+The claim (step 5) and zurg's `rex_url` (step 6) are unchanged. rex-direct (step 7) keeps `rex-direct.json` in `/config`. Certificates of your own go in `/config` too:
 `--tls-cert /config/host.crt --tls-key /config/host.key`. Without host networking,
 publish `32400:32400` and add `--gdm off` and `--friendly-name <name>` (the container's
 hostname is its ID); apps then find rex only once it is claimed, and
@@ -422,7 +424,7 @@ one in and setting `REX_TRANSCODER` is untested; to convert video, run rex witho
 | Symptom | Cause |
 |---|---|
 | A push answers 404 `no such source: PUT /rex/sources/... first` | The source has not registered: a zurg from before the sources API never does, update it to a nightly from 2026.10.17 or later (step 6) |
-| Every part read answers 502 | No source is registered (`curl -s http://127.0.0.1:32400/rex/sources`), or rex cannot reach the one that is |
+| Every part read answers 502 | No source is registered (`curl -s http://<rex's LAN IP>:32400/rex/sources`), or rex cannot reach the one that is |
 | A push answers `rejected: no movie or show library holds ...` | The catalog has no movie or show library of that item's kind: name one with `--movies`/`--shows` before the first start, or Add Library on it (step 3) |
 | zurg pushed but the library stays empty | Items are held until zurg probes them (step 6) |
 | A part read answers 502, or 401/403 | rex cannot reach the source's `url` (502), or the source refused its credential (its own status): the log line `PART ... upstream` says which |
