@@ -25,7 +25,9 @@ permissions:
 
 jobs:
   image:
-    runs-on: ubuntu-22.04
+    # dmm, as CI is (ci.yml): its binfmt already runs arm64, and an exhausted Actions budget
+    # does not stop a self-hosted runner.
+    runs-on: [self-hosted, Linux, X64, dmm]
     timeout-minutes: 30
     env:
       TAG: ${{ inputs.tag }}
@@ -81,9 +83,11 @@ jobs:
         run: |
           set -e
           image="${{ fromJSON(steps.meta.outputs.json).tags[0] }}"
-          docker run -d --name rex-smoke -p 32400:32400 -e REX_PLEXTV_URL=http://127.0.0.1:9 "$image" --gdm off
-          for i in $(seq 1 30); do curl -sf http://127.0.0.1:32400/identity && break; sleep 1; done
-          curl -sf http://127.0.0.1:32400/rex/sources | grep -q '"size":0'
+          # dmm is a shared host: a loopback-only port of its own, and no container left behind.
+          docker rm -f rex-smoke >/dev/null 2>&1 || true
+          docker run -d --rm --name rex-smoke -p 127.0.0.1:32699:32400 -e REX_PLEXTV_URL=http://127.0.0.1:9 "$image" --gdm off
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:32699/identity && break; sleep 1; done
+          curl -sf http://127.0.0.1:32699/rex/sources | grep -q '"size":0'
           docker logs rex-smoke 2>&1 | grep -q 'seeded '
           # rex.db holds the sources' logins: it must not be readable by others on the host.
           test "$(docker exec rex-smoke stat -c %a /config/rex.db)" = 600

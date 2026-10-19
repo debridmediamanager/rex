@@ -18,12 +18,16 @@ name: CI
 # 2026-10-12 above the flat number every asset gets from whatever fetches them all: linux
 # amd64 and arm64, macOS amd64 and arm64, Windows amd64.
 #
-# GitHub-hosted runners, not the org's self-hosted one: that runner is production.
-# ubuntu-22.04 links against glibc 2.35, so the Linux binaries run on Ubuntu 22.04 and
-# anything newer. macOS and Windows minutes cost ten and two times Linux ones on a private
-# repository. Windows is
-# cross-compiled with MinGW on Linux (no Visual Studio needed) and then tested on a Windows
-# runner.
+# Self-hosted, as zurg's: every Linux job runs on the repo-scoped `dmm` runner and the Windows
+# tests on `winbox` (ben@windows), so neither the minutes nor an exhausted Actions budget can
+# stop a nightly. dmm is a production host (the database and the uploaders), so everything is
+# compiled and tested inside .github/ci/Dockerfile's image through .github/ci/run.sh: Ubuntu
+# 22.04 (glibc 2.35, so the Linux binaries run on 22.04 and newer), capped at 6 CPUs and
+# 16 GB, its suites on the container's own loopback. Windows is cross-compiled with MinGW and
+# macOS with cargo-zigbuild; the macOS binaries are checked for their architecture and run no
+# suite, since no runner is a Mac. Binaries pass between jobs through REX_STAGE on dmm instead
+# of artifact storage, which an exhausted budget also refuses (zurg's build.yml, 2026-09-14);
+# the Windows runner reads its two over SSH with a key dmm lets read that directory only.
 
 on:
   push:
@@ -52,15 +56,23 @@ env:
   JELLYFIN_FFMPEG: https://github.com/jellyfin/jellyfin-ffmpeg/releases/download/v8.1.3-1/jellyfin-ffmpeg_8.1.3-1_portable
   # No suite may reach plex.tv: a test claim or announce writes to a real account.
   REX_PLEXTV_URL: http://127.0.0.1:9
+  REX_STAGE: /home/ben/rex-ci-stage
 
 jobs:
   gate:
-    runs-on: ubuntu-22.04
+    runs-on: [self-hosted, Linux, X64, dmm]
     outputs:
       build: ${{ steps.gate.outputs.build }}
       nightly: ${{ steps.gate.outputs.nightly }}
       version: ${{ steps.gate.outputs.version }}
     steps:
+      # Nothing else deletes a run's stage directory when it dies before `release`, and dmm's
+      # disk is the database's.
+      - name: Sweep stage directories older than two days
+        run: |
+          mkdir -p "$REX_STAGE"
+          find "$REX_STAGE" -mindepth 1 -maxdepth 1 -type d -mtime +2 -exec rm -rf {} +
+
       - uses: actions/checkout@v4
 
       - id: gate
@@ -96,22 +108,18 @@ jobs:
   test:
     needs: gate
     if: needs.gate.outputs.build == 'true'
-    runs-on: ubuntu-22.04
-    timeout-minutes: 45
+    runs-on: [self-hosted, Linux, X64, dmm]
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 
-      - uses: dtolnay/rust-toolchain@stable
-
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: rust
-
-      - name: Build
-        run: cargo build --release --locked --manifest-path rust/Cargo.toml
-
-      - name: Rust unit tests
-        run: cargo test --release --locked --manifest-path rust/Cargo.toml
+      - name: Build and Rust unit tests
+        run: |
+          .github/ci/run.sh '
+            cargo build --release --locked --manifest-path rust/Cargo.toml
+            cargo test --release --locked --manifest-path rust/Cargo.toml
+            mkdir -p rust/target/release
+            cp "$CARGO_TARGET_DIR/release/rex" rust/target/release/rex'
 
       # zurg's main generates what its feed sends rex (internal/rexfeed/contract_test.go);
       # test_zurg_contract replays it. A read-only deploy key on zurg, since both are private.
@@ -132,180 +140,105 @@ jobs:
           # concurrent suites remain attributable and every child is reaped.
           # Each child receives a stable, disjoint REX_TEST_PORTS range below
           # 32768; the native smoke's fixed 32620 is outside those ranges.
-          python3 tests/parallel_suites.py --workers 4 \
+          .github/ci/run.sh 'python3 tests/parallel_suites.py --workers 4 \
             test_startup_wait test_test_ports test_parallel_suites test_cli test_server_command \
             test_native_runtime_smoke test_build_catalog test_tls test_part_bytes \
             test_sources test_feed test_feed_versions test_feed_season_art \
             test_feed_blank_tiles test_feed_source_decides test_feed_placement test_feed_rejected test_feed_extras test_feed_versions_1017 test_zurg_contract test_plextv test_rex_direct test_track_prefs test_accounts \
-            test_unclaimed_gate test_photo_ssrf test_manager test_paused_limit test_webhooks test_auto_collections
+            test_unclaimed_gate test_photo_ssrf test_manager test_paused_limit test_webhooks test_auto_collections'
 
-      # No GPU on the runner: this is the CPU (x264) path, with the hardware probe on auto.
+      # No GPU in the container: this is the CPU (x264) path, with the hardware probe on auto.
+      # The pinned FFmpeg is kept beside the cargo cache, so it downloads once per pin.
       - name: Transcoder suite
         run: |
-          mkdir -p "$RUNNER_TEMP/ffmpeg"
-          curl -sSfL "${JELLYFIN_FFMPEG}_linux64-gpl.tar.xz" | tar -xJ -C "$RUNNER_TEMP/ffmpeg"
-          export REX_TRANSCODER="$RUNNER_TEMP/ffmpeg/ffmpeg" PATH="$RUNNER_TEMP/ffmpeg:$PATH"
-          python3 tests/test_native_transcode.py
-          python3 tests/test_download_queue.py
+          .github/ci/run.sh '
+            d=/home/ben/rex-ci-cache/ffmpeg/${JELLYFIN_FFMPEG##*/}-linux64
+            [ -x "$d/ffmpeg" ] || { mkdir -p "$d" && curl -sSfL "${JELLYFIN_FFMPEG}_linux64-gpl.tar.xz" | tar -xJ -C "$d"; }
+            export REX_TRANSCODER="$d/ffmpeg" PATH="$d:$PATH"
+            python3 tests/test_native_transcode.py
+            python3 tests/test_download_queue.py'
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: rex-linux-amd64
-          path: rust/target/release/rex
-          retention-days: 7
+      - name: Stage
+        run: install -D -m 755 rust/target/release/rex "$REX_STAGE/${{ github.run_id }}/rex-linux-amd64"
 
   linux-arm64:
-    needs: gate
+    needs: [gate, test]
     if: needs.gate.outputs.build == 'true'
-    runs-on: ubuntu-22.04
+    runs-on: [self-hosted, Linux, X64, dmm]
     timeout-minutes: 45
-    env:
-      CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
-      CC_aarch64_unknown_linux_gnu: aarch64-linux-gnu-gcc
     steps:
       - uses: actions/checkout@v4
 
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-unknown-linux-gnu
-
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: rust
-          key: aarch64
-
-      - name: Cross toolchain
+      # It runs under emulation (dmm's binfmt qemu-aarch64, F flag, so it works in a container):
+      # the CLI and the server answering on a port are what a cross build can get wrong that the
+      # amd64 suites would not see.
+      - name: Build and smoke test under qemu
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq gcc-aarch64-linux-gnu qemu-user-static binfmt-support
+          .github/ci/run.sh '
+            cargo build --release --locked --manifest-path rust/Cargo.toml --target aarch64-unknown-linux-gnu
+            mkdir -p rust/target/release
+            cp "$CARGO_TARGET_DIR/aarch64-unknown-linux-gnu/release/rex" rust/target/release/rex
+            file rust/target/release/rex | grep -q aarch64
+            python3 tests/test_cli.py
+            python3 tests/test_native_runtime_smoke.py'
 
-      - name: Build
-        run: cargo build --release --locked --manifest-path rust/Cargo.toml --target aarch64-unknown-linux-gnu
-
-      # It runs under emulation: the CLI and the server answering on a port are what a
-      # cross build can get wrong that the amd64 suites would not see.
-      - name: Smoke test under qemu
-        run: |
-          mkdir -p rust/target/release
-          cp rust/target/aarch64-unknown-linux-gnu/release/rex rust/target/release/rex
-          file rust/target/release/rex | grep -q aarch64
-          export QEMU_LD_PREFIX=/usr/aarch64-linux-gnu
-          python3 tests/test_cli.py
-          python3 tests/test_native_runtime_smoke.py
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: rex-linux-arm64
-          path: rust/target/aarch64-unknown-linux-gnu/release/rex
-          retention-days: 7
+      - name: Stage
+        run: install -D -m 755 rust/target/release/rex "$REX_STAGE/${{ github.run_id }}/rex-linux-arm64"
 
   darwin:
-    needs: gate
+    needs: [gate, test]
     if: needs.gate.outputs.build == 'true'
-    runs-on: macos-14
+    runs-on: [self-hosted, Linux, X64, dmm]
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-apple-darwin,x86_64-apple-darwin
-
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: rust
-
+      # Cross-built: no runner here is a Mac, so this checks the architecture and nothing runs.
+      # The first cross build (2026-10-19) ran test_cli, the native smoke, test_build_catalog,
+      # test_sources and test_feed on an Apple Silicon Mac, and --help under Rosetta.
       - name: Build
         run: |
-          cargo build --release --locked --manifest-path rust/Cargo.toml --target aarch64-apple-darwin
-          cargo build --release --locked --manifest-path rust/Cargo.toml --target x86_64-apple-darwin
+          .github/ci/run.sh '
+            for t in aarch64-apple-darwin x86_64-apple-darwin; do
+              cargo zigbuild --release --locked --manifest-path rust/Cargo.toml --target $t
+            done
+            mkdir -p out
+            cp "$CARGO_TARGET_DIR/aarch64-apple-darwin/release/rex" out/rex-darwin-arm64
+            cp "$CARGO_TARGET_DIR/x86_64-apple-darwin/release/rex" out/rex-darwin-amd64
+            file out/rex-darwin-arm64 | grep -q "Mach-O 64-bit arm64"
+            file out/rex-darwin-amd64 | grep -q "Mach-O 64-bit x86_64"'
 
-      # The runner is Apple Silicon, so the arm64 binary runs the same suites the Linux
-      # one does; the amd64 binary is checked under Rosetta.
-      - name: Test
-        run: |
-          set -e
-          mkdir -p rust/target/release
-          cp rust/target/aarch64-apple-darwin/release/rex rust/target/release/rex
-          for suite in test_cli test_native_runtime_smoke test_build_catalog test_sources test_feed; do
-            echo "::group::$suite"
-            python3 "tests/$suite.py"
-            echo "::endgroup::"
-          done
-          file rust/target/x86_64-apple-darwin/release/rex | grep -q x86_64
-          arch -x86_64 rust/target/x86_64-apple-darwin/release/rex --help | head -1
-
-      # rex has no VideoToolbox path, so macOS converts on the CPU (x264).
-      - name: Transcoder suite
-        run: |
-          mkdir -p "$RUNNER_TEMP/ffmpeg"
-          curl -sSfL "${JELLYFIN_FFMPEG}_macarm64-gpl.tar.xz" | tar -xJ -C "$RUNNER_TEMP/ffmpeg"
-          export REX_TRANSCODER="$RUNNER_TEMP/ffmpeg/ffmpeg" PATH="$RUNNER_TEMP/ffmpeg:$PATH"
-          python3 tests/test_native_transcode.py
-          python3 tests/test_download_queue.py
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: rex-darwin-arm64
-          path: rust/target/aarch64-apple-darwin/release/rex
-          retention-days: 7
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: rex-darwin-amd64
-          path: rust/target/x86_64-apple-darwin/release/rex
-          retention-days: 7
+      - name: Stage
+        run: install -D -m 755 -t "$REX_STAGE/${{ github.run_id }}" out/rex-darwin-arm64 out/rex-darwin-amd64
 
   windows-amd64:
-    needs: gate
+    needs: [gate, test]
     if: needs.gate.outputs.build == 'true'
-    runs-on: ubuntu-22.04
+    runs-on: [self-hosted, Linux, X64, dmm]
     timeout-minutes: 45
-    env:
-      CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER: x86_64-w64-mingw32-gcc
     steps:
       - uses: actions/checkout@v4
-
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: x86_64-pc-windows-gnu
-
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: rust
-          key: windows
-
-      - name: Cross toolchain
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq gcc-mingw-w64-x86-64
 
       # The unit tests are built here too and run on Windows by the next job.
       - name: Build
         run: |
-          cargo build --release --locked --manifest-path rust/Cargo.toml --target x86_64-pc-windows-gnu
-          tests=$(cargo test --release --locked --manifest-path rust/Cargo.toml --lib \
-                    --target x86_64-pc-windows-gnu --no-run --message-format=json \
-                  | python3 -c 'import json,sys; print([m["executable"] for m in map(json.loads, sys.stdin) if m.get("reason") == "compiler-artifact" and m.get("executable") and m["target"]["kind"] == ["lib"]][-1])')
-          mkdir -p out
-          cp rust/target/x86_64-pc-windows-gnu/release/rex.exe out/
-          cp "$tests" out/rex-tests.exe
+          .github/ci/run.sh '
+            cargo build --release --locked --manifest-path rust/Cargo.toml --target x86_64-pc-windows-gnu
+            tests=$(cargo test --release --locked --manifest-path rust/Cargo.toml --lib \
+                      --target x86_64-pc-windows-gnu --no-run --message-format=json \
+                    | python3 -c "import json,sys; print([m[\"executable\"] for m in map(json.loads, sys.stdin) if m.get(\"reason\") == \"compiler-artifact\" and m.get(\"executable\") and m[\"target\"][\"kind\"] == [\"lib\"]][-1])")
+            mkdir -p out
+            cp "$CARGO_TARGET_DIR/x86_64-pc-windows-gnu/release/rex.exe" out/rex-windows-amd64.exe
+            cp "$tests" out/rex-tests.exe'
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: rex-windows-amd64
-          path: out/rex.exe
-          retention-days: 7
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: rex-windows-tests
-          path: out/rex-tests.exe
-          retention-days: 1
+      - name: Stage
+        run: install -D -m 755 -t "$REX_STAGE/${{ github.run_id }}" out/rex-windows-amd64.exe out/rex-tests.exe
 
   windows-test:
     needs: windows-amd64
-    runs-on: windows-2022
+    # ben@windows, repo-scoped like zurg's winbox runner, running as NETWORK SERVICE. Its .path
+    # puts Git's bash ahead of System32, so `bash` is Git for Windows'.
+    runs-on: [self-hosted, Windows, X64, winbox]
     timeout-minutes: 45
     defaults:
       run:
@@ -313,18 +246,35 @@ jobs:
     env:
       # The suites read their fixtures without naming an encoding.
       PYTHONUTF8: "1"
+      PULL_KEY: C:/actions-runner-rex/ci-pull
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/download-artifact@v4
-        with:
-          name: rex-windows-amd64
-          path: rust/target/release
+      # A key dmm takes only for /home/ben/bin/rex-ci-pull, which prints one file of this run's
+      # stage directory. Windows' own ssh: it checks the key's ACL, which Git's does not.
+      - name: Fetch the build from dmm
+        run: |
+          pull() {
+            /c/Windows/System32/OpenSSH/ssh.exe -n -i "$PULL_KEY/id_ed25519" -o IdentitiesOnly=yes -o BatchMode=yes \
+              -o UserKnownHostsFile="$PULL_KEY/known_hosts" ben@dmm.tail-net.ts.net \
+              "${{ github.run_id }}/$1" > "$2"
+          }
+          mkdir -p rust/target/release
+          pull rex-windows-amd64.exe rust/target/release/rex.exe
+          pull rex-tests.exe rust/rex-tests.exe
+          file rust/target/release/rex.exe | grep -q PE32+
 
-      - uses: actions/download-artifact@v4
-        with:
-          name: rex-windows-tests
-          path: rust
+      # The service account cannot read ben's per-user Python, so a full one from NuGet's
+      # `python` package is unpacked into the runner's tool cache, once per version.
+      - name: Python
+        run: |
+          d="$(cygpath -u "$RUNNER_TOOL_CACHE")/python-nuget/3.12.10"
+          if [ ! -x "$d/tools/python.exe" ]; then
+            mkdir -p "$d"
+            curl -sSfL -o "$d.zip" https://www.nuget.org/api/v2/package/python/3.12.10
+            unzip -q "$d.zip" -d "$d" && rm "$d.zip"
+          fi
+          echo "$(cygpath -w "$d/tools")" >> "$GITHUB_PATH"
 
       - name: Rust unit tests
         working-directory: rust
@@ -344,20 +294,23 @@ jobs:
             echo "::endgroup::"
           done
 
-      # No GPU on the runner; on Windows rex knows NVENC only, so this is the CPU path.
+      # No GPU used; on Windows rex knows NVENC only, so this is the CPU path.
       - name: Transcoder suite
         run: |
-          dir="$(cygpath -u "$RUNNER_TEMP")/ffmpeg"  # a D:\ path's colon would split PATH
-          mkdir -p "$dir"
-          curl -sSfL -o "$dir.zip" "${JELLYFIN_FFMPEG}_win64-clang-gpl.zip"
-          unzip -q "$dir.zip" -d "$dir"
+          # A C:\ path's colon would split PATH.
+          dir="$(cygpath -u "$RUNNER_TOOL_CACHE")/jellyfin-ffmpeg/${JELLYFIN_FFMPEG##*/}-win64"
+          if [ ! -x "$dir/ffmpeg.exe" ]; then
+            mkdir -p "$dir"
+            curl -sSfL -o "$dir.zip" "${JELLYFIN_FFMPEG}_win64-clang-gpl.zip"
+            unzip -q "$dir.zip" -d "$dir" && rm "$dir.zip"
+          fi
           export REX_TRANSCODER="$(cygpath -w "$dir/ffmpeg.exe")" PATH="$dir:$PATH"
           python tests/test_native_transcode.py
 
   release:
     if: startsWith(github.ref, 'refs/tags/v') || needs.gate.outputs.nightly == 'true'
     needs: [gate, test, linux-arm64, darwin, windows-test]
-    runs-on: ubuntu-22.04
+    runs-on: [self-hosted, Linux, X64, dmm]
     permissions:
       contents: write
     env:
@@ -368,9 +321,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: actions/download-artifact@v4
-        with:
-          path: artifacts
+      - name: Collect everything the build jobs staged
+        run: |
+          for platform in linux-amd64 linux-arm64 darwin-amd64 darwin-arm64; do
+            install -D -m 755 "$REX_STAGE/${{ github.run_id }}/rex-$platform" "artifacts/rex-$platform/rex"
+          done
+          install -D -m 755 "$REX_STAGE/${{ github.run_id }}/rex-windows-amd64.exe" artifacts/rex-windows-amd64/rex.exe
 
       - name: Check the tag matches Cargo.toml
         if: env.NIGHTLY != 'true'
@@ -440,6 +396,14 @@ jobs:
         run: |
           python3 .github/announce_nightly.py "$TAG" \
             "https://github.com/$GITHUB_REPOSITORY/releases/tag/$TAG" "$GITHUB_SHA" notes.md
+
+  # Kept until here so a failed release can be rerun; a run that never gets here is swept by
+  # the next run's gate after two days.
+  unstage:
+    needs: release
+    runs-on: [self-hosted, Linux, X64, dmm]
+    steps:
+      - run: rm -rf "$REX_STAGE/${{ github.run_id }}"
 
   # The image packages the archives the release just published (docker.yml).
   docker:

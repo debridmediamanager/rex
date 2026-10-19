@@ -634,14 +634,23 @@ precisely how the Seasons bug survived a fix attempt.
 `.github/workflows/ci.yml` runs, like zurg's, only for a tag, the nightly or a manual run
 (Actions, "Run workflow", or `gh workflow run ci.yml`), never for a push or a pull request:
 pushes spent the org's Actions budget, which ran out on 2026-10-19 and blocked every run.
-Prove a push locally with `cargo test` and the suites ci.yml lists. Each run does a release
-build on GitHub's `ubuntu-22.04` (glibc 2.35, so the binary runs on 22.04 and newer), `cargo test`,
-the black-box suites that need no credentials, and also builds linux arm64 (cross-compiled, smoke-tested under qemu) and macOS arm64 and amd64
-on `macos-14` (the arm64 one runs suites natively), and Windows amd64, cross-compiled with
-MinGW on Linux and then tested on `windows-2022` (the unit tests and every suite but
-`test_manager`, since `rex manager` is Unix only). Those are the platforms zurg's own
-releases are downloaded for. It never runs on the org's self-hosted runner, which is a
-production host.
+Prove a push locally with `cargo test` and the suites ci.yml lists.
+
+It runs self-hosted, as zurg's does, so neither minutes nor the budget can stop it: every Linux
+job on the repo-scoped `dmm` runner (`~/actions-runner-rex` on dmm, beside zurg's) and the
+Windows tests on `winbox` (`C:\actions-runner-rex` on ben@windows, as NETWORK SERVICE). dmm is a
+production host, so each job compiles and tests inside `.github/ci/Dockerfile`'s image through
+`.github/ci/run.sh` (Ubuntu 22.04, glibc 2.35; 6 CPUs, 16 GB; the cargo cache and target dir in
+`~/rex-ci-cache`, rebuilt when zurg's nightly prunes the image). Each run does a release build,
+`cargo test`, the black-box suites that need no credentials and the transcoder suite; builds
+linux arm64 (smoke-tested under dmm's qemu binfmt), macOS arm64 and amd64 with cargo-zigbuild
+(checked for their architecture only: no runner is a Mac; the first ones passed test_cli, the
+native smoke, test_build_catalog, test_sources and test_feed on an Apple Silicon Mac), and
+Windows amd64 with MinGW, then tests that on Windows (the unit tests and every suite but
+`test_manager`, since `rex manager` is Unix only). Binaries pass between jobs through
+`~/rex-ci-stage/<run id>` on dmm, not artifact storage; the Windows runner reads its two with
+`ci-pull\id_ed25519`, a key dmm's `authorized_keys` binds to `~/bin/rex-ci-pull`, which prints
+one staged file and nothing else. Those are the platforms zurg's own releases are downloaded for.
 
 A nightly goes out beside zurg's: `/home/ben/zurg-nightly-dispatch.sh` on dmm dispatches
 CI with `nightly=true` at 00:40 Berlin (a `19 1 * * *` UTC cron is the fallback), and it
