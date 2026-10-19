@@ -585,6 +585,9 @@ pub struct Runtime {
     next_playlist_item: i64,
     /// Keys a merge or a delete freed: a split never reuses one (measured).
     retired_keys: Vec<i64>,
+    /// The lowest library key a new library may take: a real PMS never reuses a library's
+    /// id, and the share grants and section prefs keyed by a deleted one stayed on its key.
+    section_next: i64,
     /// The next key a scanned row takes (`mint_key`): one sequence for every kind, as a
     /// real PMS's metadata ids are, above every key the catalog, a list or a retired row
     /// ever held, and saved -- a key handed out once is never handed out again, which is
@@ -863,6 +866,7 @@ impl Runtime {
             next_playlist: playlists::PLAYLIST_BASE + 1,
             next_playlist_item: 0,
             retired_keys: Vec::new(),
+            section_next: 0,
             next_scan_key: 0,
             collection_guids: HashMap::new(),
             device_order: vec![String::new()],
@@ -1468,6 +1472,9 @@ impl Runtime {
             if let Some(keys) = state.get("retiredKeys").and_then(Value::as_array) {
                 self.retired_keys = keys.iter().filter_map(Value::as_i64).collect();
             }
+            if let Some(next) = state.get("sectionNext").and_then(Value::as_i64) {
+                self.section_next = next;
+            }
             if let Some(next) = state.get("nextScanKey").and_then(Value::as_i64) {
                 self.next_scan_key = self.next_scan_key.max(next);
             }
@@ -1873,6 +1880,7 @@ impl Runtime {
             ("historyCounter", json!(self.history_counter.get())),
             ("retiredKeys", json!(self.retired_keys)),
             ("nextScanKey", json!(self.next_scan_key)),
+            ("sectionNext", json!(self.section_next)),
             ("sources", json!(self.sources.iter().map(|source| (source.name.clone(), source.record.clone())).collect::<Map<String, Value>>())),
             // A snapshot diffs it by key instead (`diff_members`).
             ("feedHeld", if full { json!(self.feed_held) } else { Value::Null }),
@@ -9262,7 +9270,9 @@ impl Runtime {
             .filter_map(|value| value.parse::<i64>().ok())
             .max()
             .unwrap_or(0)
-            + 1;
+            .saturating_add(1)
+            .max(self.section_next);
+        self.section_next = key.saturating_add(1);
         let seed = format!("{title}-{kind}");
         let mut section = json!({
             "key": key.to_string(),
@@ -14848,6 +14858,16 @@ impl Runtime {
                         }
                         let doomed: HashSet<String> = doomed.into_iter().collect();
                         self.catalog.remove_many(&doomed);
+                        // What an item delete forgets, for every row the library held: playlist
+                        // entries, collection members, history links and the keys themselves.
+                        // Only `deleted` was written, so a deleted library's episodes stayed
+                        // addressable playlist entries and their history kept dead links.
+                        self.forget_rows(&doomed);
+                        self.collections.retain(|_, collection| collection.section != section_key);
+                        self.section_prefs.retain(|(section, _), _| section != section_key);
+                        if let Ok(number) = section_key.parse::<i64>() {
+                            self.section_next = self.section_next.max(number.saturating_add(1));
+                        }
                         // Measured on a writable copy of the reference, frame for frame: a
                         // `library.delete` activity titled `Deleting Library`, started at 0,
                         // updated at 0 with `Deleting section N`, then at 50, 0, 10, 40 and 60
@@ -14879,7 +14899,6 @@ impl Runtime {
                         activity.insert("progress".to_string(), json!(100));
                         self.notify_activity(&activity, "ended");
                         info!("SECTION delete {section_key} ({title})");
-                        self.deleted.extend(doomed);
                         self.touch_gdm();
                         self.catalog.document.insert(
                             "sections".to_string(),

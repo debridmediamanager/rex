@@ -45,24 +45,49 @@ impl Runtime {
     /// What retiring a row leaves behind besides the row itself: its key retired, and its
     /// playlist entries and collection memberships gone.
     pub(super) fn forget_row(&mut self, key: &str) {
-        if let Ok(number) = key.parse::<i64>() {
-            self.retired_keys.push(number);
+        self.forget_keys(&HashSet::from([key.to_string()]));
+    }
+
+    /// `forget_row` and `forget_history` for every key at once, one pass over each table: a
+    /// library delete retires thousands of rows.
+    pub(super) fn forget_rows(&mut self, keys: &HashSet<String>) {
+        self.forget_keys(keys);
+        for entry in self.history.iter_mut() {
+            if entry.get("ratingKey").map(string_value).is_some_and(|key| keys.contains(&key)) {
+                if let Some(object) = entry.as_object_mut() {
+                    object.shift_remove("ratingKey");
+                    object.shift_remove("key");
+                }
+            }
         }
-        self.deleted.insert(key.to_string());
+    }
+
+    fn forget_keys(&mut self, keys: &HashSet<String>) {
+        for key in keys {
+            if let Ok(number) = key.parse::<i64>() {
+                self.retired_keys.push(number);
+            }
+            self.deleted.insert(key.clone());
+        }
         // Cycle 87, plexscratch (1.43.4, `tests/fixtures/merge_playlist_s43.json`): the
         // absorbed row's playlist ENTRY goes with it -- its playlistItemID is a 404 to a
         // DELETE and a move, and a `move?after=` it goes to the front like any unknown
         // `after`. We hid the entry at render and kept its slot addressable.
-        for playlist in self.playlists.values_mut() {
-            while let Some(index) = playlist.items.iter().position(|item| item == key) {
-                playlist.items.remove(index);
-                if index < playlist.item_ids.len() {
-                    playlist.item_ids.remove(index);
-                }
-            }
+        for playlist in self.playlists.values_mut().chain(self.hidden_playlists.values_mut()) {
+            let kept = playlist.items.iter().map(|item| !keys.contains(item)).collect::<Vec<_>>();
+            let mut index = 0;
+            playlist.items.retain(|_| {
+                index += 1;
+                kept[index - 1]
+            });
+            let mut index = 0;
+            playlist.item_ids.retain(|_| {
+                index += 1;
+                kept.get(index - 1).copied().unwrap_or(true)
+            });
         }
         for collection in self.collections.values_mut() {
-            collection.items.retain(|item| item != key);
+            collection.items.retain(|item| !keys.contains(item));
         }
     }
 

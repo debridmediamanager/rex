@@ -502,6 +502,24 @@ def share_gaps(server, variant):
                                                           "X-Plex-Token": "not-a-token"})
     _, _, devices = raw(server, "GET", "/devices", [("X-Plex-Token", OWNER)])
     check(variant + ": a refused request registers no device", "unauthenticated-" not in devices, devices[:300])
+    # A deleted library takes its playlist entries with it, and its key is never minted again.
+    _, made = server.ask(OWNER, "POST", "/playlists", [("type", "video"), ("title", "Episodes"), ("smart", "0"),
+                         ("uri", "server://%s/com.plexapp.plugins.library/library/metadata/8" % MACHINE)])
+    playlist = str(((made or {}).get("MediaContainer", {}).get("Metadata") or [{}])[0].get("ratingKey"))
+    _, items = server.ask(OWNER, "GET", "/playlists/%s/items" % playlist)
+    entry = str(((items or {}).get("MediaContainer", {}).get("Metadata") or [{}])[0].get("playlistItemID"))
+    status = server.ask(OWNER, "DELETE", "/library/sections/2")[0]
+    gone = server.ask(OWNER, "DELETE", "/playlists/%s/items/%s" % (playlist, entry))[0]
+    check(variant + ": a deleted library's playlist entry goes with it", status == 200 and gone == 404,
+          (status, playlist, entry, gone))
+    status, _, _ = raw(server, "POST", "/library/sections", [
+        ("name", "Again"), ("type", "show"), ("agent", "tv.plex.agents.series"), ("scanner", "Plex TV Series"),
+        ("language", "en-US"), ("location", "/data/again"), ("X-Plex-Token", OWNER)])
+    _, sections = server.ask(OWNER, "GET", "/library/sections")
+    keys = {directory.get("title"): str(directory.get("key"))
+            for directory in (sections or {}).get("MediaContainer", {}).get("Directory", [])}
+    check(variant + ": a library added after a delete takes a key never used before",
+          status == 201 and keys.get("Again") not in (None, "1", "2"), (status, keys))
 
 
 def main():
