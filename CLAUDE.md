@@ -699,3 +699,8 @@ rigs run on.
   announce and rex-direct, which is on by default and needs only the port forward, neither a
   restart. Say each thing once per page and link back to it instead of repeating it (Ben,
   2026-10-19).
+- One name for one thing. rex's address is **rex's LAN IP** in every setup command: the
+  announce, the claim `curl`, zurg's `rex_url` and the checks (`<rex's LAN IP>` in the README,
+  setup.md and the site; `192.168.1.20`, said once, in the notes guides). Never mix in
+  `127.0.0.1`, `<rex host>` or `<rex's address>`: an unclaimed rex answers its LAN IP from its
+  own machine as it does loopback (checked 2026-10-19), so one address serves every step.
