@@ -19,7 +19,7 @@ nothing after that needs a restart. The steps below go through it in order.
 | Rust 1.89 or newer (rustup), or Docker | only to build it (below); or download a release or nightly archive (README step 1) |
 | One or more byte sources | [zurg](https://github.com/debridmediamanager/zurg) (a build with the rex feed: `rex_url` in its `config.yml`), or any HTTP server that serves the files plus something that pushes them to rex's feed |
 | Your Plex account token | not needed. A claimed rex (step 5) asks plex.tv and Plex's own metadata agent, which describes every title and powers Fix Match, with the server token the claim gives it. Only an unclaimed server that should still match with Plex's agent takes `PLEX_TOKEN`: the `X-Plex-Token` in the URL of any "View XML" link in Plex Web ([Plex's guide](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/)) |
-| An HTTPS address | only for use outside your LAN and in app.plex.tv: rex-direct with a DMM sponsorship (step 7), or a certificate for a hostname you control (a `tailscale cert`, Let's Encrypt) |
+| An HTTPS address | only for use outside your LAN and in app.plex.tv: rex-direct, on by default once claimed (step 7), or a certificate for a hostname you control (a `tailscale cert`, Let's Encrypt) |
 | FFmpeg | optional, for [transcoding](#transcoding) |
 
 ### 1. Build
@@ -118,15 +118,13 @@ step 8's systemd unit). Back it up with the server stopped, or with
 ### 4. First start, on your LAN
 
 ```bash
-export DMM_API_KEY=<your DMM API key>    # optional: rex-direct (step 7)
 rust/target/release/rex --catalog rex.db --announce-url http://<rex's LAN IP>:32400
 ```
 
 `--announce-url` is the address plex.tv gives Plex apps signed in as you, so they reach rex at
 home. An unclaimed rex announces nothing and logs `waiting for a claim`; the claim (step 5)
-starts the announce at once. `DMM_API_KEY`, a DMM sponsor's key, turns on rex-direct (step 7);
-leave it out without a sponsorship. With an HTTPS address of your own (step 7), its flags go
-here too. Everything here is read at start, so a flag or key added later needs a restart.
+starts the announce, and rex-direct (step 7), at once. With an HTTPS address of your own
+(step 7), its flags go here too. Everything here is read at start, so a flag or key added later needs a restart.
 
 Leave `--owner-username` and `--owner-email` unset: a claimed server takes both from the
 claim, and a given `--owner-username` still wins over it.
@@ -266,21 +264,24 @@ other Plex apps outside your LAN prefer one. rex has no `*.plex.direct` certific
 simplest address is rex-direct, DMM's own plex.direct. Your own hostname works too. Either
 way rex terminates TLS itself, on the same port as plain HTTP.
 
-- **rex-direct**: with step 4's `DMM_API_KEY` (in `rex.env` under `run.sh`, step 8; Docker:
-  under `environment:`), forward rex's port (32400) on your router to the rex machine. Nothing
-  to restart: at start rex registered with DMM, which points
-  `<hash>.rex-direct.debridmediamanager.com` at the public IP rex called from and hands rex
-  a certificate for that name. rex serves it and adds
+- **rex-direct**, on by default: forward rex's port (32400) on your router to the rex
+  machine. Nothing to restart: once claimed (step 5) rex registers with DMM, sending its
+  claim's token, which DMM checks with plex.tv. DMM points
+  `<hash>.rex-direct.debridmediamanager.com` at the public IP rex called from and issues a
+  certificate for that name alone, the first one in a few minutes (rex logs that it is being
+  issued and asks again). rex serves it and adds
   `https://<hash>.rex-direct.debridmediamanager.com:32400` after the addresses in
   `--announce-url`, so `--announce-url` needs only step 4's LAN address. The log says
   `rex-direct: https://<name>:32400 -> <ip>`. rex registers again every six hours, which
-  picks up a new IP and a renewed certificate without a restart. It keeps DMM's answer in
+  picks up a new IP and a renewed certificate without a restart. It keeps the answer in
   `rex-direct.json` beside the catalog (mode 600, since it holds the certificate's key) and
-  uses it when DMM does not answer at a start.
-  It needs an active DMM sponsorship. A refused key is a `WARNING` in the log and rex runs
-  on without rex-direct. The name points at the public IPv4 address rex calls DMM from, so
+  uses it when DMM does not answer at a start. A refusal is a `WARNING` in the log and rex
+  runs on without it. The name points at the public IPv4 address rex calls DMM from, so
   behind CGNAT it cannot work. Plex apps at home still use the LAN address. If your router
-  forwards another outside port to rex, set `REX_DIRECT_PORT=<that port>` beside `DMM_API_KEY`.
+  forwards another outside port to rex, set `REX_DIRECT_PORT=<that port>`. `REX_DIRECT_URL`
+  names another provider ([`docs/rex-direct-api.md`](rex-direct-api.md) is the contract;
+  only one you trust, since it picks the name your apps connect to) and `REX_DIRECT_URL=off`
+  turns rex-direct off.
 - **Your own hostname**: `--tls-cert host.crt --tls-key host.key`. The key can be PKCS#8,
   RSA or EC (`BEGIN EC PRIVATE KEY`, which `tailscale cert` and many ACME clients write). A
   `tailscale cert` hostname works for apps on your tailnet. With rex-direct as well, rex
@@ -313,7 +314,7 @@ watch with, as with any Plex server: the app asks for it before the play reaches
 
 `examples/run.sh.example` is the whole command line as a script: copy it to `run.sh` at the
 top of the checkout or release, beside `rust/` and the catalog, and fill it in. It reads the
-keys from `rex.env` (`PLEX_TOKEN=` only if you want it, `DMM_API_KEY=` for rex-direct; mode 600) and adds
+keys from `rex.env` (`PLEX_TOKEN=` only if you want it; mode 600) and adds
 `--announce-url`. `run.sh` and `rex.env` are gitignored.
 Under systemd (`~/.config/systemd/user/rex.service`, then `systemctl --user enable --now
 rex`, and `loginctl enable-linger` so it runs without a login):
@@ -405,8 +406,8 @@ services:
 
 The image starts rex on `/config/rex.db` with `--zurg-mount /zurg_mnt/zurg`, where zurg's
 Docker setup mounts. A `command:` adds to those: step 4's `--announce-url` goes there
-(`command: --announce-url http://<the host's LAN IP>:32400`) and `DMM_API_KEY` under
-`environment:`, both before the first `docker compose up`.
+(`command: --announce-url http://<the host's LAN IP>:32400`) before the first
+`docker compose up`.
 
 zurg's `rex_url` is then `http://<the host's LAN IP>:32400`, and the claim (step 5) is the
 same `curl` on the host. rex-direct (step 7) keeps `rex-direct.json` in `/config`. Certificates of your own go in `/config` too:
@@ -427,7 +428,7 @@ one in and setting `REX_TRANSCODER` is untested; to convert video, run rex witho
 | A part read answers 502, or 401/403 | rex cannot reach the source's `url` (502), or the source refused its credential (its own status): the log line `PART ... upstream` says which |
 | The server is not in the Plex apps | Not claimed, no `--announce-url`, or the announced HTTPS address is not reachable from the internet (step 7) |
 | The log says `waiting for a claim` | The server is not claimed: claim it (step 5) and it announces at once |
-| The log says `rex-direct: registration failed: HTTP 401` | DMM refused `DMM_API_KEY`: the key is wrong or the sponsorship has lapsed (step 7) |
+| The log says `rex-direct: registration failed: HTTP 401` or `403` | The provider could not confirm the claim with plex.tv: the server was removed from its Plex account, or claim it again (step 5) |
 | A second server on the same catalog exits 1 | The state file is locked by the first: one catalog per server |
 
 ### Running several servers: rex manager
@@ -441,7 +442,6 @@ running when the manager stopped is running again when it starts.
 ```bash
 rex manager serve                        # API + page on http://127.0.0.1:32300; prints the admin token once
 export PLEX_TOKEN=...                    # optional; keys come from the environment, never the command line
-export DMM_API_KEY=...                   # optional: rex-direct (step 7)
 # from a catalog seeded first (rex catalog --seed --out catalog.json, step 3)
 rex manager create living-room --port 32400 --catalog "$PWD/catalog.json" --gdm on
 rex manager start living-room

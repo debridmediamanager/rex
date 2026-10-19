@@ -693,9 +693,9 @@ rigs run on.
   limit lands in all five in the same task, and a code change that alters setup is not
   done until they do.
 - Those five describe the simplest setup there is, and in the same order: rex starts **once**,
-  with every flag and key a later step needs already on that first start (`--announce-url`
-  with the LAN address, `DMM_API_KEY` for rex-direct, an own hostname's `--tls-cert`/`--tls-key`).
-  No step says "add this flag and restart" for something that could have been on the first
-  start: the claim starts the announce and rex-direct needs only the port forward, neither a
+  with every flag a later step needs already on that first start (`--announce-url` with the
+  LAN address, an own hostname's `--tls-cert`/`--tls-key`). No step says "add this flag and
+  restart" for something that could have been on the first start: the claim starts the
+  announce and rex-direct, which is on by default and needs only the port forward, neither a
   restart. Say each thing once per page and link back to it instead of repeating it (Ben,
   2026-10-19).
