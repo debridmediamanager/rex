@@ -553,13 +553,14 @@ quality raised to Original. Without an encoder rex refuses such a play (decision
 2000/4005).
 
 A conversion carries the selected subtitle. An image one (PGS, VobSub) is burned into the
-picture. A text one (SRT, ASS) inside an MKV is copied into Plex for Android's and iOS's
-Matroska stream and burned for every other app: rex reads the track out of the release
-through its index, the first ten minutes before the play starts (about 2-4 s) and the rest
-while it plays, then carries on from the next segment with all of it (findings,
-"Subtitles through a conversion"). A subtitle uploaded to rex is copied or burned the same
-way. A text subtitle inside an MP4 or M2TS, or in a download's conversion, is dropped. An
-ASS track is drawn with the host's fonts, not the fonts attached to the release.
+picture. A text one inside an MKV or MP4 (SRT, ASS, MP4 timed text) goes into Plex for
+Android's and iOS's Matroska stream, an MP4's converted to SRT, and is burned for every other
+app: rex reads the track out of the release through its index one line at a time, the first
+two minutes before the play starts (2-3 s) and the rest while it plays, then carries on from
+the next segment with more of it (findings, "Subtitles through a conversion"). A subtitle
+uploaded to rex is copied or burned the same way. A text subtitle in a download's conversion
+is dropped. An ASS track is drawn with the host's fonts, not the fonts attached to the
+release.
 
 
 ### By platform
