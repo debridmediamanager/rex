@@ -5,8 +5,10 @@
 # Keys come from rex.env beside run.sh (mode 600; gitignored, as is run.sh):
 # PLEX_TOKEN (the owner's account token) is optional: a claimed server asks Plex's metadata
 # agent, which describes every title and powers Fix Match, and plex.tv with its own token; only
-# an unclaimed one that should still use Plex's agent needs it. DMM_API_KEY (a DMM sponsor's key)
-# turns on rex-direct: an HTTPS name and certificate of its own, announced after --announce-url's.
+# an unclaimed one that should still use Plex's agent needs it. rex-direct needs no key: once
+# claimed, rex gets an HTTPS name and certificate of its own from DMM, announced after
+# --announce-url's. REX_DIRECT_URL=off turns it off, or names another provider
+# (docs/rex-direct-api.md; REX_DIRECT_KEY if that provider wants one).
 # Under systemd, EnvironmentFile= can load the same file instead.
 #
 # Sources register themselves and push their items (docs/feed-api.md): zurg needs only

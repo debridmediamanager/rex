@@ -13,6 +13,11 @@ import shlex
 import urllib.error
 import urllib.request
 
+# rex-direct is on by default and registers with DMM once a server is claimed, which many
+# suites do against a stub plex.tv: a test server registers nowhere unless its suite names a
+# provider (`test_rex_direct.py`'s stub). Every suite starts rex through this module.
+os.environ.setdefault("REX_DIRECT_URL", "off")
+
 
 def server_command(*args, root=None):
     """Return a subprocess argv for a test-owned rex server.

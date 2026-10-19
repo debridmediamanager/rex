@@ -56,7 +56,7 @@ searched on disk. The gate is usually one truthiness check in minified code.
 | `harness/` | plexlab — the reference PMS and the recorder. See below. |
 | `probes/` | Measurement scripts: the recorders behind checked-in fixtures (`legacy_scan_fixture.py`, `record_session_gate.py`, `record_shared_user.py`), `ui_surface.py`, the plex.tv presence probes and `apkcensus.py` |
 | `docs/findings.md` | Everything measured. Read before changing behaviour. |
-| `docs/protocol-traps.md`, `docs/setup.md`, `docs/feed-api.md` | The protocol's edge cases, the operator's guide, and the API sources push with |
+| `docs/protocol-traps.md`, `docs/setup.md`, `docs/feed-api.md`, `docs/rex-direct-api.md` | The protocol's edge cases, the operator's guide, the API sources push with, and the one a rex-direct provider answers |
 
 Sidecar fixtures are captured from a real PMS -- the later ones read straight out of its
 image -- and live in `data/`. The descriptors (`server_prefs.json`, `regional_server_prefs.json`,
@@ -99,7 +99,7 @@ Where things live in `rust/src/`:
 | `runtime/universal.rs` | The video transcoder (`REX_TRANSCODER`): the conversion decision's plan and Media, `start.m3u8`/`start.mpd`, segments served outside the runtime lock, one FFmpeg per session with the hardware ladder, seeks, throttling and the idle reaper, and the `TranscodeSession` rows |
 | `runtime/plexmeta.rs`, `identify.rs` | Plex's metadata agent (the claim's server token, else `PLEX_TOKEN`), and which title a release is: the ids its source placed it with, or a TMDB id set by hand at the source (`placed`; `scan::identified_by`), asking Plex's agent for its guid by external id, whose answer and children rows are all a row shows (`metadata::describe`); nothing is read off a name, and what arrives with neither stays for Fix Match, which searches Plex's agent |
 | `runtime/plextv.rs` | claim/heartbeat/account state (`REX_PLEXTV_URL` points plex.tv and Plex's agent at a stub) |
-| `runtime/rexdirect.rs` | rex-direct, DMM's plex.direct: with `DMM_API_KEY` it registers the machineIdentifier with DMM (`REX_DIRECT_URL` points it at a stub), serves the `<hash>.rex-direct.debridmediamanager.com` wildcard certificate by SNI beside `--tls-cert`'s (`Certificates`, the TLS port's cert resolver), appends `https://<name>:<REX_DIRECT_PORT or --port>` to the announce, keeps the answer in `rex-direct.json`, and registers again every 6 h (10 min after a failure) |
+| `runtime/rexdirect.rs` | rex-direct, a plex.direct of rex's own (`docs/rex-direct-api.md`): on by default, once claimed it registers the machineIdentifier with the claim's server token at its provider (`REX_DIRECT_URL`, DMM's by default, `off`, https or loopback only; `REX_DIRECT_KEY` an optional bearer key), serves the certificate it answers by SNI beside `--tls-cert`'s (`Certificates`, the TLS port's cert resolver), appends `https://<name>:<REX_DIRECT_PORT or --port>` to the announce, keeps the answer in `rex-direct.json`, and registers again every 6 h (10 min after a failure, a 202's `retryAfter` within 15 s..10 min); unclaimed it waits in `PlexTv::direct` for the claim (`plextv::finish_claim`) |
 | `runtime/accounts.rs` | Which plex.tv account each request comes from (the access-token list: owner 1, a share its plex.tv id, with its libraries, filters, flags and track settings) and what that account keeps and sees: its watch state, ratings, hides and track picks shown over the rows while its request runs (`rows::Overlay`), its own playlists and history, the share's libraries and filters pruned from every answer, the owner's routes refused (findings, "Each account its own") |
 | `platform.rs` | Everything asked of the OS beyond `std`: local time, CPU time and load, the host name, thread ids, pausing and killing FFmpeg, the GDM socket. A Unix half and a Windows half; nothing else may call `libc` for these |
 | `runtime/*.rs` (the rest) | One subsystem each, named after it: search, listing, axes, edit, collections, playlists, artwork, butler, framework, i18n, resume (On Deck and hubs), logging and so on |
@@ -184,19 +184,27 @@ claim and announces the moment it lands, no restart (findings, "A
 claimed server needs no account token"). A comma-separated list announces each URI as its own
 connection, as a PMS with several does. The feed is rex's own API, not PMS emulation.
 
-rex-direct is DMM's own plex.direct, rex's and not a PMS's (`runtime/rexdirect.rs`). With
-`DMM_API_KEY` (a sponsor's key, from the environment only) rex POSTs its machineIdentifier to
-DMM's `/api/rex-direct/register` before the port opens; DMM points
-`<hash>.rex-direct.debridmediamanager.com` at the request's source IP (IPv4) and answers the
-name and the shared Let's Encrypt wildcard certificate. rex serves that certificate to a client
-whose SNI is under that wildcard and `--tls-cert`'s to every other (to every name when there is
-no `--tls-cert`; with neither, the port is plain only as before), and appends
-`https://<name>:<REX_DIRECT_PORT or --port>` to `--announce-url`'s list, the heartbeat
-reading its target each beat. The answer is kept in `rex-direct.json` beside the catalog
-(0600: it holds the private key) and serves a start DMM does not answer; a refusal or an
-unreachable DMM is a WARN and never fatal. A thread registers again every 6 h, which is the
-dynamic DNS and swaps in a renewed certificate without a restart, and every 10 min after a
-failure. `tests/test_rex_direct.py` drives it against a stub DMM.
+rex-direct is a plex.direct of rex's own, not a PMS's (`runtime/rexdirect.rs`), and a
+documented provider API (`docs/rex-direct-api.md`), no longer a DMM sponsor perk: rex reads no
+`DMM_API_KEY` (Ben, 2026-10-19). It is on by default with no key; `REX_DIRECT_URL` names the
+provider (default DMM's `/api/rex-direct/register`) or `off`, and must be https, or plain http
+to loopback only, since the answer carries a private key and the request the claim's token.
+The provider knows the caller by the claim, so rex registers only once claimed: a claimed start
+POSTs its machineIdentifier before the port opens, with `X-Plex-Token` (the claim's server
+token, never `PLEX_TOKEN`) and `X-Plex-Client-Identifier`, plus `Authorization: Bearer
+<REX_DIRECT_KEY>` when that is set; an unclaimed one registers the moment `/myplex/claim` lands,
+in the background before the claim's device PUT, no restart. The provider checks the token
+with plex.tv's `/api/v2/resources`, points its name at the request's source IP and answers the
+name and a certificate for it (DMM: one per server). rex serves that certificate to a client
+whose SNI is that name or, for a wildcard, under it, and `--tls-cert`'s to every other (to every
+name when there is no `--tls-cert`; with neither, the port is plain only as before), and appends
+`https://<name>:<REX_DIRECT_PORT or --port>` to `--announce-url`'s list, the heartbeat reading
+its target each beat. The answer is kept in `rex-direct.json` beside the catalog (0600: it holds
+the private key) and serves a start the provider does not answer. A 202 is a provider still
+issuing the certificate: an INFO, asked again after its `retryAfter` (15 s..10 min). Any other
+refusal or an unreachable provider is a WARN and never fatal. A thread registers again every
+6 h, which is the dynamic DNS and swaps in a renewed certificate without a restart, and every
+10 min after a failure. `tests/test_rex_direct.py` drives it against a stub provider and plex.tv.
 
 A real claim -- `POST /myplex/claim?token=` with a token from `plex.tv/api/claim/token.json`,
 once per machineIdentifier -- makes rex register the way a real PMS does (findings, "The
@@ -521,8 +529,10 @@ python3 tests/test_native_gdm.py            # native GDM answers and the /server
 REX_NATIVE_BIN=rust/target/release/rex python3 tests/test_native_phase2.py
                                             # the core modules against the oracle's recorded answers, row by row
 python3 tests/test_tls.py                   # HTTPS and plain HTTP on one port
-python3 tests/test_rex_direct.py            # rex-direct against a LOCAL stub DMM and plex.tv: its certificate by SNI beside
-                                            # --tls-cert's, the announce, rex-direct.json kept and reused, a 401 runs on without
+python3 tests/test_rex_direct.py            # rex-direct against a LOCAL stub provider and plex.tv: the claim's token sent, registered
+                                            # only once claimed (a runtime claim, no restart), its certificate by SNI beside
+                                            # --tls-cert's, the announce, rex-direct.json kept and reused, a 401 runs on without,
+                                            # a 202 asked again after 15 s (~15 s), a non-loopback http:// provider and off refused
 python3 tests/test_prefix_registry.py       # 58 measured prefix shapes
 python3 tests/test_regional_prefs.py        # the regional prefs documents, cell by cell
 python3 tests/test_part_bytes.py            # part reads against a local zurg stub
@@ -577,7 +587,8 @@ then by an outgoing connection and the server fails to bind (the cause of the ol
 "flaky" `--web-root` sub-server crash). The UI suite binds three sub-servers of its own
 on fixed ports (`gated_port`, `web_port_c16y`, `port_c29l`, 32597-32599); two suites at
 once need those remapped in the test host's copy. Point `REX_PLEXTV_URL` at a
-closed local port for any run that must not reach plex.tv.
+closed local port for any run that must not reach plex.tv. `tests/server_command.py` sets
+`REX_DIRECT_URL=off` unless a suite names a provider, so no claimed test server registers with DMM.
 
 `test_ui_surface.py` **writes**: it edits rows, builds and deletes playlists and
 collections, and finally deletes a row and a section. Everything it touches is in

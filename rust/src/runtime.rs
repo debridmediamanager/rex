@@ -23275,12 +23275,17 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
         });
     }
     // Before the port opens, so its first TLS client already gets the rex-direct certificate.
-    let direct = rexdirect::RexDirect::configured(&announced, &friendly, announce.clone(), port, &catalog_path);
+    let direct = rexdirect::RexDirect::configured(&announced, &friendly, announce.clone(), port, &catalog_path, Arc::clone(&certificates));
     let heartbeat = announce.is_some() || direct.is_some();
     let tls_config = (certificates.base.is_some() || direct.is_some())
         .then(|| Arc::new(tls_config(Arc::clone(&certificates))));
     if let Some(direct) = direct {
-        direct.start(Arc::clone(&certificates), Arc::clone(&plextv));
+        // Its provider knows rex by the claim: unclaimed, it registers when one lands.
+        if plextv::claim_token(&plextv.claim).is_some() {
+            direct.start(Arc::clone(&plextv));
+        } else {
+            direct.wait(&plextv);
+        }
     }
     let listener = TcpListener::bind((host.as_str(), port))
         .map_err(|e| format!("cannot bind {host}:{port}: {e}"))?;

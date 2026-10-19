@@ -1,16 +1,19 @@
-//! rex-direct: DMM's own plex.direct. With `DMM_API_KEY` (a DMM sponsor's key) rex POSTs
-//! its machineIdentifier to DMM (`REGISTER_URL`, or `REX_DIRECT_URL`), which points
-//! `<hash>.rex-direct.debridmediamanager.com` at the IP the request came from and answers
-//! that name with the wildcard certificate for it (dmm `src/pages/api/rex-direct/register.ts`).
-//! rex serves that certificate to a client asking for that name and announces
-//! `https://<name>:<port>` beside `--announce-url`'s list, so the Plex apps reach it over
-//! HTTPS from anywhere without the operator owning a domain.
+//! rex-direct: a plex.direct of rex's own, from a provider (docs/rex-direct-api.md). rex POSTs
+//! its machineIdentifier with the claim's server token to the provider (`REGISTER_URL`, DMM's,
+//! or `REX_DIRECT_URL`), which checks with plex.tv that the token's account owns that server,
+//! points a name of its choosing at the IP the request came from and answers that name with a
+//! certificate for it (dmm `src/pages/api/rex-direct/register.ts`). rex serves that certificate
+//! to a client asking for that name and announces `https://<name>:<port>` beside
+//! `--announce-url`'s list, so the Plex apps reach it over HTTPS from anywhere without the
+//! operator owning a domain. On by default; `REX_DIRECT_URL=off` turns it off.
 //!
-//! Registering again every 6 h is the dynamic DNS (DMM writes the record only when the IP
-//! changed) and picks up a renewed certificate without a restart. The answer is kept in
-//! `rex-direct.json` beside the catalog, owner-only since it holds the private key, and serves
-//! a start DMM does not answer. Nothing here is ever fatal: without an answer rex runs as it
-//! would without the key.
+//! The provider knows rex by its claim, so rex registers only once claimed: before the port
+//! opens on a claimed start, or the moment a claim lands (`plextv::finish_claim`). Registering
+//! again every 6 h is the dynamic DNS (DMM writes the record only when the IP changed) and
+//! picks up a renewed certificate without a restart. The answer is kept in `rex-direct.json`
+//! beside the catalog, owner-only since it holds the private key, and serves a start the
+//! provider does not answer. Nothing here is ever fatal: without an answer rex runs as it would
+//! without rex-direct.
 
 use std::io::Write;
 use std::path::PathBuf;
@@ -67,7 +70,8 @@ fn pick<T: Clone>(base: Option<&T>, direct: Option<&(String, T)>, sni: Option<&s
 }
 
 /// `sni` is `name` or another name under its wildcard (`*.<name's parent>`). The parent is
-/// read off the name DMM answered, so a test stub's domain works as DMM's does.
+/// read off the name the provider answered, so a test stub's domain works as DMM's does. A
+/// per-host certificate (DMM issues one per server) is for `name` itself, which this covers.
 fn covers(name: &str, sni: Option<&str>) -> bool {
     let Some(sni) = sni.map(str::to_ascii_lowercase) else {
         return false;
@@ -82,17 +86,17 @@ fn covers(name: &str, sni: Option<&str>) -> bool {
                 .is_some_and(|label| !label.is_empty() && !label.contains('.')))
 }
 
-/// DMM's answer: the name, the IP it points at, and the wildcard certificate.
+/// The provider's answer: the name, the IP it points at, and the certificate for that name.
 pub(crate) struct Registration {
     hostname: String,
     ip: String,
     certificate: String,
     private_key: String,
-    /// The answer as DMM sent it: what `rex-direct.json` holds.
+    /// The answer as the provider sent it: what `rex-direct.json` holds.
     raw: Vec<u8>,
 }
 
-/// An answer, from DMM or from `rex-direct.json`. Errors never quote it: it holds the key.
+/// An answer, from the provider or from `rex-direct.json`. Errors never quote it: it holds the key.
 fn parse(body: &[u8]) -> Result<Registration, String> {
     let answer: Value = serde_json::from_slice(body).map_err(|error| format!("not JSON ({error})"))?;
     let field = |name: &str| {
@@ -117,6 +121,55 @@ fn parse(body: &[u8]) -> Result<Registration, String> {
     })
 }
 
+/// No answer to serve: a provider still issuing the certificate (202, not a failure), or a
+/// failure. Either way rex keeps serving what it has.
+#[derive(Debug, PartialEq)]
+enum Later {
+    Pending(Duration, Option<String>),
+    Failed(String),
+}
+
+impl Later {
+    /// A 202's body: `retryAfter` seconds, kept within 15 s .. 10 min (60 s when it is not a
+    /// whole number), and why, if it says.
+    fn pending(body: &[u8]) -> Self {
+        let answer = serde_json::from_slice::<Value>(body).unwrap_or(Value::Null);
+        let after = answer.get("retryAfter").and_then(Value::as_u64).map_or(60, |seconds| seconds.clamp(15, 600));
+        Self::Pending(Duration::from_secs(after), reason(&answer))
+    }
+
+    fn after(&self) -> Duration {
+        match self {
+            Self::Pending(after, _) => *after,
+            Self::Failed(_) => RETRY,
+        }
+    }
+
+    fn log(&self) {
+        match self {
+            Self::Pending(after, why) => info!(
+                "rex-direct: the provider is still issuing the certificate{}; asking again in {} s",
+                why.as_ref().map(|why| format!(" ({why})")).unwrap_or_default(),
+                after.as_secs()
+            ),
+            Self::Failed(why) => warning!("rex-direct: registration failed: {why}; retrying in {} min", RETRY.as_secs() / 60),
+        }
+    }
+}
+
+/// The provider says why in `error`.
+fn reason(answer: &Value) -> Option<String> {
+    answer.get("error").and_then(Value::as_str).map(str::to_string)
+}
+
+/// The answer carries a private key and the request the claim's token: https only, or plain
+/// http to this machine (a test's stub).
+fn trusted(url: &str) -> bool {
+    upstream::scheme_host(url).is_some_and(|(tls, host)| {
+        tls || host == "localhost" || host.parse::<std::net::IpAddr>().is_ok_and(|ip| ip.to_canonical().is_loopback())
+    })
+}
+
 /// `--announce-url`'s list with the rex-direct URL appended.
 fn announce_list(announce: Option<&str>, direct: Option<&str>) -> Option<String> {
     let list = announce.into_iter().chain(direct).filter(|url| !url.is_empty()).collect::<Vec<_>>();
@@ -125,61 +178,92 @@ fn announce_list(announce: Option<&str>, direct: Option<&str>) -> Option<String>
 
 /// The server's rex-direct registration: what it registers as and announces with.
 pub(crate) struct RexDirect {
-    key: String,
+    /// `REX_DIRECT_KEY`, for a provider that wants one; DMM's ignores it.
+    key: Option<String>,
     url: String,
     machine: String,
     name: String,
     announce: Option<String>,
     port: u16,
     file: PathBuf,
+    certificates: Arc<Certificates>,
+}
+
+/// `PlexTv` is `Debug`; this never prints the key.
+impl std::fmt::Debug for RexDirect {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RexDirect").field("url", &self.url).finish_non_exhaustive()
+    }
 }
 
 impl RexDirect {
-    /// On with `DMM_API_KEY` in the environment (never argv). `machine` is the identity rex
-    /// announces on; a placeholder one is every copy's, so it registers nothing.
-    pub(crate) fn configured(machine: &str, name: &str, announce: Option<String>, port: u16, catalog: &std::path::Path) -> Option<Self> {
-        let key = std::env::var("DMM_API_KEY").ok().filter(|key| !key.is_empty())?;
-        if super::placeholder_machine(machine) {
-            warning!("rex-direct: off -- the catalog's machineIdentifier is a placeholder (seed one with rex catalog --seed)");
+    /// On unless `REX_DIRECT_URL` is `off` or not https. `machine` is the identity rex
+    /// announces on; a placeholder one is every copy's and can never be claimed.
+    pub(crate) fn configured(
+        machine: &str,
+        name: &str,
+        announce: Option<String>,
+        port: u16,
+        catalog: &std::path::Path,
+        certificates: Arc<Certificates>,
+    ) -> Option<Self> {
+        let url = std::env::var("REX_DIRECT_URL").ok().filter(|url| !url.is_empty()).unwrap_or_else(|| REGISTER_URL.to_string());
+        if url.eq_ignore_ascii_case("off") || super::placeholder_machine(machine) {
+            return None;
+        }
+        if !trusted(&url) {
+            warning!("rex-direct: off -- REX_DIRECT_URL must be https:// (plain http only to this machine): the answer carries a private key and the request the claim's token");
             return None;
         }
         Some(Self {
-            key,
-            url: std::env::var("REX_DIRECT_URL").ok().filter(|url| !url.is_empty()).unwrap_or_else(|| REGISTER_URL.to_string()),
+            key: std::env::var("REX_DIRECT_KEY").ok().filter(|key| !key.is_empty()),
+            url,
             machine: machine.to_string(),
             name: name.to_string(),
             announce,
             // The port routers forward to rex, when it is not rex's own.
             port: std::env::var("REX_DIRECT_PORT").ok().and_then(|port| port.parse().ok()).unwrap_or(port),
             file: super::plextv::claim_path(catalog).with_file_name("rex-direct.json"),
+            certificates,
         })
     }
 
-    fn register(&self) -> Result<Registration, String> {
+    /// Unclaimed, it waits for the claim; said once, here.
+    pub(crate) fn wait(self, plextv: &PlexTv) {
+        info!("rex-direct: registers with {} once claimed (POST /myplex/claim)", self.url);
+        *plextv.direct.lock().unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(self);
+    }
+
+    fn register(&self, token: &str) -> Result<Registration, Later> {
         let body = json!({"machineIdentifier": self.machine}).to_string();
-        let headers = [
-            ("x-api-key", self.key.clone()),
+        let mut headers = vec![
             ("Content-Type", "application/json".to_string()),
             ("User-Agent", upstream::UPSTREAM_UA.to_string()),
+            // How the provider knows the caller owns this server: it asks plex.tv with them.
+            ("X-Plex-Token", token.to_string()),
+            ("X-Plex-Client-Identifier", self.machine.clone()),
         ];
-        let (status, _, answer) = upstream::fetch("POST", &self.url, &headers, body.as_bytes(), TIMEOUT)?;
-        if status != 200 {
-            // DMM says why in `error`: a refused or lapsed key, no certificate yet.
-            let reason = serde_json::from_slice::<Value>(&answer)
-                .ok()
-                .and_then(|answer| answer.get("error").and_then(Value::as_str).map(str::to_string));
-            return Err(format!("HTTP {status}{}", reason.map(|reason| format!(" ({reason})")).unwrap_or_default()));
+        if let Some(key) = &self.key {
+            headers.push(("Authorization", format!("Bearer {key}")));
         }
-        parse(&answer)
+        let (status, _, answer) = upstream::fetch("POST", &self.url, &headers, body.as_bytes(), TIMEOUT).map_err(Later::Failed)?;
+        match status {
+            200 => parse(&answer).map_err(Later::Failed),
+            202 => Err(Later::pending(&answer)),
+            _ => {
+                let reason = serde_json::from_slice::<Value>(&answer).ok().as_ref().and_then(reason);
+                Err(Later::Failed(format!("HTTP {status}{}", reason.map(|reason| format!(" ({reason})")).unwrap_or_default())))
+            }
+        }
     }
 
     /// Serve, keep and announce an answer that differs from `previous`.
-    fn apply(&self, fresh: &Registration, previous: Option<&Registration>, certificates: &Certificates, plextv: &PlexTv) -> Result<(), String> {
+    fn apply(&self, fresh: &Registration, previous: Option<&Registration>, plextv: &PlexTv) -> Result<(), String> {
         if previous.is_some_and(|previous| previous.raw == fresh.raw) {
             return Ok(());
         }
-        let key = super::certified_key(fresh.certificate.as_bytes(), fresh.private_key.as_bytes(), "from DMM")?;
-        *certificates.direct.lock().unwrap_or_else(|poisoned| poisoned.into_inner()) = Some((fresh.hostname.clone(), key));
+        let key = super::certified_key(fresh.certificate.as_bytes(), fresh.private_key.as_bytes(), "from the rex-direct provider")?;
+        *self.certificates.direct.lock().unwrap_or_else(|poisoned| poisoned.into_inner()) = Some((fresh.hostname.clone(), key));
         if let Err(error) = self.keep(&fresh.raw) {
             warning!("rex-direct: could not keep {}: {error}", self.file.display());
         }
@@ -196,6 +280,14 @@ impl RexDirect {
             info!("rex-direct: https://{}:{} -> {}", fresh.hostname, self.port, fresh.ip);
         }
         Ok(())
+    }
+
+    /// Register with the claim's server token and serve what comes back.
+    fn attempt(&self, previous: Option<&Registration>, plextv: &PlexTv) -> Result<Registration, Later> {
+        let token = super::plextv::claim_token(&plextv.claim).ok_or_else(|| Later::Failed("not claimed".to_string()))?;
+        let fresh = self.register(&token)?;
+        self.apply(&fresh, previous, plextv).map_err(Later::Failed)?;
+        Ok(fresh)
     }
 
     /// `rex-direct.json`, owner-only from its first byte: it holds the private key.
@@ -217,38 +309,39 @@ impl RexDirect {
         options.open(&self.file)?.write_all(raw)
     }
 
-    /// At start, before the port opens: DMM's answer, else the one kept, else none (a WARN).
-    /// Then a thread re-registers every 6 h, 10 min after a failure.
-    pub(crate) fn start(self, certificates: Arc<Certificates>, plextv: Arc<PlexTv>) {
-        let mut current = match self.register() {
-            Ok(fresh) => self.apply(&fresh, None, &certificates, &plextv).map(|_| fresh),
-            Err(error) => Err(error),
-        };
-        let mut failed = current.is_err();
-        if let Err(error) = &current {
-            warning!("rex-direct: registration failed: {error}");
-            current = std::fs::read(&self.file)
-                .map_err(|error| error.to_string())
-                .and_then(|kept| parse(&kept))
-                .and_then(|kept| self.apply(&kept, None, &certificates, &plextv).map(|_| kept));
-            match &current {
-                Ok(_) => info!("rex-direct: serving the answer kept in {} until DMM answers", self.file.display()),
-                Err(_) => warning!("rex-direct: running without it until DMM answers"),
+    /// Once claimed, on the caller's thread (a claimed start's, before the port opens): the
+    /// provider's answer, else the one kept, else none. Then a thread registers again every
+    /// 6 h, 10 min after a failure, and when a 202 says.
+    pub(crate) fn start(self, plextv: Arc<PlexTv>) {
+        let (mut current, mut next) = match self.attempt(None, &plextv) {
+            Ok(fresh) => (Some(fresh), REFRESH),
+            Err(later) => {
+                later.log();
+                let kept = std::fs::read(&self.file)
+                    .map_err(|error| error.to_string())
+                    .and_then(|kept| parse(&kept))
+                    .and_then(|kept| self.apply(&kept, None, &plextv).map(|_| kept))
+                    .ok();
+                match (&kept, &later) {
+                    (Some(_), _) => info!("rex-direct: serving the answer kept in {} until the provider answers", self.file.display()),
+                    (None, Later::Failed(_)) => warning!("rex-direct: running without it until the provider answers"),
+                    (None, Later::Pending(..)) => {}
+                }
+                (kept, later.after())
             }
-        }
-        let mut current = current.ok();
+        };
         let _ = thread::Builder::new().name("rex-direct".to_string()).spawn(move || loop {
-            thread::sleep(if failed { RETRY } else { REFRESH });
-            match self.register().and_then(|fresh| self.apply(&fresh, current.as_ref(), &certificates, &plextv).map(|_| fresh)) {
+            thread::sleep(next);
+            next = match self.attempt(current.as_ref(), &plextv) {
                 Ok(fresh) => {
                     current = Some(fresh);
-                    failed = false;
+                    REFRESH
                 }
-                Err(error) => {
-                    warning!("rex-direct: registration failed: {error}; retrying in {} min", RETRY.as_secs() / 60);
-                    failed = true;
+                Err(later) => {
+                    later.log();
+                    later.after()
                 }
-            }
+            };
         });
     }
 }
@@ -288,14 +381,14 @@ mod tests {
     }
 
     #[test]
-    fn dmm_answer_is_read_and_a_broken_one_refused_without_quoting_it() {
+    fn the_answer_is_read_and_a_broken_one_refused_without_quoting_it() {
         let answer = json!({
             "hostname": "a1b2.rex-direct.debridmediamanager.com", "hash": "a1b2", "ip": "203.0.113.7",
             "certificate": "-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----\n",
             "privateKey": "-----BEGIN EC PRIVATE KEY-----\nSECRET\n-----END EC PRIVATE KEY-----\n",
         })
         .to_string();
-        let parsed = parse(answer.as_bytes()).expect("DMM's answer parses");
+        let parsed = parse(answer.as_bytes()).expect("the answer parses");
         assert_eq!(parsed.hostname, "a1b2.rex-direct.debridmediamanager.com");
         assert_eq!(parsed.ip, "203.0.113.7");
         assert!(parsed.certificate.contains("BEGIN CERTIFICATE"));
@@ -312,6 +405,31 @@ mod tests {
         assert!(!error.contains("SECRET") && !error.contains("evil"), "{error}");
         let error = parse(b"{\"privateKey\": \"SECRET\"").err().expect("truncated JSON is refused");
         assert!(!error.contains("SECRET"), "{error}");
+    }
+
+    #[test]
+    fn a_202_waits_its_retry_after_within_15_s_and_10_min() {
+        let wait = |body: &str| Later::pending(body.as_bytes());
+        assert_eq!(wait(r#"{"retryAfter": 30, "error": "issuing"}"#), Later::Pending(Duration::from_secs(30), Some("issuing".to_string())));
+        assert_eq!(wait(r#"{"retryAfter": 1}"#), Later::Pending(Duration::from_secs(15), None));
+        assert_eq!(wait(r#"{"retryAfter": 86400}"#), Later::Pending(Duration::from_secs(600), None));
+        for body in ["{}", r#"{"retryAfter": -5}"#, r#"{"retryAfter": "30"}"#, r#"{"retryAfter": 2.5}"#, "not json", ""] {
+            assert_eq!(wait(body).after(), Duration::from_secs(60), "{body:?}");
+        }
+        assert_eq!(Later::Failed("HTTP 500".to_string()).after(), RETRY);
+    }
+
+    #[test]
+    fn the_provider_is_https_or_on_this_machine() {
+        for url in ["https://debridmediamanager.com/api/rex-direct/register", "HTTPS://provider.example/x",
+                    "http://127.0.0.1:8080/r", "http://127.9.9.9/r", "http://localhost:9/r", "http://[::1]:9/r",
+                    "http://[::ffff:127.0.0.1]:9/r"] {
+            assert!(trusted(url), "{url}");
+        }
+        for url in ["http://provider.example/r", "http://10.0.0.1/r", "http://localhost.example/r",
+                    "http://127.0.0.1.example/r", "ftp://127.0.0.1/r", "provider.example/r", ""] {
+            assert!(!trusted(url), "{url}");
+        }
     }
 
     #[test]

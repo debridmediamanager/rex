@@ -247,6 +247,11 @@ fn parse_url(url: &str) -> Option<Target> {
     Some(Target { tls, host, port, path })
 }
 
+/// Whether `url` is https, and its host (lowercase, IPv6 unbracketed); None for no URL `fetch` takes.
+pub(super) fn scheme_host(url: &str) -> Option<(bool, String)> {
+    parse_url(url).map(|target| (target.tls, target.host))
+}
+
 fn normalize_path(path: &str) -> String {
     // RFC 3986 section 5.2.4, kept as a string operation so encoded data and
     // repeated slashes remain untouched.

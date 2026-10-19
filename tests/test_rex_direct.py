@@ -1,19 +1,23 @@
 #!/usr/bin/env python3
-"""rex-direct, black-box, against a LOCAL stub of DMM's register endpoint and of plex.tv.
+"""rex-direct, black-box, against a LOCAL stub of its provider (DMM's register endpoint) and
+of plex.tv (docs/rex-direct-api.md).
 
-With `DMM_API_KEY` set, rex POSTs its machineIdentifier to DMM's
-`/api/rex-direct/register` (`REX_DIRECT_URL` points it at the stub below), which answers
-the server's `<hash>.rex-direct...` name, the IP that name points at, and the wildcard
-certificate for it. rex serves that certificate to a TLS client asking for that name (SNI),
-keeps `--tls-cert`'s for every other name, announces `https://<name>:<port>` beside
-`--announce-url`'s list once claimed, and keeps the answer in `rex-direct.json` beside the
-catalog for a start DMM does not answer. Nothing here reaches DMM or plex.tv: the stub
-mints its own throwaway certificates with `openssl` and takes plex.tv's device PUT through
-`REX_PLEXTV_URL`. The stub's hostname is under `rex-direct.test`, not DMM's domain: rex
-takes the wildcard from the name DMM answers, not from a domain of its own.
+Once claimed, rex POSTs its machineIdentifier with the claim's server token to the provider
+(`REX_DIRECT_URL` points it at the stub below; no key), which answers the server's
+`<hash>.rex-direct...` name, the IP that name points at, and the certificate for it. rex
+serves that certificate to a TLS client asking for that name (SNI), keeps `--tls-cert`'s for
+every other name, announces `https://<name>:<port>` beside `--announce-url`'s list, and keeps
+the answer in `rex-direct.json` beside the catalog for a start the provider does not answer.
+Unclaimed it registers nothing until a claim lands, then at once, without a restart; a 202
+is a provider still issuing the certificate, asked again after its `retryAfter` (15 s at
+least, so that leg takes ~15 s). Nothing here reaches DMM or plex.tv: the stub mints its own
+throwaway certificates with `openssl` and takes plex.tv's claim exchange and device PUT
+through `REX_PLEXTV_URL`. The stub's hostname is under `rex-direct.test`, not DMM's domain:
+rex takes the wildcard from the name the provider answers, not from a domain of its own.
 
     python3 tests/test_rex_direct.py
 """
+import http.client
 import json
 import os
 import re
@@ -37,8 +41,10 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 CATALOG = os.path.join(HERE, "catalog_ui.json")
 MACHINE = json.load(open(CATALOG))["machineIdentifier"]
-KEY = "DMM-KEY-STUB-5f3a91"
-SERVER_TOKEN = "SERVER-TOKEN-STUB"
+KEY = "PROVIDER-KEY-STUB-5f3a91"
+SERVER_TOKEN = "SERVER-TOKEN-STUB-77d1"
+CLAIM_TOKEN = "claim-STUB-0c4e"
+REFUSAL = "the token does not own this server"
 HASH = "a1b2c3d4e5f6"
 HOSTNAME = "%s.rex-direct.test" % HASH
 IP = "203.0.113.7"
@@ -67,6 +73,8 @@ class Stub(ThreadingHTTPServer):
         self.records = []
         self.answer = answer
         self.status = 200
+        # (status, body) answered before `status`, one per register request.
+        self.queue = []
 
     def taken(self, path):
         with self.lock:
@@ -89,12 +97,16 @@ class Handler(BaseHTTPRequestHandler):
         with self.server.lock:
             self.server.records.append(record)
         if target.path == "/api/rex-direct/register":
-            # DMM's own answers (dmm src/pages/api/rex-direct/register.ts).
-            if self.server.status == 200:
-                status, body = 200, self.server.answer
-            else:
-                status, body = self.server.status, json.dumps({"error": "Invalid API key"}).encode()
+            # The provider contract's answers (docs/rex-direct-api.md).
+            with self.server.lock:
+                status, body = self.server.queue.pop(0) if self.server.queue else (self.server.status, None)
+            if body is None:
+                body = self.server.answer if status == 200 else json.dumps({"error": REFUSAL}).encode()
             kind = "application/json"
+        elif target.path == "/plex.tv/api/claim/exchange" and self.command == "POST":
+            status, kind = 200, "application/xml"
+            body = ('<?xml version="1.0" encoding="UTF-8"?>\n<user id="1" username="stubowner" '
+                    'email="owner@stub.invalid" authToken="%s"/>\n' % SERVER_TOKEN).encode()
         elif target.path == "/servers.plex.tv/devices/%s" % MACHINE and self.command == "PUT":
             status, kind = 200, "application/xml"
             body = ('<?xml version="1.0" encoding="UTF-8"?>\n<device clientIdentifier="%s"/>\n'
@@ -118,9 +130,9 @@ class Instance:
         self.port = port
         command = server_command("--port", port, "--catalog", os.path.join(directory, "catalog.json"),
                                  "--gdm", "off", "--heartbeat-interval", 2, *extra, root=ROOT)
-        env = dict(os.environ, DMM_API_KEY=KEY, REX_DIRECT_URL=register_url,
+        env = dict(os.environ, REX_DIRECT_URL=register_url,
                    REX_PLEXTV_URL="http://127.0.0.1:%d" % stub_port, **(env_extra or {}))
-        for name in ("REX_STATE", "REX_TOKEN", "PLEX_TOKEN", "REX_DIRECT_PORT",
+        for name in ("REX_STATE", "REX_TOKEN", "PLEX_TOKEN", "REX_DIRECT_PORT", "REX_DIRECT_KEY",
                      "REX_SCROBBLING_DECRYPT_SECRET_B64"):
             if name not in (env_extra or {}):
                 env.pop(name, None)
@@ -136,6 +148,17 @@ class Instance:
                 time.sleep(0.1)
         self.proc.kill()
         raise SystemExit("rex did not start:\n" + self.output())
+
+    def claim(self):
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=30)
+        try:
+            conn.request("POST", "/myplex/claim?token=%s" % CLAIM_TOKEN,
+                         headers={"X-Plex-Client-Identifier": "rex-direct-suite"})
+            response = conn.getresponse()
+            response.read()
+            return response.status
+        finally:
+            conn.close()
 
     def output(self):
         self.log.seek(0)
@@ -208,7 +231,7 @@ def main():
         print("SKIP the whole rex-direct suite (openssl is not on PATH)")
         return 0
     work = tempfile.mkdtemp(prefix="rex-direct-")
-    # DMM's wildcard, with an EC key in SEC1 form (`BEGIN EC PRIVATE KEY`), which is what
+    # The provider's wildcard, with an EC key in SEC1 form (`BEGIN EC PRIVATE KEY`), which is what
     # many ACME clients write; the operator's own certificate is RSA in PKCS#8.
     direct_key, direct_crt = os.path.join(work, "direct.key"), os.path.join(work, "direct.crt")
     subprocess.check_call(["openssl", "ecparam", "-name", "prime256v1", "-genkey", "-noout",
@@ -232,7 +255,8 @@ def main():
     closed_url = "http://127.0.0.1:%d/api/rex-direct/register" % free_port()  # nothing listens
     live = []
     try:
-        # 1. DMM answers: its certificate for its name, --tls-cert's for any other.
+        # 1. Claimed: rex registers before its port opens, and the provider's certificate
+        #    answers for its name, --tls-cert's for any other.
         first = os.path.join(work, "first")
         setup(first)
         instance = Instance(first, free_port(), stub.server_address[1], register_url,
@@ -240,14 +264,19 @@ def main():
                             env_extra={"REX_DIRECT_PORT": "32400"})
         live.append(instance)
         posts = stub.taken("/api/rex-direct/register")
-        check("one register request at start", len(posts) == 1, posts)
+        check("claimed: one register request, before the port opened", len(posts) == 1, posts)
         post = posts[0] if posts else {"method": None, "headers": {}, "body": b"{}"}
-        check("...a POST with the key in x-api-key, as JSON",
-              (post["method"], post["headers"].get("x-api-key"), post["headers"].get("content-type"))
-              == ("POST", KEY, "application/json"), (post["method"], post["headers"]))
+        check("...a POST as JSON",
+              (post["method"], post["headers"].get("content-type")) == ("POST", "application/json"),
+              (post["method"], post["headers"]))
+        check("...carrying the claim's server token and the machineIdentifier as plex.tv headers",
+              (post["headers"].get("x-plex-token"), post["headers"].get("x-plex-client-identifier"))
+              == (SERVER_TOKEN, MACHINE), post["headers"])
+        check("...and no key: no Authorization without REX_DIRECT_KEY, no x-api-key",
+              "authorization" not in post["headers"] and "x-api-key" not in post["headers"], post["headers"])
         check("...naming the server's machineIdentifier",
               json.loads(post["body"] or b"{}") == {"machineIdentifier": MACHINE}, post["body"])
-        check("the rex-direct name gets DMM's certificate", served(instance.port, HOSTNAME) == der(direct_crt))
+        check("the rex-direct name gets the provider's certificate", served(instance.port, HOSTNAME) == der(direct_crt))
         check("...and so does another name under its wildcard",
               served(instance.port, "other.rex-direct.test") == der(direct_crt))
         check("another name gets --tls-cert's", served(instance.port, "rex.example") == der(base_crt))
@@ -268,18 +297,18 @@ def main():
         log = instance.output()
         check("one INFO line names the URL and the IP",
               logged(log, "INFO", re.escape("rex-direct: https://%s:32400 -> %s" % (HOSTNAME, IP))), log[-3000:])
-        check("the log carries neither the key nor the private key",
-              KEY not in log and "PRIVATE KEY" not in log and open(direct_key).read().splitlines()[1] not in log)
+        check("the log carries neither the token nor the private key",
+              SERVER_TOKEN not in log and "PRIVATE KEY" not in log and open(direct_key).read().splitlines()[1] not in log)
 
-        # 2. DMM down at the next start: the kept answer serves, now without --tls-cert, so
-        #    every name gets the rex-direct certificate, on rex's own port by default.
+        # 2. The provider down at the next start: the kept answer serves, now without
+        #    --tls-cert, so every name gets the rex-direct certificate, on rex's own port.
         before = open(kept, "rb").read()
         with stub.lock:
             stub.records = []
         instance = Instance(first, free_port(), stub.server_address[1], closed_url)
         live.append(instance)
         for label, sni in (("its name", HOSTNAME), ("another name", "rex.example"), ("no SNI", None)):
-            check("DMM down, kept answer, no --tls-cert: %s gets the rex-direct certificate" % label,
+            check("provider down, kept answer, no --tls-cert: %s gets the rex-direct certificate" % label,
                   served(instance.port, sni) == der(direct_crt))
         check("...and the same port still answers plain HTTP", plain(instance.port) == b"HTTP/1.1 200 OK")
         want = ["https://%s:%d" % (HOSTNAME, instance.port)]
@@ -292,7 +321,7 @@ def main():
             "rex-direct: https://%s:%d -> %s" % (HOSTNAME, instance.port, IP)) + r".*"), log[-3000:])
         check("...and the file is left as it was", open(kept, "rb").read() == before)
 
-        # 3. DMM refuses the key and nothing is kept: rex runs on without rex-direct.
+        # 3. The provider refuses and nothing is kept: rex runs on without rex-direct.
         refused = os.path.join(work, "refused")
         setup(refused)
         stub.status = 401
@@ -308,27 +337,106 @@ def main():
         check("...and keeping nothing", not os.path.exists(os.path.join(refused, "rex-direct.json")))
         instance.stop()
         log = instance.output()
-        check("...the refusal is a WARN with DMM's status and reason",
-              logged(log, "WARNING", r"rex-direct: registration failed: HTTP 401 \(Invalid API key\).*"),
-              log[-3000:])
+        check("...the refusal is a WARN with the provider's status and reason",
+              logged(log, "WARNING", r"rex-direct: registration failed: HTTP 401 \(%s\); retrying in 10 min"
+                     % re.escape(REFUSAL)), log[-3000:])
 
-        # 4. Unclaimed it announces nothing, and its wait names the rex-direct URL, not a
-        #    --announce-url it was never given.
+        # 4. Unclaimed it registers nothing, since the provider knows rex by its claim; a claim
+        #    registers at once and announces the rex-direct URL, without a restart. With
+        #    REX_DIRECT_KEY the request carries it as a bearer key.
         unclaimed = os.path.join(work, "unclaimed")
         setup(unclaimed, claimed=False)
         stub.status = 200
         with stub.lock:
             stub.records = []
-        instance = Instance(unclaimed, free_port(), stub.server_address[1], register_url)
+        instance = Instance(unclaimed, free_port(), stub.server_address[1], register_url,
+                            env_extra={"REX_DIRECT_KEY": KEY})
         live.append(instance)
         time.sleep(3)
-        check("unclaimed, it announces nothing", announced(stub) == [], announced(stub))
+        check("unclaimed, it registers nothing", stub.taken("/api/rex-direct/register") == [],
+              stub.taken("/api/rex-direct/register"))
+        check("...announces nothing", announced(stub) == [], announced(stub))
+        check("...and serves no certificate", served(instance.port, HOSTNAME) is None)
+        with stub.lock:
+            stub.records = []  # what follows is the claim's
+        status = instance.claim()
+        check("a claim at runtime is answered", status == 200, status)
+        posts = wait_for(lambda: stub.taken("/api/rex-direct/register"), 10)
+        check("...and registers at once, without a restart",
+              len(posts) == 1 and instance.proc.poll() is None, posts)
+        post = posts[0] if posts else {"headers": {}}
+        check("...with the token the claim was given",
+              (post["headers"].get("x-plex-token"), post["headers"].get("x-plex-client-identifier"))
+              == (SERVER_TOKEN, MACHINE), post["headers"])
+        check("...and REX_DIRECT_KEY as a bearer key",
+              post["headers"].get("authorization") == "Bearer %s" % KEY, post["headers"])
+        want = ["https://%s:%d" % (HOSTNAME, instance.port)]
+        got = wait_for(lambda: [uris for uris in announced(stub) if uris == want], 10)
+        check("...announcing the rex-direct URL", got, announced(stub))
+        check("...and serving its certificate", served(instance.port, HOSTNAME) == der(direct_crt))
         instance.stop()
         log = instance.output()
-        check("...and says it waits for a claim to announce the rex-direct URL",
-              logged(log, "INFO", re.escape("waiting for a claim (POST /myplex/claim) before announcing "
-                                            "https://%s:%d" % (HOSTNAME, instance.port)))
-              and "--announce-url" not in log, log[-3000:])
+        check("...having said at start that it registers once claimed",
+              logged(log, "INFO", re.escape("rex-direct: registers with %s once claimed (POST /myplex/claim)"
+                                            % register_url)), log[-3000:])
+        check("...the log carries neither the token nor the key", SERVER_TOKEN not in log and KEY not in log)
+
+        # 5. A 202 is a provider still issuing the certificate: an INFO, the port opens at
+        #    once, and rex asks again after retryAfter, kept to 15 s at least.
+        pending = os.path.join(work, "pending")
+        setup(pending)
+        with stub.lock:
+            stub.records = []
+            stub.queue = [(202, json.dumps({"retryAfter": 1, "error": "issuing the certificate"}).encode())]
+        started = time.time()
+        instance = Instance(pending, free_port(), stub.server_address[1], register_url)
+        live.append(instance)
+        check("a 202 at start does not hold the port", time.time() - started < 10, time.time() - started)
+        check("...which serves no certificate yet", served(instance.port, HOSTNAME) is None)
+        posts = wait_for(lambda: len(stub.taken("/api/rex-direct/register")) >= 2 and stub.taken("/api/rex-direct/register"), 25)
+        asked = [r for r in stub.records if r["path"] == "/api/rex-direct/register"]
+        check("...asked again after 15 s, not the 1 s retryAfter said", posts and len(posts) == 2
+              and time.time() - started >= 14, (len(asked), time.time() - started))
+        check("...then serves the certificate", wait_for(lambda: served(instance.port, HOSTNAME) == der(direct_crt), 5))
+        want = ["https://%s:%d" % (HOSTNAME, instance.port)]
+        got = wait_for(lambda: [uris for uris in announced(stub) if uris == want], 10)
+        check("...and announces its URL", got, announced(stub))
+        instance.stop()
+        log = instance.output()
+        check("...the 202 is an INFO with its reason, not a failure",
+              logged(log, "INFO", re.escape("rex-direct: the provider is still issuing the certificate "
+                                            "(issuing the certificate); asking again in 15 s"))
+              and "registration failed" not in log, log[-3000:])
+
+        # 6. A provider over plain http to another machine is refused: the answer carries a
+        #    private key and the request the claim's token.
+        insecure = os.path.join(work, "insecure")
+        setup(insecure)
+        with stub.lock:
+            stub.records = []
+        instance = Instance(insecure, free_port(), stub.server_address[1], "http://203.0.113.9/api/rex-direct/register")
+        live.append(instance)
+        time.sleep(3)
+        check("a non-loopback http:// provider gets no request", stub.taken("/api/rex-direct/register") == [])
+        check("...and no announce names a rex-direct URL", announced(stub) == [], announced(stub))
+        instance.stop()
+        log = instance.output()
+        check("...it is a WARN, and rex-direct is off",
+              logged(log, "WARNING", re.escape("rex-direct: off -- REX_DIRECT_URL must be https://") + r".*")
+              and "rex-direct: https://" not in log, log[-3000:])
+
+        # 7. REX_DIRECT_URL=off: nothing at all.
+        off = os.path.join(work, "off")
+        setup(off)
+        with stub.lock:
+            stub.records = []
+        instance = Instance(off, free_port(), stub.server_address[1], "off")
+        live.append(instance)
+        time.sleep(3)
+        check("REX_DIRECT_URL=off registers nothing", stub.taken("/api/rex-direct/register") == [])
+        check("...announces nothing", announced(stub) == [], announced(stub))
+        instance.stop()
+        check("...and says nothing of rex-direct", "rex-direct:" not in instance.output(), instance.output()[-3000:])
     finally:
         for instance in live:
             if instance.proc.poll() is None:

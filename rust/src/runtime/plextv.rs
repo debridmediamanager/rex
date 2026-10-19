@@ -647,8 +647,9 @@ pub(crate) fn server_token(claim: &SharedClaim) -> Option<String> {
 /// The claim's own server token only. The device announce takes nothing else: plex.tv
 /// applies `PUT /devices/{id}` to the device that owns the token, so the 2026-09-11 spike's
 /// unclaimed announce with zurg's `PLEX_TOKEN` rewrote the account's "zurg" device row
-/// (findings, "Collateral change to the Plex account"; card #293).
-fn claim_token(claim: &SharedClaim) -> Option<String> {
+/// (findings, "Collateral change to the Plex account"; card #293). rex-direct's provider gets
+/// nothing else either: `PLEX_TOKEN` is the account's, and that provider is a third party.
+pub(crate) fn claim_token(claim: &SharedClaim) -> Option<String> {
     snapshot(claim).token.filter(|token| !token.is_empty())
 }
 
@@ -1442,8 +1443,8 @@ impl Beat {
 }
 
 /// `heartbeat.Heartbeat.start`: re-announce on an interval, on its own thread. The target is
-/// re-read each beat: rex-direct sets it, late when DMM answered only after the start, and
-/// anew if DMM ever names the server differently.
+/// re-read each beat: rex-direct sets it, late when its provider answered only after the start,
+/// and anew if the provider ever names the server differently.
 pub(crate) fn start_heartbeat(plextv: Arc<PlexTv>, interval: u64) {
     if let Some(beat) = plextv.beat.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).as_ref() {
         info!("heartbeat every {interval}s for machine {} -> {}", beat.machine, beat.url);
@@ -2128,6 +2129,8 @@ pub(crate) struct PlexTv {
     pub sync: Option<Arc<WatchStateSync>>,
     /// The announce heartbeat, when `--announce-url` runs one: a claim announces at once.
     pub beat: Mutex<Option<Beat>>,
+    /// rex-direct on an unclaimed start, waiting for the claim its provider knows rex by.
+    pub direct: Mutex<Option<super::rexdirect::RexDirect>>,
     /// The tokens a claimed server lets in besides its own (`Claim.admits`).
     pub access: Arc<Access>,
     pub webhooks: Webhooks,
@@ -2146,6 +2149,7 @@ impl PlexTv {
             refresh: AccountRefresh::default(),
             sync,
             beat: Mutex::new(None),
+            direct: Mutex::new(None),
             access: Arc::new(Access::seeded(&claim_tokens, &claim_grants)),
             webhooks: Webhooks::default(),
         }
@@ -2420,12 +2424,17 @@ pub(super) fn finish_claim(runtime: &SharedRuntime, token: &str, _target: &str) 
         }
         (guard.private_address.clone(), guard.published_sections())
     };
-    let beat = plextv
-        .beat
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .clone();
-    start_registration(Arc::clone(&plextv.claim), local_address, sections, beat, None);
+    let direct = plextv.direct.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).take();
+    let registration = Arc::clone(&plextv);
+    // rex-direct registers first, so the device PUT already names its URL; off the claim's
+    // answer, which would otherwise wait on the provider.
+    let _ = thread::Builder::new().name("rex-claimed".to_string()).spawn(move || {
+        if let Some(direct) = direct {
+            direct.start(Arc::clone(&registration));
+        }
+        let beat = registration.beat.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).clone();
+        start_registration(Arc::clone(&registration.claim), local_address, sections, beat, None);
+    });
     plextv.start_account(runtime);
     let guard = runtime
         .lock()
