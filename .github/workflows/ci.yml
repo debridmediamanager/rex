@@ -21,7 +21,7 @@ name: CI
 # Self-hosted, as zurg's: every Linux job runs on the repo-scoped `dmm` runner and the Windows
 # tests on `winbox` (ben@windows), so neither the minutes nor an exhausted Actions budget can
 # stop a nightly. dmm is a production host (the database and the uploaders), so everything is
-# compiled and tested inside .github/ci/Dockerfile's image through .github/ci/run.sh: Ubuntu
+# compiled and tested inside .github/ci/Dockerfile's image through .github/ci/in-image.sh: Ubuntu
 # 22.04 (glibc 2.35, so the Linux binaries run on 22.04 and newer), capped at 6 CPUs and
 # 16 GB, its suites on the container's own loopback. Windows is cross-compiled with MinGW and
 # macOS with cargo-zigbuild; the macOS binaries are checked for their architecture and run no
@@ -115,7 +115,7 @@ jobs:
 
       - name: Build and Rust unit tests
         run: |
-          .github/ci/run.sh '
+          .github/ci/in-image.sh '
             cargo build --release --locked --manifest-path rust/Cargo.toml
             cargo test --release --locked --manifest-path rust/Cargo.toml
             mkdir -p rust/target/release
@@ -140,7 +140,7 @@ jobs:
           # concurrent suites remain attributable and every child is reaped.
           # Each child receives a stable, disjoint REX_TEST_PORTS range below
           # 32768; the native smoke's fixed 32620 is outside those ranges.
-          .github/ci/run.sh 'python3 tests/parallel_suites.py --workers 4 \
+          .github/ci/in-image.sh 'python3 tests/parallel_suites.py --workers 4 \
             test_startup_wait test_test_ports test_parallel_suites test_cli test_server_command \
             test_native_runtime_smoke test_build_catalog test_tls test_part_bytes \
             test_sources test_feed test_feed_versions test_feed_season_art \
@@ -151,7 +151,7 @@ jobs:
       # The pinned FFmpeg is kept beside the cargo cache, so it downloads once per pin.
       - name: Transcoder suite
         run: |
-          .github/ci/run.sh '
+          .github/ci/in-image.sh '
             d=/home/ben/rex-ci-cache/ffmpeg/${JELLYFIN_FFMPEG##*/}-linux64
             [ -x "$d/ffmpeg" ] || { mkdir -p "$d" && curl -sSfL "${JELLYFIN_FFMPEG}_linux64-gpl.tar.xz" | tar -xJ -C "$d"; }
             export REX_TRANSCODER="$d/ffmpeg" PATH="$d:$PATH"
@@ -174,7 +174,7 @@ jobs:
       # amd64 suites would not see.
       - name: Build and smoke test under qemu
         run: |
-          .github/ci/run.sh '
+          .github/ci/in-image.sh '
             cargo build --release --locked --manifest-path rust/Cargo.toml --target aarch64-unknown-linux-gnu
             mkdir -p rust/target/release
             cp "$CARGO_TARGET_DIR/aarch64-unknown-linux-gnu/release/rex" rust/target/release/rex
@@ -198,7 +198,7 @@ jobs:
       # test_sources and test_feed on an Apple Silicon Mac, and --help under Rosetta.
       - name: Build
         run: |
-          .github/ci/run.sh '
+          .github/ci/in-image.sh '
             for t in aarch64-apple-darwin x86_64-apple-darwin; do
               cargo zigbuild --release --locked --manifest-path rust/Cargo.toml --target $t
             done
@@ -222,7 +222,7 @@ jobs:
       # The unit tests are built here too and run on Windows by the next job.
       - name: Build
         run: |
-          .github/ci/run.sh '
+          .github/ci/in-image.sh '
             cargo build --release --locked --manifest-path rust/Cargo.toml --target x86_64-pc-windows-gnu
             tests=$(cargo test --release --locked --manifest-path rust/Cargo.toml --lib \
                       --target x86_64-pc-windows-gnu --no-run --message-format=json \

@@ -640,7 +640,7 @@ It runs self-hosted, as zurg's does, so neither minutes nor the budget can stop 
 job on the repo-scoped `dmm` runner (`~/actions-runner-rex` on dmm, beside zurg's) and the
 Windows tests on `winbox` (`C:\actions-runner-rex` on ben@windows, as NETWORK SERVICE). dmm is a
 production host, so each job compiles and tests inside `.github/ci/Dockerfile`'s image through
-`.github/ci/run.sh` (Ubuntu 22.04, glibc 2.35; 6 CPUs, 16 GB; the cargo cache and target dir in
+`.github/ci/in-image.sh` (Ubuntu 22.04, glibc 2.35; 6 CPUs, 16 GB; the cargo cache and target dir in
 `~/rex-ci-cache`, rebuilt when zurg's nightly prunes the image). Each run does a release build,
 `cargo test`, the black-box suites that need no credentials and the transcoder suite; builds
 linux arm64 (smoke-tested under dmm's qemu binfmt), macOS arm64 and amd64 with cargo-zigbuild
