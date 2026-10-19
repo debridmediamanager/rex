@@ -237,7 +237,7 @@ In each zurg's `config.yml` (zurg's [`docs/config.md`](https://github.com/debrid
 
 ```yaml
 rex_url: http://<rex's LAN IP>:32400   # turns on zurg's ffprobe analysis (whole library, then new releases)
-dmm_api_key: <your DMM API key>         # sponsor key: DMM says what each file is (step 4)
+dmm_api_key: <your DMM API key>         # optional sponsor key: DMM says what each file is (step 4)
 rex_source: rd                          # optional: the name it registers as (default "zurg")
 ```
 
