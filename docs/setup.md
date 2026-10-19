@@ -295,6 +295,14 @@ Cloudflare. Cloudflare also drops the `Range` of a file's first read. rex then s
 whole file and every play start pulls all of it from your source (measured in
 docs/findings.md under "The unavoidable trade-off").
 
+No public IP at home (CGNAT): rex has no relay and none is planned. Use `tailscale serve` for
+devices on your tailnet, or a small VPS that holds the public IP: frp's `frps` on it (with
+`proxyBindAddr = "127.0.0.1"`) and Caddy terminating HTTPS with `respond /rex/* 403`, `frpc`
+on the rex machine forwarding rex's LAN IP and port, the VPS's name first in `--announce-url`
+and `REX_DIRECT_URL=off`. The notes guide has the files; it passed playback and seeking through
+a stand-in VPS (2026-10-19). Avoid hosted tunnels with bandwidth or data caps (Tailscale
+Funnel, ngrok): a film exhausts them, and Funnel also exposes `/rex/`.
+
 With your own hostname, step 4's flag lists the HTTPS address first and the LAN one after it,
 comma-separated (a second `--announce-url` replaces the first):
 

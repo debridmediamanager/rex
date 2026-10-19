@@ -123,7 +123,7 @@ You can use your own hostname instead. Give rex a certificate for it with `--tls
 
 A second `--announce-url` replaces the first, so keep both in one. Known before the first start, these flags go in step 2's command. Added later, they need a restart.
 
-Do not put a Cloudflare tunnel in front. Cloudflare drops the range of the first read so every play start pulls the whole file from your source.
+No public IP at home (CGNAT)? rex has no relay and will not get one. Use Tailscale serve for devices on your tailnet, or a small VPS whose public IP forwards to rex through a tunnel (frp, with Caddy for HTTPS): the [notes guide](https://notes.debridmediamanager.com/guides/rex/) has the recipe. Avoid tunnels that cap bandwidth or data (Tailscale Funnel, ngrok), and Cloudflare tunnels, which drop the range of the first read so every play start pulls the whole file from your source.
 
 Your Plex apps can then reach it from anywhere.
 
