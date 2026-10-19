@@ -69,12 +69,47 @@ fn words(text: &str) -> Vec<String> {
 /// The partial/first-token score pass's token view (cycle 39): marks dropped, the
 /// title table applied, ASCII case folded.
 fn tier_words(text: &str) -> Vec<String> {
-    words(
-        &fold_title(text)
-            .chars()
-            .map(|c| c.to_ascii_lowercase())
-            .collect::<String>(),
-    )
+    words(&tier_fold(text))
+}
+
+/// `key_of(row)` as a number (0 when it is none), without a `String` a row.
+fn numeric_key(row: &(impl Row + ?Sized)) -> i64 {
+    match row.get("ratingKey") {
+        Some(Value::String(key)) => key.parse().ok(),
+        Some(other) => string_value(other).parse().ok(),
+        None => None,
+    }
+    .unwrap_or(0)
+}
+
+/// `query_tier`'s anchored and prefix passes for an ASCII title and sort title, whose fold is
+/// their ASCII lower case: read in place, against the query's terms (already lower case).
+fn ascii_tier(title: &str, sort: Option<&str>, terms: &[String]) -> &'static str {
+    let mut words = title.split_whitespace();
+    let Some(first) = words.next() else {
+        return "fuzzy";
+    };
+    let anchored = match sort {
+        Some(sort) => sort.split_whitespace().next(),
+        None => Some(first),
+    };
+    if anchored.is_some_and(|word| word.eq_ignore_ascii_case(&terms[0])) {
+        return "anchored";
+    }
+    let mut words = std::iter::once(first).chain(words);
+    let starts = |word: &str, term: &str| {
+        word.len() >= term.len() && word.as_bytes()[..term.len()].eq_ignore_ascii_case(term.as_bytes())
+    };
+    if terms.iter().all(|term| words.next().is_some_and(|word| starts(word, term))) {
+        return "prefix";
+    }
+    "fuzzy"
+}
+
+fn tier_fold(text: &str) -> String {
+    let mut folded = fold_title(text);
+    folded.make_ascii_lowercase();
+    folded
 }
 
 /// The query's half of `search_tier`, worked out once a search: redone for every row, it was
@@ -96,8 +131,22 @@ impl TierQuery {
 
     /// Cycle 39's whole-title equality pass.
     fn whole_title_equal(&self, title: &str) -> bool {
-        if self.no_exact {
+        if self.no_exact || title.is_empty() {
             return false;
+        }
+        // An ASCII title folds to its ASCII lower case (`fold_title`, `fold_case`): compared
+        // word by word in place, where folding a copy of every hit's title was most of its tier.
+        if title.is_ascii() {
+            let mut left = title.split_whitespace();
+            let mut right = self.folded.iter();
+            return !self.folded.is_empty()
+                && loop {
+                    match (left.next(), right.next()) {
+                        (Some(a), Some(b)) if a.eq_ignore_ascii_case(b) => {}
+                        (None, None) => break true,
+                        _ => break false,
+                    }
+                };
         }
         let left = fold_query(&title.to_lowercase());
         let mut left = left.split_whitespace().peekable();
@@ -115,24 +164,36 @@ pub(super) fn query_tier(row: &(impl Row + ?Sized), query: &TierQuery) -> &'stat
     if terms.is_empty() {
         return "fuzzy";
     }
-    for field in ["title", "titleSort", "originalTitle"] {
-        if query.whole_title_equal(text_of(row, field)) {
+    // Words borrowed from one folded copy a field: a `String` a word, for every hit, was most
+    // of what was left of a search for "the" (2026-10-19).
+    let title = text_of(row, "title");
+    if query.whole_title_equal(title) {
+        return "exact";
+    }
+    for field in ["titleSort", "originalTitle"] {
+        let other = text_of(row, field);
+        if other != title && query.whole_title_equal(other) {
             return "exact";
         }
     }
-    let title_words = tier_words(text_of(row, "title"));
+    let sort = row.get("titleSort").and_then(Value::as_str).filter(|s| !s.is_empty() && *s != title);
+    if title.is_ascii() && sort.is_none_or(str::is_ascii) {
+        return ascii_tier(title, sort, terms);
+    }
+    let folded = tier_fold(title);
+    let title_words = folded.split_whitespace().collect::<Vec<_>>();
     if title_words.is_empty() {
         return "fuzzy";
     }
     let sorted;
-    let anchored = match row.get("titleSort").and_then(Value::as_str).filter(|s| !s.is_empty()) {
-        Some(sort) if sort != text_of(row, "title") => {
-            sorted = tier_words(sort);
-            &sorted
+    let anchored = match sort {
+        Some(sort) => {
+            sorted = tier_fold(sort);
+            sorted.split_whitespace().next()
         }
-        _ => &title_words,
+        None => title_words.first().copied(),
     };
-    if anchored.first() == terms.first() && !anchored.is_empty() {
+    if anchored.is_some() && anchored == terms.first().map(String::as_str) {
         return "anchored";
     }
     if terms.len() <= title_words.len()
@@ -405,11 +466,13 @@ fn comparison_sort_by<T>(rows: &mut Vec<T>, score: &dyn Fn(&T) -> f64) {
 }
 
 /// One tag hit, grouped per (name, library).
+/// Its rows are the catalog's own: a copy of each, three a hit, was most of what was left of a
+/// search for "the" (2026-10-19).
 #[derive(Clone)]
-pub(super) struct TagEntry {
+pub(super) struct TagEntry<'a> {
     tag: Value,
-    rows: Vec<Value>,
-    row: Value,
+    rows: Vec<&'a Value>,
+    row: &'a Value,
     tier: &'static str,
     count: usize,
 }
@@ -446,7 +509,7 @@ impl<'a> NameTiers<'a> {
 }
 
 type Typed<'a> = HashMap<String, Vec<AnyRow<'a>>>;
-type Tags = HashMap<String, Vec<TagEntry>>;
+type Tags<'a> = HashMap<String, Vec<TagEntry<'a>>>;
 
 impl Runtime {
     /// The normal title pass (`Catalog.search`): word PREFIX, tokenised on whitespace,
@@ -537,7 +600,7 @@ impl Runtime {
         text: &str,
         limit: Option<usize>,
         tagged_items: bool,
-    ) -> (Typed<'_>, Tags) {
+    ) -> (Typed<'_>, Tags<'_>) {
         let mut rows: Vec<AnyRow<'_>> = self.catalog_search(text).into_iter().map(AnyRow::Ref).collect();
         let score_query = text.trim().to_string();
         let needle = score_query.to_lowercase();
@@ -561,7 +624,7 @@ impl Runtime {
         let corpus = SearchCorpus { rows: corpus_rows, names };
         let mut tiers = NameTiers::new(&corpus, &needle_terms);
         // (hub, row, tag, name, tier)
-        let mut direct_tags: Vec<(&str, Value, Value, String, &'static str)> = Vec::new();
+        let mut direct_tags: Vec<(&str, &Value, &Value, String, &'static str)> = Vec::new();
         if needle.chars().count() >= 2 {
             for (slot, (hub, field)) in SEARCH_TAG_HUBS.iter().enumerate() {
                 for (at, row) in corpus.rows.iter().enumerate() {
@@ -571,7 +634,7 @@ impl Runtime {
                                 continue;
                             };
                             let tag = &item[*field][index as usize];
-                            direct_tags.push((hub, item.clone(), tag.clone(), text_of(tag, "tag").to_string(), tier));
+                            direct_tags.push((hub, item, tag, text_of(tag, "tag").to_string(), tier));
                         }
                     }
                 }
@@ -658,7 +721,7 @@ impl Runtime {
                             if direct_keys.contains(&key) {
                                 continue;
                             }
-                            tag_matches.push((hub, item.clone(), tag.clone(), name, "fuzzy"));
+                            tag_matches.push((hub, item, tag, name, "fuzzy"));
                         }
                     }
                 }
@@ -666,7 +729,7 @@ impl Runtime {
         }
         let mut tags: Tags = HashMap::new();
         for (hub, _field) in SEARCH_TAG_HUBS {
-            let mut seen: BTreeMapLike = BTreeMapLike::default();
+            let mut seen = BTreeMapLike::default();
             for (matched, row, tag, name, tier) in &tag_matches {
                 if matched != hub {
                     continue;
@@ -676,13 +739,13 @@ impl Runtime {
                     string_value(row.get("librarySectionID").unwrap_or(&Value::Null)),
                 );
                 let entry = seen.entry(key, || TagEntry {
-                    tag: tag.clone(),
+                    tag: (*tag).clone(),
                     rows: Vec::new(),
-                    row: row.clone(),
+                    row,
                     tier,
                     count: 0,
                 });
-                entry.rows.push(row.clone());
+                entry.rows.push(row);
             }
             let mut kept = Vec::new();
             for (_key, mut entry) in seen.into_sorted() {
@@ -718,15 +781,14 @@ impl Runtime {
         // server, 2026-10-11).
         let mut typed: Typed = HashMap::new();
         for row in rows {
-            typed
-                .entry(
-                    row.get("type")
-                        .and_then(Value::as_str)
-                        .unwrap_or("")
-                        .to_string(),
-                )
-                .or_default()
-                .push(row);
+            let kind = row.get("type").and_then(Value::as_str).unwrap_or("");
+            match typed.get_mut(kind) {
+                Some(kind_rows) => kind_rows.push(row),
+                None => {
+                    let kind = kind.to_string();
+                    typed.insert(kind, vec![row]);
+                }
+            }
         }
         if !playlist_rows.is_empty() {
             typed.insert("playlist".to_string(), playlist_rows.into_iter().map(AnyRow::Owned).collect());
@@ -737,7 +799,7 @@ impl Runtime {
                 if seen.contains(&key) {
                     continue;
                 }
-                let mut reasoned = row.clone();
+                let mut reasoned = (*row).clone();
                 if let Some(object) = reasoned.as_object_mut() {
                     object.insert("_searchReason".to_string(), json!([hub, tag]));
                 }
@@ -759,19 +821,24 @@ impl Runtime {
         }
         for (kind, candidates) in typed.iter_mut() {
             let tiered = if matches!(kind.as_str(), "movie" | "show" | "episode") {
-                let (mut title_hits, associated): (Vec<_>, Vec<_>) = std::mem::take(candidates)
+                let (title_hits, associated): (Vec<_>, Vec<_>) = std::mem::take(candidates)
                     .into_iter()
                     // Only a tag hit's own copy is reasoned: a catalog row is not read for it.
                     .partition(|r| !matches!(r, AnyRow::Owned(row) if row.get("_searchReason").is_some()));
-                // Keyed once a row: building the key on every comparison, and the tier once
-                // for this split and again for the score, were most of a search for "the" over
-                // rex-fun's library (2026-10-19).
-                title_hits.sort_by_cached_key(|row| {
-                    std::cmp::Reverse((
-                        text_of(row, "title").as_bytes().to_vec(),
-                        key_of(row).and_then(|k| k.parse::<i64>().ok()).unwrap_or(0),
-                    ))
-                });
+                // Keyed once a row, borrowing the title: building the key on every comparison,
+                // and the tier once for this split and again for the score, were most of a
+                // search for "the" over rex-fun's library (2026-10-19).
+                let order = {
+                    let keys = title_hits
+                        .iter()
+                        .map(|row| (text_of(row, "title"), numeric_key(row)))
+                        .collect::<Vec<_>>();
+                    let mut order = (0..keys.len()).collect::<Vec<_>>();
+                    order.sort_by(|&a, &b| keys[b].cmp(&keys[a]));
+                    order
+                };
+                let mut slots = title_hits.into_iter().map(Some).collect::<Vec<_>>();
+                let title_hits = order.into_iter().filter_map(|at| slots[at].take()).collect::<Vec<_>>();
                 let (exact, rest): (Vec<_>, Vec<_>) =
                     tiered(title_hits, &tier_query).into_iter().partition(|(tier, _)| *tier == "exact");
                 exact.into_iter().chain(rest).chain(tiered(associated, &tier_query)).collect::<Vec<_>>()
@@ -792,7 +859,7 @@ impl Runtime {
     }
 
     /// Drop the libraries Visibility excludes from global search (`hidden=2`).
-    fn searchable<'a>(&self, typed: Typed<'a>, tags: Tags) -> (Typed<'a>, Tags) {
+    fn searchable<'a>(&self, typed: Typed<'a>, tags: Tags<'a>) -> (Typed<'a>, Tags<'a>) {
         let hidden = self
             .catalog
             .sections
@@ -833,7 +900,7 @@ impl Runtime {
         (typed, tags)
     }
 
-    fn tag_result(&self, entry: &TagEntry, hub: &str) -> Map<String, Value> {
+    fn tag_result(&self, entry: &TagEntry<'_>, hub: &str) -> Map<String, Value> {
         let section_id = entry
             .row
             .get("librarySectionID")
@@ -1397,16 +1464,16 @@ impl Runtime {
 
 /// A tiny ordered map for the tag grouping: `sorted(seen)` in Python.
 #[derive(Default)]
-struct BTreeMapLike {
-    entries: BTreeMap<(String, String), TagEntry>,
+struct BTreeMapLike<'a> {
+    entries: BTreeMap<(String, String), TagEntry<'a>>,
 }
 
-impl BTreeMapLike {
-    fn entry(&mut self, key: (String, String), make: impl FnOnce() -> TagEntry) -> &mut TagEntry {
+impl<'a> BTreeMapLike<'a> {
+    fn entry(&mut self, key: (String, String), make: impl FnOnce() -> TagEntry<'a>) -> &mut TagEntry<'a> {
         self.entries.entry(key).or_insert_with(make)
     }
 
-    fn into_sorted(self) -> Vec<((String, String), TagEntry)> {
+    fn into_sorted(self) -> Vec<((String, String), TagEntry<'a>)> {
         self.entries.into_iter().collect()
     }
 }
