@@ -13256,10 +13256,18 @@ turn and converted (directPlay=0, subtitles=auto) in four clients' own shapes
   Real-Debrid's CDN still reset the connection after a budget: unpaced (~10 a second) the 219th
   read failed, at 6 a second the 399th, at 4 a second 450 passed. rex reads 100 at once, then 3
   a second, stops at the first refusal, and checked that pattern on the same file: 600 reads in
-  167 s, none refused. A film's 1,500 lines then take ~8 minutes, read in time order from the
-  player's position: the run starts on the first two minutes (2-3 s on every source) and
-  restarts from its next segment on fifteen, then on all of it, far ahead of the conversion. A
-  later session of the same title reuses the file.
+  167 s, none refused. A film's 1,500 lines then take ~8 minutes.
+- **A run converts only what its file knows (2026-10-19).** First the track was read in stages
+  (two minutes, fifteen, the rest), each restarting the run. Plex Web on rex-fun found two holes
+  in a dense anime episode (Laid-Back Camp, 1,152 lines, 963 in its first 15 minutes): that stage
+  took 290 s while the run converted at 2.3x, so minutes 2-5 went out unburned; and a seek to
+  20:00 started a run that finished the episode at 07:12:45, before its lines were read at
+  07:14:35, so they were never burned. Now the reader always reads the next unread line from the
+  run's position, and a run stops (paused like the throttle) at the first segment holding a line
+  its file did not have when it started. It restarts from there once the reader knows 30 s more
+  if the player is waiting on it, 2 minutes more otherwise, or all of it. A run starts once the
+  first minute is known; a refusal lifts every hold. The suite's `lag` clip (5 minutes, a line
+  every 2 s, read at 4 a second) reproduces the seek: before, the segment at 284 s had no box.
 - **Drawing it cost more than reading it.** On fun's J4105 a 4K HDR remux converting to
   1080p on the device ran at 1.94x; downloading each frame to draw on and uploading it again ran
   0.34x with no text at all, 0.32x with it. Jellyfin's Intel way, the text drawn on a transparent

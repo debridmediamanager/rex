@@ -50,11 +50,17 @@ const IDLE: Duration = Duration::from_secs(120);
 const SEEK_GAP: i64 = 4;
 /// Segments more than this far behind the player are deleted.
 const KEEP_BEHIND: f64 = 120.0;
-/// An embedded text subtitle is read one line at a time (`mkvsubs::Index::events`), in time
-/// order from where the player is: the run starts on the first two minutes and restarts on
-/// fifteen, then on all of it. At `SUBTITLE_RATE` that is 12-18 minutes of a film read each
-/// minute, many times what a conversion makes, so the run never reaches a minute not yet read.
-const SUBTITLE_WINDOWS_MS: [i64; 2] = [2 * 60 * 1000, 15 * 60 * 1000];
+/// An embedded text subtitle is read one line at a time (`mkvsubs::Index::events`), always the
+/// next unread line from where the player is, and a run converts only as far as its file knows
+/// every line (`Cover`): past that it holds until the reader has moved on. Its first run waits
+/// for the first minute. A dense anime track held 963 lines in its first 15 minutes, 290 s at
+/// `SUBTITLE_RATE`, which converted ahead of the lines; and a seek past what was read finished
+/// its run before the lines came, never to burn them (rex-fun, 2026-10-19).
+const FIRST_SUBTITLES_MS: i64 = 60 * 1000;
+/// A held run restarts once its reader knows this much more past the hold: little when the
+/// player is waiting on it, more otherwise, since every restart costs the encoder's start.
+const WAITING_ADVANCE_MS: i64 = 30 * 1000;
+const AHEAD_ADVANCE_MS: i64 = 120 * 1000;
 /// Reads of one track: `SUBTITLE_BURST` at once, then `SUBTITLE_RATE` a second. Real-Debrid's
 /// CDN resets the connection after a budget of reads of one link, which zurg answers with a
 /// 500 and, after three, a 5-minute hold on the file: unpaced (~10 a second) the 219th read
@@ -740,6 +746,37 @@ struct Progress {
     /// Input failures (the source answering 5xx, a dropped connection) retried so far.
     input_retries: u32,
     touched: Option<Instant>,
+    /// Paused at the end of what its subtitle file knows (`Cover`).
+    held: bool,
+}
+
+/// How far a burned embedded subtitle has been read.
+#[derive(Debug, Default)]
+struct Cover {
+    /// The start (ms) of every line not yet in the file, counted; `None` until the track's
+    /// index has been read. Empty once it is all read, or given up on.
+    unread: Option<BTreeMap<i64, usize>>,
+    /// The title time before which the current run's file held every line, from its start.
+    run_limit: Option<i64>,
+}
+
+impl Cover {
+    /// The first line from `from` the file does not have yet, if any.
+    fn limit(&self, from: i64) -> Option<i64> {
+        match &self.unread {
+            None => Some(from),
+            Some(unread) => unread.range(from..).next().map(|(start, _)| *start),
+        }
+    }
+
+    fn read(&mut self, start: i64) {
+        if let Some(count) = self.unread.as_mut().and_then(|unread| unread.get_mut(&start)) {
+            *count -= 1;
+            if *count == 0 {
+                self.unread.as_mut().map(|unread| unread.remove(&start));
+            }
+        }
+    }
 }
 
 pub(crate) struct Session {
@@ -753,6 +790,7 @@ pub(crate) struct Session {
     run: std::sync::atomic::AtomicU64,
     stopped: AtomicBool,
     pub started: f64,
+    cover: Mutex<Cover>,
 }
 
 impl Session {
@@ -1079,6 +1117,7 @@ impl Transcoder {
         let dir = self.root.join(sanitize(id));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).map_err(|error| format!("cannot create {}: {error}", dir.display()))?;
+        let plan_burns = plan.text_burn.is_some();
         let session = Arc::new(Session {
             id: id.to_string(),
             plan,
@@ -1089,6 +1128,7 @@ impl Transcoder {
             run: std::sync::atomic::AtomicU64::new(0),
             stopped: AtomicBool::new(false),
             started: now_seconds(),
+            cover: Mutex::new(Cover { unread: if plan_burns { None } else { Some(BTreeMap::new()) }, run_limit: None }),
         });
         self.sessions
             .lock()
@@ -1190,16 +1230,24 @@ impl Transcoder {
         }
     }
 
-    /// Read the burned embedded subtitle out of its release beside the run's segments, the
-    /// minutes from the player's position first; the run starts on those and restarts as more
-    /// is read (`SUBTITLE_WINDOWS_MS`). A track already read this start is reused. One that cannot be read (no
-    /// Cues for it, a source refusing ranges) leaves the conversion without it, as before.
+    /// Read the burned embedded subtitle out of its release beside the run's segments, always
+    /// the next unread line from the player's position, rewriting the file after each. The first
+    /// run starts once the first minute from there is known; a run held at the end of what its
+    /// file knows (`watch`) restarts once more is. A track already read this start is reused.
+    /// One that cannot be read (no Cues for it, a source refusing ranges) lifts every hold and
+    /// leaves the rest of the conversion without it.
     fn read_text(self: &Arc<Self>, session: &Arc<Session>, text: &TextBurn) {
         let file = session.dir.join(text.file_name());
         let digest = sha1::Sha1::digest(format!("{}#{}", session.plan.url, text.index).as_bytes());
         let cached = self.root.join("subtitles").join(format!("{}.{}", digest.iter().map(|byte| format!("{byte:02x}")).collect::<String>(), if text.ass { "ass" } else { "srt" }));
-        if std::fs::copy(&cached, &file).is_ok() {
+        let release = |session: &Arc<Session>| {
+            if let Ok(mut cover) = session.cover.lock() {
+                cover.unread = Some(BTreeMap::new());
+            }
             self.relaunch(session);
+        };
+        if std::fs::copy(&cached, &file).is_ok() {
+            release(session);
             return;
         }
         let plan = &session.plan;
@@ -1228,44 +1276,61 @@ impl Transcoder {
             Ok(index) => index,
             Err(error) => {
                 warning!("TRANSCODE {} cannot read subtitle stream {}, converting without it: {error}", session.id, text.index);
-                self.relaunch(session);
+                release(session);
                 return;
             }
         };
-        let from = session.state.lock().map(|state| state.run_start).unwrap_or(0) * plan.segment_seconds() as i64 * 1000;
-        let mut stages = vec![Vec::new(); SUBTITLE_WINDOWS_MS.len() + 1];
-        for cue in &index.cues {
-            let stage = SUBTITLE_WINDOWS_MS.iter().position(|window| cue.start >= from && cue.start < from + window);
-            stages[stage.unwrap_or(SUBTITLE_WINDOWS_MS.len())].push(cue.clone());
-        }
-        let (mut events, mut failed, mut script) = (Vec::new(), 0, String::new());
-        for (stage, cues) in stages.iter().enumerate() {
-            // The first stage starts the run even when it holds no line.
-            if stage > 0 && cues.is_empty() {
-                continue;
+        if let Ok(mut cover) = session.cover.lock() {
+            let mut unread = BTreeMap::new();
+            for cue in &index.cues {
+                *unread.entry(cue.start).or_insert(0) += 1;
             }
-            let (more, more_failed, refused) = index.events(&read, cues);
-            events.extend(more);
-            events.sort_by_key(|event| event.start);
-            failed += more_failed;
+            cover.unread = Some(unread);
+        }
+        let length = plan.segment_seconds() as i64 * 1000;
+        let mut pending: Vec<usize> = (0..index.cues.len()).collect();
+        let (mut events, mut failed) = (Vec::new(), 0);
+        while !pending.is_empty() {
+            let Ok(position) = session.state.lock().map(|state| state.run_start * length) else { return };
+            let pick = pending.iter().position(|&cue| index.cues[cue].start >= position).unwrap_or(0);
+            let cue = &index.cues[pending.remove(pick)];
+            let (more, more_failed, refused) = index.events(&read, std::slice::from_ref(cue));
             if session.stopped.load(Ordering::SeqCst) {
                 return;
             }
-            script = index.render(&events);
-            if let Err(error) = std::fs::write(&file, &script) {
+            events.extend(more);
+            events.sort_by_key(|event| event.start);
+            failed += more_failed;
+            if let Err(error) = std::fs::write(&file, index.render(&events)) {
                 warning!("TRANSCODE {} cannot write its subtitle: {error}", session.id);
             }
-            info!("TRANSCODE {} subtitle stream {}: {} of {} cues from {}s read in {:.1}s", session.id, text.index, events.len(), index.cues.len(), from / 1000, begun.elapsed().as_secs_f64());
-            self.relaunch(session);
             if refused {
                 warning!("TRANSCODE {} subtitle stream {}: the source refused a read, carrying on with {} lines", session.id, text.index, events.len());
+                release(session);
                 return;
             }
+            let Ok(known) = session.cover.lock().map(|mut cover| {
+                cover.read(cue.start);
+                cover.limit(position)
+            }) else {
+                return;
+            };
+            // A held run is restarted by its own `watch`; the reader starts only the first.
+            if session.run.load(Ordering::SeqCst) == 0 && known.is_none_or(|limit| limit >= position + FIRST_SUBTITLES_MS) {
+                info!("TRANSCODE {} subtitle stream {}: {} of {} cues from {}s read in {:.1}s", session.id, text.index, events.len(), index.cues.len(), position / 1000, begun.elapsed().as_secs_f64());
+                self.relaunch(session);
+            }
+        }
+        if let Ok(mut cover) = session.cover.lock() {
+            cover.unread = Some(BTreeMap::new());
         }
         if failed == 0 && std::fs::create_dir_all(self.root.join("subtitles")).is_ok() {
-            let _ = std::fs::write(&cached, &script);
+            let _ = std::fs::write(&cached, index.render(&events));
         }
         info!("TRANSCODE {} subtitle stream {}: {} cues read, {failed} unreadable, in {:.1}s", session.id, text.index, events.len(), begun.elapsed().as_secs_f64());
+        if session.run.load(Ordering::SeqCst) == 0 {
+            self.relaunch(session);
+        }
     }
 
     /// Restart the run from the first segment it has not finished, on its own path, so it
@@ -1318,6 +1383,11 @@ impl Transcoder {
             },
             },
         };
+        // Before the arguments look for the subtitle file: the reader writes a line to the file
+        // before it counts it read, so what this limit counts is in the file FFmpeg opens.
+        if let Ok(mut cover) = session.cover.lock() {
+            cover.run_limit = cover.limit(start * session.plan.segment_seconds() as i64 * 1000);
+        }
         let args = ffmpeg_args(&session.plan, path, &hardware, start, &session.dir);
         if let Some(sidecar) = &session.plan.sidecar {
             if let Err(err) = std::fs::write(session.dir.join(sidecar.file_name()), &sidecar.content) {
@@ -1337,6 +1407,7 @@ impl Transcoder {
             state.run_start = start;
             state.path = Some(path);
             state.paused = false;
+            state.held = false;
             state.finished = false;
             state.exited = None;
             state.error = false;
@@ -1500,6 +1571,28 @@ impl Transcoder {
                 }
                 return;
             }
+            // A run burning a subtitle stops where its file stops knowing the lines, and restarts
+            // there once the reader knows enough more: a little when the player waits on it.
+            let (limit, known) = session.cover.lock().map(|cover| (cover.run_limit, cover.limit((next as f64 * length * 1000.0) as i64))).unwrap_or((None, None));
+            if limit.is_some_and(|limit| ((next + 1) as f64 * length * 1000.0) as i64 > limit) {
+                let waiting = match session.state.lock() {
+                    Ok(mut state) => {
+                        if !state.paused {
+                            session.set_paused(true);
+                            state.paused = true;
+                        }
+                        state.held = true;
+                        state.last_request.is_some_and(|request| request + 1 >= next)
+                    }
+                    Err(_) => continue,
+                };
+                let advance = if waiting { WAITING_ADVANCE_MS } else { AHEAD_ADVANCE_MS };
+                if known.is_none_or(|known| known >= (next as f64 * length * 1000.0) as i64 + advance) {
+                    self.relaunch(&session);
+                    return;
+                }
+                continue;
+            }
             // Throttle on how far production runs ahead of the player.
             let (ahead, paused) = match session.state.lock() {
                 Ok(state) => {
@@ -1611,9 +1704,11 @@ impl Transcoder {
                     self.launch(session, index, None);
                 }
             } else if session.throttled() {
-                session.set_paused(false);
                 if let Ok(mut state) = session.state.lock() {
-                    state.paused = false;
+                    if !state.held {
+                        session.set_paused(false);
+                        state.paused = false;
+                    }
                 }
             }
             if Instant::now() > deadline {

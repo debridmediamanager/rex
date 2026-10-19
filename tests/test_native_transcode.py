@@ -80,6 +80,10 @@ class Zurg(http.server.BaseHTTPRequestHandler):
             first = int(match.group(1))
             last = min(int(match.group(2)), size - 1) if match.group(2) else size - 1
             partial = True
+        # A `lag` file answers small reads slowly, as a debrid source paced to its read budget
+        # does: its subtitle is read slower than a conversion runs.
+        if name.startswith("lag") and partial and last - first < 8192:
+            time.sleep(0.25)
         self.send_response(206 if partial else 200)
         self.send_header("Accept-Ranges", "bytes")
         self.send_header("Content-Length", str(last - first + 1))
@@ -136,16 +140,19 @@ def make_pgs(path, width, height, duration):
     open(path, "wb").write(data)
 
 
-def box_script():
-    """An ASS script drawing a white box over BOX for 30 s, which libass renders without a font."""
+def box_script(lines=((0, 30),)):
+    """An ASS script drawing a white box over BOX for each (start, end) in seconds, which
+    libass renders without a font."""
     x, y, w, h = BOX
+    stamp = lambda t: "%d:%02d:%02d.00" % (t // 3600, t // 60 % 60, t % 60)
     return ("[Script Info]\nScriptType: v4.00+\nPlayResX: 1280\nPlayResY: 720\n\n[V4+ Styles]\n"
             "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, "
             "Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, "
             "MarginR, MarginV, Encoding\nStyle: Default,Arial,20,&H00FFFFFF,&H00FFFFFF,&H00FFFFFF,&H00FFFFFF,0,0,0,0,"
             "100,100,0,0,1,0,0,7,0,0,0,1\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, "
-            "MarginV, Effect, Text\nDialogue: 0,0:00:00.00,0:00:30.00,Default,,0,0,0,,"
-            "{\\pos(%d,%d)\\p1}m 0 0 l %d 0 %d %d 0 %d{\\p0}\n" % (x, y, w, w, h, h))
+            "MarginV, Effect, Text\n" + "".join(
+                "Dialogue: 0,%s,%s,Default,,0,0,0,,{\\pos(%d,%d)\\p1}m 0 0 l %d 0 %d %d 0 %d{\\p0}\n"
+                % (stamp(start), stamp(end), x, y, w, w, h, h) for start, end in lines))
 
 
 def luma(path, at, crop):
@@ -588,6 +595,15 @@ def main():
                subtitle=next(s for s in streams if s["codec_type"] == "subtitle"), subtitle_codec="mov_text")
     item["Media"][0]["container"] = item["Media"][0]["Part"][0]["container"] = "mp4"
     items.append(item)
+    # Five minutes with a box every 2 s, read 4 lines a second (`lag`): its run converts faster.
+    MEDIA["lagsubs.mkv"] = os.path.join(scratch, "lagsubs.mkv")
+    lagass = os.path.join(scratch, "lag.ass")
+    open(lagass, "w").write(box_script([(start, start + 2) for start in range(0, 300, 2)]))
+    subprocess.run([FFMPEG, "-v", "error", "-y", "-i", MEDIA["long.mkv"], "-i", lagass, "-map", "0", "-map", "1", "-c", "copy",
+                    MEDIA["lagsubs.mkv"]], check=True)
+    streams = probe(MEDIA["lagsubs.mkv"])["streams"]
+    items.append(row("13", "Lagsubs", "lagsubs.mkv", streams, os.path.getsize(MEDIA["lagsubs.mkv"]), 300,
+                     subtitle=next(s for s in streams if s["codec_type"] == "subtitle"), subtitle_codec="ass"))
     # The plain clip on its own, for a subtitle uploaded to rex.
     MEDIA["plain.mkv"] = plain
     items.append(row("10", "Plain", "plain.mkv", probe(plain)["streams"], os.path.getsize(plain), DURATION))
@@ -787,6 +803,22 @@ def main():
         check("s-mov-ts: the MP4's timed text was read through its sample tables",
               status == 200 and wait_for_log(log, r"s-mov-ts subtitle stream \d+: (1) of 1 cues") == "1", str(status))
         get(port, "/video/:/transcode/universal/stop", [("session", "s-mov-ts")])
+        # A seek past what had been read: the run from there converted the rest of the title
+        # before its lines were read and never burned them (Laid-Back Camp on rex-fun). The run
+        # now holds where its file stops knowing the lines, and the reader reads from the seek.
+        decision(port, "13", "s-lag", directStream="1", subtitles="auto")
+        get(port, "/video/:/transcode/universal/start.m3u8", plex_web_query("13", "s-lag", directStream="1", subtitles="auto"))
+        base = "/video/:/transcode/universal/session/s-lag/base/"
+        status, _, first = get(port, base + "00000.ts")
+        check("s-lag: the first segment comes once the first minute is read", status == 200, str(status))
+        status, _, late = get(port, base + "00142.ts")
+        segment = os.path.join(scratch, "lag-142.ts")
+        open(segment, "wb").write(late)
+        centre = (x + w // 2 - 10, y + h // 2 - 10, 20, 20)
+        burned = luma(segment, 0, centre) if status == 200 and late[:1] == b"\x47" else -1
+        check("s-lag: a segment past what was read when it was asked for carries its line",
+              burned > 230, "luma %.0f (%s)" % (burned, status))
+        get(port, "/video/:/transcode/universal/stop", [("session", "s-lag")])
         walk(port, scratch, "capped", "1", "transcode", "copy", (640, 360),
              videoResolution="640x360", maxVideoBitrate="1000", directStream="1")
         # Audio only: the video is copied and the DTS the client refuses becomes AAC.
