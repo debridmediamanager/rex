@@ -60,9 +60,18 @@ pub(crate) fn host_name() -> Option<String> {
         let end = buffer.iter().position(|byte| *byte == 0).unwrap_or(buffer.len());
         Some(String::from_utf8_lossy(&buffer[..end]).into_owned())
     }
+    // The DNS host name, as CPython's socket.gethostname() reads it. COMPUTERNAME is the NetBIOS
+    // name, upper-cased and cut to 15 characters: a host named bp-00516 seeded "BP-00516".
     #[cfg(windows)]
     {
-        std::env::var("COMPUTERNAME").ok().filter(|name| !name.is_empty())
+        let mut buffer = [0_u16; 256];
+        let mut length = buffer.len() as u32;
+        // SAFETY: length holds the buffer's size in characters; on success it is the name's.
+        let format = win::COMPUTER_NAME_PHYSICAL_DNS_HOSTNAME;
+        if unsafe { win::GetComputerNameExW(format, buffer.as_mut_ptr(), &mut length) } == 0 {
+            return None;
+        }
+        Some(String::from_utf16_lossy(&buffer[..length as usize])).filter(|name| !name.is_empty())
     }
 }
 
@@ -441,6 +450,7 @@ mod win {
 
     pub(super) const PROCESS_TERMINATE: u32 = 0x0001;
     pub(super) const PROCESS_SUSPEND_RESUME: u32 = 0x0800;
+    pub(super) const COMPUTER_NAME_PHYSICAL_DNS_HOSTNAME: u32 = 5;
 
     #[link(name = "kernel32")]
     extern "system" {
@@ -458,6 +468,7 @@ mod win {
         pub(super) fn OpenProcess(access: u32, inherit: i32, pid: u32) -> Handle;
         pub(super) fn TerminateProcess(process: Handle, code: u32) -> i32;
         pub(super) fn CloseHandle(handle: Handle) -> i32;
+        pub(super) fn GetComputerNameExW(format: u32, buffer: *mut u16, size: *mut u32) -> i32;
     }
 
     // Undocumented but stable since Windows XP, and what every process manager calls:
