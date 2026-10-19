@@ -557,7 +557,9 @@ picture. A text one inside an MKV or MP4 (SRT, ASS, MP4 timed text) goes into Pl
 Android's and iOS's Matroska stream, an MP4's converted to SRT, and is burned for every other
 app: rex reads the track out of the release through its index one line at a time from where
 the player is, the first minute before the play starts, and converts only as far as it has
-read; a seek reads from the new position first (findings, "Subtitles through a conversion"). A subtitle
+read; a seek reads from the new position first. Lines denser than it can read in time, an
+opening song's karaoke, are left out of that play rather than stall it (findings, "Subtitles
+through a conversion"). A subtitle
 uploaded to rex is copied or burned the same way. A text subtitle in a download's conversion
 is dropped. An ASS track is drawn with the host's fonts, not the fonts attached to the
 release.

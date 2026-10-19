@@ -13268,6 +13268,20 @@ turn and converted (directPlay=0, subtitles=auto) in four clients' own shapes
   if the player is waiting on it, 2 minutes more otherwise, or all of it. A run starts once the
   first minute is known; a refusal lifts every hold. The suite's `lag` clip (5 minutes, a line
   every 2 s, read at 4 a second) reproduces the seek: before, the segment at 284 s had no box.
+- **What the test rig on zen found next** (a rex reading the same Real-Debrid episode through
+  fun's zurg, Plex Web's recorded requests replayed). A held run was first paused like the
+  throttle; after 33 s its read of the source had been closed under it, it died with "File
+  ended prematurely" and its death read as the path failing, moving the session to the CPU. A
+  held run is now stopped and started again. A seek arriving while a run was held restarted it
+  twice, once for the seek and once by the held run itself; the held run now yields. The
+  opening song's karaoke and signs ran to ~12 lines a second of film, which no read budget
+  keeps up with: the player waited 51 s and its segment request timed out. A player waiting
+  5 s on a hold now has the next 30 s of unread lines given up for that run (`s-dense` in the
+  suite: 33.5 s before, 9.4 s after, the wait being the first minute); on the rig, 4 minutes
+  played with no stall and 307 lines of the opening song were left out. Two sessions of one title
+  each with their own burst had the second's 140th read reset and FFmpeg's retries put the file
+  in zurg's hold; the budget is now the file's, shared (`s-burst`: 174 reads in 3 s before, 86
+  after).
 - **Drawing it cost more than reading it.** On fun's J4105 a 4K HDR remux converting to
   1080p on the device ran at 1.94x; downloading each frame to draw on and uploading it again ran
   0.34x with no text at all, 0.32x with it. Jellyfin's Intel way, the text drawn on a transparent

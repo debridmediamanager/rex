@@ -56,6 +56,8 @@ def check(label, ok, detail=""):
 MEDIA = {}
 # A clip zurg serves at this many bytes a second: the run outlasts the first segment.
 SLOW_RATE = 2_000_000
+# The times of each file's small range reads (a subtitle line's), by file name.
+SMALL_READS = {}
 
 
 class Zurg(http.server.BaseHTTPRequestHandler):
@@ -82,6 +84,8 @@ class Zurg(http.server.BaseHTTPRequestHandler):
             partial = True
         # A `lag` file answers small reads slowly, as a debrid source paced to its read budget
         # does: its subtitle is read slower than a conversion runs.
+        if partial and last - first < 8192:
+            SMALL_READS.setdefault(name, []).append(time.time())
         if name.startswith("lag") and partial and last - first < 8192:
             time.sleep(0.25)
         self.send_response(206 if partial else 200)
@@ -144,7 +148,7 @@ def box_script(lines=((0, 30),)):
     """An ASS script drawing a white box over BOX for each (start, end) in seconds, which
     libass renders without a font."""
     x, y, w, h = BOX
-    stamp = lambda t: "%d:%02d:%02d.00" % (t // 3600, t // 60 % 60, t % 60)
+    stamp = lambda t: "%d:%02d:%02d.%02d" % (t // 3600, t // 60 % 60, t % 60, round(t * 100) % 100)
     return ("[Script Info]\nScriptType: v4.00+\nPlayResX: 1280\nPlayResY: 720\n\n[V4+ Styles]\n"
             "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, "
             "Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, "
@@ -604,6 +608,20 @@ def main():
     streams = probe(MEDIA["lagsubs.mkv"])["streams"]
     items.append(row("13", "Lagsubs", "lagsubs.mkv", streams, os.path.getsize(MEDIA["lagsubs.mkv"]), 300,
                      subtitle=next(s for s in streams if s["codec_type"] == "subtitle"), subtitle_codec="ass"))
+    # The slow file with 120 lines packed into 6 s at 1:40, as an opening song's karaoke is.
+    MEDIA["lagdense.mkv"] = os.path.join(scratch, "lagdense.mkv")
+    dense = os.path.join(scratch, "dense.ass")
+    open(dense, "w").write(box_script(sorted([(start, start + 2) for start in range(0, 300, 2)]
+                                             + [(100 + n * 0.05, 100.05 + n * 0.05) for n in range(120)])))
+    subprocess.run([FFMPEG, "-v", "error", "-y", "-i", MEDIA["long.mkv"], "-i", dense, "-map", "0", "-map", "1", "-c", "copy",
+                    MEDIA["lagdense.mkv"]], check=True)
+    dense_streams = probe(MEDIA["lagdense.mkv"])["streams"]
+    items.append(row("15", "Lagdense", "lagdense.mkv", dense_streams, os.path.getsize(MEDIA["lagdense.mkv"]), 300,
+                     subtitle=next(s for s in dense_streams if s["codec_type"] == "subtitle"), subtitle_codec="ass"))
+    # The same file answered at full speed, for the read budget two sessions share.
+    MEDIA["burstsubs.mkv"] = MEDIA["lagsubs.mkv"]
+    items.append(row("14", "Burstsubs", "burstsubs.mkv", streams, os.path.getsize(MEDIA["lagsubs.mkv"]), 300,
+                     subtitle=next(s for s in streams if s["codec_type"] == "subtitle"), subtitle_codec="ass"))
     # The plain clip on its own, for a subtitle uploaded to rex.
     MEDIA["plain.mkv"] = plain
     items.append(row("10", "Plain", "plain.mkv", probe(plain)["streams"], os.path.getsize(plain), DURATION))
@@ -819,6 +837,30 @@ def main():
         check("s-lag: a segment past what was read when it was asked for carries its line",
               burned > 230, "luma %.0f (%s)" % (burned, status))
         get(port, "/video/:/transcode/universal/stop", [("session", "s-lag")])
+        # A player waiting on lines that read slower than they play is kept waiting a few
+        # seconds, not until they are all read: an opening song's karaoke held the player 51 s
+        # and its request timed out (Laid-Back Camp on the zen rig).
+        decision(port, "15", "s-dense", directStream="1", subtitles="auto")
+        get(port, "/video/:/transcode/universal/start.m3u8", plex_web_query("15", "s-dense", directStream="1", subtitles="auto"))
+        waits = []
+        for index in range(60):
+            begun = time.time()
+            status, _, _ = get(port, "/video/:/transcode/universal/session/s-dense/base/%05d.ts" % index)
+            waits.append((round(time.time() - begun, 1), index, status))
+        worst = max(waits)
+        check("s-dense: a player is not held long on lines read slower than they play",
+              worst[0] < 20 and all(status == 200 for _, _, status in waits), "longest wait %ss at segment %d (%s)" % worst)
+        get(port, "/video/:/transcode/universal/stop", [("session", "s-dense")])
+        # Two sessions of one title read its lines out of one budget: each with its own burst,
+        # a Real-Debrid file's reads were reset and the file held off (the zen rig, 2026-10-19).
+        for label in ("s-burst-a", "s-burst-b"):
+            decision(port, "14", label, directStream="1", subtitles="auto")
+            get(port, "/video/:/transcode/universal/start.m3u8", plex_web_query("14", label, directStream="1", subtitles="auto"))
+        time.sleep(3)
+        reads = len(SMALL_READS.get("burstsubs.mkv", []))
+        check("s-burst: two sessions of one title share its read budget", reads <= 110, "%d small reads in 3 s" % reads)
+        for label in ("s-burst-a", "s-burst-b"):
+            get(port, "/video/:/transcode/universal/stop", [("session", label)])
         walk(port, scratch, "capped", "1", "transcode", "copy", (640, 360),
              videoResolution="640x360", maxVideoBitrate="1000", directStream="1")
         # Audio only: the video is copied and the DTS the client refuses becomes AAC.

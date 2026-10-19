@@ -144,7 +144,7 @@ What it does not do:
 
 - Movies and TV only. Music and photo libraries stay empty
 - No Live TV or DVR
-- A converted stream keeps the subtitle you picked, except a text subtitle in a file other than MKV or MP4, or in a download for offline viewing. Plex for Android and iOS get a text subtitle as a track; every other app gets it drawn into the picture, as every app gets an image subtitle
+- A converted stream keeps the subtitle you picked, except a text subtitle in a file other than MKV or MP4, or in a download for offline viewing. Lines too dense to read in time, like an opening song's karaoke, can be left out the first time a title converts. Plex for Android and iOS get a text subtitle as a track; every other app gets it drawn into the picture, as every app gets an image subtitle
 - Playing outside your home needs a Plex Pass or Remote Watch Pass on the account you watch with, as with any Plex server: Plex Web asks for it before the play ever reaches rex (the other Plex apps were not tested). Converting video, GPU included, needs no Plex Pass
 
 ## License
