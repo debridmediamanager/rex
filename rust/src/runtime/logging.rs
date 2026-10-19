@@ -141,6 +141,15 @@ pub(crate) fn log(level: Level, message: &str) {
     if level == Level::Debug && !verbose() {
         return;
     }
+    // One message is one line: request text (a percent-decoded path, a client's `/log`
+    // message) carried line breaks that wrote lines of its choosing into Download Logs.
+    let escaped;
+    let message = if message.contains(['\r', '\n']) {
+        escaped = message.replace('\r', "\\r").replace('\n', "\\n");
+        escaped.as_str()
+    } else {
+        message
+    };
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default();

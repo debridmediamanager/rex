@@ -10258,7 +10258,12 @@ impl Runtime {
                 };
             }
             self.prefs.insert(key.clone(), value.clone());
-            info!("PREF {key} = {}", logging::py_str(value));
+            // The certificate's key is a secret, and the log is what people hand to support.
+            if key == "customCertificateKey" {
+                info!("PREF {key} = (set)");
+            } else {
+                info!("PREF {key} = {}", logging::py_str(value));
+            }
         }
         let written = typed
             .iter()
@@ -17179,7 +17184,8 @@ impl Runtime {
         // The oracle's unrouted tail: logged loudly and kept for `unrouted.log`, then
         // answered with the measured 404.
         let method = request.method.clone();
-        self.unknown.push(format!("{method} {path}"));
+        // `unrouted.log` is one request per line, as the log is.
+        self.unknown.push(format!("{method} {}", path.replace('\r', "\\r").replace('\n', "\\n")));
         if self.unknown.len() > 2000 {
             self.unknown.drain(..1000);
         }

@@ -432,7 +432,24 @@ def main():
              ("INFO", E("404 GET /photo/:/transcode -- rex: artwork unavailable"))],
             status=404)
 
+        # A line break a client sends in a path or a value is no line of the log's (audit
+        # 2026-10-20: a percent-decoded %0A wrote a forged line into Download Logs).
+        server.request("GET", "/nope%0AFORGED-LINE%20ERROR%20-%20forged")
+        server.request("POST", "/log?level=0&source=x&message=" + urllib.parse.quote("a\nFORGED-LINE too"))
+        # A secret setting's value is not written to the log support is handed.
+        server.request("PUT", "/:/prefs?customCertificateKey=SECRET-KEY-VALUE")
+
         lines = server.log_lines()
+        check("a line break in a request writes no line of its own",
+              not any(line.startswith("FORGED-LINE") for line in lines),
+              [line for line in lines if "FORGED-LINE" in line])
+        _, archive, _ = server.request("GET", "/diagnostics/logs")
+        unrouted = zipfile.ZipFile(io.BytesIO(archive)).read("unrouted.log").decode("utf-8", "replace")
+        check("nor in unrouted.log", not any(line.startswith("FORGED-LINE") for line in unrouted.splitlines()),
+              unrouted[-300:])
+        check("a secret setting's value stays out of the log",
+              not any("SECRET-KEY-VALUE" in line for line in lines),
+              [line for line in lines if "SECRET-KEY-VALUE" in line])
         startup = [line for line in lines if line.startswith("[MainThread] ")]
         check("the startup lines are the main thread's",
               any(line == "[MainThread] INFO - claim state: unclaimed" for line in startup)
