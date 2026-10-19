@@ -53,8 +53,8 @@ redirects are handled, and as many sources as you like feed the same libraries. 
 each registration, credential included, in `rex.db`, so a restart keeps playing before the
 source registers again.
 
-zurg does both with nothing but `rex_url` in its `config.yml` (step 6); add `dmm_api_key` so
-it also says what each file is. Anything else registers and pushes the same way:
+zurg does both with nothing but `rex_url` in its `config.yml` (step 6), and says what each file
+is from its name; add `dmm_api_key` so DMM says it instead. Anything else registers and pushes the same way:
 [`docs/feed-api.md`](feed-api.md) is the full contract, for writing a pusher of your own.
 
 Registering and pushing take no token, claimed or not, so a source may name rex by address
@@ -144,7 +144,9 @@ file.
   no candidates.
 - **What a file is comes from the source.** zurg with a sponsor `dmm_api_key` asks DMM what each
   file is and pushes it placed: the title's ids and, for an episode, TMDB's season and episode,
-  anime and long shows included. rex reads nothing off a name. A file pushed without a placement
+  anime and long shows included. Without the key zurg reads it off the release name: the title
+  through DMM's free title search, the season and episode from the file name. rex reads nothing
+  off a name. A file pushed without a placement
   is unmatched, for Fix Match: a film titled as its file, an episode in a show named after its
   release, season 1, numbered in the release's file order until the source places it. A TMDB id
   set by hand in zurg names its release too, as a title of its library's kind, trusted as given. Upgrading: `REX_ANIME_LISTS` and `REX_IMDB_EPISODES`
@@ -237,7 +239,7 @@ In each zurg's `config.yml` (zurg's [`docs/config.md`](https://github.com/debrid
 
 ```yaml
 rex_url: http://<rex's LAN IP>:32400   # turns on zurg's ffprobe analysis (whole library, then new releases)
-dmm_api_key: <your DMM API key>         # optional sponsor key: DMM says what each file is (step 4)
+dmm_api_key: <your DMM API key>         # optional sponsor key: DMM, not the name, says what each file is (step 4)
 rex_source: rd                          # optional: the name it registers as (default "zurg")
 ```
 
