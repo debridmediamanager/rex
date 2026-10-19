@@ -205,6 +205,8 @@ struct Target {
     host: String,
     port: u16,
     path: String,
+    /// Refuse every address of this host's own networks (`fetch_public`).
+    public: bool,
 }
 
 fn parse_url(url: &str) -> Option<Target> {
@@ -244,7 +246,7 @@ fn parse_url(url: &str) -> Option<Target> {
     if host.is_empty() {
         return None;
     }
-    Some(Target { tls, host, port, path })
+    Some(Target { tls, host, port, path, public: false })
 }
 
 /// Whether `url` is https, and its host (lowercase, IPv6 unbracketed); None for no URL `fetch` takes.
@@ -344,6 +346,10 @@ fn connect(target: &Target, timeout: Duration) -> Result<Conn, String> {
         .map_err(|error| format!("resolve {}: {error}", target.host))?;
     let mut last = format!("no address for {}", target.host);
     for address in addresses {
+        if target.public && own_network(address.ip()) {
+            last = format!("{} is on this host's own networks", target.host);
+            continue;
+        }
         match TcpStream::connect_timeout(&address, timeout) {
             Ok(stream) => {
                 let _ = stream.set_read_timeout(Some(timeout));
@@ -440,11 +446,23 @@ pub(super) fn open(
     body: &[u8],
     timeout: Duration,
 ) -> Result<Upstream, String> {
+    open_checked(method, url, headers, body, timeout, false)
+}
+
+fn open_checked(
+    method: &str,
+    url: &str,
+    headers: &[(&str, String)],
+    body: &[u8],
+    timeout: Duration,
+    public: bool,
+) -> Result<Upstream, String> {
     let mut url = url.to_string();
     let origin = parse_url(&url).map(|target| (target.tls, target.host, target.port));
     let mut headers = headers.to_vec();
     for _ in 0..10 {
-        let target = parse_url(&url).ok_or_else(|| format!("unsupported url {url:?}"))?;
+        let mut target = parse_url(&url).ok_or_else(|| format!("unsupported url {url:?}"))?;
+        target.public = public;
         // A source's credential is for the source: a redirect to another origin (a CDN, a
         // presigned link) goes without it, as curl and browsers send it. S3 refuses a
         // presigned URL that also carries one ("Only one auth mechanism allowed").
@@ -473,6 +491,29 @@ pub(crate) fn fetch(
     let mut response = open(method, url, headers, body, timeout)?;
     let payload = response.read_body(MAX_BODY_BYTES)?;
     Ok((response.status, response.headers, payload))
+}
+
+/// `fetch` for a url a client named (`/photo/:/transcode?url=`): it connects to no address
+/// of this host's own networks, after every redirect and on the address actually dialled,
+/// so a token holder cannot read rex's LAN through it (Plex2Shell's first step was this
+/// SSRF in a real PMS, 2026-10-19). Remote artwork is public by nature; a poster picked by
+/// url can live on any public host, so the hosts themselves are not listed.
+pub(crate) fn fetch_public(
+    method: &str,
+    url: &str,
+    headers: &[(&str, String)],
+    timeout: Duration,
+) -> Result<(u16, Vec<(String, String)>, Vec<u8>), String> {
+    let mut response = open_checked(method, url, headers, b"", timeout, true)?;
+    let payload = response.read_body(MAX_BODY_BYTES)?;
+    Ok((response.status, response.headers, payload))
+}
+
+/// A source's networks (`feed::source_peer`: loopback, RFC 1918, Tailscale, link-local
+/// with the cloud metadata address) plus `0.0.0.0`/`::`, which Linux dials as loopback.
+fn own_network(ip: std::net::IpAddr) -> bool {
+    let ip = ip.to_canonical();
+    super::feed::source_peer(ip) || ip.is_unspecified() || ip.is_multicast()
 }
 
 /// `urllib.parse.urlencode`'s escaper (`quote_plus`): unreserved bytes pass, a space
@@ -550,6 +591,26 @@ mod tests {
         for (location, expected) in cases {
             assert_eq!(redirect_url(&target, location), expected, "Location: {location}");
         }
+    }
+
+    #[test]
+    fn public_fetches_dial_nothing_on_this_hosts_networks() {
+        for (ip, own) in [
+            ("127.0.0.1", true), ("::1", true), ("0.0.0.0", true), ("::", true), ("10.0.0.5", true),
+            ("192.168.1.20", true), ("172.17.0.1", true), ("100.100.100.100", true),
+            ("169.254.169.254", true), ("fd7a:115c:a1e0::1", true), ("fe80::1", true),
+            ("::ffff:127.0.0.1", true), ("224.0.0.251", true),
+            ("8.8.8.8", false), ("2a00:1450:4001::1", false), ("::ffff:203.0.113.7", false),
+        ] {
+            assert_eq!(own_network(ip.parse().unwrap()), own, "{ip}");
+        }
+        let (url, release, thread) = stub(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok".to_vec(), false);
+        let error = fetch_public("GET", &url, &[], Duration::from_secs(1)).expect_err("loopback refused");
+        assert!(error.contains("own networks"), "{error}");
+        // The stub was never dialled: reach it once ourselves so its thread ends.
+        assert_eq!(fetch("GET", &url, &[], b"", Duration::from_secs(1)).expect("plain fetch").0, 200);
+        drop(release);
+        thread.join().expect("stub thread");
     }
 
     #[test]

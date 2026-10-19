@@ -220,7 +220,7 @@ fn held_key(source: &str, id: &str) -> String {
 /// A peer the source API answers, by its socket address alone (never `X-Forwarded-For` or
 /// `Host`): this host, the unclaimed gate's private networks, Tailscale's 100.64/10 and
 /// link-local, IPv4-mapped ones included.
-fn source_peer(peer: std::net::IpAddr) -> bool {
+pub(super) fn source_peer(peer: std::net::IpAddr) -> bool {
     let peer = peer.to_canonical();
     peer.is_loopback()
         || private_address(peer)

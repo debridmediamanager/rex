@@ -9,23 +9,19 @@ remains is behaviour.
 - a show library's `allLeaves` lists its episodes in broadcast order (`typed_rows`),
   which a season's index edit moves;
 - an offline timeline that marks a play watched writes its history row under the
-  playing client's device, not device 1;
-- a remote artwork fetch sends the oracle's urllib headers, with no `Accept`.
+  playing client's device, not device 1.
 
 Drives a real server process (`tests/server_command.py`).
 
     python3 tests/test_parity_residue.py
 """
 import http.client
-import http.server
 import json
 import os
 import socket
 import subprocess
 import sys
-import threading
 import time
-import urllib.parse
 
 from server_command import server_command
 
@@ -96,23 +92,6 @@ def start():
     raise SystemExit("server did not start")
 
 
-class Stub(http.server.BaseHTTPRequestHandler):
-    """A remote image host that remembers the header names of each fetch."""
-    seen = []
-
-    def do_GET(self):
-        Stub.seen.append([name.lower() for name in self.headers.keys()])
-        body = b"\xff\xd8\xff\xe0" + b"\0" * 60
-        self.send_response(200)
-        self.send_header("Content-Type", "image/jpeg")
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
-
-    def log_message(self, *args):
-        pass
-
-
 def run(port):
     # mediaCount on a show: each episode's versions, matched as a list.
     def size(query):
@@ -162,19 +141,6 @@ def run(port):
     check("a split row keeps its own item setting when the source's is cleared",
           created and values.get("1007") is None
           and all(values.get(key) == "1" for key in created), values)
-
-    # A remote artwork fetch: the oracle's urllib request carries no Accept header.
-    stub = http.server.HTTPServer(("127.0.0.1", 0), Stub)
-    threading.Thread(target=stub.serve_forever, daemon=True).start()
-    try:
-        url = "http://127.0.0.1:%d/poster.jpg" % stub.server_address[1]
-        status, _ = request(port, "GET", "/photo/:/transcode?width=100&height=100&url=%s"
-                            % urllib.parse.quote(url, safe=""))
-    finally:
-        stub.shutdown()
-    check("a remote artwork fetch sends no Accept header",
-          status == 200 and Stub.seen and all("accept" not in names for names in Stub.seen),
-          "status %s, headers %s" % (status, Stub.seen))
 
 
 def main():
