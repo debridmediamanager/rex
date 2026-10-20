@@ -274,6 +274,17 @@ def main():
         check("a server on one address becomes running",
               wait_for(lambda: manager.api("GET", "/servers/sixer")[1]["status"] == "running", 60),
               manager.api("GET", "/servers/sixer")[1])
+        # A start sent while a stop is still waiting for the server to exit: it was dropped, and
+        # the server stayed stopped with nothing said.
+        import threading
+        stopping = threading.Thread(target=lambda: manager.api("POST", "/servers/sixer/stop"))
+        stopping.start()
+        time.sleep(0.05)
+        manager.api("POST", "/servers/sixer/start")
+        stopping.join()
+        check("a start sent during a stop leaves the server running",
+              wait_for(lambda: manager.api("GET", "/servers/sixer")[1]["status"] == "running", 60),
+              manager.api("GET", "/servers/sixer")[1])
         manager.api("POST", "/servers/sixer/stop")
 
         logs = manager.api("GET", "/servers/alpha/logs?lines=500")[1]["lines"]

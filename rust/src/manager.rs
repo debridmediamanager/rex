@@ -680,7 +680,10 @@ impl Manager {
     fn start(&self, name: &str) -> Answer<Value> {
         let mut inner = self.lock();
         let row = inner.row(name)?;
-        if !inner.procs.contains_key(name) {
+        if inner.procs.contains_key(name) {
+            // Still stopping: the stop starts it again once its server is gone, as asked.
+            inner.update(name, &[("desired", s("running"))])?;
+        } else {
             inner.failures.remove(name);
             inner.update(name, &[("desired", s("running"))])?;
             if let Err(refused) = self.spawn(&mut inner, name) {
@@ -709,6 +712,11 @@ impl Manager {
             Some(proc) if inner.procs.get(name).is_some_and(|held| Arc::ptr_eq(&held.child, &proc.child)) => {
                 inner.procs.remove(name);
                 inner.update(name, &[("pid", Sql::Null), ("status", s("stopped")), ("last_exit", opt(describe_exit(code)))])?;
+                // A start arrived while this one waited for the exit: it was dropped, and the
+                // server stayed stopped with nothing said.
+                if !keep_desired && inner.row(name)?.desired == "running" {
+                    self.spawn(&mut inner, name)?;
+                }
             }
             None => {
                 if inner.row(name)?.status != "failed" {
