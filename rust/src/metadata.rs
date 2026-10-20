@@ -3,24 +3,9 @@
 use std::collections::HashMap;
 
 use serde_json::{json, Map, Value};
-use sha1::{Digest, Sha1};
 
 fn put(row: &mut Map<String, Value>, key: &str, value: impl Into<Value>) {
     row.insert(key.to_string(), value.into());
-}
-fn sha1_hex(text: &str) -> String {
-    let mut h = Sha1::new();
-    h.update(text.as_bytes());
-    format!("{:x}", h.finalize())
-}
-
-// "plexsim" is the pre-rename namespace, frozen: changing it re-mints every id it seeds.
-pub fn plex_guid(kind: &str, seed: &str) -> String {
-    format!(
-        "plex://{}/{}",
-        kind,
-        &sha1_hex(&format!("plexsim/{}/{}", kind, seed))[..24]
-    )
 }
 
 /// Provider calls required by the GUID relinker.  The core transformation
@@ -263,20 +248,22 @@ pub fn apply_plex_guids_recorded(items: &mut [Value], recorded: &Value) -> usize
     apply_plex_guids_with_provider(items, &mut provider)
 }
 
-fn value_truthy(value: &Value) -> bool {
+/// Python's truthiness for a JSON value: null, false, 0, "" and empty containers are false.
+/// The oracle read most optional fields this way; every module reads them through this.
+pub fn truthy(value: &Value) -> bool {
     match value {
         Value::Null => false,
-        Value::Bool(value) => *value,
-        Value::Number(value) => value.as_f64().is_some_and(|value| value != 0.0),
-        Value::String(value) => !value.is_empty(),
-        Value::Array(value) => !value.is_empty(),
-        Value::Object(value) => !value.is_empty(),
+        Value::Bool(flag) => *flag,
+        Value::Number(number) => number.as_f64().is_some_and(|value| value != 0.0),
+        Value::String(text) => !text.is_empty(),
+        Value::Array(items) => !items.is_empty(),
+        Value::Object(map) => !map.is_empty(),
     }
 }
 
 /// A provider field that says something: a non-empty string or a number.
 fn said<'a>(row: &'a Value, field: &str) -> Option<&'a Value> {
-    row.get(field).filter(|value| value_truthy(value))
+    row.get(field).filter(|value| truthy(value))
 }
 
 /// The provider sends `year` as a number or a string (tests/fixtures/provider/matches.json).
@@ -306,7 +293,7 @@ fn tags(row: &Value, field: &str, limit: usize) -> Option<Vec<Value>> {
             let entry = entry.as_object()?;
             let mut tag = Map::new();
             for key in ["tag", "role", "thumb"] {
-                if let Some(value) = entry.get(key).filter(|value| value_truthy(value)) {
+                if let Some(value) = entry.get(key).filter(|value| truthy(value)) {
                     tag.insert(key.to_string(), value.clone());
                 }
             }
@@ -499,11 +486,4 @@ mod tests {
         assert_eq!((&unknown["guid"], &unknown["_show_title"]), (&json!("local://100002"), &show["title"]));
     }
 
-    #[test]
-    fn guid() {
-        assert_eq!(
-            plex_guid("movie", "tt1254207"),
-            "plex://movie/c18b41265ec9c09e0042e95d"
-        );
-    }
 }

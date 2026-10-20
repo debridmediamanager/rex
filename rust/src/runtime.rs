@@ -25900,18 +25900,7 @@ fn statistics_bucket(timestamp: i64, timespan: i64) -> i64 {
     crate::platform::local_mktime(&mut local)
 }
 
-/// Python's truthiness for a JSON value: null, false, 0, "" and empty containers
-/// are false. The Python oracle reads most optional fields this way.
-fn truthy(value: &Value) -> bool {
-    match value {
-        Value::Null => false,
-        Value::Bool(flag) => *flag,
-        Value::Number(number) => number.as_f64().is_some_and(|value| value != 0.0),
-        Value::String(text) => !text.is_empty(),
-        Value::Array(items) => !items.is_empty(),
-        Value::Object(map) => !map.is_empty(),
-    }
-}
+use crate::metadata::truthy;
 
 /// An integer out of a JSON number or a numeric string, the way `int(x)` reads the
 /// Python rows (whose indexes are sometimes stored as strings).

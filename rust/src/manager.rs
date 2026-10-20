@@ -129,14 +129,7 @@ fn now() -> f64 {
 
 /// Python's truthiness of a JSON value.
 fn truthy(value: Option<&Value>) -> bool {
-    match value {
-        None | Some(Value::Null) => false,
-        Some(Value::Bool(flag)) => *flag,
-        Some(Value::Number(number)) => number.as_f64() != Some(0.0),
-        Some(Value::String(text)) => !text.is_empty(),
-        Some(Value::Array(rows)) => !rows.is_empty(),
-        Some(Value::Object(members)) => !members.is_empty(),
-    }
+    value.is_some_and(crate::metadata::truthy)
 }
 
 fn text<'a>(config: &'a Map<String, Value>, field: &str) -> Option<&'a str> {

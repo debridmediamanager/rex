@@ -61,14 +61,6 @@ pub fn uuid(seed: &str) -> String {
     // "plexsim" is the pre-rename namespace, frozen: changing it re-mints every id it seeds.
     sha1_hex(&format!("plexsim/{}", seed))
 }
-// "plexsim" is the pre-rename namespace, frozen: changing it re-mints every id it seeds.
-pub fn plex_guid(kind: &str, seed: &str) -> String {
-    format!(
-        "plex://{}/{}",
-        kind,
-        &sha1_hex(&format!("plexsim/{}/{}", kind, seed))[..24]
-    )
-}
 
 pub fn sections(name: &str) -> Vec<Value> {
     vec![

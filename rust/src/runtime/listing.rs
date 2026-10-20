@@ -5,19 +5,8 @@ use super::resume::int_param;
 use super::*;
 
 /// Filter names every listing refuses with a 500 (cycles 15, 18, 45, 53).
-const REFUSED_FILTER_FIELDS: &[&str] = &[
-    "parentIndex",
-    "theme",
-    "banner",
-    "art",
-    "thumb",
-    "slug",
-    "extraType",
-    "userFields",
-];
-const RESOLUTIONS: &[&str] = &[
-    "sd", "480", "576", "720", "1080", "2k", "2.7k", "4k", "8k", "16k",
-];
+use super::resume::REFUSED_FILTER_FIELDS;
+use crate::filters::RESOLUTIONS;
 /// The fields `group=` accepts, probed one at a time against the reference.
 const GROUPABLE: &[&str] = &[
     "title",

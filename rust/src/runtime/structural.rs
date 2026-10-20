@@ -185,16 +185,7 @@ const FILTER_FIELDS: &[&str] = &[
 /// Cycle 55: these four fields, the refused filter fields and `leafCount` are 500s at
 /// the parse on both references.
 const UNGROUPABLE: &[&str] = &["hdr", "duplicate", "unmatched", "inProgress", "leafCount"];
-const REFUSED_FILTER_FIELDS: &[&str] = &[
-    "parentIndex",
-    "theme",
-    "banner",
-    "art",
-    "thumb",
-    "slug",
-    "extraType",
-    "userFields",
-];
+use super::resume::REFUSED_FILTER_FIELDS;
 
 #[derive(Clone, Copy)]
 struct Parse {

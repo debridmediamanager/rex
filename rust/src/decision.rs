@@ -66,14 +66,7 @@ fn text(value: Option<&Value>) -> Option<&str> {
 
 /// Python's truth test is used by the reference for optional profile fields.
 fn truthy(value: Option<&Value>) -> bool {
-    match value {
-        None | Some(Value::Null) => false,
-        Some(Value::Bool(value)) => *value,
-        Some(Value::Number(value)) => value.as_f64().is_some_and(|number| number != 0.0),
-        Some(Value::String(value)) => !value.is_empty(),
-        Some(Value::Array(value)) => !value.is_empty(),
-        Some(Value::Object(value)) => !value.is_empty(),
-    }
+    value.is_some_and(crate::metadata::truthy)
 }
 
 fn number(value: Option<&Value>) -> Option<f64> {

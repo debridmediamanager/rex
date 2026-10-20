@@ -12,13 +12,7 @@ use super::*;
 pub(super) const PLAYLIST_BASE: i64 = 40000;
 
 /// A list's per-user state, spliced in after `composite` (or `playlistType`).
-const LIST_STATE: &[&str] = &[
-    "userRating",
-    "viewOffset",
-    "viewCount",
-    "lastViewedAt",
-    "lastRatedAt",
-];
+use super::collections::LIST_STATE;
 
 impl Runtime {
     pub(super) fn playlist_columns(&self, id: &str) -> Map<String, Value> {

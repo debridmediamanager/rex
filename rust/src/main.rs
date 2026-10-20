@@ -616,12 +616,6 @@ fn run_core(command: &str, args: &[String]) -> Result<(), String> {
             let input = required(&options, "--input")?;
             print_json(&xmlout::ordered(&read_json(input)?, None))
         }
-        "guid" => {
-            let options = parse_core_args(args, &["--kind", "--seed"])?;
-            let kind = required(&options, "--kind")?;
-            let seed = required(&options, "--seed")?;
-            print_json(&serde_json::json!({"guid":metadata::plex_guid(kind,seed)}))
-        }
         "provider-guids" => {
             let options = parse_core_args(args, &["--items", "--recorded"])?;
             let items_path = required(&options, "--items")?;

@@ -21,7 +21,7 @@ fn member_type_number(subtype: &str) -> i64 {
 
 /// The per-user state a list row carries, in this order and spliced in after its
 /// `ratingCount` (cycle 21).
-const LIST_STATE: &[&str] = &[
+pub(super) const LIST_STATE: &[&str] = &[
     "userRating",
     "viewOffset",
     "viewCount",

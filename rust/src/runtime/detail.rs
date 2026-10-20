@@ -8,13 +8,7 @@
 
 use super::*;
 
-fn unmatched_or_none_guid(row: &Value) -> bool {
-    row.get("guid").and_then(Value::as_str).is_some_and(|guid| {
-        guid.starts_with("local://")
-            || guid.starts_with("tv.plex.agents.none://")
-            || guid.starts_with("none://")
-    })
-}
+use super::showprefs::unmatched_or_none_guid;
 
 impl Runtime {
     pub(super) fn apply_detail_blocks(

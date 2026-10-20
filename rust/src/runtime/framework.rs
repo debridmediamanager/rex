@@ -180,15 +180,6 @@ fn xml_quote(value: &str) -> String {
     format!("\"{}\"", xml_text(value))
 }
 
-/// Python's `repr()` of a text value, which the framework's ValueError quotes.
-fn python_repr(value: &str) -> String {
-    if value.contains('\'') && !value.contains('"') {
-        format!("\"{value}\"")
-    } else {
-        format!("'{}'", value.replace('\\', "\\\\").replace('\'', "\\'"))
-    }
-}
-
 /// The framework's own sidecar tables, read once.
 struct FrameworkTables {
     bundles: Value,
@@ -1325,7 +1316,7 @@ impl Runtime {
                 } else {
                     "valueerror_config"
                 },
-                &[("value", python_repr(media_type))],
+                &[("value", crate::filters::py_repr(media_type))],
             );
         };
         let Some(media_class) = legacy_media_class(number) else {
@@ -1436,7 +1427,7 @@ impl Runtime {
             return Self::legacy_agent_error(
                 tables,
                 "valueerror_contributors",
-                &[("value", python_repr(media_type))],
+                &[("value", crate::filters::py_repr(media_type))],
             );
         };
         if legacy_media_class(number).is_none() {

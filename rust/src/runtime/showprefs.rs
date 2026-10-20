@@ -6,7 +6,9 @@
 
 use super::*;
 
-fn unmatched_guid(row: &Value) -> bool {
+/// A row matched to nothing: never matched (`local://`), unmatched (`tv.plex.agents.none://`)
+/// or the none agent's (`none://`). The Guid gate's set is `resume::unmatched_guid`.
+pub(super) fn unmatched_or_none_guid(row: &Value) -> bool {
     row.get("guid").and_then(Value::as_str).is_some_and(|guid| {
         guid.starts_with("local://")
             || guid.starts_with("tv.plex.agents.none://")
@@ -144,7 +146,7 @@ impl Runtime {
             .and_then(Value::as_str)
             .unwrap_or("")
             .to_string();
-        let unmatched = unmatched_guid(row);
+        let unmatched = unmatched_or_none_guid(row);
         let mut settings = self
             .item_pref_settings(&kind)
             .iter()
