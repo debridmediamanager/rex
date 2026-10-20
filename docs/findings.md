@@ -13466,14 +13466,12 @@ verdicts, is `tests/fixtures/subtitles/sync_corpus.json.gz`.
 **What rex does** (`rust/src/runtime/subtitles.rs`):
 
 - The search asks Plex's provider exactly as the PMS does, only once claimed and without
-  `plexHash`, and each addon in `REX_SUBTITLE_ADDONS` (`GET {base}/subtitles/{movie|series}/{imdb
-  or imdb:season:episode}/videoHash=&videoSize=&filename=.json`, ISO 639-2 with `pob` for pt-BR),
-  with the lock released. The OpenSubtitles hash is read through the Part's source and kept on the
-  Part (`_osHash`). The IMDb id is the one the rows hold (an episode's show's): rex identifies
-  nothing. The candidates are merged and ranked by analyze.py's release-name ranking (a hash match
-  +3, another frame rate -2, mojibake -1, hearing-impaired -0.1), answered as the reference's rows;
-  an addon's row carries the addon's own name and no score. With no claim and no addon, the empty
-  container it always answered and nothing asked. `mediaItemID` picks the Media; `title`,
+  `plexHash`, with the lock released, and no one else: Stremio addons were built and taken out
+  again before they shipped (Ben, 2026-10-20: not offered for now; `REX_SUBTITLE_ADDONS` is not
+  read). The OpenSubtitles hash is read through the Part's source and kept on the Part
+  (`_osHash`). The candidates are ranked by analyze.py's release-name ranking (mojibake -1,
+  hearing-impaired -0.1; its hash and frame-rate terms read fields only addons list), answered
+  as the reference's rows. Unclaimed, the empty container it always answered and nothing asked. `mediaItemID` picks the Media; `title`,
   `minimumScore`, `hearingImpaired` and `forced` are not read (unmeasured).
 - The apply answers as the reference does, and off the lock downloads that candidate (one request
   at a time per host, a 429's `Retry-After` waited out), stores it as UTF-8 (a BOM dropped,
@@ -13502,13 +13500,14 @@ verdicts, is `tests/fixtures/subtitles/sync_corpus.json.gz`.
 fixture's energy masks and cues; a pick is right when its truth is in sync and rex left it alone,
 or rex corrected it by the truth's ratio and an offset within 0.5 s of the truth's):
 
-| | English (77) | Brazilian Portuguese (49) |
+| | English (76) | Brazilian Portuguese (49) |
 |---|---|---|
-| Plex's first result in sync | 41 (53%) | 22 (45%) |
-| rex's pick right | 56 (73%) | 34 (69%) |
+| Plex's first result in sync | 41 (54%) | 22 (45%) |
+| rex's pick right, from Plex's candidates alone | 56 (74%) | 38 (78%) |
 
-Of the 491 candidates rex measured, Silero and rex's meter both read 179 and agreed on 176; rex
-called none in sync that Silero called off.
+Of the 408 candidates rex measured, Silero and rex's meter both read 148 and agreed on 146; rex
+called none in sync that Silero called off. With the addon's candidates too the picks were 56 of
+77 and 34 of 49: its rows, many timed for another frame rate, cost more than they added.
 
 - **The first corpus read a fraction with a leading zero as hundreds of milliseconds**
   (`int(str(int(g)).ljust(3, '0'))`: `,050` was 500 ms), about one cue in ten. measure.py reads it
@@ -13519,5 +13518,6 @@ called none in sync that Silero called off.
   One with a text track reads only the track's index: the file's head, its Tracks and its Cues
   (a Matroska `CueDuration` or an MP4 sample table gives each line's length).
 
-`tests/test_subtitles.py` drives all of it against stub providers, a stub addon and two real clips
+`tests/test_subtitles.py` drives all of it against a stub provider, a stub addon it checks is never
+asked, and two real clips
 FFmpeg makes (one with an embedded text track, one whose audio is tone bursts on its dialogue).

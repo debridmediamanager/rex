@@ -97,7 +97,7 @@ Where things live in `rust/src/`:
 | `runtime/upstream.rs` | The HTTP/HTTPS client (rustls, system roots) behind zurg, provider redirects, Plex's metadata agent and artwork |
 | `runtime/source.rs`, `runtime/feed.rs`, `runtime/scan.rs` | Sources (registered over `PUT /rex/sources/{name}`, kept in the state file, deleted with a confirmation: where a Part's bytes are), the feed API sources push items to, open to any peer on a private network (`feed::source_peer`, `docs/feed-api.md`), and the rows those items become: added, held until probed, filled, re-identified, trashed, keys minted once (`mint_key`); a show's file its source did not place is numbered in its release's file order (`number_unplaced`), never by its name |
 | `runtime/universal.rs` | The video transcoder (`REX_TRANSCODER`): the conversion decision's plan and Media, `start.m3u8`/`start.mpd`, segments served outside the runtime lock, one FFmpeg per session with the hardware ladder, seeks, throttling and the idle reaper, and the `TranscodeSession` rows |
-| `runtime/subtitles.rs` | Subtitle search, apply and automatic subtitles: Plex's provider (`streams/matches`, claimed only) and the Stremio addons `REX_SUBTITLE_ADDONS` names, ranked by release name, each kept candidate measured against the release (its embedded text track through `mkvsubs`, else with `REX_TRANSCODER` six 90 s audio windows), corrected by a shift or a frame-rate ratio and stored as UTF-8 (`_content`); automatic jobs start on the detail request and play-queue creation, only a play's reads audio (a detail request's unchecked pick is checked and fixed in place on play), and the decision waits up to 3 s for one (findings, "Subtitle search and automatic subtitles") |
+| `runtime/subtitles.rs` | Subtitle search, apply and automatic subtitles: Plex's provider alone (`streams/matches`, claimed only; no addons), ranked by release name, each kept candidate measured against the release (its embedded text track through `mkvsubs`, else with `REX_TRANSCODER` six 90 s audio windows), corrected by a shift or a frame-rate ratio and stored as UTF-8 (`_content`); automatic jobs start on the detail request and play-queue creation, only a play's reads audio (a detail request's unchecked pick is checked and fixed in place on play), and the decision waits up to 3 s for one (findings, "Subtitle search and automatic subtitles") |
 | `runtime/plexmeta.rs`, `identify.rs` | Plex's metadata agent (the claim's server token), and which title a release is: the ids its source placed it with, or a TMDB id set by hand at the source (`placed`; `scan::identified_by`), asking Plex's agent for its guid by external id, whose answer and children rows are all a row shows (`metadata::describe`); nothing is read off a name, and what arrives with neither stays for Fix Match, which searches Plex's agent |
 | `runtime/plextv.rs` | claim/heartbeat/account state (`REX_PLEXTV_URL` points plex.tv and Plex's agent at a stub) |
 | `runtime/rexdirect.rs` | rex-direct, a plex.direct of rex's own (`docs/rex-direct-api.md`): on by default, once claimed it registers the machineIdentifier with the claim's server token at its provider (`REX_DIRECT_URL`, DMM's by default, `off`, https or loopback only; `REX_DIRECT_KEY` an optional bearer key), serves the certificate it answers by SNI beside `--tls-cert`'s (`Certificates`, the TLS port's cert resolver), appends `https://<name>:<REX_DIRECT_PORT or --port>` to the announce, keeps the answer in `rex-direct.json`, and registers again every 6 h (10 min after a failure, a 202's `retryAfter` within 15 s..10 min); unclaimed it waits in `PlexTv::direct` for the claim (`plextv::finish_claim`) |
@@ -180,12 +180,11 @@ feed, is rex's own, and only its wire shapes are the reference's (`tests/fixture
 requests). Segment lengths, encoder settings and the MPD's `minBufferTime` are ours, chosen
 by measurement (findings, "The universal transcoder").
 
-Search Subtitles (`GET .../subtitles?language=`) asks Plex's provider as a claimed PMS does and
-every Stremio subtitle addon `REX_SUBTITLE_ADDONS` names (comma-separated base urls), answering the
-merged, ranked candidates as the reference's rows (`tests/fixtures/subtitles/plex_search_apply_s143.json`);
+Search Subtitles (`GET .../subtitles?language=`) asks Plex's provider as a claimed PMS does, and
+nobody else, answering its ranked candidates as the reference's rows (`tests/fixtures/subtitles/plex_search_apply_s143.json`);
 its apply (`PUT .../subtitles?key=`) downloads, measures, corrects and keeps one as plexlab's PMS
 answers it. An account whose plex.tv settings show subtitles gets one found on the item's detail
-request or play queue. With no claim and no addon nothing is asked. rex measures, it does not
+request or play queue. Unclaimed nothing is asked. rex measures, it does not
 guess: the pick and the meter are tested against 1,694 real candidates
 (`tests/fixtures/subtitles/sync_corpus.json.gz`, `probes/subsbench/`).
 
@@ -578,7 +577,7 @@ python3 tests/test_unclaimed_gate.py        # what an unclaimed server answers: 
 python3 tests/test_photo_ssrf.py            # /photo/:/transcode?url= dials nothing on rex's own networks (loopback, LAN, 0.0.0.0)
 python3 tests/test_accept_exhaustion.py     # out of descriptors the accept loop idles and serves again after (Unix; spins only on Linux)
 python3 tests/test_track_prefs.py           # a real Part starts on its account's plex.tv audio/subtitle languages; a hand pick stays that account's
-python3 tests/test_subtitles.py             # subtitle search, apply and automatic subtitles against a stub provider, addon and two
+python3 tests/test_subtitles.py             # subtitle search, apply and automatic subtitles against a stub provider and two
                                             # FFmpeg-made clips: the reference's rows, activity and requests, a late subtitle moved
                                             # onto the audio, mojibake put back, the decision waiting; nothing asked unclaimed; needs ffmpeg
 python3 tests/test_accounts.py              # plexlab's owner and shared user replayed: per-account watch state, ratings, playlists,

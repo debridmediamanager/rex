@@ -7,7 +7,8 @@ and its Stream rows, the apply `PUT .../subtitles?key=/library/streams/{id}&...`
 with `X-Plex-Activity`, the `subtitle.download` activity started and ended, the applied Stream
 row, its bytes, its delete, and the PMS's own calls to Plex's provider. Here the provider is a
 stub behind `REX_PLEXTV_URL` (its `streams/matches` and its download's 302), beside a stub
-Stremio subtitle addon (`REX_SUBTITLE_ADDONS`) and a stub source serving two small real clips
+Stremio subtitle addon named in `REX_SUBTITLE_ADDONS`, which rex must never ask (addons are not
+offered, Ben 2026-10-20), and a stub source serving two small real clips
 FFmpeg makes: a film with an embedded English text track, and an episode with no text track
 whose audio is tone bursts on its dialogue's timing, which rex reads with `REX_TRANSCODER`.
 
@@ -437,8 +438,8 @@ def main():
               (read_cues(text)[:3], film_cues[:3]))
         asked = [query for path, query, _ in stub.subtitle_calls() if path.endswith("/streams/matches")]
         check("Plex's provider was asked in pt-BR, as the measured request", asked and dict(asked[0]).get("lang") == "pt-BR", asked)
-        check("the addon was asked in pob for the film's IMDb id",
-              any(path.startswith("/addon/subtitles/movie/tt0103827/") for path, _, _ in stub.subtitle_calls()),
+        check("the addon REX_SUBTITLE_ADDONS names is never asked",
+              not any(path.startswith("/addon") for path, _, _ in stub.subtitle_calls()),
               [path for path, _, _ in stub.subtitle_calls()])
 
         # -- the episode: no text track, measured against its audio ------------------------------
@@ -459,12 +460,10 @@ def main():
         rows = container.get("Stream") or []
         expected_keys = list(REFERENCE["client"]["search"]["body"]["MediaContainer"])
         check("the search answers the reference's container", status == 200 and list(container) == expected_keys
-              and container.get("size") == 3, (status, list(container), container.get("size")))
+              and container.get("size") == 2, (status, list(container), container.get("size")))
         shape = list(REFERENCE["client"]["search"]["body"]["MediaContainer"]["Stream"][0])
-        check("every row is the reference's search row", rows and all(list(row) == shape or list(row) == [k for k in shape if k != "score"]
-                                                                      for row in rows), [list(row) for row in rows])
-        check("the addon's row matching the release's hash ranks first, named by the addon",
-              rows and rows[0].get("providerTitle") == ADDON_NAME and rows[0].get("languageCode") == "eng", rows[:1])
+        check("every row is the reference's search row", rows and all(list(row) == shape for row in rows),
+              [list(row) for row in rows])
         provider = [row for row in rows if row.get("providerTitle") == "OpenSubtitles"]
         check("Plex's rows keep the provider's id as sourceKey and its score as a string",
               sorted(row.get("sourceKey") for row in provider) == ["/library/streams/82001", "/library/streams/82002"]
@@ -485,11 +484,8 @@ def main():
                   headers)
         else:
             check("the provider was asked", False, stub.subtitle_calls())
-        addon = [(path, headers) for path, _, headers in stub.subtitle_calls() if path.startswith("/addon/subtitles/")]
-        check("the addon is asked for the episode by its show's IMDb id, season and episode, with the hash",
-              addon and addon[0][0].startswith("/addon/subtitles/series/tt0397306:5:7/videoHash=%s&videoSize=%d&filename="
-                                               % (os_hash(show), os.path.getsize(show)))
-              and addon[0][1].get("user-agent"), addon)
+        check("and never the addon", not any(path.startswith("/addon") for path, _, _ in stub.subtitle_calls()),
+              [path for path, _, _ in stub.subtitle_calls()])
         status, again = server.request(search)
         ids = {row["id"] for row in rows}
         again_ids = {row["id"] for row in ((again or {}).get("MediaContainer") or {}).get("Stream") or []}
@@ -601,17 +597,11 @@ def main():
             rows = ((found or {}).get("MediaContainer") or {}).get("Stream") or []
             time.sleep(1.0)
             calls = [path for path, _, _ in stub.subtitle_calls()]
-            if not addons:
-                check("unclaimed and with no addon: the search answers its empty container and nothing is asked",
-                      status == 200 and list((found or {}).get("MediaContainer") or {}) == ["size", "identifier", "mediaTagPrefix",
-                                                                                            "mediaTagVersion"]
-                      and calls == [], (status, found, calls))
-            else:
-                check("unclaimed with an addon: only the addon is asked, never Plex's provider",
-                      not any("/library/streams/" in path for path in calls)
-                      and any(path.startswith("/addon/subtitles/") for path in calls), calls)
-                check("and its rows are the addon's", status == 200 and rows and all(r.get("providerTitle") == ADDON_NAME for r in rows),
-                      rows)
+            check("unclaimed%s: the search answers its empty container and nothing is asked"
+                  % (" with REX_SUBTITLE_ADDONS set" if addons else ""),
+                  status == 200 and list((found or {}).get("MediaContainer") or {}) == ["size", "identifier", "mediaTagPrefix",
+                                                                                        "mediaTagVersion"]
+                  and calls == [], (status, found, calls))
         finally:
             server.stop()
     stub.httpd.shutdown()

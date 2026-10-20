@@ -589,15 +589,8 @@ conversion ends.
 
 ## Subtitles
 
-Search Subtitles in a Plex app asks Plex's own subtitle provider once rex is claimed, and every
-Stremio subtitle addon named in `REX_SUBTITLE_ADDONS`:
-
-```bash
-export REX_SUBTITLE_ADDONS=https://opensubtitles-v3.strem.io   # comma-separated; an addon's manifest URL works too
-```
-
-Under run.sh or systemd, put it in `rex.env`, as with the transcoder. With no claim and no addon,
-rex asks nobody and the search lists nothing.
+Search Subtitles in a Plex app asks Plex's own subtitle provider once rex is claimed. There is
+nothing to set up. Unclaimed, rex asks nobody and the search lists nothing.
 
 The subtitles named most like your file come first. When you pick one, rex checks it against the
 file before keeping it: against the file's own text subtitle when it has one, otherwise, with

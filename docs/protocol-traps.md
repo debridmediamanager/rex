@@ -574,8 +574,8 @@ are changing; replay the client's exact request before altering behavior.
 - **A provider subtitle's Stream row puts `key` second**, `format`, `providerTitle`, `score` and
   `sourceKey` after its language, and `transient`/`userID` after its title (the `Stream` order
   in `xmlout.rs`). An account's settings read its `languageTag` `eng` as `en`.
-- **Plex's provider downloads and Stremio addons answer 429 to parallel requests**: one request
-  per host at a time, honouring `Retry-After`.
+- **Plex's provider downloads answer 429 to parallel requests**: one request per host at a time,
+  honouring `Retry-After`.
 - **Provider subtitle files can be mojibake** (UTF-8 read as Windows-1252 and saved as UTF-8:
   `â™ª`), or Windows-1252: rex stores UTF-8 and serves it as `text/html`.
 - **The playback decision waits for an item's subtitle job** (up to 3 s, the lock released):

@@ -13,7 +13,7 @@ rex gets its library from whatever you point at it. Each source sends rex the li
 - Watched state, Continue Watching, playlists, collections, edits and Fix Match all work and survive a restart
 - Apps on your home network find it on their own when it runs on port 32400
 - Files play in their original quality. With FFmpeg (set `REX_TRANSCODER`, see [Transcoding](docs/setup.md#transcoding)) it also converts what a device cannot play, and a GPU makes that fast. A 1080p film converted on a small Intel GPU starts in about 2 seconds
-- Search Subtitles finds subtitles from Plex's own provider and, with `REX_SUBTITLE_ADDONS`, from Stremio subtitle addons. rex checks the one you pick against the file and moves it onto the file when it finds it out of sync, and when an account is set to show subtitles and a title has none in its language, rex looks for one before playback starts. See [Subtitles](docs/setup.md#subtitles)
+- Search Subtitles finds subtitles from Plex's own provider. rex checks the one you pick against the file and moves it onto the file when it finds it out of sync, and when an account is set to show subtitles and a title has none in its language, rex looks for one before playback starts. See [Subtitles](docs/setup.md#subtitles)
 - Several sources can fill the same Movies and TV libraries. Two zurgs on two debrid accounts end up in one library
 - When a source reports a file gone it leaves the library the same way it would in Plex
 

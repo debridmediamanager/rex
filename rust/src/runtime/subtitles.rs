@@ -1,5 +1,5 @@
-//! Subtitle search and automatic subtitles: Plex's own provider and Stremio subtitle addons,
-//! each candidate measured against the release and corrected before it is kept.
+//! Subtitle search and automatic subtitles from Plex's own provider, each candidate measured
+//! against the release and corrected before it is kept.
 //!
 //! Measured 2026-10-20 (`probes/subsbench/README.md`, `tests/fixtures/subtitles/`): Plex's first
 //! result is in sync for about half the releases that have a readable candidate, and every
@@ -439,7 +439,7 @@ pub(crate) fn retime(text: &str, factor: f64, offset: f64) -> String {
 
 // -- the OpenSubtitles hash ---------------------------------------------------------------
 
-/// The hash Plex's provider and the addons match a release by: its size plus the 64-bit
+/// The hash Plex's provider matches a release by: its size plus the 64-bit
 /// little-endian words of its first and last 64 KiB, wrapping (candidates.py, which agreed
 /// with the PMS's own `openSubtitlesHash` for plexlab's Sintel).
 pub(crate) fn opensubtitles_hash(size: u64, head: &[u8], tail: &[u8]) -> String {
@@ -465,23 +465,6 @@ pub(crate) fn provider_language(language: &str) -> String {
     primary
 }
 
-/// The ISO 639-2 code a Stremio addon lists a language under: `pob` for Brazilian Portuguese
-/// (the OpenSubtitles addon's own code), else the three letters of `languages.json`.
-pub(crate) fn addon_language(language: &str) -> String {
-    let language = provider_language(language);
-    if language == "pt-BR" {
-        return "pob".to_string();
-    }
-    crate::mediainfo::language_code_of_tag(&language).unwrap_or(language)
-}
-
-/// Whether an addon's `lang` is the one wanted (`addon_language`'s), in either of ISO 639-2's
-/// spellings (`ger` and `deu`).
-pub(crate) fn addon_language_matches(listed: &str, wanted: &str) -> bool {
-    let listed = listed.to_ascii_lowercase();
-    listed == wanted || crate::mediainfo::terminology(&listed) == wanted
-}
-
 /// A Stream row's language fields for a provider's language code. Measured on plexlab: the
 /// provider's `en` is the row's `languageCode` and `languageTag` `eng`, `language` English.
 pub(crate) fn row_language(language: &str) -> (String, String) {
@@ -497,18 +480,16 @@ pub(crate) fn row_language(language: &str) -> (String, String) {
 /// One subtitle a source offered for a release.
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Candidate {
-    /// `plex`, or the addon's base url.
+    /// `plex`: Plex's provider, the one source rex asks.
     pub source: String,
-    /// What Plex Web shows as its provider: `OpenSubtitles` for Plex's, an addon's own name.
+    /// What Plex Web shows as its provider: the row's `providerTitle` (`OpenSubtitles`).
     pub provider: String,
-    /// Where it is: Plex's `/library/streams/{id}`, an addon's download url.
+    /// Where it is: Plex's `/library/streams/{id}`.
     pub locator: String,
     pub release: String,
     pub file: String,
     pub title: String,
     pub score: Option<Value>,
-    pub hash_match: bool,
-    pub fps_milli: Option<i64>,
     pub hearing_impaired: bool,
     pub codec: String,
     /// The provider's language code (`en`, `pt-BR`).
@@ -555,26 +536,12 @@ fn similarity(file: &str, release: &str) -> f64 {
     score
 }
 
-/// analyze.py's `rex_rank` key: how alike the names are, a hash match, a frame rate that is
-/// not the release's, mojibake and hearing-impaired lines.
-pub(crate) fn rank_score(file: &str, frame_rate: Option<&str>, candidate: &Candidate, mojibake: usize) -> f64 {
+/// analyze.py's `rex_rank` key for Plex's rows: how alike the names are, mojibake and
+/// hearing-impaired lines (its hash and frame-rate terms read fields only addons list).
+pub(crate) fn rank_score(file: &str, candidate: &Candidate, mojibake: usize) -> f64 {
     let mut score = similarity(file, &candidate.release);
     if !candidate.file.is_empty() {
         score = score.max(similarity(file, &candidate.file));
-    }
-    if candidate.hash_match {
-        score += 3.0;
-    }
-    let want = match frame_rate {
-        Some("24p") => Some(23_976),
-        Some("PAL") => Some(25_000),
-        Some("NTSC") => Some(29_970),
-        _ => None,
-    };
-    if let (Some(want), Some(fps)) = (want, candidate.fps_milli.filter(|fps| *fps != 0)) {
-        if (fps - want).abs() > 100 {
-            score -= 2.0;
-        }
     }
     if mojibake > 3 {
         score -= 1.0;
@@ -586,8 +553,8 @@ pub(crate) fn rank_score(file: &str, frame_rate: Option<&str>, candidate: &Candi
 }
 
 /// The candidates' indexes, best first; ties keep the sources' order.
-pub(crate) fn rank(file: &str, frame_rate: Option<&str>, candidates: &[Candidate], mojibake: &dyn Fn(usize) -> usize) -> Vec<usize> {
-    let scores = (0..candidates.len()).map(|at| rank_score(file, frame_rate, &candidates[at], mojibake(at))).collect::<Vec<_>>();
+pub(crate) fn rank(file: &str, candidates: &[Candidate], mojibake: &dyn Fn(usize) -> usize) -> Vec<usize> {
+    let scores = (0..candidates.len()).map(|at| rank_score(file, &candidates[at], mojibake(at))).collect::<Vec<_>>();
     let mut order = (0..candidates.len()).collect::<Vec<_>>();
     order.sort_by(|a, b| scores[*b].total_cmp(&scores[*a]));
     order
@@ -617,13 +584,12 @@ impl Fix {
 /// ratio fixes, corrected, else the first. `top` is 1 when there is nothing to measure against.
 pub(crate) fn pick(
     file: &str,
-    frame_rate: Option<&str>,
     candidates: &[Candidate],
     top: usize,
     mut read: impl FnMut(usize) -> Option<(Reading, usize)>,
 ) -> Option<(usize, Option<Fix>)> {
     let mut measured = Vec::new();
-    for at in rank(file, frame_rate, candidates, &|_| 0) {
+    for at in rank(file, candidates, &|_| 0) {
         if measured.len() == top {
             break;
         }
@@ -632,7 +598,7 @@ pub(crate) fn pick(
         }
     }
     let garbled = measured.iter().map(|(at, _, garbled)| (*at, *garbled)).collect::<HashMap<_, _>>();
-    let order = rank(file, frame_rate, candidates, &|at| garbled.get(&at).copied().unwrap_or(0));
+    let order = rank(file, candidates, &|at| garbled.get(&at).copied().unwrap_or(0));
     let measured = order.iter().filter_map(|at| measured.iter().find(|entry| entry.0 == *at)).collect::<Vec<_>>();
     if let Some((at, _, _)) = measured.iter().find(|entry| entry.1.verdict == Verdict::InSync) {
         return Some((*at, None));
@@ -652,17 +618,6 @@ const MISS_FOR: Duration = Duration::from_secs(86_400);
 const DECISION_WAIT: Duration = Duration::from_secs(3);
 /// The largest subtitle file kept.
 const MAX_FILE: usize = 16 * 1024 * 1024;
-
-/// The Stremio subtitle addons `REX_SUBTITLE_ADDONS` names: comma-separated base urls, an
-/// addon's manifest url with or without its `/manifest.json`.
-pub(crate) fn addons() -> Vec<String> {
-    std::env::var("REX_SUBTITLE_ADDONS")
-        .unwrap_or_default()
-        .split(',')
-        .map(|base| base.trim().trim_end_matches("/manifest.json").trim_end_matches('/').to_string())
-        .filter(|base| base.starts_with("http://") || base.starts_with("https://"))
-        .collect()
-}
 
 /// Who asks Plex's provider: this server, with the claim's server token.
 #[derive(Clone)]
@@ -713,10 +668,9 @@ pub(crate) struct PartInfo {
     url: String,
     auth: Option<String>,
     size: u64,
-    /// The file's name, as the provider and the addons are told it.
+    /// The file's name, as the provider is told it.
     pub file: String,
     duration: i64,
-    pub frame_rate: Option<String>,
     video_codec: String,
     resolution: String,
     /// The ffprobe indexes of the embedded text subtitles the meter can read the timing of.
@@ -730,20 +684,16 @@ pub(crate) struct PartInfo {
 pub(crate) struct Search {
     language: String,
     agent: Option<Agent>,
-    addons: Vec<String>,
     guid: Option<String>,
     episode: bool,
     year: String,
-    /// The addons' type and id: `movie`/`tt...`, or `series`/`tt...:season:episode`.
-    stremio: Option<(String, String)>,
     pub part: PartInfo,
 }
 
 impl Candidate {
     fn to_value(&self) -> Value {
         json!({"source": self.source, "provider": self.provider, "locator": self.locator, "release": self.release,
-               "file": self.file, "title": self.title, "score": self.score, "hashMatch": self.hash_match,
-               "fpsMilli": self.fps_milli, "hearingImpaired": self.hearing_impaired, "codec": self.codec,
+               "file": self.file, "title": self.title, "score": self.score, "hearingImpaired": self.hearing_impaired, "codec": self.codec,
                "language": self.language})
     }
 
@@ -757,8 +707,6 @@ impl Candidate {
             file: text("file"),
             title: text("title"),
             score: value.get("score").filter(|score| !score.is_null()).cloned(),
-            hash_match: value.get("hashMatch").and_then(Value::as_bool).unwrap_or(false),
-            fps_milli: value.get("fpsMilli").and_then(Value::as_i64),
             hearing_impaired: value.get("hearingImpaired").and_then(Value::as_bool).unwrap_or(false),
             codec: text("codec"),
             language: text("language"),
@@ -770,8 +718,8 @@ fn encode(pairs: &[(&str, String)]) -> String {
     pairs.iter().map(|(name, value)| format!("{name}={}", upstream::quote_plus(value))).collect::<Vec<_>>().join("&")
 }
 
-/// A GET one at a time per host, a 429's `Retry-After` waited out: Plex's provider downloads and
-/// the Stremio addon both answered 429 to parallel requests (measured 2026-10-20).
+/// A GET one at a time per host, a 429's `Retry-After` waited out: Plex's provider downloads
+/// answered 429 to parallel requests (measured 2026-10-20).
 fn polite(url: &str, headers: &[(&str, String)]) -> Result<(u16, Vec<u8>), String> {
     static HOSTS: OnceLock<Mutex<HashMap<String, Arc<Mutex<()>>>>> = OnceLock::new();
     let host = url.split("://").nth(1).unwrap_or(url).split('/').next().unwrap_or_default().to_string();
@@ -862,81 +810,8 @@ fn provider_candidate(row: &Value, language: &str) -> Option<Candidate> {
     })
 }
 
-/// An addon's own name, from its manifest; its host when it has none.
-fn addon_name(base: &str) -> String {
-    static NAMES: OnceLock<Mutex<HashMap<String, String>>> = OnceLock::new();
-    let names = NAMES.get_or_init(Default::default);
-    if let Some(name) = names.lock().unwrap_or_else(PoisonError::into_inner).get(base) {
-        return name.clone();
-    }
-    let read = polite(&format!("{base}/manifest.json"), &[("User-Agent", upstream::UPSTREAM_UA.to_string())])
-        .ok()
-        .filter(|(status, _)| *status == 200)
-        .and_then(|(_, body)| serde_json::from_slice::<Value>(&body).ok())
-        .and_then(|manifest| manifest.get("name").and_then(Value::as_str).map(str::to_string));
-    let name = read.clone().unwrap_or_else(|| base.split("://").nth(1).unwrap_or(base).split('/').next().unwrap_or(base).to_string());
-    if read.is_some() {
-        names.lock().unwrap_or_else(PoisonError::into_inner).insert(base.to_string(), name.clone());
-    }
-    name
-}
-
-/// Each addon's list, as the Stremio protocol asks it (candidates.py): the release's hash,
-/// size and file name, in the language's ISO 639-2 code.
-fn addon_candidates(search: &Search, hash: Option<&str>) -> Vec<Candidate> {
-    let Some((kind, id)) = &search.stremio else { return Vec::new() };
-    let wanted = addon_language(&search.language);
-    let mut extra = Vec::new();
-    extra.extend(hash.map(|hash| ("videoHash", hash.to_string())));
-    extra.push(("videoSize", search.part.size.to_string()));
-    extra.push(("filename", search.part.file.clone()));
-    let mut out = Vec::new();
-    for base in &search.addons {
-        let url = format!("{base}/subtitles/{kind}/{id}/{}.json", encode(&extra));
-        let listed = match polite(&url, &[("User-Agent", upstream::UPSTREAM_UA.to_string())]) {
-            Ok((200, body)) => serde_json::from_slice::<Value>(&body).unwrap_or(Value::Null),
-            Ok((status, _)) => {
-                warning!("SUBTITLE addon {base} answered {status}");
-                continue;
-            }
-            Err(error) => {
-                warning!("SUBTITLE addon {base} unreachable: {error}");
-                continue;
-            }
-        };
-        let name = addon_name(base);
-        for entry in listed.get("subtitles").and_then(Value::as_array).into_iter().flatten() {
-            let text = |field: &str| entry.get(field).map(string_value).unwrap_or_default();
-            let (Some(url), lang) = (entry.get("url").and_then(Value::as_str), text("lang")) else { continue };
-            if !addon_language_matches(&lang, &wanted) {
-                continue;
-            }
-            let file = text("subtitleFileName");
-            let release = Some(text("movieReleaseName")).filter(|name| !name.is_empty()).unwrap_or_else(|| file.clone());
-            let title = file.strip_suffix(".srt").unwrap_or(&file).to_string();
-            out.push(Candidate {
-                source: base.clone(),
-                provider: name.clone(),
-                locator: url.to_string(),
-                title: if title.is_empty() { Some(release.clone()).filter(|r| !r.is_empty()).unwrap_or_else(|| text("id")) } else { title },
-                release,
-                hash_match: text("m") == "h",
-                fps_milli: entry.get("fpsMilli").and_then(|fps| fps.as_i64().or_else(|| fps.as_str()?.parse().ok())),
-                hearing_impaired: file.contains("-HI") || file.contains(".HI."),
-                file,
-                codec: "srt".to_string(),
-                language: provider_language(&search.language),
-                ..Candidate::default()
-            });
-        }
-    }
-    out
-}
-
 fn search_all(search: &Search, hash: Option<&str>) -> Vec<Candidate> {
-    let mut found = provider_candidates(search, hash);
-    found.extend(addon_candidates(search, hash));
-    found
+    provider_candidates(search, hash)
 }
 
 fn download(candidate: &Candidate, agent: Option<&Agent>) -> Option<Vec<u8>> {
@@ -1162,7 +1037,7 @@ fn run(shared: &SharedRuntime, job: Job) {
     let windows = if candidates.is_empty() { None } else { reference(&search.part, ffmpeg.as_deref()) };
     let mut texts = HashMap::new();
     let top = if windows.is_some() { MEASURED } else { 1 };
-    let picked = pick(&search.part.file, search.part.frame_rate.as_deref(), &candidates, top, |at| {
+    let picked = pick(&search.part.file, &candidates, top, |at| {
         let raw = download(&candidates[at], search.agent.as_ref())?;
         let (text, garbled) = decode_text(&raw);
         let reading = windows.as_ref().map_or_else(Reading::unknown, |windows| measure(windows, &cues(&text)));
@@ -1417,14 +1292,11 @@ impl Runtime {
         Some(Agent { token, machine: claim.machine.clone(), name: claim.name.clone(), version: claim.version.clone() })
     }
 
-    /// What a search of `key` in `language` asks, None when there is nobody to ask (no claim
-    /// and no addons) or no source holds the Part. `media` is the client's `mediaItemID`.
+    /// What a search of `key` in `language` asks, None when there is nobody to ask (no claim)
+    /// or no source holds the Part. `media` is the client's `mediaItemID`.
     fn subtitle_search_spec(&self, row: &Value, language: &str, media: Option<&str>) -> Option<Search> {
         let agent = self.subtitle_agent();
-        let addons = addons();
-        if agent.is_none() && addons.is_empty() {
-            return None;
-        }
+        agent.as_ref()?;
         let row = crate::catalog::unpacked(row);
         let rows = row.get("Media").and_then(Value::as_array)?;
         let chosen = media
@@ -1449,31 +1321,13 @@ impl Runtime {
             .filter_map(|stream| stream.get("index").and_then(Value::as_i64))
             .filter(|index| *index >= 0)
             .collect();
-        // rex identifies nothing: the IMDb id is the one the rows hold, a show's for an episode.
-        let imdb = |row: &Value| {
-            row.get("Guid").and_then(Value::as_array).into_iter().flatten().find_map(|guid| {
-                guid.get("id").and_then(Value::as_str)?.strip_prefix("imdb://").map(str::to_string)
-            })
-        };
         let episode = row.get("type").and_then(Value::as_str) == Some("episode");
-        let stremio = if episode {
-            let show = row.get("grandparentRatingKey").map(string_value).and_then(|show| self.catalog.get(&show).cloned());
-            let (season, number) = (text(&row, "parentIndex"), text(&row, "index"));
-            match (show.as_ref().and_then(imdb), season, number) {
-                (Some(id), Some(season), Some(number)) => Some(("series".to_string(), format!("{id}:{season}:{number}"))),
-                _ => None,
-            }
-        } else {
-            imdb(&row).map(|id| ("movie".to_string(), id))
-        };
         Some(Search {
             language: language.to_string(),
             agent,
-            addons,
             guid: text(&row, "guid").filter(|guid| guid.starts_with("plex://")),
             episode,
             year: text(&row, "year").unwrap_or_default(),
-            stremio,
             part: PartInfo {
                 id: text(part, "id").unwrap_or_default(),
                 url,
@@ -1481,7 +1335,6 @@ impl Runtime {
                 size: part.get("size").and_then(Value::as_u64).unwrap_or(0),
                 file: file.rsplit('/').next().unwrap_or(file).to_string(),
                 duration: chosen.get("duration").or_else(|| part.get("duration")).and_then(Value::as_i64).unwrap_or(0),
-                frame_rate: text(chosen, "videoFrameRate"),
                 video_codec: text(chosen, "videoCodec").unwrap_or_default(),
                 resolution: text(chosen, "videoResolution").unwrap_or_default(),
                 text_tracks,
@@ -1490,7 +1343,7 @@ impl Runtime {
         })
     }
 
-    /// `GET /library/metadata/{id}/subtitles?language=`: Plex's provider and the addons asked
+    /// `GET /library/metadata/{id}/subtitles?language=`: Plex's provider asked
     /// with the lock released (`agent_answer`), their candidates ranked by rex and answered as
     /// the reference's Stream rows, each search minting new local ids (the reference's 386-389,
     /// then 390-393) that keep the candidate for the apply. With nobody to ask, the empty
@@ -1527,7 +1380,7 @@ impl Runtime {
         let candidates = found.get("candidates").and_then(Value::as_array).into_iter().flatten().map(Candidate::from_value).collect::<Vec<_>>();
         let base = self.mint_subtitle_ids(candidates.len());
         let mut rows = Vec::new();
-        for (number, at) in rank(&search.part.file, search.part.frame_rate.as_deref(), &candidates, &|_| 0).into_iter().enumerate() {
+        for (number, at) in rank(&search.part.file, &candidates, &|_| 0).into_iter().enumerate() {
             let id = base + number as i64;
             let candidate = &candidates[at];
             let mut fields = offer_fields(candidate, None, &candidate.codec);
@@ -1707,17 +1560,12 @@ mod tests {
     }
 
     #[test]
-    fn languages_map_between_plex_and_the_addons() {
+    fn languages_map_to_the_provider_and_the_rows() {
         assert_eq!(provider_language("en"), "en");
         assert_eq!(provider_language("EN-us"), "en");
         assert_eq!(provider_language("pt-BR"), "pt-BR");
         assert_eq!(provider_language("pt-br"), "pt-BR");
         assert_eq!(provider_language("pt"), "pt");
-        assert_eq!(addon_language("en"), "eng");
-        assert_eq!(addon_language("pt-BR"), "pob");
-        assert_eq!(addon_language("pt"), "por");
-        assert_eq!(addon_language("de"), "deu");
-        assert!(addon_language_matches("ger", "deu") && addon_language_matches("pob", "pob") && !addon_language_matches("por", "pob"));
         assert_eq!(row_language("en"), ("eng".to_string(), "English".to_string()));
         assert_eq!(row_language("pt-BR").0, "por");
     }
@@ -1753,17 +1601,13 @@ mod tests {
     }
 
     #[test]
-    fn ranking_prefers_the_release_and_its_hash() {
+    fn ranking_prefers_the_release() {
         let file = "Love.At.First.Sight.2023.1080p.NF.WEB-DL.DDP5.1.Atmos.x264-TFA.mkv";
         let candidate = |release: &str| Candidate { release: release.to_string(), ..Candidate::default() };
         let near = candidate("Love.at.First.Sight.2023.720p.NF.WEB-DL.DDP5.1.H.264-TFA");
         let far = candidate("Love.at.First.Sight.2023.BluRay.x264-OTHER");
-        assert!(rank_score(file, Some("24p"), &near, 0) > rank_score(file, Some("24p"), &far, 0));
-        let hashed = Candidate { hash_match: true, ..far.clone() };
-        assert!(rank_score(file, None, &hashed, 0) > rank_score(file, None, &near, 0));
-        let pal = Candidate { fps_milli: Some(25_000), ..near.clone() };
-        assert!((rank_score(file, Some("24p"), &near, 0) - rank_score(file, Some("24p"), &pal, 0) - 2.0).abs() < 1e-9);
-        assert!((rank_score(file, None, &near, 0) - rank_score(file, None, &near, 4) - 1.0).abs() < 1e-9);
+        assert!(rank_score(file, &near, 0) > rank_score(file, &far, 0));
+        assert!((rank_score(file, &near, 0) - rank_score(file, &near, 4) - 1.0).abs() < 1e-9);
         assert_eq!(group("Some.Release-GROUP[rarbg].srt").as_deref(), Some("group"));
     }
 
@@ -1818,8 +1662,6 @@ mod tests {
         Candidate {
             source: text("source"),
             release: text("release"),
-            hash_match: row["hashMatch"].as_bool().unwrap_or(false),
-            fps_milli: row["fpsMilli"].as_i64().or_else(|| row["fpsMilli"].as_str().and_then(|fps| fps.parse().ok())),
             // analyze.py: Plex's flag, an addon's file name.
             hearing_impaired: row["hearingImpaired"].as_bool().unwrap_or(false) || file.contains("-HI") || file.contains(".HI."),
             file,
@@ -1839,15 +1681,15 @@ mod tests {
         for item in &corpus.items {
             let windows = windows_of(item);
             let file = item["file"].as_str().unwrap_or_default();
-            let frame_rate = item["videoFrameRate"].as_str();
             for language in ["en", "pt-BR"] {
-                let rows = item["candidates"].as_array().into_iter().flatten().filter(|row| row["lang"] == language).collect::<Vec<_>>();
+                // rex asks Plex's provider alone; the corpus's addon rows are the study's.
+                let rows = item["candidates"].as_array().into_iter().flatten().filter(|row| row["lang"] == language && row["source"] == "plex").collect::<Vec<_>>();
                 let truth = |row: &Value| row["truth"]["verdict"].as_str().unwrap_or("unknown").to_string();
                 if !rows.iter().any(|row| truth(row) != "unknown") {
                     continue;
                 }
                 let candidates = rows.iter().map(|row| candidate_of(row)).collect::<Vec<_>>();
-                let picked = pick(file, frame_rate, &candidates, MEASURED, |at| {
+                let picked = pick(file, &candidates, MEASURED, |at| {
                     let reading = measure(&windows, &cues_of(rows[at]));
                     let expected = truth(rows[at]);
                     measured_total += 1;
@@ -1888,8 +1730,8 @@ mod tests {
             100.0 * overall as f64 / measured_total.max(1) as f64,
             100.0 * agree as f64 / both.max(1) as f64
         );
-        assert_eq!(tally["en"][0], 77, "the README's 77 English releases");
-        assert_eq!(tally["pt-BR"][0], 49, "the README's 49 Brazilian releases");
+        assert_eq!(tally["en"][0], 76, "the 76 English releases with a readable candidate from Plex's provider");
+        assert_eq!(tally["pt-BR"][0], 49, "the 49 Brazilian releases with one");
         assert_eq!((tally["en"][1], tally["pt-BR"][1]), (41, 22), "Plex's first result, as the README measured it");
         for (language, [items, plex, rex]) in &tally {
             // At least fifteen points better in each language.
@@ -1919,7 +1761,7 @@ mod tests {
     }
 
     /// The whole job against the live services for one release read through a claimed rex:
-    /// Plex's provider and the Stremio OpenSubtitles addon searched, the top five downloaded and
+    /// Plex's provider searched, the top five downloaded and
     /// measured against the release (its embedded text tracks when `text_tracks` names any, else
     /// its audio through the FFmpeg on PATH). `REX_LIVE_TOKEN`/`REX_LIVE_MACHINE` are a claim's;
     /// `REX_LIVE_ITEM` is the release: `{url, size, file, duration, fps, codec, resolution,
@@ -1938,7 +1780,6 @@ mod tests {
             size: item["size"].as_u64().unwrap_or_default(),
             file: field("file"),
             duration: item["duration"].as_i64().unwrap_or_default(),
-            frame_rate: Some(field("fps")),
             video_codec: field("codec"),
             resolution: field("resolution"),
             text_tracks: item["text_tracks"].as_array().into_iter().flatten().filter_map(Value::as_i64).collect(),
@@ -1950,22 +1791,19 @@ mod tests {
             let search = Search {
                 language: language.into(),
                 agent: Some(agent.clone()),
-                addons: vec!["https://opensubtitles-v3.strem.io".into()],
                 guid: Some(field("guid")),
                 episode: false,
                 year: field("year"),
-                stremio: Some(("movie".into(), field("imdb"))),
                 part: part.clone(),
             };
             let found = search_all(&search, hash.as_deref());
-            let plex = found.iter().filter(|candidate| candidate.source == "plex").count();
-            println!("{language}: {plex} from Plex's provider, {} from the addon", found.len() - plex);
-            assert!(plex > 0 && found.len() > plex, "both sources answer");
+            println!("{language}: {} from Plex's provider", found.len());
+            assert!(!found.is_empty(), "the provider answers");
             {
                 let label = if part.text_tracks.is_empty() { "audio" } else { "embedded track" };
                 let windows = reference(&part, Some(Path::new("ffmpeg"))).expect("a reference");
                 let mut texts = HashMap::new();
-                let picked = pick(&part.file, part.frame_rate.as_deref(), &found, MEASURED, |at| {
+                let picked = pick(&part.file, &found, MEASURED, |at| {
                     let raw = download(&found[at], Some(&agent))?;
                     let (text, garbled) = decode_text(&raw);
                     let reading = measure(&windows, &cues(&text));

@@ -56,7 +56,8 @@ Items with at least one candidate the meter could read:
 | Release-name ranking over both sources | 47 | 24 |
 | Some candidate in sync | 60 | 31 |
 | Some candidate in sync, or fixed by a shift or a frame-rate ratio | 77 | 49 |
-| rex's pick: ranked, five measured with its own energy meter, corrected (the corpus test) | 56 | 34 |
+| rex's pick over both sources: ranked, five measured with its own energy meter, corrected | 56 | 34 |
+| rex's pick from Plex's candidates alone, what rex ships (76 en releases have one) | 56 of 76 | 38 |
 
 Coverage is no lever: Plex's search had any English subtitle for 112 of 120 releases and
 pt-BR for 98, the addon for 90 and 55, and the addon found none Plex lacked. Measuring the
