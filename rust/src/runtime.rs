@@ -22203,7 +22203,8 @@ fn start_gdm(runtime: SharedRuntime, mode: &str, port: u16) {
                 match socket.recv_from(&mut packet) {
                     Ok((length, address)) => {
                         if gdm_query_matches(&packet[..length]) {
-                            let response = shared.lock().ok().map(|runtime| runtime.gdm_response());
+                            // A poisoned lock (a panic elsewhere) still answers, as HTTP does.
+                            let response = Some(shared.lock().unwrap_or_else(PoisonError::into_inner).gdm_response());
                             if let Some(response) = response {
                                 if let Err(error) = socket.send_to(&response, address) {
                                     debug!(
@@ -22263,9 +22264,10 @@ fn start_gdm(runtime: SharedRuntime, mode: &str, port: u16) {
             while std::time::Instant::now() < deadline {
                 match socket.recv_from(&mut packet) {
                     Ok((length, address)) => {
-                        if let Ok(mut runtime) = search_runtime.lock() {
-                            runtime.gdm_record(&packet[..length], &address.ip().to_string());
-                        }
+                        search_runtime
+                            .lock()
+                            .unwrap_or_else(PoisonError::into_inner)
+                            .gdm_record(&packet[..length], &address.ip().to_string());
                     }
                     Err(error)
                         if matches!(
