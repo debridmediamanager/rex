@@ -275,6 +275,12 @@ def run(port):
     }
     check("an upload is served image/jpeg whatever its bytes; the transcoder refuses a non-image",
           seen == expected, seen)
+    # Cycle 17: `/file?url=` serves one of THIS row's candidates and is a 404 otherwise. The
+    # catalog row's route served any row's upload.
+    other = "/library/metadata/1008/file?url=%s" % urllib.parse.quote(
+        "upload://posters/" + hashlib.sha1(png).hexdigest(), safe="")
+    status = exchange(port, "GET", other, headers={"Accept": "*/*"})[0]
+    check("a row's /file?url= of another row's upload is a 404", status == 404, status)
 
     # 8. A key-list DELETE: the 404, neither row removed; the key-list GET still lists both.
     with open(os.path.join(FIXTURES, "delete_key_list.json")) as handle:

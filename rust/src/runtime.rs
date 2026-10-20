@@ -19828,7 +19828,14 @@ impl Runtime {
                     return Response::error(400, "rex: bad request");
                 };
                 let wanted = percent_decode(&url.replace("%2E", "."));
-                match self.uploads.get(&wanted) {
+                // One of this row's own candidates (`_uploads`, by field), as the list routes check.
+                let mine = row
+                    .get("_uploads")
+                    .and_then(Value::as_object)
+                    .is_some_and(|fields| {
+                        fields.values().filter_map(Value::as_array).flatten().any(|known| known.as_str() == Some(wanted.as_str()))
+                    });
+                match self.uploads.get(&wanted).filter(|_| mine) {
                     Some((body, content_type)) => {
                         let mut response = Response::bytes(200, content_type.clone());
                         response.body = body.clone();
