@@ -93,9 +93,12 @@ pub enum By {
     /// Each (source, source id) the row's Media came from (`feed::versions`), as `release_key`
     /// joins them: a feed push finds the rows its items are by it.
     Release,
+    /// Each uploaded subtitle's stream `id` (a Stream carrying `_content`): the only streams
+    /// `/library/streams/{id}` reads back or deletes, found without reading every row.
+    Upload,
 }
 
-const LOOKUPS: usize = 7;
+const LOOKUPS: usize = 8;
 
 /// The `By::Release` key of a source's item.
 pub fn release_key(source: &str, sid: &str) -> String {
@@ -140,6 +143,18 @@ impl By {
                     .map(hash),
             ),
             By::Release => into.extend(versions(item).iter().map(|(source, sid, _)| hash(&release_key(source, sid)))),
+            By::Upload => into.extend(
+                parts()
+                    // A packed Part is decoded only when its text holds an upload.
+                    .filter(|part| part.get(PACKED_STREAMS).and_then(Value::as_str).is_none_or(|text| text.contains("\"_content\"")))
+                    .flat_map(|part| {
+                        part_streams(part)
+                            .iter()
+                            .filter(|stream| stream.get("_content").is_some())
+                            .filter_map(|stream| stream.get("id").map(|id| hash(&text_of(id))))
+                            .collect::<Vec<_>>()
+                    }),
+            ),
         }
     }
 }
@@ -391,7 +406,7 @@ impl RowIndex {
     }
 }
 
-const BY: [By; LOOKUPS] = [By::Parent, By::Section, By::Part, By::File, By::ClipParent, By::Directory, By::Release];
+const BY: [By; LOOKUPS] = [By::Parent, By::Section, By::Part, By::File, By::ClipParent, By::Directory, By::Release, By::Upload];
 
 /// A row as a pass over the library holds it: its hot fields, and the row read only for
 /// what they do not hold (`hotrow::Lazy`).

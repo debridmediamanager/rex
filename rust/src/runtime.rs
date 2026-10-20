@@ -17034,7 +17034,14 @@ impl Runtime {
                 return Response::error(404, "rex: not found");
             };
             if request.method == "GET" || request.method == "HEAD" {
-                for row in self.catalog.hot().lazy() {
+                // An uploaded subtitle is found by its index; only another id (a 501 or a
+                // 404) scans the library.
+                let uploads = self.catalog.rows_by(crate::catalog::By::Upload, &stream_id.to_string());
+                let rows = uploads
+                    .into_iter()
+                    .map(std::borrow::Cow::Borrowed)
+                    .chain(self.catalog.hot().lazy().map(|row| std::borrow::Cow::Owned(row.body().clone())));
+                for row in rows {
                     for media in row
                         .get("Media")
                         .and_then(Value::as_array)
@@ -17089,13 +17096,23 @@ impl Runtime {
                 let mut uploaded = false;
                 // By key: `items_mut` marks every row changed, and the save then
                 // re-diffs the whole library under the lock (see `select_stream`).
-                let owners = self
+                let mut owners = self
                     .catalog
-                    .hot()
-                    .lazy()
-                    .filter(|row| row_has_stream(row.body(), stream_id))
-                    .filter_map(|row| key_of(&row))
+                    .rows_by(crate::catalog::By::Upload, &stream_id.to_string())
+                    .into_iter()
+                    .filter(|row| row_has_stream(row, stream_id))
+                    .filter_map(key_of)
                     .collect::<Vec<_>>();
+                // Not an upload: whether it is a stream at all (403) or none (404) needs a scan.
+                if owners.is_empty() {
+                    owners = self
+                        .catalog
+                        .hot()
+                        .lazy()
+                        .filter(|row| row_has_stream(row.body(), stream_id))
+                        .filter_map(|row| key_of(&row))
+                        .collect();
+                }
                 for key in &owners {
                     let Some(row) = self.catalog.get_mut(key) else {
                         continue;
@@ -21767,20 +21784,22 @@ impl Runtime {
                 wanted.push((2, number.to_string()));
             }
         }
-        let owner_index = self.catalog.hot().lazy().position(|row| {
-            row.get("Media")
-                .and_then(Value::as_array)
-                .into_iter()
-                .flatten()
-                .any(|media| {
-                    media
-                        .get("Part")
-                        .and_then(Value::as_array)
-                        .into_iter()
-                        .flatten()
-                        .any(|part| part.get("id").map(string_value).as_deref() == Some(part_id))
-                })
-        });
+        // The Part's row by the index the byte reads use: a scan read every row of the
+        // library from disk for each track a client picked.
+        let owner_index = self
+            .catalog
+            .rows_by(crate::catalog::By::Part, part_id)
+            .into_iter()
+            .find(|row| {
+                row.get("Media")
+                    .and_then(Value::as_array)
+                    .into_iter()
+                    .flatten()
+                    .flat_map(|media| media.get("Part").and_then(Value::as_array).into_iter().flatten())
+                    .any(|part| part.get("id").map(string_value).as_deref() == Some(part_id))
+            })
+            .and_then(key_of)
+            .and_then(|key| self.catalog.position(&key));
         let Some(owner_index) = owner_index else {
             return Response::error(404, "rex: no such part");
         };
