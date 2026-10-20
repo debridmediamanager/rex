@@ -23064,9 +23064,11 @@ fn start_memory_trimmer() {
 /// whole state file (every catalog row) on every read, since each one stamps its
 /// device's lastSeenAt.
 fn start_state_saver(runtime: SharedRuntime) {
+    // A transcoder needs the orderly stop too, state file or none: its FFmpegs are stopped on
+    // the way out (`Transcoder::stop_all`).
     let enabled = runtime
         .lock()
-        .map(|runtime| runtime.state_path.is_some())
+        .map(|runtime| runtime.state_path.is_some() || runtime.transcoder.is_some())
         .unwrap_or(false);
     if !enabled {
         return;
@@ -23091,6 +23093,9 @@ fn start_state_saver(runtime: SharedRuntime) {
                 .unwrap_or_else(|poisoned| poisoned.into_inner());
             if terminate {
                 info!("stopping");
+                if let Some(transcoder) = &guard.transcoder {
+                    transcoder.stop_all();
+                }
                 // Held to the end: no write is answered after the last snapshot.
                 write_or_log(guard.flush_state());
                 std::process::exit(0);

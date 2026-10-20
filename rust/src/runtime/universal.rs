@@ -1224,6 +1224,17 @@ impl Transcoder {
         }
     }
 
+    /// Every conversion stopped and its FFmpeg reaped before the server exits: only Linux ties
+    /// a child to its parent (`spawn_tied`), and on macOS and Windows a stopped rex left each
+    /// FFmpeg reading its source into a deleted directory to the end of its title.
+    pub fn stop_all(&self) {
+        let sessions = self.sessions.lock().map(|mut sessions| sessions.drain().map(|(_, session)| session).collect::<Vec<_>>());
+        for session in sessions.unwrap_or_default() {
+            session.stopped.store(true, Ordering::SeqCst);
+            session.kill_child();
+        }
+    }
+
     /// Stop `session` itself, not whatever holds its id now: the reaper found it idle, and a
     /// client resuming meanwhile may have started a new session on the same id.
     fn stop_session(&self, session: &Arc<Session>) -> bool {

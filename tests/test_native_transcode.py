@@ -999,6 +999,21 @@ def main():
             process.wait()
             time.sleep(1.5)
             check("a killed server takes its FFmpeg with it", before and not ffmpegs(), "%s -> %s" % (before, ffmpegs()))
+        elif sys.platform == "darwin":
+            # No parent-death signal here: a stopped rex stops its FFmpegs itself, or they run on
+            # into the deleted directory (docs/setup.md, "Transcoding").
+            get(port, "/video/:/transcode/universal/decision", plex_web_query("4", "s-orphan"))
+            get(port, "/video/:/transcode/universal/start.m3u8", plex_web_query("4", "s-orphan"))
+            get(port, "/video/:/transcode/universal/session/s-orphan/base/00000.ts")
+            marker = os.path.join(scratch, "segments-%d" % port)
+            def ffmpegs():
+                listed = subprocess.run(["ps", "-axo", "pid=,command="], capture_output=True, text=True).stdout
+                return [line.split()[0] for line in listed.splitlines() if "ffmpeg" in line and marker in line]
+            before = ffmpegs()
+            process.terminate()
+            process.wait()
+            time.sleep(1.5)
+            check("a stopped server stops its FFmpeg", before and not ffmpegs(), "%s -> %s" % (before, ffmpegs()))
     finally:
         process.terminate()
         process.wait()
