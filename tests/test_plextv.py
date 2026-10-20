@@ -292,6 +292,8 @@ class Stub(ThreadingHTTPServer):
         self.user_id = ACCOUNT_ID
         self.broken_features = False
         self.downloads = True
+        # Seconds the claim exchange takes: two claims sent at once must not both reach it.
+        self.exchange_delay = 0
 
     def handle_error(self, request, client_address):
         # A stopped rex hangs up on its pubsub stream. socketserver printed the
@@ -391,6 +393,7 @@ class StubHandler(BaseHTTPRequestHandler):
         query = dict(record["query"])
         xml = "application/xml"
         if (method, host, path) == ("POST", "plex.tv", "/api/claim/exchange"):
+            time.sleep(self.server.exchange_delay)
             if query.get("token") == REUSED_CLAIM_TOKEN:
                 return 200, xml, ('<?xml version="1.0" encoding="UTF-8"?>\n<user id="%d" '
                                   'username="%s" email="%s" authToken="%s"/>\n'
@@ -971,7 +974,24 @@ def main():
         # -- the claim --------------------------------------------------------------
         claimed_at = time.time()
         stub.pubsub_gap = True
-        status, body = first.request("POST", "/myplex/claim?token=%s" % CLAIM_TOKEN)
+        # Two claims at once (a retried curl): only one may exchange the token, as the second
+        # exchange is what reset the account's tokens on 2026-09-11.
+        stub.exchange_delay = 1.5
+        before = len(stub.taken("plex.tv", "/api/claim/exchange", "POST"))
+        answers = []
+        racers = [threading.Thread(target=lambda: answers.append(first.request("POST", "/myplex/claim?token=%s" % CLAIM_TOKEN)))
+                  for _ in range(2)]
+        for racer in racers:
+            racer.start()
+            time.sleep(0.2)
+        for racer in racers:
+            racer.join()
+        stub.exchange_delay = 0
+        check("two claims at once exchange the token once and the other is a 409",
+              len(stub.taken("plex.tv", "/api/claim/exchange", "POST")) - before == 1
+              and sorted(answer[0] for answer in answers) == [200, 409],
+              ([answer[0] for answer in answers], len(stub.taken("plex.tv", "/api/claim/exchange", "POST")) - before))
+        status, body = next((answer for answer in answers if answer[0] == 200), answers[0])
         myplex = (body or {}).get("MyPlex") if isinstance(body, dict) else None
         check("POST /myplex/claim answers the claimed /myplex/account",
               status == 200 and myplex and myplex.get("signInState") == "ok"

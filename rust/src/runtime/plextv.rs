@@ -2120,6 +2120,8 @@ pub(crate) struct PlexTv {
     /// The tokens a claimed server lets in besides its own (`Claim.admits`).
     pub access: Arc<Access>,
     pub webhooks: Webhooks,
+    /// A claim exchange is under way: a second claim sent meanwhile is refused, not exchanged.
+    pub claiming: std::sync::atomic::AtomicBool,
 }
 
 impl PlexTv {
@@ -2138,6 +2140,7 @@ impl PlexTv {
             direct: Mutex::new(None),
             access: Arc::new(Access::seeded(&claim_tokens, &claim_grants)),
             webhooks: Webhooks::default(),
+            claiming: std::sync::atomic::AtomicBool::new(false),
         }
     }
 
@@ -2390,11 +2393,27 @@ pub(super) fn finish_claim(runtime: &SharedRuntime, token: &str, _target: &str) 
             .unwrap_or_else(|poisoned| poisoned.into_inner());
         Arc::clone(&guard.plextv)
     };
-    refresh_version(&plextv.claim);
-    watch_version(&plextv.claim);
-    if let Err(message) = exchange(&plextv.claim, token) {
-        error!("claim exchange failed: {message}");
-        return super::Response::error(500, &format!("rex: claim exchange failed: {message}"));
+    // The route's 409 looked before this request's exchange began: a second claim sent while the
+    // first was still exchanging passed it and redeemed again, the repeat that reset the
+    // account's tokens on 2026-09-11.
+    if plextv.claiming.swap(true, std::sync::atomic::Ordering::SeqCst) {
+        return super::Response::error(409, "rex: a claim is already being made");
+    }
+    let exchanged = if plextv.claim.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).claimed() {
+        Err(None)
+    } else {
+        refresh_version(&plextv.claim);
+        watch_version(&plextv.claim);
+        exchange(&plextv.claim, token).map_err(Some)
+    };
+    plextv.claiming.store(false, std::sync::atomic::Ordering::SeqCst);
+    match exchanged {
+        Ok(_) => {}
+        Err(None) => return super::Response::error(409, "rex: already claimed"),
+        Err(Some(message)) => {
+            error!("claim exchange failed: {message}");
+            return super::Response::error(500, &format!("rex: claim exchange failed: {message}"));
+        }
     }
     // What the probe PMS did next: POST /servers.xml, the device PUT, then the pubsub
     // stream that makes it present (`do_claim`).
