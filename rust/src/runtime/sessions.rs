@@ -230,10 +230,7 @@ pub(super) fn fold_old_seconds(buckets: &mut Vec<(i64, i64)>, cutoff: i64) {
     let split = buckets.partition_point(|(at, _)| *at < cutoff);
     let mut folded: Vec<(i64, i64)> = Vec::with_capacity(buckets.len() - split + split / 3600 + 1);
     for (at, count) in buckets.drain(..split) {
-        // The hour's start counted back from the local minute and second, not rebuilt with
-        // mktime: on a fall-back day the two 02:00 hours stay two.
-        let hour = crate::platform::local_tm(at)
-            .map_or(at - at.rem_euclid(3600), |tm| at - (tm.tm_min as i64 * 60 + tm.tm_sec as i64));
+        let hour = statistics_bucket(at, 4);
         match folded.last_mut() {
             Some((known, total)) if *known == hour => *total += count,
             _ => folded.push((hour, count)),
