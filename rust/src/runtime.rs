@@ -255,6 +255,14 @@ const PREFIX_PROBES: &[&str] = &[
 ];
 
 type SharedRuntime = Arc<Mutex<Runtime>>;
+/// A call to Plex's agent, made outside the runtime lock (`Runtime::agent_answer`).
+struct AgentCall(Box<dyn FnOnce() -> Value + Send>);
+
+impl std::fmt::Debug for AgentCall {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("AgentCall")
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct RuntimeOptions {
@@ -541,6 +549,12 @@ pub struct Runtime {
     /// A claim token `POST /myplex/claim` accepted: `handle_connection` redeems it with
     /// plex.tv after the lock is released, so the exchange never holds up the API.
     pending_claim: Option<String>,
+    /// A call to Plex's agent a route needs answered (`agent_answer`): `handle_connection`
+    /// makes it after the lock is released and routes the request again with its answer, so a
+    /// Fix Match search or match waiting on plex.tv never holds up the API.
+    pending_agent: Option<(String, AgentCall)>,
+    /// The answers `pending_agent` fetched, by key, for the route's second run.
+    agent_answers: HashMap<String, Value>,
     /// A movie library's automatic collections are due (`collections::auto_collect`): its
     /// threshold was set, it was refreshed, or a match changed. Run after the lock is released,
     /// since a movie described before rex kept its collections asks Plex's agent again.
@@ -836,6 +850,8 @@ impl Runtime {
             pending_download: None,
             pending_image: None,
             pending_claim: None,
+            pending_agent: None,
+            agent_answers: HashMap::new(),
             pending_auto_collections: false,
             plextv,
             track_prefs: None,
@@ -19575,7 +19591,7 @@ impl Runtime {
             .and_then(|year| year.trim().parse::<i64>().ok())
             .or_else(|| row.get("year").and_then(Value::as_i64));
         // A show's episodes match against the SHOW, the way the agent does.
-        let kinds: &[&str] = if matches!(
+        let kinds: &'static [&'static str] = if matches!(
             row.get("type").and_then(Value::as_str),
             Some("show" | "season" | "episode")
         ) {
@@ -19583,10 +19599,16 @@ impl Runtime {
         } else {
             &["movie", "show"]
         };
+        let asked = title.clone();
+        let Some(answers) = self.agent_answer(format!("matches\u{1f}{kinds:?}\u{1f}{title}\u{1f}{year:?}"), move || {
+            Value::Array(kinds.iter().map(|kind| Value::Array(crate::identify::plex_search(plex.as_ref(), kind, &asked, year))).collect())
+        }) else {
+            return Response::empty(200);
+        };
         let mut results = Vec::new();
         let mut offered = Vec::new();
-        for kind in kinds {
-            for found in crate::identify::plex_search(plex.as_ref(), kind, &title, year).into_iter().take(20) {
+        for (kind, answer) in kinds.iter().zip(answers.as_array().into_iter().flatten()) {
+            for found in answer.as_array().into_iter().flatten().take(20).cloned() {
                 let text = |field: &str| found.get(field).filter(|value| truthy(value)).map(string_value);
                 let guid = text("guid").unwrap_or_default();
                 let mut entry = Map::new();
@@ -19626,8 +19648,8 @@ impl Runtime {
     /// back to the agent's row the person picked and the row is described from that -- not
     /// from a fresh search, which is the thing that got it wrong in the first place. An
     /// episode takes its own row by its season and episode under the picked show.
-    fn identify_guid(&mut self, key: &str, guid: &str) {
-        let (Some(plex), Some((kind, picked))) = (self.plex.clone(), self.match_candidates.get(guid).cloned()) else {
+    fn identify_guid(&mut self, key: &str, guid: &str, season: Option<Value>, episode: Option<Value>) {
+        let (Some(_), Some((kind, picked))) = (self.plex.as_ref(), self.match_candidates.get(guid).cloned()) else {
             return;
         };
         let Some(row) = self.catalog.get(key).cloned() else {
@@ -19635,11 +19657,6 @@ impl Runtime {
         };
         let show = kind == "show";
         let numbers = row.get("parentIndex").and_then(Value::as_i64).zip(row.get("index").and_then(Value::as_i64)).filter(|_| show);
-        let season = numbers.and_then(|(season, _)| crate::identify::plex_children_rows(plex.as_ref(), guid).remove(&season.to_string()));
-        let episode = numbers.zip(season.as_ref()).and_then(|((_, episode), season)| {
-            let season_guid = season.get("guid")?.as_str()?;
-            crate::identify::plex_children_rows(plex.as_ref(), season_guid).remove(&episode.to_string())
-        });
         if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
             metadata::describe(object, &picked, season.as_ref(), episode.as_ref(), show, numbers);
         }
@@ -19659,6 +19676,38 @@ impl Runtime {
         if let Some(row) = self.catalog.get_mut(key) {
             number_catalog_tags(std::slice::from_mut(row));
         }
+    }
+
+    /// The season and episode rows under the show a person picked for an episode, which
+    /// `identify_guid` describes it from: None while Plex's agent is still to be asked
+    /// (`agent_answer`), both None when there is nothing to ask.
+    fn picked_children(&mut self, row: &Value, guid: &str) -> Option<(Option<Value>, Option<Value>)> {
+        let show = self.match_candidates.get(guid).is_some_and(|(kind, _)| kind == "show");
+        let numbers = row.get("parentIndex").and_then(Value::as_i64).zip(row.get("index").and_then(Value::as_i64)).filter(|_| show);
+        let (Some(plex), Some((season, episode))) = (self.plex.clone(), numbers) else {
+            return Some((None, None));
+        };
+        let guid = guid.to_string();
+        let answer = self.agent_answer(format!("children\u{1f}{guid}\u{1f}{season}\u{1f}{episode}"), move || {
+            let season = crate::identify::plex_children_rows(plex.as_ref(), &guid).remove(&season.to_string());
+            let episode = season.as_ref().and_then(|season| {
+                crate::identify::plex_children_rows(plex.as_ref(), season.get("guid")?.as_str()?).remove(&episode.to_string())
+            });
+            json!([season, episode])
+        })?;
+        let row = |at: usize| answer.get(at).filter(|row| !row.is_null()).cloned();
+        Some((row(0), row(1)))
+    }
+
+    /// Plex's agent's answer to `call`, which `handle_connection` makes once the runtime lock is
+    /// released (`pending_agent`): None the first time a route asks, which answers nothing and
+    /// is routed again with it.
+    fn agent_answer(&mut self, key: String, call: impl FnOnce() -> Value + Send + 'static) -> Option<Value> {
+        if let Some(answer) = self.agent_answers.remove(&key) {
+            return Some(answer);
+        }
+        self.pending_agent = Some((key, AgentCall(Box::new(call))));
+        None
     }
 
     /// `PUT /library/metadata/{id}/match?guid=&name=&year=`. Measured on a writable
@@ -19695,6 +19744,13 @@ impl Runtime {
             })
             .flatten()
             .cloned();
+        let (season, episode) = match (&existing, guid.is_empty()) {
+            (None, false) => match self.picked_children(row, &guid) {
+                Some(children) => children,
+                None => return Response::empty(200),
+            },
+            _ => (None, None),
+        };
         self.push_timeline_entry(row, 3, None, None, None, None);
         if let Some(existing) = existing {
             let existing_key = key_of(&existing).unwrap_or_default();
@@ -19733,7 +19789,7 @@ impl Runtime {
             // written last, because describing an episode writes the episode's own guid --
             // running it afterwards replaces the identity the person picked.
             if !guid.is_empty() {
-                self.identify_guid(key, &guid);
+                self.identify_guid(key, &guid, season, episode);
             }
             // The identity a later push of this title joins: its TMDB id, else the agent's guid.
             let chosen = self.match_candidates.get(&guid).map(|(_, picked)| {
@@ -22957,6 +23013,24 @@ impl PollRead for StreamOwned<ServerConnection, TcpStream> {
     }
 }
 
+/// `guard.route`, a handler's panic answered 500. `except Exception: logger.exception("handler
+/// failed ...")`: the server keeps serving, rather than the panic taking the connection down and
+/// poisoning the lock for every later request.
+fn route_caught(guard: &mut Runtime, request: &Request) -> Response {
+    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| guard.route(request))) {
+        Ok(response) => response,
+        Err(_) => {
+            error!("handler failed for {} {}", request.method, logging::redact_tokens(&request.target));
+            // The panic skipped `route`'s own undo: another account's overlay and
+            // playlists stayed on, and the next request saved the owner's away.
+            guard.restore_playlists();
+            guard.leave_account();
+            guard.viewer = accounts::Grant::owner();
+            Response::error(500, "rex: internal error")
+        }
+    }
+}
+
 fn handle_connection<S: Read + Write + PollRead>(
     mut stream: &mut S,
     runtime: SharedRuntime,
@@ -23240,23 +23314,21 @@ fn handle_connection<S: Read + Write + PollRead>(
             guard.refused_for_token = false;
             crate::filters::clear_refusal();
             take_unsupported_sort();
-            // `except Exception: logger.exception("handler failed ...")`: a handler that
-            // fails answers 500 and the server keeps serving, rather than the panic
-            // taking the connection down and poisoning the lock for every later request.
-            let response = match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                guard.route(&request)
-            })) {
-                Ok(response) => response,
-                Err(_) => {
-                    error!("handler failed for {} {}", request.method, logging::redact_tokens(&request.target));
-                    // The panic skipped `route`'s own undo: another account's overlay and
-                    // playlists stayed on, and the next request saved the owner's away.
-                    guard.restore_playlists();
-                    guard.leave_account();
-                    guard.viewer = accounts::Grant::owner();
-                    Response::error(500, "rex: internal error")
-                }
-            };
+            let mut response = route_caught(&mut guard, &request);
+            // A route that needs Plex's agent asked for it (`agent_answer`): it is asked here
+            // with the lock released, and the request routed again with its answer.
+            for _ in 0..2 {
+                let Some((key, call)) = guard.pending_agent.take() else {
+                    break;
+                };
+                drop(guard);
+                let answer = (call.0)();
+                guard = runtime.lock().unwrap_or_else(PoisonError::into_inner);
+                guard.agent_answers.insert(key.clone(), answer);
+                response = route_caught(&mut guard, &request);
+                guard.agent_answers.remove(&key);
+            }
+            guard.pending_agent = None;
             guard.catalog.pack_pending();
             part_plan = guard.pending_part.take();
             let file_checks = guard.pending_file_checks.take();

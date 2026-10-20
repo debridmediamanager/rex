@@ -321,6 +321,74 @@ def matcher_identity(bytes_port):
         shutil.rmtree(work, ignore_errors=True)
 
 
+def fix_match_off_the_lock(bytes_port):
+    """Fix Match waits on Plex's agent without holding the server: its search and the picked
+    show's season and episode rows were asked under the runtime lock, so a slow plex.tv held
+    every other request, `/identity` among them, for as long as it took."""
+    delay = 3.0
+    asked = []
+
+    class Agent(http.server.BaseHTTPRequestHandler):
+        def log_message(self, *args):
+            pass
+
+        def do_POST(self):
+            self.rfile.read(int(self.headers.get("Content-Length") or 0))
+            asked.append(self.path)
+            time.sleep(delay)
+            if self.path.endswith("/children"):
+                kind = "episode" if self.path.split("/")[-2].startswith("s") else "season"
+                prefix = kind[0]
+                rows = [{"guid": "plex://%s/%s%023d" % (kind, prefix, index), "index": index, "type": kind,
+                         "title": "%s %d" % (kind, index)} for index in range(1, 31)]
+            else:
+                rows = [{"guid": "plex://show/5d9c0000000000000000aaaa", "title": "Slow Show", "type": "show",
+                         "year": 2001}]
+            body = json.dumps({"MediaContainer": {"size": len(rows), "Metadata": rows}}).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        do_GET = do_POST
+
+    stub = serve(Agent)
+    work = tempfile.mkdtemp(prefix="rex-feed-slow-agent-")
+    catalog(work)
+    server = Server(work, bytes_port, keys={"REX_PLEXTV_URL": "http://127.0.0.1:%d" % stub})
+    try:
+        server.feed("POST", "items", {"items": [item("episode", ids=False)]})
+        key = server.keys()[item("episode")["id"]]
+
+        def held(path, method="GET"):
+            """How long `/identity` took while `path` waited on the agent, and `path`'s answer."""
+            answer = {}
+            thread = threading.Thread(target=lambda: answer.update(reply=server.request(path, method)))
+            thread.start()
+            time.sleep(delay / 3)
+            started = time.time()
+            server.request("/identity")
+            took = time.time() - started
+            thread.join()
+            return took, answer["reply"]
+
+        took, (status, body) = held("/library/metadata/%s/matches?manual=1&title=Slow%%20Show" % key)
+        found = ((body or {}).get("MediaContainer") or {}).get("SearchResult") or [] if status == 200 else []
+        check("a Fix Match search waiting on Plex's agent holds no other request",
+              took < 1.0 and [row.get("guid") for row in found] == ["plex://show/5d9c0000000000000000aaaa"],
+              (took, status, found))
+        took, (status, _) = held("/library/metadata/%s/match?guid=%s&name=Slow%%20Show"
+                                 % (key, urllib.parse.quote("plex://show/5d9c0000000000000000aaaa", safe="")), "PUT")
+        children = [path.rsplit("/", 2)[1] for path in asked if path.endswith("/children")]
+        check("a match asking Plex's agent for its season and episode holds no other request",
+              took < 1.0 and status == 200 and server.row(key).get("guid") == "plex://show/5d9c0000000000000000aaaa"
+              and children == ["5d9c0000000000000000aaaa", "s%023d" % 1], (took, status, children))
+    finally:
+        server.stop()
+        shutil.rmtree(work, ignore_errors=True)
+
+
 def other_folders(bytes_port):
     """A folder no library holds is not refused: zurg's `anime` or `kids` sent every item
     back as `rejected: no movie or show library holds ...` unless the libraries were seeded
@@ -637,6 +705,7 @@ def main():
         check("a restart keeps the adopted keys", server.keys() == keys, server.keys())
         shutil.rmtree(legacy_work, ignore_errors=True)
         matcher_identity(bytes_port)
+        fix_match_off_the_lock(bytes_port)
         other_folders(bytes_port)
     finally:
         server.stop()
