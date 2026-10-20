@@ -561,6 +561,8 @@ pub struct Runtime {
     plex_direct_host: Option<String>,
     /// What restoring `--state` did, for `main()`'s `state file %s: %s` line.
     pub state_summary: String,
+    /// Where `set_state_aside` put the state it set aside, for the warning that names it.
+    set_aside: Option<PathBuf>,
     decision_profiles: decision::Profiles,
     pub part_mode: String,
     pub public_url: Option<String>,
@@ -842,6 +844,7 @@ impl Runtime {
             refused_for_token: false,
             plex_direct_host: options.plex_direct_host,
             state_summary: "no saved state".to_string(),
+            set_aside: None,
             decision_profiles,
             part_mode: options.part_mode,
             public_url: options.public_url,
@@ -1033,12 +1036,16 @@ impl Runtime {
         match source {
             // Never over an earlier one: each is the only copy of the state before it.
             StateSource::Legacy(file) => {
-                let _ = fs::rename(file, next_free(file, "stale"));
+                let stale = next_free(file, "stale");
+                let _ = fs::rename(file, &stale);
+                self.set_aside = Some(stale);
             }
             StateSource::Database(file) => {
-                if let Err(error) = store::set_aside(file, &next_free(file, "stale")) {
+                let stale = next_free(file, "stale");
+                if let Err(error) = store::set_aside(file, &stale) {
                     error!("state not set aside: {error}");
                 }
+                self.set_aside = Some(stale);
                 self.store_cache = store::Cache::default();
             }
         }
@@ -1628,7 +1635,7 @@ impl Runtime {
         self.state_summary = if rebuilt {
             warning!(
                 "catalog changed since the state was saved: carried view state for {carried} rows and the server settings; edits, lists, history and library changes stay in {}",
-                sidecar(source.file(), "stale").display()
+                self.set_aside.clone().unwrap_or_else(|| sidecar(source.file(), "stale")).display()
             );
             format!("carried over {carried} rows")
         } else {
@@ -25541,10 +25548,13 @@ mod migration_tests {
         let mut rebuilt = catalog();
         rebuilt["friendlyName"] = json!("rebuilt again");
         fs::write(&catalog_path, rebuilt.to_string()).unwrap();
-        Runtime::load(options(&catalog_path, &state_path)).expect("a second rebuild starts");
+        let runtime = Runtime::load(options(&catalog_path, &state_path)).expect("a second rebuild starts");
         // The first set-aside is the only copy of what came before it.
+        let second = PathBuf::from(format!("{}.1", sidecar(&state_path, "stale").display()));
         assert_eq!(fs::read(sidecar(&state_path, "stale")).unwrap(), legacy.to_string().into_bytes());
-        assert!(PathBuf::from(format!("{}.1", sidecar(&state_path, "stale").display())).exists());
+        assert!(second.exists());
+        // And the warning names the copy this start made, not the earlier one.
+        assert_eq!(runtime.set_aside.as_deref(), Some(second.as_path()));
         let _ = fs::remove_dir_all(dir);
     }
 
