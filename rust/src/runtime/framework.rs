@@ -378,167 +378,6 @@ fn page_framework_document(document: &str, query: &HashMap<String, String>) -> R
     response
 }
 
-/// `request_language` from `server.py`: the language a request asks for, by the measured
-/// precedence (`X-Plex-Language` query then header, then `X-Plex-Accept-Language` header
-/// and query, then `Accept-Language`). `None` is the no-language default.
-pub(super) fn request_language(
-    query: &HashMap<String, String>,
-    headers: &HashMap<String, String>,
-) -> Option<String> {
-    const TRANSLATED: [&str; 35] = [
-        "af", "ar", "ca", "cs", "da", "de", "en", "es", "es-419", "et", "fi", "fr", "fr-CA", "he",
-        "hr", "hu", "it", "ja", "ko", "lt", "nb", "nl", "no", "pl", "pt", "pt-BR", "pt-PT", "ro",
-        "ru", "sk", "sl", "sr", "sv", "uk", "zh",
-    ];
-    const LOCALISED_EXTRA: [&str; 10] = [
-        "bg", "el", "en-GB", "fa", "is", "my", "th", "tr", "vi", "zh-TW",
-    ];
-    let translated = |code: &str| TRANSLATED.contains(&code);
-    let localised = |code: &str| translated(code) || LOCALISED_EXTRA.contains(&code);
-    let wanted = query
-        .get("X-Plex-Language")
-        .filter(|value| !value.is_empty())
-        .or_else(|| {
-            headers
-                .get("x-plex-language")
-                .filter(|value| !value.is_empty())
-        });
-    let Some(text) = wanted else {
-        for source in [
-            headers.get("x-plex-accept-language"),
-            query.get("X-Plex-Accept-Language"),
-            headers.get("accept-language"),
-        ] {
-            if let Some(order) = source.and_then(|value| accept_language_order(value)) {
-                if order.is_empty() {
-                    // an all-disqualified list reads as no header
-                } else {
-                    let mut fallback = None;
-                    for tag in order {
-                        let lowered = tag.replace('_', "-").to_ascii_lowercase();
-                        let subtags = lowered.split('-').collect::<Vec<_>>();
-                        if subtags[0] == "zh"
-                            && subtags[1..]
-                                .iter()
-                                .any(|subtag| matches!(*subtag, "hant" | "tw" | "hk" | "mo"))
-                        {
-                            continue;
-                        }
-                        if matches!(subtags[0], "ca" | "nn") {
-                            let target = if subtags[0] == "ca" { "ca" } else { "no" };
-                            if fallback.is_none() && translated(target) {
-                                fallback = Some(target.to_string());
-                            }
-                            continue;
-                        }
-                        if matches!(lowered.as_str(), "pt-br" | "pt-pt") {
-                            return Some("pt-BR".to_string());
-                        }
-                        if translated(subtags[0]) {
-                            return Some(subtags[0].to_string());
-                        }
-                    }
-                    return fallback;
-                }
-            }
-            if let Some(value) = source {
-                if !value.trim().is_empty() {
-                    return None;
-                }
-            }
-        }
-        return None;
-    };
-    if let Some(first) = text.chars().next() {
-        if !first.is_alphanumeric() {
-            let rest = if matches!(first, '-' | '_' | ' ') {
-                &text[1..]
-            } else {
-                ""
-            };
-            let primary = rest
-                .replace('_', "-")
-                .to_ascii_lowercase()
-                .split('-')
-                .next()
-                .unwrap_or_default()
-                .to_string();
-            return Some(if translated(&primary) {
-                primary
-            } else {
-                "en".to_string()
-            });
-        }
-    }
-    let normalized = text.replace('_', "-").to_ascii_lowercase();
-    let regional = match normalized.as_str() {
-        "zh-tw" => Some("zh-TW"),
-        "en-gb" => Some("en-GB"),
-        "es-419" => Some("es-419"),
-        "fr-ca" => Some("fr-CA"),
-        "pt-pt" => Some("pt-PT"),
-        _ => None,
-    };
-    if let Some(code) = regional.filter(|code| localised(code)) {
-        return Some(code.to_string());
-    }
-    match normalized.as_str() {
-        "zh-hk" | "zh-tw" => return Some("en".to_string()),
-        "pt-br" | "pt-pt" => return Some("pt-BR".to_string()),
-        _ => {}
-    }
-    let primary = normalized.split('-').next().unwrap_or_default().to_string();
-    if primary == "nn" {
-        return Some("no".to_string());
-    }
-    if primary.is_empty() {
-        None
-    } else {
-        Some(primary)
-    }
-}
-
-/// An `Accept-Language` list, best first; `None` when any member is malformed.
-fn accept_language_order(value: &str) -> Option<Vec<String>> {
-    let weight_re = Regex::new(r"^(?:0(?:\.[0-9]+)?|1(?:\.0+)?)$").expect("static regex");
-    let mut ranked = Vec::new();
-    for (index, member) in value.split(',').enumerate() {
-        let member = member.trim();
-        if member.is_empty() {
-            continue;
-        }
-        let (tag, parameters) = match member.split_once(';') {
-            Some((tag, rest)) => (tag.trim(), Some(rest)),
-            None => (member, None),
-        };
-        if tag.is_empty() {
-            return None;
-        }
-        let mut weight = 1.0f64;
-        if let Some(parameters) = parameters {
-            let (name, raw) = parameters.split_once('=')?;
-            if name.trim() != "q" {
-                return None;
-            }
-            let raw = raw.trim();
-            if !weight_re.is_match(raw) {
-                return None;
-            }
-            weight = raw.parse().unwrap_or(0.0);
-        }
-        if tag == "*" || weight == 0.0 {
-            continue;
-        }
-        ranked.push((weight, index, tag.to_string()));
-    }
-    ranked.sort_by(|a, b| {
-        b.0.partial_cmp(&a.0)
-            .unwrap_or(std::cmp::Ordering::Equal)
-            .then(a.1.cmp(&b.1))
-    });
-    Some(ranked.into_iter().map(|(_, _, tag)| tag).collect())
-}
-
 /// Rewrite `"Language":[a,b]` into `"Language":a,"Language":b` -- cycle 21's one endpoint
 /// that writes a repeated child element as a repeated JSON KEY.
 fn repeat_keys(mut text: String) -> String {
@@ -1554,7 +1393,7 @@ impl Runtime {
                 })
                 .unwrap_or_default(),
         };
-        let language = request_language(query, &request.headers).unwrap_or_default();
+        let language = i18n::request_language_of(&self.catalog_path, request).unwrap_or_default();
         let languages = tables
             .agent_languages
             .get("languages")
@@ -1687,3 +1526,4 @@ fn names_in_request_order(request: &Request, names: &[String]) -> Vec<String> {
     }
     ordered
 }
+

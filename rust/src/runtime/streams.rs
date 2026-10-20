@@ -215,7 +215,7 @@ impl Runtime {
         let query = parse_query(&raw_query)
             .into_iter()
             .collect::<HashMap<String, String>>();
-        let language = framework::request_language(&query, &request.headers);
+        let language = i18n::request_language_of(&self.catalog_path, request);
         // Cycle 55: the HEADER beats the query for the product.
         let product = request
             .headers

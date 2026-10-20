@@ -448,6 +448,14 @@ pub(super) fn refusal_line(catalog: &std::path::Path, text: &str, language: Opti
     activity_text(text, language, table)
 }
 
+/// The language a request's answer is written in (`request_language`, its primary subtag),
+/// from the server's own translation table.
+pub(super) fn request_language_of(catalog: &std::path::Path, request: &Request) -> Option<String> {
+    let table = translation_table(catalog)?;
+    let (_, raw_query) = split_target(&request.target);
+    request_language(&parse_query(&raw_query), &request.headers, false, &table.languages)
+}
+
 /// The language a notification socket was opened with, fixed at the handshake
 /// (cycle 65): `X-Plex-Language` in the query, else the handshake's
 /// `Accept-Language` -- all Plex Web sends.
