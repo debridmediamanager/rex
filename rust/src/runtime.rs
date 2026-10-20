@@ -14944,7 +14944,7 @@ impl Runtime {
                     return Response::json(200, self.container(fields, true));
                 }
                 if segments.len() >= 4 && segments[3] == "extras" {
-                    return self.section_extras(section_key, &segments[4..], query);
+                    return self.section_extras(section_key, &segments[4..], query, pairs);
                 }
                 if segments.len() == 5 && segments[3] == "stations" {
                     // Cycle 45: an EMPTY container carrying `art`, `thumb` and `title1`

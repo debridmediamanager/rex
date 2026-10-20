@@ -452,6 +452,11 @@ def run_plain(server, check):
     extras = server.json("/library/metadata/101/extras/all")
     section = server.json("/library/sections/1/extras/all?extraType=1")
     section_miss = server.json("/library/sections/1/extras/all?extraType=3")
+    # The filter grammar is ordered and a repeated key ANDs, as on the grid: rebuilt from the
+    # query map, the clips leaf kept only the last `year` and listed the 2026 trailer.
+    repeated = server.json("/library/sections/1/extras/all?extraType=1&year=1900&year=2026")
+    check("a section's clips AND a repeated filter key, as its grid does",
+          repeated.get("size") == 0 and not repeated.get("Metadata"), repeated)
     item_row = first(extras)
     section_row = first(section)
     forbidden = {"librarySectionID", "librarySectionTitle", "librarySectionKey"}

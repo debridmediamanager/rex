@@ -416,6 +416,7 @@ impl Runtime {
         section_key: &str,
         rest: &[&str],
         query: &HashMap<String, String>,
+        pairs: &[(String, String)],
     ) -> Response {
         let Some(section) = self.section(section_key) else {
             return Response::error(404, "rex: not found");
@@ -520,10 +521,12 @@ impl Runtime {
                 row.get("extraType").map(string_value).as_deref() == Some(wanted.as_str())
             });
         }
-        let pairs = query
+        // The request's own pairs, in order: the grammar is ordered (`or`, `push`) and a repeated
+        // key ANDs. Rebuilt from the query map, both were lost.
+        let pairs = pairs
             .iter()
             .filter(|(key, _)| key.as_str() != "extraType")
-            .map(|(key, value)| (key.clone(), value.clone()))
+            .cloned()
             .collect::<Vec<_>>();
         let rows = match self.filter_rows(rows, &pairs) {
             Ok(rows) => rows,
