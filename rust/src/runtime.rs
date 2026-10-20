@@ -4506,21 +4506,7 @@ impl Runtime {
         });
         let rows = members
             .iter()
-            .map(|row| {
-                json!({
-                    "title": row.get("title").cloned().unwrap_or(Value::Null),
-                    "type": "image",
-                    "key": row.get("art").cloned().unwrap_or(Value::Null),
-                    "thumb": "",
-                    "label": "",
-                    "mediaType": "",
-                    "summary": "",
-                    "rating": -1,
-                    "addDate": -1,
-                    "modDate": -1,
-                    "metaModDate": -1,
-                })
-            })
+            .map(artwork_photo_row)
             .collect::<Vec<_>>();
         let mut fields = Map::from_iter([
             ("size".to_string(), json!(rows.len())),
@@ -9974,32 +9960,7 @@ impl Runtime {
             let excess = self.resource_series.len().saturating_sub(180);
             self.resource_series.drain(..excess);
         }
-        let mut series = self.resource_series.clone();
-        // `_statistics_window`: sort= really orders, limit= caps (non-positive: none).
-        if let Some(sort) = query.get("sort").filter(|sort| !sort.is_empty()) {
-            let (key, direction) = sort.split_once(':').unwrap_or((sort.as_str(), ""));
-            series.sort_by(|left, right| {
-                let value = |row: &Value| row.get(key).and_then(Value::as_f64);
-                let order = (value(left).is_none(), value(left))
-                    .partial_cmp(&(value(right).is_none(), value(right)))
-                    .unwrap_or(std::cmp::Ordering::Equal);
-                if direction == "desc" {
-                    order.reverse()
-                } else {
-                    order
-                }
-            });
-        }
-        if let Some(limit) = query
-            .get("limit")
-            .and_then(|value| value.trim_start_matches('+').parse::<i64>().ok())
-        {
-            if limit > 0 {
-                series.truncate(limit as usize);
-            } else {
-                series.clear();
-            }
-        }
+        let mut series = sessions::statistics_window(self.resource_series.clone(), query);
         let since = query.get("at>").or_else(|| query.get("at>="));
         if let Some(since) = since
             .filter(|value| !value.is_empty() && value.bytes().all(|b| b.is_ascii_digit()))
@@ -22990,6 +22951,20 @@ fn in_network(ip: std::net::IpAddr, net: std::net::IpAddr, bits: u32) -> bool {
             bits == 0 || (u128::from(ip) ^ u128::from(net)) >> (128 - bits) == 0
         }
         _ => false,
+    }
+}
+
+/// A hub's `hubKey`: the keys of the rows it lists, or none when it lists none.
+fn set_hub_key(built: &mut Map<String, Value>) {
+    let keys = built
+        .get("Metadata")
+        .and_then(Value::as_array)
+        .map(|rows| rows.iter().filter_map(key_of).collect::<Vec<_>>())
+        .unwrap_or_default();
+    if keys.is_empty() {
+        built.shift_remove("hubKey");
+    } else {
+        built.insert("hubKey".to_string(), json!(format!("/library/metadata/{}", keys.join(","))));
     }
 }
 
