@@ -140,14 +140,34 @@ impl Runtime {
             .unwrap_or_else(|| tag_id("Collection", &collection.tag_name()))
     }
 
+    /// How many rows a collection lists and their years, sorted: a plain collection's read off
+    /// its members' hot fields, where copying every member row was a whole-library collection's
+    /// 40,000 rows for each Collections tab row and each member's preplay.
+    fn member_counts(&self, collection: &Collection) -> (usize, Vec<String>) {
+        let mut years = Vec::new();
+        let mut count = 0;
+        let mut take = |year: Option<&Value>| {
+            count += 1;
+            if let Some(year) = year.filter(|value| truthy(value)) {
+                years.push(py_str(year));
+            }
+        };
+        if collection.smart {
+            for row in self.collection_members(collection) {
+                take(row.get("year"));
+            }
+        } else {
+            for row in collection.items.iter().filter_map(|key| self.catalog.lazy_get(key)) {
+                take(row.get("year"));
+            }
+        }
+        years.sort();
+        (count, years)
+    }
+
     /// The row a real PMS answers for a collection (`_collection_row`).
     pub(super) fn dynamic_collection_row(&self, collection: &Collection) -> Value {
-        let rows = self.collection_members(collection);
-        let mut years = rows
-            .iter()
-            .filter_map(|row| row.get("year").filter(|value| truthy(value)).map(py_str))
-            .collect::<Vec<_>>();
-        years.sort();
+        let (count, mut years) = self.member_counts(collection);
         // Cycle 87: a merge's stale counts first (`freeze_merged_collections`), then an
         // emptied collection's last ones (`keep_emptied_counts`).
         let emptied = collection
@@ -155,7 +175,7 @@ impl Runtime {
             .get("_frozenCounts")
             .cloned()
             .or_else(|| {
-                rows.is_empty()
+                (count == 0)
                     .then(|| collection.extra.get("_emptiedCounts").cloned())
                     .flatten()
             });
@@ -244,8 +264,8 @@ impl Runtime {
             .and_then(|emptied| emptied.get("childCount"))
         {
             row.insert("childCount".to_string(), count.clone());
-        } else if !rows.is_empty() {
-            row.insert("childCount".to_string(), json!(rows.len()));
+        } else if count > 0 {
+            row.insert("childCount".to_string(), json!(count));
         }
         row.insert(
             "librarySectionID".to_string(),
@@ -467,7 +487,7 @@ impl Runtime {
         if collection.smart {
             return;
         }
-        let after = self.collection_members(&collection).len();
+        let after = self.member_counts(&collection).0;
         if after == members.len() {
             return;
         }
@@ -508,7 +528,8 @@ impl Runtime {
             .cloned()
             .collect::<Vec<_>>();
         for collection in held {
-            let counts = collection_counts(&self.collection_members(&collection));
+            let (count, years) = self.member_counts(&collection);
+            let counts = json!({"childCount": count, "years": years});
             if let Some(stored) = self.collections.get_mut(&collection.id) {
                 stored.extra.insert("_frozenCounts".to_string(), counts);
             }
