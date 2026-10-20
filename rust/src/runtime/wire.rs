@@ -773,7 +773,7 @@ pub(super) fn write_enveloped<S: Write>(
     LAST_PAYLOAD.with(|cell| cell.set(payload));
     let mut out = format!("HTTP/1.1 {} {}\r\n", status, reason_phrase(status));
     for (name, value) in &lines {
-        out.push_str(&format!("{name}: {value}\r\n"));
+        out.push_str(&header_line(name, value));
     }
     out.push_str("\r\n");
     stream
@@ -782,6 +782,17 @@ pub(super) fn write_enveloped<S: Write>(
     stream.write_all(&body).map_err(|e| e.to_string())?;
     stream.flush().map_err(|e| e.to_string())?;
     Ok(keep)
+}
+
+/// One header line, its value on one line: a value carries text a source or a client chose
+/// (a pushed file's name in `Content-Disposition`, a source's `Content-Range`), and a line
+/// break in it wrote a header of that text's choosing.
+fn header_line(name: &str, value: &str) -> String {
+    if value.contains(['\r', '\n']) {
+        format!("{name}: {}\r\n", value.replace(['\r', '\n'], " "))
+    } else {
+        format!("{name}: {value}\r\n")
+    }
 }
 
 /// The head of a response whose body is streamed after it (a part read): the envelope's
@@ -804,7 +815,7 @@ pub(super) fn write_enveloped_head<S: Write>(
             }
             continue;
         }
-        out.push_str(&format!("{name}: {value}\r\n"));
+        out.push_str(&header_line(name, value));
     }
     out.push_str("\r\n");
     stream

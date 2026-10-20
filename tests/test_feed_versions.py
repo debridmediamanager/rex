@@ -179,6 +179,39 @@ def main():
         server.stop()
         shutil.rmtree(work, ignore_errors=True)
 
+    # -- a file name is no header ------------------------------------------------------------
+    # A download names the attachment after the media file, as a source pushed it: a line
+    # break in that name wrote a header of its own (`Set-Cookie`) into the answer.
+    work = tempfile.mkdtemp(prefix="rex-versions-")
+    catalog(work)
+    server = Server(work, bytes_port)
+    try:
+        crafted = item(0, "movies/127 Hours/a\r\nSet-Cookie: injected=1.mkv")
+        source.files.add("/dav/" + crafted["path"])
+        status, body = server.feed("POST", "items", {"items": [crafted]})
+        key = server.keys().get(crafted["id"])
+        parts = [part for media in (server.row(key).get("Media") or []) for part in media.get("Part") or []] if key else []
+        if parts:
+            import socket
+            sock = socket.create_connection(("127.0.0.1", server.port), timeout=10)
+            sock.sendall(("HEAD %s?download=1&X-Plex-Token=%s HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n"
+                          % (parts[0]["key"], server.token)).encode())
+            head = b""
+            while b"\r\n\r\n" not in head:
+                piece = sock.recv(4096)
+                if not piece:
+                    break
+                head += piece
+            sock.close()
+            lines = head.decode("latin-1").split("\r\n\r\n")[0].split("\r\n")
+            check("a file name with a line break writes no header of its own",
+                  not any(line.lower().startswith("set-cookie: injected") for line in lines), lines)
+        else:
+            check("the crafted release is pushed", False, (status, body, key))
+    finally:
+        server.stop()
+        shutil.rmtree(work, ignore_errors=True)
+
     # -- restart: the two rows the production rex held are folded ----------------------------
     work = tempfile.mkdtemp(prefix="rex-versions-")
     # They were the production rex's `rd` source's; the test's source is `zurg`.
