@@ -16366,49 +16366,44 @@ impl Runtime {
             if request.method == "GET" || request.method == "HEAD" {
                 // An uploaded subtitle is found by its index; only another id (a 501 or a
                 // 404) scans the library.
-                let uploads = self.catalog.rows_by(crate::catalog::By::Upload, &stream_id.to_string());
-                let rows = uploads
-                    .into_iter()
-                    .map(std::borrow::Cow::Borrowed)
-                    .chain(self.catalog.hot().lazy().map(|row| std::borrow::Cow::Owned(row.body().clone())));
-                for row in rows {
-                    for media in row
+                let answer = |row: &Value| -> Option<Response> {
+                    let parts = row
                         .get("Media")
                         .and_then(Value::as_array)
                         .into_iter()
                         .flatten()
-                    {
-                        for part in media
-                            .get("Part")
-                            .and_then(Value::as_array)
-                            .into_iter()
-                            .flatten()
-                        {
-                            if !crate::catalog::part_may_hold_stream(part, stream_id) {
-                                continue;
-                            }
-                            for stream in crate::catalog::part_streams(part).iter()
-                            {
-                                if stream.get("id").and_then(Value::as_i64) == Some(stream_id) {
-                                    let Some(content) =
-                                        stream.get("_content").and_then(Value::as_str)
-                                    else {
-                                        return Response::error(501, "rex: not implemented");
-                                    };
-                                    return Response {
-                                        status: 200,
-                                        // Cycle 74 (`server.py` "sidecar"): the file's
-                                        // bytes as `text/html`, `.srt` and `.vtt` alike.
-                                        content_type: "text/html".to_string(),
-                                        body: content.as_bytes().to_vec(),
-                                        headers: Vec::new(),
-                                        close: false,
-                                        doc: None,
-                                    };
-                                }
-                            }
-                        }
+                        .flat_map(|media| media.get("Part").and_then(Value::as_array).into_iter().flatten());
+                    for part in parts.filter(|part| crate::catalog::part_may_hold_stream(part, stream_id)) {
+                        let streams = crate::catalog::part_streams(part);
+                        let Some(stream) = streams.iter().find(|stream| stream.get("id").and_then(Value::as_i64) == Some(stream_id)) else {
+                            continue;
+                        };
+                        let Some(content) = stream.get("_content").and_then(Value::as_str) else {
+                            return Some(Response::error(501, "rex: not implemented"));
+                        };
+                        return Some(Response {
+                            status: 200,
+                            // Cycle 74 (`server.py` "sidecar"): the file's
+                            // bytes as `text/html`, `.srt` and `.vtt` alike.
+                            content_type: "text/html".to_string(),
+                            body: content.as_bytes().to_vec(),
+                            headers: Vec::new(),
+                            close: false,
+                            doc: None,
+                        });
                     }
+                    None
+                };
+                if let Some(response) = self
+                    .catalog
+                    .rows_by(crate::catalog::By::Upload, &stream_id.to_string())
+                    .into_iter()
+                    .find_map(answer)
+                {
+                    return response;
+                }
+                if let Some(response) = self.catalog.hot().lazy().find_map(|row| answer(row.body())) {
+                    return response;
                 }
                 return Response::error(404, "rex: not found");
             }
