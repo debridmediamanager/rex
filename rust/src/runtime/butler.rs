@@ -168,7 +168,9 @@ impl Runtime {
         // A MOVIE library steps per movie and a SHOW library names the show, then steps
         // per season, deepest first.
         let mut steps: Vec<(String, Option<String>)> = Vec::new();
-        for row in self.section_rows(section_id) {
+        // Borrowed: every field read is a hot one, and copying the library twice per refresh
+        // (old zurg builds send one per release) read every row from disk under the lock.
+        for row in self.section_row_refs(section_id) {
             let row_title = string_value(row.get("title").unwrap_or(&Value::Null));
             let label = match row
                 .get("year")
@@ -182,7 +184,7 @@ impl Runtime {
                 Some("show") => {
                     steps.push((label.clone(), None));
                     let key = key_of(&row).unwrap_or_default();
-                    let mut seasons = self.children(&key);
+                    let mut seasons = self.children_refs(&key);
                     seasons.sort_by_key(|season| {
                         -season.get("index").and_then(Value::as_i64).unwrap_or(0)
                     });
@@ -620,18 +622,16 @@ impl Runtime {
         // (`feed.rs`), so a refresh -- old zurg builds still send one per release -- is
         // the catalog's measured skeleton and changes nothing.
         self.notify_section_scan(section_id, section);
-        let rows = self.section_rows(section_id);
+        let keys = self.section_row_refs(section_id).iter().filter_map(key_of).collect::<Vec<_>>();
         if force {
-            for row in &rows {
-                if let Some(key) = key_of(row) {
-                    self.push_refresh_events(&key);
-                }
+            for key in &keys {
+                self.push_refresh_events(key);
             }
         }
         info!(
             "SECTION refresh {section_id} force={} -> {} row(s)",
             if force { "True" } else { "False" },
-            rows.len()
+            keys.len()
         );
     }
 
