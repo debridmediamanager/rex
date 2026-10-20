@@ -20534,20 +20534,22 @@ impl Runtime {
                 Some(4) => Some("episode"),
                 _ => None,
             };
-            let mut typed_rows = Vec::new();
+            // Keys, filtered on hot fields, paged, and only the page's rows copied and projected:
+            // every member was copied and projected before the page was cut.
+            let mut typed_keys = Vec::new();
             let mut seen = std::collections::HashSet::new();
             for key in self.playlist_keys(playlist) {
-                let Some(row) = self.catalog.get(&key).cloned() else {
+                let Some(row) = self.catalog.lazy_get(&key) else {
                     continue;
                 };
                 if matches!(type_filter, None | Some(-1)) {
-                    typed_rows.push(row);
+                    typed_keys.push(key);
                     continue;
                 }
                 let Some(wanted_kind) = wanted_kind else {
                     continue;
                 };
-                let mut ancestry = vec![row.clone()];
+                let mut ancestry = vec![key.clone()];
                 for field in ["parentRatingKey", "grandparentRatingKey"] {
                     if let Some(parent) = row
                         .get(field)
@@ -20557,20 +20559,22 @@ impl Runtime {
                             _ => None,
                         })
                         .filter(|text| !text.is_empty() && text.bytes().all(|b| b.is_ascii_digit()))
-                        .and_then(|parent| self.catalog.get(&parent).cloned())
                     {
                         ancestry.push(parent);
                     }
                 }
                 for candidate in ancestry {
-                    if candidate.get("type").and_then(Value::as_str) != Some(wanted_kind) {
-                        continue;
-                    }
-                    let Some(candidate_key) = key_of(&candidate) else {
+                    let Some(found) = self.catalog.lazy_get(&candidate) else {
                         continue;
                     };
-                    if seen.insert(candidate_key) {
-                        typed_rows.push(candidate);
+                    if found.get("type").and_then(Value::as_str) != Some(wanted_kind) {
+                        continue;
+                    }
+                    let Some(candidate_key) = key_of(&found) else {
+                        continue;
+                    };
+                    if seen.insert(candidate_key.clone()) {
+                        typed_keys.push(candidate_key);
                     }
                 }
             }
@@ -20582,55 +20586,43 @@ impl Runtime {
                     first_index.entry(item.as_str()).or_insert(index);
                 }
             }
-            let mut rows = typed_rows
+            let year_floor = match query.get("year>>=") {
+                Some(year_filter) => match year_filter.parse::<i64>() {
+                    Ok(year) => Some(year),
+                    Err(_) => return Response::error(400, "rex: bad request"),
+                },
+                None => None,
+            };
+            let keys = typed_keys
                 .into_iter()
-                .filter(|row| {
-                    query
-                        .get("title")
-                        .map(|needle| {
-                            row.get("title")
-                                .and_then(Value::as_str)
-                                .unwrap_or_default()
-                                .contains(needle)
-                        })
-                        .unwrap_or(true)
+                .filter(|key| {
+                    let Some(row) = self.catalog.lazy_get(key) else {
+                        return false;
+                    };
+                    query.get("title").is_none_or(|needle| {
+                        row.get("title").and_then(Value::as_str).unwrap_or_default().contains(needle.as_str())
+                    }) && query.get("unwatched").is_none_or(|value| {
+                        value == "1" && row.get("viewCount").and_then(Value::as_i64).unwrap_or(0) == 0
+                    }) && year_floor.is_none_or(|year| row.get("year").and_then(Value::as_i64).unwrap_or(0) >= year)
                 })
-                .filter(|row| {
-                    query
-                        .get("unwatched")
-                        .map(|value| {
-                            value == "1"
-                                && row.get("viewCount").and_then(Value::as_i64).unwrap_or(0) == 0
-                        })
-                        .unwrap_or(true)
-                })
-                .map(|row| {
-                    // The light grid row, as measured on the copy; a playlist item
-                    // keeps its librarySection fields.
-                    let mut value =
-                        Self::without_written_prefs(&row, self.grid_row(&row, true, false, false));
-                    // Cycle 16: a SMART list's items carry NO `playlistItemID` -- its
-                    // members are its query -- and a parent a `type=` reaches up to is
-                    // not a member either.
-                    let item_id = (!playlist.smart)
-                        .then(|| {
-                            let key = key_of(&row)?;
-                            let index = *first_index.get(key.as_str())?;
-                            playlist.item_ids.get(index).copied()
-                        })
-                        .flatten();
-                    if let (Some(object), Some(item_id)) = (value.as_object_mut(), item_id) {
-                        object.insert("playlistItemID".to_string(), json!(item_id));
-                    }
-                    value
-                })
+                .map(Value::String)
                 .collect::<Vec<_>>();
-            if let Some(year_filter) = query.get("year>>=") {
-                let Ok(year) = year_filter.parse::<i64>() else {
-                    return Response::error(400, "rex: bad request");
-                };
-                rows.retain(|row| row.get("year").and_then(Value::as_i64).unwrap_or(0) >= year);
-            }
+            let project = |key: &str| {
+                let row = self.catalog.get(key)?;
+                // The light grid row, as measured on the copy; a playlist item
+                // keeps its librarySection fields.
+                let mut value = Self::without_written_prefs(row, self.grid_row(row, true, false, false));
+                // Cycle 16: a SMART list's items carry NO `playlistItemID` -- its
+                // members are its query -- and a parent a `type=` reaches up to is
+                // not a member either.
+                let item_id = (!playlist.smart)
+                    .then(|| first_index.get(key).and_then(|index| playlist.item_ids.get(*index).copied()))
+                    .flatten();
+                if let (Some(object), Some(item_id)) = (value.as_object_mut(), item_id) {
+                    object.insert("playlistItemID".to_string(), json!(item_id));
+                }
+                Some(value)
+            };
             if let Some(sort) = query.get("sort") {
                 if sort != "" && sort != "titleSort" && sort != "titleSort:asc" {
                     return Response::error(500, "rex: bad request");
@@ -20679,8 +20671,11 @@ impl Runtime {
                     summary.get(name).cloned().unwrap_or(Value::Null),
                 );
             }
-            fields.insert("Metadata".to_string(), Value::Array(rows));
+            fields.insert("Metadata".to_string(), Value::Array(keys));
             page_fields(&mut fields, query);
+            if let Some(page) = fields.get_mut("Metadata").and_then(Value::as_array_mut) {
+                *page = page.iter().filter_map(Value::as_str).filter_map(&project).collect();
+            }
             return Response::json(200, self.container(fields, false));
         }
         if tail.first() == Some(&"composite") {
