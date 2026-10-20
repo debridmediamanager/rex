@@ -988,9 +988,13 @@ impl Runtime {
                     // Never move a catalog database aside as a corrupt state file.
                     return Err(format!("state in {} unreadable: {reason}", origin.display()));
                 }
-                let corrupt = sidecar(&origin, "corrupt");
+                let corrupt = next_free(&origin, "corrupt");
                 let _ = fs::rename(&origin, &corrupt);
-                store::remove_sidecars(&origin);
+                // The WAL holds the commits not yet in the main file: it goes with it, so the
+                // copy set aside is the whole state as it was. Deleted, it lost the last saves.
+                for suffix in ["-wal", "-shm"] {
+                    let _ = fs::rename(format!("{}{suffix}", origin.display()), format!("{}{suffix}", corrupt.display()));
+                }
                 error!(
                     "state file unreadable ({reason}); moved to {} and starting fresh",
                     corrupt.display()
@@ -1001,7 +1005,7 @@ impl Runtime {
         let state: Value = match serde_json::from_slice(&bytes) {
             Ok(value) => value,
             Err(parse_error) => {
-                let corrupt = sidecar(&origin, "corrupt");
+                let corrupt = next_free(&origin, "corrupt");
                 let _ = fs::rename(&origin, &corrupt);
                 error!(
                     "state file unreadable ({parse_error}); moved to {} and starting fresh",
@@ -1027,11 +1031,12 @@ impl Runtime {
     /// server starts from the catalog.
     fn set_state_aside(&mut self, source: &StateSource) {
         match source {
+            // Never over an earlier one: each is the only copy of the state before it.
             StateSource::Legacy(file) => {
-                let _ = fs::rename(file, sidecar(file, "stale"));
+                let _ = fs::rename(file, next_free(file, "stale"));
             }
             StateSource::Database(file) => {
-                if let Err(error) = store::set_aside(file, &sidecar(file, "stale")) {
+                if let Err(error) = store::set_aside(file, &next_free(file, "stale")) {
                     error!("state not set aside: {error}");
                 }
                 self.store_cache = store::Cache::default();
@@ -26078,7 +26083,13 @@ fn sidecar(path: &Path, suffix: &str) -> PathBuf {
 /// Pick a never-before-used archive name. A retry must not overwrite an archive from an
 /// earlier import: that copy is the recovery path if installation stops halfway through.
 fn next_migration_archive(path: &Path) -> PathBuf {
-    let first = sidecar(path, "migrated");
+    next_free(path, "migrated")
+}
+
+/// `<path>.<suffix>`, or the first `<path>.<suffix>.N` no file has: a copy kept aside is
+/// never written over another.
+fn next_free(path: &Path, suffix: &str) -> PathBuf {
+    let first = sidecar(path, suffix);
     if !first.exists() {
         return first;
     }
@@ -26088,7 +26099,7 @@ fn next_migration_archive(path: &Path) -> PathBuf {
             return candidate;
         }
     }
-    unreachable!("a finite directory cannot contain every migration archive name")
+    unreachable!("a finite directory cannot contain every archive name")
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -26117,13 +26128,16 @@ where
         // Keep the source recoverable before replacing it. A rename over an existing file is
         // atomic on the supported platforms, so deleting the destination first would only add
         // a window in which neither the old state nor the new database exists.
-        fs::copy(origin, &archive).map_err(|error| error.to_string())?;
-        fs::OpenOptions::new()
-            .read(true)
-            .write(true)
-            .open(&archive)
-            .and_then(|file| file.sync_all())
-            .map_err(|error| error.to_string())?;
+        // Already set aside (`.stale`, a rebuilt catalog's): that file is the archive.
+        if origin.exists() {
+            fs::copy(origin, &archive).map_err(|error| error.to_string())?;
+            fs::OpenOptions::new()
+                .read(true)
+                .write(true)
+                .open(&archive)
+                .and_then(|file| file.sync_all())
+                .map_err(|error| error.to_string())?;
+        }
         checkpoint(MigrationPoint::BeforeInstall)?;
     }
     store::remove_sidecars(path);
@@ -26198,6 +26212,44 @@ mod migration_tests {
         let _ = fs::remove_dir_all(&path);
         fs::create_dir_all(&path).unwrap();
         path
+    }
+
+    #[test]
+    fn an_unreadable_state_file_is_set_aside_with_its_wal() {
+        let dir = work("corrupt-wal");
+        let catalog_path = dir.join("catalog.json");
+        let state_path = dir.join("rex.db");
+        fs::write(&catalog_path, catalog().to_string()).unwrap();
+        fs::write(&state_path, b"no database at all").unwrap();
+        fs::write(format!("{}-wal", state_path.display()), b"the commits not yet checkpointed").unwrap();
+        Runtime::load(options(&catalog_path, &state_path)).expect("a fresh start");
+        assert_eq!(fs::read(sidecar(&state_path, "corrupt")).unwrap(), b"no database at all");
+        // The WAL holds the last commits: deleted, the set-aside copy lost them.
+        assert_eq!(fs::read(format!("{}-wal", sidecar(&state_path, "corrupt").display())).unwrap(),
+                   b"the commits not yet checkpointed");
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn every_set_aside_state_is_kept_and_a_legacy_one_named_by_state_starts() {
+        let dir = work("stale-twice");
+        let catalog_path = dir.join("catalog.json");
+        let state_path = dir.join("state.json");
+        fs::write(&catalog_path, catalog().to_string()).unwrap();
+        let legacy = json!({"format": 1, "catalogDigest": "an older catalog", "friendlyName": "first", "items": []});
+        fs::write(&state_path, legacy.to_string()).unwrap();
+        // `--state state.json` over a rebuilt catalog: the set-aside moved the file the import
+        // then copied, and the start failed.
+        Runtime::load(options(&catalog_path, &state_path)).expect("a legacy state over a rebuilt catalog starts");
+        assert!(sidecar(&state_path, "stale").exists());
+        let mut rebuilt = catalog();
+        rebuilt["friendlyName"] = json!("rebuilt again");
+        fs::write(&catalog_path, rebuilt.to_string()).unwrap();
+        Runtime::load(options(&catalog_path, &state_path)).expect("a second rebuild starts");
+        // The first set-aside is the only copy of what came before it.
+        assert_eq!(fs::read(sidecar(&state_path, "stale")).unwrap(), legacy.to_string().into_bytes());
+        assert!(PathBuf::from(format!("{}.1", sidecar(&state_path, "stale").display())).exists());
+        let _ = fs::remove_dir_all(dir);
     }
 
     #[test]

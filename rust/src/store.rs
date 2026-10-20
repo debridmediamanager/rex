@@ -304,8 +304,10 @@ pub fn read_state(path: &Path) -> Result<Saved, String> {
             "not a SQLite database".to_string(),
         ));
     }
+    // A database that cannot be opened at all (permissions, a lock held too long) is no
+    // corrupt one: the start fails and the file stays where it is.
+    let connection = open_read(path)?;
     let read = (|| -> Result<Saved, String> {
-        let connection = open_read(path)?;
         connection
             .query_row("PRAGMA quick_check", [], |row| row.get::<_, String>(0))
             .map_err(|e| e.to_string())
@@ -334,7 +336,6 @@ pub fn read_state(path: &Path) -> Result<Saved, String> {
 /// A state saved over another catalog: copy the whole database aside as `<path>.stale`
 /// (a consistent copy, WAL included) and drop the state from it, keeping the catalog.
 pub fn set_aside(path: &Path, stale: &Path) -> Result<(), String> {
-    let _ = fs::remove_file(stale);
     let connection = open(path)?;
     connection
         .execute("VACUUM INTO ?1", params![stale.to_string_lossy()])
