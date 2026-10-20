@@ -232,6 +232,8 @@ impl Runtime {
             .lazy()
             .filter_map(|row| key_of(&row).and_then(|key| key.parse::<i64>().ok()))
             .chain(self.retired_keys.iter().copied())
+            // Theme tracks are rows of their own, kept beside the catalog.
+            .chain(self.theme_rows.keys().filter_map(|key| key.parse::<i64>().ok()))
             .max()
             .unwrap_or(0);
         self.next_scan_key = self.next_scan_key.max(highest + 1).max(SCAN_KEY_BASE);

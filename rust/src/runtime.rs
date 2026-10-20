@@ -649,7 +649,6 @@ pub struct Runtime {
     uploads: HashMap<String, (Vec<u8>, String)>,
     /// Track rows the theme metadata leaf minted, by request path and by ratingKey.
     theme_rows: HashMap<String, Value>,
-    theme_next: i64,
     /// The spellfix1 vocabularies search falls back on: a SNAPSHOT, built at load and
     /// rebuilt only by Optimize Database (cycles 37-38), never per edit.
     spelling: Option<spellfix::SearchIndex>,
@@ -899,7 +898,6 @@ impl Runtime {
             owner_views: None,
             viewed_in_session: HashSet::new(),
             theme_rows: HashMap::new(),
-            theme_next: 0,
             spelling: None,
             terminated_sessions: HashMap::new(),
             decided_sessions: HashSet::new(),
@@ -1464,8 +1462,9 @@ impl Runtime {
             if let Some(rows) = state.get("themeRows").and_then(Value::as_object) {
                 self.theme_rows = rows.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
             }
+            // An older state's own counter for theme tracks: the keys below it may be taken.
             if let Some(next) = state.get("themeNext").and_then(Value::as_i64) {
-                self.theme_next = self.theme_next.max(next);
+                self.next_scan_key = self.next_scan_key.max(next);
             }
             if let Some(queues) = state.get("downloadQueues").and_then(Value::as_object) {
                 self.download_queues = queues.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
@@ -1880,7 +1879,6 @@ impl Runtime {
             ("builtinGroupTitles", json!(self.builtin_group_titles.iter().map(|(id, title)| (id.to_string(), json!(title))).collect::<Map<String, Value>>())),
             ("uploads", json!(self.uploads.iter().map(|(key, (bytes, kind))| (key.clone(), json!([base64_encode(bytes), kind]))).collect::<Map<String, Value>>())),
             ("themeRows", json!(self.theme_rows)),
-            ("themeNext", json!(self.theme_next)),
             ("downloadQueues", json!(self.download_queues)),
             ("historyCounter", json!(self.history_counter.get())),
             ("retiredKeys", json!(self.retired_keys)),
@@ -6938,16 +6936,9 @@ impl Runtime {
         let minted = match self.theme_rows.get(&path) {
             Some(row) => row.clone(),
             None => {
-                let highest = self
-                    .catalog
-                    .hot()
-                    .lazy()
-                    .filter_map(|row| key_of(&row).and_then(|k| k.parse::<i64>().ok()))
-                    .max()
-                    .unwrap_or(0);
-                self.theme_next = self.theme_next.max(highest + 1);
-                let id = self.theme_next;
-                self.theme_next += 1;
+                // The key every row takes (`mint_key`): from a counter of its own, the next feed
+                // row was minted the track's key, and the track's address answered the film.
+                let id = self.mint_key();
                 let mut digest = Sha1::new();
                 digest.update(path.as_bytes());
                 let hash = digest

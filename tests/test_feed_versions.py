@@ -18,6 +18,7 @@ import tempfile
 import time
 
 from test_feed import BYTES_TOKEN, BODY, MOUNT, LEGACY, Bytes, Events, Server, check, results, serve
+from test_feed import item as feed_item
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FIXTURE = json.load(open(os.path.join(HERE, "fixtures", "feed", "duplicate_releases.json")))
@@ -152,6 +153,28 @@ def main():
         ok, hit = read(server, row, one["file"]) if key else (False, [])
         check("the first source letting it go leaves the second source's row out of the trash",
               key and not row.get("deletedAt") and ok, (key, row.get("deletedAt"), hit))
+    finally:
+        server.stop()
+        shutil.rmtree(work, ignore_errors=True)
+
+    # -- a theme track's key is never a pushed row's -------------------------------------------
+    # `/theme/{v}/metadata` mints a track row; its key was the highest row key plus one, and the
+    # feed's next row took the same one.
+    work = tempfile.mkdtemp(prefix="rex-versions-")
+    catalog(work)
+    server = Server(work, bytes_port)
+    try:
+        server.feed("POST", "items", {"items": [one]})
+        film = server.keys().get(one["id"])
+        track = ((server.request("/library/metadata/%s/theme/1/metadata" % film)[1] or {}).get("MediaContainer", {})
+                 .get("Metadata") or [{}])[0].get("ratingKey")
+        new = feed_item("new")
+        source.files.add("/dav/" + new["path"])
+        server.feed("POST", "items", {"items": [new]})
+        pushed = server.keys().get(new["id"])
+        check("a row pushed after a theme track is minted takes another key",
+              track and pushed and str(track) != str(pushed) and server.row(str(track)).get("type") == "track",
+              (track, pushed, server.row(str(track)).get("type")))
     finally:
         server.stop()
         shutil.rmtree(work, ignore_errors=True)
