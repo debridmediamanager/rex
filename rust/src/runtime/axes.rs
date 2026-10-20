@@ -253,46 +253,7 @@ impl Runtime {
         title2: Option<&str>,
         fields: Map<String, Value>,
     ) -> Value {
-        let mut body = Map::new();
-        body.insert("size".to_string(), json!(0));
-        body.insert("allowSync".to_string(), json!(false));
-        body.insert(
-            "art".to_string(),
-            json!(resource_art(section.get("type").and_then(Value::as_str).unwrap_or("movie"))),
-        );
-        body.insert("content".to_string(), json!("secondary"));
-        body.insert(
-            "identifier".to_string(),
-            json!("com.plexapp.plugins.library"),
-        );
-        body.insert("mediaTagPrefix".to_string(), json!(MEDIA_TAG_PREFIX));
-        body.insert("mediaTagVersion".to_string(), json!(MEDIA_TAG_VERSION));
-        body.insert(
-            "thumb".to_string(),
-            json!(resource_thumb(section.get("type").and_then(Value::as_str).unwrap_or("movie"))),
-        );
-        body.insert(
-            "title1".to_string(),
-            section.get("title").cloned().unwrap_or(Value::Null),
-        );
-        body.insert("viewGroup".to_string(), json!("secondary"));
-        body.insert("viewMode".to_string(), json!(65592));
-        if nocache_library(section.get("type").and_then(Value::as_str).unwrap_or("movie")) {
-            body.insert("nocache".to_string(), json!(true));
-        }
-        if let Some(title2) = title2 {
-            body.insert("title2".to_string(), json!(title2));
-        }
-        for (key, value) in fields {
-            body.insert(key, value);
-        }
-        for key in ["Directory", "Metadata"] {
-            if let Some(list) = body.get(key).and_then(Value::as_array) {
-                let size = list.len();
-                body.insert("size".to_string(), json!(size));
-            }
-        }
-        json!({"MediaContainer": body})
+        json!({"MediaContainer": self.secondary_body(section, title2, fields)})
     }
 
     /// The container a section bucket listing answers (`listing_container`): the

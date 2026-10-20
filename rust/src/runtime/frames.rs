@@ -208,36 +208,15 @@ impl Runtime {
                 rows.push(stub.clone());
             }
         }
-        let mut body = Map::new();
-        body.insert("size".to_string(), json!(rows.len()));
-        body.insert("allowSync".to_string(), json!(false));
-        body.insert(
-            "art".to_string(),
-            json!(resource_art(section.get("type").and_then(Value::as_str).unwrap_or("movie"))),
+        let body = self.secondary_body(
+            section,
+            None,
+            Map::from_iter([
+                ("latestEntryTime".to_string(), json!(latest)),
+                ("updateQueueSize".to_string(), json!(0)),
+                ("Metadata".to_string(), Value::Array(rows)),
+            ]),
         );
-        body.insert("content".to_string(), json!("secondary"));
-        body.insert(
-            "identifier".to_string(),
-            json!("com.plexapp.plugins.library"),
-        );
-        body.insert("mediaTagPrefix".to_string(), json!(MEDIA_TAG_PREFIX));
-        body.insert("mediaTagVersion".to_string(), json!(MEDIA_TAG_VERSION));
-        body.insert(
-            "thumb".to_string(),
-            json!(resource_thumb(section.get("type").and_then(Value::as_str).unwrap_or("movie"))),
-        );
-        body.insert(
-            "title1".to_string(),
-            section.get("title").cloned().unwrap_or(Value::Null),
-        );
-        body.insert("viewGroup".to_string(), json!("secondary"));
-        body.insert("viewMode".to_string(), json!(65592));
-        if nocache_library(section.get("type").and_then(Value::as_str).unwrap_or("movie")) {
-            body.insert("nocache".to_string(), json!(true));
-        }
-        body.insert("latestEntryTime".to_string(), json!(latest));
-        body.insert("updateQueueSize".to_string(), json!(0));
-        body.insert("Metadata".to_string(), Value::Array(rows));
         Response::json(200, json!({"MediaContainer": Value::Object(body)}))
     }
 }
