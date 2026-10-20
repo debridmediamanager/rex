@@ -146,24 +146,6 @@ fn clauses(spec: &str) -> Vec<(String, bool, Vec<String>)> {
         .collect()
 }
 
-fn percent_decode(text: &str) -> String {
-    let bytes = text.as_bytes();
-    let mut out = Vec::with_capacity(bytes.len());
-    let mut index = 0;
-    while index < bytes.len() {
-        if bytes[index] == b'%' && index + 2 < bytes.len() {
-            if let Ok(byte) = u8::from_str_radix(&text[index + 1..index + 3], 16) {
-                out.push(byte);
-                index += 3;
-                continue;
-            }
-        }
-        out.push(if bytes[index] == b'+' { b' ' } else { bytes[index] });
-        index += 1;
-    }
-    String::from_utf8_lossy(&out).into_owned()
-}
-
 /// Whether `row` passes a share filter. A row with no content rating fails an allow-list
 /// of ratings: plexlab hid Cosmos Laundromat, which has none, from `contentRating=G,PG`.
 fn passes(row: &(impl Row + ?Sized), spec: &str) -> bool {
