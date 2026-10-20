@@ -5118,13 +5118,9 @@ impl Runtime {
                 }
                 let guid = format!("local://{key}");
                 let episodes = self
-                    .catalog
-                    .hot()
-                    .lazy()
-                    .filter(|leaf| {
-                        leaf.get("type").and_then(Value::as_str) == Some("episode")
-                            && leaf.get("parentRatingKey").map(string_value).as_deref() == Some(key)
-                    })
+                    .children_refs(key)
+                    .into_iter()
+                    .filter(|leaf| leaf.get("type").and_then(Value::as_str) == Some("episode"))
                     .filter_map(|row| key_of(&row))
                     .collect::<Vec<_>>();
                 for episode in episodes {
