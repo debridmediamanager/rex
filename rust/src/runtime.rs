@@ -19950,8 +19950,12 @@ impl Runtime {
                 if ids.is_empty() {
                     return Response::error(400, "rex: bad request");
                 }
-                let mut others = Vec::new();
+                let mut others: Vec<(String, Value)> = Vec::new();
                 for other in &ids {
+                    // A row named twice is absorbed once: its Media went in twice.
+                    if others.iter().any(|(known, _)| known == other) {
+                        continue;
+                    }
                     let Some(value) = self.catalog.get(other).cloned() else {
                         return Response::error(404, "rex: no such item");
                     };

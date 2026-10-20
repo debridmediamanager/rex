@@ -538,6 +538,14 @@ def run_plain(server, check):
     check("a play queue's window past any count lists what a large window does",
           keys(wide) and keys(huge) == keys(wide), (keys(wide), keys(huge), huge.get("_status")))
 
+    # A merge naming one row twice absorbs it once (it stored the row's Media twice).
+    before = len(server.json("/library/metadata/101").get("Metadata", [{}])[0].get("Media", []))
+    absorbed = len(server.json("/library/metadata/102").get("Metadata", [{}])[0].get("Media", []))
+    status = server.request("PUT", "/library/metadata/101/merge?ids=102,102")[0]
+    after = len(server.json("/library/metadata/101").get("Metadata", [{}])[0].get("Media", []))
+    check("a merge naming one row twice absorbs its Media once",
+          status == 200 and after == before + absorbed, (status, before, absorbed, after))
+
 
 def run_search_edits(check):
     """Search answers on rows carrying a sort title, audience ratings and a shared tag."""
