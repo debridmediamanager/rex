@@ -586,3 +586,30 @@ segment early; jellyfin-ffmpeg 8 has portable builds for every platform above
 On Linux an FFmpeg dies with rex and a restart sweeps up any left over. On macOS and
 Windows a stopped rex still stops its FFmpegs, but if rex crashes they run on until their
 conversion ends.
+
+## Subtitles
+
+Search Subtitles in a Plex app asks Plex's own subtitle provider once rex is claimed, and every
+Stremio subtitle addon named in `REX_SUBTITLE_ADDONS`:
+
+```bash
+export REX_SUBTITLE_ADDONS=https://opensubtitles-v3.strem.io   # comma-separated; an addon's manifest URL works too
+```
+
+Under run.sh or systemd, put it in `rex.env`, as with the transcoder. With no claim and no addon,
+rex asks nobody and the search lists nothing.
+
+The subtitles named most like your file come first. When you pick one, rex checks it against the
+file before keeping it: against the file's own text subtitle when it has one, otherwise, with
+`REX_TRANSCODER` set, against its sound. When it finds the subtitle running late, or timed for
+another frame rate, it moves it onto the file. Every subtitle is kept as UTF-8, whatever encoding
+it came in.
+
+When a Plex account's subtitle setting is "Always enabled", or "Shown with foreign audio" and the
+audio is in another language, and a film or episode has no subtitle in that account's language, rex
+starts looking as soon as the title is opened or played, and playback waits up to 3 seconds for it. It checks
+the five best candidates and keeps the first it finds in sync, else fixes one it finds off, else
+keeps the best named. A title with nothing to find is not searched again for a day.
+
+Checking against the sound reads six 90-second pieces of the file through its source. A file with
+a text subtitle of its own needs only a few small reads.

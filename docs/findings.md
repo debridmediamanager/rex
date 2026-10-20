@@ -13410,3 +13410,107 @@ suites replay the distinguishing cases rather than merely their one-member defau
   fixtures, 17 are shallow, 32 full probes agree with rounded milliseconds, and
   14 have explicit packet/header-derived exceptions. `test_mediainfo.py` keeps
   those exceptions visible rather than claiming exact duration parity.
+
+## Subtitle search and automatic subtitles (2026-10-20)
+
+A sponsor asked for Brazilian Portuguese subtitles from their own Stremio subtitle service, there
+as an ordinary track before playback picks its tracks. What a real PMS does was recorded first,
+then whether its answer is any good.
+
+**What a real PMS does** (plexlab 1.43.4, `tests/fixtures/subtitles/plex_search_apply_s143.json`,
+`probes/subsbench/apply_probe.py`, the applied stream deleted again):
+
+- Search Subtitles is `GET /library/metadata/{id}/subtitles?language=en` (Plex Web 4.147 also
+  sends `title`, `mediaItemID`, `minimumScore`, `hearingImpaired` and `forced` when it has them;
+  bundle module 64676). The answer is `MediaContainer {size, identifier, mediaTagPrefix,
+  mediaTagVersion, Stream}`, no `allowSync`; each row `{id, key, streamType: 3, canAutoSync:
+  false, codec, language, languageTag, languageCode, format, providerTitle, score, sourceKey,
+  title, displayTitle, extendedDisplayTitle}`. The provider's `en` is `languageCode` and
+  `languageTag` `eng`; `score` is the provider's number as a string; `sourceKey` is the provider's
+  own `/library/streams/{id}`. Every search mints new local ids (386-389, then 390-393 for the
+  same four results). Plex Web keeps the rows' order and shows `score`; its model also reads
+  `perfectMatch`, `reason` and `downloaded`, which this PMS never sent.
+- The PMS asks Plex's provider itself: `GET https://metadata.provider.plex.tv/library/streams/
+  matches?filename&guid&lang&openSubtitlesHash&plexHash&type&videoCodec&videoQuality&year` with
+  the server's own token as `X-Plex-Api-Token` and its PMS headers, and answers the rows in the
+  provider's order (scores 1496, 1225, 8349, 2847: not sorted by score).
+- The apply is `PUT /library/metadata/{id}/subtitles?key=/library/streams/{search id}&codec=srt&
+  language=eng&hearingImpaired=0&forced=0&providerTitle=OpenSubtitles&mediaItemID=3`: 200, an empty
+  `text/html` body, `X-Plex-Activity: <uuid>` and `Access-Control-Expose-Headers: X-Plex-Activity`.
+  A `subtitle.download` activity "Downloading Subtitle" starts and ends about 0.5 s later. The
+  PMS downloads `GET /library/streams/{source id}?X-Plex-Api-Token=` from the provider, which
+  302s to an opensubtitles.com link. The applied Stream is the search row plus `selected: true`,
+  `transient: "1"` and `userID: "1"`, with a new id (394); its GET is the SRT as `text/html`, its
+  DELETE a 200.
+
+**Measured live from a claimed rex's own server token** (2026-10-20): `lang=en` and `lang=pt-BR`
+answer, `pt` answered a 500 once, and `plexHash` may be left out. Provider files can be UTF-8
+read as Windows-1252 and saved again (`â™ª` for `♪`). The provider's downloads and the Stremio
+OpenSubtitles addon both answer 429 to parallel requests.
+
+**Is the first result in sync?** `probes/subsbench/` measured 120 releases of a real rex library
+(60 films, 60 episodes) and all 1,694 candidates Plex's provider (en, pt-BR) and the Stremio
+OpenSubtitles v3 addon offered for them, with Silero VAD over six 90 s windows of each release's
+audio (the meter: `probes/subsbench/README.md`). Of the releases with a readable candidate, Plex's
+first result was in sync for 38 of 75 English and 22 of 47 Brazilian Portuguese; ranking the
+candidates by release name, 46 and 23; and every one of them had a candidate in sync or put right
+by a constant shift or a frame-rate ratio. The addon found no title Plex's provider lacked: coverage
+is no lever, measuring is. Without a model, a band-passed energy detector (speech above the window's
+median dB) decides about half as often as Silero and agrees when it does; the release's own embedded
+text track is an even cheaper reference. The corpus, cue timings and energy masks with Silero's
+verdicts, is `tests/fixtures/subtitles/sync_corpus.json.gz`.
+
+**What rex does** (`rust/src/runtime/subtitles.rs`):
+
+- The search asks Plex's provider exactly as the PMS does, only once claimed and without
+  `plexHash`, and each addon in `REX_SUBTITLE_ADDONS` (`GET {base}/subtitles/{movie|series}/{imdb
+  or imdb:season:episode}/videoHash=&videoSize=&filename=.json`, ISO 639-2 with `pob` for pt-BR),
+  with the lock released. The OpenSubtitles hash is read through the Part's source and kept on the
+  Part (`_osHash`). The IMDb id is the one the rows hold (an episode's show's): rex identifies
+  nothing. The candidates are merged and ranked by analyze.py's release-name ranking (a hash match
+  +3, another frame rate -2, mojibake -1, hearing-impaired -0.1), answered as the reference's rows;
+  an addon's row carries the addon's own name and no score. With no claim and no addon, the empty
+  container it always answered and nothing asked. `mediaItemID` picks the Media; `title`,
+  `minimumScore`, `hearingImpaired` and `forced` are not read (unmeasured).
+- The apply answers as the reference does, and off the lock downloads that candidate (one request
+  at a time per host, a 429's `Retry-After` waited out), stores it as UTF-8 (a BOM dropped,
+  Windows-1252 read where it is not UTF-8, mangled UTF-8 put back where that leaves less of it),
+  measures it against the release and, when it is late or timed for another frame rate, scales it
+  by the ratio and moves it back by the lag. The Stream row is the reference's applied one with
+  its text (`_content`), every other subtitle deselected.
+- The reference is the release's embedded text track read through its index (`mkvsubs`), else
+  with `REX_TRANSCODER` six 90 s windows of its first audio track (`-ss T -t 90 -map 0:a:0 -ac 1
+  -ar 16000 -af highpass=f=300,lowpass=f=3400 -f s16le`), else none. The meter is measure.py's
+  with the energy detector, the correlation computed exactly from the cue mask's runs and the
+  speech's prefix sums instead of an FFT.
+- Automatic subtitles: on an item's detail request and on play-queue creation, when the requesting
+  account's plex.tv settings show subtitles (always, or with audio in another language) and the
+  Part has none in that language, a job searches, downloads the five best-ranked candidates one at a
+  time, measures them, keeps the first in sync, else corrects the first a shift or a ratio fixes,
+  else keeps the first; it is stored as the account's (`userID`) and selected by the settings. A
+  decision for that item waits up to 3 s for the job. A search that finds nothing is not run again
+  for that item and language for a day. Without a reference only the first is downloaded.
+
+**Measured against the corpus** (`subtitles.rs`' corpus test, rex's ranking and meter on the
+fixture's energy masks and cues; a pick is right when its truth is in sync and rex left it alone,
+or rex corrected it by the truth's ratio and an offset within 0.5 s of the truth's):
+
+| | English (75) | Brazilian Portuguese (47) |
+|---|---|---|
+| Plex's first result in sync | 38 (51%) | 22 (47%) |
+| rex's pick right | 56 (75%) | 32 (68%) |
+
+Measuring eight, or every candidate, finds 57 and 34: one and two more than five. Of the 473
+candidates rex measured, Silero and rex's meter both read 168 and agreed on 165; rex called 2 in
+sync that Silero called off.
+
+- **measure.py reads a fraction with a leading zero as hundreds of milliseconds** (`int(str(int(g))
+  .ljust(3, '0'))`: `,050` is 500 ms), so the corpus's cue timings, and its truth, carry that error
+  on about one cue in ten. rex reads `,050` as 50 ms.
+- An automatic job on a release with no embedded text track reads six 90 s windows of it through
+  its source: nine minutes of the file, a few hundred MB at film bitrates (computed, not measured).
+  One with a text track reads only the track's index: the file's head, its Tracks and its Cues
+  (a Matroska `CueDuration` or an MP4 sample table gives each line's length).
+
+`tests/test_subtitles.py` drives all of it against stub providers, a stub addon and two real clips
+FFmpeg makes (one with an embedded text track, one whose audio is tone bursts on its dialogue).

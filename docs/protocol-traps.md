@@ -557,6 +557,28 @@ are changing; replay the client's exact request before altering behavior.
 - **A stream PUT is accepted and stores nothing** (200, empty body, the title unchanged), a
   DELETE of an embedded track is **403**, and a DELETE of an uploaded sidecar really removes
   it. The GET of a real stream stays the 501.
+- **Search Subtitles mints new stream ids every search.** The rows are local Stream rows
+  (`/library/streams/{id}`) whose provider id is `sourceKey`; the same four results came back as
+  386-389, then 390-393, and the applied stream took 394. The apply names the SEARCH row's key, so
+  a server must remember what each search row was (rex: `subtitle_offers`, in memory, the last
+  4,096). An apply of a key no search answered is rex's 400 (unmeasured).
+- **The apply is a PUT on the search leaf, answered before the download.** `PUT
+  .../subtitles?key=&codec=&language=eng&hearingImpaired=0&forced=0&providerTitle=&mediaItemID=`
+  is 200 with an empty body and `X-Plex-Activity`; the stream appears when the
+  `subtitle.download` activity ends. A PUT without `key` is still the search.
+- **Plex's provider takes the server token as `X-Plex-Api-Token`**, a header on `streams/matches`
+  and a query parameter on the download, which 302s to opensubtitles.com. Its `en` row becomes
+  `languageCode`/`languageTag` `eng` on the server, and its numeric `score` a string.
+- **A provider subtitle's Stream row puts `key` second**, `format`, `providerTitle`, `score` and
+  `sourceKey` after its language, and `transient`/`userID` after its title (the `Stream` order
+  in `xmlout.rs`). An account's settings read its `languageTag` `eng` as `en`.
+- **Plex's provider downloads and Stremio addons answer 429 to parallel requests**: one request
+  per host at a time, honouring `Retry-After`.
+- **Provider subtitle files can be mojibake** (UTF-8 read as Windows-1252 and saved as UTF-8:
+  `â™ª`), or Windows-1252: rex stores UTF-8 and serves it as `text/html`.
+- **The playback decision waits for an item's subtitle job** (up to 3 s, the lock released):
+  automatic subtitles are found on the detail request, and a decision sent right after it would
+  otherwise pick the tracks without the new one.
 - **A playlist's items and a collection's children are the LIGHT grid row**, like every other
   list -- no `Guid`, `Rating`, `Field` or `Stream`, tags text-only -- while keeping their
   librarySection fields and the `playlistItemID`.
