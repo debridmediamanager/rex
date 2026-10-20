@@ -1888,6 +1888,8 @@ impl Runtime {
             ("historyCounter", json!(self.history_counter.get())),
             ("retiredKeys", json!(self.retired_keys)),
             ("nextScanKey", json!(self.next_scan_key)),
+            // An older release mints theme tracks from `themeNext` and reads no other counter.
+            ("themeNext", json!(self.next_scan_key)),
             ("sectionNext", json!(self.section_next)),
             ("sources", json!(self.sources.iter().map(|source| (source.name.clone(), source.record.clone())).collect::<Map<String, Value>>())),
             // A snapshot diffs it by key instead (`diff_members`).
