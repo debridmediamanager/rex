@@ -472,6 +472,10 @@ impl Runtime {
             .or_else(|| (!identifier.is_empty()).then(|| identifier.clone()))
             .unwrap_or_else(|| "rex".to_string());
         if !self.sessions.contains_key(&session_id) {
+            // A new play: a terminate belonged to the play it ended. A client that sends no
+            // session identifier reuses its machine's for every play, and every later play
+            // was ended at its first beat until rex restarted.
+            self.terminated_sessions.remove(&session_id);
             self.next_session_key += 1;
             self.sessions.insert(
                 session_id.clone(),

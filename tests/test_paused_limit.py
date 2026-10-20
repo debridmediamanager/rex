@@ -70,6 +70,11 @@ def main():
               paused_answer.get("terminationCode") == 2006 and paused_answer.get("terminationText"),
               paused_answer)
         check("a playing session beside it is not", "terminationCode" not in playing_answer, playing_answer)
+        # The client sends no session identifier (Plex for Apple TV does not), so its next play
+        # is the same session id: the terminate is the ended play's, not the device's for good.
+        beat(port, paused, "1007", "stopped")
+        _, again = beat(port, paused, "1008", "playing")
+        check("the same client's next play after its stop is not ended", "terminationCode" not in again, again)
     finally:
         proc.send_signal(signal.SIGTERM)
         try:
