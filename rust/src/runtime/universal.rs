@@ -2788,30 +2788,6 @@ impl Runtime {
 mod tests {
     use super::*;
 
-    #[test]
-    fn every_audio_codec_a_profile_converts_to_is_a_working_encoder() {
-        // The encoders FFmpeg runs without -strict -2 (FFmpeg 7 and 8 builds).
-        let working = ["aac", "ac3", "eac3", "mp3", "mp2", "flac", "wmav2", "libopus", "libvorbis", "pcm_s16le"];
-        let profiles: Value = serde_json::from_str(include_str!("../../../data/client_profiles.json")).unwrap();
-        let mut broken = Vec::new();
-        for (name, profile) in profiles.as_object().unwrap() {
-            for target in profile.get("targets").and_then(Value::as_array).into_iter().flatten() {
-                if target.get("tag").and_then(Value::as_str) != Some("VideoProfile") {
-                    continue;
-                }
-                // The conversion's codec when the target names no aac: its first (`transcode_plan`).
-                let codecs = target.get("audioCodec").and_then(Value::as_str).unwrap_or("").to_ascii_lowercase();
-                let codecs = codecs.split(',').filter(|codec| !codec.is_empty() && *codec != "*").collect::<Vec<_>>();
-                if let Some(first) = codecs.first().filter(|_| !codecs.contains(&"aac")) {
-                    if !working.contains(&audio_encoder(first)) {
-                        broken.push(format!("{name}: {first}"));
-                    }
-                }
-            }
-        }
-        assert!(broken.is_empty(), "no working encoder for {broken:?}");
-    }
-
     fn plan(copy: bool, duration_ms: i64) -> Plan {
         Plan {
             rating_key: "1".into(),

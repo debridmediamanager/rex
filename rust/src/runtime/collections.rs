@@ -919,6 +919,7 @@ impl Runtime {
         // any removal clears it. rex replaced on every path and ignored removals.
         let mut adding: Vec<(i64, usize, String)> = Vec::new();
         let mut removing: Vec<String> = Vec::new();
+        let mut has_addition = false;
         for (position, (name, value)) in pairs.iter().enumerate() {
             if name.split('[').next().unwrap_or_default().to_lowercase() != "label"
                 || name.ends_with(".locked")
@@ -933,6 +934,7 @@ impl Runtime {
                         .map(percent_decode),
                 );
             } else if name.contains(".tag.tag") {
+                has_addition = true;
                 adding.push((super::edit::tag_order(name, position), position, value.clone()));
             }
         }
@@ -942,7 +944,7 @@ impl Runtime {
             .map(|(_, _, value)| value)
             .filter(|value| !value.is_empty())
             .collect::<Vec<_>>();
-        let labels: Option<Vec<String>> = if wanted.is_empty() && removing.is_empty() {
+        let labels: Option<Vec<String>> = if !has_addition && removing.is_empty() {
             None
         } else if section {
             let gone = removing

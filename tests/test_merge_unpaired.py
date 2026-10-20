@@ -157,7 +157,68 @@ def media_order():
         stop(process)
 
 
+def movie_media_order():
+    """Replay measured older/newer movie merges and Fix Match absorption."""
+    measured = json.load(open(os.path.join(HERE, "fixtures", "collection_open_items_s43.json")))
+    with tempfile.TemporaryDirectory(prefix="rex-movie-order-") as workdir:
+        harness.CATALOG = os.path.join(workdir, "catalog.json")
+        with open(os.path.join(HERE, "catalog_ui.json")) as handle:
+            document = json.load(handle)
+        template = next(row for row in document["items"] if row["type"] == "movie")
+        mapping = {key: str(1050 + index) for index, key in enumerate(measured["movies"])}
+        document["items"] = []
+        for key, recorded in measured["movies"].items():
+            if key == "60":
+                continue  # Created by the recorded split, not a duplicate of Media 12 at start.
+            movie = dict(copy.deepcopy(template), **copy.deepcopy(recorded))
+            movie.update(ratingKey=mapping[key], key="/library/metadata/" + mapping[key])
+            # Keep complete, renderable Media while giving each its measured identities.
+            movie["Media"] = []
+            for media in recorded["Media"]:
+                full = copy.deepcopy(template["Media"][0])
+                full["id"] = media["id"]
+                full["Part"][0]["id"] = media["Part"][0]["id"]
+                movie["Media"].append(full)
+            document["items"].append(movie)
+        with open(harness.CATALOG, "w") as handle:
+            json.dump(document, handle)
+        process, port = harness.start()
+        try:
+            for step in measured["merges"]:
+                path = step["path"]
+                source = path.split("/")[3]
+                path = path.replace("/metadata/" + source + "/", "/metadata/" + mapping[source] + "/")
+                if "ids=" in path:
+                    absorbed = path.split("ids=")[1]
+                    path = path.replace("ids=" + absorbed, "ids=" + mapping[absorbed])
+                else:
+                    absorbed = source
+                status, _ = request(port, step["method"], path)
+                expected = step["after"]
+                _, answer = container(port, "/library/metadata/" + mapping[expected["ratingKey"]])
+                actual = (answer.get("Metadata") or [{}])[0]
+                identities = [{"id": media["id"], "Part": [{"id": part["id"]} for part in media.get("Part", [])]}
+                              for media in actual.get("Media", [])]
+                check("movie %s preserves numeric Media order and Part identities" % step["path"],
+                      status == step["status"] and identities == expected["Media"], (status, identities))
+                check("movie merge keeps target metadata, not source metadata",
+                      (actual.get("title"), actual.get("guid")) == (expected["title"], expected["guid"]),
+                      (actual.get("title"), actual.get("guid")))
+                gone, _ = request(port, "GET", "/library/metadata/" + mapping[absorbed])
+                check("absorbed movie key is retired", gone == 404, gone)
+                if source == "17" and "ids=" in path:
+                    # The reference split this first merge before matching its newer Media
+                    # into movie 4; replay it so each Media/Part identity remains unique.
+                    before = {row["ratingKey"] for row in container(port, "/library/sections/1/all")[1].get("Metadata", [])}
+                    request(port, "PUT", "/library/metadata/" + mapping["17"] + "/split")
+                    after = {row["ratingKey"] for row in container(port, "/library/sections/1/all")[1].get("Metadata", [])}
+                    mapping["60"] = (after - before).pop()
+        finally:
+            stop(process)
+
+
 def main():
+    movie_media_order()
     media_order()
     workdir = tempfile.mkdtemp(prefix="rex-merge-")
     harness.CATALOG = os.path.join(workdir, "catalog.json")

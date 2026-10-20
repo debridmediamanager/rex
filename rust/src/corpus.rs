@@ -2,6 +2,7 @@
 //! so a written row re-derives only its own entry. Built whole from every row on the first
 //! search after any write, it would read every row from disk (`hotrow.rs`).
 
+use std::borrow::Cow;
 use std::collections::HashMap;
 
 use serde_json::Value;
@@ -129,13 +130,17 @@ pub fn corpus_row(row: &Value, names: &mut Names) -> CorpusRow {
     for (slot, field) in CORPUS_TAG_FIELDS.iter().enumerate() {
         tags[slot].0 = names.pool.len() as u32;
         for (index, tag) in row.get(*field).and_then(Value::as_array).into_iter().flatten().enumerate() {
-            let name = text_of(tag, "tag");
-            let id = match names.ids.get(name) {
+            let name = match tag.get("tag") {
+                Some(Value::String(name)) => Cow::Borrowed(name.as_str()),
+                Some(value) => Cow::Owned(text(value)),
+                None => Cow::Borrowed(""),
+            };
+            let id = match names.ids.get(name.as_ref()) {
                 Some(id) => *id,
                 None => {
-                    names.words.push(words(&fold_query(name)));
+                    names.words.push(words(&fold_query(&name)));
                     let id = (names.words.len() - 1) as u32;
-                    names.ids.insert(name.to_string(), id);
+                    names.ids.insert(name.into_owned(), id);
                     id
                 }
             };

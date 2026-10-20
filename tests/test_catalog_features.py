@@ -28,6 +28,7 @@ import urllib.parse
 import xml.etree.ElementTree as ET
 
 from server_command import register_source, server_command
+from test_ports import free_port as bounded_port
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.environ.get("REX_TEST_ROOT", os.path.dirname(HERE))
@@ -44,9 +45,14 @@ MACHINE = BASE["machineIdentifier"]
 
 
 def free_port(kind=socket.SOCK_STREAM):
-    with socket.socket(socket.AF_INET, kind) as probe:
-        probe.bind(("127.0.0.1", 0))
-        return probe.getsockname()[1]
+    while True:
+        port = bounded_port()
+        with socket.socket(socket.AF_INET, kind) as probe:
+            try:
+                probe.bind(("127.0.0.1", port))
+            except OSError:
+                continue
+            return port
 
 
 def native_json(command, document):
@@ -286,6 +292,7 @@ def main():
     finally:
         plain.stop()
     run_search_edits(check)
+    run_scalar_tags(check)
     run_vocabulary(check)
     run_rebuild(check)
     run_additions(check)
@@ -556,6 +563,25 @@ def run_plain(server, check):
     after = len(server.json("/library/metadata/101").get("Metadata", [{}])[0].get("Media", []))
     check("a merge naming one row twice absorbs its Media once",
           status == 200 and after == before + absorbed, (status, before, absorbed, after))
+
+
+def run_scalar_tags(check):
+    """Indexed lookup keeps a catalog's scalar tag value and id, not a newly minted string."""
+    with open(os.path.join(HERE, "fixtures", "scalar_tag_catalog.json")) as handle:
+        tags = json.load(handle)["tags"]
+    document = copy.deepcopy(BASE)
+    item(document, 101)["Genre"] = tags
+    item(document, 102).pop("Genre", None)
+    server = Server(document)
+    try:
+        for tag in tags:
+            query = urllib.parse.urlencode({"genre[0].tag.tag": str(tag["tag"])})
+            status = server.request("PUT", "/library/metadata/102?" + query)[0]
+            actual = first(server.json("/library/metadata/102")).get("Genre")
+            check("editing a %s catalog tag reuses its canonical value and id" % type(tag["tag"]).__name__,
+                  status == 200 and actual == [tag], (status, actual, tag))
+    finally:
+        server.stop()
 
 
 def run_search_edits(check):

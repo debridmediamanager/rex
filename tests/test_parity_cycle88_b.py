@@ -45,13 +45,13 @@ import http.client
 import json
 import os
 import signal
-import socket
 import subprocess
 import sys
 import time
 import urllib.parse
 
 from server_command import server_command
+from test_ports import free_port
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -83,14 +83,6 @@ results = []
 def check(name, ok, detail=""):
     results.append(bool(ok))
     print("%s  %s%s" % ("PASS" if ok else "FAIL", name, "" if ok else "  -- " + str(detail)[:700]))
-
-
-def free_port():
-    probe = socket.socket()
-    probe.bind(("127.0.0.1", 0))
-    port = probe.getsockname()[1]
-    probe.close()
-    return port
 
 
 def request(port, method, path, body=None, raw=False):
@@ -414,6 +406,29 @@ def server_case_checks(port, fixture):
               got == (want if same else []) and want, (got, want))
 
 
+def server_empty_label_checks(port):
+    measured = json.load(open(os.path.join(HERE, "fixtures", "collection_open_items_s43.json")))
+    _, body = request(port, "GET", "/identity")
+    machine = body["MediaContainer"]["machineIdentifier"]
+    uri = "server://%s/com.plexapp.plugins.library/library/metadata/%s" % (machine, MEMBER)
+    _, body = request(port, "POST", "/library/collections?" + urllib.parse.urlencode(
+        dict(type=2, title="Empty Indexed Labels", smart=0, sectionId=SECTION, uri=uri)))
+    key = body["MediaContainer"]["Metadata"][0]["ratingKey"]
+    for exchange in measured["empty_labels"]:
+        path = exchange["path"].replace("/58", "/" + key).replace("id=58", "id=" + key)
+        path = path.replace("/sections/1/", "/sections/%s/" % SECTION)
+        if exchange["method"] == "PUT":
+            status, _ = request(port, "PUT", path)
+            check("empty indexed label write answers measured status", status == exchange["status"], status)
+            continue
+        for read_path in ("/library/metadata/" + key, "/library/collections/" + key):
+            status, body = request(port, "GET", read_path)
+            actual = [tag["tag"] for tag in body["MediaContainer"]["Metadata"][0].get("Label", [])]
+            check("empty indexed label follows measured item/section/collection semantics: " + read_path,
+                  status == exchange["status"] and actual == exchange["Label"], (actual, exchange["Label"]))
+    request(port, "DELETE", "/library/collections/" + key)
+
+
 def main():
     fixture = json.load(open(FIXTURE))
     steps = reference_edits(fixture)
@@ -421,6 +436,7 @@ def main():
     process, port = start()
     try:
         server_edit_checks(port, steps)
+        server_empty_label_checks(port)
         server_read_checks(port, fixture)
         for path in POSTER_FIXTURES:
             server_poster_checks(port, json.load(open(path)))

@@ -1,0 +1,26 @@
+{
+  "pms": "1.43.4",
+  "capture": "2026-10-20 isolated zen reference; declared Content-Length: 5",
+  "hubs": [
+    {
+      "body_bytes": 0,
+      "statuses": [
+        200
+      ],
+      "response_headers": "HTTP/1.1 200 OK\r\nX-Plex-Protocol: 1.0\r\nContent-Type: text/xml;charset=utf-8\r\nContent-Length: 101\r\nConnection: Keep-Alive\r\nKeep-Alive: timeout=20\r\nCache-Control: no-cache\r\nDate: <REDACTED>",
+      "response_closed": true
+    },
+    {
+      "body_bytes": 2,
+      "statuses": [
+        200
+      ],
+      "response_headers": "HTTP/1.1 200 OK\r\nX-Plex-Protocol: 1.0\r\nContent-Type: text/xml;charset=utf-8\r\nContent-Length: 101\r\nConnection: Keep-Alive\r\nKeep-Alive: timeout=20\r\nCache-Control: no-cache\r\nDate: <REDACTED>",
+      "response_closed": true
+    }
+  ],
+  "pipeline_statuses": [
+    200,
+    200
+  ]
+}

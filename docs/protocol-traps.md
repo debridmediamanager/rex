@@ -4132,6 +4132,26 @@ are changing; replay the client's exact request before altering behavior.
   CLOSES (`88 00`) after ponging an EMPTY ping where plexlab does not: recorded, not emulated
   (`tests/test_parity_cycle94_d.py`).
 
+- **A split inserts new collection members immediately after their source in custom order.**
+  PMS 1.43.4 (2026-10-20, `collection_open_items_s43.json`): `A, source, B` becomes
+  `A, source, new, B`, while `childCount` stays frozen. Alphabetical/release-date output
+  alone cannot distinguish adjacent insertion from appending.
+- **Movie merges and Fix Match merges order Media by numeric id too.** The same capture
+  distinguishes an older source from a newer survivor; survivor-first is not the rule.
+  Keep every Media's Part identity and source ownership while ordering it.
+- **An explicitly empty indexed collection label is not an absent edit.**
+  `label[0].tag.tag=` clears through metadata and collection item routes, but changes
+  nothing through the section route (`collection_open_items_s43.json`).
+- **Body consumption depends on the endpoint, not only the method.** POST `/hubs` answers
+  before a declared body arrives; subtitle uploads and rex's source/feed JSON APIs wait.
+  A complete buffered body followed by a request yields two answers; late bytes sent after
+  an early response do not revive the closing connection (`body_framing_s1434.json`).
+- **Shared users cannot refresh libraries through GET, POST or HEAD.** A newly claimed,
+  disposable PMS 1.43.4 returns 403 for visible, unshared and `all` section refreshes,
+  with or without force. PUT remains 404 for visible/`all`, and 403 for an unshared
+  numeric section (`shared_refresh_s1434.json`). The earlier PUT-only capture did not
+  establish permission policy because owner PUT refresh is invalid too.
+
 ## The transcoder
 
 - **Plex Web converts over HLS from app.plex.tv (4.160) and over DASH from the client rex
@@ -4155,3 +4175,7 @@ are changing; replay the client's exact request before altering behavior.
 - **A browser test's playback can start paused.** Chrome allows a play with sound for ~5 s
   after the click; a start slower than that comes up paused. That is the browser, not the
   server: direct play in the same tab autoplays.
+- **Do not diagnose a missing PGS burn from only the first output frame.** With video and
+  subtitle onset both at PTS 0, FFmpeg 8.1.2 can overlay an initial transparent canvas;
+  subsequent frames carry the subtitle. Decode a bounded interval inside the active cue
+  and compare against the source at the unchanged crop (`transcode/pgs_onset_ffmpeg.json`).

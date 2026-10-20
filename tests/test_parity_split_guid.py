@@ -23,13 +23,13 @@ Drives a real server process (`tests/server_command.py`).
 import http.client
 import json
 import os
-import socket
 import subprocess
 import sys
 import time
 import urllib.parse
 
 from server_command import server_command
+from test_ports import free_port
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -58,14 +58,6 @@ results = []
 def check(name, ok, detail=""):
     results.append(bool(ok))
     print("%s  %s%s" % ("PASS" if ok else "FAIL", name, "" if ok else "  -- " + str(detail)[:600]))
-
-
-def free_port():
-    probe = socket.socket()
-    probe.bind(("127.0.0.1", 0))
-    port = probe.getsockname()[1]
-    probe.close()
-    return port
 
 
 def request(port, method, path):
@@ -305,13 +297,56 @@ def run_split_collection(port, fixture):
           shown["MediaContainer"]["Metadata"][0].get("childCount"))
 
 
+def run_custom_split_collection(port, fixture, split_count=1):
+    measured = json.load(open(os.path.join(HERE, "fixtures", "collection_open_items_s43.json")))["custom_split"]
+    machine = request(port, "GET", "/identity")[1]["MediaContainer"]["machineIdentifier"]
+    absorbed = [ABSORBED, UNMATCH][:split_count]
+    request(port, "PUT", "/library/metadata/%s/merge?ids=%s" % (TARGET, ",".join(absorbed)))
+    collections = []
+    before = {}
+    for title in ("CustomMiddleOne", "CustomMiddleTwo"):
+        _, body = request(port, "POST", "/library/collections?" + urllib.parse.urlencode(dict(
+            type=1, title=title, smart=0, sectionId=1,
+            uri="server://%s/com.plexapp.plugins.library/library/metadata/1009,%s,1012" % (machine, TARGET))))
+        key = body["MediaContainer"]["Metadata"][0]["ratingKey"]
+        collections.append(key)
+        request(port, "PUT", "/library/metadata/%s/prefs?collectionSort=%s" % (key, measured["sort"]))
+        request(port, "PUT", "/library/collections/%s/items/%s/move?after=1009" % (key, TARGET))
+        _, shown = request(port, "GET", "/library/collections/%s" % key)
+        before[key] = shown["MediaContainer"]["Metadata"][0]["childCount"]
+        check("custom source is in the middle before split",
+              list(rows(port, "/library/collections/%s/children" % key)) == ["1009", TARGET, "1012"])
+    original_media = media_ids(detail(port, TARGET))
+    request(port, "PUT", "/library/metadata/%s/split" % TARGET)
+    for collection in collections:
+        children = rows(port, "/library/collections/%s/children" % collection)
+        new = [key for key in children if key not in ("1009", TARGET, "1012")]
+        role = dict(zip(measured["before"], ["1009", TARGET, "1012"]))
+        split_role = next(key for key in measured["after"] if key not in measured["before"])
+        expected = [actual for key in measured["after"]
+                    for actual in (new if key == split_role else [role[key]])]
+        check("custom source-middle split inserts adjacent, not at the collection tail",
+              len(new) == split_count and list(children) == expected, (list(children), expected))
+        check("custom split keeps Media order across source and new rows",
+              [media for key in [TARGET] + new for media in media_ids(detail(port, key))] == original_media)
+        _, shown = request(port, "GET", "/library/collections/%s" % collection)
+        check("custom split freezes the measured pre-split count",
+              before[collection] == measured["childCountBefore"]
+              and shown["MediaContainer"]["Metadata"][0]["childCount"] == measured["childCountAfter"])
+
+
+def run_custom_multiple_split(port, fixture):
+    # Apply the recorded adjacency rule to two new Media rows, preserving their order.
+    run_custom_split_collection(port, fixture, split_count=2)
+
+
 def recorded_keys(recorded):
     return recorded["answers"]["GET /library/metadata/%s" % recorded["split_off"]]["body"]["MediaContainer"]["Metadata"][0]["Collection"][0]
 
 
 def main():
     fixture = json.load(open(FIXTURE))
-    for part in (run_split, run_unmatched, run_split_collection):
+    for part in (run_split, run_unmatched, run_split_collection, run_custom_split_collection, run_custom_multiple_split):
         process, port = start()
         try:
             part(port, fixture)

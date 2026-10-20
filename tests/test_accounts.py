@@ -416,9 +416,71 @@ def raw(server, method, path, query=(), headers=None, body=None):
         return error.code, dict(error.headers), error.read().decode("utf-8", "replace")
 
 
+def refresh_refusals(server, variant):
+    """Replay the disposable PMS's method/section matrix and observe owner notifications."""
+    import socket
+    with open(os.path.join(FIXTURES, "shared_refresh_s1434.json")) as source:
+        measured = json.load(source)
+
+    def drain(stream):
+        data = bytearray()
+        try:
+            while True:
+                block = stream.recv(65536)
+                if not block:
+                    break
+                data.extend(block)
+        except socket.timeout:
+            pass
+        return bytes(data)
+
+    stream = socket.create_connection(("127.0.0.1", server.port), timeout=5)
+    stream.settimeout(.2)
+    stream.sendall(("GET /:/eventsource/notifications?X-Plex-Token=%s HTTP/1.1\r\n"
+                    "Host: localhost\r\n\r\n" % OWNER).encode())
+    try:
+        drain(stream)
+        _, before = server.ask(OWNER, "GET", "/library/sections/1/all")
+        for exchange in measured["exchanges"]:
+            if exchange["who"] != "shared":
+                continue
+            path = "/library/sections/%s/refresh" % exchange["section"]
+            query = [("force", "1")] if exchange["force"] else []
+            status, _ = server.ask(SHARED, exchange["method"], path, query)
+            events = drain(stream)
+            label = "%s: shared %s %s force=%s" % (
+                variant, exchange["method"], path, exchange["force"])
+            check(label + " matches measured refusal", status == exchange["status"],
+                  (status, exchange["status"]))
+            check(label + " emits no owner activity or timeline",
+                  not re.search(rb"event: (?:activity|timeline)\r?\n", events), events[:500])
+        _, after = server.ask(OWNER, "GET", "/library/sections/1/all")
+        check(variant + ": refused refreshes leave owner metadata unchanged", before == after)
+        # Positive control: the observer and refresh route must actually emit both kinds.
+        status, _ = server.ask(OWNER, "GET", "/library/sections/all/refresh", [("force", "1")])
+        events = drain(stream)
+        check(variant + ": owner GET refresh remains admitted", status == 200, status)
+        for kind in (b"activity", b"timeline"):
+            check(variant + ": owner refresh observer captures " + kind.decode(),
+                  re.search(rb"event: " + kind + rb"\r?\n", events) is not None, events[:500])
+        for exchange in measured["exchanges"]:
+            if exchange["who"] != "owner":
+                continue
+            path = "/library/sections/%s/refresh" % exchange["section"]
+            query = [("force", "1")] if exchange["force"] else []
+            status, _ = server.ask(OWNER, exchange["method"], path, query)
+            drain(stream)
+            check("%s: owner %s %s force=%s matches PMS" % (
+                variant, exchange["method"], path, exchange["force"]),
+                status == exchange["status"], (status, exchange["status"]))
+    finally:
+        stream.close()
+
+
 def share_gaps(server, variant):
     """What a share must not reach however it spells the request (audit 2026-10-20): every
     route below answered the share as the owner, or let it change the owner's things."""
+    refresh_refusals(server, variant)
     _, whole = server.ask(SHARED, "GET", "/library/sections/1/all")
     visible = sorted(rex_rows(whole))
     hidden = [key for key, *_ in MOVIES if key not in visible]

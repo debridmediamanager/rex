@@ -8567,7 +8567,8 @@ the server does not decode twice. PMS validates this shape; it never normalises 
 **GET and HEAD ignore a declared body.** Raw requests with `Content-Length: 999`, no body and an open
 socket receive their 200 immediately on both versions, with and without `Expect: 100-continue`.
 rex read the declared bytes before routing every verb, so a slow or absent body stalled every
-read-only endpoint. POST/PUT still consume their body; the rule is method-specific.
+read-only endpoint. Later captures found query-only POST/PUT exceptions too; body
+consumption is endpoint-specific (see "Closing the open audit items", below).
 
 **A measured stack is one Media with multiple Parts.** Plex recognises the filename spelling
 `Title - cdN.ext`; `build_catalog.py` groups only that spelling, orders by N, preserves each Part's
@@ -13348,3 +13349,64 @@ A source snapshot can enrich an existing version without replacing its streams
 or selected tracks. An omitted chapter array preserves saved timings; an
 explicit empty array clears them. Sources must include `-show_chapters` in their
 probe to supply this data; rex does not read media bytes to obtain it.
+
+## Closing the open audit items (2026-10-20)
+
+Measured on an isolated PMS 1.43.4 and rex 441dbe22, never by writing to plexlab or a
+production library. The redacted reference projections are checked in; regression
+suites replay the distinguishing cases rather than merely their one-member defaults.
+
+- **A split's plain-collection membership has an order.** In custom order, a source
+  between two members gains its split-off rows immediately after itself, in Media
+  order. The collection retains its pre-split `childCount`. An alphabetical or
+  release-date read alone concealed rex's append-at-tail bug
+  (`collection_open_items_s43.json`, `test_parity_split_guid.py`).
+- **Movie and Fix Match merges sort Media by numeric id, as paired episode merges
+  do.** A newer survivor absorbing an older source distinguishes this from
+  survivor-first. Every Media keeps its Part identity and source ownership
+  (`collection_open_items_s43.json`, `test_merge_unpaired.py`).
+- **An empty indexed collection label clears only on item-style writes.**
+  Metadata and collection-item routes remove the labels; section edits preserve
+  them. The parser must distinguish an absent label operation from an explicitly
+  empty indexed value (`collection_open_items_s43.json`, `test_parity_cycle88_b.py`).
+- **POST `/hubs` ignores an incomplete declared body, not all PMS POSTs.**
+  Subtitle uploads and rex's own JSON APIs still consume bodies. A fully buffered
+  body plus a pipelined request gives two responses; late bytes after an early
+  response find a closing connection (`body_framing_s1434.json`,
+  `test_body_framing.py`).
+- **Shared-user refresh refusal is 403 for GET, POST and HEAD.** A temporary managed
+  user on a freshly claimed disposable PMS measured visible, unshared and `all`
+  sections, both force values, and owner controls. PUT is 404 for visible/`all`,
+  but unshared numeric permission is checked first and returns 403. All denied
+  reference calls emitted no owner activity/status events; its empty libraries
+  cannot establish per-row timeline behavior. Rex's fixture library additionally
+  checks that denial emits no owner activity/timeline and changes no metadata.
+  The temporary share/user and exact server registration were removed afterward
+  (`shared_refresh_s1434.json`, `test_accounts.py`). The old PUT-only measurement
+  was not permission evidence: owner PUT refresh is invalid too.
+- **Uploaded artwork must not be re-encoded on every save.** With synthetic
+  retained uploads, 80 timeline requests per size on zen measured medians of
+  2.74 ms empty, 2.85 ms at 52 KiB, 11.93 ms at 1 MiB and 72.23 ms at 8 MiB.
+  `uploads` now uses the existing `Versioned` save mechanism; first and changed
+  uploads still persist before their response. `test_perf_artwork_save.py`
+  compares interleaved empty/loaded writes and verifies exact bytes, selection
+  and progress across hard kills and a later upload.
+- **The indexed tag lookup must retain the old scalar-name coercion.** A numeric
+  catalog tag `1999` was invisible to the string-only corpus, so an edit minted a
+  different id instead of reusing it. `scalar_tag_catalog.json` is explicitly a
+  synthetic compatibility input, not a provider capture; no recorded provider
+  numeric-tag example was found. String tag names remain borrowed while indexing.
+- **The PGS failure was a first-frame onset assumption, not a missing whole burn.**
+  Linux Jellyfin FFmpeg 8.1.2 reproduces it without rex: transparent and populated
+  subtitle canvases share PTS 0, and coincident video onset selects the transparent
+  first frame. The actual rex segment's subsequent 47 frames all contain the
+  subtitle at the unchanged crop. The regression sequentially decodes a bounded
+  interval inside the active cue and requires visible subtitle/source separation,
+  not a nonempty decode (`transcode/pgs_onset_ffmpeg.json`). The exact upstream
+  change and original Homebrew executable remain unexamined. Real custom client
+  capability requests also exercise Opus, Vorbis and PCM conversion, checking
+  produced codec and decoded tone instead of an encoder-name whitelist.
+- **Duration coverage is not 63 independent timing comparisons.** Of the 63 media
+  fixtures, 17 are shallow, 32 full probes agree with rounded milliseconds, and
+  14 have explicit packet/header-derived exceptions. `test_mediainfo.py` keeps
+  those exceptions visible rather than claiming exact duration parity.

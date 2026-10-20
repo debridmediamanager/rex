@@ -1,0 +1,7 @@
+{
+  "provenance": "Synthetic catalog compatibility input, not a PMS provider capture. The catalog accepts scalar tag names; an edit must reuse the existing tag's id and canonical value, as the pre-indexed lookup did.",
+  "tags": [
+    {"tag": 1999, "id": 777, "filter": "genre=777"},
+    {"tag": "1998", "id": 778, "filter": "genre=778"}
+  ]
+}

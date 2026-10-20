@@ -1,0 +1,521 @@
+{
+  "pms": "1.43.4",
+  "sections": [
+    "1",
+    "2"
+  ],
+  "shared_sections": [
+    "1"
+  ],
+  "exchanges": [
+    {
+      "who": "owner",
+      "method": "GET",
+      "section": "1",
+      "force": false,
+      "status": 200,
+      "body": "",
+      "owner_event_types": [
+        "activity",
+        "status"
+      ]
+    },
+    {
+      "who": "owner",
+      "method": "GET",
+      "section": "1",
+      "force": true,
+      "status": 200,
+      "body": "",
+      "owner_event_types": [
+        "activity",
+        "status"
+      ]
+    },
+    {
+      "who": "owner",
+      "method": "GET",
+      "section": "2",
+      "force": false,
+      "status": 200,
+      "body": "",
+      "owner_event_types": [
+        "activity",
+        "status"
+      ]
+    },
+    {
+      "who": "owner",
+      "method": "GET",
+      "section": "2",
+      "force": true,
+      "status": 200,
+      "body": "",
+      "owner_event_types": [
+        "activity",
+        "status"
+      ]
+    },
+    {
+      "who": "owner",
+      "method": "GET",
+      "section": "all",
+      "force": false,
+      "status": 200,
+      "body": "",
+      "owner_event_types": [
+        "activity",
+        "status"
+      ]
+    },
+    {
+      "who": "owner",
+      "method": "GET",
+      "section": "all",
+      "force": true,
+      "status": 200,
+      "body": "",
+      "owner_event_types": [
+        "activity",
+        "status"
+      ],
+      "owner_event_samples": {
+        "activity": "event: activity\ndata: {\"ActivityNotification\":{\"event\":\"started\",\"uuid\":\"0ab17968-f109-4414-8c81-19455e474bfc\",\"Activity\":{\"uuid\":\"0ab17968-f109-4414-8c81-19455e474bfc\",\"type\":\"library.update.section\",\"cancellable\":false,\"userID\":1,\"title\":\"Scanning\",\"subtitle\":\"\",\"progress\":0}}}"
+      }
+    },
+    {
+      "who": "owner",
+      "method": "POST",
+      "section": "1",
+      "force": false,
+      "status": 200,
+      "body": "",
+      "owner_event_types": [
+        "activity",
+        "status"
+      ]
+    },
+    {
+      "who": "owner",
+      "method": "POST",
+      "section": "1",
+      "force": true,
+      "status": 200,
+      "body": "",
+      "owner_event_types": [
+        "activity",
+        "status"
+      ]
+    },
+    {
+      "who": "owner",
+      "method": "POST",
+      "section": "2",
+      "force": false,
+      "status": 200,
+      "body": "",
+      "owner_event_types": [
+        "activity",
+        "status"
+      ]
+    },
+    {
+      "who": "owner",
+      "method": "POST",
+      "section": "2",
+      "force": true,
+      "status": 200,
+      "body": "",
+      "owner_event_types": [
+        "activity",
+        "status"
+      ]
+    },
+    {
+      "who": "owner",
+      "method": "POST",
+      "section": "all",
+      "force": false,
+      "status": 200,
+      "body": "",
+      "owner_event_types": [
+        "activity",
+        "status"
+      ]
+    },
+    {
+      "who": "owner",
+      "method": "POST",
+      "section": "all",
+      "force": true,
+      "status": 200,
+      "body": "",
+      "owner_event_types": [
+        "activity",
+        "status"
+      ]
+    },
+    {
+      "who": "owner",
+      "method": "HEAD",
+      "section": "1",
+      "force": false,
+      "status": 200,
+      "body": "",
+      "owner_event_types": [
+        "activity",
+        "status"
+      ]
+    },
+    {
+      "who": "owner",
+      "method": "HEAD",
+      "section": "1",
+      "force": true,
+      "status": 200,
+      "body": "",
+      "owner_event_types": [
+        "activity",
+        "status"
+      ]
+    },
+    {
+      "who": "owner",
+      "method": "HEAD",
+      "section": "2",
+      "force": false,
+      "status": 200,
+      "body": "",
+      "owner_event_types": [
+        "activity",
+        "status"
+      ]
+    },
+    {
+      "who": "owner",
+      "method": "HEAD",
+      "section": "2",
+      "force": true,
+      "status": 200,
+      "body": "",
+      "owner_event_types": [
+        "activity",
+        "status"
+      ]
+    },
+    {
+      "who": "owner",
+      "method": "HEAD",
+      "section": "all",
+      "force": false,
+      "status": 200,
+      "body": "",
+      "owner_event_types": [
+        "activity",
+        "status"
+      ]
+    },
+    {
+      "who": "owner",
+      "method": "HEAD",
+      "section": "all",
+      "force": true,
+      "status": 200,
+      "body": "",
+      "owner_event_types": [
+        "activity",
+        "status"
+      ]
+    },
+    {
+      "who": "owner",
+      "method": "PUT",
+      "section": "1",
+      "force": false,
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "owner_event_types": []
+    },
+    {
+      "who": "owner",
+      "method": "PUT",
+      "section": "1",
+      "force": true,
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "owner_event_types": []
+    },
+    {
+      "who": "owner",
+      "method": "PUT",
+      "section": "2",
+      "force": false,
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "owner_event_types": []
+    },
+    {
+      "who": "owner",
+      "method": "PUT",
+      "section": "2",
+      "force": true,
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "owner_event_types": []
+    },
+    {
+      "who": "owner",
+      "method": "PUT",
+      "section": "all",
+      "force": false,
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "owner_event_types": []
+    },
+    {
+      "who": "owner",
+      "method": "PUT",
+      "section": "all",
+      "force": true,
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "owner_event_types": []
+    },
+    {
+      "who": "shared",
+      "method": "GET",
+      "section": "1",
+      "force": false,
+      "status": 403,
+      "body": "<html><head><title>Forbidden</title></head><body><h1>403 Forbidden</h1></body></html>",
+      "owner_event_types": []
+    },
+    {
+      "who": "shared",
+      "method": "GET",
+      "section": "1",
+      "force": true,
+      "status": 403,
+      "body": "<html><head><title>Forbidden</title></head><body><h1>403 Forbidden</h1></body></html>",
+      "owner_event_types": []
+    },
+    {
+      "who": "shared",
+      "method": "GET",
+      "section": "2",
+      "force": false,
+      "status": 403,
+      "body": "<html><head><title>Forbidden</title></head><body><h1>403 Forbidden</h1></body></html>",
+      "owner_event_types": []
+    },
+    {
+      "who": "shared",
+      "method": "GET",
+      "section": "2",
+      "force": true,
+      "status": 403,
+      "body": "<html><head><title>Forbidden</title></head><body><h1>403 Forbidden</h1></body></html>",
+      "owner_event_types": []
+    },
+    {
+      "who": "shared",
+      "method": "GET",
+      "section": "all",
+      "force": false,
+      "status": 403,
+      "body": "<html><head><title>Forbidden</title></head><body><h1>403 Forbidden</h1></body></html>",
+      "owner_event_types": []
+    },
+    {
+      "who": "shared",
+      "method": "GET",
+      "section": "all",
+      "force": true,
+      "status": 403,
+      "body": "<html><head><title>Forbidden</title></head><body><h1>403 Forbidden</h1></body></html>",
+      "owner_event_types": []
+    },
+    {
+      "who": "shared",
+      "method": "POST",
+      "section": "1",
+      "force": false,
+      "status": 403,
+      "body": "<html><head><title>Forbidden</title></head><body><h1>403 Forbidden</h1></body></html>",
+      "owner_event_types": []
+    },
+    {
+      "who": "shared",
+      "method": "POST",
+      "section": "1",
+      "force": true,
+      "status": 403,
+      "body": "<html><head><title>Forbidden</title></head><body><h1>403 Forbidden</h1></body></html>",
+      "owner_event_types": []
+    },
+    {
+      "who": "shared",
+      "method": "POST",
+      "section": "2",
+      "force": false,
+      "status": 403,
+      "body": "<html><head><title>Forbidden</title></head><body><h1>403 Forbidden</h1></body></html>",
+      "owner_event_types": []
+    },
+    {
+      "who": "shared",
+      "method": "POST",
+      "section": "2",
+      "force": true,
+      "status": 403,
+      "body": "<html><head><title>Forbidden</title></head><body><h1>403 Forbidden</h1></body></html>",
+      "owner_event_types": []
+    },
+    {
+      "who": "shared",
+      "method": "POST",
+      "section": "all",
+      "force": false,
+      "status": 403,
+      "body": "<html><head><title>Forbidden</title></head><body><h1>403 Forbidden</h1></body></html>",
+      "owner_event_types": []
+    },
+    {
+      "who": "shared",
+      "method": "POST",
+      "section": "all",
+      "force": true,
+      "status": 403,
+      "body": "<html><head><title>Forbidden</title></head><body><h1>403 Forbidden</h1></body></html>",
+      "owner_event_types": []
+    },
+    {
+      "who": "shared",
+      "method": "HEAD",
+      "section": "1",
+      "force": false,
+      "status": 403,
+      "body": "",
+      "owner_event_types": []
+    },
+    {
+      "who": "shared",
+      "method": "HEAD",
+      "section": "1",
+      "force": true,
+      "status": 403,
+      "body": "",
+      "owner_event_types": []
+    },
+    {
+      "who": "shared",
+      "method": "HEAD",
+      "section": "2",
+      "force": false,
+      "status": 403,
+      "body": "",
+      "owner_event_types": []
+    },
+    {
+      "who": "shared",
+      "method": "HEAD",
+      "section": "2",
+      "force": true,
+      "status": 403,
+      "body": "",
+      "owner_event_types": []
+    },
+    {
+      "who": "shared",
+      "method": "HEAD",
+      "section": "all",
+      "force": false,
+      "status": 403,
+      "body": "",
+      "owner_event_types": []
+    },
+    {
+      "who": "shared",
+      "method": "HEAD",
+      "section": "all",
+      "force": true,
+      "status": 403,
+      "body": "",
+      "owner_event_types": []
+    },
+    {
+      "who": "shared",
+      "method": "PUT",
+      "section": "1",
+      "force": false,
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "owner_event_types": []
+    },
+    {
+      "who": "shared",
+      "method": "PUT",
+      "section": "1",
+      "force": true,
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "owner_event_types": []
+    },
+    {
+      "who": "shared",
+      "method": "PUT",
+      "section": "2",
+      "force": false,
+      "status": 403,
+      "body": "<html><head><title>Forbidden</title></head><body><h1>403 Forbidden</h1></body></html>",
+      "owner_event_types": []
+    },
+    {
+      "who": "shared",
+      "method": "PUT",
+      "section": "2",
+      "force": true,
+      "status": 403,
+      "body": "<html><head><title>Forbidden</title></head><body><h1>403 Forbidden</h1></body></html>",
+      "owner_event_types": []
+    },
+    {
+      "who": "shared",
+      "method": "PUT",
+      "section": "all",
+      "force": false,
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "owner_event_types": []
+    },
+    {
+      "who": "shared",
+      "method": "PUT",
+      "section": "all",
+      "force": true,
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "owner_event_types": []
+    }
+  ],
+  "cleanup": {
+    "task_device_delete_statuses": [
+      200
+    ],
+    "task_machine_devices_remaining": 0,
+    "task_managed_user_remaining": 0,
+    "task_share_absent": true,
+    "share_list_status": 404,
+    "prior_cleanup": [
+      {
+        "delete_share": 200
+      },
+      {
+        "delete_user": 200
+      },
+      {
+        "unclaim_disposable_pms": 200
+      }
+    ]
+  }
+}

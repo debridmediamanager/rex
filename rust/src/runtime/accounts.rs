@@ -197,8 +197,8 @@ pub(crate) struct Overlay {
     media: HashMap<String, Value>,
 }
 
-/// The routes a claimed 1.43.4 PMS refused a shared user with 403 (the fixture's refusal
-/// survey). `/library/sections/{id}/refresh` was a 404 there.
+/// The routes a claimed 1.43.4 PMS refused a shared user with 403. Section refresh
+/// has its own method and section-permission ordering below.
 fn admin_only(method: &str, path: &str) -> bool {
     let read = matches!(method, "GET" | "HEAD");
     let exact = [
@@ -335,14 +335,17 @@ impl Runtime {
         if path == "/downloadQueue" && method == "GET" || path.starts_with("/downloadQueue") && !self.viewer.allow_sync {
             return Some(Response::error(403, "rex: downloads are not shared"));
         }
-        if path.starts_with("/library/sections/") && path.ends_with("/refresh") && method != "GET" {
-            return Some(Response::error(404, "rex: the owner's route"));
-        }
         let segments = path.split('/').collect::<Vec<_>>();
         if let ["", "library", "sections", section, ..] = segments.as_slice() {
             if !section.is_empty() && section.bytes().all(|byte| byte.is_ascii_digit()) && !self.section_granted(section) {
                 return Some(Response::error(403, "rex: not shared"));
             }
+        }
+        // The disposable shared PMS refused GET/HEAD/POST refresh even for a granted
+        // section or `all`; PUT was a route 404, except an unshared section wins with 403.
+        if path.starts_with("/library/sections/") && path.ends_with("/refresh") {
+            let status = if matches!(method, "GET" | "HEAD" | "POST") { 403 } else { 404 };
+            return Some(Response::error(status, "rex: the owner's route"));
         }
         if let ["", "hubs", "sections", section, ..] = segments.as_slice() {
             if !self.section_granted(section) {

@@ -22,6 +22,7 @@ import time
 import urllib.parse
 
 from server_command import server_command
+from test_ports import free_port
 
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -37,14 +38,6 @@ results = []
 def check(name, ok, detail=""):
     results.append(ok)
     print("%s  %s%s" % ("PASS" if ok else "FAIL", name, "" if ok else "  -- " + detail))
-
-
-def free_port():
-    probe = socket.socket()
-    probe.bind(("127.0.0.1", 0))
-    port = probe.getsockname()[1]
-    probe.close()
-    return port
 
 
 class Instance:

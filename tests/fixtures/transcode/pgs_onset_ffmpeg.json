@@ -1,0 +1,214 @@
+{
+  "provenance": {
+    "captured": "2026-10-20",
+    "source": "rex open-items isolated zen FFmpeg measurements",
+    "fixture": "tests/test_native_transcode.py make_pgs + FFmpeg-generated subs.mkv; original video/subtitle PTS retained at 0",
+    "scope": "Crop luma decoded from actual FFmpeg output; not a PMS protocol fixture or a fabricated expected frame.",
+    "versions": {
+      "ubuntu44": "FFmpeg 4.4.2",
+      "jellyfin81": "Jellyfin FFmpeg 8.1.2"
+    },
+    "cue_seconds": [
+      0,
+      30
+    ],
+    "video_fps": 24,
+    "box": [
+      540,
+      500,
+      200,
+      60
+    ]
+  },
+  "native_segment": {
+    "command": [
+      "/usr/lib/jellyfin-ffmpeg/ffmpeg",
+      "-hide_banner",
+      "-nostdin",
+      "-v",
+      "info",
+      "-i",
+      "subs-0.ts",
+      "-map",
+      "0:v:0",
+      "-vf",
+      "crop=20:20:630:520,format=gray,showinfo",
+      "-fps_mode",
+      "passthrough",
+      "-f",
+      "rawvideo",
+      "-"
+    ],
+    "sample_crop": [
+      630,
+      520,
+      20,
+      20
+    ],
+    "frame_count": 48,
+    "luma": [
+      127.5,
+      255.0,
+      255.0,
+      255.0,
+      255.0,
+      255.0,
+      255.0,
+      255.0,
+      255.0,
+      255.0,
+      255.0,
+      255.0,
+      255.0,
+      255.0,
+      255.0,
+      255.0,
+      255.0,
+      255.0,
+      255.0,
+      255.0,
+      255.0,
+      255.0,
+      255.0,
+      255.0,
+      255.0,
+      255.0,
+      255.0,
+      255.0,
+      255.0,
+      255.0,
+      255.0,
+      255.0,
+      255.0,
+      255.0,
+      255.0,
+      255.0,
+      255.0,
+      255.0,
+      255.0,
+      255.0,
+      255.0,
+      255.0,
+      255.0,
+      255.0,
+      255.0,
+      255.0,
+      255.0,
+      255.0
+    ]
+  },
+  "direct_overlay": [
+    {
+      "decoder": "ubuntu44",
+      "fixture": "pgs-direct",
+      "command": [
+        "/usr/bin/ffmpeg",
+        "-hide_banner",
+        "-nostdin",
+        "-v",
+        "debug",
+        "-i",
+        "subs.mkv",
+        "-filter_complex",
+        "[0:0][0:2]overlay=eof_action=pass,crop=20:20:630:520,format=gray[v]",
+        "-map",
+        "[v]",
+        "-frames:v",
+        "3",
+        "-f",
+        "rawvideo",
+        "-"
+      ],
+      "exit": 0,
+      "first_three_luma": [
+        255.0,
+        255.0,
+        255.0
+      ]
+    },
+    {
+      "decoder": "ubuntu44",
+      "fixture": "pgs-jellyfin",
+      "command": [
+        "/usr/bin/ffmpeg",
+        "-hide_banner",
+        "-nostdin",
+        "-v",
+        "debug",
+        "-i",
+        "subs.mkv",
+        "-filter_complex",
+        "[0:0][0:2]overlay=eof_action=pass,crop=20:20:630:520,format=gray[v]",
+        "-map",
+        "[v]",
+        "-frames:v",
+        "3",
+        "-f",
+        "rawvideo",
+        "-"
+      ],
+      "exit": 0,
+      "first_three_luma": [
+        255.0,
+        255.0,
+        255.0
+      ]
+    },
+    {
+      "decoder": "jellyfin81",
+      "fixture": "pgs-direct",
+      "command": [
+        "/usr/lib/jellyfin-ffmpeg/ffmpeg",
+        "-hide_banner",
+        "-nostdin",
+        "-v",
+        "debug",
+        "-i",
+        "subs.mkv",
+        "-filter_complex",
+        "[0:0][0:2]overlay=eof_action=pass,crop=20:20:630:520,format=gray[v]",
+        "-map",
+        "[v]",
+        "-frames:v",
+        "3",
+        "-f",
+        "rawvideo",
+        "-"
+      ],
+      "exit": 0,
+      "first_three_luma": [
+        255.0,
+        255.0,
+        255.0
+      ]
+    },
+    {
+      "decoder": "jellyfin81",
+      "fixture": "pgs-jellyfin",
+      "command": [
+        "/usr/lib/jellyfin-ffmpeg/ffmpeg",
+        "-hide_banner",
+        "-nostdin",
+        "-v",
+        "debug",
+        "-i",
+        "subs.mkv",
+        "-filter_complex",
+        "[0:0][0:2]overlay=eof_action=pass,crop=20:20:630:520,format=gray[v]",
+        "-map",
+        "[v]",
+        "-frames:v",
+        "3",
+        "-f",
+        "rawvideo",
+        "-"
+      ],
+      "exit": 0,
+      "first_three_luma": [
+        127.5,
+        255.0,
+        255.0
+      ]
+    }
+  ]
+}

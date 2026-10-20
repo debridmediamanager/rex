@@ -168,6 +168,20 @@ def luma(path, at, crop):
     return sum(raw) / max(len(raw), 1)
 
 
+def frame_lumas(path, crop, count):
+    """Decode sequentially from the first video frame, ignoring the muxer's timestamp delay."""
+    x, y, w, h = crop
+    raw = subprocess.run([FFMPEG, "-v", "error", "-i", path, "-map", "0:v:0",
+                          "-vf", "crop=%d:%d:%d:%d,format=gray" % (w, h, x, y),
+                          "-frames:v", str(count), "-vsync", "0", "-f", "rawvideo", "-"],
+                         capture_output=True, check=True).stdout
+    frame_size = w * h
+    if len(raw) != count * frame_size:
+        raise AssertionError("expected %d decoded crop frames, got %d bytes" % (count, len(raw)))
+    return [sum(raw[offset:offset + frame_size]) / frame_size
+            for offset in range(0, len(raw), frame_size)]
+
+
 def probe(path):
     out = subprocess.run([FFPROBE, "-v", "error", "-show_streams", "-show_format", "-of", "json", path],
                          capture_output=True, text=True, check=True).stdout
@@ -536,6 +550,72 @@ def walk(port, scratch, label, key, expect_video, expect_audio, size, duration=D
     return ttfs
 
 
+def profile_audio_encoders(port, scratch):
+    """Custom client capabilities, not untouched Desktop/Roku defaults.
+
+    Those real profiles advertise these codecs in Matroska HTTP targets. Generic's
+    supported add-transcode-target API lets a client request one advertised codec
+    in HLS Matroska segments, without AAC/the first codec masking the other encoders.
+    """
+    import array
+
+    profiles = json.load(open(os.path.join(ROOT, "data/client_profiles.json")))
+    for name, codec, expected in (("Plex Desktop", "opus", "opus"),
+                                  ("Plex Desktop", "vorbis", "vorbis"),
+                                  ("Roku-5.x", "pcm", "pcm_s16le")):
+        target = next(target for target in profiles[name]["targets"]
+                      if target.get("context") == "streaming"
+                      and codec in target.get("audioCodec", "").split(","))
+        container = target["container"]
+        video = (target.get("videoCodec") or target["codec"]).split(",")[0]
+        session = "s-profile-" + codec
+        extra = {"directStream": "1", "directStreamAudio": "0",
+                 "X-Plex-Client-Profile-Name": "Generic",
+                 "X-Plex-Client-Profile-Extra":
+                     "add-transcode-target(type=videoProfile&context=streaming&protocol=hls"
+                     "&container=%s&videoCodec=%s&audioCodec=%s)" % (container, video, codec)}
+        try:
+            status, result = decision(port, "1", session, **extra)
+            media = result.get("Metadata", [{}])[0].get("Media", [{}])[0]
+            audio = next((stream for stream in media.get("Part", [{}])[0].get("Stream", [])
+                          if stream.get("streamType") == 2), {})
+            check("%s: custom %s capabilities negotiate audio conversion" % (codec, name),
+                  status == 200 and audio.get("decision") == "transcode"
+                  and audio.get("codec") == codec and media.get("container") == container,
+                  json.dumps(audio))
+            get(port, "/video/:/transcode/universal/start.m3u8", plex_web_query("1", session, **extra))
+            base = "/video/:/transcode/universal/session/%s/base/" % session
+            status, _, segment = get(port, base + "00000.ts")
+            header_status, _, header = get(port, base + "header")
+            available = status == 200 and header_status == 200
+            check("%s: negotiated Matroska audio segment is available" % codec, available,
+                  "segment %s, header %s" % (status, header_status))
+            if not available:
+                continue
+            path = os.path.join(scratch, "profile-%s-0.mkv" % codec)
+            open(path, "wb").write(header + segment)
+            actual = [stream["codec_name"] for stream in probe(path)["streams"]
+                      if stream["codec_type"] == "audio"]
+            check("%s: ffprobe identifies the requested encoded audio" % codec,
+                  actual == [expected], repr(actual))
+            # Decode the served audio, not the source or an encoder-name echo. The
+            # fixture's 440 Hz tone must survive in a quarter second of real PCM.
+            decoded = subprocess.run([FFMPEG, "-v", "error", "-i", path, "-map", "0:a:0",
+                                      "-t", "0.25", "-ac", "1", "-ar", "48000",
+                                      "-f", "s16le", "-"], capture_output=True, check=True).stdout
+            samples = array.array("h")
+            samples.frombytes(decoded)
+            if sys.byteorder != "little":
+                samples.byteswap()
+            crossings = sum((left < 0) != (right < 0) for left, right in zip(samples, samples[1:]))
+            check("%s: produced audio decodes to the source's 440 Hz tone" % codec,
+                  len(samples) == 12000 and max(map(abs, samples), default=0) > 1000
+                  and 190 <= crossings <= 250,
+                  "%d samples, %d zero crossings" % (len(samples), crossings))
+        finally:
+            get(port, "/video/:/transcode/universal/stop", [("session", session)])
+
+
 def main():
     if not FFMPEG or not FFPROBE:
         print("SKIP: no ffmpeg (set REX_TRANSCODER)")
@@ -865,6 +945,8 @@ def main():
              videoResolution="640x360", maxVideoBitrate="1000", directStream="1")
         # Audio only: the video is copied and the DTS the client refuses becomes AAC.
         walk(port, scratch, "audio-only", "5", "copy", "transcode", None, directStream="1", directStreamAudio="1")
+        # Exercise the profile-supported non-AAC encoders through real client target negotiation.
+        profile_audio_encoders(port, scratch)
         # A selected image subtitle cannot reach the client inside a conversion's
         # MPEG-TS: it is burned into the picture, which converts the video even where the
         # codec alone would be copied. The decision's shape is not measured (no recording).
@@ -881,11 +963,16 @@ def main():
         open(segment, "wb").write(first)
         x, y, w, h = BOX
         centre = (x + w // 2 - 10, y + h // 2 - 10, 20, 20)
-        # The first frame: the segment's timestamps start at the muxer's delay, not 0.
-        burned = luma(segment, 0, centre) if status == 200 and first[:1] == b"\x47" else -1
-        source = luma(plain, 0, centre)
-        check("subs: the subtitle's white box is in the converted picture",
-              burned > 200 and abs(burned - source) > 30, "luma %.0f, the source's %.0f" % (burned, source))
+        # FFmpeg 8.1.2 can composite the PTS-0 cue one frame after the PTS-0 video,
+        # unlike 4.4.2 (fixtures/transcode/pgs_onset_ffmpeg.json: 47/48 burned frames).
+        # Require every frame in a bounded stable interval (0.25-1 s of the 0-30 s cue),
+        # not the scheduling-dependent first frame, nor merely some nonempty output.
+        burned = frame_lumas(segment, centre, 24) if status == 200 and first[:1] == b"\x47" else []
+        source = frame_lumas(plain, centre, 24)
+        stable = list(zip(burned[6:24], source[6:24]))
+        check("subs: the white box is visible throughout the stable active-cue interval",
+              len(stable) == 18 and all(value > 230 and value - original > 30 for value, original in stable),
+              "burned %s, source %s" % ([round(v, 1) for v in burned], [round(v, 1) for v in source]))
         get(port, "/video/:/transcode/universal/stop", [("session", "s-subs")])
         # HDR is tonemapped to SDR BT.709: the output segment says so. Dolby Vision profile
         # 5 (no HDR10 base; a real PMS refuses it, 2003) converts too when tonemapx can apply

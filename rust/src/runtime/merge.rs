@@ -134,7 +134,7 @@ impl Runtime {
                 // artwork version) on the reference.
                 object.insert("Media".to_string(), json!([media[0].clone()]));
             }
-            for source in &media[1..] {
+            for (offset, source) in media[1..].iter().enumerate() {
                 let new_key = self.next_row_key(&kind).to_string();
                 let mut clone = original.clone();
                 if let Some(object) = clone.as_object_mut() {
@@ -154,8 +154,10 @@ impl Runtime {
                 self.catalog.add(clone.clone());
                 self.deleted.remove(&new_key);
                 for collection in self.collections.values_mut() {
-                    if !collection.smart && collection.items.contains(key) {
-                        collection.items.push(new_key.clone());
+                    if !collection.smart {
+                        if let Some(position) = collection.items.iter().position(|item| item == key) {
+                            collection.items.insert(position + offset + 1, new_key.clone());
+                        }
                     }
                 }
                 created.push(clone);

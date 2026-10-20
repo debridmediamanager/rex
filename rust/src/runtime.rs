@@ -454,6 +454,11 @@ impl Members {
         self.order.push(key);
     }
 
+    fn insert(&mut self, position: usize, key: String) {
+        *self.counts.entry(key.clone()).or_insert(0) += 1;
+        self.order.insert(position, key);
+    }
+
     fn forget(&mut self, key: &str) {
         if let Some(count) = self.counts.get_mut(key) {
             *count -= 1;
@@ -693,7 +698,7 @@ pub struct Runtime {
     /// not view state, so a later scrobble or unscrobble leaves it standing.
     viewed_in_session: HashSet<String>,
     /// Uploaded artwork by its `upload://` key: the bytes and their content type.
-    uploads: HashMap<String, (Vec<u8>, String)>,
+    uploads: Versioned<HashMap<String, (Vec<u8>, String)>>,
     /// Track rows the theme metadata leaf minted, by request path and by ratingKey.
     theme_rows: HashMap<String, Value>,
     /// The spellfix1 vocabularies search falls back on: a SNAPSHOT, built at load and
@@ -907,7 +912,7 @@ impl Runtime {
             history: Vec::new(),
             playlists: HashMap::new(),
             collections: HashMap::new(),
-            uploads: HashMap::new(),
+            uploads: Versioned::default(),
             tag_table: TagTable::default(),
             metadata_provider_groups: HashMap::new(),
             next_metadata_provider_group: 5,
@@ -1849,11 +1854,12 @@ impl Runtime {
     }
 
     /// The `Versioned` fields by their name in the state document, with their versions.
-    fn versions(&self) -> [(&'static str, u64); 3] {
+    fn versions(&self) -> [(&'static str, u64); 4] {
         [
             ("deleted", self.deleted.version()),
             ("retiredKeys", self.retired_keys.version()),
             ("byteBuckets", self.byte_buckets.version()),
+            ("uploads", self.uploads.version()),
         ]
     }
 
@@ -1961,7 +1967,11 @@ impl Runtime {
             ("nextMetadataProviderGroup", json!(self.next_metadata_provider_group)),
             ("deletedBuiltinGroups", json!(self.deleted_builtin_groups.iter().collect::<Vec<_>>())),
             ("builtinGroupTitles", json!(self.builtin_group_titles.iter().map(|(id, title)| (id.to_string(), json!(title))).collect::<Map<String, Value>>())),
-            ("uploads", json!(self.uploads.iter().map(|(key, (bytes, kind))| (key.clone(), json!([base64_encode(bytes), kind]))).collect::<Map<String, Value>>())),
+            ("uploads", if full || self.saving("uploads") {
+                json!(self.uploads.iter().map(|(key, (bytes, kind))| (key.clone(), json!([base64_encode(bytes), kind]))).collect::<Map<String, Value>>())
+            } else {
+                Value::Null
+            }),
             ("themeRows", json!(self.theme_rows)),
             ("downloadQueues", json!(self.download_queues)),
             ("historyCounter", json!(self.history_counter.get())),
@@ -1983,7 +1993,7 @@ impl Runtime {
         if let Some(object) = state.as_object_mut() {
             for (name, value) in extra
                 .into_iter()
-                .filter(|(name, value)| !matches!(*name, "feedHeld" | "accountViews" | "retiredKeys") || !value.is_null())
+                .filter(|(name, value)| !matches!(*name, "feedHeld" | "accountViews" | "retiredKeys" | "uploads") || !value.is_null())
             {
                 object.insert(name.to_string(), value);
             }
@@ -14679,7 +14689,7 @@ impl Runtime {
             );
         }
         if segments == ["library", "sections", "all", "refresh"] {
-            if request.method != "GET" && request.method != "POST" && request.method != "DELETE" {
+            if !matches!(request.method.as_str(), "GET" | "HEAD" | "POST" | "DELETE") {
                 return Response::error(404, "rex: not found");
             }
             if request.method != "DELETE" {
@@ -19377,6 +19387,7 @@ impl Runtime {
                     info!("MERGE {key} <- {ids_repr} (0 row(s) absorbed)");
                     return Response::empty(200);
                 }
+                sort_media_by_id(&mut media);
                 // Cycle 84, plexscratch42 (1.42.2) and plexscratch (1.43.4): a merge leaves
                 // the survivor's `updatedAt` and artwork version unchanged, read at once and
                 // 100 s later (`tests/fixtures/merge_updated_at_s42.json`); stamping it gave
@@ -19818,6 +19829,7 @@ impl Runtime {
             // absorbed release was a new row again at its source's next push.
             let mut media = feed::tagged_media(&existing);
             media.extend(feed::tagged_media(row));
+            sort_media_by_id(&mut media);
             if let Some(object) = self
                 .catalog
                 .get_mut(&existing_key)
@@ -20006,12 +20018,7 @@ impl Runtime {
                 {
                     let mut media = feed::tagged_media(source);
                     media.extend(feed::tagged_media(&Value::Object(object.clone())));
-                    // In the order of their ids, whichever row absorbed which (the same
-                    // fixture): Firefly's id 6 went first into a row of 32 and 34, a probe's 34
-                    // after 32. Absorbed first held only while the absorbed were the older.
-                    media.sort_by_key(|media| {
-                        media.get("id").and_then(|id| id.as_i64().or_else(|| id.as_str()?.parse().ok())).unwrap_or(i64::MAX)
-                    });
+                    sort_media_by_id(&mut media);
                     object.insert("Media".to_string(), Value::Array(media));
                     object.insert("updatedAt".to_string(), json!(now()));
                 }
@@ -24212,15 +24219,14 @@ fn read_request<S: Read>(
     } else {
         parts[2].to_string()
     };
-    // Cycle 37/38: GET and HEAD answer without consuming a declared body, and so do the
-    // two query-only UI writes (an item edit, a playlist create); an upload waits for
-    // its bytes.
+    // Cycle 37/38 and the 2026-10-20 PMS capture: GET/HEAD, query-only UI writes
+    // and POST /hubs answer before a declared body arrives; uploads consume their bytes.
     let target_path = target.split('?').next().unwrap_or("");
     let query_only_write = (method == "PUT"
         && target_path
             .strip_prefix("/library/metadata/")
             .is_some_and(|id| !id.is_empty() && id.bytes().all(|b| b.is_ascii_digit())))
-        || (method == "POST" && target_path == "/playlists");
+        || (method == "POST" && matches!(target_path, "/playlists" | "/hubs"));
     let is_read_only = matches!(method.as_str(), "GET" | "HEAD") || query_only_write;
     let transfer_chunked = headers
         .get("transfer-encoding")
@@ -24776,6 +24782,14 @@ fn hex(value: u8) -> Result<u8, ()> {
 }
 fn key_of(value: &(impl Row + ?Sized)) -> Option<String> {
     value.get("ratingKey").map(string_value)
+}
+
+/// PMS orders merged Media by their unique numeric ids, not by survivor or request order
+/// (`collection_open_items_s43.json`, `merge_shows_media_order_s43.json`).
+fn sort_media_by_id(media: &mut [Value]) {
+    media.sort_unstable_by_key(|media| {
+        media.get("id").and_then(|id| id.as_i64().or_else(|| id.as_str()?.parse().ok())).unwrap_or(i64::MAX)
+    });
 }
 
 #[cfg(test)]
@@ -28096,9 +28110,7 @@ mod request_parser_tests {
     #[test]
     fn chunked_request_body_aggregate_is_bounded_across_chunks() {
         let first = MAX_BODY_BYTES - 1;
-        // `/hubs` is a body-consuming route; query-only writes deliberately dispatch early
-        // when their body has not arrived yet, which is a separate measured rule.
-        let mut request = b"POST /hubs HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n".to_vec();
+        let mut request = b"POST /rex/sources/feed HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n".to_vec();
         request.extend_from_slice(format!("{first:x}\r\n").as_bytes());
         request.extend(std::iter::repeat_n(b'a', first));
         request.extend_from_slice(b"\r\n2\r\naa\r\n0\r\n\r\n");

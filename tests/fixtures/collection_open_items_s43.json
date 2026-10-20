@@ -1,0 +1,421 @@
+{
+  "provenance": {
+    "pms": "1.43.4",
+    "recorded": "2026-10-20",
+    "source": "collection/evidence.json; collection/custom-evidence.json",
+    "projection": "Public movie metadata and numeric Media/Part identities; device ids, file paths and transport URLs omitted."
+  },
+  "movies": {
+    "1": {
+      "ratingKey": "1",
+      "key": "/library/metadata/1",
+      "type": "movie",
+      "title": "Big Buck Bunny",
+      "guid": "plex://movie/5d7768352e80df001ebde4c9",
+      "Guid": [
+        {
+          "id": "imdb://tt1254207"
+        },
+        {
+          "id": "tmdb://10378"
+        },
+        {
+          "id": "tvdb://12352"
+        }
+      ],
+      "year": 2008,
+      "summary": "",
+      "Media": [
+        {
+          "id": 1,
+          "Part": [
+            {
+              "id": 1
+            }
+          ]
+        }
+      ],
+      "originallyAvailableAt": "2008-04-10"
+    },
+    "17": {
+      "ratingKey": "17",
+      "key": "/library/metadata/17",
+      "type": "movie",
+      "title": "Elephants Dream",
+      "guid": "plex://movie/5d776833103a2d001f5674a1",
+      "Guid": [
+        {
+          "id": "imdb://tt0807840"
+        },
+        {
+          "id": "tmdb://9761"
+        },
+        {
+          "id": "tvdb://16180"
+        }
+      ],
+      "year": 2006,
+      "summary": "The two main characters are on a journey in the folds of a giant Machine, exploring the twisted and dark complex of wires, gears and cogs. Until one moment a conflict arises that throws out all their assumptions. This movie short couples lively fun with passionate characters in an epic story line.",
+      "Media": [
+        {
+          "id": 2,
+          "Part": [
+            {
+              "id": 2
+            }
+          ]
+        }
+      ],
+      "originallyAvailableAt": "2006-05-04"
+    },
+    "18": {
+      "ratingKey": "18",
+      "key": "/library/metadata/18",
+      "type": "movie",
+      "title": "Cosmos Laundromat",
+      "guid": "plex://movie/5d776bd7594b2b001e6e4d2f",
+      "Guid": [
+        {
+          "id": "imdb://tt4957236"
+        },
+        {
+          "id": "tmdb://358332"
+        },
+        {
+          "id": "tvdb://95628"
+        }
+      ],
+      "year": 2015,
+      "summary": "On a desolate island, a suicidal sheep named Franck meets his fate\u2026in the form of a quirky salesman named Victor, who offers him the gift of a lifetime. The gift is many lifetimes, actually, in many different worlds \u2013 each lasting just a few minutes. In the sequel to the pilot, Franck will find a new reason to live\u2026in the form of a bewitching female adventurer named Tara, who awakens his long-lost lust for life. But can Franck keep up with her?",
+      "Media": [
+        {
+          "id": 12,
+          "Part": [
+            {
+              "id": 12
+            }
+          ]
+        }
+      ],
+      "originallyAvailableAt": "2015-08-10"
+    },
+    "3": {
+      "ratingKey": "3",
+      "key": "/library/metadata/3",
+      "type": "movie",
+      "title": "Sintel",
+      "guid": "plex://movie/5d77688123d5a3001f4ed3df",
+      "Guid": [
+        {
+          "id": "imdb://tt1727587"
+        },
+        {
+          "id": "tmdb://45745"
+        },
+        {
+          "id": "tvdb://9413"
+        }
+      ],
+      "year": 2010,
+      "summary": "A wandering warrior finds an unlikely friend in the form of a young dragon. The two develop a close bond, until one day the dragon is snatched away. She then sets out on a relentless quest to reclaim her friend, finding in the end that her quest exacts a far greater price than she had ever imagined.",
+      "Media": [
+        {
+          "id": 3,
+          "Part": [
+            {
+              "id": 3
+            }
+          ]
+        }
+      ],
+      "originallyAvailableAt": "2010-09-30"
+    },
+    "4": {
+      "ratingKey": "4",
+      "key": "/library/metadata/4",
+      "type": "movie",
+      "title": "Tears of Steel",
+      "guid": "plex://movie/5d77699b96b655001fdd3b87",
+      "Guid": [
+        {
+          "id": "imdb://tt2285752"
+        }
+      ],
+      "year": 2012,
+      "summary": "Thom just wanted to be an astronaut. His girlfriend Celia just wanted to create robots - and for him to not be freaked out by her cyborg hand. How was Thom supposed to know that breaking up with her would make her take out her anger on the rest of humanity using her robots? It seems the only possible way of undoing everything...is to overwrite her memory of what happened 40 years ago.",
+      "Media": [
+        {
+          "id": 4,
+          "Part": [
+            {
+              "id": 4
+            }
+          ]
+        }
+      ],
+      "originallyAvailableAt": "2012-09-26"
+    },
+    "60": {
+      "ratingKey": "60",
+      "key": "/library/metadata/60",
+      "type": "movie",
+      "title": "Elephants Dream",
+      "guid": "plex://movie/5d776833103a2d001f5674a1",
+      "Guid": [
+        {
+          "id": "imdb://tt0807840"
+        },
+        {
+          "id": "tmdb://9761"
+        },
+        {
+          "id": "tvdb://16180"
+        }
+      ],
+      "year": 2006,
+      "summary": "The two main characters are on a journey in the folds of a giant Machine, exploring the twisted and dark complex of wires, gears and cogs. Until one moment a conflict arises that throws out all their assumptions. This movie short couples lively fun with passionate characters in an epic story line.",
+      "Media": [
+        {
+          "id": 12,
+          "Part": [
+            {
+              "id": 12
+            }
+          ]
+        }
+      ],
+      "originallyAvailableAt": "2006-05-04"
+    }
+  },
+  "merges": [
+    {
+      "method": "PUT",
+      "path": "/library/metadata/17/merge?ids=18",
+      "status": 200,
+      "after": {
+        "ratingKey": "17",
+        "Media": [
+          {
+            "id": 2,
+            "Part": [
+              {
+                "id": 2
+              }
+            ]
+          },
+          {
+            "id": 12,
+            "Part": [
+              {
+                "id": 12
+              }
+            ]
+          }
+        ],
+        "title": "Elephants Dream",
+        "guid": "plex://movie/5d776833103a2d001f5674a1"
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/library/metadata/4/merge?ids=1",
+      "status": 200,
+      "after": {
+        "ratingKey": "4",
+        "Media": [
+          {
+            "id": 1,
+            "Part": [
+              {
+                "id": 1
+              }
+            ]
+          },
+          {
+            "id": 4,
+            "Part": [
+              {
+                "id": 4
+              }
+            ]
+          }
+        ],
+        "title": "Tears of Steel",
+        "guid": "plex://movie/5d77699b96b655001fdd3b87"
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/library/metadata/3/match?guid=plex%3A%2F%2Fmovie%2F5d77699b96b655001fdd3b87&name=Tears+of+Steel&year=2012",
+      "status": 200,
+      "after": {
+        "ratingKey": "4",
+        "Media": [
+          {
+            "id": 1,
+            "Part": [
+              {
+                "id": 1
+              }
+            ]
+          },
+          {
+            "id": 3,
+            "Part": [
+              {
+                "id": 3
+              }
+            ]
+          },
+          {
+            "id": 4,
+            "Part": [
+              {
+                "id": 4
+              }
+            ]
+          }
+        ],
+        "title": "Tears of Steel",
+        "guid": "plex://movie/5d77699b96b655001fdd3b87"
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/library/metadata/60/match?guid=plex%3A%2F%2Fmovie%2F5d77699b96b655001fdd3b87&name=Tears+of+Steel&year=2012",
+      "status": 200,
+      "after": {
+        "ratingKey": "4",
+        "Media": [
+          {
+            "id": 1,
+            "Part": [
+              {
+                "id": 1
+              }
+            ]
+          },
+          {
+            "id": 3,
+            "Part": [
+              {
+                "id": 3
+              }
+            ]
+          },
+          {
+            "id": 4,
+            "Part": [
+              {
+                "id": 4
+              }
+            ]
+          },
+          {
+            "id": 12,
+            "Part": [
+              {
+                "id": 12
+              }
+            ]
+          }
+        ],
+        "title": "Tears of Steel",
+        "guid": "plex://movie/5d77699b96b655001fdd3b87"
+      }
+    }
+  ],
+  "custom_split": {
+    "source": "17",
+    "before": [
+      "62",
+      "17",
+      "63"
+    ],
+    "after": [
+      "62",
+      "17",
+      "65",
+      "63"
+    ],
+    "childCountBefore": 3,
+    "childCountAfter": 3,
+    "sort": "2"
+  },
+  "empty_labels": [
+    {
+      "method": "PUT",
+      "path": "/library/metadata/58?label%5B0%5D.tag.tag=AuditLabel",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/library/metadata/58",
+      "status": 200,
+      "Label": [
+        "AuditLabel"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/library/metadata/58?label%5B0%5D.tag.tag=",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/library/metadata/58",
+      "status": 200,
+      "Label": []
+    },
+    {
+      "method": "PUT",
+      "path": "/library/sections/1/all?type=18&id=58&label%5B0%5D.tag.tag=AuditLabel",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/library/metadata/58",
+      "status": 200,
+      "Label": [
+        "AuditLabel"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/library/sections/1/all?type=18&id=58&label%5B0%5D.tag.tag=",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/library/metadata/58",
+      "status": 200,
+      "Label": [
+        "AuditLabel"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/library/collections/58?label%5B0%5D.tag.tag=AuditLabel",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/library/metadata/58",
+      "status": 200,
+      "Label": [
+        "AuditLabel"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/library/collections/58?label%5B0%5D.tag.tag=",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/library/metadata/58",
+      "status": 200,
+      "Label": []
+    }
+  ]
+}
