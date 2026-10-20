@@ -362,8 +362,14 @@ impl Rows {
     pub fn saved(&mut self, serial: Option<u64>, key_of: impl Fn(&Value) -> Option<String>) {
         self.sync();
         let attached = self.disk.is_some();
-        let mut taken: std::collections::HashSet<String> =
-            self.meta.iter().filter_map(|meta| meta.stored.as_deref().map(str::to_string)).collect();
+        // The keys already stored, gathered only once a new row needs one: every save of a
+        // timeline gathered the library's 42,806 (the production server, 2026-10-20).
+        let keyless = attached && self.meta.iter().any(|meta| meta.dirty && meta.stored.is_none());
+        let mut taken: std::collections::HashSet<String> = if keyless {
+            self.meta.iter().filter_map(|meta| meta.stored.as_deref().map(str::to_string)).collect()
+        } else {
+            Default::default()
+        };
         for (row, meta) in self.items.iter().zip(self.meta.iter_mut()) {
             if !meta.dirty {
                 continue;
