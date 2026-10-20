@@ -340,17 +340,12 @@ impl Runtime {
             }));
         }
         source.extend(collection_rows.iter());
-        let section_type = if type_number == Some(2) {
-            "show"
-        } else {
-            "movie"
-        };
         // Cycle 83: `guid=` is the grammar's own field (a case-sensitive prefix whose
         // comma is OR -- plexlab answers `guid=<a>,<b>` with both rows), so no private
         // prefix pass reads it here any more. Filtered before the two stable sorts, which
         // keeps the same rows in the same order: sorting all 34k episodes by key and title
         // to answer one guid was most of the lookup (2026-10-17).
-        let mut source = match self.filter_rows(source, pairs, section_type) {
+        let mut source = match self.filter_rows(source, pairs) {
             Ok(rows) => rows,
             Err(status) => return Response::error(status, "rex: bad request"),
         };
@@ -484,7 +479,6 @@ impl Runtime {
                 return Response::error(500, "rex: bad sourceType");
             }
         }
-        let is_show = section.get("type").and_then(Value::as_str) == Some("show");
         let title = section
             .get("title")
             .and_then(Value::as_str)
@@ -542,7 +536,7 @@ impl Runtime {
             .filter(|(key, _)| key.as_str() != "extraType")
             .map(|(key, value)| (key.clone(), value.clone()))
             .collect::<Vec<_>>();
-        let rows = match self.filter_rows(rows, &pairs, if is_show { "show" } else { "movie" }) {
+        let rows = match self.filter_rows(rows, &pairs) {
             Ok(rows) => rows,
             Err(status) => return Response::error(status, "rex: bad request"),
         };

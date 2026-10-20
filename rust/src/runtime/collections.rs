@@ -1937,12 +1937,7 @@ impl Runtime {
             .filter(|collection| collection.section == section_key)
             .map(|collection| self.dynamic_collection_row(collection))
             .collect::<Vec<_>>();
-        let section_type = self
-            .section(section_key)
-            .and_then(|section| section.get("type").and_then(Value::as_str))
-            .unwrap_or("movie")
-            .to_string();
-        let rows = self.filter_rows(rows, pairs, &section_type)?;
+        let rows = self.filter_rows(rows, pairs)?;
         self.sort_rows(
             rows,
             Some(sort.filter(|sort| !sort.is_empty()).unwrap_or("titleSort")),

@@ -230,12 +230,7 @@ impl Runtime {
         &self,
         rows: Vec<R>,
         pairs: &[(String, String)],
-        section: &Value,
     ) -> Result<Vec<R>, u16> {
-        let section_type = section
-            .get("type")
-            .and_then(Value::as_str)
-            .unwrap_or("movie");
         let kept = pairs
             .iter()
             .filter(|(name, _)| {
@@ -246,7 +241,7 @@ impl Runtime {
             })
             .cloned()
             .collect::<Vec<_>>();
-        self.filter_rows(rows, &kept, section_type)
+        self.filter_rows(rows, &kept)
     }
 
     /// A secondary list (By Genre, By Year, sorts, filters). Measured:
@@ -440,7 +435,7 @@ impl Runtime {
                 return Some(Response::error(status, "rex: bad type"));
             }
             let rows = self.axis_typed_rows(section_id, query, pairs);
-            let rows = match self.axis_filters(rows, pairs, section) {
+            let rows = match self.axis_filters(rows, pairs) {
                 Ok(rows) => rows,
                 Err(status) => return Some(Response::error(status, "rex: bad filter")),
             };
@@ -565,7 +560,7 @@ impl Runtime {
         pairs: &[(String, String)],
     ) -> Response {
         let rows = self.axis_typed_rows(section_id, query, pairs);
-        let mut rows: Vec<AnyRow<'_>> = match self.axis_filters(rows, pairs, section) {
+        let mut rows: Vec<AnyRow<'_>> = match self.axis_filters(rows, pairs) {
             Ok(rows) => rows.into_iter().map(AnyRow::Ref).collect(),
             Err(status) => return Response::error(status, "rex: bad filter"),
         };
@@ -756,7 +751,7 @@ impl Runtime {
             .filter(|(name, _)| name != "type")
             .cloned()
             .collect::<Vec<_>>();
-        let rows = match self.axis_filters(rows, &without_type, section) {
+        let rows = match self.axis_filters(rows, &without_type) {
             Ok(rows) => rows,
             Err(status) => return Response::error(status, "rex: bad filter"),
         };
@@ -884,7 +879,7 @@ impl Runtime {
                 bucket == wanted || (wanted == "#" && ascii_non_letter(&bucket))
             })
             .collect::<Vec<_>>();
-        let rows = match self.axis_filters(rows, pairs, section) {
+        let rows = match self.axis_filters(rows, pairs) {
             Ok(rows) => rows,
             Err(status) => return Response::error(status, "rex: bad filter"),
         };
@@ -1039,7 +1034,7 @@ impl Runtime {
                 title2 = wanted.clone();
             }
         }
-        let rows = match self.axis_filters(rows, pairs, section) {
+        let rows = match self.axis_filters(rows, pairs) {
             Ok(rows) => rows,
             Err(status) => return Some(Response::error(status, "rex: bad filter")),
         };
@@ -1089,7 +1084,7 @@ impl Runtime {
                 .filter(|row| self.has_unwatched(row))
                 .collect()
         };
-        let rows = match self.axis_filters(rows, pairs, section) {
+        let rows = match self.axis_filters(rows, pairs) {
             Ok(rows) => rows,
             Err(status) => return Response::error(status, "rex: bad filter"),
         };

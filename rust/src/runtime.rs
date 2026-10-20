@@ -2296,17 +2296,6 @@ impl Runtime {
         // The oracle echoes them on the item's own DETAIL read only (`show_detail` and
         // the detail route); a listing, a hub, a child list or a search row is the
         // public row and carries none -- see `echo_item_prefs`.
-        if kind == "movie" {
-            let unmatched = object
-                .get("guid")
-                .and_then(Value::as_str)
-                .is_some_and(|value| {
-                    value.starts_with("local://")
-                        || value.starts_with("none://")
-                        || value.starts_with("tv.plex.agents.none://")
-                });
-            let _ = unmatched;
-        }
         object.insert(
             "ratingKey".to_string(),
             original.get("ratingKey").cloned().unwrap_or(Value::Null),
@@ -4377,15 +4366,7 @@ impl Runtime {
             .iter()
             .map(|(key, value)| (key.clone(), value.clone()))
             .collect::<Vec<_>>();
-        let section_type = if rows
-            .iter()
-            .all(|row| row.get("type").and_then(Value::as_str) == Some("movie"))
-        {
-            "movie"
-        } else {
-            "show"
-        };
-        let rows = match self.filter_rows(rows, &pairs, section_type) {
+        let rows = match self.filter_rows(rows, &pairs) {
             Ok(rows) => rows,
             Err(status) => return Response::error(status, "rex: bad request"),
         };
@@ -4440,10 +4421,6 @@ impl Runtime {
             if section_filter.is_some_and(|wanted| wanted != section_key) {
                 continue;
             }
-            let section_type = section
-                .get("type")
-                .and_then(Value::as_str)
-                .unwrap_or("movie");
             let members = if section_filter.is_some() {
                 self.catalog
                     .hot()
@@ -4457,7 +4434,7 @@ impl Runtime {
             } else {
                 self.section_rows(&section_key)
             };
-            let mut members = match self.filter_rows(members, &pairs, section_type) {
+            let mut members = match self.filter_rows(members, &pairs) {
                 Ok(rows) => rows,
                 Err(status) => return Response::error(status, "rex: bad request"),
             };
@@ -5416,7 +5393,7 @@ impl Runtime {
             .collect()
     }
 
-    fn filter_field_types(&self, section_type: &str) -> HashMap<String, String> {
+    fn filter_field_types(&self) -> HashMap<String, String> {
         let mut fields = HashMap::from([
             ("title".to_string(), "string".to_string()),
             ("titleSort".to_string(), "string".to_string()),
@@ -5553,11 +5530,7 @@ impl Runtime {
         }
         fields.insert(
             "resolution".to_string(),
-            if section_type == "movie" {
-                "resolution".to_string()
-            } else {
-                "resolution".to_string()
-            },
+            "resolution".to_string(),
         );
         // Cycle 83: the ADVERTISED half of the table is every `Field` either library's
         // Meta carries, keyed by its bare name -- the oracle's FILTER_FIELD_TYPES is built
@@ -6036,9 +6009,8 @@ impl Runtime {
         &self,
         rows: Vec<R>,
         pairs: &[(String, String)],
-        section_type: &str,
     ) -> Result<Vec<R>, u16> {
-        let field_types = self.filter_field_types(section_type);
+        let field_types = self.filter_field_types();
         // These names are known to the query parser but the listing serializer
         // refuses them.  Treating them as unknown made the native server return
         // the unfiltered library, which is materially different from PMS's 500.
@@ -6144,11 +6116,6 @@ impl Runtime {
                 specs.push((field.to_string(), modifiers.contains(&"desc"), Some(seed.unwrap_or_default())));
                 continue;
             }
-            let direction = modifiers
-                .iter()
-                .find(|modifier| **modifier == "asc" || **modifier == "desc")
-                .copied()
-                .unwrap_or("asc");
             let allowed = [
                 "title",
                 "titleSort",
@@ -6204,7 +6171,6 @@ impl Runtime {
                 note_unsupported_sort(field);
                 return Err(500);
             }
-            let _ = direction;
             specs.push((field.to_string(), modifiers.contains(&"desc"), None));
         }
         // `server.py` `_sorted`: ties break on titleSort ascending -- or, on a season or
@@ -6533,11 +6499,6 @@ impl Runtime {
                     .collect();
                     if !query_tail.is_empty() {
                         let pairs = parse_query(query_tail);
-                        let section_type = self
-                            .section(section)
-                            .and_then(|value| value.get("type"))
-                            .and_then(Value::as_str)
-                            .unwrap_or("movie");
                         let sort = pairs
                             .iter()
                             .find(|(name, _)| name == "sort")
@@ -6561,7 +6522,7 @@ impl Runtime {
                             .cloned()
                             .collect::<Vec<_>>();
                         let mut rows = self
-                            .filter_rows(rows, &filter_pairs, section_type)
+                            .filter_rows(rows, &filter_pairs)
                             .ok()
                             .and_then(|rows| self.sort_rows(rows, sort).ok())
                             .unwrap_or_default();
@@ -15154,7 +15115,7 @@ impl Runtime {
                             .iter()
                             .map(|(k, v)| (k.clone(), v.clone()))
                             .collect::<Vec<_>>();
-                        rows = match self.filter_rows(rows, &filter_pairs, kind) {
+                        rows = match self.filter_rows(rows, &filter_pairs) {
                             Ok(rows) => rows,
                             Err(status) => return Response::error(status, "rex: bad request"),
                         };
@@ -15330,7 +15291,7 @@ impl Runtime {
                             })
                             .cloned()
                             .collect::<Vec<_>>();
-                        rows = match self.filter_rows(rows, &filter_pairs, kind) {
+                        rows = match self.filter_rows(rows, &filter_pairs) {
                             Ok(rows) => rows,
                             Err(status) => return Response::error(status, "rex: bad request"),
                         };
@@ -15594,7 +15555,7 @@ impl Runtime {
                             row.get("type").and_then(Value::as_str) == Some("episode")
                         });
                     }
-                    rows = match self.filter_rows(rows, pairs, section_kind) {
+                    rows = match self.filter_rows(rows, pairs) {
                         Ok(rows) => rows,
                         Err(status) => return Response::error(status, "rex: bad request"),
                     };
@@ -15666,11 +15627,7 @@ impl Runtime {
                                 1
                             },
                         );
-                    let section_type = section
-                        .get("type")
-                        .and_then(Value::as_str)
-                        .unwrap_or("movie");
-                    let mut field_types = self.filter_field_types(section_type);
+                    let mut field_types = self.filter_field_types();
                     for field in [
                         "parent",
                         "parentIndex",
@@ -15922,7 +15879,7 @@ impl Runtime {
                         })
                         .cloned()
                         .collect::<Vec<_>>();
-                    let rows = match self.filter_rows(rows, &filter_pairs, &kind) {
+                    let rows = match self.filter_rows(rows, &filter_pairs) {
                         Ok(rows) => rows,
                         Err(status) => return Response::error(status, "rex: bad request"),
                     };
@@ -16433,7 +16390,7 @@ impl Runtime {
                         })
                         .cloned()
                         .collect::<Vec<_>>();
-                    let rows = match self.filter_rows(rows, &filtered_pairs, &section_type) {
+                    let rows = match self.filter_rows(rows, &filtered_pairs) {
                         Ok(rows) => rows,
                         Err(status) => return Response::error(status, "rex: bad request"),
                     };
@@ -17602,7 +17559,7 @@ impl Runtime {
             })
             .cloned()
             .collect::<Vec<_>>();
-        rows = match self.filter_rows(rows, &filtered_pairs, section_type) {
+        rows = match self.filter_rows(rows, &filtered_pairs) {
             Ok(rows) => rows,
             Err(status) => return Response::error(status, "rex: bad request"),
         };
@@ -18114,7 +18071,7 @@ impl Runtime {
             })
             .cloned()
             .collect::<Vec<_>>();
-        rows = match self.filter_rows(rows, &filter_pairs, section_type) {
+        rows = match self.filter_rows(rows, &filter_pairs) {
             Ok(rows) => rows,
             Err(status) => return Response::error(status, "rex: bad request"),
         };
@@ -18254,11 +18211,6 @@ impl Runtime {
             _ => "",
         };
         let section = self.section(section_key).cloned().unwrap_or(Value::Null);
-        let section_type = section
-            .get("type")
-            .and_then(Value::as_str)
-            .unwrap_or("movie")
-            .to_string();
         let filter_pairs = query
             .iter()
             .filter(|(name, _)| {
@@ -18279,7 +18231,7 @@ impl Runtime {
         } else {
             self.choose_rows(Some(section_key), Some(type_number))
         };
-        rows = match self.filter_rows(rows, &filter_pairs, &section_type) {
+        rows = match self.filter_rows(rows, &filter_pairs) {
             Ok(rows) => rows,
             Err(status) => return Response::error(status, "rex: bad request"),
         };
@@ -19120,13 +19072,6 @@ impl Runtime {
                 };
                 // Cycle 54: `/grandchildren` runs the listing QUERY, as `/children` does --
                 // filters constrain it and an unparseable value is a 500.
-                let section_type = self
-                    .section(&string_value(
-                        row.get("librarySectionID").unwrap_or(&Value::Null),
-                    ))
-                    .and_then(|section| section.get("type").and_then(Value::as_str))
-                    .unwrap_or("show")
-                    .to_string();
                 let filter_pairs = query
                     .iter()
                     .filter(|(name, _)| {
@@ -19137,7 +19082,7 @@ impl Runtime {
                     .map(|(name, value)| (name.clone(), value.clone()))
                     .collect::<Vec<_>>();
                 if !filter_pairs.is_empty() {
-                    rows = match self.filter_rows(rows, &filter_pairs, &section_type) {
+                    rows = match self.filter_rows(rows, &filter_pairs) {
                         Ok(rows) => rows,
                         Err(status) => return Response::error(status, "rex: bad request"),
                     };
@@ -19277,11 +19222,6 @@ impl Runtime {
                 ) {
                     return Response::error(400, "rex: bad request");
                 }
-                let section_key = string_value(row.get("librarySectionID").unwrap_or(&Value::Null));
-                let section_type = self
-                    .section(&section_key)
-                    .and_then(|section| section.get("type").and_then(Value::as_str))
-                    .unwrap_or("movie");
                 // Read in place: each child was copied whole, then copied again to project it.
                 let mut children = self.children_refs(key);
                 if self.season_children_newest_first(row) {
@@ -19324,7 +19264,7 @@ impl Runtime {
                     filter_pairs
                 };
                 if !filter_pairs.is_empty() {
-                    children = match self.filter_rows(children, &filter_pairs, section_type) {
+                    children = match self.filter_rows(children, &filter_pairs) {
                         Ok(rows) => rows,
                         Err(status) => return Response::error(status, "rex: bad request"),
                     };
@@ -23652,9 +23592,7 @@ fn handle_connection<S: Read + Write + PollRead>(
                 // the bounded-header cases.  Waiting for the peer to close
                 // before answering would deadlock a client that is waiting
                 // for the measured 400 while keeping its write side open.
-                let status = if error == "unknown method" {
-                    500
-                } else if error == "negative content length" {
+                let status = if matches!(error.as_str(), "unknown method" | "negative content length") {
                     500
                 } else {
                     400
@@ -23903,9 +23841,7 @@ fn handle_connection<S: Read + Write + PollRead>(
             .is_some_and(String::is_empty);
         let mut part_plan = None;
         let mut download = None;
-        let mut response = if invalid_absolute_target || invalid_dot_path {
-            Response::error(400, "rex: bad request")
-        } else if malformed_query {
+        let mut response = if invalid_absolute_target || invalid_dot_path || malformed_query {
             Response::error(400, "rex: bad request")
         } else if empty_container_size {
             Response::error(500, "rex: bad request")
@@ -25361,9 +25297,7 @@ mod filter_projection_tests {
         let rows = runtime
             .filter_rows(
                 vec![row],
-                &[("mediaSize".to_string(), "222000000".to_string())],
-                "movie",
-            )
+                &[("mediaSize".to_string(), "222000000".to_string())])
             .expect("the recorded media-size query parses");
         assert_eq!(rows.len(), 1, "the second recorded Part remains searchable");
     }
@@ -25499,9 +25433,7 @@ mod filter_projection_tests {
                     &[(
                         "viewedOrInProgressLeafCount".to_string(),
                         viewed_or_in_progress.to_string(),
-                    )],
-                    "show",
-                )
+                    )])
                 .expect("the recorded leaf-count query parses");
             assert_eq!(matches.len(), 1, "{name} query matches the show");
         }

@@ -1647,12 +1647,7 @@ impl Runtime {
             })
             .cloned()
             .collect::<Vec<_>>();
-        let source_type = section
-            .get("type")
-            .and_then(Value::as_str)
-            .unwrap_or("movie")
-            .to_string();
-        let rows = match self.filter_rows(rows, &filter_pairs, &source_type) {
+        let rows = match self.filter_rows(rows, &filter_pairs) {
             Ok(rows) => rows,
             Err(status) => return Response::error(status, "rex: bad request"),
         };

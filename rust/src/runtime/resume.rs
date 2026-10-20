@@ -827,7 +827,7 @@ impl Runtime {
         }) {
             return Err(500);
         }
-        let types = self.filter_field_types("show");
+        let types = self.filter_field_types();
         let mut errors = Vec::new();
         if crate::filters::parse(&pairs, &types, &mut errors).is_none() {
             return Ok(None);
@@ -835,7 +835,7 @@ impl Runtime {
         // Filtered through their hot fields; only the episodes it keeps are copied.
         let hot = self.catalog.hot();
         let leaves = hot.lazy().filter(|row| row.get("type").and_then(Value::as_str) == Some("episode")).collect::<Vec<_>>();
-        self.filter_rows(leaves, &pairs, "show").map(|rows| Some(rows.into_iter().map(|row| row.body().clone()).collect()))
+        self.filter_rows(leaves, &pairs).map(|rows| Some(rows.into_iter().map(|row| row.body().clone()).collect()))
     }
 
     /// Newest first, by TYPE (1 movies, 2 the TV roll-up); None for every other type
