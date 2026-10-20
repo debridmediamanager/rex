@@ -21378,7 +21378,7 @@ impl Runtime {
                 continue;
             };
             for file in scan::row_files(row) {
-                if let Some((source, path)) = self.part_source(row, &file) {
+                for (source, path) in self.part_sources(row, &file) {
                     if !targets.iter().any(|(other, known)| other.name == source.name && *known == path) {
                         targets.push((source, path));
                     }
@@ -21398,6 +21398,25 @@ impl Runtime {
         }
         warning!("DELETE refused by the source, row kept: {}", refused.join("; "));
         Some(Response::error(400, "rex: the source did not delete the file"))
+    }
+
+    /// Every source a file is a release of on this row: two sources on one mount may each push
+    /// it, and a delete at the first alone left the other to push it back.
+    fn part_sources(&self, row: &Value, file: &str) -> Vec<(Arc<source::Source>, String)> {
+        let mut found = Vec::new();
+        for media in row.get("Media").and_then(Value::as_array).into_iter().flatten() {
+            let reads = media.get("Part").and_then(Value::as_array).into_iter().flatten().any(|part| part.get("file").and_then(Value::as_str) == Some(file));
+            let tags = (media.get("_source").and_then(Value::as_str), media.get("_path").and_then(Value::as_str));
+            if let (true, (Some(name), Some(path))) = (reads, tags) {
+                if let Some(source) = self.sources.iter().find(|source| source.name == name) {
+                    found.push((Arc::clone(source), path.to_string()));
+                }
+            }
+        }
+        if found.is_empty() {
+            found.extend(self.part_source(row, file));
+        }
+        found
     }
 
     /// Where a Part's bytes are: the source and path of the release the Part's Media came

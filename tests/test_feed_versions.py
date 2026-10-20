@@ -16,6 +16,7 @@ import shutil
 import sys
 import tempfile
 import time
+import urllib.parse
 
 from test_feed import BYTES_TOKEN, BODY, MOUNT, LEGACY, Bytes, Events, Server, check, results, serve
 from test_feed import item as feed_item
@@ -69,7 +70,15 @@ def main():
     one, two = item(0), item(1)
     for pushed in (one, two):
         source.files.add("/dav/" + pushed["path"])
-    bytes_port = serve(source.handler())
+    handler = source.handler()
+
+    def do_DELETE(self):
+        # zurg's answer to a mount's WebDAV DELETE (`test_feed_delete.py`): 204.
+        source.seen.append((self.command, urllib.parse.unquote(self.path), self.headers.get("Authorization"), None))
+        self.reply(204)
+
+    handler.do_DELETE = do_DELETE
+    bytes_port = serve(handler)
 
     # -- live: the second release joins the first ------------------------------------
     work = tempfile.mkdtemp(prefix="rex-versions-")
@@ -174,6 +183,14 @@ def main():
         status, body = server.feed("POST", "items", {"items": [one]}, source="tb")
         check("a file one source's release reads is another source's to push, on a row both hold",
               one["id"] in listed("tb") and two["id"] in listed("tb"), (body, listed("tb"), listed("zurg")))
+        # Deleted, the file goes at every source whose release reads it: deleted at the first alone,
+        # the other pushed it back with its next snapshot.
+        source.seen.clear()
+        key = listed("tb").get(one["id"])
+        status = server.request("/library/metadata/%s" % key, "DELETE")[0]
+        deletes = [seen[1] for seen in source.seen if seen[0] == "DELETE" and seen[1] == "/dav/" + one["path"]]
+        check("a delete removes a shared file at each source holding it", status == 200 and len(deletes) == 2,
+              (status, deletes, source.seen))
     finally:
         server.stop()
         shutil.rmtree(work, ignore_errors=True)
