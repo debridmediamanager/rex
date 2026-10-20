@@ -678,6 +678,10 @@ mod tests {
                     Err(_) => return,
                 }
             };
+            // macOS hands the accepted socket the listener's non-blocking mode: a read before
+            // the request arrived was a WouldBlock, and the test failed now and then.
+            stream.set_nonblocking(false).expect("blocking IPv6 stream");
+            stream.set_read_timeout(Some(Duration::from_secs(2))).expect("IPv6 read timeout");
             let mut request = Vec::new();
             let mut buffer = [0_u8; 1024];
             while !request.windows(4).any(|window| window == b"\r\n\r\n") {
