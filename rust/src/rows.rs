@@ -270,7 +270,13 @@ impl Rows {
 
     pub fn remove(&mut self, position: usize) -> Option<Value> {
         self.sync();
-        self.hold(position)?;
+        self.meta.get(position)?;
+        // The caller wants the row gone: one the file cannot give back (a failed read) is
+        // removed all the same, its body Null. Answering None left it in the catalog, and the
+        // feed then filed a second row on the same key.
+        if self.hold(position).is_none() {
+            self.items[position] = Value::Null;
+        }
         self.meta.remove(position);
         let row = self.items.remove(position);
         self.shift_cache(&[position]);
@@ -818,6 +824,29 @@ mod tests {
 
     /// A catalog kept in its state file answers, after any mix of writes, adds, removes, saves
     /// that did or did not reach the file, and rows let go of, what one in memory answers.
+    #[test]
+    fn a_row_the_file_no_longer_answers_is_still_removed() {
+        let directory = std::env::temp_dir().join(format!("rex-rows-gone-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&directory);
+        std::fs::create_dir_all(&directory).unwrap();
+        let path = directory.join("rex.db");
+        let mut catalog = Catalog::from_value(json!({"items": [
+            {"ratingKey": "1", "type": "movie", "title": "a"},
+            {"ratingKey": "2", "type": "movie", "title": "b"}]})).unwrap();
+        let mut cache = crate::store::Cache::default();
+        catalog.attach(&path, key_of, false);
+        save(&mut catalog, &mut cache, &path, true);
+        catalog.pack_pending();
+        // The row's body is gone from the file behind the catalog (a failed read looks alike).
+        let db = rusqlite::Connection::open(&path).unwrap();
+        assert!(db.execute("DELETE FROM row WHERE coll = 'state:items'", []).unwrap() > 0);
+        drop(db);
+        assert!(catalog.remove("2").is_some(), "a row in the index is removed");
+        assert_eq!(catalog.len(), 1);
+        assert!(catalog.get("2").is_none());
+        let _ = std::fs::remove_dir_all(directory);
+    }
+
     #[test]
     fn rows_in_the_file_answer_as_rows_in_memory() {
         super::BUDGET.store(4096, std::sync::atomic::Ordering::Relaxed);
