@@ -11407,7 +11407,9 @@ impl Runtime {
     /// the shelf boundary.  Keeping the rows derived from the catalog (rather
     /// than copying a fixture response) is important because timeline and
     /// metadata edits must immediately change the shelves.
-    fn route_section_hubs(&self, section_key: &str, query: &HashMap<String, String>) -> Response {
+    /// A library's hubs; `only` builds that one shelf alone (`/hubs/items`), where building
+    /// every shelf at its 100,000-row count projected the whole library to answer one.
+    fn route_section_hubs(&self, section_key: &str, query: &HashMap<String, String>, only: Option<&str>) -> Response {
         let Some(section) = self.section(section_key) else {
             return Response::error(404, "rex: not found");
         };
@@ -11667,6 +11669,9 @@ impl Runtime {
                               context: &str,
                               promoted: bool,
                               random: bool| {
+            if only.is_some_and(|only| only != identifier) {
+                return;
+            }
             let total = source_rows.len();
             let mut source_rows = source_rows;
             if random && source_rows.len() > 1 {
@@ -12313,7 +12318,7 @@ impl Runtime {
             && self.section(tail).is_some()
         {
             let scoped = HashMap::from([("count".to_string(), count)]);
-            let answer = self.route_section_hubs(tail, &scoped);
+            let answer = self.route_section_hubs(tail, &scoped, Some(&identifier));
             if answer.status == 200 {
                 serde_json::from_slice::<Value>(&answer.body).ok()
             } else {
@@ -14520,7 +14525,7 @@ impl Runtime {
             // the 85-byte Not Found document. Taking the first segment alone answered the
             // whole Recommended page for any of them.
             if segments.len() == 3 && !section_key.is_empty() && !section_key.contains('?') {
-                return self.route_section_hubs(section_key, query);
+                return self.route_section_hubs(section_key, query, None);
             }
             return Response::error(404, "rex: not found");
         }
