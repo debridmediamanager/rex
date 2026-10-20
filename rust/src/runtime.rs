@@ -18643,6 +18643,9 @@ impl Runtime {
         // (`section_items`), first occurrence of each id kept, ascending by id with
         // ties in first-seen order.  A tag needs an id and a non-empty name.
         let mut found: Vec<(Value, Value)> = Vec::new();
+        // The ids kept, as their JSON (a number and its string stay apart, as `==` keeps them):
+        // the list searched per tag was rows x tags x distinct ids under the lock.
+        let mut seen: HashSet<String> = HashSet::new();
         for row in self.section_rows(section_key) {
             for tag in row
                 .get(field)
@@ -18658,7 +18661,7 @@ impl Runtime {
                 let Some(id) = tag.get("id").filter(|id| !id.is_null()) else {
                     continue;
                 };
-                if !found.iter().any(|(seen, _)| seen == id) {
+                if seen.insert(id.to_string()) {
                     found.push((id.clone(), tag.clone()));
                 }
             }
