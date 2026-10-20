@@ -7,8 +7,7 @@ and its Stream rows, the apply `PUT .../subtitles?key=/library/streams/{id}&...`
 with `X-Plex-Activity`, the `subtitle.download` activity started and ended, the applied Stream
 row, its bytes, its delete, and the PMS's own calls to Plex's provider. Here the provider is a
 stub behind `REX_PLEXTV_URL` (its `streams/matches` and its download's 302), beside a stub
-Stremio subtitle addon named in `REX_SUBTITLE_ADDONS`, which rex must never ask (addons are not
-offered, Ben 2026-10-20), and a stub source serving two small real clips
+source serving two small real clips
 FFmpeg makes: a film with an embedded English text track, and an episode with no text track
 whose audio is tone bursts on its dialogue's timing, which rex reads with `REX_TRANSCODER`.
 
@@ -54,7 +53,6 @@ FFMPEG = os.environ.get("REX_TRANSCODER") or shutil.which("ffmpeg")
 FFPROBE = shutil.which("ffprobe") or (FFMPEG and os.path.join(os.path.dirname(FFMPEG), "ffprobe"))
 MACHINE = "00000000000000000000000000000000000000e5"
 TOKEN = "subtitles-server-token"
-ADDON_NAME = "OpenSubtitles v3"
 DURATION = 300
 # The owner's plex.tv settings: subtitles always, Brazilian Portuguese.
 PROFILE = ('<profile autoSelectAudio="1" defaultAudioAccessibility="0" defaultAudioLanguage="en" '
@@ -148,14 +146,13 @@ def os_hash(path):
 
 class Stub:
     """plex.tv and Plex's provider (`REX_PLEXTV_URL` sends `/<host><path>`), the provider's
-    download target, the Stremio addon and the source's bytes, on one port, every request kept."""
+    download target and the source's bytes, on one port, every request kept."""
 
     def __init__(self):
         self.seen = []
         self.files = {}       # /dav/<path> -> bytes of a clip
         self.subtitles = {}   # /files/<name> -> bytes of a subtitle
         self.matches = {}     # (file name, lang) -> provider rows
-        self.addon = {}       # stremio id -> addon entries
         self.port = free_port()
         stub = self
 
@@ -219,15 +216,9 @@ class Stub:
                     target = "http://127.0.0.1:%d/files/%s.srt" % (stub.port, found.group(1))
                     return self.reply(302, b"Found. Redirecting to " + target.encode(), "text/plain; charset=utf-8",
                                       [("Location", target)])
-                if path.startswith("/files/") or path.startswith("/addon/file/"):
+                if path.startswith("/files/"):
                     body = stub.subtitles.get(path)
                     return self.reply(200 if body is not None else 404, body or b"", "application/x-subrip")
-                if path == "/addon/manifest.json":
-                    return self.reply(200, json.dumps({"id": "org.stub.subtitles", "name": ADDON_NAME}).encode())
-                found = re.fullmatch(r"/addon/subtitles/(movie|series)/([^/]+)/([^/]*)\.json", path)
-                if found:
-                    entries = stub.addon.get(urllib.parse.unquote(found.group(2)), [])
-                    return self.reply(200, json.dumps({"subtitles": entries}).encode())
                 if path.startswith("/metadata.provider.plex.tv/"):
                     return self.reply(200, b'{"MediaContainer": {"size": 0, "Metadata": []}}')
                 body = b'<?xml version="1.0" encoding="UTF-8"?>\n<MediaContainer size="0"/>\n'
@@ -243,21 +234,19 @@ class Stub:
         return "http://127.0.0.1:%d" % self.port
 
     def subtitle_calls(self):
-        """What reached Plex's subtitle search, its downloads and the addon."""
+        """What reached Plex's subtitle search and its downloads."""
         return [(path, query, headers) for _, path, query, headers, _ in self.seen
-                if "/library/streams/" in path or path.startswith("/addon") or path.startswith("/files/")]
+                if "/library/streams/" in path or path.startswith("/files/")]
 
 
 # -- the server --------------------------------------------------------------------------------
 
 class Server:
-    def __init__(self, work, stub, claimed=True, addons=True, transcoder=True):
+    def __init__(self, work, stub, claimed=True, transcoder=True):
         self.port = free_port()
         env = dict(os.environ, REX_PLEXTV_URL=stub.base())
-        for name in ("REX_STATE", "REX_TOKEN", "PLEX_TOKEN", "TMDB_KEY", "REX_SUBTITLE_ADDONS", "REX_TRANSCODER"):
+        for name in ("REX_STATE", "REX_TOKEN", "PLEX_TOKEN", "TMDB_KEY", "REX_TRANSCODER"):
             env.pop(name, None)
-        if addons:
-            env["REX_SUBTITLE_ADDONS"] = stub.base() + "/addon/manifest.json"
         if transcoder:
             env["REX_TRANSCODER"] = FFMPEG
             env["REX_TRANSCODE_DIR"] = os.path.join(work, "transcode")
@@ -366,29 +355,22 @@ def main():
     stub.files["/dav/" + show_path] = open(show, "rb").read()
 
     # The film, in Brazilian Portuguese: the provider's first result is another title's timing
-    # under this very release's name; its second is in sync, in Windows-1252; the addon's is
-    # timed for 25 fps. Plex would show the first.
+    # under this very release's name; its second is in sync, in Windows-1252. Plex would show
+    # the first.
     other = timeline(97)
     stub.matches[(FILM["file"], "pt-BR")] = [provider_row(81001, FILM_STEM, "pt-BR", 9100),
                                              provider_row(81002, "Blame It on the Bellboy (1992)", "pt-BR", 1200)]
     stub.subtitles["/files/81001.srt"] = srt(other, "Outro filme %d").encode("cp1252")
     stub.subtitles["/files/81002.srt"] = srt(film_cues, "Não é possível %d").encode("cp1252")
-    stub.addon["tt0103827"] = [{"id": "5001", "url": stub.base() + "/addon/file/5001", "lang": "pob", "m": "i",
-                                "movieReleaseName": "Blame.It.on.the.Bellboy.1992.DVDRip.XviD-OLD",
-                                "subtitleFileName": "Blame.It.on.the.Bellboy.1992.DVDRip.XviD-OLD.srt", "fpsMilli": 25000}]
-    stub.subtitles["/addon/file/5001"] = srt([(a * 23.976 / 25, b * 23.976 / 25) for a, b in film_cues], "Linha %d").encode()
 
     # The episode, in English: the provider's first is another title's, its second 2.4 s late and
-    # mangled (`â™ª`); the addon's matches the release's hash.
+    # mangled (`â™ª`).
     show_stem = SHOW["file"][:-4]
     stub.matches[(SHOW["file"], "en")] = [provider_row(82001, show_stem, "en", 8000),
                                           provider_row(82002, "American Dad! S05E07", "en", 1500)]
     stub.subtitles["/files/82001.srt"] = srt(other, "Another show %d").encode()
     late = [(a + 2.4, b + 2.4) for a, b in show_cues]
     stub.subtitles["/files/82002.srt"] = srt(late, "♪ Line %d ♪").encode("utf-8").decode("cp1252").encode("utf-8")
-    stub.addon["tt0397306:5:7"] = [{"id": "6001", "url": stub.base() + "/addon/file/6001", "lang": "eng", "m": "h",
-                                    "movieReleaseName": "American Dad S05E07", "subtitleFileName": "American.Dad.S05E07.srt"}]
-    stub.subtitles["/addon/file/6001"] = srt(show_cues, "Line %d").encode()
 
     os.makedirs(os.path.join(work, "claimed"))
     server = Server(os.path.join(work, "claimed"), stub)
@@ -438,9 +420,6 @@ def main():
               (read_cues(text)[:3], film_cues[:3]))
         asked = [query for path, query, _ in stub.subtitle_calls() if path.endswith("/streams/matches")]
         check("Plex's provider was asked in pt-BR, as the measured request", asked and dict(asked[0]).get("lang") == "pt-BR", asked)
-        check("the addon REX_SUBTITLE_ADDONS names is never asked",
-              not any(path.startswith("/addon") for path, _, _ in stub.subtitle_calls()),
-              [path for path, _, _ in stub.subtitle_calls()])
 
         # -- the episode: no text track, measured against its audio ------------------------------
         stub.seen.clear()
@@ -484,8 +463,6 @@ def main():
                   headers)
         else:
             check("the provider was asked", False, stub.subtitle_calls())
-        check("and never the addon", not any(path.startswith("/addon") for path, _, _ in stub.subtitle_calls()),
-              [path for path, _, _ in stub.subtitle_calls()])
         status, again = server.request(search)
         ids = {row["id"] for row in rows}
         again_ids = {row["id"] for row in ((again or {}).get("MediaContainer") or {}).get("Stream") or []}
@@ -582,28 +559,25 @@ def main():
                 print("   ", line.rstrip()[-220:])
 
     # -- unclaimed: Plex's provider is never asked ---------------------------------------------------
-    for addons in (False, True):
-        directory = os.path.join(work, "unclaimed-%d" % addons)
-        os.makedirs(directory)
-        server = Server(directory, stub, claimed=False, addons=addons, transcoder=False)
-        try:
-            key = server.push("movie", film_path, film, {"tmdb": 31639, "imdb": "tt0103827"})
-            stub.seen.clear()
-            server.detail(key)
-            server.request("/playQueues?type=video&uri=%s&key=%s" % (
-                urllib.parse.quote("server://%s/com.plexapp.plugins.library/library/metadata/%s" % (MACHINE, key)),
-                urllib.parse.quote("/library/metadata/%s" % key)), "POST")
-            status, found = server.request("/library/metadata/%s/subtitles?language=pt-BR" % key)
-            rows = ((found or {}).get("MediaContainer") or {}).get("Stream") or []
-            time.sleep(1.0)
-            calls = [path for path, _, _ in stub.subtitle_calls()]
-            check("unclaimed%s: the search answers its empty container and nothing is asked"
-                  % (" with REX_SUBTITLE_ADDONS set" if addons else ""),
-                  status == 200 and list((found or {}).get("MediaContainer") or {}) == ["size", "identifier", "mediaTagPrefix",
-                                                                                        "mediaTagVersion"]
-                  and calls == [], (status, found, calls))
-        finally:
-            server.stop()
+    directory = os.path.join(work, "unclaimed")
+    os.makedirs(directory)
+    server = Server(directory, stub, claimed=False, transcoder=False)
+    try:
+        key = server.push("movie", film_path, film, {"tmdb": 31639, "imdb": "tt0103827"})
+        stub.seen.clear()
+        server.detail(key)
+        server.request("/playQueues?type=video&uri=%s&key=%s" % (
+            urllib.parse.quote("server://%s/com.plexapp.plugins.library/library/metadata/%s" % (MACHINE, key)),
+            urllib.parse.quote("/library/metadata/%s" % key)), "POST")
+        status, found = server.request("/library/metadata/%s/subtitles?language=pt-BR" % key)
+        time.sleep(1.0)
+        calls = [path for path, _, _ in stub.subtitle_calls()]
+        check("unclaimed: the search answers its empty container and nothing is asked",
+              status == 200 and list((found or {}).get("MediaContainer") or {}) == ["size", "identifier", "mediaTagPrefix",
+                                                                                    "mediaTagVersion"]
+              and calls == [], (status, found, calls))
+    finally:
+        server.stop()
     stub.httpd.shutdown()
     shutil.rmtree(work, ignore_errors=True)
     failed = results.count(False)

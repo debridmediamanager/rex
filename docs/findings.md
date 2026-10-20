@@ -13466,9 +13466,7 @@ verdicts, is `tests/fixtures/subtitles/sync_corpus.json.gz`.
 **What rex does** (`rust/src/runtime/subtitles.rs`):
 
 - The search asks Plex's provider exactly as the PMS does, only once claimed and without
-  `plexHash`, with the lock released, and no one else: Stremio addons were built and taken out
-  again before they shipped (Ben, 2026-10-20: not offered for now; `REX_SUBTITLE_ADDONS` is not
-  read). The OpenSubtitles hash is read through the Part's source and kept on the Part
+  `plexHash`, with the lock released, and no one else (Ben, 2026-10-20). The OpenSubtitles hash is read through the Part's source and kept on the Part
   (`_osHash`). The candidates are ranked by analyze.py's release-name ranking (mojibake -1,
   hearing-impaired -0.1; its hash and frame-rate terms read fields only addons list), answered
   as the reference's rows. Unclaimed, the empty container it always answered and nothing asked. `mediaItemID` picks the Media; `title`,
@@ -13518,6 +13516,5 @@ called none in sync that Silero called off. With the addon's candidates too the 
   One with a text track reads only the track's index: the file's head, its Tracks and its Cues
   (a Matroska `CueDuration` or an MP4 sample table gives each line's length).
 
-`tests/test_subtitles.py` drives all of it against a stub provider, a stub addon it checks is never
-asked, and two real clips
+`tests/test_subtitles.py` drives all of it against a stub provider and two real clips
 FFmpeg makes (one with an embedded text track, one whose audio is tone bursts on its dialogue).
