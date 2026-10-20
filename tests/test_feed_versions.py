@@ -129,6 +129,33 @@ def main():
         server.stop()
         shutil.rmtree(work, ignore_errors=True)
 
+    # -- two sources, one mount: the same file from each ---------------------------------------
+    # Two zurgs left on zurg's default mount_path push the same release under the same `file`.
+    # The second one's item was dropped as "a file another row already reads", and the row went
+    # to the trash when the first source let the release go while the second still had it.
+    work = tempfile.mkdtemp(prefix="rex-versions-")
+    catalog(work)
+    server = Server(work, bytes_port)
+    try:
+        server.request("/rex/sources/tb", "PUT", {"url": "http://127.0.0.1:%d/dav" % bytes_port,
+                                                  "bearer": BYTES_TOKEN, "mount": MOUNT},
+                       {"Content-Type": "application/json"})
+        listed = lambda name: {row["id"]: row["ratingKey"]
+                               for row in (server.feed("GET", "items", source=name)[1] or {}).get("items", [])}
+        server.feed("POST", "items", {"items": [one]})
+        status, body = server.feed("POST", "items", {"items": [one]}, source="tb")
+        check("the second source's copy of a file is a release of its own there",
+              status == 200 and one["id"] in listed("tb"), (body, listed("tb")))
+        server.feed("DELETE", "items", {"ids": [one["id"]]})
+        key = listed("tb").get(one["id"])
+        row = server.row(key) if key else {}
+        ok, hit = read(server, row, one["file"]) if key else (False, [])
+        check("the first source letting it go leaves the second source's row out of the trash",
+              key and not row.get("deletedAt") and ok, (key, row.get("deletedAt"), hit))
+    finally:
+        server.stop()
+        shutil.rmtree(work, ignore_errors=True)
+
     # -- restart: the two rows the production rex held are folded ----------------------------
     work = tempfile.mkdtemp(prefix="rex-versions-")
     # They were the production rex's `rd` source's; the test's source is `zurg`.

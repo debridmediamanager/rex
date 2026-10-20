@@ -237,6 +237,23 @@ impl Runtime {
         self.next_scan_key = self.next_scan_key.max(highest + 1).max(SCAN_KEY_BASE);
     }
 
+    /// Whether a row already reads this arrival's file for its source (`By::File`): one of the
+    /// same source, or one no source pushed (a scanner's, adopted by the feed). Another source's
+    /// row does not hold it: two sources on one mount push the same `file`, and the second one's
+    /// item was dropped, its row trashed with the first source's release.
+    fn file_held(&self, arrival: &Arrival) -> bool {
+        let source = arrival.extra.get("_source").and_then(Value::as_str).unwrap_or_default();
+        self.catalog.rows_by(crate::catalog::By::File, &arrival.found.file).iter().any(|row| {
+            let media = row.get("Media").and_then(Value::as_array).cloned().unwrap_or_default();
+            let mut named = std::iter::once(row.get("_source").cloned())
+                .chain(media.iter().map(|media| media.get("_source").cloned()))
+                .flatten()
+                .filter_map(|value| value.as_str().map(str::to_string))
+                .peekable();
+            named.peek().is_none() || named.any(|name| name == source)
+        })
+    }
+
     /// A ratingKey no row has ever had.
     pub(super) fn mint_key(&mut self) -> String {
         let key = self.next_scan_key;
@@ -330,8 +347,7 @@ impl Runtime {
     pub(super) fn place_arrivals(&mut self, plan: &Library, arrivals: Vec<Arrival>) -> Vec<String> {
         let mut leaves = Vec::new();
         for arrival in arrivals {
-            // A file another row already reads, found by it (`By::File`).
-            if !self.catalog.rows_by(crate::catalog::By::File, &arrival.found.file).is_empty() {
+            if self.file_held(&arrival) {
                 continue;
             }
             match self.leaf_for(plan, &arrival, None) {
@@ -665,7 +681,7 @@ impl Runtime {
         let file = &arrival.found.file;
         // zurg's mount lists a release's files flat in its directory, extras folders included.
         let directory = file.rsplit_once('/')?.0;
-        if !self.catalog.rows_by(crate::catalog::By::File, file).is_empty() {
+        if self.file_held(arrival) {
             return None;
         }
         // In whichever library its release's title is: an extra is placed by nothing, so the
