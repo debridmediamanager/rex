@@ -24773,7 +24773,10 @@ fn read_request<S: Read>(
                 Ok(value) if value <= i64::MAX as i128 => value as usize,
                 _ => return Err("bad chunk".to_string()),
             };
-            if size > MAX_BODY_BYTES.saturating_sub(decoded.len()) {
+            // A GET or HEAD body is never kept (the short body below answers it, as measured):
+            // refusing the size first answered `GET` with a 7FFFFFFFFFFFFFFF chunk a 400
+            // instead of the 200. Every other body is held to the limit before it is read.
+            if size > MAX_BODY_BYTES.saturating_sub(decoded.len()) && !matches!(method.as_str(), "GET" | "HEAD") {
                 return Err("body exceeds limit".to_string());
             }
             cursor = line_end + 2;
