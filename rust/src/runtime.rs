@@ -25971,6 +25971,11 @@ fn statistics_bucket(timestamp: i64, timespan: i64) -> i64 {
     let Some(mut local) = crate::platform::local_tm(timestamp) else {
         return timestamp;
     };
+    // The hour is counted back from the local minute and second, not rebuilt: rebuilt with
+    // tm_isdst = -1, the two 02:00 hours of a fall-back night were one bucket.
+    if timespan == 4 {
+        return timestamp - (local.tm_min as i64 * 60 + local.tm_sec as i64);
+    }
     local.tm_min = 0;
     local.tm_sec = 0;
     if timespan != 4 {
@@ -28894,5 +28899,21 @@ mod allowed_network_tests {
         assert!(member("8.8.8.8", "0.0.0.0/0"));
         assert!(network("not-an-address").is_none());
         assert!(network("10.0.0.0/33").is_none());
+    }
+}
+
+#[cfg(test)]
+mod statistics_bucket_tests {
+    use super::statistics_bucket;
+
+    #[test]
+    fn an_hour_bucket_is_its_own_hour_on_a_fall_back_night() {
+        // 2026-10-25 in Europe/Berlin: 00:30Z is 02:30 CEST, 01:30Z is 02:30 CET. Rebuilt with
+        // tm_isdst = -1, mktime picked one of the two 02:00s for both. Any time zone holds the
+        // rule; one with this change shows the bug.
+        for at in [1_792_888_200_i64, 1_792_891_800] {
+            let local = crate::platform::local_tm(at).unwrap();
+            assert_eq!(statistics_bucket(at, 4), at - (local.tm_min as i64 * 60 + local.tm_sec as i64), "{at}");
+        }
     }
 }
