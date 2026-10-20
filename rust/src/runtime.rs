@@ -4253,7 +4253,7 @@ impl Runtime {
         &self,
         requested: &str,
         media: bool,
-        query: &HashMap<String, String>,
+        pairs: &[(String, String)],
     ) -> Response {
         let wanted = requested
             .parse::<i64>()
@@ -4343,9 +4343,9 @@ impl Runtime {
         let tag_type = person.get("tagType").and_then(Value::as_i64).unwrap_or(0);
         // Cycle 11: the list is a QUERY -- the library filters narrow it (`?year=`) --
         // ordered by titleSort. The field map is the library's, read off the rows.
-        let pairs = query
+        let pairs = pairs
             .iter()
-            .map(|(key, value)| (key.clone(), value.clone()))
+            .cloned()
             .collect::<Vec<_>>();
         let rows = match self.filter_rows(rows, &pairs) {
             Ok(rows) => rows,
@@ -4384,6 +4384,7 @@ impl Runtime {
         &self,
         section_filter: Option<&str>,
         query: &HashMap<String, String>,
+        pairs: &[(String, String)],
     ) -> Response {
         if let Some(refusal) = hub_refusal(query) {
             return refusal;
@@ -4391,10 +4392,10 @@ impl Runtime {
         if let Some(status) = listing::listing_refusals(query, &[]) {
             return Response::error(status, "rex: refused");
         }
-        let pairs = query
+        let pairs = pairs
             .iter()
             .filter(|(key, _)| !matches!(key.as_str(), "type" | "limit"))
-            .map(|(key, value)| (key.clone(), value.clone()))
+            .cloned()
             .collect::<Vec<_>>();
         let mut rows = Vec::new();
         for section in &self.catalog.sections {
@@ -13879,7 +13880,7 @@ impl Runtime {
             return self.route_library_tags(query);
         }
         if path == "/library/arts" && matches!(request.method.as_str(), "GET" | "HEAD") {
-            return self.route_library_arts(None, query);
+            return self.route_library_arts(None, query, pairs);
         }
         if path == "/library/randomArtwork" && matches!(request.method.as_str(), "GET" | "HEAD") {
             // One Photo row per movie or show with a backdrop in EVERY named library,
@@ -13913,13 +13914,13 @@ impl Runtime {
         }
         if segments.first() == Some(&"library") && segments.get(1) == Some(&"people") {
             if segments.len() == 3 && matches!(request.method.as_str(), "GET" | "HEAD") {
-                return self.route_person(segments[2], false, query);
+                return self.route_person(segments[2], false, pairs);
             }
             if segments.len() == 4
                 && segments[3] == "media"
                 && matches!(request.method.as_str(), "GET" | "HEAD")
             {
-                return self.route_person(segments[2], true, query);
+                return self.route_person(segments[2], true, pairs);
             }
             return Response::error(404, "rex: not found");
         }
@@ -15062,9 +15063,9 @@ impl Runtime {
                                 candidate_number == number
                             });
                         }
-                        let filter_pairs = query
+                        let filter_pairs = pairs
                             .iter()
-                            .map(|(k, v)| (k.clone(), v.clone()))
+                            .cloned()
                             .collect::<Vec<_>>();
                         rows = match self.filter_rows(rows, &filter_pairs) {
                             Ok(rows) => rows,
@@ -17577,13 +17578,13 @@ impl Runtime {
             _ => "",
         };
         let section = self.section(section_key).cloned().unwrap_or(Value::Null);
-        let filter_pairs = query
+        let filter_pairs = Self::request_pairs(request)
             .iter()
             .filter(|(name, _)| {
                 !name.starts_with("X-Plex-")
                     && !matches!(name.as_str(), "type" | "sort" | "includeGuids")
             })
-            .map(|(name, value)| (name.clone(), value.clone()))
+            .cloned()
             .collect::<Vec<_>>();
         let mut rows = if let Some(ids) = query.get("id") {
             // An id of the wrong TYPE is simply not part of the set.
@@ -18409,14 +18410,14 @@ impl Runtime {
                 };
                 // Cycle 54: `/grandchildren` runs the listing QUERY, as `/children` does --
                 // filters constrain it and an unparseable value is a 500.
-                let filter_pairs = query
+                let filter_pairs = Self::request_pairs(request)
                     .iter()
                     .filter(|(name, _)| {
                         !name.starts_with("X-Plex-")
                             && !name.starts_with("include")
                             && !name.starts_with("exclude")
                     })
-                    .map(|(name, value)| (name.clone(), value.clone()))
+                    .cloned()
                     .collect::<Vec<_>>();
                 if !filter_pairs.is_empty() {
                     rows = match self.filter_rows(rows, &filter_pairs) {
@@ -18565,7 +18566,7 @@ impl Runtime {
                     // Cycle 14: the show's effective episodeSort=1, newest first.
                     children.reverse();
                 }
-                let filter_pairs = query
+                let filter_pairs = Self::request_pairs(request)
                     .iter()
                     .filter(|(name, _)| {
                         !matches!(
@@ -18582,7 +18583,7 @@ impl Runtime {
                                 | "includeAdvanced"
                         )
                     })
-                    .map(|(name, value)| (name.clone(), value.clone()))
+                    .cloned()
                     .collect::<Vec<_>>();
                 let unwatched_flag = ("unwatched".to_string(), "1".to_string());
                 let show_row = row.get("type").and_then(Value::as_str) == Some("show");
@@ -18777,7 +18778,7 @@ impl Runtime {
                     ))
                     .and_then(|section| section.get("type").and_then(Value::as_str))
                     .unwrap_or("movie");
-                let filter_pairs = query
+                let filter_pairs = Self::request_pairs(request)
                     .iter()
                     .filter(|(name, _)| {
                         !matches!(
@@ -18788,7 +18789,7 @@ impl Runtime {
                                 | "excludeFields"
                         )
                     })
-                    .map(|(name, value)| (name.clone(), value.clone()))
+                    .cloned()
                     .collect::<Vec<_>>();
                 // Cycle 54: the listing's filters are ignored on `/allLeaves`; only
                 // `unwatched=` (above) is read.

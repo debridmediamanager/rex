@@ -457,6 +457,12 @@ def run_plain(server, check):
     repeated = server.json("/library/sections/1/extras/all?extraType=1&year=1900&year=2026")
     check("a section's clips AND a repeated filter key, as its grid does",
           repeated.get("size") == 0 and not repeated.get("Metadata"), repeated)
+    # The same on the other leaves that filter: they rebuilt the filter from the query map too.
+    leaves = server.json("/library/sections/1/allLeaves")
+    year = next((row.get("year") for row in leaves.get("Metadata") or [] if row.get("year")), None)
+    for path in ("/library/sections/1/allLeaves",):
+        anded = server.json("%s?year=1900&year=%s" % (path, year))
+        check("%s ANDs a repeated filter key" % path, year and not anded.get("Metadata"), (year, anded))
     item_row = first(extras)
     section_row = first(section)
     forbidden = {"librarySectionID", "librarySectionTitle", "librarySectionKey"}
