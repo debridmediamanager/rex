@@ -766,29 +766,7 @@ fn run_core(command: &str, args: &[String]) -> Result<(), String> {
             let tree = object
                 .get("tree")
                 .ok_or_else(|| "filter-describe tree is required".to_string())?;
-            let titles = object.get("titles").and_then(serde_json::Value::as_object);
-            let value_titles = object
-                .get("valueTitles")
-                .and_then(serde_json::Value::as_object);
-            let title_of = |field: &str, scope: &str| {
-                titles
-                    .and_then(|titles| {
-                        titles
-                            .get(&format!("{}.{}", scope, field))
-                            .or_else(|| titles.get(field))
-                    })
-                    .and_then(serde_json::Value::as_str)
-                    .unwrap_or("")
-                    .to_string()
-            };
-            let value_title_of = |field: &str, value: &str| {
-                value_titles
-                    .and_then(|fields| fields.get(field))
-                    .and_then(serde_json::Value::as_object)
-                    .and_then(|values| values.get(value))
-                    .and_then(serde_json::Value::as_str)
-                    .map(str::to_string)
-            };
+            let (title_of, value_title_of) = title_lookups(object);
             print_json(
                 &filters::describe_with(tree, &title_of, &value_title_of)
                     .unwrap_or(serde_json::Value::Null),
@@ -816,29 +794,7 @@ fn run_core(command: &str, args: &[String]) -> Result<(), String> {
                 .and_then(serde_json::Value::as_array)
                 .cloned()
                 .unwrap_or_default();
-            let titles = object.get("titles").and_then(serde_json::Value::as_object);
-            let value_titles = object
-                .get("valueTitles")
-                .and_then(serde_json::Value::as_object);
-            let title_of = |field: &str, scope: &str| {
-                titles
-                    .and_then(|titles| {
-                        titles
-                            .get(&format!("{}.{}", scope, field))
-                            .or_else(|| titles.get(field))
-                    })
-                    .and_then(serde_json::Value::as_str)
-                    .unwrap_or("")
-                    .to_string()
-            };
-            let value_title_of = |field: &str, value: &str| {
-                value_titles
-                    .and_then(|fields| fields.get(field))
-                    .and_then(serde_json::Value::as_object)
-                    .and_then(|values| values.get(value))
-                    .and_then(serde_json::Value::as_str)
-                    .map(str::to_string)
-            };
+            let (title_of, value_title_of) = title_lookups(object);
             let descriptor = filters::Descriptor {
                 title_of: &title_of,
                 value_title_of: &value_title_of,
@@ -897,6 +853,30 @@ fn run_manager(args: &[String]) -> Result<(), String> {
 #[cfg(not(unix))]
 fn run_manager(_args: &[String]) -> Result<(), String> {
     Err("manager runs on Linux and macOS only: it supervises servers as process groups and stops them with signals".to_string())
+}
+
+/// The filter adapters' `titles` (by `scope.field`, else `field`) and `valueTitles` lookups.
+fn title_lookups(
+    object: &serde_json::Map<String, serde_json::Value>,
+) -> (impl Fn(&str, &str) -> String + '_, impl Fn(&str, &str) -> Option<String> + '_) {
+    let titles = object.get("titles").and_then(serde_json::Value::as_object);
+    let value_titles = object.get("valueTitles").and_then(serde_json::Value::as_object);
+    let title_of = move |field: &str, scope: &str| {
+        titles
+            .and_then(|titles| titles.get(&format!("{}.{}", scope, field)).or_else(|| titles.get(field)))
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("")
+            .to_string()
+    };
+    let value_title_of = move |field: &str, value: &str| {
+        value_titles
+            .and_then(|fields| fields.get(field))
+            .and_then(serde_json::Value::as_object)
+            .and_then(|values| values.get(value))
+            .and_then(serde_json::Value::as_str)
+            .map(str::to_string)
+    };
+    (title_of, value_title_of)
 }
 
 fn main() -> ExitCode {
