@@ -14,6 +14,7 @@ use serde_json::Value;
 
 /// Every field a hot row keeps, sorted (`get` searches it).
 pub const FIELDS: &[&str] = &[
+    "_collections",
     "_librarySectionID",
     "_parentRatingKey",
     "_poster_url",

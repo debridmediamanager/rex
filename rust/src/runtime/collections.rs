@@ -2201,6 +2201,35 @@ impl Runtime {
 mod tests {
     use super::*;
 
+    #[test]
+    fn an_automatic_collection_pass_reads_no_row_from_disk() {
+        let directory = std::env::temp_dir().join(format!("rex-auto-pass-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&directory);
+        std::fs::create_dir_all(&directory).unwrap();
+        let path = directory.join("rex.db");
+        let items = (0..30)
+            .map(|n| json!({"ratingKey": (100 + n).to_string(), "type": "movie", "librarySectionID": 1, "title": format!("M{n}"),
+                            "summary": "x".repeat(400), "_collections": [{"tag": "Saga", "guid": "plex://collection/1"}]}))
+            .collect::<Vec<_>>();
+        let mut catalog = crate::catalog::Catalog::from_value(json!({"items": items})).unwrap();
+        let mut cache = crate::store::Cache::default();
+        catalog.attach(&path, crate::rows::test_support::key_of, false);
+        crate::rows::test_support::save(&mut catalog, &mut cache, &path, true);
+        catalog.pack_pending();
+        let before = crate::rows::test_support::DISK_READS.with(std::cell::Cell::get);
+        // What `group_auto_collections` and the identification pass read off every movie.
+        let grouped = catalog
+            .hot()
+            .lazy()
+            .filter(|row| row.get("type").and_then(Value::as_str) == Some("movie"))
+            .filter_map(|row| row.get("_collections").and_then(Value::as_array).map(Vec::len))
+            .sum::<usize>();
+        let read = crate::rows::test_support::DISK_READS.with(std::cell::Cell::get) - before;
+        let _ = std::fs::remove_dir_all(&directory);
+        assert_eq!(grouped, 30);
+        assert_eq!(read, 0, "rows read from disk to group the library's collections");
+    }
+
     /// The Matrix, Reloaded and Revolutions as Plex's agent matched them on the production rex
     /// (tests/fixtures/provider/collections.json, out of its plex_cache.db, 2026-10-17): each filed
     /// under "The Matrix Collection".
