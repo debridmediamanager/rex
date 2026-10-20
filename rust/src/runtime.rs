@@ -1037,15 +1037,16 @@ impl Runtime {
             // Never over an earlier one: each is the only copy of the state before it.
             StateSource::Legacy(file) => {
                 let stale = next_free(file, "stale");
-                let _ = fs::rename(file, &stale);
-                self.set_aside = Some(stale);
+                if fs::rename(file, &stale).is_ok() {
+                    self.set_aside = Some(stale);
+                }
             }
             StateSource::Database(file) => {
                 let stale = next_free(file, "stale");
-                if let Err(error) = store::set_aside(file, &stale) {
-                    error!("state not set aside: {error}");
+                match store::set_aside(file, &stale) {
+                    Ok(()) => self.set_aside = Some(stale),
+                    Err(error) => error!("state not set aside: {error}"),
                 }
-                self.set_aside = Some(stale);
                 self.store_cache = store::Cache::default();
             }
         }
