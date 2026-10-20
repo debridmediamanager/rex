@@ -2011,8 +2011,9 @@ impl WatchStateSync {
             let mut guard = runtime
                 .lock()
                 .unwrap_or_else(|poisoned| poisoned.into_inner());
+            let guids = guard.guid_keys();
             for state in items {
-                if guard.import_account_state(state) {
+                if guard.import_account_state(state, &guids) {
                     applied += 1;
                 }
             }
@@ -2295,36 +2296,38 @@ impl super::Runtime {
         )
     }
 
+    /// Each guid's first live row: one pass for a page of cloud states, where a pass per state
+    /// held the runtime lock for a hundred passes over the library.
+    pub(super) fn guid_keys(&self) -> HashMap<String, String> {
+        let mut keys = HashMap::new();
+        for row in self.catalog.hot().lazy() {
+            if let (Some(guid), Some(key)) = (row.get("guid").and_then(Value::as_str), super::key_of(&row)) {
+                if !self.deleted.contains(&key) {
+                    keys.entry(guid.to_string()).or_insert(key);
+                }
+            }
+        }
+        keys
+    }
+
     /// `library.import_account_state`: one scrobbles.plex.tv row by its Plex GUID.
     /// An import, not a scrobble: no history row, no increment of a complete item and
     /// the cloud's timestamps rather than the local clock.
-    pub(super) fn import_account_state(&mut self, state: &Value) -> bool {
+    pub(super) fn import_account_state(&mut self, state: &Value, guids: &HashMap<String, String>) -> bool {
         let Some(guid) = state.get("guid").and_then(Value::as_str) else {
             return false;
         };
-        let Some((key, count)) = self
-            .catalog
-            .hot()
-            .lazy()
-            .filter(|row| row.get("guid").and_then(Value::as_str) == Some(guid))
-            .find_map(|row| {
-                let key = super::key_of(&row)?;
-                (!self.deleted.contains(&key)).then(|| {
-                    (
-                        key,
-                        row.get("viewCount")
-                            .and_then(|value| {
-                                value
-                                    .as_i64()
-                                    .or_else(|| value.as_str().and_then(|text| text.parse().ok()))
-                            })
-                            .unwrap_or(0),
-                    )
-                })
-            })
-        else {
+        let Some(key) = guids.get(guid).cloned() else {
             return false;
         };
+        let count = self
+            .catalog
+            .lazy_get(&key)
+            .and_then(|row| {
+                row.get("viewCount")
+                    .and_then(|value| value.as_i64().or_else(|| value.as_str().and_then(|text| text.parse().ok())))
+            })
+            .unwrap_or(0);
         let Some(viewed_at) = state.get("viewedAt").and_then(Value::as_i64) else {
             return false;
         };
