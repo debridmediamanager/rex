@@ -950,6 +950,11 @@ pub(crate) struct SegmentPlan {
 }
 
 impl Transcoder {
+    /// The FFmpeg `REX_TRANSCODER` names; subtitle measuring reads audio with it too.
+    pub(super) fn ffmpeg(&self) -> &std::path::Path {
+        &self.ffmpeg
+    }
+
     /// `REX_TRANSCODER` (an FFmpeg binary), `REX_TRANSCODE_DIR` (default: the system temp
     /// directory's `rex-transcode-<port>`, one per server, since a start clears it),
     /// `REX_TRANSCODE_HW` (`auto`, `vaapi`, `cuda`, `none`) and `REX_TRANSCODE_DEVICE`
@@ -1863,7 +1868,7 @@ fn filter_path(path: &str) -> String {
 }
 
 /// `length` bytes of a source's file from `offset`, as `mkvsubs` reads a subtitle track.
-fn read_range(url: &str, auth: Option<&str>, offset: u64, length: usize) -> Result<Vec<u8>, String> {
+pub(super) fn read_range(url: &str, auth: Option<&str>, offset: u64, length: usize) -> Result<Vec<u8>, String> {
     let mut headers = vec![
         ("User-Agent", super::upstream::UPSTREAM_UA.to_string()),
         ("Range", format!("bytes={offset}-{}", offset + length.max(1) as u64 - 1)),
@@ -1884,7 +1889,7 @@ fn read_range(url: &str, auth: Option<&str>, offset: u64, length: usize) -> Resu
 /// child is spawned from one thread that lives as long as the process, never from the
 /// request thread that asked for it (measured: a killed rex left a conversion running an
 /// hour, reading from zurg into a deleted directory).
-fn spawn_tied(command: Command) -> std::io::Result<Child> {
+pub(super) fn spawn_tied(command: Command) -> std::io::Result<Child> {
     use std::sync::mpsc;
     type Job = (Command, mpsc::Sender<std::io::Result<Child>>);
     static SPAWNER: OnceLock<Mutex<mpsc::Sender<Job>>> = OnceLock::new();

@@ -235,7 +235,17 @@ fn aspect_ratio(stream: Option<&Row>) -> Option<f64> {
         .copied()
 }
 
-fn terminology(raw: &str) -> &str {
+/// `languages.json`'s name for an ISO 639-2 code (`eng` -> English).
+pub(crate) fn language_name(code: &str) -> Option<String> {
+    languages().get(code).map(|(name, _)| name.clone())
+}
+
+/// The ISO 639-2 code `languages.json` gives a language tag (`en` -> `eng`).
+pub(crate) fn language_code_of_tag(tag: &str) -> Option<String> {
+    languages().iter().find(|(_, (_, known))| known == tag).map(|(code, _)| code.clone())
+}
+
+pub(crate) fn terminology(raw: &str) -> &str {
     match raw.to_ascii_lowercase().as_str() {
         "alb" => "sqi",
         "baq" => "eus",
@@ -1479,9 +1489,20 @@ pub struct TrackPrefs {
     pub subtitle: Option<String>,
 }
 
-fn stream_language(stream: &Value) -> Option<String> {
+/// A stream's language as its tag's first subtag. A subtitle Plex's provider gave carries the
+/// three letters as its tag (`eng`, measured on plexlab), read as `languages.json`'s `en`.
+pub(crate) fn stream_language(stream: &Value) -> Option<String> {
     let tag = stream.get("languageTag").and_then(Value::as_str)?;
-    tag.split('-').next().map(str::to_ascii_lowercase).filter(|code| !code.is_empty())
+    let primary = tag.split('-').next().map(str::to_ascii_lowercase).filter(|code| !code.is_empty())?;
+    match languages().get(&primary) {
+        Some((_, short)) if primary.len() == 3 => Some(short.clone()),
+        _ => Some(primary),
+    }
+}
+
+/// An account's language setting as `stream_language` reads a stream's: `pt-BR` is `pt`.
+pub(crate) fn setting_language(language: &str) -> String {
+    language.split(['-', '_']).next().unwrap_or_default().to_ascii_lowercase()
 }
 
 /// Which audio and subtitle a real PMS selects for these streams. Measured on a real
@@ -1498,7 +1519,7 @@ pub fn chosen_tracks(streams: &[Value], prefs: &TrackPrefs) -> (Option<i64>, Opt
     };
     let id = |stream: &Value| stream.get("id").and_then(Value::as_i64);
     let wanted = |stream: &&Value, language: &Option<String>| {
-        language.is_some() && stream_language(stream) == *language
+        language.is_some() && stream_language(stream) == language.as_deref().map(setting_language)
     };
     let audio_track = prefs
         .auto_audio
@@ -1518,7 +1539,7 @@ pub fn chosen_tracks(streams: &[Value], prefs: &TrackPrefs) -> (Option<i64>, Opt
     let pool: Vec<&Value> = match prefs.subtitles {
         2 if in_language.is_empty() => of(3).collect(),
         2 => in_language,
-        1 if audio_track.and_then(stream_language) != prefs.subtitle => in_language,
+        1 if audio_track.and_then(stream_language) != prefs.subtitle.as_deref().map(setting_language) => in_language,
         _ => Vec::new(),
     };
     let subtitle = pool.iter().find(|stream| !partial(stream)).or(pool.first());

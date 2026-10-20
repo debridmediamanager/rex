@@ -566,8 +566,12 @@ fn attr_table(name: &str, row: &Map<String, Value>) -> AttrTable {
             "deviceID",
             "viewType",
         ],
+        // A subtitle Plex's provider gave puts `key` second, its provider after its language and
+        // `transient`/`userID` after its title (plexlab, `subtitles/plex_search_apply_s143.json`);
+        // a file's own streams carry none of them.
         "Stream" => &[
             "id",
+            "key",
             "streamType",
             "canAutoSync",
             "selected",
@@ -579,6 +583,10 @@ fn attr_table(name: &str, row: &Map<String, Value>) -> AttrTable {
             "language",
             "languageTag",
             "languageCode",
+            "format",
+            "providerTitle",
+            "score",
+            "sourceKey",
             "anamorphic",
             "bitDepth",
             "chromaLocation",
@@ -602,6 +610,8 @@ fn attr_table(name: &str, row: &Map<String, Value>) -> AttrTable {
             "streamIdentifier",
             "hearingImpaired",
             "title",
+            "transient",
+            "userID",
             "width",
             "displayTitle",
             "extendedDisplayTitle",

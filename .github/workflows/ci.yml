@@ -158,7 +158,8 @@ jobs:
             export REX_TRANSCODER="$d/ffmpeg" PATH="$d:$PATH"
             python3 tests/test_native_transcode.py
             python3 tests/test_download_queue.py
-            python3 tests/test_perf_artwork_save.py'
+            python3 tests/test_perf_artwork_save.py
+            python3 tests/test_subtitles.py'
 
       - name: Stage
         run: install -D -m 755 rust/target/release/rex "$REX_STAGE/${{ github.run_id }}/rex-linux-amd64"

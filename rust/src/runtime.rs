@@ -63,6 +63,7 @@ mod structural;
 mod transcoder;
 mod mkvsubs;
 mod mp4subs;
+mod subtitles;
 mod universal;
 pub(crate) mod upstream;
 mod wire;
@@ -595,6 +596,15 @@ pub struct Runtime {
     /// threshold was set, it was refreshed, or a match changed. Run after the lock is released,
     /// since a movie described before rex kept its collections asks Plex's agent again.
     pending_auto_collections: bool,
+    /// A subtitle apply or automatic search a route asked for (`subtitles.rs`), run on a
+    /// thread of its own once the lock is released.
+    pending_subtitle: Option<subtitles::Job>,
+    /// The subtitle jobs running, by item, and the searches that found nothing.
+    subtitle_jobs: Arc<subtitles::Jobs>,
+    /// What each row a subtitle search answered names, by the local stream id it was minted.
+    subtitle_offers: HashMap<i64, (String, subtitles::Candidate)>,
+    /// The lowest local id the next search row may take: no search hands one out twice.
+    subtitle_serial: i64,
     /// `claim.Claim` and the account threads `main()` wires (`plextv.rs`).
     plextv: Arc<plextv::PlexTv>,
     /// The owner's track settings, read from plex.tv at start and daily; `None` until then
@@ -891,6 +901,10 @@ impl Runtime {
             pending_agent: None,
             agent_answers: HashMap::new(),
             pending_auto_collections: false,
+            pending_subtitle: None,
+            subtitle_jobs: Arc::default(),
+            subtitle_offers: HashMap::new(),
+            subtitle_serial: 0,
             plextv,
             track_prefs: None,
             requests: Vec::new(),
@@ -1545,6 +1559,9 @@ impl Runtime {
             if let Some(next) = state.get("sectionNext").and_then(Value::as_i64) {
                 self.section_next = next;
             }
+            if let Some(next) = state.get("subtitleNext").and_then(Value::as_i64) {
+                self.subtitle_serial = next;
+            }
             if let Some(next) = state.get("nextScanKey").and_then(Value::as_i64) {
                 self.next_scan_key = self.next_scan_key.max(next);
             }
@@ -1980,6 +1997,8 @@ impl Runtime {
             // An older release mints theme tracks from `themeNext` and reads no other counter.
             ("themeNext", json!(self.next_scan_key)),
             ("sectionNext", json!(self.section_next)),
+            // The next subtitle search row's or kept subtitle's id: never one handed out before.
+            ("subtitleNext", json!(self.subtitle_serial)),
             ("sources", json!(self.sources.iter().map(|source| (source.name.clone(), source.record.clone())).collect::<Map<String, Value>>())),
             // A snapshot diffs it by key instead (`diff_members`).
             ("feedHeld", if full { json!(self.feed_held) } else { Value::Null }),
@@ -8498,7 +8517,14 @@ impl Runtime {
                 self.route_rate(&query)
             }
             ("GET" | "HEAD" | "OPTIONS", "/video/:/transcode/universal/decision") => {
-                self.route_decision(&query, &request.headers)
+                // The item's subtitle job, if one is finding the account's subtitle, ends first.
+                let path = query.get("path").map(String::as_str).unwrap_or_default();
+                let key = path.split("/library/metadata/").nth(1).and_then(|tail| tail.split(['/', '?']).next()).unwrap_or("");
+                if self.subtitle_wait(key) {
+                    Response::empty(200)
+                } else {
+                    self.route_decision(&query, &request.headers)
+                }
             }
             ("GET" | "HEAD", "/subtitles/:/transcode/universal/start") => {
                 Response::error(400, "rex: bad request")
@@ -13232,7 +13258,11 @@ impl Runtime {
                 .map(|value| value.chars().take(80).collect::<String>())
                 .unwrap_or_default();
             info!("PLAYQUEUE {id} -> {row_count} item(s) from uri={source}");
+            let playing = queue.items.iter().find(|item| Some(item.id) == queue.selected).map(|item| item.rating_key.clone());
             self.queues.insert(id, queue);
+            if let Some((key, row)) = playing.and_then(|key| Some((key.clone(), self.catalog.get(&key)?.clone()))) {
+                self.subtitles_wanted(&key, &row);
+            }
             return response;
         }
         let id = segments[0];
@@ -18282,6 +18312,10 @@ impl Runtime {
                     return Response::error(400, "rex: bad request");
                 }
             }
+            // The requesting account's subtitle, found before its playback picks the tracks.
+            if request.method == "GET" {
+                self.subtitles_wanted(key, row);
+            }
             let checks_requested = ["checkFiles", "asyncCheckFiles", "checkFileAvailability"]
                 .iter()
                 .any(|option| {
@@ -19032,6 +19066,11 @@ impl Runtime {
                 )
             }
             "subtitles" => {
+                // Plex Web's apply of a search result (`plex_search_apply_s143.json`): a PUT
+                // naming the result's `/library/streams/{id}`.
+                if request.method == "PUT" && query.contains_key("key") {
+                    return self.subtitle_apply(key, row, query);
+                }
                 if request.method != "POST" {
                     // The Search Subtitles dialog.  Measured: `language` is required
                     // (400 without it) and must be a real two-letter language, any case
@@ -19048,16 +19087,7 @@ impl Runtime {
                     if !SUBTITLE_LANGUAGES.contains(&code.as_str()) {
                         return Response::error(500, "rex: internal error");
                     }
-                    // The oracle's `tag_container(size=0, Stream=[])`: the library
-                    // identity without `allowSync`.
-                    let mut body =
-                        self.container(Map::from_iter([("size".to_string(), json!(0))]), true);
-                    if let Some(object) =
-                        body.get_mut("MediaContainer").and_then(Value::as_object_mut)
-                    {
-                        object.shift_remove("allowSync");
-                    }
-                    return Response::json(200, body);
+                    return self.subtitle_search(key, row, query, language);
                 }
                 // Cycle 15, measured on the copy: the EMPTY-BODY check runs FIRST.
                 // With neither a title nor bytes the answer is 406, not the 500 a
@@ -19093,85 +19123,23 @@ impl Runtime {
                 // highest the server holds, and it is the Stream the reference writes:
                 // the format as `codec` and `format`, the stem as `title`, a
                 // `/library/streams/{id}` key, `transient: "0"`, selected -- no language.
-                let id = self
-                    .catalog
-                    .hot()
-                    .lazy()
-                    .flat_map(|item| {
-                        item.get("Media")
-                            .and_then(Value::as_array)
-                            .cloned()
-                            .unwrap_or_default()
-                    })
-                    .flat_map(|media| {
-                        media
-                            .get("Part")
-                            .and_then(Value::as_array)
-                            .cloned()
-                            .unwrap_or_default()
-                    })
-                    .filter_map(|part| crate::catalog::max_stream_id(&part))
-                    .max()
-                    .unwrap_or(0)
-                    + 1;
+                // It deselects the subtitle in every part of every Media and joins the
+                // FIRST part, as `upload_subtitle` does.
+                let fields = Map::from_iter([
+                    ("id".to_string(), Value::Null),
+                    ("streamType".to_string(), json!(3)),
+                    ("codec".to_string(), json!(format)),
+                    ("format".to_string(), json!(format)),
+                    ("title".to_string(), json!(stem)),
+                    ("key".to_string(), Value::Null),
+                    ("transient".to_string(), json!("0")),
+                    ("selected".to_string(), json!(true)),
+                ]);
                 let content = String::from_utf8_lossy(&request.body).to_string();
-                let mut stream_row = Map::new();
-                stream_row.insert("id".to_string(), json!(id));
-                stream_row.insert("streamType".to_string(), json!(3));
-                stream_row.insert("codec".to_string(), json!(format));
-                stream_row.insert("format".to_string(), json!(format));
-                stream_row.insert("title".to_string(), json!(stem));
-                stream_row.insert("key".to_string(), json!(format!("/library/streams/{id}")));
-                stream_row.insert("transient".to_string(), json!("0"));
-                stream_row.insert("selected".to_string(), json!(true));
-                crate::mediainfo::stream_titles(&mut stream_row, None, None);
-                stream_row.insert("_content".to_string(), json!(content));
-                let stream = Value::Object(stream_row);
-                let Some(row) = self.catalog.get_mut(key) else {
-                    return Response::error(404, "rex: not found");
-                };
-                // Packed again with the request's other writes (`pack_pending`).
-                crate::catalog::unpack_streams(row);
-                let Some(object) = row.as_object_mut() else {
-                    return Response::error(404, "rex: not found");
-                };
-                // Every part of every Media: the new track deselects the subtitle in all
-                // of them and joins the FIRST part, as `upload_subtitle` does.
-                let mut parts = object
-                    .get_mut("Media")
-                    .and_then(Value::as_array_mut)
-                    .into_iter()
-                    .flatten()
-                    .filter_map(|media| media.get_mut("Part").and_then(Value::as_array_mut))
-                    .flatten()
-                    .filter_map(Value::as_object_mut)
-                    .collect::<Vec<_>>();
-                if parts.is_empty() {
+                let id = self.next_stream_id();
+                if self.add_subtitle_stream(key, None, id, fields, content, true).is_none() {
                     return Response::error(404, "rex: not found");
                 }
-                for part in parts.iter_mut() {
-                    for existing in part
-                        .get_mut("Stream")
-                        .and_then(Value::as_array_mut)
-                        .into_iter()
-                        .flatten()
-                    {
-                        if existing.get("streamType").and_then(Value::as_i64) == Some(3) {
-                            if let Some(existing) = existing.as_object_mut() {
-                                existing.shift_remove("selected");
-                            }
-                        }
-                    }
-                }
-                if let Some(streams) = parts[0]
-                    .entry("Stream".to_string())
-                    .or_insert_with(|| Value::Array(Vec::new()))
-                    .as_array_mut()
-                {
-                    streams.push(stream);
-                }
-                self.dirty = true;
-                self.save_if_dirty();
                 info!("SUBTITLE upload {key} -> stream {id} ({format})");
                 Response::empty(200)
             }
@@ -23423,6 +23391,9 @@ fn handle_connection<S: Read + Write + PollRead>(
                 let _ = thread::Builder::new()
                     .name("auto-collections".to_string())
                     .spawn(move || collections::auto_collect(&shared, true));
+            }
+            if let Some(job) = guard.pending_subtitle.take() {
+                subtitles::spawn(&runtime, job);
             }
             if guard.refused_for_token {
                 take_error_note();
