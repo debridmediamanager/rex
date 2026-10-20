@@ -191,7 +191,10 @@ pub(crate) fn write_atomic(path: &std::path::Path, bytes: &[u8], private: bool) 
     if let Some(permissions) = kept {
         std::fs::set_permissions(&temporary, permissions)?;
     }
-    std::fs::rename(&temporary, path)
+    // A failed rename leaves no half-made file behind to refuse the next write.
+    std::fs::rename(&temporary, path).inspect_err(|_| {
+        let _ = std::fs::remove_file(&temporary);
+    })
 }
 
 pub(crate) fn random_bytes(buffer: &mut [u8]) -> io::Result<()> {
