@@ -217,6 +217,32 @@ thread_local! {
         std::cell::RefCell::new(ByteOwner::default());
 }
 
+/// How long per-second byte counts are kept as seconds. ponytail: the reference's own
+/// per-second window is unmeasured; a day keeps the Dashboard's live graph and bounds the table.
+pub(super) const SECONDS_KEPT: i64 = 86_400;
+
+/// Fold the per-second byte counts before `cutoff` into one entry per local hour, at the hour's
+/// first second. Every rollup coarser than a second (the hour, day, week, month and year, all
+/// calendar buckets in local time) reads the same totals from them; an entry for every second a
+/// client was ever served grew the saved state for good.
+pub(super) fn fold_old_seconds(buckets: &mut Vec<(i64, i64)>, cutoff: i64) {
+    buckets.sort_by_key(|(at, _)| *at);
+    let split = buckets.partition_point(|(at, _)| *at < cutoff);
+    let mut folded: Vec<(i64, i64)> = Vec::with_capacity(buckets.len() - split + split / 3600 + 1);
+    for (at, count) in buckets.drain(..split) {
+        // The hour's start counted back from the local minute and second, not rebuilt with
+        // mktime: on a fall-back day the two 02:00 hours stay two.
+        let hour = crate::platform::local_tm(at)
+            .map_or(at - at.rem_euclid(3600), |tm| at - (tm.tm_min as i64 * 60 + tm.tm_sec as i64));
+        match folded.last_mut() {
+            Some((known, total)) if *known == hour => *total += count,
+            _ => folded.push((hour, count)),
+        }
+    }
+    folded.append(buckets);
+    *buckets = folded;
+}
+
 impl Runtime {
     /// `Sessions.device_id`: register the client (the anonymous one is 1, every other
     /// takes the next number) and write any device name or platform it sent.
@@ -270,9 +296,16 @@ impl Runtime {
             }
         };
         let buckets = &mut self.byte_buckets[index].1;
-        match buckets.iter_mut().find(|(at, _)| *at == second) {
+        // Seconds only move forward: the current one is the last entry or a new one. A search
+        // from the front walked the device's whole history on every response.
+        match buckets.last_mut().filter(|(at, _)| *at == second) {
             Some((_, total)) => *total += count as i64,
-            None => buckets.push((second, count as i64)),
+            None => {
+                buckets.push((second, count as i64));
+                if buckets.len() % 4096 == 0 {
+                    fold_old_seconds(buckets, second - SECONDS_KEPT);
+                }
+            }
         }
         // The counters are persisted state (`persist.py` SESSION_FIELDS `_bytes`); a
         // read marks them dirty for the coalescing saver rather than saving before it
@@ -289,9 +322,12 @@ impl Runtime {
                 .collect();
         };
         let mut rows: Vec<((i64, bool, i64), i64)> = Vec::new();
+        let mut found: HashMap<(i64, bool, i64), usize> = HashMap::new();
+        // An entry older than a day is an hour's total (`fold_old_seconds`), no second's.
+        let oldest_second = now() - SECONDS_KEPT;
         for ((device, lan), buckets) in &self.byte_buckets {
             for (second, count) in buckets {
-                if *count == 0 {
+                if *count == 0 || (span == 6 && *second < oldest_second) {
                     continue;
                 }
                 let at = statistics_bucket(*second, span);
@@ -299,9 +335,12 @@ impl Runtime {
                     continue;
                 }
                 let key = (*device, *lan, at);
-                match rows.iter_mut().find(|(known, _)| *known == key) {
-                    Some((_, total)) => *total += count,
-                    None => rows.push((key, *count)),
+                match found.get(&key) {
+                    Some(&index) => rows[index].1 += count,
+                    None => {
+                        found.insert(key, rows.len());
+                        rows.push((key, *count));
+                    }
                 }
             }
         }
@@ -1189,4 +1228,24 @@ pub(super) fn statistics_window(mut rows: Vec<Value>, query: &HashMap<String, St
         }
     }
     rows
+}
+
+#[cfg(test)]
+mod fold_tests {
+    use super::*;
+
+    #[test]
+    fn folding_keeps_every_byte_and_the_recent_seconds() {
+        let start = 1_792_800_000_i64;
+        let mut buckets: Vec<(i64, i64)> = (0..50_000).map(|n| (start + n * 7, 3)).collect();
+        let cutoff = start + 40_000 * 7;
+        let recent = buckets.iter().filter(|(at, _)| *at >= cutoff).copied().collect::<Vec<_>>();
+        fold_old_seconds(&mut buckets, cutoff);
+        assert_eq!(buckets.iter().map(|(_, count)| count).sum::<i64>(), 150_000);
+        assert_eq!(buckets.iter().filter(|(at, _)| *at >= cutoff).copied().collect::<Vec<_>>(), recent);
+        assert!(buckets.len() < recent.len() + 80, "{}", buckets.len());
+        let once = buckets.clone();
+        fold_old_seconds(&mut buckets, cutoff);
+        assert_eq!(buckets, once);
+    }
 }

@@ -1615,6 +1615,10 @@ impl Runtime {
                     Some(((entry.get(0)?.as_i64()?, entry.get(1)?.as_bool()?), seconds))
                 })
                 .collect();
+            // A state saved before the table was bounded holds every second it ever counted.
+            for (_, seconds) in &mut self.byte_buckets {
+                sessions::fold_old_seconds(seconds, now() - sessions::SECONDS_KEPT);
+            }
         }
         // `Store.restore`'s answer, which `main()` logs.
         self.state_summary = if rebuilt {
