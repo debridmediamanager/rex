@@ -1158,7 +1158,7 @@ pub fn build_media(
     let duration_ms = fmt
         .and_then(|x| x.get("duration"))
         .and_then(float_any)
-        .map(|x| (x * 1000.0) as i64)
+        .map(|x| (x * 1000.0).round() as i64)
         .unwrap_or(0);
     let bitrate = fmt
         .and_then(|x| x.get("bit_rate"))

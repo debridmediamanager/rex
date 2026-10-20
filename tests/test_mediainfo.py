@@ -285,6 +285,22 @@ SKIP = {
     ("kids-8-0", 1, "extendedDisplayTitle"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
     ("kids-9-0", 1, "displayTitle"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
     ("kids-9-0", 1, "extendedDisplayTitle"): "the 1.43.4 reference labels an untagged track English; the production server writes nothing",
+    ("kids-1-0", None, "duration"): "8 ms past every duration the probe holds: the reference timed the packets",
+    ("kids-10-0", None, "duration"): "8 ms past every duration the probe holds: the reference timed the packets",
+    ("kids-12-0", None, "duration"): "8 ms past every duration the probe holds: the reference timed the packets",
+    ("kids-13-0", None, "duration"): "8 ms past every duration the probe holds: the reference timed the packets",
+    ("kids-14-0", None, "duration"): "8 ms past every duration the probe holds: the reference timed the packets",
+    ("kids-17-0", None, "duration"): "8 ms past every duration the probe holds: the reference timed the packets",
+    ("kids-3-0", None, "duration"): "8 ms past every duration the probe holds: the reference timed the packets",
+    ("kids-4-0", None, "duration"): "8 ms past every duration the probe holds: the reference timed the packets",
+    ("kids-8-0", None, "duration"): "8 ms past every duration the probe holds: the reference timed the packets",
+    ("kids-9-0", None, "duration"): "8 ms past every duration the probe holds: the reference timed the packets",
+    # The MP4 movie header's duration, which ffprobe's float only approximates: one under it,
+    # one over, one under a truncation.
+    ("fun-1051324-2", None, "duration"): "the mp4's mvhd duration, 1 ms under the probe's",
+    ("fun-1149481-1", None, "duration"): "the mp4's mvhd duration, 1 ms over the probe's",
+    ("kids-18-0", None, "duration"): "the mp4's mvhd duration, 1 ms under the probe's",
+    ("fun-1054688-1", None, "duration"): "1 ms under the probe's Matroska duration; its audio tracks end there",
 }
 
 
@@ -442,6 +458,13 @@ def _pixel_aspect_threshold(native):
                      (ratio, expected) if expected is not None else (None, None),
                      (built.get("pixelAspectRatio"), built.get("anamorphic"))))
     return rows
+
+
+@check("duration")
+def _duration(fixture):
+    # ffprobe's decimal seconds to milliseconds: rounded, as the reference has them (4160.672 s
+    # is 4160672 ms where truncating the float product, 4160671.9999999995, was 1 ms short).
+    return per_media(("duration",))(fixture)
 
 
 @check("aspect-ratio")
