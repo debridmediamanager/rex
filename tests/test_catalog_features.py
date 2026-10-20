@@ -526,6 +526,18 @@ def run_plain(server, check):
     check("a play queue's shuffle and repeat are 0/1 integer flags and anything else is a "
           "400, as both PMS versions answer", not wrong, str(wrong))
 
+    # A `window` past any count lists the queue as a large one does: `selected + window + 1`
+    # wrapped in release builds and answered only the items before the selection.
+    section_uri = urllib.parse.quote("server://%s/com.plexapp.plugins.library/library/sections/1/all?type=1"
+                                     % MACHINE, safe="")
+    made = server.json("/playQueues?type=video&uri=%s" % section_uri, "POST")
+    queue = made.get("playQueueID")
+    keys = lambda body: [row.get("ratingKey") for row in body.get("Metadata", [])]
+    wide = server.json("/playQueues/%s?window=1000" % queue)
+    huge = server.json("/playQueues/%s?window=18446744073709551615" % queue)
+    check("a play queue's window past any count lists what a large window does",
+          keys(wide) and keys(huge) == keys(wide), (keys(wide), keys(huge), huge.get("_status")))
+
 
 def run_search_edits(check):
     """Search answers on rows carrying a sort title, audience ratings and a shared tag."""

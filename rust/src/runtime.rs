@@ -13029,7 +13029,7 @@ impl Runtime {
                 .and_then(|value| value.parse::<usize>().ok())
                 .unwrap_or(total);
             let low = selected_index.saturating_sub(span);
-            let high = (selected_index + span + 1).min(rows.len());
+            let high = selected_index.saturating_add(span).saturating_add(1).min(rows.len());
             let mut sliced = Vec::new();
             if before {
                 sliced.extend(rows[low.min(rows.len())..selected_index.min(rows.len())].iter().cloned());
@@ -13046,7 +13046,7 @@ impl Runtime {
             .and_then(|value| value.parse::<usize>().ok())
         {
             let low = selected_index.saturating_sub(window).min(rows.len());
-            let high = (selected_index + window + 1).min(rows.len());
+            let high = selected_index.saturating_add(window).saturating_add(1).min(rows.len());
             rows = rows[low..high.max(low)].to_vec();
         }
         if listed_nothing {
