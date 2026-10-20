@@ -1,0 +1,762 @@
+{
+ "source": "plexlab, a real claimed Plex 1.43.4 PMS: the Search Subtitles request (GET /library/metadata/3/subtitles?language=en, Sintel) and applying its first result as Plex Web does (PUT /library/metadata/3/subtitles), the PMS's own outbound calls to Plex's provider from harness capture/outbound.jsonl, then the applied stream deleted again",
+ "captured": "2026-10-20",
+ "note": "Every token replaced with PLEX-TOKEN; signed query values with REDACTED. The search ran twice (10:13, 10:31); its result rows get new local ids each time (386-389, then 390-393).",
+ "client": {
+  "search": {
+   "request": "GET /library/metadata/3/subtitles?language=en",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 4,
+     "identifier": "com.plexapp.plugins.library",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "Stream": [
+      {
+       "id": 386,
+       "key": "/library/streams/386",
+       "streamType": 3,
+       "canAutoSync": false,
+       "codec": "srt",
+       "language": "English",
+       "languageTag": "eng",
+       "languageCode": "eng",
+       "format": "srt",
+       "providerTitle": "OpenSubtitles",
+       "score": "1496",
+       "sourceKey": "/library/streams/67399",
+       "title": "Sintel (2010).eng",
+       "displayTitle": "English",
+       "extendedDisplayTitle": "Sintel (2010).eng (English SRT OpenSubtitles)"
+      },
+      {
+       "id": 387,
+       "key": "/library/streams/387",
+       "streamType": 3,
+       "canAutoSync": false,
+       "codec": "srt",
+       "language": "English",
+       "languageTag": "eng",
+       "languageCode": "eng",
+       "format": "srt",
+       "providerTitle": "OpenSubtitles",
+       "score": "1225",
+       "sourceKey": "/library/streams/66860",
+       "title": "sintel.he",
+       "displayTitle": "English",
+       "extendedDisplayTitle": "sintel.he (English SRT OpenSubtitles)"
+      },
+      {
+       "id": 388,
+       "key": "/library/streams/388",
+       "streamType": 3,
+       "canAutoSync": false,
+       "codec": "srt",
+       "language": "English",
+       "languageTag": "eng",
+       "languageCode": "eng",
+       "format": "srt",
+       "providerTitle": "OpenSubtitles",
+       "score": "8349",
+       "sourceKey": "/library/streams/66100",
+       "title": "sintel_en",
+       "displayTitle": "English",
+       "extendedDisplayTitle": "sintel_en (English SRT OpenSubtitles)"
+      },
+      {
+       "id": 389,
+       "key": "/library/streams/389",
+       "streamType": 3,
+       "canAutoSync": false,
+       "codec": "srt",
+       "language": "English",
+       "languageTag": "eng",
+       "languageCode": "eng",
+       "format": "srt",
+       "providerTitle": "OpenSubtitles",
+       "score": "2847",
+       "sourceKey": "/library/streams/65509",
+       "title": "sintel_en",
+       "displayTitle": "English",
+       "extendedDisplayTitle": "sintel_en (English SRT OpenSubtitles)"
+      }
+     ]
+    }
+   }
+  },
+  "apply": {
+   "request": {
+    "method": "PUT",
+    "path": "/library/metadata/3/subtitles",
+    "query": [
+     [
+      "key",
+      "/library/streams/390"
+     ],
+     [
+      "codec",
+      "srt"
+     ],
+     [
+      "language",
+      "eng"
+     ],
+     [
+      "hearingImpaired",
+      "0"
+     ],
+     [
+      "forced",
+      "0"
+     ],
+     [
+      "providerTitle",
+      "OpenSubtitles"
+     ],
+     [
+      "mediaItemID",
+      "3"
+     ]
+    ]
+   },
+   "status": 200,
+   "headers": {
+    "X-Plex-Protocol": "1.0",
+    "Content-Length": "0",
+    "Content-Type": "text/html",
+    "X-Plex-Activity": "fed941cb-99b5-4311-a5f3-00fac46925d9",
+    "Access-Control-Expose-Headers": "X-Plex-Activity",
+    "Connection": "close",
+    "Cache-Control": "no-cache"
+   },
+   "body": ""
+  },
+  "events": [
+   {
+    "ActivityNotification": {
+     "event": "started",
+     "uuid": "fed941cb-99b5-4311-a5f3-00fac46925d9",
+     "Activity": {
+      "uuid": "fed941cb-99b5-4311-a5f3-00fac46925d9",
+      "type": "subtitle.download",
+      "cancellable": false,
+      "userID": 1,
+      "title": "Downloading Subtitle",
+      "subtitle": "",
+      "progress": 0
+     }
+    }
+   },
+   {
+    "ActivityNotification": {
+     "event": "ended",
+     "uuid": "fed941cb-99b5-4311-a5f3-00fac46925d9",
+     "Activity": {
+      "uuid": "fed941cb-99b5-4311-a5f3-00fac46925d9",
+      "type": "subtitle.download",
+      "cancellable": false,
+      "userID": 1,
+      "title": "Downloading Subtitle",
+      "subtitle": "",
+      "progress": 100
+     }
+    }
+   }
+  ],
+  "appliedStreams": [
+   {
+    "id": 394,
+    "key": "/library/streams/394",
+    "streamType": 3,
+    "canAutoSync": false,
+    "selected": true,
+    "codec": "srt",
+    "language": "English",
+    "languageTag": "eng",
+    "languageCode": "eng",
+    "format": "srt",
+    "providerTitle": "OpenSubtitles",
+    "score": "1496",
+    "sourceKey": "/library/streams/67399",
+    "title": "Sintel (2010).eng",
+    "transient": "1",
+    "userID": "1",
+    "displayTitle": "English",
+    "extendedDisplayTitle": "Sintel (2010).eng (English SRT OpenSubtitles)"
+   }
+  ],
+  "streamGet": {
+   "request": "GET /library/streams/394",
+   "status": 200,
+   "contentType": "text/html",
+   "bodyStart": "1\n00:01:47,250 --> 00:01:50,500\nThis blade has a dark past."
+  },
+  "deleteApplied": {
+   "request": "DELETE /library/streams/394",
+   "status": 200
+  }
+ },
+ "outbound": [
+  {
+   "iso": "2026-10-20T10:13:29",
+   "method": "GET",
+   "scheme": "https",
+   "host": "metadata.provider.plex.tv",
+   "path": "/library/streams/matches",
+   "query": [
+    [
+     "filename",
+     "Sintel (2010) - 1080p.mkv"
+    ],
+    [
+     "guid",
+     "plex://movie/5d77688123d5a3001f4ed3df"
+    ],
+    [
+     "lang",
+     "en"
+    ],
+    [
+     "openSubtitlesHash",
+     "3f2110566ac90d35"
+    ],
+    [
+     "plexHash",
+     "f387a8cf19b25c6a62dd9f4861adc06db5b62b8a"
+    ],
+    [
+     "type",
+     "1"
+    ],
+    [
+     "videoCodec",
+     "h264"
+    ],
+    [
+     "videoQuality",
+     "1080p"
+    ],
+    [
+     "year",
+     "2010"
+    ]
+   ],
+   "req_headers": [
+    [
+     "user-agent",
+     "PlexMediaServer/1.43.4.10903-e5521bd8c"
+    ],
+    [
+     "accept-encoding",
+     "gzip"
+    ],
+    [
+     "accept",
+     "application/json"
+    ],
+    [
+     "x-plex-client-identifier",
+     "15fad815c00463b33e2e644245763ee42ef84757"
+    ],
+    [
+     "x-plex-version",
+     "1.43.4.10903-e5521bd8c"
+    ],
+    [
+     "x-plex-provides",
+     "server"
+    ],
+    [
+     "x-plex-platform",
+     "Linux"
+    ],
+    [
+     "x-plex-product",
+     "Plex Media Server"
+    ],
+    [
+     "x-plex-platform-version",
+     "6.8.0-110-generic"
+    ],
+    [
+     "x-plex-device-name",
+     "plexlab"
+    ],
+    [
+     "x-plex-device",
+     "Docker Container"
+    ],
+    [
+     "x-plex-model",
+     "x86_64"
+    ],
+    [
+     "x-plex-device-vendor",
+     "Docker"
+    ],
+    [
+     "x-plex-api-token",
+     "PLEX-TOKEN"
+    ]
+   ],
+   "status": 200,
+   "res_headers": [
+    [
+     "date",
+     "Tue, 20 Oct 2026 10:13:29 GMT"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "cross-origin-resource-policy",
+     "cross-origin"
+    ],
+    [
+     "origin-agent-cluster",
+     "?1"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "x-dns-prefetch-control",
+     "off"
+    ],
+    [
+     "x-download-options",
+     "noopen"
+    ],
+    [
+     "x-permitted-cross-domain-policies",
+     "none"
+    ],
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "cache-control",
+     "max-age=60,s-maxage=86400,stale-while-revalidate=86400"
+    ],
+    [
+     "content-language",
+     "en"
+    ],
+    [
+     "x-plex-timestamp",
+     "1792491209"
+    ],
+    [
+     "x-plex-version",
+     "243daddf9db2c0df928c8936d229f0b03b53637f"
+    ],
+    [
+     "vary",
+     "Accept, Accept-Encoding, X-Plex-Language, X-Plex-Provider-Version"
+    ],
+    [
+     "set-cookie",
+     "__cf_bm=MDBru31_uEzY2BaRi5TYQ_yxXGmkOrCP0_nuX7qQJYU-1792491209.8124988-1.0.1.1-5_SBx.xaSWx2QjjDp6Hh0NieQ9mCbNRK1kLtC.dUDsoN5AQzSmhC_MJNKdHggQYHp62rCDZQu8l7jbSt9IXmjJqBCuLuajnbxEFEPaNMzEWSqN.plO2vOrFx5_0wVyRb; HttpOnly; SameSite=None; Secure; Path=/; Domain=plex.tv; Expires=Tue, 20 Oct 2026 10:43:29 GMT"
+    ],
+    [
+     "x-plex-container-start",
+     "0"
+    ],
+    [
+     "x-plex-container-total-size",
+     "4"
+    ],
+    [
+     "etag",
+     "W/\"3b1-nv7pgElYqv5gR7/ng8di6gpSb5Q\""
+    ],
+    [
+     "x-response-time",
+     "98.863"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ],
+    [
+     "cf-cache-status",
+     "MISS"
+    ],
+    [
+     "content-encoding",
+     "gzip"
+    ],
+    [
+     "server",
+     "cloudflare"
+    ],
+    [
+     "cf-ray",
+     "a4d7400d5932c3c8-TXL"
+    ]
+   ],
+   "res_body": "{\"MediaContainer\":{\"librarySectionID\":\"home\",\"librarySectionTitle\":\"Metadata\",\"offset\":0,\"totalSize\":4,\"identifier\":\"tv.plex.provider.metadata\",\"size\":4,\"Stream\":[{\"codec\":\"srt\",\"id\":\"67399\",\"key\":\"/library/streams/67399\",\"language\":\"English\",\"languageCode\":\"en\",\"providerTitle\":\"OpenSubtitles\",\"score\":1496,\"title\":\"Sintel (2010).eng\",\"index\":\"0\",\"streamType\":3},{\"codec\":\"srt\",\"id\":\"66860\",\"key\":\"/library/streams/66860\",\"language\":\"English\",\"languageCode\":\"en\",\"providerTitle\":\"OpenSubtitles\",\"score\":1225,\"title\":\"sintel.he\",\"index\":\"1\",\"streamType\":3},{\"codec\":\"srt\",\"id\":\"66100\",\"key\":\"/library/streams/66100\",\"language\":\"English\",\"languageCode\":\"en\",\"providerTitle\":\"OpenSubtitles\",\"score\":8349,\"title\":\"sintel_en\",\"index\":\"2\",\"streamType\":3},{\"codec\":\"srt\",\"id\":\"65509\",\"key\":\"/library/streams/65509\",\"language\":\"English\",\"languageCode\":\"en\",\"providerTitle\":\"OpenSubtitles\",\"score\":2847,\"title\":\"sintel_en\",\"index\":\"3\",\"streamType\":3}]}}",
+   "res_len": 328
+  },
+  {
+   "iso": "2026-10-20T10:31:20",
+   "method": "GET",
+   "scheme": "https",
+   "host": "metadata.provider.plex.tv",
+   "path": "/library/streams/matches",
+   "query": [
+    [
+     "filename",
+     "Sintel (2010) - 1080p.mkv"
+    ],
+    [
+     "guid",
+     "plex://movie/5d77688123d5a3001f4ed3df"
+    ],
+    [
+     "lang",
+     "en"
+    ],
+    [
+     "openSubtitlesHash",
+     "3f2110566ac90d35"
+    ],
+    [
+     "plexHash",
+     "f387a8cf19b25c6a62dd9f4861adc06db5b62b8a"
+    ],
+    [
+     "type",
+     "1"
+    ],
+    [
+     "videoCodec",
+     "h264"
+    ],
+    [
+     "videoQuality",
+     "1080p"
+    ],
+    [
+     "year",
+     "2010"
+    ]
+   ],
+   "req_headers": [
+    [
+     "user-agent",
+     "PlexMediaServer/1.43.4.10903-e5521bd8c"
+    ],
+    [
+     "accept-encoding",
+     "gzip"
+    ],
+    [
+     "accept",
+     "application/json"
+    ],
+    [
+     "x-plex-client-identifier",
+     "15fad815c00463b33e2e644245763ee42ef84757"
+    ],
+    [
+     "x-plex-version",
+     "1.43.4.10903-e5521bd8c"
+    ],
+    [
+     "x-plex-provides",
+     "server"
+    ],
+    [
+     "x-plex-platform",
+     "Linux"
+    ],
+    [
+     "x-plex-product",
+     "Plex Media Server"
+    ],
+    [
+     "x-plex-platform-version",
+     "6.8.0-110-generic"
+    ],
+    [
+     "x-plex-device-name",
+     "plexlab"
+    ],
+    [
+     "x-plex-device",
+     "Docker Container"
+    ],
+    [
+     "x-plex-model",
+     "x86_64"
+    ],
+    [
+     "x-plex-device-vendor",
+     "Docker"
+    ],
+    [
+     "x-plex-api-token",
+     "PLEX-TOKEN"
+    ]
+   ],
+   "status": 200,
+   "res_headers": [
+    [
+     "date",
+     "Tue, 20 Oct 2026 10:31:20 GMT"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "cross-origin-resource-policy",
+     "cross-origin"
+    ],
+    [
+     "origin-agent-cluster",
+     "?1"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "x-dns-prefetch-control",
+     "off"
+    ],
+    [
+     "x-download-options",
+     "noopen"
+    ],
+    [
+     "x-permitted-cross-domain-policies",
+     "none"
+    ],
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "cache-control",
+     "max-age=60,s-maxage=86400,stale-while-revalidate=86400"
+    ],
+    [
+     "content-language",
+     "en"
+    ],
+    [
+     "x-plex-timestamp",
+     "1792491209"
+    ],
+    [
+     "x-plex-version",
+     "243daddf9db2c0df928c8936d229f0b03b53637f"
+    ],
+    [
+     "vary",
+     "Accept, Accept-Encoding, X-Plex-Language, X-Plex-Provider-Version"
+    ],
+    [
+     "age",
+     "1070"
+    ],
+    [
+     "x-plex-container-start",
+     "0"
+    ],
+    [
+     "x-plex-container-total-size",
+     "4"
+    ],
+    [
+     "etag",
+     "W/\"3b1-nv7pgElYqv5gR7/ng8di6gpSb5Q\""
+    ],
+    [
+     "x-response-time",
+     "98.863"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ],
+    [
+     "set-cookie",
+     "__cf_bm=6qaGL5je1qEOeGSWzfDQCnuwSojCr6azpHGhNixzdMI-1792492280.7917728-1.0.1.1-hi.nbsgI2PPoH4N_rYDO3qkor9Fvl_m7PkqXUx3xCHIvkWXOAbyy8e.0hqvmWQpRawbsiAtbaTuIueTmZoH6Gc33ju6ygbnjhJQYOjHb2OQvqEvIq2Sbs.YzbTTbGrbD; HttpOnly; SameSite=None; Secure; Path=/; Domain=plex.tv; Expires=Tue, 20 Oct 2026 11:01:20 GMT"
+    ],
+    [
+     "cf-cache-status",
+     "HIT"
+    ],
+    [
+     "content-encoding",
+     "gzip"
+    ],
+    [
+     "server",
+     "cloudflare"
+    ],
+    [
+     "cf-ray",
+     "a4d75a32fe5d1931-TXL"
+    ]
+   ],
+   "res_body": "{\"MediaContainer\":{\"librarySectionID\":\"home\",\"librarySectionTitle\":\"Metadata\",\"offset\":0,\"totalSize\":4,\"identifier\":\"tv.plex.provider.metadata\",\"size\":4,\"Stream\":[{\"codec\":\"srt\",\"id\":\"67399\",\"key\":\"/library/streams/67399\",\"language\":\"English\",\"languageCode\":\"en\",\"providerTitle\":\"OpenSubtitles\",\"score\":1496,\"title\":\"Sintel (2010).eng\",\"index\":\"0\",\"streamType\":3},{\"codec\":\"srt\",\"id\":\"66860\",\"key\":\"/library/streams/66860\",\"language\":\"English\",\"languageCode\":\"en\",\"providerTitle\":\"OpenSubtitles\",\"score\":1225,\"title\":\"sintel.he\",\"index\":\"1\",\"streamType\":3},{\"codec\":\"srt\",\"id\":\"66100\",\"key\":\"/library/streams/66100\",\"language\":\"English\",\"languageCode\":\"en\",\"providerTitle\":\"OpenSubtitles\",\"score\":8349,\"title\":\"sintel_en\",\"index\":\"2\",\"streamType\":3},{\"codec\":\"srt\",\"id\":\"65509\",\"key\":\"/library/streams/65509\",\"language\":\"English\",\"languageCode\":\"en\",\"providerTitle\":\"OpenSubtitles\",\"score\":2847,\"title\":\"sintel_en\",\"index\":\"3\",\"streamType\":3}]}}",
+   "res_len": 328
+  },
+  {
+   "iso": "2026-10-20T10:31:20",
+   "method": "GET",
+   "scheme": "https",
+   "host": "metadata.provider.plex.tv",
+   "path": "/library/streams/67399",
+   "query": [
+    [
+     "X-Plex-Api-Token",
+     "PLEX-TOKEN"
+    ]
+   ],
+   "req_headers": [
+    [
+     "user-agent",
+     "PlexMediaServer/1.43.4.10903-e5521bd8c"
+    ],
+    [
+     "accept",
+     "*/*"
+    ],
+    [
+     "accept-encoding",
+     "gzip"
+    ]
+   ],
+   "status": 302,
+   "res_headers": [
+    [
+     "date",
+     "Tue, 20 Oct 2026 10:31:21 GMT"
+    ],
+    [
+     "content-type",
+     "text/plain; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "653"
+    ],
+    [
+     "location",
+     "https://www.opensubtitles.com/download/REDACTED/subfile/Sintel%20(2010).eng.srt"
+    ],
+    [
+     "cross-origin-resource-policy",
+     "cross-origin"
+    ],
+    [
+     "origin-agent-cluster",
+     "?1"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "x-dns-prefetch-control",
+     "off"
+    ],
+    [
+     "x-download-options",
+     "noopen"
+    ],
+    [
+     "x-permitted-cross-domain-policies",
+     "none"
+    ],
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "cache-control",
+     "max-age=60,s-maxage=3600,stale-while-revalidate=3600"
+    ],
+    [
+     "content-language",
+     "en"
+    ],
+    [
+     "vary",
+     "Accept, Accept-Encoding"
+    ],
+    [
+     "x-response-time",
+     "143.245"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ],
+    [
+     "cf-cache-status",
+     "MISS"
+    ],
+    [
+     "set-cookie",
+     "__cf_bm=o6pm2JE5wX.nojoZXlCDX6POq3njUmuFRkRNlFdYP.s-1792492280.862251-1.0.1.1-LILZg5p3.jU70ZGQq3ZDwQwuXQeC0X72eoJpQK6XSlEDX7XnnTg5.2j8m7Q7XbiqoGLRo6DjM9ux4WDBnbGVjQMrx2GbvKW7LFBj1JUbPWie3PP9H0h5mU9lg6_RhZp8; HttpOnly; SameSite=None; Secure; Path=/; Domain=plex.tv; Expires=Tue, 20 Oct 2026 11:01:21 GMT"
+    ],
+    [
+     "server",
+     "cloudflare"
+    ],
+    [
+     "cf-ray",
+     "a4d75a336f611931-TXL"
+    ]
+   ],
+   "res_body": "Found. Redirecting to https://www.opensubtitles.com/download/REDACTED/subfile/Sintel%20(2010).eng.srt",
+   "res_len": 653
+  }
+ ]
+}
