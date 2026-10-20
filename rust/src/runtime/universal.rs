@@ -1138,7 +1138,9 @@ impl Transcoder {
     /// the same id is replaced), already running from segment 0.
     pub fn start(self: &Arc<Self>, id: &str, plan: Plan) -> Result<Arc<Session>, String> {
         self.stop(id);
-        let dir = self.root.join(format!("{}-{}", sanitize(id), self.starts.fetch_add(1, Ordering::SeqCst)));
+        // `.` is no character `sanitize` keeps, so no session's directory is a download's
+        // (`download-<id>`).
+        let dir = self.root.join(format!("{}.{}", sanitize(id), self.starts.fetch_add(1, Ordering::SeqCst)));
         std::fs::create_dir_all(&dir).map_err(|error| format!("cannot create {}: {error}", dir.display()))?;
         let plan_burns = plan.text_burn.is_some();
         let session = Arc::new(Session {
