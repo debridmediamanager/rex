@@ -322,7 +322,7 @@ impl Runtime {
         let mut found: HashMap<(i64, bool, i64), usize> = HashMap::new();
         // An entry older than a day is an hour's total (`fold_old_seconds`), no second's.
         let oldest_second = now() - SECONDS_KEPT;
-        for ((device, lan), buckets) in &self.byte_buckets {
+        for ((device, lan), buckets) in self.byte_buckets.iter() {
             for (second, count) in buckets {
                 if *count == 0 || (span == 6 && *second < oldest_second) {
                     continue;

@@ -255,6 +255,37 @@ const PREFIX_PROBES: &[&str] = &[
 ];
 
 type SharedRuntime = Arc<Mutex<Runtime>>;
+
+/// A state field whose every change is counted (any `&mut` borrow takes a new version), so a
+/// save serialises it only when it changed: the production server's 31,614 deleted keys,
+/// 31,562 retired ones and 600 KB of byte counts were 6 of a timeline's 8 ms (2026-10-20).
+#[derive(Debug, Default)]
+struct Versioned<T> {
+    value: T,
+    version: u64,
+}
+
+static VERSIONS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+
+impl<T> Versioned<T> {
+    fn version(&self) -> u64 {
+        self.version
+    }
+}
+
+impl<T> std::ops::Deref for Versioned<T> {
+    type Target = T;
+    fn deref(&self) -> &T {
+        &self.value
+    }
+}
+
+impl<T> std::ops::DerefMut for Versioned<T> {
+    fn deref_mut(&mut self) -> &mut T {
+        self.version = VERSIONS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        &mut self.value
+    }
+}
 /// A call to Plex's agent, made outside the runtime lock (`Runtime::agent_answer`).
 struct AgentCall(Box<dyn FnOnce() -> Value + Send>);
 
@@ -584,7 +615,7 @@ pub struct Runtime {
     pub edits: HashMap<String, Map<String, Value>>,
     pub section_prefs: HashMap<(String, String), String>,
     pub added_sections: Vec<Value>,
-    pub deleted: HashSet<String>,
+    deleted: Versioned<HashSet<String>>,
     devices: HashMap<String, Device>,
     gdm_peers: HashMap<String, GdmPeer>,
     pub history: Vec<Value>,
@@ -601,7 +632,7 @@ pub struct Runtime {
     pub next_playlist: i64,
     next_playlist_item: i64,
     /// Keys a merge or a delete freed: a split never reuses one (measured).
-    retired_keys: Vec<i64>,
+    retired_keys: Versioned<Vec<i64>>,
     /// The lowest library key a new library may take: a real PMS never reuses a library's
     /// id, and the share grants and section prefs keyed by a deleted one stayed on its key.
     section_next: i64,
@@ -628,7 +659,7 @@ pub struct Runtime {
     /// `Sessions._next_key`: the counter a new session's `sessionKey` steps.
     next_session_key: i64,
     /// `Sessions._bytes`: (device, lan) -> per-second byte counts, in first-seen order.
-    byte_buckets: Vec<((i64, bool), Vec<(i64, i64)>)>,
+    byte_buckets: Versioned<Vec<((i64, bool), Vec<(i64, i64)>)>>,
     /// The reaper's last tick: process-wide, anchored at start (`sessions._last_reap`).
     last_reap: f64,
     pub started_sessions: HashSet<String>,
@@ -688,6 +719,8 @@ pub struct Runtime {
     /// place), so a save rewrites it only then rather than serialising it every time.
     spelling_serial: u64,
     spelling_saved: u64,
+    /// The `Versioned` fields' versions the state database holds (`saving`).
+    versions_saved: HashMap<&'static str, u64>,
     /// Events are retained by sequence so an eventsource/websocket subscriber
     /// can take a snapshot without a mutable callback into the route thread.
     /// This is bounded in `push_event`; it is runtime state, never persisted.
@@ -868,7 +901,7 @@ impl Runtime {
             edits: HashMap::new(),
             section_prefs: HashMap::new(),
             added_sections: Vec::new(),
-            deleted: HashSet::new(),
+            deleted: Versioned::default(),
             devices: HashMap::new(),
             gdm_peers: HashMap::new(),
             history: Vec::new(),
@@ -884,7 +917,7 @@ impl Runtime {
             download_queues: HashMap::new(),
             next_playlist: playlists::PLAYLIST_BASE + 1,
             next_playlist_item: 0,
-            retired_keys: Vec::new(),
+            retired_keys: Versioned::default(),
             section_next: 0,
             next_scan_key: 0,
             collection_guids: HashMap::new(),
@@ -900,7 +933,7 @@ impl Runtime {
             next_dynamic_key: 40000,
             sessions: HashMap::new(),
             next_session_key: 1,
-            byte_buckets: Vec::new(),
+            byte_buckets: Versioned::default(),
             last_reap: now_seconds(),
             started_sessions: HashSet::new(),
             timeline_offsets: HashMap::new(),
@@ -930,6 +963,7 @@ impl Runtime {
             store_cache: store::Cache::default(),
             spelling_serial: 0,
             spelling_saved: 0,
+            versions_saved: HashMap::new(),
             events: std::collections::VecDeque::new(),
             section_timeline: HashMap::new(),
             events_dropped: 0,
@@ -993,6 +1027,7 @@ impl Runtime {
                 let source = StateSource::Database(path.clone());
                 self.restore_state(state, &source)?;
                 self.spelling_saved = self.spelling_serial;
+                self.versions_saved = self.versions().into_iter().collect();
                 return Ok(());
             }
             store::Saved::Legacy(bytes) => (bytes, StateSource::Legacy(origin.clone())),
@@ -1041,6 +1076,7 @@ impl Runtime {
             .and_then(|document| migrate_legacy_state(&path, &origin, document, |_| Ok(())))?;
         self.store_cache = cache;
         self.spelling_saved = self.spelling_serial;
+        self.versions_saved = self.versions().into_iter().collect();
         info!("state file {} imported into {}", origin.display(), path.display());
         Ok(())
     }
@@ -1499,7 +1535,7 @@ impl Runtime {
                 self.download_queues = queues.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
             }
             if let Some(keys) = state.get("retiredKeys").and_then(Value::as_array) {
-                self.retired_keys = keys.iter().filter_map(Value::as_i64).collect();
+                *self.retired_keys = keys.iter().filter_map(Value::as_i64).collect();
             }
             if let Some(next) = state.get("sectionNext").and_then(Value::as_i64) {
                 self.section_next = next;
@@ -1631,7 +1667,7 @@ impl Runtime {
         }
         // `persist.py` SESSION_FIELDS `_bytes`: the per-second counters by (device, lan).
         if let Some(buckets) = state.get("byteBuckets").and_then(Value::as_array) {
-            self.byte_buckets = buckets
+            *self.byte_buckets = buckets
                 .iter()
                 .filter_map(|entry| {
                     let seconds = entry
@@ -1644,7 +1680,7 @@ impl Runtime {
                 })
                 .collect();
             // A state saved before the table was bounded holds every second it ever counted.
-            for (_, seconds) in &mut self.byte_buckets {
+            for (_, seconds) in self.byte_buckets.iter_mut() {
                 sessions::fold_old_seconds(seconds, now() - sessions::SECONDS_KEPT);
             }
         }
@@ -1753,6 +1789,9 @@ impl Runtime {
         self.dirty = false;
         // The vocabulary only when it was replaced since the last snapshot.
         let mut separate = vec!["items", "feedHeld", "accountViews"];
+        // A `Versioned` field the database holds as it is now is left out (`state_document`).
+        separate.extend(self.versions().into_iter().filter(|(name, _)| !self.saving(name)).map(|(name, _)| name));
+        self.versions_saved = self.versions().into_iter().collect();
         if self.spelling_serial == self.spelling_saved {
             separate.push("spelling");
         } else if let Some(object) = state.as_object_mut() {
@@ -1809,6 +1848,22 @@ impl Runtime {
         }))
     }
 
+    /// The `Versioned` fields by their name in the state document, with their versions.
+    fn versions(&self) -> [(&'static str, u64); 3] {
+        [
+            ("deleted", self.deleted.version()),
+            ("retiredKeys", self.retired_keys.version()),
+            ("byteBuckets", self.byte_buckets.version()),
+        ]
+    }
+
+    /// Whether a snapshot writes the `Versioned` field `name`: changed since the database last
+    /// had it, or not held there at all (a state set aside starts an empty one).
+    fn saving(&self, name: &str) -> bool {
+        let version = self.versions().into_iter().find(|(field, _)| *field == name).map(|(_, version)| version);
+        version != self.versions_saved.get(name).copied() || !self.store_cache.holds(name)
+    }
+
     /// The state as one document, as the legacy file held it and the database stores it.
     /// `full` includes the catalog rows, which a snapshot diffs by key instead.
     fn state_document(&self, full: bool) -> Value {
@@ -1850,7 +1905,7 @@ impl Runtime {
             "prefs": self.prefs,
             "edits": self.edits,
             "addedSections": self.added_sections,
-            "deleted": self.deleted.iter().map(|value| Value::String(value.clone())).collect::<Vec<_>>(),
+            "deleted": (full || self.saving("deleted")).then(|| self.deleted.iter().map(|value| Value::String(value.clone())).collect::<Vec<_>>()),
             "viewState": view,
             "history": self.history,
             "viewCounts": self.view_counts.borrow().clone(),
@@ -1888,7 +1943,7 @@ impl Runtime {
             "deviceFirstSeen": self.device_first_seen,
             "plays": self.plays.iter().map(|(at, kind, seconds, device)| json!([at, kind, seconds, device])).collect::<Vec<_>>(),
             "bandwidthBytes": self.bandwidth_bytes,
-            "byteBuckets": self.byte_buckets.iter().map(|((device, lan), seconds)| json!([device, lan, seconds])).collect::<Vec<_>>(),
+            "byteBuckets": (full || self.saving("byteBuckets")).then(|| self.byte_buckets.iter().map(|((device, lan), seconds)| json!([device, lan, seconds])).collect::<Vec<_>>()),
         });
         // The rest of what `persist.py` keeps and this file did not: SIM_FIELDS'
         // section-pref overrides, custom metadata provider groups and their counter,
@@ -1910,7 +1965,7 @@ impl Runtime {
             ("themeRows", json!(self.theme_rows)),
             ("downloadQueues", json!(self.download_queues)),
             ("historyCounter", json!(self.history_counter.get())),
-            ("retiredKeys", json!(self.retired_keys)),
+            ("retiredKeys", json!((full || self.saving("retiredKeys")).then(|| &*self.retired_keys))),
             ("nextScanKey", json!(self.next_scan_key)),
             // An older release mints theme tracks from `themeNext` and reads no other counter.
             ("themeNext", json!(self.next_scan_key)),
@@ -1928,7 +1983,7 @@ impl Runtime {
         if let Some(object) = state.as_object_mut() {
             for (name, value) in extra
                 .into_iter()
-                .filter(|(name, value)| !matches!(*name, "feedHeld" | "accountViews") || !value.is_null())
+                .filter(|(name, value)| !matches!(*name, "feedHeld" | "accountViews" | "retiredKeys") || !value.is_null())
             {
                 object.insert(name.to_string(), value);
             }
@@ -1941,6 +1996,11 @@ impl Runtime {
                 );
             } else {
                 object.shift_remove("viewState");
+                for name in ["deleted", "byteBuckets"] {
+                    if object.get(name).is_some_and(Value::is_null) {
+                        object.shift_remove(name);
+                    }
+                }
             }
         }
         if full {
@@ -25584,6 +25644,31 @@ mod migration_tests {
         let _ = fs::remove_dir_all(&path);
         fs::create_dir_all(&path).unwrap();
         path
+    }
+
+    #[test]
+    fn a_save_writes_the_deleted_and_retired_keys_only_once_they_change() {
+        let dir = work("versioned");
+        let catalog_path = dir.join("catalog.json");
+        let state_path = dir.join("rex.db");
+        fs::write(&catalog_path, catalog().to_string()).unwrap();
+        let mut runtime = Runtime::load(options(&catalog_path, &state_path)).expect("a start");
+        runtime.deleted.insert("900001".to_string());
+        runtime.retired_keys.push(900001);
+        runtime.save_state().unwrap();
+        let fields = |runtime: &Runtime| {
+            let document = runtime.state_document(false);
+            ["deleted", "retiredKeys", "byteBuckets"].map(|name| document.get(name).is_some())
+        };
+        assert_eq!(fields(&runtime), [false; 3], "nothing changed since the save");
+        runtime.deleted.insert("900002".to_string());
+        assert_eq!(fields(&runtime), [true, false, false]);
+        runtime.save_state().unwrap();
+        drop(runtime);
+        let restored = Runtime::load(options(&catalog_path, &state_path)).expect("a restart");
+        assert_eq!(*restored.deleted, HashSet::from(["900001".to_string(), "900002".to_string()]));
+        assert_eq!(*restored.retired_keys, vec![900001]);
+        assert_eq!(fields(&restored), [false; 3], "a restart's state is the database's");
     }
 
     #[test]

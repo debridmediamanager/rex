@@ -550,6 +550,11 @@ impl Cache {
 }
 
 impl Cache {
+    /// Whether the database holds the state field `field`.
+    pub fn holds(&self, field: &str) -> bool {
+        self.docs.contains_key(field)
+    }
+
     /// An object field kept by its members' keys, so a save serialises only the members
     /// `changed` names: the 28,859 held feed items on the production server (2026-10-10)
     /// were serialised, hashed and compared whole on every save, two seconds apart while
