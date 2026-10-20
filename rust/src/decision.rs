@@ -445,10 +445,6 @@ pub fn direct_play(profile: &Profile, media: &Value) -> (bool, String) {
         );
     }
 
-    if selected_audio_index.is_some() && first_audio_index != selected_audio_index && !can_select {
-        return (false, not_first.to_string());
-    }
-
     let subtitle_index = stream_list
         .iter()
         .position(|stream| stream_type(stream) == Some(3.0) && truthy(stream.get("selected")));
