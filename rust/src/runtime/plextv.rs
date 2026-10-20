@@ -2391,6 +2391,15 @@ pub(super) fn finish_claim(runtime: &SharedRuntime, token: &str, _target: &str) 
     if plextv.claiming.swap(true, std::sync::atomic::Ordering::SeqCst) {
         return super::Response::error(409, "rex: a claim is already being made");
     }
+    // Cleared however this ends, a panic in the exchange included: a flag left set refused
+    // every later claim until a restart.
+    struct Claiming<'a>(&'a std::sync::atomic::AtomicBool);
+    impl Drop for Claiming<'_> {
+        fn drop(&mut self) {
+            self.0.store(false, std::sync::atomic::Ordering::SeqCst);
+        }
+    }
+    let claiming = Claiming(&plextv.claiming);
     let exchanged = if plextv.claim.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).claimed() {
         Err(None)
     } else {
@@ -2398,7 +2407,7 @@ pub(super) fn finish_claim(runtime: &SharedRuntime, token: &str, _target: &str) 
         watch_version(&plextv.claim);
         exchange(&plextv.claim, token).map_err(Some)
     };
-    plextv.claiming.store(false, std::sync::atomic::Ordering::SeqCst);
+    drop(claiming);
     match exchanged {
         Ok(_) => {}
         Err(None) => return super::Response::error(409, "rex: already claimed"),
