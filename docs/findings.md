@@ -13452,8 +13452,8 @@ OpenSubtitles addon both answer 429 to parallel requests.
 (60 films, 60 episodes) and all 1,694 candidates Plex's provider (en, pt-BR) and the Stremio
 OpenSubtitles v3 addon offered for them, with Silero VAD over six 90 s windows of each release's
 audio (the meter: `probes/subsbench/README.md`). Of the releases with a readable candidate, Plex's
-first result was in sync for 38 of 75 English and 22 of 47 Brazilian Portuguese; ranking the
-candidates by release name, 46 and 23; and every one of them had a candidate in sync or put right
+first result was in sync for 41 of 77 English and 22 of 49 Brazilian Portuguese; ranking the
+candidates by release name, 47 and 24; and every one of them had a candidate in sync or put right
 by a constant shift or a frame-rate ratio. The addon found no title Plex's provider lacked: coverage
 is no lever, measuring is. Without a model, a band-passed energy detector (speech above the window's
 median dB) decides about half as often as Silero and agrees when it does; the release's own embedded
@@ -13495,18 +13495,18 @@ verdicts, is `tests/fixtures/subtitles/sync_corpus.json.gz`.
 fixture's energy masks and cues; a pick is right when its truth is in sync and rex left it alone,
 or rex corrected it by the truth's ratio and an offset within 0.5 s of the truth's):
 
-| | English (75) | Brazilian Portuguese (47) |
+| | English (77) | Brazilian Portuguese (49) |
 |---|---|---|
-| Plex's first result in sync | 38 (51%) | 22 (47%) |
-| rex's pick right | 56 (75%) | 32 (68%) |
+| Plex's first result in sync | 41 (53%) | 22 (45%) |
+| rex's pick right | 56 (73%) | 34 (69%) |
 
-Measuring eight, or every candidate, finds 57 and 34: one and two more than five. Of the 473
-candidates rex measured, Silero and rex's meter both read 168 and agreed on 165; rex called 2 in
-sync that Silero called off.
+Of the 491 candidates rex measured, Silero and rex's meter both read 179 and agreed on 176; rex
+called none in sync that Silero called off.
 
-- **measure.py reads a fraction with a leading zero as hundreds of milliseconds** (`int(str(int(g))
-  .ljust(3, '0'))`: `,050` is 500 ms), so the corpus's cue timings, and its truth, carry that error
-  on about one cue in ten. rex reads `,050` as 50 ms.
+- **The first corpus read a fraction with a leading zero as hundreds of milliseconds**
+  (`int(str(int(g)).ljust(3, '0'))`: `,050` was 500 ms), about one cue in ten. measure.py reads it
+  as written now, and the corpus and its truth were measured again from the same audio windows;
+  the numbers above are the second run's.
 - An automatic job on a release with no embedded text track reads six 90 s windows of it through
   its source: nine minutes of the file, a few hundred MB at film bitrates (computed, not measured).
   One with a text track reads only the track's index: the file's head, its Tracks and its Cues

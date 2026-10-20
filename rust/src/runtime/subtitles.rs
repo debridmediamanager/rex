@@ -1799,9 +1799,9 @@ mod tests {
             100.0 * overall as f64 / measured_total.max(1) as f64,
             100.0 * agree as f64 / both.max(1) as f64
         );
-        assert_eq!(tally["en"][0], 75, "the README's 75 English releases");
-        assert_eq!(tally["pt-BR"][0], 47, "the README's 47 Brazilian releases");
-        assert_eq!((tally["en"][1], tally["pt-BR"][1]), (38, 22), "Plex's first result, as the README measured it");
+        assert_eq!(tally["en"][0], 77, "the README's 77 English releases");
+        assert_eq!(tally["pt-BR"][0], 49, "the README's 49 Brazilian releases");
+        assert_eq!((tally["en"][1], tally["pt-BR"][1]), (41, 22), "Plex's first result, as the README measured it");
         for (language, [items, plex, rex]) in &tally {
             // At least fifteen points better in each language.
             assert!(

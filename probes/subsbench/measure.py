@@ -101,9 +101,12 @@ def decode(raw):
 def cues(text):
     out = []
     for m in TIME.finditer(text):
-        g = [int(x) for x in m.groups()]
-        a = g[0] * 3600 + g[1] * 60 + g[2] + int(str(g[3]).ljust(3, '0')[:3]) / 1000
-        b = g[4] * 3600 + g[5] * 60 + g[6] + int(str(g[7]).ljust(3, '0')[:3]) / 1000
+        # The fraction is read as written: `,050` is 50 ms. Read through int() first it lost its
+        # leading zero and padded back to 500 ms, about one cue in ten of the first corpus.
+        s = m.groups()
+        g = [int(x) for x in s]
+        a = g[0] * 3600 + g[1] * 60 + g[2] + int(s[3].ljust(3, '0')[:3]) / 1000
+        b = g[4] * 3600 + g[5] * 60 + g[6] + int(s[7].ljust(3, '0')[:3]) / 1000
         if b > a: out.append((a, b))
     if not out:
         for m in ASS.finditer(text):
@@ -112,6 +115,10 @@ def cues(text):
             b = g[4] * 3600 + g[5] * 60 + g[6] + g[7] / 100
             if b > a: out.append((a, b))
     return out
+
+
+# `,050` is 50 ms, `,5` is 500 ms: the first corpus read the former as 500.
+assert cues('1\n00:00:01,050 --> 00:00:02,5\n') == [(1.05, 2.5)]
 
 
 def lag_curve(speech, cue_list, start):

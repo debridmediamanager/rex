@@ -12,7 +12,8 @@ the release's own speech, and if not whether a constant shift or a frame-rate ra
 | 4 | `measure.py cands.json DIR out.jsonl [k/n]` | a test host (`REX_URL`, `REX_TOKEN`, Silero VAD v5's `silero_vad.onnx` in `~/subsbench`) | the meter, below |
 | 5 | `analyze.py cands.json out.jsonl` | anywhere | pick strategies scored against the meter |
 | 6 | `variant.py MODE N SECS PCT out.jsonl` | the test host | the meter re-run with another detector or window plan, against step 4's verdicts |
-| 7 | `export.py` | the test host | `tests/fixtures/subtitles/sync_corpus.json.gz`: cue timings (no text), each window's energy mask and the meter's verdicts |
+| 7 | `subref.py` | the test host | the meter with the release's own embedded text track in place of its audio, against step 4's verdicts |
+| 8 | `export.py` | the test host | `tests/fixtures/subtitles/sync_corpus.json.gz`: cue timings (no text), each window's energy mask and the meter's verdicts |
 
 `apply_probe.py` records a real PMS's Search Subtitles and apply on plexlab and deletes the
 applied stream again (`tests/fixtures/subtitles/plex_search_apply_s143.json`).
@@ -40,21 +41,22 @@ Controls, 120 releases (2026-10-20):
 |---|---|
 | Another title's subtitle against this release's audio (null) | 119 unknown, 1 shift: never in sync |
 | The release's own embedded text track | 13 of 14 readings in sync |
-| An in-sync candidate moved 2 s late | 79 of 80 readings `shift`, measured 1.8-2.1 s |
-| An in-sync candidate played at 23.976/25 | 80 of 80 readings `fps`, ratio 25/23.976 |
+| An in-sync candidate moved 2 s late | 80 of 81 readings `shift`, measured 1.5-2.4 s |
+| An in-sync candidate played at 23.976/25 | 82 of 82 readings `fps`, ratio 25/23.976 |
 
 ## What it found
 
 Items with at least one candidate the meter could read:
 
-| Pick | en (75) | pt-BR (47) |
+| Pick | en (77) | pt-BR (49) |
 |---|---|---|
-| Plex's first result (what Plex Web lists first; the client keeps the provider's order) | 38 in sync | 22 in sync |
-| Plex's highest `score` | 38 | 26 |
-| The Stremio OpenSubtitles addon's first | 31 | 17 |
-| Release-name ranking over both sources | 46 | 23 |
-| Some candidate in sync | 59 | 30 |
-| Some candidate in sync, or fixed by a shift or a frame-rate ratio | 75 | 47 |
+| Plex's first result (what Plex Web lists first; the client keeps the provider's order) | 41 in sync | 22 in sync |
+| Plex's highest `score` | 41 | 28 |
+| The Stremio OpenSubtitles addon's first | 32 | 17 |
+| Release-name ranking over both sources | 47 | 24 |
+| Some candidate in sync | 60 | 31 |
+| Some candidate in sync, or fixed by a shift or a frame-rate ratio | 77 | 49 |
+| rex's pick: ranked, five measured with its own energy meter, corrected (the corpus test) | 56 | 34 |
 
 Coverage is no lever: Plex's search had any English subtitle for 112 of 120 releases and
 pt-BR for 98, the addon for 90 and 55, and the addon found none Plex lacked. Measuring the
@@ -62,9 +64,10 @@ candidates and correcting them is: about half of Plex's first picks are off, and
 release with a readable candidate has one that is in sync or fixable.
 
 What rex can compute with no model: a band-passed (300-3400 Hz) energy detector, speech above
-the window's median dB, decides about half as often as Silero and agrees with it when it does
-(183 of 185 in sync, 66 of 72 shifts, 62 of 62 frame-rate errors; 2 of 120 nulls misread).
+the window's median dB, decides about half as often as Silero and agrees with it when it does: rex's
+own port of the meter, on the corpus's energy masks, reads 179 of the candidates Silero reads and
+agrees on 176, and calls none in sync that Silero calls off (`subtitles.rs`' corpus test).
 Aligning against the release's own embedded text track instead of audio -- rex reads one through
 its Cues for a few hundred bytes a block (`runtime/mkvsubs.rs`) -- agreed with the audio meter on
-20 of 20 in sync, 4 of 4 shifts and 4 of 6 frame-rate errors, with every null unknown; 61% of the
+20 of 20 in sync, 4 of 4 shifts and 4 of 7 frame-rate errors (3 unknown), with every null unknown (`subref.py`); 61% of the
 episodes and 52% of the movies on the library sampled carry an embedded text track.

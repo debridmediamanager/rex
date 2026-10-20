@@ -29,7 +29,11 @@ for line in open('final.jsonl'):
             if not v or not os.path.exists(path):
                 continue
             text, moj = M.decode(open(path, 'rb').read())
-            cl = [(round(a, 3), round(b, 3)) for a, b in M.cues(text) if any(lo <= a <= hi for lo, hi in keep)]
+            cl, prev = [], 0
+            for a, b in M.cues(text):
+                if any(lo <= a <= hi for lo, hi in keep):
+                    for t in (round(a * 100), round(b * 100)):
+                        cl.append(t - prev); prev = t
             meta = dict(name=name, lang=lang, source=source, mojibake=moj, cues=cl,
                         truth=dict(verdict=v['verdict'], ratio=v.get('ratio'), offset=v.get('offset')))
             if source == 'plex':
@@ -43,6 +47,7 @@ for line in open('final.jsonl'):
 doc = dict(source='rex-fun library, 120 releases sampled 2026-10-20 (60 movies, 60 episodes, no remux or 2160p); '
            'candidates from metadata.provider.plex.tv/library/streams/matches (lang en, pt-BR) and the Stremio '
            'OpenSubtitles v3 addon; truth from Silero VAD v5 over six 90 s windows (subsbench measure.py)',
+           cueEncoding='cues: flat centiseconds, each value the difference from the one before (start, end, start, end, ...)',
            frame=M.FRAME, window=M.WIN, lag=M.LAG, items=items)
 raw = json.dumps(doc, separators=(',', ':')).encode()
 open('sync_corpus.json.gz', 'wb').write(gzip.compress(raw, 9))
