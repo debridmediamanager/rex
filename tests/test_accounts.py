@@ -368,6 +368,19 @@ def run(variant, name, tokens):
             body = (page or {}).get("MediaContainer", {})
             check(variant + ": the shared user's page %d of 1 row is full, of %d in all" % (start, len(visible)),
                   status == 200 and body.get("size") == 1 and body.get("totalSize") == len(visible), body)
+        # The same for the library's other lists: their pages are cut from the share's rows.
+        for path, query in (("/library/sections/1/recentlyAdded", []), ("/library/all", [("type", "1")]),
+                            ("/library/sections/1/newest", []), ("/library/sections/1/firstCharacter/S", [("type", "1")])):
+            _, whole = server.ask(SHARED, "GET", path, query)
+            shown = sorted(rex_rows(whole))
+            pages = []
+            for start in range(len(shown)):
+                status, page = server.ask(SHARED, "GET", path, query + [("X-Plex-Container-Start", str(start)),
+                                                                        ("X-Plex-Container-Size", "1")])
+                body = (page or {}).get("MediaContainer", {})
+                pages.append((status, body.get("size"), body.get("totalSize")))
+            check(variant + ": the shared user's pages of %s are full, of %d in all" % (path, len(shown)),
+                  all(entry == (200, 1, len(shown)) for entry in pages), pages)
         # The shared user's state outlives a restart, and the owner's rows never took it.
         server.ask(SHARED, "GET", "/:/scrobble", [("key", "1"), library])
         server.ask(SHARED, "PUT", "/:/rate", [("key", "1"), library, ("rating", "7")])
