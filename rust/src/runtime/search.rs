@@ -262,6 +262,8 @@ fn tier_score_value(row: &(impl Row + ?Sized), tier: &str) -> f64 {
                 .as_f64()
                 .or_else(|| value.as_str().and_then(|s| s.parse::<f64>().ok()))
         })
+        // A NaN (a catalog's "nan" string) passed `clamp` and broke the sort's total order.
+        .filter(|rating| rating.is_finite())
         .map_or(0.0, |rating| rating.clamp(0.0, 10.0) / 10000.0);
     (base - tier_drop(tier) + tail).clamp(0.0, 1.0)
 }
@@ -1913,6 +1915,13 @@ fn begins_word(text: &str, wanted: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_nan_rating_scores_as_no_rating() {
+        let row = json!({"type": "movie", "audienceRating": "nan"});
+        let plain = json!({"type": "movie"});
+        assert_eq!(tier_score_value(&row, "prefix"), tier_score_value(&plain, "prefix"));
+    }
 
     /// `ascii_tier` against the fold it skips: `tier_words` of the title and sort title.
     fn folded_tier(title: &str, sort: Option<&str>, terms: &[String]) -> &'static str {
