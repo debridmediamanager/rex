@@ -71,8 +71,17 @@ def listed(port):
     return {((row.get("Player") or {}).get("machineIdentifier")) for row in rows}
 
 
+def session_key(port, client):
+    status, body = request(port, "/status/sessions", "reaper-observer")
+    for row in ((body or {}).get("MediaContainer") or {}).get("Metadata") or []:
+        if (row.get("Player") or {}).get("machineIdentifier") == client:
+            return row.get("sessionKey")
+    return None
+
+
 def main():
     port = int(os.environ.get("REX_TEST_PORT") or free_port())
+    quiet_port = free_port()
     env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1")
     for name in ("REX_STATE", "REX_TOKEN"):
         env.pop(name, None)
@@ -82,6 +91,13 @@ def main():
         server_command("--port", port, "--catalog", os.path.join(HERE, "catalog_ui.json"),
                        "--gdm", "off", "--assert-claimed", root=ROOT),
         cwd=ROOT, env=env, stdout=log, stderr=subprocess.STDOUT)
+    # A second server nobody reads Now Playing on while its player is silent: the reaper ran
+    # only when `/status/sessions` was read, so the player's next play, minutes later, was the
+    # old session going on (its sessionKey, no media.play) where the tick had ended it.
+    quiet = subprocess.Popen(
+        server_command("--port", quiet_port, "--catalog", os.path.join(HERE, "catalog_ui.json"),
+                       "--gdm", "off", "--assert-claimed", root=ROOT),
+        cwd=ROOT, env=env, stdout=log, stderr=subprocess.STDOUT)
     try:
         for _ in range(150):
             try:
@@ -89,6 +105,15 @@ def main():
                 break
             except OSError:
                 time.sleep(0.1)
+        for _ in range(150):
+            try:
+                socket.create_connection(("127.0.0.1", quiet_port), timeout=1).close()
+                break
+            except OSError:
+                time.sleep(0.1)
+        beat(quiet_port, "reaper-quiet", "1007")
+        quiet_key = session_key(quiet_port, "reaper-quiet")
+        quiet_beat = time.time()
         silent, steady = "reaper-silent", "reaper-steady"
         check("both players' playing beats are accepted",
               beat(port, silent, "1007") == 200 and beat(port, steady, "1008") == 200)
@@ -125,7 +150,14 @@ def main():
               midway_gone_at is not None and 190 <= midway_gone_at <= 212, "gone at %s" % (
                   "+%.1f s" % midway_gone_at if midway_gone_at is not None else "never"))
         check("a player that keeps beating is never reaped", steady in listed(port), listed(port))
+        time.sleep(max(0.0, quiet_beat + 215 - time.time()))
+        beat(quiet_port, "reaper-quiet", "1008")
+        again = session_key(quiet_port, "reaper-quiet")
+        check("a player back after the tick ended it plays a new session, Now Playing read or not",
+              quiet_key and again and again != quiet_key, (quiet_key, again))
     finally:
+        quiet.send_signal(signal.SIGTERM)
+        quiet.wait(timeout=10)
         proc.send_signal(signal.SIGTERM)
         try:
             proc.wait(timeout=10)

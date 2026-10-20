@@ -838,6 +838,9 @@ impl Runtime {
         query: &HashMap<String, String>,
         headers: &HashMap<String, String>,
     ) -> Response {
+        // The reaper's ticks are the process's, not Now Playing's: run only when that was read,
+        // a player back long after it fell silent went on as its old session.
+        self.reap_sessions();
         let mut rating_key = query.get("ratingKey").cloned().unwrap_or_default();
         // `state` is the ONE required parameter, and a closed set.
         let Some(state) = query.get("state").filter(|value| !value.is_empty()).cloned() else {
