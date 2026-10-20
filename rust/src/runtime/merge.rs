@@ -119,6 +119,11 @@ impl Runtime {
             .unwrap_or_default();
         let mut created = Vec::new();
         if media.len() >= 2 {
+            // Measured on plexscratch (1.43.4, `tests/fixtures/split_collection_s43.json`): a
+            // split-off row is a member of every collection its source is, listed after it in
+            // `/children` and found by the tag filter, while the collection keeps the
+            // `childCount` it had, as after a merge. rex copied the tag and listed only the source.
+            self.freeze_merged_collections(key);
             let kind = original
                 .get("type")
                 .and_then(Value::as_str)
@@ -148,6 +153,11 @@ impl Runtime {
                 }
                 self.catalog.add(clone.clone());
                 self.deleted.remove(&new_key);
+                for collection in self.collections.values_mut() {
+                    if !collection.smart && collection.items.contains(key) {
+                        collection.items.push(new_key.clone());
+                    }
+                }
                 created.push(clone);
             }
         }

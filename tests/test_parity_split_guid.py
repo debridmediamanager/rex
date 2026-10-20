@@ -27,6 +27,7 @@ import socket
 import subprocess
 import sys
 import time
+import urllib.parse
 
 from server_command import server_command
 
@@ -34,6 +35,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 CATALOG = os.path.join("tests", "catalog_ui.json")
 FIXTURE = os.path.join(HERE, "fixtures", "split_guid.json")
+SPLIT_COLLECTION = os.path.join(HERE, "fixtures", "split_collection_s43.json")
 ENV = dict(os.environ, PYTHONDONTWRITEBYTECODE="1",
            REX_PLEXTV_URL=os.environ.get("REX_PLEXTV_URL", "http://127.0.0.1:9"))
 for name in ("REX_STATE", "REX_TOKEN", "TMDB_KEY"):
@@ -261,9 +263,55 @@ def run_unmatched(port, fixture):
           and grid and "Guid" not in grid, (shown.get("guid"), guid_ids(shown), guid_ids(grid)))
 
 
+def run_split_collection(port, fixture):
+    """A split-off row is a member of its source's collections (plexscratch, 2026-10-20: merge 18
+    into 17, collect 17, split 17): `/children` lists the source then the new row, both details
+    carry the collection's whole tag, the tag filter finds both, and the collection keeps the
+    `childCount` it had."""
+    recorded = json.load(open(SPLIT_COLLECTION))
+    answers = {path: answer["body"]["MediaContainer"] for path, answer in recorded["answers"].items()}
+    source, split_off, collection = recorded["source"], recorded["split_off"], recorded["collection"]
+    listed = [row["ratingKey"] for row in answers["GET /library/collections/%s/children" % collection]["Metadata"]]
+    kept = answers["GET /library/collections/%s" % collection]["Metadata"][0]["childCount"]
+    tags = [answers["GET /library/metadata/%s" % key]["Metadata"][0]["Collection"] for key in (source, split_off)]
+    filtered = [row["ratingKey"] for row in answers["GET /library/sections/1/all?collection=%s" % recorded["tag_id"]]["Metadata"]]
+    check("fixture: the split-off row is listed after its source, tagged alike and filtered, the count kept",
+          listed == [source, split_off] and kept == 1 and tags[0] == tags[1] and set(tags[1][0]) >= {"id", "tag", "guid"}
+          and filtered == [source, split_off], (listed, kept, tags, filtered))
+
+    request(port, "PUT", "/library/metadata/%s/merge?ids=%s" % (TARGET, ABSORBED))
+    machine = request(port, "GET", "/identity")[1]["MediaContainer"]["machineIdentifier"]
+    _, body = request(port, "POST", "/library/collections?" + urllib.parse.urlencode(dict(
+        type=1, title="SplitProbe", smart=0, sectionId=1,
+        uri="server://%s/com.plexapp.plugins.library/library/metadata/%s" % (machine, TARGET))))
+    made = body["MediaContainer"]["Metadata"][0]
+    request(port, "PUT", "/library/metadata/%s/split" % TARGET)
+    new = [key for key in rows(port, "/library/sections/1/all") if detail(port, key).get("title") == detail(port, TARGET).get("title")
+           and key != TARGET]
+    _, children = request(port, "GET", "/library/collections/%s/children" % made["ratingKey"])
+    listed = [row["ratingKey"] for row in (children["MediaContainer"].get("Metadata") or [])]
+    check("the split-off row is listed in its source's collection, after it",
+          len(new) == 1 and listed == [TARGET] + new, (new, listed))
+    tags = [detail(port, key).get("Collection") for key in [TARGET] + new]
+    check("the split-off row's detail carries the collection's whole tag, as its source's does",
+          len(new) == 1 and tags[0] == tags[1] and tags[1] and set(tags[1][0]) >= set(recorded_keys(recorded)),
+          tags)
+    tag_id = (tags[0] or [{}])[0].get("id")
+    filtered = list(rows(port, "/library/sections/1/all?collection=%s" % tag_id))
+    check("the tag filter finds both rows", sorted(filtered) == sorted([TARGET] + new), filtered)
+    _, shown = request(port, "GET", "/library/collections/%s" % made["ratingKey"])
+    check("the collection keeps the childCount it had before the split",
+          shown["MediaContainer"]["Metadata"][0].get("childCount") == kept,
+          shown["MediaContainer"]["Metadata"][0].get("childCount"))
+
+
+def recorded_keys(recorded):
+    return recorded["answers"]["GET /library/metadata/%s" % recorded["split_off"]]["body"]["MediaContainer"]["Metadata"][0]["Collection"][0]
+
+
 def main():
     fixture = json.load(open(FIXTURE))
-    for part in (run_split, run_unmatched):
+    for part in (run_split, run_unmatched, run_split_collection):
         process, port = start()
         try:
             part(port, fixture)

@@ -1,0 +1,1141 @@
+{
+ "recorded": "plexscratch 1.43.4.10903, 2026-10-20",
+ "steps": [
+  "PUT /library/metadata/17/merge?ids=18",
+  "POST /library/collections?type=1&title=SplitProbe&smart=0&sectionId=1&uri=server://<machine>/com.plexapp.plugins.library/library/metadata/17",
+  "PUT /library/metadata/17/split"
+ ],
+ "collection": "58",
+ "tag_id": "235",
+ "source": "17",
+ "split_off": "59",
+ "answers": {
+  "GET /library/collections/58/children": {
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 2,
+     "Metadata": [
+      {
+       "ratingKey": "17",
+       "key": "/library/metadata/17",
+       "guid": "plex://movie/5d776833103a2d001f5674a1",
+       "slug": "elephants-dream",
+       "studio": "Blender Foundation",
+       "type": "movie",
+       "title": "Elephants Dream",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "contentRating": "Not Rated",
+       "summary": "The two main characters are on a journey in the folds of a giant Machine, exploring the twisted and dark complex of wires, gears and cogs. Until one moment a conflict arises that throws out all their assumptions. This movie short couples lively fun with passionate characters in an epic story line.",
+       "audienceRating": 5.4,
+       "year": 2006,
+       "thumb": "/library/metadata/17/thumb/1789203303",
+       "art": "/library/metadata/17/art/1789203303",
+       "duration": 1800690,
+       "originallyAvailableAt": "2006-05-04",
+       "addedAt": 1789187071,
+       "updatedAt": 1789203303,
+       "audienceRatingImage": "rottentomatoes://image.rating.spilled",
+       "hasPremiumPrimaryExtra": "1",
+       "Media": [
+        {
+         "id": 2,
+         "duration": 1800690,
+         "bitrate": 488,
+         "width": 1920,
+         "height": 1080,
+         "aspectRatio": 1.78,
+         "audioChannels": 1,
+         "audioCodec": "aac",
+         "videoCodec": "h264",
+         "videoResolution": "1080",
+         "container": "mkv",
+         "videoFrameRate": "24p",
+         "audioProfile": "lc",
+         "videoProfile": "high",
+         "Part": [
+          {
+           "id": 2,
+           "key": "/library/parts/2/1789295931/file.mkv",
+           "duration": 1800690,
+           "file": "/data/movies/Elephants Dream (2006)/Elephants Dream (2006) - 1080p.mkv",
+           "size": 109875079,
+           "audioProfile": "lc",
+           "container": "mkv",
+           "videoProfile": "high"
+          }
+         ]
+        }
+       ],
+       "Image": [
+        {
+         "alt": "Elephants Dream",
+         "type": "coverPoster",
+         "url": "/library/metadata/17/thumb/1789203303"
+        },
+        {
+         "alt": "Elephants Dream",
+         "type": "background",
+         "url": "/library/metadata/17/art/1789203303"
+        },
+        {
+         "alt": "Elephants Dream",
+         "type": "clearLogo",
+         "url": "/library/metadata/17/clearLogo/1789203303"
+        },
+        {
+         "alt": "Elephants Dream",
+         "type": "backgroundSquare",
+         "url": "/library/metadata/17/squareArt/1789203303"
+        }
+       ],
+       "UltraBlurColors": {
+        "topLeft": "122e44",
+        "topRight": "844f1e",
+        "bottomRight": "964106",
+        "bottomLeft": "1a4154"
+       },
+       "Genre": [
+        {
+         "tag": "Animation"
+        },
+        {
+         "tag": "Science Fiction"
+        }
+       ],
+       "Country": [
+        {
+         "tag": "Netherlands"
+        }
+       ],
+       "Collection": [
+        {
+         "tag": "SplitProbe"
+        }
+       ],
+       "Director": [
+        {
+         "tag": "Bassam Kurdali"
+        }
+       ],
+       "Writer": [
+        {
+         "tag": "Andreas Goralczyk"
+        },
+        {
+         "tag": "Pepijn Zwanenberg"
+        }
+       ],
+       "Role": [
+        {
+         "tag": "Tygo Gernandt"
+        },
+        {
+         "tag": "Cas Jansen"
+        }
+       ]
+      },
+      {
+       "ratingKey": "59",
+       "key": "/library/metadata/59",
+       "guid": "plex://movie/5d776833103a2d001f5674a1",
+       "slug": "elephants-dream",
+       "studio": "Blender Foundation",
+       "type": "movie",
+       "title": "Elephants Dream",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "contentRating": "Not Rated",
+       "summary": "The two main characters are on a journey in the folds of a giant Machine, exploring the twisted and dark complex of wires, gears and cogs. Until one moment a conflict arises that throws out all their assumptions. This movie short couples lively fun with passionate characters in an epic story line.",
+       "audienceRating": 5.4,
+       "year": 2006,
+       "thumb": "/library/metadata/59/thumb/1789203303",
+       "art": "/library/metadata/59/art/1789203303",
+       "duration": 1800011,
+       "originallyAvailableAt": "2006-05-04",
+       "addedAt": 1789187071,
+       "updatedAt": 1789203303,
+       "audienceRatingImage": "rottentomatoes://image.rating.spilled",
+       "hasPremiumPrimaryExtra": "1",
+       "Media": [
+        {
+         "id": 12,
+         "duration": 1800011,
+         "bitrate": 490,
+         "width": 1920,
+         "height": 1080,
+         "aspectRatio": 1.78,
+         "audioChannels": 1,
+         "audioCodec": "aac",
+         "videoCodec": "h264",
+         "videoResolution": "1080",
+         "container": "mp4",
+         "videoFrameRate": "24p",
+         "optimizedForStreaming": 0,
+         "audioProfile": "lc",
+         "has64bitOffsets": false,
+         "videoProfile": "high",
+         "Part": [
+          {
+           "id": 12,
+           "key": "/library/parts/12/1789295920/file.mp4",
+           "duration": 1800011,
+           "file": "/data/movies/Cosmos Laundromat (2015)/Cosmos Laundromat (2015) - 1080p.mp4",
+           "size": 110141840,
+           "audioProfile": "lc",
+           "container": "mp4",
+           "has64bitOffsets": false,
+           "optimizedForStreaming": false,
+           "videoProfile": "high"
+          }
+         ]
+        }
+       ],
+       "Image": [
+        {
+         "alt": "Elephants Dream",
+         "type": "coverPoster",
+         "url": "/library/metadata/59/thumb/1789203303"
+        },
+        {
+         "alt": "Elephants Dream",
+         "type": "background",
+         "url": "/library/metadata/59/art/1789203303"
+        },
+        {
+         "alt": "Elephants Dream",
+         "type": "clearLogo",
+         "url": "/library/metadata/59/clearLogo/1789203303"
+        },
+        {
+         "alt": "Elephants Dream",
+         "type": "backgroundSquare",
+         "url": "/library/metadata/59/squareArt/1789203303"
+        }
+       ],
+       "UltraBlurColors": {
+        "topLeft": "122e44",
+        "topRight": "844f1e",
+        "bottomRight": "964106",
+        "bottomLeft": "1a4154"
+       },
+       "Genre": [
+        {
+         "tag": "Animation"
+        },
+        {
+         "tag": "Science Fiction"
+        }
+       ],
+       "Country": [
+        {
+         "tag": "Netherlands"
+        }
+       ],
+       "Collection": [
+        {
+         "tag": "SplitProbe"
+        }
+       ],
+       "Director": [
+        {
+         "tag": "Bassam Kurdali"
+        }
+       ],
+       "Writer": [
+        {
+         "tag": "Andreas Goralczyk"
+        },
+        {
+         "tag": "Pepijn Zwanenberg"
+        }
+       ],
+       "Role": [
+        {
+         "tag": "Tygo Gernandt"
+        },
+        {
+         "tag": "Cas Jansen"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "GET /library/collections/58": {
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "Metadata": [
+      {
+       "ratingKey": "58",
+       "key": "/library/collections/58/children",
+       "guid": "collection://4c1507c6-0b74-45ad-bcae-d85eb7376dba",
+       "type": "collection",
+       "title": "SplitProbe",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 235,
+       "ratingCount": 1,
+       "thumb": "/library/collections/58/composite/1792475810?width=400&height=600",
+       "addedAt": 1792475810,
+       "updatedAt": 1792475810,
+       "childCount": 1,
+       "maxYear": "2006",
+       "minYear": "2006"
+      }
+     ]
+    }
+   }
+  },
+  "GET /library/sections/1/collections": {
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "All Movies",
+     "viewGroup": "movie",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "58",
+       "key": "/library/collections/58/children",
+       "guid": "collection://4c1507c6-0b74-45ad-bcae-d85eb7376dba",
+       "type": "collection",
+       "title": "SplitProbe",
+       "subtype": "movie",
+       "summary": "",
+       "index": 235,
+       "ratingCount": 1,
+       "thumb": "/library/collections/58/composite/1792475810?width=400&height=600",
+       "addedAt": 1792475810,
+       "updatedAt": 1792475810,
+       "childCount": 1,
+       "maxYear": "2006",
+       "minYear": "2006"
+      }
+     ]
+    }
+   }
+  },
+  "GET /library/sections/1/all?collection=235": {
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 2,
+     "allowSync": true,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "All Movies",
+     "viewGroup": "movie",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "17",
+       "key": "/library/metadata/17",
+       "guid": "plex://movie/5d776833103a2d001f5674a1",
+       "slug": "elephants-dream",
+       "studio": "Blender Foundation",
+       "type": "movie",
+       "title": "Elephants Dream",
+       "contentRating": "Not Rated",
+       "summary": "The two main characters are on a journey in the folds of a giant Machine, exploring the twisted and dark complex of wires, gears and cogs. Until one moment a conflict arises that throws out all their assumptions. This movie short couples lively fun with passionate characters in an epic story line.",
+       "audienceRating": 5.4,
+       "year": 2006,
+       "thumb": "/library/metadata/17/thumb/1789203303",
+       "art": "/library/metadata/17/art/1789203303",
+       "duration": 1800690,
+       "originallyAvailableAt": "2006-05-04",
+       "addedAt": 1789187071,
+       "updatedAt": 1789203303,
+       "audienceRatingImage": "rottentomatoes://image.rating.spilled",
+       "hasPremiumPrimaryExtra": "1",
+       "Media": [
+        {
+         "id": 2,
+         "duration": 1800690,
+         "bitrate": 488,
+         "width": 1920,
+         "height": 1080,
+         "aspectRatio": 1.78,
+         "audioChannels": 1,
+         "audioCodec": "aac",
+         "videoCodec": "h264",
+         "videoResolution": "1080",
+         "container": "mkv",
+         "videoFrameRate": "24p",
+         "audioProfile": "lc",
+         "videoProfile": "high",
+         "Part": [
+          {
+           "id": 2,
+           "key": "/library/parts/2/1789295931/file.mkv",
+           "duration": 1800690,
+           "file": "/data/movies/Elephants Dream (2006)/Elephants Dream (2006) - 1080p.mkv",
+           "size": 109875079,
+           "audioProfile": "lc",
+           "container": "mkv",
+           "videoProfile": "high"
+          }
+         ]
+        }
+       ],
+       "Image": [
+        {
+         "alt": "Elephants Dream",
+         "type": "coverPoster",
+         "url": "/library/metadata/17/thumb/1789203303"
+        },
+        {
+         "alt": "Elephants Dream",
+         "type": "background",
+         "url": "/library/metadata/17/art/1789203303"
+        },
+        {
+         "alt": "Elephants Dream",
+         "type": "clearLogo",
+         "url": "/library/metadata/17/clearLogo/1789203303"
+        },
+        {
+         "alt": "Elephants Dream",
+         "type": "backgroundSquare",
+         "url": "/library/metadata/17/squareArt/1789203303"
+        }
+       ],
+       "UltraBlurColors": {
+        "topLeft": "122e44",
+        "topRight": "844f1e",
+        "bottomRight": "964106",
+        "bottomLeft": "1a4154"
+       },
+       "Genre": [
+        {
+         "tag": "Animation"
+        },
+        {
+         "tag": "Science Fiction"
+        }
+       ],
+       "Country": [
+        {
+         "tag": "Netherlands"
+        }
+       ],
+       "Collection": [
+        {
+         "tag": "SplitProbe"
+        }
+       ],
+       "Director": [
+        {
+         "tag": "Bassam Kurdali"
+        }
+       ],
+       "Writer": [
+        {
+         "tag": "Andreas Goralczyk"
+        },
+        {
+         "tag": "Pepijn Zwanenberg"
+        }
+       ],
+       "Role": [
+        {
+         "tag": "Tygo Gernandt"
+        },
+        {
+         "tag": "Cas Jansen"
+        }
+       ]
+      },
+      {
+       "ratingKey": "59",
+       "key": "/library/metadata/59",
+       "guid": "plex://movie/5d776833103a2d001f5674a1",
+       "slug": "elephants-dream",
+       "studio": "Blender Foundation",
+       "type": "movie",
+       "title": "Elephants Dream",
+       "contentRating": "Not Rated",
+       "summary": "The two main characters are on a journey in the folds of a giant Machine, exploring the twisted and dark complex of wires, gears and cogs. Until one moment a conflict arises that throws out all their assumptions. This movie short couples lively fun with passionate characters in an epic story line.",
+       "audienceRating": 5.4,
+       "year": 2006,
+       "thumb": "/library/metadata/59/thumb/1789203303",
+       "art": "/library/metadata/59/art/1789203303",
+       "duration": 1800011,
+       "originallyAvailableAt": "2006-05-04",
+       "addedAt": 1789187071,
+       "updatedAt": 1789203303,
+       "audienceRatingImage": "rottentomatoes://image.rating.spilled",
+       "hasPremiumPrimaryExtra": "1",
+       "Media": [
+        {
+         "id": 12,
+         "duration": 1800011,
+         "bitrate": 490,
+         "width": 1920,
+         "height": 1080,
+         "aspectRatio": 1.78,
+         "audioChannels": 1,
+         "audioCodec": "aac",
+         "videoCodec": "h264",
+         "videoResolution": "1080",
+         "container": "mp4",
+         "videoFrameRate": "24p",
+         "optimizedForStreaming": 0,
+         "audioProfile": "lc",
+         "has64bitOffsets": false,
+         "videoProfile": "high",
+         "Part": [
+          {
+           "id": 12,
+           "key": "/library/parts/12/1789295920/file.mp4",
+           "duration": 1800011,
+           "file": "/data/movies/Cosmos Laundromat (2015)/Cosmos Laundromat (2015) - 1080p.mp4",
+           "size": 110141840,
+           "audioProfile": "lc",
+           "container": "mp4",
+           "has64bitOffsets": false,
+           "optimizedForStreaming": false,
+           "videoProfile": "high"
+          }
+         ]
+        }
+       ],
+       "Image": [
+        {
+         "alt": "Elephants Dream",
+         "type": "coverPoster",
+         "url": "/library/metadata/59/thumb/1789203303"
+        },
+        {
+         "alt": "Elephants Dream",
+         "type": "background",
+         "url": "/library/metadata/59/art/1789203303"
+        },
+        {
+         "alt": "Elephants Dream",
+         "type": "clearLogo",
+         "url": "/library/metadata/59/clearLogo/1789203303"
+        },
+        {
+         "alt": "Elephants Dream",
+         "type": "backgroundSquare",
+         "url": "/library/metadata/59/squareArt/1789203303"
+        }
+       ],
+       "UltraBlurColors": {
+        "topLeft": "122e44",
+        "topRight": "844f1e",
+        "bottomRight": "964106",
+        "bottomLeft": "1a4154"
+       },
+       "Genre": [
+        {
+         "tag": "Animation"
+        },
+        {
+         "tag": "Science Fiction"
+        }
+       ],
+       "Country": [
+        {
+         "tag": "Netherlands"
+        }
+       ],
+       "Collection": [
+        {
+         "tag": "SplitProbe"
+        }
+       ],
+       "Director": [
+        {
+         "tag": "Bassam Kurdali"
+        }
+       ],
+       "Writer": [
+        {
+         "tag": "Andreas Goralczyk"
+        },
+        {
+         "tag": "Pepijn Zwanenberg"
+        }
+       ],
+       "Role": [
+        {
+         "tag": "Tygo Gernandt"
+        },
+        {
+         "tag": "Cas Jansen"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "GET /library/metadata/17": {
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "Metadata": [
+      {
+       "ratingKey": "17",
+       "key": "/library/metadata/17",
+       "guid": "plex://movie/5d776833103a2d001f5674a1",
+       "slug": "elephants-dream",
+       "studio": "Blender Foundation",
+       "type": "movie",
+       "title": "Elephants Dream",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "contentRating": "Not Rated",
+       "summary": "The two main characters are on a journey in the folds of a giant Machine, exploring the twisted and dark complex of wires, gears and cogs. Until one moment a conflict arises that throws out all their assumptions. This movie short couples lively fun with passionate characters in an epic story line.",
+       "audienceRating": 5.4,
+       "year": 2006,
+       "thumb": "/library/metadata/17/thumb/1789203303",
+       "art": "/library/metadata/17/art/1789203303",
+       "duration": 1800690,
+       "originallyAvailableAt": "2006-05-04",
+       "addedAt": 1789187071,
+       "updatedAt": 1789203303,
+       "audienceRatingImage": "rottentomatoes://image.rating.spilled",
+       "hasPremiumPrimaryExtra": "1",
+       "Media": [
+        {
+         "id": 2,
+         "duration": 1800690,
+         "bitrate": 488,
+         "width": 1920,
+         "height": 1080,
+         "aspectRatio": 1.78,
+         "audioChannels": 1,
+         "audioCodec": "aac",
+         "videoCodec": "h264",
+         "videoResolution": "1080",
+         "container": "mkv",
+         "videoFrameRate": "24p",
+         "audioProfile": "lc",
+         "videoProfile": "high",
+         "Part": [
+          {
+           "id": 2,
+           "key": "/library/parts/2/1789295931/file.mkv",
+           "duration": 1800690,
+           "file": "/data/movies/Elephants Dream (2006)/Elephants Dream (2006) - 1080p.mkv",
+           "size": 109875079,
+           "audioProfile": "lc",
+           "container": "mkv",
+           "videoProfile": "high",
+           "Stream": [
+            {
+             "id": 3,
+             "streamType": 1,
+             "default": true,
+             "codec": "h264",
+             "index": 0,
+             "bitrate": 488,
+             "language": "English",
+             "languageTag": "en",
+             "languageCode": "eng",
+             "bitDepth": 8,
+             "chromaLocation": "left",
+             "chromaSubsampling": "4:2:0",
+             "codedHeight": 1088,
+             "codedWidth": 1920,
+             "frameRate": 24.0,
+             "hasScalingMatrix": false,
+             "height": 1080,
+             "level": 40,
+             "profile": "high",
+             "refFrames": 4,
+             "scanType": "progressive",
+             "width": 1920,
+             "displayTitle": "1080p",
+             "extendedDisplayTitle": "1080p (H.264)"
+            },
+            {
+             "id": 4,
+             "streamType": 2,
+             "selected": true,
+             "default": true,
+             "codec": "aac",
+             "index": 1,
+             "channels": 1,
+             "language": "English",
+             "languageTag": "en",
+             "languageCode": "eng",
+             "audioChannelLayout": "mono",
+             "profile": "lc",
+             "samplingRate": 44100,
+             "displayTitle": "English (AAC Mono)",
+             "extendedDisplayTitle": "English (AAC Mono)"
+            }
+           ]
+          }
+         ]
+        }
+       ],
+       "Image": [
+        {
+         "alt": "Elephants Dream",
+         "type": "coverPoster",
+         "url": "/library/metadata/17/thumb/1789203303"
+        },
+        {
+         "alt": "Elephants Dream",
+         "type": "background",
+         "url": "/library/metadata/17/art/1789203303"
+        },
+        {
+         "alt": "Elephants Dream",
+         "type": "clearLogo",
+         "url": "/library/metadata/17/clearLogo/1789203303"
+        },
+        {
+         "alt": "Elephants Dream",
+         "type": "backgroundSquare",
+         "url": "/library/metadata/17/squareArt/1789203303"
+        }
+       ],
+       "UltraBlurColors": {
+        "topLeft": "122e44",
+        "topRight": "844f1e",
+        "bottomRight": "964106",
+        "bottomLeft": "1a4154"
+       },
+       "Genre": [
+        {
+         "id": 6,
+         "filter": "genre=6",
+         "tag": "Animation"
+        },
+        {
+         "id": 27,
+         "filter": "genre=27",
+         "tag": "Science Fiction"
+        },
+        {
+         "id": 9,
+         "filter": "genre=9",
+         "tag": "Short"
+        }
+       ],
+       "Country": [
+        {
+         "id": 13,
+         "filter": "country=13",
+         "tag": "Netherlands"
+        }
+       ],
+       "Guid": [
+        {
+         "id": "imdb://tt0807840"
+        },
+        {
+         "id": "tmdb://9761"
+        },
+        {
+         "id": "tvdb://16180"
+        }
+       ],
+       "Rating": [
+        {
+         "image": "imdb://image.rating",
+         "value": 5.6,
+         "type": "audience"
+        },
+        {
+         "image": "rottentomatoes://image.rating.spilled",
+         "value": 5.4,
+         "type": "audience"
+        },
+        {
+         "image": "themoviedb://image.rating",
+         "value": 5.8,
+         "type": "audience"
+        }
+       ],
+       "Collection": [
+        {
+         "id": 235,
+         "filter": "collection=235",
+         "tag": "SplitProbe",
+         "guid": "collection://4c1507c6-0b74-45ad-bcae-d85eb7376dba"
+        }
+       ],
+       "Director": [
+        {
+         "id": 203,
+         "filter": "director=203",
+         "tag": "Bassam Kurdali",
+         "tagKey": "5d776834103a2d001f567901"
+        }
+       ],
+       "Writer": [
+        {
+         "id": 204,
+         "filter": "writer=204",
+         "tag": "Andreas Goralczyk",
+         "tagKey": "5ddba98af3f0e1001f8bec9b"
+        },
+        {
+         "id": 205,
+         "filter": "writer=205",
+         "tag": "Pepijn Zwanenberg",
+         "tagKey": "5d776834103a2d001f567903"
+        },
+        {
+         "id": 206,
+         "filter": "writer=206",
+         "tag": "Bassam Kurdali",
+         "tagKey": "5d776834103a2d001f567901"
+        }
+       ],
+       "Role": [
+        {
+         "id": 207,
+         "filter": "actor=207",
+         "tag": "Tygo Gernandt",
+         "tagKey": "5d7768288718ba001e3121b4",
+         "role": "Proog (voice)",
+         "thumb": "https://metadata-static.plex.tv/0/people/00ae4da33f6a7ea7b7cc27f164b77557.jpg"
+        },
+        {
+         "id": 208,
+         "filter": "actor=208",
+         "tag": "Cas Jansen",
+         "tagKey": "5d77682f7228e5001f1dddef",
+         "role": "Emo (voice)",
+         "thumb": "https://metadata-static.plex.tv/4/people/4ff32dc6f9aedaa347dccf943fb196a6.jpg"
+        }
+       ],
+       "Producer": [
+        {
+         "id": 12,
+         "filter": "producer=12",
+         "tag": "Ton Roosendaal",
+         "tagKey": "5d776834103a2d001f567902",
+         "thumb": "https://metadata-static.plex.tv/d/people/d0cd238b5a00353ddae78dd55720f7e3.jpg"
+        }
+       ],
+       "Field": [
+        {
+         "locked": true,
+         "name": "collection"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "GET /library/metadata/59": {
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "Metadata": [
+      {
+       "ratingKey": "59",
+       "key": "/library/metadata/59",
+       "guid": "plex://movie/5d776833103a2d001f5674a1",
+       "slug": "elephants-dream",
+       "studio": "Blender Foundation",
+       "type": "movie",
+       "title": "Elephants Dream",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "contentRating": "Not Rated",
+       "summary": "The two main characters are on a journey in the folds of a giant Machine, exploring the twisted and dark complex of wires, gears and cogs. Until one moment a conflict arises that throws out all their assumptions. This movie short couples lively fun with passionate characters in an epic story line.",
+       "audienceRating": 5.4,
+       "year": 2006,
+       "thumb": "/library/metadata/59/thumb/1789203303",
+       "art": "/library/metadata/59/art/1789203303",
+       "duration": 1800011,
+       "originallyAvailableAt": "2006-05-04",
+       "addedAt": 1789187071,
+       "updatedAt": 1789203303,
+       "audienceRatingImage": "rottentomatoes://image.rating.spilled",
+       "hasPremiumPrimaryExtra": "1",
+       "Media": [
+        {
+         "id": 12,
+         "duration": 1800011,
+         "bitrate": 490,
+         "width": 1920,
+         "height": 1080,
+         "aspectRatio": 1.78,
+         "audioChannels": 1,
+         "audioCodec": "aac",
+         "videoCodec": "h264",
+         "videoResolution": "1080",
+         "container": "mp4",
+         "videoFrameRate": "24p",
+         "optimizedForStreaming": 0,
+         "audioProfile": "lc",
+         "has64bitOffsets": false,
+         "videoProfile": "high",
+         "Part": [
+          {
+           "id": 12,
+           "key": "/library/parts/12/1789295920/file.mp4",
+           "duration": 1800011,
+           "file": "/data/movies/Cosmos Laundromat (2015)/Cosmos Laundromat (2015) - 1080p.mp4",
+           "size": 110141840,
+           "audioProfile": "lc",
+           "container": "mp4",
+           "has64bitOffsets": false,
+           "optimizedForStreaming": false,
+           "videoProfile": "high",
+           "Stream": [
+            {
+             "id": 23,
+             "streamType": 1,
+             "default": true,
+             "codec": "h264",
+             "index": 0,
+             "bitrate": 400,
+             "bitDepth": 8,
+             "chromaLocation": "left",
+             "chromaSubsampling": "4:2:0",
+             "codedHeight": 1088,
+             "codedWidth": 1920,
+             "frameRate": 24.0,
+             "hasScalingMatrix": false,
+             "height": 1080,
+             "level": 40,
+             "profile": "high",
+             "refFrames": 4,
+             "scanType": "progressive",
+             "streamIdentifier": "1",
+             "width": 1920,
+             "displayTitle": "1080p",
+             "extendedDisplayTitle": "1080p (H.264)"
+            },
+            {
+             "id": 24,
+             "streamType": 2,
+             "selected": true,
+             "default": true,
+             "codec": "aac",
+             "index": 1,
+             "channels": 1,
+             "bitrate": 84,
+             "audioChannelLayout": "mono",
+             "profile": "lc",
+             "samplingRate": 44100,
+             "streamIdentifier": "2",
+             "displayTitle": "Unknown (AAC Mono)",
+             "extendedDisplayTitle": "Unknown (AAC Mono)"
+            }
+           ]
+          }
+         ]
+        }
+       ],
+       "Image": [
+        {
+         "alt": "Elephants Dream",
+         "type": "coverPoster",
+         "url": "/library/metadata/59/thumb/1789203303"
+        },
+        {
+         "alt": "Elephants Dream",
+         "type": "background",
+         "url": "/library/metadata/59/art/1789203303"
+        },
+        {
+         "alt": "Elephants Dream",
+         "type": "clearLogo",
+         "url": "/library/metadata/59/clearLogo/1789203303"
+        },
+        {
+         "alt": "Elephants Dream",
+         "type": "backgroundSquare",
+         "url": "/library/metadata/59/squareArt/1789203303"
+        }
+       ],
+       "UltraBlurColors": {
+        "topLeft": "122e44",
+        "topRight": "844f1e",
+        "bottomRight": "964106",
+        "bottomLeft": "1a4154"
+       },
+       "Genre": [
+        {
+         "id": 6,
+         "filter": "genre=6",
+         "tag": "Animation"
+        },
+        {
+         "id": 27,
+         "filter": "genre=27",
+         "tag": "Science Fiction"
+        },
+        {
+         "id": 9,
+         "filter": "genre=9",
+         "tag": "Short"
+        }
+       ],
+       "Country": [
+        {
+         "id": 13,
+         "filter": "country=13",
+         "tag": "Netherlands"
+        }
+       ],
+       "Guid": [
+        {
+         "id": "imdb://tt0807840"
+        },
+        {
+         "id": "tmdb://9761"
+        },
+        {
+         "id": "tvdb://16180"
+        }
+       ],
+       "Rating": [
+        {
+         "image": "imdb://image.rating",
+         "value": 5.6,
+         "type": "audience"
+        },
+        {
+         "image": "rottentomatoes://image.rating.spilled",
+         "value": 5.4,
+         "type": "audience"
+        },
+        {
+         "image": "themoviedb://image.rating",
+         "value": 5.8,
+         "type": "audience"
+        }
+       ],
+       "Collection": [
+        {
+         "id": 235,
+         "filter": "collection=235",
+         "tag": "SplitProbe",
+         "guid": "collection://4c1507c6-0b74-45ad-bcae-d85eb7376dba"
+        }
+       ],
+       "Director": [
+        {
+         "id": 203,
+         "filter": "director=203",
+         "tag": "Bassam Kurdali",
+         "tagKey": "5d776834103a2d001f567901"
+        }
+       ],
+       "Writer": [
+        {
+         "id": 204,
+         "filter": "writer=204",
+         "tag": "Andreas Goralczyk",
+         "tagKey": "5ddba98af3f0e1001f8bec9b"
+        },
+        {
+         "id": 205,
+         "filter": "writer=205",
+         "tag": "Pepijn Zwanenberg",
+         "tagKey": "5d776834103a2d001f567903"
+        },
+        {
+         "id": 206,
+         "filter": "writer=206",
+         "tag": "Bassam Kurdali",
+         "tagKey": "5d776834103a2d001f567901"
+        }
+       ],
+       "Role": [
+        {
+         "id": 207,
+         "filter": "actor=207",
+         "tag": "Tygo Gernandt",
+         "tagKey": "5d7768288718ba001e3121b4",
+         "role": "Proog (voice)",
+         "thumb": "https://metadata-static.plex.tv/0/people/00ae4da33f6a7ea7b7cc27f164b77557.jpg"
+        },
+        {
+         "id": 208,
+         "filter": "actor=208",
+         "tag": "Cas Jansen",
+         "tagKey": "5d77682f7228e5001f1dddef",
+         "role": "Emo (voice)",
+         "thumb": "https://metadata-static.plex.tv/4/people/4ff32dc6f9aedaa347dccf943fb196a6.jpg"
+        }
+       ],
+       "Producer": [
+        {
+         "id": 12,
+         "filter": "producer=12",
+         "tag": "Ton Roosendaal",
+         "tagKey": "5d776834103a2d001f567902",
+         "thumb": "https://metadata-static.plex.tv/d/people/d0cd238b5a00353ddae78dd55720f7e3.jpg"
+        }
+       ],
+       "Field": [
+        {
+         "locked": true,
+         "name": "collection"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  }
+ }
+}
