@@ -23436,7 +23436,10 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
                     .unwrap_or_else(|_| "???".to_string());
                 let addresses = stream.peer_addr().ok().zip(stream.local_addr().ok());
                 let thread_name = logging::request_thread_name();
-                thread::spawn(move || {
+                // `thread::spawn` panics when the OS refuses a thread, and this loop is the
+                // main thread: a connection flood ended the server. The refused connection is
+                // closed instead.
+                let spawned = thread::Builder::new().spawn(move || {
                     logging::name_thread(thread_name);
                     CONNECTION.with(|cell| {
                         cell.set(addresses.map(|(peer, local)| (peer.ip(), local.ip())))
@@ -23467,8 +23470,16 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
                         serve_plain(stream, shared);
                     }
                 });
+                if let Err(error) = spawned {
+                    eprintln!("rex accept: no thread for a connection: {error}");
+                }
             }
-            Err(error) => eprintln!("rex accept: {error}"),
+            Err(error) => {
+                eprintln!("rex accept: {error}");
+                // Out of descriptors, Linux fails every accept at once while the connection
+                // waits in the backlog: without a pause this held a core at 100 %.
+                thread::sleep(std::time::Duration::from_millis(50));
+            }
         }
     }
     Ok(())

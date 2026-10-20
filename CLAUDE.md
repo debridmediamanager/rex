@@ -565,6 +565,7 @@ python3 tests/test_sources.py               # registering sources, and sources t
 python3 tests/test_server_command.py        # the launcher's default and REX_SERVER override
 python3 tests/test_unclaimed_gate.py        # what an unclaimed server answers: no client, its claim from local networks only, Host names, allowedNetworks
 python3 tests/test_photo_ssrf.py            # /photo/:/transcode?url= dials nothing on rex's own networks (loopback, LAN, 0.0.0.0)
+python3 tests/test_accept_exhaustion.py     # out of descriptors the accept loop idles and serves again after (Unix; spins only on Linux)
 python3 tests/test_track_prefs.py           # a real Part starts on its account's plex.tv audio/subtitle languages; a hand pick stays that account's
 python3 tests/test_accounts.py              # plexlab's owner and shared user replayed: per-account watch state, ratings, playlists,
                                             # history and sessions, a share's libraries, filters and flags, the owner's routes
