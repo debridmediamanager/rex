@@ -229,7 +229,7 @@ struct Target {
 fn parse_url(url: &str) -> Option<Target> {
     // A URL is written into the request line as it is: a space, CR or LF in one (a client's
     // percent-decoded `/photo/:/transcode?url=`) wrote a second request of its choosing.
-    if url.bytes().any(|byte| !(0x21..=0x7e).contains(&byte)) {
+    if url.bytes().any(|byte| byte <= 0x20 || byte == 0x7f) {
         return None;
     }
     let (scheme, rest) = url.split_once("://")?;
@@ -774,6 +774,8 @@ mod tests {
         for url in ["http://h.example/a b", "http://h.example/a\r\nX-A: b", "http://h.example/\x7f"] {
             assert!(parse_url(url).is_none(), "{url:?}");
         }
+        // A CDN's Location may carry raw UTF-8: only what ends a request line is refused.
+        assert!(parse_url("http://h.example/Amélie.mkv").is_some());
         let error = fetch("GET", "http://127.0.0.1:9/a HTTP/1.1\r\nX-A: b", &[], b"", Duration::from_secs(1))
             .map(|_| ())
             .expect_err("refused before dialling");
