@@ -719,8 +719,8 @@ pub(crate) struct PartInfo {
     pub frame_rate: Option<String>,
     video_codec: String,
     resolution: String,
-    /// The ffprobe index of an embedded text subtitle the meter can read the timing of.
-    text_track: Option<i64>,
+    /// The ffprobe indexes of the embedded text subtitles the meter can read the timing of.
+    text_tracks: Vec<i64>,
     /// The OpenSubtitles hash kept on the Part (`_osHash`).
     hash: Option<String>,
 }
@@ -1017,14 +1017,15 @@ fn reference(part: &PartInfo, ffmpeg: Option<&Path>) -> Option<Vec<(f64, Vec<u8>
         return None;
     }
     let starts = window_starts(part.duration);
-    if let Some(stream) = part.text_track {
+    for stream in &part.text_tracks {
         let read = |offset: u64, length: usize| super::universal::read_range(&part.url, part.auth.as_deref(), offset, length);
-        match super::mkvsubs::index(&read, stream) {
+        match super::mkvsubs::index(&read, *stream) {
             Ok(index) => {
                 let cues = track_cues(&index.cues);
-                if cues.len() >= 10 {
+                if spans(&cues, &starts) {
                     return Some(starts.iter().map(|start| (*start, cue_mask(&cues, *start))).collect());
                 }
+                info!("SUBTITLE text stream {stream} of {} is too sparse to measure against ({} cues)", part.file, cues.len());
             }
             Err(error) => info!("SUBTITLE cannot read text stream {stream} of {}: {error}", part.file),
         }
@@ -1035,6 +1036,15 @@ fn reference(part: &PartInfo, ffmpeg: Option<&Path>) -> Option<Vec<(f64, Vec<u8>
         .filter_map(|start| audio_window(ffmpeg, part, *start).map(|pcm| (*start, energy_mask(&pcm))))
         .collect::<Vec<_>>();
     (!windows.is_empty()).then_some(windows)
+}
+
+/// A track the meter can stand on: three cues or more in at least half the windows. Against a
+/// forced track (a real WEB-DL's: 12 lines, all within its first six minutes, measured 2026-10-20)
+/// every candidate reads nothing. Tracks flagged forced are passed over already; this catches
+/// one whose flag is missing (ponytail: not yet seen unflagged in a real library).
+fn spans(cues: &[(f64, f64)], starts: &[f64]) -> bool {
+    let full = starts.iter().filter(|start| cues.iter().filter(|(a, b)| *b > **start && *a < **start + WIN).count() >= 3).count();
+    full * 2 >= starts.len() && !starts.is_empty()
 }
 
 // -- the jobs --------------------------------------------------------------------------------
@@ -1367,17 +1377,18 @@ impl Runtime {
         let streams = part.get("Stream").and_then(Value::as_array).cloned().unwrap_or_default();
         let text = |value: &Value, name: &str| value.get(name).map(string_value).filter(|text| !text.is_empty());
         let readable = matches!(chosen.get("container").and_then(Value::as_str), Some("mkv" | "mp4" | "mov"));
-        let text_track = streams
+        let text_tracks = streams
             .iter()
             .filter(|_| readable)
-            .find(|stream| {
+            .filter(|stream| {
                 stream.get("streamType").and_then(Value::as_i64) == Some(3)
                     && stream.get("key").is_none()
                     && !stream.get("forced").is_some_and(truthy)
                     && matches!(text(stream, "codec").unwrap_or_default().to_ascii_lowercase().as_str(), "srt" | "ass" | "ssa" | "mov_text")
             })
-            .and_then(|stream| stream.get("index").and_then(Value::as_i64))
-            .filter(|index| *index >= 0);
+            .filter_map(|stream| stream.get("index").and_then(Value::as_i64))
+            .filter(|index| *index >= 0)
+            .collect();
         // rex identifies nothing: the IMDb id is the one the rows hold, a show's for an episode.
         let imdb = |row: &Value| {
             row.get("Guid").and_then(Value::as_array).into_iter().flatten().find_map(|guid| {
@@ -1413,7 +1424,7 @@ impl Runtime {
                 frame_rate: text(chosen, "videoFrameRate"),
                 video_codec: text(chosen, "videoCodec").unwrap_or_default(),
                 resolution: text(chosen, "videoResolution").unwrap_or_default(),
-                text_track,
+                text_tracks,
                 hash: text(part, "_osHash"),
             },
         })
@@ -1817,5 +1828,82 @@ mod tests {
         assert!(agree as f64 >= 0.9 * both as f64, "the meter port agrees with the truth where both read: {agree} of {both}");
         assert!(overall * 2 > measured_total, "the meter port's verdicts are the truth's for most candidates: {overall} of {measured_total}");
         assert!(false_sync <= 3, "{false_sync} candidates called in sync that are off");
+    }
+
+    #[test]
+    fn a_sparse_track_is_no_reference() {
+        // Lucky Strike 2026's forced English track (iT WEB-DL, read through a claimed rex,
+        // 2026-10-20): twelve lines between 4:33 and 6:00 of a 103-minute film.
+        let starts = window_starts(6_211_136);
+        let forced = (0..12).map(|at| (273.9 + at as f64 * 7.5, 275.0 + at as f64 * 7.5)).collect::<Vec<_>>();
+        assert!(!spans(&forced, &starts));
+        let full = (0..1500).map(|at| (at as f64 * 4.0, at as f64 * 4.0 + 2.5)).collect::<Vec<_>>();
+        assert!(spans(&full, &starts));
+        // Three of six windows with three lines each is enough; two is not.
+        let half = |windows: usize| starts.iter().take(windows).flat_map(|start| (0..3).map(move |at| (start + 10.0 * at as f64, start + 10.0 * at as f64 + 2.0))).collect::<Vec<_>>();
+        assert!(spans(&half(3), &starts));
+        assert!(!spans(&half(2), &starts));
+    }
+
+    /// The whole job against the live services for one release read through a claimed rex:
+    /// Plex's provider and the Stremio OpenSubtitles addon searched, the top five downloaded and
+    /// measured against the release (its embedded text tracks when `text_tracks` names any, else
+    /// its audio through the FFmpeg on PATH). `REX_LIVE_TOKEN`/`REX_LIVE_MACHINE` are a claim's;
+    /// `REX_LIVE_ITEM` is the release: `{url, size, file, duration, fps, codec, resolution,
+    /// text_tracks, guid, year, imdb, hash}`, the url a Part's with its token.
+    #[test]
+    #[ignore]
+    fn live_job_end_to_end() {
+        let env = |name: &str| std::env::var(name).unwrap_or_else(|_| panic!("{name}"));
+        let agent = Agent { token: env("REX_LIVE_TOKEN"), machine: env("REX_LIVE_MACHINE"), name: "rex".into(), version: "1.42.2.10156-f737b826c".into() };
+        let item: Value = serde_json::from_str(&env("REX_LIVE_ITEM")).expect("REX_LIVE_ITEM");
+        let field = |name: &str| item[name].as_str().unwrap_or_default().to_string();
+        let part = PartInfo {
+            id: "live".into(),
+            url: field("url"),
+            auth: None,
+            size: item["size"].as_u64().unwrap_or_default(),
+            file: field("file"),
+            duration: item["duration"].as_i64().unwrap_or_default(),
+            frame_rate: Some(field("fps")),
+            video_codec: field("codec"),
+            resolution: field("resolution"),
+            text_tracks: item["text_tracks"].as_array().into_iter().flatten().filter_map(Value::as_i64).collect(),
+            hash: None,
+        };
+        let hash = hash_of(&part);
+        assert_eq!(hash.as_deref(), Some(field("hash").as_str()), "the hash the study read through rex");
+        for language in ["en", "pt-BR"] {
+            let search = Search {
+                language: language.into(),
+                agent: Some(agent.clone()),
+                addons: vec!["https://opensubtitles-v3.strem.io".into()],
+                guid: Some(field("guid")),
+                episode: false,
+                year: field("year"),
+                stremio: Some(("movie".into(), field("imdb"))),
+                part: part.clone(),
+            };
+            let found = search_all(&search, hash.as_deref());
+            let plex = found.iter().filter(|candidate| candidate.source == "plex").count();
+            println!("{language}: {plex} from Plex's provider, {} from the addon", found.len() - plex);
+            assert!(plex > 0 && found.len() > plex, "both sources answer");
+            {
+                let label = if part.text_tracks.is_empty() { "audio" } else { "embedded track" };
+                let windows = reference(&part, Some(Path::new("ffmpeg"))).expect("a reference");
+                let mut texts = HashMap::new();
+                let picked = pick(&part.file, part.frame_rate.as_deref(), &found, MEASURED, |at| {
+                    let raw = download(&found[at], Some(&agent))?;
+                    let (text, garbled) = decode_text(&raw);
+                    let reading = measure(&windows, &cues(&text));
+                    println!("  {label}: {} [{}] {} ratio {} lag {:.2} z {} garbled {garbled} left {}", found[at].title, found[at].source, reading.verdict.name(), reading.ratio, reading.offset, reading.z, mojibake(&text));
+                    texts.insert(at, text);
+                    Some((reading, garbled))
+                });
+                let (at, fix) = picked.expect("a pick");
+                println!("  {label} picks {} {:?}", found[at].title, fix);
+                assert_eq!(mojibake(&texts[&at]), 0, "the kept text is clean UTF-8");
+            }
+        }
     }
 }
