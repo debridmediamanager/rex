@@ -12949,10 +12949,16 @@ impl Runtime {
     /// A row's key and every key beneath it, read before a removal cascades.
     pub(super) fn subtree_keys(&self, key: &str) -> Vec<String> {
         let mut keys = vec![key.to_string()];
+        // Each key once: a row edited to be its own parent (or its child's) looped for ever.
+        let mut seen: HashSet<String> = keys.iter().cloned().collect();
         let mut index = 0;
         while index < keys.len() {
             let parent = keys[index].clone();
-            keys.extend(self.children_refs(&parent).into_iter().filter_map(|row| key_of(&row)));
+            for child in self.children_refs(&parent).into_iter().filter_map(|row| key_of(&row)) {
+                if seen.insert(child.clone()) {
+                    keys.push(child);
+                }
+            }
             index += 1;
         }
         keys
@@ -18788,22 +18794,9 @@ impl Runtime {
                 // `library.delete`: the row AND its descendants go -- a season takes
                 // its episodes -- and removing a season's LAST episode removes the
                 // season too, measured through the reference's scanner.
-                let mut doomed = vec![key.to_string()];
-                let mut index = 0;
-                while index < doomed.len() {
-                    let parent = doomed[index].clone();
-                    for item in self.catalog.hot().lazy() {
-                        let child = item.get("parentRatingKey").map(string_value);
-                        if child.as_deref() == Some(parent.as_str()) {
-                            if let Some(child_key) = key_of(&item) {
-                                if !doomed.contains(&child_key) {
-                                    doomed.push(child_key);
-                                }
-                            }
-                        }
-                    }
-                    index += 1;
-                }
+                // By the parent index: a pass over the library for each row went was 500
+                // passes for a 500-episode show, under the lock.
+                let mut doomed = self.subtree_keys(key);
                 if let Some(refusal) = self.delete_at_sources(&doomed) {
                     return refusal;
                 }
