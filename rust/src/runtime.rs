@@ -23755,13 +23755,14 @@ fn handle_connection<S: Read + Write + PollRead>(
                 guard.register_request_device(&request);
                 // Logged before the channel's cursor is taken: the opening socket is
                 // not yet a log sink when the oracle logs it.
+                // `logger.info("... filters=%s", filters or "all")`: the list as Python prints it.
                 let filters = query
                     .get("filters")
                     .map(|value| {
                         value
                             .split(',')
                             .filter(|filter| !filter.is_empty())
-                            .map(|filter| format!("'{filter}'"))
+                            .map(crate::filters::py_repr)
                             .collect::<Vec<_>>()
                     })
                     .unwrap_or_default();
@@ -24164,22 +24165,8 @@ fn handle_websocket<S: Read + Write + PollRead>(
         .collect::<Vec<_>>();
     let filters = named.iter().cloned().collect::<HashSet<_>>();
     let everything = filters.is_empty() && filter_value.is_some();
-    // `logger.info("... filters=%s", filters or "all")`: the list as Python prints it.
-    info!(
-        "websocket event channel opened filters={}",
-        if named.is_empty() {
-            "all".to_string()
-        } else {
-            format!(
-                "[{}]",
-                named
-                    .iter()
-                    .map(|name| crate::filters::py_repr(name))
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            )
-        }
-    );
+    // Logged once, by the caller, before this socket's cursor: logged again here it reached
+    // the opening socket as a frame of its own and Download Logs held every open twice.
     // Cycle 65: the socket's language, fixed at the handshake; activity titles follow it.
     let (language, catalog_path) = {
         let guard = runtime

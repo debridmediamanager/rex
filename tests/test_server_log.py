@@ -532,9 +532,10 @@ def main():
         check("a websocket CLOSE is answered with status 1000",
               b"\x88\x02\x03\xe8" in answer, answer[-40:])
         lines = server.log_lines()
-        check("the websocket logs its filters as it opens",
-              any(re.match(r"^\[Thread-\d+ \(process_request_thread\)\] INFO - websocket event "
-                           r"channel opened filters=\['log'\]$", line) for line in lines),
+        check("the websocket logs its filters as it opens, once",
+              sum(1 for line in lines if re.match(r"^\[Thread-\d+ \(process_request_thread\)\] INFO - websocket event "
+                                                  r"channel opened filters=\['log'\]$", line)) == 1
+              and sum(1 for line in lines if "channel opened" in line) == 1,
               [line for line in lines if "websocket" in line])
         check("the websocket logs the client's close",
               any(line.endswith("INFO - websocket closed by client") for line in lines),
