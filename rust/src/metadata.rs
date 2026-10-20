@@ -71,15 +71,23 @@ pub fn apply_plex_guids_with_provider(
         }
     }
 
+    // Each row's children by `parentRatingKey`, compared as JSON as before (`"6"` is not `6`), in
+    // item order: a pass over every item per show and per season was 450M copies for a
+    // 2,000-show library.
+    let mut children: HashMap<Option<String>, Vec<usize>> = HashMap::new();
+    for (index, item) in items.iter().enumerate() {
+        children.entry(item.get("parentRatingKey").map(Value::to_string)).or_default().push(index);
+    }
+    let of_type = |items: &[Value], index: usize, kind: &str| items[index].get("type").and_then(Value::as_str) == Some(kind);
     for (show_key, show_guid, slug) in matched_shows {
         let seasons = provider.children(&show_guid);
-        for season_index in 0..items.len() {
-            let season_snapshot = items[season_index].as_object().cloned().unwrap_or_default();
-            if season_snapshot.get("type").and_then(Value::as_str) != Some("season")
-                || season_snapshot.get("parentRatingKey") != Some(&show_key)
-            {
+        for &season_index in children.get(&Some(show_key.to_string())).into_iter().flatten() {
+            if !of_type(items, season_index, "season") {
                 continue;
             }
+            let season_key = items[season_index].get("ratingKey").map(Value::to_string);
+            let season_index_text = value_key(items[season_index].get("index")).unwrap_or_default();
+            let season_guid_before = value_key(items[season_index].get("guid"));
             // Parent pointers are updated even when the provider has no
             // matching season.  This is what lets later children retain the
             // catalog's season identity while inheriting the matched show.
@@ -89,33 +97,23 @@ pub fn apply_plex_guids_with_provider(
                     put(row, "parentSlug", slug);
                 }
             }
-            let provider_season_guid = seasons
-                .get(&value_key(season_snapshot.get("index")).unwrap_or_default())
-                .cloned();
+            let provider_season_guid = seasons.get(&season_index_text).cloned();
             if let Some(season_guid) = provider_season_guid.as_deref() {
                 if let Some(row) = items[season_index].as_object_mut() {
                     put(row, "guid", season_guid);
                 }
                 relinked += 1;
             }
-            let inherited_season_guid = provider_season_guid
-                .clone()
-                .or_else(|| value_key(season_snapshot.get("guid")));
+            let inherited_season_guid = provider_season_guid.clone().or(season_guid_before);
             let episodes = provider_season_guid
                 .as_deref()
                 .map(|guid| provider.children(guid))
                 .unwrap_or_default();
-            #[allow(clippy::needless_range_loop)]
-            for episode_index in 0..items.len() {
-                let episode_snapshot = items[episode_index]
-                    .as_object()
-                    .cloned()
-                    .unwrap_or_default();
-                if episode_snapshot.get("type").and_then(Value::as_str) != Some("episode")
-                    || episode_snapshot.get("parentRatingKey") != season_snapshot.get("ratingKey")
-                {
+            for &episode_index in children.get(&season_key).into_iter().flatten() {
+                if !of_type(items, episode_index, "episode") {
                     continue;
                 }
+                let episode_index_text = value_key(items[episode_index].get("index")).unwrap_or_default();
                 if let Some(row) = items[episode_index].as_object_mut() {
                     put(row, "grandparentGuid", show_guid.clone());
                     put(
@@ -129,9 +127,7 @@ pub fn apply_plex_guids_with_provider(
                     if let Some(slug) = slug.as_deref().filter(|slug| !slug.is_empty()) {
                         put(row, "grandparentSlug", slug);
                     }
-                    if let Some(guid) =
-                        episodes.get(&value_key(episode_snapshot.get("index")).unwrap_or_default())
-                    {
+                    if let Some(guid) = episodes.get(&episode_index_text) {
                         put(row, "guid", guid.as_str());
                         relinked += 1;
                     }
