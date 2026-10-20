@@ -146,16 +146,9 @@ pub(crate) fn relink(items: &mut [Value], catalog: &Path, client: String) -> Opt
         /// `PlexProvider.match`: the first external id, `tmdb://` ones first, whose match is
         /// a `plex://` item of the kind asked for.
         fn match_item(&mut self, kind: &str, external_ids: &[String]) -> Option<(String, Option<String>)> {
-            use crate::identify::PlexSource;
-            let mut ids = external_ids.iter().collect::<Vec<_>>();
-            ids.sort_by_key(|id| !id.starts_with("tmdb://"));
-            ids.into_iter().find_map(|external| {
-                let body = json!({"type": if kind == "movie" { 1 } else { 2 }, "guid": external});
-                let answer = self.0.call("POST", "/library/metadata/matches", Some(&body))?;
-                let row = answer.pointer("/MediaContainer/Metadata/0")?;
-                let guid = row.get("guid")?.as_str().filter(|guid| guid.starts_with(&format!("plex://{kind}/")))?;
-                Some((guid.to_string(), row.get("slug").and_then(Value::as_str).map(str::to_string)))
-            })
+            let answer = crate::identify::plex_match(&self.0, kind, external_ids)?;
+            let slug = answer.row.get("slug").and_then(Value::as_str).map(str::to_string);
+            Some((answer.guid, slug))
         }
         fn children(&mut self, guid: &str) -> HashMap<String, String> {
             crate::identify::plex_children(&self.0, guid)
