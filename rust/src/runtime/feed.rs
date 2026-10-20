@@ -1231,6 +1231,13 @@ fn version_release(row: &Value, index: usize) -> Option<&str> {
 
 /// A row made of one release: that release its only Media, its source fields and name the row's.
 fn take_release(row: &mut Map<String, Value>, media: &Value) {
+    name_by_release(row, media);
+    row.insert("Media".to_string(), json!([media]));
+}
+
+/// The row's own source fields, name and ids, as its first release has them. A row dropping a
+/// release kept the dropped one's name and ids, and was named again by them.
+fn name_by_release(row: &mut Map<String, Value>, media: &Value) {
     for field in ["_source", "_sid", "_path"] {
         if let Some(value) = media.get(field) {
             row.insert(field.to_string(), value.clone());
@@ -1256,7 +1263,6 @@ fn take_release(row: &mut Map<String, Value>, media: &Value) {
     if let Some(ids) = media.get("_ids") {
         row.insert("_ids".to_string(), ids.clone());
     }
-    row.insert("Media".to_string(), json!([media]));
 }
 
 impl Runtime {
@@ -1911,17 +1917,7 @@ impl Runtime {
                 media.remove(index);
             }
             let first = object.get("Media").and_then(|media| media.get(0)).cloned().unwrap_or_default();
-            for field in ["_source", "_sid", "_path"] {
-                if let Some(value) = first.get(field) {
-                    object.insert(field.to_string(), value.clone());
-                }
-            }
-            for field in ["_folder", "_placed"] {
-                match first.get(field) {
-                    Some(value) => object.insert(field.to_string(), value.clone()),
-                    None => object.shift_remove(field),
-                };
-            }
+            name_by_release(object, &first);
             if let Some(duration) = first.get("duration") {
                 object.insert("duration".to_string(), duration.clone());
             }
@@ -2040,6 +2036,24 @@ mod tests {
         })
         .unwrap();
         (Arc::new(Mutex::new(runtime)), "11".to_string())
+    }
+
+    #[test]
+    fn a_dropped_release_leaves_the_row_named_and_identified_by_the_one_left() {
+        let dir = work("drop-version");
+        let (shared, key) = runtime_with_episode(&dir);
+        let mut guard = shared.lock().unwrap();
+        guard.catalog.get_mut(&key).unwrap()["Media"] = json!([
+            {"_source": "test", "_sid": "one", "_path": "shows/Original/one.mkv", "_release": "Original.S01E02.1080p",
+             "_ids": {"tmdb": 100}, "Part": [{"file": "/shows/Original/one.mkv"}]},
+            {"_source": "test", "_sid": "two", "_path": "shows/Other/two.mkv", "_release": "Other.S01E02.720p",
+             "_ids": {"tmdb": 200}, "Part": [{"file": "/shows/Other/two.mkv"}]}]);
+        guard.catalog.get_mut(&key).unwrap()["_ids"] = json!({"tmdb": 100});
+        assert!(guard.drop_version(&key, "test", "one"));
+        let row = guard.catalog.get(&key).unwrap();
+        assert_eq!((&row["_sid"], &row["_release"], &row["_ids"]), (&json!("two"), &json!("Other.S01E02.720p"), &json!({"tmdb": 200})));
+        drop(guard);
+        let _ = std::fs::remove_dir_all(dir);
     }
 
     #[test]
