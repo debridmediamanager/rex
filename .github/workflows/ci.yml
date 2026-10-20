@@ -146,7 +146,7 @@ jobs:
             test_sources test_feed test_feed_versions test_feed_season_art \
             test_feed_blank_tiles test_feed_source_decides test_feed_placement test_feed_rejected test_feed_extras test_feed_versions_1017 test_zurg_contract test_plextv test_rex_direct test_track_prefs test_accounts \
             test_unclaimed_gate test_photo_ssrf test_manager test_paused_limit test_webhooks test_auto_collections test_accept_exhaustion \
-            test_body_framing test_catalog_features test_parity_split_guid test_merge_unpaired test_parity_cycle88_b'
+            test_body_framing test_catalog_features test_parity_split_guid test_merge_unpaired test_parity_cycle88_b test_sidecars_embedded'
 
       # No GPU in the container: this is the CPU (x264) path, with the hardware probe on auto.
       # The pinned FFmpeg is kept beside the cargo cache, so it downloads once per pin.
@@ -344,8 +344,8 @@ jobs:
           fi
 
       # Each archive keeps the repository's layout, so `rex manager`, run.sh and every
-      # command in the docs find the binary at rust/target/release/rex either way. rex reads
-      # its measured sidecars from data/, beside the catalog or in its working directory.
+      # command in the docs find the binary at rust/target/release/rex either way. The
+      # measured sidecars in data/ are compiled into the binary; rex reads none of them here.
       - name: Package
         run: |
           set -e

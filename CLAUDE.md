@@ -76,13 +76,12 @@ The state file is state too: a SQLite database beside the catalog by default
 (`rex.db`), the catalog itself when the catalog is a database, or wherever `--state`
 names.
 
-The native server finds the same sidecars in `data/` beside the catalog, then one directory
-up, then in its working directory, trying each directory itself after its `data/` so a
-deployment that keeps them beside its catalog still works (`sidecar_roots` in `runtime.rs`).
-Run it from the repository root or keep the catalog there -- `run.sh`, copied to the root from
-`examples/run.sh.example`, `cd`s to its own directory.
-`client_profiles.json`, `languages.json` and the decision corpus are compiled into the
-binary with `include_str!`, so a change to them needs a rebuild. `plex_cache.db` and
+Every file in `data/` is compiled into the binary, gzipped (`rust/build.rs`, read by
+`sidecar_bytes` in `runtime.rs`), so a change to one needs a rebuild and rex reads none of
+them from disk: it once looked beside the catalog, one directory up and in its working
+directory, and a sponsor's rex started from `rust/target/release` found nothing and refused
+every play with a bare 400 (2026-10-20, `tests/test_sidecars_embedded.py`). The decision
+corpus is compiled in for the unit tests as well. `plex_cache.db` and
 `claim_state.json` sit beside the catalog.
 
 Where things live in `rust/src/`:
@@ -688,7 +687,7 @@ with the tag message as its notes. Its `docker` job then calls `.github/workflow
 which packages that release's Linux archives into `ghcr.io/debridmediamanager/rex`
 (`latest`, `X.Y.Z`, `X.Y`; private, like the repository) without compiling; run it by hand
 with a tag to give an older release an image. The archive keeps the repository's layout (the binary at
-`rust/target/release/rex`, the sidecars in `data/`), so every command in the
+`rust/target/release/rex`, `data/` beside it though the binary carries its own copy), so every command in the
 docs works the same from a release as from a checkout.
 
 ## Protocol reference

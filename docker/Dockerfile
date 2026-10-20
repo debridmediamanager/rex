@@ -10,8 +10,8 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends ca-certificates sqlite3 \
  && rm -rf /var/lib/apt/lists/*
 
-# The release layout: rust/target/release/rex and data/ beside it, which rex finds from its
-# working directory while the catalog, its state and claim_state.json live in /config.
+# The release layout: rust/target/release/rex (its data/ compiled in), while the catalog, its
+# state and claim_state.json live in /config.
 COPY dist/${TARGETARCH}/ /rex/
 COPY entrypoint.sh /rex/entrypoint.sh
 

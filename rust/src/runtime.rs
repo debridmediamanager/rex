@@ -8180,19 +8180,16 @@ impl Runtime {
             // Cycle 52: the three bundled static resources. No token, `Accept-Ranges`, never
             // gzipped; the two policies are `text/xml` and the favicon an octet-stream.
             ("GET" | "HEAD", "/crossdomain.xml") => static_sidecar_response(
-                &self.catalog_path,
                 "crossdomain.xml",
                 "text/xml",
                 request.method == "HEAD",
             ),
             ("GET" | "HEAD", "/clientaccesspolicy.xml") => static_sidecar_response(
-                &self.catalog_path,
                 "clientaccesspolicy.xml",
                 "text/xml",
                 request.method == "HEAD",
             ),
             ("GET" | "HEAD", "/favicon.ico") => static_sidecar_response(
-                &self.catalog_path,
                 "favicon.ico",
                 "application/octet-stream",
                 request.method == "HEAD",
@@ -25582,19 +25579,17 @@ where
     Ok(cache)
 }
 
-/// Where the measured sidecars are read from: beside the catalog, one directory up, then the
-/// working directory. Each one's `data/` comes first -- where a checkout and a release keep
-/// them -- and then the directory itself, where an older deployment may still have them.
-fn sidecar_roots(catalog: &Path) -> Vec<PathBuf> {
-    let mut roots = Vec::new();
-    if let Some(parent) = catalog.parent() {
-        roots.push(parent.to_path_buf());
-        if let Some(root) = parent.parent() {
-            roots.push(root.to_path_buf());
-        }
-    }
-    roots.push(PathBuf::from("."));
-    roots.into_iter().flat_map(|root| [root.join("data"), root]).collect()
+include!(concat!(env!("OUT_DIR"), "/sidecars.rs"));
+
+/// A measured sidecar, from the gzipped copy of `data/` `build.rs` compiled in. They were read
+/// off disk beside the catalog, one directory up or in the working directory until a sponsor's
+/// rex, started from `rust/target/release`, found none of them and refused every play with a
+/// bare 400 (2026-10-20, `tests/test_sidecars_embedded.py`).
+fn sidecar_bytes(name: &str) -> Option<Vec<u8>> {
+    let (_, packed) = SIDECARS.iter().find(|(known, _)| *known == name)?;
+    let mut bytes = Vec::new();
+    std::io::Read::read_to_end(&mut flate2::read::GzDecoder::new(*packed), &mut bytes).ok()?;
+    Some(bytes)
 }
 
 #[cfg(test)]
@@ -25602,12 +25597,16 @@ mod sidecar_tests {
     use super::*;
 
     #[test]
-    fn data_comes_before_each_directory_itself() {
-        let expected = ["/srv/rex/data", "/srv/rex", "/srv/data", "/srv", "./data", "."];
-        assert_eq!(
-            sidecar_roots(Path::new("/srv/rex/catalog.json")),
-            expected.iter().map(PathBuf::from).collect::<Vec<_>>()
-        );
+    fn every_data_file_is_compiled_in() {
+        // The build's own path, else the tree the test runs in (Windows runs a cross-built binary).
+        let built = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let crate_dir = if built.exists() { built } else { PathBuf::from(".") };
+        for entry in fs::read_dir(crate_dir.join("../data")).unwrap() {
+            let path = entry.unwrap().path();
+            let name = path.file_name().unwrap().to_str().unwrap();
+            assert_eq!(sidecar_bytes(name).as_deref(), Some(&fs::read(&path).unwrap()[..]), "{name}");
+        }
+        assert!(sidecar_bytes("missing.json").is_none());
     }
 }
 
@@ -26077,10 +26076,7 @@ fn shared_json_sidecar(catalog: &Path, name: &str) -> Option<Arc<Value>> {
     {
         return found;
     }
-    let document = sidecar_roots(catalog)
-        .into_iter()
-        .map(|root| root.join(name))
-        .find_map(|path| fs::read(path).ok())
+    let document = sidecar_bytes(name)
         .and_then(|bytes| serde_json::from_slice(&bytes).ok())
         .map(Arc::new);
     if let Ok(mut cache) = DOCUMENTS.lock() {
@@ -26120,12 +26116,8 @@ fn translation_table(catalog: &Path) -> Option<Arc<TranslationTable>> {
     table
 }
 
-fn static_sidecar_response(catalog: &Path, name: &str, content_type: &str, head: bool) -> Response {
-    let Some(body) = sidecar_roots(catalog)
-        .into_iter()
-        .map(|root| root.join(name))
-        .find_map(|path| fs::read(path).ok())
-    else {
+fn static_sidecar_response(name: &str, content_type: &str, head: bool) -> Response {
+    let Some(body) = sidecar_bytes(name) else {
         return Response::error(404, "rex: not found");
     };
     Response {

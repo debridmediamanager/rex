@@ -15,7 +15,7 @@ nothing after that needs a restart. The steps below go through it in order.
 
 | | |
 |---|---|
-| A Linux, macOS or Windows host | rex is one binary and its `data/` sidecars, with no other runtime dependencies. The same binary writes the catalog (`rex catalog`) and runs several servers (`rex manager`) |
+| A Linux, macOS or Windows host | rex is one binary, its measured sidecars (`data/`) compiled in, with no other runtime dependencies. The same binary writes the catalog (`rex catalog`) and runs several servers (`rex manager`) |
 | Rust 1.89 or newer (rustup), or Docker | only to build it (below); or download a release or nightly archive (README step 1) |
 | One or more byte sources | [zurg](https://github.com/debridmediamanager/zurg) (a build with the rex feed: `rex_url` in its `config.yml`), or any HTTP server that serves the files plus something that pushes them to rex's feed |
 | Your Plex account token | not needed. rex asks plex.tv and Plex's own metadata agent, which describes every title and powers Fix Match, with the server token the claim (step 5) gives it. `PLEX_TOKEN` is no longer read (2026-10-19), and an install that still sets it starts as before |
@@ -37,10 +37,6 @@ updating at Rust 1.98 (2026-08-25), which is still new enough:
 docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -v "$PWD":/src -w /src/rust \
   -e CARGO_TARGET_DIR=/src/rust/target rust:1-bullseye cargo build --release
 ```
-
-Run rex from the repository root, or keep its catalog there: it reads its measured
-sidecar files (`data/`) from beside the catalog, one directory up, or its working
-directory.
 
 ### 2. Sources: where the library and its bytes come from
 

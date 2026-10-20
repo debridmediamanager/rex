@@ -2252,9 +2252,7 @@ mod tests {
         }
         // Big Buck Bunny is in no collection.
         items.push(json!({"ratingKey": "100009", "type": "movie", "librarySectionID": 1, "title": "Big Buck Bunny", "_collections": []}));
-        // One directory under the repository, whose data/ holds the library settings (`sidecar_roots`).
-        let dir = crate_dir
-            .join("..")
+        let dir = std::env::temp_dir()
             .join(format!(".auto-collections-{name}-{}-{}", std::process::id(), threshold.unwrap_or("none")));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
