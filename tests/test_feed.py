@@ -22,6 +22,7 @@ The migration leg starts from rows the old WebDAV scanner really made
     python3 tests/test_feed.py
 """
 import http.server
+import io
 import json
 import os
 import shutil
@@ -34,6 +35,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import zipfile
 
 from server_command import server_command
 from startup_wait import poll_until
@@ -370,6 +372,8 @@ def fix_match_off_the_lock(bytes_port):
             started = time.time()
             server.request("/identity")
             took = time.time() - started
+            # A request refused for its token meanwhile: its refusal is its own, not the match's.
+            server.request("/library/sections", headers={"X-Plex-Token": "not-a-token"})
             thread.join()
             return took, answer["reply"]
 
@@ -384,6 +388,10 @@ def fix_match_off_the_lock(bytes_port):
         check("a match asking Plex's agent for its season and episode holds no other request",
               took < 1.0 and status == 200 and server.row(key).get("guid") == "plex://show/5d9c0000000000000000aaaa"
               and children == ["5d9c0000000000000000aaaa", "s%023d" % 1], (took, status, children))
+        status, archive = server.request("/diagnostics/logs")
+        logged = zipfile.ZipFile(io.BytesIO(archive)).read("requests.log").decode() if status == 200 else ""
+        check("the match is in Download Logs' requests though a refused request came in while it waited",
+              "PUT /library/metadata/%s/match" % key in logged, logged[-600:])
     finally:
         server.stop()
         shutil.rmtree(work, ignore_errors=True)

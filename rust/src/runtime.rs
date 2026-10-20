@@ -23392,9 +23392,14 @@ fn handle_connection<S: Read + Write + PollRead>(
                     break;
                 };
                 drop(guard);
-                let answer = (call.0)();
+                // A panic in the call answers as an agent that answered nothing would.
+                let answer = std::panic::catch_unwind(std::panic::AssertUnwindSafe(call.0)).unwrap_or(Value::Null);
                 guard = runtime.lock().unwrap_or_else(PoisonError::into_inner);
                 guard.agent_answers.insert(key.clone(), answer);
+                // What another request left meanwhile is not this one's refusal.
+                guard.refused_for_token = false;
+                crate::filters::clear_refusal();
+                take_unsupported_sort();
                 response = route_caught(&mut guard, &request);
                 guard.agent_answers.remove(&key);
             }
