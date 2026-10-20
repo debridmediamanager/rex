@@ -479,7 +479,6 @@ pub(crate) fn ladder(plan: &Plan, hardware: &Hardware) -> Vec<Path> {
     paths
 }
 
-/// The FFmpeg command line for one run of a session, starting at `start` (a segment).
 /// The FFmpeg encoder for a codec a client profile names. FFmpeg's own `opus` and `vorbis`
 /// encoders are experimental and refused without `-strict -2`, and `pcm` names no encoder:
 /// a target listing one of them first (Plex Desktop's `opus,vorbis,flac`) failed every
@@ -493,6 +492,7 @@ fn audio_encoder(codec: &str) -> &str {
     }
 }
 
+/// The FFmpeg command line for one run of a session, starting at `start` (a segment).
 pub(crate) fn ffmpeg_args(plan: &Plan, path: Path, hardware: &Hardware, start: i64, dir: &std::path::Path) -> Vec<String> {
     let length = plan.segment_seconds() as i64;
     let offset = start * length;
