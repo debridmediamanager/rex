@@ -266,6 +266,16 @@ def main():
         check("a killed server is restarted", again and again["recent_failures"] == 1, again)
         check("and answers again", wait_for(lambda: answers(a), 90))
 
+        # A server bound to one address is "running" once it answers there: the status probe
+        # dialled 127.0.0.1 alone, and a server on another address stayed "starting".
+        v6 = free_port()
+        manager.api("POST", "/servers", config("sixer", v6, host="::1"))
+        manager.api("POST", "/servers/sixer/start")
+        check("a server on one address becomes running",
+              wait_for(lambda: manager.api("GET", "/servers/sixer")[1]["status"] == "running", 60),
+              manager.api("GET", "/servers/sixer")[1])
+        manager.api("POST", "/servers/sixer/stop")
+
         logs = manager.api("GET", "/servers/alpha/logs?lines=500")[1]["lines"]
         check("the logs carry the starts", sum("manager: starting alpha" in line for line in logs) >= 3,
               logs[-5:])

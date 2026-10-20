@@ -286,10 +286,18 @@ fn port_free(host: &str, port: i64) -> bool {
     u16::try_from(port).is_ok_and(|port| TcpListener::bind((host, port)).is_ok())
 }
 
-fn port_answers(port: i64) -> bool {
-    u16::try_from(port).is_ok_and(|port| {
-        TcpStream::connect_timeout(&([127, 0, 0, 1], port).into(), Duration::from_millis(500)).is_ok()
-    })
+/// Whether the server answers on the address it was told to bind: loopback when that is every
+/// address, else that address itself (one bound to a LAN or IPv6 address never answers on
+/// 127.0.0.1, and stayed "starting").
+fn port_answers(host: &str, port: i64) -> bool {
+    use std::net::ToSocketAddrs;
+    let host = if matches!(host, "" | "0.0.0.0" | "::" | "[::]") { "127.0.0.1" } else { host.trim_matches(['[', ']']) };
+    let Ok(port) = u16::try_from(port) else {
+        return false;
+    };
+    (host, port)
+        .to_socket_addrs()
+        .is_ok_and(|mut found| found.any(|address| TcpStream::connect_timeout(&address, Duration::from_millis(500)).is_ok()))
 }
 
 /// The last `lines` lines of the last 512 KiB of a log.
@@ -749,7 +757,9 @@ impl Manager {
             match proc.poll() {
                 None => {
                     let row = inner.row(&name)?;
-                    if row.status == "starting" && port_answers(row.config.get("port").and_then(Value::as_i64).unwrap_or(0)) {
+                    if row.status == "starting"
+                        && port_answers(text(&row.config, "host").unwrap_or("0.0.0.0"), row.config.get("port").and_then(Value::as_i64).unwrap_or(0))
+                    {
                         inner.update(&name, &[("status", s("running"))])?;
                     }
                     rotate(&self.directory(&name).join("server.log"));
