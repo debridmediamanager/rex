@@ -807,10 +807,9 @@ fn ensure_account_id(claim: &SharedClaim) -> Result<Option<i64>, String> {
 
 pub(super) fn uuid4() -> String {
     let mut bytes = [0_u8; 16];
-    if let Ok(mut random) = std::fs::File::open("/dev/urandom") {
-        use std::io::Read;
-        let _ = random.read_exact(&mut bytes);
-    }
+    // `platform::random_bytes` has the Windows half: `/dev/urandom` does not open there, and
+    // every uuid -- a minted `transient-` token among them -- was all zeros.
+    crate::platform::random_bytes(&mut bytes).expect("the OS random source");
     bytes[6] = (bytes[6] & 0x0f) | 0x40;
     bytes[8] = (bytes[8] & 0x3f) | 0x80;
     let hex = bytes
@@ -2433,6 +2432,14 @@ pub(super) fn finish_claim(runtime: &SharedRuntime, token: &str, _target: &str) 
 mod tests {
     use super::*;
     use std::io::Write;
+
+    #[test]
+    fn every_uuid_is_its_own() {
+        // On Windows `/dev/urandom` did not open and every uuid was the zero one.
+        let (first, second) = (uuid4(), uuid4());
+        assert_ne!(first, second);
+        assert_ne!(first, "00000000-0000-4000-8000-000000000000");
+    }
 
     fn gzip(body: &[u8]) -> Vec<u8> {
         let mut encoder = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::fast());
