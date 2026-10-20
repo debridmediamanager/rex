@@ -6,6 +6,7 @@
 //! and the route layer works on the same ordered `serde_json` values used by
 //! the phase-two serializers.  No Python process or fixture replay is involved.
 
+use std::sync::PoisonError;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fs;
 use std::io::{self, BufReader, Read, Write};
@@ -23300,7 +23301,7 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
     let (plextv, machine, friendly, items, part_mode, catalog_path) = {
         let guard = runtime
             .lock()
-            .map_err(|_| "runtime lock poisoned".to_string())?;
+            .unwrap_or_else(PoisonError::into_inner);
         (
             Arc::clone(&guard.plextv),
             guard.machine.clone(),
@@ -23392,7 +23393,7 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
     if claim.claimed() {
         // A claimed start: the heartbeat's first beat is the device PUT.
         let (local_address, sections) = {
-            let guard = runtime.lock().map_err(|_| "runtime lock poisoned".to_string())?;
+            let guard = runtime.lock().unwrap_or_else(PoisonError::into_inner);
             (guard.private_address.clone(), guard.published_sections())
         };
         plextv::start_registration(
@@ -23743,7 +23744,14 @@ fn handle_connection<S: Read + Write + PollRead>(
                     .get("connection")
                     .is_none_or(|value| !value.eq_ignore_ascii_case("close"))
                 && !close_after_body;
-            let response = feed::handle(&runtime, &request, &request_path);
+            // Guarded as `route` is: a panic under the lock poisoned it for every Plex request.
+            let response = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                feed::handle(&runtime, &request, &request_path)
+            }))
+            .unwrap_or_else(|_| {
+                error!("feed handler failed for {} {}", request.method, feed::logged_path(&request_path));
+                Response::json(500, json!({"error": "internal error"}))
+            });
             info!(
                 "{} {} {} -> {}",
                 if request_path.starts_with("/rex/feed/") { "FEED" } else { "SOURCES" },
@@ -23797,8 +23805,7 @@ fn handle_connection<S: Read + Write + PollRead>(
         if let Some(token) = request_token(&request, &query) {
             let plextv = runtime
                 .lock()
-                .map(|guard| Arc::clone(&guard.plextv))
-                .map_err(|_| "runtime lock poisoned".to_string())?;
+                .map_or_else(|poisoned| Arc::clone(&poisoned.into_inner().plextv), |guard| Arc::clone(&guard.plextv));
             plextv.access.admits(&plextv.claim, token);
         }
         if request_path == "/:/websockets/notifications"
@@ -23810,7 +23817,7 @@ fn handle_connection<S: Read + Write + PollRead>(
             let event_start = {
                 let mut guard = runtime
                     .lock()
-                    .map_err(|_| "runtime lock poisoned".to_string())?;
+                    .unwrap_or_else(PoisonError::into_inner);
                 if !guard.authorized(&request_path, &request, &query) {
                     let response = Response::unauthorized();
                     write_response(&mut stream, &response, false)?;
@@ -23847,7 +23854,7 @@ fn handle_connection<S: Read + Write + PollRead>(
             let event_start = {
                 let mut guard = runtime
                     .lock()
-                    .map_err(|_| "runtime lock poisoned".to_string())?;
+                    .unwrap_or_else(PoisonError::into_inner);
                 if !guard.authorized(&request_path, &request, &query) {
                     let response = Response::unauthorized();
                     write_response(&mut stream, &response, false)?;
@@ -23890,7 +23897,7 @@ fn handle_connection<S: Read + Write + PollRead>(
         } else {
             let mut guard = runtime
                 .lock()
-                .map_err(|_| "runtime lock poisoned".to_string())?;
+                .unwrap_or_else(PoisonError::into_inner);
             guard.pending_part = None;
             guard.pending_file_checks = None;
             guard.pending_segment = None;
@@ -24126,11 +24133,11 @@ fn handle_connection<S: Read + Write + PollRead>(
                 let payload = wire::LAST_PAYLOAD.with(|cell| cell.get());
                 // Counting registers the client as a device, so only an admitted request is
                 // counted (`route` registers on the same rule).
-                if let Ok(mut guard) = runtime.lock() {
-                    if guard.admitted(&request) {
-                        guard.record_bytes(&owner, payload);
-                    }
+                let mut guard = runtime.lock().unwrap_or_else(PoisonError::into_inner);
+                if guard.admitted(&request) {
+                    guard.record_bytes(&owner, payload);
                 }
+                drop(guard);
                 open
             }
         };
@@ -24251,7 +24258,7 @@ fn handle_websocket<S: Read + Write + PollRead>(
     let (language, catalog_path) = {
         let guard = runtime
             .lock()
-            .map_err(|_| "runtime lock poisoned".to_string())?;
+            .unwrap_or_else(PoisonError::into_inner);
         (
             i18n::socket_language(&guard.catalog_path, request),
             guard.catalog_path.clone(),
@@ -24272,7 +24279,7 @@ fn handle_websocket<S: Read + Write + PollRead>(
         let (events, next) = {
             let mut guard = runtime
                 .lock()
-                .map_err(|_| "runtime lock poisoned".to_string())?;
+                .unwrap_or_else(PoisonError::into_inner);
             guard.absorb_logs();
             (guard.events_since(cursor), guard.event_cursor())
         };
@@ -24423,7 +24430,7 @@ fn handle_eventsource<S: Write>(
     let (language, catalog_path) = {
         let guard = runtime
             .lock()
-            .map_err(|_| "runtime lock poisoned".to_string())?;
+            .unwrap_or_else(PoisonError::into_inner);
         (
             i18n::socket_language(&guard.catalog_path, request),
             guard.catalog_path.clone(),
@@ -24435,7 +24442,7 @@ fn handle_eventsource<S: Write>(
         let (events, next) = {
             let mut guard = runtime
                 .lock()
-                .map_err(|_| "runtime lock poisoned".to_string())?;
+                .unwrap_or_else(PoisonError::into_inner);
             guard.absorb_logs();
             (guard.events_since(cursor), guard.event_cursor())
         };
@@ -26393,6 +26400,52 @@ mod file_check_tests {
     }
 
     #[test]
+    fn a_panic_under_the_runtime_lock_leaves_every_later_request_answered() {
+        let dir = std::env::temp_dir().join(format!("rex-poisoned-lock-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let catalog_path = dir.join("catalog.json");
+        fs::write(
+            &catalog_path,
+            serde_json::to_vec(&json!({"machineIdentifier": "poisoned-lock-machine", "friendlyName": "poisoned", "sections": [], "items": []}))
+                .unwrap(),
+        )
+        .unwrap();
+        let runtime = Runtime::load(RuntimeOptions {
+            catalog: catalog_path,
+            state: Some(dir.join("state.disabled")),
+            assert_claimed: true,
+            ..RuntimeOptions::default()
+        })
+        .unwrap();
+        let shared = Arc::new(Mutex::new(runtime));
+        // Any thread that panics holding the lock poisons it: the state saver, the feed's
+        // retry, a handler outside `route`'s guard.
+        let poisoner = shared.clone();
+        let _ = std::thread::spawn(move || {
+            let _guard = poisoner.lock().unwrap();
+            panic!("a panic under the runtime lock");
+        })
+        .join();
+        assert!(shared.is_poisoned());
+        let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let address = listener.local_addr().unwrap();
+        let served = shared.clone();
+        let server = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            handle_connection(&mut stream, served)
+        });
+        let mut client = TcpStream::connect(address).unwrap();
+        client.write_all(b"GET /identity HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n").unwrap();
+        client.shutdown(std::net::Shutdown::Write).unwrap();
+        let mut answer = Vec::new();
+        let _ = client.read_to_end(&mut answer);
+        let result = server.join().unwrap();
+        let _ = fs::remove_dir_all(dir);
+        assert!(answer.starts_with(b"HTTP/1.1 200"), "{result:?} {}", String::from_utf8_lossy(&answer));
+    }
+
+    #[test]
     fn routed_slow_file_check_leaves_identity_available_while_head_is_blocked() {
         let dir = std::env::temp_dir().join(format!("rex-file-check-lock-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
@@ -26972,9 +27025,7 @@ fn project_planned(runtime: &Arc<Mutex<Runtime>>, request: &Request, response: &
     // the chunk before is projected; a chunk read before any row changed is used as it was read,
     // else read again (`rows::prefetch_listed`). Read a chunk at a time under the lock, a
     // show library's 34k episodes took a fifth longer than they did from memory (2026-10-18).
-    let Ok(guard) = runtime.lock() else {
-        return;
-    };
+    let guard = runtime.lock().unwrap_or_else(PoisonError::into_inner);
     let threads = crate::rows::listing_threads();
     let ahead = guard
         .catalog
@@ -26996,9 +27047,7 @@ fn project_planned(runtime: &Arc<Mutex<Runtime>>, request: &Request, response: &
             }
             read = ready.remove(&index);
         }
-        let Ok(guard) = runtime.lock() else {
-            return;
-        };
+        let guard = runtime.lock().unwrap_or_else(PoisonError::into_inner);
         let bodies: Vec<Option<std::borrow::Cow<'_, Value>>> = match read {
             Some(read) if guard.catalog.listing_epoch() == epoch => chunk
                 .iter()
@@ -27047,9 +27096,7 @@ fn project_planned(runtime: &Arc<Mutex<Runtime>>, request: &Request, response: &
             body.insert("Metadata".to_string(), Value::Array(rows));
         }
     }
-    if let Ok(guard) = runtime.lock() {
-        guard.finish_rows(request, response);
-    }
+    runtime.lock().unwrap_or_else(PoisonError::into_inner).finish_rows(request, response);
 }
 
 /// The container `page_container` writes for a document whose one list the handler
@@ -27821,9 +27868,7 @@ fn serve_part_proxy<S: Write>(
     }
     let _ = stream.flush();
     if written > 0 {
-        if let Ok(mut guard) = runtime.lock() {
-            guard.count_part_bytes(written);
-        }
+        runtime.lock().unwrap_or_else(PoisonError::into_inner).count_part_bytes(written);
     }
     Ok(false)
 }
