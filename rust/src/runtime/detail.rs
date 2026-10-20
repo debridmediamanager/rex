@@ -96,12 +96,14 @@ impl Runtime {
                         == Some(show_key.as_str())
             });
             if pick.is_none() {
+                // Borrowed, every field read hot: copying each episode to pick one read a
+                // 1,100-episode show's rows from disk on every preplay.
                 let leaves = self
-                    .leaves(&show_key)
+                    .leaves_refs(&show_key)
                     .into_iter()
                     .filter(|leaf| leaf.get("type").and_then(Value::as_str) == Some("episode"))
                     .collect::<Vec<_>>();
-                let number = |leaf: &Value, name: &str| {
+                let number = |leaf: &RowRef<'_>, name: &str| {
                     leaf.get(name)
                         .and_then(|value| {
                             value.as_i64().or_else(|| string_value(value).parse().ok())
@@ -112,10 +114,13 @@ impl Runtime {
                     .iter()
                     .any(|leaf| number(leaf, "viewCount") != 0 || number(leaf, "viewOffset") != 0);
                 if untouched {
-                    pick = leaves.into_iter().min_by_key(|leaf| {
-                        let season = number(leaf, "parentIndex");
-                        (season == 0, season, number(leaf, "index"))
-                    });
+                    pick = leaves
+                        .into_iter()
+                        .min_by_key(|leaf| {
+                            let season = number(leaf, "parentIndex");
+                            (season == 0, season, number(leaf, "index"))
+                        })
+                        .map(|leaf| leaf.body().clone());
                 }
             }
             if let Some(chosen) = pick {
