@@ -245,14 +245,21 @@ impl Runtime {
     /// item was dropped, its row trashed with the first source's release.
     fn file_held(&self, arrival: &Arrival) -> bool {
         let source = arrival.extra.get("_source").and_then(Value::as_str).unwrap_or_default();
-        self.catalog.rows_by(crate::catalog::By::File, &arrival.found.file).iter().any(|row| {
-            let media = row.get("Media").and_then(Value::as_array).cloned().unwrap_or_default();
-            let mut named = std::iter::once(row.get("_source").cloned())
-                .chain(media.iter().map(|media| media.get("_source").cloned()))
-                .flatten()
-                .filter_map(|value| value.as_str().map(str::to_string))
-                .peekable();
-            named.peek().is_none() || named.any(|name| name == source)
+        let file = arrival.found.file.as_str();
+        self.catalog.rows_by(crate::catalog::By::File, file).iter().any(|row| {
+            // The release that reads this file, not any release of the row: a title holding one
+            // source's X and another's Y took the second source's X for held.
+            super::feed::tagged_media(row)
+                .iter()
+                .filter(|media| {
+                    media
+                        .get("Part")
+                        .and_then(Value::as_array)
+                        .into_iter()
+                        .flatten()
+                        .any(|part| part.get("file").and_then(Value::as_str) == Some(file))
+                })
+                .any(|media| media.get("_source").and_then(Value::as_str).is_none_or(|name| name == source))
         })
     }
 

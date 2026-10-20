@@ -157,6 +157,27 @@ def main():
         server.stop()
         shutil.rmtree(work, ignore_errors=True)
 
+    # -- one title from both sources, then the second source pushes the first's file ----------
+    # The row held a release of tb's (its second), so the first release's file read as tb's own
+    # and tb's copy of it was dropped.
+    work = tempfile.mkdtemp(prefix="rex-versions-")
+    catalog(work)
+    server = Server(work, bytes_port)
+    try:
+        server.request("/rex/sources/tb", "PUT", {"url": "http://127.0.0.1:%d/dav" % bytes_port,
+                                                  "bearer": BYTES_TOKEN, "mount": MOUNT},
+                       {"Content-Type": "application/json"})
+        listed = lambda name: {row["id"]: row["ratingKey"]
+                               for row in (server.feed("GET", "items", source=name)[1] or {}).get("items", [])}
+        server.feed("POST", "items", {"items": [one]})
+        server.feed("POST", "items", {"items": [two]}, source="tb")
+        status, body = server.feed("POST", "items", {"items": [one]}, source="tb")
+        check("a file one source's release reads is another source's to push, on a row both hold",
+              one["id"] in listed("tb") and two["id"] in listed("tb"), (body, listed("tb"), listed("zurg")))
+    finally:
+        server.stop()
+        shutil.rmtree(work, ignore_errors=True)
+
     # -- a theme track's key is never a pushed row's -------------------------------------------
     # `/theme/{v}/metadata` mints a track row; its key was the highest row key plus one, and the
     # feed's next row took the same one.
