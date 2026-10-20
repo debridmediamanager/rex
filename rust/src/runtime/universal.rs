@@ -480,6 +480,19 @@ pub(crate) fn ladder(plan: &Plan, hardware: &Hardware) -> Vec<Path> {
 }
 
 /// The FFmpeg command line for one run of a session, starting at `start` (a segment).
+/// The FFmpeg encoder for a codec a client profile names. FFmpeg's own `opus` and `vorbis`
+/// encoders are experimental and refused without `-strict -2`, and `pcm` names no encoder:
+/// a target listing one of them first (Plex Desktop's `opus,vorbis,flac`) failed every
+/// path of the ladder. The others are FFmpeg's names already (`mp3` is libmp3lame).
+fn audio_encoder(codec: &str) -> &str {
+    match codec {
+        "opus" => "libopus",
+        "vorbis" => "libvorbis",
+        "pcm" => "pcm_s16le",
+        other => other,
+    }
+}
+
 pub(crate) fn ffmpeg_args(plan: &Plan, path: Path, hardware: &Hardware, start: i64, dir: &std::path::Path) -> Vec<String> {
     let length = plan.segment_seconds() as i64;
     let offset = start * length;
@@ -654,7 +667,7 @@ pub(crate) fn ffmpeg_args(plan: &Plan, path: Path, hardware: &Hardware, start: i
             push(&mut args, &["-c:a", "copy"]);
         } else {
             push(&mut args, &[
-                "-c:a", &audio.codec, "-ac", &audio.channels.to_string(), "-b:a", &format!("{}k", audio.bitrate),
+                "-c:a", audio_encoder(&audio.codec), "-ac", &audio.channels.to_string(), "-b:a", &format!("{}k", audio.bitrate),
                 "-af", "aresample=async=1",
             ]);
         }
@@ -2774,6 +2787,30 @@ impl Runtime {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn every_audio_codec_a_profile_converts_to_is_a_working_encoder() {
+        // The encoders FFmpeg runs without -strict -2 (FFmpeg 7 and 8 builds).
+        let working = ["aac", "ac3", "eac3", "mp3", "mp2", "flac", "wmav2", "libopus", "libvorbis", "pcm_s16le"];
+        let profiles: Value = serde_json::from_str(include_str!("../../../data/client_profiles.json")).unwrap();
+        let mut broken = Vec::new();
+        for (name, profile) in profiles.as_object().unwrap() {
+            for target in profile.get("targets").and_then(Value::as_array).into_iter().flatten() {
+                if target.get("tag").and_then(Value::as_str) != Some("VideoProfile") {
+                    continue;
+                }
+                // The conversion's codec when the target names no aac: its first (`transcode_plan`).
+                let codecs = target.get("audioCodec").and_then(Value::as_str).unwrap_or("").to_ascii_lowercase();
+                let codecs = codecs.split(',').filter(|codec| !codec.is_empty() && *codec != "*").collect::<Vec<_>>();
+                if let Some(first) = codecs.first().filter(|_| !codecs.contains(&"aac")) {
+                    if !working.contains(&audio_encoder(first)) {
+                        broken.push(format!("{name}: {first}"));
+                    }
+                }
+            }
+        }
+        assert!(broken.is_empty(), "no working encoder for {broken:?}");
+    }
 
     fn plan(copy: bool, duration_ms: i64) -> Plan {
         Plan {
