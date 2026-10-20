@@ -914,6 +914,9 @@ pub(crate) struct Transcoder {
     sessions: Mutex<HashMap<String, Arc<Session>>>,
     /// Each source file's subtitle read budget (`SUBTITLE_BURST`): tokens and when counted.
     budgets: Mutex<HashMap<String, Arc<Mutex<(f64, Instant)>>>>,
+    /// Numbers each start's directory: a session started again on its id never shares the
+    /// directory the FFmpeg it replaces may still write into while it is killed.
+    starts: std::sync::atomic::AtomicU64,
 }
 
 impl std::fmt::Debug for Transcoder {
@@ -958,6 +961,7 @@ impl Transcoder {
             hardware: Mutex::new(Hardware::software()),
             sessions: Mutex::new(HashMap::new()),
             budgets: Mutex::new(HashMap::new()),
+            starts: std::sync::atomic::AtomicU64::new(0),
         });
         let probing = Arc::clone(&transcoder);
         thread::spawn(move || {
@@ -1134,8 +1138,7 @@ impl Transcoder {
     /// the same id is replaced), already running from segment 0.
     pub fn start(self: &Arc<Self>, id: &str, plan: Plan) -> Result<Arc<Session>, String> {
         self.stop(id);
-        let dir = self.root.join(sanitize(id));
-        let _ = std::fs::remove_dir_all(&dir);
+        let dir = self.root.join(format!("{}-{}", sanitize(id), self.starts.fetch_add(1, Ordering::SeqCst)));
         std::fs::create_dir_all(&dir).map_err(|error| format!("cannot create {}: {error}", dir.display()))?;
         let plan_burns = plan.text_burn.is_some();
         let session = Arc::new(Session {
@@ -1213,14 +1216,32 @@ impl Transcoder {
         let removed = self.sessions.lock().ok().and_then(|mut sessions| sessions.remove(id));
         match removed {
             Some(session) => {
-                session.stopped.store(true, Ordering::SeqCst);
-                session.kill_child();
-                let _ = std::fs::remove_dir_all(&session.dir);
+                Self::end(session);
                 info!("TRANSCODE {id} stopped");
                 true
             }
             None => false,
         }
+    }
+
+    /// Stop `session` itself, not whatever holds its id now: the reaper found it idle, and a
+    /// client resuming meanwhile may have started a new session on the same id.
+    fn stop_session(&self, session: &Arc<Session>) -> bool {
+        let removed = self.sessions.lock().ok().and_then(|mut sessions| {
+            sessions.get(&session.id).is_some_and(|held| Arc::ptr_eq(held, session)).then(|| sessions.remove(&session.id)).flatten()
+        });
+        removed.map(Self::end).is_some()
+    }
+
+    /// The FFmpeg killed, reaped and its segments deleted off the caller's thread: a stop is
+    /// answered inside the runtime lock, and a kill and a directory of minutes of segments
+    /// held every other request behind it.
+    fn end(session: Arc<Session>) {
+        session.stopped.store(true, Ordering::SeqCst);
+        let _ = thread::Builder::new().name("transcode-stop".to_string()).spawn(move || {
+            session.kill_child();
+            let _ = std::fs::remove_dir_all(&session.dir);
+        });
     }
 
     pub fn stop_playback(&self, playback: &str) {
@@ -1243,9 +1264,8 @@ impl Transcoder {
                 .ok()
                 .and_then(|state| state.touched)
                 .is_none_or(|touched| touched.elapsed() > IDLE);
-            if idle {
+            if idle && self.stop_session(&session) {
                 info!("TRANSCODE {} idle, killed", session.id);
-                self.stop(&session.id);
             }
         }
     }
