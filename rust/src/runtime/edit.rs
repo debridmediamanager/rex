@@ -947,18 +947,7 @@ impl Runtime {
                     }
                     return Err(refuse(400, format!("unknown tag field {}", crate::filters::py_repr(&tag_type))));
                 }
-                // Measured: the INDEX orders the list, not the parameter's position.
-                let index = name
-                    .split_once('[')
-                    .and_then(|(_, rest)| rest.split_once(']'))
-                    .map(|(index, _)| index)
-                    .unwrap_or("");
-                let order = if !index.is_empty() && index.bytes().all(|b| b.is_ascii_digit()) {
-                    index.parse::<i64>().unwrap_or(position as i64)
-                } else {
-                    position as i64
-                };
-                slot(&mut adding, &tag_type).push((order, position, value.clone()));
+                slot(&mut adding, &tag_type).push((tag_order(name, position), position, value.clone()));
             } else if let Some(field) = name.strip_suffix(".locked") {
                 if !has(EDITABLE_FIELDS, field)
                     && !is_tag_type(field)
@@ -1465,6 +1454,21 @@ pub(super) fn query_names(pairs: &[(String, String)]) -> String {
         }
     }
     seen.join(",")
+}
+
+/// Where a `field[N].tag.tag` value goes in its list: measured, the INDEX orders the list, not
+/// the parameter's position; one with no numeric index keeps its position.
+pub(super) fn tag_order(name: &str, position: usize) -> i64 {
+    let index = name
+        .split_once('[')
+        .and_then(|(_, rest)| rest.split_once(']'))
+        .map(|(index, _)| index)
+        .unwrap_or("");
+    if !index.is_empty() && index.bytes().all(|b| b.is_ascii_digit()) {
+        index.parse::<i64>().unwrap_or(position as i64)
+    } else {
+        position as i64
+    }
 }
 
 #[cfg(test)]

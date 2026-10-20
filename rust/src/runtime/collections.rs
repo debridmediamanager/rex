@@ -912,17 +912,7 @@ impl Runtime {
                         .map(percent_decode),
                 );
             } else if name.contains(".tag.tag") {
-                let index = name
-                    .split_once('[')
-                    .and_then(|(_, rest)| rest.split_once(']'))
-                    .map(|(index, _)| index)
-                    .unwrap_or("");
-                let order = if !index.is_empty() && index.bytes().all(|b| b.is_ascii_digit()) {
-                    index.parse::<i64>().unwrap_or(position as i64)
-                } else {
-                    position as i64
-                };
-                adding.push((order, position, value.clone()));
+                adding.push((super::edit::tag_order(name, position), position, value.clone()));
             }
         }
         adding.sort_by(|a, b| (a.0, a.1).cmp(&(b.0, b.1)));
