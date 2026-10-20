@@ -163,6 +163,11 @@ pub(crate) fn kill(pid: u32) {
 /// owner-only from its first byte on Unix (a Windows profile's folders are their user's).
 pub(crate) fn write_atomic(path: &std::path::Path, bytes: &[u8], private: bool) -> io::Result<()> {
     use std::io::Write;
+    // Through a symlink to the file it names, and with the mode the file had: a catalog kept
+    // 0600 or linked from elsewhere stays so.
+    let resolved = std::fs::canonicalize(path).ok();
+    let path = resolved.as_deref().unwrap_or(path);
+    let kept = (!private).then(|| std::fs::metadata(path).ok().map(|meta| meta.permissions())).flatten();
     let mut name = path.file_name().unwrap_or_default().to_os_string();
     name.push(".writing");
     let temporary = path.with_file_name(name);
@@ -183,6 +188,9 @@ pub(crate) fn write_atomic(path: &std::path::Path, bytes: &[u8], private: bool) 
     file.write_all(bytes)?;
     file.sync_all()?;
     drop(file);
+    if let Some(permissions) = kept {
+        std::fs::set_permissions(&temporary, permissions)?;
+    }
     std::fs::rename(&temporary, path)
 }
 
@@ -573,6 +581,20 @@ mod tests {
         {
             use std::os::unix::fs::PermissionsExt;
             assert_eq!(std::fs::metadata(&path).unwrap().permissions().mode() & 0o777, 0o600);
+        }
+        #[cfg(unix)]
+        {
+            // A catalog behind a link, kept 0640: written through the link, mode kept.
+            use std::os::unix::fs::PermissionsExt;
+            let real = directory.join("catalog.real.json");
+            let link = directory.join("catalog.json");
+            std::fs::write(&real, "old").unwrap();
+            std::fs::set_permissions(&real, std::fs::Permissions::from_mode(0o640)).unwrap();
+            std::os::unix::fs::symlink(&real, &link).unwrap();
+            super::write_atomic(&link, b"new", false).unwrap();
+            assert!(std::fs::symlink_metadata(&link).unwrap().file_type().is_symlink());
+            assert_eq!(std::fs::read(&real).unwrap(), b"new");
+            assert_eq!(std::fs::metadata(&real).unwrap().permissions().mode() & 0o777, 0o640);
         }
         let _ = std::fs::remove_dir_all(&directory);
     }
