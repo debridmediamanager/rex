@@ -10085,10 +10085,7 @@ impl Runtime {
             return Response::error(400, "rex: bad request");
         }
         if self.gated() {
-            let provided = request
-                .headers
-                .get("x-plex-token")
-                .or_else(|| query.get("X-Plex-Token"));
+            let provided = request_token(request, query);
             // Measured 403 to a transient token too, which opens every other route.
             if !provided.is_some_and(|value| {
                 self.token_admitted(value) && !self.plextv.access.minted(value)

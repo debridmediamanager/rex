@@ -1432,6 +1432,21 @@ def main():
         check("claimed: /security/token is 403 to an unlisted token and answers a listed one",
               second.request("GET", delegation, token=UNLISTED_TOKEN)[0] == 403
               and second.request("GET", delegation, token=ACCOUNT_TOKEN)[0] == 200)
+        # The token is read as the gate reads it: an empty header gives way to the query's. Read
+        # its own way here, an empty header was the token and the delegation a 403.
+        def empty_header(path):
+            conn = http.client.HTTPConnection("127.0.0.1", second.port, timeout=15)
+            try:
+                conn.request("GET", path + "&X-Plex-Token=" + ACCOUNT_TOKEN,
+                             headers={"Accept": "application/json", "X-Plex-Token": ""})
+                response = conn.getresponse()
+                response.read()
+                return response.status
+            finally:
+                conn.close()
+        check("claimed: /security/token reads its token as the gate does",
+              empty_header("/library/sections?type=1") == 200 and empty_header(delegation) == 200,
+              (empty_header("/library/sections?type=1"), empty_header(delegation)))
         # Measured on a claimed 1.42.2 PMS (2026-10-13): the minted token opens the library as
         # a header or in the query, and is refused only a token of its own.
         status, body = second.request("GET", delegation, token=ACCOUNT_TOKEN)
