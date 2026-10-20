@@ -86,11 +86,9 @@ directory and a show library titled Debrid TV holding `shows`. A pushed item lan
 directory its `path` starts with (`movies/<release>/<file>`), whichever source sent it
 and whatever path prefix its `file` carries, unless the source placed it as the other kind:
 an episode under `movies` goes to a show library, a movie under `shows` to a movie library.
-Any other directory is a library of its own, made the first time an item from it arrives
-and titled with the directory's name (`anime`): a show library for an item its source placed
-as an episode, a movie library otherwise, and both when the directory holds both
-([feed API](feed-api.md#libraries-one-per-directory)). Deleting such a library in Plex keeps
-it deleted. To add a directory to Debrid Movies or Debrid TV instead, name it when seeding
+An item in no library's directory goes to the first library of its kind: one its source
+placed as an episode to a show library, anything else, unplaced files included, to a movie
+library. To add more directories to the movie or show library, name them when seeding
 (`--shows anime` makes `anime` a second folder of Debrid TV):
 
 ```bash
@@ -103,10 +101,10 @@ and it only matters for zurg's own Plex matcher, which matches a file by its ful
 so set it to zurg's `mount_path` if you point zurg's `plex_server_url` at rex (which step 6
 advises against).
 
-**Name those directories before the first start.** Once rex has started, the
+**Name every directory before the first start.** Once rex has started, the
 libraries it saved in `rex.db` win over the catalog, so re-seeding changes nothing, and
 rex does not yet take Plex's "Edit Library → Add folders". A directory added later gets
-a library of its own.
+a library of its own instead: Manage → Libraries → Add Library on it.
 
 rex keeps everything clients change (watch state, edits, playlists, collections,
 history, preferences), and each source's registration, in the same `rex.db`, written as it
