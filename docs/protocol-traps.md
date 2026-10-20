@@ -2076,7 +2076,9 @@ are changing; replay the client's exact request before altering behavior.
   `totalSize=50, offset=50`; legacy `limit=` and `count=` do not truncate it. One new episode stays
   an episode, while two siblings roll up to their season.
 - **A show merge is a hierarchy merge.** It deletes the absorbed show, season and episode, appends
-  the absorbed leaf Media before the target leaf Media at matching season/episode indexes, retains
+  the absorbed leaf Media to the target leaf's at matching season/episode indexes, all in the
+  order of their Media ids (`merge_shows_media_order_s43.json`; "absorbed first" held only while the
+  absorbed were older), pairs each source with the target as the sources before it left it, retains
   target then absorbed Locations, and pushes three delete frames followed by the survivor's state
   3/5 pair. An unmatched hierarchy shape remains a no-op because no reference measurement defines
   a pairing for it.

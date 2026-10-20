@@ -19900,13 +19900,12 @@ impl Runtime {
         Response::empty(200)
     }
 
-    /// Merge show hierarchies, combining each paired episode's Media (cycle 41): the
-    /// absorbed episode's Media precede the survivor's, and the absorbed show, seasons
+    /// Merge show hierarchies, combining each paired episode's Media (cycle 41) in the order
+    /// of their ids, and the absorbed show, seasons
     /// and paired episodes disappear. An episode with no partner of the same season and
     /// episode index moves under the survivor on its own key. Frames: every removed row
     /// state 9 untitled, then each changed or moved episode state 3/5 under type -1.
     fn merge_shows(&mut self, key: &str, others: &[(String, Value)]) -> (Response, usize) {
-        let target_leaves = self.leaves(key);
         let pair_key = |leaf: &Value| {
             (
                 leaf.get("parentIndex").map(py_str).unwrap_or_default(),
@@ -19923,6 +19922,11 @@ impl Runtime {
             if source_leaves.is_empty() {
                 continue;
             }
+            // The target as the sources before this one left it (plexscratch 1.43.4,
+            // `merge_shows_media_order_s43.json`): two sources holding an episode the target
+            // lacks leave one row, the first's, with both Media. Read once, the second's moved
+            // in beside it.
+            let target_leaves = self.leaves(key);
             let mut pairs = Vec::new();
             let mut unpaired = Vec::new();
             for source in &source_leaves {
@@ -20002,6 +20006,12 @@ impl Runtime {
                 {
                     let mut media = feed::tagged_media(source);
                     media.extend(feed::tagged_media(&Value::Object(object.clone())));
+                    // In the order of their ids, whichever row absorbed which (the same
+                    // fixture): Firefly's id 6 went first into a row of 32 and 34, a probe's 34
+                    // after 32. Absorbed first held only while the absorbed were the older.
+                    media.sort_by_key(|media| {
+                        media.get("id").and_then(|id| id.as_i64().or_else(|| id.as_str()?.parse().ok())).unwrap_or(i64::MAX)
+                    });
                     object.insert("Media".to_string(), Value::Array(media));
                     object.insert("updatedAt".to_string(), json!(now()));
                 }

@@ -1026,7 +1026,8 @@ def run_additions(check):
               "library 97 %s, library 96 %s, everywhere %s" % (played_keys, alone_keys, every_keys))
 
         # Merging a show is not a no-op merely because the parent has no Media: matching
-        # episodes combine versions and the absorbed hierarchy vanishes.
+        # episodes combine versions, by Media id (`merge_shows_media_order_s43.json`: an
+        # absorbed id newer than the target's goes after it), and the absorbed hierarchy vanishes.
         answers = []
         frames = sse_frames(server, lambda: answers.append(
             server.request("PUT", "/library/metadata/24101/merge?ids=24102")[0]))
@@ -1036,7 +1037,7 @@ def run_additions(check):
         locations = [row.get("path") for row in target.get("Location") or []]
         check("show merge absorbs its hierarchy and combines matching episode Media",
               answers == [200] and gone == [404, 404, 404]
-              and episode_media == [141020, 141010]
+              and episode_media == [141010, 141020]
               and locations == ["/target", "/source"]
               and (target.get("childCount"), target.get("leafCount")) == (1, 1),
               "answer %r gone %r media %r locations %r counts %r" %

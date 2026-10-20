@@ -1,0 +1,1063 @@
+{
+ "recorded": "plexscratch 1.43.4.10903, 2026-10-20",
+ "summary": "A show merge pairs each source against the target as it stands after the sources before it: two sources holding the same episode the target lacks leave ONE row (the first source's, moved under the target) carrying both Media. A merged episode lists its Media in the order of their ids, whichever row absorbed which.",
+ "setup": {
+  "T": {
+   "show": "63",
+   "leaves": {
+    "65": {
+     "season": 1,
+     "index": 1,
+     "media": [
+      32
+     ]
+    }
+   }
+  },
+  "A": {
+   "show": "60",
+   "leaves": {
+    "62": {
+     "season": 1,
+     "index": 5,
+     "media": [
+      31
+     ]
+    }
+   }
+  },
+  "B": {
+   "show": "66",
+   "leaves": {
+    "68": {
+     "season": 1,
+     "index": 5,
+     "media": [
+      33
+     ]
+    }
+   }
+  },
+  "C": {
+   "show": "69",
+   "leaves": {
+    "71": {
+     "season": 1,
+     "index": 1,
+     "media": [
+      34
+     ]
+    }
+   }
+  },
+  "Firefly": {
+   "show": "6",
+   "leaves": {
+    "8": {
+     "season": 1,
+     "index": 1,
+     "media": [
+      6
+     ]
+    },
+    "9": {
+     "season": 1,
+     "index": 2,
+     "media": [
+      7
+     ]
+    },
+    "10": {
+     "season": 1,
+     "index": 3,
+     "media": [
+      8
+     ]
+    },
+    "12": {
+     "season": 2,
+     "index": 1,
+     "media": [
+      9
+     ]
+    },
+    "13": {
+     "season": 2,
+     "index": 2,
+     "media": [
+      10
+     ]
+    },
+    "14": {
+     "season": 2,
+     "index": 3,
+     "media": [
+      11
+     ]
+    }
+   }
+  }
+ },
+ "steps": [
+  {
+   "request": "PUT /library/metadata/63/merge?ids=60,66",
+   "status": 200,
+   "answers": {
+    "GET /library/sections/2/all": {
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 2,
+       "allowSync": true,
+       "art": "/:/resources/show-fanart.jpg",
+       "identifier": "com.plexapp.plugins.library",
+       "librarySectionID": 2,
+       "librarySectionTitle": "TV Shows",
+       "librarySectionUUID": "d962847e-2c7c-4d45-8355-e45e16287846",
+       "mediaTagPrefix": "/system/bundle/media/flags/",
+       "mediaTagVersion": 1786914632,
+       "nocache": true,
+       "thumb": "/:/resources/show.png",
+       "title1": "TV Shows",
+       "title2": "All Shows",
+       "viewGroup": "show",
+       "viewMode": 65592,
+       "Metadata": [
+        {
+         "ratingKey": "6",
+         "key": "/library/metadata/6/children",
+         "guid": "plex://show/5d9c086c7d06d9001ffd27aa",
+         "slug": "firefly",
+         "studio": "Mutant Enemy Productions",
+         "type": "show",
+         "title": "Firefly",
+         "contentRating": "TV-14",
+         "contentRatingAge": 13,
+         "summary": "In the year 2517, the universe is a vast frontier where lawlessness reigns and adventure awaits! Join Captain Malcolm Reynolds and his ragtag crew aboard the spaceship Serenity as they navigate the fringes of society, battling the oppressive Alliance and facing off against ruthless bounty hunters.",
+         "index": 1,
+         "audienceRating": 8.3,
+         "year": 2002,
+         "tagline": "Meet the most spaced-out crew in the galaxy.",
+         "thumb": "/library/metadata/6/thumb/1789240618",
+         "art": "/library/metadata/6/art/1789240618",
+         "theme": "/library/metadata/6/theme/1789240618",
+         "duration": 2700000,
+         "originallyAvailableAt": "2002-09-20",
+         "leafCount": 6,
+         "viewedLeafCount": 0,
+         "childCount": 2,
+         "addedAt": 1789187257,
+         "updatedAt": 1789240618,
+         "audienceRatingImage": "themoviedb://image.rating",
+         "episodeSort": "-1",
+         "flattenSeasons": "-1",
+         "Image": [
+          {
+           "alt": "Firefly",
+           "type": "coverPoster",
+           "url": "/library/metadata/6/thumb/1789240618"
+          },
+          {
+           "alt": "Firefly",
+           "type": "background",
+           "url": "/library/metadata/6/art/1789240618"
+          },
+          {
+           "alt": "Firefly",
+           "type": "clearLogo",
+           "url": "/library/metadata/6/clearLogo/1789240618"
+          },
+          {
+           "alt": "Firefly",
+           "type": "backgroundSquare",
+           "url": "/library/metadata/6/squareArt/1789240618"
+          }
+         ],
+         "UltraBlurColors": {
+          "topLeft": "4e172a",
+          "topRight": "1b3161",
+          "bottomRight": "3a5b9d",
+          "bottomLeft": "1f3661"
+         },
+         "Genre": [
+          {
+           "tag": "Drama"
+          },
+          {
+           "tag": "Science Fiction"
+          }
+         ],
+         "Country": [
+          {
+           "tag": "United States of America"
+          }
+         ],
+         "Role": [
+          {
+           "tag": "Nathan Fillion"
+          },
+          {
+           "tag": "Gina Torres"
+          },
+          {
+           "tag": "Alan Tudyk"
+          }
+         ]
+        },
+        {
+         "ratingKey": "63",
+         "key": "/library/metadata/63/children",
+         "guid": "local://63",
+         "type": "show",
+         "title": "Merge Probe T",
+         "summary": "",
+         "index": 1,
+         "year": 2020,
+         "leafCount": 2,
+         "viewedLeafCount": 0,
+         "childCount": 1,
+         "addedAt": 1792476120
+        }
+       ]
+      }
+     }
+    },
+    "GET /library/metadata/63/allLeaves": {
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 2,
+       "allowSync": true,
+       "art": "/:/resources/show-fanart.jpg",
+       "identifier": "com.plexapp.plugins.library",
+       "key": "63",
+       "librarySectionID": 2,
+       "librarySectionTitle": "TV Shows",
+       "librarySectionUUID": "d962847e-2c7c-4d45-8355-e45e16287846",
+       "mediaTagPrefix": "/system/bundle/media/flags/",
+       "mediaTagVersion": 1786914632,
+       "mixedParents": true,
+       "nocache": true,
+       "parentIndex": 1,
+       "parentTitle": "Merge Probe T",
+       "parentYear": 2020,
+       "title1": "TV Shows",
+       "title2": "Merge Probe T",
+       "viewGroup": "episode",
+       "viewMode": 65592,
+       "Metadata": [
+        {
+         "ratingKey": "65",
+         "key": "/library/metadata/65",
+         "parentRatingKey": "64",
+         "grandparentRatingKey": "63",
+         "guid": "local://65",
+         "parentGuid": "local://64",
+         "grandparentGuid": "local://63",
+         "type": "episode",
+         "title": "Episode 1",
+         "grandparentKey": "/library/metadata/63",
+         "parentKey": "/library/metadata/64",
+         "grandparentTitle": "Merge Probe T",
+         "parentTitle": "Season 1",
+         "summary": "",
+         "index": 1,
+         "parentIndex": 1,
+         "year": 2020,
+         "thumb": "/library/metadata/65/thumb/1792476121",
+         "duration": 1320506,
+         "addedAt": 1792476120,
+         "updatedAt": 1792476121,
+         "Media": [
+          {
+           "id": 32,
+           "duration": 1320506,
+           "bitrate": 488,
+           "width": 1920,
+           "height": 1080,
+           "aspectRatio": 1.78,
+           "audioChannels": 1,
+           "audioCodec": "aac",
+           "videoCodec": "h264",
+           "videoResolution": "1080",
+           "container": "mkv",
+           "videoFrameRate": "24p",
+           "audioProfile": "lc",
+           "videoProfile": "high",
+           "Part": [
+            {
+             "id": 32,
+             "key": "/library/parts/32/1792476119/file.mkv",
+             "duration": 1320506,
+             "file": "/data/shows/Merge Probe T (2020)/Season 01/Merge Probe T (2020) - s01e01.mkv",
+             "size": 80555568,
+             "audioProfile": "lc",
+             "container": "mkv",
+             "videoProfile": "high"
+            }
+           ]
+          }
+         ],
+         "Image": [
+          {
+           "alt": "Episode 1",
+           "type": "snapshot",
+           "url": "/library/metadata/65/thumb/1792476121"
+          }
+         ]
+        },
+        {
+         "ratingKey": "62",
+         "key": "/library/metadata/62",
+         "parentRatingKey": "64",
+         "grandparentRatingKey": "63",
+         "guid": "local://62",
+         "parentGuid": "local://64",
+         "grandparentGuid": "local://63",
+         "type": "episode",
+         "title": "Episode 5",
+         "grandparentKey": "/library/metadata/63",
+         "parentKey": "/library/metadata/64",
+         "grandparentTitle": "Merge Probe T",
+         "parentTitle": "Season 1",
+         "summary": "",
+         "index": 5,
+         "parentIndex": 1,
+         "year": 2020,
+         "thumb": "/library/metadata/62/thumb/1792476121",
+         "duration": 1320506,
+         "addedAt": 1792476120,
+         "updatedAt": 1792476121,
+         "Media": [
+          {
+           "id": 31,
+           "duration": 1320506,
+           "bitrate": 488,
+           "width": 1920,
+           "height": 1080,
+           "aspectRatio": 1.78,
+           "audioChannels": 1,
+           "audioCodec": "aac",
+           "videoCodec": "h264",
+           "videoResolution": "1080",
+           "container": "mkv",
+           "videoFrameRate": "24p",
+           "audioProfile": "lc",
+           "videoProfile": "high",
+           "Part": [
+            {
+             "id": 31,
+             "key": "/library/parts/31/1792476119/file.mkv",
+             "duration": 1320506,
+             "file": "/data/shows/Merge Probe A (2020)/Season 01/Merge Probe A (2020) - s01e05.mkv",
+             "size": 80555568,
+             "audioProfile": "lc",
+             "container": "mkv",
+             "videoProfile": "high"
+            }
+           ]
+          },
+          {
+           "id": 33,
+           "duration": 1320506,
+           "bitrate": 488,
+           "width": 1920,
+           "height": 1080,
+           "aspectRatio": 1.78,
+           "audioChannels": 1,
+           "audioCodec": "aac",
+           "videoCodec": "h264",
+           "videoResolution": "1080",
+           "container": "mkv",
+           "videoFrameRate": "24p",
+           "audioProfile": "lc",
+           "videoProfile": "high",
+           "Part": [
+            {
+             "id": 33,
+             "key": "/library/parts/33/1792476119/file.mkv",
+             "duration": 1320506,
+             "file": "/data/shows/Merge Probe B (2020)/Season 01/Merge Probe B (2020) - s01e05.mkv",
+             "size": 80555568,
+             "audioProfile": "lc",
+             "container": "mkv",
+             "videoProfile": "high"
+            }
+           ]
+          }
+         ],
+         "Image": [
+          {
+           "alt": "Episode 5",
+           "type": "snapshot",
+           "url": "/library/metadata/62/thumb/1792476121"
+          }
+         ]
+        }
+       ]
+      }
+     }
+    },
+    "GET /library/metadata/63/children": {
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "allowSync": true,
+       "art": "/:/resources/show-fanart.jpg",
+       "identifier": "com.plexapp.plugins.library",
+       "key": "63",
+       "librarySectionID": 2,
+       "librarySectionTitle": "TV Shows",
+       "librarySectionUUID": "d962847e-2c7c-4d45-8355-e45e16287846",
+       "mediaTagPrefix": "/system/bundle/media/flags/",
+       "mediaTagVersion": 1786914632,
+       "nocache": true,
+       "parentIndex": 1,
+       "parentTitle": "Merge Probe T",
+       "parentYear": 2020,
+       "title1": "TV Shows",
+       "title2": "Merge Probe T",
+       "viewGroup": "season",
+       "viewMode": 65593,
+       "Metadata": [
+        {
+         "ratingKey": "64",
+         "key": "/library/metadata/64/children",
+         "parentRatingKey": "63",
+         "guid": "local://64",
+         "parentGuid": "local://63",
+         "type": "season",
+         "title": "Season 1",
+         "parentKey": "/library/metadata/63",
+         "parentTitle": "Merge Probe T",
+         "summary": "",
+         "index": 1,
+         "parentIndex": 1,
+         "parentYear": 2020,
+         "leafCount": 2,
+         "viewedLeafCount": 0,
+         "addedAt": 1792476120
+        }
+       ]
+      }
+     }
+    }
+   }
+  },
+  {
+   "request": "PUT /library/metadata/63/merge?ids=69",
+   "status": 200,
+   "leaves": {
+    "65": [
+     32,
+     34
+    ],
+    "62": [
+     31,
+     33
+    ]
+   }
+  },
+  {
+   "request": "PUT /library/metadata/63/merge?ids=6",
+   "status": 200,
+   "answers": {
+    "GET /library/metadata/63/allLeaves": {
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 7,
+       "allowSync": true,
+       "art": "/:/resources/show-fanart.jpg",
+       "identifier": "com.plexapp.plugins.library",
+       "key": "63",
+       "librarySectionID": 2,
+       "librarySectionTitle": "TV Shows",
+       "librarySectionUUID": "d962847e-2c7c-4d45-8355-e45e16287846",
+       "mediaTagPrefix": "/system/bundle/media/flags/",
+       "mediaTagVersion": 1786914632,
+       "mixedParents": true,
+       "nocache": true,
+       "parentIndex": 1,
+       "parentTitle": "Merge Probe T",
+       "parentYear": 2020,
+       "title1": "TV Shows",
+       "title2": "Merge Probe T",
+       "viewGroup": "episode",
+       "viewMode": 65592,
+       "Metadata": [
+        {
+         "ratingKey": "65",
+         "key": "/library/metadata/65",
+         "parentRatingKey": "64",
+         "grandparentRatingKey": "63",
+         "guid": "local://65",
+         "parentGuid": "plex://season/602e67e766dfdb002c0a1b5b",
+         "grandparentGuid": "local://63",
+         "type": "episode",
+         "title": "Episode 1",
+         "grandparentKey": "/library/metadata/63",
+         "parentKey": "/library/metadata/64",
+         "grandparentTitle": "Merge Probe T",
+         "parentTitle": "Season 1",
+         "summary": "",
+         "index": 1,
+         "parentIndex": 1,
+         "year": 2020,
+         "thumb": "/library/metadata/65/thumb/1792476121",
+         "duration": 1320506,
+         "addedAt": 1792476120,
+         "updatedAt": 1792476121,
+         "Media": [
+          {
+           "id": 6,
+           "duration": 1320506,
+           "bitrate": 488,
+           "width": 1920,
+           "height": 1080,
+           "aspectRatio": 1.78,
+           "audioChannels": 1,
+           "audioCodec": "aac",
+           "videoCodec": "h264",
+           "videoResolution": "1080",
+           "container": "mkv",
+           "videoFrameRate": "24p",
+           "audioProfile": "lc",
+           "videoProfile": "high",
+           "Part": [
+            {
+             "id": 6,
+             "key": "/library/parts/6/1789295966/file.mkv",
+             "duration": 1320506,
+             "file": "/data/shows/Firefly (2002)/Season 01/Firefly (2002) - s01e01 - 1080p.mkv",
+             "size": 80555568,
+             "audioProfile": "lc",
+             "container": "mkv",
+             "videoProfile": "high"
+            }
+           ]
+          },
+          {
+           "id": 32,
+           "duration": 1320506,
+           "bitrate": 488,
+           "width": 1920,
+           "height": 1080,
+           "aspectRatio": 1.78,
+           "audioChannels": 1,
+           "audioCodec": "aac",
+           "videoCodec": "h264",
+           "videoResolution": "1080",
+           "container": "mkv",
+           "videoFrameRate": "24p",
+           "audioProfile": "lc",
+           "videoProfile": "high",
+           "Part": [
+            {
+             "id": 32,
+             "key": "/library/parts/32/1792476119/file.mkv",
+             "duration": 1320506,
+             "file": "/data/shows/Merge Probe T (2020)/Season 01/Merge Probe T (2020) - s01e01.mkv",
+             "size": 80555568,
+             "audioProfile": "lc",
+             "container": "mkv",
+             "videoProfile": "high"
+            }
+           ]
+          },
+          {
+           "id": 34,
+           "duration": 1320506,
+           "bitrate": 488,
+           "width": 1920,
+           "height": 1080,
+           "aspectRatio": 1.78,
+           "audioChannels": 1,
+           "audioCodec": "aac",
+           "videoCodec": "h264",
+           "videoResolution": "1080",
+           "container": "mkv",
+           "videoFrameRate": "24p",
+           "audioProfile": "lc",
+           "videoProfile": "high",
+           "Part": [
+            {
+             "id": 34,
+             "key": "/library/parts/34/1792476230/file.mkv",
+             "duration": 1320506,
+             "file": "/data/shows/Merge Probe C (2020)/Season 01/Merge Probe C (2020) - s01e01.mkv",
+             "size": 80555568,
+             "audioProfile": "lc",
+             "container": "mkv",
+             "videoProfile": "high"
+            }
+           ]
+          }
+         ],
+         "Image": [
+          {
+           "alt": "Episode 1",
+           "type": "snapshot",
+           "url": "/library/metadata/65/thumb/1792476121"
+          }
+         ]
+        },
+        {
+         "ratingKey": "9",
+         "key": "/library/metadata/9",
+         "parentRatingKey": "64",
+         "grandparentRatingKey": "63",
+         "guid": "plex://episode/5d9c127e4eefaa001f6449b6",
+         "parentGuid": "plex://season/602e67e766dfdb002c0a1b5b",
+         "grandparentGuid": "local://63",
+         "type": "episode",
+         "title": "Bushwhacked",
+         "grandparentKey": "/library/metadata/63",
+         "parentKey": "/library/metadata/64",
+         "grandparentTitle": "Merge Probe T",
+         "parentTitle": "Season 1",
+         "contentRating": "TV-14",
+         "summary": "Serenity is pulled in by a Tohoku-class cruiser while investigating a spaceship that was attacked by Reavers. Simon and River must hide to prevent capture, while something is wrong with the lone survivor of the attacked spaceship.",
+         "index": 2,
+         "parentIndex": 1,
+         "audienceRating": 7.7,
+         "year": 2002,
+         "thumb": "/library/metadata/9/thumb/1789243294",
+         "duration": 1320506,
+         "originallyAvailableAt": "2002-09-27",
+         "addedAt": 1789187078,
+         "updatedAt": 1789243294,
+         "audienceRatingImage": "themoviedb://image.rating",
+         "Media": [
+          {
+           "id": 7,
+           "duration": 1320506,
+           "bitrate": 488,
+           "width": 1920,
+           "height": 1080,
+           "aspectRatio": 1.78,
+           "audioChannels": 1,
+           "audioCodec": "aac",
+           "videoCodec": "h264",
+           "videoResolution": "1080",
+           "container": "mkv",
+           "videoFrameRate": "24p",
+           "audioProfile": "lc",
+           "videoProfile": "high",
+           "Part": [
+            {
+             "id": 7,
+             "key": "/library/parts/7/1789295977/file.mkv",
+             "duration": 1320506,
+             "file": "/data/shows/Firefly (2002)/Season 01/Firefly (2002) - s01e02 - 1080p.mkv",
+             "size": 80525076,
+             "audioProfile": "lc",
+             "container": "mkv",
+             "videoProfile": "high"
+            }
+           ]
+          }
+         ],
+         "Image": [
+          {
+           "alt": "Bushwhacked",
+           "type": "snapshot",
+           "url": "/library/metadata/9/thumb/1789243294"
+          }
+         ],
+         "UltraBlurColors": {
+          "topLeft": "231d1d",
+          "topRight": "44130e",
+          "bottomRight": "54131e",
+          "bottomLeft": "46424d"
+         },
+         "Director": [
+          {
+           "tag": "Tim Minear"
+          }
+         ],
+         "Writer": [
+          {
+           "tag": "Joss Whedon"
+          },
+          {
+           "tag": "Tim Minear"
+          }
+         ],
+         "Role": [
+          {
+           "tag": "Nathan Fillion"
+          },
+          {
+           "tag": "Gina Torres"
+          },
+          {
+           "tag": "Alan Tudyk"
+          }
+         ]
+        },
+        {
+         "ratingKey": "10",
+         "key": "/library/metadata/10",
+         "parentRatingKey": "64",
+         "grandparentRatingKey": "63",
+         "guid": "plex://episode/5d9c127e2df347001e41c8f3",
+         "parentGuid": "plex://season/602e67e766dfdb002c0a1b5b",
+         "grandparentGuid": "local://63",
+         "type": "episode",
+         "title": "Our Mrs. Reynolds",
+         "grandparentKey": "/library/metadata/63",
+         "parentKey": "/library/metadata/64",
+         "grandparentTitle": "Merge Probe T",
+         "parentTitle": "Season 1",
+         "contentRating": "TV-14",
+         "summary": "As an unexpected reward for an unpaid job, Mal finds himself married to a na\u00efve, subservient young woman named Saffron. The crew are amused at his discomfort and Book lectures him on propriety, but things aren't as smoothly straightforward as they thought them to be.",
+         "index": 3,
+         "parentIndex": 1,
+         "audienceRating": 8.3,
+         "year": 2002,
+         "thumb": "/library/metadata/10/thumb/1789243294",
+         "duration": 1320506,
+         "originallyAvailableAt": "2002-10-04",
+         "addedAt": 1789187080,
+         "updatedAt": 1789243294,
+         "audienceRatingImage": "themoviedb://image.rating",
+         "Media": [
+          {
+           "id": 8,
+           "duration": 1320506,
+           "bitrate": 488,
+           "width": 1920,
+           "height": 1080,
+           "aspectRatio": 1.78,
+           "audioChannels": 1,
+           "audioCodec": "aac",
+           "videoCodec": "h264",
+           "videoResolution": "1080",
+           "container": "mkv",
+           "videoFrameRate": "24p",
+           "audioProfile": "lc",
+           "videoProfile": "high",
+           "Part": [
+            {
+             "id": 8,
+             "key": "/library/parts/8/1789295988/file.mkv",
+             "duration": 1320506,
+             "file": "/data/shows/Firefly (2002)/Season 01/Firefly (2002) - s01e03 - 1080p.mkv",
+             "size": 80535020,
+             "audioProfile": "lc",
+             "container": "mkv",
+             "videoProfile": "high"
+            }
+           ]
+          }
+         ],
+         "Image": [
+          {
+           "alt": "Our Mrs. Reynolds",
+           "type": "snapshot",
+           "url": "/library/metadata/10/thumb/1789243294"
+          }
+         ],
+         "UltraBlurColors": {
+          "topLeft": "300c05",
+          "topRight": "2b0404",
+          "bottomRight": "260c03",
+          "bottomLeft": "461d0a"
+         },
+         "Director": [
+          {
+           "tag": "Vondie Curtis-Hall"
+          }
+         ],
+         "Writer": [
+          {
+           "tag": "Joss Whedon"
+          }
+         ],
+         "Role": [
+          {
+           "tag": "Nathan Fillion"
+          },
+          {
+           "tag": "Gina Torres"
+          },
+          {
+           "tag": "Alan Tudyk"
+          }
+         ]
+        },
+        {
+         "ratingKey": "62",
+         "key": "/library/metadata/62",
+         "parentRatingKey": "64",
+         "grandparentRatingKey": "63",
+         "guid": "local://62",
+         "parentGuid": "plex://season/602e67e766dfdb002c0a1b5b",
+         "grandparentGuid": "local://63",
+         "type": "episode",
+         "title": "Episode 5",
+         "grandparentKey": "/library/metadata/63",
+         "parentKey": "/library/metadata/64",
+         "grandparentTitle": "Merge Probe T",
+         "parentTitle": "Season 1",
+         "summary": "",
+         "index": 5,
+         "parentIndex": 1,
+         "year": 2020,
+         "thumb": "/library/metadata/62/thumb/1792476121",
+         "duration": 1320506,
+         "addedAt": 1792476120,
+         "updatedAt": 1792476121,
+         "Media": [
+          {
+           "id": 31,
+           "duration": 1320506,
+           "bitrate": 488,
+           "width": 1920,
+           "height": 1080,
+           "aspectRatio": 1.78,
+           "audioChannels": 1,
+           "audioCodec": "aac",
+           "videoCodec": "h264",
+           "videoResolution": "1080",
+           "container": "mkv",
+           "videoFrameRate": "24p",
+           "audioProfile": "lc",
+           "videoProfile": "high",
+           "Part": [
+            {
+             "id": 31,
+             "key": "/library/parts/31/1792476119/file.mkv",
+             "duration": 1320506,
+             "file": "/data/shows/Merge Probe A (2020)/Season 01/Merge Probe A (2020) - s01e05.mkv",
+             "size": 80555568,
+             "audioProfile": "lc",
+             "container": "mkv",
+             "videoProfile": "high"
+            }
+           ]
+          },
+          {
+           "id": 33,
+           "duration": 1320506,
+           "bitrate": 488,
+           "width": 1920,
+           "height": 1080,
+           "aspectRatio": 1.78,
+           "audioChannels": 1,
+           "audioCodec": "aac",
+           "videoCodec": "h264",
+           "videoResolution": "1080",
+           "container": "mkv",
+           "videoFrameRate": "24p",
+           "audioProfile": "lc",
+           "videoProfile": "high",
+           "Part": [
+            {
+             "id": 33,
+             "key": "/library/parts/33/1792476119/file.mkv",
+             "duration": 1320506,
+             "file": "/data/shows/Merge Probe B (2020)/Season 01/Merge Probe B (2020) - s01e05.mkv",
+             "size": 80555568,
+             "audioProfile": "lc",
+             "container": "mkv",
+             "videoProfile": "high"
+            }
+           ]
+          }
+         ],
+         "Image": [
+          {
+           "alt": "Episode 5",
+           "type": "snapshot",
+           "url": "/library/metadata/62/thumb/1792476121"
+          }
+         ]
+        },
+        {
+         "ratingKey": "12",
+         "key": "/library/metadata/12",
+         "parentRatingKey": "72",
+         "grandparentRatingKey": "63",
+         "guid": "local://12",
+         "parentGuid": "local://11",
+         "grandparentGuid": "local://63",
+         "type": "episode",
+         "title": "Episode 1",
+         "grandparentKey": "/library/metadata/63",
+         "parentKey": "/library/metadata/72",
+         "grandparentTitle": "Merge Probe T",
+         "parentTitle": "Season 2",
+         "summary": "",
+         "index": 1,
+         "parentIndex": 2,
+         "thumb": "/library/metadata/12/thumb/1789187259",
+         "duration": 1320506,
+         "addedAt": 1789187082,
+         "updatedAt": 1789187259,
+         "Media": [
+          {
+           "id": 9,
+           "duration": 1320506,
+           "bitrate": 488,
+           "width": 1920,
+           "height": 1080,
+           "aspectRatio": 1.78,
+           "audioChannels": 1,
+           "audioCodec": "aac",
+           "videoCodec": "h264",
+           "videoResolution": "1080",
+           "container": "mkv",
+           "videoFrameRate": "24p",
+           "audioProfile": "lc",
+           "videoProfile": "high",
+           "Part": [
+            {
+             "id": 9,
+             "key": "/library/parts/9/1789296000/file.mkv",
+             "duration": 1320506,
+             "file": "/data/shows/Firefly (2002)/Season 02/Firefly (2002) - s02e01 - 1080p.mkv",
+             "size": 80548704,
+             "audioProfile": "lc",
+             "container": "mkv",
+             "videoProfile": "high"
+            }
+           ]
+          }
+         ],
+         "Image": [
+          {
+           "alt": "Episode 1",
+           "type": "snapshot",
+           "url": "/library/metadata/12/thumb/1789187259"
+          }
+         ]
+        },
+        {
+         "ratingKey": "13",
+         "key": "/library/metadata/13",
+         "parentRatingKey": "72",
+         "grandparentRatingKey": "63",
+         "guid": "local://13",
+         "parentGuid": "local://11",
+         "grandparentGuid": "local://63",
+         "type": "episode",
+         "title": "Episode 2",
+         "grandparentKey": "/library/metadata/63",
+         "parentKey": "/library/metadata/72",
+         "grandparentTitle": "Merge Probe T",
+         "parentTitle": "Season 2",
+         "summary": "",
+         "index": 2,
+         "parentIndex": 2,
+         "thumb": "/library/metadata/13/thumb/1789187260",
+         "duration": 1320506,
+         "addedAt": 1789187084,
+         "updatedAt": 1789187260,
+         "Media": [
+          {
+           "id": 10,
+           "duration": 1320506,
+           "bitrate": 488,
+           "width": 1920,
+           "height": 1080,
+           "aspectRatio": 1.78,
+           "audioChannels": 1,
+           "audioCodec": "aac",
+           "videoCodec": "h264",
+           "videoResolution": "1080",
+           "container": "mkv",
+           "videoFrameRate": "24p",
+           "audioProfile": "lc",
+           "videoProfile": "high",
+           "Part": [
+            {
+             "id": 10,
+             "key": "/library/parts/10/1789296011/file.mkv",
+             "duration": 1320506,
+             "file": "/data/shows/Firefly (2002)/Season 02/Firefly (2002) - s02e02 - 1080p.mkv",
+             "size": 80595212,
+             "audioProfile": "lc",
+             "container": "mkv",
+             "videoProfile": "high"
+            }
+           ]
+          }
+         ],
+         "Image": [
+          {
+           "alt": "Episode 2",
+           "type": "snapshot",
+           "url": "/library/metadata/13/thumb/1789187260"
+          }
+         ]
+        },
+        {
+         "ratingKey": "14",
+         "key": "/library/metadata/14",
+         "parentRatingKey": "72",
+         "grandparentRatingKey": "63",
+         "guid": "local://14",
+         "parentGuid": "local://11",
+         "grandparentGuid": "local://63",
+         "type": "episode",
+         "title": "Episode 3",
+         "grandparentKey": "/library/metadata/63",
+         "parentKey": "/library/metadata/72",
+         "grandparentTitle": "Merge Probe T",
+         "parentTitle": "Season 2",
+         "summary": "",
+         "index": 3,
+         "parentIndex": 2,
+         "thumb": "/library/metadata/14/thumb/1789187260",
+         "duration": 1320506,
+         "addedAt": 1789187085,
+         "updatedAt": 1789187260,
+         "Media": [
+          {
+           "id": 11,
+           "duration": 1320506,
+           "bitrate": 488,
+           "width": 1920,
+           "height": 1080,
+           "aspectRatio": 1.78,
+           "audioChannels": 1,
+           "audioCodec": "aac",
+           "videoCodec": "h264",
+           "videoResolution": "1080",
+           "container": "mkv",
+           "videoFrameRate": "24p",
+           "audioProfile": "lc",
+           "videoProfile": "high",
+           "Part": [
+            {
+             "id": 11,
+             "key": "/library/parts/11/1789296023/file.mkv",
+             "duration": 1320506,
+             "file": "/data/shows/Firefly (2002)/Season 02/Firefly (2002) - s02e03 - 1080p.mkv",
+             "size": 80556998,
+             "audioProfile": "lc",
+             "container": "mkv",
+             "videoProfile": "high"
+            }
+           ]
+          }
+         ],
+         "Image": [
+          {
+           "alt": "Episode 3",
+           "type": "snapshot",
+           "url": "/library/metadata/14/thumb/1789187260"
+          }
+         ]
+        }
+       ]
+      }
+     }
+    }
+   }
+  }
+ ]
+}

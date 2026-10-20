@@ -28,6 +28,7 @@ import test_followups_c87_e4 as harness
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FIXTURE = os.path.join(HERE, "fixtures", "merge_unpaired_show_s43.json")
+ORDER = os.path.join(HERE, "fixtures", "merge_shows_media_order_s43.json")
 TARGET = "20001"
 PROBE = "20002"
 
@@ -86,7 +87,78 @@ def episode_at(port, show, season_index, index):
     return None, None
 
 
+def media_ids(episode):
+    return [media.get("id") for media in (episode or {}).get("Media") or []]
+
+
+def media_order():
+    """Two sources, and the order of a merged episode's Media (plexscratch, 2026-10-20,
+    `merge_shows_media_order_s43.json`): `merge?ids=A,B` of two shows holding the S1E5 the
+    target lacks left one row, A's, with both Media; a merged episode lists its Media by id,
+    so a newer source's goes after the target's and an older one's before it. rex paired every
+    source with the target as it was before the merge, and put the absorbed Media first."""
+    recorded = json.load(open(ORDER))
+    setup, steps = recorded["setup"], recorded["steps"]
+    by_key = lambda answer: {row["ratingKey"]: [media["id"] for media in row["Media"]]
+                             for row in answer["body"]["MediaContainer"]["Metadata"]}
+    after_pair = by_key(steps[0]["answers"]["GET /library/metadata/63/allLeaves"])
+    after_older = by_key(steps[2]["answers"]["GET /library/metadata/63/allLeaves"])
+    check("fixture: the two sources' S1E5 is one row, the first's, with both Media by id",
+          after_pair.get("62") == setup["A"]["leaves"]["62"]["media"] + setup["B"]["leaves"]["68"]["media"]
+          and "68" not in after_pair, after_pair)
+    check("fixture: a newer source's Media go after the target's, an older one's before them",
+          steps[1]["leaves"]["65"] == [32, 34] and after_older.get("65") == [6, 32, 34], (steps[1], after_older))
+
+    # The roles on catalog_ui.json's Simpsons (20001), whose S20E1 (1002) holds Media 100200:
+    # A and B each hold the S20E5 it lacks, C a newer S20E1 and F an older one.
+    workdir = tempfile.mkdtemp(prefix="rex-merge-order-")
+    harness.CATALOG = os.path.join(workdir, "catalog.json")
+    with open(os.path.join(HERE, "catalog_ui.json")) as handle:
+        document = json.load(handle)
+    rows = document["items"]
+    show = next(row for row in rows if row["ratingKey"] == TARGET)
+    template = next(row for row in rows if row["ratingKey"] == "1002")
+    season_template = next(row for row in rows if row["ratingKey"] == "30002")
+    sources = {"A": ("20003", 5, 100700), "B": ("20004", 5, 100800), "C": ("20005", 1, 100900), "F": ("20006", 1, 100050)}
+    episodes = {}
+    for offset, (name, (key, index, media)) in enumerate(sorted(sources.items())):
+        season_key, episode_key = str(30200 + offset), str(1200 + offset)
+        rows.append(dict(copy.deepcopy(show), ratingKey=key, key="/library/metadata/%s/children" % key,
+                         title="Order Probe %s" % name, guid="local://%s" % key))
+        rows[-1].pop("Guid", None)
+        rows.append(dict(copy.deepcopy(season_template), ratingKey=season_key, parentRatingKey=key,
+                         key="/library/metadata/%s/children" % season_key, guid="local://%s" % season_key))
+        episode = dict(copy.deepcopy(template), ratingKey=episode_key, key="/library/metadata/%s" % episode_key,
+                       parentRatingKey=season_key, grandparentRatingKey=key, index=index,
+                       guid="local://%s" % episode_key, title="Probe %s" % name)
+        episode["Media"][0]["id"] = media
+        episode["Media"][0]["Part"][0]["id"] = media // 10
+        rows.append(episode)
+        episodes[name] = episode_key
+    with open(harness.CATALOG, "w") as handle:
+        json.dump(document, handle)
+    process, port = harness.start()
+    try:
+        request(port, "PUT", "/library/metadata/%s/merge?ids=%s,%s" % (TARGET, sources["A"][0], sources["B"][0]))
+        _, season = container(port, "/library/metadata/30002/children")
+        fifth = [episode for episode in season.get("Metadata") or [] if episode.get("index") == 5]
+        check("two sources' S20E5 is one row under the target, the first's, with both Media by id",
+              [episode["ratingKey"] for episode in fifth] == [episodes["A"]] and media_ids(fifth[0]) == [100700, 100800],
+              [(episode["ratingKey"], media_ids(episode)) for episode in fifth])
+        request(port, "PUT", "/library/metadata/%s/merge?ids=%s" % (TARGET, sources["C"][0]))
+        _, first = container(port, "/library/metadata/1002")
+        check("a newer source's Media go after the target's",
+              media_ids((first.get("Metadata") or [{}])[0]) == [100200, 100900], media_ids((first.get("Metadata") or [{}])[0]))
+        request(port, "PUT", "/library/metadata/%s/merge?ids=%s" % (TARGET, sources["F"][0]))
+        _, first = container(port, "/library/metadata/1002")
+        check("an older source's Media go before them",
+              media_ids((first.get("Metadata") or [{}])[0]) == [100050, 100200, 100900], media_ids((first.get("Metadata") or [{}])[0]))
+    finally:
+        stop(process)
+
+
 def main():
+    media_order()
     workdir = tempfile.mkdtemp(prefix="rex-merge-")
     harness.CATALOG = os.path.join(workdir, "catalog.json")
     fixture, roles = build_catalog(harness.CATALOG)
