@@ -2903,7 +2903,7 @@ impl Runtime {
         if kind == "artist" {
             let section = self.section(section_key).cloned().unwrap_or(Value::Null);
             let (agent, _scanner, _group) = Self::section_agent(&section);
-            return self.form_pref_rows("8", &agent);
+            return self.form_pref_rows("8", &agent, &[]);
         }
         load_json_sidecar(&self.catalog_path, "section_prefs.json")
             .and_then(|value| value.get(kind).cloned())
@@ -2913,7 +2913,9 @@ impl Runtime {
 
     /// `server.py` `section_pref_rows`: the Add Library form's setting list for a
     /// library type and agent (`section_prefs_new.json`).
-    fn form_pref_rows(&self, type_id: &str, agent: &str) -> Vec<Value> {
+    /// The settings a library of `type_id` lists for `agent`, each the library's own row in
+    /// `base` when it has one, else the captured setting.
+    fn form_pref_rows(&self, type_id: &str, agent: &str, base: &[Value]) -> Vec<Value> {
         let document =
             load_json_sidecar(&self.catalog_path, "section_prefs_new.json").unwrap_or(Value::Null);
         let lists = document.get("lists");
@@ -2929,7 +2931,12 @@ impl Runtime {
             .unwrap_or_else(|| vec![json!("hidden")]);
         ids.iter()
             .filter_map(Value::as_str)
-            .filter_map(|name| document.get("settings").and_then(|known| known.get(name)).cloned())
+            .filter_map(|name| {
+                base.iter()
+                    .find(|row| row.get("id").and_then(Value::as_str) == Some(name))
+                    .cloned()
+                    .or_else(|| document.get("settings").and_then(|known| known.get(name)).cloned())
+            })
             .collect()
     }
 
@@ -16090,32 +16097,7 @@ impl Runtime {
                                 "artist" => "8",
                                 _ => "1",
                             };
-                            let document =
-                                load_json_sidecar(&self.catalog_path, "section_prefs_new.json")
-                                    .unwrap_or(Value::Null);
-                            let lists = document.get("lists");
-                            let known = document.get("settings");
-                            let ids = lists
-                                .and_then(|lists| {
-                                    lists
-                                        .get(format!("{type_id}|{agent}"))
-                                        .filter(|ids| truthy(ids))
-                                        .or_else(|| lists.get(type_id).filter(|ids| truthy(ids)))
-                                })
-                                .and_then(Value::as_array)
-                                .cloned()
-                                .unwrap_or_else(|| vec![json!("hidden")]);
-                            ids.iter()
-                                .filter_map(Value::as_str)
-                                .filter_map(|name| {
-                                    base.iter()
-                                        .find(|row| {
-                                            row.get("id").and_then(Value::as_str) == Some(name)
-                                        })
-                                        .cloned()
-                                        .or_else(|| known.and_then(|known| known.get(name)).cloned())
-                                })
-                                .collect::<Vec<_>>()
+                            self.form_pref_rows(type_id, agent, &base)
                         }
                         None => base,
                     };
