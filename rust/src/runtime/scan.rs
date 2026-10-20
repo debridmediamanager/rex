@@ -259,7 +259,10 @@ impl Runtime {
                         .flatten()
                         .any(|part| part.get("file").and_then(Value::as_str) == Some(file))
                 })
-                .any(|media| media.get("_source").and_then(Value::as_str).is_none_or(|name| name == source))
+                .any(|media| {
+                    // An untagged Media is the row's own source's (only the first is tagged).
+                    media.get("_source").or(row.get("_source")).and_then(Value::as_str).is_none_or(|name| name == source)
+                })
         })
     }
 
