@@ -911,47 +911,11 @@ impl Runtime {
         let section_key = string_value(&section_id);
         let section = self.section(&section_key).cloned().unwrap_or(Value::Null);
         let id = entry.tag.get("id").cloned().unwrap_or(Value::Null);
-        let id_text = string_value(&id);
         let section_number = section_key
             .parse::<i64>()
             .map(Value::from)
             .unwrap_or(section_id.clone());
-        let mut result = Map::new();
-        result.insert(
-            "key".to_string(),
-            json!(format!(
-                "/library/sections/{section_key}/all?{hub}={id_text}"
-            )),
-        );
-        result.insert("librarySectionID".to_string(), section_id.clone());
-        result.insert(
-            "librarySectionKey".to_string(),
-            json!(format!("/library/sections/{section_key}")),
-        );
-        result.insert(
-            "librarySectionTitle".to_string(),
-            section.get("title").cloned().unwrap_or(Value::Null),
-        );
-        result.insert(
-            "librarySectionType".to_string(),
-            json!(
-                if section.get("type").and_then(Value::as_str) == Some("show") {
-                    2
-                } else {
-                    1
-                }
-            ),
-        );
-        result.insert("reason".to_string(), json!("section"));
-        result.insert("reasonID".to_string(), section_number);
-        result.insert(
-            "reasonTitle".to_string(),
-            section.get("title").cloned().unwrap_or(Value::Null),
-        );
-        result.insert("score".to_string(), json!(tag_score(entry.tier)));
-        result.insert("type".to_string(), json!("tag"));
-        result.insert("id".to_string(), id);
-        result.insert("filter".to_string(), json!(format!("{hub}={id_text}")));
+        let mut result = Self::tag_hit(&section_key, &section, section_id.clone(), section_number, hub, id, tag_score(entry.tier));
         result.insert(
             "tag".to_string(),
             entry.tag.get("tag").cloned().unwrap_or(Value::Null),
@@ -1043,47 +1007,11 @@ impl Runtime {
             }
             for (name, (tag, rows, tier)) in seen {
                 let id = tag.get("id").cloned().unwrap_or(Value::Null);
-                let id_text = string_value(&id);
                 let section_number = section_key
                     .parse::<i64>()
                     .map(Value::from)
                     .unwrap_or(json!(section_key));
-                let mut result = Map::new();
-                result.insert(
-                    "key".to_string(),
-                    json!(format!(
-                        "/library/sections/{section_key}/all?collection={id_text}"
-                    )),
-                );
-                result.insert("librarySectionID".to_string(), section_number.clone());
-                result.insert(
-                    "librarySectionKey".to_string(),
-                    json!(format!("/library/sections/{section_key}")),
-                );
-                result.insert(
-                    "librarySectionTitle".to_string(),
-                    section.get("title").cloned().unwrap_or(Value::Null),
-                );
-                result.insert(
-                    "librarySectionType".to_string(),
-                    json!(
-                        if section.get("type").and_then(Value::as_str) == Some("show") {
-                            2
-                        } else {
-                            1
-                        }
-                    ),
-                );
-                result.insert("reason".to_string(), json!("section"));
-                result.insert("reasonID".to_string(), section_number);
-                result.insert(
-                    "reasonTitle".to_string(),
-                    section.get("title").cloned().unwrap_or(Value::Null),
-                );
-                result.insert("score".to_string(), json!(tag_score(tier)));
-                result.insert("type".to_string(), json!("tag"));
-                result.insert("id".to_string(), id);
-                result.insert("filter".to_string(), json!(format!("collection={id_text}")));
+                let mut result = Self::tag_hit(&section_key, section, section_number.clone(), section_number, "collection", id, tag_score(tier));
                 result.insert("tag".to_string(), json!(name));
                 result.insert("tagType".to_string(), json!(2));
                 result.insert("count".to_string(), json!(rows.len()));
@@ -1102,7 +1030,29 @@ impl Runtime {
         found
     }
 
-    /// A search hit row, led by `librarySectionTitle` and then its `score` (cycle 25).
+    /// A tag hit's fields up to its `filter`, in the measured order: a library's tag, or a collection
+/// by its index (`hub` names the filter, `collection` for one).
+fn tag_hit(section_key: &str, section: &Value, section_id: Value, section_number: Value, hub: &str, id: Value, score: String) -> Map<String, Value> {
+    let id_text = string_value(&id);
+    let title = section.get("title").cloned().unwrap_or(Value::Null);
+    let kind = if section.get("type").and_then(Value::as_str) == Some("show") { 2 } else { 1 };
+    Map::from_iter([
+        ("key".to_string(), json!(format!("/library/sections/{section_key}/all?{hub}={id_text}"))),
+        ("librarySectionID".to_string(), section_id),
+        ("librarySectionKey".to_string(), json!(format!("/library/sections/{section_key}"))),
+        ("librarySectionTitle".to_string(), title.clone()),
+        ("librarySectionType".to_string(), json!(kind)),
+        ("reason".to_string(), json!("section")),
+        ("reasonID".to_string(), section_number),
+        ("reasonTitle".to_string(), title),
+        ("score".to_string(), json!(score)),
+        ("type".to_string(), json!("tag")),
+        ("id".to_string(), id),
+        ("filter".to_string(), json!(format!("{hub}={id_text}"))),
+    ])
+}
+
+/// A search hit row, led by `librarySectionTitle` and then its `score` (cycle 25).
     fn search_hit_row(
         &self,
         row: &Value,
