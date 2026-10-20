@@ -221,7 +221,8 @@ fn save_catalog(path: &str, document: &Value) -> Result<(), String> {
         let document = document.as_object().ok_or("a catalog is a JSON object")?;
         return store::write_catalog(Path::new(path), document, &sha1_hex(text.as_bytes()));
     }
-    fs::write(path, text).map_err(|e| format!("cannot write {path}: {e}"))
+    // Whole or as it was: a catalog cut short is a re-seed, and a re-seed a new machineIdentifier.
+    crate::platform::write_atomic(Path::new(path), text.as_bytes(), false).map_err(|e| format!("cannot write {path}: {e}"))
 }
 
 /// Give the rows Plex's own guids (metadata.PlexProvider); a no-op without a claim beside

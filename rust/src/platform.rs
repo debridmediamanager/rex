@@ -158,6 +158,34 @@ pub(crate) fn kill(pid: u32) {
 }
 
 /// `secrets.token_bytes`: the system's random source (a machineIdentifier, the manager's token).
+/// `bytes` as the whole of `path`, or `path` as it was: written beside it, flushed to disk and
+/// renamed over it, so a crash or a full disk never leaves half a file. `private` makes it
+/// owner-only from its first byte on Unix (a Windows profile's folders are their user's).
+pub(crate) fn write_atomic(path: &std::path::Path, bytes: &[u8], private: bool) -> io::Result<()> {
+    use std::io::Write;
+    let mut name = path.file_name().unwrap_or_default().to_os_string();
+    name.push(".writing");
+    let temporary = path.with_file_name(name);
+    let mut options = std::fs::OpenOptions::new();
+    options.write(true).create(true).truncate(true);
+    #[cfg(unix)]
+    if private {
+        use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+        options.mode(0o600);
+        // A file left from an earlier attempt keeps its mode through `open`.
+        if temporary.exists() {
+            std::fs::set_permissions(&temporary, std::fs::Permissions::from_mode(0o600))?;
+        }
+    }
+    #[cfg(not(unix))]
+    let _ = private;
+    let mut file = options.open(&temporary)?;
+    file.write_all(bytes)?;
+    file.sync_all()?;
+    drop(file);
+    std::fs::rename(&temporary, path)
+}
+
 pub(crate) fn random_bytes(buffer: &mut [u8]) -> io::Result<()> {
     #[cfg(unix)]
     {
@@ -530,6 +558,24 @@ mod win {
 mod tests {
     use std::process::Command;
     use std::time::Duration;
+
+    #[test]
+    fn an_atomic_write_replaces_the_whole_file_and_leaves_nothing_beside_it() {
+        let directory = std::env::temp_dir().join(format!("rex-atomic-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&directory);
+        std::fs::create_dir_all(&directory).unwrap();
+        let path = directory.join("claim_state.json");
+        std::fs::write(&path, "an older, longer claim").unwrap();
+        super::write_atomic(&path, b"new", true).unwrap();
+        assert_eq!(std::fs::read(&path).unwrap(), b"new");
+        assert_eq!(std::fs::read_dir(&directory).unwrap().count(), 1);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            assert_eq!(std::fs::metadata(&path).unwrap().permissions().mode() & 0o777, 0o600);
+        }
+        let _ = std::fs::remove_dir_all(&directory);
+    }
 
     /// A child that appends a byte to `path` every 20 ms, so its file shows whether it runs.
     fn writer(path: &std::path::Path) -> std::process::Child {

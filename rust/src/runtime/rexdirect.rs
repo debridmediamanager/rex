@@ -15,7 +15,6 @@
 //! provider does not answer. Nothing here is ever fatal: without an answer rex runs as it would
 //! without rex-direct.
 
-use std::io::Write;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -295,18 +294,7 @@ impl RexDirect {
         if std::fs::read(&self.file).is_ok_and(|kept| kept == raw) {
             return Ok(());
         }
-        let mut options = std::fs::OpenOptions::new();
-        options.write(true).create(true).truncate(true);
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
-            options.mode(0o600);
-            // An existing file keeps its mode through `open`.
-            if self.file.exists() {
-                std::fs::set_permissions(&self.file, std::fs::Permissions::from_mode(0o600))?;
-            }
-        }
-        options.open(&self.file)?.write_all(raw)
+        crate::platform::write_atomic(&self.file, raw, true)
     }
 
     /// Once claimed, on the caller's thread (a claimed start's, before the port opens): the

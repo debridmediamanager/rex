@@ -540,16 +540,10 @@ impl Claim {
                 )
             },
         );
-        // The claim holds the server's token: owner-only on Unix. A Windows profile's
-        // folders are already private to their user.
-        let result = std::fs::write(&self.path, document).and_then(|_| {
-            #[cfg(unix)]
-            {
-                use std::os::unix::fs::PermissionsExt;
-                std::fs::set_permissions(&self.path, std::fs::Permissions::from_mode(0o600))?;
-            }
-            Ok(())
-        });
+        // The claim holds the server's token: owner-only from its first byte, and whole or as
+        // it was -- a claim cut short by a crash is a server to claim again, the exchange that
+        // reset the account's tokens on 2026-09-11.
+        let result = crate::platform::write_atomic(&self.path, document.as_bytes(), true);
         if let Err(message) = result {
             error!("could not persist claim state: {message}");
         }
