@@ -5,6 +5,7 @@
 //! whose docstrings hold the measurements.
 
 use super::*;
+use std::collections::BTreeMap;
 
 /// Tag axes and the element each reads.
 const SECONDARY_TAGS: &[(&str, &str)] = &[
@@ -611,7 +612,9 @@ impl Runtime {
         }
         let mut entries = Vec::new();
         if let Some(element) = lookup(SECONDARY_TAGS, leaf) {
-            let mut seen: Vec<(String, Value)> = Vec::new();
+            // By name, first tag of each kept, in name order: a list searched per tag was
+            // rows x distinct names, seconds for a show library's directors under the lock.
+            let mut seen: BTreeMap<String, Value> = BTreeMap::new();
             for row in &rows {
                 let tags = row
                     .get(element)
@@ -625,13 +628,11 @@ impl Runtime {
                 };
                 for tag in tags {
                     let name = tag.get("tag").map(string_value).unwrap_or_default();
-                    if name.is_empty() || seen.iter().any(|(known, _)| *known == name) {
-                        continue;
+                    if !name.is_empty() {
+                        seen.entry(name).or_insert(tag);
                     }
-                    seen.push((name, tag));
                 }
             }
-            seen.sort_by(|left, right| left.0.cmp(&right.0));
             for (name, tag) in seen {
                 let id = tag
                     .get("id")
@@ -659,6 +660,7 @@ impl Runtime {
             }
         } else if let Some(field) = lookup(SECONDARY_FIELDS, leaf) {
             let mut seen: Vec<(i64, String)> = Vec::new();
+            let mut known: HashSet<String> = HashSet::new();
             for row in &rows {
                 let Some(value) = row
                     .get(field)
@@ -674,7 +676,7 @@ impl Runtime {
                 } else {
                     py_str(value)
                 };
-                if !seen.iter().any(|(_, known)| *known == text) {
+                if known.insert(text.clone()) {
                     let number = text.parse::<i64>().unwrap_or(0);
                     seen.push((number, text));
                 }
