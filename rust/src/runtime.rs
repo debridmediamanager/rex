@@ -26687,89 +26687,26 @@ enum RangeResult {
     Unsatisfiable,
 }
 
+/// A part read's Range, by the one grammar every body is ranged by (`wire::range_window`,
+/// the oracle's `_range_window`). A grammar of its own here read `bytes=+5-9` as the whole
+/// file and `bytes=--5` as a range, where containers answered both as measured.
 fn parse_range(header: Option<&str>, size: u64) -> RangeResult {
-    let Some(header) = header else {
+    let Some((status, content_range, first, last)) = wire::range_window(size as usize, header) else {
         return RangeResult::Whole;
     };
-    let Some((_unit, spec)) = header.split_once('=') else {
-        return RangeResult::Whole;
-    };
-    if spec.is_empty() || spec == "-" {
-        return RangeResult::Whole;
-    }
-    let whole = || {
-        RangeResult::Partial(RangeWindow {
-            start: 0,
-            end: size.saturating_sub(1),
-            advertised_start: 0,
-            advertised_end: size.saturating_sub(1),
-        })
-    };
-    if let Some(rest) = spec.strip_prefix('-') {
-        let digits = leading_digits(rest);
-        let suffix = digits.unwrap_or(0);
-        if suffix == 0 {
-            return RangeResult::Partial(RangeWindow {
-                start: 0,
-                end: size.saturating_sub(1),
-                advertised_start: 0,
-                advertised_end: 0,
-            });
-        }
-        if suffix >= size {
-            return whole();
-        }
-        return RangeResult::Partial(RangeWindow {
-            start: size.saturating_sub(suffix),
-            end: size.saturating_sub(1),
-            advertised_start: size.saturating_sub(suffix),
-            advertised_end: size.saturating_sub(1),
-        });
-    }
-    let Some((first, last)) = spec.split_once('-') else {
-        return whole();
-    };
-    if last.contains('-') {
-        return whole();
-    }
-    let Some(start) = leading_digits(first) else {
-        return whole();
-    };
-    let end = if last.is_empty() {
-        size.saturating_sub(1)
-    } else {
-        leading_digits(last)
-            .filter(|_| last.bytes().all(|byte| byte.is_ascii_digit()))
-            .unwrap_or(0)
-    };
-    if start >= size || end < start {
+    if status == 416 {
         return RangeResult::Unsatisfiable;
     }
-    let end = end.min(size.saturating_sub(1));
-    RangeResult::Partial(RangeWindow {
-        start,
-        end,
-        advertised_start: start,
-        advertised_end: end,
-    })
-}
-
-fn leading_digits(value: &str) -> Option<u64> {
-    let digits = value
-        .as_bytes()
-        .iter()
-        .take_while(|byte| byte.is_ascii_digit())
-        .count();
-    if digits == 0 {
-        return None;
-    }
-    let mut result = 0_u64;
-    for byte in value.as_bytes().iter().take(digits) {
-        result = result
-            .saturating_mul(10)
-            .saturating_add((byte - b'0') as u64);
-    }
-    Some(result)
+    // What the Content-Range says can differ from what is sent: `bytes=-0` advertises
+    // `bytes 0-0/N` over the whole body.
+    let advertised = content_range
+        .as_deref()
+        .and_then(|text| text.strip_prefix("bytes "))
+        .and_then(|text| text.split_once('/'))
+        .and_then(|(span, _)| span.split_once('-'))
+        .and_then(|(start, end)| Some((start.parse::<u64>().ok()?, end.parse::<u64>().ok()?)));
+    let (advertised_start, advertised_end) = advertised.unwrap_or((first as u64, last as u64));
+    RangeResult::Partial(RangeWindow { start: first as u64, end: last as u64, advertised_start, advertised_end })
 }
 fn part_content_type(part: &Value) -> String {
     let file = part.get("file").and_then(Value::as_str).unwrap_or("");

@@ -215,6 +215,12 @@ EXPECTED = [
     ("the unit is not read", "items=0-10", 206, "bytes 0-10/%d" % N, 11, 0),
     ("a last past the end is clamped", "bytes=0-%d" % (N + 1000), 206,
      "bytes 0-%d/%d" % (N - 1, N), N, 0),
+    # The oracle's grammar for the same header (`_range_window`, `[+-]?[0-9]+`, unbounded
+    # ints), which containers already answered by: a part read parsed the numbers its own
+    # way and answered these three otherwise.
+    ("a signed first is read", "bytes=+5-9", 206, "bytes 5-9/%d" % N, 5, 5),
+    ("a negative suffix is not a Range", "bytes=--5", 200, None, N, 0),
+    ("a first past any integer is past the end", "bytes=99999999999999999999-", 416, None, 129, None),
 ]
 
 

@@ -83,11 +83,11 @@ pub(super) fn range_window(
         if end == digits_start {
             return None;
         }
-        text[..end]
-            .trim_start_matches('+')
-            .parse::<i64>()
-            .ok()
-            .map(|value| (value, end))
+        // Python's unbounded int: a number past i64 is past any body, not unparseable.
+        let magnitude = bytes[digits_start..end]
+            .iter()
+            .fold(0_i64, |value, digit| value.saturating_mul(10).saturating_add(i64::from(digit - b'0')));
+        Some((if bytes[0] == b'-' { -magnitude } else { magnitude }, end))
     };
     if let Some(suffix) = spec.strip_prefix('-') {
         let length = leading_int(suffix).map_or(0, |(value, _)| value);
