@@ -1,7 +1,7 @@
 {
  "source": "plexlab, a real claimed Plex 1.43.4 PMS: the Search Subtitles request (GET /library/metadata/3/subtitles?language=en, Sintel) and applying its first result as Plex Web does (PUT /library/metadata/3/subtitles), the PMS's own outbound calls to Plex's provider from harness capture/outbound.jsonl, then the applied stream deleted again",
  "captured": "2026-10-20",
- "note": "Every token replaced with PLEX-TOKEN; signed query values with REDACTED. The search ran twice (10:13, 10:31); its result rows get new local ids each time (386-389, then 390-393).",
+ "note": "Every token replaced with PLEX-TOKEN; signed query values with REDACTED. The PMS's X-Plex-Api-Token is not its PlexOnlineToken: the server token sent so is a 401 'Invalid api token' (2026-10-20); it is taken as X-Plex-Token. The search ran twice (10:13, 10:31); its result rows get new local ids each time (386-389, then 390-393).",
  "client": {
   "search": {
    "request": "GET /library/metadata/3/subtitles?language=en",

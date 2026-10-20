@@ -698,7 +698,10 @@ impl Agent {
             ("X-Plex-Device", "PC".to_string()),
             ("X-Plex-Model", "x86_64".to_string()),
             ("X-Plex-Device-Vendor", "Docker".to_string()),
-            ("X-Plex-Api-Token", self.token.clone()),
+            // The recorded PMS sent `X-Plex-Api-Token`, a credential rex does not hold: the claim's
+            // server token is refused there ("Invalid api token", 401) and taken as `X-Plex-Token`
+            // (measured 2026-10-20 on the search and the download alike).
+            ("X-Plex-Token", self.token.clone()),
         ]
     }
 }
@@ -938,13 +941,15 @@ fn search_all(search: &Search, hash: Option<&str>) -> Vec<Candidate> {
 
 fn download(candidate: &Candidate, agent: Option<&Agent>) -> Option<Vec<u8>> {
     let (url, headers) = if candidate.source == "plex" {
-        // `GET /library/streams/{id}?X-Plex-Api-Token=`, a 302 to the provider's own link.
+        // `GET /library/streams/{id}`, a 302 to the provider's own link. The token rides in the
+        // header, as on the search, so no logged url carries it; the redirect drops it.
         let agent = agent?;
-        let url = format!("{PROVIDER}{}?X-Plex-Api-Token={}", candidate.locator, upstream::quote_plus(&agent.token));
+        let url = format!("{PROVIDER}{}", candidate.locator);
         let headers = vec![
             ("User-Agent", format!("PlexMediaServer/{}", agent.version)),
             ("Accept", "*/*".to_string()),
             ("Accept-Encoding", "gzip".to_string()),
+            ("X-Plex-Token", agent.token.clone()),
         ];
         (super::plextv::plextv_url(&url), headers)
     } else {

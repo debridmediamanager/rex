@@ -196,6 +196,15 @@ class Stub:
                 if path == "/servers.plex.tv/api/v2/user":
                     body = '<?xml version="1.0" encoding="UTF-8"?>\n<user id="1" username="owner">%s</user>\n' % PROFILE
                     return self.reply(200, body.encode(), "application/xml")
+                if path.startswith("/metadata.provider.plex.tv/library/streams/"):
+                    # The provider's own refusals, measured 2026-10-20 with a claimed server's token:
+                    # it is an X-Plex-Token (header or query); as X-Plex-Api-Token it is refused.
+                    asked = dict(urllib.parse.parse_qsl(query))
+                    token = self.headers.get("X-Plex-Token") or asked.get("X-Plex-Token")
+                    if token != TOKEN:
+                        message = "Invalid api token" if self.headers.get("X-Plex-Api-Token") or asked.get("X-Plex-Api-Token") else "You must provide a token!"
+                        return self.reply(401, json.dumps({"Error": {"error": "Unauthorized", "message": message, "statusCode": 401}}).encode(),
+                                          "application/json; charset=utf-8")
                 if path == "/metadata.provider.plex.tv/library/streams/matches":
                     q = dict(urllib.parse.parse_qsl(query))
                     rows = stub.matches.get((q.get("filename"), q.get("lang")), [])
@@ -471,7 +480,7 @@ def main():
                   dict(query).get("openSubtitlesHash") == os_hash(show) and dict(query).get("filename") == SHOW["file"]
                   and dict(query).get("type") == "4" and dict(query).get("guid", "").startswith("plex://"), query)
             check("with the claim's server token and the reference's headers",
-                  headers.get("x-plex-api-token") == TOKEN and headers.get("x-plex-client-identifier") == MACHINE
+                  headers.get("x-plex-token") == TOKEN and "x-plex-api-token" not in headers and headers.get("x-plex-client-identifier") == MACHINE
                   and headers.get("x-plex-provides") == "server" and headers.get("user-agent", "").startswith("PlexMediaServer/"),
                   headers)
         else:

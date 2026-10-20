@@ -566,8 +566,10 @@ are changing; replay the client's exact request before altering behavior.
   .../subtitles?key=&codec=&language=eng&hearingImpaired=0&forced=0&providerTitle=&mediaItemID=`
   is 200 with an empty body and `X-Plex-Activity`; the stream appears when the
   `subtitle.download` activity ends. A PUT without `key` is still the search.
-- **Plex's provider takes the server token as `X-Plex-Api-Token`**, a header on `streams/matches`
-  and a query parameter on the download, which 302s to opensubtitles.com. Its `en` row becomes
+- **Plex's provider takes the claim's server token as `X-Plex-Token`, not `X-Plex-Api-Token`.** A
+  PMS sends an `X-Plex-Api-Token` (a header on `streams/matches`, a query parameter on the download,
+  which 302s to opensubtitles.com), but the server token there is a 401 "Invalid api token"; no
+  token is a 401 "You must provide a token!", and `streams/matches` without `openSubtitlesHash` a 400. Its `en` row becomes
   `languageCode`/`languageTag` `eng` on the server, and its numeric `score` a string.
 - **A provider subtitle's Stream row puts `key` second**, `format`, `providerTitle`, `score` and
   `sourceKey` after its language, and `transient`/`userID` after its title (the `Stream` order

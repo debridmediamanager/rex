@@ -13432,8 +13432,11 @@ then whether its answer is any good.
   `perfectMatch`, `reason` and `downloaded`, which this PMS never sent.
 - The PMS asks Plex's provider itself: `GET https://metadata.provider.plex.tv/library/streams/
   matches?filename&guid&lang&openSubtitlesHash&plexHash&type&videoCodec&videoQuality&year` with
-  the server's own token as `X-Plex-Api-Token` and its PMS headers, and answers the rows in the
-  provider's order (scores 1496, 1225, 8349, 2847: not sorted by score).
+  an `X-Plex-Api-Token` and its PMS headers, and answers the rows in the provider's order (scores
+  1496, 1225, 8349, 2847: not sorted by score). That token is not the claim's server token: from a
+  claimed rex the server token sent as `X-Plex-Api-Token` is a 401 "Invalid api token" on the search
+  and the download alike, and taken as `X-Plex-Token`, header or query (measured 2026-10-20). rex
+  sends `X-Plex-Token`, a header, so no url it logs carries it.
 - The apply is `PUT /library/metadata/{id}/subtitles?key=/library/streams/{search id}&codec=srt&
   language=eng&hearingImpaired=0&forced=0&providerTitle=OpenSubtitles&mediaItemID=3`: 200, an empty
   `text/html` body, `X-Plex-Activity: <uuid>` and `Access-Control-Expose-Headers: X-Plex-Activity`.
