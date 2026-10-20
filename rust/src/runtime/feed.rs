@@ -953,6 +953,32 @@ fn number_unplaced(runtime: &Runtime, plans: &mut [(Item, Library, Plan)]) {
     }
 }
 
+/// Whether `row` may be one `retry_blank` tries now, read off hot fields alone: due (`_retry`),
+/// a source's film or episode out of the trash and probed, and no poster (an episode's show's).
+/// `Runtime::blank` decides on the whole row; this keeps the pass every ten minutes from reading
+/// every row of the library from the state file under the lock, as the listing once did (26 s
+/// on the production server, every Plex request waiting behind it).
+fn may_be_blank(catalog: &crate::catalog::Catalog, row: &(impl Row + ?Sized), stamp: i64) -> bool {
+    let has = |row: Option<&Value>| row.is_some_and(|value| !value.is_null() && value.as_str() != Some(""));
+    let due = row.get("_retry").and_then(|retry| retry.get("at")).and_then(Value::as_i64).is_none_or(|at| at <= stamp);
+    let kind = row.get("type").and_then(Value::as_str);
+    if !due
+        || !matches!(kind, Some("movie" | "episode"))
+        || row.get("_sid").is_none()
+        || row.get("deletedAt").is_some()
+        || row.get("_probePending").is_some_and(truthy)
+        || row.get("guid").and_then(Value::as_str).is_some_and(|guid| guid.starts_with("tv.plex.agents.none://"))
+    {
+        return false;
+    }
+    if kind == Some("episode") {
+        let show = row.get("grandparentRatingKey").map(string_value).and_then(|show| catalog.lazy_get(&show));
+        return !has(show.as_ref().and_then(|show| show.get("_poster_url")))
+            || row.get("guid").and_then(Value::as_str).is_some_and(|guid| guid.starts_with("plex://movie/"));
+    }
+    !has(row.get("_poster_url"))
+}
+
 /// The item a row's source pushed, rebuilt from the row: what `upsert` needs to identify it
 /// again, in the library it is in. Its probe is the row's already, so none is sent.
 fn pushed_item(row: &Value) -> Option<(String, Value)> {
@@ -997,13 +1023,15 @@ pub(super) fn retry_blank(shared: &SharedRuntime, limit: usize) -> usize {
         }
         let mut groups: BTreeMap<String, Vec<(String, (String, Value))>> = BTreeMap::new();
         for row in guard.catalog.hot().lazy() {
-            let due = row.body().pointer("/_retry/at").and_then(Value::as_i64).is_none_or(|at| at <= stamp);
+            // Hot fields first: the rows that may be blank, without reading any row from disk.
+            if !may_be_blank(&guard.catalog, &row, stamp) {
+                continue;
+            }
             let library = if row.get("type").and_then(Value::as_str) == Some("movie") { "movie" } else { "show" };
             // Only what its source placed: rows pushed before DMM placed anything still carry ids
             // zurg's own Plex gave, an episode's among them (Pawn Stars' 1559521), and trusted
             // as they are those would name junk titles; they stay as they are, for Fix Match.
-            if !due
-                || !guard.blank(row.body())
+            if !guard.blank(row.body())
                 || version_placed(row.body(), 0).is_none()
                 || super::scan::identified_by(row.get("_ids").and_then(Value::as_object), version_placed(row.body(), 0), library).is_none()
             {
@@ -1926,6 +1954,42 @@ impl Runtime {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_blank_tile_pass_reads_no_row_from_disk_to_find_its_rows() {
+        let directory = std::env::temp_dir().join(format!("rex-blank-pass-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&directory);
+        std::fs::create_dir_all(&directory).unwrap();
+        let path = directory.join("rex.db");
+        let mut items = vec![json!({"ratingKey": "500", "type": "show", "title": "Named", "_poster_url": "http://p/s"}),
+                             json!({"ratingKey": "501", "type": "show", "title": "Blank"})];
+        for n in 0..40 {
+            let poster = if n % 4 == 0 { json!(null) } else { json!(format!("http://p/{n}")) };
+            items.push(json!({"ratingKey": (1000 + n).to_string(), "type": "movie", "title": format!("M{n}"), "_sid": format!("m{n}"),
+                              "_release": format!("R{n}"), "_poster_url": poster, "summary": "x".repeat(400)}));
+            items.push(json!({"ratingKey": (2000 + n).to_string(), "type": "episode", "title": format!("E{n}"), "_sid": format!("e{n}"),
+                              "grandparentRatingKey": if n % 2 == 0 { "500" } else { "501" }, "summary": "x".repeat(400)}));
+        }
+        items.push(json!({"ratingKey": "3000", "type": "movie", "title": "Trashed", "_sid": "t", "deletedAt": 1}));
+        let mut catalog = crate::catalog::Catalog::from_value(json!({"items": items})).unwrap();
+        let mut cache = crate::store::Cache::default();
+        catalog.attach(&path, crate::rows::test_support::key_of, false);
+        crate::rows::test_support::save(&mut catalog, &mut cache, &path, true);
+        catalog.pack_pending();
+        let before = crate::rows::test_support::DISK_READS.with(std::cell::Cell::get);
+        let mut tried = catalog.hot().lazy().filter(|row| may_be_blank(&catalog, row, 0)).filter_map(|row| key_of(&row)).collect::<Vec<_>>();
+        let releases = catalog.hot().lazy().filter_map(|row| row.get("_release").and_then(Value::as_str).map(str::to_string)).count();
+        let read = crate::rows::test_support::DISK_READS.with(std::cell::Cell::get) - before;
+        let _ = std::fs::remove_dir_all(&directory);
+        tried.sort();
+        let mut wanted = (0..40).filter(|n| n % 4 == 0).map(|n| (1000 + n).to_string())
+            .chain((0..40).filter(|n| n % 2 == 1).map(|n| (2000 + n).to_string()))
+            .collect::<Vec<_>>();
+        wanted.sort();
+        assert_eq!(tried, wanted);
+        assert_eq!(releases, 40);
+        assert_eq!(read, 0, "rows read from disk to find the blank ones");
+    }
 
     fn work(name: &str) -> std::path::PathBuf {
         let path = std::env::temp_dir().join(format!("rex-feed-{name}-{}", std::process::id()));

@@ -16,8 +16,10 @@ use serde_json::Value;
 pub const FIELDS: &[&str] = &[
     "_librarySectionID",
     "_parentRatingKey",
+    "_poster_url",
     "_prefs",
     "_probePending",
+    "_release",
     "_retry",
     "_scanned",
     "_sid",

@@ -547,6 +547,8 @@ impl Rows {
     /// (`catalog::compact`), and the bytes of its text.
     fn read(&self, key: &str) -> Option<(Value, usize)> {
         let disk = self.disk.as_ref()?;
+        #[cfg(test)]
+        test_support::DISK_READS.with(|reads| reads.set(reads.get() + 1));
         let mut reader = disk.reader.borrow_mut();
         if reader.is_none() {
             match crate::store::open_rows(&disk.path) {
@@ -742,14 +744,19 @@ mod overlay_tests {
     }
 }
 
+/// What a test needs to put a catalog's rows on disk and count the rows read back from it.
 #[cfg(test)]
-mod tests {
-    use serde_json::{json, Value};
-    use std::collections::HashSet;
+pub(crate) mod test_support {
+    use serde_json::Value;
 
-    use crate::catalog::{By, Catalog};
+    use crate::catalog::Catalog;
 
-    fn key_of(row: &Value) -> Option<String> {
+    thread_local! {
+        /// Rows this thread read from the state file.
+        pub(crate) static DISK_READS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+    }
+
+    pub(crate) fn key_of(row: &Value) -> Option<String> {
         row.get("ratingKey").map(|key| match key {
             Value::String(text) => text.clone(),
             other => other.to_string(),
@@ -757,7 +764,7 @@ mod tests {
     }
 
     /// What the runtime does to save (`snapshot_state`), and to flush when asked.
-    fn save(catalog: &mut Catalog, cache: &mut crate::store::Cache, path: &std::path::Path, flush: bool) {
+    pub(crate) fn save(catalog: &mut Catalog, cache: &mut crate::store::Cache, path: &std::path::Path, flush: bool) {
         let changes = catalog.take_changes();
         let delta = {
             let catalog = &*catalog;
@@ -781,6 +788,15 @@ mod tests {
             crate::store::flush(path, u64::MAX).unwrap();
         }
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::{json, Value};
+    use std::collections::HashSet;
+
+    use super::test_support::{key_of, save};
+    use crate::catalog::{By, Catalog};
 
     fn same(disk: &Catalog, memory: &Catalog, step: usize) {
         assert_eq!(disk.len(), memory.len(), "step {step}: row count");
