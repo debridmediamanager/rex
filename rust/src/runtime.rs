@@ -12869,21 +12869,11 @@ impl Runtime {
         // whole queue before the dead rows drop. The server counted and indexed only the
         // live rows and dropped the selection from a queue with none; Plex Web sizes its
         // queue as max(playQueueTotalCount, rows).
-        let mut rows = queue
-            .items
-            .iter()
-            .map(|item| {
-                self.catalog.get(&item.rating_key).map(|row| {
-                    let mut value = self.detail_row(row);
-                    mediainfo::project_chapters(row, &mut value, query.get("includeChapters")
-                        .is_some_and(|value| is_true_option(value)));
-                    if let Some(object) = value.as_object_mut() {
-                        object.insert("playQueueItemID".to_string(), json!(item.id));
-                    }
-                    value
-                })
-            })
-            .collect::<Vec<_>>();
+        // The queue's positions: windowed first, and only the rows listed are projected. Every
+        // item went through the detail projection before the window, a 500-episode show's
+        // whole queue for each read of 50 rows.
+        let mut rows = (0..queue.items.len()).collect::<Vec<usize>>();
+        let live = |index: usize| self.catalog.position(&queue.items[index].rating_key).is_some();
         let total = rows.len();
         let mut selected_index = queue
             .selected
@@ -12908,7 +12898,7 @@ impl Runtime {
         {
             if let Some(index) = queue.items.iter().position(|item| item.id == center) {
                 selected_index = index;
-                centred = rows[index].is_some();
+                centred = live(index);
             } else {
                 listed_nothing = true;
             }
@@ -12953,7 +12943,21 @@ impl Runtime {
         if listed_nothing {
             rows.clear();
         }
-        let metadata = rows.into_iter().flatten().collect::<Vec<_>>();
+        let metadata = rows
+            .into_iter()
+            .filter_map(|index| {
+                let item = &queue.items[index];
+                self.catalog.get(&item.rating_key).map(|row| {
+                    let mut value = self.detail_row(row);
+                    mediainfo::project_chapters(row, &mut value, query.get("includeChapters")
+                        .is_some_and(|value| is_true_option(value)));
+                    if let Some(object) = value.as_object_mut() {
+                        object.insert("playQueueItemID".to_string(), json!(item.id));
+                    }
+                    value
+                })
+            })
+            .collect::<Vec<_>>();
         let mut fields = Map::from_iter([
             ("Metadata".to_string(), Value::Array(metadata.clone())),
             (
