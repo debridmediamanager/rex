@@ -791,7 +791,8 @@ impl Runtime {
             if has(PARSED_NOT_STORED, field) || number < 0 || (field == "year" && number == 0) {
                 row.shift_remove(field);
             } else {
-                row.insert(field.to_string(), json!(number as i64));
+                // Past i64 it is the largest, not a wrapped negative index or duration.
+                row.insert(field.to_string(), json!(number.min(i64::MAX as i128) as i64));
             }
             return Ok(());
         }
@@ -1464,4 +1465,16 @@ pub(super) fn query_names(pairs: &[(String, String)]) -> String {
         }
     }
     seen.join(",")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn an_integer_past_i64_is_stored_as_the_largest_not_wrapped() {
+        let mut row = Map::new();
+        assert!(Runtime::set_field(&mut row, "index", "9223372036854775808", false).is_ok());
+        assert_eq!(row.get("index"), Some(&json!(i64::MAX)));
+    }
 }
