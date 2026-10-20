@@ -5945,19 +5945,22 @@ impl Runtime {
 
     /// The leaves a leaf-count filter counts: a show's own, and -- cycles 14/54 -- the
     /// SHOW's for a season or an episode row.
-    fn show_leaves_for_counts(&self, row: &dyn Row) -> Vec<Value> {
+    /// The episodes a show-level count reads, borrowed: only their hot view fields are read,
+    /// and copying every episode of every show was the TV library's Unplayed filter reading
+    /// the whole library from disk per page.
+    fn show_leaves_for_counts(&self, row: &dyn Row) -> Vec<RowRef<'_>> {
         let key = string_value(row.get("ratingKey").unwrap_or(&Value::Null));
         match row.get("type").and_then(Value::as_str) {
-            Some("show") => self.leaves(&key),
+            Some("show") => self.leaves_refs(&key),
             Some("season") => row
                 .get("parentRatingKey")
                 .map(string_value)
-                .map(|parent| self.leaves(&parent))
+                .map(|parent| self.leaves_refs(&parent))
                 .unwrap_or_default(),
             Some("episode") => row
                 .get("grandparentRatingKey")
                 .map(string_value)
-                .map(|show| self.leaves(&show))
+                .map(|show| self.leaves_refs(&show))
                 .unwrap_or_default(),
             _ => Vec::new(),
         }
