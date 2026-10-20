@@ -534,14 +534,8 @@ impl Runtime {
         {
             return Some(found.clone());
         }
-        for other in self.catalog.hot().lazy() {
-            if let Some(found) = other
-                .get(key)
-                .and_then(Value::as_array)
-                .and_then(|tags| tags.iter().find(matches))
-            {
-                return Some(found.clone());
-            }
+        if let Some(found) = tag_in_catalog(&self.catalog, key, lowered) {
+            return Some(found);
         }
         self.tag_table
             .get(&(key.to_string(), lowered.to_string()))
@@ -1471,9 +1465,56 @@ pub(super) fn tag_order(name: &str, position: usize) -> i64 {
     }
 }
 
+/// The first tag of `key` any row holds, in row order, whose name lowercased is `lowered`. The
+/// search corpus already names every row's Role, Director, Genre and Collection tags in memory,
+/// so only the row holding the match is read; the other fields are read off every row, which
+/// is what every one cost before (each row from disk, an edit's new tag at a time).
+fn tag_in_catalog(catalog: &crate::catalog::Catalog, key: &str, lowered: &str) -> Option<Value> {
+    let matches = |tag: &&Value| tag.get("tag").map(string_value).is_some_and(|text| text.to_lowercase() == lowered);
+    let hot = catalog.hot();
+    let Some(slot) = crate::corpus::CORPUS_TAG_FIELDS.iter().position(|field| *field == key) else {
+        return hot.lazy().find_map(|row| row.get(key).and_then(Value::as_array).and_then(|tags| tags.iter().find(matches)).cloned());
+    };
+    let (rows, names) = hot.corpus();
+    let wanted = names.each().filter(|(name, _)| name.to_lowercase() == lowered).map(|(_, id)| id).collect::<HashSet<_>>();
+    if wanted.is_empty() {
+        return None;
+    }
+    rows.iter().enumerate().find_map(|(position, entry)| {
+        let (index, _) = names.tags(entry, slot).iter().find(|(_, id)| wanted.contains(id))?;
+        hot.at(position)?.get(key)?.as_array()?.get(*index as usize).filter(matches).cloned()
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_known_genre_is_found_reading_only_the_row_that_holds_it() {
+        let directory = std::env::temp_dir().join(format!("rex-known-tag-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&directory);
+        std::fs::create_dir_all(&directory).unwrap();
+        let path = directory.join("rex.db");
+        let mut items = (0..40)
+            .map(|n| json!({"ratingKey": (100 + n).to_string(), "type": "movie", "title": format!("M{n}"), "summary": "x".repeat(300),
+                            "Genre": [{"tag": "Drama", "id": 1}]}))
+            .collect::<Vec<_>>();
+        items[25]["Genre"] = json!([{"tag": "Drama", "id": 1}, {"tag": "Film-Noir", "id": 77, "filter": "genre=77"}]);
+        items[30]["Genre"] = json!([{"tag": "film-noir", "id": 78}]);
+        let mut catalog = crate::catalog::Catalog::from_value(json!({"items": items})).unwrap();
+        let mut cache = crate::store::Cache::default();
+        catalog.attach(&path, crate::rows::test_support::key_of, false);
+        crate::rows::test_support::save(&mut catalog, &mut cache, &path, true);
+        catalog.pack_pending();
+        let before = crate::rows::test_support::DISK_READS.with(std::cell::Cell::get);
+        let found = tag_in_catalog(&catalog, "Genre", "film-noir");
+        let read = crate::rows::test_support::DISK_READS.with(std::cell::Cell::get) - before;
+        let _ = std::fs::remove_dir_all(&directory);
+        // The first row holding it, in row order, with its own spelling and id.
+        assert_eq!(found, Some(json!({"tag": "Film-Noir", "id": 77, "filter": "genre=77"})));
+        assert!(read <= 1, "{read} rows read from disk");
+    }
 
     #[test]
     fn an_integer_past_i64_is_stored_as_the_largest_not_wrapped() {
