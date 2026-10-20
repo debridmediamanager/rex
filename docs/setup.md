@@ -611,5 +611,7 @@ starts looking as soon as the title is opened or played, and playback waits up t
 the five best candidates and keeps the first it finds in sync, else fixes one it finds off, else
 keeps the best named. A title with nothing to find is not searched again for a day.
 
-Checking against the sound reads six 90-second pieces of the file through its source. A file with
-a text subtitle of its own needs only a few small reads.
+Checking against the sound reads six 90-second pieces of the file through its source, so rex does
+it only when the title is played: opening a title keeps the best-named subtitle, and pressing play
+checks it and fixes it in place. A file with a text subtitle of its own needs only a few small reads,
+and is checked as soon as the title is opened.

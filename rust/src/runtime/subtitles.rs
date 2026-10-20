@@ -1054,6 +1054,9 @@ fn spans(cues: &[(f64, f64)], starts: &[f64]) -> bool {
 pub(crate) struct Jobs {
     running: Mutex<HashMap<String, usize>>,
     misses: Mutex<HashMap<String, Instant>>,
+    /// Automatic subtitles kept unchecked by a detail request (no text track to check against,
+    /// and audio is read only for a play), by item and language: the stream a play checks.
+    unchecked: Mutex<HashMap<String, i64>>,
 }
 
 impl Jobs {
@@ -1085,6 +1088,18 @@ impl Jobs {
         misses.insert(what, Instant::now());
     }
 
+    fn unchecked(&self, what: &str) -> Option<i64> {
+        self.unchecked.lock().unwrap_or_else(PoisonError::into_inner).get(what).copied()
+    }
+
+    fn set_unchecked(&self, what: String, stream: Option<i64>) {
+        let mut unchecked = self.unchecked.lock().unwrap_or_else(PoisonError::into_inner);
+        match stream {
+            Some(stream) => unchecked.insert(what, stream),
+            None => unchecked.remove(&what),
+        };
+    }
+
     fn wait(&self, key: &str, limit: Duration) {
         let deadline = Instant::now() + limit;
         while self.running(key) && Instant::now() < deadline {
@@ -1097,8 +1112,9 @@ impl Jobs {
 pub(crate) enum Task {
     /// Plex Web's apply of a search row: that candidate, measured and put right.
     Apply { offer: Candidate, activity: Map<String, Value> },
-    /// The account's settings want a subtitle the Part lacks: rex's pick.
-    Automatic,
+    /// The account's settings want a subtitle the Part lacks: rex's pick. `replaces` is the
+    /// stream a detail request kept unchecked, which a play's job checks against the audio.
+    Automatic { replaces: Option<i64> },
 }
 
 #[derive(Debug)]
@@ -1107,6 +1123,9 @@ pub(crate) struct Job {
     account: i64,
     search: Search,
     ffmpeg: Option<PathBuf>,
+    /// An FFmpeg this job does not read audio with (a detail request's): its pick is kept
+    /// unchecked for a play to check.
+    audio_later: bool,
     task: Task,
     jobs: Arc<Jobs>,
 }
@@ -1130,11 +1149,11 @@ pub(super) fn spawn(runtime: &SharedRuntime, job: Job) {
 
 fn run(shared: &SharedRuntime, job: Job) {
     let _finish = Finish(Arc::clone(&job.jobs), job.key.clone());
-    let Job { key, account, search, ffmpeg, task, jobs } = job;
+    let Job { key, account, search, ffmpeg, audio_later, task, jobs } = job;
     let begun = Instant::now();
     let (hash, candidates) = match &task {
         Task::Apply { offer, .. } => (None, vec![offer.clone()]),
-        Task::Automatic => {
+        Task::Automatic { .. } => {
             let hash = hash_of(&search.part);
             let found = search_all(&search, hash.as_deref());
             (hash.filter(|_| search.part.hash.is_none()), found)
@@ -1167,10 +1186,21 @@ fn run(shared: &SharedRuntime, job: Job) {
         guard.keep_hash(&key, &search.part.id, hash);
     }
     let applied = matches!(task, Task::Apply { .. });
+    let replaces = match task {
+        Task::Automatic { replaces } => replaces,
+        Task::Apply { .. } => None,
+    };
+    let unchecked = format!("{key}\u{1f}{}", provider_language(&search.language));
     match chosen {
         Some((at, fix, text)) => {
             let candidate = &candidates[at];
-            let stored = guard.store_subtitle(&key, account, &search, candidate, text, applied);
+            let stored = match replaces {
+                Some(stream) => guard.replace_subtitle(&key, stream, account, candidate, text),
+                None => guard.store_subtitle(&key, account, &search, candidate, text, applied),
+            };
+            // Checked now, or never to be: a play's job read the audio, and without an FFmpeg
+            // nothing will. Only a detail request's pick waits for a play.
+            jobs.set_unchecked(unchecked.clone(), stored.filter(|_| !applied && windows.is_none() && audio_later));
             info!(
                 "SUBTITLE {} {key} -> stream {} {} ({}){} in {:.1}s",
                 if applied { "applied" } else { "automatic" },
@@ -1182,6 +1212,8 @@ fn run(shared: &SharedRuntime, job: Job) {
             );
         }
         None if applied => warning!("SUBTITLE apply {key}: the subtitle could not be downloaded"),
+        // The kept one stays as it was; it is not checked again.
+        None if replaces.is_some() => jobs.set_unchecked(unchecked.clone(), None),
         None => {
             info!("SUBTITLE automatic {key}: nothing found in {}, not searched again for a day", search.language);
             jobs.miss(format!("{key}\u{1f}{}", provider_language(&search.language)));
@@ -1351,6 +1383,34 @@ impl Runtime {
         Some(id)
     }
 
+    /// A kept automatic subtitle put right in place: same id and key, the play's pick and text.
+    fn replace_subtitle(&mut self, key: &str, stream: i64, account: i64, candidate: &Candidate, text: String) -> Option<i64> {
+        let codec = if is_ass(&text) { "ass" } else { "srt" };
+        let row = self.catalog.get_mut(key)?;
+        crate::catalog::unpack_streams(row);
+        let found = row
+            .get_mut("Media")
+            .and_then(Value::as_array_mut)
+            .into_iter()
+            .flatten()
+            .filter_map(|media| media.get_mut("Part").and_then(Value::as_array_mut))
+            .flatten()
+            .filter_map(|part| part.get_mut("Stream").and_then(Value::as_array_mut))
+            .flatten()
+            .filter_map(Value::as_object_mut)
+            .find(|existing| existing.get("id").and_then(Value::as_i64) == Some(stream))?;
+        let selected = found.get("selected").is_some_and(truthy);
+        let mut fields = offer_fields(candidate, Some((selected, account)), codec);
+        fields.insert("id".to_string(), json!(stream));
+        fields.insert("key".to_string(), json!(format!("/library/streams/{stream}")));
+        crate::mediainfo::stream_titles(&mut fields, None, None);
+        fields.insert("_content".to_string(), json!(text));
+        *found = fields;
+        self.dirty = true;
+        self.save_if_dirty();
+        Some(stream)
+    }
+
     fn subtitle_agent(&self) -> Option<Agent> {
         let claim = self.plextv.claim.lock().unwrap_or_else(PoisonError::into_inner);
         let token = claim.token.clone().filter(|token| !token.is_empty())?;
@@ -1509,6 +1569,7 @@ impl Runtime {
             account: self.viewer.id,
             search,
             ffmpeg: self.transcoder.as_ref().map(|transcoder| transcoder.ffmpeg().to_path_buf()),
+            audio_later: false,
             task: Task::Apply { offer, activity },
             jobs: Arc::clone(&self.subtitle_jobs),
         });
@@ -1520,8 +1581,11 @@ impl Runtime {
 
     /// Automatic subtitles, on an item's detail request and a play queue's: when the requesting
     /// account's settings want subtitles in a language its Part has none in, a job finds,
-    /// measures and keeps one before the playback decision picks the tracks.
-    pub(super) fn subtitles_wanted(&mut self, key: &str, row: &Value) {
+    /// measures and keeps one before the playback decision picks the tracks. Only a play's job
+    /// reads audio (`playing`): six 90 s windows are a few hundred MB, too much for browsing
+    /// (Ben, 2026-10-20). A detail request's pick with nothing else to check it against is kept
+    /// unchecked, and the play's job checks it and puts it right in place.
+    pub(super) fn subtitles_wanted(&mut self, key: &str, row: &Value, playing: bool) {
         if !matches!(row.get("type").and_then(Value::as_str), Some("movie" | "episode")) || self.pending_subtitle.is_some() {
             return;
         }
@@ -1535,22 +1599,31 @@ impl Runtime {
             .unwrap_or_default();
         let Some(language) = wanted_language(&streams, &prefs) else { return };
         let have = crate::mediainfo::setting_language(&language);
-        if streams.iter().any(|stream| stream.get("streamType").and_then(Value::as_i64) == Some(3) && crate::mediainfo::stream_language(stream).as_deref() == Some(have.as_str())) {
-            return;
-        }
         let miss = format!("{key}\u{1f}{}", provider_language(&language));
-        if self.subtitle_jobs.running(key) || self.subtitle_jobs.missed(&miss) {
+        let ffmpeg = self.transcoder.as_ref().map(|transcoder| transcoder.ffmpeg().to_path_buf());
+        let present = streams.iter().any(|stream| stream.get("streamType").and_then(Value::as_i64) == Some(3) && crate::mediainfo::stream_language(stream).as_deref() == Some(have.as_str()));
+        let replaces = match (present, self.subtitle_jobs.unchecked(&miss)) {
+            (false, _) => None,
+            (true, Some(stream)) if playing && ffmpeg.is_some() => Some(stream),
+            (true, _) => return,
+        };
+        if self.subtitle_jobs.running(key) || (replaces.is_none() && self.subtitle_jobs.missed(&miss)) {
             return;
         }
         let Some(search) = self.subtitle_search_spec(&row, &language, None) else { return };
-        info!("SUBTITLE automatic {key}: account {} wants {language}", self.viewer.id);
+        info!(
+            "SUBTITLE automatic {key}: account {} wants {language}{}",
+            self.viewer.id,
+            if replaces.is_some() { ", checking the kept one against the audio" } else { "" }
+        );
         self.subtitle_jobs.start(key);
         self.pending_subtitle = Some(Job {
             key: key.to_string(),
             account: self.viewer.id,
             search,
-            ffmpeg: self.transcoder.as_ref().map(|transcoder| transcoder.ffmpeg().to_path_buf()),
-            task: Task::Automatic,
+            audio_later: !playing && ffmpeg.is_some(),
+            ffmpeg: ffmpeg.filter(|_| playing),
+            task: Task::Automatic { replaces },
             jobs: Arc::clone(&self.subtitle_jobs),
         });
     }

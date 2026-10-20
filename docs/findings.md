@@ -13493,6 +13493,10 @@ verdicts, is `tests/fixtures/subtitles/sync_corpus.json.gz`.
   else keeps the first; it is stored as the account's (`userID`) and selected by the settings. A
   decision for that item waits up to 3 s for the job. A search that finds nothing is not run again
   for that item and language for a day. Without a reference only the first is downloaded.
+- Only a play's job reads audio (Ben, 2026-10-20): a detail request with no text track to check
+  against keeps the best-named candidate unchecked, and the play queue's job measures the
+  candidates against the audio and puts the kept stream right in place, same id and key
+  (`test_subtitles.py`'s S05E08). Browsing reads no audio.
 
 **Measured against the corpus** (`subtitles.rs`' corpus test, rex's ranking and meter on the
 fixture's energy masks and cues; a pick is right when its truth is in sync and rex left it alone,
@@ -13510,7 +13514,7 @@ called none in sync that Silero called off.
   (`int(str(int(g)).ljust(3, '0'))`: `,050` was 500 ms), about one cue in ten. measure.py reads it
   as written now, and the corpus and its truth were measured again from the same audio windows;
   the numbers above are the second run's.
-- An automatic job on a release with no embedded text track reads six 90 s windows of it through
+- A play's automatic job on a release with no embedded text track reads six 90 s windows of it through
   its source: nine minutes of the file, a few hundred MB at film bitrates (computed, not measured).
   One with a text track reads only the track's index: the file's head, its Tracks and its Cues
   (a Matroska `CueDuration` or an MP4 sample table gives each line's length).

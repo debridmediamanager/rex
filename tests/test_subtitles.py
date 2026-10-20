@@ -542,6 +542,42 @@ def main():
         status, _ = server.request("/library/metadata/%s/subtitles?key=/library/streams/999999&codec=srt&language=eng"
                                    % show_key, "PUT")
         check("an apply of a stream no search answered is refused", status == 400, status)
+
+        # -- a detail request reads no audio; the play checks its pick and puts it right --------
+        # Six 90 s windows are a few hundred MB of a real file: only a play reads them (Ben,
+        # 2026-10-20). The best-named candidate here is 2.4 s late; the other is in sync.
+        next_file = SHOW["file"].replace("S05E07", "S05E08")
+        next_path = "shows/%s/%s" % (SHOW["release"], next_file)
+        stub.files["/dav/" + next_path] = open(show, "rb").read()
+        stub.matches[(next_file, "pt-BR")] = [provider_row(83001, next_file[:-4], "pt-BR", 900),
+                                              provider_row(83002, "American Dad! S05E08", "pt-BR", 100)]
+        stub.subtitles["/files/83001.srt"] = srt(late, "Linha atrasada %d").encode()
+        stub.subtitles["/files/83002.srt"] = srt(show_cues, "Linha certa %d").encode()
+        next_key = server.push("episode", next_path, show, {"tmdb": 1433, "imdb": "tt0397306"}, season=5, episode=8)
+        stub.seen.clear()
+        server.detail(next_key)
+        kept_now = lambda: [s for s in server.streams(next_key) if s.get("streamType") == 3 and s.get("languageCode") == "por"]
+        poll_until(lambda: kept_now(), 30)
+        first_kept = (kept_now() or [{}])[0]
+        audio_reads = [headers.get("range") for method, path, _, headers, _ in stub.seen
+                       if urllib.parse.unquote(path) == "/dav/" + next_path and headers.get("range", "").endswith("-")]
+        check("a detail request keeps the best-named pick without reading the audio",
+              first_kept.get("sourceKey") == "/library/streams/83001" and audio_reads == [], (first_kept, audio_reads))
+        stub.seen.clear()
+        server.request("/playQueues?type=video&uri=%s&key=%s" % (
+            urllib.parse.quote("server://%s/com.plexapp.plugins.library/library/metadata/%s" % (MACHINE, next_key)),
+            urllib.parse.quote("/library/metadata/%s" % next_key)), "POST")
+        poll_until(lambda: (kept_now() or [{}])[0].get("sourceKey") == "/library/streams/83002", 60)
+        checked = kept_now()
+        audio_reads = [path for method, path, _, headers, _ in stub.seen
+                       if urllib.parse.unquote(path) == "/dav/" + next_path and headers.get("range", "").endswith("-")]
+        status, headers, body = server.request((checked or [{}])[0].get("key", "/none"), raw=True)
+        got = read_cues(body.decode("utf-8", "replace"))
+        off = [abs(a - x) for (a, _), (x, _) in zip(got, show_cues)]
+        check("the play reads the audio, then keeps the one in sync in the same stream",
+              len(checked) == 1 and checked[0].get("id") == first_kept.get("id") and audio_reads
+              and checked[0].get("sourceKey") == "/library/streams/83002" and off and max(off) <= 0.15,
+              (checked, len(audio_reads), max(off) if off else None))
     finally:
         server.stop()
         # What the meter read of each candidate, for whoever reads a failure.

@@ -13261,7 +13261,7 @@ impl Runtime {
             let playing = queue.items.iter().find(|item| Some(item.id) == queue.selected).map(|item| item.rating_key.clone());
             self.queues.insert(id, queue);
             if let Some((key, row)) = playing.and_then(|key| Some((key.clone(), self.catalog.get(&key)?.clone()))) {
-                self.subtitles_wanted(&key, &row);
+                self.subtitles_wanted(&key, &row, true);
             }
             return response;
         }
@@ -18314,7 +18314,7 @@ impl Runtime {
             }
             // The requesting account's subtitle, found before its playback picks the tracks.
             if request.method == "GET" {
-                self.subtitles_wanted(key, row);
+                self.subtitles_wanted(key, row, false);
             }
             let checks_requested = ["checkFiles", "asyncCheckFiles", "checkFileAvailability"]
                 .iter()
