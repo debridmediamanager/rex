@@ -910,12 +910,14 @@ fn profile_prefs(profile: &Element) -> crate::mediainfo::TrackPrefs {
     }
 }
 
-/// The owner's webhooks, as a claimed 1.42.2 PMS read them at its start: `GET
+/// The webhooks of every account with access, one `<user>` each with its plex.tv id and
+/// `owner` flag (rex-fun's live list, `tests/fixtures/plextv_server_webhooks_shared_s1022.xml`),
+/// as a claimed 1.42.2 PMS read them at its start: `GET
 /// plex.tv/api/v2/server/webhooks?X-Plex-Token=<server token>`, answered `<users><user>
 /// <webhooks>` (`tests/fixtures/plextv_registration_s1422.json`, claimed_start). That list was
 /// empty; Plex Web's WebhookModel reads `url` off each entry, so any element under
 /// `<webhooks>` with a `url` is one.
-fn fetch_webhooks(claim: &Claim) -> Result<Vec<String>, String> {
+fn fetch_webhooks(claim: &Claim) -> Result<Vec<Webhook>, String> {
     let url = format!(
         "{WEBHOOKS_URL}?{}",
         urlencode(&[("X-Plex-Token", claim.token.clone().unwrap_or_default())])
@@ -923,15 +925,45 @@ fn fetch_webhooks(claim: &Claim) -> Result<Vec<String>, String> {
     let headers = claim.pms_headers("PlexMediaServer", true);
     let (_, body) =
         urlopen("GET", &url, &headers, None, 30).map_err(|failure| failure.to_string())?;
-    let root = parse_xml(&body)?;
-    let mut lists = Vec::new();
-    root.iter("webhooks", &mut lists);
-    Ok(lists
-        .iter()
-        .flat_map(|list| &list.children)
-        .filter_map(|hook| hook.get("url").filter(|url| !url.is_empty()))
-        .map(str::to_string)
+    webhooks_in(&body)
+}
+
+fn webhooks_in(body: &[u8]) -> Result<Vec<Webhook>, String> {
+    let root = parse_xml(body)?;
+    Ok(root
+        .all("user")
+        .into_iter()
+        .flat_map(|user| {
+            // `owner="1"` is the owner; another `<user>` is an account the server is shared with.
+            let owner = user.get("owner") == Some("1");
+            let account = user.get("id").and_then(|id| id.parse().ok());
+            user.all("webhooks")
+                .into_iter()
+                .flat_map(|list| &list.children)
+                .filter_map(|hook| hook.get("url").filter(|url| !url.is_empty()))
+                .map(move |url| Webhook { url: url.to_string(), owner, account })
+                .collect::<Vec<_>>()
+        })
         .collect())
+}
+
+/// One URL off plex.tv's list, and whose it is.
+#[derive(Debug, Clone, PartialEq)]
+struct Webhook {
+    url: String,
+    owner: bool,
+    account: Option<i64>,
+}
+
+impl Webhook {
+    /// Plex's rule (support.plex.tv, "Webhooks"): the owner's webhooks hear everything on the
+    /// server; a shared user's hear only that user's own playback, never library events (rex #10).
+    fn wants(&self, payload: &Value) -> bool {
+        self.owner
+            || (payload.get("event").and_then(Value::as_str).is_some_and(|event| event.starts_with("media."))
+                && self.account.is_some()
+                && payload.pointer("/Account/id").and_then(Value::as_i64) == self.account)
+    }
 }
 
 /// How long a read of the webhook list is used before the next event reads it again.
@@ -976,8 +1008,8 @@ fn deliver_webhooks(claim: &SharedClaim, events: mpsc::Receiver<Value>) {
             }
             read = Some(std::time::Instant::now());
         }
-        for url in &urls {
-            post_webhook(url, &payload);
+        for hook in urls.iter().filter(|hook| hook.wants(&payload)) {
+            post_webhook(&hook.url, &payload);
         }
     }
 }
@@ -2452,6 +2484,22 @@ pub(super) fn finish_claim(runtime: &SharedRuntime, token: &str, _target: &str) 
 mod tests {
     use super::*;
     use std::io::Write;
+
+    #[test]
+    fn a_shared_users_webhook_hears_only_its_own_playback() {
+        // rex-fun's live list, a webhook added to the owner and to the first shared user.
+        let list = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/../tests/fixtures/plextv_server_webhooks_shared_s1022.xml"))
+            .unwrap()
+            .replacen("<webhooks>", "<webhooks><webhook url=\"http://shared/\"/>", 1)
+            .replace("owner=\"1\" adsConsent=\"\" adsConsentSetAt=\"\" adsConsentReminderAt=\"\" experimentalFeatures=\"1\">\n  <webhooks>",
+                     "owner=\"1\" adsConsent=\"\" adsConsentSetAt=\"\" adsConsentReminderAt=\"\" experimentalFeatures=\"1\">\n  <webhooks><webhook url=\"http://owner/\"/>");
+        let hooks = webhooks_in(list.as_bytes()).unwrap();
+        let heard = |payload: Value| hooks.iter().filter(|hook| hook.wants(&payload)).map(|hook| hook.url.as_str()).collect::<Vec<_>>();
+        assert_eq!(heard(json!({"event": "media.play", "Account": {"id": 1}})), ["http://owner/"]);
+        assert_eq!(heard(json!({"event": "library.new", "Account": {"id": 900000001}})), ["http://owner/"]);
+        assert_eq!(heard(json!({"event": "media.play", "Account": {"id": 900000001}})), ["http://shared/", "http://owner/"]);
+        assert_eq!(heard(json!({"event": "media.stop", "Account": {"id": 900000002}})), ["http://owner/"]);
+    }
 
     #[test]
     fn every_uuid_is_its_own() {

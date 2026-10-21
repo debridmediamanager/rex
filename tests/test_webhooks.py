@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""A claimed server posts its owner's webhooks: play, pause, resume, scrobble and stop.
+"""A claimed server posts its owner's webhooks: play, pause, resume, scrobble and stop, and
+none of them to a shared user's webhooks.
 
 The list is read as a claimed 1.42.2 PMS read it at its start, `GET
 plex.tv/api/v2/server/webhooks?X-Plex-Token=<server token>`
@@ -50,6 +51,18 @@ class Recorder(ThreadingHTTPServer):
         self.records = []
 
 
+def webhooks_list(owner_hook, shared_hook):
+    """rex-fun's live list (`fixtures/plextv_server_webhooks_shared_s1022.xml`): one `<user>` per
+    account with access, the owner `owner="1"`. None had a webhook, so the owner's and the first
+    shared user's are filled in here, as plex.tv lists them for a shared user who set one (rex #10)."""
+    with open(os.path.join(HERE, "fixtures", "plextv_server_webhooks_shared_s1022.xml")) as handle:
+        users = handle.read().split("<user ")
+    fill = lambda user, hook: user.replace("<webhooks>\n", '<webhooks>\n    <webhook url="%s"/>\n' % hook, 1)
+    users = [fill(user, owner_hook) if 'owner="1"' in user else user for user in users]
+    users[1] = fill(users[1], shared_hook)
+    return "<user ".join(users)
+
+
 class PlexTv(BaseHTTPRequestHandler):
     """plex.tv as REX_PLEXTV_URL reaches it (`/<host><path>`): one webhook, empty elsewhere."""
 
@@ -60,9 +73,7 @@ class PlexTv(BaseHTTPRequestHandler):
         url = urlsplit(self.path)
         self.server.records.append((self.command, url.path, parse_qsl(url.query)))
         if url.path == "/plex.tv/api/v2/server/webhooks":
-            body = ('<?xml version="1.0" encoding="UTF-8"?>\n<users>\n<user id="1" owner="1">\n'
-                    '  <webhooks>\n    <webhook url="%s"/>\n  </webhooks>\n</user>\n</users>\n'
-                    % self.server.hook).encode()
+            body = webhooks_list(self.server.hook, self.server.shared_hook).encode()
         else:
             body = b'<?xml version="1.0" encoding="UTF-8"?>\n<MediaContainer size="0"/>\n'
         self.send_response(200)
@@ -122,9 +133,10 @@ def wait_for(predicate, seconds):
 
 
 def main():
-    plextv, hook = Recorder(PlexTv), Recorder(Hook)
+    plextv, hook, shared = Recorder(PlexTv), Recorder(Hook), Recorder(Hook)
     plextv.hook = "http://127.0.0.1:%d/hook" % hook.server_address[1]
-    for server in (plextv, hook):
+    plextv.shared_hook = "http://127.0.0.1:%d/hook" % shared.server_address[1]
+    for server in (plextv, hook, shared):
         threading.Thread(target=server.serve_forever, daemon=True).start()
     directory = tempfile.mkdtemp(prefix="rex-webhooks-")
     shutil.copy(os.path.join(HERE, "catalog_ui.json"), os.path.join(directory, "catalog.json"))
@@ -157,6 +169,8 @@ def main():
         got = wait_for(lambda: len(hook.records) >= len(want) and hook.records, 15) or hook.records
         events = [payload and payload.get("event") for _, payload in got]
         check("the webhook receives play, pause, resume, scrobble and stop, in order", events == want, events)
+        check("a shared user's webhook gets none of the owner's playback (rex #10)", not shared.records,
+              [payload and payload.get("event") for _, payload in shared.records])
         reads = [query for method, path, query in plextv.records
                  if (method, path) == ("GET", "/plex.tv/api/v2/server/webhooks")]
         check("the list is read from plex.tv with the server token, as a claimed PMS reads it",

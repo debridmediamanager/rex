@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<users>
+<user id="900000001" uuid="0000000000a11ce0" hasPassword="1" owner="0" adsConsent="" adsConsentSetAt="" adsConsentReminderAt="" experimentalFeatures="0">
+  <webhooks>
+  </webhooks>
+</user>
+<user id="900000002" uuid="0000000000a11ce1" hasPassword="1" owner="0" adsConsent="" adsConsentSetAt="" adsConsentReminderAt="" experimentalFeatures="1">
+  <webhooks>
+  </webhooks>
+</user>
+<user id="900000003" uuid="0000000000a11ce2" hasPassword="1" owner="0" adsConsent="" adsConsentSetAt="" adsConsentReminderAt="" experimentalFeatures="0">
+  <webhooks>
+  </webhooks>
+</user>
+<user id="316687974" uuid="0000000000a11ce3" hasPassword="1" owner="1" adsConsent="" adsConsentSetAt="" adsConsentReminderAt="" experimentalFeatures="1">
+  <webhooks>
+  </webhooks>
+</user>
+</users>
