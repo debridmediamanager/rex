@@ -13,6 +13,7 @@ default, another build with `REX_SERVER=/path/to/rex`.
 
     python3 tests/test_parity_server.py
 """
+import base64
 import http.client
 import json
 import os
@@ -287,11 +288,14 @@ def run_browse(s):
               {"key": "/services/browse/L3JleA==", "title": "rex",
                "path": "/rex"}]}}, doc)
     status, _, doc = s.json("GET", "/services/browse/L3JleA==?includeFiles=1")
-    check("/rex lists one directory per section and no files",
-          doc == {"MediaContainer": {"size": 2, "Path": [
+    placeholder = "/rex/Pick this - the folder does not matter"
+    check("/rex lists one directory per section, the placeholder, and no files",
+          doc == {"MediaContainer": {"size": 3, "Path": [
               {"key": "/services/browse/L3JleC8x", "title": "1", "path": "/rex/1"},
-              {"key": "/services/browse/L3JleC8y", "title": "2",
-               "path": "/rex/2"}]}}, doc)
+              {"key": "/services/browse/L3JleC8y", "title": "2", "path": "/rex/2"},
+              {"key": "/services/browse/" + base64.b64encode(placeholder.encode()).decode(),
+               "title": "Pick this - the folder does not matter",
+               "path": placeholder}]}}, doc)
     status, _, doc = s.json("GET", "/services/browse/L3JleC8x?includeFiles=0")
     check("includeFiles=0 on a leaf directory is {size: 0}",
           doc == {"MediaContainer": {"size": 0}}, doc)
@@ -307,6 +311,20 @@ def run_browse(s):
     check("and sorts them by lower-cased name", titles == sorted(titles), titles)
     status, _, _ = s.json("GET", "/services/browse/L3JleA?includeFiles=1")
     check("unpadded base64 is a 400", status == 400, status)
+
+
+def run_browse_after_delete(s):
+    # A deleted Movies library could not be added back from Plex: Add Library needs a
+    # folder, and the picker offered only the libraries left (a user, 2026-10-21). Last,
+    # since it deletes the fixture's libraries; the last one always refuses its delete.
+    placeholder = "/rex/Pick this - the folder does not matter"
+    sections = container(s.json("GET", "/library/sections")[2]).get("Directory") or []
+    for section in sections[:-1]:
+        s.json("DELETE", "/library/sections/" + str(section["key"]))
+    status, _, doc = s.json("GET", "/services/browse/L3JleA==?includeFiles=0")
+    check("with one library left, /rex still offers a folder that is no library's",
+          [row.get("path") for row in container(doc).get("Path") or []]
+          == ["/rex/" + str(sections[-1]["key"]), placeholder], doc)
 
 
 def run_system(s):
@@ -504,6 +522,7 @@ def main():
         run_livetv(server)
         run_verbs(server)
         run_writes(server)
+        run_browse_after_delete(server)
     finally:
         proc.send_signal(signal.SIGTERM)
         try:

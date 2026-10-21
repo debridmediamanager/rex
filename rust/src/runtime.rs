@@ -88,6 +88,8 @@ const MAX_HEADER_LINE_BYTES: usize = 64 * 1024;
 const MAX_HEADER_LINES: usize = 100;
 const MAX_TARGET_BYTES: usize = 32 * 1024;
 const MAX_BODY_BYTES: usize = 16 * 1024 * 1024;
+/// The folder Add Library's picker always offers; its name is all a person reads.
+const BROWSE_PLACEHOLDER: &str = "/rex/Pick this - the folder does not matter";
 const PLUGIN_REGISTRY: &[&str] = &[
     "/accounts",
     "/actions",
@@ -13640,7 +13642,8 @@ impl Runtime {
         Response::error(404, "rex: not found")
     }
 
-    /// server.py's `browse`: the Add Folder picker walking rex's `/rex` tree.
+    /// server.py's `browse`: the Add Folder picker walking rex's `/rex` tree, plus
+    /// `BROWSE_PLACEHOLDER` for a new library.
     /// The bare path lists `/` and the mount point; a sub-path is its (strict) base64
     /// and answers its directories only with `includeFiles` PRESENT -- `=1` adds the
     /// files -- and a path that does not exist is an empty 200.
@@ -13675,9 +13678,14 @@ impl Runtime {
         let wanted = if trimmed.is_empty() { "/" } else { trimmed };
         let basename = |name: &str| name.rsplit('/').next().unwrap_or("").to_lowercase();
         let mut children = Vec::new();
+        // Add Library will not save without a folder, and the picker offered only existing
+        // libraries' `/rex/<key>`: a deleted Movies library could not be added back from Plex
+        // (a user, 2026-10-21). rex places a pushed item by its source's directory, else in
+        // the first library of its kind, so any folder will do and this one says so.
         if wanted == "/" && !self.catalog.sections.is_empty() {
             children.push("/rex".to_string());
         } else if wanted == "/rex" {
+            children.push(BROWSE_PLACEHOLDER.to_string());
             let mut seen = HashSet::new();
             for section in &self.catalog.sections {
                 let child = format!(
