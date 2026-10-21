@@ -1,0 +1,36 @@
+{
+  "recorded_at": "2026-10-21",
+  "client": "Plex Web",
+  "version": "4.163.0-8246fd2",
+  "source_spans": [
+    {
+      "module": "24957",
+      "url": "https://app.plex.tv/desktop/js/main-8792-0fadf59092c873ab638b-plex-4.163.0-8246fd2.js",
+      "carrier_sha256": "bdb3e4ce5d49b5eb6be48e11a4aea0f33a357561f8bf1e1303d31255f701cd97",
+      "source_byte_start": 1602673,
+      "source_byte_end_exclusive": 1603376,
+      "module_sha256": "431da4c21b9a710c115b3f8e6b85f64809f301032d03d7104061d779a0948a59",
+      "capture": "verbatim factory"
+    },
+    {
+      "module": "22701",
+      "url": "https://app.plex.tv/desktop/js/main-8792-0fadf59092c873ab638b-plex-4.163.0-8246fd2.js",
+      "carrier_sha256": "bdb3e4ce5d49b5eb6be48e11a4aea0f33a357561f8bf1e1303d31255f701cd97",
+      "source_byte_start": 452469,
+      "source_byte_end_exclusive": 454584,
+      "module_sha256": "0e7ed99d4b7fce9960033bc12bb349765a36a55fdc7790f44a7e68f6227e7dba",
+      "capture": "dependency constant values only"
+    },
+    {
+      "module": "93764",
+      "url": "https://app.plex.tv/desktop/js/main-8792-0fadf59092c873ab638b-plex-4.163.0-8246fd2.js",
+      "carrier_sha256": "bdb3e4ce5d49b5eb6be48e11a4aea0f33a357561f8bf1e1303d31255f701cd97",
+      "source_byte_start": 1621229,
+      "source_byte_end_exclusive": 1624604,
+      "module_sha256": "82369c42befb8fcbeaf98593792afd6a169879e163f06aaa77f7cedec63a2c21",
+      "capture": "dependency constant values only"
+    }
+  ],
+  "scope": "Official movie playback payment gate, with rollout enabled, a non-cloud server, and caller-supplied viewer entitlement, local/remote connection and ownerFeatures. No account or library data is captured.",
+  "adapters": "React useSelector invokes the supplied selectors; server lookup returns the caller server; source URI parsing returns its identifier; feature selectors expose the payment rollout plus the caller viewer entitlement; media constants preserve shipped string values. The gate itself is unmodified."
+}

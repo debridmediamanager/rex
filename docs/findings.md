@@ -13023,6 +13023,10 @@ numbers its row has before it is identified.
 
 ## Remote play with an owner who has no Plex Pass (2026-10-17)
 
+**Superseded by "Remote playback capabilities without a subscription" (2026-10-21).**
+This experiment established that `pass` alone does not open Plex Web's remote gate,
+not that rex cannot advertise the distinct remote-playback capability.
+
 Fizzy #297. A throwaway rex (CI artifact of c181b2c, its own catalog and port on the test
 host, two generated 60 s h264/aac clips pushed through the feed from a local static server)
 was claimed to an owner account whose plex.tv `subscription` is `active: false`, `Inactive`,
@@ -13518,3 +13522,68 @@ called none in sync that Silero called off. With the addon's candidates too the 
 
 `tests/test_subtitles.py` drives all of it against a stub provider and two real clips
 FFmpeg makes (one with an embedded text track, one whose audio is tone bursts on its dialogue).
+
+## Remote playback capabilities without a subscription (2026-10-21)
+
+rex already advertises `pass`, `myPlexSubscription=true`, `subscriptionActive=true` and
+`subscriptionState=Active` independently of claim or account subscription. Those are
+not Plex Web's remote-playback capability.
+
+**The shipped gate.** Plex Web **4.163.0-8246fd2**, module **24957**, reads the selected
+server's `ownerFeatures` for either `remote-watch-pass` or
+`76ddd91e-8321-4916-94b6-ded8e3727a64`. It permits remote video when either is present,
+even without the viewer's own Remote Watch Pass. `pass` is not an input. The rollout
+feature `remote-watch-pass-iap` enables the payment gate; it is not the paid entitlement.
+The verbatim gate and dependency adapters are in
+`tests/fixtures/plex_web_remote_gate.cjs`; the adjacent JSON records the source URL,
+carrier and module SHA-256, and exact byte spans. It was taken from the scripts loaded
+by the official app, not reconstructed from the prior finding.
+
+**Android needs the UUID too.** The retained official Android **2026.19.1** APK
+(`versionCode=971050475`, SHA-256
+`12762d80c7f4b4af2283cf7f03b8a92051a10dccbdd21e7fcf111106a7025801`) contains the same
+owner-capability branch in Hermes modules 2710 (`getUserRequiresRemoteWatchPass`) and
+4511 (`useUserRequiresRemoteWatchPass`). Module 705's owner-feature selector checks
+`ownerFeatures.includes(feature)` with the UUID-valued constant from module 713,
+without a named fallback. Module 2261 obtains those features from `/media/providers`.
+The account's own entitlement and the real connection's `local` state remain separate
+inputs. This is static inspection of the retained decompilation, not Android playback
+or a claim about the newest Play Store release.
+
+rex now includes both the measured name and UUID in its local capabilities, through
+the existing projection shared by `/`, `/media/providers` and `/myplex/account`.
+Acquired account UUIDs still union with them; claim, sign-in, ownership and token
+enforcement are unchanged. No plex.tv account response or client script is modified.
+
+**Real playback, before and after.** An isolated rex on zen, claimed with a legitimate
+claim token to an account whose live subscription was `active:false`, `Inactive`,
+served one generated 60 s H.264/AAC MP4 through its source API. The same account watched
+in official app.plex.tv **4.163.0**, Windows Chrome **155.0.8059.85**. Its only announced
+connection was public HTTPS with `local:false`, `relay:false`.
+
+- Unfixed `139d259`: Play opened the Remote Watch Pass subscription modal. No play
+  queue, decision, Part or timeline request reached rex; no video element was created.
+- Fixed binary, same catalog and claim: Play opened the video without the modal.
+  `/playQueues` and the decision answered 200, the Part answered 206, and the browser
+  decoded **640 x 360**, `readyState=4`, unpaused at **2.011917 s**, **52 video frames**.
+- Closing the player removed the video and left `/status/sessions` at size 0.
+- The public `/identity` remained 200. Anonymous and wrong-token `/` reads were 401;
+  a valid-token read was 200. `/rex/sources` through the public proxy remained 403.
+
+The HTTPS route used a Cloudflare quick tunnel only for this small generated test
+clip, with `/rex/` blocked at a dedicated reverse proxy. This does not change the
+setup warning against Cloudflare tunnels: their Range handling still makes them
+unsuitable for full-size media.
+
+`test_plextv.py` runs the shipped Web gate against actual capability responses before
+claim, after claim, after an upstream feature refresh without Pass, and after restart.
+Each consumer case exercises the named capability, the UUID, and a control retaining
+`pass` but removing both remote capabilities. Against the unfixed binary, all **36**
+remote-allow cases failed while the other **154** checks passed. With the change,
+**190/190** passed. The old UI check pinning the entire default feature string was
+removed rather than re-pinned.
+
+Remote playback is runtime-verified here for Plex Web only. Android's recovered
+predicate supports the UUID addition; Android, iOS and TV-device playback have not
+been verified.
+

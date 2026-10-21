@@ -305,9 +305,10 @@ server then shows in app.plex.tv and the apps' server list. If it does not, look
 cannot reach. plex.tv does not test the addresses, so `pubsub: reachability 0` in the log
 means nothing either way.
 
-Playing from outside your home needs a Plex Pass or Remote Watch Pass on the account you
-watch with, as with any Plex server: the app asks for it before the play reaches rex
-(measured in Plex Web only).
+With the October 21 remote-playback update, Plex Web 4.163.0 plays remotely without a Plex
+Pass or Remote Watch Pass on either the claiming or viewing account. rex advertises the
+capability locally; it changes no subscription at plex.tv. Older builds can still show
+Plex's paywall. Other Plex apps have not been playback-tested.
 
 ### 8. Run it as a service
 

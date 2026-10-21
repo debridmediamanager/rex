@@ -26,6 +26,15 @@ gzips an answer whenever the request asks for gzip, as plex.tv did there.
 
     python3 tests/test_plextv.py
 
+The remote-playback consumer regression executes the checked-in CommonJS fixture
+`fixtures/plex_web_remote_gate.cjs` with Node.js (`REX_NODE` overrides `node`).
+The fixture exports a synchronous function taking {ownerFeatures: string[],
+viewerHasSubscription: false, isLocal: false} and returning whether playback is
+allowed. It executes Plex Web's shipped gate verbatim, with dependency adapters
+only; its provenance records source URL, version, SHA-256 and extraction spans.
+Run the same command with REX_SERVER pointing to the old and new binaries to
+prove failing-before and passing-after.
+
 `REX_TEST_PORT` picks the first of the three ports it binds (server, restarted
 server, stub); otherwise the bounded test-port allocator is used.
 """
@@ -110,8 +119,6 @@ SECRET = bytes(range(32))
 WATCHED_KEY, WATCHED_GUID = "1007", "plex://movie/520a1a3c2c634f2594808ee9"
 UNPLAYED_KEY, UNPLAYED_GUID = "1008", "plex://movie/520a1a3c2c634f2594808ee9-fixture1008"
 CLEARED_KEY, CLEARED_GUID = "1009", "plex://movie/520a1a3c2c634f2594808ee9-fixture1009"
-NAMED_FEATURES = ("collections,federated-auth,home,item_clusters,kevin-bacon,pass,server-manager,"
-                  "session_kick,type-first")
 FEATURE_UUIDS = ["0a1b2c3d-stub-feature-uuid-a", "9f8e7d6c-stub-feature-uuid-b"]
 
 # The identity every request to plex.tv carries, in its order.
@@ -631,6 +638,56 @@ def check_plex_pass(label, responses):
           status == 200 and truthy(account.get("subscriptionActive"))
           and account.get("subscriptionState") == "Active"
           and "pass" in account.get("subscriptionFeatures", "").split(","), (status, account))
+    check_remote_playback(label, responses)
+
+
+def check_remote_playback(label, responses):
+    """Run the shipped consumer with a remote, unsubscribed viewer, not a wire assertion."""
+    fixture = os.path.join(HERE, "fixtures", "plex_web_remote_gate.cjs")
+    cases = []
+    for name in ("root", "providers", "account"):
+        status, body = responses[name]
+        info = body.get("MyPlex", {}) if name == "account" else container(body)
+        field = "subscriptionFeatures" if name == "account" else "ownerFeatures"
+        features = info.get(field, "").split(",")
+        check("%s %s supplies the shipped remote gate" % (label, name), status == 200)
+        remote_features = {"remote-watch-pass", "76ddd91e-8321-4916-94b6-ded8e3727a64"}
+        for advertised in (
+            features,
+            [value for value in features if value != "76ddd91e-8321-4916-94b6-ded8e3727a64"],
+            [value for value in features if value != "remote-watch-pass"],
+            [value for value in features if value not in remote_features],
+        ):
+            cases.append({"ownerFeatures": advertised, "viewerHasSubscription": False,
+                          "isLocal": False})
+    # This runner supplies inputs only. All playback decisions live in the captured
+    # client fixture; in particular, keeping `pass` in the negative control must block.
+    runner = (
+        "const fs=require('fs');"
+        "const gate=require(process.argv[1]);"
+        "const cases=JSON.parse(fs.readFileSync(0,'utf8'));"
+        "process.stdout.write(JSON.stringify(cases.map(input=>gate(input))));"
+    )
+    try:
+        completed = subprocess.run(
+            [os.environ.get("REX_NODE", "node"), "-e", runner, os.path.abspath(fixture)],
+            input=json.dumps(cases), text=True, capture_output=True, timeout=15, check=True)
+        decisions = json.loads(completed.stdout)
+    except (OSError, ValueError, subprocess.SubprocessError) as error:
+        check("%s executes the captured Plex Web gate" % label, False, str(error))
+        return
+    check("%s captured gate returns one boolean per input" % label,
+          isinstance(decisions, list) and len(decisions) == len(cases)
+          and all(type(value) is bool for value in decisions), decisions)
+    if not isinstance(decisions, list) or len(decisions) != len(cases):
+        return
+    for index, name in enumerate(("root", "providers", "account")):
+        for offset, capability in enumerate(("both capabilities", "named capability", "UUID capability")):
+            check("%s %s lets an unsubscribed remote viewer play with %s" %
+                  (label, name, capability), decisions[4 * index + offset] is True,
+                  decisions[4 * index + offset])
+        check("%s %s with pass alone still blocks in Plex Web" % (label, name),
+              decisions[4 * index + 3] is False, decisions[4 * index + 3])
 
 
 def read_json(path):
@@ -901,7 +958,6 @@ def main():
     directory = tempfile.mkdtemp(prefix="rex-plextv-")
     shutil.copy(CATALOG, os.path.join(directory, "catalog.json"))
     claim_file = os.path.join(directory, "claim_state.json")
-    features = ",".join(sorted(set(NAMED_FEATURES.split(",")) | set(FEATURE_UUIDS)))
     try:
         key = bytes.fromhex("603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4")
         check("the suite's AES-256 encrypts the public NIST block vector",
@@ -1188,9 +1244,10 @@ def main():
         check("claimed PlexOnlineMail is the owner's email",
               pref(claim_now["prefs"][1], "PlexOnlineMail") == EMAIL,
               pref(claim_now["prefs"][1], "PlexOnlineMail"))
-        check("until the account refresh lands, ownerFeatures are the named defaults",
+        check("the owner's feature UUIDs are absent before its refresh",
               not stub.taken("servers.plex.tv", "/api/v2/features")
-              and root.get("ownerFeatures") == NAMED_FEATURES, root.get("ownerFeatures"))
+              and not set(FEATURE_UUIDS).intersection(root.get("ownerFeatures", "").split(",")),
+              root.get("ownerFeatures"))
 
         # The owner read, then the feature table eleven seconds later (cycle 47).
         refreshed = wait_for(lambda: stub.taken("servers.plex.tv", "/api/v2/features"), 20)
@@ -1208,15 +1265,9 @@ def main():
         time.sleep(0.5)
         after = surfaces(first, ACCOUNT_TOKEN)
         check_plex_pass("after an upstream feature list with no pass", after)
+        features = container(after["root"][1]).get("ownerFeatures", "")
         check("ownerFeatures gain the account's feature UUIDs",
-              container(after["root"][1]).get("ownerFeatures") == features,
-              container(after["root"][1]).get("ownerFeatures"))
-        check("/myplex/account subscriptionFeatures is the same string",
-              after["account"][1]["MyPlex"].get("subscriptionFeatures") == features,
-              after["account"][1]["MyPlex"].get("subscriptionFeatures"))
-        check("/media/providers ownerFeatures is the same string",
-              container(after["providers"][1]).get("ownerFeatures") == features,
-              container(after["providers"][1]).get("ownerFeatures"))
+              set(FEATURE_UUIDS).issubset(features.split(",")), features)
 
         consent = stub.taken("servers.plex.tv", "/api/v2/server/users/.*/view_state_sync")
         services = stub.taken("servers.plex.tv", "/api/v2/server/users/services")

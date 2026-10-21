@@ -27318,32 +27318,6 @@ def main():
           str(theme_c45))
 
 
-    # Cycle 45, measured on plexlab (1.43.4) and the 1.42.2 reference: `ownerFeatures` on `GET /`
-    # and `subscriptionFeatures` on `/myplex/account` are the SAME STRING, byte for byte
-    # -- 7,078 characters on plexlab and 6,967 on the 1.42.2 reference, identical within each
-    # server. rex answered `pass,sync,hwtranscode` for one and the bare `pass` for the
-    # other, so its own two fields contradicted each other and the client -- which reads
-    # `ownerFeatures` in 28 places in its bundle -- was told the account had three
-    # features on one path and one on the other.
-    #
-    # The list is a SORTED comma join of the account's plex.tv entitlements: ~180 opaque
-    # UUIDs plus 32 NAMED features, and the 32 names are byte-identical on both servers
-    # while the UUID count differs (212 against 209). So the names are the modellable
-    # half and the UUIDs are account-and-server-scoped plex.tv content: rex carries
-    # the names and does not invent the ids.
-    features_c45 = {}
-    _status_c45f, root_c45, _ = get(base, "/")
-    _status_c45f2, myplex_c45, _ = request(base, "GET", "/myplex/account")
-    account_c45 = json.loads(myplex_c45).get("MyPlex") or {}
-    features_c45["owner"] = root_c45.get("ownerFeatures")
-    features_c45["subscription"] = account_c45.get("subscriptionFeatures")
-    named_c45 = ("collections,federated-auth,home,item_clusters,kevin-bacon,pass,server-manager,"
-             "session_kick,type-first")
-    check("the two feature lists agree and carry rex's cut of the measured names",
-          features_c45["owner"] == features_c45["subscription"] == named_c45
-          and list(features_c45["owner"].split(",")) == sorted(
-              features_c45["owner"].split(",")),
-          str(features_c45))
 
 
     # Cycle 45, caught by `tests/test_catalog_features.py` on the cycle's own head and

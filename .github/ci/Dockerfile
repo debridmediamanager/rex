@@ -3,6 +3,8 @@
 # Linux builds on glibc 2.35. macOS is cross-built with cargo-zigbuild: zig supplies the linker
 # and the system library stubs, so no Apple SDK is needed.
 FROM ubuntu:22.04
+# Execute the recorded Plex Web gate unchanged, including its ES2020 syntax.
+COPY --from=node:24-bookworm-slim /usr/local/bin/node /usr/local/bin/node
 # The fonts are the transcoder suite's: with none, libass burns no subtitle into the picture.
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends \

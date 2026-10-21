@@ -25284,15 +25284,12 @@ fn unix_year(timestamp: i64) -> i64 {
     year + if month < 10 { 0 } else { 1 }
 }
 
-/// The account feature names rex reports for the owner (the oracle's `OWNER_FEATURES` with
-/// no claim of its own): the measured 32 less the ones naming what rex cannot do -- DVR and
-/// Live TV, tuners, lyrics and the music agents, downloads, camera upload, photos, plex.direct
-/// certificates, hardware transcoding, content filters, trailers -- and webhooks, which rex posts
-/// (`plextv::Webhooks`) but no client reads off a server. Plex Web 4.147.1
-/// reads only `session_kick`, `dvr`, `livetv`, `lyrics` and `premium_music_metadata` off a
-/// server (findings, "What ownerFeatures gates"). `pass` is always advertised, regardless
-/// of claim or account status; it does not change plex.tv's own playback checks.
-const OWNER_FEATURES: &str = "collections,federated-auth,home,item_clusters,kevin-bacon,pass,server-manager,session_kick,type-first";
+/// Local rex capabilities, unioned with the owner's acquired plex.tv feature UUIDs.
+/// `pass` stays independent of claim or subscription. Plex Web 4.163.0 accepts the
+/// remote-watch-pass name or UUID; Android 2026.19.1 checks only the UUID, read from
+/// `/media/providers` (findings, "Remote playback capabilities without a subscription").
+/// Neither changes the account's plex.tv entitlements or the server's token gate.
+const OWNER_FEATURES: &str = "76ddd91e-8321-4916-94b6-ded8e3727a64,collections,federated-auth,home,item_clusters,kevin-bacon,pass,remote-watch-pass,server-manager,session_kick,type-first";
 
 /// Cycle 54: the rows `unwatched=1` drops from a list that is not a query -- a movie
 /// or an episode with a play recorded.  A parent row is never dropped for it.

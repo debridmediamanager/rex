@@ -2281,9 +2281,13 @@ are changing; replay the client's exact request before altering behavior.
   status (intentional policy, 2026-10-19): `/` and `/media/providers` answer
   `myPlexSubscription=true`, `/myplex/account` answers `subscriptionActive=true` and
   `subscriptionState=Active`, and both feature strings include `pass`. Sign-in, ownership
-  and token gates still follow the actual claim. This changes no plex.tv entitlement and
-  does not bypass a client's direct plex.tv subscription check (findings, "Remote play with
-  an owner who has no Plex Pass").
+  and token gates still follow the actual claim. Remote playback additionally needs
+  `remote-watch-pass` and its UUID `76ddd91e-8321-4916-94b6-ded8e3727a64` in the shared
+  feature projection: Plex Web 4.163.0 accepts either; Android 2026.19.1's recovered gate
+  checks only the UUID from `/media/providers`. Both are local capabilities, not acquired
+  account entitlements. Web playback was verified with an unsubscribed owner/viewer and
+  a `local=false` connection; Android was inspected statically, not playback-tested
+  (findings, "Remote playback capabilities without a subscription").
 - **An axis BUCKET resolves against the server's global tag TABLE, not the leaf's own column.** A
   genre tag id answers the identical container under `genre`, `director`, `actor`, `mood`,
   `style`, `similar`, `tag` and eleven more; only `studio` and `platform` are not bucket names at
