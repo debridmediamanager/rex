@@ -84,7 +84,26 @@ and whatever path prefix its `file` carries, unless the source placed it as the 
 an episode under `movies` goes to a show library, a movie under `shows` to a movie library.
 An item in no library's directory goes to the first library of its kind: one its source
 placed as an episode to a show library, anything else, unplaced files included, to a movie
-library. To add more directories to the movie or show library, name them when seeding
+library.
+
+**A library of its own for a directory** (anime, wrestling, a 1080p movies folder) is set in zurg,
+under that directory in its `config.yml`, beside the directory's filters:
+
+```yaml
+directories:
+  anime:
+    rex_shows: Anime          # a show library titled Anime
+    rex_movies: Anime Movies  # and a movie library; either one alone is fine
+```
+
+zurg sends it when it registers (step 6), and rex makes the libraries then, on
+`/mnt/zurg/anime`, and moves what it already shows from that directory into them, watch state
+and all. Every other directory stays in Debrid Movies and Debrid TV. Rename the libraries in
+Plex as you like. Delete one and it stays deleted: its directory goes back to Debrid Movies
+and Debrid TV. Removing the lines from zurg's config keeps the library
+([feed API](feed-api.md#libraries-a-source-declares)).
+
+To add more directories to Debrid Movies or Debrid TV instead, name them when seeding
 (`--shows anime` makes `anime` a second folder of Debrid TV):
 
 ```bash
@@ -97,10 +116,11 @@ and it only matters for zurg's own Plex matcher, which matches a file by its ful
 so set it to zurg's `mount_path` if you point zurg's `plex_server_url` at rex (which step 6
 advises against).
 
-**Name every directory before the first start.** Once rex has started, the
+**Name seeded directories before the first start.** Once rex has started, the
 libraries it saved in `rex.db` win over the catalog, so re-seeding changes nothing, and
-rex does not yet take Plex's "Edit Library → Add folders". A directory added later gets
-a library of its own instead: Manage → Libraries → Add Library on it.
+rex does not yet take Plex's "Edit Library → Add folders". Add Library cannot pick a zurg
+directory either: its folder picker lists none. A directory that needs a library later gets
+one from zurg (above).
 
 rex keeps everything clients change (watch state, edits, playlists, collections,
 history, preferences), and each source's registration, in the same `rex.db`, written as it
@@ -201,7 +221,7 @@ account out of plex.tv before.
 3. `curl -s http://<rex's LAN IP>:32400/identity` now reports `claimed="1"`, and
    `claim_state.json` exists beside the catalog.
 4. Still as the fresh account, share rex with your own account in app.plex.tv (Settings,
-   Manage Library Access, Grant Library Access, both libraries) and accept the invite as
+   Manage Library Access, Grant Library Access, every library) and accept the invite as
    yourself.
 
 You then watch signed in as yourself, with your own watch state. Fix Match works only for
@@ -228,6 +248,8 @@ rex_url: http://<rex's LAN IP>:32400   # turns on zurg's ffprobe analysis (whole
 dmm_api_key: <your DMM API key>         # optional sponsor key: DMM, not the name, says what each file is (step 4)
 rex_source: rd                          # optional: the name it registers as (default "zurg")
 ```
+
+A directory that is to be a library of its own gets `rex_shows`/`rex_movies` under it (step 3).
 
 rex's LAN IP works from the same machine, another one and a container alike. It needs a zurg
 nightly from 2026.10.17 or later: the latest zurg release, v1.0.0, has no rex feed. Restart
@@ -424,6 +446,7 @@ one in and setting `REX_TRANSCODER` is untested; to convert video, run rex witho
 | Every part read answers 502 | No source is registered (`curl -s http://<rex's LAN IP>:32400/rex/sources`), or rex cannot reach the one that is |
 | A push answers `rejected: no movie or show library holds ...` | The catalog has no movie or show library of that item's kind: name one with `--movies`/`--shows` before the first start, or Add Library on it (step 3) |
 | zurg pushed but the library stays empty | Items are held until zurg probes them (step 6) |
+| A directory given `rex_shows`/`rex_movies` has no library | zurg did not send it (`curl -s http://<rex's LAN IP>:32400/rex/sources` lists each source's `directories`), or a library there was deleted in Plex, which keeps it deleted (the log says `stays deleted`) |
 | A part read answers 502, or 401/403 | rex cannot reach the source's `url` (502), or the source refused its credential (its own status): the log line `PART ... upstream` says which |
 | The server is not in the Plex apps | Not claimed, no `--announce-url`, or the announced HTTPS address is not reachable from the internet (step 7) |
 | The log says `waiting for a claim` | The server is not claimed: claim it (step 5) and it announces at once |

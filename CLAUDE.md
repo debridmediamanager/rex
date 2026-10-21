@@ -144,7 +144,11 @@ identified; it is asked with the claim's server token, and is off without a clai
 `--assert-claimed`), which leaves every title its pushed name and Fix Match no candidates. `--zurg-mount` is zurg's
 `mount_path` (default `/mnt/zurg`): a Part's `file` is `<mount>/<directory>/<release>/<file>`,
 and each library's `Location` is `<mount>/<directory>` -- set in the catalog's sections
-(`rex catalog --seed`, or the seed on start), or through Add Library's `location`.
+(`rex catalog --seed`, or the seed on start), through Add Library's `location`, or by a
+source registering `directories` (zurg's `rex_shows`/`rex_movies`): rex makes each library it
+titles unless one of that type already names the directory or a person deleted one there
+(`deletedLocations`), and never deletes or retitles one (`feed::declare_libraries`,
+`docs/feed-api.md` "Libraries a source declares").
 
 Point zurg at the server in zurg's `config.yml`: `rex_url` (this server's URL, an address
 or a host name) is all the feed needs; zurg registers itself as the source `zurg` (or its

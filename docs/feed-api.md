@@ -60,7 +60,8 @@ registers, and plays the moment it does.
 ### `PUT /rex/sources/{name}`
 
 ```json
-{"url": "http://127.0.0.1:9999/dav", "user": "zurg-user", "password": "zurg-password", "mount": "/mnt/zurg"}
+{"url": "http://127.0.0.1:9999/dav", "user": "zurg-user", "password": "zurg-password", "mount": "/mnt/zurg",
+ "directories": [{"name": "anime", "shows": "Anime", "movies": "Anime Movies"}, {"name": "wrestling", "shows": "Wrestling"}]}
 ```
 
 | Field | Meaning |
@@ -69,13 +70,45 @@ registers, and plays the moment it does.
 | `user`, `password` | Basic auth for `url` (optional) |
 | `bearer` | `Authorization: Bearer` for `url` instead (optional) |
 | `mount` | Optional and rarely needed: the prefix of the `file` clients see for an item pushed without one (`<mount>/<path>`, else `/<path>`). Nothing is read from it. It also lets a catalog row from the old WebDAV scanner, with no feed id, find its bytes |
+| `directories` | Optional: the directories that get a library of their own ([below](#libraries-a-source-declares)). Each entry is `name`, one directory as the first segment of the source's item paths (non-empty, no `/`), and `shows` and/or `movies`, the title of its show and movie library (non-empty strings; at least one). Absent, `null` or `[]` declares nothing |
 
 `{name}` is letters, digits, `-` and `_`. A registration creates the source or replaces the
 one of that name, and the next part read streams from what it names, without a restart.
 Sending the same registration again changes nothing, so a source can send it every time it
 starts a push session; zurg does. Answers `200` with the source as `GET` shows it, or `400`
-`{"error": ...}` for a bad name, a url that is not http(s) or carries credentials, or a body
-that is not a JSON object.
+`{"error": ...}` for a bad name, a url that is not http(s) or carries credentials, a body
+that is not a JSON object, or a malformed `directories` (`directories[0]: names no shows or
+movies library`); a refused registration changes nothing.
+
+### Libraries a source declares
+
+A directory named in `directories` is a library of its own, made when the source registers:
+a movie library titled as the entry's `movies` and a show library titled as its `shows`, whichever it has,
+on the folder `<mount>/<name>` (with no `mount`, under the parent of the first library's
+folder, normally `/mnt/zurg`). rex logs `SECTION create Anime (show) for zurg's anime`, and
+Plex clients see it as one added in Add Library. Then:
+
+- **A library of that type already on the folder is used**, whoever made it: one seeded with
+  `--shows anime`, one added with Add Library, or one made by an earlier registration. Nothing is
+  made and nothing is retitled, so a rename in Plex sticks; the folder, not the title, is what
+  matches, and two sources declaring `anime` fill one library.
+- **An episode** of the directory goes to its show library, **a film** to its movie library, and
+  **an unplaced file** (no `kind`) to the first library holding the folder. rex makes the movie
+  library first, so when it makes both that is the movie library, as unplaced files go to a movie
+  library anywhere else; a directory with only a show library takes its unplaced files there, as
+  one seeded with `--shows` does. A type the entry does not title goes to the first library of
+  its kind, as an undeclared directory's do.
+- **Rows already shown move** to the new library on the source's next push, on their keys, with
+  their watch state; a row someone matched by hand (Fix Match), or one holding several releases,
+  stays where it is.
+- **Deleting the library in Plex keeps it deleted.** Its folders and type are kept in the state
+  file (`deletedLocations`), a later registration makes nothing there and logs once that it
+  stays deleted, and the directory's files go back to the first library of their kind.
+- **rex never deletes a library itself.** A directory dropped from the list, or a source that
+  stops declaring any, keeps its library.
+
+A directory no entry names, nor any library's folder, goes to the first library of its kind:
+Debrid TV for an episode, Debrid Movies for anything else.
 
 ### `GET /rex/sources` and `GET /rex/sources/{name}`
 
@@ -83,8 +116,9 @@ that is not a JSON object.
 {"size": 1, "sources": [{"name": "zurg", "url": "http://127.0.0.1:9999/dav", "auth": "basic", "mount": "/mnt/zurg"}]}
 ```
 
-Every source, or one (`404` for a name nothing registered). A credential is never answered,
-only its kind: `auth` is `basic` or `bearer`. As in every JSON answer rex gives, a field
+Every source, or one (`404` for a name nothing registered), with its `directories` as
+registered when it declared any. A credential is never answered, only its kind: `auth` is
+`basic` or `bearer`. As in every JSON answer rex gives, a field
 with no value is left out: a source with no credential has no `auth`, and with nothing
 registered the listing is `{"size": 0}`.
 
@@ -213,7 +247,7 @@ The `media_info` above is cut down to show its shape. Send ffprobe's whole outpu
 | `name` | no | The release name, shown as it is: an unplaced episode's show is titled with it. Nothing is read out of it -- no id, no title, no season or episode. Default: the folder above the file |
 | `release` | no | Groups a release's files, identified together (a season's episodes). Default: the folder above `path` |
 | `file` | no | The path clients see in Get Info, and what zurg's matcher reads back (`<mount>/<directory>/<release>/<file>`). Default `<mount>/<path>`, or `/<path>` without a mount |
-| `library` | no | A section key, or `movie`/`show`. Default: the library whose `Location` holds `file`, else one with a folder ending in a directory `path` starts with (`/mnt/zurg/movies` holds `movies/...` whatever prefix `file` has); with a type, that type's library holding `file`, else its first; a folder no library holds goes to the first library of its `kind` (Movies without one). With no `library`, an item placed as an episode that a movie library would take goes to a show library, the one beside it, and one placed as a movie that a show library would take goes to Movies; a row already shown moves when its library changes |
+| `library` | no | A section key, or `movie`/`show`. Default: the library whose `Location` holds `file`, else one with a folder ending in a directory `path` starts with (`/mnt/zurg/movies` holds `movies/...` whatever prefix `file` has); with a type, that type's library holding `file`, else its first; a folder no library holds goes to the first library of its `kind` (Movies without one). With no `library`, an item placed as an episode that a movie library would take goes to a show library -- one holding its folder ([a declared directory's](#libraries-a-source-declares)), else the one beside it -- and one placed as a movie that a show library would take goes to a movie library, one holding its folder first; a row already shown moves when its library changes |
 | `folder` | no | The folder the provider lists the file in inside its release (`Smallville/Stagione 6`), `""` at its top level. Kept on the row; nothing reads it as an extra |
 | `hash` | no | The release's info hash. Kept on the row; nothing reads it yet |
 
