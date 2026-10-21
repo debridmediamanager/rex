@@ -1217,6 +1217,24 @@ def main():
         seen = wait_for(published_titles(mark), 10)
         check("a removed library is dropped from what plex.tv holds",
               status == 200 and seen == titles, (status, seen))
+        # A library a source's `directories` makes is published as Add Library's is, so it can
+        # be shared: the source API is no client request and passes no republish of its own.
+        mark = precise_time()
+        conn = http.client.HTTPConnection("127.0.0.1", first.port, timeout=15)
+        conn.request("PUT", "/rex/sources/republish", json.dumps(
+            {"url": "http://127.0.0.1:9/dav", "directories": [{"name": "anime", "shows": "Republish Anime"}]}),
+            {"Content-Type": "application/json"})
+        status = conn.getresponse().status
+        conn.close()
+        seen = wait_for(lambda: (t := published_titles(mark)()) and "Republish Anime" in t and t, 10)
+        check("a library a source's directories makes is published to plex.tv at once",
+              status == 200 and seen == titles + ["Republish Anime"], (status, seen))
+        declared = [row["key"] for row in container(first.request("GET", "/library/sections", token=ACCOUNT_TOKEN)[1])
+                    .get("Directory") or [] if row["title"] == "Republish Anime"]
+        mark = precise_time()
+        for key in declared:
+            first.request("DELETE", "/library/sections/%s" % key, token=ACCOUNT_TOKEN)
+        wait_for(published_titles(mark), 10)
         asked = connectivity and dict(connectivity[0]["query"])["asyncIdentifier"]
 
         claim_now = surfaces(first, ACCOUNT_TOKEN)

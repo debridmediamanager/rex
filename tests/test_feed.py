@@ -187,6 +187,7 @@ class Events:
 class Server:
     def __init__(self, work, bytes_port, catalog="catalog.json", keys=None):
         self.port = free_port()
+        self.bytes_port = bytes_port
         env = dict(os.environ, TMDB_KEY="fake", REX_PLEXTV_URL="http://127.0.0.1:9")
         for name in ("REX_STATE", "REX_TOKEN", "PLEX_TOKEN", "REX_METADATA_URL", "REX_METADATA_KEY"):
             env.pop(name, None)
@@ -419,6 +420,175 @@ def other_folders(bytes_port):
               [row.get("ratingKey") for row in server.rows("/library/sections/1/all")] == [keys.get(items[0]["id"])]
               and server.row(keys.get(items[1]["id"])).get("type") == "episode"
               and len(server.rows("/library/sections/2/all")) == 1, (keys, body))
+    finally:
+        server.stop()
+        shutil.rmtree(work, ignore_errors=True)
+
+
+def moved_to(entry, directory, **fields):
+    """A fixture entry pushed from another directory of zurg's, as zurg's `anime` holds them."""
+    entry = dict(entry, **fields)
+    old = entry["path"].split("/", 1)[0]
+    for field in ("id", "path", "file", "release"):
+        entry[field] = entry[field].replace(old + "/", directory + "/", 1)
+    return entry
+
+
+def register(server, directories=None, **extra):
+    body = dict({"url": "http://127.0.0.1:%d/dav" % server.bytes_port, "bearer": BYTES_TOKEN, "mount": MOUNT}, **extra)
+    if directories is not None:
+        body["directories"] = directories
+    return server.request("/rex/sources/zurg", "PUT", body, {"Content-Type": "application/json"})
+
+
+def libraries(server):
+    """{title: (key, type, folders)} of every library."""
+    _, listing = server.request("/library/sections")
+    return {row["title"]: (row["key"], row["type"], [location["path"] for location in row.get("Location") or []])
+            for row in listing["MediaContainer"].get("Directory") or []}
+
+
+def logged(work):
+    return open(os.path.join(work, "server.log"), encoding="utf-8", errors="replace").read()
+
+
+ANIME = [{"name": "anime", "shows": "Anime", "movies": "Anime Movies"}, {"name": "wrestling", "shows": "Wrestling"}]
+
+
+def declared_libraries(bytes_port):
+    """A source declares a library of its own for a directory (`directories` on
+    `PUT /rex/sources/{name}`, zurg's `rex_shows`/`rex_movies`). Before, a folder no library held
+    went to the first library of its kind, and Add Library could not pick a zurg folder, so
+    zurg's `anime` stayed in Debrid TV and Debrid Movies for good. Its rows move to the new
+    libraries on the next push, watched as they were; a rename sticks, a deleted library stays
+    deleted and its files go back to the first library of their kind."""
+    work = tempfile.mkdtemp(prefix="rex-feed-declared-")
+    catalog(work)
+    server = Server(work, bytes_port)
+    episode, film, unplaced = (moved_to(item(kind), "anime") for kind in ("episode", "movie", "new"))
+    # Another episode of the same show (S5E8), so the two are not versions of one title.
+    bout = moved_to(item("episode"), "wrestling", episode=8, name="American.Dad.S05E08.wrestling")
+    for field in ("id", "path", "file", "release"):
+        bout[field] = bout[field].replace("E07", "E08")
+    try:
+        before = libraries(server)
+        _, body = server.feed("POST", "items", {"items": [episode, film, unplaced]})
+        keys = server.keys()
+        server.request("/:/scrobble?key=%s&identifier=com.plexapp.plugins.library" % keys.get(episode["id"]))
+        server.request("/:/progress?key=%s&identifier=com.plexapp.plugins.library&time=600000&state=stopped"
+                       % keys.get(film["id"]))
+        watched = server.row(keys.get(episode["id"]))
+        resumed = server.row(keys.get(film["id"]))
+        check("with nothing declared, anime files sit in the first library of their kind, one watched, one half-seen",
+              body.get("created") == 3 and watched.get("librarySectionID") == 2 and watched.get("viewCount") == 1
+              and resumed.get("librarySectionID") == 1 and resumed.get("viewOffset") == 600000
+              and server.row(keys.get(unplaced["id"])).get("librarySectionID") == 1,
+              (body, watched.get("librarySectionID"), watched.get("viewCount"), resumed.get("viewOffset")))
+
+        status, answer = register(server, ANIME)
+        made = libraries(server)
+        check("a registration's directories are answered as sent",
+              status == 200 and answer.get("directories") == ANIME
+              and server.request("/rex/sources/zurg")[1].get("directories") == ANIME, (status, answer))
+        check("each library it titles is made, of its type, on the source's folder, the movie library first",
+              {title: made.get(title) for title in ("Anime Movies", "Anime", "Wrestling")}
+              == {"Anime Movies": ("3", "movie", [MOUNT + "/anime"]), "Anime": ("4", "show", [MOUNT + "/anime"]),
+                  "Wrestling": ("5", "show", [MOUNT + "/wrestling"])}
+              and len(made) == len(before) + 3, made)
+        check("and logged as made for the source's directory",
+              "SECTION create Anime Movies (movie) for zurg's anime" in logged(work)
+              and "SECTION create Wrestling (show) for zurg's wrestling" in logged(work), logged(work)[-2000:])
+        anime, anime_movies = int(made.get("Anime", ("-1",))[0]), int(made.get("Anime Movies", ("-1",))[0])
+
+        _, body = server.feed("POST", "items", {"items": [episode, film, unplaced, bout]})
+        moved, half = server.row(keys.get(episode["id"])), server.row(keys.get(film["id"]))
+        check("on the next push the episode moves to Anime and the film to Anime Movies, on their keys",
+              server.keys().get(episode["id"]) == keys.get(episode["id"]) and moved.get("librarySectionID") == anime
+              and half.get("librarySectionID") == anime_movies, (body, moved.get("librarySectionID"),
+                                                                 half.get("librarySectionID")))
+        check("watched and half-seen as they were",
+              moved.get("librarySectionID") == anime and moved.get("viewCount") == 1 and watched.get("lastViewedAt")
+              and moved.get("lastViewedAt") == watched.get("lastViewedAt")
+              and half.get("librarySectionID") == anime_movies and half.get("viewOffset") == 600000,
+              (moved.get("viewCount"), moved.get("lastViewedAt"), watched.get("lastViewedAt"), half.get("viewOffset")))
+        check("a file its source did not place goes to the folder's movie library, as unplaced files do anywhere",
+              server.row(keys.get(unplaced["id"])).get("librarySectionID") == anime_movies,
+              server.row(keys.get(unplaced["id"])).get("librarySectionID"))
+        check("an episode in a folder with only a show library goes there",
+              server.row(server.keys().get(bout["id"])).get("librarySectionID") == int(made.get("Wrestling", ("-1",))[0]),
+              server.row(server.keys().get(bout["id"])))
+        check("and Debrid Movies and TV are left with nothing from those folders",
+              not server.rows("/library/sections/1/all") and not server.rows("/library/sections/2/all"),
+              (server.rows("/library/sections/1/all"), server.rows("/library/sections/2/all")))
+
+        status, _ = server.request("/library/sections/%d?name=Japanimation&agent=tv.plex.agents.series&language=en-US"
+                                   % anime, "PUT")
+        register(server, ANIME)
+        again = libraries(server)
+        check("registering again makes nothing, and a library renamed in Plex keeps its name",
+              status == 200 and len(again) == len(made) and "Anime" not in again
+              and again.get("Japanimation") == (str(anime), "show", [MOUNT + "/anime"]), again)
+
+        status, _ = server.request("/library/sections/%d" % anime_movies, "DELETE")
+        register(server, ANIME)
+        server.stop()
+        server = Server(work, bytes_port)  # registers with no directories, as an older zurg would
+        kept = libraries(server)
+        register(server, ANIME)
+        check("a library deleted in Plex is not made again, across a restart, and is logged once as kept deleted",
+              status == 200 and libraries(server) == kept and "Anime Movies" not in kept
+              and {"Japanimation", "Wrestling"} <= set(kept)
+              and logged(work).count("SECTION Anime Movies (movie) for zurg's anime stays deleted") == 1,
+              (kept, logged(work)[-2000:]))
+        _, body = server.feed("POST", "items", {"items": [film]})
+        check("and its folder's films go back to the first movie library",
+              body.get("created") == 1 and server.row(server.keys().get(film["id"])).get("librarySectionID") == 1,
+              (body, server.row(server.keys().get(film["id"])).get("librarySectionID")))
+
+        for bad, why in (("anime", "not an array"), ([{"name": "anime/x", "shows": "Anime"}], "a name with '/'"),
+                         ([{"name": "anime"}], "no title"), ([{"name": "anime", "movies": ""}], "an empty title"),
+                         ([{"shows": "Anime"}], "no name")):
+            status, body = register(server, bad)
+            check("a malformed directories (%s) is refused with its reason" % why,
+                  status == 400 and "directories" in str(body.get("error")), (status, body))
+        check("and changes neither the source nor the libraries",
+              server.request("/rex/sources/zurg")[1].get("directories") == ANIME and libraries(server) == kept,
+              server.request("/rex/sources/zurg")[1])
+    finally:
+        server.stop()
+        shutil.rmtree(work, ignore_errors=True)
+
+
+def seeded_folder_wins(bytes_port):
+    """A library already on the folder is used, whoever made it: `rex catalog --seed --shows anime`
+    put `anime` in Debrid TV, so declaring `anime`'s shows makes no second show library, only the
+    movie one it lacked. And a registration naming no directories, or an empty list, changes
+    nothing: no library, nothing more answered. (That leg holds on main too, by design.)"""
+    work = tempfile.mkdtemp(prefix="rex-feed-seeded-")
+    catalog(work)
+    document = json.load(open(os.path.join(work, "catalog.json")))
+    document["sections"][1]["Location"].append({"id": 3, "path": MOUNT + "/anime"})
+    json.dump(document, open(os.path.join(work, "catalog.json"), "w"))
+    server = Server(work, bytes_port)
+    episode, film = moved_to(item("episode"), "anime"), moved_to(item("movie"), "anime")
+    try:
+        before, source = libraries(server), server.request("/rex/sources/zurg")[1]
+        for directories in (None, []):
+            status, answer = register(server, directories)
+            check("a registration with %s directories changes nothing" % ("no" if directories is None else "empty"),
+                  status == 200 and answer == source and libraries(server) == before
+                  and "directories" not in server.request("/rex/sources/zurg")[1], (answer, libraries(server)))
+        register(server, ANIME[:1])
+        made = libraries(server)
+        check("the seeded show library holding the folder wins: only the movie library is made",
+              set(made) - set(before) == {"Anime Movies"} and made.get("TV Shows") == before.get("TV Shows"), made)
+        server.feed("POST", "items", {"items": [episode, film]})
+        keys = server.keys()
+        check("so the folder's episodes stay in Debrid TV and its films go to Anime Movies",
+              server.row(keys.get(episode["id"])).get("librarySectionID") == 2
+              and server.row(keys.get(film["id"])).get("librarySectionID") == int(made.get("Anime Movies", ("-1",))[0]),
+              (server.row(keys.get(episode["id"])).get("librarySectionID"),
+               server.row(keys.get(film["id"])).get("librarySectionID")))
     finally:
         server.stop()
         shutil.rmtree(work, ignore_errors=True)
@@ -715,6 +885,8 @@ def main():
         matcher_identity(bytes_port)
         fix_match_off_the_lock(bytes_port)
         other_folders(bytes_port)
+        declared_libraries(bytes_port)
+        seeded_folder_wins(bytes_port)
     finally:
         server.stop()
         shutil.rmtree(work, ignore_errors=True)

@@ -347,11 +347,13 @@ fn sources(shared: &SharedRuntime, request: &Request, name: &str) -> Response {
             let public = source.public();
             let mut guard = lock(shared);
             let changed = guard.sources.iter().find(|known| known.name == name).map(|known| &known.record) != Some(&source.record);
+            let declared = source.clone();
             if changed {
                 info!("SOURCES {name} registered at {}", public["url"].as_str().unwrap_or_default());
                 guard.put_source(source);
                 guard.dirty = true;
             }
+            guard.declare_libraries(&declared);
             let snapshot = guard.flush_state();
             drop(guard);
             write_or_log(snapshot);
@@ -1359,6 +1361,78 @@ impl Runtime {
         self.section(key).map(|section| string_value(section.get("title").unwrap_or(&Value::Null))).unwrap_or_default()
     }
 
+    /// A registration's `directories`: each library it titles, made unless one of that type
+    /// already has a folder naming the directory (seeded, added by hand, made before and
+    /// perhaps renamed since) or a person deleted one there (`deleted_locations`). A movie
+    /// library comes first, so an unplaced file, which goes to the first library holding its
+    /// folder, goes to a movie library there as it does anywhere else. rex never deletes or
+    /// retitles a library this made; a directory dropped from the list keeps its library.
+    pub(super) fn declare_libraries(&mut self, source: &Source) {
+        let playable = |section: &&Value| matches!(section.get("type").and_then(Value::as_str), Some("movie" | "show"));
+        // The seed's libraries sit under the mount (`/mnt/zurg/movies`): a source naming none
+        // gets its directories there too.
+        let prefix = source.mount.clone().unwrap_or_else(|| {
+            let seeded = self.catalog.sections.iter().filter(playable).flat_map(|section| self.locations(section)).next();
+            seeded.and_then(|folder| folder.trim_end_matches('/').rsplit_once('/').map(|(parent, _)| parent.to_string())).unwrap_or_else(|| "/mnt/zurg".to_string())
+        });
+        let mut made = false;
+        for entry in &source.directories {
+            let names = |folder: &str| {
+                let folder = folder.trim_end_matches('/');
+                folder == entry.name || folder.ends_with(&format!("/{}", entry.name))
+            };
+            for (kind, title) in [("movie", &entry.movies), ("show", &entry.shows)] {
+                let Some(title) = title else {
+                    continue;
+                };
+                let of_kind = |section: &&Value| section.get("type").and_then(Value::as_str) == Some(kind);
+                if self.catalog.sections.iter().filter(of_kind).any(|section| self.locations(section).iter().any(|folder| names(folder))) {
+                    continue;
+                }
+                let deleted = |gone: &&mut Value| of_kind(&&**gone) && gone.get("path").and_then(Value::as_str).is_some_and(names);
+                if let Some(gone) = self.deleted_locations.iter_mut().find(deleted) {
+                    // Said once per deletion: zurg registers again at every push session.
+                    if gone.get("told").is_none() {
+                        info!("SECTION {title} ({kind}) for {}'s {} stays deleted: a library there was deleted", source.name, entry.name);
+                        gone["told"] = json!(true);
+                        self.dirty = true;
+                    }
+                    continue;
+                }
+                let folder = format!("{}/{}", prefix.trim_end_matches('/'), entry.name);
+                let key = self.next_section_key();
+                let mut section = json!({
+                    "key": key.to_string(),
+                    "type": kind,
+                    "title": title,
+                    // Its folder too: two sources may title two directories alike.
+                    "uuid": format!("{:032x}", crc32(format!("{title}-{kind}-{folder}").as_bytes())),
+                    "createdAt": now(),
+                    "contentChangedAt": -1,
+                    "Location": [{"id": key, "path": folder}],
+                });
+                // What Add Library would have sent for it, so Plex's dialogs read it as theirs.
+                if let Some(model) = self.catalog.sections.iter().find(of_kind) {
+                    for field in ["agent", "scanner", "language", "metadataAgentProviderGroupId"] {
+                        if let Some(value) = model.get(field) {
+                            section[field] = value.clone();
+                        }
+                    }
+                }
+                info!("SECTION create {title} ({kind}) for {}'s {}", source.name, entry.name);
+                self.push_section(section.clone());
+                // As Add Library's create: a scan of the empty library and the queue frame.
+                self.notify_section_scan(&key.to_string(), &section);
+                self.notify_queue_regenerated();
+                self.dirty = true;
+                made = true;
+            }
+        }
+        if made {
+            self.republish_sections();
+        }
+    }
+
     /// The library an item belongs in: the section it names, else the movie or show
     /// library (of its type, when it names one) whose `Location` holds its file, else the
     /// first library of that type.
@@ -1410,9 +1484,12 @@ impl Runtime {
             let beside = holds(found).and_then(|location| parent(&location));
             let shows: Vec<&Value> =
                 self.catalog.sections.iter().filter(|section| section.get("type").and_then(Value::as_str) == Some("show")).collect();
+            // A show library holding the folder too (a source's `directories` gives a folder a
+            // movie and a show library on it) comes before one merely beside it.
             if let Some(show) = shows
                 .iter()
-                .find(|section| beside.is_some() && self.locations(section).iter().any(|location| parent(location) == beside))
+                .find(|section| holds(section).is_some())
+                .or_else(|| shows.iter().find(|section| beside.is_some() && self.locations(section).iter().any(|location| parent(location) == beside)))
                 .or(shows.first())
             {
                 return Some(library(show));
@@ -2341,5 +2418,99 @@ mod tests {
         let mut again = second.clone();
         again["_sid"] = json!("shows/The.Boys.S03.2160p/The.Boys.S03E02.2160p.mkv");
         assert_eq!(version_slot(&second), version_slot(&again), "another release of E02 is still a version of it");
+    }
+
+    /// rex-fun's two libraries, each with a folder per zurg mount, and its feed rows from the
+    /// folders no Location held (`fun_unheld_folders_1019.json`), which went to the first
+    /// library of their kind. Its zurgs declaring libraries for some of those folders: each
+    /// titled library is made once, on the declaring source's mount, except where a library of
+    /// that type already names the directory (`anime`, in TV Shows for every mount); the rows
+    /// then belong to them, a type a folder does not title still to the first of its kind.
+    #[test]
+    fn declared_directories_get_libraries_and_their_files_follow() {
+        let dir = work("declared");
+        let fixture: Value = serde_json::from_str(include_str!("../../../tests/fixtures/feed/fun_unheld_folders_1019.json")).unwrap();
+        let catalog_path = dir.join("catalog.json");
+        let catalog = json!({"machineIdentifier": "feed-test-machine", "friendlyName": "feed-test",
+                             "sections": fixture["sections"], "items": fixture["items"]});
+        std::fs::write(&catalog_path, serde_json::to_vec(&catalog).unwrap()).unwrap();
+        let mut runtime = Runtime::load(RuntimeOptions { catalog: catalog_path, state: Some(dir.join("no-state")), ..RuntimeOptions::default() }).unwrap();
+        let rd = Source::register("rd", &json!({"url": "http://127.0.0.1:9", "mount": "/mnt/zurg", "directories": [
+            {"name": "anime", "shows": "Anime"},
+            {"name": "OnePieceLatest", "shows": "One Piece"},
+            {"name": "music", "shows": "Music Shows", "movies": "Music Films"}]})).unwrap();
+        let usenet = Source::register("usenet", &json!({"url": "http://127.0.0.1:9", "mount": "/mnt/zurg_usenet",
+                                                         "directories": [{"name": "recent", "movies": "Recent"}]})).unwrap();
+        let plain = Source::register("other", &json!({"url": "http://127.0.0.1:9"})).unwrap();
+        runtime.declare_libraries(&rd);
+        runtime.declare_libraries(&usenet);
+        runtime.declare_libraries(&plain);
+        let made = |runtime: &Runtime| -> Vec<(String, String, String, Vec<String>)> {
+            runtime.catalog.sections.iter().map(|section| (string_value(&section["key"]), string_value(&section["type"]),
+                string_value(&section["title"]), runtime.locations(section))).collect()
+        };
+        let sections = made(&runtime);
+        let want = |key: &str, kind: &str, title: &str, folder: &str| (key.to_string(), kind.to_string(), title.to_string(), vec![folder.to_string()]);
+        assert_eq!(sections[2..], [want("3", "show", "One Piece", "/mnt/zurg/OnePieceLatest"), want("4", "movie", "Music Films", "/mnt/zurg/music"),
+                                   want("5", "show", "Music Shows", "/mnt/zurg/music"), want("6", "movie", "Recent", "/mnt/zurg_usenet/recent")]);
+        assert_eq!(runtime.added_sections.len(), 4, "kept in the state as Add Library's are");
+        runtime.declare_libraries(&rd);
+        runtime.declare_libraries(&usenet);
+        assert_eq!(made(&runtime), sections, "registering again makes nothing");
+        // A source with no mount: beside the first library's folder, as the seed puts its own.
+        let bare = Source::register("bare", &json!({"url": "http://127.0.0.1:9", "directories": [{"name": "kids", "movies": "Kids"}]})).unwrap();
+        runtime.declare_libraries(&bare);
+        assert_eq!(made(&runtime).last(), Some(&want("7", "movie", "Kids", "/mnt/zurg_tb/kids")));
+        runtime.catalog.sections.pop();
+
+        fn pick(runtime: &Runtime, source: &Source, file: &str, kind: Option<&str>) -> String {
+            let path = source.path_under_mount(file).unwrap();
+            let mut pushed = json!({"id": path, "path": path, "file": file, "media_info": {"streams": [{"codec_type": "video"}]}});
+            if let Some(kind) = kind {
+                pushed["kind"] = json!(kind);
+                pushed["ids"] = json!({"tmdb": 1});
+            }
+            runtime.feed_library(&Item::parse(source, &pushed).unwrap()).map(|library| library.title).unwrap_or_default()
+        }
+        let mut seen = Vec::new();
+        for row in fixture["items"].as_array().unwrap() {
+            let file = row.pointer("/Media/0/Part/0/file").and_then(Value::as_str).unwrap();
+            let source = if file.starts_with("/mnt/zurg_usenet/") { &usenet } else { &rd };
+            let kind = if row["type"] == "movie" { "movie" } else { "episode" };
+            seen.push((file.split('/').nth(3).unwrap().to_string(), kind, pick(&runtime, source, file, Some(kind))));
+        }
+        let expect = |folder: &str, kind: &'static str, title: &str| (folder.to_string(), kind, title.to_string());
+        assert_eq!(seen, [
+            expect("recent", "episode", "TV Shows"),        // `recent` titles films only
+            expect("music", "episode", "Music Shows"),      // not TV Shows, which is merely beside Music Films
+            expect("audiobooks", "movie", "Movies"),        // declared by nobody
+            expect("OnePieceLatest", "episode", "One Piece"),
+            expect("recent", "movie", "Recent"),
+            expect("audiobooks", "episode", "TV Shows"),
+            expect("music", "movie", "Music Films"),
+        ]);
+        let unplaced = "/mnt/zurg/music/[KH] Sword Art Online - Extra Edition (BD 1920x1080 x264-10bit FLAC) [Dual-Audio]/Extra.mkv";
+        assert_eq!(pick(&runtime, &rd, unplaced, None), "Music Films", "an unplaced file goes to the folder's movie library");
+        let anime = "/mnt/zurg/anime/[SubsPlease] Frieren - 01 (1080p) [ABCD1234]/[SubsPlease] Frieren - 01 (1080p) [ABCD1234].mkv";
+        assert_eq!(pick(&runtime, &rd, anime, Some("episode")), "TV Shows", "a folder TV Shows names stays there");
+        // Another source pushing a declared directory fills the same library.
+        let usenet_music = "/mnt/zurg_usenet/music/Release/Release.S01E01.mkv";
+        assert_eq!(pick(&runtime, &usenet, usenet_music, Some("episode")), "Music Shows");
+
+        // A library a person deleted is not made again; its files go to the first of their kind.
+        let one_piece = runtime.catalog.sections.iter().position(|section| section["title"] == "One Piece").unwrap();
+        let gone = runtime.catalog.sections.remove(one_piece);
+        runtime.deleted_locations.extend(runtime.locations(&gone).into_iter().map(|path| json!({"path": path, "type": "show"})));
+        runtime.declare_libraries(&rd);
+        assert!(runtime.catalog.sections.iter().all(|section| section["title"] != "One Piece"), "made again");
+        assert_eq!(runtime.deleted_locations, [json!({"path": "/mnt/zurg/OnePieceLatest", "type": "show", "told": true})], "said once");
+        let latest = row_file(&fixture, "OnePieceLatest");
+        assert_eq!(pick(&runtime, &rd, &latest, Some("episode")), "TV Shows");
+        let _ = std::fs::remove_dir_all(&dir);
+
+        fn row_file(fixture: &Value, folder: &str) -> String {
+            fixture["items"].as_array().unwrap().iter().filter_map(|row| row.pointer("/Media/0/Part/0/file").and_then(Value::as_str))
+                .find(|file| file.split('/').nth(3) == Some(folder)).unwrap().to_string()
+        }
     }
 }

@@ -23,6 +23,51 @@ pub(crate) struct Source {
     pub mount: Option<String>,
     /// What registered it, credentials included, as the state file keeps it.
     pub record: Value,
+    /// The directories it asks a library of their own for (`directories`, `declare_libraries`).
+    pub directories: Vec<Declared>,
+}
+
+/// One entry of a registration's `directories`: the first directory of the source's item
+/// paths, and the titles of the movie and show libraries it is to have.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct Declared {
+    pub name: String,
+    pub movies: Option<String>,
+    pub shows: Option<String>,
+}
+
+/// A registration's `directories`: absent, `null` (a Go nil slice) or empty is none; anything
+/// else malformed refuses the registration.
+fn declared(value: Option<&Value>) -> Result<Vec<Declared>, String> {
+    let entries = match value {
+        None | Some(Value::Null) => return Ok(Vec::new()),
+        Some(Value::Array(entries)) => entries,
+        Some(_) => return Err("directories must be an array".to_string()),
+    };
+    entries
+        .iter()
+        .enumerate()
+        .map(|(index, entry)| {
+            let refuse = |why: &str| format!("directories[{index}]: {why}");
+            if !entry.is_object() {
+                return Err(refuse("must be an object"));
+            }
+            let name = entry.get("name").and_then(Value::as_str).unwrap_or_default();
+            if name.is_empty() || name.contains('/') {
+                return Err(refuse("name must be one directory of the source's paths, with no '/'"));
+            }
+            let title = |kind: &str| match entry.get(kind) {
+                None | Some(Value::Null) => Ok(None),
+                Some(Value::String(title)) if !title.trim().is_empty() => Ok(Some(title.clone())),
+                Some(_) => Err(refuse(&format!("{kind} must be a library title"))),
+            };
+            let (movies, shows) = (title("movies")?, title("shows")?);
+            if movies.is_none() && shows.is_none() {
+                return Err(refuse("names no shows or movies library"));
+            }
+            Ok(Declared { name: name.to_string(), movies, shows })
+        })
+        .collect()
 }
 
 /// One path segment as a URL carries it: unreserved bytes pass, every other is `%XX`
@@ -64,11 +109,12 @@ impl Source {
             auth,
             mount: mount.filter(|mount| !mount.is_empty()).map(trimmed_mount),
             record: Value::Null,
+            directories: Vec::new(),
         }
     }
 
     /// A `PUT /rex/sources/{name}` body: `url` (http or https), `user`/`password` or
-    /// `bearer` for it, and `mount`. Answers why it is refused.
+    /// `bearer` for it, `mount`, and `directories`. Answers why it is refused.
     pub(crate) fn register(name: &str, body: &Value) -> Result<Self, String> {
         if name.is_empty() || !name.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_') {
             return Err(format!("source name {name:?}: letters, digits, '-' and '_' only"));
@@ -87,20 +133,39 @@ impl Source {
         }
         let auth = Source::basic(&field("user"), &field("password"))
             .or_else(|| Some(field("bearer")).filter(|bearer| !bearer.is_empty()).map(|bearer| format!("Bearer {bearer}")));
-        let record = Map::from_iter(
+        let directories = declared(body.get("directories"))?;
+        let mut record = Map::from_iter(
             ["url", "user", "password", "bearer", "mount"]
                 .into_iter()
                 .filter_map(|key| Some((key.to_string(), json!(Some(field(key)).filter(|value| !value.is_empty())?)))),
         );
+        // Kept only when it names one, so a registration without it is stored as before.
+        if !directories.is_empty() {
+            let entries = directories.iter().map(|entry| {
+                let mut out = json!({"name": entry.name});
+                for (kind, title) in [("shows", &entry.shows), ("movies", &entry.movies)] {
+                    if let Some(title) = title {
+                        out[kind] = json!(title);
+                    }
+                }
+                out
+            });
+            record.insert("directories".to_string(), Value::Array(entries.collect()));
+        }
         let mut source = Source::new(name, &url, auth, Some(&field("mount")));
         source.record = Value::Object(record);
+        source.directories = directories;
         Ok(source)
     }
 
     /// What the sources API answers for it: never a credential, only which kind it has.
     pub(crate) fn public(&self) -> Value {
         let auth = self.auth.as_deref().and_then(|auth| auth.split(' ').next()).map(str::to_ascii_lowercase);
-        json!({"name": self.name, "url": self.base, "auth": auth, "mount": self.mount})
+        let mut public = json!({"name": self.name, "url": self.base, "auth": auth, "mount": self.mount});
+        if let Some(directories) = self.record.get("directories") {
+            public["directories"] = directories.clone();
+        }
+        public
     }
 
     fn basic(user: &str, password: &str) -> Option<String> {
@@ -223,5 +288,31 @@ mod tests {
             assert!(Source::register(name, &body).is_err(), "{name:?} {body}");
         }
         assert!(Source::register("ok", &json!({"url": "http://h/x?next=a@b"})).is_ok(), "an @ past the host is no userinfo");
+    }
+
+    #[test]
+    fn declared_directories_are_checked_kept_and_answered() {
+        let body = json!({"url": "http://h/dav", "directories": [
+            {"name": "anime", "shows": "Anime", "movies": "Anime Movies"},
+            {"name": "wrestling", "shows": "Wrestling", "movies": null},
+            {"name": "movies-1080p", "movies": "1080p Movies"}]});
+        let source = Source::register("zurg", &body).unwrap();
+        assert_eq!(source.directories[0], Declared { name: "anime".into(), movies: Some("Anime Movies".into()), shows: Some("Anime".into()) });
+        assert_eq!(source.directories[1].movies, None);
+        let kept = json!([{"name": "anime", "shows": "Anime", "movies": "Anime Movies"},
+                          {"name": "wrestling", "shows": "Wrestling"}, {"name": "movies-1080p", "movies": "1080p Movies"}]);
+        assert_eq!(source.record["directories"], kept);
+        assert_eq!(source.public()["directories"], kept);
+        assert_eq!(Source::register("zurg", &source.record).unwrap().directories, source.directories, "restored from the state file");
+        for none in [json!({"url": "http://h/dav"}), json!({"url": "http://h/dav", "directories": []}), json!({"url": "http://h/dav", "directories": null})] {
+            let plain = Source::register("zurg", &none).unwrap();
+            assert!(plain.directories.is_empty() && plain.record == json!({"url": "http://h/dav"}) && plain.public().get("directories").is_none());
+        }
+        for bad in [json!("anime"), json!({"name": "anime"}), json!([{"name": "anime"}]), json!([{"shows": "Anime"}]),
+                    json!([{"name": "", "shows": "Anime"}]), json!([{"name": "a/b", "shows": "Anime"}]), json!(["anime"]),
+                    json!([{"name": "anime", "shows": ""}]), json!([{"name": "anime", "shows": 1}]), json!([{"name": 7, "shows": "Anime"}])] {
+            let refused = Source::register("zurg", &json!({"url": "http://h/dav", "directories": bad}));
+            assert!(refused.as_ref().is_err_and(|why| why.starts_with("directories")), "{bad}: {refused:?}");
+        }
     }
 }
