@@ -25604,7 +25604,11 @@ mod sidecar_tests {
         for entry in fs::read_dir(crate_dir.join("../data")).unwrap() {
             let path = entry.unwrap().path();
             let name = path.file_name().unwrap().to_str().unwrap();
-            assert_eq!(sidecar_bytes(name).as_deref(), Some(&fs::read(&path).unwrap()[..]), "{name}");
+            let packed = sidecar_bytes(name).unwrap_or_else(|| panic!("{name} is not compiled in"));
+            let disk = fs::read(&path).unwrap();
+            // winbox's checkout writes data/ with CRLF; the binary it tests was built on Linux.
+            let lf: Vec<u8> = disk.iter().copied().filter(|byte| *byte != b'\r').collect();
+            assert!(packed == disk || packed == lf, "{name}");
         }
         assert!(sidecar_bytes("missing.json").is_none());
     }

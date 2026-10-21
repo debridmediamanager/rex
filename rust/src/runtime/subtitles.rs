@@ -1619,7 +1619,10 @@ mod tests {
 
     fn corpus() -> Corpus {
         use std::io::Read as _;
-        let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../tests/fixtures/subtitles/sync_corpus.json.gz");
+        // The build's own path, else the tree the test runs in (Windows runs a cross-built binary).
+        let built = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let crate_dir = if built.exists() { built } else { std::path::PathBuf::from(".") };
+        let path = crate_dir.join("../tests/fixtures/subtitles/sync_corpus.json.gz");
         let mut text = String::new();
         flate2::read::GzDecoder::new(fs::File::open(path).expect("the corpus is checked in")).read_to_string(&mut text).expect("gzip");
         let document: Value = serde_json::from_str(&text).expect("json");
