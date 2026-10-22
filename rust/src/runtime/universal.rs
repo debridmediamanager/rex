@@ -482,10 +482,13 @@ pub(crate) fn ladder(plan: &Plan, hardware: &Hardware) -> Vec<Path> {
     if plan.hardware_decode && hardware.encode && hardware.accel != Accel::None {
         // HDR stays on the device only where the probe tonemapped a frame through OpenCL;
         // otherwise it is tonemapped on the CPU (`tonemapx`), since a wrong guess is a green
-        // picture. A burned image subtitle is overlaid on CPU frames at the source's size, so
+        // picture. Every algorithm the plan accepts runs there: on fun's J4105 all seven did
+        // 0.92-1.19x against tonemapx's 0.07-0.17x, and hable, Plex's default, matched
+        // tonemapx closest (findings, "OpenCL tonemapping for every algorithm").
+        // A burned image subtitle is overlaid on CPU frames at the source's size, so
         // its decode stays on the CPU; a text one is drawn on the scaled frame, downloaded.
         let tonemaps = !video.hdr || plan.tone_mapping.is_none()
-            || (plan.tone_mapping.as_deref() == Some("bt2390") && hardware.opencl_tonemap && matches!(hardware.accel, Accel::Vaapi(_)));
+            || (hardware.opencl_tonemap && matches!(hardware.accel, Accel::Vaapi(_)));
         if (tonemaps || !plan.hardware_encode) && plan.subtitle.is_none() && hardware.decode.contains(&decode_key(&video.source_codec, video.bit_depth)) {
             paths.push(if plan.hardware_encode { Path::Full } else { Path::DecodeOnly });
         }
@@ -3170,6 +3173,22 @@ mod tests {
         // A device whose probe failed to tonemap keeps HDR on the CPU.
         let without = Hardware { opencl_tonemap: false, ..hardware };
         assert_eq!(ladder(&hdr, &without)[0], Path::EncodeOnly);
+    }
+
+    #[test]
+    fn every_tonemapping_algorithm_stays_on_the_device() {
+        // Plex's default is hable, which kept every HDR conversion on the CPU (0.07-0.17x on
+        // fun's J4105); tonemap_opencl ran all seven at 0.92-1.19x there, hable closest to
+        // tonemapx (findings, "OpenCL tonemapping for every algorithm").
+        let hardware = Hardware { accel: Accel::Vaapi("/dev/dri/renderD128".into()), decode: HashSet::from(["hevc".to_string()]), encode: true, tonemapx: true, opencl_tonemap: true, ..Hardware::software() };
+        for algorithm in ["linear", "gamma", "clip", "reinhard", "hable", "mobius", "bt2390"] {
+            let mut hdr = plan(false, 60_000);
+            hdr.video.as_mut().unwrap().hdr = true;
+            hdr.tone_mapping = Some(algorithm.to_string());
+            assert_eq!(ladder(&hdr, &hardware)[0], Path::Full, "{algorithm}");
+            let full = ffmpeg_args(&hdr, Path::Full, &hardware, 0, std::path::Path::new("/tmp/x")).join(" ");
+            assert!(full.contains(&format!("tonemap_opencl=format=nv12:p=bt709:t=bt709:m=bt709:tonemap={algorithm}:")), "{full}");
+        }
     }
 
     #[test]

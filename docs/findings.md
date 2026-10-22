@@ -13167,6 +13167,35 @@ and 36.2 dB (HDR10), mean Y/U/V within about one code value (DV5 49.4/124.8/123.
 green, so the RPU is applied. Not measured: HLG and Dolby Vision 7/8 on this path (the same
 filter; tonemapx is the step down if a run fails), two viewers at once, a busy host.
 
+## OpenCL tonemapping for every algorithm (2026-10-22)
+
+rex kept HDR on the GPU only for `bt2390`, the one algorithm its startup probe tonemaps. Plex's
+default is `hable` and its settings page does not offer `bt2390`, so every default HDR conversion
+took the CPU path above. Measured on fun's J4105 (iHD 26.3.5, `intel-opencl-icd` 22.14,
+jellyfin-ffmpeg 8.1), rex-fun with no conversion running, on Jellyfin's public samples `Test
+Jellyfin 4K HEVC HDR10 40M.mp4` (PQ, 30 s) and `Test Jellyfin 4K DV P5.mp4` (30 s): rex's own
+chains to 1080p `h264_vaapi` at 8 Mbit/s, video only.
+
+| Path | HDR10 | DV5 | PSNR / SSIM against `tonemapx` with the same algorithm (HDR10, DV5) |
+|---|---|---|---|
+| CPU `tonemapx` hable (10 s) | 0.17x, CPU 299% | 0.07x, CPU 265% | reference |
+| CPU `tonemapx` bt2390 (10 s) | 0.17x | 0.08x | reference |
+| OpenCL hable | 0.92x, CPU 102% | 0.97x, CPU 123% | 32.2 dB / 0.990, 35.2 dB / 0.984 |
+| OpenCL bt2390 | 1.10x | 0.98x | 26.5 dB / 0.985, 27.4 dB / 0.974 |
+| OpenCL mobius, reinhard, clip, linear, gamma | 1.10-1.19x | 0.92-1.00x | not compared |
+| `tonemap_vaapi` (fixed-function, no algorithm) | 0.94x, CPU 38% | 1.07x, CPU 46% | 32.1 dB / 0.988 against hable; **18.7 dB / 0.921** |
+
+- Every algorithm runs on the GPU at the same speed, and hable, Plex's default, is the one that
+  matches the CPU closest. The `bt2390`-only gate bought nothing, so any algorithm the plan
+  accepts now stays on the device where the probe passed (`every_tonemapping_algorithm_stays_on_the_device`).
+- `tonemap_vaapi` runs on Gemini Lake and costs the least CPU, but it does not apply a Dolby
+  Vision 5 RPU: the DV5 output's mean V is 97 against 132-144 on every other path, a visible
+  green cast. Not used.
+- On zen's HD 510 (Skylake, no HEVC Main10 decode, so rex's full path cannot run there) a
+  synthetic PQ frame (`zscale ... npl=203`) tonemapped cleanly through OpenCL with all seven
+  algorithms. Feeding `testsrc2` merely relabelled as PQ instead gives a false green cast on the
+  GPU for every algorithm: an artefact of the input, not of the tonemapper.
+
 ## Dolby Vision profile 5 on a device without it: the client's limitation (2026-10-17)
 
 Measured on a throwaway, unclaimed PMS 1.42.2.10156-f737b826c on the test host, over loopback with its
