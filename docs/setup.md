@@ -627,19 +627,20 @@ restarts (a reboot, or the last login session ending); until then start rex unde
 The startup log says what the probe found (`transcoder: ... hardware vaapi encode=true
 tonemapx=true opencl_tonemap=true bounded_http=false alpha_subtitles=true decode=[h264,hevc,mpeg2video]`). A
 conversion runs on the GPU end to end when it can decode the source there, uploads CPU-decoded frames when it cannot or should not
-(AV1 on older Intel, a burned image subtitle, HDR tonemapped on the CPU), and falls back to x264 when there is no device.
-HDR and Dolby Vision are tonemapped on the CPU, which on a low-power Intel is a tenth of real time
-at 4K, unless the tonemapping algorithm is `bt2390` and the probe tonemapped a frame through
-OpenCL: only then do they stay on the GPU. The default algorithm is `hable`, and Plex's settings
-page does not list `bt2390`; set it with
-`curl -X PUT "http://<rex's LAN IP>:32400/:/prefs?TranscoderToneMappingAgorithm=bt2390&X-Plex-Token=<owner's token>"`. The OpenCL runtime is a package of its own:
+(AV1 on older Intel, a burned image subtitle, HDR on a device without OpenCL), and falls back to x264 when there is no device.
+HDR and Dolby Vision stay on the GPU, tonemapped through OpenCL with whichever tonemapping
+algorithm is set, once the startup probe has tonemapped a frame that way (VA-API devices; builds
+newer than 2026.10.22.0040-nightly, where earlier ones did this for `bt2390` alone). Without it
+they are tonemapped on the CPU, which on a low-power Intel is a tenth of real time at 4K. The
+OpenCL runtime is a package of its own:
 
 ```bash
 sudo apt install intel-opencl-icd   # Ubuntu 22.04: 22.14, enough for a Gemini Lake J4105
 ```
 
-With `bt2390`, a J4105 took 4K HDR10 and Dolby Vision profile 5 to 1080p at 1.2-1.7x real time,
-against 0.1-0.2x on its CPU (findings, "OpenCL tonemapping on fun's J4105").
+A J4105 takes 4K HDR10 and Dolby Vision profile 5 to 1080p at about real time with every
+algorithm (0.9-1.2x on 40 Mbit/s samples, 1.2-1.7x on WEB releases), against 0.07-0.2x on its CPU
+(findings, "OpenCL tonemapping for every algorithm").
 Every conversion is one FFmpeg reading the source over HTTP; nothing is downloaded
 first.
 
