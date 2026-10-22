@@ -597,7 +597,87 @@ def share_gaps(server, variant):
           status == 201 and keys.get("Again") not in (None, "1", "2"), (status, keys))
 
 
+def declared_move_keeps_each_account():
+    """A row moved to a library its source declared (zurg's `rex_shows`/`rex_movies`) keeps every
+    account's watch state, which is kept by key: the share's watched episode and half-seen film
+    stay the share's, the owner's watched film the owner's. The share is granted every library,
+    the ones made later included. The rows are zurg's two real entries (`fixtures/zurg/`) in its
+    `anime` directory."""
+    entries = json.load(open(os.path.join(FIXTURES, "zurg", "entries.json")))["entries"]
+    grant = '<section key="1" createdAt="2026-10-17 15:35:28 UTC"/>'
+    PlexTv.tokens = LIST.replace('filterMovies="contentRating=G%2CPG"', 'filterMovies=""').replace(
+        grant, "".join(grant.replace('"1"', '"%d"' % key) for key in range(1, 6)))
+    stub = http.server.ThreadingHTTPServer(("127.0.0.1", free_port()), PlexTv)
+    threading.Thread(target=stub.serve_forever, daemon=True).start()
+    work = tempfile.mkdtemp(prefix="rex-accounts-declared-")
+    document = catalog([])
+    document["items"] = []
+    json.dump(document, open(os.path.join(work, "catalog.json"), "w"))
+    json.dump({"machine": MACHINE, "token": SERVER_TOKEN, "owner": "owner", "email": "owner@example.com",
+               "feature_uuids": [], "account_id": 316687974, "view_state_cursor": None, "access_tokens": []},
+              open(os.path.join(work, "claim_state.json"), "w"))
+    placed = {"movie": {"kind": "movie", "ids": {"tmdb": 31639, "imdb": entries["movie"]["entry"]["imdb_id"]}},
+              "episode": {"kind": "episode", "season": 5, "episode": 7,
+                          "ids": {"tmdb": 1433, "imdb": entries["episode"]["entry"]["imdb_id"]}}}
+    pushed = []
+    for kind in ("episode", "movie"):
+        fixture = entries[kind]
+        path = "anime/%s/%s" % (fixture["release"], fixture["file"])
+        pushed.append(dict({"id": path, "path": path, "file": "/data/" + path, "name": fixture["entry"]["name"],
+                            "release": "anime/" + fixture["release"], "size": fixture["entry"]["size"],
+                            "hash": fixture["entry"]["hash"], "media_info": fixture["entry"]["media_info"]}, **placed[kind]))
+    server = Server(work, stub.server_address[1])
+
+    def register(directories=None):
+        body = {"url": "http://127.0.0.1:9/dav", "mount": "/data"}
+        if directories:
+            body["directories"] = directories
+        return raw(server, "PUT", "/rex/sources/zurg", headers={"Content-Type": "application/json"},
+                   body=json.dumps(body).encode())[0]
+
+    def push():
+        raw(server, "POST", "/rex/feed/zurg/items", headers={"Content-Type": "application/json"},
+            body=json.dumps({"items": pushed}).encode())
+        _, _, text = raw(server, "GET", "/rex/feed/zurg/items")
+        return {row["id"]: row["ratingKey"] for row in json.loads(text).get("items", [])}
+
+    def row(token, key):
+        return (rex_rows(server.ask(token, "GET", "/library/metadata/%s" % key)[1]) or {}).get(key, {})
+
+    try:
+        register()
+        keys = push()
+        episode, film = keys.get(pushed[0]["id"]), keys.get(pushed[1]["id"])
+        server.ask(SHARED, "GET", "/:/scrobble", [("key", episode), ("identifier", "com.plexapp.plugins.library")])
+        server.ask(SHARED, "GET", "/:/progress", [("key", film), ("identifier", "com.plexapp.plugins.library"),
+                                                  ("time", "600000"), ("state", "stopped")])
+        server.ask(OWNER, "GET", "/:/scrobble", [("key", film), ("identifier", "com.plexapp.plugins.library")])
+        before = (row(SHARED, episode), row(SHARED, film), row(OWNER, episode), row(OWNER, film))
+        check("declared move: before, the share watched the episode and half saw the film, the owner watched the film",
+              before[0].get("viewCount") == 1 and before[1].get("viewOffset") == 600000 and not before[2].get("viewCount")
+              and before[3].get("viewCount") == 1 and str(before[0].get("librarySectionID")) == "2",
+              [{name: state.get(name) for name in ("viewCount", "viewOffset", "librarySectionID")} for state in before])
+        register([{"name": "anime", "shows": "Anime", "movies": "Anime Movies"}])
+        moved = push()
+        _, sections = server.ask(OWNER, "GET", "/library/sections")
+        made = {directory.get("title"): str(directory.get("key"))
+                for directory in (sections or {}).get("MediaContainer", {}).get("Directory", [])}
+        after = (row(SHARED, episode), row(SHARED, film), row(OWNER, episode), row(OWNER, film))
+        check("declared move: the episode and film move on their keys to Anime and Anime Movies",
+              moved == keys and str(after[2].get("librarySectionID")) == made.get("Anime")
+              and str(after[3].get("librarySectionID")) == made.get("Anime Movies"), (moved, keys, made, after[2:]))
+        check("declared move: each account's watch state moves with them, the share's its own and the owner's its own",
+              str(after[0].get("librarySectionID")) == made.get("Anime") and after[0].get("viewCount") == 1 and after[1].get("viewOffset") == 600000 and not after[1].get("viewCount")
+              and not after[2].get("viewCount") and after[3].get("viewCount") == 1,
+              [{name: state.get(name) for name in ("viewCount", "viewOffset", "librarySectionID")} for state in after])
+    finally:
+        server.stop()
+        stub.shutdown()
+        shutil.rmtree(work, ignore_errors=True)
+
+
 def main():
+    declared_move_keeps_each_account()
     for variant, name, tokens in VARIANTS:
         run(variant, name, tokens)
     failed = results.count(False)

@@ -1066,7 +1066,7 @@ pub(super) fn row_files(row: &Value) -> Vec<String> {
 
 /// `build`'s temporary show and season keys replaced, in the key fields and in every
 /// `/library/metadata/<key>` path built from them.
-fn rekey(rows: &mut [Value], keys: &HashMap<String, String>) {
+pub(super) fn rekey(rows: &mut [Value], keys: &HashMap<String, String>) {
     for row in rows {
         let Some(object) = row.as_object_mut() else {
             continue;

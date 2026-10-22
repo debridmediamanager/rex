@@ -25,6 +25,7 @@ import shutil
 import sys
 import tempfile
 import time
+import urllib.parse
 
 from test_feed import ENTRIES, LEGACY, MOUNT, Bytes, Server, check, results, serve
 import test_feed_blank_tiles as blank
@@ -61,9 +62,10 @@ def episode(name, numbers=None):
     return item(ANIME, name, dict(ANIME["pushes"][name]["ids"], tmdb=show), kind="episode", season=season, episode=number)
 
 
-def catalog(work, *fixtures, rows=()):
+def catalog(work, *fixtures, rows=(), anime=True):
     sections = json.loads(json.dumps(LEGACY["sections"]))
-    next(section for section in sections if section["type"] == "show")["Location"].append({"id": 3, "path": "/zurg/anime"})
+    if anime:
+        next(section for section in sections if section["type"] == "show")["Location"].append({"id": 3, "path": "/zurg/anime"})
     json.dump({"machineIdentifier": "00000000000000000000000000000000000000f9", "friendlyName": "rex-placed",
                "sections": sections, "items": list(rows)}, open(os.path.join(work, "catalog.json"), "w"))
     merged = {}
@@ -230,6 +232,110 @@ def films(bytes_port):
         shutil.rmtree(work, ignore_errors=True)
 
 
+def declare(server, **titles):
+    body = {"url": "http://127.0.0.1:%d/dav" % server.bytes_port, "mount": MOUNT,
+            "bearer": "bytes-secret-for-tests", "directories": [dict({"name": "anime"}, **titles)]}
+    return server.request("/rex/sources/zurg", "PUT", body, {"Content-Type": "application/json"})
+
+
+def section_of(server, key):
+    return str(server.row(key).get("librarySectionID"))
+
+
+def declared_moves(bytes_port):
+    """zurg's `anime` declared a library of its own after these sat in TV Shows and Movies: each
+    row moves there on its key as it is (`relocate`). A film a person Fix Matched keeps their
+    match; a show's edits and picked poster go with it to the show made for it there; an episode
+    held as two releases, one in `anime` and one in `shows` (Ascendance's two S4 - 01), stays put
+    and is said once; two releases both in `anime` move together. Re-identifying a moved row lost
+    the hand match, never moved a row of two releases, and dropped its show's edits."""
+    work = tempfile.mkdtemp(prefix="rex-placed-declared-")
+    catalog(work, ANIME, TILES, EVA, anime=False)
+    server = start(work, bytes_port)
+    eva_item = item(EVA, "eva_111", {"imdb": "tt0923811", "tmdb": 15137}, kind="movie", folder="")
+    pushed = [episode("hibike"), episode("jjk_lostyears"), episode("ascendance_erai_s4_01"),
+              episode("ascendance_scene_s04e01"), eva_item]
+    try:
+        server.feed("POST", "items", {"items": pushed})
+        keys = server.keys()
+        hibike, eva, pair = (keys.get(item(fixture, name)["id"]) for fixture, name in
+                             ((ANIME, "hibike"), (EVA, "eva_111"), (ANIME, "ascendance_erai_s4_01")))
+        check("before: the anime episodes are in TV Shows, the film in Movies, Ascendance's two S4 - 01 one row",
+              (section_of(server, hibike), section_of(server, eva), section_of(server, pair)) == ("2", "1", "2")
+              and keys.get(item(ANIME, "ascendance_scene_s04e01")["id"]) == pair, (keys, section_of(server, hibike)))
+        status, chosen = blank.match(server, eva, "Elementos", 2023)
+        show = server.row(hibike).get("grandparentRatingKey")
+        season = server.row(hibike).get("parentRatingKey")
+        server.request("/library/metadata/%s?title.value=%s&title.locked=1&titleSort.value=%s&titleSort.locked=1"
+                       "&summary.value=%s&summary.locked=1&label[0].tag.tag=Kyoto" %
+                       (show, urllib.parse.quote("Hibike! (ours)"), urllib.parse.quote("Euphonium, Sound"),
+                        urllib.parse.quote("The brass band, as we tell it.")), "PUT")
+        server.request("/library/metadata/%s?summary.value=%s&summary.locked=1" % (season, urllib.parse.quote("Third year.")), "PUT")
+        picked = "https://image.tmdb.org/t/p/original/ours.jpg"
+        server.request("/library/metadata/%s/poster?url=%s" % (show, urllib.parse.quote(picked, safe="")), "PUT")
+        server.request("/:/scrobble?key=%s&identifier=com.plexapp.plugins.library" % hibike)
+        check("a person Fix Matched the film and edited the show", status == 200 and chosen.get("guid")
+              and server.row(eva).get("guid") == chosen["guid"] and server.row(show).get("title") == "Hibike! (ours)",
+              (status, chosen, server.row(show).get("title")))
+
+        declare(server, shows="Anime", movies="Anime Movies")
+        _, listing = server.request("/library/sections")
+        made = {row["title"]: row["key"] for row in listing["MediaContainer"]["Directory"]}
+        for _ in range(2):
+            server.feed("POST", "items", {"items": pushed})
+        film = server.row(eva)
+        check("the Fix Matched film moves to Anime Movies on its key, matched as the person matched it",
+              section_of(server, eva) == made.get("Anime Movies") and film.get("guid") == chosen.get("guid")
+              and server.keys().get(eva_item["id"]) == eva, (section_of(server, eva), film.get("guid"), chosen.get("guid")))
+        moved = server.row(hibike)
+        shown = server.row(moved.get("grandparentRatingKey"))
+        check("the episode moves to Anime on its key, watched", section_of(server, hibike) == made.get("Anime")
+              and moved.get("viewCount") == 1 and server.keys().get(episode("hibike")["id"]) == hibike,
+              (section_of(server, hibike), moved.get("viewCount")))
+        check("under a show there that keeps the show's edits: title, sort title, summary and label",
+              moved.get("grandparentRatingKey") != show and shown.get("title") == "Hibike! (ours)"
+              and shown.get("titleSort") == "Euphonium, Sound" and shown.get("summary") == "The brass band, as we tell it."
+              and [tag.get("tag") for tag in shown.get("Label") or []] == ["Kyoto"]
+              and moved.get("grandparentTitle") == "Hibike! (ours)",
+              {name: shown.get(name) for name in ("title", "titleSort", "summary", "Label")})
+        posters = server.request("/library/metadata/%s/posters" % moved.get("grandparentRatingKey"))[1]
+        selected = [row.get("key") for row in (posters or {}).get("MediaContainer", {}).get("Metadata") or [] if row.get("selected")]
+        check("its picked poster, and its season's summary",
+              selected == [picked] and server.row(moved.get("parentRatingKey")).get("summary") == "Third year.",
+              (selected, server.row(moved.get("parentRatingKey")).get("summary")))
+        check("and the show and season it left are gone from TV Shows",
+              server.request("/library/metadata/%s" % show)[0] == 404 and server.request("/library/metadata/%s" % season)[0] == 404,
+              (server.request("/library/metadata/%s" % show)[0], server.request("/library/metadata/%s" % season)[0]))
+        check("an episode whose two releases sit in anime and shows stays in TV Shows, said once",
+              section_of(server, pair) == "2" and log_count(work, "FEED %s stays in TV Shows" % pair) == 1,
+              (section_of(server, pair), log_count(work, "stays in TV Shows")))
+    finally:
+        stop(server, work)
+        shutil.rmtree(work, ignore_errors=True)
+
+    work = tempfile.mkdtemp(prefix="rex-placed-declared-both-")
+    catalog(work, ANIME, anime=False)
+    server = start(work, bytes_port)
+    # The scene release refiled under anime beside Erai's: both releases in the declared folder.
+    scene = episode("ascendance_scene_s04e01")
+    for field in ("id", "path", "file", "release"):
+        scene[field] = scene[field].replace("shows/", "anime/", 1)
+    try:
+        server.feed("POST", "items", {"items": [episode("ascendance_erai_s4_01"), scene]})
+        keys = server.keys()
+        pair = keys.get(episode("ascendance_erai_s4_01")["id"])
+        declare(server, shows="Anime")
+        server.feed("POST", "items", {"items": [episode("ascendance_erai_s4_01"), scene]})
+        _, listing = server.request("/library/sections")
+        anime = {row["title"]: row["key"] for row in listing["MediaContainer"]["Directory"]}.get("Anime")
+        check("an episode whose two releases are both in anime moves there, both with it",
+              keys.get(scene["id"]) == pair and section_of(server, pair) == anime
+              and len(server.row(pair).get("Media") or []) == 2, (keys, section_of(server, pair), anime))
+    finally:
+        stop(server, work)
+        shutil.rmtree(work, ignore_errors=True)
+
+
 # Plex's rows for Firefly's seasons and their episodes, by (season, episode); a season by (season, None).
 SPECIAL_PLEX = {}
 for _key, _answer in SPECIALS["plex"].items():
@@ -324,6 +430,7 @@ def main():
     retried(bytes_port)
     films(bytes_port)
     specials(bytes_port)
+    declared_moves(bytes_port)
     print("\n%d/%d passed" % (sum(results), len(results)))
     return 0 if all(results) else 1
 

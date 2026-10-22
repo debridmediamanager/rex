@@ -215,8 +215,9 @@ impl Counts {
 
 /// How each item is applied, decided under the lock before identification runs.
 enum Plan {
-    /// A row the source already has (or the old scanner made for this file: `adopt`).
-    Row { key: String, adopt: bool, reidentify: bool },
+    /// A row the source already has (or the old scanner made for this file: `adopt`); moved
+    /// as it is to the library its folder now belongs to (`relocate`), or identified again.
+    Row { key: String, adopt: bool, reidentify: bool, relocate: bool },
     Hold,
     Show,
     /// A file its source pushed as an extra: a clip of the title its release's other files are.
@@ -633,10 +634,22 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
                     // push with no placement leaves it where the last one put it (absent is
                     // unknown), unless a TMDB id set by hand names it again.
                     let replaced = item.placed.is_some() && row.is_some_and(|row| version_placed(row, 0) != item.placed.as_ref());
+                    let by_hand = row.is_some_and(|row| guard.matched_by_hand(row));
+                    let several = row.is_some_and(|row| versions(row).len() > 1);
+                    // A row of the type its new library takes moves there as it is, on its key,
+                    // with what a person did to it and to its show (`relocate`): one a person
+                    // matched by hand, one holding several releases, or one whose source placed
+                    // it where it was. Re-identifying it lost a hand match, kept a row of two
+                    // releases where it was, and dropped its show's edits with the show.
+                    let fits = row.is_some_and(|row| {
+                        matches!((row.get("type").and_then(Value::as_str), library.kind.as_str()), (Some("movie"), "movie") | (Some("episode"), "show"))
+                    });
+                    let relocate = moved && fits && (by_hand || several || !replaced) && row.is_some_and(|row| guard.releases_agree(row, &item, &library));
                     // What a person matched is theirs: no push and no retry identifies it again.
                     // A clip is its parent's: no library, so never "moved", and no title of its own.
-                    let reidentify = !row.is_some_and(|row| guard.matched_by_hand(row) || row.get("type").and_then(Value::as_str) == Some("clip"))
-                        && row.is_some_and(|row| versions(row).len() < 2)
+                    let reidentify = !relocate
+                        && !row.is_some_and(|row| by_hand || row.get("type").and_then(Value::as_str) == Some("clip"))
+                        && !several
                         && (moved
                             || replaced
                             || named
@@ -654,7 +667,7 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
                             Some((row.get("parentIndex")?.as_i64()?, row.get("index")?.as_i64()?))
                         });
                     }
-                    Plan::Row { key, adopt, reidentify }
+                    Plan::Row { key, adopt, reidentify, relocate }
                 }
                 // A retry names rows that are here; it never makes or holds one.
                 None if retry => continue,
@@ -735,13 +748,16 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
                 new_rows.entry(library.key.clone()).or_default().push(arrival);
                 libraries.entry(library.key.clone()).or_insert(library);
             }
-            Plan::Row { key, adopt, reidentify } => {
+            Plan::Row { key, adopt, reidentify, relocate } => {
                 guard.release(&held);
                 if guard.catalog.get(&key).is_none() {
                     counts.unchanged += 1;
                     continue;
                 }
                 let mut changed = guard.feed_update_row(&key, &source.name, &item, adopt, &mut probed);
+                if relocate {
+                    changed |= guard.relocate(&library, &key);
+                }
                 if reidentify {
                     if let Some(arrival) = arrivals.remove(&index) {
                         changed |= guard.reidentify(&library, &key, arrival, &moving);
@@ -1759,6 +1775,217 @@ impl Runtime {
         changed
     }
 
+    /// Whether every release of `row` belongs in `library`: a row of several releases moves only
+    /// when all of them do, or it would move with whichever was pushed last. One that does not
+    /// stays where it is, said once since the start.
+    fn releases_agree(&self, row: &Value, item: &Item, library: &Library) -> bool {
+        let all = versions(row);
+        if all.len() < 2 {
+            return true;
+        }
+        let agree = all.iter().all(|(_, _, index)| {
+            match (row.pointer(&format!("/Media/{index}/_path")).and_then(Value::as_str), media_file(row, *index)) {
+                (Some(path), Some(file)) => self
+                    .feed_library(&Item { path: path.to_string(), file, ..item.clone() })
+                    .is_some_and(|found| found.key == library.key),
+                _ => false,
+            }
+        });
+        if let Some(key) = key_of(row).filter(|key| !agree && first_time(format!("held {key}"))) {
+            let here = row.get("librarySectionID").map(string_value).unwrap_or_default();
+            info!(
+                "FEED {key} stays in {}: its releases sit in folders of different libraries, {} among them",
+                self.section_title(&here),
+                library.title
+            );
+        }
+        agree
+    }
+
+    /// A row moved to `library` as it is, on its key: its identification, a hand match among
+    /// it, its watch state (every account's, kept by key) and its edits stay. An episode goes
+    /// under its show's identity there, else under a copy of the show and season it leaves,
+    /// which keeps everything a person did to them; those it leaves go once empty.
+    fn relocate(&mut self, library: &Library, key: &str) -> bool {
+        let Some(mut row) = self.catalog.get(key).cloned() else {
+            return false;
+        };
+        let section_id = library.key.parse::<i64>().map(Value::from).unwrap_or_else(|_| json!(library.key));
+        let into = |row: &mut Value| {
+            if let Some(object) = row.as_object_mut() {
+                object.insert("librarySectionID".to_string(), section_id.clone());
+                object.insert("librarySectionTitle".to_string(), json!(library.title));
+                object.insert("librarySectionKey".to_string(), json!(format!("/library/sections/{}", library.key)));
+            }
+        };
+        into(&mut row);
+        let mut left = Vec::new();
+        let mut made = Vec::new();
+        if row.get("type").and_then(Value::as_str) == Some("episode") {
+            let parent = |field: &str| row.get(field).map(string_value).filter(|key| self.catalog.get(key).is_some());
+            let (Some(season), Some(show)) = (parent("parentRatingKey"), parent("grandparentRatingKey")) else {
+                return false;
+            };
+            let identity = self.catalog.get(&show).and_then(|row| row.get("_identity")).filter(|value| !value.is_null()).cloned();
+            let there = identity.and_then(|identity| {
+                self.catalog
+                    .find_where(|row| {
+                        row.get("type").and_then(Value::as_str) == Some("show")
+                            && string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == library.key
+                            && row.get("_identity") == Some(&identity)
+                    })
+                    .and_then(key_of)
+            });
+            let index = self.catalog.get(&season).and_then(|row| row.get("index")).cloned();
+            let mut keys = HashMap::new();
+            let new_show = match there {
+                Some(found) => found,
+                None => self.mint_key(),
+            };
+            keys.insert(show.clone(), new_show.clone());
+            let new_season = self
+                .catalog
+                .find_where(|row| {
+                    row.get("type").and_then(Value::as_str) == Some("season")
+                        && row.get("parentRatingKey").map(string_value).as_deref() == Some(new_show.as_str())
+                        && row.get("index") == index.as_ref()
+                })
+                .and_then(key_of)
+                .unwrap_or_else(|| self.mint_key());
+            keys.insert(season.clone(), new_season.clone());
+            // A show or season not there yet is the one left, copied onto a new key.
+            for (old, new) in [(&show, &new_show), (&season, &new_season)] {
+                if self.catalog.get(new).is_some() {
+                    self.carry_edits(old, new);
+                    continue;
+                }
+                let mut copy = vec![self.catalog.get(old).cloned().unwrap_or_default()];
+                super::scan::rekey(&mut copy, &keys);
+                let mut copy = copy.remove(0);
+                into(&mut copy);
+                if copy.get("guid").and_then(Value::as_str) == Some(format!("local://{old}").as_str()) {
+                    copy["guid"] = json!(format!("local://{new}"));
+                }
+                self.catalog.add(copy);
+                if let Some(edits) = self.edits.get(old.as_str()).cloned() {
+                    self.edits.insert(new.clone(), edits);
+                }
+                self.carry_collections(new);
+                made.push(new.clone());
+            }
+            let mut moved = vec![row];
+            super::scan::rekey(&mut moved, &keys);
+            row = moved.remove(0);
+            left = vec![season, show];
+        }
+        if let Some(slot) = self.catalog.get_mut(key) {
+            *slot = row;
+        }
+        self.inherit_parents(key);
+        for parent in &left {
+            self.drop_if_empty(parent);
+        }
+        for created in &made {
+            self.push_created_frames(created);
+        }
+        if let Some(row) = self.catalog.get(key).cloned() {
+            self.push_timeline_entry(&row, 5, None, None, None, None);
+        }
+        info!("FEED moved {key} to {} as it was", library.title);
+        true
+    }
+
+    /// What a person changed on a show or season, carried to the one its episodes moved to:
+    /// each field of its edit record the target has no edit of its own for (titles, sort
+    /// title, summary, labels, collections, locks), and the artwork they picked or uploaded
+    /// unless the target's own is locked.
+    fn carry_edits(&mut self, from: &str, to: &str) {
+        let (Some(old), Some(mut row)) = (self.catalog.get(from).cloned(), self.catalog.get(to).cloned()) else {
+            return;
+        };
+        let theirs = self.edits.get(to).cloned().unwrap_or_default();
+        let carried: Map<String, Value> =
+            self.edits.get(from).into_iter().flatten().filter(|(field, _)| !theirs.contains_key(*field)).map(|(f, v)| (f.clone(), v.clone())).collect();
+        let Some(object) = row.as_object_mut() else {
+            return;
+        };
+        let locked = |row: &Map<String, Value>, field: &str| super::edit::field_locked(row, field);
+        let own = object.clone();
+        for (field, value) in &carried {
+            if field == "Field" {
+                // Locks join the target's own, which a picked poster's lock is among.
+                let mut locks = object.get("Field").and_then(Value::as_array).cloned().unwrap_or_default();
+                for lock in value.as_array().into_iter().flatten() {
+                    if !locks.iter().any(|known| known.get("name") == lock.get("name")) {
+                        locks.push(lock.clone());
+                    }
+                }
+                object.insert(field.clone(), Value::Array(locks));
+            } else if value.is_null() {
+                object.shift_remove(field);
+            } else {
+                object.insert(field.clone(), value.clone());
+            }
+        }
+        let mut artwork = false;
+        for (field, private) in [("thumb", "_poster_url"), ("art", "_art_url")] {
+            if !old.as_object().is_some_and(|old| locked(old, field)) || locked(&own, field) {
+                continue;
+            }
+            match old.get(private) {
+                Some(value) => object.insert(private.to_string(), value.clone()),
+                None => object.shift_remove(private),
+            };
+            object.insert(field.to_string(), json!(format!("/library/metadata/{to}/{field}/{}", now())));
+            let mut locks = object.get("Field").and_then(Value::as_array).cloned().unwrap_or_default();
+            locks.retain(|lock| lock.get("name").and_then(Value::as_str) != Some(field));
+            locks.push(json!({"locked": true, "name": field}));
+            object.insert("Field".to_string(), Value::Array(locks));
+            if let Some(uploads) = old.get("_uploads") {
+                object.insert("_uploads".to_string(), uploads.clone());
+            }
+            artwork = true;
+        }
+        if carried.is_empty() && !artwork {
+            return;
+        }
+        let written: HashSet<String> = carried.keys().cloned().collect();
+        if let Some(slot) = self.catalog.get_mut(to) {
+            *slot = row.clone();
+        }
+        self.edits.entry(to.to_string()).or_default().extend(carried);
+        self.follow_parent(&row, &written);
+        if written.contains("Collection") {
+            self.carry_collections(to);
+        }
+        if artwork {
+            self.cascade_artwork_from(to);
+        }
+    }
+
+    /// The collections of its new library a moved show or season was a member of by name: a
+    /// collection is one library's, so the one it was in stays behind.
+    fn carry_collections(&mut self, to: &str) {
+        let Some(row) = self.catalog.get(to) else {
+            return;
+        };
+        let section = row.get("librarySectionID").map(string_value).unwrap_or_default();
+        let titles: Vec<String> = row
+            .get("Collection")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .filter_map(|tag| tag.get("tag").and_then(Value::as_str).map(str::to_lowercase))
+            .collect();
+        for collection in self.collections.values_mut() {
+            let tag = if collection.tag.is_empty() { &collection.title } else { &collection.tag };
+            if collection.section == section && titles.contains(&tag.to_lowercase()) && !collection.items.contains(to) {
+                collection.items.push(to.to_string());
+                collection.extra.shift_remove("_frozenCounts");
+            }
+        }
+    }
+
     /// A row whose source now names it by an id it was not identified by: identified
     /// again on the same ratingKey. A movie is rewritten in place; an episode is placed
     /// under the show its new identity names, and the show and season it leaves go when
@@ -2437,6 +2664,49 @@ mod tests {
         let mut again = second.clone();
         again["_sid"] = json!("shows/The.Boys.S03.2160p/The.Boys.S03E02.2160p.mkv");
         assert_eq!(version_slot(&second), version_slot(&again), "another release of E02 is still a version of it");
+    }
+
+    /// A show's edits reach the show its episodes moved to field by field: what the target has
+    /// no edit of its own for is carried, what it has stays; a picked poster likewise, unless
+    /// the target's own is locked.
+    #[test]
+    fn a_moved_shows_edits_fill_only_what_the_target_left_alone() {
+        let dir = work("carry");
+        let (shared, _) = runtime_with_episode(&dir);
+        let mut guard = shared.lock().unwrap();
+        let picked = "https://image.tmdb.org/t/p/original/ours.jpg";
+        guard.catalog.get_mut("10").unwrap().as_object_mut().unwrap().extend([
+            ("title".to_string(), json!("Ours")), ("titleSort".to_string(), json!("Ours, The")),
+            ("summary".to_string(), json!("As we tell it.")), ("Label".to_string(), json!([{"tag": "Kyoto"}])),
+            ("_poster_url".to_string(), json!(picked)), ("thumb".to_string(), json!("/library/metadata/10/thumb/5")),
+            ("Field".to_string(), json!([{"locked": true, "name": "title"}, {"locked": true, "name": "thumb"}])),
+        ]);
+        guard.edits.insert("10".to_string(), json!({"title": "Ours", "titleSort": "Ours, The", "summary": "As we tell it.",
+                                                    "Label": [{"tag": "Kyoto"}], "Field": [{"locked": true, "name": "title"}]})
+            .as_object().unwrap().clone());
+        for (key, own) in [("20", json!({"title": "Theirs"})), ("21", json!({}))] {
+            guard.catalog.add(json!({"ratingKey": key, "key": format!("/library/metadata/{key}/children"), "type": "show",
+                                     "title": "Theirs", "librarySectionID": 1, "thumb": format!("/library/metadata/{key}/thumb/1")}));
+            if !own.as_object().unwrap().is_empty() {
+                guard.edits.insert(key.to_string(), own.as_object().unwrap().clone());
+            }
+        }
+        guard.catalog.get_mut("21").unwrap()["Field"] = json!([{"locked": true, "name": "thumb"}]);
+        guard.catalog.get_mut("21").unwrap()["_poster_url"] = json!("https://image.tmdb.org/t/p/original/theirs.jpg");
+        guard.carry_edits("10", "20");
+        guard.carry_edits("10", "21");
+        let (twenty, twenty_one) = (guard.catalog.get("20").unwrap().clone(), guard.catalog.get("21").unwrap().clone());
+        assert_eq!((&twenty["title"], &twenty["titleSort"], &twenty["summary"], &twenty["Label"]),
+                   (&json!("Theirs"), &json!("Ours, The"), &json!("As we tell it."), &json!([{"tag": "Kyoto"}])), "its own title stays");
+        assert_eq!(twenty["_poster_url"], json!(picked));
+        assert!(twenty["thumb"].as_str().is_some_and(|thumb| thumb.starts_with("/library/metadata/20/thumb/")));
+        assert_eq!(guard.edits["20"]["title"], json!("Theirs"));
+        assert_eq!(guard.edits["20"]["summary"], json!("As we tell it."), "kept as its own edit across a restart");
+        assert_eq!(twenty_one["title"], json!("Ours"), "no edit of its own: the moved show's title");
+        assert_eq!(twenty_one["_poster_url"], json!("https://image.tmdb.org/t/p/original/theirs.jpg"), "its own locked poster stays");
+        assert_eq!(twenty_one["Field"], json!([{"locked": true, "name": "thumb"}, {"locked": true, "name": "title"}]), "locks joined");
+        drop(guard);
+        let _ = std::fs::remove_dir_all(dir);
     }
 
     /// rex-fun's two libraries, each with a folder per zurg mount, and its feed rows from the
