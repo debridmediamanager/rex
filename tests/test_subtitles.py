@@ -38,7 +38,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-from server_command import server_command
+from server_command import server_command, test_ffmpeg
 from startup_wait import poll_until
 from test_ports import free_port
 
@@ -51,7 +51,7 @@ CACHE = json.load(open(os.path.join(FIXTURES, "feed", "provider_cache.json")))
 LEGACY = json.load(open(os.path.join(FIXTURES, "feed", "legacy_scan_rows.json")))
 ENTRIES = json.load(open(os.path.join(FIXTURES, "zurg", "entries.json")))["entries"]
 DECISION = [tuple(pair) for pair in json.load(open(os.path.join(FIXTURES, "decision_streams_selected.json")))["request_query"]]
-FFMPEG = os.environ.get("REX_TRANSCODER") or shutil.which("ffmpeg")
+FFMPEG = test_ffmpeg()
 FFPROBE = shutil.which("ffprobe") or (FFMPEG and os.path.join(os.path.dirname(FFMPEG), "ffprobe"))
 MACHINE = "00000000000000000000000000000000000000e5"
 TOKEN = "subtitles-server-token"
@@ -258,8 +258,9 @@ class Server:
     def __init__(self, work, stub, claimed=True, transcoder=True):
         self.port = free_port()
         env = dict(os.environ, REX_PLEXTV_URL=stub.base())
-        for name in ("REX_STATE", "REX_TOKEN", "PLEX_TOKEN", "TMDB_KEY", "REX_TRANSCODER"):
+        for name in ("REX_STATE", "REX_TOKEN", "PLEX_TOKEN", "TMDB_KEY"):
             env.pop(name, None)
+        env["REX_TRANSCODER"] = "off"
         if transcoder:
             env["REX_TRANSCODER"] = FFMPEG
             env["REX_TRANSCODE_DIR"] = os.path.join(work, "transcode")

@@ -77,8 +77,9 @@ def main():
                 destination.write_bytes(base64.b64decode(row["pms"]["body_base64"]))
         port = free_port()
         env = dict(os.environ, REX_PLEXTV_URL="http://127.0.0.1:9", REX_DIRECT_URL="off")
-        for name in ("REX_TOKEN", "REX_STATE", "REX_TRANSCODER"):
+        for name in ("REX_TOKEN", "REX_STATE"):
             env.pop(name, None)
+        env["REX_TRANSCODER"] = "off"
         with tempfile.TemporaryFile() as log:
             process = subprocess.Popen(server_command("--catalog", str(catalog), "--port", port,
                                                        "--token", TOKEN, "--gdm", "off",

@@ -21,6 +21,9 @@ import urllib.request
 
 from test_ports import free_port
 
+# The servers the manager starts inherit this: no FFmpeg found on PATH (server_command.py).
+os.environ.setdefault("REX_TRANSCODER", "off")
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 CATALOG = os.path.join(HERE, "catalog_ui.json")

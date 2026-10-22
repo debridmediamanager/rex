@@ -10,6 +10,7 @@ interpreted once with :func:`shlex.split`; no shell is introduced for the child 
 import json
 import os
 import shlex
+import shutil
 import urllib.error
 import urllib.request
 
@@ -17,6 +18,16 @@ import urllib.request
 # suites do against a stub plex.tv: a test server registers nowhere unless its suite names a
 # provider (`test_rex_direct.py`'s stub). Every suite starts rex through this module.
 os.environ.setdefault("REX_DIRECT_URL", "off")
+# rex finds an FFmpeg on its own (jellyfin-ffmpeg's places, then PATH): a test server is the
+# encoder-less one the parity suites measure unless its suite names an FFmpeg.
+os.environ.setdefault("REX_TRANSCODER", "off")
+
+
+def test_ffmpeg():
+    """The FFmpeg a transcoding suite hands rex: ``REX_TRANSCODER`` unless it is ``off``,
+    else PATH's."""
+    configured = os.environ.get("REX_TRANSCODER", "")
+    return configured if configured and configured.lower() != "off" else shutil.which("ffmpeg")
 
 
 def server_command(*args, root=None):

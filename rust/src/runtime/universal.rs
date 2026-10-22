@@ -2,9 +2,10 @@
 //! session it opens, served by an FFmpeg child per session that reads the Part's bytes
 //! straight from its source.
 //!
-//! Off unless `REX_TRANSCODER` names an FFmpeg binary (jellyfin-ffmpeg is the one this
-//! was measured with: its full-GPU VA-API pipeline and its own Intel driver). Without it
-//! rex is the encoder-less server every parity suite measures, and nothing here runs.
+//! On when rex finds an FFmpeg (`find_ffmpeg`: `REX_TRANSCODER`, jellyfin-ffmpeg's own
+//! places, then PATH) -- jellyfin-ffmpeg is the one this was measured with: its full-GPU
+//! VA-API pipeline and its own Intel driver. `REX_TRANSCODER=off`, as every suite sets, is
+//! the encoder-less server the parity suites measure, and nothing here runs.
 //!
 //! The wire shapes are plexscratch 1.43.4's, recorded for Plex Web 4.160's exact request
 //! (`tests/fixtures/transcode/`): the master playlist names `session/<session>/base/
@@ -999,12 +1000,23 @@ impl Transcoder {
         &self.ffmpeg
     }
 
-    /// `REX_TRANSCODER` (an FFmpeg binary), `REX_TRANSCODE_DIR` (default: the system temp
+    /// `REX_TRANSCODER` (an FFmpeg binary, `off`, or unset to look for one: `find_ffmpeg`), `REX_TRANSCODE_DIR` (default: the system temp
     /// directory's `rex-transcode-<port>`, one per server, since a start clears it),
     /// `REX_TRANSCODE_HW` (`auto`, `vaapi`, `cuda`, `none`) and `REX_TRANSCODE_DEVICE`
     /// (default `/dev/dri/renderD128`).
     pub fn from_env(port: u16) -> Option<Arc<Self>> {
-        let ffmpeg = std::env::var("REX_TRANSCODER").ok().filter(|path| !path.is_empty())?;
+        let configured = std::env::var("REX_TRANSCODER").ok().filter(|path| !path.is_empty());
+        let Some(ffmpeg) = find_ffmpeg(configured.as_deref(), &ffmpeg_places(), std::env::var_os("PATH")) else {
+            if configured.is_some_and(|value| value.eq_ignore_ascii_case("off")) {
+                info!("transcoder off: REX_TRANSCODER=off");
+            } else {
+                info!("transcoder off: no FFmpeg found; install jellyfin-ffmpeg (docs/setup.md, Transcoding) or set REX_TRANSCODER");
+            }
+            return None;
+        };
+        if configured.is_none() {
+            info!("transcoder: found {} (REX_TRANSCODER picks another, REX_TRANSCODER=off turns conversion off)", ffmpeg.display());
+        }
         let root = std::env::var("REX_TRANSCODE_DIR")
             .ok()
             .filter(|path| !path.is_empty())
@@ -1018,7 +1030,7 @@ impl Transcoder {
             return None;
         }
         let transcoder = Arc::new(Self {
-            ffmpeg: PathBuf::from(ffmpeg),
+            ffmpeg,
             root,
             hardware: Mutex::new(Hardware::software()),
             sessions: Mutex::new(HashMap::new()),
@@ -1044,6 +1056,16 @@ impl Transcoder {
                     names.join(",")
                 }
             );
+            if !found.tonemapx {
+                warning!(
+                    "transcoder: {} is not jellyfin-ffmpeg: Dolby Vision profile 5 is not converted{}; jellyfin-ffmpeg does both",
+                    probing.ffmpeg.display(),
+                    if found.supports_tone_mapping() { "" } else { ", and no HDR is (no zscale)" }
+                );
+            }
+            if let Some(major) = probing.version().filter(|major| *major < 5) {
+                warning!("transcoder: FFmpeg {major} starts a far seek a segment early; use jellyfin-ffmpeg 8 or FFmpeg 5 and later");
+            }
             if let Ok(mut hardware) = probing.hardware.lock() {
                 *hardware = found;
             }
@@ -1083,6 +1105,13 @@ impl Transcoder {
     /// codec a clip encoded on the CPU decoded on it into device memory -- a decoder the
     /// device lacks makes FFmpeg fall back to software, and `hwdownload` then refuses
     /// the software frame, so a pass is a real hardware decode.
+    /// The major version `-version` names (`ffmpeg version 4.4.2-0ubuntu0.22.04.1`, `n7.0`,
+    /// `8.1.2-Jellyfin`); a git build (`N-127900-...`) names none.
+    fn version(&self) -> Option<u32> {
+        let output = Command::new(&self.ffmpeg).arg("-version").stdin(Stdio::null()).stderr(Stdio::null()).output().ok()?;
+        major_version(&String::from_utf8_lossy(&output.stdout))
+    }
+
     fn probe(&self) -> Hardware {
         let mut found = self.probe_device();
         let filters = Command::new(&self.ffmpeg).args(["-hide_banner", "-filters"]).stdin(Stdio::null()).stderr(Stdio::null()).output();
@@ -2002,6 +2031,37 @@ pub(super) fn spawn_tied(command: Command) -> std::io::Result<Child> {
 /// FFmpeg processes a previous rex left running in `root` (killed before the tie above
 /// existed, or by a signal that skipped it): every process of ours whose command line
 /// names the transcode directory.
+fn major_version(text: &str) -> Option<u32> {
+    let word = text.split_whitespace().skip_while(|word| *word != "version").nth(1)?;
+    word.trim_start_matches('n').split(['.', '-']).next()?.parse().ok()
+}
+
+/// Where an FFmpeg is looked for when `REX_TRANSCODER` names none, best first: jellyfin-ffmpeg's
+/// Linux package, a portable build unpacked into rex's folder as `ffmpeg/`, and Jellyfin's own
+/// server installs on Windows and macOS. `find_ffmpeg` then tries PATH's.
+fn ffmpeg_places() -> Vec<PathBuf> {
+    let name = if cfg!(windows) { "ffmpeg.exe" } else { "ffmpeg" };
+    let mut places = vec![PathBuf::from("/usr/lib/jellyfin-ffmpeg/ffmpeg")];
+    // A release keeps the binary at <folder>/rust/target/release/rex.
+    if let Some(folder) = std::env::current_exe().ok().and_then(|exe| exe.ancestors().nth(4).map(PathBuf::from)) {
+        places.push(folder.join("ffmpeg").join(name));
+    }
+    places.push(PathBuf::from(r"C:\Program Files\Jellyfin\Server\ffmpeg.exe"));
+    places.push(PathBuf::from("/Applications/Jellyfin.app/Contents/MacOS/ffmpeg"));
+    places
+}
+
+/// `REX_TRANSCODER` when it names one (`off` is none at all), else the first of `places` that
+/// exists, else `ffmpeg` on `path`.
+fn find_ffmpeg(configured: Option<&str>, places: &[PathBuf], path: Option<std::ffi::OsString>) -> Option<PathBuf> {
+    if let Some(configured) = configured {
+        return (!configured.eq_ignore_ascii_case("off")).then(|| PathBuf::from(configured));
+    }
+    let name = if cfg!(windows) { "ffmpeg.exe" } else { "ffmpeg" };
+    places.iter().find(|place| place.is_file()).cloned()
+        .or_else(|| std::env::split_paths(&path?).map(|dir| dir.join(name)).find(|candidate| candidate.is_file()))
+}
+
 fn kill_leftovers(root: &std::path::Path) {
     let needle = root.to_string_lossy().to_string();
     let Ok(entries) = std::fs::read_dir("/proc") else {
@@ -3173,6 +3233,38 @@ mod tests {
         // A device whose probe failed to tonemap keeps HDR on the CPU.
         let without = Hardware { opencl_tonemap: false, ..hardware };
         assert_eq!(ladder(&hdr, &without)[0], Path::EncodeOnly);
+    }
+
+    #[test]
+    fn ffmpeg_is_found_without_being_named() {
+        let dir = std::env::temp_dir().join(format!("rex-find-ffmpeg-{}", std::process::id()));
+        let name = if cfg!(windows) { "ffmpeg.exe" } else { "ffmpeg" };
+        let (jellyfin, on_path) = (dir.join("jellyfin").join(name), dir.join("bin").join(name));
+        for file in [&jellyfin, &on_path] {
+            std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+            std::fs::write(file, b"").unwrap();
+        }
+        let path = Some(std::env::join_paths([dir.join("empty"), dir.join("bin")]).unwrap());
+        let missing = dir.join("nowhere").join(name);
+        // Named: that one, even where another is found; `off` is none.
+        assert_eq!(find_ffmpeg(Some("/opt/ff/ffmpeg"), &[jellyfin.clone()], path.clone()), Some(PathBuf::from("/opt/ff/ffmpeg")));
+        assert_eq!(find_ffmpeg(Some("off"), &[jellyfin.clone()], path.clone()), None);
+        assert_eq!(find_ffmpeg(Some("OFF"), &[], path.clone()), None);
+        // Unnamed: jellyfin-ffmpeg's place before PATH's, PATH's when no place has one.
+        assert_eq!(find_ffmpeg(None, &[missing.clone(), jellyfin.clone()], path.clone()), Some(jellyfin.clone()));
+        assert_eq!(find_ffmpeg(None, &[missing.clone()], path.clone()), Some(on_path));
+        assert_eq!(find_ffmpeg(None, &[missing], None), None);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn ffmpeg_major_version_is_read_off_its_banner() {
+        assert_eq!(major_version("ffmpeg version 4.4.2-0ubuntu0.22.04.1 Copyright (c) 2000-2021"), Some(4));
+        assert_eq!(major_version("ffmpeg version 6.1.1-3ubuntu5 Copyright"), Some(6));
+        assert_eq!(major_version("ffmpeg version 8.1.2-Jellyfin Copyright"), Some(8));
+        assert_eq!(major_version("ffmpeg version n7.0 Copyright"), Some(7));
+        assert_eq!(major_version("ffmpeg version 7.0.2-static https://johnvansickle.com"), Some(7));
+        assert_eq!(major_version("ffmpeg version N-127900-ge2798d5cad-20261021"), None);
     }
 
     #[test]

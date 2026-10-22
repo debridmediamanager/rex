@@ -213,6 +213,42 @@ def main():
         if made:
             shutil.rmtree(webclient, ignore_errors=True)
 
+    # Conversion needs no setting: rex finds an FFmpeg (jellyfin-ffmpeg's package first, then
+    # PATH's) unless REX_TRANSCODER names one or is `off`. A stand-in that fails every probe
+    # leaves the server software-only, which is all a start needs.
+    if os.name != "nt":
+        scratch = tempfile.mkdtemp(prefix="rex-cli-ffmpeg-")
+        fake = os.path.join(scratch, "bin", "ffmpeg")
+        os.makedirs(os.path.dirname(fake))
+        with open(fake, "w") as handle:
+            handle.write("#!/bin/sh\nexit 1\n")
+        os.chmod(fake, 0o755)
+        jellyfin = "/usr/lib/jellyfin-ffmpeg/ffmpeg"
+        def started(name, **env):
+            port, log = free_port(), os.path.join(scratch, name + ".log")
+            environment = dict(ENV, **env)
+            for key in [key for key, value in env.items() if value is None]:
+                environment.pop(key)
+            with open(log, "w") as out:
+                process = subprocess.Popen(server_command("--port", str(port), "--catalog", CATALOG, "--gdm", "off",
+                                                          root=ROOT), cwd=ROOT, env=environment, stdout=out,
+                                           stderr=subprocess.STDOUT)
+            poll_until(lambda: "transcoder" in open(log).read(), 20)
+            stop(process)
+            return open(log).read()
+        found = started("path", REX_TRANSCODER=None, PATH=os.path.dirname(fake))
+        expected = jellyfin if os.path.isfile(jellyfin) else fake
+        check("with no REX_TRANSCODER rex uses the FFmpeg it finds", "transcoder: found %s " % expected in found,
+              found[-600:])
+        off = started("off", REX_TRANSCODER="off", PATH=os.path.dirname(fake))
+        check("REX_TRANSCODER=off keeps conversion off", "transcoder off: REX_TRANSCODER=off" in off
+              and "transcoder: found" not in off, off[-600:])
+        if not os.path.isfile(jellyfin):
+            none = started("none", REX_TRANSCODER=None, PATH=os.path.join(scratch, "empty"))
+            check("with no FFmpeg anywhere the log says how to get one", "transcoder off: no FFmpeg found" in none,
+                  none[-600:])
+        shutil.rmtree(scratch, ignore_errors=True)
+
     passed = sum(results)
     print("PASS %d/%d command-line checks" % (passed, len(results)))
     return 0 if passed == len(results) else 1

@@ -33,13 +33,13 @@ import time
 import urllib.parse
 import urllib.request
 
-from server_command import register_source, server_command
+from server_command import register_source, server_command, test_ffmpeg
 from startup_wait import poll_until
 from test_ports import free_port
 
 ROOT = os.environ.get("REX_TEST_ROOT",
                       os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-FFMPEG = os.environ.get("REX_TRANSCODER") or shutil.which("ffmpeg")
+FFMPEG = test_ffmpeg()
 FFPROBE = os.path.join(os.path.dirname(FFMPEG), "ffprobe") if FFMPEG else None
 if FFPROBE and not os.path.exists(FFPROBE):
     FFPROBE = shutil.which("ffprobe")
@@ -377,7 +377,7 @@ def start_server(catalog, zurg_port, transcoder, scratch, **env):
     # iGPU).
     environment = dict(os.environ, REX_TRANSCODE_HW=os.environ.get("REX_TRANSCODE_HW", "none"),
                        REX_TRANSCODE_DIR=os.path.join(scratch, "segments-%d" % port), **env)
-    environment.pop("REX_TRANSCODER", None)
+    environment["REX_TRANSCODER"] = "off"
     if transcoder:
         environment["REX_TRANSCODER"] = FFMPEG
     log = open(os.path.join(scratch, "rex-%d.log" % port), "w")

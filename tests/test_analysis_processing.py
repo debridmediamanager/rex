@@ -50,7 +50,7 @@ class Server:
         env = dict(os.environ, REX_TRANSCODER=os.path.join(directory,"ffmpeg-engine"), REX_TRANSCODE_HW="none",
                    REX_PLEXTV_URL="http://127.0.0.1:%d" % plex_port, REX_DIRECT_URL="off")
         if not transcoder:
-            env.pop("REX_TRANSCODER", None)
+            env["REX_TRANSCODER"] = "off"
         for name in ("REX_STATE", "REX_TOKEN", "PLEX_TOKEN"):
             env.pop(name, None)
         self.process = subprocess.Popen(t.server_command(

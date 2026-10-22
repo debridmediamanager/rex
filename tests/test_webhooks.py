@@ -26,7 +26,7 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qsl, urlsplit
 
-from server_command import server_command
+from server_command import server_command, test_ffmpeg
 from test_ports import free_port
 from test_accounts import SHARED, SHARED_ID
 
@@ -200,7 +200,7 @@ def main():
     plextv.hook = "http://127.0.0.1:%d/hook" % hook.server_address[1]
     plextv.shared_hook = "http://127.0.0.1:%d/shared" % shared.server_address[1]
     local_url = "http://127.0.0.1:%d/local" % local.server_address[1]
-    ffmpeg = os.environ.get("REX_TRANSCODER") or shutil.which("ffmpeg")
+    ffmpeg = test_ffmpeg()
     if not ffmpeg:
         raise RuntimeError("test_webhooks requires ffmpeg to generate and decode the real JPEG fixture")
     hook.image = subprocess.check_output([ffmpeg, "-v", "error", "-f", "lavfi", "-i", "color=c=blue:s=32x32",
