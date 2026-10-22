@@ -230,7 +230,7 @@ impl Counts {
 enum Plan {
     /// A row the source already has (or the old scanner made for this file: `adopt`); moved
     /// as it is to the library its folder now belongs to (`relocate`), or identified again.
-    Row { key: String, adopt: bool, reidentify: bool, relocate: bool },
+    Row { key: String, adopt: bool, reidentify: bool, relocate: bool, refresh_title: bool },
     Hold,
     Show,
     /// A file its source pushed as an extra: a clip of the title its release's other files are.
@@ -656,6 +656,15 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
                     let replaced = item.placed.is_some() && row.is_some_and(|row| version_placed(row, 0) != item.placed.as_ref());
                     let by_hand = row.is_some_and(|row| guard.matched_by_hand(row));
                     let several = row.is_some_and(|row| versions(row).len() > 1);
+                    let refresh_title = !by_hand && row.is_some_and(|row| {
+                        let title = row.get("grandparentRatingKey").map(string_value)
+                            .and_then(|key| guard.catalog.get(&key)).unwrap_or(row);
+                        !several && (version_release(row, 0) != Some(item.name.as_str())
+                            || row.get("_release").and_then(Value::as_str) != Some(item.name.as_str()))
+                            || item.identifiable(&library.kind)
+                                && title.get("guid").and_then(Value::as_str).is_some_and(|guid| guid.starts_with("plex://"))
+                                && title.get("_titleGuid") != title.get("guid")
+                    });
                     // A row of the type its new library takes moves there as it is, on its key,
                     // with what a person did to it and to its show (`relocate`): one a person
                     // matched by hand, one holding several releases, or one whose source placed
@@ -687,7 +696,7 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
                             Some((row.get("parentIndex")?.as_i64()?, row.get("index")?.as_i64()?))
                         });
                     }
-                    Plan::Row { key, adopt, reidentify, relocate }
+                    Plan::Row { key, adopt, reidentify, relocate, refresh_title }
                 }
                 // A retry names rows that are here; it never makes or holds one.
                 None if retry => continue,
@@ -705,7 +714,7 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
     // -- off the lock: identification, once per release ---------------------------------
     let mut groups: BTreeMap<(String, String), Vec<usize>> = BTreeMap::new();
     for (index, (item, library, plan)) in plans.iter().enumerate() {
-        if matches!(plan, Plan::Show | Plan::Row { reidentify: true, .. }) {
+        if matches!(plan, Plan::Show | Plan::Row { reidentify: true, .. } | Plan::Row { refresh_title: true, .. }) {
             groups.entry((library.key.clone(), item.release.clone())).or_default().push(index);
         }
     }
@@ -768,14 +777,20 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
                 new_rows.entry(library.key.clone()).or_default().push(arrival);
                 libraries.entry(library.key.clone()).or_insert(library);
             }
-            Plan::Row { key, adopt, reidentify, relocate } => {
+            Plan::Row { key, adopt, reidentify, relocate, refresh_title } => {
                 guard.release(&held);
                 if guard.catalog.get(&key).is_none() {
                     counts.unchanged += 1;
                     continue;
                 }
                 let (key, edition_changed) = guard.feed_edition_key(&key, &source.name, &item);
-                let mut changed = guard.feed_update_row(&key, &source.name, &item, adopt, &mut probed) || edition_changed;
+                let mut changed = edition_changed;
+                if refresh_title {
+                    if let Some(arrival) = arrivals.get(&index) {
+                        changed |= guard.refresh_source_title(&key, &item, arrival);
+                    }
+                }
+                changed |= guard.feed_update_row(&key, &source.name, &item, adopt, &mut probed);
                 if relocate {
                     changed |= guard.relocate(&library, &key);
                 }
@@ -1245,7 +1260,7 @@ const IDENTITY_FIELDS: &[&str] = &[
     "index", "thumb", "art", "duration", "Media", "_show_external_guids", "_poster_url", "_art_url",
     "_identity", "_identify", "_tmdb_id", "_kind", "_season", "_episode", "_show_title",
     "_show_summary", "_show_year", "_show_guid", "_season_guid", "_generatedTitle", "_release",
-    "_release_path", "_probePending", "_hash", "_placed",
+    "_release_path", "_probePending", "_hash", "_placed", "_titleGuid", "_show_titleGuid",
 ];
 
 /// Whether a library folder names a directory the item's path sits in: `/mnt/zurg/movies`
@@ -1846,6 +1861,12 @@ impl Runtime {
                 changed = true;
             }
         }
+        if index == 0 && row.get("_release").and_then(Value::as_str) != Some(item.name.as_str()) {
+            if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
+                object.insert("_release".to_string(), json!(item.name));
+            }
+            changed = true;
+        }
         let part = |row: &Value| -> Option<Value> {
             row.get("Media")?.as_array()?.get(index)?.get("Part")?.as_array()?.first().cloned()
         };
@@ -2110,6 +2131,80 @@ impl Runtime {
         }
     }
 
+    /// A corrected source label is not identification. Known release fallbacks may follow
+    /// it; an agent title needs a title-bearing answer from that very same guid.
+    fn refresh_source_title(&mut self, key: &str, item: &Item, arrival: &Arrival) -> bool {
+        let Some(leaf) = self.catalog.get(key).cloned() else { return false };
+        if self.matched_by_hand(&leaf) { return false; }
+        let show = leaf.get("grandparentRatingKey").map(string_value);
+        let target = show.as_deref().unwrap_or(key);
+        let Some(old) = self.catalog.get(target).cloned() else { return false };
+        let Some(object) = old.as_object() else { return false };
+        if super::edit::field_locked(object, "title") || self.edits.get(target).is_some_and(|fields| fields.contains_key("title")) {
+            return false;
+        }
+        let meta = arrival.meta.as_ref();
+        let local_identity = old.get("_identity").and_then(Value::as_str).is_some_and(|identity| identity.starts_with("title:"));
+        let source_title = old.get("_titleGuid").is_some_and(Value::is_null)
+            || old.get("guid").and_then(Value::as_str).is_some_and(|guid| guid.starts_with("local://"))
+                && (local_identity || leaf.get("_identify").is_some_and(|report| report.get("plex").is_some_and(Value::is_null)));
+        let guid_field = if show.is_some() { "_show_titleGuid" } else { "_titleGuid" };
+        let title_field = if show.is_some() { "_show_title" } else { "title" };
+        let authoritative = meta
+            .filter(|meta| meta.get(guid_field).and_then(Value::as_str).is_some() && meta.get(guid_field) == old.get("guid"))
+            .and_then(|meta| meta.get(title_field)).cloned();
+        let (title, metadata_title) = if let Some(title) = authoritative {
+            (title, true)
+        } else {
+            if !source_title || versions(&leaf).len() > 1
+                || old.get("title").and_then(Value::as_str) != leaf.get("_release").and_then(Value::as_str)
+            {
+                return false;
+            }
+            (json!(item.name), false)
+        };
+        let owner = if metadata_title { old.get("guid").cloned().unwrap_or(Value::Null) } else { Value::Null };
+        let mut changed = old.get("title") != Some(&title) || old.get("_titleGuid") != Some(&owner);
+        if let Some(row) = self.catalog.get_mut(target).and_then(Value::as_object_mut) {
+            row.insert("title".to_string(), title);
+            row.insert("_titleGuid".to_string(), owner);
+            super::edit::derive_title_sort(row);
+        }
+        if !metadata_title {
+            let identity = if local_identity {
+                json!(format!("title:{}", crate::hierarchy::fold_title(&item.name).to_lowercase()))
+            } else {
+                old.get("_identity").cloned().unwrap_or(Value::Null)
+            };
+            let mut keys: Vec<String> = show.as_deref().map(|show| self.leaves(show).iter().filter_map(key_of).collect()).unwrap_or_default();
+            keys.push(target.to_string());
+            for key in keys {
+                if let Some(row) = self.catalog.get_mut(&key).and_then(Value::as_object_mut) {
+                    if row.get("_identity") == old.get("_identity") {
+                        changed |= row.get("_identity") != Some(&identity);
+                        row.insert("_identity".to_string(), identity.clone());
+                        if show.is_some() && key != target {
+                            row.insert("_tmdb_id".to_string(), identity.clone());
+                            row.insert("_show_title".to_string(), json!(item.name));
+                        }
+                    }
+                    if row.get("_source").and_then(Value::as_str) == leaf.get("_source").and_then(Value::as_str)
+                        && row.get("_release") == leaf.get("_release")
+                    {
+                        row.insert("_release".to_string(), json!(item.name));
+                    }
+                }
+            }
+        }
+        if changed {
+            if let Some(row) = self.catalog.get(target).cloned() {
+                self.follow_parent(&row, &HashSet::from(["title".to_string()]));
+                self.push_timeline_entry(&row, 5, None, None, None, None);
+            }
+        }
+        changed
+    }
+
     /// A row whose source now names it by an id it was not identified by: identified
     /// again on the same ratingKey. A movie is rewritten in place; an episode is placed
     /// under the show its new identity names, and the show and season it leaves go when
@@ -2237,9 +2332,9 @@ impl Runtime {
         if let Some(row) = self.catalog.get_mut(show).and_then(Value::as_object_mut) {
             for field in [
                 "title", "summary", "year", "guid", "Guid", "contentRating", "studio", "Genre", "Country",
-                "Role", "rating", "audienceRating", "tagline", "_poster_url", "_art_url",
+                "Role", "rating", "audienceRating", "tagline", "_poster_url", "_art_url", "_titleGuid",
             ] {
-                match fresh.get(field).filter(|value| !value.is_null()) {
+                match fresh.get(field).filter(|value| field == "_titleGuid" || !value.is_null()) {
                     Some(value) => {
                         row.insert(field.to_string(), value.clone());
                     }

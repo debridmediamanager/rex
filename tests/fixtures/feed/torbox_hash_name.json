@@ -1,0 +1,8 @@
+{
+  "_about": "TorBox /my/torrents entry captured read-only 2026-10-22 (zurg internal/rexfeed/testdata/torbox-hash-named-2026-10-22.json). These are the provider's exact name/hash/file/size fields; the test borrows the separately recorded American Dad probe only to model an already-probed item. No placement is inferred from this release name.",
+  "hash": "dab0961f845f04f5819b648b93d09a264ce0703d",
+  "name": "dab0961f845f04f5819b648b93d09a264ce0703d",
+  "size": 1441528755,
+  "file": "[SubsPlease] One Piece - 1156 (1080p) [662D886D]/[SubsPlease] One Piece - 1156 (1080p) [662D886D].mkv",
+  "corrected_name": "[SubsPlease] One Piece - 1156 (1080p) [662D886D]"
+}

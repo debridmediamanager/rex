@@ -827,6 +827,9 @@ pub fn build(mut leaves: Vec<Value>) -> Vec<Value> {
                 "guid",
                 str_value(leaf, "_show_guid").or_else(|| str_value(leaf, "guid")),
             );
+            if let Some(owner) = leaf.get("_show_titleGuid") {
+                show.insert("_titleGuid".to_string(), owner.clone());
+            }
             put(&mut show, "type", "show");
             put_opt(
                 &mut show,
@@ -1039,6 +1042,7 @@ pub fn build(mut leaves: Vec<Value>) -> Vec<Value> {
                 "_kind",
                 "_tmdb_id",
                 "_show_title",
+                "_show_titleGuid",
                 "_show_summary",
                 "_show_year",
                 "_show_poster",

@@ -318,6 +318,19 @@ What the fields do:
   after its release's others is numbered after them). Nothing is read off either name. The
   numbers stay file order until the source places the files; a placement then moves each row on
   its ratingKey.
+- **Corrected names.** A normal same-`id` push or snapshot refreshes a source-owned release
+  title when the source corrects `name`; local show grouping and file-order numbering follow
+  the correction on the existing show, season and episode keys. No title is identified by
+  that name. A metadata-derived title is never handed back to the source, even when it
+  equals the previous source name. Older named rows without recorded title provenance
+  retry the pushed external ids on an ordinary update, and accept a title only from an
+  actual nonempty metadata `title` belonging to the same Plex guid. A guid alone, a
+  constructed release-name fallback, an unavailable answer, or a different-guid answer
+  is not title authority. This also repairs an older shared multi-version row without
+  letting one version's source label rename it. A person's locked title, persisted title
+  edit (including an unlocked edit), or Fix Match wins. A known source fallback may follow
+  a corrected source name while retaining its ids and guid, including when Plex supplied
+  a guid but no title. An unknown legacy named title is not assumed to be such a fallback.
 - **Late ids.** A push whose placement or hand-set TMDB id names what the row was not identified
   as re-identifies it on the same ratingKey, keeping its watch state (an episode moves to the
   show its new identity names, on the numbers it was placed on, else the ones it had). So does

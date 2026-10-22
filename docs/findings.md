@@ -14023,3 +14023,67 @@ composites and their photo-transcoded paths passed with system roots available.
 This is a broad API exercise, not proof that every official client or network
 observer cannot distinguish the implementation.
 
+## A corrected source name is not a new identification (2026-10-22)
+
+Fizzy #554's TorBox input is reproducible without guessing what the release is.
+`tests/fixtures/feed/torbox_hash_name.json` retains the provider's captured
+infohash-as-name, original file path and size from zurg's
+`torbox-hash-named-2026-10-22.json`. The test separately borrows an already-recorded
+probe and Plex metadata responses: it does not identify One Piece from a name or
+claim that the borrowed probe describes that release.
+
+The original `b35ae903` executable passed **15/20** initial checks in
+`test_feed_source_names.py`. An ordinary same-id `POST /rex/feed/zurg/items`
+kept the hash as the unmatched show's title; a later file created a second show
+and restarted its numbering. A modeled old named row also ignored a same-id
+update even with its own Plex guid's authoritative title available. The placed
+local fallback retained its old source title too. The offline-title check failed
+as a consequence of the earlier stale-title failure, not as a separate diagnosis.
+After another session advanced production, the freshly staged running `d76dc3a9`
+artifact passed **17/24** expanded checks; the rebuilt fix on that current source
+passed **24/24** on isolated zen, through the normal feed and metadata APIs,
+including restarts and a normal snapshot. The production binary's source
+association is the operator deployment record and successful CI run, with matching
+running, disk and staged hashes, not an embedded Git attestation.
+
+The feed now refreshes source-owned local titles and their grouping on the
+existing keys. It uses the existing metadata identification owner off the runtime
+lock, and refreshes an already named row only from the same Plex guid's answer.
+Fresh rows record provenance at the existing metadata title owner: a string binds
+an actual nonempty metadata title to its Plex guid, explicit null records a source
+fallback, and absence leaves legacy provenance unknown. A guid returned without
+an actual title is not title authority. A known source fallback can therefore follow
+its source even when Plex supplied a guid, and accept a real title later on the
+same key and guid. Older rows without provenance can recover on an ordinary same-id
+push even when `name` has not changed, including rows holding several versions
+without re-identifying any of their releases. A different guid or unavailable title
+is not authority to overwrite a named title. Equality with the old release name is
+never evidence that an agent's title belongs to the source. The existing persisted
+edit record protects unlocked manual titles, including after restart; field locks
+and Fix Match retain precedence. No name parsing, title search, identification,
+row re-keying or account-state replacement was added.
+
+Rebuilt Linux verification passed **232 Rust tests** (228 library, two CLI and
+two track-corpus tests), **47 Python core/extra suites**, all **nine media suites**
+and the **nine explicit native tests** behind CI's ignored-test filters. Service
+and native work ran on isolated zen with one CPU; the public-poster fixture alone
+used read-only public image HTTPS, never copied production credentials.
+
+A fresh read-only backup from the current `d76dc3a9` production instance held
+**42,416 rows**: 4,022 movies, 34,280 episodes, 662 shows, 1,858 seasons and 1,594
+clips. Its private loopback-only rehearsal added, removed and changed **zero**
+library rows, and preserved every other persisted state row and the flat claim
+and sources files; only volatile traffic `byteBuckets` were excluded from that
+state comparison. The 13,392,793-byte source listing completed in **0.384 s** while
+a concurrent identity request answered in **0.0193 s**. The task-owned process
+stopped cleanly. No production database/configuration write or restart was made,
+and the superseded 42,404-row backup was not restored or used for this proof.
+
+The legacy corrupt-title, mismatched-guid and earlier-Fix-Match states are
+explicitly modeled, not captured reporter databases. Missing-title cases remove
+the title from copied real PMS responses to model availability; they are not
+claimed captures of partial live replies. No reporter's saved row,
+external ids or old Plex guid was supplied, and the second reporter's provider is
+still unconfirmed. These checks prove the feed repair and its refusal boundaries,
+not that either reporter's unknown legacy provenance has been recovered.
+

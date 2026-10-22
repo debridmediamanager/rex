@@ -202,6 +202,10 @@ pub(super) fn name_release(plan: &Library, arrivals: &mut [Arrival]) {
                 meta.insert("_show_title".to_string(), json!(title));
             }
         }
+        // A guid alone does not make the fallback name an agent title. Null records
+        // a known release fallback; absence on an older row says nothing about ownership.
+        let title_guid = identity.title.as_ref().and(identity.plex.as_ref()).map_or(Value::Null, |guid| json!(guid));
+        meta.insert(if show { "_show_titleGuid" } else { "_titleGuid" }.to_string(), title_guid);
         let identity_key = identity
             .tmdb
             .map(|id| format!("tmdb:{id}"))
@@ -664,6 +668,7 @@ impl Runtime {
             leaf["_season"] = json!(season);
             leaf["_episode"] = json!(episode);
             leaf["_show_title"] = json!(leaf["title"].clone());
+            leaf["_show_titleGuid"] = Value::Null;
             leaf["_show_summary"] = json!("");
             // The local agent's episode: its generated title, marked as generated so an
             // index edit re-titles it (`unmatch_row`).
