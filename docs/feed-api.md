@@ -70,15 +70,26 @@ registers, and plays the moment it does.
 | `user`, `password` | Basic auth for `url` (optional) |
 | `bearer` | `Authorization: Bearer` for `url` instead (optional) |
 | `mount` | Optional and rarely needed: the prefix of the `file` clients see for an item pushed without one (`<mount>/<path>`, else `/<path>`). Nothing is read from it. It also lets a catalog row from the old WebDAV scanner, with no feed id, find its bytes |
-| `directories` | Optional: the directories that get a library of their own ([below](#libraries-a-source-declares)). Each entry is `name`, one directory as the first segment of the source's item paths (non-empty, no `/`), and `shows` and/or `movies`, the title of its show and movie library (non-empty strings; at least one). Absent, `null` or `[]` declares nothing |
+| `directories` | Optional: the directories that get a library of their own ([below](#libraries-a-source-declares)). Each entry is `name`, one directory as the first segment of the source's item paths (non-empty, no `/`), and `shows` and/or `movies`, the title of its show and movie library (non-empty strings; at least one). Absent, `null` or `[]` declares nothing. A malformed entry is ignored, never the registration |
 
 `{name}` is letters, digits, `-` and `_`. A registration creates the source or replaces the
 one of that name, and the next part read streams from what it names, without a restart.
 Sending the same registration again changes nothing, so a source can send it every time it
 starts a push session; zurg does. Answers `200` with the source as `GET` shows it, or `400`
-`{"error": ...}` for a bad name, a url that is not http(s) or carries credentials, a body
-that is not a JSON object, or a malformed `directories` (`directories[0]: names no shows or
-movies library`); a refused registration changes nothing.
+`{"error": ...}` for a bad name, a url that is not http(s) or carries credentials, or a body
+that is not a JSON object; a refused registration changes nothing.
+
+A malformed `directories` entry never refuses the source: one typo in a config would stop its
+whole feed. The entry is left out, the rest register, and the `200` answers each one left out
+with why, its reason naming the directory it is about; rex logs each reason once since its
+start. A `directories` that is no list is left out the same way. `ignored` is absent when
+nothing was:
+
+```json
+{"name": "zurg", "url": "http://127.0.0.1:9999/dav", "auth": "basic", "mount": "/mnt/zurg",
+ "directories": [{"name": "anime", "shows": "Anime"}],
+ "ignored": [{"entry": {"name": "kids", "shows": ""}, "reason": "directory \"kids\": shows title is empty"}]}
+```
 
 ### Libraries a source declares
 
@@ -98,12 +109,21 @@ Plex clients see it as one added in Add Library. Then:
   library anywhere else; a directory with only a show library takes its unplaced files there, as
   one seeded with `--shows` does. A type the entry does not title goes to the first library of
   its kind, as an undeclared directory's do.
-- **Rows already shown move** to the new library on the source's next push, on their keys, with
-  their watch state; a row someone matched by hand (Fix Match), or one holding several releases,
-  stays where it is.
+- **Rows already shown move** to the new library on the source's next push, as they are, on
+  their keys: identification, a Fix Match, every account's watch state and a person's edits
+  stay. An episode goes under its show there, else under a copy of the show and season it
+  leaves, which takes what a person did to them (titles, sort title, summary, labels,
+  collections, locks, a picked or uploaded poster or background); a show already there keeps
+  each edit of its own and takes the rest. A row holding several releases moves only when every
+  release's folder belongs to the new library; otherwise it stays, logged once
+  (`FEED <key> stays in Debrid TV: its releases sit in folders of different libraries`). A row
+  placed as something else in the same push is identified again instead.
 - **Deleting the library in Plex keeps it deleted.** Its folders and type are kept in the state
   file (`deletedLocations`), a later registration makes nothing there and logs once that it
   stays deleted, and the directory's files go back to the first library of their kind.
+- **Add Library brings one back.** Its folder picker lists each directory a source pushed from
+  or declared, under the source's mount (`/mnt/zurg/anime`); a library added on a deleted one's
+  folder takes the directory's files, and the folder is no longer kept deleted.
 - **rex never deletes a library itself.** A directory dropped from the list, or a source that
   stops declaring any, keeps its library.
 

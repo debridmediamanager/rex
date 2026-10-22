@@ -148,7 +148,9 @@ and each library's `Location` is `<mount>/<directory>` -- set in the catalog's s
 source registering `directories` (zurg's `rex_shows`/`rex_movies`): rex makes each library it
 titles unless one of that type already names the directory or a person deleted one there
 (`deletedLocations`), and never deletes or retitles one (`feed::declare_libraries`,
-`docs/feed-api.md` "Libraries a source declares").
+`docs/feed-api.md` "Libraries a source declares"). A row whose library changes moves there as
+it is, on its key (`feed::relocate`: hand match, edits, every account's state), and Add
+Library's picker lists each source's directories under its mount (`feed_folders`).
 
 Point zurg at the server in zurg's `config.yml`: `rex_url` (this server's URL, an address
 or a host name) is all the feed needs; zurg registers itself as the source `zurg` (or its
