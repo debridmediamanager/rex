@@ -4,11 +4,21 @@
 FROM debian:bookworm-slim
 
 ARG TARGETARCH
+ARG JELLYFIN_FFMPEG=8.1.3-1
 
-# ca-certificates for TMDB, plex.tv and HTTPS sources; sqlite3 for `.backup` of rex.db.
+# ca-certificates for plex.tv and HTTPS sources; sqlite3 for `.backup` of rex.db.
+# jellyfin-ffmpeg, the FFmpeg rex is measured with, where rex looks for it first
+# (/usr/lib/jellyfin-ffmpeg), so conversion needs no setting; with /dev/dri passed in it uses
+# the GPU through its own Intel driver. intel-opencl-icd (amd64; Intel's GPUs are x86) lets
+# that GPU tonemap HDR too.
 RUN apt-get update \
- && apt-get install -y --no-install-recommends ca-certificates sqlite3 \
- && rm -rf /var/lib/apt/lists/*
+ && apt-get install -y --no-install-recommends ca-certificates sqlite3 curl \
+ && curl -fsSL -o /tmp/jellyfin-ffmpeg.deb \
+      "https://github.com/jellyfin/jellyfin-ffmpeg/releases/download/v${JELLYFIN_FFMPEG}/jellyfin-ffmpeg8_${JELLYFIN_FFMPEG}-bookworm_${TARGETARCH}.deb" \
+ && apt-get install -y --no-install-recommends /tmp/jellyfin-ffmpeg.deb \
+      $([ "$TARGETARCH" = amd64 ] && echo intel-opencl-icd) \
+ && apt-get purge -y curl && apt-get autoremove -y \
+ && rm -rf /var/lib/apt/lists/* /tmp/jellyfin-ffmpeg.deb
 
 # The release layout: rust/target/release/rex (its data/ compiled in), while the catalog, its
 # state and claim_state.json live in /config.
