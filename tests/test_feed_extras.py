@@ -37,6 +37,8 @@ FIXTURE_PATH = os.path.join(HERE, "fixtures", "feed", "extras_1017.json")
 FIXTURE = json.load(open(FIXTURE_PATH))
 RECORD = os.environ.get("REX_RECORD_ANSWERS") == "1"
 PROBE = ENTRIES["episode"]["entry"]["media_info"]
+# Rows the production server held as episodes on 2026-10-22 for files zurg 27e589f3 then pushed as extras.
+REPUSH = json.load(open(os.path.join(HERE, "fixtures", "feed", "extras_repush_1022.json")))
 MOTTO = ["169239", "169246", "169187", "169188", "169189", "169190", "169191"]
 TO_LOVE_RU = {"159014": "[Holomux] To LOVE-Ru 01 ", "159015": "[Holomux] To LOVE-Ru 02 ", "159016": "[Holomux] To LOVE-Ru 03 "}
 
@@ -73,6 +75,13 @@ def item(name, kind=True):
     out.update(file="%s/%s" % (MOUNT, pushed["path"]), media_info=PROBE)
     if kind and name in EXTRA_TYPES:
         out.update(kind="extra", extra_type=EXTRA_TYPES[name])
+    return out
+
+
+def repushed(name):
+    pushed = REPUSH["pushes"][name]
+    out = {field: pushed[field] for field in ("id", "path", "release", "name", "size", "hash", "folder", "kind", "extra_type")}
+    out.update(file="%s/%s" % (MOUNT, pushed["path"]), media_info=PROBE)
     return out
 
 
@@ -161,6 +170,39 @@ def main():
         ncop = server.row(server.keys().get(FIXTURE["pushes"]["motto_ncop"]["id"]))
         check("NCOP under Extras/NC, pushed with no kind, is no clip: its source did not say so",
               ncop.get("type") == "episode" and ncop.get("extraType") is None, (ncop.get("type"), ncop.get("extraType")))
+    finally:
+        stop(server, work)
+        shutil.rmtree(work, ignore_errors=True)
+
+    # -- re-pushed as extras: the episode rows they were become clips -------------------------------
+    # The source decides what a file is, so a file it now calls an extra leaves the episode row it
+    # was (a version of a row holding several leaves that row alone) and is a clip of its title.
+    for pushed in REPUSH["pushes"].values():
+        source.files.add("/dav/" + pushed["path"])
+    work = tempfile.mkdtemp(prefix="rex-extras-")
+    catalog(work, REPUSH["rows"])
+    server = start(work, bytes_port)
+    try:
+        pushes = REPUSH["pushes"]
+        for name in ("inuyasha", "tbbt"):
+            check("%s's row %s is an episode before" % (name, pushes[name]["row"]), server.row(pushes[name]["row"]).get("type") == "episode")
+        status, body = server.feed("POST", "items", {"items": [repushed(name) for name in sorted(pushes)]})
+        check("every re-pushed extra is taken", status == 200 and not (body or {}).get("rejected"), (status, body))
+        keys = server.keys()
+        for name, show, extra_type, subtype in (("inuyasha", "136987", 12, "other"), ("tbbt", "115750", 3, "interview"),
+                                                ("hyouka", "101000", 12, "other")):
+            pushed = pushes[name]
+            if name != "hyouka":
+                check("%s: the episode row it was is gone" % name, not server.row(pushed["row"]), server.row(pushed["row"]).get("type"))
+                check("%s: its release's episode %s is still one" % (name, pushed["parent_episode"]),
+                      server.row(pushed["parent_episode"]).get("type") == "episode")
+            check_clip(server, show, keys.get(pushed["id"]), extra_type, subtype, pushed["name"].rsplit(".", 1)[0])
+        check("tbbt: the season only its interview was in is gone", not server.row("115751"), server.row("115751").get("type"))
+        hyouka = server.row(pushes["hyouka"]["row"])
+        check("hyouka: episode 11 keeps its own release and drops the OVA",
+              hyouka.get("type") == "episode" and files(hyouka) == ["[MTBB] Hyouka - 11 (BD 1080p) [0483B9EA].mkv"], files(hyouka))
+        status, _ = server.feed("POST", "items", {"items": [repushed(name) for name in sorted(pushes)]})
+        check("pushed again, nothing changes", status == 200 and server.keys() == keys, server.keys())
     finally:
         stop(server, work)
         shutil.rmtree(work, ignore_errors=True)

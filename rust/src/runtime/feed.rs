@@ -632,9 +632,25 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
             if let Some(seen) = seen.as_deref_mut() {
                 seen.insert(item.id.clone());
             }
-            let existing = rows.get(&item.id).map(|key| (key.clone(), false)).or_else(|| {
+            let mut existing = rows.get(&item.id).map(|key| (key.clone(), false)).or_else(|| {
                 legacy.get(&item.file).map(|key| (key.clone(), true))
             });
+            // The source now says a file it pushed as an episode or a film is an extra (zurg
+            // 27e589f3 on the production server: TBBT's interviews, InuYasha's clean endings): its row is no
+            // title any more and the file becomes a clip, as a first push of it would. A version
+            // of a row holding several leaves that row alone; a person's match stays theirs.
+            if let (Some(_), Some((key, _)), false) = (item.extra, &existing, retry) {
+                let titled = guard.catalog.get(key).is_some_and(|row| {
+                    matches!(row.get("type").and_then(Value::as_str), Some("episode" | "movie")) && !guard.matched_by_hand(row)
+                });
+                if titled {
+                    if !guard.drop_version(key, &source.name, &item.id) {
+                        guard.purge_row(key);
+                    }
+                    guard.dirty = true;
+                    existing = None;
+                }
+            }
             let plan = match existing {
                 Some((key, adopt)) => {
                     let row = guard.catalog.get(&key);

@@ -1,0 +1,2603 @@
+{
+ "pushes": {
+  "hyouka": {
+   "extra_type": "other",
+   "folder": "",
+   "hash": "d2d4e526a91878cca6eadc483422e1f4ff8de99f",
+   "id": "anime/[MTBB] Hyouka (BD 1080p)/[MTBB] Hyouka - 11.5 (OVA) (BD 1080p) [9199C7FF]-other.mkv",
+   "kind": "extra",
+   "name": "[MTBB] Hyouka - 11.5 (OVA) (BD 1080p) [9199C7FF]-other.mkv",
+   "parent_episode": null,
+   "path": "anime/[MTBB] Hyouka (BD 1080p)/[MTBB] Hyouka - 11.5 (OVA) (BD 1080p) [9199C7FF]-other.mkv",
+   "release": "anime/[MTBB] Hyouka (BD 1080p)",
+   "row": "100986",
+   "size": 1362387345
+  },
+  "inuyasha": {
+   "extra_type": "other",
+   "folder": "Bluray Extras",
+   "hash": "0660b397f850a8802976f78416b2b06b645109f6",
+   "id": "shows/[DmonHiro] Inuyasha (BD, 720p) (US BD)/Clean Ending 03.mkv",
+   "kind": "extra",
+   "name": "Clean Ending 03.mkv",
+   "parent_episode": "126693",
+   "path": "shows/[DmonHiro] Inuyasha (BD, 720p) (US BD)/Clean Ending 03.mkv",
+   "release": "shows/[DmonHiro] Inuyasha (BD, 720p) (US BD)",
+   "row": "173447",
+   "size": 47026196
+  },
+  "tbbt": {
+   "extra_type": "interview",
+   "folder": "The Big Bang Theory S01-S12",
+   "hash": "2423b609b2800eb4ec61f3409520f3946c741570",
+   "id": "shows/The Big Bang Theory S01-S12/TBBT S04 Interview 1.mkv",
+   "kind": "extra",
+   "name": "TBBT S04 Interview 1.mkv",
+   "parent_episode": "112062",
+   "path": "shows/The Big Bang Theory S01-S12/TBBT S04 Interview 1.mkv",
+   "release": "shows/The Big Bang Theory S01-S12 + Extras BluRay",
+   "row": "171045",
+   "size": 643988538
+  }
+ },
+ "rows": [
+  {
+   "Guid": [
+    {
+     "id": "imdb://tt2443042"
+    },
+    {
+     "id": "tmdb://1158911"
+    },
+    {
+     "id": "tvdb://4297585"
+    }
+   ],
+   "Media": [
+    {
+     "Part": [
+      {
+       "Stream": [
+        {
+         "bitDepth": 10,
+         "chromaLocation": null,
+         "chromaSubsampling": "4:2:0",
+         "codec": "hevc",
+         "codecID": null,
+         "codedHeight": null,
+         "codedWidth": null,
+         "colorPrimaries": null,
+         "colorRange": "tv",
+         "colorSpace": "bt709",
+         "colorTrc": null,
+         "default": true,
+         "displayTitle": "1080p",
+         "extendedDisplayTitle": "1080p (HEVC Main 10)",
+         "frameRate": 23.976,
+         "height": 1080,
+         "id": 100986001,
+         "index": 0,
+         "level": 120,
+         "profile": "main 10",
+         "refFrames": null,
+         "scanType": null,
+         "streamIdentifier": null,
+         "streamType": 1,
+         "width": 1920
+        },
+        {
+         "audioChannelLayout": "stereo",
+         "bitDepth": null,
+         "channels": 2,
+         "codec": "opus",
+         "default": true,
+         "displayTitle": "日本語 (OPUS Stereo)",
+         "extendedDisplayTitle": "日本語 (OPUS Stereo)",
+         "id": 100986002,
+         "index": 1,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "samplingRate": 48000,
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 2
+        },
+        {
+         "canAutoSync": false,
+         "codec": "ass",
+         "default": true,
+         "displayTitle": "English",
+         "extendedDisplayTitle": "English (ASS)",
+         "id": 100986003,
+         "index": 2,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 3
+        },
+        {
+         "canAutoSync": false,
+         "codec": "ass",
+         "displayTitle": "English (Weeb)",
+         "extendedDisplayTitle": "Honorifics (English (Weeb) ASS)",
+         "id": 100986004,
+         "index": 3,
+         "language": "English (Weeb)",
+         "languageCode": "enm",
+         "languageTag": "enm",
+         "streamIdentifier": null,
+         "streamType": 3,
+         "title": "Honorifics"
+        }
+       ],
+       "audioProfile": null,
+       "container": "mkv",
+       "duration": 1543047,
+       "file": "/zurg/anime/[MTBB] Hyouka (BD 1080p)/[MTBB] Hyouka - 11 (BD 1080p) [0483B9EA].mkv",
+       "id": 1009860,
+       "key": "/library/parts/1009860/1791652595/file.mkv",
+       "size": 1682521718,
+       "videoProfile": "main 10"
+      }
+     ],
+     "_chapters": [
+      {
+       "endTimeOffset": 58040,
+       "id": 10098600001,
+       "index": 1,
+       "startTimeOffset": 33,
+       "tag": "Intro"
+      },
+      {
+       "endTimeOffset": 148000,
+       "id": 10098600002,
+       "index": 2,
+       "startTimeOffset": 58040,
+       "tag": "OP"
+      },
+      {
+       "endTimeOffset": 1444510,
+       "id": 10098600003,
+       "index": 3,
+       "startTimeOffset": 148000,
+       "tag": "Episode"
+      },
+      {
+       "endTimeOffset": 1533970,
+       "id": 10098600004,
+       "index": 4,
+       "startTimeOffset": 1444510,
+       "tag": "ED"
+      },
+      {
+       "endTimeOffset": 1543040,
+       "id": 10098600005,
+       "index": 5,
+       "startTimeOffset": 1533970,
+       "tag": "Preview"
+      }
+     ],
+     "_folder": "",
+     "_ids": {
+      "imdb": "tt2340841",
+      "tmdb": "65329"
+     },
+     "_path": "anime/[MTBB] Hyouka (BD 1080p)/[MTBB] Hyouka - 11 (BD 1080p) [0483B9EA].mkv",
+     "_placed": {
+      "episode": 11,
+      "kind": "episode",
+      "season": 1
+     },
+     "_release": "[MTBB] Hyouka (BD 1080p)",
+     "_sid": "anime/[MTBB] Hyouka (BD 1080p)/[MTBB] Hyouka - 11 (BD 1080p) [0483B9EA].mkv",
+     "_source": "zurg",
+     "aspectRatio": 1.78,
+     "audioChannels": 2,
+     "audioCodec": "opus",
+     "audioProfile": null,
+     "bitrate": 8723,
+     "container": "mkv",
+     "duration": 1543047,
+     "hasVoiceActivity": false,
+     "height": 1080,
+     "id": 10098600,
+     "videoCodec": "hevc",
+     "videoFrameRate": "24p",
+     "videoProfile": "main 10",
+     "videoResolution": "1080",
+     "width": 1920
+    },
+    {
+     "Part": [
+      {
+       "Stream": [
+        {
+         "bitDepth": 10,
+         "chromaLocation": null,
+         "chromaSubsampling": "4:2:0",
+         "codec": "hevc",
+         "codecID": null,
+         "codedHeight": null,
+         "codedWidth": null,
+         "colorPrimaries": null,
+         "colorRange": "tv",
+         "colorSpace": "bt709",
+         "colorTrc": null,
+         "default": true,
+         "displayTitle": "1080p",
+         "extendedDisplayTitle": "1080p (HEVC Main 10)",
+         "frameRate": 23.976,
+         "height": 1080,
+         "id": 100987001,
+         "index": 0,
+         "level": 120,
+         "profile": "main 10",
+         "refFrames": null,
+         "scanType": null,
+         "streamIdentifier": null,
+         "streamType": 1,
+         "width": 1920
+        },
+        {
+         "audioChannelLayout": "stereo",
+         "bitDepth": null,
+         "channels": 2,
+         "codec": "opus",
+         "default": true,
+         "displayTitle": "日本語 (OPUS Stereo)",
+         "extendedDisplayTitle": "日本語 (OPUS Stereo)",
+         "id": 100987002,
+         "index": 1,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "samplingRate": 48000,
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 2
+        },
+        {
+         "canAutoSync": false,
+         "codec": "ass",
+         "default": true,
+         "displayTitle": "English",
+         "extendedDisplayTitle": "English (ASS)",
+         "id": 100987003,
+         "index": 2,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 3
+        },
+        {
+         "canAutoSync": false,
+         "codec": "ass",
+         "displayTitle": "English (Weeb)",
+         "extendedDisplayTitle": "Honorifics (English (Weeb) ASS)",
+         "id": 100987004,
+         "index": 3,
+         "language": "English (Weeb)",
+         "languageCode": "enm",
+         "languageTag": "enm",
+         "streamIdentifier": null,
+         "streamType": 3,
+         "title": "Honorifics"
+        }
+       ],
+       "audioProfile": null,
+       "container": "mkv",
+       "duration": 1533997,
+       "file": "/zurg/anime/[MTBB] Hyouka (BD 1080p)/[MTBB] Hyouka - 11.5 (OVA) (BD 1080p) [9199C7FF]-other.mkv",
+       "id": 1009870,
+       "key": "/library/parts/1009870/1791652595/file.mkv",
+       "size": 1362387345,
+       "videoProfile": "main 10"
+      }
+     ],
+     "_chapters": [
+      {
+       "endTimeOffset": 59040,
+       "id": 10098700001,
+       "index": 1,
+       "startTimeOffset": 33,
+       "tag": "Intro"
+      },
+      {
+       "endTimeOffset": 149000,
+       "id": 10098700002,
+       "index": 2,
+       "startTimeOffset": 59040,
+       "tag": "OP"
+      },
+      {
+       "endTimeOffset": 1443510,
+       "id": 10098700003,
+       "index": 3,
+       "startTimeOffset": 149000,
+       "tag": "Episode"
+      },
+      {
+       "endTimeOffset": 1533990,
+       "id": 10098700004,
+       "index": 4,
+       "startTimeOffset": 1443510,
+       "tag": "ED"
+      }
+     ],
+     "_folder": "",
+     "_hash": "d2d4e526a91878cca6eadc483422e1f4ff8de99f",
+     "_ids": {
+      "imdb": "tt2340841",
+      "tmdb": "65329"
+     },
+     "_path": "anime/[MTBB] Hyouka (BD 1080p)/[MTBB] Hyouka - 11.5 (OVA) (BD 1080p) [9199C7FF]-other.mkv",
+     "_placed": {
+      "kind": "episode"
+     },
+     "_release": "[MTBB] Hyouka (BD 1080p)",
+     "_sid": "anime/[MTBB] Hyouka (BD 1080p)/[MTBB] Hyouka - 11.5 (OVA) (BD 1080p) [9199C7FF]-other.mkv",
+     "_source": "zurg",
+     "aspectRatio": 1.78,
+     "audioChannels": 2,
+     "audioCodec": "opus",
+     "audioProfile": null,
+     "bitrate": 7105,
+     "container": "mkv",
+     "duration": 1533997,
+     "hasVoiceActivity": false,
+     "height": 1080,
+     "id": 10098700,
+     "videoCodec": "hevc",
+     "videoFrameRate": "24p",
+     "videoProfile": "main 10",
+     "videoResolution": "1080",
+     "width": 1920
+    }
+   ],
+   "Rating": [
+    {
+     "image": "themoviedb://image.rating",
+     "type": "audience",
+     "value": 8.1
+    }
+   ],
+   "Role": [
+    {
+     "filter": "actor=162085",
+     "id": 162085,
+     "role": "Hōtarō Oreki (voice)",
+     "tag": "Yuichi Nakamura",
+     "tagKey": "0412016e47c051cea96aca7a",
+     "thumb": "https://image.tmdb.org/t/p/w185/wb8behVKjBHX9XXrEydvNINCYwH.jpg"
+    },
+    {
+     "filter": "actor=97822",
+     "id": 97822,
+     "role": "Eru Chitanda (voice)",
+     "tag": "Satomi Sato",
+     "tagKey": "9e79ee9494d9cf9329e52b62",
+     "thumb": "https://image.tmdb.org/t/p/w185/ke0ROEfZo7kbu7icfO6ClWEtXIW.jpg"
+    },
+    {
+     "filter": "actor=547877",
+     "id": 547877,
+     "role": "Satoshi Fukube (voice)",
+     "tag": "Daisuke Sakaguchi",
+     "tagKey": "26c972155a8ac81e886e0d6a",
+     "thumb": "https://image.tmdb.org/t/p/w185/cP9lnoYSCyIpSlUkZN4k6RoD7fF.jpg"
+    },
+    {
+     "filter": "actor=714253",
+     "id": 714253,
+     "role": "Mayaka Ibara (voice)",
+     "tag": "Ai Kayano",
+     "tagKey": "1fc171f931c37143f424eef6",
+     "thumb": "https://image.tmdb.org/t/p/w185/l8ywp387rfdAS7mOExe3cEZnsk0.jpg"
+    }
+   ],
+   "UltraBlurColors": {
+    "bottomLeft": "1f1f26",
+    "bottomRight": "15151a",
+    "topLeft": "1a1a1e",
+    "topRight": "24242a"
+   },
+   "Writer": [
+    {
+     "filter": "writer=855973",
+     "id": 855973,
+     "tag": "Honobu Yonezawa",
+     "tagKey": "74f6ce34c5380ead7b444643"
+    },
+    {
+     "filter": "writer=751452",
+     "id": 751452,
+     "tag": "Shouji Gatou",
+     "tagKey": "da414a875840e0293eaf1767"
+    }
+   ],
+   "_artFor": "https://image.tmdb.org/t/p/w1280/kmUuJ4BHkX1cQKnFBJ2vv22bmmS.jpg",
+   "_art_url": "https://image.tmdb.org/t/p/w1280/kmUuJ4BHkX1cQKnFBJ2vv22bmmS.jpg",
+   "_folder": "",
+   "_hash": "d2d4e526a91878cca6eadc483422e1f4ff8de99f",
+   "_identify": {
+    "confidence": "exact",
+    "disputed": null,
+    "imdb": "tt2340841",
+    "plex": "plex://show/5d9c08167d06d9001ffcf7ab",
+    "source": "dmm hash",
+    "tmdb": 65329
+   },
+   "_identity": "tmdb:65329",
+   "_ids": {
+    "imdb": "tt2340841"
+   },
+   "_own_content_rating": true,
+   "_path": "anime/[MTBB] Hyouka (BD 1080p)/[MTBB] Hyouka - 11 (BD 1080p) [0483B9EA].mkv",
+   "_poster_url": "https://image.tmdb.org/t/p/w1280/sLzTu3R7WU6k2JhPkmWsJ6tjGFa.jpg",
+   "_release": "[MTBB] Hyouka (BD 1080p)",
+   "_scanned": true,
+   "_sid": "anime/[MTBB] Hyouka (BD 1080p)/[MTBB] Hyouka - 11 (BD 1080p) [0483B9EA].mkv",
+   "_source": "zurg",
+   "_thumbFor": "https://image.tmdb.org/t/p/w1280/sLzTu3R7WU6k2JhPkmWsJ6tjGFa.jpg",
+   "addedAt": 1791652595,
+   "art": "/library/metadata/101000/art/1791897222",
+   "audienceRating": 8.1,
+   "audienceRatingImage": "themoviedb://image.rating",
+   "contentRating": "TV-14",
+   "duration": 1543047,
+   "grandparentArt": "/library/metadata/101000/art/1791897222",
+   "grandparentGuid": "plex://show/5d9c08167d06d9001ffcf7ab",
+   "grandparentKey": "/library/metadata/101000",
+   "grandparentRatingKey": "101000",
+   "grandparentSlug": "hyouka",
+   "grandparentThumb": "/library/metadata/101000/thumb/1791897222",
+   "grandparentTitle": "Hyouka",
+   "guid": "plex://episode/5d9c0e0008fddd001f2de779",
+   "index": 11,
+   "key": "/library/metadata/100986",
+   "librarySectionID": 2,
+   "librarySectionKey": "/library/sections/2",
+   "librarySectionTitle": "TV Shows",
+   "originallyAvailableAt": "2012-07-02",
+   "parentGuid": "plex://season/5d9c096ae264b7001fc51b07",
+   "parentIndex": 1,
+   "parentKey": "/library/metadata/101002",
+   "parentRatingKey": "101002",
+   "parentThumb": "/library/metadata/101002/thumb/1791897222",
+   "parentTitle": "Season 1",
+   "ratingKey": "100986",
+   "summary": "When the others ask Hotaro about his solution to the murder mystery, he begins to have doubts about it himself. Hotaro confronts Irisu regarding the reason why she called the Classic Lit Club in to help finish the film.",
+   "thumb": "/library/metadata/100986/thumb/1791897222",
+   "title": "Credit Roll of Fools",
+   "type": "episode",
+   "updatedAt": 1791652595,
+   "year": 2012
+  },
+  {
+   "Country": [
+    {
+     "filter": "country=814196",
+     "id": 814196,
+     "tag": "Japan"
+    }
+   ],
+   "Genre": [
+    {
+     "filter": "genre=16771",
+     "id": 16771,
+     "tag": "Animation"
+    },
+    {
+     "filter": "genre=509431",
+     "id": 509431,
+     "tag": "Mystery"
+    },
+    {
+     "filter": "genre=244689",
+     "id": 244689,
+     "tag": "Comedy"
+    }
+   ],
+   "Guid": [
+    {
+     "id": "imdb://tt2340841"
+    },
+    {
+     "id": "tmdb://65329"
+    }
+   ],
+   "Location": [
+    {
+     "path": "/zurg/anime/[MTBB] Hyouka (BD 1080p)"
+    }
+   ],
+   "Rating": [
+    {
+     "image": "themoviedb://image.rating",
+     "type": "audience",
+     "value": 8.1
+    }
+   ],
+   "Role": [
+    {
+     "filter": "actor=162085",
+     "id": 162085,
+     "role": "Hōtarō Oreki (voice)",
+     "tag": "Yuichi Nakamura",
+     "tagKey": "0412016e47c051cea96aca7a",
+     "thumb": "https://image.tmdb.org/t/p/w185/wb8behVKjBHX9XXrEydvNINCYwH.jpg"
+    },
+    {
+     "filter": "actor=97822",
+     "id": 97822,
+     "role": "Eru Chitanda (voice)",
+     "tag": "Satomi Sato",
+     "tagKey": "9e79ee9494d9cf9329e52b62",
+     "thumb": "https://image.tmdb.org/t/p/w185/ke0ROEfZo7kbu7icfO6ClWEtXIW.jpg"
+    },
+    {
+     "filter": "actor=547877",
+     "id": 547877,
+     "role": "Satoshi Fukube (voice)",
+     "tag": "Daisuke Sakaguchi",
+     "tagKey": "26c972155a8ac81e886e0d6a",
+     "thumb": "https://image.tmdb.org/t/p/w185/cP9lnoYSCyIpSlUkZN4k6RoD7fF.jpg"
+    },
+    {
+     "filter": "actor=714253",
+     "id": 714253,
+     "role": "Mayaka Ibara (voice)",
+     "tag": "Ai Kayano",
+     "tagKey": "1fc171f931c37143f424eef6",
+     "thumb": "https://image.tmdb.org/t/p/w185/l8ywp387rfdAS7mOExe3cEZnsk0.jpg"
+    }
+   ],
+   "UltraBlurColors": {
+    "bottomLeft": "1f1f26",
+    "bottomRight": "15151a",
+    "topLeft": "1a1a1e",
+    "topRight": "24242a"
+   },
+   "_artFor": "https://image.tmdb.org/t/p/w1280/kmUuJ4BHkX1cQKnFBJ2vv22bmmS.jpg",
+   "_art_url": "https://image.tmdb.org/t/p/w1280/kmUuJ4BHkX1cQKnFBJ2vv22bmmS.jpg",
+   "_identity": "tmdb:65329",
+   "_poster_url": "https://image.tmdb.org/t/p/w342/qoAig2n9LkukqnizytaBtOSwif7.jpg",
+   "_scanned": true,
+   "_thumbFor": "https://image.tmdb.org/t/p/w342/qoAig2n9LkukqnizytaBtOSwif7.jpg",
+   "_titleGuid": "plex://show/5d9c08167d06d9001ffcf7ab",
+   "addedAt": 1791652595,
+   "art": "/library/metadata/101000/art/1791897222",
+   "audienceRating": 8.1,
+   "audienceRatingImage": "themoviedb://image.rating",
+   "childCount": 1,
+   "contentRating": "TV-14",
+   "guid": "plex://show/5d9c08167d06d9001ffcf7ab",
+   "index": 1,
+   "key": "/library/metadata/101000/children",
+   "leafCount": 21,
+   "librarySectionID": 2,
+   "librarySectionKey": "/library/sections/2",
+   "librarySectionTitle": "TV Shows",
+   "ratingKey": "101000",
+   "slug": "hyouka",
+   "studio": "Kyoto Animation",
+   "summary": "Oreki Houtarou is a minimalistic high school boy. One day, he joins the Classic Literature Club at his elder sister's request. There he meets Chitanda Eru, Fukube Satoshi, and Ibara Mayaka. Chitanda is a calm beautiful girl but she turns into an embodiment of curiosity once she says, \"I'm curious.\" Fukube is a smiling boy with a fantastic memory who calls himself a database. Ibara is a short girl and is strict with others and herself. They begin to investigate a case that occurred 45 years ago. Hints of the mystery are buried in an old collection of works of the former members of Classics Club. The collection is titled \"Hyouka.\"",
+   "thumb": "/library/metadata/101000/thumb/1791897222",
+   "title": "Hyouka",
+   "type": "show",
+   "updatedAt": 1791652595,
+   "viewedLeafCount": 0,
+   "year": 2012
+  },
+  {
+   "Guid": [
+    {
+     "id": "tmdb://73963"
+    }
+   ],
+   "UltraBlurColors": {
+    "bottomLeft": "1f1f26",
+    "bottomRight": "15151a",
+    "topLeft": "1a1a1e",
+    "topRight": "24242a"
+   },
+   "_artFor": "https://image.tmdb.org/t/p/w1280/kmUuJ4BHkX1cQKnFBJ2vv22bmmS.jpg",
+   "_art_url": "https://image.tmdb.org/t/p/w1280/kmUuJ4BHkX1cQKnFBJ2vv22bmmS.jpg",
+   "_poster_url": "https://image.tmdb.org/t/p/w342/o9SM5Bljnb8IokMbdp1Xij6gMxS.jpg",
+   "_scanned": true,
+   "_thumbFor": "https://image.tmdb.org/t/p/w342/o9SM5Bljnb8IokMbdp1Xij6gMxS.jpg",
+   "addedAt": 1791652595,
+   "art": "/library/metadata/101000/art/1791897222",
+   "guid": "plex://season/5d9c096ae264b7001fc51b07",
+   "index": 1,
+   "key": "/library/metadata/101002/children",
+   "leafCount": 21,
+   "librarySectionID": 2,
+   "librarySectionKey": "/library/sections/2",
+   "librarySectionTitle": "TV Shows",
+   "parentGuid": "plex://show/5d9c08167d06d9001ffcf7ab",
+   "parentIndex": 1,
+   "parentKey": "/library/metadata/101000",
+   "parentRatingKey": "101000",
+   "parentSlug": "hyouka",
+   "parentStudio": "Kyoto Animation",
+   "parentThumb": "/library/metadata/101000/thumb/1791897222",
+   "parentTitle": "Hyouka",
+   "parentYear": 2012,
+   "ratingKey": "101002",
+   "summary": "",
+   "thumb": "/library/metadata/101002/thumb/1791897222",
+   "title": "Season 1",
+   "type": "season",
+   "updatedAt": 1791652595,
+   "viewedLeafCount": 0
+  },
+  {
+   "Guid": [
+    {
+     "id": "imdb://tt1980710"
+    },
+    {
+     "id": "tmdb://64719"
+    },
+    {
+     "id": "tvdb://4123308"
+    }
+   ],
+   "Media": [
+    {
+     "Part": [
+      {
+       "Stream": [
+        {
+         "bitDepth": 8,
+         "chromaLocation": null,
+         "chromaSubsampling": "4:2:0",
+         "codec": "h264",
+         "codecID": null,
+         "codedHeight": null,
+         "codedWidth": null,
+         "colorPrimaries": null,
+         "colorRange": null,
+         "colorSpace": null,
+         "colorTrc": null,
+         "default": true,
+         "displayTitle": "1080p",
+         "extendedDisplayTitle": "1080p (H.264)",
+         "frameRate": 23.976,
+         "height": 1080,
+         "id": 112062001,
+         "index": 0,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "level": 40,
+         "profile": "high",
+         "refFrames": null,
+         "scanType": "progressive",
+         "streamIdentifier": null,
+         "streamType": 1,
+         "width": 1920
+        },
+        {
+         "audioChannelLayout": "5.1(side)",
+         "bitDepth": 16,
+         "channels": 6,
+         "codec": "dca",
+         "default": true,
+         "displayTitle": "English (DTS-HD MA 5.1)",
+         "extendedDisplayTitle": "English (DTS-HD MA 5.1)",
+         "id": 112062002,
+         "index": 1,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "profile": "ma",
+         "samplingRate": 48000,
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 2
+        },
+        {
+         "canAutoSync": false,
+         "codec": "srt",
+         "default": true,
+         "displayTitle": "English",
+         "extendedDisplayTitle": "English (SRT)",
+         "id": 112062003,
+         "index": 2,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 3,
+         "title": "English"
+        },
+        {
+         "canAutoSync": false,
+         "codec": "srt",
+         "displayTitle": "English",
+         "extendedDisplayTitle": "English SDH (SRT)",
+         "id": 112062004,
+         "index": 3,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "streamIdentifier": null,
+         "streamType": 3,
+         "title": "English SDH"
+        },
+        {
+         "canAutoSync": false,
+         "codec": "pgs",
+         "displayTitle": "English",
+         "extendedDisplayTitle": "English (PGS)",
+         "id": 112062005,
+         "index": 4,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "streamIdentifier": null,
+         "streamType": 3
+        }
+       ],
+       "audioProfile": "ma",
+       "container": "mkv",
+       "duration": 1290294,
+       "file": "/zurg/shows/The.Big.Bang.Theory.S05.1080p.BluRay.REMUX.AVC.DTS-HD.MA.5.1-NOGRP[rartv]/The.Big.Bang.Theory.S05E01.1080p.BluRay.REMUX.AVC.DTS-HD.MA.5.1-NOGRP.mkv",
+       "id": 1120620,
+       "key": "/library/parts/1120620/1791664508/file.mkv",
+       "size": 2862075762,
+       "videoProfile": "high"
+      }
+     ],
+     "_chapters": [
+      {
+       "endTimeOffset": 162996,
+       "id": 11206200001,
+       "index": 1,
+       "startTimeOffset": 0,
+       "tag": "Chapter 01"
+      },
+      {
+       "endTimeOffset": 647355,
+       "id": 11206200002,
+       "index": 2,
+       "startTimeOffset": 162996,
+       "tag": "Chapter 02"
+      },
+      {
+       "endTimeOffset": 1216048,
+       "id": 11206200003,
+       "index": 3,
+       "startTimeOffset": 647355,
+       "tag": "Chapter 03"
+      },
+      {
+       "endTimeOffset": 1261635,
+       "id": 11206200004,
+       "index": 4,
+       "startTimeOffset": 1216048,
+       "tag": "Chapter 04"
+      },
+      {
+       "endTimeOffset": 1290219,
+       "id": 11206200005,
+       "index": 5,
+       "startTimeOffset": 1261635,
+       "tag": "Chapter 05"
+      }
+     ],
+     "_folder": "",
+     "_ids": {
+      "imdb": "tt0898266",
+      "tmdb": "1418"
+     },
+     "_path": "shows/The.Big.Bang.Theory.S05.1080p.BluRay.REMUX.AVC.DTS-HD.MA.5.1-NOGRP[rartv]/The.Big.Bang.Theory.S05E01.1080p.BluRay.REMUX.AVC.DTS-HD.MA.5.1-NOGRP.mkv",
+     "_placed": {
+      "episode": 1,
+      "kind": "episode",
+      "season": 5
+     },
+     "_release": "The.Big.Bang.Theory.S05.1080p.BluRay.REMUX.AVC.DTS-HD.MA.5.1-NOGRP[rartv]",
+     "_sid": "shows/The.Big.Bang.Theory.S05.1080p.BluRay.REMUX.AVC.DTS-HD.MA.5.1-NOGRP[rartv]/The.Big.Bang.Theory.S05E01.1080p.BluRay.REMUX.AVC.DTS-HD.MA.5.1-NOGRP.mkv",
+     "_source": "zurg",
+     "aspectRatio": 1.78,
+     "audioChannels": 6,
+     "audioCodec": "dca-ma",
+     "audioProfile": "ma",
+     "bitrate": 17745,
+     "container": "mkv",
+     "duration": 1290294,
+     "hasVoiceActivity": false,
+     "height": 1080,
+     "id": 11206200,
+     "videoCodec": "h264",
+     "videoFrameRate": "24p",
+     "videoProfile": "high",
+     "videoResolution": "1080",
+     "width": 1920
+    },
+    {
+     "Part": [
+      {
+       "Stream": [
+        {
+         "bitDepth": 8,
+         "chromaLocation": null,
+         "chromaSubsampling": "4:2:0",
+         "codec": "h264",
+         "codecID": null,
+         "codedHeight": null,
+         "codedWidth": null,
+         "colorPrimaries": null,
+         "colorRange": null,
+         "colorSpace": null,
+         "colorTrc": null,
+         "displayTitle": "1080p",
+         "extendedDisplayTitle": "1080p (H.264)",
+         "frameRate": 23.976,
+         "height": 1080,
+         "id": 115678001,
+         "index": 0,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "level": 40,
+         "profile": "high",
+         "refFrames": null,
+         "scanType": "progressive",
+         "streamIdentifier": null,
+         "streamType": 1,
+         "width": 1920
+        },
+        {
+         "audioChannelLayout": "5.1(side)",
+         "bitDepth": 16,
+         "channels": 6,
+         "codec": "dca",
+         "default": true,
+         "displayTitle": "English (DTS-HD MA 5.1)",
+         "extendedDisplayTitle": "Surround 5.1 (English DTS-HD MA)",
+         "id": 115678002,
+         "index": 1,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "profile": "ma",
+         "samplingRate": 48000,
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 2,
+         "title": "Surround 5.1"
+        },
+        {
+         "audioChannelLayout": "5.1(side)",
+         "bitDepth": 24,
+         "bitrate": 1536,
+         "channels": 6,
+         "codec": "dca",
+         "displayTitle": "English (DTS 5.1)",
+         "extendedDisplayTitle": "Surround 5.1 (English DTS)",
+         "id": 115678003,
+         "index": 2,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "profile": "dts",
+         "samplingRate": 48000,
+         "streamIdentifier": null,
+         "streamType": 2,
+         "title": "Surround 5.1"
+        },
+        {
+         "audioChannelLayout": "stereo",
+         "bitDepth": null,
+         "bitrate": 192,
+         "channels": 2,
+         "codec": "ac3",
+         "displayTitle": "Español (AC3 Stereo)",
+         "extendedDisplayTitle": "Stereo (Español AC3)",
+         "id": 115678004,
+         "index": 3,
+         "language": "Español",
+         "languageCode": "spa",
+         "languageTag": "es",
+         "samplingRate": 48000,
+         "streamIdentifier": null,
+         "streamType": 2,
+         "title": "Stereo"
+        },
+        {
+         "audioChannelLayout": "stereo",
+         "bitDepth": null,
+         "bitrate": 192,
+         "channels": 2,
+         "codec": "ac3",
+         "displayTitle": "Português (AC3 Stereo)",
+         "extendedDisplayTitle": "Stereo (Português AC3)",
+         "id": 115678005,
+         "index": 4,
+         "language": "Português",
+         "languageCode": "por",
+         "languageTag": "pt",
+         "samplingRate": 48000,
+         "streamIdentifier": null,
+         "streamType": 2,
+         "title": "Stereo"
+        },
+        {
+         "canAutoSync": false,
+         "codec": "pgs",
+         "displayTitle": "English",
+         "extendedDisplayTitle": "English (PGS)",
+         "id": 115678006,
+         "index": 5,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 3
+        },
+        {
+         "canAutoSync": false,
+         "codec": "pgs",
+         "displayTitle": "Français",
+         "extendedDisplayTitle": "Français (PGS)",
+         "id": 115678007,
+         "index": 6,
+         "language": "Français",
+         "languageCode": "fra",
+         "languageTag": "fr",
+         "streamIdentifier": null,
+         "streamType": 3
+        },
+        {
+         "canAutoSync": false,
+         "codec": "pgs",
+         "displayTitle": "Español",
+         "extendedDisplayTitle": "Español (PGS)",
+         "id": 115678008,
+         "index": 7,
+         "language": "Español",
+         "languageCode": "spa",
+         "languageTag": "es",
+         "streamIdentifier": null,
+         "streamType": 3
+        },
+        {
+         "canAutoSync": false,
+         "codec": "pgs",
+         "displayTitle": "Español",
+         "extendedDisplayTitle": "Español (PGS)",
+         "id": 115678009,
+         "index": 8,
+         "language": "Español",
+         "languageCode": "spa",
+         "languageTag": "es",
+         "streamIdentifier": null,
+         "streamType": 3
+        },
+        {
+         "canAutoSync": false,
+         "codec": "pgs",
+         "displayTitle": "Português",
+         "extendedDisplayTitle": "Português (PGS)",
+         "id": 115678010,
+         "index": 9,
+         "language": "Português",
+         "languageCode": "por",
+         "languageTag": "pt",
+         "streamIdentifier": null,
+         "streamType": 3
+        }
+       ],
+       "audioProfile": "ma",
+       "container": "mkv",
+       "duration": 1290240,
+       "file": "/zurg/shows/The Big Bang Theory S01-S12/TBBT S05E01.mkv",
+       "id": 1156780,
+       "key": "/library/parts/1156780/1791669594/file.mkv",
+       "size": 3198459500,
+       "videoProfile": "high"
+      }
+     ],
+     "_chapters": [
+      {
+       "endTimeOffset": 162996,
+       "id": 11567800001,
+       "index": 1,
+       "startTimeOffset": 0,
+       "tag": "Chapter 01"
+      },
+      {
+       "endTimeOffset": 647355,
+       "id": 11567800002,
+       "index": 2,
+       "startTimeOffset": 162996,
+       "tag": "Chapter 02"
+      },
+      {
+       "endTimeOffset": 1216048,
+       "id": 11567800003,
+       "index": 3,
+       "startTimeOffset": 647355,
+       "tag": "Chapter 03"
+      },
+      {
+       "endTimeOffset": 1261635,
+       "id": 11567800004,
+       "index": 4,
+       "startTimeOffset": 1216048,
+       "tag": "Chapter 04"
+      },
+      {
+       "endTimeOffset": 1290240,
+       "id": 11567800005,
+       "index": 5,
+       "startTimeOffset": 1261635,
+       "tag": "Chapter 05"
+      }
+     ],
+     "_folder": "The Big Bang Theory S01-S12",
+     "_hash": "2423b609b2800eb4ec61f3409520f3946c741570",
+     "_ids": {
+      "imdb": "tt0898266",
+      "tmdb": "1418"
+     },
+     "_path": "shows/The Big Bang Theory S01-S12/TBBT S05E01.mkv",
+     "_placed": {
+      "episode": 1,
+      "kind": "episode",
+      "season": 5
+     },
+     "_release": "The Big Bang Theory S01-S12 + Extras BluRay",
+     "_sid": "shows/The Big Bang Theory S01-S12/TBBT S05E01.mkv",
+     "_source": "zurg",
+     "aspectRatio": 1.78,
+     "audioChannels": 6,
+     "audioCodec": "dca-ma",
+     "audioProfile": "ma",
+     "bitrate": 19832,
+     "container": "mkv",
+     "duration": 1290240,
+     "hasVoiceActivity": false,
+     "height": 1080,
+     "id": 11567800,
+     "videoCodec": "h264",
+     "videoFrameRate": "24p",
+     "videoProfile": "high",
+     "videoResolution": "1080",
+     "width": 1920
+    }
+   ],
+   "Rating": [
+    {
+     "image": "themoviedb://image.rating",
+     "type": "audience",
+     "value": 7.9
+    }
+   ],
+   "Role": [
+    {
+     "filter": "actor=666891",
+     "id": 666891,
+     "role": "Leonard Hofstadter",
+     "tag": "Johnny Galecki",
+     "tagKey": "95a5b83f438a490f50780090",
+     "thumb": "https://image.tmdb.org/t/p/w185/5zTHvvKpR9VUkzHxGnbrdB51Kyc.jpg"
+    },
+    {
+     "filter": "actor=158779",
+     "id": 158779,
+     "role": "Sheldon Cooper",
+     "tag": "Jim Parsons",
+     "tagKey": "09887bdffd56df122c8c26c1",
+     "thumb": "https://image.tmdb.org/t/p/w185/4D5oAUeM2wlejSwJJ6TmKoM9Abn.jpg"
+    },
+    {
+     "filter": "actor=569099",
+     "id": 569099,
+     "role": "Penny",
+     "tag": "Kaley Cuoco",
+     "tagKey": "17dc6e04a9c51f5ad1548449",
+     "thumb": "https://image.tmdb.org/t/p/w185/c01Ma8Jrr2OJ6uoikPwDK34Y8eK.jpg"
+    },
+    {
+     "filter": "actor=852766",
+     "id": 852766,
+     "role": "Howard Wolowitz",
+     "tag": "Simon Helberg",
+     "tagKey": "76ee7e03c44b2552a9ef916d",
+     "thumb": "https://image.tmdb.org/t/p/w185/zGrQSfQEw0vO6otWdSXiBHfwv7S.jpg"
+    },
+    {
+     "filter": "actor=715937",
+     "id": 715937,
+     "role": "Rajesh Koothrappali",
+     "tag": "Kunal Nayyar",
+     "tagKey": "c4ef0b7d3693a3d5aad82c38",
+     "thumb": "https://image.tmdb.org/t/p/w185/o58v195EJs4U4whNLqyoIh7Qzef.jpg"
+    },
+    {
+     "filter": "actor=197977",
+     "id": 197977,
+     "role": "Bernadette Rostenkowski",
+     "tag": "Melissa Rauch",
+     "tagKey": "5895dbb796bf87607e81e265",
+     "thumb": "https://image.tmdb.org/t/p/w185/2gdX9GwWL8ulRSYFv8iQ4ZP69Yp.jpg"
+    }
+   ],
+   "UltraBlurColors": {
+    "bottomLeft": "1f1f26",
+    "bottomRight": "15151a",
+    "topLeft": "1a1a1e",
+    "topRight": "24242a"
+   },
+   "Writer": [
+    {
+     "filter": "writer=783912",
+     "id": 783912,
+     "tag": "Adam Faberman",
+     "tagKey": "f98641cc53610ccd41d53b98"
+    }
+   ],
+   "_artFor": "https://image.tmdb.org/t/p/w1280/rwYvhVv0vwbulMwxOfEsuAr1JrT.jpg",
+   "_art_url": "https://image.tmdb.org/t/p/w1280/rwYvhVv0vwbulMwxOfEsuAr1JrT.jpg",
+   "_folder": "",
+   "_hash": "435338651574875dfc957f6c8f5b2a1dfb2eb567",
+   "_identify": {
+    "confidence": "exact",
+    "disputed": null,
+    "imdb": "tt0898266",
+    "plex": "plex://show/5d9c086c02391c001f5891b3",
+    "source": "dmm hash",
+    "tmdb": 1418
+   },
+   "_identity": "tmdb:1418",
+   "_ids": {
+    "imdb": "tt0775431"
+   },
+   "_own_content_rating": true,
+   "_path": "shows/The.Big.Bang.Theory.S05.1080p.BluRay.REMUX.AVC.DTS-HD.MA.5.1-NOGRP[rartv]/The.Big.Bang.Theory.S05E01.1080p.BluRay.REMUX.AVC.DTS-HD.MA.5.1-NOGRP.mkv",
+   "_poster_url": "https://image.tmdb.org/t/p/w1280/kSGRUzwEeW4LMOPuYKQloqCVEhH.jpg",
+   "_release": "The.Big.Bang.Theory.S05.1080p.BluRay.REMUX.AVC.DTS-HD.MA.5.1-NOGRP[rartv]",
+   "_scanned": true,
+   "_sid": "shows/The.Big.Bang.Theory.S05.1080p.BluRay.REMUX.AVC.DTS-HD.MA.5.1-NOGRP[rartv]/The.Big.Bang.Theory.S05E01.1080p.BluRay.REMUX.AVC.DTS-HD.MA.5.1-NOGRP.mkv",
+   "_source": "zurg",
+   "_thumbFor": "https://image.tmdb.org/t/p/w1280/kSGRUzwEeW4LMOPuYKQloqCVEhH.jpg",
+   "addedAt": 1791664508,
+   "art": "/library/metadata/115750/art/1791897222",
+   "audienceRating": 7.9,
+   "audienceRatingImage": "themoviedb://image.rating",
+   "contentRating": "12",
+   "duration": 1290294,
+   "grandparentArt": "/library/metadata/115750/art/1791897222",
+   "grandparentGuid": "plex://show/5d9c086c02391c001f5891b3",
+   "grandparentKey": "/library/metadata/115750",
+   "grandparentRatingKey": "115750",
+   "grandparentSlug": "the-big-bang-theory",
+   "grandparentThumb": "/library/metadata/115750/thumb/1791897222",
+   "grandparentTitle": "The Big Bang Theory",
+   "guid": "plex://episode/5d9c12792df347001e41c5a2",
+   "index": 1,
+   "key": "/library/metadata/112062",
+   "librarySectionID": 2,
+   "librarySectionKey": "/library/sections/2",
+   "librarySectionTitle": "TV Shows",
+   "originallyAvailableAt": "2011-09-22",
+   "parentGuid": "plex://season/5d9c09de170e24001f2b1b21",
+   "parentIndex": 5,
+   "parentKey": "/library/metadata/115755",
+   "parentRatingKey": "115755",
+   "parentThumb": "/library/metadata/115755/thumb/1791897222",
+   "parentTitle": "Season 5",
+   "ratingKey": "112062",
+   "summary": "Penny is worried with how damaged her friendship with the guys will be in the aftermath of her sleeping with Raj while Sheldon becomes the leader of the paintball team.",
+   "thumb": "/library/metadata/112062/thumb/1791897222",
+   "title": "The Skank Reflex Analysis",
+   "titleSort": "Skank Reflex Analysis",
+   "type": "episode",
+   "updatedAt": 1791748954,
+   "year": 2011
+  },
+  {
+   "Country": [
+    {
+     "filter": "country=387550",
+     "id": 387550,
+     "tag": "United States of America"
+    }
+   ],
+   "Genre": [
+    {
+     "filter": "genre=244689",
+     "id": 244689,
+     "tag": "Comedy"
+    }
+   ],
+   "Guid": [
+    {
+     "id": "imdb://tt0898266"
+    },
+    {
+     "id": "tmdb://1418"
+    }
+   ],
+   "Location": [
+    {
+     "path": "/zurg/shows/The Big Bang Theory S01-S12"
+    },
+    {
+     "path": "/zurg/shows/The.Big.Bang.Theory.S05.1080p.BluRay.REMUX.AVC.DTS-HD.MA.5.1-NOGRP[rartv]"
+    },
+    {
+     "path": "/zurg/shows/The.Big.Bang.Theory.S03.1080p.BluRay.REMUX.VC-1.DD5.1-NOGRP[rartv]"
+    }
+   ],
+   "Rating": [
+    {
+     "image": "themoviedb://image.rating",
+     "type": "audience",
+     "value": 7.9
+    }
+   ],
+   "Role": [
+    {
+     "filter": "actor=666891",
+     "id": 666891,
+     "role": "Leonard Hofstadter",
+     "tag": "Johnny Galecki",
+     "tagKey": "95a5b83f438a490f50780090",
+     "thumb": "https://image.tmdb.org/t/p/w185/5zTHvvKpR9VUkzHxGnbrdB51Kyc.jpg"
+    },
+    {
+     "filter": "actor=158779",
+     "id": 158779,
+     "role": "Sheldon Cooper",
+     "tag": "Jim Parsons",
+     "tagKey": "09887bdffd56df122c8c26c1",
+     "thumb": "https://image.tmdb.org/t/p/w185/4D5oAUeM2wlejSwJJ6TmKoM9Abn.jpg"
+    },
+    {
+     "filter": "actor=569099",
+     "id": 569099,
+     "role": "Penny",
+     "tag": "Kaley Cuoco",
+     "tagKey": "17dc6e04a9c51f5ad1548449",
+     "thumb": "https://image.tmdb.org/t/p/w185/c01Ma8Jrr2OJ6uoikPwDK34Y8eK.jpg"
+    },
+    {
+     "filter": "actor=852766",
+     "id": 852766,
+     "role": "Howard Wolowitz",
+     "tag": "Simon Helberg",
+     "tagKey": "76ee7e03c44b2552a9ef916d",
+     "thumb": "https://image.tmdb.org/t/p/w185/zGrQSfQEw0vO6otWdSXiBHfwv7S.jpg"
+    },
+    {
+     "filter": "actor=715937",
+     "id": 715937,
+     "role": "Rajesh Koothrappali",
+     "tag": "Kunal Nayyar",
+     "tagKey": "c4ef0b7d3693a3d5aad82c38",
+     "thumb": "https://image.tmdb.org/t/p/w185/o58v195EJs4U4whNLqyoIh7Qzef.jpg"
+    },
+    {
+     "filter": "actor=197977",
+     "id": 197977,
+     "role": "Bernadette Rostenkowski",
+     "tag": "Melissa Rauch",
+     "tagKey": "5895dbb796bf87607e81e265",
+     "thumb": "https://image.tmdb.org/t/p/w185/2gdX9GwWL8ulRSYFv8iQ4ZP69Yp.jpg"
+    }
+   ],
+   "UltraBlurColors": {
+    "bottomLeft": "1f1f26",
+    "bottomRight": "15151a",
+    "topLeft": "1a1a1e",
+    "topRight": "24242a"
+   },
+   "_artFor": "https://image.tmdb.org/t/p/w1280/rwYvhVv0vwbulMwxOfEsuAr1JrT.jpg",
+   "_art_url": "https://image.tmdb.org/t/p/w1280/rwYvhVv0vwbulMwxOfEsuAr1JrT.jpg",
+   "_identity": "tmdb:1418",
+   "_poster_url": "https://image.tmdb.org/t/p/w342/euKFiO5M125rpngFRBbSW83beeI.jpg",
+   "_scanned": true,
+   "_thumbFor": "https://image.tmdb.org/t/p/w342/euKFiO5M125rpngFRBbSW83beeI.jpg",
+   "_titleGuid": "plex://show/5d9c086c02391c001f5891b3",
+   "addedAt": 1791669593,
+   "art": "/library/metadata/115750/art/1791897222",
+   "audienceRating": 7.9,
+   "audienceRatingImage": "themoviedb://image.rating",
+   "childCount": 7,
+   "contentRating": "12",
+   "guid": "plex://show/5d9c086c02391c001f5891b3",
+   "index": 1,
+   "key": "/library/metadata/115750/children",
+   "leafCount": 159,
+   "librarySectionID": 2,
+   "librarySectionKey": "/library/sections/2",
+   "librarySectionTitle": "TV Shows",
+   "ratingKey": "115750",
+   "slug": "the-big-bang-theory",
+   "studio": "Chuck Lorre Productions",
+   "summary": "Physicists Leonard and Sheldon find their nerd-centric social circle with pals Howard and Raj expanding when aspiring actress Penny moves in next door.",
+   "tagline": "Smart is the new sexy.",
+   "thumb": "/library/metadata/115750/thumb/1791897222",
+   "title": "The Big Bang Theory",
+   "titleSort": "Big Bang Theory",
+   "type": "show",
+   "updatedAt": 1791669593,
+   "viewedLeafCount": 0,
+   "year": 2007
+  },
+  {
+   "Guid": [
+    {
+     "id": "tmdb://3738"
+    }
+   ],
+   "UltraBlurColors": {
+    "bottomLeft": "1f1f26",
+    "bottomRight": "15151a",
+    "topLeft": "1a1a1e",
+    "topRight": "24242a"
+   },
+   "_artFor": "https://image.tmdb.org/t/p/w1280/rwYvhVv0vwbulMwxOfEsuAr1JrT.jpg",
+   "_art_url": "https://image.tmdb.org/t/p/w1280/rwYvhVv0vwbulMwxOfEsuAr1JrT.jpg",
+   "_poster_url": "https://image.tmdb.org/t/p/w342/zqAL2rav7Tg8uwDtLurqZVN3mtr.jpg",
+   "_scanned": true,
+   "_thumbFor": "https://image.tmdb.org/t/p/w342/zqAL2rav7Tg8uwDtLurqZVN3mtr.jpg",
+   "addedAt": 1791669593,
+   "art": "/library/metadata/115750/art/1791897222",
+   "guid": "plex://season/5d9c09deef619b0020486b7f",
+   "index": 1,
+   "key": "/library/metadata/115751/children",
+   "leafCount": 17,
+   "librarySectionID": 2,
+   "librarySectionKey": "/library/sections/2",
+   "librarySectionTitle": "TV Shows",
+   "parentGuid": "plex://show/5d9c086c02391c001f5891b3",
+   "parentIndex": 1,
+   "parentKey": "/library/metadata/115750",
+   "parentRatingKey": "115750",
+   "parentSlug": "the-big-bang-theory",
+   "parentStudio": "Chuck Lorre Productions",
+   "parentThumb": "/library/metadata/115750/thumb/1791897222",
+   "parentTitle": "The Big Bang Theory",
+   "parentYear": 2007,
+   "ratingKey": "115751",
+   "summary": "University physicists Leonard and Sheldon know whether to use an integral or a differential to solve the area under a curve. But they don't have a clue about girls. Or dating. Or clothes. Or parties. Or having fun. Or, basically, life. So when a pretty blonde named Penny moves in the apartment across the hall, the guys decide to get an education outside of the classroom. Boys, you have a lot to learn.",
+   "thumb": "/library/metadata/115751/thumb/1791897222",
+   "title": "Season 1",
+   "type": "season",
+   "updatedAt": 1791669593,
+   "viewedLeafCount": 0
+  },
+  {
+   "Guid": [
+    {
+     "id": "tmdb://3736"
+    }
+   ],
+   "UltraBlurColors": {
+    "bottomLeft": "1f1f26",
+    "bottomRight": "15151a",
+    "topLeft": "1a1a1e",
+    "topRight": "24242a"
+   },
+   "_artFor": "https://image.tmdb.org/t/p/w1280/rwYvhVv0vwbulMwxOfEsuAr1JrT.jpg",
+   "_art_url": "https://image.tmdb.org/t/p/w1280/rwYvhVv0vwbulMwxOfEsuAr1JrT.jpg",
+   "_poster_url": "https://image.tmdb.org/t/p/w342/l08Z8ihAsTRPEuOehbwk4axg3cu.jpg",
+   "_scanned": true,
+   "_thumbFor": "https://image.tmdb.org/t/p/w342/l08Z8ihAsTRPEuOehbwk4axg3cu.jpg",
+   "addedAt": 1791669594,
+   "art": "/library/metadata/115750/art/1791897222",
+   "guid": "plex://season/5d9c09de170e24001f2b1b21",
+   "index": 5,
+   "key": "/library/metadata/115755/children",
+   "leafCount": 24,
+   "librarySectionID": 2,
+   "librarySectionKey": "/library/sections/2",
+   "librarySectionTitle": "TV Shows",
+   "parentGuid": "plex://show/5d9c086c02391c001f5891b3",
+   "parentIndex": 1,
+   "parentKey": "/library/metadata/115750",
+   "parentRatingKey": "115750",
+   "parentSlug": "the-big-bang-theory",
+   "parentStudio": "Chuck Lorre Productions",
+   "parentThumb": "/library/metadata/115750/thumb/1791897222",
+   "parentTitle": "The Big Bang Theory",
+   "parentYear": 2007,
+   "ratingKey": "115755",
+   "summary": "In season five, Penny and Leonard's relationship is relaunched in full \"beta test\" mode, while Sheldon, Howard, and Raj discover the feminine mystique is something that cannot be easily graphed or calculated. As Sheldon makes begrudging amendments to his \"Relationship Agreement\" with his \"friend-who-happens-to-be-a-girl\" Amy Farrah Fowler, Raj contemplates an arranged marriage, and Howard is all-systems-go for both is NASA space launch and wedding to the spirited Bernadette.",
+   "thumb": "/library/metadata/115755/thumb/1791897222",
+   "title": "Season 5",
+   "type": "season",
+   "updatedAt": 1791669594,
+   "viewedLeafCount": 0
+  },
+  {
+   "Guid": [
+    {
+     "id": "imdb://tt2425926"
+    },
+    {
+     "id": "tmdb://1876764"
+    },
+    {
+     "id": "tvdb://43206"
+    }
+   ],
+   "Media": [
+    {
+     "Part": [
+      {
+       "Stream": [
+        {
+         "anamorphic": false,
+         "bitDepth": 10,
+         "chromaLocation": null,
+         "chromaSubsampling": "4:2:0",
+         "codec": "h264",
+         "codecID": null,
+         "codedHeight": null,
+         "codedWidth": null,
+         "colorPrimaries": null,
+         "colorRange": null,
+         "colorSpace": null,
+         "colorTrc": null,
+         "default": true,
+         "displayTitle": "720p",
+         "extendedDisplayTitle": "720p (H.264 High 10)",
+         "frameRate": 23.976,
+         "height": 720,
+         "id": 126693001,
+         "index": 0,
+         "level": 31,
+         "pixelAspectRatio": "985:962",
+         "profile": "high 10",
+         "refFrames": null,
+         "scanType": "progressive",
+         "streamIdentifier": null,
+         "streamType": 1,
+         "width": 962
+        },
+        {
+         "audioChannelLayout": "stereo",
+         "bitDepth": null,
+         "channels": 2,
+         "codec": "aac",
+         "default": true,
+         "displayTitle": "日本語 (AAC Stereo)",
+         "extendedDisplayTitle": "日本語 (AAC Stereo)",
+         "id": 126693002,
+         "index": 1,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "profile": "lc",
+         "samplingRate": 48000,
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 2
+        },
+        {
+         "canAutoSync": false,
+         "codec": "pgs",
+         "default": true,
+         "displayTitle": "English Forced",
+         "extendedDisplayTitle": "English Forced (PGS)",
+         "forced": true,
+         "id": 126693003,
+         "index": 2,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 3
+        }
+       ],
+       "audioProfile": "lc",
+       "container": "mkv",
+       "duration": 1470857,
+       "file": "/zurg/shows/[DmonHiro] Inuyasha (BD, 720p) (US BD)/143 - 3000 Leagues In Search Of Father.mkv",
+       "id": 1266930,
+       "key": "/library/parts/1266930/1791699335/file.mkv",
+       "size": 446385617,
+       "videoProfile": "high 10"
+      }
+     ],
+     "_chapters": [],
+     "_folder": "",
+     "_hash": "0660b397f850a8802976f78416b2b06b645109f6",
+     "_ids": {
+      "imdb": "tt0290223",
+      "tmdb": "35610"
+     },
+     "_path": "shows/[DmonHiro] Inuyasha (BD, 720p) (US BD)/143 - 3000 Leagues In Search Of Father.mkv",
+     "_placed": {
+      "episode": 143,
+      "kind": "episode",
+      "season": 1
+     },
+     "_release": "[DmonHiro] Inuyasha (BD, 720p) (US BD)",
+     "_sid": "shows/[DmonHiro] Inuyasha (BD, 720p) (US BD)/143 - 3000 Leagues In Search Of Father.mkv",
+     "_source": "zurg",
+     "aspectRatio": 1.33,
+     "audioChannels": 2,
+     "audioCodec": "aac",
+     "audioProfile": "lc",
+     "bitrate": 2428,
+     "container": "mkv",
+     "duration": 1470857,
+     "hasVoiceActivity": false,
+     "height": 720,
+     "id": 12669300,
+     "videoCodec": "h264",
+     "videoFrameRate": "24p",
+     "videoProfile": "high 10",
+     "videoResolution": "720",
+     "width": 962
+    },
+    {
+     "Part": [
+      {
+       "Stream": [
+        {
+         "bitDepth": 10,
+         "chromaLocation": null,
+         "chromaSubsampling": "4:2:0",
+         "codec": "hevc",
+         "codecID": null,
+         "codedHeight": null,
+         "codedWidth": null,
+         "colorPrimaries": "bt709",
+         "colorRange": "tv",
+         "colorSpace": "bt709",
+         "colorTrc": "bt709",
+         "default": true,
+         "displayTitle": "1080p",
+         "extendedDisplayTitle": "1080p (HEVC Main 10)",
+         "frameRate": 23.976,
+         "height": 1080,
+         "id": 175995001,
+         "index": 0,
+         "level": 120,
+         "profile": "main 10",
+         "refFrames": null,
+         "scanType": null,
+         "streamIdentifier": null,
+         "streamType": 1,
+         "width": 1440
+        },
+        {
+         "audioChannelLayout": "stereo",
+         "bitDepth": null,
+         "bitrate": 224,
+         "channels": 2,
+         "codec": "ac3",
+         "default": true,
+         "displayTitle": "日本語 (AC3 Stereo)",
+         "extendedDisplayTitle": "Stereo (日本語 AC3)",
+         "id": 175995002,
+         "index": 1,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "samplingRate": 48000,
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 2,
+         "title": "Stereo"
+        },
+        {
+         "canAutoSync": false,
+         "codec": "ass",
+         "default": true,
+         "displayTitle": "English",
+         "extendedDisplayTitle": "English (ASS)",
+         "id": 175995003,
+         "index": 2,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 3
+        }
+       ],
+       "audioProfile": null,
+       "container": "mkv",
+       "duration": 1442144,
+       "file": "/mnt/zurg_usenet/shows/[Fullmetal] Inuyasha Complete BD-BOX (01-167) [1080p][HEVC 10bits]/[Fullmetal] Inuyasha Complete BD-BOX (01-167) [1080p][HEVC 10bits].7z/[Fullmetal] Inuyasha - 143 [1080p][HEVC 10bits].mkv",
+       "id": 1759950,
+       "key": "/library/parts/1759950/1792406664/file.mkv",
+       "size": 227060624,
+       "videoProfile": "main 10"
+      }
+     ],
+     "_chapters": [],
+     "_folder": "",
+     "_hash": "899a83fd1f8b1c0e0dcd3cc341b3e9ea6af104d5",
+     "_ids": {
+      "imdb": "tt0290223",
+      "tmdb": "35610"
+     },
+     "_path": "shows/[Fullmetal] Inuyasha Complete BD-BOX (01-167) [1080p][HEVC 10bits]/[Fullmetal] Inuyasha Complete BD-BOX (01-167) [1080p][HEVC 10bits].7z/[Fullmetal] Inuyasha - 143 [1080p][HEVC 10bits].mkv",
+     "_placed": {
+      "episode": 143,
+      "kind": "episode",
+      "season": 1
+     },
+     "_release": "[Fullmetal] Inuyasha Complete BD-BOX (01-167) [1080p][HEVC 10bits]",
+     "_sid": "shows/[Fullmetal] Inuyasha Complete BD-BOX (01-167) [1080p][HEVC 10bits]/[Fullmetal] Inuyasha Complete BD-BOX (01-167) [1080p][HEVC 10bits].7z/[Fullmetal] Inuyasha - 143 [1080p][HEVC 10bits].mkv",
+     "_source": "zurg",
+     "aspectRatio": 1.33,
+     "audioChannels": 2,
+     "audioCodec": "ac3",
+     "audioProfile": null,
+     "bitrate": 1260,
+     "container": "mkv",
+     "duration": 1442144,
+     "hasVoiceActivity": false,
+     "height": 1080,
+     "id": 17599500,
+     "videoCodec": "hevc",
+     "videoFrameRate": "24p",
+     "videoProfile": "main 10",
+     "videoResolution": "1080",
+     "width": 1440
+    }
+   ],
+   "Rating": [
+    {
+     "image": "themoviedb://image.rating",
+     "type": "audience",
+     "value": 8.6
+    }
+   ],
+   "Role": [
+    {
+     "filter": "actor=802622",
+     "id": 802622,
+     "role": "InuYasha (voice)",
+     "tag": "Kappei Yamaguchi",
+     "tagKey": "11b3847b1f1885ad69c8769d",
+     "thumb": "https://image.tmdb.org/t/p/w185/mJyxKRZxLv9D7LH5KcNSkjSKYOB.jpg"
+    },
+    {
+     "filter": "actor=322709",
+     "id": 322709,
+     "role": "Kagome Higurashi (voice)",
+     "tag": "Satsuki Yukino",
+     "tagKey": "6690cd29888bbfa945511e56",
+     "thumb": "https://image.tmdb.org/t/p/w185/fb9LqdOZPNjlXq3uHriBOmIe2WP.jpg"
+    },
+    {
+     "filter": "actor=277178",
+     "id": 277178,
+     "role": "Miroku (voice)",
+     "tag": "Koji Tsujitani",
+     "tagKey": "c3e02907f99014915e48bd5f",
+     "thumb": "https://image.tmdb.org/t/p/w185/7NTqy1dhJUNYjMAFqB5j1lNaar.jpg"
+    },
+    {
+     "filter": "actor=236745",
+     "id": 236745,
+     "role": "Sango (voice)",
+     "tag": "Houko Kuwashima",
+     "tagKey": "6c62f12aa3473bfdc8f5d3c7",
+     "thumb": "https://image.tmdb.org/t/p/w185/uZSmoh5jSdLwmkLaCnC3Xju6TTN.jpg"
+    },
+    {
+     "filter": "actor=849018",
+     "id": 849018,
+     "role": "Sesshomaru (voice)",
+     "tag": "Ken Narita",
+     "tagKey": "46733e2e87b47acce5fc042c",
+     "thumb": "https://image.tmdb.org/t/p/w185/7fuRQk5eUp0MWQxxkw15RM1KxQM.jpg"
+    },
+    {
+     "filter": "actor=472353",
+     "id": 472353,
+     "role": "Rin (voice)",
+     "tag": "Mamiko Noto",
+     "tagKey": "2b911be4ef89ec90d6480079",
+     "thumb": "https://image.tmdb.org/t/p/w185/wCSD7Umgzc66p8VGXrrMZtSLSuS.jpg"
+    }
+   ],
+   "UltraBlurColors": {
+    "bottomLeft": "1f1f26",
+    "bottomRight": "15151a",
+    "topLeft": "1a1a1e",
+    "topRight": "24242a"
+   },
+   "Writer": [
+    {
+     "filter": "writer=299755",
+     "id": 299755,
+     "tag": "Rumiko Takahashi",
+     "tagKey": "d26ef44fc52ec20d9649bcfa"
+    }
+   ],
+   "_artFor": "https://image.tmdb.org/t/p/w1280/mVE1ULmLaYhCkBQPt3JC5xZC6T6.jpg",
+   "_art_url": "https://image.tmdb.org/t/p/w1280/mVE1ULmLaYhCkBQPt3JC5xZC6T6.jpg",
+   "_folder": "",
+   "_hash": "0660b397f850a8802976f78416b2b06b645109f6",
+   "_identify": {
+    "confidence": "exact",
+    "disputed": null,
+    "imdb": "tt0290223",
+    "plex": "plex://show/5d9c08294eefaa001f5d730b",
+    "source": "placed",
+    "tmdb": 35610
+   },
+   "_identity": "tmdb:35610",
+   "_ids": {
+    "imdb": "tt0290223",
+    "tmdb": "35610"
+   },
+   "_own_content_rating": true,
+   "_path": "shows/[DmonHiro] Inuyasha (BD, 720p) (US BD)/143 - 3000 Leagues In Search Of Father.mkv",
+   "_placed": {
+    "episode": 143,
+    "kind": "episode",
+    "season": 1
+   },
+   "_poster_url": "https://image.tmdb.org/t/p/w1280/eeeAsfld5F52n6OCcsNiOKBNjjJ.jpg",
+   "_release": "[DmonHiro] Inuyasha (BD, 720p) (US BD)",
+   "_scanned": true,
+   "_sid": "shows/[DmonHiro] Inuyasha (BD, 720p) (US BD)/143 - 3000 Leagues In Search Of Father.mkv",
+   "_source": "zurg",
+   "_thumbFor": "https://image.tmdb.org/t/p/w1280/eeeAsfld5F52n6OCcsNiOKBNjjJ.jpg",
+   "addedAt": 1791699335,
+   "art": "/library/metadata/136987/art/1792191167",
+   "audienceRating": 8.6,
+   "audienceRatingImage": "themoviedb://image.rating",
+   "contentRating": "TV-14",
+   "duration": 1470857,
+   "grandparentArt": "/library/metadata/136987/art/1791897222",
+   "grandparentGuid": "plex://show/5d9c08294eefaa001f5d730b",
+   "grandparentKey": "/library/metadata/136987",
+   "grandparentRatingKey": "136987",
+   "grandparentSlug": "inuyasha",
+   "grandparentThumb": "/library/metadata/136987/thumb/1791897222",
+   "grandparentTitle": "InuYasha",
+   "guid": "plex://episode/8d2ebb57fb0a714b75fff6ee",
+   "index": 143,
+   "key": "/library/metadata/126693",
+   "librarySectionID": 2,
+   "librarySectionKey": "/library/sections/2",
+   "librarySectionTitle": "TV Shows",
+   "originallyAvailableAt": "2004-02-23",
+   "parentGuid": "plex://season/5d9c0986705e7a001e6ef654",
+   "parentIndex": 1,
+   "parentKey": "/library/metadata/137260",
+   "parentRatingKey": "137260",
+   "parentThumb": "/library/metadata/137260/thumb/1791897222",
+   "parentTitle": "Season 1",
+   "ratingKey": "126693",
+   "summary": "When Inuyasha and his friends visit a a new town, they find out that a headless demon has been frightening the townspeople.",
+   "thumb": "/library/metadata/126693/thumb/1792191168",
+   "title": "3,000 Leagues in Search of Father",
+   "type": "episode",
+   "updatedAt": 1792191167,
+   "year": 2004
+  },
+  {
+   "Country": [
+    {
+     "filter": "country=814196",
+     "id": 814196,
+     "tag": "Japan"
+    }
+   ],
+   "Genre": [
+    {
+     "filter": "genre=16771",
+     "id": 16771,
+     "tag": "Animation"
+    },
+    {
+     "filter": "genre=218583",
+     "id": 218583,
+     "tag": "Action & Adventure"
+    },
+    {
+     "filter": "genre=553114",
+     "id": 553114,
+     "tag": "Sci-Fi & Fantasy"
+    }
+   ],
+   "Guid": [
+    {
+     "id": "imdb://tt0290223"
+    },
+    {
+     "id": "tmdb://35610"
+    }
+   ],
+   "Location": [
+    {
+     "path": "/zurg/shows/InuYasha Final Act"
+    },
+    {
+     "path": "/zurg/shows/[DmonHiro] Inuyasha (BD, 720p) (US BD)"
+    },
+    {
+     "path": "/mnt/zurg_usenet/anime/[A&C] Inuyasha The Final Act - S07E02 [BDrip] [Multi-Audio-Subs] [2459C06B]"
+    },
+    {
+     "path": "/mnt/zurg_usenet/recent/[A&C] Inuyasha The Final Act - S07E02 [BDrip] [Multi-Audio-Subs] [2459C06B]"
+    },
+    {
+     "path": "/mnt/zurg_usenet/anime/[A&C] Inuyasha The Final Act - S07E03 [BDrip] [Multi-Audio-Subs] [C0F967C2]"
+    },
+    {
+     "path": "/mnt/zurg_usenet/recent/[A&C] Inuyasha The Final Act - S07E03 [BDrip] [Multi-Audio-Subs] [C0F967C2]"
+    },
+    {
+     "path": "/mnt/zurg_usenet/anime/[A&C] Inuyasha The Final Act - S07E04 [BDrip] [Multi-Audio-Subs] [4F8213D6]"
+    },
+    {
+     "path": "/mnt/zurg_usenet/recent/[A&C] Inuyasha The Final Act - S07E04 [BDrip] [Multi-Audio-Subs] [4F8213D6]"
+    },
+    {
+     "path": "/mnt/zurg_usenet/anime/[A&C] Inuyasha The Final Act - S07E07 [BDrip] [Multi-Audio-Subs] [B32AC30B]"
+    },
+    {
+     "path": "/mnt/zurg_usenet/recent/[A&C] Inuyasha The Final Act - S07E07 [BDrip] [Multi-Audio-Subs] [B32AC30B]"
+    },
+    {
+     "path": "/mnt/zurg_usenet/anime/[A&C] Inuyasha The Final Act - S07E06 [BDrip] [Multi-Audio-Subs] [F4D9C9FD]"
+    },
+    {
+     "path": "/mnt/zurg_usenet/recent/[A&C] Inuyasha The Final Act - S07E06 [BDrip] [Multi-Audio-Subs] [F4D9C9FD]"
+    },
+    {
+     "path": "/mnt/zurg_usenet/anime/[A&C] Inuyasha The Final Act - S07E05 [BDrip] [Multi-Audio-Subs] [FCA75B15]"
+    },
+    {
+     "path": "/mnt/zurg_usenet/recent/[A&C] Inuyasha The Final Act - S07E05 [BDrip] [Multi-Audio-Subs] [FCA75B15]"
+    },
+    {
+     "path": "/mnt/zurg_usenet/anime/[A&C] Inuyasha The Final Act - S07E09 [BDrip] [Multi-Audio-Subs] [8372D6BF]"
+    },
+    {
+     "path": "/mnt/zurg_usenet/recent/[A&C] Inuyasha The Final Act - S07E09 [BDrip] [Multi-Audio-Subs] [8372D6BF]"
+    },
+    {
+     "path": "/mnt/zurg_usenet/anime/[A&C] Inuyasha The Final Act - S07E08 [BDrip] [Multi-Audio-Subs] [49E3DC61]"
+    },
+    {
+     "path": "/mnt/zurg_usenet/recent/[A&C] Inuyasha The Final Act - S07E08 [BDrip] [Multi-Audio-Subs] [49E3DC61]"
+    },
+    {
+     "path": "/mnt/zurg_usenet/anime/[A&C] Inuyasha The Final Act - S07E10 [BDrip] [Multi-Audio-Subs] [B026D167]"
+    },
+    {
+     "path": "/mnt/zurg_usenet/recent/[A&C] Inuyasha The Final Act - S07E10 [BDrip] [Multi-Audio-Subs] [B026D167]"
+    },
+    {
+     "path": "/mnt/zurg_usenet/anime/[A&C] Inuyasha The Final Act - S07E11 [BDrip] [Multi-Audio-Subs] [51BD8359]"
+    },
+    {
+     "path": "/mnt/zurg_usenet/recent/[A&C] Inuyasha The Final Act - S07E11 [BDrip] [Multi-Audio-Subs] [51BD8359]"
+    },
+    {
+     "path": "/mnt/zurg_usenet/anime/[A&C] Inuyasha The Final Act - S07E12 [BDrip] [Multi-Audio-Subs] [DEA952D8]"
+    },
+    {
+     "path": "/mnt/zurg_usenet/recent/[A&C] Inuyasha The Final Act - S07E12 [BDrip] [Multi-Audio-Subs] [DEA952D8]"
+    },
+    {
+     "path": "/mnt/zurg_usenet/anime/[A&C] Inuyasha The Final Act - S07E22 [BDrip] [Multi-Audio-Subs] [7281674B]"
+    },
+    {
+     "path": "/mnt/zurg_usenet/recent/[A&C] Inuyasha The Final Act - S07E22 [BDrip] [Multi-Audio-Subs] [7281674B]"
+    },
+    {
+     "path": "/mnt/zurg_usenet/anime/[A&C] Inuyasha The Final Act - S07E26 [BDrip] [Multi-Audio-Subs] [C61F1FC1]"
+    },
+    {
+     "path": "/mnt/zurg_usenet/recent/[A&C] Inuyasha The Final Act - S07E26 [BDrip] [Multi-Audio-Subs] [C61F1FC1]"
+    },
+    {
+     "path": "/mnt/zurg_usenet/anime/[A&C] Inuyasha The Final Act - S07E25 [BDrip] [Multi-Audio-Subs] [8B1B1C15]"
+    },
+    {
+     "path": "/mnt/zurg_usenet/recent/[A&C] Inuyasha The Final Act - S07E25 [BDrip] [Multi-Audio-Subs] [8B1B1C15]"
+    },
+    {
+     "path": "/mnt/zurg_usenet/anime/[A&C] Inuyasha The Final Act - S07E23 [BDrip] [Multi-Audio-Subs] [49F0BF2A]"
+    },
+    {
+     "path": "/mnt/zurg_usenet/recent/[A&C] Inuyasha The Final Act - S07E23 [BDrip] [Multi-Audio-Subs] [49F0BF2A]"
+    },
+    {
+     "path": "/mnt/zurg_usenet/anime/[A&C] Inuyasha The Final Act - S07E13 [BDrip] [Multi-Audio-Subs] [36BD9253]"
+    },
+    {
+     "path": "/mnt/zurg_usenet/recent/[A&C] Inuyasha The Final Act - S07E13 [BDrip] [Multi-Audio-Subs] [36BD9253]"
+    },
+    {
+     "path": "/mnt/zurg_usenet/anime/[A&C] Inuyasha The Final Act - S07E20 [BDrip] [Multi-Audio-Subs] [64F5069A]"
+    },
+    {
+     "path": "/mnt/zurg_usenet/recent/[A&C] Inuyasha The Final Act - S07E20 [BDrip] [Multi-Audio-Subs] [64F5069A]"
+    },
+    {
+     "path": "/mnt/zurg_usenet/anime/[A&C] Inuyasha The Final Act - S07E24 [BDrip] [Multi-Audio-Subs] [7FD249F3]"
+    },
+    {
+     "path": "/mnt/zurg_usenet/recent/[A&C] Inuyasha The Final Act - S07E24 [BDrip] [Multi-Audio-Subs] [7FD249F3]"
+    },
+    {
+     "path": "/mnt/zurg_usenet/anime/[A&C] Inuyasha The Final Act - S07E14 [BDrip] [Multi-Audio-Subs] [99314800]"
+    },
+    {
+     "path": "/mnt/zurg_usenet/recent/[A&C] Inuyasha The Final Act - S07E14 [BDrip] [Multi-Audio-Subs] [99314800]"
+    },
+    {
+     "path": "/mnt/zurg_usenet/anime/[A&C] Inuyasha The Final Act - S07E17 [BDrip] [Multi-Audio-Subs] [4498977F]"
+    },
+    {
+     "path": "/mnt/zurg_usenet/recent/[A&C] Inuyasha The Final Act - S07E17 [BDrip] [Multi-Audio-Subs] [4498977F]"
+    },
+    {
+     "path": "/mnt/zurg_usenet/anime/[A&C] Inuyasha The Final Act - S07E18 [BDrip] [Multi-Audio-Subs] [012303AF]"
+    },
+    {
+     "path": "/mnt/zurg_usenet/recent/[A&C] Inuyasha The Final Act - S07E18 [BDrip] [Multi-Audio-Subs] [012303AF]"
+    },
+    {
+     "path": "/mnt/zurg_usenet/anime/[A&C] Inuyasha The Final Act - S07E16 [BDrip] [Multi-Audio-Subs] [F17008CD]"
+    },
+    {
+     "path": "/mnt/zurg_usenet/recent/[A&C] Inuyasha The Final Act - S07E16 [BDrip] [Multi-Audio-Subs] [F17008CD]"
+    },
+    {
+     "path": "/mnt/zurg_usenet/anime/[A&C] Inuyasha The Final Act - S07E19 [BDrip] [Multi-Audio-Subs] [424763E3]"
+    },
+    {
+     "path": "/mnt/zurg_usenet/recent/[A&C] Inuyasha The Final Act - S07E19 [BDrip] [Multi-Audio-Subs] [424763E3]"
+    },
+    {
+     "path": "/mnt/zurg_usenet/recent/InuYasha.S07E15.German.DL.DTS.1080p.BluRay.x265-ABJ/st08hEfvjQmOdU7RJxliPD.part01.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/InuYasha.S07E15.German.DL.DTS.1080p.BluRay.x265-ABJ/st08hEfvjQmOdU7RJxliPD.part01.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/recent/InuYasha.S07E21.German.DL.DTS.1080p.BluRay.x265-ABJ/Rg48T3CAjH7cL5rVYxQK1k.part01.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/InuYasha.S07E21.German.DL.DTS.1080p.BluRay.x265-ABJ/Rg48T3CAjH7cL5rVYxQK1k.part01.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/recent/[Fullmetal] Inuyasha Complete BD-BOX (01-167) [1080p][HEVC 10bits]/[Fullmetal] Inuyasha Complete BD-BOX (01-167) [1080p][HEVC 10bits].7z"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/[Fullmetal] Inuyasha Complete BD-BOX (01-167) [1080p][HEVC 10bits]/[Fullmetal] Inuyasha Complete BD-BOX (01-167) [1080p][HEVC 10bits].7z"
+    }
+   ],
+   "Rating": [
+    {
+     "image": "themoviedb://image.rating",
+     "type": "audience",
+     "value": 8.6
+    }
+   ],
+   "Role": [
+    {
+     "filter": "actor=802622",
+     "id": 802622,
+     "role": "InuYasha (voice)",
+     "tag": "Kappei Yamaguchi",
+     "tagKey": "11b3847b1f1885ad69c8769d",
+     "thumb": "https://image.tmdb.org/t/p/w185/mJyxKRZxLv9D7LH5KcNSkjSKYOB.jpg"
+    },
+    {
+     "filter": "actor=322709",
+     "id": 322709,
+     "role": "Kagome Higurashi (voice)",
+     "tag": "Satsuki Yukino",
+     "tagKey": "6690cd29888bbfa945511e56",
+     "thumb": "https://image.tmdb.org/t/p/w185/fb9LqdOZPNjlXq3uHriBOmIe2WP.jpg"
+    },
+    {
+     "filter": "actor=277178",
+     "id": 277178,
+     "role": "Miroku (voice)",
+     "tag": "Koji Tsujitani",
+     "tagKey": "c3e02907f99014915e48bd5f",
+     "thumb": "https://image.tmdb.org/t/p/w185/7NTqy1dhJUNYjMAFqB5j1lNaar.jpg"
+    },
+    {
+     "filter": "actor=236745",
+     "id": 236745,
+     "role": "Sango (voice)",
+     "tag": "Houko Kuwashima",
+     "tagKey": "6c62f12aa3473bfdc8f5d3c7",
+     "thumb": "https://image.tmdb.org/t/p/w185/uZSmoh5jSdLwmkLaCnC3Xju6TTN.jpg"
+    },
+    {
+     "filter": "actor=849018",
+     "id": 849018,
+     "role": "Sesshomaru (voice)",
+     "tag": "Ken Narita",
+     "tagKey": "46733e2e87b47acce5fc042c",
+     "thumb": "https://image.tmdb.org/t/p/w185/7fuRQk5eUp0MWQxxkw15RM1KxQM.jpg"
+    },
+    {
+     "filter": "actor=472353",
+     "id": 472353,
+     "role": "Rin (voice)",
+     "tag": "Mamiko Noto",
+     "tagKey": "2b911be4ef89ec90d6480079",
+     "thumb": "https://image.tmdb.org/t/p/w185/wCSD7Umgzc66p8VGXrrMZtSLSuS.jpg"
+    }
+   ],
+   "UltraBlurColors": {
+    "bottomLeft": "1f1f26",
+    "bottomRight": "15151a",
+    "topLeft": "1a1a1e",
+    "topRight": "24242a"
+   },
+   "_artFor": "https://image.tmdb.org/t/p/w1280/mVE1ULmLaYhCkBQPt3JC5xZC6T6.jpg",
+   "_art_url": "https://image.tmdb.org/t/p/w1280/mVE1ULmLaYhCkBQPt3JC5xZC6T6.jpg",
+   "_identity": "tmdb:35610",
+   "_poster_url": "https://image.tmdb.org/t/p/w342/rQHTNaynedeKurm0sNOsbAZg2oe.jpg",
+   "_scanned": true,
+   "_thumbFor": "https://image.tmdb.org/t/p/w342/rQHTNaynedeKurm0sNOsbAZg2oe.jpg",
+   "_titleGuid": "plex://show/5d9c08294eefaa001f5d730b",
+   "addedAt": 1791671767,
+   "art": "/library/metadata/136987/art/1791897222",
+   "audienceRating": 8.6,
+   "audienceRatingImage": "themoviedb://image.rating",
+   "childCount": 1,
+   "contentRating": "TV-14",
+   "guid": "plex://show/5d9c08294eefaa001f5d730b",
+   "index": 1,
+   "key": "/library/metadata/136987/children",
+   "leafCount": 1,
+   "librarySectionID": 2,
+   "librarySectionKey": "/library/sections/2",
+   "librarySectionTitle": "TV Shows",
+   "ratingKey": "136987",
+   "slug": "inuyasha",
+   "studio": "SUNRISE",
+   "summary": "Kagome Higurashi is a modern day young girl who lives with her family by the old Higure shrine. Unbeknownst to Kagome, she is the reincarnation of priestess Kikyo and posseses the \"Jewel of Four Souls\" (the Shikon jewel). One ill-fated day, Kagome locates an ancient well near her home and is abruptly transported through the well and into a feudal Japan, inhabited by demons. There, she encounters Inuyasha, son of a powerful demon father and a human mother, who is pinned to a tree by an enchanted arrow.",
+   "thumb": "/library/metadata/136987/thumb/1791897222",
+   "title": "InuYasha",
+   "type": "show",
+   "updatedAt": 1791749316,
+   "viewedLeafCount": 0,
+   "year": 2000
+  },
+  {
+   "Guid": [
+    {
+     "id": "tmdb://46327"
+    }
+   ],
+   "UltraBlurColors": {
+    "bottomLeft": "1f1f26",
+    "bottomRight": "15151a",
+    "topLeft": "1a1a1e",
+    "topRight": "24242a"
+   },
+   "_artFor": "https://image.tmdb.org/t/p/w1280/mVE1ULmLaYhCkBQPt3JC5xZC6T6.jpg",
+   "_art_url": "https://image.tmdb.org/t/p/w1280/mVE1ULmLaYhCkBQPt3JC5xZC6T6.jpg",
+   "_poster_url": "https://image.tmdb.org/t/p/w342/rQHTNaynedeKurm0sNOsbAZg2oe.jpg",
+   "_scanned": true,
+   "_thumbFor": "https://image.tmdb.org/t/p/w342/rQHTNaynedeKurm0sNOsbAZg2oe.jpg",
+   "addedAt": 1791699335,
+   "art": "/library/metadata/136987/art/1791897222",
+   "guid": "plex://season/5d9c0986705e7a001e6ef654",
+   "index": 1,
+   "key": "/library/metadata/137260/children",
+   "leafCount": 1,
+   "librarySectionID": 2,
+   "librarySectionKey": "/library/sections/2",
+   "librarySectionTitle": "TV Shows",
+   "parentGuid": "plex://show/5d9c08294eefaa001f5d730b",
+   "parentIndex": 1,
+   "parentKey": "/library/metadata/136987",
+   "parentRatingKey": "136987",
+   "parentSlug": "inuyasha",
+   "parentStudio": "SUNRISE",
+   "parentThumb": "/library/metadata/136987/thumb/1791897222",
+   "parentTitle": "InuYasha",
+   "parentYear": 2000,
+   "ratingKey": "137260",
+   "summary": "Kagome Higurashi, an average ninth grader, gets pulled into an ancient well by a demon, bringing her 500 years in the past to a feudal era. There she meets Inuyasha, a half-demon who seeks the Shikon Jewel to make himself a full-fledged demon. With Inuyasha and new friends, Kagome's search for the Jewel of Four Souls begins...",
+   "thumb": "/library/metadata/137260/thumb/1791897222",
+   "title": "Season 1",
+   "type": "season",
+   "updatedAt": 1791750080,
+   "viewedLeafCount": 0
+  },
+  {
+   "Media": [
+    {
+     "Part": [
+      {
+       "Stream": [
+        {
+         "bitDepth": 8,
+         "chromaLocation": null,
+         "chromaSubsampling": "4:2:0",
+         "codec": "h264",
+         "codecID": null,
+         "codedHeight": null,
+         "codedWidth": null,
+         "colorPrimaries": null,
+         "colorRange": null,
+         "colorSpace": null,
+         "colorTrc": null,
+         "displayTitle": "1080p",
+         "extendedDisplayTitle": "1080p (H.264)",
+         "frameRate": 23.976,
+         "height": 1080,
+         "id": 171045001,
+         "index": 0,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "level": 41,
+         "profile": "high",
+         "refFrames": null,
+         "scanType": "progressive",
+         "streamIdentifier": null,
+         "streamType": 1,
+         "width": 1920
+        },
+        {
+         "audioChannelLayout": "stereo",
+         "bitDepth": null,
+         "bitrate": 192,
+         "channels": 2,
+         "codec": "ac3",
+         "default": true,
+         "displayTitle": "English (AC3 Stereo)",
+         "extendedDisplayTitle": "Stereo (English AC3)",
+         "id": 171045002,
+         "index": 1,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "samplingRate": 48000,
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 2,
+         "title": "Stereo"
+        },
+        {
+         "canAutoSync": false,
+         "codec": "pgs",
+         "displayTitle": "English",
+         "extendedDisplayTitle": "English (PGS)",
+         "id": 171045003,
+         "index": 2,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 3
+        },
+        {
+         "canAutoSync": false,
+         "codec": "pgs",
+         "displayTitle": "Español",
+         "extendedDisplayTitle": "Español (PGS)",
+         "id": 171045004,
+         "index": 3,
+         "language": "Español",
+         "languageCode": "spa",
+         "languageTag": "es",
+         "streamIdentifier": null,
+         "streamType": 3
+        },
+        {
+         "canAutoSync": false,
+         "codec": "pgs",
+         "displayTitle": "Português",
+         "extendedDisplayTitle": "Português (PGS)",
+         "id": 171045005,
+         "index": 4,
+         "language": "Português",
+         "languageCode": "por",
+         "languageTag": "pt",
+         "streamIdentifier": null,
+         "streamType": 3
+        }
+       ],
+       "audioProfile": null,
+       "container": "mkv",
+       "duration": 389097,
+       "file": "/zurg/shows/The Big Bang Theory S01-S12/TBBT S04 Interview 1.mkv",
+       "id": 1710450,
+       "key": "/library/parts/1710450/1792240372/file.mkv",
+       "size": 643988538,
+       "videoProfile": "high"
+      }
+     ],
+     "_chapters": [],
+     "aspectRatio": 1.78,
+     "audioChannels": 2,
+     "audioCodec": "ac3",
+     "audioProfile": null,
+     "bitrate": 13241,
+     "container": "mkv",
+     "duration": 389097,
+     "hasVoiceActivity": false,
+     "height": 1080,
+     "id": 17104500,
+     "videoCodec": "h264",
+     "videoFrameRate": "24p",
+     "videoProfile": "high",
+     "videoResolution": "1080",
+     "width": 1920
+    }
+   ],
+   "Rating": [
+    {
+     "image": "themoviedb://image.rating",
+     "type": "audience",
+     "value": 7.9
+    }
+   ],
+   "Role": [
+    {
+     "filter": "actor=666891",
+     "id": 666891,
+     "role": "Leonard Hofstadter",
+     "tag": "Johnny Galecki",
+     "tagKey": "95a5b83f438a490f50780090",
+     "thumb": "https://image.tmdb.org/t/p/w185/5zTHvvKpR9VUkzHxGnbrdB51Kyc.jpg"
+    },
+    {
+     "filter": "actor=158779",
+     "id": 158779,
+     "role": "Sheldon Cooper",
+     "tag": "Jim Parsons",
+     "tagKey": "09887bdffd56df122c8c26c1",
+     "thumb": "https://image.tmdb.org/t/p/w185/4D5oAUeM2wlejSwJJ6TmKoM9Abn.jpg"
+    },
+    {
+     "filter": "actor=569099",
+     "id": 569099,
+     "role": "Penny",
+     "tag": "Kaley Cuoco",
+     "tagKey": "17dc6e04a9c51f5ad1548449",
+     "thumb": "https://image.tmdb.org/t/p/w185/c01Ma8Jrr2OJ6uoikPwDK34Y8eK.jpg"
+    },
+    {
+     "filter": "actor=852766",
+     "id": 852766,
+     "role": "Howard Wolowitz",
+     "tag": "Simon Helberg",
+     "tagKey": "76ee7e03c44b2552a9ef916d",
+     "thumb": "https://image.tmdb.org/t/p/w185/zGrQSfQEw0vO6otWdSXiBHfwv7S.jpg"
+    },
+    {
+     "filter": "actor=715937",
+     "id": 715937,
+     "role": "Rajesh Koothrappali",
+     "tag": "Kunal Nayyar",
+     "tagKey": "c4ef0b7d3693a3d5aad82c38",
+     "thumb": "https://image.tmdb.org/t/p/w185/o58v195EJs4U4whNLqyoIh7Qzef.jpg"
+    },
+    {
+     "filter": "actor=197977",
+     "id": 197977,
+     "role": "Bernadette Rostenkowski",
+     "tag": "Melissa Rauch",
+     "tagKey": "5895dbb796bf87607e81e265",
+     "thumb": "https://image.tmdb.org/t/p/w185/2gdX9GwWL8ulRSYFv8iQ4ZP69Yp.jpg"
+    }
+   ],
+   "UltraBlurColors": {
+    "bottomLeft": "1f1f26",
+    "bottomRight": "15151a",
+    "topLeft": "1a1a1e",
+    "topRight": "24242a"
+   },
+   "Writer": [
+    {
+     "filter": "writer=783912",
+     "id": 783912,
+     "tag": "Adam Faberman",
+     "tagKey": "f98641cc53610ccd41d53b98"
+    }
+   ],
+   "_artFor": "https://image.tmdb.org/t/p/w1280/rwYvhVv0vwbulMwxOfEsuAr1JrT.jpg",
+   "_art_url": "https://image.tmdb.org/t/p/w1280/rwYvhVv0vwbulMwxOfEsuAr1JrT.jpg",
+   "_folder": "The Big Bang Theory S01-S12",
+   "_generatedTitle": true,
+   "_hash": "2423b609b2800eb4ec61f3409520f3946c741570",
+   "_identify": {
+    "imdb": "tt0898266",
+    "plex": "plex://show/5d9c086c02391c001f5891b3",
+    "source": "placed",
+    "tmdb": 1418
+   },
+   "_identity": "tmdb:1418",
+   "_ids": {
+    "imdb": "tt0898266",
+    "tmdb": "1418"
+   },
+   "_own_content_rating": true,
+   "_path": "shows/The Big Bang Theory S01-S12/TBBT S04 Interview 1.mkv",
+   "_placed": {
+    "kind": "episode"
+   },
+   "_poster_url": "https://image.tmdb.org/t/p/w1280/rwYvhVv0vwbulMwxOfEsuAr1JrT.jpg",
+   "_release": "The Big Bang Theory S01-S12 + Extras BluRay",
+   "_scanned": true,
+   "_sid": "shows/The Big Bang Theory S01-S12/TBBT S04 Interview 1.mkv",
+   "_source": "zurg",
+   "_thumbFor": "https://image.tmdb.org/t/p/w1280/rwYvhVv0vwbulMwxOfEsuAr1JrT.jpg",
+   "addedAt": 1792240372,
+   "art": "/library/metadata/115750/art/1792240372",
+   "audienceRating": 7.9,
+   "audienceRatingImage": "themoviedb://image.rating",
+   "contentRating": "12",
+   "duration": 389097,
+   "grandparentArt": "/library/metadata/115750/art/1791897222",
+   "grandparentGuid": "plex://show/5d9c086c02391c001f5891b3",
+   "grandparentKey": "/library/metadata/115750",
+   "grandparentRatingKey": "115750",
+   "grandparentSlug": "the-big-bang-theory",
+   "grandparentThumb": "/library/metadata/115750/thumb/1791897222",
+   "grandparentTitle": "The Big Bang Theory",
+   "guid": "local://171045",
+   "index": 30,
+   "key": "/library/metadata/171045",
+   "librarySectionID": 2,
+   "librarySectionKey": "/library/sections/2",
+   "librarySectionTitle": "TV Shows",
+   "originallyAvailableAt": "2007-09-24",
+   "parentGuid": "plex://season/5d9c09deef619b0020486b7f",
+   "parentIndex": 1,
+   "parentKey": "/library/metadata/115751",
+   "parentRatingKey": "115751",
+   "parentThumb": "/library/metadata/115751/thumb/1791897222",
+   "parentTitle": "Season 1",
+   "ratingKey": "171045",
+   "summary": "Physicists Leonard and Sheldon find their nerd-centric social circle with pals Howard and Raj expanding when aspiring actress Penny moves in next door.",
+   "thumb": "/library/metadata/171045/thumb/1792240376",
+   "title": "Episode 30",
+   "type": "episode",
+   "updatedAt": 1792240372,
+   "year": 2007
+  },
+  {
+   "Media": [
+    {
+     "Part": [
+      {
+       "Stream": [
+        {
+         "anamorphic": false,
+         "bitDepth": 10,
+         "chromaLocation": null,
+         "chromaSubsampling": "4:2:0",
+         "codec": "h264",
+         "codecID": null,
+         "codedHeight": null,
+         "codedWidth": null,
+         "colorPrimaries": null,
+         "colorRange": null,
+         "colorSpace": null,
+         "colorTrc": null,
+         "default": true,
+         "displayTitle": "720p",
+         "extendedDisplayTitle": "720p (H.264 High 10)",
+         "frameRate": 23.976,
+         "height": 720,
+         "id": 173447001,
+         "index": 0,
+         "level": 31,
+         "pixelAspectRatio": "360:361",
+         "profile": "high 10",
+         "refFrames": null,
+         "scanType": "progressive",
+         "streamIdentifier": null,
+         "streamType": 1,
+         "width": 962
+        },
+        {
+         "audioChannelLayout": "stereo",
+         "bitDepth": null,
+         "channels": 2,
+         "codec": "aac",
+         "default": true,
+         "displayTitle": "日本語 (AAC Stereo)",
+         "extendedDisplayTitle": "日本語 (AAC Stereo)",
+         "id": 173447002,
+         "index": 1,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "profile": "lc",
+         "samplingRate": 48000,
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 2
+        }
+       ],
+       "audioProfile": "lc",
+       "container": "mkv",
+       "duration": 95625,
+       "file": "/zurg/shows/[DmonHiro] Inuyasha (BD, 720p) (US BD)/Clean Ending 03.mkv",
+       "id": 1734470,
+       "key": "/library/parts/1734470/1792240997/file.mkv",
+       "size": 47026196,
+       "videoProfile": "high 10"
+      }
+     ],
+     "_chapters": [],
+     "aspectRatio": 1.33,
+     "audioChannels": 2,
+     "audioCodec": "aac",
+     "audioProfile": "lc",
+     "bitrate": 3934,
+     "container": "mkv",
+     "duration": 95625,
+     "hasVoiceActivity": false,
+     "height": 720,
+     "id": 17344700,
+     "videoCodec": "h264",
+     "videoFrameRate": "24p",
+     "videoProfile": "high 10",
+     "videoResolution": "720",
+     "width": 962
+    }
+   ],
+   "Rating": [
+    {
+     "image": "themoviedb://image.rating",
+     "type": "audience",
+     "value": 8.6
+    }
+   ],
+   "Role": [
+    {
+     "filter": "actor=802622",
+     "id": 802622,
+     "role": "InuYasha (voice)",
+     "tag": "Kappei Yamaguchi",
+     "tagKey": "11b3847b1f1885ad69c8769d",
+     "thumb": "https://image.tmdb.org/t/p/w185/mJyxKRZxLv9D7LH5KcNSkjSKYOB.jpg"
+    },
+    {
+     "filter": "actor=322709",
+     "id": 322709,
+     "role": "Kagome Higurashi (voice)",
+     "tag": "Satsuki Yukino",
+     "tagKey": "6690cd29888bbfa945511e56",
+     "thumb": "https://image.tmdb.org/t/p/w185/fb9LqdOZPNjlXq3uHriBOmIe2WP.jpg"
+    },
+    {
+     "filter": "actor=277178",
+     "id": 277178,
+     "role": "Miroku (voice)",
+     "tag": "Koji Tsujitani",
+     "tagKey": "c3e02907f99014915e48bd5f",
+     "thumb": "https://image.tmdb.org/t/p/w185/7NTqy1dhJUNYjMAFqB5j1lNaar.jpg"
+    },
+    {
+     "filter": "actor=236745",
+     "id": 236745,
+     "role": "Sango (voice)",
+     "tag": "Houko Kuwashima",
+     "tagKey": "6c62f12aa3473bfdc8f5d3c7",
+     "thumb": "https://image.tmdb.org/t/p/w185/uZSmoh5jSdLwmkLaCnC3Xju6TTN.jpg"
+    },
+    {
+     "filter": "actor=849018",
+     "id": 849018,
+     "role": "Sesshomaru (voice)",
+     "tag": "Ken Narita",
+     "tagKey": "46733e2e87b47acce5fc042c",
+     "thumb": "https://image.tmdb.org/t/p/w185/7fuRQk5eUp0MWQxxkw15RM1KxQM.jpg"
+    },
+    {
+     "filter": "actor=472353",
+     "id": 472353,
+     "role": "Rin (voice)",
+     "tag": "Mamiko Noto",
+     "tagKey": "2b911be4ef89ec90d6480079",
+     "thumb": "https://image.tmdb.org/t/p/w185/wCSD7Umgzc66p8VGXrrMZtSLSuS.jpg"
+    }
+   ],
+   "UltraBlurColors": {
+    "bottomLeft": "1f1f26",
+    "bottomRight": "15151a",
+    "topLeft": "1a1a1e",
+    "topRight": "24242a"
+   },
+   "Writer": [
+    {
+     "filter": "writer=299755",
+     "id": 299755,
+     "tag": "Rumiko Takahashi",
+     "tagKey": "d26ef44fc52ec20d9649bcfa"
+    }
+   ],
+   "_artFor": "https://image.tmdb.org/t/p/w1280/mVE1ULmLaYhCkBQPt3JC5xZC6T6.jpg",
+   "_art_url": "https://image.tmdb.org/t/p/w1280/mVE1ULmLaYhCkBQPt3JC5xZC6T6.jpg",
+   "_folder": "Bluray Extras",
+   "_generatedTitle": true,
+   "_hash": "0660b397f850a8802976f78416b2b06b645109f6",
+   "_identify": {
+    "imdb": "tt0290223",
+    "plex": "plex://show/5d9c08294eefaa001f5d730b",
+    "source": "placed",
+    "tmdb": 35610
+   },
+   "_identity": "tmdb:35610",
+   "_ids": {
+    "imdb": "tt0290223",
+    "tmdb": "35610"
+   },
+   "_own_content_rating": true,
+   "_path": "shows/[DmonHiro] Inuyasha (BD, 720p) (US BD)/Clean Ending 03.mkv",
+   "_placed": {
+    "kind": "episode"
+   },
+   "_poster_url": "https://image.tmdb.org/t/p/w1280/mVE1ULmLaYhCkBQPt3JC5xZC6T6.jpg",
+   "_release": "[DmonHiro] Inuyasha (BD, 720p) (US BD)",
+   "_scanned": true,
+   "_sid": "shows/[DmonHiro] Inuyasha (BD, 720p) (US BD)/Clean Ending 03.mkv",
+   "_source": "zurg",
+   "_thumbFor": "https://image.tmdb.org/t/p/w1280/mVE1ULmLaYhCkBQPt3JC5xZC6T6.jpg",
+   "addedAt": 1792240997,
+   "art": "/library/metadata/136987/art/1792240997",
+   "audienceRating": 8.6,
+   "audienceRatingImage": "themoviedb://image.rating",
+   "contentRating": "TV-14",
+   "duration": 95625,
+   "grandparentArt": "/library/metadata/136987/art/1791897222",
+   "grandparentGuid": "plex://show/5d9c08294eefaa001f5d730b",
+   "grandparentKey": "/library/metadata/136987",
+   "grandparentRatingKey": "136987",
+   "grandparentSlug": "inuyasha",
+   "grandparentThumb": "/library/metadata/136987/thumb/1791897222",
+   "grandparentTitle": "InuYasha",
+   "guid": "local://173447",
+   "index": 169,
+   "key": "/library/metadata/173447",
+   "librarySectionID": 2,
+   "librarySectionKey": "/library/sections/2",
+   "librarySectionTitle": "TV Shows",
+   "originallyAvailableAt": "2000-10-16",
+   "parentGuid": "plex://season/5d9c0986705e7a001e6ef654",
+   "parentIndex": 1,
+   "parentKey": "/library/metadata/137260",
+   "parentRatingKey": "137260",
+   "parentThumb": "/library/metadata/137260/thumb/1791897222",
+   "parentTitle": "Season 1",
+   "ratingKey": "173447",
+   "summary": "Kagome Higurashi is a modern day young girl who lives with her family by the old Higure shrine. Unbeknownst to Kagome, she is the reincarnation of priestess Kikyo and posseses the \"Jewel of Four Souls\" (the Shikon jewel). One ill-fated day, Kagome locates an ancient well near her home and is abruptly transported through the well and into a feudal Japan, inhabited by demons. There, she encounters Inuyasha, son of a powerful demon father and a human mother, who is pinned to a tree by an enchanted arrow.",
+   "thumb": "/library/metadata/173447/thumb/1792240998",
+   "title": "Episode 169",
+   "type": "episode",
+   "updatedAt": 1792240997,
+   "year": 2000
+  }
+ ],
+ "source": "the production server's rows of 2026-10-22, read-only from its state file; sources renamed zurg, mounts /zurg"
+}
