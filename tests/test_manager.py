@@ -274,26 +274,44 @@ def main():
         check("a server on one address becomes running",
               wait_for(lambda: manager.api("GET", "/servers/sixer")[1]["status"] == "running", 60),
               manager.api("GET", "/servers/sixer")[1])
-        # A start sent while a stop is still waiting for the server to exit: it was dropped, and
-        # the server stayed stopped with nothing said.
+        # Keep the child alive until the API exposes the stop's desired state.
+        # Thread.start() plus a sleep did not establish request ordering: the manager
+        # accepts connections on a 100 ms poll and may handle start before stop.
         import threading
-        stopping = threading.Thread(target=lambda: manager.api("POST", "/servers/sixer/stop"))
-        held_pid = manager.api("GET", "/servers/sixer")[1]["pid"]
-        os.kill(held_pid, signal.SIGSTOP)
+        pid = manager.api("GET", "/servers/sixer")[1]["pid"]
+        os.killpg(pid, signal.SIGSTOP)
+        stop_result = []
+        stopping = threading.Thread(
+            target=lambda: stop_result.append(manager.api("POST", "/servers/sixer/stop")))
+        stopping.start()
+        ordered = False
+        started = None
         try:
-            stopping.start()
-            assert wait_for(lambda: manager.api("GET", "/servers/sixer")[1]["desired"] == "stopped", 10)
-            assert stopping.is_alive(), "the stop must still be waiting when start is sent"
-            manager.api("POST", "/servers/sixer/start")
+            ordered = wait_for(lambda: (lambda row:
+                row["desired"] == "stopped" and row["pid"] == pid)(
+                    manager.api("GET", "/servers/sixer")[1]), 10)
+            if ordered:
+                started = manager.api("POST", "/servers/sixer/start")
         finally:
             try:
-                os.kill(held_pid, signal.SIGCONT)
+                os.killpg(pid, signal.SIGCONT)
             except ProcessLookupError:
                 pass
-        stopping.join()
+            stopping.join()
+        def race_snapshot(response):
+            if response is None:
+                return None
+            status, row = response
+            return {"http": status, **{key: row.get(key) for key in
+                                      ("desired", "status", "pid", "last_exit", "last_error")}}
         check("a start sent during a stop leaves the server running",
-              wait_for(lambda: manager.api("GET", "/servers/sixer")[1]["status"] == "running", 60),
-              manager.api("GET", "/servers/sixer")[1])
+              ordered and started[0] == 200 and stop_result and stop_result[0][0] == 200
+              and wait_for(lambda: (lambda row:
+                  row["desired"] == "running" and row["status"] == "running")(
+                      manager.api("GET", "/servers/sixer")[1]), 60),
+              {"ordered": ordered, "start": race_snapshot(started),
+               "stop": race_snapshot(stop_result[0]) if stop_result else None,
+               "final": race_snapshot(manager.api("GET", "/servers/sixer"))})
         manager.api("POST", "/servers/sixer/stop")
 
         logs = manager.api("GET", "/servers/alpha/logs?lines=500")[1]["lines"]

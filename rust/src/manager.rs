@@ -369,6 +369,8 @@ fn rotate(path: &Path) {
 struct Proc {
     pid: u32,
     child: Arc<Mutex<Child>>,
+    // Set under the manager lock: stop, not the monitor, owns this child's exit.
+    stopping: bool,
 }
 
 impl Proc {
@@ -667,7 +669,7 @@ impl Manager {
             }
             Ok(child) => {
                 let pid = child.id();
-                inner.procs.insert(name.to_string(), Proc { pid, child: Arc::new(Mutex::new(child)) });
+                inner.procs.insert(name.to_string(), Proc { pid, child: Arc::new(Mutex::new(child)), stopping: false });
                 inner.due.remove(name);
                 inner.update(
                     name,
@@ -703,7 +705,10 @@ impl Manager {
                 inner.update(name, &[("desired", s("stopped"))])?;
             }
             inner.due.remove(name);
-            inner.procs.get(name).cloned()
+            inner.procs.get_mut(name).map(|proc| {
+                proc.stopping = true;
+                proc.clone()
+            })
         };
         // Waited outside the lock: a server saving on SIGTERM must not freeze the API.
         let code = proc.as_ref().and_then(Proc::terminate);
@@ -762,6 +767,11 @@ impl Manager {
         let now = now();
         let procs = inner.procs.iter().map(|(name, proc)| (name.clone(), proc.clone())).collect::<Vec<_>>();
         for (name, proc) in procs {
+            // A later start may already have restored desired=running. Classifying
+            // this intentional exit as a clean self-exit would lose that request.
+            if proc.stopping {
+                continue;
+            }
             match proc.poll() {
                 None => {
                     let row = inner.row(&name)?;
@@ -1646,6 +1656,35 @@ fn client(cli: &Cli, root: &Path) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn monitor_leaves_a_stopping_child_for_stop_to_finish() {
+        let root = std::env::temp_dir().join(format!("rex-manager-stop-{}-{}", std::process::id(), now()));
+        let manager = Arc::new(Manager::open(&root, "/bin/true".to_string()).unwrap());
+        manager.create(json!({"name": "den", "port": 32401})).unwrap();
+        let mut child = Command::new("/bin/sh").args(["-c", "exit 0"]).spawn().unwrap();
+        let pid = child.id();
+        // Force the interleaving: stop owns the child, a later start has restored
+        // desired=running, and the child exits before stop reacquires the lock.
+        assert!(child.wait().unwrap().success());
+        {
+            let mut inner = manager.lock();
+            inner.update("den", &[("desired", s("running")), ("status", s("running")),
+                ("pid", Sql::Integer(pid.into()))]).unwrap();
+            inner.procs.insert("den".to_string(), Proc {
+                pid, child: Arc::new(Mutex::new(child)), stopping: true,
+            });
+        }
+        manager.reap().unwrap();
+        {
+            let inner = manager.lock();
+            assert!(inner.procs.contains_key("den"), "stop must retain ownership of the exited child");
+            assert_eq!(inner.row("den").unwrap().desired, "running", "the later start must survive");
+            assert!(inner.due.is_empty(), "an intentional stop must not schedule a failure restart");
+        }
+        drop(manager);
+        fs::remove_dir_all(root).unwrap();
+    }
 
     #[test]
     fn failures_back_off_then_give_up_within_the_window() {
