@@ -46,6 +46,17 @@ def main():
             answer = answer if isinstance(answer, dict) else {}
             check("%s rejects nothing" % name, not answer.get("rejected"), answer)
             counts = lambda *fields: sum(answer.get(field, 0) for field in fields)
+            if sent["path"].startswith("/rex/sources/") and body.get("directories"):
+                # zurg's `rex_shows`/`rex_movies`: each directory has a library of each kind it titles.
+                check("%s ignores none of zurg's directories" % name, not answer.get("ignored"), answer.get("ignored"))
+                _, listing = server.request("/library/sections")
+                held = {(row["type"], location["path"]) for row in listing["MediaContainer"]["Directory"]
+                        for location in row.get("Location") or []}
+                for entry in body["directories"]:
+                    for kind, field in (("show", "shows"), ("movie", "movies")):
+                        if entry.get(field):
+                            check("zurg's %s directory has a %s library" % (entry["name"], kind),
+                                  (kind, "%s/%s" % (mount, entry["name"])) in held, sorted(held))
             if "items" in body:
                 check("%s accounts for each of its %d items" % (name, len(body["items"])),
                       counts("created", "updated", "held", "unchanged") == len(body["items"]), answer)
