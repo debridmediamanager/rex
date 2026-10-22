@@ -151,6 +151,9 @@ home. An unclaimed rex announces nothing and logs `waiting for a claim`; the cla
 starts the announce, and rex-direct (step 7), at once. With an HTTPS address of your own
 (step 7), its flags go here too. Everything here is read at start, so a flag or key added later needs a restart.
 
+Plex Media Server runs on the same machine? Add `--port 32500` and use `32500` wherever this
+guide says `32400`, the claim and step 7's port forward included (see LAN discovery below).
+
 Leave `--owner-username` and `--owner-email` unset: a claimed server takes both from the
 claim, and a given `--owner-username` still wins over it.
 
@@ -283,8 +286,11 @@ a wrong match can never be corrected by a later push.
 
 ### 7. Reach it from outside: HTTPS and the announce
 
-app.plex.tv connects only to an HTTPS address that plex.tv lists for the server, and the
-other Plex apps outside your LAN prefer one. rex has no `*.plex.direct` certificate. The
+app.plex.tv connects only to an HTTPS address that plex.tv lists for the server, even at
+home, and the other Plex apps outside your LAN prefer one. rex has no `*.plex.direct`
+certificate: plex.tv lists step 4's LAN address to the apps as
+`https://<rex's LAN IP with dashes>.<id>.plex.direct:32400`, a name rex cannot answer with a valid
+certificate (measured on rex-fun 2026-10-22), so app.plex.tv cannot use it. The
 simplest address is rex-direct, DMM's own plex.direct. Your own hostname works too. Either
 way rex terminates TLS itself, on the same port as plain HTTP.
 
@@ -302,8 +308,10 @@ way rex terminates TLS itself, on the same port as plain HTTP.
   uses it when DMM does not answer at a start. A refusal is a `WARNING` in the log and rex
   runs on without it. The name points at the public IPv4 address rex calls DMM from, so
   behind CGNAT it cannot work. At home, Plex apps can pick that name over the
-  LAN address (Plex for Android did, measured on rex-fun 2026-10-22): the router loops the
-  connection back to rex, so the stream stays inside the home and rex sees the router's address. If your router
+  LAN address (Plex for Android did, measured on rex-fun 2026-10-22; rex saw the router's
+  address as the client), and app.plex.tv has no other address it can use unless you announce
+  an HTTPS address of your own. So at home either the router loops the connection back to rex
+  or your network's DNS points the name at rex's LAN IP (below). If your router
   forwards another outside port to rex, set `REX_DIRECT_PORT=<that port>`. `REX_DIRECT_URL`
   names another provider by its `https://` address; plain `http://` works only on this machine,
   and anything else is refused with a warning. Use only a provider you trust, since it picks the
@@ -313,6 +321,15 @@ way rex terminates TLS itself, on the same port as plain HTTP.
   RSA or EC (`BEGIN EC PRIVATE KEY`, which `tailscale cert` and many ACME clients write). A
   `tailscale cert` hostname works for apps on your tailnet. With rex-direct as well, rex
   serves the rex-direct certificate to clients that ask for its name and yours to the rest.
+
+Check rex-direct from both sides with the address from the `rex-direct: https://...` log line:
+`curl -s https://<name>:<port>/identity` (curl refuses a bad certificate) should answer on a
+machine at home, and the same address with `/identity` should open in a phone's browser on
+mobile data with no certificate warning. If only the phone gets it, the router does not loop
+connections back: point the name at rex's LAN IP in your network's DNS (allow it in DNS rebind
+protection) and rex answers it with the same certificate (measured with a resolver override,
+2026-10-22). If the phone fails too, the port is not forwarded, the connection is behind CGNAT,
+or the certificate is still being issued.
 
 Do not put a Cloudflare tunnel in front. Every byte would pass through your host and then
 Cloudflare. Cloudflare also drops the `Range` of a file's first read. rex then serves the
