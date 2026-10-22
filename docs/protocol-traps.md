@@ -1210,7 +1210,10 @@ currently advertised by rex. A version label is not proof of complete PMS equiva
   activity update of its own; **`provider.subscriptions.process` is the one `cancellable:
   true` activity**; and **an analyze pushes NO `backgroundProcessingQueue` frame** --
   rex invented one. **`PUT /updater/check` pushes one `update.statechange` frame**
-  carrying an `AutoUpdateNotification` row.
+  carrying an `AutoUpdateNotification` row. The isolated copy's row is `state: error`,
+  which Plex Web 4.163 shows as "An update is available. Please install manually." (no
+  `error` text, `canInstall` false); rex sends `done`, its "Up to date", because rex
+  always names itself the newest PMS and must never read as out of date (Ben, 2026-10-22).
 - **`DELETE /devices/{id}` and `DELETE /accounts/{id}` are 404s**, for an id the server
   lists and one it does not; **`PUT /activities/{x}` is a 400** where its DELETE is a 404;
   and **`HEAD /:/prefs` is a 200**, the one disagreement in a HEAD sweep over sixty paths.

@@ -8591,11 +8591,13 @@ impl Runtime {
                 ),
             ),
             ("PUT", "/updater/check") => {
-                // Cycle 19: one `update.statechange` frame; with no update channel the
-                // state is `error`, as the isolated copy answers.
+                // Cycle 19: one `update.statechange` frame. The isolated copy's `error`
+                // reads in Plex Web 4.163 as "An update is available. Please install
+                // manually."; `done` is its "Up to date". rex names itself the newest PMS,
+                // so it is always up to date (Ben, 2026-10-22).
                 self.push_event(
                     "update.statechange",
-                    json!({"AutoUpdateNotification": [{"key": "", "version": "", "state": "error"}]}),
+                    json!({"AutoUpdateNotification": [{"key": "", "version": "", "state": "done"}]}),
                 );
                 Response::empty(200)
             }

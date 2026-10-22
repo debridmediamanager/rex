@@ -28145,6 +28145,13 @@ def main():
           and any((f_c19u.get("NotificationContainer") or {}).get("type") == "update.statechange"
                   for f_c19u in upd_c19u),
           "%d frames %s" % (len(upd_c19u), rows_c19u))
+    # Plex Web 4.163 shows "An update is available. Please install manually." for
+    # `state: error` with no message and canInstall false, and "Up to date" only for
+    # `done` (the `.done>.up-to-date-label` rule). rex names itself the newest PMS, so
+    # it is always up to date (Ben, 2026-10-22).
+    check("and the check says up to date, never an update to install",
+          len(rows_c19u) == 1 and rows_c19u[0].get("state") == "done",
+          str(rows_c19u))
 
 
     # Cycle 20, the parser holdout (every field x every operator against both
