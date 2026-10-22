@@ -83,7 +83,7 @@ rex plays nothing until this step. It is at your own risk: rex is not made by Pl
 
 Do it before step 4. Titles zurg sends before the claim keep their file names until rex names them in the background, about 300 an hour.
 
-Sign in to plex.tv as the fresh account, open [plex.tv/claim](https://www.plex.tv/claim) and copy the code. It expires in four minutes.
+Sign in to plex.tv as the fresh account, open [plex.tv/claim](https://www.plex.tv/claim) and copy the code. It expires after about five minutes.
 
 ```bash
 curl -X POST "http://<rex's LAN IP>:32400/myplex/claim?token=claim-xxxxxxxxxxxx"
@@ -116,7 +116,7 @@ This needs a zurg nightly from 2026.10.19 or later, so update zurg first. The la
 
 app.plex.tv only connects to an HTTPS address and the other Plex apps outside your home prefer one. rex has no relay so the address has to be reachable from the internet.
 
-The simplest way is rex-direct, which is on by default. Forward rex's port (32400) on your router to the rex machine. That is all: once claimed, rex gets a name of its own, `<hash>.rex-direct.debridmediamanager.com`, and a certificate for it from DMM, and announces `https://<name>:32400` after the address in `--announce-url`. The first certificate can take a few minutes. The name points at the public IP rex calls DMM from, and rex checks it every six hours, so a new IP is picked up on its own. One Plex account can hold up to ten rex-direct names. Behind CGNAT it cannot work, because nothing outside reaches your router's port. Plex apps at home still use the LAN address. If your router forwards another outside port to rex, set `REX_DIRECT_PORT` to that port. `REX_DIRECT_URL` points rex at another provider ([the API](docs/rex-direct-api.md)), and `REX_DIRECT_URL=off` turns it off.
+The simplest way is rex-direct, which is on by default. Forward rex's port (32400) on your router to the rex machine. That is all: once claimed, rex gets a name of its own, `<hash>.rex-direct.debridmediamanager.com`, and a certificate for it from DMM, and announces `https://<name>:32400` after the address in `--announce-url`. The first certificate can take a few minutes. The name points at the public IP rex calls DMM from, and rex checks it every six hours, so a new IP is picked up on its own. One Plex account can hold up to ten rex-direct names. Behind CGNAT it cannot work, because nothing outside reaches your router's port. At home, Plex apps can pick that name over the LAN address (Plex for Android did): your router then sends the connection straight back to rex, so the stream stays inside your home and rex sees the router as the client. If your router forwards another outside port to rex, set `REX_DIRECT_PORT` to that port. `REX_DIRECT_URL` points rex at another provider ([the API](docs/rex-direct-api.md)), and `REX_DIRECT_URL=off` turns it off.
 
 You can use your own hostname instead. Give rex a certificate for it with `--tls-cert` and `--tls-key` (PKCS#8, RSA or EC, so the files `tailscale cert` and ACME clients write work as they are) and put the address first in step 2's flag, the LAN address after it:
 

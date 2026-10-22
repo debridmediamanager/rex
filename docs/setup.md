@@ -220,7 +220,7 @@ means claiming again, and a claim gone wrong has signed every other server on th
 account out of plex.tv before.
 
 1. Open [plex.tv/claim](https://www.plex.tv/claim) signed in as the fresh account and copy
-   the `claim-...` token. It is valid for four minutes.
+   the `claim-...` token. It is valid for about five minutes (redeemed at 4:15, refused at 5:15).
 2. Redeem it on rex itself:
 
    ```bash
@@ -301,7 +301,9 @@ way rex terminates TLS itself, on the same port as plain HTTP.
   `rex-direct.json` beside the catalog (mode 600, since it holds the certificate's key) and
   uses it when DMM does not answer at a start. A refusal is a `WARNING` in the log and rex
   runs on without it. The name points at the public IPv4 address rex calls DMM from, so
-  behind CGNAT it cannot work. Plex apps at home still use the LAN address. If your router
+  behind CGNAT it cannot work. At home, Plex apps can pick that name over the
+  LAN address (Plex for Android did, measured on rex-fun 2026-10-22): the router loops the
+  connection back to rex, so the stream stays inside the home and rex sees the router's address. If your router
   forwards another outside port to rex, set `REX_DIRECT_PORT=<that port>`. `REX_DIRECT_URL`
   names another provider by its `https://` address; plain `http://` works only on this machine,
   and anything else is refused with a warning. Use only a provider you trust, since it picks the
@@ -629,7 +631,8 @@ conversion runs on the GPU end to end when it can decode the source there, uploa
 HDR and Dolby Vision are tonemapped on the CPU, which on a low-power Intel is a tenth of real time
 at 4K, unless the tonemapping algorithm is `bt2390` and the probe tonemapped a frame through
 OpenCL: only then do they stay on the GPU. The default algorithm is `hable`, and Plex's settings
-page does not list `bt2390`. The OpenCL runtime is a package of its own:
+page does not list `bt2390`; set it with
+`curl -X PUT "http://<rex's LAN IP>:32400/:/prefs?TranscoderToneMappingAgorithm=bt2390&X-Plex-Token=<owner's token>"`. The OpenCL runtime is a package of its own:
 
 ```bash
 sudo apt install intel-opencl-icd   # Ubuntu 22.04: 22.14, enough for a Gemini Lake J4105
