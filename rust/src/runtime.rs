@@ -83,9 +83,6 @@ use resume::{
     hub_refusal, int_param, page_window, paging_values, unmatched_guid,
 };
 
-// Clients get the measured build: rex answers as 1.42.2, and a client told a newer PMS may
-// ask for paths rex does not emulate. plex.tv gets the newest (`plextv::refresh_version`).
-const VERSION: &str = "1.42.2.10156-f737b826c";
 const MEDIA_TAG_PREFIX: &str = "/system/bundle/media/flags/";
 const MEDIA_TAG_VERSION: i64 = 1_655_122_614;
 const MAX_HEADER_BYTES: usize = 256 * 1024;
@@ -382,6 +379,7 @@ struct GdmPeer {
 #[derive(Debug, Clone)]
 struct Playlist {
     id: String,
+    guid: String,
     title: String,
     items: Vec<String>,
     item_ids: Vec<i64>,
@@ -934,7 +932,7 @@ impl Runtime {
         // the claim's token (a claim made later builds it then, `finish_claim`).
         let plex = plextv::claim_token(&plextv.claim).map(|_| {
             let cache = plextv::claim_path(&options.catalog).with_file_name("plex_cache.json");
-            Arc::new(plexmeta::PlexMeta::new(Arc::clone(&plextv.claim), cache, machine.clone()))
+            Arc::new(plexmeta::PlexMeta::new(Arc::clone(&plextv.claim), cache))
         });
         let analysis_jobs = analysis::Jobs::new(options.state.as_deref());
         let mut runtime = Self {
@@ -1098,6 +1096,10 @@ impl Runtime {
         if let Some(path) = runtime.state_path.clone() {
             let clean = runtime.catalog.unchanged();
             runtime.catalog.attach(&path, key_of, clean);
+        }
+        if runtime.migrate_list_guids() {
+            // Commit newly minted UUIDs before any client can observe them.
+            runtime.save_state()?;
         }
         Ok(runtime)
     }
@@ -1428,6 +1430,7 @@ impl Runtime {
                             id.clone(),
                             Playlist {
                                 id,
+                                guid: row.get("guid").and_then(Value::as_str).unwrap_or_default().to_string(),
                                 title: row
                                     .get("title")
                                     .and_then(Value::as_str)
@@ -2029,14 +2032,14 @@ impl Runtime {
             "viewCounts": self.view_counts.borrow().clone(),
             "devices": self.devices.iter().map(|(key, value)| (key.clone(), json!({"name":value.name,"product":value.product,"platform":value.platform,"lastSeenAt":value.last_seen}))).collect::<Map<String, Value>>(),
             "playlists": self.playlists.values().map(|value| {
-                let mut row = json!({"id":value.id,"title":value.title,"items":value.items,"itemIds":value.item_ids,"smart":value.smart,"uri":value.uri});
+                let mut row = json!({"id":value.id,"guid":value.guid,"title":value.title,"items":value.items,"itemIds":value.item_ids,"smart":value.smart,"uri":value.uri});
                 // Only another account's: an owner's playlist is saved as it always was.
                 if value.account != accounts::OWNER {
                     row["accountID"] = json!(value.account);
                 }
                 row
             }).chain(self.hidden_playlists.values().map(|value| {
-                let mut row = json!({"id":value.id,"title":value.title,"items":value.items,"itemIds":value.item_ids,"smart":value.smart,"uri":value.uri});
+                let mut row = json!({"id":value.id,"guid":value.guid,"title":value.title,"items":value.items,"itemIds":value.item_ids,"smart":value.smart,"uri":value.uri});
                 if value.account != accounts::OWNER {
                     row["accountID"] = json!(value.account);
                 }
@@ -3449,15 +3452,19 @@ impl Runtime {
             .collect()
     }
 
+    fn pms_identity(&self) -> std::sync::MutexGuard<'_, plextv::Claim> {
+        self.plextv.claim.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+
     fn identity(&self) -> Value {
         self.container(
             Map::from_iter([
                 ("size".to_string(), json!(0)),
-                ("apiVersion".to_string(), json!("1.1.1")),
+                ("apiVersion".to_string(), json!("1.2.3")),
                 // A JSON boolean, as server.py's `_claimed()` answers; XML renders it `1`.
                 ("claimed".to_string(), json!(self.claimed())),
                 ("machineIdentifier".to_string(), json!(self.machine)),
-                ("version".to_string(), json!(VERSION)),
+                ("version".to_string(), json!(self.pms_identity().version)),
             ]),
             false,
         )
@@ -3517,7 +3524,7 @@ impl Runtime {
             self.private_port,
             &self.machine,
             self.gdm_updated_at,
-            VERSION,
+            &self.pms_identity().version,
         )
     }
 
@@ -3585,7 +3592,7 @@ impl Runtime {
             "address": self.private_address,
             "port": self.private_port,
             "machineIdentifier": self.machine,
-            "version": VERSION
+            "version": self.pms_identity().version
         })];
         rows.extend(
             self.gdm_peers
@@ -3703,7 +3710,7 @@ impl Runtime {
             ("allowSharing", json!(true)),
             ("allowSync", json!(self.download_allowed())),
             ("allowTuners", json!(false)),
-            ("apiVersion", json!("1.1.1")),
+            ("apiVersion", json!("1.2.3")),
             ("backgroundProcessing", json!(true)),
             ("certificate", json!(true)),
             ("companionProxy", json!(true)),
@@ -3736,7 +3743,7 @@ impl Runtime {
             ("pluginHost", json!(true)),
             ("pushNotifications", json!(false)),
             ("readOnlyLibraries", json!(false)),
-            ("streamingBrainABRVersion", json!(3)),
+            ("streamDisplayTitleIncludesFormat", json!(true)),
             ("streamingBrainVersion", json!(2)),
             ("sync", json!(true)),
             // An encoder is claimed only when there is one (`REX_TRANSCODER`): Plex Web
@@ -3763,7 +3770,7 @@ impl Runtime {
             ),
             ("updatedAt", json!(1789127123)),
             ("updater", json!(true)),
-            ("version", json!(VERSION)),
+            ("version", json!(self.pms_identity().version)),
             ("voiceSearch", json!(true)),
         ]
     }
@@ -7295,13 +7302,6 @@ impl Runtime {
     }
 
     pub fn route(&mut self, request: &Request) -> Response {
-        if request.method == "PATCH" {
-            // Cycle 31, on plexscratch42 (1.42.2, the build rex reports): PATCH is not
-            // in 1.42.2's method table at all -- a 500 with the 109-byte document on every
-            // path, `/identity` and `/system` included, answered before any routing, so it
-            // registers no device and carries no framework cookie.
-            return Response::error(500, "rex: unknown method");
-        }
         // A plan only ever belongs to the request that made it.
         PROJECTION_PLAN.with(|plan| plan.borrow_mut().take());
         // Whatever the feed's threads and earlier requests wrote is answered with its own
@@ -8172,6 +8172,11 @@ impl Runtime {
                 .collect::<Vec<_>>();
             return self.route_butler(&request.method, &segments);
         }
+        if (path == "/web" || path == "/web/" || path == "/manage")
+            && matches!(request.method.as_str(), "OPTIONS" | "POST" | "PUT" | "DELETE" | "PATCH")
+        {
+            return Response::asset("application/octet-stream", Vec::new(), true);
+        }
         // server.py, cycles 15 and 18, measured on plexscratch with every verb: an
         // unknown SINGLE-segment path falls into the legacy plug-in dispatcher, and so
         // does a KNOWN one for every verb it does not implement -- `PUT /identity`,
@@ -8339,7 +8344,11 @@ impl Runtime {
                     headers: vec![
                         (
                             "Location".to_string(),
-                            format!("http://{host}/web/index.html"),
+                            if self.claimed() {
+                                format!("http://{host}/web/index.html")
+                            } else {
+                                format!("http://{host}/web/index.html#!/setup/{}", self.machine)
+                            },
                         ),
                         ("Cache-Control".to_string(), "public".to_string()),
                         ("X-Plex-Protocol".to_string(), "1.0".to_string()),
@@ -8396,7 +8405,7 @@ impl Runtime {
                 response.body = self.log_archive();
                 response.headers.push((
                     "Content-Disposition".to_string(),
-                    "attachment; filename=\"rex-logs.zip\"".to_string(),
+                    logging::archive_disposition(),
                 ));
                 response
             }
@@ -8575,7 +8584,7 @@ impl Runtime {
                     Map::from_iter([
                         ("size".to_string(), json!(0)),
                         ("canInstall".to_string(), json!(false)),
-                        ("checkedAt".to_string(), json!(now())),
+                        ("checkedAt".to_string(), json!(-1)),
                         ("status".to_string(), json!(0)),
                     ]),
                     false,
@@ -21818,8 +21827,8 @@ impl Runtime {
 
     fn route_bundled_resource(&self, relative: &str, head: bool) -> Response {
         let relative = relative.trim_end_matches('/');
-        let assets = load_json_sidecar(&self.catalog_path, "resource_assets.json");
-        let Some(assets) = assets.as_ref().and_then(Value::as_object) else {
+        let assets = shared_json_sidecar(&self.catalog_path, "resource_assets.json");
+        let Some(assets) = assets.as_deref().and_then(Value::as_object) else {
             return Response::error(404, "rex: not found");
         };
         if relative.is_empty()
@@ -21848,16 +21857,8 @@ impl Runtime {
             .and_then(Value::as_str)
             .unwrap_or("application/octet-stream")
             .to_string();
-        let body = if let Some(encoded) = asset.get("body").and_then(Value::as_str) {
-            base64_decode_bytes(encoded).unwrap_or_default()
-        } else {
-            let width = asset.get("width").and_then(Value::as_u64).unwrap_or(1) as u32;
-            let height = asset.get("height").and_then(Value::as_u64).unwrap_or(1) as u32;
-            match content_type.as_str() {
-                "image/png" => generated_png(width, height, [32, 34, 38]),
-                "image/jpeg" => generated_jpeg(width, height, [32, 34, 38]),
-                _ => Vec::new(),
-            }
+        let Some(body) = asset.get("body").and_then(Value::as_str).and_then(base64_decode_bytes) else {
+            return Response::error(500, "invalid bundled resource recording");
         };
         Response {
             status: 200,
@@ -22949,16 +22950,15 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
     }
     let listener = TcpListener::bind((host.as_str(), port))
         .map_err(|e| format!("cannot bind {host}:{port}: {e}"))?;
+    // The first client, GDM probe and plex.tv registration all see the same release.
+    // Unclaimed and --assert-claimed servers refresh too.
+    plextv::refresh_version(&plextv.claim);
+    plextv::watch_version(&plextv.claim);
     let claim = plextv
         .claim
         .lock()
         .map(|claim| claim.clone())
         .map_err(|_| "claim lock poisoned".to_string())?;
-    if claim.claimed() {
-        // Read before the registration below, so plex.tv hears one version from the start.
-        plextv::refresh_version(&plextv.claim);
-        plextv::watch_version(&plextv.claim);
-    }
     info!(
         "claim state: {}",
         if claim.claimed() {
@@ -23356,10 +23356,11 @@ fn handle_connection<S: Read + Write + PollRead>(
                     .is_some_and(|scheme_end| &request.target[..scheme_end] != "http")
         };
         let (request_path, request_query) = split_target(&request.target);
-        // The feed and the sources it pushes as are rex's own API, not emulated PMS routes:
-        // outside the Plex gate, open to any peer on a private network (`feed::source_peer`,
-        // `docs/feed-api.md`).
-        if request_path.starts_with("/rex/feed/") || request_path == "/rex/sources" || request_path.starts_with("/rex/sources/") {
+        // The private source API does not exist on the public surface. Ineligible peers
+        // take the normal PMS route/authentication path, including its wire envelope.
+        let source_peer = CONNECTION.with(std::cell::Cell::get)
+            .is_none_or(|(peer, _)| feed::source_peer(peer));
+        if source_peer && (request_path.starts_with("/rex/feed/") || request_path == "/rex/sources" || request_path.starts_with("/rex/sources/")) {
             let keep = request.version == "HTTP/1.1"
                 && request
                     .headers
@@ -24812,7 +24813,7 @@ fn show_listing_columns(items: &mut [Value]) {
 fn known_method(method: &str) -> bool {
     matches!(
         method,
-        "GET" | "HEAD" | "POST" | "PUT" | "DELETE" | "OPTIONS"
+        "GET" | "HEAD" | "POST" | "PUT" | "DELETE" | "PATCH" | "OPTIONS"
     )
 }
 
@@ -24877,9 +24878,11 @@ fn split_target(target: &str) -> (String, String) {
 /// resources and five more answer OPTIONS exactly as they answer a GET (their own 400,
 /// the image, `/log/networked`'s empty 200), where every GET-only read route is a 404.
 /// This server 404'd all of them.
+/// Current PMS also routes configured Web client assets this way (1.43.5, 2026-10-22).
 fn options_routed(path: &str) -> bool {
-    const PREFIXES: [&str; 3] = [
+    const PREFIXES: [&str; 4] = [
         "/:/resources/",
+        "/web/",
         "/video/:/transcode/universal/",
         "/subtitles/:/transcode/universal/",
     ];
@@ -27105,6 +27108,7 @@ fn part_content_type(part: &Value) -> String {
     }
     .to_string()
 }
+// Current PMS Web assets use image MIME types but leave WOFF/WOFF2 opaque.
 fn content_type(path: &str) -> String {
     if path.ends_with(".html") {
         "text/html".to_string()
@@ -27112,6 +27116,12 @@ fn content_type(path: &str) -> String {
         "text/javascript".to_string()
     } else if path.ends_with(".css") {
         "text/css".to_string()
+    } else if path.ends_with(".png") {
+        "image/png".to_string()
+    } else if path.ends_with(".svg") {
+        "image/svg+xml".to_string()
+    } else if path.ends_with(".jpg") {
+        "image/jpeg".to_string()
     } else {
         "application/octet-stream".to_string()
     }
@@ -27152,105 +27162,6 @@ fn generated_png(width: u32, height: u32, rgb: [u8; 3]) -> Vec<u8> {
     output.extend_from_slice(&chunk(b"IDAT", &compressed));
     output.extend_from_slice(&chunk(b"IEND", &[]));
     output
-}
-
-const JPEG_DC_BITS: [u8; 16] = [0, 1, 5, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0];
-const JPEG_DC_VALS: [u8; 12] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
-const JPEG_AC_BITS: [u8; 16] = [0, 2, 1, 3, 3, 2, 4, 3, 5, 5, 4, 4, 0, 0, 1, 0x7d];
-const JPEG_AC_VALS: [u8; 162] = [0x01, 0x02, 0x03, 0x00, 0x04, 0x11, 0x05, 0x12, 0x21, 0x31, 0x41, 0x06, 0x13, 0x51, 0x61, 0x07, 0x22, 0x71, 0x14, 0x32, 0x81, 0x91, 0xa1, 0x08, 0x23, 0x42, 0xb1, 0xc1, 0x15, 0x52, 0xd1, 0xf0, 0x24, 0x33, 0x62, 0x72, 0x82, 0x09, 0x0a, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2a, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3a, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48, 0x49, 0x4a, 0x53, 0x54, 0x55, 0x56, 0x57, 0x58, 0x59, 0x5a, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69, 0x6a, 0x73, 0x74, 0x75, 0x76, 0x77, 0x78, 0x79, 0x7a, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89, 0x8a, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97, 0x98, 0x99, 0x9a, 0xa2, 0xa3, 0xa4, 0xa5, 0xa6, 0xa7, 0xa8, 0xa9, 0xaa, 0xb2, 0xb3, 0xb4, 0xb5, 0xb6, 0xb7, 0xb8, 0xb9, 0xba, 0xc2, 0xc3, 0xc4, 0xc5, 0xc6, 0xc7, 0xc8, 0xc9, 0xca, 0xd2, 0xd3, 0xd4, 0xd5, 0xd6, 0xd7, 0xd8, 0xd9, 0xda, 0xe1, 0xe2, 0xe3, 0xe4, 0xe5, 0xe6, 0xe7, 0xe8, 0xe9, 0xea, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7, 0xf8, 0xf9, 0xfa];
-
-fn jpeg_huffman_codes(bits: &[u8; 16], values: &[u8]) -> HashMap<u8, (u32, u32)> {
-    let mut codes = HashMap::new();
-    let (mut code, mut index) = (0_u32, 0_usize);
-    for length in 1..=16_u32 {
-        for _ in 0..bits[length as usize - 1] {
-            codes.insert(values[index], (code, length));
-            index += 1;
-            code += 1;
-        }
-        code <<= 1;
-    }
-    codes
-}
-
-/// server.py's `_jpeg`: a baseline JPEG of one solid colour -- every 8x8 block a DC
-/// coefficient and an end-of-block, unit quantisation, the standard Huffman tables --
-/// byte for byte what the oracle serves for a bundled `.jpg` resource.
-fn generated_jpeg(width: u32, height: u32, rgb: [u8; 3]) -> Vec<u8> {
-    let (red, green, blue) = (rgb[0] as f64, rgb[1] as f64, rgb[2] as f64);
-    let luma = (0.299 * red + 0.587 * green + 0.114 * blue) as i64;
-    let chroma_b = (128.0 - 0.168736 * red - 0.331264 * green + 0.5 * blue) as i64;
-    let chroma_r = (128.0 + 0.5 * red - 0.418688 * green - 0.081312 * blue) as i64;
-    let dc_codes = jpeg_huffman_codes(&JPEG_DC_BITS, &JPEG_DC_VALS);
-    let ac_codes = jpeg_huffman_codes(&JPEG_AC_BITS, &JPEG_AC_VALS);
-    let mut scan = Vec::new();
-    let (mut accumulator, mut filled) = (0_u32, 0_u32);
-    let mut put = |scan: &mut Vec<u8>, code: u32, length: u32| {
-        for shift in (0..length).rev() {
-            accumulator = (accumulator << 1) | ((code >> shift) & 1);
-            filled += 1;
-            if filled == 8 {
-                scan.push(accumulator as u8);
-                if accumulator == 0xff {
-                    scan.push(0x00); // byte stuffing
-                }
-                accumulator = 0;
-                filled = 0;
-            }
-        }
-        filled
-    };
-    let mut previous = [0_i64; 3];
-    let blocks = ((width as u64 + 7) / 8) * ((height as u64 + 7) / 8);
-    for _ in 0..blocks {
-        for (component, level) in [luma, chroma_b, chroma_r].into_iter().enumerate() {
-            let value = (level - 128) * 8;
-            let difference = value - previous[component];
-            previous[component] = value;
-            let size = 64 - difference.unsigned_abs().leading_zeros();
-            let (code, length) = dc_codes[&(size as u8)];
-            put(&mut scan, code, length);
-            if size > 0 {
-                let bits = if difference > 0 {
-                    difference
-                } else {
-                    difference + (1_i64 << size) - 1
-                };
-                put(&mut scan, bits as u32, size);
-            }
-            let (code, length) = ac_codes[&0x00];
-            put(&mut scan, code, length);
-        }
-    }
-    while put(&mut scan, 0, 0) != 0 {
-        put(&mut scan, 1, 1);
-    }
-    let mut document = vec![0xff, 0xd8];
-    for table in 0..2_u8 {
-        document.extend_from_slice(&[0xff, 0xdb, 0, 67, table]);
-        document.extend_from_slice(&[1_u8; 64]);
-    }
-    document.extend_from_slice(&[0xff, 0xc0, 0, 17, 8]);
-    document.extend_from_slice(&(height as u16).to_be_bytes());
-    document.extend_from_slice(&(width as u16).to_be_bytes());
-    document.extend_from_slice(&[3, 1, 0x11, 0, 2, 0x11, 1, 3, 0x11, 1]);
-    for (kind, table, bits, values) in [
-        (0_u8, 0_u8, &JPEG_DC_BITS, &JPEG_DC_VALS[..]),
-        (0, 1, &JPEG_DC_BITS, &JPEG_DC_VALS[..]),
-        (1, 0, &JPEG_AC_BITS, &JPEG_AC_VALS[..]),
-        (1, 1, &JPEG_AC_BITS, &JPEG_AC_VALS[..]),
-    ] {
-        document.extend_from_slice(&[0xff, 0xc4]);
-        document.extend_from_slice(&((19 + values.len()) as u16).to_be_bytes());
-        document.push((kind << 4) | table);
-        document.extend_from_slice(bits);
-        document.extend_from_slice(values);
-    }
-    document.extend_from_slice(&[0xff, 0xda, 0, 12, 3]);
-    document.extend_from_slice(&[1, 0x00, 2, 0x11, 3, 0x11, 0, 63, 0]);
-    document.extend_from_slice(&scan);
-    document.extend_from_slice(&[0xff, 0xd9]);
-    document
 }
 
 /// `_download_disposition`: both filename forms PMS writes on a download. Cycle 41: the
@@ -28369,6 +28280,23 @@ mod gdm_tests {
             ..RuntimeOptions::default()
         })
         .expect("the UI fixture loads")
+    }
+
+    #[test]
+    fn discovery_and_client_versions_follow_the_live_claim_identity() {
+        let runtime = fixture_runtime();
+        let list: Value = serde_json::from_str(include_str!("../../tests/fixtures/plex_downloads_2026_10_22.json")).unwrap();
+        for version in ["1.43.4.10903-e5521bd8c", list["computer"]["Linux"]["version"].as_str().unwrap()] {
+            runtime.plextv.claim.lock().unwrap().version = version.to_string();
+            assert_eq!(runtime.identity()["MediaContainer"]["version"], version);
+            assert_eq!(runtime.server_info().into_iter().find(|(key, _)| *key == "version").unwrap().1, version);
+            assert_eq!(runtime.gdm_server_rows()[0]["version"], version);
+            assert!(String::from_utf8(runtime.gdm_response()).unwrap().contains(&format!("\r\nVersion: {version}\r\n")));
+            let mut body = runtime.identity();
+            home_theater_version(&mut body, &HashMap::new(), &HashMap::from([("x-plex-product".to_string(), "Plex Home Theater".to_string())]));
+            let (number, build) = version.split_once('-').unwrap();
+            assert_eq!(body["MediaContainer"]["version"], format!("{number}.0-{build}"));
+        }
     }
 
     /// The peers `/servers` lists after its own row: (machine, name, address, port, version).

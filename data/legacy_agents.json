@@ -2,6 +2,7 @@
  "bare": [
   {
    "attrs": {
+    "id": -1,
     "hasPrefs": true,
     "identifier": "com.plexapp.agents.fanarttv",
     "primary": false
@@ -10,6 +11,7 @@
   },
   {
    "attrs": {
+    "id": -900,
     "hasPrefs": false,
     "identifier": "com.plexapp.agents.none",
     "primary": true
@@ -193,6 +195,7 @@
   },
   {
    "attrs": {
+    "id": -1,
     "hasPrefs": false,
     "identifier": "com.plexapp.agents.htbackdrops",
     "primary": false
@@ -201,6 +204,7 @@
   },
   {
    "attrs": {
+    "id": -1000,
     "hasPrefs": true,
     "identifier": "com.plexapp.agents.imdb",
     "primary": true
@@ -315,6 +319,7 @@
   },
   {
    "attrs": {
+    "id": -1,
     "hasPrefs": false,
     "identifier": "com.plexapp.agents.lyricfind",
     "primary": false
@@ -323,6 +328,7 @@
   },
   {
    "attrs": {
+    "id": -1200,
     "hasPrefs": true,
     "identifier": "com.plexapp.agents.thetvdb",
     "primary": true
@@ -407,14 +413,101 @@
   },
   {
    "attrs": {
-    "hasPrefs": false,
-    "identifier": "com.plexapp.agents.plexthememusic",
-    "primary": false
+    "id": -400,
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.lastfm",
+    "primary": true
    },
-   "MediaType": []
+   "MediaType": [
+    {
+     "name": "Last.fm",
+     "mediaType": 8,
+     "Language": [
+      {
+       "code": "de"
+      },
+      {
+       "code": "en"
+      },
+      {
+       "code": "es"
+      },
+      {
+       "code": "fr"
+      },
+      {
+       "code": "it"
+      },
+      {
+       "code": "ja"
+      },
+      {
+       "code": "pl"
+      },
+      {
+       "code": "pt"
+      },
+      {
+       "code": "ru"
+      },
+      {
+       "code": "sv"
+      },
+      {
+       "code": "tr"
+      },
+      {
+       "code": "zh"
+      }
+     ]
+    },
+    {
+     "name": "Last.fm",
+     "mediaType": 9,
+     "Language": [
+      {
+       "code": "de"
+      },
+      {
+       "code": "en"
+      },
+      {
+       "code": "es"
+      },
+      {
+       "code": "fr"
+      },
+      {
+       "code": "it"
+      },
+      {
+       "code": "ja"
+      },
+      {
+       "code": "pl"
+      },
+      {
+       "code": "pt"
+      },
+      {
+       "code": "ru"
+      },
+      {
+       "code": "sv"
+      },
+      {
+       "code": "tr"
+      },
+      {
+       "code": "zh"
+      }
+     ]
+    }
+   ]
   },
   {
    "attrs": {
+    "id": -1300,
     "hasPrefs": true,
     "identifier": "com.plexapp.agents.themoviedb",
     "primary": true
@@ -592,6 +685,7 @@
   },
   {
    "attrs": {
+    "id": -1,
     "hasPrefs": false,
     "identifier": "com.plexapp.agents.movieposterdb",
     "primary": false
@@ -600,6 +694,7 @@
   },
   {
    "attrs": {
+    "id": -1,
     "hasPrefs": true,
     "identifier": "com.plexapp.agents.localmedia",
     "primary": false
@@ -608,102 +703,19 @@
   },
   {
    "attrs": {
-    "hasPrefs": true,
-    "identifier": "com.plexapp.agents.lastfm",
-    "primary": true
+    "id": -1,
+    "hasPrefs": false,
+    "identifier": "com.plexapp.agents.plexthememusic",
+    "primary": false
    },
-   "MediaType": [
-    {
-     "name": "Last.fm",
-     "mediaType": 8,
-     "Language": [
-      {
-       "code": "de"
-      },
-      {
-       "code": "en"
-      },
-      {
-       "code": "es"
-      },
-      {
-       "code": "fr"
-      },
-      {
-       "code": "it"
-      },
-      {
-       "code": "ja"
-      },
-      {
-       "code": "pl"
-      },
-      {
-       "code": "pt"
-      },
-      {
-       "code": "ru"
-      },
-      {
-       "code": "sv"
-      },
-      {
-       "code": "tr"
-      },
-      {
-       "code": "zh"
-      }
-     ]
-    },
-    {
-     "name": "Last.fm",
-     "mediaType": 9,
-     "Language": [
-      {
-       "code": "de"
-      },
-      {
-       "code": "en"
-      },
-      {
-       "code": "es"
-      },
-      {
-       "code": "fr"
-      },
-      {
-       "code": "it"
-      },
-      {
-       "code": "ja"
-      },
-      {
-       "code": "pl"
-      },
-      {
-       "code": "pt"
-      },
-      {
-       "code": "ru"
-      },
-      {
-       "code": "sv"
-      },
-      {
-       "code": "tr"
-      },
-      {
-       "code": "zh"
-      }
-     ]
-    }
-   ]
+   "MediaType": []
   }
  ],
  "byType": {
   "1": [
    {
     "attrs": {
+     "id": -900,
      "hasPrefs": false,
      "identifier": "com.plexapp.agents.none",
      "primary": true,
@@ -717,6 +729,7 @@
    },
    {
     "attrs": {
+     "id": -1000,
      "hasPrefs": true,
      "identifier": "com.plexapp.agents.imdb",
      "primary": true,
@@ -826,6 +839,7 @@
    },
    {
     "attrs": {
+     "id": -1300,
      "hasPrefs": true,
      "identifier": "com.plexapp.agents.themoviedb",
      "primary": true,
@@ -916,6 +930,7 @@
   "2": [
    {
     "attrs": {
+     "id": -900,
      "hasPrefs": false,
      "identifier": "com.plexapp.agents.none",
      "primary": true,
@@ -929,6 +944,7 @@
    },
    {
     "attrs": {
+     "id": -1200,
      "hasPrefs": true,
      "identifier": "com.plexapp.agents.thetvdb",
      "primary": true,
@@ -1008,6 +1024,7 @@
    },
    {
     "attrs": {
+     "id": -1300,
      "hasPrefs": true,
      "identifier": "com.plexapp.agents.themoviedb",
      "primary": true,
@@ -1100,6 +1117,7 @@
   "8": [
    {
     "attrs": {
+     "id": -900,
      "hasPrefs": false,
      "identifier": "com.plexapp.agents.none",
      "primary": true,
@@ -1113,6 +1131,7 @@
    },
    {
     "attrs": {
+     "id": -400,
      "hasPrefs": true,
      "identifier": "com.plexapp.agents.lastfm",
      "primary": true,
@@ -1161,6 +1180,7 @@
   "9": [
    {
     "attrs": {
+     "id": -900,
      "hasPrefs": false,
      "identifier": "com.plexapp.agents.none",
      "primary": true,
@@ -1174,6 +1194,7 @@
    },
    {
     "attrs": {
+     "id": -400,
      "hasPrefs": true,
      "identifier": "com.plexapp.agents.lastfm",
      "primary": true,

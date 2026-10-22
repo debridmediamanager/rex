@@ -96,10 +96,15 @@ with open(os.path.join(HERE, "fixtures", "outbound-announce.json")) as _handle:
     ANNOUNCES = json.load(_handle)["announces"]
 MACHINE = "f1x7u4e0000000000000000000000000000000f1"
 FRIENDLY = "rex-ui-fixture"
-# rex names itself to plex.tv as the newest public PMS, read from plex.tv's release list
-# (the stub's answer below); with no list, as the build the 1.42.2 reference runs.
-VERSION = "1.43.4.10903-e5521bd8c"
-VERSION_FALLBACK = "1.42.2.10156-f737b826c"
+# Public Plex downloads response captured verbatim on 2026-10-22.
+with open(os.path.join(HERE, "fixtures", "plex_downloads_2026_10_22.json")) as _handle:
+    DOWNLOADS = json.load(_handle)
+VERSION = DOWNLOADS["computer"]["Linux"]["version"]
+VERSION_FALLBACK = VERSION
+with open(os.path.join(HERE, "fixtures", "plexmeta_matches_s143.json")) as _handle:
+    METADATA_HEADERS = dict(json.load(_handle)["request"]["req_headers"])
+with open(os.path.join(HERE, "fixtures", "provider", "matches.json")) as _handle:
+    METADATA_ANSWERS = json.load(_handle)
 CLAIM_TOKEN = "claim-STUB-CLAIM-TOKEN"
 REUSED_CLAIM_TOKEN = "claim-STUB-REUSED"    # plex.tv answers it with the ACCOUNT token
 ACCOUNT_TOKEN = "ACCOUNT-TOKEN-STUB"
@@ -299,6 +304,7 @@ class Stub(ThreadingHTTPServer):
         self.user_id = ACCOUNT_ID
         self.broken_features = False
         self.downloads = True
+        self.release_list = DOWNLOADS
         # Seconds the claim exchange takes: two claims sent at once must not both reach it.
         self.exchange_delay = 0
 
@@ -399,6 +405,12 @@ class StubHandler(BaseHTTPRequestHandler):
         method, host, path = record["method"], record["host"], record["path"]
         query = dict(record["query"])
         xml = "application/xml"
+        if host == AGENT:
+            body = json.loads(record["body"]) if record["body"] else None
+            for entry in METADATA_ANSWERS:
+                if (method, path, body) == (entry["method"], entry["path"], entry["body"]):
+                    return 200, "application/json", json.dumps(entry["response"])
+            return 200, "application/json", '{"MediaContainer":{"Metadata":[]}}'
         if (method, host, path) == ("POST", "plex.tv", "/api/claim/exchange"):
             time.sleep(self.server.exchange_delay)
             if query.get("token") == REUSED_CLAIM_TOKEN:
@@ -429,8 +441,7 @@ class StubHandler(BaseHTTPRequestHandler):
         if (method, host, path) == ("GET", "plex.tv", "/api/downloads/5.json"):
             if not self.server.downloads:
                 return 404, "text/plain", "stub: no release list"
-            return 200, "application/json", json.dumps(
-                {"computer": {"Linux": {"id": "linux", "name": "Linux", "version": VERSION}}})
+            return 200, "application/json", json.dumps(self.server.release_list)
         if (method, host, path) == ("POST", "plex.tv", "/servers.xml"):
             # 422 every time, to a real PMS too -- and the server record is written anyway.
             return recorded("claim", "POST", "/servers.xml")["status"], xml, ""
@@ -500,7 +511,8 @@ class Instance:
         env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1",
                    PLEX_TOKEN=plex_token or "",
                    REX_PLEXTV_URL="http://127.0.0.1:%d" % stub_port,
-                   REX_SCROBBLING_DECRYPT_SECRET_B64=base64.b64encode(SECRET).decode())
+                   REX_SCROBBLING_DECRYPT_SECRET_B64=base64.b64encode(SECRET).decode(),
+                   REX_DIRECT_URL="off")
         for name in ("REX_STATE", "REX_TOKEN", "TMDB_KEY", "REX_METADATA_URL", "REX_METADATA_KEY"):
             env.pop(name, None)
         if not plex_token:
@@ -518,9 +530,9 @@ class Instance:
                 time.sleep(0.1)
         raise SystemExit("rex did not start:\n" + self.output())
 
-    def request(self, method, path, raw=False, token=None):
+    def request(self, method, path, raw=False, token=None, product="Plex Web"):
         headers = {"Accept": "application/json", "X-Plex-Client-Identifier": "plextv-suite",
-                   "X-Plex-Product": "Plex Web", "X-Plex-Platform": "Chrome"}
+                   "X-Plex-Product": product, "X-Plex-Platform": "Chrome"}
         if token:
             headers["X-Plex-Token"] = token
         conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=15)
@@ -802,6 +814,25 @@ def asked_with(records):
              dict(r["headers"]).get("x-plex-client-identifier")) for r in records]
 
 
+def metadata_identity(label, records, version, name=FRIENDLY):
+    """Assert captured PMS identity fields on actual outbound HTTP requests.
+
+    Kernel/device values vary by host; require them without copying plexlab's OS.
+    """
+    expected = {key: METADATA_HEADERS[key] for key in
+                ("x-plex-provides", "x-plex-platform", "x-plex-product",
+                 "x-plex-model", "x-plex-device-vendor", "x-plex-provider-version",
+                 "accept", "content-type")}
+    expected.update({"user-agent": METADATA_HEADERS["user-agent"].split("/", 1)[0] + "/" + version,
+                     "x-plex-version": version, "x-plex-client-identifier": MACHINE,
+                     "x-plex-device-name": name, "x-plex-token": SERVER_TOKEN})
+    observed = [dict(record["headers"]) for record in records]
+    check(label, observed and all(
+        all(headers.get(key) == value for key, value in expected.items())
+        and all(headers.get(key) for key in ("x-plex-platform-version", "x-plex-device"))
+        for headers in observed), observed)
+
+
 def server_token_setup():
     """Setup needs no account token (2026-10-15). A claimed server asks plex.tv with its own
     token -- the announce, the visibility check and Plex's metadata agent, each measured to
@@ -864,7 +895,7 @@ def server_token_setup():
         claimed = start(fresh(True), plex_token=None)
         if started("(a) a claimed server with --announce-url and no PLEX_TOKEN starts", claimed):
             announced = wait_for(beats, 10) or []
-            check("(a) with no release list it names itself as the 1.42.2 reference's real build",
+            check("(a) with no release list it names itself as the captured current public build",
                   announced and dict(sent(announced[0]))["x-plex-version"] == VERSION_FALLBACK
                   and dict(sent(announced[0]))["x-plex-device-vendor"] == "Docker",
                   announced and sent(announced[0]))
@@ -916,6 +947,7 @@ def server_token_setup():
             check("(c) a claim made at runtime turns Plex's agent on, asked with the server token",
                   status == 200 and asked and set(asked_with(asked)) == {(SERVER_TOKEN, MACHINE)},
                   (status, asked_with(asked)))
+            metadata_identity("(c) runtime metadata requests carry the real PMS identity fields", asked, VERSION)
             plain.stop()
             reset_stub()
             again = start(directory, plex_token=None, announce=None)
@@ -923,6 +955,7 @@ def server_token_setup():
                 asked = agent_after(0, "Jxqol.Brimt.2022.1080p.WEB-DL", again)
                 check("(c) a claimed start with no PLEX_TOKEN asks Plex's agent with the server token",
                       asked and set(asked_with(asked)) == {(SERVER_TOKEN, MACHINE)}, asked_with(asked))
+                metadata_identity("(c) metadata identity survives a claimed restart", asked, VERSION)
                 again.stop()
 
         # -- (d) PLEX_TOKEN, unclaimed: no longer read (2026-10-19), not even by the agent --
@@ -958,6 +991,145 @@ def server_token_setup():
         stub.server_close()
         for directory in directories:
             shutil.rmtree(directory, ignore_errors=True)
+
+
+def version_identity():
+    """One live identity, including an offline restart and a refresh without restarting."""
+    stub = Stub(free_port())
+    threading.Thread(target=stub.serve_forever, daemon=True).start()
+    directory = tempfile.mkdtemp(prefix="rex-pms-version-")
+    shutil.copy(CATALOG, os.path.join(directory, "catalog.json"))
+    claim_file = os.path.join(directory, "claim_state.json")
+    # The previous public Linux build, measured in the registration/announce captures.
+    previous = "1.43.4.10903-e5521bd8c"
+
+    def versions(instance, expected, token=SERVER_TOKEN):
+        got = {}
+        for path in ("/identity", "/", "/media/providers"):
+            status, body = instance.request("GET", path, token=token)
+            got[path] = container(body).get("version") if status == 200 else status
+        status, body = instance.request("GET", "/servers", token=token)
+        own = [row for row in container(body).get("Server", []) if row.get("machineIdentifier") == MACHINE]
+        got["/servers"] = own[0].get("version") if status == 200 and own else status
+        _, body = instance.request("GET", "/system/library/sections", raw=True, token=token)
+        framework = re.findall(rb'serverVersion="([^"]+)"', body)
+        check("framework sections use the same current PMS identity",
+              framework and set(framework) == {expected.encode()}, framework)
+        for path in ("/", "/media/providers"):
+            status, body = instance.request("GET", path, token=token, product="Plex Home Theater")
+            number, build = expected.split("-", 1)
+            got["Home Theater " + path] = container(body).get("version") if status == 200 else status
+            check("Home Theater preserves its measured fifth component on " + path,
+                  got["Home Theater " + path] == number + ".0-" + build, got)
+        check("identity, root, providers and server discovery share one PMS version",
+              all(got[path] == expected for path in ("/identity", "/", "/media/providers", "/servers")), got)
+
+    try:
+        with open(claim_file, "w") as handle:
+            json.dump({"machine": MACHINE, "version": previous}, handle)
+        stub.downloads = False
+        first = Instance(directory, free_port(), stub.server_address[1],
+                         extra=("--token", SERVER_TOKEN), announce=None, plex_token=None)
+        versions(first, VERSION)
+        check("an offline unclaimed startup uses the newer packaged release over an older cache",
+              not truthy(container(first.request("GET", "/identity")[1]).get("claimed")))
+        stub.downloads = True
+        status, _ = first.request("POST", "/myplex/claim?token=" + CLAIM_TOKEN, token=SERVER_TOKEN)
+        check("a runtime claim refreshes from the real release-list fixture", status == 200, status)
+        versions(first, VERSION)
+        exchanges = stub.taken("plex.tv", "/api/claim/exchange")
+        check("the runtime refresh also updates outbound PMS identity headers",
+              exchanges and dict(sent(exchanges[-1])).get("x-plex-version") == VERSION, exchanges)
+        first.stop()
+        stub.downloads = False
+        second = Instance(directory, free_port(), stub.server_address[1], announce=None, plex_token=None)
+        versions(second, VERSION)
+        check("the refreshed version persists across an offline restart",
+              read_json(claim_file).get("version") == VERSION, read_json(claim_file))
+        second.stop()
+        stub.downloads = True
+        # Deliberately stale version metadata, using the previous captured public build.
+        stub.release_list = json.loads(json.dumps(DOWNLOADS))
+        stub.release_list["computer"]["Linux"]["version"] = previous
+        stale = Instance(directory, free_port(), stub.server_address[1], announce=None, plex_token=None)
+        versions(stale, VERSION)
+        check("an older release-list response cannot downgrade the persisted identity",
+              read_json(claim_file).get("version") == VERSION, read_json(claim_file))
+        stale.stop()
+        stub.release_list = DOWNLOADS
+        os.unlink(claim_file)
+        stub.downloads = True
+        asserted = Instance(directory, free_port(), stub.server_address[1],
+                            extra=("--assert-claimed",), announce=None, plex_token=None)
+        versions(asserted, VERSION, token=None)
+        asserted.stop()
+    finally:
+        for instance in LIVE:
+            if instance.proc.poll() is None:
+                instance.proc.kill()
+                instance.proc.wait()
+        stub.shutdown()
+        shutil.rmtree(directory, ignore_errors=True)
+
+
+def catalog_metadata_identity():
+    """The real --relink CLI uses current identity, including offline release discovery."""
+    from test_plex_guids import rows
+    stub = Stub(free_port())
+    threading.Thread(target=stub.serve_forever, daemon=True).start()
+    try:
+        for online in (False, True):
+            stub.clear()
+            stub.downloads = online
+            with tempfile.TemporaryDirectory(prefix="rex-catalog-metadata-") as directory:
+                catalog = os.path.join(directory, "catalog.json")
+                with open(catalog, "w") as handle:
+                    json.dump({"machineIdentifier": MACHINE, "friendlyName": FRIENDLY,
+                               "sections": [], "items": rows()}, handle)
+                with open(os.path.join(directory, "claim_state.json"), "w") as handle:
+                    json.dump({"machine": MACHINE, "token": SERVER_TOKEN,
+                               "version": METADATA_HEADERS["x-plex-version"]}, handle)
+                env = dict(os.environ, REX_PLEXTV_URL="http://127.0.0.1:%d" % stub.server_address[1],
+                           REX_DIRECT_URL="off")
+                command = server_command(root=ROOT)
+                command.remove("--no-state")  # server-only flag, not a catalog option
+                result = subprocess.run(command + ["catalog", "--out", catalog, "--relink"],
+                                        cwd=ROOT, env=env, capture_output=True, text=True, timeout=60)
+                label = "online" if online else "offline"
+                if result.returncode:
+                    raise RuntimeError((label, result.returncode, result.stdout, result.stderr))
+                requests = stub.taken(AGENT)
+                metadata_identity(label + " catalog metadata transport uses packaged/current PMS identity",
+                                  requests, VERSION)
+                check(label + " relink exercises POST matches and GET children",
+                      {record["method"] for record in requests} == {"POST", "GET"}, requests)
+                check(label + " catalog refresh performs no unrelated cloud operations",
+                      all(record["host"] == AGENT or
+                          (record["host"], record["path"]) == ("plex.tv", "/api/downloads/5.json")
+                          for record in stub.records), stub.records)
+                if online:
+                    # Deliberately synthetic next-build release list: the real fixtures above
+                    # cover today's exact identity; this detects a constructor's stale copy
+                    # when the shared claim learns a newer release after construction.
+                    number, build = VERSION.split("-", 1)
+                    components = number.split(".")
+                    components[-1] = str(int(components[-1]) + 1)
+                    learned = ".".join(components) + "-" + build
+                    stub.release_list = json.loads(json.dumps(DOWNLOADS))
+                    stub.release_list["computer"]["Linux"]["version"] = learned
+                    shutil.copy(CATALOG, catalog)
+                    stub.clear()
+                    runtime = Instance(directory, free_port(), stub.server_address[1],
+                                       announce=None, plex_token=None)
+                    try:
+                        push(runtime, "Metadata.Refresh.Transport.2026")
+                        requests = wait_for(lambda: stub.taken(AGENT), 15) or []
+                        metadata_identity("an existing metadata transport reads the newly learned shared version",
+                                          requests, learned)
+                    finally:
+                        runtime.stop()
+    finally:
+        stub.shutdown()
 
 
 def main():
@@ -1382,8 +1554,9 @@ def main():
 
         saved = read_json(claim_file)
         saved.pop("access_tokens", None)
-        check("the claim file keeps machine, credentials, owner, features, id and cursor",
-              saved == {"machine": MACHINE, "token": SERVER_TOKEN, "owner": OWNER, "email": EMAIL,
+        check("the claim file keeps identity version, credentials, owner, features, id and cursor",
+              saved == {"machine": MACHINE, "version": VERSION,
+                        "token": SERVER_TOKEN, "owner": OWNER, "email": EMAIL,
                         "feature_uuids": FEATURE_UUIDS, "account_id": ACCOUNT_ID,
                         "view_state_cursor": "opaque-cursor-1"}, saved)
         # Windows has no mode bits: a profile's folders are private to their user instead.
@@ -1549,7 +1722,7 @@ def main():
               pages and pages[0]["query"])
         time.sleep(0.5)
         status, files = log_archive(second, ACCOUNT_TOKEN)
-        rex_log = files.get("rex.log", "")
+        rex_log = files.get("Plex Media Server.log", "")
         check("Download Logs hands back the startup lines, claimed",
               status == 200 and logged(rex_log, "INFO", r"claim state: CLAIMED by %s" % OWNER,
                                        ARCHIVE_LINE)
@@ -1623,6 +1796,8 @@ def main():
 
     placeholder_identity()
     server_token_setup()
+    version_identity()
+    catalog_metadata_identity()
     passed = sum(results)
     print("%d/%d checks passed" % (passed, len(results)))
     return 0 if passed == len(results) else 1

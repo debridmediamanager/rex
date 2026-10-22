@@ -1,0 +1,566 @@
+{
+  "source": "Fresh official plexinc/pms-docker:latest 1.43.5.11029-6bf8af3f0 on zen, no claim; all names in resource_assets.json, no sampling",
+  "captured_at": "2026-10-22",
+  "rows": [
+    {
+      "method": "GET",
+      "path": "/:/resources/DefaultAlbumCover.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 93938,
+      "sha256": "1f8dad064f4d3cc4b9b6ddf91dc9e65d0db6d248c5f423f7c8923b70ad4de057"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/actor-icon.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 70574,
+      "sha256": "9d7042440d462f9ada930a17ea4b526b8db918b10850381b9e35156768f48ed7"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/album-fanart.jpg",
+      "status": 200,
+      "content_type": "image/jpeg",
+      "length": 136182,
+      "sha256": "03a781447d13126c3d272b5f1c897738775cc01ce14bb9602330f8e631b754dc"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/aperture-fanart.jpg",
+      "status": 200,
+      "content_type": "image/jpeg",
+      "length": 400173,
+      "sha256": "4be2389e77082d983c05d205d8f34865ea832578d526e6e26f6623f587a9e485"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/aperture-icon.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 365060,
+      "sha256": "8dfa268b3e51b46ba497db96c7bd02ee5ece22e01d7994b3c66df19b2ef8a6a0"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/artist-fanart.jpg",
+      "status": 200,
+      "content_type": "image/jpeg",
+      "length": 136182,
+      "sha256": "03a781447d13126c3d272b5f1c897738775cc01ce14bb9602330f8e631b754dc"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/artist.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 68428,
+      "sha256": "f9faa3b0c76546114c938178b8eb86cf7d98aaaf0bbdcdfa896f16dbcf6fe64b"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/category-art/action.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 4489,
+      "sha256": "37b13956859c4152615f0fa88e37c5ce029c40b264515e8848a49179923a91c4"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/category-art/animation.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 4581,
+      "sha256": "780a6c3b9e83126a5f05ddaa953fc706d2c4c3786067a69b9cb9894595e69611"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/category-art/comedy.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 4210,
+      "sha256": "ffb0936eddb34bdeb0f68ae3210b25356e549f8bf0e6cd30bd9f55426c5f04d0"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/category-art/crime.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 4742,
+      "sha256": "3e0d3db78ab4bbc58cf43597e1dc50d6c4d4c1f8627ed3871a7b3e11937ed7bc"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/category-art/documentary.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 6092,
+      "sha256": "8a22cf189476f71121afc2a3caf513cd9b7982b63a3e5236fd62afe2424c4681"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/category-art/drama.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 4090,
+      "sha256": "6102a13976e4704afd3f828f873329e427ff623b076b5f69efa04053016777ae"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/category-art/extra-01.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 4616,
+      "sha256": "ea702541d8fd0d247cfd71fff69b4fd9cbf96518d1ab12bec8acc559fb1ee176"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/category-art/extra-02.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 5948,
+      "sha256": "39ab8babbb601e76ec0cbdf8d33874f93e217dcd7bc0a11455886781b4b5c6e0"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/category-art/extra-03.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 5192,
+      "sha256": "5e52f7d1c3f5d5b302589be2d8c1128448a894ebc397681ea7bae3e13440d7cf"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/category-art/extra-04.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 5305,
+      "sha256": "7b4d21ceb6415f0f4c1c1da1fa03b771f2513e40b86782df453d6113c5282ada"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/category-art/extra-05.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 4961,
+      "sha256": "cbe15da1c4419e54f1b647769283dc560ae733b4bb8c2c571a01b685514368ed"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/category-art/extra-06.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 5824,
+      "sha256": "d9a07f11592f4e205499eaaf8a5905213d69bd715f4e246e5a9267b8c9a5c699"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/category-art/extra-07.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 4044,
+      "sha256": "b2d01990c0ef2ca8cf3a584a96828c0e8cb9714c03d27070427edb00f84fbce0"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/category-art/extra-08.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 6742,
+      "sha256": "77b680cb43dd879aacbf8d4d7e6994f37b7ed3721c042f9950b13370c842c594"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/category-art/extra-09.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 4513,
+      "sha256": "0137b21adbfc69ac80bbcceee01e41b1e7bce057816985c3cbc38968cff6052b"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/category-art/extra-10.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 5877,
+      "sha256": "2c51a62d1fad7552f8926d82c6bef7bc44edb3659266a448a9533d53820e1444"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/category-art/extra-11.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 11605,
+      "sha256": "6601155c5815f37f8a872836cc4a1dcbd56daa6164db44a4a374e32d911a89e8"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/category-art/history.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 5287,
+      "sha256": "1a929a763e790588a42202e23e957506dbf878b77b5a4b7e142c6e81d642d754"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/category-art/horror.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 4733,
+      "sha256": "e407925454f5d296f2911eab2a684f1c737b556bd2d61366fd417b76dfe4f419"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/category-art/musical.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 4359,
+      "sha256": "3ec9d80fd52ad35921c1a9b4f59ef050070776f907228a7b1b503d4cfeeb2469"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/category-art/romance.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 4766,
+      "sha256": "8efc1c6f5a9f0d68e7dae5da0d04a753691dae0e9e4265751db9febee8e1685b"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/category-art/science-fiction.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 5207,
+      "sha256": "d9b446ebf7d72d6a5de8595ccd6eefce4b507da689434519a695a688b0e380f1"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/category-art/thriller.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 4939,
+      "sha256": "c796e4fabee1d606c2db4bdf7af1f97fd8123af1c429b17cd7ce87e951b6562e"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/category-art/western.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 3683,
+      "sha256": "cf86f5e5c4d997e2b17023d1dff40f8083ef0746eb1ad6a6b44aa894a7665fab"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/dlna-icon-260.jpg",
+      "status": 200,
+      "content_type": "image/jpeg",
+      "length": 15701,
+      "sha256": "5686d22da00a6aaa74dd41837fa1098c65e1b1afc9ce1e3c9b7e75810909c1a9"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/dlna-icon-260.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 40700,
+      "sha256": "f8d7efe940e3bc85a6a51188e63be5a6ea56b037dacc936dd442574f0d9f6a84"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/dvr/device-generic-560.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 1829,
+      "sha256": "759dd8615f8a2723ae7d1340c84608b68975ba0c5f9f335186d9e8c3f4c6ac2b"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/dvr/device-hdhomerun-connect-560.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 1432,
+      "sha256": "ecec219c59ca1e90bdf049287ec3356cd4e673708f04f2f1e5b0f28a533a2b29"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/dvr/device-hdhomerun-connect-duo-560.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 1880,
+      "sha256": "d4064820a9a3c30782010df94d5be47b9baea7063f55ecb189d1d031a074b922"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/dvr/device-hdhomerun-connect-quatro-560.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 2329,
+      "sha256": "9e78582ed170f1f62895cdbadc13996e39f887dad985b3ca5649eb59bf8dad78"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/dvr/device-hdhomerun-dual-560.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 1490,
+      "sha256": "f7f1cb1e225ba1b3970271c4b607ce933990f5939b079b0b9461f443fd3eb5b3"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/dvr/device-hdhomerun-expand-560.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 1558,
+      "sha256": "60170daa64e63f10650dbd42a0de6fcfd009bae5c35716a0efd7f2ffbe3459e1"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/dvr/device-hdhomerun-extend-560.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 1364,
+      "sha256": "a462d07c950a8c92cc2dc0b2dbe6fa8dcb847f65d54087284d6ef0d8b3a8bea8"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/dvr/device-hdhomerun-prime-560.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 1419,
+      "sha256": "526bee7992e3062b6c3be9c4577b11a87f57fe7c25b8930b0d460db2701ab65f"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/dvr/device-hdhomerun-single-560.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 1449,
+      "sha256": "e65f798e7d321d9d5a1a9d0ab292f9c1bec07c052d0b2f3ad28d1f1a2a2b3346"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/dvr/device-network-560.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 2576,
+      "sha256": "22bef7d295d4a74c101f2e0eaf38df048111acb8d3b60b25c94fa7b61bc299e9"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/dvr/device-pcie-560.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 1828,
+      "sha256": "93af7e04b05bdfe73233c470964c2c885c35d1051e8b347adb8472d084525d18"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/dvr/device-usb-560.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 1850,
+      "sha256": "be0f48347b440719a54bc51515f9886d90314ab012ae2a2dc6041a631be9092a"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/dvr/dvr-allshows-icon.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 2233,
+      "sha256": "8464100315171124a71338a23fe88957b6b4364ce97354c405ef9ed0d2234cc3"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/dvr/dvr-movies-icon.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 2433,
+      "sha256": "4720ab11636fbb884c73a0cbab25805dd411d1e5e33cbd46035e2187be0b7d83"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/dvr/dvr-news-icon.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 5266,
+      "sha256": "fa7ad53b6c08e5a1e7a1cd0fe26c3b81c2b8f21aaf62321315d55c761b9c17d2"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/dvr/dvr-program-guide-icon.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 821,
+      "sha256": "aaf1b0649c986b37fb8c78f9e4b74ea2444a794d6ff8bd5c0dad86766b975f1c"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/dvr/dvr-schedule-icon.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 872,
+      "sha256": "66496a3bd6966174fb29cda65fb7c5f8aaadab5d022a08aeb113df764ff36bb2"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/dvr/dvr-sports-icon.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 7567,
+      "sha256": "177eef824afdc58037329effc0f9cef88e184574262833ea67937fe1936556e7"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/dvr/dvr-watchnow-icon.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 776,
+      "sha256": "2340456f25459db5ebe62a322cbcd788c8b86e29575bb4a547bb1bb55ad71712"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/favicon.ico",
+      "status": 200,
+      "content_type": "application/octet-stream",
+      "length": 1150,
+      "sha256": "f37f79510504992cbe585ab0ac5e3d84760e44019c6a96402f32a2450dfcf879"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/iphoto-fanart.jpg",
+      "status": 200,
+      "content_type": "image/jpeg",
+      "length": 1116037,
+      "sha256": "11a2a9c1bbba928de2d4b336cf339163305a9eb71679ac9cd27113f3d8634626"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/iphoto-icon.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 425031,
+      "sha256": "b823e4556181beb4dc8748acda4c4499f91366e4b97f0f48c81a3707bb7fe760"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/itunes-fanart.jpg",
+      "status": 200,
+      "content_type": "image/jpeg",
+      "length": 256413,
+      "sha256": "32bc507b588823b58bbf70f7ca48b1135ab76e2e71580ffaf3a63687a985474a"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/itunes-icon.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 243150,
+      "sha256": "48068799a36d8cab9939451c503c1c27bc2cc0d96bd7f900a456af355bdb2524"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/movie-fanart.jpg",
+      "status": 200,
+      "content_type": "image/jpeg",
+      "length": 178027,
+      "sha256": "213a08f5971e27a1e5467e15df1571cd399e3fa6422d88ac7089956ffb8409bf"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/movie.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 76373,
+      "sha256": "21ce5eb5bc087cba975470d5a6c89e3a0b30ac3182e2d951477113933092b0cb"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/photo-fanart.jpg",
+      "status": 200,
+      "content_type": "image/jpeg",
+      "length": 141127,
+      "sha256": "29bdc38bff405e7da4e0365bf66b9ee12710e776aefd8b3da3b8d463ae59b17e"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/photo.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 139214,
+      "sha256": "a3c6ddcd4aa76f3b3b546aaecb182b5146fab5f9e27d16d1e217d0b6ea8d99d8"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/show-fanart.jpg",
+      "status": 200,
+      "content_type": "image/jpeg",
+      "length": 488038,
+      "sha256": "f5d51cc46d498158e4c8c6aef09cb7f395e603f3c628d2d120a5c54eef4af4f3"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/show.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 54129,
+      "sha256": "1e1f0e539126c4726615f1d5344eb85eb8b945992b1172437b26a031ddf3660d"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/sugar.cmake",
+      "status": 200,
+      "content_type": "application/octet-stream",
+      "length": 246,
+      "sha256": "f0d9173cdf9d7deef6c49cb60b071dd10b48ef25c1a76729c038df346d5b1c05"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/tag-auto-256.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 6866,
+      "sha256": "97a0d2d6aeb0e2cc250f2ad002bd93efb15c95f6973548ede66940ef48efc1cf"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/tag-geo-256.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 9259,
+      "sha256": "6d973d217691a5a88257a16ec6a683d8fe8667a97107675f32bdd2dddc33dbd2"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/tag-people-256.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 8235,
+      "sha256": "be10ac77bd06868d8d3db0aa258827d4f97b63acf5e3147f78d2a6203ef59f9b"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/tag-similar-256.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 8564,
+      "sha256": "e943afee07739a87a08416b61bc5dfce18ceb55722eb15a3496072b8f31acdf0"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/tag-temporal-256.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 8565,
+      "sha256": "3c7e6680e21d4a8bc948e5e6e8eb7acb08fd256f99b0c6c3b8da952d130302a9"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/video.png",
+      "status": 200,
+      "content_type": "image/png",
+      "length": 115623,
+      "sha256": "6aba9b13354caf472c0508a0efd609ad03a7675a9136ffdd591148d462be97b9"
+    }
+  ]
+}

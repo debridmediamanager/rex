@@ -5,6 +5,36 @@ Use them alongside [`findings.md`](findings.md), which holds the capture evidenc
 and chronological investigations. Search this file for the endpoint or field you
 are changing; replay the client's exact request before altering behavior.
 
+## Server identity
+
+The client API, `/servers`, framework `serverVersion`, Plex metadata requests, GDM,
+webhooks and plex.tv use one shared version: the current public Linux PMS release
+from `https://plex.tv/api/downloads/5.json`, read at startup, before claiming and every 24 h.
+Without a valid answer, the newest valid packaged or cached version is retained;
+an older response cannot roll it back. `claim_state.json` keeps a newer learned version,
+including for an unclaimed server. API version `1.2.3`, both favicon routes and all 70
+bundled resources were measured on PMS `1.43.5.11029-6bf8af3f0` on 2026-10-22.
+`tests/test_pms_identity.py` replays that complete resource corpus, not a byte sample.
+
+Catalog `--relink` uses the same identity and refreshes only the public release list,
+not the unrelated account/presence services. The metadata provider version `6.5.0`
+is separate from the PMS build. Framework traceback paths expand the shared build
+suffix; the current recorded runtime frame is line 847. Collection/playlist GUIDs
+are persistent UUIDs, including migrated legacy state, not branded rating keys.
+
+Current PMS routes PATCH: a plug-in listing on `/identity`, a Tornado 405 under
+`/system` (the proxy's own 400 still wins), and the route's normal refusal elsewhere.
+The historical 1.42.2-wide PATCH 500 is not the current method table.
+
+This is not an undetectability or account-safety guarantee. The private source API,
+operator diagnostics, upstream media requests, optional rex-direct hostname, TLS
+implementation and unimplemented or version-specific behavior remain observable.
+The bundled Web UI is also absent unless a local `webclient/` or `--web-root` is
+provided: the default `/web/index.html` 404 differs from PMS's packaged client.
+The dated 1.42.2/1.43.4 measurements below describe those versions, not the build
+currently advertised by rex. A version label is not proof of complete PMS equivalence.
+
+
 ## Traps that cost real time
 
 - **Loudness capability is version-scoped and is not a fabricated analysis result.** 1.43.4

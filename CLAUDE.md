@@ -68,8 +68,8 @@ real PMS localises per `X-Plex-Language` (`activity_strings.json`, `item_languag
 `stream_words.json`, `title_templates.json`); the image's own tables
 (`plugin_bundles.json`, `plugin_prefs.json`, `attributions.json`, `resource_assets.json`,
 `media_flags.json`); and three files served at the top of the surface with no token
-(`crossdomain.xml`, `clientaccesspolicy.xml`, and `favicon.ico`, which is rex's own icon:
-rex ships none of Plex's artwork). Runtime files never go in
+(`crossdomain.xml`, `clientaccesspolicy.xml`, and `favicon.ico`). The public favicon and
+all 70 `resource_assets.json` bodies are recorded PMS bytes, not generated replacements. Runtime files never go in
 `data/`: `plex_cache.db`, `claim_state.json` and `rex-direct.json` are resolved beside the
 **catalog**, because they are state rather than measurement.
 The state file is state too: a SQLite database beside the catalog by default
@@ -130,8 +130,9 @@ pushes to `/rex/feed/{name}`. Both take no token, claimed or not and with or wit
 `--token` (a feed token per source, set by hand on both sides, was the setup's longest
 step), and answer only a peer on a private network: loopback, RFC 1918, 100.64/10
 (Tailscale), link-local, fc00::/7 and fe80::/10, IPv4-mapped ones included, read off the
-socket alone and never `X-Forwarded-For` or `Host`; any other peer is a 403 (`feed::source_peer`,
-which adds Tailscale and link-local to `private_address`, the unclaimed gate's rule). The
+socket alone and never `X-Forwarded-For` or `Host` (`feed::source_peer`, which adds
+Tailscale and link-local to `private_address`). Other peers take the normal PMS
+authentication/unknown-route path, not a source-specific refusal. The
 unclaimed gate itself refused zurgs naming rex by host name or over Tailscale, so it is not
 this one. rex-direct forwards rex's port from the internet, and this keeps the feed off it. Registering is the only way a source
 exists (`ZURG_URL` is not read): a row keeps its `_source`/`_path`, and a catalog row from
@@ -229,9 +230,12 @@ claimed server gates every request as a real PMS does: its own token, the tokens
 `plex.tv/api/v2/server/access_tokens` lists for it (re-read for an unknown token, and kept in
 `claim_state.json` so a failed read after a restart locks no one out), and the `transient-`
 tokens its own `/security/token` minted (findings, "The token gate a claimed server keeps").
-To plex.tv a claimed server names itself the newest public PMS, read from plex.tv's release
-list (`/api/downloads/5.json`) before the claim and every 24 h, with `X-Plex-Device-Vendor:
-Docker` as the recorded PMS sends; clients keep the measured `1.42.2.10156-f737b826c`.
+Clients, GDM, framework sections, webhooks and plex.tv share one current public Linux PMS
+version, read from `/api/downloads/5.json` on every startup, before a claim and every 24 h.
+The newest valid packaged or cached version survives an unavailable release list; newer
+reads persist in `claim_state.json` and cannot downgrade it. The packaged measurement is
+`1.43.5.11029-6bf8af3f0`, API version `1.2.3` (2026-10-22). This is compatibility, not an
+undetectability guarantee; see docs/protocol-traps.md "Server identity".
 A conversion's own playlist and segments (`/video/:/transcode/universal/session/...`) are
 keyed to the session, not the token, as on a real PMS (findings, "A conversion session is its own key").
 An unclaimed server without `--token` serves no client (Ben, 2026-10-19): with no claim it
@@ -546,6 +550,7 @@ The native-only suites, all black-box unless noted:
 ```bash
 python3 tests/test_native_runtime_smoke.py  # native routes and CLI refusals
 python3 tests/test_native_gdm.py            # native GDM answers and the /servers self row
+python3 tests/test_pms_identity.py          # current PMS identity, wire/framework captures and every bundled resource's bytes
 REX_NATIVE_BIN=rust/target/release/rex python3 tests/test_native_phase2.py
                                             # the core modules against the oracle's recorded answers, row by row
 python3 tests/test_tls.py                   # HTTPS and plain HTTP on one port
@@ -705,9 +710,13 @@ holds the underlying captures and investigations. When the two appear to differ,
 replay the official client's exact request against the reference PMS and record
 the result before changing the emulation.
 
+The current advertised identity and its offline/update rules are in
+[Server identity](docs/protocol-traps.md#server-identity). They do not make the
+historical tables below current or establish complete PMS equivalence.
+
 The witnesses those documents and the code comments name: **plexlab**, the reference lab PMS
-(1.43.4, ten synthetic clips); **the 1.42.2 reference**, a real claimed PMS on 1.42.2.10156 --
-the build rex reports -- with a large matched library (3,887 movies, two show libraries),
+(1.43.4, ten synthetic clips); **the 1.42.2 reference**, a real claimed PMS on 1.42.2.10156,
+formerly rex's advertised build, with a large matched library (3,887 movies, two show libraries),
 read-only; **the production server**, a real 1.42.2 library that was the early cycles' second
 witness and later ran a production rex; **plexscratch** and **plexscratch42**, the disposable
 write copies; **the lab host** and **the test host**, the machines plexlab and rex's own test

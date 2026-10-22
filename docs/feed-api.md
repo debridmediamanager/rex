@@ -37,9 +37,10 @@ behind the Plex gate, claimed or not, with or without `--token`, so a source may
 address or host name (`http://rex:32400` from a container, a Tailscale name). They answer
 only a peer whose address is this machine (127.0.0.0/8, `::1`), a home network (10/8,
 172.16/12, 192.168/16, IPv6 fc00::/7), Tailscale (100.64/10) or link-local (169.254/16,
-fe80::/10), an IPv4-mapped IPv6 address of those included. Any other peer gets 403
-`{"error": "the source API only answers private networks"}` on every route and method,
-the delete confirmation included.
+fe80::/10), an IPv4-mapped IPv6 address of those included. To any other peer the source
+API does not exist: the request takes the ordinary PMS authentication and unknown-route
+path, with the same status, headers and body as an unrelated missing PMS path. No token,
+including an owner's valid Plex token, opens the source API to a public peer.
 
 rex reads the connection's own peer address, never `X-Forwarded-For` or `Host`, so a header
 cannot open it. A reverse proxy on the same machine therefore reaches it as a local peer:

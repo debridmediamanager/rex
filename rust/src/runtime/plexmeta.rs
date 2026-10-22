@@ -35,9 +35,6 @@ fn stamped(incomplete: bool, mut answer: Value) -> Value {
 pub(crate) struct PlexMeta {
     /// Read per call, so a claim made at runtime is asked with at once.
     claim: super::plextv::SharedClaim,
-    /// This server's machineIdentifier: what a real PMS sends as `X-Plex-Client-Identifier`
-    /// on every agent call (plexlab's outbound capture, tests/fixtures/plexmeta_matches_s143.json).
-    client: String,
     cache_path: PathBuf,
     cache: DiskCache,
 }
@@ -77,8 +74,8 @@ fn python_json(value: &Value) -> String {
 }
 
 impl PlexMeta {
-    pub(super) fn new(claim: super::plextv::SharedClaim, cache_path: PathBuf, client: String) -> Self {
-        Self { claim, client, cache: DiskCache::open(&cache_path), cache_path }
+    pub(super) fn new(claim: super::plextv::SharedClaim, cache_path: PathBuf) -> Self {
+        Self { claim, cache: DiskCache::open(&cache_path), cache_path }
     }
 }
 
@@ -95,17 +92,26 @@ impl crate::identify::PlexSource for PlexMeta {
         if let Some(hit) = cached.as_ref().filter(|hit| !expired(incomplete(hit), hit)) {
             return Some(hit.clone());
         }
-        let Some(token) = super::plextv::claim_token(&self.claim) else {
-            return cached;
+        // Read token and identity together on every network call: the shared claim's daily
+        // version refresh must reach an already-created metadata transport too.
+        let mut headers = {
+            let claim = self.claim.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+            let Some(token) = claim.token.as_ref().filter(|token| !token.is_empty()) else {
+                return cached;
+            };
+            let mut headers = claim.pms_headers("PlexMediaServer", false);
+            for (name, value) in &mut headers {
+                if *name == "Accept" {
+                    *value = "application/json".to_string();
+                }
+            }
+            headers.extend([
+                ("X-Plex-Token", token.clone()),
+                ("Content-Type", "application/json".to_string()),
+                ("X-Plex-Provider-Version", "6.5.0".to_string()),
+            ]);
+            headers
         };
-        let mut headers = vec![
-            ("X-Plex-Token", token),
-            ("Accept", "application/json".to_string()),
-            ("Content-Type", "application/json".to_string()),
-            ("X-Plex-Product", "Plex Media Server".to_string()),
-            ("X-Plex-Provider-Version", "6.5.0".to_string()),
-            ("X-Plex-Client-Identifier", self.client.clone()),
-        ];
         if method == "GET" {
             // The agent pages at 50 (the lab capture); 500 is refused with a 400.
             headers.push(("X-Plex-Container-Start", "0".to_string()));
@@ -135,12 +141,15 @@ impl crate::identify::PlexSource for PlexMeta {
 /// `build_catalog.relink_guids` (`rex catalog --relink`): the rows' guids relinked to the
 /// agent's, asked as `client` (the catalog's machineIdentifier) through the server's own cache,
 /// with the token of the claim beside `catalog`. None without one.
-pub(crate) fn relink(items: &mut [Value], catalog: &Path, client: String) -> Option<usize> {
+pub(crate) fn relink(items: &mut [Value], catalog: &Path, client: String, name: &str) -> Option<usize> {
     let claim_file = super::plextv::claim_path(catalog);
-    let claim = super::plextv::Claim::load(&client, claim_file.clone(), "", super::plextv::PMS_VERSION_FALLBACK);
+    let claim = super::plextv::Claim::load(&client, claim_file.clone(), name, super::plextv::PMS_VERSION_FALLBACK);
     let claim = Arc::new(Mutex::new(claim));
     super::plextv::claim_token(&claim)?;
-    let agent = PlexMeta::new(claim, claim_file.with_file_name("plex_cache.json"), client);
+    // A one-shot catalog command needs only the release list, not cloud account startup
+    // or a version watcher. Offline it retains the packaged/persisted current identity.
+    super::plextv::refresh_version(&claim);
+    let agent = PlexMeta::new(claim, claim_file.with_file_name("plex_cache.json"));
     struct Agent(PlexMeta);
     impl crate::metadata::PlexProvider for Agent {
         /// `PlexProvider.match`: the first external id, `tmdb://` ones first, whose match is

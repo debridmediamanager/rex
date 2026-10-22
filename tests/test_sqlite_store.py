@@ -31,6 +31,8 @@ import subprocess
 import sys
 import tempfile
 import time
+import urllib.parse
+import uuid
 
 from test_persist import Instance, LIBRARY, check, first, results
 
@@ -313,11 +315,130 @@ def database_catalog():
         shutil.rmtree(work, ignore_errors=True)
 
 
+def list_guid_identity():
+    """Real PMS UUID shapes, persistent migration, and collection tag identity.
+
+    Shapes come from collection_recreate_s42.json and playlist_poster_upload_s42.json,
+    both PMS 1.42.2. The current 1.43.5 reference has no libraries or playlists;
+    measuring its list GUIDs would require changing its libraries/account.
+    """
+    def uuid4_guid(guid, prefix):
+        if not isinstance(guid, str) or not guid.startswith(prefix):
+            return False
+        value = guid[len(prefix):]
+        try:
+            parsed = uuid.UUID(value)
+            return parsed.version == 4 and str(parsed) == value
+        except ValueError:
+            return False
+
+    work, catalog = workdir()
+    state = os.path.join(work, "rex.db")
+    server = None
+    try:
+        server = Instance(catalog, state=state)
+        machine = server.request("GET", "/identity")[1]["MediaContainer"]["machineIdentifier"]
+        uri = urllib.parse.quote("server://%s/%s/library/metadata/1007" % (machine, LIBRARY), safe="")
+
+        def create(kind, title):
+            path = ("/library/collections?type=1&sectionId=1" if kind == "collection"
+                    else "/playlists?type=video")
+            status, body = server.request("POST", path + "&smart=0&title=" + urllib.parse.quote(title)
+                                          + "&uri=" + uri)
+            check("create " + title, status == 200, str((status, body)))
+            return first(body)
+
+        collection = create("collection", "GUID identity")
+        playlist = create("playlist", "GUID playlist")
+        deleted = create("collection", "GUID deleted")
+        legacy = create("collection", "GUID legacy")
+        agent = create("collection", "GUID agent")
+        branded_playlist = create("playlist", "GUID branded playlist")
+        agent_guid = "plex://collection/5ec2fd508509540041a16274"
+        check("new collection has the recorded random UUIDv4 shape",
+              uuid4_guid(collection.get("guid"), "collection://"), str(collection))
+        check("new playlist has the recorded random UUIDv4 shape",
+              uuid4_guid(playlist.get("guid"), "com.plexapp.agents.none://"), str(playlist))
+        cid, pid, did = [row["ratingKey"] for row in (collection, playlist, deleted)]
+        server.request("DELETE", "/library/collections/" + did)
+        server.stop()
+        server = Instance(catalog, state=state)
+        for key, expected in ((cid, collection["guid"]), (pid, playlist["guid"])):
+            got = first(server.request("GET", "/library/metadata/" + key)[1])
+            check("new list GUID survives restart " + key, got.get("guid") == expected, str(got))
+        server.stop()
+        server = None
+        # Reproduce old deployed state, not a source-text assertion. One playlist
+        # predates GUID persistence; the live/deleted collections share an old GUID.
+        old = "collection://rex-" + cid
+        with sqlite3.connect(state) as db:
+            for coll, key, body in db.execute(
+                    "SELECT coll,key,body FROM row WHERE coll IN "
+                    "('state:collections','state:playlists','state:collectionGuids')").fetchall():
+                row = json.loads(body)
+                if coll == "state:collections" and row["id"] == cid:
+                    row["extra"]["guid"] = old
+                elif coll == "state:collections" and row["id"] == legacy["ratingKey"]:
+                    row["extra"].pop("guid", None)
+                elif coll == "state:collections" and row["id"] == agent["ratingKey"]:
+                    row["extra"]["guid"] = agent_guid
+                elif coll == "state:playlists" and row["id"] == pid:
+                    row.pop("guid", None)
+                elif coll == "state:playlists" and row["id"] == branded_playlist["ratingKey"]:
+                    row["guid"] = "com.plexapp.agents.none://rex-playlist-" + row["id"]
+                elif coll == "state:collectionGuids":
+                    row["guid"] = old
+                db.execute("UPDATE row SET body=? WHERE coll=? AND key=?",
+                           (json.dumps(row), coll, key))
+        server = Instance(catalog, state=state)
+        migrated = [first(server.request("GET", "/library/metadata/" + key)[1])
+                    for key in (cid, pid)]
+        for row, prefix in zip(migrated, ("collection://", "com.plexapp.agents.none://")):
+            check("restored old list exposes an unbranded UUIDv4",
+                  uuid4_guid(row.get("guid"), prefix), str(row))
+        for key, prefix in ((legacy["ratingKey"], "collection://"),
+                            (branded_playlist["ratingKey"], "com.plexapp.agents.none://")):
+            row = first(server.request("GET", "/library/metadata/" + key)[1])
+            check("missing collection or branded playlist migrates " + key,
+                  uuid4_guid(row.get("guid"), prefix), str(row))
+        row = first(server.request("GET", "/library/metadata/" + agent["ratingKey"])[1])
+        check("migration preserves a Plex agent collection GUID",
+              row.get("guid") == agent_guid, str(row))
+        tags = first(server.request("GET", "/library/metadata/1007")[1]).get("Collection") or []
+        check("restored member tag carries migrated GUID",
+              any(tag.get("tag") == "GUID identity" and tag.get("guid") == migrated[0]["guid"]
+                  for tag in tags), str(tags))
+        # No mutation after migration: a hard kill must not remint its identity.
+        server.stop(signal.SIGKILL)
+        server = Instance(catalog, state=state)
+        for key, expected in zip((cid, pid), migrated):
+            got = first(server.request("GET", "/library/metadata/" + key)[1])
+            check("migration committed before serving " + key,
+                  got.get("guid") == expected["guid"], str(got))
+        recreated = create("collection", "GUID deleted")
+        check("deleted-tag registry shares the migrated identity",
+              recreated.get("guid") == migrated[0]["guid"], str(recreated))
+        server.request("DELETE", "/library/collections/" + cid)
+        recreated = create("collection", "GUID identity")
+        check("delete/recreate preserves migrated collection GUID",
+              recreated.get("guid") == migrated[0]["guid"], str(recreated))
+        server.request("DELETE", "/playlists/" + pid)
+        recreated = create("playlist", "GUID playlist")
+        check("a new playlist mints a fresh UUID rather than reusing its deleted GUID",
+              uuid4_guid(recreated.get("guid"), "com.plexapp.agents.none://")
+              and recreated.get("guid") != migrated[1]["guid"], str(recreated))
+    finally:
+        if server is not None:
+            server.stop()
+        shutil.rmtree(work, ignore_errors=True)
+
+
 if __name__ == "__main__":
     default_database()
     one_write_touches_few_rows()
     legacy_migration()
     database_catalog()
+    list_guid_identity()
     failed = results.count(False)
     print("\n%d/%d passed" % (len(results) - failed, len(results)))
     sys.exit(1 if failed else 0)

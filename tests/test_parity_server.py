@@ -253,7 +253,7 @@ def run_dispatcher(s):
         check("%s /downloadQueue is the dispatcher's listing" % method, doc == plugins, doc)
 
     # -- an unknown method honours Connection: close ----------------------------------
-    for method in ("PATCH", "FROB"):
+    for method in ("FROB",):
         head = raw_exchange(s.port, ("%s /identity HTTP/1.1\r\nHost: x\r\n"
                                      "Connection: close\r\n\r\n" % method).encode())
         check("%s with Connection: close is a 500 answered Connection: close" % method,
@@ -367,27 +367,6 @@ def run_system(s):
 
 
 def run_resources(s):
-    # -- bundled resources and generated images are the oracle's bytes ---------------
-    # The oracle's `_jpeg`/`_png` placeholders at the measured geometry (zlib level 6 for
-    # the PNG, so the deflate stream is zlib's own).
-    for path, size, kind in (("/:/resources/movie-fanart.jpg", 33011, "image/jpeg"),
-                             ("/:/resources/show-fanart.jpg", 33011, "image/jpeg"),
-                             ("/:/resources/artist-fanart.jpg", 32808, "image/jpeg"),
-                             ("/:/resources/actor-icon.png", 1561, "image/png"),
-                             ("/system/bundle/media/flags/videoResolution/1080", 145,
-                              "image/png"),
-                             ("/system/bundle/media/flags/audioCodec/ac3", 188, "image/png"),
-                             ("/system/agents/attribution/image"
-                              "?identifier=com.plexapp.agents.themoviedb", 140, "image/png")):
-        status, heads, body = s.raw("GET", path)
-        check("%s is the oracle's %d-byte %s" % (path.split("?")[0], size, kind),
-              status == 200 and len(body) == size
-              and heads.get("content-type", "").startswith(kind),
-              (status, len(body), heads.get("content-type")))
-    status, _, body = s.raw("GET", "/:/resources/movie-fanart.jpg")
-    check("the fanart placeholder is a baseline JPEG with a real scan",
-          body[:2] == b"\xff\xd8" and b"\xff\xda" in body and body[-2:] == b"\xff\xd9",
-          body[:8])
     for path in ("/:/resources/", "/:/resources/dvr", "/:/resources/dvr/",
                  "/:/resources/category-art"):
         status, heads, body = s.raw("GET", path)
@@ -398,13 +377,6 @@ def run_resources(s):
 
 
 def run_misc(s):
-    # -- Download Logs names its attachment ---------------------------------------------
-    status, heads, body = s.raw("GET", "/diagnostics/logs")
-    check("/diagnostics/logs is a zip named rex-logs.zip",
-          status == 200 and body[:2] == b"PK"
-          and heads.get("content-type") == "application/zip"
-          and heads.get("content-disposition") == 'attachment; filename="rex-logs.zip"',
-          (status, heads))
     # -- the system plug-in's /root redirect ------------------------------------------
     status, heads, _ = s.raw("GET", "/:/plugins/com.plexapp.system/root")
     check("/:/plugins/com.plexapp.system/root is a 302 to /system with no cookie",

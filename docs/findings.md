@@ -13743,4 +13743,134 @@ directly and still releases every acquired host send right. Both macOS targets
 then linked successfully. Zig's Linux-hosted macOS builds warn about unavailable
 `xcrun`; Windows reports three unused certificate/error FFI declarations.
 Neither prevented compilation or linking.
+## One public PMS identity and recorded resources (2026-10-22)
+
+The public Linux release in Plex's `/api/downloads/5.json` is
+`1.43.5.11029-6bf8af3f0`. Its complete public response is recorded in
+`tests/fixtures/plex_downloads_2026_10_22.json`. A fresh official
+`plexinc/pms-docker:latest` on zen (image digest
+`sha256:01bdf0ad6d53198da4331540c1e73ab65db7a72e961fff97ecb0847d46055c5f`)
+supplied the method/identity recording in `pms_identity_2026_10_22.json` and all
+70 existing bundled-resource paths in `pms_resources_2026_10_22.json`. No account
+was claimed or production library modified. The public-route recording uses a
+forwarded public address and records credential classes, never credential values.
+
+The old binary answered clients as `1.42.2.10156-f737b826c`/API `1.1.1` while
+plex.tv could see a newer release. `Claim.version` now supplies every version
+consumer: client identity/root/providers, framework sections, `/servers`, GDM,
+webhooks and plex.tv headers. Every startup and the daily refresh read the same
+public Linux entry; a claim refreshes it too. The newest valid packaged or cached
+version wins offline, and stale release metadata cannot downgrade it. API `1.2.3`
+is the current reference's measured value. Home Theater's extra `.0` remains its
+own measured projection.
+
+Current PMS accepts PATCH as a routed method: `/identity` answers the plug-in
+listing, `/system` answers Tornado's 405 and an unknown multi-segment path answers
+404. FROB remains the 109-byte 500. The old blanket PATCH 500 belonged to 1.42.2.
+Download Logs uses `Plex Media Server Logs_<date>_<time>.zip` and
+`Plex Media Server.log`. The public favicon and every recorded resource body are
+the reference bytes, rather than a T-rex icon or solid-colour stand-ins. The
+resource JSON is borrowed through the existing shared-sidecar cache, not cloned
+in full for each image.
+
+`test_pms_identity.py` failed **79 of 85** checks against the unfixed binary,
+including **every one of the 70 resource paths**. The fixed binary passed
+**85/85**, with whole-body SHA-256 comparisons and a byte-range check over
+changed icon pixels. The old range sample covered only the common ICO header;
+it was widened rather than treating that passing sample as a regression.
+
+For the source API, a second internal Docker network gave the client a socket
+peer outside all permitted private ranges. Across eight methods, absent/wrong/
+valid tokens, forged local headers and four source paths, the unfixed server
+differed from its ordinary missing-route response in **144 of 192** comparisons:
+its source-specific JSON 403 identified it before the PMS gate. Public peers
+now take the ordinary PMS routing and wire-envelope path: **0/192 differences**.
+A local source listing still answered `{"size":0}`. The source unit regression
+also failed on the old JSON 403 versus the ordinary HTML 401.
+
+Windows Chrome 155 rendered the live `/:/resources/movie.png` as the reference's
+300×300 clapperboard; a screenshot was captured. The initial forwarded CDP port
+answered an unrelated HTTP 401, and the kids fallback decoded the image but could
+not capture a screenshot. An explicitly bound fresh SSH forward reached Windows
+and supplied the visual proof.
+
+This does not establish that rex is impossible to distinguish from PMS. Private
+management APIs, diagnostic messages, upstream requests, TLS, hostnames and
+unimplemented or version-specific behavior remain observable. Claiming complete
+equivalence or protection against Plex account action would exceed this evidence.
+
+### Independent adversarial passes
+
+The next passes did not reuse the green resource suite as evidence of complete
+equivalence:
+
+- **Public HTTP:** an expanded 196-pair request matrix against the same official
+  PMS covered XML/JSON, gzip, HEAD, bare OPTIONS, PATCH/POST/PUT/DELETE, an unknown
+  method, CORS/preflight and satisfiable/unsatisfiable ranges. Raw ordered headers
+  and bodies were retained. Seven additional wire-envelope regressions and 21
+  web-alias cases are recorded in `pms_wire_2026_10_22.json`. On the first identity
+  fix, the expanded permanent suite passed only **85/117** outer checks; its nested
+  framework comparison failed **30/34** cases. The pass exposed a missing setup
+  redirect, alias writers falling into the plug-in dispatcher, framework OPTIONS,
+  Tornado header order, static-XML 416 classification and favicon method headers.
+- **Independent identity audit:** source tracing found missing PMS headers on
+  metadata requests, old framework build paths, branded list GUIDs and a branded
+  webhook boundary. Actual local-stub requests reproduced the missing metadata
+  identity in runtime claim/restart, online/offline catalog relinking and a learned
+  next-version case. The existing webhook receiver recorded `boundary=rex-<uuid>`.
+- **Client/admin boundary:** 58 read-only requests per server plus ten web-client
+  assets found real remaining distinguishers. Without `--web-root` or a local
+  `webclient/`, `/web/index.html` is rex's 404 instead of PMS's 30,184-byte bundled
+  client. All ten assets referenced by that index were likewise absent. Owner
+  diagnostics retain useful implementation-specific log content and extra request
+  logs; private peers can still use the `/rex/*` control plane. Those are retained
+  compatibility boundaries, not clean parity results.
+
+`framework_identity_2026_10_22.json` records the current traceback and agent-ID
+responses. The current framework's `runtime.py` frame is line **847**, not 843;
+its plug-in path uses build **6bf8af3f0**. Generated and sidecar-driven errors now
+expand the shared version's build suffix. Legacy agent IDs were captured twice
+and were stable; language/filter tables were not replaced speculatively.
+
+Collection and playlist GUID shapes come from the existing real PMS 1.42.2
+captures: `collection://<UUIDv4>` and `com.plexapp.agents.none://<UUIDv4>`.
+The fresh current PMS had no libraries or playlists, so current-version list
+creation was not measured. rex now mints UUIDv4 identities and migrates old
+branded/missing state before serving it; the registry, member tags and hidden
+playlists share that migration. Existing Plex-agent GUIDs are preserved.
+`test_sqlite_store.py` exercises creation, migration, restart/hard-kill durability
+and collection delete/recreate identity. It joins the Linux CI suite.
+
+The required manager check also exposed a real unrelated lifecycle race. Replacing
+its unproven 50 ms request ordering with SIGSTOP and observed `desired=stopped`
+still failed on the unfixed binary (**67/68**). The monitor could reap the child
+owned by an in-flight stop, treat its clean exit as final and overwrite a later
+start request. Stop now marks ownership under the manager mutex, and the monitor
+leaves that child for stop's finalizer. The API regression retains the real
+stop-before-start barrier; a unit regression covers the already-exited child.
+
+The later edge sweep widened to **238 pairs** and stopped ignoring framework
+cookies; it also compares compressed bytes where the body is not instance-specific.
+Only Date, identity/claim-dependent lengths and setup-redirect machine IDs are
+normalised. This exposed three further protocol details:
+
+- Cookie-bearing framework HEAD replies ignore Range, while the core's cookie-free
+  scanner/config HEAD replies range normally. Framework GET ranges retain two
+  Content-Length fields, full length first and slice length after Connection.
+- A core-generated 416 drops the original framework cookie. Unsupported agent and
+  scanner writers instead reach the framework and carry its cookie on their empty
+  404. Treating the path alone as a core response lost that ownership distinction.
+- The current bare agent list places Last.fm before TheMovieDB and Plex Theme Music
+  last among legacy agents. Four captures retained that order; the type-filtered
+  descriptors were unchanged. The regression now compares ordered IDs, not a map
+  that hid the difference.
+
+The native build passed the full Rust suites (**197 passed**, one deliberately
+opt-in live-provider subtitle test ignored). A Docker run exceeded the existing
+catalog timing guard; the unchanged baseline exceeded it there too, while both
+baseline and changed binaries passed that guard directly on zen. The final Rust
+verification therefore uses an isolated native toolchain on zen, not a relaxed
+threshold or a skipped catalog test. Before the last cookie-ownership correction,
+the widened identity suite passed **122/125** outer checks and all **34** framework
+comparisons; the three remaining failures were the recorded cookie cases above.
 

@@ -44,19 +44,20 @@ pub(super) const PLUGIN_LIST: [&str; 17] = [
 /// The framework's own `messaging/wait` reply: an empty cerealizer dump.
 const PLUGIN_WAIT: &[u8] = b"Y2VyZWFsMQowCmIx";
 
-const FRAMEWORK_RUNTIME_FRAME: &str = "  File \"/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/Framework.bundle/Contents/Resources/Versions/2/Python/Framework/components/runtime.py\", line 843, in handle_request\n    result = f(**d)\n";
+// Current 1.43.5 framework framing, measured in framework_identity_2026_10_22.json.
+// `{build}` is expanded from the shared claim at the response boundary.
+const FRAMEWORK_RUNTIME_FRAME: &str = "  File \"/usr/lib/plexmediaserver/Resources/Plug-ins-{build}/Framework.bundle/Contents/Resources/Versions/2/Python/Framework/components/runtime.py\", line 847, in handle_request\n    result = f(**d)\n";
 
 /// `handlers/runtime.py:113` redirects `root` to the first registered prefix, and a bundle
 /// that registers none -- every agent -- raises there.
 fn plugin_root_error() -> Vec<u8> {
     format!(
-        "<?xml version='1.0' encoding='utf-8'?>\n<Response code=\"2000\" status=\"IndexError: list index out of range\">\n  <Traceback>Traceback (most recent call last):\n{FRAMEWORK_RUNTIME_FRAME}  File \"/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/Framework.bundle/Contents/Resources/Versions/2/Python/Framework/handlers/runtime.py\", line 113, in root\n    return Framework.objects.Redirect(self._core, handlers[0].prefix)\nIndexError: list index out of range\n</Traceback>\n</Response>\n"
+        "<?xml version='1.0' encoding='utf-8'?>\n<Response code=\"2000\" status=\"IndexError: list index out of range\">\n  <Traceback>Traceback (most recent call last):\n{FRAMEWORK_RUNTIME_FRAME}  File \"/usr/lib/plexmediaserver/Resources/Plug-ins-{{build}}/Framework.bundle/Contents/Resources/Versions/2/Python/Framework/handlers/runtime.py\", line 113, in root\n    return Framework.objects.Redirect(self._core, handlers[0].prefix)\nIndexError: list index out of range\n</Traceback>\n</Response>\n"
     )
     .into_bytes()
 }
 
-/// Cycle 52: the plug-in framework's TypeError document. Byte for byte on plexlab and the
-/// 1.42.2 reference once the bundle hash and line number are the reported version's.
+/// The current plug-in framework's TypeError document, captured from PMS 1.43.5.
 fn framework_traceback(sentence: &str) -> Vec<u8> {
     format!(
         "<?xml version='1.0' encoding='utf-8'?>\n<Response code=\"2000\" status=\"TypeError: {sentence}\">\n  <Traceback>Traceback (most recent call last):\n{FRAMEWORK_RUNTIME_FRAME}TypeError: {sentence}\n</Traceback>\n</Response>\n"
@@ -290,8 +291,8 @@ impl Response {
         }
     }
 
-    /// A bundled image: `no-cache`, and a range unit only where the asset handler serves it.
-    fn asset(content_type: &str, body: Vec<u8>, ranged: bool) -> Self {
+    /// A static asset: `no-cache`, and a range unit where the asset handler serves it.
+    pub(super) fn asset(content_type: &str, body: Vec<u8>, ranged: bool) -> Self {
         let mut headers = vec![("Cache-Control".to_string(), "no-cache".to_string())];
         if ranged {
             headers.push(("Accept-Ranges".to_string(), "bytes".to_string()));
@@ -460,6 +461,7 @@ impl Runtime {
         if matches!(method, "OPTIONS" | "PATCH") {
             return None;
         }
+        let read = matches!(method, "GET" | "HEAD");
         let path = raw_path.trim_end_matches('/');
         if let Some(rest) = path.strip_prefix("/:/plugins/") {
             let owner = rest.split('/').next().unwrap_or_default();
@@ -471,30 +473,29 @@ impl Runtime {
         if path != "/system" && !path.starts_with("/system/") {
             return None;
         }
-        if matches!(path, "/system/agents" | "/system/proxy") {
+        if path == "/system/proxy" || (path == "/system/agents" && read) {
             return None;
         }
-        let pieces = path.split('/').collect::<Vec<_>>();
-        let cookie = Some(format!("com.plexapp.system={FRAMEWORK_COOKIE_VALUE}"));
-        if pieces.len() == 6 && pieces[..3] == ["", "system", "agents"] && pieces[4] == "config" {
-            // Cycle 53/58: the config READ is the one framework document with no cookie;
-            // its PUT, and a GET whose mediaType does not parse, carry it.
-            if !matches!(method, "GET" | "HEAD") {
-                return cookie;
+        // Numeric config/scanner reads belong to the core. Unsupported writers
+        // instead reach the framework, including its state cookie.
+        if read {
+            let pieces = path.split('/').collect::<Vec<_>>();
+            if pieces.len() == 6
+                && pieces[..3] == ["", "system", "agents"]
+                && pieces[4] == "config"
+                && pieces[5].trim().parse::<i64>().is_ok()
+            {
+                return None;
             }
-            if pieces[5].trim().parse::<i64>().is_err() {
-                return cookie;
+            if pieces.len() == 4
+                && pieces[2] == "scanners"
+                && !pieces[3].is_empty()
+                && pieces[3].bytes().all(|b| b.is_ascii_digit())
+            {
+                return None;
             }
-            return None;
         }
-        if pieces.len() == 4
-            && pieces[2] == "scanners"
-            && !pieces[3].is_empty()
-            && pieces[3].bytes().all(|b| b.is_ascii_digit())
-        {
-            return None;
-        }
-        cookie
+        Some(format!("com.plexapp.system={FRAMEWORK_COOKIE_VALUE}"))
     }
 
     /// `_stale_framework_cookie`: a framework route whose state cookie will not unpack
@@ -566,8 +567,20 @@ impl Runtime {
             return Some(Response::error(400, "rex: bad request"));
         }
         if under_system {
+            // Current PMS routes PATCH to Tornado, rather than the 1.42.2 method-table 500.
+            if method == "PATCH" {
+                let mut response = Response::bytes(405, "text/html; charset=UTF-8");
+                response.body = b"<html><title>405: Method Not Allowed</title><body>405: Method Not Allowed</body></html>".to_vec();
+                response.headers.push(("Server".to_string(), "TornadoServer/1.0".to_string()));
+                return Some(response);
+            }
             if method == "OPTIONS" {
-                return Some(Response::bare(200));
+                let mut response = Response::bare(200);
+                response.headers = vec![
+                    ("Access-Control-Allow-Methods".to_string(), "GET, HEAD, POST, DELETE, PUT, OPTIONS".to_string()),
+                    ("Access-Control-Max-Age".to_string(), "86400".to_string()),
+                ];
+                return Some(response);
             }
             if matches!(method, "POST" | "PUT" | "DELETE")
                 && !(method == "PUT"
@@ -611,6 +624,13 @@ impl Runtime {
             return Some(stale);
         }
         let mut response = self.framework_route_inner(request, path, &segments, query);
+        if response.status == 500 && response.content_type == "application/xml" {
+            let version = plextv::version(&self.plextv.claim);
+            let build = version.rsplit_once('-').map(|(_, build)| build).unwrap_or(&version);
+            if let Ok(body) = std::str::from_utf8(&response.body) {
+                response.body = body.replace("{build}", build).into_bytes();
+            }
+        }
         if under_system && response.status == 404 && !response.content_type.is_empty() {
             // Cycle 21: an empty response under `/system` carries no Content-Type.
             response = Response::bare(404);
@@ -976,6 +996,7 @@ impl Runtime {
         sections.sort_by_key(|section| {
             string_value(section.get("title").unwrap_or(&Value::Null)).to_lowercase()
         });
+        let identity = self.pms_identity();
         let rows = sections
             .iter()
             .map(|section| {
@@ -993,7 +1014,7 @@ impl Runtime {
                     "name": title,
                     "title": title,
                     "type": section.get("type").cloned().unwrap_or(Value::Null),
-                    "serverVersion": VERSION,
+                    "serverVersion": identity.version,
                     "uuid": section.get("uuid").cloned().unwrap_or(Value::Null),
                     "host": host,
                     "serverName": self.friendly,
@@ -1004,6 +1025,7 @@ impl Runtime {
                 })
             })
             .collect::<Vec<_>>();
+        drop(identity);
         self.framework_container(query, rows, "Directory", true)
     }
 

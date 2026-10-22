@@ -3,7 +3,7 @@
 
 Every route that logs (as the Python oracle did) writes one line with its own text and level, on
 the thread that served the request, and that line reaches Download Logs
-(`/diagnostics/logs`, `rex.log`) and every event channel opened with
+(`/diagnostics/logs`, `Plex Media Server.log`) and every event channel opened with
 `filters=log` as a `LogSentNotification`. A server that answers the same bytes but
 logs nothing leaves the Troubleshooting page and the Console empty, which is exactly
 what the Console exists to show.
@@ -101,7 +101,7 @@ class Server:
         status, body, _ = self.request("GET", "/diagnostics/logs")
         if status != 200:
             return []
-        text = zipfile.ZipFile(io.BytesIO(body)).read("rex.log").decode("utf-8", "replace")
+        text = zipfile.ZipFile(io.BytesIO(body)).read("Plex Media Server.log").decode("utf-8", "replace")
         return [STAMP.sub("", line) for line in text.splitlines() if line]
 
     def stop(self):

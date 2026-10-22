@@ -66,7 +66,7 @@ impl Runtime {
             json!(if unmatched {
                 format!("local://{}", playlist.id)
             } else {
-                format!("com.plexapp.agents.none://rex-playlist-{}", playlist.id)
+                playlist.guid.clone()
             }),
         );
         row.insert("type".to_string(), json!("playlist"));
@@ -214,6 +214,7 @@ impl Runtime {
         let stamp = now();
         let mut playlist = Playlist {
             id: id.clone(),
+            guid: format!("com.plexapp.agents.none://{}", plextv::uuid4()),
             title: title.clone(),
             items: Vec::new(),
             item_ids: Vec::new(),

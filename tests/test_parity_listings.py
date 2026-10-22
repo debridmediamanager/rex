@@ -417,7 +417,7 @@ def run(port):
     common = (mc(port, "/library/sections/1/common?type=1").get("Metadata") or [{}])[0]
     tags = [t for t in common.get("Collection") or [] if t.get("tag") == "Common Probe"]
     check("a shared collection tag on /common carries the collection's guid",
-          tags and tags[0].get("guid") == "collection://rex-%s" % made.get("ratingKey"),
+          tags and tags[0].get("guid") == made.get("guid"),
           (status, common.get("Collection")))
 
     # -- type=18 ------------------------------------------------------------------------

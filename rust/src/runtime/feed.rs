@@ -275,9 +275,9 @@ fn answer(status: u16, body: Value) -> Response {
 /// both sides, guarded it before, and the unclaimed gate's check refused sources that name rex
 /// by host name (a Docker service) or reach it over Tailscale. This one reads the peer alone.
 pub(super) fn handle(shared: &SharedRuntime, request: &Request, path: &str) -> Response {
-    // rex-direct has rex's port forwarded from the internet and the feed takes no token.
+    // Keep direct callers behind the same boundary as the socket dispatcher.
     if CONNECTION.with(std::cell::Cell::get).is_some_and(|(peer, _)| !source_peer(peer)) {
-        return answer(403, json!({"error": "the source API only answers private networks"}));
+        return lock(shared).route(request);
     }
     if let Some(rest) = path.strip_prefix("/rex/sources") {
         return sources(shared, request, rest.trim_matches('/'));
@@ -2639,10 +2639,10 @@ mod tests {
     }
 
     /// rex-direct forwards rex's port from the internet, and the source API takes no token:
-    /// a peer that is not on a private network is refused on every route and method, and
-    /// headers naming a local client do not change who the socket's peer is.
+    /// a public peer gets the same authentication/unknown-route answer as any PMS path.
+    /// Headers naming a local client cannot expose the source API.
     #[test]
-    fn the_source_api_refuses_a_public_peer_whatever_its_headers_say() {
+    fn the_source_api_does_not_identify_itself_to_a_public_peer() {
         let dir = work("source-gate");
         let (shared, _) = runtime_with_episode(&dir);
         shared.lock().unwrap().put_source(Source::register("b", &json!({"url": "http://127.0.0.1:9"})).unwrap());
@@ -2669,9 +2669,23 @@ mod tests {
             ] {
                 for headers in [&[][..], &forged[..]] {
                     let response = handle(&shared, &request(method, target, headers), target);
-                    assert_eq!(response.status, 403, "{peer} {method} {target} {headers:?}");
+                    let ordinary = lock(&shared).route(&request(method, "/does-not-exist/leaf", headers));
+                    assert_eq!((response.status, &response.content_type, &response.body),
+                               (ordinary.status, &ordinary.content_type, &ordinary.body),
+                               "{peer} {method} {target} {headers:?}");
                 }
             }
+        }
+        let capture: Value = serde_json::from_str(include_str!("../../../tests/fixtures/pms_identity_2026_10_22.json")).unwrap();
+        lock(&shared).token = Some("source-gate-token".to_string());
+        for row in capture["public_rows"].as_array().unwrap().iter().filter(|row| {
+            row["token"] == "valid" && row["path"].as_str().unwrap().starts_with("/rex/")
+        }) {
+            let method = row["method"].as_str().unwrap();
+            let path = row["path"].as_str().unwrap();
+            let response = handle(&shared, &request(method, path, &[("x-plex-token", "source-gate-token")]), path);
+            assert_eq!(response.status as u64, row["status"].as_u64().unwrap(), "{method} {path}");
+            assert_eq!(response.body, row["body"].as_str().unwrap().as_bytes(), "{method} {path}");
         }
         assert_eq!(shared.lock().unwrap().sources.len(), 1, "a refused PUT registered a source");
         for peer in ["127.0.0.1", "192.168.1.10", "100.101.20.2", "fd7a:115c:a1e0::1", "::ffff:10.0.0.5"] {

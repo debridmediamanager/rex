@@ -13521,11 +13521,8 @@ def main():
     # every other verb, so `/identity`, `/hubs` and `/playlists` answer 200 to it (the
     # recorded "these answer any verb" rule) and every other path 404s it.
     #
-    # Cycle 31 took `PATCH` out of this check: on 1.42.2 -- the build rex reports -- it
-    # is not a method at all, a **500 on every path**, `/identity` included, which cycle 15
-    # could not see because plexscratch is 1.43.4. The 500 is asserted on its own below. What a real PMS does not recognise as a method AT ALL -- `FROB`,
-    # `TRACE`, a wrong-case `Get` -- is a **500** with its own four-line html body, on
-    # every path.
+    # Methods outside PMS's table -- `FROB`, `TRACE`, a wrong-case `Get` -- are
+    # a 500 with the four-line HTML refusal. PATCH is a routed method on current PMS.
     #
     # rex answered Python's BaseHTTPRequestHandler 501 page, which also leaks
     # `Server: Rex/0.1 Python/3.10.20`; a real PMS never
@@ -13535,17 +13532,11 @@ def main():
     routed_c15v = {}
     for path_c15v in ("/library/sections", "/identity", "/hubs", "/playlists",
                       "/status/sessions", "/library/sections/%s/all" % movie_section):
-        routed_c15v[path_c15v] = (request(base, "PATCH", path_c15v)[0],
-                                  request(base, "OPTIONS", path_c15v)[0])
-    # Cycle 31: every PATCH is a 500, whatever the path routes.
-    # The paths whose VERB TABLE is wrong are a separate finding (they answer the GET
-    # body to every verb); what this check pins is that PATCH and a bare OPTIONS go
-    # through routing at all rather than being refused or answered as a preflight.
-    check("a bare OPTIONS is routed like any other verb, and PATCH is a 500",
-          all(status_c15v[0] == 500 for status_c15v in routed_c15v.values())
-          and routed_c15v["/identity"][1] == 200 and routed_c15v["/hubs"][1] == 200
-          and routed_c15v["/playlists"][1] == 200
-          and routed_c15v["/library/sections/%s/all" % movie_section][1] == 404,
+        routed_c15v[path_c15v] = request(base, "OPTIONS", path_c15v)[0]
+    check("a bare OPTIONS is routed like any other verb",
+          routed_c15v["/identity"] == 200 and routed_c15v["/hubs"] == 200
+          and routed_c15v["/playlists"] == 200
+          and routed_c15v["/library/sections/%s/all" % movie_section] == 404,
           str(routed_c15v))
     frob_c15v, frob_body_c15v, frob_hd_c15v = request(base, "FROB", "/library/sections")
     check("a method a real PMS does not recognise is a 500, not a 501",
@@ -17272,12 +17263,9 @@ def main():
     # unimplemented verb is a 404 with an EMPTY body. rex answered its own text/plain
     # 404 to all of them.
     for path in ("/system", "/system/agents", "/system/zzz"):
-        # Cycle 31: the 405 is **1.43.4's**. On 1.42.2 -- the build rex reports -- PATCH
-        # is not a method at all and answers the unrecognised-method 500 here like everywhere
-        # else, so this subtree has no 405 of its own and the surface has none anywhere.
         status, body, headers = request(base, "PATCH", path, want_json=False)
-        check("PATCH %s is a 500, as it is everywhere on 1.42.2" % path,
-              status == 500 and b"500" in body, "%s %r" % (status, body[:40]))
+        check("PATCH %s is the framework's 405" % path,
+              status == 405 and b"Method Not Allowed" in body, "%s %r" % (status, body[:40]))
         status, body, headers = request(base, "OPTIONS", path, want_json=False)
         check("OPTIONS %s is an empty 200" % path,
               status == 200 and not body, "%s %r" % (status, body[:40]))
@@ -24195,33 +24183,6 @@ def main():
           % (deletes_c31g, owned_c31g.get("thumb"), after_c31g.get("thumb")))
 
 
-    # Cycle 31, measured on plexscratch42 (a fresh 1.42.2 install -- the build rex
-    # reports) against plexscratch (1.43.4), over 20 paths and three body dispositions
-    # (no `Content-Length`, `Content-Length: 0`, and that plus a Content-Type):
-    # **`PATCH` is a 500 on every path on 1.42.2**, where 1.43.4 routes it (200 on
-    # `/identity`, `/hubs`, `/playlists` and an unknown single segment; 404 on the routed
-    # multi-segment paths; 405 under `/system`; 400 on the transcoder).
-    #
-    # The control is `FROB`, which is a 500 on BOTH versions with the identical 109-byte
-    # body: PATCH is simply not in 1.42.2's method table. The decisive path is `/identity`,
-    # the one that answers every other verb -- `GET HEAD PUT POST DELETE OPTIONS` are all
-    # 200 there on 1.42.2 and PATCH alone is a 500.
-    #
-    # rex implemented 1.43.4's table exactly while reporting 1.42.2. No client sends
-    # PATCH, so nothing renders differently; what this corrects is four recorded rules that
-    # were the other version's.
-    patch_c31h = {path_c31h: request(base, "PATCH", path_c31h, want_json=False)[0]
-                  for path_c31h in ("/identity", "/library/sections",
-                                    "/library/sections/%s/all" % movie_section,
-                                    "/status/sessions", "/media/providers", "/:/prefs",
-                                    "/playlists", "/hubs", "/system", "/zzznotapath")}
-    frob_c31h = request(base, "FROB", "/identity", want_json=False)[0]
-    put_c31h = request(base, "PUT", "/identity", want_json=False)[0]
-    check("PATCH is a 500 everywhere, as an unrecognised method is on 1.42.2",
-          set(patch_c31h.values()) == {500} and frob_c31h == 500 and put_c31h == 200,
-          "%s | FROB %s | PUT %s" % (patch_c31h, frob_c31h, put_c31h))
-
-
     # Cycle 31, swept over OPTIONS, POST, PUT and DELETE on plexscratch42 (1.42.2) and
     # plexscratch (1.43.4), which agree on all 44 answers: every one of these paths refuses
     # every verb but GET and HEAD with a 404, and `/library/sections`,
@@ -29384,39 +29345,6 @@ def main():
             wrong_c52j.append("%s directory has a body" % path_c52j)
     check("/:/resources is PMS's whole bundled tree",
           not wrong_c52j, "; ".join(wrong_c52j)[:300])
-
-    # rex ships no Plex artwork or build files: both favicons are its own icon at Plex's
-    # geometry (an orange T-rex head on black; the middle of the second row from the top is the
-    # background above the skull), and `sugar.cmake` answers empty where PMS carries its
-    # build script.
-    def icon_pixel_c271(body):
-        import struct as struct_c271
-        if body[:4] != b"\x00\x00\x01\x00":
-            return None
-        size, offset = body[6], struct_c271.unpack("<I", body[18:22])[0]
-        size = size or 256
-        row = size - 2                        # a BMP image runs bottom-up
-        start = offset + 40 + (row * size + size // 2) * 4
-        blue, green, red, _alpha = body[start:start + 4]
-        return red, green, blue
-    pixels_c271 = {path_c271: icon_pixel_c271(request(base, "GET", path_c271, want_json=False)[1])
-                   for path_c271 in ("/favicon.ico", "/:/resources/favicon.ico")}
-    _, sugar_c271, _ = request(base, "GET", "/:/resources/sugar.cmake", want_json=False)
-    check("the favicons are rex's own icon and sugar.cmake carries no Plex build file",
-          all(pixel == (0, 0, 0) for pixel in pixels_c271.values()) and sugar_c271 == b"",
-          (pixels_c271, sugar_c271[:40]))
-
-    # The geometry is the file's own, and a `.jpg` name really is a JPEG.
-    _, fanart_c52j, _ = request(base, "GET", "/:/resources/movie-fanart.jpg", want_json=False)
-    _, icon_c52j, _ = request(base, "GET", "/:/resources/movie.png", want_json=False)
-    check("a bundled .jpg is a JPEG at the file's own geometry",
-          fanart_c52j[:2] == b"\xff\xd8" and b"\xff\xc0" in fanart_c52j[:600]
-          and icon_c52j[:8] == b"\x89PNG\r\n\x1a\n"
-          and int.from_bytes(icon_c52j[16:20], "big") == 300
-          and int.from_bytes(icon_c52j[20:24], "big") == 300,
-          "jpeg=%r png=%dx%d" % (fanart_c52j[:2],
-                                 int.from_bytes(icon_c52j[16:20], "big"),
-                                 int.from_bytes(icon_c52j[20:24], "big")))
 
     # Cycle 52, measured on plexlab (1.43.4) and the 1.42.2 reference: `/connections` is a real
     # route that answers **text/plain**, one line per connection --

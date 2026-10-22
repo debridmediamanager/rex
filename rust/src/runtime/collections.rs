@@ -43,15 +43,13 @@ impl Collection {
         }
     }
 
-    /// The collection's guid. Cycle 89: it is its TAG's, so a collection created under a
-    /// deleted one's name carries the deleted one's; one stored before cycle 89 has none
-    /// of its own and was always minted from its id.
+    /// The guid belongs to the tag, surviving deletion and recreation under its name.
     pub(super) fn guid(&self) -> String {
         self.extra
             .get("guid")
             .and_then(Value::as_str)
-            .map(str::to_string)
-            .unwrap_or_else(|| format!("collection://rex-{}", self.id))
+            .expect("collection guid minted at creation or restored before serving")
+            .to_string()
     }
 
     pub(super) fn stamp(&self) -> i64 {
@@ -71,6 +69,71 @@ impl Collection {
 }
 
 impl Runtime {
+    /// The recorded PMS GUIDs are random v4 UUIDs, not identifiers derived from a
+    /// ratingKey. Rewrite old state once and save it before accepting requests.
+    /// The same old collection GUID can occur both on a live row and in the
+    /// deleted-tag registry; those occurrences must receive the same new UUID.
+    pub(super) fn migrate_list_guids(&mut self) -> bool {
+        let mut changed = false;
+        let mut replacements = HashMap::<String, String>::new();
+        let mut migrate_collection = |old: &str| {
+            if !old.is_empty() && !old.starts_with("collection://rex-") {
+                return old.to_string();
+            }
+            changed = true;
+            replacements.entry(old.to_string())
+                .or_insert_with(|| format!("collection://{}", plextv::uuid4()))
+                .clone()
+        };
+        for collection in self.collections.values_mut() {
+            if collection.extra.get("guid").and_then(Value::as_str)
+                .is_some_and(|guid| !guid.is_empty() && !guid.starts_with("collection://rex-"))
+            {
+                continue;
+            }
+            let old = collection.extra.get("guid").and_then(Value::as_str)
+                .filter(|guid| !guid.is_empty()).map(str::to_string)
+                .unwrap_or_else(|| format!("collection://rex-{}", collection.id));
+            let guid = migrate_collection(&old);
+            collection.extra.insert("guid".to_string(), json!(guid));
+        }
+        for (name, entry) in &mut self.collection_guids {
+            let Some(entry) = entry.as_object_mut() else { continue };
+            if entry.get("guid").and_then(Value::as_str)
+                .is_some_and(|guid| !guid.is_empty() && !guid.starts_with("collection://rex-"))
+            {
+                continue;
+            }
+            let old = entry.get("guid").and_then(Value::as_str)
+                .filter(|guid| !guid.is_empty()).map(str::to_string)
+                .unwrap_or_else(|| format!("collection://rex-tag-{name}"));
+            let guid = migrate_collection(&old);
+            entry.insert("guid".to_string(), json!(guid));
+        }
+        for playlist in self.playlists.values_mut().chain(self.hidden_playlists.values_mut()) {
+            if playlist.guid.is_empty()
+                || playlist.guid.starts_with("com.plexapp.agents.none://rex-playlist-")
+            {
+                playlist.guid = format!("com.plexapp.agents.none://{}", plextv::uuid4());
+                changed = true;
+            }
+        }
+        if !replacements.is_empty() {
+            // A renamed/deleted collection can leave its old member tag behind.
+            // Rewrite stored tags too, including those no live collection stamps.
+            for row in self.catalog.items_mut() {
+                for tag in row.get_mut("Collection").and_then(Value::as_array_mut).into_iter().flatten() {
+                    if let Some(guid) = tag.get("guid").and_then(Value::as_str)
+                        .and_then(|guid| replacements.get(guid))
+                    {
+                        tag["guid"] = json!(guid);
+                    }
+                }
+            }
+        }
+        changed
+    }
+
     /// A collection's members in the order its `collectionSort` names (cycle 15): no
     /// sort or `0` is RELEASE DATE, `2` the custom order a move writes, and any other
     /// plain integer -- `1`, `3`, `-1`, `01`, `+1` -- ALPHABETICAL; `1.5`, ` 1`, `abc`
@@ -790,7 +853,7 @@ impl Runtime {
             None => {
                 extra.insert(
                     "guid".to_string(),
-                    json!(format!("collection://rex-{id}")),
+                    json!(format!("collection://{}", plextv::uuid4())),
                 );
             }
         }

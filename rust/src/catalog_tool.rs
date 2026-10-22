@@ -123,11 +123,12 @@ pub fn main(args: &[String]) -> Result<(), String> {
             .and_then(Value::as_str)
             .ok_or_else(|| format!("{out} names no machineIdentifier"))?
             .to_string();
+        let name = document.get("friendlyName").and_then(Value::as_str).unwrap_or_default().to_string();
         let items = document
             .get_mut("items")
             .and_then(Value::as_array_mut)
             .ok_or_else(|| format!("{out} holds no items"))?;
-        let count = relink_guids(items, &out, machine);
+        let count = relink_guids(items, &out, machine, &name);
         save_catalog(&out, &document)?;
         println!("relinked {count} row(s) in {out}");
         return Ok(());
@@ -227,8 +228,8 @@ fn save_catalog(path: &str, document: &Value) -> Result<(), String> {
 
 /// Give the rows Plex's own guids (metadata.PlexProvider); a no-op without a claim beside
 /// the catalog.
-fn relink_guids(items: &mut [Value], out: &str, machine: String) -> usize {
-    crate::runtime::plexmeta::relink(items, Path::new(out), machine).unwrap_or_else(|| {
+fn relink_guids(items: &mut [Value], out: &str, machine: String, name: &str) -> usize {
+    crate::runtime::plexmeta::relink(items, Path::new(out), machine, name).unwrap_or_else(|| {
         println!("no claim: guids stay minted, and the Android app's detail pages stay empty");
         0
     })

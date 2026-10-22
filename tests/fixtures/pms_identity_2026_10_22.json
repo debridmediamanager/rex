@@ -1,0 +1,2816 @@
+{
+  "source": "Fresh official plexinc/pms-docker:latest on isolated internal Docker network on zen; no claim or library; GET/OPTIONS/PATCH/FROB only",
+  "captured_at": "2026-10-22",
+  "version": "1.43.5.11029-6bf8af3f0",
+  "request_headers": {
+    "Host": "localhost",
+    "Accept": "application/json",
+    "X-Plex-Product": "Plex Web",
+    "X-Plex-Version": "4.162.1",
+    "X-Plex-Platform": "Chrome",
+    "Connection": "close"
+  },
+  "rows": [
+    {
+      "method": "GET",
+      "path": "/identity",
+      "status": 200,
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Content-Length",
+          "164"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ],
+      "sha256": "17989d886b9ec9c2d776026e70f7dbe09c508fe3562b20918ece12e43cd389d9",
+      "body": "{\"MediaContainer\":{\"size\":0,\"apiVersion\":\"1.2.3\",\"claimed\":false,\"machineIdentifier\":\"c87757e673893b7d32259c3d14d90a727f2fe1fd\",\"version\":\"1.43.5.11029-6bf8af3f0\"}}"
+    },
+    {
+      "method": "GET",
+      "path": "/",
+      "status": 200,
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Content-Length",
+          "2501"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ],
+      "sha256": "bd8e41eb9ec39a699a5bd4a36cd835bc134fbad8f3a87439b089962f5a93128f",
+      "body": "{\"MediaContainer\":{\"size\":25,\"allowCameraUpload\":false,\"allowChannelAccess\":true,\"allowMediaDeletion\":true,\"allowSharing\":true,\"allowSync\":false,\"allowTuners\":false,\"apiVersion\":\"1.2.3\",\"backgroundProcessing\":true,\"companionProxy\":true,\"countryCode\":\"\",\"diagnostics\":\"logs,databases,streaminglogs\",\"eventStream\":true,\"friendlyName\":\"674fb6573212\",\"hubSearch\":true,\"itemClusters\":true,\"livetv\":7,\"machineIdentifier\":\"c87757e673893b7d32259c3d14d90a727f2fe1fd\",\"mediaProviders\":true,\"multiuser\":true,\"musicAnalysis\":2,\"myPlex\":true,\"myPlexMappingState\":\"unknown\",\"myPlexSigninState\":\"none\",\"myPlexSubscription\":false,\"platform\":\"Linux\",\"platformVersion\":\"5.15.0-198-generic\",\"pluginHost\":true,\"pushNotifications\":false,\"readOnlyLibraries\":false,\"streamDisplayTitleIncludesFormat\":true,\"streamingBrainVersion\":2,\"sync\":true,\"transcoderActiveVideoSessions\":0,\"transcoderAudio\":true,\"transcoderLyrics\":true,\"transcoderPhoto\":true,\"transcoderSubtitles\":true,\"transcoderVideo\":true,\"transcoderVideoBitrates\":\"64,96,208,320,720,1500,2000,3000,4000,8000,10000,12000,20000\",\"transcoderVideoQualities\":\"0,1,2,3,4,5,6,7,8,9,10,11,12\",\"transcoderVideoResolutions\":\"128,128,160,240,320,480,768,720,720,1080,1080,1080,1080\",\"updatedAt\":1792622933,\"updater\":true,\"version\":\"1.43.5.11029-6bf8af3f0\",\"voiceSearch\":true,\"Directory\":[{\"count\":1,\"key\":\"actions\",\"title\":\"actions\"},{\"count\":1,\"key\":\"activities\",\"title\":\"activities\"},{\"count\":1,\"key\":\"butler\",\"title\":\"butler\"},{\"count\":1,\"key\":\"channels\",\"title\":\"channels\"},{\"count\":1,\"key\":\"clients\",\"title\":\"clients\"},{\"count\":1,\"key\":\"devices\",\"title\":\"devices\"},{\"count\":1,\"key\":\"diagnostics\",\"title\":\"diagnostics\"},{\"count\":1,\"key\":\"downloadQueue\",\"title\":\"downloadQueue\"},{\"count\":1,\"key\":\"hubs\",\"title\":\"hubs\"},{\"count\":3,\"key\":\"library\",\"title\":\"library\"},{\"count\":3,\"key\":\"livetv\",\"title\":\"livetv\"},{\"count\":3,\"key\":\"media\",\"title\":\"media\"},{\"count\":1,\"key\":\"neighborhood\",\"title\":\"neighborhood\"},{\"count\":1,\"key\":\"playQueues\",\"title\":\"playQueues\"},{\"count\":1,\"key\":\"playlists\",\"title\":\"playlists\"},{\"count\":1,\"key\":\"resources\",\"title\":\"resources\"},{\"count\":1,\"key\":\"search\",\"title\":\"search\"},{\"count\":1,\"key\":\"server\",\"title\":\"server\"},{\"count\":1,\"key\":\"servers\",\"title\":\"servers\"},{\"count\":1,\"key\":\"service\",\"title\":\"service\"},{\"count\":1,\"key\":\"statistics\",\"title\":\"statistics\"},{\"count\":1,\"key\":\"system\",\"title\":\"system\"},{\"count\":1,\"key\":\"transcode\",\"title\":\"transcode\"},{\"count\":1,\"key\":\"updater\",\"title\":\"updater\"},{\"count\":1,\"key\":\"user\",\"title\":\"user\"}]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/media/providers",
+      "status": 200,
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Content-Length",
+          "2150"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ],
+      "sha256": "65dba3279caa14decf5b7612220e05a70525dc847cc8efc70de6a30a13929e17",
+      "body": "{\"MediaContainer\":{\"size\":1,\"allowCameraUpload\":false,\"allowChannelAccess\":true,\"allowMediaDeletion\":true,\"allowSharing\":true,\"allowSync\":false,\"allowTuners\":false,\"apiVersion\":\"1.2.3\",\"backgroundProcessing\":true,\"companionProxy\":true,\"countryCode\":\"\",\"diagnostics\":\"logs,databases,streaminglogs\",\"eventStream\":true,\"friendlyName\":\"674fb6573212\",\"livetv\":7,\"machineIdentifier\":\"c87757e673893b7d32259c3d14d90a727f2fe1fd\",\"musicAnalysis\":2,\"myPlex\":true,\"myPlexMappingState\":\"unknown\",\"myPlexSigninState\":\"none\",\"myPlexSubscription\":false,\"platform\":\"Linux\",\"platformVersion\":\"5.15.0-198-generic\",\"pluginHost\":true,\"pushNotifications\":false,\"readOnlyLibraries\":false,\"streamDisplayTitleIncludesFormat\":true,\"streamingBrainVersion\":2,\"sync\":true,\"transcoderActiveVideoSessions\":0,\"transcoderAudio\":true,\"transcoderLyrics\":true,\"transcoderSubtitles\":true,\"transcoderVideo\":true,\"transcoderVideoBitrates\":\"64,96,208,320,720,1500,2000,3000,4000,8000,10000,12000,20000\",\"transcoderVideoQualities\":\"0,1,2,3,4,5,6,7,8,9,10,11,12\",\"transcoderVideoResolutions\":\"128,128,160,240,320,480,768,720,720,1080,1080,1080,1080\",\"updatedAt\":1792622933,\"updater\":true,\"version\":\"1.43.5.11029-6bf8af3f0\",\"voiceSearch\":true,\"MediaProvider\":[{\"identifier\":\"com.plexapp.plugins.library\",\"title\":\"Library\",\"types\":\"video,audio,photo\",\"protocols\":\"stream,download\",\"Feature\":[{\"key\":\"/library/sections\",\"type\":\"content\",\"Directory\":[{\"hubKey\":\"/hubs\",\"title\":\"Home\"}]},{\"key\":\"/hubs/search\",\"type\":\"search\"},{\"key\":\"/library/matches\",\"type\":\"match\"},{\"key\":\"/library/metadata\",\"type\":\"metadata\"},{\"key\":\"/:/rate\",\"type\":\"rate\"},{\"key\":\"/photo/:/transcode\",\"type\":\"imagetranscoder\"},{\"key\":\"/hubs/promoted\",\"type\":\"promoted\"},{\"key\":\"/hubs/continueWatching\",\"type\":\"continuewatching\"},{\"key\":\"/actions\",\"type\":\"actions\",\"Action\":[{\"id\":\"removeFromContinueWatching\",\"key\":\"/actions/removeFromContinueWatching\"}]},{\"flavor\":\"universal\",\"key\":\"/playlists\",\"type\":\"playlist\"},{\"flavor\":\"universal\",\"key\":\"/playQueues\",\"type\":\"playqueue\"},{\"scrobbleKey\":\"/:/scrobble\",\"unscrobbleKey\":\"/:/unscrobble\",\"key\":\"/:/timeline\",\"type\":\"timeline\"},{\"type\":\"manage\"},{\"type\":\"queryParser\"}]}]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/updater/status",
+      "status": 200,
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Content-Length",
+          "74"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ],
+      "sha256": "cc12b71e56df8e4b291a44a73e0e83ac68fc4ca6571d7f32515428d1d02849f8",
+      "body": "{\"MediaContainer\":{\"size\":0,\"canInstall\":false,\"checkedAt\":-1,\"status\":0}}"
+    },
+    {
+      "method": "GET",
+      "path": "/rex/sources",
+      "status": 404,
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ],
+      "sha256": "e291744d4bba4dc4c92c114e8e00c694c7dd0db625a3e45226d7f993406e9c05",
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+    },
+    {
+      "method": "GET",
+      "path": "/rex/feed/zurg/items",
+      "status": 404,
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ],
+      "sha256": "e291744d4bba4dc4c92c114e8e00c694c7dd0db625a3e45226d7f993406e9c05",
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+    },
+    {
+      "method": "GET",
+      "path": "/does-not-exist/leaf",
+      "status": 404,
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ],
+      "sha256": "e291744d4bba4dc4c92c114e8e00c694c7dd0db625a3e45226d7f993406e9c05",
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+    },
+    {
+      "method": "PATCH",
+      "path": "/identity",
+      "status": 200,
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Content-Length",
+          "49"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ],
+      "sha256": "82315dbdef57341945ee6660d9acc507cbeaa7273fe00b9fe122497fa65e635d",
+      "body": "{\"MediaContainer\":{\"size\":0,\"content\":\"plugins\"}}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/system",
+      "status": 405,
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "87"
+        ],
+        [
+          "Content-Type",
+          "text/html; charset=UTF-8"
+        ],
+        [
+          "Server",
+          "TornadoServer/1.0"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ],
+      "sha256": "ba8668b481482e74f3fc008595aec0b6686a5f5fa6134416be3bc5e48ba2ef75",
+      "body": "<html><title>405: Method Not Allowed</title><body>405: Method Not Allowed</body></html>"
+    },
+    {
+      "method": "PATCH",
+      "path": "/rex/sources",
+      "status": 404,
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ],
+      "sha256": "e291744d4bba4dc4c92c114e8e00c694c7dd0db625a3e45226d7f993406e9c05",
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+    },
+    {
+      "method": "PATCH",
+      "path": "/does-not-exist/leaf",
+      "status": 404,
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ],
+      "sha256": "e291744d4bba4dc4c92c114e8e00c694c7dd0db625a3e45226d7f993406e9c05",
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+    },
+    {
+      "method": "FROB",
+      "path": "/identity",
+      "status": 500,
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "109"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ],
+      "sha256": "a2517c71f804d43eb207d47fe15c79c1d719e7ab99de38cca8dd73784298e40f",
+      "body": "<html><head><title>Internal Server Error</title></head><body><h1>500 Internal Server Error</h1></body></html>"
+    },
+    {
+      "method": "FROB",
+      "path": "/system",
+      "status": 500,
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "109"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ],
+      "sha256": "a2517c71f804d43eb207d47fe15c79c1d719e7ab99de38cca8dd73784298e40f",
+      "body": "<html><head><title>Internal Server Error</title></head><body><h1>500 Internal Server Error</h1></body></html>"
+    },
+    {
+      "method": "FROB",
+      "path": "/rex/sources",
+      "status": 500,
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "109"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ],
+      "sha256": "a2517c71f804d43eb207d47fe15c79c1d719e7ab99de38cca8dd73784298e40f",
+      "body": "<html><head><title>Internal Server Error</title></head><body><h1>500 Internal Server Error</h1></body></html>"
+    },
+    {
+      "method": "FROB",
+      "path": "/does-not-exist/leaf",
+      "status": 500,
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "109"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ],
+      "sha256": "a2517c71f804d43eb207d47fe15c79c1d719e7ab99de38cca8dd73784298e40f",
+      "body": "<html><head><title>Internal Server Error</title></head><body><h1>500 Internal Server Error</h1></body></html>"
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/identity",
+      "status": 200,
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Content-Length",
+          "49"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ],
+      "sha256": "82315dbdef57341945ee6660d9acc507cbeaa7273fe00b9fe122497fa65e635d",
+      "body": "{\"MediaContainer\":{\"size\":0,\"content\":\"plugins\"}}"
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/system",
+      "status": 200,
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, HEAD, POST, DELETE, PUT, OPTIONS"
+        ],
+        [
+          "Access-Control-Max-Age",
+          "86400"
+        ],
+        [
+          "Content-Length",
+          "0"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ],
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "body": ""
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/rex/sources",
+      "status": 404,
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ],
+      "sha256": "e291744d4bba4dc4c92c114e8e00c694c7dd0db625a3e45226d7f993406e9c05",
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/does-not-exist/leaf",
+      "status": 404,
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ],
+      "sha256": "e291744d4bba4dc4c92c114e8e00c694c7dd0db625a3e45226d7f993406e9c05",
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+    },
+    {
+      "method": "GET",
+      "path": "/favicon.ico",
+      "status": 200,
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ],
+        [
+          "Accept-Ranges",
+          "bytes"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Content-Length",
+          "5430"
+        ],
+        [
+          "Content-Type",
+          "application/octet-stream"
+        ]
+      ],
+      "sha256": "f3365df9357f2298ba17987004675ea664bf529bf8266d3f0c08a0f40b3d33ec",
+      "body_base64": "AAABAAIAICAAAAEAIACoEAAAJgAAABAQAAABACAAaAQAAM4QAAAoAAAAIAAAAEAAAAABACAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAHx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//GmWi/xl8zP8ZfMz/GXzM/xl8zP8ZfMz/GXzM/xl7y/8eKTH/Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8eLz3/GXvK/xl8zP8ZfMz/GXzM/xl8zP8ZfMz/GXzM/xlrq/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8cU3//GXzM/xl8zP8ZfMz/GXzM/xl9zf8Xgc//FoTR/xw+V/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8kKP8Ze8v/GXzM/xl8zP8Yfs3/F4LQ/xaG0/8VidX/FoPK/x8gIP8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/xtWhf8ZfMz/GX3M/xeB0P8WhtP/FIrW/xOO2P8Skdr/GV6L/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//HyAg/xl3wv8YgM//FoXS/xSK1f8Tjtj/EpLb/xCW3v8Qld3/Hisy/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//HTxW/xeD0f8ViNT/E43Y/xKS2/8Qlt7/D5rh/w6e4/8Ufrj/Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//GW+t/xSL1v8SkNr/EZXd/w+a4P8OnuP/DKLm/wul6P8bRFr/Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8eKTL/FIvW/xGT2/8QmN//Dp3i/wyi5v8Lpun/Cqrr/w2b2/8fICD/Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8ZXYn/EZXd/w+a4f8NoOT/C6Xo/wqp6/8Iru7/B7Hw/xRqkv8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8gIP8Tis//Dpzi/wyi5v8Lp+n/Cazt/wex8P8GtfP/B7Lv/x0sNP8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/xxBWP8OneP/DKPn/wqo6v8Iru7/B7Px/wW39f8Eu/f/Do/D/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/xR9t/8MpOf/Cqnr/wiv7/8GtPL/Bbn2/wO9+P8Dvfj/GkVY/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hisz/w2g4/8Kquv/CK/v/wa18/8Euvb/A775/wO++f8Knc7/Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8eKzP/DaDj/wqp6/8Ir+//BrTy/wW59v8Dvfn/A775/wqdzv8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/xR8t/8Mo+f/Cqjq/wiu7v8Hs/H/Bbf1/wS79/8Dvfj/GkVY/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8cQVj/Dpzi/wyi5v8Lp+n/Cazt/wex8P8GtfP/Bbj1/w6Mwf8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//HyAg/xSJz/8PmuH/DaDk/wul6P8Kqev/CK7u/wex8P8Iru3/HSwz/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8ZXIn/EZPb/xCY3/8OneP/DKLm/wum6f8Kquv/Ca3t/xZnkf8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hiky/xSJ1P8SkNr/EZXd/w+a4P8OnuP/DKLm/wul6P8Ol9j/HyAg/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8Zbqz/FYjU/xON2P8Sktv/EJbe/w+a4f8OnuP/DaDl/xtDWv8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//HTxV/xiAz/8WhdL/FIrV/xOO2P8Sktv/EJbe/w+Z4P8Ve7b/Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8gIP8Zd8L/GX3M/xeB0P8WhtP/FIrW/xOO2P8Skdr/EpDa/x4qMv8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//G1aF/xl8zP8ZfMz/GH7N/xeC0P8WhtP/FYnV/xSM1/8ZXIn/Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8kKP8Ze8v/GXzM/xl8zP8ZfMz/GX3N/xeBz/8WhNH/F37H/x8gIP8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//HFN//xl8zP8ZfMz/GXzM/xl8zP8ZfMz/GXzM/xh+zf8dPVb/Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x4vPf8Ze8r/GXzM/xl8zP8ZfMz/GXzM/xl8zP8ZfMz/Gmqq/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//GmWi/xl8zP8ZfMz/GXzM/xl8zP8ZfMz/GXzM/xl7y/8eKTH/Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAKAAAABAAAAAgAAAAAQAgAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAB8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//GmKd/xl8zP8ZfMz/GXvL/x00Rv8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x4tOf8Ze8v/GHzM/xeBz/8Xc7H/Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//G1qM/xeAz/8UitX/EZHa/xlPbv8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x4mLP8Wgcr/EpHa/w+a4P8OmNr/Higt/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Gkxs/xCW3v8MoeX/Canr/xF1n/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8Sgbv/C6Xo/wev7/8FtvP/Gj5N/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//HDlK/wul6P8HsfD/A7v3/wqXxf8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/xw5Sv8Lpef/B7Hw/wS69v8Kl8X/Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8TgLr/C6Pm/wit7f8Gs/H/Gj1M/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8aS2v/EZTc/w2d4/8Lpej/E3Kd/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8eJiz/F37I/xON2P8Qlt7/D5TX/x4oLf8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//G1qM/xh+zf8VhtP/E43X/xpNbf8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hi05/xl7y/8ZfMz/GH3N/xhvrv8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/xpinf8ZfMz/GXzM/xl7y/8dNEb/Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/favicon.ico",
+      "status": 200,
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ],
+        [
+          "Accept-Ranges",
+          "bytes"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Content-Length",
+          "1150"
+        ],
+        [
+          "Content-Type",
+          "application/octet-stream"
+        ]
+      ],
+      "sha256": "f37f79510504992cbe585ab0ac5e3d84760e44019c6a96402f32a2450dfcf879",
+      "body_base64": "AAABAAEAEBAAAAEAIABoBAAAFgAAACgAAAAQAAAAIAAAAAEAIAAAAAAAAAAAABMLAAATCwAAAAAAAAAAAAAAAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/CQoK/wkJCf8JCgr/DAkI/xc9Uv8SYZf/EmGX/xJhl/8bR2f/EggH/wkJCf8JCQn/CQkJ/wkJCf8JCQn/CQkJ/wkJCf8JCQn/CgsM/w0JCf8cO0//Is74/way//8Hsf//Drr//xg7W/8VBgD/CQkJ/wkJCf8JCQn/DQ4P/wkJCf8JCQr/CQkJ/wsMDP8PFBr/EQIC/zl1g/8gyv//AI7//wSs//8SnuX/IB0i/wAAAP8JCQn/CQkJ/wkJCf8JCQn/CQoK/wkJCf8LDAz/EBQY/xQbJP8eHSL/O6nY/wyu//8Fl///CcL//xlqkP8iFBL/CQkJ/wkJCf8JCQn/CQkJ/wkKCv8JCQn/CwwN/xAVGv8ZJjL/GBsm/zJRXP80xP//Cp3//xKs//8Ws/P/IzA1/wAAAP8JCQn/CQkJ/wkJCf8JCQr/CQkJ/wsMDf8RFhv/Gygy/yI7TP8gMkP/UKfM/0HI//8no///Kc7//ySIpP8XEBb/CQkJ/wkJCf8JCQn/CQkK/wkJCf8LDA3/EBYa/xsoNP8mP1T/IkNa/y1fdf9uyPn/WsL//zuw//8q1v//HF1x/wAAAP8JCQn/CQkJ/wkKCv8JCQn/DA0N/xMYHP8dKjX/Ij5T/yVRbf8OOlD/Y6TF/3zZ//8+qf//JdL//yKvvf8AAAD/AAAA/wkJCf8JCQr/CQkJ/wwNDv8VGh//Hi05/yZBVv8fPFH/O3WQ/2PN//9Ctf//MLD//yXM//8cU2P/AAAA/wAAAP8AAAD/CQkJ/wkJCf8MDQ7/FBof/x4rN/8mPVD/JTVE/0+x2v8uvv//HJ///x7N//8hh6H/Gg8U/wAAAP8AAAD/CQkJ/woKCv8JCQn/DA0O/xIXHP8aKDL/HBwl/zptgv8nwP//BZr//wyt//8Sqef/JjA0/wkJCf8JCQn/CQkJ/wkJCf8KCgv/CQkJ/woMDf8RGB3/FRce/y4vMf8+wvf/Bqb//wSV//8Gxf//HGqK/wkJCf8JCQn/CQkJ/wkJCf8JCQn/CgoL/wkJCf8LDA3/ERMW/x4eKP8sp83/E9X//wGs//8Fw///FJTZ/wkJCf8JCQn/CQkJ/wkJCf8REhT/CQkJ/wsLC/8JCQn/CwwM/xEQEv8gMjn/HH+z/xx/s/8cf7P/HH+z/x8yQf8JCQn/CQkJ/wkJCf8JCQn/CQkJ/wkJCf8JCQn/CQkJ/wkJCf8JCQn/CQkJ/wkJCf8JCQn/CQkJ/wkJCf8JCQn/CQkJ/wkJCf8JCQn/CQkJ/wkJCf8JCQn/AABleQAACQkAAHN0AABuZwAAb20AAHBwAAAucAAAbnQAAG0uAABzdAAAcmkAADwvAAByaQAAPgoAAAk8AAB5Pg=="
+    },
+    {
+      "method": "GET",
+      "path": "/:/resources/sugar.cmake",
+      "status": 200,
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ],
+        [
+          "Accept-Ranges",
+          "bytes"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Content-Length",
+          "246"
+        ],
+        [
+          "Content-Type",
+          "application/octet-stream"
+        ]
+      ],
+      "sha256": "f0d9173cdf9d7deef6c49cb60b071dd10b48ef25c1a76729c038df346d5b1c05",
+      "body": "# This file generated automatically by:\n#   generate_sugar_files.py\n# see wiki for more info:\n#   https://github.com/ruslo/sugar/wiki/Collecting-sources\n\nif(DEFINED GRAPHICS_SUGAR_CMAKE_)\n  return()\nelse()\n  set(GRAPHICS_SUGAR_CMAKE_ 1)\nendif()\n\n"
+    },
+    {
+      "method": "GET",
+      "path": "/diagnostics/logs",
+      "status": 200,
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Type",
+          "application/zip"
+        ],
+        [
+          "Content-Disposition",
+          "attachment; filename=\"Plex Media Server Logs_2026-10-21_22-49-46.zip\""
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Content-Length",
+          "118656"
+        ]
+      ],
+      "sha256": "daf40fe49792816987435fa50bd13c532771779649f7934ecbb79ea000b86e83",
+      "files": [
+        "Plex Media Server.log",
+        "Plex Crash Uploader.log",
+        "Plex Tuner Service.log",
+        "PMS Plugin Logs/com.plexapp.agents.fanarttv.log",
+        "PMS Plugin Logs/com.plexapp.agents.htbackdrops.log",
+        "PMS Plugin Logs/com.plexapp.agents.lastfm.log",
+        "PMS Plugin Logs/com.plexapp.agents.localmedia.log",
+        "PMS Plugin Logs/com.plexapp.agents.localmedia.log.1",
+        "PMS Plugin Logs/com.plexapp.agents.lyricfind.log",
+        "PMS Plugin Logs/com.plexapp.agents.movieposterdb.log",
+        "PMS Plugin Logs/com.plexapp.agents.none.log",
+        "PMS Plugin Logs/com.plexapp.agents.imdb.log",
+        "PMS Plugin Logs/com.plexapp.agents.imdb.log.1",
+        "PMS Plugin Logs/com.plexapp.agents.plexthememusic.log",
+        "PMS Plugin Logs/com.plexapp.agents.themoviedb.log",
+        "PMS Plugin Logs/com.plexapp.agents.thetvdb.log",
+        "PMS Plugin Logs/org.musicbrainz.agents.music.log",
+        "PMS Plugin Logs/com.plexapp.system.log"
+      ]
+    }
+  ],
+  "public_rows": [
+    {
+      "method": "GET",
+      "path": "/rex/sources",
+      "token": "none",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/rex/sources",
+      "token": "wrong",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/rex/sources",
+      "token": "valid",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/rex/sources/zurg",
+      "token": "none",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/rex/sources/zurg",
+      "token": "wrong",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/rex/sources/zurg",
+      "token": "valid",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/rex/feed/zurg/items",
+      "token": "none",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/rex/feed/zurg/items",
+      "token": "wrong",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/rex/feed/zurg/items",
+      "token": "valid",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/does-not-exist/leaf",
+      "token": "none",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/does-not-exist/leaf",
+      "token": "wrong",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/does-not-exist/leaf",
+      "token": "valid",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/rex/sources",
+      "token": "none",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/rex/sources",
+      "token": "wrong",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/rex/sources",
+      "token": "valid",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/rex/sources/zurg",
+      "token": "none",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/rex/sources/zurg",
+      "token": "wrong",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/rex/sources/zurg",
+      "token": "valid",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/rex/feed/zurg/items",
+      "token": "none",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/rex/feed/zurg/items",
+      "token": "wrong",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/rex/feed/zurg/items",
+      "token": "valid",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/does-not-exist/leaf",
+      "token": "none",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/does-not-exist/leaf",
+      "token": "wrong",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/does-not-exist/leaf",
+      "token": "valid",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/rex/sources",
+      "token": "none",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/rex/sources",
+      "token": "wrong",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/rex/sources",
+      "token": "valid",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/rex/sources/zurg",
+      "token": "none",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/rex/sources/zurg",
+      "token": "wrong",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/rex/sources/zurg",
+      "token": "valid",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/rex/feed/zurg/items",
+      "token": "none",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/rex/feed/zurg/items",
+      "token": "wrong",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/rex/feed/zurg/items",
+      "token": "valid",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/does-not-exist/leaf",
+      "token": "none",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/does-not-exist/leaf",
+      "token": "wrong",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/does-not-exist/leaf",
+      "token": "valid",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/rex/sources",
+      "token": "none",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/rex/sources",
+      "token": "wrong",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/rex/sources",
+      "token": "valid",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/rex/sources/zurg",
+      "token": "none",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/rex/sources/zurg",
+      "token": "wrong",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/rex/sources/zurg",
+      "token": "valid",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/rex/feed/zurg/items",
+      "token": "none",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/rex/feed/zurg/items",
+      "token": "wrong",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/rex/feed/zurg/items",
+      "token": "valid",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/does-not-exist/leaf",
+      "token": "none",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/does-not-exist/leaf",
+      "token": "wrong",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/does-not-exist/leaf",
+      "token": "valid",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/rex/sources",
+      "token": "none",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/rex/sources",
+      "token": "wrong",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/rex/sources",
+      "token": "valid",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/rex/sources/zurg",
+      "token": "none",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/rex/sources/zurg",
+      "token": "wrong",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/rex/sources/zurg",
+      "token": "valid",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/rex/feed/zurg/items",
+      "token": "none",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/rex/feed/zurg/items",
+      "token": "wrong",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/rex/feed/zurg/items",
+      "token": "valid",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/does-not-exist/leaf",
+      "token": "none",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/does-not-exist/leaf",
+      "token": "wrong",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/does-not-exist/leaf",
+      "token": "valid",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/rex/sources",
+      "token": "none",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/rex/sources",
+      "token": "wrong",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/rex/sources",
+      "token": "valid",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/rex/sources/zurg",
+      "token": "none",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/rex/sources/zurg",
+      "token": "wrong",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/rex/sources/zurg",
+      "token": "valid",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/rex/feed/zurg/items",
+      "token": "none",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/rex/feed/zurg/items",
+      "token": "wrong",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/rex/feed/zurg/items",
+      "token": "valid",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/does-not-exist/leaf",
+      "token": "none",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/does-not-exist/leaf",
+      "token": "wrong",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/does-not-exist/leaf",
+      "token": "valid",
+      "status": 404,
+      "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+      "headers": [
+        [
+          "X-Plex-Protocol",
+          "1.0"
+        ],
+        [
+          "Content-Length",
+          "85"
+        ],
+        [
+          "Content-Type",
+          "text/html"
+        ],
+        [
+          "Connection",
+          "close"
+        ],
+        [
+          "Cache-Control",
+          "no-cache"
+        ]
+      ]
+    }
+  ],
+  "public_context": "Fresh unclaimed PMS: X-Forwarded-For 203.0.113.7, absent/wrong/LocalAdminToken credentials; credential values never retained"
+}

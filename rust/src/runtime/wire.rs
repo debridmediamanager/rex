@@ -185,6 +185,7 @@ const ORDER_ERROR: &[&str] = &[
     "Vary",
     "Content-Length",
     "Content-Type",
+    "Server",
     "Connection",
     "Keep-Alive",
     "Cache-Control",
@@ -244,6 +245,44 @@ const ORDER_SYSTEM_NOCACHE_FIRST: &[&str] = &[
     "X-Plex-Container-Total-Size",
     "Connection",
     "Keep-Alive",
+    "Access-Control-Allow-Headers",
+    "Access-Control-Allow-Origin",
+    "Date",
+];
+// Current PMS keeps the framework's full length first and the ranged slice's length
+// after its connection headers; this is distinct from the core container order.
+const ORDER_SYSTEM_RANGE: &[&str] = &[
+    "X-Plex-Protocol",
+    "Access-Control-Expose-Headers",
+    "Vary",
+    "Content-Length",
+    "Content-Type",
+    "Set-Cookie",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Content-Range",
+    "Connection",
+    "Keep-Alive",
+    "Content-Length",
+    "Cache-Control",
+    "Access-Control-Allow-Headers",
+    "Access-Control-Allow-Origin",
+    "Date",
+];
+const ORDER_SYSTEM_NOCACHE_FIRST_RANGE: &[&str] = &[
+    "X-Plex-Protocol",
+    "Access-Control-Expose-Headers",
+    "Vary",
+    "Cache-Control",
+    "Content-Length",
+    "Content-Type",
+    "Set-Cookie",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Content-Range",
+    "Connection",
+    "Keep-Alive",
+    "Content-Length",
     "Access-Control-Allow-Headers",
     "Access-Control-Allow-Origin",
     "Date",
@@ -415,12 +454,22 @@ fn header_family(
     if has("access-control-allow-methods") {
         return ORDER_PREFLIGHT;
     }
+    if status == 405 && has("server") {
+        return ORDER_ERROR;
+    }
     let path = path.trim_end_matches('/');
     if path == "/system" || path.starts_with("/system/") {
         let parent = path.rsplit_once('/').map_or("", |(head, _)| head);
         let nocache_first = framework::CACHE_CONTROL_FIRST.contains(&path)
             || parent == "/system/channels"
             || parent == "/system/plugins";
+        if status == 206 && path != "/system/agents" && has("content-range") && !has("accept-ranges") {
+            return if nocache_first {
+                ORDER_SYSTEM_NOCACHE_FIRST_RANGE
+            } else {
+                ORDER_SYSTEM_RANGE
+            };
+        }
         if has("content-encoding") {
             return if nocache_first {
                 ORDER_SYSTEM_NOCACHE_FIRST_GZIP
@@ -431,18 +480,18 @@ fn header_family(
         if nocache_first {
             return ORDER_SYSTEM_NOCACHE_FIRST;
         }
-        // `/system/agents` is the core's own handler: its container orders like one, but
-        // its refusal (`?mediaType=abc`, a 400 on plexlab) orders its length first like
-        // every other refusal.
-        return if path == "/system/agents" && status >= 400 {
-            ORDER_ERROR
-        } else if path == "/system/agents" {
-            ORDER_CONTAINER
+        // Cookie-free agent reads/refusals belong to the core; unsupported writers
+        // carry the framework's cookie and use its envelope.
+        return if path == "/system/agents" && !has("set-cookie") {
+            if status >= 400 { ORDER_ERROR } else { ORDER_CONTAINER }
         } else {
             ORDER_SYSTEM
         };
     }
     if has("set-cookie") {
+        if status == 206 && has("content-range") && !has("accept-ranges") {
+            return ORDER_SYSTEM_RANGE;
+        }
         // A plug-in's own framework paths (`/:/plugins/{id}/prefs`) gzip like `/system`.
         return if has("content-encoding") {
             ORDER_SYSTEM_GZIP
@@ -468,8 +517,8 @@ fn header_family(
     if status < 400 && path.starts_with("/photo/:/transcode") {
         return ORDER_PHOTO;
     }
-    if status < 400
-        && (is_web_route(path) || path.starts_with("/:/resources") || path == "/favicon.ico")
+    if status < 400 && has("accept-ranges")
+        && (is_web_route(path) || path == "/manage" || path.starts_with("/:/resources") || path == "/favicon.ico")
     {
         return ORDER_ASSET;
     }
@@ -589,14 +638,19 @@ pub(super) fn envelope(
             .map(|(n, _)| n.to_ascii_lowercase())
             .collect::<HashSet<_>>()
     };
-    // Cycle 16/35/44: `Range` applies to every 200 body; a part read ranges itself.
+    // Range applies to 200 bodies; Parts range themselves. Current PMS leaves no-body
+    // replies at 200 even with Range (web aliases and framework OPTIONS).
     let mut content_range: Option<String> = None;
     let part = extra.iter().any(|(name, _)| name == "ETag");
     let already_ranged = extra
         .iter()
         .any(|(name, _)| name.eq_ignore_ascii_case("content-range"));
     let mut range_container = false;
-    if status == 200 && !part && !already_ranged {
+    // Cookie-bearing framework replies answer HEAD without applying its Range. The
+    // core's cookie-free config/scanner handlers still range HEAD, as /system/agents does.
+    let framework_head = wire.method == "HEAD"
+        && extra.iter().any(|(name, _)| name.eq_ignore_ascii_case("set-cookie"));
+    if status == 200 && !body.is_empty() && !part && !already_ranged && !framework_head {
         if let Some((code, range, first, last)) = range_window(body.len(), wire.range.as_deref()) {
             if code == 416 {
                 status = 416;
@@ -614,13 +668,14 @@ pub(super) fn envelope(
         // Cycle 29/36/44: a 416 is an ERROR response -- the refusal document as
         // text/html, without Accept-Ranges, Cache-Control's success value or the
         // local-asset mark; a container's 416 names its connection state.
-        range_container = content_type.contains("xml") || content_type.contains("json");
+        range_container = !extra.iter().any(|(name, _)| name.eq_ignore_ascii_case("accept-ranges"))
+            && (content_type.contains("xml") || content_type.contains("json"));
         content_type = "text/html".to_string();
         body = error_document(416);
         extra.retain(|(name, _)| {
             !matches!(
                 name.to_ascii_lowercase().as_str(),
-                "accept-ranges" | "cache-control" | "x-plex-local-asset" | "content-range"
+                "accept-ranges" | "cache-control" | "x-plex-local-asset" | "content-range" | "set-cookie"
             )
         });
     }

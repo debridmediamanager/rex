@@ -45,9 +45,9 @@ const ACCESS_TOKENS_URL: &str = "https://plex.tv/api/v2/server/access_tokens";
 const WEBHOOKS_URL: &str = "https://plex.tv/api/v2/server/webhooks";
 /// The public, unauthenticated release list a PMS's updater reads.
 const DOWNLOADS_URL: &str = "https://plex.tv/api/downloads/5.json";
-/// The version rex names itself to plex.tv with until the release list answers: the real
-/// build the 1.42.2 reference runs (`tests/fixtures/plextv_registration_s1422.json`).
-pub(crate) const PMS_VERSION_FALLBACK: &str = "1.42.2.10156-f737b826c";
+/// Public Linux release captured in `tests/fixtures/plex_downloads_2026_10_22.json`.
+/// Used only until a valid release list or a persisted last-known version is available.
+pub(crate) const PMS_VERSION_FALLBACK: &str = "1.43.5.11029-6bf8af3f0";
 const VERSION_REREAD: Duration = Duration::from_secs(24 * 3600);
 /// `claim.ACCESS_REFRESH_WINDOW`: the 1.42.2 reference's 1.42.2 PMS re-reads the
 /// access-token list for an unknown token unless its last read finished about 6 s ago or
@@ -435,6 +435,12 @@ impl Claim {
             });
         match state {
             Ok(state) if state.get("machine").and_then(Value::as_str) == Some(machine) => {
+                if let Some(version) = state.get("version").and_then(Value::as_str).filter(|version| {
+                    pms_version_shape(version)
+                        && pms_version_numbers(version) > pms_version_numbers(&claim.version)
+                }) {
+                    claim.version = version.to_string();
+                }
                 claim.token = optional_string(state.get("token"));
                 claim.owner = optional_string(state.get("owner"));
                 claim.email = optional_string(state.get("email"));
@@ -505,8 +511,9 @@ impl Claim {
                 .map_or_else(|| "null".to_string(), |text| python_json_string(text))
         };
         let document = format!(
-            "{{\"machine\": {}, \"token\": {}, \"owner\": {}, \"email\": {}, \"feature_uuids\": [{}], \"account_id\": {}, \"view_state_cursor\": {}, \"access_tokens\": [{}]{}}}",
+            "{{\"machine\": {}, \"version\": {}, \"token\": {}, \"owner\": {}, \"email\": {}, \"feature_uuids\": [{}], \"account_id\": {}, \"view_state_cursor\": {}, \"access_tokens\": [{}]{}}}",
             python_json_string(&self.machine),
+            python_json_string(&self.version),
             string(&self.token),
             string(&self.owner),
             string(&self.email),
@@ -561,7 +568,7 @@ impl Claim {
 
     /// `Claim.pms_headers`: what a real PMS sends on every claim and registration call,
     /// in its order (tests/fixtures/plextv_registration_s1422.json).
-    fn pms_headers(&self, agent: &str, accept_encoding: bool) -> Vec<(&'static str, String)> {
+    pub(super) fn pms_headers(&self, agent: &str, accept_encoding: bool) -> Vec<(&'static str, String)> {
         let mut headers = vec![
             ("User-Agent", format!("{agent}/{}", self.version)),
             ("Accept", "*/*".to_string()),
@@ -636,48 +643,72 @@ pub(crate) fn claim_token(claim: &SharedClaim) -> Option<String> {
     snapshot(claim).token.filter(|token| !token.is_empty())
 }
 
+/// Read only the shared wire identity, not a copy of the credentials and grants.
+pub(crate) fn version(claim: &SharedClaim) -> String {
+    claim.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).version.clone()
+}
+
+fn pms_version_numbers(version: &str) -> Option<[u64; 4]> {
+    let mut parts = version.split_once('-')?.0.split('.');
+    let numbers = [
+        parts.next()?.parse().ok()?,
+        parts.next()?.parse().ok()?,
+        parts.next()?.parse().ok()?,
+        parts.next()?.parse().ok()?,
+    ];
+    parts.next().is_none().then_some(numbers)
+}
+
 /// A PMS version as plex.tv's release list spells one: `1.43.4.10903-e5521bd8c`.
 fn pms_version_shape(version: &str) -> bool {
     version.split_once('-').is_some_and(|(number, build)| {
-        number.split('.').count() == 4
+        pms_version_numbers(version).is_some()
             && number.split('.').all(|part| !part.is_empty() && part.bytes().all(|b| b.is_ascii_digit()))
             && !build.is_empty()
             && build.bytes().all(|b| b.is_ascii_hexdigit())
     })
 }
 
-/// The newest public PMS for Linux, from the release list; None when plex.tv does not answer
-/// one in the expected shape.
-fn latest_pms_version(claim: &Claim) -> Option<String> {
-    let headers = claim.pms_headers("PlexMediaServer", true);
-    let (_, body) = urlopen("GET", DOWNLOADS_URL, &headers, None, 10).ok()?;
-    let list: Value = serde_json::from_slice(&body).ok()?;
+/// Only the public Linux PMS entry describes the server identity we advertise.
+/// NAS builds, Plex clients and unsupported download entries must not select it.
+fn release_version(list: &Value) -> Option<&str> {
     list["computer"]["Linux"]["version"]
         .as_str()
         .filter(|version| pms_version_shape(version))
-        .map(str::to_string)
 }
 
-/// Names rex to plex.tv as the newest public PMS. Clients keep the measured 1.42.2
-/// (`super::VERSION`): this is plex.tv's view only.
+fn latest_pms_version(claim: &Claim) -> Option<String> {
+    let headers = claim.pms_headers("PlexMediaServer", true);
+    let (status, body) = urlopen("GET", DOWNLOADS_URL, &headers, None, 10).ok()?;
+    if status != 200 {
+        return None;
+    }
+    let list: Value = serde_json::from_slice(&body).ok()?;
+    release_version(&list).map(str::to_string)
+}
+
+/// Refresh the single identity used by clients, discovery and plex.tv.
 pub(crate) fn refresh_version(claim: &SharedClaim) {
     let current = snapshot(claim);
     let Some(latest) = latest_pms_version(&current) else {
-        warning!("plex.tv's release list did not answer; naming the server {} to plex.tv", current.version);
+        warning!("plex.tv's release list did not answer; retaining PMS {}", current.version);
         return;
     };
-    if latest != current.version {
-        info!("naming the server to plex.tv as PMS {latest}");
-        claim.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).version = latest;
+    let mut state = claim.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    // An older/stale release-list response must not roll back a last-known newer build.
+    if pms_version_numbers(&latest) < pms_version_numbers(&state.version) {
+        warning!("plex.tv's release list returned older PMS {latest}; retaining {}", state.version);
+        return;
+    }
+    if latest != state.version {
+        info!("naming the server as PMS {latest}");
+        state.version = latest;
+        state.save();
     }
 }
 
-/// Re-reads the release list every day, once a server talks to plex.tv; started once.
+/// Re-read the release list every day; the server starts this once, claimed or not.
 pub(crate) fn watch_version(claim: &SharedClaim) {
-    static STARTED: AtomicBool = AtomicBool::new(false);
-    if STARTED.swap(true, Ordering::SeqCst) {
-        return;
-    }
     let claim = Arc::clone(claim);
     let _ = thread::Builder::new().name("rex-pms-version".to_string()).spawn(move || loop {
         thread::sleep(VERSION_REREAD);
@@ -1039,6 +1070,7 @@ fn deliver_webhooks(claim: &SharedClaim, local: &Mutex<Vec<String>>, events: mps
         if local.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).is_empty()
             && !urls.iter().any(|hook| hook.wants(&event.payload)) { continue; }
         let thumb = event.thumb.and_then(webhook_thumbnail);
+        let version = version(claim);
         // Snapshot after any network read, so replacing/removing local hooks takes effect
         // even for an event that was queued before the configuration changed.
         let local = local.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).clone();
@@ -1048,7 +1080,7 @@ fn deliver_webhooks(claim: &SharedClaim, local: &Mutex<Vec<String>>, events: mps
             .filter(|url| webhook_url(url))
         {
             if delivered.insert(url) {
-                post_webhook(url, &event.payload, thumb.as_deref());
+                post_webhook(url, &event.payload, thumb.as_deref(), &version);
             }
         }
     }
@@ -1092,8 +1124,8 @@ fn webhook_image_type(bytes: &[u8]) -> Option<&'static str> {
 }
 
 /// Plex's documented multipart JSON payload and optional JPEG thumb.
-fn post_webhook(url: &str, payload: &Value, thumb: Option<&[u8]>) {
-    let boundary = format!("rex-{}", uuid4());
+fn post_webhook(url: &str, payload: &Value, thumb: Option<&[u8]>, version: &str) {
+    let boundary = uuid4();
     let mut body = format!(
         "--{boundary}\r\nContent-Disposition: form-data; name=\"payload\"\r\nContent-Type: application/json\r\n\r\n{payload}\r\n"
     ).into_bytes();
@@ -1106,7 +1138,7 @@ fn post_webhook(url: &str, payload: &Value, thumb: Option<&[u8]>) {
     }
     body.extend_from_slice(format!("--{boundary}--\r\n").as_bytes());
     let headers = [
-        ("User-Agent", format!("PlexMediaServer/{}", super::VERSION)),
+        ("User-Agent", format!("PlexMediaServer/{version}")),
         ("Accept", "*/*".to_string()),
         ("Content-Type", format!("multipart/form-data; boundary={boundary}")),
     ];
@@ -2580,7 +2612,6 @@ pub(super) fn finish_claim(runtime: &SharedRuntime, token: &str, _target: &str) 
         Err(None)
     } else {
         refresh_version(&plextv.claim);
-        watch_version(&plextv.claim);
         exchange(&plextv.claim, token).map_err(Some)
     };
     drop(claiming);
@@ -2601,7 +2632,7 @@ pub(super) fn finish_claim(runtime: &SharedRuntime, token: &str, _target: &str) 
         // An unclaimed start has no agent: it matches with Plex's agent from its claim on.
         if guard.plex.is_none() {
             let cache = claim_path(&guard.catalog_path).with_file_name("plex_cache.json");
-            let agent = super::plexmeta::PlexMeta::new(Arc::clone(&plextv.claim), cache, guard.machine.clone());
+            let agent = super::plexmeta::PlexMeta::new(Arc::clone(&plextv.claim), cache);
             guard.plex = Some(Arc::new(agent));
         }
         (guard.private_address.clone(), guard.published_sections())
@@ -2665,6 +2696,46 @@ mod tests {
         for bad in ["", "1.43.4.10903", "1.43.4-e5521bd8c", "1.43.4.x-e5521bd8c", "1.43.4.10903-", "1.43.4.10903-rex"] {
             assert!(!pms_version_shape(bad), "{bad}");
         }
+    }
+
+    #[test]
+    fn public_release_selection_ignores_unsupported_entries() {
+        let mut list: Value = serde_json::from_str(include_str!("../../../tests/fixtures/plex_downloads_2026_10_22.json")).unwrap();
+        let expected = list["computer"]["Linux"]["version"].as_str().unwrap().to_string();
+        assert_eq!(release_version(&list), Some(expected.as_str()));
+        assert_eq!(PMS_VERSION_FALLBACK, expected);
+        // Keep the real list's NAS/client/other platform entries: none may replace Linux.
+        list["computer"].as_object_mut().unwrap().remove("Linux");
+        assert_eq!(release_version(&list), None);
+        for bad in [Value::Null, json!(42), json!(""), json!("1.43.5"), json!("1.43.5.11029-not-a-build")] {
+            list["computer"]["Linux"] = json!({"version": bad});
+            assert_eq!(release_version(&list), None);
+        }
+    }
+
+    #[test]
+    fn a_last_known_release_survives_restart_but_invalid_cache_does_not() {
+        let directory = std::env::temp_dir().join(format!("rex-pms-version-{}", uuid4()));
+        std::fs::create_dir_all(&directory).unwrap();
+        let path = directory.join("claim_state.json");
+        let machine = "version-test";
+        let list: Value = serde_json::from_str(include_str!("../../../tests/fixtures/plex_downloads_2026_10_22.json")).unwrap();
+        let latest = release_version(&list).unwrap();
+        let mut claim = Claim::load(machine, path.clone(), "server", "1.43.4.10903-e5521bd8c");
+        claim.version = latest.to_string();
+        claim.save();
+        let restored = Claim::load(machine, path.clone(), "server", "1.43.4.10903-e5521bd8c");
+        assert_eq!(restored.version, latest);
+        assert!(!restored.claimed());
+        assert_eq!(restored.headers().iter().find(|(name, _)| *name == "X-Plex-Version").unwrap().1, latest);
+        // A newer binary already knows a public release: an older cache cannot undo it.
+        std::fs::write(&path, json!({"machine": machine, "version": "1.43.4.10903-e5521bd8c"}).to_string()).unwrap();
+        assert_eq!(Claim::load(machine, path.clone(), "server", latest).version, latest);
+        std::fs::write(&path, json!({"machine": machine, "version": "invalid"}).to_string()).unwrap();
+        assert_eq!(Claim::load(machine, path.clone(), "server", PMS_VERSION_FALLBACK).version, PMS_VERSION_FALLBACK);
+        std::fs::write(&path, json!({"machine": "another-server", "version": latest}).to_string()).unwrap();
+        assert_eq!(Claim::load(machine, path, "server", "1.43.4.10903-e5521bd8c").version, "1.43.4.10903-e5521bd8c");
+        std::fs::remove_dir_all(directory).unwrap();
     }
 
     #[test]

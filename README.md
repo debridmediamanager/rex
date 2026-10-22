@@ -17,6 +17,7 @@ rex gets its library from whatever you point at it. Each source sends rex the li
 - Several sources can fill the same Movies and TV libraries. Two zurgs on two debrid accounts end up in one library
 - When a source reports a file gone it leaves the library the same way it would in Plex
 - Movie editions and the full server Dashboard work with a free claiming account. [Movie and TV capabilities](docs/setup.md#movie-and-tv-capabilities) covers Downloads, real intro/credits analysis, chapter and seek thumbnails, subtitle adjustment, audio enhancement, stream limits and local controls
+- The client API, LAN discovery and Plex requests use the same current public PMS release, refreshed automatically; [scope and offline behavior](docs/protocol-traps.md#server-identity)
 
 ## Setup
 
@@ -151,3 +152,5 @@ What it does not do:
 ## License
 
 MIT. See [LICENSE](LICENSE).
+Recorded PMS resource assets retain their upstream copyrights; rex's MIT license
+does not relicense third-party artwork.

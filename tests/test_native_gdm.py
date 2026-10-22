@@ -75,7 +75,11 @@ def main():
             b"Port: %d\r\n" % tcp
             + b"Resource-Identifier: " + machine.encode() + b"\r\n"
         )
-        expected_version = b"Version: 1.42.2.10156-f737b826c\r\n"
+        identity_request = urllib.request.Request(
+            "http://127.0.0.1:%d/identity" % tcp, headers={"Accept": "application/json"})
+        with urllib.request.urlopen(identity_request, timeout=3) as response:
+            version = json.load(response)["MediaContainer"]["version"]
+        expected_version = ("Version: %s\r\n" % version).encode()
         for port in gdm_ports:
             for label, payload, answer in (
                 ("proper query", b"M-SEARCH * HTTP/1.1\r\n", True),
@@ -122,7 +126,7 @@ def main():
         with urllib.request.urlopen(request, timeout=3) as response:
             body = json.load(response)
         rows = (body.get("MediaContainer") or {}).get("Server") or []
-        ok = any(row.get("machineIdentifier") == machine for row in rows)
+        ok = any(row.get("machineIdentifier") == machine and row.get("version") == version for row in rows)
         checks.append(ok)
         print("%s /servers includes native self row" % ("PASS" if ok else "FAIL"))
     finally:
@@ -163,7 +167,8 @@ def start(catalog, tcp, gdm_ports, extra=()):
                        "--assert-claimed", *extra, root=ROOT),
         cwd=ROOT,
         env=dict(os.environ, 
-                 REX_GDM_PORTS=",".join(str(port) for port in gdm_ports)),
+                 REX_GDM_PORTS=",".join(str(port) for port in gdm_ports),
+                 REX_PLEXTV_URL="http://127.0.0.1:9", REX_DIRECT_URL="off"),
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )

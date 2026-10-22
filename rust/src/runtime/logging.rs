@@ -332,6 +332,15 @@ fn crc32(data: &[u8]) -> u32 {
     !crc
 }
 
+/// PMS's Download Logs filename (recorded from 1.43.5 on 2026-10-22).
+pub(super) fn archive_disposition() -> String {
+    let tm = local(super::now());
+    format!(
+        "attachment; filename=\"Plex Media Server Logs_{:04}-{:02}-{:02}_{:02}-{:02}-{:02}.zip\"",
+        tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec
+    )
+}
+
 impl super::Runtime {
     /// `log_archive`: Download Logs' zip of this process's own log, the requests it
     /// answered and the ones it could not route.
@@ -339,7 +348,7 @@ impl super::Runtime {
         let joined = |lines: &[String]| format!("{}\n", lines.join("\n"));
         let requests = &self.requests[self.requests.len().saturating_sub(2000)..];
         zip(&[
-            ("rex.log", joined(&lines())),
+            ("Plex Media Server.log", joined(&lines())),
             ("requests.log", joined(requests)),
             ("unrouted.log", joined(&self.unknown)),
         ])

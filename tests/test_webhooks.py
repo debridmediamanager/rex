@@ -244,6 +244,9 @@ def main():
         check("the webhook receives play, pause, resume, scrobble and stop, in order", events == want, events)
         check("a shared user's webhook gets none of the owner's playback (rex #10)", not shared.records,
               [payload and payload.get("event") for _, payload in shared.records])
+        check("multipart envelopes do not advertise an alternative server implementation",
+              len(got) == len(want) and all("rex-" not in kind.lower() for kind, _ in got),
+              [kind for kind, _ in got])
         reads = [query for method, path, query in plextv.records
                  if (method, path) == ("GET", "/plex.tv/api/v2/server/webhooks")]
         check("the list is read from plex.tv with the server token, as a claimed PMS reads it",

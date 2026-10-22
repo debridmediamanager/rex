@@ -1379,14 +1379,14 @@ mod tests {
         let american_dad = || {
             arrival("episode", Some(json!({"kind": "episode", "season": 5, "episode": 7})), json!({"imdb": "tt0397306", "tmdb": "1433"}))
         };
-        let mut claim = plextv::Claim::load(&"f".repeat(40), dir.join("claim_state.json"), "x", VERSION);
+        let mut claim = plextv::Claim::load(&"f".repeat(40), dir.join("claim_state.json"), "x", plextv::PMS_VERSION_FALLBACK);
         claim.token = Some("token".to_string());
         let claim = Arc::new(Mutex::new(claim));
         let plan = |kind: &str| Library {
             key: "1".to_string(),
             kind: kind.to_string(),
             title: "x".to_string(),
-            plex: Some(Arc::new(plexmeta::PlexMeta::new(Arc::clone(&claim), dir.join("plex_cache.json"), "f".repeat(40)))),
+            plex: Some(Arc::new(plexmeta::PlexMeta::new(Arc::clone(&claim), dir.join("plex_cache.json")))),
         };
         let mut movie = vec![film()];
         name_release(&plan("movie"), &mut movie);
