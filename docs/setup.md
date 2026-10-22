@@ -436,6 +436,8 @@ services:
     container_name: rex
     restart: unless-stopped
     network_mode: host        # LAN discovery (GDM), and zurg's registered address reachable as on the host
+    devices:
+      - /dev/dri:/dev/dri     # an Intel or AMD GPU for converting; leave out where there is none
     volumes:
       - ./rex:/config
 ```
@@ -451,9 +453,10 @@ publish `32400:32400` and add `--gdm off` and `--friendly-name <name>` (the cont
 hostname is its ID), and claim from the Docker host with `curl -X POST "http://localhost:32400/myplex/claim?token=claim-xxxxxxxxxxxx"`:
 a claim addressed to the host's LAN IP reaches rex at the container's own address, and rex
 refuses a `Host` that is not the address it reached. Apps then find rex only once it is claimed, and
-rex must still reach the address zurg registers. The image carries no FFmpeg, so in Docker rex cannot convert
-video, analyze intros, credits or thumbnails, or check subtitles against the sound. Mounting one in
-and setting `REX_TRANSCODER` is untested; for those, run rex without Docker. rex saves its state on `docker stop`.
+rex must still reach the address zurg registers. The image carries jellyfin-ffmpeg and, on amd64,
+Intel's OpenCL runtime for HDR, and rex finds them on its own; `devices` hands it the GPU (an
+NVIDIA card needs the NVIDIA container toolkit and `gpus: all` instead; untested). Images up to
+2026.10.22.0040-nightly carry no FFmpeg. rex saves its state on `docker stop`.
 
 ### Troubleshooting
 
@@ -598,9 +601,18 @@ another file version.
 
 ## Transcoding
 
-Off by default: rex then answers a conversion request the way a server with no
-encoder does. Point `REX_TRANSCODER` at an FFmpeg to turn it on. jellyfin-ffmpeg is
-the one it is measured with. Install its `.deb` as a package: it lands in
+rex converts with an FFmpeg it finds on its own, in this order: jellyfin-ffmpeg's package
+(`/usr/lib/jellyfin-ffmpeg/ffmpeg`), a portable jellyfin-ffmpeg unpacked into rex's folder as
+`ffmpeg/` (the way on Windows and macOS), a Jellyfin server install, then `ffmpeg` on PATH.
+The startup log names the one it found. `REX_TRANSCODER` names another and
+`REX_TRANSCODER=off` turns conversion off; with none, rex answers a conversion request the way
+a server with no encoder does. (Builds up to 2026.10.22.0040-nightly look for nothing and
+need `REX_TRANSCODER`.)
+
+jellyfin-ffmpeg is the one rex is measured with, and the only one that does everything. Any
+other converts ordinary video, and rex logs what it lacks: without jellyfin-ffmpeg's
+`tonemapx` it does not convert Dolby Vision profile 5, and without `zscale` (Homebrew's lacks
+it) no HDR at all. Install jellyfin-ffmpeg's `.deb` as a package: it lands in
 `/usr/lib/jellyfin-ffmpeg` beside any system FFmpeg, with its own Intel driver. On a J4105
 (2026-10-17), a copy unpacked anywhere else (`dpkg -x`) fell back to the system's older iHD,
 which could not convert 10-bit HEVC.
@@ -609,17 +621,16 @@ which could not convert 10-bit HEVC.
 DEB=jellyfin-ffmpeg8_8.1.3-1-$(. /etc/os-release; echo "$VERSION_CODENAME")_$(dpkg --print-architecture).deb   # Ubuntu 22.04/24.04/26.04, Debian 12/13
 curl -fLO "https://github.com/jellyfin/jellyfin-ffmpeg/releases/download/v8.1.3-1/$DEB"
 sudo apt install "./$DEB"
-export REX_TRANSCODER=/usr/lib/jellyfin-ffmpeg/ffmpeg LIBVA_DRIVER_NAME=iHD   # iHD: Intel only, leave it out on AMD
 sudo usermod -aG render "$USER"      # the GPU's /dev/dri/renderD128; log in again after
 ```
 
-`export` reaches only the current shell: under run.sh or systemd, put the two variables in
-`rex.env` instead. A systemd user service only gets the new group once its user manager
+Restart rex and it finds it. Its own Intel driver needs no `LIBVA_DRIVER_NAME` (encoding and
+OpenCL both measured without it on Skylake and Gemini Lake, 2026-10-22). A systemd user service only gets the new group once its user manager
 restarts (a reboot, or the last login session ending); until then start rex under `sg render`.
 
 | Variable | Default | |
 |---|---|---|
-| `REX_TRANSCODER` | off | the FFmpeg binary |
+| `REX_TRANSCODER` | found, as above | the FFmpeg binary, or `off` |
 | `REX_TRANSCODE_HW` | `auto` | `vaapi`, `cuda` or `none` (`auto` tries VA-API, then NVENC) |
 | `REX_TRANSCODE_DEVICE` | `/dev/dri/renderD128` | the VA-API device |
 | `REX_TRANSCODE_DIR` | `$TMPDIR/rex-transcode-<port>` | segments; cleared at start |
@@ -657,7 +668,7 @@ converted. A DTS or TrueHD track the client refuses becomes AAC (or the profile'
 audio codec) beside the copied video, and a quality below Original (the client's
 `maxVideoBitrate` and `videoResolution`) converts the video down while the audio is
 copied. On cellular the mobile apps cap quality at 720p and 4 Mbps (`rust/src/gate.rs`),
-so a 1080p title there needs one or the other: `REX_TRANSCODER`, or the app's cellular
+so a 1080p title there needs one or the other: an FFmpeg, or the app's cellular
 quality raised to Original. Without an encoder rex refuses such a play (decision
 2000/4005).
 
@@ -703,7 +714,7 @@ nothing to set up. Unclaimed, rex asks nobody and the search lists nothing.
 
 The subtitles named most like your file come first. When you pick one, rex checks it against the
 file before keeping it: against the file's own text subtitle when it has one, otherwise, with
-`REX_TRANSCODER` set, against its sound. When it finds the subtitle running late, or timed for
+an FFmpeg, against its sound. When it finds the subtitle running late, or timed for
 another frame rate, it moves it onto the file. Every subtitle is kept as UTF-8; one that arrives in another encoding
 is read as Western European (Windows-1252).
 

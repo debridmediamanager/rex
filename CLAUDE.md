@@ -178,10 +178,13 @@ made a row for adopts that row and its key. `/library/sections/{id}/refresh` and
 `/activities` are what they are on a library with nothing to read; old zurg builds still
 send refreshes and change nothing.
 
-`REX_TRANSCODER` (an FFmpeg; docs/setup.md "Transcoding") turns on conversion: a decision the
+An FFmpeg turns on conversion: `REX_TRANSCODER`, or else the one rex finds itself
+(`find_ffmpeg`: jellyfin-ffmpeg's package, `ffmpeg/` in rex's folder, a Jellyfin install, PATH;
+docs/setup.md "Transcoding"; the Docker image carries jellyfin-ffmpeg). A decision the
 client cannot direct-play becomes the reference's 3000/1001/1001 with the converted Media,
 and `start.m3u8`/`start.mpd` start one FFmpeg per session reading the Part from its source.
-Without it rex is the encoder-less server every suite measures. The transcoder, like the
+`REX_TRANSCODER=off` is the encoder-less server every suite measures: `tests/server_command.py`
+sets it for every test server unless the suite names an FFmpeg (`test_ffmpeg()`). The transcoder, like the
 feed, is rex's own, and only its wire shapes are the reference's (`tests/fixtures/transcode/`, recorded on plexscratch for Plex Web's exact
 requests). Segment lengths, encoder settings and the MPD's `minBufferTime` are ours, chosen
 by measurement (findings, "The universal transcoder").
