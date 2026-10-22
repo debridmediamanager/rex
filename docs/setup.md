@@ -609,13 +609,25 @@ The startup log names the one it found. `REX_TRANSCODER` names another and
 a server with no encoder does. (Builds up to 2026.10.22.0040-nightly look for nothing and
 need `REX_TRANSCODER`.)
 
-jellyfin-ffmpeg is the one rex is measured with, and the only one that does everything. Any
-other converts ordinary video, and rex logs what it lacks: without jellyfin-ffmpeg's
-`tonemapx` it does not convert Dolby Vision profile 5, and without `zscale` (Homebrew's lacks
-it) no HDR at all. Install jellyfin-ffmpeg's `.deb` as a package: it lands in
-`/usr/lib/jellyfin-ffmpeg` beside any system FFmpeg, with its own Intel driver. On a J4105
-(2026-10-17), a copy unpacked anywhere else (`dpkg -x`) fell back to the system's older iHD,
-which could not convert 10-bit HEVC.
+### Which FFmpeg
+
+Install **jellyfin-ffmpeg** 8, the build rex is measured with and the only one that does
+everything: the GPU through its own Intel driver, HDR tonemapped on the GPU or the CPU, Dolby
+Vision profile 5, and subtitles drawn on the GPU. Which file depends on the machine:
+
+| Machine | Install | rex finds it at |
+|---|---|---|
+| Ubuntu 22.04/24.04/26.04, Debian 12/13 (amd64, arm64) | the `.deb` package, below | `/usr/lib/jellyfin-ffmpeg/ffmpeg` |
+| Docker | nothing: the image carries it ([Docker](#docker)) | `/usr/lib/jellyfin-ffmpeg/ffmpeg` |
+| Windows | `jellyfin-ffmpeg_8.1.3-1_portable_win64-clang-gpl.zip` (`winarm64` on ARM) | `ffmpeg\ffmpeg.exe` in rex's folder |
+| macOS | `..._portable_macarm64-gpl.tar.xz` (Apple Silicon) or `..._portable_mac64-gpl.tar.xz` (Intel) | `ffmpeg/ffmpeg` in rex's folder |
+| Any other Linux | `..._portable_linux64-gpl.tar.xz` (`linuxarm64` on ARM) | `ffmpeg/ffmpeg` in rex's folder |
+
+The `.deb` lands in `/usr/lib/jellyfin-ffmpeg` beside any system FFmpeg and carries its own
+Intel driver; it needs no `LIBVA_DRIVER_NAME` (encoding and OpenCL measured without it on
+Skylake and Gemini Lake, 2026-10-22). Use the package, not a copy unpacked elsewhere: on a
+J4105 (2026-10-17) a `dpkg -x` copy fell back to the system's older iHD, which could not
+convert 10-bit HEVC.
 
 ```bash
 DEB=jellyfin-ffmpeg8_8.1.3-1-$(. /etc/os-release; echo "$VERSION_CODENAME")_$(dpkg --print-architecture).deb   # Ubuntu 22.04/24.04/26.04, Debian 12/13
@@ -624,7 +636,40 @@ sudo apt install "./$DEB"
 sudo usermod -aG render "$USER"      # the GPU's /dev/dri/renderD128; log in again after
 ```
 
-Restart rex and it finds it. Its own Intel driver needs no `LIBVA_DRIVER_NAME` (encoding and
+The portable builds unpack flat (`ffmpeg` and `ffprobe` at the top), so they go straight into
+an `ffmpeg` folder beside `rust/` in rex's folder. In PowerShell, in rex's folder:
+
+```powershell
+curl.exe -fLO https://github.com/jellyfin/jellyfin-ffmpeg/releases/download/v8.1.3-1/jellyfin-ffmpeg_8.1.3-1_portable_win64-clang-gpl.zip
+Expand-Archive jellyfin-ffmpeg_8.1.3-1_portable_win64-clang-gpl.zip ffmpeg
+```
+
+On macOS or another Linux, in rex's folder:
+
+```bash
+case "$(uname -s)-$(uname -m)" in
+  Darwin-arm64) B=macarm64 ;; Darwin-*) B=mac64 ;; *-aarch64) B=linuxarm64 ;; *) B=linux64 ;;
+esac
+mkdir -p ffmpeg && curl -fL "https://github.com/jellyfin/jellyfin-ffmpeg/releases/download/v8.1.3-1/jellyfin-ffmpeg_8.1.3-1_portable_${B}-gpl.tar.xz" | tar xJ -C ffmpeg
+```
+
+Downloaded with `curl` they carry no macOS quarantine; one downloaded in a browser needs the
+`xattr -dr com.apple.quarantine .` the rex download does. Where each one converts on the GPU
+is the [platform table](#by-platform) below: Windows uses only an NVIDIA card and macOS never the
+GPU, whatever the FFmpeg. The Linux portable build reaches the GPU through the system's own
+VA-API library: Ubuntu 22.04's is too old for it (`vaMapBuffer2`, measured on an HD 510,
+2026-10-22) and it converts on the CPU there, so use the `.deb` wherever there is one.
+
+Another FFmpeg converts ordinary video, and rex's log says what it lacks. Measured 2026-10-22:
+
+| FFmpeg | Lacks |
+|---|---|
+| Ubuntu 24.04's `apt install ffmpeg` (6.1), BtbN's static builds | Dolby Vision profile 5 (no `tonemapx`), subtitles drawn on the GPU |
+| Ubuntu 22.04's `apt install ffmpeg` (4.4) | the same, and a far seek starts a segment early |
+| johnvansickle's static build | the GPU (no VA-API or NVENC), HDR on the GPU, Dolby Vision profile 5 |
+| Homebrew's (macOS) | all HDR (no `zscale` or `tonemapx`) |
+
+Restart rex after installing and it finds it. Its own Intel driver needs no `LIBVA_DRIVER_NAME` (encoding and
 OpenCL both measured without it on Skylake and Gemini Lake, 2026-10-22). A systemd user service only gets the new group once its user manager
 restarts (a reboot, or the last login session ending); until then start rex under `sg render`.
 
@@ -699,9 +744,6 @@ there is no Mac runner. None of those CI checks proves a physical GPU path.
 | macOS | none: x264 always (no VideoToolbox path) | cross-built for Intel and Apple Silicon; no runtime suite in CI |
 | Windows | NVENC (NVIDIA), else x264 (no Quick Sync or AMF path) | the suite runs in CI and was run on a Windows 11 machine with an AMD GPU |
 
-Use a recent FFmpeg. Ubuntu 22.04's own (`apt install ffmpeg`, 4.4) starts a far seek a
-segment early; jellyfin-ffmpeg 8 has portable builds for every platform above
-(`jellyfin-ffmpeg_8.1.3-1_portable_*` on its releases page).
 
 On Linux an FFmpeg dies with rex and a restart sweeps up any left over. On macOS and
 Windows a stopped rex still stops its FFmpegs, but if rex crashes they run on until their

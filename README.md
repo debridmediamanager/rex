@@ -12,7 +12,7 @@ rex gets its library from whatever you point at it. Each source sends rex the li
 - Movies and shows get posters, summaries, cast, seasons and episodes from Plex's own metadata
 - Watched state, Continue Watching, playlists, collections, edits and Fix Match all work and survive a restart
 - Plex apps on your home network also find it on their own, through Plex's LAN discovery on UDP ports 32410 and 32414. That is on by default when rex uses port 32400; `--gdm on` turns it on for any other port
-- Files play in their original quality. With FFmpeg installed, which rex finds on its own ([Transcoding](docs/setup.md#transcoding); jellyfin-ffmpeg does the most), it also converts what a device cannot play, and a GPU makes that fast. A 1080p film converted on a small Intel GPU starts in about 2 seconds
+- Files play in their original quality. With jellyfin-ffmpeg installed, which rex finds on its own ([Which FFmpeg](docs/setup.md#which-ffmpeg) has the build for each system), it also converts what a device cannot play, and a GPU makes that fast. A 1080p film converted on a small Intel GPU starts in about 2 seconds
 - Search Subtitles finds subtitles from Plex's own provider. rex checks the one you pick against a text subtitle already in the file, or against the audio when FFmpeg is installed, and fixes its timing when it is off. When an account is set to show subtitles and a title has none in its language, rex looks for one for up to 3 seconds before playback starts. See [Subtitles](docs/setup.md#subtitles)
 - Several sources can fill the same Movies and TV libraries. Two zurgs on two debrid accounts end up in one library
 - When a source reports a file gone it leaves the library the same way it would in Plex
