@@ -11,12 +11,12 @@ rex gets its library from whatever you point at it. Each source sends rex the li
 - Once it is added to a Plex account, shared with yours and given an address (HTTPS for app.plex.tv), it shows up in the Plex apps next to your other servers
 - Movies and shows get posters, summaries, cast, seasons and episodes from Plex's own metadata
 - Watched state, Continue Watching, playlists, collections, edits and Fix Match all work and survive a restart
-- Apps on your home network find it on their own when it runs on port 32400
+- Plex apps on your home network also find it on their own, through Plex's LAN discovery on UDP ports 32410 and 32414. That is on by default when rex uses port 32400; `--gdm on` turns it on for any other port
 - Files play in their original quality. With FFmpeg (set `REX_TRANSCODER`, see [Transcoding](docs/setup.md#transcoding)) it also converts what a device cannot play, and a GPU makes that fast. A 1080p film converted on a small Intel GPU starts in about 2 seconds
-- Search Subtitles finds subtitles from Plex's own provider. rex checks the one you pick against the file and moves it onto the file when it finds it out of sync, and when an account is set to show subtitles and a title has none in its language, rex looks for one before playback starts. See [Subtitles](docs/setup.md#subtitles)
+- Search Subtitles finds subtitles from Plex's own provider. rex checks the one you pick against a text subtitle already in the file, or against the audio when FFmpeg is set up (`REX_TRANSCODER`), and fixes its timing when it is off. When an account is set to show subtitles and a title has none in its language, rex looks for one for up to 3 seconds before playback starts. See [Subtitles](docs/setup.md#subtitles)
 - Several sources can fill the same Movies and TV libraries. Two zurgs on two debrid accounts end up in one library
 - When a source reports a file gone it leaves the library the same way it would in Plex
-- Movie editions and the full server Dashboard work with a free claiming account. [Movie and TV capabilities](docs/setup.md#movie-and-tv-capabilities) covers Downloads, real intro/credits analysis, chapter and seek thumbnails, subtitle adjustment, audio enhancement, stream limits and local controls
+- Movie editions and the full server Dashboard work with a free claiming account, in builds newer than 2026.10.22.0040-nightly. [Movie and TV capabilities](docs/setup.md#movie-and-tv-capabilities) covers Downloads, real intro/credits analysis, chapter and seek thumbnails, subtitle adjustment, audio enhancement, stream limits and local controls
 - The client API, LAN discovery and Plex requests use the same current public PMS release, refreshed automatically; [scope and offline behavior](docs/protocol-traps.md#server-identity)
 
 ## Setup
@@ -75,7 +75,7 @@ The first start makes `rex.db` with two empty libraries, Debrid Movies and Debri
 
 Until you add it to a Plex account in step 3 rex serves no Plex app: it answers only its claim and, from this machine and your home network, your sources (step 4).
 
-Plex Media Server runs on the same machine? Add `--port 32500` and use `32500` wherever this page says `32400`. On any port but 32400 rex stays out of LAN discovery, so apps find it through the Plex account it is shared with in step 3.
+Plex Media Server runs on the same machine? Add `--port 32500` and use `32500` wherever this page says `32400`. Off port 32400 rex leaves LAN discovery to that Plex, and apps find rex through the Plex account it is shared with in step 3.
 
 **3. Add it to a Plex account**
 
@@ -108,15 +108,15 @@ dmm_api_key: <your DMM API key>   # optional: DMM's exact matches
 
 zurg tells rex where its files are and how to log in to them, then sends its whole library and every change as it happens. A movie or episode shows up once zurg has analyzed it, which zurg starts as soon as its library has loaded.
 
-Only this machine, your home network and Tailscale can push to rex's library or delete what a source pushed. rex refuses that API to any other address, so forwarding rex's port for rex-direct (step 5) puts Plex's API on the internet, which needs a token once rex is claimed, but not the feed. Running two zurgs? Give each a name of its own with `rex_source: rd` and `rex_source: ad`. Anything else that serves files can register the same way, see the [feed API](docs/feed-api.md).
+Only this machine, your home network and Tailscale can push to rex's library or delete what a source pushed. rex refuses that API to any other address, so forwarding rex's port for rex-direct (step 5) puts Plex's API on the internet, which needs a token once rex is claimed, but not the feed. A tunnel or reverse proxy running on the rex machine (frp, Caddy, Tailscale Funnel) looks local to rex, so block `/rex/` in it. A router that gives outside visitors its own address makes them look local too, which opens the feed to the internet. Running two zurgs? Give each a name of its own with `rex_source: rd` and `rex_source: ad`. Anything else that serves files can register the same way, see the [feed API](docs/feed-api.md).
 
-This needs a zurg nightly from 2026.10.17 or later, so update zurg first. The latest zurg release, v1.0.0, has no rex feed.
+This needs a zurg nightly from 2026.10.19 or later, so update zurg first. The latest zurg release, v1.0.0, has no rex feed.
 
 **5. Use it outside your home**
 
 app.plex.tv only connects to an HTTPS address and the other Plex apps outside your home prefer one. rex has no relay so the address has to be reachable from the internet.
 
-The simplest way is rex-direct, which is on by default. Forward rex's port (32400) on your router to the rex machine. That is all: once claimed, rex gets a name of its own, `<hash>.rex-direct.debridmediamanager.com`, and a certificate for it from DMM, and announces `https://<name>:32400` after the address in `--announce-url`. The first certificate can take a few minutes. The name points at the public IP rex calls DMM from, and rex checks it every six hours, so a new IP is picked up on its own. Behind CGNAT it cannot work, because nothing outside reaches your router's port. Plex apps at home still use the LAN address. If your router forwards another outside port to rex, set `REX_DIRECT_PORT` to that port. `REX_DIRECT_URL` points rex at another provider ([the API](docs/rex-direct-api.md)), and `REX_DIRECT_URL=off` turns it off.
+The simplest way is rex-direct, which is on by default. Forward rex's port (32400) on your router to the rex machine. That is all: once claimed, rex gets a name of its own, `<hash>.rex-direct.debridmediamanager.com`, and a certificate for it from DMM, and announces `https://<name>:32400` after the address in `--announce-url`. The first certificate can take a few minutes. The name points at the public IP rex calls DMM from, and rex checks it every six hours, so a new IP is picked up on its own. One Plex account can hold up to ten rex-direct names. Behind CGNAT it cannot work, because nothing outside reaches your router's port. Plex apps at home still use the LAN address. If your router forwards another outside port to rex, set `REX_DIRECT_PORT` to that port. `REX_DIRECT_URL` points rex at another provider ([the API](docs/rex-direct-api.md)), and `REX_DIRECT_URL=off` turns it off.
 
 You can use your own hostname instead. Give rex a certificate for it with `--tls-cert` and `--tls-key` (PKCS#8, RSA or EC, so the files `tailscale cert` and ACME clients write work as they are) and put the address first in step 2's flag, the LAN address after it:
 
@@ -146,7 +146,7 @@ What it does not do:
 
 - Movies and TV only. Music and photo libraries stay empty
 - No Live TV or DVR
-- A converted stream keeps the subtitle you picked, except a text subtitle in a file other than MKV or MP4, or in a download for offline viewing. Lines too dense to read in time, like an opening song's karaoke, can be left out the first time a title converts. Plex for Android and iOS get a text subtitle as a track; every other app gets it drawn into the picture, as every app gets an image subtitle
+- A converted stream keeps the subtitle you picked, except a text subtitle in a file other than MKV or MP4, or in a download for offline viewing. Lines too dense to read in time, like an opening song's karaoke, can be left out of a converted stream. Plex for Android and iOS get a text subtitle as a track; every other app gets it drawn into the picture, as every app gets an image subtitle
 - Remote playback without a Plex Pass or Remote Watch Pass is verified in Plex Web 4.163.0 with the October 21 remote-playback update, even when both the claiming and viewing accounts are free. Other Plex apps have not been playback-tested. Converting video, GPU included, needs no Plex Pass. Server capabilities do not grant Plex cloud subscriptions, Home membership or an app's own Downloads eligibility
 
 ## License

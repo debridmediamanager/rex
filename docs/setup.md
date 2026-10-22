@@ -55,10 +55,12 @@ is from its name; add `dmm_api_key` so DMM says it instead. Anything else regist
 
 Registering and pushing take no token, claimed or not, so a source may name rex by address
 or host name. They answer only this machine, your home network and Tailscale (private,
-100.64/10 and link-local addresses): any other address gets 403. So forwarding rex's port
+100.64/10 and link-local addresses): any other address gets the answer a path that does not
+exist gets, so the source API cannot be found from the internet. So forwarding rex's port
 for rex-direct (step 7) puts Plex's API on the internet, which needs a token once rex is
 claimed, but not the feed. A reverse proxy on rex's own machine looks local to rex, so block
-`/rex/` in it ([`docs/feed-api.md`](feed-api.md), "Who may call it").
+`/rex/` in it. A router that gives outside visitors its own address makes them look local too, which
+opens the feed to the internet ([`docs/feed-api.md`](feed-api.md), "Who may call it").
 
 Registering is the only way a source exists: `ZURG_URL` is no longer read, and a zurg build
 from before the sources API, which never registers, needs updating. Rows rex already has keep
@@ -97,14 +99,15 @@ directories:
 ```
 
 This needs zurg's next nightly after 2026-10-22. zurg sends it when it registers (step 6),
-and rex makes the libraries then, on `/mnt/zurg/anime`, and moves what it already shows from
+and rex makes the libraries then, on `<zurg's mount_path>/anime` (under rex's `--zurg-mount`, `/mnt/zurg` by default,
+when zurg sets none), and moves what it already shows from
 that directory into them as it is: watch state, Fix Match and edits included. An open Plex Web
 lists them at once under More in its sidebar, where you can pin them. Every other directory
 stays in Debrid Movies and Debrid TV. Rename the libraries in Plex as you like.
 Delete one and it stays deleted, its directory going back to Debrid Movies and Debrid TV, until
-you add it again with Add Library, whose folder list shows the directories zurg sent under
-`/mnt/zurg`. Removing the lines from zurg's config keeps the library, and a mistyped entry is
-skipped and named in rex's log, the rest still applied
+you add it again with Add Library, whose folder list shows the directories zurg sent. Removing the lines from zurg's config keeps the library, and a
+mistyped entry is skipped and named in zurg's log (or rex's, for one rex refuses), the rest
+still applied
 ([feed API](feed-api.md#libraries-a-source-declares)).
 
 To add more directories to Debrid Movies or Debrid TV instead, name them when seeding
@@ -182,11 +185,14 @@ curl -s http://<rex's LAN IP>:32400/rex/sources            # {"size":0,"sources"
 curl -s http://<rex's LAN IP>:32400/rex/feed/rd/items       # what rd pushed, once it has registered
 ```
 
-- **Port 32400 and LAN discovery.** On 32400 rex answers Plex's LAN discovery (GDM) on
-  udp/32410 and 32414, so apps on the same network find it. On a host that already runs
-  Plex, give rex another port: there the default `--gdm auto` answers no discovery.
+- **LAN discovery.** rex answers Plex's LAN discovery (GDM) on udp/32410 and udp/32414,
+  so apps on the same network find it on their own; a firewall on the rex machine must let
+  those two ports in. The default `--gdm auto` answers only when rex is on port 32400, so a
+  rex given another port beside a Plex on the same host leaves discovery to that Plex.
+  `--gdm on` answers on any port and `--gdm off` never. Signed-in apps find a claimed rex
+  through the Plex account it is shared with either way.
 - **Who may connect.** Until it is claimed (step 5), rex serves no Plex app: it answers
-  `/identity`, the source API (step 6) and the claim, and takes the claim only from this
+  `/identity`, the source API (step 2) and the claim, and takes the claim only from this
   machine and private addresses (10.x, 172.16-31.x, 192.168.x, IPv6 fc00::/7), as an
   unclaimed Plex Media Server does. Tailscale's 100.x addresses and anything arriving through
   a proxy with a public `X-Forwarded-For` are refused, and so is a request whose `Host` is a
@@ -255,7 +261,7 @@ rex_source: rd                          # optional: the name it registers as (de
 A directory that is to be a library of its own gets `rex_shows`/`rex_movies` under it (step 3).
 
 rex's LAN IP works from the same machine, another one and a container alike. It needs a zurg
-nightly from 2026.10.17 or later: the latest zurg release, v1.0.0, has no rex feed. Restart
+nightly from 2026.10.19 or later (the first that places files without a DMM API key): the latest zurg release, v1.0.0, has no rex feed. Restart
 zurg. Once its library has loaded it registers with rex, pushes everything it holds, then
 each change as it happens, and the whole library again
 every `rex_snapshot_every_hours` (6), registering again at the start of each. Watch it
@@ -265,8 +271,10 @@ arrive in rex's log (`SOURCES rd registered ...`, `FEED POST /rex/feed/rd/items 
 **An item appears only once zurg has probed it with ffprobe**, because rex lists each
 file with its streams. Items zurg never probed are held, not shown. zurg probes the whole
 library on its own once it has loaded, one release at a time by default (zurg's
-`analysis_workers`), up to about 20 a minute, then each new release, and
-tries a failed probe again a day later, so a large library fills over hours. **Analyze & Tag
+`analysis_workers`), then each new release. It downloads ffprobe at start if it has none; its
+Docker image carries one, and if the download fails, install ffprobe and set `ffprobe_binary`.
+With a `dmm_api_key`, up to about 20 releases a minute come from DMM's stored details instead.
+zurg tries a failed probe again a day later, so a large library fills over hours. **Analyze & Tag
 Library** on zurg's dashboard (or `POST /torrents/analyze`) retries failed probes at once.
 
 Leave zurg's `plex_server_url` pointing at your real Plex, if you have one. Pointed
@@ -285,7 +293,7 @@ way rex terminates TLS itself, on the same port as plain HTTP.
   claim's token, which DMM checks with plex.tv. DMM points
   `<hash>.rex-direct.debridmediamanager.com` at the public IP rex called from and issues a
   certificate for that name alone, the first one in a few minutes (rex logs that it is being
-  issued and asks again). rex serves it and adds
+  issued and asks again). One Plex account can hold up to ten rex-direct names. rex serves it and adds
   `https://<hash>.rex-direct.debridmediamanager.com:32400` after the addresses in
   `--announce-url`, so `--announce-url` needs only step 4's LAN address. The log says
   `rex-direct: https://<name>:32400 -> <ip>`. rex registers again every six hours, which
@@ -295,9 +303,10 @@ way rex terminates TLS itself, on the same port as plain HTTP.
   runs on without it. The name points at the public IPv4 address rex calls DMM from, so
   behind CGNAT it cannot work. Plex apps at home still use the LAN address. If your router
   forwards another outside port to rex, set `REX_DIRECT_PORT=<that port>`. `REX_DIRECT_URL`
-  names another provider ([`docs/rex-direct-api.md`](rex-direct-api.md) is the contract;
-  only one you trust, since it picks the name your apps connect to) and `REX_DIRECT_URL=off`
-  turns rex-direct off.
+  names another provider by its `https://` address; plain `http://` works only on this machine,
+  and anything else is refused with a warning. Use only a provider you trust, since it picks the
+  name your apps connect to ([`docs/rex-direct-api.md`](rex-direct-api.md) is the contract).
+  `REX_DIRECT_URL=off` turns rex-direct off.
 - **Your own hostname**: `--tls-cert host.crt --tls-key host.key`. The key can be PKCS#8,
   RSA or EC (`BEGIN EC PRIVATE KEY`, which `tailscale cert` and many ACME clients write). A
   `tailscale cert` hostname works for apps on your tailnet. With rex-direct as well, rex
@@ -371,7 +380,7 @@ folder and restart rex. It replaces `rust/`, `data/`, `examples/` and the docs, 
 updates with `git pull` and the build in step 1. In Docker, `docker compose pull &&
 docker compose up -d`.
 
-rex logs requests only under `--verbose`, and masks `X-Plex-Token` values (not the
+rex logs Plex requests only under `--verbose` (source and feed calls always), and masks `X-Plex-Token` values (not the
 single-use claim token); the log still names your titles and addresses, so keep it private.
 
 Memory: in builds after 2026.10.18.0753-nightly, the library's rows live in the state file
@@ -391,8 +400,8 @@ the same in PowerShell with `rust\target\release\rex.exe` for `rust/target/relea
 - `examples/run.sh.example` and `rex manager` are Linux and macOS only. Start `rex.exe` from a
   scheduled task (Task Scheduler, "At startup", "Run whether user is logged on or not") to
   keep it running.
-- `claim_state.json` and `rex.db`, which holds the sources' credentials, are protected only by
-  the folder they sit in, so keep the rex folder inside your user profile.
+- `claim_state.json`, `rex-direct.json` (the certificate's private key) and `rex.db`, which holds
+  the sources' credentials, are protected only by the folder they sit in, so keep the rex folder inside your user profile.
 - LAN discovery cannot share its ports with a Plex Media Server on the same Windows machine.
   Beside one, give rex another port (`--port 32500`), which keeps discovery off.
 
@@ -434,26 +443,30 @@ Docker setup mounts. A `command:` adds to those: step 4's `--announce-url` goes 
 (`command: --announce-url http://<rex's LAN IP>:32400`) before the first
 `docker compose up`.
 
-The claim (step 5) and zurg's `rex_url` (step 6) are unchanged. rex-direct (step 7) keeps `rex-direct.json` in `/config`. Certificates of your own go in `/config` too:
+zurg's `rex_url` (step 6) is unchanged, and so is the claim (step 5) with host networking. rex-direct (step 7) keeps `rex-direct.json` in `/config`. Certificates of your own go in `/config` too:
 `--tls-cert /config/host.crt --tls-key /config/host.key`. Without host networking,
 publish `32400:32400` and add `--gdm off` and `--friendly-name <name>` (the container's
-hostname is its ID); apps then find rex only once it is claimed, and
-rex must still reach the address zurg registers. The image carries no FFmpeg. Mounting
-one in and setting `REX_TRANSCODER` is untested; to convert video, run rex without Docker. rex saves its state on `docker stop`.
+hostname is its ID), and claim from the Docker host with `curl -X POST "http://localhost:32400/myplex/claim?token=claim-xxxxxxxxxxxx"`:
+a claim addressed to the host's LAN IP reaches rex at the container's own address, and rex
+refuses a `Host` that is not the address it reached. Apps then find rex only once it is claimed, and
+rex must still reach the address zurg registers. The image carries no FFmpeg, so in Docker rex cannot convert
+video, analyze intros, credits or thumbnails, or check subtitles against the sound. Mounting one in
+and setting `REX_TRANSCODER` is untested; for those, run rex without Docker. rex saves its state on `docker stop`.
 
 ### Troubleshooting
 
 | Symptom | Cause |
 |---|---|
-| A push answers 404 `no such source: PUT /rex/sources/... first` | The source has not registered: a zurg from before the sources API never does, update it to a nightly from 2026.10.17 or later (step 6) |
+| A push answers 404 `no such source: PUT /rex/sources/... first` | The source has not registered: a zurg from before the sources API never does, update it to a nightly from 2026.10.19 or later (step 6) |
 | Every part read answers 502 | No source is registered (`curl -s http://<rex's LAN IP>:32400/rex/sources`), or rex cannot reach the one that is |
-| A push answers `rejected: no movie or show library holds ...` | The catalog has no movie or show library of that item's kind: name one with `--movies`/`--shows` before the first start, or Add Library on it (step 3) |
+| A push answers `rejected: no movie or show library holds ...` | No library of that item's kind is left (one was deleted in Plex): add one with Add Library (step 3) |
 | zurg pushed but the library stays empty | Items are held until zurg probes them (step 6) |
-| A directory given `rex_shows`/`rex_movies` has no library | zurg did not send it (`curl -s http://<rex's LAN IP>:32400/rex/sources` lists each source's `directories`), rex skipped a mistyped entry (the log says why), or a library there was deleted in Plex, which keeps it deleted (the log says `stays deleted`): add it again with Add Library on `/mnt/zurg/<directory>` (step 3) |
+| A directory given `rex_shows`/`rex_movies` has no library | zurg did not send it (`curl -s http://<rex's LAN IP>:32400/rex/sources` lists each source's `directories`), zurg or rex skipped a mistyped entry (its log says why), or a library there was deleted in Plex, which keeps it deleted (the log says `stays deleted`): add it again with Add Library on `<zurg's mount_path>/<directory>` (step 3) |
 | A part read answers 502, or 401/403 | rex cannot reach the source's `url` (502), or the source refused its credential (its own status): the log line `PART ... upstream` says which |
-| The server is not in the Plex apps | Not claimed, no `--announce-url`, or the announced HTTPS address is not reachable from the internet (step 7) |
+| The server is not in the Plex apps | Not claimed, no address to announce (no `--announce-url` and rex-direct off or not registered yet), or the announced HTTPS address is not reachable from the internet (step 7) |
 | The log says `waiting for a claim` | The server is not claimed: claim it (step 5) and it announces at once |
 | The log says `rex-direct: registration failed: HTTP 401` or `403` | The provider could not confirm the claim with plex.tv: the server was removed from its Plex account, or claim it again (step 5) |
+| The log says `rex-direct: registration failed: HTTP 429` | That Plex account already holds ten rex-direct names: claim this rex with another account, or use your own hostname (step 7) |
 | A second server on the same catalog exits 1 | The state file is locked by the first: one catalog per server |
 
 ### Running several servers: rex manager
@@ -525,7 +538,7 @@ WantedBy=multi-user.target
 ## Movie and TV capabilities
 
 These capabilities describe current source builds. For a downloaded binary, choose a build
-whose release notes include the movie and TV capability update, or build current `main`.
+newer than 2026.10.22.0040-nightly, or build current `main`.
 Earlier releases do not gain capabilities from a claim or account change.
 
 rex advertises supported server capabilities even when the claiming account is free.
@@ -541,7 +554,7 @@ and DVR are not supported.
 | Intro and credits skipping | Real local analysis with FFmpeg. Repeated opening pictures across source-placed episodes of one season identify intros; dark rolling-text endings and authored chapters identify credits. Ambiguous material gets no marker |
 | Chapter and seek thumbnails | JPEGs at source-provided chapter boundaries and 10-second seek previews, including a Roku BIF index. Authenticated byte ranges and checksummed artifacts survive a restart |
 | Subtitle adjustment | Uploaded and embedded text can be checked against the selected file's text or measured audio. Analyze prepares voice-activity eligibility; silence or an uncertain match is not advertised as successfully synchronized |
-| Hardware and HDR controls | Hardware decode and encode preferences are independent. HDR tone mapping and its selected algorithm affect the actual conversion; capabilities follow the installed FFmpeg probe |
+| Hardware and HDR controls | "Use hardware acceleration when available" turns all GPU use on or off; with it on, "Use hardware-accelerated video encoding" turns off only the GPU encoder. HDR tone mapping and its selected algorithm affect the actual conversion; capabilities follow the installed FFmpeg probe |
 | Audio enhancement | Supported FFmpeg filters implement dialogue enhancement and loudness normalization. Requested processing encodes audio and can preserve copied video. Stereo dialogue enhancement is reported as stereo |
 | Remote limits | Per-user stream count and per-stream/total upload budgets use the actual connection, not a client's `location` claim. Concurrent starts reserve capacity; impossible bitrate budgets are refused |
 | Sharing and webhooks | Local owner controls can tighten content-rating/label filters and Downloads permission, and configure real multipart webhooks without the cloud subscription UI |
@@ -553,7 +566,7 @@ Set up [FFmpeg](#transcoding) first. Analyze on an item or library queues real w
 its progress in Activities. Generation defaults to off to avoid reading a large remote library
 unasked. The Library preferences `GenerateIntroMarkerBehavior`, `GenerateCreditsMarkerBehavior`,
 `GenerateChapterThumbBehavior` and `GenerateBIFBehavior` support manual generation or opt-in
-generation when source items are added. Per-library generation switches still apply.
+generation when source items are added. Per-library switches limit that automatic generation; Analyze always runs what you ask for.
 There is no nightly scheduler; a corresponding Butler task runs only when requested.
 
 Analysis reads source media, consumes CPU and stores generated files beside the state database
@@ -564,8 +577,9 @@ Deleting preview thumbnails leaves chapter images and markers intact.
 
 ### Local owner controls
 
-These APIs require both a private-network connection and the owner's Plex token (or an explicitly
-configured control token). A reverse proxy must block `/rex/` from the internet, just as for the feed.
+These APIs need the owner's Plex token (or the `--token` value) and nothing else: unlike the feed
+they are not limited to your own networks, so once rex's port is forwarded for rex-direct they
+answer from the internet to that token too. A reverse proxy should block `/rex/` from the internet, just as for the feed.
 Use `X-Plex-Token` for authentication and `Content-Type: application/json` for JSON bodies.
 
 | Route | Body / result |
@@ -609,24 +623,25 @@ restarts (a reboot, or the last login session ending); until then start rex unde
 | `REX_TRANSCODE_DIR` | `$TMPDIR/rex-transcode-<port>` | segments; cleared at start |
 
 The startup log says what the probe found (`transcoder: ... hardware vaapi encode=true
-tonemapx=true opencl_tonemap=true bounded_http=false decode=[h264,hevc,mpeg2video]`). A
-conversion runs on the GPU end to end when it can decode the source there, uploads CPU-decoded frames when it cannot
-(AV1 on older Intel), and falls back to x264 when there is no device. HDR and Dolby Vision
-are tonemapped on the GPU through OpenCL when the probe tonemapped a frame that way, else on
-the CPU, which on a low-power Intel is a tenth of real time at 4K. The OpenCL runtime is a
-package of its own:
+tonemapx=true opencl_tonemap=true bounded_http=false alpha_subtitles=true decode=[h264,hevc,mpeg2video]`). A
+conversion runs on the GPU end to end when it can decode the source there, uploads CPU-decoded frames when it cannot or should not
+(AV1 on older Intel, a burned image subtitle, HDR tonemapped on the CPU), and falls back to x264 when there is no device.
+HDR and Dolby Vision are tonemapped on the CPU, which on a low-power Intel is a tenth of real time
+at 4K, unless the tonemapping algorithm is `bt2390` and the probe tonemapped a frame through
+OpenCL: only then do they stay on the GPU. The default algorithm is `hable`, and Plex's settings
+page does not list `bt2390`. The OpenCL runtime is a package of its own:
 
 ```bash
 sudo apt install intel-opencl-icd   # Ubuntu 22.04: 22.14, enough for a Gemini Lake J4105
 ```
 
-On a J4105 that took 4K HDR10 and Dolby Vision profile 5 to 1080p at 1.2-1.7x real time,
+With `bt2390`, a J4105 took 4K HDR10 and Dolby Vision profile 5 to 1080p at 1.2-1.7x real time,
 against 0.1-0.2x on its CPU (findings, "OpenCL tonemapping on fun's J4105").
 Every conversion is one FFmpeg reading the source over HTTP; nothing is downloaded
 first.
 
-The Transcoder settings independently control hardware decoding and encoding. Disabling one
-does not pretend to disable the other. `TranscoderToneMapping` turns HDR mapping on or off;
+"Use hardware acceleration when available" turns GPU decoding and encoding on or off together;
+with it on, "Use hardware-accelerated video encoding" turns off only the GPU encoder. `TranscoderToneMapping` turns HDR mapping on or off;
 `TranscoderToneMappingAgorithm` is the protocol's spelling for its algorithm selection.
 The Normalize Loudness and Boost Dialog playback controls appear only when the app's cloud
 rollout and server capability checks allow them. rex implements their requested audio processing
@@ -685,8 +700,8 @@ nothing to set up. Unclaimed, rex asks nobody and the search lists nothing.
 The subtitles named most like your file come first. When you pick one, rex checks it against the
 file before keeping it: against the file's own text subtitle when it has one, otherwise, with
 `REX_TRANSCODER` set, against its sound. When it finds the subtitle running late, or timed for
-another frame rate, it moves it onto the file. Every subtitle is kept as UTF-8, whatever encoding
-it came in.
+another frame rate, it moves it onto the file. Every subtitle is kept as UTF-8; one that arrives in another encoding
+is read as Western European (Windows-1252).
 
 When a Plex account's subtitle setting is "Always enabled", or "Shown with foreign audio" and the
 audio is in another language, and a film or episode has no subtitle in that account's language, rex
