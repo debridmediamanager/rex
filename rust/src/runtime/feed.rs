@@ -38,6 +38,16 @@ static DELETES: LazyLock<Mutex<HashMap<String, (String, std::time::Instant)>>> =
 /// How long a source delete's code confirms it, in seconds.
 const DELETE_WINDOW: u64 = 300;
 
+/// What was logged once since the start: a `directories` entry left out (`source`, entry), and
+/// a row kept where it is because its releases sit in folders of different libraries (its key).
+/// A source registers again at every push session and pushes every row in each snapshot.
+static SAID: LazyLock<Mutex<HashSet<String>>> = LazyLock::new(|| Mutex::new(HashSet::new()));
+
+/// Whether `what` is said for the first time since the start.
+fn first_time(what: String) -> bool {
+    SAID.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).insert(what)
+}
+
 /// One pushed item, its defaults filled in.
 #[derive(Debug, Clone)]
 struct Item {
@@ -344,7 +354,16 @@ fn sources(shared: &SharedRuntime, request: &Request, name: &str) -> Response {
                 Ok(source) => source,
                 Err(error) => return answer(400, json!({"error": error})),
             };
-            let public = source.public();
+            let mut public = source.public();
+            for ignored in &source.ignored {
+                let reason = string_value(&ignored["reason"]);
+                if first_time(format!("{name} {reason}")) {
+                    warning!("SOURCES {name}: {reason}; that entry is ignored");
+                }
+            }
+            if !source.ignored.is_empty() {
+                public["ignored"] = json!(source.ignored);
+            }
             let mut guard = lock(shared);
             let changed = guard.sources.iter().find(|known| known.name == name).map(|known| &known.record) != Some(&source.record);
             let declared = source.clone();

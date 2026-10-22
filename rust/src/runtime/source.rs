@@ -25,6 +25,9 @@ pub(crate) struct Source {
     pub record: Value,
     /// The directories it asks a library of their own for (`directories`, `declare_libraries`).
     pub directories: Vec<Declared>,
+    /// The `directories` entries it sent that were left out, `{"entry", "reason"}`: answered
+    /// to the registration and logged, never kept.
+    pub ignored: Vec<Value>,
 }
 
 /// One entry of a registration's `directories`: the first directory of the source's item
@@ -36,38 +39,43 @@ pub(crate) struct Declared {
     pub shows: Option<String>,
 }
 
-/// A registration's `directories`: absent, `null` (a Go nil slice) or empty is none; anything
-/// else malformed refuses the registration.
-fn declared(value: Option<&Value>) -> Result<Vec<Declared>, String> {
+/// A registration's `directories` and the entries left out, with why. Absent, `null` (a Go nil
+/// slice) or empty is none. A malformed entry, or a value that is no list, is left out and the
+/// source registers all the same: refusing it stopped the whole feed over one typo in a config.
+fn declared(value: Option<&Value>) -> (Vec<Declared>, Vec<Value>) {
     let entries = match value {
-        None | Some(Value::Null) => return Ok(Vec::new()),
+        None | Some(Value::Null) => return (Vec::new(), Vec::new()),
         Some(Value::Array(entries)) => entries,
-        Some(_) => return Err("directories must be an array".to_string()),
+        Some(other) => return (Vec::new(), vec![json!({"entry": other, "reason": format!("directories {other}: not a list")})]),
     };
-    entries
-        .iter()
-        .enumerate()
-        .map(|(index, entry)| {
-            let refuse = |why: &str| format!("directories[{index}]: {why}");
-            if !entry.is_object() {
-                return Err(refuse("must be an object"));
-            }
-            let name = entry.get("name").and_then(Value::as_str).unwrap_or_default();
-            if name.is_empty() || name.contains('/') {
-                return Err(refuse("name must be one directory of the source's paths, with no '/'"));
-            }
-            let title = |kind: &str| match entry.get(kind) {
-                None | Some(Value::Null) => Ok(None),
-                Some(Value::String(title)) if !title.trim().is_empty() => Ok(Some(title.clone())),
-                Some(_) => Err(refuse(&format!("{kind} must be a library title"))),
-            };
-            let (movies, shows) = (title("movies")?, title("shows")?);
-            if movies.is_none() && shows.is_none() {
-                return Err(refuse("names no shows or movies library"));
-            }
-            Ok(Declared { name: name.to_string(), movies, shows })
-        })
-        .collect()
+    // Each reason names the directory it is about: zurg logs each distinct one once.
+    let check = |entry: &Value| -> Result<Declared, String> {
+        let Some(name) = entry.get("name").and_then(Value::as_str).filter(|name| !name.is_empty()) else {
+            return Err(format!("directory entry {entry}: no name"));
+        };
+        if name.contains('/') {
+            return Err(format!("directory {name:?}: name must be one directory, with no '/'"));
+        }
+        let title = |kind: &str| match entry.get(kind) {
+            None | Some(Value::Null) => Ok(None),
+            Some(Value::String(title)) if !title.trim().is_empty() => Ok(Some(title.clone())),
+            Some(Value::String(_)) => Err(format!("directory {name:?}: {kind} title is empty")),
+            Some(_) => Err(format!("directory {name:?}: {kind} title must be text")),
+        };
+        let (movies, shows) = (title("movies")?, title("shows")?);
+        if movies.is_none() && shows.is_none() {
+            return Err(format!("directory {name:?}: names no shows or movies library"));
+        }
+        Ok(Declared { name: name.to_string(), movies, shows })
+    };
+    let (mut kept, mut ignored) = (Vec::new(), Vec::new());
+    for entry in entries {
+        match check(entry) {
+            Ok(declared) => kept.push(declared),
+            Err(reason) => ignored.push(json!({"entry": entry, "reason": reason})),
+        }
+    }
+    (kept, ignored)
 }
 
 /// One path segment as a URL carries it: unreserved bytes pass, every other is `%XX`
@@ -110,6 +118,7 @@ impl Source {
             mount: mount.filter(|mount| !mount.is_empty()).map(trimmed_mount),
             record: Value::Null,
             directories: Vec::new(),
+            ignored: Vec::new(),
         }
     }
 
@@ -133,7 +142,7 @@ impl Source {
         }
         let auth = Source::basic(&field("user"), &field("password"))
             .or_else(|| Some(field("bearer")).filter(|bearer| !bearer.is_empty()).map(|bearer| format!("Bearer {bearer}")));
-        let directories = declared(body.get("directories"))?;
+        let (directories, ignored) = declared(body.get("directories"));
         let mut record = Map::from_iter(
             ["url", "user", "password", "bearer", "mount"]
                 .into_iter()
@@ -155,6 +164,7 @@ impl Source {
         let mut source = Source::new(name, &url, auth, Some(&field("mount")));
         source.record = Value::Object(record);
         source.directories = directories;
+        source.ignored = ignored;
         Ok(source)
     }
 
@@ -308,11 +318,32 @@ mod tests {
             let plain = Source::register("zurg", &none).unwrap();
             assert!(plain.directories.is_empty() && plain.record == json!({"url": "http://h/dav"}) && plain.public().get("directories").is_none());
         }
-        for bad in [json!("anime"), json!({"name": "anime"}), json!([{"name": "anime"}]), json!([{"shows": "Anime"}]),
-                    json!([{"name": "", "shows": "Anime"}]), json!([{"name": "a/b", "shows": "Anime"}]), json!(["anime"]),
-                    json!([{"name": "anime", "shows": ""}]), json!([{"name": "anime", "shows": 1}]), json!([{"name": 7, "shows": "Anime"}])] {
-            let refused = Source::register("zurg", &json!({"url": "http://h/dav", "directories": bad}));
-            assert!(refused.as_ref().is_err_and(|why| why.starts_with("directories")), "{bad}: {refused:?}");
+        // A malformed entry is left out, with why; the source and its other entries register.
+        for (bad, reason) in [(json!("anime"), r#"directories "anime": not a list"#), (json!({"name": "anime"}), r#"directories {"name":"anime"}: not a list"#)] {
+            let source = Source::register("zurg", &json!({"url": "http://h/dav", "directories": bad})).unwrap();
+            assert_eq!((source.directories.len(), source.ignored.clone()), (0, vec![json!({"entry": bad, "reason": reason})]));
+            assert_eq!(source.record, json!({"url": "http://h/dav"}), "nothing ignored is kept");
         }
+        let entries = [json!({"name": "anime"}), json!({"shows": "Anime"}), json!({"name": "", "shows": "Anime"}),
+                       json!({"name": "a/b", "shows": "Anime"}), json!("anime"), json!({"name": "anime", "shows": ""}),
+                       json!({"name": "anime", "shows": 1}), json!({"name": 7, "shows": "Anime"})];
+        let mut sent: Vec<Value> = entries.to_vec();
+        sent.insert(3, json!({"name": "wrestling", "shows": "Wrestling"}));
+        let source = Source::register("zurg", &json!({"url": "http://h/dav", "directories": sent})).unwrap();
+        assert_eq!(source.directories, [Declared { name: "wrestling".into(), movies: None, shows: Some("Wrestling".into()) }]);
+        assert_eq!(source.ignored.iter().map(|ignored| ignored["entry"].clone()).collect::<Vec<_>>(), entries);
+        // Each reason names its directory: zurg logs each distinct reason once.
+        let reasons: Vec<&str> = source.ignored.iter().filter_map(|ignored| ignored["reason"].as_str()).collect();
+        assert_eq!(reasons, [
+            r#"directory "anime": names no shows or movies library"#,
+            r#"directory entry {"shows":"Anime"}: no name"#,
+            r#"directory entry {"name":"","shows":"Anime"}: no name"#,
+            r#"directory "a/b": name must be one directory, with no '/'"#,
+            r#"directory entry "anime": no name"#,
+            r#"directory "anime": shows title is empty"#,
+            r#"directory "anime": shows title must be text"#,
+            r#"directory entry {"name":7,"shows":"Anime"}: no name"#,
+        ]);
+        assert_eq!(source.record["directories"], json!([{"name": "wrestling", "shows": "Wrestling"}]));
     }
 }

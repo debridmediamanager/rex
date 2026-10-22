@@ -545,15 +545,26 @@ def declared_libraries(bytes_port):
               body.get("created") == 1 and server.row(server.keys().get(film["id"])).get("librarySectionID") == 1,
               (body, server.row(server.keys().get(film["id"])).get("librarySectionID")))
 
-        for bad, why in (("anime", "not an array"), ([{"name": "anime/x", "shows": "Anime"}], "a name with '/'"),
-                         ([{"name": "anime"}], "no title"), ([{"name": "anime", "movies": ""}], "an empty title"),
-                         ([{"shows": "Anime"}], "no name")):
-            status, body = register(server, bad)
-            check("a malformed directories (%s) is refused with its reason" % why,
-                  status == 400 and "directories" in str(body.get("error")), (status, body))
-        check("and changes neither the source nor the libraries",
-              server.request("/rex/sources/zurg")[1].get("directories") == ANIME and libraries(server) == kept,
-              server.request("/rex/sources/zurg")[1])
+        # A malformed entry is ignored, with a reason naming its directory, and never refuses the
+        # source: one typo in zurg's config stopped its whole feed when it did.
+        bad = [{"name": "anime/x", "shows": "Anime"}, {"name": "kids"}, {"name": "docs", "movies": ""}, {"shows": "Nameless"}]
+        for _ in range(2):
+            status, body = register(server, ANIME + bad)
+        reasons = [ignored.get("reason", "") for ignored in body.get("ignored") or []]
+        check("malformed directories entries are ignored, each with a reason naming its directory",
+              status == 200 and [ignored.get("entry") for ignored in body.get("ignored") or []] == bad
+              and all(name in reason for name, reason in zip(('"anime/x"', '"kids"', '"docs"', '"shows":"Nameless"'), reasons)),
+              (status, body))
+        check("and the source registers with its good entries, the libraries as they were",
+              body.get("directories") == ANIME and server.request("/rex/sources/zurg")[1].get("directories") == ANIME
+              and libraries(server) == kept, (body, libraries(server)))
+        check("and each ignored entry is logged once, however often it is sent",
+              all(logged(work).count(reason) == 1 for reason in reasons) and len(reasons) == 4, (reasons, logged(work)[-1500:]))
+        status, body = register(server, "anime")
+        check("a directories that is no list is ignored too, and the source still registers",
+              status == 200 and body.get("ignored") == [{"entry": "anime", "reason": 'directories "anime": not a list'}]
+              and "directories" not in server.request("/rex/sources/zurg")[1] and libraries(server) == kept, body)
+
     finally:
         server.stop()
         shutil.rmtree(work, ignore_errors=True)
