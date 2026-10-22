@@ -22857,6 +22857,7 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
     let device_id = options.device_id.clone();
     let heartbeat_interval = options.heartbeat_interval;
     let gated = options.token.is_some();
+    let assert_claimed = options.assert_claimed;
     let tls_cert = options.tls_cert.clone();
     let certificates = Arc::new(rexdirect::Certificates::new(match options.tls_cert.as_deref() {
         Some(cert_path) => Some(load_tls_certificate(cert_path, options.tls_key.as_deref())?),
@@ -22975,8 +22976,10 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
             "ENFORCED"
         } else if claim.claimed() {
             "ENFORCED -- claimed: the server's own token and the ones plex.tv lists for it"
-        } else {
+        } else if assert_claimed {
             "OFF -- unclaimed: this machine and its private networks (allowedNetworks) can read the library"
+        } else {
+            "OFF -- unclaimed: no client is served until the claim, taken only from this machine and its private networks (allowedNetworks)"
         }
     );
     info!(

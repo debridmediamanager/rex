@@ -83,7 +83,7 @@ fn server_help() -> String {
         ("--no-state", "keep nothing across a restart: a restart reloads the catalog as it is on disk, which the test suites rely on. Also an empty $REX_STATE"),
         ("--catalog", "the catalog, a .db or .json file. One that does not exist is seeded on start, as rex catalog --seed would: an empty movie and show library under --zurg-mount. Default catalog.json"),
         ("--zurg-mount", "zurg's mount_path: the folder a catalog seeded on this start shows its libraries under (<mount>/movies, <mount>/shows), which zurg's own Plex matcher compares. Sources register themselves at PUT /rex/sources/{name} (docs/feed-api.md). Default /mnt/zurg"),
-        ("--friendly-name", "the name a catalog seeded on this start is given (default rex); an existing catalog keeps its own"),
+        ("--friendly-name", "the name a catalog seeded on this start is given (default the machine's host name); an existing catalog keeps its own"),
     ]
     .into_iter()
     .collect();
