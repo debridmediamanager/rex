@@ -522,6 +522,64 @@ WantedBy=multi-user.target
 ```
 
 
+## Movie and TV capabilities
+
+These capabilities describe current source builds. For a downloaded binary, choose a build
+whose release notes include the movie and TV capability update, or build current `main`.
+Earlier releases do not gain capabilities from a claim or account change.
+
+rex advertises supported server capabilities even when the claiming account is free.
+This does not change the account at plex.tv. Official-app account checks, Plex Home access,
+cloud feature rollouts and an app's own Downloads eligibility still apply. Music, Live TV
+and DVR are not supported.
+
+| Capability | What rex implements |
+|---|---|
+| Movie editions | Edit the edition in Plex Web, or have a source send `edition_title`. Different editions remain separate movies; versions of the same edition fold together. No filename parsing |
+| Dashboard | Measured CPU and memory, delivered-byte bandwidth, account-separated plays and completion history. Unsupported OS counters are omitted, not invented |
+| Downloads | Account-owned queues, original bytes or real FFmpeg conversions, Range reads, cancellation and restart recovery. A share needs download permission; local restrictions can only reduce it |
+| Intro and credits skipping | Real local analysis with FFmpeg. Repeated opening pictures across source-placed episodes of one season identify intros; dark rolling-text endings and authored chapters identify credits. Ambiguous material gets no marker |
+| Chapter and seek thumbnails | JPEGs at source-provided chapter boundaries and 10-second seek previews, including a Roku BIF index. Authenticated byte ranges and checksummed artifacts survive a restart |
+| Subtitle adjustment | Uploaded and embedded text can be checked against the selected file's text or measured audio. Analyze prepares voice-activity eligibility; silence or an uncertain match is not advertised as successfully synchronized |
+| Hardware and HDR controls | Hardware decode and encode preferences are independent. HDR tone mapping and its selected algorithm affect the actual conversion; capabilities follow the installed FFmpeg probe |
+| Audio enhancement | Supported FFmpeg filters implement dialogue enhancement and loudness normalization. Requested processing encodes audio and can preserve copied video. Stereo dialogue enhancement is reported as stereo |
+| Remote limits | Per-user stream count and per-stream/total upload budgets use the actual connection, not a client's `location` claim. Concurrent starts reserve capacity; impossible bitrate budgets are refused |
+| Sharing and webhooks | Local owner controls can tighten content-rating/label filters and Downloads permission, and configure real multipart webhooks without the cloud subscription UI |
+| Cinema trailers and pre-rolls | Queues can prepend trailers supplied by your sources and exact registered media paths. No online theater or Blu-ray trailer catalog is fetched |
+
+### Analysis and disk use
+
+Set up [FFmpeg](#transcoding) first. Analyze on an item or library queues real work and reports
+its progress in Activities. Generation defaults to off to avoid reading a large remote library
+unasked. The Library preferences `GenerateIntroMarkerBehavior`, `GenerateCreditsMarkerBehavior`,
+`GenerateChapterThumbBehavior` and `GenerateBIFBehavior` support manual generation or opt-in
+generation when source items are added. Per-library generation switches still apply.
+There is no nightly scheduler; a corresponding Butler task runs only when requested.
+
+Analysis reads source media, consumes CPU and stores generated files beside the state database
+in `<state>.analysis`. Downloads use `<state>.downloads`; keep both writable and on durable
+storage if they must survive restarts. Back up the state database and these directories together.
+Deleting a source, file version or library retires its unreferenced analysis artifacts.
+Deleting preview thumbnails leaves chapter images and markers intact.
+
+### Local owner controls
+
+These APIs require both a private-network connection and the owner's Plex token (or an explicitly
+configured control token). A reverse proxy must block `/rex/` from the internet, just as for the feed.
+Use `X-Plex-Token` for authentication and `Content-Type: application/json` for JSON bodies.
+
+| Route | Body / result |
+|---|---|
+| `GET /rex/analysis` | Current job states |
+| `POST /rex/analysis` | `{"keys":["1007"],"markers":true,"chapters":true,"previews":true}`; 202 with the number queued |
+| `GET`, `PUT`, `DELETE /rex/webhooks` | PUT `{"urls":["https://your-endpoint.example/webhook"]}`; delivery includes the event JSON and a thumbnail when available |
+| `GET`, `PUT`, `DELETE /rex/shares/{accountID}/restrictions` | PUT `{"filterMovies":"contentRating=G,PG","filterTelevision":"label!=Hidden","allowSync":false}`. Omitted fields impose no extra restriction; DELETE removes the local layer, never expands the cloud grant |
+
+Cinema pre-rolls use the Extras preference `CinemaTrailersPrerollID`: exact registered Part
+paths, commas for an ordered sequence or semicolons for a random choice. Clients must opt in
+to cinema trailers. Missing or inaccessible pre-rolls are refused rather than replaced with
+another file version.
+
 ## Transcoding
 
 Off by default: rex then answers a conversion request the way a server with no
@@ -567,6 +625,14 @@ against 0.1-0.2x on its CPU (findings, "OpenCL tonemapping on fun's J4105").
 Every conversion is one FFmpeg reading the source over HTTP; nothing is downloaded
 first.
 
+The Transcoder settings independently control hardware decoding and encoding. Disabling one
+does not pretend to disable the other. `TranscoderToneMapping` turns HDR mapping on or off;
+`TranscoderToneMappingAgorithm` is the protocol's spelling for its algorithm selection.
+The Normalize Loudness and Boost Dialog playback controls appear only when the app's cloud
+rollout and server capability checks allow them. rex implements their requested audio processing
+with `loudnorm` and `dialoguenhance`, not a flag-only acknowledgement.
+
+
 Each stream is decided on its own: what the client can play is copied, the rest is
 converted. A DTS or TrueHD track the client refuses becomes AAC (or the profile's own
 audio codec) beside the copied video, and a quality below Original (the client's
@@ -591,15 +657,16 @@ release.
 
 ### By platform
 
-Every platform but Linux arm64 runs the transcoder suite in CI
-(`tests/test_native_transcode.py`, against jellyfin-ffmpeg 8.1.3), on the CPU path, since the
-runners have no GPU.
+Linux amd64 and Windows run the transcoder suite in CI
+(`tests/test_native_transcode.py`, against jellyfin-ffmpeg 8.1.3) on the CPU path.
+Linux arm64 runs CLI/server smokes under emulation. macOS is cross-built only;
+there is no Mac runner. None of those CI checks proves a physical GPU path.
 
 | Platform | GPU paths rex knows | Notes |
 |---|---|---|
 | Linux amd64 | VA-API (Intel, AMD), NVENC (NVIDIA), else x264 | VA-API measured on an Intel HD 510; the suite runs in CI |
-| Linux arm64 | the same, which on most ARM boards means x264 | not run in CI (it is emulated there) |
-| macOS | none: x264 always (no VideoToolbox path) | the suite runs in CI on Apple Silicon |
+| Linux arm64 | the same, which on most ARM boards means x264 | CLI/server smokes run under emulation; no transcoder suite |
+| macOS | none: x264 always (no VideoToolbox path) | cross-built for Intel and Apple Silicon; no runtime suite in CI |
 | Windows | NVENC (NVIDIA), else x264 (no Quick Sync or AMF path) | the suite runs in CI and was run on a Windows 11 machine with an AMD GPU |
 
 Use a recent FFmpeg. Ubuntu 22.04's own (`apt install ffmpeg`, 4.4) starts a far seek a
@@ -631,3 +698,10 @@ Checking against the sound reads six 90-second pieces of the file through its so
 it only when the title is played: opening a title keeps the best-named subtitle, and pressing play
 checks it and fixes it in place. A file with a text subtitle of its own needs only a few small reads,
 and is checked as soon as the title is opened.
+
+Upload accepts a text subtitle through the app's normal upload dialog. The playback
+Auto Sync control also needs the client's rollout and measured voice activity on the selected
+Media version. Run Analyze to prepare that measurement. A silent file, another version's audio,
+or an uncertain offset never makes that control falsely eligible. Text tracks are read and
+audio is measured outside the request lock; changing the source invalidates the reference.
+

@@ -13587,3 +13587,160 @@ Remote playback is runtime-verified here for Plex Web only. Android's recovered
 predicate supports the UUID addition; Android, iOS and TV-device playback have not
 been verified.
 
+
+## Movie and TV server capabilities without a paid claim (2026-10-21)
+
+**Scope:** existing movie/TV server features, not Plex cloud subscriptions, Home membership,
+music, Live TV or DVR. The server's local owner capabilities may describe what rex can do
+independently of the claiming account's subscription. Viewer/account responses at plex.tv
+are not rewritten.
+
+The inspected official Web client is **4.163.0-8246fd2**, main carrier
+`main-8792-0fadf59092c873ab638b-plex-4.163.0-8246fd2.js`, SHA-256
+`bdb3e4ce5d49b5eb6be48e11a4aea0f33a357561f8bf1e1303d31255f701cd97`.
+Additional paired owner capabilities are:
+
+| Name | UUID |
+|---|---|
+| `Subtitles V2` | `b612f571-83c3-431a-88eb-3f05ce08da4a` |
+| `multiple-editions` | `dbdc0575-9fc7-4706-9e2d-fca98d10ad71` |
+| `premium-dashboard` | `222020fb-1504-492d-af33-a0b80a49558a` |
+| `grandfathering_downloads` | `5c1951bf-ccf1-4821-8ee7-e50f51218ae7` |
+| `AndroidDownloads` | `ea791163-c28d-4b7c-af88-bcc9553b206d` |
+| `auto-sub-offsets` | `d4b4e08a-9201-4c99-9a52-8f2de8ff25cd` |
+| `tonemap` | `fd6683b9-1426-4b00-840f-cd5fb0904a6a` |
+| `pms-audio-enhance` | `2573654f-0985-4cef-9c53-28e78cc62f26` |
+
+Intro/credits and automatic subtitle adjustment require configured FFmpeg. Tone mapping
+requires a successful supporting probe; the audio-enhancement group requires both
+`loudnorm` and `dialoguenhance`. Capability reads borrow the cached probe instead of
+copying its codec/filter sets. A flag is not a replacement for a working backend.
+
+### Observed official-client behavior
+
+An isolated rex on zen used one generated 60-second H.264/AAC movie, source-provided
+chapters, a real claim to a free account and a public HTTPS connection (`local:false`,
+`relay:false`). The same unpaid account signed in normally to official Plex Web in
+Windows Chrome **155.0.8059.85**:
+
+- Baseline `9b694ff` disabled the Edition field with a Plex Pass message and displayed
+  the Dashboard's Plex Pass upsell.
+- The capability build enabled the real Selectize edition editor. Normal keyboard input,
+  Enter and Save persisted `Capability cut`, visible after a page reload and in metadata.
+  The hidden `input[name=editionTitle]` is not the input a user types into.
+- Dashboard displayed its real Bandwidth/CPU/RAM and history sections instead of that
+  upsell. The account-level Go Premium button remained, correctly.
+- The app's upload dialog accepted an actual SRT selected from the Windows filesystem.
+  Its stream appeared in metadata and its text rendered during remote playback.
+  The browser decoded **640 x 360**, `readyState=4`, unpaused at **1.054928 seconds**,
+  with **28 frames** and no video error.
+- Closing the player left `/status/sessions` at size 0.
+
+The app still independently gates some audio/automatic-subtitle controls on its cloud
+rollout. Those controls were not shown for this free account. Server advertisements do
+not promise to override those gates, and no account payload or client script was patched.
+Other official apps and physical GPU execution are not runtime-verified by this run.
+
+### Implementation boundaries and regressions
+
+- **Editions are source data, not filename interpretation.** Optional movie-only
+  `edition_title`, per-version hashes and a person's locks control folding and updates.
+  Distinct editions split without losing the surviving movie's watch state.
+- **Analysis is actual work.** A bounded worker reads source video/audio off the request
+  lock, detects repeated pictures across one source-placed season, conservative dark
+  rolling-text credits and authored chapters, and builds JPEGs plus a checked Roku BIF
+  index. It publishes only against the same source revision and owns checksummed files
+  under `<state>.analysis`. Manual Analyze and opt-in source-addition generation replace
+  instant synthetic completion frames; there is no pretend nightly scheduler.
+- **Subtitle eligibility is measured per version.** Analyze prepares audio references
+  before the client's `hasVoiceActivity && canAutoSync` check. Silence does not become
+  speech, another release's hash/audio is not borrowed, and a source change invalidates
+  stale publication. The frozen limited-range late-frame fixture exposed a fixture
+  HTTP/1.1 `Connection: close` error; direct late HTTP decoding now checks that transport.
+- **Queues must project generated artifacts after raw chapters.** The first real Web
+  chapter walk showed blank cells despite completed JPEGs on the detail endpoint.
+  `test_analysis_processing.py` reproduces the missing queue markers/image URLs and
+  fetches the image through the client's `/photo/:/transcode` wrapper.
+- **Conversions are account-scoped internally.** Two accounts may use the same raw
+  playback/session id. A conversion cap excludes only the requesting account's own
+  continuation; timeline stops and opaque-bearer stops use the captured account.
+  Public session identifiers are unchanged.
+- **Downloads own durable output.** Queues, permissions, originals, converted MP4s and
+  cancellation survive restart under `<state>.downloads`. Interrupted conversions are
+  re-decided and restarted; only fully finished files are atomically published.
+- **Limits use trusted locality.** Non-loopback scenarios exercise concurrent WAN
+  reservations, total budgets and per-account same-id isolation. Client `location`
+  and a forwarded public hop cannot turn a WAN session into LAN.
+- **Local controls do not broaden a share.** Owner/private-network webhook configuration
+  delivers real multipart events/artwork. Content-rating/label restrictions and
+  `allowSync:false` intersect the cloud grant, including raw byte reads and restart.
+- **Cinema queues preserve the selected bytes.** Generated colored clips caught a
+  secondary-version pre-roll playing the primary file. Queue state now stores stable
+  Media/Part selectors, not stale full Media copies; decoded trailers/pre-rolls/features
+  keep their selected order and file across restart.
+- **Performance checks need an isolated execution phase.** The unchanged catalog
+  throughput assertion exceeded its 500 ms bound during concurrent builds. It remains
+  a required explicit CI check after the media work, with the same bound, rather than
+  running nondeterministically among parallel unit tests.
+
+### Chapter client round-trip after restart
+
+After the queue projection fix and a rex restart, the same official Web client rendered
+both generated chapter JPEGs in its chapter selector. Selecting the second chapter sought
+the real video to **20 seconds** with no video error. The edition, selected uploaded
+subtitle and generated cache survived the restart; closing the player again left zero
+sessions.
+
+### Final isolated runtime verification
+
+On zen, the release build and Rust checks passed: 221 library tests, two CLI tests and
+two recorded track-selection corpus tests. Nine opt-in media/resource/throughput checks
+also passed explicitly, including the unchanged catalog throughput bound; only the
+external live-subtitle test remained outside this credential-free harness.
+
+All 41 black-box suites passed. All nine FFmpeg suites passed, including 237 native
+conversion checks, 21 Downloads checks, 57 subtitle checks, 44 webhook checks, real
+account-separated conversions, generated analysis through play queues and the decoded
+cinema order across restart.
+
+The claim setup harness now gives each process lifecycle a separate cloud-stub endpoint,
+so a stopped instance's queued request cannot be counted as the next unclaimed instance.
+The manager's overlapping start/stop scenario holds its own child and observes the stop
+intent instead of assuming a 50 ms sleep establishes request order.
+
+The final run includes the concurrent declared-library updates through `b0a4e815`.
+Replaying the current producer-generated zurg contract also passed 29/29 checks,
+including both library types declared for a source directory. After competing builds
+finished, the explicit catalog throughput check passed with its original 500 ms bound;
+no timing threshold was relaxed.
+
+### Shared-account webhook privacy
+
+The concurrent upstream fix `0baf309` is retained. Cloud callbacks owned by a shared
+account receive only that account's playback events, never another account's playback
+or server/library events. Owner-configured local callbacks retain their server-wide scope.
+The regression uses the recorded server-webhooks XML and an actual shared access-token
+fixture. It fails against the pre-integration capability binary and passes after integration.
+
+The worker also skips artwork reads when an event has no authorized recipient. With only
+a shared-account callback configured, the following authorized callback establishes the
+ordering barrier: owner playback must cause neither a callback nor an artwork GET. The
+unfixed worker made two artwork requests and failed that assertion; the fixed worker
+makes only the one authorized request. All 44 webhook checks passed.
+
+The fixture used by the Rust policy test is embedded at compile time, so a cross-built
+test binary does not depend on the build host's source-tree path at runtime.
+
+### Supported-target build verification
+
+The final source built release executables on zen for Linux ARM64, macOS ARM64,
+macOS x86-64 and Windows x86-64. The Windows library test executable also linked.
+These supplement the native Linux runtime/media checks, not device runtime tests.
+
+The first macOS build caught `libc::mach_port_deallocate` missing from the libc
+crate. The macOS-only resource sampler now declares that native Mach function
+directly and still releases every acquired host send right. Both macOS targets
+then linked successfully. Zig's Linux-hosted macOS builds warn about unavailable
+`xcrun`; Windows reports three unused certificate/error FFI declarations.
+Neither prevented compilation or linking.
+

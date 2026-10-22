@@ -1,5 +1,5 @@
-//! What rex asks of the operating system beyond `std`: local time, the process's CPU time
-//! and the host's load, the host name, a thread's id as Python reports it, pausing and
+//! What rex asks of the operating system beyond `std`: local time, measured CPU and
+//! memory counters, the host name, a thread's id as Python reports it, pausing and
 //! killing a child, the GDM socket, random bytes, and the manager's process groups and
 //! signals (Unix only).
 //!
@@ -75,45 +75,203 @@ pub(crate) fn host_name() -> Option<String> {
     }
 }
 
-/// CPU seconds this process has used, user plus system.
-pub(crate) fn cpu_seconds() -> f64 {
-    // SAFETY: both calls write only into the structs they are given.
+/// A single counter snapshot. CPU percentages require two successful snapshots;
+/// memory is instantaneous. Missing counters never become fabricated zeroes.
+#[derive(Clone, Debug)]
+pub(crate) struct ResourceSample {
+    at: std::time::Instant,
+    host_cpu: Option<(u64, u64)>, // busy and total ticks, identical units
+    process_cpu: Option<f64>, // user + kernel seconds
+    cores: usize,
+    host_memory: Option<f64>,
+    process_memory: Option<f64>,
+}
+
+impl ResourceSample {
+    pub(crate) fn utilization(&self, previous: Option<&Self>) -> [Option<f64>; 4] {
+        let host = previous.and_then(|previous| {
+            let (busy, total) = self.host_cpu?;
+            let (old_busy, old_total) = previous.host_cpu?;
+            let delta = total.checked_sub(old_total)?;
+            let busy = busy.checked_sub(old_busy)?;
+            (delta > 0 && busy <= delta).then(|| busy as f64 * 100.0 / delta as f64)
+        });
+        let process = previous.and_then(|previous| {
+            let elapsed = self.at.checked_duration_since(previous.at)?.as_secs_f64();
+            let delta = self.process_cpu? - previous.process_cpu?;
+            (elapsed > 0.0 && delta >= 0.0 && self.cores > 0 && self.cores == previous.cores)
+                .then(|| (delta / elapsed / self.cores as f64 * 100.0).min(100.0))
+        });
+        [host, process, self.host_memory, self.process_memory]
+    }
+}
+
+fn memory_ratio(used: u64, total: u64) -> Option<f64> {
+    (total > 0 && used <= total).then(|| used as f64 * 100.0 / total as f64)
+}
+
+pub(crate) fn resource_sample() -> ResourceSample {
+    let mut sample = ResourceSample {
+        at: std::time::Instant::now(),
+        host_cpu: None,
+        process_cpu: None,
+        cores: 0,
+        host_memory: None,
+        process_memory: None,
+    };
+    #[cfg(unix)]
     unsafe {
-        #[cfg(unix)]
-        {
-            let mut usage: libc::rusage = std::mem::zeroed();
-            if libc::getrusage(libc::RUSAGE_SELF, &mut usage) != 0 {
-                return 0.0;
-            }
-            let seconds = |value: libc::timeval| value.tv_sec as f64 + value.tv_usec as f64 / 1_000_000.0;
-            seconds(usage.ru_utime) + seconds(usage.ru_stime)
+        let cores = libc::sysconf(libc::_SC_NPROCESSORS_ONLN);
+        if cores > 0 {
+            sample.cores = cores as usize;
         }
-        #[cfg(windows)]
-        {
-            let mut times: [win::FileTime; 4] = std::mem::zeroed();
-            let [created, exited, kernel, user] = &mut times;
-            if win::GetProcessTimes(win::GetCurrentProcess(), created, exited, kernel, user) == 0 {
-                return 0.0;
-            }
-            // FILETIME counts 100 ns ticks.
-            let ticks = |time: &win::FileTime| (u64::from(time.high) << 32 | u64::from(time.low)) as f64;
-            (ticks(kernel) + ticks(user)) / 10_000_000.0
+        let mut usage: libc::rusage = std::mem::zeroed();
+        if libc::getrusage(libc::RUSAGE_SELF, &mut usage) == 0 {
+            sample.process_cpu = Some(
+                usage.ru_utime.tv_sec as f64 + usage.ru_utime.tv_usec as f64 / 1_000_000.0
+                + usage.ru_stime.tv_sec as f64 + usage.ru_stime.tv_usec as f64 / 1_000_000.0,
+            );
+        }
+    }
+    #[cfg(target_os = "linux")]
+    linux_resources(&mut sample);
+    #[cfg(target_os = "macos")]
+    mac_resources(&mut sample);
+    #[cfg(windows)]
+    windows_resources(&mut sample);
+    sample
+}
+
+#[cfg(target_os = "linux")]
+fn linux_resources(sample: &mut ResourceSample) {
+    use std::io::Read;
+    // /proc/stat can be large on many-core hosts; only its first (aggregate) line
+    // matters. Every read is capped, including on an unexpectedly mounted procfs.
+    let read = |path: &str, cap| -> Option<String> {
+        let mut text = String::new();
+        std::fs::File::open(path).ok()?.take(cap).read_to_string(&mut text).ok()?;
+        Some(text)
+    };
+    sample.host_cpu = read("/proc/stat", 4096).and_then(|text| linux_cpu(&text));
+    if let Some((total, available)) = read("/proc/meminfo", 16384).and_then(|text| linux_memory(&text)) {
+        sample.host_memory = total.checked_sub(available).and_then(|used| memory_ratio(used, total));
+        let pages = unsafe { libc::sysconf(libc::_SC_PAGESIZE) };
+        if pages > 0 {
+            let resident = read("/proc/self/statm", 1024)
+                .and_then(|text| text.split_whitespace().nth(1)?.parse::<u64>().ok());
+            sample.process_memory = resident
+                .and_then(|resident| resident.checked_mul(pages as u64))
+                .and_then(|bytes| memory_ratio(bytes, total));
         }
     }
 }
 
-/// The one-minute load average, where the system keeps one (Windows does not).
-pub(crate) fn load_average() -> Option<f64> {
-    #[cfg(unix)]
-    {
-        let mut loads = [0.0_f64; 3];
-        // SAFETY: getloadavg writes at most the 3 elements it is asked for.
-        let got = unsafe { libc::getloadavg(loads.as_mut_ptr(), 3) };
-        (got >= 1).then_some(loads[0])
+#[cfg(any(target_os = "linux", test))]
+fn linux_cpu(text: &str) -> Option<(u64, u64)> {
+    let mut fields = text.lines().next()?.split_whitespace();
+    if fields.next()? != "cpu" {
+        return None;
     }
-    #[cfg(windows)]
-    {
-        None
+    // guest and guest_nice are already included in user/nice. Do not double count.
+    let mut counters = [0_u64; 8];
+    for (index, counter) in counters.iter_mut().enumerate() {
+        *counter = match fields.next() {
+            Some(value) => value.parse().ok()?,
+            None if index >= 4 => 0,
+            None => return None,
+        };
+    }
+    let total = counters.iter().try_fold(0_u64, |sum, value| sum.checked_add(*value))?;
+    let idle = counters[3].checked_add(counters[4])?;
+    Some((total.checked_sub(idle)?, total))
+}
+
+#[cfg(any(target_os = "linux", test))]
+fn linux_memory(text: &str) -> Option<(u64, u64)> {
+    let field = |name| {
+        let mut fields = text.lines().find(|line| line.starts_with(name))?.split_whitespace();
+        fields.next()?;
+        let value = fields.next()?.parse::<u64>().ok()?;
+        (fields.next()? == "kB").then(|| value.checked_mul(1024)).flatten()
+    };
+    let total = field("MemTotal:")?;
+    let available = field("MemAvailable:")?;
+    (total > 0 && available <= total).then_some((total, available))
+}
+
+#[cfg(target_os = "macos")]
+#[allow(deprecated)]
+fn mac_resources(sample: &mut ResourceSample) {
+    // libc exposes the acquisition/query APIs but not the matching port release.
+    unsafe extern "C" {
+        fn mach_port_deallocate(task: libc::mach_port_t, name: libc::mach_port_t) -> libc::kern_return_t;
+    }
+    // All Mach output buffers have their documented type and word count. The
+    // send right returned by mach_host_self is released even if a query fails.
+    unsafe {
+        let host = libc::mach_host_self();
+        let mut cpu: libc::host_cpu_load_info = std::mem::zeroed();
+        let mut count = libc::HOST_CPU_LOAD_INFO_COUNT;
+        if libc::host_statistics(host, libc::HOST_CPU_LOAD_INFO, (&mut cpu as *mut libc::host_cpu_load_info).cast(), &mut count) == 0 {
+            let total = cpu.cpu_ticks.iter().map(|ticks| u64::from(*ticks)).sum::<u64>();
+            sample.host_cpu = Some((total - u64::from(cpu.cpu_ticks[libc::CPU_STATE_IDLE as usize]), total));
+        }
+        let mut total = 0_u64;
+        let mut size = std::mem::size_of_val(&total);
+        if libc::sysctlbyname(c"hw.memsize".as_ptr(), (&mut total as *mut u64).cast(), &mut size, std::ptr::null_mut(), 0) == 0 && total > 0 {
+            let mut vm: libc::vm_statistics64 = std::mem::zeroed();
+            let mut count = libc::HOST_VM_INFO64_COUNT;
+            let page_size = libc::sysconf(libc::_SC_PAGESIZE);
+            if page_size > 0 && libc::host_statistics64(host, libc::HOST_VM_INFO64, (&mut vm as *mut libc::vm_statistics64).cast(), &mut count) == 0 {
+                // Inactive/file cache is reclaimable. Compressed pages occupy RAM;
+                // count their physical size, not the uncompressed stored-page count.
+                let used = u64::from(vm.active_count) + u64::from(vm.wire_count) + u64::from(vm.compressor_page_count);
+                sample.host_memory = used.checked_mul(page_size as u64).and_then(|used| memory_ratio(used, total));
+            }
+            let mut task: libc::mach_task_basic_info = std::mem::zeroed();
+            let mut count = libc::MACH_TASK_BASIC_INFO_COUNT;
+            if libc::task_info(libc::mach_task_self(), libc::MACH_TASK_BASIC_INFO, (&mut task as *mut libc::mach_task_basic_info).cast(), &mut count) == 0 {
+                sample.process_memory = memory_ratio(task.resident_size, total);
+            }
+        }
+        mach_port_deallocate(libc::mach_task_self(), host);
+    }
+}
+
+#[cfg(windows)]
+fn windows_resources(sample: &mut ResourceSample) {
+    unsafe {
+        let mut times: [win::FileTime; 4] = std::mem::zeroed();
+        let [created, exited, kernel, user] = &mut times;
+        let ticks = |time: &win::FileTime| u64::from(time.high) << 32 | u64::from(time.low);
+        if win::GetProcessTimes(win::GetCurrentProcess(), created, exited, kernel, user) != 0 {
+            sample.process_cpu = Some((ticks(kernel) as f64 + ticks(user) as f64) / 10_000_000.0);
+        }
+        let mut idle: win::FileTime = std::mem::zeroed();
+        if win::GetSystemTimes(&mut idle, kernel, user) != 0 {
+            // GetSystemTimes kernel includes idle.
+            sample.host_cpu = ticks(kernel).checked_add(ticks(user))
+                .and_then(|total| total.checked_sub(ticks(&idle)).map(|busy| (busy, total)));
+        }
+        let cores = win::GetActiveProcessorCount(0xffff);
+        if cores > 0 {
+            sample.cores = cores as usize;
+            // On >64 CPUs GetSystemTimes describes only the calling group.
+            if cores > 64 {
+                sample.host_cpu = None;
+            }
+        }
+        let mut memory: win::MemoryStatus = std::mem::zeroed();
+        memory.length = std::mem::size_of_val(&memory) as u32;
+        if win::GlobalMemoryStatusEx(&mut memory) != 0 {
+            sample.host_memory = memory.total_physical.checked_sub(memory.available_physical)
+                .and_then(|used| memory_ratio(used, memory.total_physical));
+            let mut process: win::ProcessMemory = std::mem::zeroed();
+            process.cb = std::mem::size_of_val(&process) as u32;
+            if win::K32GetProcessMemoryInfo(win::GetCurrentProcess(), &mut process, process.cb) != 0 {
+                sample.process_memory = memory_ratio(process.working_set as u64, memory.total_physical);
+            }
+        }
     }
 }
 
@@ -473,6 +631,33 @@ mod win {
     }
 
     #[repr(C)]
+    pub(super) struct MemoryStatus {
+        pub(super) length: u32,
+        pub(super) load: u32,
+        pub(super) total_physical: u64,
+        pub(super) available_physical: u64,
+        pub(super) total_page_file: u64,
+        pub(super) available_page_file: u64,
+        pub(super) total_virtual: u64,
+        pub(super) available_virtual: u64,
+        pub(super) available_extended_virtual: u64,
+    }
+
+    #[repr(C)]
+    pub(super) struct ProcessMemory {
+        pub(super) cb: u32,
+        pub(super) page_fault_count: u32,
+        pub(super) peak_working_set: usize,
+        pub(super) working_set: usize,
+        pub(super) quota_peak_paged_pool: usize,
+        pub(super) quota_paged_pool: usize,
+        pub(super) quota_peak_nonpaged_pool: usize,
+        pub(super) quota_nonpaged_pool: usize,
+        pub(super) page_file: usize,
+        pub(super) peak_page_file: usize,
+    }
+
+    #[repr(C)]
     pub(super) struct CertContext {
         pub(super) dwCertEncodingType: u32,
         pub(super) pbCertEncoded: *const u8,
@@ -497,6 +682,10 @@ mod win {
         pub(super) fn GetLastError() -> u32;
         pub(super) fn SetLastError(error: u32);
         pub(super) fn GetCurrentProcess() -> Handle;
+        pub(super) fn GetSystemTimes(idle: *mut FileTime, kernel: *mut FileTime, user: *mut FileTime) -> i32;
+        pub(super) fn GetActiveProcessorCount(group: u16) -> u32;
+        pub(super) fn GlobalMemoryStatusEx(status: *mut MemoryStatus) -> i32;
+        pub(super) fn K32GetProcessMemoryInfo(process: Handle, counters: *mut ProcessMemory, size: u32) -> i32;
         pub(super) fn GetProcessTimes(
             process: Handle,
             creation: *mut FileTime,
@@ -569,6 +758,102 @@ mod win {
 mod tests {
     use std::process::Command;
     use std::time::Duration;
+
+    fn fixture() -> serde_json::Value {
+        serde_json::from_str(include_str!("../../tests/fixtures/dashboard_os_counters.json")).unwrap()
+    }
+
+    #[test]
+    fn captured_linux_counters_exclude_guest_and_use_available_memory() {
+        let fixture = fixture();
+        let linux = &fixture["linux"];
+        let before = super::linux_cpu(linux["cpu_before"].as_str().unwrap()).unwrap();
+        let after = super::linux_cpu(linux["cpu_after"].as_str().unwrap()).unwrap();
+        assert_eq!(after.0 - before.0, 3944);
+        assert_eq!(after.1 - before.1, 3944); // all observed ticks busy
+        let (total, available) = super::linux_memory(linux["meminfo"].as_str().unwrap()).unwrap();
+        assert_eq!(total, 7_976_692 * 1024);
+        assert_eq!(available, 3_687_908 * 1024);
+        let ratio = super::memory_ratio(total - available, total).unwrap();
+        assert!(ratio > 53.0 && ratio < 54.0);
+        let rss = linux["statm"].as_str().unwrap().split_whitespace().nth(1).unwrap().parse::<u64>().unwrap()
+            * linux["page_bytes"].as_u64().unwrap();
+        assert!(super::memory_ratio(rss, total).unwrap() > 0.0);
+        // These guest counters must not alter either total or busy.
+        assert_eq!(super::linux_cpu("cpu 1 2 3 4 5 6 7 8 100 200"), Some((27, 36)));
+    }
+
+    #[test]
+    fn captured_macos_memory_counts_physical_compressor_pages() {
+        let fixture = fixture();
+        let mac = &fixture["macos"];
+        let used = ["active_pages", "wired_pages", "compressor_pages"].into_iter()
+            .map(|key| mac[key].as_u64().unwrap()).sum::<u64>() * mac["page_bytes"].as_u64().unwrap();
+        let ratio = super::memory_ratio(used, mac["total_bytes"].as_u64().unwrap()).unwrap();
+        assert!(ratio > 65.0 && ratio < 66.0);
+    }
+
+    #[test]
+    fn resource_delta_normalizes_cpu_and_rejects_unavailable_or_reset_counters() {
+        let at = std::time::Instant::now();
+        let before = super::ResourceSample {
+            at, host_cpu: Some((100, 200)), process_cpu: Some(1.0),
+            cores: 4, host_memory: Some(60.0), process_memory: Some(2.0),
+        };
+        let mut after = super::ResourceSample {
+            at: at + Duration::from_secs(2), host_cpu: Some((150, 400)),
+            process_cpu: Some(3.0), ..before.clone()
+        };
+        assert_eq!(after.utilization(Some(&before)), [Some(25.0), Some(25.0), Some(60.0), Some(2.0)]);
+        assert_eq!(before.utilization(None), [None, None, Some(60.0), Some(2.0)]);
+        assert_eq!(&before.utilization(Some(&before))[..2], &[None, None]);
+        after.host_cpu = Some((1, 2));
+        after.process_cpu = Some(0.0);
+        assert_eq!(&after.utilization(Some(&before))[..2], &[None, None]);
+        after.host_cpu = None;
+        after.process_cpu = None;
+        assert_eq!(&after.utilization(Some(&before))[..2], &[None, None]);
+    }
+
+    #[test]
+    fn malformed_os_counters_are_not_idle_or_zero_memory() {
+        for text in ["", "cpu 1 2", "cpu 1 bad 3 4", "cpu 18446744073709551615 1 1 1", "cpu0 1 2 3 4"] {
+            assert_eq!(super::linux_cpu(text), None);
+        }
+        for text in ["", "MemTotal: 0 kB\nMemAvailable: 0 kB", "MemTotal: 1 kB\nMemAvailable: 2 kB", "MemTotal: bad kB", "MemTotal: 2 B\nMemAvailable: 1 B"] {
+            assert_eq!(super::linux_memory(text), None);
+        }
+        assert_eq!(super::memory_ratio(1, 0), None);
+        assert_eq!(super::memory_ratio(11, 10), None);
+        assert_eq!(super::memory_ratio(0, 10), Some(0.0));
+    }
+
+    /// Run only on an isolated supported OS host, not production. Exercises this
+    /// test process's real CPU time and touched resident pages, without children.
+    #[test]
+    #[ignore = "real-process metrics smoke; run explicitly on an isolated host"]
+    fn real_process_resource_smoke() {
+        let before = super::resource_sample();
+        let mut memory = vec![0_u8; 16 * 1024 * 1024];
+        let deadline = std::time::Instant::now() + Duration::from_millis(750);
+        let mut value = 1_u64;
+        while std::time::Instant::now() < deadline {
+            for byte in memory.iter_mut().step_by(4096) {
+                value = value.wrapping_mul(6364136223846793005).wrapping_add(1);
+                *byte = std::hint::black_box(value as u8);
+            }
+        }
+        std::hint::black_box(&memory);
+        let after = super::resource_sample();
+        let metrics = after.utilization(Some(&before));
+        for metric in metrics {
+            let metric = metric.expect("supported OS must expose its counters");
+            assert!(metric.is_finite() && (0.0..=100.0).contains(&metric));
+        }
+        assert!(metrics[1].unwrap() > 0.0);
+        assert!(metrics[2].unwrap() > 0.0);
+        assert!(metrics[3].unwrap() > 0.0);
+    }
 
     #[test]
     fn an_atomic_write_replaces_the_whole_file_and_leaves_nothing_beside_it() {

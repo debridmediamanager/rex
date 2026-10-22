@@ -974,60 +974,144 @@ const WEBHOOKS_REFRESH: Duration = Duration::from_secs(300);
 /// queue (a source's first snapshot announcing thousands of rows) drops the rest.
 #[derive(Debug, Default)]
 pub(crate) struct Webhooks {
-    queue: Mutex<Option<mpsc::SyncSender<Value>>>,
+    queue: Mutex<Option<mpsc::SyncSender<WebhookEvent>>>,
+    local: Arc<Mutex<Vec<String>>>,
+}
+
+#[derive(Debug)]
+struct WebhookEvent {
+    payload: Value,
+    thumb: Option<WebhookThumb>,
+}
+
+#[derive(Debug)]
+enum WebhookThumb {
+    Bytes(Vec<u8>),
+    Url(String),
+}
+
+fn webhook_url(url: &str) -> bool {
+    url.len() <= 8192
+        && !url.contains(['#', '@', '\\'])
+        && upstream::scheme_host(url).is_some_and(|(_, host)| {
+            (!host.is_empty() && !host.contains(['%', ':'])) || host.parse::<std::net::Ipv6Addr>().is_ok()
+        })
 }
 
 impl Webhooks {
-    pub(crate) fn send(&self, claim: &SharedClaim, payload: Value) {
-        if !snapshot(claim).claimed() {
+    fn set_local(&self, urls: Vec<String>) {
+        *self.local.lock().unwrap_or_else(|poisoned| poisoned.into_inner()) = urls;
+    }
+
+    fn send(&self, claim: &SharedClaim, local: Vec<String>, event: WebhookEvent) {
+        let empty = local.is_empty();
+        self.set_local(local);
+        if empty && !snapshot(claim).claimed() {
             return;
         }
         let mut queue = self.queue.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         let sender = queue.get_or_insert_with(|| {
             let (sender, events) = mpsc::sync_channel(256);
             let claim = Arc::clone(claim);
+            let local = Arc::clone(&self.local);
             let _ = thread::Builder::new()
                 .name("rex-webhooks".to_string())
-                .spawn(move || deliver_webhooks(&claim, events));
+                .spawn(move || deliver_webhooks(&claim, &local, events));
             sender
         });
-        if sender.try_send(payload).is_err() {
+        if sender.try_send(event).is_err() {
             warning!("webhook queue full; an event was dropped");
         }
     }
 }
 
-fn deliver_webhooks(claim: &SharedClaim, events: mpsc::Receiver<Value>) {
+fn deliver_webhooks(claim: &SharedClaim, local: &Mutex<Vec<String>>, events: mpsc::Receiver<WebhookEvent>) {
     let mut urls = Vec::new();
     let mut read: Option<std::time::Instant> = None;
-    for payload in events {
+    for event in events {
         if read.is_none_or(|at| at.elapsed() >= WEBHOOKS_REFRESH) {
-            match fetch_webhooks(&snapshot(claim)) {
+            match if snapshot(claim).claimed() { fetch_webhooks(&snapshot(claim)) } else { Ok(Vec::new()) } {
                 Ok(found) => urls = found,
                 Err(message) => error!("webhooks read failed: {message}"),
             }
             read = Some(std::time::Instant::now());
         }
-        for hook in urls.iter().filter(|hook| hook.wants(&payload)) {
-            post_webhook(&hook.url, &payload);
+        if local.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).is_empty()
+            && !urls.iter().any(|hook| hook.wants(&event.payload)) { continue; }
+        let thumb = event.thumb.and_then(webhook_thumbnail);
+        // Snapshot after any network read, so replacing/removing local hooks takes effect
+        // even for an event that was queued before the configuration changed.
+        let local = local.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).clone();
+        let mut delivered = std::collections::HashSet::new();
+        for url in local.iter().map(String::as_str)
+            .chain(urls.iter().filter(|hook| hook.wants(&event.payload)).map(|hook| hook.url.as_str()))
+            .filter(|url| webhook_url(url))
+        {
+            if delivered.insert(url) {
+                post_webhook(url, &event.payload, thumb.as_deref());
+            }
         }
     }
 }
 
-/// Plex's documented webhook request (support.plex.tv, "Webhooks"; not recorded from a real
-/// PMS): a multipart POST whose `payload` part is the event's JSON. ponytail: no `thumb` part.
-fn post_webhook(url: &str, payload: &Value) {
+/// Artwork is resolved before enqueueing, but read only on the worker. Never attach
+/// the rex owner's token to an artwork request (including redirects).
+fn webhook_thumbnail(source: WebhookThumb) -> Option<Vec<u8>> {
+    const LIMIT: usize = 4 * 1024 * 1024;
+    let bytes = match source {
+        WebhookThumb::Bytes(bytes) => bytes,
+        WebhookThumb::Url(url) => {
+            if !webhook_url(&url) { return None; }
+            let mut response = upstream::open("GET", &url, &[], b"", Duration::from_secs(3)).ok()?;
+            if response.status != 200 { return None; }
+            let deadline = std::time::Instant::now() + Duration::from_secs(5);
+            let mut bytes = Vec::new();
+            let mut chunk = [0; 16384];
+            loop {
+                if std::time::Instant::now() >= deadline { return None; }
+                let count = response.read(&mut chunk).ok()?;
+                if count == 0 { break; }
+                if bytes.len() + count > LIMIT { return None; }
+                bytes.extend_from_slice(&chunk[..count]);
+            }
+            bytes
+        }
+    };
+    // Keep the original encoding; don't label PNG artwork as a JPEG.
+    (bytes.len() <= LIMIT && webhook_image_type(&bytes).is_some()).then_some(bytes)
+}
+
+fn webhook_image_type(bytes: &[u8]) -> Option<&'static str> {
+    if bytes.starts_with(&[0xff, 0xd8, 0xff]) && bytes.ends_with(&[0xff, 0xd9]) {
+        Some("image/jpeg")
+    } else if bytes.starts_with(b"\x89PNG\r\n\x1a\n") {
+        Some("image/png")
+    } else {
+        None
+    }
+}
+
+/// Plex's documented multipart JSON payload and optional JPEG thumb.
+fn post_webhook(url: &str, payload: &Value, thumb: Option<&[u8]>) {
     let boundary = format!("rex-{}", uuid4());
-    let body = format!(
-        "--{boundary}\r\nContent-Disposition: form-data; name=\"payload\"\r\nContent-Type: application/json\r\n\r\n{payload}\r\n--{boundary}--\r\n"
-    );
+    let mut body = format!(
+        "--{boundary}\r\nContent-Disposition: form-data; name=\"payload\"\r\nContent-Type: application/json\r\n\r\n{payload}\r\n"
+    ).into_bytes();
+    if let Some(thumb) = thumb {
+        let content_type = webhook_image_type(thumb).unwrap_or("application/octet-stream");
+        let filename = if content_type == "image/png" { "thumb.png" } else { "thumb.jpg" };
+        body.extend_from_slice(format!("--{boundary}\r\nContent-Disposition: form-data; name=\"thumb\"; filename=\"{filename}\"\r\nContent-Type: {content_type}\r\n\r\n").as_bytes());
+        body.extend_from_slice(thumb);
+        body.extend_from_slice(b"\r\n");
+    }
+    body.extend_from_slice(format!("--{boundary}--\r\n").as_bytes());
     let headers = [
         ("User-Agent", format!("PlexMediaServer/{}", super::VERSION)),
         ("Accept", "*/*".to_string()),
         ("Content-Type", format!("multipart/form-data; boundary={boundary}")),
     ];
     let event = payload.get("event").and_then(Value::as_str).unwrap_or("");
-    match upstream::fetch("POST", url, &headers, body.as_bytes(), Duration::from_secs(10)) {
+    match upstream::fetch("POST", url, &headers, &body, Duration::from_secs(10)) {
         Ok((status, _, _)) => info!("webhook {event} -> {status}"),
         Err(message) => error!("webhook {event} failed: {message}"),
     }
@@ -2187,6 +2271,41 @@ pub(crate) fn claim_path(catalog: &Path) -> PathBuf {
 // -- what the server shows of it -------------------------------------------------
 
 impl super::Runtime {
+    /// Local operator configuration, persisted in the ordinary runtime preferences.
+    /// The root router enforces owner authorization before entering this route.
+    pub(super) fn route_local_webhooks(&mut self, request: &super::Request) -> super::Response {
+        match request.method.as_str() {
+            "GET" => {},
+            "DELETE" => { self.prefs.remove("_rexWebhooks"); },
+            "PUT" => {
+                let Ok(value) = serde_json::from_slice::<Value>(&request.body) else {
+                    return super::Response::error(400, "rex: invalid webhook configuration");
+                };
+                let Some(urls) = value.get("urls").and_then(Value::as_array) else {
+                    return super::Response::error(400, "rex: urls must be an array");
+                };
+                if urls.len() > 64 || urls.iter().any(|url| !url.as_str().is_some_and(webhook_url)) {
+                    return super::Response::error(400, "rex: invalid webhook URL");
+                }
+                let mut unique = Vec::new();
+                for url in urls {
+                    if !unique.contains(url) { unique.push(url.clone()); }
+                }
+                self.prefs.insert("_rexWebhooks".to_string(), Value::Array(unique));
+            },
+            _ => return super::Response::error(405, "rex: method not allowed"),
+        }
+        self.plextv.webhooks.set_local(self.local_webhooks());
+        let mut response = super::Response::bytes(200, "application/json");
+        response.body = json!({"urls": self.local_webhooks()}).to_string().into_bytes();
+        response
+    }
+
+    fn local_webhooks(&self) -> Vec<String> {
+        self.prefs.get("_rexWebhooks").and_then(Value::as_array).into_iter().flatten()
+            .filter_map(Value::as_str).filter(|url| webhook_url(url)).map(str::to_string).collect()
+    }
+
     pub(super) fn claim_mut(&mut self) -> std::sync::MutexGuard<'_, Claim> {
         self.plextv
             .claim
@@ -2236,7 +2355,20 @@ impl super::Runtime {
             payload["Player"] = player;
         }
         payload["Metadata"] = Value::Object(metadata);
-        self.plextv.webhooks.send(&self.plextv.claim, payload);
+        let thumb = row.get("_poster_url").and_then(Value::as_str).and_then(|url| {
+            match self.uploads.get(url) {
+                Some((bytes, _)) if bytes.len() <= 4 * 1024 * 1024 => Some(WebhookThumb::Bytes(bytes.clone())),
+                Some(_) => None,
+                None if webhook_url(url)
+                    && !url.to_ascii_lowercase().contains("x-plex-token")
+                    && !self.claim_snapshot().token.as_deref().filter(|token| !token.is_empty()).is_some_and(|token| url.contains(token))
+                    => Some(WebhookThumb::Url(url.to_string())),
+                None => None,
+            }
+        });
+        self.plextv.webhooks.send(&self.plextv.claim, self.local_webhooks(), WebhookEvent {
+            payload, thumb,
+        });
     }
 
     /// Sends plex.tv the libraries again, when a real claim holds a server token.
@@ -2281,9 +2413,21 @@ impl super::Runtime {
         self.owner_email.clone()
     }
 
-    /// `owner_features`: the named defaults plus the account's measured feature UUIDs.
+    /// Local capabilities plus measured account UUIDs; cloud entitlements stay separate.
     pub(super) fn owner_features(&self) -> String {
-        self.claim_snapshot().owner_features(super::OWNER_FEATURES)
+        let mut features = super::OWNER_FEATURES.to_string();
+        if let Some(transcoder) = &self.transcoder {
+            features.push_str(",intro-markers,credits-markers,auto-sub-offsets,d4b4e08a-9201-4c99-9a52-8f2de8ff25cd");
+            transcoder.with_hardware(|hardware| {
+                if hardware.supports_tone_mapping() {
+                    features.push_str(",tonemap,fd6683b9-1426-4b00-840f-cd5fb0904a6a");
+                }
+                if hardware.can_normalize_loudness() && hardware.can_boost_dialog() {
+                    features.push_str(",pms-audio-enhance,2573654f-0985-4cef-9c53-28e78cc62f26");
+                }
+            });
+        }
+        self.claim_snapshot().owner_features(&features)
     }
 
     /// `_identity_prefs`.
@@ -2488,8 +2632,7 @@ mod tests {
     #[test]
     fn a_shared_users_webhook_hears_only_its_own_playback() {
         // rex-fun's live list, a webhook added to the owner and to the first shared user.
-        let list = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/../tests/fixtures/plextv_server_webhooks_shared_s1022.xml"))
-            .unwrap()
+        let list = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../tests/fixtures/plextv_server_webhooks_shared_s1022.xml"))
             .replacen("<webhooks>", "<webhooks><webhook url=\"http://shared/\"/>", 1)
             .replace("owner=\"1\" adsConsent=\"\" adsConsentSetAt=\"\" adsConsentReminderAt=\"\" experimentalFeatures=\"1\">\n  <webhooks>",
                      "owner=\"1\" adsConsent=\"\" adsConsentSetAt=\"\" adsConsentReminderAt=\"\" experimentalFeatures=\"1\">\n  <webhooks><webhook url=\"http://owner/\"/>");

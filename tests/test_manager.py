@@ -278,9 +278,18 @@ def main():
         # the server stayed stopped with nothing said.
         import threading
         stopping = threading.Thread(target=lambda: manager.api("POST", "/servers/sixer/stop"))
-        stopping.start()
-        time.sleep(0.05)
-        manager.api("POST", "/servers/sixer/start")
+        held_pid = manager.api("GET", "/servers/sixer")[1]["pid"]
+        os.kill(held_pid, signal.SIGSTOP)
+        try:
+            stopping.start()
+            assert wait_for(lambda: manager.api("GET", "/servers/sixer")[1]["desired"] == "stopped", 10)
+            assert stopping.is_alive(), "the stop must still be waiting when start is sent"
+            manager.api("POST", "/servers/sixer/start")
+        finally:
+            try:
+                os.kill(held_pid, signal.SIGCONT)
+            except ProcessLookupError:
+                pass
         stopping.join()
         check("a start sent during a stop leaves the server running",
               wait_for(lambda: manager.api("GET", "/servers/sixer")[1]["status"] == "running", 60),

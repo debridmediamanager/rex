@@ -7,10 +7,32 @@ are changing; replay the client's exact request before altering behavior.
 
 ## Traps that cost real time
 
-- **Loudness on a video's audio stream is version-scoped.** 1.43.4 writes
-  `canNormalizeLoudness`, `gainOffset`, `loudness`, `loudnessAnalysisVersion`, `lra`, `peak` and
-  `threshold` on every video audio stream; 1.42.2 writes none and its binary has no
-  `canNormalizeLoudness`. python-plexapi 4.18.3 reads the flag. Emulating 1.42.2, leave them out.
+- **Loudness capability is version-scoped and is not a fabricated analysis result.** 1.43.4
+  writes `canNormalizeLoudness`, `gainOffset`, `loudness`, `loudnessAnalysisVersion`, `lra`,
+  `peak` and `threshold`; 1.42.2 writes none. rex's movie/TV capability update derives
+  `canNormalizeLoudness` from the installed FFmpeg probe and performs requested normalization.
+  It does not invent precomputed gain or peak measurements.
+- **Server owner capabilities are not account entitlements.** Plex Web reads paired names
+  and UUIDs from `ownerFeatures`, not merely `pass` or `subscriptionActive`. Advertise
+  working local features without rewriting plex.tv, viewer subscription or Home responses.
+  App eligibility and cloud rollouts can still hide controls.
+- **Android TV sends `boostDialog=1` without an encoder.** The real SHIELD request in
+  `fixtures/decisions/shield_android_tv_decision.json` must still direct-play when processing
+  is not advertised. With FFmpeg configured, requested enhancement must produce real audio
+  processing or refuse, never claim processed output while copying it.
+- **Plex Web chapter cells read play-queue metadata.** Generated JPEGs on an item detail
+  response do not fill those cells if `queue_container` adds raw chapters afterwards.
+  Project authenticated chapter images and requested markers after the queue's chapter list.
+- **Client session identifiers are not globally unique.** Timeline completion latches,
+  decisions, conversions, limits, history and byte buckets need account-qualified internal
+  identities. Keep the public `Session.id` unchanged. An opaque conversion bearer remains
+  usable across viewers, but stop it using the account captured when it started.
+- **A preview/voice cache belongs to one source revision and Media version.** Include the
+  owning version's hash and Part identity. Replacing a source or deleting a version must
+  invalidate its results, cancel stale publication and retire only unreferenced files.
+- **Fixture HTTP persistence is part of the media input.** A server closing HTTP/1.1
+  connections must advertise `Connection: close`; otherwise FFmpeg reuses dead sockets
+  and an apparent late-frame decoder failure can be a fixture transport defect.
 - **A copied rendered walk can name the wrong browser.** Cycle 81's `windows81/*.py` drove the lab
   host's
   9224 while its report said Windows. Read `drv.CDP` (and the user agent at `/json/version`)
@@ -851,11 +873,11 @@ are changing; replay the client's exact request before altering behavior.
   `/hubs/search` as a `tagType: 2` row -- and by `/library/search` too, which cycle 28
   re-measured once the copy held a collection at all (the old "never" was the fixture's).
 - **A refresh CASCADES**: 7 frames on an episode, 18 on a season (its episodes inside its own
-  activity, with no `activity updated`), 49 on a two-season show. An **analyze** frames every
-  LEAF three times -- `mediaState` analyzing, thumbnailing, none -- and ends in one
-  `media.generate.chapter.thumbs` activity; a season and a show row are never framed
-  themselves. A library **create** ends in a `backgroundProcessingQueue` `queueRegenerated`
-  frame, which follows any write that leaves work in the queue.
+  activity, with no `activity updated`), 49 on a two-season show. The recorded PMS item
+  **analyze** frames leaves as analyzing, thumbnailing and none, then ends its chapter-thumb
+  activity; season/show rows are not framed. rex now queues real leaf analysis and emits
+  progress as work runs, not an immediate synthetic completion sequence. A library
+  **create** ends in a `backgroundProcessingQueue` `queueRegenerated` frame.
 
 - **A real PMS LOCALISES its own text.** `X-Plex-Language` (header or query) beats
   `Accept-Language`, a regional form works like its primary subtag, an unknown language
@@ -1273,9 +1295,10 @@ are changing; replay the client's exact request before altering behavior.
   no-op. Neither reaches a member. The block comes back MID-ROW -- `userRating, viewOffset,
   viewCount, lastViewedAt, lastRatedAt`, after a collection's `ratingCount` and after a
   playlist's `composite` -- on every read but `/playlists/{id}` and the create response.
-- **A SHOW library's `/analyze` frames every episode LEAF three times** (analyzing,
-  thumbnailing, none), with no activity: the section analyze reads the LEAVES, which is why
-  a movie library's fifteen for five movies is the same rule.
+- **A SHOW library's `/analyze` works on episode LEAVES.** The reference emitted analyzing,
+  thumbnailing and none without an activity (fifteen frames for five films follows the same
+  rule). rex's real worker reports queued/running/completed work instead of replaying those
+  frames before any bytes have been analyzed.
 - **A collection and a playlist answer the ITEM action leaves**, splitting by ROW TYPE:
   `/analyze` 200 on a collection and 400 on a playlist, `/allLeaves` and `/grandchildren`
   real containers on a collection and 404s on a playlist, `/related` empty on both but with

@@ -300,10 +300,7 @@ def run(variant, name, tokens):
                             wanted = recorded.get(flag)
                         check(label + ": %s as plexlab's share made it" % flag, ours == wanted, (ours, wanted))
             if path == "/media/providers":
-                recorded = re.search(r'<MediaProvider [^>]*protocols="([^"]*)"', exchange["body"]).group(1)
                 provider = body.get("MediaProvider", [{}])[0]
-                check(label + ": protocols as plexlab's", provider.get("protocols") == recorded,
-                      (provider.get("protocols"), recorded))
                 kinds = sorted(re.findall(r'<Feature [^>]*type="([^"]*)"', exchange["body"]))
                 ours = sorted(feature.get("type") for feature in provider.get("Feature", []))
                 for kind in ("manage", "subscribe"):

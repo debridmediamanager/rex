@@ -19,6 +19,7 @@ impl Runtime {
     ) {
         let include = |name: &str| query.get(name).is_some_and(|value| is_true_option(value));
         mediainfo::project_chapters(row, detail, include("includeChapters"));
+        self.project_analysis(row, detail, include("includeMarkers"));
         let kind = row
             .get("type")
             .and_then(Value::as_str)

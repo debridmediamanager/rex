@@ -124,6 +124,59 @@ impl Grant {
     }
 }
 
+#[derive(Debug, PartialEq)]
+pub(crate) enum ShareRestrictionError {
+    InvalidAccount,
+    InvalidFormat(String),
+}
+
+impl Runtime {
+    pub(crate) fn share_restrictions(&self, account: i64) -> Value {
+        self.prefs.get("_rexShareRestrictions").and_then(|all| all.get(account.to_string())).cloned().unwrap_or(Value::Null)
+    }
+
+    /// Local restrictions intersect the cloud grant; they cannot add sections or sync access.
+    pub(crate) fn set_share_restrictions(&mut self, account: i64, value: &Value) -> Result<(), ShareRestrictionError> {
+        if account <= OWNER { return Err(ShareRestrictionError::InvalidAccount); }
+        let object = value.as_object().ok_or_else(|| ShareRestrictionError::InvalidFormat("expected object".into()))?;
+        for (field, value) in object {
+            match field.as_str() {
+                "allowSync" if value.is_boolean() => {}
+                "filterMovies" | "filterTelevision" => {
+                    let spec = value.as_str().ok_or_else(|| ShareRestrictionError::InvalidFormat(field.clone()))?;
+                    if !spec.is_empty() && (clauses(spec).len() != spec.split('|').count()
+                        || clauses(spec).iter().any(|(field, _, _)| !matches!(field.as_str(), "contentRating" | "label")))
+                    { return Err(ShareRestrictionError::InvalidFormat(field.clone())); }
+                }
+                _ => return Err(ShareRestrictionError::InvalidFormat(field.clone())),
+            }
+        }
+        let mut all = self.prefs.get("_rexShareRestrictions").and_then(Value::as_object).cloned().unwrap_or_default();
+        all.insert(account.to_string(), value.clone());
+        self.prefs.insert("_rexShareRestrictions".into(), Value::Object(all));
+        self.dirty = true;
+        Ok(())
+    }
+
+    pub(crate) fn remove_share_restrictions(&mut self, account: i64) -> Result<(), ShareRestrictionError> {
+        if account <= OWNER { return Err(ShareRestrictionError::InvalidAccount); }
+        if let Some(all) = self.prefs.get_mut("_rexShareRestrictions").and_then(Value::as_object_mut) {
+            all.remove(account.to_string().as_str());
+            self.dirty = true;
+        }
+        Ok(())
+    }
+
+    pub(super) fn download_allowed(&self) -> bool {
+        self.viewer.is_owner() || (self.viewer.allow_sync
+            && self.share_restrictions(self.viewer.id).get("allowSync").and_then(Value::as_bool) != Some(false))
+    }
+
+    fn local_share_passes(&self, row: &(impl Row + ?Sized), field: &str) -> bool {
+        passes(row, self.share_restrictions(self.viewer.id).get(field).and_then(Value::as_str).unwrap_or(""))
+    }
+}
+
 /// A share filter's clauses, as plex.tv hands them to the server: `field=v1,v2` keeps only
 /// rows holding one of the values, `field!=v1,v2` drops rows holding any; clauses are joined
 /// by `|` and values may be percent-encoded (`contentRating=G%2CPG`, `label!=Rexhide`).
@@ -284,7 +337,7 @@ impl Runtime {
     /// the share's filter -- a film by the film filter, a show, season or episode by the
     /// television filter, read off the show.
     pub(super) fn visible(&self, row: &(impl Row + ?Sized)) -> bool {
-        if self.viewer.is_owner() || !self.viewer.restricted() {
+        if self.viewer.is_owner() {
             return true;
         }
         let section = string_value(row.get("librarySectionID").unwrap_or(&Value::Null));
@@ -292,8 +345,8 @@ impl Runtime {
             return false;
         }
         match row.get("type").and_then(Value::as_str) {
-            Some("movie") => passes(row, &self.viewer.filter_movies),
-            Some("show") => passes(row, &self.viewer.filter_television),
+            Some("movie") => passes(row, &self.viewer.filter_movies) && self.local_share_passes(row, "filterMovies"),
+            Some("show") => passes(row, &self.viewer.filter_television) && self.local_share_passes(row, "filterTelevision"),
             Some("season") | Some("episode") => {
                 let show_key = if row.get("type").and_then(Value::as_str) == Some("season") {
                     row.get("parentRatingKey")
@@ -301,8 +354,8 @@ impl Runtime {
                     row.get("grandparentRatingKey")
                 };
                 match show_key.map(string_value).and_then(|key| self.catalog.get(&key)) {
-                    Some(show) => passes(show, &self.viewer.filter_television),
-                    None => passes(row, &self.viewer.filter_television),
+                    Some(show) => passes(show, &self.viewer.filter_television) && self.local_share_passes(show, "filterTelevision"),
+                    None => passes(row, &self.viewer.filter_television) && self.local_share_passes(row, "filterTelevision"),
                 }
             }
             _ => true,
@@ -332,7 +385,7 @@ impl Runtime {
         }
         // The download queue: the owner's list is 403 to everyone else, and a queue of its own
         // only with allowSync=1 (`POST /downloadQueue` 403 at allowSync=0, 200 at 1).
-        if path == "/downloadQueue" && method == "GET" || path.starts_with("/downloadQueue") && !self.viewer.allow_sync {
+        if path == "/downloadQueue" && method == "GET" || path.starts_with("/downloadQueue") && !self.download_allowed() {
             return Some(Response::error(403, "rex: downloads are not shared"));
         }
         let segments = path.split('/').collect::<Vec<_>>();
@@ -564,7 +617,7 @@ impl Runtime {
             return;
         }
         // An answer the share neither prunes nor flags keeps its bytes.
-        if !self.viewer.restricted() && !matches!(path, "/" | "/media/providers" | "/library/sections") {
+        if !self.viewer.restricted() && self.share_restrictions(self.viewer.id).is_null() && !matches!(path, "/" | "/media/providers" | "/library/sections") {
             return;
         }
         let Some(mut document) = response.take_document() else {
@@ -578,7 +631,7 @@ impl Runtime {
             for (name, allowed) in [
                 ("allowCameraUpload", self.viewer.allow_camera_upload),
                 ("allowChannelAccess", self.viewer.allow_channels),
-                ("allowSync", self.viewer.allow_sync),
+                ("allowSync", self.download_allowed()),
                 ("allowTuners", self.viewer.allow_tuners),
             ] {
                 // A share lowers a flag the server has; it never raises one rex answers 0.
@@ -589,13 +642,13 @@ impl Runtime {
         }
         if path == "/media/providers" {
             for provider in container.get_mut("MediaProvider").and_then(Value::as_array_mut).into_iter().flatten() {
-                // Downloads are the owner's: "stream" alone even with allowSync=1.
-                if let Some(protocols) = provider.get("protocols").and_then(Value::as_str) {
+                // A local restriction may lower, but never raise, the cloud grant.
+                if let Some(protocols) = provider.get("protocols").and_then(Value::as_str).filter(|_| !self.download_allowed()) {
                     let kept = protocols.split(',').filter(|protocol| *protocol != "download").collect::<Vec<_>>().join(",");
                     provider["protocols"] = json!(kept);
                 }
                 if let Some(features) = provider.get_mut("Feature").and_then(Value::as_array_mut) {
-                    let sync = self.viewer.allow_sync;
+                    let sync = self.download_allowed();
                     features.retain(|feature| {
                         let kind = feature.get("type").and_then(Value::as_str);
                         kind != Some("manage")
@@ -612,7 +665,7 @@ impl Runtime {
         if path == "/library/sections" {
             for directory in container.get_mut("Directory").and_then(Value::as_array_mut).into_iter().flatten() {
                 if directory.get("allowSync").is_some() {
-                    directory["allowSync"] = json!(self.viewer.allow_sync);
+                    directory["allowSync"] = json!(self.download_allowed());
                 }
             }
         }

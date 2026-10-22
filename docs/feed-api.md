@@ -266,17 +266,18 @@ The `media_info` above is cut down to show its shape. Send ffprobe's whole outpu
 | `episode_end` | no | The last episode of a file holding several (`E01E02` -> 2). Kept on the row; the file is placed on `episode`, as rex places every multi-episode file on its first |
 | `name` | no | The release name, shown as it is: an unplaced episode's show is titled with it. Nothing is read out of it -- no id, no title, no season or episode. Default: the folder above the file |
 | `release` | no | Groups a release's files, identified together (a season's episodes). Default: the folder above `path` |
+| `edition_title` | no | Explicit movie edition label. Different labels stay separate movies; the same label can hold several versions. Omitted preserves the current source label; `""` clears it. A person's locked edition wins. Rejected for episodes or invalid labels; never inferred from a name |
 | `file` | no | The path clients see in Get Info, and what zurg's matcher reads back (`<mount>/<directory>/<release>/<file>`). Default `<mount>/<path>`, or `/<path>` without a mount |
 | `library` | no | A section key, or `movie`/`show`. Default: the library whose `Location` holds `file`, else one with a folder ending in a directory `path` starts with (`/mnt/zurg/movies` holds `movies/...` whatever prefix `file` has); with a type, that type's library holding `file`, else its first; a folder no library holds goes to the first library of its `kind` (Movies without one). With no `library`, an item placed as an episode that a movie library would take goes to a show library -- one holding its folder ([a declared directory's](#libraries-a-source-declares)), else the one beside it -- and one placed as a movie that a show library would take goes to a movie library, one holding its folder first; a row already shown moves when its library changes |
 | `folder` | no | The folder the provider lists the file in inside its release (`Smallville/Stagione 6`), `""` at its top level. Kept on the row; nothing reads it as an extra |
-| `hash` | no | The release's info hash. Kept on the row; nothing reads it yet |
+| `hash` | no | The release's content/info hash, kept per Media version. A changed hash invalidates that version's measured subtitle reference and generated analysis; it never borrows another version's hash |
 
 Embedded chapters are optional: include ffprobe's `-show_chapters` output in
 `media_info.chapters`. rex keeps the timings and titles with that file version and
 answers clients requesting `includeChapters=1` on metadata or play queues. A later
 push updates chapters on an existing version too. Omitting `chapters` preserves its
-saved chapters; an explicit `"chapters": []` clears them. rex does not generate
-chapter thumbnails.
+saved chapters; an explicit `"chapters": []` clears them. With FFmpeg, optional Analyze
+generates chapter JPEGs from these boundaries and serves them through authenticated metadata routes.
 
 To populate chapters for items already in rex, have the source resend its saved
 probes through the existing feed. A normal full snapshot updates existing versions
@@ -290,8 +291,8 @@ What the fields do:
 - **Held until probed.** An item without `media_info` is stored but not shown: it is in no
   listing, hub, search or count, and logged `FEED <source> held <id>`. The push that
   brings its `media_info` shows it, stamped as added then, so it arrives in Recently Added
-  when it becomes playable. A row already shown never goes back to held. rex never probes
-  a file itself, so a source must run ffprobe and send the result: measured on 2026-10-12,
+  when it becomes playable. A row already shown never goes back to held. A source must run ffprobe
+  and send the container and stream metadata; optional rex analysis does not replace that feed probe:
   Plex Web will not play an item without it (findings, "An item without a probe cannot
   play").
 - **Placement.** An item with a `kind` and ids is placed where its source says: the movie or
@@ -335,8 +336,9 @@ What the fields do:
   identifies it, or the episodes of a show a person matched, again. Unmatch hands it back to
   its source's ids.
 - **Versions.** A release of a title already here -- a film with the same agent guid in the
-  same section, an episode on the same season and index, whatever guid identification gave it
-  -- is no new row: it joins that row as another Media, as a real PMS offers several files of
+  same section and with the same explicit edition label, an episode on the same season and index,
+  whatever guid identification gave it -- is no new row: it joins that row as another Media,
+  as a real PMS offers several files of
   one movie as versions (2026-10-11, on one real library 407 movies and ~1,370 episodes were
   listed twice; 2026-10-17, SpongeBob's S10E64, which TMDB does not list, was five rows). Other
   files of the same release stay rows of their own: a collection that numbers several shows'

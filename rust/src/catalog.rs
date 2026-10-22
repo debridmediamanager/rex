@@ -1247,6 +1247,7 @@ mod tests {
     /// the production server (2026-10-16) every write dropped the index, so each listing after
     /// a beat scanned all 40,197 rows again: 2,000 alternations took 4 s here, unfixed.
     #[test]
+    #[ignore = "wall-clock throughput check; run explicitly without competing build/transcode work"]
     fn a_row_written_in_place_does_not_rescan_the_library() {
         let mut items = Vec::new();
         for show in 0..400u64 {

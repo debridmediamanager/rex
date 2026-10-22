@@ -9,6 +9,7 @@ are 204. Needs ffmpeg (REX_TRANSCODER, else PATH's), as test_native_transcode.py
 
 import json
 import os
+import shutil
 import socketserver
 import subprocess
 import sys
@@ -72,6 +73,25 @@ def poll_items(port, queue, until, timeout=180):
     return seen
 
 
+def start_persistent(catalog, zurg_port, scratch):
+    port = free_port()
+    environment = dict(os.environ, REX_TRANSCODER=FFMPEG, REX_TRANSCODE_HW="none",
+                       REX_TRANSCODE_DIR=os.path.join(scratch, "restart-cleared-transcoder"))
+    log = open(os.path.join(scratch, "persistent-%d.log" % port), "w")
+    process = subprocess.Popen(transcode.server_command(
+        "--port", port, "--catalog", catalog, "--state", os.path.join(scratch, "downloads.db"),
+        "--assert-claimed", root=ROOT), cwd=ROOT, env=environment, stdout=log, stderr=subprocess.STDOUT)
+    def ready():
+        try:
+            urllib.request.urlopen("http://127.0.0.1:%d/identity" % port, timeout=2).close()
+            return True
+        except Exception:
+            return False
+    transcode.poll_until(ready, 40)
+    transcode.register_source(port, "zurg", {"url": "http://127.0.0.1:%d/dav" % zurg_port, "mount": "/zurg"})
+    return port, process, log.name
+
+
 def main():
     if not FFMPEG or not FFPROBE:
         print("SKIP: no ffmpeg (set REX_TRANSCODER)")
@@ -94,7 +114,7 @@ def main():
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
 
     print("with an encoder")
-    port, process, log = start_server(catalog, zurg_port, True, scratch)
+    port, process, log = start_persistent(catalog, zurg_port, scratch)
     try:
         status, _, raw = call(port, "POST", "/downloadQueue")
         queue = (body(raw) or {}).get("MediaContainer", {}).get("DownloadQueue", [{}])[0]
@@ -179,6 +199,17 @@ def main():
         check("the capped item is converted down to the requested 640x360",
               status == 200 and 0 < video["width"] <= 640 and 0 < video["height"] <= 360 and len(small) < len(full) / 3,
               (video["width"], video["height"], len(small), len(full)))
+        # SIGTERM flushes the queue's state. Restart deliberately clears the SAME
+        # transcoder directory: offline MP4s must not live there.
+        process.terminate()
+        process.wait(timeout=30)
+        port, process, log = start_persistent(catalog, zurg_port, scratch)
+        status, headers, restored = call(port, "GET", "/downloadQueue/%s/item/%s/media" % (qid, first),
+                                         range_="bytes=0-1023")
+        check("completed downloads survive restart and retain exact Range bytes",
+              status == 206 and restored == full[:1024]
+              and dict(headers).get("Content-Range") == "bytes 0-1023/%d" % len(full),
+              (status, dict(headers).get("Content-Range")))
         status, _, _ = call(port, "DELETE", "/downloadQueue/%s/items/%s" % (qid, first))
         _, _, raw = call(port, "GET", "/downloadQueue/%s/items" % qid)
         left = (body(raw) or {}).get("MediaContainer", {}).get("DownloadQueueItem", [])
@@ -190,6 +221,31 @@ def main():
               status == 204 and body(raw) == RECORDED["items-empty"]["resp_json"], raw)
         status, _, _ = call(port, "GET", "/downloadQueue/%s/item/%s/media" % (qid, first))
         check("a deleted item's media is gone", status == 404, status)
+        # An active conversion is re-decided from persisted source/account state,
+        # not treated as completed or resumed from an incomplete MP4.
+        _,_,created = call(port, "POST", "/downloadQueue")
+        qid = body(created)["MediaContainer"]["DownloadQueue"][0]["id"]
+        previous_rate = transcode.SLOW_RATE
+        transcode.SLOW_RATE = 65536
+        try:
+            _,_,added = call(port, "POST", "/downloadQueue/%s/add" % qid, RECORDED["add-original"]["query"])
+            resumed_id = body(added)["MediaContainer"]["AddedQueueItems"][0]["id"]
+            pending = poll_items(port, qid, lambda rows: any(r.get("status") == "processing" for r in rows), timeout=15)
+            check("restart scenario interrupts a real active conversion",
+                  pending and any(r.get("status") == "processing" for r in pending[-1]), pending[-1:] if pending else [])
+            process.terminate()
+            process.wait(timeout=30)
+        finally:
+            transcode.SLOW_RATE = previous_rate
+        port, process, log = start_persistent(catalog, zurg_port, scratch)
+        resumed = poll_items(port, qid, lambda rows: any(r.get("id") == resumed_id and r.get("status") == "available" for r in rows), timeout=30)
+        status,_,resumed_bytes = call(port, "GET", "/downloadQueue/%s/item/%s/media" % (qid, resumed_id))
+        open(out, "wb").write(resumed_bytes)
+        resumed_probe = streams_of(out)
+        check("an interrupted download restarts and publishes a complete playable file",
+              status == 200 and sorted(s.get("codec_name") for s in resumed_probe["streams"]) == ["aac", "h264"]
+              and abs(float(resumed_probe.get("format", {}).get("duration", 0)) - 30) < 1.5,
+              (status, [r.get("status") for r in resumed[-1]] if resumed else []))
     finally:
         process.terminate()
         process.wait()
@@ -210,8 +266,14 @@ def main():
         process.terminate()
         process.wait()
 
+    httpd.shutdown()
+    httpd.server_close()
     passed = sum(1 for _, ok in results if ok)
     print("%d/%d checks passed" % (passed, len(results)))
+    if passed == len(results):
+        shutil.rmtree(scratch)
+    else:
+        print("Failed download media and logs retained at", scratch)
     return 0 if passed == len(results) else 1
 
 

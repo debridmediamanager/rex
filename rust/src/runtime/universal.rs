@@ -103,8 +103,8 @@ pub(crate) struct Hardware {
     pub accel: Accel,
     pub decode: HashSet<String>,
     pub encode: bool,
-    /// jellyfin-ffmpeg's `tonemapx`; upstream FFmpeg has none, and an HDR source then
-    /// converts untonemapped rather than failing on every path.
+    /// jellyfin-ffmpeg's Dolby Vision-aware CPU tone mapper. Upstream uses
+    /// zscale/tonemap for HDR10/HLG; unsupported requested processing is refused.
     pub tonemapx: bool,
     /// The device tonemaps through OpenCL derived from VA-API (jellyfin-ffmpeg's
     /// `tonemap_opencl`, which applies a profile 5 RPU): HDR then stays on the GPU end to end.
@@ -122,11 +122,18 @@ pub(crate) struct Hardware {
     /// frame to draw on it and uploading it again ran a 4K HDR remux on fun's J4105 at 0.32x,
     /// against 1.94x without the subtitle; the overlay ran it at 1.53x (measured 2026-10-19).
     pub alpha_subtitles: bool,
+    pub filters: HashSet<String>,
 }
 
 impl Hardware {
     fn software() -> Self {
-        Self { accel: Accel::None, decode: HashSet::new(), encode: false, tonemapx: false, opencl_tonemap: false, bounded_http: false, alpha_subtitles: false }
+        Self { accel: Accel::None, decode: HashSet::new(), encode: false, tonemapx: false, opencl_tonemap: false, bounded_http: false, alpha_subtitles: false, filters: HashSet::new() }
+    }
+
+    pub fn can_normalize_loudness(&self) -> bool { self.filters.contains("loudnorm") }
+    pub fn can_boost_dialog(&self) -> bool { self.filters.contains("dialoguenhance") }
+    pub fn supports_tone_mapping(&self) -> bool {
+        self.tonemapx || ["zscale", "tonemap"].iter().all(|name| self.filters.contains(*name))
     }
 }
 
@@ -216,9 +223,16 @@ pub(crate) struct Plan {
     /// not given Matroska: read out of the release before the run (`mkvsubs`).
     pub text_burn: Option<TextBurn>,
     pub incomplete_segments: bool,
-    /// The playback session (`X-Plex-Session-Identifier`) the conversion belongs to.
+    /// Ownership is internal; public conversion IDs remain opaque bearer handles.
+    pub account: i64,
+    /// The unmodified playback session (`X-Plex-Session-Identifier`).
     pub playback: String,
     pub protocol: Protocol,
+    pub hardware_decode: bool,
+    pub hardware_encode: bool,
+    pub tone_mapping: Option<String>,
+    pub boost_dialog: bool,
+    pub normalize_loudness: bool,
 }
 
 /// A subtitle file uploaded to rex (`_content` on its Stream row), written beside the run's
@@ -430,6 +444,7 @@ const OPENCL_TONEMAP: &str = "hwmap=derive_device=opencl:mode=read,tonemap_openc
 pub(crate) enum Path {
     Full,
     EncodeOnly,
+    DecodeOnly,
     Software,
 }
 
@@ -464,16 +479,17 @@ pub(crate) fn ladder(plan: &Plan, hardware: &Hardware) -> Vec<Path> {
         return vec![Path::Software];
     };
     let mut paths = Vec::new();
-    if hardware.encode && hardware.accel != Accel::None {
+    if plan.hardware_decode && hardware.encode && hardware.accel != Accel::None {
         // HDR stays on the device only where the probe tonemapped a frame through OpenCL;
         // otherwise it is tonemapped on the CPU (`tonemapx`), since a wrong guess is a green
         // picture. A burned image subtitle is overlaid on CPU frames at the source's size, so
         // its decode stays on the CPU; a text one is drawn on the scaled frame, downloaded.
-        let tonemaps = !video.hdr || (hardware.opencl_tonemap && matches!(hardware.accel, Accel::Vaapi(_)));
-        if tonemaps && plan.subtitle.is_none() && hardware.decode.contains(&decode_key(&video.source_codec, video.bit_depth)) {
-            paths.push(Path::Full);
+        let tonemaps = !video.hdr || plan.tone_mapping.is_none()
+            || (plan.tone_mapping.as_deref() == Some("bt2390") && hardware.opencl_tonemap && matches!(hardware.accel, Accel::Vaapi(_)));
+        if (tonemaps || !plan.hardware_encode) && plan.subtitle.is_none() && hardware.decode.contains(&decode_key(&video.source_codec, video.bit_depth)) {
+            paths.push(if plan.hardware_encode { Path::Full } else { Path::DecodeOnly });
         }
-        paths.push(Path::EncodeOnly);
+        if plan.hardware_encode { paths.push(Path::EncodeOnly); }
     }
     paths.push(Path::Software);
     paths
@@ -508,10 +524,17 @@ pub(crate) fn ffmpeg_args(plan: &Plan, path: Path, hardware: &Hardware, start: i
         _ => None,
     };
     let cuda = hardware.accel == Accel::Cuda && matches!(path, Path::Full | Path::EncodeOnly);
+    if path == Path::DecodeOnly {
+        match &hardware.accel {
+            Accel::Vaapi(device) => push(&mut args, &["-init_hw_device", &format!("vaapi=va:{device}"), "-hwaccel", "vaapi", "-hwaccel_device", "va", "-hwaccel_output_format", "vaapi"]),
+            Accel::Cuda => push(&mut args, &["-init_hw_device", "cuda=cu:0", "-hwaccel", "cuda", "-hwaccel_device", "cu", "-hwaccel_output_format", "cuda"]),
+            Accel::None => {}
+        }
+    }
     if converting {
         if let Some(device) = &device {
             push(&mut args, &["-init_hw_device", &format!("vaapi=va:{device}")]);
-            if path == Path::Full && video.is_some_and(|video| video.hdr) {
+            if path == Path::Full && video.is_some_and(|video| video.hdr) && plan.tone_mapping.is_some() {
                 push(&mut args, &["-init_hw_device", "opencl=ocl@va"]);
             }
             push(&mut args, &["-filter_hw_device", "va"]);
@@ -528,19 +551,17 @@ pub(crate) fn ffmpeg_args(plan: &Plan, path: Path, hardware: &Hardware, start: i
     // The source is a remote Range-capable HTTP file: reconnect through a dropped read,
     // and keep the probe small -- the catalog already knows the streams, and every MB
     // probed is a MB waited for before the first segment.
-    push(&mut args, &[
-        "-reconnect", "1", "-reconnect_on_network_error", "1", "-reconnect_delay_max", "4",
-        "-probesize", "4M", "-analyzeduration", "4M", "-fflags", "+genpts",
-    ]);
-    if hardware.bounded_http {
-        push(&mut args, &["-initial_request_size", "1048576", "-request_size", "8388608"]);
+    push(&mut args, &["-probesize", "4M", "-analyzeduration", "4M", "-fflags", "+genpts"]);
+    if plan.url.starts_with("http://") || plan.url.starts_with("https://") {
+        push(&mut args, &["-reconnect", "1", "-reconnect_on_network_error", "1", "-reconnect_delay_max", "4", "-rw_timeout", "15000000", "-protocol_whitelist", "http,https,tcp,tls,crypto"]);
+        if hardware.bounded_http {
+            push(&mut args, &["-initial_request_size", "1048576", "-request_size", "8388608"]);
+        }
+        if let Some(auth) = &plan.auth {
+            push(&mut args, &["-headers", &format!("Authorization: {auth}\r\n")]);
+        }
+        push(&mut args, &["-user_agent", super::upstream::UPSTREAM_UA]);
     }
-    if let Some(auth) = &plan.auth {
-        // ponytail: the credential is visible in this host's process list; a loopback
-        // relay through rex would hide it, worth it once a source with auth is shared.
-        push(&mut args, &["-headers", &format!("Authorization: {auth}\r\n")]);
-    }
-    push(&mut args, &["-user_agent", super::upstream::UPSTREAM_UA]);
     if offset > 0 {
         push(&mut args, &["-ss", &offset.to_string()]);
         if !converting {
@@ -596,16 +617,23 @@ pub(crate) fn ffmpeg_args(plan: &Plan, path: Path, hardware: &Hardware, start: i
     let video_filter = video.filter(|video| !video.copy).map(|video| {
         let (w, h) = (video.width, video.height);
         match path {
-            Path::Full if device.is_some() && video.hdr => drawn(format!("scale_vaapi=w={w}:h={h}:format=p010,{OPENCL_TONEMAP}"), "hwupload"),
+            Path::Full if device.is_some() && video.hdr && plan.tone_mapping.is_some() => drawn(format!("scale_vaapi=w={w}:h={h}:format=p010,{}", OPENCL_TONEMAP.replace("tonemap=bt2390", &format!("tonemap={}", plan.tone_mapping.as_deref().unwrap()))), "hwupload"),
             Path::Full if device.is_some() => drawn(format!("scale_vaapi=w={w}:h={h}:format=nv12"), "hwupload"),
             Path::Full if cuda => drawn(format!("scale_cuda=w={w}:h={h}:format=nv12"), "hwupload_cuda"),
             _ => {
                 let mut chain = Vec::new();
+                if path == Path::DecodeOnly {
+                    chain.push(format!("hwdownload,format={}", if video.bit_depth > 8 { "p010le" } else { "nv12" }));
+                }
                 if let Some(subtitles) = &burn_file {
                     chain.push(subtitles.clone());
                 }
-                if video.hdr && hardware.tonemapx {
-                    chain.push("tonemapx=tonemap=bt2390:desat=0:peak=100:t=bt709:m=bt709:p=bt709:format=yuv420p".to_string());
+                if let Some(algorithm) = plan.tone_mapping.as_deref().filter(|_| video.hdr) {
+                    if hardware.tonemapx {
+                        chain.push(format!("tonemapx=tonemap={algorithm}:desat=0:peak=100:t=bt709:m=bt709:p=bt709:format=yuv420p"));
+                    } else {
+                        chain.push(format!("zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap={algorithm}:desat=0:peak=100,zscale=t=bt709:m=bt709:r=tv,format=yuv420p"));
+                    }
                 }
                 if device.is_some() {
                     chain.push("format=nv12".to_string());
@@ -668,7 +696,8 @@ pub(crate) fn ffmpeg_args(plan: &Plan, path: Path, hardware: &Hardware, start: i
         } else {
             push(&mut args, &[
                 "-c:a", audio_encoder(&audio.codec), "-ac", &audio.channels.to_string(), "-b:a", &format!("{}k", audio.bitrate),
-                "-af", "aresample=async=1",
+                "-ar", &audio.sampling_rate.to_string(),
+                "-af", &audio_filter(plan),
             ]);
         }
     }
@@ -745,6 +774,18 @@ pub(crate) fn ffmpeg_args(plan: &Plan, path: Path, hardware: &Hardware, start: i
         &dir.join("%05d.ts").to_string_lossy(),
     ]);
     args
+}
+
+fn audio_filter(plan: &Plan) -> String {
+    let mut filters = Vec::new();
+    if plan.boost_dialog {
+        filters.push("aformat=channel_layouts=stereo,dialoguenhance=enhance=2");
+    }
+    if plan.normalize_loudness {
+        filters.push("loudnorm=I=-16:TP=-1.5:LRA=11");
+    }
+    filters.push("aresample=async=1");
+    filters.join(",")
 }
 
 #[derive(Debug, Default)]
@@ -1016,14 +1057,23 @@ impl Transcoder {
         self.hardware.lock().map(|hardware| hardware.clone()).unwrap_or_else(|_| Hardware::software())
     }
 
+    pub(super) fn with_hardware<T>(&self, read: impl FnOnce(&Hardware) -> T) -> T {
+        match self.hardware.lock() {
+            Ok(hardware) => read(&hardware),
+            Err(_) => read(&Hardware::software()),
+        }
+    }
+
     fn quiet(&self, args: &[String]) -> bool {
-        Command::new(&self.ffmpeg)
-            .args(args)
-            .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status()
-            .is_ok_and(|status| status.success())
+        let Ok(mut child) = Command::new(&self.ffmpeg).args(args).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null()).spawn() else { return false };
+        let deadline = Instant::now() + Duration::from_secs(30);
+        loop {
+            match child.try_wait() {
+                Ok(Some(status)) => return status.success(),
+                Ok(None) if Instant::now() < deadline => thread::sleep(Duration::from_millis(20)),
+                _ => { let _ = child.kill(); let _ = child.wait(); return false; }
+            }
+        }
     }
 
     /// Which device answers, and what it decodes: a frame encoded on it, and for each
@@ -1035,6 +1085,12 @@ impl Transcoder {
         let filters = Command::new(&self.ffmpeg).args(["-hide_banner", "-filters"]).stdin(Stdio::null()).stderr(Stdio::null()).output();
         let filters = filters.map(|output| String::from_utf8_lossy(&output.stdout).to_string()).unwrap_or_default();
         found.tonemapx = filters.contains(" tonemapx ");
+        found.filters = filters.lines().filter_map(|line| line.split_whitespace().nth(1).map(str::to_string)).collect();
+        for (name, filter) in [("loudnorm", "loudnorm=I=-16:TP=-1.5:LRA=11"), ("dialoguenhance", "aformat=channel_layouts=stereo,dialoguenhance=enhance=2")] {
+            if found.filters.contains(name) && !self.quiet(&["-v", "error", "-f", "lavfi", "-i", "sine=frequency=440:duration=0.2", "-af", filter, "-f", "null", "-"].map(str::to_string)) {
+                found.filters.remove(name);
+            }
+        }
         // A frame tagged PQ tonemapped through OpenCL derived from the device: an OpenCL
         // runtime missing or refusing the device fails here, not in a viewer's session.
         if let (Accel::Vaapi(device), true) = (&found.accel, filters.contains(" tonemap_opencl ")) {
@@ -1125,7 +1181,7 @@ impl Transcoder {
                 }
                 let _ = std::fs::remove_file(&sample);
             }
-            return Hardware { accel, decode, encode: true, tonemapx: false, opencl_tonemap: false, bounded_http: false, alpha_subtitles: false };
+            return Hardware { accel, decode, encode: true, ..Hardware::software() };
         }
         Hardware::software()
     }
@@ -1145,11 +1201,11 @@ impl Transcoder {
     }
 
     /// The live conversion a playback session is watching, if any.
-    pub fn for_playback(&self, playback: &str) -> Option<Arc<Session>> {
+    pub fn for_playback(&self, account: i64, playback: &str) -> Option<Arc<Session>> {
         self.sessions()
             .into_iter()
             .rev()
-            .find(|session| session.plan.playback == playback && !session.stopped.load(Ordering::SeqCst))
+            .find(|session| session.plan.account == account && session.plan.playback == playback && !session.stopped.load(Ordering::SeqCst))
     }
 
     /// `start.m3u8`: a fresh session under the client's `session` id (a previous one of
@@ -1188,47 +1244,64 @@ impl Transcoder {
         Ok(session)
     }
 
-    /// A download's conversion: one FFmpeg writing `<root>/download-<id>/media.mp4` to the end,
-    /// unthrottled and never reaped, down the hardware ladder until a path finishes. `progress`
-    /// gets FFmpeg's output seconds, bytes written and speed; `cancel` kills it. Blocks.
-    pub fn convert_file(&self, id: i64, plan: &Plan, cancel: &AtomicBool, progress: impl Fn(f64, u64, f64)) -> Result<PathBuf, String> {
-        let dir = self.root.join(format!("download-{id}"));
+    /// Convert beside the persistent destination, then publish with an atomic rename.
+    pub fn convert_file(&self, output: &std::path::Path, plan: &Plan, cancel: &AtomicBool, progress: impl Fn(f64, u64, f64)) -> Result<PathBuf, String> {
+        let parent = output.parent().ok_or("download output has no parent")?;
+        std::fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+        let dir = parent.join(format!(".rex-download-{}-{}", std::process::id(), self.starts.fetch_add(1, Ordering::SeqCst)));
+        std::fs::create_dir(&dir).map_err(|error| error.to_string())?;
+        let result = (|| {
+            let hardware = self.hardware();
+            let mut failure = "no conversion path".to_string();
+            for path in ladder(plan, &hardware) {
+                if cancel.load(Ordering::SeqCst) { return Err("cancelled".into()); }
+                if let Some(sidecar) = &plan.sidecar {
+                    std::fs::write(dir.join(sidecar.file_name()), &sidecar.content).map_err(|error| error.to_string())?;
+                }
+                let mut command = Command::new(&self.ffmpeg);
+                command.args(ffmpeg_args(plan, path, &hardware, 0, &dir)).stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::null());
+                let mut child = spawn_tied(command).map_err(|error| format!("cannot start transcoder: {error}"))?;
+                let (tx, rx) = std::sync::mpsc::channel();
+                let stdout = child.stdout.take().ok_or("transcoder progress pipe unavailable")?;
+                let reader = thread::spawn(move || {
+                    for line in BufReader::new(stdout).lines().map_while(Result::ok) {
+                        if tx.send(line).is_err() { break; }
+                    }
+                });
+                let deadline = Instant::now() + Duration::from_secs(24 * 60 * 60);
+                let (mut seconds, mut bytes, mut speed) = (0.0, 0, 0.0);
+                loop {
+                    if cancel.load(Ordering::SeqCst) || Instant::now() >= deadline {
+                        let _ = child.kill();
+                        let _ = child.wait();
+                        let _ = reader.join();
+                        return Err(if cancel.load(Ordering::SeqCst) { "cancelled" } else { "conversion deadline exceeded" }.into());
+                    }
+                    match rx.recv_timeout(Duration::from_millis(100)) {
+                        Ok(line) => {
+                            if let Some(value) = line.strip_prefix("out_time_us=") { seconds = value.parse::<f64>().map_or(seconds, |value| value / 1_000_000.0); }
+                            else if let Some(value) = line.strip_prefix("total_size=") { bytes = value.parse().unwrap_or(bytes); }
+                            else if let Some(value) = line.strip_prefix("speed=") { speed = value.trim_end_matches('x').parse().unwrap_or(speed); }
+                            else if line.starts_with("progress=") { progress(seconds, bytes, speed); }
+                        }
+                        Err(std::sync::mpsc::RecvTimeoutError::Timeout) => continue,
+                        Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => break,
+                    }
+                }
+                let _ = reader.join();
+                let status = child.wait().map_err(|error| error.to_string())?;
+                if status.success() {
+                    let partial = dir.join("media.mp4");
+                    std::fs::File::open(&partial).and_then(|file| file.sync_all()).map_err(|error| error.to_string())?;
+                    std::fs::rename(&partial, output).map_err(|error| error.to_string())?;
+                    return Ok(output.to_path_buf());
+                }
+                failure = format!("{path:?} exited {status}");
+            }
+            Err(failure)
+        })();
         let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).map_err(|error| format!("cannot create {}: {error}", dir.display()))?;
-        let hardware = self.hardware();
-        let mut failure = "no conversion path".to_string();
-        for path in ladder(plan, &hardware) {
-            let mut command = Command::new(&self.ffmpeg);
-            command.args(ffmpeg_args(plan, path, &hardware, 0, &dir)).stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::null());
-            let mut child = spawn_tied(command).map_err(|error| format!("cannot start {}: {error}", self.ffmpeg.display()))?;
-            let (mut seconds, mut bytes, mut speed) = (0.0, 0, 0.0);
-            for line in child.stdout.take().map(BufReader::new).into_iter().flat_map(|out| out.lines().map_while(Result::ok)) {
-                if cancel.load(Ordering::SeqCst) {
-                    let _ = child.kill();
-                    break;
-                }
-                if let Some(value) = line.strip_prefix("out_time_us=") {
-                    seconds = value.trim().parse::<f64>().map_or(seconds, |micros| micros / 1_000_000.0);
-                } else if let Some(value) = line.strip_prefix("total_size=") {
-                    bytes = value.trim().parse().unwrap_or(bytes);
-                } else if let Some(value) = line.strip_prefix("speed=") {
-                    speed = value.trim().trim_end_matches('x').parse().unwrap_or(speed);
-                } else if line.starts_with("progress=") {
-                    progress(seconds, bytes, speed);
-                }
-            }
-            let status = child.wait().map_err(|error| error.to_string())?;
-            if cancel.load(Ordering::SeqCst) {
-                let _ = std::fs::remove_dir_all(&dir);
-                return Err("cancelled".to_string());
-            }
-            if status.success() {
-                return Ok(dir.join("media.mp4"));
-            }
-            failure = format!("{path:?} exited {status}");
-            error!("DOWNLOAD {id}: {failure}");
-        }
-        Err(failure)
+        result
     }
 
     /// `stop` / `DELETE /transcode/sessions/{id}`: whether there was such a session.
@@ -1275,9 +1348,9 @@ impl Transcoder {
         });
     }
 
-    pub fn stop_playback(&self, playback: &str) {
+    pub fn stop_playback(&self, account: i64, playback: &str) {
         for session in self.sessions() {
-            if session.plan.playback == playback {
+            if session.plan.account == account && session.plan.playback == playback {
                 self.stop(&session.id);
             }
         }
@@ -1487,7 +1560,7 @@ impl Transcoder {
             "TRANSCODE {} run {run}: {}",
             session.id,
             args.iter()
-                .map(|arg| if arg.starts_with("Authorization:") { "Authorization: <redacted>".to_string() } else { arg.clone() })
+                .map(|arg| if arg.starts_with("Authorization:") { "Authorization: <redacted>".to_string() } else if arg == &session.plan.url { "<source>".into() } else { arg.clone() })
                 .collect::<Vec<_>>()
                 .join(" ")
         );
@@ -1634,7 +1707,11 @@ impl Transcoder {
                     return;
                 }
                 let produced = next > start;
-                let detail = errors.lock().map(|text| text.trim().to_string()).unwrap_or_default();
+                let detail = errors.lock().map(|text| {
+                    let mut text = text.trim().replace(&session.plan.url, "<source>");
+                    if let Some(auth) = &session.plan.auth { text = text.replace(auth, "<redacted>"); }
+                    text
+                }).unwrap_or_default();
                 error!("TRANSCODE {} run {run} on {path:?} exited {code}: {detail}", session.id);
                 if let Ok(mut state) = session.state.lock() {
                     state.exited = Some(code);
@@ -2010,18 +2087,23 @@ pub(crate) fn transcode_session_row(session: &Session, hardware: &Hardware, nest
         row.insert("height".to_string(), json!(video.height));
     }
     let path = session.path();
-    let device = video.is_some_and(|video| !video.copy) && hardware.accel != Accel::None && path != Some(Path::Software);
+    let device = video.is_some_and(|video| !video.copy) && hardware.accel != Accel::None && matches!(path, Some(Path::Full | Path::EncodeOnly | Path::DecodeOnly));
     row.insert("transcodeHwRequested".to_string(), json!(device));
     // Unmeasured: no reference here has a device. The names are the ones PMS's binary
     // holds for these fields; Plex Web prints "(hw)" when `transcodeHwEncoding` is set.
     if device {
         let name = hardware.accel.name();
-        if path == Some(Path::Full) {
+        if matches!(path, Some(Path::Full | Path::DecodeOnly)) {
             row.insert("transcodeHwDecoding".to_string(), json!(name));
         }
-        row.insert("transcodeHwEncoding".to_string(), json!(name));
+        if matches!(path, Some(Path::Full | Path::EncodeOnly)) {
+            row.insert("transcodeHwEncoding".to_string(), json!(name));
+        }
     }
     row.insert("transcodeHwFullPipeline".to_string(), json!(device && path == Some(Path::Full)));
+    row.insert("boostDialog".to_string(), json!(plan.boost_dialog && audio.is_some_and(|audio| !audio.copy)));
+    row.insert("normalizeLoudness".to_string(), json!(plan.normalize_loudness && audio.is_some_and(|audio| !audio.copy)));
+    row.insert("toneMapping".to_string(), json!(plan.tone_mapping.is_some() && video.is_some_and(|video| video.hdr && !video.copy)));
     row.insert("timeStamp".to_string(), json!(session.started));
     row.insert("maxOffsetAvailable".to_string(), json!((max * 1000.0).round() / 1000.0));
     row.insert("minOffsetAvailable".to_string(), json!((min * 1000.0).round() / 1000.0));
@@ -2110,10 +2192,43 @@ fn number_of(value: Option<&Value>) -> Option<f64> {
         Value::Number(number) => number.as_f64(),
         Value::String(text) => text.trim().parse::<f64>().ok(),
         _ => None,
-    }
+    }.filter(|value| value.is_finite())
 }
 
 impl Runtime {
+    pub(super) fn project_audio_capabilities(&self, row: &mut Value) {
+        let can_normalize = self.transcoder.as_ref().is_some_and(|transcoder| transcoder.with_hardware(Hardware::can_normalize_loudness));
+        for media in row.get_mut("Media").and_then(Value::as_array_mut).into_iter().flatten() {
+            for part in media.get_mut("Part").and_then(Value::as_array_mut).into_iter().flatten() {
+                for stream in part.get_mut("Stream").and_then(Value::as_array_mut).into_iter().flatten() {
+                    if stream.get("streamType").and_then(Value::as_i64) == Some(2) {
+                        stream["canNormalizeLoudness"] = json!(can_normalize);
+                    }
+                }
+            }
+        }
+    }
+
+    pub(super) fn processing_requested(&self, query: &HashMap<String, String>) -> bool {
+        // Android TV sends boostDialog=1 even to servers without an encoder.
+        // Unadvertised processing options must not break otherwise playable media.
+        ["boostDialog", "normalizeLoudness"].iter().any(|key| query.get(*key).is_some_and(|value| matches!(value.as_str(), "1" | "true")))
+            && self.transcoder.as_ref().is_some_and(|transcoder| transcoder.with_hardware(|hardware|
+                hardware.can_normalize_loudness() && hardware.can_boost_dialog()))
+    }
+
+    pub(super) fn stream_bitrate_limit(&self, query: &HashMap<String, String>) -> Option<i64> {
+        (query.get("location").map(String::as_str) == Some("wan"))
+            .then(|| number_of(self.server_pref("WanPerStreamMaxUploadRate").as_ref()).map(|rate| rate as i64))
+            .flatten().filter(|rate| *rate > 0).map(|rate| rate.min(1_000_000))
+    }
+
+    pub(super) fn bandwidth_conversion_required(&self, query: &HashMap<String, String>, media: &Value) -> bool {
+        let Some(limit) = self.stream_bitrate_limit(query) else { return false };
+        let media = crate::catalog::unpacked(media);
+        number_of(media.get("bitrate")).is_none_or(|bitrate| bitrate <= 0.0 || bitrate > limit as f64)
+    }
+
     /// The conversion this request asks for, or `None` when rex cannot make one: no
     /// transcoder, not HLS, no conversion target in the profile, or no source to read.
     pub(super) fn transcode_plan(
@@ -2125,7 +2240,19 @@ impl Runtime {
         profile_name: &str,
         protocol: &str,
     ) -> Option<Plan> {
-        let tonemapx = self.transcoder.as_ref()?.hardware().tonemapx;
+        let hardware = self.transcoder.as_ref()?.hardware();
+        let tonemapx = hardware.tonemapx;
+        let enabled = |name: &str| self.server_pref(name).as_ref().is_none_or(truthy);
+        let tone_mapping = if enabled("TranscoderToneMapping") {
+            let algorithm = self.server_pref("TranscoderToneMappingAgorithm").as_ref().map(string_value).unwrap_or_else(|| "hable".into());
+            if !matches!(algorithm.as_str(), "linear" | "gamma" | "clip" | "reinhard" | "hable" | "mobius" | "bt2390") { return None; }
+            if algorithm == "bt2390" && !tonemapx { return None; }
+            Some(algorithm)
+        } else { None };
+        let requested = |name: &str| query.get(name).is_some_and(|value| matches!(value.as_str(), "1" | "true"));
+        let boost_dialog = requested("boostDialog");
+        let normalize_loudness = requested("normalizeLoudness");
+        if (boost_dialog && !hardware.can_boost_dialog()) || (normalize_loudness && !hardware.can_normalize_loudness()) { return None; }
         let media = crate::catalog::unpacked(media);
         let media = media.as_ref();
         let wire = Protocol::parse(protocol)?;
@@ -2148,6 +2275,7 @@ impl Runtime {
         let file = part.get("file").and_then(Value::as_str).filter(|file| !file.is_empty())?;
         let (source, path) = self.part_source(row, file)?;
         let (url, auth) = source.ffmpeg_input(&path);
+        if auth.as_ref().is_some_and(|auth| auth.contains(['\r', '\n'])) { return None; }
         let target = profile
             .get("targets")
             .and_then(Value::as_array)
@@ -2184,6 +2312,8 @@ impl Runtime {
             .iter()
             .find(|stream| kind(stream) == Some(2) && stream.get("selected").is_some_and(truthy))
             .or_else(|| streams.iter().find(|stream| kind(stream) == Some(2)));
+        if (boost_dialog || normalize_loudness) && audio_stream.is_none() { return None; }
+        if streams.iter().any(|stream| stream.get("bitrate").and_then(Value::as_i64).is_some_and(|rate| !(0..=1_000_000).contains(&rate))) { return None; }
         let flag = |name: &str| query.get(name).map(String::as_str) != Some("0");
         // An embedded image subtitle is burned in the conversion's own pass; a text one is read
         // out of the release first (`text_burn`), since FFmpeg's `subtitles` filter reads its
@@ -2243,17 +2373,25 @@ impl Runtime {
                 let content = stream.get("_content").and_then(Value::as_str)?.to_string();
                 (fits && matches!(format.as_str(), "srt" | "ass" | "ssa")).then_some(Sidecar { id, format, content })
             });
-        let max_kbps = query.get("maxVideoBitrate").and_then(|value| value.parse::<i64>().ok()).filter(|value| *value > 0);
+        if let Some(value) = query.get("maxVideoBitrate") {
+            if !value.parse::<i64>().is_ok_and(|value| (0..=1_000_000).contains(&value)) { return None; }
+        }
+        let max_kbps = query.get("maxVideoBitrate").and_then(|value| value.parse::<i64>().ok()).filter(|value| *value > 0)
+            .into_iter().chain(self.stream_bitrate_limit(query)).min();
         let cap = query.get("videoResolution").and_then(|value| {
             let (w, h) = value.split_once('x')?;
-            Some((w.trim().parse::<f64>().ok()?, h.trim().parse::<f64>().ok()?))
+            let (w, h) = (w.trim().parse::<f64>().ok()?, h.trim().parse::<f64>().ok()?);
+            (w.is_finite() && h.is_finite() && (2.0..=16384.0).contains(&w) && (2.0..=16384.0).contains(&h)).then_some((w, h))
         });
-        let audio = audio_stream.map(|stream| {
+        if query.contains_key("videoResolution") && cap.is_none() { return None; }
+        if audio_stream.is_some_and(|stream| stream.get("channels").and_then(Value::as_i64).is_some_and(|channels| !(1..=64).contains(&channels))) { return None; }
+        if video_stream.is_some_and(|stream| ["width", "height"].iter().any(|name| number_of(stream.get(*name)).is_some_and(|size| !(2.0..=16384.0).contains(&size)))) { return None; }
+        let mut audio = audio_stream.map(|stream| {
             let codec = stream.get("codec").map(string_value).unwrap_or_default().to_ascii_lowercase();
             let channels = stream.get("channels").and_then(Value::as_i64).unwrap_or(2).max(1);
             let source_bitrate = stream.get("bitrate").and_then(Value::as_i64).unwrap_or(0);
-            let sampling_rate = stream.get("samplingRate").and_then(Value::as_i64).filter(|rate| *rate > 0).unwrap_or(48000);
-            let copy = flag("directStreamAudio")
+            let sampling_rate = stream.get("samplingRate").and_then(Value::as_i64).filter(|rate| (8000..=192000).contains(rate)).unwrap_or(48000);
+            let copy = !boost_dialog && !normalize_loudness && flag("directStreamAudio")
                 && audio_codecs.contains(&codec)
                 && decision::codec_limitation(profile, "VideoAudioCodec", &codec, media).is_none();
             if copy {
@@ -2280,7 +2418,9 @@ impl Runtime {
                     }
                     allowed -= 1;
                 }
-                let channels = allowed.min(6);
+                // dialoguenhance extracts correlated stereo dialogue; do not label
+                // its stereo downmix as preserved multichannel surround.
+                let channels = allowed.min(if boost_dialog { 2 } else { 6 });
                 AudioPlan {
                     index: stream.get("index").and_then(Value::as_i64).unwrap_or(-1),
                     copy: false,
@@ -2292,17 +2432,32 @@ impl Runtime {
                 }
             }
         });
+        // Reserve muxing headroom rather than raising small limits to a fixed minimum.
+        let max_kbps = max_kbps.map(|max| max.saturating_mul(95) / 100);
+        if let Some(max) = max_kbps {
+            if max < if video_stream.is_some() { 96 } else { 32 } { return None; }
+            if let Some(audio) = &mut audio {
+                let budget = if video_stream.is_some() { (max / 3).clamp(32, 192) } else { max.min(192) };
+                if audio.bitrate <= 0 || audio.bitrate > budget || !matches!(audio.codec.as_str(), "aac" | "ac3" | "eac3" | "mp3" | "opus") {
+                    let codec = audio_codecs.iter().find(|codec| matches!(codec.as_str(), "aac" | "mp3" | "opus"))?;
+                    audio.codec = codec.clone();
+                    audio.copy = false;
+                    audio.channels = audio.channels.min(2);
+                    audio.bitrate = budget;
+                }
+            }
+        }
         let video = video_stream.map(|stream| {
             let codec = stream.get("codec").map(string_value).unwrap_or_default().to_ascii_lowercase();
-            let width = number_of(stream.get("width")).or_else(|| number_of(media.get("width"))).unwrap_or(1920.0);
-            let height = number_of(stream.get("height")).or_else(|| number_of(media.get("height"))).unwrap_or(1080.0);
+            let width = number_of(stream.get("width")).or_else(|| number_of(media.get("width"))).filter(|size| (2.0..=16384.0).contains(size)).unwrap_or(1920.0);
+            let height = number_of(stream.get("height")).or_else(|| number_of(media.get("height"))).filter(|size| (2.0..=16384.0).contains(size)).unwrap_or(1080.0);
             let bit_depth = stream.get("bitDepth").and_then(Value::as_i64).unwrap_or(8);
-            let frame_rate = number_of(stream.get("frameRate")).filter(|rate| *rate > 0.0).unwrap_or(23.976);
+            let frame_rate = number_of(stream.get("frameRate")).filter(|rate| (1.0..=240.0).contains(rate)).unwrap_or(23.976);
             let audio_bitrate = audio_stream.and_then(|stream| stream.get("bitrate").and_then(Value::as_i64)).unwrap_or(0);
             let source_bitrate = stream
                 .get("bitrate")
                 .and_then(Value::as_i64)
-                .or_else(|| media.get("bitrate").and_then(Value::as_i64).map(|total| (total - audio_bitrate).max(0)))
+                .or_else(|| media.get("bitrate").and_then(Value::as_i64).map(|total| total.saturating_sub(audio_bitrate).max(0)))
                 .unwrap_or(0);
             let fits = cap.is_none_or(|(w, h)| width <= w && height <= h);
             // A burned subtitle is part of the picture, so the picture is converted.
@@ -2312,7 +2467,7 @@ impl Runtime {
                 && flag("directStream")
                 && video_codecs.contains(&codec)
                 && decision::codec_limitation(profile, "VideoCodec", &codec, media).is_none()
-                && max_kbps.is_none_or(|max| source_bitrate <= max)
+                && max_kbps.is_none_or(|max| source_bitrate > 0 && source_bitrate.saturating_add(audio.as_ref().map_or(0, |audio| audio.bitrate)) <= max)
                 && fits;
             let (out_width, out_height) = match cap {
                 Some((w, h)) if !copy && !fits => {
@@ -2325,7 +2480,7 @@ impl Runtime {
             let bitrate = if copy {
                 source_bitrate
             } else if let Some(max) = max_kbps {
-                (max - audio_out).max(300)
+                max - audio_out
             } else if source_bitrate > 0 {
                 // An H.264 encode needs more bits than the HEVC/AV1/VP9 it replaces.
                 let factor = if codec == "h264" { 1.1 } else { 1.5 };
@@ -2357,9 +2512,10 @@ impl Runtime {
         }
         // Without tonemapx a re-encoded profile 5 is green, worse than the reference's refusal.
         let profile_5 = video_stream.and_then(|stream| number_of(stream.get("DOVIProfile"))) == Some(5.0);
-        if profile_5 && !tonemapx && video.as_ref().is_some_and(|video| !video.copy) {
+        if profile_5 && (!tonemapx || tone_mapping.is_none()) && video.as_ref().is_some_and(|video| !video.copy) {
             return None;
         }
+        if tone_mapping.is_some() && !hardware.supports_tone_mapping() && video.as_ref().is_some_and(|video| video.hdr && !video.copy) { return None; }
         Some(Plan {
             rating_key: key.to_string(),
             url,
@@ -2379,8 +2535,14 @@ impl Runtime {
             text_burn,
             incomplete_segments: query.get("X-Plex-Incomplete-Segments").map(String::as_str) == Some("1")
                 || headers.get("x-plex-incomplete-segments").map(String::as_str) == Some("1"),
+            account: self.viewer.id,
             playback: self.playback_session(query, headers),
             protocol: wire,
+            hardware_decode: enabled("HardwareAcceleratedCodecs"),
+            hardware_encode: enabled("HardwareAcceleratedCodecs") && enabled("HardwareAcceleratedEncoders"),
+            tone_mapping,
+            boost_dialog: boost_dialog && audio_stream.is_some(),
+            normalize_loudness: normalize_loudness && audio_stream.is_some(),
         })
     }
 
@@ -2414,7 +2576,8 @@ impl Runtime {
         let encoding = transcoder
             .sessions()
             .iter()
-            .filter(|session| !session.stopped.load(Ordering::SeqCst) && session.plan.playback != plan.playback)
+            .filter(|session| !session.stopped.load(Ordering::SeqCst)
+                && (session.plan.account != plan.account || session.plan.playback != plan.playback))
             .filter(|session| session.plan.video.as_ref().is_some_and(|video| !video.copy))
             .count();
         encoding as i64 >= cap
@@ -2516,6 +2679,11 @@ impl Runtime {
                             stream.insert("bitrate".to_string(), json!(video.bitrate));
                             stream.insert("width".to_string(), json!(video.width));
                             stream.insert("height".to_string(), json!(video.height));
+                            if video.hdr && plan.tone_mapping.is_some() {
+                                for name in ["DOVIPresent", "DOVIProfile", "DOVILevel", "DOVIBLPresent", "DOVIELPresent", "DOVIRPUPresent", "DOVIBLCompatID", "HDR10PlusPresent"] { stream.shift_remove(name); }
+                                for (name, value) in [("colorTrc", "bt709"), ("colorPrimaries", "bt709"), ("colorSpace", "bt709")] { stream.insert(name.into(), json!(value)); }
+                            }
+                            stream.insert("bitDepth".into(), json!(8));
                         }
                         stream.insert("decision".to_string(), json!(if video.copy { "copy" } else { "transcode" }));
                     }
@@ -2524,6 +2692,8 @@ impl Runtime {
                             stream.insert("codec".to_string(), json!(audio.codec));
                             stream.insert("channels".to_string(), json!(audio.channels));
                             stream.insert("bitrate".to_string(), json!(audio.bitrate));
+                            stream.insert("boostDialog".to_string(), json!(plan.boost_dialog));
+                            stream.insert("normalizeLoudness".to_string(), json!(plan.normalize_loudness));
                         }
                         stream.insert("decision".to_string(), json!(if audio.copy { "copy" } else { "transcode" }));
                     }
@@ -2595,7 +2765,7 @@ impl Runtime {
                     Err(response) => return Some(response),
                 };
                 let playback = self.playback_session(query, &request.headers);
-                if !self.decided_sessions.contains(&(playback.clone(), key.clone())) {
+                if !self.decided_sessions.contains(&(sessions::account_session_id(self.viewer.id, &playback), key.clone())) {
                     return Some(Response::error(400, "rex: no decision for this session"));
                 }
                 let profile = ["X-Plex-Client-Profile-Name", "X-Plex-Platform", "X-Plex-Device"]
@@ -2616,6 +2786,9 @@ impl Runtime {
                 if self.over_conversion_cap(&plan) {
                     return Some(Response::error(503, "rex: the simultaneous conversion limit is reached"));
                 }
+                if let Err(error) = self.reserve_stream_admission(query, &request.headers, self.playback_lan(&request.headers), plan.bitrate()) {
+                    return Some(Response::error(503, error.reason()));
+                }
                 let id = query.get("session").filter(|id| !id.is_empty()).cloned().unwrap_or_else(|| playback.clone());
                 let (manifest, content_type) = match plan.protocol {
                     Protocol::Hls => (plan.master_playlist(&id), "application/vnd.apple.mpegurl"),
@@ -2629,6 +2802,7 @@ impl Runtime {
                     plan.audio.as_ref().map_or("none".to_string(), |audio| if audio.copy { format!("copy {}", audio.codec) } else { format!("{}->{} {}ch", audio.source_codec, audio.codec, audio.channels) }),
                 );
                 if let Err(error) = transcoder.start(&id, plan) {
+                    self.release_stream_admission(self.viewer.id, &playback);
                     error!("TRANSCODE {id}: {error}");
                     return Some(Response::error(500, "rex: transcode failed"));
                 }
@@ -2698,7 +2872,16 @@ impl Runtime {
             }
             "ping" | "stop" => {
                 let id = query.get("session")?.clone();
+                let playback = transcoder.session(&id).map(|session| (session.plan.account, session.plan.playback.clone()));
                 let known = if leaf == "ping" { transcoder.ping(&id) } else { transcoder.stop(&id) };
+                if leaf == "stop" {
+                    if let Some((account, playback)) = playback {
+                        self.release_stream_admission(account, &playback);
+                        if let Some(entry) = self.sessions.get_mut(&sessions::account_session_id(account, &playback)) {
+                            entry.player.insert("state".into(), json!("stopped"));
+                        }
+                    }
+                }
                 Some(if known { Response::empty(200) } else { Response::error(404, "rex: not found") })
             }
             _ => None,
@@ -2742,15 +2925,15 @@ impl Runtime {
     /// the `TranscodeSession`, a `Bandwidth` of ~1.05x the OUTPUT bitrate labelled with
     /// the output's resolution, and a conversion that died as `terminationCode 4006`.
     /// A `stopped` beat ends the conversion.
-    pub(super) fn timeline_transcode(&self, playback: &str, key: &str, state: &str, fields: &mut Map<String, Value>) {
+    pub(super) fn timeline_transcode(&self, account: i64, playback: &str, key: &str, state: &str, fields: &mut Map<String, Value>) {
         let Some(transcoder) = self.transcoder.as_ref() else {
             return;
         };
         if state == "stopped" {
-            transcoder.stop_playback(playback);
+            transcoder.stop_playback(account, playback);
             return;
         }
-        let Some(session) = transcoder.for_playback(playback).filter(|session| session.plan.rating_key == key) else {
+        let Some(session) = transcoder.for_playback(account, playback).filter(|session| session.plan.rating_key == key) else {
             return;
         };
         session.touch();
@@ -2770,11 +2953,11 @@ impl Runtime {
 
     /// A Now Playing row whose player is watching a conversion: the converted Media and
     /// the `TranscodeSession` after `Session`, as the reference lists it.
-    pub(super) fn session_transcode(&self, playback: &str, key: &str, object: &mut Map<String, Value>) {
+    pub(super) fn session_transcode(&self, account: i64, playback: &str, key: &str, object: &mut Map<String, Value>) {
         let Some(transcoder) = self.transcoder.as_ref() else {
             return;
         };
-        let Some(session) = transcoder.for_playback(playback).filter(|session| session.plan.rating_key == key) else {
+        let Some(session) = transcoder.for_playback(account, playback).filter(|session| session.plan.rating_key == key) else {
             return;
         };
         if let Some(media) = object.get("Media").and_then(Value::as_array).and_then(|rows| rows.first()).cloned() {
@@ -2820,8 +3003,14 @@ mod tests {
             sidecar: None,
             text_burn: None,
             incomplete_segments: true,
+            account: accounts::OWNER,
             playback: "p".into(),
             protocol: Protocol::Hls,
+            hardware_decode: true,
+            hardware_encode: true,
+            tone_mapping: Some("bt2390".into()),
+            boost_dialog: false,
+            normalize_loudness: false,
         }
     }
 
@@ -2935,7 +3124,7 @@ mod tests {
 
     #[test]
     fn the_device_path_keeps_frames_on_the_device() {
-        let hardware = Hardware { accel: Accel::Vaapi("/dev/dri/renderD128".into()), decode: HashSet::from(["hevc".to_string()]), encode: true, tonemapx: true, opencl_tonemap: false, bounded_http: false, alpha_subtitles: false };
+        let hardware = Hardware { accel: Accel::Vaapi("/dev/dri/renderD128".into()), decode: HashSet::from(["hevc".to_string()]), encode: true, tonemapx: true, ..Hardware::software() };
         let video_plan = plan(false, 60_000);
         assert_eq!(ladder(&video_plan, &hardware), vec![Path::Full, Path::EncodeOnly, Path::Software]);
         let full = ffmpeg_args(&video_plan, Path::Full, &hardware, 0, std::path::Path::new("/tmp/x")).join(" ");
@@ -2954,14 +3143,15 @@ mod tests {
         hdr.video.as_mut().unwrap().hdr = true;
         assert_eq!(ladder(&hdr, &hardware)[0], Path::EncodeOnly);
         assert!(ffmpeg_args(&hdr, Path::EncodeOnly, &hardware, 0, std::path::Path::new("/tmp/x")).join(" ").contains("tonemapx="));
-        // Upstream FFmpeg has no tonemapx: the conversion goes on without it.
+        // Upstream uses the real zscale/tonemap pipeline, never untonemapped success.
         let upstream = Hardware { tonemapx: false, ..hardware.clone() };
-        assert!(!ffmpeg_args(&hdr, Path::EncodeOnly, &upstream, 0, std::path::Path::new("/tmp/x")).join(" ").contains("tonemapx"));
+        let args = ffmpeg_args(&hdr, Path::EncodeOnly, &upstream, 0, std::path::Path::new("/tmp/x")).join(" ");
+        assert!(args.contains("zscale=t=linear") && args.contains("tonemap=tonemap=bt2390"));
     }
 
     #[test]
     fn hdr_stays_on_the_device_where_opencl_tonemaps() {
-        let hardware = Hardware { accel: Accel::Vaapi("/dev/dri/renderD128".into()), decode: HashSet::from(["hevc".to_string()]), encode: true, tonemapx: true, opencl_tonemap: true, bounded_http: false, alpha_subtitles: false };
+        let hardware = Hardware { accel: Accel::Vaapi("/dev/dri/renderD128".into()), decode: HashSet::from(["hevc".to_string()]), encode: true, tonemapx: true, opencl_tonemap: true, ..Hardware::software() };
         let mut hdr = plan(false, 60_000);
         hdr.video.as_mut().unwrap().hdr = true;
         // The CPU's tonemapx stays the step down when the device path fails.
@@ -3050,7 +3240,7 @@ mod tests {
         assert!(start.contains("-vf subtitles=f='C\\:/rex/s/sidecar.srt',scale="), "{start}");
         // libass draws on CPU frames: the device decodes and scales, the frame comes down
         // for the text and goes back up for the encoder.
-        let hardware = Hardware { accel: Accel::Vaapi("/dev/dri/renderD128".into()), decode: HashSet::from(["h264".to_string(), "hevc".to_string()]), encode: true, tonemapx: true, opencl_tonemap: false, bounded_http: false, alpha_subtitles: false };
+        let hardware = Hardware { accel: Accel::Vaapi("/dev/dri/renderD128".into()), decode: HashSet::from(["h264".to_string(), "hevc".to_string()]), encode: true, tonemapx: true, ..Hardware::software() };
         assert_eq!(ladder(&ts, &hardware)[0], Path::Full);
         let full = ffmpeg_args(&ts, Path::Full, &hardware, 5, dir).join(" ");
         assert!(full.contains("-vf scale_vaapi=w=1280:h=720:format=nv12,hwdownload,format=nv12,setpts=PTS+10/TB,subtitles=f='C\\:/rex/s/sidecar.srt',setpts=PTS-10/TB,format=nv12,hwupload -c:v h264_vaapi"), "{full}");
@@ -3074,11 +3264,11 @@ mod tests {
         let after = ffmpeg_args(&ts, Path::Software, &Hardware::software(), 0, &dir).join(" ");
         assert!(after.contains(&format!("-vf subtitles=f='{file}',scale=")), "{after}");
         assert!(after.contains("-sn") && after.matches(" -i ").count() == 1, "{after}");
-        let cuda = Hardware { accel: Accel::Cuda, decode: HashSet::from(["hevc".to_string()]), encode: true, tonemapx: false, opencl_tonemap: false, bounded_http: false, alpha_subtitles: false };
+        let cuda = Hardware { accel: Accel::Cuda, decode: HashSet::from(["hevc".to_string()]), encode: true, ..Hardware::software() };
         let full = ffmpeg_args(&ts, Path::Full, &cuda, 0, &dir).join(" ");
         assert!(full.contains(&format!("scale_cuda=w=1280:h=720:format=nv12,hwdownload,format=nv12,subtitles=f='{file}',format=nv12,hwupload_cuda")), "{full}");
         // With jellyfin-ffmpeg's canvas the frames stay on the device, the text laid over them.
-        let vaapi = Hardware { accel: Accel::Vaapi("/dev/dri/renderD128".into()), decode: HashSet::from(["hevc".to_string()]), encode: true, tonemapx: true, opencl_tonemap: false, bounded_http: false, alpha_subtitles: true };
+        let vaapi = Hardware { accel: Accel::Vaapi("/dev/dri/renderD128".into()), decode: HashSet::from(["hevc".to_string()]), encode: true, tonemapx: true, alpha_subtitles: true, ..Hardware::software() };
         let overlay = ffmpeg_args(&ts, Path::Full, &vaapi, 5, &dir).join(" ");
         assert!(overlay.contains(&format!(
             "-filter_complex [0:0]scale_vaapi=w=1280:h=720:format=nv12[main];alphasrc=s=1280x720:r=10:start=0,format=yuva420p,setpts=PTS+10/TB,subtitles=f='{file}':alpha=1:sub2video=1,setpts=PTS-10/TB,hwupload[sub];[main][sub]overlay_vaapi=eof_action=pass:repeatlast=0[v] -map [v] -map 0:1"
@@ -3092,7 +3282,7 @@ mod tests {
 
     #[test]
     fn a_burned_subtitle_is_overlaid_before_the_scale_and_upload() {
-        let hardware = Hardware { accel: Accel::Vaapi("/dev/dri/renderD128".into()), decode: HashSet::from(["hevc".to_string()]), encode: true, tonemapx: true, opencl_tonemap: false, bounded_http: false, alpha_subtitles: false };
+        let hardware = Hardware { accel: Accel::Vaapi("/dev/dri/renderD128".into()), decode: HashSet::from(["hevc".to_string()]), encode: true, tonemapx: true, ..Hardware::software() };
         let mut burned = plan(false, 60_000);
         burned.subtitle = Some(3);
         assert_eq!(ladder(&burned, &hardware), vec![Path::EncodeOnly, Path::Software]);
@@ -3101,6 +3291,54 @@ mod tests {
         assert!(!soft.contains("-vf ") && !soft.contains("-map 0:0"), "{soft}");
         let upload = ffmpeg_args(&burned, Path::EncodeOnly, &hardware, 0, std::path::Path::new("/tmp/x")).join(" ");
         assert!(upload.contains("overlay=eof_action=pass,format=nv12,hwupload,scale_vaapi"), "{upload}");
+    }
+
+    #[test]
+    fn hardware_preferences_control_the_exercised_paths() {
+        let hw = Hardware { accel: Accel::Vaapi("/dev/dri/renderD128".into()), encode: true, decode: HashSet::from(["hevc".into()]), ..Hardware::software() };
+        let mut p = plan(false, 10_000);
+        p.hardware_decode = false;
+        assert_eq!(ladder(&p, &hw), vec![Path::Software]);
+        p.hardware_decode = true;
+        p.hardware_encode = false;
+        assert_eq!(ladder(&p, &hw), vec![Path::DecodeOnly, Path::Software]);
+        let args = ffmpeg_args(&p, Path::DecodeOnly, &hw, 0, std::path::Path::new("/tmp/x")).join(" ");
+        assert!(args.contains("-hwaccel vaapi") && args.contains("hwdownload,format=nv12") && args.contains("-c:v libx264"));
+        p.video.as_mut().unwrap().hdr = true;
+        p.tone_mapping = None;
+        let args = ffmpeg_args(&p, Path::Software, &hw, 0, std::path::Path::new("/tmp/x")).join(" ");
+        assert!(!args.contains("tonemap"));
+        assert!(!Hardware::software().can_normalize_loudness());
+        assert!(!Hardware::software().can_boost_dialog());
+    }
+
+    #[test]
+    #[ignore = "requires REX_TRANSCODER pointing to FFmpeg with AAC and lavfi"]
+    fn converted_download_is_atomic_at_the_requested_destination() {
+        let ffmpeg = PathBuf::from(std::env::var("REX_TRANSCODER").expect("set REX_TRANSCODER"));
+        let root = std::env::temp_dir().join(format!("rex-atomic-output-{}", std::process::id()));
+        std::fs::create_dir_all(&root).unwrap();
+        let source = root.join("source.wav");
+        let status = Command::new(&ffmpeg).args(["-v", "error", "-y", "-f", "lavfi", "-i", "sine=frequency=440:duration=1"]).arg(&source).status().unwrap();
+        assert!(status.success());
+        let transcoder = Transcoder {
+            ffmpeg, root: root.join("ephemeral"), hardware: Mutex::new(Hardware::software()),
+            sessions: Mutex::new(HashMap::new()), budgets: Mutex::new(HashMap::new()),
+            starts: std::sync::atomic::AtomicU64::new(0),
+        };
+        let mut p = plan(false, 1000);
+        p.url = source.to_string_lossy().into_owned();
+        p.video = None;
+        p.audio.as_mut().unwrap().index = 0;
+        p.protocol = Protocol::File;
+        let output = root.join("persistent").join("chosen.mp4");
+        assert_eq!(transcoder.convert_file(&output, &p, &AtomicBool::new(false), |_, _, _| {}).unwrap(), output);
+        let before = std::fs::read(&output).unwrap();
+        assert!(before.len() > 100);
+        assert!(transcoder.convert_file(&output, &p, &AtomicBool::new(true), |_, _, _| {}).is_err());
+        assert_eq!(std::fs::read(&output).unwrap(), before);
+        assert!(!transcoder.root.exists(), "conversion must not depend on startup-cleared transcode root");
+        std::fs::remove_dir_all(root).unwrap();
     }
 
     #[test]

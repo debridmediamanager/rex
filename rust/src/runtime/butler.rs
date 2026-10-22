@@ -341,6 +341,21 @@ impl Runtime {
         let shows = count(&["show"]);
         for (index, name) in names.iter().enumerate() {
             let index = index + 1;
+            let processing = match name.as_str() {
+                "GenerateChapterThumbs" => Some(analysis::Options { chapters: true, ..Default::default() }),
+                "GenerateMediaIndexFiles" => Some(analysis::Options { previews: true, ..Default::default() }),
+                "DeepMediaAnalysis" => Some(analysis::Options { markers: true, ..Default::default() }),
+                _ => None,
+            };
+            if let Some(options) = processing {
+                let keys = self.catalog.hot().lazy()
+                    .filter(|row| matches!(row.get("type").and_then(Value::as_str), Some("movie" | "episode")))
+                    .filter_map(|row| key_of(&row)).collect::<Vec<_>>();
+                let queued = self.request_analysis(&keys, options);
+                self.notify_progress(&format!("Queued {queued} media analysis job(s)."));
+                info!("BUTLER queued {name}: {queued} job(s)");
+                continue;
+            }
             let inner = butler_messages(name).1;
             let runs = if name == "BackupDatabase" { 2 } else { 1 };
             for _run in 0..runs {

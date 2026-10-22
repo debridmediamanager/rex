@@ -31,6 +31,9 @@ pub(crate) struct SessionEntry {
     pub paused_since: f64,
     /// The account playing it (`accounts.rs`).
     pub account: i64,
+    /// Actual media bitrate, separate from Plex's displayed bandwidth estimate.
+    pub bitrate_kbps: i64,
+    pub lan: bool,
 }
 
 /// `Sessions.PLAYER_FROM`: header (or query parameter) -> the `Player` field it fills.
@@ -161,19 +164,37 @@ fn round_half_even(value: f64) -> i64 {
     rounded as i64
 }
 
+/// Internal playback identity; never expose this key in the Plex wire representation.
+pub(super) fn account_session_id(account: i64, identifier: &str) -> String {
+    format!("{account}\0{identifier}")
+}
+
 /// Who a response's bytes are counted against: `_count_bytes`'s identifier (header,
 /// else the query's LAST value), device name and platform (header, else the query's
 /// first value), and whether the peer is on the LAN.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub(super) struct ByteOwner {
     pub identifier: String,
     pub name: String,
     pub platform: String,
+    pub account: i64,
     pub lan: bool,
 }
 
+impl Default for ByteOwner {
+    fn default() -> Self {
+        Self {
+            identifier: String::new(),
+            name: String::new(),
+            platform: String::new(),
+            account: accounts::OWNER,
+            lan: false,
+        }
+    }
+}
+
 impl ByteOwner {
-    pub(super) fn of(request: &Request) -> Self {
+    pub(super) fn of(request: &Request, account: i64) -> Self {
         let (_, raw_query) = split_target(&request.target);
         let pairs = parse_query(&raw_query);
         let header = |name: &str| {
@@ -200,6 +221,7 @@ impl ByteOwner {
             .unwrap_or_default();
         Self {
             identifier,
+            account,
             name: header("X-Plex-Device-Name")
                 .or_else(|| first("X-Plex-Device-Name"))
                 .unwrap_or_default(),
@@ -278,13 +300,13 @@ impl Runtime {
         id
     }
 
-    /// `Sessions.record_bytes`: count a response against its (device, lan) bucket for
+    /// `Sessions.record_bytes`: count a response against its (device, lan, account) bucket for
     /// this second.  A zero count still registers the device and its name.
     pub(super) fn record_bytes(&mut self, owner: &ByteOwner, count: u64) {
         let device = self.note_device(&owner.identifier, &owner.name, &owner.platform);
         self.bandwidth_bytes = self.bandwidth_bytes.saturating_add(count);
         let second = now();
-        let key = (device, owner.lan);
+        let key = (device, owner.lan, owner.account);
         let index = match self.byte_buckets.iter().position(|(known, _)| *known == key) {
             Some(index) => index,
             None => {
@@ -318,11 +340,11 @@ impl Runtime {
                 .flat_map(|span| self.bandwidth_series(Some(span), since))
                 .collect();
         };
-        let mut rows: Vec<((i64, bool, i64), i64)> = Vec::new();
-        let mut found: HashMap<(i64, bool, i64), usize> = HashMap::new();
+        let mut rows: Vec<((i64, bool, i64, i64), i64)> = Vec::new();
+        let mut found: HashMap<(i64, bool, i64, i64), usize> = HashMap::new();
         // An entry older than a day is an hour's total (`fold_old_seconds`), no second's.
         let oldest_second = now() - SECONDS_KEPT;
-        for ((device, lan), buckets) in self.byte_buckets.iter() {
+        for ((device, lan, account), buckets) in self.byte_buckets.iter() {
             for (second, count) in buckets {
                 if *count == 0 || (span == 6 && *second < oldest_second) {
                     continue;
@@ -331,7 +353,7 @@ impl Runtime {
                 if since.is_some_and(|since| at < since) {
                     continue;
                 }
-                let key = (*device, *lan, at);
+                let key = (*device, *lan, *account, at);
                 match found.get(&key) {
                     Some(&index) => rows[index].1 += count,
                     None => {
@@ -341,20 +363,15 @@ impl Runtime {
                 }
             }
         }
-        rows.sort_by_key(|((_, _, at), _)| *at);
+        rows.sort_by_key(|((_, _, _, at), _)| *at);
         rows.into_iter()
-            .map(|((device, lan, at), count)| {
-                json!({"accountID": 1, "deviceID": device, "timespan": span,
+            .map(|((device, lan, account, at), count)| {
+                json!({"accountID": account, "deviceID": device, "timespan": span,
                        "at": at, "lan": lan, "bytes": count})
             })
             .collect()
     }
 
-    fn statistics_account(&self) -> Value {
-        json!({"id": 1, "key": "/accounts/1", "name": self.owner_name(),
-               "defaultAudioLanguage": "en", "autoSelectAudio": true,
-               "defaultSubtitleLanguage": "en", "subtitleMode": 2, "thumb": ""})
-    }
 
     /// `statistics("bandwidth")` past the shared grammar (`statistics_refusal`).
     pub(super) fn route_bandwidth(&self, query: &HashMap<String, String>) -> Response {
@@ -406,11 +423,12 @@ impl Runtime {
             return bare_empty();
         }
         let devices = self.statistics_devices();
-        let size = rows.len() + devices.len() + 1;
+        let accounts = self.statistics_accounts(&rows);
+        let size = rows.len() + devices.len() + accounts.len();
         Response::json(
             200,
             json!({"MediaContainer": {"size": size, "Device": devices,
-                                      "Account": [self.statistics_account()],
+                                      "Account": accounts,
                                       "StatisticsBandwidth": rows}}),
         )
     }
@@ -468,14 +486,16 @@ impl Runtime {
         let session_id = plex_value(query, headers, "X-Plex-Session-Identifier")
             .or_else(|| (!identifier.is_empty()).then(|| identifier.clone()))
             .unwrap_or_else(|| "rex".to_string());
-        if !self.sessions.contains_key(&session_id) {
+        let storage_id = account_session_id(self.viewer.id, &session_id);
+        let bitrate = self.reserved_stream_bitrate(self.viewer.id, &session_id).unwrap_or(bitrate);
+        if !self.sessions.contains_key(&storage_id) {
             // A new play: a terminate belonged to the play it ended. A client that sends no
             // session identifier reuses its machine's for every play, and every later play
             // was ended at its first beat until rex restarted.
-            self.terminated_sessions.remove(&session_id);
+            self.terminated_sessions.remove(&storage_id);
             self.next_session_key += 1;
             self.sessions.insert(
-                session_id.clone(),
+                storage_id.clone(),
                 SessionEntry {
                     session_key: self.next_session_key.to_string(),
                     id: session_id.clone(),
@@ -490,11 +510,13 @@ impl Runtime {
                     listed: false,
                     paused_since: 0.0,
                     account: self.viewer.id,
+                    bitrate_kbps: bitrate,
+                    lan: private_address(&current_peer_ip()),
                 },
             );
         }
         let address = current_peer_ip();
-        let local = private_address(&address);
+        let local = self.playback_lan(headers);
         let mut player = Map::new();
         player.insert("address".to_string(), json!(address));
         player.insert(
@@ -520,7 +542,7 @@ impl Runtime {
         }
         let owner = self.owner_name();
         let row = self.catalog.get(rating_key).cloned().unwrap_or(Value::Null);
-        let entry = self.sessions.get_mut(&session_id).expect("session just ensured");
+        let entry = self.sessions.get_mut(&storage_id).expect("session just ensured");
         let was = entry.player.get("state").and_then(Value::as_str).map(str::to_string);
         entry.rating_key = rating_key.to_string();
         entry.row = row;
@@ -528,6 +550,8 @@ impl Runtime {
         entry.view_offset = offset;
         entry.seen = now_seconds();
         entry.player = player;
+        entry.bitrate_kbps = bitrate;
+        entry.lan = local;
         // Measured as ~2.1x the media bitrate in kbps; the one approximation here.
         entry.session = json!({"id": session_id,
                                "bandwidth": round_half_even(bitrate as f64 * 2.1),
@@ -559,7 +583,8 @@ impl Runtime {
         }
         self.end_long_pause(&snapshot);
         if state == "stopped" {
-            self.sessions.remove(&session_id);
+            self.sessions.remove(&storage_id);
+            self.release_stream_admission(self.viewer.id, &session_id);
         }
         let name = plex_value(query, headers, "X-Plex-Device-Name").unwrap_or_default();
         let platform = plex_value(query, headers, "X-Plex-Platform").unwrap_or_default();
@@ -573,7 +598,7 @@ impl Runtime {
     fn end_long_pause(&mut self, entry: &SessionEntry) {
         if entry.paused_since == 0.0
             || entry.row.get("type").and_then(Value::as_str) == Some("track")
-            || self.terminated_sessions.contains_key(&entry.id)
+            || self.terminated_sessions.contains_key(&account_session_id(entry.account, &entry.id))
         {
             return;
         }
@@ -581,7 +606,8 @@ impl Runtime {
         if minutes > 0 && now_seconds() - entry.paused_since > minutes as f64 * 60.0 {
             let text = format!("Your playback was stopped after being paused for more than {minutes} minutes");
             info!("TERMINATE {}: paused over {minutes} min", entry.id);
-            self.terminated_sessions.insert(entry.id.clone(), text);
+            self.terminated_sessions.insert(account_session_id(entry.account, &entry.id), text);
+            self.release_stream_admission(entry.account, &entry.id);
         }
     }
 
@@ -662,9 +688,10 @@ impl Runtime {
             // session with that user's rating and play count.
             let row = &self.with_account_views(row, entry.account);
             let mut item = self.detail_row(row);
+            let playback_id = account_session_id(entry.account, &entry.id);
             let decided = self
                 .decided_sessions
-                .contains(&(entry.id.clone(), entry.rating_key.clone()));
+                .contains(&(playback_id.clone(), entry.rating_key.clone()));
             let Some(object) = item.as_object_mut() else {
                 continue;
             };
@@ -782,12 +809,12 @@ impl Runtime {
             object.insert("_session".to_string(), json!(true));
             object.insert("User".to_string(), entry.user.clone());
             object.insert("Player".to_string(), Value::Object(entry.player.clone()));
-            // Cycle 61: `Session` is there only once THIS playback session has asked for
-            // a decision, and it stays when the session moves on to another row.
-            if self.decided_sessions.iter().any(|(session, _)| *session == entry.id) {
+            // Cycle 61: `Session` is there only once THIS account's playback session
+            // has asked for a decision, and stays when it moves to another row.
+            if self.decided_sessions.iter().any(|(session, _)| *session == playback_id) {
                 object.insert("Session".to_string(), entry.session.clone());
             }
-            self.session_transcode(&entry.id, &entry.rating_key, object);
+            self.session_transcode(entry.account, &entry.id, &entry.rating_key, object);
             rows.push(item);
         }
         rows
@@ -819,15 +846,20 @@ impl Runtime {
         let Some(session_id) = query.get("sessionId").filter(|value| !value.is_empty()) else {
             return Response::error(400, "rex: bad request");
         };
-        if !self.sessions.contains_key(session_id) {
-            return Response::error(404, "rex: no such session");
-        }
+        let matches = self.sessions.iter()
+            .filter(|(_, entry)| entry.id == *session_id && (self.viewer.is_owner() || entry.account == self.viewer.id))
+            .map(|(id, entry)| (id.clone(), entry.account, entry.id.clone())).collect::<Vec<_>>();
+        let [(session_id, account, raw_id)] = matches.as_slice() else {
+            return Response::error(if matches.is_empty() { 404 } else { 400 }, "rex: no unique session");
+        };
+        let (session_id, account, raw_id) = (session_id.clone(), *account, raw_id.clone());
         let text = format!(
             "\"{}\" asked to stop your playback from this server: {}",
             self.owner_name(),
             query.get("reason").cloned().unwrap_or_default()
         );
         self.terminated_sessions.insert(session_id.clone(), text);
+        self.release_stream_admission(account, &raw_id);
         info!("TERMINATE {session_id}: {}", logging::py_opt(query.get("reason")));
         Response::empty(200)
     }
@@ -924,12 +956,13 @@ impl Runtime {
             let device = self.register_device(&client);
             let playing_session = plex_value(query, headers, "X-Plex-Session-Identifier")
                 .unwrap_or_else(|| client.clone());
-            // The play's session tag, as `_completed` stores it (`session or True`).
-            let session_tag = if playing_session.is_empty() {
-                "\u{1}".to_string()
-            } else {
-                playing_session.clone()
-            };
+            // Completion offsets and latches belong to the account too: a shared raw
+            // session id must not let one viewer complete (or close) another's play.
+            // Preserve `_completed`'s empty-session sentinel (`session or True`).
+            let session_tag = account_session_id(
+                self.viewer.id,
+                if playing_session.is_empty() { "\u{1}" } else { &playing_session },
+            );
             // A completed play answers `complete` to every beat past 90% until a
             // `stopped` beat has closed it, and `ignore` to every beat after that --
             // cycle 87, plexscratch42: and only while the beats go on naming the SAME item
@@ -969,7 +1002,7 @@ impl Runtime {
             if crossed {
                 latch.latched = true;
                 if let Some(row) = self.catalog.get(&key).cloned() {
-                    let player = self.sessions.get(&playing_session).map(|entry| webhook_player(&entry.player));
+                    let player = self.sessions.get(&account_session_id(self.viewer.id, &playing_session)).map(|entry| webhook_player(&entry.player));
                     self.webhook("media.scrobble", &row, player);
                 }
             } else if offset.is_some() && total > 0 && (offset_ms as f64) < total as f64 * 0.9 {
@@ -1004,7 +1037,7 @@ impl Runtime {
             let beat_id = plex_value(query, headers, "X-Plex-Session-Identifier")
                 .or_else(|| plex_value(query, headers, "X-Plex-Client-Identifier"))
                 .unwrap_or_else(|| "rex".to_string());
-            let repeat = self.sessions.get(&beat_id).is_some_and(|entry| {
+            let repeat = self.sessions.get(&account_session_id(self.viewer.id, &beat_id)).is_some_and(|entry| {
                 entry.rating_key == key
                     && entry.player.get("state").and_then(Value::as_str)
                         == Some(state.as_str())
@@ -1116,7 +1149,8 @@ impl Runtime {
                     .unwrap_or_else(|| "rex".to_string()),
                 key.clone(),
             );
-            if self.decided_sessions.contains(&session_pair)
+            let decision_pair = (account_session_id(self.viewer.id, &session_pair.0), key.clone());
+            if self.decided_sessions.contains(&decision_pair)
                 && bitrate != 0
                 && !matches!(
                     product.as_deref(),
@@ -1134,12 +1168,12 @@ impl Runtime {
                                            "resolution": resolution_title(&resolution)}]}]),
                 );
             }
-            self.timeline_transcode(&session_pair.0, &key, &state, &mut fields);
+            self.timeline_transcode(self.viewer.id, &session_pair.0, &key, &state, &mut fields);
             if state == "stopped" {
-                self.decided_sessions.remove(&session_pair);
+                self.decided_sessions.remove(&decision_pair);
             }
             // A terminate is delivered HERE, not in the terminate response.
-            if let Some(text) = self.terminated_sessions.get(&entry.id) {
+            if let Some(text) = self.terminated_sessions.get(&account_session_id(entry.account, &entry.id)) {
                 fields.insert("terminationCode".to_string(), json!(2006));
                 fields.insert("terminationText".to_string(), json!(text));
             }
@@ -1237,6 +1271,60 @@ pub(super) fn statistics_window(mut rows: Vec<Value>, query: &HashMap<String, St
 #[cfg(test)]
 mod fold_tests {
     use super::*;
+
+    fn runtime() -> Runtime {
+        let built = PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/../tests/catalog_ui.json"));
+        Runtime::load(RuntimeOptions {
+            catalog: if built.exists() { built } else { PathBuf::from("../tests/catalog_ui.json") },
+            state: Some(PathBuf::new()),
+            token: None,
+            ..RuntimeOptions::default()
+        }).expect("the UI fixture loads")
+    }
+
+    #[test]
+    fn bandwidth_keeps_accounts_and_networks_separate_on_the_same_device() {
+        let mut runtime = runtime();
+        for (account, lan, count) in [(1, true, 11), (42, true, 22), (1, false, 33), (42, false, 44)] {
+            runtime.record_bytes(&ByteOwner {
+                identifier: "shared-device".into(),
+                account,
+                lan,
+                ..ByteOwner::default()
+            }, count);
+        }
+        let rows = runtime.bandwidth_series(Some(4), None);
+        assert_eq!(rows.len(), 4);
+        let device = rows[0]["deviceID"].as_i64().unwrap();
+        for (account, lan, count) in [(1, true, 11), (42, true, 22), (1, false, 33), (42, false, 44)] {
+            let row = rows.iter().find(|row| row["accountID"] == account && row["lan"] == lan).unwrap();
+            assert_eq!(row["bytes"], count);
+            assert_eq!(row["deviceID"], device);
+        }
+    }
+
+    #[test]
+    fn reaper_removes_only_the_expired_account_scoped_session() {
+        let mut runtime = runtime();
+        let query = HashMap::from([
+            ("X-Plex-Client-Identifier".into(), "same-device".into()),
+            ("X-Plex-Session-Identifier".into(), "same-session".into()),
+        ]);
+        for account in [1, 42] {
+            runtime.viewer.id = account;
+            runtime.touch_session("1007", false, 1000, &query, &HashMap::new(), "playing", 0, None);
+        }
+        let owner_key = account_session_id(1, "same-session");
+        let shared_key = account_session_id(42, "same-session");
+        assert_eq!(runtime.sessions.len(), 2);
+        assert_eq!(runtime.sessions[&owner_key].id, "same-session");
+        assert_eq!(runtime.sessions[&shared_key].id, "same-session");
+        runtime.sessions.get_mut(&owner_key).unwrap().seen = now_seconds() - 240.0;
+        runtime.last_reap = now_seconds() - 31.0;
+        runtime.reap_sessions();
+        assert!(!runtime.sessions.contains_key(&owner_key));
+        assert!(runtime.sessions.contains_key(&shared_key));
+    }
 
     #[test]
     fn folding_keeps_every_byte_and_the_recent_seconds() {

@@ -230,8 +230,8 @@
     "summary": "This feature is Plex Pass only.",
     "type": "bool",
     "default": false,
-    "value": true,
-    "hidden": false,
+    "value": false,
+    "hidden": true,
     "advanced": false,
     "group": "extras"
   },
@@ -241,8 +241,8 @@
     "summary": "This feature is Plex Pass only.",
     "type": "bool",
     "default": false,
-    "value": true,
-    "hidden": false,
+    "value": false,
+    "hidden": true,
     "advanced": false,
     "group": "extras"
   },
@@ -253,14 +253,14 @@
     "type": "bool",
     "default": true,
     "value": true,
-    "hidden": false,
+    "hidden": true,
     "advanced": false,
     "group": "extras"
   },
   {
     "id": "CinemaTrailersPrerollID",
     "label": "Movie pre-roll video",
-    "summary": "Enter the full path to the pre-roll video file. If multiple paths separated by commas are entered, videos will be played sequentially. If multiple paths separated by semi-colons are used, a single pre-roll video will be chosen randomly from the list.",
+    "summary": "Full path of a pre-roll already provided by a registered source. Commas play videos sequentially; semicolons choose one video. Cinema trailers must be enabled in the client.",
     "type": "text",
     "default": "",
     "value": "",
@@ -1139,10 +1139,10 @@
   {
     "id": "LanNetworksBandwidth",
     "label": "LAN Networks",
-    "summary": "Comma separated list of IP addresses or IP/netmask entries for networks that will be considered to be on the local network when enforcing bandwidth restrictions. If set, all other IP addresses will be considered to be on the external network and will be subject to external network bandwidth restrictions. If left blank, only the server's subnet is considered to be on the local network.",
+    "summary": "Comma separated IP addresses or IP/netmask networks treated as local for bandwidth limits. With no list, loopback and private networks are local. Public peers cannot bypass limits using a client location flag.",
     "type": "text",
     "default": "",
-    "value": "192.0.2.0/24,100.64.0.0/10",
+    "value": "",
     "hidden": false,
     "advanced": true,
     "group": "network"
@@ -1549,74 +1549,52 @@
     "group": ""
   },
   {
-    "id": "GenerateBIFKeyframesOnly",
-    "label": "",
-    "summary": "",
-    "type": "bool",
-    "default": true,
-    "value": true,
-    "hidden": true,
-    "advanced": false,
-    "group": ""
-  },
-  {
     "id": "MarkerSource",
     "label": "Marker source",
-    "summary": "Credits markers can be generated locally and/or retrieved via an online database. Online markers may not always exist, if this preference is set to 'both' then any locally detected markers are submitted anonymously back to the online database for future use.",
+    "summary": "Markers are detected locally from source-provided media. rex does not fetch or submit markers to Plex's cloud database.",
     "type": "text",
-    "default": "any",
-    "value": "any",
+    "default": "local",
+    "value": "local",
     "hidden": false,
     "advanced": true,
     "group": "library",
-    "enumValues": "any:both, try online first|cloud:only online (no local detection)|local:local detection only"
+    "enumValues": "local:local detection only"
   },
   {
     "id": "GenerateBIFBehavior",
     "label": "Generate video preview thumbnails",
-    "summary": "Video preview thumbnails provide live updates in Now Playing and while seeking on supported apps. Thumbnail generation may take a long time, cause high CPU usage, and consume additional disk space. You can turn off thumbnail generation for individual libraries in the library's advanced settings.",
+    "summary": "Generate 10-second seek previews with FFmpeg. Analysis reads source video, uses CPU and stores images beside the state database. Manual Analyze is always available; automatic generation is opt-in.",
     "type": "text",
     "default": "never",
     "value": "never",
     "hidden": false,
     "advanced": false,
     "group": "library",
-    "enumValues": "never:never|scheduled:as a scheduled task|asap:as a scheduled task and when media is added"
-  },
-  {
-    "id": "GenerateBIFFrameInterval",
-    "label": "Video preview thumbnail frame duration",
-    "summary": "The time (in seconds) between each video preview frame.",
-    "type": "int",
-    "default": 2,
-    "value": 2,
-    "hidden": true,
-    "advanced": false,
-    "group": "library"
+    "enumValues": "never:manual analysis only|asap:when media is added"
   },
   {
     "id": "GenerateIntroMarkerBehavior",
     "label": "Generate intro video markers",
-    "summary": "Detects show intros, exposing the 'Skip Intro' button in clients.",
+    "summary": "Conservative repeated-content intro detection for source-placed episodes in the same season. Manual Analyze is available; automatic generation is opt-in.",
     "type": "text",
-    "default": "asap",
-    "value": "scheduled",
+    "default": "never",
+    "value": "never",
     "hidden": false,
     "advanced": false,
     "group": "library",
-    "enumValues": "never:never|scheduled:as a scheduled task|asap:as a scheduled task and when media is added"
+    "enumValues": "never:manual analysis only|asap:when media is added"
   },
   {
     "id": "GenerateCreditsMarkerBehavior",
     "label": "Generate credits video markers",
-    "summary": "Detects movie and episode end credits.",
+    "summary": "Conservative detection of rolling bright-text credits on dark backgrounds, plus authored chapter markers. Manual Analyze is available; automatic generation is opt-in.",
     "type": "text",
-    "default": "asap",
-    "value": "scheduled",
+    "default": "never",
+    "value": "never",
     "hidden": false,
     "advanced": false,
     "group": "library",
-    "enumValues": "never:never|scheduled:as a scheduled task|asap:as a scheduled task and when media is added"
+    "enumValues": "never:manual analysis only|asap:when media is added"
   },
   {
     "id": "GenerateAdMarkerBehavior",
@@ -1645,14 +1623,14 @@
   {
     "id": "GenerateChapterThumbBehavior",
     "label": "Generate chapter thumbnails",
-    "summary": "Chapter thumbnails provide images in the chapter view on supported apps. They can take a long time to generate and consume additional disk space.",
+    "summary": "Generate chapter JPEGs from source-provided chapter boundaries with FFmpeg. Manual Analyze is available; automatic generation is opt-in.",
     "type": "text",
-    "default": "scheduled",
-    "value": "scheduled",
+    "default": "never",
+    "value": "never",
     "hidden": false,
     "advanced": false,
     "group": "library",
-    "enumValues": "never:never|scheduled:as a scheduled task|asap:as a scheduled task and when media is added"
+    "enumValues": "never:manual analysis only|asap:when media is added"
   },
   {
     "id": "LoudnessAnalysisBehavior",

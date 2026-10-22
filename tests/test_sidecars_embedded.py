@@ -21,6 +21,7 @@ import sys
 import tempfile
 import time
 import urllib.parse
+import xml.etree.ElementTree as ET
 
 from server_command import server_command
 from test_ports import free_port
@@ -115,7 +116,8 @@ def main():
         try:
             status, body = get(ports[0], ROUTES[0])
             check("the SHIELD's decision is answered with no data/ beside rex", status == 200, status)
-            check("and it is a direct play", b"Direct play OK." in body, body[:300])
+            check("the recorded SHIELD request permits direct play without an encoder",
+                  ET.fromstring(body).get("mdeDecisionCode") == "1000", body[:300])
             for path in ROUTES:
                 got, want = get(ports[0], path), get(ports[1], path)
                 check("%s matches a server beside data/" % path.split("?")[0][:60], got == want,

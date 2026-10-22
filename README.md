@@ -16,6 +16,7 @@ rex gets its library from whatever you point at it. Each source sends rex the li
 - Search Subtitles finds subtitles from Plex's own provider. rex checks the one you pick against the file and moves it onto the file when it finds it out of sync, and when an account is set to show subtitles and a title has none in its language, rex looks for one before playback starts. See [Subtitles](docs/setup.md#subtitles)
 - Several sources can fill the same Movies and TV libraries. Two zurgs on two debrid accounts end up in one library
 - When a source reports a file gone it leaves the library the same way it would in Plex
+- Movie editions and the full server Dashboard work with a free claiming account. [Movie and TV capabilities](docs/setup.md#movie-and-tv-capabilities) covers Downloads, real intro/credits analysis, chapter and seek thumbnails, subtitle adjustment, audio enhancement, stream limits and local controls
 
 ## Setup
 
@@ -145,7 +146,7 @@ What it does not do:
 - Movies and TV only. Music and photo libraries stay empty
 - No Live TV or DVR
 - A converted stream keeps the subtitle you picked, except a text subtitle in a file other than MKV or MP4, or in a download for offline viewing. Lines too dense to read in time, like an opening song's karaoke, can be left out the first time a title converts. Plex for Android and iOS get a text subtitle as a track; every other app gets it drawn into the picture, as every app gets an image subtitle
-- Remote playback without a Plex Pass or Remote Watch Pass is verified in Plex Web 4.163.0 with the October 21 remote-playback update, even when both the claiming and viewing accounts are free. Older builds can still show Plex's paywall. Other Plex apps have not been playback-tested. Converting video, GPU included, needs no Plex Pass
+- Remote playback without a Plex Pass or Remote Watch Pass is verified in Plex Web 4.163.0 with the October 21 remote-playback update, even when both the claiming and viewing accounts are free. Other Plex apps have not been playback-tested. Converting video, GPU included, needs no Plex Pass. Server capabilities do not grant Plex cloud subscriptions, Home membership or an app's own Downloads eligibility
 
 ## License
 

@@ -63,6 +63,8 @@ struct Item {
     tmdb: Option<String>,
     ids: Map<String, Value>,
     media_info: Option<Value>,
+    /// The source's explicit movie edition; absent preserves it, empty clears it.
+    edition: Option<String>,
     /// Where the provider lists the file inside its release; `""` at its top level, `None`
     /// when the source does not say.
     folder: Option<String>,
@@ -120,8 +122,15 @@ impl Item {
             }
             Value::Object(placed)
         });
+        let edition = match value.get("edition_title") {
+            None => None,
+            Some(Value::String(title)) if text("kind").as_deref() == Some("movie") => Some(title.trim().to_string()),
+            Some(Value::String(_)) => return Err(refuse("edition_title requires kind movie")),
+            Some(_) => return Err(refuse("edition_title must be a string")),
+        };
         Ok(Self {
             placed,
+            edition,
             extra: (text("kind").as_deref() == Some("extra")).then(|| super::scan::pushed_extra_type(text("extra_type").as_deref())),
             kept: None,
             library: value.get("library").map(string_value).filter(|v| !v.is_empty() && v != "null"),
@@ -166,7 +175,11 @@ impl Item {
             ]
             .into_iter()
             .chain(self.folder.as_ref().map(|folder| ("_folder".to_string(), json!(folder))))
-            .chain(self.placed.as_ref().map(|placed| ("_placed".to_string(), placed.clone())))),
+            .chain(self.placed.as_ref().map(|placed| ("_placed".to_string(), placed.clone())))
+            .chain(self.edition.as_ref().into_iter().flat_map(|edition| [
+                ("_editionTitle".to_string(), json!(edition)),
+                ("editionTitle".to_string(), json!(edition)),
+            ]))),
             meta: None,
             numbers: super::scan::placed_numbers(self.placed.as_ref()).or(self.kept),
         }
@@ -370,6 +383,7 @@ fn sources(shared: &SharedRuntime, request: &Request, name: &str) -> Response {
             let declared = source.clone();
             if changed {
                 info!("SOURCES {name} registered at {}", public["url"].as_str().unwrap_or_default());
+                guard.invalidate_source_analysis(name);
                 guard.put_source(source);
                 guard.dirty = true;
             }
@@ -427,6 +441,7 @@ fn confirm_delete(shared: &SharedRuntime, name: &str, code: &str) -> Response {
     let mut sessions = FEED.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     sessions.remove(name);
     let mut guard = lock(shared);
+    guard.invalidate_source_analysis(name);
     let removed = guard.delete_source(name);
     let snapshot = guard.flush_state();
     drop(guard);
@@ -759,7 +774,8 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
                     counts.unchanged += 1;
                     continue;
                 }
-                let mut changed = guard.feed_update_row(&key, &source.name, &item, adopt, &mut probed);
+                let (key, edition_changed) = guard.feed_edition_key(&key, &source.name, &item);
+                let mut changed = guard.feed_update_row(&key, &source.name, &item, adopt, &mut probed) || edition_changed;
                 if relocate {
                     changed |= guard.relocate(&library, &key);
                 }
@@ -873,6 +889,9 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
     let snapshot = guard.flush_state();
     drop(guard);
     write_or_log(snapshot);
+    if !touched.is_empty() {
+        super::analysis::schedule_for_sources(shared, &touched.into_iter().collect::<Vec<_>>());
+    }
     counts
 }
 
@@ -1037,6 +1056,9 @@ fn pushed_item(row: &Value) -> Option<(String, Value)> {
     if let (Some(placed), Some(object)) = (placed, item.as_object_mut()) {
         object.extend(placed.clone());
     }
+    if let Some(edition) = row.get("_editionTitle").filter(|edition| edition.is_string()) {
+        item["edition_title"] = edition.clone();
+    }
     Some((text("_source")?.to_string(), item))
 }
 
@@ -1168,7 +1190,7 @@ pub(super) fn tagged_media(row: &Value) -> Vec<Value> {
     let mut media = row.get("Media").and_then(Value::as_array).cloned().unwrap_or_default();
     if media.iter().all(|media| media.get("_sid").is_none()) {
         if let Some(first) = media.first_mut().and_then(Value::as_object_mut) {
-            for field in ["_source", "_sid", "_path", "_folder", "_release", "_ids", "_placed"] {
+            for field in ["_source", "_sid", "_path", "_folder", "_release", "_ids", "_placed", "_editionTitle", "_hash"] {
                 if let Some(value) = row.get(field) {
                     first.insert(field.to_string(), value.clone());
                 }
@@ -1286,7 +1308,7 @@ fn name_by_release(row: &mut Map<String, Value>, media: &Value) {
         }
     }
     // The row's folder and placement are its release's, or none: another release's would number it.
-    for field in ["_folder", "_placed"] {
+    for field in ["_folder", "_placed", "_editionTitle", "_hash"] {
         match media.get(field) {
             Some(value) => row.insert(field.to_string(), value.clone()),
             None => row.shift_remove(field),
@@ -1666,6 +1688,71 @@ impl Runtime {
         json!({"size": held.len(), "held": held})
     }
 
+    /// A changed source edition leaves a folded row rather than relabeling its other
+    /// versions. A person's locked edition remains authoritative.
+    fn feed_edition_key(&mut self, key: &str, source: &str, item: &Item) -> (String, bool) {
+        let Some(edition) = item.edition.as_deref() else { return (key.to_string(), false) };
+        let Some(original) = self.catalog.get(key).cloned() else { return (key.to_string(), false) };
+        let Some(object) = original.as_object() else { return (key.to_string(), false) };
+        if original.get("type").and_then(Value::as_str) != Some("movie") {
+            return (key.to_string(), false);
+        }
+        let mut media = tagged_media(&original);
+        let index = versions(&original).into_iter().find(|(of, sid, _)| of == source && sid == &item.id).map_or(0, |(_, _, index)| index);
+        let raw_changed = media.get(index).and_then(|media| media.get("_editionTitle")).and_then(Value::as_str) != Some(edition);
+        let title_changed = !super::edit::field_locked(object, "editionTitle")
+            && original.get("editionTitle").and_then(Value::as_str).unwrap_or("") != edition;
+        if !raw_changed && !title_changed {
+            return (key.to_string(), false);
+        }
+        if let Some(selected) = media.get_mut(index).and_then(Value::as_object_mut) {
+            selected.insert("_editionTitle".to_string(), json!(edition));
+        }
+        if title_changed && media.len() > 1 {
+            self.freeze_merged_collections(key);
+            let selected = media.remove(index);
+            if let Some(row) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
+                row.insert("Media".to_string(), json!(media));
+                name_by_release(row, &media[0]);
+                if let Some(duration) = media[0].get("duration") { row.insert("duration".to_string(), duration.clone()); }
+            }
+            let new_key = self.mint_key();
+            let mut split = original;
+            if let Some(row) = split.as_object_mut() {
+                take_release(row, &selected);
+                if let Some(duration) = selected.get("duration") { row.insert("duration".to_string(), duration.clone()); }
+                row.insert("ratingKey".to_string(), json!(new_key));
+                row.insert("key".to_string(), json!(format!("/library/metadata/{new_key}")));
+                row.insert("editionTitle".to_string(), json!(edition));
+                row.insert("_editionTitle".to_string(), json!(edition));
+            }
+            self.catalog.add(split.clone());
+            self.deleted.remove(&new_key);
+            for collection in self.collections.values_mut().filter(|collection| !collection.smart) {
+                if let Some(position) = collection.items.iter().position(|item| item == key) {
+                    collection.items.insert(position + 1, new_key.clone());
+                }
+            }
+            self.push_created_frames(&new_key);
+            self.push_timeline_entry(&split, 5, None, None, None, None);
+            if let Some(remaining) = self.catalog.get(key).cloned() {
+                self.push_timeline_entry(&remaining, 5, None, None, None, None);
+            }
+            self.dirty = true;
+            return (new_key, true);
+        }
+        if let Some(row) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
+            row.insert("Media".to_string(), json!(media));
+            if index == 0 {
+                row.insert("_editionTitle".to_string(), json!(edition));
+            }
+            if title_changed {
+                row.insert("editionTitle".to_string(), json!(edition));
+            }
+        }
+        (key.to_string(), true)
+    }
+
     /// An existing row and a push of its id: adopt it for the source, restore it from the
     /// trash, follow a moved file and a new size, and queue a probe it was waiting for.
     /// Answers whether anything changed.
@@ -1690,6 +1777,18 @@ impl Runtime {
             changed = true;
         }
         let index = versions(&row).into_iter().find(|(of, sid, _)| of == source && *sid == item.id).map_or(0, |(_, _, index)| index);
+        if let Some(hash) = &item.hash {
+            let previous = row.pointer(&format!("/Media/{index}/_hash")).or_else(|| row.get("_hash").filter(|_| index == 0));
+            if previous.and_then(Value::as_str) != Some(hash.as_str()) {
+                if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
+                    if let Some(media) = object.get_mut("Media").and_then(|media| media.get_mut(index)).and_then(Value::as_object_mut) {
+                        media.insert("_hash".to_string(), json!(hash));
+                    }
+                    if index == 0 { object.insert("_hash".to_string(), json!(hash)); }
+                }
+                changed = true;
+            }
+        }
         let tagged = row.pointer(&format!("/Media/{index}/_sid")).is_some();
         let path = if tagged { row.pointer(&format!("/Media/{index}/_path")) } else { row.get("_path") };
         if path.and_then(Value::as_str) != Some(item.path.as_str()) {
@@ -2061,6 +2160,11 @@ impl Runtime {
         let Some(mut leaf) = self.leaf_for(library, &arrival, Some(key.to_string())) else {
             return false;
         };
+        if old.as_object().is_some_and(|row| super::edit::field_locked(row, "editionTitle")) {
+            if let Some(edition) = old.get("editionTitle") {
+                leaf["editionTitle"] = edition.clone();
+            }
+        }
         let pending = old.get("_probePending").is_some_and(truthy);
         if !pending {
             // The file is the same file: its Media, ids and part URL stay.
@@ -2260,6 +2364,7 @@ impl Runtime {
         let Some(index) = all.iter().find(|(of, id, _)| of == source && id == sid).map(|(_, _, index)| *index).filter(|_| all.len() > 1) else {
             return false;
         };
+        self.remove_media_analysis(key, index);
         if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
             if let Some(media) = object.get_mut("Media").and_then(Value::as_array_mut) {
                 media.remove(index);

@@ -1040,6 +1040,15 @@ fn audio_stream(stream: &Row, stream_id: i64, selected: bool) -> Row {
     row
 }
 
+/// Text streams the measured subtitle synchronizer can parse and retime. Capability still
+/// requires a resolvable source and an independent reference; the runtime projects that.
+pub(crate) fn subtitle_sync_text(stream: &Value) -> bool {
+    stream.get("streamType").and_then(Value::as_i64) == Some(3)
+        && matches!(stream.get("codec").and_then(Value::as_str), Some("srt" | "subrip" | "ass" | "ssa" | "vtt" | "webvtt" | "mov_text" | "tx3g"))
+        && (stream.get("_content").and_then(Value::as_str).is_some()
+            || stream.get("index").and_then(Value::as_i64).is_some_and(|index| index >= 0))
+}
+
 fn subtitle_stream(stream: &Row, stream_id: i64) -> Row {
     let tags = stream.get("tags").and_then(Value::as_object);
     let raw = str_value(stream, "codec_name").unwrap_or_default();
@@ -1327,8 +1336,9 @@ pub fn normalize_media(media: &mut Value) {
         put(media, "optimizedForStreaming", 0);
         put(media, "has64bitOffsets", large);
     }
-    let voice = bool_value(media, "hasVoiceActivity");
-    put(media, "hasVoiceActivity", voice);
+    // Feed flags are not analysis. Only the runtime's matching measured reference may
+    // project this back to true after normalization.
+    put(media, "hasVoiceActivity", false);
     let old_audio = str_value(media, "audioCodec");
     let old_audio_profile = str_value(media, "audioProfile");
     if old_audio.as_deref() == Some("dts") {
@@ -1467,7 +1477,7 @@ pub fn normalize_media(media: &mut Value) {
                             s.shift_remove(flag);
                         }
                     }
-                    s.entry("canAutoSync").or_insert(Value::Bool(false));
+                    put(s, "canAutoSync", false);
                 }
             }
         }

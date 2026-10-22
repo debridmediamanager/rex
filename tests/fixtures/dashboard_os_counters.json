@@ -1,0 +1,17 @@
+{
+  "provenance": "2026-10-21: Linux zen /proc/stat, /proc/meminfo, /proc/self/statm and /proc/self/smaps (KernelPageSize: 4 kB) read through ssh; macOS local sysctl hw.memsize and vm_stat. CPU sample interval was not measured; only counter ratios are asserted.",
+  "linux": {
+    "cpu_before": "cpu 39549605 484612 7212834 36507581 106348 0 1085606 0 0 0\n",
+    "cpu_after": "cpu 39553122 484612 7213195 36507581 106348 0 1085672 0 0 0\n",
+    "meminfo": "MemTotal: 7976692 kB\nMemAvailable: 3687908 kB\n",
+    "statm": "1446 260 237 6 0 89 0\n",
+    "page_bytes": 4096
+  },
+  "macos": {
+    "total_bytes": 38654705664,
+    "page_bytes": 16384,
+    "active_pages": 758010,
+    "wired_pages": 286367,
+    "compressor_pages": 504438
+  }
+}

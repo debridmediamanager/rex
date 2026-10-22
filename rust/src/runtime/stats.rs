@@ -2,8 +2,51 @@
 //! `statistics`.
 
 use super::*;
+use std::collections::BTreeMap;
 
 impl Runtime {
+    /// Polling is at most once per epoch second; CPU deltas use monotonic time.
+    /// A first/failed CPU sample omits CPU fields instead of claiming idle.
+    pub(super) fn route_resource_statistics(&mut self, query: &HashMap<String, String>) -> Response {
+        if query.get("timespan").and_then(|value| value.trim_start_matches('+').parse::<i64>().ok()) != Some(6) {
+            return Response::json(200, json!({"MediaContainer": {"size": 0}}));
+        }
+        let at = now();
+        if self.resource_series.last().and_then(|row| row["at"].as_i64()).is_none_or(|last| last < at) {
+            let sample = crate::platform::resource_sample();
+            let metrics = sample.utilization(self.resource_sample.as_ref());
+            let mut row = json!({"timespan": 6, "at": at});
+            for (name, value) in [
+                "hostCpuUtilization", "processCpuUtilization",
+                "hostMemoryUtilization", "processMemoryUtilization",
+            ].into_iter().zip(metrics) {
+                if let Some(value) = value.filter(|value| value.is_finite()) {
+                    row[name] = json!((value * 1000.0).round() / 1000.0);
+                }
+            }
+            self.resource_sample = Some(sample);
+            self.resource_series.push(row);
+            let excess = self.resource_series.len().saturating_sub(180);
+            self.resource_series.drain(..excess);
+        }
+        let series = resource_window(self.resource_series.clone(), query);
+        Response::json(200, json!({"MediaContainer": {
+            "size": series.len(), "StatisticsResources": series
+        }}))
+    }
+
+    pub(super) fn statistics_accounts(&self, rows: &[Value]) -> Vec<Value> {
+        let ids: BTreeSet<i64> = rows.iter().filter_map(|row| row["accountID"].as_i64()).collect();
+        let mut known = self.shared_account_rows();
+        known.push(json!({"id": accounts::OWNER, "key": "/accounts/1", "name": self.owner_name(),
+            "defaultAudioLanguage": "en", "autoSelectAudio": true,
+            "defaultSubtitleLanguage": "en", "subtitleMode": 2, "thumb": ""}));
+        ids.into_iter().map(|id| {
+            known.iter().find(|row| row["id"].as_i64() == Some(id)).cloned()
+                .unwrap_or_else(|| json!({"id": id, "key": format!("/accounts/{id}"), "name": ""}))
+        }).collect()
+    }
+
     /// A stable small integer per client identifier, as a PMS assigns: the anonymous
     /// client (`""`) is 1 and every other one takes the next number the first time the
     /// server sees it, from the header or the query alike.
@@ -33,7 +76,9 @@ impl Runtime {
                 .to_string(),
             seconds,
             device,
+            self.viewer.id,
         ));
+        self.dirty = true;
     }
 
     /// Rows for `/statistics/media`: a count and a duration per bucket, keyed by the
@@ -45,26 +90,21 @@ impl Runtime {
         };
         let mut out = Vec::new();
         for span in spans {
-            let mut rows: Vec<((i64, i64, i64), (i64, i64))> = Vec::new();
-            for (at, kind, seconds, device) in &self.plays {
+            let mut rows: BTreeMap<(i64, i64, i64, i64), (i64, i64)> = BTreeMap::new();
+            for (at, kind, seconds, device, account) in &self.plays {
                 let kind_number = match kind.as_str() {
                     "show" => 2,
                     "season" => 3,
                     "episode" => 4,
                     _ => 1,
                 };
-                let key = (statistics_bucket(*at, span), kind_number, *device);
-                match rows.iter_mut().find(|(known, _)| *known == key) {
-                    Some((_, (count, total))) => {
-                        *count += 1;
-                        *total += seconds;
-                    }
-                    None => rows.push((key, (1, *seconds))),
-                }
+                let key = (statistics_bucket(*at, span), kind_number, *device, *account);
+                let (count, total) = rows.entry(key).or_default();
+                *count += 1;
+                *total += seconds;
             }
-            rows.sort_by_key(|(key, _)| *key);
-            for ((at, kind, device), (count, seconds)) in rows {
-                out.push(json!({"accountID": 1, "deviceID": device, "timespan": span,
+            for ((at, kind, device, account), (count, seconds)) in rows {
+                out.push(json!({"accountID": account, "deviceID": device, "timespan": span,
                                 "at": at, "metadataType": kind, "count": count,
                                 "duration": seconds}));
             }
@@ -157,14 +197,47 @@ impl Runtime {
             return bare_empty();
         }
         let devices = self.statistics_devices();
-        let account = json!({"id": 1, "key": "/accounts/1", "name": self.owner_name(),
-                             "defaultAudioLanguage": "en", "autoSelectAudio": true,
-                             "defaultSubtitleLanguage": "en", "subtitleMode": 2, "thumb": ""});
-        let size = rows.len() + devices.len() + 1;
+        let accounts = self.statistics_accounts(&rows);
+        let size = rows.len() + devices.len() + accounts.len();
         Response::json(
             200,
-            json!({"MediaContainer": {"size": size, "Device": devices, "Account": [account],
+            json!({"MediaContainer": {"size": size, "Device": devices, "Account": accounts,
                                       "StatisticsMedia": rows}}),
         )
+    }
+}
+
+/// Preserve the observed resource grammar: sort/limit precede the strict lower
+/// bound, and both at> and at>= are strict here (unlike the media rollup).
+fn resource_window(rows: Vec<Value>, query: &HashMap<String, String>) -> Vec<Value> {
+    let mut series = sessions::statistics_window(rows, query);
+    if let Some(since) = query.get("at>").or_else(|| query.get("at>="))
+        .filter(|value| !value.is_empty() && value.bytes().all(|byte| byte.is_ascii_digit()))
+        .and_then(|value| value.parse::<i64>().ok())
+    {
+        series.retain(|row| row["at"].as_i64().unwrap_or(0) > since);
+    }
+    series
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn resource_bounds_preserve_strict_alias_and_window_order() {
+        let rows = vec![json!({"at": 10}), json!({"at": 11}), json!({"at": 12})];
+        for name in ["at>", "at>="] {
+            let query = HashMap::from([(name.to_string(), "11".to_string())]);
+            assert_eq!(resource_window(rows.clone(), &query), vec![json!({"at": 12})]);
+        }
+        let query = HashMap::from([
+            ("at>".to_string(), "11".to_string()),
+            ("limit".to_string(), "1".to_string()),
+            ("sort".to_string(), "at:asc".to_string()),
+        ]);
+        assert!(resource_window(rows.clone(), &query).is_empty());
+        let query = HashMap::from([("at>".to_string(), "-1".to_string())]);
+        assert_eq!(resource_window(rows.clone(), &query), rows);
     }
 }

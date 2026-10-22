@@ -812,6 +812,16 @@ def server_token_setup():
     stub_port = stub.server_address[1]
     directories = []
 
+    def reset_stub():
+        nonlocal stub, stub_port
+        # A stopped client's request can still be in the old listener's backlog.
+        # Separate endpoints keep it from being attributed to the next instance.
+        stub.shutdown()
+        stub.server_close()
+        stub = Stub(free_port())
+        threading.Thread(target=stub.serve_forever, daemon=True).start()
+        stub_port = stub.server_address[1]
+
     def fresh(claimed):
         directory = tempfile.mkdtemp(prefix="rex-plextv-servertoken-")
         directories.append(directory)
@@ -869,7 +879,7 @@ def server_token_setup():
         stub.downloads = True
 
         # -- (b) unclaimed, no PLEX_TOKEN, --announce-url; then a claim at runtime ------
-        stub.clear()
+        reset_stub()
         waiting = start(fresh(False), plex_token=None)
         if started("(b) an unclaimed server with --announce-url and no PLEX_TOKEN starts", waiting):
             time.sleep(5)  # two heartbeat intervals and more
@@ -893,7 +903,7 @@ def server_token_setup():
             waiting.stop()
 
         # -- (c) no PLEX_TOKEN: Plex's agent from a claim, at runtime and at start --------
-        stub.clear()
+        reset_stub()
         directory = fresh(False)
         plain = start(directory, plex_token=None, announce=None)
         if started("(c) an unclaimed server with no PLEX_TOKEN starts", plain):
@@ -907,7 +917,7 @@ def server_token_setup():
                   status == 200 and asked and set(asked_with(asked)) == {(SERVER_TOKEN, MACHINE)},
                   (status, asked_with(asked)))
             plain.stop()
-            stub.clear()
+            reset_stub()
             again = start(directory, plex_token=None, announce=None)
             if started("(c) the claimed server restarts with no PLEX_TOKEN", again):
                 asked = agent_after(0, "Jxqol.Brimt.2022.1080p.WEB-DL", again)
@@ -916,7 +926,7 @@ def server_token_setup():
                 again.stop()
 
         # -- (d) PLEX_TOKEN, unclaimed: no longer read (2026-10-19), not even by the agent --
-        stub.clear()
+        reset_stub()
         legacy = start(fresh(False))
         if started("(d) an unclaimed server with PLEX_TOKEN starts", legacy):
             status = push(legacy, "Plomb.Treska.2021.1080p.WEB-DL")
@@ -945,6 +955,7 @@ def server_token_setup():
                 instance.proc.kill()
                 instance.proc.wait()
         stub.shutdown()
+        stub.server_close()
         for directory in directories:
             shutil.rmtree(directory, ignore_errors=True)
 

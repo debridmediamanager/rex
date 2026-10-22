@@ -671,6 +671,8 @@ pub(crate) struct PartInfo {
     /// The file's name, as the provider is told it.
     pub file: String,
     duration: i64,
+    content_version: Option<String>,
+    audio_index: Option<i64>,
     video_codec: String,
     resolution: String,
     /// The ffprobe indexes of the embedded text subtitles the meter can read the timing of.
@@ -865,52 +867,480 @@ fn track_cues(cues: &[super::mkvsubs::Cue]) -> Vec<(f64, f64)> {
         .collect()
 }
 
-/// One window of the release's first audio track: 16 kHz mono, band-passed, read by Range.
-fn audio_window(ffmpeg: &Path, part: &PartInfo, start: f64) -> Option<Vec<i16>> {
+/// Bound output and wall time as well as FFmpeg's network reads. The stdout reader must run
+/// concurrently: waiting first can deadlock on a full pipe.
+fn capture(mut command: std::process::Command, maximum: usize) -> Result<Vec<u8>, String> {
     use std::io::Read as _;
+    command.stdin(std::process::Stdio::null()).stdout(std::process::Stdio::piped()).stderr(std::process::Stdio::null());
+    let mut child = super::universal::spawn_tied(command).map_err(|error| error.to_string())?;
+    let stdout = child.stdout.take().ok_or("subtitle process has no stdout")?;
+    let reader = thread::spawn(move || {
+        let mut raw = Vec::new();
+        stdout.take(maximum as u64 + 1).read_to_end(&mut raw).map(|_| raw)
+    });
+    let deadline = Instant::now() + Duration::from_secs(45);
+    let status = loop {
+        match child.try_wait() {
+            Ok(Some(status)) => break Ok(status),
+            Ok(None) if Instant::now() < deadline => thread::sleep(Duration::from_millis(20)),
+            Ok(None) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                break Err("subtitle process exceeded its time or output bound".to_string());
+            }
+            Err(error) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                break Err(error.to_string());
+            }
+        }
+    };
+    let raw = reader.join().map_err(|_| "subtitle stdout reader failed".to_string())?.map_err(|error| error.to_string())?;
+    if !status?.success() {
+        return Err("subtitle process failed".to_string());
+    }
+    if raw.len() > maximum {
+        return Err("subtitle output exceeds limit".to_string());
+    }
+    Ok(raw)
+}
+
+fn input_command(ffmpeg: &Path, part: &PartInfo) -> std::process::Command {
     let mut command = std::process::Command::new(ffmpeg);
-    command.args(["-v", "error", "-nostdin", "-reconnect", "1", "-reconnect_on_network_error", "1", "-reconnect_delay_max", "4"]);
-    command.args(["-rw_timeout", "30000000"]);
+    command.args(["-v", "error", "-nostdin", "-rw_timeout", "30000000"]);
     if let Some(auth) = &part.auth {
         command.args(["-headers", &format!("Authorization: {auth}\r\n")]);
     }
-    command.args(["-user_agent", upstream::UPSTREAM_UA, "-ss", &format!("{start:.3}"), "-i", &part.url, "-t", "90"]);
-    command.args(["-map", "0:a:0", "-ac", "1", "-ar", "16000", "-af", "highpass=f=300,lowpass=f=3400", "-f", "s16le", "-"]);
-    command.stdin(std::process::Stdio::null()).stdout(std::process::Stdio::piped()).stderr(std::process::Stdio::null());
-    let mut child = super::universal::spawn_tied(command).ok()?;
-    let mut raw = Vec::new();
-    let read = child.stdout.take()?.read_to_end(&mut raw);
-    let status = child.wait().ok()?;
-    (read.is_ok() && status.success() && raw.len() >= 32_000).then(|| raw.chunks_exact(2).map(|pair| i16::from_le_bytes([pair[0], pair[1]])).collect())
+    command.args(["-user_agent", upstream::UPSTREAM_UA]);
+    command
 }
 
-/// What the candidates are measured against: the release's own embedded text track, read
-/// through its index for a few hundred bytes a block, else (with `REX_TRANSCODER`) six 90 s
-/// windows of its audio, else nothing.
-fn reference(part: &PartInfo, ffmpeg: Option<&Path>) -> Option<Vec<(f64, Vec<u8>)>> {
+/// One window of the release's first audio track: bounded 16 kHz mono PCM.
+fn audio_window(ffmpeg: &Path, part: &PartInfo, start: f64) -> Result<Vec<i16>, String> {
+    let mut command = input_command(ffmpeg, part);
+    command.args(["-ss", &format!("{start:.3}"), "-i", &part.url, "-t", "90"]);
+    let audio = part.audio_index.map_or_else(|| "0:a:0".to_string(), |index| format!("0:{index}"));
+    command.args(["-map", &audio, "-ac", "1", "-ar", "16000", "-af", "highpass=f=300,lowpass=f=3400", "-f", "s16le", "-"]);
+    let raw = capture(command, 90 * 16000 * 2)?;
+    if raw.len() < 32_000 { return Err("subtitle audio window is unreadable or too short".to_string()) }
+    Ok(raw.chunks_exact(2).map(|pair| i16::from_le_bytes([pair[0], pair[1]])).collect())
+}
+
+#[derive(Clone, Debug)]
+struct Reference {
+    windows: Vec<(f64, Vec<u8>)>,
+    voice: bool,
+    /// A reference must never be used to measure itself.
+    track: Option<i64>,
+}
+
+impl Reference {
+    fn to_value(&self) -> Value {
+        json!({"windows": self.windows, "voice": self.voice, "track": self.track})
+    }
+
+    fn from_value(value: &Value) -> Option<Self> {
+        let windows = value.get("windows")?.as_array()?.iter().map(|window| {
+            let pair = window.as_array()?;
+            let start = pair.first()?.as_f64().filter(|start| start.is_finite() && *start >= 0.0)?;
+            let mask = pair.get(1)?.as_array()?.iter().map(|frame| frame.as_u64().and_then(|frame| u8::try_from(frame).ok()).filter(|frame| *frame <= 1)).collect::<Option<Vec<_>>>()?;
+            (!mask.is_empty() && mask.len() <= (WIN / FRAME).ceil() as usize + 1).then_some((start, mask))
+        }).collect::<Option<Vec<_>>>()?;
+        if windows.is_empty() || windows.len() > FRACTIONS.len() { return None }
+        let voice = value.get("voice")?.as_bool()?;
+        let track = value.get("track").and_then(Value::as_i64);
+        if voice && track.is_some() { return None }
+        Some(Self { windows, voice, track })
+    }
+}
+
+fn audio_reference(part: &PartInfo, ffmpeg: &Path) -> Result<Option<Reference>, String> {
+    let mut windows = Vec::new();
+    for start in window_starts(part.duration) {
+        let mask = energy_mask(&audio_window(ffmpeg, part, start)?);
+        let active = mask.iter().filter(|frame| **frame != 0).count();
+        if active >= 10 && active * 20 < mask.len() * 19 { windows.push((start, mask)); }
+    }
+    Ok((windows.len() >= 3).then_some(Reference { windows, voice: true, track: None }))
+}
+
+/// Retain independent references by kind without duplicating audio windows on a Part.
+fn keep_reference(part: &mut Value, fingerprint: &str, reference: &Reference) {
+    if part.get("_subtitleSyncReference").and_then(|value| value.get("source")).and_then(Value::as_str) != Some(fingerprint) {
+        part["_subtitleSyncReference"] = json!({"source": fingerprint, "references": {}});
+    }
+    let name = reference.track.map_or_else(|| "audio".to_string(), |track| format!("text:{track}"));
+    part["_subtitleSyncReference"]["references"][name] = reference.to_value();
+    if reference.voice { part["_subtitleSyncReference"]["audioAnalyzed"] = json!(true) }
+}
+
+fn saved_references(part: &Value, fingerprint: Option<&str>) -> Vec<Reference> {
+    part.get("_subtitleSyncReference").filter(|value| value.get("source").and_then(Value::as_str) == fingerprint)
+        .and_then(|value| value.get("references")).and_then(Value::as_object).into_iter().flat_map(|references| references.values())
+        .filter_map(Reference::from_value).collect()
+}
+
+/// Embedded timing is preferable to audio, but cannot certify its own timing. Silent or
+/// constant-energy audio is not voice analysis; retain only windows with measurable activity.
+fn measured_reference(part: &PartInfo, ffmpeg: Option<&Path>, exclude: Option<i64>) -> Option<Reference> {
     if part.duration <= 0 {
         return None;
     }
     let starts = window_starts(part.duration);
-    for stream in &part.text_tracks {
+    for stream in part.text_tracks.iter().filter(|stream| Some(**stream) != exclude) {
         let read = |offset: u64, length: usize| super::universal::read_range(&part.url, part.auth.as_deref(), offset, length);
-        match super::mkvsubs::index(&read, *stream) {
-            Ok(index) => {
-                let cues = track_cues(&index.cues);
-                if spans(&cues, &starts) {
-                    return Some(starts.iter().map(|start| (*start, cue_mask(&cues, *start))).collect());
-                }
-                info!("SUBTITLE text stream {stream} of {} is too sparse to measure against ({} cues)", part.file, cues.len());
+        if let Ok(index) = super::mkvsubs::index(&read, *stream) {
+            let cues = track_cues(&index.cues);
+            if spans(&cues, &starts) {
+                return Some(Reference { windows: starts.iter().map(|start| (*start, cue_mask(&cues, *start))).collect(), voice: false, track: Some(*stream) });
             }
-            Err(error) => info!("SUBTITLE cannot read text stream {stream} of {}: {error}", part.file),
         }
     }
-    let ffmpeg = ffmpeg?;
-    let windows = starts
-        .iter()
-        .filter_map(|start| audio_window(ffmpeg, part, *start).map(|pcm| (*start, energy_mask(&pcm))))
-        .collect::<Vec<_>>();
-    (!windows.is_empty()).then_some(windows)
+    audio_reference(part, ffmpeg?).ok().flatten()
+}
+
+fn reference(part: &PartInfo, ffmpeg: Option<&Path>) -> Option<Vec<(f64, Vec<u8>)>> {
+    measured_reference(part, ffmpeg, None).map(|reference| reference.windows)
+}
+
+// -- explicit stream reads ---------------------------------------------------------------
+
+/// Prepared under the account's request overlay, executed after releasing SharedRuntime.
+pub(super) enum SubtitleRead {
+    Ready(Response),
+    Pending(ReadJob),
+}
+
+pub(super) struct ReadJob {
+    key: String,
+    account: i64,
+    stream: i64,
+    part: PartInfo,
+    fingerprint: String,
+    original: Option<String>,
+    index: Option<i64>,
+    adjust: bool,
+    reference: Option<Reference>,
+    ffmpeg: Option<PathBuf>,
+}
+
+impl std::fmt::Debug for ReadJob {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.debug_struct("SubtitleReadJob").field("key", &self.key).field("stream", &self.stream).finish()
+    }
+}
+
+pub(super) struct ReadResult {
+    job: ReadJob,
+    original: String,
+    adjusted: String,
+    reference: Option<Reference>,
+    measured: bool,
+}
+
+fn source_fingerprint(part: &PartInfo) -> String {
+    use sha2::{Digest, Sha256};
+    let identity = serde_json::to_vec(&json!([part.id, part.url, part.auth, part.file, part.size, part.duration, part.content_version, part.audio_index, part.text_tracks])).unwrap_or_default();
+    Sha256::digest(identity).iter().map(|byte| format!("{byte:02x}")).collect()
+}
+
+fn subtitle_content_version(row: &Value, media: &Value) -> Option<String> {
+    if let Some(hash) = media.get("_hash").and_then(Value::as_str) { return Some(hash.to_string()) }
+    let same_release = media.get("_source").and_then(Value::as_str).is_some()
+        && media.get("_sid").and_then(Value::as_str).is_some()
+        && media.get("_source") == row.get("_source") && media.get("_sid") == row.get("_sid");
+    let untagged_primary = media.get("_source").is_none() && media.get("_sid").is_none()
+        && media.get("id").is_some()
+        && row.pointer("/Media/0/id") == media.get("id");
+    if same_release || untagged_primary { row.get("_hash").and_then(Value::as_str).map(str::to_string) } else { None }
+}
+
+pub(super) struct VoiceJob {
+    key: String,
+    part: PartInfo,
+    fingerprint: String,
+    ffmpeg: PathBuf,
+    /// Some(None) means a successful analysis found no usable voice activity.
+    cached: Option<Option<Reference>>,
+}
+
+impl std::fmt::Debug for VoiceJob {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.debug_struct("VoiceJob").field("key", &self.key).field("part", &self.part.id).finish()
+    }
+}
+
+pub(super) struct VoiceResult {
+    job: VoiceJob,
+    reference: Option<Reference>,
+}
+
+/// Deep/manual analysis calls this off the Runtime lock before advertising the official
+/// client's combined hasVoiceActivity && canAutoSync gate. Silence is a real empty result.
+pub(super) fn analyze_voice(job: VoiceJob) -> Result<VoiceResult, String> {
+    let reference = match &job.cached {
+        Some(reference) => reference.clone(),
+        None => audio_reference(&job.part, &job.ffmpeg)?,
+    };
+    Ok(VoiceResult { job, reference })
+}
+
+impl Runtime {
+    pub(super) fn prepare_voice_analysis(&self, key: &str, part_id: &str) -> Option<VoiceJob> {
+        let ffmpeg = self.transcoder.as_ref()?.ffmpeg().to_path_buf();
+        let row = crate::catalog::unpacked(self.catalog.get(key)?);
+        for media in row.get("Media").and_then(Value::as_array).into_iter().flatten() {
+            for part in media.get("Part").and_then(Value::as_array).into_iter().flatten() {
+                if part.get("id").map(string_value).as_deref() != Some(part_id) { continue }
+                let info = self.subtitle_read_part(&row, media, part)?;
+                if info.duration <= 0 || info.audio_index.is_none() { return None }
+                let fingerprint = source_fingerprint(&info);
+                let saved = part.get("_subtitleSyncReference").filter(|value| value.get("source").and_then(Value::as_str) == Some(fingerprint.as_str()));
+                let cached = saved.filter(|value| value.get("audioAnalyzed").and_then(Value::as_bool) == Some(true))
+                    .map(|_| saved_references(part, Some(&fingerprint)).into_iter().find(|reference| reference.voice));
+                return Some(VoiceJob { key: key.to_string(), part: info, fingerprint, ffmpeg, cached });
+            }
+        }
+        None
+    }
+
+    /// True means accepted/current, including a successfully measured silent track.
+    /// Call on base catalog Media, after leaving any request account overlay.
+    pub(super) fn finish_voice_analysis(&mut self, result: VoiceResult) -> bool {
+        let VoiceResult { job, reference } = result;
+        let Some(row) = self.catalog.get(&job.key) else { return false };
+        let row = crate::catalog::unpacked(row);
+        let current = row.get("Media").and_then(Value::as_array).into_iter().flatten().any(|media| {
+            media.get("Part").and_then(Value::as_array).into_iter().flatten().any(|part| {
+                part.get("id").map(string_value).as_deref() == Some(job.part.id.as_str())
+                    && self.subtitle_read_part(&row, media, part).is_some_and(|info| source_fingerprint(&info) == job.fingerprint)
+            })
+        });
+        if !current { return false }
+        // Cached reads are already persisted; do not turn every repeated Analyze into a write.
+        if job.cached.is_some() { return true }
+        let Some(row) = self.catalog.get_mut(&job.key) else { return false };
+        crate::catalog::unpack_streams(row);
+        for media in row.get_mut("Media").and_then(Value::as_array_mut).into_iter().flatten() {
+            for part in media.get_mut("Part").and_then(Value::as_array_mut).into_iter().flatten() {
+                if part.get("id").map(string_value).as_deref() != Some(job.part.id.as_str()) { continue }
+                if part.get("_subtitleSyncReference").and_then(|value| value.get("source")).and_then(Value::as_str) != Some(job.fingerprint.as_str()) {
+                    part["_subtitleSyncReference"] = json!({"source": job.fingerprint, "references": {}});
+                }
+                if let Some(reference) = &reference { keep_reference(part, &job.fingerprint, reference) }
+                part["_subtitleSyncReference"]["audioAnalyzed"] = json!(true);
+                self.dirty = true;
+                return true;
+            }
+        }
+        false
+    }
+}
+
+fn subtitle_response(content: &str) -> Response {
+    Response { status: 200, content_type: "text/html".to_string(), body: content.as_bytes().to_vec(), headers: Vec::new(), close: false, doc: None }
+}
+
+/// The source is immutable; manual client offsets and account track selections are not
+/// read or written by automatic correction. Unknown/broken readings never change text.
+fn adjusted_text(original: &str, reference: Option<&Reference>) -> (String, bool) {
+    let reading = reference.map_or_else(Reading::unknown, |reference| measure(&reference.windows, &cues(original)));
+    let measured = matches!(reading.verdict, Verdict::InSync | Verdict::Shift | Verdict::Fps);
+    let text = Fix::of(&reading).map_or_else(|| original.to_string(), |fix| retime(original, fix.factor, fix.offset));
+    (text, measured)
+}
+
+/// Use existing MKV/MP4 indexes before FFmpeg. A partial read is an error, never a
+/// subtitle silently missing lines. Range reading and subprocess output are both bounded.
+fn embedded_text(part: &PartInfo, index: i64, ffmpeg: Option<&Path>) -> Result<String, String> {
+    let deadline = Instant::now() + Duration::from_secs(45);
+    let total = std::sync::atomic::AtomicUsize::new(0);
+    let read = |offset: u64, length: usize| {
+        use std::sync::atomic::Ordering;
+        if Instant::now() >= deadline || total.fetch_add(length, Ordering::Relaxed).saturating_add(length) > MAX_FILE * 4 {
+            return Err("subtitle extraction exceeds its read bound".to_string());
+        }
+        super::universal::read_range(&part.url, part.auth.as_deref(), offset, length)
+    };
+    if let Ok(index) = super::mkvsubs::index(&read, index) {
+        if index.cues.len() <= 100_000 {
+            let (events, failed, refused) = index.events(&read, &index.cues);
+            if failed == 0 && !refused {
+                let text = index.render(&events);
+                if text.len() <= MAX_FILE && !events.is_empty() {
+                    return Ok(text);
+                }
+            }
+        }
+    }
+    let ffmpeg = ffmpeg.ok_or("embedded subtitle extraction unavailable")?;
+    let mut command = input_command(ffmpeg, part);
+    command.args(["-i", &part.url, "-map", &format!("0:{index}"), "-c:s", "srt", "-f", "srt", "-"]);
+    let raw = capture(command, MAX_FILE)?;
+    let (text, _) = decode_text(&raw);
+    if cues(&text).is_empty() {
+        return Err("embedded subtitle has no readable text cues".to_string());
+    }
+    Ok(text)
+}
+
+/// This function must never run with SharedRuntime locked.
+pub(super) fn read(job: ReadJob) -> Result<ReadResult, String> {
+    let original = match &job.original {
+        Some(original) => original.clone(),
+        None => embedded_text(&job.part, job.index.ok_or("missing subtitle stream index")?, job.ffmpeg.as_deref())?,
+    };
+    let reference = if job.adjust {
+        job.reference.clone().or_else(|| measured_reference(&job.part, job.ffmpeg.as_deref(), job.index))
+    } else { None };
+    let (adjusted, measured) = if job.adjust { adjusted_text(&original, reference.as_ref()) } else { (original.clone(), false) };
+    Ok(ReadResult { job, original, adjusted, reference, measured })
+}
+
+impl Runtime {
+    fn subtitle_read_part(&self, row: &Value, media: &Value, part: &Value) -> Option<PartInfo> {
+        let file = part.get("file")?.as_str()?;
+        let (source, path) = self.part_source(row, file)?;
+        let (url, auth) = source.ffmpeg_input(&path);
+        let streams = crate::catalog::part_streams(part);
+        Some(PartInfo {
+            id: part.get("id").map(string_value).unwrap_or_default(),
+            url, auth,
+            size: part.get("size").and_then(Value::as_u64).unwrap_or(0),
+            file: file.to_string(),
+            duration: media.get("duration").or_else(|| part.get("duration")).or_else(|| row.get("duration")).and_then(Value::as_i64).unwrap_or(0),
+            content_version: subtitle_content_version(row, media),
+            audio_index: streams.iter().filter(|stream| stream.get("streamType").and_then(Value::as_i64) == Some(2))
+                .find_map(|stream| stream.get("index").and_then(Value::as_i64).filter(|index| *index >= 0)),
+            text_tracks: streams.iter().filter(|stream| {
+                stream.get("_content").is_none() && stream.get("key").is_none()
+                    && !stream.get("forced").is_some_and(truthy) && crate::mediainfo::subtitle_sync_text(stream)
+            }).filter_map(|stream| stream.get("index").and_then(Value::as_i64)).filter(|index| *index >= 0).collect(),
+            ..PartInfo::default()
+        })
+    }
+
+    /// A guessed stream id must not disclose even original content.
+    pub(super) fn prepare_subtitle_read(&self, row: &Value, stream_id: i64, query: &HashMap<String, String>) -> Result<SubtitleRead, Response> {
+        if !self.visible(row) {
+            return Err(Response::error(404, "rex: not found"));
+        }
+        let row = crate::catalog::unpacked(row);
+        for media in row.get("Media").and_then(Value::as_array).into_iter().flatten() {
+            for part in media.get("Part").and_then(Value::as_array).into_iter().flatten() {
+                let streams = crate::catalog::part_streams(part);
+                let Some(stream) = streams.iter().find(|stream| stream.get("id").and_then(Value::as_i64) == Some(stream_id)) else { continue };
+                let original = stream.get("_content").and_then(Value::as_str);
+                let adjust = query.get("autoAdjustSubtitle").is_some_and(|value| value == "1" || value.eq_ignore_ascii_case("true"));
+                if !adjust {
+                    if let Some(original) = original {
+                        return Ok(SubtitleRead::Ready(subtitle_response(original)));
+                    }
+                }
+                if !crate::mediainfo::subtitle_sync_text(stream) {
+                    return original.map(|text| SubtitleRead::Ready(subtitle_response(text))).ok_or_else(|| Response::error(501, "rex: not implemented"));
+                }
+                let Some(info) = self.subtitle_read_part(&row, media, part) else {
+                    return original.map(|text| SubtitleRead::Ready(subtitle_response(text))).ok_or_else(|| Response::error(502, "rex: source unavailable"));
+                };
+                let fingerprint = source_fingerprint(&info);
+                let account = self.viewer.id;
+                let account_key = account.to_string();
+                let index = if original.is_none() { stream.get("index").and_then(Value::as_i64) } else { None };
+                let cached = stream.get("_subtitleSyncCache").and_then(|cache| cache.get(&account_key));
+                if adjust {
+                    if let Some(cache) = cached.filter(|cache| cache.get("source").and_then(Value::as_str) == Some(fingerprint.as_str())
+                        && cache.get("index").and_then(Value::as_i64) == index
+                        && original.is_none_or(|original| cache.get("original").and_then(Value::as_str) == Some(original))) {
+                        if let Some(text) = cache.get("adjusted").and_then(Value::as_str) {
+                            return Ok(SubtitleRead::Ready(subtitle_response(text)));
+                        }
+                    }
+                }
+                let reference = saved_references(part, Some(&fingerprint)).into_iter()
+                    .filter(|reference| reference.track.is_none() || reference.track != index)
+                    .min_by_key(|reference| reference.voice);
+                return Ok(SubtitleRead::Pending(ReadJob {
+                    key: row.get("ratingKey").map(string_value).unwrap_or_default(),
+                    account, stream: stream_id, part: info, fingerprint,
+                    original: original.map(str::to_string), index, adjust, reference,
+                    ffmpeg: self.transcoder.as_ref().map(|transcoder| transcoder.ffmpeg().to_path_buf()),
+                }));
+            }
+        }
+        Err(Response::error(404, "rex: not found"))
+    }
+
+    /// Revalidate source and original stream after IO; cached output never replaces
+    /// `_content` or selections. The caller persists through its normal flush.
+    pub(super) fn finish_subtitle_read(&mut self, result: ReadResult) -> Response {
+        let ReadResult { job, original, adjusted, reference, measured } = result;
+        let Some(row) = self.catalog.get(&job.key) else { return Response::error(404, "rex: not found") };
+        let unpacked = crate::catalog::unpacked(row);
+        let matching = unpacked.get("Media").and_then(Value::as_array).into_iter().flatten().any(|media| {
+            media.get("Part").and_then(Value::as_array).into_iter().flatten().any(|part| {
+                part.get("id").map(string_value).as_deref() == Some(job.part.id.as_str())
+                    && self.subtitle_read_part(&unpacked, media, part).is_some_and(|info| source_fingerprint(&info) == job.fingerprint)
+                    && crate::catalog::part_streams(part).iter().any(|stream| {
+                        stream.get("id").and_then(Value::as_i64) == Some(job.stream)
+                            && stream.get("_content").and_then(Value::as_str) == job.original.as_deref()
+                            && (job.original.is_some() || stream.get("index").and_then(Value::as_i64) == job.index)
+                    })
+            })
+        });
+        if !matching {
+            return Response::error(409, "rex: subtitle source changed");
+        }
+        if !job.adjust { return subtitle_response(&original) }
+        if let Some(row) = self.catalog.get_mut(&job.key) {
+            crate::catalog::unpack_streams(row);
+            for media in row.get_mut("Media").and_then(Value::as_array_mut).into_iter().flatten() {
+                for part in media.get_mut("Part").and_then(Value::as_array_mut).into_iter().flatten() {
+                    if part.get("id").map(string_value).as_deref() != Some(job.part.id.as_str()) { continue }
+                    if let Some(reference) = &reference {
+                        keep_reference(part, &job.fingerprint, reference);
+                    }
+                    for stream in part.get_mut("Stream").and_then(Value::as_array_mut).into_iter().flatten() {
+                        if stream.get("id").and_then(Value::as_i64) != Some(job.stream) { continue }
+                        let cache = stream.as_object_mut().unwrap().entry("_subtitleSyncCache").or_insert_with(|| json!({}));
+                        cache[job.account.to_string()] = json!({"source": job.fingerprint, "index": job.index, "original": original, "adjusted": adjusted, "measured": measured});
+                    }
+                }
+            }
+            self.dirty = true;
+        }
+        subtitle_response(&adjusted)
+    }
+
+    /// Run on unpacked metadata before removing internal fields. No source IO or FFmpeg.
+    pub(super) fn project_subtitle_capabilities(&self, row: &mut Value) {
+        let count = row.get("Media").and_then(Value::as_array).map_or(0, Vec::len);
+        for media_index in 0..count {
+            let mut voice = false;
+            let parts = row["Media"][media_index].get("Part").and_then(Value::as_array).map_or(0, Vec::len);
+            for part_index in 0..parts {
+                let media = &row["Media"][media_index];
+                let info = self.subtitle_read_part(row, media, &media["Part"][part_index]);
+                let fingerprint = info.as_ref().map(source_fingerprint);
+                let part = &mut row["Media"][media_index]["Part"][part_index];
+                let references = saved_references(part, fingerprint.as_deref());
+                voice |= references.iter().any(|reference| reference.voice);
+                for stream in part.get_mut("Stream").and_then(Value::as_array_mut).into_iter().flatten() {
+                    if stream.get("streamType").and_then(Value::as_i64) == Some(3) {
+                        let index = if stream.get("_content").is_none() { stream.get("index").and_then(Value::as_i64) } else { None };
+                        let capable = crate::mediainfo::subtitle_sync_text(stream) && info.as_ref().is_some_and(|info| {
+                            info.duration > 0 && (self.transcoder.is_some() || info.text_tracks.iter().any(|track| Some(*track) != index)
+                                || references.iter().any(|reference| reference.track.is_none() || reference.track != index))
+                        });
+                        stream["canAutoSync"] = json!(capable);
+                    }
+                    if let Some(stream) = stream.as_object_mut() { stream.shift_remove("_subtitleSyncCache"); }
+                }
+                if let Some(part) = part.as_object_mut() { part.shift_remove("_subtitleSyncReference"); }
+            }
+            row["Media"][media_index]["hasVoiceActivity"] = json!(voice);
+        }
+    }
 }
 
 /// A track the meter can stand on: three cues or more in at least half the windows. Against a
@@ -1339,6 +1769,9 @@ impl Runtime {
                 resolution: text(chosen, "videoResolution").unwrap_or_default(),
                 text_tracks,
                 hash: text(part, "_osHash"),
+                content_version: subtitle_content_version(&row, chosen),
+                audio_index: streams.iter().filter(|stream| stream.get("streamType").and_then(Value::as_i64) == Some(2))
+                    .find_map(|stream| stream.get("index").and_then(Value::as_i64).filter(|index| *index >= 0)),
             },
         })
     }
@@ -1557,6 +1990,54 @@ mod tests {
         assert_eq!(retime(vtt, 1.0, 1.5), "WEBVTT\n\n00:00:00.000 --> 00:00:01.500 line:0\nx\n");
         let ass = "[Events]\nDialogue: 0,0:00:10.00,0:00:12.50,Default,,0,0,0,,Hi, there\n";
         assert_eq!(retime(ass, 1.0, -1.0), "[Events]\nDialogue: 0,0:00:11.00,0:00:13.50,Default,,0,0,0,,Hi, there\n");
+    }
+
+    #[test]
+    fn explicit_adjustment_does_not_retime_without_a_confident_reference() {
+        let original = "1\n00:01:40,000 --> 00:01:42,000\nKeep my timing\n";
+        assert_eq!(adjusted_text(original, None), (original.to_string(), false));
+        let silent = Reference { windows: vec![(60.0, vec![0; (WIN / FRAME) as usize]); 6], voice: false, track: None };
+        assert_eq!(adjusted_text(original, Some(&silent)), (original.to_string(), false));
+    }
+
+    #[test]
+    fn sync_capability_rejects_image_and_unaddressable_subtitles() {
+        assert!(!crate::mediainfo::subtitle_sync_text(&json!({"streamType": 3, "codec": "pgs", "index": 2})));
+        assert!(!crate::mediainfo::subtitle_sync_text(&json!({"streamType": 3, "codec": "srt"})));
+        assert!(crate::mediainfo::subtitle_sync_text(&json!({"streamType": 3, "codec": "srt", "_content": "text"})));
+        assert!(crate::mediainfo::subtitle_sync_text(&json!({"streamType": 3, "codec": "mov_text", "index": 2})));
+    }
+
+    #[test]
+    fn text_reference_updates_preserve_audio_and_references_round_trip_without_derive() {
+        let audio = Reference { windows: vec![(1.0, vec![0, 1, 0, 1])], voice: true, track: None };
+        let text = Reference { windows: audio.windows.clone(), voice: false, track: Some(3) };
+        let mut part = json!({});
+        keep_reference(&mut part, "source-a", &audio);
+        keep_reference(&mut part, "source-a", &text);
+        let saved = saved_references(&part, Some("source-a"));
+        assert_eq!(saved.len(), 2);
+        assert!(saved.iter().any(|reference| reference.voice && reference.windows == audio.windows));
+        assert_eq!(part["_subtitleSyncReference"]["audioAnalyzed"], true);
+        assert!(saved_references(&part, Some("source-b")).is_empty());
+        keep_reference(&mut part, "source-b", &text);
+        assert!(!saved_references(&part, Some("source-b")).iter().any(|reference| reference.voice));
+        assert!(Reference::from_value(&json!({"windows": [[1.0, [255]]], "voice": true, "track": null})).is_none());
+    }
+
+    #[test]
+    fn subtitle_identity_uses_only_the_owning_media_content_version() {
+        let row = json!({"_source": "first", "_sid": "one", "_hash": "primary-version",
+            "Media": [{"id": 1}, {"id": 2, "_source": "other", "_sid": "two"}]});
+        assert_eq!(subtitle_content_version(&row, &row["Media"][0]).as_deref(), Some("primary-version"));
+        assert_eq!(subtitle_content_version(&row, &row["Media"][1]), None);
+        let mut other = row["Media"][1].clone();
+        other["_hash"] = json!("other-version");
+        assert_eq!(subtitle_content_version(&row, &other).as_deref(), Some("other-version"));
+        let mut part = PartInfo { content_version: Some("first".into()), ..PartInfo::default() };
+        let before = source_fingerprint(&part);
+        part.content_version = Some("second".into());
+        assert_ne!(source_fingerprint(&part), before);
     }
 
     #[test]
@@ -1787,6 +2268,8 @@ mod tests {
             resolution: field("resolution"),
             text_tracks: item["text_tracks"].as_array().into_iter().flatten().filter_map(Value::as_i64).collect(),
             hash: None,
+            content_version: item.get("hash").and_then(Value::as_str).map(str::to_string),
+            audio_index: None,
         };
         let hash = hash_of(&part);
         assert_eq!(hash.as_deref(), Some(field("hash").as_str()), "the hash the study read through rex");

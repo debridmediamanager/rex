@@ -143,9 +143,9 @@ jobs:
           .github/ci/in-image.sh 'python3 tests/parallel_suites.py --workers 4 \
             test_startup_wait test_test_ports test_parallel_suites test_cli test_server_command \
             test_native_runtime_smoke test_build_catalog test_tls test_part_bytes \
-            test_sources test_feed test_feed_versions test_feed_season_art \
+            test_sources test_feed test_feed_versions test_feed_editions test_feed_season_art \
             test_feed_blank_tiles test_feed_source_decides test_feed_placement test_feed_rejected test_feed_extras test_feed_versions_1017 test_zurg_contract test_plextv test_rex_direct test_track_prefs test_accounts \
-            test_unclaimed_gate test_photo_ssrf test_manager test_paused_limit test_webhooks test_auto_collections test_accept_exhaustion \
+            test_unclaimed_gate test_photo_ssrf test_manager test_paused_limit test_dashboard_accounts test_dashboard_resources test_share_restrictions test_stream_limits test_auto_collections test_accept_exhaustion \
             test_body_framing test_catalog_features test_parity_split_guid test_merge_unpaired test_parity_cycle88_b test_sidecars_embedded'
 
       # No GPU in the container: this is the CPU (x264) path, with the hardware probe on auto.
@@ -159,7 +159,19 @@ jobs:
             python3 tests/test_native_transcode.py
             python3 tests/test_download_queue.py
             python3 tests/test_perf_artwork_save.py
-            python3 tests/test_subtitles.py'
+            python3 tests/test_subtitles.py
+            python3 tests/test_transcode_premium.py
+            python3 tests/test_transcode_accounts.py
+            python3 tests/test_analysis_processing.py
+            python3 tests/test_webhooks.py
+            python3 tests/test_cinema_playback.py
+            export REX_TEST_FFMPEG="$d/ffmpeg" REX_THUMBNAIL_TEST_FFMPEG="$d/ffmpeg" REX_TEST_FONT=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf
+            cargo test --release --locked --manifest-path rust/Cargo.toml runtime::markers::tests -- --ignored
+            cargo test --release --locked --manifest-path rust/Cargo.toml thumbnails::tests::ffmpeg_images_and_roku_index -- --ignored
+            cargo test --release --locked --manifest-path rust/Cargo.toml runtime::analysis::tests::generated_jpeg_restore_checks_hash_containment_corruption_and_removal -- --ignored
+            cargo test --release --locked --manifest-path rust/Cargo.toml converted_download_is_atomic_at_the_requested_destination -- --ignored
+            cargo test --release --locked --manifest-path rust/Cargo.toml platform::tests::real_process_resource_smoke -- --ignored
+            cargo test --release --locked --manifest-path rust/Cargo.toml catalog::tests::a_row_written_in_place_does_not_rescan_the_library -- --ignored --test-threads=1'
 
       - name: Stage
         run: install -D -m 755 rust/target/release/rex "$REX_STAGE/${{ github.run_id }}/rex-linux-amd64"

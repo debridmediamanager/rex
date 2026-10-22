@@ -29,10 +29,12 @@ use crate::catalog::RowRef;
 use crate::hotrow::{AnyRow, Lazy, Row};
 
 mod accounts;
+mod analysis;
 mod artwork;
 mod axes;
 mod butler;
 mod children;
+mod cinema;
 mod collections;
 mod detail;
 mod diskcache;
@@ -44,8 +46,10 @@ mod gates;
 mod i18n;
 mod item_hubs;
 mod listing;
+mod limits;
 pub(crate) mod logging;
 mod merge;
+mod markers;
 mod notify;
 mod playlists;
 pub(crate) mod plexmeta;
@@ -64,6 +68,7 @@ mod transcoder;
 mod mkvsubs;
 mod mp4subs;
 mod subtitles;
+mod thumbnails;
 mod universal;
 pub(crate) mod upstream;
 mod wire;
@@ -495,10 +500,63 @@ struct MetadataProviderGroup {
 }
 
 #[derive(Debug, Clone)]
+struct QueueMedia {
+    versions: Vec<(String, Vec<String>)>,
+}
+
+impl QueueMedia {
+    fn from_media(value: &Value) -> Option<Self> {
+        let versions = value.as_array()?.iter().map(|media| {
+            let id = media.get("id").map(string_value)?;
+            let parts = media.get("Part")?.as_array()?.iter()
+                .map(|part| part.get("id").map(string_value)).collect::<Option<Vec<_>>>()?;
+            (!parts.is_empty()).then_some((id, parts))
+        }).collect::<Option<Vec<_>>>()?;
+        (!versions.is_empty()).then_some(Self { versions })
+    }
+
+    fn from_value(value: &Value) -> Option<Self> {
+        let versions = value.as_array()?.iter().map(|version| {
+            let id = version.get(0)?.as_str()?.to_string();
+            let parts = version.get(1)?.as_array()?.iter()
+                .map(|part| part.as_str().map(str::to_string)).collect::<Option<Vec<_>>>()?;
+            (!parts.is_empty()).then_some((id, parts))
+        }).collect::<Option<Vec<_>>>()?;
+        (!versions.is_empty()).then_some(Self { versions })
+    }
+
+    fn to_value(&self) -> Value { json!(self.versions) }
+
+    fn matches(value: Option<&Value>, id: &str) -> bool {
+        match value {
+            Some(Value::String(value)) => value == id,
+            Some(value) => value.as_i64().zip(id.parse::<i64>().ok()).is_some_and(|(a,b)| a == b),
+            None => false,
+        }
+    }
+
+    /// Resolve stable IDs against current catalog data, never a saved Media copy.
+    fn apply(&self, row: &mut Value) -> bool {
+        let Some(media) = row.get_mut("Media").and_then(Value::as_array_mut) else { return false };
+        media.retain(|media| self.versions.iter().any(|(id,_)| Self::matches(media.get("id"), id)));
+        if media.len() != self.versions.len() { return false }
+        for media in media {
+            let Some((_,ids)) = self.versions.iter().find(|(id,_)| Self::matches(media.get("id"), id)) else { return false };
+            let Some(parts) = media.get_mut("Part").and_then(Value::as_array_mut) else { return false };
+            parts.retain(|part| ids.iter().any(|id| Self::matches(part.get("id"), id)));
+            if parts.len() != ids.len() { return false }
+        }
+        true
+    }
+}
+
+#[derive(Debug, Clone)]
 struct QueueItem {
     id: i64,
     rating_key: String,
     added: bool,
+    /// An exact cinema prefix Media/Part selection, not a mutation of the catalog.
+    media: Option<QueueMedia>,
 }
 
 #[derive(Debug, Clone)]
@@ -514,6 +572,8 @@ struct Queue {
     client: String,
     playlist_id: Option<String>,
     playlist_title: Option<String>,
+    /// The feature selected before its cinema prefix starts.
+    main_key: Option<String>,
     /// Rows remain and NONE is selected: the selected row was removed with no row
     /// after it (cycle 84, plexscratch42). See `queue_container`.
     deselected: bool,
@@ -582,6 +642,7 @@ pub struct Runtime {
     download_plan: Option<universal::Plan>,
     /// A downloaded file's bytes, streamed after the runtime lock is released.
     pending_download: Option<downloads::FileRead>,
+    pending_artifact: Option<(Value, Option<i64>, &'static str)>,
     /// A remote artwork url the router answered with (`_serve_image`); fetched, cached,
     /// after the lock is released, so a slow image host never holds up the API.
     pending_image: Option<String>,
@@ -601,6 +662,8 @@ pub struct Runtime {
     /// A subtitle apply or automatic search a route asked for (`subtitles.rs`), run on a
     /// thread of its own once the lock is released.
     pending_subtitle: Option<subtitles::Job>,
+    pending_subtitle_read: Option<subtitles::ReadJob>,
+    analysis_jobs: Arc<analysis::Jobs>,
     /// The subtitle jobs running, by item, and the searches that found nothing.
     subtitle_jobs: Arc<subtitles::Jobs>,
     /// What each row a subtitle search answered names, by the local stream id it was minted.
@@ -671,18 +734,19 @@ pub struct Runtime {
     /// Client identifiers in the order the server first saw them (`""` is device 1).
     device_order: Vec<String>,
     device_first_seen: HashMap<String, i64>,
-    /// `(at, type, seconds, device)` per stopped play, for `/statistics/media`.
-    plays: Vec<(i64, String, i64, i64)>,
+    /// `(at, type, seconds, device, account)` per stopped play.
+    plays: Vec<(i64, String, i64, i64, i64)>,
     pub next_collection: i64,
     pub next_queue: i64,
     pub next_queue_item: i64,
     pub next_dynamic_key: i64,
     /// Live playback sessions by playback-session identity (`sessions.py`).
     pub(crate) sessions: HashMap<String, sessions::SessionEntry>,
+    stream_admissions: limits::StreamAdmissions,
     /// `Sessions._next_key`: the counter a new session's `sessionKey` steps.
     next_session_key: i64,
-    /// `Sessions._bytes`: (device, lan) -> per-second byte counts, in first-seen order.
-    byte_buckets: Versioned<Vec<((i64, bool), Vec<(i64, i64)>)>>,
+    /// `(device, lan, account)` -> per-second byte counts, in first-seen order.
+    byte_buckets: Versioned<Vec<((i64, bool, i64), Vec<(i64, i64)>)>>,
     /// The reaper's last tick: process-wide, anchored at start (`sessions._last_reap`).
     last_reap: f64,
     pub started_sessions: HashSet<String>,
@@ -726,9 +790,8 @@ pub struct Runtime {
     pub decided_sessions: HashSet<(String, String)>,
     pub web_root: Option<PathBuf>,
     pub bandwidth_bytes: u64,
-    /// `resource_statistics`: the last (second, process CPU seconds) sample and the
-    /// per-second series the Dashboard's CPU graph reads.
-    resource_sample: Option<(i64, f64)>,
+    /// The last measured resource counters and bounded Dashboard series.
+    resource_sample: Option<crate::platform::ResourceSample>,
     resource_series: Vec<Value>,
     pub dirty: bool,
     /// The order snapshots of the state are taken in, and the one a request took that
@@ -873,6 +936,7 @@ impl Runtime {
             let cache = plextv::claim_path(&options.catalog).with_file_name("plex_cache.json");
             Arc::new(plexmeta::PlexMeta::new(Arc::clone(&plextv.claim), cache, machine.clone()))
         });
+        let analysis_jobs = analysis::Jobs::new(options.state.as_deref());
         let mut runtime = Self {
             catalog,
             machine,
@@ -904,12 +968,15 @@ impl Runtime {
             downloads: Arc::new(Mutex::new(downloads::Downloads::default())),
             download_plan: None,
             pending_download: None,
+            pending_artifact: None,
             pending_image: None,
             pending_claim: None,
             pending_agent: None,
             agent_answers: HashMap::new(),
             pending_auto_collections: false,
             pending_subtitle: None,
+            pending_subtitle_read: None,
+            analysis_jobs,
             subtitle_jobs: Arc::default(),
             subtitle_offers: HashMap::new(),
             subtitle_serial: 0,
@@ -961,6 +1028,7 @@ impl Runtime {
             next_queue_item: 2,
             next_dynamic_key: 40000,
             sessions: HashMap::new(),
+            stream_admissions: Default::default(),
             next_session_key: 1,
             byte_buckets: Versioned::default(),
             last_reap: now_seconds(),
@@ -1510,6 +1578,10 @@ impl Runtime {
                             id: item.get("id")?.as_i64()?,
                             rating_key: item.get("ratingKey").map(string_value)?,
                             added: item.get("added").and_then(Value::as_bool).unwrap_or(false),
+                            media: match item.get("media").filter(|value| !value.is_null()) {
+                                Some(value) => Some(QueueMedia::from_value(value)?),
+                                None => None,
+                            },
                         })
                     })
                     .collect::<Vec<_>>();
@@ -1535,6 +1607,7 @@ impl Runtime {
                         client: text("client").unwrap_or_default(),
                         playlist_id: text("playlistId"),
                         playlist_title: text("playlistTitle"),
+                        main_key: text("mainKey"),
                         deselected: value
                             .get("deselected")
                             .and_then(Value::as_bool)
@@ -1696,6 +1769,7 @@ impl Runtime {
                         play.get(1)?.as_str()?.to_string(),
                         play.get(2)?.as_i64()?,
                         play.get(3)?.as_i64()?,
+                        play.get(4).and_then(Value::as_i64).unwrap_or(accounts::OWNER),
                     ))
                 })
                 .collect();
@@ -1714,13 +1788,17 @@ impl Runtime {
                         .iter()
                         .filter_map(|pair| Some((pair.get(0)?.as_i64()?, pair.get(1)?.as_i64()?)))
                         .collect::<Vec<_>>();
-                    Some(((entry.get(0)?.as_i64()?, entry.get(1)?.as_bool()?), seconds))
+                    Some(((entry.get(0)?.as_i64()?, entry.get(1)?.as_bool()?,
+                        entry.get(3).and_then(Value::as_i64).unwrap_or(accounts::OWNER)), seconds))
                 })
                 .collect();
             // A state saved before the table was bounded holds every second it ever counted.
             for (_, seconds) in self.byte_buckets.iter_mut() {
                 sessions::fold_old_seconds(seconds, now() - sessions::SECONDS_KEPT);
             }
+        }
+        if let Some(downloads) = state.get("downloads") {
+            self.restore_download_state(downloads);
         }
         // `Store.restore`'s answer, which `main()` logs.
         self.state_summary = if rebuilt {
@@ -1812,6 +1890,7 @@ impl Runtime {
     /// The state as the file will hold it, taken under the runtime lock; writing it is
     /// `write_snapshot`'s, which needs no lock but the file's own.
     fn snapshot_state(&mut self) -> Result<Option<StateSnapshot>, String> {
+        self.checkpoint_downloads();
         // Never while another account's state sits on the rows: the save would write it as
         // the owner's. `dirty` stays set for the save after `leave_account`.
         if self.overlay.is_some() {
@@ -1970,7 +2049,7 @@ impl Runtime {
             // counter re-derived from the surviving rows hands a deleted list's id out
             // again, and one not kept at all restarts `playlistItemID` at 1 beside the
             // restored items that already hold it.
-            "queues": self.queues.values().map(|queue| json!({"id":queue.id,"version":queue.version,"selected":queue.selected,"items":queue.items.iter().map(|item| json!({"id":item.id,"ratingKey":item.rating_key,"added":item.added})).collect::<Vec<_>>(),"source":queue.source,"natural":queue.natural,"shuffled":queue.shuffled,"lastAdded":queue.last_added,"client":queue.client,"playlistId":queue.playlist_id,"playlistTitle":queue.playlist_title,"deselected":queue.deselected})).collect::<Vec<_>>(),
+            "queues": self.queues.values().map(|queue| json!({"id":queue.id,"version":queue.version,"selected":queue.selected,"items":queue.items.iter().map(|item| json!({"id":item.id,"ratingKey":item.rating_key,"added":item.added,"media":item.media.as_ref().map(QueueMedia::to_value)})).collect::<Vec<_>>(),"source":queue.source,"natural":queue.natural,"shuffled":queue.shuffled,"lastAdded":queue.last_added,"client":queue.client,"playlistId":queue.playlist_id,"playlistTitle":queue.playlist_title,"mainKey":queue.main_key,"deselected":queue.deselected})).collect::<Vec<_>>(),
             "nextQueue": self.next_queue,
             "nextQueueItem": self.next_queue_item,
             "nextPlaylist": self.next_playlist,
@@ -1980,9 +2059,9 @@ impl Runtime {
             "tagTable": self.tag_table.iter().map(|((field, lowered), value)| json!([field, lowered, value])).collect::<Vec<_>>(),
             "deviceOrder": self.device_order,
             "deviceFirstSeen": self.device_first_seen,
-            "plays": self.plays.iter().map(|(at, kind, seconds, device)| json!([at, kind, seconds, device])).collect::<Vec<_>>(),
+            "plays": self.plays.iter().map(|(at, kind, seconds, device, account)| json!([at, kind, seconds, device, account])).collect::<Vec<_>>(),
             "bandwidthBytes": self.bandwidth_bytes,
-            "byteBuckets": (full || self.saving("byteBuckets")).then(|| self.byte_buckets.iter().map(|((device, lan), seconds)| json!([device, lan, seconds])).collect::<Vec<_>>()),
+            "byteBuckets": (full || self.saving("byteBuckets")).then(|| self.byte_buckets.iter().map(|((device, lan, account), seconds)| json!([device, lan, seconds, account])).collect::<Vec<_>>()),
         });
         // The rest of what `persist.py` keeps and this file did not: SIM_FIELDS'
         // section-pref overrides, custom metadata provider groups and their counter,
@@ -2006,7 +2085,7 @@ impl Runtime {
                 Value::Null
             }),
             ("themeRows", json!(self.theme_rows)),
-            ("downloadQueues", json!(self.download_queues)),
+            ("downloads", self.download_state()),
             ("historyCounter", json!(self.history_counter.get())),
             ("retiredKeys", json!((full || self.saving("retiredKeys")).then(|| &*self.retired_keys))),
             ("nextScanKey", json!(self.next_scan_key)),
@@ -2218,13 +2297,24 @@ impl Runtime {
     /// `detail_row_prefs`, and with `streams` false a packed Part's streams left out: a
     /// listing drops them (`grid_row`), and unpacking them first cost a parse per row.
     fn projected_row(&self, original: &Value, streams: bool) -> Value {
-        let row = if streams { strip_private_value(original) } else { strip_private_fields(original) };
+        let row = if streams {
+            let mut row = crate::catalog::unpacked(original).into_owned();
+            self.project_subtitle_capabilities(&mut row);
+            self.project_audio_capabilities(&mut row);
+            strip_private_in_place(&mut row);
+            row
+        } else {
+            strip_private_fields(original)
+        };
         self.project_copy(original, row)
     }
 
     /// `projected_row` on a copy the caller made of `original`.
     fn project_copy(&self, original: &Value, mut row: Value) -> Value {
         mediainfo::project_chapters(original, &mut row, false);
+        if original.get("Media").and_then(Value::as_array).is_some_and(|media| media.iter().any(|media| media.get("_analysis").is_some())) {
+            self.project_analysis(original, &mut row, false);
+        }
         let Some(object) = row.as_object_mut() else {
             return row;
         };
@@ -3611,7 +3701,7 @@ impl Runtime {
             ("allowChannelAccess", json!(true)),
             ("allowMediaDeletion", json!(true)),
             ("allowSharing", json!(true)),
-            ("allowSync", json!(false)),
+            ("allowSync", json!(self.download_allowed())),
             ("allowTuners", json!(false)),
             ("apiVersion", json!("1.1.1")),
             ("backgroundProcessing", json!(true)),
@@ -4743,7 +4833,7 @@ impl Runtime {
     /// `_count_bytes`'s side effect on the device table: register the client and write
     /// the device name and platform it sent (header, else the query's first value).
     fn mark_device(&mut self, request: &Request) {
-        let owner = sessions::ByteOwner::of(request);
+        let owner = sessions::ByteOwner::of(request, self.grant_for(request).id);
         self.note_device(&owner.identifier, &owner.name, &owner.platform);
     }
 
@@ -4754,6 +4844,7 @@ impl Runtime {
     /// Inside a request: snapshot now and leave the file write to the connection,
     /// which does it after releasing the runtime lock and before the status line.
     fn save_if_dirty(&mut self) {
+        self.checkpoint_downloads();
         if self.dirty && self.state_path.is_some() {
             match self.snapshot_state() {
                 // A later snapshot is written with every earlier one queued before it;
@@ -7910,6 +8001,7 @@ impl Runtime {
             if pieces.len() > 5
                 && pieces[1] == "library"
                 && pieces[2] == "parts"
+                && pieces[4] != "indexes"
                 && !digits(&pieces[4])
             {
                 return Response::error(404, "rex: not found");
@@ -8033,6 +8125,9 @@ impl Runtime {
         }
         if let Some(refusal) = self.share_refusal(request, &path) {
             return refusal;
+        }
+        if path.starts_with("/video/:/transcode/universal/") {
+            query.insert("location".to_string(), if self.playback_lan(&request.headers) { "lan" } else { "wan" }.to_string());
         }
         // A bare `/player` falls to the plug-in dispatcher for every verb but GET and
         // HEAD, as server.py's single-segment fallthrough runs before its player rule.
@@ -8633,6 +8728,24 @@ impl Runtime {
             return (self.assert_claimed || path == "/myplex/claim") && self.local_request(request);
         }
         request_token(request, query).is_some_and(|value| self.token_admitted(value))
+    }
+
+    /// Bandwidth locality uses trusted peer addresses, not Host or a client location flag.
+    fn playback_lan(&self, headers: &HashMap<String, String>) -> bool {
+        let Some((peer, _)) = CONNECTION.with(std::cell::Cell::get) else { return true };
+        let configured = self.server_pref("LanNetworksBandwidth").and_then(|value| value.as_str().map(str::to_string)).unwrap_or_default();
+        let networks = configured.split(',').filter_map(network).collect::<Vec<_>>();
+        let local = |ip: std::net::IpAddr| {
+            let ip = ip.to_canonical();
+            ip.is_loopback() || if networks.is_empty() {
+                private_address(ip)
+            } else {
+                networks.iter().any(|&(net, bits)| in_network(ip, net, bits))
+            }
+        };
+        local(peer) && headers.get("x-forwarded-for").is_none_or(|forwarded| {
+            forwarded.split(',').all(|hop| hop.trim().parse().is_ok_and(&local))
+        })
     }
 
     /// Who may claim an unclaimed server with no `--token` (and, under `--assert-claimed`, use
@@ -10037,69 +10150,6 @@ impl Runtime {
     }
 
 
-    /// `resource_statistics`: the Dashboard's CPU and memory graph.  The samples are
-    /// taken when the endpoint is ASKED -- the Dashboard polls while it is open, so the
-    /// per-second series grows the way it does on a real server.  Host CPU is the load
-    /// average over the core count and process CPU is rusage over wall time; the two
-    /// memory numbers are honestly 0.0.  The grammar is `statistics_refusal`'s.
-    fn route_resource_statistics(&mut self, query: &HashMap<String, String>) -> Response {
-        let bare_empty = || Response::json(200, json!({"MediaContainer": {"size": 0}}));
-        let Some(span) = query.get("timespan").filter(|value| !value.is_empty()) else {
-            return bare_empty();
-        };
-        if span.trim_start_matches('+').parse::<i64>().ok() != Some(6) {
-            return bare_empty();
-        }
-        let now = now();
-        let cpu_seconds = crate::platform::cpu_seconds();
-        let mut process = 0.0_f64;
-        if let Some((at, previous)) = self.resource_sample {
-            if now > at {
-                process = ((cpu_seconds - previous) / (now - at) as f64 * 100.0).max(0.0);
-            }
-        }
-        self.resource_sample = Some((now, cpu_seconds));
-        let host = match crate::platform::load_average() {
-            None => 0.0,
-            Some(load) => {
-                let cores = std::thread::available_parallelism()
-                    .map(|count| count.get())
-                    .unwrap_or(1) as f64;
-                (load / cores * 100.0).min(100.0)
-            }
-        };
-        let round3 = |value: f64| (value * 1000.0).round() / 1000.0;
-        let last_at = self
-            .resource_series
-            .last()
-            .and_then(|row| row.get("at"))
-            .and_then(Value::as_i64);
-        if last_at.is_none_or(|at| at < now) {
-            self.resource_series.push(json!({
-                "timespan": 6,
-                "at": now,
-                "hostCpuUtilization": round3(host),
-                "processCpuUtilization": round3(process),
-                "hostMemoryUtilization": 0.0,
-                "processMemoryUtilization": 0.0,
-            }));
-            // The reference kept about two and a half minutes at this bucket.
-            let excess = self.resource_series.len().saturating_sub(180);
-            self.resource_series.drain(..excess);
-        }
-        let mut series = sessions::statistics_window(self.resource_series.clone(), query);
-        let since = query.get("at>").or_else(|| query.get("at>="));
-        if let Some(since) = since
-            .filter(|value| !value.is_empty() && value.bytes().all(|b| b.is_ascii_digit()))
-            .and_then(|value| value.parse::<i64>().ok())
-        {
-            series.retain(|row| row.get("at").and_then(Value::as_i64).unwrap_or(0) > since);
-        }
-        Response::json(
-            200,
-            json!({"MediaContainer": {"size": series.len(), "StatisticsResources": series}}),
-        )
-    }
 
     fn session_profile(
         &self,
@@ -11135,6 +11185,16 @@ impl Runtime {
         let Some(mut row) = self.catalog.get(&key).cloned() else {
             return Response::error(400, "rex: bad request");
         };
+        if let Some(item) = query.get("playQueueItemID").and_then(|id| id.parse::<i64>().ok()) {
+            let selection = self.queues.values()
+                .filter(|queue| query.get("playQueueID").is_none_or(|id| id == &queue.id))
+                .flat_map(|queue| &queue.items)
+                .find(|entry| entry.id == item && entry.rating_key == key)
+                .and_then(|entry| entry.media.as_ref());
+            if selection.is_some_and(|selection| !selection.apply(&mut row)) {
+                return Response::error(404, "rex: queued media no longer exists");
+            }
+        }
         crate::catalog::unpack_streams(&mut row);
         let media_rows = row
             .get("Media")
@@ -11244,6 +11304,10 @@ impl Runtime {
             Some("App cannot direct play this item. Multi-part media requires a conversion when all parts are selected.".to_string())
         } else if direct_disabled {
             Some("App cannot direct play this item. Direct play is disabled.".to_string())
+        } else if self.processing_requested(query) {
+            Some("Requested audio enhancement requires conversion.".to_string())
+        } else if self.bandwidth_conversion_required(query, &selected_for_engine) {
+            Some("The WAN bitrate policy requires conversion.".to_string())
         } else {
             None
         };
@@ -11330,7 +11394,16 @@ impl Runtime {
             );
             return Response::json(200, self.container(fields, false));
         }
-        self.decided_sessions.insert((session.clone(), key.clone()));
+        if !query.contains_key(downloads::DOWNLOAD_MARK) {
+            let bitrate = converting.as_ref().map_or_else(
+                || selected_for_engine.get("bitrate").and_then(Value::as_i64).unwrap_or(0),
+                |plan| plan.bitrate(),
+            );
+            if let Err(error) = self.check_stream_admission(query, headers, self.playback_lan(headers), bitrate) {
+                return Response::error(503, error.reason());
+            }
+        }
+        self.decided_sessions.insert((sessions::account_session_id(self.viewer.id, &session), key.clone()));
         fields.insert("resourceSession".to_string(), json!(session));
         let decided_path = query.get("path").map_or("", String::as_str);
         if converting.is_some() {
@@ -11371,7 +11444,8 @@ impl Runtime {
             {
                 object.shift_remove("summary");
             }
-            let mut media = selected_media;
+            let mut media = object.get("Media").and_then(Value::as_array)
+                .and_then(|rows| rows.get(media_index)).cloned().unwrap_or(selected_media);
             if let Some(media_object) = media.as_object_mut() {
                 if let Some(id) = media_object.get("id").cloned() {
                     media_object.insert("id".to_string(), json!(string_value(&id)));
@@ -13099,14 +13173,21 @@ impl Runtime {
             .into_iter()
             .filter_map(|index| {
                 let item = &queue.items[index];
-                self.catalog.get(&item.rating_key).map(|row| {
+                self.catalog.get(&item.rating_key).and_then(|row| {
                     let mut value = self.detail_row(row);
+                    if item.media.as_ref().is_some_and(|media| !media.apply(&mut value)) {
+                        return None;
+                    }
                     mediainfo::project_chapters(row, &mut value, query.get("includeChapters")
                         .is_some_and(|value| is_true_option(value)));
+                    if row.get("Media").and_then(Value::as_array).is_some_and(|media| media.iter().any(|media| media.get("_analysis").is_some())) {
+                        self.project_analysis(row, &mut value, query.get("includeMarkers")
+                            .is_some_and(|value| is_true_option(value)));
+                    }
                     if let Some(object) = value.as_object_mut() {
                         object.insert("playQueueItemID".to_string(), json!(item.id));
                     }
-                    value
+                    Some(value)
                 })
             })
             .collect::<Vec<_>>();
@@ -13155,7 +13236,7 @@ impl Runtime {
             {
                 fields.insert(
                     "playQueueSelectedMetadataItemID".to_string(),
-                    json!(item.rating_key),
+                    json!(if item.media.is_some() { queue.main_key.as_ref().unwrap_or(&item.rating_key) } else { &item.rating_key }),
                 );
             }
             fields.insert("playQueueTotalCount".to_string(), json!(total));
@@ -13214,6 +13295,15 @@ impl Runtime {
                     bytes_digest(format!("{seed}/{}", key_of(row).unwrap_or_default()).as_bytes())
                 });
             }
+            let cinema = match self.cinema_prefix(query, &rows, self.next_queue as u64) {
+                Ok(cinema) => cinema,
+                Err(response) => return response,
+            };
+            let prefix_at = cinema.main_key.as_ref()
+                .and_then(|key| rows.iter().position(|row| key_of(row).as_ref() == Some(key)))
+                .unwrap_or(0);
+            let prefix_count = cinema.rows.len();
+            rows.splice(prefix_at..prefix_at, cinema.rows);
             // The query's identifier first, as the oracle reads it: Plex Web sends every
             // X-Plex-* in the query string, and a real PMS retires a client's older queue
             // by that form too (plexscratch42, 1.42.2: two creates naming the client only
@@ -13227,24 +13317,28 @@ impl Runtime {
             self.next_queue += 1;
             let row_count = rows.len();
             let mut items = Vec::new();
-            for row in rows {
+            for (index, row) in rows.into_iter().enumerate() {
                 let Some(key) = key_of(&row) else { continue };
                 items.push(QueueItem {
                     id: self.next_queue_item,
                     rating_key: key,
                     added: false,
+                    media: if index >= prefix_at && index < prefix_at + prefix_count {
+                        let Some(media) = row.get("Media").and_then(QueueMedia::from_media) else {
+                            return Response::error(400, "rex: invalid cinema media");
+                        };
+                        Some(media)
+                    } else { None },
                 });
                 self.next_queue_item += 1;
             }
             let wanted = query.get("key").map(|value| extract_key(value));
-            let selected = wanted
-                .and_then(|wanted| {
-                    items
-                        .iter()
-                        .find(|item| item.rating_key == wanted)
-                        .map(|item| item.id)
-                })
-                .or_else(|| items.first().map(|item| item.id));
+            let selected = if prefix_count > 0 {
+                items.get(prefix_at).map(|item| item.id)
+            } else {
+                wanted.and_then(|wanted| items.iter().find(|item| item.rating_key == wanted).map(|item| item.id))
+                    .or_else(|| items.first().map(|item| item.id))
+            };
             let playlist_id = query.get("playlistID").cloned().or_else(|| {
                 let uri = percent_decode(query.get("uri").map(String::as_str).unwrap_or(""));
                 uri.split("/playlists/")
@@ -13277,6 +13371,7 @@ impl Runtime {
                 client,
                 playlist_id,
                 playlist_title,
+                main_key: cinema.main_key,
                 deselected: false,
             };
             let response = self.queue_container(&queue, query);
@@ -13405,6 +13500,7 @@ impl Runtime {
                             id: self.next_queue_item,
                             rating_key: key,
                             added: true,
+                            media: None,
                         };
                         self.next_queue_item += 1;
                         added_ids.push(item.id);
@@ -13464,6 +13560,7 @@ impl Runtime {
                             id,
                             rating_key,
                             added: false,
+                            media: None,
                         }),
                     }
                 }
@@ -13609,67 +13706,7 @@ impl Runtime {
         request: &Request,
         query: &HashMap<String, String>,
     ) -> Response {
-        if segments.is_empty() {
-            if request.method == "POST" {
-                let client = query
-                    .get("X-Plex-Client-Identifier")
-                    .filter(|value| !value.is_empty())
-                    .or_else(|| request.headers.get("x-plex-client-identifier"))
-                    .cloned()
-                    .unwrap_or_default();
-                let next = self.download_queues.len() + 1;
-                let queue = self
-                    .download_queues
-                    .entry(client.clone())
-                    .or_insert_with(|| {
-                        json!({
-                            "id": next,
-                            "owner": 1,
-                            "clientIdentifier": client,
-                            "itemCount": 0,
-                            "status": "done"
-                        })
-                    })
-                    .clone();
-                return Response::json(
-                    200,
-                    json!({"MediaContainer": {"size": 1, "DownloadQueue": [queue]}}),
-                );
-            }
-            return Response::json(200, plugin_container(Vec::new()));
-        }
-        let queue = self
-            .download_queues
-            .values()
-            .find(|queue| {
-                queue.get("id").map(string_value).as_deref() == Some(segments[0])
-            })
-            .cloned();
-        let Some(queue) = queue else {
-            return Response::error(404, "rex: not found");
-        };
-        let id = segments[0];
-        match (request.method.as_str(), &segments[1..]) {
-            ("POST", ["add"]) => return self.download_add(id, request, query),
-            ("GET", ["items"]) => return self.download_items(id),
-            ("DELETE", ["items", ids]) => return self.download_delete(id, ids),
-            ("GET", ["item", item, "decision"]) => return self.download_decision(id, item, request),
-            ("GET" | "HEAD", ["item", item, "media"]) => return self.download_media(id, item, request),
-            _ => {}
-        }
-        if !matches!(request.method.as_str(), "GET" | "HEAD") {
-            return Response::error(404, "rex: not found");
-        }
-        if segments.len() == 1 {
-            return Response::json(
-                200,
-                json!({"MediaContainer": {"size": 1, "DownloadQueue": [queue]}}),
-            );
-        }
-        if segments.len() == 2 && segments[1] == "items" {
-            return Response::json(200, json!({"MediaContainer": {"size": 0}}));
-        }
-        Response::error(404, "rex: not found")
+        self.download_queue_route(segments, request, query)
     }
 
     /// server.py's `browse`: the Add Folder picker walking rex's `/rex` tree, plus
@@ -13795,6 +13832,86 @@ impl Runtime {
             .split('/')
             .filter(|segment| !segment.is_empty())
             .collect::<Vec<_>>();
+        if path == "/rex/analysis" {
+            if !self.viewer.is_owner() { return Response::error(403, "rex: the owner's route"); }
+            if matches!(request.method.as_str(), "GET" | "HEAD") {
+                return Response::json(200, json!({"jobs": self.analysis_jobs.status()}));
+            }
+            if request.method == "POST" {
+                let Ok(body) = serde_json::from_slice::<Value>(&request.body) else { return Response::error(400, "rex: expected analysis request") };
+                let Some(keys) = body.get("keys").and_then(Value::as_array) else { return Response::error(400, "rex: expected keys") };
+                let Some(keys) = keys.iter().map(|key| key.as_str().map(str::to_string)).collect::<Option<Vec<_>>>() else { return Response::error(400, "rex: invalid keys") };
+                let options = analysis::Options {
+                    markers: body.get("markers").and_then(Value::as_bool).unwrap_or(true),
+                    chapters: body.get("chapters").and_then(Value::as_bool).unwrap_or(true),
+                    previews: body.get("previews").and_then(Value::as_bool).unwrap_or(true),
+                };
+                let queued = self.request_analysis(&keys, options);
+                return Response::json(202, json!({"queued": queued}));
+            }
+            return Response::error(405, "rex: method not allowed");
+        }
+        if let ["library", "parts", part, "indexes", index, tail @ ..] = segments.as_slice() {
+            if !matches!(request.method.as_str(), "GET" | "HEAD") || !matches!(*index, "sd" | "sd.bif") {
+                return Response::error(404, "rex: not found");
+            }
+            let seek = match tail {
+                [] => None,
+                [timestamp] if *index == "sd" => match timestamp.parse::<i64>() {
+                    Ok(timestamp) if timestamp >= 0 => Some(timestamp),
+                    _ => return Response::error(404, "rex: not found"),
+                },
+                _ => return Response::error(404, "rex: not found"),
+            };
+            let key = self.catalog.rows_by(crate::catalog::By::Part, part).into_iter()
+                .find(|row| self.visible(row)).and_then(key_of);
+            let Some(key) = key else { return Response::error(404, "rex: not found") };
+            let Some(artifact) = self.analysis_artifact(&key, Some(part), None) else { return Response::error(404, "rex: not found") };
+            self.pending_artifact = Some((artifact, seek, if seek.is_some() { "image/jpeg" } else { "application/octet-stream" }));
+            return Response::empty(200);
+        }
+        if let ["library", "metadata", key, "chapters", index, "thumb"] = segments.as_slice() {
+            if !matches!(request.method.as_str(), "GET" | "HEAD") || !self.catalog.get(key).is_some_and(|row| self.visible(row)) {
+                return Response::error(404, "rex: not found");
+            }
+            let Ok(index) = index.parse::<usize>() else { return Response::error(404, "rex: not found") };
+            let Some(artifact) = self.analysis_artifact(key, None, Some(index)) else { return Response::error(404, "rex: not found") };
+            self.pending_artifact = Some((artifact, None, "image/jpeg"));
+            return Response::empty(200);
+        }
+        if path == "/rex/webhooks" {
+            if !self.viewer.is_owner() {
+                return Response::error(403, "rex: the owner's route");
+            }
+            return self.route_local_webhooks(request);
+        }
+        if let ["rex", "shares", account, "restrictions"] = segments.as_slice() {
+            if !self.viewer.is_owner() {
+                return Response::error(403, "rex: the owner's route");
+            }
+            let Ok(account) = account.parse::<i64>() else {
+                return Response::error(400, "rex: invalid account");
+            };
+            match request.method.as_str() {
+                "GET" | "HEAD" => return Response::json(200, self.share_restrictions(account)),
+                "PUT" => {
+                    let Ok(value) = serde_json::from_slice::<Value>(&request.body) else {
+                        return Response::error(400, "rex: invalid restrictions");
+                    };
+                    if self.set_share_restrictions(account, &value).is_err() {
+                        return Response::error(400, "rex: invalid restrictions");
+                    }
+                    return Response::json(200, self.share_restrictions(account));
+                }
+                "DELETE" => {
+                    if self.remove_share_restrictions(account).is_err() {
+                        return Response::error(400, "rex: invalid account");
+                    }
+                    return Response::empty(204);
+                }
+                _ => return Response::error(405, "rex: method not allowed"),
+            }
+        }
         if segments.starts_with(&["media", "providers", "metadata"]) {
             return self.route_metadata_providers(&segments, query, request);
         }
@@ -13967,7 +14084,7 @@ impl Runtime {
                     Err(response) => return response,
                 };
                 let session = self.playback_session(query, &request.headers);
-                if !self.decided_sessions.contains(&(session, key)) {
+                if !self.decided_sessions.contains(&(sessions::account_session_id(self.viewer.id, &session), key)) {
                     return Response::error(400, "rex: no decision for this session");
                 }
                 warning!(
@@ -14953,6 +15070,7 @@ impl Runtime {
                             doomed.extend(below);
                         }
                         let doomed: HashSet<String> = doomed.into_iter().collect();
+                        self.remove_analysis(|key| doomed.contains(key));
                         self.catalog.remove_many(&doomed);
                         // What an item delete forgets, for every row the library held: playlist
                         // entries, collection members, history links and the keys themselves.
@@ -15836,8 +15954,6 @@ impl Runtime {
                     let section_key = section_key.to_string();
                     match segments[3] {
                         "analyze" => {
-                            // Cycle 21: it is the LEAVES that are framed, three
-                            // frames each, in title order and with no activity.
                             let rows = self
                                 .sort_rows(self.section_rows(&section_key), Some("titleSort"))
                                 .unwrap_or_default();
@@ -15849,13 +15965,16 @@ impl Runtime {
                                     leaves.push(row);
                                 }
                             }
-                            for leaf in leaves {
-                                for media_state in [Some("analyzing"), Some("thumbnailing"), None] {
-                                    self.notify_timeline(&leaf, 5, None, media_state, None);
-                                }
-                            }
+                            let keys = leaves.iter().filter_map(key_of).collect::<Vec<_>>();
+                            self.request_analysis(&keys, analysis::Options::all());
                         }
                         "indexes" => {
+                            let keys = self.section_rows(&section_key).iter().flat_map(|row| {
+                                if row.get("type").and_then(Value::as_str) == Some("show") {
+                                    self.leaves(&key_of(row).unwrap_or_default()).iter().filter_map(key_of).collect::<Vec<_>>()
+                                } else { key_of(row).into_iter().collect() }
+                            }).collect::<Vec<_>>();
+                            self.remove_preview_indexes(&keys);
                             // Cycle 21: the delete MOVES the section's own
                             // `updatedAt` and leaves every row's alone.
                             let stamp = now();
@@ -15882,7 +16001,7 @@ impl Runtime {
                     }
                     if matches!(segments[3], "emptyTrash" | "analyze") {
                         let leaf = segments[3];
-                        info!("SECTION {leaf} {section_key} -- nothing to {leaf}, rex owns no files");
+                        info!("SECTION {leaf} {section_key}");
                     }
                     return Response::empty(200);
                 }
@@ -16540,48 +16659,19 @@ impl Runtime {
                 return Response::error(404, "rex: not found");
             };
             if request.method == "GET" || request.method == "HEAD" {
-                // An uploaded subtitle is found by its index; only another id (a 501 or a
-                // 404) scans the library.
-                let answer = |row: &Value| -> Option<Response> {
-                    let parts = row
-                        .get("Media")
-                        .and_then(Value::as_array)
-                        .into_iter()
-                        .flatten()
-                        .flat_map(|media| media.get("Part").and_then(Value::as_array).into_iter().flatten());
-                    for part in parts.filter(|part| crate::catalog::part_may_hold_stream(part, stream_id)) {
-                        let streams = crate::catalog::part_streams(part);
-                        let Some(stream) = streams.iter().find(|stream| stream.get("id").and_then(Value::as_i64) == Some(stream_id)) else {
-                            continue;
-                        };
-                        let Some(content) = stream.get("_content").and_then(Value::as_str) else {
-                            return Some(Response::error(501, "rex: not implemented"));
-                        };
-                        return Some(Response {
-                            status: 200,
-                            // Cycle 74 (`server.py` "sidecar"): the file's
-                            // bytes as `text/html`, `.srt` and `.vtt` alike.
-                            content_type: "text/html".to_string(),
-                            body: content.as_bytes().to_vec(),
-                            headers: Vec::new(),
-                            close: false,
-                            doc: None,
-                        });
+                let answer = |row: &Value| row_has_stream(row, stream_id).then(|| row.clone());
+                let row = self.catalog.rows_by(crate::catalog::By::Upload, &stream_id.to_string())
+                    .into_iter().find_map(answer)
+                    .or_else(|| self.catalog.hot().lazy().find_map(|row| answer(row.body())));
+                let Some(row) = row else { return Response::error(404, "rex: not found") };
+                return match self.prepare_subtitle_read(&row, stream_id, query) {
+                    Ok(subtitles::SubtitleRead::Ready(response)) => response,
+                    Ok(subtitles::SubtitleRead::Pending(job)) => {
+                        self.pending_subtitle_read = Some(job);
+                        Response::empty(200)
                     }
-                    None
+                    Err(response) => response,
                 };
-                if let Some(response) = self
-                    .catalog
-                    .rows_by(crate::catalog::By::Upload, &stream_id.to_string())
-                    .into_iter()
-                    .find_map(answer)
-                {
-                    return response;
-                }
-                if let Some(response) = self.catalog.hot().lazy().find_map(|row| answer(row.body())) {
-                    return response;
-                }
-                return Response::error(404, "rex: not found");
             }
             if request.method == "PUT" {
                 // Measured on a writable copy: a PUT to a stream it HAS is 200 with an
@@ -18281,6 +18371,7 @@ impl Runtime {
                         emptied = Some(season);
                     }
                 }
+                self.remove_analysis(|key| doomed.iter().any(|gone| gone == key));
                 // `library.delete`: the row and everything beneath it leave every playlist
                 // and collection (cycle 87: the entry goes, its playlistItemID a 404, where
                 // rex hid it at render and kept it addressable) and their keys are retired,
@@ -19472,9 +19563,12 @@ impl Runtime {
                         }
                     }
                     "analyze" => {
-                        let row = row.clone();
-                        let leaves = self.analyze_item(key, &row);
-                        info!("ANALYZE {key} -- {leaves} leaf frame set(s)");
+                        let count = if matches!(kind.as_str(), "movie" | "episode" | "show" | "season") {
+                            self.request_analysis(&[key.to_string()], analysis::Options::all())
+                        } else {
+                            self.analyze_item(key, row)
+                        };
+                        info!("ANALYZE {key} -- {count} leaf job(s)");
                     }
                     _ => {
                         self.unmatch_row(key);
@@ -21413,7 +21507,7 @@ impl Runtime {
             .get("X-Plex-Session-Identifier")
             .filter(|value| !value.is_empty())
         {
-            if self.terminated_sessions.contains_key(session_id) {
+            if self.terminated_sessions.contains_key(&sessions::account_session_id(self.viewer.id, session_id)) {
                 info!(
                     "PART {} refused: session {session_id} terminated",
                     segments.first().copied().unwrap_or_default()
@@ -21502,6 +21596,14 @@ impl Runtime {
             .get("download")
             .map(|value| value.trim_start_matches('+').parse::<i64>().unwrap_or(0) != 0)
             .unwrap_or(false);
+        if !download && request.method == "GET" {
+            let bitrate = owner.get("Media").and_then(Value::as_array).into_iter().flatten()
+                .find(|media| media.get("Part").and_then(Value::as_array).is_some_and(|parts| parts.iter().any(|part| part.get("id").and_then(Value::as_i64) == Some(part_id))))
+                .and_then(|media| media.get("bitrate")).and_then(Value::as_i64).unwrap_or(0);
+            if let Err(error) = self.reserve_stream_admission(query, &request.headers, self.playback_lan(&request.headers), bitrate) {
+                return Response::error(503, error.reason());
+            }
+        }
         let part_name = part
             .get("file")
             .and_then(Value::as_str)
@@ -22645,6 +22747,10 @@ fn start_state_saver(runtime: SharedRuntime) {
                 .lock()
                 .unwrap_or_else(|poisoned| poisoned.into_inner());
             if terminate {
+                drop(guard);
+                analysis::shutdown(&runtime);
+                guard = runtime.lock().unwrap_or_else(PoisonError::into_inner);
+                guard.stop_downloads();
                 info!("stopping");
                 if let Some(transcoder) = &guard.transcoder {
                     transcoder.stop_all();
@@ -22659,6 +22765,9 @@ fn start_state_saver(runtime: SharedRuntime) {
                 write_or_log(Some(snapshot));
                 continue;
             }
+            guard.checkpoint_downloads();
+            guard.resume_downloads();
+            guard.reap_stream_admissions();
             if !guard.dirty {
                 dirty_since = None;
                 continue;
@@ -22774,6 +22883,7 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
     }
     options.state = resolve_state_path(&options);
     let mut loaded = Runtime::load(options)?;
+    loaded.resume_downloads();
     release_freed_memory();
     start_memory_trimmer();
     if let Some(path) = &loaded.state_path {
@@ -22788,6 +22898,7 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
     // Before the first request: the load and its start passes wrote every row unpacked.
     loaded.catalog.pack_pending();
     let runtime = Arc::new(Mutex::new(loaded));
+    analysis::start(&runtime);
     // `logger.addHandler(_Capture())`: Download Logs and the Console see what follows.
     logging::start_capture();
     if let Some(cert) = &tls_cert {
@@ -23400,6 +23511,8 @@ fn handle_connection<S: Read + Write + PollRead>(
             .is_some_and(String::is_empty);
         let mut part_plan = None;
         let mut download = None;
+        let mut response_account = accounts::OWNER;
+        let mut response_lan = true;
         let mut response = if invalid_absolute_target || invalid_dot_path || malformed_query {
             Response::error(400, "rex: bad request")
         } else if empty_container_size {
@@ -23412,12 +23525,16 @@ fn handle_connection<S: Read + Write + PollRead>(
             guard.pending_file_checks = None;
             guard.pending_segment = None;
             guard.pending_download = None;
+            guard.pending_artifact = None;
             guard.pending_image = None;
             guard.pending_claim = None;
+            guard.pending_subtitle_read = None;
             guard.refused_for_token = false;
             crate::filters::clear_refusal();
             take_unsupported_sort();
             let mut response = route_caught(&mut guard, &request);
+            response_account = guard.grant_for(&request).id;
+            response_lan = guard.playback_lan(&request.headers);
             // A route that needs Plex's agent asked for it (`agent_answer`): it is asked here
             // with the lock released, and the request routed again with its answer.
             for _ in 0..2 {
@@ -23437,6 +23554,25 @@ fn handle_connection<S: Read + Write + PollRead>(
                 guard.agent_answers.remove(&key);
             }
             guard.pending_agent = None;
+            if let Some(job) = guard.pending_subtitle_read.take() {
+                drop(guard);
+                let result = subtitles::read(job);
+                guard = runtime.lock().unwrap_or_else(PoisonError::into_inner);
+                guard.viewer = guard.grant_for(&request);
+                response = if !guard.authorized(&request_path, &request, &query) {
+                    guard.refused_for_token = true;
+                    guard.unauthorized_route(&request_path, &request)
+                } else if let Some(refusal) = guard.share_refusal(&request, &request_path) {
+                    refusal
+                } else {
+                    match result {
+                        Ok(result) => guard.finish_subtitle_read(result),
+                        Err(_) => Response::error(502, "rex: subtitle source could not be read"),
+                    }
+                };
+                guard.viewer = accounts::Grant::owner();
+                guard.save_if_dirty();
+            }
             guard.catalog.pack_pending();
             part_plan = guard.pending_part.take();
             let file_checks = guard.pending_file_checks.take();
@@ -23444,6 +23580,7 @@ fn handle_connection<S: Read + Write + PollRead>(
             download = guard.pending_download.take();
             let image = guard.pending_image.take();
             let claim = guard.pending_claim.take();
+            let artifact = guard.pending_artifact.take().map(|(artifact, seek, kind)| (Arc::clone(&guard.analysis_jobs), artifact, seek, kind));
             if std::mem::take(&mut guard.pending_auto_collections) {
                 let shared = Arc::clone(&runtime);
                 let _ = thread::Builder::new()
@@ -23470,6 +23607,22 @@ fn handle_connection<S: Read + Write + PollRead>(
             // the runtime lock so the other clients' requests go on meanwhile.
             write_or_log(snapshot);
             let mut response = response;
+            if let Some((jobs, artifact, seek, kind)) = artifact {
+                response = match jobs.resolve(&artifact) {
+                    None => Response::error(404, "rex: artifact not found"),
+                    Some(path) => if let Some(timestamp) = seek {
+                        match thumbnails::seek_jpeg(&path, timestamp as u64) {
+                            Ok(bytes) => { let mut response = Response::bytes(200, "image/jpeg"); response.body = bytes; response }
+                            Err(_) => Response::error(404, "rex: artifact not found"),
+                        }
+                    } else {
+                        match downloads::file_response(path, &request, kind) {
+                            Ok((response, read)) => { download = Some(read); response }
+                            Err(response) => response,
+                        }
+                    },
+                };
+            }
             if let Some(plan) = PROJECTION_PLAN.with(|plan| plan.borrow_mut().take()) {
                 project_planned(&runtime, &request, &mut response, plan);
             }
@@ -23632,7 +23785,8 @@ fn handle_connection<S: Read + Write + PollRead>(
         }
         response.materialize();
         let envelope = wire::Wire::of(&request, &request_path, &query);
-        let owner = sessions::ByteOwner::of(&request);
+        let mut owner = sessions::ByteOwner::of(&request, response_account);
+        owner.lan = response_lan;
         sessions::BYTE_OWNER.with(|cell| *cell.borrow_mut() = owner.clone());
         let still_open = match (part_plan, download) {
             (Some(plan), _) if response.status == 200 => {
@@ -23640,7 +23794,7 @@ fn handle_connection<S: Read + Write + PollRead>(
                 false
             }
             (_, Some(read)) if matches!(response.status, 200 | 206) => {
-                downloads::serve_file(&mut stream, &response, read, &envelope, keep)?;
+                downloads::serve_file(&mut stream, &runtime, &response, read, &envelope, keep)?;
                 false
             }
             _ => {
@@ -25342,7 +25496,7 @@ fn unix_year(timestamp: i64) -> i64 {
 /// remote-watch-pass name or UUID; Android 2026.19.1 checks only the UUID, read from
 /// `/media/providers` (findings, "Remote playback capabilities without a subscription").
 /// Neither changes the account's plex.tv entitlements or the server's token gate.
-const OWNER_FEATURES: &str = "76ddd91e-8321-4916-94b6-ded8e3727a64,collections,federated-auth,home,item_clusters,kevin-bacon,pass,remote-watch-pass,server-manager,session_kick,type-first";
+const OWNER_FEATURES: &str = "76ddd91e-8321-4916-94b6-ded8e3727a64,Subtitles V2,b612f571-83c3-431a-88eb-3f05ce08da4a,multiple-editions,dbdc0575-9fc7-4706-9e2d-fca98d10ad71,premium-dashboard,222020fb-1504-492d-af33-a0b80a49558a,grandfathering_downloads,5c1951bf-ccf1-4821-8ee7-e50f51218ae7,ea791163-c28d-4b7c-af88-bcc9553b206d,collections,federated-auth,home,item_clusters,kevin-bacon,pass,remote-watch-pass,server-manager,session_kick,type-first";
 
 /// Cycle 54: the rows `unwatched=1` drops from a list that is not a query -- a movie
 /// or an episode with a play recorded.  A parent row is never dropped for it.
@@ -25650,27 +25804,6 @@ fn sidecar_bytes(name: &str) -> Option<Vec<u8>> {
     Some(bytes)
 }
 
-#[cfg(test)]
-mod sidecar_tests {
-    use super::*;
-
-    #[test]
-    fn every_data_file_is_compiled_in() {
-        // The build's own path, else the tree the test runs in (Windows runs a cross-built binary).
-        let built = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        let crate_dir = if built.exists() { built } else { PathBuf::from(".") };
-        for entry in fs::read_dir(crate_dir.join("../data")).unwrap() {
-            let path = entry.unwrap().path();
-            let name = path.file_name().unwrap().to_str().unwrap();
-            let packed = sidecar_bytes(name).unwrap_or_else(|| panic!("{name} is not compiled in"));
-            let disk = fs::read(&path).unwrap();
-            // winbox's checkout writes data/ with CRLF; the binary it tests was built on Linux.
-            let lf: Vec<u8> = disk.iter().copied().filter(|byte| *byte != b'\r').collect();
-            assert!(packed == disk || packed == lf, "{name}");
-        }
-        assert!(sidecar_bytes("missing.json").is_none());
-    }
-}
 
 #[cfg(test)]
 mod migration_tests {

@@ -653,6 +653,7 @@ impl Runtime {
         }
         if let Some(hash) = arrival.entry.get("hash").and_then(Value::as_str) {
             leaf["_hash"] = json!(hash);
+            leaf["Media"][0]["_hash"] = json!(hash);
         }
         for (field, value) in &arrival.extra {
             leaf[field.as_str()] = value.clone();

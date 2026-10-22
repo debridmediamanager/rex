@@ -79,6 +79,8 @@ pub struct HotRow {
     /// every row for them, and on the production server reading each row for its Media took
     /// 26 s for one source's 40,335 rows, holding every Plex request (2026-10-18).
     pub releases: Box<[Release]>,
+    /// Whether this row has generated analysis records to restore or retire.
+    pub has_analysis: bool,
 }
 
 /// A release on a row: its source, its id there, its Media and the file that Media reads.
@@ -122,7 +124,9 @@ impl HotRow {
                 Release { source: source.into(), sid: sid.into(), index, file }
             })
             .collect();
-        Self { position, ids: ids.into_boxed_slice(), values: values.into_boxed_slice(), releases }
+        let has_analysis = row.get("Media").and_then(Value::as_array).into_iter().flatten()
+            .any(|media| media.get("_analysis").and_then(Value::as_object).is_some_and(|records| !records.is_empty()));
+        Self { position, ids: ids.into_boxed_slice(), values: values.into_boxed_slice(), releases, has_analysis }
     }
 
     /// The field as the row holds it. Panics for a field a hot row does not keep.

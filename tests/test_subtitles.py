@@ -7,9 +7,9 @@ and its Stream rows, the apply `PUT .../subtitles?key=/library/streams/{id}&...`
 with `X-Plex-Activity`, the `subtitle.download` activity started and ended, the applied Stream
 row, its bytes, its delete, and the PMS's own calls to Plex's provider. Here the provider is a
 stub behind `REX_PLEXTV_URL` (its `streams/matches` and its download's 302), beside a stub
-source serving two small real clips
-FFmpeg makes: a film with an embedded English text track, and an episode with no text track
-whose audio is tone bursts on its dialogue's timing, which rex reads with `REX_TRANSCODER`.
+source serving two small real clips FFmpeg makes: a film with independent embedded text
+tracks and voiced audio, and an episode with no text track whose audio is tone bursts on
+its dialogue's timing, which rex reads with `REX_TRANSCODER`.
 
 The candidates are made from each clip's own timing, as the corpus found them
 (`fixtures/subtitles/sync_corpus.json.gz`): one in sync, one 2.4 s late, one timed for 25 fps
@@ -19,6 +19,7 @@ put a late one right, and store UTF-8.
 
     python3 tests/test_subtitles.py
 """
+import gzip
 import http.server
 import json
 import math
@@ -45,6 +46,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 FIXTURES = os.path.join(HERE, "fixtures")
 REFERENCE = json.load(open(os.path.join(FIXTURES, "subtitles", "plex_search_apply_s143.json")))
+SHARED_TOKENS = json.load(open(os.path.join(FIXTURES, "plextv_access_tokens_shared_s1434.json")))["body"]
 CACHE = json.load(open(os.path.join(FIXTURES, "feed", "provider_cache.json")))
 LEGACY = json.load(open(os.path.join(FIXTURES, "feed", "legacy_scan_rows.json")))
 ENTRIES = json.load(open(os.path.join(FIXTURES, "zurg", "entries.json")))["entries"]
@@ -99,26 +101,29 @@ def read_cues(text):
     return out
 
 
-def make_clips(work):
-    film_cues, show_cues = timeline(11), timeline(23)
-    film_srt = os.path.join(work, "film.en.srt")
-    open(film_srt, "w").write(srt(film_cues, "English line %d"))
-    film = os.path.join(work, "film.mkv")
-    subprocess.run([FFMPEG, "-v", "error", "-y", "-f", "lavfi", "-i", "color=c=black:s=64x64:r=1:d=%d" % DURATION,
-                    "-f", "lavfi", "-i", "anullsrc=r=16000:cl=mono", "-i", film_srt, "-t", str(DURATION),
-                    "-map", "0:v", "-map", "1:a", "-map", "2:s", "-c:v", "mpeg4", "-g", "10", "-c:a", "flac",
-                    "-c:s", "srt", "-metadata:s:s:0", "language=eng", film], check=True)
-    # The episode's audio: a 1 kHz tone on every line of dialogue, silence between.
+def write_dialogue_pcm(path, cues):
+    """Real decoder input with a 1 kHz tone on dialogue timing, silence between."""
     rate, tone = 16000, [int(12000 * math.sin(2 * math.pi * 1000 * n / 16000)) for n in range(16)]
     samples = bytearray(DURATION * rate * 2)
-    for a, b in show_cues:
+    for a, b in cues:
         for n in range(int(a * rate), min(int(b * rate), DURATION * rate)):
             struct.pack_into("<h", samples, 2 * n, tone[n % 16])
+    open(path, "wb").write(samples)
+
+
+def make_clips(work):
+    film_cues, show_cues = timeline(11), timeline(23)
+    # Exact FFmpeg-generated input from the late HTTP-seek JPEG failure. Keep
+    # its limited-range frame at 290 s; regenerating it can change negotiation.
+    film = os.path.join(work, "film.mkv")
+    fixture = os.path.join(FIXTURES, "subtitles", "limited_range_late_frame.mkv.gz")
+    with gzip.open(fixture, "rb") as source, open(film, "wb") as target:
+        shutil.copyfileobj(source, target)
     pcm = os.path.join(work, "show.pcm")
-    open(pcm, "wb").write(bytes(samples))
+    write_dialogue_pcm(pcm, show_cues)
     show = os.path.join(work, "show.mkv")
     subprocess.run([FFMPEG, "-v", "error", "-y", "-f", "lavfi", "-i", "color=c=black:s=64x64:r=1:d=%d" % DURATION,
-                    "-f", "s16le", "-ar", str(rate), "-ac", "1", "-i", pcm, "-t", str(DURATION),
+                    "-f", "s16le", "-ar", "16000", "-ac", "1", "-i", pcm, "-t", str(DURATION),
                     "-map", "0:v", "-map", "1:a", "-c:v", "mpeg4", "-g", "10", "-c:a", "flac", show], check=True)
     return (film, film_cues), (show, show_cues)
 
@@ -166,6 +171,12 @@ class Stub:
                 self.send_response(status)
                 self.send_header("Content-Type", kind)
                 self.send_header("Content-Length", str(len(body)))
+                # FFmpeg can reuse a range connection unless the response announces
+                # its closure. BaseHTTPRequestHandler honors the request's close
+                # header, so advertise that decision instead of leaving a dead
+                # HTTP/1.1 connection looking persistent after the first range.
+                if self.close_connection:
+                    self.send_header("Connection", "close")
                 for name, value in extra:
                     self.send_header(name, value)
                 self.end_headers()
@@ -191,6 +202,8 @@ class Stub:
                                           [("Content-Range", "bytes %d-%d/%d" % (first, last, len(body))),
                                            ("Accept-Ranges", "bytes")])
                     return self.reply(200, body, "video/x-matroska", [("Accept-Ranges", "bytes")])
+                if path == "/plex.tv/api/v2/server/access_tokens":
+                    return self.reply(200, SHARED_TOKENS.encode(), "application/xml")
                 if path == "/servers.plex.tv/api/v2/user":
                     body = '<?xml version="1.0" encoding="UTF-8"?>\n<user id="1" username="owner">%s</user>\n' % PROFILE
                     return self.reply(200, body.encode(), "application/xml")
@@ -285,10 +298,10 @@ class Server:
         except (urllib.error.URLError, ConnectionError):
             return (0, {}, b"") if raw else (0, None)
 
-    def push(self, kind, path, clip, ids, **placed):
+    def push(self, kind, path, clip, ids, content_hash="c" * 40, **placed):
         directory, release, name = path.split("/")
         item = {"id": path, "path": path, "file": "/zurg/" + path, "name": name, "release": directory + "/" + release,
-                "size": os.path.getsize(clip), "hash": "c" * 40, "ids": ids, "kind": kind, "media_info": probe(clip)}
+                "size": os.path.getsize(clip), "hash": content_hash, "ids": ids, "kind": kind, "media_info": probe(clip)}
         item.update(placed)
         status, body = self.request("/rex/feed/zurg/items", "POST", {"items": [item]})
         status, listed = self.request("/rex/feed/zurg/items")
@@ -301,6 +314,20 @@ class Server:
     def streams(self, key):
         row = self.detail(key)
         return ((row.get("Media") or [{}])[0].get("Part") or [{}])[0].get("Stream") or []
+
+    def analysis_state(self, key):
+        status, body = self.request("/rex/analysis")
+        return next((job for job in (body or {}).get("jobs", [])
+                     if str(job.get("ratingKey")) == str(key)), {}) if status == 200 else {}
+
+    def upload(self, key, title, text):
+        before = {stream["id"] for stream in self.streams(key)}
+        path = "/library/metadata/%s/subtitles?%s" % (key, urllib.parse.urlencode({"title": title, "format": "srt"}))
+        request = urllib.request.Request("http://127.0.0.1:%d%s" % (self.port, path), data=text.encode(), method="POST",
+                                         headers={"X-Plex-Token": TOKEN, "Content-Type": "application/octet-stream"})
+        with urllib.request.urlopen(request, timeout=60) as response:
+            assert response.status == 200
+        return next(stream for stream in self.streams(key) if stream["id"] not in before)
 
     def stop(self):
         self.process.terminate()
@@ -353,6 +380,22 @@ def main():
     show_path = "shows/%s/%s" % (SHOW["release"], SHOW["file"])
     stub.files["/dav/" + film_path] = open(film, "rb").read()
     stub.files["/dav/" + show_path] = open(show, "rb").read()
+    # Independent late-seek transport regression: the declared video really has a
+    # frame at 290 s. A closed HTTP/1.1 socket masquerading as persistent used to
+    # drop FFmpeg's repeated Range request and return exit 0 with no image.
+    late_frame = os.path.join(work, "http-late-frame.jpg")
+    extracted = subprocess.run(
+        [FFMPEG, "-v", "error", "-nostdin", "-n", "-rw_timeout", "15000000",
+         "-ss", "290.000", "-i", stub.base() + "/dav/" + urllib.parse.quote(film_path, safe="/"),
+         "-map", "0:0", "-an", "-sn", "-dn", "-frames:v", "1",
+         "-vf", "scale=320:-2:out_range=full,setsar=1,format=yuvj420p",
+         "-color_range", "pc", "-threads", "1", "-f", "image2", late_frame],
+        capture_output=True, timeout=45)
+    jpeg = open(late_frame, "rb").read() if os.path.isfile(late_frame) else b""
+    check("real FFmpeg late HTTP seek returns a complete JPEG from the retained source",
+          extracted.returncode == 0 and jpeg.startswith(b"\xff\xd8") and jpeg.endswith(b"\xff\xd9"),
+          (extracted.returncode, len(jpeg), extracted.stderr.decode(errors="replace")[-1000:]))
+
 
     # The film, in Brazilian Portuguese: the provider's first result is another title's timing
     # under this very release's name; its second is in sync, in Windows-1252. Plex would show
@@ -551,6 +594,120 @@ def main():
               len(checked) == 1 and checked[0].get("id") == first_kept.get("id") and audio_reads
               and checked[0].get("sourceKey") == "/library/streams/83002" and off and max(off) <= 0.15,
               (checked, len(audio_reads), max(off) if off else None))
+        # -- official per-read autoAdjustSubtitle, not a destructive edit of the upload ------
+        uploaded_text = srt([(a + 2.4, b + 2.4) for a, b in film_cues], "Uploaded late line %d")
+        uploaded = server.upload(film_key, "late.srt", uploaded_text)
+        stream_path = uploaded["key"]
+        selections = [(stream["id"], stream.get("selected")) for stream in server.streams(film_key)]
+        status, _, original = server.request(stream_path + "?autoAdjustSubtitle=0", raw=True)
+        check("disabled official adjustment returns the exact uploaded text", status == 200 and original == uploaded_text.encode())
+        status, _, corrected = server.request(stream_path + "?autoAdjustSubtitle=1", raw=True)
+        corrected_cues = read_cues(corrected.decode())
+        errors = [abs(a - b) for (a, _), (b, _) in zip(corrected_cues, film_cues)]
+        check("official adjustment measures and corrects the late upload",
+              status == 200 and len(corrected_cues) == len(film_cues) and errors and max(errors) < .15,
+              (status, errors[:4]))
+        source_reads = len([path for _, path, *_ in stub.seen if path.startswith("/dav/")])
+        status, _, repeated = server.request(stream_path + "?autoAdjustSubtitle=1", raw=True)
+        check("repeat adjustment is stable and reuses cached original/reference",
+              status == 200 and repeated == corrected
+              and source_reads == len([path for _, path, *_ in stub.seen if path.startswith("/dav/")]))
+        status, _, disabled = server.request(stream_path + "?autoAdjustSubtitle=0", raw=True)
+        check("adjustment does not overwrite original or account selections",
+              status == 200 and disabled == original
+              and selections == [(stream["id"], stream.get("selected")) for stream in server.streams(film_key)])
+        media = server.detail(film_key)["Media"][0]
+        check("text reference is not advertised as voice analysis", media.get("hasVoiceActivity") is False, media.get("hasVoiceActivity"))
+        check("internal subtitle text and analysis cache never appear in metadata",
+              "_subtitleSync" not in json.dumps(media) and "_content" not in json.dumps(media))
+
+        uncertain_text = srt(timeline(97), "Unrelated line %d")
+        uncertain = server.upload(film_key, "uncertain.srt", uncertain_text)
+        status, _, unchanged = server.request(uncertain["key"] + "?autoAdjustSubtitle=1", raw=True)
+        check("ambiguous/unrelated subtitle is not silently retimed", status == 200 and unchanged == uncertain_text.encode())
+
+        embedded = next(stream for stream in server.streams(film_key)
+                        if stream.get("streamType") == 3 and stream.get("index") == 3)
+        embedded_path = "/library/streams/%s.srt" % embedded["id"]
+        status, _, embedded_original = server.request(embedded_path + "?autoAdjustSubtitle=0", raw=True)
+        check("supported embedded text is readable without adjustment",
+              status == 200 and abs(read_cues(embedded_original.decode())[0][0] - film_cues[0][0] - 2.4) < .01)
+        status, _, embedded_fixed = server.request(embedded_path + "?autoAdjustSubtitle=1", raw=True)
+        embedded_cues = read_cues(embedded_fixed.decode())
+        errors = [abs(a - b) for (a, _), (b, _) in zip(embedded_cues, film_cues)]
+        check("supported embedded text is measured against an independent track",
+              status == 200 and len(embedded_cues) == len(film_cues) and errors and max(errors) < .15, errors[:4])
+        # A prior successful text reference coexists with the later real audio analysis.
+        # A new text-based adjustment must not overwrite that audio reference.
+        before_hybrid_selections = [(stream["id"], stream.get("selected")) for stream in server.streams(film_key)]
+        status, _ = server.request("/library/metadata/%s/analyze" % film_key, "PUT")
+        check("Analyze accepts a movie with independent embedded text and actual audio", status == 200)
+        poll_until(lambda: server.analysis_state(film_key).get("state") in ("completed", "failed", "stale"), 120)
+        hybrid = server.detail(film_key)["Media"][0]
+        hybrid_upload = next(stream for stream in hybrid["Part"][0]["Stream"] if stream["id"] == uploaded["id"])
+        check("hybrid Analyze establishes the actual client voice-and-stream gate before adjustment",
+              hybrid.get("hasVoiceActivity") is True and hybrid_upload.get("canAutoSync") is True,
+              server.analysis_state(film_key))
+        check("hybrid voice analysis leaves selected account tracks unchanged",
+              before_hybrid_selections == [(stream["id"], stream.get("selected")) for stream in server.streams(film_key)])
+        second_text = server.upload(film_key, "late-after-analysis.srt", uploaded_text)
+        before_text_adjustment = [(stream["id"], stream.get("selected")) for stream in server.streams(film_key)]
+        status, _, after_voice = server.request(second_text["key"] + "?autoAdjustSubtitle=1", raw=True)
+        check("text-reference adjustment preserves previously analyzed voice metadata",
+              status == 200 and after_voice == corrected
+              and server.detail(film_key)["Media"][0].get("hasVoiceActivity") is True
+              and before_text_adjustment == [(stream["id"], stream.get("selected")) for stream in server.streams(film_key)],
+              server.analysis_state(film_key))
+
+        audio_upload = server.upload(show_key, "audio-late.srt", srt(late, "Audio late line %d"))
+        check("voice analysis is not advertised before actual Analyze",
+              server.detail(show_key)["Media"][0].get("hasVoiceActivity") is False)
+        before_analysis_selections = [(stream["id"], stream.get("selected")) for stream in server.streams(show_key)]
+        status, _ = server.request("/library/metadata/%s/analyze" % show_key, "PUT")
+        check("manual Analyze starts actual voice processing", status == 200, status)
+        poll_until(lambda: server.analysis_state(show_key).get("state") in ("completed", "failed", "stale"), 120)
+        analyzed = server.detail(show_key)["Media"][0]
+        analyzed_upload = next(stream for stream in analyzed["Part"][0]["Stream"] if stream["id"] == audio_upload["id"])
+        check("Analyze enables the actual shipped-client voice-and-stream gate before first adjust",
+              analyzed.get("hasVoiceActivity") is True and analyzed_upload.get("canAutoSync") is True,
+              server.analysis_state(show_key))
+        check("voice analysis leaves selected account tracks unchanged",
+              before_analysis_selections == [(stream["id"], stream.get("selected")) for stream in server.streams(show_key)])
+        before_adjustment_reads = len([path for _, path, *_ in stub.seen if path.startswith("/dav/")])
+        status, _, audio_fixed = server.request(audio_upload["key"] + "?autoAdjustSubtitle=1", raw=True)
+        audio_cues = read_cues(audio_fixed.decode())
+        errors = [abs(a - b) for (a, _), (b, _) in zip(audio_cues, show_cues)]
+        check("official adjustment uses actual FFmpeg audio-reference measurements",
+              status == 200 and len(audio_cues) == len(show_cues) and errors and max(errors) < .15, errors[:4])
+        check("first official adjustment reuses the precomputed audio reference",
+              before_adjustment_reads == len([path for _, path, *_ in stub.seen if path.startswith("/dav/")]))
+        check("successful measured audio reference establishes voice-analysis metadata",
+              server.detail(show_key)["Media"][0].get("hasVoiceActivity") is True)
+        for path in (stream_path + "?autoAdjustSubtitle=1", "/library/metadata/%s" % film_key):
+            status, _, denied = server.request(path, headers={"X-Plex-Token": "not-an-authorized-account"}, raw=True)
+            check("unauthorized token gains neither subtitle nor analysis metadata: " + path,
+                  status in (401, 403) and b"Uploaded late line" not in denied and b"hasVoiceActivity" not in denied,
+                  (status, denied[:100]))
+        # This measured access-list fixture is a real Movies-only account, not an unknown
+        # token. It cannot see the episode even after the owner cached its audio analysis.
+        for path in (audio_upload["key"] + "?autoAdjustSubtitle=1", "/library/metadata/%s" % show_key):
+            status, _, denied = server.request(path, headers={"X-Plex-Token": "SHARED-TOKEN"}, raw=True)
+            check("recognized restricted account cannot read episode subtitles or analysis: " + path,
+                  status in (403, 404) and b"Audio late line" not in denied and b"hasVoiceActivity" not in denied,
+                  (status, denied[:100]))
+
+        # A source-supplied new content version must invalidate references even when every
+        # transport attribute remains the same: URL, byte size, duration and stream indices.
+        replaced_key = server.push("episode", show_path, show, {"tmdb": 1433, "imdb": "tt0397306"},
+                                   content_hash="d" * 40, season=5, episode=7)
+        check("same-path source version remains the same library item", str(replaced_key) == str(show_key))
+        check("changed owning Media content hash invalidates prior voice analysis",
+              server.detail(show_key)["Media"][0].get("hasVoiceActivity") is False)
+        before_replacement_reads = len([path for _, path, *_ in stub.seen if path.startswith("/dav/")])
+        status, _, replaced_adjusted = server.request(audio_upload["key"] + "?autoAdjustSubtitle=1", raw=True)
+        check("changed content hash invalidates adjusted cache and forces fresh source measurement",
+              status == 200 and replaced_adjusted == audio_fixed
+              and len([path for _, path, *_ in stub.seen if path.startswith("/dav/")]) > before_replacement_reads)
     finally:
         server.stop()
         # What the meter read of each candidate, for whoever reads a failure.
@@ -579,8 +736,11 @@ def main():
     finally:
         server.stop()
     stub.httpd.shutdown()
-    shutil.rmtree(work, ignore_errors=True)
     failed = results.count(False)
+    if failed:
+        print("Failed subtitle test media and server logs retained at " + work)
+    else:
+        shutil.rmtree(work, ignore_errors=True)
     print("\n%d/%d passed" % (len(results) - failed, len(results)))
     sys.exit(1 if failed else 0)
 
