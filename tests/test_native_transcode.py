@@ -705,6 +705,13 @@ def main():
     # The plain clip on its own, for a subtitle uploaded to rex.
     MEDIA["plain.mkv"] = plain
     items.append(row("10", "Plain", "plain.mkv", probe(plain)["streams"], os.path.getsize(plain), DURATION))
+    # The plain clip as MPEG-TS, as YouTube's HLS serves its h264/aac (stream types 0x1b/0x0f,
+    # which a copy into MP4 kept as its codec tags until 2026-10-22).
+    MEDIA["plain.ts"] = os.path.join(scratch, "plain.ts")
+    subprocess.run([FFMPEG, "-v", "error", "-y", "-i", plain, "-map", "0", "-c", "copy", MEDIA["plain.ts"]], check=True)
+    item = row("16", "Plaints", "plain.ts", probe(MEDIA["plain.ts"])["streams"], os.path.getsize(MEDIA["plain.ts"]), DURATION)
+    item["Media"][0]["container"] = item["Media"][0]["Part"][0]["container"] = "mpegts"
+    items.append(item)
     # HDR: a PQ-tagged 10-bit HEVC (HDR10), and a stand-in for a Dolby Vision profile 5
     # release carrying the real P5 clip's probe fields (tests/fixtures/transcode/hdr_probes.json):
     # P5 signals no transfer at all, so only its DOVI fields say it needs tonemapping.
@@ -1000,6 +1007,9 @@ def main():
         # The bundled /web client converts everything over DASH (directStream=0).
         walk_dash(port, "dash-convert", "3", "transcode", "transcode", (1280, 720))
         walk_dash(port, "dash-remux", "1", "copy", "copy", None, directStream="1", directStreamAudio="1")
+        # MPEG-TS h264/aac copied into DASH's MP4: FFmpeg refused the TS codec tags
+        # ("Tag [27][0][0][0] incompatible"), so every segment was a 500 (rex-fun, YouTube HLS).
+        walk_dash(port, "dash-remux-ts", "16", "copy", "copy", None, directStream="1", directStreamAudio="1")
         # Plex Web re-fetches both headers on every seek. Once playback had passed the
         # 120 s kept behind the player, the run's first fragment was gone and the header
         # waited on it forever: the seek hung with the buffer empty.

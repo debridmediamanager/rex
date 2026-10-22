@@ -715,6 +715,17 @@ pub(crate) fn ffmpeg_args(plan: &Plan, path: Path, hardware: &Hardware, start: i
     if text.is_none() {
         push(&mut args, &["-sn"]);
     }
+    // A copy keeps its input's codec tag, and MPEG-TS's (0x1b h264, 0x0f aac: YouTube's HLS)
+    // is no MP4 tag: FFmpeg refused every DASH run with "Tag [27][0][0][0] incompatible"
+    // (rex-fun, 2026-10-22). These are the MP4 muxer's own defaults, so other inputs are unchanged.
+    if matches!(plan.protocol, Protocol::Dash | Protocol::File) {
+        if video.is_some_and(|video| video.copy && video.source_codec == "h264") {
+            push(&mut args, &["-tag:v", "avc1"]);
+        }
+        if plan.audio.as_ref().is_some_and(|audio| audio.copy && audio.source_codec == "aac") {
+            push(&mut args, &["-tag:a", "mp4a"]);
+        }
+    }
     // A remux's pre-roll from the keyframe before the seek keeps its negative time, so
     // with the offset every packet lands on its true time on the title's clock.
     push(&mut args, &["-dn", "-map_metadata", "-1", "-map_chapters", "-1", "-avoid_negative_ts", "disabled"]);
