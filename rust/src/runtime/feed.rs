@@ -599,10 +599,15 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
     // -- under the lock: which library, which row, what has to be identified ---------------
     let mut plans: Vec<(Item, Library, Plan)> = Vec::new();
     {
-        let guard = lock(shared);
+        let mut guard = lock(shared);
         let rows = guard.feed_rows(&source.name, items.iter().map(|item| item.id.as_str()));
         let legacy = guard.legacy_rows_by_file(items.iter().map(|item| item.file.as_str()));
         let named = guard.plex.is_some();
+        for directory in items.iter().filter_map(|item| item.path.split_once('/').map(|(directory, _)| directory)) {
+            if guard.feed_directories.entry(source.name.clone()).or_default().insert(directory.to_string()) {
+                guard.dirty = true;
+            }
+        }
         for mut item in items {
             // A `kind` the source sent says which it is (`feed_library`); no name guesses.
             let Some(library) = guard.feed_library(&item) else {
@@ -1333,6 +1338,7 @@ impl Runtime {
     /// how many items went.
     fn delete_source(&mut self, source: &str) -> usize {
         self.sources.retain(|known| known.name != source);
+        self.feed_directories.remove(source);
         let prefix = held_key(source, "");
         let held: Vec<String> = self.feed_held.keys().filter(|key| key.starts_with(&prefix)).cloned().collect();
         for key in &held {
@@ -1396,6 +1402,31 @@ impl Runtime {
         self.section(key).map(|section| string_value(section.get("title").unwrap_or(&Value::Null))).unwrap_or_default()
     }
 
+    /// The folder a source's directories are libraries under: its `mount`, else where the seed
+    /// put its own (`/mnt/zurg` of `/mnt/zurg/movies`), without a trailing `/`.
+    pub(super) fn library_prefix(&self, source: &Source) -> String {
+        let playable = |section: &&Value| matches!(section.get("type").and_then(Value::as_str), Some("movie" | "show"));
+        let prefix = source.mount.clone().unwrap_or_else(|| {
+            let seeded = self.catalog.sections.iter().filter(playable).flat_map(|section| self.locations(section)).next();
+            seeded.and_then(|folder| folder.trim_end_matches('/').rsplit_once('/').map(|(parent, _)| parent.to_string())).unwrap_or_else(|| "/mnt/zurg".to_string())
+        });
+        prefix.trim_end_matches('/').to_string()
+    }
+
+    /// The folders Add Library's picker offers for the sources' directories: each directory a
+    /// source pushed from or declared, under its prefix (`/mnt/zurg/anime`).
+    pub(super) fn feed_folders(&self) -> BTreeSet<String> {
+        let mut folders = BTreeSet::new();
+        for source in &self.sources {
+            let prefix = self.library_prefix(source);
+            let pushed = self.feed_directories.get(&source.name).into_iter().flatten().cloned();
+            for directory in pushed.chain(source.directories.iter().map(|entry| entry.name.clone())) {
+                folders.insert(format!("{prefix}/{directory}"));
+            }
+        }
+        folders
+    }
+
     /// A registration's `directories`: each library it titles, made unless one of that type
     /// already has a folder naming the directory (seeded, added by hand, made before and
     /// perhaps renamed since) or a person deleted one there (`deleted_locations`). A movie
@@ -1403,13 +1434,7 @@ impl Runtime {
     /// folder, goes to a movie library there as it does anywhere else. rex never deletes or
     /// retitles a library this made; a directory dropped from the list keeps its library.
     pub(super) fn declare_libraries(&mut self, source: &Source) {
-        let playable = |section: &&Value| matches!(section.get("type").and_then(Value::as_str), Some("movie" | "show"));
-        // The seed's libraries sit under the mount (`/mnt/zurg/movies`): a source naming none
-        // gets its directories there too.
-        let prefix = source.mount.clone().unwrap_or_else(|| {
-            let seeded = self.catalog.sections.iter().filter(playable).flat_map(|section| self.locations(section)).next();
-            seeded.and_then(|folder| folder.trim_end_matches('/').rsplit_once('/').map(|(parent, _)| parent.to_string())).unwrap_or_else(|| "/mnt/zurg".to_string())
-        });
+        let prefix = self.library_prefix(source);
         let mut made = false;
         for entry in &source.directories {
             let names = |folder: &str| {

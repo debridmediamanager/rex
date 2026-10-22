@@ -7,7 +7,7 @@
 //! the phase-two serializers.  No Python process or fixture replay is involved.
 
 use std::sync::PoisonError;
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fs;
 use std::io::{self, BufReader, Read, Write};
 use std::net::{TcpListener, TcpStream, UdpSocket};
@@ -635,6 +635,9 @@ pub struct Runtime {
     /// The folders, with their type, of the libraries a person deleted (`{"path", "type"}`): a
     /// source's `directories` makes no library for them again (`declare_libraries`).
     pub deleted_locations: Vec<Value>,
+    /// By source, the first directory of every path it pushed: Add Library's folder picker
+    /// lists them under the source's mount (`route_browse`).
+    pub feed_directories: BTreeMap<String, BTreeSet<String>>,
     deleted: Versioned<HashSet<String>>,
     devices: HashMap<String, Device>,
     gdm_peers: HashMap<String, GdmPeer>,
@@ -926,6 +929,7 @@ impl Runtime {
             section_prefs: HashMap::new(),
             added_sections: Vec::new(),
             deleted_locations: Vec::new(),
+            feed_directories: BTreeMap::new(),
             deleted: Versioned::default(),
             devices: HashMap::new(),
             gdm_peers: HashMap::new(),
@@ -1217,6 +1221,9 @@ impl Runtime {
                 Ok(source) => self.put_source(source),
                 Err(error) => warning!("saved source {name} not restored: {error}"),
             }
+        }
+        if let Some(Ok(directories)) = state.get("feedDirectories").map(|value| serde_json::from_value(value.clone())) {
+            self.feed_directories = directories;
         }
         let mut carried = 0;
         // Keyed by ratingKey, so only for a file from before the rows were kept: over a
@@ -2007,6 +2014,7 @@ impl Runtime {
             ("themeNext", json!(self.next_scan_key)),
             ("sectionNext", json!(self.section_next)),
             ("deletedLocations", json!(self.deleted_locations)),
+            ("feedDirectories", json!(self.feed_directories)),
             // The next subtitle search row's or kept subtitle's id: never one handed out before.
             ("subtitleNext", json!(self.subtitle_serial)),
             ("sources", json!(self.sources.iter().map(|source| (source.name.clone(), source.record.clone())).collect::<Map<String, Value>>())),
@@ -9383,6 +9391,12 @@ impl Runtime {
         }
         info!("SECTION create {title} ({kind})");
         self.push_section(section.clone());
+        // A folder whose library was deleted is wanted again once a person adds one on it.
+        let folder = location.trim_end_matches('/');
+        self.deleted_locations.retain(|gone| {
+            gone.get("type").and_then(Value::as_str) != Some(kind.as_str())
+                || gone.get("path").and_then(Value::as_str).map(|path| path.trim_end_matches('/')) != Some(folder)
+        });
         let mut prefs = query
             .iter()
             .filter_map(|(name, value)| {
@@ -13709,6 +13723,17 @@ impl Runtime {
                     string_value(section.get("key").unwrap_or(&Value::Null))
                 );
                 if seen.insert(child.clone()) {
+                    children.push(child);
+                }
+            }
+        }
+        // The folders of the sources' directories (`/mnt/zurg/anime`), walked down from `/`: the
+        // picker offered none, so Add Library could not make a library of a zurg directory.
+        for folder in self.feed_folders() {
+            let below = if wanted == "/" { folder.strip_prefix('/') } else { folder.strip_prefix(&format!("{wanted}/")) };
+            if let Some(next) = below.and_then(|rest| rest.split('/').next()).filter(|next| !next.is_empty()) {
+                let child = format!("{}/{next}", wanted.trim_end_matches('/'));
+                if !children.contains(&child) {
                     children.push(child);
                 }
             }

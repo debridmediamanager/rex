@@ -21,6 +21,7 @@ The migration leg starts from rows the old WebDAV scanner really made
 
     python3 tests/test_feed.py
 """
+import base64
 import http.server
 import io
 import json
@@ -565,6 +566,28 @@ def declared_libraries(bytes_port):
               status == 200 and body.get("ignored") == [{"entry": "anime", "reason": 'directories "anime": not a list'}]
               and "directories" not in server.request("/rex/sources/zurg")[1] and libraries(server) == kept, body)
 
+        # Add Library's folder picker lists the sources' directories under their mount, so a
+        # deleted library comes back from Plex: it listed only `/rex/<n>` and a placeholder.
+        def browse(path):
+            status, body = server.request("/services/browse/%s?includeFiles=0" % base64.b64encode(path.encode()).decode())
+            return [row["path"] for row in (body or {}).get("MediaContainer", {}).get("Path") or []] if status == 200 else status
+        register(server, ANIME)
+        check("the picker walks down to each directory zurg pushed from or declared",
+              "/zurg" in browse("/") and browse("/zurg") == [MOUNT + "/" + name for name in ("anime", "wrestling")]
+              and browse(MOUNT + "/anime") == [], (browse("/"), browse("/zurg"), browse(MOUNT + "/anime")))
+        status, _ = server.request("/library/sections?name=Anime+Films&type=movie&agent=tv.plex.agents.movie"
+                                   "&scanner=Plex+Movie&language=en-US&location=%s" % urllib.parse.quote(MOUNT + "/anime", safe=""),
+                                   "POST")
+        _, body = server.feed("POST", "items", {"items": [film]})
+        added = libraries(server).get("Anime Films")
+        check("a library added on the deleted one's folder takes its films again",
+              status == 201 and added and server.row(server.keys().get(film["id"])).get("librarySectionID") == int(added[0]),
+              (status, added, server.row(server.keys().get(film["id"])).get("librarySectionID")))
+        server.request("/library/sections/%s" % (added or ("0",))[0], "DELETE")
+        register(server, ANIME)
+        check("and once added the folder is no longer kept deleted: deleting it again keeps it deleted, once",
+              "Anime Movies" not in libraries(server) and "Anime Films" not in libraries(server)
+              and logged(work).count("SECTION Anime Movies (movie) for zurg's anime stays deleted") == 2, logged(work)[-1500:])
     finally:
         server.stop()
         shutil.rmtree(work, ignore_errors=True)
