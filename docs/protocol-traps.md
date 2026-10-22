@@ -26,6 +26,12 @@ Current PMS routes PATCH: a plug-in listing on `/identity`, a Tornado 405 under
 `/system` (the proxy's own 400 still wins), and the route's normal refusal elsewhere.
 The historical 1.42.2-wide PATCH 500 is not the current method table.
 
+Failed media analysis ends its standard activity at progress 100 without exposing
+engine/configuration diagnostics as an `error` attribute. The real failure remains
+in operator logs and owner analysis state. `analysis_failure_s1435.json` records
+the failed PMS scanner and its notifications; it establishes that lifecycle, not
+equivalence of operation-specific activity labels.
+
 This is not an undetectability or account-safety guarantee. The private source API,
 operator diagnostics, upstream media requests, optional rex-direct hostname, TLS
 implementation and unimplemented or version-specific behavior remain observable.

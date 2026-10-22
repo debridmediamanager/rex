@@ -13832,10 +13832,11 @@ its plug-in path uses build **6bf8af3f0**. Generated and sidecar-driven errors n
 expand the shared version's build suffix. Legacy agent IDs were captured twice
 and were stable; language/filter tables were not replaced speculatively.
 
-Collection and playlist GUID shapes come from the existing real PMS 1.42.2
-captures: `collection://<UUIDv4>` and `com.plexapp.agents.none://<UUIDv4>`.
-The fresh current PMS had no libraries or playlists, so current-version list
-creation was not measured. rex now mints UUIDv4 identities and migrates old
+Collection and playlist GUID shapes were subsequently measured on the fresh
+current PMS too: `collection://<UUIDv4>` and `com.plexapp.agents.none://<UUIDv4>`.
+`list_guids_s1435.json` records actual creation responses for a synthetic movie;
+the disposable lists and library were removed afterward. These agree with the
+earlier 1.42.2 captures. rex mints UUIDv4 identities and migrates old
 branded/missing state before serving it; the registry, member tags and hidden
 playlists share that migration. Existing Plex-agent GUIDs are preserved.
 `test_sqlite_store.py` exercises creation, migration, restart/hard-kill durability
@@ -13865,12 +13866,124 @@ normalised. This exposed three further protocol details:
   descriptors were unchanged. The regression now compares ordered IDs, not a map
   that hid the difference.
 
-The native build passed the full Rust suites (**197 passed**, one deliberately
-opt-in live-provider subtitle test ignored). A Docker run exceeded the existing
+Before the concurrent movie/TV capability merge, the native build passed the full
+Rust suites (**197 passed**, one opt-in live-provider subtitle test ignored). A Docker run exceeded the existing
 catalog timing guard; the unchanged baseline exceeded it there too, while both
 baseline and changed binaries passed that guard directly on zen. The final Rust
 verification therefore uses an isolated native toolchain on zen, not a relaxed
 threshold or a skipped catalog test. Before the last cookie-ownership correction,
 the widened identity suite passed **122/125** outer checks and all **34** framework
 comparisons; the three remaining failures were the recorded cookie cases above.
+
+### Integrated transport verification
+
+The task retained concurrent `main` through `24c43642`, including declared source
+libraries, movie/TV capabilities and shared-account webhook privacy. Replaying
+the producer's current zurg contract (`f7f8830ff3634379551629f50c8a987e961fab27`)
+passed, including the declared movie and show libraries.
+
+| Isolated zen comparison | Pairs | Differences |
+|---|---:|---:|
+| HTTP matrix with the same packaged Web client supplied | 238 | 0 |
+| HTTP matrix without a Web client supplied | 238 | 15 |
+| Actual CSS-referenced image/font paths, plain and gzip requests | 24 | 0 |
+| Actual index-referenced assets, plain and gzip requests | 20 | 0 |
+| Public-peer source paths versus rex's normal unknown-path handling | 192 | 0 |
+
+The two asset sweeps overlap on the SVG mask and iPad icon: together they cover
+20 distinct real paths, not 22. Comparisons retain ordered duplicate headers,
+framework cookies, response bytes, gzip bytes and incomplete-read framing.
+Only Date, instance/claim-dependent identity lengths and setup-redirect machine
+IDs are normalised.
+
+All default-mode differences are `/web/index.html`: rex does not redistribute a
+Web client by default. Supplying the measured package's Web client removes those
+differences in this matrix, not every possible client-visible difference.
+Its existing files now reach the OPTIONS handler. Actual PNG, SVG and JPEG
+responses use the package's image MIME types; WOFF/WOFF2 remain the measured
+`application/octet-stream`, not an assumed generic font MIME type.
+
+Windows Chrome **155.0.8059.85** rendered the SVG mask from the isolated zen
+server. Its actual PNG and JPEG assets decoded at their native dimensions with
+`image/png` and `image/jpeg`. No Plex account login or production media was used.
+
+### Asynchronous failure boundary
+
+The post-integration source audit found another normal-client leak:
+`ActivityNotification.Activity.error` received the raw analysis-engine diagnostic,
+including `media analysis requires REX_TRANSCODER`. Ordinary HTTP error wrapping
+does not protect the independent notification stream.
+
+On the owned PMS 1.43.5 witness, an indexed synthetic MP4 was replaced with invalid
+media. Its scanner logged a real parse failure. Analyze still emitted the
+chapter-thumbnail activity's start at -1 and end at 100, with no public `error`
+attribute (`analysis_failure_s1435.json`). This measures the shared failure
+lifecycle, not equality of operation-specific activity labels.
+
+rex keeps the failure and its diagnostic in owner analysis state and logs, while
+ending the standard activity at 100 without attaching internal errors. The new
+fixture-driven SSE regression failed against the original integrated executable:
+its ended frame stayed at -1 and exposed the configuration diagnostic. A separate
+real-runtime smoke of the corrected executable observed start -1, end 100 and no
+public error, alongside owner state `failed` retaining the actual reason.
+
+The webhook receiver regression was also run against exact unfixed `main`
+`24c43642`: **44/48** checks passed. The four failures were its branded multipart
+boundary and current-version checks for owner, local and shared deliveries.
+Actual delivered User-Agents and `/identity` still named PMS 1.42.2, even though
+the claim/presence path had learned 1.43.5. The receiver now checks the real public
+release recording as well as cross-path version consistency; two equally stale
+identities cannot satisfy it.
+
+### Verification environment and retired fixture assumptions
+
+The first optional full client-surface replay used a minimal Ubuntu container
+without system certificate roots. Remote artwork and its composites failed there.
+An independent controlled replay changed only the read-only system-root mount:
+the same fixture URLs then served real JPEGs, including identical direct and
+photo-transcoded composite bodies. Exact unfixed `main`, the identity build and
+the later activity fix all behaved the same. The failing diagnostic was
+`no system certificate roots`; no runtime fallback was added to hide it.
+
+The broad suite also retained historical assumptions that no longer describe
+the integrated server: simulated Analyze frame counts without readable media,
+fake zero memory, fixed preference values, completed-image wording for a task
+that now queues real work, and 1.42.2's global PATCH refusal and framework strings.
+Those obsolete assertions were removed rather than re-pinned. Real analysis,
+Downloads, resource sampling and current framework behavior are exercised by
+their dedicated runtime/recorded suites. The empty download-queue envelope was
+also removed from a rebuild assertion that never populated that queue; it did
+not establish loss or preservation of queued content.
+
+One decade assertion incorrectly assumed the preceding bucket was empty after
+earlier UI edits. Current PMS and exact unfixed `main`, given synthetic movies
+from 1984, 2004 and 2024, both select the supplied decade bucket regardless of
+`=`, `!=`, `>>` or `<<`. The test now compares `>>` to that same bucket's equality
+control, not to an assumed empty result. No filter implementation was changed.
+
+The current-version collection/playlist recording drives the persistent GUID
+corpus too. On exact unfixed `main`, **34/41** checks passed; seven creation and
+migration checks rejected branded/missing UUIDs. The corrected executable passed
+**41/41**, including hard-kill durability and member/tag registry identity.
+
+### Rebuilt verification
+
+The corrected integrated release executable passed all **43** required black-box
+scripts and all **nine** pinned-FFmpeg suites on isolated zen targets. This includes
+**130/130** identity checks with **34/34** nested framework comparisons, all 70
+resource bodies, **48/48** webhook checks and real generated-media analysis.
+The default Rust run passed **229** library/CLI/corpus tests; all **nine** explicit
+media/resource/throughput checks then passed. Only the opt-in external live-subtitle
+provider check remains outside this credential-free harness, as in CI.
+
+The additional GDM, server/log, listing/list, metadata/hub, playback, persistence,
+verb and cycle-89 suites passed after retiring the obsolete assumptions above.
+GDM's two UDP sockets and TCP listener now use the existing bounded test pool;
+its actual socket pass used ports below 32768.
+
+A separate final runtime push observed metadata requests carrying
+`PlexMediaServer/1.43.5.11029-6bf8af3f0`, the same `X-Plex-Version` and `/identity`
+version, platform Linux and metadata-provider version 6.5.0. Real collection and
+playlist creation returned the current PMS UUID forms. The public release list
+was rechecked and still named this build for Linux, macOS and 64-bit Windows.
 

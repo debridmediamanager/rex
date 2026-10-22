@@ -427,7 +427,7 @@ fn worker(shared: Weak<Mutex<Runtime>>, jobs: Arc<Jobs>) {
             match result { Ok((mut record,marker_rows,voice)) if current => {
                 let voice_current = voice.is_none_or(|result|guard.finish_voice_analysis(result));
                 if !voice_current {
-                    activity.insert("error".into(),json!("source changed during voice analysis")); finish(&jobs,&work,"stale",None);
+                    finish(&jobs,&work,"stale",None);
                 } else {
                 if jobs.lane.lock().unwrap().preview_epochs.get(&work.key).copied().unwrap_or(0) != work.preview_epoch {
                     if let Some(artifact) = record.as_object_mut().and_then(|o|o.remove("bif")) { if let Some(path) = artifact["path"].as_str() { jobs.garbage_files.lock().unwrap().insert(PathBuf::from(path)); } }
@@ -439,12 +439,15 @@ fn worker(shared: Weak<Mutex<Runtime>>, jobs: Arc<Jobs>) {
                         guard.store_analysis_record(&marker.key,&marker.part_id,hash,&json!({"markers":marker.markers,"marker_group":group,"marker_dependencies":dependencies}));
                     }
                 }
-                guard.dirty = true; activity.insert("progress".into(),json!(100)); finish(&jobs,&work,"completed",None);
+                guard.dirty = true; finish(&jobs,&work,"completed",None);
                 }
             },
-                Ok(_) => { activity.insert("error".into(),json!("source changed during analysis")); finish(&jobs,&work,"stale",None); },
-                Err(error) => { if current { guard.store_analysis_record(&work.key,&work.part,&work.fingerprint,&json!({"failure":error})); guard.dirty = true; } activity.insert("error".into(),json!(error)); finish(&jobs,&work,"failed",Some(&error)); }
+                Ok(_) => { finish(&jobs,&work,"stale",None); },
+                Err(error) => { if current { guard.store_analysis_record(&work.key,&work.part,&work.fingerprint,&json!({"failure":error})); guard.dirty = true; } error!("media analysis: {error}"); finish(&jobs,&work,"failed",Some(&error)); }
             }
+            // PMS finishes the activity at 100 even when its scanner cannot
+            // parse the media; engine diagnostics stay in logs/private state.
+            activity.insert("progress".into(),json!(100));
             guard.notify_activity(&activity,"ended"); guard.catalog.pack_pending(); guard.flush_state() };
         if let Some(snapshot) = snapshot { if let Err(error) = super::write_snapshot(&snapshot) { error!("analysis state save: {error}"); } }
         collect_unused(&jobs);

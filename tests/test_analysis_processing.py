@@ -44,11 +44,13 @@ class Source(t.Zurg):
 
 
 class Server:
-    def __init__(self, directory, plex_port):
+    def __init__(self, directory, plex_port, transcoder=True):
         self.port = t.free_port()
         self.log = open(os.path.join(directory, "analysis.log"), "ab")
         env = dict(os.environ, REX_TRANSCODER=os.path.join(directory,"ffmpeg-engine"), REX_TRANSCODE_HW="none",
                    REX_PLEXTV_URL="http://127.0.0.1:%d" % plex_port, REX_DIRECT_URL="off")
+        if not transcoder:
+            env.pop("REX_TRANSCODER", None)
         for name in ("REX_STATE", "REX_TOKEN", "PLEX_TOKEN"):
             env.pop(name, None)
         self.process = subprocess.Popen(t.server_command(
@@ -84,6 +86,46 @@ class Server:
         status, _, raw = self.ask("/library/metadata/%s/analyze" % key, method="PUT")
         assert status == 200, (status, raw)
 
+
+class Events:
+    """Read the same actual SSE activity channel captured from the disposable PMS."""
+
+    def __init__(self, server):
+        self.notes = []
+        self.response = urllib.request.urlopen(urllib.request.Request(
+            "http://127.0.0.1:%d/:/eventsource/notifications?filters=activity" % server.port,
+            headers={"Accept": "text/event-stream", "X-Plex-Token": OWNER}), timeout=3600)
+
+        def read():
+            try:
+                for line in self.response:
+                    if line.startswith(b"data:"):
+                        frame = json.loads(line[5:])
+                        note = frame.get("ActivityNotification")
+                        if note and note["Activity"].get("type") == "media.analysis":
+                            self.notes.append(note)
+            except (OSError, ValueError):
+                pass
+        threading.Thread(target=read, daemon=True).start()
+
+    def assert_failed(self, key):
+        with open(os.path.join(t.ROOT, "tests", "fixtures", "analysis_failure_s1435.json")) as source:
+            reference = json.load(source)["notifications"]
+        t.poll_until(lambda: any(note["event"] == "ended" and
+                     str(note["Activity"].get("Context", {}).get("ratingKey")) == key
+                     for note in self.notes), 30)
+        notes = [note for note in self.notes
+                 if str(note["Activity"].get("Context", {}).get("ratingKey")) == key]
+        # PMS reports this failed Analyze through its chapter-thumbnail activity;
+        # compare the failure lifecycle, not operation-specific labels/context.
+        def lifecycle(note):
+            activity = note["Activity"]
+            return (note["event"], activity["progress"], activity["cancellable"],
+                    activity["userID"], "error" in activity, activity.get("error"))
+        assert [lifecycle(note) for note in notes] == [
+            lifecycle(frame["ActivityNotification"]) for frame in reference], notes
+        assert len({note["uuid"] for note in notes}) == 1, notes
+        assert all(note["uuid"] == note["Activity"]["uuid"] for note in notes), notes
 
 def ffmpeg(*args):
     return subprocess.run([t.FFMPEG, "-v", "error", "-nostdin", *args],
@@ -226,6 +268,18 @@ def main():
         for service in (upstream,plex):
             threading.Thread(target=service.serve_forever,daemon=True).start()
             stack.callback(service.shutdown)
+        # Missing engine diagnostics remain useful privately, never as PMS fields.
+        server = Server(directory, plex.server_address[1], transcoder=False)
+        try:
+            t.register_source(server.port, "zurg", {
+                "url": "http://127.0.0.1:%d/dav" % upstream.server_address[1],
+                "mount": "/zurg", "bearer": "analysis-source-secret"})
+            events = Events(server)
+            server.analyze()
+            t.poll_until(lambda: state(server, "1").get("state") == "failed", 30)
+            events.assert_failed("1")
+        finally:
+            server.close()
         server = Server(directory,plex.server_address[1])
         try:
             source = {"url":"http://127.0.0.1:%d/dav" % upstream.server_address[1],"mount":"/zurg","bearer":"analysis-source-secret"}
@@ -306,9 +360,11 @@ def main():
             server.analyze()
             t.poll_until(lambda:ready(server),120)
             artifacts(server)
+            events = Events(server)
             server.analyze("3")
             t.poll_until(lambda:state(server,"3").get("state") == "failed",30)
             assert state(server,"3").get("error")
+            events.assert_failed("3")
             bad = server.detail("3")
             assert "indexes" not in bad["Media"][0]["Part"][0]
             assert not bad.get("Marker")

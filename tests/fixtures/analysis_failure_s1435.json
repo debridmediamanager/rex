@@ -1,0 +1,123 @@
+{
+  "provenance": {
+    "server": "Plex Media Server",
+    "version": "1.43.5.11029-6bf8af3f0",
+    "container": "rex-pms-identity-reference-pass",
+    "captured_at": "2026-10-22T03:34:44Z",
+    "source": "Owned fresh unclaimed disposable PMS on internal Docker network; synthetic local movie only.",
+    "cleanup_performed": "Deleted disposable library 1 (HTTP 200), removed /config/analysis-failure and host analysis-failure-film.mp4. Rex probe process and temporary directory removed. Raw captures retained at /home/ben/rex-pms-wire-identity/analysis-failure-pms-raw.json and analysis-failure-rex-before.json. No services or binary mutations remain.",
+    "scope": "Failed PUT /library/metadata/1/analyze emits chapter-thumbnail activity, not media.analysis. This fixture establishes the shared failure lifecycle (ended progress 100, no error field), not parity of operation-specific activity labels."
+  },
+  "request": {
+    "method": "PUT",
+    "path": "/library/metadata/1/analyze",
+    "response_status": 200
+  },
+  "mutation": {
+    "path": "/config/analysis-failure/analysis-failure-film.mp4",
+    "before": "Valid synthetic 3-second blue H.264 MP4, indexed as ratingKey 1 in library 1.",
+    "after_utf8": "invalid-media",
+    "method": "docker exec rex-pms-identity-reference-pass sh -c 'printf invalid-media > /config/analysis-failure/analysis-failure-film.mp4'"
+  },
+  "scanner_log": [
+    "Oct 22, 2026 03:34:44.113 [139876010384128] INFO - /usr/lib/plexmediaserver/Plex Media Scanner --analyze --manual --server-action chapterThumbs --item 1 --log-file-suffix  Analysis",
+    "Oct 22, 2026 03:34:44.418 [139876010884864] ERROR - [FFMPEG] - moov atom not found",
+    "Oct 22, 2026 03:34:44.422 [139876010884864] ERROR - Exception analyzing media file '/config/analysis-failure/analysis-failure-film.mp4' (Could not parse /config/analysis-failure/analysis-failure-film.mp4 (error=-1094995529): Invalid data found when processing input)",
+    "Oct 22, 2026 03:34:44.423 [139876010884864] ERROR - Failed to successfully analyze part 1."
+  ],
+  "notifications": [
+    {
+      "ActivityNotification": {
+        "event": "started",
+        "uuid": "4f5c97ad-13cf-4e19-9e0f-8e265e7e9119",
+        "Activity": {
+          "uuid": "4f5c97ad-13cf-4e19-9e0f-8e265e7e9119",
+          "type": "media.generate.chapter.thumbs",
+          "cancellable": false,
+          "userID": 1,
+          "title": "Generating video chapter thumbnails",
+          "subtitle": "Analysis Failure Film",
+          "progress": -1
+        }
+      }
+    },
+    {
+      "ActivityNotification": {
+        "event": "ended",
+        "uuid": "4f5c97ad-13cf-4e19-9e0f-8e265e7e9119",
+        "Activity": {
+          "uuid": "4f5c97ad-13cf-4e19-9e0f-8e265e7e9119",
+          "type": "media.generate.chapter.thumbs",
+          "cancellable": false,
+          "userID": 1,
+          "title": "Generating video chapter thumbnails",
+          "subtitle": "Analysis Failure Film",
+          "progress": 100
+        }
+      }
+    }
+  ],
+  "rex_before": {
+    "binary": "/home/ben/rex-pms-wire-identity/target-native/release/rex",
+    "missing_transcoder_private_error": "media analysis requires REX_TRANSCODER",
+    "notifications": [
+      {
+        "ActivityNotification": {
+          "event": "started",
+          "uuid": "c4c5ad26-2b0e-4987-a4ad-5123d67255d4",
+          "Activity": {
+            "uuid": "c4c5ad26-2b0e-4987-a4ad-5123d67255d4",
+            "type": "media.analysis",
+            "cancellable": false,
+            "userID": 1,
+            "title": "Analyzing media",
+            "subtitle": "",
+            "progress": -1,
+            "Context": {
+              "ratingKey": "1"
+            }
+          }
+        }
+      },
+      {
+        "ActivityNotification": {
+          "event": "ended",
+          "uuid": "c4c5ad26-2b0e-4987-a4ad-5123d67255d4",
+          "Activity": {
+            "uuid": "c4c5ad26-2b0e-4987-a4ad-5123d67255d4",
+            "type": "media.analysis",
+            "cancellable": false,
+            "userID": 1,
+            "title": "Analyzing media",
+            "subtitle": "",
+            "progress": -1,
+            "Context": {
+              "ratingKey": "1"
+            },
+            "error": "media analysis requires REX_TRANSCODER"
+          }
+        }
+      }
+    ]
+  },
+  "reproduction": {
+    "prepare": "/home/ben/rex-pms-wire-identity/ffmpeg/ffmpeg -v error -nostdin -y -f lavfi -i color=blue:s=160x90:r=8:d=3 -c:v libx264 -threads 1 /home/ben/rex-pms-wire-identity/analysis-failure-film.mp4 && docker exec rex-pms-identity-reference-pass mkdir -p /config/analysis-failure && docker cp /home/ben/rex-pms-wire-identity/analysis-failure-film.mp4 rex-pms-identity-reference-pass:/config/analysis-failure/analysis-failure-film.mp4",
+    "create_library": {
+      "method": "POST",
+      "path": "/library/sections",
+      "params": {
+        "name": "Analysis failure measurement",
+        "type": "movie",
+        "agent": "tv.plex.agents.movie",
+        "scanner": "Plex Movie",
+        "language": "en-US",
+        "location": "/config/analysis-failure"
+      }
+    },
+    "sequence": "Create library, wait for GET /library/sections/1/all to contain ratingKey 1, then apply mutation. Run capture_python with the docker command below. First capture may contain unrelated initial scan notifications; after it settles repeat capture for the minimal pair retained here.",
+    "capture_command": "docker run --rm -i --network container:rex-pms-identity-reference-pass -v /home/ben/rex-pms-wire-identity:/capture -v /home/ben/rex-pms-wire-identity/reference/config:/config:ro python:3-alpine python -",
+    "capture_python": "import urllib.request, urllib.parse, json, pathlib, time, threading\nTOKEN=pathlib.Path('/config/Library/Application Support/Plex Media Server/.LocalAdminToken').read_text().strip()\ndef ask(path, method='GET', params={}):\n req=urllib.request.Request('http://127.0.0.1:32400'+path+'?'+urllib.parse.urlencode(params),method=method,headers={'X-Plex-Token':TOKEN,'Accept':'application/json'})\n with urllib.request.urlopen(req,timeout=30) as r:\n  raw=r.read(); return json.loads(raw) if raw else {}\nframes=[]\nr=urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:32400/:/eventsource/notifications?filters=activity',headers={'X-Plex-Token':TOKEN,'Accept':'text/event-stream'}),timeout=60)\ndef reader():\n try:\n  for line in r:\n   text=line.decode().strip()\n   if text.startswith('data:'):\n    try: frames.append(json.loads(text[5:]))\n    except ValueError: pass\n except Exception: pass\nthreading.Thread(target=reader,daemon=True).start()\nprint('analyze_response',ask('/library/metadata/1/analyze','PUT'))\ntime.sleep(15)\nnotes=[f for f in frames if 'ActivityNotification' in f]\npathlib.Path('/capture/analysis-failure-pms-raw.json').write_text(json.dumps(notes,indent=2)+'\\n')\nprint(json.dumps(notes,indent=2))\n",
+    "rex_before_python": "import os, sys, json, pathlib, tempfile, subprocess, threading, time, urllib.request\nroot='/home/ben/rex-pms-wire-identity'\nsys.path.insert(0,root+'/src/tests')\nfrom test_accounts import MACHINE, SERVER_TOKEN, OWNER, PlexTv\nimport http.server\nstub=http.server.ThreadingHTTPServer((\"127.0.0.1\",31769),PlexTv)\nthreading.Thread(target=stub.serve_forever,daemon=True).start()\nframes=[]\nwith tempfile.TemporaryDirectory(prefix='analysis-failure-',dir=root) as directory:\n p=pathlib.Path(directory)\n row={'ratingKey':'1','key':'/library/metadata/1','type':'movie','title':'Analysis Failure Film','librarySectionID':99,'duration':3000,'Media':[{'id':1,'duration':3000,'Part':[{'id':1,'key':'/library/parts/1/file.mp4','file':'/zurg/analysis-failure-film.mp4','duration':3000,'Stream':[{'id':1,'streamType':1,'codec':'h264'}]}]}]}\n (p/'catalog.json').write_text(json.dumps({'machineIdentifier':MACHINE,'sections':[{'key':'99','type':'movie','title':'Private','Location':[{'id':99,'path':'/zurg'}]}],'items':[row]}))\n (p/'claim_state.json').write_text(json.dumps({'machine':MACHINE,'token':SERVER_TOKEN,'owner':'owner','email':'owner@example.com','feature_uuids':[],'account_id':316687974,'view_state_cursor':None,'access_tokens':[]}))\n env=dict(os.environ,REX_DIRECT_URL='off',REX_PLEXTV_URL='http://127.0.0.1:31769')\n for k in ('REX_TRANSCODER','REX_STATE','REX_TOKEN','PLEX_TOKEN'): env.pop(k,None)\n log=open(p/'rex.log','w')\n proc=subprocess.Popen([root+'/target-native/release/rex','--port','31760','--catalog',str(p/'catalog.json'),'--state',str(p/'state.db'),'--gdm','off'],env=env,stdout=log,stderr=log)\n def ask(path,method='GET'):\n  return urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:31760'+path,method=method,headers={'X-Plex-Token':OWNER,'Accept':'application/json'}),timeout=5)\n try:\n  for _ in range(100):\n   try: ask('/identity').close(); break\n   except OSError: time.sleep(.1)\n  from server_command import register_source\n  print('source',register_source(31760,'zurg',{'url':'http://127.0.0.1:31768/dav','mount':'/zurg'}))\n  r=ask('/:/eventsource/notifications?filters=activity')\n  def reader():\n   try:\n    for line in r:\n     if line.startswith(b'data:'): frames.append(json.loads(line[5:]))\n   except Exception: pass\n  threading.Thread(target=reader,daemon=True).start()\n  print('status',ask('/library/metadata/1/analyze','PUT').status)\n  time.sleep(2)\n  print('state',ask('/rex/analysis').read().decode())\n  print(json.dumps(frames,indent=2))\n  pathlib.Path(root+'/analysis-failure-rex-before.json').write_text(json.dumps(frames,indent=2)+'\\n')\n finally: proc.terminate(); proc.wait(timeout=30); log.close()\n",
+    "cleanup": "Delete disposable library 1 with DELETE /library/sections/1 using local admin token, remove /config/analysis-failure and host analysis-failure-film.mp4. No PMS executable/helper changes, restart, or production containers used. Rex probe terminates its own process and temporary directory automatically."
+  }
+}
