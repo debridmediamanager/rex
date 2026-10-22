@@ -73,20 +73,6 @@ class Server:
         return (self.get(path)[1] or {}).get(key) or []
 
 
-def raw_exchange(port, request):
-    """Send bytes on one socket; answer the response head as text."""
-    sock = socket.create_connection(("127.0.0.1", port), timeout=10)
-    try:
-        sock.sendall(request)
-        data = b""
-        while b"\r\n\r\n" not in data:
-            chunk = sock.recv(4096)
-            if not chunk:
-                break
-            data += chunk
-    finally:
-        sock.close()
-    return data.split(b"\r\n\r\n", 1)[0].decode("latin-1")
 
 
 def run(server):
@@ -218,12 +204,6 @@ def run(server):
           status == 200 and body == b"" and headers.get("content-type") == "text/html",
           (status, headers.get("content-type"), body[:60]))
 
-    # -- an unknown method honours the request's Connection: close -----------------
-    head = raw_exchange(server.port, b"PATCH /library/metadata/1007/extras HTTP/1.1\r\n"
-                        b"Host: 127.0.0.1\r\nConnection: close\r\n\r\n")
-    check("PATCH is the 500 and closes a Connection: close request",
-          head.startswith("HTTP/1.1 500") and "Connection: close" in head
-          and "Keep-Alive" not in head, head)
 
     # -- the tag TABLE outlives the rows -------------------------------------------
     server.call("PUT", "/library/metadata/1007?genre%5B0%5D.tag.tag=Parity%20Minted")

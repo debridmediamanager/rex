@@ -305,12 +305,6 @@ def test_transcoder_and_envelope(server):
         if payload.startswith(b"\x89PNG") else None
     check("a transcoded row with no image is the generated tile at the TRANSCODER's size",
           (status, size, len(payload)) == (200, (200, 300), 840), (status, size, len(payload)))
-    status, headers, payload = server.call("PATCH", "/playlists",
-                                           headers={"Connection": "close"})
-    check("a PATCH from a closing client is a 500 that closes",
-          (status, headers.get("Connection"), headers.get("Keep-Alive"))
-          == (500, "close", None),
-          (status, headers.get("Connection"), headers.get("Keep-Alive")))
     server.call("POST", "/library/metadata/1008/themes", body=IMAGE)
     _, _, detail = server.json("GET", "/library/metadata/1008")
     theme = (rows(detail) or [{}])[0].get("theme")

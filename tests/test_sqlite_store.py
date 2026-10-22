@@ -316,19 +316,21 @@ def database_catalog():
 
 
 def list_guid_identity():
-    """Real PMS UUID shapes, persistent migration, and collection tag identity.
+    """Current PMS GUID shapes, persistent migration, and collection tag identity."""
+    with open(os.path.join(os.path.dirname(__file__), "fixtures", "list_guids_s1435.json")) as source:
+        reference = json.load(source)
+    shapes = {}
+    for record in reference["records"]:
+        prefix, value = record["response"]["MediaContainer"]["Metadata"][0]["guid"].rsplit("://", 1)
+        shapes[prefix + "://"] = uuid.UUID(value).version
 
-    Shapes come from collection_recreate_s42.json and playlist_poster_upload_s42.json,
-    both PMS 1.42.2. The current 1.43.5 reference has no libraries or playlists;
-    measuring its list GUIDs would require changing its libraries/account.
-    """
-    def uuid4_guid(guid, prefix):
+    def measured_guid(guid, prefix):
         if not isinstance(guid, str) or not guid.startswith(prefix):
             return False
         value = guid[len(prefix):]
         try:
             parsed = uuid.UUID(value)
-            return parsed.version == 4 and str(parsed) == value
+            return parsed.version == shapes[prefix] and str(parsed) == value
         except ValueError:
             return False
 
@@ -356,9 +358,9 @@ def list_guid_identity():
         branded_playlist = create("playlist", "GUID branded playlist")
         agent_guid = "plex://collection/5ec2fd508509540041a16274"
         check("new collection has the recorded random UUIDv4 shape",
-              uuid4_guid(collection.get("guid"), "collection://"), str(collection))
+              measured_guid(collection.get("guid"), "collection://"), str(collection))
         check("new playlist has the recorded random UUIDv4 shape",
-              uuid4_guid(playlist.get("guid"), "com.plexapp.agents.none://"), str(playlist))
+              measured_guid(playlist.get("guid"), "com.plexapp.agents.none://"), str(playlist))
         cid, pid, did = [row["ratingKey"] for row in (collection, playlist, deleted)]
         server.request("DELETE", "/library/collections/" + did)
         server.stop()
@@ -395,12 +397,12 @@ def list_guid_identity():
                     for key in (cid, pid)]
         for row, prefix in zip(migrated, ("collection://", "com.plexapp.agents.none://")):
             check("restored old list exposes an unbranded UUIDv4",
-                  uuid4_guid(row.get("guid"), prefix), str(row))
+                  measured_guid(row.get("guid"), prefix), str(row))
         for key, prefix in ((legacy["ratingKey"], "collection://"),
                             (branded_playlist["ratingKey"], "com.plexapp.agents.none://")):
             row = first(server.request("GET", "/library/metadata/" + key)[1])
             check("missing collection or branded playlist migrates " + key,
-                  uuid4_guid(row.get("guid"), prefix), str(row))
+                  measured_guid(row.get("guid"), prefix), str(row))
         row = first(server.request("GET", "/library/metadata/" + agent["ratingKey"])[1])
         check("migration preserves a Plex agent collection GUID",
               row.get("guid") == agent_guid, str(row))
@@ -425,7 +427,7 @@ def list_guid_identity():
         server.request("DELETE", "/playlists/" + pid)
         recreated = create("playlist", "GUID playlist")
         check("a new playlist mints a fresh UUID rather than reusing its deleted GUID",
-              uuid4_guid(recreated.get("guid"), "com.plexapp.agents.none://")
+              measured_guid(recreated.get("guid"), "com.plexapp.agents.none://")
               and recreated.get("guid") != migrated[1]["guid"], str(recreated))
     finally:
         if server is not None:

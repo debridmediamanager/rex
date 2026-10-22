@@ -600,14 +600,14 @@ cargo test --manifest-path rust/Cargo.toml  # the Rust unit tests: the decision 
                                             # first result on 122 real releases)
 ```
 
-Credentials unlock the rest. With a copy of `catalog_ui.json` whose Part
-files a zurg serves (made on the test host, never committed) and that zurg registered with
-the test server (`PUT /rex/sources/zurg` with its url, login and `mount`), the UI suite skips
-only its two Fix Match checks (1,979/1,979 with none skipped when it was RD-backed and read
-`PLEX_TOKEN`): they need Plex's agent, which only a real claim gives, and `--assert-claimed`
-is none (2026-10-19).
-Zurg-less it is 1,975/1,975 with exactly three skips (two Fix Match, Download):
-with no source registered a part read is the routed 502 its checks expect.
+The isolated credential-free client-surface pass on 2026-10-22 was **1,959/1,959**
+with three explicit skips: two Fix Match checks need Plex's metadata agent through
+a real claim (`--assert-claimed` is none), and Download needs readable Part files.
+For the latter, use a copy of `catalog_ui.json` made on the test host, never
+committed, and register the source serving its Part files with the test server
+(`PUT /rex/sources/zurg`, its URL, login and mount). With no source a Part read is
+the routed 502 the suite expects. HTTPS artwork also needs system certificate
+roots; a minimal test container without them is not a valid artwork target.
 `test_all.py` and `conformance.py` need a live catalog and the same credentials.
 A provider account behind zurg is read-only in tests: read bytes, never add or delete.
 

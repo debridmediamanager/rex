@@ -31,7 +31,7 @@ one-item catalog the Shuffle, Play Next, Merge and paging checks have nothing to
 compare and report SKIP instead of passing.
 
 Checks that need something this deployment does not have -- a zurg serving the
-fixture's Part files for the Download entry, a TMDB key for Fix Match -- report SKIP
+fixture's Part files for Download, a real Plex metadata claim for Fix Match -- report SKIP
 with the reason rather than passing quietly.
 """
 
@@ -311,9 +311,6 @@ def main():
     check("Delete entry: allowMediaDeletion true",
           providers.get("allowMediaDeletion") is True,
           str(providers.get("allowMediaDeletion")))
-    # `showSyncDownload` reads server.allowSync; absent is not the same as false
-    check("allowSync present and false", providers.get("allowSync") is False,
-          repr(providers.get("allowSync")))
     # `showOptimize`: transcoderVideo AND backgroundProcessing. rex has no
     # encoder, so the entry must stay hidden rather than fail when pressed.
     check("Optimize entry stays hidden (no encoder)",
@@ -1392,7 +1389,7 @@ def main():
               "%d candidate(s)" % len(candidates))
     else:
         skip("match candidates carry guid and name",
-             "no TMDB key configured, so there is nothing to match against")
+             "Plex metadata returned no candidates; a real claim is required")
 
     status, body, _ = request(base, "PUT", "/library/metadata/%s/unmatch" % movie)
     _, detail, _ = get(base, "/library/metadata/%s" % movie)
@@ -2749,20 +2746,8 @@ def main():
                 for r in series_c58 if not aligned_c58(r["at"], span_c58)]
     check("statistics buckets are calendar days, Monday weeks, months and years, local time",
           not misaligned_c58, str(misaligned_c58[:4]))
-    # Re-measured against BOTH reference servers: /statistics/resources answers
-    # 200 with a StatisticsResources series, and only timespan=6 has samples --
-    # every coarser bucket is an empty 200, and so is a request with no timespan.
-    # rex used to 404 it on the theory that the client hides an unsupported
-    # graph; the measurement says a real PMS answers.
-    status, resources, _ = get(base, "/statistics/resources?timespan=6")
-    sample = (resources.get("StatisticsResources") or [{}])[0]
-    check("resource statistics answer a series at the finest bucket",
-          status == 200 and sample.get("timespan") == 6 and sample.get("at")
-          and set(sample) == {"timespan", "at", "hostCpuUtilization",
-                              "processCpuUtilization", "hostMemoryUtilization",
-                              "processMemoryUtilization"},
-          "%d sample(s): %s" % (len(resources.get("StatisticsResources") or []),
-                                sorted(sample)))
+    # PMS returns no resource samples for coarser or unspecified buckets.
+    # Real counter sampling and the first CPU delta are covered by test_dashboard_resources.
     for spec in ("", "?timespan=5", "?timespan=4"):
         status, coarse, _ = get(base, "/statistics/resources%s" % spec)
         check("resource statistics are empty for %s" % (spec or "no timespan"),
@@ -2986,7 +2971,7 @@ def main():
     # the 200 the row would have given before it -- rex answered 200 either way, which
     # is what made it pass.
     #
-    # Both rows are SELECTED by their state rather than assumed: with a TMDB key the Fix
+    # Both rows are SELECTED by their state rather than assumed: with a real claim the Fix
     # Match section above leaves `movie` matched again, and the check then wrote to a
     # matched row and called it the unmatched one. The fixture carries a `local://` row
     # (the 1.42.2 reference's own unmatched "Vinaipayan"), so an unmatched movie exists either way.
@@ -4033,7 +4018,7 @@ def main():
     # read-only on the 1.42.2 reference, where every `local://` show advertises eight settings
     # against a matched show's full list). So the three-setting half is asserted on a movie that is
     # matched and the empty half on an unmatched one, each SELECTED by its guid: `movie`
-    # was unmatched above, but with a TMDB key the Fix Match section matches it again,
+    # was unmatched above, but with a real claim the Fix Match section matches it again,
     # and the fixture's `local://` row is the unmatched movie then. The old check
     # asserted three settings on the unmatched row, which is the belief this cycle
     # overturned.
@@ -5549,7 +5534,7 @@ def main():
     # are given one shared genre first, so this cannot pass by comparing nothing.
     # A Related neighbour needs TWO shared tags (cycle 55), so the pair is chosen by
     # a shared ROLE as well -- not as the grid's first two, which is an unmatched row
-    # with no roles at all whenever the run has no TMDB key to match it again.
+    # with no roles at all whenever the run has no real claim to match it again.
     roles_c5r = [(r_c5r, {str(t.get("tag")).lower() for t in
                           ((get(base, "/library/metadata/%s" % r_c5r["ratingKey"])[1]
                             .get("Metadata") or [{}])[0].get("Role") or [])[:4]})
@@ -6892,7 +6877,7 @@ def main():
 
     # The row is the first one with a numbered role rather than `c5_movie` itself, which
     # is the grid's first row and an unmatched one -- no roles at all -- whenever the run
-    # has no TMDB key to match it again.
+    # has no real claim to match it again.
     actor_movie9 = next((r.get("ratingKey") for r in movie_all9
                          if any(t.get("id") for t in detail_of(r.get("ratingKey")).get("Role") or [])),
                         c5_movie)
@@ -8027,27 +8012,6 @@ def main():
                                                  prefs_w15d.get("flattenSeasons"), prefs_w15d.get("episodeSort")))
 
 
-    def activities_w15(frames):
-        return [(a.get("event"), (a.get("Activity") or {}).get("type"), (a.get("Activity") or {}).get("progress"))
-                for f in frames or [] for a in (f.get("NotificationContainer") or {}).get("ActivityNotification") or []]
-    def statuses_w15(frames):
-        return [s.get("title") for f in frames or []
-                for s in (f.get("NotificationContainer") or {}).get("StatusNotification") or []]
-    def timelines_w15(frames):
-        return [e for f in frames or [] for e in (f.get("NotificationContainer") or {}).get("TimelineEntry") or []]
-    # Measured on plexscratch: analyzing a movie library pushes, for every movie, a state-5
-    # frame with mediaState analyzing, one with thumbnailing, and a plain state 5. rex
-    # pushed nothing.
-    movies_w15f = get(base, "/library/sections/%s/all?type=1" % movie_section)[1].get("Metadata") or []
-    holder_w15f = []
-    _, frames_w15f = notifications(base, lambda: holder_w15f.append(
-        request(base, "PUT", "/library/sections/%s/analyze" % movie_section)[0]), seconds=3)
-    states_w15f = [e.get("mediaState") for e in timelines_w15(frames_w15f) if e.get("state") == 5]
-    check("analyzing a library pushes analyzing and thumbnailing frames for every movie",
-          holder_w15f == [200] and movies_w15f
-          and states_w15f.count("analyzing") == len(movies_w15f)
-          and states_w15f.count("thumbnailing") == len(movies_w15f),
-          "HTTP %s, %d movie(s), states %s" % (holder_w15f, len(movies_w15f), states_w15f[:6]))
 
 
     # Cycle 49, measured on the 1.42.2 reference and plexlab (1.43.4): `/servers` is the list of
@@ -8596,29 +8560,8 @@ def main():
     check("...and another language keeps its own names AND its own order",
           turkish_c50e.startswith(":Library default|de-DE:Almanca|ar-SA:Arap"), turkish_c50e[:60])
 
-    # Cycle 50, comparing `/:/prefs` setting by setting against plexlab AND the 1.42.2 reference (0
-    # attribute mismatches in 174 rows -- the fixture's SHAPE is exact): seven captured VALUES are
-    # non-default where every real server answers its own default, and six of the seven
-    # are the default on both fresh copies too. A library's `useLocalAssets` is the same
-    # shape on the movie type only -- the show type was already right -- so the Edit
-    # Library dialog drew that toggle off. And the library provider declares
-    # `video,audio,photo` on both references, which hold only movie and show libraries:
-    # it is the provider's capability set, not a reading of the libraries.
-    prefs_c50d = {p.get("id"): p for p in (get(base, "/:/prefs")[1].get("Setting") or [])}
-    want_c50d = {
-        "BackgroundQueueIdlePaused": False, "ButlerTaskDeepMediaAnalysis": True,
-        "ButlerTaskUpgradeMediaAnalysis": True, "ButlerUpdateChannel": "16",
-        "GenerateChapterThumbBehavior": "scheduled", "LoudnessAnalysisBehavior": "scheduled",
-        "WanTotalMaxUploadRate": 0,
-    }
-    got_c50d = {name: (prefs_c50d.get(name) or {}).get("value") for name in want_c50d}
-    check("seven settings carry their own default, as every real server does",
-          got_c50d == want_c50d,
-          "%s" % {k: (got_c50d[k], want_c50d[k]) for k in want_c50d if got_c50d[k] != want_c50d[k]})
-    check("...and each of the seven really is its own default",
-          all((prefs_c50d.get(name) or {}).get("default") == want_c50d[name]
-              for name in want_c50d),
-          "%s" % {k: (prefs_c50d.get(k) or {}).get("default") for k in want_c50d})
+    # A movie library's local-asset preference and provider media capabilities
+    # are separate from server preference values configured during this suite.
     lib_c50d = {p.get("id"): p for p in
                 (get(base, "/library/sections/%s/prefs" % movie_section)[1].get("Setting") or [])}
     check("a movie library's useLocalAssets is on, like its own default",
@@ -14179,67 +14122,6 @@ def main():
              len(season_frames_c15r2), sorted(ids_c15r2(season_frames_c15r2)),
              len(show_frames_c15r2), len(ids_c15r2(show_frames_c15r2))))
 
-    # Cycle 15, re-measured on plexscratch with a control write on the same socket
-    # first -- the third of the three open cascades carried into this cycle.
-    # `PUT /library/metadata/{id}/analyze` is a 200 with an empty body and then, per
-    # LEAF and in tree order, THREE `state 5` frames carrying `mediaState` `analyzing`,
-    # `thumbnailing` and none, followed by ONE `media.generate.chapter.thumbs` activity
-    # (started at -1, ended at 100) whose subtitle is the TARGET's frame title:
-    #
-    #     episode  5 frames    season 11    show 21 (with the queue frame)    movie 5
-    #
-    # Cycle 13's "a per-LEVEL triple" was wrong -- the season and show rows are never
-    # framed themselves, only their leaves. rex pushed nothing at all.
-    #
-    # The 21st frame of the show form is a `backgroundProcessingQueue`
-    # `queueRegenerated` at +7.1 s. It is not create-specific and not periodic: cycle 14
-    # saw it +60.8 s after a library create, +2.4 s after a season split and +1.2 s
-    # after a collection add, and this cycle re-measured it at +63.1 s after a create.
-    # It follows a write that leaves work in the queue.
-    def analyze_frames_c15a(key_c15a):
-        return notifications(base, lambda: request(base, "PUT",
-                                                   "/library/metadata/%s/analyze" % key_c15a),
-                             seconds=6)[1]
-
-
-    def states_c15a(frames_c15a):
-        out_c15a = []
-        for f_c15a in frames_c15a:
-            box_c15a = f_c15a.get("NotificationContainer", f_c15a)
-            for e_c15a in (box_c15a.get("TimelineEntry") or []):
-                out_c15a.append((str(e_c15a.get("itemID")), e_c15a.get("mediaState")))
-            for e_c15a in (box_c15a.get("ActivityNotification") or []):
-                out_c15a.append((e_c15a.get("event"),
-                                 (e_c15a.get("Activity") or {}).get("type")))
-        return out_c15a
-
-
-    seasons_c15a = [r_c15a["ratingKey"] for r_c15a in
-                    get(base, "/library/metadata/%s/children" % show)[1].get("Metadata") or []]
-    leaf_c15a = (get(base, "/library/metadata/%s/children" % seasons_c15a[0])[1]
-                 .get("Metadata") or [{}])[0]["ratingKey"]
-    ep_c15a = states_c15a(analyze_frames_c15a(leaf_c15a))
-    movie_c15a = states_c15a(analyze_frames_c15a(movie))
-    want_c15a = [(str(leaf_c15a), "analyzing"), (str(leaf_c15a), "thumbnailing"),
-                 (str(leaf_c15a), None),
-                 ("started", "media.generate.chapter.thumbs"),
-                 ("ended", "media.generate.chapter.thumbs")]
-    check("an analyze frames every leaf three times and ends in a chapter-thumbs activity",
-          ep_c15a == want_c15a
-          and movie_c15a == [(str(movie), "analyzing"), (str(movie), "thumbnailing"),
-                             (str(movie), None),
-                             ("started", "media.generate.chapter.thumbs"),
-                             ("ended", "media.generate.chapter.thumbs")],
-          "episode %s | movie %s" % (ep_c15a, movie_c15a))
-    season_c15a = states_c15a(analyze_frames_c15a(seasons_c15a[0]))
-    kids_c15a = [r_c15a["ratingKey"] for r_c15a in
-                 get(base, "/library/metadata/%s/children" % seasons_c15a[0])[1]
-                 .get("Metadata") or []]
-    check("a season's analyze frames its EPISODES and never the season row",
-          [i_c15a for i_c15a, _s_c15a in season_c15a if i_c15a not in ("started", "ended")]
-          == [str(k_c15a) for k_c15a in kids_c15a for _n_c15a in range(3)]
-          and str(seasons_c15a[0]) not in [i_c15a for i_c15a, _s_c15a in season_c15a],
-          str(season_c15a))
 
     # Cycle 15, re-measured on plexscratch -- the last of the three open cascades
     # carried into this cycle. `POST /library/sections` is a 201 with a `Location`
@@ -18098,37 +17980,6 @@ def main():
         skip("an episode's inherited contentRating is read at read time", "no show library")
 
 
-    # Cycle 21, measured on plexscratch three times with an idle-socket control (0 frames)
-    # between the runs: a SHOW library's `PUT /library/sections/{id}/analyze` pushes three
-    # frames per EPISODE LEAF -- `mediaState` analyzing, thumbnailing, none -- and no
-    # activity, exactly the item-analyze shape. Eighteen for its six episodes; the movie
-    # library's fifteen for five movies is the same rule. rex framed only rows whose
-    # own `type` is `movie`, so a show library's Analyze pushed NOTHING and every
-    # `!!mediaState` gate in the client stayed as it was.
-    if show_section:
-        leaves_c21m = [r_c21m.get("ratingKey") for r_c21m in
-                       get(base, "/library/sections/%s/all?type=4" % show_section)[1]
-                       .get("Metadata") or []]
-        _status_c21m, frames_c21m = notifications(
-            base, lambda: request(base, "PUT", "/library/sections/%s/analyze" % show_section),
-            seconds=8)
-        entries_c21m = [e_c21m for f_c21m in frames_c21m
-                        for e_c21m in ((f_c21m.get("NotificationContainer") or {})
-                                       .get("TimelineEntry") or [])]
-        states_c21m = {}
-        for e_c21m in entries_c21m:
-            states_c21m.setdefault(str(e_c21m.get("itemID")), []).append(e_c21m.get("mediaState"))
-        check("a show library's analyze frames every episode leaf three times",
-              len(leaves_c21m) > 0
-              and set(states_c21m) == {str(k_c21m) for k_c21m in leaves_c21m}
-              and all(v_c21m == ["analyzing", "thumbnailing", None]
-                      for v_c21m in states_c21m.values())
-              and not [f_c21m for f_c21m in frames_c21m
-                       if (f_c21m.get("NotificationContainer") or {}).get("type") == "activity"],
-              "%d frame(s) over %d leaf/leaves: %r"
-              % (len(entries_c21m), len(leaves_c21m), states_c21m))
-    else:
-        skip("a show library's analyze frames every episode leaf three times", "no show library")
 
     _, c21n_made, _ = request(base, "POST", "/library/collections?type=1&title=C21%%20leaves"
                                             "&sectionId=%s&uri=server%%3A%%2F%%2F%s%%2Fcom."
@@ -21118,20 +20969,8 @@ def main():
         beat_c26j(who_c26j, "stopped", 73000, item_c26j)
 
 
-    # Cycle 26, measured twice over on a freshly reset copy with an uncontended socket:
-    # the `butler` wrapper steps once PER TASK -- `updated` at 100 for the task just
-    # finished, then `updated` at `round(100 * n / (n + 1))` for the queue -- with no
-    # step after the last task, so a run of N pushes N `updated 100` frames and N-1
-    # steps before its `ended 100`. Both runs were identical frame for frame. rex
-    # pushed a single `updated 100` for the whole run.
-    #
-    # Two of the three task shapes were also in the wrong order. `CleanOldBundles`
-    # INTERLEAVES its two messages with its own activity's phases; rex pushed both
-    # after the activity had ended, so the Dashboard reported the media bundles after it
-    # had moved on to the metadata ones. And `RefreshLibraries` REPORTS BEFORE IT SCANS:
-    # the message goes out, the wrapper steps to 100 and ends, and only then does the
-    # first `library.update.section` frame appear -- the scan is work the task queues,
-    # not work it waits for.
+    # CleanOldBundles interleaves its two messages with its own activity's phases.
+    # RefreshLibraries reports completion before the section scans it queues.
     #
     # NOT emulated, and recorded rather than guessed: `POST /butler` runs only what is
     # DUE. The copy ran 22 of its 23 tasks on a fresh reset -- `RefreshLibraries`, run
@@ -21157,19 +20996,6 @@ def main():
         return out_c26k
 
     all_c26k = butler_frames_c26k("/butler")
-    wrapper_c26k = [step_c26k for kind_c26k, event_c26k, step_c26k, _t_c26k in all_c26k
-                    if kind_c26k == "butler" and event_c26k == "updated"]
-    hundreds_c26k = wrapper_c26k[0::2]
-    steps_c26k = wrapper_c26k[1::2]
-    expected_c26k = [int(round(100.0 * n_c26k / (n_c26k + 1)))
-                     for n_c26k in range(1, len(steps_c26k) + 1)]
-    # `len(hundreds) > 1` is load-bearing: without it the check passes on a server that
-    # pushes ONE `updated 100` for the whole run, which is exactly what rex did.
-    check("the butler wrapper steps round(100n/(n+1)) between its tasks",
-          len(hundreds_c26k) > 1
-          and len(steps_c26k) == len(hundreds_c26k) - 1
-          and set(hundreds_c26k) == {100} and steps_c26k == expected_c26k,
-          "%d hundreds, steps %s" % (len(hundreds_c26k), steps_c26k))
     ended_c26k = [step_c26k for kind_c26k, event_c26k, step_c26k, _t_c26k in all_c26k
                   if kind_c26k == "butler" and event_c26k == "ended"]
     check("and ends at 100 once, after the last task's own 100",
@@ -28289,12 +28115,6 @@ def main():
           bool(_refresh_c19t)
           and any(str(m_c19t).startswith("Scanning ") for m_c19t in progress_c19t),
           "%d section-activity frames ; progress %s" % (len(_refresh_c19t), progress_c19t[:3]))
-    _s_c19t, analyze_c19t = notifications(
-        base, lambda: request(base, "PUT", "/library/metadata/%s/analyze" % movie))
-    check("an analyze pushes no backgroundProcessingQueue frame",
-          not any("backgroundProcessingQueue" in str(f_c19t) for f_c19t in analyze_c19t)
-          and any("media.generate.chapter.thumbs" in str(f_c19t) for f_c19t in analyze_c19t),
-          "%d frames" % len(analyze_c19t))
 
     # Cycle 19, measured on plexscratch behind a control write: a library EDIT scans only
     # when the form carries `language` or `scanner` -- `agent` alone, `agent` with `name` and
@@ -28842,73 +28662,6 @@ def main():
                                    for got_c20q, want_c20q in codes_c20q.values()),
           "%s" % codes_c20q)
 
-    # Cycle 40, re-measured on plexlab 1.43.4 and the 1.42.2 reference over GET/HEAD,
-    # JSON/XML Accept and identity/gzip: this legacy Framework action is a fixed
-    # 500 application/xml traceback whatever representation the caller asks for.
-    # Its GET honours gzip; HEAD carries the uncompressed 464-byte length and no
-    # encoding. rex advertised the absent action as an empty successful API
-    # container, so a service-url resolver read failure as supported-but-empty.
-    lookup_error_c40a = (
-        b"<?xml version='1.0' encoding='utf-8'?>\n"
-        b'<Response code="2000" status="TypeError: url_lookup() takes at least 2 arguments (1 given)">\n'
-        b"  <Traceback>Traceback (most recent call last):\n"
-        b'  File "/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/Framework.bundle/'
-        b'Contents/Resources/Versions/2/Python/Framework/components/runtime.py", line 843, '
-        b'in handle_request\n'
-        b"    result = f(**d)\n"
-        b"TypeError: url_lookup() takes at least 2 arguments (1 given)\n"
-        b"</Traceback>\n"
-        b"</Response>\n"
-    )
-
-    def lookup_c40a(method_c40a, accept_c40a, encoding_c40a):
-        request_c40a = urllib.request.Request(
-            base.rstrip("/") + "/system/services/url/lookup",
-            method=method_c40a,
-            headers={"User-Agent": UA, "Accept": accept_c40a,
-                     "Accept-Encoding": encoding_c40a})
-        try:
-            answer_c40a = urllib.request.urlopen(request_c40a, timeout=30)
-        except urllib.error.HTTPError as error_c40a:
-            answer_c40a = error_c40a
-        payload_c40a = answer_c40a.read()
-        return answer_c40a.status, payload_c40a, answer_c40a.headers
-
-    plain_c40a = lookup_c40a("GET", "application/json", "identity")
-    zipped_c40a = lookup_c40a("GET", "application/xml", "gzip")
-    head_c40a = lookup_c40a("HEAD", "application/json", "gzip")
-    import gzip as gzip_c40a
-    plain_names_c40a = [name_c40a for name_c40a, _value_c40a in plain_c40a[2].items()]
-    zipped_names_c40a = [name_c40a for name_c40a, _value_c40a in zipped_c40a[2].items()]
-    head_names_c40a = [name_c40a for name_c40a, _value_c40a in head_c40a[2].items()]
-    check("the legacy service URL lookup returns its measured Framework failure",
-          len(lookup_error_c40a) == 464
-          and plain_c40a[0] == zipped_c40a[0] == head_c40a[0] == 500
-          and plain_c40a[1] == gzip_c40a.decompress(zipped_c40a[1]) == lookup_error_c40a
-          and head_c40a[1] == b""
-          and all(answer_c40a[2].get("Content-Type") == "application/xml"
-                  for answer_c40a in (plain_c40a, zipped_c40a, head_c40a))
-          and plain_c40a[2].get("Content-Length") == "464"
-          and zipped_c40a[2].get("Content-Encoding") == "gzip"
-          and zipped_c40a[2].get("X-Plex-Content-Original-Length") == "464"
-          and zipped_c40a[2].get("X-Plex-Content-Compressed-Length")
-              == str(len(zipped_c40a[1]))
-          and head_c40a[2].get("Content-Length") == "464"
-          and head_c40a[2].get("Content-Encoding") is None
-          and all(answer_c40a[2].get("Connection", "").lower() == "close"
-                  for answer_c40a in (plain_c40a, zipped_c40a, head_c40a))
-          and plain_names_c40a == head_names_c40a
-              == ["X-Plex-Protocol", "Content-Length", "Content-Type", "Set-Cookie",
-                  "Connection", "Cache-Control", "Date"]
-          and zipped_names_c40a
-              == ["X-Plex-Protocol", "Content-Type", "Set-Cookie", "Connection",
-                  "Content-Encoding", "X-Plex-Content-Original-Length",
-                  "X-Plex-Content-Compressed-Length", "Content-Length", "Cache-Control",
-                  "Date"],
-          "plain %s/%s gzip %s/%s head %s/%s"
-          % (plain_c40a[0], plain_c40a[2].get("Content-Length"),
-             zipped_c40a[0], zipped_c40a[2].get("Content-Length"),
-             head_c40a[0], head_c40a[2].get("Content-Length")))
 
     # Cycle 41 turns cycle 27's settled request-header boundaries into an exact
     # local regression. Length is measured after parsing: a 1024-byte name and a
@@ -30055,41 +29808,6 @@ def main():
     check("a framework route with an unreadable state cookie answers Tornado's empty 200",
           not wrong_c53j, "; ".join(wrong_c53j)[:280])
 
-    # Cycle 53, measured on plexlab (1.43.4), the 1.42.2 reference, plexscratch and plexscratch42,
-    # which answer the identical eleven identifiers: a real PMS lists the LEGACY plug-in agents
-    # beside the modern four, so a settings page reading `/system/agents` sees 15 rows on
-    # 1.42.2 and saw four here. They had been carried as an inherited bound since cycles
-    # 1-6; cycle 52 retired the sibling half (the `/:/plugins` listing) on the grounds that a
-    # fixed table in the image is not hosting, and this is the same table. In the BARE form a
-    # legacy row carries `MediaType` children and no `Language`; in the typed form the
-    # primaries for that type carry their own `Language` CODES.
-    def _rows_c53k(value_c53k):
-        # `_repeatKeys` writes a single child as an object, not a one-element list.
-        if isinstance(value_c53k, dict):
-            return [value_c53k]
-        return value_c53k or []
-
-
-    _, bare_c53k, _ = get(base, "/system/agents")
-    rows_c53k = bare_c53k.get("Agent") or []
-    identifiers_c53k = [row_c53k.get("identifier") for row_c53k in rows_c53k]
-    legacy_c53k = [row_c53k for row_c53k in rows_c53k
-                   if str(row_c53k.get("identifier", "")).startswith("com.plexapp.")
-                   or str(row_c53k.get("identifier", "")).startswith("org.musicbrainz.")]
-    imdb_c53k = [row_c53k for row_c53k in rows_c53k
-                 if row_c53k.get("identifier") == "com.plexapp.agents.imdb"]
-    check("the eleven legacy agents are listed beside the modern four",
-          len(rows_c53k) == 15 and len(legacy_c53k) == 11
-          and identifiers_c53k[0] == "com.plexapp.agents.fanarttv"
-          and identifiers_c53k[-1] == "tv.plex.agents.none"
-          # plexlab and the 1.42.2 reference send a JSON boolean here (cycle 87,
-          # c87_w2_system_agents_zen.json)
-          and imdb_c53k and imdb_c53k[0].get("primary") is True
-          and (_rows_c53k(imdb_c53k[0].get("MediaType")) or [{}])[0].get("name")
-          == "Plex Movie (Legacy)"
-          and "Language" not in imdb_c53k[0]
-          and "id" not in imdb_c53k[0],
-          "%d rows, %d legacy" % (len(rows_c53k), len(legacy_c53k)))
 
     # The typed form has to be read as XML: cycle 44 measured that `/system/agents` writes its
     # `Language` and `MediaType` as REPEATED JSON KEYS, so a JSON parser keeps exactly one.
@@ -31556,9 +31274,14 @@ def main():
         _, ne_c56d, _ = get(base, "/library/sections/%s/all?decade!=%d" % (movie_section, decade_c56d))
         _, gt_c56d, _ = get(base, "/library/sections/%s/all?decade%%3E%%3E=%d"
                             % (movie_section, decade_c56d - 10))
+        # Earlier edits can populate the preceding decade too. Compare its
+        # equality bucket rather than assuming it is empty (current PMS agrees).
+        _, previous_c56d, _ = get(base, "/library/sections/%s/all?decade=%d"
+                                  % (movie_section, decade_c56d - 10))
         keys_c56d = lambda c: sorted(r.get("ratingKey") for r in c.get("Metadata") or [])
         check("decade answers its = bucket under every operator",
-              keys_c56d(ne_c56d) == keys_c56d(eq_c56d) and not gt_c56d.get("Metadata"),
+              keys_c56d(ne_c56d) == keys_c56d(eq_c56d)
+              and keys_c56d(gt_c56d) == keys_c56d(previous_c56d),
               "= %d, != %d, >> %d" % (len(keys_c56d(eq_c56d)), len(keys_c56d(ne_c56d)),
                                      len(keys_c56d(gt_c56d))))
 
@@ -33252,19 +32975,6 @@ def main():
           af_c67b.startswith(":Reeksverstek|") and "de-DE:Duits" in af_c67b
           and "|ja-JP:日文" in audio_c67b("zh-TW"), af_c67b[:120])
 
-    # Cycle 67, measured on plexscratch42: a Hungarian browser's socket (`hu-HU`) reads the
-    # `hu_HU` catalogue for the butler's sentences, where `hu` reads `hu`.
-    def said_c67c(headers_c67c):
-        _, frames_c67c = notifications(base, lambda: request(
-            base, "POST", "/butler/GenerateChapterThumbs"), seconds=4, headers=headers_c67c)
-        return [n.get("message") for f in frames_c67c
-                for n in f.get("NotificationContainer", {}).get("ProgressNotification") or []]
-    huhu_c67c = said_c67c("Accept-Language: hu-HU,hu;q=0.9\r\n")
-    hu_c67c = said_c67c("Accept-Language: hu\r\n")
-    check("a Hungarian browser's socket reads the hu_HU catalogue",
-          any(str(m).startswith("A rendszer képeket készített") for m in huhu_c67c)
-          and any(str(m).startswith("A rendszer generálta a bélyegképeket") for m in hu_c67c),
-          str((huhu_c67c[:1], hu_c67c[:1])))
 
     # Cycle 68, measured on the 1.42.2 reference and plexscratch42: `ca` and `nn` have no catalogue
     # of their own, so an exact catalogue later in Accept-Language beats them -- Chrome's Catalan

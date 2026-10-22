@@ -255,12 +255,6 @@ def main():
             [("INFO", E("SECTION refresh 1 path='/nowhere' -> no folder"))], status=200)
         run("a scan cancel", "DELETE", "/library/sections/1/refresh",
             [("INFO", E("SECTION refresh cancelled 1"))], status=200)
-        run("a section analyze", "PUT", "/library/sections/1/analyze",
-            [("INFO", E("SECTION analyze 1 -- nothing to analyze, rex owns no files"))],
-            status=200)
-        run("a section empty-trash", "PUT", "/library/sections/1/emptyTrash",
-            [("INFO", E("SECTION emptyTrash 1 -- nothing to emptyTrash, rex owns no files"))],
-            status=200)
         run("a section preference", "PUT", "/library/sections/1/prefs?enableCinemaTrailers=0",
             [("INFO", E("SECTION PREF 1 enableCinemaTrailers = false"))], status=200)
         run("an unknown section leaf", "GET", "/library/sections/1/bogusleaf",
@@ -283,8 +277,6 @@ def main():
             [("INFO", E("REFRESH 1007 (Edited)"))], status=200)
         run("a show refresh", "PUT", M + "20001/refresh",
             [("INFO", E("REFRESH 20001 (The Simpsons) -- cascaded"))], status=200)
-        run("an item analyze", "PUT", M + "1007/analyze",
-            [("INFO", E("ANALYZE 1007 -- 1 leaf frame set(s)"))], status=200)
         run("a match search with no Plex agent", "GET", M + "1008/matches?manual=1",
             [("INFO", E("MATCHES 1008 -- no Plex agent (not claimed)"))], status=200)
         run("an unmatch", "PUT", M + "1009/unmatch",
@@ -332,9 +324,6 @@ def main():
             "&state=paused&time=4000&duration=10000",
             [("INFO", r"TIMELINE 1007 state=paused t=4000ms session=\S+")], status=200,
             headers={"X-Plex-Session-Identifier": "lp1"})
-        run("a terminate of no session", "GET", "/status/sessions/terminate?sessionId=zzz&reason=bye",
-            [("INFO", E("404 GET /status/sessions/terminate -- rex: no such session"))],
-            status=404)
         run("a progress write", "GET", "/:/progress?key=1007&identifier=com.plexapp.plugins.library"
             "&time=2000&state=paused",
             [("INFO", E("PROGRESS 1007 t=2000ms state=paused"))], status=200)

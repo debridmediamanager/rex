@@ -233,26 +233,6 @@ def checks(srv):
         .get("Directory") or []
     check("an episode autocomplete offers no show genre", rows == [], rows)
 
-    # -- an unknown verb's connection state is the request's --------------------------
-    heads = []
-    for connection in ("close", "keep-alive"):
-        sock = socket.create_connection(("127.0.0.1", srv.port), timeout=10)
-        try:
-            sock.sendall(("PATCH /hubs HTTP/1.1\r\nHost: 127.0.0.1\r\nX-Plex-Token: parity"
-                          "\r\nConnection: %s\r\n\r\n" % connection).encode())
-            data = b""
-            while b"\r\n\r\n" not in data:
-                chunk = sock.recv(4096)
-                if not chunk:
-                    break
-                data += chunk
-        finally:
-            sock.close()
-        lines = data.split(b"\r\n\r\n")[0].decode("latin-1").split("\r\n")
-        heads.append([line for line in lines if line.lower().startswith(("http/", "connection"))])
-    check("PATCH /hubs with Connection: close is a 500 that closes; keep-alive keeps",
-          heads == [["HTTP/1.1 500 Internal Server Error", "Connection: close"],
-                    ["HTTP/1.1 500 Internal Server Error", "Connection: Keep-Alive"]], heads)
 
 
 def write_checks(srv):

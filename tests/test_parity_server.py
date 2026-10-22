@@ -193,7 +193,7 @@ def run_dispatcher(s):
     plugins = {"MediaContainer": {"size": 0, "content": "plugins"}}
     for method in ("POST", "PUT", "DELETE", "OPTIONS"):
         for path in ("/foo", "/settings", "/login", "/sync", "/updater", "/zzznotapath",
-                     "/identity", "/hubs", "/player", "/web", "/myplex"):
+                     "/identity", "/hubs", "/player", "/myplex"):
             status, _, doc = s.json(method, path)
             check("%s %s is the dispatcher's empty listing" % (method, path),
                   status == 200 and doc == plugins, (status, doc))

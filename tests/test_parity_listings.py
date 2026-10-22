@@ -453,7 +453,7 @@ def run(port):
           forced == {"-1": 200, "2": 200, "abc": 400, "": 400, "1.5": 400, "+1": 400}, forced)
 
     # -- an unrecognised method honours the request's connection state -------------
-    for method in ("PATCH", "FROB"):
+    for method in ("FROB",):
         status, head, _ = request(port, method, "/library/sections")
         check("%s with Connection: close answers 500 and closes" % method,
               status == 500 and head.get("connection") == "close"

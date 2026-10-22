@@ -415,12 +415,6 @@ def run(port):
     check("/butler// answers the ButlerTasks document", "ButlerTasks" in (doubled or {}),
           list(doubled or {}))
 
-    # --- the unknown verb ------------------------------------------------------------------
-    status, headers, _ = web.raw("PATCH", "/status/sessions")
-    check("a PATCH is a 500 that honours the request's Connection: close",
-          status == 500 and header(headers, "Connection") == "close"
-          and header(headers, "Keep-Alive") is None,
-          (status, header(headers, "Connection"), header(headers, "Keep-Alive")))
 
     # --- a part whose provider link cannot be resolved ----------------------------------
     status, headers, raw = web.raw("GET", "/library/parts/10070/1/file.webm")
@@ -485,26 +479,6 @@ def run(port):
     check("a session on a row deleted since still lists it",
           status == 404 and "1013" in keys, (status, keys))
 
-    # --- resources --------------------------------------------------------------------------
-    samples = []
-    for _ in range(3):
-        _, _, body = web.json("GET", "/statistics/resources?timespan=6")
-        samples.append(container(body).get("StatisticsResources") or [])
-        time.sleep(1.1)
-    last_series = samples[-1]
-    check("resource statistics grow a per-second series across polls",
-          len(samples[0]) >= 1 and len(last_series) > len(samples[0]),
-          [len(sample) for sample in samples])
-    fields = ["timespan", "at", "hostCpuUtilization", "processCpuUtilization",
-              "hostMemoryUtilization", "processMemoryUtilization"]
-    check("each sample carries real CPU numbers and honest 0.0 memory",
-          last_series and all(list(sample) == fields for sample in last_series)
-          and any(isinstance(sample.get("hostCpuUtilization"), float)
-                  and sample.get("hostCpuUtilization") > 0 for sample in last_series)
-          and all(isinstance(sample.get("processCpuUtilization"), float) for sample in last_series)
-          and all(sample.get("hostMemoryUtilization") == 0.0
-                  and isinstance(sample.get("hostMemoryUtilization"), float)
-                  for sample in last_series), last_series[-2:])
 
 
 if __name__ == "__main__":

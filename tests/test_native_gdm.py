@@ -14,6 +14,7 @@ import time
 import urllib.request
 
 from server_command import server_command
+from test_ports import free_port
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -47,8 +48,13 @@ def free_udp_ports():
     try:
         for _ in range(2):
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            sock.bind(("127.0.0.1", 0))
             sockets.append(sock)
+            while True:
+                try:
+                    sock.bind(("127.0.0.1", free_port()))
+                    break
+                except OSError:
+                    continue
         return tuple(sock.getsockname()[1] for sock in sockets)
     finally:
         for sock in sockets:
@@ -61,7 +67,7 @@ def main():
     machine = catalog_document["machineIdentifier"]
     friendly = catalog_document.get("friendlyName", "rex")
     gdm_ports = free_udp_ports()
-    tcp = 32597
+    tcp = free_port()
     proc = start(catalog, tcp, gdm_ports)
     checks = []
     try:

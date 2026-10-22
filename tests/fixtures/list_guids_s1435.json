@@ -1,0 +1,82 @@
+{
+  "provenance": {
+    "server": "Plex Media Server",
+    "version": "1.43.5.11029-6bf8af3f0",
+    "source": "Fresh owned unclaimed PMS on an internal network, synthetic three-second movie; no real account.",
+    "cleanup": "Delete only the created lists and disposable library; remove synthetic input directory."
+  },
+  "records": [
+    {
+      "kind": "collection",
+      "request": {
+        "method": "POST",
+        "path": "/library/collections",
+        "params": {
+          "type": "1",
+          "sectionId": "2",
+          "title": "Identity measurement collection",
+          "smart": "0",
+          "uri": "server://c87757e673893b7d32259c3d14d90a727f2fe1fd/com.plexapp.plugins.library/library/metadata/2"
+        }
+      },
+      "status": 200,
+      "response": {
+        "MediaContainer": {
+          "size": 1,
+          "Metadata": [
+            {
+              "ratingKey": "3",
+              "key": "/library/collections/3/children",
+              "guid": "collection://75654e77-a966-4d95-9d56-e5b681d34b07",
+              "type": "collection",
+              "title": "Identity measurement collection",
+              "subtype": "movie",
+              "summary": "",
+              "index": 4,
+              "ratingCount": 1,
+              "thumb": "/library/collections/3/composite/1792641284?width=400&height=600",
+              "addedAt": 1792641284,
+              "updatedAt": 1792641284,
+              "childCount": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "kind": "playlist",
+      "request": {
+        "method": "POST",
+        "path": "/playlists",
+        "params": {
+          "type": "video",
+          "title": "Identity measurement playlist",
+          "smart": "0",
+          "uri": "server://c87757e673893b7d32259c3d14d90a727f2fe1fd/com.plexapp.plugins.library/library/metadata/2"
+        }
+      },
+      "status": 200,
+      "response": {
+        "MediaContainer": {
+          "size": 1,
+          "Metadata": [
+            {
+              "ratingKey": "4",
+              "key": "/playlists/4/items",
+              "guid": "com.plexapp.agents.none://b00939ca-9b86-41b2-8174-f6a0ea71f207",
+              "type": "playlist",
+              "title": "Identity measurement playlist",
+              "summary": "",
+              "smart": false,
+              "playlistType": "video",
+              "composite": "/playlists/4/composite/1792641284",
+              "leafCount": 1,
+              "addedAt": 1792641284,
+              "updatedAt": 1792641284
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

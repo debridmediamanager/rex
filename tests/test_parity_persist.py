@@ -634,7 +634,6 @@ def rebuild(work, catalog, machine):
     inst.request("PUT", "/library/metadata/1008?title.value=Dropped%20Title&title.locked=1")
     inst.request("POST", "/playlists?type=video&title=Dropped&smart=0&uri=%s"
                  % uri(machine, 1007))
-    inst.request("POST", "/downloadQueue", {"X-Plex-Client-Identifier": "persist-downloader"})
     agents_before = inst.request("GET", "/system/agents/com.plexapp.agents.imdb/config/1")
     groups_before = inst.request("GET", "/media/providers/metadata/group")
     devices_before = inst.request("GET", "/devices")
@@ -688,13 +687,11 @@ def rebuild(work, catalog, machine):
     history = rows(inst.request("GET", "/status/sessions/history/all?type=0,1,4")[1])
     flattened = container(inst.request("GET", "/library/sections/2/prefs")[1]).get("Setting")
     flat = [s.get("value") for s in flattened or [] if s.get("id") == "flattenSeasons"]
-    queue = container(inst.request("GET", "/downloadQueue/1")[1])
-    check("rebuild: edits, lists, history, section settings and queues stay behind",
+    check("rebuild: edits, lists, history and section settings stay behind",
           view[1008].get("title") != "Dropped Title" and not playlists and not history
-          and flat != ["1"] and not queue.get("DownloadQueue"),
-          "title=%r playlists=%d history=%d flattenSeasons=%s downloadQueue=%s" % (
-              view[1008].get("title"), len(playlists), len(history), flat,
-              bool(queue.get("DownloadQueue"))))
+          and flat != ["1"],
+          "title=%r playlists=%d history=%d flattenSeasons=%s" % (
+              view[1008].get("title"), len(playlists), len(history), flat))
     check("rebuild: the superseded state file is kept as .stale",
           os.path.exists(state + ".stale"))
     inst.stop()

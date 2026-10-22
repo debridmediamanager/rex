@@ -35,6 +35,8 @@ ROOT = os.path.dirname(HERE)
 MACHINE = "f1x7u4e0000000000000000000000000000000f1"  # catalog_ui.json's own; a claim for another is ignored
 SERVER_TOKEN = "webhook-suite-server-token"
 KEY = "1007"
+with open(os.path.join(HERE, "fixtures", "plex_downloads_2026_10_22.json")) as source:
+    DOWNLOADS = json.load(source)
 results = []
 
 
@@ -50,6 +52,8 @@ class Recorder(ThreadingHTTPServer):
         super().__init__(("127.0.0.1", free_port()), handler)
         self.records = []
         self.thumbs = []
+        self.user_agents = []
+        self.version = None
         self.image = b""
         self.image_headers = []
 
@@ -76,6 +80,14 @@ class PlexTv(BaseHTTPRequestHandler):
             self.rfile.read(length)
         url = urlsplit(self.path)
         self.server.records.append((self.command, url.path, parse_qsl(url.query)))
+        if url.path == "/plex.tv/api/downloads/5.json":
+            body = json.dumps(DOWNLOADS).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
         if url.path == "/plex.tv/api/v2/server/access_tokens":
             with open(os.path.join(HERE, "fixtures", "plextv_access_tokens_shared_s1434.json")) as source:
                 body = json.load(source)["body"].encode()
@@ -118,10 +130,11 @@ class Hook(BaseHTTPRequestHandler):
                                            policy=email.policy.HTTP)
         parts = [part for part in message.iter_parts() if part.get_param("name", header="content-disposition") == "payload"] \
             if message.is_multipart() else []
-        self.server.records.append((kind, json.loads(parts[0].get_content()) if parts else None))
         thumbs = [part for part in message.iter_parts()
                   if part.get_param("name", header="content-disposition") == "thumb"] if message.is_multipart() else []
         self.server.thumbs.append([(part.get_content_type(), part.get_payload(decode=True)) for part in thumbs])
+        self.server.user_agents.append((self.headers.get("User-Agent"), self.server.version))
+        self.server.records.append((kind, json.loads(parts[0].get_content()) if parts else None))
         self.send_response(200)
         self.send_header("Content-Length", "0")
         self.end_headers()
@@ -164,6 +177,20 @@ def configure(port, method="GET", value=None, token=SERVER_TOKEN):
         response = conn.getresponse()
         body = response.read()
         return response.status, json.loads(body) if response.status == 200 else body
+    finally:
+        conn.close()
+
+
+def receiver_version(port, receivers):
+    conn = http.client.HTTPConnection("127.0.0.1", port, timeout=10)
+    try:
+        conn.request("GET", "/identity", headers={"Accept": "application/json"})
+        response = conn.getresponse()
+        body = json.loads(response.read())
+        version = body.get("MediaContainer", {}).get("version")
+        assert response.status == 200, body
+        for receiver in receivers:
+            receiver.version = version
     finally:
         conn.close()
 
@@ -221,6 +248,7 @@ def main():
             except OSError:
                 time.sleep(0.1)
         check("local hooks start empty", configure(port) == (200, {"urls": []}))
+        receiver_version(port, (hook, local, shared))
         urls = [local_url, plextv.hook, local_url]
         check("local configuration deduplicates preserving order",
               configure(port, "PUT", {"urls": urls}) == (200, {"urls": urls[:2]}))
@@ -303,6 +331,7 @@ def main():
             except OSError:
                 return False
         check("local hooks restore after restart", wait_for(restored, 15))
+        receiver_version(port, (hook, local, shared))
         before = len(local.records)
         beat(port, "playing", 10000)
         check("restored local configuration actually delivers", wait_for(lambda: len(local.records) > before, 15))
@@ -336,6 +365,7 @@ def main():
             except OSError:
                 return False
         check("control-token local hooks need no claim or cloud entitlement", wait_for(unclaimed_ready, 15))
+        receiver_version(port, (hook, local, shared))
         check("an unclaimed server still refuses unauthenticated configuration",
               configure(port, token="")[0] == 401)
         before_local = len(local.records)
@@ -361,6 +391,7 @@ def main():
             except OSError:
                 return False
         assert wait_for(no_local_ready, 15)
+        receiver_version(port, (hook, local, shared))
         before_images, before_shared = len(hook.image_headers), len(shared.records)
         before_owner, before_local = len(hook.records), len(local.records)
         assert beat(port, "playing", 30000) == 200
@@ -372,6 +403,12 @@ def main():
               len(hook.image_headers) == before_images + 1, len(hook.image_headers) - before_images)
         check("removed owner and local callbacks receive neither new event",
               len(hook.records) == before_owner and len(local.records) == before_local)
+        for name, receiver in (("owner", hook), ("local", local), ("shared", shared)):
+            check("every delivered %s webhook uses the current public PMS User-Agent and identity" % name,
+                  receiver.records and len(receiver.user_agents) == len(receiver.records)
+                  and all(version == DOWNLOADS["computer"]["Linux"]["version"]
+                          and agent == "PlexMediaServer/%s" % version
+                          for agent, version in receiver.user_agents), receiver.user_agents)
     finally:
         proc.send_signal(signal.SIGTERM)
         try:

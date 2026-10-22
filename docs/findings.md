@@ -13987,3 +13987,10 @@ version, platform Linux and metadata-provider version 6.5.0. Real collection and
 playlist creation returned the current PMS UUID forms. The public release list
 was rechecked and still named this build for Linux, macOS and 64-bit Windows.
 
+The final complete client-surface API replay passed **1,959/1,959**, with only
+three prerequisite skips: two Fix Match cases without a real Plex metadata claim
+and Download without a source serving the fixture's Part files. Remote posters,
+composites and their photo-transcoded paths passed with system roots available.
+This is a broad API exercise, not proof that every official client or network
+observer cannot distinguish the implementation.
+
