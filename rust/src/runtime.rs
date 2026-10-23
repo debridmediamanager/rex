@@ -11319,6 +11319,12 @@ impl Runtime {
             Some("Requested audio enhancement requires conversion.".to_string())
         } else if self.bandwidth_conversion_required(query, &selected_for_engine) {
             Some("The WAN bitrate policy requires conversion.".to_string())
+        } else if selected_for_engine.get("container").and_then(Value::as_str) == Some("hls") {
+            // A source that serves an HLS playlist (YouTube's, through a relay) has no file to
+            // read: Plex for Android decides direct play itself (hasMDE) from the codecs alone and
+            // read the playlist's bytes as the video, a 416 (rex-fun, 2026-10-23). Not measured:
+            // a real PMS has no such Part, so the text is rex's own.
+            Some("App cannot direct play this item. Its source is an HLS playlist, not a file.".to_string())
         } else {
             None
         };

@@ -705,6 +705,17 @@ def main():
     # The plain clip on its own, for a subtitle uploaded to rex.
     MEDIA["plain.mkv"] = plain
     items.append(row("10", "Plain", "plain.mkv", probe(plain)["streams"], os.path.getsize(plain), DURATION))
+    # The plain clip as an HLS playlist and its MPEG-TS segments, as a relay serves YouTube's
+    # (format_name "hls"): there is no file to direct play, only a conversion reads it.
+    hls = os.path.join(scratch, "plainhls.m3u8")
+    subprocess.run([FFMPEG, "-v", "error", "-y", "-i", plain, "-map", "0", "-c", "copy", "-f", "hls", "-hls_time", "4",
+                    "-hls_playlist_type", "vod", "-hls_segment_filename", os.path.join(scratch, "plainhls%03d.ts"), hls], check=True)
+    for name in os.listdir(scratch):
+        if name.startswith("plainhls"):
+            MEDIA[name] = os.path.join(scratch, name)
+    item = row("17", "Plainhls", "plainhls.m3u8", probe(hls)["streams"], os.path.getsize(hls), DURATION)
+    item["Media"][0]["container"] = item["Media"][0]["Part"][0]["container"] = "hls"
+    items.append(item)
     # The plain clip as MPEG-TS, as YouTube's HLS serves its h264/aac (stream types 0x1b/0x0f,
     # which a copy into MP4 kept as its codec tags until 2026-10-22).
     MEDIA["plain.ts"] = os.path.join(scratch, "plain.ts")
@@ -781,6 +792,26 @@ def main():
         check("a direct-playable request is still MDE direct play",
               container.get("mdeDecisionCode") == 1000 and "generalDecisionCode" not in container, "")
         walk(port, scratch, "remux", "1", "copy", "copy", None)
+        # Plex for Android at Original quality decides direct play itself (hasMDE) from the codecs
+        # alone, and played an HLS-backed Part's playlist bytes as the video (rex-fun, 2026-10-23).
+        android = dict(json.load(open(os.path.join(ROOT, "tests/fixtures/decisions/generic_transcode_target_s1422.json")))["decisions"][-1]["query"])
+        for name in ("maxVideoBitrate", "videoResolution"):
+            android.pop(name)
+        android.update(directPlay="1", directStream="1", directStreamAudio="1", videoQuality="100")
+        for key, label in (("17", "hls"), ("10", "plain")):
+            status, _, body = get(port, "/video/:/transcode/universal/decision",
+                                  list(dict(android, path="/library/metadata/" + key, session="mde-" + label).items()))
+            answer = json.loads(body)["MediaContainer"] if status == 200 else {}
+            if label == "hls":
+                check("an HLS-backed Part is never direct play, even when the app decides (hasMDE)",
+                      answer.get("generalDecisionCode") == 1001 and answer.get("directPlayDecisionCode") == 3000
+                      and "mdeDecisionCode" not in answer, json.dumps({k: v for k, v in answer.items() if "Decision" in k}))
+            else:
+                check("a file the app decides on is still its direct play",
+                      answer.get("mdeDecisionCode") == 1000 and "generalDecisionCode" not in answer,
+                      json.dumps({k: v for k, v in answer.items() if "Decision" in k}))
+            get(port, "/video/:/transcode/universal/stop", [("session", "mde-" + label)])
+        walk(port, scratch, "hls-source", "17", "copy", "copy", None)
         # A segment is served as soon as FFmpeg moves on to the next one, not when the
         # run ends: FFmpeg buffers its own segment list until then, which made the
         # first segment of a slow source wait for the whole file.
