@@ -19907,6 +19907,74 @@ impl Runtime {
         Some((row(0), row(1)))
     }
 
+    /// The seasons and episodes of the show a person picked for a SHOW, `{season index: {"season":
+    /// row, "episodes": {index: row}}}`, which `identify_show_children` describes the show's
+    /// rows from: None while Plex's agent is still to be asked, Null when there is nothing to ask.
+    fn picked_tree(&mut self, row: &Value, guid: &str) -> Option<Value> {
+        let show = self.match_candidates.get(guid).is_some_and(|(kind, _)| kind == "show");
+        let (Some(plex), true) = (self.plex.clone(), show && row.get("type").and_then(Value::as_str) == Some("show")) else {
+            return Some(Value::Null);
+        };
+        let guid = guid.to_string();
+        self.agent_answer(format!("tree\u{1f}{guid}"), move || {
+            let mut tree = Map::new();
+            for (index, season) in crate::identify::plex_children_rows(plex.as_ref(), &guid) {
+                let episodes: Map<String, Value> = season
+                    .get("guid")
+                    .and_then(Value::as_str)
+                    .map(|season| crate::identify::plex_children_rows(plex.as_ref(), season).into_iter().collect())
+                    .unwrap_or_default();
+                tree.insert(index, json!({"season": season, "episodes": episodes}));
+            }
+            Value::Object(tree)
+        })
+    }
+
+    /// A show matched by hand takes the picked show's seasons and episodes by their numbers, as
+    /// its rows had taken an earlier identity's: Ben 10: Omniverse, Fix Matched on the production
+    /// rex (2026-10-23), kept every episode on Ben and Kate's guids and 67 of 80 unmatched. An
+    /// episode the show lists no row for is unmatched rather than left on the old show's.
+    fn identify_show_children(&mut self, key: &str, guid: &str, tree: &Value) {
+        let (Some(tree), Some((_, picked))) = (tree.as_object(), self.match_candidates.get(guid).cloned()) else {
+            return;
+        };
+        for season in self.children(key) {
+            let (Some(season_key), Some(index)) = (key_of(&season), season.get("index").map(py_str)) else {
+                continue;
+            };
+            let found = tree.get(&index).map(|entry| &entry["season"]);
+            if let Some(object) = self.catalog.get_mut(&season_key).and_then(Value::as_object_mut) {
+                match found.and_then(|row| row.get("guid")) {
+                    Some(season_guid) => object.insert("guid".to_string(), season_guid.clone()),
+                    None => object.insert("guid".to_string(), json!(format!("local://{season_key}"))),
+                };
+                match found.and_then(|row| row.get("Guid")) {
+                    Some(ids) => object.insert("Guid".to_string(), ids.clone()),
+                    None => object.shift_remove("Guid"),
+                };
+                object.insert("parentGuid".to_string(), json!(guid));
+            }
+        }
+        for leaf in self.leaves(key) {
+            let Some(leaf_key) = key_of(&leaf) else {
+                continue;
+            };
+            let numbers = leaf.get("parentIndex").and_then(Value::as_i64).zip(leaf.get("index").and_then(Value::as_i64));
+            let entry = numbers.and_then(|(season, _)| tree.get(&season.to_string()));
+            let episode = numbers.zip(entry).and_then(|((_, episode), entry)| entry["episodes"].get(episode.to_string())).cloned();
+            if let Some(object) = self.catalog.get_mut(&leaf_key).and_then(Value::as_object_mut) {
+                match &episode {
+                    Some(episode) => metadata::describe(object, &picked, entry.map(|entry| &entry["season"]), Some(episode), true, numbers),
+                    None => {
+                        object.insert("guid".to_string(), json!(format!("local://{leaf_key}")));
+                        object.shift_remove("Guid");
+                    }
+                }
+            }
+            self.inherit_parents(&leaf_key);
+        }
+    }
+
     /// Plex's agent's answer to `call`, which `handle_connection` makes once the runtime lock is
     /// released (`pending_agent`): None the first time a route asks, which answers nothing and
     /// is routed again with it.
@@ -19959,6 +20027,13 @@ impl Runtime {
             },
             _ => (None, None),
         };
+        let tree = match (&existing, guid.is_empty()) {
+            (None, false) => match self.picked_tree(row, &guid) {
+                Some(tree) => tree,
+                None => return Response::empty(200),
+            },
+            _ => Value::Null,
+        };
         self.push_timeline_entry(row, 3, None, None, None, None);
         if let Some(existing) = existing {
             let existing_key = key_of(&existing).unwrap_or_default();
@@ -19999,6 +20074,7 @@ impl Runtime {
             // running it afterwards replaces the identity the person picked.
             if !guid.is_empty() {
                 self.identify_guid(key, &guid, season, episode);
+                self.identify_show_children(key, &guid, &tree);
             }
             // The identity a later push of this title joins: its TMDB id, else the agent's guid.
             let chosen = self.match_candidates.get(&guid).map(|(_, picked)| {

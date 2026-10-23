@@ -581,6 +581,7 @@ python3 tests/test_feed_rejected.py         # every item the feed rejects is log
 python3 tests/test_feed_display.py          # what a source names itself (`display`): titles, summaries, dates and artwork of a row nothing
                                             # identifies, its show's and season's, updated by later pushes, a person's lock kept (Ms Rachel's channel)
 python3 tests/test_feed_extras.py           # a file pushed as `kind: extra` is a clip of its release's title by its `extra_type`, one without it is no clip whatever its folder; rows held so stay through a start (Motto To Love-Ru, To Love Ru) and a re-push as an extra turns one into a clip
+python3 tests/test_match_show_children.py  # a show Fix Matched takes the picked show's seasons and episodes by their numbers; one Plex lists none for is unmatched (a real library's Ben 10: Omniverse)
 python3 tests/test_feed_versions_1017.py    # one row per episode whatever its guid, other files of one release apart, a trashed row folded or brought back (SpongeBob S10E64, Freakazoid)
 python3 tests/test_zurg_contract.py        # zurg's own feed requests (its internal/rexfeed/testdata/rex-contract.json, from
                                             # ../zurg or $ZURG_CONTRACT) replayed in order, and the two 409s zurg tells apart
