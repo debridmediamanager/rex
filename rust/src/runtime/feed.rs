@@ -87,10 +87,12 @@ struct Item {
 /// A pushed `display`, checked: the title's own `title`, `summary`, `date` (YYYY-MM-DD, or YYYY
 /// for a film known only by its year), `thumb`
 /// and `art`, its show's `title`, `summary`, `poster` and `art`, its season's `summary` and
-/// `poster`. Artwork is an http(s) URL rex fetches as it fetches Plex's agent artwork. Fields it
-/// does not know are left out; an empty one says nothing.
-fn display_fields(display: &Map<String, Value>) -> Result<Map<String, Value>, String> {
-    fn pick(from: &Map<String, Value>, fields: &[&str], within: &str) -> Result<Map<String, Value>, String> {
+/// `poster`. Artwork is an http(s) URL rex fetches as it fetches Plex's agent artwork, from
+/// public hosts only; one under the source's own url is kept as `source://<name>/<path>` and
+/// fetched from the source with its login, as its bytes are (a folder's thumbnails live on the
+/// machine that serves them). Fields it does not know are left out; an empty one says nothing.
+fn display_fields(display: &Map<String, Value>, source: &Source) -> Result<Map<String, Value>, String> {
+    fn pick(from: &Map<String, Value>, fields: &[&str], within: &str, source: &Source) -> Result<Map<String, Value>, String> {
         let mut kept = Map::new();
         for field in fields {
             let Some(value) = from.get(*field).filter(|value| !value.is_null()) else { continue };
@@ -103,6 +105,10 @@ fn display_fields(display: &Map<String, Value>) -> Result<Map<String, Value>, St
             let artwork = matches!(*field, "thumb" | "art" | "poster");
             if artwork && !(text.starts_with("https://") || text.starts_with("http://")) {
                 return Err(format!("{named} must be an http(s) URL"));
+            }
+            if let Some(path) = source.own_path(text).filter(|_| artwork) {
+                kept.insert(field.to_string(), json!(format!("source://{}/{path}", source.name)));
+                continue;
             }
             let date = |text: &str| {
                 let bytes = text.as_bytes();
@@ -118,12 +124,12 @@ fn display_fields(display: &Map<String, Value>) -> Result<Map<String, Value>, St
         }
         Ok(kept)
     }
-    let mut kept = pick(display, &["title", "summary", "date", "thumb", "art"], "")?;
+    let mut kept = pick(display, &["title", "summary", "date", "thumb", "art"], "", source)?;
     for (part, fields) in [("show", &["title", "summary", "poster", "art"][..]), ("season", &["summary", "poster"][..])] {
         match display.get(part) {
             None | Some(Value::Null) => {}
             Some(Value::Object(inner)) => {
-                let inner = pick(inner, fields, &format!("{part}."))?;
+                let inner = pick(inner, fields, &format!("{part}."), source)?;
                 if !inner.is_empty() {
                     kept.insert(part.to_string(), Value::Object(inner));
                 }
@@ -192,7 +198,7 @@ impl Item {
         };
         let display = match value.get("display") {
             None | Some(Value::Null) => None,
-            Some(Value::Object(display)) => Some(display_fields(display).map_err(|reason| refuse(&reason))?),
+            Some(Value::Object(display)) => Some(display_fields(display, source).map_err(|reason| refuse(&reason))?),
             Some(_) => return Err(refuse("display must be an object")),
         };
         Ok(Self {

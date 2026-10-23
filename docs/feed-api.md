@@ -410,7 +410,11 @@ them itself with `display`:
 | `season.summary`, `season.poster` | an episode's season | Its summary and poster (the show's poster when absent) |
 
 Artwork is an `http`/`https` URL rex fetches as it fetches Plex's agent artwork: from public
-hosts only, never this machine's own networks. Every field is optional and an empty one says
+hosts only, never this machine's own networks. The one exception is a picture under the
+source's own registered `url`: rex fetches that from the source, with the source's login, as it
+fetches its bytes, so an addon can serve its own pictures (a home video's frame) from the same
+machine. rex keeps it as `source://<name>/<path>`, and a client naming the same URL through
+`/photo/:/transcode` is still refused. Every field is optional and an empty one says
 nothing; a field of the wrong type, artwork that is no http(s) URL or a date of another shape
 rejects the item, naming the field.
 

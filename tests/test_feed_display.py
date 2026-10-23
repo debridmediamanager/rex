@@ -16,12 +16,14 @@ import sys
 import tempfile
 import urllib.parse
 
-from test_feed import MOUNT, Bytes, Server, catalog, check, results, serve
+from test_feed import BODY, MOUNT, Bytes, Server, catalog, check, results, serve
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FIXTURE = json.load(open(os.path.join(HERE, "fixtures", "feed", "display_msrachel_1023.json")))
 # A film known only by its year: the Internet Archive's His Girl Friday, as the addon pushes it.
 FILM = json.load(open(os.path.join(HERE, "fixtures", "feed", "display_archive_1023.json")))["items"][0]
+# A home video whose pictures are frames its source serves itself, on rex's own network.
+HOME = json.load(open(os.path.join(HERE, "fixtures", "feed", "display_homevideos_1023.json")))["items"][0]
 
 
 def pushed(item):
@@ -36,7 +38,8 @@ def artwork(server, key, kind):
 
 
 def main():
-    bytes_port = serve(Bytes().handler())
+    source = Bytes()
+    bytes_port = serve(source.handler())
     work = tempfile.mkdtemp(prefix="rex-display-")
     catalog(work)
     server = Server(work, bytes_port)
@@ -129,6 +132,31 @@ def main():
         check("a date of another shape is still refused",
               status == 200 and (body or {}).get("rejected") == [{"id": "odd", "reason": "display.date must be YYYY-MM-DD or YYYY"}],
               (status, body))
+
+        # A picture under the source's own url is fetched from the source, with its login, though
+        # the source is on rex's own network: as its bytes are.
+        base = "http://127.0.0.1:%d/dav" % bytes_port
+        home = json.loads(json.dumps(HOME).replace("{SOURCE}", base).replace("{MOUNT}", MOUNT))
+        thumb = "/dav/_thumbs/img-0412-b921b2.jpg"
+        source.files.update([thumb, "/dav/_thumbs/birthday-1ce30e.jpg"])
+        status, body = server.feed("POST", "items", {"items": [home]})
+        check("a home video dressed by its source's own pictures is taken",
+              status == 200 and (body or {}).get("created") == 1, (status, body))
+        episode = server.row(server.keys()[home["id"]])
+        show = server.row(episode.get("grandparentRatingKey"))
+        for name, row in (("its still", episode), ("its show's poster", show)):
+            status, picture = server.request(row.get("thumb", ""))
+            check("%s is the source's picture" % name, status == 200 and picture == BODY,
+                  (status, len(picture or b""), row.get("thumb")))
+        asked = [seen for seen in source.seen if seen[1] == thumb]
+        check("fetched from the source with the source's login",
+              bool(asked) and all(seen[2] == source.auth for seen in asked), asked)
+        # The same url named by a client is the photo transcoder's, public only: never the source's,
+        # even with its picture already fetched.
+        status, picture = server.request("/photo/:/transcode?width=320&height=180&url=" + urllib.parse.quote(base + "/_thumbs/img-0412-b921b2.jpg", safe=""))
+        check("a client naming the source's picture url is not served it", picture != BODY, (status, len(picture or b"")))
+        status, picture = server.request("/photo/:/transcode?url=" + urllib.parse.quote("source://zurg/_thumbs/img-0412-b921b2.jpg", safe=""))
+        check("nor by naming it as rex keeps it", picture != BODY, (status, len(picture or b"")))
     finally:
         server.stop()
     shutil.rmtree(work, ignore_errors=True)

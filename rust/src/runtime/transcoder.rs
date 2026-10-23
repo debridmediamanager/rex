@@ -242,11 +242,16 @@ pub(super) fn tmdb_at_width(url: &str, width: Option<&str>) -> String {
 }
 
 /// `_serve_image`'s upstream half: fetch a remote artwork url once, cached in memory
-/// (bounded, as the oracle's is), over plain HTTP or TLS against the system roots.
-pub(super) fn fetch_remote_image(url: &str) -> Option<(Vec<u8>, String)> {
+/// (bounded, as the oracle's is), over plain HTTP or TLS against the system roots. A source's
+/// own artwork comes with its headers (`from_source`) and may be on rex's own networks, as the
+/// source is; every other url is public only (`fetch_public`).
+pub(super) fn fetch_remote_image(url: &str, from_source: Option<&[(&'static str, String)]>) -> Option<(Vec<u8>, String)> {
     static CACHE: OnceLock<Mutex<HashMap<String, (Vec<u8>, String)>>> = OnceLock::new();
     let cache = CACHE.get_or_init(|| Mutex::new(HashMap::new()));
-    let cached = cache.lock().ok().and_then(|map| map.get(url).cloned());
+    // Kept apart: a client naming a source's artwork url (`/photo/:/transcode?url=`) must not
+    // be served what the source's own fetch cached, which `fetch_public` would have refused.
+    let key = if from_source.is_some() { format!("source {url}") } else { url.to_string() };
+    let cached = cache.lock().ok().and_then(|map| map.get(&key).cloned());
     info!(
         "ARTWORK {} {}",
         if cached.is_some() { "cache" } else { "fetch" },
@@ -256,13 +261,16 @@ pub(super) fn fetch_remote_image(url: &str) -> Option<(Vec<u8>, String)> {
         return Some(hit);
     }
     let short = url.chars().take(80).collect::<String>();
-    let fetched = super::upstream::fetch_public(
-        "GET",
-        url,
-        // `_serve_image`'s urllib request: the upstream User-Agent and no `Accept`.
-        &[("User-Agent", super::upstream::UPSTREAM_UA.to_string())],
-        std::time::Duration::from_secs(20),
-    );
+    let fetched = match from_source {
+        Some(headers) => super::upstream::fetch("GET", url, headers, b"", std::time::Duration::from_secs(20)),
+        None => super::upstream::fetch_public(
+            "GET",
+            url,
+            // `_serve_image`'s urllib request: the upstream User-Agent and no `Accept`.
+            &[("User-Agent", super::upstream::UPSTREAM_UA.to_string())],
+            std::time::Duration::from_secs(20),
+        ),
+    };
     let (status, headers, body) = match fetched {
         Ok(fetched) => fetched,
         Err(error) => {
@@ -284,7 +292,7 @@ pub(super) fn fetch_remote_image(url: &str) -> Option<(Vec<u8>, String)> {
         .unwrap_or_else(|| "image/jpeg".to_string());
     let hit = (body, content_type);
     if let Ok(mut map) = cache.lock() {
-        remember_image(&mut map, url, hit.clone());
+        remember_image(&mut map, &key, hit.clone());
     }
     Some(hit)
 }

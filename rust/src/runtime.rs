@@ -23794,7 +23794,20 @@ fn handle_connection<S: Read + Write + PollRead>(
             let file_checks = guard.pending_file_checks.take();
             let segment = guard.pending_segment.take();
             download = guard.pending_download.take();
-            let image = guard.pending_image.take();
+            // A source's own artwork (`source://<name>/<path>`, only ever from what it pushed)
+            // is fetched from the source with its login; any other url from public hosts only.
+            let image = guard.pending_image.take().map(|url| {
+                match url.strip_prefix("source://").and_then(|rest| rest.split_once('/')) {
+                    Some((name, path)) => match guard.sources.iter().find(|source| source.name == name) {
+                        Some(source) => {
+                            let (url, headers) = source.artwork(path);
+                            (url, Some(headers))
+                        }
+                        None => (url, Some(Vec::new())),
+                    },
+                    None => (url, None),
+                }
+            });
             let claim = guard.pending_claim.take();
             let artifact = guard.pending_artifact.take().map(|(artifact, seek, kind)| (Arc::clone(&guard.analysis_jobs), artifact, seek, kind));
             if std::mem::take(&mut guard.pending_auto_collections) {
@@ -23844,8 +23857,8 @@ fn handle_connection<S: Read + Write + PollRead>(
             }
             let mut response = match (image, claim) {
                 (_, Some(token)) => plextv::finish_claim(&runtime, &token, &request.target),
-                (Some(url), _) if response.status == 200 && response.body.is_empty() && response.doc.is_none() => {
-                    serve_remote_image(response, &url)
+                (Some((url, from_source)), _) if response.status == 200 && response.body.is_empty() && response.doc.is_none() => {
+                    serve_remote_image(response, &url, from_source.as_deref())
                 }
                 _ => response,
             };
@@ -27483,8 +27496,8 @@ fn finish_file_checks(response: &mut Response, checks: Vec<FileCheck>) {
 
 /// `_serve_image`'s upstream half, outside the lock: the remote bytes and their type
 /// into the response the router shaped, or the 404 a failed fetch is.
-fn serve_remote_image(mut response: Response, url: &str) -> Response {
-    match transcoder::fetch_remote_image(url) {
+fn serve_remote_image(mut response: Response, url: &str, from_source: Option<&[(&'static str, String)]>) -> Response {
+    match transcoder::fetch_remote_image(url, from_source) {
         Some((body, content_type)) => {
             response.body = body;
             response.content_type = content_type;

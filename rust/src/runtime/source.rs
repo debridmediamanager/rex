@@ -219,6 +219,18 @@ impl Source {
         (self.url(path), self.auth.clone())
     }
 
+    /// An artwork url under this source's url -> its path there, as written; `None` elsewhere.
+    pub(super) fn own_path(&self, url: &str) -> Option<String> {
+        let rest = url.strip_prefix(&self.base)?.strip_prefix('/')?;
+        (!rest.is_empty()).then(|| rest.to_string())
+    }
+
+    /// A `source://` artwork's url and the headers that fetch it: the path as the source wrote
+    /// it (`own_path`), not escaped again.
+    pub(super) fn artwork(&self, path: &str) -> (String, Vec<(&'static str, String)>) {
+        (format!("{}/{path}", self.base), self.headers())
+    }
+
     fn headers(&self) -> Vec<(&'static str, String)> {
         let mut headers = vec![("User-Agent", upstream::UPSTREAM_UA.to_string())];
         if let Some(auth) = &self.auth {
