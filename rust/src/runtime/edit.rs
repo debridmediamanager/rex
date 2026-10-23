@@ -1219,6 +1219,11 @@ impl Runtime {
                     query.insert("type".to_string(), number.to_string());
                 }
                 self.create_collection(&query);
+                // Its members' `Collection` tag stays `id, filter, tag` with no guid (the
+                // fixture's `/library/metadata/1`), where `POST /library/collections` stamps one.
+                if let Some(made) = self.collections.values_mut().find(|collection| named(&&**collection)) {
+                    made.extra.insert("_fromTag".to_string(), json!(true));
+                }
             }
             if let Some(collection) = self.collections.values_mut().find(|collection| named(&&**collection)) {
                 if !collection.items.contains(key) {

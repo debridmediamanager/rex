@@ -132,6 +132,16 @@ def main():
                 theirs = sorted(re.findall(r'<Video ratingKey="(\d+)"', exchange["res_body"]))
                 mine = sorted(str(m.get("ratingKey")) for m in (document or {}).get("MediaContainer", {}).get("Metadata", []))
                 check(label + ": the members the reference lists", mine == theirs, (mine, theirs))
+            elif method == "GET" and re.fullmatch(r"/library/metadata/\d+", path) and ids:
+                # A member's detail row: the tag a tag write made carries no collection guid.
+                _status, document = ask(port, method, path, query)
+                theirs = [dict(re.findall(r'(\w+)="([^"]*)"', tag))
+                          for tag in re.findall(r"<Collection [^>]*>", exchange["res_body"])]
+                row = ((document or {}).get("MediaContainer", {}).get("Metadata") or [{}])[0]
+                mine = row.get("Collection") or []
+                check(label + ": its Collection tags carry the reference's fields",
+                      [(sorted(t), t.get("tag")) for t in mine] == [(sorted(t), t.get("tag")) for t in theirs],
+                      (mine, theirs))
         check("every tag-written collection was found", sorted(ids) and len(ids) == len(TAGGED), ids)
 
         # Posters by url, on a collection Kometa made: the reference's answers, its 69th and 864-866th.

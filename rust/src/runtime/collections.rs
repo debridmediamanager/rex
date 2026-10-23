@@ -2034,6 +2034,7 @@ impl Runtime {
             let name = tag_object.get("tag").map(string_value).unwrap_or_default();
             if let Some(collection) = self.collections.values().find(|collection| {
                 !collection.smart
+                    && !collection.extra.contains_key("_fromTag")
                     && collection.tag_name() == name
                     && collection.items.contains(key)
             }) {

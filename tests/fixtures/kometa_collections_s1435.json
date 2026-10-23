@@ -5346,6 +5346,65 @@
    "res_body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<MediaContainer size=\"9\" totalSize=\"9\" offset=\"0\" allowSync=\"1\" art=\"/:/resources/movie-fanart.jpg\" identifier=\"com.plexapp.plugins.library\" librarySectionID=\"1\" librarySectionTitle=\"Movies\" librarySectionUUID=\"169b0675-08da-4eec-ad52-e09bb7288ff8\" mediaTagPrefix=\"/system/bundle/media/flags/\" mediaTagVersion=\"1791214582\" thumb=\"/:/resources/movie.png\" title1=\"Movies\" title2=\"All Movies\" viewGroup=\"movie\" viewMode=\"65592\">\n<Directory ratingKey=\"18\" key=\"/library/collections/18/children\" guid=\"collection://77878050-0a77-4bd4-a34a-89257cf1be97\" type=\"collection\" title=\"Genre Collections\" titleSort=\"!060_!Genre Collections\" subtype=\"movie\" summary=\"Section separator for Genre Collections.\" index=\"206\" ratingCount=\"1\" thumb=\"/library/metadata/18/thumb/1792789455\" addedAt=\"1792789454\" updatedAt=\"1792789455\">\n<Image alt=\"Genre Collections\" type=\"coverPoster\" url=\"/library/metadata/18/thumb/1792789455\" />\n</Directory>\n<Directory ratingKey=\"19\" key=\"/library/collections/19/children\" guid=\"collection://1f51c584-6b15-4976-bc87-7c3cbbaef279\" type=\"collection\" title=\"Animation Movies\" titleSort=\"!060_Animation Movies\" subtype=\"movie\" summary=\"Movies that have the genre Animation.\" index=\"207\" content=\"server://78d14afa2dc0be73d1e03434a4a71a331ede0631/com.plexapp.plugins.library/library/sections/1/all?type=1&amp;sort=originallyAvailableAt%3Adesc&amp;push=1&amp;genre=6&amp;pop=1\" ratingCount=\"101\" thumb=\"/library/metadata/19/thumb/1792789456\" addedAt=\"1792789455\" updatedAt=\"1792789456\" childCount=\"4\" smart=\"1\">\n<Image alt=\"Animation Movies\" type=\"coverPoster\" url=\"/library/metadata/19/thumb/1792789456\" />\n</Directory>\n<Directory ratingKey=\"20\" key=\"/library/collections/20/children\" guid=\"collection://569df8da-9c13-483c-bc8b-29bff14c75f8\" type=\"collection\" title=\"Comedy Movies\" titleSort=\"!060_Comedy Movies\" subtype=\"movie\" summary=\"Movies that have the genre Comedy.\" index=\"209\" content=\"server://78d14afa2dc0be73d1e03434a4a71a331ede0631/com.plexapp.plugins.library/library/sections/1/all?type=1&amp;sort=originallyAvailableAt%3Adesc&amp;push=1&amp;genre=7&amp;pop=1\" ratingCount=\"101\" thumb=\"/library/metadata/20/thumb/1792789456\" addedAt=\"1792789455\" updatedAt=\"1792789456\" childCount=\"1\" smart=\"1\">\n<Image alt=\"Comedy Movies\" type=\"coverPoster\" url=\"/library/metadata/20/thumb/1792789456\" />\n</Directory>\n<Directory ratingKey=\"21\" key=\"/library/collections/21/children\" guid=\"collection://a26ecda2-ac0e-403b-a552-5fdd978116a7\" type=\"collection\" title=\"Family Movies\" titleSort=\"!060_Family Movies\" subtype=\"movie\" summary=\"Movies that have the genre Family.\" index=\"210\" content=\"server://78d14afa2dc0be73d1e03434a4a71a331ede0631/com.plexapp.plugins.library/library/sections/1/all?type=1&amp;sort=originallyAvailableAt%3Adesc&amp;push=1&amp;genre=8&amp;pop=1\" ratingCount=\"101\" thumb=\"/library/metadata/21/thumb/1792789457\" addedAt=\"1792789456\" updatedAt=\"1792789457\" childCount=\"1\" smart=\"1\">\n<Image alt=\"Family Movies\" type=\"coverPoster\" url=\"/library/metadata/21/thumb/1792789457\" />\n</Directory>\n<Directory ratingKey=\"22\" key=\"/library/collections/22/children\" guid=\"collection://39d918a4-4d52-4a84-b079-e74f81229be8\" type=\"collection\" title=\"Fantasy Movies\" titleSort=\"!060_Fantasy Movies\" subtype=\"movie\" summary=\"Movies that have the genre Fantasy.\" index=\"211\" content=\"server://78d14afa2dc0be73d1e03434a4a71a331ede0631/com.plexapp.plugins.library/library/sections/1/all?type=1&amp;sort=originallyAvailableAt%3Adesc&amp;push=1&amp;genre=33&amp;pop=1\" ratingCount=\"101\" thumb=\"/library/metadata/22/thumb/1792789457\" addedAt=\"1792789456\" updatedAt=\"1792789457\" childCount=\"1\" smart=\"1\">\n<Image alt=\"Fantasy Movies\" type=\"coverPoster\" url=\"/library/metadata/22/thumb/1792789457\" />\n</Directory>\n<Directory ratingKey=\"23\" key=\"/library/collections/23/children\" guid=\"collection://a21ba845-878b-4bbb-97c6-0bb9271259a8\" type=\"collection\" title=\"Science Fiction Movies\" titleSort=\"!060_Science Fiction Movies\" subtype=\"movie\" summary=\"Movies that have the genre Science Fiction.\" index=\"212\" content=\"server://78d14afa2dc0be73d1e03434a4a71a331ede0631/com.plexapp.plugins.library/library/sections/1/all?type=1&amp;sort=originallyAvailableAt%3Adesc&amp;push=1&amp;genre=23&amp;pop=1\" ratingCount=\"101\" thumb=\"/library/metadata/23/thumb/1792789458\" addedAt=\"1792789457\" updatedAt=\"1792789458\" childCount=\"2\" smart=\"1\">\n<Image alt=\"Science Fiction Movies\" type=\"coverPoster\" url=\"/library/metadata/23/thumb/1792789458\" />\n</Directory>\n<Directory ratingKey=\"15\" key=\"/library/collections/15/children\" guid=\"collection://27feb0ff-5335-48c3-b68e-4ec69e2f59de\" type=\"collection\" title=\"Blender Films\" titleSort=\"!Blender\" contentRating=\"G\" subtype=\"movie\" summary=\"Static collection built by Kometa\" index=\"201\" ratingCount=\"1\" thumb=\"/library/collections/15/composite/1792789454?width=400&amp;height=600\" addedAt=\"1792789454\" updatedAt=\"1792789454\" childCount=\"2\" maxYear=\"2010\" minYear=\"2008\">\n</Directory>\n<Directory ratingKey=\"16\" key=\"/library/collections/16/children\" guid=\"collection://869cb697-5201-466a-bc09-3f2c12f99f27\" type=\"collection\" title=\"Animated Smart\" subtype=\"movie\" summary=\"\" index=\"204\" content=\"server://78d14afa2dc0be73d1e03434a4a71a331ede0631/com.plexapp.plugins.library/library/sections/1/all?type=1&amp;sort=random&amp;genre=6\" ratingCount=\"101\" thumb=\"/library/collections/16/composite/1792789454?width=400&amp;height=600\" addedAt=\"1792789454\" updatedAt=\"1792789454\" childCount=\"4\" smart=\"1\">\n</Directory>\n<Directory ratingKey=\"17\" key=\"/library/collections/17/children\" guid=\"collection://a6382b28-7d7f-4a0f-a376-f5e5c03d45b9\" type=\"collection\" title=\"TMDb Sintel\" contentRating=\"PG\" subtype=\"movie\" summary=\"\" index=\"205\" ratingCount=\"1\" thumb=\"/library/collections/17/composite/1792789454?width=400&amp;height=600\" addedAt=\"1792789454\" updatedAt=\"1792789454\" childCount=\"1\" maxYear=\"2010\" minYear=\"2010\">\n</Directory>\n</MediaContainer>\n"
   },
   {
+   "index": 183,
+   "method": "GET",
+   "path": "/library/metadata/1",
+   "query": [],
+   "req_len": 0,
+   "status": 200,
+   "res_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "text/xml;charset=utf-8"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "1"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Content-Original-Length",
+     "4105"
+    ],
+    [
+     "X-Plex-Content-Compressed-Length",
+     "1738"
+    ],
+    [
+     "Content-Length",
+     "1738"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Date",
+     "Fri, 23 Oct 2026 21:04:18 GMT"
+    ]
+   ],
+   "res_body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<MediaContainer size=\"1\" totalSize=\"1\" offset=\"0\" allowSync=\"1\" identifier=\"com.plexapp.plugins.library\" librarySectionID=\"1\" librarySectionTitle=\"Movies\" librarySectionUUID=\"169b0675-08da-4eec-ad52-e09bb7288ff8\" mediaTagPrefix=\"/system/bundle/media/flags/\" mediaTagVersion=\"1791214582\">\n<Video ratingKey=\"1\" key=\"/library/metadata/1\" guid=\"plex://movie/5d7768352e80df001ebde4c9\" slug=\"big-buck-bunny\" studio=\"Blender Foundation\" type=\"movie\" title=\"Big Buck Bunny\" librarySectionTitle=\"Movies\" librarySectionID=\"1\" librarySectionKey=\"/library/sections/1\" contentRating=\"G\" summary=\"In the thick and undisturbed forest, sparkling spring has finally arrived, and all creatures, big or small, enjoy life. However, Big Buck Bunny--an enormous, fluffy, and utterly adorable rabbit--is facing a crisis: the ruthless, loud, bullying gang of a flying squirrel is heartlessly harassing him, determined to squash his happiness. Now, this means war. But who will win?\" rating=\"6.5\" audienceRating=\"5.4\" year=\"2008\" tagline=\"Don&#39;t Mess with the Bunny.\" thumb=\"/library/metadata/1/thumb/1792789337\" art=\"/library/metadata/1/art/1792789337\" duration=\"10023\" originallyAvailableAt=\"2008-04-10\" addedAt=\"1792789176\" updatedAt=\"1792789337\" audienceRatingImage=\"rottentomatoes://image.rating.spilled\" hasPremiumPrimaryExtra=\"1\">\n<Media id=\"1\" duration=\"10023\" bitrate=\"4978\" width=\"1920\" height=\"1080\" aspectRatio=\"1.78\" audioChannels=\"1\" audioCodec=\"aac\" videoCodec=\"h264\" videoResolution=\"1080\" container=\"mkv\" videoFrameRate=\"24p\" videoProfile=\"high\">\n<Part id=\"1\" key=\"/library/parts/1/1792789176/file.mkv\" duration=\"10023\" file=\"/data/movies/Big Buck Bunny (2008)/Big Buck Bunny (2008) - 1080p.mkv\" size=\"6237234\" container=\"mkv\" videoProfile=\"high\">\n<Stream id=\"1\" streamType=\"1\" default=\"1\" codec=\"h264\" index=\"0\" bitrate=\"4978\" language=\"English\" languageTag=\"en\" languageCode=\"eng\" bitDepth=\"8\" chromaLocation=\"left\" chromaSubsampling=\"4:2:0\" codedHeight=\"1088\" codedWidth=\"1920\" frameRate=\"24.000\" hasScalingMatrix=\"0\" height=\"1080\" level=\"40\" profile=\"high\" refFrames=\"4\" scanType=\"progressive\" width=\"1920\" displayTitle=\"1080p\" extendedDisplayTitle=\"1080p (H.264)\">\n</Stream>\n<Stream id=\"2\" streamType=\"2\" selected=\"1\" default=\"1\" codec=\"aac\" index=\"1\" channels=\"1\" language=\"English\" languageTag=\"en\" languageCode=\"eng\" samplingRate=\"44100\" displayTitle=\"English (AAC Mono)\" extendedDisplayTitle=\"English (AAC Mono)\">\n</Stream>\n</Part>\n</Media>\n<Image alt=\"Big Buck Bunny\" type=\"coverPoster\" url=\"/library/metadata/1/thumb/1792789337\" />\n<Image alt=\"Big Buck Bunny\" type=\"background\" url=\"/library/metadata/1/art/1792789337\" />\n<Image alt=\"Big Buck Bunny\" type=\"clearLogo\" url=\"/library/metadata/1/clearLogo/1792789337\" />\n<Image alt=\"Big Buck Bunny\" type=\"backgroundSquare\" url=\"/library/metadata/1/squareArt/1792789337\" />\n<UltraBlurColors topLeft=\"492016\" topRight=\"60211c\" bottomRight=\"8b3e39\" bottomLeft=\"482c68\" />\n<Genre id=\"6\" filter=\"genre=6\" tag=\"Animation\" />\n<Genre id=\"7\" filter=\"genre=7\" tag=\"Comedy\" />\n<Genre id=\"8\" filter=\"genre=8\" tag=\"Family\" />\n<Country id=\"13\" filter=\"country=13\" tag=\"Netherlands\" />\n<Guid id=\"imdb://tt1254207\" />\n<Guid id=\"tmdb://10378\" />\n<Guid id=\"tvdb://12352\" />\n<Rating image=\"imdb://image.rating\" value=\"6.4\" type=\"audience\" />\n<Rating image=\"rottentomatoes://image.rating.spilled\" value=\"5.4\" type=\"audience\" />\n<Rating image=\"themoviedb://image.rating\" value=\"6.5\" type=\"audience\" />\n<Collection id=\"201\" filter=\"collection=201\" tag=\"Blender Films\" />\n<Director id=\"10\" filter=\"director=10\" tag=\"Sacha Goedegebure\" tagKey=\"5d7768352e80df001ebde5ab\" />\n<Writer id=\"11\" filter=\"writer=11\" tag=\"Sacha Goedegebure\" tagKey=\"5d7768352e80df001ebde5ab\" />\n<Producer id=\"12\" filter=\"producer=12\" tag=\"Ton Roosendaal\" tagKey=\"5d776834103a2d001f567902\" thumb=\"https://metadata-static.plex.tv/d/people/d0cd238b5a00353ddae78dd55720f7e3.jpg\" />\n<Label id=\"203\" filter=\"label=203\" tag=\"Kometa-test\" />\n<Field locked=\"1\" name=\"rating\" />\n<Field locked=\"1\" name=\"genre\" />\n<Field locked=\"1\" name=\"label\" />\n</Video>\n</MediaContainer>\n"
+  },
+  {
    "index": 535,
    "method": "GET",
    "path": "/library/sections/2/all",
