@@ -80,7 +80,7 @@ rust/target/release/rex catalog --seed --name den --out rex.db
 
 Either way this is a SQLite database holding a fixed `machineIdentifier` (random, as a real
 Plex Media Server's is, and kept if you re-seed), a movie library titled Movies holding the `movies`
-directory and a show library titled TV Shows holding `shows` (a catalog seeded before 2026-10-24 has
+directory and a show library titled TV Shows holding `shows` (a catalog seeded by a rex older than the 2026.10.24 nightly has
 Debrid Movies and Debrid TV; rename them in Plex if you like). A pushed item lands in the library holding the
 directory its `path` starts with (`movies/<release>/<file>`), whichever source sent it
 and whatever path prefix its `file` carries, unless the source placed it as the other kind:
