@@ -1380,6 +1380,15 @@ def run_gdm(check):
         time.sleep(1.2)
         deleted = server.request("DELETE", "/library/sections/%s" % created_key)[0]
         stamps.append(gdm_stamp(ports[0])[1])
+        # A library renamed in Edit Library: each item's own row says the new name, as the
+        # library does (2026-10-23: rows kept the old title, so an item's detail named the
+        # library as it was).
+        renamed = server.request("PUT", "/library/sections/1?agent=tv.plex.agents.movie&name=Renamed%20Films")[0]
+        detail = server.json("/library/metadata/101")
+        check("a renamed library's items carry its new name",
+              renamed == 200 and detail.get("librarySectionTitle") == "Renamed Films"
+              and (detail.get("Metadata") or [{}])[0].get("librarySectionTitle") == "Renamed Films",
+              (renamed, detail.get("librarySectionTitle"), (detail.get("Metadata") or [{}])[0].get("librarySectionTitle")))
         moved = all(later is not None and earlier is not None and int(later) > int(earlier)
                     for earlier, later in zip(stamps, stamps[1:]))
         check("library create, edit and delete each move GDM Updated-At",

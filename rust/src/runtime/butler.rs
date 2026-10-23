@@ -707,6 +707,19 @@ impl Runtime {
                 object.insert("language".to_string(), json!(language));
             }
         }
+        // Every row carries its library's title (`librarySectionTitle`, on an item's own row in
+        // its detail): a rename that left them would show the old name on every item.
+        if let Some(name) = query.get("name").filter(|value| !value.is_empty()) {
+            let keys = self.catalog.lazy_by(crate::catalog::By::Section, section_key).iter().filter_map(key_of).collect::<Vec<_>>();
+            for key in keys {
+                if self.catalog.get(&key).and_then(|row| row.get("librarySectionTitle")).and_then(Value::as_str) == Some(name.as_str()) {
+                    continue;
+                }
+                if let Some(row) = self.catalog.get_mut(&key).and_then(Value::as_object_mut) {
+                    row.insert("librarySectionTitle".to_string(), json!(name));
+                }
+            }
+        }
         for (field, value) in query {
             if let Some(pref) = field
                 .strip_prefix("prefs[")
