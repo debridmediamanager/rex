@@ -7,7 +7,7 @@
 # agent and plex.tv with the claim's own token. rex-direct needs no key: once
 # claimed, rex gets an HTTPS name and certificate of its own from DMM, announced after
 # --announce-url's. REX_DIRECT_URL=off turns it off, or names another provider
-# (docs/rex-direct-api.md; REX_DIRECT_KEY if that provider wants one).
+# (REX_DIRECT_KEY if that provider wants one).
 # Under systemd, EnvironmentFile= can load the same file instead.
 #
 # Sources register themselves and push their items (docs/feed-api.md): zurg needs only

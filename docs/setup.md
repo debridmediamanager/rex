@@ -319,7 +319,7 @@ way rex terminates TLS itself, on the same port as plain HTTP.
   forwards another outside port to rex, set `REX_DIRECT_PORT=<that port>`. `REX_DIRECT_URL`
   names another provider by its `https://` address; plain `http://` works only on this machine,
   and anything else is refused with a warning. Use only a provider you trust, since it picks the
-  name your apps connect to ([`docs/rex-direct-api.md`](rex-direct-api.md) is the contract).
+  name your apps connect to.
   `REX_DIRECT_URL=off` turns rex-direct off.
 - **Your own hostname**: `--tls-cert host.crt --tls-key host.key`. The key can be PKCS#8,
   RSA or EC (`BEGIN EC PRIVATE KEY`, which `tailscale cert` and many ACME clients write). A
@@ -369,12 +369,9 @@ Plex's paywall. Other Plex apps have not been playback-tested.
 
 ### 8. Run it as a service
 
-`examples/run.sh.example` is the whole command line as a script: copy it to `run.sh` at the
-top of the checkout or release, beside `rust/` and the catalog, and fill it in. It reads the
-keys from `rex.env` (mode 600) and adds
-`--announce-url`. `run.sh` and `rex.env` are gitignored.
-Under systemd (`~/.config/systemd/user/rex.service`, then `systemctl --user enable --now
-rex`, and `loginctl enable-linger` so it runs without a login):
+Under systemd, put step 4's command in `~/.config/systemd/user/rex.service`, then
+`systemctl --user enable --now rex`, and `loginctl enable-linger` so it runs without a login.
+Keys, if you set any, go in `rex.env` beside the catalog (mode 600):
 
 ```ini
 [Unit]
@@ -383,7 +380,8 @@ After=network-online.target
 
 [Service]
 WorkingDirectory=%h/rex
-ExecStart=%h/rex/run.sh
+EnvironmentFile=-%h/rex/rex.env
+ExecStart=%h/rex/rust/target/release/rex --catalog rex.db --announce-url http://<rex's LAN IP>:32400
 UMask=0077
 Restart=always
 RestartSec=5
@@ -392,7 +390,8 @@ RestartSec=5
 WantedBy=default.target
 ```
 
-Under launchd, with absolute log paths (relative ones make the job exit 78 without a log):
+On macOS, copy `examples/run.sh.example` to `run.sh` beside `rust/`: it is the same command as a
+script that loads `rex.env`. Under launchd, with absolute log paths (relative ones make the job exit 78 without a log):
 `launchctl submit -l com.rex -o "$PWD/rex.log" -e "$PWD/rex.err" -- /bin/bash "$PWD/run.sh"`.
 A submitted job does not survive a reboot; a LaunchAgent plist like the manager's (below)
 does. To run several servers on one host, use `rex manager` (below).
@@ -460,7 +459,7 @@ services:
     devices:
       - /dev/dri:/dev/dri     # an Intel or AMD GPU for converting; leave out where there is none
     volumes:
-      - ./rex:/config
+      - ./config:/config
 ```
 
 The image starts rex on `/config/rex.db`. A `command:` adds flags: step 4's `--announce-url` goes there
