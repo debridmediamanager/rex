@@ -24,6 +24,7 @@ import shutil
 import sys
 import tempfile
 import threading
+import urllib.parse
 
 from test_feed import ENTRIES, LEGACY, MOUNT, Bytes, Server, check, results, serve
 
@@ -104,6 +105,10 @@ def main():
     json.dump({"GET %s " % SEASON_1: first_page()}, open(os.path.join(work, "plex_cache.json"), "w"))
     server = Server(work, serve(source.handler()), keys={"REX_PLEXTV_URL": provider()})
     try:
+        # A person's locked title stays through the re-identification that matches the row.
+        query = urllib.parse.urlencode({"type": 4, "id": animaniacs["ratingKey"], "title.value": "Our Hollywoodchuck", "title.locked": 1})
+        status, _ = server.request("/library/sections/%s/all?%s" % (animaniacs["librarySectionID"], query), "PUT")
+        check("a person retitles Animaniacs' S1E109 and locks it", status == 200, status)
         status, body = server.feed("POST", "items", {"items": [
             item(animaniacs["_sid"], release(animaniacs["_sid"]), {"tmdb": 82, "imdb": "tt0105941"}, 1, 109),
             item(rezero, release(rezero), {"tmdb": 65942}, 1, 84, 7130181),
@@ -118,6 +123,7 @@ def main():
         check("Animaniacs' S1E109, past the 50 rows kept of its season, is Plex's episode on its own key",
               str(row.get("guid", "")).startswith("plex://episode/") and (row.get("parentIndex"), row.get("index")) == (1, 109),
               (row.get("guid"), row.get("parentIndex"), row.get("index")))
+        check("its locked title stays its person's", row.get("title") == "Our Hollywoodchuck", row.get("title"))
         pages = sorted(start for method, path, start in asked if path == SEASON_1)
         check("the season is read page by page to its totalSize", pages == list(range(0, 160, 50)), pages[:4])
 

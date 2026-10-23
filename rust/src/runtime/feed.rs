@@ -802,6 +802,7 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
                             // (its season was read to 50 rows, Animaniacs' S1E109): asked again on
                             // each push, which changes nothing while the answer is the same.
                             || super::scan::placed_numbers(item.placed.as_ref()).is_some()
+                                && item.identifiable(&library.kind)
                                 && row.and_then(|row| row.get("guid")).and_then(Value::as_str).is_some_and(|guid| guid.starts_with("local://"))
                             || named
                                 && item.identifiable(&library.kind)
@@ -2461,9 +2462,18 @@ impl Runtime {
         let Some(mut leaf) = self.leaf_for(library, &arrival, Some(key.to_string())) else {
             return false;
         };
-        if old.as_object().is_some_and(|row| super::edit::field_locked(row, "editionTitle")) {
-            if let Some(edition) = old.get("editionTitle") {
-                leaf["editionTitle"] = edition.clone();
+        // Every field a person locked keeps their value, as a push's own update keeps it (a
+        // locked title stayed only until a push re-identified the row, which the retry of a placed
+        // row Plex had no episode for did on every push).
+        if let Some(row) = old.as_object() {
+            let locked: Vec<String> = row.get("Field").and_then(Value::as_array).into_iter().flatten()
+                .filter_map(|entry| entry.get("name").and_then(Value::as_str).map(str::to_string))
+                .filter(|field| super::edit::field_locked(row, field))
+                .collect();
+            for field in locked {
+                if let Some(value) = row.get(&field) {
+                    leaf[field.as_str()] = value.clone();
+                }
             }
         }
         let pending = old.get("_probePending").is_some_and(truthy);
