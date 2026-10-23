@@ -2104,7 +2104,9 @@ impl Runtime {
         let writes: Vec<(String, Value)> = values
             .iter()
             .filter(|(field, value)| {
-                !field.starts_with("_show_") && !field.starts_with("_season_")
+                // An upload is a person's too, and is no lock: it only names `upload://` (`upload_artwork`).
+                let uploaded = row.get(field.as_str()).and_then(Value::as_str).is_some_and(|url| url.starts_with("upload://"));
+                !field.starts_with("_show_") && !field.starts_with("_season_") && !uploaded
                     && !super::edit::field_locked(&row, lock(field)) && row.get(field.as_str()) != Some(value)
             })
             .map(|(field, value)| (field.clone(), value.clone()))

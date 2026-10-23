@@ -93,6 +93,18 @@ def main():
         check("a push leaves a title a person locked", row.get("title") == "Our clean-up song", row.get("title"))
         check("and still writes the summary they did not", row.get("summary") == "A new description.", row.get("summary"))
 
+        # A poster a person uploaded is theirs: a later display.thumb does not replace it.
+        jpeg = bytes.fromhex("ffd8ffe000104a46494600010100000100010000ffd9")
+        status, _ = server.request("/library/metadata/%s/posters" % episode["ratingKey"], "POST", jpeg, {"Content-Type": "image/jpeg"})
+        check("a person uploads the episode's poster", status == 200, status)
+        fourth = pushed(first)
+        fourth["display"]["thumb"] = "https://i.ytimg.com/vi/w264Mn-2MnQ/hqdefault.jpg"
+        server.feed("POST", "items", {"items": [fourth]})
+        status, body = server.request("/library/metadata/%s/posters" % episode["ratingKey"])
+        chosen = [row.get("key") for row in (body or {}).get("MediaContainer", {}).get("Metadata", []) if row.get("selected")]
+        check("a push leaves the poster a person uploaded",
+              len(chosen) == 1 and "upload%3A%2F%2F" in chosen[0] and fourth["display"]["thumb"] not in chosen, chosen)
+
         bad = pushed(second)
         bad["id"] = "bad"
         bad["path"] = "shows/msrachel/bad.m3u8"
