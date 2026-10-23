@@ -100,9 +100,12 @@ impl Runtime {
         if let Some(media_state) = media_state.filter(|value| !value.is_empty()) {
             entry.insert("mediaState".to_string(), json!(media_state));
         }
+        // A season's frame names its show alone (`parentItemID`, no `rootItemID`): an empty root.
         if let Some((parent, root)) = parents {
             entry.insert("parentItemID".to_string(), json!(parent));
-            entry.insert("rootItemID".to_string(), json!(root));
+            if !root.is_empty() {
+                entry.insert("rootItemID".to_string(), json!(root));
+            }
         }
         self.record_section_timeline(row, &key, state, at);
         self.push_event("timeline", json!({"TimelineEntry": Value::Object(entry)}));

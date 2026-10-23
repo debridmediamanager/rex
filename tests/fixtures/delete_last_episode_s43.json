@@ -1,0 +1,90 @@
+{
+ "source": "plexscratch, PMS 1.43.4.10903-e5521bd8c (unclaimed, isolated), 2026-10-23: a TV library 'ProbeShows' on /config/probe/shows holding 'Lonely Show (2001)' with one episode and 'Pair Show (2002)' with two (copies of the lab's Firefly clips), allowMediaDeletion=1; DELETE of one episode each, the timeline frames off /:/websockets/notifications (the 'Processing subscriptions' activity that ended meanwhile left out), each row read back 3 s later, the section listed again 15 s later",
+ "cases": [
+  {
+   "show": "Lonely Show",
+   "deleted": "the show's last episode",
+   "rows": {
+    "show": "58",
+    "season": "59",
+    "episode": "60"
+   },
+   "DELETE /library/metadata/{episode}": 200,
+   "GET after": {
+    "show": 404,
+    "season": 404,
+    "episode": 404
+   },
+   "timeline": [
+    {
+     "identifier": "com.plexapp.plugins.library",
+     "sectionID": "5",
+     "itemID": "58",
+     "type": 2,
+     "title": "Lonely Show (2001)",
+     "state": 9,
+     "metadataState": "deleted",
+     "updatedAt": 1792787367
+    },
+    {
+     "identifier": "com.plexapp.plugins.library",
+     "sectionID": "5",
+     "itemID": "59",
+     "parentItemID": "58",
+     "type": 3,
+     "title": "Lonely Show S01",
+     "state": 9,
+     "metadataState": "deleted",
+     "updatedAt": 1792787367
+    },
+    {
+     "identifier": "com.plexapp.plugins.library",
+     "sectionID": "5",
+     "itemID": "60",
+     "parentItemID": "59",
+     "rootItemID": "58",
+     "type": 4,
+     "title": "Episode 1",
+     "state": 9,
+     "metadataState": "deleted",
+     "updatedAt": 1792787367
+    }
+   ]
+  },
+  {
+   "show": "Pair Show",
+   "deleted": "one of its two episodes",
+   "rows": {
+    "show": "61",
+    "season": "62",
+    "episode": "63"
+   },
+   "DELETE /library/metadata/{episode}": 200,
+   "GET after": {
+    "show": 200,
+    "season": 200,
+    "episode": 404
+   },
+   "timeline": [
+    {
+     "identifier": "com.plexapp.plugins.library",
+     "sectionID": "5",
+     "itemID": "63",
+     "parentItemID": "62",
+     "rootItemID": "61",
+     "type": 4,
+     "title": "Pair Show S01 E01",
+     "state": 9,
+     "metadataState": "deleted",
+     "updatedAt": 1792787375
+    }
+   ]
+  }
+ ],
+ "listing_after": [
+  [
+   "Pair Show",
+   1
+  ]
+ ]
+}

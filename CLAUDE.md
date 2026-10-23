@@ -577,6 +577,7 @@ python3 tests/test_feed_source_decides.py   # the source decides: unplaced pushe
 python3 tests/test_feed_names.py            # releases pushed with no id stay for Fix Match, however cleanly they read: a.K.A., THEATRiCAL.CUT, a release in another language than its files
 python3 tests/test_feed_placement.py        # a file its source placed (`kind`, TMDB season/episode) stays there through a start and the retry; Fix Match wins; a season-0 special is Plex's episode (Firefly's)
 python3 tests/test_feed_delete.py           # a delete removes the files at the source first, as a real PMS's does (zurg's WebDAV DELETE)
+python3 tests/test_delete_last_episode.py   # deleting a show's last episode removes its season and the show, with the reference's three frames; one of two leaves them (1.43.4)
 python3 tests/test_feed_rejected.py         # every item the feed rejects is logged with its reason (a real snapshot's sample)
 python3 tests/test_feed_display.py          # what a source names itself (`display`): titles, summaries, dates and artwork of a row nothing
                                             # identifies, its show's and season's, updated by later pushes, a person's lock kept (Ms Rachel's channel)

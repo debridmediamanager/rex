@@ -18388,6 +18388,28 @@ impl Runtime {
                         emptied = Some(season);
                     }
                 }
+                // And removing a show's last episode removes the show: measured on plexscratch
+                // 1.43.4 (`tests/fixtures/delete_last_episode_s43.json`), the show and its season
+                // are 404s at once and the show leaves the listing; rex kept a show of no episodes
+                // in the library (the production server's Manny_Pacquiao_2, 2026-10-23).
+                let show = row.get("grandparentRatingKey").map(string_value).unwrap_or_default();
+                let emptied_show = emptied.as_ref().filter(|season| {
+                    self.catalog.get(&show).is_some_and(|row| row.get("type").and_then(Value::as_str) == Some("show"))
+                        && self.children_refs(&show).into_iter().all(|child| key_of(&child).as_deref() == Some(season.as_str()))
+                }).map(|_| show.clone());
+                // Their frames are titled before they go: a season's names its show's title.
+                let gone_rows: Vec<(Value, String)> = [emptied_show.as_ref(), emptied.as_ref()]
+                    .into_iter()
+                    .flatten()
+                    .filter_map(|key| self.catalog.get(key).cloned())
+                    .map(|gone| {
+                        let title = self.frame_title(&gone);
+                        (gone, title)
+                    })
+                    .collect();
+                if let Some(show) = &emptied_show {
+                    doomed.push(show.clone());
+                }
                 self.remove_analysis(|key| doomed.iter().any(|gone| gone == key));
                 // `library.delete`: the row and everything beneath it leave every playlist
                 // and collection (cycle 87: the entry goes, its playlistItemID a 404, where
@@ -18399,7 +18421,7 @@ impl Runtime {
                     if self.catalog.remove(gone).is_none() {
                         continue;
                     }
-                    if emptied.as_ref() == Some(gone) {
+                    if emptied.as_ref() == Some(gone) || emptied_show.as_ref() == Some(gone) {
                         if let Ok(number) = gone.parse::<i64>() {
                             self.retired_keys.push(number);
                         }
@@ -18446,7 +18468,22 @@ impl Runtime {
                 // `/timeline` never listed the removal. Every measured state-9 frame carries
                 // `deleted` and the row's own type; the oracle sends the row's title too
                 // (a media-item DELETE is a 400 on both copies, so that part is unmeasured).
-                self.push_timeline_entry(&row, 9, Some("deleted"), None, None, None);
+                // Measured (`delete_last_episode_s43.json`): an episode's frame names its season
+                // and show; when they go with it, the show's frame comes first, then the season's
+                // naming the show, then the episode's under its own title, its show's being gone.
+                let episode = row.get("type").and_then(Value::as_str) == Some("episode");
+                let parents = episode.then(|| {
+                    (row.get("parentRatingKey").map(string_value).unwrap_or_default(), show.clone())
+                });
+                for (gone, title) in &gone_rows {
+                    if gone.get("type").and_then(Value::as_str) == Some("show") {
+                        self.push_timeline_entry(gone, 9, Some("deleted"), None, None, Some(title));
+                    } else if emptied_show.is_some() {
+                        self.push_timeline_entry_with(gone, 9, Some("deleted"), None, None, Some(title), Some((show.clone(), String::new())));
+                    }
+                }
+                let own = emptied_show.as_ref().map(|_| string_value(row.get("title").unwrap_or(&Value::Null)));
+                self.push_timeline_entry_with(&row, 9, Some("deleted"), None, None, own.as_deref(), parents);
                 self.dirty = true;
                 info!(
                     "DELETE {key} ({})",
