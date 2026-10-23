@@ -20,6 +20,8 @@ from test_feed import MOUNT, Bytes, Server, catalog, check, results, serve
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FIXTURE = json.load(open(os.path.join(HERE, "fixtures", "feed", "display_msrachel_1023.json")))
+# A film known only by its year: the Internet Archive's His Girl Friday, as the addon pushes it.
+FILM = json.load(open(os.path.join(HERE, "fixtures", "feed", "display_archive_1023.json")))["items"][0]
 
 
 def pushed(item):
@@ -113,6 +115,19 @@ def main():
         status, body = server.feed("POST", "items", {"items": [bad]})
         check("artwork that is no http(s) URL is refused",
               status == 200 and (body or {}).get("rejected") == [{"id": "bad", "reason": "display.thumb must be an http(s) URL"}],
+              (status, body))
+
+        # An old film's source knows its year and no day: rex shows the year and makes up no day.
+        status, body = server.feed("POST", "items", {"items": [FILM]})
+        check("a film dated by its year alone is taken", status == 200 and (body or {}).get("created") == 1, (status, body))
+        film = server.row(server.keys()[FILM["id"]])
+        check("it carries that year and no release day",
+              film.get("year") == 1940 and "originallyAvailableAt" not in film, (film.get("year"), film.get("originallyAvailableAt")))
+        odd = dict(copy.deepcopy(FILM), id="odd", path="movies/odd/odd.mp4", file=MOUNT + "/movies/odd/odd.mp4",
+                   display=dict(FILM["display"], date="194"))
+        status, body = server.feed("POST", "items", {"items": [odd]})
+        check("a date of another shape is still refused",
+              status == 200 and (body or {}).get("rejected") == [{"id": "odd", "reason": "display.date must be YYYY-MM-DD or YYYY"}],
               (status, body))
     finally:
         server.stop()

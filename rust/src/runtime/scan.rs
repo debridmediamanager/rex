@@ -76,7 +76,10 @@ pub(super) fn dress(leaf: &mut Map<String, Value>, display: &Map<String, Value>,
     }
     if let Some(date) = text(display, "date") {
         leaf.insert("year".to_string(), json!(date[..4].parse::<i64>().unwrap_or(0)));
-        leaf.insert("originallyAvailableAt".to_string(), json!(date));
+        // A bare year (an old film's) is a year only: no release day is made up for it.
+        if date.len() == 10 {
+            leaf.insert("originallyAvailableAt".to_string(), json!(date));
+        }
     }
     if let Some(thumb) = text(display, "thumb") {
         leaf.insert(if episode { "_art_url" } else { "_poster_url" }.to_string(), json!(thumb));

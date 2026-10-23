@@ -403,7 +403,7 @@ them itself with `display`:
 | Field | On | Meaning |
 |---|---|---|
 | `title`, `summary` | the title | Shown as sent |
-| `date` | the title | `YYYY-MM-DD`: `originallyAvailableAt`, and `year` from it |
+| `date` | the title | `YYYY-MM-DD`: `originallyAvailableAt`, and `year` from it. Or `YYYY` alone, for a title known only by its year (an old film): its `year`, no release day |
 | `thumb` | the title | A film's poster, an episode's still |
 | `art` | a film | Its background |
 | `show.title`, `show.summary`, `show.poster`, `show.art` | an episode's show | Its title, summary, poster and background |

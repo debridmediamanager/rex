@@ -84,7 +84,8 @@ struct Item {
     display: Option<Map<String, Value>>,
 }
 
-/// A pushed `display`, checked: the title's own `title`, `summary`, `date` (YYYY-MM-DD), `thumb`
+/// A pushed `display`, checked: the title's own `title`, `summary`, `date` (YYYY-MM-DD, or YYYY
+/// for a film known only by its year), `thumb`
 /// and `art`, its show's `title`, `summary`, `poster` and `art`, its season's `summary` and
 /// `poster`. Artwork is an http(s) URL rex fetches as it fetches Plex's agent artwork. Fields it
 /// does not know are left out; an empty one says nothing.
@@ -105,11 +106,11 @@ fn display_fields(display: &Map<String, Value>) -> Result<Map<String, Value>, St
             }
             let date = |text: &str| {
                 let bytes = text.as_bytes();
-                bytes.len() == 10 && bytes[4] == b'-' && bytes[7] == b'-'
+                (bytes.len() == 4 || bytes.len() == 10 && bytes[4] == b'-' && bytes[7] == b'-')
                     && bytes.iter().enumerate().all(|(at, byte)| at == 4 || at == 7 || byte.is_ascii_digit())
             };
             if *field == "date" && !date(text) {
-                return Err(format!("{named} must be YYYY-MM-DD"));
+                return Err(format!("{named} must be YYYY-MM-DD or YYYY"));
             }
             // A title or summary is shown as its source wrote it; a URL or date is read trimmed.
             let artwork_or_date = artwork || *field == "date";
