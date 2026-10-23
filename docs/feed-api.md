@@ -97,7 +97,7 @@ nothing was:
 A directory named in `directories` is a library of its own, made when the source registers:
 a movie library titled as the entry's `movies` and a show library titled as its `shows`, whichever it has,
 on the folder `<mount>/<name>` (with no `mount`, under the parent of the first library's
-folder, normally `/mnt/zurg`). rex logs `SECTION create Anime (show) for zurg's anime`, and
+folder, `/mnt/rex` for a library rex seeded). rex logs `SECTION create Anime (show) for zurg's anime`, and
 Plex clients see it as one added in Add Library. Then:
 
 - **A library of that type already on the folder is used**, whoever made it: one seeded with
@@ -269,7 +269,7 @@ The `media_info` above is cut down to show its shape. Send ffprobe's whole outpu
 | `name` | no | The release name, shown as it is: an unplaced episode's show is titled with it. Nothing is read out of it -- no id, no title, no season or episode. Default: the folder above the file |
 | `release` | no | Groups a release's files, identified together (a season's episodes). Default: the folder above `path` |
 | `edition_title` | no | Explicit movie edition label. Different labels stay separate movies; the same label can hold several versions. Omitted preserves the current source label; `""` clears it. A person's locked edition wins. Rejected for episodes or invalid labels; never inferred from a name |
-| `file` | no | The path clients see in Get Info, and what zurg's matcher reads back (`<mount>/<directory>/<release>/<file>`). Default `<mount>/<path>`, or `/<path>` without a mount |
+| `file` | no | The path clients see in Get Info (`<mount>/<directory>/<release>/<file>`). Default `<mount>/<path>`, or `/<path>` without a mount |
 | `library` | no | A section key, or `movie`/`show`. Default: the library whose `Location` holds `file`, else one with a folder ending in a directory `path` starts with (`/mnt/zurg/movies` holds `movies/...` whatever prefix `file` has); with a type, that type's library holding `file`, else its first; a folder no library holds goes to the first library of its `kind` (Movies without one). With no `library`, an item placed as an episode that a movie library would take goes to a show library -- one holding its folder ([a declared directory's](#libraries-a-source-declares)), else the one beside it -- and one placed as a movie that a show library would take goes to a movie library, one holding its folder first; a row already shown moves when its library changes |
 | `folder` | no | The folder the provider lists the file in inside its release (`Smallville/Stagione 6`), `""` at its top level. Kept on the row; nothing reads it as an extra |
 | `hash` | no | The release's content/info hash, kept per Media version. A changed hash invalidates that version's measured subtitle reference and generated analysis; it never borrows another version's hash |

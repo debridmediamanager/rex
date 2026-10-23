@@ -35,7 +35,7 @@ mkdir -p ~/rex && tar xzf rex-<tag>-linux-amd64.tar.gz -C ~/rex --strip-componen
 
 `<tag>` is the build's name, such as `2026.10.18.0753-nightly` or `v0.3.0`.
 Take the newest nightly (`YYYY.MM.DD.HHMM-nightly`) until the next release: v0.3.0 predates
-the server naming itself, taking its owner from the claim and trusting what zurg and DMM say
+the server naming itself, taking its owner from the claim and trusting what each source says
 each file is, which the steps below rely on.
 
 On macOS, Gatekeeper will not run a rex downloaded in a browser. After unpacking, run `xattr -dr com.apple.quarantine .` in the unpacked folder, or download it with the [GitHub CLI](https://cli.github.com) (signed in with `gh auth login`), which does not quarantine it (`darwin-amd64` on Intel):
@@ -81,7 +81,7 @@ Plex Media Server runs on the same machine? Add `--port 32500` and use `32500` w
 
 rex plays nothing until this step. It is at your own risk: rex is not made by Plex and Plex could take action against an account that registers it, so use a fresh free Plex account made just for rex, not your own.
 
-Do it before step 4. Titles zurg sends before the claim keep their file names until rex names them in the background, about 300 an hour.
+Do it before step 4. Titles a source sends before the claim keep their file names until rex names them in the background, about 300 an hour.
 
 Sign in to plex.tv as the fresh account, open [plex.tv/claim](https://www.plex.tv/claim) and copy the code. It expires after about five minutes.
 
@@ -95,9 +95,9 @@ Then, still as the fresh account, share rex with your own account in app.plex.tv
 
 The claim gives rex a token of its own. With it rex announces the address from step 2, gets its HTTPS address (step 5) and shows your titles with Plex's own metadata, with no restart. rex needs no Plex token of yours.
 
-**4. Point zurg at it**
+**4. Point a source at it**
 
-Add this to zurg's `config.yml` and restart zurg.
+A source is any program that sends rex its files over rex's feed API. For a debrid account or Usenet that is zurg: add this to zurg's `config.yml` and restart zurg.
 
 ```yaml
 rex_url: http://<rex's LAN IP>:32400
@@ -111,6 +111,8 @@ zurg tells rex where its files are and how to log in to them, then sends its who
 Only this machine, your home network and Tailscale can push to rex's library or delete what a source pushed. rex refuses that API to any other address, so forwarding rex's port for rex-direct (step 5) puts Plex's API on the internet, which needs a token once rex is claimed, but not the feed. A tunnel or reverse proxy running on the rex machine (frp, Caddy, Tailscale Funnel) looks local to rex, so block `/rex/` in it. A router that gives outside visitors its own address makes them look local too, which opens the feed to the internet. Running two zurgs? Give each a name of its own with `rex_source: rd` and `rex_source: ad`. Anything else that serves files can register the same way, see the [feed API](docs/feed-api.md).
 
 This needs a zurg nightly from 2026.10.19 or later, so update zurg first. The latest zurg release, v1.0.0, has no rex feed.
+
+Anything else registers itself the same way: your own app ([rex with your own app](https://notes.debridmediamanager.com/guides/rex-any-source/)) or an addon for YouTube channels, home videos or Stremio catalogs ([Building rex addons](https://notes.debridmediamanager.com/guides/rex-addons/)).
 
 **5. Use it outside your home**
 

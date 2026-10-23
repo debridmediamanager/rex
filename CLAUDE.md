@@ -127,7 +127,7 @@ gives the client a grid whose filter bar can only talk about the wrong type.
 
 ```bash
 cargo build --release --manifest-path rust/Cargo.toml
-rust/target/release/rex --catalog rex.db   # seeds rex.db on its first start, named after the host, under /mnt/zurg
+rust/target/release/rex --catalog rex.db   # seeds rex.db on its first start, named after the host, under /mnt/rex
 cp examples/run.sh.example run.sh   # keys go in rex.env beside it (mode 600)
 ```
 

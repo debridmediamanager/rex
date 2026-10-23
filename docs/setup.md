@@ -213,7 +213,7 @@ rex serves no Plex app until it is claimed. Claiming is at your own risk: rex is
 Plex and Plex could take action against an account that registers it, so claim it with a
 fresh free Plex account made for rex, not your own, and share it with yours (item 4 below).
 
-Do it before you point zurg at it (step 6): titles pushed before the claim keep the names
+Do it before you point a source at it (step 6): titles pushed before the claim keep the names
 they were pushed with until rex names them in the background, about 300 an hour.
 
 Claiming registers the server on the Plex account you claim with, the same way a real Plex
@@ -251,9 +251,12 @@ A claimed rex refuses another claim (409). To move it to another account, stop i
 `claim_state.json` and claim again. An unclaimed rex announces nothing, so it never writes a
 device row of its own before the claim.
 
-### 6. Point zurg at it
+### 6. Point a source at it
 
-In each zurg's `config.yml` (zurg's [`docs/config.md`](https://github.com/debridmediamanager/zurg/blob/main/docs/config.md) has the details):
+A source is any program that registers with rex and pushes its files over the feed API
+([`feed-api.md`](feed-api.md)); your own app or an addon does it as below for zurg
+([rex with your own app](https://notes.debridmediamanager.com/guides/rex-any-source/), [Building rex addons](https://notes.debridmediamanager.com/guides/rex-addons/)).
+For a debrid account or Usenet that is zurg. In each zurg's `config.yml` (zurg's [`docs/config.md`](https://github.com/debridmediamanager/zurg/blob/main/docs/config.md) has the details):
 
 ```yaml
 rex_url: http://<rex's LAN IP>:32400   # turns on zurg's ffprobe analysis (whole library, then new releases)
@@ -439,11 +442,11 @@ docker login ghcr.io -u YOUR_GITHUB_USERNAME
 Everything rex writes (`rex.db`, `claim_state.json`, Plex's metadata cache) goes to `/config`.
 Arguments that start with a flag run the server on `/config/rex.db` (`REX_CATALOG` moves
 it); a subcommand runs as given, so adding directories to the libraries before the first
-start (step 3; `--mount` matches the image's own zurg mount) is:
+start (step 3) is:
 
 ```bash
 docker compose run --rm rex catalog --seed --name den --out /config/rex.db \
-  --mount /zurg_mnt/zurg --movies movies --shows shows --shows anime
+  --movies movies --shows shows --shows anime
 ```
 
 ```yaml
@@ -494,7 +497,7 @@ NVIDIA card needs the NVIDIA container toolkit and `gpus: all` instead; untested
 
 `rex manager` is a control service on top of the server. It runs **no** rex server
 until you start one: you create a server from a configuration (port, keys,
-zurg's mount, catalog, options), start and stop it, and the manager supervises it -- an unexpected exit
+library folder, catalog, options), start and stop it, and the manager supervises it -- an unexpected exit
 is restarted with a backoff, and one that keeps dying is marked failed. Whatever was
 running when the manager stopped is running again when it starts.
 
