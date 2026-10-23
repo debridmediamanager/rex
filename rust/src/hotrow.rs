@@ -17,6 +17,7 @@ pub const FIELDS: &[&str] = &[
     "_collections",
     "_librarySectionID",
     "_parentRatingKey",
+    "_placed",
     "_poster_url",
     "_prefs",
     "_probePending",

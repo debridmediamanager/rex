@@ -1183,9 +1183,21 @@ fn may_be_blank(catalog: &crate::catalog::Catalog, row: &(impl Row + ?Sized), st
     if kind == Some("episode") {
         let show = row.get("grandparentRatingKey").map(string_value).and_then(|show| catalog.lazy_get(&show));
         return !has(show.as_ref().and_then(|show| show.get("_poster_url")))
-            || row.get("guid").and_then(Value::as_str).is_some_and(|guid| guid.starts_with("plex://movie/"));
+            || row.get("guid").and_then(Value::as_str).is_some_and(|guid| guid.starts_with("plex://movie/"))
+            || placed_unmatched(row.get("guid"), row.get("_placed"), show.as_ref().and_then(|show| show.get("guid")));
     }
     !has(row.get("_poster_url"))
+}
+
+/// An episode its source placed (numbers or a TMDB episode id) still on `local://` under a show
+/// Plex's agent named: Plex had no row for it when it came, and only a push named it again.
+/// Animaniacs' rows on the production server stayed unmatched after the agent's answers were read
+/// whole (43c6fd5c, 2026-10-23) until zurg's next snapshot, six hours on.
+fn placed_unmatched(guid: Option<&Value>, placed: Option<&Value>, show_guid: Option<&Value>) -> bool {
+    let placed = placed.filter(|placed| super::scan::placed_numbers(Some(placed)).is_some() || super::scan::placed_tmdb_episode(Some(placed)).is_some());
+    guid.and_then(Value::as_str).is_some_and(|guid| guid.starts_with("local://"))
+        && placed.is_some()
+        && show_guid.and_then(Value::as_str).is_some_and(|guid| guid.starts_with("plex://show/"))
 }
 
 /// The item a row's source pushed, rebuilt from the row: what `upsert` needs to identify it
@@ -1541,7 +1553,8 @@ impl Runtime {
     }
 
     /// A row its source pushed that draws the blank tile -- a film with no poster, or an
-    /// episode whose show has none -- or an episode named as a film, unless a person matched or
+    /// episode whose show has none -- or an episode named as a film, or one placed that Plex's
+    /// agent has not named under a show it named (`placed_unmatched`), unless a person matched or
     /// unmatched it.
     fn blank(&self, row: &Value) -> bool {
         let has = |row: Option<&Value>, field: &str| {
@@ -1560,6 +1573,9 @@ impl Runtime {
         }
         if kind == Some("episode") {
             let show = row.get("grandparentRatingKey").map(string_value).and_then(|show| self.catalog.get(&show));
+            if placed_unmatched(row.get("guid"), version_placed(row, 0), show.and_then(|show| show.get("guid"))) {
+                return true;
+            }
             // An episode with a film's guid is one `metadata::enrich` named after its show: every
             // season-0 episode before it read Specials (zen's Firefly S0E1-E3, `Episode N` under
             // one `plex://movie/` guid, 2026-10-16). Same ids, same placement: no push names it again.

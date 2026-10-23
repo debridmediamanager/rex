@@ -1,0 +1,2821 @@
+{
+ "answers": [
+  {
+   "body": "{\"guid\":\"tmdb://82\",\"type\":2}",
+   "method": "POST",
+   "path": "/library/metadata/matches",
+   "response": {
+    "MediaContainer": {
+     "Metadata": [
+      {
+       "Guid": [
+        {
+         "id": "imdb://tt0105941"
+        },
+        {
+         "id": "tmdb://82"
+        },
+        {
+         "id": "tvdb://72879"
+        }
+       ],
+       "art": "https://image.tmdb.org/t/p/original/8TThBwlIZnzCFkj21rv5Nv2lTNG.jpg",
+       "contentRating": "TV-Y7",
+       "guid": "plex://show/5d9c07fe2df347001e3a7d17",
+       "key": "/library/metadata/5d9c07fe2df347001e3a7d17/children",
+       "leafCount": 391,
+       "originallyAvailableAt": "1993-09-13",
+       "ratingKey": "5d9c07fe2df347001e3a7d17",
+       "studio": "Warner Bros. Animation",
+       "summary": "The two Warner Brothers Yakko and Wakko and their Warner sister Dot had been (supposedly) created in the 1930's, but their cartoons were too screwy for the general public to handle. The three Warners were locked up in the studio water tower until they escaped in the 90's. There, they run wild, causing chaos everywhere!",
+       "thumb": "https://image.tmdb.org/t/p/original/c1b2UtrhbMOdHKISB2ZvINo9eyc.jpg",
+       "title": "Animaniacs",
+       "type": "show",
+       "year": 1993
+      }
+     ],
+     "identifier": "tv.plex.provider.metadata",
+     "librarySectionID": "home",
+     "librarySectionTitle": "Metadata",
+     "offset": 0,
+     "size": 1,
+     "totalSize": 1
+    }
+   },
+   "start": 0
+  },
+  {
+   "body": "",
+   "method": "GET",
+   "path": "/library/metadata/5d9c07fe2df347001e3a7d17/children",
+   "response": {
+    "MediaContainer": {
+     "Metadata": [
+      {
+       "Guid": [
+        {
+         "id": "tvdb://20344"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://season/65dd8dbff97685e8c5506623",
+       "index": 0,
+       "key": "/library/metadata/65dd8dbff97685e8c5506623/children",
+       "leafCount": 5,
+       "originallyAvailableAt": "2006-07-25",
+       "ratingKey": "65dd8dbff97685e8c5506623",
+       "thumb": "https://artworks.thetvdb.com/banners/v4/season/20344/posters/6403518f57dbf.jpg",
+       "title": "Season 0",
+       "type": "season",
+       "year": 2006
+      },
+      {
+       "Guid": [
+        {
+         "id": "tvdb://4929"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://season/65dd8dbef97685e8c5506592",
+       "index": 1,
+       "key": "/library/metadata/65dd8dbef97685e8c5506592/children",
+       "leafCount": 160,
+       "originallyAvailableAt": "1993-09-13",
+       "ratingKey": "65dd8dbef97685e8c5506592",
+       "thumb": "https://artworks.thetvdb.com/banners/seasons/72879-1-2.jpg",
+       "title": "Season 1",
+       "type": "season",
+       "year": 1993
+      },
+      {
+       "Guid": [
+        {
+         "id": "tvdb://4931"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://season/65dd8dbef97685e8c55065b1",
+       "index": 2,
+       "key": "/library/metadata/65dd8dbef97685e8c55065b1/children",
+       "leafCount": 12,
+       "originallyAvailableAt": "1994-09-10",
+       "ratingKey": "65dd8dbef97685e8c55065b1",
+       "thumb": "https://artworks.thetvdb.com/banners/seasons/72879-2.jpg",
+       "title": "Season 2",
+       "type": "season",
+       "year": 1994
+      },
+      {
+       "Guid": [
+        {
+         "id": "tvdb://4932"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://season/65dd8dbef97685e8c55065b5",
+       "index": 3,
+       "key": "/library/metadata/65dd8dbef97685e8c55065b5/children",
+       "leafCount": 43,
+       "originallyAvailableAt": "1995-09-09",
+       "ratingKey": "65dd8dbef97685e8c55065b5",
+       "thumb": "https://artworks.thetvdb.com/banners/seasons/72879-3.jpg",
+       "title": "Season 3",
+       "type": "season",
+       "year": 1995
+      },
+      {
+       "Guid": [
+        {
+         "id": "tvdb://4933"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://season/65dd8dbef97685e8c55065cd",
+       "index": 4,
+       "key": "/library/metadata/65dd8dbef97685e8c55065cd/children",
+       "leafCount": 22,
+       "originallyAvailableAt": "1996-09-07",
+       "ratingKey": "65dd8dbef97685e8c55065cd",
+       "thumb": "https://artworks.thetvdb.com/banners/seasons/72879-4.jpg",
+       "title": "Season 4",
+       "type": "season",
+       "year": 1996
+      },
+      {
+       "Guid": [
+        {
+         "id": "tvdb://4934"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://season/65dd8dbef97685e8c550660d",
+       "index": 5,
+       "key": "/library/metadata/65dd8dbef97685e8c550660d/children",
+       "leafCount": 24,
+       "originallyAvailableAt": "1997-09-08",
+       "ratingKey": "65dd8dbef97685e8c550660d",
+       "thumb": "https://artworks.thetvdb.com/banners/seasons/72879-5.jpg",
+       "title": "Season 5",
+       "type": "season",
+       "year": 1997
+      },
+      {
+       "Guid": [
+        {
+         "id": "tvdb://1860085"
+        }
+       ],
+       "contentRating": "TV-PG",
+       "guid": "plex://season/65dd8dbff97685e8c550665f",
+       "index": 6,
+       "key": "/library/metadata/65dd8dbff97685e8c550665f/children",
+       "leafCount": 42,
+       "originallyAvailableAt": "2020-11-20",
+       "ratingKey": "65dd8dbff97685e8c550665f",
+       "summary": "They\u2019re back! The Warner brothers, Yakko and Wakko, and the Warner sister Dot, have a great time wreaking havoc and mayhem in the lives of everyone they meet. After returning to their beloved home, the Warner Bros. water tower, the siblings waste no time in causing chaos and comic confusion as they run loose through the studio, turning the world into their personal playground. Joining Yakko, Wakko and Dot, fan-favorite characters Pinky and the Brain also return to continue their quest for world domination.",
+       "thumb": "https://artworks.thetvdb.com/banners/v4/season/1860085/posters/618f36ef1709d.jpg",
+       "title": "Hulu Season 1",
+       "type": "season",
+       "year": 2020
+      },
+      {
+       "Guid": [
+        {
+         "id": "tvdb://1948342"
+        }
+       ],
+       "contentRating": "TV-PG",
+       "guid": "plex://season/6117a7287843e7002c680b73",
+       "index": 7,
+       "key": "/library/metadata/6117a7287843e7002c680b73/children",
+       "leafCount": 44,
+       "originallyAvailableAt": "2021-11-05",
+       "ratingKey": "6117a7287843e7002c680b73",
+       "thumb": "https://artworks.thetvdb.com/banners/v4/season/1948342/posters/618f373721882.jpg",
+       "title": "Hulu Season 2",
+       "type": "season",
+       "year": 2021
+      },
+      {
+       "Guid": [
+        {
+         "id": "tvdb://2041397"
+        }
+       ],
+       "contentRating": "TV-PG",
+       "guid": "plex://season/63c4243007b3444560219f58",
+       "index": 8,
+       "key": "/library/metadata/63c4243007b3444560219f58/children",
+       "leafCount": 39,
+       "originallyAvailableAt": "2023-02-17",
+       "ratingKey": "63c4243007b3444560219f58",
+       "thumb": "https://artworks.thetvdb.com/banners/v4/season/2041397/posters/6403515705803.jpg",
+       "title": "Hulu Season 3",
+       "type": "season",
+       "year": 2023
+      }
+     ],
+     "identifier": "tv.plex.provider.metadata",
+     "librarySectionID": "home",
+     "librarySectionTitle": "Metadata",
+     "offset": 0,
+     "size": 9,
+     "totalSize": 9
+    }
+   },
+   "start": 0
+  },
+  {
+   "body": "",
+   "method": "GET",
+   "path": "/library/metadata/65dd8dbef97685e8c55065b5/children",
+   "response": {
+    "MediaContainer": {
+     "Metadata": [
+      {
+       "Guid": [
+        {
+         "id": "imdb://tt1376791"
+        },
+        {
+         "id": "tvdb://102238"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://episode/673f5c7ea964098d492f3322",
+       "index": 1,
+       "key": "/library/metadata/673f5c7ea964098d492f3322",
+       "originallyAvailableAt": "1995-09-09",
+       "parentIndex": 3,
+       "ratingKey": "673f5c7ea964098d492f3322",
+       "summary": "The Warners star in \"Super Strong Warner Siblings, \" a spoof of \"The Mighty Morphin' Power Rangers.\" Then, in \"Nutcracker Slappy\", Slappy and Skippy try to open a walnut shell in a segment scored with classical music.",
+       "thumb": "https://artworks.thetvdb.com/banners/episodes/72879/102238.jpg",
+       "title": "Deduces Wild",
+       "type": "episode",
+       "year": 1995
+      },
+      {
+       "Guid": [
+        {
+         "id": "imdb://tt0513234"
+        },
+        {
+         "id": "tvdb://102240"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://episode/673f5c7ea964098d492f333b",
+       "index": 2,
+       "key": "/library/metadata/673f5c7ea964098d492f333b",
+       "originallyAvailableAt": "1995-09-09",
+       "parentIndex": 3,
+       "ratingKey": "673f5c7ea964098d492f333b",
+       "summary": "In \"Variety Speak,\" First, Yakko explains the headlines of the entertainment industry periodical \"Variety.\" Then, in \"Three Tenors and You're Out,\" Slappy takes Skippy to see a baseball game and is surprised to find she is attending a \"Three Tenors\" concert at Dodger stadium instead. Later, Wakko plays his own version of \"Bingo\" with Dr. Scratchansniff. And in the musical \"Finale,\" the Three Tenors return to sing the \"Animaniacs\" theme song.",
+       "thumb": "https://artworks.thetvdb.com/banners/episodes/72879/102240.jpg",
+       "title": "Rest In Pieces",
+       "type": "episode",
+       "year": 1995
+      },
+      {
+       "Guid": [
+        {
+         "id": "imdb://tt1238879"
+        },
+        {
+         "id": "tvdb://102241"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://episode/673f5c7fa964098d492f3357",
+       "index": 3,
+       "key": "/library/metadata/673f5c7fa964098d492f3357",
+       "originallyAvailableAt": "1995-09-09",
+       "parentIndex": 3,
+       "ratingKey": "673f5c7fa964098d492f3357",
+       "summary": "To complete a scavenger hunt, the Warners arrive at detective Sherlock Holmes' flat in \"Deduces Wild\". Next, in \"Rest in Pieces\", Walter Wolf fakes his own death to trap Slappy at a booby-trapped \"funeral,\" but his plan backfires as Slappy delivers the eulogy--and the last laugh. Later, in another musical finale, the Warners warble \"U. N. Me\", a ditty about the United Nations.",
+       "thumb": "https://artworks.thetvdb.com/banners/episodes/72879/102241.jpg",
+       "title": "U.N. Me",
+       "type": "episode",
+       "year": 1995
+      },
+      {
+       "Guid": [
+        {
+         "id": "imdb://tt1376792"
+        },
+        {
+         "id": "tvdb://102242"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://episode/673f5c7fa964098d492f336f",
+       "index": 4,
+       "key": "/library/metadata/673f5c7fa964098d492f336f",
+       "originallyAvailableAt": "1995-09-09",
+       "parentIndex": 3,
+       "ratingKey": "673f5c7fa964098d492f336f",
+       "summary": "In this parody of Power Rangers, the Warners do battle with martial arts bad guys and giant evil monsters.",
+       "thumb": "https://artworks.thetvdb.com/banners/episodes/72879/102242.jpg",
+       "title": "Super Strong Warner Siblings",
+       "type": "episode",
+       "year": 1995
+      },
+      {
+       "Guid": [
+        {
+         "id": "imdb://tt0513203"
+        },
+        {
+         "id": "tvdb://102243"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://episode/673f5c7fa964098d492f3387",
+       "index": 5,
+       "key": "/library/metadata/673f5c7fa964098d492f3387",
+       "originallyAvailableAt": "1995-09-09",
+       "parentIndex": 3,
+       "ratingKey": "673f5c7fa964098d492f3387",
+       "summary": "In a cartoon directed by Charlton Woodchuck, Slappy and Skippy try to crack open a walnut to Pyotr Ilyich Tchaikovsky's \"Nutcracker Suite\".",
+       "thumb": "https://artworks.thetvdb.com/banners/episodes/72879/102243.jpg",
+       "title": "Nutcracker Slappy",
+       "type": "episode",
+       "year": 1995
+      },
+      {
+       "Guid": [
+        {
+         "id": "imdb://tt0513243"
+        },
+        {
+         "id": "tvdb://102244"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://episode/673f5c80a964098d492f33a4",
+       "index": 6,
+       "key": "/library/metadata/673f5c80a964098d492f33a4",
+       "originallyAvailableAt": "1995-09-09",
+       "parentIndex": 3,
+       "ratingKey": "673f5c80a964098d492f33a4",
+       "summary": "A show saluting U.S. history, Warners begin by singing \" Presidents Song\" about all presidents of the United States. In colonial America, Pinky & Brain cry \"Don't Tread On Us\" as they try to switch their own document with real Declaration of Independence",
+       "thumb": "https://artworks.thetvdb.com/banners/episodes/72879/102244.jpg",
+       "title": "Wakko's New Gookie",
+       "type": "episode",
+       "year": 1995
+      },
+      {
+       "Guid": [
+        {
+         "id": "imdb://tt0513214"
+        },
+        {
+         "id": "tvdb://102245"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://episode/673f5c80a964098d492f33bc",
+       "index": 7,
+       "key": "/library/metadata/673f5c80a964098d492f33bc",
+       "originallyAvailableAt": "1995-09-09",
+       "parentIndex": 3,
+       "ratingKey": "673f5c80a964098d492f33bc",
+       "summary": "First, in \"Gimme the Works\", the Warners ask for a day off. Next, in the \"Wizard of Oz\" parody, \"Buttons in Ows\", Mindy and Buttons travel through an enchanted land a few days before Dorothy arrives. Then, when the Warner siblings leave in the middle of \"Hercules Unwound\" and take guest star Hercules with them, Pinky and The Brain replace them. The Brain\u00c2's plan: harness the lightning power of Zeus--and take over the world!",
+       "thumb": "https://artworks.thetvdb.com/banners/episodes/72879/102245.jpg",
+       "title": "A Quake, A Quake!",
+       "type": "episode",
+       "year": 1995
+      },
+      {
+       "Guid": [
+        {
+         "id": "imdb://tt1602152"
+        },
+        {
+         "id": "tvdb://102246"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://episode/673f5c80a964098d492f33d3",
+       "index": 8,
+       "key": "/library/metadata/673f5c80a964098d492f33d3",
+       "originallyAvailableAt": "1995-09-16",
+       "parentIndex": 3,
+       "ratingKey": "673f5c80a964098d492f33d3",
+       "summary": "The Warners sing about the latest news from Hollywood taken from the pages of the magazine Variety.",
+       "thumb": "https://artworks.thetvdb.com/banners/episodes/72879/102246.jpg",
+       "title": "Variety Speak",
+       "type": "episode",
+       "year": 1995
+      },
+      {
+       "Guid": [
+        {
+         "id": "imdb://tt2385352"
+        },
+        {
+         "id": "tvdb://102247"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://episode/673f5c80a964098d492f33ef",
+       "index": 9,
+       "key": "/library/metadata/673f5c80a964098d492f33ef",
+       "originallyAvailableAt": "1995-09-16",
+       "parentIndex": 3,
+       "ratingKey": "673f5c80a964098d492f33ef",
+       "summary": "The Warner siblings are confounded by an ever-so-cheerful governess in \"The Sound of Warners\", a musical parody of \"The Sound of Music.\" Later, in \"Yabba Dabba Boo\", famous screenwriter Larry \"Gelboo\" rewrites a script.",
+       "thumb": "https://artworks.thetvdb.com/banners/episodes/72879/102247.jpg",
+       "title": "Three Tenors and You're Out",
+       "type": "episode",
+       "year": 1995
+      },
+      {
+       "Guid": [
+        {
+         "id": "imdb://tt1692518"
+        },
+        {
+         "id": "tvdb://102248"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://episode/673f5c80a964098d492f3404",
+       "index": 10,
+       "key": "/library/metadata/673f5c80a964098d492f3404",
+       "originallyAvailableAt": "1995-09-16",
+       "parentIndex": 3,
+       "ratingKey": "673f5c80a964098d492f3404",
+       "summary": "In \"My Mother the Squirrel\", the Bluebird thinks Slappy Squirrel is his mother. Then, in a musical segment, the Warners host \"The Party\" in the water tower. Next, the Flame helps Francis Scott Key write our nation's anthem in \"Oh! Say Can You See\", and the Bluebird returns to sing his version of the classic holiday song, \"The Twelve Days of Christmas.\"",
+       "thumb": "https://artworks.thetvdb.com/banners/episodes/72879/102248.jpg",
+       "title": "Bingo",
+       "type": "episode",
+       "year": 1995
+      },
+      {
+       "Guid": [
+        {
+         "id": "imdb://tt1695151"
+        },
+        {
+         "id": "tvdb://102250"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://episode/673f5c81a964098d492f341e",
+       "index": 11,
+       "key": "/library/metadata/673f5c81a964098d492f341e",
+       "originallyAvailableAt": "1995-09-23",
+       "parentIndex": 3,
+       "ratingKey": "673f5c81a964098d492f341e",
+       "summary": "In this parody of A Hard Day's Night, the Warners are trying to go to a convention but are followed everywhere they go by their crazy fans.",
+       "thumb": "https://artworks.thetvdb.com/banners/episodes/72879/102250.jpg",
+       "title": "A Hard Day's Warners",
+       "type": "episode",
+       "year": 1995
+      },
+      {
+       "Guid": [
+        {
+         "id": "imdb://tt1695440"
+        },
+        {
+         "id": "tvdb://102252"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://episode/673f5c81a964098d492f3441",
+       "index": 12,
+       "key": "/library/metadata/673f5c81a964098d492f3441",
+       "originallyAvailableAt": "1995-09-23",
+       "parentIndex": 3,
+       "ratingKey": "673f5c81a964098d492f3441",
+       "summary": "Slappy Squirrel is featured in a parody of a variety of action movies.",
+       "thumb": "https://artworks.thetvdb.com/banners/episodes/72879/102252.jpg",
+       "title": "Gimme A Break",
+       "type": "episode",
+       "year": 1995
+      },
+      {
+       "Guid": [
+        {
+         "id": "imdb://tt2069137"
+        },
+        {
+         "id": "tvdb://102257"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://episode/673f5c81a964098d492f345f",
+       "index": 13,
+       "key": "/library/metadata/673f5c81a964098d492f345f",
+       "originallyAvailableAt": "1995-09-30",
+       "parentIndex": 3,
+       "ratingKey": "673f5c81a964098d492f345f",
+       "summary": "Wakko proves to Schratchnsniff that his song made of two-notes is actual music. A song on the Latin American waterway to the tune of Low Bridge. Wakko sings an ode to his favorite femme. The Warners sing a song about Magellan to the tune of Git Along, Little Dogies. Wakko, using fart sounds from his hands, performs the Chinese Dance from Tchaikovsky's Nutcracker Suite. The Warners sing about who's at their wrap party.",
+       "thumb": "https://artworks.thetvdb.com/banners/episodes/72879/102257.jpg",
+       "title": "The Kid In The Lid",
+       "type": "episode",
+       "year": 1995
+      },
+      {
+       "Guid": [
+        {
+         "id": "tvdb://102259"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://episode/690ecbb554be0433eafe1c8f",
+       "index": 14,
+       "key": "/library/metadata/690ecbb554be0433eafe1c8f",
+       "originallyAvailableAt": "1995-09-30",
+       "parentIndex": 3,
+       "ratingKey": "690ecbb554be0433eafe1c8f",
+       "summary": "In 1955, Slappy takes Skippy for acting lessons. They go to the Method Actor's Studio. The Studio also features Marlon Brando, James Dean,  and Jack Nicholson.",
+       "thumb": "https://artworks.thetvdb.com/banners/episodes/72879/102259.jpg",
+       "title": "Method To Her Madness",
+       "type": "episode",
+       "year": 1995
+      },
+      {
+       "Guid": [
+        {
+         "id": "tvdb://102261"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://episode/690ecbb554be0433eafe1cb5",
+       "index": 15,
+       "key": "/library/metadata/690ecbb554be0433eafe1cb5",
+       "originallyAvailableAt": "1995-10-21",
+       "parentIndex": 3,
+       "ratingKey": "690ecbb554be0433eafe1cb5",
+       "summary": "The Warners meet a mean hot dog vendor. Frustrated with the situation, the Warners leave the cartoon.",
+       "thumb": "https://artworks.thetvdb.com/banners/episodes/72879/102261.jpg",
+       "title": "Gimme The Works",
+       "type": "episode",
+       "year": 1995
+      },
+      {
+       "Guid": [
+        {
+         "id": "tvdb://102262"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://episode/690ecbb654be0433eafe1cdc",
+       "index": 16,
+       "key": "/library/metadata/690ecbb654be0433eafe1cdc",
+       "originallyAvailableAt": "1995-10-21",
+       "parentIndex": 3,
+       "ratingKey": "690ecbb654be0433eafe1cdc",
+       "summary": "Mindy and Buttons parody The Wizard of Oz.",
+       "thumb": "https://artworks.thetvdb.com/banners/episodes/72879/102262.jpg",
+       "title": "Buttons in Ows",
+       "type": "episode",
+       "year": 1995
+      },
+      {
+       "Guid": [
+        {
+         "id": "tvdb://102263"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://episode/690ecbb654be0433eafe1d2a",
+       "index": 17,
+       "key": "/library/metadata/690ecbb654be0433eafe1d2a",
+       "originallyAvailableAt": "1995-10-21",
+       "parentIndex": 3,
+       "ratingKey": "690ecbb654be0433eafe1d2a",
+       "summary": "Pinky and the Brain are in ancient Greece.",
+       "thumb": "https://artworks.thetvdb.com/banners/episodes/72879/102263.jpg",
+       "title": "Hercules Unwound",
+       "type": "episode",
+       "year": 1995
+      },
+      {
+       "Guid": [
+        {
+         "id": "tvdb://102265"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://episode/690ecbb654be0433eafe1d51",
+       "index": 18,
+       "key": "/library/metadata/690ecbb654be0433eafe1d51",
+       "originallyAvailableAt": "1995-11-04",
+       "parentIndex": 3,
+       "ratingKey": "690ecbb654be0433eafe1d51",
+       "summary": "In a parody of The Maltese Falcon and film-noir, the Warners (as detectives) search and protect a mysterious statue from several suspicious characters.",
+       "thumb": "https://artworks.thetvdb.com/banners/episodes/72879/102265.jpg",
+       "title": "This Pun For Hire",
+       "type": "episode",
+       "year": 1995
+      },
+      {
+       "Guid": [
+        {
+         "id": "tvdb://102266"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://episode/690ecbb754be0433eafe1d58",
+       "index": 19,
+       "key": "/library/metadata/690ecbb754be0433eafe1d58",
+       "originallyAvailableAt": "1995-11-04",
+       "parentIndex": 3,
+       "ratingKey": "690ecbb754be0433eafe1d58",
+       "summary": "The Warners are beamed onto their favorite old sci-fi show, where they cause chaos to the crew and introduce the engineer to doughnuts.",
+       "thumb": "https://artworks.thetvdb.com/banners/episodes/72879/102266.jpg",
+       "title": "Star Truck",
+       "type": "episode",
+       "year": 1995
+      },
+      {
+       "Guid": [
+        {
+         "id": "tvdb://102267"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://episode/690ecbb754be0433eafe1d5b",
+       "index": 20,
+       "key": "/library/metadata/690ecbb754be0433eafe1d5b",
+       "originallyAvailableAt": "1995-11-04",
+       "parentIndex": 3,
+       "ratingKey": "690ecbb754be0433eafe1d5b",
+       "summary": "Wakko gets in a fight with himself over a game of go fish.",
+       "thumb": "https://artworks.thetvdb.com/banners/episodes/72879/102267.jpg",
+       "title": "Go Fish",
+       "type": "episode",
+       "year": 1995
+      },
+      {
+       "Guid": [
+        {
+         "id": "tvdb://102269"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://episode/65dd8df1f97685e8c5508d88",
+       "index": 21,
+       "key": "/library/metadata/65dd8df1f97685e8c5508d88",
+       "originallyAvailableAt": "1995-11-04",
+       "parentIndex": 3,
+       "ratingKey": "65dd8df1f97685e8c5508d88",
+       "summary": "Yakko attends school and sings a song about multiplication.",
+       "thumb": "https://artworks.thetvdb.com/banners/episodes/72879/102269.jpg",
+       "title": "Multiplication",
+       "type": "episode",
+       "year": 1995
+      },
+      {
+       "Guid": [
+        {
+         "id": "tvdb://102271"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://episode/690ecbb854be0433eafe1d80",
+       "index": 22,
+       "key": "/library/metadata/690ecbb854be0433eafe1d80",
+       "originallyAvailableAt": "1995-11-11",
+       "parentIndex": 3,
+       "ratingKey": "690ecbb854be0433eafe1d80",
+       "summary": "The Warners sing a song about the Presidents of the United States.",
+       "thumb": "https://artworks.thetvdb.com/banners/episodes/72879/102271.jpg",
+       "title": "The Presidents Song",
+       "type": "episode",
+       "year": 1995
+      },
+      {
+       "Guid": [
+        {
+         "id": "tvdb://102272"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://episode/690ecbb854be0433eafe1de8",
+       "index": 23,
+       "key": "/library/metadata/690ecbb854be0433eafe1de8",
+       "originallyAvailableAt": "1995-11-11",
+       "parentIndex": 3,
+       "ratingKey": "690ecbb854be0433eafe1de8",
+       "summary": "Thomas Jefferson writes the Declaration Of Independance. Brain writes up a Declaration of Obedience and hopes to switch it with Jefferson's declaration.",
+       "thumb": "https://artworks.thetvdb.com/banners/episodes/72879/102272.jpg",
+       "title": "Don't Tread On Us",
+       "type": "episode",
+       "year": 1995
+      },
+      {
+       "Guid": [
+        {
+         "id": "tvdb://102273"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://episode/65dd8df1f97685e8c5508d9a",
+       "index": 24,
+       "key": "/library/metadata/65dd8df1f97685e8c5508d9a",
+       "originallyAvailableAt": "1995-11-11",
+       "parentIndex": 3,
+       "ratingKey": "65dd8df1f97685e8c5508d9a",
+       "summary": "The Flame is present as Longfellow writes his famous poem, \"Paul Revere's Ride.\"",
+       "thumb": "https://artworks.thetvdb.com/banners/episodes/72879/102273.jpg",
+       "title": "The Flame Returns",
+       "type": "episode",
+       "year": 1995
+      },
+      {
+       "Guid": [
+        {
+         "id": "tvdb://102274"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://episode/690ecbb954be0433eafe1e37",
+       "index": 25,
+       "key": "/library/metadata/690ecbb954be0433eafe1e37",
+       "originallyAvailableAt": "1995-11-18",
+       "parentIndex": 3,
+       "ratingKey": "690ecbb954be0433eafe1e37",
+       "summary": "In this parody of The Sound of Music, the Warners acquire a governess. When she begins to stifle them, the Warners decide to annoy her in return.",
+       "thumb": "https://artworks.thetvdb.com/banners/episodes/72879/102274.jpg",
+       "title": "The Sound of Warners",
+       "type": "episode",
+       "year": 1995
+      },
+      {
+       "Guid": [
+        {
+         "id": "tmdb://1906685"
+        },
+        {
+         "id": "tvdb://102276"
+        }
+       ],
+       "contentRating": "TV-Y7",
+       "guid": "plex://episode/65dd8dcbf97685e8c550703a",
+       "index": 26,
+       "key": "/library/metadata/65dd8dcbf97685e8c550703a",
+       "originallyAvailableAt": "1995-11-18",
+       "parentIndex": 3,
+       "ratingKey": "65dd8dcbf97685e8c550703a",
+       "summary": "Chicken Boo attends a table read for the movie The Flintstones.",
+       "thumb": "https://image.tmdb.org/t/p/original/k4lshNCyGKiHE0yKjjnDh3ZtYet.jpg",
+       "title": "Yabba Dabba Boo",
+       "type": "episode",
+       "year": 1995
+      },
+      {
+       "Guid": [
+        {
+         "id": "tmdb://1082000"
+        },
+        {
+         "id": "tvdb://102278"
+        }
+       ],
+       "contentRating": "TV-Y7",
+       "guid": "plex://episode/65dd8dcaf97685e8c550701c",
+       "index": 27,
+       "key": "/library/metadata/65dd8dcaf97685e8c550701c",
+       "originallyAvailableAt": "1996-01-27",
+       "parentIndex": 3,
+       "ratingKey": "65dd8dcaf97685e8c550701c",
+       "summary": "The little bird from Wild Blue Yonder returns and is adopted by Slappy.",
+       "thumb": "https://image.tmdb.org/t/p/original/bl3TbFPxOtGOPpzwk9kTfobjZyN.jpg",
+       "title": "My Mother The Squirrel",
+       "type": "episode",
+       "year": 1996
+      },
+      {
+       "Guid": [
+        {
+         "id": "tmdb://1906680"
+        },
+        {
+         "id": "tvdb://102279"
+        }
+       ],
+       "contentRating": "TV-Y7",
+       "guid": "plex://episode/65dd8dcaf97685e8c5506ff0",
+       "index": 28,
+       "key": "/library/metadata/65dd8dcaf97685e8c5506ff0",
+       "originallyAvailableAt": "1996-01-27",
+       "parentIndex": 3,
+       "ratingKey": "65dd8dcaf97685e8c5506ff0",
+       "summary": "The Warners invite several people to their water tower in expectation of a surprise guest, who Thaddeus Plotz believes to be Steven Spielberg, but is really a different \"Steven\".",
+       "thumb": "https://image.tmdb.org/t/p/original/jZzBAkfVvpCKtX9RLUPgIbLJ2rS.jpg",
+       "title": "The Party",
+       "type": "episode",
+       "year": 1996
+      },
+      {
+       "Guid": [
+        {
+         "id": "tmdb://1906679"
+        },
+        {
+         "id": "tvdb://102280"
+        }
+       ],
+       "contentRating": "TV-Y7",
+       "guid": "plex://episode/65dd8dcaf97685e8c5506fd2",
+       "index": 29,
+       "key": "/library/metadata/65dd8dcaf97685e8c5506fd2",
+       "originallyAvailableAt": "1996-01-27",
+       "parentIndex": 3,
+       "ratingKey": "65dd8dcaf97685e8c5506fd2",
+       "summary": "The Flame is present and watches along as Francis Scott Key writes The Star-Spangled Banner during the War of 1812.",
+       "thumb": "https://image.tmdb.org/t/p/original/4JnjxbrdOzSFcHmYtgNuATIt2LR.jpg",
+       "title": "Oh! Say Can You See?",
+       "type": "episode",
+       "year": 1996
+      },
+      {
+       "Guid": [
+        {
+         "id": "tvdb://5844921"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://episode/65dd8df2f97685e8c5508da9",
+       "index": 30,
+       "key": "/library/metadata/65dd8df2f97685e8c5508da9",
+       "originallyAvailableAt": "1996-01-27",
+       "parentIndex": 3,
+       "ratingKey": "65dd8df2f97685e8c5508da9",
+       "summary": "The little blue bird sings his version of The Twelve Days of Christmas.",
+       "thumb": "https://artworks.thetvdb.com/banners/episodes/72879/5844921.jpg",
+       "title": "The Twelve Days of Christmas",
+       "type": "episode",
+       "year": 1996
+      },
+      {
+       "Guid": [
+        {
+         "id": "tmdb://1906676"
+        },
+        {
+         "id": "tvdb://102287"
+        }
+       ],
+       "contentRating": "TV-Y7",
+       "guid": "plex://episode/65dd8dcaf97685e8c5506fb9",
+       "index": 31,
+       "key": "/library/metadata/65dd8dcaf97685e8c5506fb9",
+       "originallyAvailableAt": "1996-02-03",
+       "parentIndex": 3,
+       "ratingKey": "65dd8dcaf97685e8c5506fb9",
+       "summary": "Dot is hired to take up an act in a famous musical. When the director, Andy Lloud Webby, becomes annoying, she and her brothers decide to ruin it.",
+       "thumb": "https://image.tmdb.org/t/p/original/yjc10oVboe7MMox36NBWk3e4E5z.jpg",
+       "title": "Dot's Entertainment",
+       "type": "episode",
+       "year": 1996
+      },
+      {
+       "Guid": [
+        {
+         "id": "tmdb://1082001"
+        },
+        {
+         "id": "tvdb://102282"
+        }
+       ],
+       "contentRating": "TV-Y7",
+       "guid": "plex://episode/65dd8dc9f97685e8c5506f91",
+       "index": 32,
+       "key": "/library/metadata/65dd8dc9f97685e8c5506f91",
+       "originallyAvailableAt": "1996-02-03",
+       "parentIndex": 3,
+       "ratingKey": "65dd8dc9f97685e8c5506f91",
+       "summary": "A showing of the Warners' appearance in a Googi Goop cartoon, \"Little Red Riding Goop\".",
+       "thumb": "https://image.tmdb.org/t/p/original/xuRX5tZKx9E0iZSWseCNusd5g7q.jpg",
+       "title": "The Girl with the Googily Goop",
+       "type": "episode",
+       "year": 1996
+      },
+      {
+       "Guid": [
+        {
+         "id": "tmdb://1082002"
+        },
+        {
+         "id": "tvdb://102283"
+        }
+       ],
+       "contentRating": "TV-Y7",
+       "guid": "plex://episode/65dd8dc9f97685e8c5506f6c",
+       "index": 33,
+       "key": "/library/metadata/65dd8dc9f97685e8c5506f6c",
+       "originallyAvailableAt": "1996-02-03",
+       "parentIndex": 3,
+       "ratingKey": "65dd8dc9f97685e8c5506f6c",
+       "summary": "In a parody of Rudyard Kipling's poem Gunga Din, Dot is the only one with water in a village and everyone wants it, because it is hot out.",
+       "thumb": "https://image.tmdb.org/t/p/original/zupRUUyG8CDMibNPt89C1Zjhcty.jpg",
+       "title": "Gunga Dot",
+       "type": "episode",
+       "year": 1996
+      },
+      {
+       "Guid": [
+        {
+         "id": "tmdb://1906675"
+        },
+        {
+         "id": "tvdb://102288"
+        }
+       ],
+       "contentRating": "TV-Y7",
+       "guid": "plex://episode/65dd8dc9f97685e8c5506f4b",
+       "index": 34,
+       "key": "/library/metadata/65dd8dc9f97685e8c5506f4b",
+       "originallyAvailableAt": "1996-02-03",
+       "parentIndex": 3,
+       "ratingKey": "65dd8dc9f97685e8c5506f4b",
+       "summary": "Slappy is the coach of Skippy's soccer team. Skippy keeps getting hit in the face by the ball, causing him to cry and Slappy deciding to put him out of the game. But at the final game, the last ball that hits Skippy's face gives the team the win.",
+       "thumb": "https://image.tmdb.org/t/p/original/pVdvc3F9tbDp5rd26hvSIrKQ5YC.jpg",
+       "title": "Soccer Coach Slappy",
+       "type": "episode",
+       "year": 1996
+      },
+      {
+       "Guid": [
+        {
+         "id": "tmdb://1906677"
+        },
+        {
+         "id": "tvdb://102284"
+        }
+       ],
+       "contentRating": "TV-Y7",
+       "guid": "plex://episode/65dd8dc9f97685e8c5506f26",
+       "index": 35,
+       "key": "/library/metadata/65dd8dc9f97685e8c5506f26",
+       "originallyAvailableAt": "1996-02-03",
+       "parentIndex": 3,
+       "ratingKey": "65dd8dc9f97685e8c5506f26",
+       "summary": "Katie Ka-Boom gets furious when her parents will not let her wear clothes that are \"in-style\" at her school, since they make her belly button visible.",
+       "thumb": "https://image.tmdb.org/t/p/original/8o0sqXnznCLeFWniD85Cq4YmyrS.jpg",
+       "title": "Belly Button Blues",
+       "type": "episode",
+       "year": 1996
+      },
+      {
+       "Guid": [
+        {
+         "id": "tmdb://1906673"
+        },
+        {
+         "id": "tvdb://102290"
+        }
+       ],
+       "contentRating": "TV-Y7",
+       "guid": "plex://episode/65dd8dc9f97685e8c5506f04",
+       "index": 36,
+       "key": "/library/metadata/65dd8dc9f97685e8c5506f04",
+       "originallyAvailableAt": "1996-02-03",
+       "parentIndex": 3,
+       "ratingKey": "65dd8dc9f97685e8c5506f04",
+       "summary": "The Warners wake up from suspended animation in a spaceship in a parody of 2001: A Space Odyssey. When AL5000, the computer of the ship, orders them to return to their sleeping pods, the Warners refuse to and things get out of hand.",
+       "thumb": "https://image.tmdb.org/t/p/original/jzAK904gS0sAXk7tsSv6FEP3D2G.jpg",
+       "title": "Our Final Space Cartoon, We Promise",
+       "type": "episode",
+       "year": 1996
+      },
+      {
+       "Guid": [
+        {
+         "id": "tmdb://1906674"
+        },
+        {
+         "id": "tvdb://102289"
+        }
+       ],
+       "contentRating": "TV-Y7",
+       "guid": "plex://episode/65dd8dc9f97685e8c5506ee3",
+       "index": 37,
+       "key": "/library/metadata/65dd8dc9f97685e8c5506ee3",
+       "originallyAvailableAt": "1996-02-03",
+       "parentIndex": 3,
+       "ratingKey": "65dd8dc9f97685e8c5506ee3",
+       "summary": "The Warners are visited by network censors after harassing Attila the Hun, their cartoons being too violent.",
+       "thumb": "https://image.tmdb.org/t/p/original/bZcMyvgkBOchjnWGamUm197q9ps.jpg",
+       "title": "Valuable Lesson",
+       "type": "episode",
+       "year": 1996
+      },
+      {
+       "Guid": [
+        {
+         "id": "tmdb://1082003"
+        },
+        {
+         "id": "tvdb://102291"
+        }
+       ],
+       "contentRating": "TV-Y7",
+       "guid": "plex://episode/65dd8dc8f97685e8c5506ecd",
+       "index": 38,
+       "key": "/library/metadata/65dd8dc8f97685e8c5506ecd",
+       "originallyAvailableAt": "1996-02-24",
+       "parentIndex": 3,
+       "ratingKey": "65dd8dc8f97685e8c5506ecd",
+       "summary": "Wakko proves to Schratchnsniff that his song made of two notes is actual music.",
+       "thumb": "https://image.tmdb.org/t/p/original/xlsFkXWmLpUUW1siqQYhLonIQ5V.jpg",
+       "title": "Wakko's 2-Note Song",
+       "type": "episode",
+       "year": 1996
+      },
+      {
+       "Guid": [
+        {
+         "id": "tmdb://1906623"
+        },
+        {
+         "id": "tvdb://102292"
+        }
+       ],
+       "contentRating": "TV-Y7",
+       "guid": "plex://episode/65dd8dc8f97685e8c5506eb3",
+       "index": 39,
+       "key": "/library/metadata/65dd8dc8f97685e8c5506eb3",
+       "originallyAvailableAt": "1996-02-24",
+       "parentIndex": 3,
+       "ratingKey": "65dd8dc8f97685e8c5506eb3",
+       "summary": "Yakko sings a song on the Latin American waterway to the tune of \"Low Bridge\".",
+       "thumb": "https://image.tmdb.org/t/p/original/813RG7s2jPW5NtdMOq74EX1U7ia.jpg",
+       "title": "Panama Canal",
+       "type": "episode",
+       "year": 1996
+      },
+      {
+       "Guid": [
+        {
+         "id": "tmdb://1906622"
+        },
+        {
+         "id": "tvdb://102293"
+        }
+       ],
+       "contentRating": "TV-Y7",
+       "guid": "plex://episode/65dd8dc8f97685e8c5506e91",
+       "index": 40,
+       "key": "/library/metadata/65dd8dc8f97685e8c5506e91",
+       "originallyAvailableAt": "1996-02-24",
+       "parentIndex": 3,
+       "ratingKey": "65dd8dc8f97685e8c5506e91",
+       "summary": "Wakko sings a song about his favorite girl (Hello Nurse, of course).",
+       "thumb": "https://artworks.thetvdb.com/banners/episodes/72879/102293.jpg",
+       "title": "Hello Nurse",
+       "type": "episode",
+       "year": 1996
+      },
+      {
+       "Guid": [
+        {
+         "id": "tmdb://1906621"
+        },
+        {
+         "id": "tvdb://102294"
+        }
+       ],
+       "contentRating": "TV-Y7",
+       "guid": "plex://episode/65dd8dc8f97685e8c5506e77",
+       "index": 41,
+       "key": "/library/metadata/65dd8dc8f97685e8c5506e77",
+       "originallyAvailableAt": "1996-02-24",
+       "parentIndex": 3,
+       "ratingKey": "65dd8dc8f97685e8c5506e77",
+       "summary": "The Warners sing a song about Ferdinand Magellan to the tune of \"Git Along, Little Dogies\".",
+       "thumb": "https://image.tmdb.org/t/p/original/8bktqoCy8Idcsn4gRaPH4oZjlBt.jpg",
+       "title": "The Ballad of Magellan",
+       "type": "episode",
+       "year": 1996
+      },
+      {
+       "Guid": [
+        {
+         "id": "tmdb://1906620"
+        },
+        {
+         "id": "tvdb://102295"
+        }
+       ],
+       "contentRating": "TV-Y7",
+       "guid": "plex://episode/65dd8dc8f97685e8c5506e5a",
+       "index": 42,
+       "key": "/library/metadata/65dd8dc8f97685e8c5506e5a",
+       "originallyAvailableAt": "1996-02-24",
+       "parentIndex": 3,
+       "ratingKey": "65dd8dc8f97685e8c5506e5a",
+       "summary": "Wakko, suffering from laryngitis and unable to belch, uses fart sounds from his hands to perform the \"Chinese Dance\" from Tchaikovsky's Nutcracker Suite.",
+       "thumb": "https://image.tmdb.org/t/p/original/wofRzIYrCVyYX6VmvcZO2SqEB4G.jpg",
+       "title": "The Return of the Great Wakkorotti",
+       "type": "episode",
+       "year": 1996
+      },
+      {
+       "Guid": [
+        {
+         "id": "tmdb://1906619"
+        },
+        {
+         "id": "tvdb://102296"
+        }
+       ],
+       "contentRating": "TV-Y7",
+       "guid": "plex://episode/65dd8dc7f97685e8c5506e3c",
+       "index": 43,
+       "key": "/library/metadata/65dd8dc7f97685e8c5506e3c",
+       "originallyAvailableAt": "1996-02-24",
+       "parentIndex": 3,
+       "ratingKey": "65dd8dc7f97685e8c5506e3c",
+       "summary": "The Warners sing about their big third-season wrap party at the water tower.",
+       "thumb": "https://image.tmdb.org/t/p/original/KkGXshFAO2DeUxY2nZcXOKzDI1.jpg",
+       "title": "The Big Wrap Party Tonight",
+       "type": "episode",
+       "year": 1996
+      }
+     ],
+     "identifier": "tv.plex.provider.metadata",
+     "librarySectionID": "home",
+     "librarySectionTitle": "Metadata",
+     "offset": 0,
+     "size": 43,
+     "totalSize": 43
+    }
+   },
+   "start": 0
+  },
+  {
+   "body": "",
+   "method": "GET",
+   "path": "/library/metadata/65dd8dbef97685e8c55065cd/children",
+   "response": {
+    "MediaContainer": {
+     "Metadata": [
+      {
+       "Guid": [
+        {
+         "id": "imdb://tt1858610"
+        },
+        {
+         "id": "tmdb://1082014"
+        },
+        {
+         "id": "tvdb://102297"
+        }
+       ],
+       "contentRating": "TV-Y7",
+       "guid": "plex://episode/65dd8dc7f97685e8c5506e1d",
+       "index": 1,
+       "key": "/library/metadata/65dd8dc7f97685e8c5506e1d",
+       "originallyAvailableAt": "1996-09-07",
+       "parentIndex": 4,
+       "ratingKey": "65dd8dc7f97685e8c5506e1d",
+       "summary": "After being made to believe that his aunt Slappy is going insane after watching too many tabloid talk shows, Skippy places her in a retirement home for cartoon characters. A parody of One Flew Over the Cuckoo's Nest.",
+       "thumb": "https://image.tmdb.org/t/p/original/kDAaoFIFQjRD75C6P5v9UiJbD7H.jpg",
+       "title": "One Flew Over The Cuckoo Clock",
+       "type": "episode",
+       "year": 1996
+      },
+      {
+       "Guid": [
+        {
+         "id": "imdb://tt0513209"
+        },
+        {
+         "id": "tvdb://102299"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://episode/673f5c81a964098d492f3478",
+       "index": 2,
+       "key": "/library/metadata/673f5c81a964098d492f3478",
+       "originallyAvailableAt": "1996-09-07",
+       "parentIndex": 4,
+       "ratingKey": "673f5c81a964098d492f3478",
+       "summary": "The Tazmanian Devil plays the Beast and Dot is Cutie in \"Cutie and the Beast,\" a musical parody of \"Beauty and the Beast.\" In \"Boo Happens,\" Chicken Boo relives the life of \"Forrest Gump.\" Later, the Warners have fun with puns in an amusing musical number sung to the tune of the classic Christmas carol, \"Noel.\"",
+       "thumb": "https://artworks.thetvdb.com/banners/episodes/72879/102299.jpg",
+       "title": "Cutie and The Beast",
+       "type": "episode",
+       "year": 1996
+      },
+      {
+       "Guid": [
+        {
+         "id": "imdb://tt1858835"
+        },
+        {
+         "id": "tvdb://102300"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://episode/673f5c82a964098d492f3493",
+       "index": 3,
+       "key": "/library/metadata/673f5c82a964098d492f3493",
+       "originallyAvailableAt": "1996-09-07",
+       "parentIndex": 4,
+       "ratingKey": "673f5c82a964098d492f3493",
+       "summary": "The Warners, as Native Americans, introduce John Smith and company to ice cream in \"Jokahontas,\" a musical spoof of Disney's animated film \"Pocahontas.\" Later, in \"Boids on the Hood,\" the Goodfeathers challenge Ralph the Guard as he tries in vain to protect Plotz's car from \"aerial attacks.\" Then, it's \"Mighty Wakko at the Bat\" in the Warners version of the famous Ernest Lawrence Thayer poem.",
+       "thumb": "https://artworks.thetvdb.com/banners/episodes/72879/102300.jpg",
+       "title": "Boo Happens",
+       "type": "episode",
+       "year": 1996
+      },
+      {
+       "Guid": [
+        {
+         "id": "imdb://tt1622041"
+        },
+        {
+         "id": "tvdb://102301"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://episode/673f5c82a964098d492f34b2",
+       "index": 4,
+       "key": "/library/metadata/673f5c82a964098d492f34b2",
+       "originallyAvailableAt": "1996-09-07",
+       "parentIndex": 4,
+       "ratingKey": "673f5c82a964098d492f34b2",
+       "summary": "To win a Humanitarian Animation Award, the Warners attempt to teach a lesson in political correctness in \"A Very Very Very Very Special Show.\" Then, in \"Night of the Living Buttons,\" Buttons saves Mindy from a horde of graveyard zombies. The Warners return in \"Soda Jerk\" as Yakko and Dot attempt to cure Wakko of a bad case of the hiccups.",
+       "thumb": "https://artworks.thetvdb.com/banners/episodes/72879/102301.jpg",
+       "title": "Noel",
+       "type": "episode",
+       "year": 1996
+      },
+      {
+       "Guid": [
+        {
+         "id": "imdb://tt1844863"
+        },
+        {
+         "id": "tvdb://102304"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://episode/673f5c82a964098d492f34cd",
+       "index": 5,
+       "key": "/library/metadata/673f5c82a964098d492f34cd",
+       "originallyAvailableAt": "1996-09-14",
+       "parentIndex": 4,
+       "ratingKey": "673f5c82a964098d492f34cd",
+       "summary": "Parody of Disney animated films concentrating on Pocahontas, with Dot as the eponymous Native princess.",
+       "thumb": "https://artworks.thetvdb.com/banners/episodes/72879/102304.jpg",
+       "title": "Jokahontas",
+       "type": "episode",
+       "year": 1996
+      },
+      {
+       "Guid": [
+        {
+         "id": "imdb://tt0513204"
+        },
+        {
+         "id": "tvdb://102305"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://episode/673f5c82a964098d492f34e3",
+       "index": 6,
+       "key": "/library/metadata/673f5c82a964098d492f34e3",
+       "originallyAvailableAt": "1996-09-14",
+       "parentIndex": 4,
+       "ratingKey": "673f5c82a964098d492f34e3",
+       "summary": "To cure Ernest Hemingway of his writer's block, the Warners, as overzealous office supply salespeople, attempt to supply \"Paper For Pappa\" while chasing him around the globe. Next, the Hip Hippos compete on America's most violent game show, \"Amazing Gladiators.\" Then, Pinky and Ralph the Guard try in vain to make plans for the evening in \"Pinky and the Ralph.\"",
+       "thumb": "https://artworks.thetvdb.com/banners/episodes/72879/102305.jpg",
+       "title": "Boids on the Hood",
+       "type": "episode",
+       "year": 1996
+      },
+      {
+       "Guid": [
+        {
+         "id": "imdb://tt1858836"
+        },
+        {
+         "id": "tvdb://102306"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://episode/673f5c82a964098d492f34ff",
+       "index": 7,
+       "key": "/library/metadata/673f5c82a964098d492f34ff",
+       "originallyAvailableAt": "1996-09-14",
+       "parentIndex": 4,
+       "ratingKey": "673f5c82a964098d492f34ff",
+       "summary": "In a parody of the Ernest Lawrence Thayer poem \"Casey at the Ba\", Wakko Warner must lead the Animaniacs baseball team to victory.",
+       "thumb": "https://artworks.thetvdb.com/banners/episodes/72879/102306.jpg",
+       "title": "Mighty Wakko at the Bat",
+       "type": "episode",
+       "year": 1996
+      },
+      {
+       "Guid": [
+        {
+         "id": "imdb://tt0513226"
+        },
+        {
+         "id": "tvdb://102307"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://episode/673f5c83a964098d492f3519",
+       "index": 8,
+       "key": "/library/metadata/673f5c83a964098d492f3519",
+       "originallyAvailableAt": "1996-09-21",
+       "parentIndex": 4,
+       "ratingKey": "673f5c83a964098d492f3519",
+       "summary": "The Brain's plan to take over the world by becoming the sole heir to the Rockefeller fortune goes awry in \"Pitter Patter of Little Feet.\" Then, Buttons chases after \"Mindy in Wonderland\" in this parody of \"Alice in Wonderland.\"",
+       "thumb": "https://artworks.thetvdb.com/banners/episodes/72879/102307.jpg",
+       "title": "A Very Very Very Very Special Show",
+       "type": "episode",
+       "year": 1996
+      },
+      {
+       "Guid": [
+        {
+         "id": "tvdb://102308"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://episode/690ecbbf54be0433eafe1fb7",
+       "index": 9,
+       "key": "/library/metadata/690ecbbf54be0433eafe1fb7",
+       "originallyAvailableAt": "1996-09-21",
+       "parentIndex": 4,
+       "ratingKey": "690ecbbf54be0433eafe1fb7",
+       "summary": "In a parody of the music video Thriller by Michael Jackson, Buttons must save Mindy from zombies.",
+       "thumb": "https://artworks.thetvdb.com/banners/episodes/72879/102308.jpg",
+       "title": "Night of the Living Buttons",
+       "type": "episode",
+       "year": 1996
+      },
+      {
+       "Guid": [
+        {
+         "id": "tvdb://102309"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://episode/690ecbbf54be0433eafe1fc7",
+       "index": 10,
+       "key": "/library/metadata/690ecbbf54be0433eafe1fc7",
+       "originallyAvailableAt": "1996-09-21",
+       "parentIndex": 4,
+       "ratingKey": "690ecbbf54be0433eafe1fc7",
+       "summary": "Wakko eats too much dessert at the ice cream parlor. When he gets the hiccups Yakko and Dot try to figure out how to cure him. Eventually, Wakko cures himself. All he really needed to do was burb.",
+       "thumb": "https://artworks.thetvdb.com/banners/episodes/72879/102309.jpg",
+       "title": "Soda Jerk",
+       "type": "episode",
+       "year": 1996
+      },
+      {
+       "Guid": [
+        {
+         "id": "tvdb://102310"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://episode/690ecbbf54be0433eafe1feb",
+       "index": 11,
+       "key": "/library/metadata/690ecbbf54be0433eafe1feb",
+       "originallyAvailableAt": "1996-09-28",
+       "parentIndex": 4,
+       "ratingKey": "690ecbbf54be0433eafe1feb",
+       "summary": "The Warners are partnered with a James Bond caricature on a mission.",
+       "thumb": "https://artworks.thetvdb.com/banners/episodes/72879/102310.jpg",
+       "title": "From Burbank with Love",
+       "type": "episode",
+       "year": 1996
+      },
+      {
+       "Guid": [
+        {
+         "id": "tvdb://102311"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://episode/690ecbc054be0433eafe1ff8",
+       "index": 12,
+       "key": "/library/metadata/690ecbc054be0433eafe1ff8",
+       "originallyAvailableAt": "1996-09-28",
+       "parentIndex": 4,
+       "ratingKey": "690ecbc054be0433eafe1ff8",
+       "summary": "Dr. Scratchansniff goes on a vacation. Unfortunately for him, the Warners tag along with him.",
+       "thumb": "https://artworks.thetvdb.com/banners/episodes/72879/102311.jpg",
+       "title": "Anchors A-Warners",
+       "type": "episode",
+       "year": 1996
+      },
+      {
+       "Guid": [
+        {
+         "id": "tvdb://102312"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://episode/690ecbc054be0433eafe2021",
+       "index": 13,
+       "key": "/library/metadata/690ecbc054be0433eafe2021",
+       "originallyAvailableAt": "1996-09-28",
+       "parentIndex": 4,
+       "ratingKey": "690ecbc054be0433eafe2021",
+       "summary": "Yakko explains in song the different time zones.",
+       "thumb": "https://artworks.thetvdb.com/banners/episodes/72879/102312.jpg",
+       "title": "When You're Traveling...",
+       "type": "episode",
+       "year": 1996
+      },
+      {
+       "Guid": [
+        {
+         "id": "tvdb://102315"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://episode/65dd8df2f97685e8c5508db2",
+       "index": 14,
+       "key": "/library/metadata/65dd8df2f97685e8c5508db2",
+       "originallyAvailableAt": "1996-10-19",
+       "parentIndex": 4,
+       "ratingKey": "65dd8df2f97685e8c5508db2",
+       "summary": "The Warners chase Ernest Hemingway around the world when he refuses to sign for his office supply delivery.",
+       "thumb": "https://artworks.thetvdb.com/banners/episodes/72879/102315.jpg",
+       "title": "Papers for Pappa",
+       "type": "episode",
+       "year": 1996
+      },
+      {
+       "Guid": [
+        {
+         "id": "tvdb://102317"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://episode/690ecbc154be0433eafe202e",
+       "index": 15,
+       "key": "/library/metadata/690ecbc154be0433eafe202e",
+       "originallyAvailableAt": "1996-10-19",
+       "parentIndex": 4,
+       "ratingKey": "690ecbc154be0433eafe202e",
+       "summary": "As an anniversary present for Maurita, Flavio gets them onto her favourite TV show \"Amazing Gladiators\".",
+       "thumb": "https://artworks.thetvdb.com/banners/episodes/72879/102317.jpg",
+       "title": "Amazing Gladiators",
+       "type": "episode",
+       "year": 1996
+      },
+      {
+       "Guid": [
+        {
+         "id": "tvdb://102318"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://episode/690ecbc154be0433eafe203d",
+       "index": 16,
+       "key": "/library/metadata/690ecbc154be0433eafe203d",
+       "originallyAvailableAt": "1996-10-19",
+       "parentIndex": 4,
+       "ratingKey": "690ecbc154be0433eafe203d",
+       "summary": "A sneak peek of a fictional spin-off starring Pinky and Ralph the Guard.",
+       "thumb": "https://artworks.thetvdb.com/banners/episodes/72879/102318.jpg",
+       "title": "Pinky and the Ralph",
+       "type": "episode",
+       "year": 1996
+      },
+      {
+       "Guid": [
+        {
+         "id": "tvdb://102319"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://episode/690ecbc254be0433eafe2059",
+       "index": 17,
+       "key": "/library/metadata/690ecbc254be0433eafe2059",
+       "originallyAvailableAt": "1996-11-02",
+       "parentIndex": 4,
+       "ratingKey": "690ecbc254be0433eafe2059",
+       "summary": "Wakko Warner is featured in ten short films that give us a closer look at the Hollywood Legend.",
+       "thumb": "https://artworks.thetvdb.com/banners/episodes/72879/102319.jpg",
+       "title": "Ten Short Films About Wakko Warner",
+       "type": "episode",
+       "year": 1996
+      },
+      {
+       "Guid": [
+        {
+         "id": "tvdb://102320"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://episode/690ecbc254be0433eafe2062",
+       "index": 18,
+       "key": "/library/metadata/690ecbc254be0433eafe2062",
+       "originallyAvailableAt": "1996-11-02",
+       "parentIndex": 4,
+       "ratingKey": "690ecbc254be0433eafe2062",
+       "summary": "A cuckoo clock bird falls for a real female bird and tries to win her love on the hour.",
+       "thumb": "https://artworks.thetvdb.com/banners/episodes/72879/102320.jpg",
+       "title": "No Time for Love",
+       "type": "episode",
+       "year": 1996
+      },
+      {
+       "Guid": [
+        {
+         "id": "tvdb://102321"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://episode/690ecbc354be0433eafe20b8",
+       "index": 19,
+       "key": "/library/metadata/690ecbc354be0433eafe20b8",
+       "originallyAvailableAt": "1996-11-02",
+       "parentIndex": 4,
+       "ratingKey": "690ecbc354be0433eafe20b8",
+       "summary": "Chicken Boo pretends to be a television network programmer who decides on the network's fall line-up.",
+       "thumb": "https://artworks.thetvdb.com/banners/episodes/72879/102321.jpg",
+       "title": "The Boo Network",
+       "type": "episode",
+       "year": 1996
+      },
+      {
+       "Guid": [
+        {
+         "id": "tvdb://102322"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://episode/690ecbc354be0433eafe20e2",
+       "index": 20,
+       "key": "/library/metadata/690ecbc354be0433eafe20e2",
+       "originallyAvailableAt": "1996-11-16",
+       "parentIndex": 4,
+       "ratingKey": "690ecbc354be0433eafe20e2",
+       "summary": "Brain's latest scheme for world domination involves pretending to be a baby hippo (delivered by Friz Freleng's famous drunken stork) for proud new parents Flavio and Maurita to reap an inheritance.",
+       "thumb": "https://artworks.thetvdb.com/banners/episodes/72879/102322.jpg",
+       "title": "Pitter Patter of Little Feet",
+       "type": "episode",
+       "year": 1996
+      },
+      {
+       "Guid": [
+        {
+         "id": "tvdb://102323"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://episode/690ecbc454be0433eafe20ee",
+       "index": 21,
+       "key": "/library/metadata/690ecbc454be0433eafe20ee",
+       "originallyAvailableAt": "1996-11-16",
+       "parentIndex": 4,
+       "ratingKey": "690ecbc454be0433eafe20ee",
+       "summary": "Buttons tries to protect Mindy in a \"Alice In Wonderland\" world.",
+       "thumb": "https://artworks.thetvdb.com/banners/episodes/72879/102323.jpg",
+       "title": "Mindy in Wonderland",
+       "type": "episode",
+       "year": 1996
+      },
+      {
+       "Guid": [
+        {
+         "id": "tvdb://102324"
+        }
+       ],
+       "contentRating": "TV-G",
+       "guid": "plex://episode/690ecbc454be0433eafe2104",
+       "index": 22,
+       "key": "/library/metadata/690ecbc454be0433eafe2104",
+       "originallyAvailableAt": "1996-11-16",
+       "parentIndex": 4,
+       "ratingKey": "690ecbc454be0433eafe2104",
+       "summary": "Unhappy with his home life, Ralph dreams of picture perfect marriage attended by all the Animaniacs.",
+       "thumb": "https://artworks.thetvdb.com/banners/episodes/72879/102324.jpg",
+       "title": "Ralph's Wedding",
+       "type": "episode",
+       "year": 1996
+      }
+     ],
+     "identifier": "tv.plex.provider.metadata",
+     "librarySectionID": "home",
+     "librarySectionTitle": "Metadata",
+     "offset": 0,
+     "size": 22,
+     "totalSize": 22
+    }
+   },
+   "start": 0
+  }
+ ],
+ "rows": [
+  {
+   "Country": [
+    {
+     "filter": "country=387550",
+     "id": 387550,
+     "tag": "United States of America"
+    }
+   ],
+   "Genre": [
+    {
+     "filter": "genre=16771",
+     "id": 16771,
+     "tag": "Animation"
+    },
+    {
+     "filter": "genre=717119",
+     "id": 717119,
+     "tag": "Kids"
+    },
+    {
+     "filter": "genre=244689",
+     "id": 244689,
+     "tag": "Comedy"
+    },
+    {
+     "filter": "genre=334175",
+     "id": 334175,
+     "tag": "Family"
+    }
+   ],
+   "Guid": [
+    {
+     "id": "imdb://tt0105941"
+    },
+    {
+     "id": "tmdb://82"
+    }
+   ],
+   "Location": [
+    {
+     "path": "/mnt/zurg/shows/Animaniacs.S03.1080p.UPSCALED.DD.5.1.x265-EDGE2020"
+    },
+    {
+     "path": "/mnt/zurg/shows/Animaniacs.S01.1080p.UPSCALED.DD.5.1.x265-EDGE2020"
+    },
+    {
+     "path": "/mnt/zurg/shows/Animaniacs.S01.Repack.1080p.UPSCALED.DD.5.1.x265-EDGE2020"
+    },
+    {
+     "path": "/mnt/zurg/shows/Animaniacs.S04.1080p.UPSCALED.DD.5.1.x265-EDGE2020"
+    },
+    {
+     "path": "/mnt/zurg/shows/Animaniacs.S05.1080p.UPSCALED.DD.5.1.x265-EDGE2020"
+    },
+    {
+     "path": "/mnt/zurg/shows/Animaniacs"
+    }
+   ],
+   "Rating": [
+    {
+     "image": "themoviedb://image.rating",
+     "type": "audience",
+     "value": 8.0
+    }
+   ],
+   "Role": [
+    {
+     "filter": "actor=828092",
+     "id": 828092,
+     "role": "Yakko / Pinky (voice)",
+     "tag": "Rob Paulsen",
+     "tagKey": "edfd02e57839b601a5dfba08",
+     "thumb": "https://image.tmdb.org/t/p/w185/7buvKWIjPlspqruaO3b28V5owJr.jpg"
+    },
+    {
+     "filter": "actor=763495",
+     "id": 763495,
+     "role": "Wakko (voice)",
+     "tag": "Jess Harnell",
+     "tagKey": "d633535cb55e8b987a0668b4",
+     "thumb": "https://image.tmdb.org/t/p/w185/zQ2zg7PL3ut4JhfXMKSRV4FMnxR.jpg"
+    },
+    {
+     "filter": "actor=797216",
+     "id": 797216,
+     "role": "Dot (voice)",
+     "tag": "Tress MacNeille",
+     "tagKey": "2d50b3bacecab8bc6d7ac056",
+     "thumb": "https://image.tmdb.org/t/p/w185/gI2LsgByvSffQY34vabVnPmrHzw.jpg"
+    },
+    {
+     "filter": "actor=95071",
+     "id": 95071,
+     "role": "The Brain / Squit (voice)",
+     "tag": "Maurice LaMarche",
+     "tagKey": "df0f06bfab88d6a4cf77c4dc",
+     "thumb": "https://image.tmdb.org/t/p/w185/qCiL3EYAhLcNo0rNj5pczWo9MwG.jpg"
+    },
+    {
+     "filter": "actor=459551",
+     "id": 459551,
+     "role": "Slappy Squirrel (voice)",
+     "tag": "Sherri Stoner",
+     "tagKey": "5e45199fcbe4d7e72326b429",
+     "thumb": "https://image.tmdb.org/t/p/w185/8ayLtCDHqjk0YaieMBElSr5MPj1.jpg"
+    },
+    {
+     "filter": "actor=362950",
+     "id": 362950,
+     "role": "Pesto (voice)",
+     "tag": "Chick Vennera",
+     "tagKey": "b028dd5d8eee73708421735d",
+     "thumb": "https://image.tmdb.org/t/p/w185/fTuY5IhTGVEYES6LFZhbuRgZwVW.jpg"
+    }
+   ],
+   "UltraBlurColors": {
+    "bottomLeft": "1f1f26",
+    "bottomRight": "15151a",
+    "topLeft": "1a1a1e",
+    "topRight": "24242a"
+   },
+   "_artFor": "https://image.tmdb.org/t/p/w1280/8TThBwlIZnzCFkj21rv5Nv2lTNG.jpg",
+   "_art_url": "https://image.tmdb.org/t/p/w1280/8TThBwlIZnzCFkj21rv5Nv2lTNG.jpg",
+   "_identity": "tmdb:82",
+   "_poster_url": "https://image.tmdb.org/t/p/w342/c1b2UtrhbMOdHKISB2ZvINo9eyc.jpg",
+   "_scanned": true,
+   "_thumbFor": "https://image.tmdb.org/t/p/w342/c1b2UtrhbMOdHKISB2ZvINo9eyc.jpg",
+   "_titleGuid": "plex://show/5d9c07fe2df347001e3a7d17",
+   "addedAt": 1791656706,
+   "art": "/library/metadata/104981/art/1791897222",
+   "audienceRating": 8.0,
+   "audienceRatingImage": "themoviedb://image.rating",
+   "childCount": 1,
+   "contentRating": "TV-Y7",
+   "guid": "plex://show/5d9c07fe2df347001e3a7d17",
+   "index": 1,
+   "key": "/library/metadata/104981/children",
+   "leafCount": 43,
+   "librarySectionID": 2,
+   "librarySectionKey": "/library/sections/2",
+   "librarySectionTitle": "TV Shows",
+   "ratingKey": "104981",
+   "slug": "animaniacs",
+   "studio": "Warner Bros. Animation",
+   "summary": "The two Warner Brothers Yakko and Wakko and their Warner sister Dot had been (supposedly) created in the 1930's, but their cartoons were too screwy for the general public to handle. The three Warners were locked up in the studio water tower until they escaped in the 90's. There, they run wild, causing chaos everywhere!",
+   "tagline": "They're zany to the max!",
+   "thumb": "/library/metadata/104981/thumb/1791897222",
+   "title": "Animaniacs",
+   "type": "show",
+   "updatedAt": 1791656706,
+   "viewedLeafCount": 0,
+   "year": 1993
+  },
+  {
+   "Guid": [
+    {
+     "id": "tvdb://4932"
+    }
+   ],
+   "UltraBlurColors": {
+    "bottomLeft": "1f1f26",
+    "bottomRight": "15151a",
+    "topLeft": "1a1a1e",
+    "topRight": "24242a"
+   },
+   "_artFor": "https://image.tmdb.org/t/p/original/8TThBwlIZnzCFkj21rv5Nv2lTNG.jpg",
+   "_art_url": "https://image.tmdb.org/t/p/original/8TThBwlIZnzCFkj21rv5Nv2lTNG.jpg",
+   "_poster_url": "https://artworks.thetvdb.com/banners/seasons/72879-3.jpg",
+   "_scanned": true,
+   "_thumbFor": "https://artworks.thetvdb.com/banners/seasons/72879-3.jpg",
+   "addedAt": 1791656706,
+   "art": "/library/metadata/104981/art/1791897222",
+   "guid": "plex://season/65dd8dbef97685e8c55065b5",
+   "index": 3,
+   "key": "/library/metadata/104982/children",
+   "leafCount": 43,
+   "librarySectionID": 2,
+   "librarySectionKey": "/library/sections/2",
+   "librarySectionTitle": "TV Shows",
+   "parentGuid": "plex://show/5d9c07fe2df347001e3a7d17",
+   "parentIndex": 1,
+   "parentKey": "/library/metadata/104981",
+   "parentRatingKey": "104981",
+   "parentSlug": "animaniacs",
+   "parentStudio": "Warner Bros. Animation",
+   "parentThumb": "/library/metadata/104981/thumb/1791897222",
+   "parentTitle": "Animaniacs",
+   "parentYear": 1993,
+   "ratingKey": "104982",
+   "summary": "",
+   "thumb": "/library/metadata/104982/thumb/1792773040",
+   "title": "Season 3",
+   "type": "season",
+   "updatedAt": 1791656706,
+   "viewedLeafCount": 0
+  },
+  {
+   "Guid": [
+    {
+     "id": "tvdb://4933"
+    }
+   ],
+   "UltraBlurColors": {
+    "bottomLeft": "1f1f26",
+    "bottomRight": "15151a",
+    "topLeft": "1a1a1e",
+    "topRight": "24242a"
+   },
+   "_artFor": "https://image.tmdb.org/t/p/original/8TThBwlIZnzCFkj21rv5Nv2lTNG.jpg",
+   "_art_url": "https://image.tmdb.org/t/p/original/8TThBwlIZnzCFkj21rv5Nv2lTNG.jpg",
+   "_poster_url": "https://artworks.thetvdb.com/banners/seasons/72879-4.jpg",
+   "_scanned": true,
+   "_thumbFor": "https://artworks.thetvdb.com/banners/seasons/72879-4.jpg",
+   "addedAt": 1791703429,
+   "art": "/library/metadata/104981/art/1791897222",
+   "guid": "plex://season/65dd8dbef97685e8c55065cd",
+   "index": 4,
+   "key": "/library/metadata/129661/children",
+   "leafCount": 22,
+   "librarySectionID": 2,
+   "librarySectionKey": "/library/sections/2",
+   "librarySectionTitle": "TV Shows",
+   "parentGuid": "plex://show/5d9c07fe2df347001e3a7d17",
+   "parentIndex": 1,
+   "parentKey": "/library/metadata/104981",
+   "parentRatingKey": "104981",
+   "parentSlug": "animaniacs",
+   "parentStudio": "Warner Bros. Animation",
+   "parentThumb": "/library/metadata/104981/thumb/1791897222",
+   "parentTitle": "Animaniacs",
+   "parentYear": 1993,
+   "ratingKey": "129661",
+   "summary": "",
+   "thumb": "/library/metadata/129661/thumb/1792772742",
+   "title": "Season 4",
+   "type": "season",
+   "updatedAt": 1791703429,
+   "viewedLeafCount": 0
+  },
+  {
+   "Director": [
+    {
+     "filter": "director=310575",
+     "id": 310575,
+     "role": "Director",
+     "tag": "Alfred Gimeno",
+     "tagKey": "803574380c2f97a034bf077c",
+     "thumb": "https://metadata-static.plex.tv/people/5d776868e6d55c0020412709.jpg"
+    },
+    {
+     "filter": "director=230171",
+     "id": 230171,
+     "role": "Director",
+     "tag": "Dave Marshall",
+     "tagKey": "11849e838731debdb01e3a0a"
+    },
+    {
+     "filter": "director=382196",
+     "id": 382196,
+     "role": "Director",
+     "tag": "Michael Gerard",
+     "tagKey": "bf6eca17aaea4085e9fdbab8"
+    },
+    {
+     "filter": "director=892115",
+     "id": 892115,
+     "role": "Director",
+     "tag": "Greg Reyna",
+     "tagKey": "7989379bf258d96edf75b157"
+    },
+    {
+     "filter": "director=493464",
+     "id": 493464,
+     "role": "Director",
+     "tag": "Rusty Mills",
+     "tagKey": "5a71c9920cb8f439f5a4b0ea"
+    },
+    {
+     "filter": "director=350938",
+     "id": 350938,
+     "role": "Director",
+     "tag": "Audu Paden",
+     "tagKey": "1a4e53c6f14b367ade528cc9",
+     "thumb": "https://metadata-static.plex.tv/people/5d77685c7e9a3c0020c718ee.jpg"
+    }
+   ],
+   "Media": [
+    {
+     "Part": [
+      {
+       "Stream": [
+        {
+         "bitDepth": 10,
+         "chromaLocation": null,
+         "chromaSubsampling": "4:2:0",
+         "codec": "hevc",
+         "codecID": null,
+         "codedHeight": null,
+         "codedWidth": null,
+         "colorPrimaries": null,
+         "colorRange": "tv",
+         "colorSpace": null,
+         "colorTrc": null,
+         "default": true,
+         "displayTitle": "720p",
+         "extendedDisplayTitle": "720p (HEVC Main 10)",
+         "frameRate": 30.0,
+         "height": 768,
+         "id": 104945001,
+         "index": 0,
+         "level": 120,
+         "profile": "main 10",
+         "refFrames": null,
+         "scanType": null,
+         "streamIdentifier": null,
+         "streamType": 1,
+         "width": 1432
+        },
+        {
+         "audioChannelLayout": "5.1(side)",
+         "bitDepth": null,
+         "bitrate": 448,
+         "channels": 6,
+         "codec": "ac3",
+         "default": true,
+         "displayTitle": "English (AC3 5.1)",
+         "extendedDisplayTitle": "English (AC3 5.1)",
+         "id": 104945002,
+         "index": 1,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "samplingRate": 48000,
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 2
+        },
+        {
+         "canAutoSync": false,
+         "codec": "srt",
+         "default": true,
+         "displayTitle": "English",
+         "extendedDisplayTitle": " (English SRT)",
+         "id": 104945003,
+         "index": 2,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 3,
+         "title": ""
+        }
+       ],
+       "audioProfile": null,
+       "container": "mkv",
+       "duration": 308544,
+       "file": "/mnt/zurg/shows/Animaniacs.S03.1080p.UPSCALED.DD.5.1.x265-EDGE2020/Animaniacs.S03E08.Variety.Speak.1080p.UPSCALED.DD.5.1.H.265.-EDGE2020.mkv",
+       "id": 1049450,
+       "key": "/library/parts/1049450/1791656706/file.mkv",
+       "size": 141119221,
+       "videoProfile": "main 10"
+      }
+     ],
+     "_chapters": [
+      {
+       "endTimeOffset": 72839,
+       "id": 10494500001,
+       "index": 1,
+       "startTimeOffset": 0,
+       "tag": "Chapter 1"
+      },
+      {
+       "endTimeOffset": 308544,
+       "id": 10494500002,
+       "index": 2,
+       "startTimeOffset": 72839,
+       "tag": "Chapter 2"
+      }
+     ],
+     "aspectRatio": 1.85,
+     "audioChannels": 6,
+     "audioCodec": "ac3",
+     "audioProfile": null,
+     "bitrate": 3659,
+     "container": "mkv",
+     "duration": 308544,
+     "hasVoiceActivity": false,
+     "height": 768,
+     "id": 10494500,
+     "videoCodec": "hevc",
+     "videoFrameRate": "30p",
+     "videoProfile": "main 10",
+     "videoResolution": "720",
+     "width": 1432
+    }
+   ],
+   "Rating": [
+    {
+     "image": "themoviedb://image.rating",
+     "type": "audience",
+     "value": 7.8
+    }
+   ],
+   "Role": [
+    {
+     "filter": "actor=828092",
+     "id": 828092,
+     "role": "Yakko / Pinky (voice)",
+     "tag": "Rob Paulsen",
+     "tagKey": "edfd02e57839b601a5dfba08",
+     "thumb": "https://metadata-static.plex.tv/5/people/502b7e54253f7679ab3d74e6f2815da8.jpg"
+    },
+    {
+     "filter": "actor=763495",
+     "id": 763495,
+     "role": "Wakko (voice)",
+     "tag": "Jess Harnell",
+     "tagKey": "d633535cb55e8b987a0668b4",
+     "thumb": "https://metadata-static.plex.tv/4/people/4f0c5e626a22a7ae2eeddf933dc9a782.jpg"
+    },
+    {
+     "filter": "actor=797216",
+     "id": 797216,
+     "role": "Dot (voice)",
+     "tag": "Tress MacNeille",
+     "tagKey": "2d50b3bacecab8bc6d7ac056",
+     "thumb": "https://metadata-static.plex.tv/3/people/35789c0b249ce651330a7ccc5d5e6ec0.jpg"
+    },
+    {
+     "filter": "actor=95071",
+     "id": 95071,
+     "role": "The Brain / Squit (voice)",
+     "tag": "Maurice LaMarche",
+     "tagKey": "df0f06bfab88d6a4cf77c4dc",
+     "thumb": "https://metadata-static.plex.tv/7/people/7ef61d0ba49c2a22ab6040875d58c367.jpg"
+    },
+    {
+     "filter": "actor=459551",
+     "id": 459551,
+     "role": "Slappy Squirrel (voice)",
+     "tag": "Sherri Stoner",
+     "tagKey": "5e45199fcbe4d7e72326b429",
+     "thumb": "https://metadata-static.plex.tv/c/people/c4a31f75d9e0140d6f96c7402a32a52e.jpg"
+    },
+    {
+     "filter": "actor=362950",
+     "id": 362950,
+     "role": "Pesto (voice)",
+     "tag": "Chick Vennera",
+     "tagKey": "b028dd5d8eee73708421735d",
+     "thumb": "https://metadata-static.plex.tv/people/5d77682b6f4521001ea9a256.jpg"
+    }
+   ],
+   "UltraBlurColors": {
+    "bottomLeft": "1f1f26",
+    "bottomRight": "15151a",
+    "topLeft": "1a1a1e",
+    "topRight": "24242a"
+   },
+   "Writer": [
+    {
+     "filter": "writer=144253",
+     "id": 144253,
+     "role": "Writer",
+     "tag": "Deanna Oliver",
+     "tagKey": "57aed5d57928f5cd6794fbf4",
+     "thumb": "https://metadata-static.plex.tv/0/people/0c711abb050c282499fb90e3666b0ce4.jpg"
+    },
+    {
+     "filter": "writer=761495",
+     "id": 761495,
+     "role": "Writer",
+     "tag": "Nicholas Hollander",
+     "tagKey": "0ce3db9283de5f9af0defe02"
+    },
+    {
+     "filter": "writer=360909",
+     "id": 360909,
+     "role": "Writer",
+     "tag": "Randy Rogel",
+     "tagKey": "f7734fd53ac482e0848318f7"
+    },
+    {
+     "filter": "writer=478821",
+     "id": 478821,
+     "role": "Writer",
+     "tag": "Tom Minton",
+     "tagKey": "640f77081b692767dbfd5ab4"
+    },
+    {
+     "filter": "writer=247654",
+     "id": 247654,
+     "role": "Writer",
+     "tag": "Kevin Hopps",
+     "tagKey": "f16ae56b87ef5250713eef55"
+    },
+    {
+     "filter": "writer=395009",
+     "id": 395009,
+     "role": "Writer",
+     "tag": "Charles M. Howell IV",
+     "tagKey": "6d50adcb1b9f94fb3204e33f",
+     "thumb": "https://metadata-static.plex.tv/f/people/f8a31d52cc6a764a9efd245e1ee9903d.jpg"
+    }
+   ],
+   "_artFor": "https://image.tmdb.org/t/p/original/8TThBwlIZnzCFkj21rv5Nv2lTNG.jpg",
+   "_art_url": "https://image.tmdb.org/t/p/original/8TThBwlIZnzCFkj21rv5Nv2lTNG.jpg",
+   "_folder": "",
+   "_generatedTitle": true,
+   "_hash": "614f39c09230d7faa41484e0ebe2d5d8cf9f8081",
+   "_identify": {
+    "imdb": "tt0105941",
+    "plex": "plex://show/5d9c07fe2df347001e3a7d17",
+    "source": "placed",
+    "tmdb": 82
+   },
+   "_identity": "tmdb:82",
+   "_ids": {
+    "imdb": "tt0105941",
+    "tmdb": "82"
+   },
+   "_own_content_rating": true,
+   "_path": "shows/Animaniacs.S03.1080p.UPSCALED.DD.5.1.x265-EDGE2020/Animaniacs.S03E08.Variety.Speak.1080p.UPSCALED.DD.5.1.H.265.-EDGE2020.mkv",
+   "_placed": {
+    "episode": 8,
+    "kind": "episode",
+    "season": 3,
+    "tmdb_episode": 1081993
+   },
+   "_poster_url": "https://image.tmdb.org/t/p/original/8TThBwlIZnzCFkj21rv5Nv2lTNG.jpg",
+   "_release": "Animaniacs.S03.1080p.UPSCALED.DD.5.1.x265-EDGE2020",
+   "_scanned": true,
+   "_sid": "shows/Animaniacs.S03.1080p.UPSCALED.DD.5.1.x265-EDGE2020/Animaniacs.S03E08.Variety.Speak.1080p.UPSCALED.DD.5.1.H.265.-EDGE2020.mkv",
+   "_source": "zurg",
+   "_thumbFor": "https://image.tmdb.org/t/p/original/8TThBwlIZnzCFkj21rv5Nv2lTNG.jpg",
+   "addedAt": 1791656706,
+   "art": "/library/metadata/104981/art/1791897222",
+   "audienceRating": 7.8,
+   "audienceRatingImage": "themoviedb://image.rating",
+   "contentRating": "TV-Y7",
+   "duration": 308544,
+   "grandparentArt": "/library/metadata/104981/art/1791897222",
+   "grandparentGuid": "plex://show/5d9c07fe2df347001e3a7d17",
+   "grandparentKey": "/library/metadata/104981",
+   "grandparentRatingKey": "104981",
+   "grandparentSlug": "animaniacs",
+   "grandparentThumb": "/library/metadata/104981/thumb/1791897222",
+   "grandparentTitle": "Animaniacs",
+   "guid": "local://104945",
+   "index": 8,
+   "key": "/library/metadata/104945",
+   "librarySectionID": 2,
+   "librarySectionKey": "/library/sections/2",
+   "librarySectionTitle": "TV Shows",
+   "originallyAvailableAt": "1993-09-13",
+   "parentGuid": "plex://season/65dd8dbef97685e8c55065b5",
+   "parentIndex": 3,
+   "parentKey": "/library/metadata/104982",
+   "parentRatingKey": "104982",
+   "parentThumb": "/library/metadata/104982/thumb/1792773040",
+   "parentTitle": "Season 3",
+   "ratingKey": "104945",
+   "summary": "The two Warner Brothers Yakko and Wakko and their Warner sister Dot had been (supposedly) created in the 1930's, but their cartoons were too screwy for the general public to handle. The three Warners were locked up in the studio water tower until they escaped in the 90's. There, they run wild, causing chaos everywhere!",
+   "thumb": "/library/metadata/104945/thumb/1792773040",
+   "title": "Episode 8",
+   "type": "episode",
+   "updatedAt": 1792773039,
+   "year": 1993
+  },
+  {
+   "Director": [
+    {
+     "filter": "director=310575",
+     "id": 310575,
+     "role": "Director",
+     "tag": "Alfred Gimeno",
+     "tagKey": "803574380c2f97a034bf077c",
+     "thumb": "https://metadata-static.plex.tv/people/5d776868e6d55c0020412709.jpg"
+    },
+    {
+     "filter": "director=230171",
+     "id": 230171,
+     "role": "Director",
+     "tag": "Dave Marshall",
+     "tagKey": "11849e838731debdb01e3a0a"
+    },
+    {
+     "filter": "director=382196",
+     "id": 382196,
+     "role": "Director",
+     "tag": "Michael Gerard",
+     "tagKey": "bf6eca17aaea4085e9fdbab8"
+    },
+    {
+     "filter": "director=892115",
+     "id": 892115,
+     "role": "Director",
+     "tag": "Greg Reyna",
+     "tagKey": "7989379bf258d96edf75b157"
+    },
+    {
+     "filter": "director=493464",
+     "id": 493464,
+     "role": "Director",
+     "tag": "Rusty Mills",
+     "tagKey": "5a71c9920cb8f439f5a4b0ea"
+    },
+    {
+     "filter": "director=350938",
+     "id": 350938,
+     "role": "Director",
+     "tag": "Audu Paden",
+     "tagKey": "1a4e53c6f14b367ade528cc9",
+     "thumb": "https://metadata-static.plex.tv/people/5d77685c7e9a3c0020c718ee.jpg"
+    }
+   ],
+   "Media": [
+    {
+     "Part": [
+      {
+       "Stream": [
+        {
+         "bitDepth": 10,
+         "chromaLocation": null,
+         "chromaSubsampling": "4:2:0",
+         "codec": "hevc",
+         "codecID": null,
+         "codedHeight": null,
+         "codedWidth": null,
+         "colorPrimaries": null,
+         "colorRange": "tv",
+         "colorSpace": null,
+         "colorTrc": null,
+         "default": true,
+         "displayTitle": "720p",
+         "extendedDisplayTitle": "720p (HEVC Main 10)",
+         "frameRate": 30.0,
+         "height": 952,
+         "id": 104946001,
+         "index": 0,
+         "level": 120,
+         "profile": "main 10",
+         "refFrames": null,
+         "scanType": null,
+         "streamIdentifier": null,
+         "streamType": 1,
+         "width": 1432
+        },
+        {
+         "audioChannelLayout": "5.1(side)",
+         "bitDepth": null,
+         "bitrate": 448,
+         "channels": 6,
+         "codec": "ac3",
+         "default": true,
+         "displayTitle": "English (AC3 5.1)",
+         "extendedDisplayTitle": "English (AC3 5.1)",
+         "id": 104946002,
+         "index": 1,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "samplingRate": 48000,
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 2
+        },
+        {
+         "canAutoSync": false,
+         "codec": "srt",
+         "default": true,
+         "displayTitle": "English",
+         "extendedDisplayTitle": " (English SRT)",
+         "id": 104946003,
+         "index": 2,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 3,
+         "title": ""
+        }
+       ],
+       "audioProfile": null,
+       "container": "mkv",
+       "duration": 674432,
+       "file": "/mnt/zurg/shows/Animaniacs.S03.1080p.UPSCALED.DD.5.1.x265-EDGE2020/Animaniacs.S03E09.Three.Tenors.and.Youre.Out.1080p.UPSCALED.DD.5.1.H.265.-EDGE2020.mkv",
+       "id": 1049460,
+       "key": "/library/parts/1049460/1791656706/file.mkv",
+       "size": 264624936,
+       "videoProfile": "main 10"
+      }
+     ],
+     "_chapters": [],
+     "aspectRatio": 1.66,
+     "audioChannels": 6,
+     "audioCodec": "ac3",
+     "audioProfile": null,
+     "bitrate": 3139,
+     "container": "mkv",
+     "duration": 674432,
+     "hasVoiceActivity": false,
+     "height": 952,
+     "id": 10494600,
+     "videoCodec": "hevc",
+     "videoFrameRate": "30p",
+     "videoProfile": "main 10",
+     "videoResolution": "720",
+     "width": 1432
+    }
+   ],
+   "Rating": [
+    {
+     "image": "themoviedb://image.rating",
+     "type": "audience",
+     "value": 7.8
+    }
+   ],
+   "Role": [
+    {
+     "filter": "actor=828092",
+     "id": 828092,
+     "role": "Yakko / Pinky (voice)",
+     "tag": "Rob Paulsen",
+     "tagKey": "edfd02e57839b601a5dfba08",
+     "thumb": "https://metadata-static.plex.tv/5/people/502b7e54253f7679ab3d74e6f2815da8.jpg"
+    },
+    {
+     "filter": "actor=763495",
+     "id": 763495,
+     "role": "Wakko (voice)",
+     "tag": "Jess Harnell",
+     "tagKey": "d633535cb55e8b987a0668b4",
+     "thumb": "https://metadata-static.plex.tv/4/people/4f0c5e626a22a7ae2eeddf933dc9a782.jpg"
+    },
+    {
+     "filter": "actor=797216",
+     "id": 797216,
+     "role": "Dot (voice)",
+     "tag": "Tress MacNeille",
+     "tagKey": "2d50b3bacecab8bc6d7ac056",
+     "thumb": "https://metadata-static.plex.tv/3/people/35789c0b249ce651330a7ccc5d5e6ec0.jpg"
+    },
+    {
+     "filter": "actor=95071",
+     "id": 95071,
+     "role": "The Brain / Squit (voice)",
+     "tag": "Maurice LaMarche",
+     "tagKey": "df0f06bfab88d6a4cf77c4dc",
+     "thumb": "https://metadata-static.plex.tv/7/people/7ef61d0ba49c2a22ab6040875d58c367.jpg"
+    },
+    {
+     "filter": "actor=459551",
+     "id": 459551,
+     "role": "Slappy Squirrel (voice)",
+     "tag": "Sherri Stoner",
+     "tagKey": "5e45199fcbe4d7e72326b429",
+     "thumb": "https://metadata-static.plex.tv/c/people/c4a31f75d9e0140d6f96c7402a32a52e.jpg"
+    },
+    {
+     "filter": "actor=362950",
+     "id": 362950,
+     "role": "Pesto (voice)",
+     "tag": "Chick Vennera",
+     "tagKey": "b028dd5d8eee73708421735d",
+     "thumb": "https://metadata-static.plex.tv/people/5d77682b6f4521001ea9a256.jpg"
+    }
+   ],
+   "UltraBlurColors": {
+    "bottomLeft": "1f1f26",
+    "bottomRight": "15151a",
+    "topLeft": "1a1a1e",
+    "topRight": "24242a"
+   },
+   "Writer": [
+    {
+     "filter": "writer=144253",
+     "id": 144253,
+     "role": "Writer",
+     "tag": "Deanna Oliver",
+     "tagKey": "57aed5d57928f5cd6794fbf4",
+     "thumb": "https://metadata-static.plex.tv/0/people/0c711abb050c282499fb90e3666b0ce4.jpg"
+    },
+    {
+     "filter": "writer=761495",
+     "id": 761495,
+     "role": "Writer",
+     "tag": "Nicholas Hollander",
+     "tagKey": "0ce3db9283de5f9af0defe02"
+    },
+    {
+     "filter": "writer=360909",
+     "id": 360909,
+     "role": "Writer",
+     "tag": "Randy Rogel",
+     "tagKey": "f7734fd53ac482e0848318f7"
+    },
+    {
+     "filter": "writer=478821",
+     "id": 478821,
+     "role": "Writer",
+     "tag": "Tom Minton",
+     "tagKey": "640f77081b692767dbfd5ab4"
+    },
+    {
+     "filter": "writer=247654",
+     "id": 247654,
+     "role": "Writer",
+     "tag": "Kevin Hopps",
+     "tagKey": "f16ae56b87ef5250713eef55"
+    },
+    {
+     "filter": "writer=395009",
+     "id": 395009,
+     "role": "Writer",
+     "tag": "Charles M. Howell IV",
+     "tagKey": "6d50adcb1b9f94fb3204e33f",
+     "thumb": "https://metadata-static.plex.tv/f/people/f8a31d52cc6a764a9efd245e1ee9903d.jpg"
+    }
+   ],
+   "_artFor": "https://image.tmdb.org/t/p/original/8TThBwlIZnzCFkj21rv5Nv2lTNG.jpg",
+   "_art_url": "https://image.tmdb.org/t/p/original/8TThBwlIZnzCFkj21rv5Nv2lTNG.jpg",
+   "_folder": "",
+   "_generatedTitle": true,
+   "_hash": "614f39c09230d7faa41484e0ebe2d5d8cf9f8081",
+   "_identify": {
+    "imdb": "tt0105941",
+    "plex": "plex://show/5d9c07fe2df347001e3a7d17",
+    "source": "placed",
+    "tmdb": 82
+   },
+   "_identity": "tmdb:82",
+   "_ids": {
+    "imdb": "tt0105941",
+    "tmdb": "82"
+   },
+   "_own_content_rating": true,
+   "_path": "shows/Animaniacs.S03.1080p.UPSCALED.DD.5.1.x265-EDGE2020/Animaniacs.S03E09.Three.Tenors.and.Youre.Out.1080p.UPSCALED.DD.5.1.H.265.-EDGE2020.mkv",
+   "_placed": {
+    "episode": 9,
+    "kind": "episode",
+    "season": 3,
+    "tmdb_episode": 1906705
+   },
+   "_poster_url": "https://image.tmdb.org/t/p/original/8TThBwlIZnzCFkj21rv5Nv2lTNG.jpg",
+   "_release": "Animaniacs.S03.1080p.UPSCALED.DD.5.1.x265-EDGE2020",
+   "_scanned": true,
+   "_sid": "shows/Animaniacs.S03.1080p.UPSCALED.DD.5.1.x265-EDGE2020/Animaniacs.S03E09.Three.Tenors.and.Youre.Out.1080p.UPSCALED.DD.5.1.H.265.-EDGE2020.mkv",
+   "_source": "zurg",
+   "_thumbFor": "https://image.tmdb.org/t/p/original/8TThBwlIZnzCFkj21rv5Nv2lTNG.jpg",
+   "addedAt": 1791656706,
+   "art": "/library/metadata/104981/art/1791897222",
+   "audienceRating": 7.8,
+   "audienceRatingImage": "themoviedb://image.rating",
+   "contentRating": "TV-Y7",
+   "duration": 674432,
+   "grandparentArt": "/library/metadata/104981/art/1791897222",
+   "grandparentGuid": "plex://show/5d9c07fe2df347001e3a7d17",
+   "grandparentKey": "/library/metadata/104981",
+   "grandparentRatingKey": "104981",
+   "grandparentSlug": "animaniacs",
+   "grandparentThumb": "/library/metadata/104981/thumb/1791897222",
+   "grandparentTitle": "Animaniacs",
+   "guid": "local://104946",
+   "index": 9,
+   "key": "/library/metadata/104946",
+   "librarySectionID": 2,
+   "librarySectionKey": "/library/sections/2",
+   "librarySectionTitle": "TV Shows",
+   "originallyAvailableAt": "1993-09-13",
+   "parentGuid": "plex://season/65dd8dbef97685e8c55065b5",
+   "parentIndex": 3,
+   "parentKey": "/library/metadata/104982",
+   "parentRatingKey": "104982",
+   "parentThumb": "/library/metadata/104982/thumb/1792773040",
+   "parentTitle": "Season 3",
+   "ratingKey": "104946",
+   "summary": "The two Warner Brothers Yakko and Wakko and their Warner sister Dot had been (supposedly) created in the 1930's, but their cartoons were too screwy for the general public to handle. The three Warners were locked up in the studio water tower until they escaped in the 90's. There, they run wild, causing chaos everywhere!",
+   "thumb": "/library/metadata/104946/thumb/1792773040",
+   "title": "Episode 9",
+   "type": "episode",
+   "updatedAt": 1792773039,
+   "year": 1993
+  },
+  {
+   "Director": [
+    {
+     "filter": "director=310575",
+     "id": 310575,
+     "role": "Director",
+     "tag": "Alfred Gimeno",
+     "tagKey": "803574380c2f97a034bf077c",
+     "thumb": "https://metadata-static.plex.tv/people/5d776868e6d55c0020412709.jpg"
+    },
+    {
+     "filter": "director=230171",
+     "id": 230171,
+     "role": "Director",
+     "tag": "Dave Marshall",
+     "tagKey": "11849e838731debdb01e3a0a"
+    },
+    {
+     "filter": "director=382196",
+     "id": 382196,
+     "role": "Director",
+     "tag": "Michael Gerard",
+     "tagKey": "bf6eca17aaea4085e9fdbab8"
+    },
+    {
+     "filter": "director=892115",
+     "id": 892115,
+     "role": "Director",
+     "tag": "Greg Reyna",
+     "tagKey": "7989379bf258d96edf75b157"
+    },
+    {
+     "filter": "director=493464",
+     "id": 493464,
+     "role": "Director",
+     "tag": "Rusty Mills",
+     "tagKey": "5a71c9920cb8f439f5a4b0ea"
+    },
+    {
+     "filter": "director=350938",
+     "id": 350938,
+     "role": "Director",
+     "tag": "Audu Paden",
+     "tagKey": "1a4e53c6f14b367ade528cc9",
+     "thumb": "https://metadata-static.plex.tv/people/5d77685c7e9a3c0020c718ee.jpg"
+    }
+   ],
+   "Media": [
+    {
+     "Part": [
+      {
+       "Stream": [
+        {
+         "bitDepth": 10,
+         "chromaLocation": null,
+         "chromaSubsampling": "4:2:0",
+         "codec": "hevc",
+         "codecID": null,
+         "codedHeight": null,
+         "codedWidth": null,
+         "colorPrimaries": null,
+         "colorRange": "tv",
+         "colorSpace": null,
+         "colorTrc": null,
+         "default": true,
+         "displayTitle": "720p",
+         "extendedDisplayTitle": "720p (HEVC Main 10)",
+         "frameRate": 24.0,
+         "height": 960,
+         "id": 129641001,
+         "index": 0,
+         "level": 120,
+         "profile": "main 10",
+         "refFrames": null,
+         "scanType": null,
+         "streamIdentifier": null,
+         "streamType": 1,
+         "width": 1416
+        },
+        {
+         "audioChannelLayout": "stereo",
+         "bitDepth": null,
+         "bitrate": 192,
+         "channels": 2,
+         "codec": "ac3",
+         "default": true,
+         "displayTitle": "English (AC3 Stereo)",
+         "extendedDisplayTitle": "English (AC3 Stereo)",
+         "id": 129641002,
+         "index": 1,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "samplingRate": 48000,
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 2
+        },
+        {
+         "canAutoSync": false,
+         "codec": "srt",
+         "default": true,
+         "displayTitle": "English",
+         "extendedDisplayTitle": " (English SRT)",
+         "id": 129641003,
+         "index": 2,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 3,
+         "title": ""
+        }
+       ],
+       "audioProfile": null,
+       "container": "mkv",
+       "duration": 148640,
+       "file": "/mnt/zurg/shows/Animaniacs.S04.1080p.UPSCALED.DD.5.1.x265-EDGE2020/Animaniacs.S04E03.Boo.Happens.1080p.UPSCALED.DD.2.0.H.265.-EDGE2020.mkv",
+       "id": 1296410,
+       "key": "/library/parts/1296410/1791703429/file.mkv",
+       "size": 79664609,
+       "videoProfile": "main 10"
+      }
+     ],
+     "_chapters": [],
+     "aspectRatio": 1.33,
+     "audioChannels": 2,
+     "audioCodec": "ac3",
+     "audioProfile": null,
+     "bitrate": 4288,
+     "container": "mkv",
+     "duration": 148640,
+     "hasVoiceActivity": false,
+     "height": 960,
+     "id": 12964100,
+     "videoCodec": "hevc",
+     "videoFrameRate": "24p",
+     "videoProfile": "main 10",
+     "videoResolution": "720",
+     "width": 1416
+    }
+   ],
+   "Rating": [
+    {
+     "image": "themoviedb://image.rating",
+     "type": "audience",
+     "value": 7.8
+    }
+   ],
+   "Role": [
+    {
+     "filter": "actor=828092",
+     "id": 828092,
+     "role": "Yakko / Pinky (voice)",
+     "tag": "Rob Paulsen",
+     "tagKey": "edfd02e57839b601a5dfba08",
+     "thumb": "https://metadata-static.plex.tv/5/people/502b7e54253f7679ab3d74e6f2815da8.jpg"
+    },
+    {
+     "filter": "actor=763495",
+     "id": 763495,
+     "role": "Wakko (voice)",
+     "tag": "Jess Harnell",
+     "tagKey": "d633535cb55e8b987a0668b4",
+     "thumb": "https://metadata-static.plex.tv/4/people/4f0c5e626a22a7ae2eeddf933dc9a782.jpg"
+    },
+    {
+     "filter": "actor=797216",
+     "id": 797216,
+     "role": "Dot (voice)",
+     "tag": "Tress MacNeille",
+     "tagKey": "2d50b3bacecab8bc6d7ac056",
+     "thumb": "https://metadata-static.plex.tv/3/people/35789c0b249ce651330a7ccc5d5e6ec0.jpg"
+    },
+    {
+     "filter": "actor=95071",
+     "id": 95071,
+     "role": "The Brain / Squit (voice)",
+     "tag": "Maurice LaMarche",
+     "tagKey": "df0f06bfab88d6a4cf77c4dc",
+     "thumb": "https://metadata-static.plex.tv/7/people/7ef61d0ba49c2a22ab6040875d58c367.jpg"
+    },
+    {
+     "filter": "actor=459551",
+     "id": 459551,
+     "role": "Slappy Squirrel (voice)",
+     "tag": "Sherri Stoner",
+     "tagKey": "5e45199fcbe4d7e72326b429",
+     "thumb": "https://metadata-static.plex.tv/c/people/c4a31f75d9e0140d6f96c7402a32a52e.jpg"
+    },
+    {
+     "filter": "actor=362950",
+     "id": 362950,
+     "role": "Pesto (voice)",
+     "tag": "Chick Vennera",
+     "tagKey": "b028dd5d8eee73708421735d",
+     "thumb": "https://metadata-static.plex.tv/people/5d77682b6f4521001ea9a256.jpg"
+    }
+   ],
+   "UltraBlurColors": {
+    "bottomLeft": "1f1f26",
+    "bottomRight": "15151a",
+    "topLeft": "1a1a1e",
+    "topRight": "24242a"
+   },
+   "Writer": [
+    {
+     "filter": "writer=144253",
+     "id": 144253,
+     "role": "Writer",
+     "tag": "Deanna Oliver",
+     "tagKey": "57aed5d57928f5cd6794fbf4",
+     "thumb": "https://metadata-static.plex.tv/0/people/0c711abb050c282499fb90e3666b0ce4.jpg"
+    },
+    {
+     "filter": "writer=761495",
+     "id": 761495,
+     "role": "Writer",
+     "tag": "Nicholas Hollander",
+     "tagKey": "0ce3db9283de5f9af0defe02"
+    },
+    {
+     "filter": "writer=360909",
+     "id": 360909,
+     "role": "Writer",
+     "tag": "Randy Rogel",
+     "tagKey": "f7734fd53ac482e0848318f7"
+    },
+    {
+     "filter": "writer=478821",
+     "id": 478821,
+     "role": "Writer",
+     "tag": "Tom Minton",
+     "tagKey": "640f77081b692767dbfd5ab4"
+    },
+    {
+     "filter": "writer=247654",
+     "id": 247654,
+     "role": "Writer",
+     "tag": "Kevin Hopps",
+     "tagKey": "f16ae56b87ef5250713eef55"
+    },
+    {
+     "filter": "writer=395009",
+     "id": 395009,
+     "role": "Writer",
+     "tag": "Charles M. Howell IV",
+     "tagKey": "6d50adcb1b9f94fb3204e33f",
+     "thumb": "https://metadata-static.plex.tv/f/people/f8a31d52cc6a764a9efd245e1ee9903d.jpg"
+    }
+   ],
+   "_artFor": "https://image.tmdb.org/t/p/original/8TThBwlIZnzCFkj21rv5Nv2lTNG.jpg",
+   "_art_url": "https://image.tmdb.org/t/p/original/8TThBwlIZnzCFkj21rv5Nv2lTNG.jpg",
+   "_folder": "",
+   "_generatedTitle": true,
+   "_hash": "5775908066fbdbfb5fabe00cc583cf05f31b7c04",
+   "_identify": {
+    "imdb": "tt0105941",
+    "plex": "plex://show/5d9c07fe2df347001e3a7d17",
+    "source": "placed",
+    "tmdb": 82
+   },
+   "_identity": "tmdb:82",
+   "_ids": {
+    "imdb": "tt0105941",
+    "tmdb": "82"
+   },
+   "_own_content_rating": true,
+   "_path": "shows/Animaniacs.S04.1080p.UPSCALED.DD.5.1.x265-EDGE2020/Animaniacs.S04E03.Boo.Happens.1080p.UPSCALED.DD.2.0.H.265.-EDGE2020.mkv",
+   "_placed": {
+    "episode": 3,
+    "kind": "episode",
+    "season": 4,
+    "tmdb_episode": 1906736
+   },
+   "_poster_url": "https://image.tmdb.org/t/p/original/8TThBwlIZnzCFkj21rv5Nv2lTNG.jpg",
+   "_release": "Animaniacs.S04.1080p.UPSCALED.DD.5.1.x265-EDGE2020",
+   "_scanned": true,
+   "_sid": "shows/Animaniacs.S04.1080p.UPSCALED.DD.5.1.x265-EDGE2020/Animaniacs.S04E03.Boo.Happens.1080p.UPSCALED.DD.2.0.H.265.-EDGE2020.mkv",
+   "_source": "zurg",
+   "_thumbFor": "https://image.tmdb.org/t/p/original/8TThBwlIZnzCFkj21rv5Nv2lTNG.jpg",
+   "addedAt": 1791703429,
+   "art": "/library/metadata/104981/art/1791897222",
+   "audienceRating": 7.8,
+   "audienceRatingImage": "themoviedb://image.rating",
+   "contentRating": "TV-Y7",
+   "duration": 148640,
+   "grandparentArt": "/library/metadata/104981/art/1791897222",
+   "grandparentGuid": "plex://show/5d9c07fe2df347001e3a7d17",
+   "grandparentKey": "/library/metadata/104981",
+   "grandparentRatingKey": "104981",
+   "grandparentSlug": "animaniacs",
+   "grandparentThumb": "/library/metadata/104981/thumb/1791897222",
+   "grandparentTitle": "Animaniacs",
+   "guid": "local://129641",
+   "index": 3,
+   "key": "/library/metadata/129641",
+   "librarySectionID": 2,
+   "librarySectionKey": "/library/sections/2",
+   "librarySectionTitle": "TV Shows",
+   "originallyAvailableAt": "1993-09-13",
+   "parentGuid": "plex://season/65dd8dbef97685e8c55065cd",
+   "parentIndex": 4,
+   "parentKey": "/library/metadata/129661",
+   "parentRatingKey": "129661",
+   "parentThumb": "/library/metadata/129661/thumb/1792772742",
+   "parentTitle": "Season 4",
+   "ratingKey": "129641",
+   "summary": "The two Warner Brothers Yakko and Wakko and their Warner sister Dot had been (supposedly) created in the 1930's, but their cartoons were too screwy for the general public to handle. The three Warners were locked up in the studio water tower until they escaped in the 90's. There, they run wild, causing chaos everywhere!",
+   "thumb": "/library/metadata/129641/thumb/1792772742",
+   "title": "Episode 3",
+   "type": "episode",
+   "updatedAt": 1792772741,
+   "year": 1993
+  }
+ ]
+}
