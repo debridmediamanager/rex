@@ -56,6 +56,13 @@ pub fn is_sqlite(path: &Path) -> bool {
 }
 
 fn open(path: &Path) -> Result<Connection, String> {
+    // It holds the sources' logins: owner-only from its first byte, and SQLite gives its
+    // -wal and -shm the main file's mode. A file that exists keeps the mode it has.
+    #[cfg(unix)]
+    if !path.exists() {
+        use std::os::unix::fs::OpenOptionsExt;
+        fs::OpenOptions::new().write(true).create_new(true).mode(0o600).open(path).map_err(|e| e.to_string())?;
+    }
     let connection = Connection::open(path).map_err(|e| e.to_string())?;
     // WAL: a commit appends the changed pages instead of rewriting the file, and
     // readers (a backup, `sqlite3`) never block the server. FULL: a commit is on disk
@@ -1046,6 +1053,24 @@ fn requeue(path: &Path, batch: Vec<(u64, Delta)>) {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(unix)]
+    #[test]
+    fn a_new_database_and_its_sidecars_are_owner_only() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = std::env::temp_dir().join(format!("rex-store-mode-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("rex.db");
+        let connection = open(&path).unwrap();
+        connection.execute_batch("INSERT INTO doc VALUES ('x', 'object', NULL);").unwrap();
+        for file in [path.clone(), dir.join("rex.db-wal"), dir.join("rex.db-shm")] {
+            let mode = fs::metadata(&file).unwrap().permissions().mode() & 0o777;
+            assert_eq!(mode, 0o600, "{}", file.display());
+        }
+        drop(connection);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
     use super::*;
     use serde_json::json;
 
