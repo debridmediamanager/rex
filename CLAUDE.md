@@ -2,7 +2,7 @@
 
 A Plex Media Server that owns no files. It answers the PMS API well enough that
 the **official** Plex clients treat it as a real server, and serves a library its
-sources push to it -- zurg's, streamed from zurg -- instead of local media.
+sources push to it, streamed from those sources, instead of local media.
 
 Not a Plex fork and not a client. It is the server side of the protocol,
 written from measurement against a real PMS.
@@ -28,6 +28,16 @@ payload wholesale, because the recording was taken without the paging params
 the client actually sends, so it was missing the same field. Replaying the
 client's exact request is the difference between finding it in an hour and not
 finding it at all. See `docs/findings.md`.
+
+## rex is open to any source
+
+**rex is not coupled to zurg.** A source is anything that registers, pushes over the feed API
+(`docs/feed-api.md`) and serves bytes on a Range GET; zurg is one source among equals, as an
+addon is (Ben, 2026-10-23). Anything new rex needs from a source goes into that contract, for
+every source: never a branch on a source's name, a default that assumes zurg, or a feature only
+zurg's shape can use. Docs and public copy describe sources generically and name zurg only as an
+example or where a step is really about zurg. The zurg names already in rex (`--zurg-mount`,
+`test_zurg_contract.py`, the setup guides' zurg steps) are history, not precedent: do not add more.
 
 ## rex identifies nothing
 
