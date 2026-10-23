@@ -117,7 +117,7 @@ Plex clients see it as one added in Add Library. Then:
   collections, locks, a picked or uploaded poster or background); a show already there keeps
   each edit of its own and takes the rest. A row holding several releases moves only when every
   release's folder belongs to the new library; otherwise it stays, logged once
-  (`FEED <key> stays in Debrid TV: its releases sit in folders of different libraries`). A row
+  (`FEED <key> stays in TV Shows: its releases sit in folders of different libraries`). A row
   placed as something else in the same push is identified again instead.
 - **Deleting the library in Plex keeps it deleted.** Its folders and type are kept in the state
   file (`deletedLocations`), a later registration makes nothing there and logs once that it
@@ -129,7 +129,7 @@ Plex clients see it as one added in Add Library. Then:
   stops declaring any, keeps its library.
 
 A directory no entry names, nor any library's folder, goes to the first library of its kind:
-Debrid TV for an episode, Debrid Movies for anything else.
+TV Shows for an episode, Movies for anything else.
 
 ### `GET /rex/sources` and `GET /rex/sources/{name}`
 

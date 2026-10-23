@@ -79,8 +79,9 @@ rust/target/release/rex catalog --seed --name den --out rex.db
 ```
 
 Either way this is a SQLite database holding a fixed `machineIdentifier` (random, as a real
-Plex Media Server's is, and kept if you re-seed), a movie library titled Debrid Movies holding the `movies`
-directory and a show library titled Debrid TV holding `shows`. A pushed item lands in the library holding the
+Plex Media Server's is, and kept if you re-seed), a movie library titled Movies holding the `movies`
+directory and a show library titled TV Shows holding `shows` (a catalog seeded before 2026-10-24 has
+Debrid Movies and Debrid TV; rename them in Plex if you like). A pushed item lands in the library holding the
 directory its `path` starts with (`movies/<release>/<file>`), whichever source sent it
 and whatever path prefix its `file` carries, unless the source placed it as the other kind:
 an episode under `movies` goes to a show library, a movie under `shows` to a movie library.
@@ -103,15 +104,15 @@ and rex makes the libraries then, on `<zurg's mount_path>/anime` (under rex's `-
 when zurg sets none), and moves what it already shows from
 that directory into them as it is: watch state, Fix Match and edits included. An open Plex Web
 lists them at once under More in its sidebar, where you can pin them. Every other directory
-stays in Debrid Movies and Debrid TV. Rename the libraries in Plex as you like.
-Delete one and it stays deleted, its directory going back to Debrid Movies and Debrid TV, until
+stays in Movies and TV Shows. Rename the libraries in Plex as you like.
+Delete one and it stays deleted, its directory going back to Movies and TV Shows, until
 you add it again with Add Library, whose folder list shows the directories zurg sent. Removing the lines from zurg's config keeps the library, and a
 mistyped entry is skipped and named in zurg's log (or rex's, for one rex refuses), the rest
 still applied
 ([feed API](feed-api.md#libraries-a-source-declares)).
 
-To add more directories to Debrid Movies or Debrid TV instead, name them when seeding
-(`--shows anime` makes `anime` a second folder of Debrid TV):
+To add more directories to Movies or TV Shows instead, name them when seeding
+(`--shows anime` makes `anime` a second folder of TV Shows):
 
 ```bash
 rust/target/release/rex catalog --seed --name den --out rex.db \
