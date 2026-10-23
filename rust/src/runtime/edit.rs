@@ -1198,14 +1198,29 @@ impl Runtime {
             .unwrap_or_default();
         for title in &outcome.collection_added {
             let lowered = title.to_lowercase();
-            if let Some(collection) = self.collections.values_mut().find(|collection| {
+            let named = |collection: &&Collection| {
                 let tag = if collection.tag.is_empty() {
                     &collection.title
                 } else {
                     &collection.tag
                 };
                 tag.to_lowercase() == lowered && collection.section == section
-            }) {
+            };
+            // Measured on an online 1.43.5 (`tests/fixtures/kometa_collections_s1435.json`,
+            // claimed and again unclaimed): a tag naming no collection MAKES one, which is
+            // how Kometa builds every static collection. The offline copies (1.43.4,
+            // 1.42.2) made only the tag.
+            if !self.collections.values().any(|collection| named(&collection)) {
+                let mut query = HashMap::from([
+                    ("title".to_string(), title.clone()),
+                    ("sectionId".to_string(), section.clone()),
+                ]);
+                if let Some(number) = type_number_for(&row) {
+                    query.insert("type".to_string(), number.to_string());
+                }
+                self.create_collection(&query);
+            }
+            if let Some(collection) = self.collections.values_mut().find(|collection| named(&&**collection)) {
                 if !collection.items.contains(key) {
                     collection.items.push(key.to_string());
                     collection.extra.shift_remove("_frozenCounts");

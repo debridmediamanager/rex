@@ -6891,16 +6891,17 @@ impl Runtime {
             // an `upload://{posters,art}/<sha1 of the bytes>` candidate, SELECTED, and ONE
             // timeline frame of the list's own type. rex keyed the upload on the
             // clock and refused a backdrop upload outright.
-            if request.body.is_empty() {
-                return Response::error(406, "rex: not acceptable");
-            }
+            let body = match artwork::posted_artwork(request) {
+                Ok(body) => body,
+                Err(refusal) => return refusal,
+            };
             let target = if field == "posters" { "thumb" } else { "art" };
             let prefix = if field == "posters" { "upload://posters" } else { "upload://art" };
-            let upload = format!("{prefix}/{}", artwork::sha1_hex(&request.body));
+            let upload = format!("{prefix}/{}", artwork::sha1_hex(&body));
             self.uploads.insert(
                 upload.clone(),
                 // Cycle 83: served `image/jpeg` whatever the bytes, as an item's upload.
-                (request.body.clone(), "image/jpeg".to_string()),
+                (body, "image/jpeg".to_string()),
             );
             let stamp = now();
             let reversion = |columns: &mut Map<String, Value>| {
@@ -19355,14 +19356,12 @@ impl Runtime {
                 match request.method.as_str() {
                     // Measured: the plural path is a 404 for a write.
                     "PUT" => Response::error(404, "rex: not found"),
-                    // Cycle 15: an empty upload body is a 406.
-                    "POST" if request.body.is_empty() => {
-                        Response::error(406, "rex: not acceptable")
-                    }
-                    "POST" => {
-                        let body = request.body.clone();
-                        self.upload_artwork(key, tail[0], &body)
-                    }
+                    // Cycle 15: an empty upload body is a 406 -- unless it names a `url`,
+                    // which the offline copy could not fetch (findings, tenth pass).
+                    "POST" => match artwork::posted_artwork(request) {
+                        Ok(body) => self.upload_artwork(key, tail[0], &body),
+                        Err(refusal) => refusal,
+                    },
                     "GET" | "HEAD" => self.artwork_list(row, tail[0]),
                     _ => Response::error(404, "rex: not found"),
                 }
