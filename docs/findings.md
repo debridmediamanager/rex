@@ -14109,7 +14109,9 @@ Kometa on rex, and each was a measurement taken where it could not show:
   made only the tag (cycle 30's finding, made on the two offline copies). rex follows the online
   server: a tag write naming no collection in its library makes one (`edit::after_edit`). The item
   path (`PUT /library/metadata/{id}?collection[0].tag.tag=`) goes through the same code and was not
-  re-measured online.
+  re-measured online. A member's detail row keeps that tag as `id, filter, tag` with no guid (the
+  fixture's `/library/metadata/1`), where a `POST /library/collections` collection's members carry
+  its guid (cycle 15); rex marks a collection a tag made (`_fromTag`) and stamps none.
 - **`url_poster` is `POST .../posters?url=` with no body.** The online server fetched it and stored
   `upload://posters/<sha1>`, selected, answering an empty 200 (`text/html`); an `.invalid` host and
   `http://127.0.0.1:32400/identity` were 502, a GitHub README 406. rex answered the copy's 406 to
