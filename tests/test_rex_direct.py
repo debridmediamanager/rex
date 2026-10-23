@@ -205,6 +205,20 @@ def announced(stub):
             for r in stub.taken("/servers.plex.tv/devices/%s" % MACHINE)]
 
 
+def lan(port):
+    """The LAN connection rex announces of itself unasked, as a real PMS does: the address it
+    reaches the world from (`local_interface_address`), on its port; none without a route."""
+    probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        probe.connect(("192.0.2.1", 9))
+        address = probe.getsockname()[0]
+    except OSError:
+        return []
+    finally:
+        probe.close()
+    return [] if address.startswith("127.") or address == "0.0.0.0" else ["http://%s:%d" % (address, port)]
+
+
 def wait_for(predicate, timeout):
     deadline = time.time() + timeout
     while time.time() < deadline:
@@ -282,7 +296,7 @@ def main():
         check("another name gets --tls-cert's", served(instance.port, "rex.example") == der(base_crt))
         check("...and so does no SNI", served(instance.port, None) == der(base_crt))
         check("the same port still answers plain HTTP", plain(instance.port) == b"HTTP/1.1 200 OK")
-        want = [LAN, "https://%s:32400" % HOSTNAME]
+        want = [LAN, "https://%s:32400" % HOSTNAME] + [uri for uri in lan(instance.port) if uri != LAN]
         got = wait_for(lambda: [uris for uris in announced(stub) if uris == want], 10)
         check("claimed, it announces the rex-direct URL on REX_DIRECT_PORT after --announce-url's",
               got, announced(stub))
@@ -311,9 +325,9 @@ def main():
             check("provider down, kept answer, no --tls-cert: %s gets the rex-direct certificate" % label,
                   served(instance.port, sni) == der(direct_crt))
         check("...and the same port still answers plain HTTP", plain(instance.port) == b"HTTP/1.1 200 OK")
-        want = ["https://%s:%d" % (HOSTNAME, instance.port)]
+        want = ["https://%s:%d" % (HOSTNAME, instance.port)] + lan(instance.port)
         got = wait_for(lambda: [uris for uris in announced(stub) if uris == want], 10)
-        check("...announcing the kept name on rex's own port", got, announced(stub))
+        check("...announcing its LAN address and the kept name on rex's own port", got, announced(stub))
         instance.stop()
         log = instance.output()
         check("...the failure is a WARN", logged(log, "WARNING", r"rex-direct: registration failed: .*"), log[-3000:])
@@ -333,7 +347,8 @@ def main():
         check("...answering plain HTTP", plain(instance.port) == b"HTTP/1.1 200 OK")
         check("...with no certificate to serve", served(instance.port, HOSTNAME) is None)
         time.sleep(3)
-        check("...announcing nothing", announced(stub) == [], announced(stub))
+        check("...announcing its LAN address alone", all(uris == lan(instance.port) for uris in announced(stub)),
+              announced(stub))
         check("...and keeping nothing", not os.path.exists(os.path.join(refused, "rex-direct.json")))
         instance.stop()
         log = instance.output()
@@ -370,9 +385,9 @@ def main():
               == (SERVER_TOKEN, MACHINE), post["headers"])
         check("...and REX_DIRECT_KEY as a bearer key",
               post["headers"].get("authorization") == "Bearer %s" % KEY, post["headers"])
-        want = ["https://%s:%d" % (HOSTNAME, instance.port)]
+        want = ["https://%s:%d" % (HOSTNAME, instance.port)] + lan(instance.port)
         got = wait_for(lambda: [uris for uris in announced(stub) if uris == want], 10)
-        check("...announcing the rex-direct URL", got, announced(stub))
+        check("...announcing its LAN address and the rex-direct URL", got, announced(stub))
         check("...and serving its certificate", served(instance.port, HOSTNAME) == der(direct_crt))
         instance.stop()
         log = instance.output()
@@ -398,9 +413,9 @@ def main():
         check("...asked again after 15 s, not the 1 s retryAfter said", posts and len(posts) == 2
               and time.time() - started >= 14, (len(asked), time.time() - started))
         check("...then serves the certificate", wait_for(lambda: served(instance.port, HOSTNAME) == der(direct_crt), 5))
-        want = ["https://%s:%d" % (HOSTNAME, instance.port)]
+        want = ["https://%s:%d" % (HOSTNAME, instance.port)] + lan(instance.port)
         got = wait_for(lambda: [uris for uris in announced(stub) if uris == want], 10)
-        check("...and announces its URL", got, announced(stub))
+        check("...and announces its URL, then its LAN address", got, announced(stub))
         instance.stop()
         log = instance.output()
         check("...the 202 is an INFO with its reason, not a failure",
@@ -418,7 +433,8 @@ def main():
         live.append(instance)
         time.sleep(3)
         check("a non-loopback http:// provider gets no request", stub.taken("/api/rex-direct/register") == [])
-        check("...and no announce names a rex-direct URL", announced(stub) == [], announced(stub))
+        check("...and no announce names a rex-direct URL", all(uris == lan(instance.port) for uris in announced(stub)),
+              announced(stub))
         instance.stop()
         log = instance.output()
         check("...it is a WARN, and rex-direct is off",
@@ -432,9 +448,11 @@ def main():
             stub.records = []
         instance = Instance(off, free_port(), stub.server_address[1], "off")
         live.append(instance)
-        time.sleep(3)
+        lan_only = lan(instance.port)
+        got = wait_for(lambda: [uris for uris in announced(stub) if uris == lan_only], 10)
         check("REX_DIRECT_URL=off registers nothing", stub.taken("/api/rex-direct/register") == [])
-        check("...announces nothing", announced(stub) == [], announced(stub))
+        check("...and, claimed with no --announce-url, announces its LAN address as a real PMS does",
+              lan_only and got and all(uris == lan_only for uris in announced(stub)), announced(stub))
         instance.stop()
         check("...and says nothing of rex-direct", "rex-direct:" not in instance.output(), instance.output()[-3000:])
     finally:

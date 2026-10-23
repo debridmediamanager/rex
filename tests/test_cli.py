@@ -60,12 +60,12 @@ def run(*args):
     return done
 
 
-def serving(*args):
+def serving(*args, cwd=ROOT):
     """Start a server, wait for /identity, and hand back (process, port)."""
     port = free_port()
     process = subprocess.Popen(server_command(*[a.replace("PORT", str(port)) for a in args],
                                               root=ROOT),
-                               cwd=ROOT, env=ENV, stdout=subprocess.DEVNULL,
+                               cwd=cwd, env=ENV, stdout=subprocess.DEVNULL,
                                stderr=subprocess.DEVNULL)
     def ready():
         if process.poll() is not None:
@@ -193,6 +193,37 @@ def main():
         check("seeded with no --friendly-name and no --mount: the host's name, under /mnt/rex, no source's path",
               'friendlyName="%s"' % socket.gethostname() in identity
               and locations == ["/mnt/rex/movies", "/mnt/rex/shows"], (identity[:300], locations))
+    finally:
+        stop(process)
+        shutil.rmtree(scratch, ignore_errors=True)
+
+    # No --catalog at all: rex.db in the working directory, so a setup need not name it; a
+    # catalog.json an older start made there, and no rex.db, is still the one served.
+    scratch = tempfile.mkdtemp(prefix="rex-cli-default-")
+    process, port = serving("--port", "PORT", "--gdm", "off", "--assert-claimed", cwd=scratch)
+    try:
+        made = sorted(name for name in os.listdir(scratch) if not name.startswith("rex.db-"))
+        check("no --catalog: rex.db is seeded in the working directory",
+              port is not None and "rex.db" in made and "catalog.json" not in made, (port, made))
+    finally:
+        stop(process)
+        shutil.rmtree(scratch, ignore_errors=True)
+    # An older default start: catalog.json, its state in a rex.db beside it that holds no catalog.
+    scratch = tempfile.mkdtemp(prefix="rex-cli-default-")
+    shutil.copy(os.path.join(ROOT, CATALOG), os.path.join(scratch, "catalog.json"))
+    process, port = serving("--port", "PORT", "--catalog", "catalog.json", "--state", "rex.db", "--gdm", "off",
+                            "--assert-claimed", cwd=scratch)
+    stop(process)
+    check("an older default start keeps its state in rex.db beside catalog.json",
+          port is not None and os.path.exists(os.path.join(scratch, "rex.db")), (port, os.listdir(scratch)))
+    process, port = serving("--port", "PORT", "--gdm", "off", "--assert-claimed", cwd=scratch)
+    try:
+        request = urllib.request.Request("http://127.0.0.1:%d/library/sections" % port,
+                                         headers={"Accept": "application/json"}) if port else None
+        sections = json.loads(urllib.request.urlopen(request, timeout=10).read())["MediaContainer"] if port else {}
+        check("no --catalog beside an older start's catalog.json and state rex.db: that catalog is served",
+              port is not None and sections.get("size", 0) > 0,
+              (port, sections.get("size"), os.listdir(scratch)))
     finally:
         stop(process)
         shutil.rmtree(scratch, ignore_errors=True)

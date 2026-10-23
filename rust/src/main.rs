@@ -67,22 +67,22 @@ fn server_usage() -> String {
 fn server_help() -> String {
     let helps: HashMap<&str, &str> = [
         ("--part-mode", "proxy streams a part's bytes from its source through rex (the only mode: a source's links are its own, never handed to clients)"),
-        ("--token", "require this X-Plex-Token on every request except /identity and /web/* -- which is what a real PMS does. Default OFF, because the test suites and probes talk to rex without one; a real server always has a token, so leaving it off is a deliberate deviation."),
+        ("--token", "require this X-Plex-Token on every request except /identity and /web/* -- which is what a real PMS does. Not needed: a claimed rex checks every token itself."),
         ("--assert-claimed", "report claimed=1 without performing a real plex.tv claim exchange"),
         ("--web-root", "directory of the extracted Plex Web client, served at /web"),
         ("--owner-email", "owner email, which is what a real PMS reports as myPlexUsername"),
         ("--owner-username", "the Plex account that OWNS this server; shared users are not owners"),
-        ("--announce-url", "publicly reachable https URL(s), comma-separated, to register with plex.tv, and keep registered. Once claimed, rex-direct's https://<name>:<port> is added (REX_DIRECT_URL names its provider, default DMM's, or is off; REX_DIRECT_PORT sets the port, default --port)"),
+        ("--announce-url", "more addresses Plex apps reach rex at, comma-separated, such as an https name of your own. Not needed at home: once claimed, rex announces its LAN address (http://<LAN IP>:<port>) and rex-direct's https://<name>:<port> by itself (REX_DIRECT_URL=off turns rex-direct off; REX_DIRECT_PORT is the port forwarded to rex, default --port)"),
         ("--device-id", "machineIdentifier to announce on; defaults to the catalog's own"),
         ("--tls-cert", "PEM certificate chain to serve TLS with, on the same port as plain HTTP; rex-direct's certificate answers for its own name beside it, and for every name without it"),
         ("--tls-key", "PEM private key for --tls-cert, PKCS#8, RSA or EC (defaults to the certificate file itself)"),
         ("--gdm", "answer Plex's LAN discovery protocol on udp/32410 and udp/32414"),
         ("--plex-direct-host", "the <hash>.plex.direct hostname to advertise in GDM's Host: line; omitted entirely when unknown, which is what a PMS with no certificate does"),
         ("--account-state-interval", "seconds between claimed-account watch/rating imports"),
-        ("--state", "file to keep watch state, edits, lists, history, preferences, uploads and statistics in across restarts. Default: rex.db beside the catalog, or the catalog itself when it is a database (state.pickle for the Python server), or $REX_STATE"),
-        ("--no-state", "keep nothing across a restart: a restart reloads the catalog as it is on disk, which the test suites rely on. Also an empty $REX_STATE"),
-        ("--catalog", "the catalog, a .db or .json file. One that does not exist is seeded on start, as rex catalog --seed would: an empty movie and show library under --mount. Default catalog.json"),
-        ("--mount", "the folder a catalog seeded on this start shows its libraries under (<mount>/movies, <mount>/shows). Sources register themselves, and their own mount, at PUT /rex/sources/{name} (docs/feed-api.md). Default /mnt/rex"),
+        ("--state", "file to keep watch state, edits, lists, history, preferences, uploads and statistics in across restarts. Default: rex.db beside the catalog, or the catalog itself when it is a database, or $REX_STATE"),
+        ("--no-state", "keep nothing across a restart: a restart reloads the catalog as it is on disk. Also an empty $REX_STATE"),
+        ("--catalog", "the catalog, a .db or .json file. One that does not exist is seeded on start, as rex catalog --seed would: an empty movie and show library under --mount. Default rex.db, or catalog.json where an older start made one"),
+        ("--mount", "the folder path a catalog seeded on this start shows for its libraries (<mount>/movies, <mount>/shows); only a label, nothing is read there. Default /mnt/rex"),
         ("--friendly-name", "the name a catalog seeded on this start is given (default the machine's host name); an existing catalog keeps its own"),
     ]
     .into_iter()

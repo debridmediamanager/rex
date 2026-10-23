@@ -173,6 +173,26 @@ UUID4 = r"[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
 results = []
 
 
+def lan(port):
+    """The LAN connection rex adds of itself after --announce-url's, as a real PMS announces its
+    own addresses unasked: the address it reaches the world from, on its port; none without one."""
+    probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        probe.connect(("192.0.2.1", 9))
+        address = probe.getsockname()[0]
+    except OSError:
+        return []
+    finally:
+        probe.close()
+    return [] if address.startswith("127.") or address == "0.0.0.0" else ["http://%s:%d" % (address, port)]
+
+
+def connections(uris, port):
+    """The Connection[][uri] pairs an announce of `uris` sends: those, then rex's LAN one."""
+    uris = uris.split(",")
+    return [("Connection[][uri]", uri) for uri in uris + [u for u in lan(port) if u not in uris]]
+
+
 def check(name, ok, detail=""):
     results.append(bool(ok))
     print("%s  %s%s" % ("PASS" if ok else "FAIL", name, "" if ok else "  -- " + str(detail)[:600]))
@@ -1306,8 +1326,8 @@ def main():
             put = announces[0]
             check("announce is PUT servers.plex.tv/devices/{machineIdentifier}",
                   put["path"] == "/devices/%s" % MACHINE and put["body"] == b"", put["path"])
-            check("announce query is the recorded five, in order, with the server token",
-                  put["query"] == [("Connection[][uri]", ANNOUNCE_URL), ("httpsEnabled", "1"),
+            check("announce query is the recorded five, in order, with the server token, and the LAN connection",
+                  put["query"] == connections(ANNOUNCE_URL, ports[0]) + [("httpsEnabled", "1"),
                                    ("httpsRequired", "0"), ("dnsRebindingProtection", "0"),
                                    ("X-Plex-Token", SERVER_TOKEN)], put["query"])
             check("announce carries the recorded thirteen headers, in order",
@@ -1327,7 +1347,7 @@ def main():
                       and a["headers"] == real["headers"] for a in ANNOUNCES), len(ANNOUNCES))
             check("announce goes to the recorded origin with the recorded query keys and headers",
                   "https://%s" % put["host"] == real["origin"]
-                  and [k for k, _ in put["query"]] == [k for k, _ in real["query"]]
+                  and [k for k, _ in put["query"]][len(lan(ports[0])):] == [k for k, _ in real["query"]]
                   and [k for k, _ in sent(put)] == names(real["headers"])
                   and dict(sent(put))["accept"] == dict(real["headers"])["accept"]
                   and "natLoopbackSupported" not in dict(put["query"]),
@@ -1587,7 +1607,7 @@ def main():
               first_log[-3000:])
         check("the heartbeat and the proxy-behind-a-public-URL warning are logged",
               logged(first_log, "INFO", r"heartbeat every 2s for machine %s -> %s"
-                     % (MACHINE, re.escape(ANNOUNCE_URL)))
+                     % (MACHINE, re.escape(",".join(uri for _, uri in connections(ANNOUNCE_URL, ports[0])))))
               and logged(first_log, "WARNING", r"part-mode=proxy behind a public URL: .*"),
               first_log[-3000:])
         missing = [message for level, message in claim_lines if not logged(first_log, level, message)]
@@ -1626,7 +1646,7 @@ def main():
               beats and beats[0]["query"])
         real = [k for k, _ in CONNECTIONS["query"]]
         check("two --announce-url connections are two Connection[][uri] pairs, as a real PMS sends",
-              beats and beats[0]["query"] == [("Connection[][uri]", uri) for uri in ANNOUNCE_URLS.split(",")]
+              beats and beats[0]["query"] == connections(ANNOUNCE_URLS, ports[1])
               + [("httpsEnabled", "1"), ("httpsRequired", "0"), ("dnsRebindingProtection", "0"),
                  ("X-Plex-Token", SERVER_TOKEN)]
               and real[:17] == ["Connection[][uri]"] * 17 and real[17] == "httpsEnabled",
@@ -1775,8 +1795,8 @@ def main():
               third.output()[-1500:])
         beats = stub.taken("servers.plex.tv", "/devices/.*", "PUT")
         check("httpsEnabled does not follow the connection URI's scheme",
-              beats and beats[0]["query"][:2] == [("Connection[][uri]", "http://10.0.0.1:32400"),
-                                                  ("httpsEnabled", "1")],
+              beats and [pair for pair in beats[0]["query"] if pair[0] != "Connection[][uri]"][:1] == [("httpsEnabled", "1")]
+              and beats[0]["query"][0] == ("Connection[][uri]", "http://10.0.0.1:32400"),
               beats and beats[0]["query"])
         broken = wait_for(lambda: stub.taken("servers.plex.tv", "/api/v2/features"), 20)
         time.sleep(0.5)

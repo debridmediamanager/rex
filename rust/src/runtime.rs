@@ -331,7 +331,14 @@ pub struct RuntimeOptions {
 impl Default for RuntimeOptions {
     fn default() -> Self {
         Self {
-            catalog: PathBuf::from("catalog.json"),
+            // `rex.db` since 2026-10-24, so a setup need not name it. A `catalog.json` an older
+            // default start made comes first: its state went to a `rex.db` beside it, which
+            // holds no catalog. A fresh start never writes one.
+            catalog: ["catalog.json", "rex.db"]
+                .into_iter()
+                .map(PathBuf::from)
+                .find(|path| path.exists())
+                .unwrap_or_else(|| PathBuf::from("rex.db")),
             port: 32400,
             host: "0.0.0.0".to_string(),
             part_mode: "proxy".to_string(),
@@ -22830,6 +22837,36 @@ fn placeholder_machine(machine: &str) -> bool {
     matches!(machine.trim_matches('0'), "" | "1")
 }
 
+/// The LAN connection rex announces of itself: the bound address, or the routeable interface
+/// when it binds every one. None but a private address: not loopback, which no other device
+/// reaches, nor a public or VPN one a default route through a tunnel picks.
+fn lan_url(host: &str, private: &str, port: u16) -> Option<String> {
+    let bound = host.parse::<std::net::IpAddr>().ok();
+    let address = match bound {
+        Some(ip) if ip.is_unspecified() => private.parse::<std::net::IpAddr>().ok()?,
+        Some(ip) => ip,
+        None => return None,
+    };
+    if !private_address(address) {
+        return None;
+    }
+    Some(match address {
+        std::net::IpAddr::V6(v6) => format!("http://[{v6}]:{port}"),
+        v4 => format!("http://{v4}:{port}"),
+    })
+}
+
+/// `--announce-url`'s list with the LAN connection added unless it already names it.
+fn with_lan_url(announce: Option<&str>, lan: Option<&str>) -> Option<String> {
+    let mut list = announce.into_iter().flat_map(|list| list.split(',')).map(str::trim).filter(|uri| !uri.is_empty()).map(str::to_string).collect::<Vec<_>>();
+    if let Some(lan) = lan {
+        if !list.iter().any(|uri| uri.trim_end_matches('/') == lan) {
+            list.push(lan.to_string());
+        }
+    }
+    (!list.is_empty()).then(|| list.join(","))
+}
+
 /// One `allowedNetworks` entry: an address, `address/bits` or `address/netmask`.
 fn network(entry: &str) -> Option<(std::net::IpAddr, u32)> {
     let entry = entry.trim();
@@ -23131,9 +23168,8 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
             &["shows".to_string()],
         )?;
         info!(
-            "seeded {}: an empty library named {name} at {}, machine={machine}",
-            options.catalog.display(),
-            options.mount
+            "seeded {}: an empty library named {name}, machine={machine}",
+            options.catalog.display()
         );
     }
     options.state = resolve_state_path(&options);
@@ -23179,19 +23215,27 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
                     catalog's is a placeholder (seed one with rex catalog --seed)"
             .to_string());
     }
-    if let Some(url) = &announce {
+    // A real PMS announces `http://<ip>:<port>` for its own addresses unasked
+    // (`pms_announce_connections_s1422.json`); every setup used to type rex's LAN IP here.
+    // Read again at each announce (`plextv::announce`): a start before DHCP has an address.
+    let lan = !placeholder_machine(&announced) && lan_url(&host, "192.168.0.1", port).is_some();
+    if lan {
+        plextv::announce_lan(&host, port);
+    }
+    let explicit_announce = announce.is_some();
+    if let Some(url) = announce.clone().or_else(|| lan.then(String::new)) {
         *plextv
             .beat
             .lock()
             .map_err(|_| "beat lock poisoned".to_string())? = Some(plextv::Beat {
             machine: announced.clone(),
-            url: url.clone(),
+            url,
             name: friendly.clone(),
         });
     }
     // Before the port opens, so its first TLS client already gets the rex-direct certificate.
     let direct = rexdirect::RexDirect::configured(&announced, &friendly, announce.clone(), port, &catalog_path, Arc::clone(&certificates));
-    let heartbeat = announce.is_some() || direct.is_some();
+    let heartbeat = announce.is_some() || lan || direct.is_some();
     let tls_config = (certificates.base.is_some() || direct.is_some())
         .then(|| Arc::new(tls_config(Arc::clone(&certificates))));
     if let Some(direct) = direct {
@@ -23239,7 +23283,7 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
         "rex on http://{}:{port}  machine={machine}  items={items}  parts={part_mode}",
         hostname()
     );
-    if announce.is_some() && part_mode == "proxy" {
+    if explicit_announce && part_mode == "proxy" {
         // Measured behind a Cloudflare tunnel: a prefix Range reaches the origin as a
         // full fetch, so every play start drains the whole title from the provider.
         warning!(
@@ -23267,7 +23311,9 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
         );
         plextv.start_account(&runtime);
         if plextv.sync.is_none() {
-            warning!(
+            // Nobody can get the secret, and each account's watch state works without it: a
+            // warning every claimed start sent people to the docs for nothing.
+            debug!(
                 "claimed-account watch/rating sync is OFF: {} is not configured",
                 plextv::DECRYPT_SECRET_ENV
             );
@@ -28674,5 +28720,33 @@ mod statistics_bucket_tests {
             let local = crate::platform::local_tm(at).unwrap();
             assert_eq!(statistics_bucket(at, 4), at - (local.tm_min as i64 * 60 + local.tm_sec as i64), "{at}");
         }
+    }
+}
+
+#[cfg(test)]
+mod announce_tests {
+    use super::*;
+
+    #[test]
+    fn the_lan_connection_is_announced_without_being_asked() {
+        let lan = lan_url("0.0.0.0", "192.168.1.20", 32400);
+        assert_eq!(lan.as_deref(), Some("http://192.168.1.20:32400"));
+        assert_eq!(with_lan_url(None, lan.as_deref()).as_deref(), Some("http://192.168.1.20:32400"));
+        assert_eq!(
+            with_lan_url(Some("https://rex.example:443"), lan.as_deref()).as_deref(),
+            Some("https://rex.example:443,http://192.168.1.20:32400")
+        );
+        // A list that already names it, as every setup's did, announces it once.
+        assert_eq!(
+            with_lan_url(Some("https://rex.example:443,http://192.168.1.20:32400/"), lan.as_deref()).as_deref(),
+            Some("https://rex.example:443,http://192.168.1.20:32400/")
+        );
+        assert_eq!(lan_url("10.0.0.5", "192.168.1.20", 32500).as_deref(), Some("http://10.0.0.5:32500"));
+        assert_eq!(lan_url("127.0.0.1", "192.168.1.20", 32400), None);
+        assert_eq!(lan_url("0.0.0.0", "0.0.0.0", 32400), None);
+        // A default route through a tunnel or a public address is no LAN connection.
+        assert_eq!(lan_url("0.0.0.0", "100.101.1.2", 32400), None);
+        assert_eq!(lan_url("0.0.0.0", "203.0.113.7", 32400), None);
+        assert_eq!(with_lan_url(None, None), None);
     }
 }

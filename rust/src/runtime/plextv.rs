@@ -1480,11 +1480,30 @@ pub(crate) fn republish(claim: SharedClaim, local_address: String, sections: Vec
 
 // -- heartbeat.py ------------------------------------------------------------------
 
+/// Where rex listens, set once by `serve` when it announces its LAN connection of itself.
+static LAN: std::sync::OnceLock<(String, u16)> = std::sync::OnceLock::new();
+
+pub(crate) fn announce_lan(host: &str, port: u16) {
+    let _ = LAN.set((host.to_string(), port));
+}
+
+/// An announce list with rex's LAN connection after it, its address read now.
+pub(crate) fn with_lan(url: &str) -> String {
+    let lan = LAN.get().and_then(|(host, port)| {
+        super::lan_url(host, &super::local_interface_address().unwrap_or_default(), *port)
+    });
+    super::with_lan_url(Some(url), lan.as_deref()).unwrap_or_default()
+}
+
 /// `heartbeat.announce`: one registration PUT, byte-shaped like a real PMS's
 /// (`tests/fixtures/outbound-announce.json`). `url` is a comma-separated list: a server
 /// with several connections sends one `Connection[][uri]` pair each, in a row
 /// (`tests/fixtures/pms_announce_connections_s1422.json`).
 fn announce(token: &str, machine: &str, url: &str, name: &str, version: &str) -> Result<(), String> {
+    let url = with_lan(url);
+    if url.is_empty() {
+        return Err("no address to announce yet: no private network address".to_string());
+    }
     let mut pairs = url
         .split(',')
         .filter(|uri| !uri.is_empty())
@@ -1570,7 +1589,7 @@ impl Beat {
 /// and anew if the provider ever names the server differently.
 pub(crate) fn start_heartbeat(plextv: Arc<PlexTv>, interval: u64) {
     if let Some(beat) = plextv.beat.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).as_ref() {
-        info!("heartbeat every {interval}s for machine {} -> {}", beat.machine, beat.url);
+        info!("heartbeat every {interval}s for machine {} -> {}", beat.machine, with_lan(&beat.url));
     }
     let claim = Arc::clone(&plextv.claim);
     let _ = thread::Builder::new()
@@ -1580,7 +1599,8 @@ pub(crate) fn start_heartbeat(plextv: Arc<PlexTv>, interval: u64) {
             let mut waiting = false;
             loop {
                 let beat = plextv.beat.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).clone();
-                let Some(beat) = beat else {
+                // Nothing yet: no --announce-url, rex-direct not answered, no private address.
+                let Some(beat) = beat.filter(|beat| !with_lan(&beat.url).is_empty()) else {
                     thread::sleep(Duration::from_secs(interval));
                     continue;
                 };
@@ -1590,7 +1610,7 @@ pub(crate) fn start_heartbeat(plextv: Arc<PlexTv>, interval: u64) {
                 // 2026-09-11 claim answer the account token from ever being written.
                 let Some(token) = claim_token(&claim) else {
                     if !std::mem::replace(&mut waiting, true) {
-                        info!("waiting for a claim (POST /myplex/claim) before announcing {}", beat.url);
+                        info!("waiting for a claim (POST /myplex/claim) before announcing {}", with_lan(&beat.url));
                     }
                     thread::sleep(Duration::from_secs(interval));
                     continue;
