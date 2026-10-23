@@ -168,7 +168,8 @@ pub fn plex_children_rows(p: &dyn PlexSource, guid: &str) -> HashMap<String, Val
 /// content id for the Plex episode whose `Guid` lists it, reading no name, so a file pushed on
 /// other numbers than Plex's lands on Plex's own episode (Ben 10: Omniverse's `S02E01 - Showdown
 /// Part 1` is TMDB's 1107002, Plex's S3E1). Plex's season at the pushed numbers is looked at first,
-/// then every other season. With no id pushed, the row at the pushed numbers. `seasons` are the
+/// then every other season. With no id pushed, or one Plex lists nowhere, the row at the pushed
+/// numbers, the latter only when that row lists no TMDB id of its own. `seasons` are the
 /// show's `plex_children_rows`; `episodes` keeps each season's rows read, by its guid.
 pub fn plex_episode(
     p: &dyn PlexSource,
@@ -201,7 +202,16 @@ pub fn plex_episode(
             }
         }
     }
-    None
+    // Plex lists the id under no episode: Animaniacs' episodes from S1E2 on carry only imdb:// and
+    // tvdb:// ids (rex-fun, 2026-10-23), and matched none. The episode at the pushed numbers stands
+    // when it lists no TMDB id at all; one that lists another is another episode than the file's.
+    let (season, episode) = numbers?;
+    let found = seasons.get(&season.to_string())?.clone();
+    let (row, numbers) = at(season, &rows_of(&found), episode)?;
+    let tmdb_listed = row.get("Guid").and_then(Value::as_array).is_some_and(|ids| {
+        ids.iter().any(|entry| entry.get("id").and_then(Value::as_str).is_some_and(|id| id.starts_with("tmdb://")))
+    });
+    (!tmdb_listed).then_some((found, row, numbers))
 }
 
 /// The title a release is, as its source named it, and what Plex's agent adds to that.
@@ -293,5 +303,30 @@ mod tests {
         assert_eq!((unknown.kind.as_str(), unknown.tmdb, unknown.imdb, unknown.plex), ("show", Some(30983), None, None));
         let unanswered = placed(Some(&plex), "show", Some(30983), Some("not-an-imdb-id"));
         assert_eq!((unanswered.tmdb, unanswered.imdb, unanswered.plex), (Some(30983), None, None));
+    }
+
+    /// Plex's Animaniacs, as its agent answered rex-fun on 2026-10-23: its episodes from S1E2 on
+    /// list only `imdb://` and `tvdb://` ids, so a pushed `tmdb_episode` names none of them.
+    struct AnimaniacsPlex;
+    impl PlexSource for AnimaniacsPlex {
+        fn call(&self, _method: &str, path: &str, _body: Option<&Value>) -> Option<Value> {
+            (path == "/library/metadata/65dd8dbef97685e8c55065b5/children").then(|| json!({"MediaContainer": {"Metadata": [
+                {"index": 8, "guid": "plex://episode/variety", "title": "Variety Speak", "Guid": [{"id": "imdb://tt1602152"}, {"id": "tvdb://102246"}]},
+                {"index": 9, "guid": "plex://episode/tenors", "title": "Three Tenors and You're Out", "Guid": [{"id": "imdb://tt2385352"}, {"id": "tvdb://102247"}]},
+                {"index": 10, "guid": "plex://episode/bingo", "title": "Bingo", "Guid": [{"id": "tmdb://999"}, {"id": "tvdb://102248"}]}
+            ]}}))
+        }
+    }
+
+    #[test]
+    fn an_id_plex_lists_nowhere_falls_back_to_the_numbers_only_where_plex_lists_no_tmdb_id() {
+        let seasons: HashMap<String, Value> = [("3".to_string(), json!({"index": 3, "guid": "plex://season/65dd8dbef97685e8c55065b5"}))].into();
+        let mut episodes = HashMap::new();
+        // `Animaniacs.S03E09.Three.Tenors.and.Youre.Out`: DMM's S3E9, TMDB episode 1906705, which
+        // Plex lists under no episode; its S3E9 has no TMDB id of its own, so the numbers stand.
+        let found = plex_episode(&AnimaniacsPlex, &seasons, &mut episodes, Some(1906705), Some((3, 9)));
+        assert_eq!(found.map(|(_, row, numbers)| (row["title"].clone(), numbers)), Some((json!("Three Tenors and You're Out"), (3, 9))));
+        // Plex's S3E10 lists another TMDB episode: those numbers are another episode than the file's.
+        assert_eq!(plex_episode(&AnimaniacsPlex, &seasons, &mut episodes, Some(1906706), Some((3, 10))), None);
     }
 }
