@@ -216,7 +216,10 @@ guess: the pick and the meter are tested against 1,694 real candidates
 `--announce-url` announces with the claim's server token only; unclaimed it waits for the
 claim and announces the moment it lands, no restart (findings, "A
 claimed server needs no account token"). A comma-separated list announces each URI as its own
-connection, as a PMS with several does. The feed is rex's own API, not PMS emulation.
+connection, as a PMS with several does. A start refuses an entry plex.tv would keep no
+connection from: one that is not `http(s)://` and a host (a pasted Markdown link is answered 200
+and lists nothing) or a 100.64.0.0/10 address (plex.tv's firewall 403s the whole announce;
+findings, "An announce plex.tv keeps no connection from"). The feed is rex's own API, not PMS emulation.
 
 rex-direct is a plex.direct of rex's own, not a PMS's (`runtime/rexdirect.rs`), and a
 documented provider API (`docs/rex-direct-api.md`), no longer a DMM sponsor perk: rex reads no

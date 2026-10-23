@@ -14121,3 +14121,26 @@ What worked unchanged with the gate bypassed: matching items to TMDb/IMDb/TVDb i
 rating and genre updates, smart collections with labels, summaries and sort titles, and overlays
 (poster uploads). `tests/test_tag_collections.py` replays Kometa's requests; its 200 and 406 poster checks
 fetch the recorded GitHub urls and skip offline.
+
+## An announce plex.tv keeps no connection from (2026-10-24)
+
+A sponsor's rex was claimed, listed under the account's authorised devices and in no Plex app;
+its log said `announced but NOT visible in /api/v2/resources` at every start, and rex-direct's
+provider answered `The Plex account does not own this server`, since it reads the same
+resources list. The heartbeat line named its target as
+`[http://192.168.1.203:32400](http://192.168.1.203:32400)`: `--announce-url` was a Markdown link,
+pasted from a chat. Measured on a claimed test rex with its own server token, rex's exact device
+PUT to `servers.plex.tv/devices/{machine}`:
+
+| `Connection[][uri]` | plex.tv | resources |
+|---|---|---|
+| `http://192.168.88.244:32420` | 200, one `<Connection>` | listed, that connection |
+| `[http://192.168.88.244:32420](http://192.168.88.244:32420)` | **200, no `<Connection>`** | **not listed** |
+| `http://100.101.30.30:32420` (Tailscale) | **403**, Cloudflare's `Attention Required!` page | unchanged |
+| the LAN URI and the Tailscale one together | **403**, the LAN URI lost with it | unchanged |
+
+A listed server drops out of resources the moment an announce leaves it no connection, and
+comes back with the next good one. rex now refuses both at start (`main.rs` `announce_urls`,
+`tests/test_cli.py`): an entry that is not `http(s)://` and a host, and a 100.64.0.0/10
+address. A Tailscale NAME (`https://<host>.<tailnet>.ts.net:443`, as the guides announce it) is
+what plex.tv takes; the earlier rex-e2e run announced one.
