@@ -91,7 +91,11 @@ impl Item {
             return Err(refuse("path has an empty, . or .. segment"));
         }
         let file = text("file").unwrap_or_else(|| source.default_file(&path));
-        if !is_video(&file) {
+        // A source that serves an HLS playlist (a YouTube relay) names it `.m3u8`, a video only
+        // by its probe: rex plays one through a conversion, never as a file.
+        let playlist = file.to_ascii_lowercase().ends_with(".m3u8")
+            && value.pointer("/media_info/format/format_name").and_then(Value::as_str) == Some("hls");
+        if !is_video(&file) && !playlist {
             return Err(refuse("not a video file"));
         }
         if is_sample(&file) {

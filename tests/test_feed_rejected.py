@@ -48,6 +48,14 @@ def main():
         check("two new ids of one file in one push: the second is rejected",
               status == 200 and (body or {}).get("created") == 1
               and (body or {}).get("rejected") == [{"id": "twin-b", "reason": "%s is already twin-a's file" % twins[0]["file"]}], (status, body))
+        # The relay serves `videos/<id>.m3u8`: a video by its probe (ffprobe's `hls`), not its name.
+        playlist = dict(first, id="playlist", path="movies/Playlist/1mjMdudwtRc.m3u8", file=MOUNT + "/movies/Playlist/1mjMdudwtRc.m3u8", release="playlist")
+        status, body = server.feed("POST", "items", {"items": [playlist]})
+        check("an .m3u8 file whose probe is HLS is a video", status == 200 and (body or {}).get("created") == 1, (status, body))
+        named = dict(playlist, id="named", path="movies/Named/named.m3u8", file=MOUNT + "/movies/Named/named.m3u8", release="named", media_info=PROBE)
+        status, body = server.feed("POST", "items", {"items": [named]})
+        check("an .m3u8 file whose probe is a file's is still no video",
+              status == 200 and (body or {}).get("rejected") == [{"id": "named", "reason": "not a video file"}], (status, body))
     finally:
         server.stop()
     log = open(os.path.join(work, "server.log"), errors="replace").read()
