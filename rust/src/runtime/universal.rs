@@ -2457,7 +2457,9 @@ impl Runtime {
             let (w, h) = (w.trim().parse::<f64>().ok()?, h.trim().parse::<f64>().ok()?);
             (w.is_finite() && h.is_finite() && (2.0..=16384.0).contains(&w) && (2.0..=16384.0).contains(&h)).then_some((w, h))
         });
-        if query.contains_key("videoResolution") && cap.is_none() { return None; }
+        // Plex for Android at Original quality sends `videoResolution=` empty: no cap, not a bad one
+        // (refused as one, its every conversion was "No conversion profile found", rex-fun 2026-10-23).
+        if query.get("videoResolution").is_some_and(|value| !value.is_empty()) && cap.is_none() { return None; }
         if audio_stream.is_some_and(|stream| stream.get("channels").and_then(Value::as_i64).is_some_and(|channels| !(1..=64).contains(&channels))) { return None; }
         if video_stream.is_some_and(|stream| ["width", "height"].iter().any(|name| number_of(stream.get(*name)).is_some_and(|size| !(2.0..=16384.0).contains(&size)))) { return None; }
         let mut audio = audio_stream.map(|stream| {

@@ -795,9 +795,9 @@ def main():
         # Plex for Android at Original quality decides direct play itself (hasMDE) from the codecs
         # alone, and played an HLS-backed Part's playlist bytes as the video (rex-fun, 2026-10-23).
         android = dict(json.load(open(os.path.join(ROOT, "tests/fixtures/decisions/generic_transcode_target_s1422.json")))["decisions"][-1]["query"])
-        for name in ("maxVideoBitrate", "videoResolution"):
-            android.pop(name)
-        android.update(directPlay="1", directStream="1", directStreamAudio="1", videoQuality="100")
+        # Original quality, as the app sent it: no bitrate cap and an EMPTY videoResolution.
+        android.pop("maxVideoBitrate")
+        android.update(directPlay="1", directStream="1", directStreamAudio="1", videoQuality="100", videoResolution="")
         for key, label in (("17", "hls"), ("10", "plain")):
             status, _, body = get(port, "/video/:/transcode/universal/decision",
                                   list(dict(android, path="/library/metadata/" + key, session="mde-" + label).items()))
