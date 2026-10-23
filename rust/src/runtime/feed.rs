@@ -227,6 +227,20 @@ fn display_fields(display: &Map<String, Value>, source: &Source) -> Result<Map<S
     Ok(kept)
 }
 
+/// The size ffprobe read off a file (`format.size`, a string in its JSON), for an item sent
+/// without `size`: the probe is required anyway. None for a playlist, whose size is its text's.
+fn probed_size(value: &Value) -> Option<u64> {
+    let format = value.pointer("/media_info/format")?;
+    if format.get("format_name").and_then(Value::as_str) == Some("hls") {
+        return None;
+    }
+    match format.get("size")? {
+        Value::String(text) => text.trim().parse().ok(),
+        other => other.as_u64(),
+    }
+    .filter(|size| *size > 0)
+}
+
 impl Item {
     fn parse(source: &Source, value: &Value) -> Result<Self, (String, String)> {
         let text = |key: &str| value.get(key).and_then(Value::as_str).map(str::trim).filter(|v| !v.is_empty()).map(str::to_string);
@@ -296,7 +310,7 @@ impl Item {
             extra: (text("kind").as_deref() == Some("extra")).then(|| super::scan::pushed_extra_type(text("extra_type").as_deref())),
             kept: None,
             library: value.get("library").map(string_value).filter(|v| !v.is_empty() && v != "null"),
-            size: value.get("size").and_then(Value::as_u64).unwrap_or(0),
+            size: value.get("size").and_then(Value::as_u64).filter(|size| *size > 0).or_else(|| probed_size(value)).unwrap_or(0),
             hash: text("hash").map(|hash| hash.to_ascii_lowercase()),
             tmdb: id_text("tmdb"),
             folder: value.get("folder").and_then(Value::as_str).map(|folder| folder.trim_matches('/').to_string()),
@@ -3020,6 +3034,20 @@ impl Runtime {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn an_item_sent_without_its_size_takes_the_one_ffprobe_read() {
+        let source = Source::register("test", &json!({"url": "http://127.0.0.1:9"})).unwrap();
+        let probe = |format: Value| json!({"streams": [{"codec_type": "video"}], "format": format});
+        let item = |pushed: Value| Item::parse(&source, &pushed).unwrap().size;
+        // ffprobe's JSON writes format.size as a string.
+        assert_eq!(item(json!({"id": "a", "path": "movies/a.mkv", "media_info": probe(json!({"format_name": "matroska,webm", "size": "1468006400"}))})), 1468006400);
+        assert_eq!(item(json!({"id": "a", "path": "movies/a.mkv", "size": 7, "media_info": probe(json!({"size": "1468006400"}))})), 7);
+        assert_eq!(item(json!({"id": "a", "path": "movies/a.mkv", "size": 0, "media_info": probe(json!({"size": "9"}))})), 9);
+        // A playlist's size is its text's, never the stream's.
+        assert_eq!(item(json!({"id": "s", "path": "kids/s.m3u8", "media_info": probe(json!({"format_name": "hls", "size": "2048"}))})), 0);
+        assert_eq!(item(json!({"id": "a", "path": "movies/a.mkv"})), 0);
+    }
 
     #[test]
     fn the_blank_tile_pass_reads_no_row_from_disk_to_find_its_rows() {
