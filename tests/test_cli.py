@@ -120,6 +120,16 @@ def main():
         ("--h, which could be --help, --host or --heartbeat-interval", ["--h"], b"ambiguous option: --h"),
         ("a value that looks like an option", ["--token", "--verbose"], b"argument --token: expected one argument"),
         ("a --port that is not an integer", ["--port", "abc"], b"argument --port: invalid int value: 'abc'"),
+        # A sponsor's log, 2026-10-24: the address pasted as a Markdown link. plex.tv answers
+        # that announce 200 and keeps no connection, so no app lists the server.
+        ("an --announce-url pasted as a Markdown link",
+         ["--announce-url", "[http://192.168.1.203:32400](http://192.168.1.203:32400)"],
+         b"argument --announce-url: '[http://192.168.1.203:32400](http://192.168.1.203:32400)' is not"),
+        # plex.tv's firewall answers an announce naming a 100.64.0.0/10 address 403, and the
+        # LAN address beside it is lost with it (measured 2026-10-24).
+        ("an --announce-url naming a Tailscale address",
+         ["--announce-url", "http://192.168.1.20:32400,http://100.101.30.30:32400"],
+         b"argument --announce-url: plex.tv refuses an announce naming 100.101.30.30"),
     ):
         # A port of its own, so a server that wrongly starts never touches 32400.
         done = run("--port", str(free_port()), "--catalog", CATALOG, "--gdm", "off", *args)
@@ -132,6 +142,9 @@ def main():
     for label, args in (
         ("--port=N and --catalog=FILE", ["--port=PORT", "--catalog=" + CATALOG, "--gdm=off"]),
         ("the prefixes --por, --cat and --gd", ["--por", "PORT", "--cat", CATALOG, "--gd", "off"]),
+        ("the guides' Tailscale announce, a ts.net name before the LAN IP",
+         ["--port", "PORT", "--catalog", CATALOG, "--gdm", "off",
+          "--announce-url", "https://myhost.tailnet.ts.net:443,http://192.168.1.20:32400"]),
     ):
         process, port = serving(*args)
         try:

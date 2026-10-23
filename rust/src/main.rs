@@ -230,7 +230,7 @@ fn parse_server_args(args: &[String]) -> Result<ServerArgs, String> {
             "--web-root" => options.web_root = Some(PathBuf::from(value)),
             "--owner-email" => options.owner_email = value,
             "--owner-username" => options.owner_username = value,
-            "--announce-url" => options.announce_url = Some(value),
+            "--announce-url" => options.announce_url = Some(announce_urls(value)?),
             "--device-id" => options.device_id = Some(value),
             "--tls-cert" => options.tls_cert = Some(PathBuf::from(value)),
             "--tls-key" => options.tls_key = Some(PathBuf::from(value)),
@@ -277,6 +277,35 @@ fn parse_server_args(args: &[String]) -> Result<ServerArgs, String> {
 /// server.py's default is `webclient` at the repository root. The native binary lives three
 /// levels under the checkout (`rust/target/release/rex`), so the same folder is
 /// `./webclient` when started from the checkout, or that one found from the binary.
+/// `--announce-url`, refused at start where plex.tv would take it and list no connection
+/// (measured 2026-10-24 with a claimed server's own token): a Markdown link pasted from a chat
+/// is answered 200 and kept as no `Connection`, so no app lists the server; a 100.64.0.0/10
+/// (Tailscale) address makes plex.tv's firewall answer the whole announce 403.
+fn announce_urls(value: String) -> Result<String, String> {
+    for uri in value.split(',').filter(|uri| !uri.is_empty()) {
+        let Some(authority) = uri
+            .strip_prefix("http://")
+            .or_else(|| uri.strip_prefix("https://"))
+            .map(|rest| rest.split('/').next().unwrap_or_default())
+            .filter(|authority| {
+                !authority.is_empty()
+                    && authority.bytes().all(|byte| byte.is_ascii_alphanumeric() || b".-:[]".contains(&byte))
+            })
+        else {
+            return Err(format!("argument --announce-url: '{uri}' is not an http:// or https:// address, such as http://192.168.1.20:32400"));
+        };
+        let host = authority.rsplit_once(':').map_or(authority, |(host, _)| host);
+        if let Ok(ip) = host.parse::<std::net::Ipv4Addr>() {
+            if ip.octets()[0] == 100 && (ip.octets()[1] & 0xc0) == 64 {
+                return Err(format!(
+                    "argument --announce-url: plex.tv refuses an announce naming {ip} (a Tailscale address), and lists none of the others with it; use the LAN IP, or a Tailscale name such as https://myhost.tailnet.ts.net:443"
+                ));
+            }
+        }
+    }
+    Ok(value)
+}
+
 fn default_web_root() -> Option<PathBuf> {
     let local = PathBuf::from("webclient");
     if local.is_dir() {
