@@ -249,8 +249,13 @@ impl Runtime {
     /// item was dropped, its row trashed with the first source's release.
     fn file_held(&self, arrival: &Arrival) -> bool {
         let source = arrival.extra.get("_source").and_then(Value::as_str).unwrap_or_default();
-        let file = arrival.found.file.as_str();
-        self.catalog.rows_by(crate::catalog::By::File, file).iter().any(|row| {
+        self.file_holder(source, &arrival.found.file).is_some()
+    }
+
+    /// The id that reads `file` for `source` (`file_held`'s row), or `""` for a row no source
+    /// pushed. A second id of the same source naming that file is no row of its own.
+    pub(super) fn file_holder(&self, source: &str, file: &str) -> Option<String> {
+        self.catalog.rows_by(crate::catalog::By::File, file).iter().find_map(|row| {
             // The release that reads this file, not any release of the row: a title holding one
             // source's X and another's Y took the second source's X for held.
             super::feed::tagged_media(row)
@@ -263,10 +268,9 @@ impl Runtime {
                         .flatten()
                         .any(|part| part.get("file").and_then(Value::as_str) == Some(file))
                 })
-                .any(|media| {
-                    // An untagged Media is the row's own source's (only the first is tagged).
-                    media.get("_source").or(row.get("_source")).and_then(Value::as_str).is_none_or(|name| name == source)
-                })
+                // An untagged Media is the row's own source's (only the first is tagged).
+                .find(|media| media.get("_source").or(row.get("_source")).and_then(Value::as_str).is_none_or(|name| name == source))
+                .map(|media| media.get("_sid").or(row.get("_sid")).and_then(Value::as_str).unwrap_or_default().to_string())
         })
     }
 

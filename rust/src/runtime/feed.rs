@@ -623,6 +623,7 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
                 guard.dirty = true;
             }
         }
+        let mut batch_files: HashMap<String, String> = HashMap::new();
         for mut item in items {
             // A `kind` the source sent says which it is (`feed_library`); no name guesses.
             let Some(library) = guard.feed_library(&item) else {
@@ -635,6 +636,18 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
             let mut existing = rows.get(&item.id).map(|key| (key.clone(), false)).or_else(|| {
                 legacy.get(&item.file).map(|key| (key.clone(), true))
             });
+            // A new id whose file another id of this source already reads made no row and was
+            // counted nowhere: re-pushing files under new ids looked like a push that did nothing
+            // (rex-fun, 2026-10-23). A file is one row's, so the new id is refused, naming the holder.
+            if existing.is_none() && !retry {
+                let holder = guard.file_holder(&source.name, &item.file).or_else(|| batch_files.get(&item.file).cloned());
+                if let Some(holder) = holder.filter(|holder| *holder != item.id) {
+                    let holder = if holder.is_empty() { "a row no source pushed".to_string() } else { holder };
+                    counts.rejected.push(json!({"id": item.id, "reason": format!("{} is already {holder}'s file", item.file)}));
+                    continue;
+                }
+                batch_files.insert(item.file.clone(), item.id.clone());
+            }
             // The source now says a file it pushed as an episode or a film is an extra (zurg
             // 27e589f3 on the production server: TBBT's interviews, InuYasha's clean endings): its row is no
             // title any more and the file becomes a clip, as a first push of it would. A version

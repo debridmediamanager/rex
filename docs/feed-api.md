@@ -366,6 +366,9 @@ What the fields do:
   server starts. A row of several releases is not re-identified by one of them.
 - **Only video.** A `file` that is not a video (by extension) or is a sample is rejected,
   as Plex's scanners skip them.
+- **One file, one id.** A new `id` whose `file` another id of the same source already has, in
+  rex or earlier in the same push, is rejected as `<file> is already <id>'s file`. To change
+  an item's id, push it with a file of its own, or remove the old id first.
 - **Extras are the source's to name.** A file pushed with `kind: extra` is a clip of the title
   its release's other files are (the film, or the episodes' show; unmatched or not) with its
   `extra_type`, in that title's `Extras` and `extras/all` and in no listing, axis or count. One
