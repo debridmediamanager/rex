@@ -19930,49 +19930,128 @@ impl Runtime {
         })
     }
 
-    /// A show matched by hand takes the picked show's seasons and episodes by their numbers, as
-    /// its rows had taken an earlier identity's: Ben 10: Omniverse, Fix Matched on the production
-    /// rex (2026-10-23), kept every episode on Ben and Kate's guids and 67 of 80 unmatched. An
-    /// episode the show lists no row for is unmatched rather than left on the old show's.
+    /// A show matched by hand takes the picked show's seasons and episodes, as its rows had taken an
+    /// earlier identity's: Ben 10: Omniverse, Fix Matched on the production rex (2026-10-23), kept
+    /// every episode on Ben and Kate's guids, 67 of 80 unmatched. An episode its source placed with
+    /// a TMDB episode id is Plex's episode listing that id, the exchange of a pushed content id for
+    /// Plex's guid that rex makes everywhere (`identify::plex_episode`); one without is Plex's at its
+    /// numbers only when every season holds as many episodes as Plex's does. Ben 10's release
+    /// numbers four seasons of twenty where Plex lists eight of ten: by number its S2E1 would be
+    /// Plex's S2E1, another episode, so those rows stay as they were until their source sends ids.
     fn identify_show_children(&mut self, key: &str, guid: &str, tree: &Value) {
         let (Some(tree), Some((_, picked))) = (tree.as_object(), self.match_candidates.get(guid).cloned()) else {
             return;
         };
+        let leaves = self.leaves(key);
+        let tmdb_episode = |leaf: &Value| {
+            scan::placed_tmdb_episode(leaf.get("_placed").or_else(|| leaf.pointer("/Media/0/_placed")))
+        };
+        let mut counts: HashMap<String, usize> = HashMap::new();
+        for leaf in leaves.iter().filter(|leaf| tmdb_episode(leaf).is_none()) {
+            *counts.entry(leaf.get("parentIndex").map(py_str).unwrap_or_default()).or_default() += 1;
+        }
+        let sizes_agree = !counts.is_empty()
+            && counts.iter().all(|(season, count)| {
+                tree.get(season).and_then(|entry| entry["episodes"].as_object()).is_some_and(|rows| rows.len() == *count)
+            });
+        let by_id = |id: i64| {
+            let wanted = format!("tmdb://{id}");
+            tree.iter().find_map(|(season, entry)| {
+                entry["episodes"].as_object()?.iter().find_map(|(episode, row)| {
+                    let ids = row.get("Guid")?.as_array()?;
+                    ids.iter().any(|entry| entry.get("id").and_then(Value::as_str) == Some(wanted.as_str())).then(|| {
+                        (season.clone(), row.clone(), (season.parse::<i64>().ok(), episode.parse::<i64>().ok()))
+                    })
+                })
+            })
+        };
+        let mut described: HashSet<String> = HashSet::new();
+        let mut emptied: Vec<String> = Vec::new();
+        for leaf in &leaves {
+            let Some(leaf_key) = key_of(leaf) else {
+                continue;
+            };
+            let here = leaf.get("parentIndex").and_then(Value::as_i64).zip(leaf.get("index").and_then(Value::as_i64));
+            let found = match tmdb_episode(leaf) {
+                Some(id) => by_id(id),
+                None if sizes_agree => here.and_then(|(season, episode)| {
+                    let row = tree.get(&season.to_string())?["episodes"].get(episode.to_string())?.clone();
+                    Some((season.to_string(), row, (Some(season), Some(episode))))
+                }),
+                None => None,
+            };
+            let Some((season, row, (Some(s), Some(e)))) = found else {
+                self.inherit_parents(&leaf_key);
+                continue;
+            };
+            // An id naming an episode of another season moves the row into the show's season of
+            // that index, as a merge moves an unpaired episode (`merge_shows`).
+            if here.map(|n| n.0) != Some(s) {
+                let from = leaf.get("parentRatingKey").map(string_value).unwrap_or_default();
+                let target = self.season_of(key, s, &from);
+                if let Some(object) = self.catalog.get_mut(&leaf_key).and_then(Value::as_object_mut) {
+                    object.insert("parentRatingKey".to_string(), json!(target));
+                }
+                emptied.push(from);
+            }
+            if let Some(object) = self.catalog.get_mut(&leaf_key).and_then(Value::as_object_mut) {
+                metadata::describe(object, &picked, tree.get(&season).map(|entry| &entry["season"]), Some(&row), true, Some((s, e)));
+            }
+            described.insert(season);
+            self.inherit_parents(&leaf_key);
+        }
         for season in self.children(key) {
             let (Some(season_key), Some(index)) = (key_of(&season), season.get("index").map(py_str)) else {
                 continue;
             };
-            let found = tree.get(&index).map(|entry| &entry["season"]);
-            if let Some(object) = self.catalog.get_mut(&season_key).and_then(Value::as_object_mut) {
-                match found.and_then(|row| row.get("guid")) {
-                    Some(season_guid) => object.insert("guid".to_string(), season_guid.clone()),
-                    None => object.insert("guid".to_string(), json!(format!("local://{season_key}"))),
-                };
-                match found.and_then(|row| row.get("Guid")) {
+            let found = tree.get(&index).map(|entry| &entry["season"]).filter(|_| described.contains(&index));
+            if let (Some(found), Some(object)) = (found, self.catalog.get_mut(&season_key).and_then(Value::as_object_mut)) {
+                if let Some(season_guid) = found.get("guid") {
+                    object.insert("guid".to_string(), season_guid.clone());
+                }
+                match found.get("Guid") {
                     Some(ids) => object.insert("Guid".to_string(), ids.clone()),
                     None => object.shift_remove("Guid"),
                 };
+            }
+            if let Some(object) = self.catalog.get_mut(&season_key).and_then(Value::as_object_mut) {
                 object.insert("parentGuid".to_string(), json!(guid));
             }
         }
-        for leaf in self.leaves(key) {
-            let Some(leaf_key) = key_of(&leaf) else {
-                continue;
-            };
-            let numbers = leaf.get("parentIndex").and_then(Value::as_i64).zip(leaf.get("index").and_then(Value::as_i64));
-            let entry = numbers.and_then(|(season, _)| tree.get(&season.to_string()));
-            let episode = numbers.zip(entry).and_then(|((_, episode), entry)| entry["episodes"].get(episode.to_string())).cloned();
-            if let Some(object) = self.catalog.get_mut(&leaf_key).and_then(Value::as_object_mut) {
-                match &episode {
-                    Some(episode) => metadata::describe(object, &picked, entry.map(|entry| &entry["season"]), Some(episode), true, numbers),
-                    None => {
-                        object.insert("guid".to_string(), json!(format!("local://{leaf_key}")));
-                        object.shift_remove("Guid");
-                    }
-                }
+        for leaf in &leaves {
+            if let Some(leaf_key) = key_of(leaf) {
+                self.inherit_parents(&leaf_key);
             }
-            self.inherit_parents(&leaf_key);
         }
+        for season in emptied {
+            self.drop_if_empty(&season);
+        }
+    }
+
+    /// The season of `index` under `show`, made from `template` (a season of the show) on a new key
+    /// when the show has none of that index.
+    fn season_of(&mut self, show: &str, index: i64, template: &str) -> String {
+        if let Some(found) = self.children(show).into_iter().find(|season| season.get("index").and_then(Value::as_i64) == Some(index)).and_then(|season| key_of(&season)) {
+            return found;
+        }
+        let key = self.mint_key();
+        let mut season = self.catalog.get(template).cloned().unwrap_or_else(|| json!({"type": "season"}));
+        if let Some(object) = season.as_object_mut() {
+            object.insert("ratingKey".to_string(), json!(key));
+            object.insert("key".to_string(), json!(format!("/library/metadata/{key}/children")));
+            object.insert("guid".to_string(), json!(format!("local://{key}")));
+            object.insert("index".to_string(), json!(index));
+            object.insert("title".to_string(), json!(format!("Season {index}")));
+            object.insert("parentRatingKey".to_string(), json!(show));
+            object.insert("parentKey".to_string(), json!(format!("/library/metadata/{show}")));
+            for field in ["Guid", "summary", "_season_guid", "viewedLeafCount", "lastViewedAt"] {
+                object.shift_remove(field);
+            }
+            object.insert("addedAt".to_string(), json!(now()));
+            object.insert("updatedAt".to_string(), json!(now()));
+        }
+        self.catalog.add(season);
+        key
     }
 
     /// Plex's agent's answer to `call`, which `handle_connection` makes once the runtime lock is
@@ -20074,7 +20153,6 @@ impl Runtime {
             // running it afterwards replaces the identity the person picked.
             if !guid.is_empty() {
                 self.identify_guid(key, &guid, season, episode);
-                self.identify_show_children(key, &guid, &tree);
             }
             // The identity a later push of this title joins: its TMDB id, else the agent's guid.
             let chosen = self.match_candidates.get(&guid).map(|(_, picked)| {
@@ -20109,6 +20187,10 @@ impl Runtime {
                     object.insert("year".to_string(), json!(year));
                 }
                 object.insert("updatedAt".to_string(), json!(now()));
+            }
+            // After the show takes its guid: the children read it from the show (`inherit_parents`).
+            if !guid.is_empty() {
+                self.identify_show_children(key, &guid, &tree);
             }
             // Cycle 59: a rename here reaches the children as an edit's does.
             if let Some(updated) = self.catalog.get(key).cloned() {

@@ -154,6 +154,11 @@ pub(super) fn placed_numbers(placed: Option<&Value>) -> Option<(i64, i64)> {
     Some((placed.get("season")?.as_i64()?, placed.get("episode")?.as_i64()?))
 }
 
+/// TMDB's id for the episode its source placed a file on (a `_placed`'s `tmdb_episode`).
+pub(super) fn placed_tmdb_episode(placed: Option<&Value>) -> Option<i64> {
+    placed?.get("tmdb_episode")?.as_i64().filter(|id| *id > 0)
+}
+
 /// What a row or an item is identified by: the `kind` and ids its source placed it with, or a TMDB
 /// id a person set by hand at the source, read as its library's kind ("movie" or "show"). Answers
 /// ("movie" or "show", TMDB id, IMDb id); None for anything else, an IMDb or TVDB id without a
@@ -221,20 +226,23 @@ pub(super) fn name_release(plan: &Library, arrivals: &mut [Arrival]) {
         // Numbers its source placed the file on are TMDB's, which Plex's agent keeps; any other
         // is rex's own file order and names no row of Plex's.
         let pushed = placed_numbers(arrival.extra.get("_placed")).filter(|_| show);
-        let numbers = arrival.numbers.filter(|_| show);
+        let tmdb_episode = placed_tmdb_episode(arrival.extra.get("_placed")).filter(|_| show);
+        let mut numbers = arrival.numbers.filter(|_| show);
         let mut meta = Map::new();
         meta.insert("title".to_string(), json!(title));
         meta.insert("summary".to_string(), json!(""));
         if let Some(described) = &identity.row {
-            let season = pushed.and_then(|(season, _)| seasons.get(&season.to_string()));
-            let episode = pushed.zip(season).and_then(|((_, episode), season)| {
-                let guid = season.get("guid")?.as_str()?.to_string();
-                let rows = episodes
-                    .entry(guid.clone())
-                    .or_insert_with(|| plex.map(|p| identify::plex_children_rows(p, &guid)).unwrap_or_default());
-                rows.get(&episode.to_string()).cloned()
-            });
-            metadata::describe(&mut meta, described, season, episode.as_ref(), show, numbers);
+            let found = plex
+                .filter(|_| pushed.is_some() || tmdb_episode.is_some())
+                .and_then(|p| identify::plex_episode(p, &seasons, &mut episodes, tmdb_episode, pushed));
+            // Found by its TMDB id, the file is Plex's episode under Plex's numbers.
+            if let Some((_, _, plex_numbers)) = found.as_ref().filter(|_| tmdb_episode.is_some()) {
+                numbers = Some(*plex_numbers);
+                arrival.numbers = Some(*plex_numbers);
+            }
+            let season = found.as_ref().map(|(season, _, _)| season).or_else(|| pushed.and_then(|(season, _)| seasons.get(&season.to_string())));
+            let episode = found.as_ref().map(|(_, episode, _)| episode);
+            metadata::describe(&mut meta, described, season, episode, show, numbers);
         } else {
             // Named, but no Plex row for it: the ids alone, and the name it was pushed with.
             let field = if show { "_show_external_guids" } else { "Guid" };

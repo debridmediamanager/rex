@@ -176,6 +176,11 @@ impl Item {
                     placed.insert("episode_end".to_string(), json!(end));
                 }
             }
+            // TMDB's id for the episode its source placed the file on: the content id rex
+            // exchanges for Plex's episode (`identify::plex_episode`).
+            if let (true, Some(id)) = (kind == "episode", number("tmdb_episode", 1)) {
+                placed.insert("tmdb_episode".to_string(), json!(id));
+            }
             Value::Object(placed)
         });
         let edition = match value.get("edition_title") {
@@ -727,6 +732,26 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
                     existing = None;
                 }
             }
+            // A version of a row of several that its source now places on other numbers than the
+            // row's leaves the row and is placed on its own, as an extra's does above: the row was
+            // never re-identified by one of its releases, so SpongeBob's Frys S10 pack, which zurg
+            // placed S10E24 as TMDB's S9E15 (production server, 2026-10-23), sat on S10E24 beside
+            // three other releases' files for good while its own version stored the new placement.
+            if let (Some(numbers), Some((key, _)), false, true) =
+                (super::scan::placed_numbers(item.placed.as_ref()), &existing, retry, item.media_info.is_some())
+            {
+                let leaves = guard.catalog.get(key).is_some_and(|row| {
+                    let here = row.get("parentIndex").and_then(Value::as_i64).zip(row.get("index").and_then(Value::as_i64));
+                    row.get("type").and_then(Value::as_str) == Some("episode")
+                        && versions(row).len() > 1
+                        && here != Some(numbers)
+                        && !guard.matched_by_hand(row)
+                });
+                if leaves && guard.drop_version(key, &source.name, &item.id) {
+                    guard.dirty = true;
+                    existing = None;
+                }
+            }
             let plan = match existing {
                 Some((key, adopt)) => {
                     let row = guard.catalog.get(&key);
@@ -773,6 +798,11 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
                         && !several
                         && (moved
                             || replaced
+                            // Placed, but Plex's agent had no row for its numbers when it came
+                            // (its season was read to 50 rows, Animaniacs' S1E109): asked again on
+                            // each push, which changes nothing while the answer is the same.
+                            || super::scan::placed_numbers(item.placed.as_ref()).is_some()
+                                && row.and_then(|row| row.get("guid")).and_then(Value::as_str).is_some_and(|guid| guid.starts_with("local://"))
                             || named
                                 && item.identifiable(&library.kind)
                                 && (retry
@@ -905,13 +935,16 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
                             row.insert("_ids".to_string(), Value::Object(item.ids.clone()));
                         }
                     }
-                    // The placement it now sits on, also where it already sat there and nothing
-                    // moved: without it every push placed it again and no pass knew it placed.
-                    if let (Some(placed), Some(row)) = (&item.placed, guard.catalog.get_mut(&key).and_then(Value::as_object_mut)) {
-                        if row.get("_placed") != Some(placed) {
-                            row.insert("_placed".to_string(), placed.clone());
-                            changed = true;
-                        }
+                }
+                // The placement it now sits on, also where it already sat there and nothing moved:
+                // without it every push placed it again and no pass knew it placed. A row kept
+                // where a person matched it records it too: a Fix Match of its show reads the TMDB
+                // episode id its source sent (`identify_show_children`), which Ben 10: Omniverse's
+                // rows under a matched show never kept.
+                if let (Some(placed), Some(row)) = (&item.placed, guard.catalog.get_mut(&key).and_then(Value::as_object_mut)) {
+                    if row.get("_placed") != Some(placed) {
+                        row.insert("_placed".to_string(), placed.clone());
+                        changed = true;
                     }
                 }
                 if changed {
@@ -2652,7 +2685,7 @@ impl Runtime {
 
     /// A show or season a re-identified episode left with no children: deleted, its key
     /// retired, announced in `state 9` as a deleted row is.
-    fn drop_if_empty(&mut self, key: &str) {
+    pub(super) fn drop_if_empty(&mut self, key: &str) {
         let Some(row) = self.catalog.get(key).cloned() else {
             return;
         };

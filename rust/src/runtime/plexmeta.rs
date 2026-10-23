@@ -85,8 +85,12 @@ impl crate::identify::PlexSource for PlexMeta {
         // A match or children list with no rows may be filled later: kept a day, then asked
         // again (the production rex drew Camp CrunchLabs on the blank tile after its poster was
         // added, 2026-10-12, when every answer was kept for good).
+        // So is one holding fewer rows than its `totalSize`: before every page was read, a list
+        // was kept as its first 50 rows.
         let incomplete = |answer: &Value| {
-            answer.pointer("/MediaContainer/Metadata").and_then(Value::as_array).is_none_or(Vec::is_empty)
+            let rows = answer.pointer("/MediaContainer/Metadata").and_then(Value::as_array);
+            let total = answer.pointer("/MediaContainer/totalSize").and_then(Value::as_u64).unwrap_or(0) as usize;
+            rows.is_none_or(|rows| rows.is_empty() || rows.len() < total)
         };
         let cached = self.cache.get(&key);
         if let Some(hit) = cached.as_ref().filter(|hit| !expired(incomplete(hit), hit)) {
@@ -94,7 +98,7 @@ impl crate::identify::PlexSource for PlexMeta {
         }
         // Read token and identity together on every network call: the shared claim's daily
         // version refresh must reach an already-created metadata transport too.
-        let mut headers = {
+        let headers = {
             let claim = self.claim.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
             let Some(token) = claim.token.as_ref().filter(|token| !token.is_empty()) else {
                 return cached;
@@ -112,22 +116,49 @@ impl crate::identify::PlexSource for PlexMeta {
             ]);
             headers
         };
-        if method == "GET" {
-            // The agent pages at 50 (the lab capture); 500 is refused with a 400.
-            headers.push(("X-Plex-Container-Start", "0".to_string()));
-            headers.push(("X-Plex-Container-Size", "50".to_string()));
-        }
         let payload = body.map(Value::to_string).unwrap_or_default();
-        let fetched = upstream::fetch(
-            method,
-            &super::plextv::plextv_url(&format!("{PROVIDER}{path}")),
-            &headers,
-            payload.as_bytes(),
-            Duration::from_secs(25),
-        )
-        .ok()
-        .filter(|(status, _, _)| (200..300).contains(status))
-        .and_then(|(_, _, raw)| serde_json::from_slice::<Value>(&raw).ok());
+        let page = |start: usize| {
+            let mut headers = headers.clone();
+            if method == "GET" {
+                // The agent pages at 50 (the lab capture); 500 is refused with a 400.
+                headers.push(("X-Plex-Container-Start", start.to_string()));
+                headers.push(("X-Plex-Container-Size", "50".to_string()));
+            }
+            upstream::fetch(
+                method,
+                &super::plextv::plextv_url(&format!("{PROVIDER}{path}")),
+                &headers,
+                payload.as_bytes(),
+                Duration::from_secs(25),
+            )
+            .ok()
+            .filter(|(status, _, _)| (200..300).contains(status))
+            .and_then(|(_, _, raw)| serde_json::from_slice::<Value>(&raw).ok())
+        };
+        let mut fetched = page(0);
+        // A list longer than a page is read to its `totalSize` (Detective Conan's season 1 is 1,218
+        // episodes in pages of 50, Animaniacs' 160, 2026-10-23, `tests/fixtures/provider/feed_episodes_1023.json`):
+        // one page left every episode past the 50th unmatched. A page that cannot be read leaves
+        // the answer as the earlier ones made it.
+        while method == "GET" {
+            let Some(container) = fetched.as_mut().and_then(|answer| answer.get_mut("MediaContainer")) else {
+                break;
+            };
+            let total = container.get("totalSize").and_then(Value::as_u64).unwrap_or(0) as usize;
+            let have = container.get("Metadata").and_then(Value::as_array).map_or(0, Vec::len);
+            if have == 0 || have >= total {
+                break;
+            }
+            let more = page(have).and_then(|next| next.pointer("/MediaContainer/Metadata").and_then(Value::as_array).cloned()).unwrap_or_default();
+            if more.is_empty() {
+                break;
+            }
+            if let Some(Value::Array(rows)) = container.get_mut("Metadata") {
+                rows.extend(more);
+                let size = rows.len();
+                container["size"] = json!(size);
+            }
+        }
         // The provider unreachable: the answer it gave before, however empty.
         let Some(answer) = fetched else {
             return cached;

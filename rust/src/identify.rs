@@ -163,6 +163,47 @@ pub fn plex_children_rows(p: &dyn PlexSource, guid: &str) -> HashMap<String, Val
         .collect()
 }
 
+/// Plex's season and episode rows for a file of a show, and the numbers Plex files it under. By
+/// the TMDB episode id its source pushed (`tmdb_episode`) when there is one: rex exchanges that
+/// content id for the Plex episode whose `Guid` lists it, reading no name, so a file pushed on
+/// other numbers than Plex's lands on Plex's own episode (Ben 10: Omniverse's `S02E01 - Showdown
+/// Part 1` is TMDB's 1107002, Plex's S3E1). Plex's season at the pushed numbers is looked at first,
+/// then every other season. With no id pushed, the row at the pushed numbers. `seasons` are the
+/// show's `plex_children_rows`; `episodes` keeps each season's rows read, by its guid.
+pub fn plex_episode(
+    p: &dyn PlexSource,
+    seasons: &HashMap<String, Value>,
+    episodes: &mut HashMap<String, HashMap<String, Value>>,
+    tmdb_episode: Option<i64>,
+    numbers: Option<(i64, i64)>,
+) -> Option<(Value, Value, (i64, i64))> {
+    let mut rows_of = |season: &Value| -> HashMap<String, Value> {
+        let Some(guid) = season.get("guid").and_then(Value::as_str) else {
+            return HashMap::new();
+        };
+        episodes.entry(guid.to_string()).or_insert_with(|| plex_children_rows(p, guid)).clone()
+    };
+    let at = |season: i64, rows: &HashMap<String, Value>, episode: i64| rows.get(&episode.to_string()).cloned().map(|row| (row, (season, episode)));
+    let Some(id) = tmdb_episode else {
+        let (season, episode) = numbers?;
+        let found = seasons.get(&season.to_string())?.clone();
+        let (row, numbers) = at(season, &rows_of(&found), episode)?;
+        return Some((found, row, numbers));
+    };
+    let wanted = format!("tmdb://{id}");
+    let lists = |row: &Value| row.get("Guid").and_then(Value::as_array).is_some_and(|ids| ids.iter().any(|entry| entry.get("id").and_then(Value::as_str) == Some(wanted.as_str())));
+    let mut order: Vec<(i64, &Value)> = seasons.iter().filter_map(|(index, season)| Some((index.parse().ok()?, season))).collect();
+    order.sort_by_key(|(index, _)| (Some(*index) != numbers.map(|n| n.0), *index));
+    for (index, season) in order {
+        for (episode, row) in rows_of(season) {
+            if lists(&row) {
+                return Some((season.clone(), row.clone(), (index, episode.parse().ok()?)));
+            }
+        }
+    }
+    None
+}
+
 /// The title a release is, as its source named it, and what Plex's agent adds to that.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Identity {

@@ -1,0 +1,2715 @@
+{
+ "rows": [
+  {
+   "Country": [
+    {
+     "filter": "country=387550",
+     "id": 387550,
+     "tag": "United States of America"
+    }
+   ],
+   "Genre": [
+    {
+     "filter": "genre=16771",
+     "id": 16771,
+     "tag": "Animation"
+    },
+    {
+     "filter": "genre=244689",
+     "id": 244689,
+     "tag": "Comedy"
+    },
+    {
+     "filter": "genre=334175",
+     "id": 334175,
+     "tag": "Family"
+    }
+   ],
+   "Guid": [
+    {
+     "id": "imdb://tt0206512"
+    },
+    {
+     "id": "tmdb://387"
+    }
+   ],
+   "Location": [
+    {
+     "path": "/mnt/zurg/shows/Spongebob Squarepants Season 9 Complete WEB x264 [i_c]"
+    },
+    {
+     "path": "/mnt/zurg/shows/SpongeBob.SquarePants.1999.S10.REPACK.1080p.AMZN.Web-rip.x265.10bit.EAC3.2.0.FrysTAoE {imdb-tt0206512}"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S05E15.Roller.Cowards.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/ktIFge725AFZmxDcY.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E44.1080p.AMZN.WEB-DL.DD2.0.x264-NTb/uABtKdQta75Vh35ku.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/Bob.L_Eponge.S08E15.Le.p__t__.de.crabe.g__ant.Billy.Bubulle.2022.MULTI.1080p.PMTP.WEB-DL.AAC2.0.H.264-AndreMor/Isf3yaJfrjPEEQpEpj9gihFrKP4aXseF.7z"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S05E17.The.Original.Fry.Cook.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/6CJBSJ5UGmoEYVwco.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S05E32.The.Inmates.of.Summer.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/9hGC6mVQNyUfl47Za.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S01E29.Karate.Choppers.REPACK2.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob SquarePants S10E53 1080p AMZN WEB-DL DD2 0 x264-NTb/XlFDtktS7aAm9rG5t.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S05E24.The.Krusty.Plate.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/IUXUeOwhRweWWpk1p.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S03E29.Born.Again.Krabs.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.1999.S10E39.Two.Thumbs.Down.1080p.AMZN.Webrip.x265.10bit.EAC3.2.0.Frys.TAoE/fc7211a21e3d35d6fb831a7cd0cc4b61.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S03E13.The.Algaes.Always.Greener.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/Bob.L_Eponge.S06E15.Grand.P__re_.le.pirate.Le.club.des.c__phalopodes.2022.MULTI.1080p.PMTP.WEB-DL.DDP5.1.H.264-AndreMor/k71IxJdB8EDmIcrOEdbT56zyLz6Q3Omj.7z"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S06E07.Spongicus.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/JERxXQqAcLdQumMpp.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S04E03.The.Lost.Mattress.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S06E32.Pets.or.Pests.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/B6PxeLdazkl5aJnTf.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S04E05.Skill.Crane.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S05E37.20000.Patties.Under.the.Sea.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/eYFGZSeOGXrBVCmGf.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S02E08.Squirrel.Jokes.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob SquarePants S10E67 1080p AMZN WEB-DL DD2 0 x264-NTb/bmE7znua8B1IuIxfo.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S09.1080p.WEB-DL.HebSub.x264-D00oo00M"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S01E07.Plankton.REPACK2.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S06E20.Porous.Pockets.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/8yIuneC5cBPKf8JeH.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.1999.S10E25.Yeti.Krabs.1080p.AMZN.Webrip.x265.10bit.EAC3.2.0.Frys.TAoE/1501ec8cb21ed376ee71db04c4bb2dfb.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S17E02.Brainless.Bawn.1080p.HDTV.DD5.1.x264-Slurpuff"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S08.1080p.WEB-DL.HebSub.x264-D00oo00M"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S11E35.Ink.Lemonade.1080p.PMTP.WEB-DL.AAC2.0.x264-AndreMor"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S06E21.Krusty.Krushers.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/cG4cYqF4KsQBB3TyA.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S01E10.Pizza.Delivery.REPACK2.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/Bob.L'Eponge.S02E16.Service.de.nuit.Le.Capitaine.amoureux.2022.MULTI.1080p.PMTP.WEB-DL.AAC2.0.H.264-AndreMor/1HWhvT1sxx5QNOagRQuP7fyuk641mlqT.7z"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S17E07.The.Nerds.1080p.NOW.WEBRip.AAC2.0.x264-NOGRP"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S01E26.Scaredy.Pants.REPACK2.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S04E32.The.Pink.Purloiner.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E64.1080p.AMZN.WEB-DL.DD2.0.x264-NTb/WOAzEhfKQmjqPUgJt.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E42.1080p.AMZN.WEB-DL.DD2.0.x264-NTb/cCcjiPLQCpdgzh5J0.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.1999.S17E13.My.Tighty.Whiteys.1080p.AMZN.Webrip.x265.10bit.EAC3.2.0.Frys-TAoE"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S04E24.Bummer.Vacation.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S02E16.Squidville.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S04E22.Once.Bitten.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob SquarePants S10E47 1080p AMZN WEB-DL DD2 0 x264-NTb/FQqwMLUYWQoMirseQ.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S17E18.Farmers.Market.Feud.1080p.HDTV.AAC2.0.x264-Slurpuff"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/Bob.L_Eponge.S07E16.Chacun.dans.sa.cour.Le__on.de.karat__.2022.MULTI.1080p.PMTP.WEB-DL.AAC2.0.H.264-AndreMor/ngPbZZzsr1tkYeX6D4HM64JpEQwCfMgS.7z"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/Spongebob.Schwammkopf.S10E09.German.AC3D.DL.1080p.WebRip.x265.Repack-FuN/nbVbyATCP0u02gQHnMFuM9gjWGPW.part01.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S06E31.Toy.Store.Of.Doom.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/myD0ZLkHh5jEGhtAZ.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S03E35.Spongebob.Meets.The.Strangler.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S01E32.Valentines.Day.REPACK2.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S01E15.Hall.Monitor.REPACK2.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob SquarePants S10E22 1080p AMZN WEB-DL DD2 0 x264-NTb/6DF2EzgPHB0aAlka2.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S04E18.Karate.Island.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S06E30.Sand.Castles.in.the.Sand.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/LNDX874hVlalBu8M4.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S05E18.Night.Light.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/rkaSlZ9nvL7xtD7pq.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob SquarePants S10E57 1080p AMZN WEB-DL DD2 0 x264-NTb/qmJBPvHXye3eAiPnD.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S06E11.Sun.Bleached.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/CS6a4HCvKRhV5tWSv.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S02E04.Squids.Day.Off.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E22.1080p.AMZN.WEB-DL.DD2.0.x264-NTb/fT5XuPj6POyzx99lP.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S01E12.Mermaidman.and.Barnacleboy.REPACK2.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/Bob.L_Eponge.S07E06.Le.nouveau.jouet.Combines.de.radins.2022.MULTI.1080p.PMTP.WEB-DL.AAC2.0.H.264-AndreMor/B3a8sNyvXHNDM5kb7OI1rNZRP1t2QY5d.7z"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S01E23.Squidward.the.Unfriendly.Ghost.REPACK2.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S06E29.Professor.Squidward.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/ChbRCbrtOZgFxmXgg.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S13E57.Spatula.of.the.Heavens.1080p.AMZN.WEB-DL.DDP2.0.H.264-NTb/92c72af522c1859545f7fcb54757e9d8.part01.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S04E09.Mermaidman.and.Barnacleboy.VI.The.Motion.Picture.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S03E04.Frankendoodle.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S03E03.Welcome.to.the.Chumbucket.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E67.1080p.AMZN.WEB-DL.DD2.0.x264-NTb/SsWX5vEuvCBZ9F2QK.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E61.Plankton.Gets.the.Boot.1080p.AMZN.WEBRip.DDP.2.0.H.265-iVy/SpongeBob.SquarePants.S10E61.Plankton.Gets.the.Boot.1080p.AMZN.WEBRip.DDP.2.0.H.265-iVy.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E41.1080p.AMZN.WEB-DL.DD2.0.x264-NTb/EmbIuKRb0XaL1ZgcQ.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.1999.S17E16.Painfully.Employed.1080p.AMZN.Webrip.x265.10bit.EAC3.2.0.Frys-TAoE"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S02E28.Artist.Unknown.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S13E37.Abandon.Twits.1080p.AMZN.WEB-DL.DDP2.0.H.264-NTb"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S01E21.F.U.N.REPACK2.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob SquarePants S10E34 1080p AMZN WEB-DL DD2 0 x264-NTb/yXaBXLc7JcPVnCYrR.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S01E08.Naughty.Nautical.Neighbors.REPACK2.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.1999.S15.REPACK.1080p.SKST.WEB-DL.MULTI.AAC.2.0.H.264-OldT"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S03E01.Mermaid.Man.And.Barnacle.Boy.IV.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S02E22.The.Smoking.Peanut.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S06E12.House.Fancy.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/QRjYhD1dtCgkMAmrb.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S04E29.Hocus.Pocus.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S05E35.Banned.in.Bikini.Bottom.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/QpV4bfnl57KIKUeaz.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S06E33.Komputer.Overload.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/Uik1nlY27iSbjLOe9.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S04E04.Krabs.VS.Plankton.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S01E16.Sandys.Rocket.REPACK2.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S04E28.The.Thing.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S01E12.HebDub.WEB-DL.H.264-Silver007"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S03E33.Krabby.Land.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S05E22.A.Flea.In.Her.Dome.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/tpihZdHQtqem5exBH.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S13E42.Yellow.Pavement.1080p.AMZN.WEB-DL.DDP2.0.H.264-NTb/VaEQMLk0ndqTHQqly.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob SquarePants S10E46 1080p AMZN WEB-DL DD2 0 x264-NTb/fKBfc42ZQUjeHNAIw.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S03E23.Graveyard.Shift.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S01E14.Hall.Monitor.REPACK2.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S01E01.Help.Wanted.REPACK2.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob SquarePants S10E50 1080p AMZN WEB-DL DD2 0 x264-NTb/jOT4knKMyr1gLFxAW.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S03E16.Rock.A.Bye.Bi-Valve.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S05E03.Sing.a.Song.of.Patrick.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/pdyMV9TMQy3D4DRk0.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S02E29.Jellyfish.Hunters.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S06E02.Not.Normal.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/PzmCfvsEieY1QYYUJ.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E65.1080p.AMZN.WEB-DL.DD2.0.x264-NTb/Zz8ZoUVnjK1axfKum.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S17E09.The.Nerds.1080p.WEB.10bit.EAC3.2.0.x265-Frys"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S03E05.The.Snowball.Effect.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S03E30.I.Had.An.Accident.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S06E14.Patty.Caper.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/FuI8bnWrJt8iGsvgy.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E14.1080p.WEB-DL.AAC2.0.H.264-YFN-Scrambled/SpongeBob.SquarePants.S10E14.1080p.WEB-DL.AAC2.0.H.264-YFN-Scrambled.part01.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E48.1080p.AMZN.WEB-DL.DD2.0.x264-NTb/k5JuMm14M68chgUGw.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S13E47.Hot.Crossed.Nuts.1080p.AMZN.WEB-DL.DDP2.0.H.264-NTb"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S05E28.Blackened.Sponge.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/Zf8zAaApjzQqcaDwm.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S01E22.MuscleBob.BuffPants.REPACK2.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob SquarePants S10E69 1080p AMZN WEB-DL DD2 0 x264-NTb/oqcIFsCH8WamNRcLv.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S03E02.Doing.Time.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob SquarePants S10E54 1080p AMZN WEB-DL DD2 0 x264-NTb/ZhuRgwj6C45s5pSzy.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S04E12.Squidbob.Tenaclepants.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S05E06.Spy.Buddies.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/OZaDw4epvLqfTd3Bf.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E31.1080p.AMZN.WEB-DL.DD2.0.x264-NTb/uC3kUkYNj9QT7K5Ku.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob SquarePants S10E40 1080p AMZN WEB-DL DD2 0 x264-NTb/UFkIzM3VQzihfb6Vc.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E57.1080p.AMZN.WEB-DL.DD2.0.x264-NTb/OLYnOCrzC29xrBmvO.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/Bob.L_Eponge.S02E12.Bob.manque.d_air.Le.canon.__.perles.2022.MULTI.1080p.PMTP.WEB-DL.AAC2.0.H.264-AndreMor/Ay8oxJoYbDvWFEDVxCm5Sp0TBvjO5H5c.7z"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S02E23.Prehibernation.Week.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S03E15.Krab.Borg.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg/shows/Spongebob Squarepants Season 1 Complete WEB x264 [i_c]"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S06E24.Dear.Vikings.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/XMxKoAYphROKqqHsW.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S05E01.Rise.and.Shine.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/Uw9xQy5eZ5F1qcFPH.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/Bob.L_Eponge.S06E07.Carlo.le.g__ant.Une.histoire.de.nez.2022.MULTI.1080p.PMTP.WEB-DL.DDP5.1.H.264-AndreMor/hEpWGG6GEW5R8toImzPqKXjQgX0Bu98U.7z"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E43.CopyBob.DittoPants.1080p.NICK.WEBRip.AAC2.0.x264-RTN/SpongeBob.SquarePants.S10E43.CopyBob.DittoPants.1080p.NICK.WEBRip.AAC2.0.x264-RTN.part01.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S02E20.Gary.Takes.a.Bath.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S17E17.Duct.Tape.Dystopia.1080p.HDTV.AAC2.0.x264-Slurpuff"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S03E20.Mermaid.and.Barnacle.Boy.V.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob SquarePants S10E52 1080p AMZN WEB-DL DD2 0 x264-NTb/eMIdgGPo9TCNHq0Wu.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/Bob.L_Eponge.S05E10.La.puce.de.Sandy.Le.beignet_.calamit___.La.t__che_.t__che_.t__che.2022.MULTI.1080p.PMTP.WEB-DL.AAC2.0.H.264-AndreMor/TLEHDVnYjCPfsxo7Xftzin2nDabQp8Xt.7z"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S05E33.The.Two.Faces.of.Squidward.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/NO36yIHWdtPfLHNvY.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S05E14.Breath.of.A.Fresh.Squidward.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/QiQ5RAKGpJ81J3PHJ.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.1999.S17E14.What.Ever.Happened.to.Baby.Prunes.1080p.AMZN.Webrip.x265.10bit.EAC3.2.0.Frys-TAoE"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S02E24.Life.Of.Crime.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S01E38.Fools.in.April.REPACK2.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S02E34.Sandy.SpongeBob.and.the.Worm.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S06E10.A.Life.In.A.Day.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/XiyHsVzaX8mrRX7wQ.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.1999.S10E56.Mimic.Madness.1080p.AMZN.Webrip.x265.10bit.EAC3.2.0.Frys.TAoE/4df9be5ea48f2b468a6922aa80e30c61.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S04E20.Wishing.You.Well.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E46.1080p.AMZN.WEB-DL.DD2.0.x264-NTb/uVR1rFfkzfYryW3Is.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S04E25.The.Best.Day.Ever.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S05E20.Spongebob.Vs.The.Patty.Gadget.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/7aMa7s8nAnteTcKRB.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S06E13.No.Nose.Knows.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/WE8WbCl4BkbS0swtO.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S13E29.Patrick.the.Mailman.1080p.AMZN.WEB-DL.DD+2.0.H.264-CtrlHD/nJCGiN3iUSWEAWBZM.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S02E36.Im.with.Stupid.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S04E02.Shell.Of.A.Man.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S04E30.Driven.To.Tears.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S01E13.HebDub.WEB-DL.H.264-Silver007"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob SquarePants S10E24 1080p AMZN WEB-DL DD2 0 x264-NTb/cbr7pb6AunLThnTAw.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E18.1080p.WEB-DL.AAC2.0.H.264-YFN-Obfuscated/SpongeBob.SquarePants.S10E18.1080p.WEB-DL.AAC2.0.H.264-YFN-Obfuscated.part01.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S13E46.Ride.Patrick.Ride.1080p.AMZN.WEB-DL.DDP2.0.H.264-NTb/rOZoUy4ShpXo4fP3c.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.1999.S14.1080p.SKST.WEB-DL.MULTI.AAC.2.0.H.264-OldT"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S11E38.Plankton.Paranoia.1080p.AMZN.WEB-DL.DDP2.0.H.264-TVSmash/06bd77dd0f6ea699efa9f1dca7aebb01.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob SquarePants S10E68 1080p AMZN WEB-DL DD2 0 x264-NTb/CBEMf2jOmTSWXCwEl.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E37.Larrys.Gym.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/008ef4c42be341c05a1a88b9d136b829.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S02E13.Survival.of.the.Idiots.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.1999.S17E12.Its.About.Mime.1080p.AMZN.Webrip.x265.10bit.EAC3.2.0.Frys-TAoE"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S05E19.Money.Talks.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/MrSa5GWf6dIOtRFW2.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E59.1080p.AMZN.WEB-DL.DD2.0.x264-NTb/3E0Jb1drrqX3kGoRG.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/Spongebob.Schwammkopf.S10E06.German.AC3D.DL.1080p.WebRip.x265.Repack-FuN/RqbqwDrs4Mpe9TisBUGIPzjaYm5b.part01.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E60.1080p.AMZN.WEB-DL.DD2.0.x264-NTb/x9k4Ot1zB50vXZXsb.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E13.1080p.WEB-DL.AAC2.0.H.264-YFN-Scrambled/SpongeBob.SquarePants.S10E13.1080p.WEB-DL.AAC2.0.H.264-YFN-Scrambled.part01.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S04E06.Good.Neighbor.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob SquarePants S10E30 1080p AMZN WEB-DL DD2 0 x264-NTb/kmJfnKgFxEMH6T4iY.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob SquarePants S10E41 1080p AMZN WEB-DL DD2 0 x264-NTb/jlSqsVv6vlkOxBO3K.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E47.1080p.AMZN.WEB-DL.DD2.0.x264-NTb/2HNmCiF2rkvgrJ9eU.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S05E07.Boat.Smarts.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/ucz8ayy6s0SdgfMJY.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S01E06.Jellyfishing.REPACK2.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E58.1080p.AMZN.WEB-DL.DD2.0.x264-NTb/XBG7PjrR9uWMqAxaY.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S02E31.Just.One.Bite.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S01E11.Home.Sweet.Pineapple.REPACK2.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S02E07.Mermaid.Man.and.Barnacle.Boy.III.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/Bob.L_Eponge.S01E09.L_appel.de.la.nature.Le.Jour.des.contraires.2022.MULTI.1080p.PMTP.WEB-DL.AAC2.0.H.264-AndreMor/2CtxIBZscQEF1I0mCj1gB4FPEZmbjASx.7z"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.1999.S10E70.Patricks.Coupon.1080p.AMZN.Webrip.x265.10bit.EAC3.2.0.Frys.TAoE/18dbddacc2577946878fc0085f32dbcb.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S01E19.Opposite.Day.REPACK2.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S17E06.Bitter.Groans.and.Gardens.1080p.HDTV.DD5.1.x264-Slurpuff"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E53.1080p.AMZN.WEB-DL.DD2.0.x264-NTb/wFZx6YSK0XA5zeFby.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E20.1080p.AMZN.WEB-DL.DD2.0.x264-NTb/rJJBMLSJvQg6NgwPz.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.1999.S17E11.The.Fry.Cook.and.the.Elves.1080p.AMZN.Webrip.x265.10bit.EAC3.2.0.Frys-TAoE"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/Bob.L_Eponge.S01E11.Les.bras.gonflables.Le.fant__me.de.Carlo.2022.MULTI.1080p.PMTP.WEB-DL.AAC2.0.H.264-AndreMor/Vr4SeEAXQmBT8ysZhgXczW4zCSx37eeW.7z"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob SquarePants S10E55 1080p AMZN WEB-DL DD2 0 x264-NTb/Lo8DHBm7GBsCUDxxu.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E54.1080p.AMZN.WEB-DL.DD2.0.x264-NTb/cv8VcRcs0F7EP1Lv8.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S04E08.Funny.Pants.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S01E28.SB-129.REPACK2.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S02E25.The.Secret.Box.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S06E17.The.Krabby.Kronicle.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/9vLCupauV35hxSEHT.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S01E37.Walking.Small.REPACK2.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S01E36.Texas.REPACK2.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S11.1080p.WEB-DL.HebSub.x264-D00oo00M"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S03E09.As.Seen.On.TV.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S03E36..Pranks.A.Lot.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S11E52-S12E11.FarmerBob..Gary.and.Spot.1080p.PMTP.WEB-DL.DD5.1.x264-AndreMor"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/Spongebob.Schwammkopf.S10E01.German.AC3D.DL.1080p.WebRip.x265.Repack-FuN/OLSTMHRgPmhyd5A1zCGVP9fJhXJ0.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S01E24.The.Chaperone.REPACK2.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S17E08.The.SquarePants.Method.1080p.NOW.WEBRip.AAC2.0.x264-NOGRP"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E35.1080p.AMZN.WEB-DL.DD2.0.x264-NTb/jt0TVRdkxPViQKlNp.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S04E27.Thats.No.Lady.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S03E06.One.Krabs.Trash.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S04E31.Rule.Of.Dumb.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E32.1080p.AMZN.WEB-DL.DD2.0.x264-NTb/MFsR4jTND3NCJsYzI.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S03E21.Club.Spongebob.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S05E36.Spongehenge.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/how3sf70hyKK3cfZH.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E63.1080p.AMZN.WEB-DL.DD2.0.x264-NTb/jEUrPJNo4I72mqxji.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/Bob.L_Eponge.S06E08.L_ingr__dient.secret.Le.fid__le.client.2022.MULTI.1080p.PMTP.WEB-DL.DDP5.1.H.264-AndreMor/7lOhimRhfWNsHPnbJrMMNuYfesP8skpX.7z"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/Bob.L_Eponge.S02E02.Mauvaise.haleine.Pearl.et.ses.id__es.2022.MULTI.1080p.PMTP.WEB-DL.AAC2.0.H.264-AndreMor/yKxOmwTWeNzZIfhRZ2vYirCKCV5Rq1LD.7z"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S03E25.New.Student.Starfish.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S05E34.The.Battle.of.Bikini.Bottom.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/bW71lDv33Pu3Q4eAA.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S01E27.I.Was.a.Teenage.Gary.REPACK2.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S04E26.Wigstuck.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S05E04.Born.To.Be.Wild.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/QloswGSfXiWEGROYj.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S01E33.The.Paper.REPACK2.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S04E17.Whale.Of.A.Birthday.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S11E55.Goons.on.the.Moon.1080p.PMTP.WEB-DL.AAC2.0.x264-AndreMor"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S03E27.The.Great.Snail.Race.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S02E26.Band.Geeks.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S02E30.The.Fry.Cook.Games.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/Bob.L_Eponge.S05E14.Le.coquard.Au.Crabe.Croustillant_.en.avant._.2022.MULTI.1080p.PMTP.WEB-DL.AAC2.0.H.264-AndreMor/tewTYdl0QBTyUNS2pbO3NgSBul5FdsEW.7z"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S03E14.Sponge.Guard.on.Duty.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S06E08.The.Splinter.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/j4jpZb8Bqy7q1mpIp.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E55.1080p.AMZN.WEB-DL.DD2.0.x264-NTb/ckF0lJPiSI4PHXBMu.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S06E03.Gone.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/Kgbbuzopq8WXZuE4X.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E33.1080p.AMZN.WEB-DL.DD2.0.x264-NTb/Ng7n6VPZSnSoBv9H1.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob SquarePants S10E42 1080p AMZN WEB-DL DD2 0 x264-NTb/MJsERHQthAqPxNFY6.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S03E10.Can.You.Spare.A.Dime.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S05E29.Mermaid.Man.vs.Sponge.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/QhANqWKkuUzGgioyK.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob SquarePants S10E66 1080p AMZN WEB-DL DD2 0 x264-NTb/q8imo6uHUuStcAj6V.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S05E27.Blackjack.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/b0iMF3Y7p419jMFFi.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S02E19.Shanghaied.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/iA4Z69xBlW3AnoZNH.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S06E04.Suctioncup.Symphony.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/w8aphlqnHUyJwgt9k.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S05E02.Waiting.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/sgqXai0S2j2LaJhsX.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S05E38.Stanely.S.Squarepants.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/2BujhM8YgEQq4sTRY.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S02E35.Procrastination.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S17E04.SpongeBob.SparePants.1080p.HDTV.DD5.1.x264-Slurpuff"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S01E40.Hooky.REPACK2.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S05E13.To.Love.A.Patty.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/hHbTwrSBQTJevzqtI.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S05E39.To.Save.a.Squirrel.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/vTvuM0TSsB5zSZatU.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S01E13.Pickles.REPACK2.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S05E21.Slimy.Dancing.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/vBNDhim1kqIzCpHzo.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S01E04.Bubblestand.REPACK2.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/Bob.L_Eponge.S07E09.Retour.dans.le.pass__.La.r__union.secr__te.2022.MULTI.1080p.PMTP.WEB-DL.AAC2.0.H.264-AndreMor/BR6MQ26qTfCXFp0XaiFGoQcKlk40SoXQ.7z"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S02E09.Dying.for.Pie.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S05E31.Le.Big.Switch.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/0PrcgPXMr2MRgIIUk.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S02E33.Squid.on.Strike.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S06E26.Slide.Whistle.Stooges.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/Mgd0jL67FuoDUBDwN.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S04E07.Selling.Out.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S03E22.My.Pretty.Seahorse.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob SquarePants S10E58 1080p AMZN WEB-DL DD2 0 x264-NTb/11HaG6GskRF0yNBQA.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E71.Out.of.the.Picture.1080p.AMZN.WEBRip.DDP.2.0.H.265-iVy/SpongeBob.SquarePants.S10E71.Out.of.the.Picture.1080p.AMZN.WEBRip.DDP.2.0.H.265-iVy.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S01E17.Squeaky.Boots.REPACK2.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S05E09.The.Krusty.Sponge.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/dH7xKaza06zJ1FFIH.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S03E34.The.Camping.Episode.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S03E18.Krusty.Crab.Training.Video.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S02E17.No.Free.Rides.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S01E25.Employee.of.the.Month.REPACK2.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E68.1080p.AMZN.WEB-DL.DD2.0.x264-NTb/YXXWNHqBjzKL5jssU.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S02E10.Imitation.Krabs.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/Bob.L_Eponge.S02E14.Plankton.a.gagn__.Le.crayon.g__ant.2022.MULTI.1080p.PMTP.WEB-DL.AAC2.0.H.264-AndreMor/Knrap92KufQrhTrbKHEDXBX0Ka5LDb1I.7z"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S02E15.Grandmas.Kisses.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S04E21.The.New.Leaf.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S03E07.The.Nasty.Patty.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S02E11.Wormy.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E51.1080p.AMZN.WEB-DL.DD2.0.x264-NTb/EfKXP3YStPSaNMQ1P.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S06E25.Shuffle.Boarding.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/Yt3PcWZLJOXGhXymU.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S05E11.New.Digs.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/MAekaRdsBqpSH6vao.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S01E34.Arrgh.REPACK2.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S13.1080p.WEB-DL.HebSub.x264-D00oo00M"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S12.1080p.AMZN.WEBRip.DDP.2.0.H.265-iVy/SpongeBob.SquarePants.S12.1080p.AMZN.WEBRip.DDP.2.0.H.265-iVy.part01.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S05E08.Good.Old.Whatshisname.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/pBKC7gx2YajVu3ps6.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/Bob.L_Eponge.S05E05.Bob.d__m__nage.Patinoire.piscine.2022.MULTI.1080p.PMTP.WEB-DL.AAC2.0.H.264-AndreMor/Xk15jm7SjegBzIm1kkJRx2l1TDfiBnxF.7z"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S04E13.Krusty.Towers.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S05E16.Bucket.Sweet.Bucket.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/UI3MzeoZs5RDtKrOZ.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.1999.S10E38.Mall.Girl.Pearl.1080p.AMZN.Webrip.x265.10bit.EAC3.2.0.Frys.TAoE/653a97e5bcd206c20f479422d3bd027b.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E69.1080p.AMZN.WEB-DL.DD2.0.x264-NTb/7qO7k8kC37z0Nyg4p.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S03E19.Chocolate.with.Nuts.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E36.1080p.AMZN.WEB-DL.DD2.0.x264-NTb/cuCYkCCLJhkiQpHJv.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.1999.S17E17.Duct.Tape.Dystopia.1080p.AMZN.Webrip.x265.10bit.EAC3.2.0.Frys-TAoE"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob SquarePants S10E48 1080p AMZN WEB-DL DD2 0 x264-NTb/tSW20WGTsoxd5I8I1.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S02E03.Your.Shoes.Untied.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S01E05.Ripped.Pants.REPACK2.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E66.1080p.AMZN.WEB-DL.DD2.0.x264-NTb/bemJLZcPcDWfRAl0F.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S17E03.Home.Away.from.Home.1080p.HDTV.DD5.1.x264-Slurpuff"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S04E19.All.That.Glitters.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S01E02.Reef.Blower.REPACK2.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E40.1080p.AMZN.WEB-DL.DD2.0.x264-NTb/O1Jb0xAfSob4OcVlc.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.1999.S10E27.Tutor.Sauce.1080p.AMZN.Webrip.x265.10bit.EAC3.2.0.Frys.TAoE/7de18b24a5f96cb2af5da50151828355.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E50.1080p.AMZN.WEB-DL.DD2.0.x264-NTb/Z5YYcVIGGCyZA3Zvx.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S02E02.Bossy.Boots.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S06E15.Planktons.Regular.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/4r65EVxaa4gytFmup.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S01E31.Suds.REPACK2.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S02E21.Pressure.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S02E27.Sailor.Mouth.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S04E16.Chimps.Ahoy.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E21.Feral.Friends.1080p.AMZN.WEB-DL.DDP2.0.H.264-TVSmash"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E56.Mimic.Madness.1080p.WEB-DL.x264.AAC-YFN-Obfuscated/SpongeBob.SquarePants.S10E56.Mimic.Madness.1080p.WEB-DL.x264.AAC-YFN-Obfuscated.part01.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob SquarePants S10E65 1080p AMZN WEB-DL DD2 0 x264-NTb/joZ7t1DhjbpGt6Gym.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S01E09.Boating.School.REPACK2.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S02E01.Something.Smells.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/Bob.L_Eponge.S08E10.Le.bateau.fant__me.2022.MULTI.1080p.PMTP.WEB-DL.AAC2.0.H.264-AndreMor/F8L9ul7OoMwKwKa5x461o6x9HhKhVG9I.7z"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S06E34.Choir.Boys.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/TiX98aqG6mIHjqwCs.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S13E27.Upturn.Girls.1080p.AMZN.WEB-DL.DD+2.0.H.264-CtrlHD/fsJdgTChN4O0GDFYf.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob SquarePants S10E63 1080p AMZN WEB-DL DD2 0 x264-NTb/hbwRzCw4HL87URFW8.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S17E10.The.SquarePants.Method.1080p.WEB.10bit.EAC3.2.0.x265-Frys"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E30.1080p.AMZN.WEB-DL.DD2.0.x264-NTb/1qi6E0qwcDDOPsx7i.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S06E05.Penny.Foolish.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/oAtUOiaBnrq9JZJsW.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S06E28.Grandpappy.the.Pirate.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/CGHPBB8lr1YPwEMps.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S13E63-64.Big.Top.Flop.Sandy.Help.Us.1080p.PMTP.WEB-DL.DD5.1.x264-AndreMor"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/Bob.L_Eponge.S06E17.Sosies.parfaits.Le.cours.de.musique.2022.MULTI.1080p.PMTP.WEB-DL.DDP5.1.H.264-AndreMor/iqI9fra4COJmPVkHlphP1WexXDvdkBJE.7z"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E15.1080p.WEB-DL.AAC2.0.H.264-YFN-Scrambled/SpongeBob.SquarePants.S10E15.1080p.WEB-DL.AAC2.0.H.264-YFN-Scrambled.part01.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S05E30.Fungus.Among.Us.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/77kygt2Qx2PUPLOTr.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S13E58.Garys.Playhouse.1080p.AMZN.WEB-DL.DDP2.0.H.264-NTb/c761b6a546f88bd73ad5fcec674c653b.part01.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob SquarePants S10E44 1080p AMZN WEB-DL DD2 0 x264-NTb/L9a4j5ngFd8dHvyF4.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S05E05.Best.Frenemies.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/WjAR7Iz7iU5VUVT72.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S02E14.Dumped.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob SquarePants S10E35 1080p AMZN WEB-DL DD2 0 x264-NTb/Z0BTf7aMoRIWWUDgh.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S03E11.No.Weenies.Allowed.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S06E01.Krabby.Road.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/pMcPZg8ZNjErfrKVJ.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S06E23.Ditchin.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/WVbjN8p44cFdYO56z.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S03E32.Planktons.Army.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E17.1080p.WEB-DL.AAC2.0.H.264-YFN-Obfuscated/SpongeBob.SquarePants.S10E17.1080p.WEB-DL.AAC2.0.H.264-YFN-Obfuscated.part01.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S06E22.The.Card.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/GwdlgEXACLGvxivsB.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S04E10.Enemy.In-Law.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/Bob.L_Eponge.S07E17.La.capsule.temporelle.Le.tiki.land.de.Carlo.2022.MULTI.1080p.PMTP.WEB-DL.AAC2.0.H.264-AndreMor/mwLPo9yBCyAJyX35kHsli5F1GFwcLr8C.7z"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S06E19.Grooming.Gary.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/oz9rOmgpsBMWaP5NW.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S01E30.Sleepy.Time.REPACK2.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S04E11.Patrick.Smartpants.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S03E24.Krusty.Love.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S01E35.Rock.Bottom.REPACK2.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/Spongebob.Schwammkopf.S10E07.German.AC3D.DL.1080p.WebRip.x265.Repack-FuN/kD7Ap5TtJw3JIvLXyWmA4tfgETk9.part01.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E52.1080p.AMZN.WEB-DL.DD2.0.x264-NTb/OWAaWfKkpnxOf71Rf.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.1999.S10E29.The.Executive.Treatment.1080p.AMZN.Webrip.x265.10bit.EAC3.2.0.Frys.TAoE/86817039982719a9c1992aadafce64c5.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S13E61.SquidBird.1080p.NICK.WEB-DL.AAC2.0.H.264-NTb/6ad3c6baae42066e85358815ef2f2126.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S02E18.Im.Your.Biggest.Fanatic.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S04E15.Ghost.Host.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S03E26.Clams.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S05E23.Donut.Of.Shame.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/YO3ftQrR65CO3i7UX.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S17E01.Kiss.of.the.Nematode.1080p.HDTV.DD5.1.x264-Slurpuff"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E12.1080p.WEB-DL.AAC2.0.H.264-YFN-Scrambled/SpongeBob.SquarePants.S10E12.1080p.WEB-DL.AAC2.0.H.264-YFN-Scrambled.part01.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S13E40.Karen.for.Spot.1080p.AMZN.WEB-DL.DDP2.0.H.264-NTb"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S02E12.Patty.Hype.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S06E16.Boating.Buddies.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/Mj96gj5uoFcFlClD7.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S01E39.Neptunes.Spatula.REPACK2.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S05E12.Krabs.a.la.Mode.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/BOORZkwTDLAs4zx6z.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S03E12.Squilliam.Returns.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob SquarePants S10E59 1080p AMZN WEB-DL DD2 0 x264-NTb/7qkx3nrYGs1Z9FEJb.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S02E06.Bubble.Buddy.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S02E32.The.Bully.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S06E18.The.Slumber.Party.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/St64vCISge6sNF2Lg.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob SquarePants S10E60 1080p AMZN WEB-DL DD2 0 x264-NTb/LzduELjR1rloLXSjK.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S01E41.Mermaidman.and.Barnacleboy.II.REPACK2.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S02E05.Big.Pink.Loser.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S05E25.Picture.Day.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/LWNPQE7x77wG9sdnv.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E28.1080p.AMZN.WEB-DL.DD2.0.x264-NTb/3KBYzmydCioZ5HxGA.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S17E05.Lady.in.the.Lighthouse.1080p.HDTV.DD5.1.H.264-Slurpuff"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S03E08.The.Idiot.Box.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S06E09.Giant.Squidward.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/JWn1m9MJOhg0jLJr6.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.Schwammkopf.S11E26.GERMAN.DL.1080p.WEB.H264-MGE"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S01E18.Nature.Pants.REPACK2.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob SquarePants S10E64 1080p AMZN WEB-DL DD2 0 x264-NTb/7DnbDByZUWcCT3dLc.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.1999.S17E18.Farmers.Market.Feud.1080p.AMZN.Webrip.x265.10bit.EAC3.2.0.Frys-TAoE"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob SquarePants S10E28 1080p AMZN WEB-DL DD2 0 x264-NTb/IDb5HC98PxxwdYPif.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S04E01.Fear.Of.A.Krabby.Patty.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S04E14.Mrs.Puff.Youre.Fired.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S04E23.Squidtastic.Voyage.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S04E33.The.Gift.Of.Gum.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.1999.S17E15.Night.School.Knuckleheads.1080p.AMZN.Webrip.x265.10bit.EAC3.2.0.Frys-TAoE"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S01E03.Tea.at.the.Treedome.REPACK2.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S06E06.Nautical.Novice.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/Kpe427qIPcwDJA6Id.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S05E26.Pat.No.Pay.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/nb5Eqw593ngkA0MeA.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S01E20.Culture.Shock.REPACK2.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S11E46.The.Night.Patty.1080p.AMZN.WEBRip.DDP.2.0.H.265-iVy/SpongeBob.SquarePants.S11E46.The.Night.Patty.1080p.AMZN.WEBRip.DDP.2.0.H.265-iVy.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.1999.S16.iNCOMPLETE.1080p.SKST.WEB-DL.MULTI.AAC.2.0.H.264-OldT"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S03E31.Missing.Identity.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S05E10.Squid.Wood.REPACK.1080p.AMZN.WEB-DL.DDP2.0.H.264-Kitsune/dcRHaPbDDrufN81Xp.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E44.Sold.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/5e568e1181874f8ea48073e33758d481.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S11E28.Grandmums.the.Word.1080p.AMZN.WEB-DL.DDP2.0.H.264-NTb/5b76e1cea49b4f47b59486cd604d5949.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S11E28.Grandmums.the.Word.1080p.AMZN.WEB-DL.DDP2.0.H.264-NTb/e454e1ff51f1f821b96ee89f224a874e.part7.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E36.SpongeBob.LongPants.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/9dba0cfcfba74d2e92e2f5007d868235.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E36.SpongeBob.LongPants.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/d6624e844f6698b221ee4608f37b605d.part6.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E31.Pull.Up.a.Barrel.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/3834474f68578fe1cb2dd7df40c0e289.part6.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E59.Krusty.Katering.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/a3f83ffa53984f348bc9462a9fdccf8d.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E59.Krusty.Katering.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/b913ecfe368325e06e2deb51f72668e0.part6.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E30.Company.Picnic.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/396d157404c5eb6f6ad837a4783336e5.part7.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E26.Lost.in.Bikini.Bottom.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/17be567938a95da3885ed517566d395d.part6.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E26.Lost.in.Bikini.Bottom.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/baa7fac877d44564abdbe5e26155e9f3.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E34.Patrick.The.Game.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/357f8b73ccfd6285f3246c07d80856ac.part7.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S11E51.Girls.Night.Out.1080p.AMZN.WEB-DL.DDP2.0.H.264-TVSmash/36f92c38cb0443a1af99b47870bd0487.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S11E51.Girls.Night.Out.1080p.AMZN.WEB-DL.DDP2.0.H.264-TVSmash/499f10bef5ac81fd0d9d3b62c3ed7b32.part6.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S11E30.Moving.Bubble.Bass.1080p.AMZN.WEB-DL.DDP2.0.H.264-NTb/7ecf6eaf477e2848530551a25b7de753.part6.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E42.Sharks.vs.Pods.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/a4fba8c50c12f7de85487dd14d46cc42.part7.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E42.Sharks.vs.Pods.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/f2adfa53876046b6b5596eee1e1eab08.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E32.Whats.Eating.Patrick.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/9562dcaaf6a34a0fbed37dd536128d94.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E66.Unreal.Estate.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/049eda55365c553bd3c9ba9beb6ff9f9.part07.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E66.Unreal.Estate.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/f188b39a8a35457a8fcebaf5b8f0dc40.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E65.Trident.Trouble.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/ff5d67f049064756ad13096f0275cc2f.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E63.Burst.Your.Bubble.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/48fffdaa20694cebabe67518ca61392e.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E31.Pull.Up.a.Barrel.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/a59258e5bb454dbb9bf8d242146427cb.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E48.Pineapple.Invasion.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/6db4e8ad5a88b9b07998fe636fdbfe02.part6.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E48.Pineapple.Invasion.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/a414aaae026743a9a2ab1d4e4527618a.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S11E48.Bubbletown.1080p.AMZN.WEB-DL.DDP2.0.H.264-TVSmash/2cab5300a421a8c47643bf000d21682a.part7.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S11E48.Bubbletown.1080p.AMZN.WEB-DL.DDP2.0.H.264-TVSmash/6459471959dc46b19a933de863425e6d.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S11E31.Bunny.Hunt.1080p.AMZN.WEB-DL.DDP2.0.H.264-NTb/4bdd60f697634beb974543d55092f40a.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S11E31.Bunny.Hunt.1080p.AMZN.WEB-DL.DDP2.0.H.264-NTb/c8c27cb7e70df32040d9367522e12915.part6.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E18.Jailbreak.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/97ecc8f47bd04cf082f600bfc8a4f834.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E57.House.Worming.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/2eb1adf4f99d497e804427eba32cb960.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E16.Little.Yellow.Book.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/3570def884b0fd795fd6072031ea54f7.part08.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E16.Little.Yellow.Book.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/3e824fa0bfff4f28bf0ad56a0c4b4350.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E69.Lost.and.Found.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/61c58ee4c74167901f8264c9af635819.part6.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E54.MermaidPants.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/4c5ea0c361be464784aeec1e29ae4bb7.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E54.MermaidPants.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/63571802571fd1128ec0824a47c5da14.part7.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E41.Married.to.Money.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/6562159f547a450895bd129a2010aa71.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E41.Married.to.Money.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/96c478da98c3700136b5738a085918b2.part6.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S11E37.Mustard.O.Mine.1080p.AMZN.WEB-DL.DDP2.0.H.264-TVSmash/5235128b8a444cd7ac8e713bd56e0094.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S11E37.Mustard.O.Mine.1080p.AMZN.WEB-DL.DDP2.0.H.264-TVSmash/d247e2f2347e6cace28d4ffaa62a7bb9.part07.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E28.Squid.Plus.One.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/a0d8e08d5149856a45853f438db39db6.part6.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E52.Whirlybrains.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/7099b6b44c665cd912061808f84df06f.part6.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E52.Whirlybrains.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/8b25f4bee62544de88d1e381c0c41a93.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E22.SpongeBob.Youre.Fired.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/f2e083bd45fb4261b5c1bf3d7339cd10.part01.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E55.The.Whole.Tooth.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/09ed2e6212d14a8b5bffc65c90dcbb1c.part6.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E40.The.Fish.Bowl.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/79d5b70d49d84e829562bf0c4a0441bd.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E40.The.Fish.Bowl.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/7ac63045a0854ea23d396460632d0797.part6.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E47.Food.Con.Castaways.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/035bb5621a737cbfb9c213f3f5b12418.part6.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E47.Food.Con.Castaways.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/f458e28e815a41958955cb1dcbc47e10.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S11E34.Sanitation.Insanity.1080p.AMZN.WEB-DL.DDP2.0.H.264-NTb/94ab2f3fb9d94ae5925897343dc4b096.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E46.Sandys.Nutmare.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/0077f1b273204d2fb6a65d37fb19314a.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E46.Sandys.Nutmare.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/3e43c1264cb7971c63fda04b28aaabe3.part6.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E24.Kenny.the.Cat.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/4ec203bede1706c7bb0acfe00143d8c4.part6.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E50.Bulletin.Board.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/dbb74409c6330f748c19404cdf252f48.part6.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E50.Bulletin.Board.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/e57b59d17c114598bdc4b137095ec121.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E19.Safe.Deposit.Krabs.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/0fc55496a59548b6bd558899ae2d55c1.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E19.Safe.Deposit.Krabs.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/cc78f349f22d95a2d1c95f2b44632018.part08.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E53.Snail.Mail.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/4783b9897f784068bcaf0b12055ef2de.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E20.Dont.Look.Now.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/4def27f9d4ea002bc3117703d798aefc.part09.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S11E45.Call.the.Cops.1080p.AMZN.WEB-DL.DDP2.0.H.264-TVSmash/5d5ffcb82bdf4fcabdebaae672fad078.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E64.Plankton.Retires.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/250e8c628a044398bd80c8e4e6ed6fce.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E64.Plankton.Retires.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/8a3bacf56bb3817025e5e597729784a5.part6.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S11E27.Fun-Sized.Friends.1080p.AMZN.WEB-DL.DDP2.0.H.264-NTb/0044464d380741cea6b2bf135a6dbd66.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S11E27.Fun-Sized.Friends.1080p.AMZN.WEB-DL.DDP2.0.H.264-NTb/503b41a943687e40ffa984b78c4d1630.part6.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E33.Sanctuary.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/4e1076af6295b21e31fe7103358af0ea.part6.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E33.Sanctuary.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/bfc3693724c9446695837971ce2be426.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E35.The.Sewers.of.Bikini.Bottom.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/da3fd9f236ec4b4f805acf22997057ae.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E60.SpongeBobs.Place.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/0bd3096aa9c882fc917eaa28e413d65c.part6.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S11E44.Plankton.Paranoia.1080p.AMZN.WEB-DL.DDP2.0.H.264-TVSmash/7a94b604638b47f8b11d729a0db0023e.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S11E44.Plankton.Paranoia.1080p.AMZN.WEB-DL.DDP2.0.H.264-TVSmash/cf3f7e33be5094b4567fdd9232fa25b6.part6.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E30.Company.Picnic.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/4d368165eb0a4418bb6bd493ebfa95bb.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E34.Patrick.The.Game.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/64b95cd57d4d4c98b56848687062e4f7.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E32.Whats.Eating.Patrick.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/cd519e641b9a619ca9b2036d71b34ce7.part6.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E58.Snooze.You.Lose.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/37ac2baeb84e463c8493d7609edd1252.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E65.Trident.Trouble.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/c964b491bc9f57f5b18184f5d5d1e64e.part6.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E57.House.Worming.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/35fd8d0b8463495e66f5267164cf3c7b.part6.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E69.Lost.and.Found.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/641de2ba6b8a4550a05a86326d537b29.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E44.Sold.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/67ffcee862b750400491d1f1b5e8ce2c.part6.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E28.Squid.Plus.One.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/a69d126663a844dba7286fb90e436731.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E53.Snail.Mail.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/aecf5da5ddfa8d3cfd2ba95d0be150e1.part7.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E51.Mutiny.on.the.Krusty.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/648245bb6473fb1483285bc1c10b5e6b.part08.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E35.The.Sewers.of.Bikini.Bottom.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/a69b061c8f16fa4a1158610394b58454.part6.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E60.SpongeBobs.Place.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/14db40d8962649b599aba0e4a91df8c8.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E63.Burst.Your.Bubble.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/fd2a64b5b45eff6b2c47dcfcbc79ef9a.part07.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S11E34.Sanitation.Insanity.1080p.AMZN.WEB-DL.DDP2.0.H.264-NTb/9c17fe8c9be13bfa8375f781461eada8.part7.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E24.Kenny.the.Cat.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/060332c365c0452ca9c51192416150af.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E20.Dont.Look.Now.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/f09c4ab7f67f41d692356aef63e29356.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E62.Life.Insurance.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/05c6f0b02ef440c3956e345041377d0b.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E62.Life.Insurance.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/108659e724270ea718229944709a3a71.part6.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E68.The.Getaway.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/f63a39500a5af2dcdae217e734989c52.part07.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E68.The.Getaway.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/f8f6cf191beb41bb8faa815cc4a8c9ef.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S11E30.Moving.Bubble.Bass.1080p.AMZN.WEB-DL.DDP2.0.H.264-NTb/21dd778c35e044fc90103050018865ef.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E58.Snooze.You.Lose.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/ff8e2f6c888367217a58c195332d2c1c.part6.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E18.Jailbreak.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/737b1e9a3d89e373ba8a94f31078ca52.part08.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E22.SpongeBob.Youre.Fired.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/5111a482768211ac0740ea3a33ea69c0.part14.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob SquarePants S10E26 1080p AMZN WEB-DL DD2 0 x264-NTb/CQDP8VDK48H3UvxYy.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob SquarePants S10E36 1080p AMZN WEB-DL DD2 0 x264-NTb/vnnQCW6T0OOafOTS7.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E26.1080p.AMZN.WEB-DL.DD2.0.x264-NTb/QPw8NMHPL9lRDDwej.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob SquarePants S10E20 1080p AMZN WEB-DL DD2 0 x264-NTb/PPQejw19Xd9WfgSyi.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob SquarePants S10E16 1080p AMZN WEB-DL DD2 0 x264-NTb/wqjvTyb1tX3jx9wxz.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E23.1080p.AMZN.WEB-DL.DD2.0.x264-NTb/TmIFi0qJ2rGSH7UHP.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E34.1080p.AMZN.WEB-DL.DD2.0.x264-NTb/yqKe7CBOPEHdEOJaE.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob SquarePants S10E31 1080p AMZN WEB-DL DD2 0 x264-NTb/HmWLS3hPwBXVrNj6b.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob SquarePants S10E32 1080p AMZN WEB-DL DD2 0 x264-NTb/4zv5FOiVFQs21PEG8.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob SquarePants S10E23 1080p AMZN WEB-DL DD2 0 x264-NTb/hGGNxqbEMv8vXZUPL.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob SquarePants S10E33 1080p AMZN WEB-DL DD2 0 x264-NTb/PJ2UQ76u7L5e8TeNS.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E55.The.Whole.Tooth.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/5a8b6fce6b1244eb908a5928b708e74f.part1.rar"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E24.1080p.AMZN.WEB-DL.DD2.0.x264-NTb/qyoHzo4bbg7vAjJW7.7z.001"
+    },
+    {
+     "path": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E51.Mutiny.on.the.Krusty.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/392381efc01e44509bf941d7dc22a8fe.part1.rar"
+    }
+   ],
+   "Rating": [
+    {
+     "image": "themoviedb://image.rating",
+     "type": "audience",
+     "value": 7.7
+    }
+   ],
+   "Role": [
+    {
+     "filter": "actor=845082",
+     "id": 845082,
+     "role": "SpongeBob SquarePants / Gary the Snail (voice)",
+     "tag": "Tom Kenny",
+     "tagKey": "1b7ede7b556ad405f84efca3",
+     "thumb": "https://image.tmdb.org/t/p/w185/kftXtExrcoTTjyeYmSXJ0Ogr3R7.jpg"
+    },
+    {
+     "filter": "actor=431386",
+     "id": 431386,
+     "role": "Patrick Star (voice)",
+     "tag": "Bill Fagerbakke",
+     "tagKey": "40da7d53966a850b4b250500",
+     "thumb": "https://image.tmdb.org/t/p/w185/zntKKc1uT53BnIihmzbq601eWKZ.jpg"
+    },
+    {
+     "filter": "actor=531221",
+     "id": 531221,
+     "role": "Squidward (voice)",
+     "tag": "Rodger Bumpass",
+     "tagKey": "c92368985029f3f885088916",
+     "thumb": "https://image.tmdb.org/t/p/w185/lGQkw6adxqB6Hcm7VK8nVHbKupe.jpg"
+    },
+    {
+     "filter": "actor=165504",
+     "id": 165504,
+     "role": "Mr. Krabs (voice)",
+     "tag": "Clancy Brown",
+     "tagKey": "e339b000a18c735bc27bf9df",
+     "thumb": "https://image.tmdb.org/t/p/w185/1JeBRNG7VS7r64V9lOvej9bZXW5.jpg"
+    },
+    {
+     "filter": "actor=58175",
+     "id": 58175,
+     "role": "Sandy Cheeks (voice)",
+     "tag": "Carolyn Lawrence",
+     "tagKey": "24cc167f7337fa9232f4d9d4",
+     "thumb": "https://image.tmdb.org/t/p/w185/vHycxQTs8EuyFdFJNww15xXB5lT.jpg"
+    },
+    {
+     "filter": "actor=723557",
+     "id": 723557,
+     "role": "Mrs. Puff (voice)",
+     "tag": "Mary Jo Catlett",
+     "tagKey": "9bf3358b2625809b7770c4e0",
+     "thumb": "https://image.tmdb.org/t/p/w185/nHDeiQ5jwx0M8HtGgki8ZEsmUQo.jpg"
+    }
+   ],
+   "UltraBlurColors": {
+    "bottomLeft": "1f1f26",
+    "bottomRight": "15151a",
+    "topLeft": "1a1a1e",
+    "topRight": "24242a"
+   },
+   "_artFor": "https://image.tmdb.org/t/p/w1280/f3f5OzzYd8m3zN47DAjKs0sbx00.jpg",
+   "_art_url": "https://image.tmdb.org/t/p/w1280/f3f5OzzYd8m3zN47DAjKs0sbx00.jpg",
+   "_identity": "tmdb:387",
+   "_poster_url": "https://image.tmdb.org/t/p/w342/5h0EU2lqBb03dp5vtRuUHJwqzem.jpg",
+   "_scanned": true,
+   "_thumbFor": "https://image.tmdb.org/t/p/w342/5h0EU2lqBb03dp5vtRuUHJwqzem.jpg",
+   "_titleGuid": "plex://show/5d9c08077d06d9001ffcf0b1",
+   "_viewUpdatedAt": 1792215404,
+   "addedAt": 1791674883,
+   "art": "/library/metadata/118624/art/1791897222",
+   "audienceRating": 7.7,
+   "audienceRatingImage": "themoviedb://image.rating",
+   "childCount": 1,
+   "contentRating": "TV-Y7",
+   "guid": "plex://show/5d9c08077d06d9001ffcf0b1",
+   "index": 1,
+   "key": "/library/metadata/118624/children",
+   "lastViewedAt": 1726766670,
+   "leafCount": 42,
+   "librarySectionID": 2,
+   "librarySectionKey": "/library/sections/2",
+   "librarySectionTitle": "TV Shows",
+   "ratingKey": "118624",
+   "slug": "spongebob-squarepants",
+   "studio": "United Plankton Pictures",
+   "summary": "Deep down in the Pacific Ocean in the subterranean city of Bikini Bottom lives a square yellow sponge named SpongeBob SquarePants. SpongeBob lives in a pineapple with his pet snail, Gary, loves his job as a fry cook at the Krusty Krab, and has a knack for getting into all kinds of trouble without really trying. When he's not getting on the nerves of his cranky next door neighbor Squidward, SpongeBob can usually be found smack in the middle of all sorts of strange situations with his best buddy, the simple yet lovable starfish, Patrick, or his thrill-seeking surfer-girl squirrel pal, Sandy Cheeks.",
+   "tagline": "Be there and be square!",
+   "thumb": "/library/metadata/118624/thumb/1791897222",
+   "title": "SpongeBob SquarePants",
+   "type": "show",
+   "updatedAt": 1791674883,
+   "viewCount": 16,
+   "viewedLeafCount": 0,
+   "year": 1999
+  },
+  {
+   "Guid": [
+    {
+     "id": "tmdb://63883"
+    }
+   ],
+   "UltraBlurColors": {
+    "bottomLeft": "1f1f26",
+    "bottomRight": "15151a",
+    "topLeft": "1a1a1e",
+    "topRight": "24242a"
+   },
+   "_artFor": "https://image.tmdb.org/t/p/w1280/f3f5OzzYd8m3zN47DAjKs0sbx00.jpg",
+   "_art_url": "https://image.tmdb.org/t/p/w1280/f3f5OzzYd8m3zN47DAjKs0sbx00.jpg",
+   "_poster_url": "https://image.tmdb.org/t/p/w342/nz4Syeu56o9jITHHGYdfG1K4tVj.jpg",
+   "_scanned": true,
+   "_thumbFor": "https://image.tmdb.org/t/p/w342/nz4Syeu56o9jITHHGYdfG1K4tVj.jpg",
+   "addedAt": 1791824209,
+   "art": "/library/metadata/118624/art/1791897222",
+   "guid": "plex://season/65dcaf5729624af2f7e6a037",
+   "index": 10,
+   "key": "/library/metadata/141645/children",
+   "leafCount": 71,
+   "librarySectionID": 2,
+   "librarySectionKey": "/library/sections/2",
+   "librarySectionTitle": "TV Shows",
+   "parentGuid": "plex://show/5d9c08077d06d9001ffcf0b1",
+   "parentIndex": 1,
+   "parentKey": "/library/metadata/118624",
+   "parentRatingKey": "118624",
+   "parentSlug": "spongebob-squarepants",
+   "parentStudio": "United Plankton Pictures",
+   "parentThumb": "/library/metadata/118624/thumb/1791897222",
+   "parentTitle": "SpongeBob SquarePants",
+   "parentYear": 1999,
+   "ratingKey": "141645",
+   "summary": "Check out the grand opening of SpongeBob's Place, say farewell to the Chum Bucket and grab some free ice cream with Patrick! Then, stick around for more tales of the deep: SpongeBob is allergic to his pineapple home, a strange moon turns everyone in town into wild animals, and Plankton and Karen lose their love connection!",
+   "thumb": "/library/metadata/141645/thumb/1791897222",
+   "title": "Season 10",
+   "type": "season",
+   "updatedAt": 1791824209,
+   "viewedLeafCount": 0
+  },
+  {
+   "Media": [
+    {
+     "Part": [
+      {
+       "Stream": [
+        {
+         "bitDepth": 10,
+         "chromaLocation": null,
+         "chromaSubsampling": "4:2:0",
+         "codec": "hevc",
+         "codecID": null,
+         "codedHeight": null,
+         "codedWidth": null,
+         "colorPrimaries": null,
+         "colorRange": "tv",
+         "colorSpace": "bt709",
+         "colorTrc": null,
+         "default": true,
+         "displayTitle": "1080p",
+         "extendedDisplayTitle": "1080p (HEVC Main 10)",
+         "frameRate": 23.976,
+         "height": 1080,
+         "id": 141597001,
+         "index": 0,
+         "level": 120,
+         "profile": "main 10",
+         "refFrames": null,
+         "scanType": null,
+         "streamIdentifier": null,
+         "streamType": 1,
+         "width": 1920
+        },
+        {
+         "audioChannelLayout": "stereo",
+         "bitDepth": null,
+         "bitrate": 224,
+         "channels": 2,
+         "codec": "eac3",
+         "displayTitle": "English (EAC3 Stereo)",
+         "extendedDisplayTitle": "English (EAC3 Stereo)",
+         "id": 141597002,
+         "index": 1,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "samplingRate": 48000,
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 2
+        },
+        {
+         "canAutoSync": false,
+         "codec": "srt",
+         "displayTitle": "English",
+         "extendedDisplayTitle": "English (SRT)",
+         "id": 141597003,
+         "index": 2,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 3
+        }
+       ],
+       "audioProfile": null,
+       "container": "mkv",
+       "duration": 714432,
+       "file": "/mnt/zurg/shows/SpongeBob.SquarePants.1999.S10.REPACK.1080p.AMZN.Web-rip.x265.10bit.EAC3.2.0.FrysTAoE {imdb-tt0206512}/SpongeBob.SquarePants.1999.S10E24.Kenny.the.Cat.REPACK.1080p.AMZN.Web-rip.x265.10bit.EAC3.2.0.Frys-TAoE.mkv",
+       "id": 1415970,
+       "key": "/library/parts/1415970/1791824209/file.mkv",
+       "size": 226224274,
+       "videoProfile": "main 10"
+      }
+     ],
+     "_chapters": [],
+     "_folder": "",
+     "_ids": {
+      "imdb": "tt0206512",
+      "tmdb": "387"
+     },
+     "_path": "shows/SpongeBob.SquarePants.1999.S10.REPACK.1080p.AMZN.Web-rip.x265.10bit.EAC3.2.0.FrysTAoE {imdb-tt0206512}/SpongeBob.SquarePants.1999.S10E24.Kenny.the.Cat.REPACK.1080p.AMZN.Web-rip.x265.10bit.EAC3.2.0.Frys-TAoE.mkv",
+     "_placed": {
+      "episode": 15,
+      "kind": "episode",
+      "season": 9
+     },
+     "_release": "SpongeBob.SquarePants.1999.S10.REPACK.1080p.AMZN.Web-rip.x265.10bit.EAC3.2.0.FrysTAoE {imdb-tt0206512}",
+     "_sid": "shows/SpongeBob.SquarePants.1999.S10.REPACK.1080p.AMZN.Web-rip.x265.10bit.EAC3.2.0.FrysTAoE {imdb-tt0206512}/SpongeBob.SquarePants.1999.S10E24.Kenny.the.Cat.REPACK.1080p.AMZN.Web-rip.x265.10bit.EAC3.2.0.Frys-TAoE.mkv",
+     "_source": "zurg",
+     "aspectRatio": 1.78,
+     "audioChannels": 2,
+     "audioCodec": "eac3",
+     "audioProfile": null,
+     "bitrate": 2533,
+     "container": "mkv",
+     "duration": 714432,
+     "hasVoiceActivity": false,
+     "height": 1080,
+     "id": 14159700,
+     "videoCodec": "hevc",
+     "videoFrameRate": "24p",
+     "videoProfile": "main 10",
+     "videoResolution": "1080",
+     "width": 1920
+    },
+    {
+     "Part": [
+      {
+       "Stream": [
+        {
+         "bitDepth": 8,
+         "chromaLocation": null,
+         "chromaSubsampling": "4:2:0",
+         "codec": "h264",
+         "codecID": null,
+         "codedHeight": null,
+         "codedWidth": null,
+         "colorPrimaries": null,
+         "colorRange": "tv",
+         "colorSpace": "bt709",
+         "colorTrc": null,
+         "default": true,
+         "displayTitle": "1080p",
+         "extendedDisplayTitle": "1080p (H.264)",
+         "frameRate": 23.976,
+         "height": 1080,
+         "id": 148104001,
+         "index": 0,
+         "level": 40,
+         "profile": "high",
+         "refFrames": null,
+         "scanType": "progressive",
+         "streamIdentifier": null,
+         "streamType": 1,
+         "width": 1920
+        },
+        {
+         "audioChannelLayout": "stereo",
+         "bitDepth": null,
+         "bitrate": 224,
+         "channels": 2,
+         "codec": "eac3",
+         "default": true,
+         "displayTitle": "English (EAC3 Stereo)",
+         "extendedDisplayTitle": "English (EAC3 Stereo)",
+         "id": 148104002,
+         "index": 1,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "samplingRate": 48000,
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 2
+        },
+        {
+         "canAutoSync": false,
+         "codec": "srt",
+         "displayTitle": "English",
+         "extendedDisplayTitle": "English (SRT)",
+         "id": 148104003,
+         "index": 2,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 3
+        }
+       ],
+       "audioProfile": null,
+       "container": "mkv",
+       "duration": 714432,
+       "file": "/mnt/zurg_usenet/shows/SpongeBob SquarePants S10E24 1080p AMZN WEB-DL DD2 0 x264-NTb/cbr7pb6AunLThnTAw.7z.001/SpongeBob SquarePants S10E24 1080p AMZN WEB-DL DD2 0 x264-NTb.mkv",
+       "id": 1481040,
+       "key": "/library/parts/1481040/1791862410/file.mkv",
+       "size": 343221228,
+       "videoProfile": "high"
+      }
+     ],
+     "_chapters": [],
+     "_folder": "",
+     "_hash": "2d04927abe1e75b5c3324e1f7f888b64735ab6af",
+     "_ids": {
+      "imdb": "tt0206512",
+      "tmdb": "387"
+     },
+     "_path": "shows/SpongeBob SquarePants S10E24 1080p AMZN WEB-DL DD2 0 x264-NTb/cbr7pb6AunLThnTAw.7z.001/SpongeBob SquarePants S10E24 1080p AMZN WEB-DL DD2 0 x264-NTb.mkv",
+     "_placed": {
+      "kind": "episode"
+     },
+     "_release": "SpongeBob SquarePants S10E24 1080p AMZN WEB-DL DD2 0 x264-NTb",
+     "_sid": "shows/SpongeBob SquarePants S10E24 1080p AMZN WEB-DL DD2 0 x264-NTb/cbr7pb6AunLThnTAw.7z.001/SpongeBob SquarePants S10E24 1080p AMZN WEB-DL DD2 0 x264-NTb.mkv",
+     "_source": "zurg",
+     "aspectRatio": 1.78,
+     "audioChannels": 2,
+     "audioCodec": "eac3",
+     "audioProfile": null,
+     "bitrate": 3843,
+     "container": "mkv",
+     "duration": 714432,
+     "hasVoiceActivity": false,
+     "height": 1080,
+     "id": 14810400,
+     "videoCodec": "h264",
+     "videoFrameRate": "24p",
+     "videoProfile": "high",
+     "videoResolution": "1080",
+     "width": 1920
+    },
+    {
+     "Part": [
+      {
+       "Stream": [
+        {
+         "bitDepth": 8,
+         "chromaLocation": null,
+         "chromaSubsampling": "4:2:0",
+         "codec": "h264",
+         "codecID": null,
+         "codedHeight": null,
+         "codedWidth": null,
+         "colorPrimaries": null,
+         "colorRange": "tv",
+         "colorSpace": "bt709",
+         "colorTrc": null,
+         "default": true,
+         "displayTitle": "1080p",
+         "extendedDisplayTitle": "1080p (H.264)",
+         "frameRate": 23.976,
+         "height": 1080,
+         "id": 161402001,
+         "index": 0,
+         "level": 40,
+         "profile": "high",
+         "refFrames": null,
+         "scanType": "progressive",
+         "streamIdentifier": null,
+         "streamType": 1,
+         "width": 1920
+        },
+        {
+         "audioChannelLayout": "stereo",
+         "bitDepth": null,
+         "bitrate": 224,
+         "channels": 2,
+         "codec": "eac3",
+         "default": true,
+         "displayTitle": "English (EAC3 Stereo)",
+         "extendedDisplayTitle": "English (EAC3 Stereo)",
+         "id": 161402002,
+         "index": 1,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "samplingRate": 48000,
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 2
+        },
+        {
+         "canAutoSync": false,
+         "codec": "srt",
+         "displayTitle": "English",
+         "extendedDisplayTitle": "English (SRT)",
+         "id": 161402003,
+         "index": 2,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 3
+        }
+       ],
+       "audioProfile": null,
+       "container": "mkv",
+       "duration": 714432,
+       "file": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E24.Kenny.the.Cat.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/4ec203bede1706c7bb0acfe00143d8c4.part6.rar/060332c365c0452ca9c51192416150af.mkv",
+       "id": 1614020,
+       "key": "/library/parts/1614020/1792058646/file.mkv",
+       "size": 343221228,
+       "videoProfile": "high"
+      }
+     ],
+     "_chapters": [],
+     "_folder": "",
+     "_hash": "7d0ce1bb45a27ed804ba488b2d7241080da95796",
+     "_ids": {
+      "imdb": "tt0206512",
+      "tmdb": "387"
+     },
+     "_path": "shows/SpongeBob.SquarePants.S10E24.Kenny.the.Cat.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/4ec203bede1706c7bb0acfe00143d8c4.part6.rar/060332c365c0452ca9c51192416150af.mkv",
+     "_placed": {
+      "kind": "episode"
+     },
+     "_release": "SpongeBob.SquarePants.S10E24.Kenny.the.Cat.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb",
+     "_sid": "shows/SpongeBob.SquarePants.S10E24.Kenny.the.Cat.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/4ec203bede1706c7bb0acfe00143d8c4.part6.rar/060332c365c0452ca9c51192416150af.mkv",
+     "_source": "zurg",
+     "aspectRatio": 1.78,
+     "audioChannels": 2,
+     "audioCodec": "eac3",
+     "audioProfile": null,
+     "bitrate": 3843,
+     "container": "mkv",
+     "duration": 714432,
+     "hasVoiceActivity": false,
+     "height": 1080,
+     "id": 16140200,
+     "videoCodec": "h264",
+     "videoFrameRate": "24p",
+     "videoProfile": "high",
+     "videoResolution": "1080",
+     "width": 1920
+    },
+    {
+     "Part": [
+      {
+       "Stream": [
+        {
+         "bitDepth": 8,
+         "chromaLocation": null,
+         "chromaSubsampling": "4:2:0",
+         "codec": "h264",
+         "codecID": null,
+         "codedHeight": null,
+         "codedWidth": null,
+         "colorPrimaries": null,
+         "colorRange": "tv",
+         "colorSpace": "bt709",
+         "colorTrc": null,
+         "default": true,
+         "displayTitle": "1080p",
+         "extendedDisplayTitle": "1080p (H.264)",
+         "frameRate": 23.976,
+         "height": 1080,
+         "id": 166111001,
+         "index": 0,
+         "level": 40,
+         "profile": "high",
+         "refFrames": null,
+         "scanType": "progressive",
+         "streamIdentifier": null,
+         "streamType": 1,
+         "width": 1920
+        },
+        {
+         "audioChannelLayout": "stereo",
+         "bitDepth": null,
+         "bitrate": 224,
+         "channels": 2,
+         "codec": "eac3",
+         "default": true,
+         "displayTitle": "English (EAC3 Stereo)",
+         "extendedDisplayTitle": "English (EAC3 Stereo)",
+         "id": 166111002,
+         "index": 1,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "samplingRate": 48000,
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 2
+        },
+        {
+         "canAutoSync": false,
+         "codec": "srt",
+         "displayTitle": "English",
+         "extendedDisplayTitle": "English (SRT)",
+         "id": 166111003,
+         "index": 2,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 3
+        }
+       ],
+       "audioProfile": null,
+       "container": "mkv",
+       "duration": 714432,
+       "file": "/mnt/zurg_usenet/shows/SpongeBob.SquarePants.S10E24.Kenny.the.Cat.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/060332c365c0452ca9c51192416150af.part1.rar/060332c365c0452ca9c51192416150af.mkv",
+       "id": 1661110,
+       "key": "/library/parts/1661110/1792189965/file.mkv",
+       "size": 343221228,
+       "videoProfile": "high"
+      }
+     ],
+     "_chapters": [],
+     "_folder": "",
+     "_hash": "7d0ce1bb45a27ed804ba488b2d7241080da95796",
+     "_ids": {
+      "imdb": "tt0206512",
+      "tmdb": "387"
+     },
+     "_path": "shows/SpongeBob.SquarePants.S10E24.Kenny.the.Cat.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/060332c365c0452ca9c51192416150af.part1.rar/060332c365c0452ca9c51192416150af.mkv",
+     "_placed": {
+      "kind": "episode"
+     },
+     "_release": "SpongeBob.SquarePants.S10E24.Kenny.the.Cat.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb",
+     "_sid": "shows/SpongeBob.SquarePants.S10E24.Kenny.the.Cat.1080p.AMZN.WEB-DL.DDP2.0.x264-NTb/060332c365c0452ca9c51192416150af.part1.rar/060332c365c0452ca9c51192416150af.mkv",
+     "_source": "zurg",
+     "aspectRatio": 1.78,
+     "audioChannels": 2,
+     "audioCodec": "eac3",
+     "audioProfile": null,
+     "bitrate": 3843,
+     "container": "mkv",
+     "duration": 714432,
+     "hasVoiceActivity": false,
+     "height": 1080,
+     "id": 16611100,
+     "videoCodec": "h264",
+     "videoFrameRate": "24p",
+     "videoProfile": "high",
+     "videoResolution": "1080",
+     "width": 1920
+    }
+   ],
+   "Rating": [
+    {
+     "image": "themoviedb://image.rating",
+     "type": "audience",
+     "value": 7.7
+    }
+   ],
+   "Role": [
+    {
+     "filter": "actor=845082",
+     "id": 845082,
+     "role": "SpongeBob SquarePants / Gary the Snail (voice)",
+     "tag": "Tom Kenny",
+     "tagKey": "1b7ede7b556ad405f84efca3",
+     "thumb": "https://image.tmdb.org/t/p/w185/kftXtExrcoTTjyeYmSXJ0Ogr3R7.jpg"
+    },
+    {
+     "filter": "actor=431386",
+     "id": 431386,
+     "role": "Patrick Star (voice)",
+     "tag": "Bill Fagerbakke",
+     "tagKey": "40da7d53966a850b4b250500",
+     "thumb": "https://image.tmdb.org/t/p/w185/zntKKc1uT53BnIihmzbq601eWKZ.jpg"
+    },
+    {
+     "filter": "actor=531221",
+     "id": 531221,
+     "role": "Squidward (voice)",
+     "tag": "Rodger Bumpass",
+     "tagKey": "c92368985029f3f885088916",
+     "thumb": "https://image.tmdb.org/t/p/w185/lGQkw6adxqB6Hcm7VK8nVHbKupe.jpg"
+    },
+    {
+     "filter": "actor=165504",
+     "id": 165504,
+     "role": "Mr. Krabs (voice)",
+     "tag": "Clancy Brown",
+     "tagKey": "e339b000a18c735bc27bf9df",
+     "thumb": "https://image.tmdb.org/t/p/w185/1JeBRNG7VS7r64V9lOvej9bZXW5.jpg"
+    },
+    {
+     "filter": "actor=58175",
+     "id": 58175,
+     "role": "Sandy Cheeks (voice)",
+     "tag": "Carolyn Lawrence",
+     "tagKey": "24cc167f7337fa9232f4d9d4",
+     "thumb": "https://image.tmdb.org/t/p/w185/vHycxQTs8EuyFdFJNww15xXB5lT.jpg"
+    },
+    {
+     "filter": "actor=723557",
+     "id": 723557,
+     "role": "Mrs. Puff (voice)",
+     "tag": "Mary Jo Catlett",
+     "tagKey": "9bf3358b2625809b7770c4e0",
+     "thumb": "https://image.tmdb.org/t/p/w185/nHDeiQ5jwx0M8HtGgki8ZEsmUQo.jpg"
+    }
+   ],
+   "UltraBlurColors": {
+    "bottomLeft": "1f1f26",
+    "bottomRight": "15151a",
+    "topLeft": "1a1a1e",
+    "topRight": "24242a"
+   },
+   "Writer": [
+    {
+     "filter": "writer=655152",
+     "id": 655152,
+     "tag": "Mr. Lawrence",
+     "tagKey": "e55d8c62ff1e6227eec3939b"
+    }
+   ],
+   "_artFor": "https://image.tmdb.org/t/p/w1280/f3f5OzzYd8m3zN47DAjKs0sbx00.jpg",
+   "_art_url": "https://image.tmdb.org/t/p/w1280/f3f5OzzYd8m3zN47DAjKs0sbx00.jpg",
+   "_folder": "",
+   "_generatedTitle": true,
+   "_hash": "82a217e2c4240eebf9470a69128d76f20932c3d1",
+   "_identify": {
+    "confidence": "exact",
+    "disputed": null,
+    "imdb": "tt0206512",
+    "plex": "plex://show/5d9c08077d06d9001ffcf0b1",
+    "source": "name id",
+    "tmdb": 387
+   },
+   "_identity": "tmdb:387",
+   "_ids": {
+    "imdb": "tt0206512",
+    "tmdb": "387"
+   },
+   "_own_content_rating": true,
+   "_path": "shows/SpongeBob.SquarePants.1999.S10.REPACK.1080p.AMZN.Web-rip.x265.10bit.EAC3.2.0.FrysTAoE {imdb-tt0206512}/SpongeBob.SquarePants.1999.S10E24.Kenny.the.Cat.REPACK.1080p.AMZN.Web-rip.x265.10bit.EAC3.2.0.Frys-TAoE.mkv",
+   "_placed": {
+    "kind": "episode"
+   },
+   "_poster_url": "https://image.tmdb.org/t/p/w1280/f3f5OzzYd8m3zN47DAjKs0sbx00.jpg",
+   "_release": "SpongeBob.SquarePants.1999.S10.REPACK.1080p.AMZN.Web-rip.x265.10bit.EAC3.2.0.FrysTAoE {imdb-tt0206512}",
+   "_scanned": true,
+   "_sid": "shows/SpongeBob.SquarePants.1999.S10.REPACK.1080p.AMZN.Web-rip.x265.10bit.EAC3.2.0.FrysTAoE {imdb-tt0206512}/SpongeBob.SquarePants.1999.S10E24.Kenny.the.Cat.REPACK.1080p.AMZN.Web-rip.x265.10bit.EAC3.2.0.Frys-TAoE.mkv",
+   "_source": "zurg",
+   "_thumbFor": "https://image.tmdb.org/t/p/w1280/f3f5OzzYd8m3zN47DAjKs0sbx00.jpg",
+   "addedAt": 1791824209,
+   "art": "/library/metadata/118624/art/1791897222",
+   "audienceRating": 7.7,
+   "audienceRatingImage": "themoviedb://image.rating",
+   "contentRating": "TV-Y7",
+   "duration": 714432,
+   "grandparentArt": "/library/metadata/118624/art/1791897222",
+   "grandparentGuid": "plex://show/5d9c08077d06d9001ffcf0b1",
+   "grandparentKey": "/library/metadata/118624",
+   "grandparentRatingKey": "118624",
+   "grandparentSlug": "spongebob-squarepants",
+   "grandparentThumb": "/library/metadata/118624/thumb/1791897222",
+   "grandparentTitle": "SpongeBob SquarePants",
+   "guid": "local://141597",
+   "index": 24,
+   "key": "/library/metadata/141597",
+   "librarySectionID": 2,
+   "librarySectionKey": "/library/sections/2",
+   "librarySectionTitle": "TV Shows",
+   "originallyAvailableAt": "1999-05-01",
+   "parentGuid": "plex://season/65dcaf5729624af2f7e6a037",
+   "parentIndex": 10,
+   "parentKey": "/library/metadata/141645",
+   "parentRatingKey": "141645",
+   "parentThumb": "/library/metadata/141645/thumb/1791897222",
+   "parentTitle": "Season 10",
+   "ratingKey": "141597",
+   "summary": "Deep down in the Pacific Ocean in the subterranean city of Bikini Bottom lives a square yellow sponge named SpongeBob SquarePants. SpongeBob lives in a pineapple with his pet snail, Gary, loves his job as a fry cook at the Krusty Krab, and has a knack for getting into all kinds of trouble without really trying. When he's not getting on the nerves of his cranky next door neighbor Squidward, SpongeBob can usually be found smack in the middle of all sorts of strange situations with his best buddy, the simple yet lovable starfish, Patrick, or his thrill-seeking surfer-girl squirrel pal, Sandy Cheeks.",
+   "thumb": "/library/metadata/141597/thumb/1791897222",
+   "title": "Episode 24",
+   "type": "episode",
+   "updatedAt": 1791824209,
+   "year": 1999
+  },
+  {
+   "Country": [
+    {
+     "filter": "country=387550",
+     "id": 387550,
+     "tag": "United States of America"
+    }
+   ],
+   "Genre": [
+    {
+     "filter": "genre=16771",
+     "id": 16771,
+     "tag": "Animation"
+    },
+    {
+     "filter": "genre=717119",
+     "id": 717119,
+     "tag": "Kids"
+    },
+    {
+     "filter": "genre=244689",
+     "id": 244689,
+     "tag": "Comedy"
+    },
+    {
+     "filter": "genre=334175",
+     "id": 334175,
+     "tag": "Family"
+    }
+   ],
+   "Guid": [
+    {
+     "id": "imdb://tt0105941"
+    },
+    {
+     "id": "tmdb://82"
+    }
+   ],
+   "Location": [
+    {
+     "path": "/mnt/zurg/shows/Animaniacs.S03.1080p.UPSCALED.DD.5.1.x265-EDGE2020"
+    },
+    {
+     "path": "/mnt/zurg/shows/Animaniacs.S01.1080p.UPSCALED.DD.5.1.x265-EDGE2020"
+    },
+    {
+     "path": "/mnt/zurg/shows/Animaniacs.S01.Repack.1080p.UPSCALED.DD.5.1.x265-EDGE2020"
+    },
+    {
+     "path": "/mnt/zurg/shows/Animaniacs.S04.1080p.UPSCALED.DD.5.1.x265-EDGE2020"
+    },
+    {
+     "path": "/mnt/zurg/shows/Animaniacs.S05.1080p.UPSCALED.DD.5.1.x265-EDGE2020"
+    },
+    {
+     "path": "/mnt/zurg/shows/Animaniacs"
+    }
+   ],
+   "Rating": [
+    {
+     "image": "themoviedb://image.rating",
+     "type": "audience",
+     "value": 8.0
+    }
+   ],
+   "Role": [
+    {
+     "filter": "actor=828092",
+     "id": 828092,
+     "role": "Yakko / Pinky (voice)",
+     "tag": "Rob Paulsen",
+     "tagKey": "edfd02e57839b601a5dfba08",
+     "thumb": "https://image.tmdb.org/t/p/w185/7buvKWIjPlspqruaO3b28V5owJr.jpg"
+    },
+    {
+     "filter": "actor=763495",
+     "id": 763495,
+     "role": "Wakko (voice)",
+     "tag": "Jess Harnell",
+     "tagKey": "d633535cb55e8b987a0668b4",
+     "thumb": "https://image.tmdb.org/t/p/w185/zQ2zg7PL3ut4JhfXMKSRV4FMnxR.jpg"
+    },
+    {
+     "filter": "actor=797216",
+     "id": 797216,
+     "role": "Dot (voice)",
+     "tag": "Tress MacNeille",
+     "tagKey": "2d50b3bacecab8bc6d7ac056",
+     "thumb": "https://image.tmdb.org/t/p/w185/gI2LsgByvSffQY34vabVnPmrHzw.jpg"
+    },
+    {
+     "filter": "actor=95071",
+     "id": 95071,
+     "role": "The Brain / Squit (voice)",
+     "tag": "Maurice LaMarche",
+     "tagKey": "df0f06bfab88d6a4cf77c4dc",
+     "thumb": "https://image.tmdb.org/t/p/w185/qCiL3EYAhLcNo0rNj5pczWo9MwG.jpg"
+    },
+    {
+     "filter": "actor=459551",
+     "id": 459551,
+     "role": "Slappy Squirrel (voice)",
+     "tag": "Sherri Stoner",
+     "tagKey": "5e45199fcbe4d7e72326b429",
+     "thumb": "https://image.tmdb.org/t/p/w185/8ayLtCDHqjk0YaieMBElSr5MPj1.jpg"
+    },
+    {
+     "filter": "actor=362950",
+     "id": 362950,
+     "role": "Pesto (voice)",
+     "tag": "Chick Vennera",
+     "tagKey": "b028dd5d8eee73708421735d",
+     "thumb": "https://image.tmdb.org/t/p/w185/fTuY5IhTGVEYES6LFZhbuRgZwVW.jpg"
+    }
+   ],
+   "UltraBlurColors": {
+    "bottomLeft": "1f1f26",
+    "bottomRight": "15151a",
+    "topLeft": "1a1a1e",
+    "topRight": "24242a"
+   },
+   "_artFor": "https://image.tmdb.org/t/p/w1280/8TThBwlIZnzCFkj21rv5Nv2lTNG.jpg",
+   "_art_url": "https://image.tmdb.org/t/p/w1280/8TThBwlIZnzCFkj21rv5Nv2lTNG.jpg",
+   "_identity": "tmdb:82",
+   "_poster_url": "https://image.tmdb.org/t/p/w342/c1b2UtrhbMOdHKISB2ZvINo9eyc.jpg",
+   "_scanned": true,
+   "_thumbFor": "https://image.tmdb.org/t/p/w342/c1b2UtrhbMOdHKISB2ZvINo9eyc.jpg",
+   "_titleGuid": "plex://show/5d9c07fe2df347001e3a7d17",
+   "addedAt": 1791656706,
+   "art": "/library/metadata/104981/art/1791897222",
+   "audienceRating": 8.0,
+   "audienceRatingImage": "themoviedb://image.rating",
+   "childCount": 1,
+   "contentRating": "TV-Y7",
+   "guid": "plex://show/5d9c07fe2df347001e3a7d17",
+   "index": 1,
+   "key": "/library/metadata/104981/children",
+   "leafCount": 43,
+   "librarySectionID": 2,
+   "librarySectionKey": "/library/sections/2",
+   "librarySectionTitle": "TV Shows",
+   "ratingKey": "104981",
+   "slug": "animaniacs",
+   "studio": "Warner Bros. Animation",
+   "summary": "The two Warner Brothers Yakko and Wakko and their Warner sister Dot had been (supposedly) created in the 1930's, but their cartoons were too screwy for the general public to handle. The three Warners were locked up in the studio water tower until they escaped in the 90's. There, they run wild, causing chaos everywhere!",
+   "tagline": "They're zany to the max!",
+   "thumb": "/library/metadata/104981/thumb/1791897222",
+   "title": "Animaniacs",
+   "type": "show",
+   "updatedAt": 1791656706,
+   "viewedLeafCount": 0,
+   "year": 1993
+  },
+  {
+   "Guid": [
+    {
+     "id": "tvdb://4929"
+    }
+   ],
+   "UltraBlurColors": {
+    "bottomLeft": "1f1f26",
+    "bottomRight": "15151a",
+    "topLeft": "1a1a1e",
+    "topRight": "24242a"
+   },
+   "_artFor": "https://image.tmdb.org/t/p/original/8TThBwlIZnzCFkj21rv5Nv2lTNG.jpg",
+   "_art_url": "https://image.tmdb.org/t/p/original/8TThBwlIZnzCFkj21rv5Nv2lTNG.jpg",
+   "_poster_url": "https://artworks.thetvdb.com/banners/seasons/72879-1-2.jpg",
+   "_scanned": true,
+   "_thumbFor": "https://artworks.thetvdb.com/banners/seasons/72879-1-2.jpg",
+   "addedAt": 1791674553,
+   "art": "/library/metadata/104981/art/1791897222",
+   "guid": "plex://season/65dd8dbef97685e8c5506592",
+   "index": 1,
+   "key": "/library/metadata/118318/children",
+   "leafCount": 146,
+   "librarySectionID": 2,
+   "librarySectionKey": "/library/sections/2",
+   "librarySectionTitle": "TV Shows",
+   "parentGuid": "plex://show/5d9c07fe2df347001e3a7d17",
+   "parentIndex": 1,
+   "parentKey": "/library/metadata/104981",
+   "parentRatingKey": "104981",
+   "parentSlug": "animaniacs",
+   "parentStudio": "Warner Bros. Animation",
+   "parentThumb": "/library/metadata/104981/thumb/1791897222",
+   "parentTitle": "Animaniacs",
+   "parentYear": 1993,
+   "ratingKey": "118318",
+   "summary": "",
+   "thumb": "/library/metadata/118318/thumb/1792733959",
+   "title": "Season 1",
+   "type": "season",
+   "updatedAt": 1791674553,
+   "viewedLeafCount": 0
+  },
+  {
+   "Director": [
+    {
+     "filter": "director=310575",
+     "id": 310575,
+     "role": "Director",
+     "tag": "Alfred Gimeno",
+     "tagKey": "803574380c2f97a034bf077c",
+     "thumb": "https://metadata-static.plex.tv/people/5d776868e6d55c0020412709.jpg"
+    },
+    {
+     "filter": "director=230171",
+     "id": 230171,
+     "role": "Director",
+     "tag": "Dave Marshall",
+     "tagKey": "11849e838731debdb01e3a0a"
+    },
+    {
+     "filter": "director=382196",
+     "id": 382196,
+     "role": "Director",
+     "tag": "Michael Gerard",
+     "tagKey": "bf6eca17aaea4085e9fdbab8"
+    },
+    {
+     "filter": "director=892115",
+     "id": 892115,
+     "role": "Director",
+     "tag": "Greg Reyna",
+     "tagKey": "7989379bf258d96edf75b157"
+    },
+    {
+     "filter": "director=493464",
+     "id": 493464,
+     "role": "Director",
+     "tag": "Rusty Mills",
+     "tagKey": "5a71c9920cb8f439f5a4b0ea"
+    },
+    {
+     "filter": "director=350938",
+     "id": 350938,
+     "role": "Director",
+     "tag": "Audu Paden",
+     "tagKey": "1a4e53c6f14b367ade528cc9",
+     "thumb": "https://metadata-static.plex.tv/people/5d77685c7e9a3c0020c718ee.jpg"
+    }
+   ],
+   "Media": [
+    {
+     "Part": [
+      {
+       "Stream": [
+        {
+         "bitDepth": 10,
+         "chromaLocation": null,
+         "chromaSubsampling": "4:2:0",
+         "codec": "hevc",
+         "codecID": null,
+         "codedHeight": null,
+         "codedWidth": null,
+         "colorPrimaries": null,
+         "colorRange": "tv",
+         "colorSpace": null,
+         "colorTrc": null,
+         "default": true,
+         "displayTitle": "1080p",
+         "extendedDisplayTitle": "1080p (HEVC Main 10)",
+         "frameRate": 29.97,
+         "height": 1080,
+         "id": 118657001,
+         "index": 0,
+         "level": 120,
+         "profile": "main 10",
+         "refFrames": null,
+         "scanType": null,
+         "streamIdentifier": null,
+         "streamType": 1,
+         "width": 1416
+        },
+        {
+         "audioChannelLayout": "5.1(side)",
+         "bitDepth": null,
+         "bitrate": 448,
+         "channels": 6,
+         "codec": "ac3",
+         "default": true,
+         "displayTitle": "English (AC3 5.1)",
+         "extendedDisplayTitle": "English (AC3 5.1)",
+         "id": 118657002,
+         "index": 1,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "samplingRate": 48000,
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 2
+        },
+        {
+         "canAutoSync": false,
+         "codec": "srt",
+         "default": true,
+         "displayTitle": "English",
+         "extendedDisplayTitle": " (English SRT)",
+         "id": 118657003,
+         "index": 2,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "selected": true,
+         "streamIdentifier": null,
+         "streamType": 3,
+         "title": ""
+        }
+       ],
+       "audioProfile": null,
+       "container": "mkv",
+       "duration": 580075,
+       "file": "/mnt/zurg/shows/Animaniacs.S01.Repack.1080p.UPSCALED.DD.5.1.x265-EDGE2020/Animaniacs.S01E102.Hollywoodchuck.Repack.1080p.UPSCALED.DD.5.1.x265-EDGE2020.mkv",
+       "id": 1186570,
+       "key": "/library/parts/1186570/1791675148/file.mkv",
+       "size": 198385173,
+       "videoProfile": "main 10"
+      }
+     ],
+     "_chapters": [
+      {
+       "endTimeOffset": 512178,
+       "id": 11865700001,
+       "index": 1,
+       "startTimeOffset": 0,
+       "tag": "Chapter 04"
+      },
+      {
+       "endTimeOffset": 580046,
+       "id": 11865700002,
+       "index": 2,
+       "startTimeOffset": 512178,
+       "tag": "Chapter 05"
+      }
+     ],
+     "_folder": "",
+     "_hash": "1d4a9a46efb0b606cb070eef3eedf3d3abf2252c",
+     "_ids": {
+      "imdb": "tt0105941",
+      "tmdb": "82"
+     },
+     "_path": "shows/Animaniacs.S01.Repack.1080p.UPSCALED.DD.5.1.x265-EDGE2020/Animaniacs.S01E102.Hollywoodchuck.Repack.1080p.UPSCALED.DD.5.1.x265-EDGE2020.mkv",
+     "_placed": {
+      "episode": 109,
+      "kind": "episode",
+      "season": 1
+     },
+     "_release": "Animaniacs.S01.Repack.1080p.UPSCALED.DD.5.1.x265-EDGE2020",
+     "_sid": "shows/Animaniacs.S01.Repack.1080p.UPSCALED.DD.5.1.x265-EDGE2020/Animaniacs.S01E102.Hollywoodchuck.Repack.1080p.UPSCALED.DD.5.1.x265-EDGE2020.mkv",
+     "_source": "zurg",
+     "aspectRatio": 1.33,
+     "audioChannels": 6,
+     "audioCodec": "ac3",
+     "audioProfile": null,
+     "bitrate": 2736,
+     "container": "mkv",
+     "duration": 580075,
+     "hasVoiceActivity": false,
+     "height": 1080,
+     "id": 11865700,
+     "videoCodec": "hevc",
+     "videoFrameRate": "NTSC",
+     "videoProfile": "main 10",
+     "videoResolution": "1080",
+     "width": 1416
+    }
+   ],
+   "Rating": [
+    {
+     "image": "themoviedb://image.rating",
+     "type": "audience",
+     "value": 7.8
+    }
+   ],
+   "Role": [
+    {
+     "filter": "actor=828092",
+     "id": 828092,
+     "role": "Yakko / Pinky (voice)",
+     "tag": "Rob Paulsen",
+     "tagKey": "edfd02e57839b601a5dfba08",
+     "thumb": "https://metadata-static.plex.tv/5/people/502b7e54253f7679ab3d74e6f2815da8.jpg"
+    },
+    {
+     "filter": "actor=763495",
+     "id": 763495,
+     "role": "Wakko (voice)",
+     "tag": "Jess Harnell",
+     "tagKey": "d633535cb55e8b987a0668b4",
+     "thumb": "https://metadata-static.plex.tv/4/people/4f0c5e626a22a7ae2eeddf933dc9a782.jpg"
+    },
+    {
+     "filter": "actor=797216",
+     "id": 797216,
+     "role": "Dot (voice)",
+     "tag": "Tress MacNeille",
+     "tagKey": "2d50b3bacecab8bc6d7ac056",
+     "thumb": "https://metadata-static.plex.tv/3/people/35789c0b249ce651330a7ccc5d5e6ec0.jpg"
+    },
+    {
+     "filter": "actor=95071",
+     "id": 95071,
+     "role": "The Brain / Squit (voice)",
+     "tag": "Maurice LaMarche",
+     "tagKey": "df0f06bfab88d6a4cf77c4dc",
+     "thumb": "https://metadata-static.plex.tv/7/people/7ef61d0ba49c2a22ab6040875d58c367.jpg"
+    },
+    {
+     "filter": "actor=459551",
+     "id": 459551,
+     "role": "Slappy Squirrel (voice)",
+     "tag": "Sherri Stoner",
+     "tagKey": "5e45199fcbe4d7e72326b429",
+     "thumb": "https://metadata-static.plex.tv/c/people/c4a31f75d9e0140d6f96c7402a32a52e.jpg"
+    },
+    {
+     "filter": "actor=362950",
+     "id": 362950,
+     "role": "Pesto (voice)",
+     "tag": "Chick Vennera",
+     "tagKey": "b028dd5d8eee73708421735d",
+     "thumb": "https://metadata-static.plex.tv/people/5d77682b6f4521001ea9a256.jpg"
+    }
+   ],
+   "UltraBlurColors": {
+    "bottomLeft": "1f1f26",
+    "bottomRight": "15151a",
+    "topLeft": "1a1a1e",
+    "topRight": "24242a"
+   },
+   "Writer": [
+    {
+     "filter": "writer=144253",
+     "id": 144253,
+     "role": "Writer",
+     "tag": "Deanna Oliver",
+     "tagKey": "57aed5d57928f5cd6794fbf4",
+     "thumb": "https://metadata-static.plex.tv/0/people/0c711abb050c282499fb90e3666b0ce4.jpg"
+    },
+    {
+     "filter": "writer=761495",
+     "id": 761495,
+     "role": "Writer",
+     "tag": "Nicholas Hollander",
+     "tagKey": "0ce3db9283de5f9af0defe02"
+    },
+    {
+     "filter": "writer=360909",
+     "id": 360909,
+     "role": "Writer",
+     "tag": "Randy Rogel",
+     "tagKey": "f7734fd53ac482e0848318f7"
+    },
+    {
+     "filter": "writer=478821",
+     "id": 478821,
+     "role": "Writer",
+     "tag": "Tom Minton",
+     "tagKey": "640f77081b692767dbfd5ab4"
+    },
+    {
+     "filter": "writer=247654",
+     "id": 247654,
+     "role": "Writer",
+     "tag": "Kevin Hopps",
+     "tagKey": "f16ae56b87ef5250713eef55"
+    },
+    {
+     "filter": "writer=395009",
+     "id": 395009,
+     "role": "Writer",
+     "tag": "Charles M. Howell IV",
+     "tagKey": "6d50adcb1b9f94fb3204e33f",
+     "thumb": "https://metadata-static.plex.tv/f/people/f8a31d52cc6a764a9efd245e1ee9903d.jpg"
+    }
+   ],
+   "_artFor": "https://image.tmdb.org/t/p/original/8TThBwlIZnzCFkj21rv5Nv2lTNG.jpg",
+   "_art_url": "https://image.tmdb.org/t/p/original/8TThBwlIZnzCFkj21rv5Nv2lTNG.jpg",
+   "_folder": "",
+   "_generatedTitle": true,
+   "_hash": "1d4a9a46efb0b606cb070eef3eedf3d3abf2252c",
+   "_identify": {
+    "imdb": "tt0105941",
+    "plex": "plex://show/5d9c07fe2df347001e3a7d17",
+    "source": "placed",
+    "tmdb": 82
+   },
+   "_identity": "tmdb:82",
+   "_ids": {
+    "imdb": "tt0105941",
+    "tmdb": "82"
+   },
+   "_own_content_rating": true,
+   "_path": "shows/Animaniacs.S01.Repack.1080p.UPSCALED.DD.5.1.x265-EDGE2020/Animaniacs.S01E102.Hollywoodchuck.Repack.1080p.UPSCALED.DD.5.1.x265-EDGE2020.mkv",
+   "_placed": {
+    "episode": 109,
+    "kind": "episode",
+    "season": 1
+   },
+   "_poster_url": "https://image.tmdb.org/t/p/original/8TThBwlIZnzCFkj21rv5Nv2lTNG.jpg",
+   "_release": "Animaniacs.S01.Repack.1080p.UPSCALED.DD.5.1.x265-EDGE2020",
+   "_scanned": true,
+   "_sid": "shows/Animaniacs.S01.Repack.1080p.UPSCALED.DD.5.1.x265-EDGE2020/Animaniacs.S01E102.Hollywoodchuck.Repack.1080p.UPSCALED.DD.5.1.x265-EDGE2020.mkv",
+   "_source": "zurg",
+   "_thumbFor": "https://image.tmdb.org/t/p/original/8TThBwlIZnzCFkj21rv5Nv2lTNG.jpg",
+   "addedAt": 1791674553,
+   "art": "/library/metadata/104981/art/1791897222",
+   "audienceRating": 7.8,
+   "audienceRatingImage": "themoviedb://image.rating",
+   "contentRating": "TV-Y7",
+   "duration": 580064,
+   "grandparentArt": "/library/metadata/104981/art/1791897222",
+   "grandparentGuid": "plex://show/5d9c07fe2df347001e3a7d17",
+   "grandparentKey": "/library/metadata/104981",
+   "grandparentRatingKey": "104981",
+   "grandparentSlug": "animaniacs",
+   "grandparentThumb": "/library/metadata/104981/thumb/1791897222",
+   "grandparentTitle": "Animaniacs",
+   "guid": "local://118183",
+   "index": 109,
+   "key": "/library/metadata/118183",
+   "librarySectionID": 2,
+   "librarySectionKey": "/library/sections/2",
+   "librarySectionTitle": "TV Shows",
+   "originallyAvailableAt": "1993-09-13",
+   "parentGuid": "plex://season/65dd8dbef97685e8c5506592",
+   "parentIndex": 1,
+   "parentKey": "/library/metadata/118318",
+   "parentRatingKey": "118318",
+   "parentThumb": "/library/metadata/118318/thumb/1792733959",
+   "parentTitle": "Season 1",
+   "ratingKey": "118183",
+   "summary": "The two Warner Brothers Yakko and Wakko and their Warner sister Dot had been (supposedly) created in the 1930's, but their cartoons were too screwy for the general public to handle. The three Warners were locked up in the studio water tower until they escaped in the 90's. There, they run wild, causing chaos everywhere!",
+   "thumb": "/library/metadata/118183/thumb/1792733959",
+   "title": "Episode 109",
+   "type": "episode",
+   "updatedAt": 1792733958,
+   "year": 1993
+  }
+ ]
+}
