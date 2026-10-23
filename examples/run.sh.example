@@ -1,34 +1,20 @@
 #!/bin/bash
 # Copy to run.sh at the top of the checkout or release, beside rust/ (run.sh is gitignored),
-# fill in the values, and see README "Setup" for each step. It runs from its own directory.
+# and see README "Setup" for each step. It runs from its own directory and keeps rex.db there.
 #
-# Keys come from rex.env beside run.sh (mode 600; gitignored, as is run.sh):
-# rex needs no Plex token: it serves no app until it is claimed, then asks Plex's metadata
-# agent and plex.tv with the claim's own token. rex-direct needs no key: once
-# claimed, rex gets an HTTPS name and certificate of its own from DMM, announced after
-# --announce-url's. REX_DIRECT_URL=off turns it off, or names another provider
-# (REX_DIRECT_KEY if that provider wants one).
-# Under systemd, EnvironmentFile= can load the same file instead.
+# Keys, if any, go in rex.env beside run.sh (gitignored, as is run.sh). Under systemd,
+# EnvironmentFile= can load the same file instead.
 #
 # Sources register themselves and push their items (docs/feed-api.md): zurg needs only
 # rex_url in its config.yml. Nothing about a source is set here.
 #
-# The first start seeds rex.db, named after the host (--friendly-name), its libraries under
-# /mnt/rex (--mount); a claimed server takes its owner from the claim (--owner-username);
-# to name more directories, seed it yourself first: rust/target/release/rex catalog --seed
-# --out rex.db (--movies/--shows). The server keeps its state (watch state, edits, lists,
-# history, prefs, the sources' registrations) in the same file.
+# On a host that runs Plex too, use --port 32500.
 #
-# On --port 32400 rex answers Plex's LAN discovery (GDM) on udp/32410 and udp/32414; on a
-# host that runs Plex too, use another port: off 32400 rex stays out of discovery.
-#
-# --announce-url: an unclaimed server announces nothing until it is claimed, then at once.
-# An HTTPS address of your own needs --tls-cert/--tls-key here (a PKCS#8, RSA or EC key). Not a
-# Cloudflare tunnel: docs/setup.md step 7 says why.
+# --announce-url is only for an extra HTTPS address of your own (with --tls-cert/--tls-key
+# when rex serves that name itself): once claimed, rex announces its LAN address and its
+# rex-direct address by itself.
+# Not a Cloudflare tunnel: docs/setup.md says why.
 set -e
 cd "$(dirname "$0")"
 [ -f rex.env ] && { set -a; . ./rex.env; set +a; }
-exec rust/target/release/rex \
-  --catalog rex.db \
-  --port 32400 \
-  --announce-url "https://rex.example.com:32400,http://192.168.1.10:32400"
+exec rust/target/release/rex

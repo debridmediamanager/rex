@@ -8,13 +8,10 @@ does when its file goes away, `tests/fixtures/missing_file_scan_s43.json`; a del
 
 ## Sources
 
-A source has a name, a byte base URL, optional credentials for it, and optionally the
-prefix its files are shown under. The source registers them itself, over this API, before
-it pushes (`PUT /rex/sources/{name}`, below), and rex keeps them in its state file
-(`rex.db`), so a source's rows keep their bytes across a restart before it registers again.
-Nothing about a source is set on rex's side: no file, no token. rex used to take them from a
-sources file with a feed token per source, which had to be made up and copied to both sides
-by hand.
+A source has a name, a byte base URL and optional credentials for it. The source registers
+them itself, over this API, before it pushes (`PUT /rex/sources/{name}`, below), and rex keeps
+them in its state file (`rex.db`), so a source's rows keep their bytes across a restart before
+it registers again. Nothing about a source is set on rex's side: no file, no token.
 
 What rex needs from a byte server is a GET of a file, nothing more, so a source can be
 zurg's WebDAV, nginx, a NAS, object storage or `python3 -m http.server`
@@ -28,7 +25,7 @@ zurg's WebDAV, nginx, a NAS, object storage or `python3 -m http.server`
   so a presigned CDN link works and does not see the credential.
 - As many sources as needed, each registered under its own name. Each pushes to
   `/rex/feed/{its name}`, its rows remember it, and the same title from two sources is one
-  row with a Media each. An item's `file` decides which library holds it, not its source.
+  row with a Media each. An item's `path` decides which library holds it, not its source.
 
 ### Who may call it
 
@@ -47,21 +44,12 @@ cannot open it. A reverse proxy on the same machine therefore reaches it as a lo
 block `/rex/` there. Forwarding rex's port for rex-direct (setup step 7) puts Plex's API on the
 internet, which needs a token once rex is claimed, but not the feed.
 
-### Rows keep their source
-
-Registering is the only way a source exists: rex is configured with none, and `ZURG_URL`
-(which used to define a source `zurg`) is no longer read. A row the feed made names its
-source and its path there (`_source`, `_path`); a catalog row from before the feed (the old
-WebDAV scanner's) names none, and reads from the registered source whose `mount` holds its
-Part's `file`. Either has no bytes -- a part read answers 502 -- until that source
-registers, and plays the moment it does.
-
 ## Registering a source
 
 ### `PUT /rex/sources/{name}`
 
 ```json
-{"url": "http://127.0.0.1:9999/dav", "user": "zurg-user", "password": "zurg-password", "mount": "/mnt/zurg",
+{"url": "http://127.0.0.1:9999/dav", "user": "zurg-user", "password": "zurg-password",
  "directories": [{"name": "anime", "shows": "Anime", "movies": "Anime Movies"}, {"name": "wrestling", "shows": "Wrestling"}]}
 ```
 
@@ -70,7 +58,7 @@ registers, and plays the moment it does.
 | `url` | Required, `http` or `https`. A part's bytes are `GET <url>/<path>` with the client's `Range` forwarded; each path segment is percent-encoded. No `user:password@` in it: the url is answered back, so credentials go in their own fields |
 | `user`, `password` | Basic auth for `url` (optional) |
 | `bearer` | `Authorization: Bearer` for `url` instead (optional) |
-| `mount` | Optional and rarely needed: the prefix of the `file` clients see for an item pushed without one (`<mount>/<path>`, else `/<path>`). Nothing is read from it. It also lets a catalog row from the old WebDAV scanner, with no feed id, find its bytes |
+| `mount` | Optional, a label: the folder Plex apps show its files under in Get Info (`<mount>/<path>`, default `/<path>`) and its libraries under (default rex's own, `/mnt/rex`). Playback of what a source pushes never uses it |
 | `directories` | Optional: the directories that get a library of their own ([below](#libraries-a-source-declares)). Each entry is `name`, one directory as the first segment of the source's item paths (non-empty, no `/`), and `shows` and/or `movies`, the title of its show and movie library (non-empty strings; at least one). Absent, `null` or `[]` declares nothing. A malformed entry is ignored, never the registration |
 
 `{name}` is letters, digits, `-` and `_`. A registration creates the source or replaces the
@@ -87,7 +75,7 @@ start. A `directories` that is no list is left out the same way. `ignored` is ab
 nothing was:
 
 ```json
-{"name": "zurg", "url": "http://127.0.0.1:9999/dav", "auth": "basic", "mount": "/mnt/zurg",
+{"name": "zurg", "url": "http://127.0.0.1:9999/dav", "auth": "basic",
  "directories": [{"name": "anime", "shows": "Anime"}],
  "ignored": [{"entry": {"name": "kids", "shows": ""}, "reason": "directory \"kids\": shows title is empty"}]}
 ```
@@ -100,15 +88,14 @@ on the folder `<mount>/<name>` (with no `mount`, under the parent of the first l
 folder, `/mnt/rex` for a library rex seeded). rex logs `SECTION create Anime (show) for zurg's anime`, and
 Plex clients see it as one added in Add Library. Then:
 
-- **A library of that type already on the folder is used**, whoever made it: one seeded with
-  `--shows anime`, one added with Add Library, or one made by an earlier registration. Nothing is
+- **A library of that type already on the folder is used**, whoever made it: one added with
+  Add Library, or one made by an earlier registration. Nothing is
   made and nothing is retitled, so a rename in Plex sticks; the folder, not the title, is what
   matches, and two sources declaring `anime` fill one library.
 - **An episode** of the directory goes to its show library, **a film** to its movie library, and
   **an unplaced file** (no `kind`) to the first library holding the folder. rex makes the movie
   library first, so when it makes both that is the movie library, as unplaced files go to a movie
-  library anywhere else; a directory with only a show library takes its unplaced files there, as
-  one seeded with `--shows` does. A type the entry does not title goes to the first library of
+  library anywhere else; a directory with only a show library takes its unplaced files there. A type the entry does not title goes to the first library of
   its kind, as an undeclared directory's do.
 - **Rows already shown move** to the new library on the source's next push, as they are, on
   their keys: identification, a Fix Match, every account's watch state and a person's edits
@@ -134,7 +121,7 @@ TV Shows for an episode, Movies for anything else.
 ### `GET /rex/sources` and `GET /rex/sources/{name}`
 
 ```json
-{"size": 1, "sources": [{"name": "zurg", "url": "http://127.0.0.1:9999/dav", "auth": "basic", "mount": "/mnt/zurg"}]}
+{"size": 1, "sources": [{"name": "zurg", "url": "http://127.0.0.1:9999/dav", "auth": "basic"}]}
 ```
 
 Every source, or one (`404` for a name nothing registered), with its `directories` as
@@ -238,10 +225,8 @@ What rex holds for the source: the shown items with their ratingKeys
 {
   "id": "movies/Blame.It.On.The.Bellboy.1992.1080p/Blame.It.On.The.Bellboy.1992.1080p.mkv",
   "path": "movies/Blame.It.On.The.Bellboy.1992.1080p/Blame.It.On.The.Bellboy.1992.1080p.mkv",
-  "name": "Blame.It.On.The.Bellboy.1992.1080p.BluRay.x264",
-  "size": 4567890123,
   "kind": "movie",
-  "ids": {"imdb": "tt0103827", "tmdb": 31639},
+  "ids": {"tmdb": 31639},
   "media_info": {
     "format": {"format_name": "matroska,webm", "duration": "5032.144000", "bit_rate": "7261654"},
     "streams": [
@@ -259,8 +244,7 @@ The `media_info` above is cut down to show its shape. Send ffprobe's whole outpu
 | `id` | yes | The source's stable key for the file. A row's ratingKey belongs to (source, id) for good, so keep it when the file is renamed |
 | `path` | yes | Where the bytes are: `<source url>/<path>`. Its first directory also picks the library (below) |
 | `media_info` | yes, in practice | ffprobe's `-show_format -show_streams` JSON (go-ffprobe's `ProbeData` is the same shape). Absent, `null` or with no `streams`: the item is **held**, because Plex Web will not play an item without streams (findings, "An item without a probe cannot play") |
-| `size` | recommended | Bytes. Shown as the Part's size and used to answer a client's `Range`; without it rex passes the client's `Range` to the source as it is |
-| `ids` | recommended | `imdb` (`tt…`), `tmdb`, `tvdb`. With `kind`, the title: `imdb` and `tmdb` are the movie's or the **show's** ids, never an episode's. Without `kind`, only `tmdb` names anything (a TMDB id set by hand at the source): a title of its library's kind, when TMDB has one; `imdb` alone and `tvdb` are kept on the row and name nothing (below) |
+| `ids` | recommended | `imdb` (`tt…`), `tmdb`, `tvdb`. With `kind`, the title: `imdb` and `tmdb` are the movie's or the **show's** ids, never an episode's, and either one is enough (rex fills in the other from Plex). Without `kind`, only `tmdb` names anything (a TMDB id set by hand at the source): a title of its library's kind, when TMDB has one; `imdb` alone and `tvdb` are kept on the row and name nothing (below) |
 | `kind` | no | `movie`, `episode` or `extra`: what the source knows the file is. `movie` or `episode` **places** the file (below): it picks the movie or show library, and its `ids` are the title. `extra` makes it a clip of its release's title (below). Anything else, or absent: nothing places it, and rex does not guess from its name |
 | `extra_type` | with `kind: extra` | The clip's type: `trailer`, `deleted`, `featurette`, `behindthescenes`, `interview`, `scene`, `short`, `opening`, `ending` or `other` (Plex's local-extras types and creditless openings and endings). Anything else, or absent, is `other` |
 | `season`, `episode` | no | With `kind: episode`, the episode on **TMDB's** numbering of the show `ids.tmdb` names (`season` 0 is Specials). The row is placed exactly there. Absent: season 1, in the release's file order (below) |
@@ -269,7 +253,8 @@ The `media_info` above is cut down to show its shape. Send ffprobe's whole outpu
 | `name` | no | The release name, shown as it is: an unplaced episode's show is titled with it. Nothing is read out of it -- no id, no title, no season or episode. Default: the folder above the file |
 | `release` | no | Groups a release's files, identified together (a season's episodes). Default: the folder above `path` |
 | `edition_title` | no | Explicit movie edition label. Different labels stay separate movies; the same label can hold several versions. Omitted preserves the current source label; `""` clears it. A person's locked edition wins. Rejected for episodes or invalid labels; never inferred from a name |
-| `file` | no | The path clients see in Get Info (`<mount>/<directory>/<release>/<file>`). Default `<mount>/<path>`, or `/<path>` without a mount |
+| `size` | no | Bytes. Default: ffprobe's `media_info.format.size` (none for an HLS playlist). Shown as the Part's size and used to answer a client's `Range`; with neither, rex passes the client's `Range` to the source as it is |
+| `file` | no | Only the path clients see in Get Info (`<mount>/<directory>/<release>/<file>`). Default `<mount>/<path>`, or `/<path>` without a mount |
 | `library` | no | A section key, or `movie`/`show`. Default: the library whose `Location` holds `file`, else one with a folder ending in a directory `path` starts with (`/mnt/zurg/movies` holds `movies/...` whatever prefix `file` has); with a type, that type's library holding `file`, else its first; a folder no library holds goes to the first library of its `kind` (Movies without one). With no `library`, an item placed as an episode that a movie library would take goes to a show library -- one holding its folder ([a declared directory's](#libraries-a-source-declares)), else the one beside it -- and one placed as a movie that a show library would take goes to a movie library, one holding its folder first; a row already shown moves when its library changes |
 | `folder` | no | The folder the provider lists the file in inside its release (`Smallville/Stagione 6`), `""` at its top level. Kept on the row; nothing reads it as an extra |
 | `hash` | no | The release's content/info hash, kept per Media version. A changed hash invalidates that version's measured subtitle reference and generated analysis; it never borrows another version's hash |
@@ -307,8 +292,7 @@ What the fields do:
 - **Identification.** rex identifies a file only by its source's placement or by a TMDB id set
   by hand (`ids.tmdb` with no `kind`: a title of its library's kind), trusted as pushed and
   checked against nothing, and never by its name (`identify.rs`). zurg asks DMM what each file
-  is; on the production server 0.9% of episodes and 1.1% of movies arrive unplaced
-  (2026-10-17). Plex's matcher is asked for its guid by the title's external ids, and its answer
+  is. Plex's matcher is asked for its guid by the title's external ids, and its answer
   -- and, for an episode, its season's and its own row -- is everything the row shows: title,
   summary, artwork, genres, people. rex reads no TMDB. Identification searches nothing (Fix Match,
   a person's, is the only search, through Plex's matcher). An IMDb id with no `kind` names
@@ -325,15 +309,8 @@ What the fields do:
   title when the source corrects `name`; local show grouping and file-order numbering follow
   the correction on the existing show, season and episode keys. No title is identified by
   that name. A metadata-derived title is never handed back to the source, even when it
-  equals the previous source name. Older named rows without recorded title provenance
-  retry the pushed external ids on an ordinary update, and accept a title only from an
-  actual nonempty metadata `title` belonging to the same Plex guid. A guid alone, a
-  constructed release-name fallback, an unavailable answer, or a different-guid answer
-  is not title authority. This also repairs an older shared multi-version row without
-  letting one version's source label rename it. A person's locked title, persisted title
-  edit (including an unlocked edit), or Fix Match wins. A known source fallback may follow
-  a corrected source name while retaining its ids and guid, including when Plex supplied
-  a guid but no title. An unknown legacy named title is not assumed to be such a fallback.
+  equals the previous source name. A person's locked title, persisted title edit (including
+  an unlocked edit), or Fix Match wins.
 - **Late ids.** A push whose placement or hand-set TMDB id names what the row was not identified
   as re-identifies it on the same ratingKey, keeping its watch state (an episode moves to the
   show its new identity names, on the numbers it was placed on, else the ones it had). So does
@@ -342,11 +319,9 @@ What the fields do:
   show's poster -- whatever its first episode lacked, unless a
   person locked the field; seasons left without one are given theirs when the server starts.
 - **Retried.** A row on the blank tile -- a film with no poster, an episode whose show has
-  none -- or an episode named as a film (a film's guid, which every season-0 episode got before
-  2026-10-16) is identified again when the server starts and every ten minutes after, up to 50
+  none -- or an episode named as a film is identified again when the server starts and every ten minutes after, up to 50
   films or shows a pass, as its source pushed it -- when it came with a placement. A row without
-  one is left as it is: rows pushed before DMM placed anything still carry ids zurg's own Plex
-  gave, an episode's among them. One still unnamed waits an hour, then twice as long each time,
+  one is left as it is. One still unnamed waits an hour, then twice as long each time,
   to about five days. A Plex answer that found nothing is asked again after a day. No other pass at start touches a
   row by its name: none renumbers, unfolds, moves or re-identifies one.
 - **A person's match wins.** A Fix Match is recorded on the row: no push and no retry
@@ -356,8 +331,7 @@ What the fields do:
   same section and with the same explicit edition label, an episode on the same season and index,
   whatever guid identification gave it -- is no new row: it joins that row as another Media,
   as a real PMS offers several files of
-  one movie as versions (2026-10-11, on one real library 407 movies and ~1,370 episodes were
-  listed twice; 2026-10-17, SpongeBob's S10E64, which TMDB does not list, was five rows). Other
+  one movie as versions. Other
   files of the same release stay rows of their own: a collection that numbers several shows'
   episodes alike, a batch's specials on one number. The row someone watched survives, else one
   not in the trash, else the oldest. A row in the trash folds into the one that is there and
@@ -365,9 +339,8 @@ What the fields do:
   other release's files and leaves the trash, as a real PMS's item takes a new file of its
   episode. An unmatched film (`local://`) and a row awaiting a probe never fold. Each id stays
   addressable: the listing names every id on the row's key, a push updates its own Part, a
-  part read streams from its own source and path. Rows from before this are folded when the
-  server starts. A row of several releases is not re-identified by one of them.
-- **Only video.** A `file` that is not a video (by extension) or is a sample is rejected,
+  part read streams from its own source and path. A row of several releases is not re-identified by one of them.
+- **Only video.** An item whose file is not a video (by extension) or is a sample is rejected,
   as Plex's scanners skip them. An `.m3u8` file is a video when its `media_info` is an HLS
   probe (`format_name` `hls`): a source that serves a playlist (a YouTube relay) names it
   so. Such a Part is never direct played; a client's read of it is sent to a conversion.
@@ -378,13 +351,7 @@ What the fields do:
   its release's other files are (the film, or the episodes' show; unmatched or not) with its
   `extra_type`, in that title's `Extras` and `extras/all` and in no listing, axis or count. One
   whose release has no title here yet waits for a later push. A file pushed without it is no
-  clip, whatever folder it sits in or its name says: rex read folder names (`Extras`, `NC`,
-  `Featurettes`) and `NCOP`/`NCED` tags itself until 2026-10-17. Rows made of extras before then
-  stay as they are, for a person to delete.
-- **Migration.** The first time an id is seen, a row the old WebDAV scanner made for the
-  same `file` (no feed id yet) is adopted with its ratingKey, watch state and
-  identification; nothing is re-identified unless the item's placement or ids differ from the
-  ones the row was identified by.
+  clip, whatever folder it sits in or its name says.
 
 ## Display
 
@@ -486,8 +453,4 @@ as they were and the client gets the reference's 400; with `allowMediaDeletion` 
 delete is the reference's 403 and the source is not asked. Without this a deleted row came
 back with the source's next snapshot.
 
-## What happened to the scan
-
-`GET /library/sections/{id}/refresh` and `/activities` are what they are on a library
-with no folders to read: the measured scan frames, no activity left running. Old zurg
-builds still send refreshes; they succeed and change nothing.
+A library refresh (`/library/sections/{id}/refresh`) succeeds and changes nothing: rex has no folder to scan.
