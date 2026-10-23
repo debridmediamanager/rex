@@ -99,7 +99,7 @@ directories:
     rex_movies: Anime Movies  # and a movie library; either one alone is fine
 ```
 
-This needs zurg's next nightly after 2026-10-22. zurg sends it when it registers (step 6),
+This needs zurg 2026.10.22 or later and rex 2026.10.23 or later. zurg sends it when it registers (step 6),
 and rex makes the libraries then, on `<zurg's mount_path>/anime` (under rex's `--mount`, `/mnt/rex` by default,
 when zurg sets none), and moves what it already shows from
 that directory into them as it is: watch state, Fix Match and edits included. An open Plex Web
