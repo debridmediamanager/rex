@@ -79,6 +79,58 @@ struct Item {
     /// has one, else the next in its release's file order (`number_unplaced`). Set before it is
     /// identified, which reads them.
     kept: Option<(i64, i64)>,
+    /// What the source says the title is called and looks like (`display`): shown only while
+    /// nothing identifies the row (`scan::dress`), and never over a field a person locked.
+    display: Option<Map<String, Value>>,
+}
+
+/// A pushed `display`, checked: the title's own `title`, `summary`, `date` (YYYY-MM-DD), `thumb`
+/// and `art`, its show's `title`, `summary`, `poster` and `art`, its season's `summary` and
+/// `poster`. Artwork is an http(s) URL rex fetches as it fetches Plex's agent artwork. Fields it
+/// does not know are left out; an empty one says nothing.
+fn display_fields(display: &Map<String, Value>) -> Result<Map<String, Value>, String> {
+    fn pick(from: &Map<String, Value>, fields: &[&str], within: &str) -> Result<Map<String, Value>, String> {
+        let mut kept = Map::new();
+        for field in fields {
+            let Some(value) = from.get(*field).filter(|value| !value.is_null()) else { continue };
+            let named = format!("display.{within}{field}");
+            let raw = value.as_str().ok_or_else(|| format!("{named} must be a string"))?;
+            let text = raw.trim();
+            if text.is_empty() {
+                continue;
+            }
+            let artwork = matches!(*field, "thumb" | "art" | "poster");
+            if artwork && !(text.starts_with("https://") || text.starts_with("http://")) {
+                return Err(format!("{named} must be an http(s) URL"));
+            }
+            let date = |text: &str| {
+                let bytes = text.as_bytes();
+                bytes.len() == 10 && bytes[4] == b'-' && bytes[7] == b'-'
+                    && bytes.iter().enumerate().all(|(at, byte)| at == 4 || at == 7 || byte.is_ascii_digit())
+            };
+            if *field == "date" && !date(text) {
+                return Err(format!("{named} must be YYYY-MM-DD"));
+            }
+            // A title or summary is shown as its source wrote it; a URL or date is read trimmed.
+            let artwork_or_date = artwork || *field == "date";
+            kept.insert(field.to_string(), json!(if artwork_or_date { text } else { raw }));
+        }
+        Ok(kept)
+    }
+    let mut kept = pick(display, &["title", "summary", "date", "thumb", "art"], "")?;
+    for (part, fields) in [("show", &["title", "summary", "poster", "art"][..]), ("season", &["summary", "poster"][..])] {
+        match display.get(part) {
+            None | Some(Value::Null) => {}
+            Some(Value::Object(inner)) => {
+                let inner = pick(inner, fields, &format!("{part}."))?;
+                if !inner.is_empty() {
+                    kept.insert(part.to_string(), Value::Object(inner));
+                }
+            }
+            Some(_) => return Err(format!("display.{part} must be an object")),
+        }
+    }
+    Ok(kept)
 }
 
 impl Item {
@@ -132,9 +184,15 @@ impl Item {
             Some(Value::String(_)) => return Err(refuse("edition_title requires kind movie")),
             Some(_) => return Err(refuse("edition_title must be a string")),
         };
+        let display = match value.get("display") {
+            None | Some(Value::Null) => None,
+            Some(Value::Object(display)) => Some(display_fields(display).map_err(|reason| refuse(&reason))?),
+            Some(_) => return Err(refuse("display must be an object")),
+        };
         Ok(Self {
             placed,
             edition,
+            display,
             extra: (text("kind").as_deref() == Some("extra")).then(|| super::scan::pushed_extra_type(text("extra_type").as_deref())),
             kept: None,
             library: value.get("library").map(string_value).filter(|v| !v.is_empty() && v != "null"),
@@ -180,6 +238,7 @@ impl Item {
             .into_iter()
             .chain(self.folder.as_ref().map(|folder| ("_folder".to_string(), json!(folder))))
             .chain(self.placed.as_ref().map(|placed| ("_placed".to_string(), placed.clone())))
+            .chain(self.display.as_ref().map(|display| ("_display".to_string(), Value::Object(display.clone()))))
             .chain(self.edition.as_ref().into_iter().flat_map(|edition| [
                 ("_editionTitle".to_string(), json!(edition)),
                 ("editionTitle".to_string(), json!(edition)),
@@ -1950,7 +2009,88 @@ impl Runtime {
                 changed = true;
             }
         }
+        if let Some(display) = &item.display {
+            changed |= self.redress(key, display);
+        }
         changed
+    }
+
+    /// A later push's `display` over a row nothing identified, its show and its season: each
+    /// field it names and a person did not lock (`Field`). Artwork changes are `_poster_url` /
+    /// `_art_url`, which `restamp_artwork` mints new paths for; a person's upload stays theirs.
+    fn redress(&mut self, key: &str, display: &Map<String, Value>) -> bool {
+        let Some(row) = self.catalog.get(key).and_then(Value::as_object).cloned() else {
+            return false;
+        };
+        if !row.get("guid").and_then(Value::as_str).is_some_and(|guid| guid.starts_with("local://")) {
+            return false;
+        }
+        let episode = row.get("type").and_then(Value::as_str) == Some("episode");
+        let part = |name: &str| display.get(name).and_then(Value::as_object).cloned().unwrap_or_default();
+        let mut leaf = Map::new();
+        super::scan::dress(&mut leaf, display, episode);
+        // `dress` writes a new leaf's fields; on a placed episode its still is its own poster.
+        if episode {
+            if let Some(still) = leaf.remove("_art_url") {
+                leaf.insert("_poster_url".to_string(), still);
+            }
+        }
+        let mut changed = self.write_display(key, &leaf, Some(Value::Object(display.clone())));
+        if episode {
+            for (parent, from, fields) in [
+                ("grandparentRatingKey", "show", &[("summary", "summary"), ("poster", "_poster_url"), ("art", "_art_url")][..]),
+                ("parentRatingKey", "season", &[("summary", "summary"), ("poster", "_poster_url")][..]),
+            ] {
+                let Some(parent) = row.get(parent).map(string_value) else { continue };
+                let given = part(from);
+                let values: Map<String, Value> = fields
+                    .iter()
+                    .filter_map(|(field, target)| Some((target.to_string(), given.get(*field)?.clone())))
+                    .collect();
+                changed |= self.write_display(&parent, &values, None);
+            }
+        }
+        changed
+    }
+
+    /// `values` onto one row, leaving any field a person locked: `title` and `summary` by name,
+    /// a date as `originallyAvailableAt`, the poster and background as `thumb` and `art`.
+    fn write_display(&mut self, key: &str, values: &Map<String, Value>, kept: Option<Value>) -> bool {
+        let Some(row) = self.catalog.get(key).and_then(Value::as_object).cloned() else {
+            return false;
+        };
+        fn lock(field: &str) -> &str {
+            match field {
+                "year" => "originallyAvailableAt",
+                "_poster_url" => "thumb",
+                "_art_url" => "art",
+                other => other,
+            }
+        }
+        let writes: Vec<(String, Value)> = values
+            .iter()
+            .filter(|(field, value)| {
+                !field.starts_with("_show_") && !field.starts_with("_season_")
+                    && !super::edit::field_locked(&row, lock(field)) && row.get(field.as_str()) != Some(value)
+            })
+            .map(|(field, value)| (field.clone(), value.clone()))
+            .collect();
+        let keep = kept.filter(|kept| row.get("_display") != Some(kept));
+        if writes.is_empty() && keep.is_none() {
+            return false;
+        }
+        if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
+            for (field, value) in writes {
+                if field == "title" {
+                    object.shift_remove("_generatedTitle");
+                }
+                object.insert(field, value);
+            }
+            if let Some(kept) = keep {
+                object.insert("_display".to_string(), kept);
+            }
+        }
+        true
     }
 
     /// Whether every release of `row` belongs in `library`: a row of several releases moves only

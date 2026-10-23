@@ -61,6 +61,47 @@ fn stem(file: &str) -> &str {
     name.rsplit_once('.').map_or(name, |(stem, _)| stem)
 }
 
+/// A new leaf in what its source's `display` says (`docs/feed-api.md`, "Display"): its own title,
+/// summary, date and artwork, and the `_show_*`/`_season_*` fields `hierarchy::build` makes its
+/// show and season from. An episode's still is its `_art_url`, which the build turns into its
+/// poster; a film's poster and background are its own. Only for a row nothing identified.
+pub(super) fn dress(leaf: &mut Map<String, Value>, display: &Map<String, Value>, episode: bool) {
+    let text = |from: &Map<String, Value>, field: &str| from.get(field).and_then(Value::as_str).map(str::to_string);
+    if let Some(title) = text(display, "title") {
+        leaf.insert("title".to_string(), json!(title));
+        leaf.shift_remove("_generatedTitle");
+    }
+    if let Some(summary) = text(display, "summary") {
+        leaf.insert("summary".to_string(), json!(summary));
+    }
+    if let Some(date) = text(display, "date") {
+        leaf.insert("year".to_string(), json!(date[..4].parse::<i64>().unwrap_or(0)));
+        leaf.insert("originallyAvailableAt".to_string(), json!(date));
+    }
+    if let Some(thumb) = text(display, "thumb") {
+        leaf.insert(if episode { "_art_url" } else { "_poster_url" }.to_string(), json!(thumb));
+    }
+    if let Some(art) = text(display, "art").filter(|_| !episode) {
+        leaf.insert("_art_url".to_string(), json!(art));
+    }
+    if !episode {
+        return;
+    }
+    let part = |name: &str| display.get(name).and_then(Value::as_object).cloned().unwrap_or_default();
+    for (from, field, private) in [
+        ("show", "title", "_show_title"),
+        ("show", "summary", "_show_summary"),
+        ("show", "poster", "_show_poster"),
+        ("show", "art", "_show_art"),
+        ("season", "summary", "_season_summary"),
+        ("season", "poster", "_season_poster"),
+    ] {
+        if let Some(value) = text(&part(from), field) {
+            leaf.insert(private.to_string(), json!(value));
+        }
+    }
+}
+
 /// Plex's scanners skip a release's sample clip; a separate row titled as the film
 /// would be the result here.
 pub(super) fn is_sample(file: &str) -> bool {
@@ -690,6 +731,14 @@ impl Runtime {
                 leaf["title"] = json!(format!("Episode {episode}"));
             } else if let Some(object) = leaf.as_object_mut() {
                 object.shift_remove("_generatedTitle");
+            }
+        }
+        // What its source says the title is called and looks like, while nothing names it.
+        if let Some(display) = arrival.extra.get("_display").and_then(Value::as_object).cloned() {
+            if leaf.get("guid").and_then(Value::as_str).is_some_and(|guid| guid.starts_with("local://")) {
+                if let Some(object) = leaf.as_object_mut() {
+                    dress(object, &display, plan.kind == "show");
+                }
             }
         }
         Some(leaf)

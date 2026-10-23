@@ -272,6 +272,7 @@ The `media_info` above is cut down to show its shape. Send ffprobe's whole outpu
 | `library` | no | A section key, or `movie`/`show`. Default: the library whose `Location` holds `file`, else one with a folder ending in a directory `path` starts with (`/mnt/zurg/movies` holds `movies/...` whatever prefix `file` has); with a type, that type's library holding `file`, else its first; a folder no library holds goes to the first library of its `kind` (Movies without one). With no `library`, an item placed as an episode that a movie library would take goes to a show library -- one holding its folder ([a declared directory's](#libraries-a-source-declares)), else the one beside it -- and one placed as a movie that a show library would take goes to a movie library, one holding its folder first; a row already shown moves when its library changes |
 | `folder` | no | The folder the provider lists the file in inside its release (`Smallville/Stagione 6`), `""` at its top level. Kept on the row; nothing reads it as an extra |
 | `hash` | no | The release's content/info hash, kept per Media version. A changed hash invalidates that version's measured subtitle reference and generated analysis; it never borrows another version's hash |
+| `display` | no | What the title is called and looks like, for what no metadata agent knows: see **Display** below. Shown only while nothing identifies the row |
 
 Embedded chapters are optional: include ffprobe's `-show_chapters` output in
 `media_info.chapters`. rex keeps the timings and titles with that file version and
@@ -382,6 +383,46 @@ What the fields do:
   same `file` (no feed id yet) is adopted with its ratingKey, watch state and
   identification; nothing is re-identified unless the item's placement or ids differ from the
   ones the row was identified by.
+
+## Display
+
+A source that pushes things no metadata agent knows -- a YouTube channel, home video -- names
+them itself with `display`:
+
+```json
+"display": {
+  "title": "Clean Up Song for Kids", "summary": "...", "date": "2019-03-01",
+  "thumb": "https://i.ytimg.com/vi/1mjMdudwtRc/maxresdefault.jpg",
+  "art": "https://...",
+  "show": {"title": "Ms Rachel", "summary": "...", "poster": "https://...", "art": "https://..."},
+  "season": {"summary": "...", "poster": "https://..."}
+}
+```
+
+| Field | On | Meaning |
+|---|---|---|
+| `title`, `summary` | the title | Shown as sent |
+| `date` | the title | `YYYY-MM-DD`: `originallyAvailableAt`, and `year` from it |
+| `thumb` | the title | A film's poster, an episode's still |
+| `art` | a film | Its background |
+| `show.title`, `show.summary`, `show.poster`, `show.art` | an episode's show | Its title, summary, poster and background |
+| `season.summary`, `season.poster` | an episode's season | Its summary and poster (the show's poster when absent) |
+
+Artwork is an `http`/`https` URL rex fetches as it fetches Plex's agent artwork: from public
+hosts only, never this machine's own networks. Every field is optional and an empty one says
+nothing; a field of the wrong type, artwork that is no http(s) URL or a date of another shape
+rejects the item, naming the field.
+
+- **Only what nothing identifies.** `display` is shown on a row its `kind` and ids, or a
+  TMDB id set by hand, did not name: one Plex's agent describes shows what Plex says. rex
+  still identifies nothing; the source says what the title is called, as it says what it is.
+- **A person's edit wins.** A later push writes each field again unless a person locked it
+  (Plex's edit dialog locks each field it saves); an uploaded poster stays theirs.
+- **Later pushes update.** A changed `display` changes the row, its show and its season on
+  the same keys; new artwork gets new paths, so clients drop what they cached. An episode's
+  show is titled when it is made (the show's title on a later push changes nothing).
+- **Placement is separate.** `display` names nothing and numbers nothing: an episode is placed
+  by `kind`, `season` and `episode`, and unplaced ones are numbered in file order as before.
 
 ## What rex sends back: a delete
 
