@@ -3314,7 +3314,9 @@ impl Runtime {
             "contentChangedAt": section.get("contentChangedAt").cloned().unwrap_or(json!(rows.len())),
             "filters": true,
             "refreshing": false,
-            "allowSync": false,
+            // Measured: a claimed PMS answers its owner 1 here (shared_user_s1434), an
+            // unclaimed one 0 (c87_w5_music_library_s42); Kometa refuses a library at 0.
+            "allowSync": self.claimed() && self.download_allowed(),
             "content": true,
             "directory": true,
             // Cycle 58: the library's Visibility setting, 0, 1 or 2.

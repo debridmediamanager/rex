@@ -305,7 +305,8 @@ def run(variant, name, tokens):
                 ours = sorted(feature.get("type") for feature in provider.get("Feature", []))
                 for kind in ("manage", "subscribe"):
                     check(label + ": a %s Feature as plexlab's" % kind, (kind in ours) == (kind in kinds), (ours, kinds))
-            if path == "/library/sections" and who == "shared":
+            # The owner's rows too: Kometa refuses a library whose row says allowSync 0.
+            if path == "/library/sections":
                 recorded = re.findall(r'<Directory allowSync="(\d)"[^>]*key="(\d+)"', exchange["body"])
                 ours = [(str(int(directory.get("allowSync", 0))), str(directory.get("key")))
                         for directory in body.get("Directory", [])]
