@@ -274,6 +274,7 @@ The `media_info` above is cut down to show its shape. Send ffprobe's whole outpu
 | `folder` | no | The folder the provider lists the file in inside its release (`Smallville/Stagione 6`), `""` at its top level. Kept on the row; nothing reads it as an extra |
 | `hash` | no | The release's content/info hash, kept per Media version. A changed hash invalidates that version's measured subtitle reference and generated analysis; it never borrows another version's hash |
 | `display` | no | What the title is called and looks like, for what no metadata agent knows: see **Display** below. Shown only while nothing identifies the row |
+| `subtitles` | no | The subtitle files beside it at the source, each an external subtitle of this file's Part: see **Subtitles** below. Absent or `null` keeps the row's; `[]` removes them |
 
 Embedded chapters are optional: include ffprobe's `-show_chapters` output in
 `media_info.chapters`. rex keeps the timings and titles with that file version and
@@ -428,6 +429,48 @@ rejects the item, naming the field.
   show is titled when it is made (the show's title on a later push changes nothing).
 - **Placement is separate.** `display` names nothing and numbers nothing: an episode is placed
   by `kind`, `season` and `episode`, and unplaced ones are numbered in file order as before.
+
+## Subtitles
+
+A subtitle file beside the video at the source -- an *arr's import in zurg's `__magic__` with
+Bazarr's `Movie (2010).en.srt` next to it -- is pushed with the item it belongs to:
+
+```json
+"subtitles": [
+  {"path": "__magic__/movies/Sintel (2010)/Sintel (2010).en.srt", "language": "en", "size": 50},
+  {"path": "__magic__/movies/Sintel (2010)/Sintel (2010).de.forced.srt", "language": "ger", "forced": true, "size": 1834}
+]
+```
+
+| Field | Required | Meaning |
+|---|---|---|
+| `path` | yes | Where its text is: `<source url>/<path>`, read as a Part's bytes are (the source's credentials, its redirects). Its extension, lower-cased, is its format: `srt`, `ass`, `ssa`, `smi`, `txt` or `psb`, what an upload takes |
+| `language` | no | ISO 639-1 (`en`) or 639-2 (`eng`, `ger` or `deu`), as the source read it. rex reads nothing off the file's name: without one the subtitle has no language, as an upload has none |
+| `forced`, `hearing_impaired` | no | `true` flags it as the same flags on an embedded track do (`English Forced`, `English SDH`); a forced one is passed over when tracks are picked by language |
+| `size` | recommended | Bytes. The text is read when the path is new to the Part or its `size` changed, never otherwise; without a `size`, once |
+
+Each becomes an external subtitle of the item's own Part (its own version's, on a row holding
+several), in the shape a real PMS gives a subtitle file beside the video: `English`, `English
+(SRT External)`, a `/library/streams/{id}` key serving its text as UTF-8 (measured on a real
+1.43 library, `tests/fixtures/decisions/rows.json`). Clients list, pick, download and burn it in
+as they do an upload, and it is selected only where the account's track settings would select
+an embedded track.
+
+- **Absent keeps, `[]` removes.** A push without `subtitles`, or with `null`, leaves the row's
+  as they are, as an absent `chapters` does; `[]` removes this item's. A source with none sends
+  `[]` (a Go nil slice marshals to `null`, and `omitempty` drops the field). Only what a source
+  gave is removed: an upload or a subtitle found by Search Subtitles stays.
+- **One path, one subtitle.** It keeps its stream id across pushes, a new probe and restarts;
+  its language and flags follow each push.
+- **Read off the lock.** The texts are read once the push is applied, without holding a Plex
+  request, at most 4 MiB each.
+- **Nothing costs the item.** An entry with another extension, a field of the wrong type, a
+  path with an empty, `.` or `..` segment, or text over 4 MiB is left out and logged once with
+  why (`FEED zurg <id>: subtitle <path>: <why>; left out`); the item is taken. A text the source
+  does not serve yet (`subtitle <path> not read: the source answered 404`) arrives with a later
+  push, and one that fails to read again keeps the text it had.
+- **The source's, not a person's.** A client deleting one gets the 403 an embedded track's
+  delete gets, since the next push would bring it back. That answer is reasoned, not measured.
 
 ## What rex sends back: a delete
 

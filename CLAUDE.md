@@ -592,6 +592,8 @@ python3 tests/test_delete_last_episode.py   # deleting a show's last episode rem
 python3 tests/test_feed_rejected.py         # every item the feed rejects is logged with its reason (a real snapshot's sample)
 python3 tests/test_feed_display.py          # what a source names itself (`display`): titles, summaries, dates and artwork of a row nothing
                                             # identifies, its show's and season's, updated by later pushes, a person's lock kept (Ms Rachel's channel)
+python3 tests/test_feed_subtitles.py        # a source's sidecar subtitles (`subtitles`): the measured on-disk external stream on the item's own
+                                            # Part, its text read off the lock, one id per path, [] and absent, bad entries left out, uploads untouched
 python3 tests/test_feed_extras.py           # a file pushed as `kind: extra` is a clip of its release's title by its `extra_type`, one without it is no clip whatever its folder; rows held so stay through a start (Motto To Love-Ru, To Love Ru) and a re-push as an extra turns one into a clip
 python3 tests/test_match_show_children.py  # a show Fix Matched takes the picked show's episodes by its rows' TMDB episode ids, by number only where every season's count is Plex's (a real library's Ben 10: Omniverse)
 python3 tests/test_feed_episode_ids.py      # a pushed `tmdb_episode` is Plex's episode listing it, every page of a season is read, a re-placed version leaves a row of several (Re:ZERO, Ben 10, Animaniacs, SpongeBob)

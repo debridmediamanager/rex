@@ -295,6 +295,17 @@ fn language_fields(tags: Option<&Row>) -> Row {
     out
 }
 
+/// A language a source names by code -- ISO 639-1 (`en`) or 639-2 (`eng`, `ger`) -- as the
+/// Stream fields an embedded track tagged with it gets.
+pub(crate) fn code_language(code: &str) -> Row {
+    let code = code.trim();
+    let code = match code.len() {
+        3 => code.to_string(),
+        _ => language_code_of_tag(code).or_else(|| language_code_of_tag(&code.to_ascii_lowercase())).unwrap_or_else(|| code.to_string()),
+    };
+    language_fields(Some(&Row::from_iter([("language".to_string(), json!(code))])))
+}
+
 fn title_words(text: &str) -> Vec<String> {
     text.split(|c: char| {
         c.is_whitespace()

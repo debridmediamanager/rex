@@ -1607,7 +1607,7 @@ impl Runtime {
 
     /// `count` ids for search rows or a kept subtitle, each search's new (the reference's 386-389,
     /// then 390-393, its applied stream 394). The counter is kept in the state file.
-    fn mint_subtitle_ids(&mut self, count: usize) -> i64 {
+    pub(super) fn mint_subtitle_ids(&mut self, count: usize) -> i64 {
         let id = self.subtitle_serial.max(SUBTITLE_IDS);
         self.subtitle_serial = id + count as i64;
         id

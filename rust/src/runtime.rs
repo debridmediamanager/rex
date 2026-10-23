@@ -16745,7 +16745,10 @@ impl Runtime {
                                     stream.get("id").and_then(Value::as_i64) == Some(stream_id)
                                 }) {
                                     found = true;
-                                    uploaded = streams[index].get("_content").is_some();
+                                    // A source's sidecar is its file's, as an embedded track is:
+                                    // removed here, its next push would bring it back.
+                                    uploaded = streams[index].get("_content").is_some()
+                                        && streams[index].get("_sourceSubtitle").is_none();
                                     if uploaded {
                                         streams.remove(index);
                                     }
@@ -19316,7 +19319,7 @@ impl Runtime {
                 // format value.  The filename extension is only metadata: a
                 // text file named `.txt` is accepted when the form says srt,
                 // while an upper-case SRT value is refused.
-                if !matches!(format, "psb" | "srt" | "ass" | "ssa" | "smi" | "txt") {
+                if !SUBTITLE_FORMATS.contains(&format) {
                     return Response::error(400, "rex: bad request");
                 }
                 if request.body.is_empty() || !request.body_complete {
@@ -25805,6 +25808,10 @@ fn home_theater_version(
         }
     }
 }
+
+/// The subtitle formats an upload takes, by the form's lower-case `format` (measured on the
+/// copy: `vtt`, `sub`, `idx`, `sup` and `pgs` are 400s), and a source's sidecar by its extension.
+pub(super) const SUBTITLE_FORMATS: &[&str] = &["psb", "srt", "ass", "ssa", "smi", "txt"];
 
 /// Python's ordering of two JSON scalars for a sort: numbers by value, strings
 /// by code point, anything else as equal.

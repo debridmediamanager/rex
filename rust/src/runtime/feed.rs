@@ -82,6 +82,93 @@ struct Item {
     /// What the source says the title is called and looks like (`display`): shown only while
     /// nothing identifies the row (`scan::dress`), and never over a field a person locked.
     display: Option<Map<String, Value>>,
+    /// The sidecar subtitles the source serves beside the file (`subtitles`); `None` when it
+    /// sent none, which keeps what the row has, as an absent `chapters` does.
+    subtitles: Option<Vec<SourceSubtitle>>,
+}
+
+/// One entry of an item's `subtitles`: a subtitle file under the source's url, which becomes
+/// an external Stream of the item's own Part. Its language is the source's to say; rex reads
+/// nothing off its name.
+#[derive(Debug, Clone)]
+struct SourceSubtitle {
+    path: String,
+    /// The extension, lower-cased: the Stream's `codec` and `format`, as an upload's form is.
+    format: String,
+    language: Option<String>,
+    forced: bool,
+    hearing_impaired: bool,
+    size: Option<u64>,
+}
+
+/// The fields an entry sets only sometimes: a stream rewritten without them drops them.
+const SUBTITLE_FIELDS: [&str; 6] = ["forced", "hearingImpaired", "language", "languageTag", "languageCode", "_sourceSize"];
+
+/// The most text a sidecar subtitle may hold: a feature's SRT is 50-150 KB, an ASS with
+/// typesetting a few MB, and the text is kept on its row.
+const SUBTITLE_TEXT_CAP: usize = 4 << 20;
+
+/// An item's `subtitles`. Absent, `null` (a Go nil slice) or no list is none sent, so the row
+/// keeps what it has; `[]` removes them. An entry rex cannot use is left out and said once,
+/// never the item: one odd file beside a film would otherwise keep the film off rex.
+fn subtitle_entries(source: &str, id: &str, value: Option<&Value>) -> Option<Vec<SourceSubtitle>> {
+    let entries = match value {
+        None | Some(Value::Null) => return None,
+        Some(Value::Array(entries)) => entries,
+        Some(_) => {
+            say(source, id, "subtitles must be a list: the row keeps the subtitles it has");
+            return None;
+        }
+    };
+    let check = |entry: &Value| -> Result<SourceSubtitle, String> {
+        let path = entry.get("path").and_then(Value::as_str).map(|path| path.trim_matches('/')).filter(|path| !path.is_empty());
+        let path = path.ok_or_else(|| format!("subtitle entry {entry}: no path"))?;
+        if path.split('/').any(|segment| segment.is_empty() || segment == "." || segment == "..") {
+            return Err(format!("subtitle {path}: path has an empty, . or .. segment"));
+        }
+        let name = path.rsplit('/').next().unwrap_or(path);
+        let format = name.rsplit_once('.').map(|(_, extension)| extension.to_ascii_lowercase()).unwrap_or_default();
+        if !SUBTITLE_FORMATS.contains(&format.as_str()) {
+            return Err(format!("subtitle {path}: not a subtitle format an upload takes ({})", SUBTITLE_FORMATS.join(", ")));
+        }
+        let flag = |field: &str| match entry.get(field) {
+            None | Some(Value::Null) => Ok(false),
+            Some(Value::Bool(flag)) => Ok(*flag),
+            Some(_) => Err(format!("subtitle {path}: {field} must be true or false")),
+        };
+        let language = match entry.get("language") {
+            None | Some(Value::Null) => None,
+            Some(Value::String(code)) => Some(code.trim().to_string()).filter(|code| !code.is_empty()),
+            Some(_) => return Err(format!("subtitle {path}: language must be a code")),
+        };
+        let size = match entry.get("size") {
+            None | Some(Value::Null) => None,
+            Some(size) => Some(size.as_u64().ok_or_else(|| format!("subtitle {path}: size must be a whole number of bytes"))?),
+        };
+        if size.is_some_and(|size| size > SUBTITLE_TEXT_CAP as u64) {
+            return Err(format!("subtitle {path}: over {} bytes", SUBTITLE_TEXT_CAP));
+        }
+        Ok(SourceSubtitle { path: path.to_string(), format, language, forced: flag("forced")?, hearing_impaired: flag("hearing_impaired")?, size })
+    };
+    let mut kept: Vec<SourceSubtitle> = Vec::new();
+    for entry in entries {
+        match check(entry) {
+            Ok(subtitle) if kept.iter().any(|other| other.path == subtitle.path) => {
+                say(source, id, &format!("subtitle {}: listed twice; left out", subtitle.path))
+            }
+            Ok(subtitle) => kept.push(subtitle),
+            Err(reason) => say(source, id, &format!("{reason}; left out")),
+        }
+    }
+    Some(kept)
+}
+
+/// What became of a subtitle rex could not use, said once since the start: a source pushes
+/// every item again in each snapshot.
+fn say(source: &str, id: &str, what: &str) {
+    if first_time(format!("{source} {id} {what}")) {
+        warning!("FEED {source} {id}: {what}");
+    }
 }
 
 /// A pushed `display`, checked: the title's own `title`, `summary`, `date` (YYYY-MM-DD, or YYYY
@@ -202,6 +289,7 @@ impl Item {
             Some(_) => return Err(refuse("display must be an object")),
         };
         Ok(Self {
+            subtitles: subtitle_entries(&source.name, &id, value.get("subtitles")),
             placed,
             edition,
             display,
@@ -880,6 +968,9 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
         .collect();
     let mut placed = 0;
     let mut extras = Vec::new();
+    let sidecars: Vec<(String, Vec<SourceSubtitle>)> =
+        plans.iter().filter_map(|(item, _, _)| Some((item.id.clone(), item.subtitles.clone()?))).collect();
+    let mut unchanged = HashSet::new();
     for (index, (item, library, plan)) in plans.into_iter().enumerate() {
         let held = held_key(&source.name, &item.id);
         match plan {
@@ -961,6 +1052,7 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
                     touched.insert(key.clone());
                 } else {
                     counts.unchanged += 1;
+                    unchanged.insert(item.id.clone());
                 }
             }
         }
@@ -1021,6 +1113,12 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
         guard.touch_gdm();
         guard.dirty = true;
     }
+    // Last, on the rows as this push left them: a new release folded into a title is a Part of
+    // that row by now, and a probe filled in has its streams.
+    let (mut guard, resubtitled) = put_subtitles(shared, guard, source, &sidecars);
+    let moved = resubtitled.intersection(&unchanged).count();
+    counts.unchanged -= moved;
+    counts.updated += moved;
     // The production server's Usenet snapshot rejected 579 items on 2026-10-17 and said why for none.
     for rejected in &counts.rejected {
         info!("FEED {} rejected {}: {}", source.name, string_value(&rejected["id"]), string_value(&rejected["reason"]));
@@ -1041,6 +1139,119 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
         super::analysis::schedule_for_sources(shared, &touched.into_iter().collect::<Vec<_>>());
     }
     counts
+}
+
+/// Each item's sidecar subtitles on its own Part. Which texts a push needs is read under the
+/// lock, they are fetched off it, from the source as a Part's bytes are, and the streams are
+/// written under it again: a feed listing built under the lock held every Plex client 26 s
+/// (2026-10-19). A text is fetched for a path new to the Part or a `size` that changed; a
+/// failed fetch keeps the stream the Part had, and a new one is absent until a later push.
+/// Answers the ids whose subtitles changed.
+fn put_subtitles<'a>(
+    shared: &'a SharedRuntime,
+    mut guard: std::sync::MutexGuard<'a, Runtime>,
+    source: &Source,
+    wanted: &[(String, Vec<SourceSubtitle>)],
+) -> (std::sync::MutexGuard<'a, Runtime>, HashSet<String>) {
+    // A snapshot pushes every item again: one whose Part already shows its list is passed over
+    // here, so an unchanged push costs one read of each Part.
+    let (mut fetch, mut pending) = (Vec::new(), Vec::new());
+    let rows = guard.feed_rows(&source.name, wanted.iter().map(|(id, _)| id.as_str()));
+    for (id, subtitles) in wanted {
+        let Some(streams) = rows.get(id).and_then(|key| guard.item_streams(key, &source.name, id)) else { continue };
+        let ours: Vec<&Value> = streams.iter().filter(|stream| stream.get("_sourceSubtitle").is_some()).collect();
+        if ours.len() == subtitles.len() && subtitles.iter().all(|subtitle| ours.iter().any(|stream| subtitle.shown_by(stream))) {
+            continue;
+        }
+        fetch.extend(subtitles.iter().filter(|subtitle| !ours.iter().any(|stream| subtitle.kept_by(stream))).map(|subtitle| (id, subtitle)));
+        pending.push((id, subtitles));
+    }
+    let mut texts: HashMap<(&str, &str), String> = HashMap::new();
+    if !fetch.is_empty() {
+        drop(guard);
+        for (id, subtitle) in fetch {
+            match subtitle_text(source, &subtitle.path) {
+                Ok(text) => {
+                    texts.insert((id.as_str(), subtitle.path.as_str()), text);
+                }
+                Err(reason) => say(&source.name, id, &format!("subtitle {} not read: {reason}", subtitle.path)),
+            }
+        }
+        guard = lock(shared);
+    }
+    let rows = guard.feed_rows(&source.name, pending.iter().map(|(id, _)| id.as_str()));
+    let mut changed = HashSet::new();
+    for (id, subtitles) in pending {
+        if rows.get(id).is_some_and(|key| guard.write_subtitles(key, &source.name, id, subtitles, &texts)) {
+            changed.insert(id.clone());
+        }
+    }
+    if !changed.is_empty() {
+        guard.dirty = true;
+    }
+    (guard, changed)
+}
+
+/// A sidecar's text, read as a Part's bytes are (`Source::open`: its login, its redirects).
+fn subtitle_text(source: &Source, path: &str) -> Result<String, String> {
+    let mut response = source.open(path, &[])?;
+    if !(200..300).contains(&response.status) {
+        return Err(format!("the source answered {}", response.status));
+    }
+    let raw = response.read_body(SUBTITLE_TEXT_CAP)?;
+    Ok(super::subtitles::decode_text(&raw).0)
+}
+
+impl SourceSubtitle {
+    /// Whether `stream` already holds this file's text: the same path, and the same size when
+    /// the source sends one.
+    fn kept_by(&self, stream: &Value) -> bool {
+        stream.get("_sourceSubtitle").and_then(Value::as_str) == Some(self.path.as_str())
+            && (self.size.is_none() || stream.get("_sourceSize").and_then(Value::as_u64) == self.size)
+    }
+
+    /// Whether `stream` is this entry as it stands: its text kept and every field it sets the
+    /// same, none it no longer sets left over.
+    fn shown_by(&self, stream: &Value) -> bool {
+        let fresh = self.stream(0, None);
+        self.kept_by(stream)
+            && fresh.iter().all(|(field, value)| matches!(field.as_str(), "id" | "key") || stream.get(field) == Some(value))
+            && SUBTITLE_FIELDS.iter().all(|field| fresh.contains_key(*field) || stream.get(*field).is_none())
+    }
+
+    /// Its Stream, in the order a real PMS answers an on-disk sidecar (the 1.42.2 reference's
+    /// `Subclip (2024).fr.srt`, `fixtures/transcode/subtitles_s1422.json`, and a real 1.43
+    /// library's `.en.srt` in `fixtures/decisions/rows.json`): a `/library/streams/{id}` key and
+    /// the codec as its `format`, which titles it `English (SRT External)`, and no title. The
+    /// forced and hearing-impaired flags sit where a real PMS puts them on an embedded track; no
+    /// sidecar carrying one was measured. `_content` serves it as an upload's is served; `None`
+    /// leaves the text a kept stream has.
+    fn stream(&self, id: i64, text: Option<String>) -> Map<String, Value> {
+        let mut fields = Map::from_iter([
+            ("id".to_string(), json!(id)),
+            ("key".to_string(), json!(format!("/library/streams/{id}"))),
+            ("streamType".to_string(), json!(3)),
+            ("canAutoSync".to_string(), json!(false)),
+        ]);
+        if self.forced {
+            fields.insert("forced".to_string(), json!(true));
+        }
+        fields.insert("codec".to_string(), json!(self.format));
+        fields.extend(self.language.as_deref().map(mediainfo::code_language).unwrap_or_default());
+        if self.hearing_impaired {
+            fields.insert("hearingImpaired".to_string(), json!(true));
+        }
+        fields.insert("format".to_string(), json!(self.format));
+        mediainfo::stream_titles(&mut fields, None, None);
+        if let Some(text) = text {
+            fields.insert("_content".to_string(), json!(text));
+        }
+        fields.insert("_sourceSubtitle".to_string(), json!(self.path));
+        if let Some(size) = self.size {
+            fields.insert("_sourceSize".to_string(), json!(size));
+        }
+        fields
+    }
 }
 
 /// Seasons left as they were made from an unidentified first episode -- the local agent's
@@ -2070,6 +2281,76 @@ impl Runtime {
             changed |= self.redress(key, display);
         }
         changed
+    }
+
+    /// The Part a source's item `id` is on row `key` (its version's), as a JSON pointer.
+    fn item_part(&self, key: &str, source: &str, id: &str) -> Option<String> {
+        let row = self.catalog.get(key)?;
+        let index = versions(row).into_iter().find(|(of, sid, _)| of == source && sid == id)?.2;
+        row.pointer(&format!("/Media/{index}/Part/0")).map(|_| format!("/Media/{index}/Part/0"))
+    }
+
+    /// The streams of the Part a source's item `id` is on row `key`.
+    fn item_streams(&self, key: &str, source: &str, id: &str) -> Option<std::borrow::Cow<'_, [Value]>> {
+        let at = self.item_part(key, source, id)?;
+        Some(crate::catalog::part_streams(self.catalog.get(key)?.pointer(&at)?))
+    }
+
+    /// The item's sidecar subtitles on its Part, as `wanted` lists them: one whose text was
+    /// fetched (`texts`) is written, on the id its path had; one the Part holds stays, its
+    /// fields brought up to date; one the Part holds that the list no longer names goes. Other
+    /// subtitles -- uploads, search results, embedded tracks -- are never touched. Answers
+    /// whether the Part changed.
+    fn write_subtitles(&mut self, key: &str, source: &str, id: &str, wanted: &[SourceSubtitle], texts: &HashMap<(&str, &str), String>) -> bool {
+        let (Some(at), Some(old)) = (self.item_part(key, source, id), self.item_streams(key, source, id).map(std::borrow::Cow::into_owned)) else {
+            return false;
+        };
+        let path = |stream: &Value| stream.get("_sourceSubtitle").and_then(Value::as_str).map(str::to_string);
+        // The stream each entry has now: fresh fields over the Part's own (its selection kept).
+        let mut fresh: Vec<(&str, Value)> = Vec::new();
+        for subtitle in wanted {
+            let had = old.iter().find(|stream| path(stream).as_deref() == Some(subtitle.path.as_str()));
+            let text = texts.get(&(id, subtitle.path.as_str())).cloned();
+            if text.is_none() && !had.is_some_and(|had| subtitle.kept_by(had)) {
+                // Not fetched: a new one waits for a later push, a changed one keeps its old text.
+                fresh.extend(had.map(|had| (subtitle.path.as_str(), had.clone())));
+                continue;
+            }
+            let stream_id = had.and_then(|had| had.get("id")?.as_i64()).unwrap_or_else(|| self.mint_subtitle_ids(1));
+            let mut merged = had.and_then(Value::as_object).cloned().unwrap_or_default();
+            for field in SUBTITLE_FIELDS {
+                merged.shift_remove(field);
+            }
+            merged.extend(subtitle.stream(stream_id, text));
+            fresh.push((subtitle.path.as_str(), Value::Object(merged)));
+        }
+        // In place, so a push that changes nothing leaves the Part as it was; new ones last.
+        let mut streams: Vec<Value> = old
+            .iter()
+            .filter_map(|stream| match path(stream) {
+                None => Some(stream.clone()),
+                Some(path) => fresh.iter().find(|(of, _)| *of == path).map(|(_, stream)| stream.clone()),
+            })
+            .collect();
+        streams.extend(fresh.iter().filter(|(of, _)| !old.iter().any(|stream| path(stream).as_deref() == Some(*of))).map(|(_, stream)| stream.clone()));
+        if streams == old {
+            return false;
+        }
+        let prefs = self.track_prefs.clone();
+        let Some(part) = self.catalog.get_mut(key).and_then(|row| row.pointer_mut(&at)).filter(|part| part.is_object()) else {
+            return false;
+        };
+        let packed = part.as_object_mut().is_some_and(crate::catalog::unpack_part);
+        part["Stream"] = Value::Array(streams);
+        // Selected only as the account's track settings select an embedded track.
+        if let Some(prefs) = &prefs {
+            mediainfo::select_tracks(part, prefs);
+        }
+        if packed {
+            part.as_object_mut().map(crate::catalog::repack_part);
+        }
+        info!("FEED {source} {id}: {} sidecar subtitle(s) on {key}", wanted.len());
+        true
     }
 
     /// A later push's `display` over a row nothing identified, its show and its season: each
