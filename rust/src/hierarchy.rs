@@ -62,10 +62,16 @@ pub fn uuid(seed: &str) -> String {
     sha1_hex(&format!("plexsim/{}", seed))
 }
 
+/// A seeded catalog's two libraries, titled as a real PMS's own defaults are: no source's or
+/// provider's name (they were "Debrid Movies" and "Debrid TV" until 2026-10-23). A person renames
+/// them in Plex; a catalog already seeded keeps what it has.
+pub const MOVIES_TITLE: &str = "Movies";
+pub const SHOWS_TITLE: &str = "TV Shows";
+
 pub fn sections(name: &str) -> Vec<Value> {
     vec![
-        json!({"key":MOVIE_SECTION,"type":"movie","title":"Debrid Movies","uuid":uuid(&format!("section/1/{}",name))}),
-        json!({"key":SHOW_SECTION,"type":"show","title":"Debrid TV","uuid":uuid(&format!("section/2/{}",name))}),
+        json!({"key":MOVIE_SECTION,"type":"movie","title":MOVIES_TITLE,"uuid":uuid(&format!("section/1/{}",name))}),
+        json!({"key":SHOW_SECTION,"type":"show","title":SHOWS_TITLE,"uuid":uuid(&format!("section/2/{}",name))}),
     ]
 }
 
@@ -800,7 +806,7 @@ pub fn build(mut leaves: Vec<Value>) -> Vec<Value> {
         if !is_episode {
             put(leaf, "type", "movie");
             put(leaf, "librarySectionID", 1);
-            put(leaf, "librarySectionTitle", "Debrid Movies");
+            put(leaf, "librarySectionTitle", MOVIES_TITLE);
             put(leaf, "librarySectionKey", "/library/sections/1");
             for key in ["index", "parentIndex", "grandparentTitle"] {
                 leaf.shift_remove(key);
@@ -849,7 +855,7 @@ pub fn build(mut leaves: Vec<Value>) -> Vec<Value> {
             );
             put(&mut show, "art", format!("/library/metadata/{}/art/1", rk));
             put(&mut show, "librarySectionID", 2);
-            put(&mut show, "librarySectionTitle", "Debrid TV");
+            put(&mut show, "librarySectionTitle", SHOWS_TITLE);
             put(&mut show, "librarySectionKey", "/library/sections/2");
             for key in ["addedAt", "updatedAt"] {
                 put_opt(&mut show, key, int_value(leaf, key));
@@ -948,7 +954,7 @@ pub fn build(mut leaves: Vec<Value>) -> Vec<Value> {
                 str_value(&show, "art").unwrap_or_default(),
             );
             put(&mut season, "librarySectionID", 2);
-            put(&mut season, "librarySectionTitle", "Debrid TV");
+            put(&mut season, "librarySectionTitle", SHOWS_TITLE);
             put(&mut season, "librarySectionKey", "/library/sections/2");
             for key in ["addedAt", "updatedAt"] {
                 put_opt(&mut season, key, int_value(leaf, key));
@@ -985,7 +991,7 @@ pub fn build(mut leaves: Vec<Value>) -> Vec<Value> {
         put(leaf, "index", episode);
         put(leaf, "parentIndex", season_number);
         put(leaf, "librarySectionID", 2);
-        put(leaf, "librarySectionTitle", "Debrid TV");
+        put(leaf, "librarySectionTitle", SHOWS_TITLE);
         put(leaf, "librarySectionKey", "/library/sections/2");
         put_opt(leaf, "parentRatingKey", str_value(&season, "ratingKey"));
         put_opt(
