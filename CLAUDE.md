@@ -36,8 +36,9 @@ finding it at all. See `docs/findings.md`.
 addon is (Ben, 2026-10-23). Anything new rex needs from a source goes into that contract, for
 every source: never a branch on a source's name, a default that assumes zurg, or a feature only
 zurg's shape can use. Docs and public copy describe sources generically and name zurg only as an
-example or where a step is really about zurg. The zurg names already in rex (`--zurg-mount`,
-`test_zurg_contract.py`, the setup guides' zurg steps) are history, not precedent: do not add more.
+example or where a step is really about zurg. The zurg names left in rex (`test_zurg_contract.py`,
+which replays zurg's own requests, and the setup guides' zurg steps) are history, not precedent: do
+not add more. `--zurg-mount` was removed on 2026-10-23 for `--mount`.
 
 ## rex identifies nothing
 
@@ -133,7 +134,7 @@ cp examples/run.sh.example run.sh   # keys go in rex.env beside it (mode 600)
 Sources push the library; rex reads no media itself, lists and queries nothing, and
 has no provider code of its own (`docs/feed-api.md`). A `--catalog` that does not exist is
 seeded on start as `rex catalog --seed` seeds one (`--friendly-name`, default the host name; its
-libraries under `--zurg-mount`); `rex catalog --seed` stays for naming more directories or
+libraries under `--mount`, default `/mnt/rex`); `rex catalog --seed` stays for naming more directories or
 re-seeding. A source registers itself -- `PUT /rex/sources/{name}`: its byte url, `user`/
 `password` or `bearer`, `mount` -- and rex keeps the registration in the state file; it then
 pushes to `/rex/feed/{name}`. Both take no token, claimed or not and with or without
@@ -152,9 +153,9 @@ one-use code valid 300 s; `DELETE .../confirm/<code>` removes the source and wha
 from rex, never its files. With no source a part read is the 502 an unreachable source is. Plex's
 matcher names and describes what its source placed, or gave a TMDB id by hand, and nothing else is
 identified; it is asked with the claim's server token, and is off without a claim (under
-`--assert-claimed`), which leaves every title its pushed name and Fix Match no candidates. `--zurg-mount` is zurg's
-`mount_path` (default `/mnt/zurg`): a Part's `file` is `<mount>/<directory>/<release>/<file>`,
-and each library's `Location` is `<mount>/<directory>` -- set in the catalog's sections
+`--assert-claimed`), which leaves every title its pushed name and Fix Match no candidates. A source's registered `mount`
+prefixes its Parts' `file` (`<mount>/<directory>/<release>/<file>`), and each library's `Location`
+is `<mount>/<directory>` (a seeded library's under `--mount`) -- set in the catalog's sections
 (`rex catalog --seed`, or the seed on start), through Add Library's `location`, or by a
 source registering `directories` (zurg's `rex_shows`/`rex_movies`): rex makes each library it
 titles unless one of that type already names the directory or a person deleted one there
@@ -165,7 +166,7 @@ Library's picker lists each source's directories under its mount (`feed_folders`
 
 Point zurg at the server in zurg's `config.yml`: `rex_url` (this server's URL, an address
 or a host name) is all the feed needs; zurg registers itself as the source `zurg` (or its
-`rex_source`). Set `mount_path` (`--zurg-mount`). Leave zurg's `plex_server_url` on a real
+`rex_source`). Leave zurg's `plex_server_url` on a real
 Plex, if there is one: pointed at rex, zurg's matcher learns rex's own matches and pushes
 them back as exact ids, so a wrong match can never be corrected (`docs/setup.md`). zurg then pushes a snapshot of its library once it has
 loaded and every few hours, and every change as it happens: `POST`/`DELETE
@@ -275,7 +276,7 @@ launchctl remove com.rex.dev
 A plain `nohup ... &` from an agent tool call **does not survive** the call.
 
 Several servers, started and stopped on demand: `rex manager serve`, then
-`rex manager create NAME --port P [--catalog PATH] [--zurg-mount M] [--friendly-name N]` (keys from
+`rex manager create NAME --port P [--catalog PATH] [--mount M] [--friendly-name N]` (keys from
 `REX_TOKEN`/`REX_DIRECT_KEY`, and `REX_DIRECT_URL`, in the environment; a saved `dmm_api_key`
 or `plex_token` loads and reaches no server; sources register with each server) and `start|stop|list|logs NAME`; a server with no catalog seeds one on its first start
 (`build NAME` seeds it ahead of time). Its data

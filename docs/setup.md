@@ -118,8 +118,7 @@ rust/target/release/rex catalog --seed --name den --out rex.db \
   --movies movies --shows shows --shows anime
 ```
 
-The folders are shown in Plex as `/mnt/rex/<directory>`. `--mount` changes that prefix
-(`--zurg-mount`, its earlier name, still works),
+The folders are shown in Plex as `/mnt/rex/<directory>`. `--mount` changes that prefix,
 and it only matters for zurg's own Plex matcher, which matches a file by its full path,
 so set it to zurg's `mount_path` if you point zurg's `plex_server_url` at rex (which step 6
 advises against).

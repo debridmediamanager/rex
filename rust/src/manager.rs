@@ -145,7 +145,7 @@ fn validate(config: Value, partial: bool) -> Answer<Map<String, Value>> {
         return refuse("the configuration must be a JSON object".to_string());
     };
     const KNOWN: &[&str] = &[
-        "name", "port", "catalog", "mount", "zurg_mount", "tmdb_key",
+        "name", "port", "catalog", "mount", "tmdb_key",
         "plex_token", "token", "dmm_api_key", "rex_direct_key", "rex_direct_url", "friendly_name", "part_mode", "host", "gdm", "announce_url", "public_url",
         "web_root", "assert_claimed", "verbose", "extra_args", "restart",
     ];
@@ -188,7 +188,7 @@ fn validate(config: Value, partial: bool) -> Answer<Map<String, Value>> {
         out.insert("catalog".to_string(), Value::String(path));
     }
     for field in [
-        "mount", "zurg_mount", "tmdb_key", "plex_token", "token", "dmm_api_key", "rex_direct_key", "rex_direct_url",
+        "mount", "tmdb_key", "plex_token", "token", "dmm_api_key", "rex_direct_key", "rex_direct_url",
         "friendly_name", "announce_url", "public_url", "web_root", "host",
     ] {
         if out.get(field).is_some_and(|value| !value.is_null() && !value.is_string()) {
@@ -614,8 +614,7 @@ impl Manager {
             ("web_root", "--web-root"),
             ("mount", "--mount"),
         ] {
-            // `zurg_mount` is what a server saved before 2026-10-23 calls its mount.
-            if let Some(value) = text(config, key).or_else(|| (key == "mount").then(|| text(config, "zurg_mount")).flatten()) {
+            if let Some(value) = text(config, key) {
                 argv.extend([flag.to_string(), value.to_string()]);
             }
         }
@@ -958,7 +957,7 @@ impl Manager {
             };
             argv.extend(["--seed".to_string(), "--out".to_string(), self.catalog_path(name).to_string_lossy().into_owned()]);
             for (field, flag) in [("friendly_name", "--name"), ("mount", "--mount")] {
-                if let Some(value) = text(&config, field).or_else(|| (field == "mount").then(|| text(&config, "zurg_mount")).flatten()) {
+                if let Some(value) = text(&config, field) {
                     argv.extend([flag.to_string(), value.to_string()]);
                 }
             }
@@ -1459,7 +1458,7 @@ fn parse(args: &[String]) -> Result<Option<Cli>, String> {
             "serve" => (vec!["--listen", "--binary", "--admin-token-file"], &[]),
             "create" => {
                 let mut values = vec![
-                    "--port", "--catalog", "--friendly-name", "--mount", "--zurg-mount", "--part-mode", "--gdm", "--host",
+                    "--port", "--catalog", "--friendly-name", "--mount", "--part-mode", "--gdm", "--host",
                     "--announce-url", "--public-url", "--web-root", "--restart", "--extra-arg",
                     "--token-env", "--rex-direct-key-env", "--rex-direct-url-env",
                 ];
@@ -1617,7 +1616,6 @@ fn client(cli: &Cli, root: &Path) -> Result<(), String> {
             ("public_url", "--public-url"),
             ("web_root", "--web-root"),
             ("mount", "--mount"),
-            ("mount", "--zurg-mount"),
         ] {
             if let Some(value) = cli.value(flag).filter(|value| !value.is_empty()) {
                 config[field] = json!(value);
@@ -1744,11 +1742,11 @@ mod tests {
     #[test]
     fn keys_are_redacted() {
         let config = json!({"name": "den", "token": "secret", "tmdb_key": "", "plex_token": "p", "dmm_api_key": "d",
-                            "rex_direct_key": "k", "rex_direct_url": "https://provider.example/r", "zurg_mount": "/mnt/zurg"});
+                            "rex_direct_key": "k", "rex_direct_url": "https://provider.example/r", "mount": "/mnt/media"});
         assert_eq!(
             redact(config.as_object().unwrap()),
             json!({"name": "den", "token": "***", "tmdb_key": "", "plex_token": "***", "dmm_api_key": "***",
-                   "rex_direct_key": "***", "rex_direct_url": "https://provider.example/r", "zurg_mount": "/mnt/zurg"})
+                   "rex_direct_key": "***", "rex_direct_url": "https://provider.example/r", "mount": "/mnt/media"})
         );
     }
 

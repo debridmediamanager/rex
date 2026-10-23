@@ -129,9 +129,9 @@ try:
         return {section["type"]: section["Location"] for section in json.load(open(out))["sections"]}
 
     check("one mount: the locations the seed always wrote",
-          seed("--zurg-mount", "/mnt/zurg") == {"movie": [{"id": 1, "path": "/mnt/zurg/movies"}],
+          seed("--mount", "/mnt/zurg") == {"movie": [{"id": 1, "path": "/mnt/zurg/movies"}],
                                                  "show": [{"id": 2, "path": "/mnt/zurg/shows"}]},
-          seed("--zurg-mount", "/mnt/zurg"))
+          seed("--mount", "/mnt/zurg"))
     # A production server's two libraries, read from its rex.db: three zurgs, anime beside shows.
     prod = seed("--mount", "/mnt/zurg", "--mount", "/mnt/zurg_ad/", "--mount", "/mnt/zurg_tb",
                "--shows", "shows", "--shows", "anime")

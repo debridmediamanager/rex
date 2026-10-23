@@ -36,8 +36,7 @@ options:
                         checkout's root
   --name NAME           friendlyName the clients show
   --seed                write an empty library for a server its sources fill
-  --mount MOUNTS, --zurg-mount MOUNTS
-                        with --seed: the prefix the library folders are shown
+  --mount MOUNTS        with --seed: the prefix the library folders are shown
                         with; repeat for several. Default /mnt/rex. Each
                         source's own items are filed by its registered mount
   --movies MOVIES       with --seed: a directory the movie library holds under
@@ -78,7 +77,7 @@ pub fn main(args: &[String]) -> Result<(), String> {
             continue;
         }
         let target = match flag {
-            "--out" | "--name" | "--convert" | "--mount" | "--zurg-mount" | "--movies" | "--shows" => flag,
+            "--out" | "--name" | "--convert" | "--mount" | "--movies" | "--shows" => flag,
             _ => return Err(usage_error(&format!("unrecognized arguments: {arg}"))),
         };
         let value = match inline {

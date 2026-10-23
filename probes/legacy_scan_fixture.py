@@ -123,7 +123,7 @@ def main():
         env.pop(name, None)
     log = open(os.path.join(work, "server.log"), "wb")
     process = subprocess.Popen([args.bin, "--port", str(port), "--catalog", os.path.join(work, "catalog.json"),
-                                "--state", os.path.join(work, "rex.db"), "--zurg-mount", "/zurg",
+                                "--state", os.path.join(work, "rex.db"), "--mount", "/zurg",
                                 "--assert-claimed", "--gdm", "off"], cwd=args.root, env=env, stdout=log,
                                stderr=subprocess.STDOUT)
     base = "http://127.0.0.1:%d" % port

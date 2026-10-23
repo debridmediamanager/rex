@@ -35,8 +35,6 @@ const SERVER_OPTIONS: &[(&str, &str, bool)] = &[
     ("--state", "STATE", true),
     ("--no-state", "", false),
     ("--mount", "MOUNT", true),
-    // The name before rex stopped assuming zurg (2026-10-23): run scripts and the image still pass it.
-    ("--zurg-mount", "MOUNT", true),
     ("--friendly-name", "FRIENDLY_NAME", true),
 ];
 
@@ -85,7 +83,6 @@ fn server_help() -> String {
         ("--no-state", "keep nothing across a restart: a restart reloads the catalog as it is on disk, which the test suites rely on. Also an empty $REX_STATE"),
         ("--catalog", "the catalog, a .db or .json file. One that does not exist is seeded on start, as rex catalog --seed would: an empty movie and show library under --mount. Default catalog.json"),
         ("--mount", "the folder a catalog seeded on this start shows its libraries under (<mount>/movies, <mount>/shows). Sources register themselves, and their own mount, at PUT /rex/sources/{name} (docs/feed-api.md). Default /mnt/rex"),
-        ("--zurg-mount", "the same as --mount, its earlier name"),
         ("--friendly-name", "the name a catalog seeded on this start is given (default the machine's host name); an existing catalog keeps its own"),
     ]
     .into_iter()
@@ -243,7 +240,7 @@ fn parse_server_args(args: &[String]) -> Result<ServerArgs, String> {
             "--account-state-interval" => options.account_state_interval = int(&value)?.try_into().map_err(|_| format!("argument {flag}: invalid int value: '{value}'"))?,
             "--state" => options.state = Some(PathBuf::from(value)),
             "--no-state" => options.state = Some(PathBuf::new()),
-            "--mount" | "--zurg-mount" => options.mount = value,
+            "--mount" => options.mount = value,
             "--friendly-name" => options.friendly_name = Some(value),
             _ => unreachable!("every SERVER_OPTIONS flag is matched"),
         }

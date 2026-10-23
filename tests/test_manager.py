@@ -335,12 +335,12 @@ def main():
         # -- a server from its keys alone: no catalog until it is built ----------
         e = free_port()
         status, keyed = manager.api("POST", "/servers", {
-            "name": "keyed", "port": e, "plex_token": "keyed-secret", "zurg_mount": "/mnt/zurg",
+            "name": "keyed", "port": e, "plex_token": "keyed-secret", "mount": "/mnt/media",
             "gdm": "off", "assert_claimed": True})
         check("a server can be created from its keys alone",
               status == 201 and keyed["status"] == "stopped"
               and keyed["config"]["plex_token"] == "***"
-              and keyed["config"]["zurg_mount"] == "/mnt/zurg", keyed)
+              and keyed["config"]["mount"] == "/mnt/media", keyed)
         status, refused = manager.api("POST", "/servers", {"name": "zurgkeys", "port": free_port(),
                                                            "zurg_url": "http://127.0.0.1:9"})
         # Sources register with the server themselves (docs/feed-api.md); there is no zurg to configure.

@@ -140,32 +140,30 @@ def main():
             stop(process)
 
     # One command: a catalog that does not exist is seeded as `rex catalog --seed` would,
-    # named by --friendly-name, its libraries under --mount; --zurg-mount, its name before rex
-    # stopped assuming zurg (2026-10-23), still sets it for the run scripts that pass it.
-    for flag in ("--mount", "--zurg-mount"):
-        scratch = tempfile.mkdtemp(prefix="rex-cli-seed-")
-        seeded = os.path.join(scratch, "rex.db")
-        # --assert-claimed: an unclaimed server serves no client, and this reads the library.
-        process, port = serving("--port", "PORT", "--catalog", seeded, "--friendly-name", "Seeded Den",
-                                flag, "/srv/zurg", "--gdm", "off", "--assert-claimed")
-        try:
-            def get(path):
-                request = urllib.request.Request("http://127.0.0.1:%d%s" % (port, path),
-                                                 headers={"Accept": "application/json"})
-                with urllib.request.urlopen(request, timeout=10) as response:
-                    return json.loads(response.read())["MediaContainer"]
-            root = get("/") if port else {}
-            sections = get("/library/sections").get("Directory", []) if port else []
-            locations = sorted((row.get("type"), location.get("path")) for row in sections
-                               for location in row.get("Location", []))
-            check("a --catalog that does not exist is seeded on start: named, its libraries under %s" % flag,
-                  port is not None and root.get("friendlyName") == "Seeded Den"
-                  and locations == [("movie", "/srv/zurg/movies"), ("show", "/srv/zurg/shows")]
-                  and os.path.exists(seeded) and open(seeded, "rb").read(16) == b"SQLite format 3\x00",
-                  (port, root.get("friendlyName"), locations))
-        finally:
-            stop(process)
-            shutil.rmtree(scratch, ignore_errors=True)
+    # named by --friendly-name, its libraries under --mount.
+    scratch = tempfile.mkdtemp(prefix="rex-cli-seed-")
+    seeded = os.path.join(scratch, "rex.db")
+    # --assert-claimed: an unclaimed server serves no client, and this reads the library.
+    process, port = serving("--port", "PORT", "--catalog", seeded, "--friendly-name", "Seeded Den",
+                            "--mount", "/srv/media", "--gdm", "off", "--assert-claimed")
+    try:
+        def get(path):
+            request = urllib.request.Request("http://127.0.0.1:%d%s" % (port, path),
+                                             headers={"Accept": "application/json"})
+            with urllib.request.urlopen(request, timeout=10) as response:
+                return json.loads(response.read())["MediaContainer"]
+        root = get("/") if port else {}
+        sections = get("/library/sections").get("Directory", []) if port else []
+        locations = sorted((row.get("type"), location.get("path")) for row in sections
+                           for location in row.get("Location", []))
+        check("a --catalog that does not exist is seeded on start: named, its libraries under the mount",
+              port is not None and root.get("friendlyName") == "Seeded Den"
+              and locations == [("movie", "/srv/media/movies"), ("show", "/srv/media/shows")]
+              and os.path.exists(seeded) and open(seeded, "rb").read(16) == b"SQLite format 3\x00",
+              (port, root.get("friendlyName"), locations))
+    finally:
+        stop(process)
+        shutil.rmtree(scratch, ignore_errors=True)
 
     # With neither flag the guide's one command is `rex --catalog rex.db`: the server is named
     # after its host, as a real PMS is, and its libraries are under rex's own default, no source's.
