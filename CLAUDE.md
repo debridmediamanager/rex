@@ -132,7 +132,7 @@ gives the client a grid whose filter bar can only talk about the wrong type.
 
 ```bash
 cargo build --release --manifest-path rust/Cargo.toml
-rust/target/release/rex --catalog rex.db   # seeds rex.db on its first start, named after the host, under /mnt/rex
+rust/target/release/rex   # seeds rex.db (the default --catalog) on its first start, named after the host
 cp examples/run.sh.example run.sh   # keys go in rex.env beside it (mode 600)
 ```
 
@@ -213,13 +213,20 @@ request or play queue. Unclaimed nothing is asked. rex measures, it does not
 guess: the pick and the meter are tested against 1,694 real candidates
 (`tests/fixtures/subtitles/sync_corpus.json.gz`, `probes/subsbench/`).
 
-`--announce-url` announces with the claim's server token only; unclaimed it waits for the
+A claimed rex announces with the claim's server token only; unclaimed it waits for the
 claim and announces the moment it lands, no restart (findings, "A
-claimed server needs no account token"). A comma-separated list announces each URI as its own
-connection, as a PMS with several does. A start refuses an entry plex.tv would keep no
+claimed server needs no account token"). It announces its own LAN address
+(`http://<private_address>:<port>`, read again at each announce; the bound address under `--host`;
+only an RFC 1918 or ULA one, never loopback, a tunnel's, a public one or 100.64/10) with no
+flag, as a real PMS announces its interfaces (`pms_announce_connections_s1422.json`), after
+`--announce-url`'s comma-separated list of extra addresses, each its own connection; a setup
+names only an HTTPS address of its own there (2026-10-24: every guide used to type the LAN IP).
+A start refuses an entry plex.tv would keep no
 connection from: one that is not `http(s)://` and a host (a pasted Markdown link is answered 200
 and lists nothing) or a 100.64.0.0/10 address (plex.tv's firewall 403s the whole announce;
-findings, "An announce plex.tv keeps no connection from"). The feed is rex's own API, not PMS emulation.
+findings, "An announce plex.tv keeps no connection from").
+`--catalog` defaults to `rex.db` (a `catalog.json` an older default start made, with its state `rex.db` beside it, is still served), and `rex.db` is
+created 0600 with its sidecars, so setups pass neither flag nor umask. The feed is rex's own API, not PMS emulation.
 
 rex-direct is a plex.direct of rex's own, not a PMS's (`runtime/rexdirect.rs`), and a
 documented provider API (`docs/rex-direct-api.md`), no longer a DMM sponsor perk: rex reads no
@@ -772,14 +779,19 @@ rigs run on.
   limit lands in all five in the same task, and a code change that alters setup is not
   done until they do.
 - Those five describe the simplest setup there is, and in the same order: rex starts **once**,
-  with every flag a later step needs already on that first start (`--announce-url` with the
-  LAN address, an own hostname's `--tls-cert`/`--tls-key`). No step says "add this flag and
+  with every flag a later step needs already on that first start (an own hostname's
+  `--tls-cert`/`--tls-key`; nothing at all for the plain setup). No step says "add this flag and
   restart" for something that could have been on the first start: the claim starts the
   announce and rex-direct, which is on by default and needs only the port forward, neither a
   restart. Say each thing once per page and link back to it instead of repeating it (Ben,
   2026-10-19).
+- Never ask a user for what rex does not need (Ben, 2026-10-24). A field, flag or env var that
+  has a working default, only changes a label ("nothing is read from it", as `mount` was in the
+  addon guide) or that rex could find out itself stays out of every example and step; give it a
+  default or detect it in code instead. Internals the reader cannot act on and notes about
+  builds no fresh install meets stay out of the guides too.
 - One name for one thing. rex's address is **rex's LAN IP** in every setup command: the
-  announce, the claim `curl`, zurg's `rex_url` and the checks (`<rex's LAN IP>` in the README,
+  claim `curl`, zurg's `rex_url` and the checks (`<rex's LAN IP>` in the README,
   setup.md and the site; `192.168.1.20`, said once, in the notes guides). Never mix in
   `127.0.0.1`, `<rex host>` or `<rex's address>`: an unclaimed rex answers its LAN IP from its
   own machine as it does loopback (checked 2026-10-19), so one address serves every step.
