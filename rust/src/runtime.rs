@@ -21499,6 +21499,49 @@ impl Runtime {
         }
     }
 
+    /// A Part whose source serves an HLS playlist (YouTube's, through a relay) has no file to
+    /// read: Plezy plays every Original-quality item straight from its Part URL, asking for no
+    /// decision, and its mpv played the relayed playlist as a few seconds of video (rex-fun,
+    /// 2026-10-23). Not measured: a real PMS has no such Part. The read is sent to a conversion
+    /// of it, copied into MPEG-TS HLS as if the client had decided one, which any HLS player follows.
+    fn hls_part_conversion(&mut self, row: &Value, part_id: i64, query: &HashMap<String, String>, request: &Request) -> Option<Response> {
+        self.transcoder.as_ref()?;
+        let media = row.get("Media").and_then(Value::as_array)?;
+        let (media_index, part_index) = media.iter().enumerate().find_map(|(media_index, media)| {
+            let parts = media.get("Part").and_then(Value::as_array)?;
+            let part_index = parts.iter().position(|part| part.get("id").and_then(Value::as_i64) == Some(part_id))?;
+            (media.get("container").and_then(Value::as_str) == Some("hls")).then_some((media_index, part_index))
+        })?;
+        let key = row.get("ratingKey").map(string_value)?;
+        let session = format!("part-{part_id}-{}", plextv::uuid4());
+        self.decided_sessions.insert((sessions::account_session_id(self.viewer.id, &session), key.clone()));
+        let mut pairs = vec![
+            ("path", format!("/library/metadata/{key}")),
+            ("mediaIndex", media_index.to_string()),
+            ("partIndex", part_index.to_string()),
+            ("protocol", "hls".to_string()),
+            ("directPlay", "0".to_string()),
+            ("directStream", "1".to_string()),
+            ("directStreamAudio", "1".to_string()),
+            ("fastSeek", "1".to_string()),
+            ("session", session.clone()),
+            ("X-Plex-Session-Identifier", session),
+            ("X-Plex-Client-Profile-Name", "Generic".to_string()),
+            (
+                "X-Plex-Client-Profile-Extra",
+                "add-transcode-target(type=videoProfile&context=streaming&protocol=hls&container=mpegts&videoCodec=h264&audioCodec=aac,ac3,eac3,mp3)".to_string(),
+            ),
+        ];
+        if let Some(token) = query.get("X-Plex-Token").or_else(|| request.headers.get("x-plex-token")) {
+            pairs.push(("X-Plex-Token", token.clone()));
+        }
+        let pairs = pairs.iter().map(|(name, value)| format!("{name}={}", percent_encode(value))).collect::<Vec<_>>().join("&");
+        info!("PART {part_id} is an HLS playlist: its read goes to a conversion of {key}");
+        let mut response = Response::bytes(302, "");
+        response.headers.push(("Location".to_string(), format!("/video/:/transcode/universal/start.m3u8?{pairs}")));
+        Some(response)
+    }
+
     fn route_part(
         &mut self,
         segments: &[&str],
@@ -21587,6 +21630,9 @@ impl Runtime {
             .is_some_and(|value| !bool_option(value))
         {
             return Response::error(400, "rex: bad request");
+        }
+        if let Some(redirect) = self.hls_part_conversion(&owner, part_id, query, request) {
+            return redirect;
         }
         // The bytes are a source's (`source.rs`): a feed row names its source and path, a
         // catalog row's file is under a source's mount. With no source at all the read is

@@ -812,6 +812,26 @@ def main():
                       json.dumps({k: v for k, v in answer.items() if "Decision" in k}))
             get(port, "/video/:/transcode/universal/stop", [("session", "mde-" + label)])
         walk(port, scratch, "hls-source", "17", "copy", "copy", None)
+        # Plezy plays every Original-quality item from its Part URL with mpv and asks for no
+        # decision; an HLS-backed Part handed it the source's own playlist, which played as a few
+        # seconds (rex-fun, 2026-10-23). The read is a conversion now: one title-long timeline.
+        status, headers, body = get(port, "/library/parts/170/1700000000/file.m3u8")
+        check("an HLS-backed Part read is sent to a conversion's start.m3u8",
+              status == 200 and body.startswith(b"#EXTM3U") and b"session/part-170-" in body, "%s %r" % (status, body[:80]))
+        played = os.path.join(scratch, "part-read.ts")
+        subprocess.run([FFMPEG, "-v", "error", "-y", "-i", "http://127.0.0.1:%d/library/parts/170/1700000000/file.m3u8" % port,
+                        "-c", "copy", played], check=False, timeout=120)
+        length = float(subprocess.run([FFPROBE, "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", played],
+                                      capture_output=True, text=True).stdout.strip() or 0) if os.path.exists(played) else 0
+        check("a player reading that Part plays the whole title, not one segment",
+              abs(length - DURATION) < 1.5, "%.2fs of %ds" % (length, DURATION))
+        # A player that read to the end stops nothing; the idle reaper would. Stop them here.
+        status, _, body = get(port, "/transcode/sessions")
+        for listed in json.loads(body)["MediaContainer"].get("TranscodeSession", []) if status == 200 else []:
+            if str(listed.get("key", "")).startswith("part-170-"):
+                get(port, "/video/:/transcode/universal/stop", [("session", listed["key"])])
+        status, _, body = get(port, "/library/parts/100/1700000000/file.mkv")
+        check("a file's Part read is still its bytes", status == 200 and body[:4] == b"\x1a\x45\xdf\xa3", str(status))
         # Plex for Android's own target is Matroska, which takes no ADTS AAC as copied out of
         # MPEG-TS: "Error parsing AAC extradata, unable to determine samplerate" (rex-fun, 2026-10-23).
         # The picture is still copied; the AAC is converted.
