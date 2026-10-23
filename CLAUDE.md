@@ -614,6 +614,8 @@ python3 tests/test_subtitles.py             # subtitle search, apply and automat
                                             # onto the audio, mojibake put back, the decision waiting; nothing asked unclaimed; needs ffmpeg
 python3 tests/test_accounts.py              # plexlab's owner and shared user replayed: per-account watch state, ratings, playlists,
                                             # history and sessions, a share's libraries, filters and flags, the owner's routes
+python3 tests/test_kometa.py                # Kometa's requests replayed from an online 1.43.5: a tag write makes its collection,
+                                            # a url poster is fetched (its 200/406 need raw.githubusercontent.com, else skip)
 python3 tests/parallel_suites.py --workers 4 test_cli test_feed ...
                                             # several suites at once, as CI runs them: each gets its own
                                             # REX_TEST_PORTS range (tests/test_ports.py), output kept per suite

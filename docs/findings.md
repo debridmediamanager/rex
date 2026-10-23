@@ -14087,3 +14087,35 @@ external ids or old Plex guid was supplied, and the second reporter's provider i
 still unconfirmed. These checks prove the feed repair and its refusal boundaries,
 not that either reporter's unknown legacy provenance has been recovered.
 
+
+## Kometa (2026-10-23)
+
+A Discord user asked whether Kometa works with rex. Kometa 2.5.3 (python-plexapi) was run at a
+nightly rex and at two real servers: plexscratch (the offline 1.43.4 copy) and a fresh PMS 1.43.5
+on the test host, online, claimed to a test account without Plex Pass, with the harness clips. The
+latter run went through `harness/scripts/tap.py`; `tests/fixtures/kometa_collections_s1435.json`
+keeps its collection and poster exchanges and the probes sent after it. Three things stopped
+Kometa on rex, and each was a measurement taken where it could not show:
+
+- **Kometa refuses any library whose `/library/sections` row says `allowSync` 0** ("Plex Token is
+  read only"). rex wrote 0 on every row, from an unclaimed recording. plexlab's claimed recording
+  (`shared_user_s1434.json`) already held 1 for the owner; the 1.43.5 owner without Plex Pass read 1
+  too. The row now says `claimed && download_allowed()`, so a share keeps its own flag.
+- **A static collection is a tag write and nothing else**: `PUT /library/sections/1/all?
+  collection.locked=0&collection[0].tag.tag=Blender Films&id=1,3&type=1`, then
+  `/all?type=18&title=Blender Films`. The online server answered ratingKey 15 at once
+  (`collection://` guid, `childCount` 2); a plain single-id write without the lock did the same,
+  and so did one after the server was signed out. plexscratch, sent Kometa's identical write,
+  made only the tag (cycle 30's finding, made on the two offline copies). rex follows the online
+  server: a tag write naming no collection in its library makes one (`edit::after_edit`). The item
+  path (`PUT /library/metadata/{id}?collection[0].tag.tag=`) goes through the same code and was not
+  re-measured online.
+- **`url_poster` is `POST .../posters?url=` with no body.** The online server fetched it and stored
+  `upload://posters/<sha1>`, selected, answering an empty 200 (`text/html`); an `.invalid` host and
+  `http://127.0.0.1:32400/identity` were 502, a GitHub README 406. rex answered the copy's 406 to
+  every one. It now fetches public urls only, as `/photo/:/transcode` does (`artwork::posted_artwork`).
+
+What worked unchanged with the gate bypassed: matching items to TMDb/IMDb/TVDb ids, mass critic
+rating and genre updates, smart collections with labels, summaries and sort titles, and overlays
+(poster uploads). `tests/test_kometa.py` replays Kometa's requests; its 200 and 406 poster checks
+fetch the recorded GitHub urls and skip offline.

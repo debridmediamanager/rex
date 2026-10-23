@@ -1837,10 +1837,17 @@ currently advertised by rex. A version label is not proof of complete PMS equiva
   wrong one, the 403 for an unknown single segment, the 404 for a path that does not exist, all
   `Connection: Keep-Alive` and really reusable. **The one refusal that CLOSES is the 400 for a query
   pair with no `=`**, and seventeen other 400s keep it alive.
-- **A `collection[0].tag.tag=` write makes a TAG, not a collection.** The tag appears on the row, in
-  the `/collection` axis and in both search endpoints (a `tagType: 2` row with a `count`), and
-  `/library/all?type=18` gains NOTHING -- only `POST /library/collections` makes an item. The tell is
-  the `guid`: a tag-only collection's search row carries none.
+- **A `collection[0].tag.tag=` write naming no collection MAKES one** on an online 1.43.5, claimed
+  or not (2026-10-23, `tests/fixtures/kometa_collections_s1435.json`): Kometa builds every static
+  collection that way and gives up when `/all?type=18&title=` finds nothing. The offline copies
+  (plexscratch 1.43.4, plexscratch42 1.42.2) made only the TAG, which rex copied from cycle 30 until
+  then; whether the version or the missing network made the difference was not settled.
+- **A `.../posters?url=` POST with no body is fetched**, and the image kept as an upload
+  (`upload://posters/<sha1>`, selected, an empty 200); an unreachable or loopback url is a 502, a
+  page that is no image a 406 (same fixture). The offline copies could not fetch, hence their 406.
+- **A claimed server's owner reads `allowSync="1"` on every library row** in `/library/sections`
+  (plexlab, `shared_user_s1434.json`; a claimed 1.43.5 whose owner has no Plex Pass, too), a share
+  its own flag, an unclaimed server 0. Kometa refuses a library at 0 ("Plex Token is read only").
 - **The ping timer is FREE-RUNNING: a pong must not trigger another ping.** The reference pings
   every 10 s whether the client pongs or not; rex read "a frame arrived" as "the interval
   passed" and answered a pong with a ping -- **903,480 pings in 35 seconds**. Every real client
