@@ -2467,8 +2467,14 @@ impl Runtime {
             let channels = stream.get("channels").and_then(Value::as_i64).unwrap_or(2).max(1);
             let source_bitrate = stream.get("bitrate").and_then(Value::as_i64).unwrap_or(0);
             let sampling_rate = stream.get("samplingRate").and_then(Value::as_i64).filter(|rate| (8000..=192000).contains(rate)).unwrap_or(48000);
+            // MPEG-TS carries AAC as ADTS, with no AudioSpecificConfig, and Matroska's header needs
+            // one before the first packet: "Error parsing AAC extradata" ended every Plex for
+            // Android run of a YouTube HLS source (rex-fun, 2026-10-23), and aac_adtstoasc only
+            // builds it after the segment muxer has written that header. Converted instead.
+            let adts = codec == "aac" && matches!(media.get("container").and_then(Value::as_str), Some("mpegts" | "hls"));
             let copy = !boost_dialog && !normalize_loudness && flag("directStreamAudio")
                 && audio_codecs.contains(&codec)
+                && !(matroska && adts)
                 && decision::codec_limitation(profile, "VideoAudioCodec", &codec, media).is_none();
             if copy {
                 AudioPlan { index: stream.get("index").and_then(Value::as_i64).unwrap_or(-1), copy, source_codec: codec.clone(), codec, channels, bitrate: source_bitrate, sampling_rate }

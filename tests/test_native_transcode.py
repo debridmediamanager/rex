@@ -812,6 +812,11 @@ def main():
                       json.dumps({k: v for k, v in answer.items() if "Decision" in k}))
             get(port, "/video/:/transcode/universal/stop", [("session", "mde-" + label)])
         walk(port, scratch, "hls-source", "17", "copy", "copy", None)
+        # Plex for Android's own target is Matroska, which takes no ADTS AAC as copied out of
+        # MPEG-TS: "Error parsing AAC extradata, unable to determine samplerate" (rex-fun, 2026-10-23).
+        # The picture is still copied; the AAC is converted.
+        walk(port, scratch, "hls-source-android", "17", "copy", "transcode", None, muxer="mkv",
+             **{name: android[name] for name in ("X-Plex-Client-Profile-Name", "X-Plex-Client-Profile-Extra")})
         # A segment is served as soon as FFmpeg moves on to the next one, not when the
         # run ends: FFmpeg buffers its own segment list until then, which made the
         # first segment of a slow source wait for the whole file.
