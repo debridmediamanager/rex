@@ -6,8 +6,6 @@ set -e
 umask 077
 case "${1:-}" in
   "" | -*)
-    # zurg's Docker setup mounts at /zurg_mnt/zurg, so a compose file needs no flags.
-    case " $* " in *" --zurg-mount"*) ;; *) set -- --zurg-mount /zurg_mnt/zurg "$@" ;; esac
     exec /rex/rust/target/release/rex --catalog "${REX_CATALOG:-/config/rex.db}" "$@" ;;
   *) exec /rex/rust/target/release/rex "$@" ;;
 esac

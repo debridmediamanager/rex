@@ -1594,7 +1594,7 @@ impl Runtime {
         let playable = |section: &&Value| matches!(section.get("type").and_then(Value::as_str), Some("movie" | "show"));
         let prefix = source.mount.clone().unwrap_or_else(|| {
             let seeded = self.catalog.sections.iter().filter(playable).flat_map(|section| self.locations(section)).next();
-            seeded.and_then(|folder| folder.trim_end_matches('/').rsplit_once('/').map(|(parent, _)| parent.to_string())).unwrap_or_else(|| "/mnt/zurg".to_string())
+            seeded.and_then(|folder| folder.trim_end_matches('/').rsplit_once('/').map(|(parent, _)| parent.to_string())).unwrap_or_else(|| crate::catalog_tool::DEFAULT_MOUNT.to_string())
         });
         prefix.trim_end_matches('/').to_string()
     }

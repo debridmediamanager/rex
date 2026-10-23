@@ -323,7 +323,7 @@ pub struct RuntimeOptions {
     pub account_state_interval: u64,
     pub plex_direct_host: Option<String>,
     /// zurg's `mount_path`: the folder a catalog this start seeds shows its libraries under.
-    pub zurg_mount: String,
+    pub mount: String,
     /// `--friendly-name`: the name a catalog this start seeds is given (`serve`).
     pub friendly_name: Option<String>,
 }
@@ -351,7 +351,7 @@ impl Default for RuntimeOptions {
             heartbeat_interval: plextv::HEARTBEAT_INTERVAL,
             account_state_interval: plextv::ACCOUNT_STATE_INTERVAL,
             plex_direct_host: None,
-            zurg_mount: "/mnt/zurg".to_string(),
+            mount: crate::catalog_tool::DEFAULT_MOUNT.to_string(),
             friendly_name: None,
         }
     }
@@ -23122,14 +23122,14 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
         let machine = crate::catalog_tool::write_seed(
             &options.catalog.to_string_lossy(),
             name,
-            std::slice::from_ref(&options.zurg_mount),
+            std::slice::from_ref(&options.mount),
             &["movies".to_string()],
             &["shows".to_string()],
         )?;
         info!(
             "seeded {}: an empty library named {name} at {}, machine={machine}",
             options.catalog.display(),
-            options.zurg_mount
+            options.mount
         );
     }
     options.state = resolve_state_path(&options);

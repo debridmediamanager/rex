@@ -68,7 +68,7 @@ def start(catalog, state, cache_mb):
     port = free_port()
     env = dict(ENV, REX_ROW_CACHE_MB=str(cache_mb))
     process = subprocess.Popen(
-        server_command("--port", port, "--catalog", catalog, "--state", state, "--zurg-mount", MOUNT,
+        server_command("--port", port, "--catalog", catalog, "--state", state, "--mount", MOUNT,
                        "--assert-claimed", "--gdm", "off", root=ROOT),
         cwd=ROOT, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     for _ in range(3000):

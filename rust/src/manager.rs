@@ -145,7 +145,7 @@ fn validate(config: Value, partial: bool) -> Answer<Map<String, Value>> {
         return refuse("the configuration must be a JSON object".to_string());
     };
     const KNOWN: &[&str] = &[
-        "name", "port", "catalog", "zurg_mount", "tmdb_key",
+        "name", "port", "catalog", "mount", "zurg_mount", "tmdb_key",
         "plex_token", "token", "dmm_api_key", "rex_direct_key", "rex_direct_url", "friendly_name", "part_mode", "host", "gdm", "announce_url", "public_url",
         "web_root", "assert_claimed", "verbose", "extra_args", "restart",
     ];
@@ -188,7 +188,7 @@ fn validate(config: Value, partial: bool) -> Answer<Map<String, Value>> {
         out.insert("catalog".to_string(), Value::String(path));
     }
     for field in [
-        "zurg_mount", "tmdb_key", "plex_token", "token", "dmm_api_key", "rex_direct_key", "rex_direct_url",
+        "mount", "zurg_mount", "tmdb_key", "plex_token", "token", "dmm_api_key", "rex_direct_key", "rex_direct_url",
         "friendly_name", "announce_url", "public_url", "web_root", "host",
     ] {
         if out.get(field).is_some_and(|value| !value.is_null() && !value.is_string()) {
@@ -612,9 +612,10 @@ impl Manager {
             ("announce_url", "--announce-url"),
             ("public_url", "--public-url"),
             ("web_root", "--web-root"),
-            ("zurg_mount", "--zurg-mount"),
+            ("mount", "--mount"),
         ] {
-            if let Some(value) = text(config, key) {
+            // `zurg_mount` is what a server saved before 2026-10-23 calls its mount.
+            if let Some(value) = text(config, key).or_else(|| (key == "mount").then(|| text(config, "zurg_mount")).flatten()) {
                 argv.extend([flag.to_string(), value.to_string()]);
             }
         }
@@ -956,8 +957,8 @@ impl Manager {
                 None => (std::env::current_exe()?.to_string_lossy().into_owned(), vec!["catalog".to_string()]),
             };
             argv.extend(["--seed".to_string(), "--out".to_string(), self.catalog_path(name).to_string_lossy().into_owned()]);
-            for (field, flag) in [("friendly_name", "--name"), ("zurg_mount", "--zurg-mount")] {
-                if let Some(value) = text(&config, field) {
+            for (field, flag) in [("friendly_name", "--name"), ("mount", "--mount")] {
+                if let Some(value) = text(&config, field).or_else(|| (field == "mount").then(|| text(&config, "zurg_mount")).flatten()) {
                     argv.extend([flag.to_string(), value.to_string()]);
                 }
             }
@@ -1008,7 +1009,7 @@ pre{background:#f4f4f4;padding:8px;max-height:300px;overflow:auto}</style></head
 <form id=f onsubmit="create(event)">
 <input name=name placeholder="name" required> <input name=port type=number placeholder="port" required>
 <input name=catalog placeholder="catalog .json/.db (optional: else seed an empty library)" size=48><br>
-<input name=zurg_mount placeholder="zurg mount_path (default /mnt/zurg)"><br>
+<input name=mount placeholder="library folder prefix (default /mnt/rex)"><br>
 <input name=token type=password placeholder="server token (optional)"><br>
 <input name=friendly_name placeholder="friendly name (optional)">
 <select name=part_mode><option>proxy</select>
@@ -1035,7 +1036,7 @@ async function logs(n){try{out.textContent=(await api('GET','/servers/'+n+'/logs
 async function del(n){if(!confirm('Delete '+n+'? Its files are kept.'))return;try{await api('DELETE','/servers/'+n)}catch(e){out.textContent=e.message};load()}
 async function create(ev){ev.preventDefault();const d=Object.fromEntries(new FormData(ev.target));
 const c={name:d.name,port:+d.port,part_mode:d.part_mode,gdm:d.gdm,assert_claimed:!!d.assert_claimed};
-for(const k of ['catalog','zurg_mount','token','friendly_name'])if(d[k])c[k]=d[k];
+for(const k of ['catalog','mount','token','friendly_name'])if(d[k])c[k]=d[k];
 try{await api('POST','/servers',c);ev.target.reset()}catch(e){out.textContent=e.message};load()}
 load();setInterval(load,3000);
 </script></body></html>"##;
@@ -1388,7 +1389,7 @@ fn serve(root: &Path, listen: &str, binary: String, token_file: Option<&str>) ->
 const USAGE: &str = "usage: rex manager [--root ROOT] {serve,create,list,start,stop,restart,status,logs,delete,build} ...
 
   serve   [--listen HOST:PORT] [--binary PATH] [--admin-token-file FILE]
-  create  NAME --port PORT [--catalog PATH] [--friendly-name NAME] [--zurg-mount PATH]
+  create  NAME --port PORT [--catalog PATH] [--friendly-name NAME] [--mount PATH]
           [--part-mode {proxy}] [--gdm {auto,on,off}] [--host HOST] [--announce-url URL]
           [--public-url URL] [--web-root DIR] [--assert-claimed] [--verbose]
           [--restart {no,on-failure}] [--extra-arg ARG]... [--<field>-env VAR]...
@@ -1458,7 +1459,7 @@ fn parse(args: &[String]) -> Result<Option<Cli>, String> {
             "serve" => (vec!["--listen", "--binary", "--admin-token-file"], &[]),
             "create" => {
                 let mut values = vec![
-                    "--port", "--catalog", "--friendly-name", "--zurg-mount", "--part-mode", "--gdm", "--host",
+                    "--port", "--catalog", "--friendly-name", "--mount", "--zurg-mount", "--part-mode", "--gdm", "--host",
                     "--announce-url", "--public-url", "--web-root", "--restart", "--extra-arg",
                     "--token-env", "--rex-direct-key-env", "--rex-direct-url-env",
                 ];
@@ -1615,7 +1616,8 @@ fn client(cli: &Cli, root: &Path) -> Result<(), String> {
             ("announce_url", "--announce-url"),
             ("public_url", "--public-url"),
             ("web_root", "--web-root"),
-            ("zurg_mount", "--zurg-mount"),
+            ("mount", "--mount"),
+            ("mount", "--zurg-mount"),
         ] {
             if let Some(value) = cli.value(flag).filter(|value| !value.is_empty()) {
                 config[field] = json!(value);

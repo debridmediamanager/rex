@@ -71,7 +71,7 @@ and everything it pushed from rex, after a confirmation ([`docs/feed-api.md`](fe
 
 The first start makes the catalog when the `--catalog` file does not exist yet: rex seeds it
 as `rex catalog --seed` would, named by `--friendly-name` (default: the machine's host name, as a real PMS names itself), its libraries
-under `--zurg-mount`, and logs `seeded rex.db: ...`. Or seed it yourself before the first
+under `--mount` (`/mnt/rex` by default), and logs `seeded rex.db: ...`. Or seed it yourself before the first
 start, which is how to name more directories (below):
 
 ```bash
@@ -99,7 +99,7 @@ directories:
 ```
 
 This needs zurg's next nightly after 2026-10-22. zurg sends it when it registers (step 6),
-and rex makes the libraries then, on `<zurg's mount_path>/anime` (under rex's `--zurg-mount`, `/mnt/zurg` by default,
+and rex makes the libraries then, on `<zurg's mount_path>/anime` (under rex's `--mount`, `/mnt/rex` by default,
 when zurg sets none), and moves what it already shows from
 that directory into them as it is: watch state, Fix Match and edits included. An open Plex Web
 lists them at once under More in its sidebar, where you can pin them. Every other directory
@@ -118,7 +118,8 @@ rust/target/release/rex catalog --seed --name den --out rex.db \
   --movies movies --shows shows --shows anime
 ```
 
-The folders are shown in Plex as `/mnt/zurg/<directory>`. `--mount` changes that prefix,
+The folders are shown in Plex as `/mnt/rex/<directory>`. `--mount` changes that prefix
+(`--zurg-mount`, its earlier name, still works),
 and it only matters for zurg's own Plex matcher, which matches a file by its full path,
 so set it to zurg's `mount_path` if you point zurg's `plex_server_url` at rex (which step 6
 advises against).
@@ -459,8 +460,7 @@ services:
       - ./rex:/config
 ```
 
-The image starts rex on `/config/rex.db` with `--zurg-mount /zurg_mnt/zurg`, where zurg's
-Docker setup mounts. A `command:` adds to those: step 4's `--announce-url` goes there
+The image starts rex on `/config/rex.db`. A `command:` adds flags: step 4's `--announce-url` goes there
 (`command: --announce-url http://<rex's LAN IP>:32400`) before the first
 `docker compose up`.
 
@@ -506,9 +506,9 @@ rex manager create living-room --port 32400 --catalog "$PWD/catalog.json" --gdm 
 rex manager start living-room
 rex manager list                         # status | logs | stop | restart | delete [--purge] | build
 
-# or from its keys alone: an empty library at zurg's mount, for zurg to fill
-# (zurg registers with it and pushes once its rex_url names the port)
-rex manager create den --port 32401 --gdm on --zurg-mount /mnt/zurg
+# or from its keys alone: an empty library for its sources to fill
+# (a source such as zurg registers with it and pushes once its rex_url names the port)
+rex manager create den --port 32401 --gdm on
 rex manager build den --start            # rex catalog --seed, then start (restart if running)
 ```
 

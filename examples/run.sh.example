@@ -14,7 +14,7 @@
 # rex_url in its config.yml. Nothing about a source is set here.
 #
 # The first start seeds rex.db, named after the host (--friendly-name), its libraries under
-# /mnt/zurg (--zurg-mount); a claimed server takes its owner from the claim (--owner-username);
+# /mnt/rex (--mount); a claimed server takes its owner from the claim (--owner-username);
 # to name more directories, seed it yourself first: rust/target/release/rex catalog --seed
 # --out rex.db (--movies/--shows). The server keeps its state (watch state, edits, lists,
 # history, prefs, the sources' registrations) in the same file.

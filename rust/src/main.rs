@@ -34,7 +34,9 @@ const SERVER_OPTIONS: &[(&str, &str, bool)] = &[
     ("--account-state-interval", "ACCOUNT_STATE_INTERVAL", true),
     ("--state", "STATE", true),
     ("--no-state", "", false),
-    ("--zurg-mount", "ZURG_MOUNT", true),
+    ("--mount", "MOUNT", true),
+    // The name before rex stopped assuming zurg (2026-10-23): run scripts and the image still pass it.
+    ("--zurg-mount", "MOUNT", true),
     ("--friendly-name", "FRIENDLY_NAME", true),
 ];
 
@@ -66,7 +68,7 @@ fn server_usage() -> String {
 /// the oracle's own help text.
 fn server_help() -> String {
     let helps: HashMap<&str, &str> = [
-        ("--part-mode", "proxy streams a part's bytes from its source through rex (the only mode: redirect read zurg's signed links, which a source that pushes its items does not hand over)"),
+        ("--part-mode", "proxy streams a part's bytes from its source through rex (the only mode: a source's links are its own, never handed to clients)"),
         ("--token", "require this X-Plex-Token on every request except /identity and /web/* -- which is what a real PMS does. Default OFF, because the test suites and probes talk to rex without one; a real server always has a token, so leaving it off is a deliberate deviation."),
         ("--assert-claimed", "report claimed=1 without performing a real plex.tv claim exchange"),
         ("--web-root", "directory of the extracted Plex Web client, served at /web"),
@@ -81,8 +83,9 @@ fn server_help() -> String {
         ("--account-state-interval", "seconds between claimed-account watch/rating imports"),
         ("--state", "file to keep watch state, edits, lists, history, preferences, uploads and statistics in across restarts. Default: rex.db beside the catalog, or the catalog itself when it is a database (state.pickle for the Python server), or $REX_STATE"),
         ("--no-state", "keep nothing across a restart: a restart reloads the catalog as it is on disk, which the test suites rely on. Also an empty $REX_STATE"),
-        ("--catalog", "the catalog, a .db or .json file. One that does not exist is seeded on start, as rex catalog --seed would: an empty movie and show library under --zurg-mount. Default catalog.json"),
-        ("--zurg-mount", "zurg's mount_path: the folder a catalog seeded on this start shows its libraries under (<mount>/movies, <mount>/shows), which zurg's own Plex matcher compares. Sources register themselves at PUT /rex/sources/{name} (docs/feed-api.md). Default /mnt/zurg"),
+        ("--catalog", "the catalog, a .db or .json file. One that does not exist is seeded on start, as rex catalog --seed would: an empty movie and show library under --mount. Default catalog.json"),
+        ("--mount", "the folder a catalog seeded on this start shows its libraries under (<mount>/movies, <mount>/shows). Sources register themselves, and their own mount, at PUT /rex/sources/{name} (docs/feed-api.md). Default /mnt/rex"),
+        ("--zurg-mount", "the same as --mount, its earlier name"),
         ("--friendly-name", "the name a catalog seeded on this start is given (default the machine's host name); an existing catalog keeps its own"),
     ]
     .into_iter()
@@ -240,7 +243,7 @@ fn parse_server_args(args: &[String]) -> Result<ServerArgs, String> {
             "--account-state-interval" => options.account_state_interval = int(&value)?.try_into().map_err(|_| format!("argument {flag}: invalid int value: '{value}'"))?,
             "--state" => options.state = Some(PathBuf::from(value)),
             "--no-state" => options.state = Some(PathBuf::new()),
-            "--zurg-mount" => options.zurg_mount = value,
+            "--mount" | "--zurg-mount" => options.mount = value,
             "--friendly-name" => options.friendly_name = Some(value),
             _ => unreachable!("every SERVER_OPTIONS flag is matched"),
         }

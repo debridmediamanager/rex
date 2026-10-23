@@ -35,11 +35,11 @@ options:
                         SQLite, anything else JSON. Default catalog.json at the
                         checkout's root
   --name NAME           friendlyName the clients show
-  --seed                write an empty library for a zurg-backed server
+  --seed                write an empty library for a server its sources fill
   --mount MOUNTS, --zurg-mount MOUNTS
                         with --seed: the prefix the library folders are shown
-                        with (zurg's mount_path, for zurg's matcher); repeat for
-                        several. Default /mnt/zurg
+                        with; repeat for several. Default /mnt/rex. Each
+                        source's own items are filed by its registered mount
   --movies MOVIES       with --seed: a directory the movie library holds under
                         each mount; repeat for several. Default movies
   --shows SHOWS         with --seed: a directory the show library holds under
@@ -138,10 +138,16 @@ pub fn main(args: &[String]) -> Result<(), String> {
         return Err(usage_error("nothing to do: --seed, --convert or --relink"));
     }
     let or = |given: Vec<String>, default: &str| if given.is_empty() { vec![default.to_string()] } else { given };
-    let machine = write_seed(&out, &name, &or(mounts, "/mnt/zurg"), &or(movies, "movies"), &or(shows, "shows"))?;
+    let machine = write_seed(&out, &name, &or(mounts, DEFAULT_MOUNT), &or(movies, "movies"), &or(shows, "shows"))?;
     println!("wrote {out}: an empty library, machine={machine}");
     Ok(())
 }
+
+/// Where a seeded library's folders are shown: no source's own path. rex files each item by the
+/// directory its path names (`movies/...` lands in `<mount>/movies`) and a source's libraries by
+/// its registered `mount`, so this is only the folder a fresh catalog's two libraries show. It was
+/// zurg's `/mnt/zurg` until 2026-10-23, when rex stopped assuming any one source.
+pub(crate) const DEFAULT_MOUNT: &str = "/mnt/rex";
 
 /// `--seed`: an empty library at `out`, keeping the machineIdentifier already there.
 ///
