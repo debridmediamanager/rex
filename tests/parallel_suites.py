@@ -11,7 +11,7 @@ from test_ports import MAX_PORT, RESERVED_PORTS
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PORT_RANGE_BASE = 20000
-PORT_RANGE_SIZE = 256
+PORT_RANGE_SIZE = 240
 
 
 def assign_port_ranges(names, base=PORT_RANGE_BASE, size=PORT_RANGE_SIZE):
