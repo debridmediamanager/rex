@@ -14093,7 +14093,7 @@ not that either reporter's unknown legacy provenance has been recovered.
 A Discord user asked whether Kometa works with rex. Kometa 2.5.3 (python-plexapi) was run at a
 nightly rex and at two real servers: plexscratch (the offline 1.43.4 copy) and a fresh PMS 1.43.5
 on the test host, online, claimed to a test account without Plex Pass, with the harness clips. The
-latter run went through `harness/scripts/tap.py`; `tests/fixtures/kometa_collections_s1435.json`
+latter run went through `harness/scripts/tap.py`; `tests/fixtures/tag_collections_s1435.json`
 keeps its collection and poster exchanges and the probes sent after it. Three things stopped
 Kometa on rex, and each was a measurement taken where it could not show:
 
@@ -14119,5 +14119,5 @@ Kometa on rex, and each was a measurement taken where it could not show:
 
 What worked unchanged with the gate bypassed: matching items to TMDb/IMDb/TVDb ids, mass critic
 rating and genre updates, smart collections with labels, summaries and sort titles, and overlays
-(poster uploads). `tests/test_kometa.py` replays Kometa's requests; its 200 and 406 poster checks
+(poster uploads). `tests/test_tag_collections.py` replays Kometa's requests; its 200 and 406 poster checks
 fetch the recorded GitHub urls and skip offline.

@@ -100,7 +100,7 @@ pub(super) fn image_type(body: &[u8]) -> &'static str {
 }
 
 /// An artwork POST's bytes: its body, or with none what its `url` names. Measured on an online
-/// 1.43.5 (`tests/fixtures/kometa_collections_s1435.json`, Kometa's `url_poster`): the fetched
+/// 1.43.5 (`tests/fixtures/tag_collections_s1435.json`, a poster set by url): the fetched
 /// image is kept as an upload is, and an unreachable or loopback url is a 502, a page that is
 /// no image a 406. The offline copies could fetch nothing, which is why rex answered 406.
 pub(super) fn posted_artwork(request: &Request) -> Result<Vec<u8>, Response> {

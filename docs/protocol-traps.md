@@ -1838,7 +1838,7 @@ currently advertised by rex. A version label is not proof of complete PMS equiva
   `Connection: Keep-Alive` and really reusable. **The one refusal that CLOSES is the 400 for a query
   pair with no `=`**, and seventeen other 400s keep it alive.
 - **A `collection[0].tag.tag=` write naming no collection MAKES one** on an online 1.43.5, claimed
-  or not (2026-10-23, `tests/fixtures/kometa_collections_s1435.json`): Kometa builds every static
+  or not (2026-10-23, `tests/fixtures/tag_collections_s1435.json`): Kometa builds every static
   collection that way and gives up when `/all?type=18&title=` finds nothing. The offline copies
   (plexscratch 1.43.4, plexscratch42 1.42.2) made only the TAG, which rex copied from cycle 30 until
   then; whether the version or the missing network made the difference was not settled.

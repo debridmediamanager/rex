@@ -1042,8 +1042,8 @@ def main():
           and "Rex probe tag" in tags, ",".join(tags))
     # Cycle 30 measured on the two OFFLINE copies (plexscratch 1.43.4, plexscratch42 1.42.2)
     # that the tag write makes only a TAG. An online 1.43.5, claimed and unclaimed, makes
-    # the collection too (`fixtures/kometa_collections_s1435.json`, the section path; this
-    # item path was not re-measured), and Kometa's static collections depend on it.
+    # the collection too (`fixtures/tag_collections_s1435.json`, the section path; this
+    # item path was not re-measured), and static collections made by tag depend on it.
     _, collections, _ = get(base, "/library/sections/%s/collections" % movie_section)
     made = [c for c in collections.get("Metadata") or [] if c.get("title") == "Rex probe tag"]
     _, axis, _ = get(base, "/library/sections/%s/collection" % movie_section)
@@ -23643,7 +23643,7 @@ def main():
     # Cycle 30 measured on the two OFFLINE copies (plexscratch 1.43.4, plexscratch42 1.42.2)
     # that a `collection[0].tag.tag=` write on the section path makes only a TAG. An online
     # 1.43.5, claimed and unclaimed, makes the collection item too, at once
-    # (`fixtures/kometa_collections_s1435.json`; Kometa's static collections are this write).
+    # (`fixtures/tag_collections_s1435.json`; a static collection is made by this write).
     # The tag still appears on the row and in `/library/sections/{id}/collection`, and filters.
     before_c30g = len(get(base, "/library/all?type=18")[1].get("Metadata") or [])
     request(base, "PUT", "/library/sections/%s/all?type=1&id=%s"

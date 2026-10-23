@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Kometa's collections and collection posters, answered as a real PMS answers them.
+"""Collections made by a tag write and posters set by url, answered as a real PMS answers them.
 
-`fixtures/kometa_collections_s1435.json` is Kometa 2.5.3 run at a real, online PMS 1.43.5
+`fixtures/tag_collections_s1435.json` is Kometa 2.5.3 run at a real, online PMS 1.43.5
 (harness clips: Big Buck Bunny 1, Sintel 3, Firefly 6). Kometa makes a static collection
 with nothing but a tag write (`PUT /library/sections/{s}/all?collection[0].tag.tag=`), then
 looks the collection up by title (`/all?type=18&title=`) and gives up when it is not
@@ -13,7 +13,7 @@ and refused an unreachable or loopback url with 502 and a page that is no image 
 This replays Kometa's own requests in order against rex and compares what is per
 collection. The url poster's 200 and 406 fetch the recorded GitHub urls and skip offline.
 
-    python3 tests/test_kometa.py
+    python3 tests/test_tag_collections.py
 """
 import json
 import os
@@ -32,7 +32,7 @@ from test_ports import free_port
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
-FIXTURE = json.load(open(os.path.join(HERE, "fixtures", "kometa_collections_s1435.json")))["exchanges"]
+FIXTURE = json.load(open(os.path.join(HERE, "fixtures", "tag_collections_s1435.json")))["exchanges"]
 TOKEN = "kometa-token"
 # The titles Kometa made by tag write; its smart collections and separators are POSTs not replayed.
 TAGGED = ("Blender Films", "TMDb Sintel", "Space Westerns")

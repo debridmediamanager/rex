@@ -40,6 +40,11 @@ example or where a step is really about zurg. The zurg names left in rex (`test_
 which replays zurg's own requests, and the setup guides' zurg steps) are history, not precedent: do
 not add more. `--zurg-mount` was removed on 2026-10-23 for `--mount`.
 
+The same holds for the tools around rex (Ben, 2026-10-24): no code for Kometa, Bazarr, Whisparr or
+any other named client or tool. rex answers each as a real PMS does; when a tool fails, measure
+what Plex does for it and do that for every client. A recording of the tool's traffic is a
+fixture's provenance, and its test is named for the behavior (`test_tag_collections.py`).
+
 ## rex identifies nothing
 
 **rex has no identification of its own.** What a file is -- which film or show, which season
@@ -614,7 +619,7 @@ python3 tests/test_subtitles.py             # subtitle search, apply and automat
                                             # onto the audio, mojibake put back, the decision waiting; nothing asked unclaimed; needs ffmpeg
 python3 tests/test_accounts.py              # plexlab's owner and shared user replayed: per-account watch state, ratings, playlists,
                                             # history and sessions, a share's libraries, filters and flags, the owner's routes
-python3 tests/test_kometa.py                # Kometa's requests replayed from an online 1.43.5: a tag write makes its collection,
+python3 tests/test_tag_collections.py       # a metadata manager's requests replayed from an online 1.43.5: a tag write makes its collection,
                                             # a url poster is fetched (its 200/406 need raw.githubusercontent.com, else skip)
 python3 tests/parallel_suites.py --workers 4 test_cli test_feed ...
                                             # several suites at once, as CI runs them: each gets its own
