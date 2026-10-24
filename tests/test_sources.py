@@ -416,6 +416,42 @@ def part_redirect():
         shutil.rmtree(work, ignore_errors=True)
 
 
+def part_redirect_only():
+    """`--part-mode redirect-only`: rex carries no stream. A redirect still goes to the client, a
+    source answering with the bytes itself is refused, and conversion is off even with an FFmpeg
+    named, since every conversion reads its source through rex."""
+    work = tempfile.mkdtemp(prefix="rex-sources-redirect-only-")
+    root = os.path.join(work, "disk")
+    movie, episode = (dict(item(kind, ids=False), size=len(BODY)) for kind in ("movie", "episode"))
+    os.makedirs(os.path.join(root, os.path.dirname(movie["path"])))
+    open(os.path.join(root, movie["path"]), "wb").write(BODY)
+    disk_port = serve(functools.partial(http.server.SimpleHTTPRequestHandler, directory=root))
+    cdn_seen, front_seen = [], []
+    cdn_port = serve(cdn_handler(cdn_seen))
+    front_port = serve(front_handler(cdn_port, front_seen))
+    catalog(work)
+    ffmpeg = shutil.which("ffmpeg")
+    port, process, log = start(work, {
+        "disk": {"url": "http://127.0.0.1:%d" % disk_port},
+        "front": {"url": "http://localhost:%d/files" % front_port, "user": FRONT_USER, "password": FRONT_PASSWORD},
+    }, {"REX_TRANSCODER": ffmpeg} if ffmpeg else None, "--part-mode", "redirect-only")
+    try:
+        disk_part, front_part = push(port, "disk", movie), push(port, "front", episode)
+        status, headers, _ = unfollowed(port, front_part, headers={"Range": "bytes=100-199"})
+        check("redirect-only: a source's link still goes to the client",
+              status == 302 and headers.get("Location") == "http://localhost:%d/relative.mkv" % cdn_port, (status, headers))
+        status, headers, body = unfollowed(port, disk_part, headers={"Range": "bytes=100-199"})
+        check("redirect-only: a source answering with the bytes is refused, none of them sent",
+              status == 403 and BODY[100:200] not in body, (status, body[:80]))
+        logged = open(os.path.join(work, "server.log"), errors="replace").read()
+        check("redirect-only: conversion is off even with an FFmpeg named",
+              "transcoder off: --part-mode redirect-only" in logged and "transcoder: " not in logged,
+              [line for line in logged.splitlines() if "transcoder" in line])
+    finally:
+        stop(process, log)
+        shutil.rmtree(work, ignore_errors=True)
+
+
 def main():
     work = tempfile.mkdtemp(prefix="rex-sources-")
     disk_root = os.path.join(work, "disk")
@@ -555,6 +591,7 @@ def main():
         shutil.rmtree(work, ignore_errors=True)
     gated()
     part_redirect()
+    part_redirect_only()
     unregistered_rows()
     delete_source()
     failed = results.count(False)

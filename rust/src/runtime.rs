@@ -969,7 +969,13 @@ impl Runtime {
             pending_part: None,
             pending_file_checks: None,
             pending_segment: None,
-            transcoder: universal::Transcoder::from_env(options.port),
+            // `redirect-only` promises rex carries no stream, and every conversion reads its source.
+            transcoder: if options.part_mode == "redirect-only" {
+                info!("transcoder off: --part-mode redirect-only");
+                None
+            } else {
+                universal::Transcoder::from_env(options.port)
+            },
             downloads: Arc::new(Mutex::new(downloads::Downloads::default())),
             download_plan: None,
             pending_download: None,
@@ -22106,7 +22112,8 @@ impl Runtime {
             method: request.method.clone(),
             route: request.target.split('?').next().unwrap_or_default().to_string(),
             range: range.clone(),
-            redirect: self.part_mode == "redirect",
+            redirect: self.part_mode.starts_with("redirect"),
+            redirect_only: self.part_mode == "redirect-only",
         });
         response
     }
@@ -27593,6 +27600,8 @@ struct PartProxy {
     range: Option<String>,
     /// `--part-mode redirect`: a source's redirect to another origin goes to the client.
     redirect: bool,
+    /// `--part-mode redirect-only`: and a source answering with the bytes itself is refused.
+    redirect_only: bool,
 }
 
 /// A source lookup captured from the row while the runtime lock was held.  The result is
@@ -27740,6 +27749,10 @@ fn serve_part_proxy<S: Write>(
                 redirect.close = true;
                 wire::write_enveloped(stream, &redirect, envelope, keep)?;
                 return Ok(false);
+            }
+            Ok(upstream::Opened::Here(upstream)) if plan.redirect_only && upstream.status < 400 => {
+                info!("PART {part_id} range={} -> 403: the source answered with the bytes, not a link", plan.range.as_deref().unwrap_or("-"));
+                return refuse(stream, 403, "rex: this server only sends clients to a source's link");
             }
             Ok(upstream::Opened::Here(upstream)) => Ok(upstream),
             Err(error) => Err(error),
