@@ -171,7 +171,10 @@ impl Source {
     /// What the sources API answers for it: never a credential, only which kind it has.
     pub(crate) fn public(&self) -> Value {
         let auth = self.auth.as_deref().and_then(|auth| auth.split(' ').next()).map(str::to_ascii_lowercase);
-        let mut public = json!({"name": self.name, "url": self.base, "auth": auth, "mount": self.mount});
+        // `features`: what a source may lean on beyond the base contract -- `probe_digest`, an
+        // item's `probe` standing for a `media_info` rex keeps (`feed::upsert`, `wants`).
+        let mut public = json!({"name": self.name, "url": self.base, "auth": auth, "mount": self.mount,
+                                "features": ["probe_digest"]});
         if let Some(directories) = self.record.get("directories") {
             public["directories"] = directories.clone();
         }

@@ -184,7 +184,9 @@ episode season 1 of a show named after its release, in file order, until zurg pl
 reads no name: no pass at start renumbers, unfolds or moves a row, and the blank-tile retry asks
 again only for a row its source placed, by the ids it came with (older rows hold ids zurg's own
 Plex gave, an episode's among them, and stay as they are). An item
-with no `media_info` is held, not shown, until zurg probes it; a late placement re-identifies
+with no `media_info` is held, not shown, until zurg probes it, unless it brings a `probe` digest
+rex keeps for that version (`_probe`, `feed::probe_kept`; a mismatch answers `wants` and changes
+nothing, `docs/feed-api.md` "Probe digests"); a late placement re-identifies
 its row on the same key; a file that is gone is trashed as measured on plexscratch
 (`tests/fixtures/missing_file_scan_s43.json`: soft delete, deleted at once under
 `autoEmptyTrash`, back on its key until `emptyTrash`); a snapshot that names nothing, or

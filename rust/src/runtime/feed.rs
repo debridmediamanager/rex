@@ -63,6 +63,9 @@ struct Item {
     tmdb: Option<String>,
     ids: Map<String, Value>,
     media_info: Option<Value>,
+    /// What the source calls this file's `media_info` (`probe`): kept on its version, so a later
+    /// push may leave the probe out while it is the same (`wants`).
+    probe: Option<String>,
     /// The source's explicit movie edition; absent preserves it, empty clears it.
     edition: Option<String>,
     /// Where the provider lists the file inside its release; `""` at its top level, `None`
@@ -312,6 +315,7 @@ impl Item {
             library: value.get("library").map(string_value).filter(|v| !v.is_empty() && v != "null"),
             size: value.get("size").and_then(Value::as_u64).filter(|size| *size > 0).or_else(|| probed_size(value)).unwrap_or(0),
             hash: text("hash").map(|hash| hash.to_ascii_lowercase()),
+            probe: text("probe").filter(|probe| probe.len() <= 128),
             tmdb: id_text("tmdb"),
             folder: value.get("folder").and_then(Value::as_str).map(|folder| folder.trim_matches('/').to_string()),
             // A probe with no streams is no probe: Plex Web will not play such an item
@@ -342,7 +346,7 @@ impl Item {
             release: self.name.clone(),
             release_path: folder,
             entry: json!({"hash": self.hash, "imdb_id": self.imdb, "tmdb_id": self.tmdb,
-                          "size": self.size, "media_info": self.media_info}),
+                          "size": self.size, "media_info": self.media_info, "probe": self.probe}),
             extra: Map::from_iter([
                 ("_source".to_string(), json!(source)),
                 ("_sid".to_string(), json!(self.id)),
@@ -389,6 +393,9 @@ struct Counts {
     held: usize,
     unchanged: usize,
     rejected: Vec<Value>,
+    /// Items sent with a `probe` and no `media_info` whose probe rex needs: applied by none of
+    /// their fields until the source sends them again with it.
+    wants: Vec<String>,
 }
 
 impl Counts {
@@ -400,6 +407,9 @@ impl Counts {
             ("unchanged".to_string(), json!(self.unchanged)),
             ("rejected".to_string(), json!(self.rejected)),
         ])
+        .into_iter()
+        .chain((!self.wants.is_empty()).then(|| ("wants".to_string(), json!(self.wants))))
+        .collect()
     }
 }
 
@@ -813,6 +823,22 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
             let mut existing = rows.get(&item.id).map(|key| (key.clone(), false)).or_else(|| {
                 legacy.get(&item.file).map(|key| (key.clone(), true))
             });
+            // Sent by its digest alone: applied only where rex needs no probe, else asked for
+            // whole. A snapshot sent every file's probe every six hours for rows that already had
+            // it: 41,549 items, about 400 MB, all but 2% unchanged (the production server, 2026-10-24).
+            if let (None, Some(probe)) = (&item.media_info, &item.probe) {
+                // A person's match keeps its row whole: no extra or version leaves it.
+                let kept = existing.as_ref().is_some_and(|(key, legacy)| {
+                    !legacy && guard.catalog.get(key).is_some_and(|row| {
+                        let (same, splits) = probe_kept(row, &source.name, &item, probe);
+                        same && (!splits || guard.matched_by_hand(row))
+                    })
+                });
+                if !kept && !retry {
+                    counts.wants.push(item.id.clone());
+                    continue;
+                }
+            }
             // A new id whose file another id of this source already reads made no row and was
             // counted nowhere: re-pushing files under new ids looked like a push that did nothing
             // (rex-fun, 2026-10-23). A file is one row's, so the new id is refused, naming the holder.
@@ -2179,6 +2205,14 @@ impl Runtime {
                     if index == 0 { object.insert("_hash".to_string(), json!(hash)); }
                 }
                 changed = true;
+            }
+        }
+        if let (Some(probe), Some(_)) = (&item.probe, &item.media_info) {
+            if row.pointer(&format!("/Media/{index}/_probe")).and_then(Value::as_str) != Some(probe.as_str()) {
+                if let Some(media) = self.catalog.get_mut(key).and_then(|row| row.get_mut("Media")).and_then(|media| media.get_mut(index)).and_then(Value::as_object_mut) {
+                    media.insert("_probe".to_string(), json!(probe));
+                    changed = true;
+                }
             }
         }
         let tagged = row.pointer(&format!("/Media/{index}/_sid")).is_some();
@@ -3630,4 +3664,22 @@ fn stream_layout(media: &Value) -> Vec<(i64, String)> {
     crate::catalog::part_streams(&part).iter()
         .filter_map(|stream| Some((stream.get("index")?.as_i64()?, stream.get("codec").and_then(Value::as_str).unwrap_or_default().to_string())))
         .collect()
+}
+
+/// Whether `row` can take `item` without its probe: whether the version `item` names keeps the
+/// same `probe` with nothing on the row waiting for one, and whether the item would turn into a
+/// row of its own -- an extra out of a title, or a version leaving a row of several for other
+/// numbers (`upsert`), which a person's match prevents -- which needs it.
+fn probe_kept(row: &Value, source: &str, item: &Item, probe: &str) -> (bool, bool) {
+    let index = versions(row).into_iter().find(|(of, sid, _)| of == source && *sid == item.id).map(|(_, _, index)| index);
+    let same = index.is_some_and(|index| {
+        !row.get("_probePending").is_some_and(truthy)
+            && row.pointer(&format!("/Media/{index}/_probe")).and_then(Value::as_str) == Some(probe)
+    });
+    let titled = matches!(row.get("type").and_then(Value::as_str), Some("episode" | "movie"));
+    let here = row.get("parentIndex").and_then(Value::as_i64).zip(row.get("index").and_then(Value::as_i64));
+    let leaves = super::scan::placed_numbers(item.placed.as_ref()).is_some_and(|numbers| {
+        row.get("type").and_then(Value::as_str) == Some("episode") && versions(row).len() > 1 && here != Some(numbers)
+    });
+    (same, item.extra.is_some() && titled || leaves)
 }

@@ -66,7 +66,9 @@ one of that name, and the next part read streams from what it names, without a r
 Sending the same registration again changes nothing, so a source can send it every time it
 starts a push session; zurg does. Answers `200` with the source as `GET` shows it, or `400`
 `{"error": ...}` for a bad name, a url that is not http(s) or carries credentials, or a body
-that is not a JSON object; a refused registration changes nothing.
+that is not a JSON object; a refused registration changes nothing. The answer's `features`
+lists what this rex takes beyond the items below, so a source can tell before it relies on one:
+`probe_digest` ([Probe digests](#probe-digests)). A rex without `features` takes none.
 
 A malformed `directories` entry never refuses the source: one typo in a config would stop its
 whole feed. The entry is left out, the rest register, and the `200` answers each one left out
@@ -172,7 +174,9 @@ few hundred items and allow minutes per request.
 ```
 
 Answers `200` with what happened:
-`{"created": 1, "updated": 0, "held": 1, "unchanged": 0, "rejected": [{"id": "...", "reason": "..."}]}`.
+`{"created": 1, "updated": 0, "held": 1, "unchanged": 0, "rejected": [{"id": "...", "reason": "..."}]}`,
+plus `"wants": [id, ...]` when an item sent by its `probe` alone has to come whole
+([Probe digests](#probe-digests)).
 The log names each rejected item and why, `FEED {source} rejected {id}: {reason}`.
 
 ### `DELETE /rex/feed/{source}/items` -- remove
@@ -212,6 +216,22 @@ the session: every id of this source that no chunk of the session named is remov
 
 Answers the upsert counts, plus `"seen"` (ids so far in the session) and, on the final
 chunk, `"removed": {"trashed": n, "deleted": n, "released": n}`.
+
+### Probe digests
+
+A source may name an item's probe instead of sending it: `probe` is a short string of its own
+choosing (at most 128 characters) that changes whenever the probe does, such as a hash of the
+`media_info` it would send. Sent beside `media_info`, rex keeps it with that file version. Sent
+without `media_info`, the item is applied as it is, every other field included, when rex holds
+that version with the same `probe`. Otherwise -- a new item, a changed probe, a version kept
+from before digests, or a file that would leave its row (an extra, a version renumbered apart)
+-- rex changes nothing of the item and answers its id in `wants`: push it again with its
+`media_info`. A snapshot counts a wanted item as named, so it is never removed for it.
+
+A snapshot of a library that rarely changes then sends almost no probes, where it used to send
+every one. Only a rex whose registration answers `features: ["probe_digest"]` takes it; a
+source sending `probe` alone to an older one gets its items held. An item with no `probe` is
+handled as before.
 
 ### `GET /rex/feed/{source}/items` and `GET /rex/feed/{source}/held`
 
@@ -257,6 +277,7 @@ The `media_info` above is cut down to show its shape. Send ffprobe's whole outpu
 | `file` | no | Only the path clients see in Get Info (`<mount>/<directory>/<release>/<file>`). Default `<mount>/<path>`, or `/<path>` without a mount |
 | `library` | no | A section key, or `movie`/`show`. Default: the library whose `Location` holds `file`, else one with a folder ending in a directory `path` starts with (`/mnt/zurg/movies` holds `movies/...` whatever prefix `file` has); with a type, that type's library holding `file`, else its first; a folder no library holds goes to the first library of its `kind` (Movies without one). With no `library`, an item placed as an episode that a movie library would take goes to a show library -- one holding its folder ([a declared directory's](#libraries-a-source-declares)), else the one beside it -- and one placed as a movie that a show library would take goes to a movie library, one holding its folder first; a row already shown moves when its library changes |
 | `folder` | no | The folder the provider lists the file in inside its release (`Smallville/Stagione 6`), `""` at its top level. Kept on the row; nothing reads it as an extra |
+| `probe` | no | The probe's digest, kept per Media version; with it `media_info` may be left out ([Probe digests](#probe-digests)) |
 | `hash` | no | The release's content/info hash, kept per Media version. A changed hash invalidates that version's measured subtitle reference and generated analysis; it never borrows another version's hash |
 | `display` | no | What the title is called and looks like, for what no metadata agent knows: see **Display** below. Shown only while nothing identifies the row |
 | `subtitles` | no | The subtitle files beside it at the source, each an external subtitle of this file's Part: see **Subtitles** below. Absent or `null` keeps the row's; `[]` removes them |

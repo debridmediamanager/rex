@@ -396,8 +396,10 @@ def main():
         }
         answers = {name: register(port, name, body) for name, body in sources.items()}
         check("a registration answers the source", all(status == 200 for status, _ in answers.values())
-              and loads(answers["front"][1]) == {"name": "front", "url": sources["front"]["url"], "auth": "basic"}
-              and loads(answers["disk"][1]) == {"name": "disk", "url": sources["disk"]["url"]}, answers)
+              and loads(answers["front"][1]) == {"name": "front", "url": sources["front"]["url"], "auth": "basic",
+                                                 "features": ["probe_digest"]}
+              and loads(answers["disk"][1]) == {"name": "disk", "url": sources["disk"]["url"], "features": ["probe_digest"]},
+              answers)
         status, again = register(port, "front", sources["front"])
         check("registering the same again answers the same", status == 200 and again == answers["front"][1], again)
         status, listed = call(port, "/rex/sources")

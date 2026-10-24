@@ -149,10 +149,11 @@ jobs:
             test_body_framing test_catalog_features test_parity_split_guid test_merge_unpaired test_parity_cycle88_b test_sidecars_embedded'
 
       # A restart over a saved state, and the memory it takes: one after the other, outside the
-      # parallel ranges, which the list above fills (test_perf_memory reads /proc).
+      # parallel ranges, which the list above fills (test_perf_memory reads /proc). Probe digests
+      # too: the list has no range left.
       - name: State restore suites
         run: |
-          .github/ci/in-image.sh 'python3 tests/test_persist.py && python3 tests/test_perf_memory.py'
+          .github/ci/in-image.sh 'python3 tests/test_persist.py && python3 tests/test_perf_memory.py && python3 tests/test_feed_probe_digest.py'
 
       # No GPU in the container: this is the CPU (x264) path, with the hardware probe on auto.
       # The pinned FFmpeg is kept beside the cargo cache, so it downloads once per pin.
