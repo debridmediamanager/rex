@@ -16,6 +16,7 @@ import sys
 import tempfile
 import urllib.parse
 
+import test_feed_probe_changed
 from test_feed import BODY, MOUNT, Bytes, Server, catalog, check, results, serve
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -160,6 +161,8 @@ def main():
     finally:
         server.stop()
     shutil.rmtree(work, ignore_errors=True)
+    # An addon's playlist that comes back with other streams (test_feed_probe_changed.py).
+    test_feed_probe_changed.run()
     print("\n%d/%d passed" % (sum(results), len(results)))
     return 0 if all(results) else 1
 

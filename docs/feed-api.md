@@ -346,7 +346,8 @@ What the fields do:
   so. Such a Part is never direct played; a client's read of it is sent to a conversion.
   One whose probe has no duration is a live channel (a Stremio addon's TV): its conversion's
   playlist grows as the broadcast goes on, with no end, and the row keeps no resume point
-  and is never marked watched.
+  and is never marked watched. A later push of an `.m3u8` id whose probe has its streams at
+  other indexes or of other codecs (the channel from another mirror) replaces the row's streams.
 - **One file, one id.** A new `id` whose `file` another id of the same source already has, in
   rex or earlier in the same push, is rejected as `<file> is already <id>'s file`. To change
   an item's id, push it with a file of its own, or remove the old id first.

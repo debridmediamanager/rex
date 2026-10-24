@@ -49,7 +49,7 @@ pub(super) struct Arrival {
     pub numbers: Option<(i64, i64)>,
 }
 
-fn extension(file: &str) -> String {
+pub(super) fn extension(file: &str) -> String {
     file.rsplit_once('.')
         .map(|(_, extension)| extension.to_ascii_lowercase())
         .filter(|extension| (2..=5).contains(&extension.len()))

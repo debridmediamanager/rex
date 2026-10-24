@@ -16,7 +16,7 @@
 //! Each Media of such a row carries its own `_source`, `_sid` and `_path`, and the row's
 //! own are always its first Media's.
 
-use super::scan::{is_sample, name_release, row_files, under, Arrival, Found, Library};
+use super::scan::{extension, is_sample, name_release, row_files, under, Arrival, Found, Library};
 use super::source::{is_video, Source};
 use super::*;
 use std::collections::BTreeMap;
@@ -2293,6 +2293,29 @@ impl Runtime {
                 probed.push((key.to_string(), probe.clone()));
                 changed = true;
             }
+        } else if let (Some(probe), Some([old]), true) =
+            (&item.media_info, row.get("Media").and_then(Value::as_array).map(Vec::as_slice), item.path.ends_with(".m3u8"))
+        {
+            // A playlist probed with streams at other indexes or of other codecs is another stream
+            // under the same id: a Stremio addon's live channel back from another mirror
+            // (2026-10-24). The conversion maps tracks by these indexes, so the row takes the new
+            // streams. Only a playlist: a file does not change under its id, and building every
+            // pushed file's Media to compare would cost each push of a large library.
+            let part = old.pointer("/Part/0").cloned().unwrap_or_default();
+            let file = part.get("file").and_then(Value::as_str).unwrap_or_default();
+            let fresh = mediainfo::build_media(
+                probe,
+                old.get("id").and_then(Value::as_i64).unwrap_or(0),
+                part.get("id").and_then(Value::as_i64).unwrap_or(0),
+                part.get("key").and_then(Value::as_str).unwrap_or_default(),
+                file,
+                part.get("size").and_then(Value::as_i64).unwrap_or(0),
+                Some(&extension(file)),
+            );
+            if stream_layout(&fresh) != stream_layout(old) {
+                probed.push((key.to_string(), probe.clone()));
+                changed = true;
+            }
         }
         if let Some(display) = &item.display {
             changed |= self.redress(key, display);
@@ -3598,4 +3621,13 @@ mod tests {
                 .find(|file| file.split('/').nth(3) == Some(folder)).unwrap().to_string()
         }
     }
+}
+
+/// A Media's embedded streams as the conversion addresses them: index and codec. A stored
+/// Part holds them packed (`catalog::part_streams`).
+fn stream_layout(media: &Value) -> Vec<(i64, String)> {
+    let part = media.pointer("/Part/0").cloned().unwrap_or_default();
+    crate::catalog::part_streams(&part).iter()
+        .filter_map(|stream| Some((stream.get("index")?.as_i64()?, stream.get("codec").and_then(Value::as_str).unwrap_or_default().to_string())))
+        .collect()
 }
