@@ -213,6 +213,11 @@ def main():
     shutil.copy(os.path.join(ROOT, CATALOG), os.path.join(scratch, "catalog.json"))
     process, port = serving("--port", "PORT", "--catalog", "catalog.json", "--state", "rex.db", "--gdm", "off",
                             "--assert-claimed", cwd=scratch)
+    # A write saves the state at once: stopping a server on Windows kills it before any save.
+    if port:
+        urllib.request.urlopen(urllib.request.Request("http://127.0.0.1:%d/:/prefs?FriendlyName=Older" % port,
+                                                      method="PUT"), timeout=10).read()
+        poll_until(lambda: os.path.exists(os.path.join(scratch, "rex.db")), 10)
     stop(process)
     check("an older default start keeps its state in rex.db beside catalog.json",
           port is not None and os.path.exists(os.path.join(scratch, "rex.db")), (port, os.listdir(scratch)))
