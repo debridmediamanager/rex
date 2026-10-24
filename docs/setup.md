@@ -17,7 +17,6 @@ HTTPS address. rex starts once (step 4), and nothing after that needs a restart.
 | A Linux, macOS or Windows host | rex is one binary with no other runtime dependencies |
 | rex nightly 2026.10.25 or newer | download it (README step 1), or build it with Rust 1.89 or newer (rustup) or Docker (below) |
 | One or more byte sources | [zurg](https://github.com/debridmediamanager/zurg) nightly 2026.10.22 or newer (zurg v1.0.0 has no rex feed), or any HTTP server that serves the files plus something that pushes them to rex's feed |
-| Your Plex account token | not needed: rex uses the server token the claim (step 5) gives it |
 | An HTTPS address | only for use outside your LAN and in app.plex.tv: rex-direct, on by default once claimed (step 7), or a certificate for a hostname you control (a `tailscale cert`, Let's Encrypt) |
 | FFmpeg | optional, for [transcoding](#transcoding) |
 
@@ -51,14 +50,11 @@ zurg does both with nothing but `rex_url` in its `config.yml` (step 6), and says
 is from its name; add `dmm_api_key` so DMM says it instead. Anything else registers and pushes the same way:
 [`docs/feed-api.md`](feed-api.md) is the full contract, for writing a pusher of your own.
 
-Registering and pushing take no token, claimed or not, so a source may name rex by address
-or host name. They answer only this machine, your home network and Tailscale (private,
-100.64/10 and link-local addresses): any other address gets the answer a path that does not
-exist gets, so the source API cannot be found from the internet. So forwarding rex's port
-for rex-direct (step 7) puts Plex's API on the internet, which needs a token once rex is
-claimed, but not the feed. A reverse proxy on rex's own machine looks local to rex, so block
-`/rex/` in it. A router that gives outside visitors its own address makes them look local too, which
-opens the feed to the internet ([`docs/feed-api.md`](feed-api.md), "Who may call it").
+Registering and pushing take no token, so a source may name rex by address or host name.
+They answer only this machine, your home network and Tailscale, so forwarding rex's port for
+rex-direct (step 7) does not open them to the internet. A reverse proxy on rex's own machine
+looks local to rex, so block `/rex/` in it. A router that gives outside visitors its own
+address makes them look local too, which opens the feed to the internet.
 
 `DELETE /rex/sources/<name>` removes a source and everything it pushed from rex, after a
 confirmation ([`docs/feed-api.md`](feed-api.md)).
@@ -90,9 +86,7 @@ An open Plex Web lists them at once under More in its sidebar, where you can pin
 other directory stays in Movies and TV Shows. Rename the libraries in Plex as you like.
 Delete one and it stays deleted, its directory going back to Movies and TV Shows, until
 you add it again with Add Library, whose folder list shows the directories zurg sent. Removing
-the lines from zurg's config keeps the library, and a mistyped entry is skipped and named in
-zurg's log (or rex's, for one rex refuses), the rest still applied
-([feed API](feed-api.md#libraries-a-source-declares)).
+the lines from zurg's config keeps the library.
 
 rex keeps everything clients change (watch state, edits, playlists, collections,
 history, preferences), and each source's registration, in the same `rex.db`, written as it
@@ -108,10 +102,8 @@ rust/target/release/rex
 
 `<rex's LAN IP>` below is the rex machine's address on your home network, such as `192.168.1.20`
 (`hostname -I` on Linux). Every command in this guide uses it, from the rex machine or anywhere
-else at home: an unclaimed rex takes its claim from private addresses, a claimed one checks tokens instead.
-An unclaimed rex logs `waiting for a claim`; once claimed (step 5) it tells plex.tv its LAN
-address, so Plex apps signed in as you reach it at home, and starts rex-direct (step 7). With an
-HTTPS address of your own (step 7), its flags go here too: a flag or key added later needs a restart.
+else at home. With an HTTPS address of your own (step 7), its flags go here too: a flag or key
+added later needs a restart.
 
 Plex Media Server runs on the same machine? Add `--port 32500` and use `32500` wherever this
 guide says `32400`, the claim and step 7's port forward included (see LAN discovery below).
@@ -120,16 +112,10 @@ The first lines of the log say whether it seeded the catalog, name each source i
 knows (`source rd: registered, feed at /rex/feed/rd/`, or `no source yet`) and the state
 file.
 
-- **What a title looks like comes from Plex.** rex exchanges the ids its source pushed for Plex's
-  own guid and shows what Plex's metadata agent says of it: titles, summaries, posters, seasons
-  and episode names. Plex's agent is asked with the token the claim (step 5) gives rex.
-- **What a file is comes from the source.** zurg with a sponsor `dmm_api_key` asks DMM what each
-  file is and pushes it placed: the title's ids and, for an episode, TMDB's season and episode,
-  anime and long shows included. Without the key zurg reads it off the release name: the title
-  through DMM's free title search, the season and episode from the file name. rex reads nothing
-  off a name. A file pushed without a placement
-  is unmatched, for Fix Match: a film titled as its file, an episode in a show named after its
-  release, season 1, numbered in the release's file order until the source places it.
+Titles, summaries, posters and episode names come from Plex's own metadata once rex is claimed
+(step 5). Which film or episode a file is comes from its source (step 6); rex reads nothing off a
+name. A file its source did not place shows unmatched, for Fix Match: a film titled as its file,
+an episode in a show named after its release, numbered in file order.
 
 Check it answers:
 
@@ -144,14 +130,10 @@ curl -s http://<rex's LAN IP>:32400/rex/feed/rd/items       # what rd pushed, on
   must let those two ports in. On another port beside a Plex on the same host it leaves
   discovery to that Plex. Signed-in apps find a claimed rex through the Plex account it is
   shared with either way.
-- **Who may connect.** Until it is claimed (step 5), rex serves no Plex app: it answers
-  `/identity`, the source API (step 2) and the claim, and takes the claim only from this
-  machine and private addresses (10.x, 172.16-31.x, 192.168.x, IPv6 fc00::/7), as an
-  unclaimed Plex Media Server does. Tailscale's 100.x addresses and anything arriving through
-  a proxy with a public `X-Forwarded-For` are refused, and so is a request whose `Host` is a
-  hostname rather than localhost or the address it reached: use `http://<rex's LAN IP>:32400`.
-  Once claimed it accepts only its own token and the tokens plex.tv lists for it, as a real
-  Plex Media Server does.
+- **Who may connect.** Until it is claimed (step 5), rex serves no Plex app and takes its
+  claim only from this machine and your home network, addressed by IP: use
+  `http://<rex's LAN IP>:32400`, not Tailscale, a host name or a proxy. Once claimed it accepts
+  only the tokens plex.tv lists for it, as a real Plex Media Server does.
 
 ### 5. Claim it, so it appears in your Plex apps
 
@@ -164,9 +146,8 @@ file names for a while.
 
 Claiming registers the server on the Plex account you claim with, the same way a real Plex
 Media Server is claimed. **Do it once per server.** The claim is saved in `claim_state.json`
-beside the catalog and survives restarts. Keep a backup of that file: a lost claim
-means claiming again, and a claim gone wrong has signed every other server on the
-account out of plex.tv before.
+beside `rex.db` and survives restarts. Keep a backup of that file: a lost claim
+means claiming again.
 
 1. Open [plex.tv/claim](https://www.plex.tv/claim) signed in as the fresh account and copy
    the `claim-...` token. It is valid for about five minutes.
@@ -177,7 +158,7 @@ account out of plex.tv before.
    ```
 
 3. `curl -s http://<rex's LAN IP>:32400/identity` now reports `claimed="1"`, and
-   `claim_state.json` exists beside the catalog.
+   `claim_state.json` exists beside `rex.db`.
 4. Still as the fresh account, share rex with your own account in app.plex.tv (Settings,
    Manage Library Access, Grant Library Access, every library) and accept the invite as
    yourself.
@@ -206,8 +187,7 @@ directory that is to be a library of its own gets `rex_shows`/`rex_movies` under
 
 rex's LAN IP works from the same machine, another one and a container alike. Restart
 zurg. Once its library has loaded it registers with rex, pushes everything it holds, then
-each change as it happens, and the whole library again
-every `rex_snapshot_every_hours` (6), registering again at the start of each. Watch it
+each change as it happens. Watch it
 arrive in rex's log (`SOURCES rd registered ...`, `FEED POST /rex/feed/rd/items -> 200`) and with the
 `/rex/sources` and `/rex/feed/rd/items` calls above.
 
@@ -237,8 +217,8 @@ way rex terminates TLS itself, on the same port as plain HTTP.
   `<hash>.rex-direct.debridmediamanager.com` from DMM, pointed at your public IP, and a
   certificate for it, the first one in a few minutes (rex logs that it is being issued), and
   announces it. The log says `rex-direct: https://<name>:32400 -> <ip>`. A new public IP and a
-  renewed certificate are picked up without a restart. Keep `rex-direct.json` beside the
-  catalog private: it holds the certificate's key. One Plex account can hold up to ten
+  renewed certificate are picked up without a restart. Keep copies of `rex-direct.json`
+  private: it holds the certificate's key. One Plex account can hold up to ten
   rex-direct names. Behind CGNAT it cannot work. At home, Plex apps can pick that name over
   the LAN address, and app.plex.tv has no other address it can use unless you announce an
   HTTPS address of your own. So at home either the router loops the connection back to rex
@@ -247,8 +227,7 @@ way rex terminates TLS itself, on the same port as plain HTTP.
   `REX_DIRECT_URL=off` turns rex-direct off.
 - **Your own hostname**: `--tls-cert host.crt --tls-key host.key`. The key can be PKCS#8,
   RSA or EC (`BEGIN EC PRIVATE KEY`, which `tailscale cert` and many ACME clients write). A
-  `tailscale cert` hostname works for apps on your tailnet. With rex-direct as well, rex
-  serves the rex-direct certificate to clients that ask for its name and yours to the rest.
+  `tailscale cert` hostname works for apps on your tailnet, and works beside rex-direct.
 
 Check rex-direct from both sides with the address from the `rex-direct: https://...` log line:
 `curl -s https://<name>:<port>/identity` (curl refuses a bad certificate) should answer on a
@@ -387,7 +366,7 @@ NVIDIA card needs the NVIDIA container toolkit and `gpus: all` instead; untested
 | The log says `waiting for a claim` | The server is not claimed: claim it (step 5) and it announces at once |
 | The log says `rex-direct: registration failed: HTTP 401` or `403` | The provider could not confirm the claim with plex.tv: the server was removed from its Plex account, or claim it again (step 5) |
 | The log says `rex-direct: registration failed: HTTP 429` | That Plex account already holds ten rex-direct names: claim this rex with another account, or use your own hostname (step 7) |
-| A second server on the same catalog exits 1 | The state file is locked by the first: one catalog per server |
+| A second rex started in the same folder exits 1 | `rex.db` is locked by the first: give each server a folder of its own, or use `rex manager` (below) |
 
 ### Running several servers: rex manager
 
@@ -398,8 +377,8 @@ running when the manager stopped is running again when it starts.
 
 ```bash
 rex manager serve                        # API + page on http://127.0.0.1:32300; prints the admin token once
-rex manager create den --port 32401      # an empty library; a source such as zurg fills it once its rex_url names the port
-rex manager start den
+rex manager create den --port 32401      # a source such as zurg fills it once its rex_url names the port
+rex manager start den                    # its first start makes its empty library, as a plain rex does
 rex manager list                         # status | logs | stop | restart | delete [--purge]
 ```
 
@@ -449,28 +428,29 @@ WantedBy=multi-user.target
 These work even when the claiming account is free. An app's own checks, such as its Downloads
 eligibility, still apply. Music, Live TV and DVR are not supported.
 
-| Capability | What rex implements |
+| Capability | What you get |
 |---|---|
-| Movie editions | Edit the edition in Plex Web, or have a source send `edition_title`. Different editions remain separate movies; versions of the same edition fold together. No filename parsing |
-| Dashboard | Measured CPU and memory, delivered-byte bandwidth, account-separated plays and completion history. Unsupported OS counters are omitted, not invented |
-| Downloads | Account-owned queues, original bytes or real FFmpeg conversions, Range reads, cancellation and restart recovery. A share needs download permission; local restrictions can only reduce it |
-| Intro and credits skipping | Real local analysis with FFmpeg. Repeated opening pictures across source-placed episodes of one season identify intros; dark rolling-text endings and authored chapters identify credits. Ambiguous material gets no marker |
-| Chapter and seek thumbnails | JPEGs at source-provided chapter boundaries and 10-second seek previews, including a Roku BIF index. Authenticated byte ranges and checksummed artifacts survive a restart |
-| Subtitle adjustment | Uploaded and embedded text can be checked against the selected file's text or measured audio. Analyze prepares voice-activity eligibility; silence or an uncertain match is not advertised as successfully synchronized |
-| Hardware and HDR controls | "Use hardware acceleration when available" turns all GPU use on or off; with it on, "Use hardware-accelerated video encoding" turns off only the GPU encoder. HDR tone mapping and its selected algorithm affect the actual conversion; capabilities follow the installed FFmpeg probe |
-| Audio enhancement | Supported FFmpeg filters implement dialogue enhancement and loudness normalization. Requested processing encodes audio and can preserve copied video. Stereo dialogue enhancement is reported as stereo |
-| Remote limits | Per-user stream count and per-stream/total upload budgets use the actual connection, not a client's `location` claim. Concurrent starts reserve capacity; impossible bitrate budgets are refused |
-| Sharing and webhooks | Local owner controls can tighten content-rating/label filters and Downloads permission, and configure real multipart webhooks without the cloud subscription UI |
-| Cinema trailers and pre-rolls | Queues can prepend trailers supplied by your sources and exact registered media paths. No online theater or Blu-ray trailer catalog is fetched |
+| Movie editions | Set an edition in Plex's edit dialog, or have a source send `edition_title`. Different editions stay separate movies; versions of one edition fold together |
+| Dashboard | CPU, memory, bandwidth and each account's plays and history |
+| Downloads | The Plex apps' Downloads, as the original file or converted with FFmpeg. A shared account needs download permission |
+| Intro and credits skipping | With FFmpeg and [analysis](#analysis-and-disk-use): an intro is found from the opening a season's episodes share, credits from rolling text or chapters. When unsure rex adds no marker |
+| Chapter and seek thumbnails | With FFmpeg and [analysis](#analysis-and-disk-use): chapter images and seek previews, Roku included |
+| Subtitle adjustment | Auto Sync for uploaded and embedded text subtitles ([Subtitles](#subtitles)) |
+| Hardware and HDR controls | Plex's transcoder settings ([Transcoding](#transcoding)) |
+| Audio enhancement | Normalize Loudness and Boost Dialog ([Transcoding](#transcoding)) |
+| Remote limits | Per-user stream counts and upload bandwidth limits, measured on the real connection |
+| Sharing and webhooks | Rating and label filters and Downloads permission per share, and webhooks ([Local owner controls](#local-owner-controls)) |
+| Cinema trailers and pre-rolls | Trailers your sources supply, and pre-rolls (below). No online trailer catalog |
 
 ### Analysis and disk use
 
-Set up [FFmpeg](#transcoding) first. Analyze on an item or library queues real work and reports
-its progress in Activities. Generation defaults to off to avoid reading a large remote library
-unasked. The Library preferences `GenerateIntroMarkerBehavior`, `GenerateCreditsMarkerBehavior`,
-`GenerateChapterThumbBehavior` and `GenerateBIFBehavior` support manual generation or opt-in
-generation when source items are added. Per-library switches limit that automatic generation; Analyze always runs what you ask for.
-There is no nightly scheduler; a corresponding Butler task runs only when requested.
+Set up [FFmpeg](#transcoding) first. Analyze on an item or library runs the analysis and shows
+its progress in Activities. In Settings, Library, **Generate intro video markers**, **Generate
+credits video markers**, **Generate chapter thumbnails** and **Generate video preview
+thumbnails** are set to "manual analysis only" by default, so rex does not read a large remote
+library unasked; set to "when media is added", they run as sources add items, unless a library's
+own settings turn that off. Nothing runs
+on a schedule.
 
 Analysis reads source media, consumes CPU and stores generated files in a folder beside
 `rex.db`, as do Downloads; keep that disk writable and back the folders up with `rex.db`.
@@ -491,10 +471,9 @@ Use `X-Plex-Token` for authentication and `Content-Type: application/json` for J
 | `GET`, `PUT`, `DELETE /rex/webhooks` | PUT `{"urls":["https://your-endpoint.example/webhook"]}`; delivery includes the event JSON and a thumbnail when available |
 | `GET`, `PUT`, `DELETE /rex/shares/{accountID}/restrictions` | PUT `{"filterMovies":"contentRating=G,PG","filterTelevision":"label!=Hidden","allowSync":false}`. Omitted fields impose no extra restriction; DELETE removes the local layer, never expands the cloud grant |
 
-Cinema pre-rolls use the Extras preference `CinemaTrailersPrerollID`: exact registered Part
-paths, commas for an ordered sequence or semicolons for a random choice. Clients must opt in
-to cinema trailers. Missing or inaccessible pre-rolls are refused rather than replaced with
-another file version.
+Pre-rolls go in Settings, Extras, **Movie pre-roll video**: the files' paths as Get Info shows
+them, commas to play them in order, semicolons to pick one at random. The app has to have
+cinema trailers turned on.
 
 ## Transcoding
 
@@ -520,9 +499,8 @@ Vision profile 5, and subtitles drawn on the GPU. Which file depends on the mach
 | Any other Linux | `..._portable_linux64-gpl.tar.xz` (`linuxarm64` on ARM) | `ffmpeg/ffmpeg` in rex's folder |
 
 The `.deb` lands in `/usr/lib/jellyfin-ffmpeg` beside any system FFmpeg and carries its own
-Intel driver; it needs no `LIBVA_DRIVER_NAME` (encoding and OpenCL measured without it on
-Skylake and Gemini Lake, 2026-10-22). Use the package, not a copy unpacked elsewhere: on a
-J4105 (2026-10-17) a `dpkg -x` copy fell back to the system's older iHD, which could not
+Intel driver; it needs no `LIBVA_DRIVER_NAME`. Install the package rather than unpacking it
+elsewhere: an unpacked copy falls back to the system's older Intel driver, which may not
 convert 10-bit HEVC.
 
 ```bash
@@ -553,10 +531,10 @@ Downloaded with `curl` they carry no macOS quarantine; one downloaded in a brows
 `xattr -dr com.apple.quarantine .` the rex download does. Where each one converts on the GPU
 is the [platform table](#by-platform) below: Windows uses only an NVIDIA card and macOS never the
 GPU, whatever the FFmpeg. The Linux portable build reaches the GPU through the system's own
-VA-API library: Ubuntu 22.04's is too old for it (`vaMapBuffer2`, measured on an HD 510,
-2026-10-22) and it converts on the CPU there, so use the `.deb` wherever there is one.
+VA-API library: Ubuntu 22.04's is too old for it and it converts on the CPU there, so use the
+`.deb` wherever there is one.
 
-Another FFmpeg converts ordinary video, and rex's log says what it lacks. Measured 2026-10-22:
+Another FFmpeg converts ordinary video, and rex's log says what it lacks:
 
 | FFmpeg | Lacks |
 |---|---|
@@ -589,26 +567,24 @@ sudo apt install intel-opencl-icd   # Ubuntu 22.04: 22.14, enough for a Gemini L
 ```
 
 A J4105 takes 4K HDR10 and Dolby Vision profile 5 to 1080p at about real time with every
-algorithm (0.9-1.2x on 40 Mbit/s samples, 1.2-1.7x on WEB releases), against 0.07-0.2x on its CPU
-(findings, "OpenCL tonemapping for every algorithm").
+algorithm.
 Every conversion is one FFmpeg reading the source over HTTP; nothing is downloaded
 first.
 
-"Use hardware acceleration when available" turns GPU decoding and encoding on or off together;
-with it on, "Use hardware-accelerated video encoding" turns off only the GPU encoder. `TranscoderToneMapping` turns HDR mapping on or off, and the algorithm setting picks how.
-The Normalize Loudness and Boost Dialog playback controls appear only when the app's cloud
-rollout and server capability checks allow them. rex implements their requested audio processing
-with `loudnorm` and `dialoguenhance`, not a flag-only acknowledgement.
+In Settings, Transcoder, "Use hardware acceleration when available" turns GPU decoding and
+encoding on or off together; with it on, "Use hardware-accelerated video encoding" turns off
+only the GPU encoder. "Enable HDR tone mapping" turns HDR mapping on or off, and the algorithm
+setting picks how. Normalize Loudness and Boost Dialog, where the app offers them, are done
+with FFmpeg.
 
 
 Each stream is decided on its own: what the client can play is copied, the rest is
 converted. A DTS or TrueHD track the client refuses becomes AAC (or the profile's own
 audio codec) beside the copied video, and a quality below Original (the client's
 `maxVideoBitrate` and `videoResolution`) converts the video down while the audio is
-copied. On cellular the mobile apps cap quality at 720p and 4 Mbps (`rust/src/gate.rs`),
-so a 1080p title there needs one or the other: an FFmpeg, or the app's cellular
-quality raised to Original. Without an encoder rex refuses such a play (decision
-2000/4005).
+copied. On cellular the mobile apps cap quality at 720p and 4 Mbps, so a 1080p title there
+needs one or the other: an FFmpeg, or the app's cellular quality raised to Original. Without
+an FFmpeg rex refuses such a play.
 
 A conversion carries the selected subtitle. An image one (PGS, VobSub) is burned into the
 picture. A text one inside an MKV or MP4 (SRT, ASS, MP4 timed text) goes into Plex for
@@ -616,8 +592,7 @@ Android's and iOS's Matroska stream, an MP4's converted to SRT, and is burned fo
 app: rex reads the track out of the release through its index one line at a time from where
 the player is, the first minute before the play starts, and converts only as far as it has
 read; a seek reads from the new position first. Lines denser than it can read in time, an
-opening song's karaoke, are left out of that play rather than stall it (findings, "Subtitles
-through a conversion"). A subtitle
+opening song's karaoke, are left out of that play rather than stall it. A subtitle
 uploaded to rex is copied or burned the same way. A text subtitle in a download's conversion
 is dropped. An ASS track is drawn with the host's fonts, not the fonts attached to the
 release.
@@ -659,8 +634,7 @@ it only when the title is played: opening a title keeps the best-named subtitle,
 checks it and fixes it in place. A file with a text subtitle of its own needs only a few small reads,
 and is checked as soon as the title is opened.
 
-Upload accepts a text subtitle through the app's normal upload dialog. The playback
-Auto Sync control also needs the client's rollout and measured voice activity on the selected
-Media version. Run Analyze to prepare that measurement. A silent file, another version's audio,
-or an uncertain offset never makes that control falsely eligible.
+Upload accepts a text subtitle through the app's normal upload dialog. The player's Auto Sync
+appears, where the app offers it, once Analyze has run with FFmpeg on that version of the file
+and found speech in its audio.
 

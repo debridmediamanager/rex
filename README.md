@@ -61,13 +61,13 @@ On Windows unpack the zip and use `rust\target\release\rex.exe` where the steps 
 rust/target/release/rex
 ```
 
-Nothing below asks for a restart. `<rex's LAN IP>` in the next steps is the rex machine's address on your home network, such as `192.168.1.20` (`hostname -I` on Linux). Every command on this page uses it, run on the rex machine or anywhere else at home.
+`<rex's LAN IP>` in the next steps is the rex machine's address on your home network, such as `192.168.1.20` (`hostname -I` on Linux). Every command on this page uses it, run on the rex machine or anywhere else at home.
 
 The first start makes `rex.db` with two empty libraries, Movies and TV Shows (rename them in Plex, or add more with Add Library), and names the server after the machine (rename it in Plex's Settings). Files under a `movies` directory go to Movies and files under `shows` go to TV, whichever source they come from, unless the source placed a file as the other kind. A file under any other directory, like `anime`, goes to TV if its source placed it as an episode and to Movies otherwise. To give a directory libraries of its own, add `rex_shows: Anime` and/or `rex_movies: Anime Movies` under it in zurg's `config.yml` (step 4): rex makes them when zurg connects and moves what that directory already has into them as it is, watch history, Fix Match and edits included. Rename them in Plex as you like. Delete one and it stays deleted, its files going back to Movies and TV Shows, until you add it again with Add Library, whose folder list shows zurg's directories.
 
 `rex.db` holds your library, watch history and your sources' logins. Back it up with `sqlite3 rex.db ".backup rex.db.bak"` and keep the backups private.
 
-Until you add it to a Plex account in step 3 rex serves no Plex app: it answers only its claim and, from this machine and your home network, your sources (step 4).
+Until you add it to a Plex account in step 3 rex serves no Plex app: it answers only its claim and, from this machine, your home network and Tailscale, your sources (step 4).
 
 Plex Media Server runs on the same machine? Add `--port 32500` and use `32500` wherever this page says `32400`. Off port 32400 rex leaves LAN discovery to that Plex, and apps find rex through the Plex account it is shared with in step 3.
 
@@ -86,8 +86,6 @@ curl -X POST "http://<rex's LAN IP>:32400/myplex/claim?token=claim-xxxxxxxxxxxx"
 Do this once per server. rex saves it in `claim_state.json` next to `rex.db`. Back that file up.
 
 Then, still as the fresh account, share rex with your own account in app.plex.tv (Settings, Manage Library Access, Grant Library Access) and accept the invite as yourself. You watch signed in as yourself, with your own watch history. Fix Match works only for the fresh account: rex refuses it to the accounts it is shared with, as Plex does.
-
-The claim gives rex a token of its own. With it rex tells plex.tv its LAN address, gets its HTTPS address (step 5) and shows your titles with Plex's own metadata, with no restart.
 
 **4. Point a source at it**
 

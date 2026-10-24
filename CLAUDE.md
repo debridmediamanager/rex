@@ -105,7 +105,7 @@ Where things live in `rust/src/`:
 | Path | What it is |
 |---|---|
 | `main.rs` | The CLI: the server flags (argparse's, refusals included), the `catalog` and `manager` subcommands, and the test-only adapters the suites drive (`test_native_phase2.py`, `test_mediainfo.py`, the corpus recorders) |
-| `catalog_tool.rs` | `rex catalog`: `--seed` an empty library at each source's mount (`--mount`, `--movies` and `--shows` repeat; a re-seed keeps the machineIdentifier), `--convert` a JSON catalog into a database, `--relink` Plex's guids |
+| `catalog_tool.rs` | `rex catalog`: `--seed` an empty library under `--mount` (default `/mnt/rex`; `--mount`, `--movies` and `--shows` repeat; a re-seed keeps the machineIdentifier), `--convert` a JSON catalog into a database, `--relink` Plex's guids |
 | `manager.rs` | `rex manager`: the control service that runs no server until one is started, then supervises the ones it started (API on 127.0.0.1:32300, CLI, a page); Linux and macOS only; docs/setup.md "Running several servers" |
 | `runtime.rs` | The request loop, the route table and most projections; `serve` starts GDM, the state saver and the plex.tv threads |
 | `runtime/wire.rs` | The response envelope: header order, Range/416, CORS, gzip, websocket handshake |
@@ -138,10 +138,11 @@ cp examples/run.sh.example run.sh   # keys go in rex.env beside it (mode 600)
 
 Sources push the library; rex reads no media itself, lists and queries nothing, and
 has no provider code of its own (`docs/feed-api.md`). A `--catalog` that does not exist is
-seeded on start as `rex catalog --seed` seeds one (`--friendly-name`, default the host name; its
-libraries under `--mount`, default `/mnt/rex`); `rex catalog --seed` stays for naming more directories or
-re-seeding. A source registers itself -- `PUT /rex/sources/{name}`: its byte url, `user`/
-`password` or `bearer`, `mount` -- and rex keeps the registration in the state file; it then
+seeded on start as `rex catalog --seed` seeds one, named after the host with its libraries under
+`/mnt/rex`; `--friendly-name` and `--mount` change those but no setup passes them (a rename is
+done in Plex), and libraries per directory come from a source's `directories`. A source registers
+itself -- `PUT /rex/sources/{name}`: its byte url, `user`/`password` or `bearer`, optionally
+`directories` and `mount` (for what it pushes, only a Get Info label) -- and rex keeps the registration in the state file; it then
 pushes to `/rex/feed/{name}`. Both take no token, claimed or not and with or without
 `--token` (a feed token per source, set by hand on both sides, was the setup's longest
 step), and answer only a peer on a private network: loopback, RFC 1918, 100.64/10
@@ -293,8 +294,10 @@ A plain `nohup ... &` from an agent tool call **does not survive** the call.
 Several servers, started and stopped on demand: `rex manager serve`, then
 `rex manager create NAME --port P [--catalog PATH] [--mount M] [--friendly-name N]` (keys from
 `REX_TOKEN`/`REX_DIRECT_KEY`, and `REX_DIRECT_URL`, in the environment; a saved `dmm_api_key`
-or `plex_token` loads and reaches no server; sources register with each server) and `start|stop|list|logs NAME`; a server with no catalog seeds one on its first start
-(`build NAME` seeds it ahead of time). Its data
+or `plex_token` loads and reaches no server; sources register with each server) and `start|stop|list|logs NAME`; a server
+created without `--catalog` seeds its database on its first start, as a plain `rex` does, named by
+its `friendly_name` (`Manager::spawn` refuses only a catalog file that is no database; `build NAME`
+seeds ahead of time). Its data
 lives in `managed/` at the repository root (gitignored, mode 700); `tests/test_manager.py` drives it end to end and
 starts its own manager on a temporary root.
 
@@ -644,7 +647,8 @@ with three explicit skips: two Fix Match checks need Plex's metadata agent throu
 a real claim (`--assert-claimed` is none), and Download needs readable Part files.
 For the latter, use a copy of `catalog_ui.json` made on the test host, never
 committed, and register the source serving its Part files with the test server
-(`PUT /rex/sources/zurg`, its URL, login and mount). With no source a Part read is
+(`PUT /rex/sources/zurg`, its URL, login and the `mount` the catalog's Part files sit under:
+a catalog row reads through the source whose `mount` holds its file). With no source a Part read is
 the routed 502 the suite expects. HTTPS artwork also needs system certificate
 roots; a minimal test container without them is not a valid artwork target.
 `test_all.py` and `conformance.py` need a live catalog and the same credentials.
