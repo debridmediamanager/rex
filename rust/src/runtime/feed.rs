@@ -933,7 +933,7 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
                     // A clip is its parent's: no library, so never "moved", and no title of its own.
                     let reidentify = !relocate
                         && !row.is_some_and(|row| by_hand || row.get("type").and_then(Value::as_str) == Some("clip"))
-                        && !several
+                        && (!several || row.is_some_and(|row| unmatched_alike(row) && version_placed(row, 0) == item.placed.as_ref()))
                         && (moved
                             || replaced
                             // Placed, but Plex's agent had no row for its numbers when it came
@@ -1454,6 +1454,17 @@ fn placed_unmatched(guid: Option<&Value>, placed: Option<&Value>, show_guid: Opt
         && show_guid.and_then(Value::as_str).is_some_and(|guid| guid.starts_with("plex://show/"))
 }
 
+/// A row of several releases still on `local://`, each placed as its first: named by one, all are named
+/// alike. A row of several was never retried nor re-identified by a push, so Re:ZERO's S1E79, three
+/// releases of `S04E13` zurg placed on TMDB's episode 7130159, stayed unmatched on the production
+/// server while Plex's agent listed that episode (2026-10-24).
+fn unmatched_alike(row: &Value) -> bool {
+    let first = version_placed(row, 0);
+    row.get("guid").and_then(Value::as_str).is_some_and(|guid| guid.starts_with("local://"))
+        && first.is_some()
+        && (1..versions(row).len()).all(|index| version_placed(row, index) == first)
+}
+
 /// The item a row's source pushed, rebuilt from the row: what `upsert` needs to identify it
 /// again, in the library it is in. Its probe is the row's already, so none is sent.
 fn pushed_item(row: &Value) -> Option<(String, Value)> {
@@ -1819,7 +1830,7 @@ impl Runtime {
             || row.get("_sid").is_none()
             || row.get("deletedAt").is_some()
             || row.get("_probePending").is_some_and(truthy)
-            || versions(row).len() > 1
+            || versions(row).len() > 1 && !unmatched_alike(row)
             || self.matched_by_hand(row)
             || row.get("guid").and_then(Value::as_str).is_some_and(|guid| guid.starts_with("tv.plex.agents.none://"))
         {
