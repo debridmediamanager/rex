@@ -22106,6 +22106,7 @@ impl Runtime {
             method: request.method.clone(),
             route: request.target.split('?').next().unwrap_or_default().to_string(),
             range: range.clone(),
+            redirect: self.part_mode == "redirect",
         });
         response
     }
@@ -27590,6 +27591,8 @@ struct PartProxy {
     method: String,
     route: String,
     range: Option<String>,
+    /// `--part-mode redirect`: a source's redirect to another origin goes to the client.
+    redirect: bool,
 }
 
 /// A source lookup captured from the row while the runtime lock was held.  The result is
@@ -27719,7 +27722,32 @@ fn serve_part_proxy<S: Write>(
             None
         }
     };
-    let mut upstream = match plan.source.open(&plan.path, &headers) {
+    let opened = if plan.redirect {
+        match plan.source.open_here(&plan.path, &headers, &plan.method) {
+            Ok(upstream::Opened::Elsewhere(location)) => {
+                // The client fetches the provider's link itself, its own Range with it, so the
+                // bytes never pass through rex. Only the host is logged: the link is a credential.
+                let host = location.split("://").nth(1).and_then(|rest| rest.split(['/', '?']).next()).unwrap_or("");
+                info!("PART {part_id} range={} -> 302 to {host}", plan.range.as_deref().unwrap_or("-"));
+                let mut redirect = Response::bytes(302, "");
+                redirect.headers = response
+                    .headers
+                    .iter()
+                    .filter(|(name, _)| matches!(name.as_str(), "X-Plex-Protocol" | "Access-Control-Allow-Origin" | "Vary" | "Date"))
+                    .cloned()
+                    .collect();
+                redirect.headers.push(("Location".to_string(), location));
+                redirect.close = true;
+                wire::write_enveloped(stream, &redirect, envelope, keep)?;
+                return Ok(false);
+            }
+            Ok(upstream::Opened::Here(upstream)) => Ok(upstream),
+            Err(error) => Err(error),
+        }
+    } else {
+        plan.source.open(&plan.path, &headers)
+    };
+    let mut upstream = match opened {
         Ok(upstream) if upstream.status < 400 => upstream,
         // Cycle 44: the source saying the FILE is gone is a plain 404, as a real PMS
         // answers for a part it cannot open (the 1.42.2 reference's part 23595).

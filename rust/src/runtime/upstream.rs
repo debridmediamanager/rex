@@ -471,6 +471,24 @@ pub(super) fn open(
     open_checked(method, url, headers, body, timeout, false)
 }
 
+/// What `open_here` reached: the answer of the url's own origin (a redirect within it
+/// followed), or the absolute url of another origin a redirect named, not dialled.
+pub(super) enum Opened {
+    Here(Upstream),
+    Elsewhere(String),
+}
+
+/// `open` for `--part-mode redirect`: a redirect to another origin (a provider's CDN link)
+/// is answered rather than followed, so a client can be sent there itself.
+pub(super) fn open_here(
+    method: &str,
+    url: &str,
+    headers: &[(&str, String)],
+    timeout: Duration,
+) -> Result<Opened, String> {
+    follow(method, url, headers, b"", timeout, false, true)
+}
+
 fn open_checked(
     method: &str,
     url: &str,
@@ -479,6 +497,21 @@ fn open_checked(
     timeout: Duration,
     public: bool,
 ) -> Result<Upstream, String> {
+    match follow(method, url, headers, body, timeout, public, false)? {
+        Opened::Here(response) => Ok(response),
+        Opened::Elsewhere(url) => Err(format!("unfollowed redirect to {url}")),
+    }
+}
+
+fn follow(
+    method: &str,
+    url: &str,
+    headers: &[(&str, String)],
+    body: &[u8],
+    timeout: Duration,
+    public: bool,
+    stop_elsewhere: bool,
+) -> Result<Opened, String> {
     let mut url = url.to_string();
     let origin = parse_url(&url).map(|target| (target.tls, target.host, target.port));
     let mut headers = headers.to_vec();
@@ -498,9 +531,13 @@ fn open_checked(
         let redirect = matches!(response.status, 301 | 302 | 303 | 307 | 308)
             && matches!(method, "GET" | "HEAD");
         let Some(location) = response.header("location").filter(|_| redirect) else {
-            return Ok(response);
+            return Ok(Opened::Here(response));
         };
         url = redirect_url(&target, location);
+        let next = parse_url(&url).map(|next| (next.tls, next.host, next.port));
+        if stop_elsewhere && next != origin {
+            return Ok(Opened::Elsewhere(url));
+        }
     }
     Err("too many upstream redirects".to_string())
 }

@@ -196,7 +196,7 @@ fn validate(config: Value, partial: bool) -> Answer<Map<String, Value>> {
         }
     }
     for (field, allowed) in [
-        ("part_mode", &["proxy"][..]),
+        ("part_mode", &["proxy", "redirect"][..]),
         ("gdm", &["auto", "on", "off"][..]),
         ("restart", &["no", "on-failure"][..]),
     ] {
@@ -1015,7 +1015,7 @@ pre{background:#f4f4f4;padding:8px;max-height:300px;overflow:auto}</style></head
 <input name=mount placeholder="library folder prefix (default /mnt/rex)"><br>
 <input name=token type=password placeholder="server token (optional)"><br>
 <input name=friendly_name placeholder="friendly name (optional)">
-<select name=part_mode><option>proxy</select>
+<select name=part_mode><option>proxy<option>redirect</select>
 <select name=gdm><option>auto<option>on<option>off</select>
 <label><input name=assert_claimed type=checkbox> assert claimed</label>
 <button>Create</button></form>

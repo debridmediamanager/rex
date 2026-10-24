@@ -16,7 +16,7 @@ const SERVER_OPTIONS: &[(&str, &str, bool)] = &[
     ("--catalog", "CATALOG", true),
     ("--port", "PORT", true),
     ("--host", "HOST", true),
-    ("--part-mode", "{proxy}", true),
+    ("--part-mode", "{proxy,redirect}", true),
     ("--public-url", "PUBLIC_URL", true),
     ("--token", "TOKEN", true),
     ("--verbose", "", false),
@@ -66,7 +66,7 @@ fn server_usage() -> String {
 /// the oracle's own help text.
 fn server_help() -> String {
     let helps: HashMap<&str, &str> = [
-        ("--part-mode", "proxy streams a part's bytes from its source through rex (the only mode: a source's links are its own, never handed to clients)"),
+        ("--part-mode", "proxy streams a part's bytes from its source through rex; redirect sends a client playing a part directly to the link its source redirects to, so the client downloads it (conversions still read through rex)"),
         ("--token", "require this X-Plex-Token on every request except /identity and /web/* -- which is what a real PMS does. Not needed: a claimed rex checks every token itself."),
         ("--assert-claimed", "report claimed=1 without performing a real plex.tv claim exchange"),
         ("--web-root", "directory of the extracted Plex Web client, served at /web"),
@@ -246,7 +246,7 @@ fn parse_server_args(args: &[String]) -> Result<ServerArgs, String> {
         }
         // argparse checks `choices` as it consumes the option, before any later `-h`.
         for (name, current, choices) in [
-            ("--part-mode", &options.part_mode, &["proxy"][..]),
+            ("--part-mode", &options.part_mode, &["proxy", "redirect"][..]),
             ("--gdm", &options.gdm, &["auto", "on", "off"][..]),
         ] {
             if name == flag && !choices.contains(&current.as_str()) {

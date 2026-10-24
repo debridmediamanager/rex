@@ -253,6 +253,18 @@ impl Source {
         upstream::open("GET", &self.url(path), &headers, b"", Duration::from_secs(30))
     }
 
+    /// `open` that answers a redirect to another origin instead of following it.
+    pub(super) fn open_here(
+        &self,
+        path: &str,
+        extra: &[(&'static str, String)],
+        method: &str,
+    ) -> Result<upstream::Opened, String> {
+        let mut headers = self.headers();
+        headers.extend(extra.iter().cloned());
+        upstream::open_here(method, &self.url(path), &headers, Duration::from_secs(30))
+    }
+
     /// `checkFiles`: whether the source still serves the file. Only its own 404 is "gone";
     /// a transport failure or any other answer is not collapsed into a missing file.
     pub(super) fn exists(&self, path: &str) -> bool {

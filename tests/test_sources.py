@@ -358,6 +358,64 @@ def delete_source():
         shutil.rmtree(work, ignore_errors=True)
 
 
+def unfollowed(port, path, method="GET", headers=None):
+    """(status, headers, body) of one request, a redirect answered rather than followed."""
+    connection = http.client.HTTPConnection("127.0.0.1", port, timeout=60)
+    connection.request(method, path, headers=dict({"X-Plex-Token": TOKEN}, **(headers or {})))
+    response = connection.getresponse()
+    answer = (response.status, dict(response.getheaders()), response.read())
+    connection.close()
+    return answer
+
+
+def part_redirect():
+    """`--part-mode redirect`: a part read the source redirects to another origin is that
+    redirect, so the client fetches the provider's link itself and no byte passes through rex.
+    The source still gets its credential and its own same-origin hops are followed; the other
+    origin is never dialled by rex and gets no credential; a source that answers with the
+    bytes itself is streamed as in proxy mode."""
+    work = tempfile.mkdtemp(prefix="rex-sources-redirect-")
+    root = os.path.join(work, "disk")
+    movie, episode = (dict(item(kind, ids=False), size=len(BODY)) for kind in ("movie", "episode"))
+    os.makedirs(os.path.join(root, os.path.dirname(movie["path"])))
+    open(os.path.join(root, movie["path"]), "wb").write(BODY)
+    disk_port = serve(functools.partial(http.server.SimpleHTTPRequestHandler, directory=root))
+    cdn_seen, front_seen = [], []
+    cdn_port = serve(cdn_handler(cdn_seen))
+    front_port = serve(front_handler(cdn_port, front_seen))
+    catalog(work)
+    port, process, log = start(work, {
+        "disk": {"url": "http://127.0.0.1:%d" % disk_port},
+        "front": {"url": "http://localhost:%d/files" % front_port, "user": FRONT_USER, "password": FRONT_PASSWORD},
+    }, None, "--part-mode", "redirect")
+    try:
+        disk_part, front_part = push(port, "disk", movie), push(port, "front", episode)
+        status, headers, body = unfollowed(port, front_part, headers={"Range": "bytes=100-199"})
+        location = headers.get("Location", "")
+        check("a part read the source redirects elsewhere is a 302 to that link", status == 302 and not body
+              and location == "http://localhost:%d/relative.mkv" % cdn_port, (status, headers, body[:60]))
+        check("rex never dialled the other origin", cdn_seen == [], cdn_seen)
+        check("the source got its credential, its own hops followed",
+              any(path == "/redirect/relative.mkv?signed=1" and authorization for path, authorization in front_seen),
+              front_seen)
+        check("the link carries no credential", FRONT_PASSWORD not in location and FRONT_USER not in location, location)
+        status, headers, _ = unfollowed(port, front_part, "HEAD")
+        check("a HEAD is the same redirect", status == 302 and headers.get("Location") == location, (status, headers))
+        request = urllib.request.Request(location, headers={"Range": "bytes=100-199"})
+        with urllib.request.urlopen(request, timeout=10) as response:
+            check("the client reads its range from the link", response.status == 206 and response.read() == BODY[100:200])
+        status, headers, body = unfollowed(port, disk_part, headers={"Range": "bytes=100-199"})
+        check("a source answering with the bytes itself is streamed through rex",
+              status == 206 and body == BODY[100:200] and "Location" not in headers, (status, headers))
+        logged = open(os.path.join(work, "server.log"), errors="replace").read()
+        check("the log names the host the read went to, never the link",
+              ("-> 302 to localhost:%d" % cdn_port) in logged and "relative.mkv" not in logged,
+              [line for line in logged.splitlines() if "PART" in line][-3:])
+    finally:
+        stop(process, log)
+        shutil.rmtree(work, ignore_errors=True)
+
+
 def main():
     work = tempfile.mkdtemp(prefix="rex-sources-")
     disk_root = os.path.join(work, "disk")
@@ -496,6 +554,7 @@ def main():
         stop(process, log)
         shutil.rmtree(work, ignore_errors=True)
     gated()
+    part_redirect()
     unregistered_rows()
     delete_source()
     failed = results.count(False)

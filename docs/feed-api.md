@@ -22,7 +22,10 @@ zurg's WebDAV, nginx, a NAS, object storage or `python3 -m http.server`
   deep into a large file: every byte before it is read).
 - Redirects (301/302/303/307/308) are followed. The source's `user`/`password` or
   `bearer` goes only to the source's own origin, never to the host a redirect names,
-  so a presigned CDN link works and does not see the credential.
+  so a presigned CDN link works and does not see the credential. Under `--part-mode redirect`
+  a client's own byte read stops at the first redirect to another origin and the client is
+  sent there, so it downloads from that host itself; a conversion still reads through rex,
+  and a source that answers with the bytes is streamed as before.
 - As many sources as needed, each registered under its own name. Each pushes to
   `/rex/feed/{its name}`, its rows remember it, and the same title from two sources is one
   row with a Media each. An item's `path` decides which library holds it, not its source.
