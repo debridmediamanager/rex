@@ -2645,18 +2645,29 @@ pub(super) fn finish_claim(runtime: &SharedRuntime, token: &str, _target: &str) 
     }
     // What the probe PMS did next: POST /servers.xml, the device PUT, then the pubsub
     // stream that makes it present (`do_claim`).
-    let (local_address, sections) = {
+    let (local_address, sections, attached) = {
         let mut guard = runtime
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
         // An unclaimed start has no agent: it matches with Plex's agent from its claim on.
-        if guard.plex.is_none() {
+        let attached = guard.plex.is_none();
+        if attached {
             let cache = claim_path(&guard.catalog_path).with_file_name("plex_cache.json");
             let agent = super::plexmeta::PlexMeta::new(Arc::clone(&plextv.claim), cache);
             guard.plex = Some(Arc::new(agent));
         }
-        (guard.private_address.clone(), guard.published_sections())
+        (guard.private_address.clone(), guard.published_sections(), attached)
     };
+    if attached {
+        // What its sources placed while there was no agent is named now, not 50 a pass every ten
+        // minutes: a sponsor's rex given zurg before its claim held 7,035 releases on their release
+        // names for what would have been a day (2026-10-24). `retry_blank` moves each row it leaves
+        // blank an hour on, so the passes end.
+        let shared = Arc::clone(runtime);
+        let _ = thread::Builder::new().name("named-on-claim".to_string()).spawn(move || {
+            while super::feed::retry_blank(&shared, 50) > 0 {}
+        });
+    }
     let direct = plextv.direct.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).take();
     let registration = Arc::clone(&plextv);
     // rex-direct registers first, so the device PUT already names its URL; off the claim's

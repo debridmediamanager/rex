@@ -868,10 +868,13 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
                     // ponytail: a row holding several releases is not re-identified by one of
                     // them; splitting the release back out is Split's job.
                     // An id that named nothing when it came (Plex unreachable, no token) is tried
-                    // again on each push.
-                    let unnamed = row.and_then(|row| row.get("_identify")).is_some_and(|report| {
-                        ["tmdb", "plex"].iter().all(|field| report.get(*field).is_none_or(Value::is_null))
-                    });
+                    // again on each push. The report keeps the TMDB id its source placed it by
+                    // whatever Plex answered, so only a Plex guid says it was named: asking for
+                    // both left a sponsor's 7,035 releases pushed before the claim unnamed
+                    // through every push (2026-10-24).
+                    let unnamed = row
+                        .and_then(|row| row.get("_identify"))
+                        .is_some_and(|report| report.get("plex").is_none_or(Value::is_null));
                     // A file whose library changed is placed again in the one it belongs to now.
                     let moved = row.is_some_and(|row| {
                         row.get("librarySectionID").map(string_value).as_deref() != Some(library.key.as_str())
@@ -2850,8 +2853,12 @@ impl Runtime {
         let Some(identity) = leaf.get("_identity").map(string_value) else {
             return;
         };
+        // Another show, not this one: a show placed before Plex's agent could name it already holds
+        // the identity its episodes are named by again, and found itself here, so the 7,035 releases
+        // a sponsor's rex took before its claim left every show on its release name (2026-10-24).
         let taken = self.catalog.hot().lazy().any(|row| {
-            row.get("type").and_then(Value::as_str) == Some("show")
+            key_of(&row).as_deref() != Some(show)
+                && row.get("type").and_then(Value::as_str) == Some("show")
                 && string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == library.key
                 && row.get("_identity").map(string_value).as_deref() == Some(identity.as_str())
         });
