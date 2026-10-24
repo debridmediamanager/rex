@@ -346,9 +346,17 @@ def main():
         # Sources register with the server themselves (docs/feed-api.md); there is no zurg to configure.
         check("a zurg url is no configuration field", status == 400 and "zurg_url" in refused.get("error", ""),
               (status, refused))
-        status, refused = manager.api("POST", "/servers/keyed/start")
-        check("it cannot start before its catalog is built",
-              status == 409 and "build" in refused.get("error", "") and not answers(e), refused)
+        # No build first: the start seeds its catalog, as a plain `rex` does, named as configured.
+        f = free_port()
+        status, _ = manager.api("POST", "/servers", {"name": "unbuilt", "port": f, "friendly_name": "Unbuilt Den",
+                                                     "gdm": "off", "assert_claimed": True})
+        status, started = manager.api("POST", "/servers/unbuilt/start")
+        identity = wait_for(lambda: answers(f) and get_json(f, "/"), 60)
+        check("a server with no catalog starts, seeding its own, under its configured name",
+              status == 200 and identity and identity.get("MediaContainer", identity).get("friendlyName") == "Unbuilt Den",
+              (status, started, identity))
+        manager.api("POST", "/servers/unbuilt/stop")
+        wait_for(lambda: not answers(f), 30)
         os.environ["REX_MANAGER_BUILDER"] = builder
         manager.stop()
         manager.start()

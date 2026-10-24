@@ -613,6 +613,7 @@ impl Manager {
             ("public_url", "--public-url"),
             ("web_root", "--web-root"),
             ("mount", "--mount"),
+            ("friendly_name", "--friendly-name"),
         ] {
             if let Some(value) = text(config, key) {
                 argv.extend([flag.to_string(), value.to_string()]);
@@ -651,8 +652,11 @@ impl Manager {
     /// Start the process; the caller holds the lock and has set desired=running.
     fn spawn(&self, inner: &mut Inner, name: &str) -> Answer<()> {
         let config = inner.row(name)?.config;
-        if !store::is_sqlite(&self.catalog_path(name)) {
-            return Err(Refused(409, format!("{name} has no catalog yet: build it first (POST /servers/{name}/build)")));
+        // None yet is seeded by the server's first start, as a plain `rex` seeds one: a build
+        // first was one more step for nothing. Only a file that is no catalog is refused.
+        let catalog = self.catalog_path(name);
+        if catalog.exists() && !store::is_sqlite(&catalog) {
+            return Err(Refused(409, format!("{name}'s catalog is not a database: build it again (POST /servers/{name}/build)")));
         }
         let port = config.get("port").and_then(Value::as_i64).unwrap_or(0);
         if !port_free(text(&config, "host").unwrap_or("0.0.0.0"), port) {
