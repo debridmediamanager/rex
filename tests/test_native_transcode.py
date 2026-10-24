@@ -69,6 +69,14 @@ class Zurg(http.server.BaseHTTPRequestHandler):
 
     def do_GET(self):
         name = urllib.parse.unquote(self.path).rsplit("/", 1)[-1]
+        if name == "live.m3u8":
+            body = live_playlist().encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/vnd.apple.mpegurl")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
         path = MEDIA.get(name)
         if not path:
             self.send_response(404)
@@ -109,6 +117,21 @@ class Zurg(http.server.BaseHTTPRequestHandler):
                         time.sleep(len(chunk) / SLOW_RATE)
             except (BrokenPipeError, ConnectionResetError):
                 pass
+
+
+# A live channel's HLS, as a broadcast serves it: a window of its newest 2 s segments that moves
+# on in real time from the first read, and no ENDLIST (usatv's channels, rex-stremio's tv type).
+LIVE = {"segments": [], "since": None}
+
+
+def live_playlist():
+    LIVE["since"] = LIVE["since"] or time.time()
+    made = min(len(LIVE["segments"]), 3 + int((time.time() - LIVE["since"]) / 2))
+    first = max(0, made - 5)
+    lines = ["#EXTM3U", "#EXT-X-VERSION:3", "#EXT-X-TARGETDURATION:2", "#EXT-X-MEDIA-SEQUENCE:%d" % first]
+    for name in LIVE["segments"][first:made]:
+        lines += ["#EXTINF:2.000000,", name]
+    return "\n".join(lines) + "\n"
 
 
 def make_clip(path, video, audio, duration, size="1280x720"):
@@ -550,6 +573,55 @@ def walk(port, scratch, label, key, expect_video, expect_audio, size, duration=D
     return ttfs
 
 
+def live_source(port, scratch, android):
+    """A live channel plays on. Its conversion was a title of no duration: one segment and
+    ENDLIST, so Plex for Android stopped after ~10 s and Plezy too (rex live test, 2026-10-24)."""
+    session = "s-live"
+    status, container = decision(port, "18", session, **{name: android[name] for name in ("X-Plex-Client-Profile-Name", "X-Plex-Client-Profile-Extra")})
+    check("live: decision is a conversion", status == 200 and container.get("generalDecisionCode") == 1001, str(container.get("generalDecisionCode")))
+    query = plex_web_query("18", session, **{name: android[name] for name in ("X-Plex-Client-Profile-Name", "X-Plex-Client-Profile-Extra")})
+    status, _, _ = get(port, "/video/:/transcode/universal/start.m3u8", query)
+    base = "/video/:/transcode/universal/session/%s/base/" % session
+    segments, ended = [], True
+    deadline = time.time() + 16
+    while time.time() < deadline:
+        status, _, body = get(port, base + "index.m3u8")
+        playlist = body.decode()
+        ended = "#EXT-X-ENDLIST" in playlist
+        segments = [line for line in playlist.splitlines() if line and not line.startswith("#")]
+        if ended or (segments and int(segments[-1][:5]) >= 3):
+            break
+        time.sleep(1)
+    check("live: the media playlist grows and has no ENDLIST", status == 200 and not ended and segments and int(segments[-1][:5]) >= 3,
+          "%s ended=%s %s" % (status, ended, segments[-3:]))
+    status_h, _, header = get(port, base + "header")
+    served = [get(port, base + "%05d.ts" % index)[0] for index in range(4)]
+    check("live: segments 0-3 are served in turn", status_h == 200 and served == [200] * 4, "%s %s" % (status_h, served))
+    # Plezy's beats give its player's live window as the duration: past a minute, then at its
+    # edge. A channel keeps no resume point and is never watched.
+    for at in (61000, 119000):
+        get(port, "/:/timeline", [("ratingKey", "18"), ("key", "/library/metadata/18"), ("state", "playing"), ("time", str(at)),
+                                  ("duration", "120000"), ("X-Plex-Session-Identifier", "plezy-live"),
+                                  ("X-Plex-Client-Identifier", "plezy-live"), ("X-Plex-Product", "Plezy")])
+    status, _, body = get(port, "/library/metadata/18")
+    row_ = json.loads(body)["MediaContainer"]["Metadata"][0] if status == 200 else {}
+    check("live: a channel keeps no resume point and is never watched",
+          status == 200 and "viewOffset" not in row_ and not row_.get("viewCount"),
+          json.dumps({k: row_.get(k) for k in ("viewOffset", "viewCount")}))
+    get(port, "/video/:/transcode/universal/stop", [("session", session)])
+    # Plezy reads the Part with mpv, which a conversion's playlist answers: it reads on, too.
+    played = os.path.join(scratch, "live-part.ts")
+    subprocess.run([FFMPEG, "-v", "error", "-y", "-i", "http://127.0.0.1:%d/library/parts/180/1700000000/file.m3u8" % port,
+                    "-t", "20", "-c", "copy", played], check=False, timeout=120)
+    length = float(subprocess.run([FFPROBE, "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", played],
+                                  capture_output=True, text=True).stdout.strip() or 0) if os.path.exists(played) else 0
+    check("live: a player reading its Part plays on past the first segments", length > 15, "%.2fs" % length)
+    status, _, body = get(port, "/transcode/sessions")
+    for listed in json.loads(body)["MediaContainer"].get("TranscodeSession", []) if status == 200 else []:
+        if str(listed.get("key", "")).startswith("part-180-"):
+            get(port, "/video/:/transcode/universal/stop", [("session", listed["key"])])
+
+
 def profile_audio_encoders(port, scratch):
     """Custom client capabilities, not untouched Desktop/Roku defaults.
 
@@ -716,6 +788,21 @@ def main():
     item = row("17", "Plainhls", "plainhls.m3u8", probe(hls)["streams"], os.path.getsize(hls), DURATION)
     item["Media"][0]["container"] = item["Media"][0]["Part"][0]["container"] = "hls"
     items.append(item)
+    # A 90 s clip as a live channel: an HLS probe with no duration (the real one is
+    # tests/fixtures/transcode/live_hls_probe.json), so the row's duration is 0.
+    channel = os.path.join(scratch, "channel.mkv")
+    make_clip(channel, ["-c:v", "libx264", "-preset", "ultrafast", "-g", "48"], ["-c:a", "aac", "-ac", "2"], 90, "320x180")
+    subprocess.run([FFMPEG, "-v", "error", "-y", "-i", channel, "-map", "0", "-c", "copy",
+                    "-f", "hls", "-hls_time", "2", "-hls_list_size", "0", "-hls_segment_filename", os.path.join(scratch, "live%03d.ts"),
+                    os.path.join(scratch, "livevod.m3u8")], check=True)
+    LIVE["segments"] = sorted(name for name in os.listdir(scratch) if re.fullmatch(r"live\d{3}\.ts", name))
+    for name in LIVE["segments"]:
+        MEDIA[name] = os.path.join(scratch, name)
+    recorded = json.load(open(os.path.join(ROOT, "tests/fixtures/transcode/live_hls_probe.json")))["probe"]
+    assert "duration" not in recorded["format"]
+    item = row("18", "Live", "live.m3u8", probe(os.path.join(scratch, "livevod.m3u8"))["streams"], 0, 0)
+    item["Media"][0]["container"] = item["Media"][0]["Part"][0]["container"] = "hls"
+    items.append(item)
     # The plain clip as MPEG-TS, as YouTube's HLS serves its h264/aac (stream types 0x1b/0x0f,
     # which a copy into MP4 kept as its codec tags until 2026-10-22).
     MEDIA["plain.ts"] = os.path.join(scratch, "plain.ts")
@@ -830,6 +917,7 @@ def main():
         for listed in json.loads(body)["MediaContainer"].get("TranscodeSession", []) if status == 200 else []:
             if str(listed.get("key", "")).startswith("part-170-"):
                 get(port, "/video/:/transcode/universal/stop", [("session", listed["key"])])
+        live_source(port, scratch, android)
         status, _, body = get(port, "/library/parts/100/1700000000/file.mkv")
         check("a file's Part read is still its bytes", status == 200 and body[:4] == b"\x1a\x45\xdf\xa3", str(status))
         # Plex for Android's own target is Matroska, which takes no ADTS AAC as copied out of

@@ -989,10 +989,14 @@ impl Runtime {
             }
             let before = latch.progressed;
             let closed = latch.closed;
+            // A live channel (a row with no duration) has no place to resume nor an end to
+            // reach: Plezy reports its player's window as the duration, and the live edge read
+            // as a finished view (rex live test, 2026-10-24).
+            let live = self.catalog.get(&key).is_some_and(|row| row.get("duration").and_then(Value::as_i64).unwrap_or(0) <= 0);
             let crossed = self.library_progress(
                 &key,
-                offset.map(|_| offset_ms),
-                total,
+                offset.filter(|_| !live).map(|_| offset_ms),
+                if live { 0 } else { total },
                 device,
                 &session_tag,
                 true,

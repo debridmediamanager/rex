@@ -49,6 +49,11 @@ const RESUME_AHEAD: f64 = 45.0;
 const IDLE: Duration = Duration::from_secs(120);
 /// A request this many segments beyond what has been produced is a seek, not a wait.
 const SEEK_GAP: i64 = 4;
+/// A live source's remux segment: a channel's HLS has short GOPs, and the first segment is
+/// finished only when the second opens, so 10 s segments were a 10 s wait before a picture.
+const LIVE_COPY_SEGMENT: u32 = 4;
+/// How many finished segments a live media playlist lists behind the one being written.
+const LIVE_WINDOW: i64 = 6;
 /// Segments more than this far behind the player are deleted.
 const KEEP_BEHIND: f64 = 120.0;
 /// An embedded text subtitle is read one line at a time (`mkvsubs::Index::events`), always the
@@ -380,15 +385,26 @@ impl Plan {
         out
     }
 
+    /// A source with no duration (a live channel's HLS): its conversion has no end, so its
+    /// playlist grows as segments are made and a request past the newest waits instead of
+    /// seeking (it cannot seek).
+    pub fn live(&self) -> bool {
+        self.duration_ms <= 0
+    }
+
     pub fn segment_seconds(&self) -> u32 {
         match (self.protocol, self.video.as_ref().is_none_or(|video| video.copy)) {
             (_, false) => TRANSCODE_SEGMENT,
+            (Protocol::Hls | Protocol::File, true) if self.live() => LIVE_COPY_SEGMENT,
             (Protocol::Dash, true) => DASH_COPY_SEGMENT,
             (Protocol::Hls | Protocol::File, true) => COPY_SEGMENT,
         }
     }
 
     pub fn segment_count(&self) -> i64 {
+        if self.live() {
+            return i64::MAX;
+        }
         let length = self.segment_seconds() as i64 * 1000;
         ((self.duration_ms.max(1) + length - 1) / length).max(1)
     }
@@ -431,6 +447,22 @@ impl Plan {
             out.push_str(&format!("#EXTINF:{seconds}, nodesc\n{index:05}.ts\n"));
         }
         out.push_str("#EXT-X-ENDLIST\n");
+        out
+    }
+
+    /// A live session's media playlist: segments `first..=last` (the newest finished ones and
+    /// the one being written, whose request waits for it), no `EXT-X-ENDLIST` until the source
+    /// ended, so the player keeps reloading it as an HLS live stream.
+    pub fn live_playlist(&self, first: i64, last: i64, ended: bool) -> String {
+        let length = self.segment_seconds();
+        let map = if self.matroska { "#EXT-X-VERSION:7\n#EXT-X-MAP:URI=\"header\"\n" } else { "" };
+        let mut out = format!("#EXTM3U\n{map}#EXT-X-TARGETDURATION:{length}\n#EXT-X-ALLOW-CACHE:NO\n#EXT-X-MEDIA-SEQUENCE:{first}\n");
+        for index in first..=last {
+            out.push_str(&format!("#EXTINF:{length}, nodesc\n{index:05}.ts\n"));
+        }
+        if ended {
+            out.push_str("#EXT-X-ENDLIST\n");
+        }
         out
     }
 }
@@ -566,7 +598,9 @@ pub(crate) fn ffmpeg_args(plan: &Plan, path: Path, hardware: &Hardware, start: i
         }
         push(&mut args, &["-user_agent", super::upstream::UPSTREAM_UA]);
     }
-    if offset > 0 {
+    // A live source has no clock to seek on: a restart (after a dropped read) reads from its
+    // live edge, and `-initial_offset` keeps the segments counting on.
+    if offset > 0 && !plan.live() {
         push(&mut args, &["-ss", &offset.to_string()]);
         if !converting {
             push(&mut args, &["-noaccurate_seek"]);
@@ -880,6 +914,18 @@ pub(crate) struct Session {
 }
 
 impl Session {
+    /// A live session's playlist window: the newest finished segments of the current run, the
+    /// one being written, and whether the source ended. `None` for a title with a duration.
+    fn live_window(&self) -> Option<(i64, i64, bool)> {
+        if !self.plan.live() {
+            return None;
+        }
+        let state = self.state.lock().ok()?;
+        let next = state.done.range(state.run_start..).next_back().map_or(state.run_start, |(key, _)| key + 1);
+        let last = if state.finished { next - 1 } else { next };
+        Some(((next - LIVE_WINDOW).max(state.run_start), last.max(state.run_start), state.finished))
+    }
+
     fn touch(&self) {
         if let Ok(mut state) = self.state.lock() {
             state.touched = Some(Instant::now());
@@ -1714,7 +1760,8 @@ impl Transcoder {
     fn watch(self: Arc<Self>, session: Arc<Session>, run: u64, start: i64, path: Path, errors: Arc<Mutex<String>>) {
         let length = session.plan.segment_seconds() as f64;
         let duration = session.plan.duration_ms as f64 / 1000.0;
-        let span = |index: i64| (index as f64 * length, ((index + 1) as f64 * length).min(duration.max(length)), start);
+        let end = if session.plan.live() { f64::INFINITY } else { duration.max(length) };
+        let span = |index: i64| (index as f64 * length, ((index + 1) as f64 * length).min(end), start);
         // The segment FFmpeg is writing: finished once the one after it opens.
         let mut next = start;
         // Since when the player has been waiting on this run's subtitle hold.
@@ -1884,7 +1931,13 @@ impl Transcoder {
                     if ready.is_none() && !state.error && !session.stopped.load(Ordering::SeqCst) {
                         // How far THIS run has got; earlier runs' leftovers say nothing.
                         let highest = state.done.range(state.run_start..).next_back().map_or(state.run_start - 1, |(key, _)| *key);
-                        if index < state.run_start || index > highest + SEEK_GAP || state.finished {
+                        if session.plan.live() {
+                            // Behind the run (deleted) or after the channel ended: gone. Ahead:
+                            // it is made when the broadcast gets there, so wait for it.
+                            if index < state.run_start || state.finished {
+                                return Err(404);
+                            }
+                        } else if index < state.run_start || index > highest + SEEK_GAP || state.finished {
                             // Only the newest request moves FFmpeg, and only once. A request
                             // the player has since left behind (it seeked elsewhere) gives up:
                             // two of them restarting in turn at their own positions was a
@@ -2903,7 +2956,11 @@ impl Runtime {
                     (Some("base"), Some("index.m3u8"), 8) => {
                         session.touch();
                         let mut response = Response::bytes(200, "application/vnd.apple.mpegurl");
-                        response.body = session.plan.media_playlist().into_bytes();
+                        response.body = match session.live_window() {
+                            Some((first, last, ended)) => session.plan.live_playlist(first, last, ended),
+                            None => session.plan.media_playlist(),
+                        }
+                        .into_bytes();
                         response.headers.push(("Cache-Control".to_string(), "no-cache".to_string()));
                         Some(response)
                     }
@@ -3156,6 +3213,26 @@ mod tests {
         let recorded: Value = serde_json::from_str(include_str!("../../../tests/fixtures/transcode/scratch_copy_mkv.json")).unwrap();
         let body = recorded["exchanges"][3]["res_body"].as_str().unwrap();
         assert_eq!(plan(true, 1800690).media_playlist(), body);
+    }
+
+    #[test]
+    fn a_live_source_plays_on_without_an_end() {
+        // A live channel's HLS has no duration (usatv's ABC, tests/fixtures/transcode/
+        // live_hls_probe.json): its playlist was the whole "title", one segment and ENDLIST,
+        // so Plex for Android and Plezy stopped after ~10 s (rex live test, 2026-10-24).
+        let probe: Value = serde_json::from_str(include_str!("../../../tests/fixtures/transcode/live_hls_probe.json")).unwrap();
+        assert!(probe["probe"]["format"]["format_name"] == "hls" && probe["probe"]["format"].get("duration").is_none());
+        let live = plan(true, 0);
+        assert!(live.live() && !plan(true, 1800690).live());
+        assert_eq!(live.segment_seconds(), 4);
+        let playlist = live.live_playlist(3, 9, false);
+        assert!(playlist.contains("#EXT-X-MEDIA-SEQUENCE:3\n#EXTINF:4, nodesc\n00003.ts\n"), "{playlist}");
+        assert!(playlist.ends_with("00009.ts\n") && !playlist.contains("ENDLIST"), "{playlist}");
+        assert!(live.live_playlist(3, 9, true).ends_with("#EXT-X-ENDLIST\n"));
+        // A restart after a dropped read cannot seek a broadcast: it reads the live edge and
+        // numbers on from where the run stopped.
+        let joined = ffmpeg_args(&live, Path::Software, &Hardware::software(), 5, std::path::Path::new("/tmp/x")).join(" ");
+        assert!(!joined.contains("-ss 20") && joined.contains("-segment_start_number 5 -segment_time 4 -initial_offset 20"), "{joined}");
     }
 
     #[test]

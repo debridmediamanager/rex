@@ -344,6 +344,9 @@ What the fields do:
   as Plex's scanners skip them. An `.m3u8` file is a video when its `media_info` is an HLS
   probe (`format_name` `hls`): a source that serves a playlist (a YouTube relay) names it
   so. Such a Part is never direct played; a client's read of it is sent to a conversion.
+  One whose probe has no duration is a live channel (a Stremio addon's TV): its conversion's
+  playlist grows as the broadcast goes on, with no end, and the row keeps no resume point
+  and is never marked watched.
 - **One file, one id.** A new `id` whose `file` another id of the same source already has, in
   rex or earlier in the same push, is rejected as `<file> is already <id>'s file`. To change
   an item's id, push it with a file of its own, or remove the old id first.
