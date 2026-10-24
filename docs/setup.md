@@ -141,8 +141,7 @@ rex serves no Plex app until it is claimed. Claiming is at your own risk: rex is
 Plex and Plex could take action against an account that registers it, so claim it with a
 fresh free Plex account made for rex, not your own, and share it with yours (item 4 below).
 
-Do it before you point a source at it (step 6): titles pushed before the claim keep their
-file names for a while.
+Titles a source pushed before the claim are named as soon as it lands.
 
 Claiming registers the server on the Plex account you claim with, the same way a real Plex
 Media Server is claimed. **Do it once per server.** The claim is saved in `claim_state.json`

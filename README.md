@@ -75,8 +75,6 @@ Plex Media Server runs on the same machine? Add `--port 32500` and use `32500` w
 
 rex plays nothing until this step. It is at your own risk: rex is not made by Plex and Plex could take action against an account that registers it, so use a fresh free Plex account made just for rex, not your own.
 
-Do it before step 4: titles a source sends before the claim keep their file names for a while.
-
 Sign in to plex.tv as the fresh account, open [plex.tv/claim](https://www.plex.tv/claim) and copy the code. It expires after about five minutes.
 
 ```bash
