@@ -69,8 +69,8 @@ class Zurg(http.server.BaseHTTPRequestHandler):
 
     def do_GET(self):
         name = urllib.parse.unquote(self.path).rsplit("/", 1)[-1]
-        if name == "live.m3u8":
-            body = live_playlist().encode()
+        if name in ("live.m3u8", "livesubs.m3u8", "livesubs-text") or name.startswith("cue-"):
+            body = {"live.m3u8": live_playlist, "livesubs.m3u8": live_master, "livesubs-text": live_cues}.get(name, lambda: "WEBVTT\n\n")().encode()
             self.send_response(200)
             self.send_header("Content-Type", "application/vnd.apple.mpegurl")
             self.send_header("Content-Length", str(len(body)))
@@ -132,6 +132,19 @@ def live_playlist():
     for name in LIVE["segments"][first:made]:
         lines += ["#EXTINF:2.000000,", name]
     return "\n".join(lines) + "\n"
+
+
+def live_master():
+    """PenguPlay's proxied channels' master playlist (2026-10-24, URLs redacted): a WebVTT rendition
+    whose playlist and cues have no extension, which FFmpeg 7.1+ refuses as a whole unless told
+    `-extension_picky 0`."""
+    return ('#EXTM3U\n#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="rus t1",AUTOSELECT=YES,LANGUAGE="rus",URI="livesubs-text"\n'
+            '#EXT-X-STREAM-INF:AVERAGE-BANDWIDTH=6070000,BANDWIDTH=7590000,SUBTITLES="subs",RESOLUTION=320x180,FRAME-RATE=24.000,CODECS="avc1.640028"\n'
+            'live.m3u8\n')
+
+
+def live_cues():
+    return re.sub(r"live(\d{3})\.ts", r"cue-\1", live_playlist())
 
 
 def make_clip(path, video, audio, duration, size="1280x720"):
@@ -616,9 +629,18 @@ def live_source(port, scratch, android):
     length = float(subprocess.run([FFPROBE, "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", played],
                                   capture_output=True, text=True).stdout.strip() or 0) if os.path.exists(played) else 0
     check("live: a player reading its Part plays on past the first segments", length > 15, "%.2fs" % length)
+    played = os.path.join(scratch, "livesubs-part.ts")
+    try:
+        subprocess.run([FFMPEG, "-v", "error", "-y", "-i", "http://127.0.0.1:%d/library/parts/190/1700000000/file.m3u8" % port,
+                        "-t", "10", "-c", "copy", played], check=False, timeout=120)
+    except subprocess.TimeoutExpired:
+        pass  # a conversion that never starts holds its reader: what it wrote is measured below
+    length = float(subprocess.run([FFPROBE, "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", played],
+                                  capture_output=True, text=True).stdout.strip() or 0) if os.path.exists(played) else 0
+    check("live: a channel with an extensionless WebVTT rendition plays", length > 8, "%.2fs" % length)
     status, _, body = get(port, "/transcode/sessions")
     for listed in json.loads(body)["MediaContainer"].get("TranscodeSession", []) if status == 200 else []:
-        if str(listed.get("key", "")).startswith("part-180-"):
+        if str(listed.get("key", "")).startswith(("part-180-", "part-190-")):
             get(port, "/video/:/transcode/universal/stop", [("session", listed["key"])])
 
 
@@ -801,6 +823,9 @@ def main():
     recorded = json.load(open(os.path.join(ROOT, "tests/fixtures/transcode/live_hls_probe.json")))["probe"]
     assert "duration" not in recorded["format"]
     item = row("18", "Live", "live.m3u8", probe(os.path.join(scratch, "livevod.m3u8"))["streams"], 0, 0)
+    item["Media"][0]["container"] = item["Media"][0]["Part"][0]["container"] = "hls"
+    items.append(item)
+    item = row("19", "Livesubs", "livesubs.m3u8", probe(os.path.join(scratch, "livevod.m3u8"))["streams"], 0, 0)
     item["Media"][0]["container"] = item["Media"][0]["Part"][0]["container"] = "hls"
     items.append(item)
     # The plain clip as MPEG-TS, as YouTube's HLS serves its h264/aac (stream types 0x1b/0x0f,

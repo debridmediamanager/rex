@@ -128,12 +128,17 @@ pub(crate) struct Hardware {
     /// frame to draw on it and uploading it again ran a 4K HDR remux on fun's J4105 at 0.32x,
     /// against 1.94x without the subtitle; the overlay ran it at 1.53x (measured 2026-10-19).
     pub alpha_subtitles: bool,
+    /// The HLS demuxer takes `-extension_picky 0`. FFmpeg 7.1+ refuses a whole playlist one of
+    /// whose segments' format does not match its URL's extension: PenguPlay's proxied channels
+    /// carry a WebVTT rendition at extensionless URLs, and jellyfin-ffmpeg 8.1.3 failed every run
+    /// of them ("detected format webvtt ... mismatches allowed extensions", 2026-10-24).
+    pub hls_lenient: bool,
     pub filters: HashSet<String>,
 }
 
 impl Hardware {
     fn software() -> Self {
-        Self { accel: Accel::None, decode: HashSet::new(), encode: false, tonemapx: false, opencl_tonemap: false, bounded_http: false, alpha_subtitles: false, filters: HashSet::new() }
+        Self { accel: Accel::None, decode: HashSet::new(), encode: false, tonemapx: false, opencl_tonemap: false, bounded_http: false, alpha_subtitles: false, hls_lenient: false, filters: HashSet::new() }
     }
 
     pub fn can_normalize_loudness(&self) -> bool { self.filters.contains("loudnorm") }
@@ -592,6 +597,10 @@ pub(crate) fn ffmpeg_args(plan: &Plan, path: Path, hardware: &Hardware, start: i
         push(&mut args, &["-reconnect", "1", "-reconnect_on_network_error", "1", "-reconnect_delay_max", "4", "-rw_timeout", "15000000", "-protocol_whitelist", "http,https,tcp,tls,crypto"]);
         if hardware.bounded_http {
             push(&mut args, &["-initial_request_size", "1048576", "-request_size", "8388608"]);
+        }
+        // A source's HLS is a `.m3u8` (the feed takes no other).
+        if hardware.hls_lenient && plan.url.split('?').next().is_some_and(|path| path.ends_with(".m3u8")) {
+            push(&mut args, &["-extension_picky", "0"]);
         }
         if let Some(auth) = &plan.auth {
             push(&mut args, &["-headers", &format!("Authorization: {auth}\r\n")]);
@@ -1098,7 +1107,7 @@ impl Transcoder {
         thread::spawn(move || {
             let found = probing.probe();
             info!(
-                "transcoder: {} ({}), hardware {} encode={} tonemapx={} opencl_tonemap={} bounded_http={} alpha_subtitles={} decode=[{}]",
+                "transcoder: {} ({}), hardware {} encode={} tonemapx={} opencl_tonemap={} bounded_http={} alpha_subtitles={} hls_lenient={} decode=[{}]",
                 probing.ffmpeg.display(),
                 probing.root.display(),
                 found.accel.name(),
@@ -1107,6 +1116,7 @@ impl Transcoder {
                 found.opencl_tonemap,
                 found.bounded_http,
                 found.alpha_subtitles,
+                found.hls_lenient,
                 {
                     let mut names = found.decode.iter().cloned().collect::<Vec<_>>();
                     names.sort();
@@ -1207,6 +1217,10 @@ impl Transcoder {
             }
         }
         // An FFmpeg too old for the option refuses to start with it, so ask first.
+        found.hls_lenient = {
+            let help = Command::new(&self.ffmpeg).args(["-hide_banner", "-h", "demuxer=hls"]).stdin(Stdio::null()).stderr(Stdio::null()).output();
+            help.is_ok_and(|output| String::from_utf8_lossy(&output.stdout).contains("-extension_picky"))
+        };
         found.bounded_http = cfg!(windows) && {
             let help = Command::new(&self.ffmpeg).args(["-hide_banner", "-h", "protocol=http"]).stdin(Stdio::null()).stderr(Stdio::null()).output();
             help.is_ok_and(|output| String::from_utf8_lossy(&output.stdout).contains("-request_size"))
@@ -3188,6 +3202,18 @@ mod tests {
         // Input options: before `-i`, or FFmpeg applies them to the output.
         let at = args.find("-request_size 8388608").expect("bounded requests");
         assert!(args.contains("-initial_request_size 1048576") && at < args.find(" -i ").unwrap(), "{args}");
+    }
+
+    #[test]
+    fn an_hls_source_is_read_leniently_where_ffmpeg_can() {
+        let mut hls = plan(false, 60_000);
+        hls.url = "http://127.0.0.1/stremio/live-tv/channels/channels-pp-live-x.m3u8".into();
+        let lenient = Hardware { hls_lenient: true, ..Hardware::software() };
+        let args = ffmpeg_args(&hls, Path::Software, &lenient, 0, std::path::Path::new("/tmp/x")).join(" ");
+        assert!(args.contains("-extension_picky 0") && args.find("-extension_picky").unwrap() < args.find(" -i ").unwrap(), "{args}");
+        // An FFmpeg without the option refuses to start with it; a file is no playlist.
+        assert!(!ffmpeg_args(&hls, Path::Software, &Hardware::software(), 0, std::path::Path::new("/tmp/x")).join(" ").contains("extension_picky"));
+        assert!(!ffmpeg_args(&plan(false, 60_000), Path::Software, &lenient, 0, std::path::Path::new("/tmp/x")).join(" ").contains("extension_picky"));
     }
 
     #[test]
