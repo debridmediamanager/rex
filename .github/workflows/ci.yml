@@ -148,6 +148,12 @@ jobs:
             test_unclaimed_gate test_photo_ssrf test_manager test_paused_limit test_dashboard_accounts test_dashboard_resources test_share_restrictions test_stream_limits test_auto_collections test_accept_exhaustion \
             test_body_framing test_catalog_features test_parity_split_guid test_merge_unpaired test_parity_cycle88_b test_sidecars_embedded'
 
+      # A restart over a saved state, and the memory it takes: one after the other, outside the
+      # parallel ranges, which the list above fills (test_perf_memory reads /proc).
+      - name: State restore suites
+        run: |
+          .github/ci/in-image.sh 'python3 tests/test_persist.py && python3 tests/test_perf_memory.py'
+
       # No GPU in the container: this is the CPU (x264) path, with the hardware probe on auto.
       # The pinned FFmpeg is kept beside the cargo cache, so it downloads once per pin.
       - name: Transcoder suite
