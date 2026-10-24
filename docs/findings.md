@@ -14144,3 +14144,27 @@ comes back with the next good one. rex now refuses both at start (`main.rs` `ann
 `tests/test_cli.py`): an entry that is not `http(s)://` and a host, and a 100.64.0.0/10
 address. A Tailscale NAME (`https://<host>.<tailnet>.ts.net:443`, as the guides announce it) is
 what plex.tv takes; the earlier rex-e2e run announced one.
+
+## Clients downloading from the source's own link (2026-10-25)
+
+`--part-mode redirect` (`serve_part_proxy`): a part read whose source answers with a redirect to
+another origin is answered with that 302, so the client reads the provider's link itself. The
+source's own hops are still followed with its credential, the link is logged by host only, and a
+source that answers with the bytes is streamed as in proxy mode. Conversions read through rex
+whatever the mode, since FFmpeg runs here. Measured on a claimed test rex (nightly 2026-10-24 plus
+this change) and a zurg with `disable_stream_proxy: true`, which 302s every read to Real-Debrid:
+
+| Client | Item | What rex decided | Who read Real-Debrid |
+|---|---|---|---|
+| Plezy (Pixel 6) | HEVC/EAC3 MKV | direct play | **the phone**: its own TCP connection to the RD host, rex wrote 302s and no byte |
+| Plex for Android 2026.19.1 | HEVC/AAC MKV | direct play | **the phone**, its http-to-https redirect followed; a seek to 1:17 was three more 302s |
+| Plex for Android | HEVC/EAC3 MKV | video copied, audio to AAC | rex (FFmpeg) |
+| Plex Web 4.147 (Chrome 155) | H.264/AAC MP4 | direct play, then a conversion | rex: see below |
+
+Plex Web followed the 302 and dropped it: Real-Debrid answers a range with `Content-Type:
+application/force-download` and `Content-Disposition: attachment`, which Chrome's `<video>`
+refuses (the same wall as "The seven things", fix 7). The web client then asked for a new decision
+in the same second and played a conversion with video copied, from rex. Playback and a seek both
+worked; first frame at 5.7 s against 7.5 s for the same item proxied. In proxy mode the same
+client played the same item direct (`video/mp4`, 206 from rex). So a browser gets the redirect only
+from a source whose link answers a media type; with Real-Debrid it reads through rex either way.

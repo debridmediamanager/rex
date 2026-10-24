@@ -456,6 +456,21 @@ Analysis reads source media, consumes CPU and stores generated files in a folder
 Deleting a source, file version or library retires its unreferenced analysis artifacts.
 Deleting preview thumbnails leaves chapter images and markers intact.
 
+### Apps downloading straight from the source
+
+By default every byte an app plays passes through rex. Start rex with `--part-mode redirect` and,
+when an app plays a file as it is (direct play) and the source answers with a link elsewhere, such
+as zurg with `disable_stream_proxy: true` and its debrid provider's download link, rex hands the
+app that link and the app downloads from the provider itself. rex's machine then carries none of
+that stream.
+
+- Anything rex converts still reads through rex: a quality below the original, an audio track the
+  app cannot play, burned-in subtitles.
+- Plezy and Plex for Android follow the link. A web browser follows it only when the provider says
+  the file is video: Real-Debrid's links say "download", so Plex Web plays those through rex.
+- The link is the provider's own: every app and shared user who plays the file gets it, and the
+  provider sees each of them download.
+
 ### Local owner controls
 
 These APIs need the owner's Plex token and nothing else: unlike the feed
