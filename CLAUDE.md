@@ -778,7 +778,7 @@ rigs run on.
 - Never commit a token, a provider download link, zurg's credentials, a Plex token, or
   a tunnel credential. The repo is public.
 - Setup instructions live in five places that must say the same thing: `README.md`,
-  `docs/setup.md`, the notes guides `guides/rex.md` and `guides/rex-any-source.md`
+  `docs/setup.md`, the notes guides `rex/with-zurg.md` and `rex/any-source.md`
   (repo `debridmediamanager/notes`, notes.debridmediamanager.com) and the Setup and
   Limits sections of `public/index.html` in `debridmediamanager/rex-site`
   (rex.debridmediamanager.com). A change to any step, flag, env var, version floor or

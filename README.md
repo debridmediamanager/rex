@@ -100,7 +100,7 @@ zurg tells rex where its files are and how to log in to them, then sends its who
 
 Only this machine, your home network and Tailscale can push to rex's library or delete what a source pushed. A tunnel or reverse proxy running on the rex machine (frp, Caddy, Tailscale Funnel) looks local to rex, so block `/rex/` in it. A router that gives outside visitors its own address makes them look local too, which opens the feed to the internet. Running two zurgs? Give each a name of its own with `rex_source: rd` and `rex_source: ad`.
 
-Anything else registers itself the same way: your own app ([rex with your own app](https://notes.debridmediamanager.com/guides/rex-any-source/)) or an addon for YouTube channels, home videos or Stremio catalogs ([Building rex addons](https://notes.debridmediamanager.com/guides/rex-addons/)).
+Anything else registers itself the same way: your own app ([rex with your own app](https://notes.debridmediamanager.com/rex/any-source/)) or an addon for YouTube channels, home videos or Stremio catalogs ([Building rex addons](https://notes.debridmediamanager.com/rex/addons/)).
 
 **5. Use it outside your home**
 
@@ -118,7 +118,7 @@ You can use your own hostname instead. Give rex a certificate for it with `--tls
 
 Known before the first start, these flags go in step 2's command. Added later, they need a restart.
 
-No public IP at home (CGNAT)? rex has no relay and will not get one. Use Tailscale serve for devices on your tailnet, or a small VPS whose public IP forwards to rex through a tunnel (frp, with Caddy for HTTPS): the [notes guide](https://notes.debridmediamanager.com/guides/rex/) has the recipe. Avoid tunnels that cap bandwidth or data (Tailscale Funnel, ngrok), and Cloudflare tunnels, which drop the range of the first read so every play start pulls the whole file from your source.
+No public IP at home (CGNAT)? rex has no relay and will not get one. Use Tailscale serve for devices on your tailnet, or a small VPS whose public IP forwards to rex through a tunnel (frp, with Caddy for HTTPS): the [notes guide](https://notes.debridmediamanager.com/rex/with-zurg/) has the recipe. Avoid tunnels that cap bandwidth or data (Tailscale Funnel, ngrok), and Cloudflare tunnels, which drop the range of the first read so every play start pulls the whole file from your source.
 
 Your Plex apps can then reach it from anywhere.
 

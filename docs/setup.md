@@ -173,7 +173,7 @@ A claimed rex refuses another claim (409). To move it to another account, stop i
 
 A source is any program that registers with rex and pushes its files over the feed API
 ([`feed-api.md`](feed-api.md)); your own app or an addon does it as below for zurg
-([rex with your own app](https://notes.debridmediamanager.com/guides/rex-any-source/), [Building rex addons](https://notes.debridmediamanager.com/guides/rex-addons/)).
+([rex with your own app](https://notes.debridmediamanager.com/rex/any-source/), [Building rex addons](https://notes.debridmediamanager.com/rex/addons/)).
 For a debrid account or Usenet that is zurg. In each zurg's `config.yml` (zurg's [`docs/config.md`](https://github.com/debridmediamanager/zurg/blob/main/docs/config.md) has the details):
 
 ```yaml
