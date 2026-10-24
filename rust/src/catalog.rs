@@ -353,6 +353,11 @@ impl RowIndex {
             .collect();
     }
 
+    /// A restored row at `position`, the next: filed as it arrives, not read back.
+    fn file_restored(&self, position: usize, item: &Value) {
+        self.0.borrow_mut().built.get_or_insert_with(Positions::default).file(position, item);
+    }
+
     fn mark(&self, position: usize) {
         let mut state = self.0.borrow_mut();
         if state.built.is_some() {
@@ -592,6 +597,56 @@ impl Catalog {
     /// row as it is now (a start that restored them unchanged).
     pub fn attach(&mut self, path: &Path, key_of: impl Fn(&Value) -> Option<String>, clean: bool) {
         self.rows.attach(path, key_of, clean);
+    }
+
+    /// Start restoring the state's rows, kept in the file at `path` and handed in one at a time
+    /// (`restore_row`). The rows so far are handed back, for `abandon_restore`. Nothing is
+    /// marked: the file holds every row as it is.
+    pub fn begin_restore(&mut self, path: &Path) -> Rows {
+        self.generation = next_generation();
+        self.by_id.clear();
+        self.index.drop_all();
+        self.changes = Changes::default();
+        self.touched = Changes::default();
+        self.writes = Changes::default();
+        self.unpacked = Changes::default();
+        std::mem::replace(&mut self.rows, Rows::on_disk(path))
+    }
+
+    /// The next restored row, stored in the file under `key`: filed in the index and let go of,
+    /// unless the file keeps it by content.
+    pub fn restore_row(&mut self, key: &str, row: Value) {
+        let position = self.rows.len();
+        self.index.file_restored(position, &row);
+        if let Some(rating_key) = key_value_of(row.get("ratingKey")) {
+            self.by_id.insert(rating_key, position);
+        }
+        if key.starts_with('#') {
+            self.rows.push_held(row);
+        } else {
+            self.rows.push_stored(key);
+        }
+    }
+
+    /// A restore that did not finish: the rows from before it, every one to be looked at again.
+    pub fn abandon_restore(&mut self, rows: Rows) {
+        self.rows = rows;
+        self.rebuild_index();
+        for changes in [&mut self.changes, &mut self.touched, &mut self.writes, &mut self.unpacked] {
+            changes.all = true;
+        }
+    }
+
+    /// `rating_key`'s row for the next artwork pass (`restamp_artwork`).
+    pub fn mark_touched(&mut self, rating_key: &str) {
+        if !self.touched.all {
+            self.touched.keys.insert(rating_key.to_string());
+        }
+    }
+
+    /// How many rows were let go of since the last call (`Rows::trim`).
+    pub fn take_released(&mut self) -> usize {
+        self.rows.take_released()
     }
 
     /// The state database the rows are kept in.

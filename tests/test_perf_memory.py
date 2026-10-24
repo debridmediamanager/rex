@@ -48,6 +48,11 @@ HEADERS = {"X-Plex-Product": "Plex Web", "X-Plex-Platform": "Chrome",
 SHOWS = 120
 # Each Part's streams are held as their JSON text (`catalog::PACKED_STREAMS`).
 RESIDENT = 3.6
+# A restart over the same catalog: every row held at once, the start peaked at 3.5x the rows' JSON
+# and stayed there until a request (a copy of the production server's 42,052 rows: 1,992 MB peak,
+# 1,870 MB for 40 s idle); filed one at a time and left in the file, 1.0x and 435 MB (2026-10-24).
+RESTART_PEAK = 2.0
+RESTART_RESIDENT = 1.2
 results = []
 
 
@@ -199,6 +204,20 @@ def main():
         print("after two unpaged episode listings: %.0f MB resident" % after, flush=True)
         check("what an unpaged listing built is given back (+%.0f MB of %.0f MB)" % (after - loaded, loaded),
               after - loaded < loaded / 4, (after, loaded))
+        stop(process)
+        # Every start after that is over the same seed: the state's rows are filed as they are read
+        # and stay in the file, and the memory a restore used goes back without waiting for a request.
+        process, port = start(seed, state)
+        time.sleep(8)
+        resident, peak = memory(process.pid)
+        print("restarted over the same catalog: %.0f MB resident, %.0f MB peak, no request" % (resident, peak),
+              flush=True)
+        check("a restart over the same catalog peaks under %.1fx the rows' JSON (%.1fx)" % (RESTART_PEAK, peak / rows_mb),
+              peak < RESTART_PEAK * rows_mb, (peak, rows_mb))
+        check("...and holds under %.1fx of it before any request (%.1fx)" % (RESTART_RESIDENT, resident / rows_mb),
+              resident < RESTART_RESIDENT * rows_mb, (resident, rows_mb))
+        if request(port, "/library/sections/2/all?X-Plex-Container-Start=0&X-Plex-Container-Size=50") != 200:
+            check("a page of the restored library answers", False)
     finally:
         if process is not None and process.poll() is None:
             process.kill()

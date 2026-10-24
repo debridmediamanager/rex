@@ -1118,7 +1118,33 @@ impl Runtime {
         let Some(path) = self.state_path.clone() else {
             return Ok(());
         };
-        let mut saved = store::read_state(&path)?;
+        // The usual start -- a state saved over this same catalog -- leaves its rows in the file,
+        // each filed in the index as it is read and let go of (`Catalog::begin_restore`): one
+        // held every row at once, 1.6 GB of the production server's 1.85 GB peak for 42,052
+        // rows (2026-10-24). A state saved over another catalog keeps the whole read, since its
+        // rows may be joined to the catalog's (`restore_state`).
+        let streamed = state_streams(&path, &self.source_digest);
+        let mut before = None;
+        let mut saved = if streamed {
+            let kept = self.state_path.is_some();
+            let catalog = &mut self.catalog;
+            before = Some(catalog.begin_restore(&path));
+            let mut restore = |stored: &str, row: Value| {
+                if let Some(key) = key_of(&row) {
+                    if !artwork::artwork_writes(&row, &key, kept).is_empty() {
+                        catalog.mark_touched(&key);
+                    }
+                }
+                catalog.restore_row(stored, row);
+            };
+            store::read_state_with(&path, Some(&mut restore))?
+        } else {
+            store::read_state(&path)?
+        };
+        if let Some(rows) = before.take().filter(|_| !matches!(saved, store::Saved::Database(..))) {
+            self.catalog.abandon_restore(rows);
+        }
+        let streamed = streamed && matches!(saved, store::Saved::Database(..));
         let mut origin = path.clone();
         if matches!(saved, store::Saved::Missing) {
             if let Some(legacy) = LEGACY_STATE.get().filter(|legacy| legacy.exists()) {
@@ -1131,7 +1157,7 @@ impl Runtime {
             store::Saved::Database(state, cache) => {
                 self.store_cache = cache;
                 let source = StateSource::Database(path.clone());
-                self.restore_state(state, &source)?;
+                self.restore_state(state, &source, streamed)?;
                 self.spelling_saved = self.spelling_serial;
                 self.versions_saved = self.versions().into_iter().collect();
                 return Ok(());
@@ -1174,7 +1200,7 @@ impl Runtime {
                 return Ok(());
             }
         };
-        self.restore_state(state, &source)?;
+        self.restore_state(state, &source, false)?;
         let document = self.state_document(true);
         let cache = document
             .as_object()
@@ -1210,7 +1236,9 @@ impl Runtime {
         }
     }
 
-    fn restore_state(&mut self, mut state: Value, source: &StateSource) -> Result<(), String> {
+    /// `streamed`: the rows were restored as they were read (`load_state`), and the state's
+    /// `items` is empty.
+    fn restore_state(&mut self, mut state: Value, source: &StateSource, streamed: bool) -> Result<(), String> {
         if state.get("format").and_then(Value::as_i64) != Some(1) {
             self.set_state_aside(source);
             return Ok(());
@@ -1247,7 +1275,11 @@ impl Runtime {
         // overlays below.
         let restored_rows = !rebuilt && state.get("items").is_some_and(Value::is_array);
         let saved_rows = state.get("items").is_some_and(Value::is_array);
-        if restored_rows {
+        if restored_rows && streamed {
+            if let Some(sections) = state.get("sections").and_then(Value::as_array) {
+                self.catalog.sections = sections.clone();
+            }
+        } else if restored_rows {
             // Taken, not copied: a copy held every row twice at the start (the production
             // server, 16,000 rows: 805 MB of saved document beside a 775 MB catalog,
             // 2026-10-10).
@@ -23009,6 +23041,36 @@ fn start_memory_trimmer() {
 /// SIGTERM saves before the process exits. Saving on every request instead rewrote the
 /// whole state file (every catalog row) on every read, since each one stamps its
 /// device's lastSeenAt.
+/// Let go of the rows a save just put in the file, as a request's own `trim` does, and give a
+/// large release's memory back to the system. A start restores every row and holds them until
+/// the first save is written; they were let go of only by the next request, and the memory
+/// never (the production server: 1.87 GB resident for 40 s idle, 910 MB a day later).
+fn release_saved_rows(runtime: &SharedRuntime) {
+    let released = {
+        let mut guard = runtime.lock().unwrap_or_else(PoisonError::into_inner);
+        if guard.overlay.is_some() {
+            return;
+        }
+        guard.catalog.pack_pending();
+        guard.catalog.take_released()
+    };
+    if released >= RELEASE_FREE_MEMORY_ROWS {
+        crate::platform::release_free_memory();
+    }
+}
+
+/// Whether a start may restore the rows saved at `path` as it reads them: a state of this format
+/// saved over this same catalog, whose rows are taken as they are. Any other is read whole.
+fn state_streams(path: &Path, digest: &str) -> bool {
+    store::state_doc(path, "format").and_then(|format| format.as_i64()) == Some(1)
+        && store::state_doc(path, "containsClasses").and_then(|value| value.as_bool()) != Some(true)
+        && store::state_doc(path, "catalogDigest").as_ref().and_then(Value::as_str).is_none_or(|saved| saved == digest)
+}
+
+/// How many rows let go of at once are worth handing the memory back for: a library's restore,
+/// not a request's few.
+const RELEASE_FREE_MEMORY_ROWS: usize = 1000;
+
 fn start_state_saver(runtime: SharedRuntime) {
     // A transcoder needs the orderly stop too, state file or none: its FFmpegs are stopped on
     // the way out (`Transcoder::stop_all`).
@@ -23072,6 +23134,7 @@ fn start_state_saver(runtime: SharedRuntime) {
                 drop(guard);
                 write_or_log(snapshot);
                 dirty_since = None;
+                release_saved_rows(&runtime);
             }
         }
     });

@@ -275,6 +275,17 @@ fn windows_resources(sample: &mut ResourceSample) {
     }
 }
 
+/// Hand memory the allocator holds free back to the system. glibc keeps what a large free
+/// left behind: a production rex that let go of 1.3 GB of restored rows kept 910 MB resident
+/// for 340 MB in use (2026-10-24). Elsewhere the allocator returns it on its own.
+pub(crate) fn release_free_memory() {
+    #[cfg(all(target_os = "linux", target_env = "gnu"))]
+    // SAFETY: malloc_trim only returns free pages; it touches no live allocation.
+    unsafe {
+        libc::malloc_trim(0);
+    }
+}
+
 /// Stop a child where it is (`SIGSTOP`), so a transcode that is far enough ahead uses no CPU.
 pub(crate) fn pause(pid: u32) {
     #[cfg(unix)]

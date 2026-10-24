@@ -124,6 +124,7 @@ fn hash_text(text: &str) -> u64 {
 fn read_prefix(
     connection: &Connection,
     prefix: &str,
+    mut items: Option<&mut dyn FnMut(&str, Value)>,
 ) -> Result<(Map<String, Value>, Cache), String> {
     let mut document = Map::new();
     let mut cache = Cache::default();
@@ -183,6 +184,12 @@ fn read_prefix(
                     }
                     collection.rows.insert(key.clone(), (pos, hash_text(&body)));
                     collection.order.push(key.clone());
+                    if field == "items" {
+                        if let Some(visit) = items.as_mut() {
+                            visit(&key, value);
+                            continue;
+                        }
+                    }
                     if kind == Kind::Array {
                         array.push(value);
                     } else {
@@ -228,7 +235,7 @@ pub fn read_catalog(path: &Path) -> Result<(Value, String), String> {
         return Err("cannot read catalog: the database holds no catalog".to_string());
     }
     let (document, _) =
-        read_prefix(&connection, CATALOG).map_err(|e| format!("cannot parse catalog: {e}"))?;
+        read_prefix(&connection, CATALOG, None).map_err(|e| format!("cannot parse catalog: {e}"))?;
     if document.is_empty() {
         return Err("cannot read catalog: the database holds no catalog".to_string());
     }
@@ -297,6 +304,27 @@ pub enum Saved {
 }
 
 pub fn read_state(path: &Path) -> Result<Saved, String> {
+    read_state_with(path, None)
+}
+
+/// One document of the saved state (`state:<name>`), read alone: what decides how the rest
+/// is read. `None` when it, or the state, is not there.
+pub fn state_doc(path: &Path, name: &str) -> Option<Value> {
+    if !is_sqlite(path) {
+        return None;
+    }
+    let connection = open_read(path).ok()?;
+    let body: Option<String> = connection
+        .query_row("SELECT body FROM doc WHERE name = ?1", params![format!("{STATE}{name}")], |row| row.get(0))
+        .optional()
+        .ok()??;
+    serde_json::from_str(&body?).ok()
+}
+
+/// `read_state`, each saved row of `items` handed to `items` as it is read instead of kept in
+/// the document, whose `items` is then empty: a start held every row at once, 1.6 GB of the
+/// production server's 1.85 GB peak for 42,052 rows (pprof of jemalloc's heap, 2026-10-24).
+pub fn read_state_with(path: &Path, items: Option<&mut dyn FnMut(&str, Value)>) -> Result<Saved, String> {
     if !path.exists() {
         return Ok(Saved::Missing);
     }
@@ -328,7 +356,7 @@ pub fn read_state(path: &Path) -> Result<Saved, String> {
         if !has_table(&connection, "doc")? {
             return Ok(Saved::Empty);
         }
-        let (document, cache) = read_prefix(&connection, STATE)?;
+        let (document, cache) = read_prefix(&connection, STATE, items)?;
         if document.is_empty() {
             return Ok(Saved::Empty);
         }

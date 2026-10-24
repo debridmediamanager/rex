@@ -120,8 +120,19 @@ impl Runtime {
         }
         if !replacements.is_empty() {
             // A renamed/deleted collection can leave its old member tag behind.
-            // Rewrite stored tags too, including those no live collection stamps.
-            for row in self.catalog.items_mut() {
+            // Rewrite stored tags too, including those no live collection stamps. Read a row at
+            // a time and written only where a tag changes: a start leaves the rows in the file.
+            let stale = |row: &Value| {
+                row.get("Collection").and_then(Value::as_array).into_iter().flatten().any(|tag| {
+                    tag.get("guid").and_then(Value::as_str).is_some_and(|guid| replacements.contains_key(guid))
+                })
+            };
+            let keys: Vec<String> = self.catalog.hot().lazy().filter_map(|row| key_of(&row)).collect();
+            for key in keys {
+                if !self.catalog.get(&key).is_some_and(stale) {
+                    continue;
+                }
+                let Some(row) = self.catalog.get_mut(&key) else { continue };
                 for tag in row.get_mut("Collection").and_then(Value::as_array_mut).into_iter().flatten() {
                     if let Some(guid) = tag.get("guid").and_then(Value::as_str)
                         .and_then(|guid| replacements.get(guid))

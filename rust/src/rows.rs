@@ -117,6 +117,8 @@ pub struct Rows {
     /// How many times `trim` let go of rows it held: a listing that read rows ahead of time
     /// reads them again once it has (`runtime::project_planned`).
     evictions: u64,
+    /// Rows `trim` let go of since `take_released` last asked.
+    released: usize,
     meta: Vec<Meta>,
     disk: Option<Disk>,
     cache: RefCell<Cache>,
@@ -134,7 +136,7 @@ impl Clone for Rows {
 impl Rows {
     pub fn new(items: Vec<Value>) -> Self {
         let meta = vec![Meta::new(); items.len()];
-        Rows { overlay: None, items, evictions: 0, meta, disk: None, cache: RefCell::default() }
+        Rows { overlay: None, items, evictions: 0, released: 0, meta, disk: None, cache: RefCell::default() }
     }
 
     pub fn len(&self) -> usize {
@@ -357,6 +359,30 @@ impl Rows {
         self.disk.as_ref().map(|disk| disk.path.as_path())
     }
 
+    /// No rows yet, kept in the state database at `path`: a start's restore adds them one at a
+    /// time as it reads them (`push_stored`), so they are never all in memory at once.
+    pub fn on_disk(path: &Path) -> Self {
+        Rows { disk: Some(Disk { path: path.to_path_buf(), reader: RefCell::new(None), pool: Default::default() }), ..Default::default() }
+    }
+
+    /// A row the file holds under `key`, as it is there: not held.
+    pub fn push_stored(&mut self, key: &str) {
+        self.items.push(Value::Null);
+        self.meta.push(Meta { held: false, stored: Some(key.into()), dirty: false, serial: 0 });
+    }
+
+    /// A row the file keeps by content (a `#` key, no ratingKey of its own): held, as `attach`
+    /// holds one.
+    pub fn push_held(&mut self, row: Value) {
+        self.items.push(row);
+        self.meta.push(Meta::new());
+    }
+
+    /// How many rows `trim` let go of since the last call.
+    pub fn take_released(&mut self) -> usize {
+        std::mem::take(&mut self.released)
+    }
+
     /// A save took every unsaved row (`Catalog::take_changes`) and queued it as `serial`, or
     /// found nothing to write (`None`): each is held until the file has that save.
     pub fn saved(&mut self, serial: Option<u64>, key_of: impl Fn(&Value) -> Option<String>) {
@@ -402,6 +428,7 @@ impl Rows {
                 *row = Value::Null;
                 meta.held = false;
                 evicted = true;
+                self.released += 1;
             }
         }
         self.evictions += u64::from(evicted);

@@ -154,6 +154,7 @@ impl Runtime {
     /// to its children. A row that never recorded one is stamped once where the library is
     /// kept (`--state`): its cached artwork predates this and may be stale.
     pub(super) fn restamp_artwork(&mut self) {
+        // (`artwork_writes` decides it for each row; a start's restore asks it as it reads.)
         let touched = self.catalog.take_touched();
         let keys: Vec<String> = if touched.all {
             self.catalog.hot().lazy().filter_map(|row| key_of(&row)).collect()
@@ -168,20 +169,7 @@ impl Runtime {
             let Some(row) = self.catalog.get(&key) else {
                 continue;
             };
-            let mut writes = Vec::new();
-            for (source, field, mark) in [("_poster_url", "thumb", "_thumbFor"), ("_art_url", "art", "_artFor")] {
-                let owned = row
-                    .get(field)
-                    .and_then(Value::as_str)
-                    .is_some_and(|path| path.starts_with(&format!("/library/metadata/{key}/{field}/")));
-                let from = row.get(source).filter(|value| !value.is_null()).cloned().unwrap_or(json!(""));
-                match row.get(mark) {
-                    Some(minted) if *minted == from => {}
-                    None if !owned || !kept => writes.push((field, mark, from, false)),
-                    _ if owned => writes.push((field, mark, from, true)),
-                    _ => writes.push((field, mark, from, false)),
-                }
-            }
+            let writes = artwork_writes(row, &key, kept);
             if writes.is_empty() {
                 continue;
             }
@@ -637,4 +625,25 @@ fn minted_for_sources(object: &mut serde_json::Map<String, Value>) {
         let from = object.get(source).filter(|value| !value.is_null()).cloned().unwrap_or(json!(""));
         object.insert(mark.to_string(), from);
     }
+}
+
+/// What `restamp_artwork` writes to `key`'s row: each artwork field whose path was not minted
+/// for its artwork, with the artwork and whether its path gets a new version. `kept`: the
+/// library is kept (`--state`). Empty for a row whose artwork is as its paths say.
+pub(super) fn artwork_writes(row: &Value, key: &str, kept: bool) -> Vec<(&'static str, &'static str, Value, bool)> {
+    let mut writes = Vec::new();
+    for (source, field, mark) in [("_poster_url", "thumb", "_thumbFor"), ("_art_url", "art", "_artFor")] {
+        let owned = row
+            .get(field)
+            .and_then(Value::as_str)
+            .is_some_and(|path| path.starts_with(&format!("/library/metadata/{key}/{field}/")));
+        let from = row.get(source).filter(|value| !value.is_null()).cloned().unwrap_or(json!(""));
+        match row.get(mark) {
+            Some(minted) if *minted == from => {}
+            None if !owned || !kept => writes.push((field, mark, from, false)),
+            _ if owned => writes.push((field, mark, from, true)),
+            _ => writes.push((field, mark, from, false)),
+        }
+    }
+    writes
 }
