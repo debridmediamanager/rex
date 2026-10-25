@@ -978,7 +978,7 @@ A real PMS gives a member of two collections only the earlier-created collection
 members, in creation order, numbered `collection.related.{section}.1`, `.2` and on, at most
 ten. A source that files a title in several collections (Stremio catalogs as collections)
 would otherwise show one of them at random to the person. Plex Web and Plezy draw every
-shelf (a user's report, 2026-10-25); `tests/test_ui_surface.py` holds it.
+shelf; the change is wason92's patch from the DMM Discord (2026-10-25), and `tests/test_ui_surface.py` holds it.
 
 #### A smart list is a stored QUERY, and rex stored a snapshot
 
