@@ -631,7 +631,7 @@ python3 tests/test_feed_subtitles.py        # a source's sidecar subtitles (`sub
 python3 tests/test_feed_collections.py      # a source's `collections`: each name a collection of the title's library (an episode's show), made as a
                                             # tag write makes one; a person's removal and own collections kept, [] and absent (rex-stremio's catalogs)
 python3 tests/test_feed_extras.py           # a file pushed as `kind: extra` is a clip of its release's title by its `extra_type`, one without it is no clip whatever its folder; rows held so stay through a start (Motto To Love-Ru, To Love Ru) and a re-push as an extra turns one into a clip
-python3 tests/test_match_show_children.py  # a show Fix Matched takes the picked show's episodes by its rows' TMDB episode ids, by number only where every season's count is Plex's (a real library's Ben 10: Omniverse)
+python3 tests/test_match_show_children.py  # a show Fix Matched takes the picked show's episodes by its rows' TMDB episode ids, by number only where every season's count is Plex's (a real library's Ben 10: Omniverse); one matched onto a show the library holds merges into it, its episodes kept
 python3 tests/test_feed_episode_ids.py      # a pushed `tmdb_episode` is Plex's episode listing it, every page of a season is read, a re-placed version leaves a row of several (Re:ZERO, Ben 10, Animaniacs, SpongeBob)
 python3 tests/test_feed_retry_placed.py     # an episode its source placed that Plex's agent had not named is named by the ten-minute retry, without a push (Animaniacs), one of several releases placed alike too (Re:ZERO S1E79)
 python3 tests/test_feed_named_on_claim.py   # what a source placed before rex could ask Plex's agent is named the moment it is claimed, and once

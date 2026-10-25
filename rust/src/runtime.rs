@@ -20200,6 +20200,19 @@ impl Runtime {
             _ => Value::Null,
         };
         self.push_timeline_entry(row, 3, None, None, None, None);
+        // A show holds no Media of its own: merged as a film's row is, it absorbed nothing and was
+        // retired with its seasons and episodes, and the files vanished (an unplaced episode's
+        // one-episode show Fix Matched onto the library's show, Discord 2026-10-23). A show
+        // merges as Merge merges shows.
+        if let Some(existing_key) = existing
+            .as_ref()
+            .filter(|_| row.get("type").and_then(Value::as_str) == Some("show"))
+            .and_then(key_of)
+        {
+            let (response, absorbed) = self.merge_shows(&existing_key, &[(key.to_string(), row.clone())]);
+            info!("MATCH {key} merged into {existing_key} ({guid}, {absorbed} row(s) absorbed)");
+            return response;
+        }
         if let Some(existing) = existing {
             let existing_key = key_of(&existing).unwrap_or_default();
             // Each Media keeps the release it came from (`_source`/`_sid`): untagged, the

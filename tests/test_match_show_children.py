@@ -43,6 +43,16 @@ ROW = next(row for row in FIXTURE["rows"] if row["ratingKey"] == SHOWDOWN)
 SHOWDOWN_ITEM = {"id": ROW["_sid"], "path": ROW["_sid"], "file": MOUNT + "/" + ROW["_sid"], "name": ROW["_release"],
                  "release": "/".join(ROW["_sid"].split("/")[:2]), "size": 1 << 30, "hash": ROW.get("_hash", ""),
                  "ids": {"tmdb": 46922}, "kind": "episode", "season": 2, "episode": 1, "tmdb_episode": 1107002}
+UNPLACED_SID = ("shows/KonoSuba.S02E01.German.DL.DTS.1080p.BluRay.10bit.x265-PHM/"
+                "KonoSuba.S02E01.German.DL.DTS.1080p.BluRay.10bit.x265-PHM.mkv")
+UNPLACED = {"id": UNPLACED_SID, "path": UNPLACED_SID, "file": MOUNT + "/" + UNPLACED_SID,
+            "name": "KonoSuba.S02E01.German.DL.DTS.1080p.BluRay.10bit.x265-PHM",
+            "release": "/".join(UNPLACED_SID.split("/")[:2]), "size": 1 << 30,
+            "hash": "f5ec83ee163936513f1f8c00523b3ca832576e95", "ids": {}}
+
+
+def parts(row):
+    return [part.get("file") for media in row.get("Media") or [] for part in media.get("Part") or []]
 
 
 def main():
@@ -87,6 +97,25 @@ def main():
         check("the release's S2E2 is not Plex's S2E2", part_1.get("guid") == before[part_1["ratingKey"]]["guid"], part_1.get("guid"))
         kept = [key for key in watched if not server.row(key).get("viewCount")]
         check("watch state stays on its rows", not kept, kept)
+
+        # An episode its source could not place is a one-episode show of its own; Fix Matching that
+        # show to one the library already holds merged it as a film -- the show's Media (none) went
+        # over and the show was retired with its season and episode, so the file vanished (Discord,
+        # 2026-10-23). The release is fun's, DMM left it unplaced on 2026-10-25.
+        status, _ = server.feed("POST", "items", {"items": [dict(UNPLACED, media_info=PROBE)]})
+        check("the unplaced push is taken", status == 200, status)
+        stray = next((row for row in server.rows("/library/sections/%s/all?type=4" % show["librarySectionID"])
+                      if UNPLACED["file"] in parts(row)), {})
+        stand_in = str(stray.get("grandparentRatingKey", ""))
+        check("it is a show of its own", stand_in and stand_in != SHOW, stand_in)
+        status, _ = server.request("/library/metadata/%s/match?guid=%s&name=%s&year=2012"
+                                   % (stand_in, urllib.parse.quote(PICKED, safe=""), urllib.parse.quote("Ben 10: Omniverse")), "PUT")
+        check("the match onto the library's show is taken", status == 200, status)
+        leaves = server.rows("/library/metadata/%s/allLeaves" % SHOW)
+        check("its file is under the show it was matched to",
+              any(UNPLACED["file"] in parts(row) for row in leaves), len(leaves))
+        status, _ = server.request("/library/metadata/%s" % stand_in)
+        check("the stand-in show is gone", status == 404, status)
     finally:
         server.stop()
         if RECORD:
