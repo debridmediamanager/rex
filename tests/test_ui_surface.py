@@ -28879,12 +28879,14 @@ def main():
         base, "GET", "/:/plugins/com.plexapp.agents.imdb/prefs", want_json=False)
     status_500_c52c, _, _ = request(
         base, "GET", "/:/plugins/com.plexapp.framework/prefs", want_json=False)
+    # The documents carry rex's own labels (2026-10-25), so their lengths come from the sidecar.
+    prefs_docs_c52c = json.load(open(os.path.join(REPO_ROOT, "data", "plugin_prefs.json"), encoding="utf-8"))
     check("a plug-in's preference document is served",
-          status_c52c == 200 and len(body_c52c) == 418
+          status_c52c == 200 and len(body_c52c) == len(prefs_docs_c52c["com.plexapp.system"].encode())
           and b'id="PO_RGN"' in body_c52c
           and headers_c52c.get("Content-Type") == "application/xml"
           and (headers_c52c.get("Set-Cookie") or "").startswith("com.plexapp.system=")
-          and status_imdb_c52c == 200 and len(imdb_c52c) == 2224
+          and status_imdb_c52c == 200 and len(imdb_c52c) == len(prefs_docs_c52c["com.plexapp.agents.imdb"].encode())
           and status_500_c52c == 500,
           "system=%s/%s imdb=%s framework=%s"
           % (status_c52c, len(body_c52c), status_imdb_c52c, status_500_c52c))
@@ -32517,7 +32519,7 @@ def main():
     manage_c60e = {h.get("identifier"): h.get("title")
                    for h in loc_c60e("/hubs/sections/%s/manage" % movie_section, "de").get("Hub") or []}
     check("the localised strings are 1.42.2's, and the table holds the Related and manage titles",
-          (prefs_c60e.get("episodeSort") or {}).get("summary") == "How to sort the episodes for shows."
+          (prefs_c60e.get("episodeSort") or {}).get("summary") == "Order in which a show's episodes are listed."
           and related_c60e in ([], ["Ähnliche Filme"])
           and manage_c60e.get("recent.library.playlists") == "Mediathek-Playlists"
           and manage_c60e.get("movie.genre") == "Top-Filme in (Genre)",

@@ -456,20 +456,20 @@ impl Runtime {
                 let mut setting = match *name {
                     "collectionMode" => json!({
                         "id": "collectionMode", "label": "Collection Mode",
-                        "summary": "How the items in the collection are displayed on the Library tab.",
+                        "summary": "How the collection's items appear on the Library tab.",
                         "type": "text", "default": "-1", "value": "-1", "hidden": false,
                         "advanced": false, "group": "",
                         "enumValues": "-1:Library default|1:Hide items in this collection|2:Show this collection and its items|0:Hide this collection but show its items"}),
                     "collectionSort" => json!({
                         "id": "collectionSort", "label": "Collection order",
-                        "summary": "How to sort the items in the collection.",
+                        "summary": "The order the collection's items are listed in.",
                         "type": "text", "default": "0", "value": "0", "hidden": false,
                         "advanced": false, "group": "",
                         "enumValues": "0:Release date|1:Alphabetical"}),
                     _ => json!({
                         "id": "collectionFilterBasedOnUser",
                         "label": "Collection filtering based on",
-                        "summary": "Which user's activity (e.g. user rating, play count, or watched status) is used for the collection filtering.",
+                        "summary": "Whose activity (such as rating, play count or watched status) the collection's filters use.",
                         "type": "text", "default": "0", "value": "0", "hidden": false,
                         "advanced": false, "group": "",
                         "enumValues": "0:Always the server admin user|1:User currently viewing the content"}),

@@ -2,7 +2,7 @@
   {
     "id": "FriendlyName",
     "label": "Friendly name",
-    "summary": "This name will be used to identify this media server to other computers on your network. If you leave it blank, your computer's name will be used instead.",
+    "summary": "Other computers on your network see this server under this name. Leave it empty to use the computer's own name.",
     "type": "text",
     "default": "",
     "value": "",
@@ -13,7 +13,7 @@
   {
     "id": "sendCrashReports",
     "label": "Send crash reports to Plex",
-    "summary": "This helps us improve your experience.",
+    "summary": "Reports of crashes let us make things work better for you.",
     "type": "bool",
     "default": true,
     "value": false,
@@ -24,7 +24,7 @@
   {
     "id": "FSEventLibraryUpdatesEnabled",
     "label": "Scan my library automatically",
-    "summary": "Your library will be updated automatically when changes to library folders are detected.",
+    "summary": "Keep the library up to date on its own whenever something in a library folder changes.",
     "type": "bool",
     "default": false,
     "value": false,
@@ -34,8 +34,8 @@
   },
   {
     "id": "FSEventLibraryPartialScanEnabled",
-    "label": "Run a partial scan when changes are detected",
-    "summary": "When changes to library folders are detected, only scan the folder that changed.",
+    "label": "Scan only what changed when changes are found",
+    "summary": "If a library folder changes, scan just that folder instead of everything.",
     "type": "bool",
     "default": false,
     "value": false,
@@ -46,7 +46,7 @@
   {
     "id": "watchMusicSections",
     "label": "Include music libraries in automatic updates",
-    "summary": "Linux systems limit the maximum number of watched directories; this may cause problems with large music libraries.",
+    "summary": "Linux caps how many folders can be watched at once, so very large music libraries may run into trouble.",
     "type": "bool",
     "default": false,
     "value": true,
@@ -91,7 +91,7 @@
   {
     "id": "allowMediaDeletion",
     "label": "Allow media deletion",
-    "summary": "The owner of the server will be allowed to delete media files from disk.",
+    "summary": "Lets the server owner remove media files from the disk.",
     "type": "bool",
     "default": true,
     "value": true,
@@ -113,7 +113,7 @@
   {
     "id": "OnDeckWindow",
     "label": "Weeks to consider for Continue Watching",
-    "summary": "Media that has not been watched in this many weeks will not appear in Continue Watching.",
+    "summary": "Anything left unwatched for longer than this many weeks drops out of Continue Watching.",
     "type": "int",
     "default": 16,
     "value": 16,
@@ -123,8 +123,8 @@
   },
   {
     "id": "OnDeckLimit",
-    "label": "Maximum number of Continue Watching items which will appear.",
-    "summary": "Limits the number of shows which will appear Continue Watching. Setting it too high can affect performance.",
+    "label": "Most items shown in Continue Watching",
+    "summary": "Caps how many shows Continue Watching lists. A very high number may slow things down.",
     "type": "int",
     "default": 40,
     "value": 40,
@@ -135,7 +135,7 @@
   {
     "id": "OnDeckIncludePremieres",
     "label": "Include season premieres in Continue Watching",
-    "summary": "New season premieres will always appear no matter how many weeks have passed since watching.",
+    "summary": "The first episode of a new season always shows up, however many weeks it has been since you last watched.",
     "type": "bool",
     "default": true,
     "value": true,
@@ -146,7 +146,7 @@
   {
     "id": "LibraryVideoPlayedThreshold",
     "label": "Video played threshold",
-    "summary": "Set the progress percentage for video playback at which point the video will be marked as played.",
+    "summary": "Once playback passes this percentage, the video counts as played.",
     "type": "int",
     "default": 90,
     "value": 90,
@@ -158,7 +158,7 @@
   {
     "id": "LibraryVideoPlayedAtBehaviour",
     "label": "Video play completion behaviour",
-    "summary": "Decide whether to use end credits markers to determine the 'watched' state of video items. When markers are not available the selected threshold percentage will be used.",
+    "summary": "Choose whether end credits markers decide when a video counts as watched. If a video has no markers, the percentage you picked is used.",
     "type": "text",
     "default": "3",
     "value": "3",
@@ -169,8 +169,8 @@
   },
   {
     "id": "SmartShuffleMusic",
-    "label": "Enable smart shuffling on artists and smart music playlists",
-    "summary": "Smart shuffling prefers highly rated, popular and less recently heard tracks.",
+    "label": "Smart shuffle for artists and smart music playlists",
+    "summary": "Smart shuffle favours tracks that are well rated, popular or not played lately.",
     "type": "bool",
     "default": true,
     "value": true,
@@ -181,7 +181,7 @@
   {
     "id": "MusicSeparateAlbumTypes",
     "label": "Group albums by type",
-    "summary": "Group into LPs, EPs & Singles, Compilations, Live Albums, Demos and Remixes.",
+    "summary": "Splits albums by type: LPs, EPs & Singles, Compilations, Live Albums, Demos and Remixes.",
     "type": "text",
     "default": "enabled",
     "value": "enabled",
@@ -215,7 +215,7 @@
   },
   {
     "id": "CinemaTrailersFromLibrary",
-    "label": "Include Cinema Trailers from movies in my library",
+    "label": "Cinema Trailers: movies already in my library",
     "summary": "",
     "type": "bool",
     "default": true,
@@ -226,8 +226,8 @@
   },
   {
     "id": "CinemaTrailersFromTheater",
-    "label": "Include Cinema Trailers from new and upcoming movies in theaters",
-    "summary": "This feature is Plex Pass only.",
+    "label": "Cinema Trailers: new and upcoming movies in cinemas",
+    "summary": "Needs Plex Pass.",
     "type": "bool",
     "default": false,
     "value": false,
@@ -237,8 +237,8 @@
   },
   {
     "id": "CinemaTrailersFromBluRay",
-    "label": "Include Cinema Trailers from new and upcoming movies on Blu-ray",
-    "summary": "This feature is Plex Pass only.",
+    "label": "Cinema Trailers: new and upcoming movies on Blu-ray",
+    "summary": "Needs Plex Pass.",
     "type": "bool",
     "default": false,
     "value": false,
@@ -248,7 +248,7 @@
   },
   {
     "id": "CinemaTrailersIncludeEnglish",
-    "label": "Always include English language Cinema Trailers for trailers of movies not in my library.",
+    "label": "For movies not in my library, always use English Cinema Trailers.",
     "summary": "",
     "type": "bool",
     "default": true,
@@ -260,7 +260,7 @@
   {
     "id": "CinemaTrailersPrerollID",
     "label": "Movie pre-roll video",
-    "summary": "Full path of a pre-roll already provided by a registered source. Commas play videos sequentially; semicolons choose one video. Cinema trailers must be enabled in the client.",
+    "summary": "The full path of a pre-roll from a registered source. Separate videos with commas to play them in order, or with semicolons to pick one of them. The client must have cinema trailers turned on.",
     "type": "text",
     "default": "",
     "value": "",
@@ -271,7 +271,7 @@
   {
     "id": "GlobalMusicVideoPath",
     "label": "Global music videos path",
-    "summary": "A global path to music videos for all music libraries.",
+    "summary": "One music video path shared by every music library.",
     "type": "text",
     "default": "",
     "value": "",
@@ -282,7 +282,7 @@
   {
     "id": "iTunesSharingEnabled",
     "label": "Enable iTunes plugin",
-    "summary": "A server restart is required for a change to take effect.",
+    "summary": "Changes apply only after the server restarts.",
     "type": "bool",
     "default": false,
     "value": false,
@@ -304,7 +304,7 @@
   {
     "id": "AllowLegacyAgents",
     "label": "Show legacy agents during library setup",
-    "summary": "If this is enabled legacy agents will be available when setting up new libraries. Requires browser refresh after changing.",
+    "summary": "Turn on to offer legacy agents when you create a library. Reload the browser page after changing this.",
     "type": "bool",
     "default": false,
     "value": false,
@@ -369,7 +369,7 @@
   },
   {
     "id": "ArticleStrings",
-    "label": "Comma-separated list of strings considered articles when sorting titles. A server restart is required for a change to take effect.",
+    "label": "Words to skip at the start of titles when sorting, separated by commas. Changes apply only after the server restarts.",
     "summary": "",
     "type": "text",
     "default": "the,das,der,a,an,el,la",
@@ -380,7 +380,7 @@
   },
   {
     "id": "TranscoderVideoResolutionLimit",
-    "label": "Maximum video output resolution for the transcoder",
+    "label": "Highest video resolution the transcoder outputs",
     "summary": "",
     "type": "text",
     "default": "0x0",
@@ -414,7 +414,7 @@
   {
     "id": "IPNetworkType",
     "label": "Client Network",
-    "summary": "Network to advertise to clients.",
+    "summary": "Which network clients are told about.",
     "type": "text",
     "default": "dualstack",
     "value": "dualstack",
@@ -426,7 +426,7 @@
   {
     "id": "secureConnections",
     "label": "Secure connections",
-    "summary": "When set to \"Required\", some unencrypted connections (originating from the Media Server computer) will still be allowed and apps that don't support secure connections will not be able to connect at all.",
+    "summary": "Even on \"Required\", a few unencrypted connections from the Media Server computer itself are still accepted, and apps without secure connection support cannot connect at all.",
     "type": "int",
     "default": 1,
     "value": 1,
@@ -438,7 +438,7 @@
   {
     "id": "customCertificatePath",
     "label": "Custom certificate location",
-    "summary": "Path to a PKCS #12 file containing a certificate and private key to enable TLS support on a custom domain.",
+    "summary": "Location of a PKCS #12 file holding a certificate and private key, used to turn on TLS for a custom domain.",
     "type": "text",
     "default": "",
     "value": "",
@@ -460,7 +460,7 @@
   {
     "id": "customCertificateDomain",
     "label": "Custom certificate domain",
-    "summary": "Domain name to be published to plex.tv using your mapped port; must match a name from the custom certificate file. [IPv4 Only]",
+    "summary": "The domain name sent to plex.tv along with your mapped port. It has to match a name in the custom certificate file. [IPv4 Only]",
     "type": "text",
     "default": "",
     "value": "",
@@ -471,7 +471,7 @@
   {
     "id": "PreferredNetworkInterface",
     "label": "Preferred network interface",
-    "summary": "The network interface local clients will use to connect.",
+    "summary": "Which network interface clients on your local network connect through.",
     "type": "text",
     "default": "",
     "value": "",
@@ -483,7 +483,7 @@
   {
     "id": "DisableTLSv1_0",
     "label": "Strict TLS configuration",
-    "summary": "Disables legacy weak ciphers, increases DH group size, and switches to ECDSA certificates when renewing. May prevent older clients from connecting.",
+    "summary": "Turns off old weak ciphers, uses a larger DH group and moves to ECDSA certificates at the next renewal. Older clients may no longer connect.",
     "type": "bool",
     "default": false,
     "value": false,
@@ -516,7 +516,7 @@
   {
     "id": "GdmEnabled",
     "label": "Enable local network discovery (GDM)",
-    "summary": "This enables the media server to discover other servers and players on the local network.",
+    "summary": "Lets the media server find other servers and players on your local network.",
     "type": "bool",
     "default": true,
     "value": true,
@@ -527,7 +527,7 @@
   {
     "id": "PublishServerOnPlexOnlineKey",
     "label": "Publish server on Plex Online",
-    "summary": "Publishing a server makes it automatically available on your client devices without any configuration of your router.",
+    "summary": "A published server shows up on your client devices on its own, with no router setup needed.",
     "type": "bool",
     "default": false,
     "value": true,
@@ -626,7 +626,7 @@
   {
     "id": "PushNotificationsEnabled",
     "label": "Push Notifications",
-    "summary": "Allow this server to send push notifications to mobile devices. Note: Push notifications are delivered using Plex services. They're associated with your account, and some of them may contain information about the contents of your library.",
+    "summary": "Lets this server send push notifications to mobile devices. Note: these go through Plex services, are tied to your account, and some may reveal what is in your library.",
     "type": "bool",
     "default": false,
     "value": true,
@@ -637,7 +637,7 @@
   {
     "id": "TranscoderQuality",
     "label": "Transcoder quality",
-    "summary": "Quality profile used by the transcoder.",
+    "summary": "The quality profile the transcoder uses.",
     "type": "int",
     "default": 0,
     "value": 0,
@@ -649,7 +649,7 @@
   {
     "id": "SegmentedTranscoderTimeout",
     "label": "Segmented transcoder timeout",
-    "summary": "Timeout in seconds segmented transcodes wait for the transcoder to begin writing data.",
+    "summary": "How many seconds a segmented transcode waits for the transcoder to start writing data.",
     "type": "int",
     "default": 20,
     "value": 20,
@@ -660,7 +660,7 @@
   {
     "id": "TranscoderTempDirectory",
     "label": "Transcoder temporary directory",
-    "summary": "Directory to use when transcoding for temporary files.",
+    "summary": "Folder for temporary files created while transcoding.",
     "type": "text",
     "default": "",
     "value": "",
@@ -671,7 +671,7 @@
   {
     "id": "DownloadsTempDirectory",
     "label": "Downloads temporary directory",
-    "summary": "Directory to use when storing transcoded downloads until the client downloads them.",
+    "summary": "Folder that holds transcoded downloads until the client fetches them.",
     "type": "text",
     "default": "",
     "value": "",
@@ -682,7 +682,7 @@
   {
     "id": "TranscoderDefaultDuration",
     "label": "Transcoder default duration",
-    "summary": "Duration in minutes to use when transcoding something with an unknown duration.",
+    "summary": "How many minutes to assume when transcoding something whose length is unknown.",
     "type": "int",
     "default": 120,
     "value": 120,
@@ -693,7 +693,7 @@
   {
     "id": "TranscoderThrottleBuffer",
     "label": "Transcoder default throttle buffer",
-    "summary": "Amount in seconds to buffer before throttling the transcoder.",
+    "summary": "Seconds of buffer to build up before the transcoder is slowed down.",
     "type": "int",
     "default": 60,
     "value": 60,
@@ -704,7 +704,7 @@
   {
     "id": "TranscoderPruneBuffer",
     "label": "Transcoder default prune buffer",
-    "summary": "Amount in past seconds to retain before pruning segments from a transcode.",
+    "summary": "Seconds of already-played transcode to keep before older segments are removed.",
     "type": "int",
     "default": 300,
     "value": 300,
@@ -737,7 +737,7 @@
   {
     "id": "TranscoderH264BackgroundPreset",
     "label": "Background transcoding x264 preset",
-    "summary": "The x264 preset value used for background transcoding (Sync and Media Optimizer). Slower values will result in better video quality and smaller file sizes, but will take significantly longer to complete processing.",
+    "summary": "The x264 preset for background transcoding (Sync and Media Optimizer). Slower settings give better picture and smaller files but take much longer to finish.",
     "type": "text",
     "default": "veryfast",
     "value": "ultrafast",
@@ -804,7 +804,7 @@
   {
     "id": "TranscoderToneMapping",
     "label": "Enable HDR tone mapping",
-    "summary": "Transcoded HDR content will appear highly dimmed and desaturated with this disabled. Additional driver components may be needed to support hardware transcoding with this feature enabled; see our support articles for further details.",
+    "summary": "With this off, transcoded HDR video looks very dark and washed out. Hardware transcoding with this on may need extra driver components; our support articles explain more.",
     "type": "bool",
     "default": true,
     "value": true,
@@ -815,7 +815,7 @@
   {
     "id": "TranscoderToneMappingAgorithm",
     "label": "Tonemapping Algorithm",
-    "summary": "Algorithm to use when performing HDR tone mapping.",
+    "summary": "Which algorithm HDR tone mapping uses.",
     "type": "text",
     "default": "hable",
     "value": "hable",
@@ -849,7 +849,7 @@
   {
     "id": "TranscoderCanOnlyRemuxVideo",
     "label": "Disable video stream transcoding",
-    "summary": "Disable transcoding of the video stream in transcoder operations. With this set, the transcoder may still transcode audio as well as remux video.",
+    "summary": "Stops the transcoder from transcoding the video stream. Audio may still be transcoded, and video may still be remuxed.",
     "type": "bool",
     "default": false,
     "value": false,
@@ -860,7 +860,7 @@
   {
     "id": "HardwareAcceleratedCodecs",
     "label": "Use hardware acceleration when available",
-    "summary": "Plex Media Server will attempt to use hardware-accelerated video codecs when encoding and decoding video. Hardware acceleration can make transcoding faster and allow more simultaneous video transcodes, but it can also reduce video quality and compatibility.",
+    "summary": "Plex Media Server will try hardware-accelerated video codecs for encoding and decoding. This can speed up transcoding and allow more transcodes at once, but may lower video quality and compatibility.",
     "type": "bool",
     "default": true,
     "value": true,
@@ -871,7 +871,7 @@
   {
     "id": "HardwareAcceleratedEncoders",
     "label": "Use hardware-accelerated video encoding",
-    "summary": "If hardware acceleration is enabled, this controls whether it's used for encoding, in addition to decoding.",
+    "summary": "When hardware acceleration is on, choose whether it also handles encoding, not only decoding.",
     "type": "bool",
     "default": true,
     "value": true,
@@ -904,7 +904,7 @@
   {
     "id": "HardwareDevicePath",
     "label": "Hardware transcoding device",
-    "summary": "The GPU or other hardware device that will be used for transcoding",
+    "summary": "Which GPU or other hardware device does the transcoding",
     "type": "text",
     "default": "",
     "value": "",
@@ -959,7 +959,7 @@
   },
   {
     "id": "PluginsLaunchTimeout",
-    "label": "Number of seconds to wait before a plugin times out",
+    "label": "Seconds before a plug-in is given up on",
     "summary": "",
     "type": "int",
     "default": 180,
@@ -971,7 +971,7 @@
   {
     "id": "DlnaEnabled",
     "label": "Enable the DLNA server",
-    "summary": "This allows the server to stream media to DLNA (Digital Living Network Alliance) devices.",
+    "summary": "Serves media to DLNA (Digital Living Network Alliance) players and TVs.",
     "type": "bool",
     "default": false,
     "value": false,
@@ -994,7 +994,7 @@
   {
     "id": "DlnaClientPreferences",
     "label": "DLNA client preferences",
-    "summary": "Client-specific configuration settings for the DLNA server.",
+    "summary": "DLNA server settings for specific clients.",
     "type": "text",
     "default": "",
     "value": "",
@@ -1005,7 +1005,7 @@
   {
     "id": "DlnaReportTimeline",
     "label": "DLNA server timeline reporting",
-    "summary": "Enable the DLNA server to report timelines for video play activity.",
+    "summary": "Have the DLNA server report timelines while video plays.",
     "type": "bool",
     "default": true,
     "value": true,
@@ -1016,7 +1016,7 @@
   {
     "id": "DlnaDefaultProtocolInfo",
     "label": "DLNA default protocol info",
-    "summary": "Protocol info string used in GetProtocolInfo responses by the DLNA server.",
+    "summary": "The protocol info string the DLNA server sends in GetProtocolInfo responses.",
     "type": "text",
     "default": "http-get:*:video/mpeg:*,http-get:*:video/mp4:*,http-get:*:video/vnd.dlna.mpeg-tts:*,http-get:*:video/avi:*,http-get:*:video/x-matroska:*,http-get:*:video/x-ms-wmv:*,http-get:*:video/wtv:*,http-get:*:audio/mpeg:*,http-get:*:audio/mp3:*,http-get:*:audio/mp4:*,http-get:*:audio/x-ms-wma*,http-get:*:audio/wav:*,http-get:*:audio/L16:*,http-get:*image/jpeg:*,http-get:*image/png:*,http-get:*image/gif:*,http-get:*image/tiff:*",
     "value": "http-get:*:video/mpeg:*,http-get:*:video/mp4:*,http-get:*:video/vnd.dlna.mpeg-tts:*,http-get:*:video/avi:*,http-get:*:video/x-matroska:*,http-get:*:video/x-ms-wmv:*,http-get:*:video/wtv:*,http-get:*:audio/mpeg:*,http-get:*:audio/mp3:*,http-get:*:audio/mp4:*,http-get:*:audio/x-ms-wma*,http-get:*:audio/wav:*,http-get:*:audio/L16:*,http-get:*image/jpeg:*,http-get:*image/png:*,http-get:*image/gif:*,http-get:*image/tiff:*",
@@ -1027,7 +1027,7 @@
   {
     "id": "DlnaDeviceDiscoveryInterval",
     "label": "DLNA media renderer discovery interval",
-    "summary": "Number of seconds between DLNA media renderer discovery requests.",
+    "summary": "Seconds to wait between searches for DLNA media renderers.",
     "type": "int",
     "default": 60,
     "value": 60,
@@ -1038,7 +1038,7 @@
   {
     "id": "DlnaAnnouncementLeaseTime",
     "label": "DLNA server announcement lease time",
-    "summary": "Duration in seconds of DLNA Server SSDP announcement lease time.",
+    "summary": "How many seconds the DLNA server's SSDP announcement lease lasts.",
     "type": "int",
     "default": 1800,
     "value": 1800,
@@ -1049,7 +1049,7 @@
   {
     "id": "DlnaDescriptionIcons",
     "label": "DLNA server description icons",
-    "summary": "Icons offered by DLNA server when devices request server description.",
+    "summary": "Icons the DLNA server hands out when a device asks for the server description.",
     "type": "text",
     "default": "png,jpeg;260x260,120x120,48x48",
     "value": "png,jpeg;260x260,120x120,48x48",
@@ -1092,7 +1092,7 @@
   },
   {
     "id": "ScannerLowPriority",
-    "label": "Run scanner tasks at a lower priority",
+    "label": "Give scanner tasks lower priority",
     "summary": "",
     "type": "bool",
     "default": false,
@@ -1104,7 +1104,7 @@
   {
     "id": "WanPerStreamMaxUploadRate",
     "label": "Limit remote stream bitrate",
-    "summary": "Set the maximum bitrate of a remote stream from this server.",
+    "summary": "Cap the bitrate of each remote stream from this server.",
     "type": "int",
     "default": 0,
     "value": 0,
@@ -1116,7 +1116,7 @@
   {
     "id": "WanTotalMaxUploadRate",
     "label": "External network total upload limit (kbps)",
-    "summary": "Speed at which to limit the total bandwidth not on the local network in kilobits per second. Use 0 to set no limit.",
+    "summary": "Total bandwidth cap, in kilobits per second, for everything outside the local network. 0 means no cap.",
     "type": "int",
     "default": 0,
     "value": 0,
@@ -1127,7 +1127,7 @@
   {
     "id": "WanPerUserStreamCount",
     "label": "Remote streams allowed per user",
-    "summary": "Maximum number of simultaneous streams each user is allowed when not on the local network.",
+    "summary": "How many streams each user may play at once from outside the local network.",
     "type": "int",
     "default": 0,
     "value": 0,
@@ -1139,7 +1139,7 @@
   {
     "id": "LanNetworksBandwidth",
     "label": "LAN Networks",
-    "summary": "Comma separated IP addresses or IP/netmask networks treated as local for bandwidth limits. With no list, loopback and private networks are local. Public peers cannot bypass limits using a client location flag.",
+    "summary": "IP addresses or IP/netmask networks, comma separated, that count as local for bandwidth limits. If empty, loopback and private networks count as local. Public peers cannot skip limits with a client location flag.",
     "type": "text",
     "default": "",
     "value": "",
@@ -1150,7 +1150,7 @@
   {
     "id": "MinutesAllowedPaused",
     "label": "Terminate Sessions Paused for Longer Than",
-    "summary": "Value is in minutes. Terminate any sessions which have been paused for a longer time than specified amount of time.  Audio-only sessions and live sessions are excluded",
+    "summary": "In minutes. Sessions left paused longer than this are ended. Audio-only and live sessions are not affected.",
     "type": "int",
     "default": 0,
     "value": 30,
@@ -1205,7 +1205,7 @@
   {
     "id": "TreatWanIpAsLocal",
     "label": "Treat WAN IP As LAN Bandwidth",
-    "summary": "Treat incoming requests from this network's WAN IP address as LAN requests in terms of bandwidth.  This often occurs when DNS rebinding protection is in place and clients on the LAN cannot contact the server directly but instead have to go through the WAN IP address.",
+    "summary": "Count requests coming from this network's own WAN IP address as LAN for bandwidth. This is common when DNS rebinding protection stops LAN clients reaching the server directly, so they go through the WAN IP address instead.",
     "type": "bool",
     "default": true,
     "value": true,
@@ -1216,7 +1216,7 @@
   {
     "id": "RelayEnabled",
     "label": "Enable Relay",
-    "summary": "The Relay allows connections to the server through a proxy relay when the server is not accessible otherwise.  Note: this proxy relay is bandwidth limited",
+    "summary": "If the server can't be reached any other way, the Relay connects to it through a proxy relay. Note: the relay's bandwidth is limited",
     "type": "bool",
     "default": true,
     "value": false,
@@ -1238,7 +1238,7 @@
   {
     "id": "_CPU-TranscodeCountLimit",
     "label": "Maximum simultaneous CPU transcodes",
-    "summary": "Limit the number of simultaneous video transcode streams your server can utilize on your CPU",
+    "summary": "Cap how many video transcodes your server may run on the CPU at the same time",
     "type": "int",
     "default": 0,
     "value": 0,
@@ -1250,7 +1250,7 @@
   {
     "id": "OptimizerTranscodeCountLimit",
     "label": "Maximum simultaneous background video transcode",
-    "summary": "Limit the number of simultaneous video transcode your server can utilize for the optimizer and downloads",
+    "summary": "Cap how many video transcodes your server may run at the same time for the optimizer and downloads",
     "type": "int",
     "default": 1,
     "value": 1,
@@ -1262,7 +1262,7 @@
   {
     "id": "logDebug",
     "label": "Enable Plex Media Server debug logging",
-    "summary": "Debug logging enables additional detail in the log files and is helpful in diagnosing problems.",
+    "summary": "Debug logging writes extra detail to the log files, which helps track down problems.",
     "type": "bool",
     "default": true,
     "value": true,
@@ -1273,7 +1273,7 @@
   {
     "id": "LogVerbose",
     "label": "Enable Plex Media Server verbose logging",
-    "summary": "Verbose logging is only useful to debug specific issues and should only be enabled if requested by support staff.",
+    "summary": "Verbose logging only helps with debugging particular issues. Turn it on only when support staff ask you to.",
     "type": "bool",
     "default": false,
     "value": true,
@@ -1283,8 +1283,8 @@
   },
   {
     "id": "LogTokensForDebug",
-    "label": "Allow Plex Media Server tokens in logs",
-    "summary": "Media server tokens can be used to gain access to library content. Don't share logs containing tokens publicly. A server restart is required for a change to take effect.",
+    "label": "Show Plex Media Server tokens in logs",
+    "summary": "Anyone with a media server token can reach library content, so never post logs that include tokens. Changes apply only after the server restarts.",
     "type": "bool",
     "default": false,
     "value": false,
@@ -1294,8 +1294,8 @@
   },
   {
     "id": "LogMemoryUse",
-    "label": "Add Plex Media Server and System memory use for Debug Logging",
-    "summary": "Logging of the Plex Media Server memory use and the system total used memory in Plex Media Server logs. A server restart is required for the change to take effect.",
+    "label": "Log Plex Media Server and system memory use (debug logging)",
+    "summary": "Writes how much memory Plex Media Server uses, and the system's total memory use, into Plex Media Server logs. Changes apply only after the server restarts.",
     "type": "bool",
     "default": false,
     "value": false,
@@ -1328,7 +1328,7 @@
   {
     "id": "customConnections",
     "label": "Custom server access URLs",
-    "summary": "A comma-separated list of URLs (http or https) which are published up to plex.tv for server discovery. IPv6 addresses must specify a port.",
+    "summary": "URLs (http or https), separated by commas, sent to plex.tv so the server can be found. Include a port with any IPv6 address.",
     "type": "text",
     "default": "",
     "value": "",
@@ -1338,8 +1338,8 @@
   },
   {
     "id": "allowedNetworks",
-    "label": "List of IP addresses and networks that are allowed without auth",
-    "summary": "Comma separated list of IP addresses or IP/netmask entries for networks that are allowed to access Plex Media Server without logging in. When the server is signed out and this value is set, only localhost and addresses on this list will be allowed.",
+    "label": "IP addresses and networks that need no sign-in",
+    "summary": "IP addresses or IP/netmask entries, comma separated, for networks that may use Plex Media Server without signing in. If the server is signed out and this is filled in, only localhost and the listed addresses are let in.",
     "type": "text",
     "default": "",
     "value": "",
@@ -1350,7 +1350,7 @@
   {
     "id": "WebHooksEnabled",
     "label": "Webhooks",
-    "summary": "Allow this server to send events to external services.",
+    "summary": "Lets this server send events to outside services.",
     "type": "bool",
     "default": true,
     "value": true,
@@ -1360,8 +1360,8 @@
   },
   {
     "id": "ButlerStartHour",
-    "label": "Time at which tasks start to run",
-    "summary": "The time at which the server starts running background maintenance tasks.",
+    "label": "Time scheduled tasks start",
+    "summary": "When the server begins its background maintenance tasks.",
     "type": "int",
     "default": 2,
     "value": 3,
@@ -1373,7 +1373,7 @@
   {
     "id": "ButlerEndHour",
     "label": "Time at which tasks stop running",
-    "summary": "The time at which the background maintenance tasks stop running.",
+    "summary": "When the server stops its background maintenance tasks.",
     "type": "int",
     "default": 5,
     "value": 7,
@@ -1396,7 +1396,7 @@
   {
     "id": "ButlerDatabaseBackupPath",
     "label": "Backup directory",
-    "summary": "The directory in which database backups are stored.",
+    "summary": "Folder where database backups are kept.",
     "type": "text",
     "default": "/var/lib/plexmediaserver/Library/Application Support/Plex Media Server/Plug-in Support/Databases",
     "value": "/var/lib/plexmediaserver/Library/Application Support/Plex Media Server/Plug-in Support/Databases",
@@ -1551,7 +1551,7 @@
   {
     "id": "MarkerSource",
     "label": "Marker source",
-    "summary": "Markers are detected locally from source-provided media. rex does not fetch or submit markers to Plex's cloud database.",
+    "summary": "Markers come from local detection on media the source provides. rex never fetches markers from, or sends them to, Plex's cloud database.",
     "type": "text",
     "default": "local",
     "value": "local",
@@ -1563,7 +1563,7 @@
   {
     "id": "GenerateBIFBehavior",
     "label": "Generate video preview thumbnails",
-    "summary": "Generate 10-second seek previews with FFmpeg. Analysis reads source video, uses CPU and stores images beside the state database. Manual Analyze is always available; automatic generation is opt-in.",
+    "summary": "Uses FFmpeg to make seek previews every 10 seconds. It reads the source video, uses CPU and saves images next to the state database. You can always run Analyze by hand; automatic generation is off unless you turn it on.",
     "type": "text",
     "default": "never",
     "value": "never",
@@ -1575,7 +1575,7 @@
   {
     "id": "GenerateIntroMarkerBehavior",
     "label": "Generate intro video markers",
-    "summary": "Conservative repeated-content intro detection for source-placed episodes in the same season. Manual Analyze is available; automatic generation is opt-in.",
+    "summary": "Careful intro detection that looks for content repeated across source-placed episodes of one season. You can run Analyze by hand; automatic generation is off unless you turn it on.",
     "type": "text",
     "default": "never",
     "value": "never",
@@ -1587,7 +1587,7 @@
   {
     "id": "GenerateCreditsMarkerBehavior",
     "label": "Generate credits video markers",
-    "summary": "Conservative detection of rolling bright-text credits on dark backgrounds, plus authored chapter markers. Manual Analyze is available; automatic generation is opt-in.",
+    "summary": "Careful detection of scrolling bright credits text on dark backgrounds, plus chapter markers set by the author. You can run Analyze by hand; automatic generation is off unless you turn it on.",
     "type": "text",
     "default": "never",
     "value": "never",
@@ -1599,7 +1599,7 @@
   {
     "id": "GenerateAdMarkerBehavior",
     "label": "Generate ad video markers",
-    "summary": "Detects movie and episode ads.",
+    "summary": "Finds ads in movies and episodes.",
     "type": "text",
     "default": "scheduled",
     "value": "scheduled",
@@ -1611,7 +1611,7 @@
   {
     "id": "GenerateVADBehavior",
     "label": "Generate voice activity data",
-    "summary": "Detects voice activity data for movies and episodes. This is used to help syncronize subtitles to the audio track. This detection can be toggled per-library by editing the individual library and navigating to the advanced section.",
+    "summary": "Finds where voices are heard in movies and episodes, which helps line subtitles up with the audio. You can switch this per library in that library's advanced settings.",
     "type": "text",
     "default": "never",
     "value": "never",
@@ -1623,7 +1623,7 @@
   {
     "id": "GenerateChapterThumbBehavior",
     "label": "Generate chapter thumbnails",
-    "summary": "Generate chapter JPEGs from source-provided chapter boundaries with FFmpeg. Manual Analyze is available; automatic generation is opt-in.",
+    "summary": "Uses FFmpeg to make chapter JPEGs at the chapter boundaries the source provides. You can run Analyze by hand; automatic generation is off unless you turn it on.",
     "type": "text",
     "default": "never",
     "value": "never",
@@ -1635,7 +1635,7 @@
   {
     "id": "LoudnessAnalysisBehavior",
     "label": "Analyze audio tracks for loudness",
-    "summary": "Loudness analysis allows various features, such as loudness leveling and smart transitions. It can take a long time to complete when analyzing many tracks, and cause high CPU usage.",
+    "summary": "Measuring loudness enables features like loudness leveling and smart transitions. With many tracks it can run for a long time and use a lot of CPU.",
     "type": "text",
     "default": "scheduled",
     "value": "scheduled",
@@ -1647,7 +1647,7 @@
   {
     "id": "MusicAnalysisBehavior",
     "label": "Analyze audio tracks for sonic features",
-    "summary": "Sonic analysis allows various features, such as track radio. It can take a long time to complete when analyzing many tracks, and cause high CPU usage.",
+    "summary": "Sonic analysis enables features like track radio. With many tracks it can run for a long time and use a lot of CPU.",
     "type": "text",
     "default": "scheduled",
     "value": "scheduled",
@@ -1736,7 +1736,7 @@
   {
     "id": "LocationVisibility",
     "label": "Location visibility",
-    "summary": "Server owners may wish to restrict who can see location names for items which contain geolocation metadata. By default only the server owner will have visibility of these.",
+    "summary": "Owners may want to limit who sees place names on items that carry geolocation metadata. Out of the box, only the server owner sees them.",
     "type": "int",
     "default": 1,
     "value": 1,
@@ -1748,7 +1748,7 @@
   {
     "id": "DatabaseCacheSize",
     "label": "Database Cache Size (MB)",
-    "summary": "Set the size of the main database cache size in MB. Changes take effect when server is restarted.",
+    "summary": "Size of the main database cache, in MB. Takes effect after the server restarts.",
     "type": "int",
     "default": 40,
     "value": 500000,

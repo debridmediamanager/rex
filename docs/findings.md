@@ -14210,3 +14210,13 @@ the other four. The fixtures that recorded PMS in other languages
 (`c87_a_music_i18n_s42.json`, `item_language_override_zen.json`, `specials_zen.json`) had
 PMS's wording swapped for rex's, matched by language and by the English at the same path.
 The attribution blurbs are rewritten, same links.
+
+The English settings text followed on 2026-10-25: every help sentence (`summary`) in
+`server_prefs.json`, `section_prefs.json`, `section_prefs_new.json`, `item_prefs.json` and the
+collection settings, the 15 labels that are whole sentences, the butler's one task description,
+the agent setting labels in `plugin_prefs.json` and the attribution text inside each agent's
+`Info.plist` (`plugin_bundles.json`) are rex's own wording; `translations.json` was re-keyed
+to the new English, keeping rex's own translations. Short setting names and option words
+are kept as PMS names them: they are names a user matches against Plex guides, not prose.
+Fixtures that recorded those sentences (including `reference-walk.jsonl` and the shared-user
+XML) carry rex's wording in their place.

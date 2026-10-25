@@ -12231,7 +12231,7 @@
       {
        "id": "hidden",
        "label": "Visibility",
-       "summary": "Restrict where content from this library should appear.",
+       "summary": "Limit the places this library's content shows up.",
        "type": "int",
        "default": "0",
        "value": "0",
@@ -12243,7 +12243,7 @@
       {
        "id": "albumSort",
        "label": "Album sorting",
-       "summary": "How to sort the albums for artists.",
+       "summary": "Order in which an artist's albums are listed.",
        "type": "text",
        "default": "-1",
        "value": "-1",
@@ -12255,7 +12255,7 @@
       {
        "id": "respectTags",
        "label": "Prefer local metadata",
-       "summary": "When scanning this library, prefer embedded tags and local files if present.",
+       "summary": "Favour embedded tags and local files, if there are any, when scanning this library.",
        "type": "bool",
        "default": "false",
        "value": "false",
@@ -12266,7 +12266,7 @@
       {
        "id": "enableTrackOffsets",
        "label": "Store track progress",
-       "summary": "Remember and resume from your previous listening position. Useful for libraries with long-form audio content.",
+       "summary": "Pick up where you stopped listening last time. Handy for libraries of long audio.",
        "type": "bool",
        "default": "false",
        "value": "false",
@@ -12277,7 +12277,7 @@
       {
        "id": "artistBios",
        "label": "Artist Bios",
-       "summary": "Load artist biography data from the cloud.",
+       "summary": "Fetch artist biographies from the cloud.",
        "type": "bool",
        "default": "true",
        "value": "true",
@@ -12288,7 +12288,7 @@
       {
        "id": "albumReviews",
        "label": "Album Reviews and Critic Ratings",
-       "summary": "Load album reviews and critic ratings from the cloud. Might make you reconsider your taste in music.",
+       "summary": "Fetch album reviews and critic ratings from the cloud. They may change how you feel about your music taste.",
        "type": "bool",
        "default": "true",
        "value": "true",
@@ -12299,7 +12299,7 @@
       {
        "id": "popularTracks",
        "label": "Popular Tracks",
-       "summary": "Load popular track data, which powers radio stations and the popular tracks area.",
+       "summary": "Fetch popular track data, used for radio stations and the popular tracks section.",
        "type": "bool",
        "default": "true",
        "value": "true",
@@ -12310,7 +12310,7 @@
       {
        "id": "genres",
        "label": "Genres",
-       "summary": "Where to automatically obtain genres for artists and albums.",
+       "summary": "Where artist and album genres are fetched from automatically.",
        "type": "int",
        "default": "1",
        "value": "1",
@@ -12322,7 +12322,7 @@
       {
        "id": "albumPosters",
        "label": "Album Art",
-       "summary": "Where to automatically obtain album cover art.",
+       "summary": "Where album covers are fetched from automatically.",
        "type": "int",
        "default": "1",
        "value": "1",
@@ -12353,7 +12353,7 @@
       {
        "id": "albumSort",
        "label": "Albumsortierung",
-       "summary": "How to sort the albums for artists.",
+       "summary": "Order in which an artist's albums are listed.",
        "type": "text",
        "default": "-1",
        "value": "-1",
@@ -12463,7 +12463,7 @@
       {
        "id": "albumSort",
        "label": "Tri des albums",
-       "summary": "How to sort the albums for artists.",
+       "summary": "Order in which an artist's albums are listed.",
        "type": "text",
        "default": "-1",
        "value": "-1",

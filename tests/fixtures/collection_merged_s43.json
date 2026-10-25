@@ -4278,7 +4278,7 @@
       {
        "id": "allowMediaDeletion",
        "label": "Allow media deletion",
-       "summary": "The owner of the server will be allowed to delete media files from disk.",
+       "summary": "Lets the server owner remove media files from the disk.",
        "type": "bool",
        "default": true,
        "value": true,

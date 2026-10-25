@@ -5,7 +5,7 @@
   "en": {
    "id": "languageOverride",
    "label": "Metadata language",
-   "summary": "Language to use for item metadata such as synopsis and title.",
+   "summary": "The language for item details like the title and synopsis.",
    "type": "text",
    "default": "",
    "value": "",
@@ -29,7 +29,7 @@
   "zh-TW": {
    "id": "languageOverride",
    "label": "Metadata language",
-   "summary": "Language to use for item metadata such as synopsis and title.",
+   "summary": "The language for item details like the title and synopsis.",
    "type": "text",
    "default": "",
    "value": "",
@@ -65,7 +65,7 @@
   "en-GB": {
    "id": "languageOverride",
    "label": "Metadata language",
-   "summary": "Language to use for item metadata such as synopsis and title.",
+   "summary": "The language for item details like the title and synopsis.",
    "type": "text",
    "default": "",
    "value": "",

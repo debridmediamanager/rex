@@ -1,6 +1,6 @@
 {
  "com.plexapp.agents.fanarttv": {
-  "plist": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n\t<key>CFBundleIdentifier</key>\n\t<string>com.plexapp.agents.fanarttv</string>\n\t<key>PlexAgentAttributionText</key>\n\t<string>\n\t\t&lt;a href=&quot;http://fanart.tv&quot;&gt;Fanart.tv&lt;/a&gt; is a community driven website providing fanart for TV shows, movies and artists.&lt;br/&gt;\n\t\tHave some fanart to share? Visit &lt;a href=&quot;http://fanart.tv&quot;&gt;fanart.tv&lt;/a&gt;\n\t</string>\n\t<key>PlexFrameworkVersion</key>\n\t<string>2</string>\n\t<key>PlexPluginClass</key>\n\t<string>Agent</string>\n\t<key>PlexPluginCodePolicy</key>\n\t<string>Elevated</string>\n</dict>\n</plist>\n",
+  "plist": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n\t<key>CFBundleIdentifier</key>\n\t<string>com.plexapp.agents.fanarttv</string>\n\t<key>PlexAgentAttributionText</key>\n\t<string>&lt;a href=&quot;http://fanart.tv&quot;&gt;Fanart.tv&lt;/a&gt;: artwork for films, shows and artists, shared by its community.</string>\n\t<key>PlexFrameworkVersion</key>\n\t<string>2</string>\n\t<key>PlexPluginClass</key>\n\t<string>Agent</string>\n\t<key>PlexPluginCodePolicy</key>\n\t<string>Elevated</string>\n</dict>\n</plist>\n",
   "resources": {
    "icon-default.png": [
     300,
@@ -13,7 +13,7 @@
   }
  },
  "com.plexapp.agents.htbackdrops": {
-  "plist": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n\t<key>CFBundleIdentifier</key>\n\t<string>com.plexapp.agents.htbackdrops</string>\n\t<key>PlexAgentAttributionText</key>\n\t<string>High quality backdrops and wallpapers from &lt;a href=&quot;http://www.htbackdrops.org/&quot;&gt;Home Theater Backdrops&lt;/a&gt; for use in HTPC software.</string>\n\t<key>PlexFrameworkVersion</key>\n\t<string>2</string>\n\t<key>PlexPluginClass</key>\n\t<string>Agent</string>\n</dict>\n</plist>\n",
+  "plist": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n\t<key>CFBundleIdentifier</key>\n\t<string>com.plexapp.agents.htbackdrops</string>\n\t<key>PlexAgentAttributionText</key>\n\t<string>Backdrops from &lt;a href=&quot;http://www.htbackdrops.org/&quot;&gt;Home Theater Backdrops&lt;/a&gt;.</string>\n\t<key>PlexFrameworkVersion</key>\n\t<string>2</string>\n\t<key>PlexPluginClass</key>\n\t<string>Agent</string>\n</dict>\n</plist>\n",
   "resources": {
    "icon-default.png": [
     300,
@@ -26,7 +26,7 @@
   }
  },
  "com.plexapp.agents.lastfm": {
-  "plist": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n\t<key>CFBundleIdentifier</key>\n\t<string>com.plexapp.agents.lastfm</string>\n\t<key>PlexAgentAttributionText</key>\n\t<string>\n\t\tConcert information provided by &lt;a href=&quot;http://www.songkick.com/&quot;&gt;songkick&lt;/a&gt;\n\t</string>\n\t<key>PlexFrameworkVersion</key>\n\t<string>2</string>\n\t<key>PlexPluginClass</key>\n\t<string>Agent</string>\n\t<key>PlexPluginCodePolicy</key>\n\t<string>Elevated</string>\n</dict>\n</plist>\n",
+  "plist": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n\t<key>CFBundleIdentifier</key>\n\t<string>com.plexapp.agents.lastfm</string>\n\t<key>PlexAgentAttributionText</key>\n\t<string>Concert dates from &lt;a href=&quot;http://www.songkick.com/&quot;&gt;Songkick&lt;/a&gt;.</string>\n\t<key>PlexFrameworkVersion</key>\n\t<string>2</string>\n\t<key>PlexPluginClass</key>\n\t<string>Agent</string>\n\t<key>PlexPluginCodePolicy</key>\n\t<string>Elevated</string>\n</dict>\n</plist>\n",
   "resources": {
    "icon-default.png": [
     512,
@@ -48,7 +48,7 @@
   }
  },
  "com.plexapp.agents.lyricfind": {
-  "plist": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n\t<key>CFBundleIdentifier</key>\n\t<string>com.plexapp.agents.lyricfind</string>\n\t<key>PlexAgentAttributionText</key>\n\t<string>\n\t\tLyrics Licensed &amp; Provided by &lt;a href=&quot;http://www.lyricfind.com/&quot;&gt;LyricFind&lt;/a&gt;\n\t</string>\n\t<key>PlexFrameworkVersion</key>\n\t<string>2</string>\n\t<key>PlexPluginClass</key>\n\t<string>Agent</string>\n\t<key>PlexPluginCodePolicy</key>\n\t<string>Elevated</string>\n</dict>\n</plist>\n",
+  "plist": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n\t<key>CFBundleIdentifier</key>\n\t<string>com.plexapp.agents.lyricfind</string>\n\t<key>PlexAgentAttributionText</key>\n\t<string>Lyrics from &lt;a href=&quot;http://www.lyricfind.com/&quot;&gt;LyricFind&lt;/a&gt;, under licence.</string>\n\t<key>PlexFrameworkVersion</key>\n\t<string>2</string>\n\t<key>PlexPluginClass</key>\n\t<string>Agent</string>\n\t<key>PlexPluginCodePolicy</key>\n\t<string>Elevated</string>\n</dict>\n</plist>\n",
   "resources": {
    "icon-default.png": [
     512,
@@ -61,7 +61,7 @@
   }
  },
  "com.plexapp.agents.movieposterdb": {
-  "plist": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n\t<key>CFBundleIdentifier</key>\n\t<string>com.plexapp.agents.movieposterdb</string>\n\t<key>PlexAgentAttributionText</key>\n\t<string>\n\t\tThe main purpose of the &lt;a href=&quot;http://www.cinematerial.com&quot;&gt;CineMaterial.com&lt;/a&gt; website &lt;br/&gt;\n        is to provide a database with movie posters that is as &lt;br/&gt; complete as possible. All movie posters are free to download.\n\t</string>\n\t<key>PlexFrameworkVersion</key>\n\t<string>2</string>\n\t<key>PlexPluginClass</key>\n\t<string>Agent</string>\n</dict>\n</plist>\n",
+  "plist": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n\t<key>CFBundleIdentifier</key>\n\t<string>com.plexapp.agents.movieposterdb</string>\n\t<key>PlexAgentAttributionText</key>\n\t<string>Film posters from &lt;a href=&quot;http://www.cinematerial.com&quot;&gt;CineMaterial.com&lt;/a&gt;.</string>\n\t<key>PlexFrameworkVersion</key>\n\t<string>2</string>\n\t<key>PlexPluginClass</key>\n\t<string>Agent</string>\n</dict>\n</plist>\n",
   "resources": {
    "icon-default.png": [
     320,
@@ -92,7 +92,7 @@
   }
  },
  "com.plexapp.agents.imdb": {
-  "plist": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n\t<key>CFBundleIdentifier</key>\n\t<string>com.plexapp.agents.imdb</string>\n\t<key>PlexAgentAttributionText</key>\n\t<string>\n\t\tPrimary metadata provided by &lt;a href=&quot;http://www.imdb.com/&quot;&gt;IMDb&lt;/a&gt;&lt;br/&gt;\n\t\tAdditional metadata provided by &lt;a href=&quot;http://www.themoviedb.org&quot;&gt;The Movie Database&lt;/a&gt;, a free and open movie database. &lt;br/&gt;\n\t\tVideo previews provided by &lt;a href=&quot;http://internetvideoarchive.com&quot;&gt;Internet Video Archive&lt;/a&gt;&lt;br/&gt;\n\t\tOther content from\n\t\t&lt;a href=&quot;http://en.wikipedia.org/&quot;&gt;Wikipedia&lt;/a&gt;,\n\t\tlicensed under the &lt;a href=&quot;http://www.gnu.org/copyleft/fdl.html&quot;&gt;GFDL&lt;/a&gt;\n\t\t&lt;a href=&quot;http://www.chapterdb.org/&quot;&gt;ChapterDB.org&lt;/a&gt;\n\t</string>\n\t<key>PlexFrameworkVersion</key>\n\t<string>2</string>\n\t<key>PlexPluginClass</key>\n\t<string>Agent</string>\n\t<key>PlexPluginCodePolicy</key>\n\t<string>Elevated</string>\n</dict>\n</plist>\n",
+  "plist": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n\t<key>CFBundleIdentifier</key>\n\t<string>com.plexapp.agents.imdb</string>\n\t<key>PlexAgentAttributionText</key>\n\t<string>Metadata from &lt;a href=&quot;http://www.imdb.com/&quot;&gt;IMDb&lt;/a&gt; and &lt;a href=&quot;http://www.themoviedb.org&quot;&gt;The Movie Database&lt;/a&gt;.&lt;br/&gt;Trailers from &lt;a href=&quot;http://internetvideoarchive.com&quot;&gt;Internet Video Archive&lt;/a&gt;.&lt;br/&gt;Text from &lt;a href=&quot;http://en.wikipedia.org/&quot;&gt;Wikipedia&lt;/a&gt; under the &lt;a href=&quot;http://www.gnu.org/copyleft/fdl.html&quot;&gt;GFDL&lt;/a&gt;; chapters from &lt;a href=&quot;http://www.chapterdb.org/&quot;&gt;ChapterDB.org&lt;/a&gt;.</string>\n\t<key>PlexFrameworkVersion</key>\n\t<string>2</string>\n\t<key>PlexPluginClass</key>\n\t<string>Agent</string>\n\t<key>PlexPluginCodePolicy</key>\n\t<string>Elevated</string>\n</dict>\n</plist>\n",
   "resources": {
    "icon-default.png": [
     512,
@@ -131,7 +131,7 @@
   }
  },
  "com.plexapp.agents.themoviedb": {
-  "plist": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n\t<key>CFBundleIdentifier</key>\n\t<string>com.plexapp.agents.themoviedb</string>\n\t<key>PlexAgentAttributionText</key>\n\t<string>\n\t\t&lt;a href=&quot;http://www.themoviedb.org&quot;&gt;The Movie Database&lt;/a&gt; is a free and open movie database. &lt;br/&gt;\n\t\tIt's completely user driven by people like you. &lt;br/&gt; The Movie Database is currently used by millions of people every month.\n\t</string>\n\t<key>PlexFrameworkVersion</key>\n\t<string>2</string>\n\t<key>PlexPluginClass</key>\n\t<string>Agent</string>\n\t<key>PlexPluginCodePolicy</key>\n       <string>Elevated</string>\n</dict>\n</plist>\n",
+  "plist": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n\t<key>CFBundleIdentifier</key>\n\t<string>com.plexapp.agents.themoviedb</string>\n\t<key>PlexAgentAttributionText</key>\n\t<string>&lt;a href=&quot;http://www.themoviedb.org&quot;&gt;The Movie Database&lt;/a&gt;: a free film and TV database edited by its users.</string>\n\t<key>PlexFrameworkVersion</key>\n\t<string>2</string>\n\t<key>PlexPluginClass</key>\n\t<string>Agent</string>\n\t<key>PlexPluginCodePolicy</key>\n       <string>Elevated</string>\n</dict>\n</plist>\n",
   "resources": {
    "icon-default.png": [
     300,
@@ -144,7 +144,7 @@
   }
  },
  "com.plexapp.agents.thetvdb": {
-  "plist": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n\t<key>CFBundleIdentifier</key>\n\t<string>com.plexapp.agents.thetvdb</string>\n\t<key>PlexAgentAttributionText</key>\n\t<string>\n\t\t&lt;a href=&quot;http://thetvdb.com&quot;&gt;TheTVDB.com&lt;/a&gt; is a community driven database of television shows. &lt;br/&gt;\n\t\tIt is our aim to be the most complete and accurate source of&lt;br/&gt; information on TV series from many languages and countries.\n\t</string>\n\t<key>PlexFrameworkVersion</key>\n\t<string>2</string>\n\t<key>PlexPluginClass</key>\n\t<string>Agent</string>\n\t<key>PlexPluginCodePolicy</key>\n\t<string>Elevated</string>\n</dict>\n</plist>\n",
+  "plist": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n\t<key>CFBundleIdentifier</key>\n\t<string>com.plexapp.agents.thetvdb</string>\n\t<key>PlexAgentAttributionText</key>\n\t<string>&lt;a href=&quot;http://thetvdb.com&quot;&gt;TheTVDB.com&lt;/a&gt;: a television database edited by its users.</string>\n\t<key>PlexFrameworkVersion</key>\n\t<string>2</string>\n\t<key>PlexPluginClass</key>\n\t<string>Agent</string>\n\t<key>PlexPluginCodePolicy</key>\n\t<string>Elevated</string>\n</dict>\n</plist>\n",
   "resources": {
    "icon-default.png": [
     512,

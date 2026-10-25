@@ -706,7 +706,7 @@
    "query": [],
    "note": "refusal survey",
    "status": 200,
-   "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<MediaContainer size=\"20\">\n<Setting id=\"hidden\" label=\"Visibility\" summary=\"Restrict where content from this library should appear.\" type=\"int\" default=\"0\" value"
+   "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<MediaContainer size=\"20\">\n<Setting id=\"hidden\" label=\"Visibility\" summary=\"Limit the places this library's content shows up.\" type=\"int\" default=\"0\" value"
   },
   {
    "who": "shared",

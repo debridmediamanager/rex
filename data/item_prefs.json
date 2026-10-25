@@ -4,7 +4,7 @@
     {
       "id": "episodeSort",
       "label": "Episode sorting",
-      "summary": "How to sort the episodes for this show.",
+      "summary": "Order in which this show's episodes are listed.",
       "type": "text",
       "default": "-1",
       "value": "-1",
@@ -16,7 +16,7 @@
     {
       "id": "autoDeletionItemPolicyUnwatchedLibrary",
       "label": "Keep",
-      "summary": "Set the maximum number of unplayed episodes to keep for the show.",
+      "summary": "Most unplayed episodes of this show to hold on to.",
       "type": "int",
       "default": "0",
       "value": "0",
@@ -28,7 +28,7 @@
     {
       "id": "autoDeletionItemPolicyWatchedLibrary",
       "label": "Delete episodes after playing",
-      "summary": "Choose how quickly episodes are removed after the server admin has watched them.",
+      "summary": "How soon episodes are deleted once the server admin has watched them.",
       "type": "int",
       "default": "0",
       "value": "0",
@@ -40,7 +40,7 @@
     {
       "id": "flattenSeasons",
       "label": "Seasons",
-      "summary": "Choose whether to display seasons.",
+      "summary": "Pick whether seasons are shown.",
       "type": "int",
       "default": "-1",
       "value": "-1",
@@ -52,7 +52,7 @@
     {
       "id": "showOrdering",
       "label": "Episode ordering",
-      "summary": "How the episodes are named on disk.",
+      "summary": "The episode naming scheme used by the files on disk.",
       "type": "text",
       "default": "",
       "value": "",
@@ -64,7 +64,7 @@
     {
       "id": "languageOverride",
       "label": "Metadata language",
-      "summary": "Language to use for item metadata such as synopsis and title.",
+      "summary": "The language for item details like the title and synopsis.",
       "type": "text",
       "default": "",
       "value": "",
@@ -76,7 +76,7 @@
     {
       "id": "useOriginalTitle",
       "label": "Use original title",
-      "summary": "Use the original title for this item regardless of the library language.",
+      "summary": "Show this item's original title, whatever the library language is.",
       "type": "int",
       "default": "-1",
       "value": "-1",
@@ -88,7 +88,7 @@
     {
       "id": "enableCreditsMarkerGeneration",
       "label": "Enable credits detection",
-      "summary": "Generate credits markers for this item.",
+      "summary": "Create end-credits markers for this item.",
       "type": "int",
       "default": "-1",
       "value": "-1",
@@ -176,7 +176,7 @@
     {
       "id": "languageOverride",
       "label": "Metadata language",
-      "summary": "Language to use for item metadata such as synopsis and title.",
+      "summary": "The language for item details like the title and synopsis.",
       "type": "text",
       "default": "",
       "value": "",
@@ -188,7 +188,7 @@
     {
       "id": "useOriginalTitle",
       "label": "Use original title",
-      "summary": "Use the original title for this item regardless of the library language.",
+      "summary": "Show this item's original title, whatever the library language is.",
       "type": "int",
       "default": "-1",
       "value": "-1",
@@ -200,7 +200,7 @@
     {
       "id": "enableCreditsMarkerGeneration",
       "label": "Enable credits detection",
-      "summary": "Generate credits markers for this item.",
+      "summary": "Create end-credits markers for this item.",
       "type": "int",
       "default": "-1",
       "value": "-1",

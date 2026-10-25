@@ -4,7 +4,7 @@
   "hidden": {
    "id": "hidden",
    "label": "Visibility",
-   "summary": "Restrict where content from this library should appear.",
+   "summary": "Limit the places this library's content shows up.",
    "type": "int",
    "default": "0",
    "value": "0",
@@ -16,7 +16,7 @@
   "enableCinemaTrailers": {
    "id": "enableCinemaTrailers",
    "label": "Enable Cinema Trailers",
-   "summary": "Allow Cinema Trailers to play before items in this library.",
+   "summary": "Let Cinema Trailers play ahead of this library's items.",
    "type": "bool",
    "default": "true",
    "value": "true",
@@ -27,7 +27,7 @@
   "enableBIFGeneration": {
    "id": "enableBIFGeneration",
    "label": "Enable video preview thumbnails",
-   "summary": "Generate video preview thumbnails for items in this library when enabled in server settings.",
+   "summary": "Make video preview thumbnails for this library's items, if server settings have this turned on.",
    "type": "bool",
    "default": "true",
    "value": "true",
@@ -38,7 +38,7 @@
   "collectionMode": {
    "id": "collectionMode",
    "label": "Collections",
-   "summary": "How to display collections on the Library tab.",
+   "summary": "How collections show up on the Library tab.",
    "type": "int",
    "default": "2",
    "value": "2",
@@ -50,7 +50,7 @@
   "enableCreditsMarkerGeneration": {
    "id": "enableCreditsMarkerGeneration",
    "label": "Enable credits detection",
-   "summary": "Detect credits and allow credits skipping for items in this library when enabled in server settings.",
+   "summary": "Find credits and offer credits skipping for this library's items, if server settings have this turned on.",
    "type": "bool",
    "default": "true",
    "value": "true",
@@ -61,7 +61,7 @@
   "enableAdMarkerGeneration": {
    "id": "enableAdMarkerGeneration",
    "label": "Ad detection",
-   "summary": "Generate ad markers for items in this library.",
+   "summary": "Make ad markers for this library's items.",
    "type": "int",
    "default": "1",
    "value": "1",
@@ -73,7 +73,7 @@
   "enableVoiceActivityGeneration": {
    "id": "enableVoiceActivityGeneration",
    "label": "Enable voice activity detection",
-   "summary": "Detect voice activity for items in this library when enabled in server settings. This is required for subtitle auto-sync functionality.",
+   "summary": "Find voice activity for this library's items, if server settings have this turned on. Subtitle auto-sync needs it.",
    "type": "bool",
    "default": "true",
    "value": "true",
@@ -84,7 +84,7 @@
   "country": {
    "id": "country",
    "label": "Certification Country",
-   "summary": "This will influence which content rating system is used. Changing this setting will require refreshing the metadata for the changes to take effect.",
+   "summary": "Decides which content rating system applies. Refresh the metadata after changing it for the change to show.",
    "type": "text",
    "default": "US",
    "value": "US",
@@ -96,7 +96,7 @@
   "originalTitles": {
    "id": "originalTitles",
    "label": "Use original titles",
-   "summary": "Use the original titles for all items regardless of the library language.",
+   "summary": "Show every item's original title, whatever the library language is.",
    "type": "bool",
    "default": "false",
    "value": "false",
@@ -106,8 +106,8 @@
   },
   "localizedArtwork": {
    "id": "localizedArtwork",
-   "label": "Prefer artwork based on library language",
-   "summary": "Use localized posters when available. This is determined by the library language setting.",
+   "label": "Artwork in the library's language",
+   "summary": "Pick posters in the library's language when there are any. The library language setting decides which.",
    "type": "bool",
    "default": "true",
    "value": "true",
@@ -118,7 +118,7 @@
   "useLocalAssets": {
    "id": "useLocalAssets",
    "label": "Use local assets",
-   "summary": "When scanning this library, use local posters and artwork if present.",
+   "summary": "Use posters and artwork found next to the media when scanning this library.",
    "type": "bool",
    "default": "true",
    "value": "true",
@@ -129,7 +129,7 @@
   "respectTags": {
    "id": "respectTags",
    "label": "Prefer local metadata",
-   "summary": "When scanning this library, prefer embedded tags and local files if present.",
+   "summary": "Favour embedded tags and local files, if there are any, when scanning this library.",
    "type": "bool",
    "default": "false",
    "value": "false",
@@ -140,7 +140,7 @@
   "useExternalExtras": {
    "id": "useExternalExtras",
    "label": "Find extras",
-   "summary": "Find trailers and extras automatically (Plex Pass required)",
+   "summary": "Look up trailers and extras on their own (Plex Pass required)",
    "type": "bool",
    "default": "true",
    "value": "true",
@@ -151,7 +151,7 @@
   "skipNonTrailerExtras": {
    "id": "skipNonTrailerExtras",
    "label": "Only show trailers",
-   "summary": "Skip extras which aren't trailers",
+   "summary": "Leave out any extras that are not trailers",
    "type": "bool",
    "default": "false",
    "value": "false",
@@ -162,7 +162,7 @@
   "useRedbandTrailers": {
    "id": "useRedbandTrailers",
    "label": "Allow red band trailers",
-   "summary": "Use red band (restricted audiences) trailers when available",
+   "summary": "Pick red band (restricted audiences) trailers if there are any",
    "type": "bool",
    "default": "false",
    "value": "false",
@@ -173,7 +173,7 @@
   "includeExtrasWithLocalizedSubtitles": {
    "id": "includeExtrasWithLocalizedSubtitles",
    "label": "Localized subtitles",
-   "summary": "Include extras with subtitles in Library language",
+   "summary": "Also include extras that have subtitles in the Library language",
    "type": "bool",
    "default": "false",
    "value": "false",
@@ -184,7 +184,7 @@
   "includeAdultContent": {
    "id": "includeAdultContent",
    "label": "Allow matching to explicit content",
-   "summary": "Allow matching to adult/pornographic titles and returning adult titles in fix match results. This may hide the title from some features like your Watchlist.",
+   "summary": "Let items match adult/pornographic titles and show adult titles in fix match results. Such titles may be left out of features like your Watchlist.",
    "type": "bool",
    "default": "false",
    "value": "false",
@@ -195,7 +195,7 @@
   "autoCollectionThreshold": {
    "id": "autoCollectionThreshold",
    "label": "Minimum automatic collection size",
-   "summary": "Automatically create collections when there are at least the selected number of items for an available collection. Changing this value will have no effect on any existing collections.",
+   "summary": "Make a collection on its own once an available collection has at least this many items. Changing the number leaves existing collections as they are.",
    "type": "int",
    "default": "0",
    "value": "0",
@@ -207,7 +207,7 @@
   "ratingsSource": {
    "id": "ratingsSource",
    "label": "Ratings Source",
-   "summary": "Select a primary source for ratings.",
+   "summary": "Pick the main source of ratings.",
    "type": "text",
    "default": "rottentomatoes",
    "value": "rottentomatoes",
@@ -219,7 +219,7 @@
   "showOrdering": {
    "id": "showOrdering",
    "label": "Episode ordering",
-   "summary": "How the episodes are named on disk.",
+   "summary": "The episode naming scheme used by the files on disk.",
    "type": "text",
    "default": "tmdbAiring",
    "value": "tmdbAiring",
@@ -231,7 +231,7 @@
   "episodeSort": {
    "id": "episodeSort",
    "label": "Episode sorting",
-   "summary": "How to sort the episodes for shows.",
+   "summary": "Order in which a show's episodes are listed.",
    "type": "text",
    "default": "-1",
    "value": "-1",
@@ -243,7 +243,7 @@
   "flattenSeasons": {
    "id": "flattenSeasons",
    "label": "Seasons",
-   "summary": "Choose whether to display seasons.",
+   "summary": "Pick whether seasons are shown.",
    "type": "int",
    "default": "0",
    "value": "0",
@@ -255,7 +255,7 @@
   "enableIntroMarkerGeneration": {
    "id": "enableIntroMarkerGeneration",
    "label": "Enable intro detection",
-   "summary": "Detect intros and allow intro skipping for items in this library when enabled in server settings.",
+   "summary": "Find intros and offer intro skipping for this library's items, if server settings have this turned on.",
    "type": "bool",
    "default": "true",
    "value": "true",
@@ -266,7 +266,7 @@
   "useSeasonTitles": {
    "id": "useSeasonTitles",
    "label": "Use season titles",
-   "summary": "Use season titles when available.",
+   "summary": "Show season titles if there are any.",
    "type": "bool",
    "default": "false",
    "value": "false",
@@ -277,7 +277,7 @@
   "albumSort": {
    "id": "albumSort",
    "label": "Album sorting",
-   "summary": "How to sort the albums for artists.",
+   "summary": "Order in which an artist's albums are listed.",
    "type": "text",
    "default": "-1",
    "value": "-1",
@@ -289,7 +289,7 @@
   "musicAnalysis": {
    "id": "musicAnalysis",
    "label": "Sonic Analysis",
-   "summary": "Analyze tracks for sonic features.",
+   "summary": "Check tracks for sonic features.",
    "type": "bool",
    "default": "false",
    "value": "false",
@@ -300,7 +300,7 @@
   "enableTrackOffsets": {
    "id": "enableTrackOffsets",
    "label": "Store track progress",
-   "summary": "Remember and resume from your previous listening position. Useful for libraries with long-form audio content.",
+   "summary": "Pick up where you stopped listening last time. Handy for libraries of long audio.",
    "type": "bool",
    "default": "false",
    "value": "false",
@@ -311,7 +311,7 @@
   "augmentWithSharedContent": {
    "id": "augmentWithSharedContent",
    "label": "Include related content from shared libraries",
-   "summary": "Show suggestions and additional albums from libraries shared with you, and include shared tracks in Artist Radio.",
+   "summary": "Add suggestions and more albums from libraries others share with you, and mix shared tracks into Artist Radio.",
    "type": "bool",
    "default": "true",
    "value": "true",
@@ -322,7 +322,7 @@
   "artistBios": {
    "id": "artistBios",
    "label": "Artist Bios",
-   "summary": "Load artist biography data from the cloud.",
+   "summary": "Fetch artist biographies from the cloud.",
    "type": "bool",
    "default": "true",
    "value": "true",
@@ -333,7 +333,7 @@
   "albumReviews": {
    "id": "albumReviews",
    "label": "Album Reviews and Critic Ratings",
-   "summary": "Load album reviews and critic ratings from the cloud. Might make you reconsider your taste in music.",
+   "summary": "Fetch album reviews and critic ratings from the cloud. They may change how you feel about your music taste.",
    "type": "bool",
    "default": "true",
    "value": "true",
@@ -344,7 +344,7 @@
   "popularTracks": {
    "id": "popularTracks",
    "label": "Popular Tracks",
-   "summary": "Load popular track data, which powers radio stations and the popular tracks area.",
+   "summary": "Fetch popular track data, used for radio stations and the popular tracks section.",
    "type": "bool",
    "default": "true",
    "value": "true",
@@ -355,7 +355,7 @@
   "useExternalLyrics": {
    "id": "useExternalLyrics",
    "label": "Find Lyrics",
-   "summary": "Find lyrics for tracks in this library automatically.",
+   "summary": "Look up lyrics for this library's tracks on their own.",
    "type": "bool",
    "default": "true",
    "value": "true",
@@ -366,7 +366,7 @@
   "concerts": {
    "id": "concerts",
    "label": "Concerts",
-   "summary": "Load concert data for artists, in case you leave the house.",
+   "summary": "Fetch artists' concert data, should you ever go out.",
    "type": "bool",
    "default": "true",
    "value": "true",
@@ -377,7 +377,7 @@
   "genres": {
    "id": "genres",
    "label": "Genres",
-   "summary": "Where to automatically obtain genres for artists and albums.",
+   "summary": "Where artist and album genres are fetched from automatically.",
    "type": "int",
    "default": "1",
    "value": "1",
@@ -389,7 +389,7 @@
   "albumPosters": {
    "id": "albumPosters",
    "label": "Album Art",
-   "summary": "Where to automatically obtain album cover art.",
+   "summary": "Where album covers are fetched from automatically.",
    "type": "int",
    "default": "1",
    "value": "1",

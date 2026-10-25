@@ -578,7 +578,7 @@
    {
     "id": "_CPU-TranscodeCountLimit",
     "label": "Maximum simultaneous CPU transcodes",
-    "summary": "Limit the number of simultaneous video transcode streams your server can utilize on your CPU",
+    "summary": "Cap how many video transcodes your server may run on the CPU at the same time",
     "enumValues": "0:Ilimitado|1:1|2:2|3:3|4:4|5:5|6:6|7:7|8:8|9:9|10:10|11:11|12:12|13:13|14:14|15:15|16:16|17:17|18:18|19:19|20:20"
    },
    {
@@ -982,7 +982,7 @@
    {
     "id": "LibraryVideoPlayedAtBehaviour",
     "label": "Videó befejezettnek tekintése",
-    "summary": "Decide whether to use end credits markers to determine the 'watched' state of video items. When markers are not available the selected threshold percentage will be used.",
+    "summary": "Choose whether end credits markers decide when a video counts as watched. If a video has no markers, the percentage you picked is used.",
     "enumValues": "0:at selected threshold percentage|1:at final credits marker position|2:at first credits marker position|3:earliest between threshold percent and first credits marker"
    },
    {
@@ -1024,7 +1024,7 @@
    },
    {
     "id": "CinemaTrailersIncludeEnglish",
-    "label": "Always include English language Cinema Trailers for trailers of movies not in my library.",
+    "label": "For movies not in my library, always use English Cinema Trailers.",
     "summary": ""
    },
    {
@@ -1050,7 +1050,7 @@
    {
     "id": "AllowLegacyAgents",
     "label": "Show legacy agents during library setup",
-    "summary": "If this is enabled legacy agents will be available when setting up new libraries. Requires browser refresh after changing."
+    "summary": "Turn on to offer legacy agents when you create a library. Reload the browser page after changing this."
    },
    {
     "id": "MachineIdentifier",
@@ -1100,7 +1100,7 @@
    {
     "id": "IPNetworkType",
     "label": "Client Network",
-    "summary": "Network to advertise to clients.",
+    "summary": "Which network clients are told about.",
     "enumValues": "v4only:IPv4 Only|v6only:IPv6 Only|dualstack:IPv4 and IPv6"
    },
    {
@@ -1122,7 +1122,7 @@
    {
     "id": "customCertificateDomain",
     "label": "Egyéni tanúsítvány tartománya",
-    "summary": "Domain name to be published to plex.tv using your mapped port; must match a name from the custom certificate file. [IPv4 Only]"
+    "summary": "The domain name sent to plex.tv along with your mapped port. It has to match a name in the custom certificate file. [IPv4 Only]"
    },
    {
     "id": "PreferredNetworkInterface",
@@ -1219,7 +1219,7 @@
    {
     "id": "DownloadsTempDirectory",
     "label": "Downloads temporary directory",
-    "summary": "Directory to use when storing transcoded downloads until the client downloads them."
+    "summary": "Folder that holds transcoded downloads until the client fetches them."
    },
    {
     "id": "TranscoderDefaultDuration",
@@ -1285,7 +1285,7 @@
    {
     "id": "TranscoderToneMappingAgorithm",
     "label": "Tonemapping Algorithm",
-    "summary": "Algorithm to use when performing HDR tone mapping.",
+    "summary": "Which algorithm HDR tone mapping uses.",
     "enumValues": "linear|gamma|clip|reinhard|hable|mobius"
    },
    {
@@ -1480,13 +1480,13 @@
    {
     "id": "_CPU-TranscodeCountLimit",
     "label": "Maximum simultaneous CPU transcodes",
-    "summary": "Limit the number of simultaneous video transcode streams your server can utilize on your CPU",
+    "summary": "Cap how many video transcodes your server may run on the CPU at the same time",
     "enumValues": "0:Korlátlan|1:1|2:2|3:3|4:4|5:5|6:6|7:7|8:8|9:9|10:10|11:11|12:12|13:13|14:14|15:15|16:16|17:17|18:18|19:19|20:20"
    },
    {
     "id": "OptimizerTranscodeCountLimit",
     "label": "Maximum simultaneous background video transcode",
-    "summary": "Limit the number of simultaneous video transcode your server can utilize for the optimizer and downloads",
+    "summary": "Cap how many video transcodes your server may run at the same time for the optimizer and downloads",
     "enumValues": "0:Korlátlan|1:1|2:2|3:3|4:4|5:5|6:6|7:7|8:8|9:9|10:10|11:11|12:12|13:13|14:14|15:15|16:16|17:17|18:18|19:19|20:20"
    },
    {
@@ -1522,7 +1522,7 @@
    {
     "id": "customConnections",
     "label": "Egyéni szerverelérési URL-ek",
-    "summary": "A comma-separated list of URLs (http or https) which are published up to plex.tv for server discovery. IPv6 addresses must specify a port."
+    "summary": "URLs (http or https), separated by commas, sent to plex.tv so the server can be found. Include a port with any IPv6 address."
    },
    {
     "id": "allowedNetworks",
@@ -1665,7 +1665,7 @@
    {
     "id": "GenerateVADBehavior",
     "label": "Generate voice activity data",
-    "summary": "Detects voice activity data for movies and episodes. This is used to help syncronize subtitles to the audio track. This detection can be toggled per-library by editing the individual library and navigating to the advanced section.",
+    "summary": "Finds where voices are heard in movies and episodes, which helps line subtitles up with the audio. You can switch this per library in that library's advanced settings.",
     "enumValues": "never:soha|scheduled:mint egy ütemezett feladat|asap:mint egy ütemezett feladat és amikor a hozzáadják a médiát"
    },
    {

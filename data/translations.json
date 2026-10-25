@@ -167,7 +167,7 @@
    }
   },
   "description": {
-   "Create a backup copy of the server's database in the configured backup directory": {
+   "Back up the server's database to the backup folder set in Settings": {
     "af": "Maak 'n rugsteunkopie van die bediener se databasis in die gekose rugsteungids",
     "ca": "Crea una còpia de seguretat de la base de dades del servidor a la carpeta de còpies de seguretat configurada",
     "cs": "Vytvořit zálohu databáze serveru v nastavené složce pro zálohy",
@@ -2568,7 +2568,7 @@
     "uk": "Виявлення реклами",
     "zh": "广告检测"
    },
-   "Add Plex Media Server and System memory use for Debug Logging": {
+   "Log Plex Media Server and system memory use (debug logging)": {
     "af": "Voeg Plex Media Server- en stelselgeheuegebruik by ontfoutlogs",
     "ca": "Afegeix l'ús de memòria de Plex Media Server i del sistema als registres de depuració",
     "cs": "Přidat do ladicího protokolu využití paměti Plex Media Server a systému",
@@ -2696,7 +2696,7 @@
     "uk": "Сортування альбомів",
     "zh": "专辑排序"
    },
-   "Allow Plex Media Server tokens in logs": {
+   "Show Plex Media Server tokens in logs": {
     "af": "Laat Plex Media Server-tokens in logs toe",
     "ar": "السماح برموز Plex Media Server في السجلات",
     "ca": "Permet els testimonis de Plex Media Server als registres",
@@ -2817,7 +2817,7 @@
     "uk": "Дозволити трейлери red band",
     "zh": "允许红标预告片"
    },
-   "Always include English language Cinema Trailers for trailers of movies not in my library.": {
+   "For movies not in my library, always use English Cinema Trailers.": {
     "af": "Sluit altyd Engelse bioskoopvoorskoue in vir voorskoue van flieks wat nie in my biblioteek is nie.",
     "ca": "Inclou sempre tràilers de cinema en anglès per als tràilers de pel·lícules que no són a la meva biblioteca.",
     "cs": "U trailerů filmů, které nejsou v mé knihovně, vždy zahrnout kinotrailery v angličtině.",
@@ -3291,7 +3291,7 @@
     "uk": "Колекції",
     "zh": "合集"
    },
-   "Comma-separated list of strings considered articles when sorting titles. A server restart is required for a change to take effect.": {
+   "Words to skip at the start of titles when sorting, separated by commas. Changes apply only after the server restarts.": {
     "af": "Kommageskeide lys van woorde wat as lidwoorde beskou word wanneer titels gesorteer word. Die bediener moet herbegin word voordat 'n verandering in werking tree.",
     "ar": "قائمة مفصولة بفواصل بالكلمات التي تُعدّ أدوات تعريف عند ترتيب العناوين. يلزم إعادة تشغيل الخادم لتطبيق التغيير.",
     "ca": "Llista separada per comes de les cadenes que es consideren articles en ordenar els títols. Cal reiniciar el servidor perquè el canvi tingui efecte.",
@@ -4200,7 +4200,7 @@
     "uk": "Увімкнути виявлення в локальній мережі (GDM)",
     "zh": "启用本地网络发现（GDM）"
    },
-   "Enable smart shuffling on artists and smart music playlists": {
+   "Smart shuffle for artists and smart music playlists": {
     "af": "Aktiveer slim skommeling by kunstenaars en slim musieksnitlyste",
     "ca": "Activa la reproducció aleatòria intel·ligent per a artistes i llistes de reproducció musicals intel·ligents",
     "cs": "Zapnout chytré míchání u interpretů a chytrých hudebních playlistů",
@@ -4869,7 +4869,7 @@
     "uk": "Чи прийняв користувач EULA",
     "zh": "用户是否已接受 EULA"
    },
-   "Include Cinema Trailers from movies in my library": {
+   "Cinema Trailers: movies already in my library": {
     "af": "Sluit bioskoopvoorskoue in van flieks in my biblioteek",
     "ar": "تضمين إعلانات السينما لأفلام من مكتبتي",
     "ca": "Inclou tràilers de cinema de les pel·lícules de la meva biblioteca",
@@ -4905,7 +4905,7 @@
     "uk": "Включати кінотрейлери фільмів з моєї бібліотеки",
     "zh": "包含我媒体库中电影的影院预告片"
    },
-   "Include Cinema Trailers from new and upcoming movies in theaters": {
+   "Cinema Trailers: new and upcoming movies in cinemas": {
     "af": "Sluit bioskoopvoorskoue in van nuwe en komende flieks in teaters",
     "ar": "تضمين إعلانات السينما لأفلام جديدة وقادمة في دور العرض",
     "ca": "Inclou tràilers de cinema de pel·lícules noves i properes als cinemes",
@@ -4941,7 +4941,7 @@
     "uk": "Включати кінотрейлери нових і майбутніх фільмів у кінотеатрах",
     "zh": "包含院线新片和即将上映电影的影院预告片"
    },
-   "Include Cinema Trailers from new and upcoming movies on Blu-ray": {
+   "Cinema Trailers: new and upcoming movies on Blu-ray": {
     "af": "Sluit bioskoopvoorskoue in van nuwe en komende flieks op Blu-ray",
     "ar": "تضمين إعلانات السينما لأفلام جديدة وقادمة على Blu-ray",
     "ca": "Inclou tràilers de cinema de pel·lícules noves i properes en Blu-ray",
@@ -5223,7 +5223,7 @@
     "uk": "Обмежити бітрейт віддаленого потоку",
     "zh": "限制远程流比特率"
    },
-   "List of IP addresses and networks that are allowed without auth": {
+   "IP addresses and networks that need no sign-in": {
     "af": "Lys van IP-adresse en netwerke wat sonder verifikasie toegelaat word",
     "ar": "قائمة عناوين IP والشبكات المسموح لها دون مصادقة",
     "ca": "Llista d'adreces IP i xarxes permeses sense autenticació",
@@ -5354,7 +5354,7 @@
     "uk": "Джерело міток",
     "zh": "标记来源"
    },
-   "Maximum number of Continue Watching items which will appear.": {
+   "Most items shown in Continue Watching": {
     "af": "Maksimum aantal items wat in Kyk verder sal verskyn.",
     "ca": "Nombre màxim d'elements que apareixeran a Continua mirant.",
     "cs": "Maximální počet položek zobrazených v Pokračovat ve sledování.",
@@ -5398,7 +5398,7 @@
     "pt-PT": "Máximo de transcodificações de vídeo simultâneas em segundo plano",
     "sk": "Maximum súčasných prekódovaní videa na pozadí"
    },
-   "Maximum video output resolution for the transcoder": {
+   "Highest video resolution the transcoder outputs": {
     "af": "Maksimum video-uitsetresolusie vir die transkodeerder",
     "ar": "أقصى دقة لإخراج الفيديو في المحوّل",
     "ca": "Resolució màxima de sortida de vídeo del transcodificador",
@@ -5529,7 +5529,7 @@
     "uk": "Вступне відео перед фільмом",
     "zh": "电影片头视频"
    },
-   "Number of seconds to wait before a plugin times out": {
+   "Seconds before a plug-in is given up on": {
     "af": "Aantal sekondes om te wag voordat 'n inprop uittel",
     "ar": "عدد الثواني قبل انتهاء مهلة الإضافة",
     "ca": "Segons d'espera abans que un connector esgoti el temps",
@@ -5740,7 +5740,7 @@
     "uk": "Популярні треки",
     "zh": "热门曲目"
    },
-   "Prefer artwork based on library language": {
+   "Artwork in the library's language": {
     "af": "Verkies kunswerk volgens biblioteektaal",
     "ca": "Prefereix les imatges segons l'idioma de la biblioteca",
     "cs": "Upřednostnit obrázky podle jazyka knihovny",
@@ -6182,7 +6182,7 @@
     "uk": "Видаляти старі файли кешу щотижня",
     "zh": "每周删除旧的缓存文件"
    },
-   "Run a partial scan when changes are detected": {
+   "Scan only what changed when changes are found": {
     "af": "Doen 'n gedeeltelike skandering wanneer veranderinge bespeur word",
     "ar": "إجراء فحص جزئي عند اكتشاف تغييرات",
     "ca": "Fes una exploració parcial quan es detectin canvis",
@@ -6218,7 +6218,7 @@
     "uk": "Виконувати часткове сканування при виявленні змін",
     "zh": "检测到更改时执行部分扫描"
    },
-   "Run scanner tasks at a lower priority": {
+   "Give scanner tasks lower priority": {
     "af": "Laat skandeertake met laer prioriteit loop",
     "ar": "تشغيل مهام الفحص بأولوية أدنى",
     "ca": "Executa les tasques d'exploració amb prioritat més baixa",
@@ -6654,7 +6654,7 @@
     "uk": "Завершувати сеанси, призупинені довше ніж",
     "zh": "暂停超过此时长的会话将被终止"
    },
-   "Time at which tasks start to run": {
+   "Time scheduled tasks start": {
     "af": "Tyd waarop take begin loop",
     "ar": "وقت بدء تشغيل المهام",
     "ca": "Hora d'inici de les tasques",
@@ -7861,7 +7861,7 @@
    }
   },
   "summary": {
-   "A comma-separated list of URLs (http or https) which are published up to plex.tv for server discovery. IPv6 addresses must specify a port.": {
+   "URLs (http or https), separated by commas, sent to plex.tv so the server can be found. Include a port with any IPv6 address.": {
     "it": "Elenco separato da virgole di URL (http o https) pubblicati su plex.tv per il rilevamento del server. Gli indirizzi IPv6 devono specificare una porta.",
     "ja": "サーバー検出のために plex.tv に公開する URL（http または https）のカンマ区切りの一覧。IPv6 アドレスにはポートの指定が必要です。",
     "nb": "En kommaseparert liste over URL-er (http eller https) som publiseres til plex.tv for serveroppdaging. IPv6-adresser må ha port.",
@@ -7870,7 +7870,7 @@
     "pt-PT": "Lista separada por vírgulas de URLs (http ou https) publicadas no plex.tv para a descoberta do servidor. Endereços IPv6 devem especificar uma porta.",
     "sk": "Zoznam adries URL (http alebo https) oddelených čiarkou, ktoré sa zverejňujú na plex.tv na vyhľadanie servera. Adresy IPv6 musia obsahovať port."
    },
-   "A global path to music videos for all music libraries.": {
+   "One music video path shared by every music library.": {
     "af": "'n Globale pad na musiekvideo's vir alle musiekbiblioteke.",
     "ca": "Camí global als vídeos musicals per a totes les biblioteques de música.",
     "cs": "Globální cesta k hudebním klipům pro všechny hudební knihovny.",
@@ -7900,7 +7900,7 @@
     "uk": "Глобальний шлях до музичних кліпів для всіх музичних бібліотек.",
     "zh": "适用于所有音乐库的全局音乐视频路径。"
    },
-   "A server restart is required for a change to take effect.": {
+   "Changes apply only after the server restarts.": {
     "af": "Die bediener moet herbegin word voordat 'n verandering in werking tree.",
     "ar": "يلزم إعادة تشغيل الخادم لتطبيق التغيير.",
     "ca": "Cal reiniciar el servidor perquè el canvi tingui efecte.",
@@ -7936,7 +7936,7 @@
     "uk": "Зміна набуде чинності після перезапуску сервера.",
     "zh": "更改需重启服务器后生效。"
    },
-   "Algorithm to use when performing HDR tone mapping.": {
+   "Which algorithm HDR tone mapping uses.": {
     "af": "Algoritme om te gebruik vir HDR-toonkartering.",
     "cs": "Algoritmus použitý při mapování tónů HDR.",
     "da": "Algoritme, der bruges ved HDR-tonemapping.",
@@ -7960,7 +7960,7 @@
     "uk": "Алгоритм для тонального відображення HDR.",
     "zh": "执行 HDR 色调映射时使用的算法。"
    },
-   "Allow Cinema Trailers to play before items in this library.": {
+   "Let Cinema Trailers play ahead of this library's items.": {
     "af": "Laat bioskoopvoorskoue speel voor items in hierdie biblioteek.",
     "ar": "السماح بتشغيل إعلانات السينما قبل عناصر هذه المكتبة.",
     "ca": "Permet reproduir tràilers de cinema abans dels elements d'aquesta biblioteca.",
@@ -7996,7 +7996,7 @@
     "uk": "Дозволити відтворення кінотрейлерів перед елементами цієї бібліотеки.",
     "zh": "允许在此媒体库的项目播放前播放影院预告片。"
    },
-   "Allow matching to adult/pornographic titles and returning adult titles in fix match results. This may hide the title from some features like your Watchlist.": {
+   "Let items match adult/pornographic titles and show adult titles in fix match results. Such titles may be left out of features like your Watchlist.": {
     "af": "Laat passing met volwasse/pornografiese titels toe en wys volwasse titels in die resultate van Herstel passing. Dit kan die titel vir sommige funksies, soos jou Kyklys, versteek.",
     "cs": "Povolit párování s tituly pro dospělé/pornografickými tituly a jejich zobrazení ve výsledcích opravy párování. Titul se pak nemusí zobrazovat v některých funkcích, například v seznamu ke zhlédnutí.",
     "da": "Tillad match med voksen-/pornografiske titler og vis voksentitler i resultaterne for Ret match. Det kan skjule titlen i visse funktioner, f.eks. din Watchlist.",
@@ -8016,7 +8016,7 @@
     "uk": "Дозволити зіставлення з дорослими/порнографічними назвами та показ таких назв у результатах виправлення зіставлення. Це може приховати назву з деяких функцій, як-от списку перегляду.",
     "zh": "允许匹配成人/色情作品，并在修正匹配结果中返回成人作品。这可能会使该作品在“待看清单”等部分功能中隐藏。"
    },
-   "Allow this server to send events to external services.": {
+   "Lets this server send events to outside services.": {
     "af": "Laat hierdie bediener gebeurtenisse na eksterne dienste stuur.",
     "ar": "السماح لهذا الخادم بإرسال الأحداث إلى خدمات خارجية.",
     "ca": "Permet que aquest servidor enviï esdeveniments a serveis externs.",
@@ -8050,7 +8050,7 @@
     "uk": "Дозволити серверу надсилати події до зовнішніх сервісів.",
     "zh": "允许此服务器向外部服务发送事件。"
    },
-   "Allow this server to send push notifications to mobile devices. Note: Push notifications are delivered using Plex services. They're associated with your account, and some of them may contain information about the contents of your library.": {
+   "Lets this server send push notifications to mobile devices. Note: these go through Plex services, are tied to your account, and some may reveal what is in your library.": {
     "af": "Laat hierdie bediener stootkennisgewings na mobiele toestelle stuur. Let wel: stootkennisgewings word via Plex-dienste afgelewer. Hulle is aan jou rekening gekoppel, en sommige kan inligting oor die inhoud van jou biblioteek bevat.",
     "ca": "Permet que aquest servidor enviï notificacions push als dispositius mòbils. Nota: les notificacions push es lliuren mitjançant els serveis de Plex. Estan associades al teu compte i algunes poden contenir informació sobre el contingut de la teva biblioteca.",
     "cs": "Povolit serveru odesílat nabízená oznámení do mobilních zařízení. Poznámka: nabízená oznámení se doručují přes služby Plex. Jsou spojena s vaším účtem a některá mohou obsahovat informace o obsahu vaší knihovny.",
@@ -8082,7 +8082,7 @@
     "uk": "Дозволити серверу надсилати push-сповіщення на мобільні пристрої. Примітка: push-сповіщення доставляються через сервіси Plex. Вони пов'язані з вашим обліковим записом, і деякі з них можуть містити відомості про вміст вашої бібліотеки.",
     "zh": "允许此服务器向移动设备发送推送通知。注意：推送通知通过 Plex 服务发送，与你的账户关联，其中一些可能包含媒体库内容的相关信息。"
    },
-   "Amount in past seconds to retain before pruning segments from a transcode.": {
+   "Seconds of already-played transcode to keep before older segments are removed.": {
     "af": "Aantal sekondes in die verlede om te behou voordat segmente van 'n transkodering gesnoei word.",
     "ar": "عدد الثواني السابقة التي يُحتفظ بها قبل حذف مقاطع التحويل.",
     "ca": "Segons passats que es conserven abans d'eliminar els segments d'una transcodificació.",
@@ -8118,7 +8118,7 @@
     "uk": "Скільки секунд минулого зберігати, перш ніж видаляти сегменти перекодування.",
     "zh": "清理转码分段前保留的过去秒数。"
    },
-   "Amount in seconds to buffer before throttling the transcoder.": {
+   "Seconds of buffer to build up before the transcoder is slowed down.": {
     "af": "Aantal sekondes om te buffer voordat die transkodeerder gesmoor word.",
     "ar": "عدد الثواني التي يُخزَّن مؤقتًا قبل إبطاء المحوّل.",
     "ca": "Segons de memòria intermèdia abans de frenar el transcodificador.",
@@ -8154,7 +8154,7 @@
     "uk": "Скільки секунд буферизувати, перш ніж пригальмувати перекодувальник.",
     "zh": "转码器限速前缓冲的秒数。"
    },
-   "Analyze tracks for sonic features.": {
+   "Check tracks for sonic features.": {
     "af": "Ontleed snitte vir klankeienskappe.",
     "ca": "Analitza les característiques sonores de les pistes.",
     "cs": "Analyzovat zvukové vlastnosti skladeb.",
@@ -8183,7 +8183,7 @@
     "uk": "Аналізувати звукові характеристики треків.",
     "zh": "分析曲目的声音特征。"
    },
-   "Automatically create collections when there are at least the selected number of items for an available collection. Changing this value will have no effect on any existing collections.": {
+   "Make a collection on its own once an available collection has at least this many items. Changing the number leaves existing collections as they are.": {
     "af": "Skep outomaties versamelings wanneer daar ten minste die gekose aantal items vir 'n beskikbare versameling is. Om hierdie waarde te verander, het geen uitwerking op bestaande versamelings nie.",
     "ca": "Crea col·leccions automàticament quan hi hagi com a mínim el nombre d'elements seleccionat per a una col·lecció disponible. Canviar aquest valor no afecta les col·leccions existents.",
     "cs": "Automaticky vytvářet kolekce, když dostupná kolekce obsahuje alespoň zvolený počet položek. Změna této hodnoty nemá vliv na existující kolekce.",
@@ -8213,7 +8213,7 @@
     "uk": "Автоматично створювати колекції, коли для доступної колекції є щонайменше вибрана кількість елементів. Зміна цього значення не вплине на наявні колекції.",
     "zh": "当可用合集中的项目数达到所选数量时自动创建合集。更改此值不会影响现有合集。"
    },
-   "Chapter thumbnails provide images in the chapter view on supported apps. They can take a long time to generate and consume additional disk space.": {
+   "Chapter thumbnails show a picture for each chapter in apps that support them. Making them can take a long time and uses extra disk space.": {
     "af": "Hoofstukduimnaels verskaf beelde in die hoofstukaansig op ondersteunde toepassings. Dit kan lank neem om te genereer en gebruik ekstra skyfspasie.",
     "ar": "توفر الصور المصغّرة للفصول صورًا في عرض الفصول على التطبيقات المدعومة. قد يستغرق إنشاؤها وقتًا طويلًا وتستهلك مساحة إضافية على القرص.",
     "ca": "Les miniatures de capítols mostren imatges a la vista de capítols de les aplicacions compatibles. Generar-les pot trigar molt i ocupar espai de disc addicional.",
@@ -8249,7 +8249,7 @@
     "uk": "Мініатюри розділів показують зображення в поданні розділів у підтримуваних застосунках. Їх створення може тривати довго й займати додаткове місце на диску.",
     "zh": "章节缩略图会在支持的应用中为章节视图提供图片。生成可能需要很长时间，并占用额外的磁盘空间。"
    },
-   "Choose how quickly episodes are removed after the server admin has watched them.": {
+   "How soon episodes are deleted once the server admin has watched them.": {
     "af": "Kies hoe vinnig episodes verwyder word nadat die bedieneradministrateur hulle gekyk het.",
     "ar": "اختر مدى سرعة إزالة الحلقات بعد أن يشاهدها مدير الخادم.",
     "ca": "Tria amb quina rapidesa s'eliminen els episodis després que l'administrador del servidor els hagi vist.",
@@ -8280,7 +8280,7 @@
     "uk": "Виберіть, як швидко видаляти епізоди після перегляду адміністратором сервера.",
     "zh": "选择服务器管理员观看后多久删除单集。"
    },
-   "Choose whether to display seasons.": {
+   "Pick whether seasons are shown.": {
     "af": "Kies of seisoene gewys moet word.",
     "ar": "اختر ما إذا كانت المواسم تُعرض.",
     "ca": "Tria si es mostren les temporades.",
@@ -8316,7 +8316,7 @@
     "uk": "Виберіть, чи показувати сезони.",
     "zh": "选择是否显示季。"
    },
-   "Client-specific configuration settings for the DLNA server.": {
+   "DLNA server settings for specific clients.": {
     "af": "Kliëntspesifieke konfigurasie-instellings vir die DLNA-bediener.",
     "ar": "إعدادات خاصة بكل عميل لخادم DLNA.",
     "ca": "Paràmetres de configuració específics de cada client per al servidor DLNA.",
@@ -8352,7 +8352,7 @@
     "uk": "Налаштування DLNA-сервера для окремих клієнтів.",
     "zh": "DLNA 服务器的客户端专属配置。"
    },
-   "Comma separated list of IP addresses or IP/netmask entries for networks that are allowed to access Plex Media Server without logging in. When the server is signed out and this value is set, only localhost and addresses on this list will be allowed.": {
+   "IP addresses or IP/netmask entries, comma separated, for networks that may use Plex Media Server without signing in. If the server is signed out and this is filled in, only localhost and the listed addresses are let in.": {
     "af": "Kommageskeide lys van IP-adresse of IP/netmasker-inskrywings vir netwerke wat sonder aanmelding toegang tot Plex Media Server het. Wanneer die bediener afgemeld is en hierdie waarde gestel is, word slegs localhost en adresse op hierdie lys toegelaat.",
     "ar": "قائمة مفصولة بفواصل بعناوين IP أو إدخالات IP/قناع الشبكة للشبكات المسموح لها بالوصول إلى Plex Media Server دون تسجيل الدخول. عندما يكون الخادم غير مسجَّل الدخول وتكون هذه القيمة محددة، يُسمح فقط بالجهاز المحلي والعناوين الموجودة في هذه القائمة.",
     "ca": "Llista separada per comes d'adreces IP o entrades IP/màscara de xarxa de les xarxes que poden accedir a Plex Media Server sense iniciar sessió. Quan el servidor no té la sessió iniciada i aquest valor està definit, només es permetran localhost i les adreces d'aquesta llista.",
@@ -8388,7 +8388,7 @@
     "uk": "Список IP-адрес або записів IP/маска через кому для мереж, яким дозволено доступ до Plex Media Server без входу. Коли на сервері не виконано вхід і це значення задано, дозволено лише localhost і адреси з цього списку.",
     "zh": "无需登录即可访问 Plex Media Server 的网络 IP 地址或 IP/子网掩码列表，以逗号分隔。当服务器已退出登录且设置了此值时，仅允许 localhost 和此列表中的地址。"
    },
-   "Comma separated list of IP addresses or IP/netmask entries for networks that will be considered to be on the local network when enforcing bandwidth restrictions. If set, all other IP addresses will be considered to be on the external network and will be subject to external network bandwidth restrictions. If left blank, only the server's subnet is considered to be on the local network.": {
+   "IP addresses or IP/netmask ranges, separated by commas, to treat as your local network for bandwidth limits. Anything outside them counts as the external network and gets the external limits. Left blank, only the server's own subnet is local.": {
     "af": "Kommageskeide lys van IP-adresse of IP/netmasker-inskrywings vir netwerke wat as deel van die plaaslike netwerk beskou word wanneer bandwydtebeperkings toegepas word. Indien gestel, word alle ander IP-adresse as deel van die eksterne netwerk beskou en is hulle onderhewig aan die bandwydtebeperkings vir die eksterne netwerk. Indien leeg gelaat, word slegs die bediener se subnet as deel van die plaaslike netwerk beskou.",
     "ca": "Llista separada per comes d'adreces IP o entrades IP/màscara de xarxa de les xarxes que es consideraran part de la xarxa local en aplicar les restriccions d'amplada de banda. Si es defineix, totes les altres adreces IP es consideraran de la xarxa externa i estaran subjectes a les restriccions d'amplada de banda externa. Si es deixa en blanc, només la subxarxa del servidor es considera xarxa local.",
     "cs": "Čárkami oddělený seznam IP adres nebo položek IP/maska pro sítě, které se při uplatňování omezení šířky pásma považují za místní síť. Je-li vyplněn, všechny ostatní IP adresy se považují za vnější síť a vztahují se na ně omezení pro vnější síť. Je-li prázdný, za místní síť se považuje jen podsíť serveru.",
@@ -8422,7 +8422,7 @@
     "uk": "Список IP-адрес або записів IP/маска через кому для мереж, які вважатимуться локальними під час застосування обмежень пропускної здатності. Якщо задано, усі інші IP-адреси вважатимуться зовнішньою мережею, і до них застосовуватимуться обмеження для зовнішньої мережі. Якщо порожньо, локальною вважається лише підмережа сервера.",
     "zh": "执行带宽限制时视为本地网络的 IP 地址或 IP/子网掩码列表，以逗号分隔。设置后，所有其他 IP 地址都将视为外部网络并受外部网络带宽限制。留空则仅将服务器所在子网视为本地网络。"
    },
-   "Credits markers can be generated locally and/or retrieved via an online database. Online markers may not always exist, if this preference is set to 'both' then any locally detected markers are submitted anonymously back to the online database for future use.": {
+   "Credits markers can be detected on this server, fetched from an online database, or both. Online markers are not always available. With 'both', markers found here are sent back to the online database anonymously so others can use them.": {
     "af": "Aftitelingmerkers kan plaaslik gegenereer en/of uit 'n aanlyn databasis verkry word. Aanlyn merkers bestaan nie altyd nie; as hierdie voorkeur op 'albei' gestel is, word plaaslik bespeurde merkers anoniem na die aanlyn databasis teruggestuur vir toekomstige gebruik.",
     "ca": "Els marcadors de crèdits es poden generar localment i/o obtenir d'una base de dades en línia. Els marcadors en línia no sempre existeixen; si aquesta preferència és «tots dos», els marcadors detectats localment s'envien de manera anònima a la base de dades en línia per a usos futurs.",
     "cs": "Značky závěrečných titulků lze vytvářet místně nebo získat z online databáze. Online značky nemusí vždy existovat; pokud je zvoleno „obojí“, místně rozpoznané značky se anonymně odešlou do online databáze pro další použití.",
@@ -8453,7 +8453,7 @@
     "uk": "Мітки титрів можна створювати локально та/або отримувати з онлайн-бази. Онлайн-мітки є не завжди; якщо вибрано «обидва», локально виявлені мітки анонімно надсилаються до онлайн-бази для подальшого використання.",
     "zh": "片尾字幕标记可在本地生成，也可从在线数据库获取。在线标记不一定总是存在；若此项设为“两者都用”，本地检测到的标记会匿名提交回在线数据库，供今后使用。"
    },
-   "Debug logging enables additional detail in the log files and is helpful in diagnosing problems.": {
+   "Debug logging writes extra detail to the log files, which helps track down problems.": {
     "af": "Ontfoutlogging voeg ekstra besonderhede by die loglêers en help om probleme te diagnoseer.",
     "ca": "El registre de depuració afegeix més detall als fitxers de registre i ajuda a diagnosticar problemes.",
     "cs": "Ladicí protokolování přidává do protokolů další podrobnosti a pomáhá při diagnostice problémů.",
@@ -8484,7 +8484,7 @@
     "uk": "Журнал налагодження додає більше подробиць у файли журналу й допомагає діагностувати проблеми.",
     "zh": "调试日志会在日志文件中记录更多细节，有助于诊断问题。"
    },
-   "Decide whether to use end credits markers to determine the 'watched' state of video items. When markers are not available the selected threshold percentage will be used.": {
+   "Choose whether end credits markers decide when a video counts as watched. If a video has no markers, the percentage you picked is used.": {
     "af": "Besluit of eindaftitelingmerkers gebruik word om te bepaal of video-items 'gekyk' is. Wanneer merkers nie beskikbaar is nie, word die gekose drempelpersentasie gebruik.",
     "ca": "Decideix si s'utilitzen els marcadors de crèdits finals per determinar l'estat «vist» dels vídeos. Quan no hi ha marcadors, s'utilitza el percentatge de llindar seleccionat.",
     "cs": "Určete, zda se mají značky závěrečných titulků použít k určení stavu „zhlédnuto“ u videí. Pokud značky nejsou k dispozici, použije se zvolený procentní práh.",
@@ -8512,7 +8512,7 @@
     "uk": "Визначте, чи використовувати мітки фінальних титрів для позначення відео як переглянутого. Якщо міток немає, використовується вибраний відсотковий поріг.",
     "zh": "决定是否使用片尾字幕标记来判断视频项目的“已观看”状态。没有标记时将使用所选的阈值百分比。"
    },
-   "Detect credits and allow credits skipping for items in this library when enabled in server settings.": {
+   "Find credits and offer credits skipping for this library's items, if server settings have this turned on.": {
     "af": "Spoor aftiteling op en laat toe dat dit oorgeslaan word vir items in hierdie biblioteek, wanneer dit in die bedienerinstellings geaktiveer is.",
     "cs": "Rozpoznávat závěrečné titulky a umožnit jejich přeskočení u položek této knihovny, pokud je to zapnuto v nastavení serveru.",
     "da": "Registrér rulletekster og tillad at springe dem over for elementer i dette bibliotek, når det er aktiveret i serverindstillingerne.",
@@ -8535,7 +8535,7 @@
     "uk": "Виявляти титри й дозволяти їх пропуск для елементів цієї бібліотеки, якщо це ввімкнено в налаштуваннях сервера.",
     "zh": "在服务器设置中启用后，检测此媒体库项目的片尾字幕并允许跳过。"
    },
-   "Detect intros and allow intro skipping for items in this library when enabled in server settings.": {
+   "Find intros and offer intro skipping for this library's items, if server settings have this turned on.": {
     "af": "Spoor intro's op en laat toe dat dit oorgeslaan word vir items in hierdie biblioteek, wanneer dit in die bedienerinstellings geaktiveer is.",
     "cs": "Rozpoznávat úvodní znělky a umožnit jejich přeskočení u položek této knihovny, pokud je to zapnuto v nastavení serveru.",
     "da": "Registrér intro og tillad at springe den over for elementer i dette bibliotek, når det er aktiveret i serverindstillingerne.",
@@ -8558,7 +8558,7 @@
     "uk": "Виявляти вступ і дозволяти його пропуск для елементів цієї бібліотеки, якщо це ввімкнено в налаштуваннях сервера.",
     "zh": "在服务器设置中启用后，检测此媒体库项目的片头并允许跳过。"
    },
-   "Detect voice activity for items in this library when enabled in server settings. This is required for subtitle auto-sync functionality.": {
+   "Find voice activity for this library's items, if server settings have this turned on. Subtitle auto-sync needs it.": {
     "af": "Spoor stemaktiwiteit op vir items in hierdie biblioteek wanneer dit in die bedienerinstellings geaktiveer is. Dit is nodig vir outomatiese sinkronisering van onderskrifte.",
     "cs": "Rozpoznávat řeč u položek této knihovny, pokud je to zapnuto v nastavení serveru. Je to nutné pro automatickou synchronizaci titulků.",
     "da": "Registrér stemmeaktivitet for elementer i dette bibliotek, når det er aktiveret i serverindstillingerne. Det kræves til automatisk synkronisering af undertekster.",
@@ -8578,7 +8578,7 @@
     "uk": "Виявляти голосову активність для елементів цієї бібліотеки, якщо це ввімкнено в налаштуваннях сервера. Потрібно для автосинхронізації субтитрів.",
     "zh": "在服务器设置中启用后，检测此媒体库项目的人声。字幕自动同步功能需要此项。"
    },
-   "Detects movie and episode ads.": {
+   "Finds ads in movies and episodes.": {
     "af": "Spoor advertensies in flieks en episodes op.",
     "cs": "Rozpozná reklamy ve filmech a epizodách.",
     "da": "Registrerer reklamer i film og afsnit.",
@@ -8632,7 +8632,7 @@
     "uk": "Виявляє фінальні титри фільмів і епізодів.",
     "zh": "检测电影和单集的片尾字幕。"
    },
-   "Detects show intros, exposing the 'Skip Intro' button in clients.": {
+   "Finds show intros so apps can offer a 'Skip Intro' button.": {
     "af": "Spoor intro's van reekse op en wys die 'Slaan intro oor'-knoppie in kliënte.",
     "ca": "Detecta les introduccions de les sèries i mostra el botó «Salta la introducció» als clients.",
     "cs": "Rozpozná úvodní znělky seriálů a zobrazí v klientech tlačítko „Přeskočit úvod“.",
@@ -8665,7 +8665,7 @@
     "uk": "Виявляє вступ серіалів і показує в клієнтах кнопку «Пропустити вступ».",
     "zh": "检测剧集片头，在客户端中显示“跳过片头”按钮。"
    },
-   "Detects voice activity data for movies and episodes. This is used to help syncronize subtitles to the audio track. This detection can be toggled per-library by editing the individual library and navigating to the advanced section.": {
+   "Finds where voices are heard in movies and episodes, which helps line subtitles up with the audio. You can switch this per library in that library's advanced settings.": {
     "af": "Spoor stemaktiwiteitdata vir flieks en episodes op. Dit help om onderskrifte met die klanksnit te sinkroniseer. Hierdie opsporing kan per biblioteek aan- of afgeskakel word deur die biblioteek te wysig en na die gevorderde afdeling te gaan.",
     "ca": "Detecta l'activitat de veu de pel·lícules i episodis, que serveix per sincronitzar els subtítols amb la pista d'àudio. Aquesta detecció es pot activar o desactivar per biblioteca editant-la i anant a la secció avançada.",
     "cs": "Rozpozná řeč ve filmech a epizodách. Pomáhá to synchronizovat titulky se zvukovou stopou. Rozpoznávání lze zapnout či vypnout pro každou knihovnu zvlášť v jejím pokročilém nastavení.",
@@ -8692,7 +8692,7 @@
     "uk": "Виявляє голосову активність у фільмах і епізодах. Це допомагає синхронізувати субтитри з аудіодоріжкою. Виявлення можна вмикати й вимикати для кожної бібліотеки в її розширених налаштуваннях.",
     "zh": "检测电影和单集的人声数据，用于帮助字幕与音轨同步。可编辑单个媒体库并进入高级部分，按媒体库开启或关闭此检测。"
    },
-   "Directory to use when storing transcoded downloads until the client downloads them.": {
+   "Folder that holds transcoded downloads until the client fetches them.": {
     "fr": "Dossier où stocker les téléchargements transcodés jusqu'à ce que le client les récupère.",
     "fr-CA": "Dossier où stocker les téléchargements transcodés jusqu'à ce que le client les récupère.",
     "it": "Cartella in cui conservare i download transcodificati finché il client non li scarica.",
@@ -8703,7 +8703,7 @@
     "pt-PT": "Diretório onde os downloads transcodificados ficam armazenados até o cliente baixá-los.",
     "sk": "Priečinok na ukladanie prekódovaných stiahnutí, kým si ich klient nestiahne."
    },
-   "Directory to use when storing transcoded downloads until the client downloads them. This should ideally be a location on a local physical drive. It is not recommended to set this to a network location or RAM disk.": {
+   "Folder that holds transcoded downloads until the app fetches them. A folder on a local physical drive works best; a network location or RAM disk is not recommended.": {
     "cs": "Složka, kam se ukládají překódovaná stahování, dokud si je klient nestáhne. Ideálně by měla být na místním fyzickém disku. Nedoporučuje se síťové umístění ani RAM disk.",
     "da": "Mappe, hvor transkodede downloads gemmes, indtil klienten henter dem. Det bør helst være en placering på et lokalt fysisk drev. Det frarådes at bruge en netværksplacering eller RAM-disk.",
     "de": "Verzeichnis, in dem transkodierte Downloads gespeichert werden, bis der Client sie herunterlädt. Idealerweise ein lokales physisches Laufwerk. Ein Netzwerkpfad oder eine RAM-Disk wird nicht empfohlen.",
@@ -8719,7 +8719,7 @@
     "uk": "Каталог для зберігання перекодованих завантажень, доки клієнт їх не завантажить. Найкраще, щоб це був локальний фізичний диск. Не рекомендовано вказувати мережеве розташування чи RAM-диск.",
     "zh": "在客户端下载前存放转码下载内容的目录。最好位于本地物理硬盘上，不建议设为网络位置或内存盘。"
    },
-   "Directory to use when transcoding for temporary files.": {
+   "Folder for temporary files created while transcoding.": {
     "af": "Gids vir tydelike lêers tydens transkodering.",
     "ar": "المجلد المستخدم للملفات المؤقتة أثناء التحويل.",
     "ca": "Carpeta per als fitxers temporals de la transcodificació.",
@@ -8755,7 +8755,7 @@
     "uk": "Каталог для тимчасових файлів перекодування.",
     "zh": "转码时存放临时文件的目录。"
    },
-   "Directory to use when transcoding for temporary files. This should ideally be a location on a local physical drive. It is not recommended to set this to a network location or RAM disk.": {
+   "Folder for temporary files while transcoding. A folder on a local physical drive works best; a network location or RAM disk is not recommended.": {
     "cs": "Složka pro dočasné soubory při překódování. Ideálně by měla být na místním fyzickém disku. Nedoporučuje se síťové umístění ani RAM disk.",
     "da": "Mappe til midlertidige filer ved transkodning. Det bør helst være en placering på et lokalt fysisk drev. Det frarådes at bruge en netværksplacering eller RAM-disk.",
     "de": "Verzeichnis für temporäre Dateien beim Transkodieren. Idealerweise ein lokales physisches Laufwerk. Ein Netzwerkpfad oder eine RAM-Disk wird nicht empfohlen.",
@@ -8771,7 +8771,7 @@
     "uk": "Каталог для тимчасових файлів перекодування. Найкраще, щоб це був локальний фізичний диск. Не рекомендовано вказувати мережеве розташування чи RAM-диск.",
     "zh": "转码时存放临时文件的目录。最好位于本地物理硬盘上，不建议设为网络位置或内存盘。"
    },
-   "Disable transcoding of the video stream in transcoder operations. With this set, the transcoder may still transcode audio as well as remux video.": {
+   "Stops the transcoder from transcoding the video stream. Audio may still be transcoded, and video may still be remuxed.": {
     "af": "Deaktiveer transkodering van die videostroom in transkodeerderbewerkings. Met hierdie instelling kan die transkodeerder steeds klank transkodeer en video hermultiplekseer.",
     "ca": "Desactiva la transcodificació del flux de vídeo en les operacions del transcodificador. Amb aquesta opció, el transcodificador encara pot transcodificar l'àudio i tornar a multiplexar el vídeo.",
     "cs": "Vypne při překódování překódování video streamu. Překodér pak může stále překódovat zvuk a přebalovat video.",
@@ -8801,7 +8801,7 @@
     "uk": "Вимкнути перекодування відеопотоку. Перекодувальник усе одно може перекодовувати аудіо й перепаковувати відео.",
     "zh": "在转码操作中禁用视频流转码。启用后，转码器仍可能转码音频或重新封装视频。"
    },
-   "Disables legacy weak ciphers, increases DH group size, and switches to ECDSA certificates when renewing. May prevent older clients from connecting.": {
+   "Turns off old weak ciphers, uses a larger DH group and moves to ECDSA certificates at the next renewal. Older clients may no longer connect.": {
     "af": "Deaktiveer verouderde swak sifers, vergroot die DH-groepgrootte en skakel by hernuwing oor na ECDSA-sertifikate. Kan ouer kliënte verhinder om te koppel.",
     "ca": "Desactiva els xifratges febles antics, augmenta la mida del grup DH i passa a certificats ECDSA en renovar-los. Pot impedir que es connectin clients antics.",
     "cs": "Vypne starší slabé šifry, zvětší velikost skupiny DH a při obnově přejde na certifikáty ECDSA. Starší klienti se pak nemusí moci připojit.",
@@ -8832,7 +8832,7 @@
     "uk": "Вимикає застарілі слабкі шифри, збільшує розмір групи DH і переходить на сертифікати ECDSA під час поновлення. Старіші клієнти можуть не підключитися.",
     "zh": "禁用旧的弱加密算法，增大 DH 组大小，并在续期时改用 ECDSA 证书。可能导致旧版客户端无法连接。"
    },
-   "Domain name to be published to plex.tv using your mapped port; must match a name from the custom certificate file. [IPv4 Only]": {
+   "The domain name sent to plex.tv along with your mapped port. It has to match a name in the custom certificate file. [IPv4 Only]": {
     "fr": "Nom de domaine à publier sur plex.tv avec votre port redirigé ; il doit correspondre à un nom du fichier de certificat personnalisé. [IPv4 uniquement]",
     "fr-CA": "Nom de domaine à publier sur plex.tv avec votre port redirigé; il doit correspondre à un nom du fichier de certificat personnalisé. [IPv4 uniquement]",
     "it": "Nome di dominio da pubblicare su plex.tv usando la porta mappata; deve corrispondere a un nome nel file del certificato personalizzato. [Solo IPv4]",
@@ -8843,7 +8843,7 @@
     "pt-PT": "Nome de domínio a ser publicado no plex.tv usando sua porta mapeada; deve corresponder a um nome do arquivo de certificado personalizado. [Somente IPv4]",
     "sk": "Názov domény, ktorý sa zverejní na plex.tv s vaším presmerovaným portom; musí zodpovedať názvu v súbore vlastného certifikátu. [Len IPv4]"
    },
-   "Duration in minutes to use when transcoding something with an unknown duration.": {
+   "How many minutes to assume when transcoding something whose length is unknown.": {
     "af": "Duur in minute om te gebruik wanneer iets met 'n onbekende duur getranskodeer word.",
     "ar": "المدة بالدقائق المستخدمة عند تحويل محتوى مدته غير معروفة.",
     "ca": "Durada en minuts que s'utilitza en transcodificar contingut de durada desconeguda.",
@@ -8879,7 +8879,7 @@
     "uk": "Тривалість у хвилинах для перекодування вмісту з невідомою тривалістю.",
     "zh": "转码时长未知的内容时使用的时长（分钟）。"
    },
-   "Duration in seconds of DLNA Server SSDP announcement lease time.": {
+   "How many seconds the DLNA server's SSDP announcement lease lasts.": {
     "af": "Duur in sekondes van die huurtyd van die DLNA-bediener se SSDP-aankondiging.",
     "ar": "مدة إعلان SSDP لخادم DLNA بالثواني.",
     "ca": "Durada en segons de la concessió dels anuncis SSDP del servidor DLNA.",
@@ -8915,7 +8915,7 @@
     "uk": "Тривалість оренди SSDP-оголошення DLNA-сервера в секундах.",
     "zh": "DLNA 服务器 SSDP 公告租用时间（秒）。"
    },
-   "Enable the DLNA server to report timelines for video play activity.": {
+   "Have the DLNA server report timelines while video plays.": {
     "af": "Laat die DLNA-bediener tydlyne vir videospeelaktiwiteit rapporteer.",
     "ar": "تمكين خادم DLNA من الإبلاغ عن الخط الزمني لنشاط تشغيل الفيديو.",
     "ca": "Permet que el servidor DLNA informi de la cronologia de l'activitat de reproducció de vídeo.",
@@ -8951,7 +8951,7 @@
     "uk": "Дозволити DLNA-серверу повідомляти хронологію відтворення відео.",
     "zh": "允许 DLNA 服务器报告视频播放活动的时间线。"
    },
-   "Enter the full path to the pre-roll video file. If multiple paths separated by commas are entered, videos will be played sequentially. If multiple paths separated by semi-colons are used, a single pre-roll video will be chosen randomly from the list.": {
+   "Full path of the pre-roll video. Separate several paths with commas to play them all in turn, or with semicolons to pick one of them at random.": {
     "af": "Voer die volledige pad na die voorfilmvideolêer in. As verskeie paaie met kommas geskei word, word die video's een na die ander gespeel. As verskeie paaie met kommapunte geskei word, word een voorfilmvideo lukraak uit die lys gekies.",
     "ar": "أدخل المسار الكامل لملف الفيديو التمهيدي. إذا أُدخلت عدة مسارات مفصولة بفواصل، ستُشغَّل الفيديوهات بالتتابع. وإذا فُصلت بفواصل منقوطة، سيُختار فيديو تمهيدي واحد عشوائيًا من القائمة.",
     "ca": "Introdueix el camí complet del fitxer de vídeo previ. Si introdueixes diversos camins separats per comes, els vídeos es reproduiran l'un darrere l'altre. Si els separes amb punts i comes, se'n triarà un a l'atzar de la llista.",
@@ -8987,7 +8987,7 @@
     "uk": "Введіть повний шлях до вступного відео. Якщо вказати кілька шляхів через кому, відео відтворюватимуться послідовно. Якщо через крапку з комою, буде випадково вибрано одне вступне відео зі списку.",
     "zh": "输入片头视频文件的完整路径。以逗号分隔多个路径时，视频会依次播放；以分号分隔多个路径时，会从列表中随机选择一个片头视频。"
    },
-   "Find lyrics for tracks in this library automatically.": {
+   "Look up lyrics for this library's tracks on their own.": {
     "af": "Soek outomaties liedjiewoorde vir snitte in hierdie biblioteek.",
     "ca": "Cerca automàticament les lletres de les pistes d'aquesta biblioteca.",
     "cs": "Automaticky hledat texty skladeb v této knihovně.",
@@ -9016,7 +9016,7 @@
     "uk": "Автоматично шукати тексти пісень для треків цієї бібліотеки.",
     "zh": "自动为此媒体库中的曲目查找歌词。"
    },
-   "Find trailers and extras automatically (Plex Pass required)": {
+   "Look up trailers and extras on their own (Plex Pass required)": {
     "af": "Soek outomaties voorskoue en ekstras (Plex Pass vereis)",
     "ca": "Cerca tràilers i extres automàticament (cal Plex Pass)",
     "cs": "Automaticky hledat trailery a doplňky (vyžaduje Plex Pass)",
@@ -9046,7 +9046,7 @@
     "uk": "Автоматично шукати трейлери й додаткові матеріали (потрібен Plex Pass)",
     "zh": "自动查找预告片和花絮（需要 Plex Pass）"
    },
-   "Generate ad markers for items in this library.": {
+   "Make ad markers for this library's items.": {
     "af": "Genereer advertensiemerkers vir items in hierdie biblioteek.",
     "ca": "Genera marcadors d'anuncis per als elements d'aquesta biblioteca.",
     "cs": "Vytvářet značky reklam pro položky této knihovny.",
@@ -9077,7 +9077,7 @@
     "uk": "Створювати мітки реклами для елементів цієї бібліотеки.",
     "zh": "为此媒体库的项目生成广告标记。"
    },
-   "Generate credits markers for this item.": {
+   "Create end-credits markers for this item.": {
     "af": "Genereer aftitelingmerkers vir hierdie item.",
     "ca": "Genera marcadors de crèdits per a aquest element.",
     "cs": "Vytvořit značky závěrečných titulků pro tuto položku.",
@@ -9104,7 +9104,7 @@
     "uk": "Створити мітки титрів для цього елемента.",
     "zh": "为此项目生成片尾字幕标记。"
    },
-   "Generate video preview thumbnails for items in this library when enabled in server settings.": {
+   "Make video preview thumbnails for this library's items, if server settings have this turned on.": {
     "af": "Genereer videovoorskou-duimnaels vir items in hierdie biblioteek wanneer dit in die bedienerinstellings geaktiveer is.",
     "ar": "إنشاء صور مصغّرة لمعاينة الفيديو لعناصر هذه المكتبة عند تفعيلها في إعدادات الخادم.",
     "ca": "Genera miniatures de previsualització de vídeo per als elements d'aquesta biblioteca quan estigui activat a la configuració del servidor.",
@@ -9140,7 +9140,7 @@
     "uk": "Створювати мініатюри попереднього перегляду для елементів цієї бібліотеки, якщо це ввімкнено в налаштуваннях сервера.",
     "zh": "在服务器设置中启用后，为此媒体库的项目生成视频预览缩略图。"
    },
-   "Group into LPs, EPs & Singles, Compilations, Live Albums, Demos and Remixes.": {
+   "Splits albums by type: LPs, EPs & Singles, Compilations, Live Albums, Demos and Remixes.": {
     "af": "Groepeer in LP's, EP's en enkelsnitte, versamelalbums, regstreekse albums, demo's en remixes.",
     "ca": "Agrupa en LP, EP i senzills, recopilatoris, àlbums en directe, maquetes i remescles.",
     "cs": "Seskupit na LP, EP a singly, kompilace, živá alba, dema a remixy.",
@@ -9172,7 +9172,7 @@
     "uk": "Групувати на LP, EP і сингли, збірки, концертні альбоми, демо та ремікси.",
     "zh": "分组为 LP、EP 和单曲、合辑、现场专辑、小样和混音。"
    },
-   "How the episodes are named on disk.": {
+   "The episode naming scheme used by the files on disk.": {
     "af": "Hoe die episodes op skyf benoem is.",
     "ar": "طريقة تسمية الحلقات على القرص.",
     "ca": "Com s'anomenen els episodis al disc.",
@@ -9208,7 +9208,7 @@
     "uk": "Як епізоди названо на диску.",
     "zh": "单集在磁盘上的命名方式。"
    },
-   "How the items in the collection are displayed on the Library tab.": {
+   "How the collection's items appear on the Library tab.": {
     "af": "Hoe die items in die versameling op die Biblioteek-oortjie gewys word.",
     "ca": "Com es mostren els elements de la col·lecció a la pestanya Biblioteca.",
     "cs": "Jak se zobrazují položky kolekce na kartě Knihovna.",
@@ -9231,7 +9231,7 @@
     "uk": "Як елементи колекції показуються на вкладці «Бібліотека».",
     "zh": "合集中的项目在“媒体库”标签页中的显示方式。"
    },
-   "How to display collections on the Library tab.": {
+   "How collections show up on the Library tab.": {
     "af": "Hoe versamelings op die Biblioteek-oortjie gewys word.",
     "cs": "Jak zobrazovat kolekce na kartě Knihovna.",
     "da": "Hvordan samlinger vises under fanen Bibliotek.",
@@ -9253,7 +9253,7 @@
     "uk": "Як показувати колекції на вкладці «Бібліотека».",
     "zh": "合集在“媒体库”标签页中的显示方式。"
    },
-   "How to sort the albums for artists.": {
+   "Order in which an artist's albums are listed.": {
     "it": "Come ordinare gli album degli artisti.",
     "ja": "アーティストのアルバムの並べ替え方法。",
     "nb": "Hvordan album sorteres for artister.",
@@ -9262,7 +9262,7 @@
     "pt-PT": "Como ordenar os álbuns dos artistas.",
     "sk": "Ako zoradiť albumy interpretov."
    },
-   "How to sort the episodes for shows.": {
+   "Order in which a show's episodes are listed.": {
     "it": "Come ordinare gli episodi delle serie.",
     "ja": "番組のエピソードの並べ替え方法。",
     "nb": "Hvordan episoder sorteres for serier.",
@@ -9271,7 +9271,7 @@
     "pt-PT": "Como ordenar os episódios das séries.",
     "sk": "Ako zoradiť epizódy seriálov."
    },
-   "How to sort the items in the collection.": {
+   "The order the collection's items are listed in.": {
     "af": "Hoe die items in die versameling gesorteer word.",
     "ar": "طريقة ترتيب العناصر في المجموعة.",
     "ca": "Com s'ordenen els elements de la col·lecció.",
@@ -9304,7 +9304,7 @@
     "uk": "Як сортувати елементи колекції.",
     "zh": "合集中项目的排序方式。"
    },
-   "Icons offered by DLNA server when devices request server description.": {
+   "Icons the DLNA server hands out when a device asks for the server description.": {
     "af": "Ikone wat die DLNA-bediener aanbied wanneer toestelle 'n bedienerbeskrywing versoek.",
     "ar": "الأيقونات التي يقدمها خادم DLNA عندما تطلب الأجهزة وصف الخادم.",
     "ca": "Icones que ofereix el servidor DLNA quan els dispositius en sol·liciten la descripció.",
@@ -9340,7 +9340,7 @@
     "uk": "Значки, які DLNA-сервер надає, коли пристрої запитують опис сервера.",
     "zh": "设备请求服务器描述时 DLNA 服务器提供的图标。"
    },
-   "If hardware acceleration is enabled, this controls whether it's used for encoding, in addition to decoding.": {
+   "When hardware acceleration is on, choose whether it also handles encoding, not only decoding.": {
     "af": "As hardewareversnelling geaktiveer is, bepaal dit of dit benewens dekodering ook vir enkodering gebruik word.",
     "ca": "Si l'acceleració per maquinari està activada, determina si també s'utilitza per codificar, a més de per descodificar.",
     "cs": "Je-li zapnutá hardwarová akcelerace, určuje, zda se kromě dekódování použije i pro kódování.",
@@ -9370,7 +9370,7 @@
     "uk": "Якщо апаратне прискорення ввімкнено, визначає, чи використовувати його і для кодування, а не лише для декодування.",
     "zh": "启用硬件加速时，控制是否除解码外也用于编码。"
    },
-   "If this is enabled legacy agents will be available when setting up new libraries. Requires browser refresh after changing.": {
+   "Turn on to offer legacy agents when you create a library. Reload the browser page after changing this.": {
     "cs": "Je-li zapnuto, budou při nastavování nových knihoven k dispozici starší agenty. Po změně je nutné obnovit stránku v prohlížeči.",
     "da": "Når dette er aktiveret, er ældre agenter tilgængelige ved oprettelse af nye biblioteker. Kræver, at browseren genindlæses efter ændringen.",
     "de": "Wenn aktiviert, stehen beim Einrichten neuer Mediatheken ältere Agenten zur Verfügung. Nach einer Änderung muss der Browser neu geladen werden.",
@@ -9388,7 +9388,7 @@
     "uk": "Якщо ввімкнено, під час налаштування нових бібліотек будуть доступні застарілі агенти. Після зміни потрібно оновити сторінку браузера.",
     "zh": "启用后，设置新媒体库时可使用旧版代理。更改后需刷新浏览器。"
    },
-   "Include extras with subtitles in Library language": {
+   "Also include extras that have subtitles in the Library language": {
     "af": "Sluit ekstras in met onderskrifte in die biblioteektaal",
     "ca": "Inclou extres amb subtítols en l'idioma de la biblioteca",
     "cs": "Zahrnout doplňky s titulky v jazyce knihovny",
@@ -9418,7 +9418,7 @@
     "uk": "Включати додаткові матеріали із субтитрами мовою бібліотеки",
     "zh": "包含带媒体库语言字幕的花絮"
    },
-   "Language to use for item metadata such as synopsis and title.": {
+   "The language for item details like the title and synopsis.": {
     "af": "Taal vir itemmetadata soos opsomming en titel.",
     "ca": "Idioma de les metadades dels elements, com ara la sinopsi i el títol.",
     "cs": "Jazyk metadat položek, například popisu a názvu.",
@@ -9448,7 +9448,7 @@
     "uk": "Мова метаданих елементів, як-от опису й назви.",
     "zh": "用于简介、标题等项目元数据的语言。"
    },
-   "Limit the number of simultaneous video transcode your server can utilize for the optimizer and downloads": {
+   "Cap how many video transcodes your server may run at the same time for the optimizer and downloads": {
     "it": "Limita il numero di transcodifiche video simultanee che il server può usare per l'ottimizzatore e i download",
     "ja": "最適化とダウンロードでサーバーが使える動画トランスコードの同時実行数を制限します",
     "nb": "Begrens antall samtidige videotranskodinger serveren kan bruke til optimalisering og nedlastinger",
@@ -9457,7 +9457,7 @@
     "pt-PT": "Limita o número de transcodificações de vídeo simultâneas que o servidor pode usar para o otimizador e os downloads",
     "sk": "Obmedziť počet súčasných prekódovaní videa, ktoré server môže použiť pre optimalizátor a sťahovanie"
    },
-   "Limits the number of shows which will appear Continue Watching. Setting it too high can affect performance.": {
+   "Caps how many shows Continue Watching lists. A very high number may slow things down.": {
     "af": "Beperk die aantal reekse wat in Kyk verder verskyn. 'n Te hoë waarde kan werkverrigting beïnvloed.",
     "ca": "Limita el nombre de sèries que apareixen a Continua mirant. Un valor massa alt pot afectar el rendiment.",
     "cs": "Omezuje počet seriálů zobrazených v Pokračovat ve sledování. Příliš vysoká hodnota může zhoršit výkon.",
@@ -9490,7 +9490,7 @@
     "uk": "Обмежує кількість серіалів у «Продовжити перегляд». Завелике значення може вплинути на продуктивність.",
     "zh": "限制“继续观看”中显示的剧集数量。设置过高可能影响性能。"
    },
-   "Linux systems limit the maximum number of watched directories; this may cause problems with large music libraries.": {
+   "Linux caps how many folders can be watched at once, so very large music libraries may run into trouble.": {
     "af": "Linux-stelsels beperk die maksimum aantal gemonitorde gidse; dit kan probleme met groot musiekbiblioteke veroorsaak.",
     "ar": "تحدّ أنظمة Linux من الحد الأقصى لعدد المجلدات المراقَبة؛ وقد يسبب ذلك مشكلات مع مكتبات الموسيقى الكبيرة.",
     "ca": "Els sistemes Linux limiten el nombre màxim de carpetes vigilades; això pot causar problemes amb biblioteques de música grans.",
@@ -9526,7 +9526,7 @@
     "uk": "Linux обмежує максимальну кількість відстежуваних каталогів; це може спричинити проблеми з великими музичними бібліотеками.",
     "zh": "Linux 系统限制了可监视目录的最大数量，这可能导致大型音乐库出现问题。"
    },
-   "Load album reviews and critic ratings from the cloud. Might make you reconsider your taste in music.": {
+   "Fetch album reviews and critic ratings from the cloud. They may change how you feel about your music taste.": {
     "af": "Laai albumresensies en kritici-graderings uit die wolk. Kan jou musieksmaak laat heroorweeg.",
     "ca": "Carrega des del núvol ressenyes d'àlbums i valoracions de la crítica. Potser et faran replantejar els teus gustos musicals.",
     "cs": "Načítat recenze alb a hodnocení kritiků z cloudu. Možná přehodnotíte svůj hudební vkus.",
@@ -9557,7 +9557,7 @@
     "uk": "Завантажувати рецензії на альбоми та оцінки критиків із хмари. Можливо, ви переглянете свої музичні смаки.",
     "zh": "从云端加载专辑评论和影评人评分。说不定会让你重新审视自己的音乐品味。"
    },
-   "Load artist biography data from the cloud.": {
+   "Fetch artist biographies from the cloud.": {
     "af": "Laai kunstenaarbiografieë uit die wolk.",
     "ca": "Carrega des del núvol les biografies dels artistes.",
     "cs": "Načítat životopisy interpretů z cloudu.",
@@ -9588,7 +9588,7 @@
     "uk": "Завантажувати біографії виконавців із хмари.",
     "zh": "从云端加载艺人简介数据。"
    },
-   "Load concert data for artists, in case you leave the house.": {
+   "Fetch artists' concert data, should you ever go out.": {
     "af": "Laai konsertdata vir kunstenaars, ingeval jy die huis verlaat.",
     "ca": "Carrega les dates de concerts dels artistes, per si surts de casa.",
     "cs": "Načítat koncerty interpretů, kdybyste se chtěli vypravit z domu.",
@@ -9619,7 +9619,7 @@
     "uk": "Завантажувати дані про концерти виконавців — раптом вийдете з дому.",
     "zh": "加载艺人的演唱会信息，万一你想出门呢。"
    },
-   "Load popular track data, which powers radio stations and the popular tracks area.": {
+   "Fetch popular track data, used for radio stations and the popular tracks section.": {
     "af": "Laai data oor gewilde snitte, wat radiostasies en die gewilde snitte-afdeling aandryf.",
     "ca": "Carrega dades de pistes populars, que alimenten les emissores de ràdio i la secció de pistes populars.",
     "cs": "Načítat data o oblíbených skladbách, ze kterých vychází rádio a sekce oblíbených skladeb.",
@@ -9650,7 +9650,7 @@
     "uk": "Завантажувати дані про популярні треки для радіостанцій і розділу популярних треків.",
     "zh": "加载热门曲目数据，用于电台和热门曲目区域。"
    },
-   "Logging of the Plex Media Server memory use and the system total used memory in Plex Media Server logs. A server restart is required for the change to take effect.": {
+   "Writes how much memory Plex Media Server uses, and the system's total memory use, into Plex Media Server logs. Changes apply only after the server restarts.": {
     "af": "Log Plex Media Server se geheuegebruik en die stelsel se totale geheuegebruik in die Plex Media Server-logs. Die bediener moet herbegin word voordat die verandering in werking tree.",
     "ca": "Registra als registres de Plex Media Server l'ús de memòria de Plex Media Server i la memòria total utilitzada pel sistema. Cal reiniciar el servidor perquè el canvi tingui efecte.",
     "cs": "Zapisovat do protokolů Plex Media Server využití paměti Plex Media Server a celkové využití paměti systému. Změna se projeví po restartu serveru.",
@@ -9679,7 +9679,7 @@
     "uk": "Записувати в журнали Plex Media Server використання пам'яті Plex Media Server і загальне використання пам'яті системи. Зміна набуде чинності після перезапуску сервера.",
     "zh": "在 Plex Media Server 日志中记录 Plex Media Server 的内存使用量和系统总内存使用量。更改需重启服务器后生效。"
    },
-   "Loudness analysis allows various features, such as loudness leveling and smart transitions. It can take a long time to complete when analyzing many tracks, and cause high CPU usage.": {
+   "Measuring loudness enables features like loudness leveling and smart transitions. With many tracks it can run for a long time and use a lot of CPU.": {
     "af": "Luidheidsontleding maak verskeie funksies moontlik, soos luidheidsgelykmaking en slim oorgange. Dit kan lank neem wanneer baie snitte ontleed word en hoë SVE-gebruik veroorsaak.",
     "ar": "يتيح تحليل شدة الصوت ميزات مختلفة، مثل موازنة شدة الصوت والانتقالات الذكية. قد يستغرق وقتًا طويلًا عند تحليل مسارات كثيرة ويسبب استهلاكًا عاليًا للمعالج.",
     "ca": "L'anàlisi del volum permet diverses funcions, com ara l'anivellament del volum i les transicions intel·ligents. Pot trigar molt si s'analitzen moltes pistes i provocar un ús elevat de la CPU.",
@@ -9715,7 +9715,7 @@
     "uk": "Аналіз гучності вмикає різні функції, як-от вирівнювання гучності та розумні переходи. Аналіз багатьох треків може тривати довго й сильно навантажувати процесор.",
     "zh": "响度分析可支持响度均衡和智能过渡等功能。分析大量曲目可能需要很长时间，并导致 CPU 占用较高。"
    },
-   "Maximum number of simultaneous streams each user is allowed when not on the local network.": {
+   "How many streams each user may play at once from outside the local network.": {
     "af": "Maksimum aantal gelyktydige strome wat elke gebruiker buite die plaaslike netwerk toegelaat word.",
     "ar": "الحد الأقصى لعدد البثوث المتزامنة المسموح بها لكل مستخدم خارج الشبكة المحلية.",
     "ca": "Nombre màxim de fluxos simultanis permesos a cada usuari quan no és a la xarxa local.",
@@ -9751,7 +9751,7 @@
     "uk": "Максимальна кількість одночасних потоків для кожного користувача поза локальною мережею.",
     "zh": "不在本地网络时，每位用户允许的最大同时流数量。"
    },
-   "Media server tokens can be used to gain access to library content. Don't share logs containing tokens publicly. A server restart is required for a change to take effect.": {
+   "Anyone with a media server token can reach library content, so never post logs that include tokens. Changes apply only after the server restarts.": {
     "af": "Mediabedienertokens kan gebruik word om toegang tot biblioteekinhoud te kry. Moenie logs met tokens publiek deel nie. Die bediener moet herbegin word voordat 'n verandering in werking tree.",
     "ar": "يمكن استخدام رموز خادم الوسائط للوصول إلى محتوى المكتبة. لا تشارك السجلات التي تحتوي على رموز علنًا. يلزم إعادة تشغيل الخادم لتطبيق التغيير.",
     "ca": "Els testimonis del servidor multimèdia permeten accedir al contingut de la biblioteca. No comparteixis públicament registres que continguin testimonis. Cal reiniciar el servidor perquè el canvi tingui efecte.",
@@ -9787,7 +9787,7 @@
     "uk": "Токени медіасервера дають доступ до вмісту бібліотеки. Не публікуйте журнали з токенами. Зміна набуде чинності після перезапуску сервера.",
     "zh": "媒体服务器令牌可用于访问媒体库内容。请勿公开分享包含令牌的日志。更改需重启服务器后生效。"
    },
-   "Media that has not been watched in this many weeks will not appear in Continue Watching.": {
+   "Anything left unwatched for longer than this many weeks drops out of Continue Watching.": {
     "af": "Media wat soveel weke lank nie gekyk is nie, sal nie in Kyk verder verskyn nie.",
     "ca": "El contingut que no s'hagi vist durant aquest nombre de setmanes no apareixerà a Continua mirant.",
     "cs": "Média, která nebyla zhlédnuta tolik týdnů, se v Pokračovat ve sledování nezobrazí.",
@@ -9820,7 +9820,7 @@
     "uk": "Медіа, яке не переглядали стільки тижнів, не з'являтиметься в «Продовжити перегляд».",
     "zh": "超过此周数未观看的媒体将不会出现在“继续观看”中。"
    },
-   "Network to advertise to clients.": {
+   "Which network clients are told about.": {
     "fr": "Réseau annoncé aux clients.",
     "fr-CA": "Réseau annoncé aux clients.",
     "it": "Rete da comunicare ai client.",
@@ -9831,7 +9831,7 @@
     "pt-PT": "Rede anunciada aos clientes.",
     "sk": "Sieť, ktorá sa ohlasuje klientom."
    },
-   "New season premieres will always appear no matter how many weeks have passed since watching.": {
+   "The first episode of a new season always shows up, however many weeks it has been since you last watched.": {
     "af": "Nuwe seisoenpremières sal altyd verskyn, ongeag hoeveel weke sedert kyk verloop het.",
     "ar": "ستظهر بدايات المواسم الجديدة دائمًا مهما مرّ من أسابيع منذ المشاهدة.",
     "ca": "Les estrenes de temporades noves apareixeran sempre, independentment de quantes setmanes hagin passat des de l'última visualització.",
@@ -9866,7 +9866,7 @@
     "uk": "Прем'єри нових сезонів з'являтимуться завжди, скільки б тижнів не минуло від перегляду.",
     "zh": "无论观看后过了多少周，新季首集都会始终显示。"
    },
-   "Number of seconds between DLNA media renderer discovery requests.": {
+   "Seconds to wait between searches for DLNA media renderers.": {
     "af": "Aantal sekondes tussen ontdekkingsversoeke vir DLNA-mediaweergewers.",
     "ar": "عدد الثواني بين طلبات اكتشاف مشغّلات الوسائط عبر DLNA.",
     "ca": "Segons entre les sol·licituds de descoberta de reproductors DLNA.",
@@ -9902,7 +9902,7 @@
     "uk": "Кількість секунд між запитами пошуку DLNA-рендерерів.",
     "zh": "DLNA 媒体渲染器发现请求之间的间隔（秒）。"
    },
-   "Path to a PKCS #12 file containing a certificate and private key to enable TLS support on a custom domain.": {
+   "Location of a PKCS #12 file holding a certificate and private key, used to turn on TLS for a custom domain.": {
     "af": "Pad na 'n PKCS #12-lêer met 'n sertifikaat en privaat sleutel om TLS-ondersteuning op 'n pasgemaakte domein te aktiveer.",
     "ar": "مسار ملف PKCS #12 يحتوي على شهادة ومفتاح خاص لتفعيل دعم TLS على نطاق مخصص.",
     "ca": "Camí a un fitxer PKCS #12 que conté un certificat i una clau privada per activar TLS en un domini personalitzat.",
@@ -9938,7 +9938,7 @@
     "uk": "Шлях до файлу PKCS #12 із сертифікатом і закритим ключем для підтримки TLS на власному домені.",
     "zh": "包含证书和私钥的 PKCS #12 文件路径，用于在自定义域名上启用 TLS。"
    },
-   "Plex Media Server will attempt to use hardware-accelerated video codecs when encoding and decoding video. Hardware acceleration can make transcoding faster and allow more simultaneous video transcodes, but it can also reduce video quality and compatibility.": {
+   "Plex Media Server will try hardware-accelerated video codecs for encoding and decoding. This can speed up transcoding and allow more transcodes at once, but may lower video quality and compatibility.": {
     "af": "Plex Media Server sal probeer om hardewareversnelde videokodeks te gebruik vir die enkodering en dekodering van video. Hardewareversnelling kan transkodering vinniger maak en meer gelyktydige videotranskoderings toelaat, maar kan ook videogehalte en versoenbaarheid verlaag.",
     "ar": "سيحاول Plex Media Server استخدام برامج ترميز الفيديو المسرَّعة بالعتاد عند ترميز الفيديو وفك ترميزه. يمكن لتسريع العتاد أن يجعل التحويل أسرع ويسمح بعمليات تحويل متزامنة أكثر، لكنه قد يقلل أيضًا من جودة الفيديو والتوافق.",
     "ca": "Plex Media Server intentarà utilitzar còdecs de vídeo accelerats per maquinari per codificar i descodificar vídeo. L'acceleració per maquinari pot fer la transcodificació més ràpida i permetre més transcodificacions simultànies, però també pot reduir la qualitat i la compatibilitat del vídeo.",
@@ -9974,7 +9974,7 @@
     "uk": "Plex Media Server намагатиметься використовувати апаратні відеокодеки для кодування й декодування відео. Апаратне прискорення може пришвидшити перекодування й дозволити більше одночасних перекодувань, але може знизити якість відео та сумісність.",
     "zh": "Plex Media Server 会尝试在编码和解码视频时使用硬件加速视频编解码器。硬件加速可加快转码并支持更多同时转码，但也可能降低视频质量和兼容性。"
    },
-   "Protocol info string used in GetProtocolInfo responses by the DLNA server.": {
+   "The protocol info string the DLNA server sends in GetProtocolInfo responses.": {
     "af": "Protokolinligtingstring wat die DLNA-bediener in GetProtocolInfo-antwoorde gebruik.",
     "ar": "سلسلة معلومات البروتوكول التي يستخدمها خادم DLNA في ردود GetProtocolInfo.",
     "ca": "Cadena d'informació de protocol que el servidor DLNA utilitza a les respostes GetProtocolInfo.",
@@ -10010,7 +10010,7 @@
     "uk": "Рядок інформації протоколу, який DLNA-сервер використовує у відповідях GetProtocolInfo.",
     "zh": "DLNA 服务器在 GetProtocolInfo 响应中使用的协议信息字符串。"
    },
-   "Publishing a server makes it automatically available on your client devices without any configuration of your router.": {
+   "A published server shows up on your client devices on its own, with no router setup needed.": {
     "af": "Om 'n bediener te publiseer, maak dit outomaties beskikbaar op jou kliënttoestelle sonder enige konfigurasie van jou roeteerder.",
     "ar": "نشر الخادم يجعله متاحًا تلقائيًا على أجهزتك دون أي إعداد للموجّه.",
     "ca": "Publicar un servidor el fa disponible automàticament als teus dispositius client sense haver de configurar l'encaminador.",
@@ -10046,7 +10046,7 @@
     "uk": "Опублікований сервер автоматично стає доступним на ваших клієнтських пристроях без налаштування маршрутизатора.",
     "zh": "发布服务器后，无需配置路由器即可在客户端设备上自动使用。"
    },
-   "Quality profile used by the transcoder.": {
+   "The quality profile the transcoder uses.": {
     "af": "Gehalteprofiel wat die transkodeerder gebruik.",
     "ar": "ملف الجودة الذي يستخدمه المحوّل.",
     "ca": "Perfil de qualitat que utilitza el transcodificador.",
@@ -10082,7 +10082,7 @@
     "uk": "Профіль якості перекодувальника.",
     "zh": "转码器使用的质量配置。"
    },
-   "Remember and resume from your previous listening position. Useful for libraries with long-form audio content.": {
+   "Pick up where you stopped listening last time. Handy for libraries of long audio.": {
     "af": "Onthou en hervat vanaf jou vorige luisterposisie. Nuttig vir biblioteke met lang klankinhoud.",
     "ca": "Recorda la posició d'escolta anterior i continua des d'allà. Útil per a biblioteques amb contingut d'àudio llarg.",
     "cs": "Pamatovat si místo poslechu a pokračovat od něj. Hodí se pro knihovny s dlouhým zvukovým obsahem.",
@@ -10112,7 +10112,7 @@
     "uk": "Запам'ятовувати попередню позицію прослуховування та продовжувати з неї. Корисно для бібліотек із довгим аудіовмістом.",
     "zh": "记住上次收听的位置并从该处继续。适用于含有长篇音频内容的媒体库。"
    },
-   "Restrict where content from this library should appear.": {
+   "Limit the places this library's content shows up.": {
     "af": "Beperk waar inhoud uit hierdie biblioteek moet verskyn.",
     "ca": "Restringeix on ha d'aparèixer el contingut d'aquesta biblioteca.",
     "cs": "Omezte, kde se má obsah z této knihovny zobrazovat.",
@@ -10142,7 +10142,7 @@
     "uk": "Обмежте, де має з'являтися вміст цієї бібліотеки.",
     "zh": "限制此媒体库内容的显示位置。"
    },
-   "Select a primary source for ratings.": {
+   "Pick the main source of ratings.": {
     "af": "Kies 'n primêre bron vir graderings.",
     "ca": "Selecciona una font principal per a les valoracions.",
     "cs": "Vyberte hlavní zdroj hodnocení.",
@@ -10172,7 +10172,7 @@
     "uk": "Виберіть основне джерело рейтингів.",
     "zh": "选择评分的主要来源。"
    },
-   "Server owners may wish to restrict who can see location names for items which contain geolocation metadata. By default only the server owner will have visibility of these.": {
+   "Owners may want to limit who sees place names on items that carry geolocation metadata. Out of the box, only the server owner sees them.": {
     "af": "Bedienereienaars wil dalk beperk wie liggingsname kan sien vir items met geoliggingmetadata. By verstek kan slegs die bedienereienaar dit sien.",
     "ar": "قد يرغب مالكو الخوادم في تقييد من يمكنه رؤية أسماء المواقع للعناصر التي تحتوي على بيانات موقع جغرافي. افتراضيًا لا يراها إلا مالك الخادم.",
     "ca": "Els propietaris del servidor poden restringir qui veu els noms d'ubicació dels elements que contenen metadades de geolocalització. Per defecte, només el propietari del servidor els pot veure.",
@@ -10208,7 +10208,7 @@
     "uk": "Власники сервера можуть обмежити, хто бачить назви місць для елементів із метаданими геолокації. Типово їх бачить лише власник сервера.",
     "zh": "服务器所有者可以限制谁能看到含地理位置元数据的项目的地点名称。默认情况下仅服务器所有者可见。"
    },
-   "Set the maximum bitrate of a remote stream from this server.": {
+   "Cap the bitrate of each remote stream from this server.": {
     "af": "Stel die maksimum bistempo van 'n afstandstroom vanaf hierdie bediener.",
     "ar": "تعيين الحد الأقصى لمعدل البت للبث عن بُعد من هذا الخادم.",
     "ca": "Defineix la taxa de bits màxima d'un flux remot des d'aquest servidor.",
@@ -10244,7 +10244,7 @@
     "uk": "Задайте максимальний бітрейт віддаленого потоку з цього сервера.",
     "zh": "设置此服务器远程流的最大比特率。"
    },
-   "Set the maximum number of unplayed episodes to keep for the show.": {
+   "Most unplayed episodes of this show to hold on to.": {
     "af": "Stel die maksimum aantal ongespeelde episodes om vir die reeks te behou.",
     "ca": "Defineix el nombre màxim d'episodis no reproduïts que es conserven per a la sèrie.",
     "cs": "Nastavte maximální počet nepřehraných epizod, které se u seriálu ponechají.",
@@ -10278,7 +10278,7 @@
     "uk": "Задайте максимальну кількість непереглянутих епізодів серіалу, які зберігаються.",
     "zh": "设置此剧集保留的未播放单集的最大数量。"
    },
-   "Set the progress percentage for video playback at which point the video will be marked as played.": {
+   "Once playback passes this percentage, the video counts as played.": {
     "af": "Stel die vorderingspersentasie by videospeel waarop die video as gespeel gemerk word.",
     "ca": "Defineix el percentatge de progrés a partir del qual el vídeo es marca com a reproduït.",
     "cs": "Nastavte procento přehrání, při kterém se video označí jako přehrané.",
@@ -10309,7 +10309,7 @@
     "uk": "Задайте відсоток відтворення, після якого відео позначається як переглянуте.",
     "zh": "设置视频播放进度达到多少百分比时标记为已播放。"
    },
-   "Set the size of the main database cache size in MB. Changes take effect when server is restarted.": {
+   "Size of the main database cache, in MB. Takes effect after the server restarts.": {
     "af": "Stel die grootte van die hoofdatabasiskas in MB. Veranderinge tree in werking wanneer die bediener herbegin word.",
     "ca": "Defineix la mida de la memòria cau principal de la base de dades en MB. Els canvis tenen efecte quan es reinicia el servidor.",
     "cs": "Nastavte velikost hlavní mezipaměti databáze v MB. Změna se projeví po restartu serveru.",
@@ -10339,7 +10339,7 @@
     "uk": "Задайте розмір основного кешу бази даних у МБ. Зміни набудуть чинності після перезапуску сервера.",
     "zh": "设置主数据库缓存大小（MB）。重启服务器后生效。"
    },
-   "Show suggestions and additional albums from libraries shared with you, and include shared tracks in Artist Radio.": {
+   "Add suggestions and more albums from libraries others share with you, and mix shared tracks into Artist Radio.": {
     "af": "Wys voorstelle en bykomende albums uit biblioteke wat met jou gedeel is, en sluit gedeelde snitte by Kunstenaarradio in.",
     "ca": "Mostra suggeriments i més àlbums de les biblioteques compartides amb tu, i inclou pistes compartides a la ràdio de l'artista.",
     "cs": "Zobrazovat návrhy a další alba z knihoven sdílených s vámi a zahrnout sdílené skladby do rádia interpreta.",
@@ -10372,7 +10372,7 @@
     "uk": "Показувати пропозиції та додаткові альбоми зі спільних бібліотек і включати спільні треки в радіо виконавця.",
     "zh": "显示与你共享的媒体库中的推荐和更多专辑，并在艺人电台中包含共享曲目。"
    },
-   "Skip extras which aren't trailers": {
+   "Leave out any extras that are not trailers": {
     "af": "Slaan ekstras oor wat nie voorskoue is nie",
     "ca": "Omet els extres que no siguin tràilers",
     "cs": "Přeskočit doplňky, které nejsou trailery",
@@ -10403,7 +10403,7 @@
     "uk": "Пропускати додаткові матеріали, що не є трейлерами",
     "zh": "跳过非预告片的花絮"
    },
-   "Smart shuffling prefers highly rated, popular and less recently heard tracks.": {
+   "Smart shuffle favours tracks that are well rated, popular or not played lately.": {
     "af": "Slim skommeling verkies hoog gegradeerde, gewilde en minder onlangs gehoorde snitte.",
     "ca": "La reproducció aleatòria intel·ligent prioritza les pistes ben valorades, populars i escoltades fa més temps.",
     "cs": "Chytré míchání upřednostňuje dobře hodnocené, oblíbené a dlouho neposlouchané skladby.",
@@ -10434,7 +10434,7 @@
     "uk": "Розумне перемішування надає перевагу високо оціненим, популярним і давно не слуханим трекам.",
     "zh": "智能随机播放会优先选择评分高、热门且最近较少听的曲目。"
    },
-   "Sonic analysis allows various features, such as track radio. It can take a long time to complete when analyzing many tracks, and cause high CPU usage.": {
+   "Sonic analysis enables features like track radio. With many tracks it can run for a long time and use a lot of CPU.": {
     "af": "Klankontleding maak verskeie funksies moontlik, soos snitradio. Dit kan lank neem wanneer baie snitte ontleed word en hoë SVE-gebruik veroorsaak.",
     "ca": "L'anàlisi sonora permet diverses funcions, com ara la ràdio de pista. Pot trigar molt si s'analitzen moltes pistes i provocar un ús elevat de la CPU.",
     "cs": "Zvuková analýza umožňuje různé funkce, například rádio podle skladby. Při analýze mnoha skladeb může trvat dlouho a silně vytížit procesor.",
@@ -10465,7 +10465,7 @@
     "uk": "Звуковий аналіз вмикає різні функції, як-от радіо за треком. Аналіз багатьох треків може тривати довго й сильно навантажувати процесор.",
     "zh": "声音分析可支持曲目电台等功能。分析大量曲目可能需要很长时间，并导致 CPU 占用较高。"
    },
-   "Speed at which to limit the total bandwidth not on the local network in kilobits per second. Use 0 to set no limit.": {
+   "Total bandwidth cap, in kilobits per second, for everything outside the local network. 0 means no cap.": {
     "af": "Spoed in kilobis per sekonde waartoe die totale bandwydte buite die plaaslike netwerk beperk word. Gebruik 0 vir geen limiet.",
     "ar": "السرعة التي يُحدّ بها إجمالي عرض النطاق خارج الشبكة المحلية بالكيلوبت في الثانية. استخدم 0 لإلغاء الحد.",
     "ca": "Velocitat a la qual es limita l'amplada de banda total fora de la xarxa local, en kilobits per segon. Utilitza 0 per no posar cap límit.",
@@ -10501,7 +10501,7 @@
     "uk": "Обмеження загальної пропускної здатності поза локальною мережею в кілобітах за секунду. 0 — без обмеження.",
     "zh": "限制非本地网络总带宽的速度，单位为 kbps。设为 0 表示不限制。"
    },
-   "The GPU or other hardware device that will be used for transcoding": {
+   "Which GPU or other hardware device does the transcoding": {
     "af": "Die GPU of ander hardewaretoestel wat vir transkodering gebruik sal word",
     "ca": "La GPU o un altre dispositiu de maquinari que s'utilitzarà per a la transcodificació",
     "cs": "GPU nebo jiné hardwarové zařízení, které se použije k překódování",
@@ -10530,7 +10530,7 @@
     "uk": "GPU або інший апаратний пристрій для перекодування",
     "zh": "用于转码的 GPU 或其他硬件设备"
    },
-   "The Relay allows connections to the server through a proxy relay when the server is not accessible otherwise.  Note: this proxy relay is bandwidth limited": {
+   "If the server can't be reached any other way, the Relay connects to it through a proxy relay. Note: the relay's bandwidth is limited": {
     "af": "Relay laat verbindings na die bediener deur 'n instaanbediener toe wanneer die bediener andersins nie bereikbaar is nie. Let wel: Relay se bandwydte is beperk",
     "ca": "El relé permet connectar-se al servidor mitjançant un servidor intermediari quan no és accessible d'una altra manera. Nota: l'amplada de banda d'aquest relé és limitada",
     "cs": "Relay umožňuje připojení k serveru přes zprostředkující proxy, když server není dostupný jinak. Poznámka: tato proxy má omezenou šířku pásma",
@@ -10560,7 +10560,7 @@
     "uk": "Relay дозволяє підключатися до сервера через проміжний проксі, коли сервер недоступний інакше.  Примітка: пропускна здатність цього проксі обмежена",
     "zh": "当服务器无法通过其他方式访问时，中继允许通过代理中继连接服务器。注意：此代理中继有带宽限制"
    },
-   "The directory in which database backups are stored.": {
+   "Folder where database backups are kept.": {
     "af": "Die gids waarin databasisrugsteune gestoor word.",
     "ar": "المجلد الذي تُحفظ فيه النسخ الاحتياطية لقاعدة البيانات.",
     "ca": "Carpeta on es desen les còpies de seguretat de la base de dades.",
@@ -10596,7 +10596,7 @@
     "uk": "Каталог, у якому зберігаються резервні копії бази даних.",
     "zh": "存放数据库备份的目录。"
    },
-   "The network interface local clients will use to connect.": {
+   "Which network interface clients on your local network connect through.": {
     "af": "Die netwerkkoppelvlak wat plaaslike kliënte sal gebruik om te koppel.",
     "ar": "واجهة الشبكة التي سيستخدمها العملاء المحليون للاتصال.",
     "ca": "Interfície de xarxa que utilitzaran els clients locals per connectar-se.",
@@ -10632,7 +10632,7 @@
     "uk": "Мережевий інтерфейс, через який підключатимуться локальні клієнти.",
     "zh": "本地客户端连接时使用的网络接口。"
    },
-   "The owner of the server will be allowed to delete media files from disk.": {
+   "Lets the server owner remove media files from the disk.": {
     "af": "Die eienaar van die bediener sal medialêers van die skyf mag skrap.",
     "ar": "سيُسمح لمالك الخادم بحذف ملفات الوسائط من القرص.",
     "ca": "El propietari del servidor podrà suprimir fitxers multimèdia del disc.",
@@ -10668,7 +10668,7 @@
     "uk": "Власник сервера зможе видаляти медіафайли з диска.",
     "zh": "允许服务器所有者从磁盘删除媒体文件。"
    },
-   "The time (in seconds) between each video preview frame.": {
+   "Seconds between video preview frames.": {
     "af": "Die tyd (in sekondes) tussen elke videovoorskouraam.",
     "ca": "Temps (en segons) entre cada fotograma de previsualització de vídeo.",
     "cs": "Čas (v sekundách) mezi jednotlivými snímky náhledu videa.",
@@ -10701,7 +10701,7 @@
     "uk": "Час (у секундах) між кадрами попереднього перегляду відео.",
     "zh": "每个视频预览帧之间的间隔（秒）。"
    },
-   "The time at which the background maintenance tasks stop running.": {
+   "When the server stops its background maintenance tasks.": {
     "af": "Die tyd waarop die agtergrond-onderhoudstake ophou loop.",
     "ar": "الوقت الذي تتوقف فيه مهام الصيانة في الخلفية.",
     "ca": "Hora a la qual les tasques de manteniment en segon pla deixen d'executar-se.",
@@ -10737,7 +10737,7 @@
     "uk": "Час, коли фонові завдання обслуговування припиняються.",
     "zh": "后台维护任务停止运行的时间。"
    },
-   "The time at which the server starts running background maintenance tasks.": {
+   "When the server begins its background maintenance tasks.": {
     "af": "Die tyd waarop die bediener agtergrond-onderhoudstake begin uitvoer.",
     "ar": "الوقت الذي يبدأ فيه الخادم تشغيل مهام الصيانة في الخلفية.",
     "ca": "Hora a la qual el servidor comença a executar les tasques de manteniment en segon pla.",
@@ -10773,7 +10773,7 @@
     "uk": "Час, коли сервер починає виконувати фонові завдання обслуговування.",
     "zh": "服务器开始运行后台维护任务的时间。"
    },
-   "The x264 preset value used for background transcoding (Sync and Media Optimizer). Slower values will result in better video quality and smaller file sizes, but will take significantly longer to complete processing.": {
+   "The x264 preset for background transcoding (Sync and Media Optimizer). Slower settings give better picture and smaller files but take much longer to finish.": {
     "af": "Die x264-voorinstelling wat vir agtergrondtranskodering (Sinkronisering en Media-optimaliseerder) gebruik word. Stadiger waardes lewer beter videogehalte en kleiner lêers, maar verwerking neem aansienlik langer.",
     "ar": "قيمة إعداد x264 المسبق المستخدمة للتحويل في الخلفية (المزامنة ومُحسِّن الوسائط). القيم الأبطأ تعطي جودة فيديو أفضل وأحجام ملفات أصغر، لكنها تستغرق وقتًا أطول بكثير لإتمام المعالجة.",
     "ca": "Valor de predefinició x264 per a la transcodificació en segon pla (sincronització i optimitzador multimèdia). Els valors més lents donen més qualitat de vídeo i fitxers més petits, però el processament triga força més.",
@@ -10809,7 +10809,7 @@
     "uk": "Пресет x264 для фонового перекодування (синхронізація та Media Optimizer). Повільніші значення дають кращу якість відео й менші файли, але обробка триває значно довше.",
     "zh": "后台转码（同步和媒体优化）使用的 x264 预设值。较慢的值可获得更好的画质和更小的文件，但处理时间会明显变长。"
    },
-   "This allows the server to stream media to DLNA (Digital Living Network Alliance) devices.": {
+   "Serves media to DLNA (Digital Living Network Alliance) players and TVs.": {
     "af": "Dit laat die bediener toe om media na DLNA-toestelle (Digital Living Network Alliance) te stroom.",
     "ar": "يتيح هذا للخادم بث الوسائط إلى أجهزة DLNA (Digital Living Network Alliance).",
     "ca": "Permet que el servidor transmeti contingut a dispositius DLNA (Digital Living Network Alliance).",
@@ -10845,7 +10845,7 @@
     "uk": "Дозволяє серверу транслювати медіа на пристрої DLNA (Digital Living Network Alliance).",
     "zh": "允许服务器向 DLNA（Digital Living Network Alliance）设备串流媒体。"
    },
-   "This enables the media server to discover other servers and players on the local network.": {
+   "Lets the media server find other servers and players on your local network.": {
     "af": "Dit laat die mediabediener toe om ander bedieners en spelers op die plaaslike netwerk te ontdek.",
     "ar": "يتيح هذا لخادم الوسائط اكتشاف الخوادم والمشغّلات الأخرى على الشبكة المحلية.",
     "ca": "Permet que el servidor multimèdia descobreixi altres servidors i reproductors a la xarxa local.",
@@ -10881,7 +10881,7 @@
     "uk": "Дозволяє медіасерверу знаходити інші сервери та програвачі в локальній мережі.",
     "zh": "允许媒体服务器发现本地网络上的其他服务器和播放器。"
    },
-   "This feature is Plex Pass only.": {
+   "Needs Plex Pass.": {
     "af": "Hierdie funksie is slegs vir Plex Pass.",
     "ar": "هذه الميزة متاحة لمشتركي Plex Pass فقط.",
     "ca": "Aquesta funció només és per a Plex Pass.",
@@ -10917,7 +10917,7 @@
     "uk": "Ця функція доступна лише з Plex Pass.",
     "zh": "此功能仅限 Plex Pass。"
    },
-   "This helps us improve your experience.": {
+   "Reports of crashes let us make things work better for you.": {
     "af": "Dit help ons om jou ervaring te verbeter.",
     "ar": "يساعدنا هذا على تحسين تجربتك.",
     "ca": "Això ens ajuda a millorar la teva experiència.",
@@ -10953,7 +10953,7 @@
     "uk": "Це допомагає нам покращувати ваш досвід.",
     "zh": "这有助于我们改善你的体验。"
    },
-   "This name will be used to identify this media server to other computers on your network. If you leave it blank, your computer's name will be used instead.": {
+   "Other computers on your network see this server under this name. Leave it empty to use the computer's own name.": {
     "af": "Hierdie naam sal gebruik word om hierdie mediabediener aan ander rekenaars op jou netwerk te identifiseer. As jy dit leeg laat, word jou rekenaar se naam gebruik.",
     "ar": "سيُستخدم هذا الاسم لتعريف خادم الوسائط هذا لدى أجهزة الكمبيوتر الأخرى على شبكتك. إذا تركته فارغًا، فسيُستخدم اسم جهازك بدلًا منه.",
     "ca": "Aquest nom identificarà aquest servidor multimèdia davant dels altres ordinadors de la xarxa. Si el deixes en blanc, s'utilitzarà el nom de l'ordinador.",
@@ -10989,7 +10989,7 @@
     "uk": "Ця назва ідентифікуватиме медіасервер для інших комп'ютерів у вашій мережі. Якщо залишити поле порожнім, буде використано назву комп'ютера.",
     "zh": "此名称用于在网络中的其他计算机上识别此媒体服务器。留空则使用计算机名称。"
    },
-   "This will influence which content rating system is used. Changing this setting will require refreshing the metadata for the changes to take effect.": {
+   "Decides which content rating system applies. Refresh the metadata after changing it for the change to show.": {
     "af": "Dit bepaal watter ouderdomsgraderingstelsel gebruik word. Na 'n verandering moet die metadata verfris word voordat dit in werking tree.",
     "ca": "Determina quin sistema de classificació per edats s'utilitza. Després de canviar-ho, cal actualitzar les metadades perquè els canvis tinguin efecte.",
     "cs": "Ovlivňuje, který systém věkového hodnocení se použije. Aby se změna projevila, je nutné aktualizovat metadata.",
@@ -11018,7 +11018,7 @@
     "uk": "Визначає, яка система вікових рейтингів використовується. Щоб зміна набула чинності, потрібно оновити метадані.",
     "zh": "这会影响使用哪种内容分级体系。更改此设置后需刷新元数据才能生效。"
    },
-   "Timeout in seconds segmented transcodes wait for the transcoder to begin writing data.": {
+   "How many seconds a segmented transcode waits for the transcoder to start writing data.": {
     "af": "Uittel in sekondes wat gesegmenteerde transkoderings wag totdat die transkodeerder begin data skryf.",
     "ar": "المهلة بالثواني التي تنتظرها عمليات التحويل المقسَّمة حتى يبدأ المحوّل بكتابة البيانات.",
     "ca": "Temps d'espera en segons perquè el transcodificador comenci a escriure dades en les transcodificacions segmentades.",
@@ -11054,7 +11054,7 @@
     "uk": "Час очікування в секундах, протягом якого сегментні перекодування чекають, поки перекодувальник почне записувати дані.",
     "zh": "分段转码等待转码器开始写入数据的超时时间（秒）。"
    },
-   "Transcoded HDR content will appear highly dimmed and desaturated with this disabled. Additional driver components may be needed to support hardware transcoding with this feature enabled; see our support articles for further details.": {
+   "With this off, transcoded HDR video looks very dark and washed out. Hardware transcoding with this on may need extra driver components; our support articles explain more.": {
     "af": "Getranskodeerde HDR-inhoud sal baie dof en verbleik lyk as dit gedeaktiveer is. Bykomende drywerkomponente kan nodig wees om hardewaretranskodering met hierdie funksie te ondersteun; sien ons ondersteuningsartikels vir meer besonderhede.",
     "ca": "Si es desactiva, el contingut HDR transcodificat es veurà molt fosc i dessaturat. Amb aquesta opció activada, poden caldre components addicionals del controlador per a la transcodificació per maquinari; consulta els nostres articles d'assistència per a més detalls.",
     "cs": "Je-li vypnuto, bude překódovaný obsah HDR velmi tmavý a vybledlý. Pro hardwarové překódování s touto funkcí mohou být potřeba další součásti ovladače; podrobnosti najdete v našich článcích podpory.",
@@ -11086,7 +11086,7 @@
     "uk": "Якщо вимкнено, перекодований HDR-вміст виглядатиме дуже тьмяним і знебарвленим. Для апаратного перекодування з цією функцією можуть знадобитися додаткові компоненти драйвера; подробиці в наших статтях підтримки.",
     "zh": "禁用后，转码的 HDR 内容会显得非常暗淡且褪色。启用此功能进行硬件转码可能需要额外的驱动组件，详情请参阅我们的支持文章。"
    },
-   "Treat incoming requests from this network's WAN IP address as LAN requests in terms of bandwidth.  This often occurs when DNS rebinding protection is in place and clients on the LAN cannot contact the server directly but instead have to go through the WAN IP address.": {
+   "Count requests coming from this network's own WAN IP address as LAN for bandwidth. This is common when DNS rebinding protection stops LAN clients reaching the server directly, so they go through the WAN IP address instead.": {
     "af": "Behandel inkomende versoeke vanaf hierdie netwerk se WAN-IP-adres as LAN-versoeke wat bandwydte betref. Dit gebeur dikwels wanneer DNS-herbindingbeskerming aktief is en kliënte op die LAN die bediener nie direk kan bereik nie, maar via die WAN-IP-adres moet gaan.",
     "ca": "Tracta les sol·licituds entrants des de l'adreça IP WAN d'aquesta xarxa com a sol·licituds LAN pel que fa a l'amplada de banda. Passa sovint quan hi ha protecció contra el DNS rebinding i els clients de la LAN no poden contactar directament amb el servidor, sinó que han de passar per l'adreça IP WAN.",
     "cs": "Požadavky z WAN IP adresy této sítě se z hlediska šířky pásma považují za požadavky z LAN. To nastává často, když je zapnutá ochrana proti DNS rebindingu a klienti v LAN se nemohou k serveru připojit přímo, ale musí přes WAN IP adresu.",
@@ -11120,7 +11120,7 @@
     "uk": "Вважати вхідні запити з WAN IP-адреси цієї мережі запитами з локальної мережі щодо пропускної здатності.  Таке часто трапляється, коли ввімкнено захист від DNS rebinding і клієнти в локальній мережі не можуть звернутися до сервера напряму, а мусять іти через WAN IP-адресу.",
     "zh": "在带宽方面，将来自此网络 WAN IP 地址的请求视为局域网请求。这通常发生在启用了 DNS 重绑定保护、局域网客户端无法直接连接服务器而必须经由 WAN IP 地址的情况。"
    },
-   "Use localized posters when available. This is determined by the library language setting.": {
+   "Pick posters in the library's language when there are any. The library language setting decides which.": {
     "af": "Gebruik gelokaliseerde plakkate indien beskikbaar. Dit word deur die biblioteektaalinstelling bepaal.",
     "ca": "Utilitza pòsters localitzats quan n'hi hagi. Depèn de la configuració d'idioma de la biblioteca.",
     "cs": "Používat lokalizované plakáty, jsou-li k dispozici. Určuje to nastavení jazyka knihovny.",
@@ -11150,7 +11150,7 @@
     "uk": "Використовувати локалізовані постери, якщо вони є. Визначається мовою бібліотеки.",
     "zh": "可用时使用本地化海报，由媒体库语言设置决定。"
    },
-   "Use red band (restricted audiences) trailers when available": {
+   "Pick red band (restricted audiences) trailers if there are any": {
     "af": "Gebruik red band-voorskoue (beperkte gehore) indien beskikbaar",
     "ca": "Utilitza tràilers «red band» (públic restringit) quan n'hi hagi",
     "cs": "Používat trailery s omezením přístupnosti (red band), jsou-li k dispozici",
@@ -11180,7 +11180,7 @@
     "uk": "Використовувати трейлери red band (для обмеженої аудиторії), якщо вони є",
     "zh": "可用时使用红标（限制级）预告片"
    },
-   "Use season titles when available.": {
+   "Show season titles if there are any.": {
     "af": "Gebruik seisoentitels indien beskikbaar.",
     "ca": "Utilitza els títols de temporada quan n'hi hagi.",
     "cs": "Používat názvy řad, jsou-li k dispozici.",
@@ -11210,7 +11210,7 @@
     "uk": "Використовувати назви сезонів, якщо вони є.",
     "zh": "可用时使用季标题。"
    },
-   "Use the original title for this item regardless of the library language.": {
+   "Show this item's original title, whatever the library language is.": {
     "af": "Gebruik die oorspronklike titel vir hierdie item, ongeag die biblioteektaal.",
     "ca": "Utilitza el títol original d'aquest element independentment de l'idioma de la biblioteca.",
     "cs": "Použít původní název této položky bez ohledu na jazyk knihovny.",
@@ -11241,7 +11241,7 @@
     "uk": "Використовувати оригінальну назву цього елемента незалежно від мови бібліотеки.",
     "zh": "无论媒体库语言如何，此项目都使用原始标题。"
    },
-   "Use the original titles for all items regardless of the library language.": {
+   "Show every item's original title, whatever the library language is.": {
     "af": "Gebruik die oorspronklike titels vir alle items, ongeag die biblioteektaal.",
     "ca": "Utilitza els títols originals de tots els elements independentment de l'idioma de la biblioteca.",
     "cs": "Použít původní názvy všech položek bez ohledu na jazyk knihovny.",
@@ -11271,7 +11271,7 @@
     "uk": "Використовувати оригінальні назви всіх елементів незалежно від мови бібліотеки.",
     "zh": "无论媒体库语言如何，所有项目都使用原始标题。"
    },
-   "Value is in minutes. Terminate any sessions which have been paused for a longer time than specified amount of time.  Audio-only sessions and live sessions are excluded": {
+   "In minutes. Sessions left paused longer than this are ended. Audio-only and live sessions are not affected.": {
     "af": "Waarde in minute. Beëindig alle sessies wat langer as die gestelde tyd gepouseer is. Slegs-klank-sessies en regstreekse sessies word uitgesluit",
     "ca": "Valor en minuts. Finalitza les sessions que hagin estat en pausa més temps del que s'indica. S'exclouen les sessions només d'àudio i les sessions en directe",
     "cs": "Hodnota v minutách. Ukončí všechny relace, které jsou pozastavené déle než zadaná doba. Netýká se relací jen se zvukem a živých relací",
@@ -11303,7 +11303,7 @@
     "uk": "Значення в хвилинах. Завершувати всі сеанси, призупинені довше за вказаний час.  Сеанси лише з аудіо та прямі трансляції не враховуються",
     "zh": "单位为分钟。终止暂停时间超过指定时长的会话。仅音频会话和直播会话除外"
    },
-   "Verbose logging is only useful to debug specific issues and should only be enabled if requested by support staff.": {
+   "Verbose logging only helps with debugging particular issues. Turn it on only when support staff ask you to.": {
     "af": "Uitvoerige logging is slegs nuttig om spesifieke probleme te ontfout en moet slegs aangeskakel word as die ondersteuningspan daarvoor vra.",
     "ca": "El registre detallat només és útil per depurar problemes concrets i només s'ha d'activar si ho demana l'equip d'assistència.",
     "cs": "Podrobné protokolování je užitečné jen při ladění konkrétních problémů a mělo by se zapínat jen na žádost podpory.",
@@ -11334,7 +11334,7 @@
     "uk": "Докладний журнал корисний лише для налагодження конкретних проблем; вмикайте його лише на прохання служби підтримки.",
     "zh": "详细日志仅在调试特定问题时有用，只应在支持人员要求时启用。"
    },
-   "Video preview thumbnails provide live updates in Now Playing and while seeking on supported apps. Thumbnail generation may take a long time, cause high CPU usage, and consume additional disk space. You can turn off thumbnail generation for individual libraries in the library's advanced settings.": {
+   "Video preview thumbnails show live pictures in Now Playing and while seeking in apps that support them. Making them can take a long time, use a lot of CPU and take extra disk space. Each library can switch them off in its advanced settings.": {
     "af": "Videovoorskou-duimnaels gee regstreekse opdaterings in Speel nou en tydens soek op ondersteunde toepassings. Die generering van duimnaels kan lank neem, hoë SVE-gebruik veroorsaak en ekstra skyfspasie gebruik. Jy kan dit vir individuele biblioteke in die biblioteek se gevorderde instellings afskakel.",
     "ar": "توفر الصور المصغّرة لمعاينة الفيديو تحديثات مباشرة في «قيد التشغيل» وأثناء التقديم والترجيع على التطبيقات المدعومة. قد يستغرق إنشاؤها وقتًا طويلًا ويسبب استهلاكًا عاليًا للمعالج ويستهلك مساحة إضافية على القرص. يمكنك إيقاف إنشاء الصور المصغّرة لمكتبات بعينها من الإعدادات المتقدمة للمكتبة.",
     "ca": "Les miniatures de previsualització mostren actualitzacions en directe a S'està reproduint i en desplaçar-se pel vídeo a les aplicacions compatibles. Generar-les pot trigar molt, provocar un ús elevat de la CPU i ocupar espai de disc addicional. Pots desactivar-ne la generació per a cada biblioteca a la configuració avançada de la biblioteca.",
@@ -11370,7 +11370,7 @@
     "uk": "Мініатюри попереднього перегляду оновлюються наживо в «Зараз відтворюється» та під час перемотування в підтримуваних застосунках. Їх створення може тривати довго, сильно навантажувати процесор і займати додаткове місце на диску. Його можна вимкнути для окремих бібліотек у розширених налаштуваннях бібліотеки.",
     "zh": "视频预览缩略图会在支持的应用中于“正在播放”和拖动进度时实时显示。生成缩略图可能需要很长时间，导致 CPU 占用较高，并占用额外磁盘空间。可在媒体库的高级设置中为单个媒体库关闭缩略图生成。"
    },
-   "When changes to library folders are detected, only scan the folder that changed.": {
+   "If a library folder changes, scan just that folder instead of everything.": {
     "af": "Wanneer veranderinge aan biblioteekgidse bespeur word, skandeer slegs die gids wat verander het.",
     "ar": "عند اكتشاف تغييرات في مجلدات المكتبة، يُفحص المجلد الذي تغيّر فقط.",
     "ca": "Quan es detectin canvis a les carpetes de la biblioteca, explora només la carpeta que ha canviat.",
@@ -11406,7 +11406,7 @@
     "uk": "Коли виявлено зміни в папках бібліотеки, сканувати лише змінену папку.",
     "zh": "检测到媒体库文件夹有更改时，只扫描更改的文件夹。"
    },
-   "When scanning this library, prefer embedded tags and local files if present.": {
+   "Favour embedded tags and local files, if there are any, when scanning this library.": {
     "af": "Verkies ingebedde etikette en plaaslike lêers, indien teenwoordig, wanneer hierdie biblioteek geskandeer word.",
     "ca": "En explorar aquesta biblioteca, prefereix les etiquetes incrustades i els fitxers locals, si n'hi ha.",
     "cs": "Při prohledávání této knihovny upřednostnit vložené štítky a místní soubory, jsou-li k dispozici.",
@@ -11438,7 +11438,7 @@
     "uk": "Під час сканування цієї бібліотеки надавати перевагу вбудованим тегам і локальним файлам, якщо вони є.",
     "zh": "扫描此媒体库时，优先使用内嵌标签和本地文件（如有）。"
    },
-   "When scanning this library, use local posters and artwork if present.": {
+   "Use posters and artwork found next to the media when scanning this library.": {
     "af": "Gebruik plaaslike plakkate en kunswerk, indien teenwoordig, wanneer hierdie biblioteek geskandeer word.",
     "ca": "En explorar aquesta biblioteca, utilitza els pòsters i les imatges locals, si n'hi ha.",
     "cs": "Při prohledávání této knihovny použít místní plakáty a obrázky, jsou-li k dispozici.",
@@ -11467,7 +11467,7 @@
     "uk": "Під час сканування цієї бібліотеки використовувати локальні постери й зображення, якщо вони є.",
     "zh": "扫描此媒体库时，使用本地海报和图片（如有）。"
    },
-   "When set to \"Required\", some unencrypted connections (originating from the Media Server computer) will still be allowed and apps that don't support secure connections will not be able to connect at all.": {
+   "Even on \"Required\", a few unencrypted connections from the Media Server computer itself are still accepted, and apps without secure connection support cannot connect at all.": {
     "af": "Wanneer dit op \"Vereis\" gestel is, word sommige onversleutelde verbindings (vanaf die mediabedienerrekenaar) steeds toegelaat, en toepassings wat nie veilige verbindings ondersteun nie, sal glad nie kan koppel nie.",
     "ar": "عند الضبط على «مطلوب»، سيظل مسموحًا ببعض الاتصالات غير المشفرة (الصادرة من جهاز خادم الوسائط)، ولن تتمكن التطبيقات التي لا تدعم الاتصالات الآمنة من الاتصال إطلاقًا.",
     "ca": "Amb «Obligatori», encara es permetran algunes connexions sense xifrar (originades a l'ordinador del servidor multimèdia) i les aplicacions que no admetin connexions segures no es podran connectar.",
@@ -11503,7 +11503,7 @@
     "uk": "Якщо вибрано «Обов'язково», деякі незашифровані з'єднання (з комп'ютера медіасервера) усе ж дозволятимуться, а застосунки без підтримки захищених з'єднань не зможуть підключитися взагалі.",
     "zh": "设为“必需”时，部分未加密连接（来自媒体服务器所在计算机）仍会被允许，而不支持安全连接的应用将完全无法连接。"
    },
-   "Where to automatically obtain album cover art.": {
+   "Where album covers are fetched from automatically.": {
     "af": "Waarvandaan albumomslagkuns outomaties verkry word.",
     "ca": "D'on s'obtenen automàticament les portades dels àlbums.",
     "cs": "Odkud automaticky získávat obaly alb.",
@@ -11533,7 +11533,7 @@
     "uk": "Звідки автоматично отримувати обкладинки альбомів.",
     "zh": "自动获取专辑封面的来源。"
    },
-   "Where to automatically obtain genres for artists and albums.": {
+   "Where artist and album genres are fetched from automatically.": {
     "af": "Waarvandaan genres vir kunstenaars en albums outomaties verkry word.",
     "ca": "D'on s'obtenen automàticament els gèneres d'artistes i àlbums.",
     "cs": "Odkud automaticky získávat žánry interpretů a alb.",
@@ -11564,7 +11564,7 @@
     "uk": "Звідки автоматично отримувати жанри виконавців і альбомів.",
     "zh": "自动获取艺人和专辑类型的来源。"
    },
-   "Which user's activity (e.g. user rating, play count, or watched status) is used for the collection filtering.": {
+   "Whose activity (such as rating, play count or watched status) the collection's filters use.": {
     "af": "Watter gebruiker se aktiwiteit (bv. gebruikersgradering, aantal kere gespeel of gekyk-status) vir die versamelingfiltering gebruik word.",
     "ca": "Activitat de quin usuari (p. ex. valoració, nombre de reproduccions o estat de vist) s'utilitza per filtrar les col·leccions.",
     "cs": "Aktivita kterého uživatele (např. hodnocení, počet přehrání nebo stav zhlédnutí) se použije pro filtrování kolekce.",
@@ -11588,7 +11588,7 @@
     "uk": "Чия активність (наприклад, оцінка, кількість відтворень чи статус перегляду) використовується для фільтрування колекції.",
     "zh": "合集筛选使用哪位用户的活动（如用户评分、播放次数或观看状态）。"
    },
-   "Your library will be updated automatically when changes to library folders are detected.": {
+   "Keep the library up to date on its own whenever something in a library folder changes.": {
     "af": "Jou biblioteek word outomaties bygewerk wanneer veranderinge aan biblioteekgidse bespeur word.",
     "ar": "ستُحدَّث مكتبتك تلقائيًا عند اكتشاف تغييرات في مجلدات المكتبة.",
     "ca": "La biblioteca s'actualitzarà automàticament quan es detectin canvis a les seves carpetes.",

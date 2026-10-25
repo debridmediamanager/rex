@@ -90,8 +90,13 @@ rex draws plain stand-ins at those sizes. Never check in Plex's own artwork, web
 other bytes, here or in a fixture; record a hash and length instead (2026-10-25).
 The localised strings (`translations.json`, `activity_strings.json`, `refusal_strings.json`,
 `stream_words.json`, `title_templates.json`, `item_language_names.json`,
-`regional_server_prefs.json`) and `attributions.json` are rex's own wording, written from the
-English: what is measured off a real PMS is WHICH strings it translates in which language,
+`regional_server_prefs.json`), `attributions.json`, the agent attribution text inside
+`plugin_bundles.json`, the agent setting labels in `plugin_prefs.json` and the English help text
+(`summary`, and labels that are whole sentences) in `server_prefs.json`, `section_prefs*.json`,
+`item_prefs.json` and the collection settings in `runtime/collections.rs` are rex's own wording,
+written from the English. Short setting names (`Friendly name`) and option words stay as PMS
+names them, so guides written for Plex still find them. `translations.json` is keyed by that
+English, so a change to an English string re-keys its translations in the same commit: what is measured off a real PMS is WHICH strings it translates in which language,
 never its wording. A newly measured string gets rex's own translation, and a fixture recorded
 in another language has PMS's wording swapped for rex's before it is checked in. Runtime files never go in
 `data/`: `plex_cache.db`, `claim_state.json` and `rex-direct.json` are resolved beside the

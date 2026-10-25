@@ -296,7 +296,7 @@ def run(port):
     show_row = next(r for r in shared.get("Metadata") or [] if r.get("type") == "show")
     sort = next(s for s in show_row["Preferences"]["Setting"] if s.get("id") == "episodeSort")
     check("a shared show library's episodeSort is the per-show variant",
-          sort.get("summary") == "How to sort the episodes for this show."
+          sort.get("summary") == "Order in which this show's episodes are listed."
           and sort.get("enumValues") == "-1:Library default|0:Oldest first|1:Newest first",
           sort)
 
