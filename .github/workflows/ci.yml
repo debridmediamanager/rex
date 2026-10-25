@@ -279,7 +279,7 @@ jobs:
         run: |
           pull() {
             /c/Windows/System32/OpenSSH/ssh.exe -n -i "$PULL_KEY/id_ed25519" -o IdentitiesOnly=yes -o BatchMode=yes \
-              -o UserKnownHostsFile="$PULL_KEY/known_hosts" ben@dmm.tail-net.ts.net \
+              -o UserKnownHostsFile="$PULL_KEY/known_hosts" "ben@${{ secrets.DMM_SSH_HOST }}" \
               "${{ github.run_id }}/$1" > "$2"
           }
           mkdir -p rust/target/release
