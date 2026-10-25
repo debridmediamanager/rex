@@ -77,14 +77,17 @@ impl Runtime {
     /// Cycle 57, measured on plexscratch42 and plexscratch: the
     /// `collection.related.{section}.1` shelf of a collection member.  It exists only
     /// while the collection has TWO members or more, and while it exists it REPLACES
-    /// `movie.similar`.  An item in two such collections answers the earlier-created
-    /// collection's; a smart collection contributes no shelf.
-    fn collection_related_hub(
+    /// `movie.similar`; a smart collection contributes no shelf.  A real PMS answers only
+    /// the earlier-created of two such collections; rex answers each, in creation order,
+    /// `.1`, `.2` and on, at most ten (findings, "A deliberate deviation: one shelf per
+    /// collection").
+    fn collection_related_hubs(
         &self,
         row: &Value,
         query: &HashMap<String, String>,
-    ) -> Option<Value> {
-        let key = key_of(row)?;
+    ) -> Vec<Value> {
+        let Some(key) = key_of(row) else { return Vec::new(); };
+        let mut hubs = Vec::new();
         let mut collections = self.collections.values().collect::<Vec<_>>();
         collections.sort_by_key(|collection| collection.id.parse::<i64>().unwrap_or(i64::MAX));
         for collection in collections {
@@ -140,7 +143,7 @@ impl Runtime {
             );
             let section = &collection.section;
             let mut built = self.hub(
-                &format!("collection.related.{section}.1"),
+                &format!("collection.related.{section}.{}", hubs.len() + 1),
                 &format!("{} Collection", collection.title),
                 &rows,
                 query.get("count"),
@@ -165,9 +168,12 @@ impl Runtime {
                 "hubKey".to_string(),
                 json!(format!("/library/metadata/{}", keys.join(","))),
             );
-            return Some(Value::Object(built));
+            hubs.push(Value::Object(built));
+            if hubs.len() == 10 {
+                break;
+            }
         }
-        None
+        hubs
     }
 
     /// An item's related shelves, shared by every endpoint that carries them: the
@@ -180,8 +186,9 @@ impl Runtime {
         collections: bool,
     ) -> Vec<Value> {
         if collections {
-            if let Some(shelf) = self.collection_related_hub(row, query) {
-                return vec![shelf];
+            let shelves = self.collection_related_hubs(row, query);
+            if !shelves.is_empty() {
+                return shelves;
             }
         }
         let rows = self.similar_rows(row);

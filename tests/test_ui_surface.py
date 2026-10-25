@@ -31695,6 +31695,25 @@ def main():
     else:
         skip("a collection member's Related is the collection's shelf", "need two movies")
 
+    # A deliberate deviation (docs/findings.md): a real PMS shows only the earliest
+    # collection's shelf on a member of two; rex shows each, in creation order, numbered
+    # `.1`, `.2`. Plex Web and Plezy draw both (a user's Stremio catalogs as collections).
+    if len(pair_c57h) == 2:
+        made_mc = [container(
+            base, "POST", "/library/collections?type=1&title=%s&smart=0&sectionId=%s&uri=%s"
+            % (quote(title_mc), movie_section, uri_c57h))[1].get("Metadata", [{}])[0]
+            for title_mc in ("MC One", "MC Two")]
+        got_mc = [[(h.get("hubIdentifier"), h.get("title")) for h in path_mc]
+                  for path_mc in hubs_c57h()]
+        for coll_mc in made_mc:
+            request(base, "DELETE", "/library/collections/%s" % coll_mc.get("ratingKey"))
+        want_mc = [("collection.related.%s.1" % movie_section, "MC One Collection"),
+                   ("collection.related.%s.2" % movie_section, "MC Two Collection")]
+        check("a member of two collections has both shelves, oldest first",
+              got_mc == [want_mc] * 3, "got %s" % got_mc)
+    else:
+        skip("a member of two collections has both shelves, oldest first", "need two movies")
+
     # Cycle 57, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4), one sequence
     # identical on both: `playQueueLastAddedItemID` is the TAIL of the contiguous block
     # after the selected item made of added items and items moved in behind it. A first

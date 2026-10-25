@@ -971,6 +971,15 @@ difference is kept on purpose. It is the only remaining shape difference in the
 whole `/library/sections/*` surface apart from rows rex's catalog has no data
 for.
 
+#### A deliberate deviation: one shelf per collection
+
+A real PMS gives a member of two collections only the earlier-created collection's
+`collection.related` shelf (cycle 57). rex gives it one shelf per collection of two or more
+members, in creation order, numbered `collection.related.{section}.1`, `.2` and on, at most
+ten. A source that files a title in several collections (Stremio catalogs as collections)
+would otherwise show one of them at random to the person. Plex Web and Plezy draw every
+shelf (a user's report, 2026-10-25); `tests/test_ui_surface.py` holds it.
+
 #### A smart list is a stored QUERY, and rex stored a snapshot
 
 rex accepted `smart=1` on both create endpoints, set a flag, and then stored
