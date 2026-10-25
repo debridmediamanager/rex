@@ -285,6 +285,7 @@ The `media_info` above is cut down to show its shape. Send ffprobe's whole outpu
 | `hash` | no | The release's content/info hash, kept per Media version. A changed hash invalidates that version's measured subtitle reference and generated analysis; it never borrows another version's hash |
 | `display` | no | What the title is called and looks like, for what no metadata agent knows: see **Display** below. Shown only while nothing identifies the row |
 | `subtitles` | no | The subtitle files beside it at the source, each an external subtitle of this file's Part: see **Subtitles** below. Absent or `null` keeps the row's; `[]` removes them |
+| `collections` | no | The names of the collections its title is in: a film's own, an episode's show's. Each is a collection of the title's library, made the first time a title names it, as a `Collection` tag a client writes makes one; every file of a title sends the same list, and the last one sent is the title's. Only what changed since the source's last list is applied, so a title a person took out of a collection stays out, and a collection a person added it to stays. Absent or `null` keeps them; `[]` takes the title out of every collection the source named |
 
 Embedded chapters are optional: include ffprobe's `-show_chapters` output in
 `media_info.chapters`. rex keeps the timings and titles with that file version and

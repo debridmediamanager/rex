@@ -88,6 +88,9 @@ struct Item {
     /// The sidecar subtitles the source serves beside the file (`subtitles`); `None` when it
     /// sent none, which keeps what the row has, as an absent `chapters` does.
     subtitles: Option<Vec<SourceSubtitle>>,
+    /// The collections its title (a film, or an episode's show) is in, by name, in its library
+    /// (`collections`); `None` when it sent none, which keeps what the title has.
+    collections: Option<Vec<String>>,
 }
 
 /// One entry of an item's `subtitles`: a subtitle file under the source's url, which becomes
@@ -305,7 +308,24 @@ impl Item {
             Some(Value::Object(display)) => Some(display_fields(display, source).map_err(|reason| refuse(&reason))?),
             Some(_) => return Err(refuse("display must be an object")),
         };
+        let collections = match value.get("collections") {
+            None | Some(Value::Null) => None,
+            Some(Value::Array(names)) => {
+                let mut kept: Vec<String> = Vec::new();
+                for name in names {
+                    let Some(name) = name.as_str().map(str::trim).filter(|name| !name.is_empty()) else {
+                        return Err(refuse("collections must be a list of names"));
+                    };
+                    if !kept.iter().any(|seen| seen.to_lowercase() == name.to_lowercase()) {
+                        kept.push(name.to_string());
+                    }
+                }
+                Some(kept)
+            }
+            Some(_) => return Err(refuse("collections must be a list of names")),
+        };
         Ok(Self {
+            collections,
             subtitles: subtitle_entries(&source.name, &id, value.get("subtitles")),
             placed,
             edition,
@@ -1013,6 +1033,8 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
     let mut extras = Vec::new();
     let sidecars: Vec<(String, Vec<SourceSubtitle>)> =
         plans.iter().filter_map(|(item, _, _)| Some((item.id.clone(), item.subtitles.clone()?))).collect();
+    let collected: Vec<(String, Vec<String>)> =
+        plans.iter().filter_map(|(item, _, _)| Some((item.id.clone(), item.collections.clone()?))).collect();
     let mut unchanged = HashSet::new();
     for (index, (item, library, plan)) in plans.into_iter().enumerate() {
         let held = held_key(&source.name, &item.id);
@@ -1159,7 +1181,17 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
     // Last, on the rows as this push left them: a new release folded into a title is a Part of
     // that row by now, and a probe filled in has its streams.
     let (mut guard, resubtitled) = put_subtitles(shared, guard, source, &sidecars);
-    let moved = resubtitled.intersection(&unchanged).count();
+    let rows = guard.feed_rows(&source.name, collected.iter().map(|(id, _)| id.as_str()));
+    let mut regrouped = HashSet::new();
+    for (id, names) in &collected {
+        if rows.get(id).is_some_and(|key| guard.put_collections(key, names)) {
+            regrouped.insert(id.clone());
+        }
+    }
+    if !regrouped.is_empty() {
+        guard.dirty = true;
+    }
+    let moved = resubtitled.union(&regrouped).filter(|id| unchanged.contains(*id)).count();
     counts.unchanged -= moved;
     counts.updated += moved;
     // The production server's Usenet snapshot rejected 579 items on 2026-10-17 and said why for none.
@@ -2435,6 +2467,46 @@ impl Runtime {
             part.as_object_mut().map(crate::catalog::repack_part);
         }
         info!("FEED {source} {id}: {} sidecar subtitle(s) on {key}", wanted.len());
+        true
+    }
+
+    /// An item's `collections` on its title: the film's row, or the episode's show. Only what
+    /// changed since the source's last list is applied, as a person's `Collection` tag write is
+    /// (`join_tag_collection`), so a member a person took out stays out until the source drops
+    /// and names that collection again. Answers whether anything changed.
+    fn put_collections(&mut self, key: &str, wanted: &[String]) -> bool {
+        let Some(row) = self.catalog.get(key).cloned() else { return false };
+        let title = match row.get("type").and_then(Value::as_str) {
+            Some("movie") => key.to_string(),
+            Some("episode") => row.get("grandparentRatingKey").map(string_value).unwrap_or_default(),
+            _ => return false,
+        };
+        let Some(owner) = self.catalog.get(&title).cloned() else { return false };
+        let before: Vec<String> = owner
+            .get("_feedCollections")
+            .and_then(Value::as_array)
+            .map(|names| names.iter().map(string_value).collect())
+            .unwrap_or_default();
+        let has = |names: &[String], name: &str| names.iter().any(|other| other.to_lowercase() == name.to_lowercase());
+        if before.len() == wanted.len() && wanted.iter().all(|name| has(&before, name)) {
+            return false;
+        }
+        let section = owner.get("librarySectionID").map(string_value).unwrap_or_default();
+        for name in before.iter().filter(|name| !has(wanted, name)) {
+            self.untag_collection_member(&title, name);
+            self.leave_tag_collection(&title, &section, name);
+        }
+        for name in wanted.iter().filter(|name| !has(&before, name)) {
+            self.tag_collection_member(&title, name);
+            self.join_tag_collection(&title, &owner, &section, name);
+        }
+        if let Some(object) = self.catalog.get_mut(&title).and_then(Value::as_object_mut) {
+            if wanted.is_empty() {
+                object.shift_remove("_feedCollections");
+            } else {
+                object.insert("_feedCollections".to_string(), json!(wanted));
+            }
+        }
         true
     }
 

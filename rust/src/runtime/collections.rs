@@ -516,7 +516,7 @@ impl Runtime {
     /// Put a collection's tag on a member (minted the way the catalog mints tags, and
     /// kept in the tag TABLE, cycle 61) and LOCK the member's `collection` field
     /// (cycle 60).
-    fn tag_collection_member(&mut self, key: &str, name: &str) {
+    pub(super) fn tag_collection_member(&mut self, key: &str, name: &str) {
         let lowered = name.to_lowercase();
         let known = self
             .tag_table
@@ -610,7 +610,7 @@ impl Runtime {
         }
     }
 
-    fn untag_collection_member(&mut self, key: &str, name: &str) {
+    pub(super) fn untag_collection_member(&mut self, key: &str, name: &str) {
         let Some(row) = self.catalog.get_mut(key).and_then(Value::as_object_mut) else {
             return;
         };
@@ -627,6 +627,70 @@ impl Runtime {
             row.shift_remove("Collection");
         }
         row.shift_remove("_collectionLight");
+    }
+
+    /// A `Collection` tag `title` written onto `key`: the member joins the collection of that
+    /// name in its library, made first when none is.
+    pub(super) fn join_tag_collection(&mut self, key: &str, row: &Value, section: &str, title: &str) {
+        let lowered = title.to_lowercase();
+        let named = |collection: &&Collection| {
+            let tag = if collection.tag.is_empty() {
+                &collection.title
+            } else {
+                &collection.tag
+            };
+            tag.to_lowercase() == lowered && collection.section == section
+        };
+        // Measured on an online 1.43.5 (`tests/fixtures/tag_collections_s1435.json`,
+        // claimed and again unclaimed): a tag naming no collection MAKES one, which is
+        // how a metadata manager builds a static collection. The offline copies (1.43.4,
+        // 1.42.2) made only the tag.
+        if !self.collections.values().any(|collection| named(&collection)) {
+            let mut query = HashMap::from([
+                ("title".to_string(), title.to_string()),
+                ("sectionId".to_string(), section.to_string()),
+            ]);
+            if let Some(number) = type_number_for(row) {
+                query.insert("type".to_string(), number.to_string());
+            }
+            self.create_collection(&query);
+            // Its members' `Collection` tag stays `id, filter, tag` with no guid (the
+            // fixture's `/library/metadata/1`), where `POST /library/collections` stamps one.
+            if let Some(made) = self.collections.values_mut().find(|collection| named(&&**collection)) {
+                made.extra.insert("_fromTag".to_string(), json!(true));
+            }
+        }
+        if let Some(collection) = self.collections.values_mut().find(|collection| named(&&**collection)) {
+            if !collection.items.iter().any(|item| item == key) {
+                collection.items.push(key.to_string());
+                collection.extra.shift_remove("_frozenCounts");
+            }
+        }
+    }
+
+    /// A `Collection` tag `title` taken off `key`: the member leaves that collection.
+    pub(super) fn leave_tag_collection(&mut self, key: &str, section: &str, title: &str) {
+        let lowered = title.to_lowercase();
+        if let Some(before) = self
+            .collections
+            .values()
+            .find(|collection| {
+                let tag = if collection.tag.is_empty() {
+                    &collection.title
+                } else {
+                    &collection.tag
+                };
+                tag.to_lowercase() == lowered && collection.section == section
+            })
+            .cloned()
+        {
+            let id = before.id.clone();
+            let members = self.collection_members(&before);
+            if let Some(collection) = self.collections.get_mut(&id) {
+                collection.items.retain(|item| item != key);
+            }
+            self.keep_emptied_counts(&id, &members);
+        }
     }
 
     /// Add rows to a collection: each joins once, is tagged and locked.

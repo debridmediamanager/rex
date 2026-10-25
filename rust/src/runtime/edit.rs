@@ -1197,63 +1197,10 @@ impl Runtime {
             .map(string_value)
             .unwrap_or_default();
         for title in &outcome.collection_added {
-            let lowered = title.to_lowercase();
-            let named = |collection: &&Collection| {
-                let tag = if collection.tag.is_empty() {
-                    &collection.title
-                } else {
-                    &collection.tag
-                };
-                tag.to_lowercase() == lowered && collection.section == section
-            };
-            // Measured on an online 1.43.5 (`tests/fixtures/tag_collections_s1435.json`,
-            // claimed and again unclaimed): a tag naming no collection MAKES one, which is
-            // how a metadata manager builds a static collection. The offline copies (1.43.4,
-            // 1.42.2) made only the tag.
-            if !self.collections.values().any(|collection| named(&collection)) {
-                let mut query = HashMap::from([
-                    ("title".to_string(), title.clone()),
-                    ("sectionId".to_string(), section.clone()),
-                ]);
-                if let Some(number) = type_number_for(&row) {
-                    query.insert("type".to_string(), number.to_string());
-                }
-                self.create_collection(&query);
-                // Its members' `Collection` tag stays `id, filter, tag` with no guid (the
-                // fixture's `/library/metadata/1`), where `POST /library/collections` stamps one.
-                if let Some(made) = self.collections.values_mut().find(|collection| named(&&**collection)) {
-                    made.extra.insert("_fromTag".to_string(), json!(true));
-                }
-            }
-            if let Some(collection) = self.collections.values_mut().find(|collection| named(&&**collection)) {
-                if !collection.items.contains(key) {
-                    collection.items.push(key.to_string());
-                    collection.extra.shift_remove("_frozenCounts");
-                }
-            }
+            self.join_tag_collection(key, &row, &section, title);
         }
         for title in &outcome.collection_removed {
-            let lowered = title.to_lowercase();
-            if let Some(before) = self
-                .collections
-                .values()
-                .find(|collection| {
-                    let tag = if collection.tag.is_empty() {
-                        &collection.title
-                    } else {
-                        &collection.tag
-                    };
-                    tag.to_lowercase() == lowered && collection.section == section
-                })
-                .cloned()
-            {
-                let id = before.id.clone();
-                let members = self.collection_members(&before);
-                if let Some(collection) = self.collections.get_mut(&id) {
-                    collection.items.retain(|item| item != key);
-                }
-                self.keep_emptied_counts(&id, &members);
-            }
+            self.leave_tag_collection(key, &section, title);
         }
     }
 
