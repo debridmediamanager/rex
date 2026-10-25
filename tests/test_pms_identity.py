@@ -2,7 +2,9 @@
 """Latest-PMS identity, methods and static-resource corpus, against a real process.
 
 Recordings are from a fresh official PMS 1.43.5 on zen, not rex. Every recorded
-resource is compared, including both favicon routes and the build-file resource.
+resource path is answered at PMS's status, type and image size, but with rex's own
+bytes: the fixtures keep only the length and hash of Plex's artwork and web assets,
+never the bytes, and the favicon is rex's T-rex.
 """
 import base64
 import hashlib
@@ -28,6 +30,26 @@ CAPTURE = json.loads((FIXTURES / "pms_identity_2026_10_22.json").read_text())
 RESOURCES = json.loads((FIXTURES / "pms_resources_2026_10_22.json").read_text())
 WIRE = json.loads((FIXTURES / "pms_wire_2026_10_22.json").read_text())
 TOKEN = "pms-identity-regression"
+ASSETS = json.loads((ROOT / "data" / "resource_assets.json").read_text())
+ICON = (ROOT / "data" / "favicon.ico").read_bytes()
+
+
+def web_asset(row):
+    """Stand-in bytes of the recorded length; the envelope depends only on length and type."""
+    return b"x" * row["pms"]["body_length"]
+
+
+def image_size(raw):
+    """(width, height) of a PNG or a baseline JPEG, else None."""
+    if raw[:8] == b"\x89PNG\r\n\x1a\n":
+        return int.from_bytes(raw[16:20], "big"), int.from_bytes(raw[20:24], "big")
+    at = 2
+    while raw[:2] == b"\xff\xd8" and at + 9 < len(raw):
+        marker, length = raw[at + 1], int.from_bytes(raw[at + 2:at + 4], "big")
+        if marker == 0xC0:
+            return int.from_bytes(raw[at + 7:at + 9], "big"), int.from_bytes(raw[at + 5:at + 7], "big")
+        at += 2 + length
+    return None
 
 
 def request(port, method, path, token=TOKEN, extra=None, ordered=False, framing=False):
@@ -74,7 +96,7 @@ def main():
             if row.get("web_asset"):
                 destination = web_root / row["path"][len("/web/"):]
                 destination.parent.mkdir(parents=True, exist_ok=True)
-                destination.write_bytes(base64.b64decode(row["pms"]["body_base64"]))
+                destination.write_bytes(web_asset(row))
         port = free_port()
         env = dict(os.environ, REX_PLEXTV_URL="http://127.0.0.1:9", REX_DIRECT_URL="off")
         for name in ("REX_TOKEN", "REX_STATE"):
@@ -123,8 +145,9 @@ def main():
                               (status, raw[:120]))
                     elif path == "/favicon.ico":
                         status, headers, raw = request(port, method, path, token=None)
-                        check("the public favicon is the PMS recording, not a branded replacement",
-                              status == row["status"] and hashlib.sha256(raw).hexdigest() == row["sha256"],
+                        check("the public favicon is rex's own icon, not Plex's",
+                              status == row["status"] and raw == ICON
+                              and hashlib.sha256(raw).hexdigest() != row["sha256"],
                               (status, len(raw), hashlib.sha256(raw).hexdigest()))
                     elif path == "/diagnostics/logs":
                         status, headers, raw = request(port, method, path)
@@ -156,20 +179,22 @@ def main():
                         expected_headers = instance_location(expected_headers)
                     check(row["method"] + " " + row["path"] + " matches the measured PMS wire envelope",
                           status == expected["status"] and got_headers == expected_headers
-                          and raw == base64.b64decode(expected["body_base64"])
+                          and raw == (web_asset(row) if row.get("web_asset") else base64.b64decode(expected["body_base64"]))
                           and read_error == expected.get("read_error"),
                           (status, got_headers, read_error))
 
                 for row in RESOURCES["rows"]:
                     status, headers, raw = request(port, row["method"], row["path"])
-                    check(row["path"] + " matches the complete PMS resource recording",
+                    asset = ASSETS[row["path"][len("/:/resources/"):]]
+                    size = (asset["width"], asset["height"]) if "width" in asset else None
+                    check(row["path"] + " answers as PMS does, with rex's own bytes at PMS's image size",
                           status == row["status"] and headers.get("content-type") == row["content_type"]
-                          and hashlib.sha256(raw).hexdigest() == row["sha256"],
-                          (status, len(raw), hashlib.sha256(raw).hexdigest()))
+                          and hashlib.sha256(raw).hexdigest() != row["sha256"]
+                          and (size is None or image_size(raw) == size),
+                          (status, len(raw), image_size(raw), size))
 
-                # A byte range must select the reference bytes, not merely mimic its status.
-                icon = next(row for row in CAPTURE["rows"] if row["path"] == "/favicon.ico")
-                body = base64.b64decode(icon["body_base64"])
+                # A byte range must select the icon's bytes, not merely mimic its status.
+                body = ICON
                 status, headers, raw = request(port, "GET", "/favicon.ico", token=None,
                                                extra={"Range": "bytes=1000-1999", "Accept-Encoding": "gzip"})
                 check("the public icon's range is byte-exact and never compressed",

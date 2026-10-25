@@ -13797,8 +13797,10 @@ Current PMS accepts PATCH as a routed method: `/identity` answers the plug-in
 listing, `/system` answers Tornado's 405 and an unknown multi-segment path answers
 404. FROB remains the 109-byte 500. The old blanket PATCH 500 belonged to 1.42.2.
 Download Logs uses `Plex Media Server Logs_<date>_<time>.zip` and
-`Plex Media Server.log`. The public favicon and every recorded resource body are
-the reference bytes, rather than a T-rex icon or solid-colour stand-ins. The
+`Plex Media Server.log`. The public favicon and every recorded resource body were
+the reference bytes until 2026-10-25, when rex went back to its T-rex icon and
+solid-colour stand-ins so the public repository carries none of Plex's artwork
+(see "rex's own assets and translations"). The
 resource JSON is borrowed through the existing shared-sidecar cache, not cloned
 in full for each image.
 
@@ -14176,3 +14178,17 @@ no connection to it. Picking 240p in Plex for Android: "Playback Error / This it
 right now. Please try again." Plex Web on Sintel took the 302, could not play Real-Debrid's
 `application/force-download`, and with no conversion to fall back to showed "Playback Error / This
 server is not powerful enough to convert video." with a Retry button.
+
+## rex's own assets and translations (2026-10-25)
+
+Before the repository goes public, nothing in it may be Plex's own creative content.
+`data/favicon.ico` is rex's T-rex again (the rex-site icon) and `resource_assets.json`
+holds only the 70 names, types and sizes, with rex drawing solid stand-ins at those sizes,
+as it did before 2026-10-22. Clients only see a plain tile where Plex drew genre, DVR or
+default artwork. The 2026-10-22 fixtures keep the length and SHA-256 of Plex's favicon,
+`sugar.cmake` and the recorded Plex Web assets instead of their bytes; the identity suite
+writes stand-in web assets of the recorded length, since PMS's envelope for them depends
+only on length and extension.
+
+`test_pms_identity.py` failed 72 of 130 checks against the unfixed binary (the favicon,
+every resource path and the favicon range) and passed 130/130 after.

@@ -14,7 +14,9 @@ Without a valid answer, the newest valid packaged or cached version is retained;
 an older response cannot roll it back. `claim_state.json` keeps a newer learned version,
 including for an unclaimed server. API version `1.2.3`, both favicon routes and all 70
 bundled resources were measured on PMS `1.43.5.11029-6bf8af3f0` on 2026-10-22.
-`tests/test_pms_identity.py` replays that complete resource corpus, not a byte sample.
+rex answers every one of those paths at PMS's status and type, but with its own bytes:
+the T-rex favicon and plain images at PMS's sizes (2026-10-25).
+`tests/test_pms_identity.py` replays the complete resource path list, not a sample.
 
 Catalog `--relink` uses the same identity and refreshes only the public release list,
 not the unrelated account/presence services. The metadata provider version `6.5.0`

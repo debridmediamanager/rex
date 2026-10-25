@@ -144,5 +144,3 @@ What it does not do:
 ## License
 
 MIT. See [LICENSE](LICENSE).
-Recorded PMS resource assets retain their upstream copyrights; rex's MIT license
-does not relicense third-party artwork.
