@@ -471,6 +471,13 @@ that stream.
 - The link is the provider's own: every app and shared user who plays the file gets it, and the
   provider sees each of them download.
 
+`--part-mode redirect-only` makes sure rex carries no stream at all. It sends apps to the
+provider's link as `redirect` does and plays nothing else: no conversions, and nothing from a
+source that sends the file itself rather than a link (Usenet files, which zurg always sends
+itself). An app that cannot play a file as it is shows an error instead: "This server is not
+powerful enough to convert video" in Plex Web (every Real-Debrid file there), "This item can't be
+played right now" in Plex for Android when a quality below the original is picked.
+
 ### Local owner controls
 
 These APIs need the owner's Plex token and nothing else: unlike the feed

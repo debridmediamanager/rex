@@ -25,7 +25,8 @@ zurg's WebDAV, nginx, a NAS, object storage or `python3 -m http.server`
   so a presigned CDN link works and does not see the credential. Under `--part-mode redirect`
   a client's own byte read stops at the first redirect to another origin and the client is
   sent there, so it downloads from that host itself; a conversion still reads through rex,
-  and a source that answers with the bytes is streamed as before.
+  and a source that answers with the bytes is streamed as before (refused under
+  `--part-mode redirect-only`, which also converts nothing).
 - As many sources as needed, each registered under its own name. Each pushes to
   `/rex/feed/{its name}`, its rows remember it, and the same title from two sources is one
   row with a Media each. An item's `path` decides which library holds it, not its source.

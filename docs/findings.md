@@ -14168,3 +14168,11 @@ in the same second and played a conversion with video copied, from rex. Playback
 worked; first frame at 5.7 s against 7.5 s for the same item proxied. In proxy mode the same
 client played the same item direct (`video/mp4`, 206 from rex). So a browser gets the redirect only
 from a source whose link answers a media type; with Real-Debrid it reads through rex either way.
+
+`--part-mode redirect-only` (same rig, a source pushing Sintel and Big Buck Bunny): conversion is off
+whatever FFmpeg is configured, and a part read the source answers with the bytes is a 403. Plezy
+played Big Buck Bunny (AC3) and Plex for Android played Sintel direct from Real-Debrid, zen holding
+no connection to it. Picking 240p in Plex for Android: "Playback Error / This item can't be played
+right now. Please try again." Plex Web on Sintel took the 302, could not play Real-Debrid's
+`application/force-download`, and with no conversion to fall back to showed "Playback Error / This
+server is not powerful enough to convert video." with a Retry button.
