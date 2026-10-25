@@ -1549,3 +1549,33 @@ fn names_in_request_order(request: &Request, names: &[String]) -> Vec<String> {
     ordered
 }
 
+
+#[cfg(test)]
+mod tests {
+    use regex::Regex;
+    use serde_json::Value;
+
+    /// The media flag rules are rex's own (2026-10-25). The loader drops a rule whose pattern
+    /// does not compile, so every one must compile and name a badge the table sizes.
+    #[test]
+    fn every_media_flag_rule_compiles_and_names_a_sized_badge() {
+        let flags: Value = serde_json::from_str(include_str!("../../../data/media_flags.json")).unwrap();
+        let mut first = std::collections::HashMap::new();
+        for (kind, rules) in flags["substitutions"].as_object().unwrap() {
+            for rule in rules.as_array().unwrap() {
+                let (pattern, name) = (rule[0].as_str().unwrap(), rule[1].as_str().unwrap());
+                let regex = Regex::new(&format!("(?i){pattern}"))
+                    .unwrap_or_else(|error| panic!("{kind} {pattern}: {error}"));
+                assert!(flags["flags"][kind.as_str()].get(name).is_some(), "{kind} {name} has no size");
+                first.entry(kind.clone()).or_insert_with(Vec::new).push((regex, name.to_string()));
+            }
+        }
+        let pick = |kind: &str, value: &str| {
+            first[kind].iter().find(|(regex, _)| regex.is_match(value)).map(|(_, name)| name.clone())
+        };
+        assert_eq!(pick("studio", "Disney"), pick("studio", "Walt Disney Pictures"));
+        assert_eq!(pick("studio", "Disney Channel").as_deref(), Some("disney_channel"));
+        assert_eq!(pick("audioCodec", "dca").as_deref(), Some("dts"));
+        assert_eq!(pick("audioCodec", "ac3").as_deref(), Some("dolby_digital"));
+    }
+}

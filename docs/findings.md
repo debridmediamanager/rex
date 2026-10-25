@@ -215,18 +215,10 @@ the production server's own `/children`, show-detail and `/media/providers` payl
 
 The answer came from reading the client's own bundle. rex serves the web
 client, so its 214 minified chunks can be searched. `chunk-4304` is the pre-play
-page, and its descendant list ends in one gate:
-
-```js
-return s && c && d && d.totalSize ? React.createElement(/* the Seasons block */) : null
-```
-
-`d` is the descendant list, and `d.totalSize` comes from `main`'s
-`augmentResponse`:
-
-```js
-const t = null == e.totalSize ? void 0 : parseInteger(e.totalSize)
-```
+page, and its descendant list ends in one gate: the Seasons block renders only
+when the descendant list has a truthy `totalSize`, and nothing otherwise. That
+`totalSize` is set by `main`'s `augmentResponse`, which parses the container's
+`totalSize` attribute and leaves it undefined when the attribute is missing.
 
 **A MediaContainer with no `totalSize` yields `undefined`, and the entire
 Seasons block renders `null`.** Every season row can be perfect and it will
@@ -748,12 +740,9 @@ rex used to send draws an empty graph forever.
 #### The filter query language: the operator is part of the KEY
 
 The single biggest gap found in six passes, and it hid because of one line in the
-client (`main-*.js` module 14056):
-
-```js
-const t = e.operator.slice(0, -1)
-r.push(`${e.field}${encodeURIComponent(t)}=${e.value}`)
-```
+client (`main-*.js` module 14056), which builds each filter parameter as the
+field, then the URL-encoded operator minus its last character, then `=` and the
+value.
 
 The client holds operators WITH a trailing `=` (`>>=`, `<=`, `==`), strips that
 last character, and appends its own `=` as the separator. So "year is after 2000"
@@ -1702,12 +1691,8 @@ second socket and passes no filter."*
 Both halves were wrong, and for the reason this project's one rule exists: the
 measurement was taken **without the parameter the client sends**. The client does
 open a second socket and does pass a filter -- `chunk-1439-*.js`,
-`MediaServerLogEventConnection`:
-
-```js
-url(){ … this.server.resolveUrl("/:/websockets/notifications",
-        {params:{filters:"log"}, …}) }
-```
+`MediaServerLogEventConnection` opens `/:/websockets/notifications` with the
+parameter `filters=log`.
 
 With it, the reference pushes log frames continuously -- **386 in 14 seconds**:
 
@@ -14220,3 +14205,13 @@ to the new English, keeping rex's own translations. Short setting names and opti
 are kept as PMS names them: they are names a user matches against Plex guides, not prose.
 Fixtures that recorded those sentences (including `reference-walk.jsonl` and the shared-user
 XML) carry rex's wording in their place.
+
+`media_flags.json` (2026-10-25): rex never served PMS's badge artwork, only a plain image
+at each badge's size, so PMS's 624 hand-written studio and codec patterns did nothing but pick a
+size. They are replaced by rex's own rules: one per badge built from its name, most specific
+first, a few short studio names (`Disney`, `Fox`, `Warner`) and rex's own codec aliases
+(`dca`/`dts`, `ac3`, `truehd`, `pcm_*`, `vorbis`, `avc1`/`x264`, `x265`, `wmv1-3`, `xvid`/`divx`).
+Badge names and sizes stay. Plex's table also carried lookahead patterns the Rust regex crate
+cannot compile, which the loader had been dropping silently, and five rules naming badges with
+no size; `framework::tests` now fails on both. The quoted Plex Web code in this file is
+described in prose instead (card 278).

@@ -94,7 +94,8 @@ The localised strings (`translations.json`, `activity_strings.json`, `refusal_st
 `plugin_bundles.json`, the agent setting labels in `plugin_prefs.json` and the English help text
 (`summary`, and labels that are whole sentences) in `server_prefs.json`, `section_prefs*.json`,
 `item_prefs.json` and the collection settings in `runtime/collections.rs` are rex's own wording,
-written from the English. Short setting names (`Friendly name`) and option words stay as PMS
+written from the English. `media_flags.json`'s matching rules are rex's own too (its badge names and sizes are
+PMS's). Short setting names (`Friendly name`) and option words stay as PMS
 names them, so guides written for Plex still find them. `translations.json` is keyed by that
 English, so a change to an English string re-keys its translations in the same commit: what is measured off a real PMS is WHICH strings it translates in which language,
 never its wording. A newly measured string gets rex's own translation, and a fixture recorded
