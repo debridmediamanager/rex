@@ -14192,3 +14192,21 @@ only on length and extension.
 
 `test_pms_identity.py` failed 72 of 130 checks against the unfixed binary (the favicon,
 every resource path and the favicon range) and passed 130/130 after.
+
+The localised sidecars are rex's own too: 24,463 strings in 45 languages (the seven files
+named in CLAUDE.md), written from the English without reference to PMS's wording; which
+string is translated in which language, and which PMS leaves in English, still follows the
+measurements. About 5-10% of the long strings came out word for word as PMS words them
+(evenly across languages, mostly enum lists of short labels), the expected rate for two
+independent translations of formulaic text. The language pickers (`languageOverride`'s
+`:Library default`, `:Account default` and `:Series default` lists) are built from
+`agent_languages.json`'s rows for the language, which PMS's lists equal in 43 of 44 languages
+(pt-PT takes `pt`'s), behind rex's own head and its own name for English; the en-GB country
+list keeps PMS's plain names in A-Z order, as `agent_languages.json` keeps its CLDR-style
+names. Language tags PMS cannot name (`english`,
+`phi`) still echo the tag. PMS answers pt-PT from the Brazilian catalogue (589 of 593
+cells equal pt-BR's), so rex's pt-PT takes rex's pt-BR wording in those cells and its own in
+the other four. The fixtures that recorded PMS in other languages
+(`c87_a_music_i18n_s42.json`, `item_language_override_zen.json`, `specials_zen.json`) had
+PMS's wording swapped for rex's, matched by language and by the English at the same path.
+The attribution blurbs are rewritten, same links.

@@ -87,7 +87,13 @@ real PMS localises per `X-Plex-Language` (`activity_strings.json`, `item_languag
 (`crossdomain.xml`, `clientaccesspolicy.xml`, and `favicon.ico`). The favicon is rex's own
 T-rex, and `resource_assets.json` keeps only the 70 names, types and sizes PMS answers:
 rex draws plain stand-ins at those sizes. Never check in Plex's own artwork, web assets or
-other bytes, here or in a fixture; record a hash and length instead (2026-10-25). Runtime files never go in
+other bytes, here or in a fixture; record a hash and length instead (2026-10-25).
+The localised strings (`translations.json`, `activity_strings.json`, `refusal_strings.json`,
+`stream_words.json`, `title_templates.json`, `item_language_names.json`,
+`regional_server_prefs.json`) and `attributions.json` are rex's own wording, written from the
+English: what is measured off a real PMS is WHICH strings it translates in which language,
+never its wording. A newly measured string gets rex's own translation, and a fixture recorded
+in another language has PMS's wording swapped for rex's before it is checked in. Runtime files never go in
 `data/`: `plex_cache.db`, `claim_state.json` and `rex-direct.json` are resolved beside the
 **catalog**, because they are state rather than measurement.
 The state file is state too: a SQLite database beside the catalog by default

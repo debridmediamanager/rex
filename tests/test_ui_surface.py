@@ -8558,7 +8558,7 @@ def main():
           bare_c50e.startswith(":Library default|ca-ES:catal") and bare_c50e != english_c50e,
           bare_c50e[:60])
     check("...and another language keeps its own names AND its own order",
-          turkish_c50e.startswith(":Library default|de-DE:Almanca|ar-SA:Arap"), turkish_c50e[:60])
+          turkish_c50e.startswith(":Kitaplık varsayılanı|de-DE:Almanca|ar-SA:Arap"), turkish_c50e[:60])
 
     # A movie library's local-asset preference and provider media capabilities
     # are separate from server preference values configured during this suite.
@@ -10648,7 +10648,7 @@ def main():
           served_c74n)
     check("a sidecar's Plex Web title localises its External word",
           localised_c73a == {"de": ["Unbekannt (SRT Extern)"], "ja": ["不明 (SRT 外部)"],
-                             "sr": ["Непознато (SRT Екстерно)"]}, localised_c73a)
+                             "sr": ["непознато (SRT спољни)"]}, localised_c73a)
 
 
     # Measured on a writable copy of the reference: a PUT to a stream the server HAS is
@@ -15766,10 +15766,10 @@ def main():
     butler_c17d3 = de_c17d3("/butler")
     check("the translation table covers the prefs, search hub and butler strings",
           "Sammlungen" in prefs_c17d3 and "Collections" in en_prefs_c17d3
-          and "Schauspieler" in hubs_c17d3 and "Sammlungen" in hubs_c17d3
+          and "Darsteller" in hubs_c17d3 and "Sammlungen" in hubs_c17d3
           and "Datenbank sichern" in butler_c17d3,
           "prefs=%s hubs=%s butler=%s"
-          % ("Sammlungen" in prefs_c17d3, "Schauspieler" in hubs_c17d3,
+          % ("Sammlungen" in prefs_c17d3, "Darsteller" in hubs_c17d3,
              "Datenbank sichern" in butler_c17d3))
 
     # Cycle 41 swept every safe read family from the complete retained client and
@@ -15791,9 +15791,9 @@ def main():
                          for hub_c41r3 in show_hubs_de_c41r3.get("Hub") or []}
     check("the cycle 41 prefs and per-library hub strings are localised",
           (prefs_by_id_c41r3.get("TranscoderTempDirectory") or {}).get("summary")
-          == "Verzeichnis das während des Transkodierens für temporäre Dateien genutzt wird"
-          and "Top-Auswahl ungesehener Filme" in movie_titles_c41r3
-          and {"Serie starten", "Bestbewertete Serien"} <= show_titles_c41r3,
+          == "Verzeichnis für temporäre Dateien beim Transkodieren."
+          and "Top ungesehene Filme" in movie_titles_c41r3
+          and {"Jetzt ansehen", "Bestbewertete Serien"} <= show_titles_c41r3,
           "prefs=%r movie=%s show=%s"
           % ((prefs_by_id_c41r3.get("TranscoderTempDirectory") or {}).get("summary"),
              sorted(movie_titles_c41r3), sorted(show_titles_c41r3)))
@@ -15825,7 +15825,7 @@ def main():
     ordering_c17d4 = settings_c17d4.get("showOrdering") or {}
     flatten_c17d4 = settings_c17d4.get("flattenSeasons") or {}
     check("the localiser reaches a row's Preferences block",
-          ordering_c17d4.get("label") == "Reihenfolge Folgen"
+          ordering_c17d4.get("label") == "Folgenreihenfolge"
           and (english_c17d4.get("showOrdering") or {}).get("label") == "Episode ordering"
           and flatten_c17d4.get("label") == "Staffeln"
           and "Mediathek-Standard" in str(flatten_c17d4.get("enumValues") or "")
@@ -16795,19 +16795,19 @@ def main():
     # Cycle 18: the translation table is only as wide as `capture_i18n.py`'s path list,
     # which 3.3 has said since cycle 16. A third sweep found five more families the
     # reference translates: every `firstCharacter` BUCKET names itself in `title2`
-    # ("Start with 'A'" -> `Beginne mit „A“`, with the QUOTE MARKS moving too, so
+    # ("Start with 'A'" -> `Beginnt mit „A“`, with the QUOTE MARKS moving too, so
     # the string cannot be composed from a stem and the key), `/query/parse`'s
     # `fieldTitle` for every rule a client can build, the music and photo `/filters`
     # axes, a music library's own prefs, and the per-library hub page's shelf titles.
     status, bucket, _ = get(base, "/library/sections/%s/firstCharacter/T?X-Plex-Language=de"
                             % movie_section)
     check("firstCharacter bucket title2 is translated",
-          status == 200 and bucket.get("title2") == "Beginne mit „T“",
+          status == 200 and bucket.get("title2") == "Beginnt mit „T“",
           "%s %r" % (status, bucket.get("title2")))
     status, bucket, _ = get(base, "/library/sections/%s/firstCharacter/T?X-Plex-Language=fr"
                             % movie_section)
     check("and the French form carries plain quotes, as the reference sends them",
-          status == 200 and bucket.get("title2") == "Commencer avec 'T'",
+          status == 200 and bucket.get("title2") == "Commençant par « T »",
           "%s %r" % (status, bucket.get("title2")))
 
     # Cycle 18, measured on the 1.42.2 reference over 3,887 real rows: on a string field no Meta
@@ -19630,9 +19630,9 @@ def main():
     sys_c25e = {lang_c25e: titles_c25e("/system", lang_c25e)
                 for lang_c25e in ("en", "de")}
     check("/library's three Directory titles are localised",
-          lib_c25e["de"].get("sections") == "Bibliothek-Bereiche"
-          and lib_c25e["de"].get("onDeck") == "Aktuelle Inhalte"
-          and lib_c25e["fr"].get("sections") == "Sections de biblioth\u00e8que"
+          lib_c25e["de"].get("sections") == "Mediathekbereiche"
+          and lib_c25e["de"].get("onDeck") == "Inhalte als Nächstes"
+          and lib_c25e["fr"].get("sections") == "Sections de la biblioth\u00e8que"
           and lib_c25e["en"].get("sections") == "Library Sections",
           str(lib_c25e["de"]))
     check("/system's identical string is NOT localised",
@@ -29837,12 +29837,14 @@ def main():
     # other identifier -- the four modern agents included -- is a 404 on both leaves. The
     # bundle rex itself serves draws a 100x100 `<img>` per listed agent from the image
     # leaf, and rex 404'd every one.
+    # The texts are rex's own wording (2026-10-25), so their lengths come from the sidecar.
+    attributions_c53l = json.load(open(os.path.join(REPO_ROOT, "data", "attributions.json"), encoding="utf-8"))
     wrong_c53l = []
     for identifier_c53l, text_c53l, image_c53l in (
-            ("com.plexapp.agents.themoviedb", 232, True),
-            ("com.plexapp.agents.imdb", 519, True),
-            ("com.plexapp.agents.thetvdb", 235, True),
-            ("com.plexapp.agents.lastfm", 84, True),
+            ("com.plexapp.agents.themoviedb", len(attributions_c53l["com.plexapp.agents.themoviedb"]["text"].encode()), True),
+            ("com.plexapp.agents.imdb", len(attributions_c53l["com.plexapp.agents.imdb"]["text"].encode()), True),
+            ("com.plexapp.agents.thetvdb", len(attributions_c53l["com.plexapp.agents.thetvdb"]["text"].encode()), True),
+            ("com.plexapp.agents.lastfm", len(attributions_c53l["com.plexapp.agents.lastfm"]["text"].encode()), True),
             ("org.musicbrainz.agents.music", 0, False),
             ("com.plexapp.agents.none", None, False),
             ("tv.plex.agents.movie", None, False)):
@@ -32010,11 +32012,11 @@ def main():
           and "català" not in audio_c59a, audio_c59a[:120])
     de_c59a = enums_c59a(show, "de").get("audioLanguage") or ""
     check("the inherit option and the head are localised on their own (German)",
-          de_c59a.startswith(":Benutzer-Standard|en:Englisch|") and "|ca-ES:Katalanisch|" in de_c59a,
+          de_c59a.startswith(":Kontostandard|en:Englisch|") and "|ca-ES:Katalanisch|" in de_c59a,
           de_c59a[:120])
     da_c59a = enums_c59a(show, "da").get("audioLanguage") or ""
     check("the Danish inherit option is the 1.42.2 reference's, not the table list's lead",
-          da_c59a.startswith(":Kontomenu|"), da_c59a[:60])
+          da_c59a.startswith(":Kontostandard|"), da_c59a[:60])
     season_en_c59a = enums_c59a(season_c59a, "en").get("audioLanguage") or ""
     check("a season's language enum keeps its own head under en",
           season_en_c59a.startswith(":Series default|en:English|"), season_en_c59a[:80])
@@ -32362,7 +32364,8 @@ def main():
     # Cycle 59: `translations.json` is PER VERSION. It was captured off plexlab (1.43.4); the 1.42.2
     # reference (1.42.2, the build rex reports) words 405 cells differently -- re-captured off the
     # 1.42.2 reference with the same tool and overlaid. Three measured cells: a show's Seasons enum
-    # in Danish and Serbian, and Portuguese leaving the subtitle mode's inherit option in English.
+    # in Danish and Serbian, and Portuguese's subtitle mode (left half-English by the reference;
+    # rex's own wording, 2026-10-25, translates it whole).
     import html as html_c59n
     def enum_c59n(language_c59n, setting_c59n):
         body_c59n = urllib.request.urlopen(urllib.request.Request(
@@ -32373,9 +32376,9 @@ def main():
     cells_c59n = (enum_c59n("da", "flattenSeasons"), enum_c59n("sr", "flattenSeasons"),
                   enum_c59n("pt", "subtitleMode"))
     check("the localised enums are 1.42.2's wording",
-          cells_c59n[0] == "-1:Bibliotekets standard|0:Show|1:Skjul"
-          and cells_c59n[1] == "-1:Библиотека подразумевана|0:Show|1:Сакрити"
-          and str(cells_c59n[2]).startswith("-1:Account default|0:Selecionado manualmente|"),
+          cells_c59n[0] == "-1:Biblioteksstandard|0:Vis|1:Skjul"
+          and cells_c59n[1] == "-1:Подразумевано за библиотеку|0:Прикажи|1:Сакриј"
+          and str(cells_c59n[2]).startswith("-1:Predefinição da conta|0:Seleção manual|"),
           str(cells_c59n))
 
     # Cycle 60, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4): creating a
@@ -32491,8 +32494,8 @@ def main():
     ja_c60d = hub_titles_c60d(movie_section, "ja")
     check("a hub title with a name inserted is localised around the name",
           de_c60d.get("movie.recentlyadded.%s" % movie_section)
-          == "Zuletzt in %s hinzugefügt" % movie_title_c60d
-          and ja_c60d.get("movie.recentlyadded.%s" % movie_section) == "最近追加した%s" % movie_title_c60d
+          == "Kürzlich hinzugefügt in %s" % movie_title_c60d
+          and ja_c60d.get("movie.recentlyadded.%s" % movie_section) == "%s に最近追加" % movie_title_c60d
           and all(t.startswith("Top-Filme in ") for k, t in de_c60d.items()
                   if str(k).startswith("movie.genre")),
           str((de_c60d, ja_c60d.get("movie.recentlyadded.%s" % movie_section))))
@@ -32516,7 +32519,7 @@ def main():
     check("the localised strings are 1.42.2's, and the table holds the Related and manage titles",
           (prefs_c60e.get("episodeSort") or {}).get("summary") == "How to sort the episodes for shows."
           and related_c60e in ([], ["Ähnliche Filme"])
-          and manage_c60e.get("recent.library.playlists") == "Mediathek-Wiedergabelisten"
+          and manage_c60e.get("recent.library.playlists") == "Mediathek-Playlists"
           and manage_c60e.get("movie.genre") == "Top-Filme in (Genre)",
           str(((prefs_c60e.get("episodeSort") or {}).get("summary"), related_c60e, manage_c60e)))
     postplay_c60e = [h.get("title") for h in loc_c60e("/hubs/metadata/%s/postplay" % first_c60e, "de").get("Hub") or []]
@@ -32530,7 +32533,7 @@ def main():
                                     "X-Plex-Language": "ja"}), timeout=30).read())["MediaContainer"]
     iface_c60f = {s.get("id"): s for s in body_c60f.get("Setting") or []}.get("PreferredNetworkInterface") or {}
     check("the network interface picker's lead is localised",
-          str(iface_c60f.get("enumValues", "")).startswith(":全て"), str(iface_c60f.get("enumValues"))[:40])
+          str(iface_c60f.get("enumValues", "")).startswith(":すべて"), str(iface_c60f.get("enumValues"))[:40])
 
     # Cycle 61, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4):
     #  * a section-path collection rename onto ANY name in the collection tag TABLE is a 409
@@ -32628,7 +32631,7 @@ def main():
     de_c61d, da_c61d = prefs_c61d("de"), prefs_c61d("da")
     check("the server settings are 1.42.2's wording",
           (de_c61d.get("IPNetworkType") or {}).get("label") == "Client Network"
-          and (da_c61d.get("logDebug") or {}).get("label") == "Aktiver Plex Media Server debug logning",
+          and (da_c61d.get("logDebug") or {}).get("label") == "Aktivér fejlfindingslogning for Plex Media Server",
           str(((de_c61d.get("IPNetworkType") or {}).get("label"), (da_c61d.get("logDebug") or {}).get("label"))))
 
     # Cycle 62, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4), and through
@@ -32768,7 +32771,7 @@ def main():
     request(base, "PUT", "/library/metadata/%s?collection.locked=0" % first_c64c)
     check("a collection's Advanced settings are localised",
           (settings_c64c.get("collectionMode") or {}).get("label") == "Sammlungsmodus"
-          and (settings_c64c.get("collectionSort") or {}).get("enumValues") == "0:Veröffentlichungsdatum|1:Alphabetisch",
+          and (settings_c64c.get("collectionSort") or {}).get("enumValues") == "0:Erscheinungsdatum|1:Alphabetisch",
           str({k: v.get("label") for k, v in settings_c64c.items()}))
 
     # Cycle 65, measured on plexscratch42 (1.42.2) in ten languages through one scan: a socket
@@ -32785,9 +32788,9 @@ def main():
     accept_c65a = titles_c65a("", "Accept-Language: de-DE,de;q=0.9\r\n")
     en_c65a = titles_c65a("", "")
     check("activity titles on the notification socket follow the socket's language",
-          "Suche..." in de_c65a and "Abonnements verarbeiten …" in de_c65a
-          and any(str(t).startswith("Durchsuche ") for t in de_c65a)
-          and "Suche..." in accept_c65a and "Scanning" in en_c65a
+          "Scan läuft" in de_c65a and "Abonnements werden verarbeitet" in de_c65a
+          and any(str(t).endswith(" wird gescannt") for t in de_c65a)
+          and "Scan läuft" in accept_c65a and "Scanning" in en_c65a
           and "Processing subscriptions" in en_c65a,
           str((de_c65a[:3], accept_c65a[:3], en_c65a[:3])))
 
@@ -32828,7 +32831,7 @@ def main():
     tw_c66f = titles_c66f("Accept-Language: zh-TW\r\n")
     next_c66f = titles_c66f("Accept-Language: zh-TW,de;q=0.9\r\n")
     check("a Traditional-Chinese Accept-Language is skipped, not read as Simplified",
-          "Scanning" in tw_c66f and "Suche..." in next_c66f, str((tw_c66f[:2], next_c66f[:2])))
+          "Scanning" in tw_c66f and "Scan läuft" in next_c66f, str((tw_c66f[:2], next_c66f[:2])))
 
     # Cycle 66, measured on plexscratch42 in ten languages over both transports: the butler's
     # ProgressNotification sentences follow the socket's language; a scan's stay English.
@@ -32837,7 +32840,7 @@ def main():
     said_c66c = [n.get("message") for f in frames_c66c
                  for n in f.get("NotificationContainer", {}).get("ProgressNotification") or []]
     check("the butler's progress messages are localised per socket",
-          "Der Butler hat die Datenbank gesichert." in said_c66c, str(said_c66c[:3]))
+          "Der Butler hat deine Datenbank gesichert." in said_c66c, str(said_c66c[:3]))
 
     # Cycle 66, measured on the 1.42.2 reference read whole: the regional pt-BR settings carry
     # 1.42.2's wording on the transcoder rows, and 1.42.2 leaves the CPU transcode limit in English.
@@ -32847,7 +32850,7 @@ def main():
     rows_c66d = {row.get("id"): row for row in body_c66d["MediaContainer"].get("Setting") or []}
     check("the regional pt-BR settings carry 1.42.2's transcoder wording",
           (rows_c66d.get("TranscoderTempDirectory") or {}).get("summary")
-          == "Diretório utilizado ao transcodificar para arquivos temporários."
+          == "Diretório para arquivos temporários durante a transcodificação."
           and (rows_c66d.get("_CPU-TranscodeCountLimit") or {}).get("label")
           == "Maximum simultaneous CPU transcodes",
           str([(rows_c66d.get(k) or {}).get("summary", "")[:60]
@@ -32870,8 +32873,8 @@ def main():
     no_scan_c66g = [n.get("Activity", {}).get("title") for f in frames_c66g
                     for n in f.get("NotificationContainer", {}).get("ActivityNotification") or []]
     check("Norwegian (no) and Afrikaans (af) are answered in their own catalogues",
-          "Publikumsvurdering" in sorts_c66g("no") and "Kykergradering" in sorts_c66g("af")
-          and friendly_c66g("no") == "Kallenavn" and friendly_c66g("af") == "Vriendlike naam"
+          "Publikumsvurdering" in sorts_c66g("no") and "Gehoorgradering" in sorts_c66g("af")
+          and friendly_c66g("no") == "Visningsnavn" and friendly_c66g("af") == "Vriendelike naam"
           and "Skanner" in no_scan_c66g,
           str((sorts_c66g("no")[:4], sorts_c66g("af")[:4], friendly_c66g("no"),
                friendly_c66g("af"), no_scan_c66g[:2])))
@@ -32890,9 +32893,9 @@ def main():
     br_scan_c66h = [n.get("Activity", {}).get("title") for f in frames_c66h
                     for n in f.get("NotificationContainer", {}).get("ActivityNotification") or []]
     check("Brazilian Portuguese is its own catalogue on every document and the socket",
-          "Classificação de usuários" in sorts_c66h("pt-BR")
-          and "Classificação de usuários" in sorts_c66h("pt-PT")
-          and "Avaliação da Plateia" in sorts_c66h("pt") and "Buscando" in br_scan_c66h,
+          "Avaliação do público" in sorts_c66h("pt-BR")
+          and "Avaliação do público" in sorts_c66h("pt-PT")
+          and "Avaliação do público" in sorts_c66h("pt") and "Varrendo" in br_scan_c66h,
           str((sorts_c66h("pt-BR")[:5], sorts_c66h("pt")[:5], br_scan_c66h[:2])))
 
     # Cycle 66, measured on the 1.42.2 reference, plexlab and plexscratch42: the ICU-generated names
@@ -32922,7 +32925,7 @@ def main():
                                         "X-Plex-Language": language_c66j}), timeout=30).read())
                 ["MediaContainer"].get("Directory") or []]
     check("/library's titles are localised in Afrikaans and Brazilian Portuguese",
-          "Seções da Biblioteca" in library_c66j("pt-BR")
+          "Seções da biblioteca" in library_c66j("pt-BR")
           and "Biblioteekafdelings" in library_c66j("af"),
           str((library_c66j("pt-BR"), library_c66j("af"))))
 
@@ -32955,7 +32958,7 @@ def main():
                                               .get("Preferences") or {}).get("Setting") or []}
         return (rows_c67a.get("showOrdering") or {}).get("enumValues", "").split("|")[0]
     check("a show's Episode ordering lead is 1.42.2's and localised in af and pt-BR",
-          ordering_c67a("sr") == ":Библиотека подразумевана"
+          ordering_c67a("sr") == ":Подразумевано за библиотеку"
           and ordering_c67a("af") == ":Biblioteekverstek"
           and ordering_c67a("pt-BR") == ":Padrão da biblioteca",
           str([ordering_c67a(l) for l in ("sr", "af", "pt-BR")]))
@@ -32992,9 +32995,9 @@ def main():
         "nn-NO,nn;q=0.9,en-US;q=0.8,en;q=0.7", "nn,ca;q=0.9")}
     check("a fallback-only language loses to an exact catalogue later in Accept-Language",
           got_c68a["ca-ES,ca;q=0.9,en-US;q=0.8,en;q=0.7"] == "Friendly name"
-          and got_c68a["ca,fr;q=0.9"] == "Nom d'usage" and got_c68a["ca"] == "Nombre familiar"
+          and got_c68a["ca,fr;q=0.9"] == "Nom convivial" and got_c68a["ca"] == "Nom descriptiu"
           and got_c68a["nn-NO,nn;q=0.9,en-US;q=0.8,en;q=0.7"] == "Friendly name"
-          and got_c68a["nn,ca;q=0.9"] == "Kallenavn", str(got_c68a))
+          and got_c68a["nn,ca;q=0.9"] == "Visningsnavn", str(got_c68a))
 
     # Cycle 70, measured on the 1.42.2 reference: Plex for Android asks /service/ultrablur/colors
     # for an item's backdrop tint (js:831397). The url resolves as the photo transcoder does.
@@ -33212,8 +33215,8 @@ def main():
                                       if h.get("hubIdentifier") == "tv.upnext"]
         request(base, "PUT", "/:/unscrobble?identifier=com.plexapp.plugins.library&key=%s" % first_c71a)
         check("the post-play Up Next hub title is localised",
-              titles_c71a == {"en": ["Up Next"], "de": ["Demnächst"], "fr": ["À suivre"],
-                              "ja": ["次に登場"], "ru": ["Очередь воспр."], "th": ["Up Next"]},
+              titles_c71a == {"en": ["Up Next"], "de": ["Als Nächstes"], "fr": ["À regarder ensuite"],
+                              "ja": ["次に再生"], "ru": ["Далее"], "th": ["Up Next"]},
               str(titles_c71a))
 
     # Cycle 71, measured on the 1.42.2 reference (movie 380) and plexlab: the inline Related block's
@@ -33231,7 +33234,7 @@ def main():
     check("the inline Related hub title is localised on a detail row",
           en_c71b.get("movie.similar") == "Related Movies"
           and dict(related_c71b["de"]).get("movie.similar") == "Ähnliche Filme"
-          and dict(related_c71b["fr"]).get("movie.similar") == "Films associés"
+          and dict(related_c71b["fr"]).get("movie.similar") == "Films similaires"
           and dict(related_c71b["ja"]).get("movie.similar") == "関連する映画"
           and dict(related_c71b["th"]).get("movie.similar") == "Related Movies", str(related_c71b))
 

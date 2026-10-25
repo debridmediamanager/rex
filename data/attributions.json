@@ -1,6 +1,6 @@
 {
  "com.plexapp.agents.fanarttv": {
-  "text": "\n\t\t<a href=\"http://fanart.tv\">Fanart.tv</a> is a community driven website providing fanart for TV shows, movies and artists.<br/>\n\t\tHave some fanart to share? Visit <a href=\"http://fanart.tv\">fanart.tv</a>\n\t",
+  "text": "<a href=\"http://fanart.tv\">Fanart.tv</a>: artwork for films, shows and artists, shared by its community.",
   "textType": "text/plain",
   "image": [
    33,
@@ -9,7 +9,7 @@
   "imageType": "image/png"
  },
  "com.plexapp.agents.htbackdrops": {
-  "text": "High quality backdrops and wallpapers from <a href=\"http://www.htbackdrops.org/\">Home Theater Backdrops</a> for use in HTPC software.",
+  "text": "Backdrops from <a href=\"http://www.htbackdrops.org/\">Home Theater Backdrops</a>.",
   "textType": "text/plain",
   "image": [
    60,
@@ -18,7 +18,7 @@
   "imageType": "image/png"
  },
  "com.plexapp.agents.lastfm": {
-  "text": "\n\t\tConcert information provided by <a href=\"http://www.songkick.com/\">songkick</a>\n\t",
+  "text": "Concert dates from <a href=\"http://www.songkick.com/\">Songkick</a>.",
   "textType": "text/plain",
   "image": [
    261,
@@ -27,7 +27,7 @@
   "imageType": "image/png"
  },
  "com.plexapp.agents.lyricfind": {
-  "text": "\n\t\tLyrics Licensed & Provided by <a href=\"http://www.lyricfind.com/\">LyricFind</a>\n\t",
+  "text": "Lyrics from <a href=\"http://www.lyricfind.com/\">LyricFind</a>, under licence.",
   "textType": "text/plain",
   "image": [
    235,
@@ -36,7 +36,7 @@
   "imageType": "image/png"
  },
  "com.plexapp.agents.movieposterdb": {
-  "text": "\n\t\tThe main purpose of the <a href=\"http://www.cinematerial.com\">CineMaterial.com</a> website <br/>\n        is to provide a database with movie posters that is as <br/> complete as possible. All movie posters are free to download.\n\t",
+  "text": "Film posters from <a href=\"http://www.cinematerial.com\">CineMaterial.com</a>.",
   "textType": "text/plain",
   "image": [
    320,
@@ -49,7 +49,7 @@
   "textType": "text/plain"
  },
  "com.plexapp.agents.imdb": {
-  "text": "\n\t\tPrimary metadata provided by <a href=\"http://www.imdb.com/\">IMDb</a><br/>\n\t\tAdditional metadata provided by <a href=\"http://www.themoviedb.org\">The Movie Database</a>, a free and open movie database. <br/>\n\t\tVideo previews provided by <a href=\"http://internetvideoarchive.com\">Internet Video Archive</a><br/>\n\t\tOther content from\n\t\t<a href=\"http://en.wikipedia.org/\">Wikipedia</a>,\n\t\tlicensed under the <a href=\"http://www.gnu.org/copyleft/fdl.html\">GFDL</a>\n\t\t<a href=\"http://www.chapterdb.org/\">ChapterDB.org</a>\n\t",
+  "text": "Metadata from <a href=\"http://www.imdb.com/\">IMDb</a> and <a href=\"http://www.themoviedb.org\">The Movie Database</a>.<br/>Trailers from <a href=\"http://internetvideoarchive.com\">Internet Video Archive</a>.<br/>Text from <a href=\"http://en.wikipedia.org/\">Wikipedia</a> under the <a href=\"http://www.gnu.org/copyleft/fdl.html\">GFDL</a>; chapters from <a href=\"http://www.chapterdb.org/\">ChapterDB.org</a>.",
   "textType": "text/plain",
   "image": [
    63,
@@ -58,7 +58,7 @@
   "imageType": "image/png"
  },
  "com.plexapp.agents.themoviedb": {
-  "text": "\n\t\t<a href=\"http://www.themoviedb.org\">The Movie Database</a> is a free and open movie database. <br/>\n\t\tIt's completely user driven by people like you. <br/> The Movie Database is currently used by millions of people every month.\n\t",
+  "text": "<a href=\"http://www.themoviedb.org\">The Movie Database</a>: a free film and TV database edited by its users.",
   "textType": "text/plain",
   "image": [
    70,
@@ -67,7 +67,7 @@
   "imageType": "image/png"
  },
  "com.plexapp.agents.thetvdb": {
-  "text": "\n\t\t<a href=\"http://thetvdb.com\">TheTVDB.com</a> is a community driven database of television shows. <br/>\n\t\tIt is our aim to be the most complete and accurate source of<br/> information on TV series from many languages and countries.\n\t",
+  "text": "<a href=\"http://thetvdb.com\">TheTVDB.com</a>: a television database edited by its users.",
   "textType": "text/plain",
   "image": [
    80,

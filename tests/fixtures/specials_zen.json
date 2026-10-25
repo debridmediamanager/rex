@@ -114,25 +114,25 @@
    "localised": {
     "af": {
      "seasons": [
-      "Spesiale",
+      "Spesiale episodes",
       "Seisoen 1",
       "Seisoen 2",
       "Seisoen 3"
      ],
      "specials_title2": "Specials",
      "specials_parentTitle": "",
-     "episode_parentTitle": "Spesiale"
+     "episode_parentTitle": "Spesiale episodes"
     },
     "ar": {
      "seasons": [
-      "عروض خاصة",
+      "حلقات خاصة",
       "الموسم 1",
       "الموسم 2",
       "الموسم 3"
      ],
      "specials_title2": "Specials",
      "specials_parentTitle": "",
-     "episode_parentTitle": "عروض خاصة"
+     "episode_parentTitle": "حلقات خاصة"
     },
     "bg": {
      "seasons": [
@@ -147,25 +147,25 @@
     },
     "ca": {
      "seasons": [
-      "Especiales",
+      "Especials",
       "Temporada 1",
       "Temporada 2",
       "Temporada 3"
      ],
      "specials_title2": "Specials",
      "specials_parentTitle": "",
-     "episode_parentTitle": "Especiales"
+     "episode_parentTitle": "Especials"
     },
     "cs": {
      "seasons": [
-      "Bonusy",
+      "Speciály",
       "Řada 1",
       "Řada 2",
       "Řada 3"
      ],
      "specials_title2": "Specials",
      "specials_parentTitle": "",
-     "episode_parentTitle": "Bonusy"
+     "episode_parentTitle": "Speciály"
     },
     "da": {
      "seasons": [
@@ -246,14 +246,14 @@
     },
     "et": {
      "seasons": [
-      "Erisaated",
+      "Eriosad",
       "Hooaeg 1",
       "Hooaeg 2",
       "Hooaeg 3"
      ],
      "specials_title2": "Specials",
      "specials_parentTitle": "",
-     "episode_parentTitle": "Erisaated"
+     "episode_parentTitle": "Eriosad"
     },
     "fa": {
      "seasons": [
@@ -279,25 +279,25 @@
     },
     "fr": {
      "seasons": [
-      "Spécials",
+      "Épisodes spéciaux",
       "Saison 1",
       "Saison 2",
       "Saison 3"
      ],
      "specials_title2": "Specials",
      "specials_parentTitle": "",
-     "episode_parentTitle": "Spécials"
+     "episode_parentTitle": "Épisodes spéciaux"
     },
     "fr-CA": {
      "seasons": [
-      "Spécials",
+      "Épisodes spéciaux",
       "Saison 1",
       "Saison 2",
       "Saison 3"
      ],
      "specials_title2": "Specials",
      "specials_parentTitle": "",
-     "episode_parentTitle": "Spécials"
+     "episode_parentTitle": "Épisodes spéciaux"
     },
     "he": {
      "seasons": [
@@ -312,25 +312,25 @@
     },
     "hr": {
      "seasons": [
-      "Specijali",
+      "Posebne epizode",
       "Sezona 1",
       "Sezona 2",
       "Sezona 3"
      ],
      "specials_title2": "Specials",
      "specials_parentTitle": "",
-     "episode_parentTitle": "Specijali"
+     "episode_parentTitle": "Posebne epizode"
     },
     "hu": {
      "seasons": [
-      "Különlegességek",
+      "Különkiadások",
       "1. évad",
       "2. évad",
       "3. évad"
      ],
      "specials_title2": "Specials",
      "specials_parentTitle": "",
-     "episode_parentTitle": "Különlegességek"
+     "episode_parentTitle": "Különkiadások"
     },
     "is": {
      "seasons": [
@@ -356,36 +356,36 @@
     },
     "ja": {
      "seasons": [
-      "スペシャル",
-      "シーズン 1",
-      "シーズン 2",
-      "シーズン 3"
+      "特別編",
+      "シーズン1",
+      "シーズン2",
+      "シーズン3"
      ],
      "specials_title2": "Specials",
      "specials_parentTitle": "",
-     "episode_parentTitle": "スペシャル"
+     "episode_parentTitle": "特別編"
     },
     "ko": {
      "seasons": [
-      "특별영상",
+      "스페셜",
       "시즌 1",
       "시즌 2",
       "시즌 3"
      ],
      "specials_title2": "Specials",
      "specials_parentTitle": "",
-     "episode_parentTitle": "특별영상"
+     "episode_parentTitle": "스페셜"
     },
     "lt": {
      "seasons": [
-      "Specialūs pasiūlymai",
-      "Sezonas 1",
-      "Sezonas 2",
-      "Sezonas 3"
+      "Specialieji epizodai",
+      "1 sezonas",
+      "2 sezonas",
+      "3 sezonas"
      ],
      "specials_title2": "Specials",
      "specials_parentTitle": "",
-     "episode_parentTitle": "Specialūs pasiūlymai"
+     "episode_parentTitle": "Specialieji epizodai"
     },
     "my": {
      "seasons": [
@@ -400,47 +400,47 @@
     },
     "nb": {
      "seasons": [
-      "Spesialer",
+      "Spesialepisoder",
       "Sesong 1",
       "Sesong 2",
       "Sesong 3"
      ],
      "specials_title2": "Specials",
      "specials_parentTitle": "",
-     "episode_parentTitle": "Spesialer"
+     "episode_parentTitle": "Spesialepisoder"
     },
     "nl": {
      "seasons": [
-      "Extra's",
+      "Specials",
       "Seizoen 1",
       "Seizoen 2",
       "Seizoen 3"
      ],
      "specials_title2": "Specials",
      "specials_parentTitle": "",
-     "episode_parentTitle": "Extra's"
+     "episode_parentTitle": "Specials"
     },
     "no": {
      "seasons": [
-      "Spesialer",
+      "Spesialepisoder",
       "Sesong 1",
       "Sesong 2",
       "Sesong 3"
      ],
      "specials_title2": "Specials",
      "specials_parentTitle": "",
-     "episode_parentTitle": "Spesialer"
+     "episode_parentTitle": "Spesialepisoder"
     },
     "pl": {
      "seasons": [
-      "Dodatki",
+      "Odcinki specjalne",
       "Sezon 1",
       "Sezon 2",
       "Sezon 3"
      ],
      "specials_title2": "Specials",
      "specials_parentTitle": "",
-     "episode_parentTitle": "Dodatki"
+     "episode_parentTitle": "Odcinki specjalne"
     },
     "pt": {
      "seasons": [
@@ -477,14 +477,14 @@
     },
     "ro": {
      "seasons": [
-      "Speciale",
+      "Episoade speciale",
       "Sezonul 1",
       "Sezonul 2",
       "Sezonul 3"
      ],
      "specials_title2": "Specials",
      "specials_parentTitle": "",
-     "episode_parentTitle": "Speciale"
+     "episode_parentTitle": "Episoade speciale"
     },
     "ru": {
      "seasons": [
@@ -510,14 +510,14 @@
     },
     "sl": {
      "seasons": [
-      "Posebni dodatki",
+      "Posebne epizode",
       "Sezona 1",
       "Sezona 2",
       "Sezona 3"
      ],
      "specials_title2": "Specials",
      "specials_parentTitle": "",
-     "episode_parentTitle": "Posebni dodatki"
+     "episode_parentTitle": "Posebne epizode"
     },
     "sr": {
      "seasons": [
@@ -532,14 +532,14 @@
     },
     "sv": {
      "seasons": [
-      "Special",
+      "Specialavsnitt",
       "Säsong 1",
       "Säsong 2",
       "Säsong 3"
      ],
      "specials_title2": "Specials",
      "specials_parentTitle": "",
-     "episode_parentTitle": "Special"
+     "episode_parentTitle": "Specialavsnitt"
     },
     "th": {
      "seasons": [
@@ -565,14 +565,14 @@
     },
     "uk": {
      "seasons": [
-      "Спеціальні матеріали",
+      "Спецвипуски",
       "Сезон 1",
       "Сезон 2",
       "Сезон 3"
      ],
      "specials_title2": "Specials",
      "specials_parentTitle": "",
-     "episode_parentTitle": "Спеціальні матеріали"
+     "episode_parentTitle": "Спецвипуски"
     },
     "vi": {
      "seasons": [
@@ -587,14 +587,14 @@
     },
     "zh": {
      "seasons": [
-      "特色",
-      "季 1",
-      "季 2",
-      "季 3"
+      "特别篇",
+      "第 1 季",
+      "第 2 季",
+      "第 3 季"
      ],
      "specials_title2": "Specials",
      "specials_parentTitle": "",
-     "episode_parentTitle": "特色"
+     "episode_parentTitle": "特别篇"
     },
     "zh-TW": {
      "seasons": [

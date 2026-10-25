@@ -16,15 +16,15 @@
   },
   "es-419": {
    "id": "languageOverride",
-   "label": "Idioma de los Metadatos",
-   "summary": "Idioma que se usará para los metadatos del elemento, como la sinopsis y el título.",
+   "label": "Idioma de los metadatos",
+   "summary": "Idioma de los metadatos de los elementos, como la sinopsis y el título.",
    "type": "text",
    "default": "",
    "value": "",
    "hidden": false,
    "advanced": false,
    "group": "",
-   "enumValues": ":Por defecto de la biblioteca|de-DE:Alemán|ar-SA:Árabe (Arabia Saudí)|bg-BG:Búlgaro|ca-ES:Catalán|cs-CZ:Checo|zh-CN:Chino|zh-HK:Chino (Hong Kong)|zh-TW:Chino (Taiwán)|ko-KR:Coreano|hr-HR:Croata|da-DK:Danés|sk-SK:Eslovaco|es-ES:Español|es-MX:Español (México)|et-EE:Estonio|fi-FI:Finés|fr-FR:Francés|fr-CA:Francés (Canadá)|el-GR:Griego|he-IL:Hebreo|hi-IN:Hindi|hu-HU:Húngaro|id-ID:Indonesio|en-US:Inglés|en-AU:Inglés (Australia)|en-CA:Inglés (Canadá)|en-GB:Inglés (R. U.)|is-IS:Islandés|it-IT:Italiano|ja-JP:Japonés|lv-LV:Letón|lt-LT:Lituano|nl-NL:Neerlandés|nb-NO:Noruego bokmal|fa-IR:Persa|pl-PL:Polaco|pt-BR:Portugués|pt-PT:Portugués (Portugal)|ro-RO:Rumano|ru-RU:Ruso|sv-SE:Sueco|th-TH:Tailandés|tr-TR:Turco|uk-UA:Ucraniano|vi-VN:Vietnamita"
+   "enumValues": ":Predeterminado de la biblioteca|de-DE:Alemán|ar-SA:Árabe (Arabia Saudí)|bg-BG:Búlgaro|ca-ES:Catalán|cs-CZ:Checo|zh-CN:Chino|zh-HK:Chino (Hong Kong)|zh-TW:Chino (Taiwán)|ko-KR:Coreano|hr-HR:Croata|da-DK:Danés|sk-SK:Eslovaco|es-ES:Español|es-MX:Español (México)|et-EE:Estonio|fi-FI:Finés|fr-FR:Francés|fr-CA:Francés (Canadá)|el-GR:Griego|he-IL:Hebreo|hi-IN:Hindi|hu-HU:Húngaro|id-ID:Indonesio|en-US:Inglés|en-AU:Inglés (Australia)|en-CA:Inglés (Canadá)|en-GB:Inglés (R. U.)|is-IS:Islandés|it-IT:Italiano|ja-JP:Japonés|lv-LV:Letón|lt-LT:Lituano|nl-NL:Neerlandés|nb-NO:Noruego bokmal|fa-IR:Persa|pl-PL:Polaco|pt-BR:Portugués|pt-PT:Portugués (Portugal)|ro-RO:Rumano|ru-RU:Ruso|sv-SE:Sueco|th-TH:Tailandés|tr-TR:Turco|uk-UA:Ucraniano|vi-VN:Vietnamita"
   },
   "zh-TW": {
    "id": "languageOverride",
@@ -36,12 +36,12 @@
    "hidden": false,
    "advanced": false,
    "group": "",
-   "enumValues": ":Library default|tr-TR:土耳其文|zh-CN:中文|zh-TW:中文（台灣）|zh-HK:中文（香港）|da-DK:丹麥文|nb-NO:巴克摩挪威文|ja-JP:日文|ca-ES:加泰蘭文|lt-LT:立陶宛文|is-IS:冰島文|hu-HU:匈牙利文|id-ID:印尼文|hi-IN:印地文|es-ES:西班牙文|es-MX:西班牙文（墨西哥）|hr-HR:克羅埃西亞文|he-IL:希伯來文|el-GR:希臘文|lv-LV:拉脫維亞文|fr-FR:法文|fr-CA:法文（加拿大）|fa-IR:波斯文|pl-PL:波蘭文|fi-FI:芬蘭文|ar-SA:阿拉伯文（沙烏地阿拉伯）|ru-RU:俄文|bg-BG:保加利亞文|en-US:英文|en-CA:英文（加拿大）|en-GB:英文（英國）|en-AU:英文（澳洲）|th-TH:泰文|uk-UA:烏克蘭文|cs-CZ:捷克文|nl-NL:荷蘭文|sk-SK:斯洛伐克文|vi-VN:越南文|et-EE:愛沙尼亞文|sv-SE:瑞典文|it-IT:義大利文|pt-BR:葡萄牙文|pt-PT:葡萄牙文（葡萄牙）|de-DE:德文|ko-KR:韓文|ro-RO:羅馬尼亞文"
+   "enumValues": ":媒體庫預設值|tr-TR:土耳其文|zh-CN:中文|zh-TW:中文（台灣）|zh-HK:中文（香港）|da-DK:丹麥文|nb-NO:巴克摩挪威文|ja-JP:日文|ca-ES:加泰蘭文|lt-LT:立陶宛文|is-IS:冰島文|hu-HU:匈牙利文|id-ID:印尼文|hi-IN:印地文|es-ES:西班牙文|es-MX:西班牙文（墨西哥）|hr-HR:克羅埃西亞文|he-IL:希伯來文|el-GR:希臘文|lv-LV:拉脫維亞文|fr-FR:法文|fr-CA:法文（加拿大）|fa-IR:波斯文|pl-PL:波蘭文|fi-FI:芬蘭文|ar-SA:阿拉伯文（沙烏地阿拉伯）|ru-RU:俄文|bg-BG:保加利亞文|en-US:英文|en-CA:英文（加拿大）|en-GB:英文（英國）|en-AU:英文（澳洲）|th-TH:泰文|uk-UA:烏克蘭文|cs-CZ:捷克文|nl-NL:荷蘭文|sk-SK:斯洛伐克文|vi-VN:越南文|et-EE:愛沙尼亞文|sv-SE:瑞典文|it-IT:義大利文|pt-BR:葡萄牙文|pt-PT:葡萄牙文（葡萄牙）|de-DE:德文|ko-KR:韓文|ro-RO:羅馬尼亞文"
   },
   "pt-BR": {
    "id": "languageOverride",
    "label": "Idioma dos metadados",
-   "summary": "Idioma a ser usado para os metadados do item, como sinopse e título.",
+   "summary": "Idioma usado nos metadados dos itens, como sinopse e título.",
    "type": "text",
    "default": "",
    "value": "",
@@ -53,14 +53,14 @@
   "fr-CA": {
    "id": "languageOverride",
    "label": "Langue des métadonnées",
-   "summary": "Langue à utiliser pour les métadonnées de l'élément telles que le synopsis et le titre",
+   "summary": "Langue des métadonnées des éléments, comme le synopsis et le titre.",
    "type": "text",
    "default": "",
    "value": "",
    "hidden": false,
    "advanced": false,
    "group": "",
-   "enumValues": ":Bibliothèque par défaut|de-DE:Allemand|en-US:Anglais|en-AU:Anglais (Australie)|en-CA:Anglais (Canada)|en-GB:Anglais (R.-U.)|ar-SA:Arabe (Arabie saoudite)|bg-BG:Bulgare|ca-ES:Catalan|zh-CN:Chinois|zh-HK:Chinois (Hong Kong)|zh-TW:Chinois (Taïwan)|ko-KR:Coréen|hr-HR:Croate|da-DK:Danois|es-ES:Espagnol|es-MX:Espagnol (Mexique)|et-EE:Estonien|fi-FI:Finnois|fr-FR:Français|fr-CA:Français (Canada)|el-GR:Grec|he-IL:Hébreu|hi-IN:Hindi|hu-HU:Hongrois|id-ID:Indonésien|is-IS:Islandais|it-IT:Italien|ja-JP:Japonais|lv-LV:Letton|lt-LT:Lituanien|nl-NL:Néerlandais|nb-NO:Norvégien bokmål|fa-IR:Persan|pl-PL:Polonais|pt-BR:Portugais|pt-PT:Portugais (Portugal)|ro-RO:Roumain|ru-RU:Russe|sk-SK:Slovaque|sv-SE:Suédois|cs-CZ:Tchèque|th-TH:Thaï|tr-TR:Turc|uk-UA:Ukrainien|vi-VN:Vietnamien"
+   "enumValues": ":Valeur par défaut de la bibliothèque|de-DE:Allemand|en-US:Anglais|en-AU:Anglais (Australie)|en-CA:Anglais (Canada)|en-GB:Anglais (R.-U.)|ar-SA:Arabe (Arabie saoudite)|bg-BG:Bulgare|ca-ES:Catalan|zh-CN:Chinois|zh-HK:Chinois (Hong Kong)|zh-TW:Chinois (Taïwan)|ko-KR:Coréen|hr-HR:Croate|da-DK:Danois|es-ES:Espagnol|es-MX:Espagnol (Mexique)|et-EE:Estonien|fi-FI:Finnois|fr-FR:Français|fr-CA:Français (Canada)|el-GR:Grec|he-IL:Hébreu|hi-IN:Hindi|hu-HU:Hongrois|id-ID:Indonésien|is-IS:Islandais|it-IT:Italien|ja-JP:Japonais|lv-LV:Letton|lt-LT:Lituanien|nl-NL:Néerlandais|nb-NO:Norvégien bokmål|fa-IR:Persan|pl-PL:Polonais|pt-BR:Portugais|pt-PT:Portugais (Portugal)|ro-RO:Roumain|ru-RU:Russe|sk-SK:Slovaque|sv-SE:Suédois|cs-CZ:Tchèque|th-TH:Thaï|tr-TR:Turc|uk-UA:Ukrainien|vi-VN:Vietnamien"
   },
   "en-GB": {
    "id": "languageOverride",
