@@ -372,6 +372,9 @@ impl Item {
                 ("_sid".to_string(), json!(self.id)),
                 ("_path".to_string(), json!(self.path)),
                 ("_ids".to_string(), Value::Object(self.ids.clone())),
+                // The item's `release` as its source sent it: what the source knows the release
+                // by, answered back in its matches listing (`feed_matches`).
+                ("_group".to_string(), json!(self.release)),
             ]
             .into_iter()
             .chain(self.folder.as_ref().map(|folder| ("_folder".to_string(), json!(folder))))
@@ -477,7 +480,7 @@ fn answer(status: u16, body: Value) -> Response {
     Response::json(status, body)
 }
 
-/// `/rex/feed/{source}/{items|snapshot|held}` and `/rex/sources[/{name}]`, outside the Plex
+/// `/rex/feed/{source}/{items|snapshot|held|matches}` and `/rex/sources[/{name}]`, outside the Plex
 /// gate and open to any peer on a private network: a feed token per source, set by hand on
 /// both sides, guarded it before, and the unclaimed gate's check refused sources that name rex
 /// by host name (a Docker service) or reach it over Tailscale. This one reads the peer alone.
@@ -512,6 +515,7 @@ pub(super) fn handle(shared: &SharedRuntime, request: &Request, path: &str) -> R
             answer(200, listing(listed))
         }
         ("GET" | "HEAD", "held") => answer(200, lock(shared).feed_held_listing(&source)),
+        ("GET" | "HEAD", "matches") => answer(200, lock(shared).feed_matches(&source)),
         ("POST", "items") => match body() {
             Ok(body) => match body.get("items").and_then(Value::as_array) {
                 Some(items) => answer(200, Value::Object(upsert(shared, &source, items, None, false).to_json())),
@@ -534,7 +538,7 @@ pub(super) fn handle(shared: &SharedRuntime, request: &Request, path: &str) -> R
             Ok(body) => snapshot(shared, &source, &body, &mut sessions),
             Err(response) => response,
         },
-        (_, "items" | "snapshot" | "held") => answer(405, json!({"error": "method not allowed"})),
+        (_, "items" | "snapshot" | "held" | "matches") => answer(405, json!({"error": "method not allowed"})),
         _ => answer(404, json!({"error": "no such feed endpoint"})),
     };
     drop(sessions);
@@ -1647,7 +1651,7 @@ pub(super) fn tagged_media(row: &Value) -> Vec<Value> {
     let mut media = row.get("Media").and_then(Value::as_array).cloned().unwrap_or_default();
     if media.iter().all(|media| media.get("_sid").is_none()) {
         if let Some(first) = media.first_mut().and_then(Value::as_object_mut) {
-            for field in ["_source", "_sid", "_path", "_folder", "_release", "_ids", "_placed", "_editionTitle", "_hash"] {
+            for field in ["_source", "_sid", "_path", "_folder", "_release", "_group", "_ids", "_placed", "_editionTitle", "_hash"] {
                 if let Some(value) = row.get(field) {
                     first.insert(field.to_string(), value.clone());
                 }
@@ -1750,6 +1754,43 @@ fn version_release(row: &Value, index: usize) -> Option<&str> {
         .or_else(|| text(row.get("_release")))
 }
 
+/// The `release` a row's Media at `index` was pushed with (`_group`), else what an item's
+/// `release` defaults to, the folder above its path: a row from before rex kept it takes it
+/// from its next push.
+fn version_group(row: &Value, index: usize) -> Option<String> {
+    let at = |field: &str| row.pointer(&format!("/Media/{index}/{field}")).or_else(|| row.get(field).filter(|_| index == 0));
+    if let Some(group) = at("_group").and_then(Value::as_str).filter(|group| !group.is_empty()) {
+        return Some(group.to_string());
+    }
+    let path = at("_path")?.as_str()?;
+    Some(path.rsplit_once('/').map_or(path, |(folder, _)| folder).to_string())
+}
+
+/// The external ids of a title row: the TMDB id Fix Match or its source named it by
+/// (`_identity`), then Plex's for its guid (`Guid`). None for a row nothing identifies, whose
+/// `Guid` an Unmatch left behind.
+fn title_ids(title: &Value) -> Map<String, Value> {
+    let mut ids = Map::new();
+    let guid = title.get("guid").and_then(Value::as_str).unwrap_or_default();
+    if guid.is_empty() || guid.starts_with("local://") || guid.starts_with("tv.plex.agents.none://") {
+        return ids;
+    }
+    let identity = title.get("_identity").and_then(Value::as_str).and_then(|identity| identity.strip_prefix("tmdb:"));
+    let listed = title.get("Guid").and_then(Value::as_array).into_iter().flatten().filter_map(|id| id.get("id")?.as_str()?.split_once("://"));
+    for (scheme, id) in identity.map(|id| ("tmdb", id)).into_iter().chain(listed) {
+        let value = match scheme {
+            "imdb" if id.starts_with("tt") => json!(id),
+            "tmdb" | "tvdb" => match id.parse::<u64>() {
+                Ok(number) => json!(number),
+                Err(_) => continue,
+            },
+            _ => continue,
+        };
+        ids.entry(scheme).or_insert(value);
+    }
+    ids
+}
+
 /// A row made of one release: that release its only Media, its source fields and name the row's.
 fn take_release(row: &mut Map<String, Value>, media: &Value) {
     name_by_release(row, media);
@@ -1765,7 +1806,7 @@ fn name_by_release(row: &mut Map<String, Value>, media: &Value) {
         }
     }
     // The row's folder and placement are its release's, or none: another release's would number it.
-    for field in ["_folder", "_placed", "_editionTitle", "_hash"] {
+    for field in ["_folder", "_group", "_placed", "_editionTitle", "_hash"] {
         match media.get(field) {
             Some(value) => row.insert(field.to_string(), value.clone()),
             None => row.shift_remove(field),
@@ -2149,6 +2190,54 @@ impl Runtime {
         json!({"size": held.len(), "held": held})
     }
 
+    /// `GET /rex/feed/{source}/matches`: the source's releases a person placed -- under a film or
+    /// show they Fix Matched, an episode they merged into a show, or a version a merge put on
+    /// another row's episode -- with the matched title's ids, once per release and title. rex
+    /// identifies nothing here: it hands back what the person picked, for the source to carry
+    /// to whatever identifies its files. Found through the hot rows (`_matched`, a version's
+    /// `matched`), so only the rows a person matched are read whole.
+    pub(super) fn feed_matches(&self, source: &Source) -> Value {
+        let mut found: BTreeMap<(String, String), (Map<String, Value>, &str, i64)> = BTreeMap::new();
+        for row in self.catalog.hot().lazy() {
+            if !row.hot.releases.iter().any(|release| *release.source == *source.name) {
+                continue;
+            }
+            // The row, its season or its show: the first a person matched.
+            let holder = ["ratingKey", "parentRatingKey", "grandparentRatingKey"].into_iter().find_map(|field| {
+                let key = string_value(row.get(field)?);
+                self.catalog.lazy_get(&key).filter(|row| row.get("_matched").is_some_and(truthy))
+            });
+            let held_at = holder.and_then(|holder| holder.get("_matched_at").or_else(|| holder.get("updatedAt"))?.as_i64());
+            for release in row.hot.releases.iter().filter(|release| *release.source == *source.name && (holder.is_some() || release.matched)) {
+                let body = row.body();
+                let Some(group) = version_group(body, release.index) else { continue };
+                // The title it was matched to: an episode's show, a clip's film or show, a film itself.
+                let Some(title) = ["grandparentRatingKey", "parentRatingKey"]
+                    .into_iter()
+                    .filter_map(|field| self.catalog.get(&string_value(body.get(field)?)))
+                    .chain(std::iter::once(body))
+                    .find(|title| matches!(title.get("type").and_then(Value::as_str), Some("movie" | "show")))
+                else {
+                    continue;
+                };
+                let ids = title_ids(title);
+                if ids.is_empty() {
+                    continue;
+                }
+                let kind = if title.get("type").and_then(Value::as_str) == Some("movie") { "movie" } else { "tv" };
+                let moved_at = body.pointer(&format!("/Media/{}/_matched_at", release.index)).and_then(Value::as_i64);
+                let when = moved_at.into_iter().chain(held_at).max().unwrap_or(0);
+                let entry = found.entry((group, key_of(title).unwrap_or_default())).or_insert((ids, kind, when));
+                entry.2 = entry.2.max(when);
+            }
+        }
+        let matches: Vec<Value> = found
+            .into_iter()
+            .map(|((release, _), (ids, kind, when))| json!({"release": release, "ids": ids, "kind": kind, "matched_at": when}))
+            .collect();
+        json!({"size": matches.len(), "matches": matches})
+    }
+
     /// A changed source edition leaves a folded row rather than relabeling its other
     /// versions. A person's locked edition remains authoritative.
     fn feed_edition_key(&mut self, key: &str, source: &str, item: &Item) -> (String, bool) {
@@ -2296,6 +2385,7 @@ impl Runtime {
             // A placement too, kept when a push sends none (`replaced`).
             let placed = item.placed.as_ref().filter(|placed| row.pointer(&format!("/Media/{index}/_placed")) != Some(*placed));
             let stale = row.pointer(&format!("/Media/{index}/_release")).and_then(Value::as_str) != Some(item.name.as_str())
+                || row.pointer(&format!("/Media/{index}/_group")).and_then(Value::as_str) != Some(item.release.as_str())
                 || row.pointer(&format!("/Media/{index}/_ids")) != Some(&ids)
                 || placed.is_some();
             if stale {
@@ -2307,6 +2397,7 @@ impl Runtime {
                     .and_then(Value::as_object_mut)
                 {
                     media.insert("_release".to_string(), json!(item.name));
+                    media.insert("_group".to_string(), json!(item.release));
                     media.insert("_ids".to_string(), ids);
                     if let Some(placed) = placed {
                         media.insert("_placed".to_string(), placed.clone());
@@ -2318,6 +2409,12 @@ impl Runtime {
         if index == 0 && row.get("_release").and_then(Value::as_str) != Some(item.name.as_str()) {
             if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
                 object.insert("_release".to_string(), json!(item.name));
+            }
+            changed = true;
+        }
+        if index == 0 && row.get("_group").and_then(Value::as_str) != Some(item.release.as_str()) {
+            if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
+                object.insert("_group".to_string(), json!(item.release));
             }
             changed = true;
         }
@@ -3283,6 +3380,59 @@ mod tests {
         (Arc::new(Mutex::new(runtime)), "11".to_string())
     }
 
+    /// A stand-in show merged into a show its source identified: the version paired onto the
+    /// target's episode and the episode moved under it are the person's, and listed with the
+    /// target's ids; the target's own release is its source's and is not. Unmatch takes both back.
+    #[test]
+    fn a_merge_lists_what_it_moved_and_unmatch_takes_it_back() {
+        let dir = work("matches-merge");
+        let row = |key: &str, kind: &str, extra: Value| {
+            let mut row = json!({"ratingKey": key, "key": format!("/library/metadata/{key}"), "type": kind,
+                                 "title": kind, "librarySectionID": 1, "guid": format!("local://{key}")});
+            row.as_object_mut().unwrap().extend(extra.as_object().unwrap().clone());
+            row
+        };
+        let episode = |key: &str, show: &str, season: &str, index: i64, sid: &str| row(key, "episode", json!({
+            "grandparentRatingKey": show, "parentRatingKey": season, "parentIndex": 1, "index": index,
+            "_source": "test", "_sid": sid, "_path": sid, "Media": [{"Part": [{"file": format!("/shows/{sid}")}]}]}));
+        let items = vec![
+            row("10", "show", json!({"guid": "plex://show/5d9c0853e98e47001eb0ce95", "_identity": "tmdb:46922",
+                                     "Guid": [{"id": "imdb://tt2293002"}, {"id": "tmdb://46922"}, {"id": "tvdb://260995"}]})),
+            row("12", "season", json!({"parentRatingKey": "10", "index": 1})),
+            episode("11", "10", "12", 2, "shows/Ben.10.Omniverse.S01/e02.mkv"),
+            row("20", "show", json!({"_identity": "title:konosuba"})),
+            row("22", "season", json!({"parentRatingKey": "20", "index": 1})),
+            episode("21", "20", "22", 2, "shows/KonoSuba.S02E01.German.DL/e.mkv"),
+            episode("23", "20", "22", 3, "shows/KonoSuba.S02E02.German.DL/e.mkv"),
+        ];
+        let catalog_path = dir.join("catalog.json");
+        std::fs::write(&catalog_path, serde_json::to_vec(&json!({"format": 1, "machineIdentifier": "feed-test-machine",
+            "friendlyName": "feed-test", "sections": [{"key": "1", "type": 2, "title": "Shows", "Location": [{"path": "/shows"}]}],
+            "items": items})).unwrap()).unwrap();
+        let mut runtime = Runtime::load(RuntimeOptions {
+            catalog: catalog_path,
+            state: Some(dir.join("no-state")),
+            assert_claimed: true,
+            ..RuntimeOptions::default()
+        })
+        .unwrap();
+        let source = Source::register("test", &json!({"url": "http://127.0.0.1:9"})).unwrap();
+        assert_eq!(runtime.feed_matches(&source), json!({"size": 0, "matches": []}), "nothing is matched by hand yet");
+        let stand_in = runtime.catalog.get("20").cloned().unwrap();
+        runtime.merge_shows("10", &[("20".to_string(), stand_in)]);
+        let listed = runtime.feed_matches(&source);
+        // S1E2 paired with the target's own, so its version moved onto row 11; S1E3 moved on its key.
+        let releases: Vec<&Value> = listed["matches"].as_array().unwrap().iter().map(|entry| &entry["release"]).collect();
+        assert_eq!(releases, [&json!("shows/KonoSuba.S02E01.German.DL"), &json!("shows/KonoSuba.S02E02.German.DL")], "{listed}");
+        for entry in listed["matches"].as_array().unwrap() {
+            assert_eq!((&entry["kind"], &entry["ids"]), (&json!("tv"), &json!({"tmdb": 46922, "imdb": "tt2293002", "tvdb": 260995})), "{listed}");
+            assert!(entry["matched_at"].as_i64().unwrap() > 1_700_000_000, "{listed}");
+        }
+        runtime.unmatch_row("10");
+        assert_eq!(runtime.feed_matches(&source)["size"], json!(0), "Unmatch takes the merge back");
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
     #[test]
     fn a_dropped_release_leaves_the_row_named_and_identified_by_the_one_left() {
         let dir = work("drop-version");
@@ -3458,6 +3608,7 @@ mod tests {
                 ("GET", "/rex/feed/b/items"),
                 ("POST", "/rex/feed/b/items"),
                 ("PUT", "/rex/feed/b/snapshot"),
+                ("GET", "/rex/feed/b/matches"),
             ] {
                 for headers in [&[][..], &forged[..]] {
                     let response = handle(&shared, &request(method, target, headers), target);

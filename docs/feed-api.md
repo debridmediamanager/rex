@@ -243,6 +243,37 @@ What rex holds for the source: the shown items with their ratingKeys
 (`{"id", "ratingKey", "file", "deleted"}`), and the held ones (`{"id", "path", "name",
 "size", "since"}`). For operators and tests; read-only.
 
+### `GET /rex/feed/{source}/matches` -- what people matched
+
+```json
+{"size": 2, "matches": [
+  {"release": "movies/Blame.It.On.The.Bellboy.1992.1080p", "ids": {"tmdb": 31639, "imdb": "tt0103827"}, "kind": "movie", "matched_at": 1792996802},
+  {"release": "shows/Ben.10.Omniverse.S01.1080p.WEB", "ids": {"tmdb": 46922, "imdb": "tt2293002"}, "kind": "tv", "matched_at": 1792996810}]}
+```
+
+rex identifies nothing, so a person's correction in a Plex client belongs to whatever identifies
+the source's files. rex keeps it on the row (no push undoes it, [below](#an-item)) and lists it
+here for the source to carry back: once the release is identified there, the source pushes it
+placed. Read-only; a source reads it whenever it likes.
+
+One entry per release of this source and title a person put it under:
+
+- a film or show they Fix Matched: every release under it, also one pushed after the match;
+- a show they Fix Matched to one the library already holds, or merged into another: each release
+  of its episodes, whether it moved under that show or onto one of its episodes as another version;
+- a film Fix Matched to one the library already holds: both films' releases.
+
+| Field | Meaning |
+|---|---|
+| `release` | The item's `release` as the source pushed it (its default, the folder above `path`, for a version pushed before rex kept it, until its next push) |
+| `ids` | The matched title's, a film's or a show's and never an episode's: `tmdb`, `imdb` and `tvdb`, whichever are known -- the TMDB id the match named and the ids Plex lists for the title. A title with none is left out |
+| `kind` | `movie` or `tv` |
+| `matched_at` | When the match was made, in Unix seconds; the latest when several rows hold the release. A match from before rex recorded the time answers when its row last changed |
+
+A release under rows matched to different titles is listed once for each. Unmatch takes a
+title's releases out of the list, merged ones included. With nothing matched the answer is
+`{"size": 0}`: like every JSON answer rex gives, it leaves an empty list out.
+
 ## An item
 
 ```json
@@ -275,7 +306,7 @@ The `media_info` above is cut down to show its shape. Send ffprobe's whole outpu
 | `episode_end` | no | The last episode of a file holding several (`E01E02` -> 2). Kept on the row; the file is placed on `episode`, as rex places every multi-episode file on its first |
 | `tmdb_episode` | no | With `kind: episode`, TMDB's id of that episode (an integer, `tv/{show}/season/{n}/episode/{n}`'s `id`). The row is Plex's episode whose `Guid` lists `tmdb://<id>`, in whichever of the show's seasons Plex files it, and sits under Plex's season and number for it: Ben 10: Omniverse's `S02E01 - Showdown Part 1`, sent as S2E1 with 1107002, is Plex's S3E1. Without it, Plex's episode at `season`/`episode`. Kept on the row; a show a person Fix Matches re-describes its episodes by it |
 | `name` | no | The release name, shown as it is: an unplaced episode's show is titled with it. Nothing is read out of it -- no id, no title, no season or episode. Default: the folder above the file |
-| `release` | no | Groups a release's files, identified together (a season's episodes). Default: the folder above `path` |
+| `release` | no | Groups a release's files, identified together (a season's episodes), and names the release in the [matches](#get-rexfeedsourcematches----what-people-matched) listing. Default: the folder above `path` |
 | `edition_title` | no | Explicit movie edition label. Different labels stay separate movies; the same label can hold several versions. Omitted preserves the current source label; `""` clears it. A person's locked edition wins. Rejected for episodes or invalid labels; never inferred from a name |
 | `size` | no | Bytes. Default: ffprobe's `media_info.format.size` (none for an HLS playlist). Shown as the Part's size and used to answer a client's `Range`; with neither, rex passes the client's `Range` to the source as it is |
 | `file` | no | Only the path clients see in Get Info (`<mount>/<directory>/<release>/<file>`). Default `<mount>/<path>`, or `/<path>` without a mount |
@@ -352,7 +383,8 @@ What the fields do:
   row by its name: none renumbers, unfolds, moves or re-identifies one.
 - **A person's match wins.** A Fix Match is recorded on the row: no push and no retry
   identifies it, or the episodes of a show a person matched, again. Unmatch hands it back to
-  its source's ids.
+  its source's ids. The source reads what was matched from
+  [`GET .../matches`](#get-rexfeedsourcematches----what-people-matched).
 - **Versions.** A release of a title already here -- a film with the same agent guid in the
   same section and with the same explicit edition label, an episode on the same season and index,
   whatever guid identification gave it -- is no new row: it joins that row as another Media,

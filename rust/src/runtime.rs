@@ -5258,9 +5258,16 @@ impl Runtime {
     /// season unmatches its episodes (each `parentGuid` follows it) and a show
     /// its seasons and every episode under them.
     fn unmatch_row(&mut self, key: &str) {
-        // Unmatched, the row is no longer the person's match; a source's next id names it.
+        // Unmatched, the row is no longer the person's match; a source's next id names it, and
+        // its releases leave the source's matches listing (`feed_matches`), merged-in ones too.
         if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
             object.shift_remove("_matched");
+            object.shift_remove("_matched_at");
+            for media in object.get_mut("Media").and_then(Value::as_array_mut).into_iter().flatten() {
+                if let Some(media) = media.as_object_mut() {
+                    media.shift_remove("_matched_at");
+                }
+            }
         }
         let Some(row) = self.catalog.get(key).cloned() else {
             return;
@@ -20228,6 +20235,7 @@ impl Runtime {
                 object.insert("Media".to_string(), Value::Array(media));
                 object.insert("updatedAt".to_string(), json!(now()));
                 object.insert("_matched".to_string(), json!(true));
+                object.insert("_matched_at".to_string(), json!(now()));
             }
             // Only what the merge absorbed leaves the play queues, with the version
             // stepped per row (`drop_from_queues`); the oracle drops it, this left it.
@@ -20271,6 +20279,7 @@ impl Runtime {
                     // undid the match (`matched_by_hand`). The show it names is the one later
                     // episodes of that title join.
                     object.insert("_matched".to_string(), json!(true));
+                    object.insert("_matched_at".to_string(), json!(now()));
                     if let Some(identity) = chosen {
                         object.insert("_identity".to_string(), json!(identity));
                     }
@@ -20398,6 +20407,7 @@ impl Runtime {
                     object.insert("parentRatingKey".to_string(), json!(season_key));
                     // A person put it here: the feed's re-placing passes leave it (`matched_by_hand`).
                     object.insert("_matched".to_string(), json!(true));
+                    object.insert("_matched_at".to_string(), json!(now()));
                 }
                 self.inherit_parents(&episode_key);
                 if !changed.contains(&episode_key) {
@@ -20410,7 +20420,13 @@ impl Runtime {
                     .get_mut(target_key)
                     .and_then(Value::as_object_mut)
                 {
+                    // The absorbed release is on the target's row now because a person put it
+                    // there: marked on its Media alone, so the target's own release stays its
+                    // source's to place, and the source learns of the move (`feed_matches`).
                     let mut media = feed::tagged_media(source);
+                    for moved in media.iter_mut().filter_map(Value::as_object_mut) {
+                        moved.insert("_matched_at".to_string(), json!(now()));
+                    }
                     media.extend(feed::tagged_media(&Value::Object(object.clone())));
                     sort_media_by_id(&mut media);
                     object.insert("Media".to_string(), Value::Array(media));

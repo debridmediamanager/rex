@@ -16,7 +16,10 @@ metadata agent's answers for what the server asks of them (rex reads no TMDB):
   release with no id); Zoku Owarimonogatari and Wallace & Gromit, which the name search matched
   to Plex's shows before it was retired, keep those shows;
 * a Fix Match was undone by the next push that named other ids, and a match that merged two
-  rows lost the absorbed release, which came back as a row of its own.
+  rows lost the absorbed release, which came back as a row of its own;
+* what a person matched is listed for the source to carry back (`GET /rex/feed/{source}/matches`):
+  the matched film's release and the one merged into it, with the film's ids; what its source
+  placed is not, nor what an Unmatch handed back.
 
 Record the answers again (asks Plex's agent; no key is written, its cache keys hold none):
 `REX_RECORD_ANSWERS=1 PLEX_TOKEN=... python3 tests/test_feed_blank_tiles.py`.
@@ -32,7 +35,7 @@ import tempfile
 import time
 import urllib.parse
 
-from test_feed import ENTRIES, LEGACY, MOUNT, Bytes, Server, check, results, serve
+from test_feed import ENTRIES, LEGACY, MOUNT, Bytes, Server, check, guid_ids, matches, results, serve
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FIXTURE_PATH = os.path.join(HERE, "fixtures", "feed", "blank_tiles.json")
@@ -137,12 +140,22 @@ def pushes(bytes_port):
               serbian.get("title") == "Film Postcards: Serbia" and serbian.get("year") == 2012
               and "imdb://tt6257382" in guids(serbian), (serbian.get("title"), serbian.get("year"), guids(serbian)))
 
+        check("what its source placed is no person's match: the source's matches listing is empty",
+              matches(server) == {}, matches(server))
+
         # -- a person's match is theirs ------------------------------------------------------
         key = serbian.get("ratingKey")
+        matched_from = int(time.time())
         status, chosen = match(server, key, "Elementos", 2023)
         matched = server.row(key)
         check("a person Fix Matches it to another film", status == 200 and chosen.get("guid")
               and matched.get("guid") == chosen["guid"], (status, chosen, matched.get("guid")))
+        listed = matches(server) or {}
+        serbian_release = item("serbian")["release"]
+        check("the matched film's release is listed for its source, with the picked film's ids and the match's time",
+              list(listed) == [serbian_release] and listed[serbian_release]["kind"] == "movie"
+              and listed[serbian_release]["ids"] == guid_ids(matched) != {} and listed[serbian_release]["matched_at"] >= matched_from,
+              (listed, guid_ids(matched)))
         server.feed("POST", "items", {"items": [item("serbian", {"imdb": "tt0133093"}, kind="movie")]})
         after = server.row(key)
         check("a later push naming other ids leaves the match as the person made it",
@@ -158,6 +171,11 @@ def pushes(bytes_port):
         check("matching a second row to the same title merges it into the first",
               status == 200 and merged.get(item("elementos")["id"]) == key and server.row(other) == {},
               (status, merged.get(item("elementos")["id"]), key))
+        listed = matches(server) or {}
+        absorbed = listed.get(item("elementos")["release"], {})
+        check("the release merged into it is listed with the same film's ids",
+              set(listed) == {serbian_release, item("elementos")["release"]} and absorbed.get("kind") == "movie"
+              and absorbed.get("ids") == listed[serbian_release]["ids"], listed)
         before = set(merged.values())
         server.feed("POST", "items", {"items": [item("elementos", kind="movie")]})
         check("and the absorbed release's next push finds it there, not a row of its own",
@@ -167,7 +185,11 @@ def pushes(bytes_port):
         # -- Unmatch hands the row back ------------------------------------------------------
         knock_key = knock.get("ratingKey")
         match(server, knock_key, "Knock at the Cabin", 2023)
+        check("a film a person matched to the title its source had placed it as is listed too",
+              item("knock")["release"] in (matches(server) or {}), matches(server))
         status, _ = server.request("/library/metadata/%s/unmatch" % knock_key, "PUT")
+        check("after Unmatch its release leaves the listing; the others stay",
+              set(matches(server) or {}) == {serbian_release, item("elementos")["release"]}, matches(server))
         server.feed("POST", "items", {"items": [item("knock", {"imdb": "tt8272064", "tmdb": 631842}, kind="movie")]})
         check("after Unmatch a push naming other ids identifies the row again",
               status == 200 and "tmdb://631842" in guids(server.row(knock_key)),

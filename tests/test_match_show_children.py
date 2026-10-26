@@ -12,6 +12,11 @@ release as four of twenty, so by number the release's S2E1 would be Plex's S2E1,
 An episode whose source pushed TMDB's episode id is Plex's episode listing it; one with none is left
 as it was unless every season holds as many episodes as Plex's.
 
+What a person matched is the source's to carry back (`GET /rex/feed/{source}/matches`): the old
+match is listed as the release under the show, timed by the row's `updatedAt` since it predates
+`_matched_at`; the new match and a stand-in merged into the show are listed with the show's ids;
+an Unmatch takes both back.
+
 Record the answers again with the claim's server token, through a relay at REX_RECORD_PLEXTV_URL
 that reaches Plex's metadata provider (`<relay>/metadata.provider.plex.tv/...`) and nothing on
 plex.tv, so the claimed test server announces nowhere (no key is written, its cache keys hold none):
@@ -25,9 +30,10 @@ import shutil
 import sqlite3
 import sys
 import tempfile
+import time
 import urllib.parse
 
-from test_feed import ENTRIES, LEGACY, MOUNT, Bytes, Server, check, results, serve
+from test_feed import ENTRIES, LEGACY, MOUNT, Bytes, Server, check, guid_ids, matches, results, serve
 
 PROBE = ENTRIES["episode"]["entry"]["media_info"]
 
@@ -45,6 +51,8 @@ SHOWDOWN_ITEM = {"id": ROW["_sid"], "path": ROW["_sid"], "file": MOUNT + "/" + R
                  "ids": {"tmdb": 46922}, "kind": "episode", "season": 2, "episode": 1, "tmdb_episode": 1107002}
 UNPLACED_SID = ("shows/KonoSuba.S02E01.German.DL.DTS.1080p.BluRay.10bit.x265-PHM/"
                 "KonoSuba.S02E01.German.DL.DTS.1080p.BluRay.10bit.x265-PHM.mkv")
+RELEASE = SHOWDOWN_ITEM["release"]
+SHOW_ROW = next(row for row in FIXTURE["rows"] if row["ratingKey"] == SHOW)
 UNPLACED = {"id": UNPLACED_SID, "path": UNPLACED_SID, "file": MOUNT + "/" + UNPLACED_SID,
             "name": "KonoSuba.S02E01.German.DL.DTS.1080p.BluRay.10bit.x265-PHM",
             "release": "/".join(UNPLACED_SID.split("/")[:2]), "size": 1 << 30,
@@ -63,6 +71,13 @@ def main():
     server = Server(work, serve(Bytes().handler()), keys={"PLEX_TOKEN": os.environ["PLEX_TOKEN"], "REX_PLEXTV_URL": os.environ["REX_RECORD_PLEXTV_URL"]} if RECORD else None)
     try:
         watched = {row["ratingKey"] for row in FIXTURE["rows"] if row.get("viewCount")}
+        listed = matches(server)
+        check("the show a person matched before is listed once for its 80 files: its release, the show's ids, "
+              "timed by the row's updatedAt", listed == {RELEASE: {"release": RELEASE, "kind": "tv", "matched_at": SHOW_ROW["updatedAt"],
+                                                                    "ids": {"tmdb": 46922, "imdb": "tt2293002"}}}, listed)
+        status, body = server.feed("GET", "matches", source="nobody")
+        check("a source nobody registered has no matches listing: the feed's 404",
+              status == 404 and body == {"error": "no such source: PUT /rex/sources/nobody first"}, (status, body))
         # zurg's push of the Showdown file with the TMDB episode DMM places it on: stored on the row,
         # which a show matched by hand keeps where it is until the show is matched
         status, _ = server.feed("POST", "items", {"items": [dict(SHOWDOWN_ITEM, media_info=PROBE)]})
@@ -72,9 +87,14 @@ def main():
         found = ((body or {}).get("MediaContainer") or {}).get("SearchResult") or [] if status == 200 else []
         check("Plex's agent offers Ben 10: Omniverse (2012) for the show", any(row.get("guid") == PICKED for row in found),
               [(row.get("guid"), row.get("name")) for row in found])
+        matched_from = int(time.time())
         status, _ = server.request("/library/metadata/%s/match?guid=%s&name=%s&year=2012"
                                    % (SHOW, urllib.parse.quote(PICKED, safe=""), urllib.parse.quote("Ben 10: Omniverse")), "PUT")
         check("the match is taken", status == 200, status)
+        listed = matches(server) or {}
+        check("matched again, its release is listed with the picked show's ids and the match's time",
+              list(listed) == [RELEASE] and listed[RELEASE]["kind"] == "tv" and listed[RELEASE]["matched_at"] >= matched_from
+              and listed[RELEASE]["ids"] == guid_ids(server.row(SHOW)) != {}, (listed, guid_ids(server.row(SHOW))))
 
         show = server.row(SHOW)
         episodes = server.rows("/library/metadata/%s/allLeaves" % SHOW)
@@ -108,6 +128,8 @@ def main():
                       if UNPLACED["file"] in parts(row)), {})
         stand_in = str(stray.get("grandparentRatingKey", ""))
         check("it is a show of its own", stand_in and stand_in != SHOW, stand_in)
+        listed = matches(server)
+        check("unmatched, its release is no person's match", listed is not None and UNPLACED["release"] not in listed, listed)
         status, _ = server.request("/library/metadata/%s/match?guid=%s&name=%s&year=2012"
                                    % (stand_in, urllib.parse.quote(PICKED, safe=""), urllib.parse.quote("Ben 10: Omniverse")), "PUT")
         check("the match onto the library's show is taken", status == 200, status)
@@ -116,6 +138,14 @@ def main():
               any(UNPLACED["file"] in parts(row) for row in leaves), len(leaves))
         status, _ = server.request("/library/metadata/%s" % stand_in)
         check("the stand-in show is gone", status == 404, status)
+        listed = matches(server) or {}
+        merged = listed.get(UNPLACED["release"], {})
+        check("the merged stand-in's release is listed with the show's ids, as the person matched it",
+              merged.get("kind") == "tv" and merged.get("ids") == guid_ids(server.row(SHOW)) and merged.get("matched_at", 0) >= matched_from, listed)
+
+        status, _ = server.request("/library/metadata/%s/unmatch" % SHOW, "PUT")
+        listed = matches(server)
+        check("Unmatch of the show takes both releases out of the listing", status == 200 and listed == {}, (status, listed))
     finally:
         server.stop()
         if RECORD:

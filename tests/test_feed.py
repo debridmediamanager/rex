@@ -254,6 +254,25 @@ class Server:
         self.log.close()
 
 
+def matches(server, source="zurg"):
+    """The source's matches listing (`GET /rex/feed/{source}/matches`), by release."""
+    status, body = server.feed("GET", "matches", source=source)
+    # None for anything but a 200, so a check that something is not listed cannot pass on an error.
+    return {entry["release"]: entry for entry in (body or {}).get("matches", [])} if status == 200 else None
+
+
+def guid_ids(row):
+    """A row's external ids as its `Guid` lists them: what the listing reports for its title."""
+    ids = {}
+    for guid in row.get("Guid") or []:
+        scheme, _, value = guid.get("id", "").partition("://")
+        if scheme in ("tmdb", "tvdb"):
+            ids[scheme] = int(value)
+        elif scheme == "imdb":
+            ids[scheme] = value
+    return ids
+
+
 def claim(catalog_path, token):
     """A claim beside a JSON catalog, as `POST /myplex/claim` leaves one (`claim_state.json`, for
     the catalog's machineIdentifier). A catalog not written yet, or a database, gets none."""

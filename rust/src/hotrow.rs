@@ -16,6 +16,7 @@ use serde_json::Value;
 pub const FIELDS: &[&str] = &[
     "_collections",
     "_librarySectionID",
+    "_matched",
     "_parentRatingKey",
     "_placed",
     "_poster_url",
@@ -90,6 +91,9 @@ pub struct Release {
     pub source: Box<str>,
     pub sid: Box<str>,
     pub index: usize,
+    /// Whether a person moved this Media onto its row by a merge (`_matched_at` on it): a
+    /// source's matches listing finds it without reading the row.
+    pub matched: bool,
     /// The file, or what comes before `sid` in it when it ends with `sid`: 56% of the production
     /// server's files are their mount and their id, so half the bytes are kept once.
     file: Option<(Box<str>, bool)>,
@@ -122,7 +126,8 @@ impl HotRow {
                         None => (file.into(), false),
                     }
                 });
-                Release { source: source.into(), sid: sid.into(), index, file }
+                let matched = row.pointer(&format!("/Media/{index}/_matched_at")).is_some();
+                Release { source: source.into(), sid: sid.into(), index, matched, file }
             })
             .collect();
         let has_analysis = row.get("Media").and_then(Value::as_array).into_iter().flatten()
