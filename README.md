@@ -22,7 +22,7 @@ rex gets its library from whatever you point at it. Each source sends rex the li
 
 This is the short version. [docs/setup.md](docs/setup.md) has the details and a troubleshooting table.
 
-You need a Linux, macOS or Windows machine, rex nightly 2026.10.25 or newer, and at least one source such as zurg (a zurg nightly from 2026.10.22 or newer: zurg v1.0.0 has no rex feed). rex never needs your Plex token.
+You need a Linux, macOS or Windows machine, rex nightly 2026.10.25 or newer, and at least one source such as zurg (a zurg nightly from 2026.10.27 or newer: zurg v1.0.0 has no rex feed). rex never needs your Plex token.
 
 **1. Get it**
 
@@ -87,18 +87,15 @@ Then, still as the fresh account, share rex with your own account in app.plex.tv
 
 **4. Point a source at it**
 
-A source is any program that sends rex its files over rex's feed API. For a debrid account or Usenet that is zurg: add this to zurg's `config.yml` and restart zurg.
+A source is any program that sends rex its files over rex's feed API. For a debrid account or Usenet that is zurg: on zurg's dashboard open **Config**, press **Login with Plex** under Media Server Integration, sign in as the account rex is claimed with (the fresh one from step 3) and pick rex from the list. zurg marks it `rex: zurg will send it your library` and lists it at rex's LAN IP. That is all: zurg saves rex as its Plex server and as its `rex_url`, and starts at once, with no restart.
 
-```yaml
-rex_url: http://<rex's LAN IP>:32400
-dmm_api_key: <your DMM API key>   # optional: DMM's exact matches
-```
+On the same page you can enter a **DMM API Key**, the key you get by sponsoring DMM. With it zurg asks DMM which movie or episode each file is. Without it zurg works that out from the release name: it looks the title up in DMM's free title search and reads the season and episode off each file name (`S01E02`). That matches fewer titles, and an anime whose episodes are numbered across the whole series can be matched as the show, but its episodes stay in file order. A release it cannot match keeps its file name, with episodes in file order.
 
-`dmm_api_key` is optional, the key you get by sponsoring DMM. With it zurg asks DMM which movie or episode each file is. Without it zurg works that out from the release name: it looks the title up in DMM's free title search and reads the season and episode off each file name (`S01E02`). That matches fewer titles, and an anime whose episodes are numbered across the whole series can be matched as the show, but its episodes stay in file order. A release it cannot match keeps its file name, with episodes in file order. Leave `plex_server_url` pointing at your real Plex, or empty: pointed at rex, zurg learns rex's own matches and a wrong one could never be fixed.
+zurg tells rex where its files are and how to log in to them, then sends its whole library and every change as it happens. A movie or episode shows up once zurg has analyzed it, which zurg starts at once. With rex as its Plex server zurg skips its Plex matching, season fix, Plex backups and trash sweep, which need a Plex database rex does not have.
 
-zurg tells rex where its files are and how to log in to them, then sends its whole library and every change as it happens. A movie or episode shows up once zurg has analyzed it, which zurg starts as soon as its library has loaded.
+Rather not sign zurg in to Plex? Add `rex_url: http://<rex's LAN IP>:32400` to its `config.yml` and restart it instead.
 
-Only this machine, your home network and Tailscale can push to rex's library or delete what a source pushed. A tunnel or reverse proxy running on the rex machine (frp, Caddy, Tailscale Funnel) looks local to rex, so block `/rex/` in it. A router that gives outside visitors its own address makes them look local too, which opens the feed to the internet. Running two zurgs? Give each a name of its own with `rex_source: rd` and `rex_source: ad`.
+Only this machine, your home network and Tailscale can push to rex's library or delete what a source pushed. A tunnel or reverse proxy running on the rex machine (frp, Caddy, Tailscale Funnel) looks local to rex, so block `/rex/` in it. A router that gives outside visitors its own address makes them look local too, which opens the feed to the internet. Running two zurgs? Before picking rex in each, give each a name of its own in its `config.yml` with `rex_source: rd` and `rex_source: ad`.
 
 Anything else registers itself the same way: your own app ([rex with your own app](https://notes.debridmediamanager.com/rex/any-source/)) or an addon for YouTube channels, home videos or Stremio catalogs ([Building rex addons](https://notes.debridmediamanager.com/rex/addons/)).
 

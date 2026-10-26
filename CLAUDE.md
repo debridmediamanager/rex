@@ -184,11 +184,13 @@ titles unless one of that type already names the directory or a person deleted o
 it is, on its key (`feed::relocate`: hand match, edits, every account's state), and Add
 Library's picker lists each source's directories under its mount (`feed_folders`).
 
-Point zurg at the server in zurg's `config.yml`: `rex_url` (this server's URL, an address
-or a host name) is all the feed needs; zurg registers itself as the source `zurg` (or its
-`rex_source`). Leave zurg's `plex_server_url` on a real
-Plex, if there is one: pointed at rex, zurg's matcher learns rex's own matches and pushes
-them back as exact ids, so a wrong match can never be corrected (`docs/setup.md`). zurg then pushes a snapshot of its library once it has
+zurg connects by its Plex sign-in: it asks each server plex.tv lists for the account whether it
+answers `GET /rex/sources` (only rex does, and only to a private peer), and picking one sets both
+its `plex_server_url` and its `rex_url` to that plain-HTTP private address (`docs/setup.md` step
+6). `rex_url` by hand (this server's URL, an address or a host name) is the manual alternative
+and all the feed needs; zurg registers itself as the source `zurg` (or its `rex_source`). With
+rex as its Plex server zurg runs no matcher (whose ids would be rex's own guesses), season fix,
+Plex backups or trash sweep. zurg then pushes a snapshot of its library once it has
 loaded and every few hours, and every change as it happens: `POST`/`DELETE
 /rex/feed/zurg/items`, `PUT /rex/feed/zurg/snapshot` (`runtime/feed.rs`). An item
 with a `kind` and ids is the title those ids name, placed where zurg says (TMDB's season and

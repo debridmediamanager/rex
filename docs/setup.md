@@ -16,7 +16,7 @@ HTTPS address. rex starts once (step 4), and nothing after that needs a restart.
 |---|---|
 | A Linux, macOS or Windows host | rex is one binary with no other runtime dependencies |
 | rex nightly 2026.10.25 or newer | download it (README step 1), or build it with Rust 1.89 or newer (rustup) or Docker (below) |
-| One or more byte sources | [zurg](https://github.com/debridmediamanager/zurg) nightly 2026.10.22 or newer (zurg v1.0.0 has no rex feed), or any HTTP server that serves the files plus something that pushes them to rex's feed |
+| One or more byte sources | [zurg](https://github.com/debridmediamanager/zurg) nightly 2026.10.27 or newer (zurg v1.0.0 has no rex feed), or any HTTP server that serves the files plus something that pushes them to rex's feed |
 | An HTTPS address | only for use outside your LAN and in app.plex.tv: rex-direct, on by default once claimed (step 7), or a certificate for a hostname you control (a `tailscale cert`, Let's Encrypt) |
 | FFmpeg | optional, for [transcoding](#transcoding) |
 
@@ -46,8 +46,8 @@ redirects are handled, and as many sources as you like feed the same libraries. 
 each registration, credential included, in `rex.db`, so a restart keeps playing before the
 source registers again.
 
-zurg does both with nothing but `rex_url` in its `config.yml` (step 6), and says what each file
-is from its name; add `dmm_api_key` so DMM says it instead. Anything else registers and pushes the same way:
+zurg does both once you pick rex in its Plex sign-in (step 6), and says what each file
+is from its name; add a DMM API key so DMM says it instead. Anything else registers and pushes the same way:
 [`docs/feed-api.md`](feed-api.md) is the full contract, for writing a pusher of your own.
 
 Registering and pushing take no token, so a source may name rex by address or host name.
@@ -109,7 +109,7 @@ Plex Media Server runs on the same machine? Add `--port 32500` and use `32500` w
 guide says `32400`, the claim and step 7's port forward included (see LAN discovery below).
 
 The first lines of the log say whether it seeded the catalog, name each source it already
-knows (`source rd: registered, feed at /rex/feed/rd/`, or `no source yet`) and the state
+knows (`source zurg: registered, feed at /rex/feed/zurg/`, or `no source yet`) and the state
 file.
 
 Titles, summaries, posters and episode names come from Plex's own metadata once rex is claimed
@@ -122,7 +122,7 @@ Check it answers:
 ```bash
 curl -s http://<rex's LAN IP>:32400/identity      # machineIdentifier, version
 curl -s http://<rex's LAN IP>:32400/rex/sources            # {"size":0} until a source registers
-curl -s http://<rex's LAN IP>:32400/rex/feed/rd/items       # what rd pushed, once it has registered
+curl -s http://<rex's LAN IP>:32400/rex/feed/zurg/items     # what zurg pushed, once it has registered
 ```
 
 - **LAN discovery.** On port 32400 rex answers Plex's LAN discovery (GDM) on udp/32410 and
@@ -174,34 +174,38 @@ A claimed rex refuses another claim (409). To move it to another account, stop i
 A source is any program that registers with rex and pushes its files over the feed API
 ([`feed-api.md`](feed-api.md)); your own app or an addon does it as below for zurg
 ([rex with your own app](https://notes.debridmediamanager.com/rex/any-source/), [Building rex addons](https://notes.debridmediamanager.com/rex/addons/)).
-For a debrid account or Usenet that is zurg. In each zurg's `config.yml` (zurg's [`docs/config.md`](https://github.com/debridmediamanager/zurg/blob/main/docs/config.md) has the details):
+For a debrid account or Usenet that is zurg. On zurg's dashboard open **Config**, press **Login
+with Plex** under Media Server Integration, sign in as the account rex is claimed with (step 5)
+and pick rex. zurg asks each server it lists whether it is rex (`GET /rex/sources`, which only rex
+answers), marks rex `rex: zurg will send it your library`, and lists it only at the plain-HTTP
+addresses rex takes a source on: rex's LAN IP, and a Tailscale address if you announce one. Picking it
+makes rex zurg's Plex server and its `rex_url` (both saved in zurg's `config.yml`), and zurg
+starts at once, with no restart: it registers with rex, pushes everything it holds, then each
+change as it happens. Watch it arrive in rex's log (`SOURCES zurg registered ...`,
+`FEED POST /rex/feed/zurg/items -> 200`) and with the `/rex/sources` and `/rex/feed/zurg/items` calls
+above.
 
-```yaml
-rex_url: http://<rex's LAN IP>:32400
-dmm_api_key: <your DMM API key>         # optional sponsor key: DMM, not the name, says what each file is (step 4)
-```
-
-Running two zurgs? Give each a name of its own with `rex_source: rd` and `rex_source: ad`. A
-directory that is to be a library of its own gets `rex_shows`/`rex_movies` under it (step 3).
-
-rex's LAN IP works from the same machine, another one and a container alike. Restart
-zurg. Once its library has loaded it registers with rex, pushes everything it holds, then
-each change as it happens. Watch it
-arrive in rex's log (`SOURCES rd registered ...`, `FEED POST /rex/feed/rd/items -> 200`) and with the
-`/rex/sources` and `/rex/feed/rd/items` calls above.
+On the same page, **DMM API Key** takes the optional sponsor key: DMM, not the name, says what
+each file is (step 4). Running two zurgs? Before picking rex in each, give each a name of its own with
+`rex_source: rd` and `rex_source: ad` in its `config.yml`. A directory that is to be a library of its own gets
+`rex_shows`/`rex_movies` under it (step 3). To connect a zurg without signing it in to Plex, put
+`rex_url: http://<rex's LAN IP>:32400` in its `config.yml` and restart it; rex's LAN IP works
+from the same machine, another one and a container alike (zurg's
+[`docs/config.md`](https://github.com/debridmediamanager/zurg/blob/main/docs/config.md) has the details).
 
 **An item appears only once zurg has probed it with ffprobe**, because rex lists each
 file with its streams. Items zurg never probed are held, not shown. zurg probes the whole
-library on its own once it has loaded, one release at a time by default (zurg's
+library on its own once it is connected and its library has loaded, one release at a time by default (zurg's
 `analysis_workers`), then each new release. It downloads ffprobe at start if it has none; its
 Docker image carries one, and if the download fails, install ffprobe and set `ffprobe_binary`.
 With a `dmm_api_key`, up to about 20 releases a minute come from DMM's stored details instead.
 zurg tries a failed probe again a day later, so a large library fills over hours. **Analyze & Tag
 Library** on zurg's dashboard (or `POST /torrents/analyze`) retries failed probes at once.
 
-Leave zurg's `plex_server_url` pointing at your real Plex, if you have one. Pointed
-at rex, zurg's matcher learns rex's own matches and hands them to DMM as the release's id, so
-a wrong match can never be corrected by a later push.
+With rex as its Plex server zurg runs none of its Plex matching, season fix, Plex backups or
+trash sweep: they work on a Plex database, which rex does not have. A Plex Media Server zurg
+was connected to before is replaced by rex; to keep zurg scanning it, connect rex with
+`rex_url` instead.
 
 ### 7. Reach it from outside: HTTPS and the announce
 
@@ -338,7 +342,7 @@ services:
       - ./config:/config
 ```
 
-zurg's `rex_url` (step 6) and the claim (step 5) are unchanged with host networking. A
+Connecting zurg (step 6) and the claim (step 5) are unchanged with host networking. A
 `command:` adds flags, such as step 7's own hostname; its certificates go in `/config` too:
 `--tls-cert /config/host.crt --tls-key /config/host.key`. Without host networking, publish
 `32400:32400`, add `command: --announce-url http://<rex's LAN IP>:32400` (inside its container
@@ -376,7 +380,7 @@ running when the manager stopped is running again when it starts.
 
 ```bash
 rex manager serve                        # API + page on http://127.0.0.1:32300; prints the admin token once
-rex manager create den --port 32401      # a source such as zurg fills it once its rex_url names the port
+rex manager create den --port 32401      # a source such as zurg fills it once it is pointed at the port
 rex manager start den                    # its first start makes its empty library, as a plain rex does
 rex manager list                         # status | logs | stop | restart | delete [--purge]
 ```
