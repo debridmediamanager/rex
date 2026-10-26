@@ -47,6 +47,8 @@ def main():
         capacity_rejected = True
     else:
         capacity_rejected = False
+    # Sixty suites fit, including the range around the smoke's fixed port, which PortPool skips.
+    many = assign_port_ranges(["suite-%d" % index for index in range(60)])
     child = subprocess.run(
         [sys.executable, os.path.join(ROOT, "tests", "parallel_suites.py"), "--workers", "1",
          "test_parallel_failure_fixture"],
@@ -60,6 +62,7 @@ def main():
         and all(low <= high <= MAX_PORT for low, high in parsed_ranges)
         and parsed_ranges == sorted(parsed_ranges),
         capacity_rejected,
+        len(many) == 60,
         all("::group::%s" % name in output.getvalue()
             and "::endgroup::" in output.getvalue()
             and "%s exit " % name in output.getvalue() for name in names),

@@ -139,7 +139,7 @@ jobs:
           # captures each child's output before emitting its own log group, so
           # concurrent suites remain attributable and every child is reaped.
           # Each child receives a stable, disjoint REX_TEST_PORTS range below
-          # 32768; the native smoke's fixed 32620 is outside those ranges.
+          # 32768; every pool skips the native smoke's fixed 32620.
           .github/ci/in-image.sh 'python3 tests/parallel_suites.py --workers 4 \
             test_startup_wait test_test_ports test_parallel_suites test_cli test_server_command \
             test_native_runtime_smoke test_pms_identity test_sqlite_store test_build_catalog test_tls test_part_bytes \
