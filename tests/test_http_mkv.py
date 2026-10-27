@@ -174,9 +174,20 @@ def first_pts(path):
     return float(out[0]) if out else None
 
 
+def processes():
+    """Every process's id and command line. `tasklist` shows no command lines, so Windows asks CIM."""
+    if os.name == "nt":
+        listed = subprocess.run(["powershell", "-NoProfile", "-Command",
+                                 "Get-CimInstance Win32_Process -Filter \"Name='ffmpeg.exe'\" | "
+                                 "ForEach-Object { \"$($_.ProcessId) $($_.CommandLine)\" }"],
+                                capture_output=True, text=True).stdout
+    else:
+        listed = subprocess.run(["ps", "-axo", "pid=,command="], capture_output=True, text=True).stdout
+    return [line.strip() for line in listed.splitlines() if line.strip()]
+
+
 def ffmpegs_reading(name):
-    listed = subprocess.run(["ps", "-axo", "pid=,command="], capture_output=True, text=True).stdout
-    return [line.split()[0] for line in listed.splitlines() if "ffmpeg" in line and "/" + name in line and "-f matroska" in line]
+    return [line.split()[0] for line in processes() if "ffmpeg" in line.lower() and "/" + name in line and "-f matroska" in line]
 
 
 def gone(name, timeout=10):

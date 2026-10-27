@@ -331,6 +331,7 @@ jobs:
           fi
           export REX_TRANSCODER="$(cygpath -w "$dir/ffmpeg.exe")" PATH="$dir:$PATH"
           python tests/test_native_transcode.py
+          python tests/test_http_mkv.py
 
   release:
     if: startsWith(github.ref, 'refs/tags/v') || needs.gate.outputs.nightly == 'true'
