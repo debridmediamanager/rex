@@ -76,6 +76,9 @@ const KEEP_BEHIND: f64 = 120.0;
 /// `SUBTITLE_RATE`, which converted ahead of the lines; and a seek past what was read finished
 /// its run before the lines came, never to burn them (rex-fun, 2026-10-19).
 const FIRST_SUBTITLES_MS: i64 = 60 * 1000;
+/// How long the first run waits on that minute: a track dense from its start (an anime's opening
+/// typesetting) is read for minutes at `SUBTITLE_RATE`, past a player's patience.
+const FIRST_SUBTITLES_WAIT: Duration = Duration::from_secs(8);
 /// A held run restarts once its reader knows this much more past the hold: little when the
 /// player is waiting on it, more otherwise, since every restart costs the encoder's start.
 const WAITING_ADVANCE_MS: i64 = 30 * 1000;
@@ -2010,6 +2013,7 @@ impl Transcoder {
             read_range(&plan.url, plan.auth.as_deref(), offset, length)
         };
         let begun = Instant::now();
+        info!("TRANSCODE {} subtitle stream {}: reading it before the first run", session.id, text.index);
         let index = match super::mkvsubs::index(&read, text.index) {
             Ok(index) => index,
             Err(error) => {
@@ -2062,8 +2066,12 @@ impl Transcoder {
             }) else {
                 return;
             };
-            // A held run is restarted by its own `watch`; the reader starts only the first.
-            if session.run.load(Ordering::SeqCst) == 0 && known.is_none_or(|limit| limit >= position + FIRST_SUBTITLES_MS) {
+            // A held run is restarted by its own `watch`; the reader starts only the first: once it
+            // knows the first minute, or after `FIRST_SUBTITLES_WAIT`, and the run holds where the
+            // lines run out as later runs do. Round Two Time's ASS opening, read 3 lines a second,
+            // held the first run past the player's 45 s with nothing logged (rex-fun, 2026-10-27).
+            let enough = known.is_none_or(|limit| limit >= position + FIRST_SUBTITLES_MS) || begun.elapsed() >= FIRST_SUBTITLES_WAIT;
+            if session.run.load(Ordering::SeqCst) == 0 && enough {
                 info!("TRANSCODE {} subtitle stream {}: {} of {} cues from {}s read in {:.1}s", session.id, text.index, events.len(), index.cues.len(), position / 1000, begun.elapsed().as_secs_f64());
                 self.relaunch(session, None);
             }
@@ -2601,6 +2609,14 @@ impl Transcoder {
                 }
             }
             if Instant::now() > deadline {
+                // Say why the player is let down: a run never started was silent (rex-fun,
+                // 2026-10-27: an ASS track's opening read for minutes before the first run).
+                let why = match session.run.load(Ordering::SeqCst) {
+                    0 if session.plan.text_burn.is_some() => "no run has started: its subtitle stream is still being read".to_string(),
+                    0 => "no run has started".to_string(),
+                    run => format!("run {run} has not made it"),
+                };
+                warning!("TRANSCODE {} segment {index} waited 45 s and failed: {why}", session.id);
                 return Err(500);
             }
             thread::sleep(Duration::from_millis(25));

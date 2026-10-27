@@ -803,6 +803,17 @@ def run(scratch):
     dense_streams = probe(MEDIA["lagdense.mkv"])["streams"]
     items.append(row("15", "Lagdense", "lagdense.mkv", dense_streams, os.path.getsize(MEDIA["lagdense.mkv"]), 300,
                      subtitle=next(s for s in dense_streams if s["codec_type"] == "subtitle"), subtitle_codec="ass"))
+    # The slow file with 600 lines in its first minute, as an anime episode's opening typesetting
+    # has (Round Two Time's ASS on rex-fun): read 3 a second, that minute takes over 3 minutes.
+    MEDIA["lagopen.mkv"] = os.path.join(scratch, "lagopen.mkv")
+    opening = os.path.join(scratch, "opening.ass")
+    open(opening, "w").write(box_script(sorted([(n * 0.1, n * 0.1 + 0.1) for n in range(600)]
+                                               + [(start, start + 2) for start in range(60, 300, 2)])))
+    subprocess.run([FFMPEG, "-v", "error", "-y", "-i", MEDIA["long.mkv"], "-i", opening, "-map", "0", "-map", "1", "-c", "copy",
+                    MEDIA["lagopen.mkv"]], check=True)
+    opening_streams = probe(MEDIA["lagopen.mkv"])["streams"]
+    items.append(row("21", "Lagopen", "lagopen.mkv", opening_streams, os.path.getsize(MEDIA["lagopen.mkv"]), 300,
+                     subtitle=next(s for s in opening_streams if s["codec_type"] == "subtitle"), subtitle_codec="ass"))
     # The same file answered at full speed, for the read budget two sessions share.
     MEDIA["burstsubs.mkv"] = MEDIA["lagsubs.mkv"]
     items.append(row("14", "Burstsubs", "burstsubs.mkv", streams, os.path.getsize(MEDIA["lagsubs.mkv"]), 300,
@@ -1114,6 +1125,19 @@ def run(scratch):
         check("s-lag: a segment past what was read when it was asked for carries its line",
               burned > 230, "luma %.0f (%s)" % (burned, status))
         get(port, "/video/:/transcode/universal/stop", [("session", "s-lag")])
+        # A track dense from its start: the first run waited for its first minute of lines, read 3
+        # a second, and the player's first segment failed at 45 s with nothing logged (Round Two
+        # Time on rex-fun, 2026-10-27). It starts after a few seconds and holds where they run out.
+        decision(port, "21", "s-open", directStream="1", subtitles="auto")
+        began = time.time()
+        get(port, "/video/:/transcode/universal/start.m3u8", plex_web_query("21", "s-open", directStream="1", subtitles="auto"))
+        status, _, first = get(port, "/video/:/transcode/universal/session/s-open/base/00000.ts")
+        took = time.time() - began
+        check("s-open: a track dense from its start still gives the first segment within 20 s",
+              status == 200 and first[:1] == b"\x47" and took < 20, "%s in %.1f s" % (status, took))
+        check("s-open: the log says the track is read before the first run",
+              wait_for_log(log, r"(s-open subtitle stream \d+: reading it before the first run)", 5) is not None, "")
+        get(port, "/video/:/transcode/universal/stop", [("session", "s-open")])
         # A player waiting on lines that read slower than they play is kept waiting a few
         # seconds, not until they are all read: an opening song's karaoke held the player 51 s
         # and its request timed out (Laid-Back Camp on the zen rig).
