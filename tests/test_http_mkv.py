@@ -403,6 +403,18 @@ def build(scratch):
     item["Media"][0].update({"width": 1920, "height": 1080})
     items.append(item)
     files["interlaced.mkv"] = "209"
+    # Recorded files whose keyframes are further apart than a DASH remux's 5 s segment: 12 of 33
+    # files sampled on rex-fun have a gap over 5 s, most of them x265 encodes (2026-10-27).
+    # And one whose 2 s keyframes fit them, which keeps the copy. `slowgop8.mkv` is served at
+    # nt.SLOW_RATE, as a debrid source is read: a player has the first segment before the second
+    # is cut.
+    for key, name, gop in (("210", "gop8.mkv", 8), ("211", "gop12.mkv", 12), ("212", "gop2.mkv", 2), ("213", "slowgop8.mkv", 8)):
+        MEDIA[name] = os.path.join(scratch, name)
+        subprocess.run([FFMPEG, "-v", "error", "-y", "-f", "lavfi", "-i", "testsrc2=s=640x360:r=25:d=%d" % DURATION, "-f", "lavfi", "-i", "sine=d=%d" % DURATION,
+                        "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p",
+                        "-x264-params", "keyint=%d:min-keyint=%d:scenecut=0" % (gop * 25, gop * 25), "-c:a", "aac", "-shortest", MEDIA[name]], check=True)
+        items.append(file_row(key, name, probe(MEDIA[name])["streams"]))
+        files[name] = key
     # Two audio tracks, the second (AC3 5.1) selected.
     MEDIA["twoaudio.mkv"] = os.path.join(scratch, "twoaudio.mkv")
     subprocess.run([FFMPEG, "-v", "error", "-y", "-i", plain, "-f", "lavfi", "-i", "sine=f=880:d=%d" % DURATION,
@@ -433,7 +445,7 @@ def field_order(path):
     return out[0] if out else "none"
 
 
-def guard(port, scratch, live_key, file_key, interlaced_live, interlaced_file, long_gop_live):
+def guard(port, scratch, live_key, file_key, interlaced_live, interlaced_file, long_gop_live, long_gop_file):
     print("every profile's streaming protocol")
     targets = {}
     for name, profile in sorted(PROFILES.items()):
@@ -457,7 +469,8 @@ def guard(port, scratch, live_key, file_key, interlaced_live, interlaced_file, l
         signature = (protocol, target.get("container"), target.get("videoCodec") or target.get("codec"), target.get("audioCodec"))
         for kind, key, extra in (("live", live_key, {}), ("capped file", file_key, {"maxVideoBitrate": "1000", "videoResolution": "640x360"}),
                                  ("interlaced live", interlaced_live, {}), ("interlaced file", interlaced_file, {}),
-                                 ("long-GOP live", long_gop_live, {})):
+                                 ("long-GOP live", long_gop_live, {}),
+                                 ("long-GOP file", long_gop_file, {"directStream": "1", "directStreamAudio": "1"})):
             session = "g-%s-%s-%s" % (re.sub(r"\W", "", name), protocol, re.sub(r"\W", "", kind))
             container = decide(port, profile_query(name, protocol, key, session, **extra))
             text = " ".join(str(container.get(field, "")) for field in ("generalDecisionText", "transcodeDecisionText"))
@@ -686,6 +699,54 @@ def loudness(path):
                           capture_output=True, text=True)
     found = re.search(r"mean_volume: (-?[\d.]+) dB", done.stderr)
     return float(found.group(1)) if found else None
+
+
+def long_gop_files(port, scratch, files, log):
+    """A recorded file remuxed over DASH whose keyframes are further apart than the 5 s template:
+    one gap spanning two template slots made one chunk of them, and every later segment held the
+    film of the one after its number. Each chunk's own `sidx` shows it; the video is converted from
+    there, so every segment starts where its number says. A file whose keyframes fit keeps the copy."""
+    print("recorded files with keyframes further apart than a DASH segment")
+    for name in ("gop8.mkv", "gop12.mkv", "gop2.mkv", "slowgop8.mkv"):
+        key = files[name]
+        session = "vod-" + name.split(".")[0]
+        query = nt.dash_query(key, session, directStream="1", directStreamAudio="1")
+        decide(port, query)
+        status, _, mpd = get(port, "/video/:/transcode/universal/start.mpd", query)
+        length = int(re.search(r'duration="(\d+)"', mpd.decode()).group(1)) if status == 200 else 5
+        placed = []
+        for index in range(DURATION // 5):
+            status, _, body = get(port, "/video/:/transcode/universal/session/%s/0/%d.m4s" % (session, index), timeout=90)
+            kinds = nt.boxes(body) if status == 200 else []
+            scale = next((extra["timescale"] for kind, extra in kinds if kind == "moov"), 0)
+            tfdt = next((extra.get("tfdt") for kind, extra in kinds if kind == "moof"), None)
+            placed.append(round(tfdt / scale - index * length, 1) if scale and tfdt is not None else None)
+            path = os.path.join(scratch, "%s-%d.mp4" % (session, index))
+            open(path, "wb").write(body)
+        # A copied chunk starts on the first keyframe at or after its slot, so within the slot;
+        # one a whole slot late holds the next segment's film.
+        check("%s keyframes %s s apart: every DASH segment starts in its own slot" % (name, re.search(r"gop(\d+)", name).group(1)),
+              all(off is not None and -length < off < length - 0.05 for off in placed) and decodes(path), "offsets %s" % placed)
+        get(port, "/video/:/transcode/universal/stop", [("session", session)])
+        if name == "gop2.mkv":
+            # FFmpeg's `-use_timeline 1` cut each chunk 5 s after the last: 6 s chunks drifted a
+            # second a segment, and this file was converted at its fifth.
+            switched = re.findall(r"TRANSCODE %s run [^\n]*the copied video cuts only on keyframes" % session, open(log).read())
+            check("gop2.mkv keyframes 2 s apart: the remux keeps the copy", not switched, switched[:1])
+        session += "-read"
+        query = nt.dash_query(key, session, directStream="1", directStreamAudio="1")
+        decide(port, query)
+        url = "http://127.0.0.1:%d/video/:/transcode/universal/start.mpd?%s" % (port, urllib.parse.urlencode(query))
+        try:
+            done = subprocess.run([FFMPEG, "-v", "error", "-i", url, "-map", "0:v:0", "-c", "copy", "-f", "null", "-", "-progress", "pipe:1"],
+                                  capture_output=True, text=True, timeout=180)
+            out = done.stdout
+        except subprocess.TimeoutExpired as expired:
+            out = (expired.stdout or b"").decode("utf-8", "replace") if isinstance(expired.stdout, bytes) else (expired.stdout or "")
+        read = max([int(value) for value in re.findall(r"^out_time_us=(\d+)", out, re.M)] or [0]) / 1e6
+        check("%s: a DASH reader reads the whole %d s" % (name, DURATION), read >= DURATION - 3, "%.1f s" % read)
+        get(port, "/video/:/transcode/universal/stop", [("session", session)])
+    check("the log says where the copied video was converted from", "runs a segment past its own); converting it from segment" in open(log).read(), "")
 
 
 def long_gop(port, scratch, channels, log):
@@ -962,12 +1023,14 @@ def run(scratch):
     port, process, log = nt.start_server(catalog, source_port, True, scratch)
     try:
         if "guard" in sys.argv[1:] or len(sys.argv) == 1:
-            guard(port, scratch, channels["live-guard"], files["h264.mkv"], channels["live-guard-i"], files["interlaced.mkv"], channels["live-gop10"])
+            guard(port, scratch, channels["live-guard"], files["h264.mkv"], channels["live-guard-i"], files["interlaced.mkv"], channels["live-gop10"], files["gop12.mkv"])
             live_dash(port, channels["live-guard"])
         if "stale" in sys.argv[1:] or len(sys.argv) == 1:
             stale(port, scratch, channels, log)
             missing_audio(port, scratch, channels, log)
+        if any(name in sys.argv[1:] for name in ("stale", "gop")) or len(sys.argv) == 1:
             long_gop(port, scratch, channels, log)
+            long_gop_files(port, scratch, files, log)
         if "http" in sys.argv[1:] or len(sys.argv) == 1:
             http_matrix(port, scratch, channels, files, log)
     finally:

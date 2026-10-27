@@ -10,7 +10,8 @@ Playwright and Google Chrome (Playwright's own Chromium has no H.264/AAC).
 
     REX_SERVER=/path/to/rex python3 probes/shaka_live_dash.py [SECONDS] [dash|hls] [CHANNEL]
 
-CHANNEL is one of tests/test_http_mkv.py's live channels (`live-gop5` has beIN Sports 7's GOP).
+CHANNEL is one of tests/test_http_mkv.py's live channels (`live-gop5` has beIN Sports 7's GOP) or
+recorded files (`gop8.mkv`, `gop12.mkv`: keyframes 8 and 12 s apart), a file remuxed as a copy.
 """
 import http.server
 import json
@@ -59,7 +60,7 @@ def main():
 
 
 def play(scratch, seconds, protocol, channel):
-    items, channels, _ = suite.build(scratch)
+    items, channels, files = suite.build(scratch)
     catalog = os.path.join(scratch, "catalog.json")
     json.dump({"machineIdentifier": "0" * 39 + "9", "friendlyName": "rex-shaka",
                "sections": [{"key": "1", "type": "movie", "title": "Clips", "uuid": "0" * 39 + "9"}], "items": items}, open(catalog, "w"))
@@ -69,7 +70,12 @@ def play(scratch, seconds, protocol, channel):
     try:
         session = "shaka-live"
         # Plex Web 4.147.1's recorded DASH request, or 4.160's HLS one.
-        query = (nt.dash_query if protocol == "dash" else nt.plex_web_query)(channels[channel], session)
+        if channel in files:
+            # A recorded file, remuxed: the request that copies (directStream=1), as the DASH
+            # profiles that remux send it.
+            query = (nt.dash_query if protocol == "dash" else nt.plex_web_query)(files[channel], session, directStream="1", directStreamAudio="1")
+        else:
+            query = (nt.dash_query if protocol == "dash" else nt.plex_web_query)(channels[channel], session)
         print("decision", suite.decide(port, query).get("generalDecisionCode"))
         mpd = "http://127.0.0.1:%d/video/:/transcode/universal/start.%s?%s" % (
             port, "mpd" if protocol == "dash" else "m3u8", urllib.parse.urlencode(query))

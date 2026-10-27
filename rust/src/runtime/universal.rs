@@ -24,7 +24,7 @@
 
 use super::*;
 use std::collections::BTreeMap;
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, Read};
 use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::OnceLock;
@@ -61,9 +61,6 @@ const LIVE_STALL: Duration = Duration::from_secs(20);
 /// bytes, and a slow start is not held longer than this.
 const STREAM_HOLD: usize = 64 * 1024;
 const STREAM_HOLD_TIME: Duration = Duration::from_secs(1);
-/// How many segments a live DASH remux's audio may run ahead of its copied video before the video
-/// is converted (`watch`).
-const LONG_GOP_LAG: i64 = 2;
 /// How many live restarts in a row may produce nothing before the session fails.
 const LIVE_RESTARTS: u32 = 4;
 /// The segment a live DASH session's run starts at, and its players' first (`mpd`).
@@ -329,6 +326,29 @@ impl Sidecar {
     /// Whether this plan draws it into the picture rather than carrying it as a stream.
     fn burned(plan: &Plan) -> bool {
         plan.sidecar.is_some() && !plan.matroska
+    }
+}
+
+/// Where a DASH chunk's media ends on the title's clock, from the `sidx` FFmpeg's MP4 muxer
+/// writes ahead of its fragment (its earliest presentation time and duration), in the first bytes
+/// of the chunk file.
+fn chunk_end(head: &[u8]) -> Option<f64> {
+    let int = |at: usize, len: usize| head.get(at..at + len).map(|bytes| bytes.iter().fold(0_u64, |value, byte| value << 8 | *byte as u64));
+    let mut at = 0;
+    loop {
+        let size = int(at, 4)? as usize;
+        if head.get(at + 4..at + 8)? == b"sidx" {
+            let wide = int(at + 8, 1)? == 1;
+            let scale = int(at + 16, 4)?;
+            let time = int(at + 20, if wide { 8 } else { 4 })?;
+            let refs = at + if wide { 36 } else { 28 };
+            let duration = (0..int(refs + 2, 2)? as usize).map(|n| int(refs + 8 + 12 * n, 4)).sum::<Option<u64>>()?;
+            return (scale > 0).then(|| (time + duration) as f64 / scale as f64);
+        }
+        if size < 8 {
+            return None;
+        }
+        at += size;
     }
 }
 
@@ -954,6 +974,9 @@ pub(crate) fn ffmpeg_args(plan: &Plan, path: Path, hardware: &Hardware, start: i
         let manifest = if cfg!(windows) { manifest.replace('\\', "/") } else { manifest };
         push(&mut args, &[
             "-f", "dash", "-format_options", "movflags=+frag_discont", "-seg_duration", &length.to_string(),
+            // No timeline: with one FFmpeg 8.1 cuts each segment its length after the last cut, not
+            // on the template's slots, so plain.ts's 2 s keyframes made 6 s chunks and its remux was
+            // converted at its fifth (`chunk_end` reads where a chunk really ends).
             "-use_template", "1", "-use_timeline", "0", "-single_file", "0", "-window_size", "0",
             "-remove_at_exit", "0", "-dash_segment_type", "mp4", "-adaptation_sets", sets,
             "-init_seg_name", "init-$RepresentationID$.m4s",
@@ -1016,6 +1039,8 @@ struct Progress {
     seek: u64,
     /// Input failures (the source answering 5xx, a dropped connection) retried so far.
     input_retries: u32,
+    /// Whether anything of the current run (a segment or a header) has gone to a player.
+    served: bool,
     /// A live run's restarts since its last new segment (`LIVE_RESTARTS`).
     live_restarts: u32,
     touched: Option<Instant>,
@@ -2136,6 +2161,7 @@ impl Transcoder {
         );
         if let Ok(mut state) = session.state.lock() {
             state.run_start = start;
+            state.served = false;
             state.path = Some(path);
             state.paused = false;
             state.held = false;
@@ -2250,8 +2276,7 @@ impl Transcoder {
         let done_at = |index: i64| if session.plan.protocol == Protocol::Dash { index } else { index + 1 };
         let mut next = start;
         let mut progressed = Instant::now();
-        // How far each DASH representation's own chunks have got (`LONG_GOP_LAG`).
-        let mut rep_next = [start, start];
+        let copied_dash = session.plan.protocol == Protocol::Dash && session.plan_now().video.is_some_and(|video| video.copy);
         // Since when the player has been waiting on this run's subtitle hold.
         let mut waited: Option<Instant> = None;
         loop {
@@ -2259,7 +2284,51 @@ impl Transcoder {
             if session.stopped.load(Ordering::SeqCst) || session.run.load(Ordering::SeqCst) != run {
                 return;
             }
-            while session.opened(done_at(next), start) {
+            // Before the segments: a run that has exited has written every chunk it will.
+            let exited = session
+                .child
+                .lock()
+                .ok()
+                .and_then(|mut child| child.as_mut().and_then(|process| process.try_wait().ok().flatten()))
+                .map(|status| status.code().unwrap_or(-1));
+            // A recorded file's copied chunk is served once the one after it is checked too: a
+            // player has the first segment before a remux read from a debrid source cuts the
+            // second, and an 8 s gap shows only there. CI's gop8.mkv was converted from segment 1
+            // after its copied segment 0 had gone to FFmpeg's DASH reader, which kept the copy's
+            // header and read 24 s of 30 (2026-10-27). A live chunk is served at once.
+            let ahead = i64::from(copied_dash && !session.plan.live() && exited.is_none());
+            while session.opened(done_at(next) + ahead, start) {
+                // A copied video's chunk is checked before it is served (a remux runs far ahead of
+                // the player): one that runs past the next slot's end leaves the one after it a slot
+                // late, so the conversion starts at this one, and a file's first long gap is known
+                // before any of it is served.
+                let late = (next..=next + ahead).filter(|_| copied_dash).find(|&chunk| {
+                    let mut head = Vec::new();
+                    let _ = std::fs::File::open(session.segment_file(chunk, 0, start)).and_then(|file| file.take(1024).read_to_end(&mut head));
+                    chunk_end(&head).is_some_and(|end| end >= (chunk + 2) as f64 * length - 0.05)
+                });
+                if let Some(late) = late {
+                    if let Ok(mut forced) = session.forced.lock() {
+                        forced.1 = true;
+                    }
+                    // Nothing of this run played yet (a file's opening, as a remux runs ahead):
+                    // the conversion takes the run from its start, so no player gets a copied
+                    // segment and a converted one, each with its own header.
+                    // Decided under the lock a request takes to find a segment, and this run's
+                    // segments dropped there, so none is read as its files go.
+                    let from = session.state.lock().map(|mut state| if state.served { next } else {
+                        state.done.retain(|index, _| *index < start);
+                        start
+                    }).unwrap_or(next);
+                    warning!(
+                        "TRANSCODE {} run {run}: the copied video cuts only on keyframes further apart than the {} s segments (its chunk for segment {late} runs a segment past its own); converting it from segment {from}",
+                        session.id, length
+                    );
+                    if session.run.load(Ordering::SeqCst) == run && !session.stopped.load(Ordering::SeqCst) {
+                        self.launch(&session, from, None);
+                    }
+                    return;
+                }
                 if let Ok(mut state) = session.state.lock() {
                     state.done.insert(next, span(next));
                     state.input_retries = 0;
@@ -2268,44 +2337,17 @@ impl Transcoder {
                 next += 1;
                 progressed = Instant::now();
             }
-            // A live DASH remux numbers its segments on a fixed template, and copied video can cut
-            // only on the source's keyframes: Digi Sport 4's are 10 s apart, so its 4 s segments
-            // fell behind the audio's and the player's requests ran out ahead of them (1/14.m4s a
-            // 500 at +87 s; rex-fun, 2026-10-27). Once the audio is `LONG_GOP_LAG` segments ahead,
-            // the video is converted, keyframes on the template, from the next segment on.
-            if session.plan.protocol == Protocol::Dash && session.plan.live() && session.plan.representations() == 2
-                && session.plan_now().video.is_some_and(|video| video.copy)
-            {
-                for (rep, at) in rep_next.iter_mut().enumerate() {
-                    while session.segment_file(*at, rep, start).exists() {
-                        *at += 1;
-                    }
-                }
-                if rep_next[1] >= rep_next[0] + LONG_GOP_LAG {
-                    if let Ok(mut forced) = session.forced.lock() {
-                        forced.1 = true;
-                    }
-                    warning!(
-                        "TRANSCODE {} run {run}: the copied video cuts only on keyframes further apart than the {} s segments (audio at {}, video at {}); converting it from segment {next}",
-                        session.id, length, rep_next[1], rep_next[0]
-                    );
-                    if session.run.load(Ordering::SeqCst) == run && !session.stopped.load(Ordering::SeqCst) {
-                        self.launch(&session, next, None);
-                    }
-                    return;
-                }
-            }
+            // A DASH remux numbers its segments on a fixed template, and copied video cuts only on
+            // the source's keyframes: one gap wider than a segment merges two template slots into
+            // one chunk and numbers every later chunk a segment early. Digi Sport 4's keyframes are
+            // 10 s apart (live, 1/14.m4s a 500 at +87 s), and 12 of 33 files sampled on rex-fun
+            // have a gap over 5 s (2026-10-27): the check is in the loop above, as each chunk is
+            // done.
             // A live source that stops sending holds FFmpeg on its playlist with nothing out, and
             // one that ends or errors ends the run: either way the channel goes on, so the run is
             // started again at the live edge, numbered on from the segment it was writing.
             let paused = session.state.lock().map(|state| state.paused || state.held).unwrap_or(false);
             let live_stalled = session.plan.live() && !paused && progressed.elapsed() > LIVE_STALL;
-            let exited = session
-                .child
-                .lock()
-                .ok()
-                .and_then(|mut child| child.as_mut().and_then(|process| process.try_wait().ok().flatten()))
-                .map(|status| status.code().unwrap_or(-1));
             // A run that fails before any segment is not the channel going on: that is the
             // ladder's, and a stale copy's (`force_next`).
             if session.plan.live() && ((exited.is_some() && next > start) || (exited.is_none() && live_stalled)) {
@@ -2486,6 +2528,9 @@ impl Transcoder {
                         session.remove_segment(key, run);
                     }
                     let ready = state.done.get(&index).map(|range| range.2);
+                    // Under the lock that finds it: a switch deciding on `served` meanwhile would
+                    // delete the file this request is about to read (a 500 for gop8.mkv's segment 0).
+                    state.served |= ready == Some(state.run_start);
                     if ready.is_none() && !state.error && !session.stopped.load(Ordering::SeqCst) {
                         // How far THIS run has got; earlier runs' leftovers say nothing.
                         let highest = state.done.range(state.run_start..).next_back().map_or(state.run_start - 1, |(key, _)| *key);
@@ -2572,14 +2617,21 @@ impl Transcoder {
         loop {
             // The init is complete once its run has finished a segment -- not once that
             // run's FIRST fragment exists: the player re-fetches the header on every seek,
-            // long after the first fragments were pruned behind it (that hung the seek).
-            let (run, finished) = session
+            // long after the first fragments were pruned behind it (that hung the seek). Done, not
+            // merely written: a copied video's chunk is done once `watch` has checked it, and a run
+            // that fails that is replaced by a conversion whose header differs. Counted served
+            // under that lock, as a segment is.
+            let (run, ready) = session
                 .state
                 .lock()
-                .map(|state| (state.run_start, state.done.values().any(|range| range.2 == state.run_start)))
+                .map(|mut state| {
+                    let ready = state.done.values().any(|range| range.2 == state.run_start);
+                    state.served |= ready;
+                    (state.run_start, ready)
+                })
                 .map_err(|_| 500u16)?;
             let path = session.init_file(rep, run);
-            if path.exists() && (finished || session.segment_file(run, rep, run).exists()) {
+            if path.exists() && ready {
                 return std::fs::read(path).map_err(|_| 500);
             }
             if session.stopped.load(Ordering::SeqCst) {
@@ -3760,6 +3812,20 @@ mod tests {
             boost_dialog: false,
             normalize_loudness: false,
         }
+    }
+
+    #[test]
+    fn a_copied_chunk_says_where_it_ends_in_its_sidx() {
+        let hex = |text: &str| (0..text.len()).step_by(2).map(|at| u8::from_str_radix(&text[at..at + 2], 16).unwrap()).collect::<Vec<u8>>();
+        // FFmpeg 8.1's first video chunk (`styp`, `sidx`) of a 12 s-GOP file remuxed in 5 s
+        // segments: 0.023 s to 12.023 s, past the second slot's end, so the next chunk is a slot late.
+        let late = hex("00000018737479706d736468000000006d7364686d7369780000003473696478010000000000000100003e800000000000000170000000000000000000000001002916130002ee0080000000");
+        assert!((chunk_end(&late).unwrap() - 12.023).abs() < 0.001);
+        // A 2 s-GOP file's run from segment 4 (`-ss 20`, `-output_ts_offset 20`): 20 s to 26 s.
+        let fine = hex("00000018737479706d736468000000006d7364686d7369780000003473696478010000000000000100003e80000000000004e2000000000000000000000000010014769b0001770080000000");
+        assert!((chunk_end(&fine).unwrap() - 26.0).abs() < 0.001);
+        assert_eq!(chunk_end(&late[..60]), None);
+        assert_eq!(chunk_end(b""), None);
     }
 
     #[test]
