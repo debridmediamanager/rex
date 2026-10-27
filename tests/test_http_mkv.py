@@ -247,7 +247,9 @@ def make_channel(scratch, name, video, audio, size="320x180", rate=24, extra=(),
     vod = open(os.path.join(scratch, name + "-vod.m3u8")).read()
     lengths = [float(value) for value in re.findall(r"#EXTINF:([\d.]+),", vod)]
     CHANNELS[name + ".m3u8"] = {"segments": segments, "lengths": lengths, "since": None}
-    return probe(os.path.join(scratch, name + "-vod.m3u8"))["streams"]
+    # The streams as read off the frames, as rex-live-sports probes a channel since 6758680: a
+    # playlist's own probe leaves an interlaced picture's field_order unknown.
+    return probe(clip)["streams"]
 
 
 def live_row(key, name, streams):
@@ -281,14 +283,20 @@ def build(scratch):
     h264 = ["-c:v", "libx264", "-preset", "ultrafast", "-g", "48", "-pix_fmt", "yuv420p"]
     aac = ["-c:a", "aac", "-ac", "2"]
     items, channels = [], {}
-    # The guard's channel, read by every profile in turn: on the air for its whole run.
+    # The guard's channels, read by every profile in turn: on the air for its whole run. One is
+    # field-coded 576i25, as many broadcast channels are.
     streams = make_channel(scratch, "live-guard", h264, aac, seconds=1200)
     items.append(live_row("100", "live-guard", streams))
     channels["live-guard"] = "100"
+    streams = make_channel(scratch, "live-guard-i", ["-vf", "setfield=tff", "-c:v", "libx264", "-preset", "ultrafast", "-g", "50",
+                                                     "-pix_fmt", "yuv420p", "-flags", "+ilme+ildct", "-x264-params", "tff=1"],
+                           aac, "720x576", 25, ("-field_order", "tt"), seconds=1200)
+    items.append(live_row("99", "live-guard-i", streams))
+    channels["live-guard-i"] = "99"
     # Live channels, each a different broadcast shape, each read once.
     for key, name, video, audio, size, rate, extra in (
             ("101", "live-h264", h264, aac, "320x180", 24, ()),
-            ("102", "live-1080i", ["-c:v", "libx264", "-preset", "ultrafast", "-g", "50", "-pix_fmt", "yuv420p",
+            ("102", "live-1080i", ["-vf", "setfield=tff", "-c:v", "libx264", "-preset", "ultrafast", "-g", "50", "-pix_fmt", "yuv420p",
                                    "-flags", "+ilme+ildct", "-x264-params", "tff=1"], ["-c:a", "mp2", "-ac", "2"], "1920x1080", 25,
              ("-field_order", "tt")),
             ("103", "live-hevc", ["-c:v", "libx265", "-preset", "ultrafast", "-x265-params", "log-level=none:keyint=48",
@@ -339,6 +347,16 @@ def build(scratch):
         items.append(file_row(key, name, streams, subtitle=next(s for s in streams if s["codec_type"] == "subtitle"),
                               subtitle_codec=codec))
         files[name] = key
+    # An interlaced 1080i25 file (x264 field coding), its row's video `scanType` interlaced as
+    # rex's mediainfo names a probe's `field_order` tt.
+    MEDIA["interlaced.mkv"] = os.path.join(scratch, "interlaced.mkv")
+    make_clip(MEDIA["interlaced.mkv"], ["-vf", "setfield=tff", "-c:v", "libx264", "-preset", "ultrafast", "-g", "50", "-pix_fmt", "yuv420p",
+                                        "-flags", "+ilme+ildct", "-x264-params", "tff=1"], aac, DURATION, "1920x1080")
+    item = file_row("209", "interlaced.mkv", probe(MEDIA["interlaced.mkv"])["streams"])
+    item["Media"][0]["Part"][0]["Stream"][0].update({"scanType": "interlaced", "width": 1920, "height": 1080})
+    item["Media"][0].update({"width": 1920, "height": 1080})
+    items.append(item)
+    files["interlaced.mkv"] = "209"
     # Two audio tracks, the second (AC3 5.1) selected.
     MEDIA["twoaudio.mkv"] = os.path.join(scratch, "twoaudio.mkv")
     subprocess.run([FFMPEG, "-v", "error", "-y", "-i", plain, "-f", "lavfi", "-i", "sine=f=880:d=%d" % DURATION,
@@ -356,7 +374,20 @@ def build(scratch):
     return items, channels, files
 
 
-def guard(port, scratch, live_key, file_key):
+# The profiles whose browsers cannot decode field-coded (PAFF) H.264: Chrome 156 (macOS, Windows) and
+# Edge 156 failed a real 1080i50 recording with PIPELINE_ERROR_DECODE, Firefox 153 and WebKit 26.4
+# played it (findings, 2026-10-27); Opera is Chromium too. rex converts interlaced H.264 for them.
+PAFF_BLIND = {"Chrome", "Microsoft Edge", "Opera"}
+
+
+def field_order(path):
+    out = subprocess.run([FFPROBE, "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=field_order",
+                          "-of", "csv=p=0", path], capture_output=True, text=True).stdout.split()
+    # MPEG-TS lists the stream under its program too: the first line is enough.
+    return out[0] if out else "none"
+
+
+def guard(port, scratch, live_key, file_key, interlaced_live, interlaced_file):
     print("every profile's streaming protocol")
     targets = {}
     for name, profile in sorted(PROFILES.items()):
@@ -378,20 +409,44 @@ def guard(port, scratch, live_key, file_key):
     started = set()
     for (name, protocol), target in sorted(targets.items()):
         signature = (protocol, target.get("container"), target.get("videoCodec") or target.get("codec"), target.get("audioCodec"))
-        for kind, key, extra in (("live", live_key, {}), ("capped file", file_key, {"maxVideoBitrate": "1000", "videoResolution": "640x360"})):
-            session = "g-%s-%s-%s" % (re.sub(r"\W", "", name), protocol, kind.split()[0])
+        for kind, key, extra in (("live", live_key, {}), ("capped file", file_key, {"maxVideoBitrate": "1000", "videoResolution": "640x360"}),
+                                 ("interlaced live", interlaced_live, {}), ("interlaced file", interlaced_file, {})):
+            session = "g-%s-%s-%s" % (re.sub(r"\W", "", name), protocol, re.sub(r"\W", "", kind))
             container = decide(port, profile_query(name, protocol, key, session, **extra))
             text = " ".join(str(container.get(field, "")) for field in ("generalDecisionText", "transcodeDecisionText"))
             check("%s / %s: a %s converts" % (name, protocol, kind),
                   container.get("generalDecisionCode") == 1001 and "No conversion profile" not in text,
                   "%s %s" % (container.get("generalDecisionCode", container.get("status")), text.strip()[:80]))
-            if (signature, kind) in started or container.get("generalDecisionCode") != 1001:
+            blind = kind.startswith("interlaced") and name in PAFF_BLIND
+            if blind:
+                streams = container.get("Metadata", [{}])[0].get("Media", [{}])[0].get("Part", [{}])[0].get("Stream", [])
+                video = next((stream.get("decision") for stream in streams if stream.get("streamType") == 1), None)
+                check("%s / %s: an %s's H.264 is converted, not copied" % (name, protocol, kind), video == "transcode", str(video))
+            if (signature, kind, blind) in started or container.get("generalDecisionCode") != 1001:
                 continue
-            started.add((signature, kind))
+            started.add((signature, kind, blind))
             ok, path = segment_bytes(port, protocol, profile_query(name, protocol, key, session, **extra), session, scratch,
                                      "guard-%s" % session)
             check("%s / %s: start's %s media decodes (%s)" % (name, protocol, kind, "/".join(str(v) for v in signature[1:])),
                   ok and decodes(path), "%d bytes" % os.path.getsize(path))
+            if blind:
+                check("%s / %s: the %s's picture comes out deinterlaced" % (name, protocol, kind),
+                      field_order(path) == "progressive", field_order(path))
+            get(port, "/video/:/transcode/universal/stop", [("session", session)])
+    # Plex Web's own requests: its Chrome profile names no streaming target, which the request
+    # adds (`X-Plex-Client-Profile-Extra`), so no profile above is Plex Web on Chrome.
+    for label, query_of, protocol in (("Plex Web 4.160 (Chrome)", nt.plex_web_query, "hls"),
+                                      ("Plex Web 4.147.1 (Chrome)", nt.dash_query, "dash")):
+        for kind, key in (("interlaced live", interlaced_live), ("interlaced file", interlaced_file)):
+            session = "w-%s-%s" % (protocol, re.sub(r"\W", "", kind))
+            container = decide(port, query_of(key, session))
+            streams = container.get("Metadata", [{}])[0].get("Media", [{}])[0].get("Part", [{}])[0].get("Stream", [])
+            video = next((stream.get("decision") for stream in streams if stream.get("streamType") == 1), None)
+            check("%s / %s: an %s's H.264 is converted, not copied" % (label, protocol, kind),
+                  container.get("generalDecisionCode") == 1001 and video == "transcode", "%s %s" % (container.get("generalDecisionCode"), video))
+            ok, path = segment_bytes(port, protocol, query_of(key, session), session, scratch, "guard-%s" % session)
+            check("%s / %s: the %s's picture decodes, deinterlaced" % (label, protocol, kind),
+                  ok and decodes(path) and field_order(path) == "progressive", field_order(path))
             get(port, "/video/:/transcode/universal/stop", [("session", session)])
 
 
@@ -461,7 +516,7 @@ def live_dash(port, key):
 def http_matrix(port, scratch, channels, files, log):
     print("Plex Desktop's Matroska stream")
     expect = {
-        "live-guard": ("h264", "aac", 2), "live-h264": ("h264", "aac", 2), "live-1080i": ("h264", "mp2", 2), "live-hevc": ("hevc", "mp2", 1),
+        "live-guard": ("h264", "aac", 2), "live-guard-i": ("h264", "aac", 2), "live-h264": ("h264", "aac", 2), "live-1080i": ("h264", "mp2", 2), "live-hevc": ("hevc", "mp2", 1),
         "live-ac3": ("h264", "ac3", 6), "live-radio": (None, "aac", 2), "live-gop5": ("h264", "aac", 2),
     }
     for name, key in channels.items():
@@ -635,7 +690,7 @@ def run(scratch):
     port, process, log = nt.start_server(catalog, source_port, True, scratch)
     try:
         if "guard" in sys.argv[1:] or len(sys.argv) == 1:
-            guard(port, scratch, channels["live-guard"], files["h264.mkv"])
+            guard(port, scratch, channels["live-guard"], files["h264.mkv"], channels["live-guard-i"], files["interlaced.mkv"])
             live_dash(port, channels["live-guard"])
         if "http" in sys.argv[1:] or len(sys.argv) == 1:
             http_matrix(port, scratch, channels, files, log)

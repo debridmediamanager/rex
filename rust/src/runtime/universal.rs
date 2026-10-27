@@ -164,6 +164,25 @@ pub(crate) struct VideoPlan {
     /// The source's `profile` and `level`, for a copied stream's DASH `codecs`.
     pub source_profile: String,
     pub source_level: i64,
+    /// The source is interlaced (`scanType`): a conversion deinterlaces it, as plexscratch's
+    /// does with `yadif` (`interlaced_s1434.json`).
+    pub interlaced: bool,
+}
+
+/// The client profiles whose browsers cannot decode field-coded (PAFF) H.264: Chrome 156 on macOS
+/// and Windows and Edge 156 failed the real Eleven Sports 1 recording with PIPELINE_ERROR_DECODE,
+/// where Firefox 153 and WebKit 26.4 played it (2026-10-27). Opera is Chromium too. A probe says
+/// interlaced, not how, so every interlaced H.264 is converted for them.
+const PAFF_BLIND_PROFILES: &[&str] = &["Chrome", "Microsoft Edge", "Opera"];
+
+/// The deinterlacer a path runs on its device's frames, if it has one; `None` runs `yadif` on
+/// CPU frames.
+fn device_deinterlacer(path: Path, hardware: &Hardware) -> Option<&'static str> {
+    match (&hardware.accel, path) {
+        (Accel::Vaapi(_), Path::Full) => Some("deinterlace_vaapi"),
+        (Accel::Cuda, Path::Full) => Some("yadif_cuda"),
+        _ => None,
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -579,7 +598,10 @@ pub(crate) fn ladder(plan: &Plan, hardware: &Hardware) -> Vec<Path> {
         // its decode stays on the CPU; a text one is drawn on the scaled frame, downloaded.
         let tonemaps = !video.hdr || plan.tone_mapping.is_none()
             || (hardware.opencl_tonemap && matches!(hardware.accel, Accel::Vaapi(_)));
-        if (tonemaps || !plan.hardware_encode) && plan.subtitle.is_none() && hardware.decode.contains(&decode_key(&video.source_codec, video.bit_depth)) {
+        // An interlaced picture stays on the device only where it has a deinterlacer there.
+        let deinterlaces = !video.interlaced || !plan.hardware_encode
+            || device_deinterlacer(Path::Full, hardware).is_some_and(|filter| hardware.filters.contains(filter));
+        if (tonemaps || !plan.hardware_encode) && deinterlaces && plan.subtitle.is_none() && hardware.decode.contains(&decode_key(&video.source_codec, video.bit_depth)) {
             paths.push(if plan.hardware_encode { Path::Full } else { Path::DecodeOnly });
         }
         if plan.hardware_encode { paths.push(Path::EncodeOnly); }
@@ -719,14 +741,20 @@ pub(crate) fn ffmpeg_args(plan: &Plan, path: Path, hardware: &Hardware, start: i
     }
     let video_filter = video.filter(|video| !video.copy).map(|video| {
         let (w, h) = (video.width, video.height);
+        // Deinterlaced first, on the frames' own side (`device_deinterlacer`; `ladder` keeps a path
+        // only where it has one), one frame out per frame in, as plexscratch's `yadif` does.
+        let on_device = device_deinterlacer(path, hardware).filter(|_| video.interlaced).map_or(String::new(), |filter| format!("{filter},"));
         match path {
-            Path::Full if device.is_some() && video.hdr && plan.tone_mapping.is_some() => drawn(format!("scale_vaapi=w={w}:h={h}:format=p010,{}", OPENCL_TONEMAP.replace("tonemap=bt2390", &format!("tonemap={}", plan.tone_mapping.as_deref().unwrap()))), "hwupload"),
-            Path::Full if device.is_some() => drawn(format!("scale_vaapi=w={w}:h={h}:format=nv12"), "hwupload"),
-            Path::Full if cuda => drawn(format!("scale_cuda=w={w}:h={h}:format=nv12"), "hwupload_cuda"),
+            Path::Full if device.is_some() && video.hdr && plan.tone_mapping.is_some() => drawn(format!("{on_device}scale_vaapi=w={w}:h={h}:format=p010,{}", OPENCL_TONEMAP.replace("tonemap=bt2390", &format!("tonemap={}", plan.tone_mapping.as_deref().unwrap()))), "hwupload"),
+            Path::Full if device.is_some() => drawn(format!("{on_device}scale_vaapi=w={w}:h={h}:format=nv12"), "hwupload"),
+            Path::Full if cuda => drawn(format!("{on_device}scale_cuda=w={w}:h={h}:format=nv12"), "hwupload_cuda"),
             _ => {
                 let mut chain = Vec::new();
                 if path == Path::DecodeOnly {
                     chain.push(format!("hwdownload,format={}", if video.bit_depth > 8 { "p010le" } else { "nv12" }));
+                }
+                if video.interlaced {
+                    chain.push("yadif".to_string());
                 }
                 if let Some(subtitles) = &burn_file {
                     chain.push(subtitles.clone());
@@ -2845,8 +2873,11 @@ impl Runtime {
                 .or_else(|| media.get("bitrate").and_then(Value::as_i64).map(|total| total.saturating_sub(audio_bitrate).max(0)))
                 .unwrap_or(0);
             let fits = cap.is_none_or(|(w, h)| width <= w && height <= h);
+            let interlaced = stream.get("scanType").and_then(Value::as_str) == Some("interlaced");
+            let paff_blind = interlaced && codec == "h264" && PAFF_BLIND_PROFILES.contains(&profile_name);
             // A burned subtitle is part of the picture, so the picture is converted.
             let copy = subtitle.is_none()
+                && !paff_blind
                 && text_burn.is_none()
                 && !(sidecar.is_some() && !matroska)
                 && flag("directStream")
@@ -2890,6 +2921,7 @@ impl Runtime {
                 frame_rate,
                 source_profile: stream.get("profile").map(string_value).unwrap_or_default(),
                 source_level: stream.get("level").and_then(Value::as_i64).unwrap_or(40),
+                interlaced,
             }
         });
         if video.is_none() && audio.is_none() {
@@ -3411,6 +3443,7 @@ mod tests {
                 frame_rate: 23.976,
                 source_profile: "main".into(),
                 source_level: 120,
+                interlaced: false,
             }),
             audio: Some(AudioPlan { index: 1, copy: false, source_codec: "eac3".into(), codec: "aac".into(), channels: 2, bitrate: 192, sampling_rate: 48000 }),
             subtitle: None,
@@ -3590,6 +3623,30 @@ mod tests {
         assert!(args.contains("-c:v copy"));
         assert!(args.contains("-ss 20 -noaccurate_seek"));
         assert!(!args.contains("force_key_frames"));
+    }
+
+    #[test]
+    fn an_interlaced_picture_is_deinterlaced_on_every_path() {
+        // plexscratch deinterlaces with `yadif` before it scales (`interlaced_s1434.json`).
+        let mut interlaced = plan(false, 60_000);
+        interlaced.video.as_mut().unwrap().interlaced = true;
+        let tmp = std::path::Path::new("/tmp/x");
+        let software = ffmpeg_args(&interlaced, Path::Software, &Hardware::software(), 0, tmp).join(" ");
+        assert!(software.contains("-vf yadif,scale=1280:720"), "{software}");
+        let filters = HashSet::from(["deinterlace_vaapi".to_string(), "yadif_cuda".to_string()]);
+        let vaapi = Hardware { accel: Accel::Vaapi("/dev/dri/renderD128".into()), decode: HashSet::from(["hevc".to_string()]), encode: true, filters: filters.clone(), ..Hardware::software() };
+        assert_eq!(ladder(&interlaced, &vaapi)[0], Path::Full);
+        let full = ffmpeg_args(&interlaced, Path::Full, &vaapi, 0, tmp).join(" ");
+        assert!(full.contains("deinterlace_vaapi,scale_vaapi=w=1280:h=720:format=nv12"), "{full}");
+        let upload = ffmpeg_args(&interlaced, Path::EncodeOnly, &vaapi, 0, tmp).join(" ");
+        assert!(upload.contains("yadif,") && upload.contains("hwupload,scale_vaapi"), "{upload}");
+        let cuda = Hardware { accel: Accel::Cuda, decode: HashSet::from(["hevc".to_string()]), encode: true, filters, ..Hardware::software() };
+        assert!(ffmpeg_args(&interlaced, Path::Full, &cuda, 0, tmp).join(" ").contains("yadif_cuda,scale_cuda"));
+        // A device without its deinterlacer keeps the picture off it: CPU decode and yadif.
+        let without = Hardware { filters: HashSet::new(), ..vaapi.clone() };
+        assert_eq!(ladder(&interlaced, &without), vec![Path::EncodeOnly, Path::Software]);
+        // A progressive picture is not touched.
+        assert!(!ffmpeg_args(&plan(false, 60_000), Path::Full, &vaapi, 0, tmp).join(" ").contains("deinterlace"));
     }
 
     #[test]

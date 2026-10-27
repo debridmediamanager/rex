@@ -12662,6 +12662,39 @@ progressive. plexscratch has no plex.tv, so it can convert only with the encoder
 downloaded (`liblibx264_encoder.so` copied into its Codecs; no libmp3lame, so a Chrome profile's MP3
 audio fails there).
 
+### Interlaced H.264: deinterlaced when converted, never copied to Chromium (2026-10-27)
+
+Live channels whose H.264 is field-coded (PAFF: SPS `frame_mbs_only_flag=0`, slices
+`field_pic_flag=1`) never played in Chrome when rex copied the video (Eleven Sports 1, Alkass
+Three, Digi Sport 3, ESPN 2 LatAm on rex-fun; beIN 2 Malaysia, Sport 2 CZ and MAX Sport 2 are
+`frame_mbs_only=1` and play). The same 20 s recorded from Eleven Sports 1 (1080i50, High 4.0),
+as a plain `<video src>` MP4 with its frames copied, re-encoded by x264 as MBAFF interlaced, and
+deinterlaced (`yadif`):
+
+| Browser | PAFF copy | x264 MBAFF | progressive |
+|---|---|---|---|
+| Chrome 156, macOS | `PIPELINE_ERROR_DECODE` | plays | plays |
+| Chrome 156, Windows | `PIPELINE_ERROR_DECODE` | plays | plays |
+| Edge 156, Windows | `PIPELINE_ERROR_DECODE` | plays | plays |
+| Firefox 153, Windows | plays | plays | plays |
+| WebKit 26.4, macOS | plays | plays | plays |
+
+A probe says a stream is interlaced (`field_order`, rex's `scanType`), not whether it is PAFF or
+MBAFF, so rex converts every interlaced H.264 for the Chrome, Microsoft Edge and Opera profiles
+(`PAFF_BLIND_PROFILES`; Opera unmeasured, Chromium). Not measured: Opera itself, Chromecast (a
+Chromium media stack), the TV web apps (`HTML TV App`), Android's and iOS's own players; they keep
+the copy. Plex Web's own direct play of an interlaced file is its MDE's decision and unchanged.
+
+A conversion of an interlaced source deinterlaces it as plexscratch does (`yadif`, one frame out
+per frame in, before the scale): `yadif` on CPU frames, `deinterlace_vaapi` on a VAAPI full path,
+`yadif_cuda` on a CUDA one; a device FFmpeg without its deinterlacer keeps the picture off it
+(the ladder starts at `EncodeOnly`). The real recording is not checked in: it is a broadcaster's
+footage and the repository is public, and no encoder writes PAFF (x264 codes MBAFF; FFmpeg has no
+field-coded H.264 encoder), so `tests/test_http_mkv.py` covers interlaced sources with x264's
+field coding, which a probe reports alike: every profile and protocol converts an interlaced live
+channel and file, and for the three profiles above the video is converted and comes out
+progressive.
+
 ## An item without a probe cannot play (2026-10-12)
 
 Question: could rex show a pushed item before its source sends `media_info`, as a real PMS
