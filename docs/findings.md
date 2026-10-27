@@ -12593,6 +12593,41 @@ target's protocol must convert a live channel and a capped file and start media 
 The 21 profiles whose targets name no protocol are PMS's DLNA renderer profiles, listed by name;
 rex runs no DLNA server, and a new one, or a protocol rex does not serve, fails the suite.
 
+### Live DASH start-up, a silent source's hang-up, live AAC (2026-10-27)
+
+Measured with `probes/shaka_live_dash.py` (Shaka 3.3.1 in Chrome, Plex Web 4.147.1's player; mux.js
+for MPEG-TS), first frame after load on the same generated live channel:
+
+| | HLS | DASH |
+|---|---|---|
+| 85eeef3f | 0.3 s | 9.8 s |
+| a DASH segment done by its own file | 0.3 s | 2.3 s |
+| and live DASH cut in 4 s | 0.3 s | 0.3-0.5 s |
+
+- **FFmpeg's DASH muxer writes each chunk into `.tmp` and renames it when it is done**, where the
+  HLS segment muxer writes in place. rex took a segment as done once the next one's file opened,
+  which for DASH meant once the next one was finished: every DASH segment, live or not, was held one
+  segment's length (chunk 1 renamed 0.25 s after `start.mpd`, served at 4.1 s). A DASH segment is
+  now done when its own file exists.
+- **A live DASH remux is cut in 4 s, as live HLS is** (`LIVE_COPY_SEGMENT`): a 5 s cut waits for the
+  keyframe after it, which a channel's backlog of three 2 s segments does not hold, so the first
+  video chunk came 2.1 s after `start.mpd` while audio's came at once.
+
+**A hang-up is seen while FFmpeg writes nothing.** A Matroska stream noticed the client leaving
+only at its next write, so a source that stopped sending left FFmpeg running until the idle reaper:
+121 s after the hang-up on 85eeef3f, under 1 s now. A thread peeks at the connection's socket every
+500 ms while the stream runs (`PollRead::socket`, std's `peek` and read timeout, so Windows too):
+the client sends nothing after its request, so EOF, a reset, or over TLS any byte (its
+close_notify) is the hang-up.
+
+**ADTS AAC still cannot be copied into a streamed Matroska**, with stock FFmpeg 8.1.2 (Homebrew)
+or 8.1.3 (jellyfin-ffmpeg, fun) alike. The same copy into a seekable file works and carries a 2-byte
+AudioSpecificConfig: the muxer patches `CodecPrivate` once `aac_adtstoasc` has built it from the
+first packet. Into a pipe it cannot seek back, and `write_header` fails with "Error parsing AAC
+extradata, unable to determine samplerate" for a plain copy, `-bsf:a aac_adtstoasc`, `-live 1` and
+`-flush_packets 1 -max_interleave_delta 0`. The CLI has no option to set a copied stream's
+extradata, so rex cannot hand it an ASC built from the probe. The conversion to AAC stays.
+
 ## An item without a probe cannot play (2026-10-12)
 
 Question: could rex show a pushed item before its source sends `media_info`, as a real PMS
