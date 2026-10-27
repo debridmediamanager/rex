@@ -438,7 +438,10 @@ impl Plan {
     pub fn segment_seconds(&self) -> u32 {
         match (self.protocol, self.video.as_ref().is_none_or(|video| video.copy)) {
             (_, false) => TRANSCODE_SEGMENT,
-            (Protocol::Hls | Protocol::File | Protocol::Http, true) if self.live() => LIVE_COPY_SEGMENT,
+            // A live DASH remux too: a 5 s cut waits for the keyframe after it, which a channel's
+            // backlog of 2 s segments did not hold, and the first video chunk came 2.1 s after
+            // start.mpd where audio's came at once (probes/shaka_live_dash.py, 2026-10-27).
+            (_, true) if self.live() => LIVE_COPY_SEGMENT,
             (Protocol::Dash, true) => DASH_COPY_SEGMENT,
             (Protocol::Hls | Protocol::File | Protocol::Http, true) => COPY_SEGMENT,
         }
@@ -1950,7 +1953,11 @@ impl Transcoder {
         let duration = session.plan.duration_ms as f64 / 1000.0;
         let end = if session.plan.live() { f64::INFINITY } else { duration.max(length) };
         let span = |index: i64| (index as f64 * length, ((index + 1) as f64 * length).min(end), start);
-        // The segment FFmpeg is writing: finished once the one after it opens.
+        // The segment FFmpeg is writing: finished once the one after it opens. FFmpeg's DASH muxer
+        // writes each into `.tmp` and renames it when it is done, so there a segment's own file
+        // says so: waiting on the next one's held every live DASH segment one segment's length
+        // (chunk 1 renamed 0.25 s after start.mpd, served at 4.1 s; probes/shaka_live_dash.py).
+        let done_at = |index: i64| if session.plan.protocol == Protocol::Dash { index } else { index + 1 };
         let mut next = start;
         // Since when the player has been waiting on this run's subtitle hold.
         let mut waited: Option<Instant> = None;
@@ -1959,7 +1966,7 @@ impl Transcoder {
             if session.stopped.load(Ordering::SeqCst) || session.run.load(Ordering::SeqCst) != run {
                 return;
             }
-            while session.opened(next + 1, start) {
+            while session.opened(done_at(next), start) {
                 if let Ok(mut state) = session.state.lock() {
                     state.done.insert(next, span(next));
                     state.input_retries = 0;

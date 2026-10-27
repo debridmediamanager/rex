@@ -360,6 +360,16 @@ def live_dash(port, key):
     check("live over DASH: the MPD is dynamic, clocked, with no duration",
           status == 200 and 'type="dynamic"' in mpd and "availabilityStartTime=" in mpd and "mediaPresentationDuration" not in mpd,
           re.sub(r"\s+", " ", mpd[mpd.find("<MPD"):mpd.find("<Period")])[-260:])
+    # The first video segment as a player asks it, straight after the MPD: a live DASH segment was
+    # served only once the next one was done, and in 5 s cuts, 6.2 s after start.mpd where HLS's
+    # first came in 0.3 s (Shaka 3.3.1's first frame 9.7 s after load; probes/shaka_live_dash.py).
+    base = "/video/:/transcode/universal/session/%s/0/" % session
+    asked = time.time()
+    status_h, _, header = get(port, base + "header")
+    status_s, _, first = get(port, base + "0.m4s")
+    waited = time.time() - asked
+    check("live over DASH: the first video segment is served within 1.5 s of start.mpd",
+          status_h == status_s == 200 and first and waited < 1.5, "%s/%s in %.2fs" % (status_h, status_s, waited))
     get(port, "/video/:/transcode/universal/stop", [("session", session)])
     session = "dash-live-read"
     query = nt.dash_query(key, session)
