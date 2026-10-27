@@ -337,6 +337,20 @@ def build(scratch):
     CHANNELS["live-hiccup.m3u8"]["freeze"] = (14, 74)
     items.append(live_row("109", "live-hiccup", streams))
     channels["live-hiccup"] = "109"
+    # A channel with no audio at open while its probe promised AAC (Sport 5 Gold, 11:30 UTC).
+    streams = make_channel(scratch, "live-noaudio", h264, ["-an"])
+    item = live_row("110", "live-noaudio", [dict(streams[0], index=0), {"codec_type": "audio", "codec_name": "aac", "index": 1, "channels": 2}])
+    items.append(item)
+    channels["live-noaudio"] = "110"
+    # ... and one whose audio comes back: 20 s with none, then audio and video. It holds on its
+    # first segments with audio (as a source re-resolving does), so the run is started again.
+    quiet = make_channel(scratch, "live-audioback-a", h264, ["-an"], seconds=20)
+    loud = make_channel(scratch, "live-audioback-b", h264, aac, seconds=200)
+    first, second = CHANNELS.pop("live-audioback-a.m3u8"), CHANNELS.pop("live-audioback-b.m3u8")
+    CHANNELS["live-audioback.m3u8"] = {"segments": first["segments"] + second["segments"], "lengths": first["lengths"] + second["lengths"],
+                                       "since": None, "freeze": (sum(first["lengths"]) + 6, sum(first["lengths"]) + 36)}
+    items.append(live_row("111", "live-audioback", loud))
+    channels["live-audioback"] = "111"
     # Files.
     files = {}
     for key, name, video, audio in (
@@ -658,6 +672,65 @@ def stale(port, scratch, channels, log):
     get(port, "/video/:/transcode/universal/stop", [("session", session)])
 
 
+def loudness(path):
+    """The mean volume of a file's audio in dB (-91 for silence), or None without audio."""
+    done = subprocess.run([FFMPEG, "-v", "info", "-i", path, "-map", "0:a:0", "-af", "volumedetect", "-f", "null", "-"],
+                          capture_output=True, text=True)
+    found = re.search(r"mean_volume: (-?[\d.]+) dB", done.stderr)
+    return float(found.group(1)) if found else None
+
+
+def missing_audio(port, scratch, channels, log):
+    """A live source with no audio at open, where its probe promised some: every run died on
+    `-map 0:a:0`, and the ladder converted the audio and then the video for nothing (rex-fun
+    2026-10-27, Sport 5 Gold). Silence stands in for it, and a restart takes the audio back."""
+    print("a live source without its audio")
+    key = channels["live-noaudio"]
+    for label, query_of, segments in (("Plex Web DASH", nt.dash_query, dash_segments), ("Plex Web HLS", nt.plex_web_query, hls_segments),
+                                      ("Apple TV Matroska HLS", apple_tv_query, hls_segments)):
+        session = "na-" + re.sub(r"\W", "", label).lower()
+        decide(port, query_of(key, session))
+        result = segments(port, query_of(key, session), session, 2, scratch, session)
+        sets = len(re.findall(r"<AdaptationSet", result[2])) if len(result) > 2 else None
+        sound = result[1]
+        if sets:
+            # DASH keeps the audio in its own representation: its first segment.
+            sound = os.path.join(scratch, session + "-audio.mp4")
+            open(sound, "wb").write(get(port, "/video/:/transcode/universal/session/%s/1/%d.m4s" % (session, first_segment(result[2])))[2])
+        found = sorted({s["codec_type"] for path in {result[1], sound} for s in streams_of(path)["streams"]})
+        check("no audio at open: %s plays, a silent track where the audio was promised" % label,
+              all(status == 200 for status in result[0]) and decodes(result[1]) and found == ["audio", "video"]
+              and (loudness(sound) or 0) < -80 and sets in (None, 2),
+              "%s %s %s sets=%s" % (result[0], found, loudness(sound), sets))
+        get(port, "/video/:/transcode/universal/stop", [("session", session)])
+    session = "na-desktop"
+    decide(port, desktop_query(key, session))
+    path = os.path.join(scratch, session + ".mkv")
+    status, _, data = read_stream(port, desktop_query(key, session), 600_000, 25, path)
+    check("no audio at open: Plex Desktop's Matroska stream plays, a silent track in it",
+          status == 200 and decodes(path) and "audio" in [s["codec_type"] for s in streams_of(path)["streams"]], "%s %d bytes" % (status, len(data)))
+    get(port, "/video/:/transcode/universal/stop", [("session", session)])
+    text = open(log).read()
+    check("the log says silence stands in, and no copy was converted for it",
+          "has no audio now; silence stands in" in text and not re.search(r"na-\w+ (stream )?failed on every path copying", text), "")
+    # The audio comes back: the restart after the source held reads it again.
+    key = channels["live-audioback"]
+    session = "na-back"
+    decide(port, nt.plex_web_query(key, session))
+    get(port, "/video/:/transcode/universal/start.m3u8", nt.plex_web_query(key, session))
+    base = "/video/:/transcode/universal/session/%s/base/" % session
+    statuses, last = [], b""
+    for index in range(22):
+        status, _, body = get(port, base + "%05d.ts" % index, timeout=60)
+        statuses.append(status)
+        last = body if status == 200 else last
+    path = os.path.join(scratch, session + ".ts")
+    open(path, "wb").write(last)
+    check("the audio back after a restart: the player's last segment has the source's own sound",
+          all(status == 200 for status in statuses) and (loudness(path) or -91) > -60, "%s %s dB" % (statuses, loudness(path)))
+    get(port, "/video/:/transcode/universal/stop", [("session", session)])
+
+
 def http_matrix(port, scratch, channels, files, log):
     print("Plex Desktop's Matroska stream")
     expect = {
@@ -841,6 +914,7 @@ def run(scratch):
             live_dash(port, channels["live-guard"])
         if "stale" in sys.argv[1:] or len(sys.argv) == 1:
             stale(port, scratch, channels, log)
+            missing_audio(port, scratch, channels, log)
         if "http" in sys.argv[1:] or len(sys.argv) == 1:
             http_matrix(port, scratch, channels, files, log)
     finally:

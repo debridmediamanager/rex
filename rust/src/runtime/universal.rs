@@ -281,6 +281,8 @@ pub(crate) struct Plan {
     /// The session's segment length, kept when a forced conversion (`Session::plan_now`) would
     /// otherwise change it under the playlist the player already has.
     pub segment_length: Option<u32>,
+    /// The live source has no audio now: a silent track of the plan's layout takes its place.
+    pub silent_audio: bool,
     /// Ownership is internal; public conversion IDs remain opaque bearer handles.
     pub account: i64,
     /// The unmodified playback session (`X-Plex-Session-Identifier`).
@@ -727,6 +729,13 @@ pub(crate) fn ffmpeg_args(plan: &Plan, path: Path, hardware: &Hardware, start: i
         }
         push(&mut args, &["-i", file]);
     }
+    // Silence where a live source's audio is missing now (`Session::silenced`), in the layout the
+    // plan promised, encoded as its audio is.
+    let silence_input = plan.audio.as_ref().filter(|_| plan.silent_audio).map(|audio| {
+        let layout = match audio.channels { 1 => "mono", 6 => "5.1", _ => "stereo" };
+        push(&mut args, &["-f", "lavfi", "-i", &format!("anullsrc=channel_layout={layout}:sample_rate={}", audio.sampling_rate)]);
+        if sidecar_file.is_some() && !Sidecar::burned(plan) { 2 } else { 1 }
+    });
     // The text drawn into the picture: an upload, or an embedded track once it has been read.
     let text_file = sidecar_file
         .clone()
@@ -832,7 +841,12 @@ pub(crate) fn ffmpeg_args(plan: &Plan, path: Path, hardware: &Hardware, start: i
         push(&mut args, &["-filter_complex", &graph, "-map", "[v]"]);
     }
     if let Some(audio) = plan.audio.as_ref() {
-        push(&mut args, &["-map", &if audio.index >= 0 && !plan.live() { format!("0:{}", audio.index) } else { format!("0:a:{}", audio.ordinal) }]);
+        let map = match silence_input {
+            Some(input) => format!("{input}:a:0"),
+            None if audio.index >= 0 && !plan.live() => format!("0:{}", audio.index),
+            None => format!("0:a:{}", audio.ordinal),
+        };
+        push(&mut args, &["-map", &map]);
     }
     let text = plan.text_subtitle.filter(|_| plan.matroska).map(|index| format!("0:{index}"))
         .or_else(|| plan.sidecar.as_ref().filter(|_| plan.matroska).map(|_| "1:0".to_string()));
@@ -1056,6 +1070,8 @@ pub(crate) struct Session {
     cover: Mutex<Cover>,
     /// Copied streams converted since a copy failed: audio, video (`force_next`).
     forced: Mutex<(bool, bool)>,
+    /// The live source has no audio now: silence stands in for it until a restart (`silenced`).
+    silent: AtomicBool,
 }
 
 impl Session {
@@ -1065,7 +1081,8 @@ impl Session {
         let mut plan = self.plan.clone();
         let (audio, video) = self.forced.lock().map(|forced| *forced).unwrap_or_default();
         plan.segment_length = Some(self.plan.segment_seconds());
-        if let Some(stream) = plan.audio.as_mut().filter(|stream| audio && stream.copy) {
+        plan.silent_audio = self.silent.load(Ordering::SeqCst) && plan.audio.is_some();
+        if let Some(stream) = plan.audio.as_mut().filter(|stream| (audio || plan.silent_audio) && stream.copy) {
             stream.copy = false;
             stream.codec = stream.convert_to.clone();
             stream.channels = stream.channels.clamp(1, 6);
@@ -1078,6 +1095,16 @@ impl Session {
             }
         }
         plan
+    }
+
+    /// Whether a failed run's error is a live source with no audio stream now, which no conversion
+    /// changes: Sport 5 Gold carried none for a moment at open, and every path and every forced
+    /// conversion failed on `-map 0:a:0` (rex-fun, 2026-10-27). Silence stands in for it, keeping
+    /// the streams every muxer and the player were told of; a restart reads the source again.
+    fn silenced(&self, errors: &str) -> bool {
+        let missing = self.plan.live() && self.plan.audio.is_some()
+            && errors.contains("matches no streams") && errors.contains("'0:a:");
+        missing && !self.silent.swap(true, Ordering::SeqCst)
     }
 
     /// After every path failed with nothing out: convert the next copied stream, audio first, and
@@ -1423,6 +1450,12 @@ pub(crate) fn serve_stream<S: Write>(stream: &mut S, response: &Response, plan: 
         }
         failure = format!("{path:?} exited {}: {}", status.map_or("killed".to_string(), |status| format!("{status:?}")), errors.trim());
         warning!("TRANSCODE {} stream: {failure}", session.id);
+        if session.silenced(&errors) {
+            warning!("TRANSCODE {} stream: the live source has no audio now; silence stands in for it", session.id);
+            plan = session.plan_now();
+            paths.push_front(path);
+            continue;
+        }
         if paths.is_empty() {
             if let Some(converted) = session.force_next() {
                 warning!("TRANSCODE {} stream failed on every path copying its {converted}: converting it, in case the source's codec changed", session.id);
@@ -1758,6 +1791,7 @@ impl Transcoder {
             started: now_seconds(),
             cover: Mutex::new(Cover { unread: if plan_burns { None } else { Some(BTreeMap::new()) }, run_limit: None }),
             forced: Mutex::new((false, false)),
+            silent: AtomicBool::new(false),
         });
         self.sessions
             .lock()
@@ -2262,6 +2296,8 @@ impl Transcoder {
                     return;
                 }
                 warning!("TRANSCODE {} run {run} on {path:?}: {why}; starting again at the live edge from segment {next}", session.id);
+                // The source's own audio again, if it has it back.
+                session.silent.store(false, Ordering::SeqCst);
                 if session.run.load(Ordering::SeqCst) == run && !session.stopped.load(Ordering::SeqCst) {
                     self.launch_on(&session, next, path);
                 }
@@ -2288,6 +2324,13 @@ impl Transcoder {
                 error!("TRANSCODE {} run {run} on {path:?} exited {code}: {detail}", session.id);
                 if let Ok(mut state) = session.state.lock() {
                     state.exited = Some(code);
+                }
+                if session.silenced(&detail) {
+                    warning!("TRANSCODE {} run {run}: the live source has no audio now; silence stands in for it until a restart", session.id);
+                    if session.run.load(Ordering::SeqCst) == run && !session.stopped.load(Ordering::SeqCst) {
+                        self.launch_on(&session, start, path);
+                    }
+                    return;
                 }
                 // The source refusing or dropping the read says nothing about the encoder:
                 // retry the same path after a pause instead of falling down the ladder.
@@ -3172,6 +3215,7 @@ impl Runtime {
                 || headers.get("x-plex-incomplete-segments").map(String::as_str) == Some("1"),
             copyts: query.get("copyts").map(String::as_str) == Some("1"),
             segment_length: None,
+            silent_audio: false,
             account: self.viewer.id,
             playback: self.playback_session(query, headers),
             protocol: wire,
@@ -3674,6 +3718,7 @@ mod tests {
             incomplete_segments: true,
             copyts: false,
             segment_length: None,
+            silent_audio: false,
             account: accounts::OWNER,
             playback: "p".into(),
             protocol: Protocol::Hls,
