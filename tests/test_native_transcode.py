@@ -1174,8 +1174,10 @@ def run(scratch):
         # The same box over HDR10 (tonemapped): where the device overlays with alpha (the
         # probe's alpha_subtitles, VAAPI), the run stays on it, decode to encode.
         device = wait_for_log(log, r"hardware (\S+) ") or "none"
+        # ... and decodes the clip's 10-bit HEVC there (zen's Skylake does not, fun's J4105 does).
         overlays = device == "vaapi" and wait_for_log(log, r"alpha_subtitles=(true|false)") == "true" \
-            and wait_for_log(log, r"opencl_tonemap=(true|false)") == "true"
+            and wait_for_log(log, r"opencl_tonemap=(true|false)") == "true" \
+            and "hevc10" in (wait_for_log(log, r"decode=\[([^\]]*)\]") or "").split(",")
         status, container = decision(port, "20", "s-hdrsubs")
         if container.get("generalDecisionCode") == 1001:
             get(port, "/video/:/transcode/universal/start.m3u8", plex_web_query("20", "s-hdrsubs"))
