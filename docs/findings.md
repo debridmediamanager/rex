@@ -12802,6 +12802,31 @@ suite's 2 s-GOP clips): its MPEG-TS far seek read the conversion's video at the 
 timescale (tfdt 2.731 s for 20 s).
 rex keeps `-use_timeline 0` and reads each chunk's `sidx`.
 
+### A subtitle track dense from its start; a live DASH restart behind the clock (2026-10-27)
+
+**Round Two Time never started in Plex Web** (rex-fun, ratingKey 106616: HEVC Main10 1080p and Opus
+in Matroska, its embedded ASS selected, so burned). The first run waited for its reader to know the
+first minute of lines (`FIRST_SUBTITLES_MS`), and the reader reads at `SUBTITLE_RATE`, 3 a second
+after its burst: an opening dense with typesetting is minutes of reads, the player's first segment
+waited its 45 s and got `500 transcode failed`, and nothing in the log said why. Not a regression:
+0a3e0a27 and 01846cb7 do the same. The first run now starts once that minute is known or after 8 s
+(`FIRST_SUBTITLES_WAIT`), whichever comes first, and holds where the lines run out as later runs
+do; the log says the track is being read, and a segment that waits out its 45 s says why (no run
+yet, its subtitle still being read). On a generated file with 600 lines in its first minute
+(`lagopen.mkv`): the first segment came in 8.4 s, where c3dd5e47 answered 500 at 45.0 s.
+
+**Star Sports Select 2 timed out over live DASH** (rex-fun 188641): the source stalled and was
+resolved again (404s, then a switched stream), and rex restarted the run numbered on from the
+segment it had reached. A DASH player asks by its MPD's clock, not by what was made, so it was
+asking far ahead of the run (FFmpeg's DASH reader jumped 4, 15, 29, 40) and each wait ran out. A
+live DASH restart now starts at the segment the clock has reached, where Shaka asks (HLS is taken on
+from where it stopped, as its players read the playlist). What the jump skips is gone at once, a
+404, rather than waited on. On the generated channel that stops for 60 s (`live-hiccup`), 80 s
+after start: the clock's segment came at once, where c3dd5e47 took 41.5 s; Shaka 3.3.1 got 19 video
+segments between 75 s and 140 s (the source is back at 74 s) and no error, where on c3dd5e47 it got
+none and logged 2,936 errors 1002 (`probes/shaka_live_dash.py 140 dash live-hiccup`). A reader that asks
+every segment in order (the suite's) gets 404 for the skipped ones and 200 from the clock's on.
+
 ## An item without a probe cannot play (2026-10-12)
 
 Question: could rex show a pushed item before its source sends `media_info`, as a real PMS
