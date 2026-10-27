@@ -12741,6 +12741,26 @@ Matroska stream:
   header into the same body, which FFmpeg's demuxer (mpv's, Plex Desktop's) does not read on as
   one stream, so the player asks `start` again at the live edge. Not measured with Plex Desktop.
 
+### A live source with no audio at open; copied video with long GOPs over DASH (2026-10-27)
+
+**Sport 5 Gold carried no audio for a moment at open** (rex-fun, c809352d, 11:30 UTC): every run
+died on `-map 0:a:0` ("matches no streams"), and the ladder read that as a failed copy, converting
+the audio and then the video for nothing. A live source's missing audio is now its own case
+(`Session::silenced`): the run starts again on the same path with silence (`anullsrc`, the plan's
+layout) where the audio goes, encoded as the client takes audio, so every muxer and the MPD the
+player already has keep the streams they were told of. A restart from the live edge reads the
+source's own audio again. Minutes later the channel carried its two MP2 tracks again.
+
+**Copied video over live DASH with keyframes far apart** (Digi Sport 4: every 10.00 s). A
+template of 4 s segments cannot hold video that cuts only on keyframes: the audio's chunks ran ahead
+of the video's, and FFmpeg's DASH reader asked for segments the video never reached (1/14.m4s a 500
+at +87 s, 3/3). Once a live DASH run's audio is two segments ahead of its copied video, the video is
+converted from the next segment on, keyframes on the template (`LONG_GOP_LAG`); a channel whose
+keyframes fit the template keeps the copy, and HLS and Matroska keep it, as their playlists carry
+real durations. On a generated 10 s-GOP channel: Shaka 3.3.1 (Plex Web's player) played 90.4 s of
+90 after the change and 83.2 s before (it places media by its own timestamps); FFmpeg's reader read
+16 s, and every one of 16 segments came.
+
 ## An item without a probe cannot play (2026-10-12)
 
 Question: could rex show a pushed item before its source sends `media_info`, as a real PMS
