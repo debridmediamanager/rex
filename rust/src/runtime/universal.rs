@@ -2377,11 +2377,22 @@ impl Transcoder {
                     error!("TRANSCODE {} run {run} on {path:?}: {why}, {LIVE_RESTARTS} restarts brought nothing new; giving up", session.id);
                     return;
                 }
-                warning!("TRANSCODE {} run {run} on {path:?}: {why}; starting again at the live edge from segment {next}", session.id);
+                // A DASH player asks by the clock its MPD set (`mpd`), not by what was made: after a
+                // source's stops a run numbered on from `next` made each segment long after it was
+                // asked for, and the player jumped ahead to segments it waited 20-30 s on (Star
+                // Sports Select 2, rex-fun 2026-10-27). So a live DASH run starts again where the
+                // clock is; HLS players read the playlist and are taken on from `next`.
+                let edge = if session.plan.protocol == Protocol::Dash {
+                    LIVE_DASH_FIRST + ((now_seconds() - session.started) / length).floor() as i64
+                } else {
+                    next
+                };
+                let from = next.max(edge);
+                warning!("TRANSCODE {} run {run} on {path:?}: {why}; starting again at the live edge from segment {from}", session.id);
                 // The source's own audio again, if it has it back.
                 session.silent.store(false, Ordering::SeqCst);
                 if session.run.load(Ordering::SeqCst) == run && !session.stopped.load(Ordering::SeqCst) {
-                    self.launch_on(&session, next, path);
+                    self.launch_on(&session, from, path);
                 }
                 return;
             }

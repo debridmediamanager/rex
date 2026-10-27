@@ -675,10 +675,35 @@ def stale(port, scratch, channels, log):
         decide(port, query_of(key, session))
         began = time.time()
         result = segments(port, query_of(key, session), session, 18, scratch, session)
-        check("a live source that stops for 60 s: %s's every segment comes" % label,
-              all(status == 200 for status in result[0]), "%s in %.0f s" % (result[0], time.time() - began))
+        if "HLS" in label:
+            check("a live source that stops for 60 s: %s's every segment comes" % label,
+                  all(status == 200 for status in result[0]), "%s in %.0f s" % (result[0], time.time() - began))
+        else:
+            # Read in order, not by the clock: what the run skipped to reach the clock is gone at
+            # once (404), and none waits out the 45 s.
+            check("a live source that stops for 60 s: %s's every segment comes or is gone at once" % label,
+                  200 in result[0][2:] and all(status in (200, 404) for status in result[0]),
+                  "%s in %.0f s" % (result[0], time.time() - began))
         get(port, "/video/:/transcode/universal/stop", [("session", session)])
         CHANNELS["live-hiccup.m3u8"]["since"] = None  # the next client meets the stop again
+    # A DASH player follows its MPD's clock, not what was made: after the stop it asks for the
+    # segment the clock says, and the run was numbered on from where it stopped, far behind it
+    # (Star Sports Select 2: requests jumped 4, 15, 29, 40, each waited 20-30 s).
+    session = "st-hiccup-clock"
+    query = nt.dash_query(key, session)
+    decide(port, query)
+    status, _, mpd = get(port, "/video/:/transcode/universal/start.mpd", query)
+    mpd = mpd.decode("utf-8", "replace")
+    get(port, "/video/:/transcode/universal/session/%s/0/header" % session)
+    time.sleep(80)
+    index = first_segment(mpd) if status == 200 else 0
+    asked = time.time()
+    status, _, body = get(port, "/video/:/transcode/universal/session/%s/0/%d.m4s" % (session, index), timeout=60)
+    took = time.time() - asked
+    check("after a stop, the segment a DASH player's clock asks for comes within 15 s",
+          status == 200 and took < 15, "segment %d: %s in %.1f s" % (index, status, took))
+    get(port, "/video/:/transcode/universal/stop", [("session", session)])
+    CHANNELS["live-hiccup.m3u8"]["since"] = None
     check("the log says why the run started again", "starting again at the live edge" in open(log).read(),
           re.findall(r"st-hiccup[^\n]*(?:starting again|giving up)[^\n]*", open(log).read())[:2])
     session = "st-hiccup-desktop"
