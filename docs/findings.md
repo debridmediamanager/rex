@@ -12715,6 +12715,32 @@ is the limit there, so zen shows the path, not fun's gain, which only fun's hard
 The burned box is white on both paths (`tests/test_native_transcode.py` `subs`/`hdrsubs`, which
 also say which path ran where the device can take it).
 
+### Live sources that change under their probe (2026-10-27)
+
+rex never probes; a live source's probe can be a day old, and rex-fun's every-app matrix on
+01846cb7 failed three channels whose stream had changed under it. Each is now played through, in
+`tests/test_http_mkv.py` ("stale"), with Plex for Apple TV's own request
+(`fixtures/transcode/appletv_hls_mkv_query.json`), Plex Web's DASH and HLS and Plex Desktop's
+Matroska stream:
+
+- **A codec that changed** (Sport 5 Gold: probe MP2, channel AAC). The plan copied the audio and
+  no Matroska header takes copied ADTS AAC, so every path failed. When every path fails with nothing
+  out and a stream was copied, the session converts it (`Session::force_next`, audio then video)
+  and runs the ladder again, on the segment length the player already has. A Matroska stream holds
+  its first 64 KB before its head goes out: FFmpeg writes 282 bytes of header before it fails on
+  such a track, after which no other attempt could answer.
+- **Indexes that moved** (Movistar Deportes: probe video at 0 and no audio, channel audio at 0).
+  `-map 0:0` took the audio as the video: DASH refused it ("Stream 0 is not mapped to an
+  AdaptationSet"), HLS and Matroska streamed audio as the picture. A live source's streams are
+  mapped by kind (`0:v:0`, the audio's place among audio streams), and only what the plan has.
+- **A source that stops** (Digi Sport 4). FFmpeg waits on a live playlist that stops changing, with
+  nothing out and nothing logged, and the player's next segment waited 45 s and failed. A live run
+  that has made nothing for 20 s (`LIVE_STALL`), or ends after making something, is started again
+  from the segment it was writing, saying why; four restarts that bring nothing new end the session.
+  A Matroska stream ends instead, logging why: a run started again would write a second Matroska
+  header into the same body, which FFmpeg's demuxer (mpv's, Plex Desktop's) does not read on as
+  one stream, so the player asks `start` again at the live edge. Not measured with Plex Desktop.
+
 ## An item without a probe cannot play (2026-10-12)
 
 Question: could rex show a pushed item before its source sends `media_info`, as a real PMS
