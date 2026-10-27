@@ -231,12 +231,12 @@ def segment_bytes(port, protocol, query, session, scratch, label):
 BEIN_KEYFRAMES = [0, 5, 10, 15, 20, 22.88, 25.28] + [25.28 + 5 * n for n in range(1, 20)]
 
 
-def make_channel(scratch, name, video, audio, size="320x180", rate=24, extra=(), seconds=120):
+def make_channel(scratch, name, video, audio, size="320x180", rate=24, extra=(), seconds=120, maps=()):
     """A clip cut into a live channel's 2 s MPEG-TS segments, served as `<name>.m3u8`."""
     clip = os.path.join(scratch, name + ".ts")
     inputs = ["-f", "lavfi", "-i", "testsrc2=s=%s:r=%d:d=%d" % (size, rate, seconds)] if video else []
     inputs += ["-f", "lavfi", "-i", "sine=f=440:d=%d" % seconds]
-    subprocess.run([FFMPEG, "-v", "error", "-y", *inputs, *video, *audio, *extra, "-shortest", "-f", "mpegts", clip], check=True)
+    subprocess.run([FFMPEG, "-v", "error", "-y", *inputs, *maps, *video, *audio, *extra, "-shortest", "-f", "mpegts", clip], check=True)
     subprocess.run([FFMPEG, "-v", "error", "-y", "-i", clip, "-map", "0", "-c", "copy", "-f", "hls", "-hls_time", "2",
                     "-hls_list_size", "0", "-hls_segment_filename", os.path.join(scratch, name + "%03d.ts"),
                     os.path.join(scratch, name + "-vod.m3u8")], check=True)
@@ -312,6 +312,16 @@ def build(scratch):
         streams = make_channel(scratch, name, video, audio, size or "320x180", rate or 24, extra)
         items.append(live_row(key, name, streams))
         channels[name] = key
+    # Live channels whose streams changed under their probe (rex-fun, 2026-10-27): the row is the
+    # day-old probe, the channel what it serves now.
+    streams = make_channel(scratch, "live-audiofirst", h264, aac, maps=("-map", "1:a", "-map", "0:v"))
+    item = live_row("108", "live-audiofirst", streams)
+    part = item["Media"][0]["Part"][0]
+    # Movistar Deportes' probe: one video stream at index 0, no audio; it now serves audio as 0.
+    part["Stream"] = [dict(stream, index=0) for stream in part["Stream"] if stream["streamType"] == 1]
+    item["Media"][0].pop("audioCodec", None)
+    items.append(item)
+    channels["live-audiofirst"] = "108"
     # Files.
     files = {}
     for key, name, video, audio in (
@@ -513,6 +523,73 @@ def live_dash(port, key):
     get(port, "/video/:/transcode/universal/stop", [("session", session)])
 
 
+def hls_segments(port, query, session, count, scratch, label):
+    """start.m3u8, then `count` segments in order, as a player asks them: each one's status, and
+    the first ones as one decodable file (behind the Matroska header where there is one)."""
+    get(port, "/video/:/transcode/universal/start.m3u8", query)
+    base = "/video/:/transcode/universal/session/%s/base/" % session
+    status, _, playlist = get(port, base + "index.m3u8")
+    header = get(port, base + "header")[2] if b"EXT-X-MAP" in playlist else b""
+    statuses, data = [], header
+    for index in range(count):
+        status, _, body = get(port, base + "%05d.ts" % index, timeout=60)
+        statuses.append(status)
+        if index < 2 and status == 200:
+            data += body
+    path = os.path.join(scratch, "%s.bin" % label)
+    open(path, "wb").write(data)
+    return statuses, path
+
+
+def dash_segments(port, query, session, count, scratch, label):
+    status, _, mpd = get(port, "/video/:/transcode/universal/start.mpd", query)
+    mpd = mpd.decode("utf-8", "replace")
+    first = first_segment(mpd) if status == 200 else 0
+    sets = len(re.findall(r"<AdaptationSet", mpd))
+    statuses, data = [], b""
+    for rep in range(sets):
+        statuses.append(get(port, "/video/:/transcode/universal/session/%s/%d/header" % (session, rep))[0])
+    for index in range(first, first + count):
+        for rep in range(sets):
+            status, _, body = get(port, "/video/:/transcode/universal/session/%s/%d/%d.m4s" % (session, rep, index), timeout=60)
+            statuses.append(status)
+            # rex serves a DASH segment as its init and its fragment: the first is a whole file.
+            if rep == 0 and not data and status == 200:
+                data = body
+    path = os.path.join(scratch, "%s.mp4" % label)
+    open(path, "wb").write(data)
+    return statuses, path, mpd
+
+
+def stale(port, scratch, channels, log):
+    """Live channels whose streams changed under their probe, as rex-fun's every-app matrix met
+    them on 01846cb7 (2026-10-27). rex never probes; a source's probe can be a day old."""
+    print("live sources that changed under their probe")
+    # 2. Movistar Deportes: the probe had video at 0 and no audio; the channel serves audio as 0.
+    #    A live source's streams are mapped by kind, and only what the plan has is mapped.
+    key = channels["live-audiofirst"]
+    for label, run in (("Plex Web DASH", lambda session: dash_segments(port, nt.dash_query(key, session), session, 2, scratch, session)),
+                       ("Plex Web HLS", lambda session: hls_segments(port, nt.plex_web_query(key, session), session, 2, scratch, session))):
+        session = "st-audiofirst-" + label.split()[-1].lower()
+        decide(port, (nt.dash_query if "DASH" in label else nt.plex_web_query)(key, session))
+        result = run(session)
+        statuses, path = result[0], result[1]
+        found = streams_of(path)["streams"]
+        sets = len(re.findall(r"<AdaptationSet", result[2])) if len(result) > 2 else None
+        check("indexes moved under the probe: %s plays the video, and only it" % label,
+              all(status == 200 for status in statuses) and decodes(path) and sets in (None, 1)
+              and [s["codec_type"] for s in found] == ["video"], "%s %s sets=%s" % (statuses, [s.get("codec_type") for s in found], sets))
+        get(port, "/video/:/transcode/universal/stop", [("session", session)])
+    session = "st-audiofirst-desktop"
+    decide(port, desktop_query(key, session))
+    status, headers, data = read_stream(port, desktop_query(key, session), 600_000, 25, os.path.join(scratch, session + ".mkv"))
+    found = streams_of(os.path.join(scratch, session + ".mkv"))["streams"]
+    check("indexes moved under the probe: Plex Desktop's stream is the video, and only it",
+          status == 200 and decodes(os.path.join(scratch, session + ".mkv")) and [s["codec_type"] for s in found] == ["video"],
+          str([s.get("codec_type") for s in found]))
+    get(port, "/video/:/transcode/universal/stop", [("session", session)])
+
+
 def http_matrix(port, scratch, channels, files, log):
     print("Plex Desktop's Matroska stream")
     expect = {
@@ -520,6 +597,8 @@ def http_matrix(port, scratch, channels, files, log):
         "live-ac3": ("h264", "ac3", 6), "live-radio": (None, "aac", 2), "live-gop5": ("h264", "aac", 2),
     }
     for name, key in channels.items():
+        if name not in expect:
+            continue
         session = "h-" + name
         container = decide(port, desktop_query(key, session))
         media = container.get("Metadata", [{}])[0].get("Media", [{}])[0]
@@ -692,6 +771,8 @@ def run(scratch):
         if "guard" in sys.argv[1:] or len(sys.argv) == 1:
             guard(port, scratch, channels["live-guard"], files["h264.mkv"], channels["live-guard-i"], files["interlaced.mkv"])
             live_dash(port, channels["live-guard"])
+        if "stale" in sys.argv[1:] or len(sys.argv) == 1:
+            stale(port, scratch, channels, log)
         if "http" in sys.argv[1:] or len(sys.argv) == 1:
             http_matrix(port, scratch, channels, files, log)
     finally:

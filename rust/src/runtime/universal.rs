@@ -188,6 +188,9 @@ fn device_deinterlacer(path: Path, hardware: &Hardware) -> Option<&'static str> 
 #[derive(Clone, Debug)]
 pub(crate) struct AudioPlan {
     pub index: i64,
+    /// Which of the source's audio streams it is, counted from 0: a live source's map, since its
+    /// stream indexes can move under a probe a day old.
+    pub ordinal: i64,
     pub copy: bool,
     pub source_codec: String,
     pub codec: String,
@@ -737,7 +740,10 @@ pub(crate) fn ffmpeg_args(plan: &Plan, path: Path, hardware: &Hardware, start: i
         None => chain,
     };
     // A row without ffprobe's stream `index` maps the first stream of the kind.
-    let video_input = video.map(|video| if video.index >= 0 { format!("0:{}", video.index) } else { "0:v:0".to_string() });
+    // A live source's streams are mapped by kind: its indexes can move under a probe a day old
+    // (Movistar Deportes' stream 0 turned audio, and its "video" took an audio filter; rex-fun
+    // 2026-10-27).
+    let video_input = video.map(|video| if video.index >= 0 && !plan.live() { format!("0:{}", video.index) } else { "0:v:0".to_string() });
     let burn = plan.subtitle.filter(|_| converting);
     if let (Some(input), None, None) = (&video_input, burn, &canvas) {
         push(&mut args, &["-map", input]);
@@ -807,7 +813,7 @@ pub(crate) fn ffmpeg_args(plan: &Plan, path: Path, hardware: &Hardware, start: i
         push(&mut args, &["-filter_complex", &graph, "-map", "[v]"]);
     }
     if let Some(audio) = plan.audio.as_ref() {
-        push(&mut args, &["-map", &if audio.index >= 0 { format!("0:{}", audio.index) } else { "0:a:0".to_string() }]);
+        push(&mut args, &["-map", &if audio.index >= 0 && !plan.live() { format!("0:{}", audio.index) } else { format!("0:a:{}", audio.ordinal) }]);
     }
     let text = plan.text_subtitle.filter(|_| plan.matroska).map(|index| format!("0:{index}"))
         .or_else(|| plan.sidecar.as_ref().filter(|_| plan.matroska).map(|_| "1:0".to_string()));
@@ -2821,8 +2827,9 @@ impl Runtime {
                 && names(&audio_codecs, &codec)
                 && !(matroska && adts)
                 && decision::codec_limitation(profile, "VideoAudioCodec", &codec, media).is_none();
+            let ordinal = streams.iter().filter(|other| kind(other) == Some(2)).position(|other| other.get("index") == stream.get("index")).unwrap_or(0) as i64;
             if copy {
-                AudioPlan { index: stream.get("index").and_then(Value::as_i64).unwrap_or(-1), copy, source_codec: codec.clone(), codec, channels, bitrate: source_bitrate, sampling_rate }
+                AudioPlan { index: stream.get("index").and_then(Value::as_i64).unwrap_or(-1), ordinal, copy, source_codec: codec.clone(), codec, channels, bitrate: source_bitrate, sampling_rate }
             } else {
                 let out = if names(&audio_codecs, "aac") || audio_codecs.is_empty() { "aac".to_string() } else { audio_codecs[0].clone() };
                 // The profile's own channel bound for this codec (Web: 6), else stereo.
@@ -2850,6 +2857,7 @@ impl Runtime {
                 let channels = allowed.min(if boost_dialog { 2 } else { 6 });
                 AudioPlan {
                     index: stream.get("index").and_then(Value::as_i64).unwrap_or(-1),
+                    ordinal,
                     copy: false,
                     source_codec: codec,
                     codec: out,
@@ -3459,7 +3467,7 @@ mod tests {
                 source_level: 120,
                 interlaced: false,
             }),
-            audio: Some(AudioPlan { index: 1, copy: false, source_codec: "eac3".into(), codec: "aac".into(), channels: 2, bitrate: 192, sampling_rate: 48000 }),
+            audio: Some(AudioPlan { index: 1, ordinal: 0, copy: false, source_codec: "eac3".into(), codec: "aac".into(), channels: 2, bitrate: 192, sampling_rate: 48000 }),
             subtitle: None,
             matroska: false,
             text_subtitle: None,
