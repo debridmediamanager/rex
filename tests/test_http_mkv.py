@@ -1,0 +1,509 @@
+#!/usr/bin/env python3
+"""Every client profile's streaming protocol converts, and Plex Desktop's Matroska stream plays.
+
+Plex for Mac 1.115 (profile `Plex Desktop`) asks for a conversion with `protocol=http` and plays
+what `/video/:/transcode/universal/start` (no extension) answers: one Matroska stream, chunked as
+it is made. rex had no such protocol and refused every conversion it asked for -- "Cannot convert
+this item. No conversion profile found for protocol http." -- so a live channel, which only a
+conversion reads, never played (rex-fun, 2026-10-26). plexlab's answers are
+`tests/fixtures/transcode/http_mkv_s1434.json`.
+
+    guard   every streaming target of every profile in data/client_profiles.json: the decision
+            for an item that must be converted (a live HLS channel, a file over the quality cap)
+            is Conversion OK, and start serves media FFmpeg decodes, for each distinct target.
+            A profile naming a protocol rex does not serve fails here, by name.
+    http    live channels (H.264/AAC, 1080i, HEVC/MP2, AC3 5.1, audio only), files (mkv, mp4,
+            HDR10 tonemapped, a text and an image subtitle, a second audio track), a seek either
+            clock, a stop and a disconnect ending FFmpeg, the session's listing and ping.
+
+    python3 tests/test_http_mkv.py      # REX_TRANSCODER=/path/to/ffmpeg optional
+"""
+import http.client
+import json
+import os
+import re
+import shutil
+import socketserver
+import subprocess
+import sys
+import tempfile
+import threading
+import time
+import urllib.parse
+
+import test_native_transcode as nt
+from test_native_transcode import FFMPEG, FFPROBE, MEDIA, check, get, make_clip, probe, row
+
+ROOT = nt.ROOT
+DURATION = 30
+PROFILES = json.load(open(os.path.join(ROOT, "data/client_profiles.json")))
+RECORDED = json.load(open(os.path.join(ROOT, "tests/fixtures/transcode/http_mkv_s1434.json")))
+# The profiles whose streaming targets name no protocol (an MPEG-TS or ASF file, no `protocol`
+# attribute): PMS's DLNA renderer profiles, which its DLNA server streams to. rex runs no DLNA
+# server, so no request of theirs reaches the universal transcoder. Listed by name so that a new
+# one is a failure to look at, not a silent gap.
+NO_PROTOCOL = {
+    "Asus Transformer Prime TF201", "Panasonic Viera 3D TV", "PlayStation 3", "Roku-5000X-6.0",
+    "RokuDLNA-3.1", "RokuDLNA-4400X-7.x", "RokuDLNA-5.1", "RokuDLNA-5000X-6.x", "RokuDLNA-5000X-7.x",
+    "RokuDLNA-6.x", "RokuDLNA-6000X-7.x", "Samsung SmartTV", "Sony Blu-ray", "Sony Blu-ray 2013",
+    "Sony Bravia 2010", "Sony Bravia 2011", "Sony Bravia 2012", "Sony Bravia 2013", "Sony Streaming Player",
+    "Western Digital TV Live", "Xbox 360",
+}
+SERVED = {"hls", "dash", "http"}
+
+# Each live channel's segments, by its playlist's name; each moves on in real time from its
+# first read, as nt.live_playlist's does.
+CHANNELS = {}
+
+
+class Quiet(socketserver.ThreadingTCPServer):
+    daemon_threads = True
+
+    def handle_error(self, request, client_address):
+        pass  # FFmpeg hangs up mid-read whenever a stream ends; that is no failure
+
+
+class Source(nt.Zurg):
+    def do_GET(self):
+        name = urllib.parse.unquote(self.path).rsplit("/", 1)[-1]
+        channel = CHANNELS.get(name)
+        if channel is None:
+            return super().do_GET()
+        channel["since"] = channel["since"] or time.time()
+        made = min(len(channel["segments"]), 3 + int((time.time() - channel["since"]) / 2))
+        first = max(0, made - 5)
+        lines = ["#EXTM3U", "#EXT-X-VERSION:3", "#EXT-X-TARGETDURATION:2", "#EXT-X-MEDIA-SEQUENCE:%d" % first]
+        for segment in channel["segments"][first:made]:
+            lines += ["#EXTINF:2.000000,", segment]
+        body = ("\n".join(lines) + "\n").encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/vnd.apple.mpegurl")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+
+def desktop_query(key, session, **extra):
+    """Plex for Mac's own request, as recorded (`http_mkv_s1434.json`), for item `key`."""
+    pairs = []
+    for name, value in RECORDED["exchanges"][0]["query"]:
+        if name in ("maxVideoBitrate", "videoResolution"):
+            continue
+        value = {"path": "/library/metadata/%s" % key, "session": session,
+                 "X-Plex-Session-Identifier": "playback-" + session}.get(name, value)
+        pairs.append((name, extra.pop(name, value)))
+    pairs.extend(extra.items())
+    return pairs
+
+
+def profile_query(profile, protocol, key, session, **extra):
+    """Plex Web's recorded conversion request, as `profile` asking over `protocol`."""
+    return nt.plex_web_query(key, session, protocol=protocol, **{"X-Plex-Client-Profile-Name": profile}, **extra)
+
+
+def decide(port, query):
+    status, _, body = get(port, "/video/:/transcode/universal/decision", query)
+    return json.loads(body)["MediaContainer"] if status == 200 else {"status": status}
+
+
+def read_stream(port, query, limit, seconds, path):
+    """GET start, keep at most `limit` bytes or `seconds` of them, and hang up. Answers the
+    status, headers and the bytes written to `path`. A live source that stops publishing (the
+    fixture channels end after 60 s) stops the stream, as a real one does: 15 s of silence ends it."""
+    connection = http.client.HTTPConnection("127.0.0.1", port, timeout=15)
+    connection.request("GET", "/video/:/transcode/universal/start?" + urllib.parse.urlencode(query))
+    response = connection.getresponse()
+    headers = {name.lower(): value for name, value in response.getheaders()}
+    data = b""
+    deadline = time.time() + seconds
+    while len(data) < limit and time.time() < deadline:
+        try:
+            chunk = response.read1(65536) if response.status == 200 else response.read()
+        except TimeoutError:
+            break
+        if not chunk:
+            break
+        data += chunk
+    connection.close()
+    open(path, "wb").write(data)
+    return response.status, headers, data
+
+
+def streams_of(path):
+    try:
+        return probe(path)
+    except subprocess.CalledProcessError:
+        return {"streams": [], "format": {}}
+
+
+def decodes(path, kind="v"):
+    """Whether FFmpeg decodes a frame of `kind` out of `path`: a 200 of an error page is no media."""
+    done = subprocess.run([FFMPEG, "-v", "error", "-i", path, "-map", "0:%s:0" % kind, "-frames:%s" % kind, "1" if kind == "v" else "10",
+                           "-f", "null", "-"], capture_output=True, text=True)
+    return done.returncode == 0
+
+
+def last_pts(path):
+    """A streamed Matroska has no duration in its header (plexlab's neither): its last packet's time."""
+    out = subprocess.run([FFPROBE, "-v", "error", "-select_streams", "v:0", "-show_entries", "packet=pts_time",
+                          "-of", "csv=p=0", path], capture_output=True, text=True).stdout.split()
+    times = [float(value) for value in out if value not in ("", "N/A")]
+    return max(times) if times else 0.0
+
+
+def first_pts(path):
+    out = subprocess.run([FFPROBE, "-v", "error", "-select_streams", "v:0", "-show_entries", "packet=pts_time",
+                          "-read_intervals", "%+#1", "-of", "csv=p=0", path], capture_output=True, text=True).stdout.split()
+    return float(out[0]) if out else None
+
+
+def ffmpegs_reading(name):
+    listed = subprocess.run(["ps", "-axo", "pid=,command="], capture_output=True, text=True).stdout
+    return [line.split()[0] for line in listed.splitlines() if "ffmpeg" in line and "/" + name in line and "-f matroska" in line]
+
+
+def gone(name, timeout=10):
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if not ffmpegs_reading(name):
+            return True
+        time.sleep(0.3)
+    return False
+
+
+def segment_bytes(port, protocol, query, session, scratch, label):
+    """The first media a protocol's start leads to, as one decodable file."""
+    path = os.path.join(scratch, "%s.bin" % label)
+    if protocol == "http":
+        status, headers, data = read_stream(port, query, 1_500_000, 20, path)
+        return status == 200 and headers.get("content-type") == "video/x-matroska", path
+    if protocol == "hls":
+        status, _, master = get(port, "/video/:/transcode/universal/start.m3u8", query)
+        base = "/video/:/transcode/universal/session/%s/base/" % session
+        status_i, _, index = get(port, base + "index.m3u8")
+        header = get(port, base + "header")[2] if b'EXT-X-MAP' in index else b""
+        status_s, _, first = get(port, base + "00000.ts")
+        open(path, "wb").write(header + first)
+        return status == status_i == status_s == 200, path
+    status, _, mpd = get(port, "/video/:/transcode/universal/start.mpd", query)
+    base = "/video/:/transcode/universal/session/%s/0/" % session
+    status_h, _, header = get(port, base + "header")
+    status_s, _, first = get(port, base + "0.m4s")
+    open(path, "wb").write(header + first)
+    return status == status_h == status_s == 200, path
+
+
+def make_channel(scratch, name, video, audio, size="320x180", rate=24, extra=(), seconds=120):
+    """A clip cut into a live channel's 2 s MPEG-TS segments, served as `<name>.m3u8`."""
+    clip = os.path.join(scratch, name + ".ts")
+    inputs = ["-f", "lavfi", "-i", "testsrc2=s=%s:r=%d:d=%d" % (size, rate, seconds)] if video else []
+    inputs += ["-f", "lavfi", "-i", "sine=f=440:d=%d" % seconds]
+    subprocess.run([FFMPEG, "-v", "error", "-y", *inputs, *video, *audio, *extra, "-shortest", "-f", "mpegts", clip], check=True)
+    subprocess.run([FFMPEG, "-v", "error", "-y", "-i", clip, "-map", "0", "-c", "copy", "-f", "hls", "-hls_time", "2",
+                    "-hls_list_size", "0", "-hls_segment_filename", os.path.join(scratch, name + "%03d.ts"),
+                    os.path.join(scratch, name + "-vod.m3u8")], check=True)
+    segments = sorted(entry for entry in os.listdir(scratch) if re.fullmatch(re.escape(name) + r"\d{3}\.ts", entry))
+    for segment in segments:
+        MEDIA[segment] = os.path.join(scratch, segment)
+    CHANNELS[name + ".m3u8"] = {"segments": segments, "since": None}
+    return probe(os.path.join(scratch, name + "-vod.m3u8"))["streams"]
+
+
+def live_row(key, name, streams):
+    if any(stream["codec_type"] == "video" for stream in streams):
+        item = row(key, name.title(), name + ".m3u8", streams, 0, 0)
+    else:
+        # A radio channel: a row with its one audio stream.
+        item = row(key, name.title(), name + ".m3u8", [{"codec_type": "video", "codec_name": "h264", "index": -1}] + streams, 0, 0)
+        part = item["Media"][0]["Part"][0]
+        part["Stream"] = [stream for stream in part["Stream"] if stream["streamType"] != 1]
+        for field in ("videoCodec", "width", "height", "videoResolution", "videoFrameRate", "aspectRatio"):
+            item["Media"][0].pop(field, None)
+    video = next((stream for stream in streams if stream["codec_type"] == "video"), None)
+    if video:
+        stream = item["Media"][0]["Part"][0]["Stream"][0]
+        stream.update({"width": video["width"], "height": video["height"]})
+        item["Media"][0].update({"width": video["width"], "height": video["height"]})
+        if video.get("field_order") not in (None, "progressive", "unknown"):
+            stream["scanType"] = "interlaced"
+    item["Media"][0]["container"] = item["Media"][0]["Part"][0]["container"] = "hls"
+    return item
+
+
+def file_row(key, name, streams, container="mkv", **extra):
+    item = row(key, name.split(".")[0].title(), name, streams, os.path.getsize(MEDIA[name]), DURATION, **extra)
+    item["Media"][0]["container"] = item["Media"][0]["Part"][0]["container"] = container
+    return item
+
+
+def build(scratch):
+    h264 = ["-c:v", "libx264", "-preset", "ultrafast", "-g", "48", "-pix_fmt", "yuv420p"]
+    aac = ["-c:a", "aac", "-ac", "2"]
+    items, channels = [], {}
+    # The guard's channel, read by every profile in turn: on the air for its whole run.
+    streams = make_channel(scratch, "live-guard", h264, aac, seconds=1200)
+    items.append(live_row("100", "live-guard", streams))
+    channels["live-guard"] = "100"
+    # Live channels, each a different broadcast shape, each read once.
+    for key, name, video, audio, size, rate, extra in (
+            ("101", "live-h264", h264, aac, "320x180", 24, ()),
+            ("102", "live-1080i", ["-c:v", "libx264", "-preset", "ultrafast", "-g", "50", "-pix_fmt", "yuv420p",
+                                   "-flags", "+ilme+ildct", "-x264-params", "tff=1"], ["-c:a", "mp2", "-ac", "2"], "1920x1080", 25,
+             ("-field_order", "tt")),
+            ("103", "live-hevc", ["-c:v", "libx265", "-preset", "ultrafast", "-x265-params", "log-level=none:keyint=48",
+                                  "-pix_fmt", "yuv420p"], ["-c:a", "mp2", "-ac", "1"], "320x180", 24, ()),
+            ("104", "live-ac3", h264, ["-c:a", "ac3", "-ac", "6"], "320x180", 24, ()),
+            ("105", "live-radio", [], aac, None, None, ())):
+        streams = make_channel(scratch, name, video, audio, size or "320x180", rate or 24, extra)
+        items.append(live_row(key, name, streams))
+        channels[name] = key
+    # Files.
+    files = {}
+    for key, name, video, audio in (
+            ("201", "h264.mkv", h264, aac),
+            ("202", "slowstop.mkv", h264, aac),
+            ("203", "plainmp4.mp4", h264, aac)):
+        MEDIA[name] = os.path.join(scratch, name)
+        make_clip(MEDIA[name], video, audio, 90 if name == "slowstop.mkv" else DURATION)
+        items.append(file_row(key, name, probe(MEDIA[name])["streams"], container="mp4" if name.endswith(".mp4") else "mkv"))
+        files[name] = key
+    # The slow file is served at nt.SLOW_RATE only when its name starts with "slow".
+    # HDR10: PQ-tagged 10-bit HEVC, tonemapped when converted.
+    MEDIA["hdr10.mkv"] = os.path.join(scratch, "hdr10.mkv")
+    make_clip(MEDIA["hdr10.mkv"], ["-c:v", "libx265", "-preset", "ultrafast", "-pix_fmt", "yuv420p10le", "-x265-params",
+                                   "log-level=none:colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc:hdr10=1:max-cll=1000,400"],
+              aac, DURATION)
+    item = file_row("204", "hdr10.mkv", probe(MEDIA["hdr10.mkv"])["streams"])
+    item["Media"][0]["Part"][0]["Stream"][0].update({"bitDepth": 10, "colorTrc": "smpte2084"})
+    items.append(item)
+    files["hdr10.mkv"] = "204"
+    # Subtitles: an embedded SRT (carried into the Matroska) and a PGS box (burned).
+    plain = MEDIA["h264.mkv"]
+    srt = os.path.join(scratch, "line.srt")
+    open(srt, "w").write("1\n00:00:00,500 --> 00:00:29,000\nHello from the SRT\n")
+    sup = os.path.join(scratch, "box.sup")
+    nt.make_pgs(sup, 1280, 720, DURATION)
+    for key, name, source, codec, flags in (("205", "srt.mkv", srt, "srt", ["-c:s", "srt"]), ("206", "pgs.mkv", sup, "pgs", [])):
+        MEDIA[name] = os.path.join(scratch, name)
+        subprocess.run([FFMPEG, "-v", "error", "-y", "-i", plain, "-i", source, "-map", "0", "-map", "1", "-c", "copy", *flags,
+                        MEDIA[name]], check=True)
+        streams = probe(MEDIA[name])["streams"]
+        items.append(file_row(key, name, streams, subtitle=next(s for s in streams if s["codec_type"] == "subtitle"),
+                              subtitle_codec=codec))
+        files[name] = key
+    # Two audio tracks, the second (AC3 5.1) selected.
+    MEDIA["twoaudio.mkv"] = os.path.join(scratch, "twoaudio.mkv")
+    subprocess.run([FFMPEG, "-v", "error", "-y", "-i", plain, "-f", "lavfi", "-i", "sine=f=880:d=%d" % DURATION,
+                    "-map", "0:v", "-map", "0:a", "-map", "1:a", "-c:v", "copy", "-c:a:0", "copy", "-c:a:1", "ac3", "-ac:a:1", "6",
+                    MEDIA["twoaudio.mkv"]], check=True)
+    streams = probe(MEDIA["twoaudio.mkv"])["streams"]
+    item = file_row("207", "twoaudio.mkv", streams)
+    rows = item["Media"][0]["Part"][0]["Stream"]
+    second = next(s for s in streams if s["codec_type"] == "audio" and s["codec_name"] == "ac3")
+    rows[1]["selected"] = False
+    rows.append({"id": 207003, "streamType": 2, "codec": "ac3", "index": second["index"], "channels": 6, "bitrate": 448,
+                 "selected": True, "displayTitle": "Second (AC3 5.1)"})
+    items.append(item)
+    files["twoaudio.mkv"] = "207"
+    return items, channels, files
+
+
+def guard(port, scratch, live_key, file_key):
+    print("every profile's streaming protocol")
+    targets = {}
+    for name, profile in sorted(PROFILES.items()):
+        for target in profile.get("targets", []):
+            if target.get("tag") != "VideoProfile" or target.get("context") == "static":
+                continue
+            protocol = target.get("protocol")
+            if protocol is None:
+                continue
+            targets.setdefault((name, protocol), target)
+    no_protocol = {name for name, profile in PROFILES.items()
+                   if any(t.get("tag") == "VideoProfile" and t.get("context") != "static" and t.get("protocol") is None
+                          for t in profile.get("targets", []))
+                   and not any(t.get("tag") == "VideoProfile" and t.get("protocol") for t in profile.get("targets", []))}
+    check("the protocol-less profiles are the known DLNA/pre-universal list", no_protocol == NO_PROTOCOL,
+          "new: %s, gone: %s" % (sorted(no_protocol - NO_PROTOCOL), sorted(NO_PROTOCOL - no_protocol)))
+    unknown = sorted({protocol for _, protocol in targets} - SERVED)
+    check("every profile's streaming protocol is one rex serves (%s)" % ", ".join(sorted(SERVED)), not unknown, str(unknown))
+    started = set()
+    for (name, protocol), target in sorted(targets.items()):
+        signature = (protocol, target.get("container"), target.get("videoCodec") or target.get("codec"), target.get("audioCodec"))
+        for kind, key, extra in (("live", live_key, {}), ("capped file", file_key, {"maxVideoBitrate": "1000", "videoResolution": "640x360"})):
+            session = "g-%s-%s-%s" % (re.sub(r"\W", "", name), protocol, kind.split()[0])
+            container = decide(port, profile_query(name, protocol, key, session, **extra))
+            text = " ".join(str(container.get(field, "")) for field in ("generalDecisionText", "transcodeDecisionText"))
+            check("%s / %s: a %s converts" % (name, protocol, kind),
+                  container.get("generalDecisionCode") == 1001 and "No conversion profile" not in text,
+                  "%s %s" % (container.get("generalDecisionCode", container.get("status")), text.strip()[:80]))
+            if (signature, kind) in started or container.get("generalDecisionCode") != 1001:
+                continue
+            started.add((signature, kind))
+            ok, path = segment_bytes(port, protocol, profile_query(name, protocol, key, session, **extra), session, scratch,
+                                     "guard-%s" % session)
+            check("%s / %s: start's %s media decodes (%s)" % (name, protocol, kind, "/".join(str(v) for v in signature[1:])),
+                  ok and decodes(path), "%d bytes" % os.path.getsize(path))
+            get(port, "/video/:/transcode/universal/stop", [("session", session)])
+
+
+def http_matrix(port, scratch, channels, files, log):
+    print("Plex Desktop's Matroska stream")
+    expect = {
+        "live-guard": ("h264", "aac", 2), "live-h264": ("h264", "aac", 2), "live-1080i": ("h264", "mp2", 2), "live-hevc": ("hevc", "mp2", 1),
+        "live-ac3": ("h264", "ac3", 6), "live-radio": (None, "aac", 2),
+    }
+    for name, key in channels.items():
+        session = "h-" + name
+        container = decide(port, desktop_query(key, session))
+        media = container.get("Metadata", [{}])[0].get("Media", [{}])[0]
+        part = media.get("Part", [{}])[0]
+        check("%s: decision is Conversion OK as mkv, streams direct" % name,
+              container.get("generalDecisionCode") == 1001 and media.get("container") == "mkv" and "protocol" not in media
+              and all(stream.get("location") == "direct" for stream in part.get("Stream", [])),
+              json.dumps({k: media.get(k) for k in ("container", "protocol", "videoCodec", "audioCodec")}))
+        path = os.path.join(scratch, "%s.mkv" % name)
+        status, headers, data = read_stream(port, desktop_query(key, session), 1_500_000, 25, path)
+        check("%s: start is plexlab's chunked video/x-matroska" % name,
+              status == 200 and headers.get("content-type") == "video/x-matroska" and headers.get("transfer-encoding") == "chunked"
+              and headers.get("accept-ranges") == "none" and data[:4] == b"\x1a\x45\xdf\xa3", "%s %d bytes" % (status, len(data)))
+        found = streams_of(path)["streams"]
+        video = next((s["codec_name"] for s in found if s["codec_type"] == "video"), None)
+        audio = next((s for s in found if s["codec_type"] == "audio"), {})
+        want_video, want_audio, channels_n = expect[name]
+        check("%s: the stream is %s/%s %dch and decodes" % (name, want_video, want_audio, channels_n),
+              video == want_video and audio.get("codec_name") == want_audio and audio.get("channels") == channels_n
+              and decodes(path, "v" if want_video else "a"), "%s/%s %sch" % (video, audio.get("codec_name"), audio.get("channels")))
+        check("%s: hanging up ends its FFmpeg" % name, gone(name + ".m3u8"), str(ffmpegs_reading(name + ".m3u8")))
+        get(port, "/video/:/transcode/universal/stop", [("session", session)])
+
+    capped = {"maxVideoBitrate": "1500", "videoResolution": "1280x720"}
+    for name, extra, want in (
+            ("h264.mkv", {}, ("h264", "copy")),
+            ("h264.mkv", capped, ("h264", "convert")),
+            ("plainmp4.mp4", capped, ("h264", "convert")),
+            ("hdr10.mkv", {}, ("hevc", "copy")),
+            ("hdr10.mkv", capped, ("h264", "convert")),
+            ("srt.mkv", {}, ("h264", "copy")),
+            ("pgs.mkv", capped, ("h264", "convert")),
+            ("twoaudio.mkv", {}, ("h264", "copy"))):
+        key = files[name]
+        label = "%s%s" % (name, " capped" if extra else "")
+        session = "f-" + re.sub(r"\W", "", label)
+        container = decide(port, desktop_query(key, session, **extra))
+        if name == "hdr10.mkv" and extra and "no HDR is (no zscale)" in open(log, errors="replace").read():
+            # rex never sends HDR untonemapped: without zscale (Homebrew's FFmpeg) it refuses.
+            check("hdr10 capped: without zscale the HDR conversion is refused", container.get("generalDecisionCode") != 1001,
+                  str(container.get("generalDecisionCode")))
+            continue
+        streams = {s.get("streamType"): s for s in container.get("Metadata", [{}])[0].get("Media", [{}])[0].get("Part", [{}])[0].get("Stream", [])}
+        decision = streams.get(1, {}).get("decision")
+        check("%s: decision 1001, video %s" % (label, "transcode" if want[1] == "convert" else "copy"),
+              container.get("generalDecisionCode") == 1001 and decision == ("transcode" if want[1] == "convert" else "copy"), str(decision))
+        path = os.path.join(scratch, "%s.mkv" % session)
+        status, headers, data = read_stream(port, desktop_query(key, session, **extra), 50_000_000, 60, path)
+        found = streams_of(path)
+        video = next((s for s in found["streams"] if s["codec_type"] == "video"), {})
+        audio = next((s for s in found["streams"] if s["codec_type"] == "audio"), {})
+        duration = last_pts(path)
+        check("%s: the whole title streams as %s and decodes" % (label, want[0]),
+              status == 200 and video.get("codec_name") == want[0] and decodes(path) and abs(duration - DURATION) < 2.5,
+              "%s %.1fs %d bytes" % (video.get("codec_name"), duration, len(data)))
+        if name == "hdr10.mkv" and extra:
+            tags = "%s,%s" % (video.get("color_transfer"), video.get("color_primaries"))
+            check("hdr10 capped: the picture is tonemapped to BT.709", tags == "bt709,bt709", tags)
+        if name == "srt.mkv":
+            subtitle = next((s for s in found["streams"] if s["codec_type"] == "subtitle"), {})
+            check("srt.mkv: the selected SRT is carried in the Matroska", subtitle.get("codec_name") == "subrip", str(subtitle.get("codec_name")))
+        if name == "pgs.mkv":
+            bright = nt.luma(path, 2, nt.BOX)
+            check("pgs.mkv: the selected PGS box is burned in", bright > 200, "%.0f" % bright)
+        if name == "twoaudio.mkv":
+            check("twoaudio.mkv: the selected second track (AC3 5.1) is the one streamed",
+                  audio.get("codec_name") == "ac3" and audio.get("channels") == 6, "%s %sch" % (audio.get("codec_name"), audio.get("channels")))
+        if name == "h264.mkv" and not extra:
+            status, _, _ = get(port, "/video/:/transcode/universal/ping", [("session", session)])
+            _, _, body = get(port, "/transcode/sessions")
+            rows = [r for r in json.loads(body)["MediaContainer"].get("TranscodeSession", []) if r.get("key") == session]
+            check("an ended stream's session is kept, as plexlab's: ping 200, listed complete http/mkv",
+                  status == 200 and rows and rows[0].get("protocol") == "http" and rows[0].get("container") == "mkv"
+                  and rows[0].get("complete") is True, json.dumps(rows[0] if rows else {})[:160])
+        status = get(port, "/video/:/transcode/universal/stop", [("session", session)])[0]
+        if name == "h264.mkv" and not extra:
+            check("its stop is 200, and ping after it 404", status == 200
+                  and get(port, "/video/:/transcode/universal/ping", [("session", session)])[0] == 404, str(status))
+
+    # A seek: plexlab's `offset=4` starts at 4.0 s with copyts=1 and at 0 with copyts=0.
+    for copyts, low, high in (("1", 9.5, 12.5), ("0", -0.2, 1.0)):
+        session = "seek-" + copyts
+        query = desktop_query(files["h264.mkv"], session, offset="10", copyts=copyts, **capped)
+        decide(port, query)
+        path = os.path.join(scratch, "seek-%s.mkv" % copyts)
+        read_stream(port, query, 400_000, 20, path)
+        pts = first_pts(path)
+        check("a seek to 10 s with copyts=%s starts at %s" % (copyts, "10 s" if copyts == "1" else "0"),
+              pts is not None and low <= pts <= high, str(pts))
+        get(port, "/video/:/transcode/universal/stop", [("session", session)])
+
+    # A stop mid-stream ends the stream and its FFmpeg; the source is read slowly, so it runs on.
+    session = "stopme"
+    query = desktop_query(files["slowstop.mkv"], session, **capped)
+    decide(port, query)
+    connection = http.client.HTTPConnection("127.0.0.1", port, timeout=30)
+    connection.request("GET", "/video/:/transcode/universal/start?" + urllib.parse.urlencode(query))
+    response = connection.getresponse()
+    first = response.read1(65536)
+    running = bool(ffmpegs_reading("slowstop.mkv"))
+    status = get(port, "/video/:/transcode/universal/stop", [("session", session)])[0]
+    ended = False
+    deadline = time.time() + 15
+    try:
+        while time.time() < deadline:
+            if not response.read1(65536):
+                ended = True
+                break
+    except (http.client.IncompleteRead, OSError):
+        ended = True
+    connection.close()
+    check("a stop mid-stream is 200, ends the stream and its FFmpeg",
+          first and running and status == 200 and ended and gone("slowstop.mkv"), "running=%s stop=%s ended=%s" % (running, status, ended))
+
+
+def main():
+    if not FFMPEG or not FFPROBE:
+        print("SKIP: no ffmpeg (set REX_TRANSCODER)")
+        return 0
+    scratch = tempfile.mkdtemp(prefix="rex-http-mkv-test-")
+    items, channels, files = build(scratch)
+    catalog = os.path.join(scratch, "catalog.json")
+    json.dump({"machineIdentifier": "0000000000000000000000000000000000000008", "friendlyName": "rex-http-mkv",
+               "sections": [{"key": "1", "type": "movie", "title": "Clips", "uuid": "0" * 39 + "8"}],
+               "items": items}, open(catalog, "w"))
+    source_port = nt.free_port()
+    httpd = Quiet(("127.0.0.1", source_port), Source)
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    port, process, log = nt.start_server(catalog, source_port, True, scratch)
+    try:
+        if "guard" in sys.argv[1:] or len(sys.argv) == 1:
+            guard(port, scratch, channels["live-guard"], files["h264.mkv"])
+        if "http" in sys.argv[1:] or len(sys.argv) == 1:
+            http_matrix(port, scratch, channels, files, log)
+    finally:
+        process.terminate()
+        process.wait()
+        httpd.shutdown()
+    results = nt.results
+    failed = [label for label, ok in results if not ok]
+    print("\n%d/%d passed" % (len(results) - len(failed), len(results)))
+    if failed:
+        print("rex log: %s" % log)
+        if os.environ.get("CI"):
+            with open(log, encoding="utf-8", errors="replace") as handle:
+                print("".join(handle.readlines()[-150:]))
+        return 1
+    shutil.rmtree(scratch, ignore_errors=True)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

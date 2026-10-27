@@ -164,6 +164,7 @@ jobs:
             [ -x "$d/ffmpeg" ] || { mkdir -p "$d" && curl -sSfL "${JELLYFIN_FFMPEG}_linux64-gpl.tar.xz" | tar -xJ -C "$d"; }
             export REX_TRANSCODER="$d/ffmpeg" PATH="$d:$PATH"
             python3 tests/test_native_transcode.py
+            python3 tests/test_http_mkv.py
             python3 tests/test_download_queue.py
             python3 tests/test_perf_artwork_save.py
             python3 tests/test_subtitles.py

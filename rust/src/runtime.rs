@@ -639,6 +639,9 @@ pub struct Runtime {
     /// A transcoded segment the router accepted; served once ffmpeg has written it, after
     /// the runtime lock is released (`universal.rs`).
     pending_segment: Option<universal::SegmentPlan>,
+    /// A Matroska conversion (`protocol=http`) the router accepted; `handle_connection` runs
+    /// its FFmpeg and streams it after the runtime lock is released.
+    pending_stream: Option<universal::StreamPlan>,
     /// The video transcoder, only with `REX_TRANSCODER` (`universal.rs`).
     transcoder: Option<Arc<universal::Transcoder>>,
     /// The download queue's items and their conversions (`downloads.rs`).
@@ -969,6 +972,7 @@ impl Runtime {
             pending_part: None,
             pending_file_checks: None,
             pending_segment: None,
+            pending_stream: None,
             // `redirect-only` promises rex carries no stream, and every conversion reads its source.
             transcoder: if options.part_mode == "redirect-only" {
                 info!("transcoder off: --part-mode redirect-only");
@@ -23922,6 +23926,7 @@ fn handle_connection<S: Read + Write + PollRead>(
             .get("X-Plex-Container-Size")
             .is_some_and(String::is_empty);
         let mut part_plan = None;
+        let mut stream_plan: Option<universal::StreamPlan> = None;
         let mut download = None;
         let mut response_account = accounts::OWNER;
         let mut response_lan = true;
@@ -23936,6 +23941,7 @@ fn handle_connection<S: Read + Write + PollRead>(
             guard.pending_part = None;
             guard.pending_file_checks = None;
             guard.pending_segment = None;
+            guard.pending_stream = None;
             guard.pending_download = None;
             guard.pending_artifact = None;
             guard.pending_image = None;
@@ -23989,6 +23995,7 @@ fn handle_connection<S: Read + Write + PollRead>(
             part_plan = guard.pending_part.take();
             let file_checks = guard.pending_file_checks.take();
             let segment = guard.pending_segment.take();
+            stream_plan = guard.pending_stream.take();
             download = guard.pending_download.take();
             // A source's own artwork (`source://<name>/<path>`, only ever from what it pushed)
             // is fetched from the source with its login; any other url from public hosts only.
@@ -24213,6 +24220,20 @@ fn handle_connection<S: Read + Write + PollRead>(
         let mut owner = sessions::ByteOwner::of(&request, response_account);
         owner.lan = response_lan;
         sessions::BYTE_OWNER.with(|cell| *cell.borrow_mut() = owner.clone());
+        if let Some(plan) = stream_plan.take().filter(|_| response.status == 200) {
+            let (account, playback) = (plan.session.plan.account, plan.session.plan.playback.clone());
+            let transcoder = Arc::clone(&plan.transcoder);
+            let written = universal::serve_stream(&mut stream, &response, plan, &envelope);
+            let mut guard = runtime.lock().unwrap_or_else(PoisonError::into_inner);
+            if let Ok(written) = written {
+                guard.record_bytes(&owner, written);
+            }
+            // A seek's new stream holds the playback's place by now; only the last one frees it.
+            if transcoder.for_playback(account, &playback).is_none() {
+                guard.release_stream_admission(account, &playback);
+            }
+            break;
+        }
         let still_open = match (part_plan, download) {
             (Some(plan), _) if response.status == 200 => {
                 serve_part_proxy(&mut stream, &runtime, response.clone(), plan, &envelope, keep)?;

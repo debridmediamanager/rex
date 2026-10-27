@@ -1,0 +1,1599 @@
+{
+ "label": "http-mkv",
+ "reference": "plexlab 1.43.4.10903 (unclaimed)",
+ "source_request": "Plex for Mac 1.115.0.426 (profile Plex Desktop) protocol=http conversion, recorded 2026-10-27",
+ "exchanges": [
+  {
+   "method": "GET",
+   "path": "/video/:/transcode/universal/decision",
+   "query": [
+    [
+     "hasMDE",
+     "1"
+    ],
+    [
+     "path",
+     "/library/metadata/1"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "protocol",
+     "http"
+    ],
+    [
+     "fastSeek",
+     "1"
+    ],
+    [
+     "directPlay",
+     "0"
+    ],
+    [
+     "directStream",
+     "1"
+    ],
+    [
+     "subtitleSize",
+     "100"
+    ],
+    [
+     "audioBoost",
+     "700"
+    ],
+    [
+     "location",
+     "lan"
+    ],
+    [
+     "addDebugOverlay",
+     "0"
+    ],
+    [
+     "autoAdjustQuality",
+     "0"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "autoAdjustSubtitle",
+     "1"
+    ],
+    [
+     "advancedSubtitles",
+     "text"
+    ],
+    [
+     "mediaBufferSize",
+     "157286"
+    ],
+    [
+     "session",
+     "rexcap-h1"
+    ],
+    [
+     "subtitles",
+     "auto"
+    ],
+    [
+     "copyts",
+     "1"
+    ],
+    [
+     "Accept-Language",
+     "en"
+    ],
+    [
+     "X-Plex-Session-Identifier",
+     "playback-rexcap-h1"
+    ],
+    [
+     "X-Plex-Chunked",
+     "1"
+    ],
+    [
+     "X-Plex-Incomplete-Segments",
+     "1"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Mac"
+    ],
+    [
+     "X-Plex-Version",
+     "1.115.0.426-4e960a1d"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "rexcap-plexdesktop"
+    ],
+    [
+     "X-Plex-Platform",
+     "macos"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "27.0"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ],
+    [
+     "X-Plex-Model",
+     "standalone"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "rexcap-mac"
+    ],
+    [
+     "X-Plex-Device-Screen-Resolution",
+     "1920x1022,1920x1080"
+    ],
+    [
+     "X-Plex-Client-Profile-Name",
+     "Plex Desktop"
+    ],
+    [
+     "X-Plex-Language",
+     "en"
+    ],
+    [
+     "maxVideoBitrate",
+     "1500"
+    ],
+    [
+     "videoResolution",
+     "1280x720"
+    ]
+   ],
+   "note": "decision: conversion forced by maxVideoBitrate",
+   "status": 200,
+   "res_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Content-Length",
+     "4158"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "ms": 10,
+   "res_body": "{\"MediaContainer\":{\"size\":1,\"allowSync\":\"1\",\"directPlayDecisionCode\":3000,\"directPlayDecisionText\":\"App cannot direct play this item. Direct play is disabled.\",\"generalDecisionCode\":1001,\"generalDecisionText\":\"Direct play not available; Conversion OK.\",\"identifier\":\"com.plexapp.plugins.library\",\"librarySectionID\":\"1\",\"librarySectionTitle\":\"Movies\",\"librarySectionUUID\":\"e46d000f-bcc4-4b5b-8a7b-1a9d721346ec\",\"mediaTagPrefix\":\"/system/bundle/media/flags/\",\"mediaTagVersion\":\"1786914632\",\"resourceSession\":\"playback-rexcap-h1\",\"transcodeDecisionCode\":1001,\"transcodeDecisionText\":\"Direct play not available; Conversion OK.\",\"Metadata\":[{\"addedAt\":1789187071,\"art\":\"/library/metadata/1/art/1791852220\",\"audienceRating\":5.4,\"audienceRatingImage\":\"rottentomatoes://image.rating.spilled\",\"contentRating\":\"G\",\"duration\":10031,\"guid\":\"plex://movie/5d7768352e80df001ebde4c9\",\"hasPremiumPrimaryExtra\":\"1\",\"key\":\"/library/metadata/1\",\"librarySectionID\":\"1\",\"librarySectionKey\":\"/library/sections/1\",\"librarySectionTitle\":\"Movies\",\"loudnessAnalysisVersion\":\"0.02\",\"originallyAvailableAt\":\"2008-04-10\",\"ratingKey\":\"1\",\"slug\":\"big-buck-bunny\",\"studio\":\"Blender Foundation\",\"summary\":\"In the thick and undisturbed forest, sparkling spring has finally arrived, and all creatures, big or small, enjoy life. However, Big Buck Bunny--an enormous, fluffy, and utterly adorable rabbit--is facing a crisis: the ruthless, loud, bullying gang of a flying squirrel is heartlessly harassing him, determined to squash his happiness. Now, this means war. But who will win?\",\"tagline\":\"Don't Mess with the Bunny.\",\"thumb\":\"/library/metadata/1/thumb/1791852220\",\"title\":\"Big Buck Bunny\",\"type\":\"movie\",\"updatedAt\":1791852220,\"useOriginalTitle\":\"-1\",\"year\":2008,\"Media\":[{\"id\":\"1\",\"videoProfile\":\"high\",\"audioChannels\":1,\"audioCodec\":\"*\",\"bitrate\":1164,\"container\":\"mkv\",\"duration\":10031,\"height\":404,\"videoCodec\":\"h264\",\"videoFrameRate\":\"24p\",\"videoResolution\":\"SD\",\"width\":720,\"selected\":true,\"Part\":[{\"deepAnalysisVersion\":\"6\",\"id\":\"1\",\"requiredBandwidths\":\"3365,3365,3365,3365,3365,3365,3365,3365\",\"videoProfile\":\"high\",\"bitrate\":1164,\"container\":\"mkv\",\"duration\":10031,\"height\":404,\"width\":720,\"decision\":\"transcode\",\"selected\":true,\"Stream\":[{\"bitDepth\":8,\"bitrate\":1079,\"codec\":\"h264\",\"default\":true,\"displayTitle\":\"1080p\",\"extendedDisplayTitle\":\"1080p (H.264)\",\"frameRate\":24.0,\"height\":404,\"id\":\"1\",\"language\":\"English\",\"languageCode\":\"eng\",\"languageTag\":\"en\",\"requiredBandwidths\":\"3309,3309,3309,3309,3309,3309,3309,3309\",\"streamType\":1,\"width\":720,\"decision\":\"transcode\",\"location\":\"direct\"},{\"bitrate\":85,\"bitrateMode\":\"cbr\",\"channels\":1,\"codec\":\"*\",\"default\":true,\"displayTitle\":\"English (AAC Mono)\",\"extendedDisplayTitle\":\"English (AAC Mono)\",\"gainOffset\":\"0.03\",\"id\":\"2\",\"language\":\"English\",\"languageCode\":\"eng\",\"languageTag\":\"en\",\"loudness\":\"-21.76\",\"loudnessAnalysisVersion\":\"0.02\",\"lra\":\"0.10\",\"peak\":\"-17.96\",\"requiredBandwidths\":\"58,58,58,58,58,58,58,58\",\"samplingRate\":44100,\"selected\":true,\"streamType\":2,\"threshold\":\"-31.76\",\"decision\":\"copy\",\"location\":\"direct\"}]}]}],\"UltraBlurColors\":[{\"bottomLeft\":\"482c68\",\"bottomRight\":\"8b3e39\",\"topLeft\":\"492016\",\"topRight\":\"60211c\"}],\"Genre\":[{\"filter\":\"genre=6\",\"id\":\"6\",\"tag\":\"Animation\"},{\"filter\":\"genre=476\",\"id\":\"476\",\"tag\":\"Comedy\"},{\"filter\":\"genre=477\",\"id\":\"477\",\"tag\":\"Family\"},{\"filter\":\"genre=9\",\"id\":\"9\",\"tag\":\"Short\"}],\"Country\":[{\"filter\":\"country=13\",\"id\":\"13\",\"tag\":\"Netherlands\"}],\"Rating\":[{\"image\":\"imdb://image.rating\",\"type\":\"audience\",\"value\":\"6.4\"},{\"image\":\"rottentomatoes://image.rating.spilled\",\"type\":\"audience\",\"value\":\"5.4\"},{\"image\":\"themoviedb://image.rating\",\"type\":\"audience\",\"value\":\"6.5\"}],\"Director\":[{\"filter\":\"director=478\",\"id\":\"478\",\"tag\":\"Sacha Goedegebure\",\"tagKey\":\"5d7768352e80df001ebde5ab\"}],\"Writer\":[{\"filter\":\"writer=479\",\"id\":\"479\",\"tag\":\"Sacha Goedegebure\",\"tagKey\":\"5d7768352e80df001ebde5ab\"}],\"Producer\":[{\"filter\":\"producer=12\",\"id\":\"12\",\"tag\":\"Ton Roosendaal\",\"tagKey\":\"5d776834103a2d001f567902\",\"thumb\":\"https://metadata-static.plex.tv/d/people/d0cd238b5a00353ddae78dd55720f7e3.jpg\"}],\"Field\":[{\"locked\":true,\"name\":\"thumb\"},{\"locked\":true,\"name\":\"collection\"}]}]}}"
+  },
+  {
+   "method": "GET",
+   "path": "/video/:/transcode/universal/decision",
+   "query": [
+    [
+     "hasMDE",
+     "1"
+    ],
+    [
+     "path",
+     "/library/metadata/1"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "protocol",
+     "http"
+    ],
+    [
+     "fastSeek",
+     "1"
+    ],
+    [
+     "directPlay",
+     "0"
+    ],
+    [
+     "directStream",
+     "1"
+    ],
+    [
+     "subtitleSize",
+     "100"
+    ],
+    [
+     "audioBoost",
+     "700"
+    ],
+    [
+     "location",
+     "lan"
+    ],
+    [
+     "addDebugOverlay",
+     "0"
+    ],
+    [
+     "autoAdjustQuality",
+     "0"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "autoAdjustSubtitle",
+     "1"
+    ],
+    [
+     "advancedSubtitles",
+     "text"
+    ],
+    [
+     "mediaBufferSize",
+     "157286"
+    ],
+    [
+     "session",
+     "rexcap-h1"
+    ],
+    [
+     "subtitles",
+     "auto"
+    ],
+    [
+     "copyts",
+     "1"
+    ],
+    [
+     "Accept-Language",
+     "en"
+    ],
+    [
+     "X-Plex-Session-Identifier",
+     "playback-rexcap-h1"
+    ],
+    [
+     "X-Plex-Chunked",
+     "1"
+    ],
+    [
+     "X-Plex-Incomplete-Segments",
+     "1"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Mac"
+    ],
+    [
+     "X-Plex-Version",
+     "1.115.0.426-4e960a1d"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "rexcap-plexdesktop"
+    ],
+    [
+     "X-Plex-Platform",
+     "macos"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "27.0"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ],
+    [
+     "X-Plex-Model",
+     "standalone"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "rexcap-mac"
+    ],
+    [
+     "X-Plex-Device-Screen-Resolution",
+     "1920x1022,1920x1080"
+    ],
+    [
+     "X-Plex-Client-Profile-Name",
+     "Plex Desktop"
+    ],
+    [
+     "X-Plex-Language",
+     "en"
+    ],
+    [
+     "maxVideoBitrate",
+     "1500"
+    ],
+    [
+     "videoResolution",
+     "1280x720"
+    ]
+   ],
+   "note": "decision, XML",
+   "status": 200,
+   "res_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "text/xml;charset=utf-8"
+    ],
+    [
+     "Content-Length",
+     "4017"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "ms": 5,
+   "res_body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<MediaContainer size=\"1\" allowSync=\"1\" directPlayDecisionCode=\"3000\" directPlayDecisionText=\"App cannot direct play this item. Direct play is disabled.\" generalDecisionCode=\"1001\" generalDecisionText=\"Direct play not available; Conversion OK.\" identifier=\"com.plexapp.plugins.library\" librarySectionID=\"1\" librarySectionTitle=\"Movies\" librarySectionUUID=\"e46d000f-bcc4-4b5b-8a7b-1a9d721346ec\" mediaTagPrefix=\"/system/bundle/media/flags/\" mediaTagVersion=\"1786914632\" resourceSession=\"playback-rexcap-h1\" transcodeDecisionCode=\"1001\" transcodeDecisionText=\"Direct play not available; Conversion OK.\">\n<Video addedAt=\"1789187071\" art=\"/library/metadata/1/art/1791852220\" audienceRating=\"5.4\" audienceRatingImage=\"rottentomatoes://image.rating.spilled\" contentRating=\"G\" duration=\"10031\" guid=\"plex://movie/5d7768352e80df001ebde4c9\" hasPremiumPrimaryExtra=\"1\" key=\"/library/metadata/1\" librarySectionID=\"1\" librarySectionKey=\"/library/sections/1\" librarySectionTitle=\"Movies\" loudnessAnalysisVersion=\"0.02\" originallyAvailableAt=\"2008-04-10\" ratingKey=\"1\" slug=\"big-buck-bunny\" studio=\"Blender Foundation\" summary=\"In the thick and undisturbed forest, sparkling spring has finally arrived, and all creatures, big or small, enjoy life. However, Big Buck Bunny--an enormous, fluffy, and utterly adorable rabbit--is facing a crisis: the ruthless, loud, bullying gang of a flying squirrel is heartlessly harassing him, determined to squash his happiness. Now, this means war. But who will win?\" tagline=\"Don&#39;t Mess with the Bunny.\" thumb=\"/library/metadata/1/thumb/1791852220\" title=\"Big Buck Bunny\" type=\"movie\" updatedAt=\"1791852220\" useOriginalTitle=\"-1\" year=\"2008\">\n<Media id=\"1\" videoProfile=\"high\" audioChannels=\"1\" audioCodec=\"*\" bitrate=\"1164\" container=\"mkv\" duration=\"10031\" height=\"404\" videoCodec=\"h264\" videoFrameRate=\"24p\" videoResolution=\"SD\" width=\"720\" selected=\"1\">\n<Part deepAnalysisVersion=\"6\" id=\"1\" requiredBandwidths=\"3365,3365,3365,3365,3365,3365,3365,3365\" videoProfile=\"high\" bitrate=\"1164\" container=\"mkv\" duration=\"10031\" height=\"404\" width=\"720\" decision=\"transcode\" selected=\"1\">\n<Stream bitDepth=\"8\" bitrate=\"1079\" codec=\"h264\" default=\"1\" displayTitle=\"1080p\" extendedDisplayTitle=\"1080p (H.264)\" frameRate=\"24\" height=\"404\" id=\"1\" language=\"English\" languageCode=\"eng\" languageTag=\"en\" requiredBandwidths=\"3309,3309,3309,3309,3309,3309,3309,3309\" streamType=\"1\" width=\"720\" decision=\"transcode\" location=\"direct\" />\n<Stream bitrate=\"85\" bitrateMode=\"cbr\" channels=\"1\" codec=\"*\" default=\"1\" displayTitle=\"English (AAC Mono)\" extendedDisplayTitle=\"English (AAC Mono)\" gainOffset=\"0.03\" id=\"2\" language=\"English\" languageCode=\"eng\" languageTag=\"en\" loudness=\"-21.76\" loudnessAnalysisVersion=\"0.02\" lra=\"0.10\" peak=\"-17.96\" requiredBandwidths=\"58,58,58,58,58,58,58,58\" samplingRate=\"44100\" selected=\"1\" streamType=\"2\" threshold=\"-31.76\" decision=\"copy\" location=\"direct\" />\n</Part>\n</Media>\n<UltraBlurColors bottomLeft=\"482c68\" bottomRight=\"8b3e39\" topLeft=\"492016\" topRight=\"60211c\" />\n<Genre filter=\"genre=6\" id=\"6\" tag=\"Animation\" />\n<Genre filter=\"genre=476\" id=\"476\" tag=\"Comedy\" />\n<Genre filter=\"genre=477\" id=\"477\" tag=\"Family\" />\n<Genre filter=\"genre=9\" id=\"9\" tag=\"Short\" />\n<Country filter=\"country=13\" id=\"13\" tag=\"Netherlands\" />\n<Rating image=\"imdb://image.rating\" type=\"audience\" value=\"6.4\" />\n<Rating image=\"rottentomatoes://image.rating.spilled\" type=\"audience\" value=\"5.4\" />\n<Rating image=\"themoviedb://image.rating\" type=\"audience\" value=\"6.5\" />\n<Director filter=\"director=478\" id=\"478\" tag=\"Sacha Goedegebure\" tagKey=\"5d7768352e80df001ebde5ab\" />\n<Writer filter=\"writer=479\" id=\"479\" tag=\"Sacha Goedegebure\" tagKey=\"5d7768352e80df001ebde5ab\" />\n<Producer filter=\"producer=12\" id=\"12\" tag=\"Ton Roosendaal\" tagKey=\"5d776834103a2d001f567902\" thumb=\"https://metadata-static.plex.tv/d/people/d0cd238b5a00353ddae78dd55720f7e3.jpg\" />\n<Field locked=\"1\" name=\"thumb\" />\n<Field locked=\"1\" name=\"collection\" />\n</Video>\n</MediaContainer>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/video/:/transcode/universal/start",
+   "query": [
+    [
+     "hasMDE",
+     "1"
+    ],
+    [
+     "path",
+     "/library/metadata/1"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "protocol",
+     "http"
+    ],
+    [
+     "fastSeek",
+     "1"
+    ],
+    [
+     "directPlay",
+     "0"
+    ],
+    [
+     "directStream",
+     "1"
+    ],
+    [
+     "subtitleSize",
+     "100"
+    ],
+    [
+     "audioBoost",
+     "700"
+    ],
+    [
+     "location",
+     "lan"
+    ],
+    [
+     "addDebugOverlay",
+     "0"
+    ],
+    [
+     "autoAdjustQuality",
+     "0"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "autoAdjustSubtitle",
+     "1"
+    ],
+    [
+     "advancedSubtitles",
+     "text"
+    ],
+    [
+     "mediaBufferSize",
+     "157286"
+    ],
+    [
+     "session",
+     "rexcap-h1"
+    ],
+    [
+     "subtitles",
+     "auto"
+    ],
+    [
+     "copyts",
+     "1"
+    ],
+    [
+     "Accept-Language",
+     "en"
+    ],
+    [
+     "X-Plex-Session-Identifier",
+     "playback-rexcap-h1"
+    ],
+    [
+     "X-Plex-Chunked",
+     "1"
+    ],
+    [
+     "X-Plex-Incomplete-Segments",
+     "1"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Mac"
+    ],
+    [
+     "X-Plex-Version",
+     "1.115.0.426-4e960a1d"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "rexcap-plexdesktop"
+    ],
+    [
+     "X-Plex-Platform",
+     "macos"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "27.0"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ],
+    [
+     "X-Plex-Model",
+     "standalone"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "rexcap-mac"
+    ],
+    [
+     "X-Plex-Device-Screen-Resolution",
+     "1920x1022,1920x1080"
+    ],
+    [
+     "X-Plex-Client-Profile-Name",
+     "Plex Desktop"
+    ],
+    [
+     "X-Plex-Language",
+     "en"
+    ],
+    [
+     "maxVideoBitrate",
+     "1500"
+    ],
+    [
+     "videoResolution",
+     "1280x720"
+    ]
+   ],
+   "note": "start: the whole 10 s title, chunked Matroska",
+   "status": 200,
+   "res_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "video/x-matroska"
+    ],
+    [
+     "Accept-Ranges",
+     "none"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Transfer-Encoding",
+     "chunked"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "ms": 981,
+   "media_head_hex": "1a45dfa3a34286810142f7810142f2810442f381084282886d6174726f736b6142878104428581021853806701ffffffffffffff114d9b74b1bf840eb3200f4d",
+   "ffprobe": {
+    "first_packets": [
+     "0,0.000000",
+     "0,0.083000",
+     "0,0.042000",
+     "1,0.000000",
+     "1,0.023000",
+     "0,0.125000"
+    ],
+    "programs": [],
+    "streams": [
+     {
+      "index": 0,
+      "codec_name": "h264",
+      "codec_type": "video",
+      "width": 720,
+      "height": 404,
+      "start_time": "0.000000"
+     },
+     {
+      "index": 1,
+      "codec_name": "aac",
+      "codec_type": "audio",
+      "start_time": "0.000000"
+     }
+    ],
+    "format": {
+     "format_name": "matroska,webm"
+    }
+   },
+   "res_len": 632859
+  },
+  {
+   "method": "GET",
+   "path": "/video/:/transcode/universal/ping",
+   "query": [
+    [
+     "session",
+     "rexcap-h1"
+    ]
+   ],
+   "note": "ping after the stream ended",
+   "status": 200,
+   "res_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "ms": 1,
+   "res_body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/transcode/sessions",
+   "query": [],
+   "note": "the http session listed",
+   "status": 200,
+   "res_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Content-Length",
+     "528"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "ms": 1,
+   "res_body": "{\"MediaContainer\":{\"size\":1,\"TranscodeSession\":[{\"key\":\"rexcap-h1\",\"throttled\":false,\"complete\":true,\"progress\":90.0,\"size\":-1,\"speed\":7.800000190734863,\"error\":false,\"duration\":10023,\"remaining\":0,\"context\":\"streaming\",\"sourceVideoCodec\":\"h264\",\"sourceAudioCodec\":\"aac\",\"videoDecision\":\"transcode\",\"audioDecision\":\"copy\",\"protocol\":\"http\",\"container\":\"mkv\",\"videoCodec\":\"h264\",\"audioCodec\":\"*\",\"audioChannels\":1,\"transcodeHwRequested\":false,\"timeStamp\":1793055927.774491,\"maxOffsetAvailable\":10.042,\"minOffsetAvailable\":0.0}]}}"
+  },
+  {
+   "method": "GET",
+   "path": "/video/:/transcode/universal/stop",
+   "query": [
+    [
+     "session",
+     "rexcap-h1"
+    ]
+   ],
+   "note": "stop",
+   "status": 200,
+   "res_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "ms": 0,
+   "res_body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/video/:/transcode/universal/stop",
+   "query": [
+    [
+     "session",
+     "rexcap-h1"
+    ]
+   ],
+   "note": "stop again",
+   "status": 200,
+   "res_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "ms": 0,
+   "res_body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/video/:/transcode/universal/decision",
+   "query": [
+    [
+     "hasMDE",
+     "1"
+    ],
+    [
+     "path",
+     "/library/metadata/1"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "protocol",
+     "http"
+    ],
+    [
+     "fastSeek",
+     "1"
+    ],
+    [
+     "directPlay",
+     "0"
+    ],
+    [
+     "directStream",
+     "1"
+    ],
+    [
+     "subtitleSize",
+     "100"
+    ],
+    [
+     "audioBoost",
+     "700"
+    ],
+    [
+     "location",
+     "lan"
+    ],
+    [
+     "addDebugOverlay",
+     "0"
+    ],
+    [
+     "autoAdjustQuality",
+     "0"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "autoAdjustSubtitle",
+     "1"
+    ],
+    [
+     "advancedSubtitles",
+     "text"
+    ],
+    [
+     "mediaBufferSize",
+     "157286"
+    ],
+    [
+     "session",
+     "rexcap-off-1"
+    ],
+    [
+     "subtitles",
+     "auto"
+    ],
+    [
+     "copyts",
+     "1"
+    ],
+    [
+     "Accept-Language",
+     "en"
+    ],
+    [
+     "X-Plex-Session-Identifier",
+     "playback-rexcap-off-1"
+    ],
+    [
+     "X-Plex-Chunked",
+     "1"
+    ],
+    [
+     "X-Plex-Incomplete-Segments",
+     "1"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Mac"
+    ],
+    [
+     "X-Plex-Version",
+     "1.115.0.426-4e960a1d"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "rexcap-plexdesktop"
+    ],
+    [
+     "X-Plex-Platform",
+     "macos"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "27.0"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ],
+    [
+     "X-Plex-Model",
+     "standalone"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "rexcap-mac"
+    ],
+    [
+     "X-Plex-Device-Screen-Resolution",
+     "1920x1022,1920x1080"
+    ],
+    [
+     "X-Plex-Client-Profile-Name",
+     "Plex Desktop"
+    ],
+    [
+     "X-Plex-Language",
+     "en"
+    ],
+    [
+     "offset",
+     "4"
+    ],
+    [
+     "maxVideoBitrate",
+     "1500"
+    ],
+    [
+     "videoResolution",
+     "1280x720"
+    ]
+   ],
+   "note": "decision with offset=4 copyts=1",
+   "status": 200,
+   "res_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Content-Length",
+     "4161"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "ms": 4,
+   "res_body": "{\"MediaContainer\":{\"size\":1,\"allowSync\":\"1\",\"directPlayDecisionCode\":3000,\"directPlayDecisionText\":\"App cannot direct play this item. Direct play is disabled.\",\"generalDecisionCode\":1001,\"generalDecisionText\":\"Direct play not available; Conversion OK.\",\"identifier\":\"com.plexapp.plugins.library\",\"librarySectionID\":\"1\",\"librarySectionTitle\":\"Movies\",\"librarySectionUUID\":\"e46d000f-bcc4-4b5b-8a7b-1a9d721346ec\",\"mediaTagPrefix\":\"/system/bundle/media/flags/\",\"mediaTagVersion\":\"1786914632\",\"resourceSession\":\"playback-rexcap-off-1\",\"transcodeDecisionCode\":1001,\"transcodeDecisionText\":\"Direct play not available; Conversion OK.\",\"Metadata\":[{\"addedAt\":1789187071,\"art\":\"/library/metadata/1/art/1791852220\",\"audienceRating\":5.4,\"audienceRatingImage\":\"rottentomatoes://image.rating.spilled\",\"contentRating\":\"G\",\"duration\":10031,\"guid\":\"plex://movie/5d7768352e80df001ebde4c9\",\"hasPremiumPrimaryExtra\":\"1\",\"key\":\"/library/metadata/1\",\"librarySectionID\":\"1\",\"librarySectionKey\":\"/library/sections/1\",\"librarySectionTitle\":\"Movies\",\"loudnessAnalysisVersion\":\"0.02\",\"originallyAvailableAt\":\"2008-04-10\",\"ratingKey\":\"1\",\"slug\":\"big-buck-bunny\",\"studio\":\"Blender Foundation\",\"summary\":\"In the thick and undisturbed forest, sparkling spring has finally arrived, and all creatures, big or small, enjoy life. However, Big Buck Bunny--an enormous, fluffy, and utterly adorable rabbit--is facing a crisis: the ruthless, loud, bullying gang of a flying squirrel is heartlessly harassing him, determined to squash his happiness. Now, this means war. But who will win?\",\"tagline\":\"Don't Mess with the Bunny.\",\"thumb\":\"/library/metadata/1/thumb/1791852220\",\"title\":\"Big Buck Bunny\",\"type\":\"movie\",\"updatedAt\":1791852220,\"useOriginalTitle\":\"-1\",\"year\":2008,\"Media\":[{\"id\":\"1\",\"videoProfile\":\"high\",\"audioChannels\":1,\"audioCodec\":\"*\",\"bitrate\":1164,\"container\":\"mkv\",\"duration\":10031,\"height\":404,\"videoCodec\":\"h264\",\"videoFrameRate\":\"24p\",\"videoResolution\":\"SD\",\"width\":720,\"selected\":true,\"Part\":[{\"deepAnalysisVersion\":\"6\",\"id\":\"1\",\"requiredBandwidths\":\"3365,3365,3365,3365,3365,3365,3365,3365\",\"videoProfile\":\"high\",\"bitrate\":1164,\"container\":\"mkv\",\"duration\":10031,\"height\":404,\"width\":720,\"decision\":\"transcode\",\"selected\":true,\"Stream\":[{\"bitDepth\":8,\"bitrate\":1079,\"codec\":\"h264\",\"default\":true,\"displayTitle\":\"1080p\",\"extendedDisplayTitle\":\"1080p (H.264)\",\"frameRate\":24.0,\"height\":404,\"id\":\"1\",\"language\":\"English\",\"languageCode\":\"eng\",\"languageTag\":\"en\",\"requiredBandwidths\":\"3309,3309,3309,3309,3309,3309,3309,3309\",\"streamType\":1,\"width\":720,\"decision\":\"transcode\",\"location\":\"direct\"},{\"bitrate\":85,\"bitrateMode\":\"cbr\",\"channels\":1,\"codec\":\"*\",\"default\":true,\"displayTitle\":\"English (AAC Mono)\",\"extendedDisplayTitle\":\"English (AAC Mono)\",\"gainOffset\":\"0.03\",\"id\":\"2\",\"language\":\"English\",\"languageCode\":\"eng\",\"languageTag\":\"en\",\"loudness\":\"-21.76\",\"loudnessAnalysisVersion\":\"0.02\",\"lra\":\"0.10\",\"peak\":\"-17.96\",\"requiredBandwidths\":\"58,58,58,58,58,58,58,58\",\"samplingRate\":44100,\"selected\":true,\"streamType\":2,\"threshold\":\"-31.76\",\"decision\":\"copy\",\"location\":\"direct\"}]}]}],\"UltraBlurColors\":[{\"bottomLeft\":\"482c68\",\"bottomRight\":\"8b3e39\",\"topLeft\":\"492016\",\"topRight\":\"60211c\"}],\"Genre\":[{\"filter\":\"genre=6\",\"id\":\"6\",\"tag\":\"Animation\"},{\"filter\":\"genre=476\",\"id\":\"476\",\"tag\":\"Comedy\"},{\"filter\":\"genre=477\",\"id\":\"477\",\"tag\":\"Family\"},{\"filter\":\"genre=9\",\"id\":\"9\",\"tag\":\"Short\"}],\"Country\":[{\"filter\":\"country=13\",\"id\":\"13\",\"tag\":\"Netherlands\"}],\"Rating\":[{\"image\":\"imdb://image.rating\",\"type\":\"audience\",\"value\":\"6.4\"},{\"image\":\"rottentomatoes://image.rating.spilled\",\"type\":\"audience\",\"value\":\"5.4\"},{\"image\":\"themoviedb://image.rating\",\"type\":\"audience\",\"value\":\"6.5\"}],\"Director\":[{\"filter\":\"director=478\",\"id\":\"478\",\"tag\":\"Sacha Goedegebure\",\"tagKey\":\"5d7768352e80df001ebde5ab\"}],\"Writer\":[{\"filter\":\"writer=479\",\"id\":\"479\",\"tag\":\"Sacha Goedegebure\",\"tagKey\":\"5d7768352e80df001ebde5ab\"}],\"Producer\":[{\"filter\":\"producer=12\",\"id\":\"12\",\"tag\":\"Ton Roosendaal\",\"tagKey\":\"5d776834103a2d001f567902\",\"thumb\":\"https://metadata-static.plex.tv/d/people/d0cd238b5a00353ddae78dd55720f7e3.jpg\"}],\"Field\":[{\"locked\":true,\"name\":\"thumb\"},{\"locked\":true,\"name\":\"collection\"}]}]}}"
+  },
+  {
+   "method": "GET",
+   "path": "/video/:/transcode/universal/start",
+   "query": [
+    [
+     "hasMDE",
+     "1"
+    ],
+    [
+     "path",
+     "/library/metadata/1"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "protocol",
+     "http"
+    ],
+    [
+     "fastSeek",
+     "1"
+    ],
+    [
+     "directPlay",
+     "0"
+    ],
+    [
+     "directStream",
+     "1"
+    ],
+    [
+     "subtitleSize",
+     "100"
+    ],
+    [
+     "audioBoost",
+     "700"
+    ],
+    [
+     "location",
+     "lan"
+    ],
+    [
+     "addDebugOverlay",
+     "0"
+    ],
+    [
+     "autoAdjustQuality",
+     "0"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "autoAdjustSubtitle",
+     "1"
+    ],
+    [
+     "advancedSubtitles",
+     "text"
+    ],
+    [
+     "mediaBufferSize",
+     "157286"
+    ],
+    [
+     "session",
+     "rexcap-off-1"
+    ],
+    [
+     "subtitles",
+     "auto"
+    ],
+    [
+     "copyts",
+     "1"
+    ],
+    [
+     "Accept-Language",
+     "en"
+    ],
+    [
+     "X-Plex-Session-Identifier",
+     "playback-rexcap-off-1"
+    ],
+    [
+     "X-Plex-Chunked",
+     "1"
+    ],
+    [
+     "X-Plex-Incomplete-Segments",
+     "1"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Mac"
+    ],
+    [
+     "X-Plex-Version",
+     "1.115.0.426-4e960a1d"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "rexcap-plexdesktop"
+    ],
+    [
+     "X-Plex-Platform",
+     "macos"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "27.0"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ],
+    [
+     "X-Plex-Model",
+     "standalone"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "rexcap-mac"
+    ],
+    [
+     "X-Plex-Device-Screen-Resolution",
+     "1920x1022,1920x1080"
+    ],
+    [
+     "X-Plex-Client-Profile-Name",
+     "Plex Desktop"
+    ],
+    [
+     "X-Plex-Language",
+     "en"
+    ],
+    [
+     "offset",
+     "4"
+    ],
+    [
+     "maxVideoBitrate",
+     "1500"
+    ],
+    [
+     "videoResolution",
+     "1280x720"
+    ]
+   ],
+   "note": "start at offset=4, copyts=1: first packets' pts",
+   "status": 200,
+   "res_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "video/x-matroska"
+    ],
+    [
+     "Accept-Ranges",
+     "none"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Transfer-Encoding",
+     "chunked"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "ms": 781,
+   "media_head_hex": "1a45dfa3a34286810142f7810142f2810442f381084282886d6174726f736b6142878104428581021853806701ffffffffffffff114d9b74b1bf840eb3200f4d",
+   "ffprobe": {
+    "first_packets": [
+     "0,4.042000",
+     "0,4.083000",
+     "1,4.017000",
+     "1,4.040000",
+     "0,4.125000",
+     "1,4.063000"
+    ],
+    "programs": [],
+    "streams": [
+     {
+      "index": 0,
+      "codec_name": "h264",
+      "codec_type": "video",
+      "width": 720,
+      "height": 404,
+      "start_time": "4.042000"
+     },
+     {
+      "index": 1,
+      "codec_name": "aac",
+      "codec_type": "audio",
+      "start_time": "4.017000"
+     }
+    ],
+    "format": {
+     "format_name": "matroska,webm"
+    }
+   },
+   "res_len": 389127
+  },
+  {
+   "method": "GET",
+   "path": "/video/:/transcode/universal/stop",
+   "query": [
+    [
+     "session",
+     "rexcap-off-1"
+    ]
+   ],
+   "note": "stop",
+   "status": 200,
+   "res_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "ms": 1,
+   "res_body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/video/:/transcode/universal/decision",
+   "query": [
+    [
+     "hasMDE",
+     "1"
+    ],
+    [
+     "path",
+     "/library/metadata/1"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "protocol",
+     "http"
+    ],
+    [
+     "fastSeek",
+     "1"
+    ],
+    [
+     "directPlay",
+     "0"
+    ],
+    [
+     "directStream",
+     "1"
+    ],
+    [
+     "subtitleSize",
+     "100"
+    ],
+    [
+     "audioBoost",
+     "700"
+    ],
+    [
+     "location",
+     "lan"
+    ],
+    [
+     "addDebugOverlay",
+     "0"
+    ],
+    [
+     "autoAdjustQuality",
+     "0"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "autoAdjustSubtitle",
+     "1"
+    ],
+    [
+     "advancedSubtitles",
+     "text"
+    ],
+    [
+     "mediaBufferSize",
+     "157286"
+    ],
+    [
+     "session",
+     "rexcap-off-0"
+    ],
+    [
+     "subtitles",
+     "auto"
+    ],
+    [
+     "copyts",
+     "0"
+    ],
+    [
+     "Accept-Language",
+     "en"
+    ],
+    [
+     "X-Plex-Session-Identifier",
+     "playback-rexcap-off-0"
+    ],
+    [
+     "X-Plex-Chunked",
+     "1"
+    ],
+    [
+     "X-Plex-Incomplete-Segments",
+     "1"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Mac"
+    ],
+    [
+     "X-Plex-Version",
+     "1.115.0.426-4e960a1d"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "rexcap-plexdesktop"
+    ],
+    [
+     "X-Plex-Platform",
+     "macos"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "27.0"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ],
+    [
+     "X-Plex-Model",
+     "standalone"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "rexcap-mac"
+    ],
+    [
+     "X-Plex-Device-Screen-Resolution",
+     "1920x1022,1920x1080"
+    ],
+    [
+     "X-Plex-Client-Profile-Name",
+     "Plex Desktop"
+    ],
+    [
+     "X-Plex-Language",
+     "en"
+    ],
+    [
+     "offset",
+     "4"
+    ],
+    [
+     "maxVideoBitrate",
+     "1500"
+    ],
+    [
+     "videoResolution",
+     "1280x720"
+    ]
+   ],
+   "note": "decision with offset=4 copyts=0",
+   "status": 200,
+   "res_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Content-Length",
+     "4161"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "ms": 5,
+   "res_body": "{\"MediaContainer\":{\"size\":1,\"allowSync\":\"1\",\"directPlayDecisionCode\":3000,\"directPlayDecisionText\":\"App cannot direct play this item. Direct play is disabled.\",\"generalDecisionCode\":1001,\"generalDecisionText\":\"Direct play not available; Conversion OK.\",\"identifier\":\"com.plexapp.plugins.library\",\"librarySectionID\":\"1\",\"librarySectionTitle\":\"Movies\",\"librarySectionUUID\":\"e46d000f-bcc4-4b5b-8a7b-1a9d721346ec\",\"mediaTagPrefix\":\"/system/bundle/media/flags/\",\"mediaTagVersion\":\"1786914632\",\"resourceSession\":\"playback-rexcap-off-0\",\"transcodeDecisionCode\":1001,\"transcodeDecisionText\":\"Direct play not available; Conversion OK.\",\"Metadata\":[{\"addedAt\":1789187071,\"art\":\"/library/metadata/1/art/1791852220\",\"audienceRating\":5.4,\"audienceRatingImage\":\"rottentomatoes://image.rating.spilled\",\"contentRating\":\"G\",\"duration\":10031,\"guid\":\"plex://movie/5d7768352e80df001ebde4c9\",\"hasPremiumPrimaryExtra\":\"1\",\"key\":\"/library/metadata/1\",\"librarySectionID\":\"1\",\"librarySectionKey\":\"/library/sections/1\",\"librarySectionTitle\":\"Movies\",\"loudnessAnalysisVersion\":\"0.02\",\"originallyAvailableAt\":\"2008-04-10\",\"ratingKey\":\"1\",\"slug\":\"big-buck-bunny\",\"studio\":\"Blender Foundation\",\"summary\":\"In the thick and undisturbed forest, sparkling spring has finally arrived, and all creatures, big or small, enjoy life. However, Big Buck Bunny--an enormous, fluffy, and utterly adorable rabbit--is facing a crisis: the ruthless, loud, bullying gang of a flying squirrel is heartlessly harassing him, determined to squash his happiness. Now, this means war. But who will win?\",\"tagline\":\"Don't Mess with the Bunny.\",\"thumb\":\"/library/metadata/1/thumb/1791852220\",\"title\":\"Big Buck Bunny\",\"type\":\"movie\",\"updatedAt\":1791852220,\"useOriginalTitle\":\"-1\",\"year\":2008,\"Media\":[{\"id\":\"1\",\"videoProfile\":\"high\",\"audioChannels\":1,\"audioCodec\":\"*\",\"bitrate\":1164,\"container\":\"mkv\",\"duration\":10031,\"height\":404,\"videoCodec\":\"h264\",\"videoFrameRate\":\"24p\",\"videoResolution\":\"SD\",\"width\":720,\"selected\":true,\"Part\":[{\"deepAnalysisVersion\":\"6\",\"id\":\"1\",\"requiredBandwidths\":\"3365,3365,3365,3365,3365,3365,3365,3365\",\"videoProfile\":\"high\",\"bitrate\":1164,\"container\":\"mkv\",\"duration\":10031,\"height\":404,\"width\":720,\"decision\":\"transcode\",\"selected\":true,\"Stream\":[{\"bitDepth\":8,\"bitrate\":1079,\"codec\":\"h264\",\"default\":true,\"displayTitle\":\"1080p\",\"extendedDisplayTitle\":\"1080p (H.264)\",\"frameRate\":24.0,\"height\":404,\"id\":\"1\",\"language\":\"English\",\"languageCode\":\"eng\",\"languageTag\":\"en\",\"requiredBandwidths\":\"3309,3309,3309,3309,3309,3309,3309,3309\",\"streamType\":1,\"width\":720,\"decision\":\"transcode\",\"location\":\"direct\"},{\"bitrate\":85,\"bitrateMode\":\"cbr\",\"channels\":1,\"codec\":\"*\",\"default\":true,\"displayTitle\":\"English (AAC Mono)\",\"extendedDisplayTitle\":\"English (AAC Mono)\",\"gainOffset\":\"0.03\",\"id\":\"2\",\"language\":\"English\",\"languageCode\":\"eng\",\"languageTag\":\"en\",\"loudness\":\"-21.76\",\"loudnessAnalysisVersion\":\"0.02\",\"lra\":\"0.10\",\"peak\":\"-17.96\",\"requiredBandwidths\":\"58,58,58,58,58,58,58,58\",\"samplingRate\":44100,\"selected\":true,\"streamType\":2,\"threshold\":\"-31.76\",\"decision\":\"copy\",\"location\":\"direct\"}]}]}],\"UltraBlurColors\":[{\"bottomLeft\":\"482c68\",\"bottomRight\":\"8b3e39\",\"topLeft\":\"492016\",\"topRight\":\"60211c\"}],\"Genre\":[{\"filter\":\"genre=6\",\"id\":\"6\",\"tag\":\"Animation\"},{\"filter\":\"genre=476\",\"id\":\"476\",\"tag\":\"Comedy\"},{\"filter\":\"genre=477\",\"id\":\"477\",\"tag\":\"Family\"},{\"filter\":\"genre=9\",\"id\":\"9\",\"tag\":\"Short\"}],\"Country\":[{\"filter\":\"country=13\",\"id\":\"13\",\"tag\":\"Netherlands\"}],\"Rating\":[{\"image\":\"imdb://image.rating\",\"type\":\"audience\",\"value\":\"6.4\"},{\"image\":\"rottentomatoes://image.rating.spilled\",\"type\":\"audience\",\"value\":\"5.4\"},{\"image\":\"themoviedb://image.rating\",\"type\":\"audience\",\"value\":\"6.5\"}],\"Director\":[{\"filter\":\"director=478\",\"id\":\"478\",\"tag\":\"Sacha Goedegebure\",\"tagKey\":\"5d7768352e80df001ebde5ab\"}],\"Writer\":[{\"filter\":\"writer=479\",\"id\":\"479\",\"tag\":\"Sacha Goedegebure\",\"tagKey\":\"5d7768352e80df001ebde5ab\"}],\"Producer\":[{\"filter\":\"producer=12\",\"id\":\"12\",\"tag\":\"Ton Roosendaal\",\"tagKey\":\"5d776834103a2d001f567902\",\"thumb\":\"https://metadata-static.plex.tv/d/people/d0cd238b5a00353ddae78dd55720f7e3.jpg\"}],\"Field\":[{\"locked\":true,\"name\":\"thumb\"},{\"locked\":true,\"name\":\"collection\"}]}]}}"
+  },
+  {
+   "method": "GET",
+   "path": "/video/:/transcode/universal/start",
+   "query": [
+    [
+     "hasMDE",
+     "1"
+    ],
+    [
+     "path",
+     "/library/metadata/1"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "protocol",
+     "http"
+    ],
+    [
+     "fastSeek",
+     "1"
+    ],
+    [
+     "directPlay",
+     "0"
+    ],
+    [
+     "directStream",
+     "1"
+    ],
+    [
+     "subtitleSize",
+     "100"
+    ],
+    [
+     "audioBoost",
+     "700"
+    ],
+    [
+     "location",
+     "lan"
+    ],
+    [
+     "addDebugOverlay",
+     "0"
+    ],
+    [
+     "autoAdjustQuality",
+     "0"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "autoAdjustSubtitle",
+     "1"
+    ],
+    [
+     "advancedSubtitles",
+     "text"
+    ],
+    [
+     "mediaBufferSize",
+     "157286"
+    ],
+    [
+     "session",
+     "rexcap-off-0"
+    ],
+    [
+     "subtitles",
+     "auto"
+    ],
+    [
+     "copyts",
+     "0"
+    ],
+    [
+     "Accept-Language",
+     "en"
+    ],
+    [
+     "X-Plex-Session-Identifier",
+     "playback-rexcap-off-0"
+    ],
+    [
+     "X-Plex-Chunked",
+     "1"
+    ],
+    [
+     "X-Plex-Incomplete-Segments",
+     "1"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Mac"
+    ],
+    [
+     "X-Plex-Version",
+     "1.115.0.426-4e960a1d"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "rexcap-plexdesktop"
+    ],
+    [
+     "X-Plex-Platform",
+     "macos"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "27.0"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ],
+    [
+     "X-Plex-Model",
+     "standalone"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "rexcap-mac"
+    ],
+    [
+     "X-Plex-Device-Screen-Resolution",
+     "1920x1022,1920x1080"
+    ],
+    [
+     "X-Plex-Client-Profile-Name",
+     "Plex Desktop"
+    ],
+    [
+     "X-Plex-Language",
+     "en"
+    ],
+    [
+     "offset",
+     "4"
+    ],
+    [
+     "maxVideoBitrate",
+     "1500"
+    ],
+    [
+     "videoResolution",
+     "1280x720"
+    ]
+   ],
+   "note": "start at offset=4, copyts=0: first packets' pts",
+   "status": 200,
+   "res_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "video/x-matroska"
+    ],
+    [
+     "Accept-Ranges",
+     "none"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Transfer-Encoding",
+     "chunked"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "ms": 780,
+   "media_head_hex": "1a45dfa3a34286810142f7810142f2810442f381084282886d6174726f736b6142878104428581021853806701ffffffffffffff114d9b74b1bf840eb3200f4d",
+   "ffprobe": {
+    "first_packets": [
+     "0,0.083000",
+     "0,0.166000",
+     "0,0.125000",
+     "1,0.100000",
+     "1,0.123000",
+     "0,0.208000"
+    ],
+    "programs": [],
+    "streams": [
+     {
+      "index": 0,
+      "codec_name": "h264",
+      "codec_type": "video",
+      "width": 720,
+      "height": 404,
+      "start_time": "0.083000"
+     },
+     {
+      "index": 1,
+      "codec_name": "aac",
+      "codec_type": "audio",
+      "start_time": "0.100000"
+     }
+    ],
+    "format": {
+     "format_name": "matroska,webm"
+    }
+   },
+   "res_len": 389055
+  },
+  {
+   "method": "GET",
+   "path": "/video/:/transcode/universal/stop",
+   "query": [
+    [
+     "session",
+     "rexcap-off-0"
+    ]
+   ],
+   "note": "stop",
+   "status": 200,
+   "res_headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "ms": 1,
+   "res_body": ""
+  }
+ ]
+}
