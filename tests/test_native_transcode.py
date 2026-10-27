@@ -1171,9 +1171,15 @@ def run(scratch):
               len(stable) == 18 and all(value > 230 and value - original > 30 for value, original in stable),
               "burned %s, source %s" % ([round(v, 1) for v in burned], [round(v, 1) for v in source]))
         get(port, "/video/:/transcode/universal/stop", [("session", "s-subs")])
-        # The same box over HDR10 (tonemapped): where the device overlays with alpha (the
-        # probe's alpha_subtitles, VAAPI), the run stays on it, decode to encode.
+        # Where the device overlays with alpha (the probe's alpha_subtitles, VAAPI) and decodes the
+        # clip, the run stays on it, decode to encode; before, a burned bitmap took the CPU decode.
         device = wait_for_log(log, r"hardware (\S+) ") or "none"
+        decodes_on_device = (wait_for_log(log, r"decode=\[([^\]]*)\]") or "").split(",")
+        on_device = device == "vaapi" and wait_for_log(log, r"alpha_subtitles=(true|false)") == "true" and "h264" in decodes_on_device
+        ran = wait_for_log(log, r"TRANSCODE s-subs run 1 from segment 0 on (\w+)")
+        check("subs: the burned run is on the full device path where the device overlays (%s)" % device,
+              ran == "Full" if on_device else ran in ("EncodeOnly", "Software"), str(ran))
+        # The same box over HDR10 (tonemapped): the same, where it also tonemaps there.
         # ... and decodes the clip's 10-bit HEVC there (zen's Skylake does not, fun's J4105 does).
         overlays = device == "vaapi" and wait_for_log(log, r"alpha_subtitles=(true|false)") == "true" \
             and wait_for_log(log, r"opencl_tonemap=(true|false)") == "true" \
