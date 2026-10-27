@@ -11,7 +11,8 @@ conversion reads, never played (rex-fun, 2026-10-26). plexlab's answers are
     guard   every streaming target of every profile in data/client_profiles.json: the decision
             for an item that must be converted (a live HLS channel, a file over the quality cap)
             is Conversion OK, and start serves media FFmpeg decodes, for each distinct target.
-            A profile naming a protocol rex does not serve fails here, by name.
+            A profile naming a protocol rex does not serve fails here, by name. A live channel
+            over DASH is a dynamic MPD a reader goes on reading.
     http    live channels (H.264/AAC, 1080i, HEVC/MP2, AC3 5.1, audio only), files (mkv, mp4,
             HDR10 tonemapped, a text and an image subtitle, a second audio track), a seek either
             clock, a stop and a disconnect ending FFmpeg, the session's listing and ping.
@@ -347,6 +348,33 @@ def guard(port, scratch, live_key, file_key):
             get(port, "/video/:/transcode/universal/stop", [("session", session)])
 
 
+def live_dash(port, key):
+    """A live channel over DASH, as Plex Web 4.147.1 asks for it: the MPD is dynamic (a static one
+    said 0 s, and Shaka 3.3.1 played nothing: probes/shaka_live_dash.py), and a DASH reader goes on
+    reading it past the first segments."""
+    session = "dash-live"
+    query = nt.dash_query(key, session)
+    decide(port, query)
+    status, _, body = get(port, "/video/:/transcode/universal/start.mpd", query)
+    mpd = body.decode("utf-8", "replace")
+    check("live over DASH: the MPD is dynamic, clocked, with no duration",
+          status == 200 and 'type="dynamic"' in mpd and "availabilityStartTime=" in mpd and "mediaPresentationDuration" not in mpd,
+          re.sub(r"\s+", " ", mpd[mpd.find("<MPD"):mpd.find("<Period")])[-260:])
+    get(port, "/video/:/transcode/universal/stop", [("session", session)])
+    session = "dash-live-read"
+    query = nt.dash_query(key, session)
+    decide(port, query)
+    url = "http://127.0.0.1:%d/video/:/transcode/universal/start.mpd?%s" % (port, urllib.parse.urlencode(query))
+    started = time.time()
+    done = subprocess.run([FFMPEG, "-v", "error", "-i", url, "-t", "16", "-map", "0:v:0", "-c", "copy", "-f", "null", "-",
+                           "-progress", "pipe:1"], capture_output=True, text=True, timeout=120)
+    times = [int(value) for value in re.findall(r"^out_time_us=(\d+)", done.stdout, re.M)]
+    read = max(times, default=0) / 1e6
+    check("live over DASH: a DASH reader goes on past the first segments (16 s)", read >= 15,
+          "%.1f s read in %.0f s %s" % (read, time.time() - started, done.stderr.strip()[-120:]))
+    get(port, "/video/:/transcode/universal/stop", [("session", session)])
+
+
 def http_matrix(port, scratch, channels, files, log):
     print("Plex Desktop's Matroska stream")
     expect = {
@@ -486,6 +514,7 @@ def main():
     try:
         if "guard" in sys.argv[1:] or len(sys.argv) == 1:
             guard(port, scratch, channels["live-guard"], files["h264.mkv"])
+            live_dash(port, channels["live-guard"])
         if "http" in sys.argv[1:] or len(sys.argv) == 1:
             http_matrix(port, scratch, channels, files, log)
     finally:

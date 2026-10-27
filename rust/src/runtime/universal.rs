@@ -287,6 +287,13 @@ impl Sidecar {
     }
 }
 
+/// `2026-10-27T00:01:02Z`, a dynamic MPD's wall-clock times (UTC, whole seconds).
+fn utc(seconds: f64) -> String {
+    let seconds = seconds.max(0.0) as i64;
+    let (days, rest) = (seconds.div_euclid(86_400), seconds.rem_euclid(86_400));
+    format!("{}T{:02}:{:02}:{:02}Z", super::edit::civil_from_days(days), rest / 3600, rest / 60 % 60, rest % 60)
+}
+
 /// `PT0H30M0.689941S`, as the reference writes a DASH duration.
 fn dash_duration(milliseconds: i64) -> String {
     // Through a 32-bit float, as the reference's own `0.689941` for 1 800 690 ms shows.
@@ -361,8 +368,32 @@ impl Plan {
         let template = format!(
             "\t\t\t<SegmentTemplate timescale=\"1\" duration=\"{length}\" initialization=\"session/{session}/$RepresentationID$/header\" media=\"session/{session}/$RepresentationID$/$Number$.m4s\" startNumber=\"0\">\n\t\t\t</SegmentTemplate>\n"
         );
+        // A live source has no end: a static MPD said it was 0 s long, and players stopped after
+        // the segment or two they had (Shaka 3.3.1, Plex Web's, and FFmpeg's DASH reader, rex-fun
+        // 2026-10-27). A dynamic one starts its clock at the session's start; a segment asked for
+        // before it is made waits for it (`segment`), so the player can start at segment 0.
+        // ponytail: no measured PMS live DASH MPD (plexlab has no tuner); these are DASH-IF's live
+        // attributes, checked against Shaka 3.3.1 (`probes/shaka_live_dash.py`).
+        let (kind, timing, period) = if self.live() {
+            (
+                "dynamic",
+                format!(
+                    "\tavailabilityStartTime=\"{}\"\n\tpublishTime=\"{}\"\n\ttimeShiftBufferDepth=\"PT{}S\"\n\tsuggestedPresentationDelay=\"PT{}S\"\n",
+                    // Back by the presentation delay: a reader's first segment is (now - start -
+                    // delay) / duration, which FFmpeg's DASH reader wrapped to 858993457 when it
+                    // came out negative at the session's first second.
+                    utc(now_seconds() - f64::from(length * 2)),
+                    utc(now_seconds()),
+                    KEEP_BEHIND as u32 / 2,
+                    length * 2
+                ),
+                String::new(),
+            )
+        } else {
+            ("static", format!("\tmediaPresentationDuration=\"{duration}\"\n"), format!(" duration=\"{duration}\""))
+        };
         let mut out = format!(
-            "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<MPD xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n\txmlns=\"urn:mpeg:dash:schema:mpd:2011\"\n\txmlns:xlink=\"http://www.w3.org/1999/xlink\"\n\txsi:schemaLocation=\"urn:mpeg:dash:schema:mpd:2011 http://standards.iso.org/ittf/PubliclyAvailableStandards/MPEG-DASH_schema_files/DASH-MPD.xsd\"\n\tprofiles=\"urn:mpeg:dash:profile:isoff-live:2011\"\n\ttype=\"static\"\n\tmediaPresentationDuration=\"{duration}\"\n\tmaxSegmentDuration=\"PT{}S\"\n\tminBufferTime=\"PT{}S\">\n\t<Period start=\"PT0S\" id=\"0\" duration=\"{duration}\">\n",
+            "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<MPD xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n\txmlns=\"urn:mpeg:dash:schema:mpd:2011\"\n\txmlns:xlink=\"http://www.w3.org/1999/xlink\"\n\txsi:schemaLocation=\"urn:mpeg:dash:schema:mpd:2011 http://standards.iso.org/ittf/PubliclyAvailableStandards/MPEG-DASH_schema_files/DASH-MPD.xsd\"\n\tprofiles=\"urn:mpeg:dash:profile:isoff-live:2011\"\n\ttype=\"{kind}\"\n{timing}\tmaxSegmentDuration=\"PT{}S\"\n\tminBufferTime=\"PT{}S\">\n\t<Period start=\"PT0S\" id=\"0\"{period}>\n",
             length * 2,
             // Ours, not the reference's 2x segment: Plex Web's Shaka player starts only
             // once max(minBufferTime, 2 s) is buffered, so PT10S held every start for
