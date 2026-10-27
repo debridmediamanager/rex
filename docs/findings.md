@@ -12628,6 +12628,40 @@ extradata, unable to determine samplerate" for a plain copy, `-bsf:a aac_adtstoa
 `-flush_packets 1 -max_interleave_delta 0`. The CLI has no option to set a copied stream's
 extradata, so rex cannot hand it an ASC built from the probe. The conversion to AAC stays.
 
+### FFmpeg's DASH reader and a live MPD's window; a scan type learned late (2026-10-27)
+
+rex-fun's beIN Sports 7 (MENA) failed one live DASH read in four: the reader (jellyfin-ffmpeg
+8.1.3, `ffmpeg -i start.mpd`) fetched audio segment 0 280 times in two seconds. Two things, neither
+the channel's 5 s GOP (a generated channel with its measured keyframes plays in Shaka 3.3.1 and reads
+cleanly in FFmpeg):
+
+- **FFmpeg's reader works the live window out unsigned** (`libavformat/dashdec.c`,
+  `calc_min_seg_no`: `(now - availabilityStartTime - timeShiftBufferDepth) / duration`). rex's
+  clock started 8 s back with a 60 s depth, so for a session's first minute that wrapped to
+  4611686018427387891, every segment was "old", and the reader went back to its first one after each
+  read: thousands of opens of segment 0 a second on every live channel (7,376 on the test channel).
+  Shaka never did. A live MPD now starts its clock a window (6 segments) back with that window as its
+  depth, an 8 s delay and one segment's `maxSegmentDuration`; the run starts at segment 2, where
+  Shaka 3.3.1 asks first (the live edge less the max segment duration and the delay, and one
+  before), and FFmpeg's reader starts two later. Shaka: first frame 0.3 s and on; FFmpeg's reader:
+  each segment opened once, 8 s read in about 16 s.
+- **The 45 s stalls were the source.** The same channel's HLS stalled the same way at 03:08, its
+  live-sports server re-resolved it at 03:10, 03:12 and 03:22, and from 03:22 it served audio only,
+  which a plan made from its probe (video at index 0) refuses at once. rex-live-sports re-probes.
+
+**A playlist's scan type is taken when it changes.** rex-live-sports began reading `field_order`
+off a channel's frames (6758680), but rex took a playlist's new probe only when its streams' indexes
+or codecs changed (2026-10-24, another mirror), so 683 of 716 channels kept no `scanType`. The
+comparison includes `scanType` now (`feed::stream_layout`; `tests/test_feed_probe_changed.py`, a
+real 1080i channel's probe).
+
+**plexscratch (1.43.4) deinterlaces with `yadif`**, measured for Plex for Mac's request on an x264
+MBAFF 1080i25 clip and on 20 s recorded from Eleven Sports 1 (PAFF 1080i50, field-coded, which
+Chrome cannot decode): `[0:0]yadif[0];[0]scale=...;[1]format=pix_fmts=yuv420p|nv12`, H.264 at 25 fps,
+progressive. plexscratch has no plex.tv, so it can convert only with the encoders plexlab has
+downloaded (`liblibx264_encoder.so` copied into its Codecs; no libmp3lame, so a Chrome profile's MP3
+audio fails there).
+
 ## An item without a probe cannot play (2026-10-12)
 
 Question: could rex show a pushed item before its source sends `media_info`, as a real PMS
