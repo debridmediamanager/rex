@@ -12545,6 +12545,54 @@ The first segment is the encode of its first seconds, so a conversion's segments
 (1.3 s to the first on the GPU, against 2.4 s for 5 s); a remux keeps Plex's 10 s (HLS) and
 5 s (DASH), because it can only cut on the source's keyframes.
 
+### Plex Desktop's Matroska stream, and live DASH (2026-10-27)
+
+Plex for Mac 1.115 (profile `Plex Desktop`) converts with `protocol=http`, and rex refused every
+such decision ("Cannot convert this item. No conversion profile found for protocol http.", rex-fun
+2026-10-26): `Protocol::parse` knew `hls`, `dash` and the download's `static` only. A live channel
+has no file to direct play, so none ever played there. Measured on plexlab 1.43.4 for Plex for
+Mac's exact request (`tests/fixtures/transcode/http_mkv_s1434.json`):
+
+- The decision is 1001 with Media and Part `container="mkv"`, **no `protocol`** and no
+  `optimizedForStreaming`, every Stream `location="direct"`. A copied AAC keeps its copy.
+- The client asks `/video/:/transcode/universal/start` with **no extension** (its web client maps
+  `{dash: ".mpd", hls: ".m3u8", http: ""}`) and plays the answer: `200`, `Content-Type:
+  video/x-matroska`, `Accept-Ranges: none`, `Transfer-Encoding: chunked`, `Connection: close`,
+  one Matroska stream with an unknown-size Segment, written as it is made.
+- A seek is a new `start` with `offset` in seconds: with `copyts=1` the stream's first packets are
+  at 4.0 s for `offset=4`, with `copyts=0` (the client's choice for live TV) at 0.
+- The session is listed by `/transcode/sessions` (`complete` once the title is out) and answers
+  `ping` 200 after the stream ends, until its `stop`.
+
+rex now runs one FFmpeg writing `-f matroska pipe:1` per such start, after the runtime lock is
+released, with the first bytes deciding the hardware path (a path that fails before any is
+followed by the next). The client's own reads pace FFmpeg through the pipe, so there is no
+throttle; hanging up or `stop` kills it. Two traps found on the way:
+
+- **`*` in a target's codec lists is a wildcard.** Plex Desktop's `h264,hevc,*`,
+  `opus,vorbis,flac,*` and `ass,pgs,vobsub,*` matched nothing literally, so every AAC was
+  converted to Opus and an SRT was dropped. A conversion for a list with `*` picks AAC.
+- **ADTS AAC (an MPEG-TS or HLS source's) cannot be copied into a Matroska header**, in segments
+  or in one stream, with or without `-bsf:a aac_adtstoasc` (FFmpeg 8.1.2: "Error parsing AAC
+  extradata, unable to determine samplerate"). A live channel's AAC is converted to AAC.
+
+**A live source over DASH needs a dynamic MPD.** rex wrote every MPD `type="static"` with the
+title's duration, which for a live source is 0: Shaka Player 3.3.1 (Plex Web 4.147.1's player)
+loaded it as `isLive() == false` and played 0 s of a live channel, and FFmpeg's DASH reader read one
+segment or two (rex-fun, 2026-10-27: 1.9-5.4 s of channels that play on over HLS). A live MPD is
+now `type="dynamic"` with `availabilityStartTime`, `publishTime`, `timeShiftBufferDepth` and
+`suggestedPresentationDelay` and no duration; segment requests ahead of production already
+waited. `availabilityStartTime` is set back by the presentation delay: FFmpeg's DASH reader takes
+its first segment as `(now - start - delay) / duration` and wrapped a negative one to segment
+858993457. No reference PMS live DASH MPD is recorded (plexlab has no tuner), so these are
+DASH-IF's attributes, checked against Shaka 3.3.1 in Chrome (`probes/shaka_live_dash.py`: playing
+on from about 12 s after load) and FFmpeg's reader (`tests/test_http_mkv.py`).
+
+`tests/test_http_mkv.py` walks every profile in `data/client_profiles.json`: each streaming
+target's protocol must convert a live channel and a capped file and start media FFmpeg decodes.
+The 21 profiles whose targets name no protocol are PMS's DLNA renderer profiles, listed by name;
+rex runs no DLNA server, and a new one, or a protocol rex does not serve, fails the suite.
+
 ## An item without a probe cannot play (2026-10-12)
 
 Question: could rex show a pushed item before its source sends `media_info`, as a real PMS

@@ -613,6 +613,9 @@ python3 tests/test_regional_prefs.py        # the regional prefs documents, cell
 python3 tests/test_part_bytes.py            # part reads against a local zurg stub
 python3 tests/test_native_transcode.py      # the transcoder against generated clips behind a local zurg; needs ffmpeg
                                             # (REX_TRANSCODER, else PATH's); with an Intel GPU REX_TRANSCODE_HW=vaapi and jellyfin-ffmpeg
+python3 tests/test_http_mkv.py              # every profile's streaming protocol converts and plays (a profile naming one rex
+                                            # does not serve fails by name), live DASH a dynamic MPD, and Plex Desktop's
+                                            # `protocol=http` Matroska stream across live channels and files; needs ffmpeg
 python3 tests/test_download_queue.py        # offline downloads: Plex for Android's queue flow, each item converted to one mp4
                                             # and served by Range, as a claimed 1.42.2 PMS answered it; needs ffmpeg
 python3 tests/test_feed.py                  # the feed API against a stub source: no gate, upsert, late ids, held
