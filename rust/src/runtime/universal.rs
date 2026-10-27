@@ -52,6 +52,11 @@ const SEEK_GAP: i64 = 4;
 /// A live source's remux segment: a channel's HLS has short GOPs, and the first segment is
 /// finished only when the second opens, so 10 s segments were a 10 s wait before a picture.
 const LIVE_COPY_SEGMENT: u32 = 4;
+/// How much of a Matroska stream is held before its head goes out, or for how long
+/// (`serve_stream`): FFmpeg fails on a header it cannot write within milliseconds of its first
+/// bytes, and a slow start is not held longer than this.
+const STREAM_HOLD: usize = 64 * 1024;
+const STREAM_HOLD_TIME: Duration = Duration::from_secs(1);
 /// The segment a live DASH session's run starts at, and its players' first (`mpd`).
 const LIVE_DASH_FIRST: i64 = 2;
 /// How many finished segments a live media playlist lists behind the one being written.
@@ -194,6 +199,8 @@ pub(crate) struct AudioPlan {
     pub copy: bool,
     pub source_codec: String,
     pub codec: String,
+    /// What a copied stream is converted to when the copy fails (`Session::force_next`).
+    pub convert_to: String,
     pub channels: i64,
     pub bitrate: i64,
     pub sampling_rate: i64,
@@ -265,6 +272,9 @@ pub(crate) struct Plan {
     pub incomplete_segments: bool,
     /// The client's `copyts=1`: a Matroska stream keeps the title's clock from its `offset`.
     pub copyts: bool,
+    /// The session's segment length, kept when a forced conversion (`Session::plan_now`) would
+    /// otherwise change it under the playlist the player already has.
+    pub segment_length: Option<u32>,
     /// Ownership is internal; public conversion IDs remain opaque bearer handles.
     pub account: i64,
     /// The unmodified playback session (`X-Plex-Session-Identifier`).
@@ -469,6 +479,9 @@ impl Plan {
     }
 
     pub fn segment_seconds(&self) -> u32 {
+        if let Some(length) = self.segment_length {
+            return length;
+        }
         match (self.protocol, self.video.as_ref().is_none_or(|video| video.copy)) {
             (_, false) => TRANSCODE_SEGMENT,
             // A live DASH remux too: a 5 s cut waits for the keyframe after it, which a channel's
@@ -1033,9 +1046,50 @@ pub(crate) struct Session {
     stopped: AtomicBool,
     pub started: f64,
     cover: Mutex<Cover>,
+    /// Copied streams converted since a copy failed: audio, video (`force_next`).
+    forced: Mutex<(bool, bool)>,
 }
 
 impl Session {
+    /// The plan a run goes by: the session's, with each copied stream a failed copy has turned
+    /// into a conversion, on the segment length the player already has.
+    pub fn plan_now(&self) -> Plan {
+        let mut plan = self.plan.clone();
+        let (audio, video) = self.forced.lock().map(|forced| *forced).unwrap_or_default();
+        plan.segment_length = Some(self.plan.segment_seconds());
+        if let Some(stream) = plan.audio.as_mut().filter(|stream| audio && stream.copy) {
+            stream.copy = false;
+            stream.codec = stream.convert_to.clone();
+            stream.channels = stream.channels.clamp(1, 6);
+            stream.bitrate = if stream.channels > 2 { 384 } else { 192 };
+        }
+        if let Some(stream) = plan.video.as_mut().filter(|stream| video && stream.copy) {
+            stream.copy = false;
+            if stream.bitrate <= 0 {
+                stream.bitrate = match stream.height { h if h > 1100 => 20000, h if h > 730 => 8000, h if h > 500 => 4000, _ => 2000 };
+            }
+        }
+        plan
+    }
+
+    /// After every path failed with nothing out: convert the next copied stream, audio first, and
+    /// say which, or `None` when nothing is left to convert. A live source's codec can change under
+    /// its probe: Sport 5 Gold's MP2 became AAC, which no Matroska header takes copied (rex-fun,
+    /// 2026-10-27), and the run failed on every path.
+    fn force_next(&self) -> Option<&'static str> {
+        let plan = self.plan_now();
+        let mut forced = self.forced.lock().ok()?;
+        if plan.audio.as_ref().is_some_and(|stream| stream.copy) {
+            forced.0 = true;
+            return Some("audio");
+        }
+        if plan.video.as_ref().is_some_and(|stream| stream.copy) {
+            forced.1 = true;
+            return Some("video");
+        }
+        None
+    }
+
     /// A live session's playlist window: the newest finished segments of the current run, the
     /// one being written, and whether the source ended. `None` for a title with a duration.
     fn live_window(&self) -> Option<(i64, i64, bool)> {
@@ -1209,7 +1263,9 @@ pub(crate) fn serve_stream<S: Write>(stream: &mut S, response: &Response, plan: 
         });
     }
     let mut failure = "no conversion path".to_string();
-    for path in ladder(&session.plan, &hardware) {
+    let mut plan = session.plan_now();
+    let mut paths: std::collections::VecDeque<Path> = ladder(&plan, &hardware).into();
+    while let Some(path) = paths.pop_front() {
         if session.stopped.load(Ordering::SeqCst) || hung_up.load(Ordering::SeqCst) {
             break;
         }
@@ -1217,7 +1273,7 @@ pub(crate) fn serve_stream<S: Write>(stream: &mut S, response: &Response, plan: 
             let _ = std::fs::write(session.dir.join(sidecar.file_name()), &sidecar.content);
         }
         let mut command = Command::new(&transcoder.ffmpeg);
-        command.args(ffmpeg_args(&session.plan, path, &hardware, offset, &session.dir)).stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped());
+        command.args(ffmpeg_args(&plan, path, &hardware, offset, &session.dir)).stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped());
         let mut child = match spawn_tied(command) {
             Ok(child) => child,
             Err(error) => {
@@ -1248,39 +1304,96 @@ pub(crate) fn serve_stream<S: Write>(stream: &mut S, response: &Response, plan: 
             state.path = Some(path);
         }
         let mut buffer = vec![0_u8; 64 * 1024];
-        loop {
-            let count = match out.read(&mut buffer) {
-                Ok(0) | Err(_) => break,
-                Ok(count) => count,
-            };
-            session.touch();
-            if !head {
+        // The first bytes are held until there are `STREAM_HOLD` of them: FFmpeg writes a
+        // Matroska header's first 282 bytes before it fails on a track it cannot take (a stale
+        // probe's copied AAC), and once the head has gone out no other path can answer.
+        let mut held: Vec<u8> = Vec::new();
+        let send = |stream: &mut S, bytes: &[u8], head: &mut bool| -> Result<bool, String> {
+            if !*head {
                 super::wire::write_enveloped_head(stream, response, envelope, false, None)?;
-                head = true;
+                *head = true;
             }
-            let mut chunk = format!("{count:x}\r\n").into_bytes();
-            chunk.extend_from_slice(&buffer[..count]);
+            let mut chunk = format!("{:x}\r\n", bytes.len()).into_bytes();
+            chunk.extend_from_slice(bytes);
             chunk.extend_from_slice(b"\r\n");
             // A seek or a stop closes the socket mid-stream. Normal.
-            if stream.write_all(&chunk).and_then(|_| stream.flush()).is_err() {
+            Ok(stream.write_all(&chunk).and_then(|_| stream.flush()).is_ok())
+        };
+        // FFmpeg's bytes come through a thread, so a hold can end on time as well as on size.
+        let (tx, rx) = std::sync::mpsc::sync_channel::<Vec<u8>>(4);
+        let pump = thread::spawn(move || {
+            while let Ok(count) = out.read(&mut buffer) {
+                if count == 0 || tx.send(buffer[..count].to_vec()).is_err() {
+                    break;
+                }
+            }
+        });
+        let mut first_held: Option<Instant> = None;
+        loop {
+            let bytes = match rx.recv_timeout(Duration::from_millis(100)) {
+                Ok(bytes) => bytes,
+                Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
+                    // Held long enough that FFmpeg did not fail on its header: send them.
+                    if !head && first_held.is_some_and(|first| first.elapsed() >= STREAM_HOLD_TIME) {
+                        if !send(stream, &held, &mut head)? {
+                            client_gone = true;
+                            break;
+                        }
+                        written += held.len() as u64;
+                        held.clear();
+                    }
+                    continue;
+                }
+                Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => break,
+            };
+            session.touch();
+            let chunk = if head {
+                &bytes[..]
+            } else {
+                first_held.get_or_insert_with(Instant::now);
+                held.extend_from_slice(&bytes);
+                if held.len() < STREAM_HOLD && first_held.is_some_and(|first| first.elapsed() < STREAM_HOLD_TIME) {
+                    continue;
+                }
+                &held[..]
+            };
+            if !send(stream, chunk, &mut head)? {
                 client_gone = true;
                 break;
             }
-            written += count as u64;
+            written += chunk.len() as u64;
+            held.clear();
         }
+        drop(rx);
         let status = session.child.lock().ok().and_then(|mut slot| slot.take()).map(|mut child| {
             if client_gone {
                 let _ = child.kill();
             }
             child.wait()
         });
+        let _ = pump.join();
         let errors = errors.join().unwrap_or_default();
+        // A run that ended well short of the hold still sends what it made.
+        if !head && !held.is_empty() && status.as_ref().is_some_and(|status| status.as_ref().is_ok_and(|status| status.success())) {
+            if send(stream, &held, &mut head)? {
+                written += held.len() as u64;
+            } else {
+                client_gone = true;
+            }
+        }
         client_gone |= hung_up.load(Ordering::SeqCst);
         if head || client_gone || session.stopped.load(Ordering::SeqCst) {
             break;
         }
         failure = format!("{path:?} exited {}: {}", status.map_or("killed".to_string(), |status| format!("{status:?}")), errors.trim());
         warning!("TRANSCODE {} stream: {failure}", session.id);
+        if paths.is_empty() {
+            if let Some(converted) = session.force_next() {
+                warning!("TRANSCODE {} stream failed on every path copying its {converted}: converting it, in case the source's codec changed", session.id);
+                plan = session.plan_now();
+                paths = ladder(&plan, &hardware).into();
+            }
+        }
     }
     streaming.store(false, Ordering::SeqCst);
     if head {
@@ -1603,6 +1716,7 @@ impl Transcoder {
             stopped: AtomicBool::new(false),
             started: now_seconds(),
             cover: Mutex::new(Cover { unread: if plan_burns { None } else { Some(BTreeMap::new()) }, run_limit: None }),
+            forced: Mutex::new((false, false)),
         });
         self.sessions
             .lock()
@@ -1900,7 +2014,8 @@ impl Transcoder {
     fn launch_with(self: &Arc<Self>, session: &Arc<Session>, start: i64, after: Option<Path>, same: Option<Path>) {
         session.kill_child();
         let hardware = self.hardware();
-        let paths = ladder(&session.plan, &hardware);
+        let plan = session.plan_now();
+        let paths = ladder(&plan, &hardware);
         let path = match (same, after) {
             (Some(path), _) => path,
             (None, after) => match after {
@@ -1908,6 +2023,10 @@ impl Transcoder {
             Some(failed) => match paths.iter().position(|path| *path == failed) {
                 Some(position) if position + 1 < paths.len() => paths[position + 1],
                 _ => {
+                    if let Some(stream) = session.force_next() {
+                        warning!("TRANSCODE {} failed on every path copying its {stream}: converting it, in case the source's codec changed", session.id);
+                        return self.launch_with(session, start, None, None);
+                    }
                     if let Ok(mut state) = session.state.lock() {
                         state.error = true;
                     }
@@ -1922,7 +2041,7 @@ impl Transcoder {
         if let Ok(mut cover) = session.cover.lock() {
             cover.run_limit = cover.limit(start * session.plan.segment_seconds() as i64 * 1000);
         }
-        let args = ffmpeg_args(&session.plan, path, &hardware, start, &session.dir);
+        let args = ffmpeg_args(&plan, path, &hardware, start, &session.dir);
         if let Some(sidecar) = &session.plan.sidecar {
             if let Err(err) = std::fs::write(session.dir.join(sidecar.file_name()), &sidecar.content) {
                 warning!("TRANSCODE {} cannot write its subtitle: {err}", session.id);
@@ -2827,11 +2946,11 @@ impl Runtime {
                 && names(&audio_codecs, &codec)
                 && !(matroska && adts)
                 && decision::codec_limitation(profile, "VideoAudioCodec", &codec, media).is_none();
+            let out = if names(&audio_codecs, "aac") || audio_codecs.is_empty() { "aac".to_string() } else { audio_codecs[0].clone() };
             let ordinal = streams.iter().filter(|other| kind(other) == Some(2)).position(|other| other.get("index") == stream.get("index")).unwrap_or(0) as i64;
             if copy {
-                AudioPlan { index: stream.get("index").and_then(Value::as_i64).unwrap_or(-1), ordinal, copy, source_codec: codec.clone(), codec, channels, bitrate: source_bitrate, sampling_rate }
+                AudioPlan { index: stream.get("index").and_then(Value::as_i64).unwrap_or(-1), ordinal, copy, source_codec: codec.clone(), codec, convert_to: out, channels, bitrate: source_bitrate, sampling_rate }
             } else {
-                let out = if names(&audio_codecs, "aac") || audio_codecs.is_empty() { "aac".to_string() } else { audio_codecs[0].clone() };
                 // The profile's own channel bound for this codec (Web: 6), else stereo.
                 let mut probe = media.clone();
                 let mut allowed = channels;
@@ -2860,7 +2979,8 @@ impl Runtime {
                     ordinal,
                     copy: false,
                     source_codec: codec,
-                    codec: out,
+                    codec: out.clone(),
+                    convert_to: out,
                     channels,
                     bitrate: if channels > 2 { 384 } else { 192 },
                     sampling_rate,
@@ -2975,6 +3095,7 @@ impl Runtime {
             incomplete_segments: query.get("X-Plex-Incomplete-Segments").map(String::as_str) == Some("1")
                 || headers.get("x-plex-incomplete-segments").map(String::as_str) == Some("1"),
             copyts: query.get("copyts").map(String::as_str) == Some("1"),
+            segment_length: None,
             account: self.viewer.id,
             playback: self.playback_session(query, headers),
             protocol: wire,
@@ -3467,7 +3588,7 @@ mod tests {
                 source_level: 120,
                 interlaced: false,
             }),
-            audio: Some(AudioPlan { index: 1, ordinal: 0, copy: false, source_codec: "eac3".into(), codec: "aac".into(), channels: 2, bitrate: 192, sampling_rate: 48000 }),
+            audio: Some(AudioPlan { index: 1, ordinal: 0, copy: false, source_codec: "eac3".into(), codec: "aac".into(), convert_to: "aac".into(), channels: 2, bitrate: 192, sampling_rate: 48000 }),
             subtitle: None,
             matroska: false,
             text_subtitle: None,
@@ -3476,6 +3597,7 @@ mod tests {
             text_burn: None,
             incomplete_segments: true,
             copyts: false,
+            segment_length: None,
             account: accounts::OWNER,
             playback: "p".into(),
             protocol: Protocol::Hls,

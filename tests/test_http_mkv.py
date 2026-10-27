@@ -314,6 +314,12 @@ def build(scratch):
         channels[name] = key
     # Live channels whose streams changed under their probe (rex-fun, 2026-10-27): the row is the
     # day-old probe, the channel what it serves now.
+    streams = make_channel(scratch, "live-aacnow", h264, aac)
+    item = live_row("107", "live-aacnow", streams)
+    audio = next(stream for stream in item["Media"][0]["Part"][0]["Stream"] if stream["streamType"] == 2)
+    audio["codec"] = item["Media"][0]["audioCodec"] = "mp2"  # Sport 5 Gold's probe said MP2; it serves AAC
+    items.append(item)
+    channels["live-aacnow"] = "107"
     streams = make_channel(scratch, "live-audiofirst", h264, aac, maps=("-map", "1:a", "-map", "0:v"))
     item = live_row("108", "live-audiofirst", streams)
     part = item["Media"][0]["Part"][0]
@@ -523,6 +529,15 @@ def live_dash(port, key):
     get(port, "/video/:/transcode/universal/stop", [("session", session)])
 
 
+APPLE_TV = json.load(open(os.path.join(ROOT, "tests/fixtures/transcode/appletv_hls_mkv_query.json")))
+
+
+def apple_tv_query(key, session):
+    """Plex for Apple TV's own request (`appletv_hls_mkv_query.json`): HLS in Matroska segments."""
+    return [(name, {"/library/metadata/KEY": "/library/metadata/%s" % key, "SESSION": session}.get(value, value))
+            for name, value in APPLE_TV["query"]]
+
+
 def hls_segments(port, query, session, count, scratch, label):
     """start.m3u8, then `count` segments in order, as a player asks them: each one's status, and
     the first ones as one decodable file (behind the Matroska header where there is one)."""
@@ -565,6 +580,25 @@ def stale(port, scratch, channels, log):
     """Live channels whose streams changed under their probe, as rex-fun's every-app matrix met
     them on 01846cb7 (2026-10-27). rex never probes; a source's probe can be a day old."""
     print("live sources that changed under their probe")
+    # 1. Sport 5 Gold: the probe said MP2, the channel serves AAC, which no Matroska header takes
+    #    copied: "failed on every path". A failed copy converts that stream and runs again.
+    key = channels["live-aacnow"]
+    session = "st-aacnow-tv"
+    container = decide(port, apple_tv_query(key, session))
+    statuses, path = hls_segments(port, apple_tv_query(key, session), session, 3, scratch, session)
+    found = streams_of(path)["streams"]
+    check("a codec changed under the probe: Apple TV's Matroska HLS plays, the audio converted",
+          container.get("generalDecisionCode") == 1001 and statuses == [200] * 3 and decodes(path, "a")
+          and [s["codec_name"] for s in found if s["codec_type"] == "audio"] == ["aac"], "%s %s" % (statuses, [s.get("codec_name") for s in found]))
+    get(port, "/video/:/transcode/universal/stop", [("session", session)])
+    session = "st-aacnow-desktop"
+    decide(port, desktop_query(key, session))
+    status, headers, data = read_stream(port, desktop_query(key, session), 600_000, 25, os.path.join(scratch, session + ".mkv"))
+    check("a codec changed under the probe: Plex Desktop's Matroska stream plays, the audio converted",
+          status == 200 and decodes(os.path.join(scratch, session + ".mkv"), "a"), "%s %d bytes" % (status, len(data)))
+    get(port, "/video/:/transcode/universal/stop", [("session", session)])
+    check("the log says which copy failed and that it is converted",
+          "failed on every path copying its audio: converting it" in open(log).read(), "")
     # 2. Movistar Deportes: the probe had video at 0 and no audio; the channel serves audio as 0.
     #    A live source's streams are mapped by kind, and only what the plan has is mapped.
     key = channels["live-audiofirst"]
