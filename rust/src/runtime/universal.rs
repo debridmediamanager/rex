@@ -61,6 +61,9 @@ const LIVE_STALL: Duration = Duration::from_secs(20);
 /// bytes, and a slow start is not held longer than this.
 const STREAM_HOLD: usize = 64 * 1024;
 const STREAM_HOLD_TIME: Duration = Duration::from_secs(1);
+/// How many segments a live DASH remux's audio may run ahead of its copied video before the video
+/// is converted (`watch`).
+const LONG_GOP_LAG: i64 = 2;
 /// How many live restarts in a row may produce nothing before the session fails.
 const LIVE_RESTARTS: u32 = 4;
 /// The segment a live DASH session's run starts at, and its players' first (`mpd`).
@@ -2247,6 +2250,8 @@ impl Transcoder {
         let done_at = |index: i64| if session.plan.protocol == Protocol::Dash { index } else { index + 1 };
         let mut next = start;
         let mut progressed = Instant::now();
+        // How far each DASH representation's own chunks have got (`LONG_GOP_LAG`).
+        let mut rep_next = [start, start];
         // Since when the player has been waiting on this run's subtitle hold.
         let mut waited: Option<Instant> = None;
         loop {
@@ -2262,6 +2267,33 @@ impl Transcoder {
                 }
                 next += 1;
                 progressed = Instant::now();
+            }
+            // A live DASH remux numbers its segments on a fixed template, and copied video can cut
+            // only on the source's keyframes: Digi Sport 4's are 10 s apart, so its 4 s segments
+            // fell behind the audio's and the player's requests ran out ahead of them (1/14.m4s a
+            // 500 at +87 s; rex-fun, 2026-10-27). Once the audio is `LONG_GOP_LAG` segments ahead,
+            // the video is converted, keyframes on the template, from the next segment on.
+            if session.plan.protocol == Protocol::Dash && session.plan.live() && session.plan.representations() == 2
+                && session.plan_now().video.is_some_and(|video| video.copy)
+            {
+                for (rep, at) in rep_next.iter_mut().enumerate() {
+                    while session.segment_file(*at, rep, start).exists() {
+                        *at += 1;
+                    }
+                }
+                if rep_next[1] >= rep_next[0] + LONG_GOP_LAG {
+                    if let Ok(mut forced) = session.forced.lock() {
+                        forced.1 = true;
+                    }
+                    warning!(
+                        "TRANSCODE {} run {run}: the copied video cuts only on keyframes further apart than the {} s segments (audio at {}, video at {}); converting it from segment {next}",
+                        session.id, length, rep_next[1], rep_next[0]
+                    );
+                    if session.run.load(Ordering::SeqCst) == run && !session.stopped.load(Ordering::SeqCst) {
+                        self.launch(&session, next, None);
+                    }
+                    return;
+                }
             }
             // A live source that stops sending holds FFmpeg on its playlist with nothing out, and
             // one that ends or errors ends the run: either way the channel goes on, so the run is

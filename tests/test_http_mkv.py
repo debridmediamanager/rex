@@ -337,6 +337,13 @@ def build(scratch):
     CHANNELS["live-hiccup.m3u8"]["freeze"] = (14, 74)
     items.append(live_row("109", "live-hiccup", streams))
     channels["live-hiccup"] = "109"
+    # Digi Sport 4's GOP: keyframes 10 s apart (measured over 30 s, 2026-10-27), so its source
+    # segments are 10 s long too; MP2 audio as its.
+    streams = make_channel(scratch, "live-gop10", ["-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p",
+                                                   "-x264-params", "keyint=250:min-keyint=250:scenecut=0"],
+                           ["-c:a", "mp2", "-ac", "2"], "320x180", 25, seconds=1200)
+    items.append(live_row("112", "live-gop10", streams))
+    channels["live-gop10"] = "112"
     # A channel with no audio at open while its probe promised AAC (Sport 5 Gold, 11:30 UTC).
     streams = make_channel(scratch, "live-noaudio", h264, ["-an"])
     item = live_row("110", "live-noaudio", [dict(streams[0], index=0), {"codec_type": "audio", "codec_name": "aac", "index": 1, "channels": 2}])
@@ -426,7 +433,7 @@ def field_order(path):
     return out[0] if out else "none"
 
 
-def guard(port, scratch, live_key, file_key, interlaced_live, interlaced_file):
+def guard(port, scratch, live_key, file_key, interlaced_live, interlaced_file, long_gop_live):
     print("every profile's streaming protocol")
     targets = {}
     for name, profile in sorted(PROFILES.items()):
@@ -449,7 +456,8 @@ def guard(port, scratch, live_key, file_key, interlaced_live, interlaced_file):
     for (name, protocol), target in sorted(targets.items()):
         signature = (protocol, target.get("container"), target.get("videoCodec") or target.get("codec"), target.get("audioCodec"))
         for kind, key, extra in (("live", live_key, {}), ("capped file", file_key, {"maxVideoBitrate": "1000", "videoResolution": "640x360"}),
-                                 ("interlaced live", interlaced_live, {}), ("interlaced file", interlaced_file, {})):
+                                 ("interlaced live", interlaced_live, {}), ("interlaced file", interlaced_file, {}),
+                                 ("long-GOP live", long_gop_live, {})):
             session = "g-%s-%s-%s" % (re.sub(r"\W", "", name), protocol, re.sub(r"\W", "", kind))
             container = decide(port, profile_query(name, protocol, key, session, **extra))
             text = " ".join(str(container.get(field, "")) for field in ("generalDecisionText", "transcodeDecisionText"))
@@ -678,6 +686,50 @@ def loudness(path):
                           capture_output=True, text=True)
     found = re.search(r"mean_volume: (-?[\d.]+) dB", done.stderr)
     return float(found.group(1)) if found else None
+
+
+def long_gop(port, scratch, channels, log):
+    """Live DASH of a channel whose keyframes are 10 s apart: copied video cuts only there, so a
+    4 s template ran out ahead of it and the player's segment failed (Digi Sport 4, rex-fun
+    2026-10-27, 3/3). The video is converted once that shows; the other protocols keep the copy."""
+    print("a live source with keyframes 10 s apart")
+    key = channels["live-gop10"]
+    session = "gop-dash"
+    decide(port, nt.dash_query(key, session))
+    began = time.time()
+    statuses, path, mpd = dash_segments(port, nt.dash_query(key, session), session, 16, scratch, session)
+    # As fast as they play: before, each waited on the video's next cut, 10 s for 4 s of film
+    # (16 segments in 141 s), and the player ran dry.
+    took = time.time() - began
+    check("10 s keyframes: live DASH's 16 segments come as fast as they play (64 s of film)",
+          all(status == 200 for status in statuses) and decodes(path) and took < 64 + 16, "%s in %.0f s" % (statuses, took))
+    check("the log says the copied video is converted, and from where",
+          "the copied video cuts only on keyframes further apart" in open(log).read(), "")
+    get(port, "/video/:/transcode/universal/stop", [("session", session)])
+    session = "gop-dash-read"
+    decide(port, nt.dash_query(key, session))
+    url = "http://127.0.0.1:%d/video/:/transcode/universal/start.mpd?%s" % (port, urllib.parse.urlencode(nt.dash_query(key, session)))
+    try:
+        done = subprocess.run([FFMPEG, "-v", "error", "-i", url, "-t", "16", "-map", "0:v:0", "-c", "copy", "-f", "null", "-", "-progress", "pipe:1"],
+                              capture_output=True, text=True, timeout=180)
+        out = done.stdout
+    except subprocess.TimeoutExpired as expired:
+        out = (expired.stdout or b"").decode("utf-8", "replace") if isinstance(expired.stdout, bytes) else (expired.stdout or "")
+    read = max([int(value) for value in re.findall(r"^out_time_us=(\d+)", out, re.M)] or [0]) / 1e6
+    check("10 s keyframes: a DASH reader reads 16 s", read >= 15, "%.1f s" % read)
+    get(port, "/video/:/transcode/universal/stop", [("session", session)])
+    for label, query_of in (("Plex Web HLS", nt.plex_web_query), ("Apple TV Matroska HLS", apple_tv_query)):
+        session = "gop-" + re.sub(r"\W", "", label).lower()
+        decide(port, query_of(key, session))
+        statuses, path = hls_segments(port, query_of(key, session), session, 4, scratch, session)
+        check("10 s keyframes: %s plays" % label, all(status == 200 for status in statuses) and decodes(path), str(statuses))
+        get(port, "/video/:/transcode/universal/stop", [("session", session)])
+    session = "gop-desktop"
+    decide(port, desktop_query(key, session))
+    path = os.path.join(scratch, session + ".mkv")
+    status, _, data = read_stream(port, desktop_query(key, session), 1_000_000, 40, path, silence=40)
+    check("10 s keyframes: Plex Desktop's Matroska stream plays", status == 200 and decodes(path), "%s %d bytes" % (status, len(data)))
+    get(port, "/video/:/transcode/universal/stop", [("session", session)])
 
 
 def missing_audio(port, scratch, channels, log):
@@ -910,11 +962,12 @@ def run(scratch):
     port, process, log = nt.start_server(catalog, source_port, True, scratch)
     try:
         if "guard" in sys.argv[1:] or len(sys.argv) == 1:
-            guard(port, scratch, channels["live-guard"], files["h264.mkv"], channels["live-guard-i"], files["interlaced.mkv"])
+            guard(port, scratch, channels["live-guard"], files["h264.mkv"], channels["live-guard-i"], files["interlaced.mkv"], channels["live-gop10"])
             live_dash(port, channels["live-guard"])
         if "stale" in sys.argv[1:] or len(sys.argv) == 1:
             stale(port, scratch, channels, log)
             missing_audio(port, scratch, channels, log)
+            long_gop(port, scratch, channels, log)
         if "http" in sys.argv[1:] or len(sys.argv) == 1:
             http_matrix(port, scratch, channels, files, log)
     finally:
