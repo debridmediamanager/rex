@@ -715,6 +715,17 @@ def main():
         print("SKIP: no ffmpeg (set REX_TRANSCODER)")
         return 0
     scratch = tempfile.mkdtemp(prefix="rex-transcode-test-")
+    try:
+        return run(scratch)
+    finally:
+        # A run leaves its clips and segments (~1 GB); left behind, they filled a disk.
+        if os.environ.get("REX_KEEP_TMP"):
+            print("scratch kept: %s" % scratch)
+        else:
+            shutil.rmtree(scratch, ignore_errors=True)
+
+
+def run(scratch):
     clips = {
         "remux.mkv": (["-c:v", "libx264", "-preset", "ultrafast", "-g", "48", "-pix_fmt", "yuv420p"], ["-c:a", "aac", "-ac", "2"], DURATION),
         # Long enough that its far seek lands beyond what the slow read has produced,
@@ -1318,13 +1329,11 @@ def main():
     failed = [label for label, ok in results if not ok]
     print("\n%d/%d passed" % (len(results) - len(failed), len(results)))
     if failed:
-        print("rex log: %s" % log)
-        # A CI runner's scratch directory is gone when the job ends: show what rex said.
-        if os.environ.get("CI"):
-            with open(log, encoding="utf-8", errors="replace") as handle:
-                print("".join(handle.readlines()[-150:]))
+        # The scratch directory goes with the run (REX_KEEP_TMP=1 keeps it): show what rex said.
+        print("rex log (last 150 lines; REX_KEEP_TMP=1 keeps %s):" % log)
+        with open(log, encoding="utf-8", errors="replace") as handle:
+            print("".join(handle.readlines()[-150:]))
         return 1
-    shutil.rmtree(scratch, ignore_errors=True)
     return 0
 
 
