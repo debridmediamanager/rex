@@ -12761,6 +12761,47 @@ real durations. On a generated 10 s-GOP channel: Shaka 3.3.1 (Plex Web's player)
 90 after the change and 83.2 s before (it places media by its own timestamps); FFmpeg's reader read
 16 s, and every one of 16 segments came.
 
+### A recorded file's long GOPs over a DASH remux (2026-10-27)
+
+**How often:** keyframe spacing over the first 60 s of 36 files rex-fun serves (18 films, 18
+episodes, read one at a time through rex's own Part URL; 33 measurable, two AVI and a VC-1 gave no
+flags): 12 have a gap over 5 s, 10 over 8 s and 6 over 10 s, most of them x265 encodes (its default
+keyint is 250 frames, ~10 s). A DASH remux cuts copied video only on keyframes, in 5 s template
+slots: one gap spanning two slots made one chunk of them and numbered every later chunk a segment
+early. On generated 30 s files Shaka 3.3.1 played 21.2 s of the one with 12 s keyframes (29.3 s of
+the 8 s one), and segment offsets from their slots ran 0, 7, 14, 21, 28 s.
+
+**What rex does:** each copied video chunk is checked as FFmpeg finishes it, before it is served:
+the `sidx` FFmpeg's MP4 muxer writes ahead of every fragment gives where the chunk starts and how
+long it runs on the title's clock, and the first chunk that runs past the next slot's end switches
+the run to converting the video, keyframes on the template (`chunk_end`): from the run's start if
+nothing of it has gone to a player yet (a file's opening, as a remux runs far ahead), else from
+that chunk. A run's DASH header waits for its first segment to be checked, so a player is not
+handed the copy's header before a switch replaces it. A recorded file's chunk is served only once
+the chunk after it is checked too: a player has the first segment before a remux read at a debrid
+source's pace cuts the second, so a gap first seen in the second chunk (8 s keyframes) converted
+from segment 1 after the copied segment 0 had gone out, and FFmpeg's DASH reader, which keeps the
+first header it reads (a later `moov` is skipped as a duplicate), read the converted fragments at
+the copy's timescale: 24.0 s of 30 (CI, and locally with the file served at 2 MB/s). With the
+lookahead the run converts from its start and the reader reads 29.9 s; a live chunk is served at
+once. A switch from the start is decided, and the run's segments dropped, under the lock a request
+finds its segment with: decided outside it, it deleted gop8.mkv's segment 0 under a request that
+had just found it (a 500). The same rule now covers live DASH (it replaced the audio-lag one). After it both files' segments start 0.1 s into their own slots,
+FFmpeg's DASH reader read 29.9 s of both, and a file with 2 s keyframes keeps the copy (its
+segments 0 or 1 s into their slots). Not covered: a long gap deep into a file that a player has
+already reached switches there, so the player meets a converted segment (its own header in front,
+as rex serves every DASH segment) after copied ones.
+
+**Not the muxer's own timeline.** The first version read FFmpeg's manifest with `-use_timeline 1`,
+which lists where each chunk really cut. But a timeline changes where FFmpeg 8.1 cuts: with one,
+each segment ends at the first keyframe its length after the last cut (`dashenc.c`, `pts -
+start_pts` against `seg_duration`); without one, at the first keyframe past the template's next
+slot (`pts - first_pts` against `segment_index * seg_duration`). A 2 s-GOP file then cut 6 s chunks,
+drifting a second a segment, and the remux was converted at its fifth chunk (both of the transcoder
+suite's 2 s-GOP clips): its MPEG-TS far seek read the conversion's video at the copy's 90 kHz
+timescale (tfdt 2.731 s for 20 s).
+rex keeps `-use_timeline 0` and reads each chunk's `sidx`.
+
 ## An item without a probe cannot play (2026-10-12)
 
 Question: could rex show a pushed item before its source sends `media_info`, as a real PMS
