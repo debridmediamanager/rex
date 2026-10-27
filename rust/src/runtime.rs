@@ -23622,11 +23622,18 @@ fn connection_lines(owner: &str) -> String {
 /// the client's frames (a CLOSE) between its own writes.
 trait PollRead {
     fn poll_timeout(&self, timeout: Option<std::time::Duration>);
+    /// The connection's own socket, and whether TLS runs over it: a Matroska stream watches it
+    /// for the client hanging up while FFmpeg writes nothing (`universal::serve_stream`).
+    fn socket(&self) -> Option<(TcpStream, bool)>;
 }
 
 impl PollRead for TcpStream {
     fn poll_timeout(&self, timeout: Option<std::time::Duration>) {
         let _ = self.set_read_timeout(timeout);
+    }
+
+    fn socket(&self) -> Option<(TcpStream, bool)> {
+        Some((self.try_clone().ok()?, false))
     }
 }
 
@@ -23634,11 +23641,19 @@ impl<T: PollRead + ?Sized> PollRead for &mut T {
     fn poll_timeout(&self, timeout: Option<std::time::Duration>) {
         (**self).poll_timeout(timeout);
     }
+
+    fn socket(&self) -> Option<(TcpStream, bool)> {
+        (**self).socket()
+    }
 }
 
 impl PollRead for StreamOwned<ServerConnection, TcpStream> {
     fn poll_timeout(&self, timeout: Option<std::time::Duration>) {
         let _ = self.sock.set_read_timeout(timeout);
+    }
+
+    fn socket(&self) -> Option<(TcpStream, bool)> {
+        Some((self.sock.try_clone().ok()?, true))
     }
 }
 
@@ -24223,7 +24238,8 @@ fn handle_connection<S: Read + Write + PollRead>(
         if let Some(plan) = stream_plan.take().filter(|_| response.status == 200) {
             let (account, playback) = (plan.session.plan.account, plan.session.plan.playback.clone());
             let transcoder = Arc::clone(&plan.transcoder);
-            let written = universal::serve_stream(&mut stream, &response, plan, &envelope);
+            let socket = stream.socket();
+            let written = universal::serve_stream(&mut stream, &response, plan, &envelope, socket);
             let mut guard = runtime.lock().unwrap_or_else(PoisonError::into_inner);
             if let Ok(written) = written {
                 guard.record_bytes(&owner, written);

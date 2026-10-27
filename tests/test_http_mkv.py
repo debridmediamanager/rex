@@ -64,9 +64,25 @@ class Quiet(socketserver.ThreadingTCPServer):
         pass  # FFmpeg hangs up mid-read whenever a stream ends; that is no failure
 
 
+# A `stall` file's source sends this much of it, then nothing, holding the connection open, as a
+# debrid CDN that stops mid-file does.
+STALL_AFTER = 400_000
+
+
 class Source(nt.Zurg):
     def do_GET(self):
         name = urllib.parse.unquote(self.path).rsplit("/", 1)[-1]
+        if name.startswith("stall") and name in MEDIA:
+            size = os.path.getsize(MEDIA[name])
+            self.send_response(200)
+            self.send_header("Accept-Ranges", "bytes")
+            self.send_header("Content-Length", str(size))
+            self.end_headers()
+            with open(MEDIA[name], "rb") as handle:
+                self.wfile.write(handle.read(STALL_AFTER))
+            self.wfile.flush()
+            time.sleep(600)
+            return
         channel = CHANNELS.get(name)
         if channel is None:
             return super().do_GET()
@@ -263,7 +279,8 @@ def build(scratch):
     for key, name, video, audio in (
             ("201", "h264.mkv", h264, aac),
             ("202", "slowstop.mkv", h264, aac),
-            ("203", "plainmp4.mp4", h264, aac)):
+            ("203", "plainmp4.mp4", h264, aac),
+            ("208", "stall.mkv", h264, aac)):
         MEDIA[name] = os.path.join(scratch, name)
         make_clip(MEDIA[name], video, audio, 90 if name == "slowstop.mkv" else DURATION)
         items.append(file_row(key, name, probe(MEDIA[name])["streams"], container="mp4" if name.endswith(".mp4") else "mkv"))
@@ -482,6 +499,34 @@ def http_matrix(port, scratch, channels, files, log):
         check("a seek to 10 s with copyts=%s starts at %s" % (copyts, "10 s" if copyts == "1" else "0"),
               pts is not None and low <= pts <= high, str(pts))
         get(port, "/video/:/transcode/universal/stop", [("session", session)])
+
+    # A source that stops sending: FFmpeg writes nothing more, so only the socket says the client
+    # hung up. Before, FFmpeg ran on until the idle reaper (120 s).
+    session = "stalled"
+    query = desktop_query(files["stall.mkv"], session, **capped)
+    decide(port, query)
+    connection = http.client.HTTPConnection("127.0.0.1", port, timeout=4)
+    connection.request("GET", "/video/:/transcode/universal/start?" + urllib.parse.urlencode(query))
+    response = connection.getresponse()
+    received = 0
+    try:
+        while True:
+            chunk = response.read1(65536)
+            if not chunk:
+                break
+            received += len(chunk)
+    except (TimeoutError, OSError):
+        pass  # the source has gone quiet
+    stalled = bool(ffmpegs_reading("stall.mkv"))
+    # The response holds the socket's file: closing only the connection sends no FIN.
+    response.close()
+    connection.close()
+    hung_up = time.time()
+    ended = gone("stall.mkv", timeout=8)
+    check("a hang-up while the source sends nothing ends FFmpeg within seconds",
+          received and stalled and ended, "%d bytes, FFmpeg %s, gone %s in %.1fs"
+          % (received, "running" if stalled else "not running", ended, time.time() - hung_up))
+    get(port, "/video/:/transcode/universal/stop", [("session", session)])
 
     # A stop mid-stream ends the stream and its FFmpeg; the source is read slowly, so it runs on.
     session = "stopme"

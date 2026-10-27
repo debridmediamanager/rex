@@ -1116,15 +1116,42 @@ pub(crate) struct StreamPlan {
 /// out with the first bytes, so a path that fails before any is followed by the next one down
 /// the ladder; the client's own pace holds FFmpeg back through the pipe. Disconnecting, or a
 /// `stop`, ends its FFmpeg.
-pub(crate) fn serve_stream<S: Write>(stream: &mut S, response: &Response, plan: StreamPlan, envelope: &super::wire::Wire) -> Result<u64, String> {
+pub(crate) fn serve_stream<S: Write>(stream: &mut S, response: &Response, plan: StreamPlan, envelope: &super::wire::Wire, socket: Option<(std::net::TcpStream, bool)>) -> Result<u64, String> {
     let StreamPlan { session, offset, transcoder } = plan;
     let hardware = transcoder.hardware();
     let mut written = 0_u64;
     let mut head = false;
     let mut client_gone = false;
+    // A hang-up is otherwise seen only by the next write, and a source that stopped sending left
+    // FFmpeg running until the idle reaper (120 s). The client sends nothing after its request,
+    // so its socket turning readable is the hang-up: EOF or a reset, or over TLS its close_notify.
+    let hung_up = Arc::new(AtomicBool::new(false));
+    let streaming = Arc::new(AtomicBool::new(true));
+    if let Some((socket, tls)) = socket {
+        let (hung_up, streaming, watched) = (Arc::clone(&hung_up), Arc::clone(&streaming), Arc::clone(&session));
+        thread::spawn(move || {
+            let _ = socket.set_read_timeout(Some(Duration::from_millis(500)));
+            let mut byte = [0_u8; 1];
+            while streaming.load(Ordering::SeqCst) {
+                let closed = match socket.peek(&mut byte) {
+                    Ok(0) => true,
+                    Ok(_) => tls,
+                    Err(error) => !matches!(error.kind(), std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut | std::io::ErrorKind::Interrupted),
+                };
+                if closed && streaming.load(Ordering::SeqCst) {
+                    hung_up.store(true, Ordering::SeqCst);
+                    watched.kill_child();
+                    return;
+                }
+                if !closed && matches!(socket.peek(&mut byte), Ok(1..)) {
+                    thread::sleep(Duration::from_millis(500));
+                }
+            }
+        });
+    }
     let mut failure = "no conversion path".to_string();
     for path in ladder(&session.plan, &hardware) {
-        if session.stopped.load(Ordering::SeqCst) {
+        if session.stopped.load(Ordering::SeqCst) || hung_up.load(Ordering::SeqCst) {
             break;
         }
         if let Some(sidecar) = &session.plan.sidecar {
@@ -1189,12 +1216,14 @@ pub(crate) fn serve_stream<S: Write>(stream: &mut S, response: &Response, plan: 
             child.wait()
         });
         let errors = errors.join().unwrap_or_default();
-        if head || session.stopped.load(Ordering::SeqCst) {
+        client_gone |= hung_up.load(Ordering::SeqCst);
+        if head || client_gone || session.stopped.load(Ordering::SeqCst) {
             break;
         }
         failure = format!("{path:?} exited {}: {}", status.map_or("killed".to_string(), |status| format!("{status:?}")), errors.trim());
         warning!("TRANSCODE {} stream: {failure}", session.id);
     }
+    streaming.store(false, Ordering::SeqCst);
     if head {
         // plexlab keeps an ended stream's session, listed `complete` and answering ping, until
         // its stop (`http_mkv_s1434.json`); the reaper ends it like any idle one.
@@ -1208,6 +1237,10 @@ pub(crate) fn serve_stream<S: Write>(stream: &mut S, response: &Response, plan: 
         return Ok(written);
     }
     transcoder.stop_session(&session);
+    if client_gone {
+        info!("TRANSCODE {} stream ended before its first bytes, the client gone", session.id);
+        return Ok(0);
+    }
     error!("TRANSCODE {} stream failed on every path: {failure}", session.id);
     super::wire::write_enveloped(stream, &Response::error(500, "rex: transcode failed"), envelope, false)?;
     Ok(0)
