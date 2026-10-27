@@ -613,6 +613,17 @@ def main():
         print("SKIP: no ffmpeg (set REX_TRANSCODER)")
         return 0
     scratch = tempfile.mkdtemp(prefix="rex-http-mkv-test-")
+    try:
+        return run(scratch)
+    finally:
+        # A run leaves ~1 GB of generated channels and segments: 208 left behind filled a disk.
+        if os.environ.get("REX_KEEP_TMP"):
+            print("scratch kept: %s" % scratch)
+        else:
+            shutil.rmtree(scratch, ignore_errors=True)
+
+
+def run(scratch):
     items, channels, files = build(scratch)
     catalog = os.path.join(scratch, "catalog.json")
     json.dump({"machineIdentifier": "0000000000000000000000000000000000000008", "friendlyName": "rex-http-mkv",
@@ -636,12 +647,11 @@ def main():
     failed = [label for label, ok in results if not ok]
     print("\n%d/%d passed" % (len(results) - len(failed), len(results)))
     if failed:
-        print("rex log: %s" % log)
-        if os.environ.get("CI"):
-            with open(log, encoding="utf-8", errors="replace") as handle:
-                print("".join(handle.readlines()[-150:]))
+        # The scratch directory goes with the run (REX_KEEP_TMP=1 keeps it): show what rex said.
+        print("rex log (last 150 lines; REX_KEEP_TMP=1 keeps %s):" % log)
+        with open(log, encoding="utf-8", errors="replace") as handle:
+            print("".join(handle.readlines()[-150:]))
         return 1
-    shutil.rmtree(scratch, ignore_errors=True)
     return 0
 
 

@@ -48,6 +48,17 @@ def main():
     protocol = sys.argv[2] if len(sys.argv) > 2 else "dash"
     channel = sys.argv[3] if len(sys.argv) > 3 else "live-h264"
     scratch = tempfile.mkdtemp(prefix="rex-shaka-")
+    try:
+        return play(scratch, seconds, protocol, channel)
+    finally:
+        # A run leaves ~1 GB of generated channels; REX_KEEP_TMP=1 keeps them.
+        if os.environ.get("REX_KEEP_TMP"):
+            print("scratch kept: %s" % scratch)
+        else:
+            shutil.rmtree(scratch, ignore_errors=True)
+
+
+def play(scratch, seconds, protocol, channel):
     items, channels, _ = suite.build(scratch)
     catalog = os.path.join(scratch, "catalog.json")
     json.dump({"machineIdentifier": "0" * 39 + "9", "friendlyName": "rex-shaka",
@@ -104,7 +115,6 @@ def main():
         process.wait()
         if os.environ.get("SHOW_LOG"):
             print("".join(line for line in open(log) if "shaka-live" in line or "TRANSCODE" in line)[:6000])
-        shutil.rmtree(scratch, ignore_errors=True)
 
 
 if __name__ == "__main__":
