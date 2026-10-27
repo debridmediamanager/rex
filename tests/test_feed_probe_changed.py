@@ -10,6 +10,7 @@ mirror was gone. `fixtures/feed/live_mirror_probes_1024.json` holds two real lay
 """
 import json
 import os
+import shutil
 import sys
 import tempfile
 
@@ -17,12 +18,18 @@ from test_feed import MOUNT, Bytes, Server, catalog, check, results, serve
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PROBES = json.load(open(os.path.join(HERE, "fixtures", "feed", "live_mirror_probes_1024.json")))
+INTERLACED = json.load(open(os.path.join(HERE, "fixtures", "feed", "live_interlaced_probe_1027.json")))
 
 
-def item(probe):
-    path = "live-tv/channels/channels-red-hd.m3u8"
-    return {"id": "st-channels-red-hd", "path": path, "file": "%s/%s" % (MOUNT, path), "name": ".red HD",
-            "media_info": probe, "display": {"title": ".red HD"}}
+def item(probe, name="channels-red-hd"):
+    path = "live-tv/channels/%s.m3u8" % name
+    return {"id": "st-" + name, "path": path, "file": "%s/%s" % (MOUNT, path), "name": name,
+            "media_info": probe, "display": {"title": name}}
+
+
+def scan_type(server, key):
+    media = server.row(key).get("Media") or [{}]
+    return next((s.get("scanType") for s in (media[0].get("Part") or [{}])[0].get("Stream") or [] if s.get("streamType") == 1), None)
 
 
 def streams(server, key):
@@ -54,8 +61,22 @@ def run():
               second[:4])
         status, body = server.feed("POST", "items", {"items": [item(PROBES["second"])]})
         check("the same probe again changes nothing", status == 200 and (body or {}).get("unchanged") == 1, (status, body))
+        # A channel probed once with no field_order, then again with it on the same layout: the row
+        # takes it, so the conversion knows to deinterlace (rex-live-sports 6758680; rex-fun kept
+        # scanType None on 683 of 716 channels, as only a layout change replaced the streams).
+        status, body = server.feed("POST", "items", {"items": [item(INTERLACED["before"], "eleven-1")]})
+        key = server.keys()["st-eleven-1"]
+        check("a channel probed without field_order has no scanType", status == 200 and scan_type(server, key) is None, scan_type(server, key))
+        status, body = server.feed("POST", "items", {"items": [item(INTERLACED["after"], "eleven-1")]})
+        check("its probe with field_order tt makes its video interlaced, on the same row",
+              status == 200 and (body or {}).get("updated") == 1 and server.keys()["st-eleven-1"] == key
+              and scan_type(server, key) == "interlaced", (body, scan_type(server, key)))
+        status, body = server.feed("POST", "items", {"items": [item(INTERLACED["after"], "eleven-1")]})
+        check("the same interlaced probe again changes nothing", status == 200 and (body or {}).get("unchanged") == 1, (status, body))
     finally:
         server.stop()
+        if not os.environ.get("REX_KEEP_TMP"):
+            shutil.rmtree(work, ignore_errors=True)
 
 
 def main():

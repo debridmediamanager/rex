@@ -2473,7 +2473,8 @@ impl Runtime {
             // A playlist probed with streams at other indexes or of other codecs is another stream
             // under the same id: a Stremio addon's live channel back from another mirror
             // (2026-10-24). The conversion maps tracks by these indexes, so the row takes the new
-            // streams. Only a playlist: a file does not change under its id, and building every
+            // streams; and a scan type newly known on the same layout too, which decides the
+            // deinterlace (rex-live-sports reading field_order off the frames, 2026-10-27). Only a playlist: a file does not change under its id, and building every
             // pushed file's Media to compare would cost each push of a large library.
             let part = old.pointer("/Part/0").cloned().unwrap_or_default();
             let file = part.get("file").and_then(Value::as_str).unwrap_or_default();
@@ -3893,10 +3894,16 @@ mod tests {
 
 /// A Media's embedded streams as the conversion addresses them: index and codec. A stored
 /// Part holds them packed (`catalog::part_streams`).
-fn stream_layout(media: &Value) -> Vec<(i64, String)> {
+/// A Part's streams as a conversion reads them: index, codec, and whether the picture is
+/// interlaced (`scanType`), which decides whether it is deinterlaced.
+fn stream_layout(media: &Value) -> Vec<(i64, String, Option<String>)> {
     let part = media.pointer("/Part/0").cloned().unwrap_or_default();
     crate::catalog::part_streams(&part).iter()
-        .filter_map(|stream| Some((stream.get("index")?.as_i64()?, stream.get("codec").and_then(Value::as_str).unwrap_or_default().to_string())))
+        .filter_map(|stream| Some((
+            stream.get("index")?.as_i64()?,
+            stream.get("codec").and_then(Value::as_str).unwrap_or_default().to_string(),
+            stream.get("scanType").and_then(Value::as_str).map(str::to_string),
+        )))
         .collect()
 }
 
