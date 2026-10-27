@@ -19,6 +19,7 @@ conversion reads, never played (rex-fun, 2026-10-26). plexlab's answers are
 
     python3 tests/test_http_mkv.py      # REX_TRANSCODER=/path/to/ffmpeg optional
 """
+import calendar
 import http.client
 import json
 import os
@@ -87,11 +88,16 @@ class Source(nt.Zurg):
         if channel is None:
             return super().do_GET()
         channel["since"] = channel["since"] or time.time()
-        made = min(len(channel["segments"]), 3 + int((time.time() - channel["since"]) / 2))
+        # Three segments on the air at the first read, then each as its own length passes.
+        lengths = channel["lengths"]
+        made, clock = 3, time.time() - channel["since"]
+        while made < len(lengths) and clock >= sum(lengths[3:made + 1]):
+            made += 1
         first = max(0, made - 5)
-        lines = ["#EXTM3U", "#EXT-X-VERSION:3", "#EXT-X-TARGETDURATION:2", "#EXT-X-MEDIA-SEQUENCE:%d" % first]
-        for segment in channel["segments"][first:made]:
-            lines += ["#EXTINF:2.000000,", segment]
+        lines = ["#EXTM3U", "#EXT-X-VERSION:3", "#EXT-X-TARGETDURATION:%d" % -(-max(lengths) // 1),
+                 "#EXT-X-MEDIA-SEQUENCE:%d" % first]
+        for segment, length in zip(channel["segments"][first:made], lengths[first:made]):
+            lines += ["#EXTINF:%.6f," % length, segment]
         body = ("\n".join(lines) + "\n").encode()
         self.send_response(200)
         self.send_header("Content-Type", "application/vnd.apple.mpegurl")
@@ -216,9 +222,13 @@ def segment_bytes(port, protocol, query, session, scratch, label):
     status, _, mpd = get(port, "/video/:/transcode/universal/start.mpd", query)
     base = "/video/:/transcode/universal/session/%s/0/" % session
     status_h, _, header = get(port, base + "header")
-    status_s, _, first = get(port, base + "0.m4s")
+    status_s, _, first = get(port, base + "%d.m4s" % (first_segment(mpd.decode("utf-8", "replace")) if status == 200 else 0))
     open(path, "wb").write(header + first)
     return status == status_h == status_s == 200, path
+
+
+# beIN Sports 7 (MENA)'s keyframe times over a minute, then on every 5 s.
+BEIN_KEYFRAMES = [0, 5, 10, 15, 20, 22.88, 25.28] + [25.28 + 5 * n for n in range(1, 20)]
 
 
 def make_channel(scratch, name, video, audio, size="320x180", rate=24, extra=(), seconds=120):
@@ -233,7 +243,10 @@ def make_channel(scratch, name, video, audio, size="320x180", rate=24, extra=(),
     segments = sorted(entry for entry in os.listdir(scratch) if re.fullmatch(re.escape(name) + r"\d{3}\.ts", entry))
     for segment in segments:
         MEDIA[segment] = os.path.join(scratch, segment)
-    CHANNELS[name + ".m3u8"] = {"segments": segments, "since": None}
+    # Each segment's own length: a source cut on its keyframes has segments as long as its GOP.
+    vod = open(os.path.join(scratch, name + "-vod.m3u8")).read()
+    lengths = [float(value) for value in re.findall(r"#EXTINF:([\d.]+),", vod)]
+    CHANNELS[name + ".m3u8"] = {"segments": segments, "lengths": lengths, "since": None}
     return probe(os.path.join(scratch, name + "-vod.m3u8"))["streams"]
 
 
@@ -281,7 +294,13 @@ def build(scratch):
             ("103", "live-hevc", ["-c:v", "libx265", "-preset", "ultrafast", "-x265-params", "log-level=none:keyint=48",
                                   "-pix_fmt", "yuv420p"], ["-c:a", "mp2", "-ac", "1"], "320x180", 24, ()),
             ("104", "live-ac3", h264, ["-c:a", "ac3", "-ac", "6"], "320x180", 24, ()),
-            ("105", "live-radio", [], aac, None, None, ())):
+            ("105", "live-radio", [], aac, None, None, ()),
+            # beIN Sports 7 (MENA)'s GOP, read off the real channel (2026-10-27): keyframes every
+            # 5 s with two short gaps (20 -> 22.88 -> 25.28), so its source segments are cut there.
+            ("106", "live-gop5", ["-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p",
+                                  "-x264-params", "keyint=1000:min-keyint=1000:scenecut=0",
+                                  "-force_key_frames", ",".join("%.2f" % t for t in BEIN_KEYFRAMES)],
+             ["-c:a", "aac", "-ac", "2", "-ar", "44100"], "320x180", 50, ())):
         streams = make_channel(scratch, name, video, audio, size or "320x180", rate or 24, extra)
         items.append(live_row(key, name, streams))
         channels[name] = key
@@ -376,6 +395,21 @@ def guard(port, scratch, live_key, file_key):
             get(port, "/video/:/transcode/universal/stop", [("session", session)])
 
 
+def first_segment(mpd):
+    """The segment Shaka 3.3.1 asks for first: 0 for a static MPD; for a dynamic one the live edge
+    less the max segment duration and the delay, and one before that (probes/shaka_live_dash.py
+    logs its requests)."""
+    clock = re.search(r'availabilityStartTime="([^"]+)"', mpd)
+    if not clock:
+        return 0
+    def seconds(name):
+        found = re.search(r'%s="PT([\d.]+)S"' % name, mpd)
+        return float(found.group(1)) if found else 0.0
+    since = time.time() - calendar.timegm(time.strptime(clock.group(1), "%Y-%m-%dT%H:%M:%SZ"))
+    length = float(re.search(r'SegmentTemplate timescale="1" duration="(\d+)"', mpd).group(1))
+    return max(0, int((since - seconds("maxSegmentDuration") - seconds("suggestedPresentationDelay")) // length) - 1)
+
+
 def live_dash(port, key):
     """A live channel over DASH, as Plex Web 4.147.1 asks for it: the MPD is dynamic (a static one
     said 0 s, and Shaka 3.3.1 played nothing: probes/shaka_live_dash.py), and a DASH reader goes on
@@ -388,28 +422,39 @@ def live_dash(port, key):
     check("live over DASH: the MPD is dynamic, clocked, with no duration",
           status == 200 and 'type="dynamic"' in mpd and "availabilityStartTime=" in mpd and "mediaPresentationDuration" not in mpd,
           re.sub(r"\s+", " ", mpd[mpd.find("<MPD"):mpd.find("<Period")])[-260:])
-    # The first video segment as a player asks it, straight after the MPD: a live DASH segment was
-    # served only once the next one was done, and in 5 s cuts, 6.2 s after start.mpd where HLS's
-    # first came in 0.3 s (Shaka 3.3.1's first frame 9.7 s after load; probes/shaka_live_dash.py).
+    # The first video segment as Shaka 3.3.1 asks it, straight after the MPD: the live edge less
+    # the max segment duration and the delay, and a segment before that (probes/shaka_live_dash.py
+    # logs its requests). A live DASH segment was served only once the next one was done, and in
+    # 5 s cuts, 6.2 s after start.mpd where HLS's first came in 0.3 s (Shaka's first frame 9.7 s).
+    index = first_segment(mpd)
     base = "/video/:/transcode/universal/session/%s/0/" % session
     asked = time.time()
     status_h, _, header = get(port, base + "header")
-    status_s, _, first = get(port, base + "0.m4s")
+    status_s, _, first = get(port, base + "%d.m4s" % index)
     waited = time.time() - asked
     check("live over DASH: the first video segment is served within 1.5 s of start.mpd",
-          status_h == status_s == 200 and first and waited < 1.5, "%s/%s in %.2fs" % (status_h, status_s, waited))
+          status_h == status_s == 200 and first and waited < 1.5, "segment %d: %s/%s in %.2fs" % (index, status_h, status_s, waited))
     get(port, "/video/:/transcode/universal/stop", [("session", session)])
     session = "dash-live-read"
     query = nt.dash_query(key, session)
     decide(port, query)
     url = "http://127.0.0.1:%d/video/:/transcode/universal/start.mpd?%s" % (port, urllib.parse.urlencode(query))
     started = time.time()
-    done = subprocess.run([FFMPEG, "-v", "error", "-i", url, "-t", "16", "-map", "0:v:0", "-c", "copy", "-f", "null", "-",
+    done = subprocess.run([FFMPEG, "-v", "verbose", "-i", url, "-t", "16", "-map", "0:v:0", "-c", "copy", "-f", "null", "-",
                            "-progress", "pipe:1"], capture_output=True, text=True, timeout=120)
     times = [int(value) for value in re.findall(r"^out_time_us=(\d+)", done.stdout, re.M)]
     read = max(times, default=0) / 1e6
     check("live over DASH: a DASH reader goes on past the first segments (16 s)", read >= 15,
           "%.1f s read in %.0f s %s" % (read, time.time() - started, done.stderr.strip()[-120:]))
+    # FFmpeg 8.1's reader logs each segment it opens twice. Under the window rex once wrote, its
+    # unsigned arithmetic took every segment for an old one and opened segment 0 thousands of times
+    # in a second (rex-fun 2026-10-27: 280 times; dashdec.c `calc_min_seg_no`).
+    opened = {}
+    for segment in re.findall(r"session/%s/(\d+/\d+\.m4s)" % session, done.stderr):
+        opened[segment] = opened.get(segment, 0) + 1
+    worst = max(opened.items(), key=lambda item: item[1], default=("none", 0))
+    check("live over DASH: the DASH reader opens each segment once", opened and worst[1] <= 2,
+          "%s opened %d times (logged)" % worst)
     get(port, "/video/:/transcode/universal/stop", [("session", session)])
 
 
@@ -417,7 +462,7 @@ def http_matrix(port, scratch, channels, files, log):
     print("Plex Desktop's Matroska stream")
     expect = {
         "live-guard": ("h264", "aac", 2), "live-h264": ("h264", "aac", 2), "live-1080i": ("h264", "mp2", 2), "live-hevc": ("hevc", "mp2", 1),
-        "live-ac3": ("h264", "ac3", 6), "live-radio": (None, "aac", 2),
+        "live-ac3": ("h264", "ac3", 6), "live-radio": (None, "aac", 2), "live-gop5": ("h264", "aac", 2),
     }
     for name, key in channels.items():
         session = "h-" + name

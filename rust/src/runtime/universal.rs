@@ -52,6 +52,8 @@ const SEEK_GAP: i64 = 4;
 /// A live source's remux segment: a channel's HLS has short GOPs, and the first segment is
 /// finished only when the second opens, so 10 s segments were a 10 s wait before a picture.
 const LIVE_COPY_SEGMENT: u32 = 4;
+/// The segment a live DASH session's run starts at, and its players' first (`mpd`).
+const LIVE_DASH_FIRST: i64 = 2;
 /// How many finished segments a live media playlist lists behind the one being written.
 const LIVE_WINDOW: i64 = 6;
 /// Segments more than this far behind the player are deleted.
@@ -379,12 +381,19 @@ impl Plan {
                 "dynamic",
                 format!(
                     "\tavailabilityStartTime=\"{}\"\n\tpublishTime=\"{}\"\n\ttimeShiftBufferDepth=\"PT{}S\"\n\tsuggestedPresentationDelay=\"PT{}S\"\n",
-                    // Back by the presentation delay: a reader's first segment is (now - start -
-                    // delay) / duration, which FFmpeg's DASH reader wrapped to 858993457 when it
-                    // came out negative at the session's first second.
-                    utc(now_seconds() - f64::from(length * 2)),
+                    // FFmpeg 8.1's DASH reader works these out unsigned (dashdec.c): its first
+                    // segment is (now - start - delay) / duration, which wrapped to 858993457
+                    // while negative, and its oldest is (now - start - depth) / duration, which
+                    // wrapped to 4611686018427387891 under a 60 s depth for a session's first
+                    // minute, so it took every segment for an old one and read the same one again,
+                    // thousands of times a second (rex-fun, 2026-10-27). So the clock starts a
+                    // window back and the depth is that window. Shaka 3.3.1 starts a segment
+                    // and the max segment duration lower than FFmpeg's reader does: at
+                    // `LIVE_DASH_FIRST`, where the run starts, with that many segments of margin
+                    // above the window's oldest; FFmpeg's reader two segments on.
+                    utc(now_seconds() - f64::from(length) * (LIVE_DASH_FIRST + 4) as f64),
                     utc(now_seconds()),
-                    KEEP_BEHIND as u32 / 2,
+                    length * (LIVE_DASH_FIRST as u32 + 4),
                     length * 2
                 ),
                 String::new(),
@@ -394,7 +403,9 @@ impl Plan {
         };
         let mut out = format!(
             "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<MPD xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n\txmlns=\"urn:mpeg:dash:schema:mpd:2011\"\n\txmlns:xlink=\"http://www.w3.org/1999/xlink\"\n\txsi:schemaLocation=\"urn:mpeg:dash:schema:mpd:2011 http://standards.iso.org/ittf/PubliclyAvailableStandards/MPEG-DASH_schema_files/DASH-MPD.xsd\"\n\tprofiles=\"urn:mpeg:dash:profile:isoff-live:2011\"\n\ttype=\"{kind}\"\n{timing}\tmaxSegmentDuration=\"PT{}S\"\n\tminBufferTime=\"PT{}S\">\n\t<Period start=\"PT0S\" id=\"0\"{period}>\n",
-            length * 2,
+            // A live remux's segment is as long as its source's GOP allows, and players start
+            // this far below the live edge: one segment, as close to FFmpeg's reader as it goes.
+            if self.live() { length } else { length * 2 },
             // Ours, not the reference's 2x segment: Plex Web's Shaka player starts only
             // once max(minBufferTime, 2 s) is buffered, so PT10S held every start for
             // two 5 s segments (6.3 s to first frame on the test host, measured).
@@ -1512,13 +1523,14 @@ impl Transcoder {
     /// the same id is replaced), already running from segment 0.
     pub fn start(self: &Arc<Self>, id: &str, plan: Plan) -> Result<Arc<Session>, String> {
         let session = self.register(id, plan)?;
+        let first = if session.plan.protocol == Protocol::Dash && session.plan.live() { LIVE_DASH_FIRST } else { 0 };
         match session.plan.text_burn.clone() {
             Some(text) => {
                 let transcoder = Arc::clone(self);
                 let reading = Arc::clone(&session);
                 thread::spawn(move || transcoder.read_text(&reading, &text));
             }
-            None => self.launch(&session, 0, None),
+            None => self.launch(&session, first, None),
         }
         Ok(session)
     }

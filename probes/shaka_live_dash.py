@@ -8,7 +8,9 @@ asks the decision and `start.mpd` as Plex Web does (`protocol=dash`), then plays
 same channel's `start.m3u8` (Plex Web 4.160's request) in the same player, for comparison. Needs
 Playwright and Google Chrome (Playwright's own Chromium has no H.264/AAC).
 
-    REX_SERVER=/path/to/rex python3 probes/shaka_live_dash.py [SECONDS] [dash|hls]
+    REX_SERVER=/path/to/rex python3 probes/shaka_live_dash.py [SECONDS] [dash|hls] [CHANNEL]
+
+CHANNEL is one of tests/test_http_mkv.py's live channels (`live-gop5` has beIN Sports 7's GOP).
 """
 import http.server
 import json
@@ -44,6 +46,7 @@ window.player.load(%s).then(() => window.log.push('loaded live=' + player.isLive
 def main():
     seconds = int(sys.argv[1]) if len(sys.argv) > 1 else 40
     protocol = sys.argv[2] if len(sys.argv) > 2 else "dash"
+    channel = sys.argv[3] if len(sys.argv) > 3 else "live-h264"
     scratch = tempfile.mkdtemp(prefix="rex-shaka-")
     items, channels, _ = suite.build(scratch)
     catalog = os.path.join(scratch, "catalog.json")
@@ -55,7 +58,7 @@ def main():
     try:
         session = "shaka-live"
         # Plex Web 4.147.1's recorded DASH request, or 4.160's HLS one.
-        query = (nt.dash_query if protocol == "dash" else nt.plex_web_query)(channels["live-h264"], session)
+        query = (nt.dash_query if protocol == "dash" else nt.plex_web_query)(channels[channel], session)
         print("decision", suite.decide(port, query).get("generalDecisionCode"))
         mpd = "http://127.0.0.1:%d/video/:/transcode/universal/start.%s?%s" % (
             port, "mpd" if protocol == "dash" else "m3u8", urllib.parse.urlencode(query))
