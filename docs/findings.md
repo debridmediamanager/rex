@@ -12695,6 +12695,26 @@ field coding, which a probe reports alike: every profile and protocol converts a
 channel and file, and for the three profiles above the video is converted and comes out
 progressive.
 
+### A burned image subtitle on the device (2026-10-27)
+
+Burning a selected PGS subtitle took the whole conversion off the device: the ladder skipped the
+full path for any image subtitle, so a 4K HDR title was decoded on the CPU, tonemapped by
+`tonemapx` and overlaid there. On rex-fun (J4105, jellyfin-ffmpeg 8.1.3, 0a3e0a27) Plex Web's
+own request for 10 Cloverfield Lane (HEVC Main10 4K HDR, PGS 0:12) had its first 5 segments (10 s
+of film) ready at 9.7/16.5/24.7/33.6/42.0 s (0.25x real time, so playback stalled), and at
+4.6/5.8/7.2/8.8/10.6 s with no subtitle.
+
+Where the probe found `alpha_subtitles` (an FFmpeg with `alphasrc` and a working `overlay_vaapi`,
+as text subtitles already use) the picture now stays on the device (VAAPI decode, OpenCL
+tonemap, `scale_vaapi`) and the bitmap is scaled to it on the CPU, uploaded and laid over it with
+`overlay_vaapi`; CUDA and an FFmpeg without that overlay keep the CPU overlay. On zen (G4400T, HD
+510; its HEVC decode is 8-bit only, so a 10-bit source cannot take the device path there), a
+3840x2160 H.264 title with a 4K PGS box now runs on the full path, 10 s ready at
+2.9/7.0/12.1/15.6/18.0 s against 4.9/7.7/11.5/14.7/18.5 s on EncodeOnly before: HD 510's 4K encode
+is the limit there, so zen shows the path, not fun's gain, which only fun's hardware can measure.
+The burned box is white on both paths (`tests/test_native_transcode.py` `subs`/`hdrsubs`, which
+also say which path ran where the device can take it).
+
 ## An item without a probe cannot play (2026-10-12)
 
 Question: could rex show a pushed item before its source sends `media_info`, as a real PMS
