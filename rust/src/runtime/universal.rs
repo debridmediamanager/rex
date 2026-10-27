@@ -594,14 +594,17 @@ pub(crate) fn ladder(plan: &Plan, hardware: &Hardware) -> Vec<Path> {
         // picture. Every algorithm the plan accepts runs there: on fun's J4105 all seven did
         // 0.92-1.19x against tonemapx's 0.07-0.17x, and hable, Plex's default, matched
         // tonemapx closest (findings, "OpenCL tonemapping for every algorithm").
-        // A burned image subtitle is overlaid on CPU frames at the source's size, so
-        // its decode stays on the CPU; a text one is drawn on the scaled frame, downloaded.
+        // A text subtitle is drawn on the scaled frame (downloaded, or on a device canvas).
         let tonemaps = !video.hdr || plan.tone_mapping.is_none()
             || (hardware.opencl_tonemap && matches!(hardware.accel, Accel::Vaapi(_)));
         // An interlaced picture stays on the device only where it has a deinterlacer there.
         let deinterlaces = !video.interlaced || !plan.hardware_encode
             || device_deinterlacer(Path::Full, hardware).is_some_and(|filter| hardware.filters.contains(filter));
-        if (tonemaps || !plan.hardware_encode) && deinterlaces && plan.subtitle.is_none() && hardware.decode.contains(&decode_key(&video.source_codec, video.bit_depth)) {
+        // A burned image subtitle stays on the device where it overlays with alpha there (the
+        // probe's `alpha_subtitles`: VAAPI's `overlay_vaapi`); elsewhere the picture is decoded on
+        // the CPU, where the bitmap is overlaid.
+        let overlays = plan.subtitle.is_none() || (hardware.alpha_subtitles && matches!(hardware.accel, Accel::Vaapi(_)) && plan.hardware_encode);
+        if (tonemaps || !plan.hardware_encode) && deinterlaces && overlays && hardware.decode.contains(&decode_key(&video.source_codec, video.bit_depth)) {
             paths.push(if plan.hardware_encode { Path::Full } else { Path::DecodeOnly });
         }
         if plan.hardware_encode { paths.push(Path::EncodeOnly); }
@@ -783,9 +786,20 @@ pub(crate) fn ffmpeg_args(plan: &Plan, path: Path, hardware: &Hardware, start: i
         }
     });
     if let (Some(input), Some(subtitle), Some(filter)) = (&video_input, burn, &video_filter) {
-        // The subtitle is drawn at the source's size, before the scale and any upload;
-        // FFmpeg turns the bitmap stream into frames for `overlay` itself.
-        let graph = format!("[{input}][0:{subtitle}]overlay=eof_action=pass,{filter}[v]");
+        let graph = match video.filter(|_| path == Path::Full && device.is_some() && hardware.alpha_subtitles) {
+            // The picture stays on the device; the bitmap is scaled to it on the CPU, where it
+            // changes only per line, and laid over it there (`overlay_vaapi`). Overlaid on CPU
+            // frames, a 4K HDR title's software decode and CPU tonemap ran at 0.25x on fun's J4105
+            // where the device path runs at 1x (rex-fun, 2026-10-27: 10 s ready at 42.0 s, 10.6 s
+            // without the subtitle).
+            Some(video) => format!(
+                "[{input}]{filter}[main];[0:{subtitle}]scale={}:{},format=yuva420p,hwupload[sub];[main][sub]overlay_vaapi=eof_action=pass[v]",
+                video.width, video.height
+            ),
+            // The subtitle is drawn at the source's size, before the scale and any upload;
+            // FFmpeg turns the bitmap stream into frames for `overlay` itself.
+            None => format!("[{input}][0:{subtitle}]overlay=eof_action=pass,{filter}[v]"),
+        };
         push(&mut args, &["-filter_complex", &graph, "-map", "[v]"]);
     }
     if let (Some(input), Some(canvas), Some(filter)) = (&video_input, &canvas, &video_filter) {
@@ -3647,6 +3661,26 @@ mod tests {
         assert_eq!(ladder(&interlaced, &without), vec![Path::EncodeOnly, Path::Software]);
         // A progressive picture is not touched.
         assert!(!ffmpeg_args(&plan(false, 60_000), Path::Full, &vaapi, 0, tmp).join(" ").contains("deinterlace"));
+    }
+
+    #[test]
+    fn a_burned_image_subtitle_stays_on_the_device_where_it_overlays_there() {
+        let tmp = std::path::Path::new("/tmp/x");
+        let mut burned = plan(false, 60_000);
+        burned.subtitle = Some(5);
+        burned.video.as_mut().unwrap().hdr = true;
+        let vaapi = Hardware { accel: Accel::Vaapi("/dev/dri/renderD128".into()), decode: HashSet::from(["hevc".to_string()]), encode: true, tonemapx: true, opencl_tonemap: true, alpha_subtitles: true, ..Hardware::software() };
+        assert_eq!(ladder(&burned, &vaapi), vec![Path::Full, Path::EncodeOnly, Path::Software]);
+        let full = ffmpeg_args(&burned, Path::Full, &vaapi, 0, tmp).join(" ");
+        assert!(full.contains("-hwaccel vaapi"), "{full}");
+        assert!(full.contains("[0:0]scale_vaapi=w=1280:h=720:format=p010,hwmap=derive_device=opencl"), "{full}");
+        assert!(full.contains("[0:5]scale=1280:720,format=yuva420p,hwupload[sub];[main][sub]overlay_vaapi=eof_action=pass[v]"), "{full}");
+        // The CPU paths overlay the bitmap on CPU frames at the source's size, as before.
+        let software = ffmpeg_args(&burned, Path::EncodeOnly, &vaapi, 0, tmp).join(" ");
+        assert!(software.contains("[0:0][0:5]overlay=eof_action=pass,"), "{software}");
+        // A device FFmpeg that cannot overlay with alpha, or CUDA, decodes on the CPU.
+        assert_eq!(ladder(&burned, &Hardware { alpha_subtitles: false, ..vaapi.clone() })[0], Path::EncodeOnly);
+        assert_eq!(ladder(&burned, &Hardware { accel: Accel::Cuda, ..vaapi.clone() })[0], Path::EncodeOnly);
     }
 
     #[test]

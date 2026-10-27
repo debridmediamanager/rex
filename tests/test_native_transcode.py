@@ -855,6 +855,16 @@ def main():
                           "DOVIBLCompatID": dovi["dv_bl_signal_compatibility_id"], "DOVIBLPresent": True,
                           "DOVIRPUPresent": True, "DOVIELPresent": False})
         items.append(item)
+    # The HDR10 clip with the PGS box selected: a 4K HDR title's burned image subtitle, which on
+    # fun's J4105 dropped the conversion to 0.25x until it stayed on the device (2026-10-27).
+    MEDIA["hdrsubs.mkv"] = os.path.join(scratch, "hdrsubs.mkv")
+    subprocess.run([FFMPEG, "-v", "error", "-y", "-i", MEDIA["hdr10.mkv"], "-i", sup, "-map", "0", "-map", "1", "-c", "copy",
+                    MEDIA["hdrsubs.mkv"]], check=True)
+    streams = probe(MEDIA["hdrsubs.mkv"])["streams"]
+    item = row("20", "Hdrsubs", "hdrsubs.mkv", streams, os.path.getsize(MEDIA["hdrsubs.mkv"]), DURATION,
+               subtitle=next(s for s in streams if s["codec_type"] == "subtitle"))
+    item["Media"][0]["Part"][0]["Stream"][0].update({"bitDepth": 10, "colorTrc": "smpte2084"})
+    items.append(item)
     catalog = os.path.join(scratch, "catalog.json")
     json.dump({"machineIdentifier": "0000000000000000000000000000000000000007", "friendlyName": "rex-transcode",
                "sections": [{"key": "1", "type": "movie", "title": "Clips", "uuid": "0" * 39 + "7"}],
@@ -1150,6 +1160,28 @@ def main():
               len(stable) == 18 and all(value > 230 and value - original > 30 for value, original in stable),
               "burned %s, source %s" % ([round(v, 1) for v in burned], [round(v, 1) for v in source]))
         get(port, "/video/:/transcode/universal/stop", [("session", "s-subs")])
+        # The same box over HDR10 (tonemapped): where the device overlays with alpha (the
+        # probe's alpha_subtitles, VAAPI), the run stays on it, decode to encode.
+        device = wait_for_log(log, r"hardware (\S+) ") or "none"
+        overlays = device == "vaapi" and wait_for_log(log, r"alpha_subtitles=(true|false)") == "true" \
+            and wait_for_log(log, r"opencl_tonemap=(true|false)") == "true"
+        status, container = decision(port, "20", "s-hdrsubs")
+        if container.get("generalDecisionCode") == 1001:
+            get(port, "/video/:/transcode/universal/start.m3u8", plex_web_query("20", "s-hdrsubs"))
+            status, _, first = get(port, "/video/:/transcode/universal/session/s-hdrsubs/base/00000.ts")
+            segment = os.path.join(scratch, "hdrsubs-0.ts")
+            open(segment, "wb").write(first)
+            burned = frame_lumas(segment, centre, 24) if status == 200 and first[:1] == b"\x47" else []
+            check("hdrsubs: the box is burned into the tonemapped HDR picture",
+                  len(burned) == 24 and all(value > 200 for value in burned[6:24]), [round(v, 1) for v in burned])
+            ran = wait_for_log(log, r"TRANSCODE s-hdrsubs run 1 from segment 0 on (\w+)")
+            check("hdrsubs: it runs on the full device path where the device overlays (%s)" % device,
+                  ran == "Full" if overlays else ran in ("EncodeOnly", "Software"), str(ran))
+            get(port, "/video/:/transcode/universal/stop", [("session", "s-hdrsubs")])
+        else:
+            tonemaps = wait_for_log(log, r"tonemapx=(true|false)") == "true" or "no HDR is (no zscale)" not in open(log).read()
+            check("hdrsubs: without tonemapping the HDR conversion is refused", not tonemaps and not overlays,
+                  str(container.get("generalDecisionCode")))
         # HDR is tonemapped to SDR BT.709: the output segment says so. Dolby Vision profile
         # 5 (no HDR10 base; a real PMS refuses it, 2003) converts too when tonemapx can apply
         # its RPU, and keeps the refusal when it cannot: untonemapped it is green.
