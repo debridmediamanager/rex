@@ -91,6 +91,10 @@ class Source(nt.Zurg):
         # Three segments on the air at the first read, then each as its own length passes.
         lengths = channel["lengths"]
         made, clock = 3, time.time() - channel["since"]
+        # A channel that stops publishing for a while, then is back at its live edge.
+        frozen = channel.get("freeze")
+        if frozen and frozen[0] <= clock < frozen[1]:
+            clock = frozen[0]
         while made < len(lengths) and clock >= sum(lengths[3:made + 1]):
             made += 1
         first = max(0, made - 5)
@@ -129,11 +133,11 @@ def decide(port, query):
     return json.loads(body)["MediaContainer"] if status == 200 else {"status": status}
 
 
-def read_stream(port, query, limit, seconds, path):
+def read_stream(port, query, limit, seconds, path, silence=15):
     """GET start, keep at most `limit` bytes or `seconds` of them, and hang up. Answers the
     status, headers and the bytes written to `path`. A live source that stops publishing (the
     fixture channels end after 60 s) stops the stream, as a real one does: 15 s of silence ends it."""
-    connection = http.client.HTTPConnection("127.0.0.1", port, timeout=15)
+    connection = http.client.HTTPConnection("127.0.0.1", port, timeout=silence)
     connection.request("GET", "/video/:/transcode/universal/start?" + urllib.parse.urlencode(query))
     response = connection.getresponse()
     headers = {name.lower(): value for name, value in response.getheaders()}
@@ -328,6 +332,11 @@ def build(scratch):
     item["Media"][0].pop("audioCodec", None)
     items.append(item)
     channels["live-audiofirst"] = "108"
+    streams = make_channel(scratch, "live-hiccup", h264, aac, seconds=240)
+    # Digi Sport 4 stopped for longer than a player waits on a segment (45 s); the channel did not.
+    CHANNELS["live-hiccup.m3u8"]["freeze"] = (14, 74)
+    items.append(live_row("109", "live-hiccup", streams))
+    channels["live-hiccup"] = "109"
     # Files.
     files = {}
     for key, name, video, audio in (
@@ -621,6 +630,31 @@ def stale(port, scratch, channels, log):
     check("indexes moved under the probe: Plex Desktop's stream is the video, and only it",
           status == 200 and decodes(os.path.join(scratch, session + ".mkv")) and [s["codec_type"] for s in found] == ["video"],
           str([s.get("codec_type") for s in found]))
+    get(port, "/video/:/transcode/universal/stop", [("session", session)])
+    # 3. Digi Sport 4: the source stops publishing for 60 s. FFmpeg waits on its playlist with
+    #    nothing out and the player's next segment waited 45 s and failed; now the run starts
+    #    again at the live edge, so it comes.
+    key = channels["live-hiccup"]
+    for label, query_of, segments in (("Plex Web HLS", nt.plex_web_query, hls_segments), ("Plex Web DASH", nt.dash_query, dash_segments)):
+        session = "st-hiccup-" + label.split()[-1].lower()
+        decide(port, query_of(key, session))
+        began = time.time()
+        result = segments(port, query_of(key, session), session, 18, scratch, session)
+        check("a live source that stops for 60 s: %s's every segment comes" % label,
+              all(status == 200 for status in result[0]), "%s in %.0f s" % (result[0], time.time() - began))
+        get(port, "/video/:/transcode/universal/stop", [("session", session)])
+        CHANNELS["live-hiccup.m3u8"]["since"] = None  # the next client meets the stop again
+    check("the log says why the run started again", "starting again at the live edge" in open(log).read(),
+          re.findall(r"st-hiccup[^\n]*(?:starting again|giving up)[^\n]*", open(log).read())[:2])
+    session = "st-hiccup-desktop"
+    decide(port, desktop_query(key, session))
+    began = time.time()
+    # A player waits out a silent source longer than rex does (`LIVE_STALL`, 20 s).
+    status, headers, data = read_stream(port, desktop_query(key, session), 100_000_000, 90, os.path.join(scratch, session + ".mkv"), silence=40)
+    check("a live source that stops: Plex Desktop's Matroska stream ends, saying why",
+          status == 200 and decodes(os.path.join(scratch, session + ".mkv")) and time.time() - began < 80
+          and re.search(r"st-hiccup-desktop stream(: the live source sent nothing| ended: FFmpeg exited)", open(log).read()),
+          "%d bytes in %.0f s; %s" % (len(data), time.time() - began, re.findall(r"st-hiccup-desktop stream[^\n]*", open(log).read())[-1:]))
     get(port, "/video/:/transcode/universal/stop", [("session", session)])
 
 

@@ -52,11 +52,17 @@ const SEEK_GAP: i64 = 4;
 /// A live source's remux segment: a channel's HLS has short GOPs, and the first segment is
 /// finished only when the second opens, so 10 s segments were a 10 s wait before a picture.
 const LIVE_COPY_SEGMENT: u32 = 4;
+/// How long a live source may send nothing before its run is started again from the live edge
+/// (a Matroska stream ends instead): Digi Sport 4's HLS stopped and FFmpeg waited on it, so the
+/// player's next segment waited 45 s and failed (rex-fun, 2026-10-27).
+const LIVE_STALL: Duration = Duration::from_secs(20);
 /// How much of a Matroska stream is held before its head goes out, or for how long
 /// (`serve_stream`): FFmpeg fails on a header it cannot write within milliseconds of its first
 /// bytes, and a slow start is not held longer than this.
 const STREAM_HOLD: usize = 64 * 1024;
 const STREAM_HOLD_TIME: Duration = Duration::from_secs(1);
+/// How many live restarts in a row may produce nothing before the session fails.
+const LIVE_RESTARTS: u32 = 4;
 /// The segment a live DASH session's run starts at, and its players' first (`mpd`).
 const LIVE_DASH_FIRST: i64 = 2;
 /// How many finished segments a live media playlist lists behind the one being written.
@@ -993,6 +999,8 @@ struct Progress {
     seek: u64,
     /// Input failures (the source answering 5xx, a dropped connection) retried so far.
     input_retries: u32,
+    /// A live run's restarts since its last new segment (`LIVE_RESTARTS`).
+    live_restarts: u32,
     touched: Option<Instant>,
     /// Paused at the end of what its subtitle file knows (`Cover`).
     held: bool,
@@ -1262,7 +1270,27 @@ pub(crate) fn serve_stream<S: Write>(stream: &mut S, response: &Response, plan: 
             }
         });
     }
+    // A live source that stops sending ends the stream (`LIVE_STALL`): a run started again would
+    // write a second Matroska header into this body, which FFmpeg's demuxer (mpv's, Plex
+    // Desktop's) reads as no part of the stream; ended, the player asks `start` again, at the
+    // live edge.
+    let last_bytes = Arc::new(Mutex::new(Instant::now()));
+    let stalled = Arc::new(AtomicBool::new(false));
+    if session.plan.live() {
+        let (last_bytes, stalled, streaming, watched) = (Arc::clone(&last_bytes), Arc::clone(&stalled), Arc::clone(&streaming), Arc::clone(&session));
+        thread::spawn(move || {
+            while streaming.load(Ordering::SeqCst) {
+                thread::sleep(Duration::from_millis(500));
+                if last_bytes.lock().map(|last| last.elapsed() > LIVE_STALL).unwrap_or(false) && streaming.load(Ordering::SeqCst) {
+                    stalled.store(true, Ordering::SeqCst);
+                    watched.kill_child();
+                    return;
+                }
+            }
+        });
+    }
     let mut failure = "no conversion path".to_string();
+    let mut ended = String::new();
     let mut plan = session.plan_now();
     let mut paths: std::collections::VecDeque<Path> = ladder(&plan, &hardware).into();
     while let Some(path) = paths.pop_front() {
@@ -1271,6 +1299,9 @@ pub(crate) fn serve_stream<S: Write>(stream: &mut S, response: &Response, plan: 
         }
         if let Some(sidecar) = &session.plan.sidecar {
             let _ = std::fs::write(session.dir.join(sidecar.file_name()), &sidecar.content);
+        }
+        if let Ok(mut last) = last_bytes.lock() {
+            *last = Instant::now();
         }
         let mut command = Command::new(&transcoder.ffmpeg);
         command.args(ffmpeg_args(&plan, path, &hardware, offset, &session.dir)).stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped());
@@ -1347,6 +1378,9 @@ pub(crate) fn serve_stream<S: Write>(stream: &mut S, response: &Response, plan: 
                 Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => break,
             };
             session.touch();
+            if let Ok(mut last) = last_bytes.lock() {
+                *last = Instant::now();
+            }
             let chunk = if head {
                 &bytes[..]
             } else {
@@ -1381,8 +1415,10 @@ pub(crate) fn serve_stream<S: Write>(stream: &mut S, response: &Response, plan: 
                 client_gone = true;
             }
         }
+        ended = format!("FFmpeg exited {}{}", status.as_ref().map_or("killed".to_string(), |status| format!("{status:?}")),
+            if errors.trim().is_empty() { String::new() } else { format!(": {}", errors.trim().replace(&session.plan.url, "<source>")) });
         client_gone |= hung_up.load(Ordering::SeqCst);
-        if head || client_gone || session.stopped.load(Ordering::SeqCst) {
+        if head || client_gone || session.stopped.load(Ordering::SeqCst) || stalled.load(Ordering::SeqCst) {
             break;
         }
         failure = format!("{path:?} exited {}: {}", status.map_or("killed".to_string(), |status| format!("{status:?}")), errors.trim());
@@ -1394,6 +1430,11 @@ pub(crate) fn serve_stream<S: Write>(stream: &mut S, response: &Response, plan: 
                 paths = ladder(&plan, &hardware).into();
             }
         }
+    }
+    if stalled.load(Ordering::SeqCst) {
+        info!("TRANSCODE {} stream: the live source sent nothing for {} s, so the stream ends here", session.id, LIVE_STALL.as_secs());
+    } else if head && !client_gone && !session.stopped.load(Ordering::SeqCst) {
+        info!("TRANSCODE {} stream ended: {ended}", session.id);
     }
     streaming.store(false, Ordering::SeqCst);
     if head {
@@ -2171,6 +2212,7 @@ impl Transcoder {
         // (chunk 1 renamed 0.25 s after start.mpd, served at 4.1 s; probes/shaka_live_dash.py).
         let done_at = |index: i64| if session.plan.protocol == Protocol::Dash { index } else { index + 1 };
         let mut next = start;
+        let mut progressed = Instant::now();
         // Since when the player has been waiting on this run's subtitle hold.
         let mut waited: Option<Instant> = None;
         loop {
@@ -2182,15 +2224,49 @@ impl Transcoder {
                 if let Ok(mut state) = session.state.lock() {
                     state.done.insert(next, span(next));
                     state.input_retries = 0;
+                    state.live_restarts = 0;
                 }
                 next += 1;
+                progressed = Instant::now();
             }
+            // A live source that stops sending holds FFmpeg on its playlist with nothing out, and
+            // one that ends or errors ends the run: either way the channel goes on, so the run is
+            // started again at the live edge, numbered on from the segment it was writing.
+            let paused = session.state.lock().map(|state| state.paused || state.held).unwrap_or(false);
+            let live_stalled = session.plan.live() && !paused && progressed.elapsed() > LIVE_STALL;
             let exited = session
                 .child
                 .lock()
                 .ok()
                 .and_then(|mut child| child.as_mut().and_then(|process| process.try_wait().ok().flatten()))
                 .map(|status| status.code().unwrap_or(-1));
+            // A run that fails before any segment is not the channel going on: that is the
+            // ladder's, and a stale copy's (`force_next`).
+            if session.plan.live() && ((exited.is_some() && next > start) || (exited.is_none() && live_stalled)) {
+                let why = match exited {
+                    Some(code) => {
+                        let detail = errors.lock().map(|text| text.trim().replace(&session.plan.url, "<source>")).unwrap_or_default();
+                        format!("FFmpeg exited {code}{}", if detail.is_empty() { String::new() } else { format!(": {detail}") })
+                    }
+                    None => format!("the source sent nothing for {} s", LIVE_STALL.as_secs()),
+                };
+                let again = session.state.lock().map(|mut state| {
+                    state.live_restarts += 1;
+                    state.live_restarts <= LIVE_RESTARTS
+                }).unwrap_or(false);
+                if !again {
+                    if let Ok(mut state) = session.state.lock() {
+                        state.error = true;
+                    }
+                    error!("TRANSCODE {} run {run} on {path:?}: {why}, {LIVE_RESTARTS} restarts brought nothing new; giving up", session.id);
+                    return;
+                }
+                warning!("TRANSCODE {} run {run} on {path:?}: {why}; starting again at the live edge from segment {next}", session.id);
+                if session.run.load(Ordering::SeqCst) == run && !session.stopped.load(Ordering::SeqCst) {
+                    self.launch_on(&session, next, path);
+                }
+                return;
+            }
             if let Some(code) = exited {
                 if code == 0 {
                     if let Ok(mut state) = session.state.lock() {
