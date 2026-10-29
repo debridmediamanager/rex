@@ -129,6 +129,16 @@ No public IP at home (CGNAT)? rex has no relay and will not get one. Use Tailsca
 
 Your Plex apps can then reach it from anywhere.
 
+**Your watch history from another Plex server**
+
+Once your library is in rex, rex can copy what you watched, started and rated on your old Plex server, which has to be running. In app.plex.tv, signed in as yourself, open any movie on the old server, then **⋯**, **Get Info** and **View XML**, and copy the address of the tab that opens. Do the same on a movie on rex and keep only the token at the end of that address, after `X-Plex-Token=`. Then, from a computer on your home network:
+
+```bash
+curl -d "<the old server's address>" "http://<rex's LAN IP>:32400/rex/import-watched?X-Plex-Token=<your token on rex>"
+```
+
+rex answers how many titles it marked watched, in progress and rated, and how many of the old server's it does not have. It goes by the id Plex's own agents give a title, so a library on Plex's legacy agents brings nothing over. It never changes what you already watched or rated on rex, so run it again once more of your library has arrived. Everyone you share rex with can do the same with their own token. The [notes guide](https://notes.debridmediamanager.com/rex/import-watched/) has each step.
+
 To keep it running, start step 2's command, with any flags from step 5, as a service: [the full guide](docs/setup.md#8-run-it-as-a-service) has the systemd unit, and a way to run several servers on one machine.
 
 To update, unpack a newer build into `~/rex` as in step 1 and restart rex. It replaces `rust/`, `data/` and `examples/` and leaves `rex.db`, `rex.env`, `run.sh`, `claim_state.json` and `rex-direct.json` alone. With Docker, `docker compose pull && docker compose up -d`.

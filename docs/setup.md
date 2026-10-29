@@ -261,6 +261,24 @@ cannot reach. `pubsub: reachability 0` in the log means nothing either way.
 Remote playback needs no Plex Pass or Remote Watch Pass on either account (checked in Plex
 Web; other Plex apps have not been playback-tested).
 
+Coming from another Plex server? Once the library has arrived, each account can bring
+its watch state over: what it watched, started and rated there. Plex Web's **View XML** (an
+item's **⋯**, **Get Info**) opens an address on the old server that carries the account's
+token there. POST that address to rex, with the account's token on rex (the `X-Plex-Token` at
+the end of the same View XML address on a rex item), from rex's own networks:
+
+```bash
+curl -d "<the old server's View XML address>" "http://<rex's LAN IP>:32400/rex/import-watched?X-Plex-Token=<the token on rex>"
+```
+
+rex reads every film and episode of the old server's libraries as that account sees them and
+answers `{"watched", "inProgress", "rated", "alreadyHere", "notInRex"}`. A title is the same
+when its `plex://` guid is, so a library on Plex's legacy agents matches nothing. What the
+account already has on rex is kept, so a later run adds only what is new. No history rows are
+written and nothing is sent to plex.tv; the pasted token is used only for the old server.
+[Importing your watch history](https://notes.debridmediamanager.com/rex/import-watched/) walks
+through it.
+
 ### 8. Run it as a service
 
 Under systemd, put step 4's command, with any flags from step 7, in `~/.config/systemd/user/rex.service`,
