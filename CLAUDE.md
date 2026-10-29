@@ -70,7 +70,7 @@ searched on disk. The gate is usually one truthiness check in minified code.
 | `tests/` | Conformance and end-to-end suites, plus `catalog_ui.json` and `fixtures/decisions/`, the measured decision corpus |
 | `tests/fixtures/` | Redacted corpora recorded from a real PMS through a real client; `media/` pairs real files' probes with a real PMS's analysis of them |
 | `harness/` | plexlab — the reference PMS and the recorder. See below. |
-| `probes/` | Measurement scripts: the recorders behind checked-in fixtures (`legacy_scan_fixture.py`, `record_session_gate.py`, `record_shared_user.py`), `ui_surface.py`, the plex.tv presence probes and `apkcensus.py` |
+| `probes/` | Measurement scripts: the recorders behind checked-in fixtures (`legacy_scan_fixture.py`, `record_session_gate.py`, `record_shared_user.py`, `record_watch_import.py`), `ui_surface.py`, the plex.tv presence probes and `apkcensus.py` |
 | `docs/findings.md` | Everything measured. Read before changing behaviour. |
 | `docs/protocol-traps.md`, `docs/setup.md`, `docs/feed-api.md`, `docs/rex-direct-api.md` | The protocol's edge cases, the operator's guide, the API sources push with, and the one a rex-direct provider answers |
 
@@ -657,6 +657,8 @@ python3 tests/test_subtitles.py             # subtitle search, apply and automat
                                             # onto the audio, mojibake put back, the decision waiting; nothing asked unclaimed; needs ffmpeg
 python3 tests/test_accounts.py              # plexlab's owner and shared user replayed: per-account watch state, ratings, playlists,
                                             # history and sessions, a share's libraries, filters and flags, the owner's routes
+python3 tests/test_watch_import.py          # POST /rex/import-watched against plexscratch's recorded answers: an account's old
+                                            # server's watch state and ratings onto rows of the same guid, paged, kept per account
 python3 tests/test_tag_collections.py       # a metadata manager's requests replayed from an online 1.43.5: a tag write makes its collection,
                                             # a url poster is fetched (its 200/406 need raw.githubusercontent.com, else skip)
 python3 tests/test_collection_hub_pins.py   # a collection's Visible on and Manage Recommendations replayed from Plex Web on an online

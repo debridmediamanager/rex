@@ -14556,3 +14556,30 @@ built-in hub's own ticks change the list but not the pages (1.43.5 drops a hub i
 unticks and adds `movie.genre.1.7` to Home when that is ticked; rex still serves its fixed
 built-ins); `/hubs/promoted` with `pinnedContentDirectoryID` names the Recently Added shelf
 `movie.recentlyadded.1` on 1.43.5 where rex keeps 1.42.2's `home.movies.recent.1`.
+
+## Importing an account's watch state from its old server (2026-10-29)
+
+A rex user's history lives on the Plex server they watched on before, and rex starts with none
+(a Discord report, 2026-10-28). `POST /rex/import-watched` reads it off that server
+(`runtime/watched.rs`). What a real PMS answers the requests it sends was recorded on
+plexscratch 1.43.4 after a film was part-watched, two episodes watched (one started again) and
+an episode rated through `/:/progress`, `/:/scrobble` and `/:/rate`
+(`tests/fixtures/watch_import_s143.json`, `probes/record_watch_import.py`):
+
+- `/library/sections/{id}/all?type=1` (films) and `type=4` (a show library's episodes) list each
+  leaf with `viewCount`, `viewOffset`, `lastViewedAt`, `userRating` and `lastRatedAt` as the
+  token's account holds them. A part-watched film has `viewOffset` and `lastViewedAt` and no
+  `viewCount`; one watched and started again has all three; a rating alone leaves the view
+  fields absent.
+- Paged with `X-Plex-Container-Start`/`-Size` in the query, every page carries `totalSize` and
+  `offset`, and the page past the end is `size="0"` with no `Metadata`.
+- On fun's old library (2026-10-17 copy) every watched film and episode but 74 trailers
+  (`iva://`) and `local://` items had a `plex://` guid, which is what rex's rows carry from
+  Plex's agent: the import matches by that guid alone.
+
+Whose state it becomes is the request's own rex token, as for a play (`accounts.rs`). rex asks
+plex.tv nothing with the pasted token: a request to plex.tv with an account token and rex's
+client identifier is the kind that rewrote a device row on 2026-09-11 ("Collateral change to the
+Plex account"), and rex reads no account token. The route answers only rex's own networks
+(`feed::source_peer`), since it dials the address it is given. Not measured: a library on
+Plex's legacy agents, whose `com.plexapp.agents.*` guids match nothing here.

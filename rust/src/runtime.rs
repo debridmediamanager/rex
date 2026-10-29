@@ -71,6 +71,7 @@ mod mp4subs;
 mod subtitles;
 mod thumbnails;
 mod universal;
+mod watched;
 pub(crate) mod upstream;
 mod wire;
 mod feed;
@@ -13967,6 +13968,9 @@ impl Runtime {
             let Some(artifact) = self.analysis_artifact(key, None, Some(index)) else { return Response::error(404, "rex: not found") };
             self.pending_artifact = Some((artifact, None, "image/jpeg"));
             return Response::empty(200);
+        }
+        if path == "/rex/import-watched" {
+            return self.route_import_watched(request);
         }
         if path == "/rex/webhooks" {
             if !self.viewer.is_owner() {

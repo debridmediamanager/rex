@@ -1,0 +1,2127 @@
+{
+ "recorded_from": "plexscratch, PMS 1.43.4.10903-e5521bd8c",
+ "exchanges": [
+  {
+   "method": "GET",
+   "path": "/library/sections",
+   "query": [],
+   "headers": {
+    "Accept": "application/json",
+    "X-Plex-Token": "<TOKEN>"
+   },
+   "status": 200,
+   "content_type": "application/json",
+   "body": {
+    "MediaContainer": {
+     "size": 2,
+     "allowSync": false,
+     "title1": "Plex Library",
+     "Directory": [
+      {
+       "allowSync": false,
+       "filters": true,
+       "refreshing": false,
+       "key": "1",
+       "type": "movie",
+       "title": "Movies",
+       "agent": "tv.plex.agents.movie",
+       "scanner": "Plex Movie",
+       "language": "en-US",
+       "metadataAgentProviderGroupId": 1,
+       "uuid": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+       "updatedAt": 1789240743,
+       "createdAt": 1789187246,
+       "scannedAt": 1789299524,
+       "content": true,
+       "directory": true,
+       "contentChangedAt": 9081,
+       "hidden": 0,
+       "Location": [
+        {
+         "id": 1,
+         "path": "/data/movies"
+        }
+       ]
+      },
+      {
+       "allowSync": false,
+       "filters": true,
+       "refreshing": false,
+       "key": "2",
+       "type": "show",
+       "title": "TV Shows",
+       "agent": "tv.plex.agents.series",
+       "scanner": "Plex TV Series",
+       "language": "en-US",
+       "metadataAgentProviderGroupId": 2,
+       "uuid": "d962847e-2c7c-4d45-8355-e45e16287846",
+       "updatedAt": 1789187257,
+       "createdAt": 1789187257,
+       "scannedAt": 1789299525,
+       "content": true,
+       "directory": true,
+       "contentChangedAt": 8922,
+       "hidden": 0,
+       "Location": [
+        {
+         "id": 2,
+         "path": "/data/shows"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/all",
+   "query": [
+    [
+     "type",
+     "1"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "500"
+    ]
+   ],
+   "headers": {
+    "Accept": "application/json",
+    "X-Plex-Token": "<TOKEN>"
+   },
+   "status": 200,
+   "content_type": "application/json",
+   "body": {
+    "MediaContainer": {
+     "size": 5,
+     "totalSize": 5,
+     "offset": 0,
+     "allowSync": true,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "All Movies",
+     "viewGroup": "movie",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "1",
+       "key": "/library/metadata/1",
+       "guid": "plex://movie/5d7768352e80df001ebde4c9",
+       "slug": "big-buck-bunny",
+       "type": "movie",
+       "title": "Big Buck Bunny",
+       "summary": "",
+       "viewOffset": 600000,
+       "lastViewedAt": 1793312968,
+       "year": 2008,
+       "thumb": "/library/metadata/1/thumb/1789256269",
+       "art": "/library/metadata/1/art/1789256269",
+       "duration": 1800690,
+       "originallyAvailableAt": "2008-04-10",
+       "addedAt": 1789187071,
+       "updatedAt": 1789256269,
+       "audienceRatingImage": "rottentomatoes://image.rating.spilled",
+       "hasPremiumPrimaryExtra": "1",
+       "useOriginalTitle": "-1",
+       "Media": [
+        {
+         "id": 1,
+         "duration": 1800690,
+         "bitrate": 488,
+         "width": 1920,
+         "height": 1080,
+         "aspectRatio": 1.78,
+         "audioChannels": 1,
+         "audioCodec": "aac",
+         "videoCodec": "h264",
+         "videoResolution": "1080",
+         "container": "mkv",
+         "videoFrameRate": "24p",
+         "audioProfile": "lc",
+         "videoProfile": "high",
+         "Part": [
+          {
+           "id": 1,
+           "key": "/library/parts/1/1789295908/file.mkv",
+           "duration": 1800690,
+           "file": "/data/movies/Big Buck Bunny (2008)/Big Buck Bunny (2008) - 1080p.mkv",
+           "size": 109924159,
+           "audioProfile": "lc",
+           "container": "mkv",
+           "videoProfile": "high"
+          }
+         ]
+        }
+       ],
+       "Image": [
+        {
+         "alt": "Big Buck Bunny",
+         "type": "coverPoster",
+         "url": "/library/metadata/1/thumb/1789256269"
+        },
+        {
+         "alt": "Big Buck Bunny",
+         "type": "background",
+         "url": "/library/metadata/1/art/1789256269"
+        },
+        {
+         "alt": "Big Buck Bunny",
+         "type": "clearLogo",
+         "url": "/library/metadata/1/clearLogo/1789256269"
+        },
+        {
+         "alt": "Big Buck Bunny",
+         "type": "backgroundSquare",
+         "url": "/library/metadata/1/squareArt/1789256269"
+        }
+       ],
+       "UltraBlurColors": {
+        "topLeft": "480805",
+        "topRight": "0504f7",
+        "bottomRight": "0404f8",
+        "bottomLeft": "000303"
+       }
+      },
+      {
+       "ratingKey": "18",
+       "key": "/library/metadata/18",
+       "guid": "plex://movie/5d776bd7594b2b001e6e4d2f",
+       "slug": "cosmos-laundromat",
+       "studio": "Blender Foundation",
+       "type": "movie",
+       "title": "Cosmos Laundromat",
+       "summary": "On a desolate island, a suicidal sheep named Franck meets his fate\u2026in the form of a quirky salesman named Victor, who offers him the gift of a lifetime. The gift is many lifetimes, actually, in many different worlds \u2013 each lasting just a few minutes. In the sequel to the pilot, Franck will find a new reason to live\u2026in the form of a bewitching female adventurer named Tara, who awakens his long-lost lust for life. But can Franck keep up with her?",
+       "audienceRating": 5.6,
+       "userRating": 6.0,
+       "viewCount": 1,
+       "lastViewedAt": 1789234543,
+       "lastRatedAt": 1767600315,
+       "year": 2015,
+       "tagline": "Any life you ever wanted!",
+       "thumb": "/library/metadata/18/thumb/1789234024",
+       "art": "/library/metadata/18/art/1789234024",
+       "duration": 1800011,
+       "originallyAvailableAt": "2015-08-10",
+       "addedAt": 1789234023,
+       "updatedAt": 1789234024,
+       "audienceRatingImage": "rottentomatoes://image.rating.spilled",
+       "Media": [
+        {
+         "id": 12,
+         "duration": 1800011,
+         "bitrate": 490,
+         "width": 1920,
+         "height": 1080,
+         "aspectRatio": 1.78,
+         "audioChannels": 1,
+         "audioCodec": "aac",
+         "videoCodec": "h264",
+         "videoResolution": "1080",
+         "container": "mp4",
+         "videoFrameRate": "24p",
+         "optimizedForStreaming": 0,
+         "audioProfile": "lc",
+         "has64bitOffsets": false,
+         "videoProfile": "high",
+         "Part": [
+          {
+           "id": 12,
+           "key": "/library/parts/12/1789295920/file.mp4",
+           "duration": 1800011,
+           "file": "/data/movies/Cosmos Laundromat (2015)/Cosmos Laundromat (2015) - 1080p.mp4",
+           "size": 110141840,
+           "audioProfile": "lc",
+           "container": "mp4",
+           "has64bitOffsets": false,
+           "optimizedForStreaming": false,
+           "videoProfile": "high"
+          }
+         ]
+        }
+       ],
+       "Image": [
+        {
+         "alt": "Cosmos Laundromat",
+         "type": "coverPoster",
+         "url": "/library/metadata/18/thumb/1789234024"
+        },
+        {
+         "alt": "Cosmos Laundromat",
+         "type": "background",
+         "url": "/library/metadata/18/art/1789234024"
+        },
+        {
+         "alt": "Cosmos Laundromat",
+         "type": "backgroundSquare",
+         "url": "/library/metadata/18/squareArt/1789234024"
+        }
+       ],
+       "UltraBlurColors": {
+        "topLeft": "2d2457",
+        "topRight": "904338",
+        "bottomRight": "491e4a",
+        "bottomLeft": "143835"
+       },
+       "Genre": [
+        {
+         "tag": "Animation"
+        },
+        {
+         "tag": "Fantasy"
+        }
+       ],
+       "Country": [
+        {
+         "tag": "Netherlands"
+        }
+       ],
+       "Director": [
+        {
+         "tag": "Mathieu Auvray"
+        }
+       ],
+       "Writer": [
+        {
+         "tag": "Esther Wouda"
+        }
+       ],
+       "Role": [
+        {
+         "tag": "Pierre Bokma"
+        },
+        {
+         "tag": "Reinout Scholten van Aschat"
+        }
+       ]
+      },
+      {
+       "ratingKey": "17",
+       "key": "/library/metadata/17",
+       "guid": "plex://movie/5d776833103a2d001f5674a1",
+       "slug": "elephants-dream",
+       "studio": "Blender Foundation",
+       "type": "movie",
+       "title": "Elephants Dream",
+       "contentRating": "Not Rated",
+       "summary": "The two main characters are on a journey in the folds of a giant Machine, exploring the twisted and dark complex of wires, gears and cogs. Until one moment a conflict arises that throws out all their assumptions. This movie short couples lively fun with passionate characters in an epic story line.",
+       "audienceRating": 5.4,
+       "year": 2006,
+       "thumb": "/library/metadata/17/thumb/1789203303",
+       "art": "/library/metadata/17/art/1789203303",
+       "duration": 1800690,
+       "originallyAvailableAt": "2006-05-04",
+       "addedAt": 1789187071,
+       "updatedAt": 1789203303,
+       "audienceRatingImage": "rottentomatoes://image.rating.spilled",
+       "hasPremiumPrimaryExtra": "1",
+       "Media": [
+        {
+         "id": 2,
+         "duration": 1800690,
+         "bitrate": 488,
+         "width": 1920,
+         "height": 1080,
+         "aspectRatio": 1.78,
+         "audioChannels": 1,
+         "audioCodec": "aac",
+         "videoCodec": "h264",
+         "videoResolution": "1080",
+         "container": "mkv",
+         "videoFrameRate": "24p",
+         "audioProfile": "lc",
+         "videoProfile": "high",
+         "Part": [
+          {
+           "id": 2,
+           "key": "/library/parts/2/1789295931/file.mkv",
+           "duration": 1800690,
+           "file": "/data/movies/Elephants Dream (2006)/Elephants Dream (2006) - 1080p.mkv",
+           "size": 109875079,
+           "audioProfile": "lc",
+           "container": "mkv",
+           "videoProfile": "high"
+          }
+         ]
+        }
+       ],
+       "Image": [
+        {
+         "alt": "Elephants Dream",
+         "type": "coverPoster",
+         "url": "/library/metadata/17/thumb/1789203303"
+        },
+        {
+         "alt": "Elephants Dream",
+         "type": "background",
+         "url": "/library/metadata/17/art/1789203303"
+        },
+        {
+         "alt": "Elephants Dream",
+         "type": "clearLogo",
+         "url": "/library/metadata/17/clearLogo/1789203303"
+        },
+        {
+         "alt": "Elephants Dream",
+         "type": "backgroundSquare",
+         "url": "/library/metadata/17/squareArt/1789203303"
+        }
+       ],
+       "UltraBlurColors": {
+        "topLeft": "122e44",
+        "topRight": "844f1e",
+        "bottomRight": "964106",
+        "bottomLeft": "1a4154"
+       },
+       "Genre": [
+        {
+         "tag": "Animation"
+        },
+        {
+         "tag": "Science Fiction"
+        }
+       ],
+       "Country": [
+        {
+         "tag": "Netherlands"
+        }
+       ],
+       "Director": [
+        {
+         "tag": "Bassam Kurdali"
+        }
+       ],
+       "Writer": [
+        {
+         "tag": "Andreas Goralczyk"
+        },
+        {
+         "tag": "Pepijn Zwanenberg"
+        }
+       ],
+       "Role": [
+        {
+         "tag": "Tygo Gernandt"
+        },
+        {
+         "tag": "Cas Jansen"
+        }
+       ]
+      },
+      {
+       "ratingKey": "3",
+       "key": "/library/metadata/3",
+       "guid": "plex://movie/5d77688123d5a3001f4ed3df",
+       "slug": "sintel",
+       "studio": "Blender Foundation",
+       "type": "movie",
+       "title": "Sintel",
+       "contentRating": "PG",
+       "summary": "A wandering warrior finds an unlikely friend in the form of a young dragon. The two develop a close bond, until one day the dragon is snatched away. She then sets out on a relentless quest to reclaim her friend, finding in the end that her quest exacts a far greater price than she had ever imagined.",
+       "audienceRating": 7.4,
+       "year": 2010,
+       "thumb": "/library/metadata/3/thumb/1789187249",
+       "art": "/library/metadata/3/art/1789187249",
+       "duration": 1800690,
+       "originallyAvailableAt": "2010-09-30",
+       "addedAt": 1789187069,
+       "updatedAt": 1789187249,
+       "audienceRatingImage": "rottentomatoes://image.rating.upright",
+       "Media": [
+        {
+         "id": 3,
+         "duration": 1800690,
+         "bitrate": 488,
+         "width": 1920,
+         "height": 1080,
+         "aspectRatio": 1.78,
+         "audioChannels": 1,
+         "audioCodec": "aac",
+         "videoCodec": "h264",
+         "videoResolution": "1080",
+         "container": "mkv",
+         "videoFrameRate": "24p",
+         "audioProfile": "lc",
+         "videoProfile": "high",
+         "Part": [
+          {
+           "id": 3,
+           "key": "/library/parts/3/1789295943/file.mkv",
+           "duration": 1800690,
+           "file": "/data/movies/Sintel (2010)/Sintel (2010) - 1080p.mkv",
+           "size": 109871539,
+           "audioProfile": "lc",
+           "container": "mkv",
+           "videoProfile": "high"
+          }
+         ]
+        }
+       ],
+       "Image": [
+        {
+         "alt": "Sintel",
+         "type": "coverPoster",
+         "url": "/library/metadata/3/thumb/1789187249"
+        },
+        {
+         "alt": "Sintel",
+         "type": "background",
+         "url": "/library/metadata/3/art/1789187249"
+        },
+        {
+         "alt": "Sintel",
+         "type": "clearLogo",
+         "url": "/library/metadata/3/clearLogo/1789187249"
+        },
+        {
+         "alt": "Sintel",
+         "type": "backgroundSquare",
+         "url": "/library/metadata/3/squareArt/1789187249"
+        }
+       ],
+       "UltraBlurColors": {
+        "topLeft": "081c2a",
+        "topRight": "020b14",
+        "bottomRight": "030f1b",
+        "bottomLeft": "0f2b3c"
+       },
+       "Genre": [
+        {
+         "tag": "Animation"
+        },
+        {
+         "tag": "Fantasy"
+        }
+       ],
+       "Country": [
+        {
+         "tag": "Netherlands"
+        }
+       ],
+       "Director": [
+        {
+         "tag": "Colin Levy"
+        }
+       ],
+       "Writer": [
+        {
+         "tag": "Esther Wouda"
+        }
+       ],
+       "Role": [
+        {
+         "tag": "Halina Reijn"
+        },
+        {
+         "tag": "Thom Hoffman"
+        }
+       ]
+      },
+      {
+       "ratingKey": "4",
+       "key": "/library/metadata/4",
+       "guid": "plex://movie/5d77699b96b655001fdd3b87",
+       "slug": "tears-of-steel",
+       "studio": "Blender Foundation",
+       "type": "movie",
+       "title": "Tears of Steel",
+       "summary": "Thom just wanted to be an astronaut. His girlfriend Celia just wanted to create robots - and for him to not be freaked out by her cyborg hand. How was Thom supposed to know that breaking up with her would make her take out her anger on the rest of humanity using her robots? It seems the only possible way of undoing everything...is to overwrite her memory of what happened 40 years ago.",
+       "audienceRating": 5.5,
+       "userRating": 5.0,
+       "lastRatedAt": 1767600310,
+       "year": 2012,
+       "tagline": "He just wanted to be awesome in space!",
+       "thumb": "/library/metadata/4/thumb/1789187250",
+       "art": "/library/metadata/4/art/1789187250",
+       "duration": 1800690,
+       "originallyAvailableAt": "2012-09-26",
+       "addedAt": 1789187073,
+       "updatedAt": 1789187250,
+       "audienceRatingImage": "imdb://image.rating",
+       "Media": [
+        {
+         "id": 4,
+         "duration": 1800690,
+         "bitrate": 488,
+         "width": 1920,
+         "height": 1080,
+         "aspectRatio": 1.78,
+         "audioChannels": 1,
+         "audioCodec": "aac",
+         "videoCodec": "h264",
+         "videoResolution": "1080",
+         "container": "mkv",
+         "videoFrameRate": "24p",
+         "audioProfile": "lc",
+         "videoProfile": "high",
+         "Part": [
+          {
+           "id": 4,
+           "key": "/library/parts/4/1789295955/file.mkv",
+           "duration": 1800690,
+           "file": "/data/movies/Tears of Steel (2012)/Tears of Steel (2012) - 1080p.mkv",
+           "size": 109891759,
+           "audioProfile": "lc",
+           "container": "mkv",
+           "videoProfile": "high"
+          }
+         ]
+        }
+       ],
+       "Image": [
+        {
+         "alt": "Tears of Steel",
+         "type": "coverPoster",
+         "url": "/library/metadata/4/thumb/1789187250"
+        },
+        {
+         "alt": "Tears of Steel",
+         "type": "background",
+         "url": "/library/metadata/4/art/1789187250"
+        },
+        {
+         "alt": "Tears of Steel",
+         "type": "clearLogo",
+         "url": "/library/metadata/4/clearLogo/1789187250"
+        },
+        {
+         "alt": "Tears of Steel",
+         "type": "backgroundSquare",
+         "url": "/library/metadata/4/squareArt/1789187250"
+        }
+       ],
+       "UltraBlurColors": {
+        "topLeft": "243034",
+        "topRight": "725929",
+        "bottomRight": "212a27",
+        "bottomLeft": "020c0c"
+       },
+       "Genre": [
+        {
+         "tag": "Science Fiction"
+        },
+        {
+         "tag": "Short"
+        }
+       ],
+       "Country": [
+        {
+         "tag": "Netherlands"
+        }
+       ],
+       "Director": [
+        {
+         "tag": "Ian Hubert"
+        }
+       ],
+       "Writer": [
+        {
+         "tag": "Ian Hubert"
+        }
+       ],
+       "Role": [
+        {
+         "tag": "Derek de Lint"
+        },
+        {
+         "tag": "Sergio Hasselbaink"
+        },
+        {
+         "tag": "Rogier Schippers"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/2/all",
+   "query": [
+    [
+     "type",
+     "4"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "500"
+    ]
+   ],
+   "headers": {
+    "Accept": "application/json",
+    "X-Plex-Token": "<TOKEN>"
+   },
+   "status": 200,
+   "content_type": "application/json",
+   "body": {
+    "MediaContainer": {
+     "size": 6,
+     "totalSize": 6,
+     "offset": 0,
+     "allowSync": true,
+     "art": "/:/resources/show-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 2,
+     "librarySectionTitle": "TV Shows",
+     "librarySectionUUID": "d962847e-2c7c-4d45-8355-e45e16287846",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "nocache": true,
+     "thumb": "/:/resources/show.png",
+     "title1": "TV Shows",
+     "title2": "All Shows",
+     "viewGroup": "show",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "8",
+       "key": "/library/metadata/8",
+       "parentRatingKey": "7",
+       "grandparentRatingKey": "6",
+       "guid": "plex://episode/5d9c127e4eefaa001f6449c2",
+       "parentGuid": "plex://season/602e67e766dfdb002c0a1b5b",
+       "grandparentGuid": "plex://show/5d9c086c7d06d9001ffd27aa",
+       "grandparentSlug": "firefly",
+       "type": "episode",
+       "title": "The Train Job",
+       "titleSort": "Train Job",
+       "grandparentKey": "/library/metadata/6",
+       "parentKey": "/library/metadata/7",
+       "grandparentTitle": "Firefly",
+       "parentTitle": "Season 1",
+       "contentRating": "TV-14",
+       "summary": "The crew of Serenity take on a train heist commissioned by a crime lord. They steal the goods, only to find it is medicine that's desperately needed by the town.",
+       "index": 1,
+       "parentIndex": 1,
+       "audienceRating": 7.6,
+       "viewCount": 1,
+       "lastViewedAt": 1793312968,
+       "year": 2002,
+       "thumb": "/library/metadata/8/thumb/1789243294",
+       "art": "/library/metadata/6/art/1789240618",
+       "parentThumb": "/library/metadata/7/thumb/1789243294",
+       "grandparentThumb": "/library/metadata/6/thumb/1789240618",
+       "grandparentArt": "/library/metadata/6/art/1789240618",
+       "grandparentTheme": "/library/metadata/6/theme/1789240618",
+       "duration": 1320506,
+       "originallyAvailableAt": "2002-09-20",
+       "addedAt": 1789187076,
+       "updatedAt": 1789243294,
+       "audienceRatingImage": "themoviedb://image.rating",
+       "Media": [
+        {
+         "id": 6,
+         "duration": 1320506,
+         "bitrate": 488,
+         "width": 1920,
+         "height": 1080,
+         "aspectRatio": 1.78,
+         "audioChannels": 1,
+         "audioCodec": "aac",
+         "videoCodec": "h264",
+         "videoResolution": "1080",
+         "container": "mkv",
+         "videoFrameRate": "24p",
+         "audioProfile": "lc",
+         "videoProfile": "high",
+         "Part": [
+          {
+           "id": 6,
+           "key": "/library/parts/6/1789295966/file.mkv",
+           "duration": 1320506,
+           "file": "/data/shows/Firefly (2002)/Season 01/Firefly (2002) - s01e01 - 1080p.mkv",
+           "size": 80555568,
+           "audioProfile": "lc",
+           "container": "mkv",
+           "videoProfile": "high"
+          }
+         ]
+        }
+       ],
+       "Image": [
+        {
+         "alt": "The Train Job",
+         "type": "coverPoster",
+         "url": "/library/metadata/6/thumb/1789240618"
+        },
+        {
+         "alt": "The Train Job",
+         "type": "snapshot",
+         "url": "/library/metadata/8/thumb/1789243294"
+        },
+        {
+         "alt": "The Train Job",
+         "type": "background",
+         "url": "/library/metadata/6/art/1789240618"
+        },
+        {
+         "alt": "The Train Job",
+         "type": "clearLogo",
+         "url": "/library/metadata/6/clearLogo/1789240618"
+        },
+        {
+         "alt": "The Train Job",
+         "type": "backgroundSquare",
+         "url": "/library/metadata/6/squareArt/1789240618"
+        }
+       ],
+       "UltraBlurColors": {
+        "topLeft": "4d180f",
+        "topRight": "45240b",
+        "bottomRight": "210b05",
+        "bottomLeft": "8c3b33"
+       },
+       "Director": [
+        {
+         "tag": "Joss Whedon"
+        }
+       ],
+       "Writer": [
+        {
+         "tag": "Joss Whedon"
+        },
+        {
+         "tag": "Tim Minear"
+        }
+       ],
+       "Role": [
+        {
+         "tag": "Nathan Fillion"
+        },
+        {
+         "tag": "Gina Torres"
+        },
+        {
+         "tag": "Alan Tudyk"
+        }
+       ]
+      },
+      {
+       "ratingKey": "9",
+       "key": "/library/metadata/9",
+       "parentRatingKey": "7",
+       "grandparentRatingKey": "6",
+       "guid": "plex://episode/5d9c127e4eefaa001f6449b6",
+       "parentGuid": "plex://season/602e67e766dfdb002c0a1b5b",
+       "grandparentGuid": "plex://show/5d9c086c7d06d9001ffd27aa",
+       "grandparentSlug": "firefly",
+       "type": "episode",
+       "title": "Bushwhacked",
+       "grandparentKey": "/library/metadata/6",
+       "parentKey": "/library/metadata/7",
+       "grandparentTitle": "Firefly",
+       "parentTitle": "Season 1",
+       "contentRating": "TV-14",
+       "summary": "Serenity is pulled in by a Tohoku-class cruiser while investigating a spaceship that was attacked by Reavers. Simon and River must hide to prevent capture, while something is wrong with the lone survivor of the attacked spaceship.",
+       "index": 2,
+       "parentIndex": 1,
+       "audienceRating": 7.7,
+       "userRating": 8.0,
+       "lastRatedAt": 1793312968,
+       "year": 2002,
+       "thumb": "/library/metadata/9/thumb/1789243294",
+       "art": "/library/metadata/6/art/1789240618",
+       "parentThumb": "/library/metadata/7/thumb/1789243294",
+       "grandparentThumb": "/library/metadata/6/thumb/1789240618",
+       "grandparentArt": "/library/metadata/6/art/1789240618",
+       "grandparentTheme": "/library/metadata/6/theme/1789240618",
+       "duration": 1320506,
+       "originallyAvailableAt": "2002-09-27",
+       "addedAt": 1789187078,
+       "updatedAt": 1789243294,
+       "audienceRatingImage": "themoviedb://image.rating",
+       "Media": [
+        {
+         "id": 7,
+         "duration": 1320506,
+         "bitrate": 488,
+         "width": 1920,
+         "height": 1080,
+         "aspectRatio": 1.78,
+         "audioChannels": 1,
+         "audioCodec": "aac",
+         "videoCodec": "h264",
+         "videoResolution": "1080",
+         "container": "mkv",
+         "videoFrameRate": "24p",
+         "audioProfile": "lc",
+         "videoProfile": "high",
+         "Part": [
+          {
+           "id": 7,
+           "key": "/library/parts/7/1789295977/file.mkv",
+           "duration": 1320506,
+           "file": "/data/shows/Firefly (2002)/Season 01/Firefly (2002) - s01e02 - 1080p.mkv",
+           "size": 80525076,
+           "audioProfile": "lc",
+           "container": "mkv",
+           "videoProfile": "high"
+          }
+         ]
+        }
+       ],
+       "Image": [
+        {
+         "alt": "Bushwhacked",
+         "type": "coverPoster",
+         "url": "/library/metadata/6/thumb/1789240618"
+        },
+        {
+         "alt": "Bushwhacked",
+         "type": "snapshot",
+         "url": "/library/metadata/9/thumb/1789243294"
+        },
+        {
+         "alt": "Bushwhacked",
+         "type": "background",
+         "url": "/library/metadata/6/art/1789240618"
+        },
+        {
+         "alt": "Bushwhacked",
+         "type": "clearLogo",
+         "url": "/library/metadata/6/clearLogo/1789240618"
+        },
+        {
+         "alt": "Bushwhacked",
+         "type": "backgroundSquare",
+         "url": "/library/metadata/6/squareArt/1789240618"
+        }
+       ],
+       "UltraBlurColors": {
+        "topLeft": "231d1d",
+        "topRight": "44130e",
+        "bottomRight": "54131e",
+        "bottomLeft": "46424d"
+       },
+       "Director": [
+        {
+         "tag": "Tim Minear"
+        }
+       ],
+       "Writer": [
+        {
+         "tag": "Joss Whedon"
+        },
+        {
+         "tag": "Tim Minear"
+        }
+       ],
+       "Role": [
+        {
+         "tag": "Nathan Fillion"
+        },
+        {
+         "tag": "Gina Torres"
+        },
+        {
+         "tag": "Alan Tudyk"
+        }
+       ]
+      },
+      {
+       "ratingKey": "10",
+       "key": "/library/metadata/10",
+       "parentRatingKey": "7",
+       "grandparentRatingKey": "6",
+       "guid": "plex://episode/5d9c127e2df347001e41c8f3",
+       "parentGuid": "plex://season/602e67e766dfdb002c0a1b5b",
+       "grandparentGuid": "plex://show/5d9c086c7d06d9001ffd27aa",
+       "grandparentSlug": "firefly",
+       "type": "episode",
+       "title": "Our Mrs. Reynolds",
+       "grandparentKey": "/library/metadata/6",
+       "parentKey": "/library/metadata/7",
+       "grandparentTitle": "Firefly",
+       "parentTitle": "Season 1",
+       "contentRating": "TV-14",
+       "summary": "As an unexpected reward for an unpaid job, Mal finds himself married to a na\u00efve, subservient young woman named Saffron. The crew are amused at his discomfort and Book lectures him on propriety, but things aren't as smoothly straightforward as they thought them to be.",
+       "index": 3,
+       "parentIndex": 1,
+       "audienceRating": 8.3,
+       "viewOffset": 300000,
+       "viewCount": 1,
+       "lastViewedAt": 1793312968,
+       "year": 2002,
+       "thumb": "/library/metadata/10/thumb/1789243294",
+       "art": "/library/metadata/6/art/1789240618",
+       "parentThumb": "/library/metadata/7/thumb/1789243294",
+       "grandparentThumb": "/library/metadata/6/thumb/1789240618",
+       "grandparentArt": "/library/metadata/6/art/1789240618",
+       "grandparentTheme": "/library/metadata/6/theme/1789240618",
+       "duration": 1320506,
+       "originallyAvailableAt": "2002-10-04",
+       "addedAt": 1789187080,
+       "updatedAt": 1789243294,
+       "audienceRatingImage": "themoviedb://image.rating",
+       "Media": [
+        {
+         "id": 8,
+         "duration": 1320506,
+         "bitrate": 488,
+         "width": 1920,
+         "height": 1080,
+         "aspectRatio": 1.78,
+         "audioChannels": 1,
+         "audioCodec": "aac",
+         "videoCodec": "h264",
+         "videoResolution": "1080",
+         "container": "mkv",
+         "videoFrameRate": "24p",
+         "audioProfile": "lc",
+         "videoProfile": "high",
+         "Part": [
+          {
+           "id": 8,
+           "key": "/library/parts/8/1789295988/file.mkv",
+           "duration": 1320506,
+           "file": "/data/shows/Firefly (2002)/Season 01/Firefly (2002) - s01e03 - 1080p.mkv",
+           "size": 80535020,
+           "audioProfile": "lc",
+           "container": "mkv",
+           "videoProfile": "high"
+          }
+         ]
+        }
+       ],
+       "Image": [
+        {
+         "alt": "Our Mrs. Reynolds",
+         "type": "coverPoster",
+         "url": "/library/metadata/6/thumb/1789240618"
+        },
+        {
+         "alt": "Our Mrs. Reynolds",
+         "type": "snapshot",
+         "url": "/library/metadata/10/thumb/1789243294"
+        },
+        {
+         "alt": "Our Mrs. Reynolds",
+         "type": "background",
+         "url": "/library/metadata/6/art/1789240618"
+        },
+        {
+         "alt": "Our Mrs. Reynolds",
+         "type": "clearLogo",
+         "url": "/library/metadata/6/clearLogo/1789240618"
+        },
+        {
+         "alt": "Our Mrs. Reynolds",
+         "type": "backgroundSquare",
+         "url": "/library/metadata/6/squareArt/1789240618"
+        }
+       ],
+       "UltraBlurColors": {
+        "topLeft": "300c05",
+        "topRight": "2b0404",
+        "bottomRight": "260c03",
+        "bottomLeft": "461d0a"
+       },
+       "Director": [
+        {
+         "tag": "Vondie Curtis-Hall"
+        }
+       ],
+       "Writer": [
+        {
+         "tag": "Joss Whedon"
+        }
+       ],
+       "Role": [
+        {
+         "tag": "Nathan Fillion"
+        },
+        {
+         "tag": "Gina Torres"
+        },
+        {
+         "tag": "Alan Tudyk"
+        }
+       ]
+      },
+      {
+       "ratingKey": "12",
+       "key": "/library/metadata/12",
+       "parentRatingKey": "11",
+       "grandparentRatingKey": "6",
+       "guid": "local://12",
+       "parentGuid": "local://11",
+       "grandparentGuid": "plex://show/5d9c086c7d06d9001ffd27aa",
+       "grandparentSlug": "firefly",
+       "type": "episode",
+       "title": "Episode 1",
+       "grandparentKey": "/library/metadata/6",
+       "parentKey": "/library/metadata/11",
+       "grandparentTitle": "Firefly",
+       "parentTitle": "Season 2",
+       "contentRating": "TV-14",
+       "summary": "",
+       "index": 1,
+       "parentIndex": 2,
+       "viewCount": 1,
+       "lastViewedAt": 1793312968,
+       "thumb": "/library/metadata/12/thumb/1789187259",
+       "art": "/library/metadata/6/art/1789240618",
+       "grandparentThumb": "/library/metadata/6/thumb/1789240618",
+       "grandparentArt": "/library/metadata/6/art/1789240618",
+       "grandparentTheme": "/library/metadata/6/theme/1789240618",
+       "duration": 1320506,
+       "addedAt": 1789187082,
+       "updatedAt": 1789187259,
+       "Media": [
+        {
+         "id": 9,
+         "duration": 1320506,
+         "bitrate": 488,
+         "width": 1920,
+         "height": 1080,
+         "aspectRatio": 1.78,
+         "audioChannels": 1,
+         "audioCodec": "aac",
+         "videoCodec": "h264",
+         "videoResolution": "1080",
+         "container": "mkv",
+         "videoFrameRate": "24p",
+         "audioProfile": "lc",
+         "videoProfile": "high",
+         "Part": [
+          {
+           "id": 9,
+           "key": "/library/parts/9/1789296000/file.mkv",
+           "duration": 1320506,
+           "file": "/data/shows/Firefly (2002)/Season 02/Firefly (2002) - s02e01 - 1080p.mkv",
+           "size": 80548704,
+           "audioProfile": "lc",
+           "container": "mkv",
+           "videoProfile": "high"
+          }
+         ]
+        }
+       ],
+       "Image": [
+        {
+         "alt": "Episode 1",
+         "type": "coverPoster",
+         "url": "/library/metadata/6/thumb/1789240618"
+        },
+        {
+         "alt": "Episode 1",
+         "type": "snapshot",
+         "url": "/library/metadata/12/thumb/1789187259"
+        },
+        {
+         "alt": "Episode 1",
+         "type": "background",
+         "url": "/library/metadata/6/art/1789240618"
+        },
+        {
+         "alt": "Episode 1",
+         "type": "clearLogo",
+         "url": "/library/metadata/6/clearLogo/1789240618"
+        },
+        {
+         "alt": "Episode 1",
+         "type": "backgroundSquare",
+         "url": "/library/metadata/6/squareArt/1789240618"
+        }
+       ]
+      },
+      {
+       "ratingKey": "13",
+       "key": "/library/metadata/13",
+       "parentRatingKey": "11",
+       "grandparentRatingKey": "6",
+       "guid": "local://13",
+       "parentGuid": "local://11",
+       "grandparentGuid": "plex://show/5d9c086c7d06d9001ffd27aa",
+       "grandparentSlug": "firefly",
+       "type": "episode",
+       "title": "Episode 2",
+       "grandparentKey": "/library/metadata/6",
+       "parentKey": "/library/metadata/11",
+       "grandparentTitle": "Firefly",
+       "parentTitle": "Season 2",
+       "contentRating": "TV-14",
+       "summary": "",
+       "index": 2,
+       "parentIndex": 2,
+       "thumb": "/library/metadata/13/thumb/1789187260",
+       "art": "/library/metadata/6/art/1789240618",
+       "grandparentThumb": "/library/metadata/6/thumb/1789240618",
+       "grandparentArt": "/library/metadata/6/art/1789240618",
+       "grandparentTheme": "/library/metadata/6/theme/1789240618",
+       "duration": 1320506,
+       "addedAt": 1789187084,
+       "updatedAt": 1789187260,
+       "Media": [
+        {
+         "id": 10,
+         "duration": 1320506,
+         "bitrate": 488,
+         "width": 1920,
+         "height": 1080,
+         "aspectRatio": 1.78,
+         "audioChannels": 1,
+         "audioCodec": "aac",
+         "videoCodec": "h264",
+         "videoResolution": "1080",
+         "container": "mkv",
+         "videoFrameRate": "24p",
+         "audioProfile": "lc",
+         "videoProfile": "high",
+         "Part": [
+          {
+           "id": 10,
+           "key": "/library/parts/10/1789296011/file.mkv",
+           "duration": 1320506,
+           "file": "/data/shows/Firefly (2002)/Season 02/Firefly (2002) - s02e02 - 1080p.mkv",
+           "size": 80595212,
+           "audioProfile": "lc",
+           "container": "mkv",
+           "videoProfile": "high"
+          }
+         ]
+        }
+       ],
+       "Image": [
+        {
+         "alt": "Episode 2",
+         "type": "coverPoster",
+         "url": "/library/metadata/6/thumb/1789240618"
+        },
+        {
+         "alt": "Episode 2",
+         "type": "snapshot",
+         "url": "/library/metadata/13/thumb/1789187260"
+        },
+        {
+         "alt": "Episode 2",
+         "type": "background",
+         "url": "/library/metadata/6/art/1789240618"
+        },
+        {
+         "alt": "Episode 2",
+         "type": "clearLogo",
+         "url": "/library/metadata/6/clearLogo/1789240618"
+        },
+        {
+         "alt": "Episode 2",
+         "type": "backgroundSquare",
+         "url": "/library/metadata/6/squareArt/1789240618"
+        }
+       ]
+      },
+      {
+       "ratingKey": "14",
+       "key": "/library/metadata/14",
+       "parentRatingKey": "11",
+       "grandparentRatingKey": "6",
+       "guid": "local://14",
+       "parentGuid": "local://11",
+       "grandparentGuid": "plex://show/5d9c086c7d06d9001ffd27aa",
+       "grandparentSlug": "firefly",
+       "type": "episode",
+       "title": "Episode 3",
+       "grandparentKey": "/library/metadata/6",
+       "parentKey": "/library/metadata/11",
+       "grandparentTitle": "Firefly",
+       "parentTitle": "Season 2",
+       "contentRating": "TV-14",
+       "summary": "",
+       "index": 3,
+       "parentIndex": 2,
+       "thumb": "/library/metadata/14/thumb/1789187260",
+       "art": "/library/metadata/6/art/1789240618",
+       "grandparentThumb": "/library/metadata/6/thumb/1789240618",
+       "grandparentArt": "/library/metadata/6/art/1789240618",
+       "grandparentTheme": "/library/metadata/6/theme/1789240618",
+       "duration": 1320506,
+       "addedAt": 1789187085,
+       "updatedAt": 1789187260,
+       "Media": [
+        {
+         "id": 11,
+         "duration": 1320506,
+         "bitrate": 488,
+         "width": 1920,
+         "height": 1080,
+         "aspectRatio": 1.78,
+         "audioChannels": 1,
+         "audioCodec": "aac",
+         "videoCodec": "h264",
+         "videoResolution": "1080",
+         "container": "mkv",
+         "videoFrameRate": "24p",
+         "audioProfile": "lc",
+         "videoProfile": "high",
+         "Part": [
+          {
+           "id": 11,
+           "key": "/library/parts/11/1789296023/file.mkv",
+           "duration": 1320506,
+           "file": "/data/shows/Firefly (2002)/Season 02/Firefly (2002) - s02e03 - 1080p.mkv",
+           "size": 80556998,
+           "audioProfile": "lc",
+           "container": "mkv",
+           "videoProfile": "high"
+          }
+         ]
+        }
+       ],
+       "Image": [
+        {
+         "alt": "Episode 3",
+         "type": "coverPoster",
+         "url": "/library/metadata/6/thumb/1789240618"
+        },
+        {
+         "alt": "Episode 3",
+         "type": "snapshot",
+         "url": "/library/metadata/14/thumb/1789187260"
+        },
+        {
+         "alt": "Episode 3",
+         "type": "background",
+         "url": "/library/metadata/6/art/1789240618"
+        },
+        {
+         "alt": "Episode 3",
+         "type": "clearLogo",
+         "url": "/library/metadata/6/clearLogo/1789240618"
+        },
+        {
+         "alt": "Episode 3",
+         "type": "backgroundSquare",
+         "url": "/library/metadata/6/squareArt/1789240618"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/2/all",
+   "query": [
+    [
+     "type",
+     "4"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "2"
+    ]
+   ],
+   "headers": {
+    "Accept": "application/json",
+    "X-Plex-Token": "<TOKEN>"
+   },
+   "status": 200,
+   "content_type": "application/json",
+   "body": {
+    "MediaContainer": {
+     "size": 2,
+     "totalSize": 6,
+     "offset": 0,
+     "allowSync": true,
+     "art": "/:/resources/show-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 2,
+     "librarySectionTitle": "TV Shows",
+     "librarySectionUUID": "d962847e-2c7c-4d45-8355-e45e16287846",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "nocache": true,
+     "thumb": "/:/resources/show.png",
+     "title1": "TV Shows",
+     "title2": "All Shows",
+     "viewGroup": "show",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "8",
+       "key": "/library/metadata/8",
+       "parentRatingKey": "7",
+       "grandparentRatingKey": "6",
+       "guid": "plex://episode/5d9c127e4eefaa001f6449c2",
+       "parentGuid": "plex://season/602e67e766dfdb002c0a1b5b",
+       "grandparentGuid": "plex://show/5d9c086c7d06d9001ffd27aa",
+       "grandparentSlug": "firefly",
+       "type": "episode",
+       "title": "The Train Job",
+       "titleSort": "Train Job",
+       "grandparentKey": "/library/metadata/6",
+       "parentKey": "/library/metadata/7",
+       "grandparentTitle": "Firefly",
+       "parentTitle": "Season 1",
+       "contentRating": "TV-14",
+       "summary": "The crew of Serenity take on a train heist commissioned by a crime lord. They steal the goods, only to find it is medicine that's desperately needed by the town.",
+       "index": 1,
+       "parentIndex": 1,
+       "audienceRating": 7.6,
+       "viewCount": 1,
+       "lastViewedAt": 1793312968,
+       "year": 2002,
+       "thumb": "/library/metadata/8/thumb/1789243294",
+       "art": "/library/metadata/6/art/1789240618",
+       "parentThumb": "/library/metadata/7/thumb/1789243294",
+       "grandparentThumb": "/library/metadata/6/thumb/1789240618",
+       "grandparentArt": "/library/metadata/6/art/1789240618",
+       "grandparentTheme": "/library/metadata/6/theme/1789240618",
+       "duration": 1320506,
+       "originallyAvailableAt": "2002-09-20",
+       "addedAt": 1789187076,
+       "updatedAt": 1789243294,
+       "audienceRatingImage": "themoviedb://image.rating",
+       "Media": [
+        {
+         "id": 6,
+         "duration": 1320506,
+         "bitrate": 488,
+         "width": 1920,
+         "height": 1080,
+         "aspectRatio": 1.78,
+         "audioChannels": 1,
+         "audioCodec": "aac",
+         "videoCodec": "h264",
+         "videoResolution": "1080",
+         "container": "mkv",
+         "videoFrameRate": "24p",
+         "audioProfile": "lc",
+         "videoProfile": "high",
+         "Part": [
+          {
+           "id": 6,
+           "key": "/library/parts/6/1789295966/file.mkv",
+           "duration": 1320506,
+           "file": "/data/shows/Firefly (2002)/Season 01/Firefly (2002) - s01e01 - 1080p.mkv",
+           "size": 80555568,
+           "audioProfile": "lc",
+           "container": "mkv",
+           "videoProfile": "high"
+          }
+         ]
+        }
+       ],
+       "Image": [
+        {
+         "alt": "The Train Job",
+         "type": "coverPoster",
+         "url": "/library/metadata/6/thumb/1789240618"
+        },
+        {
+         "alt": "The Train Job",
+         "type": "snapshot",
+         "url": "/library/metadata/8/thumb/1789243294"
+        },
+        {
+         "alt": "The Train Job",
+         "type": "background",
+         "url": "/library/metadata/6/art/1789240618"
+        },
+        {
+         "alt": "The Train Job",
+         "type": "clearLogo",
+         "url": "/library/metadata/6/clearLogo/1789240618"
+        },
+        {
+         "alt": "The Train Job",
+         "type": "backgroundSquare",
+         "url": "/library/metadata/6/squareArt/1789240618"
+        }
+       ],
+       "UltraBlurColors": {
+        "topLeft": "4d180f",
+        "topRight": "45240b",
+        "bottomRight": "210b05",
+        "bottomLeft": "8c3b33"
+       },
+       "Director": [
+        {
+         "tag": "Joss Whedon"
+        }
+       ],
+       "Writer": [
+        {
+         "tag": "Joss Whedon"
+        },
+        {
+         "tag": "Tim Minear"
+        }
+       ],
+       "Role": [
+        {
+         "tag": "Nathan Fillion"
+        },
+        {
+         "tag": "Gina Torres"
+        },
+        {
+         "tag": "Alan Tudyk"
+        }
+       ]
+      },
+      {
+       "ratingKey": "9",
+       "key": "/library/metadata/9",
+       "parentRatingKey": "7",
+       "grandparentRatingKey": "6",
+       "guid": "plex://episode/5d9c127e4eefaa001f6449b6",
+       "parentGuid": "plex://season/602e67e766dfdb002c0a1b5b",
+       "grandparentGuid": "plex://show/5d9c086c7d06d9001ffd27aa",
+       "grandparentSlug": "firefly",
+       "type": "episode",
+       "title": "Bushwhacked",
+       "grandparentKey": "/library/metadata/6",
+       "parentKey": "/library/metadata/7",
+       "grandparentTitle": "Firefly",
+       "parentTitle": "Season 1",
+       "contentRating": "TV-14",
+       "summary": "Serenity is pulled in by a Tohoku-class cruiser while investigating a spaceship that was attacked by Reavers. Simon and River must hide to prevent capture, while something is wrong with the lone survivor of the attacked spaceship.",
+       "index": 2,
+       "parentIndex": 1,
+       "audienceRating": 7.7,
+       "userRating": 8.0,
+       "lastRatedAt": 1793312968,
+       "year": 2002,
+       "thumb": "/library/metadata/9/thumb/1789243294",
+       "art": "/library/metadata/6/art/1789240618",
+       "parentThumb": "/library/metadata/7/thumb/1789243294",
+       "grandparentThumb": "/library/metadata/6/thumb/1789240618",
+       "grandparentArt": "/library/metadata/6/art/1789240618",
+       "grandparentTheme": "/library/metadata/6/theme/1789240618",
+       "duration": 1320506,
+       "originallyAvailableAt": "2002-09-27",
+       "addedAt": 1789187078,
+       "updatedAt": 1789243294,
+       "audienceRatingImage": "themoviedb://image.rating",
+       "Media": [
+        {
+         "id": 7,
+         "duration": 1320506,
+         "bitrate": 488,
+         "width": 1920,
+         "height": 1080,
+         "aspectRatio": 1.78,
+         "audioChannels": 1,
+         "audioCodec": "aac",
+         "videoCodec": "h264",
+         "videoResolution": "1080",
+         "container": "mkv",
+         "videoFrameRate": "24p",
+         "audioProfile": "lc",
+         "videoProfile": "high",
+         "Part": [
+          {
+           "id": 7,
+           "key": "/library/parts/7/1789295977/file.mkv",
+           "duration": 1320506,
+           "file": "/data/shows/Firefly (2002)/Season 01/Firefly (2002) - s01e02 - 1080p.mkv",
+           "size": 80525076,
+           "audioProfile": "lc",
+           "container": "mkv",
+           "videoProfile": "high"
+          }
+         ]
+        }
+       ],
+       "Image": [
+        {
+         "alt": "Bushwhacked",
+         "type": "coverPoster",
+         "url": "/library/metadata/6/thumb/1789240618"
+        },
+        {
+         "alt": "Bushwhacked",
+         "type": "snapshot",
+         "url": "/library/metadata/9/thumb/1789243294"
+        },
+        {
+         "alt": "Bushwhacked",
+         "type": "background",
+         "url": "/library/metadata/6/art/1789240618"
+        },
+        {
+         "alt": "Bushwhacked",
+         "type": "clearLogo",
+         "url": "/library/metadata/6/clearLogo/1789240618"
+        },
+        {
+         "alt": "Bushwhacked",
+         "type": "backgroundSquare",
+         "url": "/library/metadata/6/squareArt/1789240618"
+        }
+       ],
+       "UltraBlurColors": {
+        "topLeft": "231d1d",
+        "topRight": "44130e",
+        "bottomRight": "54131e",
+        "bottomLeft": "46424d"
+       },
+       "Director": [
+        {
+         "tag": "Tim Minear"
+        }
+       ],
+       "Writer": [
+        {
+         "tag": "Joss Whedon"
+        },
+        {
+         "tag": "Tim Minear"
+        }
+       ],
+       "Role": [
+        {
+         "tag": "Nathan Fillion"
+        },
+        {
+         "tag": "Gina Torres"
+        },
+        {
+         "tag": "Alan Tudyk"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/2/all",
+   "query": [
+    [
+     "type",
+     "4"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "2"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "2"
+    ]
+   ],
+   "headers": {
+    "Accept": "application/json",
+    "X-Plex-Token": "<TOKEN>"
+   },
+   "status": 200,
+   "content_type": "application/json",
+   "body": {
+    "MediaContainer": {
+     "size": 2,
+     "totalSize": 6,
+     "offset": 2,
+     "allowSync": true,
+     "art": "/:/resources/show-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 2,
+     "librarySectionTitle": "TV Shows",
+     "librarySectionUUID": "d962847e-2c7c-4d45-8355-e45e16287846",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "nocache": true,
+     "thumb": "/:/resources/show.png",
+     "title1": "TV Shows",
+     "title2": "All Shows",
+     "viewGroup": "show",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "10",
+       "key": "/library/metadata/10",
+       "parentRatingKey": "7",
+       "grandparentRatingKey": "6",
+       "guid": "plex://episode/5d9c127e2df347001e41c8f3",
+       "parentGuid": "plex://season/602e67e766dfdb002c0a1b5b",
+       "grandparentGuid": "plex://show/5d9c086c7d06d9001ffd27aa",
+       "grandparentSlug": "firefly",
+       "type": "episode",
+       "title": "Our Mrs. Reynolds",
+       "grandparentKey": "/library/metadata/6",
+       "parentKey": "/library/metadata/7",
+       "grandparentTitle": "Firefly",
+       "parentTitle": "Season 1",
+       "contentRating": "TV-14",
+       "summary": "As an unexpected reward for an unpaid job, Mal finds himself married to a na\u00efve, subservient young woman named Saffron. The crew are amused at his discomfort and Book lectures him on propriety, but things aren't as smoothly straightforward as they thought them to be.",
+       "index": 3,
+       "parentIndex": 1,
+       "audienceRating": 8.3,
+       "viewOffset": 300000,
+       "viewCount": 1,
+       "lastViewedAt": 1793312968,
+       "year": 2002,
+       "thumb": "/library/metadata/10/thumb/1789243294",
+       "art": "/library/metadata/6/art/1789240618",
+       "parentThumb": "/library/metadata/7/thumb/1789243294",
+       "grandparentThumb": "/library/metadata/6/thumb/1789240618",
+       "grandparentArt": "/library/metadata/6/art/1789240618",
+       "grandparentTheme": "/library/metadata/6/theme/1789240618",
+       "duration": 1320506,
+       "originallyAvailableAt": "2002-10-04",
+       "addedAt": 1789187080,
+       "updatedAt": 1789243294,
+       "audienceRatingImage": "themoviedb://image.rating",
+       "Media": [
+        {
+         "id": 8,
+         "duration": 1320506,
+         "bitrate": 488,
+         "width": 1920,
+         "height": 1080,
+         "aspectRatio": 1.78,
+         "audioChannels": 1,
+         "audioCodec": "aac",
+         "videoCodec": "h264",
+         "videoResolution": "1080",
+         "container": "mkv",
+         "videoFrameRate": "24p",
+         "audioProfile": "lc",
+         "videoProfile": "high",
+         "Part": [
+          {
+           "id": 8,
+           "key": "/library/parts/8/1789295988/file.mkv",
+           "duration": 1320506,
+           "file": "/data/shows/Firefly (2002)/Season 01/Firefly (2002) - s01e03 - 1080p.mkv",
+           "size": 80535020,
+           "audioProfile": "lc",
+           "container": "mkv",
+           "videoProfile": "high"
+          }
+         ]
+        }
+       ],
+       "Image": [
+        {
+         "alt": "Our Mrs. Reynolds",
+         "type": "coverPoster",
+         "url": "/library/metadata/6/thumb/1789240618"
+        },
+        {
+         "alt": "Our Mrs. Reynolds",
+         "type": "snapshot",
+         "url": "/library/metadata/10/thumb/1789243294"
+        },
+        {
+         "alt": "Our Mrs. Reynolds",
+         "type": "background",
+         "url": "/library/metadata/6/art/1789240618"
+        },
+        {
+         "alt": "Our Mrs. Reynolds",
+         "type": "clearLogo",
+         "url": "/library/metadata/6/clearLogo/1789240618"
+        },
+        {
+         "alt": "Our Mrs. Reynolds",
+         "type": "backgroundSquare",
+         "url": "/library/metadata/6/squareArt/1789240618"
+        }
+       ],
+       "UltraBlurColors": {
+        "topLeft": "300c05",
+        "topRight": "2b0404",
+        "bottomRight": "260c03",
+        "bottomLeft": "461d0a"
+       },
+       "Director": [
+        {
+         "tag": "Vondie Curtis-Hall"
+        }
+       ],
+       "Writer": [
+        {
+         "tag": "Joss Whedon"
+        }
+       ],
+       "Role": [
+        {
+         "tag": "Nathan Fillion"
+        },
+        {
+         "tag": "Gina Torres"
+        },
+        {
+         "tag": "Alan Tudyk"
+        }
+       ]
+      },
+      {
+       "ratingKey": "12",
+       "key": "/library/metadata/12",
+       "parentRatingKey": "11",
+       "grandparentRatingKey": "6",
+       "guid": "local://12",
+       "parentGuid": "local://11",
+       "grandparentGuid": "plex://show/5d9c086c7d06d9001ffd27aa",
+       "grandparentSlug": "firefly",
+       "type": "episode",
+       "title": "Episode 1",
+       "grandparentKey": "/library/metadata/6",
+       "parentKey": "/library/metadata/11",
+       "grandparentTitle": "Firefly",
+       "parentTitle": "Season 2",
+       "contentRating": "TV-14",
+       "summary": "",
+       "index": 1,
+       "parentIndex": 2,
+       "viewCount": 1,
+       "lastViewedAt": 1793312968,
+       "thumb": "/library/metadata/12/thumb/1789187259",
+       "art": "/library/metadata/6/art/1789240618",
+       "grandparentThumb": "/library/metadata/6/thumb/1789240618",
+       "grandparentArt": "/library/metadata/6/art/1789240618",
+       "grandparentTheme": "/library/metadata/6/theme/1789240618",
+       "duration": 1320506,
+       "addedAt": 1789187082,
+       "updatedAt": 1789187259,
+       "Media": [
+        {
+         "id": 9,
+         "duration": 1320506,
+         "bitrate": 488,
+         "width": 1920,
+         "height": 1080,
+         "aspectRatio": 1.78,
+         "audioChannels": 1,
+         "audioCodec": "aac",
+         "videoCodec": "h264",
+         "videoResolution": "1080",
+         "container": "mkv",
+         "videoFrameRate": "24p",
+         "audioProfile": "lc",
+         "videoProfile": "high",
+         "Part": [
+          {
+           "id": 9,
+           "key": "/library/parts/9/1789296000/file.mkv",
+           "duration": 1320506,
+           "file": "/data/shows/Firefly (2002)/Season 02/Firefly (2002) - s02e01 - 1080p.mkv",
+           "size": 80548704,
+           "audioProfile": "lc",
+           "container": "mkv",
+           "videoProfile": "high"
+          }
+         ]
+        }
+       ],
+       "Image": [
+        {
+         "alt": "Episode 1",
+         "type": "coverPoster",
+         "url": "/library/metadata/6/thumb/1789240618"
+        },
+        {
+         "alt": "Episode 1",
+         "type": "snapshot",
+         "url": "/library/metadata/12/thumb/1789187259"
+        },
+        {
+         "alt": "Episode 1",
+         "type": "background",
+         "url": "/library/metadata/6/art/1789240618"
+        },
+        {
+         "alt": "Episode 1",
+         "type": "clearLogo",
+         "url": "/library/metadata/6/clearLogo/1789240618"
+        },
+        {
+         "alt": "Episode 1",
+         "type": "backgroundSquare",
+         "url": "/library/metadata/6/squareArt/1789240618"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/2/all",
+   "query": [
+    [
+     "type",
+     "4"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "4"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "2"
+    ]
+   ],
+   "headers": {
+    "Accept": "application/json",
+    "X-Plex-Token": "<TOKEN>"
+   },
+   "status": 200,
+   "content_type": "application/json",
+   "body": {
+    "MediaContainer": {
+     "size": 2,
+     "totalSize": 6,
+     "offset": 4,
+     "allowSync": true,
+     "art": "/:/resources/show-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 2,
+     "librarySectionTitle": "TV Shows",
+     "librarySectionUUID": "d962847e-2c7c-4d45-8355-e45e16287846",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "nocache": true,
+     "thumb": "/:/resources/show.png",
+     "title1": "TV Shows",
+     "title2": "All Shows",
+     "viewGroup": "show",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "13",
+       "key": "/library/metadata/13",
+       "parentRatingKey": "11",
+       "grandparentRatingKey": "6",
+       "guid": "local://13",
+       "parentGuid": "local://11",
+       "grandparentGuid": "plex://show/5d9c086c7d06d9001ffd27aa",
+       "grandparentSlug": "firefly",
+       "type": "episode",
+       "title": "Episode 2",
+       "grandparentKey": "/library/metadata/6",
+       "parentKey": "/library/metadata/11",
+       "grandparentTitle": "Firefly",
+       "parentTitle": "Season 2",
+       "contentRating": "TV-14",
+       "summary": "",
+       "index": 2,
+       "parentIndex": 2,
+       "thumb": "/library/metadata/13/thumb/1789187260",
+       "art": "/library/metadata/6/art/1789240618",
+       "grandparentThumb": "/library/metadata/6/thumb/1789240618",
+       "grandparentArt": "/library/metadata/6/art/1789240618",
+       "grandparentTheme": "/library/metadata/6/theme/1789240618",
+       "duration": 1320506,
+       "addedAt": 1789187084,
+       "updatedAt": 1789187260,
+       "Media": [
+        {
+         "id": 10,
+         "duration": 1320506,
+         "bitrate": 488,
+         "width": 1920,
+         "height": 1080,
+         "aspectRatio": 1.78,
+         "audioChannels": 1,
+         "audioCodec": "aac",
+         "videoCodec": "h264",
+         "videoResolution": "1080",
+         "container": "mkv",
+         "videoFrameRate": "24p",
+         "audioProfile": "lc",
+         "videoProfile": "high",
+         "Part": [
+          {
+           "id": 10,
+           "key": "/library/parts/10/1789296011/file.mkv",
+           "duration": 1320506,
+           "file": "/data/shows/Firefly (2002)/Season 02/Firefly (2002) - s02e02 - 1080p.mkv",
+           "size": 80595212,
+           "audioProfile": "lc",
+           "container": "mkv",
+           "videoProfile": "high"
+          }
+         ]
+        }
+       ],
+       "Image": [
+        {
+         "alt": "Episode 2",
+         "type": "coverPoster",
+         "url": "/library/metadata/6/thumb/1789240618"
+        },
+        {
+         "alt": "Episode 2",
+         "type": "snapshot",
+         "url": "/library/metadata/13/thumb/1789187260"
+        },
+        {
+         "alt": "Episode 2",
+         "type": "background",
+         "url": "/library/metadata/6/art/1789240618"
+        },
+        {
+         "alt": "Episode 2",
+         "type": "clearLogo",
+         "url": "/library/metadata/6/clearLogo/1789240618"
+        },
+        {
+         "alt": "Episode 2",
+         "type": "backgroundSquare",
+         "url": "/library/metadata/6/squareArt/1789240618"
+        }
+       ]
+      },
+      {
+       "ratingKey": "14",
+       "key": "/library/metadata/14",
+       "parentRatingKey": "11",
+       "grandparentRatingKey": "6",
+       "guid": "local://14",
+       "parentGuid": "local://11",
+       "grandparentGuid": "plex://show/5d9c086c7d06d9001ffd27aa",
+       "grandparentSlug": "firefly",
+       "type": "episode",
+       "title": "Episode 3",
+       "grandparentKey": "/library/metadata/6",
+       "parentKey": "/library/metadata/11",
+       "grandparentTitle": "Firefly",
+       "parentTitle": "Season 2",
+       "contentRating": "TV-14",
+       "summary": "",
+       "index": 3,
+       "parentIndex": 2,
+       "thumb": "/library/metadata/14/thumb/1789187260",
+       "art": "/library/metadata/6/art/1789240618",
+       "grandparentThumb": "/library/metadata/6/thumb/1789240618",
+       "grandparentArt": "/library/metadata/6/art/1789240618",
+       "grandparentTheme": "/library/metadata/6/theme/1789240618",
+       "duration": 1320506,
+       "addedAt": 1789187085,
+       "updatedAt": 1789187260,
+       "Media": [
+        {
+         "id": 11,
+         "duration": 1320506,
+         "bitrate": 488,
+         "width": 1920,
+         "height": 1080,
+         "aspectRatio": 1.78,
+         "audioChannels": 1,
+         "audioCodec": "aac",
+         "videoCodec": "h264",
+         "videoResolution": "1080",
+         "container": "mkv",
+         "videoFrameRate": "24p",
+         "audioProfile": "lc",
+         "videoProfile": "high",
+         "Part": [
+          {
+           "id": 11,
+           "key": "/library/parts/11/1789296023/file.mkv",
+           "duration": 1320506,
+           "file": "/data/shows/Firefly (2002)/Season 02/Firefly (2002) - s02e03 - 1080p.mkv",
+           "size": 80556998,
+           "audioProfile": "lc",
+           "container": "mkv",
+           "videoProfile": "high"
+          }
+         ]
+        }
+       ],
+       "Image": [
+        {
+         "alt": "Episode 3",
+         "type": "coverPoster",
+         "url": "/library/metadata/6/thumb/1789240618"
+        },
+        {
+         "alt": "Episode 3",
+         "type": "snapshot",
+         "url": "/library/metadata/14/thumb/1789187260"
+        },
+        {
+         "alt": "Episode 3",
+         "type": "background",
+         "url": "/library/metadata/6/art/1789240618"
+        },
+        {
+         "alt": "Episode 3",
+         "type": "clearLogo",
+         "url": "/library/metadata/6/clearLogo/1789240618"
+        },
+        {
+         "alt": "Episode 3",
+         "type": "backgroundSquare",
+         "url": "/library/metadata/6/squareArt/1789240618"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/2/all",
+   "query": [
+    [
+     "type",
+     "4"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "6"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "2"
+    ]
+   ],
+   "headers": {
+    "Accept": "application/json",
+    "X-Plex-Token": "<TOKEN>"
+   },
+   "status": 200,
+   "content_type": "application/json",
+   "body": {
+    "MediaContainer": {
+     "size": 0,
+     "totalSize": 6,
+     "offset": 6,
+     "allowSync": true,
+     "art": "/:/resources/show-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 2,
+     "librarySectionTitle": "TV Shows",
+     "librarySectionUUID": "d962847e-2c7c-4d45-8355-e45e16287846",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "nocache": true,
+     "thumb": "/:/resources/show.png",
+     "title1": "TV Shows",
+     "title2": "All Shows",
+     "viewGroup": "show",
+     "viewMode": 65592
+    }
+   }
+  }
+ ]
+}
