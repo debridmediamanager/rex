@@ -269,6 +269,11 @@ fn admin_only(method: &str, path: &str) -> bool {
     if path.starts_with("/library/metadata/") && path.ends_with("/matches") {
         return true;
     }
+    // ponytail: a friend's write to Manage Recommendations is unmeasured; the list is the
+    // owner's (Plex Web shows it only on the owner's server settings), so it is refused.
+    if !read && path.starts_with("/hubs/sections/") && path.split('/').nth(4) == Some("manage") {
+        return true;
+    }
     // PUT /:/prefs and an edit of a row were 403. ponytail: the other library and server
     // writes are refused by the same rule, unmeasured one by one.
     !read

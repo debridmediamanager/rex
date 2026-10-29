@@ -42,6 +42,7 @@ mod downloads;
 mod edit;
 mod frames;
 mod framework;
+mod hubpins;
 mod gates;
 mod i18n;
 mod item_hubs;
@@ -715,6 +716,9 @@ pub struct Runtime {
     pub history: Vec<Value>,
     playlists: HashMap<String, Playlist>,
     collections: HashMap<String, Collection>,
+    /// Manage Recommendations, by library: its hubs in order with where each is shown, once a
+    /// person changed anything (`hubpins.rs`).
+    hub_layouts: HashMap<String, Vec<hubpins::HubSlot>>,
     metadata_provider_groups: HashMap<String, MetadataProviderGroup>,
     next_metadata_provider_group: i64,
     /// Cycle 87: a BUILT-IN group's renamed title, by group id (plexscratch42).
@@ -1018,6 +1022,7 @@ impl Runtime {
             history: Vec::new(),
             playlists: HashMap::new(),
             collections: HashMap::new(),
+            hub_layouts: HashMap::new(),
             uploads: Versioned::default(),
             tag_table: TagTable::default(),
             metadata_provider_groups: HashMap::new(),
@@ -1667,6 +1672,10 @@ impl Runtime {
                     },
                 );
             }
+            for (section, slots) in state.get("hubLayouts").and_then(Value::as_object).into_iter().flatten() {
+                let slots = slots.as_array().into_iter().flatten().filter_map(hubpins::HubSlot::from_value).collect();
+                self.hub_layouts.insert(section.clone(), slots);
+            }
             for entry in state.get("sectionPrefs").and_then(Value::as_array).into_iter().flatten() {
                 if let (Some(section), Some(name), Some(value)) = (
                     entry.get(0).map(string_value),
@@ -2126,6 +2135,7 @@ impl Runtime {
         // (Inserted after the literal: one `json!` this long overflows the macro's
         // recursion limit.)
         let extra = [
+            ("hubLayouts", json!(self.hub_layouts.iter().map(|(section, slots)| (section.clone(), json!(slots.iter().map(hubpins::HubSlot::to_value).collect::<Vec<_>>()))).collect::<Map<String, Value>>())),
             ("sectionPrefs", json!(self.section_prefs.iter().map(|((section, name), value)| json!([section, name, value])).collect::<Vec<_>>())),
             ("metadataProviderGroups", json!(self.metadata_provider_groups.values().map(|group| json!({"id":group.id,"title":group.title,"primaryIdentifier":group.primary_identifier,"items":group.items})).collect::<Vec<_>>())),
             ("nextMetadataProviderGroup", json!(self.next_metadata_provider_group)),
@@ -12290,6 +12300,9 @@ impl Runtime {
             hubs.insert(position, Value::Object(playlist));
         }
 
+        if only.is_none() {
+            hubs = self.arrange_section_hubs(section_key, hubs, query);
+        }
         // `section_hubs` answers through `hub_container`: `size`, `allowSync` and
         // `identifier`, then the library's id -- an INT when the id is all digits --
         // title and uuid, and no media-tag pair (a hub response never carries one).
@@ -14784,92 +14797,8 @@ impl Runtime {
             }
             return self.route_section_continue_watching_items(section_key);
         }
-        if segments.first() == Some(&"hubs")
-            && segments.get(1) == Some(&"sections")
-            && segments.len() == 4
-            && segments[3] == "manage"
-        {
-            let section_key = segments[2];
-            let Some(section) = self.section(section_key) else {
-                return Response::error(404, "rex: not found");
-            };
-            if request.method != "GET" && request.method != "HEAD" {
-                return Response::error(404, "rex: not found");
-            }
-            if let Some(raw_item) = query.get("metadataItemId") {
-                // Measured on both servers: naming an item -- even with an empty id --
-                // is a 400 on a read.  Cycle 55 refined it on the 1.42.2 reference and
-                // plexlab: the id is a signed 32-bit integer and there are THREE answers.
-                // `-1` (and `-01`) is the bare hub list, a number naming NO item (`0`,
-                // `-2`, `999999`, `+999999`) is an EMPTY 200, and an item the server holds
-                // -- in any library -- is the 400, as are an empty value, a word, `1.5`, `
-                // 1` and `2147483648`.
-                if !int_param(raw_item, Some(32)) {
-                    return Response::error(400, "rex: bad request");
-                }
-                let item = raw_item.parse::<i64>().unwrap_or(0);
-                if item != -1 {
-                    if self.catalog.get(&item.to_string()).is_some() {
-                        return Response::error(400, "rex: bad request");
-                    }
-                    return Response::json(
-                        200,
-                        self.container(Map::from_iter([("size".to_string(), json!(0))]), false),
-                    );
-                }
-            }
-            let rows = if section.get("type").and_then(Value::as_str) == Some("show") {
-                vec![
-                    ("tv.recentlyaired", "Recently Released Episodes", false),
-                    ("tv.recentlyadded", "Recently Added TV", true),
-                    ("recent.library.playlists", "Library Playlists", false),
-                    ("tv.startwatching", "Start Watching", false),
-                    ("tv.rediscover", "Rediscover", false),
-                    ("tv.morefromnetwork", "More from (Network)", false),
-                    ("tv.moreingenre", "More in (Genre)", false),
-                    ("tv.toprated", "Top Rated TV", false),
-                    ("tv.recentlyviewed", "Recently Watched Episodes", false),
-                ]
-            } else {
-                vec![
-                    ("movie.recentlyreleased", "Recently Released Movies", false),
-                    ("movie.recentlyadded", "Recently Added Movies", true),
-                    ("recent.library.playlists", "Library Playlists", false),
-                    ("movie.genre", "Top Movies in (Genre)", false),
-                    (
-                        "movie.by.actor.or.director",
-                        "Top Movies by (Actor or Director)",
-                        false,
-                    ),
-                    ("movie.topunwatched", "Top Unwatched Movies", false),
-                    ("movie.curated", "Seasonal Movies", true),
-                    ("movie.recentlyviewed", "Recently Watched Movies", false),
-                ]
-            };
-            let hubs = rows
-                .into_iter()
-                .map(|(identifier, title, home)| {
-                    json!({
-                        "identifier": identifier,
-                        "title": title,
-                        "recommendationsVisibility": "all",
-                        "homeVisibility": if home { "all" } else { "none" },
-                        "promotedToRecommended": true,
-                        "promotedToOwnHome": home,
-                        "promotedToSharedHome": home,
-                    })
-                })
-                .collect::<Vec<_>>();
-            return Response::json(
-                200,
-                self.container(
-                    Map::from_iter([
-                        ("size".to_string(), json!(hubs.len())),
-                        ("Hub".to_string(), Value::Array(hubs)),
-                    ]),
-                    false,
-                ),
-            );
+        if segments.len() >= 4 && segments[..2] == ["hubs", "sections"] && segments[3] == "manage" {
+            return self.route_hub_manage(request, segments[2], &segments[4..], query);
         }
         if segments.len() == 4 && segments[..2] == ["hubs", "sections"] && segments[3] == "extras" {
             // Measured on both servers: an empty hub list -- `size 0`, `allowSync` and

@@ -960,6 +960,18 @@ impl Runtime {
                 "home.playlists" => owned(self.recent_playlists()),
                 _ => Vec::new(),
             };
+            if *identifier == "home.playlists" {
+                // Measured on 1.43.5: the libraries' Home collections come after the
+                // Recently Added shelves and before Recent Playlists.
+                for section in &self.catalog.sections {
+                    let key = string_value(section.get("key").unwrap_or(&Value::Null));
+                    if directories.as_ref().is_some_and(|wanted| !wanted.contains(&key)) || self.section_visibility(&key) >= 1 {
+                        continue;
+                    }
+                    let (before, after) = self.home_collection_shelves(&key, query);
+                    hubs.extend(before.into_iter().chain(after));
+                }
+            }
             hubs.push(self.home_hub(identifier, title, key, &rows, query, kind, style, true));
         }
         self.expand_global_hub_rows(&mut hubs, query);
@@ -1167,7 +1179,12 @@ impl Runtime {
                     }
                 }
             }
+            // A collection pinned to Home sits before or after the library's Recently Added
+            // as its list orders them (1.43.5, `collection_hub_pins_s1435.json`).
+            let (before, after) = self.home_collection_shelves(&section_key, query);
+            hubs.extend(before);
             hubs.push(shelf);
+            hubs.extend(after);
         }
         if wanted
             .as_ref()
