@@ -200,10 +200,10 @@ class Server:
         poll_until(lambda: self.ask(OWNER, "GET", "/library/sections")[0] == 200
                    and self.ask(SHARED, "GET", "/library/sections")[0] == 200, 40)
 
-    def ask(self, token, method, path, query=(), body=None):
+    def ask(self, token, method, path, query=(), body=None, headers=None):
         pairs = list(query) + [("X-Plex-Token", token)]
         url = "http://127.0.0.1:%d%s?%s" % (self.port, path, urllib.parse.urlencode(pairs))
-        request = urllib.request.Request(url, method=method, data=body, headers={
+        request = urllib.request.Request(url, method=method, data=body, headers=headers or {
             "Accept": "application/json", "X-Plex-Client-Identifier": "rex-import-probe"})
         try:
             with urllib.request.urlopen(request, timeout=60) as response:
@@ -216,7 +216,10 @@ class Server:
             return 0, None
 
     def import_from(self, token, address):
-        return self.ask(token, "POST", "/rex/import-watched", body=address.encode())
+        # What the guide's `curl -d` sends: no Plex headers, and `Accept: */*`, which rex's
+        # Plex surface answered as XML -- an empty body for the import's answer (zen, 2026-10-30).
+        return self.ask(token, "POST", "/rex/import-watched", body=address.encode(), headers={
+            "User-Agent": "curl/8.5.0", "Accept": "*/*", "Content-Type": "application/x-www-form-urlencoded"})
 
     def row(self, token, key):
         status, document = self.ask(token, "GET", "/library/metadata/" + key)

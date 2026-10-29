@@ -138,7 +138,11 @@ impl Runtime {
             let error = answer.get("error").and_then(Value::as_str).unwrap_or("the old server could not be read");
             return Response::json(502, json!({"error": error}));
         };
-        Response::json(200, self.import_watched(items))
+        // rex's own answer, never a Plex document: a 200 `application/json` is negotiated into
+        // Plex XML for any Accept that does not ask for JSON, and curl's `*/*` got an empty body.
+        let mut response = Response::json(200, self.import_watched(items));
+        response.content_type = "application/json; charset=utf-8".to_string();
+        response
     }
 
     /// The old server's leaves onto the rows with their guid, for the account the request
