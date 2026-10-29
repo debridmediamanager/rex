@@ -302,8 +302,13 @@ single-use claim token); the log still names your titles and addresses, so keep 
 
 The Windows build is `rust\target\release\rex.exe` in the zip, and every step above works
 the same in PowerShell with `rust\target\release\rex.exe` for `rust/target/release/rex`,
-`curl.exe` for `curl` and `$env:NAME = '...'` for `export`. Three things differ:
+`curl.exe` for `curl` and `$env:NAME = '...'` for `export`. Four things differ:
 
+- Windows Firewall keeps your network out of rex, so other machines can neither reach it nor
+  find it with discovery. Let it in once, in PowerShell run as administrator (with `--port`, use
+  that port for 32400):
+  `New-NetFirewallRule -DisplayName rex -Protocol TCP -LocalPort 32400` and
+  `New-NetFirewallRule -DisplayName "rex discovery" -Protocol UDP -LocalPort 32410,32414`.
 - `examples/run.sh.example` and `rex manager` are Linux and macOS only. Start `rex.exe` from a
   scheduled task (Task Scheduler, "At startup", "Run whether user is logged on or not") to
   keep it running.

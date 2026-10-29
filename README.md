@@ -53,7 +53,14 @@ Both put rex at `rust/target/release/rex` (in `~/rex`, or in the clone).
 
 Or run the Docker image, `ghcr.io/debridmediamanager/rex:nightly` (private, like zurg's): [docs/setup.md](docs/setup.md#docker) has a compose file.
 
-On Windows unpack the zip and use `rust\target\release\rex.exe` where the steps say `rust/target/release/rex`. `examples/run.sh.example` and `rex manager` are for Linux and macOS only.
+On Windows unpack the zip and use `rust\target\release\rex.exe` where the steps say `rust/target/release/rex`, and `curl.exe` where they say `curl` (Windows PowerShell's own `curl` rejects `-X`). Windows Firewall keeps your network out of rex until you let it in, once, in PowerShell run as administrator:
+
+```powershell
+New-NetFirewallRule -DisplayName rex -Protocol TCP -LocalPort 32400
+New-NetFirewallRule -DisplayName "rex discovery" -Protocol UDP -LocalPort 32410,32414
+```
+
+`examples/run.sh.example` and `rex manager` are for Linux and macOS only.
 
 **2. Start it**
 
