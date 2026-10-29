@@ -10796,7 +10796,7 @@ drove playback as fifteen client identities; C repeated axes 1, 2, 3, 4, 7 and 1
   `PreferredNetworkInterface` enum has its `:Any` lead translated.
 
 **Recorded, not built.** Manage Recommendations' writes (both copies 404 the whole manage leaf,
-unclaimed); `X-Plex-Client-Profile-Extra` on a PLAIN-form decision (every official client that
+unclaimed; built 2026-10-29 from an online 1.43.5, "A collection on Recommended and Home"); `X-Plex-Client-Profile-Extra` on a PLAIN-form decision (every official client that
 sends one sends `hasMDE=1`); a beat's stale `playQueueItemID` echoed in its frame; the session
 `User` block (claim); `/system/scanners/{N}` under `Accept: application/json`; the playbackState
 latch after a stopped beat; `/hubs/promoted?includeGuids=1`; the `tagId` value grammar;
@@ -14506,3 +14506,53 @@ Badge names and sizes stay. Plex's table also carried lookahead patterns the Rus
 cannot compile, which the loader had been dropping silently, and five rules naming badges with
 no size; `framework::tests` now fails on both. The quoted Plex Web code in this file is
 described in prose instead (card 278).
+
+## A collection on Recommended and Home (2026-10-29)
+
+A rex-support thread on Discord ("Collections Not Showing On Home"): a collection's "⋯ → Visible on
+→ Home" did nothing on rex, and Manage Recommendations did not list the collection. rex answered a
+fixed list of the built-in hubs and 404'd every write under `/hubs/sections/{id}/manage` (cycle
+60 had recorded the writes as not built: both offline copies 404 the leaf unclaimed).
+
+Measured on a fresh, online PMS 1.43.5.11029 on the test host with the harness clips, driven by
+the Plex Web 4.162.1 it serves (Chrome over CDP), and recorded in
+`tests/fixtures/collection_hub_pins_s1435.json`; `tests/test_collection_hub_pins.py` replays it.
+
+- **Plex Web asks a collection's own row of the library's list**: `GET
+  /hubs/sections/{s}/manage?metadataItemId={collection}` is `size` 0 until it is in the list,
+  then that one `Hub`. rex's empty answer was right; its refusal of the write was the bug. Each tick
+  in the Visible on menu is `POST manage?metadataItemId=&promotedToRecommended=
+  &promotedToOwnHome=&promotedToSharedHome=` with all three flags, answered with the row.
+- **The row is `custom.collection.{s}.{id}`** with `deletable`, appended to the list; its
+  `recommendationsVisibility` is `all`/`none`, its `homeVisibility` `none`, `admin` (Home), `shared`
+  (Friends' Home) or `all`. Unticking all three keeps the row; Remove Hub (`DELETE manage/{row}`)
+  or Reset Customization (`DELETE manage`, which also drops every collection) removes it. A
+  built-in's DELETE is a 400, an unknown row's a 404, an unknown row's move a 400.
+- **Manage Recommendations writes the same list**: a tick is `PUT manage/{row}?promotedTo...`
+  (empty 200), a drag `PUT manage/{row}/move?after={row above}` answering the whole list, and a
+  drop at the top omits `after` (Plex Web's saga leaves it undefined; replayed by hand: first).
+  The page lives under Settings, Manage, Libraries, not on the library.
+- **The served shelf** is `custom.collection.{s}.{id}.{id}`, `context` `hub.custom.collection`,
+  `key` `/library/collections/{id}/children`, the collection's members in its own order
+  (`hubKey` 2,1,3: release date), `promoted` only where the reader's Home shows it. On the
+  library's Recommended page it sits where the list puts it (Continue Watching, which the list
+  does not name, stays first); on `/hubs/promoted` and `/hubs` it follows the list around the
+  library's Recently Added, before Recent Playlists.
+- **Only a Plex Pass owner's server serves it.** Claimed to an account without Plex Pass the same
+  server took and listed every write and served no collection shelf anywhere; Plex Web also hides
+  Visible on and the page's "Manage Recommendations" unless `ownerFeatures` names
+  `collection-publishing` (or the Plex Pass UUID). The served shelves were measured with the server
+  claimed to an account with Plex Pass for about fifteen minutes, then signed out and its device removed.
+  rex claims Plex Pass, so it serves them.
+- **It is the server's list, not an account's.** One list per library, written from the owner's
+  settings; Home and Friends' Home are two flags on it. rex answers an account other than the
+  owner from `promotedToSharedHome` and refuses its writes. Neither was measured with a real
+  friend (sharing the test server was not allowed), so that half is the reading of PMS's own
+  `homeVisibility` words, not a capture.
+
+Built, from the fixture: the list with every verb above, kept in the state file (`hubLayouts`),
+the collection shelves on the Recommended page, `/hubs/promoted` and `/hubs`. **Not built**: a
+built-in hub's own ticks change the list but not the pages (1.43.5 drops a hub its library's list
+unticks and adds `movie.genre.1.7` to Home when that is ticked; rex still serves its fixed
+built-ins); `/hubs/promoted` with `pinnedContentDirectoryID` names the Recently Added shelf
+`movie.recentlyadded.1` on 1.43.5 where rex keeps 1.42.2's `home.movies.recent.1`.

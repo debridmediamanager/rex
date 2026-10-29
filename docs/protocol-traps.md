@@ -178,6 +178,11 @@ currently advertised by rex. A version label is not proof of complete PMS equiva
   id stripped), `style` and `promoted`. `hubKey` is not a listing path — it is
   `/library/metadata/<comma-joined ratingKeys>` naming that shelf's own rows. And
   `/hubs/home/recentlyAdded` keys on `type`, NOT on `sectionID`.
+- **Manage Recommendations is one list per library, and a collection joins it.** Visible on is
+  `POST /hubs/sections/{s}/manage?metadataItemId={collection}` with all three flags; the row
+  `custom.collection.{s}.{id}` stays, unticked, until Remove Hub or Reset Customization, and its
+  shelf `custom.collection.{s}.{id}.{id}` is served only by a Plex Pass owner's server (findings,
+  "A collection on Recommended and Home").
 - **The preplay page's Related shelf is `/hubs/metadata/{id}/related`**, a
   different endpoint from `/library/metadata/{id}/related` — the client rewrites
   the path. `related` carries the librarySection triple, `postplay` carries none of

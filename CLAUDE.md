@@ -659,6 +659,8 @@ python3 tests/test_accounts.py              # plexlab's owner and shared user re
                                             # history and sessions, a share's libraries, filters and flags, the owner's routes
 python3 tests/test_tag_collections.py       # a metadata manager's requests replayed from an online 1.43.5: a tag write makes its collection,
                                             # a url poster is fetched (its 200/406 need raw.githubusercontent.com, else skip)
+python3 tests/test_collection_hub_pins.py   # a collection's Visible on and Manage Recommendations replayed from Plex Web on an online
+                                            # 1.43.5: the list's rows, moves, removal and reset, its shelf on Recommended and Home, kept by --state
 python3 tests/parallel_suites.py --workers 4 test_cli test_feed ...
                                             # several suites at once, as CI runs them: each gets its own
                                             # REX_TEST_PORTS range (tests/test_ports.py), output kept per suite
