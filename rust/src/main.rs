@@ -8,7 +8,7 @@ use rex::{catalog, decision, filters, gate, hierarchy, mediainfo, metadata, runt
 use serde_json::json;
 
 fn usage() -> &'static str {
-    "Usage: rex [server options] | rex catalog ... | rex manager ... | rex <decision|mediainfo|normalize-media|stream-titles|hierarchy-build|hierarchy-normalize|hierarchy-fold|hierarchy-case|catalog-normalize|xml|system-xml|ordered|guid|provider-guids|gate|filter-compare|filter-parse|filter-evaluate|filter-describe|filter-document|filter-orders|filter-source-order> ..."
+    "Usage: rex [server options] | rex catalog --help | rex manager --help\nTest adapters, for the suites only: rex <decision|mediainfo|normalize-media|stream-titles|hierarchy-build|hierarchy-normalize|hierarchy-fold|hierarchy-case|catalog-normalize|xml|system-xml|ordered|guid|provider-guids|gate|filter-compare|filter-parse|filter-evaluate|filter-describe|filter-document|filter-orders|filter-source-order> ..."
 }
 
 /// `main()`'s `argparse` options, in its declaration order: (flag, metavar, takes a value).
@@ -66,9 +66,14 @@ fn server_usage() -> String {
 /// the oracle's own help text.
 fn server_help() -> String {
     let helps: HashMap<&str, &str> = [
+        ("--port", "TCP port to serve on, plain HTTP and, with a certificate, HTTPS on the same port. Default 32400"),
+        ("--host", "address to listen on. Default 0.0.0.0, every interface"),
+        ("--public-url", "only its host name is read, and only when it is a *.plex.direct name: advertised in LAN discovery, as --plex-direct-host is"),
+        ("--verbose", "log every request line and debug detail"),
+        ("--heartbeat-interval", "seconds between announces to plex.tv once claimed. Default 600"),
         ("--part-mode", "proxy streams a part's bytes from its source through rex; redirect sends a client playing a part directly to the link its source redirects to, so the client downloads it (conversions still read through rex); redirect-only also turns conversion off and refuses a part its source answers with the bytes, so rex carries no stream"),
-        ("--token", "require this X-Plex-Token on every request except /identity and /web/* -- which is what a real PMS does. Not needed: a claimed rex checks every token itself."),
-        ("--assert-claimed", "report claimed=1 without performing a real plex.tv claim exchange"),
+        ("--token", "require this X-Plex-Token on every request except /identity, /web/* and, from a private network, the source API (/rex/sources, /rex/feed). Also $REX_TOKEN. Not needed: a claimed rex checks every token itself."),
+        ("--assert-claimed", "for tests: report claimed=1 without a real plex.tv claim"),
         ("--web-root", "directory of the extracted Plex Web client, served at /web"),
         ("--owner-email", "owner email, which is what a real PMS reports as myPlexUsername"),
         ("--owner-username", "the Plex account that OWNS this server; shared users are not owners"),
@@ -76,12 +81,12 @@ fn server_help() -> String {
         ("--device-id", "machineIdentifier to announce on; defaults to the catalog's own"),
         ("--tls-cert", "PEM certificate chain to serve TLS with, on the same port as plain HTTP; rex-direct's certificate answers for its own name beside it, and for every name without it"),
         ("--tls-key", "PEM private key for --tls-cert, PKCS#8, RSA or EC (defaults to the certificate file itself)"),
-        ("--gdm", "answer Plex's LAN discovery protocol on udp/32410 and udp/32414"),
+        ("--gdm", "answer Plex's LAN discovery protocol on udp/32410 and udp/32414. Default auto: on only when --port is 32400"),
         ("--plex-direct-host", "the <hash>.plex.direct hostname to advertise in GDM's Host: line; omitted entirely when unknown, which is what a PMS with no certificate does"),
         ("--account-state-interval", "seconds between claimed-account watch/rating imports"),
         ("--state", "file to keep watch state, edits, lists, history, preferences, uploads and statistics in across restarts. Default: rex.db beside the catalog, or the catalog itself when it is a database, or $REX_STATE"),
         ("--no-state", "keep nothing across a restart: a restart reloads the catalog as it is on disk. Also an empty $REX_STATE"),
-        ("--catalog", "the catalog, a .db or .json file. One that does not exist is seeded on start, as rex catalog --seed would: an empty movie and show library under --mount. Default rex.db, or catalog.json where an older start made one"),
+        ("--catalog", "the catalog, a .db or .json file. One that does not exist is seeded on start, as rex catalog --seed would: an empty movie and show library under --mount. Default rex.db in the working directory, or catalog.json there where an older start made one"),
         ("--mount", "the folder path a catalog seeded on this start shows for its libraries (<mount>/movies, <mount>/shows); only a label, nothing is read there. Default /mnt/rex"),
         ("--friendly-name", "the name a catalog seeded on this start is given (default the machine's host name); an existing catalog keeps its own"),
     ]
@@ -103,7 +108,7 @@ fn server_help() -> String {
         lines
     };
     let mut out = format!(
-        "{}\n\nrex -- a PMS that owns no files\n\noptions:\n  -h, --help            show this help message and exit\n",
+        "{}\n\nrex -- a media server for the Plex apps that owns no files\n\noptions:\n  -h, --help            show this help message and exit\n",
         server_usage()
     );
     for (flag, metavar, takes) in SERVER_OPTIONS {

@@ -34,7 +34,7 @@ options:
   --out OUT             the catalog to write: .db (or an existing database) is
                         SQLite, anything else JSON. Default catalog.json at the
                         checkout's root
-  --name NAME           friendlyName the clients show
+  --name NAME           the server name the Plex apps show. Default rex
   --seed                write an empty library for a server its sources fill
   --mount MOUNTS        with --seed: the prefix the library folders are shown
                         with; repeat for several. Default /mnt/rex. Each

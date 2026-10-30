@@ -1006,7 +1006,7 @@ const PAGE: &str = r##"<!doctype html><html><head><meta charset="utf-8">
 td,th{border-bottom:1px solid #ccc;padding:4px 6px;text-align:left}input,select{margin:2px}
 pre{background:#f4f4f4;padding:8px;max-height:300px;overflow:auto}</style></head><body>
 <h1>rex manager</h1>
-<p>Admin token: <input id=tok type=password size=40> <button onclick="save()">Use</button></p>
+<p>Admin token: <input id=tok type=password size=40> <button onclick="save()">Use</button> (printed at the manager's first start, kept in admin.token under its root)</p>
 <table><thead><tr><th>name<th>port<th>status<th>desired<th>last exit<th></tr></thead><tbody id=rows></tbody></table>
 <h2>New server</h2>
 <form id=f onsubmit="create(event)">
@@ -1406,7 +1406,9 @@ Every command but serve also takes --url URL (default http://127.0.0.1:32300) an
 --token-file FILE (default <root>/admin.token; or $REX_MANAGER_TOKEN). Keys come from the
 environment (REX_TOKEN, REX_DIRECT_KEY, REX_DIRECT_URL, or the variable --token-env,
 --rex-direct-key-env and --rex-direct-url-env name), never
-the command line. Sources register with the server themselves (docs/feed-api.md).";
+the command line. Sources register with the server themselves (docs/feed-api.md).
+--root defaults to managed/ in the folder rex was unpacked into, else in the working directory.
+Linux and macOS only.";
 
 fn usage_error(message: &str) -> String {
     format!("{}\nrex: error: {message}", USAGE.lines().next().unwrap_or_default())
@@ -1553,7 +1555,7 @@ impl Client {
         let payload = body.map(|body| body.to_string()).unwrap_or_default();
         let headers = [("Authorization", format!("Bearer {}", self.token)), ("Content-Type", "application/json".to_string())];
         let (status, _, raw) = crate::runtime::upstream::fetch(method, &url, &headers, payload.as_bytes(), Duration::from_secs(60))
-            .map_err(|error| format!("manager: cannot reach {}: {error}", self.url))?;
+            .map_err(|error| format!("manager: cannot reach {}: {error} (is `rex manager serve` running there?)", self.url))?;
         let answer = serde_json::from_slice::<Value>(&raw);
         if status >= 400 {
             let message = answer

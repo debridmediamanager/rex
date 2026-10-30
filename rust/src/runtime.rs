@@ -8185,8 +8185,14 @@ impl Runtime {
         if !self.authorized(&path, &request, &query) {
             let response = self.unauthorized_route(&path, request);
             self.refused_for_token = true;
+            // An unclaimed claim needs no token: what refused it is where it came from.
+            let why = if path == "/myplex/claim" && !self.gated() {
+                "a claim is taken only from this machine or its home network, addressed by rex's LAN IP (not a host name or a proxy)"
+            } else {
+                "no valid token"
+            };
             warning!(
-                "{} {} {} -- no valid token",
+                "{} {} {} -- {why}",
                 response.status,
                 request.method,
                 split_target(&request.target).0
@@ -23227,7 +23233,7 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
         info!("state file {}: {}", path.display(), loaded.state_summary);
     }
     if loaded.sources.is_empty() {
-        info!("no source yet: one registers at PUT /rex/sources/{{name}} (docs/feed-api.md)");
+        info!("no source yet: a source registers itself once pointed at this server (zurg: rex_url; others: PUT /rex/sources/{{name}}, docs/feed-api.md)");
     }
     for source in &loaded.sources {
         info!("source {}: registered, feed at /rex/feed/{}/", source.name, source.name);
@@ -23241,7 +23247,7 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
     if let Some(cert) = &tls_cert {
         info!("TLS multiplexed on tcp/{port} from {}", cert.display());
     }
-    let (plextv, machine, friendly, items, part_mode, catalog_path) = {
+    let (plextv, machine, friendly, items, part_mode, catalog_path, private) = {
         let guard = runtime
             .lock()
             .unwrap_or_else(PoisonError::into_inner);
@@ -23252,6 +23258,7 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
             guard.catalog.len(),
             guard.part_mode.clone(),
             guard.catalog_path.clone(),
+            guard.private_address.clone(),
         )
     };
     // Cycle 44: announced on the server's own machineIdentifier.
@@ -23293,7 +23300,7 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
         }
     }
     let listener = TcpListener::bind((host.as_str(), port))
-        .map_err(|e| format!("cannot bind {host}:{port}: {e}"))?;
+        .map_err(|e| format!("cannot bind {host}:{port}: {e} (another rex or Plex on this port? --port picks another)"))?;
     // The first client, GDM probe and plex.tv registration all see the same release.
     // Unclaimed and --assert-claimed servers refresh too.
     plextv::refresh_version(&plextv.claim);
@@ -23325,9 +23332,10 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
             "OFF -- unclaimed: no client is served until the claim, taken only from this machine and its private networks (allowedNetworks)"
         }
     );
+    // The LAN address, not the host name: the unclaimed gate refuses a claim addressed by name.
     info!(
-        "rex on http://{}:{port}  machine={machine}  items={items}  parts={part_mode}",
-        hostname()
+        "rex on {}  machine={machine}  items={items}  parts={part_mode}",
+        lan_url(&host, &private, port).unwrap_or_else(|| format!("http://{}:{port}", hostname()))
     );
     if explicit_announce && part_mode == "proxy" {
         // Measured behind a Cloudflare tunnel: a prefix Range reaches the origin as a

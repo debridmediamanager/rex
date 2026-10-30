@@ -701,7 +701,7 @@ pub(crate) fn refresh_version(claim: &SharedClaim) {
         return;
     }
     if latest != state.version {
-        info!("naming the server as PMS {latest}");
+        info!("reporting Plex Media Server version {latest} to clients");
         state.version = latest;
         state.save();
     }
@@ -1610,7 +1610,7 @@ pub(crate) fn start_heartbeat(plextv: Arc<PlexTv>, interval: u64) {
                 // 2026-09-11 claim answer the account token from ever being written.
                 let Some(token) = claim_token(&claim) else {
                     if !std::mem::replace(&mut waiting, true) {
-                        info!("waiting for a claim (POST /myplex/claim) before announcing {}", with_lan(&beat.url));
+                        info!("waiting for a claim before announcing {}: copy a code from https://www.plex.tv/claim and POST it to /myplex/claim?token=<code> at rex's LAN IP", with_lan(&beat.url));
                     }
                     thread::sleep(Duration::from_secs(interval));
                     continue;
@@ -2639,7 +2639,7 @@ pub(super) fn finish_claim(runtime: &SharedRuntime, token: &str, _target: &str) 
         Ok(_) => {}
         Err(None) => return super::Response::error(409, "rex: already claimed"),
         Err(Some(message)) => {
-            error!("claim exchange failed: {message}");
+            error!("claim exchange failed: {message} (a code from https://www.plex.tv/claim works once, for about five minutes: copy a new one and claim again)");
             return super::Response::error(500, &format!("rex: claim exchange failed: {message}"));
         }
     }

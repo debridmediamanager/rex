@@ -61,9 +61,9 @@ fn open(path: &Path) -> Result<Connection, String> {
     #[cfg(unix)]
     if !path.exists() {
         use std::os::unix::fs::OpenOptionsExt;
-        fs::OpenOptions::new().write(true).create_new(true).mode(0o600).open(path).map_err(|e| e.to_string())?;
+        fs::OpenOptions::new().write(true).create_new(true).mode(0o600).open(path).map_err(|e| format!("cannot create {}: {e}", path.display()))?;
     }
-    let connection = Connection::open(path).map_err(|e| e.to_string())?;
+    let connection = Connection::open(path).map_err(|e| format!("cannot open {}: {e}", path.display()))?;
     // WAL: a commit appends the changed pages instead of rewriting the file, and
     // readers (a backup, `sqlite3`) never block the server. FULL: a commit is on disk
     // before it returns, which is what "saved before it is answered" means.
