@@ -345,6 +345,10 @@ the same in PowerShell with `rust\target\release\rex.exe` for `rust/target/relea
   that port for 32400):
   `New-NetFirewallRule -DisplayName rex -Protocol TCP -LocalPort 32400` and
   `New-NetFirewallRule -DisplayName "rex discovery" -Protocol UDP -LocalPort 32410,32414`.
+  If Windows ever asked whether to allow rex and you clicked **Cancel**, it saved a rule that
+  blocks rex and wins over the port rules. Remove it, as administrator:
+  `Get-NetFirewallApplicationFilter -Program "$HOME\rex\rust\target\release\rex.exe" | Get-NetFirewallRule | Where-Object Action -eq Block | Remove-NetFirewallRule`
+  (with rex elsewhere, its own path).
 - `examples/run.sh.example` and `rex manager` are Linux and macOS only. To keep rex running, put
   its command in `run.cmd` in rex's folder, which starts it there (rex makes `rex.db` in the
   folder it starts in) and keeps its log in `rex.log`; step 7's flags go on its last line and keys
@@ -364,7 +368,8 @@ the same in PowerShell with `rust\target\release\rex.exe` for `rust/target/relea
   Start-ScheduledTask rex
   ```
 
-  It runs while you are logged in. `Stop-Process -Name rex` stops it (`Stop-ScheduledTask` would end only `run.cmd`); stop it before unpacking a
+  It runs while you are logged in. `Stop-Process -Name rex` stops it (`Stop-ScheduledTask` would end only `run.cmd`),
+  and `Stop-Process -Name rex; Start-Sleep 1; Start-ScheduledTask rex` restarts it. Stop it before unpacking a
   newer build, as Windows will not replace a running `rex.exe`.
 - `claim_state.json`, `rex-direct.json` (the certificate's private key) and `rex.db`, which holds
   the sources' credentials, are protected only by the folder they sit in, so keep the rex folder inside your user profile.

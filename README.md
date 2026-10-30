@@ -72,7 +72,7 @@ rust/target/release/rex
 
 The first start makes `rex.db` with two empty libraries, Movies and TV Shows (rename them in Plex, or add more with Add Library), and names the server after the machine (rename it in Plex's Settings). Files under a `movies` directory go to Movies and files under `shows` go to TV, whichever source they come from, unless the source placed a file as the other kind. A file under any other directory, like `anime`, goes to TV if its source placed it as an episode and to Movies otherwise. To give a directory libraries of its own, add `rex_shows: Anime` and/or `rex_movies: Anime Movies` under it in zurg's `config.yml` (step 4): rex makes them when zurg connects and moves what that directory already has into them as it is, watch history, Fix Match and edits included. Rename them in Plex as you like. Delete one and it stays deleted, its files going back to Movies and TV Shows, until you add it again with Add Library, whose folder list shows zurg's directories.
 
-`rex.db` holds your library, watch history and your sources' logins. Back it up with `sqlite3 rex.db ".backup rex.db.bak"` (Windows has no `sqlite3`: stop rex and copy `rex.db` with its `rex.db-wal` and `rex.db-shm`) and keep the backups private.
+`rex.db` holds your library, watch history and your sources' logins. Back it up with `sqlite3 rex.db ".backup rex.db.bak"` (Windows has no `sqlite3`: stop rex with `Stop-Process -Name rex` and copy `rex.db` with its `rex.db-wal` and `rex.db-shm`) and keep the backups private.
 
 Until you add it to a Plex account in step 3 rex serves no Plex app: it answers only its claim and, from this machine, your home network and Tailscale, your sources (step 4).
 
@@ -141,7 +141,7 @@ rex answers how many titles it marked watched, in progress and rated, and how ma
 
 To keep it running, start step 2's command, with any flags from step 5, as a service: [the full guide](docs/setup.md#8-run-it-as-a-service) has the systemd unit, a LaunchAgent for macOS, a scheduled task for Windows, and a way to run several servers on one machine.
 
-To update, unpack a newer build into `~/rex` as in step 1 and restart rex. On Windows stop rex first: Windows will not replace a running `rex.exe`. It replaces `rust/`, `data/` and `examples/` and leaves `rex.db`, `rex.env`, `run.sh`, `claim_state.json` and `rex-direct.json` alone. With Docker, `docker compose pull && docker compose up -d`.
+To update, unpack a newer build into `~/rex` as in step 1 and restart rex. On Windows stop rex first, as for a backup: Windows will not replace a running `rex.exe`. It replaces `rust/`, `data/` and `examples/` and leaves `rex.db`, `rex.env`, `run.sh`, `claim_state.json` and `rex-direct.json` alone. With Docker, `docker compose pull && docker compose up -d`.
 
 ## For developers
 
