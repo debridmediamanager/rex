@@ -364,7 +364,7 @@ the same in PowerShell with `rust\target\release\rex.exe` for `rust/target/relea
   Start-ScheduledTask rex
   ```
 
-  It runs while you are logged in. `Stop-ScheduledTask rex` stops it; stop it before unpacking a
+  It runs while you are logged in. `Stop-Process -Name rex` stops it (`Stop-ScheduledTask` would end only `run.cmd`); stop it before unpacking a
   newer build, as Windows will not replace a running `rex.exe`.
 - `claim_state.json`, `rex-direct.json` (the certificate's private key) and `rex.db`, which holds
   the sources' credentials, are protected only by the folder they sit in, so keep the rex folder inside your user profile.
