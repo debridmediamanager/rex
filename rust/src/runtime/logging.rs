@@ -34,7 +34,7 @@ struct Sink {
 pub(crate) fn redact_tokens(target: &str) -> String {
     static TOKEN: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
     TOKEN
-        .get_or_init(|| regex::Regex::new(r"(?i)(x-plex-token(?:=|%3d))[A-Za-z0-9_.~-]+").unwrap())
+        .get_or_init(|| regex::Regex::new(r"(?i)(\b(?:x-plex-)?token(?:=|%3d))[A-Za-z0-9_.~-]+").unwrap())
         .replace_all(target, "${1}xxxxxxxxxxxxxxxxxxxx")
         .into_owned()
 }
@@ -362,5 +362,12 @@ mod tests {
     #[test]
     fn crc32_matches_the_check_value() {
         assert_eq!(crc32(b"123456789"), 0xCBF4_3926);
+    }
+
+    #[test]
+    fn redacts_plex_tokens_and_claim_codes() {
+        assert_eq!(redact_tokens("/library?X-Plex-Token=abc123"), "/library?X-Plex-Token=xxxxxxxxxxxxxxxxxxxx");
+        assert_eq!(redact_tokens("/myplex/claim?token=claim-SECRETabc123"), "/myplex/claim?token=xxxxxxxxxxxxxxxxxxxx");
+        assert_eq!(redact_tokens("/rex/sources?accessToken=keep"), "/rex/sources?accessToken=keep");
     }
 }
