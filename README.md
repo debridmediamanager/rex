@@ -32,7 +32,7 @@ Download the build for your machine from [Releases](https://github.com/debridmed
 mkdir -p ~/rex && tar xzf rex-<tag>-linux-$(dpkg --print-architecture).tar.gz -C ~/rex --strip-components=1 && cd ~/rex
 ```
 
-`<tag>` is the newest nightly's name (`YYYY.MM.DD.HHMM-nightly`).
+`<tag>` is the newest nightly's name (`YYYY.MM.DD.HHMM-nightly`). On a Mac the file ends in `darwin-arm64.tar.gz` (Apple Silicon) or `darwin-amd64.tar.gz` (Intel) instead.
 
 On macOS, Gatekeeper will not run a rex downloaded in a browser. After unpacking, run `xattr -dr com.apple.quarantine .` in the unpacked folder, or download it with the [GitHub CLI](https://cli.github.com) (signed in with `gh auth login`), which does not quarantine it (`darwin-amd64` on Intel):
 
@@ -68,11 +68,11 @@ New-NetFirewallRule -DisplayName "rex discovery" -Protocol UDP -LocalPort 32410,
 rust/target/release/rex
 ```
 
-`<rex's LAN IP>` in the next steps is the rex machine's address on your home network, such as `192.168.1.20` (`hostname -I` on Linux). Every command on this page uses it, run on the rex machine or anywhere else at home.
+`<rex's LAN IP>` in the next steps is the rex machine's address on your home network, such as `192.168.1.20` (`hostname -I` on Linux, `ipconfig getifaddr en0` on macOS, **IPv4 Address** in `ipconfig` on Windows). Every command on this page uses it, run on the rex machine or anywhere else at home.
 
 The first start makes `rex.db` with two empty libraries, Movies and TV Shows (rename them in Plex, or add more with Add Library), and names the server after the machine (rename it in Plex's Settings). Files under a `movies` directory go to Movies and files under `shows` go to TV, whichever source they come from, unless the source placed a file as the other kind. A file under any other directory, like `anime`, goes to TV if its source placed it as an episode and to Movies otherwise. To give a directory libraries of its own, add `rex_shows: Anime` and/or `rex_movies: Anime Movies` under it in zurg's `config.yml` (step 4): rex makes them when zurg connects and moves what that directory already has into them as it is, watch history, Fix Match and edits included. Rename them in Plex as you like. Delete one and it stays deleted, its files going back to Movies and TV Shows, until you add it again with Add Library, whose folder list shows zurg's directories.
 
-`rex.db` holds your library, watch history and your sources' logins. Back it up with `sqlite3 rex.db ".backup rex.db.bak"` and keep the backups private.
+`rex.db` holds your library, watch history and your sources' logins. Back it up with `sqlite3 rex.db ".backup rex.db.bak"` (Windows has no `sqlite3`: stop rex and copy `rex.db` with its `rex.db-wal` and `rex.db-shm`) and keep the backups private.
 
 Until you add it to a Plex account in step 3 rex serves no Plex app: it answers only its claim and, from this machine, your home network and Tailscale, your sources (step 4).
 
@@ -139,9 +139,9 @@ curl -d "<the old server's address>" "http://<rex's LAN IP>:32400/rex/import-wat
 
 rex answers how many titles it marked watched, in progress and rated, and how many of the old server's it does not have. It goes by the id Plex's own agents give a title, so a library on Plex's legacy agents brings nothing over. It never changes what you already watched or rated on rex, so run it again once more of your library has arrived. Everyone you share rex with can do the same with their own token. The [notes guide](https://notes.debridmediamanager.com/rex/import-watched/) has each step.
 
-To keep it running, start step 2's command, with any flags from step 5, as a service: [the full guide](docs/setup.md#8-run-it-as-a-service) has the systemd unit, and a way to run several servers on one machine.
+To keep it running, start step 2's command, with any flags from step 5, as a service: [the full guide](docs/setup.md#8-run-it-as-a-service) has the systemd unit, a LaunchAgent for macOS, a scheduled task for Windows, and a way to run several servers on one machine.
 
-To update, unpack a newer build into `~/rex` as in step 1 and restart rex. It replaces `rust/`, `data/` and `examples/` and leaves `rex.db`, `rex.env`, `run.sh`, `claim_state.json` and `rex-direct.json` alone. With Docker, `docker compose pull && docker compose up -d`.
+To update, unpack a newer build into `~/rex` as in step 1 and restart rex. On Windows stop rex first: Windows will not replace a running `rex.exe`. It replaces `rust/`, `data/` and `examples/` and leaves `rex.db`, `rex.env`, `run.sh`, `claim_state.json` and `rex-direct.json` alone. With Docker, `docker compose pull && docker compose up -d`.
 
 ## For developers
 

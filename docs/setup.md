@@ -91,7 +91,7 @@ the lines from zurg's config keeps the library.
 rex keeps everything clients change (watch state, edits, playlists, collections,
 history, preferences), and each source's registration, in the same `rex.db`, written as it
 changes. It holds the sources' credentials, so keep it and its backups private. Back it up
-with the server stopped, or with `sqlite3 rex.db ".backup rex.db.bak"`; in Docker,
+with the server stopped by copying `rex.db` with its `rex.db-wal` and `rex.db-shm` (the way on Windows, which has no `sqlite3`), or with `sqlite3 rex.db ".backup rex.db.bak"`; in Docker,
 `docker exec rex sqlite3 /config/rex.db ".backup /config/rex.db.bak"`.
 
 ### 4. First start, on your LAN
@@ -101,7 +101,7 @@ rust/target/release/rex
 ```
 
 `<rex's LAN IP>` below is the rex machine's address on your home network, such as `192.168.1.20`
-(`hostname -I` on Linux). Every command in this guide uses it, from the rex machine or anywhere
+(`hostname -I` on Linux, `ipconfig getifaddr en0` on macOS, **IPv4 Address** in `ipconfig` on Windows). Every command in this guide uses it, from the rex machine or anywhere
 else at home. With an HTTPS address of your own (step 7), its flags go here too: a flag or key
 added later needs a restart.
 
@@ -302,10 +302,28 @@ WantedBy=default.target
 ```
 
 On macOS, copy `examples/run.sh.example` to `run.sh` beside `rust/`: it is the same command as a
-script that loads `rex.env`. Under launchd, with absolute log paths (relative ones make the job exit 78 without a log):
-`launchctl submit -l com.rex -o "$PWD/rex.log" -e "$PWD/rex.err" -- /bin/bash "$PWD/run.sh"`.
-A submitted job does not survive a reboot; a LaunchAgent plist like the manager's (below)
-does. To run several servers on one host, use `rex manager` (below).
+script that starts rex in its own folder and loads `rex.env`, so step 7's flags go on its last line.
+A LaunchAgent runs it whenever you log in. In rex's folder, with absolute log paths (relative ones
+make the job exit 78 without a log):
+
+```bash
+mkdir -p ~/Library/LaunchAgents
+cat > ~/Library/LaunchAgents/com.rex.plist <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>com.rex</string>
+  <key>ProgramArguments</key><array><string>/bin/bash</string><string>$PWD/run.sh</string></array>
+  <key>RunAtLoad</key><true/><key>KeepAlive</key><true/>
+  <key>StandardOutPath</key><string>$PWD/rex.log</string>
+  <key>StandardErrorPath</key><string>$PWD/rex.log</string>
+</dict></plist>
+PLIST
+launchctl load ~/Library/LaunchAgents/com.rex.plist
+```
+
+`launchctl kickstart -k gui/$(id -u)/com.rex` restarts it. To run several servers on one host, use
+`rex manager` (below).
 
 To update a release, unpack the newer archive with `--strip-components=1` in the same
 folder and restart rex. It replaces `rust/`, `data/`, `examples/` and the docs, and leaves
@@ -327,9 +345,27 @@ the same in PowerShell with `rust\target\release\rex.exe` for `rust/target/relea
   that port for 32400):
   `New-NetFirewallRule -DisplayName rex -Protocol TCP -LocalPort 32400` and
   `New-NetFirewallRule -DisplayName "rex discovery" -Protocol UDP -LocalPort 32410,32414`.
-- `examples/run.sh.example` and `rex manager` are Linux and macOS only. Start `rex.exe` from a
-  scheduled task (Task Scheduler, "At startup", "Run whether user is logged on or not") to
-  keep it running.
+- `examples/run.sh.example` and `rex manager` are Linux and macOS only. To keep rex running, put
+  its command in `run.cmd` in rex's folder, which starts it there (rex makes `rex.db` in the
+  folder it starts in) and keeps its log in `rex.log`; step 7's flags go on its last line and keys
+  above it as `set NAME=value`:
+
+  ```bat
+  @echo off
+  cd /d "%~dp0"
+  rust\target\release\rex.exe 2>> rex.log
+  ```
+
+  Then, in PowerShell as administrator and with rex in `$HOME\rex`, have it start at logon with no time limit, on battery too:
+
+  ```powershell
+  $settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit 0 -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
+  Register-ScheduledTask rex -Action (New-ScheduledTaskAction -Execute "$HOME\rex\run.cmd") -Trigger (New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME) -Settings $settings
+  Start-ScheduledTask rex
+  ```
+
+  It runs while you are logged in. `Stop-ScheduledTask rex` stops it; stop it before unpacking a
+  newer build, as Windows will not replace a running `rex.exe`.
 - `claim_state.json`, `rex-direct.json` (the certificate's private key) and `rex.db`, which holds
   the sources' credentials, are protected only by the folder they sit in, so keep the rex folder inside your user profile.
 - LAN discovery cannot share its ports with a Plex Media Server on the same Windows machine.
@@ -337,7 +373,10 @@ the same in PowerShell with `rust\target\release\rex.exe` for `rust/target/relea
 
 ### Docker
 
-`ghcr.io/debridmediamanager/rex:nightly` is rex's Linux build (amd64 and arm64) in an image.
+`ghcr.io/debridmediamanager/rex:nightly` is rex's Linux build (amd64 and arm64) in an image, and
+this section is for a Linux host. On macOS and Windows, Docker Desktop runs containers inside a
+virtual machine, so host networking, LAN discovery and the GPU do not work there as they do on
+Linux: run the release build instead.
 It is private, as the repository is: log in with a classic GitHub token that has
 `read:packages` and `repo`, the same as for zurg's image.
 
