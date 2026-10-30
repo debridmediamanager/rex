@@ -16,11 +16,13 @@ HTTPS address. rex starts once (step 4), and nothing after that needs a restart.
 |---|---|
 | A Linux, macOS or Windows host | rex is one binary with no other runtime dependencies |
 | rex nightly 2026.10.25 or newer | download it (README step 1), or build it with Rust 1.89 or newer (rustup) or Docker (below) |
-| One or more byte sources | [zurg](https://github.com/debridmediamanager/zurg) nightly 2026.10.22 or newer (zurg v1.0.0 has no rex feed), or any HTTP server that serves the files plus something that pushes them to rex's feed |
+| One or more byte sources | [zurg](https://zurg.debridmediamanager.com/) nightly 2026.10.27 or newer (zurg v1.0.0 has no rex feed), or any HTTP server that serves the files plus something that pushes them to rex's feed |
 | An HTTPS address | only for use outside your LAN and in app.plex.tv: rex-direct, on by default once claimed (step 7), or a certificate for a hostname you control (a `tailscale cert`, Let's Encrypt) |
 | FFmpeg | optional, for [transcoding](#transcoding) |
 
-### 1. Build
+### 1. Get it
+
+Download a release as in [the README's step 1](../README.md#setup), or build it:
 
 ```bash
 git clone https://github.com/debridmediamanager/rex && cd rex
@@ -109,7 +111,7 @@ Plex Media Server runs on the same machine? Add `--port 32500` and use `32500` w
 guide says `32400`, the claim and step 7's port forward included (see LAN discovery below).
 
 The first lines of the log say whether it seeded the catalog, name each source it already
-knows (`source rd: registered, feed at /rex/feed/rd/`, or `no source yet`) and the state
+knows (`source zurg: registered, feed at /rex/feed/zurg/`, or `no source yet`) and the state
 file.
 
 Titles, summaries, posters and episode names come from Plex's own metadata once rex is claimed
@@ -122,7 +124,7 @@ Check it answers:
 ```bash
 curl -s http://<rex's LAN IP>:32400/identity      # machineIdentifier, version
 curl -s http://<rex's LAN IP>:32400/rex/sources            # {"size":0} until a source registers
-curl -s http://<rex's LAN IP>:32400/rex/feed/rd/items       # what rd pushed, once it has registered
+curl -s http://<rex's LAN IP>:32400/rex/feed/zurg/items     # what zurg pushed, once it has registered
 ```
 
 - **LAN discovery.** On port 32400 rex answers Plex's LAN discovery (GDM) on udp/32410 and
@@ -156,8 +158,7 @@ means claiming again.
    curl -s -X POST "http://<rex's LAN IP>:32400/myplex/claim?token=claim-xxxxxxxxxxxxxxxx"
    ```
 
-3. `curl -s http://<rex's LAN IP>:32400/identity` now reports `claimed="1"`, and
-   `claim_state.json` exists beside `rex.db`.
+3. `curl -s http://<rex's LAN IP>:32400/identity` now reports `claimed="1"`.
 4. Still as the fresh account, share rex with your own account in app.plex.tv (Settings,
    Manage Library Access, Grant Library Access, every library) and accept the invite as
    yourself.
@@ -174,7 +175,7 @@ A claimed rex refuses another claim (409). To move it to another account, stop i
 A source is any program that registers with rex and pushes its files over the feed API
 ([`feed-api.md`](feed-api.md)); your own app or an addon does it as below for zurg
 ([rex with your own app](https://notes.debridmediamanager.com/rex/any-source/), [Building rex addons](https://notes.debridmediamanager.com/rex/addons/)).
-For a debrid account or Usenet that is zurg. In each zurg's `config.yml` (zurg's [`docs/config.md`](https://github.com/debridmediamanager/zurg/blob/main/docs/config.md) has the details):
+For a debrid account or Usenet that is zurg. In each zurg's `config.yml` (zurg's [config reference](https://notes.debridmediamanager.com/zurg/reference/config/) has the details):
 
 ```yaml
 rex_url: http://<rex's LAN IP>:32400
@@ -187,8 +188,8 @@ directory that is to be a library of its own gets `rex_shows`/`rex_movies` under
 rex's LAN IP works from the same machine, another one and a container alike. Restart
 zurg. Once its library has loaded it registers with rex, pushes everything it holds, then
 each change as it happens. Watch it
-arrive in rex's log (`SOURCES rd registered ...`, `FEED POST /rex/feed/rd/items -> 200`) and with the
-`/rex/sources` and `/rex/feed/rd/items` calls above.
+arrive in rex's log (`SOURCES zurg registered at ...`, then `FEED PUT /rex/feed/zurg/snapshot -> 200`) and
+with the `/rex/sources` and `/rex/feed/zurg/items` calls above (a zurg given `rex_source` uses that name).
 
 **An item appears only once zurg has probed it with ffprobe**, because rex lists each
 file with its streams. Items zurg never probed are held, not shown. zurg probes the whole
@@ -198,10 +199,6 @@ Docker image carries one, and if the download fails, install ffprobe and set `ff
 With a `dmm_api_key`, up to about 20 releases a minute come from DMM's stored details instead.
 zurg tries a failed probe again a day later, so a large library fills over hours. **Analyze & Tag
 Library** on zurg's dashboard (or `POST /torrents/analyze`) retries failed probes at once.
-
-Leave zurg's `plex_server_url` pointing at your real Plex, if you have one. Pointed
-at rex, zurg's matcher learns rex's own matches and hands them to DMM as the release's id, so
-a wrong match can never be corrected by a later push.
 
 ### 7. Reach it from outside: HTTPS and the announce
 
@@ -338,7 +335,7 @@ single-use claim token); the log still names your titles and addresses, so keep 
 
 The Windows build is `rust\target\release\rex.exe` in the zip, and every step above works
 the same in PowerShell with `rust\target\release\rex.exe` for `rust/target/release/rex`,
-`curl.exe` for `curl` and `$env:NAME = '...'` for `export`. Four things differ:
+and `curl.exe` for `curl`. Four things differ:
 
 - Windows Firewall keeps your network out of rex, so other machines can neither reach it nor
   find it with discovery. Let it in once, in PowerShell run as administrator (with `--port`, use
@@ -382,7 +379,7 @@ the same in PowerShell with `rust\target\release\rex.exe` for `rust/target/relea
 this section is for a Linux host. On macOS and Windows, Docker Desktop runs containers inside a
 virtual machine, so host networking, LAN discovery and the GPU do not work there as they do on
 Linux: run the release build instead.
-It is private, as the repository is: log in with a classic GitHub token that has
+It is private, like zurg's image: log in with a classic GitHub token that has
 `read:packages` and `repo`, the same as for zurg's image.
 
 ```bash
@@ -442,10 +439,10 @@ is restarted with a backoff, and one that keeps dying is marked failed. Whatever
 running when the manager stopped is running again when it starts.
 
 ```bash
-rex manager serve                        # API + page on http://127.0.0.1:32300; prints the admin token once
-rex manager create den --port 32401      # a source such as zurg fills it once its rex_url names the port
-rex manager start den                    # its first start makes its empty library, as a plain rex does
-rex manager list                         # status | logs | stop | restart | delete [--purge]
+rust/target/release/rex manager serve                     # API + page on http://127.0.0.1:32300; prints the admin token once
+rust/target/release/rex manager create den --port 32401   # a source such as zurg fills it once its rex_url names the port
+rust/target/release/rex manager start den                 # its first start makes its empty library, as a plain rex does
+rust/target/release/rex manager list                      # status | logs | stop | restart | delete [--purge]
 ```
 
 Each server gets `managed/servers/<name>/`, whose `rex.db` holds its catalog and its state. `http://127.0.0.1:32300/` is a small page for the same operations (paste
@@ -642,7 +639,7 @@ restarts (a reboot, or the last login session ending); until then start rex unde
 | `REX_TRANSCODE_DIR` | `$TMPDIR/rex-transcode-<port>` | segments; cleared at start |
 
 The startup log says what the probe found (`transcoder: ... hardware vaapi encode=true
-tonemapx=true opencl_tonemap=true bounded_http=false alpha_subtitles=true decode=[h264,hevc,mpeg2video]`). A
+tonemapx=true opencl_tonemap=true bounded_http=false alpha_subtitles=true hls_lenient=true decode=[h264,hevc,mpeg2video]`). A
 conversion runs on the GPU end to end when it can decode the source there, uploads CPU-decoded frames when it cannot or should not
 (AV1 on older Intel, a burned image subtitle, HDR on a device without OpenCL), and falls back to x264 when there is no device.
 HDR and Dolby Vision stay on the GPU, tonemapped through OpenCL with whichever tonemapping

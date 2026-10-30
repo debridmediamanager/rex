@@ -1,10 +1,10 @@
 # rex
 
-rex is a Plex Media Server that owns no files.
+rex is a media server for the official Plex apps that owns no files.
 
 Your movies and shows live on a debrid service or on any web server. rex shows them to the official Plex apps as a normal Plex server. Nothing is downloaded first. When you press play rex streams the file straight from where it lives.
 
-rex gets its library from whatever you point at it. Each source sends rex the list of files it has along with their ffprobe details and keeps it up to date as things are added or removed. [zurg](https://github.com/debridmediamanager/zurg) does this for you today. Anything else works too if it can run ffprobe and send the result to rex's [feed API](docs/feed-api.md). The files themselves can sit on any web server.
+rex gets its library from whatever you point at it. Each source sends rex the list of files it has along with their ffprobe details and keeps it up to date as things are added or removed. [zurg](https://zurg.debridmediamanager.com/) does this for you today. Anything else works too if it can run ffprobe and send the result to rex's [feed API](docs/feed-api.md). The files themselves can sit on any web server.
 
 ## What you get
 
@@ -22,24 +22,29 @@ rex gets its library from whatever you point at it. Each source sends rex the li
 
 This is the short version. [docs/setup.md](docs/setup.md) has the details and a troubleshooting table.
 
-You need a Linux, macOS or Windows machine, rex nightly 2026.10.25 or newer, and at least one source such as zurg (a zurg nightly from 2026.10.22 or newer: zurg v1.0.0 has no rex feed). rex never needs your Plex token.
+You need a Linux, macOS or Windows machine, rex nightly 2026.10.25 or newer, and at least one source such as zurg (a zurg nightly from 2026.10.27 or newer: zurg v1.0.0 has no rex feed). rex never needs your Plex token.
 
 **1. Get it**
 
-Download the build for your machine from [Releases](https://github.com/debridmediamanager/rex/releases) and unpack it. There are builds for Linux (amd64 and arm64, glibc 2.35 or newer, so Ubuntu 22.04 and up), for macOS (Intel and Apple Silicon) and for Windows (64 bit).
+There are builds on [Releases](https://github.com/debridmediamanager/rex/releases) for Linux (amd64 and arm64, glibc 2.35 or newer, so Ubuntu 22.04 and up), macOS (Intel and Apple Silicon) and Windows (64 bit). This takes the newest for your machine into `~/rex`:
 
 ```bash
-mkdir -p ~/rex && tar xzf rex-<tag>-linux-$(dpkg --print-architecture).tar.gz -C ~/rex --strip-components=1 && cd ~/rex
+mkdir -p ~/rex && cd ~/rex
+TAG=$(curl -fsSL 'https://api.github.com/repos/debridmediamanager/rex/releases?per_page=1' | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -1)
+P=$(uname -s | tr A-Z a-z)-$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
+curl -fL "https://github.com/debridmediamanager/rex/releases/download/$TAG/rex-$TAG-$P.tar.gz" | tar xz --strip-components=1
 ```
 
-`<tag>` is the newest nightly's name (`YYYY.MM.DD.HHMM-nightly`). On a Mac the file ends in `darwin-arm64.tar.gz` (Apple Silicon) or `darwin-amd64.tar.gz` (Intel) instead.
+On Windows, in PowerShell:
 
-On macOS, Gatekeeper will not run a rex downloaded in a browser. After unpacking, run `xattr -dr com.apple.quarantine .` in the unpacked folder, or download it with the [GitHub CLI](https://cli.github.com) (signed in with `gh auth login`), which does not quarantine it (`darwin-amd64` on Intel):
-
-```bash
-TAG=$(gh api 'repos/debridmediamanager/rex/releases?per_page=1' --jq '.[0].tag_name')
-gh release download "$TAG" -R debridmediamanager/rex -p '*-darwin-arm64.tar.gz'
+```powershell
+New-Item -ItemType Directory -Force $HOME\rex | Out-Null; cd $HOME\rex
+$tag = (Invoke-RestMethod 'https://api.github.com/repos/debridmediamanager/rex/releases?per_page=1')[0].tag_name
+curl.exe -fLO "https://github.com/debridmediamanager/rex/releases/download/$tag/rex-$tag-windows-amd64.zip"
+tar -xf "rex-$tag-windows-amd64.zip" --strip-components=1; Remove-Item "rex-$tag-windows-amd64.zip"
 ```
+
+A macOS build downloaded in a browser instead is stopped by Gatekeeper: run `xattr -dr com.apple.quarantine .` in its folder.
 
 To build it yourself instead (Rust 1.89 or newer from rustup, as distro packages are often
 older; no Rust on the machine? the full guide has a Docker build):
@@ -51,9 +56,9 @@ cargo build --release --manifest-path rust/Cargo.toml
 
 Both put rex at `rust/target/release/rex` (in `~/rex`, or in the clone).
 
-Or run the Docker image, `ghcr.io/debridmediamanager/rex:nightly` (private, like zurg's): [docs/setup.md](docs/setup.md#docker) has a compose file.
+Or run the Docker image, `ghcr.io/debridmediamanager/rex:nightly` (private, like zurg's; the download above is not): [docs/setup.md](docs/setup.md#docker) has a compose file.
 
-On Windows unpack the zip and use `rust\target\release\rex.exe` where the steps say `rust/target/release/rex`, and `curl.exe` where they say `curl` (Windows PowerShell's own `curl` rejects `-X`). Windows Firewall keeps your network out of rex until you let it in, once, in PowerShell run as administrator:
+On Windows use `rust\target\release\rex.exe` where the steps say `rust/target/release/rex`, and `curl.exe` where they say `curl` (Windows PowerShell's own `curl` rejects `-X`). Windows Firewall keeps your network out of rex until you let it in, once, in PowerShell run as administrator:
 
 ```powershell
 New-NetFirewallRule -DisplayName rex -Protocol TCP -LocalPort 32400
@@ -160,4 +165,6 @@ What it does not do:
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE). The Docker image also carries [jellyfin-ffmpeg](https://github.com/jellyfin/jellyfin-ffmpeg) (GPL), unmodified, from its own releases.
+
+rex is an independent project, not affiliated with or endorsed by Plex, Inc. Plex is a trademark of Plex, Inc.

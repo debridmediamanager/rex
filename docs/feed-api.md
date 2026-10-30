@@ -45,7 +45,7 @@ including an owner's valid Plex token, opens the source API to a public peer.
 
 rex reads the connection's own peer address, never `X-Forwarded-For` or `Host`, so a header
 cannot open it. A reverse proxy on the same machine therefore reaches it as a local peer:
-block `/rex/` there. Forwarding rex's port for rex-direct (setup step 7) puts Plex's API on the
+block `/rex/` there. Forwarding rex's port for rex-direct ([setup step 7](setup.md#7-reach-it-from-outside-https-and-the-announce)) puts Plex's API on the
 internet, which needs a token once rex is claimed, but not the feed.
 
 ## Registering a source
@@ -81,7 +81,7 @@ start. A `directories` that is no list is left out the same way. `ignored` is ab
 nothing was:
 
 ```json
-{"name": "zurg", "url": "http://127.0.0.1:9999/dav", "auth": "basic",
+{"name": "zurg", "url": "http://127.0.0.1:9999/dav", "auth": "basic", "features": ["probe_digest"],
  "directories": [{"name": "anime", "shows": "Anime"}],
  "ignored": [{"entry": {"name": "kids", "shows": ""}, "reason": "directory \"kids\": shows title is empty"}]}
 ```
@@ -127,7 +127,7 @@ TV Shows for an episode, Movies for anything else.
 ### `GET /rex/sources` and `GET /rex/sources/{name}`
 
 ```json
-{"size": 1, "sources": [{"name": "zurg", "url": "http://127.0.0.1:9999/dav", "auth": "basic"}]}
+{"size": 1, "sources": [{"name": "zurg", "url": "http://127.0.0.1:9999/dav", "auth": "basic", "features": ["probe_digest"]}]}
 ```
 
 Every source, or one (`404` for a name nothing registered), with its `directories` as
@@ -218,7 +218,7 @@ the session: every id of this source that no chunk of the session named is remov
   `"force": true`. The final chunk's own upserts still apply. This is the guard against a
   source that answers with a truncated library while it is still loading.
 
-Answers the upsert counts, plus `"seen"` (ids so far in the session) and, on the final
+Answers the upsert counts, plus `"session"` when one was sent, `"seen"` (ids so far in the session) and, on the final
 chunk, `"removed": {"trashed": n, "deleted": n, "released": n}`.
 
 ### Probe digests
@@ -298,7 +298,7 @@ The `media_info` above is cut down to show its shape. Send ffprobe's whole outpu
 |---|---|---|
 | `id` | yes | The source's stable key for the file. A row's ratingKey belongs to (source, id) for good, so keep it when the file is renamed |
 | `path` | yes | Where the bytes are: `<source url>/<path>`. Its first directory also picks the library (below) |
-| `media_info` | yes, in practice | ffprobe's `-show_format -show_streams` JSON (go-ffprobe's `ProbeData` is the same shape). Absent, `null` or with no `streams`: the item is **held**, because Plex Web will not play an item without streams (findings, "An item without a probe cannot play") |
+| `media_info` | yes, in practice | ffprobe's `-show_format -show_streams` JSON (go-ffprobe's `ProbeData` is the same shape). Absent, `null` or with no `streams`: the item is **held**, because Plex Web will not play an item without streams (findings, "An item without a probe cannot play"). A file keeps the streams of the probe it was first shown with: a later one changes only its `chapters` (an `.m3u8` is the exception, below), so a file whose bytes change is a new `id` |
 | `ids` | recommended | `imdb` (`tt…`), `tmdb`, `tvdb`. With `kind`, the title: `imdb` and `tmdb` are the movie's or the **show's** ids, never an episode's, and either one is enough (rex fills in the other from Plex). Without `kind`, only `tmdb` names anything (a TMDB id set by hand at the source): a title of its library's kind, when TMDB has one; `imdb` alone and `tvdb` are kept on the row and name nothing (below) |
 | `kind` | no | `movie`, `episode` or `extra`: what the source knows the file is. `movie` or `episode` **places** the file (below): it picks the movie or show library, and its `ids` are the title. `extra` makes it a clip of its release's title (below). Anything else, or absent: nothing places it, and rex does not guess from its name |
 | `extra_type` | with `kind: extra` | The clip's type: `trailer`, `deleted`, `featurette`, `behindthescenes`, `interview`, `scene`, `short`, `opening`, `ending` or `other` (Plex's local-extras types and creditless openings and endings). Anything else, or absent, is `other` |
@@ -319,18 +319,11 @@ The `media_info` above is cut down to show its shape. Send ffprobe's whole outpu
 | `collections` | no | The names of the collections its title is in: a film's own, an episode's show's. Each is a collection of the title's library, made the first time a title names it, as a `Collection` tag a client writes makes one; every file of a title sends the same list, and the last one sent is the title's. Only what changed since the source's last list is applied, so a title a person took out of a collection stays out, and a collection a person added it to stays. Absent or `null` keeps them; `[]` takes the title out of every collection the source named |
 
 Embedded chapters are optional: include ffprobe's `-show_chapters` output in
-`media_info.chapters`. rex keeps the timings and titles with that file version and
-answers clients requesting `includeChapters=1` on metadata or play queues. A later
-push updates chapters on an existing version too. Omitting `chapters` preserves its
-saved chapters; an explicit `"chapters": []` clears them. With FFmpeg, optional Analyze
-generates chapter JPEGs from these boundaries and serves them through authenticated metadata routes.
-
-To populate chapters for items already in rex, have the source resend its saved
-probes through the existing feed. A normal full snapshot updates existing versions
-on their current keys; no database edits or rex restart are needed. With zurg,
-wait for its next full snapshot or restart zurg to trigger one after its library
-loads. Its saved probes must contain chapter data; probes made without
-`-show_chapters` must first be refreshed at the source.
+`media_info.chapters`. rex keeps their timings and titles with that file version and
+answers `includeChapters=1` on metadata and play queues with them; with FFmpeg, Analyze
+makes a picture for each. A later push updates them on the same key, an absent `chapters`
+keeps them and `"chapters": []` clears them, so a source adds chapters to what rex already
+holds by sending its probes again, made with `-show_chapters`, in its next snapshot.
 
 What the fields do:
 
@@ -508,9 +501,9 @@ the files on its disk (measured on plexscratch 1.43.4, `tests/fixtures/media_del
 For every Part of the row and the rows beneath it, rex sends the source a WebDAV
 `DELETE {url}/{path}` with the source's credentials -- what a media server on zurg's mount
 sends through rclone -- and removes the rows only when every file is gone (a 2xx, or the
-source's 404). zurg marks the file deleted, keeps it so across restarts, removes the release
-from the account with its last file, and pushes the removal back. A source that refuses (zurg
-answers 403 for a file an *arr placed under `__magic__`) or cannot be reached leaves the rows
+source's 404). The source must then stop pushing the file, or its next snapshot brings it
+back (zurg keeps it deleted across restarts). A source that refuses (zurg answers 403 for a
+file an *arr placed under `__magic__`) or cannot be reached leaves the rows
 as they were and the client gets the reference's 400; with `allowMediaDeletion` off the
 delete is the reference's 403 and the source is not asked. Without this a deleted row came
 back with the source's next snapshot.

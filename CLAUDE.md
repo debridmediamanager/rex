@@ -1,6 +1,6 @@
 # rex
 
-A Plex Media Server that owns no files. It answers the PMS API well enough that
+A media server for the official Plex apps that owns no files. It answers the PMS API well enough that
 the **official** Plex clients treat it as a real server, and serves a library its
 sources push to it, streamed from those sources, instead of local media.
 
