@@ -26,12 +26,13 @@ gzips an answer whenever the request asks for gzip, as plex.tv did there.
 
     python3 tests/test_plextv.py
 
-The remote-playback consumer regression executes the checked-in CommonJS fixture
-`fixtures/plex_web_remote_gate.cjs` with Node.js (`REX_NODE` overrides `node`).
+The remote-playback consumer regression executes `fixtures/plex_web_remote_gate.cjs` with
+Node.js (`REX_NODE` overrides `node`), which runs Plex Web's gate fetched from app.plex.tv at test
+time (cached in the temp directory, checked against the recorded SHA-256s; skipped offline).
 The fixture exports a synchronous function taking {ownerFeatures: string[],
 viewerHasSubscription: false, isLocal: false} and returning whether playback is
-allowed. It executes Plex Web's shipped gate verbatim, with dependency adapters
-only; its provenance records source URL, version, SHA-256 and extraction spans.
+allowed. It executes Plex Web's shipped gate unmodified, with dependency adapters
+only; plex_web_remote_gate.json records source URL, version, SHA-256 and extraction spans.
 Run the same command with REX_SERVER pointing to the old and new binaries to
 prove failing-before and passing-after.
 
@@ -56,6 +57,7 @@ import tempfile
 import threading
 import time
 import urllib.parse
+import urllib.request
 import zipfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -673,9 +675,37 @@ def check_plex_pass(label, responses):
     check_remote_playback(label, responses)
 
 
+def plex_web_gate_source():
+    """Plex Web's gate module, fetched by its recorded URL and hashes: Plex's code is never checked in."""
+    span = read_json(os.path.join(HERE, "fixtures", "plex_web_remote_gate.json"))["source_spans"][0]
+    carrier = os.path.join(tempfile.gettempdir(), "rex-plex-web-%s.js" % span["carrier_sha256"][:16])
+    try:
+        if not os.path.exists(carrier):
+            with urllib.request.urlopen(span["url"], timeout=60) as response:
+                data = response.read()
+            if hashlib.sha256(data).hexdigest() != span["carrier_sha256"]:
+                return None
+            with open(carrier, "wb") as handle:
+                handle.write(data)
+        data = open(carrier, "rb").read()
+    except OSError:
+        return None
+    module = data[span["source_byte_start"]:span["source_byte_end_exclusive"]]
+    if hashlib.sha256(module).hexdigest() != span["module_sha256"]:
+        return None
+    path = carrier[:-3] + "-%s.js" % span["module"]
+    with open(path, "wb") as handle:
+        handle.write(module)
+    return path
+
+
 def check_remote_playback(label, responses):
     """Run the shipped consumer with a remote, unsubscribed viewer, not a wire assertion."""
     fixture = os.path.join(HERE, "fixtures", "plex_web_remote_gate.cjs")
+    gate_source = plex_web_gate_source()
+    if gate_source is None:
+        print("SKIP  %s Plex Web's gate could not be fetched from app.plex.tv" % label)
+        return
     cases = []
     for name in ("root", "providers", "account"):
         status, body = responses[name]
@@ -703,7 +733,8 @@ def check_remote_playback(label, responses):
     try:
         completed = subprocess.run(
             [os.environ.get("REX_NODE", "node"), "-e", runner, os.path.abspath(fixture)],
-            input=json.dumps(cases), text=True, capture_output=True, timeout=15, check=True)
+            env=dict(os.environ, REX_PLEX_WEB_GATE=gate_source), input=json.dumps(cases),
+            text=True, capture_output=True, timeout=15, check=True)
         decisions = json.loads(completed.stdout)
     except (OSError, ValueError, subprocess.SubprocessError) as error:
         check("%s executes the captured Plex Web gate" % label, False, str(error))

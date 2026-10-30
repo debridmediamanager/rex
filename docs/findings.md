@@ -13839,8 +13839,8 @@ server's `ownerFeatures` for either `remote-watch-pass` or
 `76ddd91e-8321-4916-94b6-ded8e3727a64`. It permits remote video when either is present,
 even without the viewer's own Remote Watch Pass. `pass` is not an input. The rollout
 feature `remote-watch-pass-iap` enables the payment gate; it is not the paid entitlement.
-The verbatim gate and dependency adapters are in
-`tests/fixtures/plex_web_remote_gate.cjs`; the adjacent JSON records the source URL,
+`tests/test_plextv.py` fetches the gate from app.plex.tv at test time and runs it through the
+dependency adapters in `tests/fixtures/plex_web_remote_gate.cjs`; the adjacent JSON records the source URL,
 carrier and module SHA-256, and exact byte spans. It was taken from the scripts loaded
 by the official app, not reconstructed from the prior finding.
 
