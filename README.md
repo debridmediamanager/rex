@@ -106,7 +106,7 @@ rex_url: http://<rex's LAN IP>:32400
 dmm_api_key: <your DMM API key>   # optional: DMM's exact matches
 ```
 
-`dmm_api_key` is optional, the key you get by sponsoring DMM. With it zurg asks DMM which movie or episode each file is. Without it zurg works that out from the release name: it looks the title up in DMM's free title search and reads the season and episode off each file name (`S01E02`). That matches fewer titles, and an anime whose episodes are numbered across the whole series can be matched as the show, but its episodes stay in file order. A release it cannot match keeps its file name, with episodes in file order. Leave `plex_server_url` pointing at your real Plex, or empty: pointed at rex, zurg learns rex's own matches and a wrong one could never be fixed.
+`dmm_api_key` is optional, the key you get by sponsoring DMM. With it zurg asks DMM which movie or episode each file is. Without it zurg works that out from the release name: it looks the title up in DMM's free title search and reads the season and episode off each file name (`S01E02`). That matches fewer titles, and an anime whose episodes are numbered across the whole series can be matched as the show, but its episodes stay in file order. A release it cannot match keeps its file name, with episodes in file order.
 
 zurg tells rex where its files are and how to log in to them, then sends its whole library and every change as it happens. A movie or episode shows up once zurg has analyzed it, which zurg starts as soon as its library has loaded.
 
@@ -146,7 +146,7 @@ rex answers how many titles it marked watched, in progress and rated, and how ma
 
 To keep it running, start step 2's command, with any flags from step 5, as a service: [the full guide](docs/setup.md#8-run-it-as-a-service) has the systemd unit, a LaunchAgent for macOS, a scheduled task for Windows, and a way to run several servers on one machine.
 
-To update, unpack a newer build into `~/rex` as in step 1 and restart rex. On Windows stop rex first, as for a backup: Windows will not replace a running `rex.exe`. It replaces `rust/`, `data/` and `examples/` and leaves `rex.db`, `rex.env`, `run.sh`, `claim_state.json` and `rex-direct.json` alone. With Docker, `docker compose pull && docker compose up -d`.
+To update, unpack a newer build into `~/rex` as in step 1 and restart rex. On Windows stop rex first, as for a backup: Windows will not replace a running `rex.exe`. It replaces `rust/`, `data/`, `examples/` and the docs, and leaves `rex.db`, `rex.env`, `run.sh`, `claim_state.json` and `rex-direct.json` alone. With Docker, `docker compose pull && docker compose up -d`.
 
 ## For developers
 

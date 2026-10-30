@@ -179,7 +179,7 @@ For a debrid account or Usenet that is zurg. In each zurg's `config.yml` (zurg's
 
 ```yaml
 rex_url: http://<rex's LAN IP>:32400
-dmm_api_key: <your DMM API key>         # optional sponsor key: DMM, not the name, says what each file is (step 4)
+dmm_api_key: <your DMM API key>         # optional sponsor key: DMM, not the name, says what each file is (step 2)
 ```
 
 Running two zurgs? Give each a name of its own with `rex_source: rd` and `rex_source: ad`. A
