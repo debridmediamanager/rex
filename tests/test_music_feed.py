@@ -134,10 +134,12 @@ def main():
         # Placed again: same key, another track of the album.
         key = step["ratingKey"]
         moved = dict(next(item for item in items if item["path"].endswith("01 - 15 Step.flac")), track=2)
+        rex.request("/:/scrobble?identifier=com.plexapp.plugins.library&key=%s" % key)
         status, body = rex.push([moved])
         row = rex.rows("/library/metadata/%s" % key)
         check("a track placed on another number moves there on its key",
               body.get("updated") == 1 and row and row[0]["title"] == "Bodysnatchers" and row[0]["index"] == 2, (body, row[:1]))
+        check("and keeps the play it had", row and row[0].get("viewCount") == 1, row[:1] and row[0].get("viewCount"))
         status, body = rex.request("/rex/feed/plexav/items", "DELETE", {"ids": [moved["id"]]}, {"Content-Type": "application/json"})
         row = rex.rows("/library/metadata/%s" % key)
         check("a removed track goes to the trash", body.get("trashed") == 1 and row and row[0].get("deletedAt"), (body, row[:1]))
