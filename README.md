@@ -2,12 +2,12 @@
 
 <h1 align="center">rex</h1>
 
-<p align="center"><b>Your debrid and Usenet library in the official Plex apps.<br>A media server that owns no files.</b></p>
+<p align="center"><b>Any source. Every Plex app.<br>A media server that owns no files.</b></p>
 
 <p align="center">
   <a href="https://rex.debridmediamanager.com">Website</a> ·
   <a href="https://github.com/debridmediamanager/rex/releases">Download</a> ·
-  <a href="https://notes.debridmediamanager.com/rex/">Guides</a> ·
+  <a href="https://notes.debridmediamanager.com/rex/">Docs</a> ·
   <a href="https://notes.debridmediamanager.com/rex/faq/">FAQ</a> ·
   <a href="https://discord.com/invite/7u4YjMThXP">Discord</a>
 </p>
@@ -92,3 +92,7 @@ rex is written in Rust. [CLAUDE.md](CLAUDE.md) covers the code, the tests and ho
 [PolyForm Noncommercial 1.0.0](LICENSE): free for personal, hobby, educational and other noncommercial use. Commercial use is not allowed. Copies must keep the license and its `Required Notice` line, which credits the author. The Docker image also carries [jellyfin-ffmpeg](https://github.com/jellyfin/jellyfin-ffmpeg) (GPL), unmodified, from its own releases.
 
 rex is an independent project, not affiliated with or endorsed by Plex, Inc. Plex is a trademark of Plex, Inc.
+
+---
+
+**More from DMM:** [Debrid Media Manager](https://debridmediamanager.com/) · [zurg](https://zurg.debridmediamanager.com/) · [rex](https://rex.debridmediamanager.com/) · [Docs](https://notes.debridmediamanager.com/) · [Sponsor](https://gatekeeper.debridmediamanager.com/) · [Discord](https://discord.com/invite/7u4YjMThXP) · [Reddit](https://www.reddit.com/r/debridmediamanager/)
