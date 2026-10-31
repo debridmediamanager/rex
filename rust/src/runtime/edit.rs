@@ -332,7 +332,7 @@ pub(super) fn parse_edit_date(text: &str) -> Option<String> {
     Some(text)
 }
 
-fn days_from_civil(year: i64, month: i64, day: i64) -> i64 {
+pub(super) fn days_from_civil(year: i64, month: i64, day: i64) -> i64 {
     let y = if month <= 2 { year - 1 } else { year };
     let era = if y >= 0 { y } else { y - 399 } / 400;
     let yoe = y - era * 400;

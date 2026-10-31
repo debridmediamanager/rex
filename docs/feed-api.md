@@ -316,6 +316,7 @@ The `media_info` above is cut down to show its shape. Send ffprobe's whole outpu
 | `hash` | no | The release's content/info hash, kept per Media version. A changed hash invalidates that version's measured subtitle reference and generated analysis; it never borrows another version's hash |
 | `display` | no | What the title is called and looks like, for what no metadata agent knows: see **Display** below. Shown only while nothing identifies the row |
 | `subtitles` | no | The subtitle files beside it at the source, each an external subtitle of this file's Part: see **Subtitles** below. Absent or `null` keeps the row's; `[]` removes them |
+| `channel` | no | Only on a live channel: makes it a channel of rex's Live TV, with its number, name and guide. See **Live TV** below |
 | `collections` | no | The names of the collections its title is in: a film's own, an episode's show's. Each is a collection of the title's library, made the first time a title names it, as a `Collection` tag a client writes makes one; every file of a title sends the same list, and the last one sent is the title's. Only what changed since the source's last list is applied, so a title a person took out of a collection stays out, and a collection a person added it to stays. Absent or `null` keeps them; `[]` takes the title out of every collection the source named |
 
 Embedded chapters are optional: include ffprobe's `-show_chapters` output in
@@ -399,6 +400,7 @@ What the fields do:
   playlist grows as the broadcast goes on, with no end, and the row keeps no resume point
   and is never marked watched. A later push of an `.m3u8` id whose probe has its streams at
   other indexes or of other codecs (the channel from another mirror) replaces the row's streams.
+  With a [`channel`](#live-tv) it is also a channel of Live TV's guide.
   An audio file is taken only as a `kind: "track"` ([Tracks](#tracks)), and a track must be one.
 - **One file, one id.** A new `id` whose `file` another id of the same source already has, in
   rex or earlier in the same push, is rejected as `<file> is already <id>'s file`. To change
@@ -538,6 +540,67 @@ an embedded track.
   push, and one that fails to read again keeps the text it had.
 - **The source's, not a person's.** A client deleting one gets the 403 an embedded track's
   delete gets, since the next push would bring it back. That answer is reasoned, not measured.
+
+## Live TV
+
+A live channel (an `.m3u8` whose probe has no duration, above) pushed with a `channel` is also a
+channel of rex's Live TV: the Plex apps show a **Live TV & DVR** source with a guide, What's On
+and search, as they do for a PMS with a tuner and an XMLTV guide, and watching a channel there
+plays the item's own live conversion. Any source can send it; rex reads no guide format itself,
+so a source that has XMLTV, an M3U's EPG or an addon's schedule turns it into this:
+
+```json
+"channel": {
+  "number": "2.1", "title": "Rex News", "call_sign": "Rex News",
+  "guide": [
+    {"start": "2026-10-31T13:30:00Z", "end": "2026-10-31T14:00:00Z", "title": "Episode 3",
+     "summary": "Episode 3.", "type": "episode", "show": "Firefly", "season": 1, "episode": 3,
+     "categories": ["Series", "Drama"], "new": true},
+    {"start": 1793455200, "end": 1793457000, "title": "Rex Evening News",
+     "summary": "The day's headlines.", "categories": ["News"]}
+  ]
+}
+```
+
+| Field | Required | Meaning |
+|---|---|---|
+| `number` | yes | The channel's number in the guide and its key (`2.1`, `704`): letters, digits, `.`, `-` and `_`. The lineup is ordered by it, part by part (`2.1` before `10.1`). Two items naming one number: the one pushed first keeps it |
+| `title` | no | Its name (`2.1 Rex News` in the guide). Default: the item's `display` title, else its row's title |
+| `call_sign` | no | Its call sign. Default: `title` |
+| `guide` | no | Its programmes, below. Absent or `[]`: the channel is listed with nothing in the guide |
+
+Each programme:
+
+| Field | Required | Meaning |
+|---|---|---|
+| `start`, `end` | yes | Epoch seconds, or ISO 8601 with `Z` or an offset (`2026-10-31T14:30:00+01:00`); without either, UTC. `end` after `start` |
+| `title` | yes | A film's or a programme's title; an episode's own title |
+| `summary` | no | Its description |
+| `type` | no | `episode`, with `show`, `season` and `episode` (numbers from 0): an episode of that show, which the guide groups under it. Anything else, or absent, is a programme of its own, as a real PMS files an XMLTV programme with no episode number (the news, a match, a film) |
+| `show`, `season`, `episode` | with `type: episode` | The show's title and the episode's numbers |
+| `categories` | no | Its categories (XMLTV's `<category>`): a film's genres, an episode's show's. An episode in `sports` or `news` is on What's On's Sports and News shelves |
+| `thumb` | no | An `http(s)` URL of its picture |
+| `new` | no | `true` for a first airing (XMLTV's `<new/>`): every airing of that episode shows as new, as a real PMS shows them; a film never does |
+
+- **The guide is what the source pushed.** rex keeps every programme of the last push and drops
+  none by age; a real PMS shows the past airings of the day it holds in its guide, so a source
+  sends from some hours back and as far ahead as it knows (a week, as XMLTV guides do), and
+  pushes again as its schedule moves. A push of the item with a `channel` replaces the channel
+  and its guide whole; one without `channel` keeps them; `"channel": null` ends the channel.
+- **What clients see** was measured on a PMS with an HDHomeRun and an XMLTV guide (findings,
+  "Live TV"): the guide per channel and day, What's On (on now, tonight's new episodes, later,
+  films and sports later), a film's and a show's page with every airing, and Live TV in search.
+  A programme's guid is built from these fields as a real PMS builds an XMLTV programme's
+  (`tv.plex.xmltv://movie/<title>`, `tv.plex.xmltv://episode/<show>/<season>/<episode>`).
+- **Watching** a channel from the guide tunes it as a real PMS does and plays the item's own
+  live conversion: nothing new runs at the source. Like any live channel it keeps no resume
+  point and is never marked watched.
+- **No recording.** rex records nothing, so the source carries no Record (as a PMS whose owner
+  has no Plex Pass answers it), and Plex apps offer none.
+- **The channel stays a row** of its library, playable there as before.
+- A `channel` on anything but a live channel, a `number` with other characters, or a programme
+  with a bad time, no `title`, or `type: episode` without its numbers is rejected with the item,
+  its reason naming the field (`channel.guide[3]: end must be after start`).
 
 ## What rex sends back: a delete
 

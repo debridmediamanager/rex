@@ -14679,3 +14679,133 @@ searched it, and the PMS's own calls to Plex's agent were recorded beside them
   merges its tracks' moods, 52 for In Rainbows, in an order not worked out; rex shows the agent's
   ten), the library `Meta`'s newer fields (rex keeps the empty 1.42 library's descriptor), and
   `Similar` tag case (plexav's `Bôa` was another artist's first spelling).
+
+## Live TV: a source's live channels as one DVR (2026-10-31)
+
+Measured on plexav, a claimed PMS 1.43.4 in Europe/Amsterdam with a fake HDHomeRun of three
+channels (2.1 Rex News, 4.1 Rex Movies, 7.1 Rex Sports; H.264 720p30 High, AC3 mono) and an XMLTV
+guide (a week from two hours back: news on the hour, Firefly with `xmltv_ns` numbers on the half
+hour, a Blender film every other hour, football hourly), DVR key 2, provider
+`tv.plex.providers.epg.xmltv:2`. Plex Web 4.163.0's and Plex for Android 2026.21.0's sessions were
+recorded while the owner had a Plex Pass; by the time of `reads_s1434` and `tune_s1434` the server
+belonged to an account without one, which is the shape rex answers (it records nothing).
+Fixtures: `tests/fixtures/livetv/` (`probes/record_livetv.py`); `tests/test_livetv.py` replays
+them against rex with the recorded guide pushed and the guide clock at the recording's moment.
+
+**What is Live TV, and what hides Record.**
+- `/media/providers` gains a second provider: `id` 3, `parentID` 2, `identifier`
+  `tv.plex.providers.epg.xmltv:2`, `protocols` `livetv`, `epgSource` `XMLTV`, and ten features.
+  Without a Plex Pass its content Directory pivots are What's On and Guide only, and it has **no
+  `subscribe`** feature; with the Pass it adds the DVR Schedule and Recording Priority pivots and
+  `{"flavor": "record", "type": "subscribe"}`. Plex Web (4.147.1, the bundle rex serves) draws
+  Record only when `showRecord = !a && server.isFullServer && !!provider.features.subscribe &&
+  provider.features.subscribe.flavor === "record"`, and plays live TV only when the server's
+  `livetv >= 4` (rex answers 7). `allowTuners` is `true` on a PMS with a DVR.
+- Without the Pass `/media/subscriptions`, `/scheduled` and `/template` answer the server's own
+  token 401. rex keeps its tunerless answers there (an empty container, the template's 400): a
+  401 is what signs a Plex app out.
+
+**The guide's own words.** A programme with an `episode-num` is an episode, guid
+`tv.plex.xmltv://episode/<show>/<season>/<episode>` (`xmltv_ns` + 1), title its `sub-title`, under
+`.../season/<show>/<n>` and `.../show/<show>`; every other one is a movie,
+`tv.plex.xmltv://movie/<title>`, whatever its category (news, a live match). A title in a guid is
+percent-encoded (`Big%20Buck%20Bunny`); a `ratingKey` is the guid with every byte but a letter or
+digit escaped, `.` included (`tv%2Eplex%2Exmltv%3A%2F%2Fmovie%2FBig%2520Buck%2520Bunny`), and a
+`key` is `/tv.plex.providers.epg.xmltv:2/metadata/<ratingKey>`. A movie lists its categories as
+Genre tags by name; an episode none (its show has them all). Every airing of an episode is
+`premiere="1"` once one of its airings is `<new/>` (Firefly's are new one hour in three; all show
+it); a movie never is. An airing's Media says `audioChannels` 2 and `videoResolution` "480" for a
+guide that says nothing of either, the channel's `channelCallSign`, `channelIdentifier`,
+`channelTitle` (`2.1 Rex News`), `channelVcn` and `channelID` (its lineup place), `beginsAt`,
+`endsAt`, and `onAir` while it is on, on the Metadata too. PMS numbers airings and tags in the
+order it read the XMLTV document; rex numbers them by start then lineup, which no client reads.
+
+**Reads.**
+- `/lineups/dvr/channels`: `{id, gridKey, vcn}` the number, `title`, `callSign`.
+- `/grid?channelGridKey=&date=`: the channel's airings touching the **UTC** day of `date`
+  (`date=2026-10-31` ran to 00:00 UTC, an hour past Amsterdam's midnight), the day's past ones
+  included; one programme's airings in a row are one row (eleven hours of football: one row, eleven
+  Media). No `date`, no channel, an unknown one or a day without airings: `{"size": 0}`.
+- `/metadata/<ratingKey>`: a movie's or an episode's page lists **every** airing PMS holds, past
+  ones included, with `librarySectionID` 1 (Movies) or 2 (Shows); a show's (Plex Web's request,
+  every `include*`) is a bare `{size, allowSync}` container with `skipChildren`, `leafCount`,
+  `childCount`, its Genres and Channels and `Extras {size: 0}`; `/children` its seasons, under
+  the container keys `key: "1"`, `viewGroup: season`, `viewMode: 65593`; `/grandchildren` its
+  episodes ordered by their next airing not yet over (the one on now first, one whose airing
+  today has ended after tonight's last); `/related` empty. An unknown key is the 404.
+- `/hubs/discover` (What's On): Recent Channels (the client's account's tuned channels, each with
+  the airing on now), What's On Now (each channel's airing, lineup order), Shows On Now (the same
+  by start; the one hub `promoted=1` answers), New Shows On Tonight (premiering episodes starting
+  19:00-23:00 local time), My Upcoming Shows and Recommended For You (empty without
+  recordings), What's On Later (each channel's next airing), Sports On Later and News On Later
+  (episodes in those categories), Movies On Later (movies by their next start, ties in the order
+  first aired). Rows list every airing of their programme; `hubKey` names them.
+- `/library/search?searchTypes=livetv` (Plex Web's search, beside the library's): movies, shows
+  and episodes whose title holds every word, scored as library search scores a title (`Sintel`
+  0.93, `Episode 3` 0.91, `rex` and `tears of` 0.73, `fire` for Firefly 0.53, `bunny` 0.33,
+  `sintell` nothing); a category named (`news`) is also a tag hit at 0.92.
+- `/livetv/dvrs` and `/livetv/dvrs/2`: the DVR, its lineup, and its device with one
+  `ChannelMapping` per channel and the transcode setting; the DVR's settings (enhanced guide,
+  refresh time and interval, kids/news/sports categories). `/livetv/dvrs/3` is the 404.
+
+**Watching.** `POST /livetv/dvrs/2/channels/<number>/tune` answers a `MediaSubscription` (type 4,
+`This Episode` for a film too, `New Airings Only`), its rolling `MediaGrabOperation`
+(`<number>-<X-Plex-Session-Identifier>`, grabber `tv.plex.grabbers.hdhomerun`) holding the
+session's Video (the airing on now, under key `/livetv/sessions/<uuid>` and a ratingKey PMS mints
+per session), its capture Media (`origin` `livetv`, `protocol` `hls`, `mpegts`, `beginsAt` the
+tune and `endsAt` five minutes on, the tuner's streams; the Part keyed
+`/livetv/sessions/<uuid>/<asking client>/index.m3u8?offset=-1.000000`) and the capture's own
+TranscodeSession; then `Timeline` (the airing on now and the next two on the channel) and
+`AlsoAiring` (what is on the other channels). Plex Web then asks the universal decision and
+`start.m3u8` with `path=/livetv/sessions/<uuid>`: direct play off, a conversion, and a decision
+Video of a session's fields only (`live="1"`, its key, `genuineMediaAnalysis`, the airing's
+guid/title/numbers), with none of a library's container fields. Plex for Android asks
+`start.m3u8` alone, no decision. `/livetv/sessions[/<uuid>]` lists a session as its Video with
+`live="1"`, `parentIndex` -1 for a film, the capture Media and TranscodeSession; a session tuned
+and not played is not in `/status/sessions`, one played is, `librarySectionID` "-4", `live` "1".
+Beats on the session's key answer `playbackState` `ignore`, except Android's at its live edge
+past ten seconds (17448 of 17448 ms: `complete`, where Plex Web's 8000 of 8000 was `ignore`).
+The Plex Pass sessions carried `canNormalizeLoudness` and `hasVoiceActivity`, the tune without
+it neither; the first tune after the DVR was set up lacked the capture's `width`, `height`,
+`aspectRatio`, `channelCallSign` and the Part's `size`, every later one had them.
+
+**Headers, and the tune's activity** (found running Plex Web 4.160/4.163 against rex on
+2026-10-31: it drew the guide and the airing's Watch Now, tuned, and asked nothing more). Plex Web
+reads the tune's activity off its answer -- `h = xhr.getResponseHeader("X-Plex-Activity"); if (!h)
+reject("Could not tune channel (No activity)")` -- and ends its player with "This live TV session
+has ended" when that activity's `ended` notification comes. plexav's tune answers, Plex Web's and
+Android's alike, carry `X-Plex-Activity: <uuid>` and a second `Access-Control-Expose-Headers:
+X-Plex-Activity` right after `Content-Type` (after the envelope's own `Location, Date` one when a
+browser asked), and `/activities` lists it while the session runs: `grabber.grab`, cancellable,
+"Recording", "Live TV - Session", its `Context` naming the device, grabber, provider source,
+subscription and the session as `transcode_session` (beside the rolling subscription's
+`provider.subscription.refresh`; its `progress` read 11 at 39 s and 33 at 142 s). rex's envelope
+dropped any expose line a route added when the request had an `Origin`, so even an activity it
+named was hidden from a browser (a subtitle apply's too). The show page asked with
+`asyncAugmentMetadata=1` answers an activity the same way, never listed (it ends at once). Every
+other Live TV read's header lines match PMS's in order, the paged `/grandchildren`'s
+`X-Plex-Container-Start`/`-Total-Size` included. An HLS playlist offered gzip is gzipped
+(`start.m3u8` 176 bytes to 178). The conversion's own session playlist and segments differ from
+PMS's transcoder's in their header lines (PMS writes no expose or `Vary` there, sends segments
+chunked, keeps the connection) and are left as rex's shared transcoder answers them: Plex Web and
+Android play through them.
+
+**What rex does with it.** A live channel item pushed with a `channel` (`docs/feed-api.md`, "Live
+TV") is a channel of one DVR, numbered and keyed as plexav's (DVR 2, provider 3, device 1), and the
+routes above answer from the pushed guides (`runtime/livetv.rs`). A tune's session plays the
+channel row's own live conversion: the decision, `start.m3u8` and beats on
+`/livetv/sessions/<uuid>` are handed to `/library/metadata/<row>`, a start with no decision makes
+one, and the session's ratingKey is the row's, so a beat keeps no resume point and nothing is
+watched; rex answers `ignore` to every live beat. The decision and Now Playing rows are rewritten to
+the session's fields. A stopped beat ends the session; one unasked for six hours is dropped at
+the next tune; its `grabber.grab` activity starts with the tune, is listed in `/activities` and
+ends with the session (its notifications, not recorded on plexav, are rex's started/ended pair;
+its progress stays 0, and the subscription's refresh activity is not listed); Recent Channels are
+each account's, kept while rex runs. The device's names and
+the settings' help text are rex's own. Not measured: a programme's picture (plexav's guide has
+no `<icon>`), which rex answers as the pushed URL in `thumb`; a gap in a guide, where rex tunes
+the channel as a movie named after itself. Not built: recording
+and subscriptions, `/hubs/search` (PMS's seventeen-hub answer), `/sections`, `/watchnow`, a
+season's `/children`, category hits in search, playing the Part key itself, and the `complete`
+answer to a live beat; a share's `allowTuners` lowers the flag but does not hide the provider
+(unmeasured).
