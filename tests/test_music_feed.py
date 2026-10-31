@@ -77,6 +77,15 @@ def main():
         differences = M.compare(json.dumps({"Media": theirs["Media"]}), json.dumps({"Media": mine["Media"]}),
                                 ignore=("accessible", "exists"))
         check("a FLAC track's Media, Part and Stream are plexav's for the same file", not differences, differences)
+        # plexav's bitrate rule (fixtures/music/media.json): a FLAC's Media counts its audio frames, from the
+        # first packet its source's probe names; its Stream is the file's.
+        probe = next(item for item in items if item["path"].endswith("01 - 15 Step.flac"))["media_info"]
+        size = int(probe["format"]["size"])
+        frames = round((size - int(probe["packets"][0]["pos"])) * 8 / mine["Media"][0]["duration"])
+        check("a FLAC track's bitrate is its audio frames' over its length, its stream's the file's, as plexav's",
+              (mine["Media"][0].get("bitrate"), mine["Media"][0]["Part"][0]["Stream"][0].get("bitrate"))
+              == (frames, round(int(probe["format"]["bit_rate"]) / 1000)),
+              (mine["Media"][0].get("bitrate"), frames))
         stream = mine["Media"][0]["Part"][0]["Stream"][0]
         check("its stream is titled as a track's: FLAC (Stereo)", stream.get("displayTitle") == "FLAC (Stereo)", stream)
 
