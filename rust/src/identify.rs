@@ -265,6 +265,56 @@ pub fn placed(plex: Option<&dyn PlexSource>, kind: &str, tmdb: Option<i64>, imdb
     identity
 }
 
+/// Plex's album a track's source placed it on, and its artist: the agent's album row (its
+/// `Children` the album's tracks) and the artist row. Asked exactly as plexav's PMS 1.43.4 asked
+/// for its music library (its outbound capture, 2026-10-31): a MusicBrainz release id through
+/// `GET /library/metadata/matches?guid=mbid://<id>&type=9...`, whose row names the album's guid and
+/// the agent's own key for that release (`ratingKey`, which is not always the guid's tail: In
+/// Rainbows is `plex://album/5d07c2b1...`, key `5d07c92a...`); then that key with
+/// `includeChildren=1`, and the album's `parentRatingKey`, the artist. A `plex://album/` guid
+/// pushed instead is asked for by its own tail. `None` when the agent names no album.
+pub fn plex_album(p: &dyn PlexSource, mbid: Option<&str>, guid: Option<&str>) -> Option<(Value, Option<Value>)> {
+    let first = |answer: Option<Value>| answer?.pointer("/MediaContainer/Metadata/0").cloned();
+    let release = match (mbid, guid) {
+        (Some(mbid), _) => {
+            let path = format!(
+                "/library/metadata/matches?guid=mbid://{mbid}&includeChildren=1&includeElements=Directory,Children,Guid&includeFields=id,guid,title,parentGuid,parentTitle,ratingKey&type=9"
+            );
+            let row = first(p.call("GET", &path, None))?;
+            row.get("guid")?.as_str().filter(|guid| guid.starts_with("plex://album/"))?;
+            row.get("ratingKey")?.as_str()?.to_string()
+        }
+        (None, Some(guid)) => guid.strip_prefix("plex://album/").filter(|tail| !tail.is_empty())?.to_string(),
+        (None, None) => return None,
+    };
+    let album = first(p.call(
+        "GET",
+        &format!("/library/metadata/{release}?includeAlternates=1&includeChildren=1&X-Plex-Country=US&X-Plex-Language=en-US"),
+        None,
+    ))?;
+    album.get("guid")?.as_str().filter(|guid| guid.starts_with("plex://album/"))?;
+    let artist = album
+        .get("parentRatingKey")
+        .and_then(Value::as_str)
+        .and_then(|key| first(p.call("GET", &format!("/library/metadata/{key}?includeAlternates=1&X-Plex-Country=US&X-Plex-Language=en-US"), None)))
+        .filter(|row| row.get("guid").and_then(Value::as_str).is_some_and(|guid| guid.starts_with("plex://artist/")));
+    Some((album, artist))
+}
+
+/// The album's track on `disc` and `track`: its `Children` row whose `parentIndex` and `index`
+/// are those (Plex numbers an album's discs from 1).
+pub fn album_track(album: &Value, disc: i64, track: i64) -> Option<Value> {
+    album
+        .pointer("/Children/Metadata")?
+        .as_array()?
+        .iter()
+        .find(|row| {
+            row.get("index").and_then(Value::as_i64) == Some(track)
+                && row.get("parentIndex").and_then(Value::as_i64).unwrap_or(1) == disc
+        })
+        .cloned()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -284,6 +334,42 @@ mod tests {
                 json!({})
             })
         }
+    }
+
+    /// Plex's agent as plexav's PMS heard it for its music library (2026-10-31).
+    struct PlexavAgent(RefCell<Vec<String>>);
+    impl PlexSource for PlexavAgent {
+        fn call(&self, method: &str, path: &str, _body: Option<&Value>) -> Option<Value> {
+            self.0.borrow_mut().push(format!("{method} {path}"));
+            let recorded: Value = serde_json::from_str(include_str!("../../tests/fixtures/music/agent.json")).unwrap();
+            let (wanted, query) = path.split_once('?').unwrap_or((path, ""));
+            let mut asked: Vec<(String, String)> = query.split('&').filter_map(|pair| pair.split_once('=')).map(|(k, v)| (k.to_string(), v.to_string())).collect();
+            asked.sort();
+            recorded["answers"].as_array().unwrap().iter().find_map(|answer| {
+                let mut theirs: Vec<(String, String)> = answer["query"].as_array().unwrap().iter()
+                    .map(|pair| (pair[0].as_str().unwrap().to_string(), pair[1].as_str().unwrap().to_string())).collect();
+                theirs.sort();
+                (answer["path"] == wanted && theirs == asked).then(|| answer["response"].clone())
+            })
+        }
+    }
+
+    #[test]
+    fn a_release_id_is_plexs_album_its_track_and_its_artist() {
+        let agent = PlexavAgent(RefCell::new(Vec::new()));
+        // In Rainbows: the match names the guid and the agent's own key for the release, which differ.
+        let (album, artist) = plex_album(&agent, Some("3b408cb5-7d51-4188-b07c-fabcf308cda3"), None).unwrap();
+        assert_eq!(album["guid"], "plex://album/5d07c2b1403c6402908fddb6");
+        assert_eq!(artist.unwrap()["title"], "Radiohead");
+        assert_eq!(album_track(&album, 1, 9).unwrap()["title"], "Jigsaw Falling Into Place");
+        assert!(album_track(&album, 2, 1).is_none());
+        assert!(agent.0.borrow()[1].starts_with("GET /library/metadata/5d07c92a403c640290c645e3?"), "{:?}", agent.0.borrow());
+        // A pushed album guid is asked for by its tail, with no match.
+        let agent = PlexavAgent(RefCell::new(Vec::new()));
+        let (album, _) = plex_album(&agent, None, Some("plex://album/5d07c2fb403c640290929d98")).unwrap();
+        assert_eq!((album["title"].as_str(), agent.0.borrow().len()), (Some("The Slip"), 2));
+        // A release id the agent does not know names nothing.
+        assert!(plex_album(&agent, Some("00000000-0000-0000-0000-000000000000"), None).is_none());
     }
 
     #[test]

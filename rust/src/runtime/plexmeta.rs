@@ -119,7 +119,9 @@ impl crate::identify::PlexSource for PlexMeta {
         let payload = body.map(Value::to_string).unwrap_or_default();
         let page = |start: usize| {
             let mut headers = headers.clone();
-            if method == "GET" {
+            // A path naming its own query (a music match, an album with its children) is asked as
+            // plexav's PMS asked it, unpaged (its outbound capture, 2026-10-31).
+            if method == "GET" && !path.contains('?') {
                 // The agent pages at 50 (the lab capture); 500 is refused with a 400.
                 headers.push(("X-Plex-Container-Start", start.to_string()));
                 headers.push(("X-Plex-Container-Size", "50".to_string()));
