@@ -14680,6 +14680,15 @@ searched it, and the PMS's own calls to Plex's agent were recorded beside them
   ten), the library `Meta`'s newer fields (rex keeps the empty 1.42 library's descriptor), and
   `Similar` tag case (plexav's `Bôa` was another artist's first spelling).
 
+**The transcoder naming itself (2026-10-31, plexav 1.43.4).** Plexamp draws an artist's and an album's
+header art, and a list's composite, as `/photo/:/transcode?url=/photo/:/transcode?...url=<image>...`.
+plexav answered that 200 `image/jpeg` at two and three levels (54,387 and 54,409 bytes beside the
+one-level 54,449). The oracle's rule that a url naming the transcoder is refused (cycle 52) does not
+hold here: rex answered every nested level 404 and Plexamp drew blank headers. rex now follows the
+nesting, eight levels at most (only three measured). Plexamp also PUTs each new smart list's
+`summary` with `includeFields=thumbBlurHash`, which plexav answered 200 and rex refused as an
+unknown column; the edit now passes over that name.
+
 ## Live TV: a source's live channels as one DVR (2026-10-31)
 
 Measured on plexav, a claimed PMS 1.43.4 in Europe/Amsterdam with a fake HDHomeRun of three

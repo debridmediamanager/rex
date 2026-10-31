@@ -224,6 +224,18 @@ def main():
                   status == record["status"] == 200 and listed and listed[0].get("summary") == summary,
                   (status, listed[:1]))
         check("All Music holds every track", len(rex.rows("/playlists/%s/items" % made["All Music"])) == 46)
+
+        # Plexamp draws an artist's and an album's header art, and a list's composite, through the
+        # transcoder naming the transcoder (`url=/photo/:/transcode?...url=...`): plexav answered all
+        # three 200 image/jpeg, and rex refused every nested level with a 404 (a blank header).
+        for record in M.load("plexamp-nested-art"):
+            extra = {"X-Plex-Token=REDACTED": "X-Plex-Token=" + M.TOKEN,
+                     "%2Fplaylists%2F60%2F": "%%2Fplaylists%%2F%s%%2F" % made["All Music"]}
+            status, headers, body = M.send(rex, record, mapping, parts, extra=extra)
+            kind = {name.lower(): value for name, value in headers.items()}.get("content-type", "")
+            check("Plexamp's nested transcode of %s answers an image, as plexav's"
+                  % dict(record["query"])["url"].split("url=")[1].split("&")[0],
+                  status == record["status"] == 200 and kind.startswith("image/") and len(body) > 0, (status, kind))
         played = [row["title"] for row in rex.rows("/playlists/%s/items" % made["Recently Played"])]
         check("Recently Played is read when asked: the track played above", played == ["15 Step"], played)
 

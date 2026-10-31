@@ -46,7 +46,11 @@ fn url_scheme(target: &str) -> Option<String> {
 }
 
 thread_local! {
-    static IN_TRANSCODE: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    /// How many transcodes deep the current inner fetch is. Plexamp names the transcoder
+    /// inside its own `url` (`/photo/:/transcode?url=%2Fphoto%2F%3A%2Ftranscode%3F...`) for an
+    /// artist's and album's header art, and plexav (1.43.4, 2026-10-31) answered that 200 at
+    /// two and three levels; the oracle's one-level refusal does not hold for it.
+    static TRANSCODE_DEPTH: std::cell::Cell<u8> = const { std::cell::Cell::new(0) };
     /// The transcoder's OWN `width`/`height` while its inner fetch runs: an item with
     /// no image to resolve is the oracle's `("png", query)`, the generated tile at the
     /// size the TRANSCODER was asked for, not the direct path's 342x513.
@@ -135,7 +139,8 @@ impl Runtime {
             response.headers.push(("Date".to_string(), http_date()));
             return transcoded(response);
         }
-        if IN_TRANSCODE.with(|cell| cell.get()) {
+        // Three levels measured; past eight a crafted url is refused rather than followed.
+        if TRANSCODE_DEPTH.with(|cell| cell.get()) >= 8 {
             return Response::photo_error(404, "rex: not found");
         }
         let segments = inner
@@ -174,11 +179,11 @@ impl Runtime {
                 .map(|value| value.clamp(1, 2000) as u32)
                 .unwrap_or(1)
         };
-        TRANSCODE_SIZE.with(|cell| cell.set(Some((dimension("width"), dimension("height")))));
-        IN_TRANSCODE.with(|cell| cell.set(true));
+        let outer_size = TRANSCODE_SIZE.with(|cell| cell.replace(Some((dimension("width"), dimension("height")))));
+        TRANSCODE_DEPTH.with(|cell| cell.set(cell.get() + 1));
         let fetched = self.request_route(&inner_request);
-        IN_TRANSCODE.with(|cell| cell.set(false));
-        TRANSCODE_SIZE.with(|cell| cell.set(None));
+        TRANSCODE_DEPTH.with(|cell| cell.set(cell.get() - 1));
+        TRANSCODE_SIZE.with(|cell| cell.set(outer_size));
         if fetched.status != 200 {
             // Every refusal the direct path makes -- 400, 404, 500 -- is a 404 here.
             return Response::photo_error(404, "rex: not found");
