@@ -11,7 +11,9 @@ Android's Live TV tab):
 
     python3 tests/livetv_source.py --rex http://127.0.0.1:32400
 
-It pushes three channels with a week's guide starting two hours ago, as plexav's guide.xml was
+(add `--host <this machine's LAN IP>` when rex runs on another machine or in a container: the
+channels are then served on every address). It pushes three channels with a week's guide starting
+two hours ago, as plexav's guide.xml was
 made (news on the hour, Firefly on the half hour, films every other hour, football hourly), and
 serves until interrupted. `tests/test_livetv.py` imports it and pushes a recorded guide instead.
 """
@@ -21,8 +23,10 @@ import http.server
 import json
 import os
 import shutil
+import signal
 import socketserver
 import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -52,15 +56,16 @@ class Files(http.server.SimpleHTTPRequestHandler):
 class LiveSource:
     """Live HLS channels under `<url>/channels/<number>.m3u8`."""
 
-    def __init__(self, ffmpeg, ffprobe, port, channels=CHANNELS, root=None):
+    def __init__(self, ffmpeg, ffprobe, port, channels=CHANNELS, root=None, host="127.0.0.1"):
         self.ffmpeg, self.ffprobe, self.channels = ffmpeg, ffprobe, channels
         self.root = root or tempfile.mkdtemp(prefix="rex-livetv-source-")
         self.dir = os.path.join(self.root, "channels")
         os.makedirs(self.dir, exist_ok=True)
         self.port = port
-        self.url = "http://127.0.0.1:%d" % port
+        self.url = "http://%s:%d" % (host, port)
         self.processes = []
-        self.httpd = Quiet(("127.0.0.1", port), functools.partial(Files, directory=self.root))
+        # Served on every address when rex reaches it by another than loopback (`--host`).
+        self.httpd = Quiet(("127.0.0.1" if host == "127.0.0.1" else "0.0.0.0", port), functools.partial(Files, directory=self.root))
         threading.Thread(target=self.httpd.serve_forever, daemon=True).start()
         for number, title, colour in channels:
             self.processes.append(subprocess.Popen(
@@ -146,8 +151,9 @@ def main():
     parser.add_argument("--host", default="127.0.0.1", help="the address rex reaches this source at")
     args = parser.parse_args()
     ffmpeg, ffprobe = shutil.which("ffmpeg"), shutil.which("ffprobe")
-    source = LiveSource(ffmpeg, ffprobe, args.port)
-    source.url = "http://%s:%d" % (args.host, args.port)
+    source = LiveSource(ffmpeg, ffprobe, args.port, host=args.host)
+    # A kill ends the channels' FFmpegs too, as Ctrl-C does.
+    signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
     try:
         source.wait()
         guide = week()
