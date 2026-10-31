@@ -64,7 +64,7 @@ rex reads no disk and lists nothing, and nothing about a source is set on rex's 
 source **registers** itself (`PUT /rex/sources/<name>`: the URL its files are under and the
 credential for it) and **pushes** its items to `/rex/feed/<name>/...`; when
 someone plays a file rex fetches its bytes with a GET of `<url>/<path>`. A source can be
-zurg's WebDAV, nginx, a NAS, object storage or `python3 -m http.server`. `Range` support and
+nginx, a NAS, object storage, zurg's WebDAV or `python3 -m http.server`. `Range` support and
 redirects are handled, and as many sources as you like feed the same libraries. rex keeps
 each registration, credential included, in `rex.db`, so a restart keeps playing before the
 source registers again.
@@ -226,7 +226,9 @@ everything it holds, then each change as it happens. Watch it arrive in rex's lo
 `rex_source`.
 
 **An item appears only once its source has probed it with ffprobe**, because rex lists each
-file with its streams. Items never probed are held, not shown. zurg probes the whole
+file with its streams. Items never probed are held, not shown. A source sends ffprobe's
+`-show_format -show_streams` output as each item's `media_info` ([`feed-api.md`](feed-api.md)).
+zurg, for one, probes the whole
 library on its own once it has loaded, one release at a time by default (zurg's
 `analysis_workers`), then each new release. It downloads ffprobe at start if it has none; its
 Docker image carries one, and if the download fails, install ffprobe and set `ffprobe_binary`.

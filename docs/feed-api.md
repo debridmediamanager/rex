@@ -1,6 +1,6 @@
 # The feed API: sources push items to rex
 
-rex does not list, scan or query any library. A **source** (zurg, rex-stremio, or anything else
+rex does not list, scan or query any library. A **source** (rex-stremio, zurg, or anything else
 that serves files over HTTP) pushes the items it holds, and rex turns
 them into library rows on keys that never change. The feed is rex's own API, not an
 emulated Plex route: what was measured on a real PMS is marked where it applies (what a row
@@ -14,7 +14,7 @@ them in its state file (`rex.db`), so a source's rows keep their bytes across a 
 it registers again. Nothing about a source is set on rex's side: no file, no token.
 
 What rex needs from a byte server is a GET of a file, nothing more, so a source can be
-zurg's WebDAV, nginx, a NAS, object storage or `python3 -m http.server`
+nginx, a NAS, object storage, zurg's WebDAV or `python3 -m http.server`
 (`tests/test_sources.py` runs two such sources side by side):
 
 - `Range` is optional. A server that ignores it and answers 200 with the whole file

@@ -63,7 +63,7 @@ Once it runs: [share it with family and friends](https://notes.debridmediamanage
 
 ## Sources and addons
 
-rex reads no media from disk. A source (zurg, an addon or your own app) tells rex what files it has and what is in them over the [feed API](docs/feed-api.md), and serves them when you press play.
+rex reads no media from disk. A source (an addon, your own app or zurg) tells rex what files it has and what is in them over the [feed API](docs/feed-api.md), and serves them when you press play.
 
 | Source | What it brings |
 |---|---|
