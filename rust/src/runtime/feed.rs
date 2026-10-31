@@ -91,6 +91,9 @@ struct Item {
     /// The collections its title (a film, or an episode's show) is in, by name, in its library
     /// (`collections`); `None` when it sent none, which keeps what the title has.
     collections: Option<Vec<String>>,
+    /// The Live TV channel a live item is (`channel`, `livetv::channel_field`): `None` when it
+    /// sent none, which keeps what the row has; `Some(None)` for `null`, which ends it.
+    channel: Option<Option<Value>>,
 }
 
 /// One entry of an item's `subtitles`: a subtitle file under the source's url, which becomes
@@ -324,7 +327,19 @@ impl Item {
             }
             Some(_) => return Err(refuse("collections must be a list of names")),
         };
+        let channel = match value.get("channel") {
+            None => None,
+            Some(Value::Null) => Some(None),
+            Some(channel) => {
+                let duration = value.pointer("/media_info/format/duration").map(string_value).and_then(|text| text.trim().parse::<f64>().ok());
+                if !playlist || duration.is_some_and(|seconds| seconds > 0.0) {
+                    return Err(refuse("channel is only for a live channel: an .m3u8 whose probe has no duration"));
+                }
+                Some(Some(super::livetv::channel_field(channel).map_err(|reason| refuse(&reason))?))
+            }
+        };
         Ok(Self {
+            channel,
             collections,
             subtitles: subtitle_entries(&source.name, &id, value.get("subtitles")),
             placed,
@@ -380,6 +395,7 @@ impl Item {
             .chain(self.folder.as_ref().map(|folder| ("_folder".to_string(), json!(folder))))
             .chain(self.placed.as_ref().map(|placed| ("_placed".to_string(), placed.clone())))
             .chain(self.display.as_ref().map(|display| ("_display".to_string(), Value::Object(display.clone()))))
+            .chain(self.channel.clone().flatten().map(|channel| ("_channel".to_string(), channel)))
             .chain(self.edition.as_ref().into_iter().flat_map(|edition| [
                 ("_editionTitle".to_string(), json!(edition)),
                 ("editionTitle".to_string(), json!(edition)),
@@ -2494,6 +2510,17 @@ impl Runtime {
         }
         if let Some(display) = &item.display {
             changed |= self.redress(key, display);
+        }
+        if let Some(channel) = &item.channel {
+            if row.get("_channel") != channel.as_ref() {
+                if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
+                    match channel {
+                        Some(channel) => object.insert("_channel".to_string(), channel.clone()),
+                        None => object.shift_remove("_channel"),
+                    };
+                    changed = true;
+                }
+            }
         }
         changed
     }

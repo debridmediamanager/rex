@@ -48,6 +48,7 @@ mod i18n;
 mod item_hubs;
 mod listing;
 mod limits;
+mod livetv;
 pub(crate) mod logging;
 mod merge;
 mod markers;
@@ -801,6 +802,8 @@ pub struct Runtime {
     spelling: Option<spellfix::SearchIndex>,
     pub terminated_sessions: HashMap<String, String>,
     pub decided_sessions: HashSet<(String, String)>,
+    /// Live TV's tuned sessions (`runtime/livetv.rs`).
+    livetv: livetv::Sessions,
     pub web_root: Option<PathBuf>,
     pub bandwidth_bytes: u64,
     /// The last measured resource counters and bounded Dashboard series.
@@ -1071,6 +1074,7 @@ impl Runtime {
             spelling: None,
             terminated_sessions: HashMap::new(),
             decided_sessions: HashSet::new(),
+            livetv: livetv::Sessions::default(),
             web_root: options.web_root,
             bandwidth_bytes: 0,
             resource_sample: None,
@@ -3771,7 +3775,8 @@ impl Runtime {
             ("allowMediaDeletion", json!(true)),
             ("allowSharing", json!(true)),
             ("allowSync", json!(self.download_allowed())),
-            ("allowTuners", json!(false)),
+            // Measured: a PMS with a DVR answers true; rex has one once a source pushes a channel.
+            ("allowTuners", json!(self.has_livetv())),
             ("apiVersion", json!("1.2.3")),
             ("backgroundProcessing", json!(true)),
             ("certificate", json!(true)),
@@ -4030,16 +4035,16 @@ impl Runtime {
                 body.insert(name.to_string(), value);
             }
         }
-        body.insert(
-            "MediaProvider".to_string(),
-            json!([{
-                "identifier": "com.plexapp.plugins.library",
-                "title": "Library",
-                "types": "video,audio,photo",
-                "protocols": "stream,download",
-                "Feature": features,
-            }]),
-        );
+        let mut providers = vec![json!({
+            "identifier": "com.plexapp.plugins.library",
+            "title": "Library",
+            "types": "video,audio,photo",
+            "protocols": "stream,download",
+            "Feature": features,
+        })];
+        providers.extend(self.livetv_provider());
+        body.insert("size".to_string(), json!(providers.len()));
+        body.insert("MediaProvider".to_string(), Value::Array(providers));
         json!({"MediaContainer": body})
     }
 
@@ -7420,6 +7425,7 @@ impl Runtime {
         self.enter_account(request);
         self.hide_other_playlists();
         let mut response = self.request_route(request);
+        self.livetv_finish(request, &mut response);
         self.share_response(&raw_path, &mut response);
         self.restore_playlists();
         self.leave_account();
@@ -8017,7 +8023,8 @@ impl Runtime {
             // Cycle 50: the doubled slash answers the parent's own listing.
             path = "/:/plugins".to_string();
         }
-        if path.contains("//") {
+        // A Live TV guide key is a guid, `tv.plex.xmltv://...`, once the path is decoded.
+        if path.contains("//") && !path.starts_with(livetv::PREFIX) {
             if matches!(
                 path.as_str(),
                 "/status/sessions//"
@@ -8206,6 +8213,9 @@ impl Runtime {
         }
         if path.starts_with("/video/:/transcode/universal/") {
             query.insert("location".to_string(), if self.playback_lan(&request.headers) { "lan" } else { "wan" }.to_string());
+        }
+        if let Some(response) = self.route_livetv(request, &path, &mut query) {
+            return response;
         }
         // A bare `/player` falls to the plug-in dispatcher for every verb but GET and
         // HEAD, as server.py's single-segment fallthrough runs before its player rule.

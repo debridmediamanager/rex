@@ -1,0 +1,434 @@
+#!/usr/bin/env python3
+"""Live TV: a source's live channels are one DVR, answered as a real PMS with a DVR answers the
+Plex clients' guide, pages, search and tune, and watched through rex's own live conversion.
+
+The reference is plexav, a claimed 1.43.4 PMS in Europe/Amsterdam with an HDHomeRun of three
+channels and an XMLTV guide, owned by an account without a Plex Pass (so no recording). Its
+answers are `tests/fixtures/livetv/` (`probes/record_livetv.py`), each set recorded at one moment
+(`now`): rex runs with its guide clock there (`REX_LIVETV_NOW`), TZ=Europe/Amsterdam, and the
+recorded guide pushed by a source of three real live HLS channels (`tests/livetv_source.py`).
+
+    tunerless  a live channel pushed without `channel` leaves every Live TV answer as it was; with
+               one it is a DVR, and `channel: null` ends that
+    reads      Plex Web's and Plex for Android's guide, What's On, show page, search and the DVR's
+               own reads (`reads_s1434`), value for value
+    web        Plex Web 4.163.0 tunes 2.1 and plays it (`web_watch_s1434`): the tune, the decision
+               (live, the session's key), start.m3u8, segments that decode, its beats, Now Playing,
+               and its stop
+    android    Plex for Android 2026.21.0 does the same from its Live TV tab (`android_watch_s1434`)
+    session    a film tuned and its session read back (`tune_s1434`)
+
+    python3 tests/test_livetv.py      # needs ffmpeg (REX_TRANSCODER, else PATH's)
+"""
+import gzip
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+import xml.etree.ElementTree as ET
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from livetv_source import LiveSource, push  # noqa: E402
+from server_command import server_command, test_ffmpeg  # noqa: E402
+from startup_wait import poll_until  # noqa: E402
+from test_ports import free_port  # noqa: E402
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+FIXTURES = os.path.join(ROOT, "tests", "fixtures", "livetv")
+FFMPEG = test_ffmpeg()
+FFPROBE = shutil.which("ffprobe") if FFMPEG else None
+if FFMPEG and os.path.exists(os.path.join(os.path.dirname(FFMPEG), "ffprobe")):
+    FFPROBE = os.path.join(os.path.dirname(FFMPEG), "ffprobe")
+PREFIX = "/tv.plex.providers.epg.xmltv:2"
+UUID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+# A database's own numbers and clocks: an airing's, a tag's or a session item's id, when PMS
+# read its guide, and the server's name.
+VOLATILE = {"id", "addedAt", "createdAt", "refreshedAt", "lastSeenAt", "updatedAt", "machineIdentifier", "uuid",
+            "mediaTagVersion", "friendlyName", "timeStamp", "hubKey", "mediaSubscriptionID", "sessionKey"}
+
+DVR_OWN = {"lineupTitle", "lineup", "uri", "deviceAuth", "deviceId", "make", "model", "modelNumber", "title", "tuners", "summary"}
+
+results = []
+
+
+def check(label, ok, detail=""):
+    results.append((label, bool(ok)))
+    print("  %s  %-70s %s" % ("PASS" if ok else "FAIL", label, detail if not ok else ""))
+    return ok
+
+
+def fixture(name):
+    path = os.path.join(FIXTURES, name)
+    return json.load(gzip.open(path, "rt") if name.endswith(".gz") else open(path))
+
+
+def request(port, method, path, query=(), headers=(), timeout=60):
+    url = "http://127.0.0.1:%d%s" % (port, path)
+    if query:
+        url += "?" + urllib.parse.urlencode([tuple(pair) for pair in query])
+    call = urllib.request.Request(url, method=method, headers=dict(headers))
+    try:
+        with urllib.request.urlopen(call, timeout=timeout) as response:
+            return response.status, response.headers.get("Content-Type", ""), response.read()
+    except urllib.error.HTTPError as error:
+        return error.code, error.headers.get("Content-Type", ""), error.read()
+
+
+def tree(element):
+    """An XML element as the JSON PMS answers it: attributes, children by name."""
+    node = dict(element.attrib)
+    for child in element:
+        node.setdefault(child.tag, []).append(tree(child))
+    return node
+
+
+def document(body, content_type):
+    text = body.decode() if isinstance(body, bytes) else body
+    if "xml" in content_type:
+        root = ET.fromstring(text)
+        return {root.tag: tree(root)}
+    return json.loads(text)
+
+
+def normal(value):
+    return UUID.sub("<uuid>", value) if isinstance(value, str) else value
+
+
+def diff(reference, got, path="", out=None):
+    """Every element and attribute the reference has that rex does not, or the other way, and
+    every value that differs, but the volatile ones'."""
+    out = [] if out is None else out
+    if isinstance(reference, dict) and isinstance(got, dict):
+        for name in reference:
+            if name not in got:
+                out.append("%s.%s missing (%s)" % (path, name, json.dumps(reference[name])[:60]))
+        for name in got:
+            if name not in reference:
+                out.append("%s.%s extra (%s)" % (path, name, json.dumps(got[name])[:60]))
+        for name in reference:
+            if name not in got or name == "TranscodeSession":
+                continue
+            left, right = reference[name], got[name]
+            if isinstance(left, dict) and isinstance(right, list) and len(right) == 1:
+                right = right[0]
+            if isinstance(left, (dict, list)) or isinstance(right, (dict, list)):
+                diff(left, right, "%s.%s" % (path, name), out)
+            elif name in VOLATILE or (name == "filter" and str(left).startswith("genre=")):
+                continue
+            elif name in ("ratingKey", "key") and str(left).isdigit():
+                continue  # PMS mints an item per session or subscription; rex's is the channel's row
+            elif normal(left) != normal(right):
+                out.append("%s.%s = %s, reference %s" % (path, name, json.dumps(right)[:70], json.dumps(left)[:70]))
+    elif isinstance(reference, list) and isinstance(got, list):
+        if len(reference) != len(got):
+            out.append("%s: %d rows, reference %d" % (path, len(got), len(reference)))
+        for at, (left, right) in enumerate(zip(reference, got)):
+            diff(left, right, "%s[%d]" % (path, at), out)
+    elif normal(reference) != normal(got):
+        out.append("%s = %s, reference %s" % (path, json.dumps(got)[:70], json.dumps(reference)[:70]))
+    return out
+
+
+def start_rex(scratch, now, transcoder=False):
+    port = free_port()
+    catalog = os.path.join(scratch, "catalog-%d.json" % port)
+    json.dump({"machineIdentifier": "0000000000000000000000000000000000000017", "friendlyName": "rex-livetv",
+               "sections": [{"key": "1", "type": "movie", "title": "Movies", "uuid": "0" * 39 + "1"}], "items": []},
+              open(catalog, "w"))
+    env = dict(os.environ, TZ="Europe/Amsterdam", REX_TRANSCODER=FFMPEG if transcoder else "off",
+               REX_TRANSCODE_HW="none", REX_TRANSCODE_DIR=os.path.join(scratch, "segments-%d" % port),
+               REX_PLEXTV_URL="http://127.0.0.1:%d" % free_port())
+    if now:
+        env["REX_LIVETV_NOW"] = str(now)
+    log = open(os.path.join(scratch, "rex-%d.log" % port), "w")
+    process = subprocess.Popen(server_command("--port", port, "--catalog", catalog, "--assert-claimed", root=ROOT),
+                               cwd=ROOT, env=env, stdout=log, stderr=subprocess.STDOUT)
+
+    def ready():
+        try:
+            urllib.request.urlopen("http://127.0.0.1:%d/identity" % port, timeout=2)
+            return True
+        except Exception:
+            return False
+
+    if not poll_until(ready, 40):
+        raise RuntimeError("rex did not start: %s" % log.name)
+    return port, process
+
+
+def push_guide(port, source, guide):
+    items = [source.item(channel["number"], channel["title"], channel) for channel in guide["channels"]]
+    answer = push("http://127.0.0.1:%d" % port, source, items)
+    return answer
+
+
+def provider(body):
+    providers = json.loads(body)["MediaContainer"].get("MediaProvider", [])
+    return next((entry for entry in providers if entry.get("protocols") == "livetv"), None)
+
+
+def replay(port, exchange, query=None):
+    headers = [(name, value) for name, value in exchange["headers"]]
+    return request(port, exchange["method"], exchange["path"], exchange["query"] if query is None else query, headers)
+
+
+def compare(label, port, exchange, tolerated=()):
+    """A recorded exchange replayed: rex's status, and its body against the reference's."""
+    status, content_type, body = replay(port, exchange)
+    if status != exchange["status"]:
+        return check(label, False, "status %s, reference %s" % (status, exchange["status"]))
+    if status != 200:
+        return check(label, True)
+    if exchange["path"] == "/media/providers":
+        reference, got = json.loads(exchange["body"]), json.loads(body)
+        differences = diff(provider(exchange["body"]), provider(body), "livetv")
+        for name in ("size", "allowTuners"):
+            if reference["MediaContainer"][name] != got["MediaContainer"][name]:
+                differences.append("%s = %s, reference %s" % (name, got["MediaContainer"][name], reference["MediaContainer"][name]))
+        return check(label, not differences, "; ".join(differences[:6]))
+    differences = diff(document(exchange["body"], exchange["type"]), document(body, content_type))
+    differences = [line for line in differences if line.split(" ")[0].rsplit(".", 1)[-1] not in tolerated]
+    if exchange["path"].startswith("/livetv/dvrs"):
+        # The device is rex's sources, not an HDHomeRun: its names, and the settings' help text,
+        # are rex's own (CLAUDE.md: whole-sentence help text is rex's wording).
+        differences = [line for line in differences if line.split(" ")[0].rsplit(".", 1)[-1] not in DVR_OWN]
+    return check(label, not differences, "%d: %s" % (len(differences), "; ".join(differences[:6])))
+
+
+def label_of(exchange):
+    query = "&".join("%s=%s" % tuple(pair) for pair in exchange["query"] if not pair[0].startswith("X-Plex"))
+    return ("%s %s?%s" % (exchange["method"], exchange["path"].replace(PREFIX, "<epg>"), query))[:68]
+
+
+def tunerless(scratch, source, guide):
+    print("tunerless")
+    port, process = start_rex(scratch, None)
+    try:
+        first = guide["channels"][0]
+        before = {path: request(port, "GET", path, headers=[("Accept", "application/json")]) for path in
+                  ("/livetv", "/livetv/dvrs", "/livetv/sessions", "/livetv/epg", "/livetv/sessions/x", "/media/subscriptions",
+                   PREFIX + "/lineups/dvr/channels", "/media/grabbers")}
+        answer = push("http://127.0.0.1:%d" % port, source, [source.item(first["number"], first["title"], None)])
+        status, _, body = request(port, "GET", "/media/providers", headers=[("Accept", "application/json")])
+        container = json.loads(body)["MediaContainer"]
+        check("a live channel without `channel`: one provider, allowTuners false",
+              container["size"] == 1 and provider(body) is None and container["allowTuners"] is False,
+              json.dumps({"size": container["size"], "allowTuners": container["allowTuners"]}))
+        after = {path: request(port, "GET", path, headers=[("Accept", "application/json")]) for path in before}
+        for path in before:
+            check("unchanged without a channel: %s" % path, before[path][:1] + before[path][2:] == after[path][:1] + after[path][2:],
+                  "%s %s" % (after[path][0], after[path][2][:80]))
+        status, _, _ = request(port, "POST", "/livetv/dvrs/2/channels/2.1/tune")
+        check("unchanged without a channel: POST tune", status == 404, str(status))
+        answer = push_guide(port, source, {"channels": [first]})
+        status, _, body = request(port, "GET", "/media/providers", headers=[("Accept", "application/json")])
+        check("`channel` makes it a DVR: the Live TV provider, allowTuners true",
+              provider(body) is not None and json.loads(body)["MediaContainer"]["allowTuners"] is True, json.dumps(answer))
+        status, _, body = request(port, "GET", PREFIX + "/lineups/dvr/channels", headers=[("Accept", "application/json")])
+        check("its lineup lists the channel", status == 200 and json.loads(body)["MediaContainer"]["size"] == 1, body[:120])
+        item = source.item(first["number"], first["title"], None)
+        item["channel"] = None
+        answer = push("http://127.0.0.1:%d" % port, source, [item])
+        status, _, body = request(port, "GET", "/media/providers", headers=[("Accept", "application/json")])
+        check("`channel: null` ends it", provider(body) is None and json.loads(body)["MediaContainer"]["allowTuners"] is False, json.dumps(answer))
+        rejected = push("http://127.0.0.1:%d" % port, source, [dict(source.item(first["number"], first["title"], {"number": "2/1"}))])
+        check("a bad channel is refused by name", rejected.get("rejected") and "channel.number" in rejected["rejected"][0]["reason"], json.dumps(rejected))
+    finally:
+        process.kill()
+        process.wait()
+
+
+def reads(scratch, source, guide):
+    recorded = fixture("reads_s1434.json.gz")
+    print("reads (the reference at %d)" % recorded["now"])
+    port, process = start_rex(scratch, recorded["now"])
+    try:
+        print("  pushed %s" % json.dumps(push_guide(port, source, guide)))
+        seen = set()
+        for exchange in recorded["exchanges"]:
+            name = (exchange["path"], json.dumps(exchange["query"]))
+            if name in seen:
+                continue
+            seen.add(name)
+            compare(label_of(exchange), port, exchange)
+    finally:
+        process.kill()
+        process.wait()
+
+
+def decodes(port, base, scratch, label, count=3):
+    """The session's media playlist and its first segments, decoded by FFmpeg."""
+    deadline, names = time.time() + 40, []
+    while time.time() < deadline and len(names) < count:
+        status, _, body = request(port, "GET", base + "index.m3u8")
+        names = [line for line in body.decode().splitlines() if line and not line.startswith("#")] if status == 200 else []
+        time.sleep(1)
+    check("%s: the media playlist grows, no ENDLIST" % label, len(names) >= count and b"#EXT-X-ENDLIST" not in body, body[-200:])
+    path = os.path.join(scratch, "%s.ts" % label.replace(" ", "-"))
+    statuses = []
+    with open(path, "wb") as handle:
+        for name in names[:count]:
+            status, _, segment = request(port, "GET", base + name.split("?")[0])
+            statuses.append(status)
+            handle.write(segment)
+    frames = (subprocess.run([FFPROBE, "-v", "error", "-count_frames", "-select_streams", "v:0", "-show_entries",
+                              "stream=nb_read_frames", "-of", "csv=p=0", path], capture_output=True, text=True).stdout.split() or [""])[0]
+    check("%s: segments %s decode (%s frames)" % (label, statuses, frames), statuses == [200] * count and frames.isdigit() and int(frames) > 30, frames)
+
+
+def tune(port, exchange, label, tolerated=()):
+    """The tune replayed and compared; rex's session uuid and its ratingKey."""
+    status, content_type, body = replay(port, exchange)
+    differences = diff(document(exchange["body"], exchange["type"]), document(body, content_type)) if status == 200 else ["status %d" % status]
+    differences = [line for line in differences if line.split(" ")[0].rsplit(".", 1)[-1] not in tolerated]
+    check("%s: the tune" % label, not differences, "%d: %s" % (len(differences), "; ".join(differences[:8])))
+    key = re.search(r"/livetv/sessions/([0-9a-f-]{36})", body.decode())
+    rating = re.search(r'ratingKey"?[=:] ?"(\d+)"', body.decode())
+    return (key.group(1) if key else None), (rating.group(1) if rating else None)
+
+
+# What a capture recorded that the reference no longer answers, by the attribute's name: Plex Web's
+# and Android's sessions ran on an account with a Plex Pass and a recording of Firefly scheduled,
+# and Plex Web's tune was the first after the DVR was set up. plexav answered them since without
+# the Pass (`tune_s1434`, `reads_s1434`: no `subscribe` and two pivots, no `canNormalizeLoudness`)
+# and later tunes describe the capture's picture (`width`, `height`, `aspectRatio`), its
+# `channelCallSign` and the Part's `size`, as Android's did; rex records nothing.
+TOLERATED = {
+    "Plex Web": {"width", "height", "aspectRatio", "pixelAspectRatio", "channelCallSign", "size", "canNormalizeLoudness", "hasVoiceActivity"},
+    "Plex for Android": {"grandparentSubscriptionID", "grandparentSubscriptionType", "canNormalizeLoudness", "hasVoiceActivity"},
+}
+
+
+def watch(scratch, source, guide, name, label):
+    recorded = fixture(name)
+    print("%s (the reference at %d)" % (label, recorded["now"]))
+    port, process = start_rex(scratch, recorded["now"], transcoder=True)
+    try:
+        push_guide(port, source, guide)
+        exchanges = recorded["exchanges"]
+        at = next(index for index, exchange in enumerate(exchanges) if exchange["path"].endswith("/tune"))
+        for exchange in exchanges[:at]:
+            # The providers list is the Plex Pass one then (`TOLERATED`); `reads` checks today's.
+            if exchange["path"] not in ("/status/sessions", "/:/timeline", "/media/providers"):
+                compare("%s: %s" % (label, label_of(exchange)), port, exchange, TOLERATED[label])
+        uuid, rating = tune(port, exchanges[at], label, TOLERATED[label])
+        if not check("%s: a session key" % label, uuid and rating):
+            return
+        recorded_uuid = UUID.search(exchanges[at]["body"]).group(0)
+        recorded_rating = re.search(r'ratingKey"?[=:] ?"(\d+)"', exchanges[at]["body"]).group(1)
+        swap = lambda pairs: [[name, rating if name == "ratingKey" and value == recorded_rating else value.replace(recorded_uuid, uuid)]
+                              for name, value in pairs]
+        session = None
+        for exchange in exchanges[at + 1:]:
+            query = swap(exchange["query"])
+            path = exchange["path"]
+            if path == "/video/:/transcode/universal/decision":
+                status, content_type, body = replay(port, exchange, query)
+                reference, got = document(exchange["body"], exchange["type"]), document(body, content_type) if status == 200 else {}
+                container = got.get("MediaContainer", {})
+                video = (container.get("Video") or [{}])[0]
+                wanted = {name: value for name, value in reference["MediaContainer"].items() if not isinstance(value, list)}
+                differences = diff(wanted, {name: value for name, value in container.items() if not isinstance(value, list)}, "container")
+                differences += diff({name: value for name, value in reference["MediaContainer"]["Video"][0].items() if not isinstance(value, list)},
+                                    {name: value for name, value in video.items() if not isinstance(value, list)}, "Video")
+                media = (video.get("Media") or [{}])[0]
+                if media.get("origin") != "livetv" or media.get("uuid") != uuid:
+                    differences.append("Media origin/uuid %s %s" % (media.get("origin"), media.get("uuid")))
+                check("%s: the decision is a live conversion of the session" % label, status == 200 and not differences,
+                      "%d: %s" % (len(differences), "; ".join(differences[:6])))
+            elif path == "/video/:/transcode/universal/start.m3u8":
+                status, _, body = replay(port, exchange, query)
+                session = dict(query).get("session")
+                lines = body.decode().splitlines() if status == 200 else []
+                shape = [line.split(":")[0] if line.startswith("#") else line.split("?")[0] for line in lines]
+                reference = [line.split(":")[0] if line.startswith("#") else line.split("?")[0] for line in exchange["body"].splitlines()]
+                check("%s: start.m3u8 names the session's playlist" % label, status == 200 and shape == reference, "%s %s" % (status, lines))
+                decodes(port, "/video/:/transcode/universal/session/%s/base/" % session, scratch, label)
+            elif path == "/:/timeline":
+                # A live beat keeps nothing: rex answers `ignore` to each. The reference answered
+                # `complete` to Android's beats at its live edge past 10 s (17448 of 17448 ms), and
+                # `ignore` to Plex Web's at 8000 of 8000: a play rex never completes.
+                status, content_type, body = replay(port, exchange, query)
+                state = json.loads(body)["MediaContainer"].get("playbackState") if status == 200 else None
+                reference = json.loads(exchange["body"])["MediaContainer"]["playbackState"]
+                check("%s: a beat at %s of %s ms keeps nothing (reference: %s)" % (label, dict(query).get("time"), dict(query).get("duration"), reference),
+                      state == "ignore", "%s %s" % (status, body[:120]))
+            elif path == "/status/sessions" and json.loads(exchange["body"])["MediaContainer"]["size"]:
+                status, content_type, body = replay(port, exchange, query)
+                reference = json.loads(exchange["body"])["MediaContainer"]["Metadata"][0]
+                rows = json.loads(body)["MediaContainer"].get("Metadata", []) if status == 200 else []
+                keep = lambda row: {name: value for name, value in row.items() if not isinstance(value, (list, dict))}
+                differences = diff(keep(reference), keep(rows[0])) if rows else ["no session"]
+                check("%s: Now Playing shows the live session" % label, not differences, "; ".join(differences[:6]))
+                break
+        # The channel keeps no resume point and is never watched; a stop ends the session.
+        key = re.search(r'ratingKey="?(\d+)', request(port, "GET", "/livetv/sessions/" + uuid, headers=[("Accept", "application/xml")])[2].decode())
+        stop = [("key", "/livetv/sessions/" + uuid), ("ratingKey", key.group(1) if key else ""), ("state", "stopped"),
+                ("time", "60000"), ("duration", "60000"), ("X-Plex-Client-Identifier", "rex-livetv-test")]
+        status, _, _ = request(port, "GET", "/:/timeline", stop, [("Accept", "application/json")])
+        status_after, _, _ = request(port, "GET", "/livetv/sessions/" + uuid, headers=[("Accept", "application/json")])
+        check("%s: a stopped beat ends the session" % label, status == 200 and status_after == 404, "%s %s" % (status, status_after))
+        if key:
+            _, _, body = request(port, "GET", "/library/metadata/" + key.group(1), headers=[("Accept", "application/json")])
+            row = json.loads(body)["MediaContainer"]["Metadata"][0]
+            check("%s: the channel keeps no resume point and is not watched" % label, "viewOffset" not in row and not row.get("viewCount"),
+                  json.dumps({name: row.get(name) for name in ("viewOffset", "viewCount")}))
+        if session:
+            request(port, "GET", "/video/:/transcode/universal/stop", [("session", session)])
+    finally:
+        process.kill()
+        process.wait()
+
+
+def session(scratch, source, guide):
+    recorded = fixture("tune_s1434.json")
+    print("session (the reference at %d)" % recorded["now"])
+    port, process = start_rex(scratch, recorded["now"])
+    try:
+        push_guide(port, source, guide)
+        exchanges = recorded["exchanges"]
+        uuid, _ = tune(port, exchanges[0], "a film")
+        recorded_uuid = UUID.search(exchanges[0]["body"]).group(0)
+        for exchange in exchanges[1:]:
+            compare(label_of(dict(exchange, path=exchange["path"].replace(recorded_uuid, "<uuid>"))), port,
+                    dict(exchange, path=exchange["path"].replace(recorded_uuid, uuid or "none")))
+    finally:
+        process.kill()
+        process.wait()
+
+
+def main():
+    if not FFMPEG or not FFPROBE:
+        print("SKIP: no ffmpeg (set REX_TRANSCODER)")
+        return 0
+    scratch = tempfile.mkdtemp(prefix="rex-livetv-test-")
+    guide = fixture("guide_s1434.json")
+    source = LiveSource(FFMPEG, FFPROBE, free_port(), root=os.path.join(scratch, "source"))
+    try:
+        source.wait()
+        wanted = sys.argv[1:] or ["tunerless", "reads", "web", "android", "session"]
+        for phase in wanted:
+            {"tunerless": lambda: tunerless(scratch, source, guide), "reads": lambda: reads(scratch, source, guide),
+             "web": lambda: watch(scratch, source, guide, "web_watch_s1434.json.gz", "Plex Web"),
+             "android": lambda: watch(scratch, source, guide, "android_watch_s1434.json.gz", "Plex for Android"),
+             "session": lambda: session(scratch, source, guide)}[phase]()
+    finally:
+        source.close()
+        if os.environ.get("REX_KEEP_TMP"):
+            print("scratch kept: %s" % scratch)
+        else:
+            shutil.rmtree(scratch, ignore_errors=True)
+    failed = [label for label, ok in results if not ok]
+    print("\n%d/%d passed" % (len(results) - len(failed), len(results)))
+    return 1 if failed else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

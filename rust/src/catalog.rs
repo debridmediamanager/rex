@@ -96,9 +96,12 @@ pub enum By {
     /// Each uploaded subtitle's stream `id` (a Stream carrying `_content`): the only streams
     /// `/library/streams/{id}` reads back or deletes, found without reading every row.
     Upload,
+    /// A live channel its source made a Live TV channel (`_channel`), all under `""`: the guide
+    /// lists them without reading every row (`runtime/livetv.rs`).
+    Channel,
 }
 
-const LOOKUPS: usize = 8;
+const LOOKUPS: usize = 9;
 
 /// The `By::Release` key of a source's item.
 pub fn release_key(source: &str, sid: &str) -> String {
@@ -143,6 +146,7 @@ impl By {
                     .map(hash),
             ),
             By::Release => into.extend(versions(item).iter().map(|(source, sid, _)| hash(&release_key(source, sid)))),
+            By::Channel => into.extend(item.get("_channel").filter(|channel| channel.is_object()).map(|_| hash(""))),
             By::Upload => into.extend(
                 parts()
                     // A packed Part is decoded only when its text holds an upload.
@@ -411,7 +415,7 @@ impl RowIndex {
     }
 }
 
-const BY: [By; LOOKUPS] = [By::Parent, By::Section, By::Part, By::File, By::ClipParent, By::Directory, By::Release, By::Upload];
+const BY: [By; LOOKUPS] = [By::Parent, By::Section, By::Part, By::File, By::ClipParent, By::Directory, By::Release, By::Upload, By::Channel];
 
 /// A row as a pass over the library holds it: its hot fields, and the row read only for
 /// what they do not hold (`hotrow::Lazy`).
