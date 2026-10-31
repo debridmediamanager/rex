@@ -1,0 +1,1380 @@
+{
+ "fresh": [
+  {
+   "after": 0.72,
+   "rows": [
+    {
+     "UltraBlurColors": null,
+     "ownThumb": false,
+     "thumb": "/library/metadata/74/thumb/1793484130",
+     "thumbBlurHash": null
+    }
+   ]
+  },
+  {
+   "after": 0.99,
+   "rows": [
+    {
+     "UltraBlurColors": {
+      "bottomLeft": "117127",
+      "bottomRight": "376d0d",
+      "topLeft": "0f0e88",
+      "topRight": "53147b"
+     },
+     "ownThumb": true,
+     "thumb": "/library/metadata/93/thumb/1793485863",
+     "thumbBlurHash": "L+H-iDj[fQj[Qef7fQf7}PjsfQjs"
+    }
+   ]
+  }
+ ],
+ "recorded": "plexav, PMS 1.43.4, 2026-10-31",
+ "requests": [
+  {
+   "path": "/library/sections/1/all?type=8&excludeFields=summary&excludeElements=Media%2CDirector%2CCountry&sort=titleSort&includeFields=thumbBlurHash",
+   "rows": [
+    {
+     "fields": [],
+     "ownArt": false,
+     "ownThumb": false,
+     "type": "artist"
+    },
+    {
+     "fields": [
+      "thumbBlurHash",
+      "UltraBlurColors"
+     ],
+     "ownArt": false,
+     "ownThumb": true,
+     "type": "artist"
+    },
+    {
+     "fields": [
+      "thumbBlurHash",
+      "UltraBlurColors"
+     ],
+     "ownArt": true,
+     "ownThumb": true,
+     "type": "artist"
+    }
+   ],
+   "status": 200
+  },
+  {
+   "path": "/library/sections/1/all?type=8&excludeFields=summary&excludeElements=Media%2CDirector%2CCountry&sort=titleSort",
+   "rows": [
+    {
+     "fields": [],
+     "ownArt": false,
+     "ownThumb": false,
+     "type": "artist"
+    },
+    {
+     "fields": [
+      "UltraBlurColors"
+     ],
+     "ownArt": false,
+     "ownThumb": true,
+     "type": "artist"
+    },
+    {
+     "fields": [
+      "UltraBlurColors"
+     ],
+     "ownArt": true,
+     "ownThumb": true,
+     "type": "artist"
+    }
+   ],
+   "status": 200
+  },
+  {
+   "path": "/library/metadata/17/children?excludeFields=summary&includeFields=thumbBlurHash",
+   "rows": [
+    {
+     "fields": [
+      "thumbBlurHash",
+      "UltraBlurColors"
+     ],
+     "ownArt": false,
+     "ownThumb": true,
+     "type": "album"
+    }
+   ],
+   "status": 200
+  },
+  {
+   "path": "/library/metadata/17/children?excludeFields=summary",
+   "rows": [
+    {
+     "fields": [
+      "UltraBlurColors"
+     ],
+     "ownArt": false,
+     "ownThumb": true,
+     "type": "album"
+    }
+   ],
+   "status": 200
+  },
+  {
+   "path": "/library/metadata/17?includeStations=1&excludeFields=summary&includeFields=thumbBlurHash",
+   "rows": [
+    {
+     "fields": [
+      "thumbBlurHash",
+      "UltraBlurColors"
+     ],
+     "ownArt": true,
+     "ownThumb": true,
+     "type": "artist"
+    }
+   ],
+   "status": 200
+  },
+  {
+   "path": "/library/metadata/17?includeStations=1&excludeFields=summary",
+   "rows": [
+    {
+     "fields": [
+      "UltraBlurColors"
+     ],
+     "ownArt": true,
+     "ownThumb": true,
+     "type": "artist"
+    }
+   ],
+   "status": 200
+  },
+  {
+   "path": "/library/metadata/17?includeFields=thumbBlurHash",
+   "rows": [
+    {
+     "fields": [
+      "thumbBlurHash",
+      "UltraBlurColors"
+     ],
+     "ownArt": true,
+     "ownThumb": true,
+     "type": "artist"
+    }
+   ],
+   "status": 200
+  },
+  {
+   "path": "/library/metadata/17",
+   "rows": [
+    {
+     "fields": [
+      "UltraBlurColors"
+     ],
+     "ownArt": true,
+     "ownThumb": true,
+     "type": "artist"
+    }
+   ],
+   "status": 200
+  },
+  {
+   "path": "/library/metadata/17?includeRelated=1&includeRelatedCount=31&includeConcerts=1&includePreferences=1&includeExternalMetadata=1&includeStations=1&includePopularLeaves=1&asyncAugmentMetadata=1&augmentCount=4&includeFields=musicAnalysis%2CthumbBlurHash&excludeFields=summary&excludeElements=Similar",
+   "rows": [
+    {
+     "fields": [
+      "thumbBlurHash",
+      "UltraBlurColors"
+     ],
+     "ownArt": true,
+     "ownThumb": true,
+     "type": "artist"
+    }
+   ],
+   "status": 200
+  },
+  {
+   "path": "/library/metadata/17?includeRelated=1&includeRelatedCount=31&includeConcerts=1&includePreferences=1&includeExternalMetadata=1&includeStations=1&includePopularLeaves=1&asyncAugmentMetadata=1&augmentCount=4&excludeFields=summary&excludeElements=Similar",
+   "rows": [
+    {
+     "fields": [
+      "UltraBlurColors"
+     ],
+     "ownArt": true,
+     "ownThumb": true,
+     "type": "artist"
+    }
+   ],
+   "status": 200
+  },
+  {
+   "path": "/library/metadata/31?includeFields=thumbBlurHash",
+   "rows": [
+    {
+     "fields": [
+      "thumbBlurHash",
+      "UltraBlurColors"
+     ],
+     "ownArt": false,
+     "ownThumb": true,
+     "type": "album"
+    }
+   ],
+   "status": 200
+  },
+  {
+   "path": "/library/metadata/31",
+   "rows": [
+    {
+     "fields": [
+      "UltraBlurColors"
+     ],
+     "ownArt": false,
+     "ownThumb": true,
+     "type": "album"
+    }
+   ],
+   "status": 200
+  },
+  {
+   "path": "/library/metadata/31?includeRelated=1&asyncAugmentMetadata=1&augmentCount=20&includeFields=musicAnalysis%2CthumbBlurHash&excludeFields=summary",
+   "rows": [
+    {
+     "fields": [
+      "thumbBlurHash",
+      "UltraBlurColors"
+     ],
+     "ownArt": false,
+     "ownThumb": true,
+     "type": "album"
+    }
+   ],
+   "status": 200
+  },
+  {
+   "path": "/library/metadata/31?includeRelated=1&asyncAugmentMetadata=1&augmentCount=20&excludeFields=summary",
+   "rows": [
+    {
+     "fields": [
+      "UltraBlurColors"
+     ],
+     "ownArt": false,
+     "ownThumb": true,
+     "type": "album"
+    }
+   ],
+   "status": 200
+  },
+  {
+   "path": "/library/sections/1/all?type=1%2C2%2C9%2C13%2C19%2C21&sort=addedAt%3Adesc&limit=5&excludeFields=summary&excludeElements=Mood%2CSimilar%2CGenre%2CStyle%2CCountry&includeFields=thumbBlurHash",
+   "rows": [
+    {
+     "fields": [
+      "thumbBlurHash",
+      "UltraBlurColors"
+     ],
+     "ownArt": false,
+     "ownThumb": true,
+     "type": "album"
+    }
+   ],
+   "status": 200
+  },
+  {
+   "path": "/library/sections/1/all?type=1%2C2%2C9%2C13%2C19%2C21&sort=addedAt%3Adesc&limit=5&excludeFields=summary&excludeElements=Mood%2CSimilar%2CGenre%2CStyle%2CCountry",
+   "rows": [
+    {
+     "fields": [
+      "UltraBlurColors"
+     ],
+     "ownArt": false,
+     "ownThumb": true,
+     "type": "album"
+    }
+   ],
+   "status": 200
+  },
+  {
+   "path": "/hubs/sections/1?count=6&includeExternalMetadata=1&includeMyMixes=1&includeAnniversaryReleases=1&excludeElements=Similar%2CMood&includeLibraryPlaylists=1&includeStations=1&includeStationDirectories=1&excludeFields=summary&includeFields=thumbBlurHash",
+   "rows": [
+    {
+     "fields": [
+      "thumbBlurHash",
+      "UltraBlurColors"
+     ],
+     "ownArt": false,
+     "ownThumb": true,
+     "type": "album"
+    },
+    {
+     "fields": [
+      "thumbBlurHash",
+      "UltraBlurColors"
+     ],
+     "ownArt": true,
+     "ownThumb": true,
+     "type": "artist"
+    },
+    {
+     "fields": [],
+     "ownArt": false,
+     "ownThumb": false,
+     "type": "directory"
+    },
+    {
+     "fields": [],
+     "ownArt": false,
+     "ownThumb": false,
+     "type": "playlist"
+    }
+   ],
+   "status": 200
+  },
+  {
+   "path": "/hubs/sections/1?count=6&includeExternalMetadata=1&includeMyMixes=1&includeAnniversaryReleases=1&excludeElements=Similar%2CMood&includeLibraryPlaylists=1&includeStations=1&includeStationDirectories=1&excludeFields=summary",
+   "rows": [
+    {
+     "fields": [
+      "UltraBlurColors"
+     ],
+     "ownArt": false,
+     "ownThumb": true,
+     "type": "album"
+    },
+    {
+     "fields": [
+      "UltraBlurColors"
+     ],
+     "ownArt": true,
+     "ownThumb": true,
+     "type": "artist"
+    },
+    {
+     "fields": [],
+     "ownArt": false,
+     "ownThumb": false,
+     "type": "directory"
+    },
+    {
+     "fields": [],
+     "ownArt": false,
+     "ownThumb": false,
+     "type": "playlist"
+    }
+   ],
+   "status": 200
+  },
+  {
+   "path": "/library/sections/1/all?type=9&genre=54&excludeFields=summary&id%21=-1&sort=random&includeFields=thumbBlurHash",
+   "rows": [
+    {
+     "fields": [
+      "thumbBlurHash",
+      "UltraBlurColors"
+     ],
+     "ownArt": false,
+     "ownThumb": true,
+     "type": "album"
+    }
+   ],
+   "status": 200
+  },
+  {
+   "path": "/library/sections/1/all?type=9&genre=54&excludeFields=summary&id%21=-1&sort=random",
+   "rows": [
+    {
+     "fields": [
+      "UltraBlurColors"
+     ],
+     "ownArt": false,
+     "ownThumb": true,
+     "type": "album"
+    }
+   ],
+   "status": 200
+  },
+  {
+   "path": "/library/sections/1/all?type=9&studio=Parlophone&excludeFields=summary&id%21=-1&sort=random&includeFields=thumbBlurHash",
+   "rows": [
+    {
+     "fields": [
+      "thumbBlurHash",
+      "UltraBlurColors"
+     ],
+     "ownArt": false,
+     "ownThumb": true,
+     "type": "album"
+    }
+   ],
+   "status": 200
+  },
+  {
+   "path": "/library/sections/1/all?type=9&studio=Parlophone&excludeFields=summary&id%21=-1&sort=random",
+   "rows": [
+    {
+     "fields": [
+      "UltraBlurColors"
+     ],
+     "ownArt": false,
+     "ownThumb": true,
+     "type": "album"
+    }
+   ],
+   "status": 200
+  },
+  {
+   "path": "/library/sections/1/all?type=9&sort=addedAt%3Adesc&excludeFields=summary&id%21=-1&includeFields=thumbBlurHash",
+   "rows": [
+    {
+     "fields": [],
+     "ownArt": false,
+     "ownThumb": false,
+     "type": "album"
+    },
+    {
+     "fields": [
+      "thumbBlurHash",
+      "UltraBlurColors"
+     ],
+     "ownArt": false,
+     "ownThumb": true,
+     "type": "album"
+    }
+   ],
+   "status": 200
+  },
+  {
+   "path": "/library/sections/1/all?type=9&sort=addedAt%3Adesc&excludeFields=summary&id%21=-1",
+   "rows": [
+    {
+     "fields": [],
+     "ownArt": false,
+     "ownThumb": false,
+     "type": "album"
+    },
+    {
+     "fields": [
+      "UltraBlurColors"
+     ],
+     "ownArt": false,
+     "ownThumb": true,
+     "type": "album"
+    }
+   ],
+   "status": 200
+  },
+  {
+   "path": "/library/sections/1/all?type=10&includeFields=thumbBlurHash",
+   "rows": [
+    {
+     "fields": [],
+     "ownArt": false,
+     "ownThumb": false,
+     "type": "track"
+    }
+   ],
+   "status": 200
+  },
+  {
+   "path": "/library/sections/1/all?type=9&includeFields=artBlurHash",
+   "rows": [
+    {
+     "fields": [],
+     "ownArt": false,
+     "ownThumb": false,
+     "type": "album"
+    },
+    {
+     "fields": [
+      "UltraBlurColors"
+     ],
+     "ownArt": false,
+     "ownThumb": true,
+     "type": "album"
+    }
+   ],
+   "status": 200
+  },
+  {
+   "path": "/library/sections/1/all?type=8&includeFields=artBlurHash",
+   "rows": [
+    {
+     "fields": [],
+     "ownArt": false,
+     "ownThumb": false,
+     "type": "artist"
+    },
+    {
+     "fields": [
+      "UltraBlurColors"
+     ],
+     "ownArt": false,
+     "ownThumb": true,
+     "type": "artist"
+    },
+    {
+     "fields": [
+      "artBlurHash",
+      "UltraBlurColors"
+     ],
+     "ownArt": true,
+     "ownThumb": true,
+     "type": "artist"
+    }
+   ],
+   "status": 200
+  },
+  {
+   "path": "/library/sections/2/all?includeFields=thumbBlurHash,artBlurHash",
+   "rows": [
+    {
+     "fields": [
+      "thumbBlurHash",
+      "artBlurHash",
+      "UltraBlurColors"
+     ],
+     "ownArt": true,
+     "ownThumb": true,
+     "type": "show"
+    }
+   ],
+   "status": 200
+  },
+  {
+   "path": "/library/sections/2/all?type=3&includeFields=thumbBlurHash,artBlurHash",
+   "rows": [
+    {
+     "fields": [
+      "thumbBlurHash",
+      "UltraBlurColors"
+     ],
+     "ownArt": false,
+     "ownThumb": true,
+     "type": "season"
+    }
+   ],
+   "status": 200
+  },
+  {
+   "path": "/library/sections/2/all?type=4&includeFields=thumbBlurHash,artBlurHash",
+   "rows": [
+    {
+     "fields": [
+      "thumbBlurHash",
+      "UltraBlurColors"
+     ],
+     "ownArt": false,
+     "ownThumb": true,
+     "type": "episode"
+    }
+   ],
+   "status": 200
+  },
+  {
+   "path": "/library/sections/2/all?type=4",
+   "rows": [
+    {
+     "fields": [
+      "UltraBlurColors"
+     ],
+     "ownArt": false,
+     "ownThumb": true,
+     "type": "episode"
+    }
+   ],
+   "status": 200
+  }
+ ],
+ "rows": {
+  "1": {
+   "UltraBlurColors": {
+    "bottomLeft": "254f75",
+    "bottomRight": "30618f",
+    "topLeft": "122f4b",
+    "topRight": "244c74"
+   },
+   "artBlurHash": "L42$v?V?H;tTROkCo#adH;o#%iRO",
+   "cover": null,
+   "service": {
+    "MediaContainer": {
+     "UltraBlurColors": [
+      {
+       "bottomLeft": "3b3b3b",
+       "bottomRight": "7c531b",
+       "topLeft": "0d020e",
+       "topRight": "16061b"
+      }
+     ],
+     "size": 1
+    }
+   },
+   "thumbBlurHash": "L56*N^NM9ZD%_2xtIVE10O-Ss,bc",
+   "thumbLength": 125136,
+   "thumbSha256": "48afbefe73a15349504ae7232a6901a11b8637a259e4a2cf1f03e03d6ec0f2a6",
+   "title": "Daft Punk",
+   "type": "artist"
+  },
+  "17": {
+   "UltraBlurColors": {
+    "bottomLeft": "23406e",
+    "bottomRight": "100208",
+    "topLeft": "561106",
+    "topRight": "200403"
+   },
+   "artBlurHash": "LlLz%6oe~q-p^+j[M{fl%MayM{j[",
+   "cover": null,
+   "service": {
+    "MediaContainer": {
+     "UltraBlurColors": [
+      {
+       "bottomLeft": "09020f",
+       "bottomRight": "1b1a1c",
+       "topLeft": "482115",
+       "topRight": "232020"
+      }
+     ],
+     "size": 1
+    }
+   },
+   "thumbBlurHash": "LyKd[3V@-;xv%LofWVWB~qayRjof",
+   "thumbLength": 459048,
+   "thumbSha256": "5e28d7e8be8e62251696dd25d7fa56e7d68099fcf8193b0b660c9ae96b37476e",
+   "title": "Radiohead",
+   "type": "artist"
+  },
+  "18": {
+   "UltraBlurColors": {
+    "bottomLeft": "2c657f",
+    "bottomRight": "295d7a",
+    "topLeft": "0b333e",
+    "topRight": "183b55"
+   },
+   "artBlurHash": null,
+   "cover": null,
+   "service": {
+    "MediaContainer": {
+     "UltraBlurColors": [
+      {
+       "bottomLeft": "2c657f",
+       "bottomRight": "295d7a",
+       "topLeft": "0b333e",
+       "topRight": "183b55"
+      }
+     ],
+     "size": 1
+    }
+   },
+   "thumbBlurHash": "LSPG:Lx]-oS5~Bxt9aM{~VM{%Ln~",
+   "thumbLength": 701811,
+   "thumbSha256": "cbb945ccdda7a116866dfb048f84ede7737394cef03d83a9f124e2124b960cf1",
+   "title": "OK Computer",
+   "type": "album"
+  },
+  "2": {
+   "UltraBlurColors": {
+    "bottomLeft": "a8260e",
+    "bottomRight": "2b478b",
+    "topLeft": "531608",
+    "topRight": "1f5548"
+   },
+   "artBlurHash": null,
+   "cover": null,
+   "service": {
+    "MediaContainer": {
+     "UltraBlurColors": [
+      {
+       "bottomLeft": "a8260e",
+       "bottomRight": "2b478b",
+       "topLeft": "531608",
+       "topRight": "1f5548"
+      }
+     ],
+     "size": 1
+    }
+   },
+   "thumbBlurHash": "LF7nXkt6D%kDofWUWBfP4TRj%MjY",
+   "thumbLength": 534135,
+   "thumbSha256": "2b29e80c6fadd011dd393221ac893bcde041fed0f91df2bac10ac4568e24f8f3",
+   "title": "Discovery",
+   "type": "album"
+  },
+  "31": {
+   "UltraBlurColors": {
+    "bottomLeft": "792227",
+    "bottomRight": "ad1719",
+    "topLeft": "0c3146",
+    "topRight": "330f16"
+   },
+   "artBlurHash": null,
+   "cover": null,
+   "service": {
+    "MediaContainer": {
+     "UltraBlurColors": [
+      {
+       "bottomLeft": "792227",
+       "bottomRight": "ad1719",
+       "topLeft": "0c3146",
+       "topRight": "330f16"
+      }
+     ],
+     "size": 1
+    }
+   },
+   "thumbBlurHash": "LTGjveJB10xC%0J9sTxDAcWC-Sj?",
+   "thumbLength": 988057,
+   "thumbSha256": "5d7d5681e6fe79b6af5c7b00c89a24d83a3d6bbf3fc87d9199598241576b9c25",
+   "title": "In Rainbows",
+   "type": "album"
+  },
+  "42": {
+   "UltraBlurColors": {
+    "bottomLeft": "160303",
+    "bottomRight": "0b0e0b",
+    "topLeft": "310404",
+    "topRight": "160303"
+   },
+   "artBlurHash": "L7711QNGayae}@s:RkoL-UoeWCR+",
+   "cover": null,
+   "service": {
+    "MediaContainer": {
+     "UltraBlurColors": [
+      {
+       "bottomLeft": "040b03",
+       "bottomRight": "0c0a22",
+       "topLeft": "201d23",
+       "topRight": "0e0e28"
+      }
+     ],
+     "size": 1
+    }
+   },
+   "thumbBlurHash": "LA97CT9GE3SN~VafE2xaM{t7oM%1",
+   "thumbLength": 198406,
+   "thumbSha256": "cd69bd19b4dc6ac230b5498226c2e281f6729b6f4ff4277ca8d82a44137a6d7f",
+   "title": "Nine Inch Nails",
+   "type": "artist"
+  },
+  "43": {
+   "UltraBlurColors": {
+    "bottomLeft": "4b0c07",
+    "bottomRight": "356e05",
+    "topLeft": "4c1c1e",
+    "topRight": "722f31"
+   },
+   "artBlurHash": null,
+   "cover": null,
+   "service": {
+    "MediaContainer": {
+     "UltraBlurColors": [
+      {
+       "bottomLeft": "4b0c07",
+       "bottomRight": "356e05",
+       "topLeft": "4c1c1e",
+       "topRight": "722f31"
+      }
+     ],
+     "size": 1
+    }
+   },
+   "thumbBlurHash": "LH9t4Hof00ayi_M{t7%M8_jt?bay",
+   "thumbLength": 401332,
+   "thumbSha256": "b70c00fcbfe881a2cfe26c892b2cd0724ad3a2494670d057ec0d5b23712ff80c",
+   "title": "The Slip",
+   "type": "album"
+  },
+  "66": {
+   "UltraBlurColors": null,
+   "artBlurHash": null,
+   "cover": null,
+   "thumbBlurHash": null,
+   "title": "Rex Test",
+   "type": "artist"
+  },
+  "67": {
+   "UltraBlurColors": null,
+   "artBlurHash": null,
+   "cover": null,
+   "thumbBlurHash": null,
+   "title": "Codec Test",
+   "type": "album"
+  },
+  "74": {
+   "UltraBlurColors": {
+    "bottomLeft": "963366",
+    "bottomRight": "9d2766",
+    "topLeft": "25091c",
+    "topRight": "141314"
+   },
+   "artBlurHash": null,
+   "cover": "artist.jpg",
+   "service": {
+    "MediaContainer": {
+     "UltraBlurColors": [
+      {
+       "bottomLeft": "963366",
+       "bottomRight": "9d2766",
+       "topLeft": "25091c",
+       "topRight": "141314"
+      }
+     ],
+     "size": 1
+    }
+   },
+   "thumbBlurHash": "L}JhkVj[fQj[1Fa{fQa{ayfQfQfQ",
+   "thumbLength": 8068,
+   "thumbSha256": "b8bb2d1f185368ead4f2f13254d1e4eed0af842932bc9d50c4b3fd7900c9c7b1",
+   "title": "Rex Blur",
+   "type": "artist"
+  },
+  "75": {
+   "UltraBlurColors": {
+    "bottomLeft": "4f339a",
+    "bottomRight": "646027",
+    "topLeft": "531122",
+    "topRight": "406a2e"
+   },
+   "artBlurHash": null,
+   "cover": "quadrants.jpg",
+   "service": {
+    "MediaContainer": {
+     "UltraBlurColors": [
+      {
+       "bottomLeft": "4f339a",
+       "bottomRight": "646027",
+       "topLeft": "531122",
+       "topRight": "406a2e"
+      }
+     ],
+     "size": 1
+    }
+   },
+   "thumbBlurHash": "LqJHETUrjIp9Vq}7o0JCjZoJfQa}",
+   "thumbLength": 10619,
+   "thumbSha256": "2f6818199a0e1acc3d95ad5cbf9a3142837da212291a80c27a6ad452680da54b",
+   "title": "Blur Quadrants",
+   "type": "album"
+  },
+  "77": {
+   "UltraBlurColors": {
+    "bottomLeft": "b20101",
+    "bottomRight": "8703be",
+    "topLeft": "001710",
+    "topRight": "2c2cdc"
+   },
+   "artBlurHash": null,
+   "cover": "stripes.jpg",
+   "service": {
+    "MediaContainer": {
+     "UltraBlurColors": [
+      {
+       "bottomLeft": "b20101",
+       "bottomRight": "8703be",
+       "topLeft": "001710",
+       "topRight": "2c2cdc"
+      }
+     ],
+     "size": 1
+    }
+   },
+   "thumbBlurHash": "L~MGPE:|{#DIj[jsjtazfQfQfQfQ",
+   "thumbLength": 19449,
+   "thumbSha256": "256ba848bb45d00735c129f58ac82fdb7c73ab9c2616a6937a7c7dbf47ce9922",
+   "title": "Blur Stripes",
+   "type": "album"
+  },
+  "79": {
+   "UltraBlurColors": {
+    "bottomLeft": "196976",
+    "bottomRight": "166977",
+    "topLeft": "06343c",
+    "topRight": "196976"
+   },
+   "artBlurHash": null,
+   "cover": "solid.png",
+   "service": {
+    "MediaContainer": {
+     "UltraBlurColors": [
+      {
+       "bottomLeft": "196976",
+       "bottomRight": "166977",
+       "topLeft": "06343c",
+       "topRight": "196976"
+      }
+     ],
+     "size": 1
+    }
+   },
+   "thumbBlurHash": "L03e=hpxfQpxpxfkfQfkfQfQfQfQ",
+   "thumbLength": 2339,
+   "thumbSha256": "67e0cbeb3974b59def019436d098f1c43446277b29b8a0f409f0952baee93033",
+   "title": "Blur Solid",
+   "type": "album"
+  },
+  "81": {
+   "UltraBlurColors": {
+    "bottomLeft": "232423",
+    "bottomRight": "5d5d5d",
+    "topLeft": "2e2e2e",
+    "topRight": "5d5d5d"
+   },
+   "artBlurHash": null,
+   "cover": "gradient.png",
+   "service": {
+    "MediaContainer": {
+     "UltraBlurColors": [
+      {
+       "bottomLeft": "232423",
+       "bottomRight": "5d5d5d",
+       "topLeft": "2e2e2e",
+       "topRight": "5d5d5d"
+      }
+     ],
+     "size": 1
+    }
+   },
+   "thumbBlurHash": "L$HV9w00%MRjj[ayfQfQfQfQfQfQ",
+   "thumbLength": 2367,
+   "thumbSha256": "b3c8177031127b2acd2a8b6fb9c552fd4b6025e9b938cb7808b840d861b003a5",
+   "title": "Blur Gradient",
+   "type": "album"
+  },
+  "83": {
+   "UltraBlurColors": {
+    "bottomLeft": "884d04",
+    "bottomRight": "6b2ca3",
+    "topLeft": "472300",
+    "topRight": "6b2ca3"
+   },
+   "artBlurHash": null,
+   "cover": "wide.jpg",
+   "service": {
+    "MediaContainer": {
+     "UltraBlurColors": [
+      {
+       "bottomLeft": "884d04",
+       "bottomRight": "6b2ca3",
+       "topLeft": "472300",
+       "topRight": "6b2ca3"
+      }
+     ],
+     "size": 1
+    }
+   },
+   "thumbBlurHash": "L]L-Yb}ioJI^oLj?fQa}fQfQfQfQ",
+   "thumbLength": 13380,
+   "thumbSha256": "53526caa4f1ecfa824dc881ddf8ae9fab33ade17f9646383178314fe6b026761",
+   "title": "Blur Wide",
+   "type": "album"
+  },
+  "85": {
+   "UltraBlurColors": {
+    "bottomLeft": "1a6b69",
+    "bottomRight": "456a29",
+    "topLeft": "19197b",
+    "topRight": "a11676"
+   },
+   "artBlurHash": null,
+   "cover": "diagonal.jpg",
+   "service": {
+    "MediaContainer": {
+     "UltraBlurColors": [
+      {
+       "bottomLeft": "1a6b69",
+       "bottomRight": "456a29",
+       "topLeft": "19197b",
+       "topRight": "a11676"
+      }
+     ],
+     "size": 1
+    }
+   },
+   "thumbBlurHash": "L$HV9Z2Y$5SghpazfQf7gcfQfQfQ",
+   "thumbLength": 20046,
+   "thumbSha256": "3ff355158c6f5b953e3b694deada23e4de1983404f6a8d5e60e8f71b52a57465",
+   "title": "Blur Diagonal",
+   "type": "album"
+  },
+  "87": {
+   "UltraBlurColors": {
+    "bottomLeft": "117127",
+    "bottomRight": "376d0d",
+    "topLeft": "0f0e88",
+    "topRight": "53147b"
+   },
+   "artBlurHash": null,
+   "cover": "fresh.jpg",
+   "service": {
+    "MediaContainer": {
+     "UltraBlurColors": [
+      {
+       "bottomLeft": "117127",
+       "bottomRight": "376d0d",
+       "topLeft": "0f0e88",
+       "topRight": "53147b"
+      }
+     ],
+     "size": 1
+    }
+   },
+   "thumbBlurHash": "L+H-iDj[fQj[Qef7fQf7}PjsfQjs",
+   "thumbLength": 9900,
+   "thumbSha256": "0a2699d7ec553f273d65c477e284d9c49e51d3f765b886f6b788427a44a26e44",
+   "title": "Blur Fresh",
+   "type": "album"
+  },
+  "89": {
+   "UltraBlurColors": {
+    "bottomLeft": "117127",
+    "bottomRight": "376d0d",
+    "topLeft": "0f0e88",
+    "topRight": "53147b"
+   },
+   "artBlurHash": null,
+   "cover": "fresh.jpg",
+   "service": {
+    "MediaContainer": {
+     "UltraBlurColors": [
+      {
+       "bottomLeft": "117127",
+       "bottomRight": "376d0d",
+       "topLeft": "0f0e88",
+       "topRight": "53147b"
+      }
+     ],
+     "size": 1
+    }
+   },
+   "thumbBlurHash": "L+H-iDj[fQj[Qef7fQf7}PjsfQjs",
+   "thumbLength": 9900,
+   "thumbSha256": "0a2699d7ec553f273d65c477e284d9c49e51d3f765b886f6b788427a44a26e44",
+   "title": "Blur Fresh Two",
+   "type": "album"
+  },
+  "91": {
+   "UltraBlurColors": {
+    "bottomLeft": "117127",
+    "bottomRight": "376d0d",
+    "topLeft": "0f0e88",
+    "topRight": "53147b"
+   },
+   "artBlurHash": null,
+   "cover": "fresh.jpg",
+   "service": {
+    "MediaContainer": {
+     "UltraBlurColors": [
+      {
+       "bottomLeft": "117127",
+       "bottomRight": "376d0d",
+       "topLeft": "0f0e88",
+       "topRight": "53147b"
+      }
+     ],
+     "size": 1
+    }
+   },
+   "thumbBlurHash": "L+H-iDj[fQj[Qef7fQf7}PjsfQjs",
+   "thumbLength": 9900,
+   "thumbSha256": "0a2699d7ec553f273d65c477e284d9c49e51d3f765b886f6b788427a44a26e44",
+   "title": "Blur Fresh 2330",
+   "type": "album"
+  },
+  "93": {
+   "UltraBlurColors": {
+    "bottomLeft": "117127",
+    "bottomRight": "376d0d",
+    "topLeft": "0f0e88",
+    "topRight": "53147b"
+   },
+   "artBlurHash": null,
+   "cover": "fresh.jpg",
+   "service": {
+    "MediaContainer": {
+     "UltraBlurColors": [
+      {
+       "bottomLeft": "117127",
+       "bottomRight": "376d0d",
+       "topLeft": "0f0e88",
+       "topRight": "53147b"
+      }
+     ],
+     "size": 1
+    }
+   },
+   "thumbBlurHash": "L+H-iDj[fQj[Qef7fQf7}PjsfQjs",
+   "thumbLength": 9900,
+   "thumbSha256": "0a2699d7ec553f273d65c477e284d9c49e51d3f765b886f6b788427a44a26e44",
+   "title": "Blur Fresh 233101",
+   "type": "album"
+  }
+ },
+ "solids": {
+  "s_000000.png": {
+   "colors": [
+    {
+     "bottomLeft": "030403",
+     "bottomRight": "0d0202",
+     "topLeft": "0d0202",
+     "topRight": "030403"
+    }
+   ],
+   "status": 200
+  },
+  "s_000080.png": {
+   "colors": [
+    {
+     "bottomLeft": "080483",
+     "bottomRight": "030483",
+     "topLeft": "030483",
+     "topRight": "080483"
+    }
+   ],
+   "status": 200
+  },
+  "s_0000ff.png": {
+   "colors": [
+    {
+     "bottomLeft": "0703fc",
+     "bottomRight": "0404fb",
+     "topLeft": "010193",
+     "topRight": "0703fc"
+    }
+   ],
+   "status": 200
+  },
+  "s_008000.png": {
+   "colors": [
+    {
+     "bottomLeft": "067203",
+     "bottomRight": "037203",
+     "topLeft": "003900",
+     "topRight": "067203"
+    }
+   ],
+   "status": 200
+  },
+  "s_00ff00.png": {
+   "colors": [
+    {
+     "bottomLeft": "027201",
+     "bottomRight": "017201",
+     "topLeft": "003900",
+     "topRight": "027201"
+    }
+   ],
+   "status": 200
+  },
+  "s_00ffff.png": {
+   "colors": [
+    {
+     "bottomLeft": "006c6c",
+     "bottomRight": "006c6c",
+     "topLeft": "003636",
+     "topRight": "006c6c"
+    }
+   ],
+   "status": 200
+  },
+  "s_141414.png": {
+   "colors": [
+    {
+     "bottomLeft": "171414",
+     "bottomRight": "141314",
+     "topLeft": "141314",
+     "topRight": "171414"
+    }
+   ],
+   "status": 200
+  },
+  "s_1e788c.png": {
+   "colors": [
+    {
+     "bottomLeft": "196976",
+     "bottomRight": "166977",
+     "topLeft": "06343c",
+     "topRight": "196976"
+    }
+   ],
+   "status": 200
+  },
+  "s_202020.png": {
+   "colors": [
+    {
+     "bottomLeft": "282323",
+     "bottomRight": "232423",
+     "topLeft": "232423",
+     "topRight": "282323"
+    }
+   ],
+   "status": 200
+  },
+  "s_3264c8.png": {
+   "colors": [
+    {
+     "bottomLeft": "2c55b8",
+     "bottomRight": "2a56b7",
+     "topLeft": "102961",
+     "topRight": "2c55b8"
+    }
+   ],
+   "status": 200
+  },
+  "s_404040.png": {
+   "colors": [
+    {
+     "bottomLeft": "474443",
+     "bottomRight": "434343",
+     "topLeft": "2e2e2e",
+     "topRight": "474443"
+    }
+   ],
+   "status": 200
+  },
+  "s_64c832.png": {
+   "colors": [
+    {
+     "bottomLeft": "376d1c",
+     "bottomRight": "356d1c",
+     "topLeft": "173609",
+     "topRight": "376d1c"
+    }
+   ],
+   "status": 200
+  },
+  "s_6e28a0.png": {
+   "colors": [
+    {
+     "bottomLeft": "6f2ba4",
+     "bottomRight": "6b2ca3",
+     "topLeft": "3c145f",
+     "topRight": "6f2ba4"
+    }
+   ],
+   "status": 200
+  },
+  "s_800000.png": {
+   "colors": [
+    {
+     "bottomLeft": "880403",
+     "bottomRight": "830403",
+     "topLeft": "5c0101",
+     "topRight": "880403"
+    }
+   ],
+   "status": 200
+  },
+  "s_808080.png": {
+   "colors": [
+    {
+     "bottomLeft": "605c5c",
+     "bottomRight": "5d5d5d",
+     "topLeft": "2e2e2e",
+     "topRight": "605c5c"
+    }
+   ],
+   "status": 200
+  },
+  "s_c0c0c0.png": {
+   "colors": [
+    {
+     "bottomLeft": "615c5c",
+     "bottomRight": "5d5d5d",
+     "topLeft": "2e2e2e",
+     "topRight": "615c5c"
+    }
+   ],
+   "status": 200
+  },
+  "s_c86432.png": {
+   "colors": [
+    {
+     "bottomLeft": "94421c",
+     "bottomRight": "93431d",
+     "topLeft": "4b1f09",
+     "topRight": "94421c"
+    }
+   ],
+   "status": 200
+  },
+  "s_e678aa.png": {
+   "colors": [
+    {
+     "bottomLeft": "992f64",
+     "bottomRight": "963366",
+     "topLeft": "4e1532",
+     "topRight": "992f64"
+    }
+   ],
+   "status": 200
+  },
+  "s_f08c1e.png": {
+   "colors": [
+    {
+     "bottomLeft": "8b4a02",
+     "bottomRight": "8a4b03",
+     "topLeft": "472300",
+     "topRight": "8b4a02"
+    }
+   ],
+   "status": 200
+  },
+  "s_ff0000.png": {
+   "colors": [
+    {
+     "bottomLeft": "b20101",
+     "bottomRight": "000303",
+     "topLeft": "000303",
+     "topRight": "b20101"
+    }
+   ],
+   "status": 200
+  },
+  "s_ff00ff.png": {
+   "colors": [
+    {
+     "bottomLeft": "990099",
+     "bottomRight": "0003fc",
+     "topLeft": "000193",
+     "topRight": "990099"
+    }
+   ],
+   "status": 200
+  },
+  "s_ffff00.png": {
+   "colors": [
+    {
+     "bottomLeft": "626200",
+     "bottomRight": "007300",
+     "topLeft": "003900",
+     "topRight": "626200"
+    }
+   ],
+   "status": 200
+  },
+  "s_ffffff.png": {
+   "colors": null,
+   "status": 500
+  }
+ },
+ "tiny": {
+  "p1x1_black.png": {
+   "colors": null,
+   "status": 500
+  },
+  "p1x1_blue.png": {
+   "colors": null,
+   "status": 500
+  },
+  "p2x2.png": {
+   "colors": [
+    {
+     "bottomLeft": "1c1ccb",
+     "bottomRight": "675f0f",
+     "topLeft": "5b0606",
+     "topRight": "0e720e"
+    }
+   ],
+   "status": 200
+  },
+  "p3x1.png": {
+   "colors": null,
+   "status": 500
+  }
+ }
+}
