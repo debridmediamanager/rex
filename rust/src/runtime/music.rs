@@ -80,6 +80,36 @@ fn placement(item: &Item) -> Value {
     json!({"placed": item.placed, "ids": item.ids, "display": item.display})
 }
 
+/// The loudness fields a stream shows, as plexav's PMS formats them after its analysis (2026-10-31):
+/// gains, loudness and range to two places, peaks and the album's range to six, as strings.
+const LOUDNESS: [(&str, usize); 7] = [("albumGain", 2), ("albumPeak", 6), ("albumRange", 6), ("gain", 2), ("loudness", 2), ("lra", 2), ("peak", 6)];
+
+/// A pushed `loudness`, checked: its numbers (or the strings PMS writes), the ramps as PMS's
+/// `"<dB> <s>;"` strings, and `levels`, the momentary loudness every 100 ms in dB.
+pub(super) fn loudness_fields(loudness: &Map<String, Value>) -> Result<Map<String, Value>, String> {
+    let mut kept = Map::new();
+    for (field, places) in LOUDNESS {
+        let Some(value) = loudness.get(field).filter(|value| !value.is_null()) else { continue };
+        let number = value.as_f64().or_else(|| value.as_str()?.trim().parse().ok()).ok_or_else(|| format!("loudness.{field} must be a number"))?;
+        kept.insert(field.to_string(), json!(format!("{number:.places$}")));
+    }
+    for field in ["startRamp", "endRamp"] {
+        if let Some(value) = loudness.get(field).filter(|value| !value.is_null()) {
+            kept.insert(field.to_string(), json!(value.as_str().ok_or_else(|| format!("loudness.{field} must be a string"))?));
+        }
+    }
+    if let Some(levels) = loudness.get("levels").filter(|value| !value.is_null()) {
+        let levels: Vec<f64> = levels
+            .as_array()
+            .ok_or_else(|| "loudness.levels must be a list of numbers".to_string())?
+            .iter()
+            .map(|level| level.as_f64().ok_or_else(|| "loudness.levels must be a list of numbers".to_string()))
+            .collect::<Result<_, _>>()?;
+        kept.insert("levels".to_string(), json!(levels));
+    }
+    Ok(kept)
+}
+
 /// Tracks a source pushed: held without a probe, placed on their album when new, placed again on
 /// the same key when the source moves them; the rest of the feed (removal, snapshots, the source's
 /// listing, part reads) is the video path's, by the same `_source`/`_sid` on the row.
@@ -115,8 +145,11 @@ pub(super) fn upsert_tracks(
                         let had = guard.item_streams(key, &source.name, &item.id).map(|streams| lyric_sources(&streams)).unwrap_or_default();
                         let wanted: Option<Vec<(String, Option<u64>)>> =
                             item.lyrics.as_ref().map(|lyrics| lyrics.iter().map(|(path, _, size)| (path.clone(), *size)).collect());
+                        let loudness_had = guard.item_streams(key, &source.name, &item.id).and_then(|streams| streams.first().and_then(|stream| stream.get("_loudness").cloned()));
+                        let loudness_changed = item.loudness.as_ref().is_some_and(|loudness| loudness_had.as_ref() != Some(&Value::Object(loudness.clone())));
                         match wanted {
                             Some(wanted) if wanted != had => plans.push((item, section, Plan::Lyrics(key.clone()))),
+                            _ if loudness_changed => plans.push((item, section, Plan::Lyrics(key.clone()))),
                             _ => counts.unchanged += 1,
                         }
                     } else {
@@ -172,6 +205,7 @@ pub(super) fn upsert_tracks(
         }
     }
     let mut guard = lock(shared);
+    let mut carried: HashMap<String, Vec<(String, Value)>> = HashMap::new();
     let mut sections: Vec<String> = Vec::new();
     // Unplaced tracks are numbered in their album's file order, after what it already holds.
     plans.sort_by(|a, b| a.0.path.cmp(&b.0.path));
@@ -179,7 +213,8 @@ pub(super) fn upsert_tracks(
         let answer = named.get(&album_ids(&item)).cloned().flatten();
         let key = match &plan {
             Plan::Lyrics(key) => {
-                if guard.put_lyrics(key, source, &item, &texts) {
+                let loudness = guard.refresh_loudness(key, source, &item);
+                if guard.put_lyrics(key, source, &item, &texts) | loudness {
                     counts.updated += 1;
                 } else {
                     counts.unchanged += 1;
@@ -187,12 +222,25 @@ pub(super) fn upsert_tracks(
                 continue;
             }
             Plan::Replace(key) => {
+                // What people did with the track stays with it on its new album.
+                let kept: Vec<(String, Value)> = guard.catalog.get(key).and_then(Value::as_object).map(|row| {
+                    ["viewCount", "viewOffset", "lastViewedAt", "skipCount", "lastSkippedAt", "userRating", "lastRatedAt"]
+                        .iter()
+                        .filter_map(|field| Some((field.to_string(), row.get(*field)?.clone())))
+                        .collect()
+                }).unwrap_or_default();
                 guard.unplace_track(key);
+                carried.insert(key.clone(), kept);
                 Some(key.clone())
             }
             Plan::New => None,
         };
         let key = guard.place_track(&section, source, &item, answer.as_ref(), key);
+        if let Some(kept) = carried.remove(&key) {
+            if let Some(object) = guard.catalog.get_mut(&key).and_then(Value::as_object_mut) {
+                object.extend(kept);
+            }
+        }
         guard.put_lyrics(&key, source, &item, &texts);
         match plan {
             Plan::Lyrics(_) => {}
@@ -285,6 +333,94 @@ impl Runtime {
             return Some(response);
         }
         Some(Response::json(200, document))
+    }
+
+    /// A placed track's loudness changed at its source: its audio Stream takes the new fields.
+    fn refresh_loudness(&mut self, key: &str, source: &Source, item: &Item) -> bool {
+        let Some(loudness) = item.loudness.as_ref() else {
+            return false;
+        };
+        let Some(at) = self.item_part(key, &source.name, &item.id) else {
+            return false;
+        };
+        let Some(part) = self.catalog.get_mut(key).and_then(|row| row.pointer_mut(&at)).filter(|part| part.is_object()) else {
+            return false;
+        };
+        let packed = part.as_object_mut().is_some_and(crate::catalog::unpack_part);
+        if let Some(stream) = part.pointer_mut("/Stream/0").and_then(Value::as_object_mut) {
+            stream.retain(|name, _| !LOUDNESS.iter().any(|(field, _)| field == name) && !matches!(name.as_str(), "_startRamp" | "_endRamp" | "_levels" | "_loudness"));
+        }
+        let mut media = json!({"Part": [part.clone()]});
+        put_loudness(&mut media, loudness);
+        *part = media["Part"][0].take();
+        if packed {
+            part.as_object_mut().map(crate::catalog::repack_part);
+        }
+        self.dirty = true;
+        true
+    }
+
+    /// `GET /library/streams/{id}/levels`: a track's loudness levels its source pushed, as plexav
+    /// answers them once its loudness analysis ran (`{"size", "totalSamples", "Level": [{"v"}]}`);
+    /// `None` -- the 404 plexav answers before any analysis -- for a stream with none.
+    pub(super) fn music_levels(&self, id: &str, query: &HashMap<String, String>) -> Option<Response> {
+        let stream_id = id.parse::<i64>().ok()?;
+        let found = |row: &Value| -> Option<Vec<f64>> {
+            if row.get("type").and_then(Value::as_str) != Some("track") {
+                return None;
+            }
+            let row = crate::catalog::unpacked(row);
+            row.get("Media")?.as_array()?.iter().flat_map(|media| media.get("Part").and_then(Value::as_array).into_iter().flatten()).find_map(|part| {
+                crate::catalog::part_streams(part).iter().find(|stream| stream.get("id").and_then(Value::as_i64) == Some(stream_id))?.get("_levels")?.as_array()?.iter().map(Value::as_f64).collect()
+            })
+        };
+        let levels = self.catalog.hot().lazy().find_map(|row| found(row.body()))?;
+        let wanted = query.get("subsample").and_then(|value| value.parse::<usize>().ok());
+        let shown = subsample_levels(&levels, wanted);
+        let mut container = Map::new();
+        container.insert("size".to_string(), json!(shown.len()));
+        container.insert("totalSamples".to_string(), json!(levels.len().to_string()));
+        if !shown.is_empty() {
+            container.insert("Level".to_string(), Value::Array(shown.iter().map(|level| json!({"v": level})).collect()));
+        }
+        Some(Response::json(200, json!({"MediaContainer": container})))
+    }
+
+    /// `includeLoudnessRamps=1` on a play queue: each track's audio stream carries the `startRamp`
+    /// and `endRamp` its source pushed (plexav's analysed tracks, Plexamp's queue).
+    pub(super) fn music_loudness_ramps(&self, body: &mut Value) {
+        let Some(rows) = body.pointer_mut("/MediaContainer/Metadata").and_then(Value::as_array_mut) else {
+            return;
+        };
+        for row in rows {
+            let Some(stored) = row.get("ratingKey").map(string_value).and_then(|key| self.catalog.get(&key)).filter(|stored| stored.get("type").and_then(Value::as_str) == Some("track")) else {
+                continue;
+            };
+            let stored = crate::catalog::unpacked(stored);
+            let ramps: HashMap<i64, Vec<(&str, Value)>> = stored
+                .get("Media")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+                .flat_map(|media| media.get("Part").and_then(Value::as_array).into_iter().flatten())
+                .flat_map(|part| crate::catalog::part_streams(part).into_owned())
+                .filter_map(|stream| {
+                    let ramps: Vec<(&str, Value)> = [("startRamp", "_startRamp"), ("endRamp", "_endRamp")]
+                        .into_iter()
+                        .filter_map(|(field, private)| Some((field, stream.get(private)?.clone())))
+                        .collect();
+                    Some((stream.get("id")?.as_i64()?, ramps))
+                })
+                .collect();
+            for stream in row.get_mut("Media").and_then(Value::as_array_mut).into_iter().flatten().flat_map(|media| media.get_mut("Part").and_then(Value::as_array_mut).into_iter().flatten()).flat_map(|part| part.get_mut("Stream").and_then(Value::as_array_mut).into_iter().flatten()) {
+                let Some(found) = stream.get("id").and_then(Value::as_i64).and_then(|id| ramps.get(&id)) else { continue };
+                if let Some(object) = stream.as_object_mut() {
+                    for (field, value) in found {
+                        object.insert(field.to_string(), value.clone());
+                    }
+                }
+            }
+        }
     }
 
     /// Whether a section is a music library (`type=artist`).
@@ -544,6 +680,9 @@ impl Runtime {
             Some(&extension),
         );
         mediainfo::audio_media(&mut media, item.media_info.as_ref().unwrap_or(&Value::Null));
+        if let Some(loudness) = &item.loudness {
+            put_loudness(&mut media, loudness);
+        }
         if let Some(hash) = &item.hash {
             media["_hash"] = json!(hash);
         }
@@ -1390,6 +1529,55 @@ fn converted_track_media(direct: &Map<String, Value>, plan: &super::universal::P
         out.insert(field.to_string(), value);
     }
     out
+}
+
+/// A track's loudness on its audio Stream: the fields after `bitrate` as plexav's analysed streams
+/// list them, the ramps and levels kept for `includeLoudnessRamps` and `/levels`.
+fn put_loudness(media: &mut Value, loudness: &Map<String, Value>) {
+    let Some(stream) = media.pointer_mut("/Part/0/Stream/0").and_then(Value::as_object_mut) else {
+        return;
+    };
+    let mut out = Map::new();
+    for (name, value) in std::mem::take(stream) {
+        let after = name == "bitrate";
+        out.insert(name, value);
+        if after {
+            for (field, _) in LOUDNESS {
+                if let Some(value) = loudness.get(field) {
+                    out.insert(field.to_string(), value.clone());
+                }
+            }
+        }
+    }
+    for (field, private) in [("startRamp", "_startRamp"), ("endRamp", "_endRamp"), ("levels", "_levels")] {
+        if let Some(value) = loudness.get(field) {
+            out.insert(private.to_string(), value.clone());
+        }
+    }
+    out.insert("_loudness".to_string(), Value::Object(loudness.clone()));
+    *stream = out;
+}
+
+/// The levels a client asks for: every sample at `subsample` 0, absent or at least their count,
+/// none at 1 (plexav's own answers), else each bucket's mean. plexav recomputes a bucket from the
+/// audio, which rex never reads: on its five analysed tracks the mean came within 0.2 dB at 64, 128
+/// (Plexamp's) and 199, 0.8 at 10; a power mean or a bucket's maximum came further off.
+fn subsample_levels(levels: &[f64], wanted: Option<usize>) -> Vec<f64> {
+    let total = levels.len();
+    match wanted {
+        None | Some(0) => return levels.to_vec(),
+        Some(1) => return Vec::new(),
+        Some(count) if count >= total => return levels.to_vec(),
+        _ => {}
+    }
+    let count = wanted.unwrap_or(total);
+    (0..count)
+        .map(|at| {
+            let (start, end) = (at * total / count, ((at + 1) * total / count).max(at * total / count + 1));
+            let bucket = &levels[start..end.min(total)];
+            (bucket.iter().sum::<f64>() / bucket.len() as f64 * 10.0).round() / 10.0
+        })
+        .collect()
 }
 
 /// A lyrics file as plexav's PMS reads it: an LRC's `[ti:]`, `[ar:]`, `[au:]` and `[by:]` tags

@@ -94,6 +94,8 @@ pub(super) struct Item {
     /// A track's sidecar lyrics (`lyrics`: `.lrc` or `.txt` files beside it at the source), as
     /// (path, format, size); `None` when it sent none, which keeps what the track has.
     pub(super) lyrics: Option<Vec<(String, String, Option<u64>)>>,
+    /// A track's loudness as its source analysed it (`loudness`), in PMS's own names.
+    pub(super) loudness: Option<Map<String, Value>>,
     /// The Live TV channel a live item is (`channel`, `livetv::channel_field`): `None` when it
     /// sent none, which keeps what the row has; `Some(None)` for `null`, which ends it.
     channel: Option<Option<Value>>,
@@ -381,7 +383,13 @@ impl Item {
             ),
             Some(_) => return Err(refuse("lyrics must be a list, on a track")),
         };
+        let loudness = match value.get("loudness") {
+            None | Some(Value::Null) => None,
+            Some(Value::Object(loudness)) if track => Some(super::music::loudness_fields(loudness).map_err(|reason| refuse(&reason))?),
+            Some(_) => return Err(refuse("loudness must be an object, on a track")),
+        };
         Ok(Self {
+            loudness,
             lyrics,
             channel,
             collections,

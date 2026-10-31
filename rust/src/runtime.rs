@@ -13421,6 +13421,9 @@ impl Runtime {
         if let Some(container) = body.get_mut("MediaContainer").and_then(Value::as_object_mut) {
             container.shift_remove("allowSync");
         }
+        if query.get("includeLoudnessRamps").is_some_and(|value| is_true_option(value)) {
+            self.music_loudness_ramps(&mut body);
+        }
         Response::json(200, body)
     }
 
@@ -16736,6 +16739,11 @@ impl Runtime {
             return Response::error(404, "rex: not found");
         }
         if segments.starts_with(&["library", "streams"]) && segments.len() >= 3 {
+            if segments.len() == 4 && segments[3] == "levels" && matches!(request.method.as_str(), "GET" | "HEAD") {
+                if let Some(response) = self.music_levels(segments[2], query) {
+                    return response;
+                }
+            }
             if segments.len() > 3 {
                 return Response::error(404, "rex: not found");
             }
