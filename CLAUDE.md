@@ -764,7 +764,10 @@ then tag the tested commit with the release notes as the tag message and push th
 git tag -a v0.2.0 -F notes.md <tested commit> && git push origin v0.2.0
 ```
 
-The tag's run tests again, checks the tag matches `Cargo.toml`, and publishes
+The tag's run builds and tests nothing when a manual or nightly run passed on the tagged commit
+and its binaries are still in `~/rex-ci-stage/<run id>` (kept two days): `gate` finds that run and
+`release` packages its build. A tag on any other commit builds and tests everything first. Either
+way it checks the tag matches `Cargo.toml`, and publishes
 `rex-vX.Y.Z-{linux,darwin}-{amd64,arm64}.tar.gz`, `rex-vX.Y.Z-windows-amd64.zip` and `SHA256SUMS` as the GitHub release, titled `rex X.Y.Z`
 with the tag message as its notes. Its `docker` job then calls `.github/workflows/docker.yml`,
 which packages that release's Linux archives into `ghcr.io/debridmediamanager/rex`

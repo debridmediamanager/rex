@@ -3,9 +3,11 @@ name: CI
 # Like zurg's build.yml, CI runs only for a tag, the nightly or a manual run, never for a push or
 # a pull request: on GitHub-hosted runners every push spent the org's Actions budget, which ran
 # out on 2026-10-19 and then blocked every run. Prove a push locally (cargo test and the suites
-# below). A tag `vX.Y.Z` builds every platform and publishes the GitHub release with the tag's
-# own message as its notes. A manual run (workflow_dispatch) builds and tests every platform
-# without publishing anything.
+# below). A tag `vX.Y.Z` publishes the GitHub release with the tag's own message as its notes.
+# A manual run (workflow_dispatch) builds and tests every platform without publishing anything,
+# and a tag on a commit such a run passed publishes that run's binaries instead of building and
+# testing it all again: release from main by running CI on it, then tagging the commit it tested
+# within two days, while its stage directory is kept. A tag no passed run built builds everything.
 #
 # A nightly builds every platform and publishes a prerelease tagged YYYY.MM.DD.HHMM-nightly
 # beside zurg's, with the commits since the previous release as its notes and a `nightly`
@@ -63,6 +65,9 @@ jobs:
     runs-on: [self-hosted, Linux, X64, dmm]
     outputs:
       build: ${{ steps.gate.outputs.build }}
+      # The run whose stage directory `release` packages: this one, or for a tag the passed
+      # run that already built and tested its commit. Empty when nothing is to be published.
+      stage: ${{ steps.gate.outputs.stage }}
       nightly: ${{ steps.gate.outputs.nightly }}
       version: ${{ steps.gate.outputs.version }}
     steps:
@@ -84,8 +89,26 @@ jobs:
           set -euo pipefail
           echo "nightly=$NIGHTLY" >> "$GITHUB_OUTPUT"
           echo "version=$(TZ=Europe/Berlin date +%Y.%m.%d.%H%M-nightly)" >> "$GITHUB_OUTPUT"
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            # A manual or nightly run that passed on this very commit, its binaries still staged.
+            for id in $(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$GITHUB_SHA&status=success&per_page=20" \
+                          --jq '.workflow_runs[] | select(.event != "push") | .id'); do
+              ok=true
+              for f in rex-linux-amd64 rex-linux-arm64 rex-darwin-amd64 rex-darwin-arm64 rex-windows-amd64.exe; do
+                [ -s "$REX_STAGE/$id/$f" ] || ok=false
+              done
+              if $ok; then
+                echo "publishing run $id's build of $GITHUB_SHA, which passed every job"
+                echo "build=false" >> "$GITHUB_OUTPUT"
+                echo "stage=$id" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+            done
+            echo "no passed run of $GITHUB_SHA is still staged: building and testing it"
+          fi
           if [ "$NIGHTLY" != true ]; then
             echo "build=true" >> "$GITHUB_OUTPUT"
+            echo "stage=$GITHUB_RUN_ID" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           # The same two questions zurg's prep asks, against the nightlies that went out.
@@ -104,6 +127,7 @@ jobs:
             fi
           fi
           echo "build=$build" >> "$GITHUB_OUTPUT"
+          if [ "$build" = true ]; then echo "stage=$GITHUB_RUN_ID" >> "$GITHUB_OUTPUT"; fi
 
   test:
     needs: gate
@@ -334,7 +358,11 @@ jobs:
           python tests/test_http_mkv.py
 
   release:
-    if: startsWith(github.ref, 'refs/tags/v') || needs.gate.outputs.nightly == 'true'
+    # The build jobs are skipped when a tag publishes an earlier run's build, which the bare
+    # condition would take for a reason to skip this job too.
+    if: >-
+      !cancelled() && !failure() && needs.gate.outputs.stage != '' &&
+      (startsWith(github.ref, 'refs/tags/v') || needs.gate.outputs.nightly == 'true')
     needs: [gate, test, linux-arm64, darwin, windows-test]
     runs-on: [self-hosted, Linux, X64, dmm]
     permissions:
@@ -350,9 +378,9 @@ jobs:
       - name: Collect everything the build jobs staged
         run: |
           for platform in linux-amd64 linux-arm64 darwin-amd64 darwin-arm64; do
-            install -D -m 755 "$REX_STAGE/${{ github.run_id }}/rex-$platform" "artifacts/rex-$platform/rex"
+            install -D -m 755 "$REX_STAGE/${{ needs.gate.outputs.stage }}/rex-$platform" "artifacts/rex-$platform/rex"
           done
-          install -D -m 755 "$REX_STAGE/${{ github.run_id }}/rex-windows-amd64.exe" artifacts/rex-windows-amd64/rex.exe
+          install -D -m 755 "$REX_STAGE/${{ needs.gate.outputs.stage }}/rex-windows-amd64.exe" artifacts/rex-windows-amd64/rex.exe
 
       - name: Check the tag matches Cargo.toml
         if: env.NIGHTLY != 'true'
@@ -428,10 +456,10 @@ jobs:
   # Kept until here so a failed release can be rerun; a run that never gets here is swept by
   # the next run's gate after two days.
   unstage:
-    needs: release
+    needs: [gate, release]
     runs-on: [self-hosted, Linux, X64, dmm]
     steps:
-      - run: rm -rf "$REX_STAGE/${{ github.run_id }}"
+      - run: rm -rf "$REX_STAGE/${{ needs.gate.outputs.stage }}"
 
   # The image packages the archives the release just published (docker.yml).
   docker:
