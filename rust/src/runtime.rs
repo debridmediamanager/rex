@@ -23265,7 +23265,7 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
         info!("state file {}: {}", path.display(), loaded.state_summary);
     }
     if loaded.sources.is_empty() {
-        info!("no source yet: a source registers itself once pointed at this server (zurg: rex_url; others: PUT /rex/sources/{{name}}, docs/feed-api.md)");
+        info!("no source yet: a source registers itself once pointed at this server (PUT /rex/sources/{{name}}, docs/feed-api.md)");
     }
     for source in &loaded.sources {
         info!("source {}: registered, feed at /rex/feed/{}/", source.name, source.name);
