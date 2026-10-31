@@ -3,7 +3,7 @@
 `tests/test_livetv.py` (fixtures in `tests/fixtures/livetv/`).
 
 The reference is plexav: a claimed PMS 1.43.4 with an HDHomeRun of three channels (2.1 Rex News,
-4.1 Rex Movies, 7.1 Rex Sports) and an XMLTV guide, in Europe/Amsterdam. Three modes:
+4.1 Rex Movies, 7.1 Rex Sports) and an XMLTV guide, in Europe/Amsterdam. Its modes:
 
     guide     plexav's guide.xml as a source pushes it (`channel.guide`, docs/feed-api.md "Live
               TV"), keeping the airings PMS held: those that had not ended when it read the guide
@@ -22,8 +22,12 @@ The reference is plexav: a claimed PMS 1.43.4 with an HDHomeRun of three channel
     replay    on the lab host: the read-only requests below, each a client's own (its query and
               X-Plex headers as captured), asked of the reference now with its server token
                 python3 record_livetv.py replay http://127.0.0.1:32420 web-*.jsonl droid-livetv.jsonl > reads.json
+    listing   on the lab host: WRITES plexav's guide.xml (one of GUIDES, or `plexav`, its own back
+              from guide.xml.orig), refreshes the guide and asks the provider's listings
+                python3 record_livetv.py listing http://127.0.0.1:32420 order | gzip > listing_order_s1434.json.gz
 
-Every fixture is `{"now": <epoch the answers were given at>, "exchanges": [...]}`; the test pins
+Every fixture is `{"now": <epoch the answers were given at>, "exchanges": [...]}` (a listing's also
+its `guide`, as a source pushes it); the test pins
 rex's guide clock there (`REX_LIVETV_NOW`). Tokens, cookies and account names are left out.
 """
 import ast
@@ -257,9 +261,108 @@ def tuned(base):
     return {"now": int(tune["t"]), "source": "plexav, one tune as Plex Web sends it", "exchanges": exchanges}
 
 
+# The guides `listing` gives plexav, programmes in the document's order: channel, start in minutes
+# from the moment it is written, minutes, title, categories, a season and episode for an episode,
+# and an element flagging it (`new`, `previously-shown`). Each order of the document, start,
+# title and lineup disagrees with the others.
+GUIDES = {
+    # Ties at one start (India and Hotel at +60, Zebra and Yak at +150) where the programme named
+    # first in the document airs that start later in it; "The" before two titles; a film whose
+    # first airing comes before another's while its last comes after; one of each on now.
+    "order": [["4.1", 300, 30, "Hotel", ["Movie", "Drama"]], ["2.1", 60, 30, "India", ["Movie", "Drama"]],
+              ["4.1", 60, 30, "Hotel", ["Movie", "Drama"]], ["7.1", 120, 30, "The Juliet", ["Movie"]],
+              ["7.1", 180, 30, "Kappa", ["Movie"]], ["7.1", 600, 30, "Kappa", ["Movie"]],
+              ["4.1", 150, 30, "The Zebra Show", ["Series", "Drama"], [1, 1]], ["2.1", 200, 30, "Yak Show", ["Series", "Comedy"], [1, 1]],
+              ["2.1", 250, 30, "The Zebra Show", ["Series", "Drama"], [1, 2]], ["2.1", 150, 30, "Yak Show", ["Series", "Comedy"], [2, 1]],
+              ["7.1", -10, 40, "Lima", ["Movie", "Comedy"]], ["4.1", -5, 30, "Yak Show", ["Series", "Comedy"], [1, 3]],
+              ["2.1", -90, 30, "Golf", ["Movie"]]],
+    # Airings that end a few minutes after plexav reads the guide, read once they have ended.
+    "held": [["4.1", -20, 24, "Sierra", ["Movie"]], ["2.1", 60, 30, "Tango", ["Movie"]], ["7.1", -10, 18, "Uniform", ["Movie"]],
+             ["4.1", 240, 30, "Sierra", ["Movie"]], ["7.1", 30, 30, "Uniform", ["Movie"]], ["2.1", -5, 7, "Romeo", ["Movie"]],
+             ["2.1", 3, 20, "Quebec Show", ["Series"], [1, 1]], ["2.1", 120, 30, "Quebec Show", ["Series"], [1, 2]],
+             # Which airings are premieres: an episode `<previously-shown />`, one `<new />`, a film `<new />`.
+             ["7.1", 60, 30, "Nova Show", ["Series"], [1, 1], "previously-shown"], ["7.1", 120, 30, "Nova Show", ["Series"], [1, 2], "new"],
+             ["4.1", 120, 30, "Vega", ["Movie"], None, "new"]],
+}
+GUIDE_PATH = "/home/ben/plexav/media/livetv/guide.xml"
+ORIGINAL = "/home/ben/plexav/guide.xml.orig"
+
+
+def xmltv(programmes, at):
+    """A guide in plexav's own guide.xml shape."""
+    from xml.sax.saxutils import escape
+    stamp = lambda moment: dt.datetime.fromtimestamp(moment, dt.timezone.utc).strftime("%Y%m%d%H%M%S +0000")
+    lines = ['<?xml version="1.0" encoding="UTF-8"?>', '<tv generator-info-name="rex-listing">']
+    for number, name in (("2.1", "Rex News"), ("4.1", "Rex Movies"), ("7.1", "Rex Sports")):
+        lines.append('<channel id="%s"><display-name>%s</display-name><display-name>%s</display-name><lcn>%s</lcn></channel>' % (number, name, number, number))
+    for channel, start, minutes, title, categories, *rest in programmes:
+        begins, number, flag = at + start * 60, (rest + [None])[0], (rest + [None, None])[1]
+        body = '<title lang="en">%s</title>' % escape(title) + ('<sub-title lang="en">Episode %d</sub-title>' % number[1] if number else "")
+        body += '<desc lang="en">%s.</desc>' % escape(title) + "".join('<category lang="en">%s</category>' % escape(name) for name in categories)
+        if number:
+            body += '<episode-num system="xmltv_ns">%d.%d.</episode-num>' % (number[0] - 1, number[1] - 1)
+        if flag:
+            body += "<%s />" % flag
+        lines.append('<programme start="%s" stop="%s" channel="%s">%s</programme>' % (stamp(begins), stamp(begins + minutes * 60), channel, body))
+    return "\n".join(lines + ["</tv>"]) + "\n"
+
+
+def reload_guide(base, token):
+    """The DVR's Refresh Guide, as Plex Web's DVR settings send it, waited out."""
+    ask(base, token, "POST", "/livetv/dvrs/2/reloadGuide")
+    started, seen = time.time(), False
+    while time.time() - started < 240:
+        time.sleep(1)
+        activities = json.loads(ask(base, token, "GET", "/activities")["body"])["MediaContainer"].get("Activity", [])
+        if any("guide" in (activity.get("type", "") + activity.get("title", "")).lower() for activity in activities):
+            seen = True
+        elif seen or time.time() - started > 15:
+            return
+
+
+def listing(base, name):
+    """On the lab host: give plexav one of GUIDES (or, `plexav`, its own guide back from
+    guide.xml.orig), refresh its guide, and ask the provider's listings as Plex Web asks them.
+    The one write besides guide.xml is the refresh; Ben allowed both (2026-10-31)."""
+    token = server_token()
+    at = int(time.time()) // 60 * 60
+    text = open(ORIGINAL).read() if name == "plexav" else xmltv(GUIDES[name], at)
+    open(GUIDE_PATH, "w").write(text)
+    reload_guide(base, token)
+    read = int(time.time())
+    if name == "held":
+        time.sleep(max(0, at + 11 * 60 - time.time()))
+    library = "&includeCollections=1&includeExternalMedia=1&includeAdvanced=1&includeMeta=1"
+    later = "beginsAt>=now&sort=beginsAt,mediaHeight:desc,mediaAnalysisVersion:desc"
+    on_now = "beginsAt<=now&endsAt>=%2B1s"
+    targets = ["/all", "/sections/1/all", "/sections/2/all", "/sections/1/all?type=1", "/sections/2/all?type=2", "/sections/2/all?type=4"]
+    targets += ["/sections/1/all?type=1&sort=" + sort for sort in (
+        "beginsAt", "beginsAt:desc", "titleSort", "titleSort:desc", "originallyAvailableAt,year:nullsLast,titleSort",
+        "originallyAvailableAt:desc,year:nullsLast:desc,titleSort")]
+    targets += ["/sections/2/all?type=2&sort=" + sort for sort in ("titleSort", "titleSort:desc", "originallyAvailableAt", "originallyAvailableAt:desc")]
+    targets += ["/sections/2/all?type=4&sort=" + sort for sort in (
+        "beginsAt", "beginsAt:desc", "show.titleSort,season.index,episode.index", "show.titleSort:desc,season.index,episode.index")]
+    targets += ["/sections/1/all?type=1&" + later, "/sections/2/all?type=4&" + later, "/all?type=1,4&" + on_now + "&sort=beginsAt,mediaHeight:desc,mediaAnalysisVersion:desc",
+                "/sections/1/all?type=1&%s&sort=beginsAt&skipDetails=1" % on_now, "/sections/2/all?type=4&%s&sort=beginsAt&skipDetails=1" % on_now,
+                "/sections/2/all?type=4&beginsAt>=%d&beginsAt<=%d&mediaAnalysisVersion=1&sort=beginsAt" % (at + 100 * 60, at + 260 * 60),
+                "/sections/1/all?type=1&X-Plex-Container-Start=1&X-Plex-Container-Size=2", "/sections/2/all?type=4&X-Plex-Container-Start=0&X-Plex-Container-Size=2",
+                "/sections/1/all?type=1" + library, "/sections/2/all?type=2" + library, "/sections/2/all?" + library[1:],
+                "/sections/1/all?type=1&sort=titleSort:desc" + library, "/sections/2/all?type=4&sort=beginsAt:desc" + library, "/sections/3/all?type=4&" + later, "/hubs/onnow/all", "/hubs/onlater/all"]
+    exchanges = [ask(base, token, "GET", P + target) for target in targets]
+    exchanges.append(ask(base, token, "GET", P + "/sections/1/all?type=1" + library, extra={"X-Plex-Container-Start": "1", "X-Plex-Container-Size": "2"}))
+    for word in ("drama", "comedy", "movie", "news", "series"):
+        hit = ask(base, token, "GET", "%s/library/search?query=%s%s" % (P, word, SEARCH))
+        exchanges.append(hit)
+        for key in sorted(set(re.findall(r'"key":"(/tv\.plex\.providers\.epg\.xmltv:2/sections/\d/all\?genre=\d+)"', hit["body"]))):
+            exchanges.append(ask(base, token, "GET", key))
+            exchanges.append(ask(base, token, "GET", key + "&type=%s&sort=titleSort" % ("1" if "/sections/1/" in key else "2")))
+    return {"now": int(exchanges[0]["t"]), "source": "plexav given guide %r at %d, read at %d" % (name, at, read),
+            "guide": guide(GUIDE_PATH, read), "exchanges": exchanges}
+
+
 if __name__ == "__main__":
     mode = sys.argv[1]
     result = {"guide": lambda: guide(sys.argv[2], int(sys.argv[3])), "capture": lambda: capture(sys.argv[2]),
               "headers": lambda: headers(sys.argv[2:]), "ask": lambda: asked(sys.argv[2]), "tune": lambda: tuned(sys.argv[2]),
-              "replay": lambda: replay(sys.argv[2], sys.argv[3:])}[mode]()
+              "replay": lambda: replay(sys.argv[2], sys.argv[3:]), "listing": lambda: listing(sys.argv[2], sys.argv[3])}[mode]()
     json.dump(result, sys.stdout, indent=None, separators=(",", ":"))
