@@ -210,9 +210,19 @@ def main():
             row = json.loads(body)["MediaContainer"]["Metadata"][0]
             made[dict(record["query"])["title"]] = row["ratingKey"]
             check("Plexamp's smart list %r is created" % dict(record["query"])["title"], status == 200 and row.get("smart") is True, (status, row))
-        status, _ = rex.request("/playlists/%s?summary=%s" % (made["All Music"], urllib.parse.quote("The easiest way to play.")), "PUT")
-        listed = rex.rows("/playlists/%s" % made["All Music"])
-        check("a smart list takes its summary", status == 200 and listed and listed[0].get("summary") == "The easiest way to play.", listed[:1])
+        # Then Plexamp PUTs each list's summary with `includeFields=thumbBlurHash` beside it, which
+        # plexav answered 200; rex refused the unknown name with a 400 until the request was
+        # replayed as Plexamp sends it (a hand-made PUT without includeFields passed).
+        theirs = {json.loads(r["res_body"])["MediaContainer"]["Metadata"][0]["ratingKey"]: dict(r["query"])["title"]
+                  for r in setup if r["method"] == "POST" and r["path"] == "/playlists"}
+        for record in (r for r in setup if r["method"] == "PUT" and r["path"].startswith("/playlists/")):
+            title = theirs[record["path"].rsplit("/", 1)[1]]
+            status, _, _ = M.send(rex, record, mapping, parts, path="/playlists/%s" % made[title])
+            listed = rex.rows("/playlists/%s" % made[title])
+            summary = dict(record["query"])["summary"]
+            check("Plexamp's summary PUT on %r answers 200 and is kept, as plexav's" % title,
+                  status == record["status"] == 200 and listed and listed[0].get("summary") == summary,
+                  (status, listed[:1]))
         check("All Music holds every track", len(rex.rows("/playlists/%s/items" % made["All Music"])) == 46)
         played = [row["title"] for row in rex.rows("/playlists/%s/items" % made["Recently Played"])]
         check("Recently Played is read when asked: the track played above", played == ["15 Step"], played)

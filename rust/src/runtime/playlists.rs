@@ -343,9 +343,12 @@ impl Runtime {
                 .unwrap_or(name)
                 .to_string()
         };
+        // Plexamp's first run PUTs each smart list's `summary` with `includeFields=thumbBlurHash`
+        // beside it, and plexav (1.43.4) answered 200 and kept the summary: the response-shaping
+        // name is not a column, so it neither fails the edit nor counts as one.
         let named = pairs
             .iter()
-            .filter(|(name, _)| !name.starts_with("X-Plex-"))
+            .filter(|(name, _)| !name.starts_with("X-Plex-") && name != "includeFields")
             .cloned()
             .collect::<Vec<_>>();
         if alias {
