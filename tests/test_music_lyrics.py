@@ -66,6 +66,12 @@ def main():
                 check("  Accept %s, %s: %s, as plexav" % (answer["accept"], answer["query"] or "no format", answer["contentType"]),
                       status == answer["status"] and content.split(";")[0] == answer["contentType"].split(";")[0] and same,
                       (status, content, got[:300]))
+        # Plex Web's decision for the track names its audio alone, as plexav's did for its .lrc track.
+        record = next(r for r in M.load("web-music-play") if r["path"] == "/music/:/transcode/universal/decision")
+        query = [(k, "/library/metadata/%s" % keys[pushed[0]["id"]] if k == "path" else v) for k, v in record["query"] if "token" not in k.lower()]
+        status, decision = rex.request("/music/:/transcode/universal/decision?" + urllib.parse.urlencode(query), headers={"Accept": "application/json"})
+        streams = decision["MediaContainer"]["Metadata"][0]["Media"][0]["Part"][0]["Stream"]
+        check("its decision leaves the lyrics stream out", [s["streamType"] for s in streams] == [2], streams)
         # Absent keeps them, [] takes them away.
         status, body = rex.push([dict(pushed[0]).copy()])
         status, body = rex.push([dict(pushed[0], lyrics=[])])

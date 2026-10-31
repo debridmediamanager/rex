@@ -1398,6 +1398,8 @@ impl Runtime {
                     .into_iter()
                     .flatten()
                     .filter_map(Value::as_object)
+                    // A track's lyrics stream is no part of its decision (plexav, 2026-10-31).
+                    .filter(|stream| stream.get("streamType").and_then(Value::as_i64) != Some(4))
                     .map(|stream| {
                         let mut out = Map::new();
                         for (name, value) in sorted(stream) {
