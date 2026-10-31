@@ -575,6 +575,10 @@ pub fn stream_titles(row: &mut Row, stand_in: Option<&str>, words: Option<&Row>)
             let language = str_value(row, "language");
             let codec = audio_codec_label(row);
             let channels = channel_label(row);
+            // A music track's stream -- the only one that carries `canNormalizeLoudness`
+            // (plexav 1.43.4, 2026-10-31) -- is titled with no language: `FLAC (Stereo)`.
+            let music = language.is_none() && row.contains_key("canNormalizeLoudness");
+            let unknown = if music { String::new() } else { unknown };
             put(
                 row,
                 "displayTitle",
@@ -588,6 +592,12 @@ pub fn stream_titles(row: &mut Row, stand_in: Option<&str>, words: Option<&Row>)
                         .join(" ")
                 ),
             );
+            if music {
+                let label = format!("{} ({})", codec, channels.clone().unwrap_or_default());
+                put(row, "displayTitle", label.clone());
+                put(row, "extendedDisplayTitle", label);
+                return;
+            }
             if let Some(title) = title {
                 let stereo = match channels.as_deref() {
                     Some("Stereo") => vec!["2.0"],
@@ -1720,5 +1730,76 @@ mod tests {
             str_value(&language_fields(Some(&tags)), "languageCode"),
             Some("fra".into())
         );
+    }
+}
+
+/// A track's Media as plexav's PMS 1.43.4 writes one for an audio file (its own analysis of the
+/// synthetic FLAC and MP3 files, 2026-10-31, `tests/fixtures/music/media.json`): no video
+/// field, a Part with no profile, and one audio Stream with `canNormalizeLoudness` false (rex runs
+/// no loudness analysis), the file's bitrate where the stream names none (FLAC's), and the title
+/// `FLAC (Stereo)`.
+pub fn audio_media(media: &mut Value) {
+    let Some(object) = media.as_object_mut() else {
+        return;
+    };
+    let bitrate = object.get("bitrate").cloned();
+    object.retain(|key, value| !value.is_null() && !key.starts_with("video") && !matches!(key.as_str(), "width" | "height" | "aspectRatio" | "audioProfile"));
+    for part in object.get_mut("Part").and_then(Value::as_array_mut).into_iter().flatten() {
+        let Some(part) = part.as_object_mut() else { continue };
+        part.retain(|key, value| !value.is_null() && !matches!(key.as_str(), "videoProfile" | "audioProfile"));
+        for stream in part.get_mut("Stream").and_then(Value::as_array_mut).into_iter().flatten() {
+            let Some(stream) = stream.as_object_mut() else { continue };
+            if stream.get("streamType").and_then(Value::as_i64) != Some(2) {
+                continue;
+            }
+            let mut shaped = Map::new();
+            for key in ["id", "streamType"] {
+                if let Some(value) = stream.get(key) {
+                    shaped.insert(key.to_string(), value.clone());
+                }
+            }
+            shaped.insert("canNormalizeLoudness".to_string(), json!(false));
+            for key in ["selected", "codec", "index", "channels", "bitrate", "audioChannelLayout", "bitDepth", "samplingRate"] {
+                match stream.get(key).filter(|value| !value.is_null()).cloned().or_else(|| (key == "bitrate").then(|| bitrate.clone()).flatten()) {
+                    Some(value) => {
+                        shaped.insert(key.to_string(), value);
+                    }
+                    None => {}
+                }
+            }
+            for (key, value) in stream.iter() {
+                if !shaped.contains_key(key) && !value.is_null() && !matches!(key.as_str(), "streamIdentifier" | "displayTitle" | "extendedDisplayTitle") {
+                    shaped.insert(key.clone(), value.clone());
+                }
+            }
+            stream_titles(&mut shaped, None, None);
+            *stream = shaped;
+        }
+    }
+}
+
+#[cfg(test)]
+mod music_tests {
+    use super::*;
+
+    /// plexav's own files: ffprobe's JSON for each and the Media PMS 1.43.4 wrote for it.
+    #[test]
+    fn a_track_is_described_as_plexav_describes_the_same_file() {
+        let recorded: Value = serde_json::from_str(include_str!("../../tests/fixtures/music/media.json")).unwrap();
+        for track in recorded["tracks"].as_array().unwrap() {
+            let theirs = &track["media"];
+            let part = &theirs["Part"][0];
+            let mut ours = build_media(&track["probe"], 1, 1, "/library/parts/1/1/file", part["file"].as_str().unwrap(), part["size"].as_i64().unwrap(), part["container"].as_str());
+            audio_media(&mut ours);
+            for field in ["duration", "audioChannels", "audioCodec", "container", "hasVoiceActivity"] {
+                assert_eq!(ours[field], theirs[field], "{} Media {field}", track["title"]);
+            }
+            assert!(ours.as_object().unwrap().keys().all(|key| theirs.get(key).is_some() || key.starts_with('_')), "{ours}");
+            let (stream, expected) = (&ours["Part"][0]["Stream"][0], &part["Stream"][0]);
+            for field in ["streamType", "canNormalizeLoudness", "selected", "codec", "index", "channels", "audioChannelLayout", "samplingRate", "displayTitle", "extendedDisplayTitle"] {
+                assert_eq!(stream[field], expected[field], "{} Stream {field}", track["title"]);
+            }
+            assert_eq!(stream.get("bitDepth"), expected.get("bitDepth"), "{}", track["title"]);
+        }
     }
 }

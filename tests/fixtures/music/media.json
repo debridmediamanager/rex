@@ -1,0 +1,209 @@
+{
+ "recorded": "plexav PMS 1.43.4, 2026-10-31: ffprobe of its own files and its Media for them (detail reads by Plex Web)",
+ "tracks": [
+  {
+   "title": "15 Step",
+   "probe": {
+    "streams": [
+     {
+      "index": 0,
+      "codec_name": "flac",
+      "codec_long_name": "FLAC (Free Lossless Audio Codec)",
+      "codec_type": "audio",
+      "codec_tag_string": "[0][0][0][0]",
+      "codec_tag": "0x0000",
+      "sample_fmt": "s16",
+      "sample_rate": "44100",
+      "channels": 2,
+      "channel_layout": "stereo",
+      "bits_per_sample": 0,
+      "r_frame_rate": "0/0",
+      "avg_frame_rate": "0/0",
+      "time_base": "1/44100",
+      "start_pts": 0,
+      "start_time": "0.000000",
+      "duration_ts": 1984500,
+      "duration": "45.000000",
+      "bits_per_raw_sample": "16",
+      "disposition": {
+       "default": 0,
+       "dub": 0,
+       "original": 0,
+       "comment": 0,
+       "lyrics": 0,
+       "karaoke": 0,
+       "forced": 0,
+       "hearing_impaired": 0,
+       "visual_impaired": 0,
+       "clean_effects": 0,
+       "attached_pic": 0,
+       "timed_thumbnails": 0
+      }
+     }
+    ],
+    "format": {
+     "nb_streams": 1,
+     "nb_programs": 0,
+     "format_name": "flac",
+     "format_long_name": "raw FLAC",
+     "start_time": "0.000000",
+     "duration": "45.000000",
+     "size": "565825",
+     "bit_rate": "100591",
+     "probe_score": 100,
+     "tags": {
+      "title": "15 Step",
+      "artist": "Radiohead",
+      "album_artist": "Radiohead",
+      "album": "In Rainbows",
+      "date": "2007",
+      "track": "1/10",
+      "genre": "Alternative",
+      "encoder": "Lavf58.76.100"
+     }
+    }
+   },
+   "media": {
+    "id": 27,
+    "duration": 45000,
+    "bitrate": 99,
+    "audioChannels": 2,
+    "audioCodec": "flac",
+    "container": "flac",
+    "hasVoiceActivity": false,
+    "Part": [
+     {
+      "accessible": true,
+      "exists": true,
+      "id": 27,
+      "key": "/library/parts/27/1793451813/file.flac",
+      "duration": 45000,
+      "file": "/data/music/Radiohead/In Rainbows (2007)/01 - 15 Step.flac",
+      "size": 565825,
+      "container": "flac",
+      "Stream": [
+       {
+        "id": 27,
+        "streamType": 2,
+        "canNormalizeLoudness": false,
+        "selected": true,
+        "codec": "flac",
+        "index": 0,
+        "channels": 2,
+        "bitrate": 99,
+        "audioChannelLayout": "stereo",
+        "bitDepth": 16,
+        "samplingRate": 44100,
+        "displayTitle": "FLAC (Stereo)",
+        "extendedDisplayTitle": "FLAC (Stereo)"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "title": "No Surprises",
+   "probe": {
+    "streams": [
+     {
+      "index": 0,
+      "codec_name": "mp3",
+      "codec_long_name": "MP3 (MPEG audio layer 3)",
+      "codec_type": "audio",
+      "codec_tag_string": "[0][0][0][0]",
+      "codec_tag": "0x0000",
+      "sample_fmt": "fltp",
+      "sample_rate": "44100",
+      "channels": 2,
+      "channel_layout": "stereo",
+      "bits_per_sample": 0,
+      "r_frame_rate": "0/0",
+      "avg_frame_rate": "0/0",
+      "time_base": "1/14112000",
+      "start_pts": 353600,
+      "start_time": "0.025057",
+      "duration_ts": 635535360,
+      "duration": "45.035102",
+      "bit_rate": "192000",
+      "disposition": {
+       "default": 0,
+       "dub": 0,
+       "original": 0,
+       "comment": 0,
+       "lyrics": 0,
+       "karaoke": 0,
+       "forced": 0,
+       "hearing_impaired": 0,
+       "visual_impaired": 0,
+       "clean_effects": 0,
+       "attached_pic": 0,
+       "timed_thumbnails": 0
+      },
+      "tags": {
+       "encoder": "Lavc58.13"
+      }
+     }
+    ],
+    "format": {
+     "nb_streams": 1,
+     "nb_programs": 0,
+     "format_name": "mp3",
+     "format_long_name": "MP2/3 (MPEG audio layer 2/3)",
+     "start_time": "0.025057",
+     "duration": "45.035102",
+     "size": "1081658",
+     "bit_rate": "192144",
+     "probe_score": 51,
+     "tags": {
+      "title": "No Surprises",
+      "artist": "Radiohead",
+      "album_artist": "Radiohead",
+      "album": "OK Computer",
+      "date": "1997",
+      "track": "10/12",
+      "genre": "Alternative",
+      "encoder": "Lavf58.76.100"
+     }
+    }
+   },
+   "media": {
+    "id": 24,
+    "duration": 45035,
+    "bitrate": 192,
+    "audioChannels": 2,
+    "audioCodec": "mp3",
+    "container": "mp3",
+    "hasVoiceActivity": false,
+    "Part": [
+     {
+      "accessible": true,
+      "exists": true,
+      "id": 24,
+      "key": "/library/parts/24/1793451820/file.mp3",
+      "duration": 45035,
+      "file": "/data/music/Radiohead/OK Computer (1997)/10 - No Surprises.mp3",
+      "size": 1081658,
+      "container": "mp3",
+      "Stream": [
+       {
+        "id": 24,
+        "streamType": 2,
+        "canNormalizeLoudness": false,
+        "selected": true,
+        "codec": "mp3",
+        "index": 0,
+        "channels": 2,
+        "bitrate": 192,
+        "audioChannelLayout": "stereo",
+        "samplingRate": 44100,
+        "displayTitle": "MP3 (Stereo)",
+        "extendedDisplayTitle": "MP3 (Stereo)"
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ]
+}
