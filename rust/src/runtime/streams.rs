@@ -128,6 +128,11 @@ fn localise_streams(
             }
         }
         Value::Object(object) => {
+            // A track's stream keeps the title its Media was given (`mediainfo::audio_media`,
+            // plexav's `FLAC (Stereo)`): no language part to localise. Not measured in another language.
+            if object.get("type").and_then(Value::as_str) == Some("track") {
+                return;
+            }
             let kind = object.get("streamType").and_then(Value::as_i64);
             if matches!(kind, Some(2 | 3)) {
                 let english = object

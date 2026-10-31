@@ -575,10 +575,6 @@ pub fn stream_titles(row: &mut Row, stand_in: Option<&str>, words: Option<&Row>)
             let language = str_value(row, "language");
             let codec = audio_codec_label(row);
             let channels = channel_label(row);
-            // A music track's stream -- the only one that carries `canNormalizeLoudness`
-            // (plexav 1.43.4, 2026-10-31) -- is titled with no language: `FLAC (Stereo)`.
-            let music = language.is_none() && row.contains_key("canNormalizeLoudness");
-            let unknown = if music { String::new() } else { unknown };
             put(
                 row,
                 "displayTitle",
@@ -592,12 +588,6 @@ pub fn stream_titles(row: &mut Row, stand_in: Option<&str>, words: Option<&Row>)
                         .join(" ")
                 ),
             );
-            if music {
-                let label = format!("{} ({})", codec, channels.clone().unwrap_or_default());
-                put(row, "displayTitle", label.clone());
-                put(row, "extendedDisplayTitle", label);
-                return;
-            }
             if let Some(title) = title {
                 let stereo = match channels.as_deref() {
                     Some("Stereo") => vec!["2.0"],
@@ -1772,7 +1762,15 @@ pub fn audio_media(media: &mut Value) {
                     shaped.insert(key.clone(), value.clone());
                 }
             }
-            stream_titles(&mut shaped, None, None);
+            // A track's stream is titled with no language part (`FLAC (Stereo)`), where a video's
+            // untagged audio is `Unknown (FLAC Stereo)`.
+            if shaped.get("language").is_none() {
+                let label = format!("{} ({})", audio_codec_label(&shaped), channel_label(&shaped).unwrap_or_default());
+                shaped.insert("displayTitle".to_string(), json!(label));
+                shaped.insert("extendedDisplayTitle".to_string(), json!(label));
+            } else {
+                stream_titles(&mut shaped, None, None);
+            }
             *stream = shaped;
         }
     }
