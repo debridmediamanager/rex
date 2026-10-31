@@ -29,6 +29,10 @@ const PROVIDER: &str = "tv.plex.providers.epg.xmltv:2";
 pub(super) const PREFIX: &str = "/tv.plex.providers.epg.xmltv:2";
 /// Measured: a tune's capture media is offered for five minutes from the tune (`endsAt`).
 const CAPTURE_WINDOW: i64 = 300;
+/// How long an airing is listed after it ends. Measured on plexav: at 18:22 UTC its News had
+/// lost the airing that ended at 14:30 and kept the one that ended at 15:30 (at 15:46 it listed
+/// airings that ended at 14:00), so between 2 h 52 min and 3 h 52 min; rex takes 3 h.
+const HELD_AFTER: i64 = 3 * 3600;
 /// A tuned session nobody has asked about for this long is forgotten.
 const SESSION_IDLE: i64 = 6 * 3600;
 
@@ -46,17 +50,30 @@ pub(super) struct Tuned {
     at: i64,
     seen: i64,
     media: i64,
-    /// The session's `grabber.grab` activity, as `/activities` lists it while the session runs.
+    /// The session's activities, as `/activities` lists them while the session runs: its
+    /// `grabber.grab` (the one its tune named) and its rolling subscription's refresh.
     activity: Value,
+    refresh: Value,
+    /// The last beat's offset and whether a beat completed the play (`timeline_state`).
+    offset: Option<i64>,
+    completed: bool,
 }
 
-/// The tuned sessions, the subscriptions numbered for them, and each account's channels tuned
-/// most recently (What's On's Recent Channels; kept while rex runs).
-#[derive(Default, Debug)]
+/// The tuned sessions, the subscriptions numbered for them, each account's channels tuned most
+/// recently (What's On's Recent Channels; kept while rex runs), and the guide read off the
+/// channel rows, kept until a row changes (`Catalog::generation`).
+#[derive(Default)]
 pub(super) struct Sessions {
     tuned: HashMap<String, Tuned>,
     subscriptions: i64,
     recent: HashMap<i64, Vec<String>>,
+    guide: std::sync::Mutex<Option<(u64, Arc<Guide>)>>,
+}
+
+impl std::fmt::Debug for Sessions {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.debug_struct("Sessions").field("tuned", &self.tuned).field("subscriptions", &self.subscriptions).finish()
+    }
 }
 
 /// One channel of the lineup.
@@ -105,8 +122,11 @@ struct Guide {
     /// Every category any programme names, in the order first named: a Genre tag's id is its
     /// place after the channels' ids, as PMS numbers its tags in one table.
     genres: Vec<String>,
+    /// Each channel's airings, by start.
+    by_channel: Vec<Vec<usize>>,
     added: i64,
-    now: i64,
+    /// The request's clock, set as each request takes the kept guide (`Runtime::guide`).
+    now: std::sync::atomic::AtomicI64,
 }
 
 /// A row's three shapes of a guid: the guid itself, its `ratingKey` and its `key`.
@@ -293,6 +313,16 @@ pub(super) fn channel_field(value: &Value) -> Result<Value, String> {
     Ok(Value::Object(kept))
 }
 
+/// A setting row as PMS lists one.
+fn setting(id: &str, label: &str, summary: &str, kind: &str, default: &str, values: Option<String>) -> Value {
+    let mut row = json!({"id": id, "label": label, "summary": summary, "type": kind, "default": default,
+                         "value": default, "hidden": false, "advanced": false, "group": ""});
+    if let Some(values) = values {
+        row["enumValues"] = json!(values);
+    }
+    row
+}
+
 /// A channel number's order: `2.1` before `4.1` before `10.1`, part by part.
 fn number_order(number: &str) -> Vec<(u64, String)> {
     number.split('.').map(|part| (part.parse::<u64>().unwrap_or(u64::MAX), part.to_string())).collect()
@@ -311,19 +341,40 @@ fn local_hour(at: i64, hours: i32) -> i64 {
 }
 
 impl Guide {
+    fn now(&self) -> i64 {
+        self.now.load(std::sync::atomic::Ordering::Relaxed)
+    }
+
+    /// Whether an airing is still listed (`HELD_AFTER`).
+    fn held(&self, airing: &Airing) -> bool {
+        airing.ends > self.now() - HELD_AFTER
+    }
+
+    /// A programme's airings still listed, by start.
+    fn listed<'a>(&'a self, programme: &'a Programme) -> impl Iterator<Item = &'a Airing> + Clone + 'a {
+        programme.airings.iter().map(|at| &self.airings[*at]).filter(|airing| self.held(airing))
+    }
+
     fn on_air(&self, airing: &Airing) -> bool {
-        airing.begins <= self.now && self.now < airing.ends
+        airing.begins <= self.now() && self.now() < airing.ends
     }
 
     /// The airing on a channel now.
     fn current(&self, channel: usize) -> Option<usize> {
-        (0..self.airings.len()).find(|at| self.airings[*at].channel == channel && self.on_air(&self.airings[*at]))
+        self.at(channel, self.now())
+    }
+
+    /// The airing on a channel at `at`.
+    fn at(&self, channel: usize, at: i64) -> Option<usize> {
+        let airings = &self.by_channel[channel];
+        let after = airings.partition_point(|index| self.airings[*index].begins <= at);
+        airings[..after].iter().rev().find(|index| at < self.airings[**index].ends).copied()
     }
 
     /// A programme's next airing not yet over, else its last.
-    fn next_of(&self, programme: &Programme) -> Option<&Airing> {
-        let airings = programme.airings.iter().map(|at| &self.airings[*at]);
-        airings.clone().find(|airing| airing.ends > self.now).or_else(|| airings.last())
+    fn next_of<'a>(&'a self, programme: &'a Programme) -> Option<&'a Airing> {
+        let airings = self.listed(programme);
+        airings.clone().find(|airing| airing.ends > self.now()).or_else(|| airings.last())
     }
 
     fn channel_tag(channel: &Channel) -> String {
@@ -461,9 +512,58 @@ impl Guide {
         )
     }
 
+    /// The categories a search names, as tag hits (score, tier class, `Directory`): a film's in
+    /// Movies, counted by airings (plexav's News: 164, its airings held); a show's in Shows,
+    /// counted by shows (Drama: 1). Scored as a tag (0.92 the name, 0.52 its start, 0.32 a later
+    /// word: `foot` for Football).
+    fn category_hits(&self, needle: &str) -> Vec<(f64, i64, Value)> {
+        let terms = crate::hierarchy::fold_query(&needle.to_lowercase()).split_whitespace().map(str::to_string).collect::<Vec<_>>();
+        let mut hits = Vec::new();
+        for (section, title) in [(1, "Movies"), (2, "Shows")] {
+            let mut counts: Vec<(String, usize)> = Vec::new();
+            let mut shows: Vec<(String, String)> = Vec::new();
+            for programme in &self.programmes {
+                if (section == 2) != programme.episode {
+                    continue;
+                }
+                for category in &programme.categories {
+                    let add = if section == 1 {
+                        self.listed(programme).count()
+                    } else if shows.contains(&(programme.show.clone(), category.clone())) {
+                        0
+                    } else {
+                        shows.push((programme.show.clone(), category.clone()));
+                        1
+                    };
+                    match counts.iter_mut().find(|(name, _)| name == category) {
+                        Some((_, count)) => *count += add,
+                        None => counts.push((category.clone(), add)),
+                    }
+                }
+            }
+            for (name, count) in counts {
+                let Some(tier) = search::tag_tier(&name, &terms) else {
+                    continue;
+                };
+                let score = match tier {
+                    "exact" => 0.92,
+                    "fuzzy" => 0.32,
+                    _ => 0.52,
+                };
+                let id = self.genre_id(&name);
+                hits.push((score, search::tier_class(tier), json!({
+                    "key": format!("{PREFIX}/sections/{section}/all?genre={id}"), "librarySectionID": section,
+                    "librarySectionKey": format!("{PREFIX}/sections/{section}"), "librarySectionTitle": title,
+                    "librarySectionType": section, "type": "tag", "id": id, "filter": format!("genre={id}"), "tag": name,
+                    "tagType": 1, "count": count})));
+            }
+        }
+        hits
+    }
+
     /// A programme's row listing every airing pushed for it.
     fn full_row(&self, programme: &Programme, shape: Shape) -> Value {
-        let airings = programme.airings.iter().map(|at| &self.airings[*at]).collect::<Vec<_>>();
+        let airings = self.listed(programme).collect::<Vec<_>>();
         self.row(programme, &airings, shape)
     }
 
@@ -570,9 +670,25 @@ enum Shape {
 impl Runtime {
     /// The lineup and its guide, or `None` while no source has pushed a channel: rex is then
     /// the tunerless server it always was.
-    // ponytail: the guide is read off the channel rows on every Live TV request; a lineup of
-    // hundreds of channels a week deep wants it kept per catalog generation.
-    fn guide(&self) -> Option<Guide> {
+    /// The guide, read off the channel rows once and kept until a row changes: a lineup of 300
+    /// channels a week deep is 100,000 airings, too many to read again for each grid request
+    /// (`tests/test_perf_livetv.py`).
+    fn guide(&self) -> Option<Arc<Guide>> {
+        let generation = self.catalog.generation();
+        let mut kept = self.livetv.guide.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let guide = match kept.as_ref().filter(|(at, _)| *at == generation) {
+            Some((_, guide)) => Arc::clone(guide),
+            None => {
+                let guide = Arc::new(self.read_guide()?);
+                *kept = Some((generation, Arc::clone(&guide)));
+                guide
+            }
+        };
+        guide.now.store(now(), std::sync::atomic::Ordering::Relaxed);
+        Some(guide)
+    }
+
+    fn read_guide(&self) -> Option<Guide> {
         let mut rows = self
             .catalog
             .rows_by(By::Channel, "")
@@ -610,7 +726,7 @@ impl Runtime {
         // Airings are numbered by start, then lineup order; a programme and a category in the
         // order they first air.
         entries.sort_by_key(|(channel, entry)| (entry.get("start").and_then(Value::as_i64).unwrap_or(0), *channel));
-        let mut guide = Guide { channels, airings: Vec::new(), programmes: Vec::new(), genres: Vec::new(), added, now: now() };
+        let mut guide = Guide { by_channel: vec![Vec::new(); channels.len()], channels, airings: Vec::new(), programmes: Vec::new(), genres: Vec::new(), added, now: now().into() };
         let mut by_guid: HashMap<String, usize> = HashMap::new();
         for (channel, entry) in entries {
             let text = |name: &str| entry.get(name).and_then(Value::as_str).unwrap_or_default().to_string();
@@ -652,6 +768,7 @@ impl Runtime {
             });
             guide.programmes[programme].premiere |= entry.get("new").and_then(Value::as_bool) == Some(true);
             guide.programmes[programme].airings.push(guide.airings.len());
+            guide.by_channel[channel].push(guide.airings.len());
             guide.airings.push(Airing {
                 id: guide.airings.len() as i64 + 1,
                 channel,
@@ -730,7 +847,7 @@ impl Runtime {
             }
             return None;
         }
-        let in_livetv = path.starts_with(PREFIX) || path.starts_with("/livetv/");
+        let in_livetv = path.starts_with(PREFIX) || path.starts_with("/livetv/") || path.starts_with("/media/grabbers/devices");
         if !in_livetv {
             return None;
         }
@@ -739,6 +856,9 @@ impl Runtime {
         let segments = path.trim_start_matches('/').split('/').collect::<Vec<_>>();
         match (request.method.as_str(), segments.as_slice()) {
             (_, ["livetv", "dvrs"]) if get => Some(Response::json(200, self.dvrs(&guide))),
+            (_, ["media", "grabbers", "devices"]) if get => Some(Response::json(200, json!({"MediaContainer": {"size": 1, "Device": [self.device_row(&guide, false)]}}))),
+            (_, ["media", "grabbers", "devices", "1"]) if get => Some(Response::json(200, json!({"MediaContainer": {"size": 1, "Device": [self.device_row(&guide, true)]}}))),
+            (_, ["media", "grabbers", "devices", "1", "channels"]) if get => Some(Response::json(200, self.device_channels(&guide))),
             (_, ["livetv", "dvrs", key]) if get => Some(if *key == DVR { Response::json(200, self.dvrs(&guide)) } else { Response::error(404, "rex: no such DVR") }),
             ("POST", ["livetv", "dvrs", key, "channels", number, "tune"]) => Some(if *key != DVR {
                 Response::error(404, "rex: no such DVR")
@@ -777,6 +897,39 @@ impl Runtime {
             "/grid" => Some(Response::json(200, container(self.grid(guide, query)))),
             "/hubs/discover" => Some(Response::json(200, self.discover(guide, query))),
             "/library/search" => Some(Response::json(200, self.livetv_search(guide, query))),
+            "/hubs/search" => Some(match query.get("query").filter(|text| !text.is_empty()) {
+                Some(_) => Response::json(200, self.livetv_hubs_search(guide, query)),
+                None => Response::error(400, "rex: bad request"),
+            }),
+            "/sections" => Some(Response::json(200, self.livetv_sections(guide))),
+            "/sections/1" | "/sections/2" => {
+                // Measured: each section's secondary listing, as plexav answers it (a sidecar).
+                let mut document = load_json_sidecar(&self.catalog_path, "livetv_sections.json")?.get(&tail["/sections/".len()..])?.clone();
+                let text = serde_json::to_string(&document).ok()?.replace("{prefix}", PREFIX);
+                document = serde_json::from_str(&text).ok()?;
+                document["MediaContainer"]["mediaTagVersion"] = json!(MEDIA_TAG_VERSION);
+                Some(Response::json(200, document))
+            }
+            "/watchnow" => Some(Response::json(200, json!({"MediaContainer": {"size": 3, "Type": [
+                {"key": format!("{PREFIX}/watchnow/all"), "type": "mixed", "title": "All Channels", "active": false},
+                {"key": format!("{PREFIX}/sections/1/all?type=1&beginsAt<=now&endsAt>=%2B1s&sort=beginsAt&skipDetails=1"), "type": "movie", "title": "Movies on Now", "active": false},
+                {"key": format!("{PREFIX}/sections/2/all?type=4&beginsAt<=now&endsAt>=%2B1s&sort=beginsAt&skipDetails=1"), "type": "episode", "title": "Shows on Now", "active": false}]}}))),
+            // Measured: each channel's airing now, in lineup order, with that airing alone.
+            "/watchnow/all" => {
+                let rows = (0..guide.channels.len())
+                    .filter_map(|channel| guide.current(channel))
+                    .map(|at| {
+                        let airing = &guide.airings[at];
+                        let mut row = guide.row(&guide.programmes[airing.programme], &[airing], Shape::Search);
+                        if let Some(object) = row.as_object_mut() {
+                            object.shift_remove("librarySectionTitle");
+                            object.insert("skipDetails".to_string(), json!("1"));
+                        }
+                        row
+                    })
+                    .collect::<Vec<_>>();
+                Some(Response::json(200, container(rows)))
+            }
             _ => {
                 let tail = tail.strip_prefix("/metadata/")?;
                 self.provider_metadata(guide, tail, query)
@@ -800,7 +953,7 @@ impl Runtime {
         };
         let end = start + 86400;
         let mut rows: Vec<(usize, Vec<&Airing>)> = Vec::new();
-        for airing in guide.airings.iter().filter(|airing| airing.channel == channel && airing.ends > start && airing.begins < end) {
+        for airing in guide.by_channel[channel].iter().map(|at| &guide.airings[*at]).filter(|airing| guide.held(airing) && airing.ends > start && airing.begins < end) {
             match rows.last_mut() {
                 Some((programme, airings)) if *programme == airing.programme => airings.push(airing),
                 _ => rows.push((airing.programme, vec![airing])),
@@ -872,8 +1025,27 @@ impl Runtime {
                     "mediaTagPrefix": MEDIA_TAG_PREFIX, "mediaTagVersion": MEDIA_TAG_VERSION, "nocache": true,
                     "title1": "Shows", "viewGroup": "show", "viewMode": 65592, "Metadata": rows}})))
             }
-            // ponytail: a season's /children and an item's other leaves were not measured; they
-            // fall to the route table's 404.
+            // Measured: a season's episodes by their first airing still listed (where the show's
+            // grandchildren go by the next airing), in a container naming the show by an internal
+            // id (rex's: 1).
+            ("/children", Item::Season(show, season)) => {
+                let mut episodes = guide
+                    .programmes
+                    .iter()
+                    .filter(|programme| programme.episode && programme.show == show && programme.season == season)
+                    .collect::<Vec<_>>();
+                episodes.sort_by_key(|episode| guide.listed(episode).next().map_or(i64::MAX, |airing| airing.begins));
+                let rows = episodes.into_iter().map(|episode| guide.full_row(episode, Shape::Child)).collect::<Vec<_>>();
+                Some(Response::json(200, json!({"MediaContainer": {
+                    "size": rows.len(), "allowSync": false, "art": "/:/resources/show-fanart.jpg", "grandparentRatingKey": 1,
+                    "grandparentTitle": show, "identifier": IDENTIFIER, "key": "2", "mediaTagPrefix": MEDIA_TAG_PREFIX,
+                    "mediaTagVersion": MEDIA_TAG_VERSION, "nocache": true, "parentIndex": season, "parentTitle": "",
+                    "title1": show, "title2": format!("Season {season}"), "viewGroup": "episode", "viewMode": 65592,
+                    "Metadata": rows}})))
+            }
+            // Measured: a programme has no children.
+            ("/children" | "/grandchildren", Item::Programme(_)) => Some(Response::error(400, "rex: bad request")),
+            // ponytail: a season's `/grandchildren` was not measured; it falls to the route table.
             _ => None,
         }
     }
@@ -921,23 +1093,130 @@ impl Runtime {
                 hits.push((score, guide.full_row(programme, Shape::Search)));
             }
         }
-        // ponytail: PMS also answers a category whose name matches as a tag hit (`news`, 0.92);
-        // not built.
         hits.sort_by(|left, right| right.0.partial_cmp(&left.0).unwrap_or(std::cmp::Ordering::Equal));
         let limit = query.get("limit").and_then(|limit| limit.parse::<usize>().ok()).unwrap_or(usize::MAX);
-        let results = hits
+        // Measured: the titles first, then each category named (`news` after Rex Evening News,
+        // whose 0.33 is under the tag's 0.92).
+        let mut results = hits
             .into_iter()
-            .take(limit)
             .map(|(score, row)| json!({"score": (score * 100.0).round() / 100.0, "Metadata": row}))
             .collect::<Vec<_>>();
+        let mut tags = guide.category_hits(&needle);
+        tags.sort_by(|left, right| right.0.partial_cmp(&left.0).unwrap_or(std::cmp::Ordering::Equal));
+        results.extend(tags.into_iter().map(|(score, _, directory)| json!({"score": score, "Directory": directory})));
+        results.truncate(limit);
         json!({"MediaContainer": {"size": results.len(), "SearchResult": results}})
+    }
+
+    /// `/hubs/search` (the provider's `search` feature): the library search's seventeen hubs and
+    /// their order (`search::search_hub_rank`, PMS's unstable sort), Movies, Shows and Episodes holding
+    /// the guide's titles and Genres its categories, as plexav answers it.
+    fn livetv_hubs_search(&self, guide: &Guide, query: &HashMap<String, String>) -> Value {
+        let needle = query.get("query").cloned().unwrap_or_default();
+        let limit = query.get("limit").and_then(|limit| limit.parse::<usize>().ok()).unwrap_or(3);
+        let tier_query = search::TierQuery::new(&needle);
+        let terms = needle.split_whitespace().map(str::to_lowercase).collect::<Vec<_>>();
+        let matches = |title: &str| {
+            let words = title.split_whitespace().map(str::to_lowercase).collect::<Vec<_>>();
+            !terms.is_empty() && terms.iter().all(|term| words.iter().any(|word| word.starts_with(term.as_str())))
+        };
+        let mut found: HashMap<&str, Vec<(f64, i64, Value)>> = HashMap::new();
+        let mut shows = Vec::new();
+        for programme in &guide.programmes {
+            let mut hit = |kind: &'static str, probe: Value, mut row: Value| {
+                let score = search::search_score_value(&probe, &needle);
+                let class = search::tier_class(search::query_tier(&probe, &tier_query));
+                if let Some(object) = row.as_object_mut() {
+                    let mut ordered = Map::new();
+                    for (name, value) in std::mem::take(object) {
+                        ordered.insert(name.clone(), value);
+                        if name == "librarySectionTitle" {
+                            ordered.insert("score".to_string(), json!(format!("{score:.5}")));
+                        }
+                    }
+                    *object = ordered;
+                }
+                found.entry(kind).or_default().push((score, class, row));
+            };
+            if programme.episode && !shows.contains(&programme.show) {
+                shows.push(programme.show.clone());
+                if matches(&programme.show) {
+                    hit("show", json!({"type": "show", "title": programme.show}), guide.show_row(&programme.show, true, false));
+                }
+            }
+            if matches(&programme.title) {
+                let kind = if programme.episode { "episode" } else { "movie" };
+                hit(kind, json!({"type": kind, "title": programme.title}), guide.full_row(programme, Shape::Search));
+            }
+        }
+        let tags = guide.category_hits(&needle);
+        let mut hubs = Vec::new();
+        for (kind, title) in search::SEARCH_HUBS {
+            let mut hub = Map::new();
+            hub.insert("title".to_string(), json!(title));
+            hub.insert("type".to_string(), json!(kind));
+            hub.insert("hubIdentifier".to_string(), json!(kind));
+            hub.insert("context".to_string(), json!(""));
+            let mut classes = Vec::new();
+            let mut rows = found.remove(kind).unwrap_or_default();
+            rows.sort_by(|left, right| right.0.partial_cmp(&left.0).unwrap_or(std::cmp::Ordering::Equal));
+            rows.truncate(limit);
+            classes.extend(rows.iter().map(|(_, class, _)| *class));
+            let mut directory = Vec::new();
+            if *kind == "genre" {
+                let mut tags = tags.clone();
+                tags.sort_by(|left, right| right.0.partial_cmp(&left.0).unwrap_or(std::cmp::Ordering::Equal));
+                for (score, class, row) in tags.into_iter().take(limit) {
+                    classes.push(class);
+                    let mut ordered = Map::new();
+                    for (name, value) in row.as_object().cloned().unwrap_or_default() {
+                        let after = name == "librarySectionType";
+                        ordered.insert(name, value);
+                        if after {
+                            let section = ordered.get("librarySectionID").cloned().unwrap_or(Value::Null);
+                            let section_title = ordered.get("librarySectionTitle").cloned().unwrap_or(Value::Null);
+                            ordered.insert("reason".to_string(), json!("section"));
+                            ordered.insert("reasonID".to_string(), section);
+                            ordered.insert("reasonTitle".to_string(), section_title);
+                            ordered.insert("score".to_string(), json!(format!("{score:.5}")));
+                        }
+                    }
+                    directory.push(Value::Object(ordered));
+                }
+            }
+            hub.insert("size".to_string(), json!(rows.len() + directory.len()));
+            hub.insert("more".to_string(), json!(false));
+            hub.insert("style".to_string(), json!("shelf"));
+            if !rows.is_empty() {
+                hub.insert("Metadata".to_string(), Value::Array(rows.into_iter().map(|(_, _, row)| row).collect()));
+            }
+            if !directory.is_empty() {
+                hub.insert("Directory".to_string(), Value::Array(directory));
+            }
+            hubs.push((search::search_hub_rank(kind, &classes), Value::Object(hub)));
+        }
+        search::comparison_sort(&mut hubs, &|hub: &(i64, Value)| hub.0 as f64);
+        let hubs = hubs.into_iter().map(|(_, hub)| hub).collect::<Vec<_>>();
+        json!({"MediaContainer": {"size": hubs.len(), "Hub": hubs}})
+    }
+
+    /// `/sections`: the provider's two sections (measured; their uuids are rex's own).
+    fn livetv_sections(&self, guide: &Guide) -> Value {
+        let row = |key: &str, kind: &str, title: &str| {
+            json!({"allowSync": true, "filters": true, "refreshing": false, "key": key, "type": kind, "title": title,
+                   "agent": "", "scanner": "", "language": "", "uuid": crate::hierarchy::uuid(&format!("{}:livetv:{key}", self.machine)),
+                   "updatedAt": guide.added, "createdAt": guide.added, "content": true, "directory": true,
+                   "contentChangedAt": guide.airings.len(), "hidden": 0})
+        };
+        json!({"MediaContainer": {"size": 2, "allowSync": false, "title1": "Plex Library",
+               "Directory": [row("1", "movie", "Movies"), row("2", "show", "Shows")]}})
     }
 
     /// `/hubs/discover`, What's On, with plexav's nine hubs (ten with Recent Channels); under
     /// `promoted=1` only the promoted one.
     fn discover(&self, guide: &Guide, query: &HashMap<String, String>) -> Value {
         let count = query.get("count").and_then(|count| count.parse::<usize>().ok()).unwrap_or(usize::MAX);
-        let now = guide.now;
+        let now = guide.now();
         let hub = |key: String, title: &str, kind: &str, id: &str, rows: Vec<(usize, Value)>, promoted: bool| {
             let rows = rows.into_iter().take(count).collect::<Vec<_>>();
             let mut hub = Map::new();
@@ -978,7 +1257,7 @@ impl Runtime {
         }
         // Next: each channel's airing after the one on now.
         let later = (0..guide.channels.len())
-            .filter_map(|channel| (0..guide.airings.len()).find(|at| guide.airings[*at].channel == channel && guide.airings[*at].begins > now))
+            .filter_map(|channel| guide.by_channel[channel].iter().copied().find(|at| guide.airings[*at].begins > now))
             .collect::<Vec<_>>();
         // A programme's next start not before now (measured: Movies On Later, ties in the order
         // the programmes first aired).
@@ -1063,22 +1342,57 @@ impl Runtime {
 
     /// `/livetv/dvrs`: the one DVR, its lineup, and the device its channels are mapped from. The
     /// device is rex's own sources, so its names are rex's; the shape and settings are plexav's.
-    fn dvrs(&self, guide: &Guide) -> Value {
+    /// The DVR's one device, rex's sources: `/livetv/dvrs`' and `/media/grabbers/devices/1`'s
+    /// row with its channel mapping, `/media/grabbers/devices`' without (measured on plexav).
+    fn device_row(&self, guide: &Guide, mapping: bool) -> Value {
         let device = self.machine.chars().take(8).collect::<String>().to_uppercase();
-        let lineup = format!("lineup://{IDENTIFIER}/rex#{}", guid_part(&self.friendly));
-        let mappings = guide
+        let mut row = json!({
+            "parentID": DVR.parse::<i64>().unwrap_or(2), "key": "1",
+            "uuid": format!("device://tv.plex.grabbers.hdhomerun/{device}"), "uri": format!("http://127.0.0.1:{}", self.private_port),
+            "protocol": "livetv", "status": "alive", "state": "enabled", "lastSeenAt": super::now(), "canTranscode": "1",
+            "deviceAuth": "", "deviceId": device, "make": "rex", "model": "rex live channels", "modelNumber": "rex",
+            "source": "1", "sources": "1", "thumb": "/:/resources/dvr/device-generic-560.png", "title": self.friendly,
+            // ponytail: plexav's is its HDHomeRun's tuner count (2); rex's sources have none, so
+            // every channel can be watched at once. Unmeasurable without a tuner of rex's own.
+            "tuners": guide.channels.len().to_string()});
+        if mapping {
+            row["ChannelMapping"] = Value::Array(
+                guide
+                    .channels
+                    .iter()
+                    .map(|channel| json!({"channelKey": channel.number, "deviceIdentifier": channel.number, "enabled": "1", "lineupIdentifier": channel.number}))
+                    .collect(),
+            );
+        }
+        row["Setting"] = json!([setting("transcodeProfile", "Transcoder Quality",
+            "How live TV is converted. The original format can make very large files.", "text", "heavy",
+            Some("none:Original format|heavy:Highest quality|mobile:High quality (30fps limit)|internet540:Medium quality (540p)|internet480:Medium quality (480p)|internet360:Low quality (360p)|internet240:Low quality (240p)".to_string()))]);
+        row
+    }
+
+    /// `/media/grabbers/devices/1/channels`: the device's channels (measured: `drm` and
+    /// `favorite` false, `hd` as the tuner says; rex says it of a channel 720 lines or more).
+    fn device_channels(&self, guide: &Guide) -> Value {
+        let rows = guide
             .channels
             .iter()
-            .map(|channel| json!({"channelKey": channel.number, "deviceIdentifier": channel.number, "enabled": "1", "lineupIdentifier": channel.number}))
+            .map(|channel| {
+                let mut row = channel.row.clone();
+                crate::catalog::unpack_streams(&mut row);
+                let height = row
+                    .pointer("/Media/0/Part/0/Stream")
+                    .and_then(Value::as_array)
+                    .and_then(|streams| streams.iter().find(|stream| stream.get("streamType").and_then(Value::as_i64) == Some(1)))
+                    .and_then(|video| video.get("height").and_then(Value::as_i64))
+                    .unwrap_or(0);
+                json!({"key": channel.number, "identifier": channel.number, "name": channel.title, "drm": false, "hd": height >= 720, "favorite": false})
+            })
             .collect::<Vec<_>>();
-        let setting = |id: &str, label: &str, summary: &str, kind: &str, default: &str, values: Option<String>| {
-            let mut row = json!({"id": id, "label": label, "summary": summary, "type": kind, "default": default,
-                                 "value": default, "hidden": false, "advanced": false, "group": ""});
-            if let Some(values) = values {
-                row["enumValues"] = json!(values);
-            }
-            row
-        };
+        json!({"MediaContainer": {"size": rows.len(), "DeviceChannel": rows}})
+    }
+
+    fn dvrs(&self, guide: &Guide) -> Value {
+        let lineup = format!("lineup://{IDENTIFIER}/rex#{}", guid_part(&self.friendly));
         let hours = (0..24)
             .map(|hour: i32| {
                 let name = |hour: i32| match hour {
@@ -1095,18 +1409,7 @@ impl Runtime {
             "key": DVR, "uuid": crate::hierarchy::uuid(&format!("{}:dvr", self.machine)), "language": "deu",
             "lineupTitle": self.friendly, "lineup": lineup, "country": "deu", "refreshedAt": guide.added,
             "epgIdentifier": PROVIDER,
-            "Device": [{
-                "parentID": DVR.parse::<i64>().unwrap_or(2), "key": "1",
-                "uuid": format!("device://tv.plex.grabbers.hdhomerun/{device}"), "uri": format!("http://127.0.0.1:{}", self.private_port),
-                "protocol": "livetv", "status": "alive", "state": "enabled", "lastSeenAt": super::now(), "canTranscode": "1",
-                "deviceAuth": "", "deviceId": device, "make": "rex", "model": "rex live channels", "modelNumber": "rex",
-                "source": "1", "sources": "1", "thumb": "/:/resources/dvr/device-generic-560.png", "title": self.friendly,
-                "tuners": guide.channels.len().to_string(),
-                "ChannelMapping": mappings,
-                "Setting": [setting("transcodeProfile", "Transcoder Quality",
-                    "How live TV is converted. The original format can make very large files.", "text", "heavy",
-                    Some("none:Original format|heavy:Highest quality|mobile:High quality (30fps limit)|internet540:Medium quality (540p)|internet480:Medium quality (480p)|internet360:Low quality (360p)|internet240:Low quality (240p)".to_string()))]
-            }],
+            "Device": [self.device_row(guide, true)],
             "Lineup": [{"id": lineup, "title": self.friendly}],
             "Setting": [
                 setting("useUmp", "Enhanced Guide", "Download richer details for some shows and movies; guide refreshes take longer.", "bool", "false", None),
@@ -1150,10 +1453,7 @@ impl Runtime {
 
     /// The programme a channel showed at `at`, or the channel itself where its guide has nothing.
     fn tuned_programme(&self, guide: &Guide, channel: usize, at: i64) -> (Programme, Option<usize>) {
-        let airing = (0..guide.airings.len()).find(|index| {
-            let airing = &guide.airings[*index];
-            airing.channel == channel && airing.begins <= at && at < airing.ends
-        });
+        let airing = guide.at(channel, at);
         if let Some(index) = airing {
             let programme = &guide.programmes[guide.airings[index].programme];
             return (
@@ -1301,16 +1601,23 @@ impl Runtime {
         // `X-Plex-Activity`, exposed to a browser, and `/activities` lists it while the session
         // runs. Plex Web refuses a tune without it ("Could not tune channel (No activity)") and
         // ends its player when the activity ends.
-        // ponytail: PMS's `progress` was 11 at 39 s and 33 at 142 s, a formula unmeasured; and its
-        // rolling subscription's `provider.subscription.refresh` activity is not listed.
+        // As listed the moment after a tune (plexav without a Plex Pass, 2026-10-31): the grab and
+        // its rolling subscription's refresh, at 0.
+        // ponytail: PMS's grab `progress` read 11 at 39 s and 33 at 142 s (with a Pass, then also
+        // a Context `status`), a formula unmeasured; rex's stays 0.
         let activity = json!({"uuid": self.activity_uuid(), "type": "grabber.grab", "cancellable": true, "userID": self.viewer.id,
             "title": "Recording", "subtitle": "Live TV - Session", "progress": 0,
             "Context": {"deviceID": "1", "grabber": "tv.plex.grabbers.hdhomerun", "itemKey": "", "itemMediaIndex": "0",
-                        "itemRatingKey": "", "source": format!("provider://{IDENTIFIER}"), "status": "inprogress",
+                        "itemRatingKey": "", "source": format!("provider://{IDENTIFIER}"),
                         "subscriptionID": subscription.to_string(), "transcode_session": uuid}});
+        let refresh = json!({"uuid": self.activity_uuid(), "type": "provider.subscription.refresh", "cancellable": false,
+            "userID": self.viewer.id, "title": "Refreshing Sub", "subtitle": "Grabbing", "progress": 0,
+            "Context": {"alreadyCompletedItems": 0, "completed": 0, "currentSize": 0, "refreshing": "0",
+                        "subscriptionID": subscription.to_string(), "total": 1, "waiting": "0"}});
+        self.push_activity(&refresh, "started");
         self.push_activity(&activity, "started");
         let activity_uuid = activity.get("uuid").map(string_value).unwrap_or_default();
-        self.livetv.tuned.insert(uuid.clone(), Tuned { row: row.clone(), client, at, seen: stamp, media, activity });
+        self.livetv.tuned.insert(uuid.clone(), Tuned { row: row.clone(), client, at, seen: stamp, media, activity, refresh, offset: None, completed: false });
         let recent = self.livetv.recent.entry(self.viewer.id).or_default();
         recent.retain(|recent| recent != number);
         recent.insert(0, number.to_string());
@@ -1352,8 +1659,10 @@ impl Runtime {
         video.insert("TranscodeSession".to_string(), self.capture_session(guide, channel, &uuid, at));
         let operation = format!("{number}-{session}");
         // The airing on now and the next two on this channel.
-        let timeline = (0..guide.airings.len())
-            .filter(|index| guide.airings[*index].channel == channel && guide.airings[*index].ends > at)
+        let timeline = guide.by_channel[channel]
+            .iter()
+            .copied()
+            .filter(|index| guide.airings[*index].ends > at)
             .take(3)
             .map(|index| {
                 let airing = &guide.airings[index];
@@ -1393,27 +1702,33 @@ impl Runtime {
     fn end_tuned(&mut self, uuid: &str) {
         if let Some(tuned) = self.livetv.tuned.remove(uuid) {
             self.push_activity(&tuned.activity, "ended");
+            self.push_activity(&tuned.refresh, "ended");
         }
     }
 
     /// `/activities`: the tuned sessions' activities (every other activity of rex's starts and
     /// ends inside the request that ran it).
     pub(super) fn livetv_activities(&self) -> Value {
-        let mut rows = self.livetv.tuned.values().map(|tuned| (tuned.at, tuned.activity.clone())).collect::<Vec<_>>();
-        rows.sort_by_key(|(at, _)| *at);
+        // Measured: listed by uuid.
+        let mut rows = self.livetv.tuned.values().flat_map(|tuned| [tuned.activity.clone(), tuned.refresh.clone()]).collect::<Vec<_>>();
+        rows.sort_by_key(|row| row.get("uuid").map(string_value).unwrap_or_default());
         if rows.is_empty() {
             return json!({"MediaContainer": {"size": 0}});
         }
-        json!({"MediaContainer": {"size": rows.len(), "Activity": rows.into_iter().map(|(_, row)| row).collect::<Vec<_>>()}})
+        json!({"MediaContainer": {"size": rows.len(), "Activity": rows}})
     }
 
     /// After the route: a tuned session's decision and Now Playing row describe the session, as
     /// PMS's do (`live`, the session's key, the airing's title), not the channel's row.
-    pub(super) fn livetv_finish(&self, request: &Request, response: &mut Response) {
+    pub(super) fn livetv_finish(&mut self, request: &Request, response: &mut Response) {
         if self.livetv.tuned.is_empty() || response.status != 200 || !response.content_type.starts_with("application/json") {
             return;
         }
         let (path, raw_query) = split_target(&request.target);
+        if path == "/:/timeline" {
+            self.timeline_state(&raw_query, response);
+            return;
+        }
         let decision = path == "/video/:/transcode/universal/decision";
         if !decision && path != "/status/sessions" {
             return;
@@ -1487,6 +1802,52 @@ impl Runtime {
                     }
                 }
             }
+        }
+        response.store_document(document);
+    }
+}
+
+impl Runtime {
+    /// A beat on a tuned session's key, answered as PMS answers a library item's
+    /// (`library_progress`): `complete` once a beat at 90% or more of its duration follows one
+    /// above 0 and under 90%, and to each beat past 90% after, until one under it. Measured on
+    /// plexav: Plex for Android's beats, `duration` its window and `time` its edge, were
+    /// `ignore` at 7427 of 7427 ms and `complete` at 17448 of 17448 ms on; Plex Web's at 8000 of
+    /// 8000, after beats at 0, `ignore`. Plex Web marks only its own copy of the session's
+    /// metadata played (`viewCount` 1) past a minute; rex writes nothing.
+    fn timeline_state(&mut self, raw_query: &str, response: &mut Response) {
+        let pairs = parse_query(raw_query);
+        let field = |name: &str| pairs.iter().rev().find(|(key, _)| key == name).map(|(_, value)| value.clone());
+        let Some((uuid, _)) = field("key").and_then(|key| self.tuned_by_path(&key)) else {
+            return;
+        };
+        let (Some(time), total) = (
+            field("time").and_then(|value| value.parse::<i64>().ok()),
+            field("duration").and_then(|value| value.parse::<i64>().ok()).unwrap_or(0),
+        ) else {
+            return;
+        };
+        let Some(tuned) = self.livetv.tuned.get_mut(&uuid) else {
+            return;
+        };
+        if total <= 0 {
+            return;
+        }
+        let past = (time as f64) >= total as f64 * 0.9;
+        if tuned.offset.is_some_and(|seen| seen > 0 && (seen as f64) < total as f64 * 0.9) && past {
+            tuned.completed = true;
+        } else if !past {
+            tuned.completed = false;
+        }
+        tuned.offset = Some(time);
+        if !(tuned.completed && past) {
+            return;
+        }
+        let Some(mut document) = response.take_document() else {
+            return;
+        };
+        if let Some(container) = document.get_mut("MediaContainer").and_then(Value::as_object_mut) {
+            container.insert("playbackState".to_string(), json!("complete"));
         }
         response.store_document(document);
     }

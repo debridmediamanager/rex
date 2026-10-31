@@ -2479,6 +2479,12 @@ impl super::Runtime {
                 }
             });
         }
+        // Measured: plexav, a DVR whose owner has no Plex Pass, names `livetv` (and not `dvr`,
+        // the Pass's recording); Plex Web reads the DVRs (`/livetv/dvrs`) for its Live TV & DVR
+        // settings only for a server naming either. rex records nothing.
+        if self.has_livetv() {
+            features.push_str(",livetv");
+        }
         self.claim_snapshot().owner_features(&features)
     }
 

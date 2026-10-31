@@ -10,7 +10,7 @@ use crate::corpus::CorpusRow;
 use crate::hierarchy::{fold_query, fold_title};
 
 /// The seventeen hubs `/hubs/search` answers, in the reference's base order.
-const SEARCH_HUBS: &[(&str, &str)] = &[
+pub(super) const SEARCH_HUBS: &[(&str, &str)] = &[
     ("show", "Shows"),
     ("artist", "Artists"),
     ("album", "Albums"),
@@ -45,7 +45,7 @@ fn tier_drop(tier: &str) -> f64 {
     }
 }
 
-fn tier_class(tier: &str) -> i64 {
+pub(super) fn tier_class(tier: &str) -> i64 {
     match tier {
         "exact" => 0,
         "anchored" => 1,
@@ -269,7 +269,7 @@ fn tier_score_value(row: &(impl Row + ?Sized), tier: &str) -> f64 {
 }
 
 /// The integer hub rank (cycle 41).
-fn search_hub_rank(kind: &str, classes: &[i64]) -> i64 {
+pub(super) fn search_hub_rank(kind: &str, classes: &[i64]) -> i64 {
     let class = classes.iter().copied().min().unwrap_or(3);
     let bonus = match class {
         0 => 50,

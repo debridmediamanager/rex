@@ -14813,8 +14813,68 @@ its progress stays 0, and the subscription's refresh activity is not listed); Re
 each account's, kept while rex runs. The device's names and
 the settings' help text are rex's own. Not measured: a programme's picture (plexav's guide has
 no `<icon>`), which rex answers as the pushed URL in `thumb`; a gap in a guide, where rex tunes
-the channel as a movie named after itself. Not built: recording
-and subscriptions, `/hubs/search` (PMS's seventeen-hub answer), `/sections`, `/watchnow`, a
-season's `/children`, category hits in search, playing the Part key itself, and the `complete`
-answer to a live beat; a share's `allowTuners` lowers the flag but does not hide the provider
+the channel as a movie named after itself. Not built then: recording and subscriptions,
+`/hubs/search`, `/sections`, `/watchnow`, a season's `/children`, category hits in search, the
+Part key and the `complete` answer to a live beat (the second round below built or measured
+each but recording); a share's `allowTuners` lowers the flag but does not hide the provider
 (unmeasured).
+
+### The second round: search, pages, the owner feature, beats and a lineup of 300 (2026-10-31)
+
+Measured on plexav again, read-only but for ONE tune of 2.1 (Plex Web's request, at 18:23 UTC,
+no Plex Pass), whose capture and rolling subscription ended on their own
+(`tests/fixtures/livetv/browse_s1434.json.gz` and `tune2_s1434.json.gz`, `probes/record_livetv.py
+ask` and `tune`). No client recording asks the provider's `/hubs/search`, `/sections` or
+`/watchnow`; they were asked as the provider's Feature list names them, with Plex Web 4.163.0's
+headers, a browser's `Origin` and gzip.
+
+- **Past airings go after about three hours.** At 18:22 UTC News had lost the airing that ended
+  at 14:30 and kept the one that ended at 15:30; at 15:46 it listed airings that ended at 14:00.
+  Every list of airings (a page's Media, the grid, search, What's On, category counts) drops an
+  airing three hours after its end.
+- **Search names categories.** `/library/search?searchTypes=livetv` answers the titles, then each
+  category the query names as a tag hit (`score` 0.92 the name, 0.52 its start: `foot` for
+  Football), keyed `/sections/<1|2>/all?genre=<id>`: a film's in Movies counted by its airings
+  listed (News 164), a show's in Shows counted by shows (Drama 1). `/hubs/search` is the library
+  search's seventeen hubs with the same rows and a `score` string, the categories in Genres with
+  `reason` "section". Its hub order for `firefly` and `rex` is the library's (PMS's unstable sort
+  of its ranks); for `news`, hits in Movies and Genres, plexav put Movies where Genres stood and
+  rex, sorting the library's order, puts Episodes there: an input order rex cannot see.
+- **`/sections`** lists Movies (1) and Shows (2) as a library's sections do; `/sections/1` and
+  `/2` are a library's secondary listing with its Type, Filter, Sort, Field and FieldType blocks
+  (`data/livetv_sections.json`); `/sections/3` and `/4` (the Sports and News hubs' keys) are 404.
+  **`/watchnow`** is three Types (All Channels, Movies on Now, Shows on Now) and **`/watchnow/all`**
+  each channel's airing now, in lineup order, that airing alone, `skipDetails` "1". **A season's
+  `/children`** lists its episodes by their first airing still listed (the show's
+  `/grandchildren` go by the next), under `grandparentRatingKey` 1 and `key` "2"; a programme's is
+  a 400. The `/sections/<n>/all` listings those keys open were measured (`?genre=`, the on-now
+  filter, `?type=`) but not built: their default order is unexplained.
+- **The device.** `/media/grabbers/devices` lists the DVR's device without its channel mapping,
+  `/devices/1` with it, `/devices/1/channels` each channel's `key`, `identifier`, `name`, `drm`,
+  `hd` and `favorite`.
+- **The owner feature.** plexav, a DVR whose owner has no Plex Pass, names `livetv` in
+  `ownerFeatures` and not `dvr`. Plex Web reads the DVRs for its Live TV & DVR settings only for a
+  server naming `dvr` or `livetv` (`hasOwnerFeature("dvr") || hasOwnerFeature("livetv")`); the
+  pane itself shows for any owned server with `livetv >= 1`, and the sidebar and guide need
+  neither. rex names `livetv` once it has a channel, never `dvr`.
+- **The session's Part key is a 404** -- `/livetv/sessions/<uuid>/<client>/index.m3u8?offset=-1`,
+  naming the tune's session or the asking client, with or without `X-Plex-Session-Identifier` --
+  as rex's already was. Right after the tune `/activities` listed its `grabber.grab` (`progress` 0,
+  no `status` in its Context) and its rolling subscription's `provider.subscription.refresh`
+  (`progress` 0, `total` 1), every activity by uuid; rex lists both.
+- **A live beat completes as a library item's does.** PMS answers `complete` to a beat at 90% or
+  more of its `duration` after one above 0 and under 90%, and to each past 90% after
+  (`library_progress`'s rule): Android's beats, its window as the duration, read `ignore` at 7427
+  of 7427 and `complete` from 17448 of 17448; Plex Web's 8000 of 8000 after beats at 0, `ignore`.
+  Plex Web, given `complete` past a minute, marks only its own copy of the session's metadata
+  played. rex answers the same and writes nothing.
+- **Unmeasurable read-only:** a programme's picture (plexav's guide has no `<icon>`, and changing
+  its guide is a write), a gap in a guide (plexav's has none), and the tuner count (rex has no
+  tuner; it answers its channel count).
+
+**The guide is kept.** It was read off the channel rows for every Live TV request: with 300
+channels of a programme every half hour for a week (100,800 airings) a grid answered in 257 ms,
+the lineup in 277 ms, and `/identity` beside four streams of grid requests waited up to 1.35 s.
+It is now read once and kept until a row changes (`Catalog::generation`), each channel's airings
+indexed by start: the first grid 283 ms, then 0.9 ms, the lineup 1.7 ms, What's On 82 ms,
+`/identity` beside the grids at most 14 ms (`tests/test_perf_livetv.py`).

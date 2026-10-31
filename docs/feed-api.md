@@ -582,10 +582,10 @@ Each programme:
 | `thumb` | no | An `http(s)` URL of its picture |
 | `new` | no | `true` for a first airing (XMLTV's `<new/>`): every airing of that episode shows as new, as a real PMS shows them; a film never does |
 
-- **The guide is what the source pushed.** rex keeps every programme of the last push and drops
-  none by age; a real PMS shows the past airings of the day it holds in its guide, so a source
-  sends from some hours back and as far ahead as it knows (a week, as XMLTV guides do), and
-  pushes again as its schedule moves. A push of the item with a `channel` replaces the channel
+- **The guide is what the source pushed.** rex keeps every programme of the last push and lists
+  an airing until three hours after it ends, as a real PMS stops listing its guide's past airings
+  then; so a source sends from some hours back and as far ahead as it knows (a week, as XMLTV
+  guides do), and pushes again as its schedule moves. A push of the item with a `channel` replaces the channel
   and its guide whole; one without `channel` keeps them; `"channel": null` ends the channel.
 - **What clients see** was measured on a PMS with an HDHomeRun and an XMLTV guide (findings,
   "Live TV"): the guide per channel and day, What's On (on now, tonight's new episodes, later,

@@ -17,6 +17,11 @@ recorded guide pushed by a source of three real live HLS channels (`tests/livetv
                and its stop
     android    Plex for Android 2026.21.0 does the same from its Live TV tab (`android_watch_s1434`)
     session    a film tuned and its session read back (`tune_s1434`)
+    browse     what no client recording holds (`browse_s1434`): the provider's search hubs and
+               category hits, its sections and Guide page, a season's episodes, the DVR's device,
+               and the `livetv` owner feature
+    tune2      one tune as Plex Web sends it, without a Plex Pass (`tune2_s1434`): its headers, its
+               activities, the session and its Part key's 404
 
     python3 tests/test_livetv.py      # needs ffmpeg (REX_TRANSCODER, else PATH's)
 """
@@ -52,7 +57,8 @@ UUID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}
 # A database's own numbers and clocks: an airing's, a tag's or a session item's id, when PMS
 # read its guide, and the server's name.
 VOLATILE = {"id", "addedAt", "createdAt", "refreshedAt", "lastSeenAt", "updatedAt", "machineIdentifier", "uuid",
-            "mediaTagVersion", "friendlyName", "timeStamp", "hubKey", "mediaSubscriptionID", "sessionKey"}
+            "mediaTagVersion", "friendlyName", "timeStamp", "hubKey", "mediaSubscriptionID", "sessionKey",
+            "contentChangedAt"}
 
 DVR_OWN = {"lineupTitle", "lineup", "uri", "deviceAuth", "deviceId", "make", "model", "modelNumber", "title", "tuners", "summary"}
 
@@ -155,6 +161,8 @@ def diff(reference, got, path="", out=None):
                 diff(left, right, "%s.%s" % (path, name), out)
             elif name in VOLATILE or (name == "filter" and str(left).startswith("genre=")):
                 continue
+            elif name == "key" and "?genre=" in str(left) and str(left).split("?genre=")[0] == str(right).split("?genre=")[0]:
+                continue  # a tag's id is its database's
             elif name in ("ratingKey", "key") and str(left).isdigit():
                 continue  # PMS mints an item per session or subscription; rex's is the channel's row
             elif normal(left) != normal(right):
@@ -209,6 +217,9 @@ def provider(body):
 
 def replay(port, exchange, query=None):
     headers = [(name, value) for name, value in exchange["headers"]]
+    # A recording made with urllib asked `Connection: close`, which its answer's headers show.
+    if ["Connection", "close"] in exchange.get("answered", []):
+        headers.append(("Connection", "close"))
     return request(port, exchange["method"], exchange["path"], exchange["query"] if query is None else query, headers)
 
 
@@ -228,9 +239,18 @@ def compare(label, port, exchange, tolerated=()):
             if reference["MediaContainer"][name] != got["MediaContainer"][name]:
                 differences.append("%s = %s, reference %s" % (name, got["MediaContainer"][name], reference["MediaContainer"][name]))
         return check(label, not differences, "; ".join(differences[:6]))
-    differences = diff(document(exchange["body"], exchange["type"]), document(body, content_type))
+    reference, got = document(exchange["body"], exchange["type"]), document(body, content_type)
+    hubs = reference.get("MediaContainer", {}).get("Hub", [])
+    if exchange["path"].endswith("/hubs/search") and sum(1 for hub in hubs if hub.get("size")) > 1:
+        # plexav orders the hubs of one search by PMS's unstable sort, which rex runs on the
+        # library's hub order and ranks: right for a search with hits in one hub (`firefly`,
+        # `rex`), not for `news`, whose Movies and Genres hits it ordered unlike the library (its
+        # input order then is unknown). The hubs are compared by type.
+        for side in (reference, got):
+            side.get("MediaContainer", {}).get("Hub", []).sort(key=lambda hub: hub.get("hubIdentifier", ""))
+    differences = diff(reference, got)
     differences = [line for line in differences if line.split(" ")[0].rsplit(".", 1)[-1] not in tolerated]
-    if exchange["path"].startswith("/livetv/dvrs"):
+    if exchange["path"].startswith(("/livetv/dvrs", "/media/grabbers/devices")):
         # The device is rex's sources, not an HDHomeRun: its names, and the settings' help text,
         # are rex's own (CLAUDE.md: whole-sentence help text is rex's wording).
         differences = [line for line in differences if line.split(" ")[0].rsplit(".", 1)[-1] not in DVR_OWN]
@@ -253,8 +273,9 @@ def tunerless(scratch, source, guide):
         answer = push("http://127.0.0.1:%d" % port, source, [source.item(first["number"], first["title"], None)])
         status, _, body = request(port, "GET", "/media/providers", headers=[("Accept", "application/json")])
         container = json.loads(body)["MediaContainer"]
-        check("a live channel without `channel`: one provider, allowTuners false",
-              container["size"] == 1 and provider(body) is None and container["allowTuners"] is False,
+        check("a live channel without `channel`: one provider, allowTuners false, no `livetv` owner feature",
+              container["size"] == 1 and provider(body) is None and container["allowTuners"] is False
+              and "livetv" not in container["ownerFeatures"].split(","),
               json.dumps({"size": container["size"], "allowTuners": container["allowTuners"]}))
         after = {path: request(port, "GET", path, headers=[("Accept", "application/json")]) for path in before}
         for path in before:
@@ -412,14 +433,14 @@ def watch(scratch, source, guide, name, label):
                 check("%s: start.m3u8 names the session's playlist" % label, status == 200 and shape == reference, "%s %s" % (status, lines))
                 decodes(port, "/video/:/transcode/universal/session/%s/base/" % session, scratch, label)
             elif path == "/:/timeline":
-                # A live beat keeps nothing: rex answers `ignore` to each. The reference answered
-                # `complete` to Android's beats at its live edge past 10 s (17448 of 17448 ms), and
-                # `ignore` to Plex Web's at 8000 of 8000: a play rex never completes.
+                # The reference answered `complete` to Android's beats at its live edge once the
+                # one before was under 90% (17448 of 17448 ms after 7427 of 7427), and `ignore` to
+                # Plex Web's 8000 of 8000 after beats at 0: a library item's rule.
                 status, content_type, body = replay(port, exchange, query)
                 state = json.loads(body)["MediaContainer"].get("playbackState") if status == 200 else None
                 reference = json.loads(exchange["body"])["MediaContainer"]["playbackState"]
-                check("%s: a beat at %s of %s ms keeps nothing (reference: %s)" % (label, dict(query).get("time"), dict(query).get("duration"), reference),
-                      state == "ignore", "%s %s" % (status, body[:120]))
+                check("%s: a beat at %s of %s ms is %r, as the reference's" % (label, dict(query).get("time"), dict(query).get("duration"), reference),
+                      state == reference, "%s %s" % (status, body[:120]))
             elif path == "/status/sessions" and json.loads(exchange["body"])["MediaContainer"]["size"]:
                 status, content_type, body = replay(port, exchange, query)
                 reference = json.loads(exchange["body"])["MediaContainer"]["Metadata"][0]
@@ -466,6 +487,63 @@ def session(scratch, source, guide):
         process.wait()
 
 
+def browse(scratch, source, guide):
+    """The provider's pages no client recording holds, asked as Plex Web asks (`browse_s1434`):
+    search hubs and category hits, the sections and the Guide page, a season's episodes, the
+    DVR's device, and the owner features of a server with a DVR."""
+    recorded = fixture("browse_s1434.json.gz")
+    print("browse (the reference at %d)" % recorded["now"])
+    port, process = start_rex(scratch, recorded["now"])
+    try:
+        push_guide(port, source, guide)
+        for exchange in recorded["exchanges"]:
+            if exchange["path"] == "/activities":
+                continue  # the reference's own recordings' activities
+            if exchange["path"] == "/":
+                features = json.loads(exchange["body"])["MediaContainer"]["ownerFeatures"].split(",")
+                _, _, body = request(port, "GET", "/", headers=[("Accept", "application/json")])
+                own = json.loads(body)["MediaContainer"]["ownerFeatures"].split(",")
+                check("a DVR names the `livetv` owner feature and not `dvr`, as plexav without a Plex Pass",
+                      "livetv" in features and "dvr" not in features and "livetv" in own and "dvr" not in own, ",".join(name for name in own if not UUID.match(name)))
+                continue
+            compare(label_of(exchange), port, exchange)
+    finally:
+        process.kill()
+        process.wait()
+
+
+def tune2(scratch, source, guide):
+    """One tune as Plex Web sends it, to plexav without a Plex Pass (`tune2_s1434`): the answer and
+    its headers, the session's activities, the session, and its Part key, which plexav answers
+    404 whichever client the key names."""
+    recorded = fixture("tune2_s1434.json.gz")
+    print("tune2 (the reference at %d)" % recorded["now"])
+    port, process = start_rex(scratch, recorded["now"])
+    try:
+        push_guide(port, source, guide)
+        exchanges = recorded["exchanges"]
+        uuid, _ = tune(port, exchanges[0], "Plex Web, no Plex Pass")
+        recorded_uuid = UUID.search(exchanges[0]["body"]).group(0)
+        subscription = re.search(r'MediaSubscription key="(\d+)"', exchanges[0]["body"]).group(1)
+        for exchange in exchanges[1:]:
+            path = exchange["path"].replace(recorded_uuid, uuid or "none")
+            if exchange["path"] == "/activities":
+                status, _, body = replay(port, dict(exchange, path=path))
+                mine = json.loads(body)["MediaContainer"].get("Activity", [])
+                theirs = [row for row in json.loads(exchange["body"])["MediaContainer"]["Activity"]
+                          if row.get("Context", {}).get("subscriptionID") == subscription]
+                wipe = lambda rows: sorted([dict(row, uuid=None, Context={name: value for name, value in row["Context"].items()
+                                                                          if name not in ("subscriptionID", "transcode_session")})
+                                            for row in rows], key=lambda row: row["type"])
+                check("/activities lists the session's grab and its subscription's refresh, as plexav",
+                      wipe(mine) == wipe(theirs), json.dumps(mine)[:300])
+                continue
+            compare(label_of(dict(exchange, path=exchange["path"].replace(recorded_uuid, "<uuid>"))), port, dict(exchange, path=path))
+    finally:
+        process.kill()
+        process.wait()
+
+
 def main():
     if not FFMPEG or not FFPROBE:
         print("SKIP: no ffmpeg (set REX_TRANSCODER)")
@@ -475,12 +553,13 @@ def main():
     source = LiveSource(FFMPEG, FFPROBE, free_port(), root=os.path.join(scratch, "source"))
     try:
         source.wait()
-        wanted = sys.argv[1:] or ["tunerless", "reads", "web", "android", "session"]
+        wanted = sys.argv[1:] or ["tunerless", "reads", "browse", "web", "android", "session", "tune2"]
         for phase in wanted:
             {"tunerless": lambda: tunerless(scratch, source, guide), "reads": lambda: reads(scratch, source, guide),
              "web": lambda: watch(scratch, source, guide, "web_watch_s1434.json.gz", "Plex Web"),
              "android": lambda: watch(scratch, source, guide, "android_watch_s1434.json.gz", "Plex for Android"),
-             "session": lambda: session(scratch, source, guide)}[phase]()
+             "session": lambda: session(scratch, source, guide), "browse": lambda: browse(scratch, source, guide),
+             "tune2": lambda: tune2(scratch, source, guide)}[phase]()
     finally:
         source.close()
         if os.environ.get("REX_KEEP_TMP"):

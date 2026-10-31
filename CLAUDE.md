@@ -566,6 +566,7 @@ python3 tests/test_perf_part_read.py        # a byte read finds its Part without
 python3 tests/test_perf_search_typo.py      # a misspelt search answers in milliseconds and holds no other request
 python3 tests/test_perf_search_rank.py      # a search for "the" ranks thousands of hits keyed once a row (the web client's request)
 python3 tests/test_perf_feed_listing.py     # a source's listing and a snapshot's end read no row from disk and hold no Plex request
+python3 tests/test_perf_livetv.py           # a lineup of 300 channels a week deep: the grid and lineup in milliseconds, holding no Plex request
 python3 tests/test_perf_bandwidth.py        # three days of per-second byte counts: a day of seconds kept, older ones per hour, the graph fast
 python3 tests/test_manager.py               # rex manager end to end: create, start, crash restart, give-up, restore; starts its own
 python3 tests/test_concurrency.py           # barrier races, 32-thread load, backlog, --state kills, reaper, slow sockets; ~4 min
