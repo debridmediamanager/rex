@@ -14,7 +14,7 @@
 
 https://github.com/user-attachments/assets/541345b9-1cdd-4411-b536-2beeba9b0204
 
-Your movies and shows stay on a debrid service, a Usenet provider or any web server. rex shows them to the Plex apps as a normal Plex server, and when you press play it streams the file straight from where it lives. Nothing is downloaded first and nothing is scanned: a title appears as soon as its source tells rex about it.
+Your movies and shows stay on a debrid service, a Usenet provider or any web server. rex shows them to the Plex apps as a normal server, and when you press play it streams the file straight from where it lives. Nothing is downloaded first and nothing is scanned: a title appears as soon as its source tells rex about it.
 
 | | |
 |---|---|
