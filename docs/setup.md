@@ -79,8 +79,11 @@ under that directory in its `config.yml`, beside the directory's filters:
 directories:
   anime:
     rex_shows: Anime          # a show library titled Anime
-    rex_movies: Anime Movies  # and a movie library; either one alone is fine
+    rex_movies: Anime Movies  # and a movie library
 ```
+
+Give a directory both: DMM places some of its files as films and some as episodes, and a kind
+with no title of its own goes to Movies or TV Shows.
 
 zurg sends it when it registers (step 6), and rex makes the libraries then and moves what it
 already shows from that directory into them as it is: watch state, Fix Match and edits included.
@@ -94,7 +97,9 @@ rex keeps everything clients change (watch state, edits, playlists, collections,
 history, preferences), and each source's registration, in the same `rex.db`, written as it
 changes. It holds the sources' credentials, so keep it and its backups private. Back it up
 with the server stopped by copying `rex.db` with its `rex.db-wal` and `rex.db-shm` (the way on Windows, which has no `sqlite3`), or with `sqlite3 rex.db ".backup rex.db.bak"`; in Docker,
-`docker exec rex sqlite3 /config/rex.db ".backup /config/rex.db.bak"`.
+`docker exec rex sqlite3 /config/rex.db ".backup /config/rex.db.bak"`. Copy `claim_state.json`
+(step 5) and `rex-direct.json` (step 7) beside it once they exist; [step 9](#9-later-restore-move-remove)
+restores them.
 
 ### 4. First start, on your LAN
 
@@ -167,8 +172,10 @@ You then watch signed in as yourself, with your own watch state. Fix Match works
 the account rex is claimed with: rex refuses it (403) to the accounts it is shared with, as a
 real Plex Media Server does.
 
-A claimed rex refuses another claim (409). To move it to another account, stop it, remove
-`claim_state.json` and claim again.
+A claimed rex refuses another claim (409). To move it to another account (the fresh one was
+lost or banned), stop it, remove `claim_state.json`, start it, claim again and share again. The
+library, Fix Match, edits and the rex-direct name stay; each shared account's watch state comes
+back once rex is shared with it again, and the old owner's passes to the new one.
 
 ### 6. Point a source at it
 
@@ -182,7 +189,8 @@ rex_url: http://<rex's LAN IP>:32400
 dmm_api_key: <your DMM API key>         # optional sponsor key: DMM, not the name, says what each file is (step 2)
 ```
 
-Running two zurgs? Give each a name of its own with `rex_source: rd` and `rex_source: ad`. A
+`rex_url` is rex's plain `http://` LAN address, never an HTTPS one from step 7: the feed answers
+only rex's own networks. Running two zurgs? Give each a name of its own with `rex_source: rd` and `rex_source: ad`. A
 directory that is to be a library of its own gets `rex_shows`/`rex_movies` under it (step 3).
 
 rex's LAN IP works from the same machine, another one and a container alike. Restart
@@ -200,10 +208,19 @@ With a `dmm_api_key`, up to about 20 releases a minute come from DMM's stored de
 zurg tries a failed probe again a day later, so a large library fills over hours. **Analyze & Tag
 Library** on zurg's dashboard (or `POST /torrents/analyze`) retries failed probes at once.
 
+**Deleting in a Plex app deletes at the source.** The claiming account's delete of a film or
+episode first has the source delete its files (a WebDAV `DELETE`; zurg then removes the torrent
+from the debrid account once none of its files is left), and the row goes only once they are
+gone. Shared accounts cannot delete (403). Settings, Library, Show Advanced, **Allow media
+deletion** off makes rex refuse every delete. A file a source removes goes to the trash as on a
+real PMS: kept, unavailable, back on its key if pushed again, until **Empty Trash** or **Empty
+trash automatically after every scan** (off) removes it.
+
 ### 7. Reach it from outside: HTTPS and the announce
 
 app.plex.tv connects only to an HTTPS address that plex.tv lists for the server, even at
-home, and the other Plex apps outside your LAN prefer one. rex has no `*.plex.direct`
+home, and the other Plex apps outside your LAN prefer one. `http://<rex's LAN IP>:32400/web` is
+not Plex Web: rex has no web app, and that page only says whether it is claimed and where to watch. rex has no `*.plex.direct`
 certificate, so app.plex.tv cannot use the LAN address plex.tv lists for it. The
 simplest address is rex-direct, DMM's own plex.direct. Your own hostname works too. Either
 way rex terminates TLS itself, on the same port as plain HTTP.
@@ -322,7 +339,7 @@ launchctl load ~/Library/LaunchAgents/com.rex.plist
 `launchctl kickstart -k gui/$(id -u)/com.rex` restarts it. To run several servers on one host, use
 `rex manager` (below).
 
-To update a release, unpack the newer archive with `--strip-components=1` in the same
+rex never updates itself. To update a release, unpack the newer archive with `--strip-components=1` in the same
 folder and restart rex. It replaces `rust/`, `data/`, `examples/` and the docs, and leaves
 `rex.db`, `rex.env`, `run.sh`, `claim_state.json` and `rex-direct.json` alone. A checkout
 updates with `git pull` and the build in step 1. In Docker, `docker compose pull &&
@@ -330,6 +347,28 @@ docker compose up -d`.
 
 rex logs Plex requests only under `--verbose` (source and feed calls always), and masks `X-Plex-Token` values (not the
 single-use claim token); the log still names your titles and addresses, so keep it private.
+
+### 9. Later: restore, move, remove
+
+- **Restore a backup:** stop rex, delete `rex.db`, `rex.db-wal` and `rex.db-shm`, copy the
+  backup in as `rex.db` with `claim_state.json` and `rex-direct.json`, and start rex. An old
+  `rex.db-wal` left beside a restored `rex.db` is applied on start and undoes the restore.
+- **Move rex to another machine:** stop the old one for good, unpack rex on the new one with
+  the backup in its folder, and start it there: the same server, claimed and shared. Point each
+  source at the new LAN IP (zurg's `rex_url`), and move the port forward; the rex-direct name
+  stays and follows the new public IP.
+- **Which build:** rex has no version command. The nightly's date is in its download's name and
+  is the binary's file date (`ls -l rust/target/release/rex`). The Plex version apps show is the
+  current Plex Media Server's, which rex reports on purpose so the apps treat it as up to date.
+- **Start over:** `DELETE /rex/sources/<name>` (step 2) and a restart of the source refills its
+  items, dropping their watch state. From nothing: stop rex, delete `rex.db*`,
+  `claim_state.json` and `rex-direct.json`, start it, claim it again (step 5).
+- **Remove rex:** stop and remove its service (on Windows also `Unregister-ScheduledTask rex` and
+  `Remove-NetFirewallRule -DisplayName rex, "rex discovery"`), remove `rex_url` from zurg's
+  config, remove the server from the fresh account in app.plex.tv (Settings, Authorized Devices,
+  Servers), and delete the folder.
+- **Help:** the [Discord](https://discord.com/invite/7u4YjMThXP)'s rex-support forum;
+  [Getting help](https://notes.debridmediamanager.com/guides/remote-help/) says what to include.
 
 ### Windows
 
@@ -379,12 +418,7 @@ and `curl.exe` for `curl`. Four things differ:
 this section is for a Linux host. On macOS and Windows, Docker Desktop runs containers inside a
 virtual machine, so host networking, LAN discovery and the GPU do not work there as they do on
 Linux: run the release build instead.
-It is private, like zurg's image: log in with a classic GitHub token that has
-`read:packages` and `repo`, the same as for zurg's image.
-
-```bash
-docker login ghcr.io -u YOUR_GITHUB_USERNAME
-```
+The image is private, so a pull may be refused; the release download works for everyone.
 
 Everything rex writes (`rex.db`, `claim_state.json`, `rex-direct.json`, Plex's metadata
 cache) goes to `/config`.

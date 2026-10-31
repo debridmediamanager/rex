@@ -56,7 +56,7 @@ cargo build --release --manifest-path rust/Cargo.toml
 
 Both put rex at `rust/target/release/rex` (in `~/rex`, or in the clone).
 
-Or run the Docker image, `ghcr.io/debridmediamanager/rex:nightly` (private, like zurg's; the download above is not): [docs/setup.md](docs/setup.md#docker) has a compose file.
+Or run the Docker image, `ghcr.io/debridmediamanager/rex:nightly`: [docs/setup.md](docs/setup.md#docker) has a compose file. The image is private, so a pull may be refused; the download above works for everyone.
 
 On Windows use `rust\target\release\rex.exe` where the steps say `rust/target/release/rex`, and `curl.exe` where they say `curl` (Windows PowerShell's own `curl` rejects `-X`). Windows Firewall keeps your network out of rex until you let it in, once, in PowerShell run as administrator:
 
@@ -75,9 +75,9 @@ rust/target/release/rex
 
 `<rex's LAN IP>` in the next steps is the rex machine's address on your home network, such as `192.168.1.20` (`hostname -I` on Linux, `ipconfig getifaddr en0` on macOS, **IPv4 Address** in `ipconfig` on Windows). Every command on this page uses it, run on the rex machine or anywhere else at home.
 
-The first start makes `rex.db` with two empty libraries, Movies and TV Shows (rename them in Plex, or add more with Add Library), and names the server after the machine (rename it in Plex's Settings). Files under a `movies` directory go to Movies and files under `shows` go to TV, whichever source they come from, unless the source placed a file as the other kind. A file under any other directory, like `anime`, goes to TV if its source placed it as an episode and to Movies otherwise. To give a directory libraries of its own, add `rex_shows: Anime` and/or `rex_movies: Anime Movies` under it in zurg's `config.yml` (step 4): rex makes them when zurg connects and moves what that directory already has into them as it is, watch history, Fix Match and edits included. Rename them in Plex as you like. Delete one and it stays deleted, its files going back to Movies and TV Shows, until you add it again with Add Library, whose folder list shows zurg's directories.
+The first start makes `rex.db` with two empty libraries, Movies and TV Shows (rename them in Plex, or add more with Add Library), and names the server after the machine (rename it in Plex's Settings). Files under a `movies` directory go to Movies and files under `shows` go to TV, whichever source they come from, unless the source placed a file as the other kind. A file under any other directory, like `anime`, goes to TV if its source placed it as an episode and to Movies otherwise. To give a directory libraries of its own, add both `rex_shows: Anime` and `rex_movies: Anime Movies` under it in zurg's `config.yml` (step 4), since DMM places some of its files as films and some as episodes and a kind with no title of its own goes to Movies or TV Shows: rex makes them when zurg connects and moves what that directory already has into them as it is, watch history, Fix Match and edits included. Rename them in Plex as you like. Delete one and it stays deleted, its files going back to Movies and TV Shows, until you add it again with Add Library, whose folder list shows zurg's directories.
 
-`rex.db` holds your library, watch history and your sources' logins. Back it up with `sqlite3 rex.db ".backup rex.db.bak"` (Windows has no `sqlite3`: stop rex with `Stop-Process -Name rex` and copy `rex.db` with its `rex.db-wal` and `rex.db-shm`) and keep the backups private.
+`rex.db` holds your library, watch history and your sources' logins. Back it up with `sqlite3 rex.db ".backup rex.db.bak"` (Windows has no `sqlite3`: stop rex with `Stop-Process -Name rex` and copy `rex.db` with its `rex.db-wal` and `rex.db-shm`), together with `claim_state.json` and `rex-direct.json` once they exist, and keep the backups private. [Later: restore, move, remove](docs/setup.md#9-later-restore-move-remove) puts them back.
 
 Until you add it to a Plex account in step 3 rex serves no Plex app: it answers only its claim and, from this machine, your home network and Tailscale, your sources (step 4).
 
@@ -106,17 +106,21 @@ rex_url: http://<rex's LAN IP>:32400
 dmm_api_key: <your DMM API key>   # optional: DMM's exact matches
 ```
 
+`rex_url` is that plain `http://` address, never an HTTPS one from step 5: rex takes pushes only from its own networks.
+
 `dmm_api_key` is optional, the key you get by sponsoring DMM. With it zurg asks DMM which movie or episode each file is. Without it zurg works that out from the release name: it looks the title up in DMM's free title search and reads the season and episode off each file name (`S01E02`). That matches fewer titles, and an anime whose episodes are numbered across the whole series can be matched as the show, but its episodes stay in file order. A release it cannot match keeps its file name, with episodes in file order.
 
 zurg tells rex where its files are and how to log in to them, then sends its whole library and every change as it happens. A movie or episode shows up once zurg has analyzed it, which zurg starts as soon as its library has loaded.
 
 Only this machine, your home network and Tailscale can push to rex's library or delete what a source pushed. A tunnel or reverse proxy running on the rex machine (frp, Caddy, Tailscale Funnel) looks local to rex, so block `/rex/` in it. A router that gives outside visitors its own address makes them look local too, which opens the feed to the internet. Running two zurgs? Give each a name of its own with `rex_source: rd` and `rex_source: ad`.
 
+Signed in as the fresh account, deleting a title in a Plex app deletes its file at its source too: for zurg, from your debrid account. Accounts rex is shared with cannot delete. Settings, Library, Show Advanced, **Allow media deletion** turns it off. A file a source removes goes to the library's trash, as in Plex.
+
 Anything else registers itself the same way: your own app ([rex with your own app](https://notes.debridmediamanager.com/rex/any-source/)) or an addon for YouTube channels, home videos or Stremio catalogs ([Building rex addons](https://notes.debridmediamanager.com/rex/addons/)).
 
 **5. Use it outside your home**
 
-app.plex.tv only connects to an HTTPS address, even at home, and the other Plex apps outside your home prefer one. rex has no relay so the address has to be reachable from the internet.
+app.plex.tv only connects to an HTTPS address, even at home, and the other Plex apps outside your home prefer one. `http://<rex's LAN IP>:32400/web` is not Plex Web: rex has no web app, and that page only says whether it is claimed and where to watch. rex has no relay so the address has to be reachable from the internet.
 
 The simplest way is rex-direct, which is on by default. Forward rex's port (32400) on your router to the rex machine. That is all: once claimed, rex gets a name of its own, `<hash>.rex-direct.debridmediamanager.com`, and a certificate for it from DMM, and announces it. The first certificate can take a few minutes. The name points at your public IP, and a new IP is picked up on its own. One Plex account can hold up to ten rex-direct names. Behind CGNAT it cannot work, because nothing outside reaches your router's port. At home, Plex apps can pick that name over the LAN address and app.plex.tv has no other address it can use unless you announce an HTTPS address of your own. So at home your router has to send the connection straight back to rex, or your home network's DNS has to point the name at rex: the check below shows which you need. If your router forwards another outside port to rex, start rex with `REX_DIRECT_PORT` set to that port. `REX_DIRECT_URL=off` turns rex-direct off.
 
@@ -146,7 +150,7 @@ rex answers how many titles it marked watched, in progress and rated, and how ma
 
 To keep it running, start step 2's command, with any flags from step 5, as a service: [the full guide](docs/setup.md#8-run-it-as-a-service) has the systemd unit, a LaunchAgent for macOS, a scheduled task for Windows, and a way to run several servers on one machine.
 
-To update, unpack a newer build into `~/rex` as in step 1 and restart rex. On Windows stop rex first, as for a backup: Windows will not replace a running `rex.exe`. It replaces `rust/`, `data/`, `examples/` and the docs, and leaves `rex.db`, `rex.env`, `run.sh`, `claim_state.json` and `rex-direct.json` alone. With Docker, `docker compose pull && docker compose up -d`.
+rex never updates itself. To update, unpack a newer build into `~/rex` as in step 1 and restart rex. On Windows stop rex first, as for a backup: Windows will not replace a running `rex.exe`. It replaces `rust/`, `data/`, `examples/` and the docs, and leaves `rex.db`, `rex.env`, `run.sh`, `claim_state.json` and `rex-direct.json` alone. With Docker, `docker compose pull && docker compose up -d`. Restoring a backup, moving rex, a lost Plex account, which build you run and removing rex: [Later: restore, move, remove](docs/setup.md#9-later-restore-move-remove).
 
 ## For developers
 
