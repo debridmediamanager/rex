@@ -1,6 +1,6 @@
 # The feed API: sources push items to rex
 
-rex does not list, scan or query any library. A **source** (zurg, or anything else
+rex does not list, scan or query any library. A **source** (zurg, rex-stremio, or anything else
 that serves files over HTTP) pushes the items it holds, and rex turns
 them into library rows on keys that never change. The feed is rex's own API, not an
 emulated Plex route: what was measured on a real PMS is marked where it applies (what a row
@@ -53,7 +53,7 @@ internet, which needs a token once rex is claimed, but not the feed.
 ### `PUT /rex/sources/{name}`
 
 ```json
-{"url": "http://127.0.0.1:9999/dav", "user": "zurg-user", "password": "zurg-password",
+{"url": "http://127.0.0.1:9999/dav", "user": "dav-user", "password": "dav-password",
  "directories": [{"name": "anime", "shows": "Anime", "movies": "Anime Movies"}, {"name": "wrestling", "shows": "Wrestling"}]}
 ```
 
@@ -341,12 +341,12 @@ What the fields do:
   leaves it where the last one put it. A person's Fix Match still wins over a placement.
 - **Identification.** rex identifies a file only by its source's placement or by a TMDB id set
   by hand (`ids.tmdb` with no `kind`: a title of its library's kind), trusted as pushed and
-  checked against nothing, and never by its name (`identify.rs`). zurg asks DMM what each file
-  is. Plex's matcher is asked for its guid by the title's external ids, and its answer
+  checked against nothing, and never by its name (`identify.rs`). How the source decides is its
+  own: zurg, for one, asks DMM. Plex's matcher is asked for its guid by the title's external ids, and its answer
   -- and, for an episode, its season's and its own row -- is everything the row shows: title,
   summary, artwork, genres, people. rex reads no TMDB. Identification searches nothing (Fix Match,
   a person's, is the only search, through Plex's matcher). An IMDb id with no `kind` names
-  nothing: zurg has DMM place a hand-set IMDb id. An identification that names nothing never
+  nothing: the source places it first, as zurg has DMM place a hand-set IMDb id. An identification that names nothing never
   takes away a title a row already has; a title Plex does not know keeps the name it was pushed
   with.
 - **Unplaced.** An item nothing identifies is shown unmatched, for Fix Match: a film titled as

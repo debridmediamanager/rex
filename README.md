@@ -28,7 +28,7 @@ Your movies and shows stay on a debrid service, a Usenet provider or any web ser
 - **Looks like any other Plex server.** Posters, summaries, cast, seasons and episodes from Plex's own metadata. Watched state, Continue Watching, playlists, collections, edits and Fix Match all work and survive a restart.
 - **Original quality, straight from the source.** With [jellyfin-ffmpeg](docs/setup.md#which-ffmpeg) installed rex also converts what a device cannot play; on a small Intel GPU a converted 1080p film starts in about 2 seconds.
 - **Subtitles that fit.** Search Subtitles uses Plex's own provider. rex checks the one you pick against a text subtitle in the file, or its audio when FFmpeg is installed, and fixes the timing when it is off.
-- **Many sources, one library.** Two zurgs on two debrid accounts, or zurg and an addon, fill the same Movies and TV Shows libraries.
+- **Many sources, one library.** Your debrid accounts, your Stremio addons and an app of your own can all fill the same Movies and TV Shows libraries.
 - **No Plex Pass.** Remote playback in Plex Web and converting video work on free accounts. So do movie editions, the server Dashboard, Downloads and, with FFmpeg, intro and credits skipping ([what works](docs/setup.md#movie-and-tv-capabilities)).
 - **Free for personal use**, with the source code public and nightly builds.
 
@@ -42,8 +42,8 @@ Pick the guide for what you have.
 
 | You have | Guide |
 |---|---|
-| A debrid account or Usenet | [rex with zurg](https://notes.debridmediamanager.com/rex/with-zurg/) |
-| Stremio addons | [rex with your Stremio addons](https://notes.debridmediamanager.com/rex/stremio/), free, with no zurg and no sponsorship |
+| Your debrid library or Usenet, through zurg | [rex with zurg](https://notes.debridmediamanager.com/rex/with-zurg/) |
+| Stremio addons | [rex with your Stremio addons](https://notes.debridmediamanager.com/rex/stremio/), free, with no sponsorship |
 | Files your own app serves over HTTP | [rex with your own app](https://notes.debridmediamanager.com/rex/any-source/) |
 | A Plex server today | [Move from Plex to rex](https://notes.debridmediamanager.com/rex/from-plex/) |
 
@@ -52,7 +52,7 @@ In short:
 1. **Get it.** [Download](https://github.com/debridmediamanager/rex/releases) the newest build for Linux (glibc 2.35 or newer, so Ubuntu 22.04 and up), macOS or Windows, or build it with Rust.
 2. **Start it.** It makes an empty Movies and an empty TV Shows library.
 3. **Claim it** with a code from [plex.tv/claim](https://www.plex.tv/claim) on a fresh free Plex account, and share it with your own. At your own risk: rex is not made by Plex, and Plex could act against the account that claims it.
-4. **Point a source at it.** For zurg that is `rex_url: http://<rex's LAN IP>:32400` in its `config.yml`, then restart zurg. Your own app or an addon registers itself the same way.
+4. **Point a source at it.** Give it `http://<rex's LAN IP>:32400` and it registers itself: for zurg that is `rex_url` in its `config.yml`, for rex-stremio **rex's address** on its settings page, for your own app the [feed API](docs/feed-api.md).
 5. **Forward port 32400** to rex. rex-direct then gives it an HTTPS address of its own, for use away from home and in app.plex.tv, which needs HTTPS even at home. [Check it](docs/setup.md#7-reach-it-from-outside-https-and-the-announce) from home and from a phone off Wi-Fi.
 
 You need rex nightly 2026.10.25 or newer and, for zurg, zurg nightly 2026.10.27 or newer (a sponsor build. [gatekeeper](https://gatekeeper.debridmediamanager.com/) gives your GitHub account access). [docs/setup.md](docs/setup.md) has every command, Windows, Docker, running it as a service, updates and a troubleshooting table.
@@ -77,8 +77,8 @@ rex reads no media from disk. A source (zurg, an addon or your own app) tells re
 ## Limits
 
 - Movies and TV only. Music and photo libraries stay empty. There is no tuner or DVR, though an addon can bring live channels.
-- A title shows up only once its source has probed it. zurg's first pass over a big library takes a few hours.
-- Away from home rex needs an address of its own: rex-direct, or a certificate for a hostname you own. rex has no relay, so behind CGNAT use Tailscale or a small VPS ([how](https://notes.debridmediamanager.com/rex/with-zurg/)).
+- A title shows up only once its source has probed it. A source's first pass over a big library can take a few hours.
+- Away from home rex needs an address of its own: rex-direct, or a certificate for a hostname you own. rex has no relay, so behind CGNAT use Tailscale or a small VPS ([how](https://notes.debridmediamanager.com/rex/any-source/#use-it-outside-your-home-optional)).
 - Downloads for offline viewing leave text subtitles out.
 - Remote playback on free accounts is checked in Plex Web only; the other Plex apps have not been tested away from home on free accounts.
 - It started as an experiment and got further than expected. It is not a product and does not try to replace Plex.

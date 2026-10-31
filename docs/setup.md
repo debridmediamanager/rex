@@ -17,7 +17,7 @@ HTTPS address. rex starts once (step 4), and nothing after that needs a restart.
 | A Linux, macOS or Windows host | rex is one binary with no other runtime dependencies |
 | 1 GB of RAM | with 4,062 movies and 656 shows (34,678 episodes) rex used under 500 MB while it started and about 730 MB while the library was browsed; converting video takes more |
 | rex nightly 2026.10.25 or newer | download it ([step 1](#1-get-it)), or build it with Rust 1.89 or newer (rustup) or Docker (below) |
-| One or more byte sources | [zurg](https://zurg.debridmediamanager.com/) nightly 2026.10.27 or newer (zurg v1.0.0 has no rex feed), or any HTTP server that serves the files plus something that pushes them to rex's feed |
+| One or more sources | anything that serves the files over HTTP and pushes them to rex's feed: [rex-stremio](https://github.com/debridmediamanager/rex-stremio) for Stremio addons, [zurg](https://zurg.debridmediamanager.com/) nightly 2026.10.27 or newer for a debrid account or Usenet (zurg v1.0.0 has no rex feed), or your own |
 | An HTTPS address | only for use outside your LAN and in app.plex.tv: rex-direct, on by default once claimed (step 7), or a certificate for a hostname you control (a `tailscale cert`, Let's Encrypt) |
 | FFmpeg | optional, for [transcoding](#transcoding) |
 
@@ -69,9 +69,10 @@ redirects are handled, and as many sources as you like feed the same libraries. 
 each registration, credential included, in `rex.db`, so a restart keeps playing before the
 source registers again.
 
-zurg does both with nothing but `rex_url` in its `config.yml` (step 6), and says what each file
-is from its name; add `dmm_api_key` so DMM says it instead. Anything else registers and pushes the same way:
-[`docs/feed-api.md`](feed-api.md) is the full contract, for writing a pusher of your own.
+The source also says what each file is; rex reads nothing off a name. Every source registers
+and pushes the same way, and [`docs/feed-api.md`](feed-api.md) is the full contract, for writing
+one of your own. zurg, for one, does both with nothing but `rex_url` in its `config.yml`
+(step 6), and asks DMM what each file is.
 
 Registering and pushing take no token, so a source may name rex by address or host name.
 They answer only this machine, your home network and Tailscale, so forwarding rex's port for
@@ -93,8 +94,9 @@ to a show library, a movie under `shows` to a movie library. An item in no libra
 goes to the first library of its kind: one its source placed as an episode to a show library,
 anything else, unplaced files included, to a movie library.
 
-**A library of its own for a directory** (anime, wrestling, a 1080p movies folder) is set in zurg,
-under that directory in its `config.yml`, beside the directory's filters:
+**A library of its own for a directory** (anime, wrestling, a 1080p movies folder) is declared
+by the source, as `directories` when it registers ([`feed-api.md`](feed-api.md#libraries-a-source-declares)).
+In zurg it is set under that directory in its `config.yml`, beside the directory's filters:
 
 ```yaml
 directories:
@@ -106,13 +108,13 @@ directories:
 Give a directory both: DMM places some of its files as films and some as episodes, and a kind
 with no title of its own goes to Movies or TV Shows.
 
-zurg sends it when it registers (step 6), and rex makes the libraries then and moves what it
+The source sends it when it registers (step 6), and rex makes the libraries then and moves what it
 already shows from that directory into them as it is: watch state, Fix Match and edits included.
 An open Plex Web lists them at once under More in its sidebar, where you can pin them. Every
 other directory stays in Movies and TV Shows. Rename the libraries in Plex as you like.
 Delete one and it stays deleted, its directory going back to Movies and TV Shows, until
-you add it again with Add Library, whose folder list shows the directories zurg sent. Removing
-the lines from zurg's config keeps the library.
+you add it again with Add Library, whose folder list shows the directories sources sent.
+Taking a directory out of the source's registration (zurg: its config) keeps the library.
 
 rex keeps everything clients change (watch state, edits, playlists, collections,
 history, preferences), and each source's registration, in the same `rex.db`, written as it
@@ -137,7 +139,7 @@ Plex Media Server runs on the same machine? Add `--port 32500` and use `32500` w
 guide says `32400`, the claim and step 7's port forward included (see LAN discovery below).
 
 The first lines of the log say whether it seeded the catalog, name each source it already
-knows (`source zurg: registered, feed at /rex/feed/zurg/`, or `no source yet`) and the state
+knows (`source <name>: registered, feed at /rex/feed/<name>/`, or `no source yet`) and the state
 file.
 
 Titles, summaries, posters and episode names come from Plex's own metadata once rex is claimed
@@ -150,7 +152,7 @@ Check it answers:
 ```bash
 curl -s http://<rex's LAN IP>:32400/identity      # machineIdentifier, version
 curl -s http://<rex's LAN IP>:32400/rex/sources            # {"size":0} until a source registers
-curl -s http://<rex's LAN IP>:32400/rex/feed/zurg/items     # what zurg pushed, once it has registered
+curl -s http://<rex's LAN IP>:32400/rex/feed/<name>/items   # what the source <name> pushed, once it has registered
 ```
 
 - **LAN discovery.** On port 32400 rex answers Plex's LAN discovery (GDM) on udp/32410 and
@@ -201,16 +203,18 @@ back once rex is shared with it again, and the old owner's passes to the new one
 ### 6. Point a source at it
 
 A source is any program that registers with rex and pushes its files over the feed API
-([`feed-api.md`](feed-api.md)); your own app or an addon does it as below for zurg
-([rex with your own app](https://notes.debridmediamanager.com/rex/any-source/), [Building rex addons](https://notes.debridmediamanager.com/rex/addons/)).
-For a debrid account or Usenet that is zurg. In each zurg's `config.yml` (zurg's [config reference](https://notes.debridmediamanager.com/zurg/reference/config/) has the details):
+([`feed-api.md`](feed-api.md)). Give it `http://<rex's LAN IP>:32400` and it does the rest:
+[rex-stremio](https://notes.debridmediamanager.com/rex/stremio/) takes it as **rex's address** on
+its settings page, your own app or an addon as in [rex with your own app](https://notes.debridmediamanager.com/rex/any-source/)
+and [Building rex addons](https://notes.debridmediamanager.com/rex/addons/).
+For a debrid library or Usenet, zurg is one such source. In each zurg's `config.yml` (zurg's [config reference](https://notes.debridmediamanager.com/zurg/reference/config/) has the details):
 
 ```yaml
 rex_url: http://<rex's LAN IP>:32400
-dmm_api_key: <your DMM API key>         # optional sponsor key: DMM, not the name, says what each file is (step 2)
+dmm_api_key: <your DMM API key>         # optional sponsor key: DMM, not the name, says what each file is
 ```
 
-`rex_url` is rex's plain `http://` LAN address, never an HTTPS one from step 7: the feed answers
+The address a source is given is rex's plain `http://` LAN address, never an HTTPS one from step 7: the feed answers
 only rex's own networks. Running two zurgs? Give each a name of its own with `rex_source: rd` and `rex_source: ad`. A
 directory that is to be a library of its own gets `rex_shows`/`rex_movies` under it (step 3).
 
@@ -220,8 +224,8 @@ each change as it happens. Watch it
 arrive in rex's log (`SOURCES zurg registered at ...`, then `FEED PUT /rex/feed/zurg/snapshot -> 200`) and
 with the `/rex/sources` and `/rex/feed/zurg/items` calls above (a zurg given `rex_source` uses that name).
 
-**An item appears only once zurg has probed it with ffprobe**, because rex lists each
-file with its streams. Items zurg never probed are held, not shown. zurg probes the whole
+**An item appears only once its source has probed it with ffprobe**, because rex lists each
+file with its streams. Items never probed are held, not shown. zurg probes the whole
 library on its own once it has loaded, one release at a time by default (zurg's
 `analysis_workers`), then each new release. It downloads ffprobe at start if it has none; its
 Docker image carries one, and if the download fails, install ffprobe and set `ffprobe_binary`.
@@ -230,7 +234,7 @@ zurg tries a failed probe again a day later, so a large library fills over hours
 Library** on zurg's dashboard (or `POST /torrents/analyze`) retries failed probes at once.
 
 **Deleting in a Plex app deletes at the source.** The claiming account's delete of a film or
-episode first has the source delete its files (a WebDAV `DELETE`; zurg then removes the torrent
+episode first has the source delete its files (a WebDAV `DELETE`; zurg, for one, then removes the torrent
 from the debrid account once none of its files is left), and the row goes only once they are
 gone. Shared accounts cannot delete (403). Settings, Library, Show Advanced, **Allow media
 deletion** off makes rex refuse every delete. A file a source removes goes to the trash as on a
@@ -385,8 +389,8 @@ single-use claim token); the log still names your titles and addresses, so keep 
   items, dropping their watch state. From nothing: stop rex, delete `rex.db*`,
   `claim_state.json` and `rex-direct.json`, start it, claim it again (step 5).
 - **Remove rex:** stop and remove its service (on Windows also `Unregister-ScheduledTask rex` and
-  `Remove-NetFirewallRule -DisplayName rex, "rex discovery"`), remove `rex_url` from zurg's
-  config, remove the server from the fresh account in app.plex.tv (Settings, Authorized Devices,
+  `Remove-NetFirewallRule -DisplayName rex, "rex discovery"`), take rex's address out of each
+  source (zurg: `rex_url`), remove the server from the fresh account in app.plex.tv (Settings, Authorized Devices,
   Servers), and delete the folder.
 - **Help:** the [Discord](https://discord.com/invite/7u4YjMThXP)'s rex-support forum;
   [Getting help](https://notes.debridmediamanager.com/guides/remote-help/) says what to include.
@@ -449,14 +453,14 @@ services:
     image: ghcr.io/debridmediamanager/rex:nightly
     container_name: rex
     restart: unless-stopped
-    network_mode: host        # LAN discovery (GDM), and zurg's registered address reachable as on the host
+    network_mode: host        # LAN discovery (GDM), and each source's registered address reachable as on the host
     devices:
       - /dev/dri:/dev/dri     # an Intel or AMD GPU for converting; leave out where there is none
     volumes:
       - ./config:/config
 ```
 
-zurg's `rex_url` (step 6) and the claim (step 5) are unchanged with host networking. A
+The address you give each source (step 6) and the claim (step 5) are unchanged with host networking. A
 `command:` adds flags, such as step 7's own hostname; its certificates go in `/config` too:
 `--tls-cert /config/host.crt --tls-key /config/host.key`. Without host networking, publish
 `32400:32400`, add `command: --announce-url http://<rex's LAN IP>:32400` (inside its container
@@ -464,7 +468,7 @@ rex knows only the container's address), rename the server in Plex's Settings (i
 after the container's ID), and claim from the Docker host with `curl -X POST "http://localhost:32400/myplex/claim?token=claim-xxxxxxxxxxxx"`:
 a claim addressed to the host's LAN IP reaches rex at the container's own address, and rex
 refuses a `Host` that is not the address it reached. Apps then find rex only once it is claimed, and
-rex must still reach the address zurg registers. The image carries jellyfin-ffmpeg and, on amd64,
+rex must still reach the address each source registers. The image carries jellyfin-ffmpeg and, on amd64,
 Intel's OpenCL runtime for HDR, and rex finds them on its own; `devices` hands it the GPU (an
 NVIDIA card needs the NVIDIA container toolkit and `gpus: all` instead; untested). rex saves its state on `docker stop`.
 
@@ -472,11 +476,11 @@ NVIDIA card needs the NVIDIA container toolkit and `gpus: all` instead; untested
 
 | Symptom | Cause |
 |---|---|
-| A push answers 404 `no such source: PUT /rex/sources/... first` | The source has not registered: update zurg (What you need) |
+| A push answers 404 `no such source: PUT /rex/sources/... first` | The source has not registered: start it again, or update it (zurg: What you need) |
 | Every part read answers 502 | No source is registered (`curl -s http://<rex's LAN IP>:32400/rex/sources`), or rex cannot reach the one that is |
 | A push answers `rejected: no movie or show library holds ...` | No library of that item's kind is left (one was deleted in Plex): add one with Add Library (step 3) |
-| zurg pushed but the library stays empty | Items are held until zurg probes them (step 6) |
-| A directory given `rex_shows`/`rex_movies` has no library | zurg did not send it (`curl -s http://<rex's LAN IP>:32400/rex/sources` lists each source's `directories`), zurg or rex skipped a mistyped entry (its log says why), or a library there was deleted in Plex, which keeps it deleted (the log says `stays deleted`): add it again with Add Library (step 3) |
+| A source pushed but the library stays empty | Items are held until their source probes them (step 6) |
+| A directory given `rex_shows`/`rex_movies` has no library | The source did not send it (`curl -s http://<rex's LAN IP>:32400/rex/sources` lists each source's `directories`), the source or rex skipped a mistyped entry (its log says why), or a library there was deleted in Plex, which keeps it deleted (the log says `stays deleted`): add it again with Add Library (step 3) |
 | A part read answers 502, or 401/403 | rex cannot reach the source's `url` (502), or the source refused its credential (its own status): the log line `PART ... upstream` says which |
 | The server is not in the Plex apps | Not claimed (step 5), or, in app.plex.tv and outside your home, no HTTPS address reachable from the internet (step 7) |
 | A device at home cannot connect, and rex's `heartbeat ... ->` line shows no LAN address or the wrong one | rex announces the private address of the network it reaches the internet through; behind a VPN or a Tailscale exit node that is not your home network. Add `--announce-url http://<rex's LAN IP>:32400` |
@@ -494,7 +498,7 @@ running when the manager stopped is running again when it starts.
 
 ```bash
 rust/target/release/rex manager serve                     # API + page on http://127.0.0.1:32300; prints the admin token once
-rust/target/release/rex manager create den --port 32401   # a source such as zurg fills it once its rex_url names the port
+rust/target/release/rex manager create den --port 32401   # a source fills it once pointed at this port
 rust/target/release/rex manager start den                 # its first start makes its empty library, as a plain rex does
 rust/target/release/rex manager list                      # status | logs | stop | restart | delete [--purge]
 ```
@@ -579,8 +583,8 @@ Deleting preview thumbnails leaves chapter images and markers intact.
 ### Apps downloading straight from the source
 
 By default every byte an app plays passes through rex. Start rex with `--part-mode redirect` and,
-when an app plays a file as it is (direct play) and the source answers with a link elsewhere, such
-as zurg with `disable_stream_proxy: true` and its debrid provider's download link, rex hands the
+when an app plays a file as it is (direct play) and the source answers with a link elsewhere (rex-stremio answers with its stream addon's link,
+zurg, given `disable_stream_proxy: true`, with its debrid provider's download link), rex hands the
 app that link and the app downloads from the provider itself. rex's machine then carries none of
 that stream.
 
