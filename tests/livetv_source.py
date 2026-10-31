@@ -131,16 +131,16 @@ def week(start=None):
     for h in range(24 * 7):
         at = hour + h * 3600
         guide["2.1"].append({"start": at, "end": at + 1800, "title": "Rex Evening News", "summary": "The day's headlines.",
-                             "type": "movie", "categories": ["News"], "new": True})
+                             "type": "movie", "categories": ["News"]})
         episode = h % 14 + 1
         guide["2.1"].append({"start": at + 1800, "end": at + 3600, "title": "Episode %d" % episode, "summary": "Episode %d." % episode,
                              "type": "episode", "show": "Firefly", "season": 1, "episode": episode,
-                             "categories": ["Series", "Drama"], "new": h % 3 == 0})
+                             "categories": ["Series", "Drama"]})
         if h % 2 == 0:
             guide["4.1"].append({"start": at, "end": at + 7200, "title": ["Sintel", "Big Buck Bunny", "Tears of Steel"][h // 2 % 3],
                                  "summary": "A Blender open movie.", "type": "movie", "categories": ["Movie"]})
         guide["7.1"].append({"start": at, "end": at + 3600, "title": "Rex Football Live", "summary": "Live match coverage.",
-                             "type": "movie", "categories": ["Sports", "Football"], "new": True})
+                             "type": "movie", "categories": ["Sports", "Football"]})
     return guide
 
 

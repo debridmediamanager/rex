@@ -566,7 +566,7 @@ so a source that has XMLTV, an M3U's EPG or an addon's schedule turns it into th
   "guide": [
     {"start": "2026-10-31T13:30:00Z", "end": "2026-10-31T14:00:00Z", "title": "Episode 3",
      "summary": "Episode 3.", "type": "episode", "show": "Firefly", "season": 1, "episode": 3,
-     "categories": ["Series", "Drama"], "new": true},
+     "categories": ["Series", "Drama"], "previously_shown": true},
     {"start": 1793455200, "end": 1793457000, "title": "Rex Evening News",
      "summary": "The day's headlines.", "categories": ["News"]}
   ]
@@ -591,7 +591,7 @@ Each programme:
 | `show`, `season`, `episode` | with `type: episode` | The show's title and the episode's numbers |
 | `categories` | no | Its categories (XMLTV's `<category>`): a film's genres, an episode's show's. An episode in `sports` or `news` is on What's On's Sports and News shelves |
 | `thumb` | no | An `http(s)` URL of its picture |
-| `new` | no | `true` for a first airing (XMLTV's `<new/>`): every airing of that episode shows as new, as a real PMS shows them; a film never does |
+| `previously_shown` | no | `true` for a repeat (XMLTV's `<previously-shown />`): every other airing of an episode is a premiere, as a real PMS shows them, `<new />` or not; a film never is |
 
 - **The guide is what the source pushed.** rex keeps every programme of the last push and lists
   an airing until three hours after it ends, as a real PMS stops listing its guide's past airings

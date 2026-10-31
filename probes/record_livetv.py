@@ -94,8 +94,10 @@ def guide(path, held_since):
         categories = [category.text for category in programme.findall("category")]
         if categories:
             entry["categories"] = categories
-        if programme.find("new") is not None:
-            entry["new"] = True
+        # Measured (`listing held`): an episode's airing is a premiere unless it is
+        # `<previously-shown />`; `<new />` changes nothing.
+        if programme.find("previously-shown") is not None:
+            entry["previously_shown"] = True
         channels[programme.get("channel")]["guide"].append(entry)
     return {"source": "plexav guide.xml, airings held from %d" % held_since, "channels": list(channels.values())}
 

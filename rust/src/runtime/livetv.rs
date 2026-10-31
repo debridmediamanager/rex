@@ -94,6 +94,9 @@ struct Airing {
     begins: i64,
     ends: i64,
     programme: usize,
+    /// Pushed `previously_shown` (XMLTV's `<previously-shown />`): an episode's airing that is no
+    /// premiere.
+    repeat: bool,
 }
 
 /// A programme: every airing of one guid.
@@ -107,9 +110,6 @@ struct Programme {
     index: i64,
     categories: Vec<String>,
     thumb: Option<String>,
-    /// Measured: every airing of an episode is a premiere once one of them is pushed `new`
-    /// (plexav's Firefly, `<new/>` on one airing in three, shows `premiere` on all of them).
-    premiere: bool,
     /// Its airings, by start.
     airings: Vec<usize>,
 }
@@ -311,8 +311,8 @@ pub(super) fn channel_field(value: &Value) -> Result<Value, String> {
             }
             programme.insert("thumb".to_string(), json!(thumb));
         }
-        if entry.get("new").and_then(Value::as_bool) == Some(true) {
-            programme.insert("new".to_string(), json!(true));
+        if entry.get("previously_shown").and_then(Value::as_bool) == Some(true) {
+            programme.insert("previously_shown".to_string(), json!(true));
         }
         guide.push(Value::Object(programme));
     }
@@ -403,13 +403,20 @@ impl Guide {
         self.channels.len() as i64 + 1 + self.genres.iter().position(|genre| genre == name).unwrap_or(0) as i64
     }
 
+    /// A programme's duration, every Media's too (measured, `listing_held`: Sierra's airings of
+    /// 24 and 30 minutes both say 24): PMS's is the first airing it read; rex's the first held.
+    fn duration(&self, programme: &Programme) -> i64 {
+        let first = self.listed(programme).next().or_else(|| programme.airings.first().map(|at| &self.airings[*at]));
+        first.map_or(0, |airing| (airing.ends - airing.begins) * 1000)
+    }
+
     /// A row's `Media` for one airing.
     fn media(&self, airing: &Airing) -> Value {
         let channel = &self.channels[airing.channel];
         let programme = &self.programmes[airing.programme];
         let mut media = Map::new();
         media.insert("id".to_string(), json!(airing.id));
-        media.insert("duration".to_string(), json!((airing.ends - airing.begins) * 1000));
+        media.insert("duration".to_string(), json!(self.duration(programme)));
         // Measured with a guide that says nothing of picture or sound: SD stereo.
         media.insert("audioChannels".to_string(), json!(2));
         media.insert("videoResolution".to_string(), json!("480"));
@@ -417,8 +424,9 @@ impl Guide {
         media.insert("channelIdentifier".to_string(), json!(channel.number));
         media.insert("channelTitle".to_string(), json!(Self::channel_tag(channel)));
         media.insert("channelVcn".to_string(), json!(channel.number));
-        // Measured: XMLTV's `<new/>` marks an episode a premiere, never a movie.
-        if programme.premiere && programme.episode {
+        // Measured (`listing_held`): every airing of an episode is a premiere but one
+        // `<previously-shown />`; `<new />` changes nothing, and a film never is.
+        if programme.episode && !airing.repeat {
             media.insert("premiere".to_string(), json!("1"));
         }
         media.insert("protocol".to_string(), json!("livetv"));
@@ -478,8 +486,7 @@ impl Guide {
             row.insert("index".to_string(), json!(programme.index));
             row.insert("parentIndex".to_string(), json!(programme.season));
         }
-        let first = airings.first().copied().or_else(|| programme.airings.first().map(|at| &self.airings[*at]));
-        row.insert("duration".to_string(), json!(first.map_or(0, |airing| (airing.ends - airing.begins) * 1000)));
+        row.insert("duration".to_string(), json!(self.duration(programme)));
         row.insert("addedAt".to_string(), json!(self.added));
         if airings.iter().any(|airing| self.on_air(airing)) {
             row.insert("onAir".to_string(), json!(true));
@@ -612,7 +619,8 @@ impl Guide {
         }
         row.insert("ratingKey".to_string(), json!(rating_key(&guid)));
         row.insert("key".to_string(), json!(format!("{}/children", item_key(&guid))));
-        row.insert("skipChildren".to_string(), json!(seasons.len() == 1));
+        // Measured: a show of two seasons skips them too (`listing_order`'s Yak Show).
+        row.insert("skipChildren".to_string(), json!(true));
         row.insert("guid".to_string(), json!(guid));
         row.insert("type".to_string(), json!("show"));
         row.insert("title".to_string(), json!(show));
@@ -788,12 +796,10 @@ impl Runtime {
                     index,
                     categories,
                     thumb: entry.get("thumb").and_then(Value::as_str).map(str::to_string),
-                    premiere: false,
                     airings: Vec::new(),
                 });
                 guide.programmes.len() - 1
             });
-            guide.programmes[programme].premiere |= entry.get("new").and_then(Value::as_bool) == Some(true);
             guide.programmes[programme].airings.push(guide.airings.len());
             guide.by_channel[channel].push(guide.airings.len());
             guide.airings.push(Airing {
@@ -802,6 +808,7 @@ impl Runtime {
                 begins: entry.get("start").and_then(Value::as_i64).unwrap_or(0),
                 ends: entry.get("end").and_then(Value::as_i64).unwrap_or(0),
                 programme,
+                repeat: entry.get("previously_shown").and_then(Value::as_bool) == Some(true),
             });
         }
         Some(guide)
@@ -1477,7 +1484,7 @@ impl Runtime {
         let mut tonight = guide
             .airings
             .iter()
-            .filter(|airing| guide.programmes[airing.programme].premiere && guide.programmes[airing.programme].episode && airing.begins >= evening && airing.begins <= night)
+            .filter(|airing| !airing.repeat && guide.programmes[airing.programme].episode && airing.begins >= evening && airing.begins <= night)
             .map(|airing| (airing.begins, airing.programme))
             .collect::<Vec<_>>();
         tonight.sort();
@@ -1662,7 +1669,6 @@ impl Runtime {
                     index: programme.index,
                     categories: programme.categories.clone(),
                     thumb: programme.thumb.clone(),
-                    premiere: programme.premiere,
                     airings: programme.airings.clone(),
                 },
                 Some(index),
@@ -1681,7 +1687,6 @@ impl Runtime {
             index: 0,
             categories: Vec::new(),
             thumb: None,
-            premiere: false,
             airings: Vec::new(),
         };
         (programme, None)
@@ -2079,7 +2084,7 @@ mod tests {
     #[test]
     fn channel_field_keeps_a_guide_and_refuses_a_bad_one() {
         let kept = channel_field(&json!({"number": "2.1", "title": "Rex News", "guide": [
-            {"start": "2026-10-31T13:30:00Z", "end": 1793455200, "title": "Episode 3", "type": "episode", "show": "Firefly", "season": 1, "episode": 3, "new": true},
+            {"start": "2026-10-31T13:30:00Z", "end": 1793455200, "title": "Episode 3", "type": "episode", "show": "Firefly", "season": 1, "episode": 3, "previously_shown": true},
             {"start": 1793451600, "end": 1793453400, "title": "Rex Evening News", "type": "show", "categories": ["News"]}]}))
         .unwrap();
         assert_eq!(kept["guide"][0]["title"], "Rex Evening News");

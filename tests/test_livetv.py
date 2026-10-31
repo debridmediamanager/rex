@@ -515,9 +515,6 @@ def browse(scratch, source, guide):
         process.wait()
 
 
-UNFIXED = {"premiere", "skipChildren", "duration"}
-
-
 def listed(exchange, body, now):
     """A listing's rows in plexav's order, but each tie's rows by ratingKey and each row's Media
     by start: plexav breaks a tie, and lists a row's airings, in the order it read its XMLTV
@@ -590,7 +587,7 @@ def listings(scratch, source, names=("order", "held", "plexav")):
                           == keys[window["offset"]:window["offset"] + window["size"]])
                     for side in (reference, got):
                         side["MediaContainer"].pop("Metadata", None)
-                differences = [line for line in diff(reference, got) if line.split(" ")[0].rsplit(".", 1)[-1] not in UNFIXED]
+                differences = diff(reference, got)
                 check(label, not differences, "%d: %s" % (len(differences), "; ".join(differences[:6])))
                 if name == "order" and exchange["path"].endswith("/sections/1/all") and not exchange["query"]:
                     # rex's tie: India and Hotel first air at one start, India on the lineup's first channel.

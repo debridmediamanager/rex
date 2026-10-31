@@ -14722,8 +14722,8 @@ percent-encoded (`Big%20Buck%20Bunny`); a `ratingKey` is the guid with every byt
 digit escaped, `.` included (`tv%2Eplex%2Exmltv%3A%2F%2Fmovie%2FBig%2520Buck%2520Bunny`), and a
 `key` is `/tv.plex.providers.epg.xmltv:2/metadata/<ratingKey>`. A movie lists its categories as
 Genre tags by name; an episode none (its show has them all). Every airing of an episode is
-`premiere="1"` once one of its airings is `<new/>` (Firefly's are new one hour in three; all show
-it); a movie never is. An airing's Media says `audioChannels` 2 and `videoResolution` "480" for a
+`premiere="1"` but one `<previously-shown />` (corrected in "The listings' order": `<new/>`, on
+Firefly's one hour in three, was not what made them all premieres); a movie never is. An airing's Media says `audioChannels` 2 and `videoResolution` "480" for a
 guide that says nothing of either, the channel's `channelCallSign`, `channelIdentifier`,
 `channelTitle` (`2.1 Rex News`), `channelVcn` and `channelID` (its lineup place), `beginsAt`,
 `endsAt`, and `onAir` while it is on, on the Metadata too. PMS numbers airings and tags in the
@@ -14924,6 +14924,14 @@ read by hand first, with the same answers.
   now in lineup order; What's On Later's, `/hubs/onlater/all`, the airing each of those runs into:
   plexav's own guide listed each channel's next, both written guides, with a gap after the
   airings on now, nothing.
+- **Three fields of every item, corrected by these guides.** An episode's airing is a premiere
+  (`premiere` "1" on its Media) unless the document says `<previously-shown />`; `<new />` changes
+  nothing (`held`: Quebec Show, unflagged, and Nova Show's `<new />` episode are premieres, its
+  `<previously-shown />` one not; the film Vega's `<new />` none). rex read it off `new`, so a
+  source now pushes `previously_shown` (docs/feed-api.md) and `new` is gone. A show skips its
+  seasons with two of them (`order`'s Yak Show; rex had `skipChildren` only for one). A Media's
+  `duration` is its programme's, not its airing's (`held`: Sierra's airings of 24 and 30 minutes
+  both 24, Uniform's 18 and 30 both 18): PMS's is the first airing it read, rex's the first held.
 - **Unexplained to rex, and what it does.** The document's order is not in a source's push: its
   guides are per channel and kept by start. rex breaks a tie by the order the programmes first
   air, then by the lineup (`India` before `Hotel`), and lists a row's `Media` by start; on plexav's
