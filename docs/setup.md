@@ -483,6 +483,8 @@ rust/target/release/rex manager list                      # status | logs | stop
 Each server gets `managed/servers/<name>/`, whose `rex.db` holds its catalog and its state. `http://127.0.0.1:32300/` is a small page for the same operations (paste
 the admin token from `managed/admin.token`).
 
+![The rex manager page with one server, rex-demo, running](images/rex-manager-page.webp)
+
 Run the manager itself under the init system, so it outlives any shell. macOS (launchd,
 `~/Library/LaunchAgents/com.rex.manager.plist`):
 
