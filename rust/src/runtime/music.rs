@@ -62,6 +62,17 @@ type Named = HashMap<(Option<String>, Option<String>), Option<(Value, Option<Val
 enum Plan {
     New,
     Replace(String),
+    /// Placed where it was, its sidecar lyrics changed.
+    Lyrics(String),
+}
+
+/// A track's lyrics as its row holds them: each sidecar's path and size.
+fn lyric_sources(streams: &[Value]) -> Vec<(String, Option<u64>)> {
+    streams
+        .iter()
+        .filter(|stream| stream.get("streamType").and_then(Value::as_i64) == Some(4))
+        .filter_map(|stream| Some((stream.get("_sourceLyrics")?.as_str()?.to_string(), stream.get("_sourceSize").and_then(Value::as_u64))))
+        .collect()
 }
 
 /// A track's placement as the row keeps it, to tell a push that moves it.
@@ -101,7 +112,13 @@ pub(super) fn upsert_tracks(
                     guard.release(&held);
                     let kept = guard.catalog.get(key).and_then(|row| row.get("_placement")).cloned();
                     if item.media_info.is_none() || kept.as_ref() == Some(&placement(&item)) {
-                        counts.unchanged += 1;
+                        let had = guard.item_streams(key, &source.name, &item.id).map(|streams| lyric_sources(&streams)).unwrap_or_default();
+                        let wanted: Option<Vec<(String, Option<u64>)>> =
+                            item.lyrics.as_ref().map(|lyrics| lyrics.iter().map(|(path, _, size)| (path.clone(), *size)).collect());
+                        match wanted {
+                            Some(wanted) if wanted != had => plans.push((item, section, Plan::Lyrics(key.clone()))),
+                            _ => counts.unchanged += 1,
+                        }
                     } else {
                         plans.push((item, section, Plan::Replace(key.clone())));
                     }
@@ -142,6 +159,18 @@ pub(super) fn upsert_tracks(
         info!("FEED identified album {:?} -> {what}", ids.0.as_deref().or(ids.1.as_deref()).unwrap_or_default());
         named.insert(ids, answer);
     }
+    // Off the lock too: each sidecar's text, read from the source as a Part's bytes are.
+    let mut texts: HashMap<(String, String), String> = HashMap::new();
+    for (item, _, _) in &plans {
+        for (path, _, _) in item.lyrics.iter().flatten() {
+            match super::feed::subtitle_text(source, path) {
+                Ok(text) => {
+                    texts.insert((item.id.clone(), path.clone()), text);
+                }
+                Err(why) => warning!("FEED {} {}: lyrics {path} not read: {why}", source.name, item.id),
+            }
+        }
+    }
     let mut guard = lock(shared);
     let mut sections: Vec<String> = Vec::new();
     // Unplaced tracks are numbered in their album's file order, after what it already holds.
@@ -149,6 +178,14 @@ pub(super) fn upsert_tracks(
     for (item, section, plan) in plans {
         let answer = named.get(&album_ids(&item)).cloned().flatten();
         let key = match &plan {
+            Plan::Lyrics(key) => {
+                if guard.put_lyrics(key, source, &item, &texts) {
+                    counts.updated += 1;
+                } else {
+                    counts.unchanged += 1;
+                }
+                continue;
+            }
             Plan::Replace(key) => {
                 guard.unplace_track(key);
                 Some(key.clone())
@@ -156,7 +193,9 @@ pub(super) fn upsert_tracks(
             Plan::New => None,
         };
         let key = guard.place_track(&section, source, &item, answer.as_ref(), key);
+        guard.put_lyrics(&key, source, &item, &texts);
         match plan {
+            Plan::Lyrics(_) => {}
             Plan::New => {
                 counts.created += 1;
                 guard.push_created_frames(&key);
@@ -172,6 +211,82 @@ pub(super) fn upsert_tracks(
 }
 
 impl Runtime {
+    /// A track's sidecar lyrics on its Part, each an external lyrics Stream as plexav's PMS makes
+    /// one of an `.lrc` or `.txt` beside a track (2026-10-31, `tests/fixtures/music/lyrics.json`):
+    /// `streamType` 4, `codec` and `format` its extension, `provider` the local media agent,
+    /// `LRC` (`LRC (External)` extended, and to Plex Web), a `/library/streams/{id}` key. Its text is kept on it (`_content`); one not
+    /// read keeps the text it had. Answers whether anything changed.
+    fn put_lyrics(&mut self, key: &str, source: &Source, item: &Item, texts: &HashMap<(String, String), String>) -> bool {
+        let Some(wanted) = item.lyrics.as_ref() else {
+            return false;
+        };
+        let (Some(at), Some(old)) = (self.item_part(key, &source.name, &item.id), self.item_streams(key, &source.name, &item.id).map(std::borrow::Cow::into_owned)) else {
+            return false;
+        };
+        let mut streams: Vec<Value> = old.iter().filter(|stream| stream.get("streamType").and_then(Value::as_i64) != Some(4)).cloned().collect();
+        for (path, format, size) in wanted {
+            let had = old.iter().find(|stream| stream.get("_sourceLyrics").and_then(Value::as_str) == Some(path.as_str()));
+            let Some(text) = texts.get(&(item.id.clone(), path.clone())).cloned().or_else(|| had.and_then(|had| had.get("_content")?.as_str().map(str::to_string))) else {
+                continue;
+            };
+            let id = had.and_then(|had| had.get("id")?.as_i64()).unwrap_or_else(|| self.mint_subtitle_ids(1));
+            let title = format.to_ascii_uppercase();
+            streams.push(json!({
+                "id": id, "key": format!("/library/streams/{id}"), "streamType": 4, "codec": format, "format": format,
+                "provider": "com.plexapp.agents.localmedia", "displayTitle": title, "extendedDisplayTitle": format!("{title} (External)"),
+                "_content": text, "_sourceLyrics": path, "_sourceSize": size,
+            }));
+        }
+        if streams == old {
+            return false;
+        }
+        let Some(part) = self.catalog.get_mut(key).and_then(|row| row.pointer_mut(&at)).filter(|part| part.is_object()) else {
+            return false;
+        };
+        let packed = part.as_object_mut().is_some_and(crate::catalog::unpack_part);
+        part["Stream"] = Value::Array(streams);
+        if packed {
+            part.as_object_mut().map(crate::catalog::repack_part);
+        }
+        self.dirty = true;
+        info!("FEED {} {}: {} lyrics file(s) on {key}", source.name, item.id, wanted.len());
+        true
+    }
+
+    /// `GET /library/streams/{id}` of a track's lyrics, as plexav's PMS answers its sidecar
+    /// `.lrc` and `.txt` (2026-10-31): a `Lyrics` document -- JSON when the client asks for JSON,
+    /// XML under `format=xml` -- or else the file itself, as `text/html` (no Accept at all too).
+    pub(super) fn music_lyrics(&self, row: &Value, stream_id: i64, query: &HashMap<String, String>, headers: &HashMap<String, String>) -> Option<Response> {
+        if row.get("type").and_then(Value::as_str) != Some("track") {
+            return None;
+        }
+        let row = crate::catalog::unpacked(row);
+        let stream = row
+            .get("Media")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .flat_map(|media| media.get("Part").and_then(Value::as_array).into_iter().flatten())
+            .flat_map(|part| crate::catalog::part_streams(part).into_owned())
+            .find(|stream| stream.get("id").and_then(Value::as_i64) == Some(stream_id) && stream.get("streamType").and_then(Value::as_i64) == Some(4))?;
+        let text = stream.get("_content").and_then(Value::as_str).unwrap_or_default().to_string();
+        let accept = headers.get("accept").map(String::as_str).unwrap_or_default();
+        let json_asked = accept.contains("json");
+        let xml_asked = query.get("format").map(String::as_str) == Some("xml");
+        if !json_asked && !xml_asked {
+            let mut response = Response::bytes(200, "text/html");
+            response.body = text.into_bytes();
+            return Some(response);
+        }
+        let document = json!({"MediaContainer": {"size": 1, "Lyrics": [lyrics_document(&text, stream.get("format").and_then(Value::as_str) == Some("lrc"))]}});
+        if json_asked {
+            let mut response = Response::bytes(200, "application/json");
+            response.body = document.to_string().into_bytes();
+            return Some(response);
+        }
+        Some(Response::json(200, document))
+    }
+
     /// Whether a section is a music library (`type=artist`).
     pub(super) fn music_section(&self, section: &str) -> bool {
         self.catalog.sections.iter().any(|row| {
@@ -1275,6 +1390,76 @@ fn converted_track_media(direct: &Map<String, Value>, plan: &super::universal::P
         out.insert(field.to_string(), value);
     }
     out
+}
+
+/// A lyrics file as plexav's PMS reads it: an LRC's `[ti:]`, `[ar:]`, `[au:]` and `[by:]` tags
+/// and its timed lines, each ending where the next starts (the last has no end); a text file's
+/// lines untimed, a line it ends with empty (`{}`) as plexav's.
+fn lyrics_document(text: &str, timed: bool) -> Value {
+    let mut tags: HashMap<&str, String> = HashMap::new();
+    let mut lines: Vec<(Option<i64>, String)> = Vec::new();
+    let text = text.strip_prefix('\u{feff}').unwrap_or(text);
+    let raw: Vec<&str> = text.split('\n').map(|line| line.trim_end_matches('\r')).collect();
+    for line in &raw {
+        if !timed {
+            lines.push((None, line.to_string()));
+            continue;
+        }
+        let mut rest = *line;
+        let mut stamps = Vec::new();
+        while let Some(inner) = rest.strip_prefix('[').and_then(|rest| rest.split_once(']')) {
+            let (tag, after) = inner;
+            if let Some((name, value)) = tag.split_once(':').filter(|(name, _)| name.chars().all(|c| c.is_ascii_alphabetic())) {
+                tags.insert(match name { "ti" => "title", "ar" => "artist", "au" => "author", "by" => "by", _ => "" }, value.trim().to_string());
+            } else if let Some((minutes, seconds)) = tag.split_once(':') {
+                if let (Ok(minutes), Ok(seconds)) = (minutes.parse::<i64>(), seconds.parse::<f64>()) {
+                    stamps.push(minutes * 60_000 + (seconds * 1000.0).round() as i64);
+                }
+            }
+            rest = after;
+        }
+        for stamp in stamps {
+            lines.push((Some(stamp), rest.trim().to_string()));
+        }
+    }
+    if timed {
+        lines.sort_by_key(|(stamp, _)| *stamp);
+    }
+    let mut document = Map::new();
+    document.insert("provider".to_string(), json!("com.plexapp.agents.localmedia"));
+    document.insert("minLines".to_string(), json!(0));
+    document.insert("timed".to_string(), json!(timed));
+    for field in ["title", "artist"] {
+        if let Some(value) = tags.get(field) {
+            document.insert(field.to_string(), json!(value));
+        }
+    }
+    document.insert("author".to_string(), json!(tags.get("author").cloned().unwrap_or_default()));
+    document.insert("by".to_string(), json!(tags.get("by").cloned().unwrap_or_default()));
+    let rows: Vec<Value> = lines
+        .iter()
+        .enumerate()
+        .map(|(at, (start, words))| {
+            let end = lines.get(at + 1).and_then(|(next, _)| *next);
+            if words.is_empty() && start.is_none() {
+                return json!({});
+            }
+            let mut span = Map::from_iter([("text".to_string(), json!(words))]);
+            let mut line = Map::new();
+            if let Some(start) = start {
+                line.insert("startOffset".to_string(), json!(start));
+                span.insert("startOffset".to_string(), json!(start));
+                if let Some(end) = end {
+                    line.insert("endOffset".to_string(), json!(end));
+                    span.insert("endOffset".to_string(), json!(end));
+                }
+            }
+            line.insert("Span".to_string(), json!([span]));
+            Value::Object(line)
+        })
+        .collect();
+    document.insert("Line".to_string(), Value::Array(rows));
+    Value::Object(document)
 }
 
 /// `titleSort` after `title` when the sort title differs, as the catalog load writes it

@@ -181,6 +181,12 @@ pub fn client_titles(node: &mut Value, external: &str) {
                 .and_then(Value::as_str)
                 .filter(|title| !title.is_empty())
                 .map(str::to_string);
+            // A sidecar lyrics stream: `LRC`, `LRC (External)` to Plex Web (plexav, 2026-10-31).
+            if let (Some(4), Some(title)) = (kind, title.as_ref()) {
+                if object.get("provider").and_then(Value::as_str) == Some("com.plexapp.agents.localmedia") {
+                    object.insert("displayTitle".to_string(), json!(format!("{title} ({external})")));
+                }
+            }
             if let (Some(kind @ (1 | 3)), Some(title)) = (kind, title) {
                 let codec = if kind == 1 {
                     crate::mediainfo::video_codec_label(object).unwrap_or_default()

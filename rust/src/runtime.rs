@@ -16764,6 +16764,9 @@ impl Runtime {
                     .into_iter().find_map(answer)
                     .or_else(|| self.catalog.hot().lazy().find_map(|row| answer(row.body())));
                 let Some(row) = row else { return Response::error(404, "rex: not found") };
+                if let Some(response) = self.music_lyrics(&row, stream_id, query, &request.headers) {
+                    return response;
+                }
                 return match self.prepare_subtitle_read(&row, stream_id, query) {
                     Ok(subtitles::SubtitleRead::Ready(response)) => response,
                     Ok(subtitles::SubtitleRead::Pending(job)) => {
