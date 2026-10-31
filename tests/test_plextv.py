@@ -56,6 +56,7 @@ import sys
 import tempfile
 import threading
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 import zipfile
@@ -676,35 +677,45 @@ def check_plex_pass(label, responses):
 
 
 def plex_web_gate_source():
-    """Plex Web's gate module, fetched by its recorded URL and hashes: Plex's code is never checked in."""
+    """Plex Web's gate module, fetched by its recorded URL and hashes: Plex's code is never checked in.
+    Returns (source, None), or (None, why): only an unreachable network is a skip, so a bundle Plex
+    removed or changed fails rather than quietly turning the check off."""
     span = read_json(os.path.join(HERE, "fixtures", "plex_web_remote_gate.json"))["source_spans"][0]
-    carrier = os.path.join(tempfile.gettempdir(), "rex-plex-web-%s.js" % span["carrier_sha256"][:16])
+    cache = os.path.join(tempfile.gettempdir(), "rex-plex-web-%d" % os.getuid())
+    os.makedirs(cache, mode=0o700, exist_ok=True)
+    carrier = os.path.join(cache, span["carrier_sha256"] + ".js")
     try:
-        if not os.path.exists(carrier):
-            with urllib.request.urlopen(span["url"], timeout=60) as response:
-                data = response.read()
-            if hashlib.sha256(data).hexdigest() != span["carrier_sha256"]:
-                return None
-            with open(carrier, "wb") as handle:
-                handle.write(data)
         data = open(carrier, "rb").read()
     except OSError:
-        return None
+        try:
+            with urllib.request.urlopen(span["url"], timeout=60) as response:
+                data = response.read()
+        except urllib.error.HTTPError as error:
+            return None, "app.plex.tv answered %d for %s" % (error.code, span["url"])
+        except (OSError, ValueError):
+            return None, None
+        partial = "%s.%d" % (carrier, os.getpid())
+        with open(partial, "wb") as handle:
+            handle.write(data)
+        os.replace(partial, carrier)
+    if hashlib.sha256(data).hexdigest() != span["carrier_sha256"]:
+        os.unlink(carrier)
+        return None, "the bundle at %s is not the recorded one" % span["url"]
     module = data[span["source_byte_start"]:span["source_byte_end_exclusive"]]
     if hashlib.sha256(module).hexdigest() != span["module_sha256"]:
-        return None
-    path = carrier[:-3] + "-%s.js" % span["module"]
-    with open(path, "wb") as handle:
-        handle.write(module)
-    return path
+        return None, "module %s is not at its recorded byte range" % span["module"]
+    return module.decode("utf-8"), None
 
 
 def check_remote_playback(label, responses):
     """Run the shipped consumer with a remote, unsubscribed viewer, not a wire assertion."""
     fixture = os.path.join(HERE, "fixtures", "plex_web_remote_gate.cjs")
-    gate_source = plex_web_gate_source()
+    gate_source, why = plex_web_gate_source()
     if gate_source is None:
-        print("SKIP  %s Plex Web's gate could not be fetched from app.plex.tv" % label)
+        if why is None:
+            print("SKIP  %s Plex Web's gate: app.plex.tv is unreachable" % label)
+        else:
+            check("%s fetches Plex Web's recorded gate" % label, False, why)
         return
     cases = []
     for name in ("root", "providers", "account"):

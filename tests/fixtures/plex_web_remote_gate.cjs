@@ -1,7 +1,7 @@
 // Runs Plex Web 4.163.0 module 24957, which test_plextv.py fetches from app.plex.tv at test time
 // and checks against plex_web_remote_gate.json; none of Plex's code is checked in. Only its inputs are adapted here.
 'use strict';
-const shippedGateFactory = (0, eval)(require('fs').readFileSync(process.env.REX_PLEX_WEB_GATE, 'utf8'));
+const shippedGateFactory = (0, eval)(process.env.REX_PLEX_WEB_GATE);
 
 module.exports = function ({ownerFeatures, viewerHasSubscription, isLocal}) {
     const server = {machineIdentifier: 'rex-fixture', isCloud: false,
