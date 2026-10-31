@@ -142,8 +142,8 @@ Deleting a source removes it and every item it pushed from rex, so it takes two 
 and the first removes nothing:
 
 ```json
-DELETE /rex/sources/rd                      -> {"confirm": "/rex/sources/rd/confirm/9f2c...e41a", "items": 1234, "expires_in": 300}
-DELETE /rex/sources/rd/confirm/9f2c...e41a  -> {"deleted": true, "removed": 1234}
+DELETE /rex/sources/myapp                      -> {"confirm": "/rex/sources/myapp/confirm/9f2c...e41a", "items": 1234, "expires_in": 300}
+DELETE /rex/sources/myapp/confirm/9f2c...e41a  -> {"deleted": true, "removed": 1234}
 ```
 
 The first answers how many items the source has here (its rows' releases and its held

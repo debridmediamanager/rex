@@ -207,7 +207,7 @@ A source is any program that registers with rex and pushes its files over the fe
 [rex-stremio](https://notes.debridmediamanager.com/rex/stremio/) takes it as **rex's address** on
 its settings page, and your own app or an addon sends it as [rex with your own app](https://notes.debridmediamanager.com/rex/any-source/)
 and [Building rex addons](https://notes.debridmediamanager.com/rex/addons/) show.
-For a debrid library or Usenet, zurg is one such source. In each zurg's `config.yml` (zurg's [config reference](https://notes.debridmediamanager.com/zurg/reference/config/) has the details):
+For a debrid library or Usenet, zurg is one such source. In each zurg's `config.yml` ([rex with zurg, step 4](https://notes.debridmediamanager.com/rex/with-zurg/#step-4-connect-zurg-to-rex) has the details):
 
 ```yaml
 rex_url: http://<rex's LAN IP>:32400
