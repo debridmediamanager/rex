@@ -46,6 +46,8 @@ pub(super) struct Tuned {
     at: i64,
     seen: i64,
     media: i64,
+    /// The session's `grabber.grab` activity, as `/activities` lists it while the session runs.
+    activity: Value,
 }
 
 /// The tuned sessions, the subscriptions numbered for them, and each account's channels tuned
@@ -723,7 +725,7 @@ impl Runtime {
                     self.route_decision(query, &request.headers);
                 }
                 if path == "/:/timeline" && query.get("state").map(String::as_str) == Some("stopped") {
-                    self.livetv.tuned.remove(&uuid);
+                    self.end_tuned(&uuid);
                 }
             }
             return None;
@@ -810,7 +812,7 @@ impl Runtime {
     /// `/metadata/<ratingKey>` and its `/children`, `/grandchildren` and `/related`: a movie, an
     /// episode, a show or a season of the guide. Several keys joined by commas (a hub's `hubKey`)
     /// answer each.
-    fn provider_metadata(&self, guide: &Guide, tail: &str, query: &HashMap<String, String>) -> Option<Response> {
+    fn provider_metadata(&mut self, guide: &Guide, tail: &str, query: &HashMap<String, String>) -> Option<Response> {
         let (key, leaf) = ["/children", "/grandchildren", "/related"]
             .iter()
             .find_map(|leaf| tail.strip_suffix(leaf).map(|key| (key, *leaf)))
@@ -833,12 +835,21 @@ impl Runtime {
                     Item::Season(show, season) => guide.season_row(&show, season, true),
                 })
                 .collect::<Vec<_>>();
-            // Measured: a show's page (Plex Web's request, its include* parameters) is the bare
-            // container.
-            if rows.len() == 1 && rows[0].get("type").and_then(Value::as_str) == Some("show") {
-                return Some(Response::json(200, json!({"MediaContainer": {"size": 1, "allowSync": false, "Metadata": rows}})));
+            let on = |name: &str| query.get(name).is_some_and(|value| is_true_option(value));
+            // Measured (a show's page, Plex Web's request): under `asyncCheckFiles` or
+            // `asyncRefreshLocalMediaAgent` the container is bare, as a library item's page is.
+            let mut response = if on("asyncCheckFiles") || on("asyncRefreshLocalMediaAgent") {
+                Response::json(200, json!({"MediaContainer": {"size": rows.len(), "allowSync": false, "Metadata": rows}}))
+            } else {
+                Response::json(200, page(rows))
+            };
+            // Measured: `asyncAugmentMetadata=1` answers an activity (never listed in
+            // `/activities`: it ends at once); no client reads it but the tune's and a subtitle's.
+            if on("asyncAugmentMetadata") {
+                response.headers.push(("X-Plex-Activity".to_string(), self.activity_uuid()));
+                response.headers.push(("Access-Control-Expose-Headers".to_string(), "X-Plex-Activity".to_string()));
             }
-            return Some(Response::json(200, page(rows)));
+            return Some(response);
         }
         let item = self.guide_item(guide, key)?;
         match (leaf, item) {
@@ -1275,7 +1286,10 @@ impl Runtime {
         };
         let at = now();
         let stamp = super::now();
-        self.livetv.tuned.retain(|_, tuned| stamp - tuned.seen < SESSION_IDLE);
+        let idle = self.livetv.tuned.iter().filter(|(_, tuned)| stamp - tuned.seen >= SESSION_IDLE).map(|(uuid, _)| uuid.clone()).collect::<Vec<_>>();
+        for uuid in idle {
+            self.end_tuned(&uuid);
+        }
         let uuid = plextv::uuid4();
         let client = plex_value(query, &request.headers, "X-Plex-Client-Identifier").unwrap_or_default();
         let session = plex_value(query, &request.headers, "X-Plex-Session-Identifier").unwrap_or_else(|| client.clone());
@@ -1283,7 +1297,20 @@ impl Runtime {
         let subscription = self.livetv.subscriptions;
         let media = 1_000_000 + subscription;
         let row = guide.channels[channel].key.clone();
-        self.livetv.tuned.insert(uuid.clone(), Tuned { row: row.clone(), client, at, seen: stamp, media });
+        // Measured (Plex Web's and Android's tunes): the answer names the session's activity in
+        // `X-Plex-Activity`, exposed to a browser, and `/activities` lists it while the session
+        // runs. Plex Web refuses a tune without it ("Could not tune channel (No activity)") and
+        // ends its player when the activity ends.
+        // ponytail: PMS's `progress` was 11 at 39 s and 33 at 142 s, a formula unmeasured; and its
+        // rolling subscription's `provider.subscription.refresh` activity is not listed.
+        let activity = json!({"uuid": self.activity_uuid(), "type": "grabber.grab", "cancellable": true, "userID": self.viewer.id,
+            "title": "Recording", "subtitle": "Live TV - Session", "progress": 0,
+            "Context": {"deviceID": "1", "grabber": "tv.plex.grabbers.hdhomerun", "itemKey": "", "itemMediaIndex": "0",
+                        "itemRatingKey": "", "source": format!("provider://{IDENTIFIER}"), "status": "inprogress",
+                        "subscriptionID": subscription.to_string(), "transcode_session": uuid}});
+        self.push_activity(&activity, "started");
+        let activity_uuid = activity.get("uuid").map(string_value).unwrap_or_default();
+        self.livetv.tuned.insert(uuid.clone(), Tuned { row: row.clone(), client, at, seen: stamp, media, activity });
         let recent = self.livetv.recent.entry(self.viewer.id).or_default();
         recent.retain(|recent| recent != number);
         recent.insert(0, number.to_string());
@@ -1356,7 +1383,28 @@ impl Runtime {
         if !also.is_empty() {
             subscription_row["AlsoAiring"] = json!({"Metadata": also});
         }
-        Response::json(200, json!({"MediaContainer": {"size": 1, "MediaSubscription": [subscription_row]}}))
+        let mut response = Response::json(200, json!({"MediaContainer": {"size": 1, "MediaSubscription": [subscription_row]}}));
+        response.headers.push(("X-Plex-Activity".to_string(), activity_uuid));
+        response.headers.push(("Access-Control-Expose-Headers".to_string(), "X-Plex-Activity".to_string()));
+        response
+    }
+
+    /// A tuned session over: forgotten, and its activity ended.
+    fn end_tuned(&mut self, uuid: &str) {
+        if let Some(tuned) = self.livetv.tuned.remove(uuid) {
+            self.push_activity(&tuned.activity, "ended");
+        }
+    }
+
+    /// `/activities`: the tuned sessions' activities (every other activity of rex's starts and
+    /// ends inside the request that ran it).
+    pub(super) fn livetv_activities(&self) -> Value {
+        let mut rows = self.livetv.tuned.values().map(|tuned| (tuned.at, tuned.activity.clone())).collect::<Vec<_>>();
+        rows.sort_by_key(|(at, _)| *at);
+        if rows.is_empty() {
+            return json!({"MediaContainer": {"size": 0}});
+        }
+        json!({"MediaContainer": {"size": rows.len(), "Activity": rows.into_iter().map(|(_, row)| row).collect::<Vec<_>>()}})
     }
 
     /// After the route: a tuned session's decision and Now Playing row describe the session, as

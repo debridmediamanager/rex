@@ -147,6 +147,7 @@ const ORDER_CONTAINER: &[&str] = &[
     "Access-Control-Expose-Headers",
     "Vary",
     "Content-Type",
+    "X-Plex-Activity",
     "Content-Length",
     "Content-Range",
     "X-Plex-Container-Start",
@@ -166,6 +167,7 @@ const ORDER_GZIP: &[&str] = &[
     "Access-Control-Expose-Headers",
     "Vary",
     "Content-Type",
+    "X-Plex-Activity",
     "X-Plex-Container-Start",
     "X-Plex-Container-Total-Size",
     "Connection",
@@ -185,6 +187,7 @@ const ORDER_ERROR: &[&str] = &[
     "Vary",
     "Content-Length",
     "Content-Type",
+    "X-Plex-Activity",
     "Server",
     "Connection",
     "Keep-Alive",
@@ -582,6 +585,9 @@ const GZIP_TYPES: &[&str] = &[
     "application/json",
     "text/html",
     "text/plain",
+    // Measured (plexav, Plex Web's and Android's live sessions): an HLS playlist offered gzip is
+    // gzipped, `start.m3u8`'s 176 bytes to 178.
+    "application/vnd.apple.mpegurl",
 ];
 
 fn gzip(body: &[u8]) -> Option<Vec<u8>> {
@@ -606,7 +612,7 @@ pub(super) fn envelope(
     let mut extra: Vec<(String, String)> = response
         .headers
         .iter()
-        .filter(|(name, _)| {
+        .filter(|(name, value)| {
             // Cycle 53: a framework STRING result carries the literal `Content-type`
             // spelling as its own header line (`Response::framework_string`); only the
             // canonical spelling is the envelope's to write.
@@ -624,6 +630,7 @@ pub(super) fn envelope(
                         | "x-rex-untyped"
                 ) && !(wire.origin.is_some()
                     && !raw
+                    && !activity_exposed(name, value)
                     && matches!(
                         name.to_ascii_lowercase().as_str(),
                         "access-control-allow-origin" | "access-control-expose-headers" | "vary"
@@ -772,11 +779,24 @@ pub(super) fn envelope(
     } else {
         header_family(&lines, status, &wire.path, range_container)
     };
-    let lines = order_lines(lines, order);
+    let mut lines = order_lines(lines, order);
+    // Measured (a Live TV tune, a subtitle apply): an activity's own expose line follows it,
+    // after the envelope's `Location, Date` one when a browser asked.
+    if let Some(expose) = lines.iter().position(|(name, value)| activity_exposed(name, value)) {
+        let line = lines.remove(expose);
+        let after = lines.iter().position(|(name, _)| name == "X-Plex-Activity").map_or(lines.len(), |at| at + 1);
+        lines.insert(after, line);
+    }
     if wire.method == "HEAD" {
         body.clear();
     }
     (status, lines, body, keep)
+}
+
+/// The `Access-Control-Expose-Headers: X-Plex-Activity` line an activity's answer carries
+/// beside the envelope's own (Plex Web reads the activity off a tune's answer).
+fn activity_exposed(name: &str, value: &str) -> bool {
+    name.eq_ignore_ascii_case("access-control-expose-headers") && value == "X-Plex-Activity"
 }
 
 pub(super) fn reason_phrase(status: u16) -> &'static str {

@@ -14690,6 +14690,27 @@ The Plex Pass sessions carried `canNormalizeLoudness` and `hasVoiceActivity`, th
 it neither; the first tune after the DVR was set up lacked the capture's `width`, `height`,
 `aspectRatio`, `channelCallSign` and the Part's `size`, every later one had them.
 
+**Headers, and the tune's activity** (found running Plex Web 4.160/4.163 against rex on
+2026-10-31: it drew the guide and the airing's Watch Now, tuned, and asked nothing more). Plex Web
+reads the tune's activity off its answer -- `h = xhr.getResponseHeader("X-Plex-Activity"); if (!h)
+reject("Could not tune channel (No activity)")` -- and ends its player with "This live TV session
+has ended" when that activity's `ended` notification comes. plexav's tune answers, Plex Web's and
+Android's alike, carry `X-Plex-Activity: <uuid>` and a second `Access-Control-Expose-Headers:
+X-Plex-Activity` right after `Content-Type` (after the envelope's own `Location, Date` one when a
+browser asked), and `/activities` lists it while the session runs: `grabber.grab`, cancellable,
+"Recording", "Live TV - Session", its `Context` naming the device, grabber, provider source,
+subscription and the session as `transcode_session` (beside the rolling subscription's
+`provider.subscription.refresh`; its `progress` read 11 at 39 s and 33 at 142 s). rex's envelope
+dropped any expose line a route added when the request had an `Origin`, so even an activity it
+named was hidden from a browser (a subtitle apply's too). The show page asked with
+`asyncAugmentMetadata=1` answers an activity the same way, never listed (it ends at once). Every
+other Live TV read's header lines match PMS's in order, the paged `/grandchildren`'s
+`X-Plex-Container-Start`/`-Total-Size` included. An HLS playlist offered gzip is gzipped
+(`start.m3u8` 176 bytes to 178). The conversion's own session playlist and segments differ from
+PMS's transcoder's in their header lines (PMS writes no expose or `Vary` there, sends segments
+chunked, keeps the connection) and are left as rex's shared transcoder answers them: Plex Web and
+Android play through them.
+
 **What rex does with it.** A live channel item pushed with a `channel` (`docs/feed-api.md`, "Live
 TV") is a channel of one DVR, numbered and keyed as plexav's (DVR 2, provider 3, device 1), and the
 routes above answer from the pushed guides (`runtime/livetv.rs`). A tune's session plays the
@@ -14698,7 +14719,10 @@ channel row's own live conversion: the decision, `start.m3u8` and beats on
 one, and the session's ratingKey is the row's, so a beat keeps no resume point and nothing is
 watched; rex answers `ignore` to every live beat. The decision and Now Playing rows are rewritten to
 the session's fields. A stopped beat ends the session; one unasked for six hours is dropped at
-the next tune; Recent Channels are each account's, kept while rex runs. The device's names and
+the next tune; its `grabber.grab` activity starts with the tune, is listed in `/activities` and
+ends with the session (its notifications, not recorded on plexav, are rex's started/ended pair;
+its progress stays 0, and the subscription's refresh activity is not listed); Recent Channels are
+each account's, kept while rex runs. The device's names and
 the settings' help text are rex's own. Not measured: a programme's picture (plexav's guide has
 no `<icon>`), which rex answers as the pushed URL in `thumb`; a gap in a guide, where rex tunes
 the channel as a movie named after itself. Not built: recording

@@ -8655,10 +8655,9 @@ impl Runtime {
                 .unwrap_or_else(|| self.route_resource_statistics(&query)),
             ("GET" | "HEAD", "/status/sessions") => self.route_sessions(&query),
             // `server.py`: the running activities -- every native activity starts and
-            // ends inside the request that ran it, so the list between requests is empty.
-            ("GET" | "HEAD", "/activities") => {
-                Response::json(200, json!({"MediaContainer": {"size": 0}}))
-            }
+            // ends inside the request that ran it, so the list between requests is empty
+            // but for a Live TV session's (`livetv.rs`).
+            ("GET" | "HEAD", "/activities") => Response::json(200, self.livetv_activities()),
             ("GET" | "HEAD", "/status/sessions/background") => {
                 Response::json(200, json!({"MediaContainer": {"size": 0}}))
             }

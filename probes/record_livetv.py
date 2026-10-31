@@ -10,6 +10,8 @@ The reference is plexav: a claimed PMS 1.43.4 with an HDHomeRun of three channel
                 python3 probes/record_livetv.py guide guide.xml 1793454567 > tests/fixtures/livetv/guide_s1434.json
     capture   a recorded client session's Live TV exchanges, redacted, with the moment they began
                 python3 probes/record_livetv.py capture web-livetv-watch.jsonl > tests/fixtures/livetv/web_watch_s1434.json
+    headers   the header lines of each Live TV read the clients made (no bodies)
+                python3 probes/record_livetv.py headers web-livetv-*.jsonl | gzip > tests/fixtures/livetv/headers_s1434.json.gz
     replay    on the lab host: the read-only requests below, each a client's own (its query and
               X-Plex headers as captured), asked of the reference now with its server token
                 python3 record_livetv.py replay http://127.0.0.1:32420 web-*.jsonl droid-livetv.jsonl > reads.json
@@ -31,7 +33,7 @@ import xml.etree.ElementTree as ET
 
 LIVETV = re.compile(r"^/(tv\.plex\.providers\.epg\.xmltv:\d+/|livetv/|media/providers$|video/:/transcode/universal/(decision|start\.m3u8)|status/sessions$|:/timeline$)")
 # The client headers a request is replayed with; never a token, a cookie or a device token.
-KEEP = re.compile(r"^(accept|x-plex-(product|version|client-identifier|platform|platform-version|device|device-name|model|"
+KEEP = re.compile(r"^(accept|accept-encoding|origin|x-plex-(product|version|client-identifier|platform|platform-version|device|device-name|model|"
                   r"features|language|provider-version|text-format|session-identifier|session-id|client-profile-name|"
                   r"client-profile-extra|playback-session-id|playback-id|incomplete-segments))$", re.I)
 ACCOUNT = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[a-z]{2,}")
@@ -96,7 +98,7 @@ def redact(text):
     return text
 
 
-def exchange(record, body, status, content_type, at=None):
+def exchange(record, body, status, content_type, at=None, answered=None):
     headers = record["req_headers"]
     if isinstance(headers, str):
         headers = ast.literal_eval(headers)
@@ -105,6 +107,8 @@ def exchange(record, body, status, content_type, at=None):
         "query": [[name, value] for name, value in record.get("query") or [] if name not in SECRET],
         "headers": [[name, value] for name, value in headers if KEEP.match(name)],
         "status": status, "type": content_type, "body": redact(body), "t": round(at if at is not None else record.get("t", 0), 3),
+        # The answer's header lines in order, as the client got them (`Date` is the moment's).
+        "answered": [[name, value] for name, value in answered or [] if name != "Date"],
     }
 
 
@@ -127,10 +131,25 @@ def capture(path):
         headers = record["res_headers"]
         headers = ast.literal_eval(headers) if isinstance(headers, str) else headers
         content_type = dict((name.lower(), value) for name, value in headers).get("content-type", "")
-        exchanges.append(exchange(record, record.get("res_body"), record["status"], content_type))
+        exchanges.append(exchange(record, record.get("res_body"), record["status"], content_type, answered=headers))
     # The guide's clock is the tune's moment where the session holds one: what was on air then.
     tune = next((item["t"] for item in exchanges if item["path"].endswith("/tune")), start)
     return {"now": int(tune), "source": path.rsplit("/", 1)[-1], "exchanges": exchanges}
+
+
+def headers(paths):
+    """Each Live TV read the clients made, once, with the header lines the reference answered
+    it with and no body: the answers' headers, not their values, at whatever moment."""
+    exchanges, seen = [], set()
+    for record in server_records(paths):
+        name = (record["path"].split("?")[0], json.dumps(sorted(dict(record.get("query") or []).keys())))
+        if record["method"] != "GET" or "/transcode/" in record["path"] or name in seen or record["status"] != 200:
+            continue
+        seen.add(name)
+        answered = record["res_headers"]
+        content_type = dict((key.lower(), value) for key, value in answered).get("content-type", "")
+        exchanges.append(exchange(record, None, record["status"], content_type, answered=answered))
+    return {"now": int(exchanges[0]["t"]), "source": "Plex Web's guide, pages, record and search sessions", "exchanges": exchanges}
 
 
 def replay(base, paths):
@@ -152,7 +171,7 @@ def replay(base, paths):
                            query=urllib.parse.parse_qsl(query, keep_blank_values=True)))
     start, exchanges = time.time(), []
     for record in wanted:
-        headers = dict((name, value) for name, value in exchange(record, "", 0, "")["headers"])
+        headers = dict((name, value) for name, value in exchange(record, "", 0, "")["headers"] if name.lower() != "accept-encoding")
         query = urllib.parse.urlencode([tuple(pair) for pair in record.get("query") or []])
         request = urllib.request.Request(base + record["path"] + ("?" + query if query else ""),
                                          headers=dict(headers, **{"X-Plex-Token": token}))
@@ -170,5 +189,6 @@ def replay(base, paths):
 if __name__ == "__main__":
     mode = sys.argv[1]
     result = {"guide": lambda: guide(sys.argv[2], int(sys.argv[3])), "capture": lambda: capture(sys.argv[2]),
+              "headers": lambda: headers(sys.argv[2:]),
               "replay": lambda: replay(sys.argv[2], sys.argv[3:])}[mode]()
     json.dump(result, sys.stdout, indent=None, separators=(",", ":"))

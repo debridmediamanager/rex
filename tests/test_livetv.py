@@ -21,6 +21,7 @@ recorded guide pushed by a source of three real live HLS channels (`tests/livetv
     python3 tests/test_livetv.py      # needs ffmpeg (REX_TRANSCODER, else PATH's)
 """
 import gzip
+import http.client
 import json
 import os
 import re
@@ -69,16 +70,48 @@ def fixture(name):
     return json.load(gzip.open(path, "rt") if name.endswith(".gz") else open(path))
 
 
+# The header lines of the last answer `request` read, in order, repeats kept.
+LAST = {"headers": []}
+
+
 def request(port, method, path, query=(), headers=(), timeout=60):
-    url = "http://127.0.0.1:%d%s" % (port, path)
-    if query:
-        url += "?" + urllib.parse.urlencode([tuple(pair) for pair in query])
-    call = urllib.request.Request(url, method=method, headers=dict(headers))
+    target = path + ("?" + urllib.parse.urlencode([tuple(pair) for pair in query]) if query else "")
+    # http.client, not urllib: urllib sends `Connection: close`, which no Plex client does, and
+    # the answer's connection headers are among those compared.
+    connection = http.client.HTTPConnection("127.0.0.1", port, timeout=timeout)
     try:
-        with urllib.request.urlopen(call, timeout=timeout) as response:
-            return response.status, response.headers.get("Content-Type", ""), response.read()
-    except urllib.error.HTTPError as error:
-        return error.code, error.headers.get("Content-Type", ""), error.read()
+        connection.request(method, target, headers=dict(headers))
+        response = connection.getresponse()
+        body = response.read()
+    finally:
+        connection.close()
+    LAST["headers"] = list(response.getheaders())
+    if response.getheader("Content-Encoding") == "gzip":
+        body = gzip.decompress(body)
+    return response.status, response.getheader("Content-Type", ""), body
+
+
+# Header values that are the moment's or the body's own; the rest must be the reference's.
+MOMENTARY = {"Date", "Content-Length", "X-Plex-Content-Original-Length", "X-Plex-Content-Compressed-Length",
+             "X-Plex-Container-Total-Size", "X-Plex-Activity"}
+
+
+def header_check(label, exchange):
+    """The last answer's header lines against the reference's, in order: every name, and every
+    value but the moment's (an activity's must be a uuid)."""
+    if not exchange.get("answered"):
+        return True
+    got = [(name, value) for name, value in LAST["headers"] if name != "Date"]
+    wanted = [(name, value) for name, value in exchange["answered"] if name != "Date"]
+    differences = []
+    if [name for name, _ in got] != [name for name, _ in wanted]:
+        differences.append("names %s, reference %s" % ([name for name, _ in got], [name for name, _ in wanted]))
+    for (name, value), (_, reference) in zip(got, wanted):
+        if name == "X-Plex-Activity" and not UUID.fullmatch(value):
+            differences.append("X-Plex-Activity %r is no uuid" % value)
+        elif name not in MOMENTARY and value != reference:
+            differences.append("%s: %r, reference %r" % (name, value, reference))
+    return check("%s: headers" % label, not differences, "; ".join(differences)[:400])
 
 
 def tree(element):
@@ -180,11 +213,13 @@ def replay(port, exchange, query=None):
 
 
 def compare(label, port, exchange, tolerated=()):
-    """A recorded exchange replayed: rex's status, and its body against the reference's."""
+    """A recorded exchange replayed: rex's status, its body against the reference's, and the
+    header lines where the recording kept them."""
     status, content_type, body = replay(port, exchange)
     if status != exchange["status"]:
         return check(label, False, "status %s, reference %s" % (status, exchange["status"]))
-    if status != 200:
+    header_check(label, exchange)
+    if status != 200 or exchange["body"] is None:
         return check(label, True)
     if exchange["path"] == "/media/providers":
         reference, got = json.loads(exchange["body"]), json.loads(body)
@@ -258,6 +293,10 @@ def reads(scratch, source, guide):
                 continue
             seen.add(name)
             compare(label_of(exchange), port, exchange)
+        # Plex Web's own reads of the guide, pages and search, for their header lines.
+        for exchange in fixture("headers_s1434.json.gz")["exchanges"]:
+            if exchange["path"] not in ("/status/sessions", "/:/timeline"):
+                compare("Plex Web: " + label_of(exchange), port, exchange)
     finally:
         process.kill()
         process.wait()
@@ -289,8 +328,23 @@ def tune(port, exchange, label, tolerated=()):
     differences = diff(document(exchange["body"], exchange["type"]), document(body, content_type)) if status == 200 else ["status %d" % status]
     differences = [line for line in differences if line.split(" ")[0].rsplit(".", 1)[-1] not in tolerated]
     check("%s: the tune" % label, not differences, "%d: %s" % (len(differences), "; ".join(differences[:8])))
+    # Plex Web refuses a tune whose answer names no activity: "Could not tune channel (No
+    # activity)" (Plex Web 4.160/4.163 against rex, 2026-10-31). Every recorded tune has one.
+    activity = dict(LAST["headers"]).get("X-Plex-Activity")
+    check("%s: the tune names its activity, exposed to a browser" % label,
+          activity and ("Access-Control-Expose-Headers", "X-Plex-Activity") in LAST["headers"], str(LAST["headers"]))
+    if exchange.get("answered"):
+        header_check("%s: the tune" % label, exchange)
     key = re.search(r"/livetv/sessions/([0-9a-f-]{36})", body.decode())
     rating = re.search(r'ratingKey"?[=:] ?"(\d+)"', body.decode())
+    if activity and key:
+        # Measured (plexav's /activities after Plex Web's tune): the session's grabber.grab.
+        _, _, listed = request(port, "GET", "/activities", headers=[("Accept", "application/json")])
+        rows = json.loads(listed)["MediaContainer"].get("Activity", [])
+        row = next((row for row in rows if row.get("uuid") == activity), {})
+        check("%s: /activities lists the session's grabber.grab" % label,
+              row.get("type") == "grabber.grab" and row.get("subtitle") == "Live TV - Session"
+              and row.get("Context", {}).get("transcode_session") == key.group(1), json.dumps(rows)[:300])
     return (key.group(1) if key else None), (rating.group(1) if rating else None)
 
 
@@ -315,8 +369,12 @@ def watch(scratch, source, guide, name, label):
         exchanges = recorded["exchanges"]
         at = next(index for index, exchange in enumerate(exchanges) if exchange["path"].endswith("/tune"))
         for exchange in exchanges[:at]:
-            # The providers list is the Plex Pass one then (`TOLERATED`); `reads` checks today's.
-            if exchange["path"] not in ("/status/sessions", "/:/timeline", "/media/providers"):
+            # The providers list is the Plex Pass one then (`TOLERATED`); `reads` checks today's
+            # body, this its header lines.
+            if exchange["path"] == "/media/providers":
+                replay(port, exchange)
+                header_check("%s: %s" % (label, label_of(exchange)), exchange)
+            elif exchange["path"] not in ("/status/sessions", "/:/timeline"):
                 compare("%s: %s" % (label, label_of(exchange)), port, exchange, TOLERATED[label])
         uuid, rating = tune(port, exchanges[at], label, TOLERATED[label])
         if not check("%s: a session key" % label, uuid and rating):
@@ -331,6 +389,7 @@ def watch(scratch, source, guide, name, label):
             path = exchange["path"]
             if path == "/video/:/transcode/universal/decision":
                 status, content_type, body = replay(port, exchange, query)
+                header_check("%s: the decision" % label, exchange)
                 reference, got = document(exchange["body"], exchange["type"]), document(body, content_type) if status == 200 else {}
                 container = got.get("MediaContainer", {})
                 video = (container.get("Video") or [{}])[0]
@@ -345,6 +404,7 @@ def watch(scratch, source, guide, name, label):
                       "%d: %s" % (len(differences), "; ".join(differences[:6])))
             elif path == "/video/:/transcode/universal/start.m3u8":
                 status, _, body = replay(port, exchange, query)
+                header_check("%s: start.m3u8" % label, exchange)
                 session = dict(query).get("session")
                 lines = body.decode().splitlines() if status == 200 else []
                 shape = [line.split(":")[0] if line.startswith("#") else line.split("?")[0] for line in lines]
@@ -374,7 +434,9 @@ def watch(scratch, source, guide, name, label):
                 ("time", "60000"), ("duration", "60000"), ("X-Plex-Client-Identifier", "rex-livetv-test")]
         status, _, _ = request(port, "GET", "/:/timeline", stop, [("Accept", "application/json")])
         status_after, _, _ = request(port, "GET", "/livetv/sessions/" + uuid, headers=[("Accept", "application/json")])
-        check("%s: a stopped beat ends the session" % label, status == 200 and status_after == 404, "%s %s" % (status, status_after))
+        _, _, listed = request(port, "GET", "/activities", headers=[("Accept", "application/json")])
+        check("%s: a stopped beat ends the session and its activity" % label,
+              status == 200 and status_after == 404 and json.loads(listed)["MediaContainer"]["size"] == 0, "%s %s %s" % (status, status_after, listed[:120]))
         if key:
             _, _, body = request(port, "GET", "/library/metadata/" + key.group(1), headers=[("Accept", "application/json")])
             row = json.loads(body)["MediaContainer"]["Metadata"][0]
