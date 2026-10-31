@@ -454,13 +454,13 @@ rejects the item, naming the field.
 
 ## Subtitles
 
-A subtitle file beside the video at the source -- an *arr's import in zurg's `__magic__` with
-a subtitle tool's `Movie (2010).en.srt` next to it -- is pushed with the item it belongs to:
+A subtitle file beside the video at the source, such as a subtitle tool's `Movie (2010).en.srt`
+next to `Movie (2010).mkv`, is pushed with the item it belongs to:
 
 ```json
 "subtitles": [
-  {"path": "__magic__/movies/Sintel (2010)/Sintel (2010).en.srt", "language": "en", "size": 50},
-  {"path": "__magic__/movies/Sintel (2010)/Sintel (2010).de.forced.srt", "language": "ger", "forced": true, "size": 1834}
+  {"path": "movies/Sintel (2010)/Sintel (2010).en.srt", "language": "en", "size": 50},
+  {"path": "movies/Sintel (2010)/Sintel (2010).de.forced.srt", "language": "ger", "forced": true, "size": 1834}
 ]
 ```
 

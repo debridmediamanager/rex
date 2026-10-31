@@ -5,8 +5,8 @@
 # Keys, if any, go in rex.env beside run.sh (gitignored, as is run.sh). Under systemd,
 # EnvironmentFile= can load the same file instead.
 #
-# Sources register themselves and push their items (docs/feed-api.md): zurg needs only
-# rex_url in its config.yml. Nothing about a source is set here.
+# Sources register themselves and push their items (docs/feed-api.md) once given rex's
+# address (zurg: rex_url in its config.yml). Nothing about a source is set here.
 #
 # On a host that runs Plex too, use --port 32500.
 #
