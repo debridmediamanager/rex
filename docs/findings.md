@@ -14878,3 +14878,50 @@ the lineup in 277 ms, and `/identity` beside four streams of grid requests waite
 It is now read once and kept until a row changes (`Catalog::generation`), each channel's airings
 indexed by start: the first grid 283 ms, then 0.9 ms, the lineup 1.7 ms, What's On 82 ms,
 `/identity` beside the grids at most 14 ms (`tests/test_perf_livetv.py`).
+
+## Music: conversion, lyrics, loudness and bitrate, measured on plexav (2026-10-31)
+
+Measured on plexav (PMS 1.43.4) by replaying its clients' own recorded requests, after adding six
+synthetic files beside its library for this (`Rex Test/Codec Test (2026)`: Opus, Vorbis, ALAC and PCM
+tones, a 20 s FLAC ramp from 2% to full level, an `.lrc` and a `.txt`) and refreshing the music
+section (`probes/record_music_conversion.py`, `record_music_lyrics.py`, `record_music_loudness.py`;
+`tests/fixtures/music/`).
+
+- **Conversion.** Plex Web's and Plex for Android's decisions, as recorded, direct play every codec
+  (FLAC, MP3, Opus, Vorbis, ALAC, PCM) whatever `musicBitrate` asks: a lower one alone converts
+  nothing. With the client's own `directPlay=0` (a music quality below original) it answers
+  3000 `App cannot direct play this item. Direct play is disabled.`, 1001/1001 `Direct play not
+  available; Conversion OK.`, the Media in the client's music target for the protocol (its
+  `X-Plex-Client-Profile-Extra` `add-transcode-target(type=musicProfile...)`): DASH `mp4`/AAC
+  `cbr`, `location="segments-audio"` for Web; HLS MP3 `vbr`, `segments-av`, in `mpegts` for Web's
+  HLS target and `mkv` for Android's (both list `aac` first and got MP3). Bitrate is 95% of
+  `musicBitrate` (192 -> 182, 128 -> 121, 64 -> 60), an AAC capped at six bits a sample (320 -> 258
+  at 44.1 kHz, 281 at 48). `start.mpd` has one `audio/mp4` `mp4a.40.2` representation and
+  one-second segments (`PT0H0M45S`: whole seconds print with no decimals); `start.m3u8` names only
+  `BANDWIDTH`; the HLS media playlist is Matroska's (`EXT-X-MAP`, `#EXTINF:1, nodesc`). rex keeps
+  its own `minBufferTime` (one segment) where plexav's is `PT10S`, as for video.
+- **Lyrics.** An `.lrc` or `.txt` beside a track is a Part Stream `streamType` 4, `codec`/`format`
+  its extension, `provider` `com.plexapp.agents.localmedia`, `displayTitle` `LRC` (`LRC
+  (External)` to Plex Web, and always as `extendedDisplayTitle`), `key` `/library/streams/{id}`.
+  The decision leaves it out. Its key answers a `Lyrics` document (`provider`, `minLines` 0, `timed`,
+  an LRC's `[ti:]`/`[ar:]` as `title`/`artist`, `author`, `by`, and `Line`s of `Span`s, each timed
+  line ending where the next starts, the last open; a text file's lines untimed, its final newline an
+  empty `Line`) as JSON when Accept names JSON and as XML under `format=xml`; with any other Accept,
+  or none, the file itself as `text/html`.
+- **Loudness.** Analysed on scan, the new files' audio Streams carry `albumGain`, `albumPeak`,
+  `albumRange`, `gain`, `loudness`, `lra` and `peak` as strings (two places, six for the peaks and
+  the album's range); `includeLoudnessRamps=1` on Plexamp's queue adds `startRamp` and `endRamp`
+  (`"-12.78 0.00;-9.80 0.10;..."`). `/library/streams/{id}/levels` answers `size`, `totalSamples`
+  (a string, ten a second) and `Level` `{"v"}`; `subsample` 0, absent or at least the total gives
+  every sample, 1 none, a smaller count values plexav recomputes from the audio: rex, which reads
+  none, averages the pushed samples, within 0.2 dB at 64, 128 (Plexamp's) and 199 and 0.8 at 10 on
+  plexav's five analysed tracks. The 46 tracks scanned before carry none and stay 404s.
+- **Bitrate.** A stream's own ffprobe `bit_rate` rounded (MP3 192, ALAC 134,728 -> 135, PCM 1411,
+  Vorbis's nominal 128); a FLAC's Media its audio frames over its length, the bytes after its
+  metadata blocks (`(size - first packet pos) * 8 / duration`, 15 Step 99 where ffprobe's file
+  bitrate is 101) and its Stream the file's (101, which plexav also showed as 99 before its
+  refresh); an Opus Media none and its Stream the file's (98). A source sends the first packet with
+  `-show_packets -read_intervals %+#1`.
+- **Not done.** `thumbBlurHash` and `UltraBlurColors` need the artwork decoded, and rex's crates
+  decode no JPEG or PNG; an FFmpeg could, which was not built. A music library a source declares
+  (`directories` `music`) lists as plexav's Add Library one does (agent, scanner, language, group).

@@ -77,6 +77,15 @@ def main():
         differences = M.compare(json.dumps({"Media": theirs["Media"]}), json.dumps({"Media": mine["Media"]}),
                                 ignore=("accessible", "exists"))
         check("a FLAC track's Media, Part and Stream are plexav's for the same file", not differences, differences)
+        # plexav's bitrate rule (fixtures/music/media.json): a FLAC's Media counts its audio frames, from the
+        # first packet its source's probe names; its Stream is the file's.
+        probe = next(item for item in items if item["path"].endswith("01 - 15 Step.flac"))["media_info"]
+        size = int(probe["format"]["size"])
+        frames = round((size - int(probe["packets"][0]["pos"])) * 8 / mine["Media"][0]["duration"])
+        check("a FLAC track's bitrate is its audio frames' over its length, its stream's the file's, as plexav's",
+              (mine["Media"][0].get("bitrate"), mine["Media"][0]["Part"][0]["Stream"][0].get("bitrate"))
+              == (frames, round(int(probe["format"]["bit_rate"]) / 1000)),
+              (mine["Media"][0].get("bitrate"), frames))
         stream = mine["Media"][0]["Part"][0]["Stream"][0]
         check("its stream is titled as a track's: FLAC (Stereo)", stream.get("displayTitle") == "FLAC (Stereo)", stream)
 
@@ -125,10 +134,12 @@ def main():
         # Placed again: same key, another track of the album.
         key = step["ratingKey"]
         moved = dict(next(item for item in items if item["path"].endswith("01 - 15 Step.flac")), track=2)
+        rex.request("/:/scrobble?identifier=com.plexapp.plugins.library&key=%s" % key)
         status, body = rex.push([moved])
         row = rex.rows("/library/metadata/%s" % key)
         check("a track placed on another number moves there on its key",
               body.get("updated") == 1 and row and row[0]["title"] == "Bodysnatchers" and row[0]["index"] == 2, (body, row[:1]))
+        check("and keeps the play it had", row and row[0].get("viewCount") == 1, row[:1] and row[0].get("viewCount"))
         status, body = rex.request("/rex/feed/plexav/items", "DELETE", {"ids": [moved["id"]]}, {"Content-Type": "application/json"})
         row = rex.rows("/library/metadata/%s" % key)
         check("a removed track goes to the trash", body.get("trashed") == 1 and row and row[0].get("deletedAt"), (body, row[:1]))

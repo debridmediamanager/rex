@@ -1728,11 +1728,41 @@ mod tests {
 /// field, a Part with no profile, and one audio Stream with `canNormalizeLoudness` false (rex runs
 /// no loudness analysis), the file's bitrate where the stream names none (FLAC's), and the title
 /// `FLAC (Stereo)`.
-pub fn audio_media(media: &mut Value) {
+pub fn audio_media(media: &mut Value, probe: &Value) {
     let Some(object) = media.as_object_mut() else {
         return;
     };
-    let bitrate = object.get("bitrate").cloned();
+    // plexav's bitrates for its own files (2026-10-31, the same fixture): a stream's own
+    // `bit_rate` when ffprobe names one (MP3 192, ALAC 134,728 -> 135, PCM 1411, Vorbis's nominal
+    // 128); else a FLAC's audio frames over its length (the bytes after the metadata blocks, from
+    // the first packet's `pos`: 15 Step's 99 where the file's is 101), the file's otherwise; an
+    // Opus file's Media none. The Stream's is the stream's, else the file's (FLAC 101, Opus 98).
+    let audio = probe.get("streams").and_then(Value::as_array).into_iter().flatten().find(|stream| stream.get("codec_type").and_then(Value::as_str) == Some("audio"));
+    let number = |value: Option<&Value>| value.and_then(|value| value.as_f64().or_else(|| value.as_str()?.trim().parse().ok()));
+    let kbps = |bits: f64| json!((bits / 1000.0).round() as i64);
+    let own = number(audio.and_then(|stream| stream.get("bit_rate")));
+    let file = number(probe.pointer("/format/bit_rate"));
+    let codec = audio.and_then(|stream| stream.get("codec_name")).and_then(Value::as_str).unwrap_or_default();
+    let duration = object.get("duration").and_then(Value::as_i64).filter(|duration| *duration > 0);
+    let size = object.get("Part").and_then(|parts| parts.pointer("/0/size")).and_then(Value::as_i64);
+    let first = number(probe.pointer("/packets/0/pos"));
+    let media_bitrate = match (own, codec) {
+        (Some(bits), _) => Some(kbps(bits)),
+        (None, "flac") => match (size, duration, first) {
+            (Some(size), Some(duration), Some(first)) => Some(json!(((size as f64 - first) * 8.0 / duration as f64).round() as i64)),
+            _ => file.map(kbps),
+        },
+        (None, _) => None,
+    };
+    match &media_bitrate {
+        Some(value) => {
+            object.insert("bitrate".to_string(), value.clone());
+        }
+        None => {
+            object.shift_remove("bitrate");
+        }
+    }
+    let bitrate = own.or(file).map(kbps);
     object.retain(|key, value| !value.is_null() && !key.starts_with("video") && !matches!(key.as_str(), "width" | "height" | "aspectRatio" | "audioProfile"));
     for part in object.get_mut("Part").and_then(Value::as_array_mut).into_iter().flatten() {
         let Some(part) = part.as_object_mut() else { continue };
@@ -1765,9 +1795,12 @@ pub fn audio_media(media: &mut Value) {
             // A track's stream is titled with no language part (`FLAC (Stereo)`), where a video's
             // untagged audio is `Unknown (FLAC Stereo)`.
             if shaped.get("language").is_none() {
-                let label = format!("{} ({})", audio_codec_label(&shaped), channel_label(&shaped).unwrap_or_default());
+                let channels = channel_label(&shaped).unwrap_or_default();
+                let label = format!("{} ({channels})", audio_codec_label(&shaped));
+                // A stream titled in its tags (an Ogg's) is extended by that title: `Opus Tone (Stereo)`.
+                let extended = shaped.get("title").and_then(Value::as_str).map_or_else(|| label.clone(), |title| format!("{title} ({channels})"));
                 shaped.insert("displayTitle".to_string(), json!(label));
-                shaped.insert("extendedDisplayTitle".to_string(), json!(label));
+                shaped.insert("extendedDisplayTitle".to_string(), json!(extended));
             } else {
                 stream_titles(&mut shaped, None, None);
             }
@@ -1788,13 +1821,14 @@ mod music_tests {
             let theirs = &track["media"];
             let part = &theirs["Part"][0];
             let mut ours = build_media(&track["probe"], 1, 1, "/library/parts/1/1/file", part["file"].as_str().unwrap(), part["size"].as_i64().unwrap(), part["container"].as_str());
-            audio_media(&mut ours);
-            for field in ["duration", "audioChannels", "audioCodec", "container", "hasVoiceActivity"] {
+            audio_media(&mut ours, &track["probe"]);
+            for field in ["duration", "bitrate", "audioChannels", "audioCodec", "container"] {
                 assert_eq!(ours[field], theirs[field], "{} Media {field}", track["title"]);
             }
-            assert!(ours.as_object().unwrap().keys().all(|key| theirs.get(key).is_some() || key.starts_with('_')), "{ours}");
+            // hasVoiceActivity: present in plexav's earlier reads, absent after its 2026-10-31 refresh.
+            assert!(ours.as_object().unwrap().keys().all(|key| theirs.get(key).is_some() || key.starts_with('_') || key == "hasVoiceActivity"), "{ours}");
             let (stream, expected) = (&ours["Part"][0]["Stream"][0], &part["Stream"][0]);
-            for field in ["streamType", "canNormalizeLoudness", "selected", "codec", "index", "channels", "audioChannelLayout", "samplingRate", "displayTitle", "extendedDisplayTitle"] {
+            for field in ["streamType", "selected", "codec", "channels", "bitrate", "audioChannelLayout", "samplingRate", "displayTitle", "extendedDisplayTitle", "title"] {
                 assert_eq!(stream[field], expected[field], "{} Stream {field}", track["title"]);
             }
             assert_eq!(stream.get("bitDepth"), expected.get("bitDepth"), "{}", track["title"]);

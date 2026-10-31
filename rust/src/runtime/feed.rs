@@ -91,6 +91,11 @@ pub(super) struct Item {
     /// The collections its title (a film, or an episode's show) is in, by name, in its library
     /// (`collections`); `None` when it sent none, which keeps what the title has.
     collections: Option<Vec<String>>,
+    /// A track's sidecar lyrics (`lyrics`: `.lrc` or `.txt` files beside it at the source), as
+    /// (path, format, size); `None` when it sent none, which keeps what the track has.
+    pub(super) lyrics: Option<Vec<(String, String, Option<u64>)>>,
+    /// A track's loudness as its source analysed it (`loudness`), in PMS's own names.
+    pub(super) loudness: Option<Map<String, Value>>,
     /// The Live TV channel a live item is (`channel`, `livetv::channel_field`): `None` when it
     /// sent none, which keeps what the row has; `Some(None)` for `null`, which ends it.
     channel: Option<Option<Value>>,
@@ -358,7 +363,34 @@ impl Item {
                 Some(Some(super::livetv::channel_field(channel).map_err(|reason| refuse(&reason))?))
             }
         };
+        let lyrics = match value.get("lyrics") {
+            None | Some(Value::Null) => None,
+            Some(Value::Array(entries)) if track => Some(
+                entries
+                    .iter()
+                    .filter_map(|entry| {
+                        let path = entry.get("path").and_then(Value::as_str).map(|path| path.trim_matches('/'))?;
+                        let format = path.rsplit_once('.').map(|(_, extension)| extension.to_ascii_lowercase())?;
+                        let usable = matches!(format.as_str(), "lrc" | "txt")
+                            && !path.split('/').any(|segment| segment.is_empty() || segment == "." || segment == "..");
+                        if !usable {
+                            say(&source.name, &id, &format!("lyrics {path}: not an .lrc or .txt path; left out"));
+                            return None;
+                        }
+                        Some((path.to_string(), format, entry.get("size").and_then(Value::as_u64)))
+                    })
+                    .collect(),
+            ),
+            Some(_) => return Err(refuse("lyrics must be a list, on a track")),
+        };
+        let loudness = match value.get("loudness") {
+            None | Some(Value::Null) => None,
+            Some(Value::Object(loudness)) if track => Some(super::music::loudness_fields(loudness).map_err(|reason| refuse(&reason))?),
+            Some(_) => return Err(refuse("loudness must be an object, on a track")),
+        };
         Ok(Self {
+            loudness,
+            lyrics,
             channel,
             collections,
             subtitles: subtitle_entries(&source.name, &id, value.get("subtitles")),
@@ -1315,7 +1347,7 @@ fn put_subtitles<'a>(
 }
 
 /// A sidecar's text, read as a Part's bytes are (`Source::open`: its login, its redirects).
-fn subtitle_text(source: &Source, path: &str) -> Result<String, String> {
+pub(super) fn subtitle_text(source: &Source, path: &str) -> Result<String, String> {
     let mut response = source.open(path, &[])?;
     if !(200..300).contains(&response.status) {
         return Err(format!("the source answered {}", response.status));
@@ -2008,7 +2040,7 @@ impl Runtime {
                 let folder = folder.trim_end_matches('/');
                 folder == entry.name || folder.ends_with(&format!("/{}", entry.name))
             };
-            for (kind, title) in [("movie", &entry.movies), ("show", &entry.shows)] {
+            for (kind, title) in [("movie", &entry.movies), ("show", &entry.shows), ("artist", &entry.music)] {
                 let Some(title) = title else {
                     continue;
                 };
@@ -2553,14 +2585,14 @@ impl Runtime {
     }
 
     /// The Part a source's item `id` is on row `key` (its version's), as a JSON pointer.
-    fn item_part(&self, key: &str, source: &str, id: &str) -> Option<String> {
+    pub(super) fn item_part(&self, key: &str, source: &str, id: &str) -> Option<String> {
         let row = self.catalog.get(key)?;
         let index = versions(row).into_iter().find(|(of, sid, _)| of == source && sid == id)?.2;
         row.pointer(&format!("/Media/{index}/Part/0")).map(|_| format!("/Media/{index}/Part/0"))
     }
 
     /// The streams of the Part a source's item `id` is on row `key`.
-    fn item_streams(&self, key: &str, source: &str, id: &str) -> Option<std::borrow::Cow<'_, [Value]>> {
+    pub(super) fn item_streams(&self, key: &str, source: &str, id: &str) -> Option<std::borrow::Cow<'_, [Value]>> {
         let at = self.item_part(key, source, id)?;
         Some(crate::catalog::part_streams(self.catalog.get(key)?.pointer(&at)?))
     }

@@ -13421,6 +13421,9 @@ impl Runtime {
         if let Some(container) = body.get_mut("MediaContainer").and_then(Value::as_object_mut) {
             container.shift_remove("allowSync");
         }
+        if query.get("includeLoudnessRamps").is_some_and(|value| is_true_option(value)) {
+            self.music_loudness_ramps(&mut body);
+        }
         Response::json(200, body)
     }
 
@@ -14245,6 +14248,12 @@ impl Runtime {
             && matches!(segments[0], "audio" | "music" | "subtitles")
             && segments[1..3] == [":", "transcode"]
         {
+            // A track's conversion (`music::music_plan`) runs through the video transcoder's sessions.
+            if segments[0] == "music" && segments[3] == "universal" {
+                if let Some(response) = self.route_universal(&segments, query, request) {
+                    return response;
+                }
+            }
             return Response::error(400, "rex: bad request");
         }
         if segments.len() >= 4
@@ -16730,6 +16739,11 @@ impl Runtime {
             return Response::error(404, "rex: not found");
         }
         if segments.starts_with(&["library", "streams"]) && segments.len() >= 3 {
+            if segments.len() == 4 && segments[3] == "levels" && matches!(request.method.as_str(), "GET" | "HEAD") {
+                if let Some(response) = self.music_levels(segments[2], query) {
+                    return response;
+                }
+            }
             if segments.len() > 3 {
                 return Response::error(404, "rex: not found");
             }
@@ -16758,6 +16772,9 @@ impl Runtime {
                     .into_iter().find_map(answer)
                     .or_else(|| self.catalog.hot().lazy().find_map(|row| answer(row.body())));
                 let Some(row) = row else { return Response::error(404, "rex: not found") };
+                if let Some(response) = self.music_lyrics(&row, stream_id, query, &request.headers) {
+                    return response;
+                }
                 return match self.prepare_subtitle_read(&row, stream_id, query) {
                     Ok(subtitles::SubtitleRead::Ready(response)) => response,
                     Ok(subtitles::SubtitleRead::Pending(job)) => {

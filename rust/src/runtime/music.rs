@@ -62,11 +62,52 @@ type Named = HashMap<(Option<String>, Option<String>), Option<(Value, Option<Val
 enum Plan {
     New,
     Replace(String),
+    /// Placed where it was, its sidecar lyrics changed.
+    Lyrics(String),
+}
+
+/// A track's lyrics as its row holds them: each sidecar's path and size.
+fn lyric_sources(streams: &[Value]) -> Vec<(String, Option<u64>)> {
+    streams
+        .iter()
+        .filter(|stream| stream.get("streamType").and_then(Value::as_i64) == Some(4))
+        .filter_map(|stream| Some((stream.get("_sourceLyrics")?.as_str()?.to_string(), stream.get("_sourceSize").and_then(Value::as_u64))))
+        .collect()
 }
 
 /// A track's placement as the row keeps it, to tell a push that moves it.
 fn placement(item: &Item) -> Value {
     json!({"placed": item.placed, "ids": item.ids, "display": item.display})
+}
+
+/// The loudness fields a stream shows, as plexav's PMS formats them after its analysis (2026-10-31):
+/// gains, loudness and range to two places, peaks and the album's range to six, as strings.
+const LOUDNESS: [(&str, usize); 7] = [("albumGain", 2), ("albumPeak", 6), ("albumRange", 6), ("gain", 2), ("loudness", 2), ("lra", 2), ("peak", 6)];
+
+/// A pushed `loudness`, checked: its numbers (or the strings PMS writes), the ramps as PMS's
+/// `"<dB> <s>;"` strings, and `levels`, the momentary loudness every 100 ms in dB.
+pub(super) fn loudness_fields(loudness: &Map<String, Value>) -> Result<Map<String, Value>, String> {
+    let mut kept = Map::new();
+    for (field, places) in LOUDNESS {
+        let Some(value) = loudness.get(field).filter(|value| !value.is_null()) else { continue };
+        let number = value.as_f64().or_else(|| value.as_str()?.trim().parse().ok()).ok_or_else(|| format!("loudness.{field} must be a number"))?;
+        kept.insert(field.to_string(), json!(format!("{number:.places$}")));
+    }
+    for field in ["startRamp", "endRamp"] {
+        if let Some(value) = loudness.get(field).filter(|value| !value.is_null()) {
+            kept.insert(field.to_string(), json!(value.as_str().ok_or_else(|| format!("loudness.{field} must be a string"))?));
+        }
+    }
+    if let Some(levels) = loudness.get("levels").filter(|value| !value.is_null()) {
+        let levels: Vec<f64> = levels
+            .as_array()
+            .ok_or_else(|| "loudness.levels must be a list of numbers".to_string())?
+            .iter()
+            .map(|level| level.as_f64().ok_or_else(|| "loudness.levels must be a list of numbers".to_string()))
+            .collect::<Result<_, _>>()?;
+        kept.insert("levels".to_string(), json!(levels));
+    }
+    Ok(kept)
 }
 
 /// Tracks a source pushed: held without a probe, placed on their album when new, placed again on
@@ -101,7 +142,16 @@ pub(super) fn upsert_tracks(
                     guard.release(&held);
                     let kept = guard.catalog.get(key).and_then(|row| row.get("_placement")).cloned();
                     if item.media_info.is_none() || kept.as_ref() == Some(&placement(&item)) {
-                        counts.unchanged += 1;
+                        let had = guard.item_streams(key, &source.name, &item.id).map(|streams| lyric_sources(&streams)).unwrap_or_default();
+                        let wanted: Option<Vec<(String, Option<u64>)>> =
+                            item.lyrics.as_ref().map(|lyrics| lyrics.iter().map(|(path, _, size)| (path.clone(), *size)).collect());
+                        let loudness_had = guard.item_streams(key, &source.name, &item.id).and_then(|streams| streams.first().and_then(|stream| stream.get("_loudness").cloned()));
+                        let loudness_changed = item.loudness.as_ref().is_some_and(|loudness| loudness_had.as_ref() != Some(&Value::Object(loudness.clone())));
+                        match wanted {
+                            Some(wanted) if wanted != had => plans.push((item, section, Plan::Lyrics(key.clone()))),
+                            _ if loudness_changed => plans.push((item, section, Plan::Lyrics(key.clone()))),
+                            _ => counts.unchanged += 1,
+                        }
                     } else {
                         plans.push((item, section, Plan::Replace(key.clone())));
                     }
@@ -142,21 +192,58 @@ pub(super) fn upsert_tracks(
         info!("FEED identified album {:?} -> {what}", ids.0.as_deref().or(ids.1.as_deref()).unwrap_or_default());
         named.insert(ids, answer);
     }
+    // Off the lock too: each sidecar's text, read from the source as a Part's bytes are.
+    let mut texts: HashMap<(String, String), String> = HashMap::new();
+    for (item, _, _) in &plans {
+        for (path, _, _) in item.lyrics.iter().flatten() {
+            match super::feed::subtitle_text(source, path) {
+                Ok(text) => {
+                    texts.insert((item.id.clone(), path.clone()), text);
+                }
+                Err(why) => warning!("FEED {} {}: lyrics {path} not read: {why}", source.name, item.id),
+            }
+        }
+    }
     let mut guard = lock(shared);
+    let mut carried: HashMap<String, Vec<(String, Value)>> = HashMap::new();
     let mut sections: Vec<String> = Vec::new();
     // Unplaced tracks are numbered in their album's file order, after what it already holds.
     plans.sort_by(|a, b| a.0.path.cmp(&b.0.path));
     for (item, section, plan) in plans {
         let answer = named.get(&album_ids(&item)).cloned().flatten();
         let key = match &plan {
+            Plan::Lyrics(key) => {
+                let loudness = guard.refresh_loudness(key, source, &item);
+                if guard.put_lyrics(key, source, &item, &texts) | loudness {
+                    counts.updated += 1;
+                } else {
+                    counts.unchanged += 1;
+                }
+                continue;
+            }
             Plan::Replace(key) => {
+                // What people did with the track stays with it on its new album.
+                let kept: Vec<(String, Value)> = guard.catalog.get(key).and_then(Value::as_object).map(|row| {
+                    ["viewCount", "viewOffset", "lastViewedAt", "skipCount", "lastSkippedAt", "userRating", "lastRatedAt"]
+                        .iter()
+                        .filter_map(|field| Some((field.to_string(), row.get(*field)?.clone())))
+                        .collect()
+                }).unwrap_or_default();
                 guard.unplace_track(key);
+                carried.insert(key.clone(), kept);
                 Some(key.clone())
             }
             Plan::New => None,
         };
         let key = guard.place_track(&section, source, &item, answer.as_ref(), key);
+        if let Some(kept) = carried.remove(&key) {
+            if let Some(object) = guard.catalog.get_mut(&key).and_then(Value::as_object_mut) {
+                object.extend(kept);
+            }
+        }
+        guard.put_lyrics(&key, source, &item, &texts);
         match plan {
+            Plan::Lyrics(_) => {}
             Plan::New => {
                 counts.created += 1;
                 guard.push_created_frames(&key);
@@ -172,6 +259,170 @@ pub(super) fn upsert_tracks(
 }
 
 impl Runtime {
+    /// A track's sidecar lyrics on its Part, each an external lyrics Stream as plexav's PMS makes
+    /// one of an `.lrc` or `.txt` beside a track (2026-10-31, `tests/fixtures/music/lyrics.json`):
+    /// `streamType` 4, `codec` and `format` its extension, `provider` the local media agent,
+    /// `LRC` (`LRC (External)` extended, and to Plex Web), a `/library/streams/{id}` key. Its text is kept on it (`_content`); one not
+    /// read keeps the text it had. Answers whether anything changed.
+    fn put_lyrics(&mut self, key: &str, source: &Source, item: &Item, texts: &HashMap<(String, String), String>) -> bool {
+        let Some(wanted) = item.lyrics.as_ref() else {
+            return false;
+        };
+        let (Some(at), Some(old)) = (self.item_part(key, &source.name, &item.id), self.item_streams(key, &source.name, &item.id).map(std::borrow::Cow::into_owned)) else {
+            return false;
+        };
+        let mut streams: Vec<Value> = old.iter().filter(|stream| stream.get("streamType").and_then(Value::as_i64) != Some(4)).cloned().collect();
+        for (path, format, size) in wanted {
+            let had = old.iter().find(|stream| stream.get("_sourceLyrics").and_then(Value::as_str) == Some(path.as_str()));
+            let Some(text) = texts.get(&(item.id.clone(), path.clone())).cloned().or_else(|| had.and_then(|had| had.get("_content")?.as_str().map(str::to_string))) else {
+                continue;
+            };
+            let id = had.and_then(|had| had.get("id")?.as_i64()).unwrap_or_else(|| self.mint_subtitle_ids(1));
+            let title = format.to_ascii_uppercase();
+            streams.push(json!({
+                "id": id, "key": format!("/library/streams/{id}"), "streamType": 4, "codec": format, "format": format,
+                "provider": "com.plexapp.agents.localmedia", "displayTitle": title, "extendedDisplayTitle": format!("{title} (External)"),
+                "_content": text, "_sourceLyrics": path, "_sourceSize": size,
+            }));
+        }
+        if streams == old {
+            return false;
+        }
+        let Some(part) = self.catalog.get_mut(key).and_then(|row| row.pointer_mut(&at)).filter(|part| part.is_object()) else {
+            return false;
+        };
+        let packed = part.as_object_mut().is_some_and(crate::catalog::unpack_part);
+        part["Stream"] = Value::Array(streams);
+        if packed {
+            part.as_object_mut().map(crate::catalog::repack_part);
+        }
+        self.dirty = true;
+        info!("FEED {} {}: {} lyrics file(s) on {key}", source.name, item.id, wanted.len());
+        true
+    }
+
+    /// `GET /library/streams/{id}` of a track's lyrics, as plexav's PMS answers its sidecar
+    /// `.lrc` and `.txt` (2026-10-31): a `Lyrics` document -- JSON when the client asks for JSON,
+    /// XML under `format=xml` -- or else the file itself, as `text/html` (no Accept at all too).
+    pub(super) fn music_lyrics(&self, row: &Value, stream_id: i64, query: &HashMap<String, String>, headers: &HashMap<String, String>) -> Option<Response> {
+        if row.get("type").and_then(Value::as_str) != Some("track") {
+            return None;
+        }
+        let row = crate::catalog::unpacked(row);
+        let stream = row
+            .get("Media")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .flat_map(|media| media.get("Part").and_then(Value::as_array).into_iter().flatten())
+            .flat_map(|part| crate::catalog::part_streams(part).into_owned())
+            .find(|stream| stream.get("id").and_then(Value::as_i64) == Some(stream_id) && stream.get("streamType").and_then(Value::as_i64) == Some(4))?;
+        let text = stream.get("_content").and_then(Value::as_str).unwrap_or_default().to_string();
+        let accept = headers.get("accept").map(String::as_str).unwrap_or_default();
+        let json_asked = accept.contains("json");
+        let xml_asked = query.get("format").map(String::as_str) == Some("xml");
+        if !json_asked && !xml_asked {
+            let mut response = Response::bytes(200, "text/html");
+            response.body = text.into_bytes();
+            return Some(response);
+        }
+        let document = json!({"MediaContainer": {"size": 1, "Lyrics": [lyrics_document(&text, stream.get("format").and_then(Value::as_str) == Some("lrc"))]}});
+        if json_asked {
+            let mut response = Response::bytes(200, "application/json");
+            response.body = document.to_string().into_bytes();
+            return Some(response);
+        }
+        Some(Response::json(200, document))
+    }
+
+    /// A placed track's loudness changed at its source: its audio Stream takes the new fields.
+    fn refresh_loudness(&mut self, key: &str, source: &Source, item: &Item) -> bool {
+        let Some(loudness) = item.loudness.as_ref() else {
+            return false;
+        };
+        let Some(at) = self.item_part(key, &source.name, &item.id) else {
+            return false;
+        };
+        let Some(part) = self.catalog.get_mut(key).and_then(|row| row.pointer_mut(&at)).filter(|part| part.is_object()) else {
+            return false;
+        };
+        let packed = part.as_object_mut().is_some_and(crate::catalog::unpack_part);
+        if let Some(stream) = part.pointer_mut("/Stream/0").and_then(Value::as_object_mut) {
+            stream.retain(|name, _| !LOUDNESS.iter().any(|(field, _)| field == name) && !matches!(name.as_str(), "_startRamp" | "_endRamp" | "_levels" | "_loudness"));
+        }
+        let mut media = json!({"Part": [part.clone()]});
+        put_loudness(&mut media, loudness);
+        *part = media["Part"][0].take();
+        if packed {
+            part.as_object_mut().map(crate::catalog::repack_part);
+        }
+        self.dirty = true;
+        true
+    }
+
+    /// `GET /library/streams/{id}/levels`: a track's loudness levels its source pushed, as plexav
+    /// answers them once its loudness analysis ran (`{"size", "totalSamples", "Level": [{"v"}]}`);
+    /// `None` -- the 404 plexav answers before any analysis -- for a stream with none.
+    pub(super) fn music_levels(&self, id: &str, query: &HashMap<String, String>) -> Option<Response> {
+        let stream_id = id.parse::<i64>().ok()?;
+        let found = |row: &Value| -> Option<Vec<f64>> {
+            if row.get("type").and_then(Value::as_str) != Some("track") {
+                return None;
+            }
+            let row = crate::catalog::unpacked(row);
+            row.get("Media")?.as_array()?.iter().flat_map(|media| media.get("Part").and_then(Value::as_array).into_iter().flatten()).find_map(|part| {
+                crate::catalog::part_streams(part).iter().find(|stream| stream.get("id").and_then(Value::as_i64) == Some(stream_id))?.get("_levels")?.as_array()?.iter().map(Value::as_f64).collect()
+            })
+        };
+        let levels = self.catalog.hot().lazy().find_map(|row| found(row.body()))?;
+        let wanted = query.get("subsample").and_then(|value| value.parse::<usize>().ok());
+        let shown = subsample_levels(&levels, wanted);
+        let mut container = Map::new();
+        container.insert("size".to_string(), json!(shown.len()));
+        container.insert("totalSamples".to_string(), json!(levels.len().to_string()));
+        if !shown.is_empty() {
+            container.insert("Level".to_string(), Value::Array(shown.iter().map(|level| json!({"v": level})).collect()));
+        }
+        Some(Response::json(200, json!({"MediaContainer": container})))
+    }
+
+    /// `includeLoudnessRamps=1` on a play queue: each track's audio stream carries the `startRamp`
+    /// and `endRamp` its source pushed (plexav's analysed tracks, Plexamp's queue).
+    pub(super) fn music_loudness_ramps(&self, body: &mut Value) {
+        let Some(rows) = body.pointer_mut("/MediaContainer/Metadata").and_then(Value::as_array_mut) else {
+            return;
+        };
+        for row in rows {
+            let Some(stored) = row.get("ratingKey").map(string_value).and_then(|key| self.catalog.get(&key)).filter(|stored| stored.get("type").and_then(Value::as_str) == Some("track")) else {
+                continue;
+            };
+            let stored = crate::catalog::unpacked(stored);
+            let ramps: HashMap<i64, Vec<(&str, Value)>> = stored
+                .get("Media")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+                .flat_map(|media| media.get("Part").and_then(Value::as_array).into_iter().flatten())
+                .flat_map(|part| crate::catalog::part_streams(part).into_owned())
+                .filter_map(|stream| {
+                    let ramps: Vec<(&str, Value)> = [("startRamp", "_startRamp"), ("endRamp", "_endRamp")]
+                        .into_iter()
+                        .filter_map(|(field, private)| Some((field, stream.get(private)?.clone())))
+                        .collect();
+                    Some((stream.get("id")?.as_i64()?, ramps))
+                })
+                .collect();
+            for stream in row.get_mut("Media").and_then(Value::as_array_mut).into_iter().flatten().flat_map(|media| media.get_mut("Part").and_then(Value::as_array_mut).into_iter().flatten()).flat_map(|part| part.get_mut("Stream").and_then(Value::as_array_mut).into_iter().flatten()) {
+                let Some(found) = stream.get("id").and_then(Value::as_i64).and_then(|id| ramps.get(&id)) else { continue };
+                if let Some(object) = stream.as_object_mut() {
+                    for (field, value) in found {
+                        object.insert(field.to_string(), value.clone());
+                    }
+                }
+            }
+        }
+    }
+
     /// Whether a section is a music library (`type=artist`).
     pub(super) fn music_section(&self, section: &str) -> bool {
         self.catalog.sections.iter().any(|row| {
@@ -428,7 +679,10 @@ impl Runtime {
             item.size as i64,
             Some(&extension),
         );
-        mediainfo::audio_media(&mut media);
+        mediainfo::audio_media(&mut media, item.media_info.as_ref().unwrap_or(&Value::Null));
+        if let Some(loudness) = &item.loudness {
+            put_loudness(&mut media, loudness);
+        }
         if let Some(hash) = &item.hash {
             media["_hash"] = json!(hash);
         }
@@ -984,6 +1238,81 @@ impl Runtime {
         None
     }
 
+    /// A track's conversion for a client that asked for one (`directPlay=0`), as plexav's PMS
+    /// converted its tracks for Plex Web and Plex for Android (2026-10-31, `tests/fixtures/music/
+    /// conversion.json`): to the client's own music target for the protocol (its
+    /// `X-Plex-Client-Profile-Extra` `add-transcode-target(type=musicProfile...)`), MP3 when the
+    /// target lists it (HLS: Web's `mpegts` and Android's `mkv` both took MP3), else its first codec
+    /// (DASH's `aac`); at 95% of `musicBitrate`, an AAC no more than six bits a sample (258 kbit/s
+    /// at 44.1 kHz, 281 at 48); one-second segments. `None` without an encoder or a target.
+    pub(super) fn music_plan(&self, query: &HashMap<String, String>, headers: &HashMap<String, String>, key: &str, media: &Value, protocol: &str) -> Option<super::universal::Plan> {
+        use super::universal::{AudioPlan, Plan, Protocol};
+        self.transcoder.as_ref()?;
+        let wire = Protocol::parse(protocol).filter(|wire| matches!(wire, Protocol::Hls | Protocol::Dash))?;
+        let extra = query.get("X-Plex-Client-Profile-Extra").or_else(|| headers.get("x-plex-client-profile-extra")).cloned().unwrap_or_default();
+        let target: HashMap<String, String> = extra
+            .split('+')
+            .filter_map(|entry| entry.strip_prefix("add-transcode-target(")?.strip_suffix(')'))
+            .map(|inner| inner.split('&').filter_map(|pair| pair.split_once('=')).map(|(k, v)| (k.to_string(), v.to_string())).collect::<HashMap<_, _>>())
+            .find(|target| target.get("type").map(String::as_str) == Some("musicProfile") && target.get("protocol").map(String::as_str) == Some(protocol))?;
+        let codecs: Vec<String> = target.get("audioCodec").map(|list| list.split(',').map(|codec| codec.trim().to_ascii_lowercase()).filter(|codec| !codec.is_empty()).collect()).unwrap_or_default();
+        let codec = if codecs.iter().any(|codec| codec == "mp3") { "mp3".to_string() } else { codecs.first()?.clone() };
+        if !matches!(codec.as_str(), "mp3" | "aac") {
+            return None;
+        }
+        let media = crate::catalog::unpacked(media);
+        let part = media.get("Part").and_then(Value::as_array).and_then(|parts| parts.first())?;
+        let streams = crate::catalog::part_streams(part);
+        let stream = streams.iter().find(|stream| stream.get("streamType").and_then(Value::as_i64) == Some(2))?;
+        let row = self.catalog.get(key)?;
+        let file = part.get("file").and_then(Value::as_str).filter(|file| !file.is_empty())?;
+        let (source, path) = self.part_source(row, file)?;
+        let (url, auth) = source.ffmpeg_input(&path);
+        let rate = stream.get("samplingRate").and_then(Value::as_i64).unwrap_or(44_100);
+        let asked = query.get("musicBitrate").and_then(|rate| rate.parse::<i64>().ok()).filter(|rate| *rate > 0).unwrap_or(320);
+        let mut bitrate = asked * 95 / 100;
+        if codec == "aac" {
+            bitrate = bitrate.min(rate * 6 / 1024);
+        }
+        let channels = stream.get("channels").and_then(Value::as_i64).unwrap_or(2).min(2);
+        Some(Plan {
+            rating_key: key.to_string(),
+            url,
+            auth,
+            duration_ms: media.get("duration").and_then(Value::as_i64).unwrap_or(0),
+            video: None,
+            audio: Some(AudioPlan {
+                index: stream.get("index").and_then(Value::as_i64).unwrap_or(0),
+                ordinal: 0,
+                copy: false,
+                source_codec: stream.get("codec").map(string_value).unwrap_or_default(),
+                codec: codec.clone(),
+                convert_to: codec,
+                channels,
+                bitrate,
+                sampling_rate: rate,
+            }),
+            subtitle: None,
+            matroska: wire == Protocol::Hls && target.get("container").map(String::as_str) == Some("mkv"),
+            text_subtitle: None,
+            text_to_srt: false,
+            sidecar: None,
+            text_burn: None,
+            incomplete_segments: false,
+            copyts: false,
+            segment_length: Some(1),
+            silent_audio: false,
+            account: self.viewer.id,
+            playback: self.playback_session(query, headers),
+            protocol: wire,
+            hardware_decode: false,
+            hardware_encode: false,
+            tone_mapping: None,
+            boost_dialog: false,
+            normalize_loudness: false,
+        })
+    }
+
     /// `GET /music/:/transcode/universal/decision`: a track direct plays, as plexav's PMS answered
     /// Plex Web (`protocol=dash`, `musicBitrate=320`) and Plex for Android (`protocol=hls`) for its
     /// FLAC and MP3 tracks -- `mdeDecisionCode` 1000, `Direct play OK.`, the Part `decision`
@@ -1009,6 +1338,16 @@ impl Runtime {
         let section = string_value(row.get("librarySectionID").unwrap_or(&Value::Null));
         let section_row = self.section(&section).cloned().unwrap_or_default();
         let detail = self.detail_row(&row);
+        // The client turned direct play off (a lower music quality than original): plexav converts.
+        // A lower `musicBitrate` alone, or a codec, never did: it direct played FLAC, MP3, Opus,
+        // Vorbis, ALAC and PCM to both clients.
+        let converting = (query.get("directPlay").map(String::as_str) == Some("0"))
+            .then(|| {
+                let index = query.get("mediaIndex").and_then(|index| index.parse::<usize>().ok()).unwrap_or(0);
+                let media = row.get("Media").and_then(Value::as_array).and_then(|media| media.get(index).or(media.first())).cloned()?;
+                self.music_plan(query, &_request.headers, key, &media, query.get("protocol").map(String::as_str).unwrap_or("hls"))
+            })
+            .flatten();
         let sorted = |object: &Map<String, Value>| -> Map<String, Value> {
             let mut names: Vec<&String> = object.keys().collect();
             names.sort();
@@ -1059,6 +1398,8 @@ impl Runtime {
                     .into_iter()
                     .flatten()
                     .filter_map(Value::as_object)
+                    // A track's lyrics stream is no part of its decision (plexav, 2026-10-31).
+                    .filter(|stream| stream.get("streamType").and_then(Value::as_i64) != Some(4))
                     .map(|stream| {
                         let mut out = Map::new();
                         for (name, value) in sorted(stream) {
@@ -1077,6 +1418,9 @@ impl Runtime {
                     .collect();
                 part_out.insert("Stream".to_string(), Value::Array(streams));
                 shaped.insert("Part".to_string(), json!([part_out]));
+                if let Some(plan) = &converting {
+                    shaped = converted_track_media(&shaped, plan);
+                }
                 track.insert("Media".to_string(), json!([shaped]));
             }
             for field in ["Genre", "Mood"] {
@@ -1096,23 +1440,216 @@ impl Runtime {
                 }
             }
         }
-        let fields = Map::from_iter([
-            ("size".to_string(), json!(1)),
-            ("allowSync".to_string(), json!("1")),
-            ("identifier".to_string(), json!("com.plexapp.plugins.library")),
-            ("librarySectionID".to_string(), json!(section)),
-            ("librarySectionTitle".to_string(), section_row.get("title").cloned().unwrap_or(Value::Null)),
-            ("librarySectionUUID".to_string(), section_row.get("uuid").cloned().unwrap_or(Value::Null)),
-            ("mdeDecisionCode".to_string(), json!(1000)),
-            ("mdeDecisionText".to_string(), json!("Direct play OK.")),
-            ("mediaTagPrefix".to_string(), json!(MEDIA_TAG_PREFIX)),
-            ("mediaTagVersion".to_string(), json!(MEDIA_TAG_VERSION.to_string())),
-            ("resourceSession".to_string(), json!(session)),
-            ("Metadata".to_string(), json!([track])),
-        ]);
-        info!("DECISION direct play (music) for path={path}");
+        let direct_off = query.get("directPlay").map(String::as_str) == Some("0");
+        let mut fields = Map::from_iter([("size".to_string(), json!(1)), ("allowSync".to_string(), json!("1"))]);
+        // plexav's answers when direct play is off: a conversion, or with no encoder rex's video
+        // refusal (an encoder-less PMS was not measured for music).
+        let (play, general, convert) = match (&converting, direct_off) {
+            (Some(_), _) => (
+                Some((3000, "App cannot direct play this item. Direct play is disabled.")),
+                Some((1001, "Direct play not available; Conversion OK.")),
+                Some((1001, "Direct play not available; Conversion OK.")),
+            ),
+            (None, true) => (
+                Some((3000, "App cannot direct play this item. Direct play is disabled.")),
+                Some((2000, "Neither direct play nor conversion is available.")),
+                Some((4005, "Cannot convert this item. No conversion profile found for protocol.")),
+            ),
+            (None, false) => (None, None, None),
+        };
+        if let Some((code, text)) = play {
+            fields.insert("directPlayDecisionCode".to_string(), json!(code));
+            fields.insert("directPlayDecisionText".to_string(), json!(text));
+        }
+        if let Some((code, text)) = general {
+            fields.insert("generalDecisionCode".to_string(), json!(code));
+            fields.insert("generalDecisionText".to_string(), json!(text));
+        }
+        fields.insert("identifier".to_string(), json!("com.plexapp.plugins.library"));
+        fields.insert("librarySectionID".to_string(), json!(section));
+        fields.insert("librarySectionTitle".to_string(), section_row.get("title").cloned().unwrap_or(Value::Null));
+        fields.insert("librarySectionUUID".to_string(), section_row.get("uuid").cloned().unwrap_or(Value::Null));
+        if !direct_off {
+            fields.insert("mdeDecisionCode".to_string(), json!(1000));
+            fields.insert("mdeDecisionText".to_string(), json!("Direct play OK."));
+        }
+        fields.insert("mediaTagPrefix".to_string(), json!(MEDIA_TAG_PREFIX));
+        fields.insert("mediaTagVersion".to_string(), json!(MEDIA_TAG_VERSION.to_string()));
+        fields.insert("resourceSession".to_string(), json!(session));
+        if let Some((code, text)) = convert {
+            fields.insert("transcodeDecisionCode".to_string(), json!(code));
+            fields.insert("transcodeDecisionText".to_string(), json!(text));
+        }
+        if direct_off && converting.is_none() {
+            fields.insert("size".to_string(), json!(0));
+            info!("DECISION refused (music, no conversion) for path={path}");
+            return Response::json(200, json!({"MediaContainer": fields}));
+        }
+        fields.insert("Metadata".to_string(), json!([track]));
+        info!("DECISION {} (music) for path={path}", if converting.is_some() { "conversion" } else { "direct play" });
         Response::json(200, json!({"MediaContainer": fields}))
     }
+}
+
+/// A track's Media as plexav's conversion decision names it: the target's codec, container,
+/// bitrate and protocol on the Media, `decision="transcode"` on the Part and its one Stream
+/// (`bitrateMode` `cbr` for AAC and `vbr` for MP3, `location` `segments-audio` for DASH and
+/// `segments-av` for HLS), the source's titles kept on the Stream.
+fn converted_track_media(direct: &Map<String, Value>, plan: &super::universal::Plan) -> Map<String, Value> {
+    let Some(audio) = plan.audio.as_ref() else {
+        return direct.clone();
+    };
+    let protocol = plan.protocol.name();
+    let duration = direct.get("duration").cloned().unwrap_or(Value::Null);
+    let id = direct.get("id").cloned().unwrap_or(Value::Null);
+    let part = direct.get("Part").and_then(Value::as_array).and_then(|parts| parts.first()).cloned().unwrap_or_default();
+    let stream = part.pointer("/Stream/0").cloned().unwrap_or_default();
+    let text = |value: &Value, field: &str| value.get(field).cloned().unwrap_or(Value::Null);
+    let converted_stream = json!({
+        "bitrate": audio.bitrate, "bitrateMode": if audio.codec == "mp3" { "vbr" } else { "cbr" },
+        "channels": audio.channels, "codec": audio.codec,
+        "displayTitle": text(&stream, "displayTitle"), "extendedDisplayTitle": text(&stream, "extendedDisplayTitle"),
+        "id": text(&stream, "id"), "selected": true, "streamType": 2, "decision": "transcode",
+        "location": if protocol == "dash" { "segments-audio" } else { "segments-av" },
+    });
+    let converted_part = json!({
+        "id": text(&part, "id"), "bitrate": audio.bitrate, "container": plan.container(), "duration": duration,
+        "decision": "transcode", "selected": true, "Stream": [converted_stream],
+    });
+    let mut out = Map::new();
+    for (field, value) in [
+        ("id", id),
+        ("audioChannels", json!(audio.channels)),
+        ("audioCodec", json!(audio.codec)),
+        ("bitrate", json!(audio.bitrate)),
+        ("container", json!(plan.container())),
+        ("duration", duration.clone()),
+        ("protocol", json!(protocol)),
+        ("selected", json!(true)),
+        ("Part", json!([converted_part])),
+    ] {
+        out.insert(field.to_string(), value);
+    }
+    out
+}
+
+/// A track's loudness on its audio Stream: the fields after `bitrate` as plexav's analysed streams
+/// list them, the ramps and levels kept for `includeLoudnessRamps` and `/levels`.
+fn put_loudness(media: &mut Value, loudness: &Map<String, Value>) {
+    let Some(stream) = media.pointer_mut("/Part/0/Stream/0").and_then(Value::as_object_mut) else {
+        return;
+    };
+    let mut out = Map::new();
+    for (name, value) in std::mem::take(stream) {
+        let after = name == "bitrate";
+        out.insert(name, value);
+        if after {
+            for (field, _) in LOUDNESS {
+                if let Some(value) = loudness.get(field) {
+                    out.insert(field.to_string(), value.clone());
+                }
+            }
+        }
+    }
+    for (field, private) in [("startRamp", "_startRamp"), ("endRamp", "_endRamp"), ("levels", "_levels")] {
+        if let Some(value) = loudness.get(field) {
+            out.insert(private.to_string(), value.clone());
+        }
+    }
+    out.insert("_loudness".to_string(), Value::Object(loudness.clone()));
+    *stream = out;
+}
+
+/// The levels a client asks for: every sample at `subsample` 0, absent or at least their count,
+/// none at 1 (plexav's own answers), else each bucket's mean. plexav recomputes a bucket from the
+/// audio, which rex never reads: on its five analysed tracks the mean came within 0.2 dB at 64, 128
+/// (Plexamp's) and 199, 0.8 at 10; a power mean or a bucket's maximum came further off.
+fn subsample_levels(levels: &[f64], wanted: Option<usize>) -> Vec<f64> {
+    let total = levels.len();
+    match wanted {
+        None | Some(0) => return levels.to_vec(),
+        Some(1) => return Vec::new(),
+        Some(count) if count >= total => return levels.to_vec(),
+        _ => {}
+    }
+    let count = wanted.unwrap_or(total);
+    (0..count)
+        .map(|at| {
+            let (start, end) = (at * total / count, ((at + 1) * total / count).max(at * total / count + 1));
+            let bucket = &levels[start..end.min(total)];
+            (bucket.iter().sum::<f64>() / bucket.len() as f64 * 10.0).round() / 10.0
+        })
+        .collect()
+}
+
+/// A lyrics file as plexav's PMS reads it: an LRC's `[ti:]`, `[ar:]`, `[au:]` and `[by:]` tags
+/// and its timed lines, each ending where the next starts (the last has no end); a text file's
+/// lines untimed, a line it ends with empty (`{}`) as plexav's.
+fn lyrics_document(text: &str, timed: bool) -> Value {
+    let mut tags: HashMap<&str, String> = HashMap::new();
+    let mut lines: Vec<(Option<i64>, String)> = Vec::new();
+    let text = text.strip_prefix('\u{feff}').unwrap_or(text);
+    let raw: Vec<&str> = text.split('\n').map(|line| line.trim_end_matches('\r')).collect();
+    for line in &raw {
+        if !timed {
+            lines.push((None, line.to_string()));
+            continue;
+        }
+        let mut rest = *line;
+        let mut stamps = Vec::new();
+        while let Some(inner) = rest.strip_prefix('[').and_then(|rest| rest.split_once(']')) {
+            let (tag, after) = inner;
+            if let Some((name, value)) = tag.split_once(':').filter(|(name, _)| name.chars().all(|c| c.is_ascii_alphabetic())) {
+                tags.insert(match name { "ti" => "title", "ar" => "artist", "au" => "author", "by" => "by", _ => "" }, value.trim().to_string());
+            } else if let Some((minutes, seconds)) = tag.split_once(':') {
+                if let (Ok(minutes), Ok(seconds)) = (minutes.parse::<i64>(), seconds.parse::<f64>()) {
+                    stamps.push(minutes * 60_000 + (seconds * 1000.0).round() as i64);
+                }
+            }
+            rest = after;
+        }
+        for stamp in stamps {
+            lines.push((Some(stamp), rest.trim().to_string()));
+        }
+    }
+    if timed {
+        lines.sort_by_key(|(stamp, _)| *stamp);
+    }
+    let mut document = Map::new();
+    document.insert("provider".to_string(), json!("com.plexapp.agents.localmedia"));
+    document.insert("minLines".to_string(), json!(0));
+    document.insert("timed".to_string(), json!(timed));
+    for field in ["title", "artist"] {
+        if let Some(value) = tags.get(field) {
+            document.insert(field.to_string(), json!(value));
+        }
+    }
+    document.insert("author".to_string(), json!(tags.get("author").cloned().unwrap_or_default()));
+    document.insert("by".to_string(), json!(tags.get("by").cloned().unwrap_or_default()));
+    let rows: Vec<Value> = lines
+        .iter()
+        .enumerate()
+        .map(|(at, (start, words))| {
+            let end = lines.get(at + 1).and_then(|(next, _)| *next);
+            if words.is_empty() && start.is_none() {
+                return json!({});
+            }
+            let mut span = Map::from_iter([("text".to_string(), json!(words))]);
+            let mut line = Map::new();
+            if let Some(start) = start {
+                line.insert("startOffset".to_string(), json!(start));
+                span.insert("startOffset".to_string(), json!(start));
+                if let Some(end) = end {
+                    line.insert("endOffset".to_string(), json!(end));
+                    span.insert("endOffset".to_string(), json!(end));
+                }
+            }
+            line.insert("Span".to_string(), json!([span]));
+            Value::Object(line)
+        })
+        .collect();
+    document.insert("Line".to_string(), Value::Array(rows));
+    Value::Object(document)
 }
 
 /// `titleSort` after `title` when the sort title differs, as the catalog load writes it

@@ -1,0 +1,273 @@
+{
+ "recorded": "plexav PMS 1.43.4, 2026-10-31",
+ "texts": {
+  "01 - Opus Tone.lrc": "[ti:Opus Tone]\n[ar:Rex Test]\n[00:00.00]First synthetic line for rex\n[00:05.50]Second synthetic line for rex\n[00:12.25]Third synthetic line for rex\n",
+  "02 - Vorbis Tone.txt": "First plain synthetic line for rex\nSecond plain synthetic line for rex\n"
+ },
+ "tracks": [
+  {
+   "title": "Opus Tone",
+   "file": "/data/music/Rex Test/Codec Test (2026)/01 - Opus Tone.opus",
+   "streams": [
+    {
+     "id": 74,
+     "streamType": 2,
+     "selected": true,
+     "codec": "opus",
+     "index": 0,
+     "channels": 2,
+     "bitrate": 98,
+     "albumGain": "3.74",
+     "albumPeak": "0.092372",
+     "albumRange": "0.074578",
+     "audioChannelLayout": "stereo",
+     "gain": "3.74",
+     "loudness": "-21.81",
+     "lra": "0.01",
+     "peak": "0.092372",
+     "samplingRate": 48000,
+     "title": "Opus Tone",
+     "displayTitle": "OPUS (Stereo)",
+     "extendedDisplayTitle": "Opus Tone (Stereo)"
+    },
+    {
+     "id": 78,
+     "key": "/library/streams/78",
+     "streamType": 4,
+     "codec": "lrc",
+     "format": "lrc",
+     "provider": "com.plexapp.agents.localmedia",
+     "displayTitle": "LRC",
+     "extendedDisplayTitle": "LRC (External)"
+    }
+   ],
+   "answers": [
+    {
+     "accept": null,
+     "query": [],
+     "status": 200,
+     "contentType": "text/html",
+     "body": "[ti:Opus Tone]\n[ar:Rex Test]\n[00:00.00]First synthetic line for rex\n[00:05.50]Second synthetic line for rex\n[00:12.25]Third synthetic line for rex\n"
+    },
+    {
+     "accept": null,
+     "query": [
+      [
+       "format",
+       "xml"
+      ]
+     ],
+     "status": 200,
+     "contentType": "text/xml;charset=utf-8",
+     "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<MediaContainer size=\"1\">\n<Lyrics provider=\"com.plexapp.agents.localmedia\" minLines=\"0\" timed=\"1\" title=\"Opus Tone\" artist=\"Rex Test\" author=\"\" by=\"\">\n<Line startOffset=\"0\" endOffset=\"5500\">\n<Span text=\"First synthetic line for rex\" startOffset=\"0\" endOffset=\"5500\" />\n</Line>\n<Line startOffset=\"5500\" endOffset=\"12250\">\n<Span text=\"Second synthetic line for rex\" startOffset=\"5500\" endOffset=\"12250\" />\n</Line>\n<Line startOffset=\"12250\">\n<Span text=\"Third synthetic line for rex\" startOffset=\"12250\" />\n</Line>\n</Lyrics>\n</MediaContainer>\n"
+    },
+    {
+     "accept": null,
+     "query": [
+      [
+       "format",
+       "json"
+      ]
+     ],
+     "status": 200,
+     "contentType": "text/html",
+     "body": "[ti:Opus Tone]\n[ar:Rex Test]\n[00:00.00]First synthetic line for rex\n[00:05.50]Second synthetic line for rex\n[00:12.25]Third synthetic line for rex\n"
+    },
+    {
+     "accept": "application/json",
+     "query": [],
+     "status": 200,
+     "contentType": "application/json",
+     "body": "{\"MediaContainer\":{\"size\":1,\"Lyrics\":[{\"provider\":\"com.plexapp.agents.localmedia\",\"minLines\":0,\"timed\":true,\"title\":\"Opus Tone\",\"artist\":\"Rex Test\",\"author\":\"\",\"by\":\"\",\"Line\":[{\"startOffset\":0,\"endOffset\":5500,\"Span\":[{\"text\":\"First synthetic line for rex\",\"startOffset\":0,\"endOffset\":5500}]},{\"startOffset\":5500,\"endOffset\":12250,\"Span\":[{\"text\":\"Second synthetic line for rex\",\"startOffset\":5500,\"endOffset\":12250}]},{\"startOffset\":12250,\"Span\":[{\"text\":\"Third synthetic line for rex\",\"startOffset\":12250}]}]}]}}"
+    },
+    {
+     "accept": "application/json",
+     "query": [
+      [
+       "format",
+       "xml"
+      ]
+     ],
+     "status": 200,
+     "contentType": "application/json",
+     "body": "{\"MediaContainer\":{\"size\":1,\"Lyrics\":[{\"provider\":\"com.plexapp.agents.localmedia\",\"minLines\":0,\"timed\":true,\"title\":\"Opus Tone\",\"artist\":\"Rex Test\",\"author\":\"\",\"by\":\"\",\"Line\":[{\"startOffset\":0,\"endOffset\":5500,\"Span\":[{\"text\":\"First synthetic line for rex\",\"startOffset\":0,\"endOffset\":5500}]},{\"startOffset\":5500,\"endOffset\":12250,\"Span\":[{\"text\":\"Second synthetic line for rex\",\"startOffset\":5500,\"endOffset\":12250}]},{\"startOffset\":12250,\"Span\":[{\"text\":\"Third synthetic line for rex\",\"startOffset\":12250}]}]}]}}"
+    },
+    {
+     "accept": "application/json",
+     "query": [
+      [
+       "format",
+       "json"
+      ]
+     ],
+     "status": 200,
+     "contentType": "application/json",
+     "body": "{\"MediaContainer\":{\"size\":1,\"Lyrics\":[{\"provider\":\"com.plexapp.agents.localmedia\",\"minLines\":0,\"timed\":true,\"title\":\"Opus Tone\",\"artist\":\"Rex Test\",\"author\":\"\",\"by\":\"\",\"Line\":[{\"startOffset\":0,\"endOffset\":5500,\"Span\":[{\"text\":\"First synthetic line for rex\",\"startOffset\":0,\"endOffset\":5500}]},{\"startOffset\":5500,\"endOffset\":12250,\"Span\":[{\"text\":\"Second synthetic line for rex\",\"startOffset\":5500,\"endOffset\":12250}]},{\"startOffset\":12250,\"Span\":[{\"text\":\"Third synthetic line for rex\",\"startOffset\":12250}]}]}]}}"
+    },
+    {
+     "accept": "text/plain, */*; q=0.01",
+     "query": [],
+     "status": 200,
+     "contentType": "text/html",
+     "body": "[ti:Opus Tone]\n[ar:Rex Test]\n[00:00.00]First synthetic line for rex\n[00:05.50]Second synthetic line for rex\n[00:12.25]Third synthetic line for rex\n"
+    },
+    {
+     "accept": "text/plain, */*; q=0.01",
+     "query": [
+      [
+       "format",
+       "xml"
+      ]
+     ],
+     "status": 200,
+     "contentType": "text/xml;charset=utf-8",
+     "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<MediaContainer size=\"1\">\n<Lyrics provider=\"com.plexapp.agents.localmedia\" minLines=\"0\" timed=\"1\" title=\"Opus Tone\" artist=\"Rex Test\" author=\"\" by=\"\">\n<Line startOffset=\"0\" endOffset=\"5500\">\n<Span text=\"First synthetic line for rex\" startOffset=\"0\" endOffset=\"5500\" />\n</Line>\n<Line startOffset=\"5500\" endOffset=\"12250\">\n<Span text=\"Second synthetic line for rex\" startOffset=\"5500\" endOffset=\"12250\" />\n</Line>\n<Line startOffset=\"12250\">\n<Span text=\"Third synthetic line for rex\" startOffset=\"12250\" />\n</Line>\n</Lyrics>\n</MediaContainer>\n"
+    },
+    {
+     "accept": "text/plain, */*; q=0.01",
+     "query": [
+      [
+       "format",
+       "json"
+      ]
+     ],
+     "status": 200,
+     "contentType": "text/html",
+     "body": "[ti:Opus Tone]\n[ar:Rex Test]\n[00:00.00]First synthetic line for rex\n[00:05.50]Second synthetic line for rex\n[00:12.25]Third synthetic line for rex\n"
+    }
+   ]
+  },
+  {
+   "title": "Vorbis Tone",
+   "file": "/data/music/Rex Test/Codec Test (2026)/02 - Vorbis Tone.ogg",
+   "streams": [
+    {
+     "id": 75,
+     "streamType": 2,
+     "selected": true,
+     "codec": "vorbis",
+     "index": 0,
+     "channels": 2,
+     "bitrate": 128,
+     "albumGain": "3.74",
+     "albumPeak": "0.092372",
+     "albumRange": "0.074578",
+     "audioChannelLayout": "stereo",
+     "gain": "3.74",
+     "loudness": "-21.74",
+     "lra": "0.00",
+     "peak": "0.090267",
+     "samplingRate": 44100,
+     "title": "Vorbis Tone",
+     "displayTitle": "VORBIS (Stereo)",
+     "extendedDisplayTitle": "Vorbis Tone (Stereo)"
+    },
+    {
+     "id": 79,
+     "key": "/library/streams/79",
+     "streamType": 4,
+     "codec": "txt",
+     "format": "txt",
+     "provider": "com.plexapp.agents.localmedia",
+     "displayTitle": "TXT",
+     "extendedDisplayTitle": "TXT (External)"
+    }
+   ],
+   "answers": [
+    {
+     "accept": null,
+     "query": [],
+     "status": 200,
+     "contentType": "text/html",
+     "body": "First plain synthetic line for rex\nSecond plain synthetic line for rex\n"
+    },
+    {
+     "accept": null,
+     "query": [
+      [
+       "format",
+       "xml"
+      ]
+     ],
+     "status": 200,
+     "contentType": "text/xml;charset=utf-8",
+     "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<MediaContainer size=\"1\">\n<Lyrics provider=\"com.plexapp.agents.localmedia\" minLines=\"0\" timed=\"0\" author=\"\" by=\"\">\n<Line>\n<Span text=\"First plain synthetic line for rex\" />\n</Line>\n<Line>\n<Span text=\"Second plain synthetic line for rex\" />\n</Line>\n<Line />\n</Lyrics>\n</MediaContainer>\n"
+    },
+    {
+     "accept": null,
+     "query": [
+      [
+       "format",
+       "json"
+      ]
+     ],
+     "status": 200,
+     "contentType": "text/html",
+     "body": "First plain synthetic line for rex\nSecond plain synthetic line for rex\n"
+    },
+    {
+     "accept": "application/json",
+     "query": [],
+     "status": 200,
+     "contentType": "application/json",
+     "body": "{\"MediaContainer\":{\"size\":1,\"Lyrics\":[{\"provider\":\"com.plexapp.agents.localmedia\",\"minLines\":0,\"timed\":false,\"author\":\"\",\"by\":\"\",\"Line\":[{\"Span\":[{\"text\":\"First plain synthetic line for rex\"}]},{\"Span\":[{\"text\":\"Second plain synthetic line for rex\"}]},{}]}]}}"
+    },
+    {
+     "accept": "application/json",
+     "query": [
+      [
+       "format",
+       "xml"
+      ]
+     ],
+     "status": 200,
+     "contentType": "application/json",
+     "body": "{\"MediaContainer\":{\"size\":1,\"Lyrics\":[{\"provider\":\"com.plexapp.agents.localmedia\",\"minLines\":0,\"timed\":false,\"author\":\"\",\"by\":\"\",\"Line\":[{\"Span\":[{\"text\":\"First plain synthetic line for rex\"}]},{\"Span\":[{\"text\":\"Second plain synthetic line for rex\"}]},{}]}]}}"
+    },
+    {
+     "accept": "application/json",
+     "query": [
+      [
+       "format",
+       "json"
+      ]
+     ],
+     "status": 200,
+     "contentType": "application/json",
+     "body": "{\"MediaContainer\":{\"size\":1,\"Lyrics\":[{\"provider\":\"com.plexapp.agents.localmedia\",\"minLines\":0,\"timed\":false,\"author\":\"\",\"by\":\"\",\"Line\":[{\"Span\":[{\"text\":\"First plain synthetic line for rex\"}]},{\"Span\":[{\"text\":\"Second plain synthetic line for rex\"}]},{}]}]}}"
+    },
+    {
+     "accept": "text/plain, */*; q=0.01",
+     "query": [],
+     "status": 200,
+     "contentType": "text/html",
+     "body": "First plain synthetic line for rex\nSecond plain synthetic line for rex\n"
+    },
+    {
+     "accept": "text/plain, */*; q=0.01",
+     "query": [
+      [
+       "format",
+       "xml"
+      ]
+     ],
+     "status": 200,
+     "contentType": "text/xml;charset=utf-8",
+     "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<MediaContainer size=\"1\">\n<Lyrics provider=\"com.plexapp.agents.localmedia\" minLines=\"0\" timed=\"0\" author=\"\" by=\"\">\n<Line>\n<Span text=\"First plain synthetic line for rex\" />\n</Line>\n<Line>\n<Span text=\"Second plain synthetic line for rex\" />\n</Line>\n<Line />\n</Lyrics>\n</MediaContainer>\n"
+    },
+    {
+     "accept": "text/plain, */*; q=0.01",
+     "query": [
+      [
+       "format",
+       "json"
+      ]
+     ],
+     "status": 200,
+     "contentType": "text/html",
+     "body": "First plain synthetic line for rex\nSecond plain synthetic line for rex\n"
+    }
+   ]
+  }
+ ]
+}

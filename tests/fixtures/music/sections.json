@@ -1,0 +1,90 @@
+{
+ "recorded": "plexav PMS 1.43.4 GET /library/sections, 2026-10-31 (Accept: application/json)",
+ "body": {
+  "MediaContainer": {
+   "size": 3,
+   "allowSync": false,
+   "title1": "Plex Library",
+   "Directory": [
+    {
+     "allowSync": true,
+     "filters": true,
+     "refreshing": false,
+     "key": "3",
+     "type": "movie",
+     "title": "Movies",
+     "agent": "tv.plex.agents.movie",
+     "scanner": "Plex Movie",
+     "language": "en-US",
+     "metadataAgentProviderGroupId": 1,
+     "uuid": "f0a8c716-9a26-4518-81b3-0fb19de00ccc",
+     "updatedAt": 1793455079,
+     "createdAt": 1793455079,
+     "scannedAt": 1793455079,
+     "content": true,
+     "directory": true,
+     "contentChangedAt": -1,
+     "hidden": 0,
+     "Location": [
+      {
+       "id": 3,
+       "path": "/data/movies"
+      }
+     ]
+    },
+    {
+     "allowSync": true,
+     "filters": true,
+     "refreshing": false,
+     "key": "2",
+     "type": "show",
+     "title": "TV Shows",
+     "agent": "tv.plex.agents.series",
+     "scanner": "Plex TV Series",
+     "language": "en-US",
+     "metadataAgentProviderGroupId": 2,
+     "uuid": "393d6182-1c4b-4d09-86da-80c3fc57103d",
+     "updatedAt": 1793455079,
+     "createdAt": 1793455079,
+     "scannedAt": 1793455079,
+     "content": true,
+     "directory": true,
+     "contentChangedAt": 10526,
+     "hidden": 0,
+     "Location": [
+      {
+       "id": 2,
+       "path": "/data/tv"
+      }
+     ]
+    },
+    {
+     "allowSync": true,
+     "filters": true,
+     "refreshing": false,
+     "key": "1",
+     "type": "artist",
+     "title": "Music",
+     "agent": "tv.plex.agents.music",
+     "scanner": "Plex Music",
+     "language": "en-US",
+     "metadataAgentProviderGroupId": 3,
+     "uuid": "44a5b57b-41c7-491a-8a3b-0a53e4c9edad",
+     "updatedAt": 1793457164,
+     "createdAt": 1793452010,
+     "scannedAt": 1793472011,
+     "content": true,
+     "directory": true,
+     "contentChangedAt": 10627,
+     "hidden": 0,
+     "Location": [
+      {
+       "id": 1,
+       "path": "/data/music"
+      }
+     ]
+    }
+   ]
+  }
+ }
+}

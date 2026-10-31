@@ -368,7 +368,10 @@ fn dash_duration(milliseconds: i64) -> String {
     let seconds = (milliseconds.max(0) as f32 / 1000.0) as f64;
     let hours = (seconds / 3600.0).floor();
     let minutes = ((seconds - hours * 3600.0) / 60.0).floor();
-    format!("PT{}H{}M{:.6}S", hours as i64, minutes as i64, seconds - hours * 3600.0 - minutes * 60.0)
+    // Trailing zeros dropped: a 45 s track is plexav's `PT0H0M45S` (2026-10-31).
+    let rest = format!("{:.6}", seconds - hours * 3600.0 - minutes * 60.0);
+    let rest = if rest.contains('.') { rest.trim_end_matches('0').trim_end_matches('.') } else { rest.as_str() };
+    format!("PT{}H{}M{rest}S", hours as i64, minutes as i64)
 }
 
 impl Plan {
@@ -548,6 +551,10 @@ impl Plan {
             .as_ref()
             .map_or((0, 0, 0.0), |video| (video.width, video.height, video.frame_rate));
         let suffix = if self.incomplete_segments { "?X-Plex-Incomplete-Segments=1" } else { "" };
+        // A track's names its bandwidth alone (plexav's music conversion, 2026-10-31).
+        if self.video.is_none() {
+            return format!("#EXTM3U\n#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH={}\nsession/{session}/base/index.m3u8{suffix}\n", self.bitrate() * 1000);
+        }
         format!(
             "#EXTM3U\n#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH={},RESOLUTION={width}x{height},FRAME-RATE={rate:.6}\nsession/{session}/base/index.m3u8{suffix}\n",
             self.bitrate() * 1000
@@ -3582,7 +3589,11 @@ impl Runtime {
                 if let (Some(object), Some(part)) = (media.as_object_mut(), parts.get(part_index)) {
                     object.insert("Part".to_string(), json!([part]));
                 }
-                let plan = self.transcode_plan(query, &request.headers, &key, &media, &profile, protocol)?;
+                let plan = if segments.first() == Some(&"music") {
+                    self.music_plan(query, &request.headers, &key, &media, protocol)?
+                } else {
+                    self.transcode_plan(query, &request.headers, &key, &media, &profile, protocol)?
+                };
                 if self.over_conversion_cap(&plan) {
                     return Some(Response::error(503, "rex: the simultaneous conversion limit is reached"));
                 }

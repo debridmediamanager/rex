@@ -646,6 +646,11 @@ python3 tests/test_music_feed.py            # tracks a source pushes (`kind: tra
                                             # Plex guid through a stub agent, plexav's Media for the same file, `display` for what nothing names; needs ffmpeg
 python3 tests/test_music_clients.py         # plexav's Plex Web, Android and Plexamp requests replayed against that library: browse, the music decision,
                                             # part reads, timelines counting plays and skips, smart lists, rating, search; needs ffmpeg
+python3 tests/test_music_conversion.py      # a track converted when the client turns direct play off: plexav's decisions, DASH and Matroska HLS,
+                                            # decoded segments; its codec and bitrate rules; needs ffmpeg
+python3 tests/test_music_lyrics.py          # a source's sidecar `lyrics`: plexav's lyrics stream and its JSON, XML and raw answers
+python3 tests/test_music_loudness.py        # a source's `loudness`: plexav's stream fields, `/levels` per subsample and the play-queue ramps
+python3 tests/test_music_library_declared.py # a source's `directories` `music` makes the music library its tracks go to
 python3 tests/test_match_show_children.py  # a show Fix Matched takes the picked show's episodes by its rows' TMDB episode ids, by number only where every season's count is Plex's (a real library's Ben 10: Omniverse); one matched onto a show the library holds merges into it, its episodes kept; both listed for the source with the show's ids until Unmatch
 python3 tests/test_feed_episode_ids.py      # a pushed `tmdb_episode` is Plex's episode listing it, every page of a season is read, a re-placed version leaves a row of several (Re:ZERO, Ben 10, Animaniacs, SpongeBob)
 python3 tests/test_feed_retry_placed.py     # an episode its source placed that Plex's agent had not named is named by the ten-minute retry, without a push (Animaniacs), one of several releases placed alike too (Re:ZERO S1E79)

@@ -63,7 +63,7 @@ internet, which needs a token once rex is claimed, but not the feed.
 | `user`, `password` | Basic auth for `url` (optional) |
 | `bearer` | `Authorization: Bearer` for `url` instead (optional) |
 | `mount` | Optional, a label: the folder Plex apps show its files under in Get Info (`<mount>/<path>`, default `/<path>`) and its libraries under (default rex's own, `/mnt/rex`). Playback of what a source pushes never uses it |
-| `directories` | Optional: the directories that get a library of their own ([below](#libraries-a-source-declares)). Each entry is `name`, one directory as the first segment of the source's item paths (non-empty, no `/`), and `shows` and/or `movies`, the title of its show and movie library (non-empty strings; at least one). Absent, `null` or `[]` declares nothing. A malformed entry is ignored, never the registration |
+| `directories` | Optional: the directories that get a library of their own ([below](#libraries-a-source-declares)). Each entry is `name`, one directory as the first segment of the source's item paths (non-empty, no `/`), and `shows`, `movies` and/or `music`, the title of its show, movie and music library (non-empty strings; at least one). Absent, `null` or `[]` declares nothing. A malformed entry is ignored, never the registration |
 
 `{name}` is letters, digits, `-` and `_`. A registration creates the source or replaces the
 one of that name, and the next part read streams from what it names, without a restart.
@@ -435,6 +435,8 @@ with a four-album library, through Plex Web, Plex for Android and Plexamp
 | `ids.plex` | Or Plex's album guid itself, `plex://album/<id>` |
 | `disc`, `track` | The track's disc (default 1) and number on that album: the album's track at those numbers at Plex's agent is the track |
 | `display` | For a track nothing names: its `title`, `summary` and `date`, its `artist` (`title`, `summary`, `poster`, `art`) and its `album` (`title`, `summary`, `poster`, `date`), as an episode's `show` and `season` ([Display](#display)) |
+| `lyrics` | The lyrics files beside it at the source: `[{"path": "music/.../01 - Song.lrc", "size": 147}]`, an `.lrc` (timed) or `.txt` each, read as a Part's bytes are and only when its path or `size` is new. Each is the track's lyrics stream as a real PMS makes one of a sidecar file (`LRC`, served as its `Lyrics` document or the file itself). Absent or `null` keeps them, `[]` removes them; another extension is left out |
+| `loudness` | What a loudness analysis of the file found, in PMS's names: `gain`, `albumGain`, `peak`, `albumPeak`, `albumRange`, `loudness`, `lra` (numbers), `startRamp` and `endRamp` (PMS's `"<dB> <seconds>;..."` strings) and `levels`, the loudness every 100 ms in dB. Shown on the track's audio stream, its ramps on a play queue asked with `includeLoudnessRamps=1`, its levels at `/library/streams/{id}/levels`; without it, that answers 404 as an unanalysed PMS does. rex never reads a file to work it out |
 | `library` | A music library's key; default the music library whose folder holds the file, else one whose folder ends in the item's first directory, else the first music library |
 
 - **rex reads no tag and no name.** The album is the one its ids name and the track the one on its
@@ -444,14 +446,23 @@ with a four-album library, through Plex Web, Plex for Android and Plexamp
   as its file under `[Unknown Artist]` and `[Unknown Album]`. One with no `track` number is
   numbered after the album's last.
 - **A music library is needed.** rex makes none on a push, as it makes no film or show library:
-  add one in Plex (Add Library, Music) on any folder. A track no music library takes is rejected,
-  `no music library holds <file>`.
+  add one in Plex (Add Library, Music) on any folder, or declare one for the source's directory
+  (`directories: [{"name": "music", "music": "Music"}]`, [above](#libraries-a-source-declares)). A
+  track no music library takes is rejected, `no music library holds <file>`.
+- **Its bitrate is PMS's.** A stream's own `bit_rate` when ffprobe names one; for a FLAC, its audio
+  frames over its length, which needs the first packet's position: probe with `-show_packets
+  -read_intervals %+#1` beside `-show_format -show_streams` (without it the file's bitrate is shown,
+  a kbit/s or two above PMS's); an Opus file's Media none.
 - **Held, moved and removed as any item.** Without `media_info` it is held; a push placing it on
   another album or number moves it there on its key; a removal trashes it; an album or artist left
   with nothing goes with its last track.
+- **Played direct, converted when asked.** Every codec plays as its file, as PMS answered its
+  clients for FLAC, MP3, Opus, Vorbis, ALAC and PCM; a client that turns direct play off (a music
+  quality below original) gets a conversion through rex's FFmpeg, as PMS converts: AAC in MP4 over
+  DASH (Plex Web), MP3 over HLS (Plex for Android, in Matroska segments), at 95% of the asked
+  bitrate, one-second segments. Without an FFmpeg that request is refused.
 - **What rex does not do.** No sonic analysis (no Stations, radio, mixes or sonically similar
-  tracks), no loudness analysis (no levels or loudness ramps), no lyrics, no music conversion: a
-  track plays as its file, direct.
+  tracks), and no analysis of its own of any file: loudness and lyrics are what the source pushes.
 
 ## Display
 
