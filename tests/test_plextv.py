@@ -681,7 +681,9 @@ def plex_web_gate_source():
     Returns (source, None), or (None, why): only an unreachable network is a skip, so a bundle Plex
     removed or changed fails rather than quietly turning the check off."""
     span = read_json(os.path.join(HERE, "fixtures", "plex_web_remote_gate.json"))["source_spans"][0]
-    cache = os.path.join(tempfile.gettempdir(), "rex-plex-web-%d" % os.getuid())
+    # /tmp is shared on Unix, so the cache is per user there; Windows' temp dir already is.
+    user = "-%d" % os.getuid() if hasattr(os, "getuid") else ""
+    cache = os.path.join(tempfile.gettempdir(), "rex-plex-web" + user)
     os.makedirs(cache, mode=0o700, exist_ok=True)
     carrier = os.path.join(cache, span["carrier_sha256"] + ".js")
     try:
