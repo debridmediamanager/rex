@@ -188,9 +188,9 @@ Library's picker lists each source's directories under its mount (`feed_folders`
 
 Point zurg at the server in zurg's `config.yml`: `rex_url` (this server's URL, an address
 or a host name) is all the feed needs; zurg registers itself as the source `zurg` (or its
-`rex_source`). Leave zurg's `plex_server_url` on a real
-Plex, if there is one: pointed at rex, zurg's matcher learns rex's own matches and pushes
-them back as exact ids, so a wrong match can never be corrected (`docs/setup.md`). zurg then pushes a snapshot of its library once it has
+`rex_source`). zurg from 2026.10.27 skips its Plex matcher and scans when `plex_server_url`
+is a rex (`PlexIsRex`); an older zurg pointed at rex learns rex's own matches and pushes them
+back as exact ids, so a wrong match can never be corrected. zurg then pushes a snapshot of its library once it has
 loaded and every few hours, and every change as it happens: `POST`/`DELETE
 /rex/feed/zurg/items`, `PUT /rex/feed/zurg/snapshot` (`runtime/feed.rs`). An item
 with a `kind` and ids is the title those ids name, placed where zurg says (TMDB's season and
