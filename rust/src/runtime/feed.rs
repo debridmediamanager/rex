@@ -2040,7 +2040,7 @@ impl Runtime {
                 let folder = folder.trim_end_matches('/');
                 folder == entry.name || folder.ends_with(&format!("/{}", entry.name))
             };
-            for (kind, title) in [("movie", &entry.movies), ("show", &entry.shows)] {
+            for (kind, title) in [("movie", &entry.movies), ("show", &entry.shows), ("artist", &entry.music)] {
                 let Some(title) = title else {
                     continue;
                 };

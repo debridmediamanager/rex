@@ -37,6 +37,8 @@ pub(crate) struct Declared {
     pub name: String,
     pub movies: Option<String>,
     pub shows: Option<String>,
+    /// A music library's title (an artist library, as Add Library's Music makes).
+    pub music: Option<String>,
 }
 
 /// A registration's `directories` and the entries left out, with why. Absent, `null` (a Go nil
@@ -62,11 +64,11 @@ fn declared(value: Option<&Value>) -> (Vec<Declared>, Vec<Value>) {
             Some(Value::String(_)) => Err(format!("directory {name:?}: {kind} title is empty")),
             Some(_) => Err(format!("directory {name:?}: {kind} title must be text")),
         };
-        let (movies, shows) = (title("movies")?, title("shows")?);
-        if movies.is_none() && shows.is_none() {
-            return Err(format!("directory {name:?}: names no shows or movies library"));
+        let (movies, shows, music) = (title("movies")?, title("shows")?, title("music")?);
+        if movies.is_none() && shows.is_none() && music.is_none() {
+            return Err(format!("directory {name:?}: names no shows, movies or music library"));
         }
-        Ok(Declared { name: name.to_string(), movies, shows })
+        Ok(Declared { name: name.to_string(), movies, shows, music })
     };
     let (mut kept, mut ignored) = (Vec::new(), Vec::new());
     for entry in entries {
@@ -152,7 +154,7 @@ impl Source {
         if !directories.is_empty() {
             let entries = directories.iter().map(|entry| {
                 let mut out = json!({"name": entry.name});
-                for (kind, title) in [("shows", &entry.shows), ("movies", &entry.movies)] {
+                for (kind, title) in [("shows", &entry.shows), ("movies", &entry.movies), ("music", &entry.music)] {
                     if let Some(title) = title {
                         out[kind] = json!(title);
                     }
@@ -334,7 +336,7 @@ mod tests {
             {"name": "wrestling", "shows": "Wrestling", "movies": null},
             {"name": "movies-1080p", "movies": "1080p Movies"}]});
         let source = Source::register("zurg", &body).unwrap();
-        assert_eq!(source.directories[0], Declared { name: "anime".into(), movies: Some("Anime Movies".into()), shows: Some("Anime".into()) });
+        assert_eq!(source.directories[0], Declared { name: "anime".into(), movies: Some("Anime Movies".into()), shows: Some("Anime".into()), music: None });
         assert_eq!(source.directories[1].movies, None);
         let kept = json!([{"name": "anime", "shows": "Anime", "movies": "Anime Movies"},
                           {"name": "wrestling", "shows": "Wrestling"}, {"name": "movies-1080p", "movies": "1080p Movies"}]);
@@ -357,12 +359,12 @@ mod tests {
         let mut sent: Vec<Value> = entries.to_vec();
         sent.insert(3, json!({"name": "wrestling", "shows": "Wrestling"}));
         let source = Source::register("zurg", &json!({"url": "http://h/dav", "directories": sent})).unwrap();
-        assert_eq!(source.directories, [Declared { name: "wrestling".into(), movies: None, shows: Some("Wrestling".into()) }]);
+        assert_eq!(source.directories, [Declared { name: "wrestling".into(), movies: None, shows: Some("Wrestling".into()), music: None }]);
         assert_eq!(source.ignored.iter().map(|ignored| ignored["entry"].clone()).collect::<Vec<_>>(), entries);
         // Each reason names its directory: zurg logs each distinct reason once.
         let reasons: Vec<&str> = source.ignored.iter().filter_map(|ignored| ignored["reason"].as_str()).collect();
         assert_eq!(reasons, [
-            r#"directory "anime": names no shows or movies library"#,
+            r#"directory "anime": names no shows, movies or music library"#,
             r#"directory entry {"shows":"Anime"}: no name"#,
             r#"directory entry {"name":"","shows":"Anime"}: no name"#,
             r#"directory "a/b": name must be one directory, with no '/'"#,

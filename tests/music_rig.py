@@ -188,14 +188,14 @@ def agent_server(answers=AGENT):
 class Rex:
     """A claimed (`--assert-claimed`) rex whose section 1 is a music library."""
 
-    def __init__(self, work, bytes_port, agent_url, extra_sections=()):
+    def __init__(self, work, bytes_port, agent_url, extra_sections=(), music=True, register=None):
         self.port = free_port()
         self.work = work
         catalog = {"machineIdentifier": MACHINE, "friendlyName": "rex-music",
-                   "sections": [{"key": "1", "type": "artist", "title": "Music", "agent": "tv.plex.agents.music",
-                                 "scanner": "Plex Music", "language": "en-US",
-                                 "uuid": "0000000000000000000000000000000000000a01",
-                                 "Location": [{"id": 1, "path": "/data/music"}]}] + list(extra_sections),
+                   "sections": ([{"key": "1", "type": "artist", "title": "Music", "agent": "tv.plex.agents.music",
+                                  "scanner": "Plex Music", "language": "en-US",
+                                  "uuid": "0000000000000000000000000000000000000a01",
+                                  "Location": [{"id": 1, "path": "/data/music"}]}] if music else []) + list(extra_sections),
                    "items": []}
         path = os.path.join(work, "catalog.json")
         json.dump(catalog, open(path, "w"))
@@ -216,7 +216,7 @@ class Rex:
                 return False
         poll_until(ready, 40)
         status, _ = self.request("/rex/sources/plexav", "PUT",
-                                 {"url": "http://127.0.0.1:%d" % bytes_port, "mount": "/data"},
+                                 dict({"url": "http://127.0.0.1:%d" % bytes_port, "mount": "/data"}, **(register or {})),
                                  {"Content-Type": "application/json"})
         assert status == 200, status
 
