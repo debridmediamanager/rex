@@ -14925,3 +14925,68 @@ section (`probes/record_music_conversion.py`, `record_music_lyrics.py`, `record_
 - **Not done.** `thumbBlurHash` and `UltraBlurColors` need the artwork decoded, and rex's crates
   decode no JPEG or PNG; an FFmpeg could, which was not built. A music library a source declares
   (`directories` `music`) lists as plexav's Add Library one does (agent, scanner, language, group).
+
+## Artwork BlurHash and UltraBlur colours (2026-10-31)
+
+Measured on plexav (PMS 1.43.4) with rex's own synthetic covers as the `Rex Blur` albums of its
+music library (`probes/make_blur_images.py`, the files in `tests/fixtures/artwork/`) and its real
+albums and Firefly; recorded by `probes/record_blur.py` into `tests/fixtures/artwork/plexav_blur.json`
+(Plex's artwork by sha256 and length only).
+
+- **Which rows.** `UltraBlurColors` on every artist, album, film, show, season and episode with an
+  image of its own, whatever the request; a track (which borrows its album's cover) and a playlist
+  never carry it, nor a row with no image. `thumbBlurHash` and `artBlurHash` only when
+  `includeFields` names them (Plexamp sends `includeFields=thumbBlurHash`, also
+  `musicAnalysis,thumbBlurHash`), each of the row's own image: an album's, season's and episode's
+  background is borrowed, so none has `artBlurHash`; an artist with no background none either.
+  `parentThumbBlurHash`/`grandparentThumbBlurHash` are never answered. Listings, `/children`, detail
+  rows and hub rows alike; the hashes sit after `index` (and `audienceRating`, `lastRatedAt`) and
+  before `year`, `thumbBlurHash` first; `UltraBlurColors` after `Image`. plexav's movie library is
+  empty: a film is taken to answer as the show does, as the binary treats both alike.
+- **Which image the colours are.** A row's own background, else its own poster: a show's and an
+  artist's with a background are the background's (`/services/ultrablur/colors?url=` of the art
+  answers them exactly), an album's, season's and episode's their own poster's or still's.
+- **When.** PMS works both out when the row gets its image and stores them on it
+  (`pv:thumbBlurHash`, `pv:ultraBlurTopLeft`... in `extra_data`). An album caught 0.7 s after its
+  files appeared had its artist's thumb and neither field; 0.3 s later its own cover and both.
+  rex works them out the first time a response shows the row, on a thread of its own outside the
+  runtime lock, keyed by the artwork's versioned path, kept in `blur_cache.db` beside the state file
+  and read back whole on start; until then a row answers as plexav's unanalysed one, and a film,
+  show, season or episode keeps the fixed palette rex always sent (as it does when no image can be
+  read). A listing of 400 albums whose covers take 40 ms each answers in milliseconds before and
+  after (`tests/test_perf_blur.py`).
+- **BlurHash** (read off the 1.43.4 binary, `GenerateBlurHash` from its `BlurHashProcessor`, and
+  checked against plexav's hashes): Wolt's reference encoder on the image the photo transcoder
+  makes of it -- fitted inside 100x100 with its aspect kept and never enlarged (a 1400x2100 poster
+  67x100), FreeImage's bicubic (Mitchell, B = C = 1/3), the JPEG decoded by libjpeg at a reduced DCT
+  size first (a 256 hint). 3x4 components for a film's or a show's poster (`T...`, plexav's
+  Firefly), 4x3 for every other image, a season's poster and every background included (`L...`):
+  that is why plexav's show and season, both 1400x2100 posters, start with different letters.
+  rex does the same but decodes at full size (no pure-Rust decoder scales in the DCT): its hashes
+  are byte-identical to plexav's for the PNG covers, five of the six JPEG ones and three of seven
+  real Plex images (Firefly's poster, two album covers), and otherwise decode to within 0.5 per
+  channel on average, 17 at the worst of 32x32 pixels (quadrants.jpg's hard edges: 1.2 and 24).
+- **UltraBlur colours** (read off the binary, `0x1140100` and what it calls; a Python model
+  reproduced plexav's `/services/ultrablur/colors?url=` on 72 images, served to it over http, with
+  no difference): OpenCV decodes the image (capped at 3840x2160's pixel count, bilinearly) and cuts
+  it in quadrants. Each quadrant's palette is color-thief's MMCQ -- every fifth pixel, near-white
+  (all channels over 250) left out, eight boxes by count, then ten by count times volume, with one
+  port bug in the median cut's back-off -- and each colour is scored in Okhsl: its rank, a dark
+  lightness (150 up to 0.4), a strong saturation (300 from 0.6), its distance from the colour beside
+  it (measured in Oklab of the gamma-encoded channels, another PMS slip), penalties for yellow-green,
+  skin tones and washed-out colours. The best wins, its saturation raised to 0.6 when over 0.2, its
+  lightness capped at 0.2 top left and 0.4 elsewhere; top right and bottom left are scored against
+  top left, bottom right against bottom left. A quadrant of near-white alone has no palette: a white
+  image is a 500, and such a row has no colours (its hash is a separate processor's). Ties fall as
+  libc++'s `std::sort` leaves them, and the floats are f32 in the binary's order with musl's
+  `cbrtf`, `powf`, `cosf`, `sinf` and `atan2f`: a grey's hue is their rounding noise. rex's port
+  (`runtime/ultrablur.rs`, pure Rust) answers exactly what plexav does for all 23 solid colours and
+  every PNG among those 72; a JPEG decodes a unit or two apart from libjpeg-turbo, which leaves 45 of
+  the 49 within 4 per channel and flips the pick of one quadrant in two real photos (24 and 102).
+  An image under 2x2 has an empty quadrant: plexav answers 500 for 1x1 and 3x1 PNGs and colours for
+  a 2x2 one (`plexav_blur.json` "tiny"): the 1x1 PNGs the parity and UI suites upload, which
+  expected the 200 rex's fixed palette gave, are 2x2 since. The colours route reads the url's own image
+  (TMDB's original); listings' analysis reads TMDB's 342-wide poster and 780-wide background, which
+  may move a corner a unit or two. Test servers run with `REX_ARTWORK_ANALYSIS=off`
+  (`tests/server_command.py`), every listing then answering as before; the colours route still
+  reads its image.

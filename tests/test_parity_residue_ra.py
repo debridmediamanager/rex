@@ -185,8 +185,9 @@ def run(port):
         check("%s of that non-image thumb is the transcoder's 500" % leaf,
               status == 500 and len(body) == 109 and order(names) == ERROR_ORDER,
               (status, names, body[:60]))
-    png = (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", 1, 1, 8, 2, 0, 0, 0))
-           + chunk(b"IDAT", zlib.compress(b"\x00\x10\x20\x30")) + chunk(b"IEND", b""))
+    # 2x2: a 1x1 image has no UltraBlur palette, plexav's 500 (`fixtures/artwork/plexav_blur.json`).
+    png = (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", 2, 2, 8, 2, 0, 0, 0))
+           + chunk(b"IDAT", zlib.compress(b"\x00" + b"\x10\x20\x30" * 2 + b"\x00" + b"\x10\x20\x30" * 2)) + chunk(b"IEND", b""))
     raw(port, "POST", "/library/metadata/1007/posters", body=png)
     art = thumb()
     status, _, names, values, body = raw(

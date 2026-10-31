@@ -81,6 +81,16 @@ impl DiskCache {
         serde_json::from_str(&text?).ok()
     }
 
+    /// Every answer kept, for a cache read whole into memory on start (`blur.rs`).
+    pub(super) fn all(&self) -> Vec<(String, Value)> {
+        let Some(connection) = &self.connection else { return Vec::new() };
+        let Ok(connection) = connection.lock() else { return Vec::new() };
+        let Ok(mut select) = connection.prepare("SELECT key, value FROM cache") else { return Vec::new() };
+        let rows = select.query_map([], |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)));
+        rows.map(|rows| rows.flatten().filter_map(|(key, text)| Some((key, serde_json::from_str(&text).ok()?))).collect())
+            .unwrap_or_default()
+    }
+
     pub(super) fn put(&self, key: &str, value: &Value) {
         let Some(connection) = &self.connection else { return };
         let Ok(connection) = connection.lock() else { return };

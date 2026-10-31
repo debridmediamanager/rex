@@ -70,7 +70,7 @@ searched on disk. The gate is usually one truthiness check in minified code.
 | `tests/` | Conformance and end-to-end suites, plus `catalog_ui.json` and `fixtures/decisions/`, the measured decision corpus |
 | `tests/fixtures/` | Redacted corpora recorded from a real PMS through a real client; `media/` pairs real files' probes with a real PMS's analysis of them |
 | `harness/` | plexlab — the reference PMS and the recorder. See below. |
-| `probes/` | Measurement scripts: the recorders behind checked-in fixtures (`legacy_scan_fixture.py`, `record_session_gate.py`, `record_shared_user.py`, `record_watch_import.py`), `ui_surface.py`, the plex.tv presence probes and `apkcensus.py` |
+| `probes/` | Measurement scripts: the recorders behind checked-in fixtures (`legacy_scan_fixture.py`, `record_session_gate.py`, `record_shared_user.py`, `record_watch_import.py`, `record_blur.py`), `ui_surface.py`, the plex.tv presence probes and `apkcensus.py` |
 | `docs/findings.md` | Everything measured. Read before changing behaviour. |
 | `docs/protocol-traps.md`, `docs/setup.md`, `docs/feed-api.md`, `docs/rex-direct-api.md` | The protocol's edge cases, the operator's guide, the API sources push with, and the one a rex-direct provider answers |
 
@@ -101,7 +101,8 @@ English, so a change to an English string re-keys its translations in the same c
 never its wording. A newly measured string gets rex's own translation, and a fixture recorded
 in another language has PMS's wording swapped for rex's before it is checked in. Runtime files never go in
 `data/`: `plex_cache.db`, `claim_state.json` and `rex-direct.json` are resolved beside the
-**catalog**, because they are state rather than measurement.
+**catalog**, because they are state rather than measurement; `blur_cache.db`, each artwork's
+BlurHash and corner colours, beside the state file (in memory under `--no-state`).
 The state file is state too: a SQLite database beside the catalog by default
 (`rex.db`), the catalog itself when the catalog is a database, or wherever `--state`
 names.
@@ -568,6 +569,7 @@ python3 tests/test_perf_search_rank.py      # a search for "the" ranks thousands
 python3 tests/test_perf_feed_listing.py     # a source's listing and a snapshot's end read no row from disk and hold no Plex request
 python3 tests/test_perf_livetv.py           # a lineup of 300 channels a week deep: the grid and lineup in milliseconds, holding no Plex request
 python3 tests/test_perf_bandwidth.py        # three days of per-second byte counts: a day of seconds kept, older ones per hour, the graph fast
+python3 tests/test_perf_blur.py             # 400 albums whose covers read slowly: listings never wait for the artwork analysis
 python3 tests/test_manager.py               # rex manager end to end: create, start, crash restart, give-up, restore; starts its own
 python3 tests/test_concurrency.py           # barrier races, 32-thread load, backlog, --state kills, reaper, slow sockets; ~4 min
 python3 tests/test_plextv.py                # claim, announce, account import and restart against a LOCAL stub plex.tv
@@ -651,6 +653,8 @@ python3 tests/test_music_conversion.py      # a track converted when the client 
 python3 tests/test_music_lyrics.py          # a source's sidecar `lyrics`: plexav's lyrics stream and its JSON, XML and raw answers
 python3 tests/test_music_loudness.py        # a source's `loudness`: plexav's stream fields, `/levels` per subsample and the play-queue ramps
 python3 tests/test_music_library_declared.py # a source's `directories` `music` makes the music library its tracks go to
+python3 tests/test_artwork_blur.py          # thumbBlurHash, artBlurHash and UltraBlurColors as plexav answers them for rex's own synthetic
+                                            # covers: which rows carry which, the hash and corners within tolerance, kept by --state
 python3 tests/test_match_show_children.py  # a show Fix Matched takes the picked show's episodes by its rows' TMDB episode ids, by number only where every season's count is Plex's (a real library's Ben 10: Omniverse); one matched onto a show the library holds merges into it, its episodes kept; both listed for the source with the show's ids until Unmatch
 python3 tests/test_feed_episode_ids.py      # a pushed `tmdb_episode` is Plex's episode listing it, every page of a season is read, a re-placed version leaves a row of several (Re:ZERO, Ben 10, Animaniacs, SpongeBob)
 python3 tests/test_feed_retry_placed.py     # an episode its source placed that Plex's agent had not named is named by the ten-minute retry, without a push (Animaniacs), one of several releases placed alike too (Re:ZERO S1E79)
@@ -708,7 +712,10 @@ then by an outgoing connection and the server fails to bind (the cause of the ol
 on fixed ports (`gated_port`, `web_port_c16y`, `port_c29l`, 32597-32599); two suites at
 once need those remapped in the test host's copy. Point `REX_PLEXTV_URL` at a
 closed local port for any run that must not reach plex.tv. `tests/server_command.py` sets
-`REX_DIRECT_URL=off` unless a suite names a provider, so no claimed test server registers with DMM.
+`REX_DIRECT_URL=off` unless a suite names a provider, so no claimed test server registers with DMM,
+and `REX_ARTWORK_ANALYSIS=off` unless a suite names it (`test_artwork_blur.py`, `test_perf_blur.py`):
+rex reads a listed row's artwork in the background for its BlurHash and UltraBlur colours, so the
+row's answer changes once its image is read, between two reads of a suite that compares them.
 
 `test_ui_surface.py` **writes**: it edits rows, builds and deletes playlists and
 collections, and finally deletes a row and a section. Everything it touches is in
@@ -717,7 +724,7 @@ with `--no-state` — but run it against a test instance, started on the fixture
 checks are written against:
 
 ```bash
-rust/target/release/rex --port 32500 --catalog tests/catalog_ui.json --assert-claimed --no-state &
+REX_ARTWORK_ANALYSIS=off rust/target/release/rex --port 32500 --catalog tests/catalog_ui.json --assert-claimed --no-state &
 python3 tests/test_ui_surface.py --base http://127.0.0.1:32500
 ```
 
@@ -817,7 +824,10 @@ rigs run on.
 - Comments explain **what was measured and why the obvious thing is wrong**,
   not what the line does. Match the existing density.
 - rex keeps its existing crate set. Tests may use `plexapi`; probes may use
-  anything.
+  anything. One exception, Ben's (2026-10-31): artwork is decoded in pure Rust for the
+  BlurHash and UltraBlur colours a real PMS answers (`runtime/blur.rs`), with `zune-jpeg`,
+  `png` and `image-webp`, default features off -- the three formats Plex's artwork comes in,
+  no C and no FFmpeg. Nothing else joins them for it.
 - Atomic commits, semantic single-line messages (`fix: emit totalSize on paged
   children`), authored as `Ben Adrian Sarmiento <me@bensarmiento.com>`.
 - Never commit a token, a provider download link, zurg's credentials, a Plex token, or

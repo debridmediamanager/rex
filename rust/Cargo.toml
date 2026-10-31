@@ -17,6 +17,12 @@ flate2 = { version = "1", default-features = false, features = ["zlib"] }
 rustls = "0.23"
 rustls-pemfile = "2"
 rusqlite = { version = "0.40", features = ["bundled"] }
+# Ben's exception to the crate set (2026-10-31): artwork is decoded, in pure Rust, for the
+# BlurHash and UltraBlur colours a real PMS answers (runtime/blur.rs). Plex's artwork is JPEG,
+# PNG or WebP; nothing else is compiled in.
+zune-jpeg = { version = "0.5", default-features = false, features = ["std", "x86", "neon"] }
+png = { version = "0.18", default-features = false }
+image-webp = { version = "0.2", default-features = false }
 
 [build-dependencies]
 # Already rex's: `build.rs` gzips `data/` into the binary with it.

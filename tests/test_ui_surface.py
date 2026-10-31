@@ -32154,8 +32154,9 @@ def main():
     #    `upload://clearLogos/...` candidate, and the row gains its own versioned `theme`
     #    (served audio) or a `clearLogo` Image -- where rex kept nothing and filed a
     #    theme as an `art` upload.
-    png_c59g = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk"
-                                "+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==")
+    # 2x2, not 1x1: the movie keeps this poster, and cycle 70's ultrablur check below reads it; a
+    # 1x1 image has no UltraBlur palette, plexav's 500 (`fixtures/artwork/plexav_blur.json` "tiny").
+    png_c59g = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAEElEQVR4nGNg+M9QD8YwBgA0zgX5nvvb8wAAAABJRU5ErkJggg==")
     mp3_c59g = b"ID3\x04\x00\x00\x00\x00\x00\x00" + b"\xff\xfb\x90\x00" * 64
     _, grid_c59g, _ = get(base, "/library/sections/%s/all" % movie_section)
     keys_c59g = [r.get("ratingKey") for r in grid_c59g.get("Metadata") or []]

@@ -21,6 +21,10 @@ os.environ.setdefault("REX_DIRECT_URL", "off")
 # rex finds an FFmpeg on its own (jellyfin-ffmpeg's places, then PATH): a test server is the
 # encoder-less one the parity suites measure unless its suite names an FFmpeg.
 os.environ.setdefault("REX_TRANSCODER", "off")
+# rex reads every listed row's artwork in the background for its BlurHash and UltraBlur colours,
+# so a row's answer changes once its image is read (a TMDB poster, when the host has a network):
+# a test server analyses nothing unless its suite names it (`test_artwork_blur.py`).
+os.environ.setdefault("REX_ARTWORK_ANALYSIS", "off")
 
 
 def test_ffmpeg():

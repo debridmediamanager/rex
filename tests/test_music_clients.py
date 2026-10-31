@@ -8,8 +8,8 @@ its answer compared as `harness/scripts/replay.py` compares: element structure, 
 and values, the per-server fields left out.
 
 What is left out, by design and named: no `Stations` (rex runs no sonic analysis, so a library
-of music has no Stations shelf and an artist none), no `UltraBlurColors`/`thumbBlurHash` (no
-artwork analysis), no `requiredBandwidths`/`deepAnalysisVersion` (no loudness analysis); a
+of music has no Stations shelf and an artist none), no `UltraBlurColors`/`thumbBlurHash` (the
+artwork analysis is `test_artwork_blur.py`'s), no `requiredBandwidths`/`deepAnalysisVersion` (no loudness analysis); a
 library's `Meta` and settings' help text (rex's own wording); the Top Albums shelf's period
 (drawn); an album's `Mood` list (plexav's merges its tracks' in an order not worked out); view
 state where the recording had plays rex's fresh library has not (`viewCount`, `skipCount`,

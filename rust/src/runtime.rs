@@ -31,6 +31,8 @@ use crate::hotrow::{AnyRow, Lazy, Row};
 mod accounts;
 mod analysis;
 mod artwork;
+mod blur;
+mod ultrablur;
 mod axes;
 mod butler;
 mod children;
@@ -658,6 +660,9 @@ pub struct Runtime {
     /// A remote artwork url the router answered with (`_serve_image`); fetched, cached,
     /// after the lock is released, so a slow image host never holds up the API.
     pending_image: Option<String>,
+    /// `/service(s)/ultrablur/colors`: the palette its image falls back to, answered once the
+    /// image is read outside the lock.
+    pending_ultrablur: Option<Value>,
     /// A claim token `POST /myplex/claim` accepted: `handle_connection` redeems it with
     /// plex.tv after the lock is released, so the exchange never holds up the API.
     pending_claim: Option<String>,
@@ -676,6 +681,7 @@ pub struct Runtime {
     pending_subtitle: Option<subtitles::Job>,
     pending_subtitle_read: Option<subtitles::ReadJob>,
     analysis_jobs: Arc<analysis::Jobs>,
+    blurs: Arc<blur::Blurs>,
     /// The subtitle jobs running, by item, and the searches that found nothing.
     subtitle_jobs: Arc<subtitles::Jobs>,
     /// What each row a subtitle search answered names, by the local stream id it was minted.
@@ -954,6 +960,7 @@ impl Runtime {
             Arc::new(plexmeta::PlexMeta::new(Arc::clone(&plextv.claim), cache))
         });
         let analysis_jobs = analysis::Jobs::new(options.state.as_deref());
+        let blurs = blur::Blurs::new(options.state.as_deref());
         let mut runtime = Self {
             catalog,
             machine,
@@ -994,6 +1001,7 @@ impl Runtime {
             pending_download: None,
             pending_artifact: None,
             pending_image: None,
+            pending_ultrablur: None,
             pending_claim: None,
             pending_agent: None,
             agent_answers: HashMap::new(),
@@ -1001,6 +1009,7 @@ impl Runtime {
             pending_subtitle: None,
             pending_subtitle_read: None,
             analysis_jobs,
+            blurs,
             subtitle_jobs: Arc::default(),
             subtitle_offers: HashMap::new(),
             subtitle_serial: 0,
@@ -7663,6 +7672,7 @@ impl Runtime {
     /// The passes over a response's rows after its route, in their order.
     fn finish_rows(&self, request: &Request, response: &mut Response) {
         self.alternates_response(request, response);
+        self.blur_response(request, response);
         exclude_fields_response(request, response);
         sync_version_response(request, response);
         self.stream_titles_response(request, response);
@@ -12595,7 +12605,9 @@ impl Runtime {
     /// (js:831397).  The 1.42.2 reference answers both spellings and resolves the url
     /// exactly as `/photo/:/transcode` does: no `url` a 400, an unresolvable one a 404, a
     /// server path that is not an image a 500, any image it serves a 200 with the four
-    /// corner colours.  rex has no image decoder, so the VALUES are the row's own palette.
+    /// corner colours.  The colours are the image's (`blur.rs`): a row's own artwork's as its
+    /// rows show them, any other image's worked out once it is read, outside the lock, and the
+    /// row's palette (else rex's fixed one) only for an image that cannot be read.
     fn route_ultrablur_colors(
         &mut self,
         request: &Request,
@@ -12604,10 +12616,12 @@ impl Runtime {
         let Some(url) = query.get("url").cloned() else {
             return Response::error(400, "rex: bad request");
         };
+        // PMS reads the url's own bytes, not a transcode: the largest size the transcoder takes
+        // asks TMDB for its original.
         let photo_query = HashMap::from([
             ("url".to_string(), url.clone()),
-            ("width".to_string(), "64".to_string()),
-            ("height".to_string(), "64".to_string()),
+            ("width".to_string(), "4096".to_string()),
+            ("height".to_string(), "4096".to_string()),
         ]);
         let fetched = self.route_photo_transcode(request, &photo_query);
         if fetched.status != 200 {
@@ -12619,8 +12633,16 @@ impl Runtime {
             .and_then(|rest| rest.split_once('/'))
             .map(|(key, _)| key.to_string())
             .filter(|key| !key.is_empty() && key.bytes().all(|b| b.is_ascii_digit()));
-        let palette = owner
-            .and_then(|key| self.catalog.get(&key))
+        let row = owner.and_then(|key| self.catalog.get(&key));
+        let leaf = inner.split('/').nth(4).unwrap_or_default();
+        let own = row.and_then(|row| row.get(if leaf == "art" { "art" } else { "thumb" })).and_then(Value::as_str);
+        if let Some(analysis) = own.filter(|_| matches!(leaf, "thumb" | "art" | "poster")).and_then(|path| self.blurs.cached(path)) {
+            return match &analysis.colors {
+                Some(colors) => blur::colors_answer(blur::colors_object(colors)),
+                None => Response::error(500, "rex: no palette"),
+            };
+        }
+        let palette = row
             .and_then(|row| row.get("UltraBlurColors"))
             .map(|colors| {
                 if colors.is_array() {
@@ -12639,10 +12661,8 @@ impl Runtime {
                 .unwrap_or_else(|| json!(fallback));
             colors.insert(corner.to_string(), value);
         }
-        Response::json(
-            200,
-            json!({"MediaContainer": {"size": 1, "UltraBlurColors": [Value::Object(colors)]}}),
-        )
+        self.pending_ultrablur = Some(Value::Object(colors));
+        fetched
     }
 
     /// `section_continue_watching`: a show library keeps a hidden row, a movie library
@@ -23376,6 +23396,7 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
     loaded.catalog.pack_pending();
     let runtime = Arc::new(Mutex::new(loaded));
     analysis::start(&runtime);
+    blur::start(&runtime);
     // `logger.addHandler(_Capture())`: Download Logs and the Console see what follows.
     logging::start_capture();
     if let Some(cert) = &tls_cert {
@@ -24035,6 +24056,7 @@ fn handle_connection<S: Read + Write + PollRead>(
             guard.pending_download = None;
             guard.pending_artifact = None;
             guard.pending_image = None;
+            guard.pending_ultrablur = None;
             guard.pending_claim = None;
             guard.pending_subtitle_read = None;
             guard.refused_for_token = false;
@@ -24101,6 +24123,7 @@ fn handle_connection<S: Read + Write + PollRead>(
                     None => (url, None),
                 }
             });
+            let ultrablur = guard.pending_ultrablur.take();
             let claim = guard.pending_claim.take();
             let artifact = guard.pending_artifact.take().map(|(artifact, seek, kind)| (Arc::clone(&guard.analysis_jobs), artifact, seek, kind));
             if std::mem::take(&mut guard.pending_auto_collections) {
@@ -24155,6 +24178,9 @@ fn handle_connection<S: Read + Write + PollRead>(
                 }
                 _ => response,
             };
+            if let Some(fallback) = ultrablur {
+                response = blur::colors_response(response, fallback);
+            }
             if let Some(checks) = file_checks {
                 finish_file_checks(&mut response, checks);
             }

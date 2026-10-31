@@ -244,8 +244,10 @@ def run(port):
     def chunk(kind, data):
         return (struct.pack(">I", len(data)) + kind + data
                 + struct.pack(">I", zlib.crc32(kind + data) & 0xffffffff))
-    png = (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", 1, 1, 8, 2, 0, 0, 0))
-           + chunk(b"IDAT", zlib.compress(b"\0\0\0\0")) + chunk(b"IEND", b""))
+    # 2x2: a 1x1 image has empty quadrants, no UltraBlur palette and plexav's 500 (PMS 1.43.4,
+    # `fixtures/artwork/plexav_blur.json` "tiny"); a 2x2 one has its colours.
+    png = (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", 2, 2, 8, 2, 0, 0, 0))
+           + chunk(b"IDAT", zlib.compress(b"\0" + bytes(6) + b"\0" + bytes(6))) + chunk(b"IEND", b""))
     seen = {}
     for key, body in (("1007", text), ("1012", png)):
         status, _, _ = exchange(port, "POST", "/library/metadata/%s/posters" % key, body=body,

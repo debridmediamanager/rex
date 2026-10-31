@@ -60,7 +60,8 @@ ALBUMS = [
 
 # Differ per server by construction (replay.py's), and what rex does not have by design: no
 # sonic or loudness analysis (`requiredBandwidths`, `deepAnalysisVersion`), no artwork colours
-# (`UltraBlurColors`), its own session ids and media ids.
+# (`UltraBlurColors`: these servers run without the artwork analysis, `server_command.py`, which
+# `test_artwork_blur.py` measures), its own session ids and media ids.
 VOLATILE = {
     "machineIdentifier", "ratingKey", "parentRatingKey", "grandparentRatingKey", "key", "parentKey",
     "grandparentKey", "guid", "parentGuid", "grandparentGuid", "addedAt", "updatedAt", "createdAt",
@@ -188,7 +189,7 @@ def agent_server(answers=AGENT):
 class Rex:
     """A claimed (`--assert-claimed`) rex whose section 1 is a music library."""
 
-    def __init__(self, work, bytes_port, agent_url, extra_sections=(), music=True, register=None):
+    def __init__(self, work, bytes_port, agent_url, extra_sections=(), music=True, register=None, args=()):
         self.port = free_port()
         self.work = work
         catalog = {"machineIdentifier": MACHINE, "friendlyName": "rex-music",
@@ -205,7 +206,7 @@ class Rex:
             env.pop(name, None)
         self.log = open(os.path.join(work, "server.log"), "ab")
         self.process = subprocess.Popen(
-            server_command("--port", self.port, "--catalog", path, "--assert-claimed", "--gdm", "off", root=ROOT),
+            server_command("--port", self.port, "--catalog", path, "--assert-claimed", "--gdm", "off", *args, root=ROOT),
             cwd=ROOT, env=env, stdout=self.log, stderr=subprocess.STDOUT)
 
         def ready():
