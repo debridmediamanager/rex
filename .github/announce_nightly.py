@@ -32,8 +32,8 @@ def message(tag, url, commit, notes):
             "title": f"rex {tag}",
             "url": url,
             "description": describe(notes.splitlines()),
-            "color": 0x5865F2,
-            "footer": {"text": f"nightly build, for sponsors · commit {commit[:7]}"},
+            "color": 0xFF9A62,
+            "footer": {"text": f"nightly build · commit {commit[:7]}"},
         }],
         "allowed_mentions": {"parse": []},
     }

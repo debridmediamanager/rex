@@ -1002,9 +1002,11 @@ impl Manager {
 
 const PAGE: &str = r##"<!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>rex manager</title>
-<style>body{font:14px system-ui,sans-serif;margin:16px;max-width:960px}table{border-collapse:collapse;width:100%}
-td,th{border-bottom:1px solid #ccc;padding:4px 6px;text-align:left}input,select{margin:2px}
-pre{background:#f4f4f4;padding:8px;max-height:300px;overflow:auto}</style></head><body>
+<style>body{font:14px system-ui,sans-serif;margin:16px;max-width:960px;color:#ddd;background:#111}
+table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #333;padding:4px 6px;text-align:left}
+input,select,button{margin:2px;color:#ddd;background:#222;border:1px solid #444;border-radius:4px;padding:3px 6px}
+button{background:#ff9a62;color:#1a0d05;border-color:#ff9a62;cursor:pointer}a{color:#ff9a62}
+pre{background:#222;padding:8px;max-height:300px;overflow:auto}</style></head><body>
 <h1>rex manager</h1>
 <p>Admin token: <input id=tok type=password size=40> <button onclick="save()">Use</button> (printed at the manager's first start, kept in admin.token under its root)</p>
 <table><thead><tr><th>name<th>port<th>status<th>desired<th>last exit<th></tr></thead><tbody id=rows></tbody></table>
