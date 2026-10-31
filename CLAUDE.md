@@ -810,7 +810,9 @@ rigs run on.
   Limits sections of `public/index.html` in `debridmediamanager/rex-site`
   (rex.debridmediamanager.com). A change to any step, flag, env var, version floor or
   limit lands in all five in the same task, and a code change that alters setup is not
-  done until they do.
+  done until they do. The README, like the site, keeps only a one-line-per-step outline
+  and the version floors, and links to `docs/setup.md` for the commands (2026-10-31): it
+  introduces the project, so detail goes in setup.md, not back into it.
 - Those five describe the simplest setup there is, and in the same order: rex starts **once**,
   with every flag a later step needs already on that first start (an own hostname's
   `--tls-cert`/`--tls-key`; nothing at all for the plain setup). No step says "add this flag and
