@@ -22,7 +22,7 @@ rex gets its library from whatever you point at it. Each source sends rex the li
 
 This is the short version. [docs/setup.md](docs/setup.md) has the details and a troubleshooting table.
 
-You need a Linux, macOS or Windows machine, rex nightly 2026.10.25 or newer, and at least one source such as zurg (a zurg nightly from 2026.10.27 or newer: zurg v1.0.0 has no rex feed). rex never needs your Plex token.
+You need a Linux, macOS or Windows machine with 1 GB of RAM, rex nightly 2026.10.25 or newer, and at least one source such as zurg (a zurg nightly from 2026.10.27 or newer: zurg v1.0.0 has no rex feed). rex never needs your Plex token.
 
 **1. Get it**
 

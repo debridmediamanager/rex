@@ -15,6 +15,7 @@ HTTPS address. rex starts once (step 4), and nothing after that needs a restart.
 | | |
 |---|---|
 | A Linux, macOS or Windows host | rex is one binary with no other runtime dependencies |
+| 1 GB of RAM | with 4,062 movies and 656 shows (34,678 episodes) rex used under 500 MB while it started and about 730 MB while the library was browsed; converting video takes more |
 | rex nightly 2026.10.25 or newer | download it (README step 1), or build it with Rust 1.89 or newer (rustup) or Docker (below) |
 | One or more byte sources | [zurg](https://zurg.debridmediamanager.com/) nightly 2026.10.27 or newer (zurg v1.0.0 has no rex feed), or any HTTP server that serves the files plus something that pushes them to rex's feed |
 | An HTTPS address | only for use outside your LAN and in app.plex.tv: rex-direct, on by default once claimed (step 7), or a certificate for a hostname you control (a `tailscale cert`, Let's Encrypt) |
