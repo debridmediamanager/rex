@@ -50,22 +50,22 @@ fn first_time(what: String) -> bool {
 
 /// One pushed item, its defaults filled in.
 #[derive(Debug, Clone)]
-struct Item {
-    id: String,
-    path: String,
-    file: String,
-    library: Option<String>,
-    name: String,
-    release: String,
-    size: u64,
-    hash: Option<String>,
+pub(super) struct Item {
+    pub(super) id: String,
+    pub(super) path: String,
+    pub(super) file: String,
+    pub(super) library: Option<String>,
+    pub(super) name: String,
+    pub(super) release: String,
+    pub(super) size: u64,
+    pub(super) hash: Option<String>,
     imdb: Option<String>,
     tmdb: Option<String>,
-    ids: Map<String, Value>,
-    media_info: Option<Value>,
+    pub(super) ids: Map<String, Value>,
+    pub(super) media_info: Option<Value>,
     /// What the source calls this file's `media_info` (`probe`): kept on its version, so a later
     /// push may leave the probe out while it is the same (`wants`).
-    probe: Option<String>,
+    pub(super) probe: Option<String>,
     /// The source's explicit movie edition; absent preserves it, empty clears it.
     edition: Option<String>,
     /// Where the provider lists the file inside its release; `""` at its top level, `None`
@@ -77,14 +77,14 @@ struct Item {
     /// Where the source placed the file, kept on the row as `_placed`: its `kind` ("movie" or
     /// "episode") and an episode's TMDB `season`, `episode` and `episode_end`. `None` when it
     /// sends no `kind` rex knows: nothing places the file, and its name is not read.
-    placed: Option<Value>,
+    pub(super) placed: Option<Value>,
     /// The season and episode a show's file its source did not number is on: its row's, when it
     /// has one, else the next in its release's file order (`number_unplaced`). Set before it is
     /// identified, which reads them.
     kept: Option<(i64, i64)>,
     /// What the source says the title is called and looks like (`display`): shown only while
     /// nothing identifies the row (`scan::dress`), and never over a field a person locked.
-    display: Option<Map<String, Value>>,
+    pub(super) display: Option<Map<String, Value>>,
     /// The sidecar subtitles the source serves beside the file (`subtitles`); `None` when it
     /// sent none, which keeps what the row has, as an absent `chapters` does.
     subtitles: Option<Vec<SourceSubtitle>>,
@@ -218,7 +218,13 @@ fn display_fields(display: &Map<String, Value>, source: &Source) -> Result<Map<S
         Ok(kept)
     }
     let mut kept = pick(display, &["title", "summary", "date", "thumb", "art"], "", source)?;
-    for (part, fields) in [("show", &["title", "summary", "poster", "art"][..]), ("season", &["summary", "poster"][..])] {
+    for (part, fields) in [
+        ("show", &["title", "summary", "poster", "art"][..]),
+        ("season", &["summary", "poster"][..]),
+        // A track's artist and album, as an episode's show and season (`music.rs`).
+        ("artist", &["title", "summary", "poster", "art"][..]),
+        ("album", &["title", "summary", "poster", "date"][..]),
+    ] {
         match display.get(part) {
             None | Some(Value::Null) => {}
             Some(Value::Object(inner)) => {
@@ -261,10 +267,17 @@ impl Item {
         // by its probe: rex plays one through a conversion, never as a file.
         let playlist = file.to_ascii_lowercase().ends_with(".m3u8")
             && value.pointer("/media_info/format/format_name").and_then(Value::as_str) == Some("hls");
-        if !is_video(&file) && !playlist {
+        // A file its source pushes as a track is music (`music.rs`), by its kind: rex reads no
+        // tag of it. Anything else is a video, as Plex's scanners take a video library's files.
+        let track = text("kind").as_deref() == Some("track");
+        if track && !super::music::is_audio(&file) {
+            return Err(refuse("not an audio file"));
+        }
+        if !track && !is_video(&file) && !playlist {
             return Err(refuse("not a video file"));
         }
-        if is_sample(&file) {
+        // A video scanner's rule: a song may well be called "Sample".
+        if !track && is_sample(&file) {
             return Err(refuse("a sample"));
         }
         let segments: Vec<&str> = path.split('/').collect();
@@ -281,8 +294,15 @@ impl Item {
         let number = |key: &str, least: i64| {
             value.get(key).and_then(|n| n.as_i64().or_else(|| n.as_str()?.trim().parse().ok())).filter(|n| *n >= least)
         };
-        let placed = text("kind").filter(|kind| matches!(kind.as_str(), "movie" | "episode")).map(|kind| {
+        let placed = text("kind").filter(|kind| matches!(kind.as_str(), "movie" | "episode" | "track")).map(|kind| {
             let mut placed = Map::from_iter([("kind".to_string(), json!(kind))]);
+            // A track sits on its album's `disc` (1 unless said) and `track`, Plex's own numbers.
+            if kind == "track" {
+                placed.insert("disc".to_string(), json!(number("disc", 1).unwrap_or(1)));
+                if let Some(track) = number("track", 1) {
+                    placed.insert("track".to_string(), json!(track));
+                }
+            }
             if let (true, Some(season), Some(episode)) = (kind == "episode", number("season", 0), number("episode", 1)) {
                 placed.insert("season".to_string(), json!(season));
                 placed.insert("episode".to_string(), json!(episode));
@@ -345,7 +365,9 @@ impl Item {
                 .filter(|probe| probe.get("streams").and_then(Value::as_array).is_some_and(|streams| !streams.is_empty()))
                 .cloned(),
             ids: Map::from_iter(
-                [("imdb", imdb.clone()), ("tmdb", id_text("tmdb")), ("tvdb", id_text("tvdb"))]
+                [("imdb", imdb.clone()), ("tmdb", id_text("tmdb")), ("tvdb", id_text("tvdb")),
+                 // A track's album: MusicBrainz's release id, or Plex's album guid (`music.rs`).
+                 ("mbid", id_text("mbid").filter(|_| track)), ("plex", id_text("plex").filter(|guid| track && guid.starts_with("plex://album/")))]
                     .into_iter()
                     .filter_map(|(key, value)| value.map(|value| (key.to_string(), json!(value)))),
             ),
@@ -390,7 +412,7 @@ impl Item {
     }
 
     /// The `kind` its source placed it as, if any.
-    fn kind(&self) -> Option<&str> {
+    pub(super) fn kind(&self) -> Option<&str> {
         self.placed.as_ref()?.get("kind")?.as_str()
     }
 
@@ -401,7 +423,7 @@ impl Item {
     }
 
     /// The held record: what the push said, minus nothing (it has no probe).
-    fn held(&self, since: i64) -> Value {
+    pub(super) fn held(&self, since: i64) -> Value {
         json!({"id": self.id, "path": self.path, "file": self.file, "library": self.library,
                "name": self.name, "release": self.release, "size": self.size, "hash": self.hash,
                "ids": self.ids, "since": since})
@@ -410,12 +432,12 @@ impl Item {
 
 /// What a push did, as the response reports it.
 #[derive(Debug, Default)]
-struct Counts {
-    created: usize,
-    updated: usize,
-    held: usize,
-    unchanged: usize,
-    rejected: Vec<Value>,
+pub(super) struct Counts {
+    pub(super) created: usize,
+    pub(super) updated: usize,
+    pub(super) held: usize,
+    pub(super) unchanged: usize,
+    pub(super) rejected: Vec<Value>,
     /// Items sent with a `probe` and no `media_info` whose probe rex needs: applied by none of
     /// their fields until the source sends them again with it.
     wants: Vec<String>,
@@ -447,7 +469,7 @@ enum Plan {
     Extra(i64),
 }
 
-fn held_key(source: &str, id: &str) -> String {
+pub(super) fn held_key(source: &str, id: &str) -> String {
     format!("{source}:{id}")
 }
 
@@ -464,7 +486,7 @@ pub(super) fn source_peer(peer: std::net::IpAddr) -> bool {
             .any(|(net, bits)| in_network(peer, net, bits))
 }
 
-fn lock(shared: &SharedRuntime) -> std::sync::MutexGuard<'_, Runtime> {
+pub(super) fn lock(shared: &SharedRuntime) -> std::sync::MutexGuard<'_, Runtime> {
     shared.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
@@ -821,6 +843,11 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
         unique.insert(item.id.clone(), index);
     }
     let items: Vec<Item> = unique.into_values().map(|index| items[index].clone()).collect();
+    // Tracks are placed on their album by `music.rs`; everything else below is film and TV.
+    let (tracks, items): (Vec<Item>, Vec<Item>) = items.into_iter().partition(|item| item.kind() == Some("track"));
+    if !tracks.is_empty() {
+        super::music::upsert_tracks(shared, source, tracks, &mut counts, seen.as_deref_mut(), retry);
+    }
 
     // -- under the lock: which library, which row, what has to be identified ---------------
     let mut plans: Vec<(Item, Library, Plan)> = Vec::new();
@@ -2085,7 +2112,7 @@ impl Runtime {
     /// The rows of this source's `ids`, by id; of two rows of one id, the later. Found by
     /// release (`catalog::By::Release`): a map of the source's every row read the library on
     /// each push.
-    fn feed_rows<'a>(&self, source: &str, ids: impl Iterator<Item = &'a str>) -> HashMap<String, String> {
+    pub(super) fn feed_rows<'a>(&self, source: &str, ids: impl Iterator<Item = &'a str>) -> HashMap<String, String> {
         ids.filter_map(|sid| {
             let key = crate::catalog::release_key(source, sid);
             let row = self

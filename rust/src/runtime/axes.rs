@@ -213,7 +213,10 @@ impl Runtime {
             .parse::<i64>()
             .map(|number| number.to_string())
             .unwrap_or_else(|_| raw.to_string());
-        let Some(number) = normal.parse::<i64>().ok().filter(|number| (1..=4).contains(number)) else {
+        // A music library's axes read its artists unless a type says otherwise (plexav, 2026-10-31).
+        let music = self.music_section(section_id);
+        let typed = |number: &i64| (1..=4).contains(number) || music && (8..=10).contains(number);
+        let Some(number) = normal.parse::<i64>().ok().filter(typed).or_else(|| (music && raw.is_empty()).then_some(8)) else {
             if !raw.is_empty() {
                 return Vec::new();
             }
@@ -489,9 +492,10 @@ impl Runtime {
     /// The row whose sort title the `firstCharacter` AXIS counts a row under: a
     /// season and an episode count under their SHOW (cycle 16).
     fn first_character_basis<'a>(&'a self, row: RowRef<'a>) -> RowRef<'a> {
+        // An album and a track count under their ARTIST (plexav: Discovery's 14 tracks under `D`).
         let key = match row.get("type").and_then(Value::as_str) {
-            Some("season") => row.get("parentRatingKey"),
-            Some("episode") => row.get("grandparentRatingKey"),
+            Some("season" | "album") => row.get("parentRatingKey"),
+            Some("episode" | "track") => row.get("grandparentRatingKey"),
             _ => return row,
         };
         key.map(string_value)

@@ -50,6 +50,7 @@ mod listing;
 mod limits;
 pub(crate) mod logging;
 mod merge;
+mod music;
 mod markers;
 mod notify;
 mod playlists;
@@ -2306,7 +2307,7 @@ impl Runtime {
     fn leaves_refs(&self, key: &str) -> Vec<RowRef<'_>> {
         let mut out = Vec::new();
         for child in self.children_refs(key) {
-            if child.get("type").and_then(Value::as_str) == Some("episode") {
+            if matches!(child.get("type").and_then(Value::as_str), Some("episode" | "track")) {
                 out.push(child);
             } else if let Some(child_key) = key_of(&child) {
                 out.extend(self.leaves_refs(&child_key));
@@ -2458,6 +2459,9 @@ impl Runtime {
             if generated && sort_matches_generated && !sort_locked && !sort_written {
                 object.shift_remove("titleSort");
             }
+        }
+        if matches!(kind.as_str(), "artist" | "album") {
+            self.music_play_counts(&key, object);
         }
         if kind == "show" {
             let seasons = self.children_refs(&key);
@@ -2634,7 +2638,10 @@ impl Runtime {
                 .filter(|url| !url.is_empty())
                 .map(str::to_string)
         };
-        if let (true, Some(poster)) = (kind == "episode", nonempty("grandparentThumb")) {
+        // A track's cover is its artist's poster and it has no snapshot (plexav, 2026-10-31).
+        if let (true, Some(poster)) = (kind == "track", nonempty("grandparentThumb")) {
+            images.push(json!({"alt": title, "type": "coverPoster", "url": poster}));
+        } else if let (true, Some(poster)) = (kind == "episode", nonempty("grandparentThumb")) {
             images.push(json!({"alt": title, "type": "coverPoster", "url": poster}));
             if let Some(url) = nonempty("thumb") {
                 images.push(json!({"alt": title, "type": "snapshot", "url": url}));
@@ -5562,7 +5569,10 @@ impl Runtime {
         entry.insert("deviceID".to_string(), json!(1));
         entry.insert("_history".to_string(), json!(true));
         let detail = self.detail_row(row);
-        if row.get("type").and_then(Value::as_str) == Some("episode") {
+        // A track's entry names its album and artist as an episode's names its season and show
+        // (plexav's `/status/sessions/history/all`, 2026-10-31), with the album's title too.
+        let track = row.get("type").and_then(Value::as_str) == Some("track");
+        if track || row.get("type").and_then(Value::as_str) == Some("episode") {
             for (source, target) in [
                 ("parentRatingKey", "parentKey"),
                 ("grandparentRatingKey", "grandparentKey"),
@@ -5577,6 +5587,9 @@ impl Runtime {
                         json!(format!("/library/metadata/{value}")),
                     );
                 }
+            }
+            if let Some(value) = detail.get("parentTitle").filter(|value| track && !value.is_null()) {
+                entry.insert("parentTitle".to_string(), value.clone());
             }
             for name in [
                 "grandparentTitle",
@@ -5620,12 +5633,17 @@ impl Runtime {
     /// put the production server's whole show library -- 13,500 episodes -- in memory again
     /// for a page of 50 shows (+650 MB per request, 2026-10-10).
     fn choose_refs(&self, section: Option<&str>, type_number: Option<i64>) -> Vec<RowRef<'_>> {
+        // A music library's types are Plex's own 8, 9 and 10 (plexav, 2026-10-31).
+        let music = section.is_some_and(|section| self.music_section(section));
         let kind = type_number.map(|number| match number {
             1 => "movie",
             2 => "show",
             3 => "season",
             4 => "episode",
+            8 if music => "artist",
             8 => "clip",
+            9 => "album",
+            10 => "track",
             _ => "",
         });
         if let (Some(section), Some(kind)) = (section, kind.filter(|kind| !kind.is_empty())) {
@@ -5885,7 +5903,9 @@ impl Runtime {
                 Some("show") => 2,
                 Some("season") => 3,
                 Some("episode") => 4,
-                Some("clip") => 8,
+                Some("clip" | "artist") => 8,
+                Some("album") => 9,
+                Some("track") => 10,
                 _ => 0,
             });
         }
@@ -6196,6 +6216,7 @@ impl Runtime {
             "label" => row.get("Label"),
             "mood" => row.get("Mood"),
             "style" => row.get("Style"),
+            "format" => row.get("Format"),
             "contentRating" => row.get("contentRating"),
             "location" => row.get("librarySectionID"),
             "id" => row.get("ratingKey"),
@@ -6299,6 +6320,23 @@ impl Runtime {
                     ("show", "show") | ("season", "season") | ("episode", "episode") => {
                         vec![value.whole().clone()]
                     }
+                    // A music library's scopes (plexav's clients: `artist.id=`, `album.subformat!=`,
+                    // `track.userRating>>=`), resolved as the show's are.
+                    ("artist", "artist") | ("album", "album") | ("track", "track") => vec![value.whole().clone()],
+                    ("album", "artist") | ("track", "album") => self.children(&string_value(value.get("ratingKey").unwrap_or(&Value::Null))),
+                    ("track", "artist") => self.leaves(&string_value(value.get("ratingKey").unwrap_or(&Value::Null))),
+                    ("artist", "album") | ("album", "track") => value
+                        .get("parentRatingKey")
+                        .map(string_value)
+                        .and_then(|parent| self.catalog.get(&parent).cloned())
+                        .into_iter()
+                        .collect(),
+                    ("artist", "track") => value
+                        .get("grandparentRatingKey")
+                        .map(string_value)
+                        .and_then(|parent| self.catalog.get(&parent).cloned())
+                        .into_iter()
+                        .collect(),
                     // A scoped filter on a parent row ranges over the
                     // descendants named by its prefix.  The previous
                     // implementation only resolved upward (episode -> show
@@ -6774,11 +6812,15 @@ impl Runtime {
                             .find(|(name, _)| name == "limit")
                             .and_then(|(_, value)| value.parse::<usize>().ok())
                             .filter(|limit| *limit > 0);
+                        // Plexamp's smart lists group tracks by guid (`group=guid&having=min(...)`,
+                        // plexav 2026-10-31): one row per guid, no filter.
+                        let group = pairs.iter().find(|(name, _)| name == "group").map(|(_, value)| value.clone());
                         let filter_pairs = pairs
                             .iter()
                             .filter(|(name, _)| {
                                 name != "sort"
                                     && name != "limit"
+                                    && !matches!(name.as_str(), "group" | "having" | "includeFields" | "excludeFields" | "resolveTags")
                                     && !((level.is_some() || uri_type.is_some()) && name == "type")
                             })
                             .cloned()
@@ -6788,6 +6830,10 @@ impl Runtime {
                             .ok()
                             .and_then(|rows| self.sort_rows(rows, sort).ok())
                             .unwrap_or_default();
+                        if let Some(field) = group {
+                            let mut seen = HashSet::new();
+                            rows.retain(|row| seen.insert(row.get(&field).map(string_value).unwrap_or_default()));
+                        }
                         if let Some(limit) = limit {
                             rows.truncate(limit);
                         }
@@ -6817,7 +6863,7 @@ impl Runtime {
         let mut out = Vec::new();
         for row in self.rows_for_uri(uri) {
             match row.get("type").and_then(Value::as_str) {
-                Some("show" | "season") => {
+                Some("show" | "season" | "artist" | "album") => {
                     if let Some(key) = key_of(&row) {
                         out.extend(self.leaves(&key));
                     }
@@ -8715,6 +8761,7 @@ impl Runtime {
             ("GET" | "HEAD" | "PUT" | "POST" | "DELETE" | "OPTIONS", "/:/rate") => {
                 self.route_rate(&query)
             }
+            ("GET" | "HEAD" | "OPTIONS", "/music/:/transcode/universal/decision") => self.route_music_decision(&query, request),
             ("GET" | "HEAD" | "OPTIONS", "/video/:/transcode/universal/decision") => {
                 // The item's subtitle job, if one is finding the account's subtitle, ends first.
                 let path = query.get("path").map(String::as_str).unwrap_or_default();
@@ -10087,6 +10134,18 @@ impl Runtime {
             }
             if name == "deviceID" {
                 rows.retain(|row| string_value(row.get(field).unwrap_or(&Value::Null)) == *wanted);
+            } else if name == "metadataItemID" {
+                // A track's play is its album's and artist's too (plexav: Plexamp's artist page
+                // asks `metadataItemID=<artist>` and lists the artist's tracks).
+                let wanted = number(wanted);
+                let ancestor = |row: &Value, field: &str| {
+                    row.get(field).map(string_value).and_then(|key| key.rsplit('/').next().and_then(|key| key.parse::<i128>().ok()))
+                };
+                rows.retain(|row| {
+                    row_number(row, field) == Some(wanted)
+                        || row.get("type").and_then(Value::as_str) == Some("track")
+                            && (ancestor(row, "parentKey") == Some(wanted) || ancestor(row, "grandparentKey") == Some(wanted))
+                });
             } else {
                 let wanted = number(wanted);
                 rows.retain(|row| row_number(row, field) == Some(wanted));
@@ -12415,6 +12474,7 @@ impl Runtime {
         hubs.push(shelf("music.videos.new", "Recently Added Music Videos".to_string(), "clip",
                         Some(format!("{base}extras/all?extraType=4&extra.addedAt>=-2w&type=10&sourceType=8&extra.sort=addedAt:desc")),
                         &[]));
+        self.fill_music_hubs(section_key, &mut hubs, query);
         let section_id = section_key
             .parse::<u64>()
             .map(|id| json!(id))
@@ -13072,7 +13132,8 @@ impl Runtime {
     }
 
     fn queue_rows_for_query(&self, query: &HashMap<String, String>) -> Vec<Value> {
-        if let Some(playlist_id) = query.get("playlistID") {
+        // Plexamp sends `playlistID=undefined` beside an album's uri; plexav queued the album.
+        if let Some(playlist_id) = query.get("playlistID").filter(|id| id.bytes().all(|b| b.is_ascii_digit())) {
             return self
                 .playlists
                 .get(playlist_id)
@@ -13115,7 +13176,7 @@ impl Runtime {
         let mut expanded = Vec::new();
         for row in rows {
             match row.get("type").and_then(Value::as_str) {
-                Some("show" | "season") => {
+                Some("show" | "season" | "artist" | "album") => {
                     if let Some(key) = key_of(&row) {
                         expanded.extend(self.leaves(&key));
                     }
@@ -13339,7 +13400,10 @@ impl Runtime {
             }
             fields.insert("playQueueTotalCount".to_string(), json!(total));
         }
-        if let Some(last_added) = queue.last_added {
+        // A queue of tracks names its last item from the start (plexav, every client's album
+        // queue, 2026-10-31); a video queue only once something was added to it.
+        let tracks = queue.items.first().and_then(|item| self.catalog.get(&item.rating_key)).and_then(|row| row.get("type")).and_then(Value::as_str) == Some("track");
+        if let Some(last_added) = queue.last_added.or_else(|| queue.items.last().filter(|_| tracks).map(|item| item.id)) {
             fields.insert("playQueueLastAddedItemID".to_string(), json!(last_added));
         }
         // `play_queue_container` builds the LIBRARY container (`mediaTagVersion`
@@ -13437,7 +13501,8 @@ impl Runtime {
                 wanted.and_then(|wanted| items.iter().find(|item| item.rating_key == wanted).map(|item| item.id))
                     .or_else(|| items.first().map(|item| item.id))
             };
-            let playlist_id = query.get("playlistID").cloned().or_else(|| {
+            // Plexamp's `playlistID=undefined` names no list (plexav answered its album's uri).
+            let playlist_id = query.get("playlistID").filter(|id| id.bytes().all(|b| b.is_ascii_digit())).cloned().or_else(|| {
                 let uri = percent_decode(query.get("uri").map(String::as_str).unwrap_or(""));
                 uri.split("/playlists/")
                     .nth(1)
@@ -14156,6 +14221,9 @@ impl Runtime {
                 .is_some_and(|id| id.is_empty() || !id.bytes().all(|b| b.is_ascii_digit()))
             {
                 return Response::error(400, "rex: bad request");
+            }
+            if let Some(answer) = segments.get(3).and_then(|id| music::augmentation(id)) {
+                return answer;
             }
             return Response::error(404, "rex: not found");
         }
@@ -16951,6 +17019,9 @@ impl Runtime {
             );
         }
         if let Some(value) = query.get("type") {
+            if let Some(answer) = value.contains(',').then(|| self.music_typed_listing(section_key, value, query, pairs)).flatten() {
+                return answer;
+            }
             // Cycle 55, measured on the 1.42.2 reference and plexlab: the type is a SIGNED
             // 32-BIT integer -- `type=2147483648` is refused with the same status as `abc`.
             if !int_param(value.trim(), Some(32)) {
@@ -17165,13 +17236,14 @@ impl Runtime {
                 if type_number.is_none() {
                     matches!(
                         row.get("type").and_then(Value::as_str),
-                        Some("movie" | "show")
+                        Some("movie" | "show" | "artist")
                     )
                 } else {
                     true
                 }
             })
             .collect::<Vec<_>>();
+        let rows = self.music_listing_order(section_key, type_number, query, rows);
         let section_type = self
             .section(section_key)
             .and_then(|section| section.get("type").and_then(Value::as_str))
@@ -17287,7 +17359,8 @@ impl Runtime {
             .map(String::as_str)
             .or(if by_id {
                 Some("id")
-            } else if show_order {
+            } else if show_order || section_type == "artist" && matches!(query.get("type").map(String::as_str), Some("9" | "10")) {
+                // A music library's albums and tracks keep `music_listing_order`'s order.
                 None
             } else {
                 Some("titleSort")
@@ -18607,6 +18680,9 @@ impl Runtime {
             let mut detail_fields = Map::new();
             detail_fields.insert("size".to_string(), json!(1));
             detail_fields.insert("allowSync".to_string(), json!(kind != "clip"));
+            if let Some(augmentation) = music::augmentation_key(row, query) {
+                detail_fields.insert("augmentationKey".to_string(), augmentation);
+            }
             if kind != "clip" {
                 let section_id = row.get("librarySectionID").cloned().unwrap_or(Value::Null);
                 let section = self
@@ -25770,6 +25846,8 @@ fn number_catalog_tags(items: &mut [Value]) {
         ("Similar", "similar"),
         ("Mood", "mood"),
         ("Style", "style"),
+        // An album's `Format` (`Album`, `EP`, `Single`): a tag like the others (plexav, 2026-10-31).
+        ("Format", "format"),
     ];
     for item in items {
         for (field, filter_name) in TAG_FIELDS {
@@ -27541,6 +27619,9 @@ fn part_content_type(part: &Value) -> String {
         "mpg" | "mpeg" => "video/mpeg",
         "flv" => "video/x-flv",
         "wmv" => "video/x-ms-wmv",
+        // plexav's part reads of its tracks (2026-10-31).
+        "flac" => "audio/flac",
+        "mp3" => "audio/mpeg",
         "asf" => "video/x-ms-asf",
         _ => "application/octet-stream",
     }
@@ -28035,7 +28116,9 @@ fn type_number_for(value: &Value) -> Option<i64> {
         "show" => Some(2),
         "season" => Some(3),
         "episode" => Some(4),
-        "clip" => Some(8),
+        "clip" | "artist" => Some(8),
+        "album" => Some(9),
+        "track" => Some(10),
         "playlist" => Some(15),
         "collection" => Some(18),
         _ => None,

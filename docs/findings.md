@@ -14600,3 +14600,82 @@ client identifier is the kind that rewrote a device row on 2026-09-11 ("Collater
 Plex account"), and rex reads no account token. The route answers only rex's own networks
 (`feed::source_peer`), since it dials the address it is given. Not measured: a library on
 Plex's legacy agents, whose `com.plexapp.agents.*` guids match nothing here.
+
+## A music library, measured on plexav (2026-10-31)
+
+plexav is a real PMS 1.43.4 on the lab host with one music library: four albums of synthetic 45 s
+tones (its `make-music.sh`) tagged as Radiohead's In Rainbows (FLAC) and OK Computer, Nine Inch Nails'
+The Slip and Daft Punk's Discovery (MP3), so Plex's agent matched them to real `plex://` guids. Plex
+Web 4.163.0, Plex for Android 2026.21.0 and Plexamp 4.12.4 browsed, played, rated, listed and
+searched it, and the PMS's own calls to Plex's agent were recorded beside them
+(`probes/record_music_fixtures.py` -> `tests/fixtures/music/`). rex's music library
+(`runtime/music.rs`, `docs/feed-api.md` "Tracks") is that measurement.
+
+- **How a PMS learns an album.** `GET metadata.provider.plex.tv/library/metadata/matches?guid=mbid://
+  <release mbid>&includeChildren=1&includeElements=Directory,Children,Guid&includeFields=id,guid,title,
+  parentGuid,parentTitle,ratingKey&type=9` names the album's guid and the agent's own key for that
+  release, which is not always the guid's tail (In Rainbows: `plex://album/5d07c2b1...`, key
+  `5d07c92a...`); then `GET /library/metadata/<key>?includeAlternates=1&includeChildren=1` (the album,
+  its `Children` the tracks with `index`, `parentIndex`, guid, `ratingCount`, `Genre`, `Mood`) and
+  the album's `parentRatingKey` with `includeAlternates=1` (the artist: summary, `Genre`, `Country`,
+  `Style`, `Mood`, 30 `Similar`). The agent's `Format` `{"type":"album"}` is the tag `Album`.
+- **Rows.** artist (8): `key` `/children`, `index` 1, its own thumb and art, `Location` its folder.
+  album (9): `index` 1, the agent's `studio`, `rating`, `year`, `originallyAvailableAt`, its own
+  cover, its artist's art and `parentThumb`; `leafCount`/`viewedLeafCount` on its detail read only.
+  track (10): the album's cover as `thumb`, the artist's art, `parentStudio`, `parentYear`,
+  `ratingCount`, `Genre`, `Mood`; its `Image` coverPoster is the ARTIST's poster, with no snapshot.
+  A played track's album and artist carry its `viewCount`, `skipCount` and `lastViewedAt`.
+- **Media.** A FLAC: `bitrate` 99, `audioChannels` 2, `audioCodec`/`container` flac,
+  `hasVoiceActivity` false, no video field; its Stream `canNormalizeLoudness` false, `bitrate`,
+  `audioChannelLayout` stereo, `bitDepth` 16, `samplingRate` 44100 and the title `FLAC (Stereo)`
+  -- no language part, where a video's audio track is `Unknown (FLAC Stereo)`. PMS's FLAC bitrate is
+  about 1.5 kbit/s under ffprobe's `bit_rate` (its own count leaves the header out); rex keeps
+  ffprobe's (101 for 15 Step).
+- **Listings.** `type=8/9/10` on the library; albums default to artist then album sort title,
+  tracks to artist, album, year, disc, number (the `firstCharacter` sorts Plex Web sends say so,
+  and the answers follow them). `firstCharacter` counts an album and a track under its ARTIST.
+  Web's popular-tracks request (`album.subformat!=Compilation,Live&artist.id=&group=title&limit=100
+  &ratingCount>=1&resolveTags=1&sort=ratingCount:desc&type=10`) is the grammar's own; Plexamp's
+  `type=1,2,9,13,19,21&sort=addedAt:desc&limit=5` lists the albums.
+- **Details.** `asyncAugmentMetadata=1` gives the container an `augmentationKey`
+  (`/library/metadata/augmentations/<n>`, numbered per request); `GET` of it with `wait=1` answered
+  Plexamp `{"MediaContainer":{"size":0}}`. An artist's `includePopularLeaves=1` is five tracks by
+  `ratingCount` with the listing's key; `includePreferences=1` its one setting, `albumSort`;
+  `/related` and `includeRelated=1` six album shelves (Singles & EPs, Live Albums, Soundtracks,
+  Compilations, Demos, Remixes), empty for four plain albums; an album's and a track's related are
+  empty. Children: an artist's albums are `viewGroup` album at 65592, an album's tracks `track` at
+  65593 with the artist as `title1` and `grandparent*`.
+- **Hubs.** The library's shelves before any play: Recently Played Music (empty), Recently Added in
+  Music (the albums), Recent Playlists, Stations, Top Albums from a drawn period, New Releases on
+  TIDAL, Haven't played in a drawn period, Artists on Tour, Recently Added Music Videos. After plays:
+  More by <artist> (`sort=year`), More in <genre>, Most Played in <month>. plexav had run sonic
+  analysis: Stations held Library, Deep Cuts, Time Travel and Random Album Radio, and an artist
+  read with `includeStations=1` carried `Stations`. rex runs no sonic analysis and shows neither
+  (Ben's call, 2026-10-31); Plexamp's On This Day (`includeAnniversaryReleases=1`) is the albums
+  released on today's date.
+- **Playback.** Web queues an album with `type=audio`, Android an album's `/children` with
+  `type=video&continuous=1`, Plexamp with `includeLoudnessRamps=1&playlistID=undefined`; all three
+  queues hold the ten tracks and name `playQueueLastAddedItemID` (the last item) from the start.
+  `GET /music/:/transcode/universal/decision` answered every track `mdeDecisionCode` 1000 `Direct
+  play OK.`, Part `decision="directplay"`, Stream `location="direct"` (XML for Web, its attributes
+  alphabetical with the decision's last; the same converted to JSON for Android, ids as strings).
+  Part reads are `audio/flac` / `audio/mpeg`; Plexamp reads whole files with `download=1`
+  (`Content-Disposition: attachment`). `/library/streams/<id>/levels` is a 404 without loudness
+  analysis.
+- **Timelines.** A track's answer is `ignore` while it plays, with no counts until it has some; its
+  `Bandwidths` is the bitrate in units of 1,048.576 bit/s (192 kbit/s MP3s 183, 99 kbit/s FLACs 95),
+  where a video's is 2.1 times it. Stopped with `continuing=1` at 25 of 45 s it answered `complete`,
+  `viewCount` 1, `skipCount` 1, `viewOffset` -1: a skip and a play at once. Stopped at 34 ms, neither.
+  rex counts the play from half the track (not measured between those two points). The artist's
+  history (`metadataItemID=<artist>`) lists its tracks' plays, each naming album and artist.
+- **Lists and actions.** `POST /playlists?type=audio&uri=<album>` is the album's tracks. Plexamp's
+  first run creates five smart lists with `uri=library://x/directory/<encoded section listing>`
+  (`track.lastViewedAt>>=-2w&group=guid&having=min(album.originallyAvailableAt)` and the like) and
+  `PUT`s each one's summary; their items are the listing's, read when asked. `PUT /:/rate` on an
+  album keeps `userRating`. `/library/search?searchTypes=movies,music,people,tv` lists the artist,
+  its albums and tracks.
+- **Not matched, by design.** `UltraBlurColors` and `thumbBlurHash` (artwork analysis),
+  `requiredBandwidths`/`deepAnalysisVersion` (loudness analysis), an album's `Mood` list (plexav's
+  merges its tracks' moods, 52 for In Rainbows, in an order not worked out; rex shows the agent's
+  ten), the library `Meta`'s newer fields (rex keeps the empty 1.42 library's descriptor), and
+  `Similar` tag case (plexav's `Bôa` was another artist's first spelling).

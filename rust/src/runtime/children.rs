@@ -228,6 +228,9 @@ impl Runtime {
                 out.insert(name.to_string(), value);
             }
         }
+        if matches!(kind, "artist" | "album") {
+            self.music_children_fields(parent, &mut out);
+        }
         out
     }
 }

@@ -162,7 +162,11 @@ pub fn corpus_row(row: &Value, names: &mut Names) -> CorpusRow {
     });
     CorpusRow {
         related,
-        searchable: matches!(row.get("type").and_then(Value::as_str), Some("movie" | "show" | "season" | "episode")),
+        // A music library's rows are searched too (plexav's `/library/search?searchTypes=music`).
+        searchable: matches!(
+            row.get("type").and_then(Value::as_str),
+            Some("movie" | "show" | "season" | "episode" | "artist" | "album" | "track")
+        ),
         section: {
             let section = row.get("librarySectionID").map(text).unwrap_or_default();
             let next = names.sections.len() as u32;

@@ -647,7 +647,7 @@ impl Runtime {
         let normal_gate = rows.iter().any(|row| {
             matches!(
                 row.get("type").and_then(Value::as_str),
-                Some("movie" | "show")
+                Some("movie" | "show" | "artist" | "album" | "track")
             )
         }) || !playlist_rows.is_empty()
             || collection_hit
@@ -1288,6 +1288,9 @@ fn tag_hit(section_key: &str, section: &Value, section_id: Value, section_number
         }
         if matches!(kind, "show" | "season" | "episode") {
             return tokens.contains("tv");
+        }
+        if matches!(kind, "artist" | "album" | "track") {
+            return tokens.contains("music");
         }
         let mut families = HashSet::new();
         for section_id in self.search_row_sections(kind, row) {

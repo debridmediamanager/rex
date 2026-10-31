@@ -202,7 +202,9 @@ impl Runtime {
         let mut rows = self.playable_rows_for_uri(&uri);
         // Cycle 41: a type/content mismatch returns 400, but first creates an EMPTY
         // playlist of that type and pushes its ordinary type-15 `created` frame.
-        let mismatched = kind != "video" && !rows.is_empty();
+        // A track is audio (plexav: Plex Web's `type=audio` list of an album); the rest is video.
+        let content = |row: &Value| if row.get("type").and_then(Value::as_str) == Some("track") { "audio" } else { "video" };
+        let mismatched = rows.iter().any(|row| content(row) != kind);
         if mismatched {
             rows.clear();
         }

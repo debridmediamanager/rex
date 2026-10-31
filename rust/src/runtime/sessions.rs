@@ -1110,6 +1110,12 @@ impl Runtime {
                     };
                 }
             }
+            // A track's play and skip are counted when it stops (`music.rs`).
+            if playback_state != "complete" {
+                if let Some(answer) = self.music_timeline(&key, &state, offset_ms, total, query, device) {
+                    playback_state = answer;
+                }
+            }
             // Cycle 70: the OFFLINE form marks the item watched when `viewCount` is 1 or
             // more; `viewCount=0` on a watched item clears it.
             if !listed
@@ -1165,10 +1171,14 @@ impl Runtime {
                     .get("videoResolution")
                     .map(string_value)
                     .unwrap_or_default();
+                // plexav (2026-10-31): a track's is its bitrate in units of 1,048.576 bit/s --
+                // 192 kbit/s MP3s were 183, 99 kbit/s FLACs 95 -- where a video's is 2.1 times it.
+                let track = self.catalog.get(&key).and_then(|row| row.get("type")).and_then(Value::as_str) == Some("track");
+                let bandwidth = if track { (bitrate as f64 * 1000.0 / 1048.576).round() as i64 } else { round_half_even(bitrate as f64 * 2.1) };
                 fields.insert(
                     "Bandwidths".to_string(),
                     json!([{"Bandwidth": [{"time": 0,
-                                           "bandwidth": round_half_even(bitrate as f64 * 2.1),
+                                           "bandwidth": bandwidth,
                                            "resolution": resolution_title(&resolution)}]}]),
                 );
             }
@@ -1217,9 +1227,15 @@ impl Runtime {
             json!(["Bandwidths", "TranscodeSession"].iter().filter(|name| fields.contains_key(**name)).count()),
         );
         body.insert("playbackState".to_string(), json!(playback_state));
-        body.insert("skipCount".to_string(), json!(0));
-        body.insert("viewCount".to_string(), json!(view_count));
-        body.insert("viewOffset".to_string(), json!(stored));
+        // A track names its counts only once it has any (plexav: none on a first play, then
+        // `skipCount`, `viewCount` and `viewOffset -1`).
+        let skips = self.view_state(&rating_key, "skipCount").and_then(|value| value.as_i64()).unwrap_or(0);
+        let track = self.catalog.get(&rating_key).and_then(|row| row.get("type")).and_then(Value::as_str) == Some("track");
+        if !track || skips > 0 || view_count > 0 {
+            body.insert("skipCount".to_string(), json!(if track { skips } else { 0 }));
+            body.insert("viewCount".to_string(), json!(view_count));
+            body.insert("viewOffset".to_string(), json!(stored));
+        }
         body.extend(fields);
         Response::json(200, json!({"MediaContainer": body}))
     }

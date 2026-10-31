@@ -185,6 +185,9 @@ impl Runtime {
         query: &HashMap<String, String>,
         collections: bool,
     ) -> Vec<Value> {
+        if let Some(hubs) = self.music_related(row) {
+            return hubs;
+        }
         if collections {
             let shelves = self.collection_related_hubs(row, query);
             if !shelves.is_empty() {

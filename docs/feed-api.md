@@ -299,8 +299,8 @@ The `media_info` above is cut down to show its shape. Send ffprobe's whole outpu
 | `id` | yes | The source's stable key for the file. A row's ratingKey belongs to (source, id) for good, so keep it when the file is renamed |
 | `path` | yes | Where the bytes are: `<source url>/<path>`. Its first directory also picks the library (below) |
 | `media_info` | yes, in practice | ffprobe's `-show_format -show_streams` JSON (go-ffprobe's `ProbeData` is the same shape). Absent, `null` or with no `streams`: the item is **held**, because Plex Web will not play an item without streams (findings, "An item without a probe cannot play"). A file keeps the streams of the probe it was first shown with: a later one changes only its `chapters` (an `.m3u8` is the exception, below), so a file whose bytes change is a new `id` |
-| `ids` | recommended | `imdb` (`tt…`), `tmdb`, `tvdb`. With `kind`, the title: `imdb` and `tmdb` are the movie's or the **show's** ids, never an episode's, and either one is enough (rex fills in the other from Plex). Without `kind`, only `tmdb` names anything (a TMDB id set by hand at the source): a title of its library's kind, when TMDB has one; `imdb` alone and `tvdb` are kept on the row and name nothing (below) |
-| `kind` | no | `movie`, `episode` or `extra`: what the source knows the file is. `movie` or `episode` **places** the file (below): it picks the movie or show library, and its `ids` are the title. `extra` makes it a clip of its release's title (below). Anything else, or absent: nothing places it, and rex does not guess from its name |
+| `ids` | recommended | `imdb` (`tt…`), `tmdb`, `tvdb`; for a track, its album's `mbid` or `plex` ([Tracks](#tracks)). With `kind`, the title: `imdb` and `tmdb` are the movie's or the **show's** ids, never an episode's, and either one is enough (rex fills in the other from Plex). Without `kind`, only `tmdb` names anything (a TMDB id set by hand at the source): a title of its library's kind, when TMDB has one; `imdb` alone and `tvdb` are kept on the row and name nothing (below) |
+| `kind` | no | `movie`, `episode`, `extra` or `track`: what the source knows the file is. `track` is music ([Tracks](#tracks)). `movie` or `episode` **places** the file (below): it picks the movie or show library, and its `ids` are the title. `extra` makes it a clip of its release's title (below). Anything else, or absent: nothing places it, and rex does not guess from its name |
 | `extra_type` | with `kind: extra` | The clip's type: `trailer`, `deleted`, `featurette`, `behindthescenes`, `interview`, `scene`, `short`, `opening`, `ending` or `other` (Plex's local-extras types and creditless openings and endings). Anything else, or absent, is `other` |
 | `season`, `episode` | no | With `kind: episode`, the episode on **TMDB's** numbering of the show `ids.tmdb` names (`season` 0 is Specials). The row is placed exactly there. Absent: season 1, in the release's file order (below) |
 | `episode_end` | no | The last episode of a file holding several (`E01E02` -> 2). Kept on the row; the file is placed on `episode`, as rex places every multi-episode file on its first |
@@ -391,7 +391,7 @@ What the fields do:
   episode. An unmatched film (`local://`) and a row awaiting a probe never fold. Each id stays
   addressable: the listing names every id on the row's key, a push updates its own Part, a
   part read streams from its own source and path. A row of several releases is not re-identified by one of them.
-- **Only video.** An item whose file is not a video (by extension) or is a sample is rejected,
+- **Only video, or a track.** An item whose file is not a video (by extension) or is a sample is rejected,
   as Plex's scanners skip them. An `.m3u8` file is a video when its `media_info` is an HLS
   probe (`format_name` `hls`): a source that serves a playlist (a YouTube relay) names it
   so. Such a Part is never direct played; a client's read of it is sent to a conversion.
@@ -399,6 +399,7 @@ What the fields do:
   playlist grows as the broadcast goes on, with no end, and the row keeps no resume point
   and is never marked watched. A later push of an `.m3u8` id whose probe has its streams at
   other indexes or of other codecs (the channel from another mirror) replaces the row's streams.
+  An audio file is taken only as a `kind: "track"` ([Tracks](#tracks)), and a track must be one.
 - **One file, one id.** A new `id` whose `file` another id of the same source already has, in
   rex or earlier in the same push, is rejected as `<file> is already <id>'s file`. To change
   an item's id, push it with a file of its own, or remove the old id first.
@@ -407,6 +408,48 @@ What the fields do:
   `extra_type`, in that title's `Extras` and `extras/all` and in no listing, axis or count. One
   whose release has no title here yet waits for a later push. A file pushed without it is no
   clip, whatever folder it sits in or its name says.
+
+## Tracks
+
+Music is pushed as tracks: `"kind": "track"`, an audio file (`flac`, `mp3`, `m4a`, `aac`, `ogg`,
+`oga`, `opus`, `wav`, `alac`, `aif`, `aiff`, `wma`, `ape`, `wv`, `dsf`, `mka`) and its ffprobe JSON in
+`media_info`, as for a video. rex places it in a music library (one of type `artist`) as a real
+PMS shows one: artist, album, track (Plex's types 8, 9 and 10), measured on plexav, a PMS 1.43.4
+with a four-album library, through Plex Web, Plex for Android and Plexamp
+(`tests/fixtures/music/`).
+
+```json
+{"id": "music/Radiohead/In Rainbows (2007)/01 - 15 Step.flac",
+ "path": "music/Radiohead/In Rainbows (2007)/01 - 15 Step.flac",
+ "kind": "track", "ids": {"mbid": "3b408cb5-7d51-4188-b07c-fabcf308cda3"}, "disc": 1, "track": 1,
+ "media_info": {"format": {"format_name": "flac", "duration": "45.000000", "size": "565825", "bit_rate": "100591"},
+                "streams": [{"index": 0, "codec_type": "audio", "codec_name": "flac", "channels": 2,
+                             "channel_layout": "stereo", "sample_rate": "44100", "bits_per_raw_sample": "16"}]}}
+```
+
+| Field | Meaning |
+|---|---|
+| `ids.mbid` | MusicBrainz's **release** id of the track's album. rex asks Plex's agent for the album it names (`GET /library/metadata/matches?guid=mbid://<id>&type=9`, as a real PMS asks), and the album's tracks, its artist and everything shown come from the agent |
+| `ids.plex` | Or Plex's album guid itself, `plex://album/<id>` |
+| `disc`, `track` | The track's disc (default 1) and number on that album: the album's track at those numbers at Plex's agent is the track |
+| `display` | For a track nothing names: its `title`, `summary` and `date`, its `artist` (`title`, `summary`, `poster`, `art`) and its `album` (`title`, `summary`, `poster`, `date`), as an episode's `show` and `season` ([Display](#display)) |
+| `library` | A music library's key; default the music library whose folder holds the file, else one whose folder ends in the item's first directory, else the first music library |
+
+- **rex reads no tag and no name.** The album is the one its ids name and the track the one on its
+  numbers; titles, artwork, genres, moods, styles, similar artists, reviews and listener counts are
+  Plex's agent's. A track whose ids name nothing Plex knows, or that has none, is shown by its
+  `display`, grouped under an artist and an album of those names; with no `display` it is titled
+  as its file under `[Unknown Artist]` and `[Unknown Album]`. One with no `track` number is
+  numbered after the album's last.
+- **A music library is needed.** rex makes none on a push, as it makes no film or show library:
+  add one in Plex (Add Library, Music) on any folder. A track no music library takes is rejected,
+  `no music library holds <file>`.
+- **Held, moved and removed as any item.** Without `media_info` it is held; a push placing it on
+  another album or number moves it there on its key; a removal trashes it; an album or artist left
+  with nothing goes with its last track.
+- **What rex does not do.** No sonic analysis (no Stations, radio, mixes or sonically similar
+  tracks), no loudness analysis (no levels or loudness ramps), no lyrics, no music conversion: a
+  track plays as its file, direct.
 
 ## Display
 
@@ -431,6 +474,8 @@ them itself with `display`:
 | `art` | a film | Its background |
 | `show.title`, `show.summary`, `show.poster`, `show.art` | an episode's show | Its title, summary, poster and background |
 | `season.summary`, `season.poster` | an episode's season | Its summary and poster (the show's poster when absent) |
+| `artist.title`, `artist.summary`, `artist.poster`, `artist.art` | a track's artist ([Tracks](#tracks)) | Its name, summary, poster and background |
+| `album.title`, `album.summary`, `album.poster`, `album.date` | a track's album | Its title, review, cover and release date |
 
 Artwork is an `http`/`https` URL rex fetches as it fetches Plex's agent artwork: from public
 hosts only, never this machine's own networks. The one exception is a picture under the

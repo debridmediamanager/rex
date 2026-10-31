@@ -26,6 +26,9 @@ impl Runtime {
             .unwrap_or_default()
             .to_string();
         let key = key_of(row).unwrap_or_default();
+        if matches!(kind.as_str(), "artist" | "album" | "track") {
+            self.music_detail(row, detail, query);
+        }
         let Some(object) = detail.as_object_mut() else {
             return;
         };
