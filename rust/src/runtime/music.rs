@@ -773,12 +773,14 @@ impl Runtime {
         }
         let number = |row: &Value, field: &str| row.get(field).and_then(Value::as_i64).unwrap_or(0);
         albums.sort_by_key(|album| (std::cmp::Reverse(number(album, "addedAt")), key_of(album).and_then(|key| key.parse::<i64>().ok())));
-        let tracks: Vec<Value> = self.choose_rows(Some(section), Some(10));
-        let played: Vec<&Value> = {
-            let mut played: Vec<&Value> = tracks.iter().filter(|track| number(track, "lastViewedAt") > 0).collect();
-            played.sort_by_key(|track| std::cmp::Reverse(number(track, "lastViewedAt")));
-            played
-        };
+        // Only the played tracks are copied: a library's every track was, for each hub request.
+        let mut played: Vec<Value> = self
+            .choose_refs(Some(section), Some(10))
+            .into_iter()
+            .filter(|track| track.get("lastViewedAt").and_then(Value::as_i64).unwrap_or(0) > 0)
+            .map(|track| track.body().clone())
+            .collect();
+        played.sort_by_key(|track| std::cmp::Reverse(number(track, "lastViewedAt")));
         let fill = |hub: &mut Value, rows: Vec<Value>| {
             let total = rows.len();
             // A shelf's rows name their library, which a section listing's leave to the container.
