@@ -8188,6 +8188,8 @@ impl Runtime {
             // An unclaimed claim needs no token: what refused it is where it came from.
             let why = if path == "/myplex/claim" && !self.gated() {
                 "a claim is taken only from this machine or its home network, addressed by rex's LAN IP (not a host name or a proxy)"
+            } else if !self.gated() {
+                "not claimed yet: rex serves the Plex apps once it is claimed (docs/setup.md step 5)"
             } else {
                 "no valid token"
             };
@@ -22159,6 +22161,12 @@ impl Runtime {
 
     fn route_web(&self, segments: &[&str], head: bool, trailing_slash: bool) -> Response {
         let Some(root) = &self.web_root else {
+            // People open :32400/web out of habit; rex has no web app, so say where to go.
+            if matches!(segments, [] | ["index.html"]) {
+                let mut response = Response::bytes(200, "text/html; charset=utf-8");
+                response.body = web_landing(self.claimed()).into_bytes();
+                return response;
+            }
             return Response::error(404, "rex: not found");
         };
         let relative = if segments.is_empty() {
@@ -22201,6 +22209,28 @@ impl Runtime {
             .push(("Accept-Ranges".to_string(), "bytes".to_string()));
         response
     }
+}
+
+/// The page `/web` answers when rex has no `--web-root`: rex ships no web app of its own.
+fn web_landing(claimed: bool) -> String {
+    let next = if claimed {
+        "<p>This rex is claimed. Open it in a Plex app signed in to an account it is shared with, or in a \
+         browser at <a href=\"https://app.plex.tv\">app.plex.tv</a> once rex has an HTTPS address \
+         (rex-direct, docs/setup.md step 7).</p>"
+    } else {
+        "<p>This rex is not claimed yet, so no Plex app can use it. Copy a code from \
+         <a href=\"https://www.plex.tv/claim\">plex.tv/claim</a> and send it from this network:</p>\
+         <pre>curl -X POST \"http://&lt;rex's LAN IP&gt;:32400/myplex/claim?token=&lt;code&gt;\"</pre>\
+         <p>Step by step: docs/setup.md step 5.</p>"
+    };
+    format!(
+        "<!doctype html><html lang=en><head><meta charset=utf-8>\
+         <meta name=viewport content=\"width=device-width,initial-scale=1\"><title>rex</title>\
+         <style>body{{font:16px/1.5 system-ui,sans-serif;max-width:40em;margin:3em auto;padding:0 1em;\
+         color:#ddd;background:#111}}a{{color:#ff9a62}}pre{{background:#222;padding:.6em;overflow:auto}}</style>\
+         </head><body><h1>rex</h1><p>rex has no web app of its own: the Plex apps are its interface.</p>{next}\
+         </body></html>"
+    )
 }
 
 #[derive(Debug, Clone)]

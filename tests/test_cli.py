@@ -262,6 +262,23 @@ def main():
         if made:
             shutil.rmtree(webclient, ignore_errors=True)
 
+    # No webclient anywhere: /web, where people look out of habit, says how to claim and where
+    # to watch instead of a bare 404.
+    if not os.path.exists(webclient):
+        process, port = serving("--port", "PORT", "--catalog", CATALOG, "--gdm", "off")
+        try:
+            try:
+                with urllib.request.urlopen("http://127.0.0.1:%d/web/index.html" % port,
+                                            timeout=10) as response:
+                    status, kind, body = response.status, response.headers.get("Content-Type", ""), response.read()
+            except Exception as error:
+                status, kind, body = None, "", repr(error).encode()
+            check("with no webclient, /web is a page saying how to claim rex and where to watch",
+                  status == 200 and kind.startswith("text/html") and b"plex.tv/claim" in body
+                  and b"app.plex.tv" not in body, (status, kind, body[:200]))
+        finally:
+            stop(process)
+
     # Conversion needs no setting: rex finds an FFmpeg (jellyfin-ffmpeg's package first, then
     # PATH's) unless REX_TRANSCODER names one or is `off`. A stand-in that fails every probe
     # leaves the server software-only, which is all a start needs.

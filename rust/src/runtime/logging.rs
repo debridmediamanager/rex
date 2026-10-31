@@ -28,7 +28,7 @@ struct Sink {
     rows: Vec<Value>,
 }
 
-/// A request target with every `X-Plex-Token` value masked, plain or URL-encoded (the
+/// A request target with every `X-Plex-Token` and `token` (a claim code) value masked, plain or URL-encoded (the
 /// `url=` of `/photo/:/transcode` carries one): the request line and `requests.log` are what
 /// people hand over for support. A real PMS's own log masks every token as a run of `x`.
 pub(crate) fn redact_tokens(target: &str) -> String {

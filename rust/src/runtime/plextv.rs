@@ -2639,7 +2639,7 @@ pub(super) fn finish_claim(runtime: &SharedRuntime, token: &str, _target: &str) 
         Ok(_) => {}
         Err(None) => return super::Response::error(409, "rex: already claimed"),
         Err(Some(message)) => {
-            error!("claim exchange failed: {message} (a code from https://www.plex.tv/claim works once, for about five minutes: copy a new one and claim again)");
+            error!("claim exchange failed: {message} (if the code was used or is over about five minutes old, copy a new one from https://www.plex.tv/claim and claim again)");
             return super::Response::error(500, &format!("rex: claim exchange failed: {message}"));
         }
     }
