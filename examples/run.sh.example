@@ -1,6 +1,6 @@
 #!/bin/bash
 # Copy to run.sh at the top of the checkout or release, beside rust/ (run.sh is gitignored),
-# and see README "Setup" for each step. It runs from its own directory and keeps rex.db there.
+# and see docs/setup.md for each step. It runs from its own directory and keeps rex.db there.
 #
 # Keys, if any, go in rex.env beside run.sh (gitignored, as is run.sh). Under systemd,
 # EnvironmentFile= can load the same file instead.

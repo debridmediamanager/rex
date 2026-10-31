@@ -1,6 +1,6 @@
 # Setting up rex
 
-The README has the short version. This is the full one.
+The [README](../README.md) has the short version. This is the full one.
 
 ## The steps
 
@@ -16,14 +16,34 @@ HTTPS address. rex starts once (step 4), and nothing after that needs a restart.
 |---|---|
 | A Linux, macOS or Windows host | rex is one binary with no other runtime dependencies |
 | 1 GB of RAM | with 4,062 movies and 656 shows (34,678 episodes) rex used under 500 MB while it started and about 730 MB while the library was browsed; converting video takes more |
-| rex nightly 2026.10.25 or newer | download it (README step 1), or build it with Rust 1.89 or newer (rustup) or Docker (below) |
+| rex nightly 2026.10.25 or newer | download it ([step 1](#1-get-it)), or build it with Rust 1.89 or newer (rustup) or Docker (below) |
 | One or more byte sources | [zurg](https://zurg.debridmediamanager.com/) nightly 2026.10.27 or newer (zurg v1.0.0 has no rex feed), or any HTTP server that serves the files plus something that pushes them to rex's feed |
 | An HTTPS address | only for use outside your LAN and in app.plex.tv: rex-direct, on by default once claimed (step 7), or a certificate for a hostname you control (a `tailscale cert`, Let's Encrypt) |
 | FFmpeg | optional, for [transcoding](#transcoding) |
 
 ### 1. Get it
 
-Download a release as in [the README's step 1](../README.md#setup), or build it:
+There are builds on [Releases](https://github.com/debridmediamanager/rex/releases) for Linux (amd64 and arm64, glibc 2.35 or newer, so Ubuntu 22.04 and up), macOS (Intel and Apple Silicon) and Windows (64 bit). This takes the newest for your machine into `~/rex`:
+
+```bash
+mkdir -p ~/rex && cd ~/rex
+TAG=$(curl -fsSL 'https://api.github.com/repos/debridmediamanager/rex/releases?per_page=1' | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -1)
+P=$(uname -s | tr A-Z a-z)-$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
+curl -fL "https://github.com/debridmediamanager/rex/releases/download/$TAG/rex-$TAG-$P.tar.gz" | tar xz --strip-components=1
+```
+
+On Windows, in PowerShell (then see [Windows](#windows)):
+
+```powershell
+New-Item -ItemType Directory -Force $HOME\rex | Out-Null; cd $HOME\rex
+$tag = (Invoke-RestMethod 'https://api.github.com/repos/debridmediamanager/rex/releases?per_page=1')[0].tag_name
+curl.exe -fLO "https://github.com/debridmediamanager/rex/releases/download/$tag/rex-$tag-windows-amd64.zip"
+tar -xf "rex-$tag-windows-amd64.zip" --strip-components=1; Remove-Item "rex-$tag-windows-amd64.zip"
+```
+
+A macOS build downloaded in a browser instead is stopped by Gatekeeper: run `xattr -dr com.apple.quarantine .` in its folder.
+
+Or build it (Rust 1.89 or newer from rustup, as distro packages are often older):
 
 ```bash
 git clone https://github.com/debridmediamanager/rex && cd rex
