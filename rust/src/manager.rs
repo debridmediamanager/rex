@@ -1022,6 +1022,7 @@ pre{background:#222;padding:8px;max-height:300px;overflow:auto}</style></head><b
 <label><input name=assert_claimed type=checkbox> assert claimed</label>
 <button>Create</button></form>
 <pre id=out></pre>
+<p><a href="https://notes.debridmediamanager.com/rex/">rex guides</a> &middot; questions go to the rex-support forum on <a href="https://discord.com/invite/7u4YjMThXP">Discord</a></p>
 <script>
 const out=document.getElementById('out');
 function tok(){try{return sessionStorage.getItem('t')||''}catch(e){return ''}}
@@ -1664,6 +1665,12 @@ fn client(cli: &Cli, root: &Path) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_page_links_the_guides_and_where_to_ask() {
+        assert!(PAGE.contains("https://notes.debridmediamanager.com/rex/"));
+        assert!(PAGE.contains("https://discord.com/invite/7u4YjMThXP"));
+    }
 
     #[test]
     fn monitor_leaves_a_stopping_child_for_stop_to_finish() {

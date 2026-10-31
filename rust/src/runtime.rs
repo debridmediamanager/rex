@@ -22229,6 +22229,8 @@ fn web_landing(claimed: bool) -> String {
          <style>body{{font:16px/1.5 system-ui,sans-serif;max-width:40em;margin:3em auto;padding:0 1em;\
          color:#ddd;background:#111}}a{{color:#ff9a62}}pre{{background:#222;padding:.6em;overflow:auto}}</style>\
          </head><body><h1>rex</h1><p>rex has no web app of its own: the Plex apps are its interface.</p>{next}\
+         <p>The <a href=\"https://notes.debridmediamanager.com/rex/\">rex guides</a> have every step. Stuck? Ask in \
+         the rex-support forum on <a href=\"https://discord.com/invite/7u4YjMThXP\">Discord</a>.</p>\
          </body></html>"
     )
 }
@@ -28997,5 +28999,21 @@ mod announce_tests {
         assert_eq!(lan_url("0.0.0.0", "100.101.1.2", 32400), None);
         assert_eq!(lan_url("0.0.0.0", "203.0.113.7", 32400), None);
         assert_eq!(with_lan_url(None, None), None);
+    }
+}
+
+#[cfg(test)]
+mod web_landing_tests {
+    use super::*;
+
+    // The page someone sees opening rex in a browser is where they are most likely
+    // stuck, so both versions say where the guides are and where to ask.
+    #[test]
+    fn the_landing_page_links_the_guides_and_where_to_ask() {
+        for claimed in [false, true] {
+            let page = web_landing(claimed);
+            assert!(page.contains("https://notes.debridmediamanager.com/rex/"), "{page}");
+            assert!(page.contains("https://discord.com/invite/7u4YjMThXP"), "{page}");
+        }
     }
 }
