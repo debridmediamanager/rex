@@ -12,6 +12,13 @@ The reference is plexav: a claimed PMS 1.43.4 with an HDHomeRun of three channel
                 python3 probes/record_livetv.py capture web-livetv-watch.jsonl > tests/fixtures/livetv/web_watch_s1434.json
     headers   the header lines of each Live TV read the clients made (no bodies)
                 python3 probes/record_livetv.py headers web-livetv-*.jsonl | gzip > tests/fixtures/livetv/headers_s1434.json.gz
+    ask       on the lab host: GETs no capture holds (the provider's search, sections and Guide
+              page, a season's episodes, the DVR's device), with Plex Web 4.163.0's headers, a
+              browser's Origin and gzip
+                python3 record_livetv.py ask http://127.0.0.1:32420 > browse.json
+    tune      on the lab host: ONE tune of 2.1 as Plex Web sends it, then reads of what it made
+              (`/activities`, the session, its Part key as the tune and the session name it)
+                python3 record_livetv.py tune http://127.0.0.1:32420 > tune2.json
     replay    on the lab host: the read-only requests below, each a client's own (its query and
               X-Plex headers as captured), asked of the reference now with its server token
                 python3 record_livetv.py replay http://127.0.0.1:32420 web-*.jsonl droid-livetv.jsonl > reads.json
@@ -186,9 +193,73 @@ def replay(base, paths):
     return {"now": int(start), "source": "replayed against plexav", "exchanges": exchanges}
 
 
+WEB = {"X-Plex-Product": "Plex Web", "X-Plex-Version": "4.163.0", "X-Plex-Client-Identifier": "rexlivetvprobe2",
+       "X-Plex-Platform": "Chrome", "X-Plex-Platform-Version": "151.0", "X-Plex-Features": "external-media,indirect-media,hub-style-list",
+       "X-Plex-Model": "hosted", "X-Plex-Device": "Linux", "X-Plex-Device-Name": "Chrome", "X-Plex-Language": "en",
+       "X-Plex-Provider-Version": "7.2", "X-Plex-Text-Format": "plain", "Origin": "https://app.plex.tv",
+       "Accept-Encoding": "gzip, deflate, br, zstd", "Accept-Language": "en"}
+P = "/tv.plex.providers.epg.xmltv:2"
+SEARCH = "&limit=100&searchTypes=livetv&includeCollections=1&includeExternalMedia=1"
+ASKED = ["%s/hubs/search?query=%s" % (P, word) for word in ("firefly", "news", "rex")] + ["%s/hubs/search?query=firefly&limit=3" % P] + [
+    "%s/library/search?query=%s%s" % (P, word, SEARCH) for word in ("news", "sports", "movie", "drama", "foot", "series")] + [
+    P + "/sections", P + "/sections/1", P + "/sections/2", P + "/sections/3", P + "/sections/4", P + "/watchnow", P + "/watchnow/all",
+    P + "/metadata/tv%2Eplex%2Exmltv%3A%2F%2Fseason%2FFirefly%2F1/children",
+    P + "/metadata/tv%2Eplex%2Exmltv%3A%2F%2Fseason%2FFirefly%2F1/children?excludeAllLeaves=1&X-Plex-Container-Start=0&X-Plex-Container-Size=20",
+    P + "/metadata/tv%2Eplex%2Exmltv%3A%2F%2Fmovie%2FSintel/children",
+    "/media/grabbers/devices", "/media/grabbers/devices/1", "/media/grabbers/devices/1/channels", "/activities", "/"]
+
+
+def ask(base, token, method, target, accept="application/json", extra=None):
+    """One request as Plex Web sends it, as a fixture exchange: the headers sent (no token) and
+    the answer's header lines and body, unzipped."""
+    import gzip
+    headers = dict(WEB, Accept=accept, **(extra or {}))
+    request = urllib.request.Request(base + target, method=method, data=b"" if method == "POST" else None,
+                                     headers=dict(headers, **{"X-Plex-Token": token}))
+    try:
+        response = urllib.request.urlopen(request, timeout=30)
+    except urllib.error.HTTPError as error:
+        response = error
+    body = response.read()
+    if response.headers.get("Content-Encoding") == "gzip":
+        body = gzip.decompress(body)
+    path, _, query = target.partition("?")
+    return {"method": method, "path": path, "query": [list(pair) for pair in urllib.parse.parse_qsl(query, keep_blank_values=True)],
+            "headers": [[name, value] for name, value in headers.items()], "status": getattr(response, "status", None) or response.code,
+            "type": response.headers.get("Content-Type", ""), "body": redact(body.decode("utf-8", "replace")), "t": round(time.time(), 3),
+            "answered": [[name, value] for name, value in response.headers.items() if name != "Date"]}
+
+
+def server_token():
+    return subprocess.run(["docker", "exec", "plexav-plex", "sh", "-c",
+                           "grep -o 'PlexOnlineToken=\"[^\"]*' '/config/Library/Application Support/Plex Media Server/Preferences.xml'"],
+                          capture_output=True, text=True).stdout.split('"')[1].strip()
+
+
+def asked(base):
+    token = server_token()
+    exchanges = [ask(base, token, "GET", target) for target in ASKED]
+    return {"now": int(exchanges[0]["t"]), "source": "plexav, Plex Web's headers, no capture holds these", "exchanges": exchanges}
+
+
+def tuned(base):
+    """ONE tune: plexav records nothing, but a tune opens a capture and a rolling subscription
+    that end on their own; ask before running it again."""
+    import re
+    token = server_token()
+    session = "rexsessprobe"
+    tune = ask(base, token, "POST", "/livetv/dvrs/2/channels/2.1/tune?X-Plex-Session-Identifier=" + session, "text/plain, */*; q=0.01")
+    uuid = re.search(r"/livetv/sessions/([0-9a-f-]{36})", tune["body"]).group(1)
+    exchanges = [tune, ask(base, token, "GET", "/activities"), ask(base, token, "GET", "/livetv/sessions/" + uuid)]
+    for client in (session, WEB["X-Plex-Client-Identifier"]):
+        exchanges.append(ask(base, token, "GET", "/livetv/sessions/%s/%s/index.m3u8?offset=-1.000000" % (uuid, client), "*/*"))
+    exchanges.append(ask(base, token, "GET", "/status/sessions"))
+    return {"now": int(tune["t"]), "source": "plexav, one tune as Plex Web sends it", "exchanges": exchanges}
+
+
 if __name__ == "__main__":
     mode = sys.argv[1]
     result = {"guide": lambda: guide(sys.argv[2], int(sys.argv[3])), "capture": lambda: capture(sys.argv[2]),
-              "headers": lambda: headers(sys.argv[2:]),
+              "headers": lambda: headers(sys.argv[2:]), "ask": lambda: asked(sys.argv[2]), "tune": lambda: tuned(sys.argv[2]),
               "replay": lambda: replay(sys.argv[2], sys.argv[3:])}[mode]()
     json.dump(result, sys.stdout, indent=None, separators=(",", ":"))
