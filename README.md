@@ -42,9 +42,9 @@ Pick the guide for what you have.
 
 | You have | Guide |
 |---|---|
-| Your debrid library or Usenet, through zurg | [rex with zurg](https://notes.debridmediamanager.com/rex/with-zurg/) |
-| Stremio addons | [rex with your Stremio addons](https://notes.debridmediamanager.com/rex/stremio/), free, with no sponsorship |
 | Files your own app serves over HTTP | [rex with your own app](https://notes.debridmediamanager.com/rex/any-source/) |
+| Stremio addons | [rex with your Stremio addons](https://notes.debridmediamanager.com/rex/stremio/), free, with no sponsorship |
+| Your debrid library or Usenet, through zurg | [rex with zurg](https://notes.debridmediamanager.com/rex/with-zurg/) |
 | A Plex server today | [Move from Plex to rex](https://notes.debridmediamanager.com/rex/from-plex/) |
 
 In short:
@@ -67,8 +67,8 @@ rex reads no media from disk. A source (zurg, an addon or your own app) tells re
 
 | Source | What it brings |
 |---|---|
-| [zurg](https://zurg.debridmediamanager.com/) | Your debrid accounts and Usenet |
 | [rex-stremio](https://github.com/debridmediamanager/rex-stremio) | Your Stremio addons' catalogs, played from your stream addons |
+| [zurg](https://zurg.debridmediamanager.com/) | Your debrid accounts and Usenet |
 | [rex-live-sports](https://github.com/debridmediamanager/rex-live-sports) | The channels of a live-sports server, played live |
 | Your own | [Building rex addons](https://notes.debridmediamanager.com/rex/addons/) walks through one |
 

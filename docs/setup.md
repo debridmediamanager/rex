@@ -105,7 +105,7 @@ directories:
     rex_movies: Anime Movies  # and a movie library
 ```
 
-Give a directory both: DMM places some of its files as films and some as episodes, and a kind
+In zurg, give a directory both: DMM places some of its files as films and some as episodes, and a kind
 with no title of its own goes to Movies or TV Shows.
 
 The source sends it when it registers (step 6), and rex makes the libraries then and moves what it
@@ -205,8 +205,8 @@ back once rex is shared with it again, and the old owner's passes to the new one
 A source is any program that registers with rex and pushes its files over the feed API
 ([`feed-api.md`](feed-api.md)). Give it `http://<rex's LAN IP>:32400` and it does the rest:
 [rex-stremio](https://notes.debridmediamanager.com/rex/stremio/) takes it as **rex's address** on
-its settings page, your own app or an addon as in [rex with your own app](https://notes.debridmediamanager.com/rex/any-source/)
-and [Building rex addons](https://notes.debridmediamanager.com/rex/addons/).
+its settings page, and your own app or an addon sends it as [rex with your own app](https://notes.debridmediamanager.com/rex/any-source/)
+and [Building rex addons](https://notes.debridmediamanager.com/rex/addons/) show.
 For a debrid library or Usenet, zurg is one such source. In each zurg's `config.yml` (zurg's [config reference](https://notes.debridmediamanager.com/zurg/reference/config/) has the details):
 
 ```yaml
@@ -218,11 +218,12 @@ The address a source is given is rex's plain `http://` LAN address, never an HTT
 only rex's own networks. Running two zurgs? Give each a name of its own with `rex_source: rd` and `rex_source: ad`. A
 directory that is to be a library of its own gets `rex_shows`/`rex_movies` under it (step 3).
 
-rex's LAN IP works from the same machine, another one and a container alike. Restart
-zurg. Once its library has loaded it registers with rex, pushes everything it holds, then
-each change as it happens. Watch it
-arrive in rex's log (`SOURCES zurg registered at ...`, then `FEED PUT /rex/feed/zurg/snapshot -> 200`) and
-with the `/rex/sources` and `/rex/feed/zurg/items` calls above (a zurg given `rex_source` uses that name).
+rex's LAN IP works from the same machine, another one and a container alike. A source registers
+with rex once it has the address (zurg once you restart it and its library has loaded), pushes
+everything it holds, then each change as it happens. Watch it arrive in rex's log
+(`SOURCES <name> registered at ...`, then `FEED <name> upsert: ...` lines) and with the
+`/rex/sources` and `/rex/feed/<name>/items` calls above. zurg registers as `zurg`, or as its
+`rex_source`.
 
 **An item appears only once its source has probed it with ffprobe**, because rex lists each
 file with its streams. Items never probed are held, not shown. zurg probes the whole
@@ -480,7 +481,7 @@ NVIDIA card needs the NVIDIA container toolkit and `gpus: all` instead; untested
 | Every part read answers 502 | No source is registered (`curl -s http://<rex's LAN IP>:32400/rex/sources`), or rex cannot reach the one that is |
 | A push answers `rejected: no movie or show library holds ...` | No library of that item's kind is left (one was deleted in Plex): add one with Add Library (step 3) |
 | A source pushed but the library stays empty | Items are held until their source probes them (step 6) |
-| A directory given `rex_shows`/`rex_movies` has no library | The source did not send it (`curl -s http://<rex's LAN IP>:32400/rex/sources` lists each source's `directories`), the source or rex skipped a mistyped entry (its log says why), or a library there was deleted in Plex, which keeps it deleted (the log says `stays deleted`): add it again with Add Library (step 3) |
+| A directory a source declared (`directories`; zurg's `rex_shows`/`rex_movies`) has no library | The source did not send it (`curl -s http://<rex's LAN IP>:32400/rex/sources` lists each source's `directories`), the source or rex skipped a mistyped entry (its log says why), or a library there was deleted in Plex, which keeps it deleted (the log says `stays deleted`): add it again with Add Library (step 3) |
 | A part read answers 502, or 401/403 | rex cannot reach the source's `url` (502), or the source refused its credential (its own status): the log line `PART ... upstream` says which |
 | The server is not in the Plex apps | Not claimed (step 5), or, in app.plex.tv and outside your home, no HTTPS address reachable from the internet (step 7) |
 | A device at home cannot connect, and rex's `heartbeat ... ->` line shows no LAN address or the wrong one | rex announces the private address of the network it reaches the internet through; behind a VPN or a Tailscale exit node that is not your home network. Add `--announce-url http://<rex's LAN IP>:32400` |

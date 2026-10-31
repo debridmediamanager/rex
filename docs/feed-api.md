@@ -53,7 +53,7 @@ internet, which needs a token once rex is claimed, but not the feed.
 ### `PUT /rex/sources/{name}`
 
 ```json
-{"url": "http://127.0.0.1:9999/dav", "user": "dav-user", "password": "dav-password",
+{"url": "http://127.0.0.1:8080/files", "user": "dav-user", "password": "dav-password",
  "directories": [{"name": "anime", "shows": "Anime", "movies": "Anime Movies"}, {"name": "wrestling", "shows": "Wrestling"}]}
 ```
 
@@ -81,7 +81,7 @@ start. A `directories` that is no list is left out the same way. `ignored` is ab
 nothing was:
 
 ```json
-{"name": "zurg", "url": "http://127.0.0.1:9999/dav", "auth": "basic", "features": ["probe_digest"],
+{"name": "myapp", "url": "http://127.0.0.1:8080/files", "auth": "basic", "features": ["probe_digest"],
  "directories": [{"name": "anime", "shows": "Anime"}],
  "ignored": [{"entry": {"name": "kids", "shows": ""}, "reason": "directory \"kids\": shows title is empty"}]}
 ```
@@ -91,7 +91,7 @@ nothing was:
 A directory named in `directories` is a library of its own, made when the source registers:
 a movie library titled as the entry's `movies` and a show library titled as its `shows`, whichever it has,
 on the folder `<mount>/<name>` (with no `mount`, under the parent of the first library's
-folder, `/mnt/rex` for a library rex seeded). rex logs `SECTION create Anime (show) for zurg's anime`, and
+folder, `/mnt/rex` for a library rex seeded). rex logs `SECTION create Anime (show) for myapp's anime`, and
 Plex clients see it as one added in Add Library. Then:
 
 - **A library of that type already on the folder is used**, whoever made it: one added with
@@ -116,7 +116,7 @@ Plex clients see it as one added in Add Library. Then:
   file (`deletedLocations`), a later registration makes nothing there and logs once that it
   stays deleted, and the directory's files go back to the first library of their kind.
 - **Add Library brings one back.** Its folder picker lists each directory a source pushed from
-  or declared, under the source's mount (`/mnt/zurg/anime`); a library added on a deleted one's
+  or declared, under the source's mount (`/mnt/myapp/anime`); a library added on a deleted one's
   folder takes the directory's files, and the folder is no longer kept deleted.
 - **rex never deletes a library itself.** A directory dropped from the list, or a source that
   stops declaring any, keeps its library.
@@ -127,7 +127,7 @@ TV Shows for an episode, Movies for anything else.
 ### `GET /rex/sources` and `GET /rex/sources/{name}`
 
 ```json
-{"size": 1, "sources": [{"name": "zurg", "url": "http://127.0.0.1:9999/dav", "auth": "basic", "features": ["probe_digest"]}]}
+{"size": 1, "sources": [{"name": "myapp", "url": "http://127.0.0.1:8080/files", "auth": "basic", "features": ["probe_digest"]}]}
 ```
 
 Every source, or one (`404` for a name nothing registered), with its `directories` as
@@ -310,8 +310,8 @@ The `media_info` above is cut down to show its shape. Send ffprobe's whole outpu
 | `edition_title` | no | Explicit movie edition label. Different labels stay separate movies; the same label can hold several versions. Omitted preserves the current source label; `""` clears it. A person's locked edition wins. Rejected for episodes or invalid labels; never inferred from a name |
 | `size` | no | Bytes. Default: ffprobe's `media_info.format.size` (none for an HLS playlist). Shown as the Part's size and used to answer a client's `Range`; with neither, rex passes the client's `Range` to the source as it is |
 | `file` | no | Only the path clients see in Get Info (`<mount>/<directory>/<release>/<file>`). Default `<mount>/<path>`, or `/<path>` without a mount |
-| `library` | no | A section key, or `movie`/`show`. Default: the library whose `Location` holds `file`, else one with a folder ending in a directory `path` starts with (`/mnt/zurg/movies` holds `movies/...` whatever prefix `file` has); with a type, that type's library holding `file`, else its first; a folder no library holds goes to the first library of its `kind` (Movies without one). With no `library`, an item placed as an episode that a movie library would take goes to a show library -- one holding its folder ([a declared directory's](#libraries-a-source-declares)), else the one beside it -- and one placed as a movie that a show library would take goes to a movie library, one holding its folder first; a row already shown moves when its library changes |
-| `folder` | no | The folder the provider lists the file in inside its release (`Smallville/Stagione 6`), `""` at its top level. Kept on the row; nothing reads it as an extra |
+| `library` | no | A section key, or `movie`/`show`. Default: the library whose `Location` holds `file`, else one with a folder ending in a directory `path` starts with (`/mnt/myapp/movies` holds `movies/...` whatever prefix `file` has); with a type, that type's library holding `file`, else its first; a folder no library holds goes to the first library of its `kind` (Movies without one). With no `library`, an item placed as an episode that a movie library would take goes to a show library -- one holding its folder ([a declared directory's](#libraries-a-source-declares)), else the one beside it -- and one placed as a movie that a show library would take goes to a movie library, one holding its folder first; a row already shown moves when its library changes |
+| `folder` | no | The folder the source lists the file in inside its release (`Smallville/Stagione 6`), `""` at its top level. Kept on the row; nothing reads it as an extra |
 | `probe` | no | The probe's digest, kept per Media version; with it `media_info` may be left out ([Probe digests](#probe-digests)) |
 | `hash` | no | The release's content/info hash, kept per Media version. A changed hash invalidates that version's measured subtitle reference and generated analysis; it never borrows another version's hash |
 | `display` | no | What the title is called and looks like, for what no metadata agent knows: see **Display** below. Shown only while nothing identifies the row |
@@ -488,7 +488,7 @@ an embedded track.
   request, at most 4 MiB each.
 - **Nothing costs the item.** An entry with another extension, a field of the wrong type, a
   path with an empty, `.` or `..` segment, or text over 4 MiB is left out and logged once with
-  why (`FEED zurg <id>: subtitle <path>: <why>; left out`); the item is taken. A text the source
+  why (`FEED myapp <id>: subtitle <path>: <why>; left out`); the item is taken. A text the source
   does not serve yet (`subtitle <path> not read: the source answered 404`) arrives with a later
   push, and one that fails to read again keeps the text it had.
 - **The source's, not a person's.** A client deleting one gets the 403 an embedded track's
@@ -499,8 +499,8 @@ an embedded track.
 A person deleting a row in a client deletes its files at the source, as a real PMS deletes
 the files on its disk (measured on plexscratch 1.43.4, `tests/fixtures/media_delete_s43.json`).
 For every Part of the row and the rows beneath it, rex sends the source a WebDAV
-`DELETE {url}/{path}` with the source's credentials -- what a media server on zurg's mount
-sends through rclone -- and removes the rows only when every file is gone (a 2xx, or the
+`DELETE {url}/{path}` with the source's credentials -- what a media server reading the source
+through an rclone WebDAV mount sends -- and removes the rows only when every file is gone (a 2xx, or the
 source's 404). The source must then stop pushing the file, or its next snapshot brings it
 back (zurg keeps it deleted across restarts). A source that refuses (zurg answers 403 for a
 file an *arr placed under `__magic__`) or cannot be reached leaves the rows
