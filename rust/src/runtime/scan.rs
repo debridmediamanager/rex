@@ -982,7 +982,8 @@ impl Runtime {
         let stamp = now();
         let mut chain = vec![key.to_string()];
         if let Some(row) = self.catalog.get(key) {
-            if row.get("type").and_then(Value::as_str) == Some("episode") {
+            // A track's album and artist are trashed and restored with it, as an episode's season and show.
+            if matches!(row.get("type").and_then(Value::as_str), Some("episode" | "track")) {
                 chain.extend(row.get("parentRatingKey").map(string_value));
                 chain.extend(row.get("grandparentRatingKey").map(string_value));
             }
@@ -1010,7 +1011,8 @@ impl Runtime {
     pub(super) fn untrash_row(&mut self, key: &str) {
         let mut chain = vec![key.to_string()];
         if let Some(row) = self.catalog.get(key) {
-            if row.get("type").and_then(Value::as_str) == Some("episode") {
+            // A track's album and artist are trashed and restored with it, as an episode's season and show.
+            if matches!(row.get("type").and_then(Value::as_str), Some("episode" | "track")) {
                 chain.extend(row.get("parentRatingKey").map(string_value));
                 chain.extend(row.get("grandparentRatingKey").map(string_value));
             }
@@ -1055,7 +1057,7 @@ impl Runtime {
         let Some(row) = self.catalog.get(key).cloned() else {
             return;
         };
-        let parents = (row.get("type").and_then(Value::as_str) == Some("episode")).then(|| {
+        let parents = matches!(row.get("type").and_then(Value::as_str), Some("episode" | "track")).then(|| {
             (
                 row.get("parentRatingKey").map(string_value).unwrap_or_default(),
                 row.get("grandparentRatingKey").map(string_value).unwrap_or_default(),
@@ -1093,7 +1095,7 @@ impl Runtime {
             .lazy()
             .filter(|row| {
                 string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == section
-                    && matches!(row.get("type").and_then(Value::as_str), Some("movie" | "episode"))
+                    && matches!(row.get("type").and_then(Value::as_str), Some("movie" | "episode" | "track"))
                     && row.get("deletedAt").is_some()
             })
             .map(|row| row.body().clone())

@@ -132,6 +132,9 @@ def main():
         status, body = rex.request("/rex/feed/plexav/items", "DELETE", {"ids": [moved["id"]]}, {"Content-Type": "application/json"})
         row = rex.rows("/library/metadata/%s" % key)
         check("a removed track goes to the trash", body.get("trashed") == 1 and row and row[0].get("deletedAt"), (body, row[:1]))
+        album = rex.rows("/library/metadata/%s" % row[0]["parentRatingKey"]) if row else []
+        check("its album is marked with it, as a trashed episode marks its season (inferred, not measured for music)",
+              album and album[0].get("deletedAt"), album[:1])
 
         # A library: `library` naming no music library refuses the track.
         status, body = rex.push([dict(items[1], id="other", path=items[1]["path"], library="7")])
