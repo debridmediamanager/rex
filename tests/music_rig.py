@@ -103,8 +103,11 @@ def make_library(root):
                             "-metadata", "album_artist=" + artist, "-metadata", "album=" + album,
                             "-metadata", "date=%d" % year, "-metadata", "track=%d/%d" % (number, len(titles)),
                             "-metadata", "genre=" + genre] + codec + [path], check=True)
+            # With the first packet (`-show_packets -read_intervals %+#1`): where a FLAC's audio
+            # starts, which plexav's bitrate for it counts from (docs/feed-api.md "Tracks").
             probe = json.loads(subprocess.run([ffprobe, "-v", "quiet", "-print_format", "json", "-show_format",
-                                               "-show_streams", path], check=True, capture_output=True).stdout)
+                                               "-show_streams", "-show_packets", "-read_intervals", "%+#1", path],
+                                              check=True, capture_output=True).stdout)
             relative = "/".join(["music", artist, "%s (%d)" % (album, year), name])
             items.append({"id": relative, "path": relative, "kind": "track", "ids": {"mbid": mbid},
                           "disc": 1, "track": number, "media_info": probe,

@@ -428,7 +428,7 @@ impl Runtime {
             item.size as i64,
             Some(&extension),
         );
-        mediainfo::audio_media(&mut media);
+        mediainfo::audio_media(&mut media, item.media_info.as_ref().unwrap_or(&Value::Null));
         if let Some(hash) = &item.hash {
             media["_hash"] = json!(hash);
         }
