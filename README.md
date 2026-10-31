@@ -55,7 +55,7 @@ In short:
 4. **Point a source at it.** For zurg that is `rex_url: http://<rex's LAN IP>:32400` in its `config.yml`, then restart zurg. Your own app or an addon registers itself the same way.
 5. **Forward port 32400** to rex. rex-direct then gives it an HTTPS address of its own, for use away from home and in app.plex.tv, which needs HTTPS even at home. [Check it](docs/setup.md#7-reach-it-from-outside-https-and-the-announce) from home and from a phone off Wi-Fi.
 
-You need rex nightly 2026.10.25 or newer and, for zurg, zurg nightly 2026.10.27 or newer (a sponsor build, from [gatekeeper](https://gatekeeper.debridmediamanager.com/)). [docs/setup.md](docs/setup.md) has every command, Windows, Docker, running it as a service, updates and a troubleshooting table.
+You need rex nightly 2026.10.25 or newer and, for zurg, zurg nightly 2026.10.27 or newer (a sponsor build. [gatekeeper](https://gatekeeper.debridmediamanager.com/) gives your GitHub account access). [docs/setup.md](docs/setup.md) has every command, Windows, Docker, running it as a service, updates and a troubleshooting table.
 
 Two things to know first. Deleting a title in a Plex app as the claiming account deletes it at its source too, from your debrid account for zurg; untick **Allow media deletion** (Settings, Library, Show Advanced) to stop that. And a reverse proxy or tunnel on the rex machine must block `/rex/`, or it opens rex's feed to the internet.
 
