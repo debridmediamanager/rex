@@ -12,7 +12,7 @@
   <a href="https://discord.com/invite/7u4YjMThXP">Discord</a>
 </p>
 
-https://github.com/user-attachments/assets/6e79828e-0bcb-4dfc-8bd6-55c848917fb7
+https://github.com/user-attachments/assets/541345b9-1cdd-4411-b536-2beeba9b0204
 
 Your movies and shows stay on a debrid service, a Usenet provider or any web server. rex shows them to the Plex apps as a normal Plex server, and when you press play it streams the file straight from where it lives. Nothing is downloaded first and nothing is scanned: a title appears as soon as its source tells rex about it.
 
@@ -30,7 +30,7 @@ Your movies and shows stay on a debrid service, a Usenet provider or any web ser
 - **Subtitles that fit.** Search Subtitles uses Plex's own provider. rex checks the one you pick against a text subtitle in the file, or its audio when FFmpeg is installed, and fixes the timing when it is off.
 - **Many sources, one library.** Two zurgs on two debrid accounts, or zurg and an addon, fill the same Movies and TV Shows libraries.
 - **No Plex Pass.** Remote playback in Plex Web and converting video work on free accounts. So do movie editions, the server Dashboard, Downloads and, with FFmpeg, intro and credits skipping ([what works](docs/setup.md#movie-and-tv-capabilities)).
-- **Free and open source** under the MIT license, with nightly builds.
+- **Free for personal use**, with the source code public and nightly builds.
 
 | Search Subtitles | Original quality, or converted |
 |---|---|
@@ -89,6 +89,6 @@ rex is written in Rust. [CLAUDE.md](CLAUDE.md) covers the code, the tests and ho
 
 ## License
 
-MIT. See [LICENSE](LICENSE). The Docker image also carries [jellyfin-ffmpeg](https://github.com/jellyfin/jellyfin-ffmpeg) (GPL), unmodified, from its own releases.
+[PolyForm Noncommercial 1.0.0](LICENSE): free for personal, hobby, educational and other noncommercial use. Commercial use is not allowed. Copies must keep the license and its `Required Notice` line, which credits the author. The Docker image also carries [jellyfin-ffmpeg](https://github.com/jellyfin/jellyfin-ffmpeg) (GPL), unmodified, from its own releases.
 
 rex is an independent project, not affiliated with or endorsed by Plex, Inc. Plex is a trademark of Plex, Inc.
