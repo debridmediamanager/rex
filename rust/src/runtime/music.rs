@@ -106,6 +106,9 @@ pub(super) fn upsert_tracks(
                         plans.push((item, section, Plan::Replace(key.clone())));
                     }
                 }
+                // Named by its probe's digest alone: rex holds no such version, so it asks for the
+                // probe (`wants`), as for any item (docs/feed-api.md "Probe digests").
+                None if item.media_info.is_none() && item.probe.is_some() => counts.wants.push(item.id.clone()),
                 None if item.media_info.is_none() => {
                     let since = guard.feed_held.get(&held).and_then(|old| old.get("since")).and_then(Value::as_i64).unwrap_or_else(now);
                     let record = item.held(since);

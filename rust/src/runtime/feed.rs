@@ -440,7 +440,7 @@ pub(super) struct Counts {
     pub(super) rejected: Vec<Value>,
     /// Items sent with a `probe` and no `media_info` whose probe rex needs: applied by none of
     /// their fields until the source sends them again with it.
-    wants: Vec<String>,
+    pub(super) wants: Vec<String>,
 }
 
 impl Counts {

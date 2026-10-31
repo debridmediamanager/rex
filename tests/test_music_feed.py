@@ -97,11 +97,13 @@ def main():
             {"id": "loose/d.mp3", "path": "loose/d.mp3", "kind": "track", "media_info": None},
             {"id": "loose/e.mkv", "path": "loose/e.mkv", "kind": "track", "media_info": probe},
             {"id": "loose/f.mp3", "path": "loose/f.mp3", "media_info": probe},
+            {"id": "loose/g.mp3", "path": "loose/g.mp3", "kind": "track", "probe": "digest-1"},
         ])
         rejected = {entry["id"]: entry["reason"] for entry in body.get("rejected") or []}
         check("tracks nothing or something unknown names are created, one held without its probe",
               body.get("created") == 3 and body.get("held") == 1, body)
         check("a video file pushed as a track is refused", rejected.get("loose/e.mkv") == "not an audio file", rejected)
+        check("a new track named by its probe's digest alone is asked for whole", body.get("wants") == ["loose/g.mp3"], body)
         check("an audio file pushed as anything else is refused", rejected.get("loose/f.mp3") == "not a video file", rejected)
         band = next((row for row in rex.rows("/library/sections/1/all?type=8") if row["title"] == "Home Band"), None)
         check("the display's artist is an artist of its own, no agent guid", band and band["guid"].startswith("local://"), band)
