@@ -589,6 +589,8 @@ that stream.
   app cannot play, burned-in subtitles.
 - Plezy and Plex for Android follow the link. A web browser follows it only when the provider says
   the file is video: Real-Debrid's links say "download", so Plex Web plays those through rex.
+  TorBox's Cloudflare and BunnyCDN servers (`erth` and `hare` in its CDN setting) do not let a
+  browser read their links at all, so Plex Web cannot play from them: pick a regional CDN.
 - The link is the provider's own: every app and shared user who plays the file gets it, and the
   provider sees each of them download.
 

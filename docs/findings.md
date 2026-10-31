@@ -14455,6 +14455,23 @@ right now. Please try again." Plex Web on Sintel took the 302, could not play Re
 `application/force-download`, and with no conversion to fall back to showed "Playback Error / This
 server is not powerful enough to convert video." with a Retry button.
 
+TorBox (2026-10-31, a sponsor's rex-support thread, then a fresh shared-account `requestdl` link
+read with `Range`, `Sec-Fetch-Mode: cors` and each `Origin`): whether Plex Web can take the 302
+depends on the account's CDN setting. Its media fetch is CORS, and after the cross-origin redirect
+its `Origin` is `null`.
+
+| TorBox host | `Origin: https://app.plex.tv` | `Origin: null` |
+|---|---|---|
+| `nexus-NNN.ceur.tb-cdn.st` (`Server: Nexus/1.0`) | echoed | `null` echoed |
+| `nexus.erth.tb-cdn.earth` (Cloudflare, `CF-Cache-Status: DYNAMIC`) | no `Access-Control-Allow-Origin` | none |
+| `nexus.hare.tb-cdn.earth` (BunnyCDN) | none | none |
+
+With `erth` the sponsor's Plex Web showed the artwork and never started; a plain `<video>` tag
+played the same link (no CORS), and switching the TorBox CDN fixed it. The `/dld/100MB.bin` file
+`/v1/api/speedtest` lists DOES answer `Access-Control-Allow-Origin: *` on `erth` and `hare`, so
+only a real download link shows the gap. rex redirects whatever the link answers; `docs/setup.md`
+tells TorBox users to pick a regional CDN.
+
 ## rex's own assets and translations (2026-10-25)
 
 Before the repository goes public, nothing in it may be Plex's own creative content.
