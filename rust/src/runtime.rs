@@ -14245,6 +14245,12 @@ impl Runtime {
             && matches!(segments[0], "audio" | "music" | "subtitles")
             && segments[1..3] == [":", "transcode"]
         {
+            // A track's conversion (`music::music_plan`) runs through the video transcoder's sessions.
+            if segments[0] == "music" && segments[3] == "universal" {
+                if let Some(response) = self.route_universal(&segments, query, request) {
+                    return response;
+                }
+            }
             return Response::error(400, "rex: bad request");
         }
         if segments.len() >= 4

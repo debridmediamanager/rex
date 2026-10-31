@@ -1,0 +1,1750 @@
+{
+ "recorded": "plexav PMS 1.43.4, 2026-10-31",
+ "exchanges": [
+  {
+   "client": "web-music-play",
+   "path": "/music/:/transcode/universal/decision",
+   "query": [
+    [
+     "hasMDE",
+     "1"
+    ],
+    [
+     "path",
+     "/library/metadata/32"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "musicBitrate",
+     "320"
+    ],
+    [
+     "directStreamAudio",
+     "0"
+    ],
+    [
+     "mediaBufferSize",
+     "12288"
+    ],
+    [
+     "session",
+     "rexprobe-web"
+    ],
+    [
+     "protocol",
+     "dash"
+    ],
+    [
+     "directPlay",
+     "0"
+    ],
+    [
+     "directStream",
+     "0"
+    ],
+    [
+     "Accept-Language",
+     "en"
+    ],
+    [
+     "X-Plex-Session-Identifier",
+     "bf21qed36676rzctugu1v6ch"
+    ],
+    [
+     "X-Plex-Client-Profile-Extra",
+     "add-transcode-target(type=musicProfile&context=streaming&protocol=dash&container=mp4&audioCodec=aac)+add-transcode-target(type=musicProfile&context=streaming&protocol=hls&container=mpegts&audioCodec=aac,mp3)"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Web"
+    ],
+    [
+     "X-Plex-Version",
+     "4.163.0"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "thuj6pv24kf5wr6qaqla8flz"
+    ],
+    [
+     "X-Plex-Platform",
+     "Chrome"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "151.0"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ],
+    [
+     "X-Plex-Model",
+     "hosted"
+    ],
+    [
+     "X-Plex-Device",
+     "Linux"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "Chrome"
+    ],
+    [
+     "X-Plex-Device-Screen-Resolution",
+     "1400x900,1280x720"
+    ],
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ],
+    [
+     "X-Plex-Language",
+     "en"
+    ],
+    [
+     "X-Plex-Session-Id",
+     "cb22220f-1e9f-4a50-8c54-1fd96224c096"
+    ],
+    [
+     "X-Plex-Playback-Session-Id",
+     "239ebbbe-83ae-4790-81d4-0dedc3c9b375"
+    ],
+    [
+     "X-Plex-Playback-Id",
+     "eda360ab-fc1a-4a63-8927-c27e9fe1e58c"
+    ]
+   ],
+   "status": 200,
+   "headers": {
+    "Content-Type": "text/xml;charset=utf-8",
+    "Cache-Control": "no-cache"
+   },
+   "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<MediaContainer size=\"1\" allowSync=\"1\" directPlayDecisionCode=\"3000\" directPlayDecisionText=\"App cannot direct play this item. Direct play is disabled.\" generalDecisionCode=\"1001\" generalDecisionText=\"Direct play not available; Conversion OK.\" identifier=\"com.plexapp.plugins.library\" librarySectionID=\"1\" librarySectionTitle=\"Music\" librarySectionUUID=\"44a5b57b-41c7-491a-8a3b-0a53e4c9edad\" mediaTagPrefix=\"/system/bundle/media/flags/\" mediaTagVersion=\"1786914632\" resourceSession=\"bf21qed36676rzctugu1v6ch\" transcodeDecisionCode=\"1001\" transcodeDecisionText=\"Direct play not available; Conversion OK.\">\n<Track addedAt=\"1793451813\" art=\"/library/metadata/17/art/1793452370\" duration=\"45000\" grandparentArt=\"/library/metadata/17/art/1793452370\" grandparentGuid=\"plex://artist/5d07bbfc403c6402904a5ecc\" grandparentKey=\"/library/metadata/17\" grandparentRatingKey=\"17\" grandparentThumb=\"/library/metadata/17/thumb/1793452370\" grandparentTitle=\"Radiohead\" guid=\"plex://track/5d07d499403c64029080d0b7\" index=\"1\" key=\"/library/metadata/32\" lastViewedAt=\"1793457050\" librarySectionID=\"1\" librarySectionKey=\"/library/sections/1\" librarySectionTitle=\"Music\" parentGuid=\"plex://album/5d07c2b1403c6402908fddb6\" parentIndex=\"1\" parentKey=\"/library/metadata/31\" parentRatingKey=\"31\" parentStudio=\"Hostess Entertainment Unlimited\" parentThumb=\"/library/metadata/31/thumb/1793452371\" parentTitle=\"In Rainbows\" parentYear=\"2007\" ratingCount=\"1795575\" ratingKey=\"32\" skipCount=\"2\" thumb=\"/library/metadata/31/thumb/1793452371\" title=\"15 Step\" type=\"track\" updatedAt=\"1793452371\" viewCount=\"3\">\n<Media id=\"27\" audioChannels=\"2\" audioCodec=\"aac\" bitrate=\"258\" container=\"mp4\" duration=\"45000\" protocol=\"dash\" selected=\"1\">\n<Part deepAnalysisVersion=\"6\" id=\"27\" requiredBandwidths=\"90,90,90,90,90,90,90,90\" bitrate=\"258\" container=\"mp4\" duration=\"45000\" decision=\"transcode\" selected=\"1\">\n<Stream bitrate=\"258\" bitrateMode=\"cbr\" channels=\"2\" codec=\"aac\" displayTitle=\"FLAC (Stereo)\" extendedDisplayTitle=\"FLAC (Stereo)\" id=\"27\" requiredBandwidths=\"90,90,90,90,90,90,90,90\" selected=\"1\" streamType=\"2\" decision=\"transcode\" location=\"segments-audio\" />\n</Part>\n</Media>\n<Genre filter=\"genre=54\" id=\"54\" tag=\"Pop/Rock\" />\n<Mood filter=\"mood=171\" id=\"171\" tag=\"Tense/Anxious\" />\n<Mood filter=\"mood=144\" id=\"144\" tag=\"Knotty\" />\n<Mood filter=\"mood=123\" id=\"123\" tag=\"Urgent\" />\n<Mood filter=\"mood=115\" id=\"115\" tag=\"Exuberant\" />\n<Mood filter=\"mood=168\" id=\"168\" tag=\"Cerebral\" />\n<Mood filter=\"mood=122\" id=\"122\" tag=\"Dramatic\" />\n<Mood filter=\"mood=110\" id=\"110\" tag=\"Intense\" />\n<Mood filter=\"mood=152\" id=\"152\" tag=\"Gloomy\" />\n<Mood filter=\"mood=118\" id=\"118\" tag=\"Confrontational\" />\n<Mood filter=\"mood=145\" id=\"145\" tag=\"Fiery\" />\n</Track>\n</MediaContainer>\n"
+  },
+  {
+   "client": "web-music-play",
+   "path": "/music/:/transcode/universal/start.mpd",
+   "query": [
+    [
+     "hasMDE",
+     "1"
+    ],
+    [
+     "path",
+     "/library/metadata/32"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "musicBitrate",
+     "320"
+    ],
+    [
+     "directStreamAudio",
+     "0"
+    ],
+    [
+     "mediaBufferSize",
+     "12288"
+    ],
+    [
+     "session",
+     "rexprobe-web"
+    ],
+    [
+     "protocol",
+     "dash"
+    ],
+    [
+     "directPlay",
+     "0"
+    ],
+    [
+     "directStream",
+     "0"
+    ],
+    [
+     "Accept-Language",
+     "en"
+    ],
+    [
+     "X-Plex-Session-Identifier",
+     "bf21qed36676rzctugu1v6ch"
+    ],
+    [
+     "X-Plex-Client-Profile-Extra",
+     "add-transcode-target(type=musicProfile&context=streaming&protocol=dash&container=mp4&audioCodec=aac)+add-transcode-target(type=musicProfile&context=streaming&protocol=hls&container=mpegts&audioCodec=aac,mp3)"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Web"
+    ],
+    [
+     "X-Plex-Version",
+     "4.163.0"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "thuj6pv24kf5wr6qaqla8flz"
+    ],
+    [
+     "X-Plex-Platform",
+     "Chrome"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "151.0"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ],
+    [
+     "X-Plex-Model",
+     "hosted"
+    ],
+    [
+     "X-Plex-Device",
+     "Linux"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "Chrome"
+    ],
+    [
+     "X-Plex-Device-Screen-Resolution",
+     "1400x900,1280x720"
+    ],
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ],
+    [
+     "X-Plex-Language",
+     "en"
+    ],
+    [
+     "X-Plex-Session-Id",
+     "cb22220f-1e9f-4a50-8c54-1fd96224c096"
+    ],
+    [
+     "X-Plex-Playback-Session-Id",
+     "239ebbbe-83ae-4790-81d4-0dedc3c9b375"
+    ],
+    [
+     "X-Plex-Playback-Id",
+     "eda360ab-fc1a-4a63-8927-c27e9fe1e58c"
+    ]
+   ],
+   "status": 200,
+   "headers": {
+    "Content-Type": "application/dash+xml",
+    "Cache-Control": "no-cache"
+   },
+   "body": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<MPD xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n\txmlns=\"urn:mpeg:dash:schema:mpd:2011\"\n\txmlns:xlink=\"http://www.w3.org/1999/xlink\"\n\txsi:schemaLocation=\"urn:mpeg:dash:schema:mpd:2011 http://standards.iso.org/ittf/PubliclyAvailableStandards/MPEG-DASH_schema_files/DASH-MPD.xsd\"\n\tprofiles=\"urn:mpeg:dash:profile:isoff-live:2011\"\n\ttype=\"static\"\n\tmediaPresentationDuration=\"PT0H0M45S\"\n\tmaxSegmentDuration=\"PT2S\"\n\tminBufferTime=\"PT10S\">\n\t<Period start=\"PT0S\" id=\"0\" duration=\"PT0H0M45S\">\n\t\t<AdaptationSet segmentAlignment=\"true\">\n\t\t\t<SegmentTemplate timescale=\"1\" duration=\"1\" initialization=\"session/rexprobe-web/$RepresentationID$/header\" media=\"session/rexprobe-web/$RepresentationID$/$Number$.m4s\" startNumber=\"0\">\n\t\t\t</SegmentTemplate>\n\t\t\t<Representation id=\"0\" mimeType=\"audio/mp4\" codecs=\"mp4a.40.2\" bandwidth=\"258000\" audioSamplingRate=\"44100\">\n\t\t\t\t<AudioChannelConfiguration schemeIdUri=\"urn:mpeg:dash:23003:3:audio_channel_configuration:2011\" value=\"2\"/>\n\t\t\t</Representation>\n\t\t</AdaptationSet>\n\t</Period>\n</MPD>\n"
+  },
+  {
+   "client": "web-music-play",
+   "path": "/music/:/transcode/universal/session/rexprobe-web/0/header",
+   "query": [
+    [
+     "X-Plex-Session-Identifier",
+     "bf21qed36676rzctugu1v6ch"
+    ],
+    [
+     "X-Plex-Client-Profile-Extra",
+     "add-transcode-target(type=musicProfile&context=streaming&protocol=dash&container=mp4&audioCodec=aac)+add-transcode-target(type=musicProfile&context=streaming&protocol=hls&container=mpegts&audioCodec=aac,mp3)"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Web"
+    ],
+    [
+     "X-Plex-Version",
+     "4.163.0"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "thuj6pv24kf5wr6qaqla8flz"
+    ],
+    [
+     "X-Plex-Platform",
+     "Chrome"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "151.0"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ],
+    [
+     "X-Plex-Model",
+     "hosted"
+    ],
+    [
+     "X-Plex-Device",
+     "Linux"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "Chrome"
+    ],
+    [
+     "X-Plex-Device-Screen-Resolution",
+     "1400x900,1280x720"
+    ],
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ],
+    [
+     "X-Plex-Language",
+     "en"
+    ],
+    [
+     "X-Plex-Session-Id",
+     "cb22220f-1e9f-4a50-8c54-1fd96224c096"
+    ],
+    [
+     "X-Plex-Playback-Session-Id",
+     "239ebbbe-83ae-4790-81d4-0dedc3c9b375"
+    ],
+    [
+     "X-Plex-Playback-Id",
+     "eda360ab-fc1a-4a63-8927-c27e9fe1e58c"
+    ]
+   ],
+   "status": 200,
+   "headers": {
+    "Cache-Control": "no-cache",
+    "Content-Type": "application/octet-stream"
+   },
+   "length": 765,
+   "head": "0000001c66747970"
+  },
+  {
+   "client": "web-music-play",
+   "path": "/music/:/transcode/universal/session/rexprobe-web/0/0.m4s",
+   "query": [
+    [
+     "X-Plex-Session-Identifier",
+     "bf21qed36676rzctugu1v6ch"
+    ],
+    [
+     "X-Plex-Client-Profile-Extra",
+     "add-transcode-target(type=musicProfile&context=streaming&protocol=dash&container=mp4&audioCodec=aac)+add-transcode-target(type=musicProfile&context=streaming&protocol=hls&container=mpegts&audioCodec=aac,mp3)"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Web"
+    ],
+    [
+     "X-Plex-Version",
+     "4.163.0"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "thuj6pv24kf5wr6qaqla8flz"
+    ],
+    [
+     "X-Plex-Platform",
+     "Chrome"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "151.0"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ],
+    [
+     "X-Plex-Model",
+     "hosted"
+    ],
+    [
+     "X-Plex-Device",
+     "Linux"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "Chrome"
+    ],
+    [
+     "X-Plex-Device-Screen-Resolution",
+     "1400x900,1280x720"
+    ],
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ],
+    [
+     "X-Plex-Language",
+     "en"
+    ],
+    [
+     "X-Plex-Session-Id",
+     "cb22220f-1e9f-4a50-8c54-1fd96224c096"
+    ],
+    [
+     "X-Plex-Playback-Session-Id",
+     "239ebbbe-83ae-4790-81d4-0dedc3c9b375"
+    ],
+    [
+     "X-Plex-Playback-Id",
+     "eda360ab-fc1a-4a63-8927-c27e9fe1e58c"
+    ]
+   ],
+   "status": 200,
+   "headers": {
+    "Cache-Control": "no-cache",
+    "Content-Type": "application/octet-stream"
+   },
+   "length": 29128,
+   "head": "0000001c66747970"
+  },
+  {
+   "client": "web-music-play",
+   "path": "/music/:/transcode/universal/session/rexprobe-web/0/1.m4s",
+   "query": [
+    [
+     "X-Plex-Session-Identifier",
+     "bf21qed36676rzctugu1v6ch"
+    ],
+    [
+     "X-Plex-Client-Profile-Extra",
+     "add-transcode-target(type=musicProfile&context=streaming&protocol=dash&container=mp4&audioCodec=aac)+add-transcode-target(type=musicProfile&context=streaming&protocol=hls&container=mpegts&audioCodec=aac,mp3)"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Web"
+    ],
+    [
+     "X-Plex-Version",
+     "4.163.0"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "thuj6pv24kf5wr6qaqla8flz"
+    ],
+    [
+     "X-Plex-Platform",
+     "Chrome"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "151.0"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media,hub-style-list"
+    ],
+    [
+     "X-Plex-Model",
+     "hosted"
+    ],
+    [
+     "X-Plex-Device",
+     "Linux"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "Chrome"
+    ],
+    [
+     "X-Plex-Device-Screen-Resolution",
+     "1400x900,1280x720"
+    ],
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ],
+    [
+     "X-Plex-Language",
+     "en"
+    ],
+    [
+     "X-Plex-Session-Id",
+     "cb22220f-1e9f-4a50-8c54-1fd96224c096"
+    ],
+    [
+     "X-Plex-Playback-Session-Id",
+     "239ebbbe-83ae-4790-81d4-0dedc3c9b375"
+    ],
+    [
+     "X-Plex-Playback-Id",
+     "eda360ab-fc1a-4a63-8927-c27e9fe1e58c"
+    ]
+   ],
+   "status": 200,
+   "headers": {
+    "Cache-Control": "no-cache",
+    "Content-Type": "application/octet-stream"
+   },
+   "length": 28609,
+   "head": "0000001c66747970"
+  },
+  {
+   "client": "droid-music-play",
+   "path": "/music/:/transcode/universal/decision",
+   "query": [
+    [
+     "directPlay",
+     "0"
+    ],
+    [
+     "directStream",
+     "1"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "protocol",
+     "hls"
+    ],
+    [
+     "fastSeek",
+     "1"
+    ],
+    [
+     "path",
+     "/library/metadata/32"
+    ],
+    [
+     "session",
+     "rexprobe-droid"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "mediaBufferSize",
+     "25000"
+    ],
+    [
+     "hasMDE",
+     "1"
+    ],
+    [
+     "audioBoost",
+     "100"
+    ],
+    [
+     "musicBitrate",
+     "192"
+    ],
+    [
+     "location",
+     "lan"
+    ],
+    [
+     "X-Plex-Client-Profile-Extra",
+     "add-transcode-target(type=musicProfile&context=all&protocol=hls&container=mkv&videoCodec=&audioCodec=aac,pcm,mp3,ac3,dca)+add-transcode-target-codec(scope=videoTranscodeTarget&scopeName=mp3&scopeType=audioCodec&context=all&protocol=http)+add-transcode-target-codec(scope=videoTranscodeTarget&scopeName=ac3&scopeType=audioCodec&context=all&protocol=http)+add-transcode-target-codec(scope=videoTranscodeTarget&scopeName=dca&scopeType=audioCodec&context=all&protocol=http)+add-transcode-target-codec(scope=videoTranscodeTarget&scopeName=opus&scopeType=audioCodec&context=all&protocol=http)"
+    ],
+    [
+     "X-Plex-Client-Profile-Name",
+     "Generic"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Model",
+     "goldfish_arm64"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Google"
+    ],
+    [
+     "X-Plex-Device-Screen-Resolution",
+     "1080x2400"
+    ],
+    [
+     "X-Plex-Device-Screen-Density",
+     "2.625"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.21.0"
+    ],
+    [
+     "X-Plex-Language",
+     "en"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media"
+    ],
+    [
+     "X-Plex-Provider-Version",
+     "7.6.0"
+    ],
+    [
+     "X-Plex-DRM",
+     "widevine:video"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "sbwl3v8cusd2zwtvsqo69due"
+    ],
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ],
+    [
+     "X-Plex-Advertising-Identifier",
+     "cf7e867f-68ee-4810-8ecb-b632f466ab7d"
+    ],
+    [
+     "X-Plex-Device-Notification-Token",
+     "REDACTED"
+    ],
+    [
+     "X-Plex-Session-Id",
+     "79ced03e-e2cd-4a37-8cef-ff0ddad2c45f"
+    ]
+   ],
+   "status": 200,
+   "headers": {
+    "Content-Type": "application/json",
+    "Cache-Control": "no-cache"
+   },
+   "body": "{\"MediaContainer\":{\"size\":1,\"allowSync\":\"1\",\"directPlayDecisionCode\":3000,\"directPlayDecisionText\":\"App cannot direct play this item. Direct play is disabled.\",\"generalDecisionCode\":1001,\"generalDecisionText\":\"Direct play not available; Conversion OK.\",\"identifier\":\"com.plexapp.plugins.library\",\"librarySectionID\":\"1\",\"librarySectionTitle\":\"Music\",\"librarySectionUUID\":\"44a5b57b-41c7-491a-8a3b-0a53e4c9edad\",\"mediaTagPrefix\":\"/system/bundle/media/flags/\",\"mediaTagVersion\":\"1786914632\",\"resourceSession\":\"sbwl3v8cusd2zwtvsqo69due\",\"transcodeDecisionCode\":1001,\"transcodeDecisionText\":\"Direct play not available; Conversion OK.\",\"Metadata\":[{\"addedAt\":1793451813,\"art\":\"/library/metadata/17/art/1793452370\",\"duration\":45000,\"grandparentArt\":\"/library/metadata/17/art/1793452370\",\"grandparentGuid\":\"plex://artist/5d07bbfc403c6402904a5ecc\",\"grandparentKey\":\"/library/metadata/17\",\"grandparentRatingKey\":\"17\",\"grandparentThumb\":\"/library/metadata/17/thumb/1793452370\",\"grandparentTitle\":\"Radiohead\",\"guid\":\"plex://track/5d07d499403c64029080d0b7\",\"index\":1,\"key\":\"/library/metadata/32\",\"lastViewedAt\":1793457050,\"librarySectionID\":\"1\",\"librarySectionKey\":\"/library/sections/1\",\"librarySectionTitle\":\"Music\",\"parentGuid\":\"plex://album/5d07c2b1403c6402908fddb6\",\"parentIndex\":1,\"parentKey\":\"/library/metadata/31\",\"parentRatingKey\":\"31\",\"parentStudio\":\"Hostess Entertainment Unlimited\",\"parentThumb\":\"/library/metadata/31/thumb/1793452371\",\"parentTitle\":\"In Rainbows\",\"parentYear\":2007,\"ratingCount\":1795575,\"ratingKey\":\"32\",\"skipCount\":\"2\",\"thumb\":\"/library/metadata/31/thumb/1793452371\",\"title\":\"15 Step\",\"type\":\"track\",\"updatedAt\":1793452371,\"viewCount\":3,\"Media\":[{\"id\":\"27\",\"audioChannels\":2,\"audioCodec\":\"mp3\",\"bitrate\":182,\"container\":\"mkv\",\"duration\":45000,\"protocol\":\"hls\",\"selected\":true,\"Part\":[{\"deepAnalysisVersion\":\"6\",\"id\":\"27\",\"requiredBandwidths\":\"90,90,90,90,90,90,90,90\",\"bitrate\":182,\"container\":\"mkv\",\"duration\":45000,\"decision\":\"transcode\",\"selected\":true,\"Stream\":[{\"bitrate\":182,\"bitrateMode\":\"vbr\",\"channels\":2,\"codec\":\"mp3\",\"displayTitle\":\"FLAC (Stereo)\",\"extendedDisplayTitle\":\"FLAC (Stereo)\",\"id\":\"27\",\"requiredBandwidths\":\"90,90,90,90,90,90,90,90\",\"selected\":true,\"streamType\":2,\"decision\":\"transcode\",\"location\":\"segments-av\"}]}]}],\"Genre\":[{\"filter\":\"genre=54\",\"id\":\"54\",\"tag\":\"Pop/Rock\"}],\"Mood\":[{\"filter\":\"mood=171\",\"id\":\"171\",\"tag\":\"Tense/Anxious\"},{\"filter\":\"mood=144\",\"id\":\"144\",\"tag\":\"Knotty\"},{\"filter\":\"mood=123\",\"id\":\"123\",\"tag\":\"Urgent\"},{\"filter\":\"mood=115\",\"id\":\"115\",\"tag\":\"Exuberant\"},{\"filter\":\"mood=168\",\"id\":\"168\",\"tag\":\"Cerebral\"},{\"filter\":\"mood=122\",\"id\":\"122\",\"tag\":\"Dramatic\"},{\"filter\":\"mood=110\",\"id\":\"110\",\"tag\":\"Intense\"},{\"filter\":\"mood=152\",\"id\":\"152\",\"tag\":\"Gloomy\"},{\"filter\":\"mood=118\",\"id\":\"118\",\"tag\":\"Confrontational\"},{\"filter\":\"mood=145\",\"id\":\"145\",\"tag\":\"Fiery\"}]}]}}"
+  },
+  {
+   "client": "droid-music-play",
+   "path": "/music/:/transcode/universal/start.m3u8",
+   "query": [
+    [
+     "directPlay",
+     "0"
+    ],
+    [
+     "directStream",
+     "1"
+    ],
+    [
+     "directStreamAudio",
+     "1"
+    ],
+    [
+     "protocol",
+     "hls"
+    ],
+    [
+     "fastSeek",
+     "1"
+    ],
+    [
+     "path",
+     "/library/metadata/32"
+    ],
+    [
+     "session",
+     "rexprobe-droid"
+    ],
+    [
+     "mediaIndex",
+     "0"
+    ],
+    [
+     "partIndex",
+     "0"
+    ],
+    [
+     "mediaBufferSize",
+     "25000"
+    ],
+    [
+     "hasMDE",
+     "1"
+    ],
+    [
+     "audioBoost",
+     "100"
+    ],
+    [
+     "musicBitrate",
+     "192"
+    ],
+    [
+     "location",
+     "lan"
+    ],
+    [
+     "X-Plex-Client-Profile-Extra",
+     "add-transcode-target(type=musicProfile&context=all&protocol=hls&container=mkv&videoCodec=&audioCodec=aac,pcm,mp3,ac3,dca)+add-transcode-target-codec(scope=videoTranscodeTarget&scopeName=mp3&scopeType=audioCodec&context=all&protocol=http)+add-transcode-target-codec(scope=videoTranscodeTarget&scopeName=ac3&scopeType=audioCodec&context=all&protocol=http)+add-transcode-target-codec(scope=videoTranscodeTarget&scopeName=dca&scopeType=audioCodec&context=all&protocol=http)+add-transcode-target-codec(scope=videoTranscodeTarget&scopeName=opus&scopeType=audioCodec&context=all&protocol=http)"
+    ],
+    [
+     "X-Plex-Client-Profile-Name",
+     "Generic"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Model",
+     "goldfish_arm64"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Google"
+    ],
+    [
+     "X-Plex-Device-Screen-Resolution",
+     "1080x2400"
+    ],
+    [
+     "X-Plex-Device-Screen-Density",
+     "2.625"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.21.0"
+    ],
+    [
+     "X-Plex-Language",
+     "en"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media"
+    ],
+    [
+     "X-Plex-Provider-Version",
+     "7.6.0"
+    ],
+    [
+     "X-Plex-DRM",
+     "widevine:video"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "sbwl3v8cusd2zwtvsqo69due"
+    ],
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ],
+    [
+     "X-Plex-Advertising-Identifier",
+     "cf7e867f-68ee-4810-8ecb-b632f466ab7d"
+    ],
+    [
+     "X-Plex-Device-Notification-Token",
+     "REDACTED"
+    ],
+    [
+     "X-Plex-Session-Id",
+     "79ced03e-e2cd-4a37-8cef-ff0ddad2c45f"
+    ]
+   ],
+   "status": 200,
+   "headers": {
+    "Content-Type": "application/vnd.apple.mpegurl",
+    "Cache-Control": "no-cache"
+   },
+   "body": "#EXTM3U\n#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=182000\nsession/rexprobe-droid/base/index.m3u8\n"
+  },
+  {
+   "client": "droid-music-play",
+   "path": "/music/:/transcode/universal/session/rexprobe-droid/base/index.m3u8",
+   "query": [
+    [
+     "X-Plex-Client-Profile-Extra",
+     "add-transcode-target(type=musicProfile&context=all&protocol=hls&container=mkv&videoCodec=&audioCodec=aac,pcm,mp3,ac3,dca)+add-transcode-target-codec(scope=videoTranscodeTarget&scopeName=mp3&scopeType=audioCodec&context=all&protocol=http)+add-transcode-target-codec(scope=videoTranscodeTarget&scopeName=ac3&scopeType=audioCodec&context=all&protocol=http)+add-transcode-target-codec(scope=videoTranscodeTarget&scopeName=dca&scopeType=audioCodec&context=all&protocol=http)+add-transcode-target-codec(scope=videoTranscodeTarget&scopeName=opus&scopeType=audioCodec&context=all&protocol=http)"
+    ],
+    [
+     "X-Plex-Client-Profile-Name",
+     "Generic"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Model",
+     "goldfish_arm64"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Google"
+    ],
+    [
+     "X-Plex-Device-Screen-Resolution",
+     "1080x2400"
+    ],
+    [
+     "X-Plex-Device-Screen-Density",
+     "2.625"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.21.0"
+    ],
+    [
+     "X-Plex-Language",
+     "en"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media"
+    ],
+    [
+     "X-Plex-Provider-Version",
+     "7.6.0"
+    ],
+    [
+     "X-Plex-DRM",
+     "widevine:video"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "sbwl3v8cusd2zwtvsqo69due"
+    ],
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ],
+    [
+     "X-Plex-Advertising-Identifier",
+     "cf7e867f-68ee-4810-8ecb-b632f466ab7d"
+    ],
+    [
+     "X-Plex-Device-Notification-Token",
+     "REDACTED"
+    ],
+    [
+     "X-Plex-Session-Id",
+     "79ced03e-e2cd-4a37-8cef-ff0ddad2c45f"
+    ]
+   ],
+   "status": 200,
+   "headers": {
+    "Content-Type": "application/vnd.apple.mpegurl",
+    "Cache-Control": "no-cache"
+   },
+   "body": "#EXTM3U\n#EXT-X-VERSION:7\n#EXT-X-MAP:URI=\"header\"\n#EXT-X-TARGETDURATION:1\n#EXT-X-ALLOW-CACHE:NO\n#EXT-X-MEDIA-SEQUENCE:0\n#EXTINF:1, nodesc\n00000.ts\n#EXTINF:1, nodesc\n00001.ts\n#EXTINF:1, nodesc\n00002.ts\n#EXTINF:1, nodesc\n00003.ts\n#EXTINF:1, nodesc\n00004.ts\n#EXTINF:1, nodesc\n00005.ts\n#EXTINF:1, nodesc\n00006.ts\n#EXTINF:1, nodesc\n00007.ts\n#EXTINF:1, nodesc\n00008.ts\n#EXTINF:1, nodesc\n00009.ts\n#EXTINF:1, nodesc\n00010.ts\n#EXTINF:1, nodesc\n00011.ts\n#EXTINF:1, nodesc\n00012.ts\n#EXTINF:1, nodesc\n00013.ts\n#EXTINF:1, nodesc\n00014.ts\n#EXTINF:1, nodesc\n00015.ts\n#EXTINF:1, nodesc\n00016.ts\n#EXTINF:1, nodesc\n00017.ts\n#EXTINF:1, nodesc\n00018.ts\n#EXTINF:1, nodesc\n00019.ts\n#EXTINF:1, nodesc\n00020.ts\n#EXTINF:1, nodesc\n00021.ts\n#EXTINF:1, nodesc\n00022.ts\n#EXTINF:1, nodesc\n00023.ts\n#EXTINF:1, nodesc\n00024.ts\n#EXTINF:1, nodesc\n00025.ts\n#EXTINF:1, nodesc\n00026.ts\n#EXTINF:1, nodesc\n00027.ts\n#EXTINF:1, nodesc\n00028.ts\n#EXTINF:1, nodesc\n00029.ts\n#EXTINF:1, nodesc\n00030.ts\n#EXTINF:1, nodesc\n00031.ts\n#EXTINF:1, nodesc\n00032.ts\n#EXTINF:1, nodesc\n00033.ts\n#EXTINF:1, nodesc\n00034.ts\n#EXTINF:1, nodesc\n00035.ts\n#EXTINF:1, nodesc\n00036.ts\n#EXTINF:1, nodesc\n00037.ts\n#EXTINF:1, nodesc\n00038.ts\n#EXTINF:1, nodesc\n00039.ts\n#EXTINF:1, nodesc\n00040.ts\n#EXTINF:1, nodesc\n00041.ts\n#EXTINF:1, nodesc\n00042.ts\n#EXTINF:1, nodesc\n00043.ts\n#EXTINF:1, nodesc\n00044.ts\n#EXT-X-ENDLIST\n"
+  },
+  {
+   "client": "droid-music-play",
+   "path": "/music/:/transcode/universal/session/rexprobe-droid/base/header",
+   "query": [
+    [
+     "X-Plex-Client-Profile-Extra",
+     "add-transcode-target(type=musicProfile&context=all&protocol=hls&container=mkv&videoCodec=&audioCodec=aac,pcm,mp3,ac3,dca)+add-transcode-target-codec(scope=videoTranscodeTarget&scopeName=mp3&scopeType=audioCodec&context=all&protocol=http)+add-transcode-target-codec(scope=videoTranscodeTarget&scopeName=ac3&scopeType=audioCodec&context=all&protocol=http)+add-transcode-target-codec(scope=videoTranscodeTarget&scopeName=dca&scopeType=audioCodec&context=all&protocol=http)+add-transcode-target-codec(scope=videoTranscodeTarget&scopeName=opus&scopeType=audioCodec&context=all&protocol=http)"
+    ],
+    [
+     "X-Plex-Client-Profile-Name",
+     "Generic"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Model",
+     "goldfish_arm64"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Google"
+    ],
+    [
+     "X-Plex-Device-Screen-Resolution",
+     "1080x2400"
+    ],
+    [
+     "X-Plex-Device-Screen-Density",
+     "2.625"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.21.0"
+    ],
+    [
+     "X-Plex-Language",
+     "en"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media"
+    ],
+    [
+     "X-Plex-Provider-Version",
+     "7.6.0"
+    ],
+    [
+     "X-Plex-DRM",
+     "widevine:video"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "sbwl3v8cusd2zwtvsqo69due"
+    ],
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ],
+    [
+     "X-Plex-Advertising-Identifier",
+     "cf7e867f-68ee-4810-8ecb-b632f466ab7d"
+    ],
+    [
+     "X-Plex-Device-Notification-Token",
+     "REDACTED"
+    ],
+    [
+     "X-Plex-Session-Id",
+     "79ced03e-e2cd-4a37-8cef-ff0ddad2c45f"
+    ]
+   ],
+   "status": 200,
+   "headers": {
+    "Cache-Control": "no-cache",
+    "Content-Type": "application/octet-stream"
+   },
+   "length": 480,
+   "head": "1a45dfa3a3428681"
+  },
+  {
+   "client": "droid-music-play",
+   "path": "/music/:/transcode/universal/session/rexprobe-droid/base/00000.ts",
+   "query": [
+    [
+     "X-Plex-Client-Profile-Extra",
+     "add-transcode-target(type=musicProfile&context=all&protocol=hls&container=mkv&videoCodec=&audioCodec=aac,pcm,mp3,ac3,dca)+add-transcode-target-codec(scope=videoTranscodeTarget&scopeName=mp3&scopeType=audioCodec&context=all&protocol=http)+add-transcode-target-codec(scope=videoTranscodeTarget&scopeName=ac3&scopeType=audioCodec&context=all&protocol=http)+add-transcode-target-codec(scope=videoTranscodeTarget&scopeName=dca&scopeType=audioCodec&context=all&protocol=http)+add-transcode-target-codec(scope=videoTranscodeTarget&scopeName=opus&scopeType=audioCodec&context=all&protocol=http)"
+    ],
+    [
+     "X-Plex-Client-Profile-Name",
+     "Generic"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex for Android (Mobile)"
+    ],
+    [
+     "X-Plex-Platform",
+     "Android"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "13"
+    ],
+    [
+     "X-Plex-Model",
+     "goldfish_arm64"
+    ],
+    [
+     "X-Plex-Device",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "sdk_gphone64_arm64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Google"
+    ],
+    [
+     "X-Plex-Device-Screen-Resolution",
+     "1080x2400"
+    ],
+    [
+     "X-Plex-Device-Screen-Density",
+     "2.625"
+    ],
+    [
+     "X-Plex-Version",
+     "2026.21.0"
+    ],
+    [
+     "X-Plex-Language",
+     "en"
+    ],
+    [
+     "X-Plex-Features",
+     "external-media,indirect-media"
+    ],
+    [
+     "X-Plex-Provider-Version",
+     "7.6.0"
+    ],
+    [
+     "X-Plex-DRM",
+     "widevine:video"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "sbwl3v8cusd2zwtvsqo69due"
+    ],
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ],
+    [
+     "X-Plex-Advertising-Identifier",
+     "cf7e867f-68ee-4810-8ecb-b632f466ab7d"
+    ],
+    [
+     "X-Plex-Device-Notification-Token",
+     "REDACTED"
+    ],
+    [
+     "X-Plex-Session-Id",
+     "79ced03e-e2cd-4a37-8cef-ff0ddad2c45f"
+    ]
+   ],
+   "status": 200,
+   "headers": {
+    "Cache-Control": "no-cache",
+    "Content-Type": "video/MP2T"
+   },
+   "length": 6189,
+   "head": "1f43b6755827bf84"
+  }
+ ],
+ "rules": [
+  {
+   "client": "web-music-play",
+   "title": "15 Step",
+   "directPlay": "1",
+   "musicBitrate": "320",
+   "general": 1000,
+   "codec": "flac",
+   "container": "flac",
+   "bitrate": 99,
+   "source": {
+    "samplingRate": 44100
+   }
+  },
+  {
+   "client": "web-music-play",
+   "title": "15 Step",
+   "directPlay": "0",
+   "musicBitrate": "320",
+   "general": 1001,
+   "codec": "aac",
+   "container": "mp4",
+   "bitrate": 258,
+   "source": {
+    "samplingRate": null
+   }
+  },
+  {
+   "client": "web-music-play",
+   "title": "15 Step",
+   "directPlay": "0",
+   "musicBitrate": "192",
+   "general": 1001,
+   "codec": "aac",
+   "container": "mp4",
+   "bitrate": 182,
+   "source": {
+    "samplingRate": null
+   }
+  },
+  {
+   "client": "web-music-play",
+   "title": "15 Step",
+   "directPlay": "0",
+   "musicBitrate": "128",
+   "general": 1001,
+   "codec": "aac",
+   "container": "mp4",
+   "bitrate": 121,
+   "source": {
+    "samplingRate": null
+   }
+  },
+  {
+   "client": "web-music-play",
+   "title": "15 Step",
+   "directPlay": "0",
+   "musicBitrate": "64",
+   "general": 1001,
+   "codec": "aac",
+   "container": "mp4",
+   "bitrate": 60,
+   "source": {
+    "samplingRate": null
+   }
+  },
+  {
+   "client": "web-music-play",
+   "title": "Opus Tone",
+   "directPlay": "1",
+   "musicBitrate": "320",
+   "general": 1000,
+   "codec": "opus",
+   "container": "ogg",
+   "bitrate": null,
+   "source": {
+    "samplingRate": 48000
+   }
+  },
+  {
+   "client": "web-music-play",
+   "title": "Opus Tone",
+   "directPlay": "0",
+   "musicBitrate": "320",
+   "general": 1001,
+   "codec": "aac",
+   "container": "mp4",
+   "bitrate": 281,
+   "source": {
+    "samplingRate": null
+   }
+  },
+  {
+   "client": "web-music-play",
+   "title": "Opus Tone",
+   "directPlay": "0",
+   "musicBitrate": "192",
+   "general": 1001,
+   "codec": "aac",
+   "container": "mp4",
+   "bitrate": 182,
+   "source": {
+    "samplingRate": null
+   }
+  },
+  {
+   "client": "web-music-play",
+   "title": "Opus Tone",
+   "directPlay": "0",
+   "musicBitrate": "128",
+   "general": 1001,
+   "codec": "aac",
+   "container": "mp4",
+   "bitrate": 121,
+   "source": {
+    "samplingRate": null
+   }
+  },
+  {
+   "client": "web-music-play",
+   "title": "Opus Tone",
+   "directPlay": "0",
+   "musicBitrate": "64",
+   "general": 1001,
+   "codec": "aac",
+   "container": "mp4",
+   "bitrate": 60,
+   "source": {
+    "samplingRate": null
+   }
+  },
+  {
+   "client": "web-music-play",
+   "title": "Vorbis Tone",
+   "directPlay": "1",
+   "musicBitrate": "320",
+   "general": 1000,
+   "codec": "vorbis",
+   "container": "ogg",
+   "bitrate": 128,
+   "source": {
+    "samplingRate": 44100
+   }
+  },
+  {
+   "client": "web-music-play",
+   "title": "Vorbis Tone",
+   "directPlay": "0",
+   "musicBitrate": "320",
+   "general": 1001,
+   "codec": "aac",
+   "container": "mp4",
+   "bitrate": 258,
+   "source": {
+    "samplingRate": null
+   }
+  },
+  {
+   "client": "web-music-play",
+   "title": "Vorbis Tone",
+   "directPlay": "0",
+   "musicBitrate": "192",
+   "general": 1001,
+   "codec": "aac",
+   "container": "mp4",
+   "bitrate": 182,
+   "source": {
+    "samplingRate": null
+   }
+  },
+  {
+   "client": "web-music-play",
+   "title": "Vorbis Tone",
+   "directPlay": "0",
+   "musicBitrate": "128",
+   "general": 1001,
+   "codec": "aac",
+   "container": "mp4",
+   "bitrate": 121,
+   "source": {
+    "samplingRate": null
+   }
+  },
+  {
+   "client": "web-music-play",
+   "title": "Vorbis Tone",
+   "directPlay": "0",
+   "musicBitrate": "64",
+   "general": 1001,
+   "codec": "aac",
+   "container": "mp4",
+   "bitrate": 60,
+   "source": {
+    "samplingRate": null
+   }
+  },
+  {
+   "client": "web-music-play",
+   "title": "ALAC Tone",
+   "directPlay": "1",
+   "musicBitrate": "320",
+   "general": 1000,
+   "codec": "alac",
+   "container": "mp4",
+   "bitrate": 135,
+   "source": {
+    "samplingRate": 44100
+   }
+  },
+  {
+   "client": "web-music-play",
+   "title": "ALAC Tone",
+   "directPlay": "0",
+   "musicBitrate": "320",
+   "general": 1001,
+   "codec": "aac",
+   "container": "mp4",
+   "bitrate": 258,
+   "source": {
+    "samplingRate": null
+   }
+  },
+  {
+   "client": "web-music-play",
+   "title": "ALAC Tone",
+   "directPlay": "0",
+   "musicBitrate": "192",
+   "general": 1001,
+   "codec": "aac",
+   "container": "mp4",
+   "bitrate": 182,
+   "source": {
+    "samplingRate": null
+   }
+  },
+  {
+   "client": "web-music-play",
+   "title": "ALAC Tone",
+   "directPlay": "0",
+   "musicBitrate": "128",
+   "general": 1001,
+   "codec": "aac",
+   "container": "mp4",
+   "bitrate": 121,
+   "source": {
+    "samplingRate": null
+   }
+  },
+  {
+   "client": "web-music-play",
+   "title": "ALAC Tone",
+   "directPlay": "0",
+   "musicBitrate": "64",
+   "general": 1001,
+   "codec": "aac",
+   "container": "mp4",
+   "bitrate": 60,
+   "source": {
+    "samplingRate": null
+   }
+  },
+  {
+   "client": "web-music-play",
+   "title": "WAV Tone",
+   "directPlay": "1",
+   "musicBitrate": "320",
+   "general": 1000,
+   "codec": "pcm",
+   "container": "wav",
+   "bitrate": 1411,
+   "source": {
+    "samplingRate": 44100
+   }
+  },
+  {
+   "client": "web-music-play",
+   "title": "WAV Tone",
+   "directPlay": "0",
+   "musicBitrate": "320",
+   "general": 1001,
+   "codec": "aac",
+   "container": "mp4",
+   "bitrate": 258,
+   "source": {
+    "samplingRate": null
+   }
+  },
+  {
+   "client": "web-music-play",
+   "title": "WAV Tone",
+   "directPlay": "0",
+   "musicBitrate": "192",
+   "general": 1001,
+   "codec": "aac",
+   "container": "mp4",
+   "bitrate": 182,
+   "source": {
+    "samplingRate": null
+   }
+  },
+  {
+   "client": "web-music-play",
+   "title": "WAV Tone",
+   "directPlay": "0",
+   "musicBitrate": "128",
+   "general": 1001,
+   "codec": "aac",
+   "container": "mp4",
+   "bitrate": 121,
+   "source": {
+    "samplingRate": null
+   }
+  },
+  {
+   "client": "web-music-play",
+   "title": "WAV Tone",
+   "directPlay": "0",
+   "musicBitrate": "64",
+   "general": 1001,
+   "codec": "aac",
+   "container": "mp4",
+   "bitrate": 60,
+   "source": {
+    "samplingRate": null
+   }
+  },
+  {
+   "client": "droid-music-play",
+   "title": "15 Step",
+   "directPlay": "1",
+   "musicBitrate": "192",
+   "general": 1000,
+   "codec": "flac",
+   "container": "flac",
+   "bitrate": 99,
+   "source": {
+    "samplingRate": 44100
+   }
+  },
+  {
+   "client": "droid-music-play",
+   "title": "15 Step",
+   "directPlay": "0",
+   "musicBitrate": "320",
+   "general": 1001,
+   "codec": "mp3",
+   "container": "mkv",
+   "bitrate": 304,
+   "source": {
+    "samplingRate": null
+   }
+  },
+  {
+   "client": "droid-music-play",
+   "title": "15 Step",
+   "directPlay": "0",
+   "musicBitrate": "192",
+   "general": 1001,
+   "codec": "mp3",
+   "container": "mkv",
+   "bitrate": 182,
+   "source": {
+    "samplingRate": null
+   }
+  },
+  {
+   "client": "droid-music-play",
+   "title": "15 Step",
+   "directPlay": "0",
+   "musicBitrate": "128",
+   "general": 1001,
+   "codec": "mp3",
+   "container": "mkv",
+   "bitrate": 121,
+   "source": {
+    "samplingRate": null
+   }
+  },
+  {
+   "client": "droid-music-play",
+   "title": "15 Step",
+   "directPlay": "0",
+   "musicBitrate": "64",
+   "general": 1001,
+   "codec": "mp3",
+   "container": "mkv",
+   "bitrate": 60,
+   "source": {
+    "samplingRate": null
+   }
+  },
+  {
+   "client": "droid-music-play",
+   "title": "Opus Tone",
+   "directPlay": "1",
+   "musicBitrate": "192",
+   "general": 1000,
+   "codec": "opus",
+   "container": "ogg",
+   "bitrate": null,
+   "source": {
+    "samplingRate": 48000
+   }
+  },
+  {
+   "client": "droid-music-play",
+   "title": "Opus Tone",
+   "directPlay": "0",
+   "musicBitrate": "320",
+   "general": 1001,
+   "codec": "mp3",
+   "container": "mkv",
+   "bitrate": 304,
+   "source": {
+    "samplingRate": null
+   }
+  },
+  {
+   "client": "droid-music-play",
+   "title": "Opus Tone",
+   "directPlay": "0",
+   "musicBitrate": "192",
+   "general": 1001,
+   "codec": "mp3",
+   "container": "mkv",
+   "bitrate": 182,
+   "source": {
+    "samplingRate": null
+   }
+  },
+  {
+   "client": "droid-music-play",
+   "title": "Opus Tone",
+   "directPlay": "0",
+   "musicBitrate": "128",
+   "general": 1001,
+   "codec": "mp3",
+   "container": "mkv",
+   "bitrate": 121,
+   "source": {
+    "samplingRate": null
+   }
+  },
+  {
+   "client": "droid-music-play",
+   "title": "Opus Tone",
+   "directPlay": "0",
+   "musicBitrate": "64",
+   "general": 1001,
+   "codec": "mp3",
+   "container": "mkv",
+   "bitrate": 60,
+   "source": {
+    "samplingRate": null
+   }
+  },
+  {
+   "client": "droid-music-play",
+   "title": "Vorbis Tone",
+   "directPlay": "1",
+   "musicBitrate": "192",
+   "general": 1000,
+   "codec": "vorbis",
+   "container": "ogg",
+   "bitrate": 128,
+   "source": {
+    "samplingRate": 44100
+   }
+  },
+  {
+   "client": "droid-music-play",
+   "title": "Vorbis Tone",
+   "directPlay": "0",
+   "musicBitrate": "320",
+   "general": 1001,
+   "codec": "mp3",
+   "container": "mkv",
+   "bitrate": 304,
+   "source": {
+    "samplingRate": null
+   }
+  },
+  {
+   "client": "droid-music-play",
+   "title": "Vorbis Tone",
+   "directPlay": "0",
+   "musicBitrate": "192",
+   "general": 1001,
+   "codec": "mp3",
+   "container": "mkv",
+   "bitrate": 182,
+   "source": {
+    "samplingRate": null
+   }
+  },
+  {
+   "client": "droid-music-play",
+   "title": "Vorbis Tone",
+   "directPlay": "0",
+   "musicBitrate": "128",
+   "general": 1001,
+   "codec": "mp3",
+   "container": "mkv",
+   "bitrate": 121,
+   "source": {
+    "samplingRate": null
+   }
+  },
+  {
+   "client": "droid-music-play",
+   "title": "Vorbis Tone",
+   "directPlay": "0",
+   "musicBitrate": "64",
+   "general": 1001,
+   "codec": "mp3",
+   "container": "mkv",
+   "bitrate": 60,
+   "source": {
+    "samplingRate": null
+   }
+  },
+  {
+   "client": "droid-music-play",
+   "title": "ALAC Tone",
+   "directPlay": "1",
+   "musicBitrate": "192",
+   "general": 1000,
+   "codec": "alac",
+   "container": "mp4",
+   "bitrate": 135,
+   "source": {
+    "samplingRate": 44100
+   }
+  },
+  {
+   "client": "droid-music-play",
+   "title": "ALAC Tone",
+   "directPlay": "0",
+   "musicBitrate": "320",
+   "general": 1001,
+   "codec": "mp3",
+   "container": "mkv",
+   "bitrate": 304,
+   "source": {
+    "samplingRate": null
+   }
+  },
+  {
+   "client": "droid-music-play",
+   "title": "ALAC Tone",
+   "directPlay": "0",
+   "musicBitrate": "192",
+   "general": 1001,
+   "codec": "mp3",
+   "container": "mkv",
+   "bitrate": 182,
+   "source": {
+    "samplingRate": null
+   }
+  },
+  {
+   "client": "droid-music-play",
+   "title": "ALAC Tone",
+   "directPlay": "0",
+   "musicBitrate": "128",
+   "general": 1001,
+   "codec": "mp3",
+   "container": "mkv",
+   "bitrate": 121,
+   "source": {
+    "samplingRate": null
+   }
+  },
+  {
+   "client": "droid-music-play",
+   "title": "ALAC Tone",
+   "directPlay": "0",
+   "musicBitrate": "64",
+   "general": 1001,
+   "codec": "mp3",
+   "container": "mkv",
+   "bitrate": 60,
+   "source": {
+    "samplingRate": null
+   }
+  },
+  {
+   "client": "droid-music-play",
+   "title": "WAV Tone",
+   "directPlay": "1",
+   "musicBitrate": "192",
+   "general": 1000,
+   "codec": "pcm",
+   "container": "wav",
+   "bitrate": 1411,
+   "source": {
+    "samplingRate": 44100
+   }
+  },
+  {
+   "client": "droid-music-play",
+   "title": "WAV Tone",
+   "directPlay": "0",
+   "musicBitrate": "320",
+   "general": 1001,
+   "codec": "mp3",
+   "container": "mkv",
+   "bitrate": 304,
+   "source": {
+    "samplingRate": null
+   }
+  },
+  {
+   "client": "droid-music-play",
+   "title": "WAV Tone",
+   "directPlay": "0",
+   "musicBitrate": "192",
+   "general": 1001,
+   "codec": "mp3",
+   "container": "mkv",
+   "bitrate": 182,
+   "source": {
+    "samplingRate": null
+   }
+  },
+  {
+   "client": "droid-music-play",
+   "title": "WAV Tone",
+   "directPlay": "0",
+   "musicBitrate": "128",
+   "general": 1001,
+   "codec": "mp3",
+   "container": "mkv",
+   "bitrate": 121,
+   "source": {
+    "samplingRate": null
+   }
+  },
+  {
+   "client": "droid-music-play",
+   "title": "WAV Tone",
+   "directPlay": "0",
+   "musicBitrate": "64",
+   "general": 1001,
+   "codec": "mp3",
+   "container": "mkv",
+   "bitrate": 60,
+   "source": {
+    "samplingRate": null
+   }
+  }
+ ]
+}

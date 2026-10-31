@@ -984,6 +984,81 @@ impl Runtime {
         None
     }
 
+    /// A track's conversion for a client that asked for one (`directPlay=0`), as plexav's PMS
+    /// converted its tracks for Plex Web and Plex for Android (2026-10-31, `tests/fixtures/music/
+    /// conversion.json`): to the client's own music target for the protocol (its
+    /// `X-Plex-Client-Profile-Extra` `add-transcode-target(type=musicProfile...)`), MP3 when the
+    /// target lists it (HLS: Web's `mpegts` and Android's `mkv` both took MP3), else its first codec
+    /// (DASH's `aac`); at 95% of `musicBitrate`, an AAC no more than six bits a sample (258 kbit/s
+    /// at 44.1 kHz, 281 at 48); one-second segments. `None` without an encoder or a target.
+    pub(super) fn music_plan(&self, query: &HashMap<String, String>, headers: &HashMap<String, String>, key: &str, media: &Value, protocol: &str) -> Option<super::universal::Plan> {
+        use super::universal::{AudioPlan, Plan, Protocol};
+        self.transcoder.as_ref()?;
+        let wire = Protocol::parse(protocol).filter(|wire| matches!(wire, Protocol::Hls | Protocol::Dash))?;
+        let extra = query.get("X-Plex-Client-Profile-Extra").or_else(|| headers.get("x-plex-client-profile-extra")).cloned().unwrap_or_default();
+        let target: HashMap<String, String> = extra
+            .split('+')
+            .filter_map(|entry| entry.strip_prefix("add-transcode-target(")?.strip_suffix(')'))
+            .map(|inner| inner.split('&').filter_map(|pair| pair.split_once('=')).map(|(k, v)| (k.to_string(), v.to_string())).collect::<HashMap<_, _>>())
+            .find(|target| target.get("type").map(String::as_str) == Some("musicProfile") && target.get("protocol").map(String::as_str) == Some(protocol))?;
+        let codecs: Vec<String> = target.get("audioCodec").map(|list| list.split(',').map(|codec| codec.trim().to_ascii_lowercase()).filter(|codec| !codec.is_empty()).collect()).unwrap_or_default();
+        let codec = if codecs.iter().any(|codec| codec == "mp3") { "mp3".to_string() } else { codecs.first()?.clone() };
+        if !matches!(codec.as_str(), "mp3" | "aac") {
+            return None;
+        }
+        let media = crate::catalog::unpacked(media);
+        let part = media.get("Part").and_then(Value::as_array).and_then(|parts| parts.first())?;
+        let streams = crate::catalog::part_streams(part);
+        let stream = streams.iter().find(|stream| stream.get("streamType").and_then(Value::as_i64) == Some(2))?;
+        let row = self.catalog.get(key)?;
+        let file = part.get("file").and_then(Value::as_str).filter(|file| !file.is_empty())?;
+        let (source, path) = self.part_source(row, file)?;
+        let (url, auth) = source.ffmpeg_input(&path);
+        let rate = stream.get("samplingRate").and_then(Value::as_i64).unwrap_or(44_100);
+        let asked = query.get("musicBitrate").and_then(|rate| rate.parse::<i64>().ok()).filter(|rate| *rate > 0).unwrap_or(320);
+        let mut bitrate = asked * 95 / 100;
+        if codec == "aac" {
+            bitrate = bitrate.min(rate * 6 / 1024);
+        }
+        let channels = stream.get("channels").and_then(Value::as_i64).unwrap_or(2).min(2);
+        Some(Plan {
+            rating_key: key.to_string(),
+            url,
+            auth,
+            duration_ms: media.get("duration").and_then(Value::as_i64).unwrap_or(0),
+            video: None,
+            audio: Some(AudioPlan {
+                index: stream.get("index").and_then(Value::as_i64).unwrap_or(0),
+                ordinal: 0,
+                copy: false,
+                source_codec: stream.get("codec").map(string_value).unwrap_or_default(),
+                codec: codec.clone(),
+                convert_to: codec,
+                channels,
+                bitrate,
+                sampling_rate: rate,
+            }),
+            subtitle: None,
+            matroska: wire == Protocol::Hls && target.get("container").map(String::as_str) == Some("mkv"),
+            text_subtitle: None,
+            text_to_srt: false,
+            sidecar: None,
+            text_burn: None,
+            incomplete_segments: false,
+            copyts: false,
+            segment_length: Some(1),
+            silent_audio: false,
+            account: self.viewer.id,
+            playback: self.playback_session(query, headers),
+            protocol: wire,
+            hardware_decode: false,
+            hardware_encode: false,
+            tone_mapping: None,
+            boost_dialog: false,
+            normalize_loudness: false,
+        })
+    }
+
     /// `GET /music/:/transcode/universal/decision`: a track direct plays, as plexav's PMS answered
     /// Plex Web (`protocol=dash`, `musicBitrate=320`) and Plex for Android (`protocol=hls`) for its
     /// FLAC and MP3 tracks -- `mdeDecisionCode` 1000, `Direct play OK.`, the Part `decision`
@@ -1009,6 +1084,16 @@ impl Runtime {
         let section = string_value(row.get("librarySectionID").unwrap_or(&Value::Null));
         let section_row = self.section(&section).cloned().unwrap_or_default();
         let detail = self.detail_row(&row);
+        // The client turned direct play off (a lower music quality than original): plexav converts.
+        // A lower `musicBitrate` alone, or a codec, never did: it direct played FLAC, MP3, Opus,
+        // Vorbis, ALAC and PCM to both clients.
+        let converting = (query.get("directPlay").map(String::as_str) == Some("0"))
+            .then(|| {
+                let index = query.get("mediaIndex").and_then(|index| index.parse::<usize>().ok()).unwrap_or(0);
+                let media = row.get("Media").and_then(Value::as_array).and_then(|media| media.get(index).or(media.first())).cloned()?;
+                self.music_plan(query, &_request.headers, key, &media, query.get("protocol").map(String::as_str).unwrap_or("hls"))
+            })
+            .flatten();
         let sorted = |object: &Map<String, Value>| -> Map<String, Value> {
             let mut names: Vec<&String> = object.keys().collect();
             names.sort();
@@ -1077,6 +1162,9 @@ impl Runtime {
                     .collect();
                 part_out.insert("Stream".to_string(), Value::Array(streams));
                 shaped.insert("Part".to_string(), json!([part_out]));
+                if let Some(plan) = &converting {
+                    shaped = converted_track_media(&shaped, plan);
+                }
                 track.insert("Media".to_string(), json!([shaped]));
             }
             for field in ["Genre", "Mood"] {
@@ -1096,23 +1184,97 @@ impl Runtime {
                 }
             }
         }
-        let fields = Map::from_iter([
-            ("size".to_string(), json!(1)),
-            ("allowSync".to_string(), json!("1")),
-            ("identifier".to_string(), json!("com.plexapp.plugins.library")),
-            ("librarySectionID".to_string(), json!(section)),
-            ("librarySectionTitle".to_string(), section_row.get("title").cloned().unwrap_or(Value::Null)),
-            ("librarySectionUUID".to_string(), section_row.get("uuid").cloned().unwrap_or(Value::Null)),
-            ("mdeDecisionCode".to_string(), json!(1000)),
-            ("mdeDecisionText".to_string(), json!("Direct play OK.")),
-            ("mediaTagPrefix".to_string(), json!(MEDIA_TAG_PREFIX)),
-            ("mediaTagVersion".to_string(), json!(MEDIA_TAG_VERSION.to_string())),
-            ("resourceSession".to_string(), json!(session)),
-            ("Metadata".to_string(), json!([track])),
-        ]);
-        info!("DECISION direct play (music) for path={path}");
+        let direct_off = query.get("directPlay").map(String::as_str) == Some("0");
+        let mut fields = Map::from_iter([("size".to_string(), json!(1)), ("allowSync".to_string(), json!("1"))]);
+        // plexav's answers when direct play is off: a conversion, or with no encoder rex's video
+        // refusal (an encoder-less PMS was not measured for music).
+        let (play, general, convert) = match (&converting, direct_off) {
+            (Some(_), _) => (
+                Some((3000, "App cannot direct play this item. Direct play is disabled.")),
+                Some((1001, "Direct play not available; Conversion OK.")),
+                Some((1001, "Direct play not available; Conversion OK.")),
+            ),
+            (None, true) => (
+                Some((3000, "App cannot direct play this item. Direct play is disabled.")),
+                Some((2000, "Neither direct play nor conversion is available.")),
+                Some((4005, "Cannot convert this item. No conversion profile found for protocol.")),
+            ),
+            (None, false) => (None, None, None),
+        };
+        if let Some((code, text)) = play {
+            fields.insert("directPlayDecisionCode".to_string(), json!(code));
+            fields.insert("directPlayDecisionText".to_string(), json!(text));
+        }
+        if let Some((code, text)) = general {
+            fields.insert("generalDecisionCode".to_string(), json!(code));
+            fields.insert("generalDecisionText".to_string(), json!(text));
+        }
+        fields.insert("identifier".to_string(), json!("com.plexapp.plugins.library"));
+        fields.insert("librarySectionID".to_string(), json!(section));
+        fields.insert("librarySectionTitle".to_string(), section_row.get("title").cloned().unwrap_or(Value::Null));
+        fields.insert("librarySectionUUID".to_string(), section_row.get("uuid").cloned().unwrap_or(Value::Null));
+        if !direct_off {
+            fields.insert("mdeDecisionCode".to_string(), json!(1000));
+            fields.insert("mdeDecisionText".to_string(), json!("Direct play OK."));
+        }
+        fields.insert("mediaTagPrefix".to_string(), json!(MEDIA_TAG_PREFIX));
+        fields.insert("mediaTagVersion".to_string(), json!(MEDIA_TAG_VERSION.to_string()));
+        fields.insert("resourceSession".to_string(), json!(session));
+        if let Some((code, text)) = convert {
+            fields.insert("transcodeDecisionCode".to_string(), json!(code));
+            fields.insert("transcodeDecisionText".to_string(), json!(text));
+        }
+        if direct_off && converting.is_none() {
+            fields.insert("size".to_string(), json!(0));
+            info!("DECISION refused (music, no conversion) for path={path}");
+            return Response::json(200, json!({"MediaContainer": fields}));
+        }
+        fields.insert("Metadata".to_string(), json!([track]));
+        info!("DECISION {} (music) for path={path}", if converting.is_some() { "conversion" } else { "direct play" });
         Response::json(200, json!({"MediaContainer": fields}))
     }
+}
+
+/// A track's Media as plexav's conversion decision names it: the target's codec, container,
+/// bitrate and protocol on the Media, `decision="transcode"` on the Part and its one Stream
+/// (`bitrateMode` `cbr` for AAC and `vbr` for MP3, `location` `segments-audio` for DASH and
+/// `segments-av` for HLS), the source's titles kept on the Stream.
+fn converted_track_media(direct: &Map<String, Value>, plan: &super::universal::Plan) -> Map<String, Value> {
+    let Some(audio) = plan.audio.as_ref() else {
+        return direct.clone();
+    };
+    let protocol = plan.protocol.name();
+    let duration = direct.get("duration").cloned().unwrap_or(Value::Null);
+    let id = direct.get("id").cloned().unwrap_or(Value::Null);
+    let part = direct.get("Part").and_then(Value::as_array).and_then(|parts| parts.first()).cloned().unwrap_or_default();
+    let stream = part.pointer("/Stream/0").cloned().unwrap_or_default();
+    let text = |value: &Value, field: &str| value.get(field).cloned().unwrap_or(Value::Null);
+    let converted_stream = json!({
+        "bitrate": audio.bitrate, "bitrateMode": if audio.codec == "mp3" { "vbr" } else { "cbr" },
+        "channels": audio.channels, "codec": audio.codec,
+        "displayTitle": text(&stream, "displayTitle"), "extendedDisplayTitle": text(&stream, "extendedDisplayTitle"),
+        "id": text(&stream, "id"), "selected": true, "streamType": 2, "decision": "transcode",
+        "location": if protocol == "dash" { "segments-audio" } else { "segments-av" },
+    });
+    let converted_part = json!({
+        "id": text(&part, "id"), "bitrate": audio.bitrate, "container": plan.container(), "duration": duration,
+        "decision": "transcode", "selected": true, "Stream": [converted_stream],
+    });
+    let mut out = Map::new();
+    for (field, value) in [
+        ("id", id),
+        ("audioChannels", json!(audio.channels)),
+        ("audioCodec", json!(audio.codec)),
+        ("bitrate", json!(audio.bitrate)),
+        ("container", json!(plan.container())),
+        ("duration", duration.clone()),
+        ("protocol", json!(protocol)),
+        ("selected", json!(true)),
+        ("Part", json!([converted_part])),
+    ] {
+        out.insert(field.to_string(), value);
+    }
+    out
 }
 
 /// `titleSort` after `title` when the sort title differs, as the catalog load writes it
