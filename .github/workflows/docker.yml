@@ -2,7 +2,7 @@ name: Docker
 
 # Publishes ghcr.io/debridmediamanager/rex for a release, from that release's own Linux
 # archives: no compile, so QEMU only runs the image's apt-get for arm64. The package belongs
-# to this private repository and inherits its access, as zurg's sponsor image does.
+# to this repository and is public, as the repository is (since 2026-10-31).
 #
 # CI's release job calls it for every tag. Run it by hand (Actions, "Run workflow") to
 # publish an image for a release that has none.

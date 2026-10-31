@@ -439,7 +439,6 @@ and `curl.exe` for `curl`. Four things differ:
 this section is for a Linux host. On macOS and Windows, Docker Desktop runs containers inside a
 virtual machine, so host networking, LAN discovery and the GPU do not work there as they do on
 Linux: run the release build instead.
-The image is private, so a pull may be refused; the release download works for everyone.
 
 Everything rex writes (`rex.db`, `claim_state.json`, `rex-direct.json`, Plex's metadata
 cache) goes to `/config`.
