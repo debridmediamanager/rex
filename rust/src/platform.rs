@@ -286,6 +286,20 @@ pub(crate) fn release_free_memory() {
     }
 }
 
+/// Two malloc arenas, not glibc's eight a core: those suit programs allocating on many threads
+/// at once, and rex does most of its work behind the runtime lock. The production server sat at
+/// 730 MB resident in 42 arena heaps for a 286 MB heap (2026-11-01). An operator's
+/// `MALLOC_ARENA_MAX` wins, as glibc reads it itself. Called before any thread starts.
+pub fn limit_malloc_arenas() {
+    #[cfg(all(target_os = "linux", target_env = "gnu"))]
+    if std::env::var_os("MALLOC_ARENA_MAX").is_none() {
+        // SAFETY: mallopt only sets a tunable.
+        unsafe {
+            libc::mallopt(libc::M_ARENA_MAX, 2);
+        }
+    }
+}
+
 /// Stop a child where it is (`SIGSTOP`), so a transcode that is far enough ahead uses no CPU.
 pub(crate) fn pause(pid: u32) {
     #[cfg(unix)]

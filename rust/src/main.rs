@@ -913,6 +913,7 @@ fn title_lookups(
 }
 
 fn main() -> ExitCode {
+    rex::platform::limit_malloc_arenas();
     let mut args = env::args().skip(1).collect::<Vec<_>>();
     // `python3 server.py` with no arguments serves on the defaults, and `--help`
     // anywhere among the server options prints argparse's help.
