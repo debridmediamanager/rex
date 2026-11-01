@@ -149,6 +149,11 @@ pub(super) fn upsert_tracks(
                     let release = (source.name.clone(), item.release.clone());
                     let own = album.is_none_or(|album| albums.entry(album).or_insert_with_key(|album| guard.album_release(album)).as_ref() == Some(&release));
                     if item.media_info.is_none() || (kept.as_ref() == Some(&placement(&item)) && own) {
+                        // Its Part's file or size, as for a video (`feed_update_row`): a source that
+                        // learns a track's size only when it first plays (rex-youtube names a track
+                        // from its album's listing) sends it on the next push, which this counted
+                        // unchanged and dropped, leaving the Part at size 0 (2026-11-01).
+                        let refreshed = guard.refresh_track_part(key, &item);
                         let had = guard.item_streams(key, &source.name, &item.id).map(|streams| lyric_sources(&streams)).unwrap_or_default();
                         let wanted: Option<Vec<(String, Option<u64>)>> =
                             item.lyrics.as_ref().map(|lyrics| lyrics.iter().map(|(path, _, size)| (path.clone(), *size)).collect());
@@ -157,6 +162,7 @@ pub(super) fn upsert_tracks(
                         match wanted {
                             Some(wanted) if wanted != had => plans.push((item, section, Plan::Lyrics(key.clone()))),
                             _ if loudness_changed => plans.push((item, section, Plan::Lyrics(key.clone()))),
+                            _ if refreshed => counts.updated += 1,
                             _ => {
                                 counts.unchanged += 1;
                                 counts.unchanged_tracks.push(item.id.clone());
@@ -270,6 +276,29 @@ pub(super) fn upsert_tracks(
 }
 
 impl Runtime {
+    /// A placed track's Part takes the file and size its source pushes now; whether either changed.
+    /// A size of 0 (none sent, none probed) keeps the one the Part has.
+    fn refresh_track_part(&mut self, key: &str, item: &Item) -> bool {
+        let Some(part) = self.catalog.get(key).and_then(|row| row.pointer("/Media/0/Part/0")).cloned() else {
+            return false;
+        };
+        let moved = part.get("file").and_then(Value::as_str) != Some(item.file.as_str());
+        let resized = item.size > 0 && part.get("size").and_then(Value::as_u64) != Some(item.size);
+        if !moved && !resized {
+            return false;
+        }
+        if let Some(part) = self.catalog.get_mut(key).and_then(|row| row.pointer_mut("/Media/0/Part/0")).and_then(Value::as_object_mut) {
+            if moved {
+                part.insert("file".to_string(), json!(item.file));
+            }
+            if resized {
+                part.insert("size".to_string(), json!(item.size));
+            }
+        }
+        self.dirty = true;
+        true
+    }
+
     /// A track's sidecar lyrics on its Part, each an external lyrics Stream as plexav's PMS makes
     /// one of an `.lrc` or `.txt` beside a track (2026-10-31, `tests/fixtures/music/lyrics.json`):
     /// `streamType` 4, `codec` and `format` its extension, `provider` the local media agent,

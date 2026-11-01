@@ -131,6 +131,20 @@ def main():
                                   "display": dict(display, title="Encore")}])
         check("its probe shows it", body.get("created") == 1, body)
 
+        # A source that learns a track's size later (rex-youtube names a track from its album's listing,
+        # and its size only when the track first plays) pushes it again with the size: the Part takes it.
+        shutil.copy(source, os.path.join(loose, "h.mp3"))
+        sizeless = dict(probe, format={key: value for key, value in probe["format"].items() if key != "size"})
+        late = {"id": "loose/h.mp3", "path": "loose/h.mp3", "kind": "track", "track": 3, "media_info": sizeless, "display": display}
+        rex.push([late])
+        row = next((row for row in rex.rows("/library/sections/1/all?type=10") if row["title"] == "Opening" and row["index"] == 3), {})
+        part = lambda: rex.rows("/library/metadata/%s" % row.get("ratingKey"))[0]["Media"][0]["Part"][0]
+        check("a track pushed with no size has none", row and part().get("size") == 0, row and part())
+        size = os.path.getsize(os.path.join(loose, "h.mp3"))
+        status, body = rex.push([dict(late, size=size)])
+        check("pushed again with its size, the track's Part takes it, on its key",
+              body.get("updated") == 1 and part().get("size") == size, (body, row and part()))
+
         # Placed again: same key, another track of the album.
         key = step["ratingKey"]
         moved = dict(next(item for item in items if item["path"].endswith("01 - 15 Step.flac")), track=2)
