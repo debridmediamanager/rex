@@ -311,9 +311,11 @@ def main():
               == (SERVER_TOKEN, MACHINE), post["headers"])
         check("...and no key: no Authorization without REX_DIRECT_KEY, no x-api-key",
               "authorization" not in post["headers"] and "x-api-key" not in post["headers"], post["headers"])
-        body = dict({"machineIdentifier": MACHINE}, **({"lanIp": lan_ip()} if lan_ip() else {}))
-        check("...naming the server's machineIdentifier and, on an RFC 1918 network, its LAN address as lanIp (%s)"
-              % lan_ip(), json.loads(post["body"] or b"{}") == body, post["body"])
+        # --announce-url names a plain http RFC 1918 address (LAN), so that is the lanIp, whatever
+        # this machine's own interface address is.
+        body = {"machineIdentifier": MACHINE, "lanIp": "10.0.0.1"}
+        check("...naming the server's machineIdentifier and --announce-url's LAN address as lanIp (10.0.0.1)",
+              json.loads(post["body"] or b"{}") == body, post["body"])
         check("the rex-direct name gets the provider's certificate", served(instance.port, HOSTNAME) == der(direct_crt))
         check("...and so does another name under its wildcard",
               served(instance.port, "other.rex-direct.test") == der(direct_crt))
