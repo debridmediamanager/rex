@@ -262,7 +262,9 @@ name and a certificate for it (DMM: one per server). rex serves that certificate
 whose SNI is that name or, for a wildcard, under it, and `--tls-cert`'s to every other (to every
 name when there is no `--tls-cert`; with neither, the port is plain only as before), and appends
 `https://<name>:<REX_DIRECT_PORT or --port>` to `--announce-url`'s list, the heartbeat reading
-its target each beat. The answer is kept in `rex-direct.json` beside the catalog (0600: it holds
+its target each beat. An answer's optional `lanHostname` (one label under the name, at `lanIp`) is
+served the same certificate and announced right after it on `--port`, since plex.tv turns rex's
+plain LAN connection into a plex.direct name rex has no certificate for. The answer is kept in `rex-direct.json` beside the catalog (0600: it holds
 the private key) and serves a start the provider does not answer. A 202 is a provider still
 issuing the certificate: an INFO, asked again after its `retryAfter` (15 s..10 min). Any other
 refusal or an unreachable provider is a WARN and never fatal. A thread registers again every

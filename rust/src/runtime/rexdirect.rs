@@ -5,7 +5,10 @@
 //! certificate for it (dmm `src/pages/api/rex-direct/register.ts`). rex serves that certificate
 //! to a client asking for that name and announces `https://<name>:<port>` beside
 //! `--announce-url`'s list, so the Plex apps reach it over HTTPS from anywhere without the
-//! operator owning a domain. On by default; `REX_DIRECT_URL=off` turns it off.
+//! operator owning a domain. On by default; `REX_DIRECT_URL=off` turns it off. It may also
+//! answer a name on rex's LAN (`lanHostname`, at the `lanIp` rex sent), served and announced
+//! after it: plex.tv turns rex's plain LAN connection into a plex.direct name rex has no
+//! certificate for, so a client at home otherwise reaches rex only through the router.
 //!
 //! The provider knows rex by its claim, so rex registers only once claimed: before the port
 //! opens on a claimed start, or the moment a claim lands (`plextv::finish_claim`). Registering
@@ -34,14 +37,15 @@ const RETRY: Duration = Duration::from_secs(600);
 /// Short: the start waits on it before the port opens.
 const TIMEOUT: Duration = Duration::from_secs(10);
 
-/// What the TLS port serves, by SNI: the rex-direct certificate for its name and any other
-/// under its wildcard, `--tls-cert`'s for every other name (no SNI included), and the
+/// What the TLS port serves, by SNI: the rex-direct certificate for its name, its LAN name and
+/// any other under its wildcard, `--tls-cert`'s for every other name (no SNI included), and the
 /// rex-direct one for every name when there is no `--tls-cert`.
 #[derive(Debug)]
 pub(crate) struct Certificates {
     pub base: Option<Arc<CertifiedKey>>,
-    /// The rex-direct name and its certificate, replaced in place by a renewal.
-    direct: Mutex<Option<(String, Arc<CertifiedKey>)>>,
+    /// The rex-direct name, whether a LAN name sits under it, and its certificate, replaced in
+    /// place by a renewal.
+    direct: Mutex<Option<(String, bool, Arc<CertifiedKey>)>>,
 }
 
 impl Certificates {
@@ -61,34 +65,40 @@ impl ResolvesServerCert for Certificates {
     }
 }
 
-fn pick<T: Clone>(base: Option<&T>, direct: Option<&(String, T)>, sni: Option<&str>) -> Option<T> {
+fn pick<T: Clone>(base: Option<&T>, direct: Option<&(String, bool, T)>, sni: Option<&str>) -> Option<T> {
     match direct {
-        Some((name, key)) if base.is_none() || covers(name, sni) => Some(key.clone()),
+        Some((name, lan, key)) if base.is_none() || covers(name, *lan, sni) => Some(key.clone()),
         _ => base.cloned(),
     }
 }
 
-/// `sni` is `name` or another name under its wildcard (`*.<name's parent>`). The parent is
-/// read off the name the provider answered, so a test stub's domain works as DMM's does. A
-/// per-host certificate (DMM issues one per server) is for `name` itself, which this covers.
-fn covers(name: &str, sni: Option<&str>) -> bool {
+/// `sni` is `name`, another name under the shared wildcard (`*.<name's parent>`), or, when
+/// the provider gave a LAN name, one label under `name` itself, where that name lives (a
+/// per-server `*.<name>`). The parent is read off the name the provider answered, so a test
+/// stub's domain works as DMM's does. A per-host certificate is for `name` itself.
+fn covers(name: &str, lan: bool, sni: Option<&str>) -> bool {
     let Some(sni) = sni.map(str::to_ascii_lowercase) else {
         return false;
     };
     let name = name.to_ascii_lowercase();
     let parent = name.split_once('.').map_or("", |(_, parent)| parent);
-    sni == name
-        || (parent.contains('.')
+    let under = |domain: &str| {
+        domain.contains('.')
             && sni
-                .strip_suffix(parent)
+                .strip_suffix(domain)
                 .and_then(|label| label.strip_suffix('.'))
-                .is_some_and(|label| !label.is_empty() && !label.contains('.')))
+                .is_some_and(|label| !label.is_empty() && !label.contains('.'))
+    };
+    sni == name || under(parent) || (lan && under(&name))
 }
 
 /// The provider's answer: the name, the IP it points at, and the certificate for that name.
 pub(crate) struct Registration {
     hostname: String,
     ip: String,
+    /// A name on rex's LAN under `hostname`, and the address the provider says it points at.
+    lan_hostname: Option<String>,
+    lan_ip: Option<String>,
     certificate: String,
     private_key: String,
     /// The answer as the provider sent it: what `rex-direct.json` holds.
@@ -106,14 +116,22 @@ fn parse(body: &[u8]) -> Result<Registration, String> {
             .map(str::to_string)
             .ok_or_else(|| format!("no {name} in the answer"))
     };
+    // Each name becomes an announced URL and an SNI rule: a DNS name and nothing else.
+    let dns_name = |name: &str| name.contains('.') && name.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'.' || b == b'-');
     let hostname = field("hostname")?;
-    // It becomes an announced URL and the SNI rule: a DNS name and nothing else.
-    if !hostname.contains('.') || !hostname.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'.' || b == b'-') {
+    if !dns_name(&hostname) {
         return Err("the answer's hostname is not a DNS name".to_string());
     }
+    // Optional: null is its absence, anything else must be a name.
+    let lan_hostname = match answer.get("lanHostname") {
+        None | Some(Value::Null) => None,
+        Some(name) => Some(name.as_str().filter(|name| dns_name(name)).ok_or("the answer's lanHostname is not a DNS name")?.to_string()),
+    };
     Ok(Registration {
         hostname,
         ip: field("ip")?,
+        lan_hostname,
+        lan_ip: answer.get("lanIp").and_then(Value::as_str).filter(|ip| !ip.is_empty()).map(str::to_string),
         certificate: field("certificate")?,
         private_key: field("privateKey")?,
         raw: body.to_vec(),
@@ -184,6 +202,9 @@ pub(crate) struct RexDirect {
     name: String,
     announce: Option<String>,
     port: u16,
+    /// `--port`, which the LAN name is announced on: a client at home reaches rex directly,
+    /// not through the router's forward that `REX_DIRECT_PORT` names.
+    lan_port: u16,
     file: PathBuf,
     certificates: Arc<Certificates>,
 }
@@ -222,6 +243,7 @@ impl RexDirect {
             announce,
             // The port routers forward to rex, when it is not rex's own.
             port: std::env::var("REX_DIRECT_PORT").ok().and_then(|port| port.parse().ok()).unwrap_or(port),
+            lan_port: port,
             file: super::plextv::claim_path(catalog).with_file_name("rex-direct.json"),
             certificates,
         })
@@ -268,14 +290,16 @@ impl RexDirect {
             return Ok(());
         }
         let key = super::certified_key(fresh.certificate.as_bytes(), fresh.private_key.as_bytes(), "from the rex-direct provider")?;
-        *self.certificates.direct.lock().unwrap_or_else(|poisoned| poisoned.into_inner()) = Some((fresh.hostname.clone(), key));
+        *self.certificates.direct.lock().unwrap_or_else(|poisoned| poisoned.into_inner()) =
+            Some((fresh.hostname.clone(), fresh.lan_hostname.is_some(), key));
         if let Err(error) = self.keep(&fresh.raw) {
             warning!("rex-direct: could not keep {}: {error}", self.file.display());
         }
-        if previous.is_none_or(|previous| previous.hostname != fresh.hostname) {
-            let url = format!("https://{}:{}", fresh.hostname, self.port);
+        if previous.is_none_or(|previous| (&previous.hostname, &previous.lan_hostname) != (&fresh.hostname, &fresh.lan_hostname)) {
+            let mut urls = vec![format!("https://{}:{}", fresh.hostname, self.port)];
+            urls.extend(fresh.lan_hostname.iter().map(|lan| format!("https://{lan}:{}", self.lan_port)));
             *plextv.beat.lock().unwrap_or_else(|poisoned| poisoned.into_inner()) =
-                announce_list(self.announce.as_deref(), Some(&url)).map(|url| Beat {
+                announce_list(self.announce.as_deref(), Some(&urls.join(","))).map(|url| Beat {
                     machine: self.machine.clone(),
                     url,
                     name: self.name.clone(),
@@ -283,6 +307,12 @@ impl RexDirect {
         }
         if previous.is_none_or(|previous| (&previous.hostname, &previous.ip) != (&fresh.hostname, &fresh.ip)) {
             info!("rex-direct: https://{}:{} -> {}", fresh.hostname, self.port, fresh.ip);
+        }
+        if let Some(lan) = fresh.lan_hostname.as_ref().filter(|_| {
+            previous.is_none_or(|previous| (&previous.lan_hostname, &previous.lan_ip) != (&fresh.lan_hostname, &fresh.lan_ip))
+        }) {
+            let ip = fresh.lan_ip.as_ref().map(|ip| format!(" -> {ip}")).unwrap_or_default();
+            info!("rex-direct: https://{lan}:{}{ip} (LAN)", self.lan_port);
         }
         Ok(())
     }
@@ -346,7 +376,7 @@ mod tests {
 
     #[test]
     fn its_name_and_its_wildcard_get_the_rex_direct_certificate() {
-        let direct = ("a1b2.rex-direct.debridmediamanager.com".to_string(), "direct");
+        let direct = ("a1b2.rex-direct.debridmediamanager.com".to_string(), false, "direct");
         let cases = [
             (Some("a1b2.rex-direct.debridmediamanager.com"), "direct"),
             (Some("A1B2.Rex-Direct.DebridMediaManager.com"), "direct"),
@@ -366,7 +396,7 @@ mod tests {
 
     #[test]
     fn without_a_base_certificate_every_name_gets_rex_direct_and_without_either_none() {
-        let direct = ("a1b2.rex-direct.test".to_string(), "direct");
+        let direct = ("a1b2.rex-direct.test".to_string(), false, "direct");
         for sni in [Some("a1b2.rex-direct.test"), Some("rex.example.com"), None] {
             assert_eq!(pick(None, Some(&direct), sni), Some("direct"), "SNI {sni:?}");
             assert_eq!(pick(Some(&"base"), None, sni), Some("base"), "SNI {sni:?}");
@@ -399,6 +429,53 @@ mod tests {
         assert!(!error.contains("SECRET") && !error.contains("evil"), "{error}");
         let error = parse(b"{\"privateKey\": \"SECRET\"").err().expect("truncated JSON is refused");
         assert!(!error.contains("SECRET"), "{error}");
+    }
+
+    #[test]
+    fn with_a_lan_name_one_label_under_the_name_gets_the_rex_direct_certificate_too() {
+        let name = "a1b2.rex-direct.debridmediamanager.com";
+        // (SNI, with a LAN name, without one)
+        let cases = [
+            (Some("lan.a1b2.rex-direct.debridmediamanager.com"), "direct", "base"),
+            (Some("LAN.A1B2.Rex-Direct.DebridMediaManager.com"), "direct", "base"),
+            (Some("a1b2.rex-direct.debridmediamanager.com"), "direct", "direct"),
+            // The shared wildcard's rule stays.
+            (Some("ffff.rex-direct.debridmediamanager.com"), "direct", "direct"),
+            // A deeper name, lookalikes, an empty label, the parent itself.
+            (Some("x.lan.a1b2.rex-direct.debridmediamanager.com"), "base", "base"),
+            (Some("lan.xa1b2.rex-direct.debridmediamanager.com"), "base", "base"),
+            (Some("lan.a1b2.rex-direct.debridmediamanager.com.evil.example"), "base", "base"),
+            (Some(".a1b2.rex-direct.debridmediamanager.com"), "base", "base"),
+            (Some("rex-direct.debridmediamanager.com"), "base", "base"),
+            (None, "base", "base"),
+        ];
+        for (sni, with_lan, without) in cases {
+            assert_eq!(pick(Some(&"base"), Some(&(name.to_string(), true, "direct")), sni), Some(with_lan), "SNI {sni:?}, LAN name");
+            assert_eq!(pick(Some(&"base"), Some(&(name.to_string(), false, "direct")), sni), Some(without), "SNI {sni:?}, none");
+        }
+    }
+
+    #[test]
+    fn a_lan_name_is_optional_and_a_broken_one_refuses_the_whole_answer() {
+        let mut answer = json!({
+            "hostname": "a1b2.rex-direct.debridmediamanager.com", "ip": "203.0.113.7",
+            "certificate": "CERT", "privateKey": "SECRET",
+            "lanHostname": "lan.a1b2.rex-direct.debridmediamanager.com", "lanIp": "192.168.1.20",
+        });
+        let parsed = parse(answer.to_string().as_bytes()).expect("the answer parses");
+        assert_eq!(parsed.lan_hostname.as_deref(), Some("lan.a1b2.rex-direct.debridmediamanager.com"));
+        assert_eq!(parsed.lan_ip.as_deref(), Some("192.168.1.20"));
+        answer["lanHostname"] = Value::Null;
+        assert_eq!(parse(answer.to_string().as_bytes()).map(|parsed| parsed.lan_hostname).ok(), Some(None));
+        answer.as_object_mut().unwrap().remove("lanHostname");
+        answer.as_object_mut().unwrap().remove("lanIp");
+        let parsed = parse(answer.to_string().as_bytes()).expect("an answer without a LAN name parses");
+        assert_eq!((parsed.lan_hostname, parsed.lan_ip), (None, None));
+        for bad in [json!("lan.evil.example/x"), json!("evil"), json!(""), json!(7)] {
+            answer["lanHostname"] = bad.clone();
+            let error = parse(answer.to_string().as_bytes()).err().unwrap_or_else(|| panic!("{bad} is refused"));
+            assert_eq!(error, "the answer's lanHostname is not a DNS name");
+        }
     }
 
     #[test]

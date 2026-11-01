@@ -86,6 +86,7 @@ caller can do is name an address on a private network; refuse anything else (DMM
 
 ```json
 {"hostname": "a1b2c3d4e5f6.rex-direct.debridmediamanager.com", "ip": "203.0.113.7",
+ "lanHostname": "lan.a1b2c3d4e5f6.rex-direct.debridmediamanager.com", "lanIp": "192.168.1.20",
  "certificate": "-----BEGIN CERTIFICATE-----\n...", "privateKey": "-----BEGIN EC PRIVATE KEY-----\n..."}
 ```
 
@@ -93,22 +94,31 @@ caller can do is name an address on a private network; refuse anything else (DMM
 |---|---|
 | `hostname` | The DNS name: letters, digits, `.` and `-`, with at least one dot. Anything else is refused |
 | `ip` | The address the name points at. rex only logs it |
-| `certificate` | The PEM chain for `hostname`: a certificate for that name itself, or a wildcard over its parent |
+| `lanHostname` | Optional: a name pointing at the request's `lanIp`, one label under `hostname` (DMM: `lan.<hostname>`). The same rule as `hostname`; a `lanHostname` that breaks it refuses the whole answer. Absent or `null`, rex does as it did before LAN names |
+| `lanIp` | Optional: the address `lanHostname` points at. rex only logs it |
+| `certificate` | The PEM chain for `hostname`: a certificate for that name itself, or a wildcard over its parent; with a `lanHostname`, one that also covers it (DMM: `*.<hostname>`, beside `hostname` itself) |
 | `privateKey` | Its PEM key: PKCS#8, RSA or SEC1 EC (`BEGIN EC PRIVATE KEY`) |
 
 Other fields are ignored. With the answer rex:
 
 - **serves the certificate by SNI** on its port, beside plain HTTP: to a client asking for
-  `hostname`, or for one more label under `hostname`'s parent (what a wildcard covers).
+  `hostname`, or for one more label under `hostname`'s parent (what a wildcard covers), and
+  with a `lanHostname` for one more label under `hostname` itself (where `lanHostname` lives).
   `--tls-cert`'s certificate answers every other name and a client sending none; without
   `--tls-cert` the rex-direct certificate answers every name.
 - **announces** `https://<hostname>:<REX_DIRECT_PORT or --port>` after `--announce-url`'s
   addresses, on the claim's heartbeat, and logs `rex-direct: https://<hostname>:<port> -> <ip>`.
+  A `lanHostname` is announced right after it as `https://<lanHostname>:<--port>`: a client
+  on the LAN reaches rex directly, not through the router's forward `REX_DIRECT_PORT` names.
+  rex logs it as `rex-direct: https://<lanHostname>:<port> -> <lanIp> (LAN)`. rex's plain
+  `http://<lanIp>:<port>` connection is still announced last: plex.tv turns it into a
+  `plex.direct` name rex holds no certificate for, which is why the LAN name exists.
 - **keeps the answer** as sent in `rex-direct.json` beside the catalog, mode 600 since it
   holds the private key, and serves it at a start the provider does not answer.
 
 The same answer again changes nothing. A new certificate is swapped in without a restart; a
-new `hostname` is announced instead of the old one.
+new `hostname` or `lanHostname` is announced instead of the old one, and the kept answer
+announces both again at a start the provider does not answer.
 
 ### 202: still issuing the certificate
 
