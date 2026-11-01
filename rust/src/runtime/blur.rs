@@ -7,8 +7,7 @@
 //! runtime lock, so a listing never waits: until the image is read the row answers as plexav's
 //! unanalysed one. Each answer is kept by the artwork's versioned path (`/library/metadata/{id}/
 //! thumb/{stamp}`, re-minted whenever the artwork changes) in table `blur_cache` of the state
-//! database (`blur_cache.db` beside a JSON state file), and all of it is read back into memory
-//! when the worker starts.
+//! database, and all of it is read back into memory when the worker starts.
 
 use super::diskcache::DiskCache;
 use super::{transcoder, Runtime, SharedRuntime};
@@ -72,8 +71,8 @@ pub(super) struct Blurs {
 }
 
 impl Blurs {
-    /// Kept in the state database (a table of its own), or beside a JSON state file; with
-    /// `--no-state` in memory only, as the rest of the state.
+    /// Kept in the state database, a table of its own; with `--no-state` in memory only, as the
+    /// rest of the state.
     pub(super) fn new(state: Option<&Path>) -> Arc<Self> {
         Arc::new(Self {
             known: Mutex::new(HashMap::new()),
@@ -107,11 +106,9 @@ impl Blurs {
     fn disk(&self) -> Option<&DiskCache> {
         self.disk
             .get_or_init(|| {
-                // A database catalog keeps everything in its one file (tests/test_sqlite_store.py).
-                self.state.as_deref().map(|state| match crate::store::is_sqlite(state) {
-                    true => DiskCache::open_table(state, "blur_cache"),
-                    false => DiskCache::open(&state.with_file_name("blur_cache.json")),
-                })
+                // The state is always a database (a JSON one is imported into one at load), and a
+                // database catalog keeps everything in its one file (tests/test_sqlite_store.py).
+                self.state.as_deref().map(|state| DiskCache::open_table(state, "blur_cache"))
             })
             .as_ref()
     }
