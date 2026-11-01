@@ -22924,19 +22924,27 @@ fn placeholder_machine(machine: &str) -> bool {
 /// when it binds every one. None but a private address: not loopback, which no other device
 /// reaches, nor a public or VPN one a default route through a tunnel picks.
 fn lan_url(host: &str, private: &str, port: u16) -> Option<String> {
-    let bound = host.parse::<std::net::IpAddr>().ok();
-    let address = match bound {
-        Some(ip) if ip.is_unspecified() => private.parse::<std::net::IpAddr>().ok()?,
-        Some(ip) => ip,
-        None => return None,
-    };
-    if !private_address(address) {
-        return None;
-    }
-    Some(match address {
+    Some(match lan_address(host, private)? {
         std::net::IpAddr::V6(v6) => format!("http://[{v6}]:{port}"),
         v4 => format!("http://{v4}:{port}"),
     })
+}
+
+fn lan_address(host: &str, private: &str) -> Option<std::net::IpAddr> {
+    let address = match host.parse::<std::net::IpAddr>().ok()? {
+        ip if ip.is_unspecified() => private.parse::<std::net::IpAddr>().ok()?,
+        ip => ip,
+    };
+    private_address(address).then_some(address)
+}
+
+/// That LAN connection's address when it is RFC 1918 IPv4: what rex-direct's provider may
+/// point a LAN name at (docs/rex-direct-api.md, `lanIp`). A ULA is no A record.
+fn lan_ipv4(host: &str, private: &str) -> Option<std::net::Ipv4Addr> {
+    match lan_address(host, private)?.to_canonical() {
+        std::net::IpAddr::V4(v4) => Some(v4),
+        std::net::IpAddr::V6(_) => None,
+    }
 }
 
 /// `--announce-url`'s list with the LAN connection added unless it already names it.
@@ -29029,6 +29037,27 @@ mod announce_tests {
         assert_eq!(lan_url("0.0.0.0", "100.101.1.2", 32400), None);
         assert_eq!(lan_url("0.0.0.0", "203.0.113.7", 32400), None);
         assert_eq!(with_lan_url(None, None), None);
+    }
+
+    #[test]
+    fn rex_direct_is_given_only_an_rfc_1918_ipv4_lan_address() {
+        let ip = |host, private| lan_ipv4(host, private).map(|ip| ip.to_string());
+        assert_eq!(ip("0.0.0.0", "192.168.1.20").as_deref(), Some("192.168.1.20"));
+        assert_eq!(ip("0.0.0.0", "172.31.255.1").as_deref(), Some("172.31.255.1"));
+        assert_eq!(ip("10.0.0.5", "192.168.1.20").as_deref(), Some("10.0.0.5"));
+        assert_eq!(ip("::ffff:192.168.1.5", "").as_deref(), Some("192.168.1.5"));
+        for (host, private) in [
+            ("127.0.0.1", "192.168.1.20"),
+            ("0.0.0.0", "0.0.0.0"),
+            ("0.0.0.0", "100.101.1.2"),
+            ("0.0.0.0", "172.32.0.1"),
+            ("0.0.0.0", "203.0.113.7"),
+            ("0.0.0.0", "fd00::5"),
+            ("fd00::5", "192.168.1.20"),
+            ("rex.example", "192.168.1.20"),
+        ] {
+            assert_eq!(ip(host, private), None, "{host} / {private}");
+        }
     }
 }
 

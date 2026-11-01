@@ -45,12 +45,17 @@ X-Plex-Token: <the claim's server token>
 X-Plex-Client-Identifier: <machineIdentifier>
 Authorization: Bearer <REX_DIRECT_KEY>          (only when REX_DIRECT_KEY is set)
 
-{"machineIdentifier": "<machineIdentifier>"}
+{"machineIdentifier": "<machineIdentifier>", "lanIp": "192.168.1.20"}
 ```
 
 `X-Plex-Token` is the server token plex.tv issued at the claim; rex holds no account token.
 The body's `machineIdentifier` and `X-Plex-Client-Identifier` are the same
 value: the identity rex announces to plex.tv on. rex logs neither the token nor the key.
+
+| Field | Meaning |
+|---|---|
+| `machineIdentifier` | Always sent |
+| `lanIp` | rex's address on its LAN, the one it announces as `http://<lanIp>:<port>`: the bound address, or under `--host 0.0.0.0` the interface its default route leaves from, read at each request. Sent only when it is RFC 1918 IPv4 (10/8, 172.16/12, 192.168/16); IPv6, a tunnel's (Tailscale's 100.64/10), a public address or loopback leaves the key out. So the provider can give rex a name on its LAN as well; a provider that does not know the key ignores it |
 
 ## Verifying the caller
 
@@ -69,6 +74,11 @@ It answers a JSON array of the account's devices. The caller is genuine when an 
 the account, including rows that are not servers (`provides` `controller`), so match on all
 three fields; a bad token is 401. Point the name at the request's source address (DMM's
 provider writes an IPv4 A record).
+
+`lanIp` is the caller's word alone: nothing can check it, and a record holding it points a
+public name wherever the caller says. Accept it only when it is RFC 1918 IPv4, so the worst a
+caller can do is name an address on a private network; refuse anything else (DMM answers 400
+`Invalid lanIp`, which rex treats as any other failure).
 
 ## Answers
 

@@ -234,7 +234,13 @@ impl RexDirect {
     }
 
     fn register(&self, token: &str) -> Result<Registration, Later> {
-        let body = json!({"machineIdentifier": self.machine}).to_string();
+        let mut body = json!({"machineIdentifier": self.machine});
+        // For a LAN name: plex.tv turns rex's http LAN connection into a plex.direct name rex
+        // has no certificate for. Only RFC 1918, since the provider's record takes it on trust.
+        if let Some(ip) = super::plextv::lan_ipv4() {
+            body["lanIp"] = json!(ip.to_string());
+        }
+        let body = body.to_string();
         let mut headers = vec![
             ("Content-Type", "application/json".to_string()),
             ("User-Agent", upstream::UPSTREAM_UA.to_string()),

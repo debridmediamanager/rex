@@ -2,7 +2,8 @@
 """rex-direct, black-box, against a LOCAL stub of its provider (DMM's register endpoint) and
 of plex.tv (docs/rex-direct-api.md).
 
-Once claimed, rex POSTs its machineIdentifier with the claim's server token to the provider
+Once claimed, rex POSTs its machineIdentifier (and its LAN address as `lanIp` when that is
+RFC 1918, none when bound to loopback) with the claim's server token to the provider
 (`REX_DIRECT_URL` points it at the stub below; no key), which answers the server's
 `<hash>.rex-direct...` name, the IP that name points at, and the certificate for it. rex
 serves that certificate to a TLS client asking for that name (SNI), keeps `--tls-cert`'s for
@@ -18,6 +19,7 @@ rex takes the wildcard from the name the provider answers, not from a domain of 
     python3 tests/test_rex_direct.py
 """
 import http.client
+import ipaddress
 import json
 import os
 import re
@@ -205,18 +207,31 @@ def announced(stub):
             for r in stub.taken("/servers.plex.tv/devices/%s" % MACHINE)]
 
 
-def lan(port):
-    """The LAN connection rex announces of itself unasked, as a real PMS does: the address it
-    reaches the world from (`local_interface_address`), on its port; none without a route."""
+def local_address():
+    """The address rex reaches the world from (`local_interface_address`); None without a route."""
     probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
         probe.connect(("192.0.2.1", 9))
-        address = probe.getsockname()[0]
+        return probe.getsockname()[0]
     except OSError:
-        return []
+        return None
     finally:
         probe.close()
-    return [] if address.startswith("127.") or address == "0.0.0.0" else ["http://%s:%d" % (address, port)]
+
+
+def lan(port):
+    """The LAN connection rex announces of itself unasked, as a real PMS does: the address it
+    reaches the world from, on its port; none without a route."""
+    address = local_address()
+    return [] if not address or address.startswith("127.") or address == "0.0.0.0" else ["http://%s:%d" % (address, port)]
+
+
+def lan_ip():
+    """What rex sends its provider as `lanIp`: that address when it is RFC 1918, else None
+    (never a public one, a tunnel's 100.64/10 or IPv6)."""
+    address = local_address()
+    private = ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16")
+    return address if address and any(ipaddress.ip_address(address) in ipaddress.ip_network(net) for net in private) else None
 
 
 def wait_for(predicate, timeout):
@@ -288,8 +303,9 @@ def main():
               == (SERVER_TOKEN, MACHINE), post["headers"])
         check("...and no key: no Authorization without REX_DIRECT_KEY, no x-api-key",
               "authorization" not in post["headers"] and "x-api-key" not in post["headers"], post["headers"])
-        check("...naming the server's machineIdentifier",
-              json.loads(post["body"] or b"{}") == {"machineIdentifier": MACHINE}, post["body"])
+        body = dict({"machineIdentifier": MACHINE}, **({"lanIp": lan_ip()} if lan_ip() else {}))
+        check("...naming the server's machineIdentifier and, on an RFC 1918 network, its LAN address as lanIp (%s)"
+              % lan_ip(), json.loads(post["body"] or b"{}") == body, post["body"])
         check("the rex-direct name gets the provider's certificate", served(instance.port, HOSTNAME) == der(direct_crt))
         check("...and so does another name under its wildcard",
               served(instance.port, "other.rex-direct.test") == der(direct_crt))
@@ -355,6 +371,20 @@ def main():
         check("...the refusal is a WARN with the provider's status and reason",
               logged(log, "WARNING", r"rex-direct: registration failed: HTTP 401 \(%s\); retrying in 10 min"
                      % re.escape(REFUSAL)), log[-3000:])
+
+        # 3b. Bound to loopback rex has no LAN address, so the request names none.
+        loopback = os.path.join(work, "loopback")
+        setup(loopback)
+        stub.status = 200
+        with stub.lock:
+            stub.records = []
+        instance = Instance(loopback, free_port(), stub.server_address[1], register_url, extra=("--host", "127.0.0.1"))
+        live.append(instance)
+        posts = stub.taken("/api/rex-direct/register")
+        check("bound to loopback, the request carries no lanIp",
+              len(posts) == 1 and json.loads(posts[0]["body"] or b"{}") == {"machineIdentifier": MACHINE},
+              posts and posts[0]["body"])
+        instance.stop()
 
         # 4. Unclaimed it registers nothing, since the provider knows rex by its claim; a claim
         #    registers at once and announces the rex-direct URL, without a restart. With

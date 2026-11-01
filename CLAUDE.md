@@ -253,7 +253,7 @@ documented provider API (`docs/rex-direct-api.md`), no longer a DMM sponsor perk
 provider (default DMM's `/api/rex-direct/register`) or `off`, and must be https, or plain http
 to loopback only, since the answer carries a private key and the request the claim's token.
 The provider knows the caller by the claim, so rex registers only once claimed: a claimed start
-POSTs its machineIdentifier before the port opens, with `X-Plex-Token` (the claim's server
+POSTs its machineIdentifier (and `lanIp`, its LAN address when that is RFC 1918 IPv4) before the port opens, with `X-Plex-Token` (the claim's server
 token) and `X-Plex-Client-Identifier`, plus `Authorization: Bearer
 <REX_DIRECT_KEY>` when that is set; an unclaimed one registers the moment `/myplex/claim` lands,
 in the background before the claim's device PUT, no restart. The provider checks the token
