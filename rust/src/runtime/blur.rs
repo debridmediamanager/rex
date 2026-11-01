@@ -255,7 +255,8 @@ impl Runtime {
                 }
                 for row in lists.into_iter().filter_map(Value::as_array_mut).flatten() {
                     if let Some(row) = row.as_object_mut() {
-                        changed |= self.blur_row(&known, row, &included);
+                        changed |= self.blur_row(&known, row, &included, true);
+                        changed |= self.blur_nested(&known, row);
                     }
                 }
             }
@@ -268,7 +269,30 @@ impl Runtime {
         }
     }
 
-    fn blur_row(&self, known: &HashMap<String, Option<Arc<Analysis>>>, row: &mut Map<String, Value>, included: &HashSet<String>) -> bool {
+    /// A row listed inside another (a show's `OnDeck`, a detail's related hubs) answers the colours
+    /// it answers on its own, never a hash: its own listing and the nested copy disagreed, the
+    /// nested one keeping rex's fixed palette (Up Next's row against the show's On Deck row).
+    fn blur_nested(&self, known: &HashMap<String, Option<Arc<Analysis>>>, row: &mut Map<String, Value>) -> bool {
+        let none = HashSet::new();
+        let mut changed = false;
+        for value in row.values_mut() {
+            let children: Vec<&mut Value> = match value {
+                Value::Array(list) => list.iter_mut().collect(),
+                Value::Object(_) => vec![value],
+                _ => continue,
+            };
+            for child in children {
+                let Some(object) = child.as_object_mut() else { continue };
+                if object.contains_key("ratingKey") {
+                    changed |= self.blur_row(known, object, &none, false);
+                }
+                changed |= self.blur_nested(known, object);
+            }
+        }
+        changed
+    }
+
+    fn blur_row(&self, known: &HashMap<String, Option<Arc<Analysis>>>, row: &mut Map<String, Value>, included: &HashSet<String>, top: bool) -> bool {
         if !row.get("type").and_then(Value::as_str).is_some_and(analysed_type) {
             return false;
         }
@@ -288,9 +312,14 @@ impl Runtime {
         };
         if let Some(colors) = colors.and_then(|analysis| analysis.colors.as_ref()) {
             let value = colors_object(colors);
+            let music_row = matches!(row.get("type").and_then(Value::as_str), Some("artist" | "album"));
             match row.get_mut("UltraBlurColors") {
                 Some(Value::Array(list)) => *list = vec![value],
                 Some(existing) => *existing = value,
+                // plexav (2026-11-01): an episode that lists with colours has none on its history
+                // row, and rex's film/show/season/episode rows already carry the field wherever PMS
+                // answers it (the fixed palette). Only an artist's or an album's is added here.
+                None if !top || !music_row => {}
                 None => {
                     // After `Image`, before the row's tags, where plexav writes it.
                     let at = row.keys().position(|key| key == "Image").map(|index| index + 1).unwrap_or_else(|| {

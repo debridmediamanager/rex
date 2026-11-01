@@ -15053,3 +15053,13 @@ albums and Firefly; recorded by `probes/record_blur.py` into `tests/fixtures/art
   may move a corner a unit or two. Test servers run with `REX_ARTWORK_ANALYSIS=off`
   (`tests/server_command.py`), every listing then answering as before; the colours route still
   reads its image.
+
+**Colours where PMS keeps them (2026-11-01, plexav 1.43.4).** An episode that lists with
+`UltraBlurColors` has none on its history row: plexav's `/status/sessions/history/all` row for it is a
+self-closing `Video`. rex's analysis added the colours to every row of every answer, history included,
+which only showed with analysis on (the suites run it off), and replaced them only on top-level and hub
+rows, so a show's `OnDeck` episode kept the fixed palette while the same episode's own row and its
+post-play Up Next carried the still's colours. rex now adds the field only to an artist's or an album's
+row (the rows plexav lists with colours that carry no fixed palette) and replaces it, without hashes,
+on every nested row that already carries it.
+

@@ -335,6 +335,29 @@ def main():
               [(title, again.get(title, {}).get("thumbBlurHash")) for title in mine])
         time.sleep(1)
         check("and no cover is read again", [path for path in reads[before:] if path != "gone.jpg"] == [], reads[before:])
+
+        # plexav (2026-11-01): an episode carrying colours in its listing has none on its history row
+        # (the XML row is self-closing); rex added them to every row of every answer, history too.
+        # A play to its end, as a client reports it, writes the history row.
+        key, length = episode["ratingKey"], int(episode.get("duration") or 600000)
+        for state, at in (("playing", length // 2), ("stopped", length * 19 // 20)):
+            rex.request("/:/timeline?ratingKey=%s&key=%%2Flibrary%%2Fmetadata%%2F%s&state=%s&time=%d&duration=%d"
+                        % (key, key, state, at, length))
+        history = [row for row in rex.rows("/status/sessions/history/all") if row.get("ratingKey") == key]
+        check("an analysed episode's history row carries no UltraBlurColors, as plexav's",
+              history and all("UltraBlurColors" not in row for row in history), [sorted(row) for row in history])
+        # The same episode answers the same colours wherever it is listed: its show's On Deck row
+        # (nested in the show's detail) kept rex's fixed palette while the listing had the still's.
+        rex.request("/:/unscrobble?identifier=com.plexapp.plugins.library&key=%s" % episode["ratingKey"])
+        status, detail = rex.request("/library/metadata/%s?includeOnDeck=1" % show["ratingKey"])
+        deck = (((detail or {}).get("MediaContainer") or {}).get("Metadata") or [{}])[0].get("OnDeck", {}).get("Metadata") or [{}]
+        deck = deck if isinstance(deck, list) else [deck]
+        deck_colors = deck[0].get("UltraBlurColors")
+        deck_colors = deck_colors[0] if isinstance(deck_colors, list) else deck_colors
+        check("the episode's On Deck row answers the colours its listing does",
+              status == 200 and deck[0].get("ratingKey") == episode["ratingKey"] and deck_colors == episode.get("UltraBlurColors"),
+              (status, deck[0].get("ratingKey"), deck_colors, episode.get("UltraBlurColors")))
+
     finally:
         release.set()
         rex.stop()
