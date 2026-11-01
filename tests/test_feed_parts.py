@@ -24,13 +24,14 @@ import tempfile
 import time
 import urllib.parse
 
-from test_feed import ENTRIES, MOUNT, Bytes, Server, catalog, check, results, serve
+from test_feed import BYTES_TOKEN, ENTRIES, MOUNT, Bytes, Server, catalog, check, results, serve
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FIXTURE = json.load(open(os.path.join(HERE, "fixtures", "feed", "parts_lost_1101.json")))
 # A real PMS's stacked `- pt1`/`- pt2` pair and two `allParts=1` audio picks on it
 # (`probes/record_parts_stack.py` on plexscratch 1.43.4).
 STACK = json.load(open(os.path.join(HERE, "fixtures", "parts_stack_s1434.json")))["exchanges"]
+MONK = json.load(open(os.path.join(HERE, "fixtures", "feed", "parts_monk_1101.json")))
 PROBE = ENTRIES["episode"]["entry"]["media_info"]
 
 
@@ -275,12 +276,49 @@ def main():
         server.stop()
         shutil.rmtree(work, ignore_errors=True)
 
+    # -- complete versions first: rex-fun's Monk S01E01 ----------------------------------------------
+    # Plex Web plays, of versions that tie on everything else, the one of the highest bitrate, then
+    # the first. The RD pack's two parts sat behind three Usenet releases of one half each, holding
+    # part 1's bitrate where the lone part 2 had a higher one: Play and Resume took the lone part 2,
+    # which overran into S01E02 (2026-11-01).
+    def monk(entry):
+        probe = copy.deepcopy(PROBE)
+        probe["format"].update(duration=entry["duration"], size=str(entry["size"]), bit_rate=entry["bit_rate"])
+        pushed = {k: v for k, v in entry.items() if k not in ("source", "duration", "bit_rate")}
+        return entry["source"], dict(pushed, file="%s/%s" % (MOUNT, entry["path"]), media_info=probe)
+    work = tempfile.mkdtemp(prefix="rex-parts-")
+    server = start(work, port)
+    try:
+        for name in ("rd", "usenet"):
+            server.request("/rex/sources/%s" % name, "PUT", {"url": "http://127.0.0.1:%d/dav" % port, "bearer": BYTES_TOKEN,
+                                                             "mount": MOUNT}, {"Content-Type": "application/json"})
+        for entry in MONK["lone"] + MONK["pack"]:
+            name, pushed = monk(entry)
+            source.files.add("/dav/" + pushed["path"])
+            server.feed("POST", "items", {"items": [pushed]}, source=name)
+        keys = {name: {row["id"]: row["ratingKey"] for row in (server.feed("GET", "items", source=name)[1] or {}).get("items", [])}
+                for name in ("rd", "usenet")}
+        key = keys["rd"].get(MONK["pack"][0]["id"])
+        row = server.row(key)
+        versions = [[part.get("file").rsplit("/", 1)[-1] for part in media.get("Part") or []] for media in row.get("Media") or []]
+        want = [[entry["path"].rsplit("/", 1)[-1] for entry in MONK["pack"]]] + [[entry["path"].rsplit("/", 1)[-1]] for entry in MONK["lone"]]
+        check("Monk S01E01: one row, the pack's two parts its first version, then the lone part 1, then the lone part 2s",
+              len({k for found in keys.values() for k in found.values()}) == 1 and versions == want, versions)
+        rates = [media.get("bitrate") for media in row.get("Media") or []]
+        check("the two-part version's bitrate is its last Part's, as a real PMS's stacked pair has it",
+              rates[:1] == [int(MONK["pack"][1]["bit_rate"]) // 1000], rates)
+        ok, hit = read(server, source, ((row.get("Media") or [{}])[0].get("Part") or [{}])[0])
+        check("and the row's first Part is the pack's part 1", ok and hit == ["/dav/" + MONK["pack"][0]["path"]], (ok, hit))
+    finally:
+        server.stop()
+        shutil.rmtree(work, ignore_errors=True)
+
     # -- a track picked for all Parts, as the reference carries it ---------------------------------
     # Plex Web sends `allParts=1` with every pick before play. A real PMS carries it to the other
     # Parts of the Media by stream index; rex matched stream ids, which no other Part has, and so
     # took the second Part's selected track away.
     recorded = lambda at: STACK[at]["body"]["MediaContainer"]["Metadata"][0]
-    audio = lambda row: [[(s.get("id"), bool(s.get("selected"))) for s in p.get("Stream") or [] if s.get("streamType") == 2]
+    audio = lambda row: [[(s.get("id"), bool(s.get("selected"))) for s in p.get("Stream") or [] if s.get("streamType") in (2, 3)]
                          for m in row.get("Media") or [] for p in m.get("Part") or []]
     work = tempfile.mkdtemp(prefix="rex-parts-")
     stacked = dict({k: v for k, v in recorded(0).items() if k in ("title", "duration", "Media")},
@@ -290,12 +328,12 @@ def main():
         check("the reference's stacked pair is one Media of two Parts, its duration their sum",
               len(recorded(0)["Media"]) == 1 and recorded(0)["Media"][0]["duration"]
               == sum(p["duration"] for p in recorded(0)["Media"][0]["Part"]), recorded(0)["Media"][0]["duration"])
-        for at in (1, 3):
+        # Then, as Plex Web's player sends them while part 1 plays, two picks without `allParts`.
+        for at in (1, 3, 5, 7):
             pick = STACK[at]
             server.request("%s?%s" % (pick["path"], urllib.parse.urlencode(pick["params"])), "PUT")
-            check("an allParts=1 pick of stream %s selects on each Part what the reference selected"
-                  % pick["params"]["audioStreamID"], audio(server.row("500")) == audio(recorded(at + 1)),
-                  (audio(server.row("500")), audio(recorded(at + 1))))
+            check("a pick of %s selects on each Part what the reference selected" % urllib.parse.urlencode(pick["params"]),
+                  audio(server.row("500")) == audio(recorded(at + 1)), (audio(server.row("500")), audio(recorded(at + 1))))
     finally:
         server.stop()
         shutil.rmtree(work, ignore_errors=True)

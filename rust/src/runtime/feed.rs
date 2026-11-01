@@ -1750,6 +1750,31 @@ fn sync_parts(media: &mut Map<String, Value>) {
     if let Some(durations) = durations {
         media.insert("duration".to_string(), json!(durations.iter().sum::<i64>()));
     }
+    // Its `bitrate` is its LAST Part's, as a real PMS gives a stacked pair (parts of 2137 and 415
+    // kbps make a Media of 415, `tests/fixtures/parts_stack_s1434.json`). Plex Web plays the
+    // version of the highest bitrate where all else ties, so a Media of both halves holding
+    // part 1's lost to the lone part 2 beside it (rex-fun's Monk S01E01, 2026-11-01).
+    let last = parts.last().unwrap_or(first);
+    let rate = last.get("_bitrate").and_then(Value::as_i64).or_else(|| {
+        let (size, duration) = (last.get("size")?.as_i64()?, last.get("duration")?.as_i64()?);
+        (duration > 0).then(|| size * 8 / duration)
+    });
+    if let Some(rate) = rate {
+        media.insert("bitrate".to_string(), json!(rate));
+    }
+}
+
+/// Where a Media sorts among its row's versions: one of several Parts, then a whole file, then a
+/// lone first part, then a lone later part. Plex Web plays the first of versions that tie on
+/// everything it ranks them by, and Monk S01E01's lone part 2 played as the episode and overran
+/// into S01E02 (rex-fun, 2026-11-01).
+fn completeness(media: &Value) -> u8 {
+    match part_numbers(media).as_slice() {
+        [_, _, ..] => 0,
+        [None] | [] => 1,
+        [Some(1)] => 2,
+        _ => 3,
+    }
 }
 
 /// `theirs`, one Media of a row folding into `media`, joined to the Media of the same source and
@@ -1790,6 +1815,9 @@ fn join_parts(media: &mut [Value], theirs: &[Value]) -> bool {
                     if let Some(value) = media.get(field) {
                         part.insert(field.to_string(), value.clone());
                     }
+                }
+                if let Some(rate) = media.get("bitrate") {
+                    part.insert("_bitrate".to_string(), rate.clone());
                 }
             }
         }
@@ -2537,7 +2565,10 @@ impl Runtime {
             put(self, "_path", Some(json!(item.path)));
             changed = true;
         }
-        if own("_part").and_then(Value::as_i64) != item.part {
+        // A new part number moves its version among the row's (`order_versions`), last: what
+        // follows writes to this item's Media and Part by their places now.
+        let reorder = own("_part").and_then(Value::as_i64) != item.part;
+        if reorder {
             put(self, "_part", item.part.map(|part| json!(part)));
             changed = true;
         }
@@ -2675,6 +2706,18 @@ impl Runtime {
         }
         if let Some(display) = &item.display {
             changed |= self.redress(key, display);
+        }
+        // A Media of several Parts is made again from its Parts on each push of one: one joined
+        // before its bitrate was its last Part's (rex-fun's Monk S01E01) takes it then.
+        if own_part {
+            if let Some(media) = self.catalog.get_mut(key).and_then(|row| row.get_mut("Media")).and_then(|media| media.get_mut(index)).and_then(Value::as_object_mut) {
+                let before = media.clone();
+                sync_parts(media);
+                changed |= *media != before;
+            }
+        }
+        if reorder {
+            self.order_versions(key);
         }
         changed
     }
@@ -3399,6 +3442,7 @@ impl Runtime {
                     untrash.push(survivor.clone());
                 }
             }
+            self.order_versions(&survivor);
             if let Some(row) = self.catalog.get(&survivor).cloned() {
                 self.push_timeline_entry(&row, 5, None, None, None, None);
             }
@@ -3454,6 +3498,7 @@ impl Runtime {
                     }
                 }
             }
+            self.order_versions(key);
             if let Some(row) = self.catalog.get(key).cloned() {
                 self.push_timeline_entry(&row, 5, None, None, None, None);
             }
@@ -3475,10 +3520,30 @@ impl Runtime {
                 object.insert("duration".to_string(), duration.clone());
             }
         }
+        self.order_versions(key);
         if let Some(row) = self.catalog.get(key).cloned() {
             self.push_timeline_entry(&row, 5, None, None, None, None);
         }
         info!("FEED {source} dropped {sid} from {key}");
+        true
+    }
+
+    /// A row's versions in `completeness` order, each class as it was; the row's own source
+    /// fields and duration its new first Media's. Answers whether they moved.
+    pub(super) fn order_versions(&mut self, key: &str) -> bool {
+        let Some(row) = self.catalog.get(key) else { return false };
+        let mut media = tagged_media(row);
+        if media.windows(2).all(|pair| completeness(&pair[0]) <= completeness(&pair[1])) {
+            return false;
+        }
+        media.sort_by_key(completeness);
+        if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
+            take_release(object, &media[0]);
+            if let Some(duration) = media[0].get("duration") {
+                object.insert("duration".to_string(), duration.clone());
+            }
+            object.insert("Media".to_string(), Value::Array(media));
+        }
         true
     }
 
@@ -3503,6 +3568,26 @@ impl Runtime {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_media_of_parts_takes_its_last_parts_bitrate_and_sorts_first() {
+        // As a real PMS's stacked pair (`parts_stack_s1434.json`): parts of 2137 and 415 kbps, a Media of 415.
+        let tagged = |sid: &str, part: i64, rate: Option<i64>| {
+            let mut part = json!({"_source": "s", "_sid": sid, "_path": sid, "_part": part, "duration": 10_000, "size": 1_000_000});
+            if let Some(rate) = rate { part["_bitrate"] = json!(rate); }
+            part
+        };
+        let mut media = json!({"bitrate": 2137, "Part": [tagged("one", 1, Some(2137)), tagged("two", 2, Some(415))]});
+        sync_parts(media.as_object_mut().unwrap());
+        assert_eq!((media["bitrate"].clone(), media["duration"].clone(), media["_sid"].clone()), (json!(415), json!(20_000), json!("one")));
+        // Joined before Parts kept their own: the last Part's size over its duration (rex-fun's Monk S01E01).
+        let mut media = json!({"bitrate": 23599, "Part": [tagged("one", 1, None), tagged("two", 2, None)]});
+        sync_parts(media.as_object_mut().unwrap());
+        assert_eq!(media["bitrate"], json!(800));
+        let lone = |part: Option<i64>| json!({"_part": part, "Part": [{"file": "f"}]});
+        let order: Vec<u8> = [lone(Some(2)), lone(Some(1)), lone(None), media].iter().map(completeness).collect();
+        assert_eq!(order, vec![3, 2, 1, 0]);
+    }
 
     #[test]
     fn an_item_sent_without_its_size_takes_the_one_ffprobe_read() {

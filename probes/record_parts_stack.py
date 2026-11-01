@@ -3,14 +3,17 @@
 
 Run against plexscratch, the disposable write copy, with a probe library under its writable
 `/config` holding `Lost (2004)/Season 04/Lost - s04e13 - pt1.mkv` and `- pt2.mkv` (each: h264,
-two AAC tracks, one SRT `eng`; pt1 10 s with `eng` then `fre`, pt2 12 s with `fre` then `eng`, so a
-pick carried to the other Part shows whether it goes by index or by language):
+two AAC tracks, one SRT `eng`; pt1 10 s at about 2 Mbps with `eng` then `fre`, pt2 12 s at about
+300 kbps with `fre` then `eng`, so a pick carried to the other Part shows whether it goes by index
+or by language, and the Media's `bitrate` whether it is the first Part's, the last's or the most):
 
     PLEX_URL=http://<lab ip>:32410 PLEX_TOKEN=$(./scratch.sh token) \\
         python3 probes/record_parts_stack.py tests/fixtures/parts_stack_s1434.json
 
-It makes the library, scans it, records the episode's Media and Parts and two audio picks with
-`allParts=1` on part 1 as Plex Web sends them, and deletes the library again. No token is written.
+It makes the library, scans it, records the episode's Media and Parts, two audio picks with
+`allParts=1` on part 1 as Plex Web sends them before play, then a subtitle and an audio pick on
+part 1 without it, as its player sends them while part 1 plays, and deletes the library again. No
+token is written.
 The decision's `partIndex` grammar on a stacked pair is cycle 37's (findings, "partIndex on a
 MULTI-PART Media").
 """
@@ -73,6 +76,11 @@ try:
     for language in ("fra", "eng"):
         stream = next(s["id"] for s in parts[0]["Stream"] if s.get("streamType") == 2 and s.get("languageCode") == language)
         ask("PUT", "/library/parts/%s" % parts[0]["id"], {"audioStreamID": stream, "allParts": 1})
+        detail(key)
+    # Plex Web's player sends `allParts` only while a later Part plays (`partIndex > 0`).
+    french = next(s["id"] for s in parts[0]["Stream"] if s.get("streamType") == 2 and s.get("languageCode") == "fra")
+    for pick in ({"subtitleStreamID": 0}, {"audioStreamID": french}):
+        ask("PUT", "/library/parts/%s" % parts[0]["id"], pick)
         detail(key)
 finally:
     ask("DELETE", "/library/sections/%s" % section, record=False)
