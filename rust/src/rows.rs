@@ -23,7 +23,8 @@ fn log_error(message: &str) {
 /// What the database stores the catalog's rows under (`store.rs`).
 const COLLECTION: &str = "state:items";
 
-/// The byte budget for rows read from the file and kept between requests (`REX_ROW_CACHE_MB`).
+/// The memory rows read from the file may hold while kept between requests, as `held` counts
+/// it (`REX_ROW_CACHE_MB`, 64 by default; a host packing several servers sets 16).
 static BUDGET: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(usize::MAX);
 
 fn cache_budget() -> usize {
@@ -234,9 +235,10 @@ impl Rows {
             return Some(unsafe { &*row });
         }
         let started = std::time::Instant::now();
-        let (row, bytes) = self.read(key)?;
+        let row = self.read(key)?;
         cache.reads += 1;
         cache.reading += started.elapsed();
+        let bytes = held(&row);
         let row = Box::new(row);
         let pointer: *const Value = &*row;
         cache.bytes += bytes;
@@ -332,7 +334,7 @@ impl Rows {
             let cached = self.cache.borrow().rows.get(&position).map(|(row, _, _)| (**row).clone());
             if let Some(row) = cached {
                 visit(position, &row);
-            } else if let Some((row, _)) = meta.stored.as_deref().and_then(|key| self.read(key)) {
+            } else if let Some(row) = meta.stored.as_deref().and_then(|key| self.read(key)) {
                 visit(position, &row);
             }
         }
@@ -575,7 +577,7 @@ impl Rows {
                 self.cache.get_mut().bytes -= bytes;
                 *row
             }
-            None => self.read(meta.stored.as_deref()?)?.0,
+            None => self.read(meta.stored.as_deref()?)?,
         };
         self.items[position] = row;
         self.meta[position].held = true;
@@ -583,8 +585,8 @@ impl Rows {
     }
 
     /// A row from the file, as the catalog holds rows: its streams packed, fitted to size
-    /// (`catalog::compact`), and the bytes of its text.
-    fn read(&self, key: &str) -> Option<(Value, usize)> {
+    /// (`catalog::compact`).
+    fn read(&self, key: &str) -> Option<Value> {
         let disk = self.disk.as_ref()?;
         #[cfg(test)]
         test_support::DISK_READS.with(|reads| reads.set(reads.get() + 1));
@@ -604,14 +606,14 @@ impl Rows {
             .and_then(|mut statement| {
                 statement.query_row(rusqlite::params![COLLECTION, key], |found| {
                     let text = found.get_ref(0)?.as_str()?;
-                    Ok(serde_json::from_str::<Value>(text).map(|row| (row, text.len())))
+                    Ok(serde_json::from_str::<Value>(text))
                 })
             });
         match read {
-            Ok(Ok((mut row, bytes))) => {
+            Ok(Ok(mut row)) => {
                 crate::catalog::pack_streams(&mut row);
                 crate::catalog::compact(&mut row);
-                Some((row, bytes * 3))
+                Some(row)
             }
             Ok(Err(error)) => {
                 log_error(&format!("rows: row {key} unreadable: {error}"));
@@ -622,6 +624,39 @@ impl Rows {
                 None
             }
         }
+    }
+}
+
+/// What a row read from the file holds in the cache: its box and everything under it. Three
+/// times its text was the guess: `catalog_ui.json`'s movie holds 5.0 times its text and its
+/// episode 3.6, every key, string and list an allocation and every map an index besides its
+/// entries, while a film of 34 streams, packed into one string, holds 1.8. The guess counted
+/// 40% and 18% short and 63% over (`the_row_cache_counts_the_memory_a_row_holds`).
+fn held(row: &Value) -> usize {
+    std::mem::size_of::<Value>() + heap(row)
+}
+
+/// The heap under `value` as `compact` leaves it, at exactly its size. A map is serde_json's
+/// `preserve_order` one: indexmap's entries (a hash, the key, the value) and hashbrown's index
+/// of them (a `usize` and a control byte a bucket, and one group's width more).
+fn heap(value: &Value) -> usize {
+    const VALUE: usize = std::mem::size_of::<Value>();
+    const ENTRY: usize = std::mem::size_of::<(u64, String, Value)>();
+    const GROUP: usize = if cfg!(any(target_arch = "x86", target_arch = "x86_64")) { 16 } else { 8 };
+    match value {
+        Value::String(text) => text.capacity(),
+        Value::Array(values) => values.capacity() * VALUE + values.iter().map(heap).sum::<usize>(),
+        Value::Object(object) if !object.is_empty() => {
+            // `Map` shows no capacity: `compact` collects each into one of exactly its length.
+            let buckets = match object.len() {
+                1..=3 => 4,
+                4..=7 => 8,
+                8..=14 => 16,
+                len => (len * 8 / 7).next_power_of_two(),
+            };
+            object.len() * ENTRY + buckets * 9 + GROUP + object.iter().map(|(key, value)| key.capacity() + heap(value)).sum::<usize>()
+        }
+        _ => 0,
     }
 }
 
@@ -962,5 +997,76 @@ mod listed_tests {
         let expected = serde_json::json!({"ratingKey":"7","Genre":[{"tag":"Drama"}],
             "Media":[{"id":1,"Part":[{"id":2,"Rating":"kept below the top"}]}]});
         assert_eq!(super::listed(text), Some(expected));
+    }
+}
+
+#[cfg(test)]
+mod budget_tests {
+    use std::alloc::{GlobalAlloc, Layout, System};
+    use std::cell::Cell;
+
+    use serde_json::{json, Value};
+
+    use super::test_support::{key_of, save};
+    use crate::catalog::Catalog;
+
+    thread_local! {
+        /// Bytes this thread allocated and has not freed.
+        static LIVE: Cell<isize> = const { Cell::new(0) };
+    }
+
+    struct Counting;
+
+    // SAFETY: `System` does the allocating; this only counts.
+    unsafe impl GlobalAlloc for Counting {
+        unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+            let _ = LIVE.try_with(|live| live.set(live.get() + layout.size() as isize));
+            unsafe { System.alloc(layout) }
+        }
+        unsafe fn dealloc(&self, pointer: *mut u8, layout: Layout) {
+            let _ = LIVE.try_with(|live| live.set(live.get() - layout.size() as isize));
+            unsafe { System.dealloc(pointer, layout) }
+        }
+    }
+
+    #[global_allocator]
+    static COUNTING: Counting = Counting;
+
+    /// The cache counts what a row read from the file holds in memory, as the allocator counts it.
+    #[test]
+    fn the_row_cache_counts_the_memory_a_row_holds() {
+        let fixture: Value = serde_json::from_str(include_str!("../../tests/catalog_ui.json")).unwrap();
+        // A movie and an episode, each with its Media, Part and Streams, and a film of 34 streams.
+        let keys = ["1007", "1001", "1012"];
+        let items: Vec<Value> = fixture["items"].as_array().unwrap().iter().filter(|row| key_of(row).is_some_and(|key| keys.contains(&key.as_str()))).cloned().collect();
+        assert_eq!(items.len(), keys.len());
+        let directory = std::env::temp_dir().join(format!("rex-rows-held-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&directory);
+        std::fs::create_dir_all(&directory).unwrap();
+        let path = directory.join("rex.db");
+        let mut catalog = Catalog::from_value(json!({"items": items})).unwrap();
+        catalog.attach(&path, key_of, false);
+        save(&mut catalog, &mut crate::store::Cache::default(), &path, true);
+        let db = rusqlite::Connection::open(&path).unwrap();
+        let mut rows = super::Rows::on_disk(&path);
+        for (position, key) in keys.iter().enumerate() {
+            let text: String = db.query_row("SELECT body FROM row WHERE coll = ?1 AND key = ?2", rusqlite::params![super::COLLECTION, key], |found| found.get(0)).unwrap();
+            // What `read` does, and the box the cache keeps it in.
+            let before = LIVE.with(Cell::get);
+            let mut row: Value = serde_json::from_str(&text).unwrap();
+            crate::catalog::pack_streams(&mut row);
+            crate::catalog::compact(&mut row);
+            let row = Box::new(row);
+            let truth = (LIVE.with(Cell::get) - before) as usize;
+            drop(row);
+            rows.push_stored(key);
+            let counted = rows.cache.borrow().bytes;
+            assert!(rows.get(position).is_some());
+            let counted = rows.cache.borrow().bytes - counted;
+            eprintln!("row {key}: text {} bytes, counted {counted}, holds {truth} ({:.2}x its text)", text.len(), truth as f64 / text.len() as f64);
+            assert!(counted.abs_diff(truth) * 10 <= truth, "row {key}: counted {counted} bytes, holds {truth}");
+            assert!(truth * 2 > text.len() * 3, "row {key}: {truth} bytes held for {} of text", text.len());
+        }
+        let _ = std::fs::remove_dir_all(directory);
     }
 }
