@@ -52,6 +52,8 @@ git clone https://github.com/debridmediamanager/rex && cd rex
 cargo build --release --manifest-path rust/Cargo.toml       # -> rust/target/release/rex
 ```
 
+A checkout runs `rust/target/release/rex` wherever this guide says `./rex`.
+
 Without a Rust toolchain on the host, build in Docker. The binary runs on any Linux of the
 same architecture with glibc 2.31 (Debian 11's) or newer:
 
@@ -129,7 +131,7 @@ restores them.
 ### 4. First start, on your LAN
 
 ```bash
-rust/target/release/rex
+./rex
 ```
 
 `<rex's LAN IP>` below is the rex machine's address on your home network, such as `192.168.1.20`
@@ -337,7 +339,7 @@ After=network-online.target
 [Service]
 WorkingDirectory=%h/rex
 EnvironmentFile=-%h/rex/rex.env
-ExecStart=%h/rex/rust/target/release/rex
+ExecStart=%h/rex/rex
 Restart=always
 RestartSec=5
 
@@ -345,7 +347,7 @@ RestartSec=5
 WantedBy=default.target
 ```
 
-On macOS, copy `examples/run.sh.example` to `run.sh` beside `rust/`: it is the same command as a
+On macOS, copy `examples/run.sh.example` to `run.sh` beside `rex`: it is the same command as a
 script that starts rex in its own folder and loads `rex.env`, so step 7's flags go on its last line.
 A LaunchAgent runs it whenever you log in. In rex's folder, with absolute log paths (relative ones
 make the job exit 78 without a log):
@@ -370,7 +372,7 @@ launchctl load ~/Library/LaunchAgents/com.rex.plist
 `rex manager` (below).
 
 rex never updates itself. To update a release, unpack the newer archive with `--strip-components=1` in the same
-folder and restart rex. It replaces `rust/`, `data/`, `examples/` and the docs, and leaves
+folder and restart rex. It replaces the program, `data/`, `examples/` and the docs, and leaves
 `rex.db`, `rex.env`, `run.sh`, `claim_state.json` and `rex-direct.json` alone. A checkout
 updates with `git pull` and the build in step 1. In Docker, `docker compose pull &&
 docker compose up -d`.
@@ -388,7 +390,7 @@ single-use claim token); the log still names your titles and addresses, so keep 
   source at the new LAN IP (zurg's `rex_url`), and move the port forward; the rex-direct name
   stays and follows the new public IP.
 - **Which build:** rex has no version command. The nightly's date is in its download's name and
-  is the binary's file date (`ls -l rust/target/release/rex`). The Plex version apps show is the
+  is the binary's file date (`ls -l rex`). The Plex version apps show is the
   current Plex Media Server's, which rex reports on purpose so the apps treat it as up to date.
 - **Start over:** `DELETE /rex/sources/<name>` (step 2) and a restart of the source refills its
   items, dropping their watch state. From nothing: stop rex, delete `rex.db*`,
@@ -402,8 +404,8 @@ single-use claim token); the log still names your titles and addresses, so keep 
 
 ### Windows
 
-The Windows build is `rust\target\release\rex.exe` in the zip, and every step above works
-the same in PowerShell with `rust\target\release\rex.exe` for `rust/target/release/rex`,
+The Windows build is `rex.exe` in the zip, and every step above works
+the same in PowerShell with `.\rex.exe` for `./rex`,
 and `curl.exe` for `curl`. Four things differ:
 
 - Windows Firewall keeps your network out of rex, so other machines can neither reach it nor
@@ -413,7 +415,7 @@ and `curl.exe` for `curl`. Four things differ:
   `New-NetFirewallRule -DisplayName "rex discovery" -Protocol UDP -LocalPort 32410,32414`.
   If Windows ever asked whether to allow rex and you clicked **Cancel**, it saved a rule that
   blocks rex and wins over the port rules. Remove it, as administrator:
-  `Get-NetFirewallApplicationFilter -Program "$HOME\rex\rust\target\release\rex.exe" | Get-NetFirewallRule | Where-Object Action -eq Block | Remove-NetFirewallRule`
+  `Get-NetFirewallApplicationFilter -Program "$HOME\rex\rex.exe" | Get-NetFirewallRule | Where-Object Action -eq Block | Remove-NetFirewallRule`
   (with rex elsewhere, its own path).
 - `examples/run.sh.example` and `rex manager` are Linux and macOS only. To keep rex running, put
   its command in `run.cmd` in rex's folder, which starts it there (rex makes `rex.db` in the
@@ -423,7 +425,7 @@ and `curl.exe` for `curl`. Four things differ:
   ```bat
   @echo off
   cd /d "%~dp0"
-  rust\target\release\rex.exe 2>> rex.log
+  rex.exe 2>> rex.log
   ```
 
   Then, in PowerShell as administrator and with rex in `$HOME\rex`, have it start at logon with no time limit, on battery too:
@@ -502,10 +504,10 @@ is restarted with a backoff, and one that keeps dying is marked failed. Whatever
 running when the manager stopped is running again when it starts.
 
 ```bash
-rust/target/release/rex manager serve                     # API + page on http://127.0.0.1:32300; prints the admin token once
-rust/target/release/rex manager create den --port 32401   # a source fills it once pointed at this port
-rust/target/release/rex manager start den                 # its first start makes its empty library, as a plain rex does
-rust/target/release/rex manager list                      # status | logs | stop | restart | delete [--purge]
+./rex manager serve                     # API + page on http://127.0.0.1:32300; prints the admin token once
+./rex manager create den --port 32401   # a source fills it once pointed at this port
+./rex manager start den                 # its first start makes its empty library, as a plain rex does
+./rex manager list                      # status | logs | stop | restart | delete [--purge]
 ```
 
 Each server gets `managed/servers/<name>/`, whose `rex.db` holds its catalog and its state. `http://127.0.0.1:32300/` is a small page for the same operations (paste
@@ -522,7 +524,7 @@ Run the manager itself under the init system, so it outlives any shell. macOS (l
 <plist version="1.0"><dict>
   <key>Label</key><string>com.rex.manager</string>
   <key>ProgramArguments</key><array>
-    <string>/path/to/rex/rust/target/release/rex</string><string>manager</string><string>serve</string>
+    <string>/path/to/rex/rex</string><string>manager</string><string>serve</string>
   </array>
   <key>RunAtLoad</key><true/><key>KeepAlive</key><true/>
   <key>StandardOutPath</key><string>/path/to/rex/managed.log</string>
@@ -541,7 +543,7 @@ After=network-online.target
 [Service]
 User=youruser
 WorkingDirectory=/path/to/rex
-ExecStart=/path/to/rex/rust/target/release/rex manager serve
+ExecStart=/path/to/rex/rex manager serve
 KillMode=mixed
 TimeoutStopSec=60
 Restart=on-failure

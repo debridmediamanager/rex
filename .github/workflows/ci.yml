@@ -392,9 +392,11 @@ jobs:
             exit 1
           fi
 
-      # Each archive keeps the repository's layout, so `rex manager`, run.sh and every
-      # command in the docs find the binary at rust/target/release/rex either way. The
-      # measured sidecars in data/ are compiled into the binary; rex reads none of them here.
+      # The binary sits at the top of each archive, so the docs start it as `./rex`. Releases
+      # before 2026-11-01 kept it at rust/target/release/rex and the update steps unpack over
+      # the old folder: that path stays, a link to the new binary (a copy in the Windows zip,
+      # where a scheduled task names it), so a service set up then runs the update and not
+      # the binary left behind. The measured sidecars in data/ are compiled into the binary.
       - name: Package
         run: |
           set -e
@@ -402,7 +404,13 @@ jobs:
             name="rex-${TAG}-${platform}"
             binary=rex; [ "$platform" = windows-amd64 ] && binary=rex.exe
             mkdir -p "$name/rust/target/release"
-            install -m 755 "artifacts/rex-$platform/$binary" "$name/rust/target/release/$binary"
+            install -m 755 "artifacts/rex-$platform/$binary" "$name/$binary"
+            if [ "$platform" = windows-amd64 ]; then
+              cp "$name/$binary" "$name/rust/target/release/$binary"
+            else
+              ln -s ../../../rex "$name/rust/target/release/rex"
+            fi
+            test -x "$name/rust/target/release/$binary"
             git ls-files -z -- data examples \
                 README.md LICENSE docs/setup.md docs/feed-api.md \
               | xargs -0 cp --parents -t "$name"

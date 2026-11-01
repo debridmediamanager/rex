@@ -45,7 +45,7 @@ jobs:
           for arch in amd64 arm64; do
             mkdir -p "dist/$arch"
             tar xzf "rex-$TAG-linux-$arch.tar.gz" -C "dist/$arch" --strip-components=1
-            test -x "dist/$arch/rust/target/release/rex"
+            test -x "dist/$arch/rex"
           done
 
       - uses: docker/setup-qemu-action@v3

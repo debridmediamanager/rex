@@ -20,7 +20,7 @@ RUN apt-get update \
  && apt-get purge -y curl && apt-get autoremove -y \
  && rm -rf /var/lib/apt/lists/* /tmp/jellyfin-ffmpeg.deb
 
-# The release layout: rust/target/release/rex (its data/ compiled in), while the catalog, its
+# The release layout: /rex/rex (its data/ compiled in), while the catalog, its
 # state and claim_state.json live in /config.
 COPY dist/${TARGETARCH}/ /rex/
 COPY entrypoint.sh /rex/entrypoint.sh
