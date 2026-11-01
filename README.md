@@ -53,7 +53,7 @@ In short:
 2. **Start it.** It makes an empty Movies and an empty TV Shows library.
 3. **Claim it** with a code from [plex.tv/claim](https://www.plex.tv/claim) on a fresh free Plex account, and share it with your own. At your own risk: rex is not made by Plex, and Plex could act against the account that claims it.
 4. **Point a source at it.** Give it `http://<rex's LAN IP>:32400` and it registers itself: for zurg that is `rex_url` in its `config.yml`, for rex-stremio **rex's address** on its settings page, for your own app the [feed API](docs/feed-api.md).
-5. **Forward port 32400** to rex. rex-direct then gives it an HTTPS address of its own, for use away from home and in app.plex.tv, which needs HTTPS even at home. [Check it](docs/setup.md#7-reach-it-from-outside-https-and-the-announce) from home and from a phone off Wi-Fi.
+5. **Forward port 32400** to rex to watch away from home. rex-direct gives rex an HTTPS address for that, and one for home that app.plex.tv uses with no port forward. [Check them](docs/setup.md#7-reach-it-from-outside-https-and-the-announce) from home and from a phone off Wi-Fi.
 
 You need rex nightly 2026.10.25 or newer and, for zurg, zurg nightly 2026.10.27 or newer (a sponsor build. [gatekeeper](https://gatekeeper.debridmediamanager.com/) gives your GitHub account access). [docs/setup.md](docs/setup.md) has every command, Windows, Docker, running it as a service, updates and a troubleshooting table.
 
