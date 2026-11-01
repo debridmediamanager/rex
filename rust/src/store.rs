@@ -182,8 +182,7 @@ fn read_prefix(
                         crate::catalog::pack_streams(&mut value);
                         crate::catalog::compact(&mut value);
                     }
-                    collection.rows.insert(key.clone(), (pos, hash_text(&body)));
-                    collection.order.push(key.clone());
+                    collection.rows.insert(key.as_str().into(), (pos, hash_text(&body)));
                     if field == "items" {
                         if let Some(visit) = items.as_mut() {
                             visit(&key, value);
@@ -431,13 +430,24 @@ impl Kind {
 
 #[derive(Debug, Default, Clone)]
 struct Collection {
-    /// key -> (pos, hash of the stored body)
-    rows: HashMap<String, (f64, u64)>,
-    order: Vec<String>,
+    /// key -> (pos, hash of the stored body), each key held once. A second copy of every key
+    /// in pos order, read only for the last pos and which rows went, and `String`'s capacity
+    /// word were half this cache: 114 bytes a key, ~20 MB of fun's 285 MB idle heap for its
+    /// 44,644 rows, 52,439 `deleted` and 52,387 `retiredKeys` (heaptrack, 2026-11-01).
+    rows: HashMap<Box<str>, (f64, u64)>,
     /// Hash of the whole field as `diff` last wrote it; 0 when unknown or written by member.
     /// Every save re-keyed and compared each element of every field -- 22,432 `deleted` and
     /// 22,380 `retiredKeys` on the production server (2026-10-16) -- for each progress beat.
     whole: u64,
+}
+
+impl Collection {
+    /// Where a new member or an appended row goes: past every stored row, which is the last
+    /// one, since every pass leaves positions rising in the rows' order. A scan, so only a
+    /// save that adds a row pays it.
+    fn next_pos(&self) -> f64 {
+        self.rows.values().map(|(pos, _)| *pos).reduce(f64::max).map_or(0.0, |pos| pos + 1.0)
+    }
 }
 
 /// What the database holds, as of the last snapshot: the next one writes the difference.
@@ -615,43 +625,39 @@ impl Cache {
         let mut delta = Delta::default();
         let collection = self.collections.get_mut(field).expect("checked above");
         collection.whole = 0;
-        // Every pass leaves `order` in position order, and a new member goes last.
-        let mut next = collection
-            .order
-            .last()
-            .and_then(|key| collection.rows.get(key))
-            .map_or(0.0, |(pos, _)| pos + 1.0);
+        // A new member goes past every member stored before this save, those it removes
+        // included: they leave the cache after the loop.
+        let mut next = None;
         let mut keys: Vec<&String> = changed.iter().collect();
         keys.sort();
-        let mut gone = HashSet::new();
+        let mut gone = Vec::new();
         for key in keys {
-            match (collection.rows.get(key).copied(), get(key)) {
+            match (collection.rows.get(key.as_str()).copied(), get(key)) {
                 (Some((pos, hash)), Some(member)) => {
                     let body = member.to_string();
                     let new_hash = hash_text(&body);
                     if new_hash != hash {
-                        collection.rows.insert(key.clone(), (pos, new_hash));
+                        collection.rows.insert(key.as_str().into(), (pos, new_hash));
                         delta.ops.push(Op::Put { coll: name.clone(), key: key.clone(), pos, body });
                     }
                 }
                 // A member's position only orders the rows read back into a map.
                 (None, Some(member)) => {
+                    let pos = next.unwrap_or_else(|| collection.next_pos());
                     let body = member.to_string();
-                    collection.rows.insert(key.clone(), (next, hash_text(&body)));
-                    collection.order.push(key.clone());
-                    delta.ops.push(Op::Put { coll: name.clone(), key: key.clone(), pos: next, body });
-                    next += 1.0;
+                    collection.rows.insert(key.as_str().into(), (pos, hash_text(&body)));
+                    delta.ops.push(Op::Put { coll: name.clone(), key: key.clone(), pos, body });
+                    next = Some(pos + 1.0);
                 }
                 (Some(_), None) => {
-                    collection.rows.remove(key);
-                    gone.insert(key.clone());
+                    gone.push(key);
                     delta.ops.push(Op::Delete { coll: name.clone(), key: key.clone() });
                 }
                 (None, None) => {}
             }
         }
-        if !gone.is_empty() {
-            collection.order.retain(|key| !gone.contains(key));
+        for key in gone {
+            collection.rows.remove(key.as_str());
         }
         delta
     }
@@ -684,7 +690,7 @@ impl Cache {
             let mut appended = Vec::new();
             let mut gone = Vec::new();
             for key in changed {
-                match (collection.rows.get(key).copied(), get(key)) {
+                match (collection.rows.get(key.as_str()).copied(), get(key)) {
                     (Some((pos, hash)), Some(row)) => {
                         let body = crate::catalog::unpacked(row).to_string();
                         let new_hash = hash_text(&body);
@@ -712,7 +718,7 @@ impl Cache {
             // which is only true when each sits past every row already stored, so
             // anything else (a row inserted in the middle) takes the full pass.
             appended.sort_by_key(|(at, _, _)| *at);
-            let stored = collection.order.len() - gone.len();
+            let stored = collection.rows.len() - gone.len();
             if appended
                 .iter()
                 .enumerate()
@@ -722,28 +728,21 @@ impl Cache {
             }
             if complete {
                 for (key, pos, hash, body) in puts {
-                    collection.rows.insert(key.clone(), (pos, hash));
+                    collection.rows.insert(key.as_str().into(), (pos, hash));
                     delta.ops.push(Op::Put { coll: name.clone(), key, pos, body });
                 }
-                if !gone.is_empty() {
-                    let gone_set: HashSet<&String> = gone.iter().collect();
-                    collection.order.retain(|key| !gone_set.contains(key));
-                    for key in gone {
-                        collection.rows.remove(&key);
-                        delta.ops.push(Op::Delete { coll: name.clone(), key });
-                    }
+                for key in gone {
+                    collection.rows.remove(key.as_str());
+                    delta.ops.push(Op::Delete { coll: name.clone(), key });
                 }
-                let mut next = collection
-                    .order
-                    .last()
-                    .and_then(|key| collection.rows.get(key))
-                    .map_or(0.0, |(pos, _)| pos + 1.0);
-                for (_, key, row) in appended {
-                    let body = crate::catalog::unpacked(row).to_string();
-                    collection.rows.insert(key.clone(), (next, hash_text(&body)));
-                    collection.order.push(key.clone());
-                    delta.ops.push(Op::Put { coll: name.clone(), key, pos: next, body });
-                    next += 1.0;
+                if !appended.is_empty() {
+                    let mut next = collection.next_pos();
+                    for (_, key, row) in appended {
+                        let body = crate::catalog::unpacked(row).to_string();
+                        collection.rows.insert(key.as_str().into(), (next, hash_text(&body)));
+                        delta.ops.push(Op::Put { coll: name.clone(), key, pos: next, body });
+                        next += 1.0;
+                    }
                 }
                 return delta;
             }
@@ -788,11 +787,11 @@ fn diff_collection(
     delta: &mut Delta,
 ) {
     let present: HashSet<&str> = entries.iter().map(|(key, _)| key.as_str()).collect();
-    for key in &collection.order {
-        if !present.contains(key.as_str()) {
+    for key in collection.rows.keys() {
+        if !present.contains(&**key) {
             delta.ops.push(Op::Delete {
                 coll: name.to_string(),
-                key: key.clone(),
+                key: key.to_string(),
             });
         }
     }
@@ -801,7 +800,7 @@ fn diff_collection(
     // gap worn too thin) every row is renumbered.
     let retained: Vec<Option<f64>> = entries
         .iter()
-        .map(|(key, _)| collection.rows.get(key).map(|(pos, _)| *pos))
+        .map(|(key, _)| collection.rows.get(key.as_str()).map(|(pos, _)| *pos))
         .collect();
     let mut positions = vec![0f64; entries.len()];
     let mut ordered = retained
@@ -841,10 +840,9 @@ fn diff_collection(
         positions = (0..entries.len()).map(|index| index as f64).collect();
     }
     let mut rows = HashMap::with_capacity(entries.len());
-    let mut order = Vec::with_capacity(entries.len());
     for ((key, body), pos) in entries.into_iter().zip(positions) {
         let hash = hash_text(&body);
-        match collection.rows.get(&key) {
+        match collection.rows.get(key.as_str()) {
             Some((was_pos, was_hash)) if *was_hash == hash => {
                 if *was_pos != pos {
                     delta.ops.push(Op::Move {
@@ -861,11 +859,9 @@ fn diff_collection(
                 body,
             }),
         }
-        rows.insert(key.clone(), (pos, hash));
-        order.push(key);
+        rows.insert(key.into_boxed_str(), (pos, hash));
     }
     collection.rows = rows;
-    collection.order = order;
 }
 
 fn apply(connection: &mut Connection, deltas: &[Delta]) -> Result<(), String> {
@@ -1203,6 +1199,102 @@ mod tests {
 
     fn items_after(items: &[Value]) -> Vec<Value> {
         items.iter().rev().cloned().collect()
+    }
+
+    /// A new member goes past every member stored before the save, the last one included
+    /// when the same save removes it.
+    #[test]
+    fn a_new_member_goes_past_the_last_even_one_removed_with_it() {
+        let mut cache = Cache::default();
+        let mut held: Map<String, Value> = (0..3).map(|n| (format!("k{n}"), json!(n))).collect();
+        let all = held.clone();
+        assert_eq!(cache.diff_members("feedHeld", &HashSet::new(), |_| None, || all).len(), 4);
+        held.remove("k2");
+        held.insert("k3".to_string(), json!(3));
+        let changed: HashSet<String> = ["k2".to_string(), "k3".to_string()].into();
+        let delta = cache.diff_members("feedHeld", &changed, |key| held.get(key), Map::new);
+        assert!(
+            matches!(&delta.ops[..], [Op::Delete { key: gone, .. }, Op::Put { key, pos, .. }]
+                if gone == "k2" && key == "k3" && *pos == 3.0),
+            "{delta:?}"
+        );
+    }
+
+    use std::alloc::{GlobalAlloc, Layout, System};
+
+    /// The test binary's allocator, counting what each thread holds, so a test weighs what
+    /// a call keeps; the other tests allocate on threads of their own.
+    struct Counting;
+
+    thread_local! {
+        static HELD: std::cell::Cell<isize> = const { std::cell::Cell::new(0) };
+    }
+
+    fn count(bytes: isize) {
+        let _ = HELD.try_with(|held| held.set(held.get() + bytes));
+    }
+
+    unsafe impl GlobalAlloc for Counting {
+        unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+            let ptr = System.alloc(layout);
+            if !ptr.is_null() {
+                count(layout.size() as isize);
+            }
+            ptr
+        }
+        unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
+            let ptr = System.alloc_zeroed(layout);
+            if !ptr.is_null() {
+                count(layout.size() as isize);
+            }
+            ptr
+        }
+        unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+            System.dealloc(ptr, layout);
+            count(-(layout.size() as isize));
+        }
+        unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, size: usize) -> *mut u8 {
+            let moved = System.realloc(ptr, layout, size);
+            if !moved.is_null() {
+                count(size as isize - layout.size() as isize);
+            }
+            moved
+        }
+    }
+
+    #[global_allocator]
+    static COUNTING: Counting = Counting;
+
+    /// What a start keeps to diff the next save against, for the shape of fun's `rex.db`:
+    /// 44,644 rows keyed by ratingKey, 52,439 `deleted` and 52,387 `retiredKeys`, each of
+    /// those an array element keyed by its content hash (heaptrack, 2026-11-01). It was 114
+    /// bytes a key with each key held twice, 57 once; as requested, so malloc's rounding of
+    /// each key's own allocation comes on top (jemalloc's: ~135 and ~67).
+    #[test]
+    fn the_save_cache_is_small_per_key() {
+        let dir = std::env::temp_dir().join(format!("rex-store-weight-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("rex.db");
+        let rows: Vec<Value> = (0..44_644).map(|n| json!({"ratingKey": (100_000 + n).to_string()})).collect();
+        let deleted: Vec<Value> = (0..52_439).map(|n| json!((200_000 + n).to_string())).collect();
+        let retired: Vec<Value> = (0..52_387).map(|n| json!(300_000 + n)).collect();
+        let keys = rows.len() + deleted.len() + retired.len();
+        let saved = state(json!({"format": 1, "deleted": deleted, "retiredKeys": retired}));
+        let mut cache = write_fresh(&path, &saved).unwrap();
+        let key = |row: &Value| row.get("ratingKey").and_then(Value::as_str).map(str::to_string);
+        let first = cache.diff_rows("items", &each(&rows), None, key, |_| None, |_| None);
+        apply(&mut open(&path).unwrap(), &[first]).unwrap();
+        drop((cache, rows, saved));
+        let before = HELD.with(std::cell::Cell::get);
+        let cache = match read_state_with(&path, Some(&mut |_: &str, _: Value| {})).unwrap() {
+            Saved::Database(_, cache) => cache,
+            _ => panic!("not read back"),
+        };
+        let per_key = (HELD.with(std::cell::Cell::get) - before) as usize / keys;
+        drop(cache);
+        let _ = fs::remove_dir_all(&dir);
+        assert!(per_key < 60, "{per_key} bytes a key");
     }
 
     #[test]
