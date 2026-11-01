@@ -6,15 +6,16 @@
 //! out the first time a response shows the row, on a thread of its own and never under the
 //! runtime lock, so a listing never waits: until the image is read the row answers as plexav's
 //! unanalysed one. Each answer is kept by the artwork's versioned path (`/library/metadata/{id}/
-//! thumb/{stamp}`, re-minted whenever the artwork changes) in `blur_cache.db` beside the state
-//! file, and all of it is read back into memory on start.
+//! thumb/{stamp}`, re-minted whenever the artwork changes) in table `blur_cache` of the state
+//! database (`blur_cache.db` beside a JSON state file), and all of it is read back into memory
+//! when the worker starts.
 
 use super::diskcache::DiskCache;
 use super::{transcoder, Runtime, SharedRuntime};
 use serde_json::{json, Map, Value};
 use std::collections::{HashMap, HashSet, VecDeque};
-use std::path::Path;
-use std::sync::{Arc, Condvar, Mutex, PoisonError, Weak};
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, Condvar, Mutex, OnceLock, PoisonError, Weak};
 use std::time::Duration;
 
 /// One image's analysis: its BlurHash and its four corner colours (topLeft, topRight,
@@ -62,20 +63,24 @@ pub(super) struct Blurs {
     known: Mutex<HashMap<String, Option<Arc<Analysis>>>>,
     lane: Mutex<Lane>,
     wake: Condvar,
-    disk: Option<DiskCache>,
+    /// The state file, and the cache opened from it by the worker, after the state is loaded.
+    state: Option<PathBuf>,
+    disk: OnceLock<Option<DiskCache>>,
     /// `REX_ARTWORK_ANALYSIS=off`: no listing shows either field rex works out (the test servers
     /// `tests/server_command.py` starts, whose answers must not change between two reads).
     enabled: bool,
 }
 
 impl Blurs {
-    /// Kept beside the state file; with `--no-state` in memory only, as the rest of the state.
+    /// Kept in the state database (a table of its own), or beside a JSON state file; with
+    /// `--no-state` in memory only, as the rest of the state.
     pub(super) fn new(state: Option<&Path>) -> Arc<Self> {
         Arc::new(Self {
             known: Mutex::new(HashMap::new()),
             lane: Mutex::new(Lane::default()),
             wake: Condvar::new(),
-            disk: state.map(|state| DiskCache::open(&state.with_file_name("blur_cache.json"))),
+            state: state.map(Path::to_path_buf),
+            disk: OnceLock::new(),
             enabled: std::env::var("REX_ARTWORK_ANALYSIS").map_or(true, |value| value != "off"),
         })
     }
@@ -99,8 +104,20 @@ impl Blurs {
         self.known.lock().unwrap_or_else(PoisonError::into_inner).get(path).cloned().flatten()
     }
 
+    fn disk(&self) -> Option<&DiskCache> {
+        self.disk
+            .get_or_init(|| {
+                // A database catalog keeps everything in its one file (tests/test_sqlite_store.py).
+                self.state.as_deref().map(|state| match crate::store::is_sqlite(state) {
+                    true => DiskCache::open_table(state, "blur_cache"),
+                    false => DiskCache::open(&state.with_file_name("blur_cache.json")),
+                })
+            })
+            .as_ref()
+    }
+
     fn remember(&self, path: String, analysis: Option<Analysis>) {
-        if let (Some(disk), Some(analysis)) = (&self.disk, &analysis) {
+        if let (Some(disk), Some(analysis)) = (self.disk(), &analysis) {
             disk.put(&path, &json!({"hash": analysis.hash, "colors": analysis.colors}));
         }
         self.known.lock().unwrap_or_else(PoisonError::into_inner).insert(path, analysis.map(Arc::new));
@@ -130,7 +147,7 @@ enum Target {
 }
 
 fn worker(shared: Weak<Mutex<Runtime>>, blurs: Arc<Blurs>) {
-    if let Some(disk) = &blurs.disk {
+    if let Some(disk) = blurs.disk() {
         let restored = disk.all();
         let mut known = blurs.known.lock().unwrap_or_else(PoisonError::into_inner);
         for (path, value) in restored {

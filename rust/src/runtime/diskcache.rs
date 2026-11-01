@@ -21,6 +21,7 @@ use std::sync::Mutex;
 
 pub(super) struct DiskCache {
     path: PathBuf,
+    table: &'static str,
     connection: Option<Mutex<Connection>>,
 }
 
@@ -30,21 +31,27 @@ impl DiskCache {
     pub(super) fn open(json_path: &Path) -> Self {
         let path = json_path.with_extension("db");
         let fresh = !path.exists();
-        let connection = Connection::open(&path)
-            .and_then(|connection| {
-                // A lost answer is fetched again, so a crash may drop the last commits.
-                connection.execute_batch(
-                    "PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA busy_timeout=10000;
-                     CREATE TABLE IF NOT EXISTS cache (key TEXT PRIMARY KEY, value TEXT NOT NULL);",
-                )?;
-                Ok(connection)
-            })
-            .ok();
-        let cache = Self { path, connection: connection.map(Mutex::new) };
+        let cache = Self::open_table(&path, "cache");
         if fresh {
             cache.import(json_path);
         }
         cache
+    }
+
+    /// The cache as table `table` of the database at `path`, which may hold other tables (the
+    /// state database, so a database catalog stays one file).
+    pub(super) fn open_table(path: &Path, table: &'static str) -> Self {
+        let connection = Connection::open(path)
+            .and_then(|connection| {
+                // A lost answer is fetched again, so a crash may drop the last commits.
+                connection.execute_batch(&format!(
+                    "PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA busy_timeout=10000;
+                     CREATE TABLE IF NOT EXISTS {table} (key TEXT PRIMARY KEY, value TEXT NOT NULL);"
+                ))?;
+                Ok(connection)
+            })
+            .ok();
+        Self { path: path.to_path_buf(), table, connection: connection.map(Mutex::new) }
     }
 
     fn import(&self, json_path: &Path) {
@@ -59,7 +66,7 @@ impl DiskCache {
         let imported = connection.transaction().and_then(|transaction| {
             {
                 let mut insert =
-                    transaction.prepare("INSERT OR REPLACE INTO cache (key, value) VALUES (?1, ?2)")?;
+                    transaction.prepare(&format!("INSERT OR REPLACE INTO {} (key, value) VALUES (?1, ?2)", self.table))?;
                 for (key, value) in &legacy {
                     insert.execute(params![key, value.to_string()])?;
                 }
@@ -75,7 +82,7 @@ impl DiskCache {
     pub(super) fn get(&self, key: &str) -> Option<Value> {
         let connection = self.connection.as_ref()?.lock().ok()?;
         let text: Option<String> = connection
-            .query_row("SELECT value FROM cache WHERE key = ?1", params![key], |row| row.get(0))
+            .query_row(&format!("SELECT value FROM {} WHERE key = ?1", self.table), params![key], |row| row.get(0))
             .optional()
             .ok()?;
         serde_json::from_str(&text?).ok()
@@ -85,7 +92,7 @@ impl DiskCache {
     pub(super) fn all(&self) -> Vec<(String, Value)> {
         let Some(connection) = &self.connection else { return Vec::new() };
         let Ok(connection) = connection.lock() else { return Vec::new() };
-        let Ok(mut select) = connection.prepare("SELECT key, value FROM cache") else { return Vec::new() };
+        let Ok(mut select) = connection.prepare(&format!("SELECT key, value FROM {}", self.table)) else { return Vec::new() };
         let rows = select.query_map([], |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)));
         rows.map(|rows| rows.flatten().filter_map(|(key, text)| Some((key, serde_json::from_str(&text).ok()?))).collect())
             .unwrap_or_default()
@@ -95,7 +102,7 @@ impl DiskCache {
         let Some(connection) = &self.connection else { return };
         let Ok(connection) = connection.lock() else { return };
         if let Err(error) = connection.execute(
-            "INSERT OR REPLACE INTO cache (key, value) VALUES (?1, ?2)",
+            &format!("INSERT OR REPLACE INTO {} (key, value) VALUES (?1, ?2)", self.table),
             params![key, value.to_string()],
         ) {
             warning!("{}: {error}", self.path.display());
