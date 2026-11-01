@@ -1,0 +1,588 @@
+{
+ "_provenance": "plexav (PMS 1.43.4, an HDHomeRun and an XMLTV guide, no Plex Pass), 2026-11-01: a managed Home user of its owner, shared every library, asked each request with its share's allowTuners 0 and 1 (plex.tv shared_servers sharing_settings).",
+ "runs": {
+  "allowTuners=0": [
+   {
+    "who": "owner",
+    "method": "GET",
+    "path": "/media/providers",
+    "query": [],
+    "status": 200,
+    "providers": [
+     "com.plexapp.plugins.library",
+     "tv.plex.providers.epg.xmltv:2"
+    ]
+   },
+   {
+    "who": "owner",
+    "method": "GET",
+    "path": "/livetv/dvrs",
+    "query": [],
+    "status": 200
+   },
+   {
+    "who": "owner",
+    "method": "GET",
+    "path": "/livetv/dvrs/2",
+    "query": [],
+    "status": 200
+   },
+   {
+    "who": "owner",
+    "method": "GET",
+    "path": "/livetv/sessions",
+    "query": [],
+    "status": 200
+   },
+   {
+    "who": "owner",
+    "method": "GET",
+    "path": "/tv.plex.providers.epg.xmltv:2/sections",
+    "query": [],
+    "status": 200
+   },
+   {
+    "who": "owner",
+    "method": "GET",
+    "path": "/tv.plex.providers.epg.xmltv:2/lineups/dvr/channels",
+    "query": [],
+    "status": 200
+   },
+   {
+    "who": "owner",
+    "method": "GET",
+    "path": "/tv.plex.providers.epg.xmltv:2/grid",
+    "query": [
+     [
+      "type",
+      "1"
+     ]
+    ],
+    "status": 200
+   },
+   {
+    "who": "owner",
+    "method": "GET",
+    "path": "/tv.plex.providers.epg.xmltv:2/hubs/discover",
+    "query": [],
+    "status": 200,
+    "hubs": [
+     [
+      "today.whatsonnow",
+      3
+     ],
+     [
+      "today.onrightnow",
+      3
+     ],
+     [
+      "today.premierstonight",
+      4
+     ],
+     [
+      "today.upcomingfavorites",
+      1
+     ],
+     [
+      "today.recommended",
+      0
+     ],
+     [
+      "today.whatsonlater",
+      3
+     ],
+     [
+      "today.upcomingsports",
+      0
+     ],
+     [
+      "today.upcomingmovies",
+      5
+     ],
+     [
+      "today.upcomingnews",
+      0
+     ]
+    ]
+   },
+   {
+    "who": "owner",
+    "method": "GET",
+    "path": "/tv.plex.providers.epg.xmltv:2/watchnow",
+    "query": [],
+    "status": 200
+   },
+   {
+    "who": "owner",
+    "method": "GET",
+    "path": "/tv.plex.providers.epg.xmltv:2/hubs/search",
+    "query": [
+     [
+      "query",
+      "Firefly"
+     ]
+    ],
+    "status": 200
+   },
+   {
+    "who": "owner",
+    "method": "GET",
+    "path": "/tv.plex.providers.epg.xmltv:2/library/search",
+    "query": [
+     [
+      "query",
+      "Firefly"
+     ],
+     [
+      "searchTypes",
+      "livetv"
+     ]
+    ],
+    "status": 200
+   },
+   {
+    "who": "owner",
+    "method": "POST",
+    "path": "/livetv/dvrs/2/channels/2.1/tune",
+    "query": [],
+    "status": 200
+   },
+   {
+    "who": "shared",
+    "method": "GET",
+    "path": "/media/providers",
+    "query": [],
+    "status": 200,
+    "providers": [
+     "com.plexapp.plugins.library"
+    ]
+   },
+   {
+    "who": "shared",
+    "method": "GET",
+    "path": "/livetv/dvrs",
+    "query": [],
+    "status": 403
+   },
+   {
+    "who": "shared",
+    "method": "GET",
+    "path": "/livetv/dvrs/2",
+    "query": [],
+    "status": 403
+   },
+   {
+    "who": "shared",
+    "method": "GET",
+    "path": "/livetv/sessions",
+    "query": [],
+    "status": 403
+   },
+   {
+    "who": "shared",
+    "method": "GET",
+    "path": "/tv.plex.providers.epg.xmltv:2/sections",
+    "query": [],
+    "status": 403
+   },
+   {
+    "who": "shared",
+    "method": "GET",
+    "path": "/tv.plex.providers.epg.xmltv:2/lineups/dvr/channels",
+    "query": [],
+    "status": 403
+   },
+   {
+    "who": "shared",
+    "method": "GET",
+    "path": "/tv.plex.providers.epg.xmltv:2/grid",
+    "query": [
+     [
+      "type",
+      "1"
+     ]
+    ],
+    "status": 403
+   },
+   {
+    "who": "shared",
+    "method": "GET",
+    "path": "/tv.plex.providers.epg.xmltv:2/hubs/discover",
+    "query": [],
+    "status": 200,
+    "hubs": [
+     [
+      "today.whatsonnow",
+      3
+     ],
+     [
+      "today.onrightnow",
+      3
+     ],
+     [
+      "today.premierstonight",
+      4
+     ],
+     [
+      "today.upcomingfavorites",
+      0
+     ],
+     [
+      "today.recommended",
+      0
+     ],
+     [
+      "today.whatsonlater",
+      3
+     ],
+     [
+      "today.upcomingsports",
+      0
+     ],
+     [
+      "today.upcomingmovies",
+      5
+     ],
+     [
+      "today.upcomingnews",
+      0
+     ]
+    ]
+   },
+   {
+    "who": "shared",
+    "method": "GET",
+    "path": "/tv.plex.providers.epg.xmltv:2/watchnow",
+    "query": [],
+    "status": 403
+   },
+   {
+    "who": "shared",
+    "method": "GET",
+    "path": "/tv.plex.providers.epg.xmltv:2/hubs/search",
+    "query": [
+     [
+      "query",
+      "Firefly"
+     ]
+    ],
+    "status": 403
+   },
+   {
+    "who": "shared",
+    "method": "GET",
+    "path": "/tv.plex.providers.epg.xmltv:2/library/search",
+    "query": [
+     [
+      "query",
+      "Firefly"
+     ],
+     [
+      "searchTypes",
+      "livetv"
+     ]
+    ],
+    "status": 403
+   },
+   {
+    "who": "shared",
+    "method": "POST",
+    "path": "/livetv/dvrs/2/channels/2.1/tune",
+    "query": [],
+    "status": 403
+   }
+  ],
+  "allowTuners=1": [
+   {
+    "who": "owner",
+    "method": "GET",
+    "path": "/media/providers",
+    "query": [],
+    "status": 200,
+    "providers": [
+     "com.plexapp.plugins.library",
+     "tv.plex.providers.epg.xmltv:2"
+    ]
+   },
+   {
+    "who": "owner",
+    "method": "GET",
+    "path": "/livetv/dvrs",
+    "query": [],
+    "status": 200
+   },
+   {
+    "who": "owner",
+    "method": "GET",
+    "path": "/livetv/dvrs/2",
+    "query": [],
+    "status": 200
+   },
+   {
+    "who": "owner",
+    "method": "GET",
+    "path": "/livetv/sessions",
+    "query": [],
+    "status": 200
+   },
+   {
+    "who": "owner",
+    "method": "GET",
+    "path": "/tv.plex.providers.epg.xmltv:2/sections",
+    "query": [],
+    "status": 200
+   },
+   {
+    "who": "owner",
+    "method": "GET",
+    "path": "/tv.plex.providers.epg.xmltv:2/lineups/dvr/channels",
+    "query": [],
+    "status": 200
+   },
+   {
+    "who": "owner",
+    "method": "GET",
+    "path": "/tv.plex.providers.epg.xmltv:2/grid",
+    "query": [
+     [
+      "type",
+      "1"
+     ]
+    ],
+    "status": 200
+   },
+   {
+    "who": "owner",
+    "method": "GET",
+    "path": "/tv.plex.providers.epg.xmltv:2/hubs/discover",
+    "query": [],
+    "status": 200,
+    "hubs": [
+     [
+      "today.whatsonnow",
+      3
+     ],
+     [
+      "today.onrightnow",
+      3
+     ],
+     [
+      "today.premierstonight",
+      4
+     ],
+     [
+      "today.upcomingfavorites",
+      1
+     ],
+     [
+      "today.recommended",
+      0
+     ],
+     [
+      "today.whatsonlater",
+      3
+     ],
+     [
+      "today.upcomingsports",
+      0
+     ],
+     [
+      "today.upcomingmovies",
+      5
+     ],
+     [
+      "today.upcomingnews",
+      0
+     ]
+    ]
+   },
+   {
+    "who": "owner",
+    "method": "GET",
+    "path": "/tv.plex.providers.epg.xmltv:2/watchnow",
+    "query": [],
+    "status": 200
+   },
+   {
+    "who": "owner",
+    "method": "GET",
+    "path": "/tv.plex.providers.epg.xmltv:2/hubs/search",
+    "query": [
+     [
+      "query",
+      "Firefly"
+     ]
+    ],
+    "status": 200
+   },
+   {
+    "who": "owner",
+    "method": "GET",
+    "path": "/tv.plex.providers.epg.xmltv:2/library/search",
+    "query": [
+     [
+      "query",
+      "Firefly"
+     ],
+     [
+      "searchTypes",
+      "livetv"
+     ]
+    ],
+    "status": 200
+   },
+   {
+    "who": "owner",
+    "method": "POST",
+    "path": "/livetv/dvrs/2/channels/2.1/tune",
+    "query": [],
+    "status": 200
+   },
+   {
+    "who": "shared",
+    "method": "GET",
+    "path": "/media/providers",
+    "query": [],
+    "status": 200,
+    "providers": [
+     "com.plexapp.plugins.library",
+     "tv.plex.providers.epg.xmltv:2"
+    ]
+   },
+   {
+    "who": "shared",
+    "method": "GET",
+    "path": "/livetv/dvrs",
+    "query": [],
+    "status": 200
+   },
+   {
+    "who": "shared",
+    "method": "GET",
+    "path": "/livetv/dvrs/2",
+    "query": [],
+    "status": 200
+   },
+   {
+    "who": "shared",
+    "method": "GET",
+    "path": "/livetv/sessions",
+    "query": [],
+    "status": 200
+   },
+   {
+    "who": "shared",
+    "method": "GET",
+    "path": "/tv.plex.providers.epg.xmltv:2/sections",
+    "query": [],
+    "status": 200
+   },
+   {
+    "who": "shared",
+    "method": "GET",
+    "path": "/tv.plex.providers.epg.xmltv:2/lineups/dvr/channels",
+    "query": [],
+    "status": 200
+   },
+   {
+    "who": "shared",
+    "method": "GET",
+    "path": "/tv.plex.providers.epg.xmltv:2/grid",
+    "query": [
+     [
+      "type",
+      "1"
+     ]
+    ],
+    "status": 200
+   },
+   {
+    "who": "shared",
+    "method": "GET",
+    "path": "/tv.plex.providers.epg.xmltv:2/hubs/discover",
+    "query": [],
+    "status": 200,
+    "hubs": [
+     [
+      "today.whatsonnow",
+      3
+     ],
+     [
+      "today.onrightnow",
+      3
+     ],
+     [
+      "today.premierstonight",
+      4
+     ],
+     [
+      "today.upcomingfavorites",
+      0
+     ],
+     [
+      "today.recommended",
+      0
+     ],
+     [
+      "today.whatsonlater",
+      3
+     ],
+     [
+      "today.upcomingsports",
+      0
+     ],
+     [
+      "today.upcomingmovies",
+      5
+     ],
+     [
+      "today.upcomingnews",
+      0
+     ]
+    ]
+   },
+   {
+    "who": "shared",
+    "method": "GET",
+    "path": "/tv.plex.providers.epg.xmltv:2/watchnow",
+    "query": [],
+    "status": 200
+   },
+   {
+    "who": "shared",
+    "method": "GET",
+    "path": "/tv.plex.providers.epg.xmltv:2/hubs/search",
+    "query": [
+     [
+      "query",
+      "Firefly"
+     ]
+    ],
+    "status": 200
+   },
+   {
+    "who": "shared",
+    "method": "GET",
+    "path": "/tv.plex.providers.epg.xmltv:2/library/search",
+    "query": [
+     [
+      "query",
+      "Firefly"
+     ],
+     [
+      "searchTypes",
+      "livetv"
+     ]
+    ],
+    "status": 200
+   },
+   {
+    "who": "shared",
+    "method": "POST",
+    "path": "/livetv/dvrs/2/channels/2.1/tune",
+    "query": [],
+    "status": 200
+   }
+  ]
+ }
+}
