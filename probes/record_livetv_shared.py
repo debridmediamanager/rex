@@ -8,8 +8,8 @@ the share's Live TV permission (`allowTuners`), next to its owner
 
 `SHARED_TOKEN` is the `accessToken` plex.tv gives the shared user for this server. Run it once
 per share setting (change it at plex.tv between runs), `--merge` adding to the same file. Only
-reads and one tune, whose session is stopped at the end. Tokens are written as `<OWNER>` and
-`<SHARED>`; bodies are kept only as `/media/providers`' identifiers and What's On's hubs, the rest by status alone.
+reads and one tune, whose session is stopped at the end. No token is written;
+bodies are kept only as `/media/providers`' identifiers and What's On's hubs, the rest by status alone.
 """
 import argparse
 import json
