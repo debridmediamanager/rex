@@ -14989,6 +14989,38 @@ section (`probes/record_music_conversion.py`, `record_music_lyrics.py`, `record_
   decode no JPEG or PNG; an FFmpeg could, which was not built. A music library a source declares
   (`directories` `music`) lists as plexav's Add Library one does (agent, scanner, language, group).
 
+## Music: a track's Part read per audio format (2026-11-01)
+
+Plexamp played an AAC `.m4a` from rex as `application/octet-stream`. Measured read-only on plexav (PMS
+1.43.4): the first track of each file extension in its music section, whole, `Range: bytes=0-99`,
+an open `bytes=100-`, a HEAD and Plexamp's `download=1` whole and ranged, every header in order, and
+its one episode ranged (`probes/record_music_part_reads.py`, `tests/fixtures/music/part-reads.json`,
+`tests/test_music_part_reads.py`).
+
+| File | Codec | plexav's `Content-Type` | rex before |
+|---|---|---|---|
+| `.mp3` | MP3 | `audio/mpeg` | `audio/mpeg` |
+| `.flac` | FLAC | `audio/flac` | `audio/flac` |
+| `.m4a` | ALAC | `audio/mp4` | `application/octet-stream` |
+| `.wav` | PCM | `audio/wav` | `application/octet-stream` |
+| `.opus` | Opus (`ogg`) | `application/octet-stream` | `application/octet-stream` |
+| `.ogg` | Vorbis | `application/octet-stream` | `application/octet-stream` |
+
+- plexav holds no AAC file, so an AAC `.m4a` is `audio/mp4` by the type being keyed on the file's
+  extension, never its codec or container (cycle 44); the suite reads one beside the ALAC.
+- Everything else is the video part read's: `X-Plex-Protocol, ETag, Last-Modified,
+  [Content-Disposition,] Accept-Ranges, [Content-Range,] Connection, Keep-Alive, Content-Length,
+  Content-Type, Date`; a HEAD is the 200's headers with no body; `download=1` adds only
+  `Content-Disposition: attachment; filename="03 - ALAC Tone.m4a";
+  filename*=UTF-8''03%20-%20ALAC%20Tone%2Em4a`, ranged or not. rex already answered all of it.
+- **`Last-Modified` is the row's `updatedAt`, not its `addedAt`**, a track's (One More Time added
+  13:03:41, updated 13:12:50, `Last-Modified` 13:12:50) and the episode's (14:47:22, 14:47:24,
+  14:47:24) alike. A row with no `updatedAt` answers none: every row Plex's agent never matched
+  (`local://`: Rex Test's artist, album and tracks, the Blur tones). rex sent the `addedAt`; it now
+  sends the `updatedAt`, none without one, and its ETag is the same digest as before.
+- **Not done.** rex gives every row an `updatedAt`, a track nothing names included, where plexav's
+  unmatched rows list none, so such a track still sends a `Last-Modified` (and lists the field).
+
 ## Artwork BlurHash and UltraBlur colours (2026-10-31)
 
 Measured on plexav (PMS 1.43.4) with rex's own synthetic covers as the `Rex Blur` albums of its
