@@ -181,9 +181,7 @@ fn read_prefix(
                     if field == "items" {
                         crate::catalog::pack_streams(&mut value);
                         crate::catalog::compact(&mut value);
-                    }
-                    collection.rows.insert(key.as_str().into(), (pos, hash_text(&body)));
-                    if field == "items" {
+                        collection.rows.insert(key.as_str().into(), (pos, hash_text(&body)));
                         if let Some(visit) = items.as_mut() {
                             visit(&key, value);
                             continue;
@@ -195,6 +193,12 @@ fn read_prefix(
                         object.insert(key, value);
                     }
                 }
+                // Every other field's keys are read back by the first save that needs them
+                // (`read_rows`): `deleted` and `retiredKeys`, written only when they change,
+                // were 52,439 and 52,387 keys and 6 MB of fun's idle heap (heaptrack,
+                // 2026-11-01). `items` keeps its own: its bodies are read here anyway, and the
+                // first progress beat writes a row.
+                collection.unread = field != "items";
                 cache.docs.insert(field.clone(), (kind, 0));
                 cache.collections.insert(field.clone(), collection);
                 document.insert(
@@ -372,10 +376,11 @@ pub fn read_state_with(path: &Path, items: Option<&mut dyn FnMut(&str, Value)>) 
         if !has_table(&connection, "doc")? {
             return Ok(Saved::Empty);
         }
-        let (document, cache) = read_prefix(&connection, STATE, items)?;
+        let (document, mut cache) = read_prefix(&connection, STATE, items)?;
         if document.is_empty() {
             return Ok(Saved::Empty);
         }
+        cache.path = Some(path.to_path_buf());
         Ok(Saved::Database(Value::Object(document), cache))
     })();
     match read {
@@ -456,6 +461,8 @@ struct Collection {
     /// Every save re-keyed and compared each element of every field -- 22,432 `deleted` and
     /// 22,380 `retiredKeys` on the production server (2026-10-16) -- for each progress beat.
     whole: u64,
+    /// `rows` is still only in the file, as a start leaves every field but `items` (`read_rows`).
+    unread: bool,
 }
 
 impl Collection {
@@ -473,6 +480,53 @@ pub struct Cache {
     /// field -> (kind, hash of a value doc's body; 0 for a collection)
     docs: HashMap<String, (Kind, u64)>,
     collections: HashMap<String, Collection>,
+    /// The file the collections were read from, where an unread one's rows are.
+    path: Option<PathBuf>,
+}
+
+/// A collection's rows as the cache keeps them: each key's position and its body's hash.
+fn stored_rows(path: &Path, name: &str) -> Result<HashMap<Box<str>, (f64, u64)>, String> {
+    let connection = open_read(path)?;
+    let mut statement = connection
+        .prepare("SELECT key, pos, body FROM row WHERE coll = ?1")
+        .map_err(|e| e.to_string())?;
+    let rows = statement
+        .query_map(params![name], |row| {
+            Ok((row.get::<_, String>(0)?.into_boxed_str(), (row.get::<_, f64>(1)?, hash_text(row.get_ref(2)?.as_str()?))))
+        })
+        .map_err(|e| e.to_string())?
+        .collect::<Result<HashMap<_, _>, _>>()
+        .map_err(|e| e.to_string());
+    rows
+}
+
+impl Cache {
+    /// Read `field`'s rows from the file if a start left them there, as they are stored: the
+    /// save then writes what it would have with them read at the start, since nothing wrote
+    /// them since (a save that changes them reads them first; one that clears them forgets
+    /// the collection). False when the file cannot give them: its rows are cleared, and the
+    /// save writes the field whole.
+    fn read_rows(&mut self, field: &str, delta: &mut Delta) -> bool {
+        let Some(collection) = self.collections.get_mut(field).filter(|collection| collection.unread) else {
+            return true;
+        };
+        collection.unread = false;
+        let name = format!("{STATE}{field}");
+        match self.path.as_deref().ok_or_else(|| "no state file".to_string()).and_then(|path| stored_rows(path, &name)) {
+            Ok(rows) => {
+                collection.rows = rows;
+                true
+            }
+            Err(error) => {
+                crate::runtime::logging::log(
+                    crate::runtime::logging::Level::Error,
+                    &format!("state: {name} not read back, written whole: {error}"),
+                );
+                delta.ops.push(Op::ClearRows { coll: name });
+                false
+            }
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -576,6 +630,7 @@ impl Cache {
                             .collect(),
                         _ => unreachable!(),
                     };
+                    self.read_rows(field, &mut delta);
                     let collection = self.collections.entry(field.clone()).or_default();
                     diff_collection(&name, collection, entries, &mut delta);
                     collection.whole = whole;
@@ -629,17 +684,20 @@ impl Cache {
         get: impl Fn(&str) -> Option<&'a Value>,
         all: impl FnOnce() -> Map<String, Value>,
     ) -> Delta {
+        let mut delta = Delta::default();
+        // A save that changes no member reads none back.
         let known = self.docs.get(field).map(|(kind, _)| *kind) == Some(Kind::Object)
-            && self.collections.contains_key(field);
+            && self.collections.contains_key(field)
+            && (changed.is_empty() || self.read_rows(field, &mut delta));
         if !known {
             let mut state = Map::new();
             state.insert(field.to_string(), Value::Object(all()));
             let others: Vec<String> = self.docs.keys().filter(|name| *name != field).cloned().collect();
             let others: Vec<&str> = others.iter().map(String::as_str).collect();
-            return self.diff(&state, &others);
+            delta.extend(self.diff(&state, &others));
+            return delta;
         }
         let name = format!("{STATE}{field}");
-        let mut delta = Delta::default();
         let collection = self.collections.get_mut(field).expect("checked above");
         collection.whole = 0;
         // A new member goes past every member stored before this save, those it removes
@@ -698,7 +756,8 @@ impl Cache {
         let name = format!("{STATE}{field}");
         let mut delta = Delta::default();
         let known = self.docs.get(field).map(|(kind, _)| *kind) == Some(Kind::Array)
-            && self.collections.contains_key(field);
+            && self.collections.contains_key(field)
+            && self.read_rows(field, &mut delta);
         if let (Some(changed), true) = (changed, known) {
             let collection = self.collections.get_mut(field).expect("checked above");
             collection.whole = 0;
@@ -1242,7 +1301,9 @@ mod tests {
     /// 44,644 rows keyed by ratingKey, 52,439 `deleted` and 52,387 `retiredKeys`, each of
     /// those an array element keyed by its content hash (heaptrack, 2026-11-01). It was 114
     /// bytes a key with each key held twice, 57 once; as requested, so malloc's rounding of
-    /// each key's own allocation comes on top (jemalloc's: ~135 and ~67).
+    /// each key's own allocation comes on top (jemalloc's: ~135 and ~67). With the keys of
+    /// `deleted` and `retiredKeys` left in the file until a save changes them, 8,643,540
+    /// bytes (193 a row) became 2,431,390 (54 a row) (2026-11-02).
     #[test]
     fn the_save_cache_is_small_per_key() {
         let dir = std::env::temp_dir().join(format!("rex-store-weight-{}", std::process::id()));
@@ -1264,10 +1325,200 @@ mod tests {
             Saved::Database(_, cache) => cache,
             _ => panic!("not read back"),
         };
-        let per_key = (crate::test_alloc::held() - before) as usize / keys;
+        let held = (crate::test_alloc::held() - before) as usize;
+        let per_key = held / keys;
+        let per_row = held / 44_644;
+        eprintln!("save cache: {held} bytes, {per_key} a key of the three fields, {per_row} a row");
         drop(cache);
         let _ = fs::remove_dir_all(&dir);
-        assert!(per_key < 60, "{per_key} bytes a key");
+        assert!(per_row < 60, "{per_row} bytes a row");
+    }
+
+    impl Cache {
+        /// Every collection's rows read now, as a start read them before `read_rows`.
+        fn read_all(&mut self) {
+            let fields: Vec<String> = self.collections.keys().cloned().collect();
+            for field in fields {
+                assert!(self.read_rows(&field, &mut Delta::default()));
+            }
+        }
+    }
+
+    fn read_back(path: &Path) -> Cache {
+        match read_state(path).unwrap() {
+            Saved::Database(_, cache) => cache,
+            _ => panic!("not read back"),
+        }
+    }
+
+    fn writes(delta: &Delta) -> Vec<String> {
+        let mut ops: Vec<String> = delta.ops.iter().map(|op| format!("{op:?}")).collect();
+        ops.sort();
+        ops
+    }
+
+    /// Fields whose rows a start leaves in the file write, save after save and start after start,
+    /// what they wrote with every row read at the start: a whole field (`diff`, saved only when it
+    /// changes, as `deleted` and `retiredKeys` are), one by member (`diff_members`) and the rows
+    /// (`diff_rows`). Deltas are queued and written a few saves later, as the saver does.
+    #[test]
+    fn a_field_read_back_when_a_save_needs_it_writes_what_it_did_read_at_the_start() {
+        let dir = std::env::temp_dir().join(format!("rex-store-lazy-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("rex.db");
+        let mut seed = 0x9e37_79b9_7f4a_7c15u64;
+        let mut next = move |limit: usize| {
+            seed ^= seed << 13;
+            seed ^= seed >> 7;
+            seed ^= seed << 17;
+            (seed % limit as u64) as usize
+        };
+        let mut deleted: Vec<String> = (0..300).map(|n| (200_000 + n).to_string()).collect();
+        let mut retired: Vec<i64> = (0..300).map(|n| 300_000 + n).collect();
+        let mut held: Map<String, Value> = (0..40).map(|n| (format!("h{n}"), json!({"n": n}))).collect();
+        let mut rows: Vec<Value> = (0..20).map(|n| json!({"ratingKey": n.to_string()})).collect();
+        let mut prefs: Map<String, Value> = (0..10).map(|n| (format!("p{n}"), json!(n))).collect();
+        let key = |row: &Value| row.get("ratingKey").and_then(Value::as_str).map(str::to_string);
+        let find = |rows: &[Value], k: &str| rows.iter().position(|row| key(row).as_deref() == Some(k));
+        let mut first = state(json!({"format": 1, "deleted": deleted, "retiredKeys": retired, "prefs": prefs, "feedHeld": held}));
+        first.insert("items".into(), Value::Array(rows.clone()));
+        write_fresh(&path, &first).unwrap();
+        let mut connection = open(&path).unwrap();
+        let mut lazy = read_back(&path);
+        let mut eager = read_back(&path);
+        eager.read_all();
+        let mut queued = Vec::new();
+        let mut minted = 1_000_000;
+        for step in 0..4000 {
+            let (mut whole_changed, mut retired_changed) = (false, false);
+            let mut held_changed = HashSet::new();
+            let mut rows_changed = HashSet::new();
+            match next(10) {
+                0 if deleted.len() > 1 => {
+                    // As a set gives keys back: the last one taking the removed one's place.
+                    let at = next(deleted.len());
+                    deleted.swap_remove(at);
+                    whole_changed = true;
+                }
+                1 => {
+                    minted += 1;
+                    deleted.insert(next(deleted.len() + 1), minted.to_string());
+                    whole_changed = true;
+                }
+                2 => {
+                    retired.push(minted);
+                    retired_changed = true;
+                }
+                3 if !retired.is_empty() => {
+                    retired.remove(next(retired.len()));
+                    retired_changed = true;
+                }
+                4 => {
+                    let name = format!("h{}", next(60));
+                    match held.get(&name) {
+                        Some(_) if next(2) == 0 => drop(held.shift_remove(&name)),
+                        _ => drop(held.insert(name.clone(), json!({"n": step}))),
+                    }
+                    held_changed.insert(name);
+                }
+                5 => {
+                    let at = next(rows.len());
+                    rows[at]["viewOffset"] = json!(step);
+                    rows_changed.extend(key(&rows[at]));
+                }
+                6 => {
+                    prefs.insert(format!("p{}", next(15)), json!(step));
+                }
+                7 => {
+                    // A restart, once the saves taken so far are written.
+                    apply(&mut connection, &queued).unwrap();
+                    queued.clear();
+                    lazy = read_back(&path);
+                    eager = read_back(&path);
+                    eager.read_all();
+                }
+                _ => {
+                    let (one, two) = (next(deleted.len()), next(deleted.len()));
+                    deleted.swap(one, two);
+                    whole_changed = true;
+                }
+            }
+            // As the runtime saves: `deleted` and `retiredKeys` only when they changed.
+            let mut document = state(json!({"format": 1, "prefs": prefs, "step": step}));
+            let mut separate = vec!["items", "feedHeld"];
+            match whole_changed {
+                true => drop(document.insert("deleted".into(), json!(deleted))),
+                false => separate.push("deleted"),
+            }
+            match retired_changed {
+                true => drop(document.insert("retiredKeys".into(), json!(retired))),
+                false => separate.push("retiredKeys"),
+            }
+            let mut deltas = Vec::new();
+            for cache in [&mut eager, &mut lazy] {
+                let mut delta = cache.diff(&document, &separate);
+                delta.extend(cache.diff_members("feedHeld", &held_changed, |name| held.get(name), || held.clone()));
+                delta.extend(cache.diff_rows(
+                    "items",
+                    &each(&rows),
+                    Some(&rows_changed),
+                    key,
+                    |k| find(&rows, k).map(|at| &rows[at]),
+                    |k| find(&rows, k),
+                ));
+                deltas.push(delta);
+            }
+            assert_eq!(writes(&deltas[1]), writes(&deltas[0]), "step {step}");
+            queued.push(deltas.pop().unwrap());
+            if next(4) == 0 {
+                apply(&mut connection, &queued).unwrap();
+                queued.clear();
+            }
+        }
+        apply(&mut connection, &queued).unwrap();
+        drop(connection);
+        match read_state(&path).unwrap() {
+            Saved::Database(value, _) => {
+                assert_eq!(value["deleted"], json!(deleted));
+                assert_eq!(value["retiredKeys"], json!(retired));
+                assert_eq!(value["feedHeld"].as_object().map(|held| held.len()), Some(held.len()));
+                assert_eq!(value["items"], Value::Array(rows));
+            }
+            _ => panic!("not read back"),
+        }
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// A field the file cannot give back when a save first needs it is written whole: nothing
+    /// it holds is lost, and nothing it no longer holds stays behind.
+    #[test]
+    fn a_field_the_file_cannot_give_back_is_written_whole() {
+        let dir = std::env::temp_dir().join(format!("rex-store-unread-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("rex.db");
+        let mut held: Map<String, Value> = (0..3).map(|n| (format!("k{n}"), json!(n))).collect();
+        write_fresh(&path, &state(json!({"format": 1, "deleted": ["1", "2", "3"], "feedHeld": held}))).unwrap();
+        let mut cache = read_back(&path);
+        let aside = dir.join("aside.db");
+        fs::rename(&path, &aside).unwrap();
+        let mut delta = cache.diff(&state(json!({"format": 1, "deleted": ["1", "3", "4"]})), &["feedHeld"]);
+        held.shift_remove("k1");
+        held.insert("k9".into(), json!(9));
+        let changed: HashSet<String> = ["k1".to_string(), "k9".to_string()].into();
+        delta.extend(cache.diff_members("feedHeld", &changed, |key| held.get(key), || held.clone()));
+        assert_eq!(delta.ops.iter().filter(|op| matches!(op, Op::ClearRows { .. })).count(), 2, "{delta:?}");
+        fs::rename(&aside, &path).unwrap();
+        apply(&mut open(&path).unwrap(), &[delta]).unwrap();
+        match read_state(&path).unwrap() {
+            Saved::Database(value, _) => {
+                assert_eq!(value["deleted"], json!(["1", "3", "4"]));
+                assert_eq!(value["feedHeld"], Value::Object(held));
+            }
+            _ => panic!("not read back"),
+        }
+        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]
