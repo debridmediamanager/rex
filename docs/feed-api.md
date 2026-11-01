@@ -64,6 +64,7 @@ internet, which needs a token once rex is claimed, but not the feed.
 | `bearer` | `Authorization: Bearer` for `url` instead (optional) |
 | `mount` | Optional, a label: the folder Plex apps show its files under in Get Info (`<mount>/<path>`, default `/<path>`) and its libraries under (default rex's own, `/mnt/rex`). Playback of what a source pushes never uses it |
 | `directories` | Optional: the directories that get a library of their own ([below](#libraries-a-source-declares)). Each entry is `name`, one directory as the first segment of the source's item paths (non-empty, no `/`), and `shows` and/or `movies`, the title of its show and movie library (non-empty strings; at least one). Absent, `null` or `[]` declares nothing. A malformed entry is ignored, never the registration |
+| `trash` | Optional: `false` deletes what the source removes (a snapshot leaving it out, or a `DELETE`) instead of keeping it in the trash for its file to come back. For files that never come back, such as live channels that end: the production server's Live Sports library held 2,115 trashed channels beside 853 live ones (2026-11-01). Absent or `true`: the trash, as for a missing file (deleted at once only under `autoEmptyTrash`) |
 
 `{name}` is letters, digits, `-` and `_`. A registration creates the source or replaces the
 one of that name, and the next part read streams from what it names, without a restart.

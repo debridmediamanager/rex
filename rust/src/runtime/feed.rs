@@ -744,7 +744,8 @@ fn snapshot(shared: &SharedRuntime, source: &Source, body: &Value, sessions: &mu
 }
 
 /// Remove ids: held ones are forgotten, rows go to the trash (or are deleted under
-/// `autoEmptyTrash`), as a real PMS treats a file that is gone.
+/// `autoEmptyTrash`, or for a source registered `"trash": false`), as a real PMS treats a
+/// file that is gone.
 fn remove(shared: &SharedRuntime, source: &Source, ids: &[String], keys: &[String]) -> Map<String, Value> {
     let mut guard = lock(shared);
     let rows = guard.feed_rows(&source.name, ids.iter().map(String::as_str));
@@ -782,7 +783,7 @@ fn remove(shared: &SharedRuntime, source: &Source, ids: &[String], keys: &[Strin
             let title = guard.section_title(&section);
             *activity = Some(guard.scan_started(&section, &title));
         }
-        match guard.remove_missing(key) {
+        match guard.remove_missing(key, !source.trash) {
             Some(true) => deleted += 1,
             Some(false) => trashed += 1,
             None => {}

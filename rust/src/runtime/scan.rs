@@ -960,13 +960,14 @@ impl Runtime {
     }
 
     /// A file the source no longer has: to the trash, or deleted at once under
-    /// `autoEmptyTrash` (measured, 5a: one `state 9` frame and nothing else). Answers
+    /// `autoEmptyTrash` (measured, 5a: one `state 9` frame and nothing else) or for a source
+    /// that keeps no trash (`no_trash`). Answers
     /// whether it was deleted rather than trashed; a row already in the trash is left.
-    pub(super) fn remove_missing(&mut self, key: &str) -> Option<bool> {
+    pub(super) fn remove_missing(&mut self, key: &str, no_trash: bool) -> Option<bool> {
         if self.catalog.get(key)?.get("deletedAt").is_some() {
             return None;
         }
-        if self.auto_empty_trash() {
+        if no_trash || self.auto_empty_trash() {
             self.purge_row(key);
             Some(true)
         } else {
