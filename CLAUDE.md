@@ -621,7 +621,7 @@ python3 tests/test_http_mkv.py              # every profile's streaming protocol
                                             # does not serve fails by name), live DASH a dynamic MPD, and Plex Desktop's
                                             # `protocol=http` Matroska stream across live channels and files; needs ffmpeg
 python3 tests/test_livetv.py                # Live TV, a DVR of a source's live channels, against plexav's recorded answers (a
-                                            # 1.43.4 PMS with an HDHomeRun and XMLTV): guide, What's On, pages, search, the DVR,
+                                            # 1.43.4 PMS with an HDHomeRun and XMLTV): guide, What's On, pages, search, listings, the DVR,
                                             # Plex Web's and Android's tune played to decoded segments; no channel leaves the
                                             # tunerless answers; needs ffmpeg
 python3 tests/test_download_queue.py        # offline downloads: Plex for Android's queue flow, each item converted to one mp4

@@ -94,6 +94,9 @@ struct Airing {
     begins: i64,
     ends: i64,
     programme: usize,
+    /// Pushed `previously_shown` (XMLTV's `<previously-shown />`): an episode's airing that is no
+    /// premiere.
+    repeat: bool,
 }
 
 /// A programme: every airing of one guid.
@@ -107,9 +110,6 @@ struct Programme {
     index: i64,
     categories: Vec<String>,
     thumb: Option<String>,
-    /// Measured: every airing of an episode is a premiere once one of them is pushed `new`
-    /// (plexav's Firefly, `<new/>` on one airing in three, shows `premiere` on all of them).
-    premiere: bool,
     /// Its airings, by start.
     airings: Vec<usize>,
 }
@@ -159,6 +159,14 @@ fn guid_part(text: &str) -> String {
 
 fn item_key(guid: &str) -> String {
     format!("{PREFIX}/metadata/{}", rating_key(guid))
+}
+
+/// Measured on the listings: a title PMS sorts otherwise ("The Juliet") carries its `titleSort`.
+fn title_sort(row: &mut Map<String, Value>, title: &str) {
+    let sorted = crate::hierarchy::sort_title(title);
+    if sorted != title {
+        row.insert("titleSort".to_string(), json!(sorted));
+    }
 }
 
 fn show_guid(show: &str) -> String {
@@ -303,8 +311,8 @@ pub(super) fn channel_field(value: &Value) -> Result<Value, String> {
             }
             programme.insert("thumb".to_string(), json!(thumb));
         }
-        if entry.get("new").and_then(Value::as_bool) == Some(true) {
-            programme.insert("new".to_string(), json!(true));
+        if entry.get("previously_shown").and_then(Value::as_bool) == Some(true) {
+            programme.insert("previously_shown".to_string(), json!(true));
         }
         guide.push(Value::Object(programme));
     }
@@ -343,6 +351,16 @@ fn local_hour(at: i64, hours: i32) -> i64 {
 impl Guide {
     fn now(&self) -> i64 {
         self.now.load(std::sync::atomic::Ordering::Relaxed)
+    }
+
+    /// A listing filter's moment: `now`, `now` and seconds (`+1s`, as `endsAt>=%2B1s` sends it)
+    /// or an epoch.
+    fn bound(&self, value: &str) -> Option<i64> {
+        match value.strip_suffix('s').filter(|seconds| seconds.starts_with(['+', '-'])) {
+            Some(seconds) => seconds.parse::<i64>().ok().map(|seconds| self.now() + seconds),
+            None if value == "now" => Some(self.now()),
+            None => value.parse().ok(),
+        }
     }
 
     /// Whether an airing is still listed (`HELD_AFTER`).
@@ -385,13 +403,20 @@ impl Guide {
         self.channels.len() as i64 + 1 + self.genres.iter().position(|genre| genre == name).unwrap_or(0) as i64
     }
 
+    /// A programme's duration, every Media's too (measured, `listing_held`: Sierra's airings of
+    /// 24 and 30 minutes both say 24): PMS's is the first airing it read; rex's the first held.
+    fn duration(&self, programme: &Programme) -> i64 {
+        let first = self.listed(programme).next().or_else(|| programme.airings.first().map(|at| &self.airings[*at]));
+        first.map_or(0, |airing| (airing.ends - airing.begins) * 1000)
+    }
+
     /// A row's `Media` for one airing.
     fn media(&self, airing: &Airing) -> Value {
         let channel = &self.channels[airing.channel];
         let programme = &self.programmes[airing.programme];
         let mut media = Map::new();
         media.insert("id".to_string(), json!(airing.id));
-        media.insert("duration".to_string(), json!((airing.ends - airing.begins) * 1000));
+        media.insert("duration".to_string(), json!(self.duration(programme)));
         // Measured with a guide that says nothing of picture or sound: SD stereo.
         media.insert("audioChannels".to_string(), json!(2));
         media.insert("videoResolution".to_string(), json!("480"));
@@ -399,8 +424,9 @@ impl Guide {
         media.insert("channelIdentifier".to_string(), json!(channel.number));
         media.insert("channelTitle".to_string(), json!(Self::channel_tag(channel)));
         media.insert("channelVcn".to_string(), json!(channel.number));
-        // Measured: XMLTV's `<new/>` marks an episode a premiere, never a movie.
-        if programme.premiere && programme.episode {
+        // Measured (`listing_held`): every airing of an episode is a premiere but one
+        // `<previously-shown />`; `<new />` changes nothing, and a film never is.
+        if programme.episode && !airing.repeat {
             media.insert("premiere".to_string(), json!("1"));
         }
         media.insert("protocol".to_string(), json!("livetv"));
@@ -422,7 +448,7 @@ impl Guide {
         row.insert("ratingKey".to_string(), json!(rating_key(&programme.guid)));
         row.insert("key".to_string(), json!(item_key(&programme.guid)));
         let section = |row: &mut Map<String, Value>| {
-            if shape == Shape::Page {
+            if matches!(shape, Shape::Page | Shape::All) {
                 let (title, id) = if programme.episode { ("Shows", 2) } else { ("Movies", 1) };
                 row.insert("librarySectionTitle".to_string(), json!(title));
                 row.insert("librarySectionID".to_string(), json!(id));
@@ -446,6 +472,7 @@ impl Guide {
             row.insert("guid".to_string(), json!(programme.guid));
             row.insert("type".to_string(), json!("movie"));
             row.insert("title".to_string(), json!(programme.title));
+            title_sort(&mut row, &programme.title);
             section(&mut row);
         }
         row.insert("summary".to_string(), json!(programme.summary));
@@ -459,8 +486,7 @@ impl Guide {
             row.insert("index".to_string(), json!(programme.index));
             row.insert("parentIndex".to_string(), json!(programme.season));
         }
-        let first = airings.first().copied().or_else(|| programme.airings.first().map(|at| &self.airings[*at]));
-        row.insert("duration".to_string(), json!(first.map_or(0, |airing| (airing.ends - airing.begins) * 1000)));
+        row.insert("duration".to_string(), json!(self.duration(programme)));
         row.insert("addedAt".to_string(), json!(self.added));
         if airings.iter().any(|airing| self.on_air(airing)) {
             row.insert("onAir".to_string(), json!(true));
@@ -575,7 +601,10 @@ impl Guide {
         episodes
     }
 
-    fn show_row(&self, show: &str, search: bool, extras: bool) -> Value {
+    /// A show's row: a page's (`Shape::Page`), a search hit's (`Shape::Search`) or a listing's
+    /// (`Shape::Hub`: no section, no Channel tags).
+    fn show_row(&self, show: &str, shape: Shape, extras: bool) -> Value {
+        let search = shape == Shape::Search;
         let episodes = self.episodes(show);
         let guid = show_guid(show);
         let mut seasons = episodes.iter().map(|episode| episode.season).collect::<Vec<_>>();
@@ -590,23 +619,27 @@ impl Guide {
         }
         row.insert("ratingKey".to_string(), json!(rating_key(&guid)));
         row.insert("key".to_string(), json!(format!("{}/children", item_key(&guid))));
-        row.insert("skipChildren".to_string(), json!(seasons.len() == 1));
+        // Measured: a show of two seasons skips them too (`listing_order`'s Yak Show).
+        row.insert("skipChildren".to_string(), json!(true));
         row.insert("guid".to_string(), json!(guid));
         row.insert("type".to_string(), json!("show"));
         row.insert("title".to_string(), json!(show));
-        if !search {
+        title_sort(&mut row, show);
+        if shape == Shape::Page {
             row.insert("librarySectionTitle".to_string(), json!("Shows"));
         }
-        row.insert("librarySectionID".to_string(), json!(2));
-        row.insert("librarySectionKey".to_string(), json!(format!("{PREFIX}/sections/2")));
+        if shape != Shape::Hub {
+            row.insert("librarySectionID".to_string(), json!(2));
+            row.insert("librarySectionKey".to_string(), json!(format!("{PREFIX}/sections/2")));
+        }
         row.insert("summary".to_string(), json!(""));
         row.insert("index".to_string(), json!(1));
         row.insert("leafCount".to_string(), json!(episodes.len()));
         row.insert("viewedLeafCount".to_string(), json!(0));
         row.insert("childCount".to_string(), json!(seasons.len()));
         row.insert("addedAt".to_string(), json!(self.added));
-        row.insert("Genre".to_string(), self.genre_tags(&categories, !search));
-        if !search {
+        row.insert("Genre".to_string(), self.genre_tags(&categories, shape == Shape::Page));
+        if shape == Shape::Page {
             let mut channels = episodes
                 .iter()
                 .flat_map(|episode| episode.airings.iter().map(|at| self.airings[*at].channel))
@@ -661,8 +694,10 @@ enum Shape {
     Child,
     /// `/library/search`.
     Search,
-    /// `/hubs/discover`.
+    /// `/hubs/discover`, and a section's listing.
     Hub,
+    /// The provider's own `/all` listing: a hub's row with the section it is filed in.
+    All,
     /// A tune's Timeline and AlsoAiring.
     Tune,
 }
@@ -761,12 +796,10 @@ impl Runtime {
                     index,
                     categories,
                     thumb: entry.get("thumb").and_then(Value::as_str).map(str::to_string),
-                    premiere: false,
                     airings: Vec::new(),
                 });
                 guide.programmes.len() - 1
             });
-            guide.programmes[programme].premiere |= entry.get("new").and_then(Value::as_bool) == Some(true);
             guide.programmes[programme].airings.push(guide.airings.len());
             guide.by_channel[channel].push(guide.airings.len());
             guide.airings.push(Airing {
@@ -775,6 +808,7 @@ impl Runtime {
                 begins: entry.get("start").and_then(Value::as_i64).unwrap_or(0),
                 ends: entry.get("end").and_then(Value::as_i64).unwrap_or(0),
                 programme,
+                repeat: entry.get("previously_shown").and_then(Value::as_bool) == Some(true),
             });
         }
         Some(guide)
@@ -910,6 +944,26 @@ impl Runtime {
                 document["MediaContainer"]["mediaTagVersion"] = json!(MEDIA_TAG_VERSION);
                 Some(Response::json(200, document))
             }
+            "/sections/1/all" => Some(self.listing(guide, Some(1), query)),
+            "/sections/2/all" => Some(self.listing(guide, Some(2), query)),
+            // ponytail: the bare `/all` (every movie, show, season and episode in the order PMS
+            // read them) is no key rex emits; only What's On's `type=` one is built.
+            "/all" if query.contains_key("type") => Some(self.listing(guide, None, query)),
+            // Measured: What's On Now's key is each channel's airing on now, What's On Later's the
+            // airing each of those runs into, in lineup order; a channel whose next airing leaves a
+            // gap after the one on now has none (plexav's guides with gaps listed nothing later).
+            "/hubs/onnow/all" | "/hubs/onlater/all" => {
+                let later = tail == "/hubs/onlater/all";
+                let rows = (0..guide.channels.len())
+                    .filter_map(|channel| guide.current(channel).and_then(|at| if later { guide.at(channel, guide.airings[at].ends) } else { Some(at) }))
+                    .map(|at| guide.full_row(&guide.programmes[guide.airings[at].programme], Shape::Hub))
+                    .collect::<Vec<_>>();
+                let mut container = json!({"size": rows.len(), "identifier": IDENTIFIER});
+                if !rows.is_empty() {
+                    container["Metadata"] = json!(rows);
+                }
+                Some(Response::json(200, json!({"MediaContainer": container})))
+            }
             "/watchnow" => Some(Response::json(200, json!({"MediaContainer": {"size": 3, "Type": [
                 {"key": format!("{PREFIX}/watchnow/all"), "type": "mixed", "title": "All Channels", "active": false},
                 {"key": format!("{PREFIX}/sections/1/all?type=1&beginsAt<=now&endsAt>=%2B1s&sort=beginsAt&skipDetails=1"), "type": "movie", "title": "Movies on Now", "active": false},
@@ -935,6 +989,154 @@ impl Runtime {
                 self.provider_metadata(guide, tail, query)
             }
         }
+    }
+
+    /// `/sections/<1|2>/all` and the provider's `/all?type=`: the keys What's On's shelves, search's
+    /// category hits and the provider's Movies and Shows sections open. Measured on plexav with
+    /// guides written for it (findings, "The listings' order"): a programme is listed while
+    /// PMS holds an airing of it, every held airing its Media. `beginsAt>=`/`<=` and `endsAt>=`/`<=`
+    /// (`now`, `now` and seconds as `+1s`, or an epoch) keep the programmes with an airing inside
+    /// them and `genre=` those with the category. Films and episodes go by their first held
+    /// airing inside the filters (`beginsAt`, the default), `:desc` by their last; shows by
+    /// `titleSort` (the default); `originallyAvailableAt`, which no guide gives, falls to
+    /// `titleSort`. A tie is in the order PMS read the programmes in its XMLTV document, which
+    /// a source's per-channel guides cannot say: rex's is the order they first air.
+    fn listing(&self, guide: &Guide, section: Option<i64>, query: &HashMap<String, String>) -> Response {
+        let types = match query.get("type") {
+            Some(text) => text.split(',').filter_map(|kind| kind.trim().parse::<i64>().ok()).collect::<Vec<_>>(),
+            None => vec![if section == Some(2) { 2 } else { 1 }],
+        };
+        let bound = |name: &str| query.get(name).and_then(|value| guide.bound(value));
+        let (begins_from, begins_to, ends_from, ends_to) = (bound("beginsAt>"), bound("beginsAt<"), bound("endsAt>"), bound("endsAt<"));
+        let inside = |airing: &&Airing| {
+            begins_from.is_none_or(|at| airing.begins >= at)
+                && begins_to.is_none_or(|at| airing.begins <= at)
+                && ends_from.is_none_or(|at| airing.ends >= at)
+                && ends_to.is_none_or(|at| airing.ends <= at)
+        };
+        let genre = query.get("genre").map(|id| guide.genres.iter().find(|name| guide.genre_id(name).to_string() == *id).cloned());
+        let sort = query.get("sort").map(String::as_str).unwrap_or(if types == [2] { "titleSort" } else { "beginsAt" });
+        let first = sort.split(',').next().unwrap_or_default();
+        let (field, descending) = first.strip_suffix(":desc").map_or((first, false), |field| (field, true));
+        // Each row: its time and title keys, its season and episode, its place, and the row.
+        let mut rows: Vec<(i64, String, (i64, i64), usize, Value)> = Vec::new();
+        let mut shows = HashSet::new();
+        // An unknown genre id keeps nothing.
+        let named = |categories: &[&String]| genre.as_ref().is_none_or(|name| name.as_ref().is_some_and(|name| categories.contains(&name)));
+        for (place, programme) in guide.programmes.iter().enumerate() {
+            let held = guide.listed(programme).collect::<Vec<_>>();
+            if held.is_empty() {
+                continue;
+            }
+            // A show is listed where its first episode is, by its episodes' categories.
+            if programme.episode && types.contains(&2) && shows.insert(programme.show.clone()) {
+                let episodes = guide.episodes(&programme.show);
+                if named(&episodes.iter().flat_map(|episode| episode.categories.iter()).collect::<Vec<_>>()) {
+                    let begins = episodes.iter().flat_map(|episode| guide.listed(episode)).map(|airing| airing.begins).min().unwrap_or(0);
+                    rows.push((begins, crate::hierarchy::sort_title(&programme.show), (0, 0), place, guide.show_row(&programme.show, Shape::Hub, false)));
+                }
+            }
+            if !types.contains(if programme.episode { &4 } else { &1 }) || !named(&programme.categories.iter().collect::<Vec<_>>()) {
+                continue;
+            }
+            let Some(begins) = held.iter().copied().filter(inside).map(|airing| airing.begins).reduce(if descending { i64::max } else { i64::min }) else {
+                continue;
+            };
+            let title = crate::hierarchy::sort_title(if programme.episode { &programme.show } else { &programme.title });
+            let shape = if section.is_none() { Shape::All } else { Shape::Hub };
+            rows.push((begins, title, (programme.season, programme.index), place, guide.row(programme, &held, shape)));
+        }
+        rows.sort_by(|a, b| {
+            let order = match field {
+                "beginsAt" => a.0.cmp(&b.0),
+                "titleSort" | "show.titleSort" => a.1.cmp(&b.1),
+                _ => std::cmp::Ordering::Equal,
+            };
+            let order = if descending { order.reverse() } else { order };
+            let fallback = if field == "show.titleSort" { a.2.cmp(&b.2) } else if field == "beginsAt" { std::cmp::Ordering::Equal } else { a.1.cmp(&b.1) };
+            order.then(fallback).then(a.3.cmp(&b.3))
+        });
+        let rows = rows.into_iter().map(|row| row.4).collect::<Vec<_>>();
+        let (page, paged, start, total) = match super::resume::page_window(rows, query) {
+            Ok(window) => window,
+            Err(status) => return Response::error(status, "rex: bad request"),
+        };
+        let mut container = Map::new();
+        container.insert("size".to_string(), json!(page.len()));
+        if paged {
+            container.insert("totalSize".to_string(), json!(total));
+            container.insert("offset".to_string(), json!(start));
+        }
+        container.insert("allowSync".to_string(), json!(false));
+        let movies = section == Some(1);
+        if section.is_some() {
+            container.insert("art".to_string(), json!(if movies { "/:/resources/movie-fanart.jpg" } else { "/:/resources/show-fanart.jpg" }));
+        }
+        container.insert("identifier".to_string(), json!(IDENTIFIER));
+        container.insert("mediaTagPrefix".to_string(), json!("/system/bundle/media/flags/"));
+        container.insert("mediaTagVersion".to_string(), json!(MEDIA_TAG_VERSION));
+        if section.is_some() {
+            if !movies {
+                container.insert("nocache".to_string(), json!(true));
+            }
+            let (thumb, title, kind) = if movies { ("movie", "Movies", "movie") } else { ("show", "Shows", "show") };
+            container.insert("thumb".to_string(), json!(format!("/:/resources/{thumb}.png")));
+            container.insert("title1".to_string(), json!(title));
+            container.insert("title2".to_string(), json!(format!("All {title}")));
+            container.insert("viewGroup".to_string(), json!(kind));
+            container.insert("viewMode".to_string(), json!(65592));
+        }
+        if query.get("includeMeta").map(String::as_str) == Some("1") {
+            let asked = query.contains_key("type").then(|| types.first().copied().unwrap_or(1));
+            if let Some(meta) = self.listing_meta(asked, query.get("sort").map(String::as_str)) {
+                container.insert("Meta".to_string(), meta);
+            }
+        }
+        if !page.is_empty() {
+            container.insert("Metadata".to_string(), Value::Array(page));
+        }
+        let mut response = Response::json(200, json!({"MediaContainer": container}));
+        if paged {
+            response.headers.push(("X-Plex-Container-Start".to_string(), start.to_string()));
+            response.headers.push(("X-Plex-Container-Total-Size".to_string(), total.to_string()));
+        }
+        response
+    }
+
+    /// A listing's `Meta` (`includeMeta=1`), measured: every Type of both sections, Episodes,
+    /// Shows (titled so here, "TV Shows" in `/sections/2`) and Movies; the `type=` asked is
+    /// `active`, and its Sort asked (else its default one) `active` with its direction. With no
+    /// `type=` none is.
+    fn listing_meta(&self, kind: Option<i64>, sort: Option<&str>) -> Option<Value> {
+        let text = serde_json::to_string(&load_json_sidecar(&self.catalog_path, "livetv_sections.json")?).ok()?.replace("{prefix}", PREFIX);
+        let sections: Value = serde_json::from_str(&text).ok()?;
+        let types = |section: &str| sections[section]["MediaContainer"]["Type"].as_array().cloned().unwrap_or_default();
+        let mut listed = types("2");
+        listed.reverse();
+        listed.extend(types("1"));
+        for entry in &mut listed {
+            let key = entry["key"].as_str().unwrap_or_default().to_string();
+            if key.ends_with("type=2") {
+                entry["title"] = json!("Shows");
+            }
+            if kind.is_none_or(|kind| !key.ends_with(&format!("type={kind}"))) {
+                continue;
+            }
+            entry["active"] = json!(true);
+            for choice in entry["Sort"].as_array_mut().into_iter().flatten() {
+                let direction = match sort {
+                    Some(sort) if sort == choice["descKey"].as_str().unwrap_or_default() => Some("desc".to_string()),
+                    Some(sort) if sort == choice["key"].as_str().unwrap_or_default() => Some("asc".to_string()),
+                    Some(_) => None,
+                    None => choice["default"].as_str().map(str::to_string),
+                };
+                if let Some(direction) = direction {
+                    choice["active"] = json!(true);
+                    choice["activeDirection"] = json!(direction);
+                }
+            }
+        }
+        Some(json!({"Type": listed, "FieldType": sections["1"]["MediaContainer"]["FieldType"]}))
     }
 
     /// `/grid?channelGridKey=&date=`: one channel's airings that touch one day, the day read as
@@ -984,7 +1186,7 @@ impl Runtime {
                 .into_iter()
                 .map(|item| match item {
                     Item::Programme(at) => guide.full_row(&guide.programmes[at], Shape::Page),
-                    Item::Show(show) => guide.show_row(&show, false, query.get("includeExtras").map(String::as_str) == Some("1")),
+                    Item::Show(show) => guide.show_row(&show, Shape::Page, query.get("includeExtras").map(String::as_str) == Some("1")),
                     Item::Season(show, season) => guide.season_row(&show, season, true),
                 })
                 .collect::<Vec<_>>();
@@ -1085,7 +1287,7 @@ impl Runtime {
                 shows.push(programme.show.clone());
                 if matches(&programme.show) {
                     let score = search::search_score_value(&json!({"type": "show", "title": programme.show}), &needle);
-                    hits.push((score, guide.show_row(&programme.show, true, false)));
+                    hits.push((score, guide.show_row(&programme.show, Shape::Search, false)));
                 }
             }
             if matches(&programme.title) {
@@ -1141,7 +1343,7 @@ impl Runtime {
             if programme.episode && !shows.contains(&programme.show) {
                 shows.push(programme.show.clone());
                 if matches(&programme.show) {
-                    hit("show", json!({"type": "show", "title": programme.show}), guide.show_row(&programme.show, true, false));
+                    hit("show", json!({"type": "show", "title": programme.show}), guide.show_row(&programme.show, Shape::Search, false));
                 }
             }
             if matches(&programme.title) {
@@ -1282,7 +1484,7 @@ impl Runtime {
         let mut tonight = guide
             .airings
             .iter()
-            .filter(|airing| guide.programmes[airing.programme].premiere && guide.programmes[airing.programme].episode && airing.begins >= evening && airing.begins <= night)
+            .filter(|airing| !airing.repeat && guide.programmes[airing.programme].episode && airing.begins >= evening && airing.begins <= night)
             .map(|airing| (airing.begins, airing.programme))
             .collect::<Vec<_>>();
         tonight.sort();
@@ -1467,7 +1669,6 @@ impl Runtime {
                     index: programme.index,
                     categories: programme.categories.clone(),
                     thumb: programme.thumb.clone(),
-                    premiere: programme.premiere,
                     airings: programme.airings.clone(),
                 },
                 Some(index),
@@ -1486,7 +1687,6 @@ impl Runtime {
             index: 0,
             categories: Vec::new(),
             thumb: None,
-            premiere: false,
             airings: Vec::new(),
         };
         (programme, None)
@@ -1884,7 +2084,7 @@ mod tests {
     #[test]
     fn channel_field_keeps_a_guide_and_refuses_a_bad_one() {
         let kept = channel_field(&json!({"number": "2.1", "title": "Rex News", "guide": [
-            {"start": "2026-10-31T13:30:00Z", "end": 1793455200, "title": "Episode 3", "type": "episode", "show": "Firefly", "season": 1, "episode": 3, "new": true},
+            {"start": "2026-10-31T13:30:00Z", "end": 1793455200, "title": "Episode 3", "type": "episode", "show": "Firefly", "season": 1, "episode": 3, "previously_shown": true},
             {"start": 1793451600, "end": 1793453400, "title": "Rex Evening News", "type": "show", "categories": ["News"]}]}))
         .unwrap();
         assert_eq!(kept["guide"][0]["title"], "Rex Evening News");

@@ -14722,8 +14722,8 @@ percent-encoded (`Big%20Buck%20Bunny`); a `ratingKey` is the guid with every byt
 digit escaped, `.` included (`tv%2Eplex%2Exmltv%3A%2F%2Fmovie%2FBig%2520Buck%2520Bunny`), and a
 `key` is `/tv.plex.providers.epg.xmltv:2/metadata/<ratingKey>`. A movie lists its categories as
 Genre tags by name; an episode none (its show has them all). Every airing of an episode is
-`premiere="1"` once one of its airings is `<new/>` (Firefly's are new one hour in three; all show
-it); a movie never is. An airing's Media says `audioChannels` 2 and `videoResolution` "480" for a
+`premiere="1"` but one `<previously-shown />` (corrected in "The listings' order": `<new/>`, on
+Firefly's one hour in three, was not what made them all premieres); a movie never is. An airing's Media says `audioChannels` 2 and `videoResolution` "480" for a
 guide that says nothing of either, the channel's `channelCallSign`, `channelIdentifier`,
 `channelTitle` (`2.1 Rex News`), `channelVcn` and `channelID` (its lineup place), `beginsAt`,
 `endsAt`, and `onAir` while it is on, on the Metadata too. PMS numbers airings and tags in the
@@ -14847,8 +14847,7 @@ headers, a browser's `Origin` and gzip.
   each channel's airing now, in lineup order, that airing alone, `skipDetails` "1". **A season's
   `/children`** lists its episodes by their first airing still listed (the show's
   `/grandchildren` go by the next), under `grandparentRatingKey` 1 and `key` "2"; a programme's is
-  a 400. The `/sections/<n>/all` listings those keys open were measured (`?genre=`, the on-now
-  filter, `?type=`) but not built: their default order is unexplained.
+  a 400. The `/sections/<n>/all` listings those keys open are the next section's.
 - **The device.** `/media/grabbers/devices` lists the DVR's device without its channel mapping,
   `/devices/1` with it, `/devices/1/channels` each channel's `key`, `identifier`, `name`, `drm`,
   `hd` and `favorite`.
@@ -14878,6 +14877,70 @@ the lineup in 277 ms, and `/identity` beside four streams of grid requests waite
 It is now read once and kept until a row changes (`Catalog::generation`), each channel's airings
 indexed by start: the first grid 283 ms, then 0.9 ms, the lineup 1.7 ms, What's On 82 ms,
 `/identity` beside the grids at most 14 ms (`tests/test_perf_livetv.py`).
+
+### The listings' order, on guides written for plexav (2026-10-31)
+
+The `/sections/<1|2>/all` listings (search's category hits, What's On's shelves, the provider's
+Movies and Shows) went unbuilt because plexav's own guide could not tell their order apart:
+there the order PMS read its XMLTV document, the airings' starts, the titles and the lineup
+mostly agree. Ben allowed experiments on its guide: `probes/record_livetv.py listing` writes a
+guide to plexav's `guide.xml`, refreshes it as Plex Web's Refresh Guide does (`POST
+/livetv/dvrs/2/reloadGuide`, from the DVR settings' bundle code; no capture held it) and asks
+the listings with Plex Web's headers. `listing_order_s1434` and `listing_held_s1434` are guides
+whose document order, starts, titles and lineup disagree; `listing_plexav_s1434` is plexav's own
+guide put back from `guide.xml.orig` (md5 `7e76ba21...`) at the end. Three more guides were
+read by hand first, with the same answers.
+
+- **What is listed.** A refresh reads only the airings not yet over: one that ended before it
+  never shows (`Golf`), and its programme exists only if a later airing does. An airing that ends
+  after the refresh stays three hours, as everywhere else (`held`, read 11 minutes on: `Romeo`,
+  whose one airing had ended, still listed, and `Sierra` still first by its ended airing). A
+  programme is listed while it holds an airing, every held airing its `Media`.
+- **The order** of films (`/sections/1/all`, `type=1`) and episodes (`/sections/2/all?type=4`), with
+  no `sort` or `sort=beginsAt`: by the **first held airing's start**; `beginsAt:desc` by the
+  **last** one's, descending. A filter (`beginsAt>=now`, `beginsAt<=now&endsAt>=%2B1s`, an epoch
+  range) keeps the programmes with an airing inside it and sorts by the first (or last) of those,
+  their `Media` still every held airing (`Uniform`, on now and again later, is first in Movies
+  On Later by the later one). **Ties go in the order the document named the programmes**: not
+  title, lineup or the tied airing's own place (`Hotel`, named first but aired at +60 later in the
+  document than `India`'s +60, comes first; under `:desc` too). A row's `Media` are in the
+  document's order as well (`Hotel` lists its +300 airing before its +60). Shows (`/sections/2/all`,
+  `type=2`, `genre=`) go by `titleSort`, `The Zebra Show` as `Zebra Show`; `titleSort:desc`
+  reverses it; `originallyAvailableAt`, which no guide gives, falls to `titleSort` ascending in
+  both directions (films' `originallyAvailableAt,year:nullsLast,titleSort` likewise);
+  `show.titleSort,season.index,episode.index` orders episodes by show, then season and number, and
+  `show.titleSort:desc` reverses only the show.
+- **Paging** is a library's: `X-Plex-Container-Start`/`-Size` in the query or as headers answer
+  `size`, `totalSize` and `offset` and the `X-Plex-Container-Start` and `-Total-Size` headers.
+- **`includeMeta=1`** adds a `Meta` of every Type of both sections, Episodes, Shows and Movies
+  (Shows titled so, `TV Shows` in `/sections/2`), with `FieldType`; the `type=` asked is `active`
+  with its asked or default Sort `active` and `activeDirection`; with no `type=` none is.
+- **The containers**: Movies' `art`, `thumb`, `title1` Movies, `title2` All Movies, `viewGroup`
+  movie, `viewMode` 65592; Shows' the show ones with `nocache`, also for `type=4`. A row is the
+  hub's, a show's without its section or Channel tags, and a title PMS sorts otherwise carries its
+  `titleSort`. The provider's `/all?type=1,4&...` (Shows On Now's key) is the same listing whose
+  rows name their section. `/sections/3/all` and `/4/all` (Sports and News On Later's keys) are
+  404, as `/sections/3` was. What's On Now's key, `/hubs/onnow/all`, is each channel's airing on
+  now in lineup order; What's On Later's, `/hubs/onlater/all`, the airing each of those runs into:
+  plexav's own guide listed each channel's next, both written guides, with a gap after the
+  airings on now, nothing.
+- **Three fields of every item, corrected by these guides.** An episode's airing is a premiere
+  (`premiere` "1" on its Media) unless the document says `<previously-shown />`; `<new />` changes
+  nothing (`held`: Quebec Show, unflagged, and Nova Show's `<new />` episode are premieres, its
+  `<previously-shown />` one not; the film Vega's `<new />` none). rex read it off `new`, so a
+  source now pushes `previously_shown` (docs/feed-api.md) and `new` is gone. A show skips its
+  seasons with two of them (`order`'s Yak Show; rex had `skipChildren` only for one). A Media's
+  `duration` is its programme's, not its airing's (`held`: Sierra's airings of 24 and 30 minutes
+  both 24, Uniform's 18 and 30 both 18): PMS's is the first airing it read, rex's the first held.
+- **Unexplained to rex, and what it does.** The document's order is not in a source's push: its
+  guides are per channel and kept by start. rex breaks a tie by the order the programmes first
+  air, then by the lineup (`India` before `Hotel`), and lists a row's `Media` by start; on plexav's
+  own guide, written hour by hour, both agree with PMS. The bare `/all` (every film, show, season
+  and episode, in the document's order) is no key rex emits and is not built. PMS numbers its
+  genre tags by name as it first meets them and keeps them across refreshes (`Drama` 4, `Comedy` 7
+  in `order`; plexav's own guide's News was 9 at first, 5 when this began and 10 after), so a
+  search hit's `genre=` id is rex's own, numbered in the order the categories first air; the
+  replay opens each hit by the key rex's search gives it.
 
 ## Music: conversion, lyrics, loudness and bitrate, measured on plexav (2026-10-31)
 

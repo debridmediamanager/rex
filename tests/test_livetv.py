@@ -22,11 +22,14 @@ recorded guide pushed by a source of three real live HLS channels (`tests/livetv
                and the `livetv` owner feature
     tune2      one tune as Plex Web sends it, without a Plex Pass (`tune2_s1434`): its headers, its
                activities, the session and its Part key's 404
+    listings   the provider's `/sections/<n>/all` and What's On keys, filtered, sorted and paged, on
+               guides written for plexav and on its own (`listing_*_s1434`)
 
     python3 tests/test_livetv.py      # needs ffmpeg (REX_TRANSCODER, else PATH's)
 """
 import gzip
 import http.client
+import itertools
 import json
 import os
 import re
@@ -512,6 +515,89 @@ def browse(scratch, source, guide):
         process.wait()
 
 
+def listed(exchange, body, now):
+    """A listing's rows in plexav's order, but each tie's rows by ratingKey and each row's Media
+    by start: plexav breaks a tie, and lists a row's airings, in the order it read its XMLTV
+    document, which a source's per-channel guides cannot say. Ties are rows of one key under
+    the listing's sort: its first airing inside the filters (`beginsAt`, the films' and episodes'
+    default), its last for `:desc`."""
+    rows = body.get("MediaContainer", {}).get("Metadata", [])
+    for row in rows:
+        row.get("Media", []).sort(key=lambda media: (media["beginsAt"], media.get("channelID", 0)))
+    query = dict(exchange["query"])
+    kind = query.get("type", "2" if "/sections/2/" in exchange["path"] else "1")
+    sort = query.get("sort", "titleSort" if kind == "2" else "beginsAt").split(",")[0]
+    if not sort.startswith("beginsAt"):
+        return body
+    moment = lambda value: now if value == "now" else now + int(value[:-1]) if value.endswith("s") else int(value)
+    bounds = [(name[:-1], name[-1], moment(value)) for name, value in exchange["query"] if name[-1:] in "<>"]
+    def key(row):
+        inside = [media["beginsAt"] for media in row.get("Media", [])
+                  if all(media[field] >= at if side == ">" else media[field] <= at for field, side, at in bounds)]
+        return (max if sort.endswith(":desc") else min)(inside or [0])
+    if rows:
+        body["MediaContainer"]["Metadata"] = [row for _, tie in itertools.groupby(rows, key) for row in sorted(tie, key=lambda row: row["ratingKey"])]
+    return body
+
+
+def listings(scratch, source, names=("order", "held", "plexav")):
+    """The provider's listings (`listing_*_s1434`): plexav given guides written for it, whose
+    document order, starts, titles and lineup disagree, and its own guide back; each answer
+    replayed against the same guide pushed to rex. A search's category hit is opened by the key
+    rex's own search gives it: PMS numbers its tags in the order it read them, rex in the order
+    they first air."""
+    for name in names:
+        recorded = fixture("listing_%s_s1434.json.gz" % name)
+        print("listings: %s (the reference at %d)" % (name, recorded["now"]))
+        port, process = start_rex(scratch, recorded["now"])
+        try:
+            push_guide(port, source, recorded["guide"])
+            genres = {}
+            for exchange in recorded["exchanges"]:
+                if exchange["path"].endswith("/library/search"):
+                    _, _, body = replay(port, exchange)
+                    ours = {(hit["Directory"]["tag"], hit["Directory"]["librarySectionID"]): hit["Directory"]["id"]
+                            for hit in json.loads(body)["MediaContainer"].get("SearchResult", []) if "Directory" in hit}
+                    for hit in json.loads(exchange["body"])["MediaContainer"].get("SearchResult", []):
+                        if "Directory" in hit:
+                            genres[str(hit["Directory"]["id"])] = str(ours.get((hit["Directory"]["tag"], hit["Directory"]["librarySectionID"])))
+                    continue
+                if exchange["path"] == PREFIX + "/all" and not exchange["query"]:
+                    continue  # every item in the order PMS read them: no key rex emits opens it
+                query = [[field, genres.get(value, value) if field == "genre" else value] for field, value in exchange["query"]]
+                label = "%s %s" % (name, label_of(exchange))
+                status, content_type, body = replay(port, exchange, query)
+                if status != exchange["status"]:
+                    check(label, False, "status %s, reference %s" % (status, exchange["status"]))
+                    continue
+                header_check(label, exchange)
+                if status != 200:
+                    check(label, True)
+                    continue
+                reference = listed(exchange, document(exchange["body"], exchange["type"]), recorded["now"])
+                got = listed(exchange, document(body, content_type), recorded["now"])
+                paging = {"X-Plex-Container-Start", "X-Plex-Container-Size"}
+                if paging & {field for field, _ in exchange["query"] + exchange["headers"]}:
+                    # A page can end inside a tie: it is checked as the window of rex's whole listing.
+                    whole = dict(exchange, query=[pair for pair in query if pair[0] not in paging],
+                                 headers=[pair for pair in exchange["headers"] if pair[0] not in paging])
+                    keys = [row["ratingKey"] for row in json.loads(replay(port, whole)[2])["MediaContainer"].get("Metadata", [])]
+                    window = json.loads(body)["MediaContainer"]
+                    check(label + ": the window of the whole listing", [row["ratingKey"] for row in window.get("Metadata", [])]
+                          == keys[window["offset"]:window["offset"] + window["size"]])
+                    for side in (reference, got):
+                        side["MediaContainer"].pop("Metadata", None)
+                differences = diff(reference, got)
+                check(label, not differences, "%d: %s" % (len(differences), "; ".join(differences[:6])))
+                if name == "order" and exchange["path"].endswith("/sections/1/all") and not exchange["query"]:
+                    # rex's tie: India and Hotel first air at one start, India on the lineup's first channel.
+                    titles = [row["title"] for row in json.loads(body)["MediaContainer"].get("Metadata", [])]
+                    check("order: a tie goes in the order the programmes first air, then lineup", titles == ["Lima", "India", "Hotel", "The Juliet", "Kappa"], titles)
+        finally:
+            process.kill()
+            process.wait()
+
+
 def tune2(scratch, source, guide):
     """One tune as Plex Web sends it, to plexav without a Plex Pass (`tune2_s1434`): the answer and
     its headers, the session's activities, the session, and its Part key, which plexav answers
@@ -553,13 +639,13 @@ def main():
     source = LiveSource(FFMPEG, FFPROBE, free_port(), root=os.path.join(scratch, "source"))
     try:
         source.wait()
-        wanted = sys.argv[1:] or ["tunerless", "reads", "browse", "web", "android", "session", "tune2"]
+        wanted = sys.argv[1:] or ["tunerless", "reads", "browse", "listings", "web", "android", "session", "tune2"]
         for phase in wanted:
             {"tunerless": lambda: tunerless(scratch, source, guide), "reads": lambda: reads(scratch, source, guide),
              "web": lambda: watch(scratch, source, guide, "web_watch_s1434.json.gz", "Plex Web"),
              "android": lambda: watch(scratch, source, guide, "android_watch_s1434.json.gz", "Plex for Android"),
              "session": lambda: session(scratch, source, guide), "browse": lambda: browse(scratch, source, guide),
-             "tune2": lambda: tune2(scratch, source, guide)}[phase]()
+             "tune2": lambda: tune2(scratch, source, guide), "listings": lambda: listings(scratch, source)}[phase]()
     finally:
         source.close()
         if os.environ.get("REX_KEEP_TMP"):
