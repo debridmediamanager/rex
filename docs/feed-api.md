@@ -300,7 +300,7 @@ The `media_info` above is cut down to show its shape. Send ffprobe's whole outpu
 | `path` | yes | Where the bytes are: `<source url>/<path>`. Its first directory also picks the library (below) |
 | `media_info` | yes, in practice | ffprobe's `-show_format -show_streams` JSON (go-ffprobe's `ProbeData` is the same shape). Absent, `null` or with no `streams`: the item is **held**, because Plex Web will not play an item without streams (findings, "An item without a probe cannot play"). A file keeps the streams of the probe it was first shown with: a later one changes only its `chapters` (an `.m3u8` is the exception, below), so a file whose bytes change is a new `id` |
 | `ids` | recommended | `imdb` (`tt…`), `tmdb`, `tvdb`. With `kind`, the title: `imdb` and `tmdb` are the movie's or the **show's** ids, never an episode's, and either one is enough (rex fills in the other from Plex). Without `kind`, only `tmdb` names anything (a TMDB id set by hand at the source): a title of its library's kind, when TMDB has one; `imdb` alone and `tvdb` are kept on the row and name nothing (below) |
-| `kind` | no | `movie`, `episode` or `extra`: what the source knows the file is. `movie` or `episode` **places** the file (below): it picks the movie or show library, and its `ids` are the title. `extra` makes it a clip of its release's title (below). Anything else, or absent: nothing places it, and rex does not guess from its name |
+| `kind` | no | `movie`, `episode`, `extra` or `unplaced`: what the source knows the file is. `movie` or `episode` **places** the file (below): it picks the movie or show library, and its `ids` are the title. `extra` makes it a clip of its release's title (below). `unplaced`: the source looked and nothing places the file, so a placement it pushed before is taken back (below). Anything else, or absent: nothing places it, and rex does not guess from its name |
 | `extra_type` | with `kind: extra` | The clip's type: `trailer`, `deleted`, `featurette`, `behindthescenes`, `interview`, `scene`, `short`, `opening`, `ending` or `other` (Plex's local-extras types and creditless openings and endings). Anything else, or absent, is `other` |
 | `season`, `episode` | no | With `kind: episode`, the episode on **TMDB's** numbering of the show `ids.tmdb` names (`season` 0 is Specials). The row is placed exactly there. Absent: season 1, in the release's file order (below) |
 | `episode_end` | no | The last episode of a file holding several (`E01E02` -> 2). Kept on the row; the file is placed on `episode`, as rex places every multi-episode file on its first |
@@ -338,7 +338,13 @@ What the fields do:
   show is the one its ids name, kept even when Plex has no record of it, and an episode sits on
   its `season` and `episode`. That holds on every push and restart. A later push placing it
   elsewhere moves it there on the same ratingKey, watch state kept; a push without a placement
-  leaves it where the last one put it. A person's Fix Match still wins over a placement.
+  leaves it where the last one put it. A push with `kind: "unplaced"` takes the placement back:
+  the file leaves the title it was placed as (its version, where the row holds several releases;
+  else the row) and is shown unmatched, as a first push of it would be. zurg sends it when DMM
+  turns down the id zurg sent, or when a release taken for one film is a run of episodes: the
+  production server held the 1996 film Second Chance eleven times, once per episode of a series
+  (2026-11-01). Sent by its digest alone, such an item is asked for whole (`wants`). A person's
+  Fix Match still wins over a placement.
 - **Identification.** rex identifies a file only by its source's placement or by a TMDB id set
   by hand (`ids.tmdb` with no `kind`: a title of its library's kind), trusted as pushed and
   checked against nothing, and never by its name (`identify.rs`). How the source decides is its

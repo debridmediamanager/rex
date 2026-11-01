@@ -1,0 +1,1083 @@
+{
+ "source": "the production server's rows of 2026-11-01 (rex-fun, read-only from rex.db), source renamed zurg, mount /zurg; pushes are zurg's items for them, kind as the contract has it sent",
+ "rows": [
+  {
+   "ratingKey": "174630",
+   "key": "/library/metadata/174630",
+   "guid": "plex://movie/5d776bf7ad5437001f7af8f1",
+   "type": "movie",
+   "title": "Second Chance",
+   "summary": "Three scientists invent a youth serum, but they're forced to flee their lab as a group of mercenaries try to take it for the wealthy old man who hired them, capturing the head of the lab in the process.",
+   "duration": 2781948,
+   "addedAt": 1792267996,
+   "updatedAt": 1792267996,
+   "thumb": "/library/metadata/174630/thumb/1792267997",
+   "art": "/library/metadata/174630/art/1792267997",
+   "Media": [
+    {
+     "id": 17463000,
+     "duration": 2781948,
+     "bitrate": 2100,
+     "width": 704,
+     "height": 528,
+     "aspectRatio": 1.33,
+     "audioChannels": 2,
+     "audioCodec": "ac3",
+     "videoCodec": "h264",
+     "videoResolution": "480",
+     "container": "mkv",
+     "videoFrameRate": "NTSC",
+     "videoProfile": "high",
+     "audioProfile": null,
+     "Part": [
+      {
+       "id": 1746300,
+       "key": "/library/parts/1746300/1792267996/file.mkv",
+       "duration": 2781948,
+       "file": "/zurg/shows/Second.Chance.1995.dvdrip-xpost/Second.Chance.01.mkv",
+       "size": 730327948,
+       "container": "mkv",
+       "videoProfile": "high",
+       "audioProfile": null,
+       "Stream": [
+        {
+         "id": 174630001,
+         "streamType": 1,
+         "codec": "h264",
+         "index": 0,
+         "streamIdentifier": null,
+         "width": 704,
+         "height": 528,
+         "profile": "high",
+         "level": 41,
+         "refFrames": null,
+         "bitDepth": 8,
+         "chromaSubsampling": "4:2:0",
+         "chromaLocation": null,
+         "codedHeight": null,
+         "codedWidth": null,
+         "codecID": null,
+         "colorPrimaries": null,
+         "colorTrc": null,
+         "colorSpace": null,
+         "colorRange": null,
+         "frameRate": 29.97,
+         "scanType": "progressive",
+         "default": true,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "displayTitle": "480p",
+         "extendedDisplayTitle": "480p (H.264)"
+        },
+        {
+         "id": 174630002,
+         "streamType": 2,
+         "codec": "ac3",
+         "index": 1,
+         "streamIdentifier": null,
+         "channels": 2,
+         "audioChannelLayout": "stereo",
+         "samplingRate": 48000,
+         "bitDepth": null,
+         "selected": true,
+         "default": true,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "bitrate": 192,
+         "displayTitle": "日本語 (AC3 Stereo)",
+         "extendedDisplayTitle": "日本語 (AC3 Stereo)"
+        },
+        {
+         "id": 174630003,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "vobsub",
+         "index": 2,
+         "streamIdentifier": null,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "displayTitle": "日本語",
+         "extendedDisplayTitle": "日本語 (VOBSUB)",
+         "selected": true
+        }
+       ]
+      }
+     ],
+     "hasVoiceActivity": false,
+     "_source": "zurg",
+     "_sid": "shows/Second.Chance.1995.dvdrip-xpost/Second.Chance.01.mkv",
+     "_path": "shows/Second.Chance.1995.dvdrip-xpost/Second.Chance.01.mkv",
+     "_folder": "",
+     "_release": "Second.Chance.1995.dvdrip-xpost",
+     "_ids": {
+      "imdb": "tt0117579",
+      "tmdb": "369091"
+     },
+     "_placed": {
+      "kind": "movie"
+     },
+     "_chapters": [],
+     "_probe": "1d4cd5911d775b7e6bc4ee1118995698",
+     "_group": "shows/Second.Chance.1995.dvdrip-xpost"
+    }
+   ],
+   "_identity": "tmdb:369091",
+   "_release": "Second.Chance.1995.dvdrip-xpost",
+   "_hash": "6b8062a496b350c08bf17da021e292a5a7735c23",
+   "_source": "zurg",
+   "_sid": "shows/Second.Chance.1995.dvdrip-xpost/Second.Chance.01.mkv",
+   "_path": "shows/Second.Chance.1995.dvdrip-xpost/Second.Chance.01.mkv",
+   "_ids": {
+    "imdb": "tt0117579",
+    "tmdb": "369091"
+   },
+   "_folder": "",
+   "_placed": {
+    "kind": "movie"
+   },
+   "year": 1996,
+   "originallyAvailableAt": "1996-07-12",
+   "tagline": "Good news: They found the secret to age reversal. Bad news: They've gone too far.",
+   "contentRating": "PG",
+   "studio": "Dayton Studios",
+   "audienceRating": 4.2,
+   "Genre": [
+    {
+     "tag": "Comedy",
+     "id": 244689,
+     "filter": "genre=244689"
+    },
+    {
+     "tag": "Science Fiction",
+     "id": 658108,
+     "filter": "genre=658108"
+    }
+   ],
+   "Country": [
+    {
+     "tag": "United States of America",
+     "id": 387550,
+     "filter": "country=387550"
+    }
+   ],
+   "Role": [
+    {
+     "tag": "Richard Hatch",
+     "role": "Mitch",
+     "thumb": "https://metadata-static.plex.tv/5/people/5aa82631444a50bfb88f76eda0f1a2f0.jpg",
+     "tagKey": "48a04339034c37559f3f6f5b",
+     "id": 827173,
+     "filter": "actor=827173"
+    },
+    {
+     "tag": "Cylk Cozart",
+     "role": "Brad",
+     "thumb": "https://metadata-static.plex.tv/7/people/740e8420a15e4dfbd047a6e004353155.jpg",
+     "tagKey": "8d1d6b45431edc573dbff00e",
+     "id": 208485,
+     "filter": "actor=208485"
+    },
+    {
+     "tag": "Arte Johnson",
+     "role": "Dr. Josef Stiggens",
+     "thumb": "https://metadata-static.plex.tv/9/people/9dc0a23da20471d6e7fd3f7a3d86ee5a.jpg",
+     "tagKey": "41c82902c71cde6284365efa",
+     "id": 602932,
+     "filter": "actor=602932"
+    },
+    {
+     "tag": "George LePorte",
+     "role": "Stan",
+     "tagKey": "4a3ad99d29006cfa8d18edb6",
+     "id": 573687,
+     "filter": "actor=573687"
+    },
+    {
+     "tag": "Julie Hughes",
+     "role": "Renae",
+     "tagKey": "f05d0b03ba93845d1e9bdb46",
+     "id": 309286,
+     "filter": "actor=309286"
+    },
+    {
+     "tag": "Nicholas Walker",
+     "role": "Nelson Stafford",
+     "tagKey": "cd7a198aeaaadd00e411e7b8",
+     "id": 750794,
+     "filter": "actor=750794"
+    }
+   ],
+   "Director": [
+    {
+     "tag": "Lyman Dayton",
+     "role": "Director",
+     "tagKey": "323abc440af97078a2c9a047",
+     "id": 279316,
+     "filter": "director=279316"
+    }
+   ],
+   "Writer": [
+    {
+     "tag": "Lyman Dayton",
+     "role": "Writer",
+     "tagKey": "323abc440af97078a2c9a047",
+     "id": 7006,
+     "filter": "writer=7006"
+    },
+    {
+     "tag": "Robert Paxton",
+     "role": "Writer",
+     "tagKey": "a3a02124680f78cc4651dc7a",
+     "id": 603593,
+     "filter": "writer=603593"
+    }
+   ],
+   "_poster_url": "https://image.tmdb.org/t/p/original/a91TXpV1wxv88cnXGsDMrW87HGy.jpg",
+   "Guid": [
+    {
+     "id": "imdb://tt0117579"
+    },
+    {
+     "id": "tmdb://369091"
+    },
+    {
+     "id": "tvdb://119802"
+    }
+   ],
+   "_identify": {
+    "source": "placed",
+    "imdb": "tt0117579",
+    "tmdb": 369091,
+    "plex": "plex://movie/5d776bf7ad5437001f7af8f1"
+   },
+   "librarySectionID": 1,
+   "librarySectionTitle": "Movies",
+   "librarySectionKey": "/library/sections/1",
+   "slug": "second-chance",
+   "UltraBlurColors": {
+    "topLeft": "1a1a1e",
+    "topRight": "24242a",
+    "bottomRight": "15151a",
+    "bottomLeft": "1f1f26"
+   },
+   "_scanned": true,
+   "_thumbFor": "https://image.tmdb.org/t/p/original/a91TXpV1wxv88cnXGsDMrW87HGy.jpg",
+   "_artFor": "",
+   "_titleGuid": "plex://movie/5d776bf7ad5437001f7af8f1",
+   "_group": "shows/Second.Chance.1995.dvdrip-xpost"
+  },
+  {
+   "ratingKey": "174631",
+   "key": "/library/metadata/174631",
+   "guid": "plex://movie/5d776bf7ad5437001f7af8f1",
+   "type": "movie",
+   "title": "Second Chance",
+   "summary": "Three scientists invent a youth serum, but they're forced to flee their lab as a group of mercenaries try to take it for the wealthy old man who hired them, capturing the head of the lab in the process.",
+   "duration": 2780881,
+   "addedAt": 1792267996,
+   "updatedAt": 1792267996,
+   "thumb": "/library/metadata/174631/thumb/1792267997",
+   "art": "/library/metadata/174631/art/1792267997",
+   "Media": [
+    {
+     "id": 17463100,
+     "duration": 2780881,
+     "bitrate": 2100,
+     "width": 704,
+     "height": 528,
+     "aspectRatio": 1.33,
+     "audioChannels": 2,
+     "audioCodec": "ac3",
+     "videoCodec": "h264",
+     "videoResolution": "480",
+     "container": "mkv",
+     "videoFrameRate": "NTSC",
+     "videoProfile": "high",
+     "audioProfile": null,
+     "Part": [
+      {
+       "id": 1746310,
+       "key": "/library/parts/1746310/1792267996/file.mkv",
+       "duration": 2780881,
+       "file": "/zurg/shows/Second.Chance.1995.dvdrip-xpost/Second.Chance.02.mkv",
+       "size": 730152444,
+       "container": "mkv",
+       "videoProfile": "high",
+       "audioProfile": null,
+       "Stream": [
+        {
+         "id": 174631001,
+         "streamType": 1,
+         "codec": "h264",
+         "index": 0,
+         "streamIdentifier": null,
+         "width": 704,
+         "height": 528,
+         "profile": "high",
+         "level": 41,
+         "refFrames": null,
+         "bitDepth": 8,
+         "chromaSubsampling": "4:2:0",
+         "chromaLocation": null,
+         "codedHeight": null,
+         "codedWidth": null,
+         "codecID": null,
+         "colorPrimaries": null,
+         "colorTrc": null,
+         "colorSpace": null,
+         "colorRange": null,
+         "frameRate": 29.97,
+         "scanType": "progressive",
+         "default": true,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "displayTitle": "480p",
+         "extendedDisplayTitle": "480p (H.264)"
+        },
+        {
+         "id": 174631002,
+         "streamType": 2,
+         "codec": "ac3",
+         "index": 1,
+         "streamIdentifier": null,
+         "channels": 2,
+         "audioChannelLayout": "stereo",
+         "samplingRate": 48000,
+         "bitDepth": null,
+         "selected": true,
+         "default": true,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "bitrate": 192,
+         "displayTitle": "日本語 (AC3 Stereo)",
+         "extendedDisplayTitle": "日本語 (AC3 Stereo)"
+        },
+        {
+         "id": 174631003,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "vobsub",
+         "index": 2,
+         "streamIdentifier": null,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "displayTitle": "日本語",
+         "extendedDisplayTitle": "日本語 (VOBSUB)",
+         "selected": true
+        }
+       ]
+      }
+     ],
+     "hasVoiceActivity": false,
+     "_chapters": [],
+     "_probe": "5b81026032a531946cee536414db8af6"
+    }
+   ],
+   "_identity": "tmdb:369091",
+   "_release": "Second.Chance.1995.dvdrip-xpost",
+   "_hash": "6b8062a496b350c08bf17da021e292a5a7735c23",
+   "_source": "zurg",
+   "_sid": "shows/Second.Chance.1995.dvdrip-xpost/Second.Chance.02.mkv",
+   "_path": "shows/Second.Chance.1995.dvdrip-xpost/Second.Chance.02.mkv",
+   "_ids": {
+    "imdb": "tt0117579",
+    "tmdb": "369091"
+   },
+   "_folder": "",
+   "_placed": {
+    "kind": "movie"
+   },
+   "year": 1996,
+   "originallyAvailableAt": "1996-07-12",
+   "tagline": "Good news: They found the secret to age reversal. Bad news: They've gone too far.",
+   "contentRating": "PG",
+   "studio": "Dayton Studios",
+   "audienceRating": 4.2,
+   "Genre": [
+    {
+     "tag": "Comedy",
+     "id": 244689,
+     "filter": "genre=244689"
+    },
+    {
+     "tag": "Science Fiction",
+     "id": 658108,
+     "filter": "genre=658108"
+    }
+   ],
+   "Country": [
+    {
+     "tag": "United States of America",
+     "id": 387550,
+     "filter": "country=387550"
+    }
+   ],
+   "Role": [
+    {
+     "tag": "Richard Hatch",
+     "role": "Mitch",
+     "thumb": "https://metadata-static.plex.tv/5/people/5aa82631444a50bfb88f76eda0f1a2f0.jpg",
+     "tagKey": "48a04339034c37559f3f6f5b",
+     "id": 827173,
+     "filter": "actor=827173"
+    },
+    {
+     "tag": "Cylk Cozart",
+     "role": "Brad",
+     "thumb": "https://metadata-static.plex.tv/7/people/740e8420a15e4dfbd047a6e004353155.jpg",
+     "tagKey": "8d1d6b45431edc573dbff00e",
+     "id": 208485,
+     "filter": "actor=208485"
+    },
+    {
+     "tag": "Arte Johnson",
+     "role": "Dr. Josef Stiggens",
+     "thumb": "https://metadata-static.plex.tv/9/people/9dc0a23da20471d6e7fd3f7a3d86ee5a.jpg",
+     "tagKey": "41c82902c71cde6284365efa",
+     "id": 602932,
+     "filter": "actor=602932"
+    },
+    {
+     "tag": "George LePorte",
+     "role": "Stan",
+     "tagKey": "4a3ad99d29006cfa8d18edb6",
+     "id": 573687,
+     "filter": "actor=573687"
+    },
+    {
+     "tag": "Julie Hughes",
+     "role": "Renae",
+     "tagKey": "f05d0b03ba93845d1e9bdb46",
+     "id": 309286,
+     "filter": "actor=309286"
+    },
+    {
+     "tag": "Nicholas Walker",
+     "role": "Nelson Stafford",
+     "tagKey": "cd7a198aeaaadd00e411e7b8",
+     "id": 750794,
+     "filter": "actor=750794"
+    }
+   ],
+   "Director": [
+    {
+     "tag": "Lyman Dayton",
+     "role": "Director",
+     "tagKey": "323abc440af97078a2c9a047",
+     "id": 279316,
+     "filter": "director=279316"
+    }
+   ],
+   "Writer": [
+    {
+     "tag": "Lyman Dayton",
+     "role": "Writer",
+     "tagKey": "323abc440af97078a2c9a047",
+     "id": 7006,
+     "filter": "writer=7006"
+    },
+    {
+     "tag": "Robert Paxton",
+     "role": "Writer",
+     "tagKey": "a3a02124680f78cc4651dc7a",
+     "id": 603593,
+     "filter": "writer=603593"
+    }
+   ],
+   "_poster_url": "https://image.tmdb.org/t/p/original/a91TXpV1wxv88cnXGsDMrW87HGy.jpg",
+   "Guid": [
+    {
+     "id": "imdb://tt0117579"
+    },
+    {
+     "id": "tmdb://369091"
+    },
+    {
+     "id": "tvdb://119802"
+    }
+   ],
+   "_identify": {
+    "source": "placed",
+    "imdb": "tt0117579",
+    "tmdb": 369091,
+    "plex": "plex://movie/5d776bf7ad5437001f7af8f1"
+   },
+   "librarySectionID": 1,
+   "librarySectionTitle": "Movies",
+   "librarySectionKey": "/library/sections/1",
+   "slug": "second-chance",
+   "UltraBlurColors": {
+    "topLeft": "1a1a1e",
+    "topRight": "24242a",
+    "bottomRight": "15151a",
+    "bottomLeft": "1f1f26"
+   },
+   "_scanned": true,
+   "_thumbFor": "https://image.tmdb.org/t/p/original/a91TXpV1wxv88cnXGsDMrW87HGy.jpg",
+   "_artFor": "",
+   "_titleGuid": "plex://movie/5d776bf7ad5437001f7af8f1",
+   "_group": "shows/Second.Chance.1995.dvdrip-xpost"
+  },
+  {
+   "ratingKey": "174632",
+   "key": "/library/metadata/174632",
+   "guid": "plex://movie/5d776bf7ad5437001f7af8f1",
+   "type": "movie",
+   "title": "Second Chance",
+   "summary": "Three scientists invent a youth serum, but they're forced to flee their lab as a group of mercenaries try to take it for the wealthy old man who hired them, capturing the head of the lab in the process.",
+   "duration": 2749983,
+   "addedAt": 1792267996,
+   "updatedAt": 1792267996,
+   "thumb": "/library/metadata/174632/thumb/1792267997",
+   "art": "/library/metadata/174632/art/1792267997",
+   "Media": [
+    {
+     "id": 17463200,
+     "duration": 2749983,
+     "bitrate": 2100,
+     "width": 704,
+     "height": 528,
+     "aspectRatio": 1.33,
+     "audioChannels": 2,
+     "audioCodec": "ac3",
+     "videoCodec": "h264",
+     "videoResolution": "480",
+     "container": "mkv",
+     "videoFrameRate": "NTSC",
+     "videoProfile": "high",
+     "audioProfile": null,
+     "Part": [
+      {
+       "id": 1746320,
+       "key": "/library/parts/1746320/1792267996/file.mkv",
+       "duration": 2749983,
+       "file": "/zurg/shows/Second.Chance.1995.dvdrip-xpost/Second.Chance.03.mkv",
+       "size": 721981936,
+       "container": "mkv",
+       "videoProfile": "high",
+       "audioProfile": null,
+       "Stream": [
+        {
+         "id": 174632001,
+         "streamType": 1,
+         "codec": "h264",
+         "index": 0,
+         "streamIdentifier": null,
+         "width": 704,
+         "height": 528,
+         "profile": "high",
+         "level": 41,
+         "refFrames": null,
+         "bitDepth": 8,
+         "chromaSubsampling": "4:2:0",
+         "chromaLocation": null,
+         "codedHeight": null,
+         "codedWidth": null,
+         "codecID": null,
+         "colorPrimaries": null,
+         "colorTrc": null,
+         "colorSpace": null,
+         "colorRange": null,
+         "frameRate": 29.97,
+         "scanType": "progressive",
+         "default": true,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "displayTitle": "480p",
+         "extendedDisplayTitle": "480p (H.264)"
+        },
+        {
+         "id": 174632002,
+         "streamType": 2,
+         "codec": "ac3",
+         "index": 1,
+         "streamIdentifier": null,
+         "channels": 2,
+         "audioChannelLayout": "stereo",
+         "samplingRate": 48000,
+         "bitDepth": null,
+         "selected": true,
+         "default": true,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "bitrate": 192,
+         "displayTitle": "日本語 (AC3 Stereo)",
+         "extendedDisplayTitle": "日本語 (AC3 Stereo)"
+        },
+        {
+         "id": 174632003,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "vobsub",
+         "index": 2,
+         "streamIdentifier": null,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "displayTitle": "日本語",
+         "extendedDisplayTitle": "日本語 (VOBSUB)",
+         "selected": true
+        }
+       ]
+      }
+     ],
+     "hasVoiceActivity": false,
+     "_chapters": [],
+     "_probe": "7a867bc33705b534de810ac57502de69"
+    }
+   ],
+   "_identity": "tmdb:369091",
+   "_release": "Second.Chance.1995.dvdrip-xpost",
+   "_hash": "6b8062a496b350c08bf17da021e292a5a7735c23",
+   "_source": "zurg",
+   "_sid": "shows/Second.Chance.1995.dvdrip-xpost/Second.Chance.03.mkv",
+   "_path": "shows/Second.Chance.1995.dvdrip-xpost/Second.Chance.03.mkv",
+   "_ids": {
+    "imdb": "tt0117579",
+    "tmdb": "369091"
+   },
+   "_folder": "",
+   "_placed": {
+    "kind": "movie"
+   },
+   "year": 1996,
+   "originallyAvailableAt": "1996-07-12",
+   "tagline": "Good news: They found the secret to age reversal. Bad news: They've gone too far.",
+   "contentRating": "PG",
+   "studio": "Dayton Studios",
+   "audienceRating": 4.2,
+   "Genre": [
+    {
+     "tag": "Comedy",
+     "id": 244689,
+     "filter": "genre=244689"
+    },
+    {
+     "tag": "Science Fiction",
+     "id": 658108,
+     "filter": "genre=658108"
+    }
+   ],
+   "Country": [
+    {
+     "tag": "United States of America",
+     "id": 387550,
+     "filter": "country=387550"
+    }
+   ],
+   "Role": [
+    {
+     "tag": "Richard Hatch",
+     "role": "Mitch",
+     "thumb": "https://metadata-static.plex.tv/5/people/5aa82631444a50bfb88f76eda0f1a2f0.jpg",
+     "tagKey": "48a04339034c37559f3f6f5b",
+     "id": 827173,
+     "filter": "actor=827173"
+    },
+    {
+     "tag": "Cylk Cozart",
+     "role": "Brad",
+     "thumb": "https://metadata-static.plex.tv/7/people/740e8420a15e4dfbd047a6e004353155.jpg",
+     "tagKey": "8d1d6b45431edc573dbff00e",
+     "id": 208485,
+     "filter": "actor=208485"
+    },
+    {
+     "tag": "Arte Johnson",
+     "role": "Dr. Josef Stiggens",
+     "thumb": "https://metadata-static.plex.tv/9/people/9dc0a23da20471d6e7fd3f7a3d86ee5a.jpg",
+     "tagKey": "41c82902c71cde6284365efa",
+     "id": 602932,
+     "filter": "actor=602932"
+    },
+    {
+     "tag": "George LePorte",
+     "role": "Stan",
+     "tagKey": "4a3ad99d29006cfa8d18edb6",
+     "id": 573687,
+     "filter": "actor=573687"
+    },
+    {
+     "tag": "Julie Hughes",
+     "role": "Renae",
+     "tagKey": "f05d0b03ba93845d1e9bdb46",
+     "id": 309286,
+     "filter": "actor=309286"
+    },
+    {
+     "tag": "Nicholas Walker",
+     "role": "Nelson Stafford",
+     "tagKey": "cd7a198aeaaadd00e411e7b8",
+     "id": 750794,
+     "filter": "actor=750794"
+    }
+   ],
+   "Director": [
+    {
+     "tag": "Lyman Dayton",
+     "role": "Director",
+     "tagKey": "323abc440af97078a2c9a047",
+     "id": 279316,
+     "filter": "director=279316"
+    }
+   ],
+   "Writer": [
+    {
+     "tag": "Lyman Dayton",
+     "role": "Writer",
+     "tagKey": "323abc440af97078a2c9a047",
+     "id": 7006,
+     "filter": "writer=7006"
+    },
+    {
+     "tag": "Robert Paxton",
+     "role": "Writer",
+     "tagKey": "a3a02124680f78cc4651dc7a",
+     "id": 603593,
+     "filter": "writer=603593"
+    }
+   ],
+   "_poster_url": "https://image.tmdb.org/t/p/original/a91TXpV1wxv88cnXGsDMrW87HGy.jpg",
+   "Guid": [
+    {
+     "id": "imdb://tt0117579"
+    },
+    {
+     "id": "tmdb://369091"
+    },
+    {
+     "id": "tvdb://119802"
+    }
+   ],
+   "_identify": {
+    "source": "placed",
+    "imdb": "tt0117579",
+    "tmdb": 369091,
+    "plex": "plex://movie/5d776bf7ad5437001f7af8f1"
+   },
+   "librarySectionID": 1,
+   "librarySectionTitle": "Movies",
+   "librarySectionKey": "/library/sections/1",
+   "slug": "second-chance",
+   "UltraBlurColors": {
+    "topLeft": "1a1a1e",
+    "topRight": "24242a",
+    "bottomRight": "15151a",
+    "bottomLeft": "1f1f26"
+   },
+   "_scanned": true,
+   "_thumbFor": "https://image.tmdb.org/t/p/original/a91TXpV1wxv88cnXGsDMrW87HGy.jpg",
+   "_artFor": "",
+   "_titleGuid": "plex://movie/5d776bf7ad5437001f7af8f1",
+   "_group": "shows/Second.Chance.1995.dvdrip-xpost"
+  },
+  {
+   "ratingKey": "174633",
+   "key": "/library/metadata/174633",
+   "guid": "plex://movie/5d776bf7ad5437001f7af8f1",
+   "type": "movie",
+   "title": "Second Chance",
+   "summary": "Three scientists invent a youth serum, but they're forced to flee their lab as a group of mercenaries try to take it for the wealthy old man who hired them, capturing the head of the lab in the process.",
+   "duration": 2782082,
+   "addedAt": 1792267996,
+   "updatedAt": 1792267996,
+   "thumb": "/library/metadata/174633/thumb/1792267997",
+   "art": "/library/metadata/174633/art/1792267997",
+   "Media": [
+    {
+     "id": 17463300,
+     "duration": 2782082,
+     "bitrate": 2100,
+     "width": 704,
+     "height": 528,
+     "aspectRatio": 1.33,
+     "audioChannels": 2,
+     "audioCodec": "ac3",
+     "videoCodec": "h264",
+     "videoResolution": "480",
+     "container": "mkv",
+     "videoFrameRate": "NTSC",
+     "videoProfile": "high",
+     "audioProfile": null,
+     "Part": [
+      {
+       "id": 1746330,
+       "key": "/library/parts/1746330/1792267996/file.mkv",
+       "duration": 2782082,
+       "file": "/zurg/shows/Second.Chance.1995.dvdrip-xpost/Second.Chance.04.mkv",
+       "size": 730138663,
+       "container": "mkv",
+       "videoProfile": "high",
+       "audioProfile": null,
+       "Stream": [
+        {
+         "id": 174633001,
+         "streamType": 1,
+         "codec": "h264",
+         "index": 0,
+         "streamIdentifier": null,
+         "width": 704,
+         "height": 528,
+         "profile": "high",
+         "level": 41,
+         "refFrames": null,
+         "bitDepth": 8,
+         "chromaSubsampling": "4:2:0",
+         "chromaLocation": null,
+         "codedHeight": null,
+         "codedWidth": null,
+         "codecID": null,
+         "colorPrimaries": null,
+         "colorTrc": null,
+         "colorSpace": null,
+         "colorRange": null,
+         "frameRate": 29.97,
+         "scanType": "progressive",
+         "default": true,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "displayTitle": "480p",
+         "extendedDisplayTitle": "480p (H.264)"
+        },
+        {
+         "id": 174633002,
+         "streamType": 2,
+         "codec": "ac3",
+         "index": 1,
+         "streamIdentifier": null,
+         "channels": 2,
+         "audioChannelLayout": "stereo",
+         "samplingRate": 48000,
+         "bitDepth": null,
+         "selected": true,
+         "default": true,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "bitrate": 192,
+         "displayTitle": "日本語 (AC3 Stereo)",
+         "extendedDisplayTitle": "日本語 (AC3 Stereo)"
+        },
+        {
+         "id": 174633003,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "vobsub",
+         "index": 2,
+         "streamIdentifier": null,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "displayTitle": "日本語",
+         "extendedDisplayTitle": "日本語 (VOBSUB)",
+         "selected": true
+        }
+       ]
+      }
+     ],
+     "hasVoiceActivity": false,
+     "_chapters": [],
+     "_probe": "e90c135651a770773ed20e8fdab1d6be"
+    }
+   ],
+   "_identity": "tmdb:369091",
+   "_release": "Second.Chance.1995.dvdrip-xpost",
+   "_hash": "6b8062a496b350c08bf17da021e292a5a7735c23",
+   "_source": "zurg",
+   "_sid": "shows/Second.Chance.1995.dvdrip-xpost/Second.Chance.04.mkv",
+   "_path": "shows/Second.Chance.1995.dvdrip-xpost/Second.Chance.04.mkv",
+   "_ids": {
+    "imdb": "tt0117579",
+    "tmdb": "369091"
+   },
+   "_folder": "",
+   "_placed": {
+    "kind": "movie"
+   },
+   "year": 1996,
+   "originallyAvailableAt": "1996-07-12",
+   "tagline": "Good news: They found the secret to age reversal. Bad news: They've gone too far.",
+   "contentRating": "PG",
+   "studio": "Dayton Studios",
+   "audienceRating": 4.2,
+   "Genre": [
+    {
+     "tag": "Comedy",
+     "id": 244689,
+     "filter": "genre=244689"
+    },
+    {
+     "tag": "Science Fiction",
+     "id": 658108,
+     "filter": "genre=658108"
+    }
+   ],
+   "Country": [
+    {
+     "tag": "United States of America",
+     "id": 387550,
+     "filter": "country=387550"
+    }
+   ],
+   "Role": [
+    {
+     "tag": "Richard Hatch",
+     "role": "Mitch",
+     "thumb": "https://metadata-static.plex.tv/5/people/5aa82631444a50bfb88f76eda0f1a2f0.jpg",
+     "tagKey": "48a04339034c37559f3f6f5b",
+     "id": 827173,
+     "filter": "actor=827173"
+    },
+    {
+     "tag": "Cylk Cozart",
+     "role": "Brad",
+     "thumb": "https://metadata-static.plex.tv/7/people/740e8420a15e4dfbd047a6e004353155.jpg",
+     "tagKey": "8d1d6b45431edc573dbff00e",
+     "id": 208485,
+     "filter": "actor=208485"
+    },
+    {
+     "tag": "Arte Johnson",
+     "role": "Dr. Josef Stiggens",
+     "thumb": "https://metadata-static.plex.tv/9/people/9dc0a23da20471d6e7fd3f7a3d86ee5a.jpg",
+     "tagKey": "41c82902c71cde6284365efa",
+     "id": 602932,
+     "filter": "actor=602932"
+    },
+    {
+     "tag": "George LePorte",
+     "role": "Stan",
+     "tagKey": "4a3ad99d29006cfa8d18edb6",
+     "id": 573687,
+     "filter": "actor=573687"
+    },
+    {
+     "tag": "Julie Hughes",
+     "role": "Renae",
+     "tagKey": "f05d0b03ba93845d1e9bdb46",
+     "id": 309286,
+     "filter": "actor=309286"
+    },
+    {
+     "tag": "Nicholas Walker",
+     "role": "Nelson Stafford",
+     "tagKey": "cd7a198aeaaadd00e411e7b8",
+     "id": 750794,
+     "filter": "actor=750794"
+    }
+   ],
+   "Director": [
+    {
+     "tag": "Lyman Dayton",
+     "role": "Director",
+     "tagKey": "323abc440af97078a2c9a047",
+     "id": 279316,
+     "filter": "director=279316"
+    }
+   ],
+   "Writer": [
+    {
+     "tag": "Lyman Dayton",
+     "role": "Writer",
+     "tagKey": "323abc440af97078a2c9a047",
+     "id": 7006,
+     "filter": "writer=7006"
+    },
+    {
+     "tag": "Robert Paxton",
+     "role": "Writer",
+     "tagKey": "a3a02124680f78cc4651dc7a",
+     "id": 603593,
+     "filter": "writer=603593"
+    }
+   ],
+   "_poster_url": "https://image.tmdb.org/t/p/original/a91TXpV1wxv88cnXGsDMrW87HGy.jpg",
+   "Guid": [
+    {
+     "id": "imdb://tt0117579"
+    },
+    {
+     "id": "tmdb://369091"
+    },
+    {
+     "id": "tvdb://119802"
+    }
+   ],
+   "_identify": {
+    "source": "placed",
+    "imdb": "tt0117579",
+    "tmdb": 369091,
+    "plex": "plex://movie/5d776bf7ad5437001f7af8f1"
+   },
+   "librarySectionID": 1,
+   "librarySectionTitle": "Movies",
+   "librarySectionKey": "/library/sections/1",
+   "slug": "second-chance",
+   "UltraBlurColors": {
+    "topLeft": "1a1a1e",
+    "topRight": "24242a",
+    "bottomRight": "15151a",
+    "bottomLeft": "1f1f26"
+   },
+   "_scanned": true,
+   "_thumbFor": "https://image.tmdb.org/t/p/original/a91TXpV1wxv88cnXGsDMrW87HGy.jpg",
+   "_artFor": "",
+   "_titleGuid": "plex://movie/5d776bf7ad5437001f7af8f1",
+   "_group": "shows/Second.Chance.1995.dvdrip-xpost"
+  }
+ ],
+ "pushes": {
+  "Second.Chance.01": {
+   "id": "shows/Second.Chance.1995.dvdrip-xpost/Second.Chance.01.mkv",
+   "path": "shows/Second.Chance.1995.dvdrip-xpost/Second.Chance.01.mkv",
+   "release": "shows/Second.Chance.1995.dvdrip-xpost",
+   "name": "Second.Chance.1995.dvdrip-xpost",
+   "size": 730327948,
+   "hash": "6b8062a496b350c08bf17da021e292a5a7735c23",
+   "folder": "",
+   "row": "174630",
+   "kind": "unplaced"
+  },
+  "Second.Chance.02": {
+   "id": "shows/Second.Chance.1995.dvdrip-xpost/Second.Chance.02.mkv",
+   "path": "shows/Second.Chance.1995.dvdrip-xpost/Second.Chance.02.mkv",
+   "release": "shows/Second.Chance.1995.dvdrip-xpost",
+   "name": "Second.Chance.1995.dvdrip-xpost",
+   "size": 730152444,
+   "hash": "6b8062a496b350c08bf17da021e292a5a7735c23",
+   "folder": "",
+   "row": "174631",
+   "kind": "unplaced"
+  },
+  "Second.Chance.03": {
+   "id": "shows/Second.Chance.1995.dvdrip-xpost/Second.Chance.03.mkv",
+   "path": "shows/Second.Chance.1995.dvdrip-xpost/Second.Chance.03.mkv",
+   "release": "shows/Second.Chance.1995.dvdrip-xpost",
+   "name": "Second.Chance.1995.dvdrip-xpost",
+   "size": 721981936,
+   "hash": "6b8062a496b350c08bf17da021e292a5a7735c23",
+   "folder": "",
+   "row": "174632",
+   "kind": "unplaced"
+  },
+  "Second.Chance.04": {
+   "id": "shows/Second.Chance.1995.dvdrip-xpost/Second.Chance.04.mkv",
+   "path": "shows/Second.Chance.1995.dvdrip-xpost/Second.Chance.04.mkv",
+   "release": "shows/Second.Chance.1995.dvdrip-xpost",
+   "name": "Second.Chance.1995.dvdrip-xpost",
+   "size": 730138663,
+   "hash": "6b8062a496b350c08bf17da021e292a5a7735c23",
+   "folder": "",
+   "row": "174633"
+  }
+ }
+}
