@@ -100,7 +100,9 @@ def main():
             if status != 200 or json.loads(body).get("rejected"):
                 raise RuntimeError("push refused: %s %s" % (status, body[:300]))
         print("pushed %d channels, %d airings in %.1fs" % (CHANNELS, CHANNELS * 7 * 48, time.perf_counter() - began), flush=True)
-        today = time.strftime("%Y-%m-%d", time.gmtime())
+        # Tomorrow, whole in the week pushed: today keeps only the airings that ended under three
+        # hours ago, 8 rows after 22:30 UTC, which failed `rows >= 10` every night.
+        today = time.strftime("%Y-%m-%d", time.gmtime(time.time() + 86400))
         status, _, first = ask(port, "GET", "%s/grid?channelGridKey=150.1&date=%s" % (PREFIX, today))
         grids = []
         for number in range(1, 41):
