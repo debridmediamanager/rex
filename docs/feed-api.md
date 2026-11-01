@@ -444,6 +444,7 @@ with a four-album library, through Plex Web, Plex for Android and Plexamp
 |---|---|
 | `ids.mbid` | MusicBrainz's **release** id of the track's album. rex asks Plex's agent for the album it names (`GET /library/metadata/matches?guid=mbid://<id>&type=9`, as a real PMS asks), and the album's tracks, its artist and everything shown come from the agent |
 | `ids.plex` | Or Plex's album guid itself, `plex://album/<id>` |
+| `ids.artist_mbid` | MusicBrainz's **artist** id. Asked only when nothing names the album (no `ids.mbid` or `ids.plex`, or Plex's agent names nothing for them): rex asks the agent for the artist it names (`GET /library/metadata/matches?guid=mbid://<id>&type=8`) and puts the album, titled as `display.album`, under that artist, beside the artist's named albums. Without it, such an album goes under an artist of `display.artist`'s name |
 | `disc`, `track` | The track's disc (default 1) and number on that album: the album's track at those numbers at Plex's agent is the track |
 | `release` | Which copy of the album the track is, as for any item: default the folder above its path. Each release is an album of its own (below), so a release whose files sit in disc folders (`CD1/`, `CD2/`) sends one `release` for all of them |
 | `display` | For a track nothing names: its `title`, `summary` and `date`, its `artist` (`title`, `summary`, `poster`, `art`) and its `album` (`title`, `summary`, `poster`, `date`), as an episode's `show` and `season` ([Display](#display)) |
