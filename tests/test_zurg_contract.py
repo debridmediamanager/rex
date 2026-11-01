@@ -86,6 +86,19 @@ def main():
                     expected = [want, item.get("season"), item.get("episode")] if want == "episode" else [want]
                     check("%s is the %s zurg pushed" % (item["id"].rsplit("/", 1)[-1], want),
                           got[:len(expected)] == expected, got)
+                # The parts zurg sends of one episode of one release are one row, one Media of
+                # their files in part order.
+                episodes = {}
+                for item in body["items"]:
+                    if item["media_info"] and item.get("part"):
+                        episodes.setdefault((item.get("release"), item.get("season"), item.get("episode")), []).append(item)
+                for parts in episodes.values():
+                    parts.sort(key=lambda item: item["part"])
+                    row = server.row(keys.get(parts[0]["id"]))
+                    files = [[part.get("file") for part in media.get("Part") or []] for media in row.get("Media") or []]
+                    check("%s's %d parts are one Media of one row" % (parts[0]["id"].rsplit("/", 1)[-1], len(parts)),
+                          len({keys.get(item["id"]) for item in parts}) == 1 and files[:1] == [[item["file"] for item in parts]],
+                          ({item["id"]: keys.get(item["id"]) for item in parts}, files))
         _, shown = server.feed("GET", "items")
         gone = {row["id"] for row in shown.get("items", []) if not row.get("deleted")}
         for sent in requests:
