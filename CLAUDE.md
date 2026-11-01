@@ -238,7 +238,7 @@ A claimed rex announces with the claim's server token only; unclaimed it waits f
 claim and announces the moment it lands, no restart (findings, "A
 claimed server needs no account token"). It announces its own LAN address
 (`http://<private_address>:<port>`, read again at each announce; the bound address under `--host`;
-only an RFC 1918 or ULA one, never loopback, a tunnel's, a public one or 100.64/10) with no
+only an RFC 1918 or ULA one, never loopback, a tunnel's, a public one or 100.64/10, nor one on a container network, which `lan_interface_address` tells by the default route's veth and says once in the log) with no
 flag, as a real PMS announces its interfaces (`pms_announce_connections_s1422.json`), after
 `--announce-url`'s comma-separated list of extra addresses, each its own connection; a setup
 names only an HTTPS address of its own there (2026-10-24: every guide used to type the LAN IP).

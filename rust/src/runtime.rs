@@ -26180,6 +26180,66 @@ fn compare_json(left: &Value, right: &Value) -> std::cmp::Ordering {
     }
 }
 
+/// The interface the default route leaves from, read off Linux's `/proc/net/route` (the
+/// `Iface` of the `00000000` destination): the one `local_interface_address` picks its address
+/// from.
+fn default_route_interface(route_table: &str) -> Option<String> {
+    route_table
+        .lines()
+        .skip(1)
+        .filter_map(|line| {
+            let mut fields = line.split_whitespace();
+            let iface = fields.next()?;
+            (fields.next()? == "00000000").then(|| iface.to_string())
+        })
+        .next()
+}
+
+/// Whether an interface is one end of a virtual link: its `iflink` names another interface
+/// (the veth peer in the host's namespace, a macvlan's parent) where a NIC's names itself.
+/// Measured on zen (`tests/fixtures/proc_net_route/`): Docker's bridged `eth0` is 2/87, the
+/// host's `eno1` and a host-networked container's are 2/2.
+fn virtual_link(ifindex: &str, iflink: &str) -> bool {
+    ifindex.trim() != iflink.trim()
+}
+
+/// Whether the address rex reaches the world from sits on a container network: Docker, Podman
+/// or LXC without host networking, where the default route leaves through a veth. Nothing
+/// outside that network reaches such an address, so it is no LAN address to announce or to
+/// hand rex-direct's provider; `--announce-url` names the real one. Linux only, where those
+/// networks live.
+fn on_container_network() -> bool {
+    #[cfg(target_os = "linux")]
+    {
+        let read = |path: String| std::fs::read_to_string(path).ok();
+        let Some(iface) = read("/proc/net/route".to_string()).and_then(|table| default_route_interface(&table)) else {
+            return false;
+        };
+        let (Some(ifindex), Some(iflink)) =
+            (read(format!("/sys/class/net/{iface}/ifindex")), read(format!("/sys/class/net/{iface}/iflink")))
+        else {
+            return false;
+        };
+        virtual_link(&ifindex, &iflink)
+    }
+    #[cfg(not(target_os = "linux"))]
+    false
+}
+
+/// `local_interface_address` when it is an address other devices on the LAN can reach: not one
+/// on a container network, which is said once in the log.
+fn lan_interface_address() -> Option<String> {
+    static SAID: std::sync::Once = std::sync::Once::new();
+    let address = local_interface_address()?;
+    if on_container_network() {
+        SAID.call_once(|| {
+            info!("no LAN address to announce: {address} is on a container network (Docker without host networking); add --announce-url http://<rex's LAN IP>:<port> for one")
+        });
+        return None;
+    }
+    Some(address)
+}
+
 fn local_interface_address() -> Option<String> {
     for destination in ["192.0.2.1:9", "8.8.8.8:9", "1.1.1.1:9"] {
         let Ok(socket) = UdpSocket::bind("0.0.0.0:0") else {
@@ -29178,6 +29238,20 @@ mod announce_tests {
         assert_eq!(lan_url("0.0.0.0", "100.101.1.2", 32400), None);
         assert_eq!(lan_url("0.0.0.0", "203.0.113.7", 32400), None);
         assert_eq!(with_lan_url(None, None), None);
+    }
+
+    #[test]
+    fn a_container_network_is_told_by_the_default_routes_veth() {
+        // Both tables captured on zen on 2026-11-01: a bridged alpine container, and the host.
+        let bridged = include_str!("../../tests/fixtures/proc_net_route/docker_bridge_eth0.txt");
+        let host = include_str!("../../tests/fixtures/proc_net_route/zen_host_eno1.txt");
+        assert_eq!(default_route_interface(bridged).as_deref(), Some("eth0"));
+        assert_eq!(default_route_interface(host).as_deref(), Some("eno1"));
+        assert_eq!(default_route_interface("Iface\tDestination\n"), None);
+        assert_eq!(default_route_interface("eth0\t000011AC\t00000000\n"), None, "no header line, no default route");
+        // The bridged container's eth0 read 2/87, the host's eno1 and a host-networked container's 2/2.
+        assert!(virtual_link("2\n", "87\n"));
+        assert!(!virtual_link("2\n", "2\n"));
     }
 
     #[test]

@@ -176,9 +176,25 @@ UUID4 = r"[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
 results = []
 
 
+def on_container_network():
+    """Whether the default route leaves through a veth (Docker, Podman or LXC without host
+    networking), as rex reads it off /proc/net/route and sysfs: then it announces no LAN address
+    and sends no lanIp, since nothing outside that network reaches one. Linux only."""
+    try:
+        with open("/proc/net/route") as table:
+            iface = next(line.split()[0] for line in list(table)[1:] if line.split()[1:2] == ["00000000"])
+        with open("/sys/class/net/%s/ifindex" % iface) as f1, open("/sys/class/net/%s/iflink" % iface) as f2:
+            return f1.read().strip() != f2.read().strip()
+    except (OSError, StopIteration, IndexError):
+        return False
+
+
 def lan(port):
     """The LAN connection rex adds of itself after --announce-url's, as a real PMS announces its
-    own addresses unasked: the address it reaches the world from, on its port; none without one."""
+    own addresses unasked: the address it reaches the world from, on its port; none without one,
+    and none on a container network (rex's `lan_interface_address`), as CI's bridged container is."""
+    if on_container_network():
+        return []
     probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
         probe.connect(("192.0.2.1", 9))
