@@ -648,6 +648,8 @@ python3 tests/test_music_feed.py            # tracks a source pushes (`kind: tra
                                             # Plex guid through a stub agent, plexav's Media for the same file, `display` for what nothing names; needs ffmpeg
 python3 tests/test_music_clients.py         # plexav's Plex Web, Android and Plexamp requests replayed against that library: browse, the music decision,
                                             # part reads, timelines counting plays and skips, smart lists, rating, search; needs ffmpeg
+python3 tests/test_music_releases.py        # two releases of one album (folders, formats or sources) are two album rows of its guid,
+                                            # each with its own tracks, as plexav lists them; keys and plays kept; needs ffmpeg
 python3 tests/test_music_conversion.py      # a track converted when the client turns direct play off: plexav's decisions, DASH and Matroska HLS,
                                             # decoded segments; its codec and bitrate rules; needs ffmpeg
 python3 tests/test_music_lyrics.py          # a source's sidecar `lyrics`: plexav's lyrics stream and its JSON, XML and raw answers

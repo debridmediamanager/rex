@@ -306,7 +306,7 @@ The `media_info` above is cut down to show its shape. Send ffprobe's whole outpu
 | `episode_end` | no | The last episode of a file holding several (`E01E02` -> 2). Kept on the row; the file is placed on `episode`, as rex places every multi-episode file on its first |
 | `tmdb_episode` | no | With `kind: episode`, TMDB's id of that episode (an integer, `tv/{show}/season/{n}/episode/{n}`'s `id`). The row is Plex's episode whose `Guid` lists `tmdb://<id>`, in whichever of the show's seasons Plex files it, and sits under Plex's season and number for it: Ben 10: Omniverse's `S02E01 - Showdown Part 1`, sent as S2E1 with 1107002, is Plex's S3E1. Without it, Plex's episode at `season`/`episode`. Kept on the row; a show a person Fix Matches re-describes its episodes by it |
 | `name` | no | The release name, shown as it is: an unplaced episode's show is titled with it. Nothing is read out of it -- no id, no title, no season or episode. Default: the folder above the file |
-| `release` | no | Groups a release's files, identified together (a season's episodes), and names the release in the [matches](#get-rexfeedsourcematches----what-people-matched) listing. Default: the folder above `path` |
+| `release` | no | Groups a release's files, identified together (a season's episodes; a track's album, [Tracks](#tracks)), and names the release in the [matches](#get-rexfeedsourcematches----what-people-matched) listing. Default: the folder above `path` |
 | `edition_title` | no | Explicit movie edition label. Different labels stay separate movies; the same label can hold several versions. Omitted preserves the current source label; `""` clears it. A person's locked edition wins. Rejected for episodes or invalid labels; never inferred from a name |
 | `size` | no | Bytes. Default: ffprobe's `media_info.format.size` (none for an HLS playlist). Shown as the Part's size and used to answer a client's `Range`; with neither, rex passes the client's `Range` to the source as it is |
 | `file` | no | Only the path clients see in Get Info (`<mount>/<directory>/<release>/<file>`). Default `<mount>/<path>`, or `/<path>` without a mount |
@@ -434,6 +434,7 @@ with a four-album library, through Plex Web, Plex for Android and Plexamp
 | `ids.mbid` | MusicBrainz's **release** id of the track's album. rex asks Plex's agent for the album it names (`GET /library/metadata/matches?guid=mbid://<id>&type=9`, as a real PMS asks), and the album's tracks, its artist and everything shown come from the agent |
 | `ids.plex` | Or Plex's album guid itself, `plex://album/<id>` |
 | `disc`, `track` | The track's disc (default 1) and number on that album: the album's track at those numbers at Plex's agent is the track |
+| `release` | Which copy of the album the track is, as for any item: default the folder above its path. Each release is an album of its own (below), so a release whose files sit in disc folders (`CD1/`, `CD2/`) sends one `release` for all of them |
 | `display` | For a track nothing names: its `title`, `summary` and `date`, its `artist` (`title`, `summary`, `poster`, `art`) and its `album` (`title`, `summary`, `poster`, `date`), as an episode's `show` and `season` ([Display](#display)) |
 | `lyrics` | The lyrics files beside it at the source: `[{"path": "music/.../01 - Song.lrc", "size": 147}]`, an `.lrc` (timed) or `.txt` each, read as a Part's bytes are and only when its path or `size` is new. Each is the track's lyrics stream as a real PMS makes one of a sidecar file (`LRC`, served as its `Lyrics` document or the file itself). Absent or `null` keeps them, `[]` removes them; another extension is left out |
 | `loudness` | What a loudness analysis of the file found, in PMS's names: `gain`, `albumGain`, `peak`, `albumPeak`, `albumRange`, `loudness`, `lra` (numbers), `startRamp` and `endRamp` (PMS's `"<dB> <seconds>;..."` strings) and `levels`, the loudness every 100 ms in dB. Shown on the track's audio stream, its ramps on a play queue asked with `includeLoudnessRamps=1`, its levels at `/library/streams/{id}/levels`; without it, that answers 404 as an unanalysed PMS does. rex never reads a file to work it out |
@@ -445,6 +446,17 @@ with a four-album library, through Plex Web, Plex for Android and Plexamp
   `display`, grouped under an artist and an album of those names; with no `display` it is titled
   as its file under `[Unknown Artist]` and `[Unknown Album]`. One with no `track` number is
   numbered after the album's last.
+- **Each release is an album.** Tracks of the same source and `release` are one album; another
+  release of that album -- another folder, another format, or the same files pushed by another
+  source -- is an album row of its own with the same guid and its own tracks, as a real PMS lists
+  them (plexav, 2026-11-01: In Rainbows as FLAC and as AAC in two folders, one artist and two album
+  rows of `plex://album/5d07c2b1403c6402908fddb6`, ten tracks each;
+  `tests/fixtures/music/album-releases.json`). Unlike films and episodes, releases are not folded
+  into one row of several Media. An album made before rex kept them apart, holding two releases,
+  stays the release its first track came with, on its key, and the next push moves the other's
+  tracks, on their keys and with their plays, to an album of their own.
+  Not yet as PMS: its plays are kept per guid, so both its In Rainbows showed the same play and
+  skip counts; rex counts each row's own.
 - **A music library is needed.** rex makes none on a push, as it makes no film or show library:
   add one in Plex (Add Library, Music) on any folder, or declare one for the source's directory
   (`directories: [{"name": "music", "music": "Music"}]`, [above](#libraries-a-source-declares)). A

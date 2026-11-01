@@ -125,6 +125,7 @@ pub(super) fn upsert_tracks(
     let plex = {
         let mut guard = lock(shared);
         let rows = guard.feed_rows(&source.name, items.iter().map(|item| item.id.as_str()));
+        let mut albums: HashMap<String, Option<(String, String)>> = HashMap::new();
         for item in items {
             let Some(section) = guard.music_library(&item) else {
                 counts.rejected.push(json!({"id": item.id, "reason": format!("no music library holds {}", item.file)}));
@@ -140,8 +141,14 @@ pub(super) fn upsert_tracks(
             match rows.get(&item.id) {
                 Some(key) => {
                     guard.release(&held);
-                    let kept = guard.catalog.get(key).and_then(|row| row.get("_placement")).cloned();
-                    if item.media_info.is_none() || kept.as_ref() == Some(&placement(&item)) {
+                    let row = guard.catalog.get(key);
+                    let kept = row.and_then(|row| row.get("_placement")).cloned();
+                    // A track on another release's album (one an older rex put both releases on)
+                    // moves to its own, as a placement does.
+                    let album = row.and_then(|row| row.get("parentRatingKey")).map(string_value);
+                    let release = (source.name.clone(), item.release.clone());
+                    let own = album.is_none_or(|album| albums.entry(album).or_insert_with_key(|album| guard.album_release(album)).as_ref() == Some(&release));
+                    if item.media_info.is_none() || (kept.as_ref() == Some(&placement(&item)) && own) {
                         let had = guard.item_streams(key, &source.name, &item.id).map(|streams| lyric_sources(&streams)).unwrap_or_default();
                         let wanted: Option<Vec<(String, Option<u64>)>> =
                             item.lyrics.as_ref().map(|lyrics| lyrics.iter().map(|(path, _, size)| (path.clone(), *size)).collect());
@@ -463,16 +470,30 @@ impl Runtime {
             .unwrap_or_default()
     }
 
-    /// A row of `kind` in `section` whose identity is `identity` (under `parent`).
-    fn music_row(&self, section: &str, kind: &str, identity: &str, parent: Option<&str>) -> Option<String> {
+    /// A row of `kind` in `section` whose identity is `identity` (under `parent`); an album, the one
+    /// of `release`.
+    fn music_row(&self, section: &str, kind: &str, identity: &str, parent: Option<&str>, release: Option<&(String, String)>) -> Option<String> {
         self.catalog
             .find_where(|row| {
                 row.get("type").and_then(Value::as_str) == Some(kind)
                     && string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == section
                     && row.get("_identity").and_then(Value::as_str) == Some(identity)
                     && parent.is_none_or(|parent| row.get("parentRatingKey").map(string_value).as_deref() == Some(parent))
+                    && release.is_none_or(|release| key_of(row).and_then(|key| self.album_release(&key)).as_ref() == Some(release))
             })
             .and_then(key_of)
+    }
+
+    /// The release an album is: its first track's source and `release`. A real PMS lists each
+    /// release of an album as an album row of its own, of the same guid, with its own tracks
+    /// (plexav, 2026-11-01: In Rainbows as FLAC and as AAC in two folders, albums 31 and 95, ten
+    /// tracks each), where films and episodes fold releases into one row of several Media. An
+    /// album made before rex kept them apart is the release of its lowest-keyed track.
+    /// Only that track is read: the others' keys are hot fields.
+    fn album_release(&self, album: &str) -> Option<(String, String)> {
+        let tracks = self.catalog.lazy_by(crate::catalog::By::Parent, album);
+        let first = tracks.iter().min_by_key(|track| key_of(*track).and_then(|key| key.parse::<i64>().ok()).unwrap_or(i64::MAX))?;
+        Some((first.get("_source").map(string_value).unwrap_or_default(), first.get("_group").map(string_value).unwrap_or_default()))
     }
 
     /// A track's artist, album and own row, each found or made, the track on `key` when it keeps
@@ -517,7 +538,7 @@ impl Runtime {
             .or_else(|| text(album, "parentGuid"))
             .map(|guid| string_value(&guid))
             .unwrap_or_else(|| format!("artist:{}", hierarchy::fold_title(&artist_title).to_lowercase()));
-        let artist_key = match self.music_row(section, "artist", &artist_identity, None) {
+        let artist_key = match self.music_row(section, "artist", &artist_identity, None, None) {
             Some(found) => found,
             None => {
                 let rk = self.mint_key();
@@ -569,7 +590,7 @@ impl Runtime {
         let album_identity = text(album, "guid")
             .map(|guid| string_value(&guid))
             .unwrap_or_else(|| format!("album:{}", hierarchy::fold_title(&album_title).to_lowercase()));
-        let album_key = match self.music_row(section, "album", &album_identity, Some(&artist_key)) {
+        let album_key = match self.music_row(section, "album", &album_identity, Some(&artist_key), Some(&(source.name.clone(), item.release.clone()))) {
             Some(found) => found,
             None => {
                 let rk = self.mint_key();
