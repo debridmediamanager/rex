@@ -193,6 +193,18 @@ fn announce_list(announce: Option<&str>, direct: Option<&str>) -> Option<String>
     (!list.is_empty()).then(|| list.join(","))
 }
 
+/// The LAN address `--announce-url` names, when it does: the first RFC 1918 IPv4 among its plain
+/// `http://` entries. That is how a setup tells rex its LAN address when rex cannot read it
+/// itself (Docker without host networking announces its bridge address, a VPN its tunnel's;
+/// docs/setup.md), so the provider's LAN name follows it rather than the interface.
+fn announced_lan_ipv4(announce: Option<&str>) -> Option<std::net::Ipv4Addr> {
+    announce?
+        .split(',')
+        .filter_map(|url| url.trim().strip_prefix("http://"))
+        .filter_map(|rest| rest.split(['/', ':']).next()?.parse::<std::net::Ipv4Addr>().ok())
+        .find(std::net::Ipv4Addr::is_private)
+}
+
 /// The server's rex-direct registration: what it registers as and announces with.
 pub(crate) struct RexDirect {
     /// `REX_DIRECT_KEY`, for a provider that wants one; DMM's ignores it.
@@ -259,7 +271,7 @@ impl RexDirect {
         let mut body = json!({"machineIdentifier": self.machine});
         // For a LAN name: plex.tv turns rex's http LAN connection into a plex.direct name rex
         // has no certificate for. Only RFC 1918, since the provider's record takes it on trust.
-        if let Some(ip) = super::plextv::lan_ipv4() {
+        if let Some(ip) = announced_lan_ipv4(self.announce.as_deref()).or_else(super::plextv::lan_ipv4) {
             body["lanIp"] = json!(ip.to_string());
         }
         let body = body.to_string();
@@ -453,6 +465,19 @@ mod tests {
             assert_eq!(pick(Some(&"base"), Some(&(name.to_string(), true, "direct")), sni), Some(with_lan), "SNI {sni:?}, LAN name");
             assert_eq!(pick(Some(&"base"), Some(&(name.to_string(), false, "direct")), sni), Some(without), "SNI {sni:?}, none");
         }
+    }
+
+    #[test]
+    fn the_lan_address_announce_url_names_is_the_one_sent_as_lan_ip() {
+        let ip = |list: &str| announced_lan_ipv4(Some(list)).map(|ip| ip.to_string());
+        assert_eq!(ip("http://192.168.1.20:32400").as_deref(), Some("192.168.1.20"));
+        assert_eq!(ip("https://rex.example.com:32400, http://10.0.0.5:32400/").as_deref(), Some("10.0.0.5"));
+        // A public or tunnel address, an https entry and a host name name no LAN address.
+        assert_eq!(ip("http://203.0.113.7:32400,http://100.101.1.2:32400"), None);
+        assert_eq!(ip("https://192.168.1.20:32400"), None);
+        assert_eq!(ip("http://rex.local:32400"), None);
+        assert_eq!(ip(""), None);
+        assert_eq!(announced_lan_ipv4(None), None);
     }
 
     #[test]
