@@ -21617,6 +21617,21 @@ impl Runtime {
             }
         }
         let all_parts = query.get("allParts").is_some_and(|value| value == "1");
+        // Measured on plexscratch (`tests/fixtures/parts_stack_s1434.json`): `allParts=1` carries
+        // the pick to the other Parts of the picked Part's Media by stream INDEX -- French at
+        // index 2 of a stacked pair's first Part picked index 2 of the second, its English -- never
+        // by id, which no other Part's stream has. rex matched ids on every Part of every Media,
+        // which took the selected track off each other Part.
+        let stream_id = |stream: &Value| stream.get("id").map(string_value).unwrap_or_default();
+        let picked = owner.get("Media").and_then(Value::as_array).into_iter().flatten().enumerate().find_map(|(index, media)| {
+            let part = media.get("Part").and_then(Value::as_array)?.iter().find(|part| part.get("id").map(string_value).as_deref() == Some(part_id))?;
+            Some((index, part.get("Stream").and_then(Value::as_array).cloned().unwrap_or_default()))
+        });
+        let carried = |stream_type: i64, chosen: &str| -> Option<i64> {
+            picked.as_ref()?.1.iter()
+                .find(|stream| stream.get("streamType").and_then(Value::as_i64) == Some(stream_type) && stream_id(stream) == chosen)?
+                .get("index")?.as_i64()
+        };
         // `get_mut`, not `items_mut`: the latter marks every row changed, and the save
         // that follows then re-diffed fun's whole library under the lock (19-45 s a PUT).
         if let Some(media_rows) = self
@@ -21629,16 +21644,20 @@ impl Runtime {
             })
             .and_then(Value::as_array_mut)
         {
-            for media in media_rows {
+            for (media_index, media) in media_rows.iter_mut().enumerate() {
                 for part in media
                     .get_mut("Part")
                     .and_then(Value::as_array_mut)
                     .into_iter()
                     .flatten()
                 {
-                    if part.get("id").map(string_value).as_deref() != Some(part_id) && !all_parts {
+                    let own = part.get("id").map(string_value).as_deref() == Some(part_id);
+                    if !own && !(all_parts && picked.as_ref().is_some_and(|(index, _)| *index == media_index)) {
                         continue;
                     }
+                    let held: Vec<(i64, i64)> = crate::catalog::part_streams(part).iter()
+                        .filter_map(|stream| Some((stream.get("streamType")?.as_i64()?, stream.get("index")?.as_i64()?)))
+                        .collect();
                     // Chosen by hand: the account's settings never re-select over it.
                     if let Some(object) = part.as_object_mut() {
                         object.insert("_trackChosen".to_string(), json!(true));
@@ -21657,9 +21676,17 @@ impl Runtime {
                         else {
                             continue;
                         };
-                        let id = stream.get("id").map(string_value).unwrap_or_default();
+                        let selected = if own || chosen == "0" {
+                            stream_id(stream) == *chosen
+                        } else {
+                            // A Part with no track at that index keeps its own pick.
+                            match carried(stream_type, chosen).filter(|index| held.contains(&(stream_type, *index))) {
+                                Some(index) => stream.get("index").and_then(Value::as_i64) == Some(index),
+                                None => continue,
+                            }
+                        };
                         if let Some(object) = stream.as_object_mut() {
-                            if &id == chosen {
+                            if selected {
                                 object.insert("selected".to_string(), json!(true));
                             } else {
                                 object.shift_remove("selected");

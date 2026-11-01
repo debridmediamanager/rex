@@ -9,7 +9,9 @@ number, as files of one release without a part still are (a rex user's Lost S01E
 with two Parts, its duration the sum (findings, "partIndex on a MULTI-PART Media"), and Plex Web
 plays the Parts back to back, its timeline reporting the time across the whole Media.
 
-`fixtures/feed/parts_lost_1101.json` is what a source pushes for both finales.
+`fixtures/feed/parts_lost_1101.json` is what a source pushes for both finales;
+`fixtures/parts_stack_s1434.json` is a real PMS's stacked `- pt1`/`- pt2` pair and the track picks
+Plex Web sends for it with `allParts=1`, which the last leg replays.
 
     python3 tests/test_feed_parts.py
 """
@@ -26,6 +28,9 @@ from test_feed import ENTRIES, MOUNT, Bytes, Server, catalog, check, results, se
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FIXTURE = json.load(open(os.path.join(HERE, "fixtures", "feed", "parts_lost_1101.json")))
+# A real PMS's stacked `- pt1`/`- pt2` pair and two `allParts=1` audio picks on it
+# (`probes/record_parts_stack.py` on plexscratch 1.43.4).
+STACK = json.load(open(os.path.join(HERE, "fixtures", "parts_stack_s1434.json")))["exchanges"]
 PROBE = ENTRIES["episode"]["entry"]["media_info"]
 
 
@@ -257,6 +262,31 @@ def main():
         check("two files of one release on S1E24 without a part are two rows, as before",
               status == 200 and len(set(keys.values())) == 2 and len(rows) == 2
               and all(len(media(r)) == 1 for r in rows), (keys, [media(r) for r in rows]))
+    finally:
+        server.stop()
+        shutil.rmtree(work, ignore_errors=True)
+
+    # -- a track picked for all Parts, as the reference carries it ---------------------------------
+    # Plex Web sends `allParts=1` with every pick before play. A real PMS carries it to the other
+    # Parts of the Media by stream index; rex matched stream ids, which no other Part has, and so
+    # took the second Part's selected track away.
+    recorded = lambda at: STACK[at]["body"]["MediaContainer"]["Metadata"][0]
+    audio = lambda row: [[(s.get("id"), bool(s.get("selected"))) for s in p.get("Stream") or [] if s.get("streamType") == 2]
+                         for m in row.get("Media") or [] for p in m.get("Part") or []]
+    work = tempfile.mkdtemp(prefix="rex-parts-")
+    stacked = dict({k: v for k, v in recorded(0).items() if k in ("title", "duration", "Media")},
+                   ratingKey="500", key="/library/metadata/500", guid="local://500", type="movie", librarySectionID=1)
+    server = start(work, port, [stacked])
+    try:
+        check("the reference's stacked pair is one Media of two Parts, its duration their sum",
+              len(recorded(0)["Media"]) == 1 and recorded(0)["Media"][0]["duration"]
+              == sum(p["duration"] for p in recorded(0)["Media"][0]["Part"]), recorded(0)["Media"][0]["duration"])
+        for at in (1, 3):
+            pick = STACK[at]
+            server.request("%s?%s" % (pick["path"], urllib.parse.urlencode(pick["params"])), "PUT")
+            check("an allParts=1 pick of stream %s selects on each Part what the reference selected"
+                  % pick["params"]["audioStreamID"], audio(server.row("500")) == audio(recorded(at + 1)),
+                  (audio(server.row("500")), audio(recorded(at + 1))))
     finally:
         server.stop()
         shutil.rmtree(work, ignore_errors=True)

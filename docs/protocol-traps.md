@@ -2119,7 +2119,9 @@ currently advertised by rex. A version label is not proof of complete PMS equiva
   turns a read-only request into a trivial server stall.
 - **A measured multipart filename is `Title - cdN.ext`.** One Media owns ordered Parts, its duration
   is their sum, and every Part owns its own file on zurg. `partIndex=0/1` projects that Part,
-  out-of-range is 400 and `-1` is the 4005 all-parts conversion refusal.
+  out-of-range is 400 and `-1` is the 4005 all-parts conversion refusal. A show library stacks
+  `- ptN` the same way, and `PUT /library/parts/{id}?…StreamID=&allParts=1` carries the pick to
+  the Media's other Parts by stream index, not id (findings, "An episode in two files").
 - **A clip is not an ordinary library row.** It publishes no librarySection triple; the parent owns
   `primaryExtraKey` and inline `Extras`; item and section `/extras/all` use different projections;
   the clip borrows the parent's `art` attribute but its own `/art` route is 404.

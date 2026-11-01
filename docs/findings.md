@@ -14600,3 +14600,45 @@ client identifier is the kind that rewrote a device row on 2026-09-11 ("Collater
 Plex account"), and rex reads no account token. The route answers only rex's own networks
 (`feed::source_peer`), since it dials the address it is given. Not measured: a library on
 Plex's legacy agents, whose `com.plexapp.agents.*` guids match nothing here.
+
+## An episode in two files: `part` (2026-11-01)
+
+TMDB and Plex's agent merge some two-part episodes that TVDB and the releases list as two: Lost's
+S4E13 "There's No Place Like Home (2)" is TMDB's one 85-minute episode (id 334007) and Plex's one
+S4E13, where a release has `S04E13` and `S04E14` files; S1E24 "Exodus (2)" (333947, 87 minutes) is
+`S01E24` and `S01E25` (TMDB's API, 2026-11-01). A source placing both files on S4E13 made two rows
+on one number, as two files of one release without a part still are (a rex user's Lost S01E24 and
+its renamed `S01E24.Part.2`: Plex Web drew two "Exodus (2)" tiles, 2026-11-01). The feed's `part`
+(`docs/feed-api.md`) is the source saying the files are one episode; the parts become one Media of
+several Parts (`feed::join_parts`), each Part keeping its own item's `_source`, `_sid`, `_path`,
+`_part` and `_probe`, so byte reads, conversions, subtitles, analysis, deletes and a source's
+removal reach each file by itself (`tests/test_feed_parts.py`, `fixtures/feed/parts_lost_1101.json`).
+
+What a real PMS makes of `Lost - s04e13 - pt1.mkv` and `- pt2.mkv` in a show library, measured on
+plexscratch 1.43.4 with a probe library under its writable `/config` (each file h264, two AAC
+tracks and one SRT; pt1 10 s with `eng` then `fre`, pt2 12 s with `fre` then `eng`;
+`tests/fixtures/parts_stack_s1434.json`, `probes/record_parts_stack.py`):
+
+- **One episode row, one Media, two Parts in `ptN` order.** The Media's and the row's `duration`
+  is the Parts' sum (10023 + 12023 = 22046), each Part keeps its own `duration`, `file`, `size`,
+  `key` and streams, and the Media's id is the first Part's. This is cycle 37's `- cdN` stack on a
+  show library, with the TV scanner's `ptN` spelling.
+- **`allParts=1` carries a track pick to the other Parts by stream index**, never by id or
+  language: French at index 2 of pt1 left pt2's index 2 (English) selected, and English at index 1
+  of pt1 selected pt2's index 1 (French). Plex Web sends `allParts=1` with every pre-play pick and
+  in the player whenever `partIndex > 0`. rex matched the picked stream's id on every Part of every
+  Media, which no other Part's stream has, so each pick took the selected track off the other
+  Parts (and off every other version); it now carries the pick by index to the Parts of the picked
+  Part's Media alone, and a Part with no track at that index keeps its own.
+- The decision's `partIndex` grammar is cycle 37's. This probe's decisions were 400s for its own
+  reason: an MDE decision with `directPlay=1` on a Part with a selected subtitle refuses
+  `subtitles=auto` (PMS's log: "hasMDE was specified along with directPlay on a part with a
+  selected subtitle and invalid subtitle setting 'auto'"), so none is recorded here.
+
+Read off Plex Web 4.147.1 rather than measured on a client: the player asks a decision and a
+conversion per Part (`mediaIndex`, `partIndex`), and its timeline reports `time` across the whole
+Media -- the Parts before the playing one plus the position in it (module 88937 sums the earlier
+Parts' `duration`, so every Part needs one) -- with the Media's `duration`. The resume point is
+therefore the Media's, and rex keeps whatever the client sends. A conversion's `offset` is the
+position inside the Part it converts. Not run on a real client: playing across the Part boundary,
+direct or converted.
