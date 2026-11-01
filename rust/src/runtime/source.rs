@@ -28,6 +28,10 @@ pub(crate) struct Source {
     /// The `directories` entries it sent that were left out, `{"entry", "reason"}`: answered
     /// to the registration and logged, never kept.
     pub ignored: Vec<Value>,
+    /// False when it registered `"trash": false`: an item it removes is deleted, never kept in
+    /// the trash for its file to come back. A live channel that ends never does: the production
+    /// server's Live Sports library held 2,115 trashed channels beside 853 live ones (2026-11-01).
+    pub trash: bool,
 }
 
 /// One entry of a registration's `directories`: the first directory of the source's item
@@ -121,11 +125,12 @@ impl Source {
             record: Value::Null,
             directories: Vec::new(),
             ignored: Vec::new(),
+            trash: true,
         }
     }
 
     /// A `PUT /rex/sources/{name}` body: `url` (http or https), `user`/`password` or
-    /// `bearer` for it, `mount`, and `directories`. Answers why it is refused.
+    /// `bearer` for it, `mount`, `directories` and `trash`. Answers why it is refused.
     pub(crate) fn register(name: &str, body: &Value) -> Result<Self, String> {
         if name.is_empty() || !name.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_') {
             return Err(format!("source name {name:?}: letters, digits, '-' and '_' only"));
@@ -163,7 +168,12 @@ impl Source {
             });
             record.insert("directories".to_string(), Value::Array(entries.collect()));
         }
+        let trash = body.get("trash") != Some(&Value::Bool(false));
+        if !trash {
+            record.insert("trash".to_string(), json!(false));
+        }
         let mut source = Source::new(name, &url, auth, Some(&field("mount")));
+        source.trash = trash;
         source.record = Value::Object(record);
         source.directories = directories;
         source.ignored = ignored;
@@ -179,6 +189,9 @@ impl Source {
                                 "features": ["probe_digest"]});
         if let Some(directories) = self.record.get("directories") {
             public["directories"] = directories.clone();
+        }
+        if !self.trash {
+            public["trash"] = json!(false);
         }
         public
     }
@@ -343,6 +356,10 @@ mod tests {
         assert_eq!(source.record["directories"], kept);
         assert_eq!(source.public()["directories"], kept);
         assert_eq!(Source::register("zurg", &source.record).unwrap().directories, source.directories, "restored from the state file");
+        let live = Source::register("live", &json!({"url": "http://h/x", "trash": false})).unwrap();
+        assert!(!live.trash && live.public()["trash"] == json!(false), "{}", live.public());
+        assert!(!Source::register("live", &live.record).unwrap().trash, "trash false restored from the state file");
+        assert!(Source::register("plain", &json!({"url": "http://h/x"})).unwrap().trash, "trash kept by default");
         for none in [json!({"url": "http://h/dav"}), json!({"url": "http://h/dav", "directories": []}), json!({"url": "http://h/dav", "directories": null})] {
             let plain = Source::register("zurg", &none).unwrap();
             assert!(plain.directories.is_empty() && plain.record == json!({"url": "http://h/dav"}) && plain.public().get("directories").is_none());

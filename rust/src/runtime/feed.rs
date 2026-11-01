@@ -74,6 +74,9 @@ pub(super) struct Item {
     /// The `extraType` of a file its source pushed as an extra (`kind: "extra"`,
     /// `scan::pushed_extra_type`): a clip of its release's title, never an episode or a film.
     extra: Option<i64>,
+    /// The source says nothing places the file (`kind: "unplaced"`): a title it placed the file
+    /// as before is taken back, where an absent `kind` leaves it.
+    unplaced: bool,
     /// Where the source placed the file, kept on the row as `_placed`: its `kind` ("movie" or
     /// "episode") and an episode's TMDB `season`, `episode` and `episode_end`. `None` when it
     /// sends no `kind` rex knows: nothing places the file, and its name is not read.
@@ -398,6 +401,7 @@ impl Item {
             edition,
             display,
             extra: (text("kind").as_deref() == Some("extra")).then(|| super::scan::pushed_extra_type(text("extra_type").as_deref())),
+            unplaced: text("kind").as_deref() == Some("unplaced"),
             kept: None,
             library: value.get("library").map(string_value).filter(|v| !v.is_empty() && v != "null"),
             size: value.get("size").and_then(Value::as_u64).filter(|size| *size > 0).or_else(|| probed_size(value)).unwrap_or(0),
@@ -810,7 +814,8 @@ fn snapshot(shared: &SharedRuntime, source: &Source, body: &Value, sessions: &mu
 }
 
 /// Remove ids: held ones are forgotten, rows go to the trash (or are deleted under
-/// `autoEmptyTrash`), as a real PMS treats a file that is gone.
+/// `autoEmptyTrash`, or for a source registered `"trash": false`), as a real PMS treats a
+/// file that is gone.
 fn remove(shared: &SharedRuntime, source: &Source, ids: &[String], keys: &[String]) -> Map<String, Value> {
     let mut guard = lock(shared);
     let rows = guard.feed_rows(&source.name, ids.iter().map(String::as_str));
@@ -848,7 +853,7 @@ fn remove(shared: &SharedRuntime, source: &Source, ids: &[String], keys: &[Strin
             let title = guard.section_title(&section);
             *activity = Some(guard.scan_started(&section, &title));
         }
-        match guard.remove_missing(key) {
+        match guard.remove_missing(key, !source.trash) {
             Some(true) => deleted += 1,
             Some(false) => trashed += 1,
             None => {}
@@ -959,6 +964,33 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
                     matches!(row.get("type").and_then(Value::as_str), Some("episode" | "movie")) && !guard.matched_by_hand(row)
                 });
                 if titled {
+                    if !guard.drop_version(key, &source.name, &item.id) {
+                        guard.purge_row(key);
+                    }
+                    guard.dirty = true;
+                    existing = None;
+                }
+            }
+            // The source now says nothing places a file it placed before (`kind: "unplaced"`):
+            // zurg-usenet had sent Second Chance's eleven episodes as the 1996 film, eleven rows of
+            // it on the production server (2026-11-01), until DMM turned down the film id it sent.
+            // The row is no title any more and the file is shown unmatched, as a first push of it
+            // would; a version of a row holding several leaves that row alone, and a person's match
+            // stays theirs. One sent by its digest alone is asked for whole, which an unmatched
+            // row is made from.
+            if let (true, Some((key, _)), false) = (item.unplaced, &existing, retry) {
+                let placed = guard.catalog.get(key).is_some_and(|row| {
+                    matches!(row.get("type").and_then(Value::as_str), Some("episode" | "movie"))
+                        && !guard.matched_by_hand(row)
+                        && versions(row)
+                            .iter()
+                            .any(|(of, sid, index)| *of == source.name && *sid == item.id && version_placed(row, *index).is_some())
+                });
+                if placed && item.media_info.is_none() {
+                    counts.wants.push(item.id.clone());
+                    continue;
+                }
+                if placed {
                     if !guard.drop_version(key, &source.name, &item.id) {
                         guard.purge_row(key);
                     }

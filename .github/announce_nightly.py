@@ -3,7 +3,8 @@
     DISCORD_WEBHOOK=... python3 .github/announce_nightly.py TAG URL COMMIT notes.md
     python3 .github/announce_nightly.py --dry-run TAG URL COMMIT notes.md
 
-The notes are the release's own: one `- subject` line per commit. --dry-run prints the payload.
+The notes are the release's own: the Docker image line, then one `- subject` line per commit.
+--dry-run prints the payload.
 """
 import json
 import os

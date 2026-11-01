@@ -168,7 +168,7 @@ jobs:
             test_startup_wait test_test_ports test_parallel_suites test_cli test_server_command \
             test_native_runtime_smoke test_pms_identity test_sqlite_store test_build_catalog test_tls test_part_bytes \
             test_sources test_feed test_feed_versions test_feed_editions test_feed_season_art \
-            test_feed_blank_tiles test_feed_source_names test_feed_source_decides test_feed_placement test_feed_rejected test_feed_display test_artwork_blur test_feed_subtitles test_feed_collections test_feed_extras test_match_show_children test_feed_episode_ids test_feed_retry_placed test_feed_named_on_claim test_delete_last_episode test_feed_versions_1017 test_zurg_contract test_plextv test_rex_direct test_track_prefs test_accounts test_watch_import test_tag_collections test_collection_hub_pins \
+            test_feed_blank_tiles test_feed_source_names test_feed_source_decides test_feed_placement test_feed_rejected test_feed_display test_artwork_blur test_feed_subtitles test_feed_collections test_feed_extras test_feed_unplaced test_feed_no_trash test_match_show_children test_feed_episode_ids test_feed_retry_placed test_feed_named_on_claim test_delete_last_episode test_feed_versions_1017 test_zurg_contract test_plextv test_rex_direct test_track_prefs test_accounts test_watch_import test_tag_collections test_collection_hub_pins \
             test_unclaimed_gate test_photo_ssrf test_manager test_paused_limit test_dashboard_accounts test_dashboard_resources test_share_restrictions test_stream_limits test_auto_collections test_accept_exhaustion \
             test_body_framing test_catalog_features test_parity_split_guid test_merge_unpaired test_parity_cycle88_b test_sidecars_embedded'
 
@@ -392,9 +392,11 @@ jobs:
             exit 1
           fi
 
-      # Each archive keeps the repository's layout, so `rex manager`, run.sh and every
-      # command in the docs find the binary at rust/target/release/rex either way. The
-      # measured sidecars in data/ are compiled into the binary; rex reads none of them here.
+      # The binary sits at the top of each archive, so the docs start it as `./rex`. Releases
+      # before 2026-11-01 kept it at rust/target/release/rex and the update steps unpack over
+      # the old folder: that path stays, a link to the new binary (a copy in the Windows zip,
+      # where a scheduled task names it), so a service set up then runs the update and not
+      # the binary left behind. The measured sidecars in data/ are compiled into the binary.
       - name: Package
         run: |
           set -e
@@ -402,7 +404,13 @@ jobs:
             name="rex-${TAG}-${platform}"
             binary=rex; [ "$platform" = windows-amd64 ] && binary=rex.exe
             mkdir -p "$name/rust/target/release"
-            install -m 755 "artifacts/rex-$platform/$binary" "$name/rust/target/release/$binary"
+            install -m 755 "artifacts/rex-$platform/$binary" "$name/$binary"
+            if [ "$platform" = windows-amd64 ]; then
+              cp "$name/$binary" "$name/rust/target/release/$binary"
+            else
+              ln -s ../../../rex "$name/rust/target/release/rex"
+            fi
+            test -x "$name/rust/target/release/$binary"
             git ls-files -z -- data examples \
                 README.md LICENSE docs/setup.md docs/feed-api.md \
               | xargs -0 cp --parents -t "$name"
@@ -423,8 +431,12 @@ jobs:
             # dmm's gh is Ubuntu's 2.4.0, whose `release list` has no --json: every nightly
             # since the move to dmm failed here (2026-10-19, 10-20). `gh api` is the gate's call.
             prev=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=1" --jq '.[0].tag_name // ""')
-            git log --no-merges --format='- %s' ${prev:+"$prev..HEAD"} -n 200 > notes.md
-            test -s notes.md || echo "- no changes" > notes.md
+            # The image line leads, so the Discord post's trimming (announce_nightly.py) keeps it.
+            echo "Docker (Linux amd64 and arm64): \`docker pull ghcr.io/$GITHUB_REPOSITORY:$TAG\`, also tagged \`nightly\`" > notes.md
+            echo >> notes.md
+            git log --no-merges --format='- %s' ${prev:+"$prev..HEAD"} -n 200 > commits.md
+            test -s commits.md || echo "- no changes" > commits.md
+            cat commits.md >> notes.md
             gh release create "$TAG" --prerelease --target "$GITHUB_SHA" \
               --title "rex $TAG" --notes-file notes.md \
               rex-*.tar.gz rex-*.zip SHA256SUMS
@@ -441,17 +453,6 @@ jobs:
             --title "rex ${GITHUB_REF_NAME#v}" \
             --notes-file notes.md \
             rex-*.tar.gz rex-*.zip SHA256SUMS
-
-      # Nightlies only, to #general through the webhook zurg's nightlies use. A tag is
-      # announced by whoever cut it. The release is already out, so a failure here loses
-      # only the post.
-      - name: Announce the nightly on Discord
-        if: env.NIGHTLY == 'true'
-        env:
-          DISCORD_WEBHOOK: ${{ secrets.DISCORD_RELEASE_WEBHOOK }}
-        run: |
-          python3 .github/announce_nightly.py "$TAG" \
-            "https://github.com/$GITHUB_REPOSITORY/releases/tag/$TAG" "$GITHUB_SHA" notes.md
 
   # Kept until here so a failed release can be rerun; a run that never gets here is swept by
   # the next run's gate after two days.
@@ -470,3 +471,24 @@ jobs:
     permissions:
       contents: read
       packages: write
+
+  # Nightlies only, to #changelog through the webhook zurg's nightlies use. A tag is announced
+  # by whoever cut it. After `docker`, because the post names the image, which is pushed about
+  # five minutes after the release (2026-11-01: 00:28:41 -> 00:33:28). A failure here loses only
+  # the post.
+  announce:
+    if: needs.gate.outputs.nightly == 'true'
+    needs: [gate, docker]
+    runs-on: [self-hosted, Linux, X64, dmm]
+    env:
+      TAG: ${{ needs.gate.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Announce the nightly on Discord
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_RELEASE_WEBHOOK }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" --jq .body > notes.md
+          python3 .github/announce_nightly.py "$TAG" \
+            "https://github.com/$GITHUB_REPOSITORY/releases/tag/$TAG" "$GITHUB_SHA" notes.md

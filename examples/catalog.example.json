@@ -5,24 +5,24 @@
     {
       "key": "1",
       "type": "movie",
-      "title": "Debrid Movies",
+      "title": "Movies",
       "uuid": "4d3316c14882aeacb807a385e2b089e2a47f563f",
       "Location": [
         {
           "id": 1,
-          "path": "/mnt/zurg/movies"
+          "path": "/mnt/rex/movies"
         }
       ]
     },
     {
       "key": "2",
       "type": "show",
-      "title": "Debrid TV",
+      "title": "TV Shows",
       "uuid": "f4ff9b82807b7e5a1972f3b818062ffee2e373e8",
       "Location": [
         {
           "id": 2,
-          "path": "/mnt/zurg/shows"
+          "path": "/mnt/rex/shows"
         }
       ]
     }
@@ -40,7 +40,7 @@
       "thumb": "/library/metadata/20001/thumb/33edc963d0",
       "art": "/library/metadata/20001/art/a46fe593d7",
       "librarySectionID": 2,
-      "librarySectionTitle": "Debrid TV",
+      "librarySectionTitle": "TV Shows",
       "librarySectionKey": "/library/sections/2",
       "addedAt": 1789180059,
       "updatedAt": 1789180059,
@@ -156,7 +156,7 @@
       "thumb": "/library/metadata/30001/thumb/b3aeffde16",
       "art": "/library/metadata/30001/art/a46fe593d7",
       "librarySectionID": 2,
-      "librarySectionTitle": "Debrid TV",
+      "librarySectionTitle": "TV Shows",
       "librarySectionKey": "/library/sections/2",
       "addedAt": 1789180059,
       "updatedAt": 1789180059,
@@ -216,7 +216,7 @@
               "id": 10010,
               "key": "/library/parts/10010/1789180059/file.mkv",
               "duration": 1311769,
-              "file": "/mnt/zurg/shows/The.Simpsons.S19.1080p.AMZN.WEB-DL.DD+5.1.H.264-CtrlHD/The.Simpsons.S19E09.Eternal.Moonshine.of.the.Simpson.Mind.1080p.AMZN.WEB.DL.DD+5.1.H.264-CtrlHD.mkv",
+              "file": "/mnt/rex/shows/The.Simpsons.S19.1080p.AMZN.WEB-DL.DD+5.1.H.264-CtrlHD/The.Simpsons.S19E09.Eternal.Moonshine.of.the.Simpson.Mind.1080p.AMZN.WEB.DL.DD+5.1.H.264-CtrlHD.mkv",
               "size": 1546039833,
               "container": "mkv",
               "videoProfile": "high",
@@ -335,7 +335,7 @@
       "grandparentTitle": "The Simpsons",
       "_poster_url": "https://image.tmdb.org/t/p/w1280/zxp6Q9XhwvUsC1agsGoYhc9cS0f.jpg",
       "librarySectionID": 2,
-      "librarySectionTitle": "Debrid TV",
+      "librarySectionTitle": "TV Shows",
       "librarySectionKey": "/library/sections/2",
       "parentRatingKey": "30001",
       "parentKey": "/library/metadata/30001",
@@ -371,7 +371,7 @@
       "thumb": "/library/metadata/20002/thumb/622db56068",
       "art": "/library/metadata/20002/art/a91e2056e7",
       "librarySectionID": 2,
-      "librarySectionTitle": "Debrid TV",
+      "librarySectionTitle": "TV Shows",
       "librarySectionKey": "/library/sections/2",
       "addedAt": 1789180063,
       "updatedAt": 1789180063,
@@ -459,7 +459,7 @@
       "thumb": "/library/metadata/30004/thumb/820dd37f8f",
       "art": "/library/metadata/30004/art/a91e2056e7",
       "librarySectionID": 2,
-      "librarySectionTitle": "Debrid TV",
+      "librarySectionTitle": "TV Shows",
       "librarySectionKey": "/library/sections/2",
       "addedAt": 1789180063,
       "updatedAt": 1789180063,
@@ -519,7 +519,7 @@
               "id": 10050,
               "key": "/library/parts/10050/1789180063/file.mp4",
               "duration": 2588252,
-              "file": "/mnt/zurg/shows/Hells.Kitchen.S17.1080p.FAWE.WEB-DL.AAC2.0.H.264-FUZEER/Hells.Kitchen.S17E16.1080p.FAWE.WEB.DL.AAC2.0.H.264-FUZEER.mp4",
+              "file": "/mnt/rex/shows/Hells.Kitchen.S17.1080p.FAWE.WEB-DL.AAC2.0.H.264-FUZEER/Hells.Kitchen.S17E16.1080p.FAWE.WEB.DL.AAC2.0.H.264-FUZEER.mp4",
               "size": 1874229686,
               "container": "mp4",
               "videoProfile": "main",
@@ -598,7 +598,7 @@
       "grandparentTitle": "Hell's Kitchen",
       "_poster_url": "https://image.tmdb.org/t/p/w1280/cz1iCSh5hPcSffTuZkrvy4S1YAp.jpg",
       "librarySectionID": 2,
-      "librarySectionTitle": "Debrid TV",
+      "librarySectionTitle": "TV Shows",
       "librarySectionKey": "/library/sections/2",
       "parentRatingKey": "30004",
       "parentKey": "/library/metadata/30004",
@@ -661,7 +661,7 @@
               "id": 10070,
               "key": "/library/parts/10070/1789180064/file.webm",
               "duration": 734167,
-              "file": "/mnt/zurg/movies/Tears of Steel (2012)/Tears of Steel.webm",
+              "file": "/mnt/rex/movies/Tears of Steel (2012)/Tears of Steel.webm",
               "size": 571346576,
               "container": "webm",
               "videoProfile": "0",
@@ -777,7 +777,7 @@
       "_poster_url": "https://image.tmdb.org/t/p/w342/8qy3jRmaHR7f8VZh3iXCqCWfFsH.jpg",
       "_art_url": "https://image.tmdb.org/t/p/w1280/fOy6SL5Zs2PFcNXwqEPIDPrLB1q.jpg",
       "librarySectionID": 1,
-      "librarySectionTitle": "Debrid Movies",
+      "librarySectionTitle": "Movies",
       "librarySectionKey": "/library/sections/1",
       "Location": [
         {

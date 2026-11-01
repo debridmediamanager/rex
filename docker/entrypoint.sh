@@ -6,6 +6,6 @@ set -e
 umask 077
 case "${1:-}" in
   "" | -*)
-    exec /rex/rust/target/release/rex --catalog "${REX_CATALOG:-/config/rex.db}" "$@" ;;
-  *) exec /rex/rust/target/release/rex "$@" ;;
+    exec /rex/rex --catalog "${REX_CATALOG:-/config/rex.db}" "$@" ;;
+  *) exec /rex/rex "$@" ;;
 esac
