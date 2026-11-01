@@ -315,10 +315,8 @@ impl Runtime {
         let upload = format!("{prefix}/{}", sha1_hex(body));
         self.uploads.insert(
             upload.clone(),
-            (
-                body.to_vec(),
-                served.unwrap_or_else(|| image_type(body)).to_string(),
-            ),
+            body.to_vec(),
+            served.unwrap_or_else(|| image_type(body)).to_string(),
         );
         let stamp = now();
         let rating_key = key.to_string();
@@ -646,4 +644,139 @@ pub(super) fn artwork_writes(row: &Value, key: &str, kept: bool) -> Vec<(&'stati
         }
     }
     writes
+}
+
+/// Uploaded artwork by its `upload://` key: its type and length, and its bytes only until the
+/// state file has the save that wrote them (`trim`); then the file's are read when a request
+/// asks (`Runtime::upload`). heaptrack on the production server's `rex.db` (44,644 rows,
+/// f0d4dc7a): 55 MB of a 285.5 MB idle heap was its 379 uploads, every one decoded at the start
+/// and held, for a custom poster asked for now and then. With no state file every upload stays
+/// here.
+#[derive(Debug, Default)]
+pub(super) struct Uploads {
+    entries: HashMap<String, Upload>,
+    /// Uploaded since a snapshot last took them (`take_changed`): the next one writes them.
+    changed: HashSet<String>,
+}
+
+#[derive(Debug)]
+struct Upload {
+    kind: String,
+    len: usize,
+    bytes: Option<Vec<u8>>,
+    /// The last save that wrote it, as `rows.rs` keeps a row's.
+    serial: u64,
+}
+
+impl Uploads {
+    pub(super) fn insert(&mut self, key: String, bytes: Vec<u8>, kind: String) {
+        let serial = self.entries.get(&key).map_or(0, |upload| upload.serial);
+        self.changed.insert(key.clone());
+        self.entries.insert(key, Upload { kind, len: bytes.len(), bytes: Some(bytes), serial });
+    }
+
+    /// One the state file holds, restored: only its type and length are kept.
+    pub(super) fn restore(&mut self, key: String, kind: String, len: usize) {
+        self.entries.insert(key, Upload { kind, len, bytes: None, serial: 0 });
+    }
+
+    pub(super) fn len_of(&self, key: &str) -> Option<usize> {
+        self.entries.get(key).map(|upload| upload.len)
+    }
+
+    /// The bytes and type of `key`: those held, else what `read` reads from the file.
+    pub(super) fn get(&self, key: &str, read: impl FnOnce(&str) -> Option<Vec<u8>>) -> Option<(Vec<u8>, String)> {
+        let upload = self.entries.get(key)?;
+        let bytes = match &upload.bytes {
+            Some(bytes) => bytes.clone(),
+            None => read(key)?,
+        };
+        Some((bytes, upload.kind.clone()))
+    }
+
+    /// The uploads `keys` names, or every one, as the state file stores them: `[base64, type]`.
+    pub(super) fn document(&self, keys: Option<&HashSet<String>>, read: impl Fn(&str) -> Option<Vec<u8>>) -> Map<String, Value> {
+        let all: Vec<&String> = match keys {
+            Some(keys) => keys.iter().collect(),
+            None => self.entries.keys().collect(),
+        };
+        all.into_iter()
+            .filter_map(|key| {
+                let (bytes, kind) = self.get(key, &read)?;
+                Some((key.clone(), json!([base64_encode(&bytes), kind])))
+            })
+            .collect()
+    }
+
+    pub(super) fn take_changed(&mut self) -> HashSet<String> {
+        std::mem::take(&mut self.changed)
+    }
+
+    /// A save took `keys` and queued them as `serial`.
+    pub(super) fn saved(&mut self, keys: &HashSet<String>, serial: u64) {
+        for key in keys {
+            if let Some(upload) = self.entries.get_mut(key) {
+                upload.serial = upload.serial.max(serial);
+            }
+        }
+    }
+
+    /// Let go of the bytes the file has: each upload no snapshot waits to take whose save is
+    /// durable (`store::written`).
+    pub(super) fn trim(&mut self, durable: u64) {
+        for (key, upload) in self.entries.iter_mut() {
+            if upload.serial <= durable && !self.changed.contains(key) {
+                upload.bytes = None;
+            }
+        }
+    }
+}
+
+/// An upload's bytes as the state file stores them, read through the catalog's own reader.
+pub(super) fn upload_from_file(catalog: &Catalog, key: &str) -> Option<Vec<u8>> {
+    let body = catalog.state_row("state:uploads", key)?;
+    let stored: Value = serde_json::from_str(&body).ok()?;
+    base64_decode_bytes(stored.get(0)?.as_str()?)
+}
+
+#[cfg(test)]
+mod upload_tests {
+    use super::Uploads;
+
+    const KEY: &str = "upload://posters/0a";
+
+    fn unread(_: &str) -> Option<Vec<u8>> {
+        panic!("read from the file while held")
+    }
+
+    #[test]
+    fn an_upload_is_held_until_the_file_has_its_save_then_read_from_the_file() {
+        let mut uploads = Uploads::default();
+        uploads.insert(KEY.to_string(), b"poster".to_vec(), "image/jpeg".to_string());
+        let held = Some((b"poster".to_vec(), "image/jpeg".to_string()));
+        uploads.trim(u64::MAX);
+        assert_eq!(uploads.get(KEY, unread), held, "no snapshot has taken it");
+        let taken = uploads.take_changed();
+        uploads.saved(&taken, 7);
+        uploads.trim(6);
+        assert_eq!(uploads.get(KEY, unread), held, "its save is not in the file yet");
+        uploads.trim(7);
+        assert!(uploads.entries[KEY].bytes.is_none());
+        let mut asked = Vec::new();
+        let read = uploads.get(KEY, |key| {
+            asked.push(key.to_string());
+            Some(b"the file's".to_vec())
+        });
+        assert_eq!(read, Some((b"the file's".to_vec(), "image/jpeg".to_string())));
+        assert_eq!(asked, [KEY]);
+        assert_eq!(uploads.len_of(KEY), Some(6));
+        // Uploaded again before its save is written: held until that one is.
+        uploads.insert(KEY.to_string(), b"poster".to_vec(), "image/jpeg".to_string());
+        let taken = uploads.take_changed();
+        uploads.trim(6);
+        assert_eq!(uploads.get(KEY, unread), held, "the save that wrote it is serial 7");
+        uploads.restore("upload://art/0b".to_string(), "image/jpeg".to_string(), 3);
+        assert_eq!(uploads.get("upload://art/0b", |_| None), None, "a restored upload is the file's");
+        assert_eq!(uploads.document(Some(&taken), unread)[KEY], serde_json::json!(["cG9zdGVy", "image/jpeg"]));
+    }
 }

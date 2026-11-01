@@ -7,16 +7,21 @@ needs no migration either way: this release reads what an older one wrote, and t
 reads what this one wrote -- the way back after an upgrade. Proved with a real older release
 (`REX_OLD_SERVER`, e.g. v0.3.0's binary) and this build (`REX_SERVER`, or the default), on one
 state file: each restart answers every read as the run before it left it, and this release's
-own writes reach the older one.
+own writes reach the older one. An uploaded poster is served byte for byte by the other
+release too: this one keeps none of the bytes the file has (`artwork::Uploads`), and writes an
+upload as the older one did, `[base64, type]` by key.
 
     REX_OLD_SERVER=/path/to/rex-v0.3.0/rust/target/release/rex python3 tests/test_state_compat.py
 """
+import hashlib
+import http.client
 import json
 import os
 import shutil
 import signal
 import sys
 import tempfile
+import urllib.parse
 
 import test_persist
 from test_persist import HERE, LIBRARY, Instance, check, differing, first, results, snapshot, write_everything
@@ -38,6 +43,24 @@ def run(binary, catalog, state):
             os.environ["REX_SERVER"] = previous
 
 
+def exchange(instance, method, path, body=None):
+    """(status, raw body): `Instance.request` decodes a body as text."""
+    connection = http.client.HTTPConnection("127.0.0.1", instance.port, timeout=10)
+    try:
+        connection.request(method, path, body=body, headers=test_persist.HEADERS)
+        response = connection.getresponse()
+        return response.status, response.read()
+    finally:
+        connection.close()
+
+
+def upload(instance, body):
+    """Upload `body` as row 1007's poster: the path its candidate is served from, or None."""
+    status = exchange(instance, "POST", "/library/metadata/1007/posters", body)[0]
+    key = "upload://posters/" + hashlib.sha1(body).hexdigest()
+    return "/library/metadata/1007/file?url=" + urllib.parse.quote(key, safe="") if status == 200 else None
+
+
 def main():
     old = os.environ.get("REX_OLD_SERVER")
     if not old:
@@ -54,6 +77,8 @@ def main():
         before = run(old, catalog, state)
         ok, statuses = write_everything(before, machine)
         check("the older release accepts every write", ok, "statuses %s" % statuses)
+        old_poster = b"\x89PNG\r\n\x1a\n" + b"uploaded to the older release" * 64
+        old_upload = upload(before, old_poster)
         written = snapshot(before)
         before.stop(signal.SIGTERM)
 
@@ -66,6 +91,10 @@ def main():
             ("GET", "/:/rate?key=1007&identifier=%s&rating=6" % LIBRARY),
             ("PUT", "/library/metadata/1007?title.value=Written%20After%20The%20Upgrade&title.locked=1"))]
         check("this release accepts its writes", all(200 <= status < 300 for status in statuses), statuses)
+        check("this release serves the older one's upload as sent",
+              old_upload and exchange(upgraded, "GET", old_upload) == (200, old_poster), old_upload)
+        new_poster = b"\x89PNG\r\n\x1a\n" + b"uploaded after the upgrade" * 64
+        new_upload = upload(upgraded, new_poster)
         # Once a save reached the file the rows are let go of: these reads come from the file.
         upgraded.request("GET", "/library/sections/1/all")
         after = snapshot(upgraded)
@@ -76,6 +105,9 @@ def main():
 
         downgraded = run(old, catalog, state)
         back = snapshot(downgraded)
+        check("the older release serves both releases' uploads as sent",
+              new_upload and exchange(downgraded, "GET", new_upload) == (200, new_poster)
+              and exchange(downgraded, "GET", old_upload) == (200, old_poster), new_upload)
         check("the older release reads this one's file as it left it", not differing(after, back),
               "differ: %s" % differing(after, back))
         downgraded.stop(signal.SIGTERM)

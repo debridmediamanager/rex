@@ -658,6 +658,11 @@ impl Catalog {
         self.rows.attached()
     }
 
+    /// The body that database holds under `key` in its collection `coll` (`Rows::state_row`).
+    pub fn state_row(&self, coll: &str, key: &str) -> Option<String> {
+        self.rows.state_row(coll, key)
+    }
+
     /// A save took the changes and queued them as `serial` (`None`: there was nothing to
     /// write): the rows it took are let go of once the file has it (`pack_pending`).
     pub fn saved(&mut self, serial: Option<u64>, key_of: impl Fn(&Value) -> Option<String>) {

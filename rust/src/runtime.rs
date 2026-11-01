@@ -800,8 +800,8 @@ pub struct Runtime {
     /// Leaves completed in a PLAYBACK SESSION (Python's `_viewedInSession`): history,
     /// not view state, so a later scrobble or unscrobble leaves it standing.
     viewed_in_session: HashSet<String>,
-    /// Uploaded artwork by its `upload://` key: the bytes and their content type.
-    uploads: Versioned<HashMap<String, (Vec<u8>, String)>>,
+    /// Uploaded artwork by its `upload://` key (`artwork::Uploads`).
+    uploads: artwork::Uploads,
     /// Track rows the theme metadata leaf minted, by request path and by ratingKey.
     theme_rows: HashMap<String, Value>,
     /// The spellfix1 vocabularies search falls back on: a SNAPSHOT, built at load and
@@ -1037,7 +1037,7 @@ impl Runtime {
             playlists: HashMap::new(),
             collections: HashMap::new(),
             hub_layouts: HashMap::new(),
-            uploads: Versioned::default(),
+            uploads: artwork::Uploads::default(),
             tag_table: TagTable::default(),
             metadata_provider_groups: HashMap::new(),
             next_metadata_provider_group: 5,
@@ -1705,7 +1705,11 @@ impl Runtime {
                     value.get(0).and_then(Value::as_str).and_then(base64_decode_bytes),
                     value.get(1).and_then(Value::as_str),
                 ) {
-                    self.uploads.insert(key.clone(), (bytes, kind.to_string()));
+                    // A legacy file's are held for its import, and let go of once it is written.
+                    match source {
+                        StateSource::Legacy(_) => self.uploads.insert(key.clone(), bytes, kind.to_string()),
+                        StateSource::Database(_) => self.uploads.restore(key.clone(), kind.to_string(), bytes.len()),
+                    }
                 }
             }
             if let Some(rows) = state.get("themeRows").and_then(Value::as_object) {
@@ -1981,7 +1985,7 @@ impl Runtime {
         let mut state = self.state_document(false);
         self.dirty = false;
         // The vocabulary only when it was replaced since the last snapshot.
-        let mut separate = vec!["items", "feedHeld", "accountViews"];
+        let mut separate = vec!["items", "feedHeld", "accountViews", "uploads"];
         // A `Versioned` field the database holds as it is now is left out (`state_document`).
         separate.extend(self.versions().into_iter().filter(|(name, _)| !self.saving(name)).map(|(name, _)| name));
         self.versions_saved = self.versions().into_iter().collect();
@@ -2005,6 +2009,19 @@ impl Runtime {
             &held_changes,
             |key| held.get(key),
             || held.iter().map(|(key, value)| (key.clone(), value.clone())).collect(),
+        ));
+        // Only the uploads made since the last snapshot, by key: the others' bytes are the file's
+        // alone, and the whole field -- 47 MB of base64 on the production server -- was encoded
+        // again for each new upload.
+        let upload_changes = self.uploads.take_changed();
+        let (uploads, rows) = (&self.uploads, &self.catalog);
+        let read = |key: &str| artwork::upload_from_file(rows, key);
+        let changed_uploads = uploads.document(Some(&upload_changes), read);
+        delta.extend(self.store_cache.diff_members(
+            "uploads",
+            &upload_changes,
+            |key| changed_uploads.get(key),
+            || uploads.document(None, read),
         ));
         let account_changes = std::mem::take(&mut self.account_views_changed);
         let states = &self.account_states;
@@ -2033,8 +2050,9 @@ impl Runtime {
         self.save_serial = store::next_serial();
         // Queued under the runtime lock, so deltas are written in the order taken.
         store::enqueue(&path, self.save_serial, delta);
-        // Its rows stay in memory until the file has them (`rows.rs`).
+        // Its rows and uploads stay in memory until the file has them (`rows.rs`).
         self.catalog.saved(Some(self.save_serial), key_of);
+        self.uploads.saved(&upload_changes, self.save_serial);
         Ok(Some(StateSnapshot {
             serial: self.save_serial,
             path,
@@ -2042,12 +2060,11 @@ impl Runtime {
     }
 
     /// The `Versioned` fields by their name in the state document, with their versions.
-    fn versions(&self) -> [(&'static str, u64); 4] {
+    fn versions(&self) -> [(&'static str, u64); 3] {
         [
             ("deleted", self.deleted.version()),
             ("retiredKeys", self.retired_keys.version()),
             ("byteBuckets", self.byte_buckets.version()),
-            ("uploads", self.uploads.version()),
         ]
     }
 
@@ -2156,8 +2173,9 @@ impl Runtime {
             ("nextMetadataProviderGroup", json!(self.next_metadata_provider_group)),
             ("deletedBuiltinGroups", json!(self.deleted_builtin_groups.iter().collect::<Vec<_>>())),
             ("builtinGroupTitles", json!(self.builtin_group_titles.iter().map(|(id, title)| (id.to_string(), json!(title))).collect::<Map<String, Value>>())),
-            ("uploads", if full || self.saving("uploads") {
-                json!(self.uploads.iter().map(|(key, (bytes, kind))| (key.clone(), json!([base64_encode(bytes), kind]))).collect::<Map<String, Value>>())
+            // A snapshot diffs it by key instead (`diff_members`).
+            ("uploads", if full {
+                Value::Object(self.uploads.document(None, |key| artwork::upload_from_file(&self.catalog, key)))
             } else {
                 Value::Null
             }),
@@ -6904,6 +6922,18 @@ impl Runtime {
     }
 
 
+    /// Let go of the upload bytes the state file has, as `Rows::trim` lets go of rows.
+    fn trim_uploads(&mut self) {
+        if let Some(path) = &self.state_path {
+            self.uploads.trim(store::written(path));
+        }
+    }
+
+    /// An upload's bytes and type: held until a save put them in the state file, then the file's.
+    fn upload(&self, key: &str) -> Option<(Vec<u8>, String)> {
+        self.uploads.get(key, |key| artwork::upload_from_file(&self.catalog, key))
+    }
+
     /// A list's stored columns: a collection's `extra`, a playlist's edits.
     fn list_columns(&self, id: &str, is_collection: bool) -> Option<Map<String, Value>> {
         if is_collection {
@@ -6958,9 +6988,9 @@ impl Runtime {
                 .get("_uploads")
                 .and_then(Value::as_array)
                 .is_some_and(|list| list.iter().any(|known| known.as_str() == Some(wanted.as_str())));
-            return Some(match self.uploads.get(&wanted).cloned() {
-                Some((body, content_type)) if mine => serve(body, content_type, false),
-                _ => Response::error(404, "rex: not found"),
+            return Some(match mine.then(|| self.upload(&wanted)).flatten() {
+                Some((body, content_type)) => serve(body, content_type, false),
+                None => Response::error(404, "rex: not found"),
             });
         }
         if !(1..=2).contains(&tail.len()) || !matches!(tail[0], "poster" | "art" | "thumb") {
@@ -6973,10 +7003,11 @@ impl Runtime {
         let upload = columns
             .get("_poster_url")
             .map(string_value)
-            .and_then(|url| self.uploads.get(&url).cloned());
+            .filter(|_| own && tail[0] != "art")
+            .and_then(|url| self.upload(&url));
         Some(match upload {
-            Some((body, content_type)) if own && tail[0] != "art" => serve(body, content_type, true),
-            _ => Response::error(404, "rex: not found"),
+            Some((body, content_type)) => serve(body, content_type, true),
+            None => Response::error(404, "rex: not found"),
         })
     }
 
@@ -7025,11 +7056,8 @@ impl Runtime {
             let target = if field == "posters" { "thumb" } else { "art" };
             let prefix = if field == "posters" { "upload://posters" } else { "upload://art" };
             let upload = format!("{prefix}/{}", artwork::sha1_hex(&body));
-            self.uploads.insert(
-                upload.clone(),
-                // Cycle 83: served `image/jpeg` whatever the bytes, as an item's upload.
-                (body, "image/jpeg".to_string()),
-            );
+            // Cycle 83: served `image/jpeg` whatever the bytes, as an item's upload.
+            self.uploads.insert(upload.clone(), body, "image/jpeg".to_string());
             let stamp = now();
             let reversion = |columns: &mut Map<String, Value>| {
                 columns.insert(private.to_string(), json!(upload));
@@ -15109,7 +15137,7 @@ impl Runtime {
                         return response;
                     };
                     // An UPLOADED poster (`upload://...`) is served from the upload store.
-                    let uploaded = self.uploads.get(&art).cloned();
+                    let uploaded = self.upload(&art);
                     let url =
                         transcoder::tmdb_at_width(&art, query.get("width").map(String::as_str));
                     let mut response = match uploaded {
@@ -19559,14 +19587,13 @@ impl Runtime {
                 let stored = row
                     .get(&format!("_{}_url", tail[0]))
                     .and_then(Value::as_str);
-                match stored.and_then(|url| self.uploads.get(url)) {
-                    Some((body, content_type))
-                        if owned && matches!(request.method.as_str(), "GET" | "HEAD") =>
-                    {
+                let served = owned && matches!(request.method.as_str(), "GET" | "HEAD");
+                match stored.filter(|_| served).and_then(|url| self.upload(url)) {
+                    Some((body, content_type)) => {
                         // The oracle's `_serve_image` over an upload: `no-cache` and a
                         // byte range unit, like every other body path.
-                        let mut response = Response::bytes(200, content_type.clone());
-                        response.body = body.clone();
+                        let mut response = Response::bytes(200, content_type);
+                        response.body = body;
                         response
                             .headers
                             .push(("Accept-Ranges".to_string(), "bytes".to_string()));
@@ -19593,10 +19620,10 @@ impl Runtime {
                     .is_some_and(|fields| {
                         fields.values().filter_map(Value::as_array).flatten().any(|known| known.as_str() == Some(wanted.as_str()))
                     });
-                match self.uploads.get(&wanted).filter(|_| mine) {
+                match mine.then(|| self.upload(&wanted)).flatten() {
                     Some((body, content_type)) => {
-                        let mut response = Response::bytes(200, content_type.clone());
-                        response.body = body.clone();
+                        let mut response = Response::bytes(200, content_type);
+                        response.body = body;
                         response
                             .headers
                             .push(("Accept-Ranges".to_string(), "bytes".to_string()));
@@ -19896,10 +19923,10 @@ impl Runtime {
                 .map(str::to_string)
         });
         let mut response = match art {
-            Some(url) => match self.uploads.get(&url) {
+            Some(url) => match self.upload(&url) {
                 Some((body, content_type)) => {
-                    let mut response = Response::bytes(200, content_type.clone());
-                    response.body = body.clone();
+                    let mut response = Response::bytes(200, content_type);
+                    response.body = body;
                     response
                 }
                 None => {
@@ -20667,10 +20694,10 @@ impl Runtime {
         };
         // Cycle 29: `X-Plex-Local-Asset: 1` marks an ITEM's own artwork, uploaded or
         // remote; a direct asset is `no-cache` (a re-match changes the version).
-        let mut response = match self.uploads.get(&url) {
+        let mut response = match self.upload(&url) {
             Some((body, content_type)) => {
-                let mut response = Response::bytes(200, content_type.clone());
-                response.body = body.clone();
+                let mut response = Response::bytes(200, content_type);
+                response.body = body;
                 response
             }
             None => {
@@ -23236,6 +23263,7 @@ fn release_saved_rows(runtime: &SharedRuntime) {
             return;
         }
         guard.catalog.pack_pending();
+        guard.trim_uploads();
         guard.catalog.take_released()
     };
     if released >= RELEASE_FREE_MEMORY_ROWS {
@@ -24145,6 +24173,7 @@ fn handle_connection<S: Read + Write + PollRead>(
                 guard.save_if_dirty();
             }
             guard.catalog.pack_pending();
+            guard.trim_uploads();
             part_plan = guard.pending_part.take();
             let file_checks = guard.pending_file_checks.take();
             let segment = guard.pending_segment.take();

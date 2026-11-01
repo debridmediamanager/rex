@@ -2413,8 +2413,8 @@ impl super::Runtime {
         }
         payload["Metadata"] = Value::Object(metadata);
         let thumb = row.get("_poster_url").and_then(Value::as_str).and_then(|url| {
-            match self.uploads.get(url) {
-                Some((bytes, _)) if bytes.len() <= 4 * 1024 * 1024 => Some(WebhookThumb::Bytes(bytes.clone())),
+            match self.uploads.len_of(url) {
+                Some(len) if len <= 4 * 1024 * 1024 => self.upload(url).map(|(bytes, _)| WebhookThumb::Bytes(bytes)),
                 Some(_) => None,
                 None if webhook_url(url)
                     && !url.to_ascii_lowercase().contains("x-plex-token")

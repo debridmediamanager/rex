@@ -587,9 +587,32 @@ impl Rows {
     /// A row from the file, as the catalog holds rows: its streams packed, fitted to size
     /// (`catalog::compact`).
     fn read(&self, key: &str) -> Option<Value> {
-        let disk = self.disk.as_ref()?;
         #[cfg(test)]
         test_support::DISK_READS.with(|reads| reads.set(reads.get() + 1));
+        let read = self.body(COLLECTION, key, |text| serde_json::from_str::<Value>(text))?;
+        match read {
+            Ok(mut row) => {
+                crate::catalog::pack_streams(&mut row);
+                crate::catalog::compact(&mut row);
+                Some(row)
+            }
+            Err(error) => {
+                log_error(&format!("rows: row {key} unreadable: {error}"));
+                None
+            }
+        }
+    }
+
+    /// The body the state file holds under `key` in its collection `coll`, for what the runtime
+    /// keeps no copy of (an upload's bytes, `artwork::Uploads`): read through the rows' own
+    /// connection, whose page cache a second one would hold again.
+    pub fn state_row(&self, coll: &str, key: &str) -> Option<String> {
+        self.body(coll, key, str::to_string)
+    }
+
+    /// `parse` of the body the file holds under `key` in `coll`.
+    fn body<T>(&self, coll: &str, key: &str, parse: impl FnOnce(&str) -> T) -> Option<T> {
+        let disk = self.disk.as_ref()?;
         let mut reader = disk.reader.borrow_mut();
         if reader.is_none() {
             match crate::store::open_rows(&disk.path) {
@@ -604,21 +627,10 @@ impl Rows {
         let read = connection
             .prepare_cached("SELECT body FROM row WHERE coll = ?1 AND key = ?2")
             .and_then(|mut statement| {
-                statement.query_row(rusqlite::params![COLLECTION, key], |found| {
-                    let text = found.get_ref(0)?.as_str()?;
-                    Ok(serde_json::from_str::<Value>(text))
-                })
+                statement.query_row(rusqlite::params![coll, key], |found| Ok(parse(found.get_ref(0)?.as_str()?)))
             });
         match read {
-            Ok(Ok(mut row)) => {
-                crate::catalog::pack_streams(&mut row);
-                crate::catalog::compact(&mut row);
-                Some(row)
-            }
-            Ok(Err(error)) => {
-                log_error(&format!("rows: row {key} unreadable: {error}"));
-                None
-            }
+            Ok(parsed) => Some(parsed),
             Err(error) => {
                 log_error(&format!("rows: row {key} not read: {error}"));
                 None

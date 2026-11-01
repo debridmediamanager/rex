@@ -201,8 +201,8 @@ fn resolve(runtime: &Runtime, job: &Job) -> Option<Option<Target>> {
         return Some(None);
     };
     let portrait = job.leaf == "thumb" && matches!(row.get("type").and_then(Value::as_str), Some("movie" | "show"));
-    if let Some((bytes, _)) = runtime.uploads.get(url) {
-        return Some(Some(Target::Bytes(bytes.clone(), portrait)));
+    if let Some((bytes, _)) = runtime.upload(url) {
+        return Some(Some(Target::Bytes(bytes, portrait)));
     }
     if let Some((name, path)) = url.strip_prefix("source://").and_then(|rest| rest.split_once('/')) {
         let Some(source) = runtime.sources.iter().find(|source| source.name == name) else { return Some(None) };

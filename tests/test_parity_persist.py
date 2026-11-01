@@ -15,12 +15,16 @@ the reads answer identically, and only counts when they differ from a fresh inst
 kind also creates one more of its thing after the restart, and that id must be the one
 a server that never restarted hands out: the counter continues rather than restarts.
 
+An upload's bytes are then checked against the bytes sent, right after the upload and across a
+restart, and shown to be read from the state file once it has them rather than held.
+
 The catalog-rebuild rule (`restore_state`, `rust/src/runtime.rs`) is checked last: over a
 changed catalog only the view state -- matched by guid, then by part file -- and the
 server-level settings carry over, and the old file is kept as `<file>.stale`.
 
     python3 tests/test_parity_persist.py
 """
+import base64
 import hashlib
 import http.client
 import json
@@ -28,6 +32,7 @@ import os
 import shutil
 import signal
 import socket
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -605,12 +610,70 @@ def main():
                       after[name] == continued[name] and after[name] not in (None, [], ""),
                       "after a restart %s, without one %s" % (after[name], continued[name]))
 
+        uploads_from_the_file(work, catalog)
         rebuild(work, catalog, machine)
     finally:
         shutil.rmtree(work, ignore_errors=True)
 
     print("\nPASS %d/%d" % (sum(results), len(results)))
     return 0 if all(results) else 1
+
+
+def uploads_from_the_file(work, catalog):
+    """An upload's bytes are held only until a save has put them in the state file, and read
+    from there after (`artwork::Uploads`): heaptrack on the production server's `rex.db` found
+    55 MB of a 285.5 MB idle heap was its 379 uploads, every one decoded at the start and held.
+    Each read is checked against the bytes sent, not against another read; a body changed in
+    the file behind the server is what it serves once it holds no copy."""
+    state = os.path.join(work, "uploads-state")
+    poster = b"\x89PNG\r\n\x1a\n" + b"read back from the state file" * 64
+    other = b"\x89PNG\r\n\x1a\n" + b"changed in the file behind the server" * 64
+    key = "upload://posters/" + hashlib.sha1(poster).hexdigest()
+    candidate = "/library/metadata/1007/file?url=" + q(key)
+
+    def served(data):
+        return 200, {"type": "image/jpeg", "length": len(data),
+                     "sha1": hashlib.sha1(data).hexdigest()}
+
+    def stored(data=None):
+        db = sqlite3.connect(state)
+        try:
+            if data is not None:
+                db.execute("UPDATE row SET body = ? WHERE coll = 'state:uploads' AND key = ?",
+                           (json.dumps([base64.b64encode(data).decode(), "image/jpeg"]), key))
+                db.commit()
+            row = db.execute("SELECT body FROM row WHERE coll = 'state:uploads' AND key = ?",
+                             (key,)).fetchone()
+        finally:
+            db.close()
+        return json.loads(row[0]) if row else None
+
+    inst = Instance(catalog, state)
+    status = inst.request("POST", "/library/metadata/1007/posters", body=poster)[0]
+    # The upload is saved before it is answered, but nothing lets its bytes go until the next
+    # request has been answered: the first read is served from memory, the second from the file.
+    reads = [inst.request("GET", candidate) for _ in range(2)]
+    thumb = first(inst.request("GET", "/library/metadata/1007")[1]).get("thumb")
+    reads.append(inst.request("GET", thumb))
+    check("uploads: served as sent right after the upload, and once the file has its save",
+          status == 200 and reads == [served(poster)] * 3, "status %s, reads %s" % (status, reads))
+    check("uploads: the state file keeps [base64, type] by key, the shape every release reads",
+          stored() == [base64.b64encode(poster).decode(), "image/jpeg"], str(stored())[:200])
+    stored(other)
+    changed = inst.request("GET", candidate)
+    stored(poster)
+    inst.stop(signal.SIGTERM)
+    check("uploads: once saved, the bytes are the file's, not a copy held in memory",
+          changed == served(other), "after the file changed: %s" % (changed,))
+
+    inst = Instance(catalog, state)
+    restored = inst.request("GET", candidate)
+    stored(other)
+    changed = inst.request("GET", candidate)
+    inst.stop()
+    check("uploads: a restart serves the bytes sent, read from the file",
+          restored == served(poster) and changed == served(other),
+          "restored %s, after the file changed %s" % (restored, changed))
 
 
 def rebuild(work, catalog, machine):
