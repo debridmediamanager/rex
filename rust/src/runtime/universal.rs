@@ -2743,8 +2743,7 @@ fn major_version(text: &str) -> Option<u32> {
 fn ffmpeg_places() -> Vec<PathBuf> {
     let name = if cfg!(windows) { "ffmpeg.exe" } else { "ffmpeg" };
     let mut places = vec![PathBuf::from("/usr/lib/jellyfin-ffmpeg/ffmpeg")];
-    // A release keeps the binary at <folder>/rust/target/release/rex.
-    if let Some(folder) = std::env::current_exe().ok().and_then(|exe| exe.ancestors().nth(4).map(PathBuf::from)) {
+    if let Some(folder) = std::env::current_exe().ok().and_then(|exe| crate::catalog_tool::install_folder(&exe)) {
         places.push(folder.join("ffmpeg").join(name));
     }
     places.push(PathBuf::from(r"C:\Program Files\Jellyfin\Server\ffmpeg.exe"));

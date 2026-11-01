@@ -244,13 +244,26 @@ pub(crate) fn sha1_hex(bytes: &[u8]) -> String {
     format!("{:x}", Sha1::digest(bytes))
 }
 
-/// The checkout (or unpacked release) the binary runs from: `rust/target/release/rex` sits
-/// three directories under it, beside `data/`. A binary anywhere else gets the working
-/// directory, which is what `oracle/`'s tools resolved to from their own place.
+/// The folder rex runs from: a release keeps the binary at its top (since 2026-11-01), a
+/// checkout at `rust/target/release/rex`, three directories under it. Releases before that
+/// kept the checkout's layout, and still carry the old path, so services set up from older
+/// guides find the new binary.
+pub fn install_folder(exe: &Path) -> Option<PathBuf> {
+    let dir = exe.parent()?;
+    if dir.ends_with("rust/target/release") {
+        dir.ancestors().nth(3).map(Path::to_path_buf)
+    } else {
+        Some(dir.to_path_buf())
+    }
+}
+
+/// The checkout (or unpacked release) the binary runs from, where `data/` sits. A binary
+/// anywhere else gets the working directory, which is what `oracle/`'s tools resolved to from
+/// their own place.
 pub(crate) fn checkout_root() -> PathBuf {
     std::env::current_exe()
         .ok()
-        .and_then(|exe| exe.ancestors().nth(4).map(Path::to_path_buf))
+        .and_then(|exe| install_folder(&exe))
         .filter(|root| root.join("data").is_dir())
         .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")))
 }
@@ -363,6 +376,16 @@ fn py_float(value: f64) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn install_folder_finds_a_flat_release_and_a_checkout() {
+        // A release unpacked to ~/rex runs ~/rex/rex: the old `ancestors().nth(4)` gave `/`
+        // there, so a portable FFmpeg in ~/rex/ffmpeg was never found.
+        assert_eq!(install_folder(Path::new("/home/u/rex/rex")), Some(PathBuf::from("/home/u/rex")));
+        assert_eq!(install_folder(Path::new("/home/u/rex/rust/target/release/rex")), Some(PathBuf::from("/home/u/rex")));
+        // A build under CARGO_TARGET_DIR is no checkout's: its own folder.
+        assert_eq!(install_folder(Path::new("/cache/target/release/rex")), Some(PathBuf::from("/cache/target/release")));
+    }
 
     fn temp(name: &str) -> PathBuf {
         let dir = std::env::temp_dir().join(format!("rex-catalog-{}-{name}", std::process::id()));

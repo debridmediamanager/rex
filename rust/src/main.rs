@@ -316,8 +316,7 @@ fn default_web_root() -> Option<PathBuf> {
     if local.is_dir() {
         return Some(local);
     }
-    let exe = env::current_exe().ok()?;
-    let checkout = exe.parent()?.parent()?.parent()?.parent()?;
+    let checkout = rex::catalog_tool::install_folder(&env::current_exe().ok()?)?;
     Some(checkout.join("webclient")).filter(|path| path.is_dir())
 }
 
