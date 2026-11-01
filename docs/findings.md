@@ -15045,7 +15045,7 @@ albums and Firefly; recorded by `probes/record_blur.py` into `tests/fixtures/art
   (`pv:thumbBlurHash`, `pv:ultraBlurTopLeft`... in `extra_data`). An album caught 0.7 s after its
   files appeared had its artist's thumb and neither field; 0.3 s later its own cover and both.
   rex works them out the first time a response shows the row, on a thread of its own outside the
-  runtime lock, keyed by the artwork's versioned path, kept in `blur_cache.db` beside the state file
+  runtime lock, keyed by the artwork's versioned path, kept in table `blur_cache` of the state database
   and read back whole on start; until then a row answers as plexav's unanalysed one, and a film,
   show, season or episode keeps the fixed palette rex always sent (as it does when no image can be
   read). A listing of 400 albums whose covers take 40 ms each answers in milliseconds before and

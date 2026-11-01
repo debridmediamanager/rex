@@ -559,7 +559,7 @@ WantedBy=multi-user.target
 
 These work even when the claiming account is free. An app's own checks, such as its Downloads
 eligibility, still apply. Music and Live TV come from sources that send them ([feed API](feed-api.md),
-"Tracks" and "Live TV"); there is no DVR, so nothing records, and music has no radio, mixes or stations.
+"Tracks" and "Live TV"); there is no DVR, so nothing records, and Plexamp's radio, mixes and stations are missing.
 
 | Capability | What you get |
 |---|---|

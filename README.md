@@ -29,7 +29,7 @@ Your movies and shows stay on a debrid service, a Usenet provider or any web ser
 - **Original quality, straight from the source.** With [jellyfin-ffmpeg](docs/setup.md#which-ffmpeg) installed rex also converts what a device cannot play; on a small Intel GPU a converted 1080p film starts in about 2 seconds.
 - **Subtitles that fit.** Search Subtitles uses Plex's own provider. rex checks the one you pick against a text subtitle in the file, or its audio when FFmpeg is installed, and fixes the timing when it is off.
 - **Many sources, one library.** Your debrid accounts, your Stremio addons and an app of your own can all fill the same Movies and TV Shows libraries.
-- **Music and Live TV from addons.** An addon can bring albums, which Plex names and Plexamp plays, and live channels with a TV guide in the Plex apps' Live TV, as [rex-live-sports](https://github.com/debridmediamanager/rex-live-sports) does ([Building rex addons](https://notes.debridmediamanager.com/rex/addons/#music)).
+- **Music and Live TV from addons.** An addon can bring albums, which Plex names and Plexamp plays, and live channels with a TV guide in Plex Web's and Plex for Android's Live TV, as [rex-live-sports](https://github.com/debridmediamanager/rex-live-sports) does ([Building rex addons](https://notes.debridmediamanager.com/rex/addons/#music)).
 - **No Plex Pass.** Remote playback in Plex Web and converting video work on free accounts. So do movie editions, the server Dashboard, Downloads and, with FFmpeg, intro and credits skipping ([what works](docs/setup.md#movie-and-tv-capabilities)).
 - **Free for personal use**, with the source code public and nightly builds.
 
@@ -77,7 +77,7 @@ rex reads no media from disk. A source (an addon, your own app or zurg) tells re
 
 ## Limits
 
-- Music needs a source that sends tracks ([feed API](docs/feed-api.md#tracks)). Plexamp, Plex Web and Plex for Android play it, but Plex's radio, mixes and stations are missing.
+- Music needs a source that sends tracks ([feed API](docs/feed-api.md#tracks)). Plexamp, Plex Web and Plex for Android play it, but Plexamp's radio, mixes and stations are missing.
 - Live TV shows the channels a source brings, such as [rex-live-sports](https://github.com/debridmediamanager/rex-live-sports), with their guide, in Plex Web's and Plex for Android's Live TV. Nothing records: there is no DVR.
 - Photo libraries stay empty.
 - A title shows up only once its source has probed it. A source's first pass over a big library can take a few hours.
