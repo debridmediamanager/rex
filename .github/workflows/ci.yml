@@ -423,8 +423,12 @@ jobs:
             # dmm's gh is Ubuntu's 2.4.0, whose `release list` has no --json: every nightly
             # since the move to dmm failed here (2026-10-19, 10-20). `gh api` is the gate's call.
             prev=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=1" --jq '.[0].tag_name // ""')
-            git log --no-merges --format='- %s' ${prev:+"$prev..HEAD"} -n 200 > notes.md
-            test -s notes.md || echo "- no changes" > notes.md
+            # The image line leads, so the Discord post's trimming (announce_nightly.py) keeps it.
+            echo "Docker (Linux amd64 and arm64): \`docker pull ghcr.io/$GITHUB_REPOSITORY:$TAG\`, also tagged \`nightly\`" > notes.md
+            echo >> notes.md
+            git log --no-merges --format='- %s' ${prev:+"$prev..HEAD"} -n 200 > commits.md
+            test -s commits.md || echo "- no changes" > commits.md
+            cat commits.md >> notes.md
             gh release create "$TAG" --prerelease --target "$GITHUB_SHA" \
               --title "rex $TAG" --notes-file notes.md \
               rex-*.tar.gz rex-*.zip SHA256SUMS
@@ -441,17 +445,6 @@ jobs:
             --title "rex ${GITHUB_REF_NAME#v}" \
             --notes-file notes.md \
             rex-*.tar.gz rex-*.zip SHA256SUMS
-
-      # Nightlies only, to #general through the webhook zurg's nightlies use. A tag is
-      # announced by whoever cut it. The release is already out, so a failure here loses
-      # only the post.
-      - name: Announce the nightly on Discord
-        if: env.NIGHTLY == 'true'
-        env:
-          DISCORD_WEBHOOK: ${{ secrets.DISCORD_RELEASE_WEBHOOK }}
-        run: |
-          python3 .github/announce_nightly.py "$TAG" \
-            "https://github.com/$GITHUB_REPOSITORY/releases/tag/$TAG" "$GITHUB_SHA" notes.md
 
   # Kept until here so a failed release can be rerun; a run that never gets here is swept by
   # the next run's gate after two days.
@@ -470,3 +463,24 @@ jobs:
     permissions:
       contents: read
       packages: write
+
+  # Nightlies only, to #changelog through the webhook zurg's nightlies use. A tag is announced
+  # by whoever cut it. After `docker`, because the post names the image, which is pushed about
+  # five minutes after the release (2026-11-01: 00:28:41 -> 00:33:28). A failure here loses only
+  # the post.
+  announce:
+    if: needs.gate.outputs.nightly == 'true'
+    needs: [gate, docker]
+    runs-on: [self-hosted, Linux, X64, dmm]
+    env:
+      TAG: ${{ needs.gate.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Announce the nightly on Discord
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_RELEASE_WEBHOOK }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" --jq .body > notes.md
+          python3 .github/announce_nightly.py "$TAG" \
+            "https://github.com/$GITHUB_REPOSITORY/releases/tag/$TAG" "$GITHUB_SHA" notes.md

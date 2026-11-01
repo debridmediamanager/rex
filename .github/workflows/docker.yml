@@ -1,6 +1,6 @@
 name: Docker
 
-# Publishes ghcr.io/debridmediamanager/rex for a release, from that release's own Linux
+# Publishes ghcr.io/debridmediamanager/rex for a release or nightly, from its own Linux
 # archives: no compile, so QEMU only runs the image's apt-get for arm64. The package belongs
 # to this repository and is public, as the repository is (since 2026-10-31).
 #

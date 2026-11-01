@@ -771,7 +771,7 @@ way it checks the tag matches `Cargo.toml`, and publishes
 `rex-vX.Y.Z-{linux,darwin}-{amd64,arm64}.tar.gz`, `rex-vX.Y.Z-windows-amd64.zip` and `SHA256SUMS` as the GitHub release, titled `rex X.Y.Z`
 with the tag message as its notes. Its `docker` job then calls `.github/workflows/docker.yml`,
 which packages that release's Linux archives into `ghcr.io/debridmediamanager/rex`
-(`latest`, `X.Y.Z`, `X.Y`; public, like the repository) without compiling; run it by hand
+(`latest`, `X.Y.Z`, `X.Y`; a nightly gets `nightly` and its own tag instead; public, like the repository) without compiling; run it by hand
 with a tag to give an older release an image. The archive keeps the repository's layout (the binary at
 `rust/target/release/rex`, `data/` beside it though the binary carries its own copy), so every command in the
 docs works the same from a release as from a checkout.
