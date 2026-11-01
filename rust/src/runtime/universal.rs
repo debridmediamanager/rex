@@ -259,6 +259,8 @@ impl Protocol {
 #[derive(Clone, Debug)]
 pub(crate) struct Plan {
     pub rating_key: String,
+    /// The Part it converts: one of several on a Media of an episode in parts (`partIndex`).
+    pub part_id: String,
     pub url: String,
     pub auth: Option<String>,
     pub duration_ms: i64,
@@ -3321,6 +3323,7 @@ impl Runtime {
         if tone_mapping.is_some() && !hardware.supports_tone_mapping() && video.as_ref().is_some_and(|video| video.hdr && !video.copy) { return None; }
         Some(Plan {
             rating_key: key.to_string(),
+            part_id: part.get("id").map(string_value).unwrap_or_default(),
             url,
             auth,
             duration_ms: part
@@ -3797,7 +3800,16 @@ impl Runtime {
         let Some(session) = transcoder.for_playback(account, playback).filter(|session| session.plan.rating_key == key) else {
             return;
         };
-        if let Some(media) = object.get("Media").and_then(Value::as_array).and_then(|rows| rows.first()).cloned() {
+        // The Media and Part it converts: the second Part of an episode in parts showed the first's
+        // id and streams under the second's duration (rex-fun's Monk S01E01, 2026-11-01).
+        let rows = object.get("Media").and_then(Value::as_array).cloned().unwrap_or_default();
+        let playing = rows.iter().find_map(|media| {
+            let part = media.get("Part")?.as_array()?.iter().find(|part| part.get("id").map(string_value) == Some(session.plan.part_id.clone()))?;
+            let mut media = media.clone();
+            media["Part"] = json!([part]);
+            Some(media)
+        });
+        if let Some(media) = playing.or_else(|| rows.first().cloned()) {
             object.insert("Media".to_string(), json!([self.converted_media(&media, &session.plan, false)]));
         }
         // A converting session's bandwidth is ~1.05x the OUTPUT (509 for 485 kbps,
@@ -3816,6 +3828,7 @@ mod tests {
     fn plan(copy: bool, duration_ms: i64) -> Plan {
         Plan {
             rating_key: "1".into(),
+            part_id: "10".into(),
             url: "http://zurg/dav/movies/a.mkv".into(),
             auth: None,
             duration_ms,

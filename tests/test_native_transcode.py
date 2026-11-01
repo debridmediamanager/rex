@@ -613,6 +613,30 @@ def reaches_end(port, scratch, label, key, **extra):
     get(port, "/video/:/transcode/universal/stop", [("session", session)])
 
 
+def converts_second_part(port, scratch, key, part_ids):
+    """A Media of two Parts converted on its second: the conversion reads the second Part's file,
+    and Now Playing names that Part, not the first (rex-fun's Monk S01E01 listed the first's id and
+    streams under the second's duration, 2026-11-01)."""
+    session = "s-part2"
+    extra = {"partIndex": "1", "videoResolution": "640x360", "maxVideoBitrate": "1000", "directStream": "1"}
+    status, container = decision(port, key, session, **extra)
+    get(port, "/video/:/transcode/universal/start.m3u8", plex_web_query(key, session, **extra))
+    status, _, first = get(port, "/video/:/transcode/universal/session/%s/base/00000.ts" % session)
+    beat = [("ratingKey", key), ("key", "/library/metadata/%s" % key), ("state", "playing"), ("time", "32000"),
+            ("duration", "60000"), ("hasMDE", "1"), ("X-Plex-Session-Identifier", "playback-" + session),
+            ("X-Plex-Client-Identifier", "thuj6pv24kf5wr6qaqla8flz"), ("X-Plex-Product", "Plex Web"), ("X-Plex-Platform", "Chrome")]
+    get(port, "/:/timeline", beat)
+    status, _, body = get(port, "/status/sessions")
+    listing = json.loads(body)["MediaContainer"].get("Metadata", []) if status == 200 else []
+    row_ = next((r for r in listing if r.get("ratingKey") == key), {})
+    parts = [str(part.get("id")) for media in row_.get("Media") or [] for part in media.get("Part") or []]
+    check("part 2: its conversion starts and Now Playing names part 2", first[:1] == b"\x47" and parts == [part_ids[1]],
+          "%d bytes, parts %s" % (len(first), parts))
+    get(port, "/video/:/transcode/universal/stop", [("session", session)])
+    beat[2] = ("state", "stopped")
+    get(port, "/:/timeline", beat)
+
+
 def live_source(port, scratch, android):
     """A live channel plays on. Its conversion was a title of no duration: one segment and
     ENDLIST, so Plex for Android stopped after ~10 s and Plezy too (rex live test, 2026-10-24)."""
@@ -923,6 +947,16 @@ def run(scratch):
     item = row("22", "Shortvideo", "shortvideo.mkv", short["streams"], os.path.getsize(MEDIA["shortvideo.mkv"]), 11)
     item["duration"] = item["Media"][0]["duration"] = item["Media"][0]["Part"][0]["duration"] = round(float(short["format"]["duration"]) * 1000)
     items.append(item)
+    # An episode in two files, one Media of two Parts: the remux and the plain clip.
+    item = row("23", "Twoparts", "remux.mkv", probe(MEDIA["remux.mkv"])["streams"], os.path.getsize(MEDIA["remux.mkv"]), 2 * DURATION)
+    second = json.loads(json.dumps(item["Media"][0]["Part"][0]))
+    second.update(id=231, key="/library/parts/231/1700000000/file.mkv", file="/zurg/movies/Twoparts/plain.mkv",
+                  size=os.path.getsize(plain), duration=DURATION * 1000)
+    for stream in second["Stream"]:
+        stream["id"] += 100
+    item["Media"][0]["Part"][0].update(file="/zurg/movies/Twoparts/remux.mkv", duration=DURATION * 1000)
+    item["Media"][0]["Part"].append(second)
+    items.append(item)
     catalog = os.path.join(scratch, "catalog.json")
     json.dump({"machineIdentifier": "0000000000000000000000000000000000000007", "friendlyName": "rex-transcode",
                "sections": [{"key": "1", "type": "movie", "title": "Clips", "uuid": "0" * 39 + "7"}],
@@ -1201,6 +1235,7 @@ def run(scratch):
         walk(port, scratch, "capped", "1", "transcode", "copy", (640, 360),
              videoResolution="640x360", maxVideoBitrate="1000", directStream="1")
         reaches_end(port, scratch, "shortvideo", "22", videoResolution="640x360", maxVideoBitrate="1000", directStream="1")
+        converts_second_part(port, scratch, "23", ["230", "231"])
         # Audio only: the video is copied and the DTS the client refuses becomes AAC.
         walk(port, scratch, "audio-only", "5", "copy", "transcode", None, directStream="1", directStreamAudio="1")
         # Exercise the profile-supported non-AAC encoders through real client target negotiation.
