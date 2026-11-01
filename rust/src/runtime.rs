@@ -152,6 +152,8 @@ const GDM_QUERY: &[u8] = b"M-SEARCH * ";
 const GDM_SEARCH: &[u8] = b"M-SEARCH * HTTP/1.1\r\n";
 /// A real PMS searches its LAN this often (`gdm.SEARCH_INTERVAL`).
 const GDM_SEARCH_INTERVAL: std::time::Duration = std::time::Duration::from_secs(5);
+/// How long after the last search that fell back on it the spelling vocabulary is let go.
+const SPELLING_IDLE: std::time::Duration = std::time::Duration::from_secs(30 * 60);
 const GDM_TTL_SECONDS: i64 = 180;
 
 /// The trigger, bisected byte by byte on the 1.42.2 reference: a prefix compare of the
@@ -805,8 +807,11 @@ pub struct Runtime {
     /// Track rows the theme metadata leaf minted, by request path and by ratingKey.
     theme_rows: HashMap<String, Value>,
     /// The spellfix1 vocabularies search falls back on: a SNAPSHOT, built at load and
-    /// rebuilt only by Optimize Database (cycles 37-38), never per edit.
-    spelling: Option<spellfix::SearchIndex>,
+    /// rebuilt only by Optimize Database (cycles 37-38), never per edit. Held only while
+    /// searches use it (`spelling_fuzzy`, `drop_idle_spelling`).
+    spelling: std::cell::RefCell<spellfix::Spelling>,
+    /// When a search last fell back on `spelling`.
+    spelling_used: std::cell::Cell<std::time::Instant>,
     pub terminated_sessions: HashMap<String, String>,
     pub decided_sessions: HashSet<(String, String)>,
     /// Live TV's tuned sessions (`runtime/livetv.rs`).
@@ -1081,7 +1086,8 @@ impl Runtime {
             owner_views: None,
             viewed_in_session: HashSet::new(),
             theme_rows: HashMap::new(),
-            spelling: None,
+            spelling: std::cell::RefCell::new(spellfix::Spelling::Unbuilt),
+            spelling_used: std::cell::Cell::new(std::time::Instant::now()),
             terminated_sessions: HashMap::new(),
             decided_sessions: HashSet::new(),
             livetv: livetv::Sessions::default(),
@@ -1122,7 +1128,7 @@ impl Runtime {
         runtime.claim_mut().name = runtime.friendly.clone();
         // A restored vocabulary is kept as it stood (cycle 73); only a fresh start, or
         // a state file without one, builds it from the rows.
-        if runtime.spelling.is_none() {
+        if matches!(runtime.spelling.get_mut(), spellfix::Spelling::Unbuilt) {
             runtime.rebuild_spelling();
         }
         // From here the rows live in the state file, and memory holds those written since the
@@ -1630,9 +1636,16 @@ impl Runtime {
                 }
             }
             if restored_rows {
-                self.spelling = state
-                    .get("spelling")
-                    .and_then(spellfix::SearchIndex::from_value);
+                // Left in the database for the first search that falls back on it; a legacy
+                // file's is taken now, since its import writes the database from memory.
+                let saved = state.get("spelling");
+                *self.spelling.get_mut() = if matches!(source, StateSource::Database(_)) && saved.is_some_and(Value::is_object) {
+                    spellfix::Spelling::Saved
+                } else {
+                    saved
+                        .and_then(spellfix::SearchIndex::from_value)
+                        .map_or(spellfix::Spelling::Unbuilt, spellfix::Spelling::Loaded)
+                };
                 self.spelling_serial += 1;
             }
             for value in state.get("queues").and_then(Value::as_array).into_iter().flatten() {
@@ -1994,7 +2007,7 @@ impl Runtime {
         } else if let Some(object) = state.as_object_mut() {
             object.insert(
                 "spelling".to_string(),
-                json!(self.spelling.as_ref().map(spellfix::SearchIndex::to_value)),
+                self.spelling.borrow().to_value(),
             );
             self.spelling_saved = self.spelling_serial;
         }
@@ -2213,7 +2226,7 @@ impl Runtime {
             if full {
                 object.insert(
                     "spelling".to_string(),
-                    json!(self.spelling.as_ref().map(spellfix::SearchIndex::to_value)),
+                    self.spelling.borrow().to_value(),
                 );
             } else {
                 object.shift_remove("viewState");
@@ -7425,6 +7438,55 @@ impl Runtime {
 
     /// Rebuild both spellfix vocabularies from the current rows (`rebuild_spelling`).
     fn rebuild_spelling(&mut self) {
+        let index = self.build_spelling();
+        *self.spelling.get_mut() = spellfix::Spelling::Loaded(index);
+        self.spelling_serial += 1;
+    }
+
+    /// One query's spellfix candidates; a vocabulary `drop_idle_spelling` let go of, or a start
+    /// left in the state file, is read back from there first. Restored at every start, the
+    /// production server's (44,644 rows, 4.9 MB saved) held 16 MB of heap for good, for a fallback
+    /// only a misspelt search takes (heaptrack on its rex.db). Read back on a library that size it
+    /// costs 35 ms under the lock; rebuilt instead it reads every row from the file, 1.8-3.9 s
+    /// (`spelling_costs_on_a_production_sized_library`), and would take in every edit made since
+    /// the last Optimize Database, which a restart keeps out of it (cycle 73).
+    pub(super) fn spelling_fuzzy(&self, text: &str) -> spellfix::Fuzzy {
+        self.spelling_used.set(std::time::Instant::now());
+        let mut spelling = self.spelling.borrow_mut();
+        let index = match std::mem::replace(&mut *spelling, spellfix::Spelling::Saved) {
+            spellfix::Spelling::Loaded(index) => index,
+            // A file that lost it, which no rex writes, gets the rows' own, as a start does.
+            _ => self
+                .state_path
+                .as_deref()
+                .and_then(|path| store::state_doc(path, "spelling"))
+                .as_ref()
+                .and_then(spellfix::SearchIndex::from_value)
+                .unwrap_or_else(|| self.build_spelling()),
+        };
+        let fuzzy = index.fuzzy(text);
+        *spelling = spellfix::Spelling::Loaded(index);
+        fuzzy
+    }
+
+    /// Let the vocabulary go once no search has fallen back on it for `SPELLING_IDLE` and the
+    /// state file holds it as it stands: every snapshot taken is written, so one replaced since
+    /// the last save waits for its own.
+    fn drop_idle_spelling(&mut self, now: std::time::Instant) {
+        let Some(path) = &self.state_path else {
+            return;
+        };
+        if matches!(self.spelling.get_mut(), spellfix::Spelling::Loaded(_))
+            && now.saturating_duration_since(self.spelling_used.get()) >= SPELLING_IDLE
+            && self.spelling_saved == self.spelling_serial
+            && store::written(path) >= self.save_serial
+        {
+            *self.spelling.get_mut() = spellfix::Spelling::Saved;
+        }
+    }
+
+    /// Both spellfix vocabularies, built from the current rows.
+    fn build_spelling(&self) -> spellfix::SearchIndex {
         let static_tags = load_json_sidecar(&self.catalog_path, "spellfix_static_tags.json")
             .and_then(|value| value.as_array().cloned())
             .map(|values| {
@@ -7435,8 +7497,7 @@ impl Runtime {
             })
             .unwrap_or_default();
         let catalog = &self.catalog;
-        self.spelling = Some(spellfix::SearchIndex::build(&|visit| catalog.each_row(|_, row| visit(row)), &static_tags));
-        self.spelling_serial += 1;
+        spellfix::SearchIndex::build(&|visit| catalog.each_row(|_, row| visit(row)), &static_tags)
     }
 
     /// Every request registers its client -- header or query alike -- in the order the
@@ -23333,6 +23394,7 @@ fn start_state_saver(runtime: SharedRuntime) {
             guard.checkpoint_downloads();
             guard.resume_downloads();
             guard.reap_stream_admissions();
+            guard.drop_idle_spelling(std::time::Instant::now());
             if !guard.dirty {
                 dirty_since = None;
                 continue;
@@ -26564,6 +26626,128 @@ mod migration_tests {
         assert_eq!(*restored.deleted, HashSet::from(["900001".to_string(), "900002".to_string()]));
         assert_eq!(*restored.retired_keys, vec![900001]);
         assert_eq!(fields(&restored), [false; 3], "a restart's state is the database's");
+    }
+
+    /// The show hub's titles for one search.
+    fn shows(runtime: &Runtime, query: &str) -> Vec<String> {
+        let (typed, _) = runtime.search_matches(query, None, false);
+        let mut titles = typed
+            .get("show")
+            .into_iter()
+            .flatten()
+            .filter_map(|row| row.get("title").and_then(Value::as_str).map(str::to_string))
+            .collect::<Vec<_>>();
+        titles.sort();
+        titles
+    }
+
+    #[test]
+    fn the_saved_vocabulary_is_read_by_the_first_misspelt_search_and_let_go_when_idle() {
+        use spellfix::Spelling;
+        let held = |runtime: &Runtime| matches!(*runtime.spelling.borrow(), Spelling::Loaded(_));
+        let dir = work("spelling-lazy");
+        let catalog_path = dir.join("catalog.json");
+        let state_path = dir.join("rex.db");
+        fs::write(&catalog_path, include_str!("../../tests/catalog_ui.json")).unwrap();
+        let mut first = Runtime::load(options(&catalog_path, &state_path)).expect("a start");
+        first.save_state().unwrap();
+        let built = shows(&first, "Simpsns");
+        assert_eq!(built, ["The Simpsons"], "found by its spelling");
+        let vocabulary = first.spelling.borrow().to_value();
+        drop(first);
+        let mut restarted = Runtime::load(options(&catalog_path, &state_path)).expect("a restart");
+        assert!(matches!(*restarted.spelling.borrow(), Spelling::Saved), "a start reads no vocabulary");
+        assert_eq!(shows(&restarted, "Simpsns"), built, "read back, it answers as the one built");
+        assert_eq!(restarted.spelling.borrow().to_value(), vocabulary);
+        let now = std::time::Instant::now();
+        restarted.drop_idle_spelling(now);
+        assert!(held(&restarted), "kept while searches use it");
+        restarted.drop_idle_spelling(now + SPELLING_IDLE);
+        assert!(!held(&restarted), "let go once idle");
+        // Optimize Database replaces it: not let go before the state file has the new one.
+        restarted.rebuild_spelling();
+        restarted.drop_idle_spelling(now + SPELLING_IDLE);
+        assert!(held(&restarted), "an unsaved vocabulary is kept");
+        restarted.save_state().unwrap();
+        restarted.drop_idle_spelling(now + SPELLING_IDLE);
+        assert!(!held(&restarted), "let go once saved");
+        assert_eq!(shows(&restarted, "Simpsns"), built, "read back again");
+        assert!(held(&restarted));
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    /// What reading the vocabulary back costs against rebuilding it, on a library of the production
+    /// server's size: `cargo test --release --lib spelling_costs -- --ignored --nocapture`.
+    #[test]
+    #[ignore]
+    fn spelling_costs_on_a_production_sized_library() {
+        let dir = work("spelling-costs");
+        let catalog_path = dir.join("catalog.json");
+        let state_path = dir.join("rex.db");
+        let mut document: Value = serde_json::from_str(include_str!("../../tests/catalog_ui.json")).unwrap();
+        let shape: Vec<Vec<usize>> = serde_json::from_str(include_str!("../tests/fixtures/fun_show_shape.json")).unwrap();
+        let episode: Value = serde_json::from_str(include_str!("../../tests/fixtures/fun_episode_row.json")).unwrap();
+        let movies: Vec<Value> = document["items"].as_array().unwrap().iter().filter(|row| row["type"] == "movie").cloned().collect();
+        // Titles, casts and an id of each row's own, so the vocabularies grow as a real library's
+        // do: 33 syllables make 4.75 MB of saved vocabulary, the production server's is 4.9 MB.
+        let parts = ["ka", "lo", "mi", "ra", "ten", "dor", "vel", "sa", "quin", "bri", "mo", "zan", "tu", "pel", "gor", "ash", "en",
+                     "rin", "sto", "wy", "har", "lu", "bex", "co", "fen", "dri", "ol", "mar", "che", "ix", "nor", "pa", "vin"];
+        let syllables = parts.len();
+        let word = |n: usize| -> String {
+            let mut text = (0..3).map(|i| parts[n / syllables.pow(i) % syllables]).collect::<String>();
+            text[..1].make_ascii_uppercase();
+            text
+        };
+        let space = syllables.pow(3);
+        let own = |mut row: Value, kind: &str, section: i64, number: usize| {
+            row["ratingKey"] = json!((400000 + number).to_string());
+            row["key"] = json!(format!("/library/metadata/{}", 400000 + number));
+            row["type"] = json!(kind);
+            row["librarySectionID"] = json!(section);
+            row["title"] = json!((0..2 + number % 3).map(|i| word((number * 7 + i * 1_013) % space)).collect::<Vec<_>>().join(" "));
+            row["Guid"] = json!([{"id": format!("imdb://tt{:08}", 20_000_000 + number)}]);
+            row["Role"] = json!((0..6).map(|k| json!({"tag": format!("{} {}", word((number * 31 + k * 977) % space), word((number * 17 + k * 4_099) % space))})).collect::<Vec<_>>());
+            row
+        };
+        let mut items = Vec::new();
+        for seasons in &shape {
+            items.push(own(json!({}), "show", 2, items.len()));
+            for count in seasons {
+                items.push(own(json!({}), "season", 2, items.len()));
+                for _ in 0..*count {
+                    items.push(own(episode.clone(), "episode", 2, items.len()));
+                }
+            }
+        }
+        while items.len() < 44_644 {
+            items.push(own(movies[items.len() % movies.len()].clone(), "movie", 1, items.len()));
+        }
+        document["items"] = Value::Array(items);
+        fs::write(&catalog_path, document.to_string()).unwrap();
+        drop(document);
+        let mut first = Runtime::load(options(&catalog_path, &state_path)).expect("a start");
+        first.save_state().unwrap();
+        drop(first);
+        let started = std::time::Instant::now();
+        let mut restarted = Runtime::load(options(&catalog_path, &state_path)).expect("a restart");
+        eprintln!("restart: {:?}", started.elapsed());
+        let started = std::time::Instant::now();
+        let saved = store::state_doc(&state_path, "spelling").unwrap();
+        let read = started.elapsed();
+        let started = std::time::Instant::now();
+        let index = spellfix::SearchIndex::from_value(&saved).unwrap();
+        eprintln!("vocabulary {} bytes of JSON: read {read:?}, from_value {:?}", saved.to_string().len(), started.elapsed());
+        drop((saved, index));
+        let started = std::time::Instant::now();
+        restarted.spelling_fuzzy("Kalomi");
+        eprintln!("first fallback search, read back: {:?}", started.elapsed());
+        let started = std::time::Instant::now();
+        restarted.spelling_fuzzy("Kalomi");
+        eprintln!("the next, held: {:?}", started.elapsed());
+        let started = std::time::Instant::now();
+        restarted.rebuild_spelling();
+        eprintln!("rebuild from the state file's rows: {:?}", started.elapsed());
+        let _ = fs::remove_dir_all(dir);
     }
 
     #[test]

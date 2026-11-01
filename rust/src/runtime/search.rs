@@ -655,9 +655,7 @@ impl Runtime {
         let spelling = if normal_gate {
             None
         } else {
-            Some(self.spelling.as_ref().map(|index| index.fuzzy(text)).unwrap_or_else(|| {
-                crate::runtime::spellfix::SearchIndex::default().fuzzy(text)
-            }))
+            Some(self.spelling_fuzzy(text))
         };
         // Both passes read the hot fields and the search corpus, and a row only for a hit: read
         // whole, every row of a production library came off disk under the runtime lock.

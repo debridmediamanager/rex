@@ -1019,6 +1019,26 @@ impl Fuzzy {
     }
 }
 
+/// Where the server's vocabulary is (`Runtime::spelling_fuzzy`).
+#[derive(Debug)]
+pub enum Spelling {
+    /// Nowhere: a start builds it from the rows.
+    Unbuilt,
+    /// Only in the state file, read back by the next search that falls back on it.
+    Saved,
+    Loaded(SearchIndex),
+}
+
+impl Spelling {
+    /// The saved document: `null` for one not in memory, which a save never writes.
+    pub fn to_value(&self) -> serde_json::Value {
+        match self {
+            Spelling::Loaded(index) => index.to_value(),
+            _ => serde_json::Value::Null,
+        }
+    }
+}
+
 /// One snapshot of the title and tag spellfix tables.
 #[derive(Clone, Default, Debug)]
 pub struct SearchIndex {

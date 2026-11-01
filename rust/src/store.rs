@@ -307,17 +307,34 @@ pub fn read_state(path: &Path) -> Result<Saved, String> {
 }
 
 /// One document of the saved state (`state:<name>`), read alone: what decides how the rest
-/// is read. `None` when it, or the state, is not there.
+/// is read, or the spelling vocabulary a search reads back. A value or an object, whose
+/// members are rows; `None` when it, or the state, is not there, or it is an array.
 pub fn state_doc(path: &Path, name: &str) -> Option<Value> {
     if !is_sqlite(path) {
         return None;
     }
     let connection = open_read(path).ok()?;
-    let body: Option<String> = connection
-        .query_row("SELECT body FROM doc WHERE name = ?1", params![format!("{STATE}{name}")], |row| row.get(0))
+    let name = format!("{STATE}{name}");
+    let (kind, body): (String, Option<String>) = connection
+        .query_row("SELECT kind, body FROM doc WHERE name = ?1", params![name], |row| Ok((row.get(0)?, row.get(1)?)))
         .optional()
         .ok()??;
-    serde_json::from_str(&body?).ok()
+    match Kind::parse(&kind)? {
+        Kind::Value => serde_json::from_str(&body?).ok(),
+        Kind::Array => None,
+        Kind::Object => {
+            let mut rows = connection.prepare("SELECT key, body FROM row WHERE coll = ?1 ORDER BY pos, key").ok()?;
+            let members = rows
+                .query_map(params![name], |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)))
+                .ok()?;
+            let mut object = Map::new();
+            for member in members {
+                let (key, body) = member.ok()?;
+                object.insert(key, serde_json::from_str(&body).ok()?);
+            }
+            Some(Value::Object(object))
+        }
+    }
 }
 
 /// `read_state`, each saved row of `items` handed to `items` as it is read instead of kept in

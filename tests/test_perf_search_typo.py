@@ -12,10 +12,15 @@ The library is `test_perf_listing_window.py`'s, every episode given ids of its o
 copies of one real row, so they shared its imdb/tmdb/tvdb ids), which is what fills a real
 library's tag vocabulary. The unit is one unpaged episode listing parsed here, as there.
 
+A restart leaves the vocabularies in the state file until a search falls back on them (they held
+16 MB for good on the production server): the first misspelt search after it reads them back
+within the same budget, and answers as the server that built them did.
+
     python3 tests/test_perf_search_typo.py
 """
 import http.client
 import json
+import os
 import shutil
 import sys
 import tempfile
@@ -59,6 +64,24 @@ def shows(body):
     return {row.get("title") for hub in hubs if hub.get("type") == "show" for row in hub.get("Metadata", [])}
 
 
+def typo_beside_identity(port, unit, label):
+    """A misspelt search, and /identity asked while it runs: a container's health check."""
+    during = {}
+    typo = threading.Thread(target=lambda: during.update(search=search(port, "Simpsns")))
+    typo.start()
+    time.sleep(0.05)
+    during["identity"] = request(port, "/identity")
+    typo.join()
+    status, body, took = during["search"]
+    check("%s: the misspelt title is found by its spelling" % label, status == 200
+          and shows(body) == {"The Simpsons"}, (status, shows(body) if status == 200 else body[:200]))
+    check("%s: a misspelt search is under 0.5 units (%.4fs, %.2f)" % (label, took, took / unit),
+          took < 0.5 * unit, (took, unit))
+    identity = during["identity"]
+    check("%s: /identity answers beside it, under 0.5 units (%.4fs)" % (label, identity[2]),
+          identity[0] == 200 and identity[2] < 0.5 * unit, (identity[0], identity[2], unit))
+
+
 def main():
     directory = tempfile.mkdtemp(prefix="rex-perf-typo-")
     try:
@@ -71,22 +94,21 @@ def main():
             unit = client_unit(body)
             print("unit (parsing the unpaged episode listing here, %d rows): %.4fs"
                   % (len(container(body).get("Metadata", [])), unit), flush=True)
-
-            # A container's health check asks /identity while the search runs.
-            during = {}
-            typo = threading.Thread(target=lambda: during.update(search=search(port, "Simpsns")))
-            typo.start()
-            time.sleep(0.05)
-            during["identity"] = request(port, "/identity")
-            typo.join()
-            status, body, took = during["search"]
-            check("the misspelt title is found by its spelling", status == 200
-                  and shows(body) == {"The Simpsons"}, (status, shows(body) if status == 200 else body[:200]))
-            check("a misspelt search is under 0.5 units (%.4fs, %.2f)" % (took, took / unit),
-                  took < 0.5 * unit, (took, unit))
-            identity = during["identity"]
-            check("/identity answers beside it, under 0.5 units (%.4fs)" % identity[2],
-                  identity[0] == 200 and identity[2] < 0.5 * unit, (identity[0], identity[2], unit))
+            typo_beside_identity(port, unit, "built")
+        finally:
+            process.kill()
+            process.wait()
+        state = os.path.join(directory, "rex.db")
+        process, port = start(path, "--state", state)
+        try:
+            # Saved before it is answered, as every write is.
+            check("the vocabularies are rebuilt and saved", optimize(port) == 200)
+        finally:
+            process.kill()
+            process.wait()
+        process, port = start(path, "--state", state)
+        try:
+            typo_beside_identity(port, unit, "read back after a restart")
         finally:
             process.kill()
             process.wait()

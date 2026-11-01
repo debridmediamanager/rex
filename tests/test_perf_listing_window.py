@@ -110,10 +110,10 @@ def catalog(directory):
     return path, episodes
 
 
-def start(path):
+def start(path, *extra):
     port = free_port()
     process = subprocess.Popen(
-        server_command("--port", port, "--catalog", path, "--assert-claimed", "--gdm", "off",
+        server_command("--port", port, "--catalog", path, "--assert-claimed", "--gdm", "off", *extra,
                        root=ROOT),
         cwd=ROOT, env=ENV, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     for _ in range(1800):
