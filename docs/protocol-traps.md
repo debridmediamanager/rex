@@ -1693,7 +1693,7 @@ currently advertised by rex. A version label is not proof of complete PMS equiva
   `Related`, and the `/media/providers` `Home` `Directory` -- the one childless `Directory` on
   the surface that is paired, which `hubKey` identifies.
 - **A real PMS ignores every conditional request header.** A part read carries an `ETag` and a
-  `Last-Modified` and answers 206 to `If-None-Match`, `If-Modified-Since`, `If-Range` and
+  `Last-Modified` (the row's `updatedAt`, none for a row without one) and answers 206 to `If-None-Match`, `If-Modified-Since`, `If-Range` and
   `If-Match` alike -- never 304, never 412.
 - **`/library/all/top` answers any type NUMBER** -- 0, 3, 8, 9, 10, 12, 13, 15, 18, 20 and -1
   included -- and 400s only a value that does not parse. The Dashboard asks for movie, show and
@@ -2243,7 +2243,8 @@ currently advertised by rex. A version label is not proof of complete PMS equiva
 - **A part read carries `X-Plex-Protocol` first like every other response**, its `Content-Type` is
   keyed on the stored FILE's extension (a `mp4` Media whose file is `.mkv` answers
   `video/x-matroska`; the URL's extension is ignored; an unknown extension is
-  `application/octet-stream`, NOT `video/mp4`), and the bandwidth statistic counts what was
+  `application/octet-stream`, NOT `video/mp4`; a track's `.mp3` `audio/mpeg`, `.flac` `audio/flac`,
+  `.m4a` `audio/mp4`, `.wav` `audio/wav`, and `.opus` and `.ogg` octet-streams), and the bandwidth statistic counts what was
   WRITTEN — every seek and stop is an abort, so counting the advertised length moves the Dashboard
   by a whole file per seek. **`POST`/`PUT` on the THREE-segment media path is a 404**; only
   `/library/parts/{id}` takes the track write.

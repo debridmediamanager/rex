@@ -189,7 +189,7 @@ def agent_server(answers=AGENT):
 class Rex:
     """A claimed (`--assert-claimed`) rex whose section 1 is a music library."""
 
-    def __init__(self, work, bytes_port, agent_url, extra_sections=(), music=True, register=None, args=()):
+    def __init__(self, work, bytes_port, agent_url, extra_sections=(), music=True, register=None, args=(), items=()):
         self.port = free_port()
         self.work = work
         catalog = {"machineIdentifier": MACHINE, "friendlyName": "rex-music",
@@ -197,7 +197,7 @@ class Rex:
                                   "scanner": "Plex Music", "language": "en-US",
                                   "uuid": "0000000000000000000000000000000000000a01",
                                   "Location": [{"id": 1, "path": "/data/music"}]}] if music else []) + list(extra_sections),
-                   "items": []}
+                   "items": list(items)}
         path = os.path.join(work, "catalog.json")
         json.dump(catalog, open(path, "w"))
         json.dump({"machine": MACHINE, "token": TOKEN}, open(os.path.join(work, "claim_state.json"), "w"))

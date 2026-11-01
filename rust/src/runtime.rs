@@ -21948,12 +21948,12 @@ impl Runtime {
                     if candidate.get("id").and_then(Value::as_i64) == Some(part_id) {
                         let mut selected = candidate.clone();
                         // `resolve_part`: the part carries its ROW's addedAt, the stamp
-                        // behind the byte response's ETag and Last-Modified.
+                        // behind the byte response's ETag, and its updatedAt, which is the
+                        // Last-Modified (plexav 1.43.4, `fixtures/music/part-reads.json`).
                         if let Some(object) = selected.as_object_mut() {
-                            object.insert(
-                                "addedAt".to_string(),
-                                row.get("addedAt").cloned().unwrap_or(Value::Null),
-                            );
+                            for field in ["addedAt", "updatedAt"] {
+                                object.insert(field.to_string(), row.get(field).cloned().unwrap_or(Value::Null));
+                            }
                         }
                         part = Some(selected);
                         owner = row.clone();
@@ -22175,7 +22175,10 @@ impl Runtime {
         response
             .headers
             .push(("ETag".to_string(), format!("\"{etag}\"")));
-        if let Some(seconds) = stamp.as_i64().filter(|seconds| *seconds != 0) {
+        // Measured on plexav (1.43.4): Last-Modified is the row's updatedAt, not its addedAt (a
+        // track's and an episode's alike), and a row with none -- a track Plex's agent never
+        // matched -- answers none.
+        if let Some(seconds) = part.get("updatedAt").and_then(Value::as_i64).filter(|seconds| *seconds != 0) {
             response
                 .headers
                 .push(("Last-Modified".to_string(), http_date_at(seconds)));
@@ -27671,9 +27674,12 @@ fn part_content_type(part: &Value) -> String {
         "mpg" | "mpeg" => "video/mpeg",
         "flv" => "video/x-flv",
         "wmv" => "video/x-ms-wmv",
-        // plexav's part reads of its tracks (2026-10-31).
+        // plexav's part reads of its tracks (2026-10-31, 2026-11-01): `.opus` and `.ogg` are
+        // octet-streams there too.
         "flac" => "audio/flac",
         "mp3" => "audio/mpeg",
+        "m4a" => "audio/mp4",
+        "wav" => "audio/wav",
         "asf" => "video/x-ms-asf",
         _ => "application/octet-stream",
     }

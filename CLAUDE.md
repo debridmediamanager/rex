@@ -652,6 +652,9 @@ python3 tests/test_music_releases.py        # two releases of one album (folders
                                             # each with its own tracks, as plexav lists them; keys and plays kept; needs ffmpeg
 python3 tests/test_music_conversion.py      # a track converted when the client turns direct play off: plexav's decisions, DASH and Matroska HLS,
                                             # decoded segments; its codec and bitrate rules; needs ffmpeg
+python3 tests/test_music_part_reads.py      # a track's Part read per audio format as plexav answers it: type by extension (`.m4a`
+                                            # audio/mp4, `.wav` audio/wav, Opus/Vorbis octet-stream), headers in order, Range, HEAD,
+                                            # download=1, Last-Modified the row's updatedAt; needs ffmpeg
 python3 tests/test_music_lyrics.py          # a source's sidecar `lyrics`: plexav's lyrics stream and its JSON, XML and raw answers
 python3 tests/test_music_loudness.py        # a source's `loudness`: plexav's stream fields, `/levels` per subsample and the play-queue ramps
 python3 tests/test_music_library_declared.py # a source's `directories` `music` makes the music library its tracks go to
