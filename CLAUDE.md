@@ -645,6 +645,8 @@ python3 tests/test_feed_subtitles.py        # a source's sidecar subtitles (`sub
                                             # Part, its text read off the lock, one id per path, [] and absent, bad entries left out, uploads untouched
 python3 tests/test_feed_collections.py      # a source's `collections`: each name a collection of the title's library (an episode's show), made as a
                                             # tag write makes one; a person's removal and own collections kept, [] and absent (rex-stremio's catalogs)
+python3 tests/test_feed_playlists.py       # a source's `playlists`: each title an owner's playlist in the pushed order, audio for tracks and video
+                                            # for films; a person's removal and own members kept, {} and absent, emptied ones deleted, kept by --state
 python3 tests/test_feed_extras.py           # a file pushed as `kind: extra` is a clip of its release's title by its `extra_type`, one without it is no clip whatever its folder; rows held so stay through a start (Motto To Love-Ru, To Love Ru) and a re-push as an extra turns one into a clip
 python3 tests/test_music_feed.py            # tracks a source pushes (`kind: track`) become plexav's music library: albums by MusicBrainz release id or
                                             # Plex guid through a stub agent, plexav's Media for the same file, `display` for what nothing names; needs ffmpeg
