@@ -231,6 +231,13 @@ impl Runtime {
             )).collect::<Vec<_>>()).unwrap_or_default();
         self.discard_analysis_parts(&parts);
     }
+    /// One Part's records, as `remove_media_analysis` removes a whole Media's.
+    pub(super) fn remove_part_analysis(&mut self, key: &str, part: &str) {
+        let parts: Vec<_> = self.analysis_record(key, part)
+            .map(|record| (key.to_string(), part.to_string(), record["fingerprint"].as_str().unwrap_or_default().to_string()))
+            .into_iter().collect();
+        self.discard_analysis_parts(&parts);
+    }
     fn discard_analysis_parts(&mut self, parts: &[(String,String,String)]) {
         for (key,part,_) in parts {
             if let Some(row) = self.catalog.get_mut(key) {

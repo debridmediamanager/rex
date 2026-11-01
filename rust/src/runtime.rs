@@ -21951,9 +21951,11 @@ impl Runtime {
     fn part_sources(&self, row: &Value, file: &str) -> Vec<(Arc<source::Source>, String)> {
         let mut found = Vec::new();
         for media in row.get("Media").and_then(Value::as_array).into_iter().flatten() {
-            let reads = media.get("Part").and_then(Value::as_array).into_iter().flatten().any(|part| part.get("file").and_then(Value::as_str) == Some(file));
-            let tags = (media.get("_source").and_then(Value::as_str), media.get("_path").and_then(Value::as_str));
-            if let (true, (Some(name), Some(path))) = (reads, tags) {
+            let part = media.get("Part").and_then(Value::as_array).into_iter().flatten().find(|part| part.get("file").and_then(Value::as_str) == Some(file));
+            // A Part of an episode sent in parts is its own item: its own source and path.
+            let tags = part.filter(|part| part.get("_sid").is_some()).unwrap_or(media);
+            let tags = (tags.get("_source").and_then(Value::as_str), tags.get("_path").and_then(Value::as_str));
+            if let (true, (Some(name), Some(path))) = (part.is_some(), tags) {
                 if let Some(source) = self.sources.iter().find(|source| source.name == name) {
                     found.push((Arc::clone(source), path.to_string()));
                 }
@@ -21969,11 +21971,12 @@ impl Runtime {
     /// from (its own tags on a row holding several, else the row's when the Part is the
     /// one the feed made it with), else the source whose mount holds the file.
     fn part_source(&self, row: &Value, file: &str) -> Option<(Arc<source::Source>, String)> {
-        let holder = row.get("Media").and_then(Value::as_array).into_iter().flatten().find(|media| {
-            media.get("Part").and_then(Value::as_array).into_iter().flatten().any(|part| part.get("file").and_then(Value::as_str) == Some(file))
-        });
+        let (holder, part) = row.get("Media").and_then(Value::as_array).into_iter().flatten().find_map(|media| {
+            let part = media.get("Part").and_then(Value::as_array).into_iter().flatten().find(|part| part.get("file").and_then(Value::as_str) == Some(file))?;
+            Some((media, part))
+        }).unzip();
         let own = scan::row_files(row).into_iter().next().is_some_and(|first| first == file);
-        let tags = holder.filter(|media| media.get("_sid").is_some()).or(own.then_some(row));
+        let tags = part.filter(|part| part.get("_sid").is_some()).or(holder.filter(|media| media.get("_sid").is_some())).or(own.then_some(row));
         if let Some((tags, name)) = tags.and_then(|tags| Some((tags, tags.get("_source").and_then(Value::as_str)?))) {
             let path = tags.get("_path").and_then(Value::as_str)?;
             let source = self.sources.iter().find(|source| source.name == name)?;

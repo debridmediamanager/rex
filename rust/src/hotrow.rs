@@ -117,10 +117,10 @@ impl HotRow {
                 }
             }
         }
-        let releases = crate::catalog::versions(row)
+        let releases = crate::catalog::releases(row)
             .into_iter()
-            .map(|(source, sid, index)| {
-                let file = row.pointer(&format!("/Media/{index}/Part/0/file")).and_then(Value::as_str).map(|file| {
+            .map(|(source, sid, index, part)| {
+                let file = row.pointer(&format!("/Media/{index}/Part/{part}/file")).and_then(Value::as_str).map(|file| {
                     match file.strip_suffix(sid.as_str()) {
                         Some(before) => (before.into(), true),
                         None => (file.into(), false),
@@ -330,6 +330,11 @@ mod tests {
         let row = serde_json::json!({"_source": "zurg", "_sid": "s", "Media": [{"Part": [{"file": "/f/s"}]}]});
         let got: Vec<_> = HotRow::of(0, &row).releases.iter().map(|r| (r.sid.to_string(), r.file())).collect();
         assert_eq!(got, vec![("s".to_string(), Some("/f/s".to_string()))]);
+        // An episode its source sent in parts: each Part its own release, on its own file.
+        let row = serde_json::json!({"Media": [{"_source": "zurg", "_sid": "e13", "Part": [
+            {"_source": "zurg", "_sid": "e13", "file": "/f/e13"}, {"_source": "zurg", "_sid": "e14", "file": "/f/e14"}]}]});
+        let got: Vec<_> = HotRow::of(0, &row).releases.iter().map(|r| (r.sid.to_string(), r.index, r.file())).collect();
+        assert_eq!(got, vec![("e13".to_string(), 0, Some("/f/e13".to_string())), ("e14".to_string(), 0, Some("/f/e14".to_string()))]);
     }
 
     #[test]
