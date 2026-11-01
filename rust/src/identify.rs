@@ -303,6 +303,22 @@ pub fn plex_album(p: &dyn PlexSource, mbid: Option<&str>, guid: Option<&str>) ->
 
 /// The album's track on `disc` and `track`: its `Children` row whose `parentIndex` and `index`
 /// are those (Plex numbers an album's discs from 1).
+/// Plex's artist for a MusicBrainz artist id its source pushed (`ids.artist_mbid`), for a track whose
+/// album nothing names: `GET /library/metadata/matches?guid=mbid://<id>&type=8`, then that artist's row as
+/// `plex_album` reads one. plexav's PMS never asked this (it reaches artists through albums), so the
+/// request is the album's shape with `type=8`; the agent answers it (Radiohead, 2026-11-02,
+/// `tests/fixtures/music/agent-artist.json`), GET and POST alike. `None` when it names no artist.
+pub fn plex_artist(p: &dyn PlexSource, mbid: &str) -> Option<Value> {
+    let first = |answer: Option<Value>| answer?.pointer("/MediaContainer/Metadata/0").cloned();
+    let is_artist = |row: &Value| row.get("guid").and_then(Value::as_str).is_some_and(|guid| guid.starts_with("plex://artist/"));
+    let path = format!(
+        "/library/metadata/matches?guid=mbid://{mbid}&includeElements=Directory,Children,Guid&includeFields=id,guid,title,parentGuid,parentTitle,ratingKey&type=8"
+    );
+    let row = first(p.call("GET", &path, None)).filter(is_artist)?;
+    let key = row.get("ratingKey")?.as_str()?;
+    first(p.call("GET", &format!("/library/metadata/{key}?includeAlternates=1&X-Plex-Country=US&X-Plex-Language=en-US"), None)).filter(is_artist)
+}
+
 pub fn album_track(album: &Value, disc: i64, track: i64) -> Option<Value> {
     album
         .pointer("/Children/Metadata")?

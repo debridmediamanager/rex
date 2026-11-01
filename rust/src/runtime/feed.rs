@@ -441,7 +441,9 @@ impl Item {
             ids: Map::from_iter(
                 [("imdb", imdb.clone()), ("tmdb", id_text("tmdb")), ("tvdb", id_text("tvdb")),
                  // A track's album: MusicBrainz's release id, or Plex's album guid (`music.rs`).
-                 ("mbid", id_text("mbid").filter(|_| track)), ("plex", id_text("plex").filter(|guid| track && guid.starts_with("plex://album/")))]
+                 ("mbid", id_text("mbid").filter(|_| track)), ("plex", id_text("plex").filter(|guid| track && guid.starts_with("plex://album/"))),
+                 // Its artist's MusicBrainz id, for an album nothing names (`music.rs`).
+                 ("artist_mbid", id_text("artist_mbid").filter(|_| track))]
                     .into_iter()
                     .filter_map(|(key, value)| value.map(|value| (key.to_string(), json!(value)))),
             ),

@@ -1,0 +1,48 @@
+{
+ "recorded": "Plex's agent (metadata.provider.plex.tv) asked from fun with rex-fun's claim token, 2026-11-02: GET matches by Radiohead's MusicBrainz artist id, type=8 (plexav's PMS never asked for an artist this way); the artist row it names is agent.json's",
+ "answers": [
+  {
+   "path": "/library/metadata/matches",
+   "query": [
+    [
+     "guid",
+     "mbid://a74b1b7f-71a5-4011-9441-d0b5e4122711"
+    ],
+    [
+     "includeElements",
+     "Directory,Children,Guid"
+    ],
+    [
+     "includeFields",
+     "id,guid,title,parentGuid,parentTitle,ratingKey"
+    ],
+    [
+     "type",
+     "8"
+    ]
+   ],
+   "response": {
+    "MediaContainer": {
+     "librarySectionID": "home",
+     "librarySectionTitle": "Metadata",
+     "offset": 0,
+     "totalSize": 1,
+     "identifier": "tv.plex.provider.metadata",
+     "size": 1,
+     "Metadata": [
+      {
+       "guid": "plex://artist/5d07bbfc403c6402904a5ecc",
+       "ratingKey": "5d07bbfc403c6402904a5ecc",
+       "title": "Radiohead",
+       "Guid": [
+        {
+         "id": "mbid://a74b1b7f-71a5-4011-9441-d0b5e4122711"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

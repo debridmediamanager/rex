@@ -40,6 +40,11 @@ fn album_ids(item: &Item) -> (Option<String>, Option<String>) {
     (id("mbid"), id("plex"))
 }
 
+/// The MusicBrainz artist id a source pushed with a track, asked for only when nothing names its album.
+fn artist_mbid(item: &Item) -> Option<String> {
+    item.ids.get("artist_mbid").map(string_value).filter(|id| !id.is_empty())
+}
+
 fn placed_number(item: &Item, field: &str) -> Option<i64> {
     item.placed.as_ref()?.get(field)?.as_i64()
 }
@@ -208,6 +213,20 @@ pub(super) fn upsert_tracks(
         info!("FEED identified album {:?} -> {what}", ids.0.as_deref().or(ids.1.as_deref()).unwrap_or_default());
         named.insert(ids, answer);
     }
+    // Then the artist of each album nothing named, by its artist id: the album goes under Plex's artist,
+    // beside that artist's named albums, not under an artist of its displayed name (2026-11-02: rex-fun
+    // drew Lawrence and Pentatonix twice, once for each kind of album).
+    let mut artists: HashMap<String, Option<Value>> = HashMap::new();
+    for (item, _, _) in &plans {
+        let Some(mbid) = artist_mbid(item) else { continue };
+        if named.get(&album_ids(item)).is_some_and(Option::is_some) || artists.contains_key(&mbid) {
+            continue;
+        }
+        let answer = plex.as_deref().and_then(|p| identify::plex_artist(p as &dyn PlexSource, &mbid));
+        let what = answer.as_ref().and_then(|artist| artist.get("guid")).map(string_value).unwrap_or_else(|| "nothing".to_string());
+        info!("FEED identified artist {mbid:?} -> {what}");
+        artists.insert(mbid, answer);
+    }
     // Off the lock too: each sidecar's text, read from the source as a Part's bytes are.
     let mut texts: HashMap<(String, String), String> = HashMap::new();
     for (item, _, _) in &plans {
@@ -226,7 +245,10 @@ pub(super) fn upsert_tracks(
     // Unplaced tracks are numbered in their album's file order, after what it already holds.
     plans.sort_by(|a, b| a.0.path.cmp(&b.0.path));
     for (item, section, plan) in plans {
-        let answer = named.get(&album_ids(&item)).cloned().flatten();
+        let answer = named.get(&album_ids(&item)).cloned().flatten().or_else(|| {
+            let artist = artists.get(&artist_mbid(&item)?)?.clone()?;
+            Some((Value::Null, Some(artist)))
+        });
         let key = match &plan {
             Plan::Lyrics(key) => {
                 let loudness = guard.refresh_loudness(key, source, &item);

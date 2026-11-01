@@ -34,7 +34,8 @@ from test_ports import free_port
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 FIXTURES = os.path.join(HERE, "fixtures", "music")
-AGENT = json.load(open(os.path.join(FIXTURES, "agent.json")))["answers"]
+AGENT = json.load(open(os.path.join(FIXTURES, "agent.json")))["answers"] + \
+    json.load(open(os.path.join(FIXTURES, "agent-artist.json")))["answers"]
 MACHINE = "00000000000000000000000000000000000000a1"
 REFERENCE_MACHINE = "8b9a5a573725219f3a79001e70fcd435b9600995"
 TOKEN = "fake"

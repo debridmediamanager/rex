@@ -145,6 +145,34 @@ def main():
         check("pushed again with its size, the track's Part takes it, on its key",
               body.get("updated") == 1 and part().get("size") == size, (body, row and part()))
 
+        # An album nothing names, pushed with its artist's MusicBrainz id: under Plex's artist for that id,
+        # beside the artist's named albums, not under an artist of its displayed name (rex-fun drew Lawrence
+        # and Pentatonix twice, 2026-11-02). The agent's answer: fixtures/music/agent-artist.json.
+        RADIOHEAD = "a74b1b7f-71a5-4011-9441-d0b5e4122711"
+        for name in ("i.mp3", "j.mp3"):
+            shutil.copy(source, os.path.join(loose, name))
+        session = {"id": "loose/i.mp3", "path": "loose/i.mp3", "kind": "track", "track": 1, "media_info": probe,
+                   "ids": {"artist_mbid": RADIOHEAD},
+                   "display": {"title": "Live Session Opener", "artist": {"title": "Radiohead"}, "album": {"title": "Live Sessions"}}}
+        before = len(rex.rows("/library/sections/1/all?type=8"))
+        rex.push([session])
+        row = next((row for row in rex.rows("/library/sections/1/all?type=10") if row["title"] == "Live Session Opener"), {})
+        check("an album nothing names, with its artist id, is under Plex's artist beside its named albums",
+              row.get("grandparentRatingKey") == radiohead.get("ratingKey") and row.get("parentTitle") == "Live Sessions"
+              and len(rex.rows("/library/sections/1/all?type=8")) == before, (row.get("grandparentTitle"), row.get("grandparentRatingKey")))
+        solo = {"id": "loose/j.mp3", "path": "loose/j.mp3", "kind": "track", "track": 1, "media_info": probe,
+                "display": {"title": "Solo", "artist": {"title": "Solo Act"}, "album": {"title": "Solo Album"}}}
+        rex.push([solo])
+        solo_row = next((row for row in rex.rows("/library/sections/1/all?type=10") if row["title"] == "Solo"), {})
+        status, body = rex.push([dict(solo, ids={"artist_mbid": RADIOHEAD})])
+        moved_row = rex.rows("/library/metadata/%s" % solo_row.get("ratingKey"))
+        check("pushed again with its artist id, a displayed artist's track moves to Plex's artist on its key",
+              body.get("updated") == 1 and moved_row and moved_row[0].get("grandparentRatingKey") == radiohead.get("ratingKey"),
+              (body, moved_row[:1] and moved_row[0].get("grandparentTitle")))
+        check("and the artist it leaves with nothing goes",
+              not any(row["title"] == "Solo Act" for row in rex.rows("/library/sections/1/all?type=8")),
+              [row["title"] for row in rex.rows("/library/sections/1/all?type=8")])
+
         # Placed again: same key, another track of the album.
         key = step["ratingKey"]
         moved = dict(next(item for item in items if item["path"].endswith("01 - 15 Step.flac")), track=2)
