@@ -536,11 +536,11 @@ def main():
             stub.records = []
         instance = Instance(off, free_port(), stub.server_address[1], "off")
         live.append(instance)
-        lan_only = lan(instance.port)
+        lan_only = lan(instance.port)  # [] on a container network (CI): then no announce may name anything
         got = wait_for(lambda: [uris for uris in announced(stub) if uris == lan_only], 10)
         check("REX_DIRECT_URL=off registers nothing", stub.taken("/api/rex-direct/register") == [])
         check("...and, claimed with no --announce-url, announces its LAN address as a real PMS does",
-              lan_only and got and all(uris == lan_only for uris in announced(stub)), announced(stub))
+              (got or not lan_only) and all(uris == lan_only for uris in announced(stub)), announced(stub))
         instance.stop()
         check("...and says nothing of rex-direct", "rex-direct:" not in instance.output(), instance.output()[-3000:])
     finally:
