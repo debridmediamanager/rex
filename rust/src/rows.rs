@@ -110,11 +110,90 @@ impl Overlay {
     }
 }
 
+/// The rows by position: every row as it is until the file keeps them (`attach`, `on_disk`), for
+/// the passes that take them all (`all`, `all_mut`), then a box a row, `None` exactly while only
+/// the file has it. Each row the file kept was a `Null` of 72 bytes (serde_json's `Value` with
+/// `preserve_order`) in a vector grown past fun's 45,328 rows to 65,536: 4.7 MB, now 0.5
+/// (`a_row_the_file_keeps_holds_no_value_here`, 2026-11-02).
+#[derive(Debug)]
+enum Items {
+    All(Vec<Value>),
+    Kept(Vec<Option<Box<Value>>>),
+}
+
+impl Default for Items {
+    fn default() -> Self {
+        Items::All(Vec::new())
+    }
+}
+
+impl Items {
+    fn len(&self) -> usize {
+        match self {
+            Items::All(rows) => rows.len(),
+            Items::Kept(rows) => rows.len(),
+        }
+    }
+
+    fn get(&self, position: usize) -> Option<&Value> {
+        match self {
+            Items::All(rows) => rows.get(position),
+            Items::Kept(rows) => rows.get(position)?.as_deref(),
+        }
+    }
+
+    fn get_mut(&mut self, position: usize) -> Option<&mut Value> {
+        match self {
+            Items::All(rows) => rows.get_mut(position),
+            Items::Kept(rows) => rows.get_mut(position)?.as_deref_mut(),
+        }
+    }
+
+    /// The rows as the file keeps them, boxed the first time.
+    fn kept(&mut self) -> &mut Vec<Option<Box<Value>>> {
+        if let Items::All(rows) = self {
+            *self = Items::Kept(std::mem::take(rows).into_iter().map(|row| Some(Box::new(row))).collect());
+        }
+        match self {
+            Items::Kept(rows) => rows,
+            Items::All(_) => unreachable!("boxed above"),
+        }
+    }
+
+    fn push(&mut self, row: Value) {
+        match self {
+            Items::All(rows) => rows.push(row),
+            Items::Kept(rows) => rows.push(Some(Box::new(row))),
+        }
+    }
+
+    /// The row at `position`, taken out: `Null` when only the file had it.
+    fn remove(&mut self, position: usize) -> Value {
+        match self {
+            Items::All(rows) => rows.remove(position),
+            Items::Kept(rows) => rows.remove(position).map_or(Value::Null, |row| *row),
+        }
+    }
+
+    fn retain(&mut self, keep: impl Fn(usize) -> bool) {
+        let mut index = 0;
+        match self {
+            Items::All(rows) => rows.retain(|_| {
+                index += 1;
+                keep(index - 1)
+            }),
+            Items::Kept(rows) => rows.retain(|_| {
+                index += 1;
+                keep(index - 1)
+            }),
+        }
+    }
+}
+
 #[derive(Debug, Default)]
 pub struct Rows {
     overlay: Option<Overlay>,
-    /// Each row by position: its body when held, `Null` when only the file has it.
-    items: Vec<Value>,
+    items: Items,
     /// How many times `trim` let go of rows it held: a listing that read rows ahead of time
     /// reads them again once it has (`runtime::project_planned`).
     evictions: u64,
@@ -137,7 +216,7 @@ impl Clone for Rows {
 impl Rows {
     pub fn new(items: Vec<Value>) -> Self {
         let meta = vec![Meta::new(); items.len()];
-        Rows { overlay: None, items, evictions: 0, released: 0, meta, disk: None, cache: RefCell::default() }
+        Rows { overlay: None, items: Items::All(items), evictions: 0, released: 0, meta, disk: None, cache: RefCell::default() }
     }
 
     pub fn len(&self) -> usize {
@@ -147,11 +226,6 @@ impl Rows {
     /// Whether the row at `position` is in memory.
     pub fn held(&self, position: usize) -> bool {
         position < self.items.len() && self.held_at(position)
-    }
-
-    /// Whether every row is held, as before `attach`: only then may a pass take them all.
-    pub fn all_held(&self) -> bool {
-        self.meta.iter().all(|meta| meta.held)
     }
 
     /// `meta` for every row: `all_mut`'s caller may have replaced the rows, which are then
@@ -166,18 +240,22 @@ impl Rows {
         self.meta.get(position).is_none_or(|meta| meta.held)
     }
 
-    /// Every row, when all are held (`all_held`).
+    /// Every row, before the file keeps them (`attach`).
     pub fn all(&self) -> &Vec<Value> {
-        assert!(self.all_held(), "rows not all in memory");
-        &self.items
+        match &self.items {
+            Items::All(rows) => rows,
+            Items::Kept(_) => panic!("rows kept in the file"),
+        }
     }
 
-    /// Every row mutably, when all are held; each is then unsaved.
+    /// Every row mutably, before the file keeps them; each is then unsaved.
     pub fn all_mut(&mut self) -> &mut Vec<Value> {
         self.sync();
-        assert!(self.all_held(), "rows not all in memory");
         self.meta.iter_mut().for_each(|meta| meta.dirty = true);
-        &mut self.items
+        match &mut self.items {
+            Items::All(rows) => rows,
+            Items::Kept(_) => panic!("rows kept in the file"),
+        }
     }
 
     pub fn get(&self, position: usize) -> Option<&Value> {
@@ -278,9 +356,7 @@ impl Rows {
         // The caller wants the row gone: one the file cannot give back (a failed read) is
         // removed all the same, its body Null. Answering None left it in the catalog, and the
         // feed then filed a second row on the same key.
-        if self.hold(position).is_none() {
-            self.items[position] = Value::Null;
-        }
+        let _ = self.hold(position);
         self.meta.remove(position);
         let row = self.items.remove(position);
         self.shift_cache(&[position]);
@@ -291,11 +367,7 @@ impl Rows {
     pub fn remove_all(&mut self, gone: &[usize]) {
         self.sync();
         let is_gone = |position: usize| gone.binary_search(&position).is_ok();
-        let mut index = 0;
-        self.items.retain(|_| {
-            index += 1;
-            !is_gone(index - 1)
-        });
+        self.items.retain(|position| !is_gone(position));
         let mut index = 0;
         self.meta.retain(|_| {
             index += 1;
@@ -327,7 +399,9 @@ impl Rows {
     pub fn each(&self, mut visit: impl FnMut(usize, &Value)) {
         for position in 0..self.len() {
             if self.held_at(position) {
-                visit(position, &self.items[position]);
+                if let Some(row) = self.items.get(position) {
+                    visit(position, row);
+                }
                 continue;
             }
             let meta = &self.meta[position];
@@ -346,14 +420,15 @@ impl Rows {
     pub fn attach(&mut self, path: &Path, key_of: impl Fn(&Value) -> Option<String>, clean: bool) {
         self.sync();
         let mut taken = std::collections::HashSet::new();
-        for (row, meta) in self.items.iter().zip(self.meta.iter_mut()) {
-            if !meta.held {
+        for (position, meta) in self.meta.iter_mut().enumerate() {
+            let Some(row) = self.items.get(position).filter(|_| meta.held) else {
                 continue;
-            }
+            };
             meta.stored = key_of(row).filter(|key| !key.starts_with('#') && taken.insert(key.clone())).map(Into::into);
             meta.dirty = !clean || meta.stored.is_none();
             meta.serial = 0;
         }
+        self.items.kept();
         self.disk = Some(Disk { path: path.to_path_buf(), reader: RefCell::new(None), pool: Default::default() });
     }
 
@@ -364,12 +439,16 @@ impl Rows {
     /// No rows yet, kept in the state database at `path`: a start's restore adds them one at a
     /// time as it reads them (`push_stored`), so they are never all in memory at once.
     pub fn on_disk(path: &Path) -> Self {
-        Rows { disk: Some(Disk { path: path.to_path_buf(), reader: RefCell::new(None), pool: Default::default() }), ..Default::default() }
+        Rows {
+            items: Items::Kept(Vec::new()),
+            disk: Some(Disk { path: path.to_path_buf(), reader: RefCell::new(None), pool: Default::default() }),
+            ..Default::default()
+        }
     }
 
     /// A row the file holds under `key`, as it is there: not held.
     pub fn push_stored(&mut self, key: &str) {
-        self.items.push(Value::Null);
+        self.items.kept().push(None);
         self.meta.push(Meta { held: false, stored: Some(key.into()), dirty: false, serial: 0 });
     }
 
@@ -398,7 +477,7 @@ impl Rows {
         } else {
             Default::default()
         };
-        for (row, meta) in self.items.iter().zip(self.meta.iter_mut()) {
+        for (position, meta) in self.meta.iter_mut().enumerate() {
             if !meta.dirty {
                 continue;
             }
@@ -408,7 +487,7 @@ impl Rows {
             }
             // A row added since `attach` is stored under its own key once a save wrote it.
             if attached && meta.stored.is_none() {
-                meta.stored = key_of(row).filter(|key| !key.starts_with('#') && taken.insert(key.clone())).map(Into::into);
+                meta.stored = self.items.get(position).and_then(&key_of).filter(|key| !key.starts_with('#') && taken.insert(key.clone())).map(Into::into);
                 if meta.stored.is_none() {
                     meta.dirty = true;
                 }
@@ -425,9 +504,9 @@ impl Rows {
         let durable = crate::store::written(&disk.path);
         self.meta.resize(self.items.len(), Meta::new());
         let mut evicted = false;
-        for (row, meta) in self.items.iter_mut().zip(self.meta.iter_mut()) {
+        for (row, meta) in self.items.kept().iter_mut().zip(self.meta.iter_mut()) {
             if meta.held && !meta.dirty && meta.stored.is_some() && meta.serial <= durable {
-                *row = Value::Null;
+                *row = None;
                 meta.held = false;
                 evicted = true;
                 self.released += 1;
@@ -575,11 +654,11 @@ impl Rows {
         let row = match cached {
             Some((row, _, bytes)) => {
                 self.cache.get_mut().bytes -= bytes;
-                *row
+                row
             }
-            None => self.read(meta.stored.as_deref()?)?,
+            None => Box::new(self.read(meta.stored.as_deref()?)?),
         };
-        self.items[position] = row;
+        self.items.kept()[position] = Some(row);
         self.meta[position].held = true;
         Some(())
     }
@@ -1020,6 +1099,22 @@ mod budget_tests {
     use super::test_support::{key_of, save};
     use crate::catalog::Catalog;
 
+
+    /// What a start keeps for each of fun's 45,328 rows the file holds (2026-11-01): 7,087,783
+    /// bytes, 156 a row, were a 72-byte `Null` in a vector grown to 65,536 (104 a row), `Meta`'s
+    /// 32 in one alike (46) and its key's 6. With an 8-byte slot, 2,893,481 bytes, 63 a row.
+    #[test]
+    fn a_row_the_file_keeps_holds_no_value_here() {
+        let path = std::env::temp_dir().join(format!("rex-rows-weight-{}.db", std::process::id()));
+        let before = crate::test_alloc::held();
+        let mut rows = super::Rows::on_disk(&path);
+        for n in 0..45_328 {
+            rows.push_stored(&(100_000 + n).to_string());
+        }
+        let held = (crate::test_alloc::held() - before) as usize;
+        eprintln!("rows: {held} bytes, {} a row", held / 45_328);
+        assert!(held / 45_328 < 70, "{held} bytes");
+    }
 
     /// The cache counts what a row read from the file holds in memory, as the allocator counts it.
     #[test]
