@@ -55,7 +55,7 @@ value: the identity rex announces to plex.tv on. rex logs neither the token nor 
 | Field | Meaning |
 |---|---|
 | `machineIdentifier` | Always sent |
-| `lanIp` | rex's address on its LAN, the one it announces as `http://<lanIp>:<port>`: the first RFC 1918 IPv4 among `--announce-url`'s plain `http://` entries (how a setup names it when rex cannot read it itself: Docker without host networking, a VPN), else the bound address, or under `--host 0.0.0.0` the interface its default route leaves from, read at each request. Sent only when it is RFC 1918 IPv4 (10/8, 172.16/12, 192.168/16); IPv6, a tunnel's (Tailscale's 100.64/10), a public address or loopback leaves the key out. So the provider can give rex a name on its LAN as well; a provider that does not know the key ignores it |
+| `lanIp` | rex's address on its LAN, the one it announces as `http://<lanIp>:<port>`: the first RFC 1918 IPv4 among `--announce-url`'s plain `http://` entries (how a setup names it when rex cannot read it itself: Docker without host networking, a VPN), else the bound address, or under `--host 0.0.0.0` the interface its default route leaves from, read at each request, unless that interface is a container network's (a veth: Docker, Podman or LXC without host networking), which nothing outside the container reaches. Sent only when it is RFC 1918 IPv4 (10/8, 172.16/12, 192.168/16); IPv6, a tunnel's (Tailscale's 100.64/10), a public address or loopback leaves the key out. So the provider can give rex a name on its LAN as well; a provider that does not know the key ignores it |
 
 ## Verifying the caller
 

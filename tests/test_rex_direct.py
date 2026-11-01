@@ -213,8 +213,24 @@ def announced(stub):
             for r in stub.taken("/servers.plex.tv/devices/%s" % MACHINE)]
 
 
+def on_container_network():
+    """Whether the default route leaves through a veth (Docker, Podman or LXC without host
+    networking), as rex reads it off /proc/net/route and sysfs: then it announces no LAN address
+    and sends no lanIp, since nothing outside that network reaches one. Linux only."""
+    try:
+        with open("/proc/net/route") as table:
+            iface = next(line.split()[0] for line in list(table)[1:] if line.split()[1:2] == ["00000000"])
+        with open("/sys/class/net/%s/ifindex" % iface) as f1, open("/sys/class/net/%s/iflink" % iface) as f2:
+            return f1.read().strip() != f2.read().strip()
+    except (OSError, StopIteration, IndexError):
+        return False
+
+
 def local_address():
-    """The address rex reaches the world from (`local_interface_address`); None without a route."""
+    """The address rex reaches the world from (`local_interface_address`); None without a route,
+    and None on a container network (`lan_interface_address`), as CI's bridged container is."""
+    if on_container_network():
+        return None
     probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
         probe.connect(("192.0.2.1", 9))

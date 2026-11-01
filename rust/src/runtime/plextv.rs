@@ -1490,14 +1490,14 @@ pub(crate) fn announce_lan(host: &str, port: u16) {
 /// An announce list with rex's LAN connection after it, its address read now.
 pub(crate) fn with_lan(url: &str) -> String {
     let lan = LAN.get().and_then(|(host, port)| {
-        super::lan_url(host, &super::local_interface_address().unwrap_or_default(), *port)
+        super::lan_url(host, &super::lan_interface_address().unwrap_or_default(), *port)
     });
     super::with_lan_url(Some(url), lan.as_deref()).unwrap_or_default()
 }
 
 /// The address of that LAN connection, read now, when it is RFC 1918 IPv4.
 pub(crate) fn lan_ipv4() -> Option<std::net::Ipv4Addr> {
-    LAN.get().and_then(|(host, _)| super::lan_ipv4(host, &super::local_interface_address().unwrap_or_default()))
+    LAN.get().and_then(|(host, _)| super::lan_ipv4(host, &super::lan_interface_address().unwrap_or_default()))
 }
 
 /// `heartbeat.announce`: one registration PUT, byte-shaped like a real PMS's
