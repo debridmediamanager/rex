@@ -1014,35 +1014,12 @@ mod listed_tests {
 
 #[cfg(test)]
 mod budget_tests {
-    use std::alloc::{GlobalAlloc, Layout, System};
-    use std::cell::Cell;
 
     use serde_json::{json, Value};
 
     use super::test_support::{key_of, save};
     use crate::catalog::Catalog;
 
-    thread_local! {
-        /// Bytes this thread allocated and has not freed.
-        static LIVE: Cell<isize> = const { Cell::new(0) };
-    }
-
-    struct Counting;
-
-    // SAFETY: `System` does the allocating; this only counts.
-    unsafe impl GlobalAlloc for Counting {
-        unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-            let _ = LIVE.try_with(|live| live.set(live.get() + layout.size() as isize));
-            unsafe { System.alloc(layout) }
-        }
-        unsafe fn dealloc(&self, pointer: *mut u8, layout: Layout) {
-            let _ = LIVE.try_with(|live| live.set(live.get() - layout.size() as isize));
-            unsafe { System.dealloc(pointer, layout) }
-        }
-    }
-
-    #[global_allocator]
-    static COUNTING: Counting = Counting;
 
     /// The cache counts what a row read from the file holds in memory, as the allocator counts it.
     #[test]
@@ -1064,12 +1041,12 @@ mod budget_tests {
         for (position, key) in keys.iter().enumerate() {
             let text: String = db.query_row("SELECT body FROM row WHERE coll = ?1 AND key = ?2", rusqlite::params![super::COLLECTION, key], |found| found.get(0)).unwrap();
             // What `read` does, and the box the cache keeps it in.
-            let before = LIVE.with(Cell::get);
+            let before = crate::test_alloc::held();
             let mut row: Value = serde_json::from_str(&text).unwrap();
             crate::catalog::pack_streams(&mut row);
             crate::catalog::compact(&mut row);
             let row = Box::new(row);
-            let truth = (LIVE.with(Cell::get) - before) as usize;
+            let truth = (crate::test_alloc::held() - before) as usize;
             drop(row);
             rows.push_stored(key);
             let counted = rows.cache.borrow().bytes;

@@ -21,4 +21,6 @@ pub mod platform;
 pub mod rows;
 pub mod runtime;
 pub mod store;
+#[cfg(test)]
+mod test_alloc;
 pub mod xmlout;

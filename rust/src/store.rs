@@ -1237,50 +1237,6 @@ mod tests {
         );
     }
 
-    use std::alloc::{GlobalAlloc, Layout, System};
-
-    /// The test binary's allocator, counting what each thread holds, so a test weighs what
-    /// a call keeps; the other tests allocate on threads of their own.
-    struct Counting;
-
-    thread_local! {
-        static HELD: std::cell::Cell<isize> = const { std::cell::Cell::new(0) };
-    }
-
-    fn count(bytes: isize) {
-        let _ = HELD.try_with(|held| held.set(held.get() + bytes));
-    }
-
-    unsafe impl GlobalAlloc for Counting {
-        unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-            let ptr = System.alloc(layout);
-            if !ptr.is_null() {
-                count(layout.size() as isize);
-            }
-            ptr
-        }
-        unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
-            let ptr = System.alloc_zeroed(layout);
-            if !ptr.is_null() {
-                count(layout.size() as isize);
-            }
-            ptr
-        }
-        unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-            System.dealloc(ptr, layout);
-            count(-(layout.size() as isize));
-        }
-        unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, size: usize) -> *mut u8 {
-            let moved = System.realloc(ptr, layout, size);
-            if !moved.is_null() {
-                count(size as isize - layout.size() as isize);
-            }
-            moved
-        }
-    }
-
-    #[global_allocator]
-    static COUNTING: Counting = Counting;
 
     /// What a start keeps to diff the next save against, for the shape of fun's `rex.db`:
     /// 44,644 rows keyed by ratingKey, 52,439 `deleted` and 52,387 `retiredKeys`, each of
@@ -1303,12 +1259,12 @@ mod tests {
         let first = cache.diff_rows("items", &each(&rows), None, key, |_| None, |_| None);
         apply(&mut open(&path).unwrap(), &[first]).unwrap();
         drop((cache, rows, saved));
-        let before = HELD.with(std::cell::Cell::get);
+        let before = crate::test_alloc::held();
         let cache = match read_state_with(&path, Some(&mut |_: &str, _: Value| {})).unwrap() {
             Saved::Database(_, cache) => cache,
             _ => panic!("not read back"),
         };
-        let per_key = (HELD.with(std::cell::Cell::get) - before) as usize / keys;
+        let per_key = (crate::test_alloc::held() - before) as usize / keys;
         drop(cache);
         let _ = fs::remove_dir_all(&dir);
         assert!(per_key < 60, "{per_key} bytes a key");
