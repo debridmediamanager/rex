@@ -964,6 +964,12 @@ impl Runtime {
                 }
                 Some(Response::json(200, json!({"MediaContainer": container})))
             }
+            // Measured on plexav (2026-11-01): What's On's My Upcoming Shows and Recommended For You
+            // keys answer 200 with the provider's bare container; upcoming lists only shows a
+            // recording rule names, and rex records nothing, so both stay empty.
+            "/hubs/playlists/fav" | "/hubs/playlists/rec" => {
+                Some(Response::json(200, json!({"MediaContainer": {"size": 0, "identifier": IDENTIFIER}})))
+            }
             "/watchnow" => Some(Response::json(200, json!({"MediaContainer": {"size": 3, "Type": [
                 {"key": format!("{PREFIX}/watchnow/all"), "type": "mixed", "title": "All Channels", "active": false},
                 {"key": format!("{PREFIX}/sections/1/all?type=1&beginsAt<=now&endsAt>=%2B1s&sort=beginsAt&skipDetails=1"), "type": "movie", "title": "Movies on Now", "active": false},

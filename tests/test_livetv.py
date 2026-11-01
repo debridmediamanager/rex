@@ -510,6 +510,15 @@ def browse(scratch, source, guide):
                       "livetv" in features and "dvr" not in features and "livetv" in own and "dvr" not in own, ",".join(name for name in own if not UUID.match(name)))
                 continue
             compare(label_of(exchange), port, exchange)
+        # What's On names two playlist hubs; plexav answered both keys 200 with the provider's bare
+        # container (2026-11-01, no recording rule: upcoming lists only shows a rule names), where rex
+        # answered 404.
+        for name in ("fav", "rec"):
+            status, _, body = request(port, "GET", "/tv.plex.providers.epg.xmltv:2/hubs/playlists/" + name,
+                                      headers=[("Accept", "application/json")])
+            check("What's On's %s playlist hub answers plexav's empty container" % name,
+                  status == 200 and json.loads(body or b"{}") == {"MediaContainer": {"size": 0, "identifier": "tv.plex.providers.epg.xmltv"}},
+                  (status, body[:120]))
     finally:
         process.kill()
         process.wait()
