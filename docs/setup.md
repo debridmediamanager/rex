@@ -556,7 +556,8 @@ WantedBy=multi-user.target
 ## Movie and TV capabilities
 
 These work even when the claiming account is free. An app's own checks, such as its Downloads
-eligibility, still apply. Music, Live TV and DVR are not supported.
+eligibility, still apply. Music and Live TV come from sources that send them ([feed API](feed-api.md),
+"Tracks" and "Live TV"); there is no DVR, so nothing records, and music has no radio, mixes or stations.
 
 | Capability | What you get |
 |---|---|
@@ -571,6 +572,8 @@ eligibility, still apply. Music, Live TV and DVR are not supported.
 | Remote limits | Per-user stream counts and upload bandwidth limits, measured on the real connection |
 | Sharing and webhooks | Rating and label filters and Downloads permission per share, and webhooks ([Local owner controls](#local-owner-controls)) |
 | Cinema trailers and pre-rolls | Trailers your sources supply, and pre-rolls (below). No online trailer catalog |
+| Music | A source's tracks as artists and albums, named by Plex from their MusicBrainz release, played in Plexamp, Plex Web and Plex for Android with lyrics and loudness when the source sends them |
+| Live TV | A source's live channels and guide in Plex Web's and Plex for Android's Live TV: What's On, the guide, search and watching a channel |
 
 ### Analysis and disk use
 
@@ -586,6 +589,10 @@ Analysis reads source media, consumes CPU and stores generated files in a folder
 `rex.db`, as do Downloads; keep that disk writable and back the folders up with `rex.db`.
 Deleting a source, file version or library retires its unreferenced analysis artifacts.
 Deleting preview thumbnails leaves chapter images and markers intact.
+
+The blurred backgrounds and colours the Plex apps draw behind a title are worked out from its
+poster and background the first time a listing shows it, and kept in `blur_cache.json` beside
+`rex.db`. `REX_ARTWORK_ANALYSIS=off` turns that off.
 
 ### Apps downloading straight from the source
 
